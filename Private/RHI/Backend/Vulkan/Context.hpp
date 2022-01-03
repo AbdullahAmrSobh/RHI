@@ -10,9 +10,8 @@ namespace Vulkan
     {
     public:
         Context(Device& device);
-
-        virtual EResultCode Present(uint32_t _swapchainCount, ISwapChain** _ppSwapchains) override;
         
+        virtual EResultCode Present(uint32_t swapchainCount, ISwapChain** ppSwapchains) override;
     
     private:
         Device* m_pDevice;

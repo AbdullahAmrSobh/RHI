@@ -13,18 +13,18 @@ namespace Vulkan
         uint32_t index       = 0;
         vkGetDeviceQueue(m_pDevice->GetHandle(), familyIndex, index, &m_PresentQueue);
     }
-
-    EResultCode Context::Present(uint32_t _swapchainCount, ISwapChain** _ppSwapchains)
+    
+    EResultCode Context::Present(uint32_t swapchainCount, ISwapChain** ppSwapchains)
     {
         std::vector<VkSemaphore> waitSemaphores;
         
-        std::vector<VkSwapchainKHR> swapchains(_swapchainCount);
-        std::vector<uint32_t>       imageIndices(_swapchainCount);
-        std::vector<VkResult>       results(_swapchainCount);
+        std::vector<VkSwapchainKHR> swapchains(swapchainCount);
+        std::vector<uint32_t>       imageIndices(swapchainCount);
+        std::vector<VkResult>       results(swapchainCount);
         
-        for (uint32_t i = 0; i < _swapchainCount; i++)
+        for (uint32_t i = 0; i < swapchainCount; i++)
         {
-            auto swapchain  = static_cast<SwapChain*>(_ppSwapchains[i]);
+            auto swapchain  = static_cast<SwapChain*>(ppSwapchains[i]);
             swapchains[i]   = swapchain->GetHandle();
             imageIndices[i] = swapchain->GetCurrentBackBufferIndex();
             

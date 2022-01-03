@@ -1,6 +1,6 @@
-#include "RHI/Backend//Vulkan/Resources.hpp"
 #include "RHI/Backend/Vulkan/Device.hpp"
 #include "RHI/Backend/Vulkan/Common.hpp"
+#include "RHI/Backend/Vulkan/Queue.hpp"
 
 namespace RHI
 {
@@ -22,23 +22,23 @@ namespace Vulkan
         {
             VkDeviceQueueCreateInfo queueCreateInfo = {};
             float                   queuePriority   = 1.0f;
-            
+
             uint32_t index = 0;
             for (const auto& qfb : m_physicalDevice.GetQueueFamilyProperties())
             {
 
                 if (qfb.queueFlags & VK_QUEUE_GRAPHICS_BIT)
                 {
-					
-					m_queueSettings.presentQueueIndex = index;
-					m_queueSettings.presentQueueCount = 1;
-					m_queueSettings.graphicsQueueIndex = index;
-					m_queueSettings.graphicsQueueCount = 1;
-					m_queueSettings.computeQueueIndex = index;
-					m_queueSettings.computeQueueCount = 1;
-					m_queueSettings.transferQueueIndex = index;
-					m_queueSettings.transferQueueCount = 1;
-                    
+
+                    m_queueSettings.presentQueueIndex  = index;
+                    m_queueSettings.presentQueueCount  = 1;
+                    m_queueSettings.graphicsQueueIndex = index;
+                    m_queueSettings.graphicsQueueCount = 1;
+                    m_queueSettings.computeQueueIndex  = index;
+                    m_queueSettings.computeQueueCount  = 1;
+                    m_queueSettings.transferQueueIndex = index;
+                    m_queueSettings.transferQueueCount = 1;
+
                     queueCreateInfo.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
                     queueCreateInfo.pNext            = nullptr;
                     queueCreateInfo.flags            = 0;
@@ -86,7 +86,14 @@ namespace Vulkan
             VkResult result = vmaCreateAllocator(&createInfo, &m_allocator);
             return result;
         }
-    }
+        
+        // Create queues;
+        m_PresentQueue  = CreateUnique<PresentQueue>(*this, m_queueSettings.presentQueueIndex);
+        m_GraphicsQueue = CreateUnique<Queue>(*this, m_queueSettings.graphicsQueueIndex);
+        m_ComputeQueue  = CreateUnique<Queue>(*this, m_queueSettings.computeQueueIndex);
+        m_TransferQueue = CreateUnique<Queue>(*this, m_queueSettings.transferQueueIndex);
+    
+	}
 
 } // namespace Vulkan
 } // namespace RHI

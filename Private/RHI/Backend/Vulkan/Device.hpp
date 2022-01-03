@@ -1,6 +1,6 @@
 #pragma once
-#include "RHI/Backend/Vulkan/vma/vk_mem_alloc.h"
 #include "RHI/Backend/Vulkan/Common.hpp"
+#include "RHI/Backend/Vulkan/vma/vk_mem_alloc.h"
 
 #include <utility>
 #include <vector>
@@ -9,6 +9,8 @@ namespace RHI
 {
 namespace Vulkan
 {
+    class Queue;
+    class PresentQueue;
 
     class PhysicalDevice
     {
@@ -30,7 +32,7 @@ namespace Vulkan
 
             return properties;
         }
-        
+
         inline VkPhysicalDeviceFeatures GetFeatures() const
         {
             VkPhysicalDeviceFeatures features;
@@ -44,13 +46,13 @@ namespace Vulkan
         {
             uint32_t queueFamilyCount = 0;
             vkGetPhysicalDeviceQueueFamilyProperties(m_physicalDevice, &queueFamilyCount, nullptr);
-            
+
             std::vector<VkQueueFamilyProperties> queueFamilyProperties(queueFamilyCount);
             vkGetPhysicalDeviceQueueFamilyProperties(m_physicalDevice, &queueFamilyCount, queueFamilyProperties.data());
-            
+
             return queueFamilyProperties;
         }
-        
+
         inline std::vector<VkLayerProperties> GetAvailableLayers() const
         {
             uint32_t layerCount = 0;
@@ -66,7 +68,7 @@ namespace Vulkan
         {
             uint32_t extensionCount = 0;
             vkEnumerateDeviceExtensionProperties(m_physicalDevice, nullptr, &extensionCount, nullptr);
-            
+
             std::vector<VkExtensionProperties> extensionProperties(extensionCount);
             vkEnumerateDeviceExtensionProperties(m_physicalDevice, nullptr, &extensionCount, extensionProperties.data());
 
@@ -87,7 +89,7 @@ namespace Vulkan
             VkSurfaceCapabilitiesKHR capabilities;
 
             vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_physicalDevice, _surface, &capabilities);
-            
+
             return capabilities;
         }
 
@@ -128,16 +130,17 @@ namespace Vulkan
         inline VkDevice       GetHandle() { return m_device; }
         inline VmaAllocator   GetAllocator() { return m_allocator; }
         inline PhysicalDevice GetPhysicalDevice() const { return m_physicalDevice; }
+        inline PresentQueue&  GetPresentQueue() const { return *m_PresentQueue; }
+        inline Queue&         GetGraphicsQueue() const { return *m_GraphicsQueue; }
+        inline Queue&         GetComputeQueue() const { return *m_ComputeQueue; }
+        inline Queue&         GetTransferQueue() const { return *m_TransferQueue; }
 
     private:
         VkInstance     m_instance;
         VkDevice       m_device;
         PhysicalDevice m_physicalDevice;
         VmaAllocator   m_allocator;
-        
-		friend class Factory;
-		friend class Context;
-        
+
         struct QueueSettings
         {
             uint32_t presentQueueIndex, presentQueueCount;
@@ -145,9 +148,13 @@ namespace Vulkan
             uint32_t computeQueueIndex, computeQueueCount;
             uint32_t transferQueueIndex, transferQueueCount;
         } m_queueSettings;
-    
+
+        Unique<PresentQueue> m_PresentQueue;
+        Unique<Queue>        m_GraphicsQueue;
+        Unique<Queue>        m_ComputeQueue;
+        Unique<Queue>        m_TransferQueue;
     };
-    
+
     template <typename T>
     class DeviceObject
     {
