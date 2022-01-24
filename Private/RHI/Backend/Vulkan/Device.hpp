@@ -21,24 +21,20 @@ namespace Vulkan
             : m_physicalDevice(_physicalDevice)
         {
         }
-        
+
         inline VkPhysicalDevice GetHandle() { return m_physicalDevice; }
 
         inline VkPhysicalDeviceProperties GetProperties() const
         {
             VkPhysicalDeviceProperties properties;
-
             vkGetPhysicalDeviceProperties(m_physicalDevice, &properties);
-
             return properties;
         }
 
         inline VkPhysicalDeviceFeatures GetFeatures() const
         {
             VkPhysicalDeviceFeatures features;
-
             vkGetPhysicalDeviceFeatures(m_physicalDevice, &features);
-
             return features;
         }
 
@@ -46,10 +42,8 @@ namespace Vulkan
         {
             uint32_t queueFamilyCount = 0;
             vkGetPhysicalDeviceQueueFamilyProperties(m_physicalDevice, &queueFamilyCount, nullptr);
-
             std::vector<VkQueueFamilyProperties> queueFamilyProperties(queueFamilyCount);
             vkGetPhysicalDeviceQueueFamilyProperties(m_physicalDevice, &queueFamilyCount, queueFamilyProperties.data());
-
             return queueFamilyProperties;
         }
 
@@ -57,10 +51,8 @@ namespace Vulkan
         {
             uint32_t layerCount = 0;
             vkEnumerateDeviceLayerProperties(m_physicalDevice, &layerCount, nullptr);
-
             std::vector<VkLayerProperties> layerProperties(layerCount);
             vkEnumerateDeviceLayerProperties(m_physicalDevice, &layerCount, layerProperties.data());
-
             return layerProperties;
         }
 
@@ -68,28 +60,22 @@ namespace Vulkan
         {
             uint32_t extensionCount = 0;
             vkEnumerateDeviceExtensionProperties(m_physicalDevice, nullptr, &extensionCount, nullptr);
-
             std::vector<VkExtensionProperties> extensionProperties(extensionCount);
             vkEnumerateDeviceExtensionProperties(m_physicalDevice, nullptr, &extensionCount, extensionProperties.data());
-
             return extensionProperties;
         }
 
         inline VkPhysicalDeviceMemoryProperties GetMemoryProperties() const
         {
             VkPhysicalDeviceMemoryProperties properties;
-
             vkGetPhysicalDeviceMemoryProperties(m_physicalDevice, &properties);
-
             return properties;
         }
 
         inline VkSurfaceCapabilitiesKHR GetSurfaceCapabilities(VkSurfaceKHR _surface) const
         {
             VkSurfaceCapabilitiesKHR capabilities;
-
             vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_physicalDevice, _surface, &capabilities);
-
             return capabilities;
         }
 
@@ -97,10 +83,8 @@ namespace Vulkan
         {
             uint32_t presentModeCount = 0;
             vkGetPhysicalDeviceSurfacePresentModesKHR(m_physicalDevice, _surface, &presentModeCount, nullptr);
-
             std::vector<VkPresentModeKHR> presentModes(presentModeCount);
             vkGetPhysicalDeviceSurfacePresentModesKHR(m_physicalDevice, _surface, &presentModeCount, presentModes.data());
-
             return presentModes;
         }
 
@@ -108,10 +92,8 @@ namespace Vulkan
         {
             uint32_t surfaceFormatCount = 0;
             vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, _surface, &surfaceFormatCount, nullptr);
-
             std::vector<VkSurfaceFormatKHR> surfaceFormats(surfaceFormatCount);
             vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, _surface, &surfaceFormatCount, surfaceFormats.data());
-
             return surfaceFormats;
         }
 
@@ -127,8 +109,8 @@ namespace Vulkan
 
         VkResult Init(VkInstance _instance, VkPhysicalDevice _physicalDevice);
 
-        inline VkDevice       GetHandle() { return m_device; }
-        inline VmaAllocator   GetAllocator() { return m_allocator; }
+        inline VkDevice       GetHandle() const { return m_device; }
+        inline VmaAllocator   GetAllocator() const { return m_allocator; }
         inline PhysicalDevice GetPhysicalDevice() const { return m_physicalDevice; }
         inline PresentQueue&  GetPresentQueue() const { return *m_PresentQueue; }
         inline Queue&         GetGraphicsQueue() const { return *m_GraphicsQueue; }
@@ -169,6 +151,7 @@ namespace Vulkan
         void Init(Device& _pDevice) { m_pDevice = &_pDevice; }
 
         inline T GetHandle() { return m_handle; }
+        inline T GetHandle() const { return m_handle; }
 
     protected:
         Device* m_pDevice;

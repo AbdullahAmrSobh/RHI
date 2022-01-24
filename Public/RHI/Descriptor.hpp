@@ -1,13 +1,13 @@
 #pragma once
+#include "RHI/Buffer.hpp"
 #include "RHI/Definitions.hpp"
 #include "RHI/Sampler.hpp"
 #include "RHI/Texture.hpp"
-#include "RHI/Buffer.hpp"
 
 namespace RHI
 {
 
-enum class EResourceViewType
+enum class EShaderResourceType
 {
     Sampler              = 0,
     SampledImage         = 2,
@@ -22,7 +22,7 @@ enum class EResourceViewType
 
 enum class EShaderStageFlagBits
 {
-    
+
     VertexBit   = 0x00000001,
     DomainBit   = 0x00000002,
     HullBit     = 0x00000004,
@@ -34,45 +34,44 @@ enum class EShaderStageFlagBits
 };
 using ShaderStageFlags = Flags<EShaderStageFlagBits>;
 
-struct DescriptorSetLayoutBinding 
+struct DescriptorSetLayoutBinding
 {
-    EResourceViewType     resourceType;
-    uint32_t              resourceCount;
-    ShaderStageFlags      stageFlags;
-	ISampler*             pImmutableSamplers;
-};
+    explicit DescriptorSetLayoutBinding(EShaderStageFlagBits stage, EShaderResourceType type);
+    explicit DescriptorSetLayoutBinding(EShaderStageFlagBits stage, EShaderResourceType type, uint32_t arrayCount);
 
-struct DescriptorSetLayout 
-{
-	uint32_t                    bindingCount;
-    DescriptorSetLayoutBinding* pBindings;
+    EShaderResourceType  resourceType;
+    uint32_t             resourceCount;
+    EShaderStageFlagBits stageFlags;
+    ISampler*            pImmutableSamplers;
 };
-
-struct DescriptorSetUpdateInfo
-{
-	void SetBinding(uint32_t bindingIndex, uint32_t arrayElement, ITexture* pTexture);
-	void SetBinding(uint32_t bindingIndex, uint32_t arrayElement, IBuffer* pBuffer);
-};
+using DescriptorSetLayout = ArrayView<DescriptorSetLayoutBinding>;
 
 class IDescriptorSet
 {
 public:
-	virtual ~IDescriptorSet() = default;
-	
-	void Update(DescriptorSetUpdateInfo updateInfo);
+    virtual ~IDescriptorSet() = default;
+
+    virtual void BeginUpdate()                                                    = 0;
+    virtual void EndUpdate()                                                      = 0;
+    virtual void BindResource(uint32_t dstBinding, ITexture& texture)             = 0;
+    virtual void BindResource(uint32_t dstBinding, ArrayView<ITexture*> textures) = 0;
+    virtual void BindResource(uint32_t dstBinding, IBuffer& buffer)               = 0;
+    virtual void BindResource(uint32_t dstBinding, ArrayView<IBuffer*> buffers)   = 0;
 };
 using DescriptorSetPtr = Unique<IDescriptorSet>;
 
-
-struct DescriptorPoolDesc 
-{};
+struct DescriptorPoolDesc
+{
+    ArrayView<DescriptorSetLayout> descriptorSetLayouts;
+    uint32_t                       maxSets;
+};
 
 class IDescriptorPool
 {
-public: 
-	virtual ~IDescriptorPool() = default;
-	
-	virtual DescriptorSetPtr AllocateDescriptorSet(const DescriptorSetLayout& layout) = 0;
+public:
+    virtual ~IDescriptorPool() = default;
+
+    virtual Expected<DescriptorSetPtr> AllocateDescriptorSet(const DescriptorSetLayout& layout) = 0;
 };
 using DescriptorPoolPtr = Unique<IDescriptorPool>;
 

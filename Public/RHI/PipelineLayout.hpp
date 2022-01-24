@@ -7,8 +7,7 @@ namespace RHI
 
 struct PipelineLayoutDesc
 {
-    uint32_t             layoutCount;
-    DescriptorSetLayout* pLayouts;
+	ArrayView<DescriptorSetLayout> descriptorSetLayouts;
 };
 
 class IPipelineLayout

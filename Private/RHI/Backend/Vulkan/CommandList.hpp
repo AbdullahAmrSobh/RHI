@@ -1,5 +1,7 @@
 #pragma once
-#include "RHI/Backend/Vulkan/Device.hpp"
+#include "RHI/Backend/Vulkan/Fence.hpp"
+#include "RHI/Backend/Vulkan/RenderTarget.hpp"
+#include "RHI/Commands.hpp"
 
 #include "RHI/Backend/Vulkan/Buffer.hpp"
 #include "RHI/Backend/Vulkan/Texture.hpp"
@@ -9,77 +11,73 @@ namespace RHI
 namespace Vulkan
 {
 
-    class Semaphore : public DeviceObject<VkSemaphore>
+    class CommandList final
+        : public ICommandList
+        , public DeviceObject<VkCommandBuffer>
     {
-    public:
-        Semaphore(Device& device)
-            : DeviceObject(device)
+        virtual void Reset() override;
+        virtual void Begin() override;
+        virtual void End() override;
+
+        virtual void SetViewports(const Viewport* viewports, uint32_t count) override;
+        virtual void SetScissors(const Rect* scissors, uint32_t count) override;
+
+        // virtual void SetClearColor(const Color& color) override;
+
+        virtual void Submit(const CopyCommand& command) override;
+        virtual void Submit(const DrawCommand& command) override;
+        virtual void Submit(const DispatchCommand& command) override;
+
+    private:
+        inline void WaitForResourceIsReady(const Texture& texture, VkPipelineStageFlags stage)
         {
+            m_waitPoint.push_back({texture.GetResourceIsReadySemaphore(), stage});
         }
 
-        inline ~Semaphore() { vkDestroySemaphore(m_pDevice->GetHandle(), m_handle, nullptr); }
-        inline VkResult Init()
-        {
-            VkSemaphoreCreateInfo info = {};
-            info.sType                 = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-            info.pNext                 = nullptr;
-            info.flags                 = 0;
-            return vkCreateSemaphore(m_pDevice->GetHandle(), &info, nullptr, &m_handle);
-        }
-    };
-
-    class DrawCommand : DeviceObject<VkCommandBuffer>
-    {
     public:
-        void DrawIndexedInstanced(Buffer& instanceBuffer, uint32_t instanceCount, Buffer& vertexBuffer, uint32_t vertexCount, Buffer& indexBuffer,
-                                  uint32_t indexCount)
+        struct WaitPoint
         {
-            VkCommandBufferBeginInfo beginInfo           = {};
-            VkRenderPassBeginInfo    renderPassBeginInfo = {};
-            std::vector<VkViewport>  viewports;
-            std::vector<VkRect2D>    scissors;
+            VkSemaphore          semaphore;
+            VkPipelineStageFlags stage;
+        };
 
-            VkPipeline       pipeline;
-            VkPipelineLayout pipelineLayout;
-
-            uint32_t                     firstSet = 0;
-            std::vector<VkDescriptorSet> descriptorSets;
-            std::vector<uint32_t>        dynamicOffsets;
-                        
-            VkBuffer     buffers[2] = {instanceBuffer.GetHandle(), vertexBuffer.GetHandle()};
-            VkDeviceSize offsets[2] = {0, 0};
-
-            vkBeginCommandBuffer(m_handle, &beginInfo);
-            vkCmdBeginRenderPass(m_handle, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-            vkCmdBindPipeline(m_handle, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-            vkCmdSetViewport(m_handle, 0, viewports.size(), viewports.data());
-            vkCmdSetScissor(m_handle, 0, scissors.size(), scissors.data());
-            vkCmdBindDescriptorSets(m_handle, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, firstSet, descriptorSets.size(), descriptorSets.data(),
-                                    dynamicOffsets.size(), dynamicOffsets.data());
-            // vkCmdPipelineBarrier(m_handle, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask, VkDependencyFlags dependencyFlags, uint32_t
-            // memoryBarrierCount, const VkMemoryBarrier *pMemoryBarriers, uint32_t bufferMemoryBarrierCount, const VkBufferMemoryBarrier
-            // *pBufferMemoryBarriers, uint32_t imageMemoryBarrierCount, const VkImageMemoryBarrier *pImageMemoryBarriers)
-            vkCmdBindVertexBuffers(m_handle, 0, 2, buffers, offsets);
-            vkCmdBindIndexBuffer(m_handle, instanceBuffer.GetHandle(), 0, VK_INDEX_TYPE_UINT32);
-            vkCmdDraw(m_handle, vertexCount, instanceCount, 0, 0);
-            vkCmdDrawIndexed(m_handle, indexCount, instanceCount, 0, 0, 0);
-            vkCmdEndRenderPass(m_handle);
-            vkEndCommandBuffer(m_handle);
+        inline ArrayView<WaitPoint> GetWaitPoints() const { return ArrayView<WaitPoint>(m_waitPoint.begin()._Ptr, m_waitPoint.end()._Ptr); }
+        
+        inline ArrayView<VkSemaphore> GetSignalSemaphores() const
+        {
+            return ArrayView<VkSemaphore>(m_signalSemaphores.begin()._Ptr, m_signalSemaphores.end()._Ptr);
         }
 
     private:
+        std::vector<WaitPoint>   m_waitPoint;
+        std::vector<VkSemaphore> m_signalSemaphores;
     };
 
     class SubmitInfo
     {
     public:
-        SubmitInfo(const std::vector<VkSemaphore>& waitSemaphores, const std::vector<VkPipelineStageFlags>& waitSemaphoreStageMasks,
-                   const std::vector<VkCommandBuffer>& commandBuffers, const std::vector<VkSemaphore>& signalSemaphores)
-            : m_waitSemaphores(waitSemaphores)
-            , m_dstStageMasks(waitSemaphoreStageMasks)
-            , m_signalSemaphores(signalSemaphores)
-            , m_commandBuffers(commandBuffers)
+        SubmitInfo(ArrayView<ICommandList*> cmdLists)
         {
+            std::for_each(cmdLists.begin(), cmdLists.end(),
+                          [&](ICommandList* _pCommandList)
+                          {
+                              CommandList* commandList = static_cast<CommandList*>(_pCommandList);
+
+                              auto waitPoints = commandList->GetWaitPoints();
+
+                              std::for_each(waitPoints.begin(), waitPoints.end(),
+                                            [&](const CommandList::WaitPoint& waitSemaphore)
+                                            {
+                                                m_waitSemaphores.push_back(waitSemaphore.semaphore);
+                                                m_dstStageMasks.push_back(waitSemaphore.stage);
+                                            });
+
+                              std::transform(commandList->GetSignalSemaphores().begin(), commandList->GetSignalSemaphores().end(),
+                                             std::back_inserter(m_signalSemaphores), [](VkSemaphore semaphore) { return semaphore; });
+
+                              m_commandBuffers.push_back(commandList->GetHandle());
+                          });
+
             m_submitInfo.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
             m_submitInfo.pNext                = nullptr;
             m_submitInfo.waitSemaphoreCount   = static_cast<uint32_t>(m_waitSemaphores.size());
@@ -92,11 +90,38 @@ namespace Vulkan
         }
 
     private:
+        friend class CommandQueue;
         VkSubmitInfo                      m_submitInfo;
         std::vector<VkSemaphore>          m_waitSemaphores;
         std::vector<VkPipelineStageFlags> m_dstStageMasks;
         std::vector<VkCommandBuffer>      m_commandBuffers;
         std::vector<VkSemaphore>          m_signalSemaphores;
+    };
+
+    class CommandQueue final
+        : public ICommandQueue
+        , public DeviceObject<VkQueue>
+    {
+    public:
+        CommandQueue(Device& device, uint32_t queueFamilyIndex, uint32_t queueIndex)
+            : DeviceObject(device)
+            , m_queueFamilyIndex(queueFamilyIndex)
+            , m_queueIndex(queueIndex)
+        {
+            vkGetDeviceQueue(m_pDevice->GetHandle(), m_queueFamilyIndex, m_queueIndex, &m_handle);
+        }
+        
+        virtual void Submit(ArrayView<ICommandList*> commandLists, IFence& signalFence) override
+        {
+            SubmitInfo   submitInfo(commandLists);
+            VkFence      fenceToSignal = static_cast<Fence*>(&signalFence)->GetHandle();
+            VkSubmitInfo submitInfos[] = {submitInfo.m_submitInfo};
+            Assert(vkQueueSubmit(m_handle, 1, submitInfos, fenceToSignal));
+        }
+    
+    private:
+        uint32_t m_queueFamilyIndex;
+        uint32_t m_queueIndex;
     };
 
 } // namespace Vulkan

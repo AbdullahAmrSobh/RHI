@@ -1,10 +1,24 @@
 #pragma once
 #include "RHI/Common.hpp"
 #include "RHI/Core/Expected.hpp"
+#include "RHI/Core/Span.hpp"
 #include <functional>
+
+#ifdef _WIN32
+#include <windows.h>
+namespace RHI
+{
+using NativeWindowHandle = HWND;
+}
+#else
+#warning "No native window handle type defined for this platform"
+using NativeWindowHandle = void*;
+#endif
 
 namespace RHI
 {
+
+using DeviceAddress = void*;
 
 enum class EBackendType
 {
@@ -39,110 +53,15 @@ enum class EDebugMessageSeverity
     Fatel,
 };
 
-template <class T>
-using Expected = tl::expected<T, EResultCode>;
-
-template <typename FlagBitsType>
-struct FlagTraits
+enum class ESampleCount
 {
-    enum
-    {
-        allFlags = 0
-    };
-};
-
-template <typename BitType>
-class Flags
-{
-public:
-    using MaskType = typename std::underlying_type<BitType>::type;
-
-    // constructors
-    constexpr Flags() noexcept
-        : m_mask(0)
-    {
-    }
-
-    constexpr Flags(BitType bit) noexcept
-        : m_mask(static_cast<MaskType>(bit))
-    {
-    }
-
-    constexpr Flags(Flags<BitType> const& rhs) noexcept = default;
-
-    constexpr explicit Flags(MaskType flags) noexcept
-        : m_mask(flags)
-    {
-    }
-
-    // relational operators
-#if defined(RHI_ENABLE_SPACESHIP_OPERATOR)
-    auto operator<=>(Flags<BitType> const&) const = default;
-#else
-    constexpr bool operator<(Flags<BitType> const& rhs) const noexcept { return m_mask < rhs.m_mask; }
-
-    constexpr bool operator<=(Flags<BitType> const& rhs) const noexcept { return m_mask <= rhs.m_mask; }
-
-    constexpr bool operator>(Flags<BitType> const& rhs) const noexcept { return m_mask > rhs.m_mask; }
-
-    constexpr bool operator>=(Flags<BitType> const& rhs) const noexcept { return m_mask >= rhs.m_mask; }
-
-    constexpr bool operator==(Flags<BitType> const& rhs) const noexcept { return m_mask == rhs.m_mask; }
-
-    constexpr bool operator!=(Flags<BitType> const& rhs) const noexcept { return m_mask != rhs.m_mask; }
-#endif
-
-    // logical operator
-    constexpr bool operator!() const noexcept { return !m_mask; }
-
-    // bitwise operators
-    constexpr Flags<BitType> operator&(Flags<BitType> const& rhs) const noexcept { return Flags<BitType>(m_mask & rhs.m_mask); }
-
-    constexpr Flags<BitType> operator|(Flags<BitType> const& rhs) const noexcept { return Flags<BitType>(m_mask | rhs.m_mask); }
-
-    constexpr Flags<BitType> operator^(Flags<BitType> const& rhs) const noexcept { return Flags<BitType>(m_mask ^ rhs.m_mask); }
-
-    constexpr Flags<BitType> operator~() const noexcept { return Flags<BitType>(m_mask ^ FlagTraits<BitType>::allFlags); }
-
-    // assignment operators
-    constexpr Flags<BitType>& operator=(Flags<BitType> const& rhs) noexcept = default;
-
-    constexpr Flags<BitType>& operator|=(Flags<BitType> const& rhs) noexcept
-    {
-        m_mask |= rhs.m_mask;
-        return *this;
-    }
-
-    constexpr Flags<BitType>& operator&=(Flags<BitType> const& rhs) noexcept
-    {
-        m_mask &= rhs.m_mask;
-        return *this;
-    }
-
-    constexpr Flags<BitType>& operator^=(Flags<BitType> const& rhs) noexcept
-    {
-        m_mask ^= rhs.m_mask;
-        return *this;
-    }
-
-    // cast operators
-    explicit constexpr operator bool() const noexcept { return !!m_mask; }
-
-    explicit constexpr operator MaskType() const noexcept { return m_mask; }
-
-private:
-    MaskType m_mask;
-};
-
-class IDebugMessenger
-{
-public:
-    virtual ~IDebugMessenger() = default;
-
-    virtual void Info(std::string_view message)  = 0;
-    virtual void Warn(std::string_view message)  = 0;
-    virtual void Error(std::string_view message) = 0;
-    virtual void Fatel(std::string_view message) = 0;
+    Count1  = 0x01,
+    Count2  = 0x02,
+    Count4  = 0x04,
+    Count8  = 0x08,
+    Count16 = 0x10,
+    Count32 = 0x20,
+    Count64 = 0x40,
 };
 
 enum class EPixelFormat
@@ -154,6 +73,8 @@ enum class EPixelFormat
     Depth,
     DepthStencil,
 };
+
+enum class EBufferFormat {};
 
 enum class ECompareOp
 {
@@ -168,53 +89,203 @@ enum class ECompareOp
 
 };
 
+enum class EFilter
+{
+    Nearest = 0,
+    Linear  = 1,
+};
+
+enum class ESamplerAddressMode
+{
+    Repeat         = 0,
+    MirroredRepeat = 1,
+    ClampToEdge    = 2,
+    ClampToBorder  = 3,
+};
+
+enum class EBorderColor
+{
+    FloatTransparentBlack = 0,
+    IntTransparentBlack   = 1,
+    FloatOpaqueBlack      = 2,
+    IntOpaqueBlack        = 3,
+    FloatOpaqueWhite      = 4,
+    IntOpaqueWhite        = 5,
+};
+
+// Resource Usage enums
+
+enum class EResourceUsage
+{
+    Invalid            = 0,
+    GpuOnly            = 1,
+    CpuOnly            = 2,
+    CpuToGpu           = 3,
+    GpuToCpu           = 4,
+    CpuCopy            = 5,
+    GpuLazilyAllocated = 6,
+    MaxEnum            = 0x7FFFFFFF
+};
+
+enum class ETextureViewDimensions
+{
+    View3D      = 0x00,
+    View2D      = 0x01,
+    View1D      = 0x02,
+    ViewCubeMap = 0x03,
+};
+
+enum class ETextureUsageFlagBits
+{
+    Invalid                = 0x00000000,
+    TransferSrc            = 0x00000001,
+    TransferDst            = 0x00000002,
+    Sampled                = 0x00000004,
+    Storge                 = 0x00000008,
+    ColorAttachment        = 0x00000010,
+    DepthStencilAttachment = 0x00000020,
+    TransientAttachment    = 0x00000040,
+    InputAttachment        = 0x00000080,
+    Present                = 0x00000100,
+    SwapchainImage         = 0x00000200,
+    MaxEnum                = 0x7FFFFFFF,
+};
+using TextureUsageFlags = Flags<ETextureUsageFlagBits>;
+
+enum class ETextureViewAspectFlagBits
+{
+    Invalid = 0x00000000,
+    Color   = 0x00000001,
+    Depth   = 0x00000002,
+    Stencil = 0x00000004,
+    MaxEnum = 0x7FFFFFFF,
+};
+using TextureViewAspectFlags = Flags<ETextureViewAspectFlagBits>;
+
+enum class EBufferUsageFlagBits
+{
+    Invalid            = 0x00000000,
+    TransferSrc        = 0x00000001,
+    TransferDst        = 0x00000002,
+    UniformTexelBuffer = 0x00000004,
+    StorageTexelBuffer = 0x00000008,
+    UniformBuffer      = 0x00000010,
+    StorageBuffer      = 0x00000020,
+    IndexBuffer        = 0x00000040,
+    VertexBuffer       = 0x00000080,
+    IndirectBuffer     = 0x00000100,
+    MaxEnum            = 0x7FFFFFFF,
+};
+using BufferUsageFlags = Flags<EBufferUsageFlagBits>;
+
 // Structs
 struct Color
 {
-    float r, g, b, a;
-
-    Color()
+    explicit Color()
         : r(0.f)
         , g(0.f)
         , b(0.f)
         , a(0.f)
     {
     }
-    Color(float c)
+    explicit Color(float c)
         : r(c)
         , g(c)
         , b(c)
         , a(c)
     {
     }
-    Color(float _r, float _g, float _b, float _a)
-        : r(_r)
-        , g(_g)
-        , b(_b)
-        , a(_a)
+    explicit Color(float r, float g, float b, float a)
+        : r(r)
+        , g(g)
+        , b(b)
+        , a(a)
     {
     }
 
     bool operator==(const Color& _b) const { return r == _b.r && g == _b.g && b == _b.b && a == _b.a; }
     bool operator!=(const Color& _b) const { return !(*this == _b); }
+
+    float r, g, b, a;
 };
 
 struct Rect
 {
+    explicit Rect(uint32_t w, uint32_t h)
+        : x(0)
+        , y(0)
+        , sizeX(w)
+        , sizeY(h)
+    {
+    }
+
+    explicit Rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h)
+        : x(x)
+        , y(y)
+        , sizeX(w)
+        , sizeY(h)
+    {
+    }
+
     uint32_t x;
     uint32_t y;
     uint32_t sizeX;
     uint32_t sizeY;
 };
 
+struct Volume
+{
+    explicit Volume(uint32_t sizeX, uint32_t sizeY, uint32_t sizeZ)
+        : x(0)
+        , y(0)
+        , z(0)
+        , sizeX(sizeX)
+        , sizeY(sizeY)
+        , sizeZ(sizeZ)
+    {
+    }
+
+    explicit Volume(uint32_t x, uint32_t y, uint32_t z, uint32_t sizeX, uint32_t sizeY, uint32_t sizeZ)
+        : x(x)
+        , y(y)
+        , z(z)
+        , sizeX(sizeX)
+        , sizeY(sizeY)
+        , sizeZ(sizeZ)
+    {
+    }
+
+    uint32_t x;
+    uint32_t y;
+    uint32_t z;
+    uint32_t sizeX;
+    uint32_t sizeY;
+    uint32_t sizeZ;
+};
+
 struct Extent2D
 {
+	Extent2D() = default;
+    explicit Extent2D(uint32_t sizeX, uint32_t sizeY)
+        : sizeX(sizeX)
+        , sizeY(sizeY)
+    {
+    }
+
     uint32_t sizeX;
     uint32_t sizeY;
 };
 
 struct Extent3D
 {
+	Extent3D() = default;
+    explicit Extent3D(uint32_t sizeX, uint32_t sizeY = 1, uint32_t sizeZ = 1)
+        : sizeX(sizeX)
+        , sizeY(sizeY)
+        , sizeZ(sizeZ)
+    {
+    }
+
     uint32_t sizeX;
     uint32_t sizeY;
     uint32_t sizeZ;
@@ -226,7 +297,7 @@ struct Viewport
     float minY, maxY;
     float minZ, maxZ;
 
-    Viewport()
+    explicit Viewport()
         : minX(0.f)
         , maxX(0.f)
         , minY(0.f)
@@ -236,7 +307,7 @@ struct Viewport
     {
     }
 
-    Viewport(float width, float height)
+    explicit Viewport(float width, float height)
         : minX(0.f)
         , maxX(width)
         , minY(0.f)
@@ -246,7 +317,7 @@ struct Viewport
     {
     }
 
-    Viewport(float _minX, float _maxX, float _minY, float _maxY, float _minZ, float _maxZ)
+    explicit Viewport(float _minX, float _maxX, float _minY, float _maxY, float _minZ, float _maxZ)
         : minX(_minX)
         , maxX(_maxX)
         , minY(_minY)
@@ -262,8 +333,8 @@ struct Viewport
     }
     bool operator!=(const Viewport& b) const { return !(*this == b); }
 
-    [[nodiscard]] float Width() const { return maxX - minX; }
-    [[nodiscard]] float Height() const { return maxY - minY; }
+    RHI_NODISCARD float GetWidth() const { return maxX - minX; }
+    RHI_NODISCARD float GetHeight() const { return maxY - minY; }
 };
 
 } // namespace RHI

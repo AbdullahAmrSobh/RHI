@@ -9,16 +9,14 @@ namespace Vulkan
 {
     Expected<TexturePtr> Factory::CreateTexture(const MemoryAllocationDesc& allocDesc, const TextureDesc& desc)
     {
-        // Create a texture resource.
         auto     texture = CreateUnique<Texture>(*m_device);
         VkResult result  = texture->Init(allocDesc, desc);
-
         if (result != VK_SUCCESS)
             return tl::unexpected(ToResultCode(result));
 
         return texture;
     }
-
+    
     Texture::~Texture()
     {
         if (m_allocation != VK_NULL_HANDLE)
@@ -33,15 +31,15 @@ namespace Vulkan
         createInfo.sType             = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         createInfo.pNext             = nullptr;
         createInfo.flags             = 0;
-
-        if (desc.extent.sizeY == 1 && desc.extent.sizeZ == 1)
-            createInfo.imageType = VK_IMAGE_TYPE_1D;
-        else if (desc.extent.sizeZ == 1)
-            createInfo.imageType = VK_IMAGE_TYPE_2D;
-        else
-            createInfo.imageType = VK_IMAGE_TYPE_3D;
-
-        createInfo.format      = Utils::ToVkFormat(desc.format);
+        {
+            if (desc.extent.sizeY == 1 && desc.extent.sizeZ == 1)
+                createInfo.imageType = VK_IMAGE_TYPE_1D;
+            else if (desc.extent.sizeZ == 1)
+                createInfo.imageType = VK_IMAGE_TYPE_2D;
+            else
+                createInfo.imageType = VK_IMAGE_TYPE_3D;
+        }
+        createInfo.format      = Utils::ConvertTextureFormat(desc.format);
         createInfo.extent      = {desc.extent.sizeX, desc.extent.sizeX, desc.extent.sizeZ};
         createInfo.mipLevels   = desc.mipLevels;
         createInfo.arrayLayers = desc.arraySize;
@@ -52,11 +50,15 @@ namespace Vulkan
         createInfo.queueFamilyIndexCount = 0;
         createInfo.pQueueFamilyIndices   = nullptr;
         createInfo.initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED;
-        
+
         VmaAllocationCreateInfo allocInfo = {};
         allocInfo.usage                   = static_cast<VmaMemoryUsage>(allocDesc.usage);
-
+        
+		Assert(m_resourceIsReadySemaphore.Init());
+        
         return vmaCreateImage(m_pDevice->GetAllocator(), &createInfo, &allocInfo, &m_handle, &m_allocation, &m_allocationInfo);
+    
+
     }
 
     Expected<TextureViewPtr> Factory::CreateTextureView(const TextureViewDesc& desc)
@@ -65,7 +67,7 @@ namespace Vulkan
         VkResult result      = textureView->Init(desc);
         if (result != VK_SUCCESS)
             return tl::unexpected(ToResultCode(result));
-
+        
         return textureView;
     }
 
@@ -79,7 +81,7 @@ namespace Vulkan
         createInfo.flags                       = 0;
         createInfo.image                       = static_cast<Texture*>(desc.pTexture)->GetHandle();
         createInfo.viewType                    = static_cast<VkImageViewType>(desc.viewDimension);
-        createInfo.format                      = Utils::ToVkFormat(desc.format);
+        createInfo.format                      = Utils::ConvertTextureFormat(desc.format);
         createInfo.components.a                = VK_COMPONENT_SWIZZLE_IDENTITY;
         createInfo.components.r                = VK_COMPONENT_SWIZZLE_IDENTITY;
         createInfo.components.g                = VK_COMPONENT_SWIZZLE_IDENTITY;

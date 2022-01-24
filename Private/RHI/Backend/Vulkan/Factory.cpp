@@ -2,6 +2,9 @@
 #include "RHI/Backend/Vulkan/Common.hpp"
 #include "RHI/Backend/Vulkan/Utils.hpp"
 
+#include "RHI/Backend/Vulkan/RenderPass.hpp"
+#include "RHI/Backend/Vulkan/SwapChain.hpp"
+
 namespace RHI
 {
 namespace Vulkan
@@ -36,9 +39,6 @@ namespace Vulkan
 
     Factory::~Factory()
     {
-        for (auto& [key, surface] : m_surfaceMap)
-            vkDestroySurfaceKHR(m_instance, surface, nullptr);
-        
         auto pfnDestroyDebugUtilsMessenger =
             reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(m_instance, "vkDestroyDebugUtilsMessengerEXT"));
 
@@ -93,13 +93,16 @@ namespace Vulkan
             if (result != VK_SUCCESS)
                 return ToResultCode(result);
         }
-        
+
         // Create a Device.
         m_device        = CreateUnique<Device>();
         VkResult result = m_device->Init(m_instance, GetPhysicalDevices(m_instance).front());
 
+        Surface::InitCacheManager(m_instance, m_device.get());
+        RenderPass::InitCacheManager(*m_device);
+
         return ToResultCode(result);
     }
-    
+
 } // namespace Vulkan
 } // namespace RHI

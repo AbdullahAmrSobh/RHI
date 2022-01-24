@@ -66,7 +66,7 @@ namespace Vulkan
         }
         return EResultCode::Fail;
     }
-
+    
     inline void Assert(VkResult result) { assert(result == VK_SUCCESS); }
 
 #define RHI_VK_RETURN_ON_FAIL(result) \

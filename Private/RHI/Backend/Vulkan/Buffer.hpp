@@ -18,7 +18,7 @@ namespace Vulkan
         ~Buffer();
 
         VkResult Init(const MemoryAllocationDesc& allocDesc, const BufferDesc& desc);
-
+        
         inline virtual size_t GetSize() const override { return m_allocationInfo.size; }
         
         inline virtual Expected<DeviceAddress> Map(size_t offset, size_t range) override

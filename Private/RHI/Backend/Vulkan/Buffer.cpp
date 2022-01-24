@@ -58,7 +58,7 @@ namespace Vulkan
         createInfo.pNext                  = nullptr;
         createInfo.flags                  = 0;
         createInfo.buffer                 = static_cast<Buffer&>(*desc.pBuffer).GetHandle();
-        createInfo.format                 = Utils::ToVkFormat(desc.format);
+        createInfo.format                 = Utils::ConvertBufferFormat(desc.format);
         createInfo.offset                 = desc.offset;
         createInfo.range                  = desc.size;
 
