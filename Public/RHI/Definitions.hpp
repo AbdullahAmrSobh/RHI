@@ -4,6 +4,8 @@
 #include "RHI/Core/Span.hpp"
 #include <functional>
 
+#include <cassert>
+
 #ifdef _WIN32
 #include <windows.h>
 namespace RHI
@@ -15,6 +17,10 @@ using NativeWindowHandle = HWND;
 using NativeWindowHandle = void*;
 #endif
 
+#define RHI_BIT(x) (1 << x)
+
+#define RHI_ASSERT(x) assert(x)
+
 namespace RHI
 {
 
@@ -25,7 +31,6 @@ enum class EBackendType
     None,
     Vulkan,
     D3D12,
-    Metal,
 };
 
 enum class EResultCode
@@ -53,6 +58,42 @@ enum class EDebugMessageSeverity
     Fatel,
 };
 
+enum class EShaderStageFlagBits
+{
+    Vertex      = 0x000001,
+    Hull        = 0x000002,
+    Domain      = 0x000004,
+    Geometry    = 0x000008,
+    Pixel       = 0x000010,
+    Compute     = 0x000020,
+    AllGraphics = 0x0000001F,
+    All         = 0x7FFFFFFF,
+    MaxEnum     = 0xFFFFFF,
+};
+using ShaderStageFlags = Flags<EShaderStageFlagBits>;
+
+enum class EPipelineStage
+{
+    Graphics,
+    Compute,
+    RayTracing,
+};
+
+enum class EDescriptorType
+{
+    Sampler       = 1,
+    Texture       = 2,
+    UniformBuffer = 3,
+    TexelBuffer   = 4,
+};
+
+enum class EDescriptorAccessType
+{
+    Undefined  = 0,
+    Unoredered = 1,
+    ReadOnly   = 2,
+};
+
 enum class ESampleCount
 {
     Count1  = 0x01,
@@ -74,7 +115,9 @@ enum class EPixelFormat
     DepthStencil,
 };
 
-enum class EBufferFormat {};
+enum class EBufferFormat
+{
+};
 
 enum class ECompareOp
 {
@@ -162,6 +205,19 @@ enum class ETextureViewAspectFlagBits
 };
 using TextureViewAspectFlags = Flags<ETextureViewAspectFlagBits>;
 
+enum class ETextureLayout
+{
+    Undefined                     = 0,
+    General                       = 1,
+    ColorAttachmentOptimal        = 2,
+    DepthStencilAttachmentOptimal = 3,
+    DepthStencilReadOnlyOptimal   = 4,
+    ShaderReadOnlyOptimal         = 5,
+    TransferSrcOptimal            = 6,
+    TransferDstOptimal            = 7,
+    Preinitialized                = 8,
+};
+
 enum class EBufferUsageFlagBits
 {
     Invalid            = 0x00000000,
@@ -178,10 +234,9 @@ enum class EBufferUsageFlagBits
 };
 using BufferUsageFlags = Flags<EBufferUsageFlagBits>;
 
-// Structs
 struct Color
 {
-    explicit Color()
+    Color()
         : r(0.f)
         , g(0.f)
         , b(0.f)
@@ -211,6 +266,14 @@ struct Color
 
 struct Rect
 {
+    Rect()
+        : x(0)
+        , y(0)
+        , sizeX(0)
+        , sizeY(0)
+    {
+    }
+
     explicit Rect(uint32_t w, uint32_t h)
         : x(0)
         , y(0)
@@ -227,6 +290,9 @@ struct Rect
     {
     }
 
+    bool operator==(const Rect& _b) const { return x == _b.x && y == _b.y && sizeX == _b.sizeX && sizeY == _b.sizeY; }
+    bool operator!=(const Rect& _b) const { return !(*this == _b); }
+
     uint32_t x;
     uint32_t y;
     uint32_t sizeX;
@@ -235,6 +301,16 @@ struct Rect
 
 struct Volume
 {
+    Volume()
+        : x(0)
+        , y(0)
+        , z(0)
+        , sizeX(0)
+        , sizeY(0)
+        , sizeZ(0)
+    {
+    }
+
     explicit Volume(uint32_t sizeX, uint32_t sizeY, uint32_t sizeZ)
         : x(0)
         , y(0)
@@ -255,6 +331,9 @@ struct Volume
     {
     }
 
+    bool operator==(const Volume& _b) const { return x == _b.x && y == _b.y && z == _b.z && sizeX == _b.sizeX && sizeY == _b.sizeY && sizeZ == _b.sizeZ; }
+    bool operator!=(const Volume& _b) const { return !(*this == _b); }
+
     uint32_t x;
     uint32_t y;
     uint32_t z;
@@ -265,12 +344,20 @@ struct Volume
 
 struct Extent2D
 {
-	Extent2D() = default;
+    Extent2D()
+        : sizeX(0)
+        , sizeY(0)
+    {
+    }
+
     explicit Extent2D(uint32_t sizeX, uint32_t sizeY)
         : sizeX(sizeX)
         , sizeY(sizeY)
     {
     }
+
+    bool operator==(const Extent2D& _b) const { return sizeX == _b.sizeX && sizeY == _b.sizeY; }
+    bool operator!=(const Extent2D& _b) const { return !(*this == _b); }
 
     uint32_t sizeX;
     uint32_t sizeY;
@@ -278,13 +365,22 @@ struct Extent2D
 
 struct Extent3D
 {
-	Extent3D() = default;
+    Extent3D()
+        : sizeX(0)
+        , sizeY(0)
+        , sizeZ(0)
+    {
+    }
+
     explicit Extent3D(uint32_t sizeX, uint32_t sizeY = 1, uint32_t sizeZ = 1)
         : sizeX(sizeX)
         , sizeY(sizeY)
         , sizeZ(sizeZ)
     {
     }
+
+    bool operator==(const Extent3D& _b) const { return sizeX == _b.sizeX && sizeY == _b.sizeY && sizeZ == _b.sizeZ; }
+    bool operator!=(const Extent3D& _b) const { return !(*this == _b); }
 
     uint32_t sizeX;
     uint32_t sizeY;
@@ -335,6 +431,35 @@ struct Viewport
 
     RHI_NODISCARD float GetWidth() const { return maxX - minX; }
     RHI_NODISCARD float GetHeight() const { return maxY - minY; }
+};
+
+struct MapableResource
+{
+    enum class Type
+    {
+        Buffer,
+        Texture,
+    };
+
+    Type type;
+
+    union
+    {
+        class IBuffer*  pBuffer;
+        class ITexture* pTexture;
+    };
+
+    MapableResource(IBuffer& pBuffer)
+        : type(Type::Buffer)
+        , pBuffer(&pBuffer)
+    {
+    }
+
+    MapableResource(ITexture& pTexture)
+        : type(Type::Texture)
+        , pTexture(&pTexture)
+    {
+    }
 };
 
 } // namespace RHI

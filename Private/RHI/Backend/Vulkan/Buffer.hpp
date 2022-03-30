@@ -10,6 +10,8 @@ namespace Vulkan
         : public IBuffer
         , public DeviceObject<VkBuffer>
     {
+		friend class Device;
+		
     public:
         inline Buffer(Device& device)
             : DeviceObject(device)
@@ -19,18 +21,9 @@ namespace Vulkan
 
         VkResult Init(const MemoryAllocationDesc& allocDesc, const BufferDesc& desc);
         
-        inline virtual size_t GetSize() const override { return m_allocationInfo.size; }
-        
-        inline virtual Expected<DeviceAddress> Map(size_t offset, size_t range) override
-        {
-            DeviceAddress deviceAddress;
-            VkResult      result = vmaMapMemory(m_pDevice->GetAllocator(), m_allocation, &deviceAddress);
-            if (result != VK_SUCCESS)
-                return tl::unexpected(ToResultCode(result));
-            return deviceAddress;
-        }
-        
-        inline virtual void Unmap() override { vmaMapMemory(m_pDevice->GetAllocator(), m_allocation, &m_deviceAddress); }
+		inline VmaAllocationInfo GetAllocationInfo() const { return m_allocationInfo; }		
+		
+		virtual size_t GetSize() const override { return m_allocationInfo.size; }
     
     private:
         VmaAllocation     m_allocation = VK_NULL_HANDLE;

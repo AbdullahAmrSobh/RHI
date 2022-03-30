@@ -1,10 +1,12 @@
 #pragma once
-#include "RHI/PipelineLayout.hpp"
 #include "RHI/Backend/Vulkan/Device.hpp"
+#include "RHI/PipelineLayout.hpp"
 
-namespace RHI {
-namespace Vulkan {
-    
+namespace RHI
+{
+namespace Vulkan
+{
+
     class PipelineLayout final
         : public IPipelineLayout
         , public DeviceObject<VkPipelineLayout>
@@ -15,7 +17,7 @@ namespace Vulkan {
         {
         }
         ~PipelineLayout();
-        
+
         VkResult Init(const PipelineLayoutDesc& desc);
     };
 

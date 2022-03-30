@@ -40,6 +40,46 @@ namespace Vulkan
             default:                             return VK_FORMAT_UNDEFINED;
             };
         }
+        
+        VkDescriptorType GetDescriptorType(EDescriptorType type, EDescriptorAccessType access)
+        {
+            switch (type)
+            {
+            case EDescriptorType::Sampler: return VK_DESCRIPTOR_TYPE_SAMPLER;
+            case EDescriptorType::Texture:
+            {
+                switch (access)
+                {
+                case RHI::EDescriptorAccessType::ReadOnly: return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+                case RHI::EDescriptorAccessType::Unoredered: return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+                default: assert(false); break;
+                }
+            }
+            break;
+            case EDescriptorType::UniformBuffer:
+            {
+                switch (access)
+                {
+                case RHI::EDescriptorAccessType::ReadOnly: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                case RHI::EDescriptorAccessType::Unoredered: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+                default: assert(false); break;
+                }
+            }
+            break;
+            case EDescriptorType::TexelBuffer:
+            {
+                switch (access)
+                {
+                case RHI::EDescriptorAccessType::ReadOnly: return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+                case RHI::EDescriptorAccessType::Unoredered: return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+                default: assert(false); break;
+                };
+            }
+            break;
+            };
+            
+            return VK_DESCRIPTOR_TYPE_MAX_ENUM;
+        }
 
     } // namespace Utils
 } // namespace Vulkan

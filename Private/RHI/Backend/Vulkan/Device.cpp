@@ -1,6 +1,10 @@
 #include "RHI/Backend/Vulkan/Device.hpp"
 #include "RHI/Backend/Vulkan/Common.hpp"
-#include "RHI/Backend/Vulkan/Queue.hpp"
+
+// #include "RHI/Backend/Vulkan/Queue.hpp"
+
+#include "RHI/Backend/Vulkan/Buffer.hpp"
+#include "RHI/Backend/Vulkan/Texture.hpp"
 
 namespace RHI
 {
@@ -86,14 +90,42 @@ namespace Vulkan
             VkResult result = vmaCreateAllocator(&createInfo, &m_allocator);
             return result;
         }
-        
+
         // Create queues;
-        m_PresentQueue  = CreateUnique<PresentQueue>(*this, m_queueSettings.presentQueueIndex);
-        m_GraphicsQueue = CreateUnique<Queue>(*this, m_queueSettings.graphicsQueueIndex);
-        m_ComputeQueue  = CreateUnique<Queue>(*this, m_queueSettings.computeQueueIndex);
-        m_TransferQueue = CreateUnique<Queue>(*this, m_queueSettings.transferQueueIndex);
-    
-	}
+        // m_PresentQueue  = CreateUnique<PresentQueue>(*this, m_queueSettings.presentQueueIndex);
+        // m_GraphicsQueue = CreateUnique<Queue>(*this, m_queueSettings.graphicsQueueIndex);
+        // m_ComputeQueue  = CreateUnique<Queue>(*this, m_queueSettings.computeQueueIndex);
+        // m_TransferQueue = CreateUnique<Queue>(*this, m_queueSettings.transferQueueIndex);
+    }
+
+    DeviceAddress Device::MapResourceMemory(const MapableResource& resource, size_t offset, size_t range)
+    {
+        VmaAllocation allocation = VK_NULL_HANDLE;
+        if (resource.type == MapableResource::Type::Buffer)
+            allocation = static_cast<Buffer*>(resource.pBuffer)->m_allocation;
+        else
+            allocation = static_cast<Texture*>(resource.pTexture)->m_allocation;
+
+        DeviceAddress address;
+        VkResult      result = vmaMapMemory(m_allocator, allocation, &address);
+
+        if (result != VK_SUCCESS)
+            return nullptr;
+
+        return address;
+    }
+
+    void Device::UnmapResourceMemory(const MapableResource& resource)
+    {
+        VmaAllocation allocation;
+
+        if (resource.type == MapableResource::Type::Buffer)
+            allocation = static_cast<Buffer*>(resource.pBuffer)->m_allocation;
+        else
+            allocation = static_cast<Texture*>(resource.pTexture)->m_allocation;
+
+        vmaUnmapMemory(m_allocator, allocation);
+    }
 
 } // namespace Vulkan
 } // namespace RHI

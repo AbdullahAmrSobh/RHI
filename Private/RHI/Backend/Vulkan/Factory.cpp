@@ -99,7 +99,6 @@ namespace Vulkan
         VkResult result = m_device->Init(m_instance, GetPhysicalDevices(m_instance).front());
 
         Surface::InitCacheManager(m_instance, m_device.get());
-        RenderPass::InitCacheManager(*m_device);
 
         return ToResultCode(result);
     }

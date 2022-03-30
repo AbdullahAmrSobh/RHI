@@ -1,61 +1,49 @@
 #pragma once
-#include "RHI/Common.hpp"
 #include "RHI/Definitions.hpp"
+
 #include "RHI/Texture.hpp"
 
 namespace RHI
 {
 
-enum class ERenderTargetAttacmentUsage
-{
-    Color        = 1,
-    Depth        = 2,
-    Stencil      = 3,
-    DepthStencil = 4,
-    Present      = 5,
-};
-
 struct RenderTargetAttachmentDesc
 {
     RenderTargetAttachmentDesc() = default;
-    RenderTargetAttachmentDesc(EPixelFormat format, ESampleCount sampleCount, ITextureView* pAttachmentView, Extent2D extent,
-                               ERenderTargetAttacmentUsage usage)
-        : format(format)
-        , sampleCount(sampleCount)
-        , pAttachmentView(pAttachmentView)
-        , extent(extent)
-        , usage(usage)
-    {
-    }
-
-    EPixelFormat                format;
-    ESampleCount                sampleCount;
-    ITextureView*               pAttachmentView;
-    Extent2D                    extent;
-    ERenderTargetAttacmentUsage usage;
+    ITextureView* pView          = nullptr;
+    EPixelFormat  format         = EPixelFormat::None;
 };
 
 struct RenderTargetDesc
 {
-    RenderTargetDesc(const Extent2D _extent, ArrayView<RenderTargetAttachmentDesc> _attachments)
-        : extent(_extent)
-        , attachments(_attachments)
+
+    explicit RenderTargetDesc(Extent3D extent, const std::initializer_list<RenderTargetAttachmentDesc> attachments)
+        : extent(extent)
+        , attachments(attachments)
     {
     }
-    RenderTargetDesc(const Extent2D _extent, ArrayView<RenderTargetAttachmentDesc> _attachments, RenderTargetAttachmentDesc _depthAttachment);
 
-    ArrayView<RenderTargetAttachmentDesc> attachments;
-    RenderTargetAttachmentDesc            depthAttachment;
-    bool                                  hasDepthStencil;
-    Extent2D                              extent;
+    explicit RenderTargetDesc(Extent3D extent, const std::initializer_list<RenderTargetAttachmentDesc> attachments,
+                              const RenderTargetAttachmentDesc& depthStencilAttachment)
+        : extent(extent)
+        , attachments(attachments)
+        , depthStencilAttachment(depthStencilAttachment)
+    {
+    }
+
+    Extent3D                                extent;
+    std::vector<RenderTargetAttachmentDesc> attachments;
+    RenderTargetAttachmentDesc              depthStencilAttachment;
+
+    inline bool IsDepthStencilEnabled() const { return depthStencilAttachment.pView != nullptr; }
 };
 
 class IRenderTarget
 {
 public:
     virtual ~IRenderTarget() = default;
+    
+    virtual const ArrayView<const ITextureView*> GetAttachments() const = 0;
 };
-
 using RenderTargetPtr = Unique<IRenderTarget>;
 
 } // namespace RHI

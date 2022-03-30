@@ -2,40 +2,39 @@
 #include "RHI/Backend/Vulkan/Device.hpp"
 #include "RHI/Backend/Vulkan/Utils.hpp"
 #include "RHI/PipelineState.hpp"
-#include "RHI/Texture.hpp"
 
 namespace RHI
 {
 namespace Vulkan
 {
-    class ShaderBytecode final
-        : public IShaderBytecode
+    class ShaderModule final
+        : public IShaderModule
         , public DeviceObject<VkShaderModule>
     {
     public:
-        inline ShaderBytecode(Device& device, const ShaderBytecodeDesc& desc)
+        inline ShaderModule(Device& device, const ShaderModuleDesc& desc)
             : DeviceObject(device)
-            , IShaderBytecode(desc.entryPointName, desc.stage)
+            , IShaderModule(desc.entryPointName, desc.stage)
         {
         }
 
-        ~ShaderBytecode();
+        ~ShaderModule();
 
         VkResult Init(const VkShaderModuleCreateInfo& createInfo);
     };
-
+    
     namespace PipelineStateInitalizers
     {
         struct ShaderStage
         {
-            ShaderStage(const IShaderBytecode* pVertex, const IShaderBytecode* pTessellationcontrol, const IShaderBytecode* pTessellationevaluation,
-                        const IShaderBytecode* pGeometry, const IShaderBytecode* pFragment)
+            ShaderStage(const IShaderModule* pVertex, const IShaderModule* pTessellationcontrol, const IShaderModule* pTessellationevaluation,
+                        const IShaderModule* pGeometry, const IShaderModule* pFragment)
             {
-                const ShaderBytecode& vertexShader                 = *static_cast<const ShaderBytecode*>(pVertex);
-                const ShaderBytecode& tessellationControlShader    = *static_cast<const ShaderBytecode*>(pTessellationcontrol);
-                const ShaderBytecode& tessellationEvaluationShader = *static_cast<const ShaderBytecode*>(pTessellationevaluation);
-                const ShaderBytecode& geometryShader               = *static_cast<const ShaderBytecode*>(pGeometry);
-                const ShaderBytecode& fragmentShader               = *static_cast<const ShaderBytecode*>(pFragment);
+                const ShaderModule& vertexShader                 = static_cast<const ShaderModule&>(*pVertex);
+                const ShaderModule& tessellationControlShader    = static_cast<const ShaderModule&>(*pTessellationcontrol);
+                const ShaderModule& tessellationEvaluationShader = static_cast<const ShaderModule&>(*pTessellationevaluation);
+                const ShaderModule& geometryShader               = static_cast<const ShaderModule&>(*pGeometry);
+                const ShaderModule& fragmentShader               = static_cast<const ShaderModule&>(*pFragment);
 
                 VkPipelineShaderStageCreateInfo createInfo = {};
                 createInfo.sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;

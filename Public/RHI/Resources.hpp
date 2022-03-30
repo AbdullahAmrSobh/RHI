@@ -13,10 +13,8 @@ class IResource
 {
 public:
     virtual ~IResource() = default;
-    
-    virtual size_t                  GetSize() const                  = 0;
-    virtual Expected<DeviceAddress> Map(size_t offset, size_t range) = 0;
-    virtual void                    Unmap()                          = 0;
+	
+	virtual size_t GetSize() const = 0;
 };
 
 } // namespace RHI

@@ -7,6 +7,14 @@ namespace RHI
 
 struct SwapChainDesc
 {
+    SwapChainDesc(Extent2D extent, uint32_t bufferCount, TextureUsageFlags bufferUsage, NativeWindowHandle windowHandle)
+        : extent(extent)
+        , bufferCount(bufferCount)
+        , bufferUsage(bufferUsage)
+        , windowHandle(windowHandle)
+    {
+    }
+
     Extent2D           extent;
     uint32_t           bufferCount;
     TextureUsageFlags  bufferUsage;
@@ -20,12 +28,11 @@ public:
 
     inline uint32_t             GetCurrentImageIndex() const { return m_currentImageIndex; }
     inline ITexture&            GetCurrentImage() { return *m_images[m_currentImageIndex]; }
-    inline ITexture&            GetImageAt(uint32_t index) { return *m_images[index]; }
-    inline uint32_t             GetImageCount() const { return m_imageCount; }
-    inline ArrayView<ITexture*> GetImages() { return ArrayView<ITexture*>(m_images.begin(), m_images.begin() + m_imageCount); }
-    
+    inline ITexture&            GetTextureAt(uint32_t index) { return *m_images[index]; }
+    inline uint32_t             GetTextureCount() const { return m_imageCount; }
+    inline ArrayView<ITexture*> GetTextures() { return ArrayView<ITexture*>(m_images.begin(), m_images.begin() + m_imageCount); }
+
     virtual EResultCode SwapBuffers() = 0;
-    virtual EResultCode Present(IFence& renderFinished)     = 0;
 
 protected:
     constexpr static uint32_t MAX_BACK_BUFFERS = 3;

@@ -15,23 +15,21 @@ class IBuffer : public IResource
 {
 public:
     virtual ~IBuffer() = default;
-    
 };
 using BufferPtr = Unique<IBuffer>;
 
 struct BufferViewDesc
 {
     EBufferFormat format;
-    size_t       offset;
-    size_t       size;
-    IBuffer*     pBuffer;
+    size_t        offset;
+    size_t        size;
+    IBuffer*      pBuffer;
 };
 
 class IBufferView
 {
 public:
     virtual ~IBufferView() = default;
-    
 };
 using BufferViewPtr = Unique<IBufferView>;
 

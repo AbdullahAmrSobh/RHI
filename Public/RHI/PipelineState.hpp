@@ -1,24 +1,13 @@
 #pragma once
 #include "RHI/Definitions.hpp"
+#include "RHI/PipelineLayout.hpp"
 #include "RHI/Resources.hpp"
+#include "RHI/Shader.hpp"
+
+#include "RHI/RenderGraph.hpp"
 
 namespace RHI
 {
-
-class IPipelineLayout;
-
-
-// Todo move to Definitions.hpp
-enum class EShaderStage
-{
-    Vertex,
-    Hull,
-    Domain,
-    Geometry,
-    Pixel,
-    Compute,
-    MaxEnum,
-};
 
 enum class EVertexAttributeFormat
 {
@@ -50,39 +39,6 @@ enum class ERasterizationFillMode
     Line
 };
 
-struct ShaderBytecodeDesc
-{
-	ShaderBytecodeDesc(std::vector<std::byte> data, std::string_view entryPoint, EShaderStage stage)
-		: bytecode(std::move(data))
-		, entryPointName(entryPoint)
-		, stage(stage)
-	{}
-	
-    std::vector<std::byte> bytecode;
-    std::string          entryPointName;
-    EShaderStage         stage;
-};
-
-class IShaderBytecode
-{
-public:
-    IShaderBytecode(std::string entryPointName, EShaderStage stage)
-        : m_entryPointName(std::move(entryPointName))
-        , m_stage(stage)
-    {
-    }
-
-    virtual ~IShaderBytecode() = default;
-
-    inline const std::string& GetEntryPointName() const { return m_entryPointName; }
-    inline EShaderStage       GetStage() const { return m_stage; }
-
-private:
-    std::string  m_entryPointName;
-    EShaderStage m_stage;
-};
-using ShaderBytecodePtr = Unique<IShaderBytecode>;
-
 struct PipelineRasterizationStateDesc
 {
     ERasterizationCullMode cullmode = ERasterizationCullMode::BackFace;
@@ -91,7 +47,7 @@ struct PipelineRasterizationStateDesc
 
 struct PipelineStateMultisampleStateDesc
 {
-	ESampleCount sampleCount;
+    ESampleCount sampleCount;
 };
 
 struct PipelineDepthStencilStateDesc
@@ -104,35 +60,46 @@ struct PipelineStateColorBlendStateDesc
 {
 };
 
-struct PipelineRenderTargetLayoutDesc
+struct PipelineStateRenderTargetLayout
 {
-    uint32_t     renderTargetColorAttachmentCount;
-    EPixelFormat formats[8];
-    EPixelFormat depthFormat;
+	PipelineStateRenderTargetLayout() = default;
+    PipelineStateRenderTargetLayout(const std::vector<EPixelFormat>& colorFormats, EPixelFormat depthStencilFormat = EPixelFormat::None)
+        : colorFormats(std::move(colorFormats))
+        , depthStencilFormat(depthStencilFormat)
+    {
+    }
+    
+    std::vector<EPixelFormat> colorFormats;
+    EPixelFormat              depthStencilFormat;
 };
 
 struct GraphicsPipelineStateDesc
 {
-    IShaderBytecode* pVertexShader   = nullptr;
-    IShaderBytecode* pPixelShader    = nullptr;
-    IShaderBytecode* pDomainShader   = nullptr;
-    IShaderBytecode* pHullShader     = nullptr;
-    IShaderBytecode* pGeometryShader = nullptr;
+    explicit GraphicsPipelineStateDesc(const IPipelineLayout& layout, GraphicsPipelineShaders shaders)
+        : pPipelineLayout(&layout)
+        , shaders(shaders)
+    {
+    }
 
+    const IPipelineLayout*              pPipelineLayout;
+    GraphicsPipelineShaders             shaders;
     std::vector<EVertexAttributeFormat> vertexAttributes;
     PipelineRasterizationStateDesc      rasterizationState;
     PipelineStateMultisampleStateDesc   multisampleState;
     PipelineDepthStencilStateDesc       depthStencilState;
     PipelineStateColorBlendStateDesc    colorBlendState;
-    PipelineRenderTargetLayoutDesc      renderTargetLayout;
-
-    IPipelineLayout* pPipelineLayout;
+    PipelineStateRenderTargetLayout		renderTargetLayout;
 };
 
 struct ComputePipelineStateDesc
 {
-    IShaderBytecode* pGeometryShader = nullptr;
-    IPipelineLayout* pPipelineLayout;
+    explicit ComputePipelineStateDesc(const IPipelineLayout& layout, ComputePipelineShader shader)
+        : shader(shader)
+    {
+    }
+
+    const IPipelineLayout* pPipelineLayout;
+    ComputePipelineShader  shader;
 };
 
 class IPipelineState

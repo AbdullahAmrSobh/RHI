@@ -1,13 +1,29 @@
 #pragma once
 #include "RHI/Definitions.hpp"
-#include "RHi/Descriptor.hpp"
+#include "RHI/DescriptorSetLayout.hpp"
 
 namespace RHI
 {
 
+struct ConstantBufferDesc
+{
+    ConstantBufferDesc(EShaderStageFlagBits stage, size_t offset, size_t range)
+        : stage(stage)
+        , offset(offset)
+        , range(range)
+    {
+    }
+    
+    EShaderStageFlagBits stage;
+    size_t               offset;
+    size_t               range;
+};
+
 struct PipelineLayoutDesc
 {
-	ArrayView<DescriptorSetLayout> descriptorSetLayouts;
+	PipelineLayoutDesc() = default;
+    ArrayView<IDescriptorSetLayout*> descriptorSetLayouts;
+    ArrayView<ConstantBufferDesc>    constantBufferDescs;
 };
 
 class IPipelineLayout
@@ -16,5 +32,4 @@ public:
     virtual ~IPipelineLayout() = default;
 };
 using PipelineLayoutPtr = Unique<IPipelineLayout>;
-
 } // namespace RHI

@@ -1,12 +1,11 @@
 #include "RHI/Backend/Vulkan/SwapChain.hpp"
-#include "RHI/Backend/Vulkan/Queue.inl"
 #include <algorithm>
 
 namespace RHI
 {
 namespace Vulkan
 {
-
+    
     VkResult Surface::Init(VkInstance instance, NativeWindowHandle nativeWindowHandle)
     {
         VkWin32SurfaceCreateInfoKHR createInfo           = {};
@@ -18,19 +17,19 @@ namespace Vulkan
         static PFN_vkCreateWin32SurfaceKHR createSurface = (PFN_vkCreateWin32SurfaceKHR)vkGetInstanceProcAddr(instance, "vkCreateWin32SurfaceKHR");
         return createSurface(instance, &createInfo, nullptr, &m_handle);
     }
-
+    
     SwapChain::~SwapChain() { vkDestroySwapchainKHR(m_pDevice->GetHandle(), m_handle, nullptr); }
-
+    
     VkResult SwapChain::Init(const SwapChainDesc& desc)
     {
         Surface& surface = Surface::FindSurfaceOrCreate(desc.windowHandle);
-
+        
         VkSurfaceCapabilitiesKHR        surfaceCapabilities = surface.GetSupportedCapabilities();
         std::vector<VkSurfaceFormatKHR> surfaceFormats      = surface.GetSupportedFormats();
         std::vector<VkPresentModeKHR>   presentModes        = surface.GetSupportedPresentModes();
-
+        
         VkSurfaceFormatKHR selectedSurfaceFormat = Surface::SelectFormat(surfaceFormats);
-
+        
         // create swapchain
         VkSwapchainCreateInfoKHR createInfo = {};
         createInfo.sType                    = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -68,28 +67,7 @@ namespace Vulkan
         VkResult    result = vkAcquireNextImageKHR(m_pDevice->GetHandle(), m_handle, UINT64_MAX, imageIsReady, fence, &m_currentImageIndex);
         return ToResultCode(result);
     }
-
-    EResultCode SwapChain::Present(IFence& fence)
-    {
-        // semaphores which indicate that the frame is finished, and is ready to be presented
-		// The presentation would not be queued, untill every CommandList, that append into that list,
-		// has finished execution.
-        std::vector<VkSemaphore> renderFinishedSemaphores;
-
-        VkPresentInfoKHR presentInfo   = {};
-        presentInfo.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        presentInfo.pNext              = nullptr;
-        presentInfo.waitSemaphoreCount = static_cast<uint32_t>(renderFinishedSemaphores.size());
-        presentInfo.pWaitSemaphores    = renderFinishedSemaphores.data();
-        presentInfo.swapchainCount     = 1;
-        presentInfo.pSwapchains        = &m_handle;
-        presentInfo.pImageIndices      = &m_currentImageIndex;
-        presentInfo.pResults           = nullptr;
-
-        VkResult result = vkQueuePresentKHR(m_pPresentQueue->GetHandle(), &presentInfo);
-        return ToResultCode(result);
-    }
-
+	
     void SwapChain::ObtainBackBuffers()
     {
         VkResult result = vkGetSwapchainImagesKHR(m_pDevice->GetHandle(), m_handle, &m_imageCount, nullptr);

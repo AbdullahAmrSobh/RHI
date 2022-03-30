@@ -1,7 +1,6 @@
 #pragma once
-#include "RHI/Definitions.hpp"
 #include "RHI/Backend/Vulkan/Device.hpp"
-#include "RHI/Backend/Vulkan/RenderTarget.hpp"
+#include "RHI/Definitions.hpp"
 
 namespace RHI
 {
@@ -11,26 +10,22 @@ namespace Vulkan
     {
     private:
         friend class Factory;
-        static void InitCacheManager(Device& device);
-    
+
     public:
         RenderPass(Device& device)
             : DeviceObject(device)
         {
         }
         ~RenderPass();
-        
-        VkResult Init(const RenderTargetDesc& desc);
 
-        static RenderPass& FindOrCreate(const RenderTargetDesc& desc);
-    
+        VkResult Init(const class RenderPassBuilder& builder);
+
+        uint32_t GetSubpassCount() const;
+        uint32_t GetSubpassIndex(const struct PassId id) const;
+
+        static RenderPass& FindOrCreate(Device& device, const struct PipelineStateRenderTargetLayout& layout);
     private:
-		
-        std::vector<VkAttachmentDescription> SetupColorAttachments(const RenderTargetDesc& desc);
-    
-    private:
-        static Device*                                        s_pDevice;
-        static std::unordered_map<size_t, Unique<RenderPass>> s_RenderPasses;
+        static std::unordered_map<uint64_t, RenderPass*> s_cache;
     };
     using RenderPassRef = Shared<RenderPass>;
 

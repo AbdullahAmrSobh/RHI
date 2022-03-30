@@ -13,7 +13,7 @@ namespace Vulkan
 
     template <class T>
     using VkExpected = tl::expected<T, VkResult>;
-
+    
     inline EResultCode ToResultCode(VkResult result)
     {
         switch (result)

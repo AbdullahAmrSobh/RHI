@@ -103,7 +103,7 @@ namespace Vulkan
         static Device*                                                 s_pDevice;
         static std::unordered_map<NativeWindowHandle, Unique<Surface>> m_surfaces;
     };
-
+    
     class SwapChain final
         : public ISwapChain
         , public DeviceObject<VkSwapchainKHR>
@@ -119,16 +119,14 @@ namespace Vulkan
         ~SwapChain();
 
         VkResult Init(const SwapChainDesc& desc);
-        
+
         virtual EResultCode SwapBuffers() override;
-        virtual EResultCode Present(IFence& fence) override;
-    
+
     private:
         void ObtainBackBuffers();
-    
-    private:
-        Queue*    m_pPresentQueue;
 
+    private:
+        Queue* m_pPresentQueue;
     };
 
 } // namespace Vulkan

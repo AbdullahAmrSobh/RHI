@@ -1,4 +1,6 @@
 #pragma once
+#include "RHI/Device.hpp"
+
 #include "RHI/Backend/Vulkan/Common.hpp"
 #include "RHI/Backend/Vulkan/vma/vk_mem_alloc.h"
 
@@ -101,7 +103,7 @@ namespace Vulkan
         VkPhysicalDevice m_physicalDevice;
     };
 
-    class Device
+    class Device final : public RHI::Device
     {
     public:
         Device() = default;
@@ -112,17 +114,16 @@ namespace Vulkan
         inline VkDevice       GetHandle() const { return m_device; }
         inline VmaAllocator   GetAllocator() const { return m_allocator; }
         inline PhysicalDevice GetPhysicalDevice() const { return m_physicalDevice; }
-        inline PresentQueue&  GetPresentQueue() const { return *m_PresentQueue; }
-        inline Queue&         GetGraphicsQueue() const { return *m_GraphicsQueue; }
-        inline Queue&         GetComputeQueue() const { return *m_ComputeQueue; }
-        inline Queue&         GetTransferQueue() const { return *m_TransferQueue; }
+        
+        virtual DeviceAddress   MapResourceMemory(const MapableResource& resource, size_t offset, size_t range) override;
+        virtual void            UnmapResourceMemory(const MapableResource& resource) override;
 
     private:
         VkInstance     m_instance;
         VkDevice       m_device;
         PhysicalDevice m_physicalDevice;
         VmaAllocator   m_allocator;
-
+        
         struct QueueSettings
         {
             uint32_t presentQueueIndex, presentQueueCount;
@@ -130,11 +131,7 @@ namespace Vulkan
             uint32_t computeQueueIndex, computeQueueCount;
             uint32_t transferQueueIndex, transferQueueCount;
         } m_queueSettings;
-
-        Unique<PresentQueue> m_PresentQueue;
-        Unique<Queue>        m_GraphicsQueue;
-        Unique<Queue>        m_ComputeQueue;
-        Unique<Queue>        m_TransferQueue;
+        
     };
 
     template <typename T>
@@ -156,6 +153,24 @@ namespace Vulkan
     protected:
         Device* m_pDevice;
         T       m_handle;
+    };
+
+    // Todo create specialization for gpu resources i.e. Buffer, Image, etc.
+
+    template <>
+    class DeviceObject<void>
+    {
+    public:
+        inline DeviceObject(Device& _device)
+            : m_pDevice(&_device)
+        {
+        }
+        virtual ~DeviceObject() = default;
+
+        void Init(Device& _pDevice) { m_pDevice = &_pDevice; }
+
+    protected:
+        Device* m_pDevice;
     };
 
 } // namespace Vulkan
