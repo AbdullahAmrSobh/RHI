@@ -1,49 +1,57 @@
 #pragma once
 #include "RHI/Definitions.hpp"
-#include "RHI/Texture.hpp"
+#include "RHI/Image.hpp"
 
-namespace RHI {
-
-struct BufferResourceRegion 
+namespace RHI
 {
-	BufferResourceRegion() = default;
-	
-	IBuffer* pBuffer;
-	size_t offset;
-	size_t range;
+
+struct BufferResourceRegion
+{
+    BufferResourceRegion() = default;
+
+    IBuffer* pBuffer;
+    size_t   offset;
+    size_t   range;
 };
 
-struct TextureResourceRegion 
+struct ImageResourceRegion
 {
-	TextureResourceRegion() = default;
-	
-	ITextureView* pTextureView;
-	Extent3D Area;
-};
-	
-	enum class ResourceType {};
+    ImageResourceRegion() = default;
 
-struct CopyCommand 
+    IImageView*           pImageView;
+    Extent3D              area;
+    ImageSubresourceRange subresourceRange;
+};
+
+struct CopyCommand
 {
-	void SetSrcResource(TextureResourceRegion src);
-	void SetSrcResource(BufferResourceRegion src);
-	
-	void SetDstResource(TextureResourceRegion dst);
-	void SetDstResource(BufferResourceRegion dst);
-	
-	ResourceType srcResourceType;
-	union 
+	CopyCommand()
+		: nullSource(nullptr)
+		, nullDestination(nullptr)
 	{
-		BufferResourceRegion source;
-		TextureResourceRegion textureSource;
-	};
-	
-	ResourceType dstResourceType;
-	union 
-	{
-		BufferResourceRegion destination;
-		TextureResourceRegion textureDestination;
-	};
+	}
+
+    void SetCopySourceResource(ImageResourceRegion source);
+    void SetCopySourceResource(BufferResourceRegion source);
+    
+    void SetCopyDestinationResource(ImageResourceRegion destination);
+    void SetCopyDestinationResource(BufferResourceRegion destination);
+    
+    EResourceType sourceResourceType;
+    union
+    {
+        nullptr_t            nullSource;
+        BufferResourceRegion sourceBuffer;
+        ImageResourceRegion  sourceImage;
+    };
+    
+    EResourceType destinationResourceType;
+    union
+    {
+        nullptr_t            nullDestination;
+        BufferResourceRegion destinationBuffer;
+        ImageResourceRegion  destinationImage;
+    };
 };
 
 } // namespace RHI

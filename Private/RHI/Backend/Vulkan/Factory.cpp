@@ -97,9 +97,6 @@ namespace Vulkan
         // Create a Device.
         m_device        = CreateUnique<Device>();
         VkResult result = m_device->Init(m_instance, GetPhysicalDevices(m_instance).front());
-
-        Surface::InitCacheManager(m_instance, m_device.get());
-
         return ToResultCode(result);
     }
 

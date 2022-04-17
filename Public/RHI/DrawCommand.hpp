@@ -16,11 +16,11 @@ struct DrawCommand
         Indexed
     };
 
-    struct LinearDrawDesc
+    struct DrawLinear
     {
-        LinearDrawDesc() = default;
+        DrawLinear() = default;
 
-        LinearDrawDesc(uint32_t instanceCount, uint32_t instanceOffset, uint32_t vertexCount, uint32_t vertexOffset)
+        DrawLinear(uint32_t instanceCount, uint32_t instanceOffset, uint32_t vertexCount, uint32_t vertexOffset)
             : instanceCount(instanceCount)
             , instanceOffset(instanceOffset)
             , vertexCount(vertexCount)
@@ -34,11 +34,11 @@ struct DrawCommand
         uint32_t vertexOffset   = 0;
     };
 
-    struct IndexedDrawDesc
+    struct DrawIndexed
     {
-        IndexedDrawDesc() = default;
+        DrawIndexed() = default;
 
-        IndexedDrawDesc(uint32_t instanceCount, uint32_t instanceOffset, uint32_t vertexOffset, uint32_t indexCount, uint32_t indexOffset)
+        DrawIndexed(uint32_t instanceCount, uint32_t instanceOffset, uint32_t vertexOffset, uint32_t indexCount, uint32_t indexOffset)
             : instanceCount(instanceCount)
             , instanceOffset(instanceOffset)
             , vertexOffset(vertexOffset)
@@ -53,35 +53,58 @@ struct DrawCommand
         uint32_t indexCount     = 0;
         uint32_t indexOffset    = 0;
     };
-    
-    DrawCommand(const LinearDrawDesc& desc, IBuffer& vertexBuffer)
-		: type(EDrawType::Linear)
-		, linearDrawDesc(desc)
-		, pVertexBuffer(&vertexBuffer)
-	{
-	}
-    
-    DrawCommand(const IndexedDrawDesc& desc, IBuffer& vertexBuffer, IBuffer& indexBuffer)
-		: type(EDrawType::Indexed)
-		, indexedDrawDesc(desc)
-		, pVertexBuffer(&vertexBuffer)
-		, pIndexBuffer(&indexBuffer)
-	{
-	}
-    
-    IPipelineLayout*             pPipelineLayout   = nullptr;
-    IPipelineState*              pPipelineState    = nullptr;
-    std::vector<IDescriptorSet*> descriptorSetPtrs = {};
-    IBuffer*                     pVertexBuffer     = nullptr;
-    IBuffer*                     pIndexBuffer      = nullptr;
-    IBuffer*                     pInstanceBuffer   = nullptr;
-    
+
+    DrawCommand(const DrawLinear& desc)
+        : type(EDrawType::Linear)
+        , linearDrawDesc(desc)
+    {
+    }
+
+    DrawCommand(const DrawIndexed& desc)
+        : type(EDrawType::Indexed)
+        , indexedDrawDesc(desc)
+    {
+    }
+
     const EDrawType type;
     union
     {
-        const LinearDrawDesc  linearDrawDesc;
-        const IndexedDrawDesc indexedDrawDesc;
+        const DrawLinear  linearDrawDesc;
+        const DrawIndexed indexedDrawDesc;
     };
+
+    inline void SetVertexBuffer(IBuffer& vertexBuffer)
+    {
+        pVertexBuffer = &vertexBuffer;
+    }
+
+    inline void SetIndexBuffer(IBuffer& indexBuffer)
+    {
+        pIndexBuffer = &indexBuffer;
+    }
+
+    inline void SetInstanceBuffer(IBuffer& instanceBuffer)
+    {
+        pInstanceBuffer = &instanceBuffer;
+    }
+
+    inline void SetPipelineState(IPipelineState& pipelineState)
+    {
+        pPipelineState = &pipelineState;
+    }
+
+    inline void SetDescriptorSets(IPipelineLayout& layout, const std::vector<IDescriptorSet*>& descriptorSets)
+    {
+        pPipelineLayout   = &layout;
+        descriptorSetPtrs = descriptorSets;
+    }
+
+    std::vector<IDescriptorSet*> descriptorSetPtrs = {};
+    IPipelineLayout*             pPipelineLayout   = nullptr;
+    IPipelineState*              pPipelineState    = nullptr;
+    IBuffer*                     pVertexBuffer     = nullptr;
+    IBuffer*                     pIndexBuffer      = nullptr;
+    IBuffer*                     pInstanceBuffer   = nullptr;
 };
 
 } // namespace RHI

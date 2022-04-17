@@ -4,7 +4,6 @@
 #include "RHI/Backend/Vulkan/Common.hpp"
 #include "RHI/Backend/Vulkan/vma/vk_mem_alloc.h"
 
-#include <utility>
 #include <vector>
 
 namespace RHI
@@ -24,114 +23,76 @@ namespace Vulkan
         {
         }
 
-        inline VkPhysicalDevice GetHandle() { return m_physicalDevice; }
-
-        inline VkPhysicalDeviceProperties GetProperties() const
+        inline VkPhysicalDevice GetHandle()
         {
-            VkPhysicalDeviceProperties properties;
-            vkGetPhysicalDeviceProperties(m_physicalDevice, &properties);
-            return properties;
+            return m_physicalDevice;
         }
 
-        inline VkPhysicalDeviceFeatures GetFeatures() const
-        {
-            VkPhysicalDeviceFeatures features;
-            vkGetPhysicalDeviceFeatures(m_physicalDevice, &features);
-            return features;
-        }
+        VkPhysicalDeviceProperties GetProperties() const;
 
-        inline std::vector<VkQueueFamilyProperties> GetQueueFamilyProperties() const
-        {
-            uint32_t queueFamilyCount = 0;
-            vkGetPhysicalDeviceQueueFamilyProperties(m_physicalDevice, &queueFamilyCount, nullptr);
-            std::vector<VkQueueFamilyProperties> queueFamilyProperties(queueFamilyCount);
-            vkGetPhysicalDeviceQueueFamilyProperties(m_physicalDevice, &queueFamilyCount, queueFamilyProperties.data());
-            return queueFamilyProperties;
-        }
+        VkPhysicalDeviceFeatures GetFeatures() const;
 
-        inline std::vector<VkLayerProperties> GetAvailableLayers() const
-        {
-            uint32_t layerCount = 0;
-            vkEnumerateDeviceLayerProperties(m_physicalDevice, &layerCount, nullptr);
-            std::vector<VkLayerProperties> layerProperties(layerCount);
-            vkEnumerateDeviceLayerProperties(m_physicalDevice, &layerCount, layerProperties.data());
-            return layerProperties;
-        }
+        std::vector<VkQueueFamilyProperties> GetQueueFamilyProperties() const;
 
-        inline std::vector<VkExtensionProperties> GetAvailableExtensions() const
-        {
-            uint32_t extensionCount = 0;
-            vkEnumerateDeviceExtensionProperties(m_physicalDevice, nullptr, &extensionCount, nullptr);
-            std::vector<VkExtensionProperties> extensionProperties(extensionCount);
-            vkEnumerateDeviceExtensionProperties(m_physicalDevice, nullptr, &extensionCount, extensionProperties.data());
-            return extensionProperties;
-        }
+        std::vector<VkLayerProperties> GetAvailableLayers() const;
 
-        inline VkPhysicalDeviceMemoryProperties GetMemoryProperties() const
-        {
-            VkPhysicalDeviceMemoryProperties properties;
-            vkGetPhysicalDeviceMemoryProperties(m_physicalDevice, &properties);
-            return properties;
-        }
+        std::vector<VkExtensionProperties> GetAvailableExtensions() const;
 
-        inline VkSurfaceCapabilitiesKHR GetSurfaceCapabilities(VkSurfaceKHR _surface) const
-        {
-            VkSurfaceCapabilitiesKHR capabilities;
-            vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_physicalDevice, _surface, &capabilities);
-            return capabilities;
-        }
+        VkPhysicalDeviceMemoryProperties GetMemoryProperties() const;
 
-        inline std::vector<VkPresentModeKHR> GetPresentModes(VkSurfaceKHR _surface) const
-        {
-            uint32_t presentModeCount = 0;
-            vkGetPhysicalDeviceSurfacePresentModesKHR(m_physicalDevice, _surface, &presentModeCount, nullptr);
-            std::vector<VkPresentModeKHR> presentModes(presentModeCount);
-            vkGetPhysicalDeviceSurfacePresentModesKHR(m_physicalDevice, _surface, &presentModeCount, presentModes.data());
-            return presentModes;
-        }
+        VkSurfaceCapabilitiesKHR GetSurfaceCapabilities(VkSurfaceKHR _surface) const;
 
-        inline std::vector<VkSurfaceFormatKHR> GetSurfaceFormats(VkSurfaceKHR _surface) const
-        {
-            uint32_t surfaceFormatCount = 0;
-            vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, _surface, &surfaceFormatCount, nullptr);
-            std::vector<VkSurfaceFormatKHR> surfaceFormats(surfaceFormatCount);
-            vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, _surface, &surfaceFormatCount, surfaceFormats.data());
-            return surfaceFormats;
-        }
+        std::vector<VkPresentModeKHR> GetPresentModes(VkSurfaceKHR _surface) const;
+
+        std::vector<VkSurfaceFormatKHR> GetSurfaceFormats(VkSurfaceKHR _surface) const;
 
     private:
         VkPhysicalDevice m_physicalDevice;
     };
 
-    class Device final : public RHI::Device
+    class Device final : public RHI::IDevice
     {
     public:
+        using Base = RHI::IDevice;
+
         Device() = default;
         ~Device();
 
         VkResult Init(VkInstance _instance, VkPhysicalDevice _physicalDevice);
 
-        inline VkDevice       GetHandle() const { return m_device; }
-        inline VmaAllocator   GetAllocator() const { return m_allocator; }
-        inline PhysicalDevice GetPhysicalDevice() const { return m_physicalDevice; }
-        
-        virtual DeviceAddress   MapResourceMemory(const MapableResource& resource, size_t offset, size_t range) override;
-        virtual void            UnmapResourceMemory(const MapableResource& resource) override;
+        inline VkDevice GetHandle() const
+        {
+            return m_device;
+        }
+
+        inline VmaAllocator GetAllocator() const
+        {
+            return m_allocator;
+        }
+
+        inline PhysicalDevice GetPhysicalDevice() const
+        {
+            return m_physicalDevice;
+        }
+
+        inline Queue& GetGraphicsQueue()
+        {
+            return *m_pGraphicsQueue;
+        }
+
+        virtual DeviceAddress MapResourceMemory(const MapableResource& resource, size_t offset, size_t range) override;
+        virtual void          UnmapResourceMemory(const MapableResource& resource) override;
 
     private:
         VkInstance     m_instance;
         VkDevice       m_device;
         PhysicalDevice m_physicalDevice;
         VmaAllocator   m_allocator;
-        
-        struct QueueSettings
-        {
-            uint32_t presentQueueIndex, presentQueueCount;
-            uint32_t graphicsQueueIndex, graphicsQueueCount;
-            uint32_t computeQueueIndex, computeQueueCount;
-            uint32_t transferQueueIndex, transferQueueCount;
-        } m_queueSettings;
-        
+
+        Queue* m_pGraphicsQueue = nullptr;
+        // Queue* m_pPresentQueue  = nullptr;
+        // Queue* m_pComputeQueue  = nullptr;
+        // Queue* m_pTransferQueue = nullptr;
     };
 
     template <typename T>
@@ -145,17 +106,25 @@ namespace Vulkan
         }
         virtual ~DeviceObject() = default;
 
-        void Init(Device& _pDevice) { m_pDevice = &_pDevice; }
+        void Init(Device& _pDevice)
+        {
+            m_pDevice = &_pDevice;
+        }
 
-        inline T GetHandle() { return m_handle; }
-        inline T GetHandle() const { return m_handle; }
+        inline T GetHandle()
+        {
+            return m_handle;
+        }
+
+        inline T GetHandle() const
+        {
+            return m_handle;
+        }
 
     protected:
         Device* m_pDevice;
         T       m_handle;
     };
-
-    // Todo create specialization for gpu resources i.e. Buffer, Image, etc.
 
     template <>
     class DeviceObject<void>
@@ -167,7 +136,10 @@ namespace Vulkan
         }
         virtual ~DeviceObject() = default;
 
-        void Init(Device& _pDevice) { m_pDevice = &_pDevice; }
+        void Init(Device& _pDevice)
+        {
+            m_pDevice = &_pDevice;
+        }
 
     protected:
         Device* m_pDevice;

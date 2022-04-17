@@ -8,6 +8,8 @@ class ISampler;
 
 struct Descriptor
 {
+    Descriptor() = default;
+
     inline Descriptor(EDescriptorType type, EDescriptorAccessType access, uint32_t count, ShaderStageFlags bindStages)
         : type(type)
         , accessType(access)
@@ -15,7 +17,7 @@ struct Descriptor
         , stages(bindStages)
     {
     }
-
+    
     inline Descriptor(const ISampler& immutableSampler, ShaderStageFlags bindStages, uint32_t count = 1)
         : type(EDescriptorType::Sampler)
         , accessType(EDescriptorAccessType::Undefined)
@@ -24,33 +26,25 @@ struct Descriptor
         , pImmutableSampler(&immutableSampler)
     {
     }
-
+    
     EDescriptorType       type;
     EDescriptorAccessType accessType;
     uint32_t              count;
     ShaderStageFlags      stages;
     const ISampler*       pImmutableSampler;
-
-    inline bool operator==(const Descriptor& other) const
-    {
-        return type == other.type && accessType == other.accessType && count == other.count && stages == other.stages &&
-               pImmutableSampler == other.pImmutableSampler;
-    }
-
-    inline bool operator!=(const Descriptor& other) const { return !(*this == other); }
 };
 
 struct DescriptorSeLayoutDesc
 {
+    DescriptorSeLayoutDesc() = default;
     DescriptorSeLayoutDesc(std::initializer_list<Descriptor> descriptors)
         : m_descriptors(descriptors)
     {
     }
 
-    inline DescriptorSeLayoutDesc& AddDescriptor(const Descriptor& descriptor)
+    inline void AddDescriptor(const Descriptor& descriptor)
     {
         m_descriptors.push_back(descriptor);
-        return *this;
     }
 
     std::vector<Descriptor> m_descriptors;

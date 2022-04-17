@@ -4,7 +4,7 @@
 
 #include "RHI/Backend/Vulkan/Buffer.hpp"
 #include "RHI/Backend/Vulkan/Sampler.hpp"
-#include "RHI/Backend/Vulkan/Texture.hpp"
+#include "RHI/Backend/Vulkan/Image.hpp"
 
 namespace RHI
 {
@@ -77,7 +77,7 @@ namespace Vulkan
                 }
             }
             break;
-            case EDescriptorType::Texture:
+            case EDescriptorType::Image:
             {
                 switch (binding.accessType)
                 {
@@ -85,14 +85,14 @@ namespace Vulkan
                 case RHI::EDescriptorAccessType::Unoredered: writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE; break;
                 default: writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_MAX_ENUM; break;
                 };
-
+                
                 for (uint32_t i = 0; i < binding.elementsCount; ++i)
                 {
                     imagesInfos.push_back(VkDescriptorImageInfo());
                     auto& info                    = imagesInfos.back();
-                    info.imageView                = static_cast<const TextureView&>(*binding.pTextureBindings->pTextureView).GetHandle();
+                    info.imageView                = static_cast<const ImageView&>(*binding.pImageBindings->pImageView).GetHandle();
                     info.sampler                  = VK_NULL_HANDLE;
-                    info.imageLayout              = static_cast<VkImageLayout>(static_cast<uint32_t>(binding.pTextureBindings->layout));
+                    info.imageLayout              = static_cast<VkImageLayout>(static_cast<uint32_t>(binding.pImageBindings->layout));
                     writeDescriptorSet.pImageInfo = &info;
                 }
             }

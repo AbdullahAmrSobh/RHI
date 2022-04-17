@@ -1,6 +1,6 @@
 #pragma once
-#include "RHI/Definitions.hpp"
 #include "RHI/Backend/Vulkan/Device.hpp"
+#include "RHI/Definitions.hpp"
 
 namespace RHI
 {
@@ -14,8 +14,11 @@ namespace Vulkan
         {
         }
         
-        inline ~Semaphore() { vkDestroySemaphore(m_pDevice->GetHandle(), m_handle, nullptr); }
-        
+        inline ~Semaphore()
+        {
+            vkDestroySemaphore(m_pDevice->GetHandle(), m_handle, nullptr);
+        }
+
         inline VkResult Init()
         {
             VkSemaphoreCreateInfo info = {};
@@ -24,7 +27,8 @@ namespace Vulkan
             info.flags                 = 0;
             return vkCreateSemaphore(m_pDevice->GetHandle(), &info, nullptr, &m_handle);
         }
-
+		
     };
+
 } // namespace Vulkan
 } // namespace RHI

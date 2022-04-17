@@ -137,7 +137,10 @@ namespace Vulkan
                 state.pVertexAttributeDescriptions    = attributes.data();
             }
 
-            inline void Initalize(VkPipelineVertexInputStateCreateInfo const*& pState) const { pState = &state; }
+            inline void Initalize(VkPipelineVertexInputStateCreateInfo const*& pState) const
+            {
+                pState = &state;
+            }
 
             VkVertexInputBindingDescription                bindingDescription;
             std::vector<VkVertexInputAttributeDescription> attributes;
@@ -155,7 +158,10 @@ namespace Vulkan
                 state.primitiveRestartEnable = VK_FALSE;
             }
 
-            inline void Initalize(VkPipelineInputAssemblyStateCreateInfo const*& pState) const { pState = &state; }
+            inline void Initalize(VkPipelineInputAssemblyStateCreateInfo const*& pState) const
+            {
+                pState = &state;
+            }
 
             VkPipelineInputAssemblyStateCreateInfo state;
         };
@@ -171,7 +177,10 @@ namespace Vulkan
                 state.patchControlPoints = 0;
             }
 
-            inline void Initalize(VkPipelineTessellationStateCreateInfo const*& pState) const { pState = &state; }
+            inline void Initalize(VkPipelineTessellationStateCreateInfo const*& pState) const
+            {
+                pState = &state;
+            }
 
             VkPipelineTessellationStateCreateInfo state;
         };
@@ -189,7 +198,10 @@ namespace Vulkan
                 state.pScissors     = nullptr;
             }
 
-            inline void Initalize(VkPipelineViewportStateCreateInfo const*& pState) const { pState = &state; }
+            inline void Initalize(VkPipelineViewportStateCreateInfo const*& pState) const
+            {
+                pState = &state;
+            }
 
             VkPipelineViewportStateCreateInfo state;
         };
@@ -217,7 +229,10 @@ namespace Vulkan
                 state.depthBiasSlopeFactor    = 0.0f;
             }
 
-            inline void Initalize(VkPipelineRasterizationStateCreateInfo const*& pState) const { pState = &state; }
+            inline void Initalize(VkPipelineRasterizationStateCreateInfo const*& pState) const
+            {
+                pState = &state;
+            }
 
             VkPipelineRasterizationStateCreateInfo state;
         };
@@ -237,7 +252,10 @@ namespace Vulkan
                 state.alphaToOneEnable      = VK_FALSE;
             }
 
-            inline void Initalize(VkPipelineMultisampleStateCreateInfo const*& pState) const { pState = &state; }
+            inline void Initalize(VkPipelineMultisampleStateCreateInfo const*& pState) const
+            {
+                pState = &state;
+            }
 
             VkPipelineMultisampleStateCreateInfo state;
         };
@@ -260,7 +278,10 @@ namespace Vulkan
                 state.maxDepthBounds        = 1.0f;
             }
 
-            inline void Initalize(VkPipelineDepthStencilStateCreateInfo const*& pState) const { pState = &state; }
+            inline void Initalize(VkPipelineDepthStencilStateCreateInfo const*& pState) const
+            {
+                pState = &state;
+            }
 
             VkPipelineDepthStencilStateCreateInfo state;
         };
@@ -282,7 +303,10 @@ namespace Vulkan
                 state.blendConstants[3] = 0.0f;
             }
 
-            inline void Initalize(VkPipelineColorBlendStateCreateInfo const*& pState) const { pState = &state; }
+            inline void Initalize(VkPipelineColorBlendStateCreateInfo const*& pState) const
+            {
+                pState = &state;
+            }
 
             std::vector<VkPipelineColorBlendAttachmentState> attachmentColorBlend;
             VkPipelineColorBlendStateCreateInfo              state;
@@ -309,7 +333,10 @@ namespace Vulkan
                 state.pDynamicStates    = dynamicStates;
             }
 
-            inline void Initalize(VkPipelineDynamicStateCreateInfo const*& pState) const { pState = &state; }
+            inline void Initalize(VkPipelineDynamicStateCreateInfo const*& pState) const
+            {
+                pState = &state;
+            }
 
             VkPipelineDynamicStateCreateInfo state;
         };

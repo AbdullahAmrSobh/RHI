@@ -1,6 +1,6 @@
 #pragma once
-#include "RHI/Backend/Vulkan/Device.hpp"
 #include "RHI/Buffer.hpp"
+#include "RHI/Backend/Vulkan/Device.hpp"
 
 namespace RHI
 {
@@ -23,8 +23,6 @@ namespace Vulkan
         
 		inline VmaAllocationInfo GetAllocationInfo() const { return m_allocationInfo; }		
 		
-		virtual size_t GetSize() const override { return m_allocationInfo.size; }
-    
     private:
         VmaAllocation     m_allocation = VK_NULL_HANDLE;
         VmaAllocationInfo m_allocationInfo;

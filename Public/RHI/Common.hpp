@@ -12,7 +12,7 @@ namespace RHI
 {
 
 template <class T, size_t S = nonstd::dynamic_extent>
-using ArrayView = ::nonstd::span<T, S>;
+using Span = ::nonstd::span<T, S>;
 
 template <typename T>
 using Unique = std::unique_ptr<T>;
@@ -20,7 +20,10 @@ using Unique = std::unique_ptr<T>;
 template <typename T>
 using Shared = std::shared_ptr<T>;
 
-inline size_t HashCombine(size_t seed, size_t value) { return seed ^ (value + 0x9e3779b9 + (seed << 6) + (seed >> 2)); }
+inline size_t HashCombine(size_t seed, size_t value)
+{
+    return seed ^ (value + 0x9e3779b9 + (seed << 6) + (seed >> 2));
+}
 
 template <typename T, typename... Args>
 inline Unique<T> CreateUnique(Args&&... args)
@@ -76,30 +79,63 @@ public:
 #if defined(RHI_ENABLE_SPACESHIP_OPERATOR)
     auto operator<=>(Flags<BitType> const&) const = default;
 #else
-    constexpr bool operator<(Flags<BitType> const& rhs) const noexcept { return m_mask < rhs.m_mask; }
+    constexpr bool operator<(Flags<BitType> const& rhs) const noexcept
+    {
+        return m_mask < rhs.m_mask;
+    }
 
-    constexpr bool operator<=(Flags<BitType> const& rhs) const noexcept { return m_mask <= rhs.m_mask; }
+    constexpr bool operator<=(Flags<BitType> const& rhs) const noexcept
+    {
+        return m_mask <= rhs.m_mask;
+    }
 
-    constexpr bool operator>(Flags<BitType> const& rhs) const noexcept { return m_mask > rhs.m_mask; }
+    constexpr bool operator>(Flags<BitType> const& rhs) const noexcept
+    {
+        return m_mask > rhs.m_mask;
+    }
 
-    constexpr bool operator>=(Flags<BitType> const& rhs) const noexcept { return m_mask >= rhs.m_mask; }
+    constexpr bool operator>=(Flags<BitType> const& rhs) const noexcept
+    {
+        return m_mask >= rhs.m_mask;
+    }
 
-    constexpr bool operator==(Flags<BitType> const& rhs) const noexcept { return m_mask == rhs.m_mask; }
+    constexpr bool operator==(Flags<BitType> const& rhs) const noexcept
+    {
+        return m_mask == rhs.m_mask;
+    }
 
-    constexpr bool operator!=(Flags<BitType> const& rhs) const noexcept { return m_mask != rhs.m_mask; }
+    constexpr bool operator!=(Flags<BitType> const& rhs) const noexcept
+    {
+        return m_mask != rhs.m_mask;
+    }
 #endif
 
     // logical operator
-    constexpr bool operator!() const noexcept { return !m_mask; }
+    constexpr bool operator!() const noexcept
+    {
+        return !m_mask;
+    }
 
     // bitwise operators
-    constexpr Flags<BitType> operator&(Flags<BitType> const& rhs) const noexcept { return Flags<BitType>(m_mask & rhs.m_mask); }
+    constexpr Flags<BitType> operator&(Flags<BitType> const& rhs) const noexcept
+    {
+        return Flags<BitType>(m_mask & rhs.m_mask);
+    }
 
-    constexpr Flags<BitType> operator|(Flags<BitType> const& rhs) const noexcept { return Flags<BitType>(m_mask | rhs.m_mask); }
+    constexpr Flags<BitType> operator|(Flags<BitType> const& rhs) const noexcept
+    {
+        return Flags<BitType>(m_mask | rhs.m_mask);
+    }
 
-    constexpr Flags<BitType> operator^(Flags<BitType> const& rhs) const noexcept { return Flags<BitType>(m_mask ^ rhs.m_mask); }
+    constexpr Flags<BitType> operator^(Flags<BitType> const& rhs) const noexcept
+    {
+        return Flags<BitType>(m_mask ^ rhs.m_mask);
+    }
 
-    constexpr Flags<BitType> operator~() const noexcept { return Flags<BitType>(m_mask ^ FlagTraits<BitType>::allFlags); }
+    constexpr Flags<BitType> operator~() const noexcept
+    {
+        return Flags<BitType>(m_mask ^ FlagTraits<BitType>::allFlags);
+    }
 
     // assignment operators
     constexpr Flags<BitType>& operator=(Flags<BitType> const& rhs) noexcept = default;
@@ -123,12 +159,24 @@ public:
     }
 
     // cast operators
-    explicit constexpr operator bool() const noexcept { return !!m_mask; }
+    explicit constexpr operator bool() const noexcept
+    {
+        return !!m_mask;
+    }
 
-    explicit constexpr operator MaskType() const noexcept { return m_mask; }
+    explicit constexpr operator MaskType() const noexcept
+    {
+        return m_mask;
+    }
 
 private:
     MaskType m_mask;
 };
+
+template <typename T>
+inline constexpr uint32_t CountElements(const T& t)
+{
+    return static_cast<uint32_t>(t.size());
+}
 
 } // namespace RHI

@@ -1,21 +1,20 @@
 #pragma once
 #include "RHI/Definitions.hpp"
-#include "RHI/Resources.hpp"
+#include "RHI/Memory.hpp"
 
 #include "RHI/Device.hpp"
-#include "RHI/Queue.hpp"
 
 namespace RHI
 {
 
-class Device
+class IDevice
 {
 public:
-    virtual ~Device() = default;
+    virtual ~IDevice() = default;
     
     inline DeviceAddress MapResourceMemory(IBuffer& resource, size_t offset, size_t range)
 	{
-		return MapResourceMemory(resource, offset, range);
+		return MapResourceMemory(MapableResource(resource), offset, range);
 	}
     
 	inline void UnmapResourceMemory(IBuffer& resource)
@@ -23,22 +22,21 @@ public:
 		UnmapResourceMemory(MapableResource(resource));
 	}
     
-	inline DeviceAddress MapResourceMemory(ITexture& resource, size_t offset, size_t range)
+	inline DeviceAddress MapResourceMemory(IImage& resource, size_t offset, size_t range)
     {
         return MapResourceMemory(MapableResource(resource), offset, range);
     }
     
-	inline void UnmapResourceMemory(ITexture& resource)
+	inline void UnmapResourceMemory(IImage& resource)
 	{
 		UnmapResourceMemory(MapableResource(resource));
 	}
-	
-	virtual IQueue& GetMainQueue() = 0;
     
 protected:
     virtual DeviceAddress MapResourceMemory(const MapableResource& resource, size_t offset, size_t range) = 0;
     virtual void          UnmapResourceMemory(const MapableResource& resource)                            = 0;
 
 };
+using DevicePtr = Unique<IDevice>;
 
 } // namespace RHI

@@ -14,7 +14,7 @@ namespace Vulkan
         ~Factory();
 
         EResultCode Init(VkApplicationInfo _appInfo, IDebugMessenger& debugMessengerCallback);
-
+        
         inline virtual Device& GetFactoryDevice() override { return *m_device; }
 
         // Interface Implementation.
@@ -33,20 +33,20 @@ namespace Vulkan
         virtual Expected<PipelineStatePtr> CreateGraphicsPipelineState(const GraphicsPipelineStateDesc&) override;
 
         virtual Expected<PipelineStatePtr> CreateComputePipelineState(const ComputePipelineStateDesc&) override;
-
+	
+		// virtual Expected<MemoryPoolPtr> CreateResourceMemoryPool(const MemoryPoolDesc&) override;
+        
         virtual Expected<BufferPtr> CreateBuffer(const MemoryAllocationDesc&, const BufferDesc&) override;
-
+        
         virtual Expected<BufferViewPtr> CreateBufferView(const BufferViewDesc&) override;
-
-        virtual Expected<TexturePtr> CreateTexture(const MemoryAllocationDesc&, const TextureDesc&) override;
-
-        virtual Expected<TextureViewPtr> CreateTextureView(const TextureViewDesc&) override;
-
+        
+        virtual Expected<ImagePtr> CreateImage(const MemoryAllocationDesc&, const ImageDesc&) override;
+        
+        virtual Expected<ImageViewPtr> CreateImageView(const ImageViewDesc&) override;
+        
         virtual Expected<FencePtr> CreateFence() override;
-
-        virtual Expected<RenderGraphPtr> CreateRenderGraph(const RenderGraphBuilder&) override;
-
-        virtual Expected<RenderTargetPtr> CreateRenderTarget(const RenderTargetDesc&) override;
+            
+		virtual Expected<FrameGraphPtr> CreateFrameGraph() override;
 
     private:
         VkInstance               m_instance;

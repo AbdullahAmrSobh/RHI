@@ -1,15 +1,86 @@
 #include "RHI/Backend/Vulkan/Device.hpp"
 #include "RHI/Backend/Vulkan/Common.hpp"
-
-// #include "RHI/Backend/Vulkan/Queue.hpp"
-
 #include "RHI/Backend/Vulkan/Buffer.hpp"
-#include "RHI/Backend/Vulkan/Texture.hpp"
+#include "RHI/Backend/Vulkan/Image.hpp"
+#include "RHI/Backend/Vulkan/Queue.hpp"
 
 namespace RHI
 {
 namespace Vulkan
 {
+
+    VkPhysicalDeviceProperties PhysicalDevice::GetProperties() const
+    {
+        VkPhysicalDeviceProperties properties;
+        vkGetPhysicalDeviceProperties(m_physicalDevice, &properties);
+        return properties;
+    }
+
+    VkPhysicalDeviceFeatures PhysicalDevice::GetFeatures() const
+    {
+        VkPhysicalDeviceFeatures features;
+        vkGetPhysicalDeviceFeatures(m_physicalDevice, &features);
+        return features;
+    }
+
+    std::vector<VkQueueFamilyProperties> PhysicalDevice::GetQueueFamilyProperties() const
+    {
+        uint32_t queueFamilyCount = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(m_physicalDevice, &queueFamilyCount, nullptr);
+        std::vector<VkQueueFamilyProperties> queueFamilyProperties(queueFamilyCount);
+        vkGetPhysicalDeviceQueueFamilyProperties(m_physicalDevice, &queueFamilyCount, queueFamilyProperties.data());
+        return queueFamilyProperties;
+    }
+
+    std::vector<VkLayerProperties> PhysicalDevice::GetAvailableLayers() const
+    {
+        uint32_t layerCount = 0;
+        vkEnumerateDeviceLayerProperties(m_physicalDevice, &layerCount, nullptr);
+        std::vector<VkLayerProperties> layerProperties(layerCount);
+        vkEnumerateDeviceLayerProperties(m_physicalDevice, &layerCount, layerProperties.data());
+        return layerProperties;
+    }
+
+    std::vector<VkExtensionProperties> PhysicalDevice::GetAvailableExtensions() const
+    {
+        uint32_t extensionCount = 0;
+        vkEnumerateDeviceExtensionProperties(m_physicalDevice, nullptr, &extensionCount, nullptr);
+        std::vector<VkExtensionProperties> extensionProperties(extensionCount);
+        vkEnumerateDeviceExtensionProperties(m_physicalDevice, nullptr, &extensionCount, extensionProperties.data());
+        return extensionProperties;
+    }
+
+    VkPhysicalDeviceMemoryProperties PhysicalDevice::GetMemoryProperties() const
+    {
+        VkPhysicalDeviceMemoryProperties properties;
+        vkGetPhysicalDeviceMemoryProperties(m_physicalDevice, &properties);
+        return properties;
+    }
+
+    VkSurfaceCapabilitiesKHR PhysicalDevice::GetSurfaceCapabilities(VkSurfaceKHR _surface) const
+    {
+        VkSurfaceCapabilitiesKHR capabilities;
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_physicalDevice, _surface, &capabilities);
+        return capabilities;
+    }
+
+    std::vector<VkPresentModeKHR> PhysicalDevice::GetPresentModes(VkSurfaceKHR _surface) const
+    {
+        uint32_t presentModeCount = 0;
+        vkGetPhysicalDeviceSurfacePresentModesKHR(m_physicalDevice, _surface, &presentModeCount, nullptr);
+        std::vector<VkPresentModeKHR> presentModes(presentModeCount);
+        vkGetPhysicalDeviceSurfacePresentModesKHR(m_physicalDevice, _surface, &presentModeCount, presentModes.data());
+        return presentModes;
+    }
+
+    std::vector<VkSurfaceFormatKHR> PhysicalDevice::GetSurfaceFormats(VkSurfaceKHR _surface) const
+    {
+        uint32_t surfaceFormatCount = 0;
+        vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, _surface, &surfaceFormatCount, nullptr);
+        std::vector<VkSurfaceFormatKHR> surfaceFormats(surfaceFormatCount);
+        vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, _surface, &surfaceFormatCount, surfaceFormats.data());
+        return surfaceFormats;
+    }
 
     Device::~Device()
     {
@@ -21,42 +92,35 @@ namespace Vulkan
     {
         m_instance       = _instance;
         m_physicalDevice = PhysicalDevice(_instance, _physicalDevice);
+        
 
+		QueueDesc graphicsQueueDesc; // this queue is assumed to be present capable.
+        
         // Create the device
         {
-            VkDeviceQueueCreateInfo queueCreateInfo = {};
             float                   queuePriority   = 1.0f;
+            VkDeviceQueueCreateInfo queueCreateInfo = {};
+            queueCreateInfo.sType                   = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            queueCreateInfo.pNext                   = nullptr;
+            queueCreateInfo.flags                   = 0;
+            queueCreateInfo.queueCount              = 1;
+            queueCreateInfo.pQueuePriorities        = &queuePriority;
 
-            uint32_t index = 0;
-            for (const auto& qfb : m_physicalDevice.GetQueueFamilyProperties())
+            uint32_t queueFamilyIndex = 0;
+            
+
+            for (const auto& qfp : m_physicalDevice.GetQueueFamilyProperties())
             {
-
-                if (qfb.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+                if (qfp.queueFlags & VK_QUEUE_GRAPHICS_BIT)
                 {
-
-                    m_queueSettings.presentQueueIndex  = index;
-                    m_queueSettings.presentQueueCount  = 1;
-                    m_queueSettings.graphicsQueueIndex = index;
-                    m_queueSettings.graphicsQueueCount = 1;
-                    m_queueSettings.computeQueueIndex  = index;
-                    m_queueSettings.computeQueueCount  = 1;
-                    m_queueSettings.transferQueueIndex = index;
-                    m_queueSettings.transferQueueCount = 1;
-
-                    queueCreateInfo.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-                    queueCreateInfo.pNext            = nullptr;
-                    queueCreateInfo.flags            = 0;
-                    queueCreateInfo.queueFamilyIndex = index;
-                    queueCreateInfo.queueCount       = 1;
-                    queueCreateInfo.pQueuePriorities = &queuePriority;
+                    graphicsQueueDesc.queueFamilyIndex = queueFamilyIndex;
                     break;
                 }
-
-                index++;
+                queueFamilyIndex++;
             }
 
             std::vector<VkDeviceQueueCreateInfo> queueCreateInfos = {};
-
+            
             std::vector<const char*> enabledLayers     = {"VK_LAYER_LUNARG_standard_validation"};
             std::vector<const char*> enabledExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
             VkPhysicalDeviceFeatures enabledFeatures   = {};
@@ -91,20 +155,17 @@ namespace Vulkan
             return result;
         }
 
-        // Create queues;
-        // m_PresentQueue  = CreateUnique<PresentQueue>(*this, m_queueSettings.presentQueueIndex);
-        // m_GraphicsQueue = CreateUnique<Queue>(*this, m_queueSettings.graphicsQueueIndex);
-        // m_ComputeQueue  = CreateUnique<Queue>(*this, m_queueSettings.computeQueueIndex);
-        // m_TransferQueue = CreateUnique<Queue>(*this, m_queueSettings.transferQueueIndex);
-    }
-
+		m_pGraphicsQueue = new Queue(*this, graphicsQueueDesc);
+		
+	}
+    
     DeviceAddress Device::MapResourceMemory(const MapableResource& resource, size_t offset, size_t range)
     {
         VmaAllocation allocation = VK_NULL_HANDLE;
         if (resource.type == MapableResource::Type::Buffer)
             allocation = static_cast<Buffer*>(resource.pBuffer)->m_allocation;
         else
-            allocation = static_cast<Texture*>(resource.pTexture)->m_allocation;
+            allocation = static_cast<Image*>(resource.pImage)->m_allocation;
 
         DeviceAddress address;
         VkResult      result = vmaMapMemory(m_allocator, allocation, &address);
@@ -122,7 +183,7 @@ namespace Vulkan
         if (resource.type == MapableResource::Type::Buffer)
             allocation = static_cast<Buffer*>(resource.pBuffer)->m_allocation;
         else
-            allocation = static_cast<Texture*>(resource.pTexture)->m_allocation;
+            allocation = static_cast<Image*>(resource.pImage)->m_allocation;
 
         vmaUnmapMemory(m_allocator, allocation);
     }

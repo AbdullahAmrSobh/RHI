@@ -6,16 +6,11 @@ namespace RHI
 
 struct ShaderModuleDesc
 {
-    ShaderModuleDesc(std::vector<std::byte> data, std::string_view entryPoint, EShaderStageFlagBits stage)
-        : bytecode(std::move(data))
-        , entryPointName(entryPoint)
-        , stage(stage)
-    {
-    }
-
+    ShaderModuleDesc() = default;
+	
     std::vector<std::byte> bytecode;
     std::string            entryPointName;
-    EShaderStageFlagBits           stage;
+    EShaderStageFlagBits   stage;
 };
 
 class IShaderModule
@@ -26,25 +21,28 @@ public:
         , m_stage(stage)
     {
     }
-
+    
     virtual ~IShaderModule() = default;
-
-    inline const std::string& GetEntryPointName() const { return m_entryPointName; }
-    inline EShaderStageFlagBits       GetStage() const { return m_stage; }
+    
+    inline const std::string& GetEntryPointName() const
+    {
+        return m_entryPointName;
+    }
+    inline EShaderStageFlagBits GetStage() const
+    {
+        return m_stage;
+    }
 
 private:
-    std::string  m_entryPointName;
-    EShaderStageFlagBits m_stage;
+    const std::string          m_entryPointName;
+    const EShaderStageFlagBits m_stage;
 };
 using ShaderModulePtr = Unique<IShaderModule>;
 
 struct GraphicsPipelineShaders
 {
-	GraphicsPipelineShaders(IShaderModule& vertexShader, IShaderModule& pixelShader)
-		: pVertexShader(&vertexShader)
-		, pPixelShader(&pixelShader)
-	{}
-    
+    GraphicsPipelineShaders() = default;
+
     IShaderModule* pVertexShader   = nullptr;
     IShaderModule* pPixelShader    = nullptr;
     IShaderModule* pDomainShader   = nullptr;
@@ -52,9 +50,11 @@ struct GraphicsPipelineShaders
     IShaderModule* pGeometryShader = nullptr;
 };
 
-class ComputePipelineShader
+struct ComputePipelineShader
 {
-    IShaderModule*                   pComputeShader = nullptr;
+    ComputePipelineShader() = default;
+
+    IShaderModule* pComputeShader = nullptr;
 };
 
 } // namespace RHI

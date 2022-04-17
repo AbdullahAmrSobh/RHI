@@ -31,13 +31,13 @@ namespace Vulkan
         case VK_ERROR_MEMORY_MAP_FAILED:
         case VK_ERROR_LAYER_NOT_PRESENT: return EResultCode::LayerNotPresent;
         case VK_ERROR_EXTENSION_NOT_PRESENT: return EResultCode::ExtensionNotPresent;
-        case VK_ERROR_FEATURE_NOT_PRESENT:
-        case VK_ERROR_INCOMPATIBLE_DRIVER:
+        case VK_ERROR_FEATURE_NOT_PRESENT: return EResultCode::FeatureNotAvailable;
+        case VK_ERROR_INCOMPATIBLE_DRIVER: 
         case VK_ERROR_TOO_MANY_OBJECTS:
         case VK_ERROR_FORMAT_NOT_SUPPORTED:
         case VK_ERROR_FRAGMENTED_POOL:
         case VK_ERROR_UNKNOWN:
-        case VK_ERROR_OUT_OF_POOL_MEMORY:
+        case VK_ERROR_OUT_OF_POOL_MEMORY: return EResultCode::OutOfMemory;
         case VK_ERROR_INVALID_EXTERNAL_HANDLE:
         case VK_ERROR_FRAGMENTATION:
         case VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS:

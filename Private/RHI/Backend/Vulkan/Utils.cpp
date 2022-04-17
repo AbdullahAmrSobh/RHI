@@ -46,7 +46,7 @@ namespace Vulkan
             switch (type)
             {
             case EDescriptorType::Sampler: return VK_DESCRIPTOR_TYPE_SAMPLER;
-            case EDescriptorType::Texture:
+            case EDescriptorType::Image:
             {
                 switch (access)
                 {

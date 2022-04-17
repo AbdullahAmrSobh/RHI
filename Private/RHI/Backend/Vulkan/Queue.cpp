@@ -1,45 +1,54 @@
 #include "RHI/Backend/Vulkan/Queue.hpp"
 #include "RHI/Backend/Vulkan/Factory.hpp"
 
-namespace RHI {
-namespace Vulkan {
+#include "RHI/Backend/Vulkan/Fence.hpp"
 
-        void Submit(ICommandContext& cmdCtx, IFence& signalFence) 
+namespace RHI
+{
+namespace Vulkan
+{
+    Queue::Queue(Device& device, const QueueDesc& queueDesc)
+        : DeviceObject(device)
+        , m_queueFamilyIndex(queueDesc.queueFamilyIndex)
+        , m_queueIndex(queueDesc.queueIndex)
+    {
+        vkGetDeviceQueue(m_pDevice->GetHandle(), m_queueFamilyIndex, m_queueIndex, &m_handle);
+    }
+
+    VkResult Queue::Submit(const std::vector<SubmitInfo>& submitInfos, IFence& signalFence)
+    {
+        Fence&                    vkSignalFence = static_cast<Fence&>(signalFence);
+        std::vector<VkSubmitInfo> vkSubmitInfos(CountElements(submitInfos));
+        for (auto& submitInfo : submitInfos)
         {
-            CommandContext& vkCmdCtx        = static_cast<CommandContext&>(cmdCtx);
-            VkCommandBuffer handle          = vkCmdCtx.GetHandle();
-            VkSubmitInfo    submitInfo      = {};
-            submitInfo.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-            submitInfo.pNext                = nullptr;
-            submitInfo.waitSemaphoreCount   = static_cast<uint32_t>(vkCmdCtx.m_waitSemaphores.size());
-            submitInfo.pWaitSemaphores      = vkCmdCtx.m_waitSemaphores.data();
-            submitInfo.pWaitDstStageMask    = vkCmdCtx.m_waitStages.data();
-            submitInfo.commandBufferCount   = 1;
-            submitInfo.pCommandBuffers      = &handle;
-            submitInfo.signalSemaphoreCount = static_cast<uint32_t>(vkCmdCtx.m_signalSemaphores.size());
-            submitInfo.pSignalSemaphores    = vkCmdCtx.m_signalSemaphores.data();
-            Fence& fence                    = static_cast<Fence&>(signalFence);
-            VkResult result = vkQueueSubmit(m_handle, 1, &submitInfo, fence.GetHandle());
-			assert(result == VK_SUCCESS);
+            VkSubmitInfo vkSubmitInfo         = {};
+            vkSubmitInfo.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+            vkSubmitInfo.pNext                = nullptr;
+            vkSubmitInfo.commandBufferCount   = CountElements(submitInfo.commandBuffers);
+            vkSubmitInfo.pCommandBuffers      = submitInfo.commandBuffers.data();
+            vkSubmitInfo.signalSemaphoreCount = CountElements(submitInfo.signalSemaphores);
+            vkSubmitInfo.pSignalSemaphores    = submitInfo.signalSemaphores.data();
+            vkSubmitInfo.waitSemaphoreCount   = CountElements(submitInfo.waitSemaphores);
+            vkSubmitInfo.pWaitSemaphores      = submitInfo.waitSemaphores.data();
+            vkSubmitInfo.pWaitDstStageMask    = submitInfo.waitStages.data();
+            vkSubmitInfos.push_back(vkSubmitInfo);
         }
+        return vkQueueSubmit(m_handle, CountElements(vkSubmitInfos), vkSubmitInfos.data(), vkSignalFence.GetHandle());
+    }
+    
+    VkResult Queue::Present(const PresentInfo& desc, std::vector<VkResult>& outPresentResults)
+    {
+        VkPresentInfoKHR presentInfo   = {};
+        presentInfo.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        presentInfo.pNext              = nullptr;
+        presentInfo.waitSemaphoreCount = CountElements(desc.waitSemaphores);
+        presentInfo.pWaitSemaphores    = desc.waitSemaphores.data();
+        presentInfo.swapchainCount     = CountElements(desc.swapchainHandles);
+        presentInfo.pSwapchains        = desc.swapchainHandles.data();
+        presentInfo.pImageIndices      = desc.imageIndices.data();
+        presentInfo.pResults           = outPresentResults.data();
+        return vkQueuePresentKHR(m_handle, &presentInfo);
+    }
 
-        void Present(const SwapchainPresentDesc& desc)
-		{
-			
-			std::vector<VkSwapchainKHR> swapchainHandles;
-			std::vector<uint32_t> imageIndices;
-			VkPresentInfoKHR presentInfo = {};
-			presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-			presentInfo.pNext = nullptr;
-			presentInfo.waitSemaphoreCount;
-			presentInfo.pWaitSemaphores;
-			presentInfo.swapchainCount = static_cast<uint32_t>(swapchainHandles.size());
-			presentInfo.pSwapchains = swapchainHandles.data();
-			presentInfo.pImageIndices = imageIndices.data();
-			presentInfo.pResults;
-			
-			VkResult result = vkQueuePresentKHR(m_handle, &presentInfo);
-			assert(result == VK_SUCCESS);
-		}
 } // namespace Vulkan
 } // namespace RHI

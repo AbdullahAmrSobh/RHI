@@ -1,4 +1,4 @@
-#include "RHI/Backend/Vulkan/Texture.hpp"
+#include "RHI/Backend/Vulkan/Image.hpp"
 
 #include "RHI/Backend/Vulkan/Factory.hpp"
 #include "RHI/Backend/Vulkan/Utils.hpp"
@@ -7,25 +7,25 @@ namespace RHI
 {
 namespace Vulkan
 {
-    Expected<TexturePtr> Factory::CreateTexture(const MemoryAllocationDesc& allocDesc, const TextureDesc& desc)
+    Expected<ImagePtr> Factory::CreateImage(const MemoryAllocationDesc& allocDesc, const ImageDesc& desc)
     {
-        auto     texture = CreateUnique<Texture>(*m_device);
-        VkResult result  = texture->Init(allocDesc, desc);
+        auto     image  = CreateUnique<Image>(*m_device);
+        VkResult result = image->Init(allocDesc, desc);
         if (result != VK_SUCCESS)
             return tl::unexpected(ToResultCode(result));
 
-        return texture;
+        return image;
     }
-    
-    Texture::~Texture()
+
+    Image::~Image()
     {
         if (m_allocation != VK_NULL_HANDLE)
             vmaDestroyImage(m_pDevice->GetAllocator(), m_handle, m_allocation);
         else if (m_handle != VK_NULL_HANDLE)
             vkDestroyImage(m_pDevice->GetHandle(), m_handle, nullptr);
     }
-
-    VkResult Texture::Init(const MemoryAllocationDesc& allocDesc, const TextureDesc& desc)
+    
+    VkResult Image::Init(const MemoryAllocationDesc& allocDesc, const ImageDesc& desc)
     {
         VkImageCreateInfo createInfo = {};
         createInfo.sType             = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -39,7 +39,7 @@ namespace Vulkan
             else
                 createInfo.imageType = VK_IMAGE_TYPE_3D;
         }
-        createInfo.format      = Utils::ConvertTextureFormat(desc.format);
+        createInfo.format      = Utils::ConvertPixelFormat(desc.format);
         createInfo.extent      = {desc.extent.sizeX, desc.extent.sizeX, desc.extent.sizeZ};
         createInfo.mipLevels   = desc.mipLevels;
         createInfo.arrayLayers = desc.arraySize;
@@ -53,35 +53,33 @@ namespace Vulkan
 
         VmaAllocationCreateInfo allocInfo = {};
         allocInfo.usage                   = static_cast<VmaMemoryUsage>(allocDesc.usage);
-        
-		Assert(m_resourceIsReadySemaphore.Init());
-        
-        return vmaCreateImage(m_pDevice->GetAllocator(), &createInfo, &allocInfo, &m_handle, &m_allocation, &m_allocationInfo);
-    
 
+        Assert(m_resourceIsReadySemaphore.Init());
+
+        return vmaCreateImage(m_pDevice->GetAllocator(), &createInfo, &allocInfo, &m_handle, &m_allocation, &m_allocationInfo);
     }
 
-    Expected<TextureViewPtr> Factory::CreateTextureView(const TextureViewDesc& desc)
+    Expected<ImageViewPtr> Factory::CreateImageView(const ImageViewDesc& desc)
     {
-        auto     textureView = CreateUnique<TextureView>(*m_device);
-        VkResult result      = textureView->Init(desc);
+        auto     imageView = CreateUnique<ImageView>(*m_device);
+        VkResult result    = imageView->Init(desc);
         if (result != VK_SUCCESS)
             return tl::unexpected(ToResultCode(result));
-        
-        return textureView;
+
+        return imageView;
     }
 
-    TextureView::~TextureView() { vkDestroyImageView(m_pDevice->GetHandle(), m_handle, nullptr); }
+    ImageView::~ImageView() { vkDestroyImageView(m_pDevice->GetHandle(), m_handle, nullptr); }
 
-    VkResult TextureView::Init(const TextureViewDesc& desc)
+    VkResult ImageView::Init(const ImageViewDesc& desc)
     {
         VkImageViewCreateInfo createInfo       = {};
         createInfo.sType                       = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         createInfo.pNext                       = nullptr;
         createInfo.flags                       = 0;
-        createInfo.image                       = static_cast<Texture*>(desc.pTexture)->GetHandle();
+        createInfo.image                       = static_cast<Image*>(desc.pImage)->GetHandle();
         createInfo.viewType                    = static_cast<VkImageViewType>(desc.viewDimension);
-        createInfo.format                      = Utils::ConvertTextureFormat(desc.format);
+        createInfo.format                      = Utils::ConvertPixelFormat(desc.format);
         createInfo.components.a                = VK_COMPONENT_SWIZZLE_IDENTITY;
         createInfo.components.r                = VK_COMPONENT_SWIZZLE_IDENTITY;
         createInfo.components.g                = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -89,13 +87,13 @@ namespace Vulkan
         createInfo.subresourceRange.aspectMask = 0;
 
         // Choose which aspects of the image this view will contain.
-        if (desc.aspectFlags & ETextureViewAspectFlagBits::Color)
+        if (desc.aspectFlags & EImageViewAspectFlagBits::Color)
             createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 
-        if (desc.aspectFlags & ETextureViewAspectFlagBits::Depth)
+        if (desc.aspectFlags & EImageViewAspectFlagBits::Depth)
             createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 
-        if (desc.aspectFlags & ETextureViewAspectFlagBits::Stencil)
+        if (desc.aspectFlags & EImageViewAspectFlagBits::Stencil)
             createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT;
 
         createInfo.subresourceRange.layerCount     = desc.viewRange.arrayCount;

@@ -1,6 +1,5 @@
 project "RHI"
 	kind "StaticLib"
-	toolset "clang"
 	language "C++"
 	cppdialect "C++17"
 	-- staticruntime "on"

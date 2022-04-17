@@ -1,23 +1,17 @@
 #pragma once
 #include "RHI/Fence.hpp"
-#include "RHI/Texture.hpp"
+#include "RHI/Image.hpp"
 
 namespace RHI
 {
 
 struct SwapChainDesc
 {
-    SwapChainDesc(Extent2D extent, uint32_t bufferCount, TextureUsageFlags bufferUsage, NativeWindowHandle windowHandle)
-        : extent(extent)
-        , bufferCount(bufferCount)
-        , bufferUsage(bufferUsage)
-        , windowHandle(windowHandle)
-    {
-    }
+    SwapChainDesc() = default;
 
     Extent2D           extent;
     uint32_t           bufferCount;
-    TextureUsageFlags  bufferUsage;
+    ImageUsageFlags    bufferUsage;
     NativeWindowHandle windowHandle;
 };
 
@@ -26,22 +20,46 @@ class ISwapChain
 public:
     virtual ~ISwapChain() = default;
 
-    inline uint32_t             GetCurrentImageIndex() const { return m_currentImageIndex; }
-    inline ITexture&            GetCurrentImage() { return *m_images[m_currentImageIndex]; }
-    inline ITexture&            GetTextureAt(uint32_t index) { return *m_images[index]; }
-    inline uint32_t             GetTextureCount() const { return m_imageCount; }
-    inline ArrayView<ITexture*> GetTextures() { return ArrayView<ITexture*>(m_images.begin(), m_images.begin() + m_imageCount); }
+    inline uint32_t GetCurrentImageIndex() const
+    {
+        return m_currentImageIndex;
+    }
 
-    virtual EResultCode SwapBuffers() = 0;
+    inline IImage& GetCurrentImage()
+    {
+        return *m_images[m_currentImageIndex];
+    }
+
+    inline IImage& GetImageAt(uint32_t index)
+    {
+        return *m_images[index];
+    }
+
+    inline uint32_t GetImageCount() const
+    {
+        return CountElements(m_images);
+    }
+
+    inline std::vector<Unique<IImage>>& GetImages()
+    {
+        return m_images;
+    }
+
+    inline EPixelFormat GetImagePixelFormat() const
+    {
+        return m_imagePixelFormat;
+    };
+
+    virtual void        Resize(Extent2D newExtent) = 0;
+    virtual EResultCode SwapBuffers()              = 0;
+
+    virtual struct SwapChainAttachmentId GetSwapChainAttachmentId() const;
 
 protected:
-    constexpr static uint32_t MAX_BACK_BUFFERS = 3;
-
-    uint32_t                                m_imageCount        = 0;
-    uint32_t                                m_currentImageIndex = 0;
-    std::array<ITexture*, MAX_BACK_BUFFERS> m_images;
+    EPixelFormat                m_imagePixelFormat;
+    uint32_t                    m_currentImageIndex = 0;
+    std::vector<Unique<IImage>> m_images;
 };
-
 using SwapChainPtr = Unique<ISwapChain>;
 
 } // namespace RHI

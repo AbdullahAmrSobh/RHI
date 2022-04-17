@@ -5,19 +5,7 @@ namespace RHI
 {
 namespace Vulkan
 {
-    
-    VkResult Surface::Init(VkInstance instance, NativeWindowHandle nativeWindowHandle)
-    {
-        VkWin32SurfaceCreateInfoKHR createInfo           = {};
-        createInfo.sType                                 = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-        createInfo.flags                                 = 0;
-        createInfo.pNext                                 = 0;
-        createInfo.hinstance                             = GetModuleHandle(nullptr);
-        createInfo.hwnd                                  = static_cast<HWND>(nativeWindowHandle);
-        static PFN_vkCreateWin32SurfaceKHR createSurface = (PFN_vkCreateWin32SurfaceKHR)vkGetInstanceProcAddr(instance, "vkCreateWin32SurfaceKHR");
-        return createSurface(instance, &createInfo, nullptr, &m_handle);
-    }
-    
+
     SwapChain::~SwapChain() { vkDestroySwapchainKHR(m_pDevice->GetHandle(), m_handle, nullptr); }
     
     VkResult SwapChain::Init(const SwapChainDesc& desc)
@@ -38,7 +26,7 @@ namespace Vulkan
         createInfo.surface                  = surface.GetHandle();
         createInfo.minImageCount            = std::clamp(desc.bufferCount, surfaceCapabilities.minImageCount, surfaceCapabilities.maxImageCount);
         createInfo.imageFormat              = selectedSurfaceFormat.format;
-        createInfo.imageColorSpace          = selectedSurfaceFormat.colorSpace;
+        createInfo.imageColorSpace          = select21edSurfaceFormat.colorSpace;
         createInfo.imageExtent              = Surface::ClampExtent({desc.extent.sizeX, desc.extent.sizeY}, surfaceCapabilities.currentExtent,
                                                                    surfaceCapabilities.minImageExtent, surfaceCapabilities.maxImageExtent);
         createInfo.imageArrayLayers         = 1;
@@ -51,7 +39,7 @@ namespace Vulkan
         createInfo.presentMode              = Surface::SelectPresentMode(presentModes);
         createInfo.clipped                  = VK_TRUE;
         createInfo.oldSwapchain             = VK_NULL_HANDLE;
-
+        
         VkResult result = vkCreateSwapchainKHR(m_pDevice->GetHandle(), &createInfo, nullptr, &m_handle);
         if (result != VK_SUCCESS)
             return result;

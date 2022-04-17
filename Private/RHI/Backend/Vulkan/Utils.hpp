@@ -1,7 +1,7 @@
 #pragma once
 #include "RHI/Definitions.hpp"
 #include "RHI/PipelineState.hpp"
-#include "RHI/Texture.hpp"
+#include "RHI/Image.hpp"
 
 #include <vulkan/vulkan.h>
 
@@ -11,19 +11,18 @@ namespace Vulkan
 {
     namespace Utils
     {
-        bool IsSuccess(VkResult result);
-
-        VkFormat              ConvertTextureFormat(EPixelFormat format);
+        inline bool IsSuccess(VkResult result) { return result <= VK_INCOMPLETE; }
+        
+        VkFormat              ConvertPixelFormat(EPixelFormat format);
         VkFormat              ConvertBufferFormat(EVertexAttributeFormat format);
         VkFormat              ConvertBufferFormat(EBufferFormat format);
         size_t                GetFormatTaxelSize(VkFormat format);
         VkSampleCountFlagBits ConvertSampleCount(ESampleCount sampleCount);
         
-		inline VkShaderStageFlags ConvertShaderStage(ShaderStageFlags stages)
-		{
-			// this is me just being lazy
-			return static_cast<VkShaderStageFlags>(static_cast<ShaderStageFlags::MaskType>(stages));
-		}
+        inline VkShaderStageFlags ConvertShaderStage(ShaderStageFlags stages)
+        {
+            return static_cast<VkShaderStageFlags>(static_cast<ShaderStageFlags::MaskType>(stages));
+        }
         
         VkDescriptorType GetDescriptorType(EDescriptorType type, EDescriptorAccessType access);
     

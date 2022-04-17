@@ -1,5 +1,5 @@
 #pragma once
-#include "RHI/Texture.hpp"
+#include "RHI/Image.hpp"
 
 #include "RHI/Backend/Vulkan/Device.hpp"
 #include "RHI/Backend/Vulkan/Semaphore.hpp"
@@ -11,27 +11,25 @@ namespace Vulkan
     
     class SwapChain;
 
-    class Texture final
-        : public ITexture
+    class Image final
+        : public IImage
         , public DeviceObject<VkImage>
     {
 		friend class Device;
     
     public:
-        inline Texture(Device& device, VkImage image = VK_NULL_HANDLE, SwapChain* pSwapChain = nullptr)
+        Image(Device& device, VkImage image = VK_NULL_HANDLE, SwapChain* pSwapChain = nullptr)
             : DeviceObject(device, image)
             , m_pSwapChain(pSwapChain)
 			, m_resourceIsReadySemaphore(device)
         {
         }
-        ~Texture();
+        ~Image();
 
-        VkResult              Init(const MemoryAllocationDesc& allocDesc, const TextureDesc& desc);
+        VkResult              Init(const MemoryAllocationDesc& allocDesc, const ImageDesc& desc);
 		
 		inline VmaAllocationInfo GetAllocationInfo() const { return m_allocationInfo; }		
 		inline VkSemaphore GetResourceIsReadySemaphore() const { return m_resourceIsReadySemaphore.GetHandle(); }
-
-		virtual size_t GetSize() const override { return m_allocationInfo.size; }
 
     private:
         VmaAllocation     m_allocation = VK_NULL_HANDLE;
@@ -42,18 +40,18 @@ namespace Vulkan
 		Semaphore m_resourceIsReadySemaphore;
 	};
     
-    class TextureView final
-        : public ITextureView
+    class ImageView final
+        : public IImageView
         , public DeviceObject<VkImageView>
     {
     public:
-        inline TextureView(Device& device)
+        ImageView(Device& device)
             : DeviceObject(device)
         {
         }
-        ~TextureView();
+        ~ImageView();
         
-        VkResult Init(const TextureViewDesc& desc);
+        VkResult Init(const ImageViewDesc& desc);
     };
 
 } // namespace Vulkan

@@ -11,7 +11,7 @@ namespace Vulkan
     {
         std::vector<VkDescriptorPoolSize> sizes;
         sizes.reserve(desc.descriptors.size());
-
+        
         for (const auto& descriptor : desc.descriptors)
         {
             VkDescriptorPoolSize size = {};

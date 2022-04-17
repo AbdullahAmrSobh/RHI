@@ -7,6 +7,7 @@ namespace RHI
 
 struct ConstantBufferDesc
 {
+	ConstantBufferDesc() = default;
     ConstantBufferDesc(EShaderStageFlagBits stage, size_t offset, size_t range)
         : stage(stage)
         , offset(offset)
@@ -22,8 +23,8 @@ struct ConstantBufferDesc
 struct PipelineLayoutDesc
 {
 	PipelineLayoutDesc() = default;
-    ArrayView<IDescriptorSetLayout*> descriptorSetLayouts;
-    ArrayView<ConstantBufferDesc>    constantBufferDescs;
+    std::vector<IDescriptorSetLayout*> descriptorSetLayouts;
+    std::vector<ConstantBufferDesc>    constantBufferDescs;
 };
 
 class IPipelineLayout

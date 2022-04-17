@@ -7,19 +7,24 @@ namespace RHI
 
 class IDescriptorSetLayout;
 
+struct DescriptorSize
+{
+    DescriptorSize() = default;
+    DescriptorSize(EDescriptorType type, uint32_t count = 1)
+        : count(count)
+        , type(type)
+    {
+    }
+
+    EDescriptorType type;
+    uint32_t        count;
+};
+
 struct DescriptorPoolDesc
 {
-
-    struct DescriptorSize
-    {
-        EDescriptorType type;
-        uint32_t        count;
-    };
-
-    inline DescriptorPoolDesc& AddDescriptor(EDescriptorType type, uint32_t count = 1)
+    inline void AddDescriptor(EDescriptorType type, uint32_t count = 1)
     {
         descriptors.emplace_back(type, count);
-        return *this;
     }
 
     std::vector<DescriptorSize> descriptors;
