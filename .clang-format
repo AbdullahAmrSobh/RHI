@@ -1,6 +1,5 @@
 ---
 Language:        Cpp
-# BasedOnStyle:  LLVM
 AccessModifierOffset: -4 # -2
 AlignAfterOpenBracket: Align
 AlignConsecutiveAssignments: Consecutive 
@@ -21,21 +20,21 @@ AlwaysBreakTemplateDeclarations: true # false
 BinPackArguments: true
 BinPackParameters: true
 BraceWrapping:   
-  AfterClass:      true # false
-  AfterControlStatement: true # false
-  AfterEnum:       true # false
-  AfterFunction:   true # false
-  AfterNamespace:  true # false
-  AfterObjCDeclaration: true # false
-  AfterStruct:     true # false
-  AfterUnion:      true # false
-  AfterExternBlock: true # false
-  BeforeCatch:     true # false
-  BeforeElse:      true # false
-  IndentBraces:    true # false
-  SplitEmptyFunction: true
-  SplitEmptyRecord: true
-  SplitEmptyNamespace: true
+  AfterClass:      false # false
+  AfterControlStatement: false # false
+  AfterEnum:       false # false
+  AfterFunction:   false # false
+  AfterNamespace:  false # false
+  AfterObjCDeclaration: false # false
+  AfterStruct:     false # false
+  AfterUnion:      false # false
+  AfterExternBlock: false # false
+  BeforeCatch:     false # false
+  BeforeElse:      false # false
+  IndentBraces:    false # false
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
 BreakBeforeBinaryOperators: None
 BreakBeforeBraces: Allman # Attach
 BreakBeforeInheritanceComma: false
@@ -62,12 +61,14 @@ ForEachMacros:
   - BOOST_FOREACH
 IncludeBlocks:   Preserve
 IncludeCategories: 
-  - Regex:           '^"(llvm|llvm-c|clang|clang-c)/'
-    Priority:        2
-  - Regex:           '^(<|"(gtest|gmock|isl|json)/)'
-    Priority:        3
-  - Regex:           '.*'
+  - Regex:           '<([A-Za-z0-9\Q/-_\E])+>' 
     Priority:        1
+  - Regex:           '^<(RHI)/'
+    Priority:        2
+  - Regex:           '^"(RHI)/'
+    Priority:        3
+  - Regex:           '^"(Vulkan)/'
+    Priority:        4
 IncludeIsMainRegex: '(Test)?$'
 IndentCaseLabels: false # false
 IndentPPDirectives: None
@@ -105,7 +106,6 @@ SpacesInContainerLiterals: true
 SpacesInCStyleCastParentheses: false
 SpacesInParentheses: false
 SpacesInSquareBrackets: false
-Standard:        Cpp11
-TabWidth:        8
-UseTab:          Never
-...
+Standard:        c++17
+TabWidth:        4
+UseTab:          Never 
