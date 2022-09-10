@@ -1,15 +1,19 @@
 #pragma once
+#include <cstddef>
 #include <cstdint>
+#include <vector>
+
 #include "RHI/Common.hpp"
 #include "RHI/Format.hpp"
+#include "RHI/Memory.hpp"
 
 namespace RHI
 {
 
 enum class EShaderStageFlagBits
 {
-    Vertex = 0x01,
-    Pixel  = 0x02
+    Vertex = 0x000001,
+    Pixel  = 0x000002
 };
 using ShaderStageFlags = Flags<EShaderStageFlagBits>;
 
@@ -17,6 +21,7 @@ struct ShaderProgramDesc
 {
     EShaderStageFlagBits   stage;
     std::vector<std::byte> binShader;
+    std::string            entryName;
 };
 
 class IShaderProgram
@@ -33,25 +38,6 @@ public:
     virtual EResultCode Wait() const      = 0;
     virtual EResultCode Reset() const     = 0;
     virtual EResultCode GetStatus() const = 0;
-};
-
-enum class EMemoryPhysicalType 
-{
-    Host, 
-    Device,
-}; 
-
-struct ResourceMemoryRequirement 
-{
-    size_t byteSize;
-    size_t byteAlignment;
-};
-
-struct MemoryAllocationDesc 
-{
-    EMemoryPhysicalType       type;
-    size_t                    byteOffset; 
-    ResourceMemoryRequirement memoryRequirement; 
 };
 
 struct SamplerDesc
@@ -95,16 +81,70 @@ public:
     virtual ~ISampler() = default;
 };
 
+enum class EResourceType
+{
+    Image,
+    Buffer
+};
+
+class IResource
+{
+public:
+    virtual ~IResource() = default;
+
+    size_t GetSize() const;
+
+    Expected<MappedAllocationPtr> Map(size_t byteOffset, size_t byteSize);
+    void                          Unmap();
+
+protected:
+    size_t m_memorySize = SIZE_MAX;
+};
+
 enum class ESampleCount
 {
-    Undefined = 0,
-    Count1    = 1,
-    Count2    = 2,
-    Count4    = 4,
-    Count8    = 8,
-    Count16   = 16,
-    Count32   = 32,
-    Count64   = 64
+    Undefined = 0x0000000,
+    Count1    = 0x0000001,
+    Count2    = 0x0000002,
+    Count4    = 0x0000004,
+    Count8    = 0x0000008,
+    Count16   = 0x000000F,
+    Count32   = 0x0000020,
+    Count64   = 0x0000040
+};
+
+enum class EImageUsageFlagBits
+{
+    Undefined    = 0x000000,
+    Color        = 0x000001,
+    DepthStencil = 0x000002,
+    Transfer     = 0x000004,
+    ShaderInput  = 0x000008,
+};
+using ImageUsageFlags = Flags<EImageUsageFlagBits>;
+
+struct ImageDesc
+{
+    ImageUsageFlags usage;
+    Extent3D        extent;
+    EFormat         format;
+    ESampleCount    sampleCount;
+    uint32_t        mipLevelsCount;
+    uint32_t        arraySize;
+};
+
+class IImage : public IResource
+{
+public:
+    virtual ~IImage() = default;
+};
+
+struct ImageViewRange
+{
+    uint32_t baseArrayElement;
+    uint32_t arraySize;
+    uint32_t baseMipLevel;
+    uint32_t mipLevelsCount;
 };
 
 enum class EImageViewAspectFlagBits
@@ -124,41 +164,6 @@ enum class EImageType
     TypeCubeMap
 };
 
-struct ImageViewRange
-{
-    uint32_t baseArrayElement;
-    uint32_t arraySize;
-    uint32_t baseMipLevel;
-    uint32_t mipLevelsCount;
-};
-
-struct BufferViewRange
-{
-    size_t byteOffset;
-    size_t byteRange;
-};
-
-struct ImageDesc
-{
-    Extent3D     extent;
-    EFormat      format;
-    ESampleCount sampleCount;
-    uint32_t     mipLevelsCount;
-    uint32_t     arraySize;
-};
-
-enum class EResourceType
-{
-    Image,
-    Buffer
-};
-
-class IImage
-{
-public:
-    virtual ~IImage() = default;
-};
-
 struct ImageViewDesc
 {
     EFormat              format;
@@ -173,22 +178,37 @@ public:
     virtual ~IImageView() = default;
 };
 
+enum class EBufferUsageFlagBits
+{
+    Instance = 0x000001,
+    Vertex   = 0x000002,
+    Index    = 0x000004,
+    Transfer = 0x000008,
+};
+using BufferUsageFlags = Flags<EBufferUsageFlagBits>;
+
 struct BufferDesc
 {
-    size_t size;
+    BufferUsageFlags usage;
+    size_t           size;
 };
 
-class IBuffer
+class IBuffer : public IResource
 {
 public:
     virtual ~IBuffer() = default;
 };
 
+struct BufferViewRange
+{
+    size_t byteOffset;
+    size_t byteRange;
+};
+
 struct BufferViewDesc
 {
-    EFormat format;
-    size_t  byteOffset;
-    size_t  byteRange;
+    EFormat         format;
+    BufferViewRange range;
 };
 
 class IBufferView

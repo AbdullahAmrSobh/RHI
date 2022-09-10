@@ -6,8 +6,37 @@
 #include "RHI/Core/Expected.hpp"
 #include "RHI/Core/Span.hpp"
 
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+   #ifdef _WIN64
+      #define RHI_WINDOWS
+   #else
+      #error "WIN32 platforms are not supported"
+   #endif
+#elif __APPLE__
+    #error "Apple Platforms are not supported yet"
+#elif __ANDROID__
+    #define RHI_ANDROID
+#elif __linux__
+    #define RHI_LINUX
+#else
+    #error "Unknown compiler"
+#endif
+
 namespace RHI
 {
+
+enum class EResultCode 
+{
+    Success,
+    Fail,
+    Timeout,
+    NotReady,
+    HostOutOfMemory,
+    DeviceOutOfMemory,
+    ExtensionNotAvailable, 
+    InvalidArguments,
+    FeatureNotAvailable    
+};
 
 template <class T, size_t S = nonstd::dynamic_extent>
 using Span = ::nonstd::span<T, S>;
@@ -30,7 +59,6 @@ inline Shared<T> CreateShared(Args&&... args)
     return std::make_shared<T>(std::forward<Args>(args)...);
 }
 
-enum class EResultCode;
 using Unexpected = tl::unexpected<EResultCode>;
 template <class T>
 using Expected = tl::expected<T, EResultCode>;
@@ -172,6 +200,12 @@ inline constexpr uint32_t CountElements(const T& t)
     return static_cast<uint32_t>(t.size());
 }
 
+enum class EAccess 
+{
+    Read,
+    ReadWrite,
+};
+
 struct Extent2D
 {
     uint32_t sizeX;
@@ -198,6 +232,14 @@ struct Viewport
     Rect  drawingArea;
     float minDepth;
     float maxDepth;
+};
+
+template<typename T>
+class ID 
+{
+public:
+
+
 };
 
 } // namespace RHI

@@ -1,52 +1,35 @@
 #pragma once
+#include "RHI/Common.hpp"
 
 namespace RHI
 {
 
-enum class EMemoryLevel
+enum class EMemoryType
 {
     Host,
-    Device
+    Device,
 };
 
-enum class EMemoryAccess
+using MappedAllocationPtr = void*;
+
+struct AllocationMemoryRequirement
 {
-    Read,
-    Write, 
+    size_t byteSize;
+    size_t byteAlignment;
 };
 
-struct MemoryAllocationRequirement
-{
-    EMemoryLevel  level;
-    EMemoryAccess access;
-    size_t        byteSize;
-    siez_t        byteAlignment;
-};
-
-class IAllocation
+class IMemoryPool
 {
 public:
-    using Ptr = void*;
-
-    virtual size_t GetSize() const = 0;
-    
-    // Only to use valid if this allocation object is a sub-allocation.
-    virtual IAllocation* GetParantAllocation();
-
-    virtual Ptr  Map(size_t byteOffset, size_t range);
-    virtual void Unmap();
-
-protected:
-    Ptr m_ptr;
+    size_t GetCapacity() const;
 };
 
-class IMemoryAllocator
+struct AllocationDesc
 {
-public:
-    virtual ~MemoryAllocator() = default;
-    
-    Unique<IAllocation> Allocate(const MemoryAllocationRequirement& requirement);
-    EResultCode Free(IAllocation& allocation);
+    EMemoryType                 type;
+    size_t                      byteOffset;
+    AllocationMemoryRequirement memoryRequirement;
+    IMemoryPool*                pMemoryPool = nullptr;
 };
 
 } // namespace RHI

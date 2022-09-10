@@ -17,15 +17,13 @@ endif()
 
 include(FILES.cmake)
 
-add_library(RHI_INTERFACE INTERFACE ${HEADER_FILES})
-
-set(SOURCE_FILES_DIR = ${CMAKE_SOURCE_DIR}/Source)
-set(INCLUDE_DIR = ${CMAKE_SOURCE_DIR}/Include)
+set(RHI_SOURCE_FILES_DIR = ${CMAKE_SOURCE_DIR}/Source)
+set(RHI_INCLUDE_DIR = ${CMAKE_SOURCE_DIR}/Include)
 
 # BUILD RHI as a static library
 add_library(RHI STATIC ${SOURCE_FILES})
-target_include_directories(RHI PUBLIC ${INCLUDE_DIR}
-							   PRIVATE ${SOURCE_FILES_DIR}
+target_include_directories(RHI PUBLIC ${RHI_INCLUDE_DIR}
+							   PRIVATE ${RHI_SOURCE_FILES_DIR}
 							   PRIVATE ${Vulkan_INCLUDE_DIRS})
 target_link_libraries(RHI PRIVATE ${Vulkan_LIBRARIES})
 

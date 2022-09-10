@@ -1,28 +1,14 @@
 #pragma once
 #include <string>
 #include <vector>
+
 #include "RHI/Format.hpp"
+#include "RHI/ShaderResourceBindings.hpp"
 
 namespace RHI
 {
+
 class IShaderProgram;
-
-struct PipelineLayoutDesc
-{
-    std::vector<DescriptorSetLayout> descriptorSetLayouts;
-};
-
-class IPipelineLayout
-{
-public:
-    virtual ~IPipelineLayout() = default;
-};
-
-struct RenderTargetLayout
-{
-    std::vector<EFormat> colorFormats;
-    EFormat              depthStencilFormat;
-};
 
 namespace PipelineStateDesc
 {
@@ -74,14 +60,31 @@ namespace PipelineStateDesc
 
 } // namespace PipelineStateDesc
 
-struct GraphicsPipelineStateDesc
+
+struct PipelineLayoutDesc
+{
+    std::vector<ShaderResourceGroupLayout> shaderBindingGroupLayouts;
+};
+
+struct RenderTargetLayout
+{
+    std::vector<EFormat> colorFormats;
+    EFormat              depthStencilFormat;
+};
+
+struct PipelineStateDescBase
+{
+    PipelineLayoutDesc                              pipelineLayoutDesc;
+};
+
+struct GraphicsPipelineStateDesc : PipelineStateDescBase
 {
     RenderTargetLayout                              renderTargetLayout;
     PipelineStateDesc::GraphicsShaderStages         shaderStages;
-    std::vector<PipelineStateDesc::VertexAttribute> attributes;
+    std::vector<PipelineStateDesc::VertexAttribute> vertexInputAttributes;
     PipelineStateDesc::Rasterization                rasterizationState;
     PipelineStateDesc::ColorBlend                   colorBlendState;
-    PipelineStateDesc::DepthStencil                 DepthStencil;
+    PipelineStateDesc::DepthStencil                 depthStencil;
 };
 
 class IPipelineState

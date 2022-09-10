@@ -1,41 +1,37 @@
 #pragma once
+#include <utility>
+#include <vector>
 #include "RHI/Resource.hpp"
+#include "RHI/ShaderResourceBindings.hpp"
 
 namespace RHI
 {
 
-class IDescriptorSet;
-class IPipelineLayout;
+class IShaderResourceGroup;
 class IPipelineState;
 
-struct DispatchCommand
+struct PipelineCommand
 {
-    DispatchCommand() = default;
+    PipelineCommand(const IPipelineState& pipelineState);
 
-    inline void SetPipelineState(IPipelineState& pipelineState)
-    {
-        pPipelineState = &pipelineState;
-    }
+    void BindShaderResourceGroup(IShaderResourceGroup::Id groupIndex, const IShaderResourceGroup& group);
 
-    inline void SetDescriptorSets(IPipelineLayout& layout, const std::vector<IDescriptorSet*>& descriptorSets)
-    {
-        pPipelineLayout   = &layout;
-        descriptorSetPtrs = descriptorSets;
-    }
-
-    IPipelineState*              pPipelineState;
-    IPipelineLayout*             pPipelineLayout;
-    std::vector<IDescriptorSet*> descriptorSetPtrs;
-
-    uint32_t countX  = 0;
-    uint32_t countY  = 0;
-    uint32_t countZ  = 0;
-    uint32_t offsetX = 0;
-    uint32_t offsetY = 0;
-    uint32_t offsetZ = 0;
+    std::vector<IShaderResourceGroup> resourceGroup;
+    IPipelineState*                   pPipelineState;
 };
 
-struct DrawCommand
+struct DispatchCommand : PipelineCommand
+{
+    IPipelineState* pPipelineState;
+    uint32_t        countX  = 0;
+    uint32_t        countY  = 0;
+    uint32_t        countZ  = 0;
+    uint32_t        offsetX = 0;
+    uint32_t        offsetY = 0;
+    uint32_t        offsetZ = 0;
+};
+
+struct DrawCommand : PipelineCommand
 {
     enum class EType
     {
@@ -60,14 +56,16 @@ struct DrawCommand
         uint32_t indexOffset    = 0;
     };
 
-    DrawCommand(const LinearData& desc)
-        : type(EType::Linear)
+    DrawCommand(const IPipelineState& pso, const LinearData& desc)
+        : PipelineCommand(pso)
+        , type(EType::Linear)
         , linearDrawDesc(desc)
     {
     }
 
-    DrawCommand(const IndexedData& desc)
-        : type(EType::Indexed)
+    DrawCommand(const IPipelineState& pso, const IndexedData& desc)
+        : PipelineCommand(pso)
+        , type(EType::Indexed)
         , indexedDrawDesc(desc)
     {
     }
@@ -92,24 +90,17 @@ struct DrawCommand
         pPipelineState = &pipelineState;
     }
 
-    inline void SetDescriptorSets(IPipelineLayout& layout, const std::vector<IDescriptorSet*>& descriptorSets)
-    {
-        pPipelineLayout   = &layout;
-        descriptorSetPtrs = descriptorSets;
-    }
-
     const EType type;
     union
     {
         const LinearData  linearDrawDesc;
         const IndexedData indexedDrawDesc;
     };
-    std::vector<IDescriptorSet*> descriptorSetPtrs = {};
-    IPipelineLayout*             pPipelineLayout   = nullptr;
-    IPipelineState*              pPipelineState    = nullptr;
-    IBuffer*                     pVertexBuffer     = nullptr;
-    IBuffer*                     pIndexBuffer      = nullptr;
-    IBuffer*                     pInstanceBuffer   = nullptr;
+
+    IPipelineState* pPipelineState  = nullptr;
+    IBuffer*        pVertexBuffer   = nullptr;
+    IBuffer*        pIndexBuffer    = nullptr;
+    IBuffer*        pInstanceBuffer = nullptr;
 };
 
 struct CopyCommand
@@ -139,6 +130,8 @@ struct CopyCommand
 class ICommandBuffer
 {
 public:
+    virtual ~ICommandBuffer();
+    
     virtual void Begin() = 0;
     virtual void End()   = 0;
 
