@@ -6,9 +6,6 @@
 #include "RHI/Common.hpp"
 #include "RHI/Device.hpp"
 
-#include <vulkan/vulkan.h>
-#include <vulkan/vulkan_core.h>
-
 namespace RHI
 {
 
@@ -60,7 +57,7 @@ public:
 #elif defined(RHI_WINDOWS)
     virtual Expected<Unique<ISurface>> CreateSurface(const struct Win32SurfaceDesc& desc) = 0;
 #endif
-
+    
     virtual Expected<Unique<IDevice>> CreateDevice(const IPhysicalDevice& physicalDevice) = 0;
 
 protected:

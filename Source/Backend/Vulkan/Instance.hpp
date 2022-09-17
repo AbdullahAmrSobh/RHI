@@ -11,7 +11,7 @@ namespace Vulkan
     {
     public:
         ~Instance();
-
+        
         VkResult Init();
 
         inline VkInstance GetHandle() const
@@ -25,7 +25,7 @@ namespace Vulkan
         virtual Expected<Unique<ISurface>> CreateSurface(const struct Win32SurfaceDesc& desc) override;
 #endif
         virtual Expected<Unique<IDevice>> CreateDevice(const IPhysicalDevice& physicalDevice) override;
-
+    
     private:
         VkInstance               m_instance;
         VkDebugUtilsMessengerEXT m_debugMessenger;

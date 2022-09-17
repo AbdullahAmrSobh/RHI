@@ -12,9 +12,21 @@ namespace RHI
 {
 namespace Vulkan
 {
+    
+    static std::vector<VkPhysicalDevice> GetPhysicalDevices(VkInstance instance)
+    {
+        uint32_t deviceCount = 0;
+        vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+        std::vector<VkPhysicalDevice> devices(deviceCount);
+        vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+        return devices;
+    }
 
-    static VkBool32 VKAPI_CALL DebugUtilsMessengerCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes,
-                                                           const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
+    static VkBool32 VKAPI_CALL DebugUtilsMessengerCallback(
+        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, 
+        VkDebugUtilsMessageTypeFlagsEXT messageTypes,
+        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+        void* pUserData)
     {
         auto callback = reinterpret_cast<IDebugCallbacks*>(pUserData);
         if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
@@ -33,10 +45,10 @@ namespace Vulkan
         {
             callback->Fatel(pCallbackData->pMessage);
         }
-
+        
         return VK_FALSE;
     }
-
+    
     Instance::~Instance()
     {
         vkDestroyInstance(m_instance, nullptr);
@@ -55,13 +67,13 @@ namespace Vulkan
 
         std::vector<const char*> enabledLayers;
         std::vector<const char*> enabledExtensions = {VK_KHR_SURFACE_EXTENSION_NAME, "VK_KHR_xlib_surface"};
-
+        
         VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo = {};
         if (m_debugCallbacks != nullptr)
         {
             enabledLayers.push_back("VK_LAYER_KHRONOS_validation");
             enabledExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-
+            
             debugCreateInfo.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
             debugCreateInfo.pNext           = nullptr;
             debugCreateInfo.flags           = 0;
@@ -70,7 +82,7 @@ namespace Vulkan
             debugCreateInfo.pfnUserCallback = DebugUtilsMessengerCallback;
             debugCreateInfo.pUserData       = m_debugCallbacks.get();
         }
-
+        
         VkInstanceCreateInfo createInfo    = {};
         createInfo.sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
         createInfo.pNext                   = m_debugCallbacks != nullptr ? nullptr : &debugCreateInfo;
@@ -80,28 +92,17 @@ namespace Vulkan
         createInfo.ppEnabledLayerNames     = enabledLayers.data();
         createInfo.enabledExtensionCount   = CountElements(enabledExtensions);
         createInfo.ppEnabledExtensionNames = enabledExtensions.data();
-
+        
         VkResult result = vkCreateInstance(&createInfo, nullptr, &m_instance);
-
+        
+        for (VkPhysicalDevice physicalDevice : GetPhysicalDevices(m_instance))
         {
-            /// TODO query physicalDevice
+            m_physicalDevices.push_back(std::move(CreateUnique<PhysicalDevice>(physicalDevice)));    
         }
-
+        
         return result;
     }
-
-#ifdef RHI_LINUX
-    Expected<Unique<ISurface>> Instance::CreateSurface(const X11SurfaceDesc& desc)
-    {
-        return Unexpected(EResultCode::Fail);
-    }
-#elif defined(RHI_WINDOWS)
-    Expected<Unique<ISurface>> Instance::CreateSurface(const Win32SurfaceDesc& desc)
-    {
-        return Unexpected(EResultCode::Fail);
-    }
-#endif
-
+    
     Expected<Unique<IDevice>> Instance::CreateDevice(const IPhysicalDevice& physicalDevice)
     {
         auto     device = CreateUnique<Device>();

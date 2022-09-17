@@ -4,7 +4,7 @@
 #include <type_traits>
 
 #include "RHI/Core/Expected.hpp"
-#include "RHI/Core/Span.hpp"
+// #include "RHI/Core/Span.hpp"
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
    #ifdef _WIN64
@@ -35,11 +35,12 @@ enum class EResultCode
     DeviceOutOfMemory,
     ExtensionNotAvailable, 
     InvalidArguments,
-    FeatureNotAvailable    
+    FeatureNotAvailable,
+    FrameGraphCycle,
 };
 
-template <class T, size_t S = nonstd::dynamic_extent>
-using Span = ::nonstd::span<T, S>;
+// template <class T, size_t S = nonstd::dynamic_extent>
+// using Span = ::nonstd::span<T, S>;
 
 template <typename T>
 using Unique = std::unique_ptr<T>;
@@ -90,7 +91,7 @@ public:
     }
 
     constexpr Flags(Flags<BitType> const& rhs) noexcept = default;
-
+    
     constexpr explicit Flags(MaskType flags) noexcept
         : m_mask(flags)
     {
@@ -221,8 +222,8 @@ struct Extent3D
 
 struct Rect
 {
-    uint32_t x;
-    uint32_t y;
+    int32_t x;
+    int32_t y;
     uint32_t size_x;
     uint32_t size_y;
 };
@@ -241,5 +242,14 @@ public:
 
 
 };
+
+template<typename T>
+T Select(const std::vector<T>& range, T desired, T fallback)
+{
+    for (T t : range)
+        if (t == desired) return t;
+    
+    return fallback;
+}
 
 } // namespace RHI

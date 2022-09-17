@@ -2,7 +2,7 @@
 #include <utility>
 #include <vector>
 #include "RHI/Resource.hpp"
-#include "RHI/ShaderResourceBindings.hpp"
+#include "RHI/ShaderResourceGroup.hpp"
 
 namespace RHI
 {
@@ -13,8 +13,8 @@ class IPipelineState;
 struct PipelineCommand
 {
     PipelineCommand(const IPipelineState& pipelineState);
-
-    void BindShaderResourceGroup(IShaderResourceGroup::Id groupIndex, const IShaderResourceGroup& group);
+    
+    void BindShaderResourceGroup(std::string_view groupName, const IShaderResourceGroup& group);
 
     std::vector<IShaderResourceGroup> resourceGroup;
     IPipelineState*                   pPipelineState;
@@ -137,10 +137,19 @@ public:
 
     virtual void SetViewports(const std::vector<Viewport>& viewports) = 0;
     virtual void SetScissors(const std::vector<Rect>& scissors)       = 0;
-
+    
     virtual void Submit(const DrawCommand& drawCommand)         = 0;
     virtual void Submit(const CopyCommand& copyCommand)         = 0;
     virtual void Submit(const DispatchCommand& dispatchCommand) = 0;
+};
+
+class ITransferQueue 
+{
+public: 
+    virtual ~ITransferQueue() = default;
+    
+    virtual EResultCode Submit(const CopyCommand& copyCommand, IFence& signalFence) = 0;
+
 };
 
 } // namespace RHI

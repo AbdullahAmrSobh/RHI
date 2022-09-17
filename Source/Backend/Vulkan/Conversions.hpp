@@ -10,7 +10,7 @@ namespace Vulkan
 {
     EResultCode ConvertResult(VkResult result);
     VkResult    ConvertResult(EResultCode result);
-
+    
     VkFormat ConvertFormat(EFormat format);
     EFormat  ConvertFormat(VkFormat format);
 

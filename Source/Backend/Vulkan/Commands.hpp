@@ -1,26 +1,25 @@
 #pragma once
-
-#include <vector>
 #include "RHI/Commands.hpp"
-#include "RHI/Common.hpp"
-
 #include "Backend/Vulkan/Resource.hpp"
-#include <vulkan/vulkan.h>
-#include <vulkan/vulkan_core.h>
 
 namespace RHI
 {
 namespace Vulkan
-{   
+{
     class Semaphore;
-
+    class CommandAllocator;
+    
     class CommandBuffer final
         : public ICommandBuffer
-        , public Resource<VkCommandBuffer>
+        , public DeviceObject<VkCommandBuffer>
     {
     public:
-
-        CommandBuffer();
+        CommandBuffer(Device& device, CommandAllocator* pParantAllocator, VkCommandBuffer handle)
+            : DeviceObject(&device, handle)
+            , m_pParantAllocator(pParantAllocator)
+        {
+        }
+        
         ~CommandBuffer();
 
         virtual void Begin() override;
@@ -32,16 +31,31 @@ namespace Vulkan
         virtual void Submit(const DrawCommand& drawCommand) override;
         virtual void Submit(const CopyCommand& copyCommand) override;
         virtual void Submit(const DispatchCommand& dispatchCommand) override;
+
+    private:
+        class CommandAllocator* m_pParantAllocator;
     };
 
-    class CommandAllocator final
+    enum class ECommandPrimaryTask
+    {
+        Graphics,
+        Compute,
+        Transfer,
+    };
+
+    class CommandAllocator final : public DeviceObject<VkCommandPool>
     {
     public:
+        CommandAllocator();
+        ~CommandAllocator();
+
+        VkResult Init(ECommandPrimaryTask task);
+
         VkResult Reset();
 
-        Unique<CommandBuffer>              AllocateCommandBuffer();
-        std::vector<Unique<CommandBuffer>> AllocateCommandBuffers(uint32_t count);
+        Unique<CommandBuffer> AllocateCommandBuffer();
 
+        std::vector<CommandBuffer> AllocateCommandBuffers(uint32_t count);
     };
 
 } // namespace Vulkan

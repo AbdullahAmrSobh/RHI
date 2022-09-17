@@ -19,15 +19,21 @@ using ShaderStageFlags = Flags<EShaderStageFlagBits>;
 
 struct ShaderProgramDesc
 {
-    EShaderStageFlagBits   stage;
-    std::vector<std::byte> binShader;
-    std::string            entryName;
+    EShaderStageFlagBits  stage;
+    std::vector<uint32_t> shaderCode;
+    std::string           entryName;
 };
 
 class IShaderProgram
 {
 public:
+    IShaderProgram(std::string name) : m_name(std::move(name)) { }
     virtual ~IShaderProgram();
+    
+    inline std::string GetFunctionName() const { return m_name; } 
+
+private:
+    std::string m_name;
 };
 
 class IFence
@@ -64,7 +70,7 @@ struct SamplerDesc
         Greater,
         GreaterEq,
     };
-
+    
     EFilter      filter;
     ECompareOp   compare;
     float        mipLodBias;
@@ -73,6 +79,7 @@ struct SamplerDesc
     EAddressMode addressW;
     float        minLod;
     float        maxLod;
+    float        maxAnisotropy;
 };
 
 class ISampler
@@ -123,6 +130,14 @@ enum class EImageUsageFlagBits
 };
 using ImageUsageFlags = Flags<EImageUsageFlagBits>;
 
+enum class EImageType
+{
+    Type1D,
+    Type2D,
+    Type3D,
+    TypeCubeMap
+};
+
 struct ImageDesc
 {
     ImageUsageFlags usage;
@@ -155,14 +170,6 @@ enum class EImageViewAspectFlagBits
     Stencil   = 0x00000004,
 };
 using ImageViewAspectFlags = Flags<EImageViewAspectFlagBits>;
-
-enum class EImageType
-{
-    Type1D,
-    Type2D,
-    Type3D,
-    TypeCubeMap
-};
 
 struct ImageViewDesc
 {

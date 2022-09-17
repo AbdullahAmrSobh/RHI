@@ -3,7 +3,7 @@
 #include <vector>
 
 #include "RHI/Format.hpp"
-#include "RHI/ShaderResourceBindings.hpp"
+#include "RHI/ShaderResourceGroup.hpp"
 
 namespace RHI
 {
@@ -26,23 +26,23 @@ namespace PipelineStateDesc
         std::string name;
         EFormat     format;
     };
-
+    
     struct Rasterization
     {
         enum class ECullMode
         {
+            None,
             FrontFace,
             BackFace,
-            Discard
         };
-
+        
         enum class EFillMode
         {
             Point,
             Triangle,
             Line
         };
-
+        
         ECullMode cullMode = ECullMode::BackFace;
         EFillMode fillMode = EFillMode::Triangle;
     };
@@ -72,13 +72,9 @@ struct RenderTargetLayout
     EFormat              depthStencilFormat;
 };
 
-struct PipelineStateDescBase
+struct GraphicsPipelineStateDesc
 {
     PipelineLayoutDesc                              pipelineLayoutDesc;
-};
-
-struct GraphicsPipelineStateDesc : PipelineStateDescBase
-{
     RenderTargetLayout                              renderTargetLayout;
     PipelineStateDesc::GraphicsShaderStages         shaderStages;
     std::vector<PipelineStateDesc::VertexAttribute> vertexInputAttributes;

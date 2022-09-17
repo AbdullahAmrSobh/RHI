@@ -3,14 +3,13 @@
 #include "RHI/Common.hpp"
 #include "RHI/Device.hpp"
 
-#include <vulkan/vulkan.h>
-
-#include "Backend/Vulkan/Device.hpp"
 #include "Backend/Vulkan/Instance.hpp"
+#include "Backend/Vulkan/Device.hpp"
 #include "Backend/Vulkan/PipelineState.hpp"
 #include "Backend/Vulkan/Resource.hpp"
 #include "Backend/Vulkan/Swapchain.hpp"
-#include <vulkan/vulkan_core.h>
+
+#include "Backend/Vulkan/Common.hpp"
 
 namespace RHI
 {
@@ -57,7 +56,7 @@ namespace Vulkan
         vkEnumerateDeviceExtensionProperties(m_physicalDevice, nullptr, &extensionCount, extensionProperties.data());
         return extensionProperties;
     }
-
+    
     VkPhysicalDeviceMemoryProperties PhysicalDevice::GetMemoryProperties() const
     {
         VkPhysicalDeviceMemoryProperties properties;
@@ -71,7 +70,7 @@ namespace Vulkan
         vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_physicalDevice, surface, &capabilities);
         return capabilities;
     }
-
+    
     std::vector<VkPresentModeKHR> PhysicalDevice::GetPresentModes(VkSurfaceKHR surface) const
     {
         uint32_t presentModeCount = 0;
@@ -95,7 +94,7 @@ namespace Vulkan
         WaitIdle();
         vkDestroyDevice(m_device, nullptr);
     }
-
+    
     VkResult Device::Init(Instance& instance, const PhysicalDevice& physicalDevice)
     {
         std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
@@ -105,6 +104,7 @@ namespace Vulkan
         for (uint32_t queueFamilyIndex = 0; queueFamilyIndex <= queueFamiliesProperties.size(); queueFamilyIndex++)
         {
             auto queueFamilyProperty = queueFamiliesProperties[queueFamilyIndex];
+
             if (queueFamilyProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT)
             {
                 queueCreateInfos.emplace_back();
@@ -117,83 +117,54 @@ namespace Vulkan
                 queueCreateInfo.pQueuePriorities         = &priority;
                 break;
             }
+
+            // Check if dedicated compute queue
+            if (queueFamilyProperty.queueFlags & VK_QUEUE_COMPUTE_BIT) {}
+
+            // Find dedicated transfer queue if exist
+            if (queueFamilyProperty.queueFlags == VK_QUEUE_TRANSFER_BIT) {}
         }
 
-            std::vector<const char*> enabledLayers     = {"VK_LAYER_LUNARG_standard_validation"};
-            std::vector<const char*> enabledExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-
+        std::vector<const char*> enabledLayers     = {"VK_LAYER_LUNARG_standard_validation"};
+        std::vector<const char*> enabledExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+        
         VkPhysicalDeviceFeatures features = {};
+        {
+            VkDeviceCreateInfo createInfo      = {};
+            createInfo.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+            createInfo.pNext                   = nullptr;
+            createInfo.flags                   = 0;
+            createInfo.queueCreateInfoCount    = CountElements(queueCreateInfos);
+            createInfo.pQueueCreateInfos       = queueCreateInfos.data();
+            createInfo.enabledLayerCount       = CountElements(enabledLayers);
+            createInfo.ppEnabledLayerNames     = enabledLayers.data();
+            createInfo.enabledExtensionCount   = CountElements(enabledExtensions);
+            createInfo.ppEnabledExtensionNames = enabledExtensions.data();
+            createInfo.pEnabledFeatures        = &features;
 
-        VkDeviceCreateInfo createInfo      = {};
-        createInfo.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        createInfo.pNext                   = nullptr;
-        createInfo.flags                   = 0;
-        createInfo.queueCreateInfoCount    = CountElements(queueCreateInfos);
-        createInfo.pQueueCreateInfos       = queueCreateInfos.data();
-        createInfo.enabledLayerCount       = CountElements(enabledLayers);
-        createInfo.ppEnabledLayerNames     = enabledLayers.data();
-        createInfo.enabledExtensionCount   = CountElements(enabledExtensions);
-        createInfo.ppEnabledExtensionNames = enabledExtensions.data();
-        createInfo.pEnabledFeatures        = &features;
-
-        VkResult result = vkCreateDevice(physicalDevice.GetHandle(), &createInfo, nullptr, &m_device);
-        return result;
+            VkResult result = vkCreateDevice(physicalDevice.GetHandle(), &createInfo, nullptr, &m_device);
+            if (!RHI_SUCCESS(result))
+                return result;
+        }
+        
+        VmaAllocatorCreateInfo createInfo = {};
+        createInfo.flags                  = 0;
+        createInfo.physicalDevice         = m_pPhysicalDevice->GetHandle();
+        createInfo.device                 = m_device;
+        createInfo.instance               = m_pInstance->GetHandle();
+            // createInfo.vulkanApiVersion = VK_VERSION_1_2;
+        return vmaCreateAllocator(&createInfo, &m_allocator);
     }
-
-    void Device::WaitIdle() const
+    
+    EResultCode Device::WaitIdle() const
     {
+        return ConvertResult(vkDeviceWaitIdle(m_device));
     }
-
-    Expected<Unique<ISwapchain>> Device::CreateSwapChain(const SwapchainDesc& desc)
-    {
-        return Unexpected(EResultCode::Fail);
-    }
-
-    Expected<Unique<IShaderProgram>> Device::CreateShaderProgram(const ShaderProgramDesc& desc)
-    {
-        return Unexpected(EResultCode::Fail);
-    }
-
-    Expected<Unique<IPipelineState>> Device::CreateGraphicsPipelineState(const GraphicsPipelineStateDesc& desc)
-    {
-        return Unexpected(EResultCode::Fail);
-    }
-
-    Expected<Unique<IFence>> Device::CreateFence()
+    
+    Expected<Unique<IFrameGraph>> Device::CreateFrameGraph()
     {
         return Unexpected(EResultCode::Fail);
     }
-
-    Expected<Unique<ISampler>> Device::CreateSampler(const SamplerDesc& desc)
-    {
-        return Unexpected(EResultCode::Fail);
-    }
-
-    Expected<Unique<IImage>> Device::CreateImage(const AllocationDesc& allocationDesc, const ImageDesc& desc)
-    {
-        return Unexpected(EResultCode::Fail);
-    }
-
-    Expected<Unique<IImageView>> Device::CreateImageView(const IImage& image, const ImageViewDesc& desc)
-    {
-        return Unexpected(EResultCode::Fail);
-    }
-
-    Expected<Unique<IBuffer>> Device::CreateBuffer(const AllocationDesc& allocationDesc, const BufferDesc& desc)
-    {
-        return Unexpected(EResultCode::Fail);
-    }
-
-    Expected<Unique<IBufferView>> Device::CreateBufferView(const IBuffer& buffer, const BufferViewDesc& desc)
-    {
-        return Unexpected(EResultCode::Fail);
-    }
-
-    Expected<Unique<FrameGraph>> Device::CreateFrameGraph()
-    {
-        return Unexpected(EResultCode::Fail);
-    }
-
 
 } // namespace Vulkan
 } // namespace RHI

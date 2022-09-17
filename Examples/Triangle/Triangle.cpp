@@ -8,14 +8,6 @@
 #include <cassert>
 
 #include <RHI/RHI.hpp>
-#include "RHI/Commands.hpp"
-#include "RHI/Common.hpp"
-#include "RHI/Format.hpp"
-#include "RHI/FrameGraph.hpp"
-#include "RHI/Instance.hpp"
-#include "RHI/PipelineState.hpp"
-#include "RHI/Resource.hpp"
-#include "RHI/ShaderResourceBindings.hpp"
 
 #define GLFW_EXPOSE_NATIVE_X11
 #include <GLFW/glfw3.h>
@@ -180,7 +172,7 @@ public:
             desc.stage       = RHI::EShaderStageFlagBits::Pixel;
             desc.entryName   = "pixelShader";
             auto pixelShader = ASSERT_VALUE(m_device->CreateShaderProgram(desc));
-
+            
             RHI::GraphicsPipelineStateDesc pipelineDesc;
             pipelineDesc.shaderStages.pVertexShader = vertexShader.get();
             pipelineDesc.shaderStages.pPixelShader  = pixelShader.get();
@@ -200,7 +192,7 @@ public:
             m_frameGraph   = ASSERT_VALUE(m_device->CreateFrameGraph());
             auto& database = m_frameGraph->GetDatabase();
             database.UseSwapchainImage("a_swapchainImage)", *m_swapchain);
-
+            
             m_pPrimaryPass = &m_frameGraph->AddRenderPass("PrimaryRenderPass", RHI::EHardwareQueueType::Graphics);
             m_pPrimaryPass->SetCallbacks(m_primaryPassCallbacks);
         }
@@ -213,7 +205,7 @@ public:
     void OnFrame()
     {
         m_frameGraph->BeginFrame();
-        
+        m_pPrimaryPass->Submit();
         m_frameGraph->EndFrame();
     };
 
@@ -228,8 +220,8 @@ private:
     RHI::Unique<RHI::IBuffer>                       m_indexBuffer;
     RHI::Unique<RHI::IPipelineState>                m_pipeline;
     RHI::Unique<RHI::IShaderResourceGroupAllocator> m_shaderResourceGroupAllocator;
-    RHI::Unique<RHI::FrameGraph>                    m_frameGraph;
-    RHI::Pass*                                      m_pPrimaryPass;
+    RHI::Unique<RHI::IFrameGraph>                   m_frameGraph;
+    RHI::Unique<RHI::IPass>                         m_pPrimaryPass;
     PrimaryRenderPass                               m_primaryPassCallbacks;
 };
 

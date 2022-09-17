@@ -1,20 +1,14 @@
 #pragma once
 #include <cstdint>
 #include <vector>
+
 #include "RHI/Common.hpp"
 #include "RHI/Format.hpp"
 
-#ifdef _WIN32
+// TODO move each platform into its own header file
+
+#ifdef RHI_WINDOWS
 #include <windows.h>
-namespace RHI
-{
-using NativeWindowHandle = HWND;
-}
-#else
-namespace RHI
-{
-using NativeWindowHandle = void*;
-}
 #endif
 
 namespace RHI
@@ -22,7 +16,17 @@ namespace RHI
 
 class IImage;
 
-struct X11SurfaceDesc {};
+using NativeWindowHandle = HWND;
+struct Win32SurfaceDesc
+{
+    HWND      hwnd;
+    HINSTANCE instance;
+};
+
+// using NativeWindowHandle = void*;
+struct X11SurfaceDesc
+{
+};
 
 class ISurface
 {
@@ -45,15 +49,14 @@ public:
 
     const std::vector<IImage*>& GetBackImages() const;
 
-    // Swap the back buffers
     virtual EResultCode SwapBuffers()                               = 0;
     virtual EResultCode Resize(Extent2D newExtent)                  = 0;
     virtual EResultCode SetFullscreenExeclusive(bool enable = true) = 0;
 
 protected:
-    uint32_t             m_currentImageIndex;
+    ISurface*            m_pSurface          = nullptr;
+    uint32_t             m_currentImageIndex = 0;
     std::vector<IImage*> m_backBuffers;
-    ISurface*            m_pSurface;
 };
 
 } // namespace RHI
