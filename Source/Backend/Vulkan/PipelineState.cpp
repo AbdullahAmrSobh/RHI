@@ -1,7 +1,9 @@
 #include "Backend/Vulkan/PipelineState.hpp"
+#include "RHI/PipelineState.hpp"
 #include "Backend/Vulkan/Common.hpp"
 #include "Backend/Vulkan/Device.hpp"
-
+#include "Backend/Vulkan/RenderPass.hpp"
+#include "Backend/Vulkan/ShaderResourceGroup.hpp"
 
 namespace RHI
 {
@@ -12,43 +14,69 @@ namespace Vulkan
     {
         return Unexpected(EResultCode::Fail);
     }
-    
-    PipelineLayout::~PipelineLayout() 
+
+    PipelineLayout::~PipelineLayout()
     {
         vkDestroyPipelineLayout(m_pDevice->GetHandle(), m_handle, nullptr);
     }
-    
-    VkResult PipelineLayout::Init(const PipelineLayoutDesc& layoutDesc) 
+
+    VkResult PipelineLayout::Init(const PipelineLayoutDesc& layoutDesc)
     {
+        std::vector<VkPushConstantRange> pushConstantRanges;
+
+        size_t hash   = 0;
+        size_t offset = 0;
+
+        for (auto& layout : layoutDesc.shaderBindingGroupLayouts)
+        {
+            hash = hash_combine(hash, layout.GetHash());
+
+            for (auto& constants : layout.GetShaderConstantBufferBindings())
+            {
+                offset = constants.byteSize;
+                VkPushConstantRange range;
+                range.offset = offset;
+                range.size   = constants.byteSize;
+                pushConstantRanges.push_back(range);
+            }
+        }
+
+        // layoutDesc.shaderBindingGroupLayouts
+
+        std::transform(m_descriptorSetsLayouts.begin(), m_descriptorSetsLayouts.end(), std::back_insert_iterator(m_descriptorSetsLayouts),
+                       [](const Unique<DescriptorSetLayout>& dsl) { return dsl->GetHandle(); });
+
+        std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
+
         VkPipelineLayoutCreateInfo createInfo = {};
-        createInfo.sType;
-        createInfo.pNext;
-        createInfo.flags;
-        createInfo.setLayoutCount;
-        createInfo.pSetLayouts;
-        createInfo.pushConstantRangeCount;
-        createInfo.pPushConstantRanges;
-        
+        createInfo.sType                      = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        createInfo.pNext                      = nullptr;
+        createInfo.flags                      = 0;
+        createInfo.setLayoutCount             = CountElements(descriptorSetLayouts);
+        createInfo.pSetLayouts                = descriptorSetLayouts.data();
+        createInfo.pushConstantRangeCount     = CountElements(pushConstantRanges);
+        createInfo.pPushConstantRanges        = pushConstantRanges.data();
+
         return vkCreatePipelineLayout(m_pDevice->GetHandle(), &createInfo, nullptr, &m_handle);
     }
-    
+
     namespace PipelineStateInitalizers
     {
         struct ShaderStage
         {
-            ShaderStage(const PipelineStateDesc::GraphicsShaderStages& shaderStages)
+            ShaderStage(const GraphicsPipelineShaderStages& shaderStages)
             {
                 const ShaderModule* pVertexShader                 = static_cast<const ShaderModule*>(shaderStages.pVertexShader);
                 const ShaderModule* pTessellationControlShader    = static_cast<const ShaderModule*>(shaderStages.pTessControlShader);
                 const ShaderModule* pTessellationEvaluationShader = static_cast<const ShaderModule*>(shaderStages.pTessEvalShader);
                 const ShaderModule* pGeometryShader               = static_cast<const ShaderModule*>(shaderStages.pGeometryShader);
                 const ShaderModule* pFragmentShader               = static_cast<const ShaderModule*>(shaderStages.pPixelShader);
-                
+
                 VkPipelineShaderStageCreateInfo createInfo = {};
                 createInfo.sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
                 createInfo.pNext                           = nullptr;
                 createInfo.flags                           = 0;
-                
+
                 if (pVertexShader)
                 {
                     createInfo.stage               = VK_SHADER_STAGE_VERTEX_BIT;
@@ -107,7 +135,7 @@ namespace Vulkan
 
         struct VertexInputState
         {
-            explicit VertexInputState(std::vector<PipelineStateDesc::VertexAttribute> vertexInputAttributes)
+            explicit VertexInputState(std::vector<GraphicsPipelineVertexAttributeState> vertexInputAttributes)
             {
                 bindingDescription.stride = 0;
 
@@ -120,9 +148,9 @@ namespace Vulkan
                     attribute.location                          = location;
                     attribute.format                            = ConvertFormat(inattribute.format);
                     attribute.offset                            = bindingDescription.stride;
-                    
-                    bindingDescription.stride += GetTexelSize(attribute.format);
-                    
+
+                    bindingDescription.stride += FormatStrideSize(attribute.format);
+
                     location++;
                     attributes.push_back(attribute);
                 }
@@ -211,7 +239,7 @@ namespace Vulkan
 
         struct RasterizationState
         {
-            explicit RasterizationState(const PipelineStateDesc::Rasterization& rasterStateDesc)
+            explicit RasterizationState(const GraphicsPipelineRasterizationState& rasterStateDesc)
             {
                 state.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
                 state.pNext = nullptr;
@@ -219,7 +247,7 @@ namespace Vulkan
                 state.depthClampEnable = VK_FALSE;
                 // discards all primitives before the rasterization stage if enabled which we don't want
                 state.rasterizerDiscardEnable = VK_FALSE;
-                
+
                 state.polygonMode = VK_POLYGON_MODE_FILL;
                 state.lineWidth   = 1.0f;
                 // no backface cull
@@ -254,18 +282,18 @@ namespace Vulkan
                 state.alphaToCoverageEnable = VK_FALSE;
                 state.alphaToOneEnable      = VK_FALSE;
             }
-            
+
             inline void Initalize(VkPipelineMultisampleStateCreateInfo const*& pState) const
             {
                 pState = &state;
             }
-            
+
             VkPipelineMultisampleStateCreateInfo state;
         };
-        
+
         struct DepthStencilState
         {
-            explicit DepthStencilState(const PipelineStateDesc::DepthStencil& depthStencil)
+            explicit DepthStencilState(const GraphicsPipelineStateDesc& depthStencil)
             {
                 state.sType                 = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
                 state.pNext                 = nullptr;
@@ -280,7 +308,7 @@ namespace Vulkan
                 state.minDepthBounds        = 0.0f;
                 state.maxDepthBounds        = 1.0f;
             }
-            
+
             inline void Initalize(VkPipelineDepthStencilStateCreateInfo const*& pState) const
             {
                 pState = &state;
@@ -291,7 +319,7 @@ namespace Vulkan
 
         struct ColorBlendState
         {
-            explicit ColorBlendState(const PipelineStateDesc::ColorBlend& stateDesc)
+            explicit ColorBlendState(const GraphicsPipelineColorBlendState& stateDesc)
             {
                 state.sType             = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
                 state.pNext             = nullptr;
@@ -345,7 +373,7 @@ namespace Vulkan
         };
 
     } // namespace PipelineStateInitalizers
-    
+
     PipelineState::~PipelineState()
     {
         vkDestroyPipeline(m_pDevice->GetHandle(), m_handle, nullptr);
@@ -354,9 +382,9 @@ namespace Vulkan
     VkResult PipelineState::Init(const GraphicsPipelineStateDesc& desc)
     {
         VkGraphicsPipelineCreateInfo createInfo;
-        
-        PipelineStateInitalizers::ShaderStage      shaderStageStateInitalizer(desc.shaderStages);
-        PipelineStateInitalizers::VertexInputState vertexInputStateInitalizer(desc.vertexInputAttributes);
+
+        PipelineStateInitalizers::ShaderStage        shaderStageStateInitalizer(desc.shaderStages);
+        PipelineStateInitalizers::VertexInputState   vertexInputStateInitalizer(desc.vertexInputAttributes);
         PipelineStateInitalizers::InputAssemblyState inputAssemblyStateInitalizer;
         PipelineStateInitalizers::TessellationState  tessellationStateInitalizer;
         PipelineStateInitalizers::ViewportState      viewportStateInitalizer;
@@ -365,7 +393,7 @@ namespace Vulkan
         PipelineStateInitalizers::DepthStencilState  depthStencilStateInitalizer(desc.depthStencil);
         PipelineStateInitalizers::ColorBlendState    colorBlendStateInitalizer(desc.colorBlendState);
         PipelineStateInitalizers::DynamicState       dynamicStateInitalizer;
-        
+
         shaderStageStateInitalizer.Initalize(createInfo.stageCount, createInfo.pStages);
         vertexInputStateInitalizer.Initalize(createInfo.pVertexInputState);
         inputAssemblyStateInitalizer.Initalize(createInfo.pInputAssemblyState);
@@ -376,13 +404,15 @@ namespace Vulkan
         depthStencilStateInitalizer.Initalize(createInfo.pDepthStencilState);
         colorBlendStateInitalizer.Initalize(createInfo.pColorBlendState);
         dynamicStateInitalizer.Initalize(createInfo.pDynamicState);
-        
+
+        RenderPassManager::SubpassDesc subpass = m_pDevice->GetRenderPassManager().GetPass(desc.renderTargetLayout);
+
         createInfo.sType              = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         createInfo.pNext              = nullptr;
         createInfo.flags              = 0;
         createInfo.layout             = m_layout->GetHandle();
-        createInfo.renderPass         = m_renderPass->GetHandle();
-        createInfo.subpass            = 0;
+        createInfo.renderPass         = subpass.renderPass;
+        createInfo.subpass            = subpass.subpassIndex;
         createInfo.basePipelineHandle = VK_NULL_HANDLE;
         createInfo.basePipelineIndex  = 0;
 

@@ -1,9 +1,5 @@
 #include "RHI/Common.hpp"
-
-#include <cstddef>
-#include <vector>
-
-#include "Backend/Vulkan/Conversions.hpp"
+#include "Backend/Vulkan/Common.hpp"
 #include "Backend/Vulkan/Device.hpp"
 #include "Backend/Vulkan/Instance.hpp"
 #include "Backend/Vulkan/Swapchain.hpp"
@@ -102,6 +98,11 @@ namespace Vulkan
         
         return result;
     }
+
+    Expected<Unique<ISurface>> Instance::CreateSurface(const struct X11SurfaceDesc& desc)
+    {
+        return Unexpected(EResultCode::Fail);
+    }
     
     Expected<Unique<IDevice>> Instance::CreateDevice(const IPhysicalDevice& physicalDevice)
     {
@@ -109,7 +110,7 @@ namespace Vulkan
         VkResult result = device->Init(*this, static_cast<const PhysicalDevice&>(physicalDevice));
         if (result != VK_SUCCESS)
         {
-            return device;
+            return std::move(device);
         }
         else
         {

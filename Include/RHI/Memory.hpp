@@ -4,7 +4,6 @@
 namespace RHI
 {
 
-
 enum class EMemoryUsage {};
 
 enum class EMemoryType

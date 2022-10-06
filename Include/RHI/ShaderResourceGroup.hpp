@@ -1,17 +1,15 @@
 #pragma once
-#include <cstddef>
-#include <initializer_list>
-#include <map>
-#include <string>
-#include <string_view>
-#include <varient>
-#include <vector>
-
 #include "RHI/Common.hpp"
 #include "RHI/Resource.hpp"
 
 namespace RHI
 {
+
+class IImage;
+class IImageView;
+class IBuffer;
+class IBufferView;
+class ISampler;
 
 enum class EShaderInputResourceType
 {
@@ -33,13 +31,12 @@ enum class EShaderStagesFlagBits
 };
 using ShaderStagesFlags = Flags<EShaderStagesFlagBits>;
 
+using ShaderBindingIndex = uint32_t;
+
 struct ShaderBindingReference
 {
-    ShaderBindingReference(std::string_view name);
-    ShaderBindingReference(uint32_t index);
-
-    std::string_view name;
-    uint32_t         bindingIndex = UINT32_MAX;
+    std::string_view   name;
+    ShaderBindingIndex index = UINT32_MAX;
 };
 
 struct ShaderInputResourceBindingDescBase
@@ -50,10 +47,10 @@ struct ShaderInputResourceBindingDescBase
     uint32_t                 count;
 };
 
-struct ShaderInputResourceBindingDesc : ShaderInputResourceBindingDescBase 
+struct ShaderInputResourceBindingDesc : ShaderInputResourceBindingDescBase
 {
     EAccess access;
-}
+};
 
 struct ShaderStaticSamplerResourceBindingDesc : ShaderInputResourceBindingDescBase
 {
@@ -76,26 +73,6 @@ public:
         return m_bindingReferences;
     }
 
-    // The order of binding decleration is important
-
-    inline void AddInputResource(const ShaderInputResourceBindingDesc& bindingDesc)
-    {
-        m_bindingReferences.emplace_back(++m_resourceBindingCount, bindingDesc.name);
-        m_resourceBindings.push_back(bindingDesc);
-    }
-
-    inline void AddStaticSampler(const ShaderStaticSamplerResourceBindingDesc& bindingDesc)
-    {
-        m_bindingReferences.emplace_back(++m_resourceBindingCount, bindingDesc.name);
-        m_resourceBindings.push_back(bindingDesc);
-    }
-
-    inline void AddConstantBuffer(const ShaderConstantBufferBindingDesc& bindingDesc)
-    {
-        m_bindingReferences.emplace_back(++m_resourceBindingCount, bindingDesc.name);
-        m_resourceBindings.push_back(bindingDesc);
-    }
-
     inline const std::vector<ShaderInputResourceBindingDesc>& GetShaderInputResourceBindings() const
     {
         return m_resourceBindings;
@@ -111,10 +88,30 @@ public:
         return m_staticSamplers;
     }
 
+    inline ShaderBindingReference AddInputResource(const ShaderInputResourceBindingDesc& bindingDesc)
+    {
+        m_bindingReferences.emplace_back(++m_resourceBindingCount, bindingDesc.name);
+        m_resourceBindings.push_back(bindingDesc);
+        return m_bindingReferences.back();
+    }
+
+    inline ShaderBindingReference AddStaticSampler(const ShaderStaticSamplerResourceBindingDesc& bindingDesc)
+    {
+        m_bindingReferences.emplace_back(++m_resourceBindingCount, bindingDesc.name);
+        m_staticSamplers.push_back(bindingDesc);
+        return m_bindingReferences.back();
+    }
+
+    inline ShaderBindingReference AddConstantBuffer(const ShaderConstantBufferBindingDesc& bindingDesc)
+    {
+        m_bindingReferences.emplace_back(++m_constantBufferBindingCount, bindingDesc.name);
+        m_constantBuffersBindings.push_back(bindingDesc);
+        return m_bindingReferences.back();
+    }
+
 private:
-    uint32_t m_resourceBindingCount       = 0;
-    uint32_t m_constantBufferBindingCount = 0;
-    
+    uint32_t                                            m_resourceBindingCount       = 0;
+    uint32_t                                            m_constantBufferBindingCount = 0;
     std::vector<ShaderBindingReference>                 m_bindingReferences;
     std::vector<ShaderInputResourceBindingDesc>         m_resourceBindings;
     std::vector<ShaderConstantBufferBindingDesc>        m_constantBuffersBindings;
@@ -130,43 +127,65 @@ public:
         void*  pConstantData;
     };
 
-private:
-    std::map<std::string, std::vector<IImageView*>> m_imageBinds;
-    
-    std::map<std::string, std::vector<IBuffer*>> m_buffersBinds;
-    
-    std::map<std::string, std::vector<IBufferView*>> m_texelBufferBinds;
-    
-    std::map<std::string, std::vector<ISampler*>> m_samplersBinds;
-    
-    std::map<std::string, ConstantBuffer> m_constants;
-
-public:
-    inline void BindImages(ShaderBindingReference bindingReference, const std::vector<IImageView*>& images)
+    inline const std::map<ShaderBindingIndex, std::vector<IImageView*>>& GetImageBinds() const
     {
-        m_imageBinds[bindingReference.name] = images.data();
+        return m_imageBinds;
     }
 
-    inline void BindBuffers(ShaderBindingReference bindingReference, const std::vector<IBuffer*>& buffers)
+    inline const std::map<ShaderBindingIndex, std::vector<IBuffer*>>& GetBuffersBinds() const
     {
-        m_imageBinds[bindingReference.name] = buffers.data();
+        return m_buffersBinds;
     }
 
-    inline void BindTexelBuffers(ShaderBindingReference bindingReference, const std::vector<IBufferView*>& bufferViews)
+    inline const std::map<ShaderBindingIndex, std::vector<IBufferView*>>& GetTexelBufferBinds() const
     {
-        m_imageBinds[bindingReference.name] = bufferViews.data();
+        return m_texelBufferBinds;
     }
 
-    inline void BindSamplers(ShaderBindingReference bindingReference, const std::vector<ISampelr*>& samplers)
+    inline const std::map<ShaderBindingIndex, std::vector<ISampler*>>& GetSamplersBinds() const
     {
-        m_imageBinds[bindingReference.name] = samplers.data();
+        return m_samplersBinds;
+    }
+
+    inline const std::map<ShaderBindingIndex, ConstantBuffer>& GetConstants() const
+    {
+        return m_constants;
+    }
+
+    // inline void BindAttachment(const ShaderBindingReference& bindingReference, const std::vector<PassImageAttachment*>& pImageAttachment) {}
+
+    inline void BindImages(const ShaderBindingReference& bindingReference, const std::vector<IImageView*>& images)
+    {
+        m_imageBinds[bindingReference.index] = images;
+    }
+
+    inline void BindBuffers(const ShaderBindingReference& bindingReference, const std::vector<IBuffer*>& buffers)
+    {
+        m_buffersBinds[bindingReference.index] = buffers;
+    }
+
+    inline void BindTexelBuffers(const ShaderBindingReference& bindingReference, const std::vector<IBufferView*>& bufferViews)
+    {
+        m_texelBufferBinds[bindingReference.index] = bufferViews;
+    }
+
+    inline void BindSamplers(const ShaderBindingReference& bindingReference, const std::vector<ISampler*>& samplers)
+    {
+        m_samplersBinds[bindingReference.index] = samplers;
     }
 
     template <typename T>
-    inline void SetConstant(ShadewrBindingReference bindingReference, const std::vector<T>& data)
+    inline void SetConstant(const ShaderBindingReference& bindingReference, const std::vector<T>& data)
     {
-        m_imageBinds[bindingReference.name] = ConstantBuffer(data.size(), data.data());
+        m_constants[bindingReference.index] = ConstantBuffer(data.size(), data.data());
     }
+
+private:
+    std::map<ShaderBindingIndex, std::vector<IImageView*>>  m_imageBinds;
+    std::map<ShaderBindingIndex, std::vector<IBuffer*>>     m_buffersBinds;
+    std::map<ShaderBindingIndex, std::vector<IBufferView*>> m_texelBufferBinds;
+    std::map<ShaderBindingIndex, std::vector<ISampler*>>    m_samplersBinds;
+    std::map<ShaderBindingIndex, ConstantBuffer>            m_constants;
 };
 
 class IShaderResourceGroup
@@ -174,11 +193,11 @@ class IShaderResourceGroup
 public:
     ~IShaderResourceGroup() = default;
 
-    Expected<std::string_view> GetBindingName(uint32_t index) const
+    inline Expected<std::string_view> GetBindingName(uint32_t index) const
     {
         for (auto& reference : m_bindingReferencs)
         {
-            if (reference.name == name)
+            if (reference.index == index)
             {
                 return reference.name;
             }
@@ -186,13 +205,13 @@ public:
         return Unexpected(EResultCode::InvalidArguments);
     }
 
-    Expected<uint32_t> GetBindingIndex(std::string_view name) const
+    inline Expected<uint32_t> GetBindingIndex(std::string_view name) const
     {
         for (auto& reference : m_bindingReferencs)
         {
-            if (reference.index == index)
+            if (reference.name == name)
             {
-                return reference.name;
+                return reference.index;
             }
         }
         return Unexpected(EResultCode::InvalidArguments);
@@ -210,9 +229,7 @@ class IShaderResourceGroupAllocator
 public:
     ~IShaderResourceGroupAllocator() = default;
 
-    virtual Expected<Unique<IShaderResourceGroup>> Allocate() const = 0;
-
-    virtual void Free(Unique<IShaderResourceGroup> group) = 0;
+    virtual Expected<Unique<IShaderResourceGroup>> Allocate(const ShaderResourceGroupLayout& layout) const = 0;
 };
 
 } // namespace RHI

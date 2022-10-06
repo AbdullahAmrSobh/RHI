@@ -27,6 +27,15 @@ target_include_directories(RHI PUBLIC ${RHI_INCLUDE_DIR}
 							   PRIVATE ${Vulkan_INCLUDE_DIRS})
 target_link_libraries(RHI PRIVATE ${Vulkan_LIBRARIES})
 
+if(UINX)
+	find_package(X11 REQUIRED)
+	if(NOT X11_FOUND)
+		message(FATAL_ERROR "Failed to find Xlib")
+	endif()
+	target_include_directories(RHI PUBLIC ${X11_INCLUDE_DIR})
+	target_link_directories(RHI PUBLIC ${X11_LIBRARIES})
+endif()
+
 set_property(TARGET RHI PROPERTY CXX_STANDARD 23)
 
 add_subdirectory(Examples)

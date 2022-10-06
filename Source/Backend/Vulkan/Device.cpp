@@ -1,15 +1,7 @@
-#include <vector>
-
-#include "RHI/Common.hpp"
-#include "RHI/Device.hpp"
-
-#include "Backend/Vulkan/Instance.hpp"
 #include "Backend/Vulkan/Device.hpp"
 #include "Backend/Vulkan/PipelineState.hpp"
 #include "Backend/Vulkan/Resource.hpp"
 #include "Backend/Vulkan/Swapchain.hpp"
-
-#include "Backend/Vulkan/Common.hpp"
 
 namespace RHI
 {
@@ -56,7 +48,7 @@ namespace Vulkan
         vkEnumerateDeviceExtensionProperties(m_physicalDevice, nullptr, &extensionCount, extensionProperties.data());
         return extensionProperties;
     }
-    
+
     VkPhysicalDeviceMemoryProperties PhysicalDevice::GetMemoryProperties() const
     {
         VkPhysicalDeviceMemoryProperties properties;
@@ -70,7 +62,7 @@ namespace Vulkan
         vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_physicalDevice, surface, &capabilities);
         return capabilities;
     }
-    
+
     std::vector<VkPresentModeKHR> PhysicalDevice::GetPresentModes(VkSurfaceKHR surface) const
     {
         uint32_t presentModeCount = 0;
@@ -94,40 +86,67 @@ namespace Vulkan
         WaitIdle();
         vkDestroyDevice(m_device, nullptr);
     }
-    
+
     VkResult Device::Init(Instance& instance, const PhysicalDevice& physicalDevice)
     {
         std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+
+        std::optional<uint32_t> dedicatedGraphicsQueueFamilyIndex = {};
+        std::optional<uint32_t> dedicatedComputeQueueFamilyIndex  = {};
+        std::optional<uint32_t> dedicatedTransferQueueFamilyIndex = {};
 
         float priority                = 1.0f;
         auto  queueFamiliesProperties = physicalDevice.GetQueueFamilyProperties();
         for (uint32_t queueFamilyIndex = 0; queueFamilyIndex <= queueFamiliesProperties.size(); queueFamilyIndex++)
         {
-            auto queueFamilyProperty = queueFamiliesProperties[queueFamilyIndex];
+            VkQueueFamilyProperties queueFamilyProperty = queueFamiliesProperties[queueFamilyIndex];
 
-            if (queueFamilyProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+            if (!dedicatedGraphicsQueueFamilyIndex.has_value() && queueFamilyProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT)
             {
-                queueCreateInfos.emplace_back();
-                VkDeviceQueueCreateInfo& queueCreateInfo = queueCreateInfos.back();
-                queueCreateInfo.sType                    = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-                queueCreateInfo.pNext                    = nullptr;
-                queueCreateInfo.flags                    = 0;
-                queueCreateInfo.queueFamilyIndex         = queueFamilyIndex;
-                queueCreateInfo.queueCount               = 1;
-                queueCreateInfo.pQueuePriorities         = &priority;
-                break;
+                VkDeviceQueueCreateInfo queueCreateInfo;
+                queueCreateInfo.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+                queueCreateInfo.pNext            = nullptr;
+                queueCreateInfo.flags            = 0;
+                queueCreateInfo.queueFamilyIndex = queueFamilyIndex;
+                queueCreateInfo.queueCount       = 1;
+                queueCreateInfo.pQueuePriorities = &priority;
+                queueCreateInfos.push_back(queueCreateInfo);
+
+                dedicatedGraphicsQueueFamilyIndex = queueFamilyIndex;
             }
 
-            // Check if dedicated compute queue
-            if (queueFamilyProperty.queueFlags & VK_QUEUE_COMPUTE_BIT) {}
+            if (!dedicatedGraphicsQueueFamilyIndex.has_value() && queueFamilyProperty.queueFlags & VK_QUEUE_COMPUTE_BIT)
+            {
+                VkDeviceQueueCreateInfo queueCreateInfo;
+                queueCreateInfo.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+                queueCreateInfo.pNext            = nullptr;
+                queueCreateInfo.flags            = 0;
+                queueCreateInfo.queueFamilyIndex = queueFamilyIndex;
+                queueCreateInfo.queueCount       = 1;
+                queueCreateInfo.pQueuePriorities = &priority;
+                queueCreateInfos.push_back(queueCreateInfo);
 
-            // Find dedicated transfer queue if exist
-            if (queueFamilyProperty.queueFlags == VK_QUEUE_TRANSFER_BIT) {}
+                dedicatedGraphicsQueueFamilyIndex = queueFamilyIndex;
+            }
+
+            if (!dedicatedGraphicsQueueFamilyIndex.has_value() && queueFamilyProperty.queueFlags == VK_QUEUE_TRANSFER_BIT)
+            {
+                VkDeviceQueueCreateInfo queueCreateInfo;
+                queueCreateInfo.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+                queueCreateInfo.pNext            = nullptr;
+                queueCreateInfo.flags            = 0;
+                queueCreateInfo.queueFamilyIndex = queueFamilyIndex;
+                queueCreateInfo.queueCount       = 1;
+                queueCreateInfo.pQueuePriorities = &priority;
+                queueCreateInfos.push_back(queueCreateInfo);
+
+                dedicatedGraphicsQueueFamilyIndex = queueFamilyIndex;
+            }
         }
 
         std::vector<const char*> enabledLayers     = {"VK_LAYER_LUNARG_standard_validation"};
         std::vector<const char*> enabledExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-        
+
         VkPhysicalDeviceFeatures features = {};
         {
             VkDeviceCreateInfo createInfo      = {};
@@ -146,24 +165,50 @@ namespace Vulkan
             if (!RHI_SUCCESS(result))
                 return result;
         }
-        
+
+        // Create Queue
+        {
+            VkQueue queueHandle = VK_NULL_HANDLE;
+
+            if (dedicatedGraphicsQueueFamilyIndex.has_value())
+            {
+                m_queues.push_back(Queue(queueHandle, dedicatedGraphicsQueueFamilyIndex.value(), 0));
+                m_pGraphicsQueue = &m_queues.back();
+
+                // Use the graphics queue as a fall back if there is no dedicated compute or transfer queues.
+                m_pComputeQueue  = m_pGraphicsQueue;
+                m_pTransferQueue = m_pGraphicsQueue;
+            }
+            else
+            {
+                return VK_ERROR_UNKNOWN;
+            }
+
+            if (dedicatedComputeQueueFamilyIndex.has_value())
+            {
+                m_queues.push_back(Queue(queueHandle, dedicatedComputeQueueFamilyIndex.value(), 0));
+                m_pComputeQueue = &m_queues.back();
+            }
+
+            if (dedicatedTransferQueueFamilyIndex.has_value())
+            {
+                m_queues.push_back(Queue(queueHandle, dedicatedTransferQueueFamilyIndex.value(), 0));
+                m_pTransferQueue = &m_queues.back();
+            }
+        }
+
         VmaAllocatorCreateInfo createInfo = {};
         createInfo.flags                  = 0;
         createInfo.physicalDevice         = m_pPhysicalDevice->GetHandle();
         createInfo.device                 = m_device;
         createInfo.instance               = m_pInstance->GetHandle();
-            // createInfo.vulkanApiVersion = VK_VERSION_1_2;
+        // createInfo.vulkanApiVersion = VK_VERSION_1_2;
         return vmaCreateAllocator(&createInfo, &m_allocator);
     }
-    
+
     EResultCode Device::WaitIdle() const
     {
         return ConvertResult(vkDeviceWaitIdle(m_device));
-    }
-    
-    Expected<Unique<IFrameGraph>> Device::CreateFrameGraph()
-    {
-        return Unexpected(EResultCode::Fail);
     }
 
 } // namespace Vulkan

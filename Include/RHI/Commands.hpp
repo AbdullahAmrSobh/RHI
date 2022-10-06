@@ -1,19 +1,26 @@
 #pragma once
-#include <utility>
-#include <vector>
+#include "RHI/Common.hpp"
 #include "RHI/Resource.hpp"
-#include "RHI/ShaderResourceGroup.hpp"
 
 namespace RHI
 {
 
+enum class EResourceType;
+
+struct ImageViewRange;
+struct BufferViewRange;
+
 class IShaderResourceGroup;
 class IPipelineState;
+class IBuffer;
+class IBufferView;
+class IImage;
+class IImageView;
 
 struct PipelineCommand
 {
     PipelineCommand(const IPipelineState& pipelineState);
-    
+
     void BindShaderResourceGroup(std::string_view groupName, const IShaderResourceGroup& group);
 
     std::vector<IShaderResourceGroup> resourceGroup;
@@ -113,17 +120,30 @@ struct CopyCommand
     inline void SetDestination(const IBuffer& buffer, const BufferViewRange& range);
 
     EResourceType sourceResourceType;
-    union
+    EResourceType destinationResourceType;
+
+    struct CopyImage
     {
         IImage*        pImage;
         ImageViewRange imageRange;
     };
 
-    EResourceType destinationResourceType;
-    union
+    struct CopyBuffer
     {
         IBuffer*        pBuffer;
         BufferViewRange bufferRange;
+    };
+
+    union
+    {
+        CopyImage  srcImage;
+        CopyBuffer srcBuffer;
+    };
+
+    union
+    {
+        CopyImage  dstImage;
+        CopyBuffer dstBuffer;
     };
 };
 
@@ -131,25 +151,16 @@ class ICommandBuffer
 {
 public:
     virtual ~ICommandBuffer();
-    
+
     virtual void Begin() = 0;
     virtual void End()   = 0;
 
     virtual void SetViewports(const std::vector<Viewport>& viewports) = 0;
     virtual void SetScissors(const std::vector<Rect>& scissors)       = 0;
-    
+
     virtual void Submit(const DrawCommand& drawCommand)         = 0;
     virtual void Submit(const CopyCommand& copyCommand)         = 0;
     virtual void Submit(const DispatchCommand& dispatchCommand) = 0;
-};
-
-class ITransferQueue 
-{
-public: 
-    virtual ~ITransferQueue() = default;
-    
-    virtual EResultCode Submit(const CopyCommand& copyCommand, IFence& signalFence) = 0;
-
 };
 
 } // namespace RHI

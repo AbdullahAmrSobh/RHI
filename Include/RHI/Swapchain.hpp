@@ -1,38 +1,11 @@
 #pragma once
-#include <cstdint>
-#include <vector>
-
-#include "RHI/Common.hpp"
-#include "RHI/Format.hpp"
-
-// TODO move each platform into its own header file
-
-#ifdef RHI_WINDOWS
-#include <windows.h>
-#endif
+#include "RHI/Surface.hpp"
 
 namespace RHI
 {
 
+enum class EFormat;
 class IImage;
-
-using NativeWindowHandle = HWND;
-struct Win32SurfaceDesc
-{
-    HWND      hwnd;
-    HINSTANCE instance;
-};
-
-// using NativeWindowHandle = void*;
-struct X11SurfaceDesc
-{
-};
-
-class ISurface
-{
-public:
-    virtual ~ISurface() = default;
-};
 
 struct SwapchainDesc
 {
@@ -46,8 +19,11 @@ class ISwapchain
 {
 public:
     virtual ~ISwapchain() = default;
-
-    const std::vector<IImage*>& GetBackImages() const;
+    
+    inline const std::vector<IImage*>& GetBackImages() const
+    {
+        return m_backBuffers;
+    }
 
     virtual EResultCode SwapBuffers()                               = 0;
     virtual EResultCode Resize(Extent2D newExtent)                  = 0;

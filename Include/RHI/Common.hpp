@@ -1,31 +1,44 @@
 #pragma once
+#include <algorithm>
+#include <array>
+#include <cstddef>
 #include <cstdint>
+#include <functional>
+#include <map>
 #include <memory>
+#include <set>
 #include <type_traits>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
+#include <vector>
+
 
 #include "RHI/Core/Expected.hpp"
+#include "RHI/Core/Span.hpp"
+
 // #include "RHI/Core/Span.hpp"
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-   #ifdef _WIN64
-      #define RHI_WINDOWS
-   #else
-      #error "WIN32 platforms are not supported"
-   #endif
-#elif __APPLE__
-    #error "Apple Platforms are not supported yet"
-#elif __ANDROID__
-    #define RHI_ANDROID
-#elif __linux__
-    #define RHI_LINUX
+#ifdef _WIN64
+#define RHI_WINDOWS
 #else
-    #error "Unknown compiler"
+#error "WIN32 platforms are not supported"
+#endif
+#elif __APPLE__
+#error "Apple Platforms are not supported yet"
+#elif __ANDROID__
+#define RHI_ANDROID
+#elif __linux__
+#define RHI_LINUX
+#else
+#error "Unknown compiler"
 #endif
 
 namespace RHI
 {
 
-enum class EResultCode 
+enum class EResultCode
 {
     Success,
     Fail,
@@ -33,7 +46,7 @@ enum class EResultCode
     NotReady,
     HostOutOfMemory,
     DeviceOutOfMemory,
-    ExtensionNotAvailable, 
+    ExtensionNotAvailable,
     InvalidArguments,
     FeatureNotAvailable,
     FrameGraphCycle,
@@ -91,7 +104,7 @@ public:
     }
 
     constexpr Flags(Flags<BitType> const& rhs) noexcept = default;
-    
+
     constexpr explicit Flags(MaskType flags) noexcept
         : m_mask(flags)
     {
@@ -143,7 +156,7 @@ public:
     {
         return Flags<BitType>(m_mask & rhs.m_mask);
     }
-    
+
     constexpr Flags<BitType> operator|(Flags<BitType> const& rhs) const noexcept
     {
         return Flags<BitType>(m_mask | rhs.m_mask);
@@ -201,7 +214,7 @@ inline constexpr uint32_t CountElements(const T& t)
     return static_cast<uint32_t>(t.size());
 }
 
-enum class EAccess 
+enum class EAccess
 {
     Read,
     ReadWrite,
@@ -222,10 +235,10 @@ struct Extent3D
 
 struct Rect
 {
-    int32_t x;
-    int32_t y;
-    uint32_t size_x;
-    uint32_t size_y;
+    int32_t  x;
+    int32_t  y;
+    uint32_t sizeX;
+    uint32_t sizeY;
 };
 
 struct Viewport
@@ -235,21 +248,22 @@ struct Viewport
     float maxDepth;
 };
 
-template<typename T>
-class ID 
-{
-public:
-
-
-};
-
-template<typename T>
+template <typename T>
 T Select(const std::vector<T>& range, T desired, T fallback)
 {
     for (T t : range)
-        if (t == desired) return t;
-    
+        if (t == desired)
+            return t;
+
     return fallback;
+}
+
+inline size_t hash_combine(std::size_t first, std::size_t second)
+{
+    size_t                   seed = first;
+    static std::hash<size_t> hasher;
+    seed ^= hasher(second) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    return seed;
 }
 
 } // namespace RHI

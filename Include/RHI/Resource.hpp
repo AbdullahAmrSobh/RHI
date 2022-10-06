@@ -27,10 +27,16 @@ struct ShaderProgramDesc
 class IShaderProgram
 {
 public:
-    IShaderProgram(std::string name) : m_name(std::move(name)) { }
+    IShaderProgram(std::string name)
+        : m_name(std::move(name))
+    {
+    }
     virtual ~IShaderProgram();
-    
-    inline std::string GetFunctionName() const { return m_name; } 
+
+    inline std::string GetFunctionName() const
+    {
+        return m_name;
+    }
 
 private:
     std::string m_name;
@@ -46,40 +52,39 @@ public:
     virtual EResultCode GetStatus() const = 0;
 };
 
+enum class ESamplerFilter
+{
+    Linear,
+    Nearest
+};
+
+enum class ESamplerAddressMode
+{
+    Repeat,
+    Clamp
+};
+
+enum class ESamplerCompareOp
+{
+    Never,
+    Less,
+    LessEq,
+    Greater,
+    GreaterEq,
+};
+
 struct SamplerDesc
 {
-    enum class EFilter
-    {
-        Point,
-        Bilinear,
-        Trilinear,
-        Anisotropic
-    };
 
-    enum class EAddressMode
-    {
-        Repeat,
-        Clamp
-    };
-
-    enum class ECompareOp
-    {
-        Never,
-        Less,
-        LessEq,
-        Greater,
-        GreaterEq,
-    };
-    
-    EFilter      filter;
-    ECompareOp   compare;
-    float        mipLodBias;
-    EAddressMode addressU;
-    EAddressMode addressV;
-    EAddressMode addressW;
-    float        minLod;
-    float        maxLod;
-    float        maxAnisotropy;
+    ESamplerFilter      filter;
+    ESamplerCompareOp   compare;
+    float               mipLodBias;
+    ESamplerAddressMode addressU;
+    ESamplerAddressMode addressV;
+    ESamplerAddressMode addressW;
+    float               minLod;
+    float               maxLod;
+    float               maxAnisotropy;
 };
 
 class ISampler

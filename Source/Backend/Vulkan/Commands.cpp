@@ -1,7 +1,8 @@
 #include "Backend/Vulkan/Commands.hpp"
 #include "Backend/Vulkan/Common.hpp"
 #include "Backend/Vulkan/Device.hpp"
-
+#include "Backend/Vulkan/PipelineState.hpp"
+#include "Backend/Vulkan/Resource.hpp"
 
 namespace RHI
 {
@@ -40,23 +41,68 @@ namespace Vulkan
 
     void CommandBuffer::Submit(const DrawCommand& drawCommand)
     {
-        // BeginRenderPass and set RenderTarget
-        // Bind PipelineState
-        // Bind ShaderResourceGroups
-        // Bind VertexBuffers indexBuffers
-        // DispatchDrawCommand
-        // EndRenderPass
+        VkRenderPassBeginInfo renderPassBegin;
+        VkSubpassBeginInfo    subpassBeginInfo;
+
+        vkCmdBeginRenderPass2(m_handle, &renderPassBegin, &subpassBeginInfo);
+        const PipelineState& pso = *static_cast<const PipelineState*>(drawCommand.pPipelineState);
+
+        vkCmdBindPipeline(m_handle, VK_PIPELINE_BIND_POINT_GRAPHICS, pso.GetHandle());
+
+        std::vector<VkDescriptorSet> descriptorSets;
+        vkCmdBindDescriptorSets(m_handle, VK_PIPELINE_BIND_POINT_GRAPHICS, pso.GetLayout().GetHandle(), 0, CountElements(descriptorSets), descriptorSets.data(),
+                                0, nullptr);
+
+        switch (drawCommand.type)
+        {
+        case RHI::DrawCommand::EType::Indexed:
+        {
+            break;
+        }
+        case RHI::DrawCommand::EType::Linear:
+        {
+            break;
+        }
+        }
+        VkSubpassEndInfo endInfo;
+        vkCmdEndRenderPass2(m_handle, &endInfo);
     }
 
-    void CommandBuffer::Submit(const CopyCommand& copyCommand) {}
+    void CommandBuffer::Submit(const CopyCommand& copyCommand)
+    {
+        if (copyCommand.destinationResourceType == EResourceType::Buffer && copyCommand.sourceResourceType == EResourceType::Buffer)
+        {
+            Buffer&           srcBuffer = static_cast<Buffer&>(*copyCommand.srcBuffer.pBuffer);
+            Buffer&           dstBuffer = static_cast<Buffer&>(*copyCommand.dstBuffer.pBuffer);
+            VkCopyBufferInfo2 copyInfo;
+            // copyInfo.sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2;
+            // copyInfo.pNext = nullptr;
+            // copyInfo.srcBuffer = srcBuffer.GetHandle();
+            // copyInfo.dstBuffer = dstBuffer.GetHandle();
+            // copyInfo.regionCount;
+            // copyInfo.pRegions;
+        }
+        else if (copyCommand.destinationResourceType == EResourceType::Buffer && copyCommand.sourceResourceType == EResourceType::Image)
+        {
+            VkCopyImageToBufferInfo2 copyInfo;
+        }
+        else if (copyCommand.destinationResourceType == EResourceType::Image && copyCommand.sourceResourceType == EResourceType::Image)
+        {
+            VkCopyImageInfo2 copyInfo;
+        }
+        else if (copyCommand.destinationResourceType == EResourceType::Image && copyCommand.sourceResourceType == EResourceType::Buffer)
+        {
+            VkCopyImageToBufferInfo2 copyInfo;
+        }
+    }
 
     void CommandBuffer::Submit(const DispatchCommand& dispatchCommand) {}
-    
+
     CommandAllocator::~CommandAllocator()
     {
         vkDestroyCommandPool(m_pDevice->GetHandle(), m_handle, nullptr);
     }
-    
+
     VkResult CommandAllocator::Init(ECommandPrimaryTask task)
     {
         VkCommandPoolCreateInfo createInfo;
@@ -78,9 +124,10 @@ namespace Vulkan
     {
         return vkResetCommandPool(m_pDevice->GetHandle(), m_handle, 0);
     }
-    
+
     Unique<CommandBuffer> CommandAllocator::AllocateCommandBuffer()
     {
+        return nullptr;
     }
 
     std::vector<CommandBuffer> CommandAllocator::AllocateCommandBuffers(uint32_t count)
@@ -92,16 +139,16 @@ namespace Vulkan
         allocateInfo.level                       = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         allocateInfo.commandBufferCount          = count;
 
-        std::vector<VkCommandBuffer>        handles(count, VK_NULL_HANDLE);
-        std::vector<CommandBuffer> commandBuffers;
+        std::vector<VkCommandBuffer> handles(count, VK_NULL_HANDLE);
+        std::vector<CommandBuffer>   commandBuffers;
         commandBuffers.reserve(count);
         vkAllocateCommandBuffers(m_pDevice->GetHandle(), &allocateInfo, handles.data());
-        
+
         for (VkCommandBuffer handle : handles)
         {
             commandBuffers.emplace_back(this, handle);
         }
-        
+
         return commandBuffers;
     }
 

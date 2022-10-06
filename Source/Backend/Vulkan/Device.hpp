@@ -1,79 +1,16 @@
-#include <vector>
-
-#include "RHI/Common.hpp"
+#pragma once
 #include "RHI/Device.hpp"
-#include "RHI/ShaderResourceGroup.hpp"
-#include "RHI/Swapchain.hpp"
-
 #include "Backend/Vulkan/Instance.hpp"
-#include "Backend/Vulkan/PipelineState.hpp"
-#include "Backend/Vulkan/Swapchain.hpp"
-#include "Backend/Vulkan/Vma/vk_mem_alloc.hpp"
 
 namespace RHI
 {
 namespace Vulkan
 {
-    namespace Internal
-    {
-        class PipelineLayout;
+    class RenderPassManager;
+    class Semaphore;
+    class Fence;
+    class PipelineLayout;
 
-        class RenderPass final : public DeviceObject<VkRenderPass>
-        {
-        public:
-        };
-
-        class Framebuffer final : public DeviceObject<VkFramebuffer>
-        {
-        public:
-            struct Desc
-            {
-                RenderPass* pRenderPass;
-                uint32_t    attachmentCount;
-                ImageView*  pAttachments;
-                Extent2D    extent;
-            };
-
-            Framebuffer(Device& pDevice);
-            ~Framebuffer()
-            {
-                vkDestroyFramebuffer(m_pDevice->GetHandle(), m_handle, nullptr);
-            }
-            
-            VkResult Init(const Desc& desc)
-            {
-
-                std::vector<VkImageView> attachmentsHandles{};
-                for (uint32_t i = 0; i < desc.attachmentCount; i++)
-                {
-                    attachmentsHandles.push_back(desc.pAttachments[i].GetHandle());
-                }
-
-                VkFramebufferCreateInfo createInfo{};
-                createInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-                createInfo.pNext           = nullptr;
-                createInfo.flags           = 0;
-                createInfo.renderPass      = desc.pRenderPass->GetHandle();
-                createInfo.attachmentCount = desc.attachmentCount;
-                createInfo.pAttachments    = attachmentsHandles.data();
-                createInfo.width           = desc.extent.sizeX;
-                createInfo.height          = desc.extent.sizeY;
-                createInfo.layers          = 0;
-                
-                return vkCreateFramebuffer(m_pDevice->GetHandle(), &createInfo, nullptr, &m_handle);
-            }
-        };
-        
-        class ObjectCache
-        {
-        public:
-            Shared<RenderPass>  GetRenderPass(RenderTargetLayout renderTargetLayout);
-            Unique<Framebuffer> GetFramebuffer(Framebuffer::Desc framebufferDesc);
-        };
-    } // namespace Internal
-    
-    class RenderPassCache;
-    class Instance;
     class PhysicalDevice final : public IPhysicalDevice
     {
     public:
@@ -126,25 +63,27 @@ namespace Vulkan
             VkSubmitInfo2                submitInfo;
         };
 
-        inline Queue(VkQueue queue)
+        inline Queue(VkQueue queue, uint32_t familyIndex, uint32_t index)
             : m_queue(queue)
+            , m_familyIndex(index)
+            , m_queueIndex(index)
         {
         }
-        uint32_t GetFamilyIndex() const
+
+        inline uint32_t GetFamilyIndex() const
         {
             return m_familyIndex;
         }
 
-        uint32_t GetQueueIndex() const
+        inline uint32_t GetQueueIndex() const
         {
             return m_queueIndex;
         }
 
         bool SupportPresent() const;
 
-        VkResult Submit(const std::vector<PresentRequest>& presentRequsts);
-
-        VkResult Present(const std::vector<SubmitRequest>& submitRequests, Fence* pSignalFence = nullptr);
+        VkResult Submit(const std::vector<SubmitRequest>& submitRequests, Fence* pSignalFence = nullptr);
+        VkResult Present(const PresentRequest& presentRequest);
 
     private:
         VkQueue  m_queue;
@@ -178,7 +117,7 @@ namespace Vulkan
         {
             return m_allocator;
         }
-        
+
         inline Queue& GetGraphicsQueue()
         {
             return *m_pGraphicsQueue;
@@ -192,6 +131,11 @@ namespace Vulkan
         inline Queue& GetTransferQueue()
         {
             return *m_pTransferQueue;
+        }
+
+        inline RenderPassManager& GetRenderPassManager() const
+        {
+            return *m_renderPassManager;
         }
 
         virtual EResultCode                                     WaitIdle() const override;
@@ -210,18 +154,26 @@ namespace Vulkan
     private:
         PipelineLayout FindPipelineLayout(size_t hash);
 
-    private:
-        class Instance*    m_pInstance;
-        VkDevice           m_device;
-        VmaAllocator       m_allocator;
-        PhysicalDevice*    m_pPhysicalDevice;
-        Unique<Queue>      m_graphicsQueue;
-        std::vector<Queue> m_queues;
-        Queue*             m_pGraphicsQueue;
-        Queue*             m_pComputeQueue;
-        Queue*             m_pTransferQueue;
+        EResultCode InitQueues(std::optional<uint32_t> graphicsQueueIndex, std::optional<uint32_t> computeQueueIndex, std::optional<uint32_t> indexQueueIndex);
 
-        Unique<Internal::ObjectCache> m_objectCache;
+    private:
+        Instance*       m_pInstance;
+        PhysicalDevice* m_pPhysicalDevice;
+
+        VkDevice     m_device;
+        VmaAllocator m_allocator;
+
+        std::vector<Queue> m_queues;
+
+        // Pointer to dedicated graphics queue.
+        Queue* m_pGraphicsQueue;
+        // pointer to dedicated compute queue.
+        Queue* m_pComputeQueue;
+        // pointer to dedicated transfer queue.
+        Queue* m_pTransferQueue;
+
+        // Cache for render passes.
+        Unique<RenderPassManager> m_renderPassManager;
     };
 } // namespace Vulkan
 } // namespace RHI

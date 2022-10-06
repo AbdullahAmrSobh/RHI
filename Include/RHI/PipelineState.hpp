@@ -1,65 +1,59 @@
 #pragma once
-#include <string>
-#include <vector>
-
-#include "RHI/Format.hpp"
-#include "RHI/ShaderResourceGroup.hpp"
+#include "RHI/Common.hpp"
 
 namespace RHI
 {
 
+enum class EFormat;
+
+class ShaderResourceGroupLayout;
 class IShaderProgram;
 
-namespace PipelineStateDesc
+enum class ERasterizationCullMode
 {
-    struct GraphicsShaderStages
-    {
-        IShaderProgram* pVertexShader;
-        IShaderProgram* pTessControlShader;
-        IShaderProgram* pTessEvalShader;
-        IShaderProgram* pGeometryShader;
-        IShaderProgram* pPixelShader;
-    };
+    None,
+    FrontFace,
+    BackFace,
+};
 
-    struct VertexAttribute
-    {
-        std::string name;
-        EFormat     format;
-    };
-    
-    struct Rasterization
-    {
-        enum class ECullMode
-        {
-            None,
-            FrontFace,
-            BackFace,
-        };
-        
-        enum class EFillMode
-        {
-            Point,
-            Triangle,
-            Line
-        };
-        
-        ECullMode cullMode = ECullMode::BackFace;
-        EFillMode fillMode = EFillMode::Triangle;
-    };
+enum class ERasterizationFillMode
+{
+    Point,
+    Triangle,
+    Line
+};
 
-    struct DepthStencil
-    {
-        bool depthEnabled  = false;
-        bool stencilEnable = false;
-    }; // enable disable
+struct GraphicsPipelineShaderStages
+{
+    IShaderProgram* pVertexShader;
+    IShaderProgram* pTessControlShader;
+    IShaderProgram* pTessEvalShader;
+    IShaderProgram* pGeometryShader;
+    IShaderProgram* pPixelShader;
+};
 
-    struct ColorBlend
-    {
-        // !TODO
-    };
+struct GraphicsPipelineVertexAttributeState
+{
+    std::string name;
+    EFormat     format;
+};
 
-} // namespace PipelineStateDesc
+struct GraphicsPipelineRasterizationState
+{
+    ERasterizationCullMode cullMode = ERasterizationCullMode::BackFace;
+    ERasterizationFillMode fillMode = ERasterizationFillMode::Triangle;
+};
 
+struct GraphicsPipelineDepthStencilState
+{
+    bool depthEnabled  = false;
+    bool stencilEnable = false;
+};
+
+struct GraphicsPipelineColorBlendState
+{
+    // !TODO
+};
 
 struct PipelineLayoutDesc
 {
@@ -74,13 +68,13 @@ struct RenderTargetLayout
 
 struct GraphicsPipelineStateDesc
 {
-    PipelineLayoutDesc                              pipelineLayoutDesc;
-    RenderTargetLayout                              renderTargetLayout;
-    PipelineStateDesc::GraphicsShaderStages         shaderStages;
-    std::vector<PipelineStateDesc::VertexAttribute> vertexInputAttributes;
-    PipelineStateDesc::Rasterization                rasterizationState;
-    PipelineStateDesc::ColorBlend                   colorBlendState;
-    PipelineStateDesc::DepthStencil                 depthStencil;
+    PipelineLayoutDesc                                pipelineLayoutDesc;
+    RenderTargetLayout                                renderTargetLayout;
+    GraphicsPipelineShaderStages                      shaderStages;
+    std::vector<GraphicsPipelineVertexAttributeState> vertexInputAttributes;
+    GraphicsPipelineRasterizationState                rasterizationState;
+    GraphicsPipelineColorBlendState                   colorBlendState;
+    GraphicsPipelineRasterizationState                depthStencil;
 };
 
 class IPipelineState

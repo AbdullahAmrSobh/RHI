@@ -3,6 +3,8 @@
 namespace RHI
 {
 
+//TODO Simplify this..
+
 enum class EFormat
 {
     Undefined                = 0,

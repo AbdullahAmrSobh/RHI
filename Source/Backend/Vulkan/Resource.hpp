@@ -1,8 +1,6 @@
 #pragma once
 #include "RHI/Resource.hpp"
-
-#include "Backend/Vulkan/Vma/vk_mem_alloc.hpp"
-#include <vulkan/vulkan.h>
+#include "Backend/Vulkan/Common.hpp"
 
 namespace RHI
 {
@@ -24,7 +22,7 @@ namespace Vulkan
         {
             return m_handle;
         }
-    
+
     protected:
         Device* m_pDevice;
         T       m_handle;
@@ -34,15 +32,15 @@ namespace Vulkan
     class Resource : public DeviceObject<T>
     {
     public:
-        Resource(Device* pDevice, T handle, VmaAllocation allocation = VK_NULL_HANDLE)
-            : DeviceObject(pDevice, handle)
+        Resource(Device* pDevice, T handle = VK_NULL_HANDLE, VmaAllocation allocation = VK_NULL_HANDLE)
+            : DeviceObject<T>(pDevice, handle)
             , m_allocation(allocation)
         {
         }
-        
+
         inline VmaAllocation GetAllocation() const
         {
-            return m_allocation
+            return m_allocation;
         }
 
         inline const VmaAllocationInfo& GetAllocationInfo() const
@@ -71,7 +69,11 @@ namespace Vulkan
         , public DeviceObject<VkFence>
     {
     public:
-        Fence(Device& device);
+        Fence(Device& device)
+            : DeviceObject(&device)
+        {
+        }
+
         ~Fence();
 
         VkResult Init();
@@ -86,7 +88,10 @@ namespace Vulkan
         , public Resource<VkImage>
     {
     public:
-        Image(Device& device, VkImage imageHandle = VK_NULL_HANDLE);
+        Image(Device& device, VkImage imageHandle = VK_NULL_HANDLE)
+            : Resource(&device, imageHandle)
+        {
+        }
         ~Image();
 
         VkResult Init(const AllocationDesc& allocationDesc, const ImageDesc& desc);
@@ -97,7 +102,10 @@ namespace Vulkan
         , public DeviceObject<VkImageView>
     {
     public:
-        ImageView(Device& device);
+        ImageView(Device& device)
+            : DeviceObject(&device)
+        {
+        }
         ~ImageView();
 
         VkResult Init(const Image& image, const ImageViewDesc& desc);
@@ -108,7 +116,10 @@ namespace Vulkan
         , public Resource<VkBuffer>
     {
     public:
-        Buffer(Device& device);
+        Buffer(Device& device)
+            : Resource(&device)
+        {
+        }
         ~Buffer();
 
         VkResult Init(const AllocationDesc& allocationDesc, const BufferDesc& desc);
@@ -119,7 +130,10 @@ namespace Vulkan
         , public DeviceObject<VkBufferView>
     {
     public:
-        BufferView(Device& device);
+        BufferView(Device& device)
+            : DeviceObject(&device)
+        {
+        }
         ~BufferView();
 
         VkResult Init(const Buffer& buffer, const BufferViewDesc& desc);
@@ -130,7 +144,10 @@ namespace Vulkan
         , public DeviceObject<VkSampler>
     {
     public:
-        Sampler(Device& device);
+        Sampler(Device& device)
+            : DeviceObject(&device)
+        {
+        }
         ~Sampler();
 
         VkResult Init(const SamplerDesc& desc);
@@ -139,6 +156,10 @@ namespace Vulkan
     class Semaphore final : public DeviceObject<VkSemaphore>
     {
     public:
+        Semaphore(Device& device)
+            : DeviceObject(&device)
+        {
+        }
         ~Semaphore();
 
         VkResult Init(bool bin);

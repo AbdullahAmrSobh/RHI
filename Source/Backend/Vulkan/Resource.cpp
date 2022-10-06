@@ -1,11 +1,9 @@
+#include "RHI/Resource.hpp"
+#include "Backend/Vulkan/Device.hpp"
 #include "Backend/Vulkan/Resource.hpp"
 #include "Backend/Vulkan/Common.hpp"
-#include "Backend/Vulkan/Device.hpp"
+#include <vulkan/vulkan_core.h>
 
-namespace RHI
-{
-
-}
 namespace RHI
 {
 namespace Vulkan
@@ -17,7 +15,7 @@ namespace Vulkan
         VkResult             result       = shaderModule->Init(desc);
 
         if (RHI_SUCCESS(result))
-            return shaderModule;
+            return std::move(shaderModule);
 
         return Unexpected(ConvertResult(result));
     }
@@ -28,7 +26,7 @@ namespace Vulkan
         VkResult      result = fence->Init();
 
         if (RHI_SUCCESS(result))
-            return fence;
+            return std::move(fence);
 
         return Unexpected(ConvertResult(result));
     }
@@ -39,7 +37,7 @@ namespace Vulkan
         VkResult      result = image->Init(allocationDesc, desc);
 
         if (RHI_SUCCESS(result))
-            return image;
+            return std::move(image);
 
         return Unexpected(ConvertResult(result));
     }
@@ -50,7 +48,7 @@ namespace Vulkan
         VkResult          result    = imageView->Init(static_cast<const Image&>(image), desc);
 
         if (RHI_SUCCESS(result))
-            return imageView;
+            return std::move(imageView);
 
         return Unexpected(ConvertResult(result));
     }
@@ -61,7 +59,7 @@ namespace Vulkan
         VkResult       result = buffer->Init(allocationDesc, desc);
 
         if (RHI_SUCCESS(result))
-            return buffer;
+            return std::move(buffer);
 
         return Unexpected(ConvertResult(result));
     }
@@ -72,7 +70,7 @@ namespace Vulkan
         VkResult           result     = bufferView->Init(static_cast<const Buffer&>(buffer), desc);
 
         if (RHI_SUCCESS(result))
-            return bufferView;
+            return std::move(bufferView);
 
         return Unexpected(ConvertResult(result));
     }
@@ -83,7 +81,7 @@ namespace Vulkan
         VkResult        result  = sampler->Init(desc);
 
         if (RHI_SUCCESS(result))
-            return sampler;
+            return std::move(sampler);
 
         return Unexpected(ConvertResult(result));
     }
@@ -177,7 +175,7 @@ namespace Vulkan
         createInfo.pNext                           = nullptr;
         createInfo.flags                           = 0;
         createInfo.image                           = image.GetHandle();
-        createInfo.viewType                        = ConvertImageType(desc.type);
+        createInfo.viewType                        = ConvertImageViewType(desc.type, desc.range.arraySize != 1);
         createInfo.format                          = ConvertFormat(desc.format);
         createInfo.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
         createInfo.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -239,6 +237,26 @@ namespace Vulkan
         vkDestroySampler(m_pDevice->GetHandle(), m_handle, nullptr);
     }
 
+    VkFilter ConvertFilter(ESamplerFilter filter)
+    {
+
+    }
+
+    VkSamplerMipmapMode ConvertMipMapMode(ESamplerFilter filter)
+    {
+
+    }
+
+    VkSamplerAddressMode ConvertAddressMode(ESamplerAddressMode addressMode)
+    {
+        
+    }
+
+    VkCompareOp ConvertCompareOp(ESamplerCompareOp compareOp)
+    {
+
+    }
+
     VkResult Sampler::Init(const SamplerDesc& desc)
     {
         VkSamplerCreateInfo createInfo{};
@@ -247,19 +265,28 @@ namespace Vulkan
         createInfo.flags                   = 0;
         createInfo.magFilter               = ConvertFilter(desc.filter);
         createInfo.minFilter               = ConvertFilter(desc.filter);
-        createInfo.mipmapMode              = ConvertFilterToSamplerMipmapMode(desc.filter);
+        createInfo.mipmapMode              = ConvertMipMapMode(desc.filter);
         createInfo.addressModeU            = ConvertAddressMode(desc.addressU);
         createInfo.addressModeV            = ConvertAddressMode(desc.addressV);
         createInfo.addressModeW            = ConvertAddressMode(desc.addressW);
         createInfo.mipLodBias              = desc.mipLodBias;
-        createInfo.anisotropyEnable        = (desc.maxAnisotropy > 0.0f) ? VK_TRUE : VK_FALSE;
+        createInfo.anisotropyEnable        = VK_FALSE;
         createInfo.maxAnisotropy           = desc.maxAnisotropy;
-        createInfo.compareEnable           = IsCompareEnable(desc.compare);
+        createInfo.compareEnable           = VK_TRUE;
         createInfo.compareOp               = ConvertCompareOp(desc.compare);
         createInfo.minLod                  = desc.minLod;
         createInfo.maxLod                  = desc.maxLod;
         createInfo.borderColor             = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
         createInfo.unnormalizedCoordinates = VK_TRUE;
+
+        if(desc.maxAnisotropy != 0.0f)
+        {
+            createInfo.magFilter               = VK_FILTER_LINEAR;
+            createInfo.minFilter               = VK_FILTER_LINEAR;
+            createInfo.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+            createInfo.anisotropyEnable        = VK_TRUE;
+            createInfo.maxAnisotropy           = desc.maxAnisotropy;
+        }
         
         return vkCreateSampler(m_pDevice->GetHandle(), &createInfo, nullptr, &m_handle);
     }

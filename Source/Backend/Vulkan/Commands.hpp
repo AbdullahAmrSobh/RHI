@@ -1,5 +1,6 @@
 #pragma once
 #include "RHI/Commands.hpp"
+#include "Backend/Vulkan/RenderPass.hpp"
 #include "Backend/Vulkan/Resource.hpp"
 
 namespace RHI
@@ -34,6 +35,7 @@ namespace Vulkan
 
     private:
         class CommandAllocator* m_pParantAllocator;
+        const Framebuffer*      m_renderTarget;
     };
 
     enum class ECommandPrimaryTask

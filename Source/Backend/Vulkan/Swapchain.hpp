@@ -1,52 +1,55 @@
 #pragma once
-#include "RHI/Device.hpp"
 #include "RHI/Swapchain.hpp"
-
-#include <vulkan/vulkan.h>
-
 #include "Backend/Vulkan/Resource.hpp"
+
 
 namespace RHI
 {
 namespace Vulkan
 {
-
+    class Instance;
+    
     class Surface final
         : public ISurface
         , public DeviceObject<VkSurfaceKHR>
     {
     public:
         ~Surface();
-        
+
+#ifdef RHI_WINDOWS
         VkResult Init(const Win32SurfaceDesc& desc);
-        
+#elif defined(RHI_LINUX)
+        VkResult Init(const X11SurfaceDesc& desc);
+#endif
+
         VkBool32 QueueSupportPresent(const class Queue& queue) const;
 
         std::vector<VkSurfaceFormatKHR> GetSupportedFormats();
-        
+
         std::vector<VkPresentModeKHR> GetSupportedPresentModes();
 
         VkSurfaceCapabilities2KHR GetCapabilities2();
-        
+
         static VkSurfaceFormatKHR SelectFormat(const std::vector<VkSurfaceFormatKHR>& formats);
-        
+
         static VkExtent2D ClampExtent(VkExtent2D actualExtent, VkExtent2D currentExtent, VkExtent2D minImageExtent, VkExtent2D maxImageExtent);
 
         static VkPresentModeKHR SelectPresentMode(const std::vector<VkPresentModeKHR>& presentModes);
-    
+
     private:
         Instance* m_pInstance;
+        Device*   m_pDevice;
     };
-    
+
     class Swapchain final
         : public ISwapchain
         , public DeviceObject<VkSwapchainKHR>
     {
     public:
         ~Swapchain();
-        
+
         const std::vector<Image*>& GetBackImages() const;
-        
+
         VkResult Init(const SwapchainDesc& desc);
 
         // Swap the back buffers
@@ -56,7 +59,7 @@ namespace Vulkan
 
     private:
         VkResult InitBackbuffers();
-        
+
         // Operations must wait on that semaphore,
         // before using the current swapchain Image.
         Semaphore m_ImageAcquiredSemaphore;
