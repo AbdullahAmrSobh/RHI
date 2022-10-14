@@ -1,7 +1,7 @@
 #pragma once
 #include "RHI/Common.hpp"
 
-#ifdef RHI_WINDOWs
+#ifdef RHI_WINDOWS
 #include <windows.h>
 namespace RHI
 {

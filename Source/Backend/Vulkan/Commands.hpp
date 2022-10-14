@@ -9,26 +9,26 @@ namespace Vulkan
 {
     class Semaphore;
     class CommandAllocator;
-    
+
     class CommandBuffer final
         : public ICommandBuffer
         , public DeviceObject<VkCommandBuffer>
     {
     public:
-        CommandBuffer(Device& device, CommandAllocator* pParantAllocator, VkCommandBuffer handle)
+        CommandBuffer(const Device& device, CommandAllocator* pParantAllocator, VkCommandBuffer handle)
             : DeviceObject(&device, handle)
             , m_pParantAllocator(pParantAllocator)
         {
         }
-        
+
         ~CommandBuffer();
 
         virtual void Begin() override;
         virtual void End() override;
-
+        
         virtual void SetViewports(const std::vector<Viewport>& viewports) override;
         virtual void SetScissors(const std::vector<Rect>& scissors) override;
-
+        
         virtual void Submit(const DrawCommand& drawCommand) override;
         virtual void Submit(const CopyCommand& copyCommand) override;
         virtual void Submit(const DispatchCommand& dispatchCommand) override;
@@ -48,11 +48,18 @@ namespace Vulkan
     class CommandAllocator final : public DeviceObject<VkCommandPool>
     {
     public:
-        CommandAllocator();
+        static Result<Unique<CommandAllocator>> Create(const Device& device);
+        
+        CommandAllocator(const Device& device)
+            : DeviceObject(&device)
+        {
+        }
+        
         ~CommandAllocator();
-
+        
+        
         VkResult Init(ECommandPrimaryTask task);
-
+        
         VkResult Reset();
 
         Unique<CommandBuffer> AllocateCommandBuffer();

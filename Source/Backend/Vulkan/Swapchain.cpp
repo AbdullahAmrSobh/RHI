@@ -12,17 +12,19 @@ namespace RHI
 namespace Vulkan
 {
 
+
 #ifdef RHI_LINUX
-
-
-
+    Expected<Unique<ISurface>> Instance::CreateSurface(const struct X11SurfaceDesc& desc)
+    {
+        return Unexpected(EResultCode::Fail);
+    }
+    
+    
     VkResult Surface::Init(const X11SurfaceDesc& desc)
     {
         return VK_ERROR_UNKNOWN;
     }
-
 #elif defined(RHI_WINDOWS)
-
     Expected<Unique<ISurface>> Instance::CreateSurface(const Win32SurfaceDesc& desc)
     {
         Unique<Surface> surface = CreateUnique<Surface>(*this);

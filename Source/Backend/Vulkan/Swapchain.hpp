@@ -2,7 +2,6 @@
 #include "RHI/Swapchain.hpp"
 #include "Backend/Vulkan/Resource.hpp"
 
-
 namespace RHI
 {
 namespace Vulkan
@@ -23,9 +22,9 @@ namespace Vulkan
 #endif
 
         VkBool32 QueueSupportPresent(const class Queue& queue) const;
-
+        
         std::vector<VkSurfaceFormatKHR> GetSupportedFormats();
-
+        
         std::vector<VkPresentModeKHR> GetSupportedPresentModes();
 
         VkSurfaceCapabilities2KHR GetCapabilities2();
@@ -51,18 +50,28 @@ namespace Vulkan
         const std::vector<Image*>& GetBackImages() const;
 
         VkResult Init(const SwapchainDesc& desc);
+        
+        inline VkResult* GetLastPresentResult() 
+        {
+            return &m_lastPresentResult;
+        }
 
+        inline Semaphore& GetBackbufferReadSemaphore() 
+        {
+            return m_imageAcquiredSemaphore;
+        }
+        
         // Swap the back buffers
-        virtual EResultCode SwapBuffers() override;
-        virtual EResultCode Resize(Extent2D newExtent) override;
+        virtual EResultCode SwapBuffers            () override;
+        virtual EResultCode Resize                 (Extent2D newExtent) override;
         virtual EResultCode SetFullscreenExeclusive(bool enable = true) override;
-
+    
     private:
         VkResult InitBackbuffers();
-
+        
         // Operations must wait on that semaphore,
         // before using the current swapchain Image.
-        Semaphore m_ImageAcquiredSemaphore;
+        Semaphore m_imageAcquiredSemaphore;
     };
 
 } // namespace Vulkan

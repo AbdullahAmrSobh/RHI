@@ -1,9 +1,9 @@
 #pragma once
-#include "RHI/Common.hpp"
 #include "RHI/FrameGraph.hpp"
-#include "RHI/Swapchain.hpp"
-#include "Backend/Vulkan/RenderPass.hpp"
-#include "Backend/Vulkan/Resource.hpp"
+
+#include "Backend/Vulkan/Commands.hpp"
+#include "Backend/Vulkan/Common.hpp"
+#include "Backend/Vulkan/Device.hpp"
 
 namespace RHI
 {
@@ -15,28 +15,34 @@ namespace Vulkan
         RenderPass* pRenderPass;
         uint32_t    subpassIndex;
     };
-    
+
     class Pass final : public IPass
     {
     public:
         Pass();
         ~Pass();
 
-        virtual EResultCode Submit() override;
+        VkResult Init();
 
     private:
-        Unique<Framebuffer> m_framebuffer;
+        const Device*            m_pDevice;
+        RenderPass*              m_pRenderPass;
+        Unique<Framebuffer>      m_framebuffer;
+        Unique<CommandAllocator> m_commandAllocator;
     };
 
     class FrameGraph final : public IFrameGraph
     {
     public:
-        FrameGraph();
+        FrameGraph(const Device& device);
         ~FrameGraph();
 
-        virtual Unique<IPass> AddRenderPass(std::string_view name, EHardwareQueueType queueType) override;
-        virtual void          BeginFrameInternal() override;
-        virtual void          EndFrameInternal() override;
+        VkResult Init();
+
+        virtual void Submit(const IPass& pass) override;
+
+    private:
+        const Device* m_pDevice;
     };
 
 } // namespace Vulkan

@@ -1,8 +1,4 @@
 #pragma once
-#include <cstddef>
-#include <cstdint>
-#include <vector>
-
 #include "RHI/Common.hpp"
 #include "RHI/Format.hpp"
 #include "RHI/Memory.hpp"
@@ -211,7 +207,7 @@ public:
     virtual ~IBuffer() = default;
 };
 
-struct BufferViewRange
+struct BufferRange
 {
     size_t byteOffset;
     size_t byteRange;
@@ -219,8 +215,8 @@ struct BufferViewRange
 
 struct BufferViewDesc
 {
-    EFormat         format;
-    BufferViewRange range;
+    EFormat     format;
+    BufferRange range;
 };
 
 class IBufferView

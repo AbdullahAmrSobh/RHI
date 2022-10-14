@@ -15,8 +15,12 @@ layout(location = 1) in vec3 inVertColor;
 
 layout(location = 0) out vec3 outPixelColor;
 
-void vertexFn() {
+
+struct VertexInput {};
+
+void vertexFn(VertexInput data) {
 }
 
 void pixelFn() {
+
 }

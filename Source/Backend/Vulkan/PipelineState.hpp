@@ -1,21 +1,27 @@
 #pragma once
 #include "RHI/PipelineState.hpp"
 #include "Backend/Vulkan/Resource.hpp"
+#include "Backend/Vulkan/ShaderResourceGroup.hpp"
 
 namespace RHI
 {
 namespace Vulkan
 {
-    class DescriptorSetLayout;
-    
     class PipelineLayout final : public DeviceObject<VkPipelineLayout>
     {
     public:
+        static Result<Unique<PipelineLayout>> CreatePipelineLayout(const Device& device, PipelineLayoutDesc& layoutDesc);
+
+        PipelineLayout(const Device& device)
+            : DeviceObject(&device)
+        {
+        }
+
         ~PipelineLayout();
 
         VkResult Init(const PipelineLayoutDesc& layoutDesc);
 
-        size_t GetHash() const
+        inline size_t GetHash() const
         {
             return m_hash;
         }
@@ -27,9 +33,10 @@ namespace Vulkan
 
     private:
         size_t                                   m_hash;
+        std::vector<VkPushConstantRange>         m_pushConstantRanges;
         std::vector<Unique<DescriptorSetLayout>> m_descriptorSetsLayouts;
     };
-
+    
     class PipelineState final
         : public IPipelineState
         , public DeviceObject<VkPipeline>
@@ -47,7 +54,7 @@ namespace Vulkan
 
     private:
         // std::shared_ptr<Internal::RenderPass> m_renderPass;
-        std::shared_ptr<PipelineLayout> m_layout;
+        Shared<PipelineLayout> m_layout;
     };
 
 } // namespace Vulkan

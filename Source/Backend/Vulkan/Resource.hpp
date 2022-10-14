@@ -12,19 +12,19 @@ namespace Vulkan
     class DeviceObject
     {
     public:
-        DeviceObject(Device* pDevice, T handle = VK_NULL_HANDLE)
+        DeviceObject(const Device* pDevice, T handle = VK_NULL_HANDLE)
             : m_pDevice(pDevice)
             , m_handle(handle)
         {
         }
-
+        
         inline T GetHandle() const
         {
             return m_handle;
         }
-
+    
     protected:
-        Device* m_pDevice;
+        const Device* m_pDevice;
         T       m_handle;
     };
 
@@ -32,7 +32,7 @@ namespace Vulkan
     class Resource : public DeviceObject<T>
     {
     public:
-        Resource(Device* pDevice, T handle = VK_NULL_HANDLE, VmaAllocation allocation = VK_NULL_HANDLE)
+        Resource(const Device* pDevice, T handle = VK_NULL_HANDLE, VmaAllocation allocation = VK_NULL_HANDLE)
             : DeviceObject<T>(pDevice, handle)
             , m_allocation(allocation)
         {

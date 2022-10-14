@@ -205,10 +205,63 @@ namespace Vulkan
         // createInfo.vulkanApiVersion = VK_VERSION_1_2;
         return vmaCreateAllocator(&createInfo, &m_allocator);
     }
-
+    
     EResultCode Device::WaitIdle() const
     {
         return ConvertResult(vkDeviceWaitIdle(m_device));
+    }
+
+    VkResult Queue::Present(const PresentRequest& presentRequest)
+    {
+        std::vector<VkSemaphore>    waitSemaphoresHandles;
+        std::vector<VkSwapchainKHR> swapchainsHandles;
+        std::vector<uint32_t>       imageIndices;
+        std::vector<VkResult>       results;
+        
+        for (auto swapchain : presentRequest.swapchains)
+        {
+            imageIndices.push_back(swapchain->GetCurrentBackBufferIndex());
+            waitSemaphoresHandles.push_back(swapchain->GetBackbufferReadSemaphore());
+            swapchainsHandles.push_back(swapchain->GetHandle());
+            results.push_back(VkResult());
+        }
+
+        results.resize(presentRequest.size());
+        imageIndices.resize(presentRequest.size());
+        
+        VkPresentInfoKHR presentInfo;
+        presentInfo.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        presentInfo.pNext              = nullptr;
+        presentInfo.waitSemaphoreCount = CountElements(waitSemaphoresHandles);
+        presentInfo.pWaitSemaphores    = signalSemaphoresHandles.data();
+        presentInfo.swapchainCount     = CountElements(swapchainsHandles);
+        presentInfo.pSwapchains        = swapchainsHandles.data();
+        presentInfo.pImageIndices      = imageIndices.data();
+        presentInfo.pResults           = results.data();
+
+        return vkQueuePresentKHR(m_queue, &presentInfo);
+    }
+
+    VkResult Queue::Submit(const std::vector<Queue::SubmitRequest>& submitRequests)
+    {
+        std::vector<VkSubmitInfo2> submitInfos;
+        submitRequests.reserve(SubmitRequest.size());
+
+        for (const auto& submitRequest : submitRequests)
+        {
+            VkSubmitInfo2 submitInfo;
+            submitInfo.sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+            submitInfo.pNext                    = nullptr;
+            submitInfo.flags                    = 0;
+            submitInfo.waitSemaphoreInfoCount   = CountElements(submitRequest.waitSemaphores);
+            submitInfo.pWaitSemaphoreInfos      = submitRequest.waitSemaphores.data();
+            submitInfo.commandBufferInfoCount   = CountElements(submitRequest.commandBuffers);
+            submitInfo.pCommandBufferInfos      = submitRequest.commandBuffers.data();
+            submitInfo.signalSemaphoreInfoCount = CountElements(submitRequest.signalSemaphores);
+            submitInfo.pSignalSemaphoreInfos    = submitRequest.signalSemaphores.data();
+        }
+
+        return vkQueueSubmit2(m_handle, CountElements(submitInfo), submitInfo.data());
     }
 
 } // namespace Vulkan

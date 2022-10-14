@@ -20,10 +20,13 @@ class IImageView;
 struct PipelineCommand
 {
     PipelineCommand(const IPipelineState& pipelineState);
-
-    void BindShaderResourceGroup(std::string_view groupName, const IShaderResourceGroup& group);
-
-    std::vector<IShaderResourceGroup> resourceGroup;
+    
+    inline void BindShaderResourceGroup(const std::string& groupName, const IShaderResourceGroup& group)
+    {
+        boundResourceGroups[groupName] = &group;
+    }
+    
+    std::unordered_map<std::string, const IShaderResourceGroup*> boundResourceGroups;
     IPipelineState*                   pPipelineState;
 };
 
@@ -130,8 +133,8 @@ struct CopyCommand
 
     struct CopyBuffer
     {
-        IBuffer*        pBuffer;
-        BufferViewRange bufferRange;
+        IBuffer*    pBuffer;
+        BufferRange bufferRange;
     };
 
     union

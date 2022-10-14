@@ -14,20 +14,26 @@
 
 #define ASSERT_VALUE(exception) exception.or_else([](RHI::EResultCode resultCode) { assert(resultCode == RHI::EResultCode::Success); }).value_or(nullptr)
 
-std::vector<std::byte> ReadBinFile(std::string filepath)
+std::vector<std::byte> ReadBinFile(std::string_view path)
 {
     std::vector<std::byte> buffer;
     return buffer;
 }
 
+struct Mesh 
+{
+    std::vector<float>    vertexBufferData; 
+    std::vector<uint32_t> indexBufferData;  
+};
+
+Mesh LoadMesh(std::string_view path) 
+{
+    return Mesh();
+}
+
 class RHIDebugCallbacks final : public RHI::IDebugCallbacks
 {
 public:
-    RHIDebugCallbacks()                         = default;
-    RHIDebugCallbacks(RHIDebugCallbacks&&)      = delete;
-    RHIDebugCallbacks(const RHIDebugCallbacks&) = delete;
-    ~RHIDebugCallbacks()                        = default;
-
     virtual void Log(std::string_view message) override
     {
         std::cout << "Debug messenger: " << message << std::endl;
@@ -49,54 +55,26 @@ public:
     }
 };
 
-class PrimaryRenderPass final : public RHI::Pass::Callbacks
+class PrimaryRenderPass final : public RHI::PassCallbacks
 {
 public:
-    virtual void Setup(RHI::FrameGraph::Builder& frameGraph) override
+    virtual void Setup(FrameGraphBuilder& builder)     override
     {
-        RHI::ImagePassAttachmentDesc colorAttachment;
-        colorAttachment.id                          = "a_swapchainImage";
-        colorAttachment.view.viewAspect             = RHI::EImageViewAspectFlagBits::Color;
-        colorAttachment.view.format                 = RHI::EFormat::Undefined;
-        colorAttachment.view.type                   = RHI::EImageType::Type2D;
-        colorAttachment.view.range.arraySize        = 1;
-        colorAttachment.view.range.baseArrayElement = 0;
-        colorAttachment.view.range.mipLevelsCount   = 1;
-        colorAttachment.view.range.baseMipLevel     = 0;
+        RHI::ImagePassAttachmentDesc passAttachmentDesc;
+        passAttachmentDesc.attachmentReference;
+        passAttachmentDesc.loadStoreOps;
+        passAttachmentDesc.view;
 
-        frameGraph.UseColorAttachment(colorAttachment, RHI::EAccess::ReadWrite);
-
-        RHI::ImagePassAttachmentDesc depthAttachment;
-        frameGraph.UseColorAttachment(depthAttachment, RHI::EAccess::ReadWrite);
     }
-
-    virtual void BindAttachments(RHI::AttachmentsBindingContext& context) override
+    
+    virtual void Compile(PassCompileContext& context)  override
     {
-        RHI::IShaderResourceGroup::Data data;
-        auto                            pImageView = context.GetImageView("a_swapchainImage");
-        data.BindImage(RHI::ShaderBindingIndex(0), *pImageView);
-        m_pShaderResourceGroup->BindData(data);
     }
-
-    virtual void Execute(RHI::ExecuteContext& context) override
+    
+    virtual void Execute(PassExecuteContext& context)  override
     {
-        auto& commandBuffer = context.GetCommandBuffer();
-
-        commandBuffer.Begin();
-        std::vector<RHI::Viewport> viewports = {};
-        std::vector<RHI::Rect>     scissors  = {};
-        commandBuffer.SetViewports(viewports);
-        commandBuffer.SetScissors(scissors);
-        RHI::DrawCommand drawCommand{
-            *m_pPipelineState,
-            RHI::DrawCommand::IndexedData{},
-        };
-        commandBuffer.Submit(drawCommand);
-        commandBuffer.End();
     }
-
-    RHI::IPipelineState*       m_pPipelineState;
-    RHI::IShaderResourceGroup* m_pShaderResourceGroup;
+    
 };
 
 class Renderer
@@ -122,14 +100,14 @@ public:
         {
             RHI::X11SurfaceDesc        surfaceDesc;
             RHI::Unique<RHI::ISurface> surface = ASSERT_VALUE(m_instance->CreateSurface(surfaceDesc));
-
+            
             RHI::SwapchainDesc swapchainDesc;
             swapchainDesc.backImagesCount          = 2;
             swapchainDesc.extent                   = {640, 480};
             swapchainDesc.pSurface                 = m_surface.get();
             RHI::Unique<RHI::ISwapchain> swapchain = ASSERT_VALUE(m_device->CreateSwapChain(swapchainDesc));
         }
-
+        
         std::vector<float>    vertexBufferData;
         std::vector<uint32_t> indexBufferData;
 
@@ -182,31 +160,36 @@ public:
 
             m_pipeline = ASSERT_VALUE(m_device->CreateGraphicsPipelineState(pipelineDesc));
         }
-
+        
         // Create shader resource group allocator
         {
             m_shaderResourceGroupAllocator = ASSERT_VALUE(m_device->CreateShaderResourceGroupAllocator());
         }
+        
 
+        // Create the frameGraph. 
         {
             m_frameGraph   = ASSERT_VALUE(m_device->CreateFrameGraph());
-            auto& database = m_frameGraph->GetDatabase();
-            database.UseSwapchainImage("a_swapchainImage)", *m_swapchain);
+
+
+            // Import the swapchain as an imageAttachment. 
             
-            m_pPrimaryPass = &m_frameGraph->AddRenderPass("PrimaryRenderPass", RHI::EHardwareQueueType::Graphics);
+
+            ImageAttachmentReference swapchainAttachment = m_frameGraph->ImportSwapchain("SwapchainImage", *m_swapchain);
+            
+            m_pPrimaryPass = ASSERT_VALUE(m_frameGraph->CreatePass("PrimaryRenderPass", RHI::EHardwareQueueType::Graphics));
             m_pPrimaryPass->SetCallbacks(m_primaryPassCallbacks);
         }
     };
-
-    void Shutdown(){
-
-    };
-
+    
     void OnFrame()
     {
-        m_frameGraph->BeginFrame();
-        m_pPrimaryPass->Submit();
-        m_frameGraph->EndFrame();
+        m_frameGraph.Begin();
+        
+        // Must be called per render pass to submit this render pass for execution. 
+        m_frameGraph.Submit(m_pPrimaryPass);
+        
+        m_frameGraph.End();
     };
 
 private:

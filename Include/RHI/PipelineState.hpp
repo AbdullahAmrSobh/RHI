@@ -74,7 +74,7 @@ struct GraphicsPipelineStateDesc
     std::vector<GraphicsPipelineVertexAttributeState> vertexInputAttributes;
     GraphicsPipelineRasterizationState                rasterizationState;
     GraphicsPipelineColorBlendState                   colorBlendState;
-    GraphicsPipelineRasterizationState                depthStencil;
+    GraphicsPipelineDepthStencilState                 depthStencil;
 };
 
 class IPipelineState

@@ -4,7 +4,7 @@
 namespace RHI
 {
     
-class RenderTargetLayout;
+struct RenderTargetLayout;
 
 namespace Vulkan
 {
@@ -17,7 +17,7 @@ namespace Vulkan
             std::vector<VkSubpassDescription>    subpassesDescs;
             std::vector<VkSubpassDependency>     dependencies;
         };
-
+        
         static Result<Unique<RenderPass>> Create(Device& device, const Desc& desc);
     };
 

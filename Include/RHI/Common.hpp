@@ -12,7 +12,9 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
+#include <cassert>
+#include <optional>
+#include <iterator>
 
 #include "RHI/Core/Expected.hpp"
 #include "RHI/Core/Span.hpp"
@@ -20,11 +22,7 @@
 // #include "RHI/Core/Span.hpp"
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-#ifdef _WIN64
-#define RHI_WINDOWS
-#else
-#error "WIN32 platforms are not supported"
-#endif
+#define RHI_WINDOWS 1
 #elif __APPLE__
 #error "Apple Platforms are not supported yet"
 #elif __ANDROID__
@@ -49,7 +47,9 @@ enum class EResultCode
     ExtensionNotAvailable,
     InvalidArguments,
     FeatureNotAvailable,
+    InvalidObject, 
     FrameGraphCycle,
+
 };
 
 // template <class T, size_t S = nonstd::dynamic_extent>

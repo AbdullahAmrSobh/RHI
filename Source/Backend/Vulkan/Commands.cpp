@@ -9,6 +9,8 @@ namespace RHI
 namespace Vulkan
 {
 
+    CommandBuffer::~CommandBuffer() {}
+
     void CommandBuffer::Begin()
     {
         VkCommandBufferBeginInfo beginInfo = {};
@@ -70,33 +72,36 @@ namespace Vulkan
 
     void CommandBuffer::Submit(const CopyCommand& copyCommand)
     {
-        if (copyCommand.destinationResourceType == EResourceType::Buffer && copyCommand.sourceResourceType == EResourceType::Buffer)
-        {
-            Buffer&           srcBuffer = static_cast<Buffer&>(*copyCommand.srcBuffer.pBuffer);
-            Buffer&           dstBuffer = static_cast<Buffer&>(*copyCommand.dstBuffer.pBuffer);
-            VkCopyBufferInfo2 copyInfo;
-            // copyInfo.sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2;
-            // copyInfo.pNext = nullptr;
-            // copyInfo.srcBuffer = srcBuffer.GetHandle();
-            // copyInfo.dstBuffer = dstBuffer.GetHandle();
-            // copyInfo.regionCount;
-            // copyInfo.pRegions;
-        }
-        else if (copyCommand.destinationResourceType == EResourceType::Buffer && copyCommand.sourceResourceType == EResourceType::Image)
-        {
-            VkCopyImageToBufferInfo2 copyInfo;
-        }
-        else if (copyCommand.destinationResourceType == EResourceType::Image && copyCommand.sourceResourceType == EResourceType::Image)
-        {
-            VkCopyImageInfo2 copyInfo;
-        }
-        else if (copyCommand.destinationResourceType == EResourceType::Image && copyCommand.sourceResourceType == EResourceType::Buffer)
-        {
-            VkCopyImageToBufferInfo2 copyInfo;
-        }
+        // if (copyCommand.destinationResourceType == EResourceType::Buffer && copyCommand.sourceResourceType == EResourceType::Buffer)
+        // {
+        //     Buffer&           srcBuffer = static_cast<Buffer&>(*copyCommand.srcBuffer.pBuffer);
+        //     Buffer&           dstBuffer = static_cast<Buffer&>(*copyCommand.dstBuffer.pBuffer);
+        //     VkCopyBufferInfo2 copyInfo {};
+        //     copyInfo.sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2_KHR;
+        //     copyInfo.pNext = nullptr;
+        //     copyInfo.srcBuffer = srcBuffer.GetHandle();
+        //     copyInfo.dstBuffer = dstBuffer.GetHandle();
+        //     copyInfo.regionCount;
+        //     copyInfo.pRegions;
+        // }
+        // else if (copyCommand.destinationResourceType == EResourceType::Buffer && copyCommand.sourceResourceType == EResourceType::Image)
+        // {
+        //     VkCopyImageToBufferInfo2 copyInfo;
+        // }
+        // else if (copyCommand.destinationResourceType == EResourceType::Image && copyCommand.sourceResourceType == EResourceType::Image)
+        // {
+        //     VkCopyImageInfo2 copyInfo;
+        // }
+        // else if (copyCommand.destinationResourceType == EResourceType::Image && copyCommand.sourceResourceType == EResourceType::Buffer)
+        // {
+        //     VkCopyImageToBufferInfo2 copyInfo;
+        // }
     }
 
-    void CommandBuffer::Submit(const DispatchCommand& dispatchCommand) {}
+    void CommandBuffer::Submit(const DispatchCommand& dispatchCommand)
+    {
+        // TODO
+    }
 
     CommandAllocator::~CommandAllocator()
     {
@@ -127,7 +132,17 @@ namespace Vulkan
 
     Unique<CommandBuffer> CommandAllocator::AllocateCommandBuffer()
     {
-        return nullptr;
+        VkCommandBufferAllocateInfo allocateInfo = {};
+        allocateInfo.sType                       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocateInfo.pNext                       = nullptr;
+        allocateInfo.commandPool                 = m_handle;
+        allocateInfo.level                       = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocateInfo.commandBufferCount          = 1;
+
+        VkCommandBuffer handle = VK_NULL_HANDLE;
+        vkAllocateCommandBuffers(m_pDevice->GetHandle(), &allocateInfo, &handle);
+
+        return CreateUnique<CommandBuffer>(*m_pDevice, this, handle);
     }
 
     std::vector<CommandBuffer> CommandAllocator::AllocateCommandBuffers(uint32_t count)
@@ -146,7 +161,7 @@ namespace Vulkan
 
         for (VkCommandBuffer handle : handles)
         {
-            commandBuffers.emplace_back(this, handle);
+            commandBuffers.emplace_back(*m_pDevice, this, handle);
         }
 
         return commandBuffers;

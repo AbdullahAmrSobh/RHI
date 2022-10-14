@@ -98,11 +98,6 @@ namespace Vulkan
         
         return result;
     }
-
-    Expected<Unique<ISurface>> Instance::CreateSurface(const struct X11SurfaceDesc& desc)
-    {
-        return Unexpected(EResultCode::Fail);
-    }
     
     Expected<Unique<IDevice>> Instance::CreateDevice(const IPhysicalDevice& physicalDevice)
     {

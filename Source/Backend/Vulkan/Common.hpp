@@ -4,10 +4,11 @@
 #include <utility>
 #include <vector>
 
-#include "RHI/Core/Expected.hpp"
 #include "RHI/Common.hpp"
+#include "RHI/Core/Expected.hpp"
 #include "RHI/Format.hpp"
 #include "RHI/Resource.hpp"
+
 
 #include "Backend/Vulkan/Vma/vk_mem_alloc.hpp"
 #include <vulkan/vulkan_core.h>
@@ -46,7 +47,6 @@ inline EResultCode ConvertResult(VkResult resultCode)
     }
 }
 
-
 // inline VkImageViewType ConvertImageType(EImageType imageType, bool array)
 // {
 //     static VkImageViewType lookup[] = {VK_IMAGE_VIEW_TYPE_1D, VK_IMAGE_VIEW_TYPE_1D_ARRAY,   VK_IMAGE_VIEW_TYPE_2D,      VK_IMAGE_VIEW_TYPE_2D_ARRAY,
@@ -55,13 +55,13 @@ inline EResultCode ConvertResult(VkResult resultCode)
 //     return lookup[index + (array ? 0 : 1)];
 // }
 
-// VkFormat ConvertFormat(EFormat format);
+VkFormat ConvertFormat(EFormat format);
 
-// uint32_t GetTexelSize(EFormat format);
+uint32_t GetTexelSize(EFormat format);
 
-// uint32_t GetTexelSize(VkFormat format);
+uint32_t GetTexelSize(VkFormat format);
 
-// VkShaderStageFlags CovnertShaderStages(ShaderStageFlags stages);
+VkShaderStageFlags CovnertShaderStages(ShaderStageFlags stages);
 
 // PipelineState
 
@@ -82,10 +82,10 @@ inline VkExtent2D ConvertExtent(Extent2D extent)
     return {extent.sizeX, extent.sizeY};
 }
 
-// inline VkSampleCountFlagBits ConvertSampleCount(ESampleCount sampleCount)
-// {
-//     return static_cast<VkSampleCountFlagBits>(static_cast<uint32_t>(sampleCount));
-// }
+inline VkSampleCountFlagBits ConvertSampleCount(ESampleCount sampleCount)
+{
+    return static_cast<VkSampleCountFlagBits>(static_cast<uint32_t>(sampleCount));
+}
 
 // inline VkImageType ConvertImageType(Extent3D extent)
 // {
@@ -101,7 +101,7 @@ inline VkExtent2D ConvertExtent(Extent2D extent)
 //     {
 //         return VK_IMAGE_TYPE_3D;
 //     }
-// 
+//
 //     return VK_IMAGE_TYPE_MAX_ENUM;
 // }
 
@@ -127,10 +127,8 @@ inline VkRect2D ConvertRect(const Rect& rect)
 
 // VmaAllocationCreateFlags ConvertAllocationUsage(RHI::EMemoryUsage usage);
 
-VkFormat ConvertFormat(EFormat format);
-uint32_t FormatStrideSize(EFormat format);
-uint32_t FormatStrideSize(VkFormat format);
-VkSampleCountFlagBits ConvertSampleCount(ESampleCount sampleCount);
-
+VkFormat              ConvertFormat(EFormat format);
+uint32_t              FormatStrideSize(EFormat format);
+uint32_t              FormatStrideSize(VkFormat format);
 
 } // namespace RHI

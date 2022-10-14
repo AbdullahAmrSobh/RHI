@@ -10,6 +10,8 @@ namespace Vulkan
     class Semaphore;
     class Fence;
     class PipelineLayout;
+    class DescriptorSetLayout;
+    class Swapchain;
 
     class PhysicalDevice final : public IPhysicalDevice
     {
@@ -51,16 +53,15 @@ namespace Vulkan
     public:
         struct PresentRequest
         {
-            Semaphore*  pRenderFinishedSemaphores;
-            ISwapchain* pSwapchain;
+            std::vector<Semaphore*> waitSemaphores;
+            std::vector<Swapchain*> swapchains;
         };
 
         struct SubmitRequest
         {
-            std::vector<VkSemaphore>     waitSemaphores;
-            std::vector<VkCommandBuffer> commandBuffers;
-            std::vector<VkSemaphore>     signalSemaphores;
-            VkSubmitInfo2                submitInfo;
+            std::vector<VkSemaphoreSubmitInfo>     waitSemaphores;
+            std::vector<VkCommandBufferSubmitInfo> commandBuffers;
+            std::vector<VkSemaphoreSubmitInfo>     signalSemaphores;
         };
 
         inline Queue(VkQueue queue, uint32_t familyIndex, uint32_t index)
@@ -82,7 +83,7 @@ namespace Vulkan
 
         bool SupportPresent() const;
 
-        VkResult Submit(const std::vector<SubmitRequest>& submitRequests, Fence* pSignalFence = nullptr);
+        VkResult Submit(const std::vector<SubmitRequest>& submitRequests);
         VkResult Present(const PresentRequest& presentRequest);
 
     private:
@@ -118,9 +119,19 @@ namespace Vulkan
             return m_allocator;
         }
 
+        inline const Queue& GetGraphicsQueue() const
+        {
+            return *m_pGraphicsQueue;
+        }
+
         inline Queue& GetGraphicsQueue()
         {
             return *m_pGraphicsQueue;
+        }
+
+        inline const Queue& GetComputeQueue() const
+        {
+            return *m_pComputeQueue;
         }
 
         inline Queue& GetComputeQueue()
@@ -129,6 +140,11 @@ namespace Vulkan
         }
 
         inline Queue& GetTransferQueue()
+        {
+            return *m_pTransferQueue;
+        }
+
+        inline const Queue& GetTransferQueue() const
         {
             return *m_pTransferQueue;
         }
@@ -151,9 +167,10 @@ namespace Vulkan
         virtual Expected<Unique<IBufferView>>                   CreateBufferView(const IBuffer& buffer, const BufferViewDesc& desc) override;
         virtual Expected<Unique<IFrameGraph>>                   CreateFrameGraph() override;
 
-    private:
-        PipelineLayout FindPipelineLayout(size_t hash);
+        PipelineLayout*      FindPipelineLayout(size_t hash) const;
+        DescriptorSetLayout* FindDescriptorSetLayout(size_t hash) const;
 
+    private:
         EResultCode InitQueues(std::optional<uint32_t> graphicsQueueIndex, std::optional<uint32_t> computeQueueIndex, std::optional<uint32_t> indexQueueIndex);
 
     private:
@@ -165,15 +182,13 @@ namespace Vulkan
 
         std::vector<Queue> m_queues;
 
-        // Pointer to dedicated graphics queue.
+        // Pointer to dedicated queues.
         Queue* m_pGraphicsQueue;
-        // pointer to dedicated compute queue.
         Queue* m_pComputeQueue;
-        // pointer to dedicated transfer queue.
         Queue* m_pTransferQueue;
-
+            
         // Cache for render passes.
-        Unique<RenderPassManager> m_renderPassManager;
+        mutable Unique<RenderPassManager> m_renderPassManager;
     };
 } // namespace Vulkan
 } // namespace RHI

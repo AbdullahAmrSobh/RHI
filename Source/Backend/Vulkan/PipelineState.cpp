@@ -1,9 +1,8 @@
 #include "Backend/Vulkan/PipelineState.hpp"
-#include "RHI/PipelineState.hpp"
+
 #include "Backend/Vulkan/Common.hpp"
 #include "Backend/Vulkan/Device.hpp"
 #include "Backend/Vulkan/RenderPass.hpp"
-#include "Backend/Vulkan/ShaderResourceGroup.hpp"
 
 namespace RHI
 {
@@ -12,7 +11,15 @@ namespace Vulkan
 
     Expected<Unique<IPipelineState>> Device::CreateGraphicsPipelineState(const GraphicsPipelineStateDesc& desc)
     {
-        return Unexpected(EResultCode::Fail);
+        Unique<PipelineState> pipelineState = CreateUnique<PipelineState>(desc);
+        VkResult              result        = pipelineState->Init(desc);
+
+        if (RHI_SUCCESS(result))
+        {
+            return Unexpected(ConvertResult(result));
+        }
+
+        return std::move(pipelineState);
     }
 
     PipelineLayout::~PipelineLayout()
@@ -22,14 +29,15 @@ namespace Vulkan
 
     VkResult PipelineLayout::Init(const PipelineLayoutDesc& layoutDesc)
     {
-        std::vector<VkPushConstantRange> pushConstantRanges;
-
+        
         size_t hash   = 0;
+        
         size_t offset = 0;
-
         for (auto& layout : layoutDesc.shaderBindingGroupLayouts)
         {
             hash = hash_combine(hash, layout.GetHash());
+            
+            // For other resources
 
             for (auto& constants : layout.GetShaderConstantBufferBindings())
             {
@@ -37,16 +45,14 @@ namespace Vulkan
                 VkPushConstantRange range;
                 range.offset = offset;
                 range.size   = constants.byteSize;
-                pushConstantRanges.push_back(range);
+                m_pushConstantRanges.push_back(range);
             }
+
+            
         }
-
-        // layoutDesc.shaderBindingGroupLayouts
-
-        std::transform(m_descriptorSetsLayouts.begin(), m_descriptorSetsLayouts.end(), std::back_insert_iterator(m_descriptorSetsLayouts),
-                       [](const Unique<DescriptorSetLayout>& dsl) { return dsl->GetHandle(); });
-
         std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
+        std::transform(m_descriptorSetsLayouts.begin(), m_descriptorSetsLayouts.end(), std::back_insert_iterator(descriptorSetLayouts),
+                       [](const Unique<DescriptorSetLayout>& dsl) { return dsl->GetHandle(); });
 
         VkPipelineLayoutCreateInfo createInfo = {};
         createInfo.sType                      = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -54,8 +60,8 @@ namespace Vulkan
         createInfo.flags                      = 0;
         createInfo.setLayoutCount             = CountElements(descriptorSetLayouts);
         createInfo.pSetLayouts                = descriptorSetLayouts.data();
-        createInfo.pushConstantRangeCount     = CountElements(pushConstantRanges);
-        createInfo.pPushConstantRanges        = pushConstantRanges.data();
+        createInfo.pushConstantRangeCount     = CountElements(m_pushConstantRanges);
+        createInfo.pPushConstantRanges        = m_pushConstantRanges.data();
 
         return vkCreatePipelineLayout(m_pDevice->GetHandle(), &createInfo, nullptr, &m_handle);
     }
@@ -135,7 +141,7 @@ namespace Vulkan
 
         struct VertexInputState
         {
-            explicit VertexInputState(std::vector<GraphicsPipelineVertexAttributeState> vertexInputAttributes)
+            VertexInputState(std::vector<GraphicsPipelineVertexAttributeState> vertexInputAttributes)
             {
                 bindingDescription.stride = 0;
 
@@ -180,7 +186,7 @@ namespace Vulkan
 
         struct InputAssemblyState
         {
-            explicit InputAssemblyState()
+            InputAssemblyState()
             {
                 state.sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
                 state.pNext                  = nullptr;
@@ -199,7 +205,7 @@ namespace Vulkan
 
         struct TessellationState
         {
-            explicit TessellationState()
+            TessellationState()
             {
 
                 state.sType              = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
@@ -218,7 +224,7 @@ namespace Vulkan
 
         struct ViewportState
         {
-            explicit ViewportState()
+            ViewportState()
             {
                 state.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
                 state.pNext         = nullptr;
@@ -239,7 +245,7 @@ namespace Vulkan
 
         struct RasterizationState
         {
-            explicit RasterizationState(const GraphicsPipelineRasterizationState& rasterStateDesc)
+            RasterizationState(const GraphicsPipelineRasterizationState& rasterStateDesc)
             {
                 state.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
                 state.pNext = nullptr;
@@ -270,7 +276,7 @@ namespace Vulkan
 
         struct MultisampleState
         {
-            explicit MultisampleState(ESampleCount sampleCount)
+            MultisampleState(ESampleCount sampleCount)
             {
                 state.sType                 = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
                 state.pNext                 = nullptr;
@@ -293,7 +299,7 @@ namespace Vulkan
 
         struct DepthStencilState
         {
-            explicit DepthStencilState(const GraphicsPipelineStateDesc& depthStencil)
+            DepthStencilState(const GraphicsPipelineDepthStencilState& depthStencil)
             {
                 state.sType                 = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
                 state.pNext                 = nullptr;
@@ -319,7 +325,7 @@ namespace Vulkan
 
         struct ColorBlendState
         {
-            explicit ColorBlendState(const GraphicsPipelineColorBlendState& stateDesc)
+            ColorBlendState(const GraphicsPipelineColorBlendState& stateDesc)
             {
                 state.sType             = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
                 state.pNext             = nullptr;
@@ -345,7 +351,7 @@ namespace Vulkan
 
         struct DynamicState
         {
-            explicit DynamicState()
+            DynamicState()
             {
                 VkDynamicState dynamicStates[] = {
                     VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR,

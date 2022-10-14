@@ -35,6 +35,12 @@ using ShaderBindingIndex = uint32_t;
 
 struct ShaderBindingReference
 {
+    ShaderBindingReference(ShaderBindingIndex index, std::string_view name)
+        : index(index)
+        , name(name)
+    {
+    }
+
     std::string_view   name;
     ShaderBindingIndex index = UINT32_MAX;
 };
@@ -127,6 +133,11 @@ public:
         void*  pConstantData;
     };
 
+    inline const ShaderResourceGroupLayout& GetLayout() const
+    {
+        return *m_pLayout;
+    }
+
     inline const std::map<ShaderBindingIndex, std::vector<IImageView*>>& GetImageBinds() const
     {
         return m_imageBinds;
@@ -158,7 +169,7 @@ public:
     {
         m_imageBinds[bindingReference.index] = images;
     }
-
+    // TODO Take BufferRangeView
     inline void BindBuffers(const ShaderBindingReference& bindingReference, const std::vector<IBuffer*>& buffers)
     {
         m_buffersBinds[bindingReference.index] = buffers;
@@ -181,6 +192,7 @@ public:
     }
 
 private:
+    ShaderResourceGroupLayout*                              m_pLayout;
     std::map<ShaderBindingIndex, std::vector<IImageView*>>  m_imageBinds;
     std::map<ShaderBindingIndex, std::vector<IBuffer*>>     m_buffersBinds;
     std::map<ShaderBindingIndex, std::vector<IBufferView*>> m_texelBufferBinds;
@@ -229,7 +241,7 @@ class IShaderResourceGroupAllocator
 public:
     ~IShaderResourceGroupAllocator() = default;
 
-    virtual Expected<Unique<IShaderResourceGroup>> Allocate(const ShaderResourceGroupLayout& layout) const = 0;
+    virtual Expected<Unique<IShaderResourceGroup>> Allocate(const ShaderResourceGroupLayout& layout) = 0;
 };
 
 } // namespace RHI
