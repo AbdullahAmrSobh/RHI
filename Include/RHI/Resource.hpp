@@ -131,12 +131,15 @@ enum class EImageUsageFlagBits
 };
 using ImageUsageFlags = Flags<EImageUsageFlagBits>;
 
-enum class EImageType
+enum class EImageViewType
 {
     Type1D,
+    Type1DArray,
     Type2D,
+    Type2DArray,
     Type3D,
-    TypeCubeMap
+    TypeCubeMap,
+    TypeCubeMapArray
 };
 
 struct ImageDesc
@@ -175,7 +178,7 @@ using ImageViewAspectFlags = Flags<EImageViewAspectFlagBits>;
 struct ImageViewDesc
 {
     EFormat              format;
-    EImageType           type;
+    EImageViewType       type;
     ImageViewAspectFlags viewAspect;
     ImageViewRange       range;
 };

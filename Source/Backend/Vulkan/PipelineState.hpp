@@ -26,7 +26,7 @@ namespace Vulkan
             return m_hash;
         }
 
-        inline std::vector<Unique<DescriptorSetLayout>> GetDescriptorLayouts() const
+        inline const std::vector<Unique<DescriptorSetLayout>>& GetDescriptorLayouts() const
         {
             return m_descriptorSetsLayouts;
         }

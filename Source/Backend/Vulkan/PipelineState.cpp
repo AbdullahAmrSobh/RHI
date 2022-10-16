@@ -52,7 +52,7 @@ namespace Vulkan
         }
         std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
         std::transform(m_descriptorSetsLayouts.begin(), m_descriptorSetsLayouts.end(), std::back_insert_iterator(descriptorSetLayouts),
-                       [](const Unique<DescriptorSetLayout>& dsl) { return dsl->GetHandle(); });
+                       [](const auto& dsl) { return dsl->GetHandle(); });
 
         VkPipelineLayoutCreateInfo createInfo = {};
         createInfo.sType                      = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;

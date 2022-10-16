@@ -95,6 +95,7 @@ using ConvertViewToResource = typename internal::ConvertViewToResource<T>::Type;
 template <typename T>
 using ConvertViewToDesc = typename internal::ConvertViewToDesc<T>::Type;
 
+// asserts the ensure that the type traits work correctly. 
 static_assert(std::is_same_v<ConvertResourceToView<IImage>, IImageView>, "Invalid Conversion");
 static_assert(std::is_same_v<ConvertResourceToView<IBuffer>, IBufferView>, "Invalid Conversion");
 static_assert(std::is_same_v<ConvertResourceToDesc<IImage>, ImageDesc>, "Invalid Conversion");

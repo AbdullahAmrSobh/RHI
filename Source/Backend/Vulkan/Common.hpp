@@ -1,134 +1,95 @@
 #pragma once
-#include <cassert>
-#include <cstdint>
-#include <utility>
-#include <vector>
-
 #include "RHI/Common.hpp"
-#include "RHI/Core/Expected.hpp"
 #include "RHI/Format.hpp"
 #include "RHI/Resource.hpp"
 
-
 #include "Backend/Vulkan/Vma/vk_mem_alloc.hpp"
-#include <vulkan/vulkan_core.h>
 
 #undef SUCCESS
 
 #define RHI_ASSERT_SUCCESS(X) assert(X == VK_SUCCESS);
+
+#define RHI_SUCCESS(X) (X == VK_SUCCESS)
+
 #define RHI_RETURN_ON_FAIL(X)                                                                                                                                  \
-    if (X != VK_SUCCESS)                                                                                                                                       \
+    if (RHI_SUCCESS(X))                                                                                                                                        \
     {                                                                                                                                                          \
         return X;                                                                                                                                              \
     }
-#define RHI_SUCCESS(X) (X == VK_SUCCESS)
 
 namespace RHI
 {
-
-template <typename T>
-using Result      = tl::expected<T, VkResult>;
-using ResultError = tl::unexpected<VkResult>;
-template <class T>
-using ResultSuccess = tl::expected<T, VkResult>;
-
-inline EResultCode ConvertResult(VkResult resultCode)
+namespace Vulkan
 {
-    switch (resultCode)
+    template <typename T>
+    using Result = tl::expected<T, VkResult>;
+
+    using ResultError = tl::unexpected<VkResult>;
+
+    template <class T>
+    using ResultSuccess = tl::expected<T, VkResult>;
+
+    EResultCode ConvertResult(VkResult resultCode);
+
+    VkShaderStageFlags CovnertShaderStages(ShaderStageFlags stages);
+
+    VkShaderStageFlagBits CovnertShaderStages(EShaderStageFlagBits stages);
+
+    VkCullModeFlags ConvertRasterizationStateCullMode(enum class ERasterizationCullMode cullMode);
+    
+    VkPolygonMode ConvertRasterizationStateFillMode(enum class ERasterizationFillMode fillMode);
+
+    VkSamplerAddressMode ConvertSamplerAddressMode(ESamplerAddressMode addressMode);
+
+    VkCompareOp ConvertSamplerCompareOp(ESamplerCompareOp compareOp);
+
+    VkFormat ConvertFormat(EFormat format);
+
+    uint32_t FormatStrideSize(EFormat format);
+
+    uint32_t FormatStrideSize(VkFormat format);
+
+    VkImageViewType ConvertImageType(EImageViewType imageType);
+
+    inline VkExtent3D ConvertExtent(Extent3D extent)
     {
-    case VK_SUCCESS: return EResultCode::Success;
-    case VK_TIMEOUT: return EResultCode::Timeout;
-    case VK_NOT_READY: return EResultCode::NotReady;
-    case VK_ERROR_OUT_OF_HOST_MEMORY: return EResultCode::HostOutOfMemory;
-    case VK_ERROR_OUT_OF_DEVICE_MEMORY: return EResultCode::DeviceOutOfMemory;
-    case VK_ERROR_EXTENSION_NOT_PRESENT: return EResultCode::ExtensionNotAvailable;
-    case VK_ERROR_FEATURE_NOT_PRESENT: return EResultCode::FeatureNotAvailable;
-    default: return EResultCode::Fail;
+        return {extent.sizeX, extent.sizeY, extent.sizeZ};
     }
-}
 
-// inline VkImageViewType ConvertImageType(EImageType imageType, bool array)
-// {
-//     static VkImageViewType lookup[] = {VK_IMAGE_VIEW_TYPE_1D, VK_IMAGE_VIEW_TYPE_1D_ARRAY,   VK_IMAGE_VIEW_TYPE_2D,      VK_IMAGE_VIEW_TYPE_2D_ARRAY,
-//                                        VK_IMAGE_VIEW_TYPE_3D, VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, VK_IMAGE_VIEW_TYPE_MAX_ENUM};
-//     uint32_t               index    = static_cast<uint32_t>(imageType);
-//     return lookup[index + (array ? 0 : 1)];
-// }
+    inline VkExtent2D ConvertExtent(Extent2D extent)
+    {
+        return {extent.sizeX, extent.sizeY};
+    }
 
-VkFormat ConvertFormat(EFormat format);
+    inline VkSampleCountFlagBits ConvertSampleCount(ESampleCount sampleCount)
+    {
+        return static_cast<VkSampleCountFlagBits>(static_cast<uint32_t>(sampleCount));
+    }
 
-uint32_t GetTexelSize(EFormat format);
+    inline VkViewport ConvertViewport(const Viewport& viewport)
+    {
+        return {float(viewport.drawingArea.x),
+                float(viewport.drawingArea.y),
+                float(viewport.drawingArea.sizeX),
+                float(viewport.drawingArea.sizeY),
+                viewport.minDepth,
+                viewport.maxDepth};
+    }
 
-uint32_t GetTexelSize(VkFormat format);
+    inline VkRect2D ConvertRect(const Rect& rect)
+    {
+        return {{rect.x, rect.y}, {rect.sizeX, rect.sizeY}};
+    }
 
-VkShaderStageFlags CovnertShaderStages(ShaderStageFlags stages);
+    VkImageUsageFlags ConvertImageUsage(ImageUsageFlags usageFlags);
 
-// PipelineState
+    VkImageViewType ConvertImageViewType(EImageViewType imageType);
 
-// VkCullModeFlags ConvertCullMode(GraphicsPipelineRasterizationState::ECullMode cullMode);
-// VkPolygonMode ConvertFillMode(PipelineStateDesc::Rasterization::EFillMode fillMode);
-// VkImageAspectFlags ConvertViewAspect(ImageViewAspectFlags aspectFlags);
-// VkSamplerAddressMode ConvertAddressMode(SamplerDesc::EAddressMode addressMode);
+    VkImageAspectFlags ConvertViewAspect(ImageViewAspectFlags aspectFlags);
 
-// Image Utility functions
+    VkBufferUsageFlags ConvertBufferUsage(BufferUsageFlags usageFlags);
 
-inline VkExtent3D ConvertExtent(Extent3D extent)
-{
-    return {extent.sizeX, extent.sizeY, extent.sizeZ};
-}
+    VmaAllocationCreateFlags ConvertAllocationUsage(RHI::EMemoryUsage usage);
 
-inline VkExtent2D ConvertExtent(Extent2D extent)
-{
-    return {extent.sizeX, extent.sizeY};
-}
-
-inline VkSampleCountFlagBits ConvertSampleCount(ESampleCount sampleCount)
-{
-    return static_cast<VkSampleCountFlagBits>(static_cast<uint32_t>(sampleCount));
-}
-
-// inline VkImageType ConvertImageType(Extent3D extent)
-// {
-//     if (extent.sizeY == 1 && extent.sizeZ == 1)
-//     {
-//         return VK_IMAGE_TYPE_1D;
-//     }
-//     else if (extent.sizeZ == 1)
-//     {
-//         return VK_IMAGE_TYPE_2D;
-//     }
-//     else
-//     {
-//         return VK_IMAGE_TYPE_3D;
-//     }
-//
-//     return VK_IMAGE_TYPE_MAX_ENUM;
-// }
-
-inline VkViewport ConvertViewport(const Viewport& viewport)
-{
-    return {float(viewport.drawingArea.x),
-            float(viewport.drawingArea.y),
-            float(viewport.drawingArea.sizeX),
-            float(viewport.drawingArea.sizeY),
-            viewport.minDepth,
-            viewport.maxDepth};
-}
-
-inline VkRect2D ConvertRect(const Rect& rect)
-{
-    return {{rect.x, rect.y}, {rect.sizeX, rect.sizeY}};
-}
-
-// VkBufferUsageFlags      ConvertBufferUsage(BufferUsageFlags usageFlags);
-// VkImageUsageFlags       ConvertImageUsage(ImageUsageFlags usageFlags);
-// VkCompareOp             ConvertCompareOp(SamplerDesc::ECompareOp compareOp);
-// VkImageViewType         ConvertImageViewType(EImageType imageType, bool array);
-
-// VmaAllocationCreateFlags ConvertAllocationUsage(RHI::EMemoryUsage usage);
-
-VkFormat              ConvertFormat(EFormat format);
-uint32_t              FormatStrideSize(EFormat format);
-uint32_t              FormatStrideSize(VkFormat format);
-
+} // namespace Vulkan
 } // namespace RHI

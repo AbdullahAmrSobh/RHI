@@ -200,7 +200,7 @@ namespace Vulkan
     {
 
         std::vector<VkWriteDescriptorSet> descriptorSetWriteDescriptions = {};
-
+        
         std::vector<std::vector<VkDescriptorImageInfo>> imageBindingInfos;
         imageBindingInfos.reserve(data.GetSamplersBinds().size() + data.GetImageBinds().size());
 

@@ -24,10 +24,20 @@ public:
         m_pCallback = &callbacks;
     }
 
+    inline EHardwareQueueType GetQueueType() const
+    {
+        return m_queueType;
+    }
+
     // Return a union list of all image attachments used by this pass
     inline const std::vector<ImagePassAttachment*>& GetImagePassAttachments() const
     {
         return m_imagePassAttachments;
+    }
+
+    inline const ImagePassAttachment* GetDepthStencilAttachment() const
+    {
+        return m_pDepthStencilAttachment;
     }
 
     // Return a union list of all buffer attachments used by this pass
@@ -41,17 +51,25 @@ public:
         return m_presentSwapchains;
     }
 
-    inline const std::vector<IFence*>& GetFencesToSignal() const
+    inline const IFence* GetSignalFence() const
     {
-        return m_signalFences;
+        return m_pSignalFences;
+    }
+
+    inline bool HasDepthStencil() const 
+    {
+        return m_pDepthStencilAttachment == nullptr;
     }
 
 protected:
+    EHardwareQueueType m_queueType;
+
     std::vector<ImagePassAttachment*>  m_imagePassAttachments;
     std::vector<BufferPassAttachment*> m_bufferPassAttachments;
     ImagePassAttachment*               m_pDepthStencilAttachment;
+    
+    IFence*                  m_pSignalFences;
 
-    std::vector<IFence*>     m_signalFences;
     std::vector<ISwapchain*> m_presentSwapchains;
     PassCallbacks*           m_pCallback;
 
@@ -70,26 +88,14 @@ private:
     const IPass* m_pPass;
 };
 
-class PassExecuteContext
-{
-public:
-    const std::vector<ICommandBuffer*>& GetCommandBuffers() const
-    {
-        return m_commandBuffers;
-    }
-
-private:
-    std::vector<ICommandBuffer*> m_commandBuffers;
-};
-
 class PassCallbacks
 {
 public:
     virtual ~PassCallbacks() = default;
-
+    
     virtual void Setup(FrameGraphBuilder& builder)    = 0;
     virtual void Compile(PassCompileContext& context) = 0;
-    virtual void Execute(PassExecuteContext& context) = 0;
+    virtual void Execute(ICommandBuffer& commandBuffer) = 0;
 };
 
 } // namespace RHI

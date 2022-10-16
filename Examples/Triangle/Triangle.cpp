@@ -58,20 +58,18 @@ public:
 class PrimaryRenderPass final : public RHI::PassCallbacks
 {
 public:
-    virtual void Setup(FrameGraphBuilder& builder)     override
+    virtual void Setup(RHI::FrameGraphBuilder& builder)     override
     {
         RHI::ImagePassAttachmentDesc passAttachmentDesc;
-        passAttachmentDesc.attachmentReference;
-        passAttachmentDesc.loadStoreOps;
-        passAttachmentDesc.view;
-
+        passAttachmentDesc.attachmentReference = 123;
+    
     }
     
-    virtual void Compile(PassCompileContext& context)  override
+    virtual void Compile(RHI::PassCompileContext& context)  override
     {
     }
     
-    virtual void Execute(PassExecuteContext& context)  override
+    virtual void Execute(RHI::PassExecuteContext& context)  override
     {
     }
     
@@ -174,7 +172,7 @@ public:
 
             // Import the swapchain as an imageAttachment. 
             
-
+            
             ImageAttachmentReference swapchainAttachment = m_frameGraph->ImportSwapchain("SwapchainImage", *m_swapchain);
             
             m_pPrimaryPass = ASSERT_VALUE(m_frameGraph->CreatePass("PrimaryRenderPass", RHI::EHardwareQueueType::Graphics));

@@ -15,21 +15,7 @@ namespace Vulkan
         RenderPass* pRenderPass;
         uint32_t    subpassIndex;
     };
-
-    class Pass final : public IPass
-    {
-    public:
-        Pass();
-        ~Pass();
-
-        VkResult Init();
-
-    private:
-        const Device*            m_pDevice;
-        RenderPass*              m_pRenderPass;
-        Unique<Framebuffer>      m_framebuffer;
-        Unique<CommandAllocator> m_commandAllocator;
-    };
+    
 
     class FrameGraph final : public IFrameGraph
     {

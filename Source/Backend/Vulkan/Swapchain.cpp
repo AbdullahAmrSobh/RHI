@@ -1,3 +1,4 @@
+#include "RHI/Common.hpp"
 #ifdef RHI_WINDOWS
 #define VK_USE_PLATFORM_WIN32_KHR
 #elif defined(RHI_LINUX)
@@ -11,7 +12,6 @@ namespace RHI
 {
 namespace Vulkan
 {
-
 
 #ifdef RHI_LINUX
     Expected<Unique<ISurface>> Instance::CreateSurface(const struct X11SurfaceDesc& desc)
@@ -59,7 +59,7 @@ namespace Vulkan
 
         if (RHI_SUCCESS(result))
             return std::move(swapchain);
-
+        
         return Unexpected(ConvertResult(result));
     }
 
@@ -195,7 +195,7 @@ namespace Vulkan
         acquireInfo.pNext      = nullptr;
         acquireInfo.swapchain  = m_handle;
         acquireInfo.timeout    = UINT32_MAX;
-        acquireInfo.semaphore  = m_ImageAcquiredSemaphore.GetHandle();
+        acquireInfo.semaphore  = m_imageAcquiredSemaphore.GetHandle();
         acquireInfo.fence      = VK_NULL_HANDLE;
         acquireInfo.deviceMask = 0;
 
@@ -228,14 +228,14 @@ namespace Vulkan
 
         if (!RHI_SUCCESS(result))
             return result;
-
+        
         m_backBuffers.reserve(backBuffersCount);
 
         for (VkImage imageHandle : backImagesHandles)
         {
             m_backBuffers.push_back(static_cast<IImage*>(new Image(*m_pDevice, imageHandle)));
         }
-
+        
         return result;
     }
 

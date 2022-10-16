@@ -13,6 +13,7 @@ enum class EAttachmentUsage
     RenderTarget,
     ShaderInput,
     DepthStencil,
+    InputAttachment,
 };
 
 enum class EAttachmentAccess
@@ -64,7 +65,7 @@ public:
     }
 
 private:
-    const uint32_t m_index;
+    uint32_t m_index;
 };
 using ImageAttachmentReference  = AttachmentReference<EAttachmentResourceType::Image>;
 using BufferAttachmentReference = AttachmentReference<EAttachmentResourceType::Buffer>;
@@ -176,9 +177,8 @@ struct ImagePassAttachmentDesc
 
 struct BufferPassAttachmentDesc
 {
-    std::string           attachmentReference;
-    AttachmentLoadStoreOp loadStoreOps;
-    BufferViewDesc        attachmentViewDesc;
+    std::string    attachmentReference;
+    BufferViewDesc attachmentViewDesc;
 };
 
 template <typename ResourceView>
@@ -280,6 +280,45 @@ protected:
 };
 
 using BufferPassAttachment = PassAttachment<IBufferView>;
-using ImagePassAttachment  = PassAttachment<IImageView>;
+
+class ImagePassAttachment final : public PassAttachment<IImageView>
+{
+public:
+    inline AttachmentLoadStoreOp GetLoadStoreOp() const
+    {
+        return m_loadStoreOps;
+    }
+
+    inline ESampleCount GetSampleCount() const
+    {
+        return m_sampleCount;
+    }
+
+    // TMEP remove later.
+    inline ImagePassAttachment* GetNext() const
+    {
+        return static_cast<ImagePassAttachment*>(m_pNext);
+    }
+    
+    inline ImagePassAttachment* GetNext()
+    {
+        return static_cast<ImagePassAttachment*>(m_pNext);
+    }
+
+    inline const ImagePassAttachment* GetPerv() const
+    {
+        return static_cast<const ImagePassAttachment*>(m_pPrev);
+    
+    }
+
+    inline ImagePassAttachment* GetPerv()
+    {
+        return static_cast<ImagePassAttachment*>(m_pPrev);
+    }
+
+private:
+    AttachmentLoadStoreOp m_loadStoreOps;
+    ESampleCount          m_sampleCount;
+};
 
 } // namespace RHI

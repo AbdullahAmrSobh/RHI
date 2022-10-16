@@ -205,47 +205,47 @@ namespace Vulkan
         // createInfo.vulkanApiVersion = VK_VERSION_1_2;
         return vmaCreateAllocator(&createInfo, &m_allocator);
     }
-    
+
     EResultCode Device::WaitIdle() const
     {
         return ConvertResult(vkDeviceWaitIdle(m_device));
     }
 
-    VkResult Queue::Present(const PresentRequest& presentRequest)
+    VkResult Queue::Present(const PresentRequest& presentRequest) const 
     {
         std::vector<VkSemaphore>    waitSemaphoresHandles;
         std::vector<VkSwapchainKHR> swapchainsHandles;
         std::vector<uint32_t>       imageIndices;
         std::vector<VkResult>       results;
-        
+
         for (auto swapchain : presentRequest.swapchains)
         {
             imageIndices.push_back(swapchain->GetCurrentBackBufferIndex());
-            waitSemaphoresHandles.push_back(swapchain->GetBackbufferReadSemaphore());
             swapchainsHandles.push_back(swapchain->GetHandle());
+            waitSemaphoresHandles.push_back(swapchain->GetBackbufferReadSemaphore().GetHandle());
             results.push_back(VkResult());
         }
 
-        results.resize(presentRequest.size());
-        imageIndices.resize(presentRequest.size());
-        
+        results.resize(presentRequest.swapchains.size());
+        imageIndices.reserve(presentRequest.swapchains.size());
+
         VkPresentInfoKHR presentInfo;
         presentInfo.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         presentInfo.pNext              = nullptr;
         presentInfo.waitSemaphoreCount = CountElements(waitSemaphoresHandles);
-        presentInfo.pWaitSemaphores    = signalSemaphoresHandles.data();
+        presentInfo.pWaitSemaphores    = waitSemaphoresHandles.data();
         presentInfo.swapchainCount     = CountElements(swapchainsHandles);
         presentInfo.pSwapchains        = swapchainsHandles.data();
         presentInfo.pImageIndices      = imageIndices.data();
         presentInfo.pResults           = results.data();
 
-        return vkQueuePresentKHR(m_queue, &presentInfo);
+        return vkQueuePresentKHR(m_handle, &presentInfo);
     }
-
-    VkResult Queue::Submit(const std::vector<Queue::SubmitRequest>& submitRequests)
+    
+    VkResult Queue::Submit(const std::vector<Queue::SubmitRequest>& submitRequests, const Fence* pFence) const 
     {
         std::vector<VkSubmitInfo2> submitInfos;
-        submitRequests.reserve(SubmitRequest.size());
+        submitInfos.reserve(submitRequests.size());
 
         for (const auto& submitRequest : submitRequests)
         {
@@ -259,9 +259,10 @@ namespace Vulkan
             submitInfo.pCommandBufferInfos      = submitRequest.commandBuffers.data();
             submitInfo.signalSemaphoreInfoCount = CountElements(submitRequest.signalSemaphores);
             submitInfo.pSignalSemaphoreInfos    = submitRequest.signalSemaphores.data();
+            submitInfos.push_back(submitInfo);
         }
 
-        return vkQueueSubmit2(m_handle, CountElements(submitInfo), submitInfo.data());
+        return vkQueueSubmit2(m_handle, CountElements(submitInfos), submitInfos.data(), pFence->GetHandle());
     }
 
 } // namespace Vulkan

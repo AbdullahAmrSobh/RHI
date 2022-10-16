@@ -58,7 +58,7 @@ namespace Vulkan
         , public DeviceObject<VkShaderModule>
     {
     public:
-        ShaderModule(Device& device);
+        ShaderModule(const Device& device);
         ~ShaderModule();
 
         VkResult Init(const ShaderProgramDesc& desc);
@@ -69,7 +69,7 @@ namespace Vulkan
         , public DeviceObject<VkFence>
     {
     public:
-        Fence(Device& device)
+        Fence(const Device& device)
             : DeviceObject(&device)
         {
         }
@@ -88,7 +88,7 @@ namespace Vulkan
         , public Resource<VkImage>
     {
     public:
-        Image(Device& device, VkImage imageHandle = VK_NULL_HANDLE)
+        Image(const Device& device, VkImage imageHandle = VK_NULL_HANDLE)
             : Resource(&device, imageHandle)
         {
         }
@@ -96,13 +96,13 @@ namespace Vulkan
 
         VkResult Init(const AllocationDesc& allocationDesc, const ImageDesc& desc);
     };
-
+    
     class ImageView final
         : public IImageView
         , public DeviceObject<VkImageView>
     {
     public:
-        ImageView(Device& device)
+        ImageView(const Device& device)
             : DeviceObject(&device)
         {
         }
@@ -116,7 +116,7 @@ namespace Vulkan
         , public Resource<VkBuffer>
     {
     public:
-        Buffer(Device& device)
+        Buffer(const Device& device)
             : Resource(&device)
         {
         }
@@ -130,7 +130,7 @@ namespace Vulkan
         , public DeviceObject<VkBufferView>
     {
     public:
-        BufferView(Device& device)
+        BufferView(const Device& device)
             : DeviceObject(&device)
         {
         }
@@ -144,7 +144,7 @@ namespace Vulkan
         , public DeviceObject<VkSampler>
     {
     public:
-        Sampler(Device& device)
+        Sampler(const Device& device)
             : DeviceObject(&device)
         {
         }
@@ -156,7 +156,7 @@ namespace Vulkan
     class Semaphore final : public DeviceObject<VkSemaphore>
     {
     public:
-        Semaphore(Device& device)
+        Semaphore(const Device& device)
             : DeviceObject(&device)
         {
         }

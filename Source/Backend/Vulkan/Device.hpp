@@ -63,9 +63,9 @@ namespace Vulkan
             std::vector<VkCommandBufferSubmitInfo> commandBuffers;
             std::vector<VkSemaphoreSubmitInfo>     signalSemaphores;
         };
-
+        
         inline Queue(VkQueue queue, uint32_t familyIndex, uint32_t index)
-            : m_queue(queue)
+            : m_handle(queue)
             , m_familyIndex(index)
             , m_queueIndex(index)
         {
@@ -83,11 +83,11 @@ namespace Vulkan
 
         bool SupportPresent() const;
 
-        VkResult Submit(const std::vector<SubmitRequest>& submitRequests);
-        VkResult Present(const PresentRequest& presentRequest);
+        VkResult Present(const PresentRequest& presentRequest) const;
+        VkResult Submit(const std::vector<SubmitRequest>& submitRequests, const Fence* fence) const;
 
     private:
-        VkQueue  m_queue;
+        VkQueue  m_handle;
         uint32_t m_familyIndex;
         uint32_t m_queueIndex;
     };
@@ -103,7 +103,7 @@ namespace Vulkan
         {
             return *m_pPhysicalDevice;
         }
-
+        
         inline VkPhysicalDevice GetPhysicalDeviceHandle() const
         {
             return m_pPhysicalDevice->GetHandle();
@@ -133,7 +133,7 @@ namespace Vulkan
         {
             return *m_pComputeQueue;
         }
-
+        
         inline Queue& GetComputeQueue()
         {
             return *m_pComputeQueue;
