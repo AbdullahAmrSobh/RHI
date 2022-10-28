@@ -1,29 +1,11 @@
 #include "RHI/FrameGraph.hpp"
+#include "RHI/Common.hpp"
 #include "RHI/PipelineState.hpp"
 #include "RHI/Swapchain.hpp"
 
 
 namespace RHI
 {
-const RenderTargetLayout& IPass::GetRenderTargetLayout() const
-{
-    RenderTargetLayout output;
-    for (auto& passAttachment : m_imagePassAttachments)
-    {
-        if (passAttachment->GetUsage() == EAttachmentUsage::RenderTarget)
-        {
-            output.colorFormats.push_back(passAttachment->GetDesc().format);
-        }
-    }
-
-    if (m_pDepthStencilAttachment != nullptr)
-    {
-        output.depthStencilFormat = m_pDepthStencilAttachment->GetDesc().format;
-    }
-    
-    return output;
-}
-
 EResultCode IFrameGraph::BeginFrame()
 {
     m_currentFrameNumber++;
@@ -43,6 +25,8 @@ EResultCode IFrameGraph::BeginFrame()
     }
 
     BeginFrameInternal();
+
+    return EResultCode::Success;
 }
 
 EResultCode IFrameGraph::EndFrame()
@@ -51,6 +35,8 @@ EResultCode IFrameGraph::EndFrame()
     // Enqueue present
 
     EndFrameInternal();
+
+    return EResultCode::Success;
 }
 
 } // namespace RHI

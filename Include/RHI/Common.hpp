@@ -22,7 +22,7 @@
 // #include "RHI/Core/Span.hpp"
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-#define RHI_WINDOWS 1
+#define RHI_WINDOWS
 #elif __APPLE__
 #error "Apple Platforms are not supported yet"
 #elif __ANDROID__

@@ -1,5 +1,6 @@
 #pragma once
 #include "RHI/Common.hpp"
+#include "RHI/Resource.hpp"
 
 namespace RHI
 {
@@ -8,6 +9,7 @@ enum class EFormat;
 
 class ShaderResourceGroupLayout;
 class IShaderProgram;
+class IPass;
 
 enum class ERasterizationCullMode
 {
@@ -60,21 +62,17 @@ struct PipelineLayoutDesc
     std::vector<ShaderResourceGroupLayout> shaderBindingGroupLayouts;
 };
 
-struct RenderTargetLayout
-{
-    std::vector<EFormat> colorFormats;
-    EFormat              depthStencilFormat;
-};
+
 
 struct GraphicsPipelineStateDesc
 {
     PipelineLayoutDesc                                pipelineLayoutDesc;
-    RenderTargetLayout                                renderTargetLayout;
     GraphicsPipelineShaderStages                      shaderStages;
     std::vector<GraphicsPipelineVertexAttributeState> vertexInputAttributes;
     GraphicsPipelineRasterizationState                rasterizationState;
     GraphicsPipelineColorBlendState                   colorBlendState;
     GraphicsPipelineDepthStencilState                 depthStencil;
+    const IPass*                                      pPass; 
 };
 
 class IPipelineState

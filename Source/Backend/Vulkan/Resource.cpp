@@ -1,14 +1,15 @@
 #include "RHI/Resource.hpp"
+#include "Backend/Vulkan/Common.hpp"
 #include "Backend/Vulkan/Device.hpp"
 #include "Backend/Vulkan/Resource.hpp"
-#include "Backend/Vulkan/Common.hpp"
 #include <vulkan/vulkan_core.h>
+
 
 namespace RHI
 {
 namespace Vulkan
 {
-    
+
     Expected<Unique<IShaderProgram>> Device::CreateShaderProgram(const ShaderProgramDesc& desc)
     {
         Unique<ShaderModule> shaderModule = CreateUnique<ShaderModule>(*this);
@@ -66,7 +67,7 @@ namespace Vulkan
 
     Expected<Unique<IBufferView>> Device::CreateBufferView(const IBuffer& buffer, const BufferViewDesc& desc)
     {
-        Unique<BufferView> bufferView = CreateUnique<BufferView>();
+        Unique<BufferView> bufferView = CreateUnique<BufferView>(*this);
         VkResult           result     = bufferView->Init(static_cast<const Buffer&>(buffer), desc);
 
         if (RHI_SUCCESS(result))
@@ -141,10 +142,23 @@ namespace Vulkan
     VkResult Image::Init(const AllocationDesc& allocationDesc, const ImageDesc& desc)
     {
         VkImageCreateInfo createInfo{};
-        createInfo.sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        createInfo.pNext                 = nullptr;
-        createInfo.flags                 = 0;
-        createInfo.imageType             = ConvertImageType(desc.extent);
+        createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        createInfo.pNext = nullptr;
+        createInfo.flags = 0;
+
+        if (desc.extent.sizeY && desc.extent.sizeZ)
+        {
+            createInfo.imageType = VK_IMAGE_TYPE_1D;
+        }
+        else if (desc.extent.sizeZ)
+        {
+            createInfo.imageType = VK_IMAGE_TYPE_2D;
+        }
+        else
+        {
+            createInfo.imageType = VK_IMAGE_TYPE_3D;
+        }
+
         createInfo.format                = ConvertFormat(desc.format);
         createInfo.extent                = ConvertExtent(desc.extent);
         createInfo.mipLevels             = desc.mipLevelsCount;
@@ -156,13 +170,13 @@ namespace Vulkan
         createInfo.queueFamilyIndexCount = 0;
         createInfo.pQueueFamilyIndices   = nullptr;
         createInfo.initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED;
-    
+
         VmaAllocationCreateInfo allocationCreateInfo;
-        allocationCreateInfo.usage = ConvertMemoryUsage(allocationDesc.usage);
-        
-        return vmaCreateImage(m_pDevice->GetAllocator(), &createInfo,  &allocationCreateInfo, &m_handle, &m_allocation, &m_allocationInfo);
+        allocationCreateInfo.usage = ConvertAllocationUsage(allocationDesc.usage);
+
+        return vmaCreateImage(m_pDevice->GetAllocator(), &createInfo, &allocationCreateInfo, &m_handle, &m_allocation, &m_allocationInfo);
     }
-    
+
     ImageView::~ImageView()
     {
         vkDestroyImageView(m_pDevice->GetHandle(), m_handle, nullptr);
@@ -175,7 +189,7 @@ namespace Vulkan
         createInfo.pNext                           = nullptr;
         createInfo.flags                           = 0;
         createInfo.image                           = image.GetHandle();
-        createInfo.viewType                        = ConvertImageViewType(desc.type, desc.range.arraySize != 1);
+        createInfo.viewType                        = ConvertImageViewType(desc.type);
         createInfo.format                          = ConvertFormat(desc.format);
         createInfo.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
         createInfo.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -206,13 +220,13 @@ namespace Vulkan
         createInfo.sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
         createInfo.queueFamilyIndexCount = 0;
         createInfo.pQueueFamilyIndices   = nullptr;
-        
+
         VmaAllocationCreateInfo allocationCreateInfo;
-        allocationCreateInfo.usage = ConvertMemoryUsage(allocationDesc.usage);
+        allocationCreateInfo.usage = ConvertAllocationUsage(allocationDesc.usage);
 
         return vmaCreateBuffer(m_pDevice->GetAllocator(), &createInfo, &allocationCreateInfo, &m_handle, &m_allocation, &m_allocationInfo);
     }
-    
+
     BufferView::~BufferView()
     {
         vkDestroyBufferView(m_pDevice->GetHandle(), m_handle, nullptr);
@@ -237,25 +251,7 @@ namespace Vulkan
         vkDestroySampler(m_pDevice->GetHandle(), m_handle, nullptr);
     }
 
-    VkFilter ConvertFilter(ESamplerFilter filter)
-    {
 
-    }
-
-    VkSamplerMipmapMode ConvertMipMapMode(ESamplerFilter filter)
-    {
-
-    }
-
-    VkSamplerAddressMode ConvertAddressMode(ESamplerAddressMode addressMode)
-    {
-        
-    }
-
-    VkCompareOp ConvertCompareOp(ESamplerCompareOp compareOp)
-    {
-
-    }
 
     VkResult Sampler::Init(const SamplerDesc& desc)
     {
@@ -265,29 +261,29 @@ namespace Vulkan
         createInfo.flags                   = 0;
         createInfo.magFilter               = ConvertFilter(desc.filter);
         createInfo.minFilter               = ConvertFilter(desc.filter);
-        createInfo.mipmapMode              = ConvertMipMapMode(desc.filter);
-        createInfo.addressModeU            = ConvertAddressMode(desc.addressU);
-        createInfo.addressModeV            = ConvertAddressMode(desc.addressV);
-        createInfo.addressModeW            = ConvertAddressMode(desc.addressW);
+        createInfo.mipmapMode              = ConvertSamplerMipMapMode(desc.filter);
+        createInfo.addressModeU            = ConvertSamplerAddressMode(desc.addressU);
+        createInfo.addressModeV            = ConvertSamplerAddressMode(desc.addressV);
+        createInfo.addressModeW            = ConvertSamplerAddressMode(desc.addressW);
         createInfo.mipLodBias              = desc.mipLodBias;
         createInfo.anisotropyEnable        = VK_FALSE;
         createInfo.maxAnisotropy           = desc.maxAnisotropy;
         createInfo.compareEnable           = VK_TRUE;
-        createInfo.compareOp               = ConvertCompareOp(desc.compare);
+        createInfo.compareOp               = ConvertSamplerCompareOp(desc.compare);
         createInfo.minLod                  = desc.minLod;
         createInfo.maxLod                  = desc.maxLod;
         createInfo.borderColor             = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
         createInfo.unnormalizedCoordinates = VK_TRUE;
 
-        if(desc.maxAnisotropy != 0.0f)
+        if (desc.maxAnisotropy != 0.0f)
         {
-            createInfo.magFilter               = VK_FILTER_LINEAR;
-            createInfo.minFilter               = VK_FILTER_LINEAR;
-            createInfo.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-            createInfo.anisotropyEnable        = VK_TRUE;
-            createInfo.maxAnisotropy           = desc.maxAnisotropy;
+            createInfo.magFilter        = VK_FILTER_LINEAR;
+            createInfo.minFilter        = VK_FILTER_LINEAR;
+            createInfo.mipmapMode       = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+            createInfo.anisotropyEnable = VK_TRUE;
+            createInfo.maxAnisotropy    = desc.maxAnisotropy;
         }
-        
+
         return vkCreateSampler(m_pDevice->GetHandle(), &createInfo, nullptr, &m_handle);
     }
 
@@ -302,7 +298,7 @@ namespace Vulkan
         createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
         createInfo.pNext = nullptr;
         createInfo.flags = 0;
-        
+
         return vkCreateSemaphore(m_pDevice->GetHandle(), &createInfo, nullptr, &m_handle);
     }
 

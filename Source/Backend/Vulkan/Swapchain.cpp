@@ -1,12 +1,19 @@
 #include "RHI/Common.hpp"
+
 #ifdef RHI_WINDOWS
 #define VK_USE_PLATFORM_WIN32_KHR
 #elif defined(RHI_LINUX)
 #define VK_USE_PLATFORM_XLIB_KHR
 #endif
 
-#include "Backend/Vulkan/Swapchain.hpp"
 #include "Backend/Vulkan/Device.hpp"
+#include "Backend/Vulkan/Swapchain.hpp"
+
+#ifdef RHI_WINDOWS
+#include "RHI/Platform/Win32Surface.hpp"
+#elif defined(RHI_LINUX)
+#include "RHI/Platform/XlibSurface.hpp"
+#endif
 
 namespace RHI
 {
@@ -14,15 +21,27 @@ namespace Vulkan
 {
 
 #ifdef RHI_LINUX
-    Expected<Unique<ISurface>> Instance::CreateSurface(const struct X11SurfaceDesc& desc)
+    Expected<Unique<ISurface>> Instance::CreateSurface(const X11SurfaceDesc& desc)
     {
-        return Unexpected(EResultCode::Fail);
+        Unique<Surface> surface = CreateUnique<Surface>(*this);
+        VkResult        result  = surface->Init(desc);
+
+        if (RHI_SUCCESS(result))
+            return std::move(surface);
+
+        return Unexpected(ConvertResult(result));
     }
-    
-    
+
     VkResult Surface::Init(const X11SurfaceDesc& desc)
     {
-        return VK_ERROR_UNKNOWN;
+        VkXlibSurfaceCreateInfoKHR createInfo           = {};
+        createInfo.sType                                = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
+        createInfo.pNext                                = nullptr;
+        createInfo.flags                                = 0;
+        createInfo.dpy                                  = (Display*)desc.pDisplay;
+        createInfo.window                               = desc.window;
+        static PFN_vkCreateXlibSurfaceKHR createSurface = (PFN_vkCreateXlibSurfaceKHR)vkGetInstanceProcAddr(m_pInstance->GetHandle(), "vkCreateXlibSurfaceKHR");
+        return createSurface(m_pInstance->GetHandle(), &createInfo, nullptr, &m_handle);
     }
 #elif defined(RHI_WINDOWS)
     Expected<Unique<ISurface>> Instance::CreateSurface(const Win32SurfaceDesc& desc)
@@ -59,7 +78,7 @@ namespace Vulkan
 
         if (RHI_SUCCESS(result))
             return std::move(swapchain);
-        
+
         return Unexpected(ConvertResult(result));
     }
 
@@ -71,8 +90,8 @@ namespace Vulkan
     VkBool32 Surface::QueueSupportPresent(const class Queue& queue) const
     {
         VkBool32 support = VK_FALSE;
-        VkResult result = vkGetPhysicalDeviceSurfaceSupportKHR(static_cast<const PhysicalDevice&>(m_pDevice->GetPhysicalDevice()).GetHandle(),
-                                                               queue.GetFamilyIndex(), m_handle, &support);
+        VkResult result  = vkGetPhysicalDeviceSurfaceSupportKHR(static_cast<const PhysicalDevice&>(m_pDevice->GetPhysicalDevice()).GetHandle(),
+                                                                queue.GetFamilyIndex(), m_handle, &support);
         if (!RHI_SUCCESS(result))
         {
             return VK_FALSE;
@@ -184,6 +203,7 @@ namespace Vulkan
         createInfo.oldSwapchain          = VK_NULL_HANDLE;
 
         RHI_RETURN_ON_FAIL(vkCreateSwapchainKHR(m_pDevice->GetHandle(), &createInfo, nullptr, &m_handle));
+        RHI_RETURN_ON_FAIL(m_imageAcquiredSemaphore->Init());
 
         return InitBackbuffers();
     }
@@ -195,7 +215,7 @@ namespace Vulkan
         acquireInfo.pNext      = nullptr;
         acquireInfo.swapchain  = m_handle;
         acquireInfo.timeout    = UINT32_MAX;
-        acquireInfo.semaphore  = m_imageAcquiredSemaphore.GetHandle();
+        acquireInfo.semaphore  = m_imageAcquiredSemaphore->GetHandle();
         acquireInfo.fence      = VK_NULL_HANDLE;
         acquireInfo.deviceMask = 0;
 
@@ -228,14 +248,14 @@ namespace Vulkan
 
         if (!RHI_SUCCESS(result))
             return result;
-        
+
         m_backBuffers.reserve(backBuffersCount);
 
         for (VkImage imageHandle : backImagesHandles)
         {
             m_backBuffers.push_back(static_cast<IImage*>(new Image(*m_pDevice, imageHandle)));
         }
-        
+
         return result;
     }
 

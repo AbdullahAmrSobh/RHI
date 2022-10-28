@@ -2,6 +2,7 @@
 #include "RHI/Common.hpp"
 #include "RHI/Format.hpp"
 #include "RHI/Resource.hpp"
+#include "RHI/PipelineState.hpp"
 
 #include "Backend/Vulkan/Vma/vk_mem_alloc.hpp"
 
@@ -35,9 +36,13 @@ namespace Vulkan
 
     VkShaderStageFlagBits CovnertShaderStages(EShaderStageFlagBits stages);
 
-    VkCullModeFlags ConvertRasterizationStateCullMode(enum class ERasterizationCullMode cullMode);
+    VkCullModeFlags ConvertRasterizationStateCullMode(ERasterizationCullMode cullMode);
     
-    VkPolygonMode ConvertRasterizationStateFillMode(enum class ERasterizationFillMode fillMode);
+    VkPolygonMode ConvertRasterizationStateFillMode(ERasterizationFillMode fillMode);
+
+    VkFilter ConvertFilter(ESamplerFilter filter);
+
+    VkSamplerMipmapMode ConvertSamplerMipMapMode(ESamplerFilter filter);
 
     VkSamplerAddressMode ConvertSamplerAddressMode(ESamplerAddressMode addressMode);
 
@@ -50,6 +55,8 @@ namespace Vulkan
     uint32_t FormatStrideSize(VkFormat format);
 
     VkImageViewType ConvertImageType(EImageViewType imageType);
+
+    VkImageAspectFlags ConvertViewAspect(ImageViewAspectFlags aspectFlags);
 
     inline VkExtent3D ConvertExtent(Extent3D extent)
     {
@@ -81,15 +88,12 @@ namespace Vulkan
         return {{rect.x, rect.y}, {rect.sizeX, rect.sizeY}};
     }
 
+    // these flags may be refactored
     VkImageUsageFlags ConvertImageUsage(ImageUsageFlags usageFlags);
-
-    VkImageViewType ConvertImageViewType(EImageViewType imageType);
-
-    VkImageAspectFlags ConvertViewAspect(ImageViewAspectFlags aspectFlags);
 
     VkBufferUsageFlags ConvertBufferUsage(BufferUsageFlags usageFlags);
 
-    VmaAllocationCreateFlags ConvertAllocationUsage(RHI::EMemoryUsage usage);
+    VmaMemoryUsage ConvertAllocationUsage(EMemoryUsage usage);
 
 } // namespace Vulkan
 } // namespace RHI

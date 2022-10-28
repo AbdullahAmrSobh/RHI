@@ -47,6 +47,8 @@ private:
 class ITransferQueue
 {
 public:
+    virtual ~ITransferQueue() = default;
+
     virtual EResultCode Enqueue(const CopyCommand& copyCommand, const IFence& signalFence)                     = 0;
     virtual EResultCode Enqueue(const std::vector<const CopyCommand&> copyCommands, const IFence& signalFence) = 0;
 };
@@ -92,6 +94,10 @@ public:
 
     virtual Expected<Unique<IFrameGraph>> CreateFrameGraph() = 0;
 
+    // virtual Expected<Unique<IRenderPass>> CreateRenderPass(std::string_view passName, FrameGraphBuilder& builder);
+
+    // virtual Expected<Unique<IComputePass>> CreateComputePass(std::string_view passName, FrameGraphBuilder& builder);
+    
 protected:
     Unique<ITransferQueue> m_transferQueue;
     IPhysicalDevice*       m_pPhysicalDevice;

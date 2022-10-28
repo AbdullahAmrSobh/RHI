@@ -3,6 +3,7 @@
 #include "Backend/Vulkan/Device.hpp"
 #include "Backend/Vulkan/PipelineState.hpp"
 #include "Backend/Vulkan/Resource.hpp"
+#include <vulkan/vulkan_core.h>
 
 namespace RHI
 {
@@ -72,35 +73,69 @@ namespace Vulkan
 
     void CommandBuffer::Submit(const CopyCommand& copyCommand)
     {
-        // if (copyCommand.destinationResourceType == EResourceType::Buffer && copyCommand.sourceResourceType == EResourceType::Buffer)
-        // {
-        //     Buffer&           srcBuffer = static_cast<Buffer&>(*copyCommand.srcBuffer.pBuffer);
-        //     Buffer&           dstBuffer = static_cast<Buffer&>(*copyCommand.dstBuffer.pBuffer);
-        //     VkCopyBufferInfo2 copyInfo {};
-        //     copyInfo.sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2_KHR;
-        //     copyInfo.pNext = nullptr;
-        //     copyInfo.srcBuffer = srcBuffer.GetHandle();
-        //     copyInfo.dstBuffer = dstBuffer.GetHandle();
-        //     copyInfo.regionCount;
-        //     copyInfo.pRegions;
-        // }
-        // else if (copyCommand.destinationResourceType == EResourceType::Buffer && copyCommand.sourceResourceType == EResourceType::Image)
-        // {
-        //     VkCopyImageToBufferInfo2 copyInfo;
-        // }
-        // else if (copyCommand.destinationResourceType == EResourceType::Image && copyCommand.sourceResourceType == EResourceType::Image)
-        // {
-        //     VkCopyImageInfo2 copyInfo;
-        // }
-        // else if (copyCommand.destinationResourceType == EResourceType::Image && copyCommand.sourceResourceType == EResourceType::Buffer)
-        // {
-        //     VkCopyImageToBufferInfo2 copyInfo;
-        // }
+        if (copyCommand.destinationResourceType == EResourceType::Buffer && copyCommand.sourceResourceType == EResourceType::Buffer)
+        {
+            Buffer&           srcBuffer = static_cast<Buffer&>(*copyCommand.srcBuffer.pBuffer);
+            Buffer&           dstBuffer = static_cast<Buffer&>(*copyCommand.dstBuffer.pBuffer);
+            VkCopyBufferInfo2 copyInfo{};
+            copyInfo.sType     = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2_KHR;
+            copyInfo.pNext     = nullptr;
+            copyInfo.srcBuffer = srcBuffer.GetHandle();
+            copyInfo.dstBuffer = dstBuffer.GetHandle();
+            // copyInfo.regionCount;
+            // copyInfo.pRegions;
+
+            vkCmdCopyBuffer2(m_handle, &copyInfo);
+        }
+        else if (copyCommand.destinationResourceType == EResourceType::Buffer && copyCommand.sourceResourceType == EResourceType::Image)
+        {
+            VkCopyImageToBufferInfo2 copyInfo;
+            vkCmdCopyImageToBuffer2(m_handle, &copyInfo);
+        }
+        else if (copyCommand.destinationResourceType == EResourceType::Image && copyCommand.sourceResourceType == EResourceType::Image)
+        {
+            VkCopyImageInfo2 copyInfo;
+            vkCmdCopyImage2(m_handle, &copyInfo);
+        }
+        else if (copyCommand.destinationResourceType == EResourceType::Image && copyCommand.sourceResourceType == EResourceType::Buffer)
+        {
+            VkCopyImageToBufferInfo2 copyInfo;
+            vkCmdCopyImageToBuffer2(m_handle, &copyInfo);
+        }
     }
 
     void CommandBuffer::Submit(const DispatchCommand& dispatchCommand)
     {
         // TODO
+    }
+
+    void CommandBuffer ::BeginRenderPass(Extent2D extent, std::vector<VkClearValue> clearValues)
+    {
+        VkRenderPassBeginInfo renderPassBegin{};
+        renderPassBegin.sType                    = VK_STRUCTURE_TYPE_DEVICE_GROUP_RENDER_PASS_BEGIN_INFO;
+        renderPassBegin.pNext                    = nullptr;
+        renderPassBegin.renderPass               = m_renderTarget->GetRenderPass().GetHandle();
+        renderPassBegin.framebuffer              = m_renderTarget->GetHandle();
+        renderPassBegin.renderArea.offset.x      = 0;
+        renderPassBegin.renderArea.offset.y      = 0;
+        renderPassBegin.renderArea.extent.height = extent.sizeX;
+        renderPassBegin.renderArea.extent.width  = extent.sizeY;
+        renderPassBegin.clearValueCount          = CountElements(clearValues);
+        renderPassBegin.pClearValues             = clearValues.data();
+
+        VkSubpassBeginInfo subpassBeginInfo{};
+        subpassBeginInfo.sType    = VK_STRUCTURE_TYPE_SUBPASS_BEGIN_INFO;
+        subpassBeginInfo.pNext    = nullptr;
+        subpassBeginInfo.contents = VK_SUBPASS_CONTENTS_INLINE;
+        vkCmdBeginRenderPass2(m_handle, &renderPassBegin, &subpassBeginInfo);
+    }
+
+    void CommandBuffer ::EndRenderPass()
+    {
+        VkSubpassEndInfo subpassEndInfo{};
+        subpassEndInfo.sType = VK_STRUCTURE_TYPE_SUBPASS_END_INFO;
+        subpassEndInfo.pNext = nullptr;
+        vkCmdEndRenderPass2(m_handle, &subpassEndInfo);
     }
 
     CommandAllocator::~CommandAllocator()

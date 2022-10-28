@@ -1,7 +1,11 @@
 #pragma once
+#include <vector>
 #include "RHI/Commands.hpp"
+#include "RHI/Common.hpp"
 #include "Backend/Vulkan/RenderPass.hpp"
 #include "Backend/Vulkan/Resource.hpp"
+#include "Backend/Vulkan/ShaderResourceGroup.hpp"
+#include <vulkan/vulkan_core.h>
 
 namespace RHI
 {
@@ -25,13 +29,18 @@ namespace Vulkan
 
         virtual void Begin() override;
         virtual void End() override;
-        
+
         virtual void SetViewports(const std::vector<Viewport>& viewports) override;
         virtual void SetScissors(const std::vector<Rect>& scissors) override;
-        
+
         virtual void Submit(const DrawCommand& drawCommand) override;
         virtual void Submit(const CopyCommand& copyCommand) override;
         virtual void Submit(const DispatchCommand& dispatchCommand) override;
+
+    private:
+        void BeginRenderPass(Extent2D extent, std::vector<VkClearValue> clearValues);
+        void EndRenderPass();
+        void BindShaderResourceGroups(const std::vector<ShaderResourceGroup*>& groups);
 
     private:
         class CommandAllocator* m_pParantAllocator;
@@ -49,17 +58,16 @@ namespace Vulkan
     {
     public:
         static Result<Unique<CommandAllocator>> Create(const Device& device);
-        
+
         CommandAllocator(const Device& device)
             : DeviceObject(&device)
         {
         }
-        
+
         ~CommandAllocator();
-        
-        
+
         VkResult Init(ECommandPrimaryTask task);
-        
+
         VkResult Reset();
 
         Unique<CommandBuffer> AllocateCommandBuffer();

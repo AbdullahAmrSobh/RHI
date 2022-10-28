@@ -203,7 +203,7 @@ private:
 class IShaderResourceGroup
 {
 public:
-    ~IShaderResourceGroup() = default;
+    virtual ~IShaderResourceGroup() = default;
 
     inline Expected<std::string_view> GetBindingName(uint32_t index) const
     {
@@ -239,7 +239,7 @@ protected:
 class IShaderResourceGroupAllocator
 {
 public:
-    ~IShaderResourceGroupAllocator() = default;
+    virtual ~IShaderResourceGroupAllocator() = default;
 
     virtual Expected<Unique<IShaderResourceGroup>> Allocate(const ShaderResourceGroupLayout& layout) = 0;
 };

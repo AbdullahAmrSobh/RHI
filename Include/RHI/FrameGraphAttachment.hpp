@@ -49,6 +49,11 @@ template <EAttachmentResourceType EType>
 class AttachmentReference
 {
 public:
+    AttachmentReference()
+        : m_index(UINT32_MAX)
+    {
+    }
+    
     AttachmentReference(uint32_t index)
         : m_index(index)
     {
@@ -191,8 +196,9 @@ public:
     using ResourceViewDesc = ConvertViewToDesc<ResourceView>;
     using FrameAttachment  = FrameAttachment<ResourceType>;
 
-    PassAttachment(const FrameAttachment& frameAttachment, Unique<ResourceView> view, const ResourceViewDesc& viewDesc, EAccess access, EAttachmentUsage usage)
-        : m_frameAttachment(FrameAttachment)
+    PassAttachment(const FrameAttachment& frameAttachment, Unique<ResourceView> view, const ResourceViewDesc& viewDesc, EAttachmentAccess access,
+                   EAttachmentUsage usage)
+        : m_frameAttachment(frameAttachment)
         , m_access(access)
         , m_usage(usage)
         , m_view(std::move(view))
@@ -213,7 +219,7 @@ public:
         return *m_view;
     }
 
-    inline EAccess GetAccess() const
+    inline EAttachmentAccess GetAccess() const
     {
         return m_access;
     }
@@ -299,7 +305,7 @@ public:
     {
         return static_cast<ImagePassAttachment*>(m_pNext);
     }
-    
+
     inline ImagePassAttachment* GetNext()
     {
         return static_cast<ImagePassAttachment*>(m_pNext);
@@ -308,7 +314,6 @@ public:
     inline const ImagePassAttachment* GetPerv() const
     {
         return static_cast<const ImagePassAttachment*>(m_pPrev);
-    
     }
 
     inline ImagePassAttachment* GetPerv()

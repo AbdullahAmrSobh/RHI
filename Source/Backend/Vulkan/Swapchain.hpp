@@ -1,5 +1,7 @@
 #pragma once
+#include "RHI/Common.hpp"
 #include "RHI/Swapchain.hpp"
+#include "Backend/Vulkan/Device.hpp"
 #include "Backend/Vulkan/Resource.hpp"
 
 namespace RHI
@@ -13,6 +15,11 @@ namespace Vulkan
         , public DeviceObject<VkSurfaceKHR>
     {
     public:
+        Surface(const Instance& instance)
+            : DeviceObject(nullptr)
+            , m_pInstance(&instance)
+        {
+        }
         ~Surface();
 
 #ifdef RHI_WINDOWS
@@ -36,8 +43,7 @@ namespace Vulkan
         static VkPresentModeKHR SelectPresentMode(const std::vector<VkPresentModeKHR>& presentModes);
 
     private:
-        Instance* m_pInstance;
-        Device*   m_pDevice;
+        const Instance* m_pInstance;
     };
 
     class Swapchain final
@@ -45,6 +51,11 @@ namespace Vulkan
         , public DeviceObject<VkSwapchainKHR>
     {
     public:
+        Swapchain(const Device& device)
+            : DeviceObject(&device)
+            , m_imageAcquiredSemaphore(CreateUnique<Semaphore>(device))
+        {
+        }
         ~Swapchain();
 
         const std::vector<Image*>& GetBackImages() const;
@@ -53,7 +64,7 @@ namespace Vulkan
 
         inline Semaphore& GetBackbufferReadSemaphore()
         {
-            return m_imageAcquiredSemaphore;
+            return *m_imageAcquiredSemaphore;
         }
 
         // Swap the back buffers
@@ -66,7 +77,7 @@ namespace Vulkan
 
         // Operations must wait on that semaphore,
         // before using the current swapchain Image.
-        Semaphore m_imageAcquiredSemaphore;
+        Unique<Semaphore> m_imageAcquiredSemaphore;
     };
 
 } // namespace Vulkan

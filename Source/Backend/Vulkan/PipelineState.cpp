@@ -9,9 +9,23 @@ namespace RHI
 namespace Vulkan
 {
 
+
+    Result<Unique<PipelineLayout>> PipelineLayout::Create(const Device& device, PipelineLayoutDesc& layoutDesc)
+    {
+        Unique<PipelineLayout> pipelineLayout = CreateUnique<PipelineLayout>(device);
+        VkResult              result        = pipelineLayout->Init(layoutDesc);
+
+        if (RHI_SUCCESS(result))
+        {
+            return ResultError(result);
+        }
+
+        return std::move(pipelineLayout);
+    }
+
     Expected<Unique<IPipelineState>> Device::CreateGraphicsPipelineState(const GraphicsPipelineStateDesc& desc)
     {
-        Unique<PipelineState> pipelineState = CreateUnique<PipelineState>(desc);
+        Unique<PipelineState> pipelineState = CreateUnique<PipelineState>(*this);
         VkResult              result        = pipelineState->Init(desc);
 
         if (RHI_SUCCESS(result))
@@ -411,18 +425,22 @@ namespace Vulkan
         colorBlendStateInitalizer.Initalize(createInfo.pColorBlendState);
         dynamicStateInitalizer.Initalize(createInfo.pDynamicState);
 
-        RenderPassManager::SubpassDesc subpass = m_pDevice->GetRenderPassManager().GetPass(desc.renderTargetLayout);
+        auto subpass = static_cast<const Pass*>(desc.pPass)->GetRenderPass();
+        assert(subpass.has_value());
 
+        // Recreate the entire PipelineStateObject if the RenderPassChanges. 
+        
         createInfo.sType              = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         createInfo.pNext              = nullptr;
         createInfo.flags              = 0;
         createInfo.layout             = m_layout->GetHandle();
-        createInfo.renderPass         = subpass.renderPass;
-        createInfo.subpass            = subpass.subpassIndex;
+        createInfo.renderPass         = subpass->first.GetHandle();
+        createInfo.subpass            = subpass->second;
         createInfo.basePipelineHandle = VK_NULL_HANDLE;
         createInfo.basePipelineIndex  = 0;
 
         return vkCreateGraphicsPipelines(m_pDevice->GetHandle(), VK_NULL_HANDLE, 1, &createInfo, nullptr, &m_handle);
     }
+    
 } // namespace Vulkan
 } // namespace RHI
