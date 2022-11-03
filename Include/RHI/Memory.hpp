@@ -4,7 +4,12 @@
 namespace RHI
 {
 
-enum class EMemoryUsage {};
+enum class EMemoryUsage {
+    Stream,
+    Stage, 
+    Local,
+    Hosted, 
+};
 
 enum class EMemoryType
 {

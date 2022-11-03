@@ -63,6 +63,9 @@ enum class ESamplerAddressMode
 enum class ESamplerCompareOp
 {
     Never,
+    Equal, 
+    NotEqual,
+    Always,
     Less,
     LessEq,
     Greater,

@@ -8,6 +8,7 @@ enum class EFormat;
 
 class ShaderResourceGroupLayout;
 class IShaderProgram;
+class IPass;
 
 enum class ERasterizationCullMode
 {
@@ -60,16 +61,16 @@ struct PipelineLayoutDesc
     std::vector<ShaderResourceGroupLayout> shaderBindingGroupLayouts;
 };
 
-struct RenderTargetLayout
-{
-    std::vector<EFormat> colorFormats;
-    EFormat              depthStencilFormat;
-};
+// struct RenderTargetLayout
+// {
+//     std::vector<EFormat> colorFormats;
+//     EFormat              depthStencilFormat;
+// };
 
 struct GraphicsPipelineStateDesc
 {
     PipelineLayoutDesc                                pipelineLayoutDesc;
-    RenderTargetLayout                                renderTargetLayout;
+    const IPass*                                      pRenderPass;
     GraphicsPipelineShaderStages                      shaderStages;
     std::vector<GraphicsPipelineVertexAttributeState> vertexInputAttributes;
     GraphicsPipelineRasterizationState                rasterizationState;

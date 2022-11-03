@@ -13,6 +13,12 @@ namespace Vulkan
         , public DeviceObject<VkSurfaceKHR>
     {
     public:
+        Surface(const Instance& instance)
+            : DeviceObject(nullptr)
+            , m_pInstance(&instance)
+        {
+        }
+
         ~Surface();
 
 #ifdef RHI_WINDOWS
@@ -36,8 +42,7 @@ namespace Vulkan
         static VkPresentModeKHR SelectPresentMode(const std::vector<VkPresentModeKHR>& presentModes);
 
     private:
-        Instance* m_pInstance;
-        Device*   m_pDevice;
+        const Instance* m_pInstance;
     };
 
     class Swapchain final
@@ -45,13 +50,19 @@ namespace Vulkan
         , public DeviceObject<VkSwapchainKHR>
     {
     public:
+        Swapchain(const Device& device)
+            : DeviceObject(&device)
+            , m_imageAcquiredSemaphore(device)
+        {
+        }
+        
         ~Swapchain();
-
+        
         const std::vector<Image*>& GetBackImages() const;
 
         VkResult Init(const SwapchainDesc& desc);
 
-        inline Semaphore& GetBackbufferReadSemaphore()
+        inline const Semaphore& GetBackbufferReadSemaphore() const
         {
             return m_imageAcquiredSemaphore;
         }

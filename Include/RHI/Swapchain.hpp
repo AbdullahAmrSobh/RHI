@@ -5,6 +5,7 @@ namespace RHI
 {
 
 enum class EFormat;
+struct ImageDesc;
 class IImage;
 
 struct SwapchainDesc
@@ -27,7 +28,7 @@ public:
 
     inline const ImageDesc& GetBackBuffersDesc() const 
     {
-        return * m_backBuffersDesc;
+        return *m_backBuffersDesc;
     }
 
     inline uint32_t GetCurrentBackBufferIndex() const 

@@ -181,8 +181,39 @@ struct BufferPassAttachmentDesc
     BufferViewDesc attachmentViewDesc;
 };
 
+namespace Internal
+{
+    class EmptyPassAttachmentBase
+    {
+    };
+
+    class ImagePassAttachmentBase
+    {
+    public:
+        ImagePassAttachmentBase(AttachmentLoadStoreOp loadStoreOp, ESampleCount sampleCount)
+            : m_loadStoreOps(loadStoreOp)
+            , m_sampleCount(sampleCount)
+        {
+        }
+
+        inline AttachmentLoadStoreOp GetLoadStoreOp() const
+        {
+            return m_loadStoreOps;
+        }
+        inline ESampleCount GetSampleCount() const
+        {
+            return m_sampleCount;
+        }
+    
+    private:
+        AttachmentLoadStoreOp m_loadStoreOps;
+        ESampleCount          m_sampleCount;
+    };
+} // namespace Internal
+
 template <typename ResourceView>
-class PassAttachment
+class PassAttachment final
+    : public std::conditional_t<std::is_same_v<ResourceView, IImageView>, Internal::ImagePassAttachmentBase, Internal::EmptyPassAttachmentBase>
 {
     friend class IFrameGraph;
 
@@ -190,9 +221,22 @@ public:
     using ResourceType     = ConvertViewToResource<ResourceView>;
     using ResourceViewDesc = ConvertViewToDesc<ResourceView>;
     using FrameAttachment  = FrameAttachment<ResourceType>;
-
+    
     PassAttachment(const FrameAttachment& frameAttachment, Unique<ResourceView> view, const ResourceViewDesc& viewDesc, EAccess access, EAttachmentUsage usage)
         : m_frameAttachment(FrameAttachment)
+        , m_access(access)
+        , m_usage(usage)
+        , m_view(std::move(view))
+        , m_desc(CreateUnique<const ResourceViewDesc>())
+        , m_pNext(nullptr)
+        , m_pPrev(nullptr)
+    {
+        *m_desc = viewDesc;
+    }
+    
+    PassAttachment(const FrameAttachment& frameAttachment, Unique<ResourceView> view, const ResourceViewDesc& viewDesc, EAccess access, EAttachmentUsage usage, EAttachmentLoadOp loadStoreOp, ESampleCount sampleCount)
+        : Internal::ImagePassAttachmentBase(loadStoreOp, sampleCount)
+        , m_frameAttachment(FrameAttachment)
         , m_access(access)
         , m_usage(usage)
         , m_view(std::move(view))
@@ -242,7 +286,7 @@ public:
     {
         return m_pNext;
     }
-
+    
     inline const PassAttachment* GetPerv() const
     {
         return m_pPrev;
@@ -280,45 +324,6 @@ protected:
 };
 
 using BufferPassAttachment = PassAttachment<IBufferView>;
-
-class ImagePassAttachment final : public PassAttachment<IImageView>
-{
-public:
-    inline AttachmentLoadStoreOp GetLoadStoreOp() const
-    {
-        return m_loadStoreOps;
-    }
-
-    inline ESampleCount GetSampleCount() const
-    {
-        return m_sampleCount;
-    }
-
-    // TMEP remove later.
-    inline ImagePassAttachment* GetNext() const
-    {
-        return static_cast<ImagePassAttachment*>(m_pNext);
-    }
-    
-    inline ImagePassAttachment* GetNext()
-    {
-        return static_cast<ImagePassAttachment*>(m_pNext);
-    }
-
-    inline const ImagePassAttachment* GetPerv() const
-    {
-        return static_cast<const ImagePassAttachment*>(m_pPrev);
-    
-    }
-
-    inline ImagePassAttachment* GetPerv()
-    {
-        return static_cast<ImagePassAttachment*>(m_pPrev);
-    }
-
-private:
-    AttachmentLoadStoreOp m_loadStoreOps;
-    ESampleCount          m_sampleCount;
-};
+using ImagePassAttachment  = PassAttachment<IImageView>;
 
 } // namespace RHI

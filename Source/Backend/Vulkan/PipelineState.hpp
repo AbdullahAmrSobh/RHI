@@ -11,14 +11,14 @@ namespace Vulkan
     {
     public:
         static Result<Unique<PipelineLayout>> CreatePipelineLayout(const Device& device, PipelineLayoutDesc& layoutDesc);
-
+        
         PipelineLayout(const Device& device)
             : DeviceObject(&device)
         {
         }
-
+        
         ~PipelineLayout();
-
+        
         VkResult Init(const PipelineLayoutDesc& layoutDesc);
 
         inline size_t GetHash() const
@@ -46,7 +46,7 @@ namespace Vulkan
         ~PipelineState();
 
         VkResult Init(const GraphicsPipelineStateDesc& desc);
-
+        
         inline const PipelineLayout& GetLayout() const
         {
             return *m_layout;

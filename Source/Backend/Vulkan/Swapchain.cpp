@@ -51,12 +51,12 @@ namespace Vulkan
     }
 
 #endif
-
+    
     Expected<Unique<ISwapchain>> Device::CreateSwapChain(const SwapchainDesc& desc)
     {
         Unique<Swapchain> swapchain = CreateUnique<Swapchain>(*this);
         VkResult          result    = swapchain->Init(desc);
-
+        
         if (RHI_SUCCESS(result))
             return std::move(swapchain);
         

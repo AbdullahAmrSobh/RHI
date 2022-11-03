@@ -80,7 +80,7 @@ namespace Vulkan
     {
         vkFreeDescriptorSets(m_pDevice->GetHandle(), m_pParantPool->GetHandle(), 1, &m_handle);
     }
-
+    
     VkWriteDescriptorSet DescriptorSet::WriteImages(uint32_t bindingIndex, const std::vector<VkDescriptorImageInfo>& imageInfos) const
     {
         VkWriteDescriptorSet write;
@@ -169,30 +169,7 @@ namespace Vulkan
             return ResultError(result);
         }
 
-        return CreateUnique<DescriptorSet>(*m_pDevice, setHandle, this);
-    }
-
-    Result<Unique<DescriptorSet>> DescriptorPool::Allocate(const DescriptorSetLayout& layout)
-    {
-        VkDescriptorSetLayout       layoutHandle = layout.GetHandle();
-        VkDescriptorSetAllocateInfo allocateInfo = {};
-        allocateInfo.sType                       = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocateInfo.pNext                       = nullptr;
-        allocateInfo.descriptorPool              = GetHandle();
-        allocateInfo.descriptorSetCount          = 1;
-        allocateInfo.pSetLayouts                 = &layoutHandle;
-
-        VkDescriptorSet setHandle;
-        VkResult        result = vkAllocateDescriptorSets(m_pDevice->GetHandle(), &allocateInfo, &setHandle);
-
-        if (result == VK_SUCCESS)
-        {
-            return CreateUnique<DescriptorSet>(*m_pDevice, layout, setHandle, *this);
-        }
-        else
-        {
-            return ResultError(result);
-        }
+        return std::move(CreateUnique<DescriptorSet>(*m_pDevice, layout, setHandle, *this));
     }
 
     // ShaderResourceGroup
@@ -269,7 +246,7 @@ namespace Vulkan
             VkWriteDescriptorSet writeDesc = m_descriptorSet->WriteBuffers(binding.first, bufferInfos);
             descriptorSetWriteDescriptions.push_back(writeDesc);
         }
-
+        
         // BindTexelBuffers
         for (auto& binding : data.GetTexelBufferBinds())
         {
@@ -341,7 +318,7 @@ namespace Vulkan
             {
                 return Unexpected(ConvertResult(result.error()));
             }
-
+            
             Result<Unique<DescriptorSet>> descriptorSetResult = m_descriptorPools.back()->Allocate(*pSetLayout);
             if (!descriptorSetResult.has_value())
             {
@@ -352,8 +329,8 @@ namespace Vulkan
                 descriptorSet = std::move(descriptorSetResult.value());
             }
         }
-
-        return CreateUnique<ShaderResourceGroup>(*m_pDevice, *pSetLayout, descriptorSet);
+        
+        return std::move(CreateUnique<ShaderResourceGroup>(*m_pDevice, std::move(descriptorSet)));
     }
 
 } // namespace Vulkan

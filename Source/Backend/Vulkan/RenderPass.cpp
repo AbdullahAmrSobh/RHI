@@ -1,22 +1,42 @@
 #include "Backend/Vulkan//RenderPass.hpp"
 #include "Backend/Vulkan//Device.hpp"
-#include "Backend/Vulkan/Common.hpp"
+#include "Backend/Vulkan//FrameGraphPass.hpp"
 #include "Backend/Vulkan/Commands.hpp"
+#include "Backend/Vulkan/Common.hpp"
 
 namespace RHI
 {
 namespace Vulkan
 {
 
-    VkAttachmentLoadOp ConvertLoadOp(EAttachmentLoadOp loadOp) {}
+    VkAttachmentLoadOp ConvertLoadOp(EAttachmentLoadOp loadOp)
+    {
+        switch (loadOp)
+        {
+        case EAttachmentLoadOp::Discard: VK_ATTACHMENT_LOAD_OP_CLEAR;
+        case EAttachmentLoadOp::DontCare: VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        case EAttachmentLoadOp::Load: return VK_ATTACHMENT_LOAD_OP_LOAD;
+        };
+        return VK_ATTACHMENT_LOAD_OP_MAX_ENUM;
+    }
 
-    VkAttachmentStoreOp ConvertStoreOp(EAttachmentStoreOp storeOp) {}
+    VkAttachmentStoreOp ConvertStoreOp(EAttachmentStoreOp storeOp)
+    {
+        switch (storeOp)
+        {
+        case EAttachmentStoreOp::Store: return VK_ATTACHMENT_STORE_OP_STORE;
+        case EAttachmentStoreOp::DontCare: return VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        case EAttachmentStoreOp::Discard: return VK_ATTACHMENT_STORE_OP_NONE;
+        }
+        return VK_ATTACHMENT_STORE_OP_MAX_ENUM;
+    }
 
     VkImageLayout GetAttachmentOptimalLayout(const ImagePassAttachment* pImageAttachment)
     {
         if (pImageAttachment != nullptr)
         {
             // TODO Deduce the optimal layout based on the usage and the access of the prev attachment.
+            return VK_IMAGE_LAYOUT_GENERAL;
         }
         else
         {
@@ -24,10 +44,16 @@ namespace Vulkan
         }
     }
 
-    Result<Unique<RenderPass>> RenderPass::Create(const Device& device, const RenderTargetLayout& renderTargetLayout)
+    Result<Unique<RenderPass>> RenderPass::Create(const Device& device, const Pass& pass)
     {
         Unique<RenderPass> renderPass = CreateUnique<RenderPass>(device);
-        // ...
+        VkResult           result     = renderPass->Init(pass);
+
+        if (RHI_SUCCESS(result))
+        {
+            return ResultError(result);
+        }
+
         return std::move(renderPass);
     }
 
@@ -38,13 +64,13 @@ namespace Vulkan
 
     VkResult RenderPass::Init(const Pass& pass)
     {
-        const std::vector<ImagePassAttachment*>& passAttachments = pass.GetImagePassAttachments();
+        auto passAttachments = pass.GetImageAttachments();
 
         uint32_t currentAttachmentIndex = 0;
 
         std::vector<VkAttachmentDescription> attachmentsDescriptions;
         // The + 1 is to account for the depth stencil attachment;
-        attachmentsDescriptions.reserve(CountElements(pass.GetImagePassAttachments()) + 1);
+        attachmentsDescriptions.reserve(CountElements(pass.GetImageAttachments()) + 1);
 
         std::vector<VkAttachmentReference> inputAttachments;
         std::vector<VkAttachmentReference> colorAttachments;
@@ -86,10 +112,10 @@ namespace Vulkan
 
         VkSubpassDescription subpassDescription{};
         subpassDescription.flags = 0;
-        switch (pass.GetQueueType())
+        switch (pass.GetPassType())
         {
-        case EHardwareQueueType::Graphics: subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        case EHardwareQueueType::Compute: subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_COMPUTE;
+        case EPassType::Graphics: subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        case EPassType::Compute: subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_COMPUTE;
         };
         subpassDescription.inputAttachmentCount    = CountElements(inputAttachments);
         subpassDescription.pInputAttachments       = inputAttachments.data();
@@ -132,7 +158,7 @@ namespace Vulkan
         return vkCreateRenderPass(m_pDevice->GetHandle(), &createInfo, nullptr, &m_handle);
     }
 
-    Result<Unique<Framebuffer>> Framebuffer::Create(Device& device, VkExtent2D extent, const AttachmentsDesc& attachments, const RenderPass& renderPass)
+    Result<Unique<Framebuffer>> Framebuffer::Create(const Device& device, VkExtent2D extent, const AttachmentsDesc& attachments, const RenderPass& renderPass)
     {
         Unique<Framebuffer> framebuffer = CreateUnique<Framebuffer>(device);
         VkResult            result      = framebuffer->Init(extent, attachments, renderPass);
@@ -142,7 +168,12 @@ namespace Vulkan
         }
         return ResultError(result);
     }
-    
+
+    Framebuffer::~Framebuffer()
+    {
+        vkDestroyFramebuffer(m_pDevice->GetHandle(), m_handle, nullptr);
+    }
+
     VkResult Framebuffer::Init(VkExtent2D extent, const AttachmentsDesc& attachmentsDesc, const RenderPass& renderPass)
     {
         std::vector<VkImageView> attachments;
@@ -170,44 +201,6 @@ namespace Vulkan
         createInfo.layers          = 1;
 
         return vkCreateFramebuffer(m_pDevice->GetHandle(), &createInfo, nullptr, &m_handle);
-    }
-
-    EResultCode Pass::Submit()
-    {
-        const Queue* pQueue = nullptr;
-        if (m_queueType == EHardwareQueueType::Graphics)
-        {
-            pQueue = &m_pDevice->GetGraphicsQueue();
-        }
-        else
-        {
-            pQueue = &m_pDevice->GetComputeQueue();
-        }
-        VkCommandBufferSubmitInfo cmdBufSubmitInfo = {};
-        cmdBufSubmitInfo.sType                     = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
-        cmdBufSubmitInfo.pNext                     = nullptr;
-        cmdBufSubmitInfo.deviceMask                = UINT32_MAX;
-        cmdBufSubmitInfo.commandBuffer             = m_commandBuffers[m_currentBackbufferIndex++]->GetHandle();
-        
-        for(auto& waitSemaphore : m_pWaitSemaphores)
-        {
-        
-        }
-
-        VkSemaphoreSubmitInfo semaphoreSubmitInfo = {};
-        
-        
-        // signal passFinishedSemaphore.
-        
-
-        Queue::SubmitRequest submitReq{};
-        submitReq.waitSemaphores;
-        submitReq.commandBuffers.push_back(cmdBufSubmitInfo);
-        submitReq.signalSemaphores;
-        
-        std::vector<Queue::SubmitRequest> submitRequests{submitReq};
-        VkResult                          result = pQueue->Submit(submitRequests, static_cast<Fence*>(m_pSignalFences));
-        return ConvertResult(result);
     }
 
 } // namespace Vulkan

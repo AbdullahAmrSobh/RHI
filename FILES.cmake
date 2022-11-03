@@ -29,6 +29,7 @@ set(SOURCE_FILES
 	"Source/Backend/Vulkan/Device.hpp"
 	"Source/Backend/Vulkan/FrameGraph.cpp"
 	"Source/Backend/Vulkan/FrameGraph.hpp"
+	"Source/Backend/Vulkan/FrameGraphPass.hpp"
 	"Source/Backend/Vulkan/Instance.cpp"
 	"Source/Backend/Vulkan/Instance.hpp"
 	"Source/Backend/Vulkan/PipelineState.cpp"

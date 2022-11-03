@@ -1,9 +1,12 @@
 #include <cstdint>
 #include <cstdio>
+#include <file_system>
+#include <fstream>
 #include <iostream>
 #include <string>
 #include <utility>
 #include <vector>
+
 
 #include <cassert>
 
@@ -14,19 +17,23 @@
 
 #define ASSERT_VALUE(exception) exception.or_else([](RHI::EResultCode resultCode) { assert(resultCode == RHI::EResultCode::Success); }).value_or(nullptr)
 
-std::vector<std::byte> ReadBinFile(std::string_view path)
+std::vector<uint32_t> ReadBinFile(std::string path)
 {
-    std::vector<std::byte> buffer;
+    std::vector<std::uint32_t> buffer;
+    std::fstream               file(path, std::ios::binary);
+    auto                       size = std::filesystem::file_size(path);
+    buffer.resize(size);
+    file.read(buffer.data(), buffer.size() * 4);
     return buffer;
 }
 
-struct Mesh 
+struct Mesh
 {
-    std::vector<float>    vertexBufferData; 
-    std::vector<uint32_t> indexBufferData;  
+    std::vector<float>    vertexBufferData;
+    std::vector<uint32_t> indexBufferData;
 };
 
-Mesh LoadMesh(std::string_view path) 
+Mesh LoadMesh(std::string_view path)
 {
     return Mesh();
 }
@@ -55,24 +62,16 @@ public:
     }
 };
 
-class PrimaryRenderPass final : public RHI::PassCallbacks
+class PrimaryRenderPass final : public RHI::IPassCallbacks
 {
 public:
-    virtual void Setup(RHI::FrameGraphBuilder& builder)     override
-    {
-        RHI::ImagePassAttachmentDesc passAttachmentDesc;
-        passAttachmentDesc.attachmentReference = 123;
-    
-    }
-    
-    virtual void Compile(RHI::PassCompileContext& context)  override
-    {
-    }
-    
-    virtual void Execute(RHI::PassExecuteContext& context)  override
-    {
-    }
-    
+    virtual ~PrimaryRenderPass() = default;
+
+    virtual void Setup(RHI::FrameGraphBuilder& builder) override {}
+
+    virtual void UseAttachments(RHI::IPass& pass) override {}
+
+    virtual void BuildCommandBuffer(RHI::ICommandBuffer& commandBuffer) override {}
 };
 
 class Renderer
@@ -96,16 +95,18 @@ public:
 
         // Create Surface and Swapchain
         {
-            RHI::X11SurfaceDesc        surfaceDesc;
+            RHI::Win32SurfaceDesc surfaceDesc;
+            surfaceDesc.hwnd;
+            surfaceDesc.instance;
             RHI::Unique<RHI::ISurface> surface = ASSERT_VALUE(m_instance->CreateSurface(surfaceDesc));
-            
+
             RHI::SwapchainDesc swapchainDesc;
             swapchainDesc.backImagesCount          = 2;
             swapchainDesc.extent                   = {640, 480};
             swapchainDesc.pSurface                 = m_surface.get();
             RHI::Unique<RHI::ISwapchain> swapchain = ASSERT_VALUE(m_device->CreateSwapChain(swapchainDesc));
         }
-        
+
         std::vector<float>    vertexBufferData;
         std::vector<uint32_t> indexBufferData;
 
@@ -139,16 +140,16 @@ public:
         {
             RHI::ShaderProgramDesc desc;
 
-            desc.binShader    = ReadBinFile("./shaders.spv");
+            desc.shaderCode   = ReadBinFile("./shaders.spv");
             desc.stage        = RHI::EShaderStageFlagBits::Vertex;
             desc.entryName    = "vertexShader";
             auto vertexShader = ASSERT_VALUE(m_device->CreateShaderProgram(desc));
 
-            desc.binShader   = ReadBinFile("./shaders.spv");
+            desc.shaderCode  = ReadBinFile("./shaders.spv");
             desc.stage       = RHI::EShaderStageFlagBits::Pixel;
             desc.entryName   = "pixelShader";
             auto pixelShader = ASSERT_VALUE(m_device->CreateShaderProgram(desc));
-            
+
             RHI::GraphicsPipelineStateDesc pipelineDesc;
             pipelineDesc.shaderStages.pVertexShader = vertexShader.get();
             pipelineDesc.shaderStages.pPixelShader  = pixelShader.get();
@@ -158,41 +159,37 @@ public:
 
             m_pipeline = ASSERT_VALUE(m_device->CreateGraphicsPipelineState(pipelineDesc));
         }
-        
+
         // Create shader resource group allocator
         {
             m_shaderResourceGroupAllocator = ASSERT_VALUE(m_device->CreateShaderResourceGroupAllocator());
         }
-        
 
-        // Create the frameGraph. 
+        // Create the frameGraph.
         {
-            m_frameGraph   = ASSERT_VALUE(m_device->CreateFrameGraph());
+            m_frameGraph = ASSERT_VALUE(m_device->CreateFrameGraph());
 
-
-            // Import the swapchain as an imageAttachment. 
-            
-            
+            // Import the swapchain as an imageAttachment.
             ImageAttachmentReference swapchainAttachment = m_frameGraph->ImportSwapchain("SwapchainImage", *m_swapchain);
-            
-            m_pPrimaryPass = ASSERT_VALUE(m_frameGraph->CreatePass("PrimaryRenderPass", RHI::EHardwareQueueType::Graphics));
-            m_pPrimaryPass->SetCallbacks(m_primaryPassCallbacks);
+        }
+
+        {
+            m_primaryRenderPass = RHI::CreateUnique<PrimaryRenderPass>();
         }
     };
     
     void OnFrame()
     {
-        m_frameGraph.Begin();
+        m_frameGraph.BeginFrame();
         
-        // Must be called per render pass to submit this render pass for execution. 
-        m_frameGraph.Submit(m_pPrimaryPass);
+        m_frameGraph.Execute(m_primaryRenderPass);
         
-        m_frameGraph.End();
+        m_frameGraph.EndFrame();
     };
 
 private:
     GLFWwindow* m_pWindow;
-
+    
     RHI::Unique<RHI::IInstance>                     m_instance;
     RHI::Unique<RHI::IDevice>                       m_device;
     RHI::Unique<RHI::ISurface>                      m_surface;
@@ -202,8 +199,7 @@ private:
     RHI::Unique<RHI::IPipelineState>                m_pipeline;
     RHI::Unique<RHI::IShaderResourceGroupAllocator> m_shaderResourceGroupAllocator;
     RHI::Unique<RHI::IFrameGraph>                   m_frameGraph;
-    RHI::Unique<RHI::IPass>                         m_pPrimaryPass;
-    PrimaryRenderPass                               m_primaryPassCallbacks;
+    RHI::Unique<PrimaryRenderPass>                  m_primaryRenderPass;
 };
 
 int main(void)

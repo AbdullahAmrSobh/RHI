@@ -6,7 +6,6 @@ namespace RHI
 {
 namespace Vulkan
 {
-    class RenderPassManager;
     class Semaphore;
     class Fence;
     class PipelineLayout;
@@ -149,11 +148,6 @@ namespace Vulkan
             return *m_pTransferQueue;
         }
 
-        inline RenderPassManager& GetRenderPassManager() const
-        {
-            return *m_renderPassManager;
-        }
-
         virtual EResultCode                                     WaitIdle() const override;
         virtual Expected<Unique<ISwapchain>>                    CreateSwapChain(const SwapchainDesc& desc) override;
         virtual Expected<Unique<IShaderProgram>>                CreateShaderProgram(const ShaderProgramDesc& desc) override;
@@ -175,20 +169,19 @@ namespace Vulkan
 
     private:
         Instance*       m_pInstance;
+
         PhysicalDevice* m_pPhysicalDevice;
-
+        
         VkDevice     m_device;
+        
         VmaAllocator m_allocator;
-
+        
         std::vector<Queue> m_queues;
 
         // Pointer to dedicated queues.
         Queue* m_pGraphicsQueue;
         Queue* m_pComputeQueue;
         Queue* m_pTransferQueue;
-            
-        // Cache for render passes.
-        mutable Unique<RenderPassManager> m_renderPassManager;
     };
 } // namespace Vulkan
 } // namespace RHI

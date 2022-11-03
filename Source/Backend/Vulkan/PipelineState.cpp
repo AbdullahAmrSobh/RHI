@@ -2,26 +2,28 @@
 
 #include "Backend/Vulkan/Common.hpp"
 #include "Backend/Vulkan/Device.hpp"
+#include "Backend/Vulkan/FrameGraphPass.hpp"
 #include "Backend/Vulkan/RenderPass.hpp"
+
 
 namespace RHI
 {
 namespace Vulkan
 {
 
-    Expected<Unique<IPipelineState>> Device::CreateGraphicsPipelineState(const GraphicsPipelineStateDesc& desc)
+    Result<Unique<PipelineLayout>> PipelineLayout::CreatePipelineLayout(const Device& device, PipelineLayoutDesc& layoutDesc)
     {
-        Unique<PipelineState> pipelineState = CreateUnique<PipelineState>(desc);
-        VkResult              result        = pipelineState->Init(desc);
-
+        Unique<PipelineLayout> pipelineLayout = CreateUnique<PipelineLayout>(device);
+        VkResult               result         = pipelineLayout->Init(layoutDesc);
+        
         if (RHI_SUCCESS(result))
         {
-            return Unexpected(ConvertResult(result));
+            return ResultError(result);
         }
-
-        return std::move(pipelineState);
+        
+        return std::move(pipelineLayout);
     }
-
+    
     PipelineLayout::~PipelineLayout()
     {
         vkDestroyPipelineLayout(m_pDevice->GetHandle(), m_handle, nullptr);
@@ -29,26 +31,24 @@ namespace Vulkan
 
     VkResult PipelineLayout::Init(const PipelineLayoutDesc& layoutDesc)
     {
+
+        size_t hash = 0;
         
-        size_t hash   = 0;
-        
-        size_t offset = 0;
+        uint32_t offset = 0;
         for (auto& layout : layoutDesc.shaderBindingGroupLayouts)
         {
             hash = hash_combine(hash, layout.GetHash());
-            
+
             // For other resources
 
             for (auto& constants : layout.GetShaderConstantBufferBindings())
             {
-                offset = constants.byteSize;
+                offset = static_cast<uint32_t>(constants.byteSize);
                 VkPushConstantRange range;
                 range.offset = offset;
-                range.size   = constants.byteSize;
+                range.size   = static_cast<uint32_t>(constants.byteSize);
                 m_pushConstantRanges.push_back(range);
             }
-
-            
         }
         std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
         std::transform(m_descriptorSetsLayouts.begin(), m_descriptorSetsLayouts.end(), std::back_insert_iterator(descriptorSetLayouts),
@@ -332,7 +332,7 @@ namespace Vulkan
                 state.flags             = 0;
                 state.logicOpEnable     = VK_FALSE;
                 state.logicOp           = VK_LOGIC_OP_SET;
-                state.attachmentCount   = attachmentColorBlend.size();
+                state.attachmentCount   = CountElements(attachmentColorBlend);
                 state.pAttachments      = attachmentColorBlend.data();
                 state.blendConstants[0] = 0.0f;
                 state.blendConstants[1] = 0.0f;
@@ -380,6 +380,19 @@ namespace Vulkan
 
     } // namespace PipelineStateInitalizers
 
+    Expected<Unique<IPipelineState>> Device::CreateGraphicsPipelineState(const GraphicsPipelineStateDesc& desc)
+    {
+        Unique<PipelineState> pipelineState = CreateUnique<PipelineState>(*this);
+        VkResult              result        = pipelineState->Init(desc);
+
+        if (RHI_SUCCESS(result))
+        {
+            return Unexpected(ConvertResult(result));
+        }
+
+        return std::move(pipelineState);
+    }
+
     PipelineState::~PipelineState()
     {
         vkDestroyPipeline(m_pDevice->GetHandle(), m_handle, nullptr);
@@ -411,14 +424,14 @@ namespace Vulkan
         colorBlendStateInitalizer.Initalize(createInfo.pColorBlendState);
         dynamicStateInitalizer.Initalize(createInfo.pDynamicState);
 
-        RenderPassManager::SubpassDesc subpass = m_pDevice->GetRenderPassManager().GetPass(desc.renderTargetLayout);
+        auto pFrameGraphRenderPass = static_cast<const Pass*>(desc.pRenderPass);
 
         createInfo.sType              = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         createInfo.pNext              = nullptr;
         createInfo.flags              = 0;
         createInfo.layout             = m_layout->GetHandle();
-        createInfo.renderPass         = subpass.renderPass;
-        createInfo.subpass            = subpass.subpassIndex;
+        createInfo.renderPass         = pFrameGraphRenderPass->GetRenderPass()->GetHandle();
+        createInfo.subpass            = 0;
         createInfo.basePipelineHandle = VK_NULL_HANDLE;
         createInfo.basePipelineIndex  = 0;
 
