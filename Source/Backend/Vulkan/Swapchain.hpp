@@ -20,10 +20,6 @@ namespace Vulkan
             , m_pInstance(&instance)
         {
         }
-<<<<<<< HEAD
-
-=======
->>>>>>> 49ff0baea8856acd38e8e358c4e24685c7cec3bb
         ~Surface();
 
 #ifdef RHI_WINDOWS
