@@ -149,7 +149,7 @@ namespace Vulkan
 
         return vkCreateDescriptorPool(m_pDevice->GetHandle(), &createInfo, nullptr, &m_handle);
     }
-
+    
     Result<Unique<DescriptorSet>> DescriptorPool::Allocate(const DescriptorSetLayout& layout)
     {
         VkDescriptorSetLayout layoutHandle = layout.GetHandle();
@@ -266,6 +266,12 @@ namespace Vulkan
         vkUpdateDescriptorSets(m_pDevice->GetHandle(), CountElements(descriptorSetWriteDescriptions), descriptorSetWriteDescriptions.data(), 0, nullptr);
 
         return EResultCode::Success;
+    }
+    
+    Expected<Unique<IShaderResourceGroupAllocator>> Device::CreateShaderResourceGroupAllocator()
+    {
+        Unique<ShaderResourceGroupAllocator> allocator = CreateUnique<ShaderResourceGroupAllocator>(*this);
+        return allocator;
     }
 
     // ShaderResourceGroupAllocator

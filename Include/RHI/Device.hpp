@@ -66,8 +66,8 @@ public:
         return *m_transferQueue;
     }
 
-    virtual EResultCode WaitIdle() const;
-
+    virtual EResultCode WaitIdle() const = 0;
+    
     virtual Expected<Unique<ISwapchain>> CreateSwapChain(const SwapchainDesc& desc) = 0;
 
     virtual Expected<Unique<IShaderProgram>> CreateShaderProgram(const ShaderProgramDesc& desc) = 0;
@@ -80,10 +80,8 @@ public:
 
     virtual Expected<Unique<ISampler>> CreateSampler(const SamplerDesc& desc) = 0;
 
-    virtual Expected<Unique<IMemoryPool>> CreateMemoryPool(const AllocationDesc& allocationDesc);
-
     virtual Expected<Unique<IImage>> CreateImage(const AllocationDesc& allocationDesc, const ImageDesc& desc) = 0;
-
+    
     virtual Expected<Unique<IImageView>> CreateImageView(const IImage& image, const ImageViewDesc& desc) = 0;
 
     virtual Expected<Unique<IBuffer>> CreateBuffer(const AllocationDesc& allocationDesc, const BufferDesc& desc) = 0;

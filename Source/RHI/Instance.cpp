@@ -28,11 +28,21 @@ Expected<Unique<IInstance>> IInstance::Create(EBackend backend, Unique<IDebugCal
         {
             return instance;
         }
-
+        
         return Unexpected(EResultCode::Fail);
     }
     default: return Unexpected(EResultCode::Fail);
     }
 }
+
+    std::vector<IPhysicalDevice*> IInstance::GetPhysicalDevice() const
+    {
+        std::vector<IPhysicalDevice*> result;
+        for (auto& physicalDevice : m_physicalDevices )
+        {
+            result.push_back(physicalDevice.get());
+        }
+        return result;
+    }
 
 } // namespace RHI

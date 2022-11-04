@@ -42,7 +42,7 @@ namespace Vulkan
 
         return Unexpected(ConvertResult(result));
     }
-
+    
     Expected<Unique<IImage>> Device::CreateImage(const AllocationDesc& allocationDesc, const ImageDesc& desc)
     {
         Unique<Image> image  = CreateUnique<Image>(*this);

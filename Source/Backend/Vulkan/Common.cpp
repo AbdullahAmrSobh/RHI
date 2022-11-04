@@ -23,6 +23,10 @@ namespace Vulkan
         }
     }
     
+    VkFormat ConvertFormat(EFormat format)
+    {
+        return static_cast<VkFormat>(static_cast<uint32_t>(format));
+    }
     
 } // namespace Vulkan
 } // namespace RHI

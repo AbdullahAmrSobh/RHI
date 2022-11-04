@@ -1,12 +1,10 @@
 #include <cstdint>
 #include <cstdio>
-#include <file_system>
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <utility>
 #include <vector>
-
 
 #include <cassert>
 
@@ -19,12 +17,7 @@
 
 std::vector<uint32_t> ReadBinFile(std::string path)
 {
-    std::vector<std::uint32_t> buffer;
-    std::fstream               file(path, std::ios::binary);
-    auto                       size = std::filesystem::file_size(path);
-    buffer.resize(size);
-    file.read(buffer.data(), buffer.size() * 4);
-    return buffer;
+    return std::vector<uint32_t> {};
 }
 
 struct Mesh
@@ -65,6 +58,11 @@ public:
 class PrimaryRenderPass final : public RHI::IPassCallbacks
 {
 public:
+    PrimaryRenderPass(RHI::IFrameGraph& frameGraph)
+        : RHI::IPassCallbacks(frameGraph, "primaryRenderPass", RHI::EPassType::Graphics)
+    {
+    }
+    
     virtual ~PrimaryRenderPass() = default;
 
     virtual void Setup(RHI::FrameGraphBuilder& builder) override {}
@@ -134,62 +132,48 @@ public:
             m_indexBuffer = ASSERT_VALUE(m_device->CreateBuffer(allocationDesc, bufferDesc));
         }
 
-        RHI::RenderTargetLayout renderTargetLayout;
+        // Create the frameGraph.
+        {
 
+        }
+        
         // Create pipeline
         {
             RHI::ShaderProgramDesc desc;
-
+            
             desc.shaderCode   = ReadBinFile("./shaders.spv");
             desc.stage        = RHI::EShaderStageFlagBits::Vertex;
             desc.entryName    = "vertexShader";
             auto vertexShader = ASSERT_VALUE(m_device->CreateShaderProgram(desc));
-
+            
             desc.shaderCode  = ReadBinFile("./shaders.spv");
             desc.stage       = RHI::EShaderStageFlagBits::Pixel;
             desc.entryName   = "pixelShader";
             auto pixelShader = ASSERT_VALUE(m_device->CreateShaderProgram(desc));
-
+            
             RHI::GraphicsPipelineStateDesc pipelineDesc;
             pipelineDesc.shaderStages.pVertexShader = vertexShader.get();
             pipelineDesc.shaderStages.pPixelShader  = pixelShader.get();
-            pipelineDesc.renderTargetLayout         = renderTargetLayout;
-            pipelineDesc.vertexInputAttributes.push_back(RHI::PipelineStateDesc::VertexAttribute{"v_position", RHI::EFormat::R32G32B32Sfloat});
-            pipelineDesc.vertexInputAttributes.push_back(RHI::PipelineStateDesc::VertexAttribute{"v_color", RHI::EFormat::R8G8B8A8Srgb});
-
+            pipelineDesc.pRenderPass                = &m_primaryRenderPass->GetPass();
+            pipelineDesc.vertexInputAttributes.push_back(RHI::GraphicsPipelineVertexAttributeState{"v_position", RHI::EFormat::R32G32B32Sfloat});
+            pipelineDesc.vertexInputAttributes.push_back(RHI::GraphicsPipelineVertexAttributeState{"v_color", RHI::EFormat::R8G8B8A8Srgb});
+            
             m_pipeline = ASSERT_VALUE(m_device->CreateGraphicsPipelineState(pipelineDesc));
         }
-
+        
         // Create shader resource group allocator
         {
             m_shaderResourceGroupAllocator = ASSERT_VALUE(m_device->CreateShaderResourceGroupAllocator());
         }
-
-        // Create the frameGraph.
-        {
-            m_frameGraph = ASSERT_VALUE(m_device->CreateFrameGraph());
-
-            // Import the swapchain as an imageAttachment.
-            ImageAttachmentReference swapchainAttachment = m_frameGraph->ImportSwapchain("SwapchainImage", *m_swapchain);
-        }
-
-        {
-            m_primaryRenderPass = RHI::CreateUnique<PrimaryRenderPass>();
-        }
     };
-    
+
     void OnFrame()
     {
-        m_frameGraph.BeginFrame();
-        
-        m_frameGraph.Execute(m_primaryRenderPass);
-        
-        m_frameGraph.EndFrame();
     };
 
 private:
     GLFWwindow* m_pWindow;
-    
+
     RHI::Unique<RHI::IInstance>                     m_instance;
     RHI::Unique<RHI::IDevice>                       m_device;
     RHI::Unique<RHI::ISurface>                      m_surface;
@@ -229,7 +213,6 @@ int main(void)
         /* Poll for and process events */
         glfwPollEvents();
     }
-    renderer.Shutdown();
     glfwTerminate();
     return 0;
 }

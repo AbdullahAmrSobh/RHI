@@ -44,12 +44,12 @@ public:
     static Expected<Unique<IInstance>> Create(EBackend backend, Unique<IDebugCallbacks> callbacks = nullptr);
 
     virtual ~IInstance() = default;
-
+    
     inline uint32_t GetPhysicalDeviceCount() const
     {
         return m_physicalDeviceCount;
     }
-
+    
     std::vector<IPhysicalDevice*> GetPhysicalDevice() const;
 
 #ifdef RHI_LINUX

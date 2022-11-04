@@ -112,7 +112,7 @@ namespace Vulkan
 
         VkSubpassDescription subpassDescription{};
         subpassDescription.flags = 0;
-        switch (pass.GetPassType())
+        switch (pass.GetType())
         {
         case EPassType::Graphics: subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
         case EPassType::Compute: subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_COMPUTE;

@@ -112,7 +112,7 @@ namespace Vulkan
         {
             return m_device;
         }
-
+        
         inline VmaAllocator GetAllocator() const
         {
             return m_allocator;
