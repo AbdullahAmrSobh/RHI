@@ -1,4 +1,6 @@
-#include "Backend/Vulkan//RenderPass.hpp"
+#include "RHI/FrameGraphAttachment.hpp"
+#include "RHI/FrameGraphPass.hpp"
+
 #include "Backend/Vulkan//Device.hpp"
 #include "Backend/Vulkan//FrameGraphPass.hpp"
 #include "Backend/Vulkan/Commands.hpp"
@@ -8,7 +10,7 @@ namespace RHI
 {
 namespace Vulkan
 {
-
+    
     VkAttachmentLoadOp ConvertLoadOp(EAttachmentLoadOp loadOp)
     {
         switch (loadOp)
@@ -38,10 +40,8 @@ namespace Vulkan
             // TODO Deduce the optimal layout based on the usage and the access of the prev attachment.
             return VK_IMAGE_LAYOUT_GENERAL;
         }
-        else
-        {
-            return VK_IMAGE_LAYOUT_UNDEFINED;
-        }
+
+        return VK_IMAGE_LAYOUT_UNDEFINED;
     }
 
     Result<Unique<RenderPass>> RenderPass::Create(const Device& device, const Pass& pass)
@@ -80,7 +80,7 @@ namespace Vulkan
         for (auto& attachment : passAttachments)
         {
             VkAttachmentDescription attachmentDescription{};
-            attachmentDescription.flags;
+            attachmentDescription.flags          = 0;
             attachmentDescription.format         = ConvertFormat(attachment->GetDesc().format);
             attachmentDescription.samples        = ConvertSampleCount(attachment->GetSampleCount());
             attachmentDescription.loadOp         = ConvertLoadOp(attachment->GetLoadStoreOp().loadOp);
@@ -131,13 +131,13 @@ namespace Vulkan
             const ImagePassAttachment* attachment = pass.GetDepthStencilAttachment();
 
             VkAttachmentDescription attachmentDescription = {};
-            attachmentDescription.flags;
-            attachmentDescription.format         = ConvertFormat(attachment->GetDesc().format);
-            attachmentDescription.samples        = ConvertSampleCount(attachment->GetSampleCount());
-            attachmentDescription.loadOp         = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-            attachmentDescription.storeOp        = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-            attachmentDescription.stencilLoadOp  = ConvertLoadOp(attachment->GetLoadStoreOp().loadOp);
-            attachmentDescription.stencilStoreOp = ConvertStoreOp(attachment->GetLoadStoreOp().storeOp);
+            attachmentDescription.flags                   = {};
+            attachmentDescription.format                  = ConvertFormat(attachment->GetDesc().format);
+            attachmentDescription.samples                 = ConvertSampleCount(attachment->GetSampleCount());
+            attachmentDescription.loadOp                  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            attachmentDescription.storeOp                 = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            attachmentDescription.stencilLoadOp           = ConvertLoadOp(attachment->GetLoadStoreOp().loadOp);
+            attachmentDescription.stencilStoreOp          = ConvertStoreOp(attachment->GetLoadStoreOp().storeOp);
 
             attachmentsDescriptions.push_back(attachmentDescription);
 
@@ -168,12 +168,12 @@ namespace Vulkan
         }
         return ResultError(result);
     }
-
+    
     Framebuffer::~Framebuffer()
     {
         vkDestroyFramebuffer(m_pDevice->GetHandle(), m_handle, nullptr);
     }
-
+    
     VkResult Framebuffer::Init(VkExtent2D extent, const AttachmentsDesc& attachmentsDesc, const RenderPass& renderPass)
     {
         std::vector<VkImageView> attachments;

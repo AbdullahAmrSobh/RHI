@@ -1,10 +1,12 @@
 #pragma once
+#include "RHI/FrameGraphPass.hpp"
+
+#include "Backend/Vulkan/Device.hpp"
+#include "Backend/Vulkan/FrameGraphPass.hpp"
 #include "Backend/Vulkan/Resource.hpp"
 
 namespace RHI
 {
-
-struct RenderTargetLayout;
 
 namespace Vulkan
 {

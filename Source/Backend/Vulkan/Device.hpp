@@ -1,5 +1,10 @@
 #pragma once
+#include <unordered_map>
+#include "RHI/Common.hpp"
 #include "RHI/Device.hpp"
+#include "RHI/PipelineState.hpp"
+#include "RHI/Resource.hpp"
+#include "RHI/ShaderResourceGroup.hpp"
 #include "Backend/Vulkan/Instance.hpp"
 
 namespace RHI
@@ -62,7 +67,7 @@ namespace Vulkan
             std::vector<VkCommandBufferSubmitInfo> commandBuffers;
             std::vector<VkSemaphoreSubmitInfo>     signalSemaphores;
         };
-        
+
         inline Queue(VkQueue queue, uint32_t familyIndex, uint32_t index)
             : m_handle(queue)
             , m_familyIndex(index)
@@ -91,6 +96,18 @@ namespace Vulkan
         uint32_t m_queueIndex;
     };
 
+    using DeviceMemoryPtr = void*;
+    class DeviceContext
+    {
+    public:
+        virtual ~DeviceContext() = default;
+        
+        virtual Expected<DeviceMemoryPtr> Map(IResource& resource);
+        virtual void                      Unmap(IResource& resource);
+
+                
+    };
+
     class Device final : public IDevice
     {
     public:
@@ -102,7 +119,7 @@ namespace Vulkan
         {
             return *m_pPhysicalDevice;
         }
-        
+
         inline VkPhysicalDevice GetPhysicalDeviceHandle() const
         {
             return m_pPhysicalDevice->GetHandle();
@@ -132,7 +149,7 @@ namespace Vulkan
         {
             return *m_pComputeQueue;
         }
-        
+
         inline Queue& GetComputeQueue()
         {
             return *m_pComputeQueue;
@@ -160,9 +177,6 @@ namespace Vulkan
         virtual Expected<Unique<IBuffer>>                       CreateBuffer(const AllocationDesc& allocationDesc, const BufferDesc& desc) override;
         virtual Expected<Unique<IBufferView>>                   CreateBufferView(const IBuffer& buffer, const BufferViewDesc& desc) override;
         virtual Expected<Unique<IFrameGraph>>                   CreateFrameGraph() override;
-
-        PipelineLayout*      FindPipelineLayout(size_t hash) const;
-        DescriptorSetLayout* FindDescriptorSetLayout(size_t hash) const;
 
     private:
         EResultCode InitQueues(std::optional<uint32_t> graphicsQueueIndex, std::optional<uint32_t> computeQueueIndex, std::optional<uint32_t> indexQueueIndex);

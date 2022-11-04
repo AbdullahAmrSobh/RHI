@@ -3,6 +3,7 @@
 #include "Backend/Vulkan/Device.hpp"
 #include "Backend/Vulkan/Resource.hpp"
 
+
 namespace RHI
 {
 namespace Vulkan
@@ -231,7 +232,7 @@ namespace Vulkan
         createInfo.pQueueFamilyIndices   = nullptr;
 
         VmaAllocationCreateInfo allocationCreateInfo;
-        allocationCreateInfo.usage = ConvertMemoryUsage(allocationDesc.usage);
+        allocationCreateInfo.usage = ConvertAllocationUsage(allocationDesc.usage);
 
         return vmaCreateBuffer(m_pDevice->GetAllocator(), &createInfo, &allocationCreateInfo, &m_handle, &m_allocation, &m_allocationInfo);
     }
@@ -299,15 +300,15 @@ namespace Vulkan
         createInfo.flags                   = 0;
         createInfo.magFilter               = ConvertFilter(desc.filter);
         createInfo.minFilter               = ConvertFilter(desc.filter);
-        createInfo.mipmapMode              = ConvertMipMapMode(desc.filter);
-        createInfo.addressModeU            = ConvertAddressMode(desc.addressU);
-        createInfo.addressModeV            = ConvertAddressMode(desc.addressV);
-        createInfo.addressModeW            = ConvertAddressMode(desc.addressW);
+        createInfo.mipmapMode              = ConvertSamplerMipMapMode(desc.filter);
+        createInfo.addressModeU            = ConvertSamplerAddressMode(desc.addressU);
+        createInfo.addressModeV            = ConvertSamplerAddressMode(desc.addressV);
+        createInfo.addressModeW            = ConvertSamplerAddressMode(desc.addressW);
         createInfo.mipLodBias              = desc.mipLodBias;
         createInfo.anisotropyEnable        = VK_FALSE;
         createInfo.maxAnisotropy           = desc.maxAnisotropy;
         createInfo.compareEnable           = VK_TRUE;
-        createInfo.compareOp               = ConvertCompareOp(desc.compare);
+        createInfo.compareOp               = ConvertSamplerCompareOp(desc.compare);
         createInfo.minLod                  = desc.minLod;
         createInfo.maxLod                  = desc.maxLod;
         createInfo.borderColor             = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;

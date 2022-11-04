@@ -1,7 +1,11 @@
 #pragma once
+#include <vector>
 #include "RHI/Commands.hpp"
+#include "RHI/Common.hpp"
 #include "Backend/Vulkan/RenderPass.hpp"
 #include "Backend/Vulkan/Resource.hpp"
+#include "Backend/Vulkan/ShaderResourceGroup.hpp"
+#include <vulkan/vulkan_core.h>
 
 namespace RHI
 {
@@ -41,6 +45,11 @@ namespace Vulkan
         
         // Method for waiting on a stage (sync point), for other commands to finish.
         // Method for signaling to other commands, that this command finished a sage.
+
+    private:
+        void BeginRenderPass(Extent2D extent, std::vector<VkClearValue> clearValues);
+        void EndRenderPass();
+        void BindShaderResourceGroups(const std::vector<ShaderResourceGroup*>& groups);
     
     private:
         const Framebuffer* m_renderTarget;
@@ -61,7 +70,7 @@ namespace Vulkan
     {
     public:
         static Result<Unique<CommandAllocator>> Create(const Device& device);
-        
+
         CommandAllocator(const Device& device)
             : DeviceObject(&device)
         {

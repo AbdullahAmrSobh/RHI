@@ -1,5 +1,6 @@
 #pragma once
 #include "RHI/Common.hpp"
+#include "RHI/Resource.hpp"
 
 namespace RHI
 {
@@ -61,11 +62,6 @@ struct PipelineLayoutDesc
     std::vector<ShaderResourceGroupLayout> shaderBindingGroupLayouts;
 };
 
-// struct RenderTargetLayout
-// {
-//     std::vector<EFormat> colorFormats;
-//     EFormat              depthStencilFormat;
-// };
 
 struct GraphicsPipelineStateDesc
 {
@@ -76,6 +72,7 @@ struct GraphicsPipelineStateDesc
     GraphicsPipelineRasterizationState                rasterizationState;
     GraphicsPipelineColorBlendState                   colorBlendState;
     GraphicsPipelineDepthStencilState                 depthStencil;
+    const IPass*                                      pPass; 
 };
 
 class IPipelineState

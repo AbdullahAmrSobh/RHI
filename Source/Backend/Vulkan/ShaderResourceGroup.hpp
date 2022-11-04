@@ -105,6 +105,7 @@ namespace Vulkan
             , m_descriptorSet(std::move(descriptorSet))
         {
         }
+        ~ShaderResourceGroup() = default;
         
         inline const DescriptorSet& GetDescriptorSet() const
         {

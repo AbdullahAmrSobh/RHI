@@ -11,7 +11,7 @@ namespace RHI
 namespace Vulkan
 {
 
-    Result<Unique<PipelineLayout>> PipelineLayout::CreatePipelineLayout(const Device& device, PipelineLayoutDesc& layoutDesc)
+    Result<Unique<PipelineLayout>> PipelineLayout::Create(const Device& device, PipelineLayoutDesc& layoutDesc)
     {
         Unique<PipelineLayout> pipelineLayout = CreateUnique<PipelineLayout>(device);
         VkResult               result         = pipelineLayout->Init(layoutDesc);
@@ -426,6 +426,8 @@ namespace Vulkan
 
         auto pFrameGraphRenderPass = static_cast<const Pass*>(desc.pRenderPass);
 
+        // Recreate the entire PipelineStateObject if the RenderPassChanges. 
+        
         createInfo.sType              = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         createInfo.pNext              = nullptr;
         createInfo.flags              = 0;
@@ -437,5 +439,6 @@ namespace Vulkan
 
         return vkCreateGraphicsPipelines(m_pDevice->GetHandle(), VK_NULL_HANDLE, 1, &createInfo, nullptr, &m_handle);
     }
+    
 } // namespace Vulkan
 } // namespace RHI

@@ -1,5 +1,7 @@
 #pragma once
+#include "RHI/Common.hpp"
 #include "RHI/FrameGraph.hpp"
+#include "RHI/PipelineState.hpp"
 
 namespace RHI
 {

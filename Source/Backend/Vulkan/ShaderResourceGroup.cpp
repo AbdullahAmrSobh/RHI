@@ -1,4 +1,8 @@
 #include "Backend/Vulkan/ShaderResourceGroup.hpp"
+#include <cassert>
+#include <map>
+#include "RHI/Common.hpp"
+#include "Backend/Vulkan/Common.hpp"
 #include "Backend/Vulkan/Device.hpp"
 
 namespace RHI
@@ -177,7 +181,7 @@ namespace Vulkan
     {
 
         std::vector<VkWriteDescriptorSet> descriptorSetWriteDescriptions = {};
-        
+
         std::vector<std::vector<VkDescriptorImageInfo>> imageBindingInfos;
         imageBindingInfos.reserve(data.GetSamplersBinds().size() + data.GetImageBinds().size());
 
@@ -277,8 +281,29 @@ namespace Vulkan
     // ShaderResourceGroupAllocator
     Expected<Unique<IShaderResourceGroup>> ShaderResourceGroupAllocator::Allocate(const ShaderResourceGroupLayout& layout)
     {
-        DescriptorSetLayout*  pSetLayout    = m_pDevice->FindDescriptorSetLayout(layout.GetHash());
-        Unique<DescriptorSet> descriptorSet = nullptr;
+
+        static std::map<size_t, Unique<DescriptorSetLayout>> s_layoutCache;
+        auto                                                 cacheResult = s_layoutCache.find(layout.GetHash());
+
+        const DescriptorSetLayout* pSetLayout = nullptr;
+        if (cacheResult != s_layoutCache.end())
+        {
+            pSetLayout = cacheResult->second.get();
+        }
+        else
+        {
+            s_layoutCache[layout.GetHash()] = CreateUnique<DescriptorSetLayout>(*m_pDevice);
+            VkResult result                 = s_layoutCache[layout.GetHash()]->Init(layout);
+            if (!RHI_SUCCESS(result))
+            {
+                return Unexpected(ConvertResult(result));
+            }
+
+            pSetLayout = s_layoutCache.find(layout.GetHash())->second.get();
+        }
+
+        const DescriptorSetLayout& descriptorSetLayout = *pSetLayout;
+        Unique<DescriptorSet>      descriptorSet       = nullptr;
 
         for (auto& pool : m_descriptorPools)
         {
@@ -287,7 +312,7 @@ namespace Vulkan
             //     continue;
             // }
 
-            auto allocationResult = pool->Allocate(*pSetLayout);
+            auto allocationResult = pool->Allocate(descriptorSetLayout);
 
             if (allocationResult.has_value())
             {
@@ -313,7 +338,7 @@ namespace Vulkan
         {
             DescriptorPool::Capacity capacity;
             capacity.maxSets = 3;
-            capacity.sizes   = pSetLayout->GetSize();
+            capacity.sizes   = descriptorSetLayout.GetSize();
 
             Result<Unique<DescriptorPool>> result = DescriptorPool::Create(*m_pDevice, capacity);
             if (result.has_value())

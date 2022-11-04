@@ -10,8 +10,8 @@ namespace Vulkan
     class PipelineLayout final : public DeviceObject<VkPipelineLayout>
     {
     public:
-        static Result<Unique<PipelineLayout>> CreatePipelineLayout(const Device& device, PipelineLayoutDesc& layoutDesc);
-        
+        static Result<Unique<PipelineLayout>> Create(const Device& device, PipelineLayoutDesc& layoutDesc);
+
         PipelineLayout(const Device& device)
             : DeviceObject(&device)
         {
@@ -42,7 +42,11 @@ namespace Vulkan
         , public DeviceObject<VkPipeline>
     {
     public:
-        PipelineState(Device& device);
+        PipelineState(const Device& device)   
+            : DeviceObject(&device) 
+        {
+        }
+
         ~PipelineState();
 
         VkResult Init(const GraphicsPipelineStateDesc& desc);
@@ -53,7 +57,6 @@ namespace Vulkan
         }
 
     private:
-        // std::shared_ptr<Internal::RenderPass> m_renderPass;
         Shared<PipelineLayout> m_layout;
     };
 

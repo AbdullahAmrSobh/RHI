@@ -1,5 +1,7 @@
 #pragma once
+#include "RHI/Common.hpp"
 #include "RHI/Swapchain.hpp"
+#include "Backend/Vulkan/Device.hpp"
 #include "Backend/Vulkan/Resource.hpp"
 
 namespace RHI
@@ -18,7 +20,10 @@ namespace Vulkan
             , m_pInstance(&instance)
         {
         }
+<<<<<<< HEAD
 
+=======
+>>>>>>> 49ff0baea8856acd38e8e358c4e24685c7cec3bb
         ~Surface();
 
 #ifdef RHI_WINDOWS
@@ -52,10 +57,9 @@ namespace Vulkan
     public:
         Swapchain(const Device& device)
             : DeviceObject(&device)
-            , m_imageAcquiredSemaphore(device)
+            , m_imageAcquiredSemaphore(CreateUnique<Semaphore>(device))
         {
         }
-        
         ~Swapchain();
         
         const std::vector<Image*>& GetBackImages() const;
@@ -64,7 +68,7 @@ namespace Vulkan
 
         inline const Semaphore& GetBackbufferReadSemaphore() const
         {
-            return m_imageAcquiredSemaphore;
+            return *m_imageAcquiredSemaphore;
         }
 
         // Swap the back buffers
@@ -77,7 +81,7 @@ namespace Vulkan
 
         // Operations must wait on that semaphore,
         // before using the current swapchain Image.
-        Semaphore m_imageAcquiredSemaphore;
+        Unique<Semaphore> m_imageAcquiredSemaphore;
     };
 
 } // namespace Vulkan

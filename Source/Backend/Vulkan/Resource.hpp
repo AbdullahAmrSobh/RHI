@@ -162,7 +162,7 @@ namespace Vulkan
         }
         ~Semaphore();
 
-        VkResult Init(bool bin);
+        VkResult Init(bool bin = true);
     };
 
 } // namespace Vulkan
