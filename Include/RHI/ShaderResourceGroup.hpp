@@ -72,42 +72,45 @@ struct ShaderConstantBufferBindingDesc : ShaderInputResourceBindingDescBase
 class ShaderResourceGroupLayout
 {
 public:
-    size_t GetHash() const;
-
+    inline size_t GetHash() const
+    {
+        return m_hash;
+    }
+    
     inline const std::vector<ShaderBindingReference>& GetBindingReferencs() const
     {
         return m_bindingReferences;
     }
-
+    
     inline const std::vector<ShaderInputResourceBindingDesc>& GetShaderInputResourceBindings() const
     {
         return m_resourceBindings;
     }
-
+    
     inline const std::vector<ShaderConstantBufferBindingDesc>& GetShaderConstantBufferBindings() const
     {
         return m_constantBuffersBindings;
     }
-
+    
     inline const std::vector<ShaderStaticSamplerResourceBindingDesc>& GetShaderStaticSamplerResourceBindings() const
     {
         return m_staticSamplers;
     }
-
+    
     inline ShaderBindingReference AddInputResource(const ShaderInputResourceBindingDesc& bindingDesc)
     {
         m_bindingReferences.emplace_back(++m_resourceBindingCount, bindingDesc.name);
         m_resourceBindings.push_back(bindingDesc);
         return m_bindingReferences.back();
     }
-
+    
     inline ShaderBindingReference AddStaticSampler(const ShaderStaticSamplerResourceBindingDesc& bindingDesc)
     {
         m_bindingReferences.emplace_back(++m_resourceBindingCount, bindingDesc.name);
         m_staticSamplers.push_back(bindingDesc);
         return m_bindingReferences.back();
     }
-
+    
     inline ShaderBindingReference AddConstantBuffer(const ShaderConstantBufferBindingDesc& bindingDesc)
     {
         m_bindingReferences.emplace_back(++m_constantBufferBindingCount, bindingDesc.name);
@@ -116,6 +119,20 @@ public:
     }
 
 private:
+    template<typename T>
+    static inline constexpr size_t hasher(T x) 
+    {
+        return std::hash<T>{}(x);
+    }
+
+    inline void UpdateHashValue(const ShaderInputResourceBindingDescBase& desc)
+    {
+        m_hash = hash_combine(m_hash, hash_combine(ShaderResourceGroupLayout::hasher(desc.count), ShaderResourceGroupLayout::hasher(desc.name)));
+    }
+
+private:
+    size_t m_hash = 0;
+
     uint32_t                                            m_resourceBindingCount       = 0;
     uint32_t                                            m_constantBufferBindingCount = 0;
     std::vector<ShaderBindingReference>                 m_bindingReferences;

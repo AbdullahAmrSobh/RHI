@@ -3,28 +3,14 @@
 #include "Backend/Vulkan/Device.hpp"
 #include "Backend/Vulkan/Resource.hpp"
 
-
 namespace RHI
 {
 namespace Vulkan
 {
 
-    VmaMemoryUsage ConvertMemoryUsage(EMemoryUsage usage)
-    {
-        switch (usage)
-        {
-        case EMemoryUsage::Stream: return VMA_MEMORY_USAGE_CPU_COPY;
-        case EMemoryUsage::Hosted: return VMA_MEMORY_USAGE_CPU_ONLY;
-        case EMemoryUsage::Stage: return VMA_MEMORY_USAGE_CPU_TO_GPU;
-        case EMemoryUsage::Local: return VMA_MEMORY_USAGE_GPU_ONLY;
-        };
-
-        return VMA_MEMORY_USAGE_UNKNOWN;
-    }
-
     Expected<Unique<IShaderProgram>> Device::CreateShaderProgram(const ShaderProgramDesc& desc)
     {
-        Unique<ShaderModule> shaderModule = CreateUnique<ShaderModule>(*this);
+        Unique<ShaderModule> shaderModule = CreateUnique<ShaderModule>(*this, desc.entryName);
         VkResult             result       = shaderModule->Init(desc);
 
         if (RHI_SUCCESS(result))
@@ -43,7 +29,7 @@ namespace Vulkan
 
         return Unexpected(ConvertResult(result));
     }
-    
+
     Expected<Unique<IImage>> Device::CreateImage(const AllocationDesc& allocationDesc, const ImageDesc& desc)
     {
         Unique<Image> image  = CreateUnique<Image>(*this);
@@ -101,7 +87,10 @@ namespace Vulkan
 
     ShaderModule::~ShaderModule()
     {
-        vkDestroyShaderModule(m_pDevice->GetHandle(), m_handle, nullptr);
+        if (m_handle)
+        {
+            vkDestroyShaderModule(m_pDevice->GetHandle(), m_handle, nullptr);
+        }
     }
 
     VkResult ShaderModule::Init(const ShaderProgramDesc& desc)
@@ -118,7 +107,10 @@ namespace Vulkan
 
     Fence::~Fence()
     {
-        vkDestroyFence(m_pDevice->GetHandle(), m_handle, nullptr);
+        if (m_handle)
+        {
+            vkDestroyFence(m_pDevice->GetHandle(), m_handle, nullptr);
+        }
     }
 
     VkResult Fence::Init()
@@ -148,7 +140,10 @@ namespace Vulkan
 
     Image::~Image()
     {
-        vkDestroyImage(m_pDevice->GetHandle(), m_handle, nullptr);
+        if (m_handle)
+        {
+            vkDestroyImage(m_pDevice->GetHandle(), m_handle, nullptr);
+        }
     }
 
     VkResult Image::Init(const AllocationDesc& allocationDesc, const ImageDesc& desc)
@@ -181,15 +176,25 @@ namespace Vulkan
         createInfo.pQueueFamilyIndices   = nullptr;
         createInfo.initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED;
 
-        VmaAllocationCreateInfo allocationCreateInfo;
+        VmaAllocationCreateInfo allocationCreateInfo = {};
         allocationCreateInfo.usage = ConvertMemoryUsage(allocationDesc.usage);
 
-        return vmaCreateImage(m_pDevice->GetAllocator(), &createInfo, &allocationCreateInfo, &m_handle, &m_allocation, &m_allocationInfo);
+        VkResult result = vmaCreateImage(m_pDevice->GetAllocator(), &createInfo, &allocationCreateInfo, &m_handle, &m_allocation, &m_allocationInfo);
+
+        if (RHI_SUCCESS(result))
+        {
+            m_memorySize = m_allocationInfo.size;
+        }
+
+        return result;
     }
 
     ImageView::~ImageView()
     {
-        vkDestroyImageView(m_pDevice->GetHandle(), m_handle, nullptr);
+        if (m_handle)
+        {
+            vkDestroyImageView(m_pDevice->GetHandle(), m_handle, nullptr);
+        }
     }
 
     VkResult ImageView::Init(const Image& image, const ImageViewDesc& desc)
@@ -216,7 +221,10 @@ namespace Vulkan
 
     Buffer::~Buffer()
     {
-        vkDestroyBuffer(m_pDevice->GetHandle(), m_handle, nullptr);
+        if (m_handle)
+        {
+            vkDestroyBuffer(m_pDevice->GetHandle(), m_handle, nullptr);
+        }
     }
 
     VkResult Buffer::Init(const AllocationDesc& allocationDesc, const BufferDesc& desc)
@@ -230,16 +238,26 @@ namespace Vulkan
         createInfo.sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
         createInfo.queueFamilyIndexCount = 0;
         createInfo.pQueueFamilyIndices   = nullptr;
+        
+        VmaAllocationCreateInfo allocationCreateInfo = {};
+        allocationCreateInfo.usage = ConvertMemoryUsage(allocationDesc.usage);
+        
+        VkResult result = vmaCreateBuffer(m_pDevice->GetAllocator(), &createInfo, &allocationCreateInfo, &m_handle, &m_allocation, &m_allocationInfo);
+        
+        if (RHI_SUCCESS(result))
+        {
+            m_memorySize = m_allocationInfo.size;
+        }
 
-        VmaAllocationCreateInfo allocationCreateInfo;
-        allocationCreateInfo.usage = ConvertAllocationUsage(allocationDesc.usage);
-
-        return vmaCreateBuffer(m_pDevice->GetAllocator(), &createInfo, &allocationCreateInfo, &m_handle, &m_allocation, &m_allocationInfo);
+        return result;
     }
 
     BufferView::~BufferView()
     {
-        vkDestroyBufferView(m_pDevice->GetHandle(), m_handle, nullptr);
+        if (m_handle)
+        {
+            vkDestroyBufferView(m_pDevice->GetHandle(), m_handle, nullptr);
+        }
     }
 
     VkResult BufferView::Init(const Buffer& buffer, const BufferViewDesc& desc)
@@ -258,38 +276,10 @@ namespace Vulkan
 
     Sampler::~Sampler()
     {
-        vkDestroySampler(m_pDevice->GetHandle(), m_handle, nullptr);
-    }
-
-    VkFilter ConvertFilter(ESamplerFilter filter)
-    {
-        return filter == ESamplerFilter::Linear ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
-    }
-
-    VkSamplerMipmapMode ConvertMipMapMode(ESamplerFilter filter)
-    {
-        return filter == ESamplerFilter::Linear ? VK_SAMPLER_MIPMAP_MODE_LINEAR : VK_SAMPLER_MIPMAP_MODE_NEAREST;
-    }
-
-    VkSamplerAddressMode ConvertAddressMode(ESamplerAddressMode addressMode)
-    {
-        return addressMode == ESamplerAddressMode::Repeat ? VK_SAMPLER_ADDRESS_MODE_REPEAT : VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-    }
-
-    VkCompareOp ConvertCompareOp(ESamplerCompareOp compareOp)
-    {
-        switch (compareOp)
+        if (m_handle)
         {
-        case ESamplerCompareOp::Equal: return VK_COMPARE_OP_EQUAL;
-        case ESamplerCompareOp::NotEqual: return VK_COMPARE_OP_NOT_EQUAL;
-        case ESamplerCompareOp::Always: return VK_COMPARE_OP_ALWAYS;
-        case ESamplerCompareOp::Greater: return VK_COMPARE_OP_GREATER;
-        case ESamplerCompareOp::GreaterEq: return VK_COMPARE_OP_GREATER_OR_EQUAL;
-        case ESamplerCompareOp::Less: return VK_COMPARE_OP_LESS;
-        case ESamplerCompareOp::LessEq: return VK_COMPARE_OP_LESS_OR_EQUAL;
-        case ESamplerCompareOp::Never: return VK_COMPARE_OP_NEVER;
+            vkDestroySampler(m_pDevice->GetHandle(), m_handle, nullptr);
         }
-        return VK_COMPARE_OP_MAX_ENUM;
     }
 
     VkResult Sampler::Init(const SamplerDesc& desc)
@@ -328,7 +318,10 @@ namespace Vulkan
 
     Semaphore::~Semaphore()
     {
-        vkDestroySemaphore(m_pDevice->GetHandle(), m_handle, nullptr);
+        if (m_handle)
+        {
+            vkDestroySemaphore(m_pDevice->GetHandle(), m_handle, nullptr);
+        }
     }
 
     VkResult Semaphore::Init(bool bin)

@@ -38,28 +38,28 @@ class IInstance
 {
 public:
     static Expected<Unique<IInstance>> Create(EBackend backend, Unique<IDebugCallbacks> callbacks = nullptr);
-
-    virtual ~IInstance() = default;
     
+    virtual ~IInstance() = default;
+
     inline uint32_t GetPhysicalDeviceCount() const
     {
         return m_physicalDeviceCount;
     }
-    
-    std::vector<IPhysicalDevice*> GetPhysicalDevice() const;
+
+    std::vector<IPhysicalDevice*> GetPhysicalDevices() const;
 
 #ifdef RHI_LINUX
     virtual Expected<Unique<ISurface>> CreateSurface(const struct X11SurfaceDesc& desc) = 0;
 #elif defined(RHI_WINDOWS)
     virtual Expected<Unique<ISurface>> CreateSurface(const struct Win32SurfaceDesc& desc) = 0;
 #endif
-    
+
     virtual Expected<Unique<IDevice>> CreateDevice(const IPhysicalDevice& physicalDevice) = 0;
 
 protected:
-    uint32_t                             m_physicalDeviceCount;
-    std::vector<Unique<IPhysicalDevice>> m_physicalDevices;
-    Unique<IDebugCallbacks>              m_debugCallbacks;
+    uint32_t                             m_physicalDeviceCount = 0;
+    std::vector<Unique<IPhysicalDevice>> m_physicalDevices     = {};
+    Unique<IDebugCallbacks>              m_debugCallbacks      = nullptr;
 };
 
 } // namespace RHI

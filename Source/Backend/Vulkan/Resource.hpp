@@ -22,10 +22,10 @@ namespace Vulkan
         {
             return m_handle;
         }
-    
+
     protected:
         const Device* m_pDevice;
-        T       m_handle;
+        T             m_handle;
     };
 
     template <typename T>
@@ -37,7 +37,7 @@ namespace Vulkan
             , m_allocation(allocation)
         {
         }
-
+        
         inline VmaAllocation GetAllocation() const
         {
             return m_allocation;
@@ -47,7 +47,7 @@ namespace Vulkan
         {
             return m_allocationInfo;
         }
-
+    
     protected:
         VmaAllocation     m_allocation = VK_NULL_HANDLE;
         VmaAllocationInfo m_allocationInfo;
@@ -58,7 +58,11 @@ namespace Vulkan
         , public DeviceObject<VkShaderModule>
     {
     public:
-        ShaderModule(const Device& device);
+        ShaderModule(const Device& device, std::string name)
+            : DeviceObject(&device)
+            , IShaderProgram(name)
+        {
+        }
         ~ShaderModule();
 
         VkResult Init(const ShaderProgramDesc& desc);
@@ -73,7 +77,6 @@ namespace Vulkan
             : DeviceObject(&device)
         {
         }
-
         ~Fence();
 
         VkResult Init();
@@ -96,7 +99,7 @@ namespace Vulkan
 
         VkResult Init(const AllocationDesc& allocationDesc, const ImageDesc& desc);
     };
-    
+
     class ImageView final
         : public IImageView
         , public DeviceObject<VkImageView>

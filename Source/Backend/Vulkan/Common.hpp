@@ -13,7 +13,7 @@
 #define RHI_SUCCESS(X) (X == VK_SUCCESS)
 
 #define RHI_RETURN_ON_FAIL(X)                                                                                                                                  \
-    if (RHI_SUCCESS(X))                                                                                                                                        \
+    if (!RHI_SUCCESS(X))                                                                                                                                        \
     {                                                                                                                                                          \
         return X;                                                                                                                                              \
     }
@@ -54,8 +54,8 @@ namespace Vulkan
 
     uint32_t FormatStrideSize(VkFormat format);
 
-    VkImageViewType ConvertImageType(EImageViewType imageType);
-
+    VkImageViewType ConvertImageViewType(EImageViewType imageType);
+    
     VkImageAspectFlags ConvertViewAspect(ImageViewAspectFlags aspectFlags);
 
     inline VkExtent3D ConvertExtent(Extent3D extent)
@@ -92,8 +92,8 @@ namespace Vulkan
     VkImageUsageFlags ConvertImageUsage(ImageUsageFlags usageFlags);
 
     VkBufferUsageFlags ConvertBufferUsage(BufferUsageFlags usageFlags);
-
-    VmaMemoryUsage ConvertAllocationUsage(EMemoryUsage usage);
+    
+    VmaMemoryUsage ConvertMemoryUsage(EMemoryUsage usage);
 
 } // namespace Vulkan
 } // namespace RHI

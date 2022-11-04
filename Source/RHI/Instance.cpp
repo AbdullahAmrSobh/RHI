@@ -35,7 +35,7 @@ Expected<Unique<IInstance>> IInstance::Create(EBackend backend, Unique<IDebugCal
     }
 }
 
-    std::vector<IPhysicalDevice*> IInstance::GetPhysicalDevice() const
+    std::vector<IPhysicalDevice*> IInstance::GetPhysicalDevices() const
     {
         std::vector<IPhysicalDevice*> result;
         for (auto& physicalDevice : m_physicalDevices )

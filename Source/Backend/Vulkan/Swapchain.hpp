@@ -30,14 +30,14 @@ namespace Vulkan
 
         VkBool32 QueueSupportPresent(const class Queue& queue) const;
 
-        std::vector<VkSurfaceFormatKHR> GetSupportedFormats();
-
-        std::vector<VkPresentModeKHR> GetSupportedPresentModes();
-
-        VkSurfaceCapabilities2KHR GetCapabilities2();
+        std::vector<VkSurfaceFormatKHR> GetSupportedFormats(const PhysicalDevice& physicalDevice);
+        
+        std::vector<VkPresentModeKHR> GetSupportedPresentModes(const PhysicalDevice& physicalDevice);
+        
+        VkSurfaceCapabilitiesKHR GetCapabilities(const PhysicalDevice& physicalDevice);
 
         static VkSurfaceFormatKHR SelectFormat(const std::vector<VkSurfaceFormatKHR>& formats);
-
+        
         static VkExtent2D ClampExtent(VkExtent2D actualExtent, VkExtent2D currentExtent, VkExtent2D minImageExtent, VkExtent2D maxImageExtent);
 
         static VkPresentModeKHR SelectPresentMode(const std::vector<VkPresentModeKHR>& presentModes);
@@ -45,7 +45,7 @@ namespace Vulkan
     private:
         const Instance* m_pInstance;
     };
-
+    
     class Swapchain final
         : public ISwapchain
         , public DeviceObject<VkSwapchainKHR>

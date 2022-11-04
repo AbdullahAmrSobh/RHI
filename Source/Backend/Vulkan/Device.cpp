@@ -90,17 +90,17 @@ namespace Vulkan
     VkResult Device::Init(Instance& instance, const PhysicalDevice& physicalDevice)
     {
         std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-
+        
         std::optional<uint32_t> dedicatedGraphicsQueueFamilyIndex = {};
         std::optional<uint32_t> dedicatedComputeQueueFamilyIndex  = {};
         std::optional<uint32_t> dedicatedTransferQueueFamilyIndex = {};
 
         float priority                = 1.0f;
         auto  queueFamiliesProperties = physicalDevice.GetQueueFamilyProperties();
-        for (uint32_t queueFamilyIndex = 0; queueFamilyIndex <= queueFamiliesProperties.size(); queueFamilyIndex++)
+        for (uint32_t queueFamilyIndex = 0; queueFamilyIndex < queueFamiliesProperties.size(); queueFamilyIndex++)
         {
             VkQueueFamilyProperties queueFamilyProperty = queueFamiliesProperties[queueFamilyIndex];
-
+            
             if (!dedicatedGraphicsQueueFamilyIndex.has_value() && queueFamilyProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT)
             {
                 VkDeviceQueueCreateInfo queueCreateInfo;
@@ -143,10 +143,10 @@ namespace Vulkan
                 dedicatedGraphicsQueueFamilyIndex = queueFamilyIndex;
             }
         }
-
-        std::vector<const char*> enabledLayers     = {"VK_LAYER_LUNARG_standard_validation"};
+        
+        std::vector<const char*> enabledLayers;
         std::vector<const char*> enabledExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-
+        
         VkPhysicalDeviceFeatures features = {};
         {
             VkDeviceCreateInfo createInfo      = {};
@@ -160,16 +160,14 @@ namespace Vulkan
             createInfo.enabledExtensionCount   = CountElements(enabledExtensions);
             createInfo.ppEnabledExtensionNames = enabledExtensions.data();
             createInfo.pEnabledFeatures        = &features;
-
-            VkResult result = vkCreateDevice(physicalDevice.GetHandle(), &createInfo, nullptr, &m_device);
-            if (!RHI_SUCCESS(result))
-                return result;
+            
+            RHI_RETURN_ON_FAIL(vkCreateDevice(physicalDevice.GetHandle(), &createInfo, nullptr, &m_device))
         }
 
         // Create Queue
         {
             VkQueue queueHandle = VK_NULL_HANDLE;
-
+            
             if (dedicatedGraphicsQueueFamilyIndex.has_value())
             {
                 m_queues.push_back(Queue(queueHandle, dedicatedGraphicsQueueFamilyIndex.value(), 0));

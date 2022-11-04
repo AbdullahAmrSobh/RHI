@@ -13,7 +13,7 @@ namespace Vulkan
         ~Instance();
         
         VkResult Init();
-
+        
         inline VkInstance GetHandle() const
         {
             return m_instance;

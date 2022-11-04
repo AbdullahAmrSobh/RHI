@@ -27,22 +27,7 @@ namespace Vulkan
 
         VkResult Init(const Pass& pass);
     };
-
-    class RenderPassManager
-    {
-    public:
-        struct SubpassDesc
-        {
-            VkRenderPass renderPass;
-            uint32_t     subpassIndex;
-        };
-
-        SubpassDesc& GetPass(const RenderTargetLayout& renderTargetLayout) const;
-
-    private:
-        mutable std::unordered_map<size_t, Unique<RenderPass>> m_renderPasses;
-    };
-
+    
     class Framebuffer final : public DeviceObject<VkFramebuffer>
     {
     public:
@@ -52,7 +37,7 @@ namespace Vulkan
             const ImageView* pColorAttachments;
             const ImageView* pDepthStencilAttachment;
         };
-
+        
         static Result<Unique<Framebuffer>> Create(const Device& device, VkExtent2D extent, const AttachmentsDesc& attachments, const RenderPass& renderPass);
 
         Framebuffer(const Device& device)

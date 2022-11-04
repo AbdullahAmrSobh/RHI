@@ -20,7 +20,7 @@ namespace Vulkan
     class PhysicalDevice final : public IPhysicalDevice
     {
     public:
-        inline PhysicalDevice(VkPhysicalDevice physicalDevice)
+        PhysicalDevice(VkPhysicalDevice physicalDevice)
             : m_physicalDevice(physicalDevice)
         {
         }
@@ -101,16 +101,19 @@ namespace Vulkan
     {
     public:
         virtual ~DeviceContext() = default;
-        
+
         virtual Expected<DeviceMemoryPtr> Map(IResource& resource);
         virtual void                      Unmap(IResource& resource);
-
-                
     };
-
+    
     class Device final : public IDevice
     {
     public:
+        Device(const Instance& instance, const PhysicalDevice& physicaldDevice)
+            : m_pInstance(&instance)
+            , m_pPhysicalDevice(&physicaldDevice)
+        {
+        }
         ~Device();
 
         VkResult Init(Instance& instance, const PhysicalDevice& physicalDevice);
@@ -129,7 +132,7 @@ namespace Vulkan
         {
             return m_device;
         }
-        
+
         inline VmaAllocator GetAllocator() const
         {
             return m_allocator;
@@ -182,14 +185,14 @@ namespace Vulkan
         EResultCode InitQueues(std::optional<uint32_t> graphicsQueueIndex, std::optional<uint32_t> computeQueueIndex, std::optional<uint32_t> indexQueueIndex);
 
     private:
-        Instance*       m_pInstance;
+        const Instance* m_pInstance;
 
-        PhysicalDevice* m_pPhysicalDevice;
-        
-        VkDevice     m_device;
-        
+        const PhysicalDevice* m_pPhysicalDevice;
+
+        VkDevice m_device;
+
         VmaAllocator m_allocator;
-        
+
         std::vector<Queue> m_queues;
 
         // Pointer to dedicated queues.

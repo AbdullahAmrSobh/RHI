@@ -70,12 +70,12 @@ namespace Vulkan
     }
 
 #endif
-    
+
     Expected<Unique<ISwapchain>> Device::CreateSwapChain(const SwapchainDesc& desc)
     {
         Unique<Swapchain> swapchain = CreateUnique<Swapchain>(*this);
         VkResult          result    = swapchain->Init(desc);
-        
+
         if (RHI_SUCCESS(result))
             return std::move(swapchain);
 
@@ -99,34 +99,30 @@ namespace Vulkan
         return support;
     }
 
-    std::vector<VkSurfaceFormatKHR> Surface::GetSupportedFormats()
+    std::vector<VkSurfaceFormatKHR> Surface::GetSupportedFormats(const PhysicalDevice& physicalDevice)
     {
         uint32_t count;
-        vkGetPhysicalDeviceSurfaceFormatsKHR(m_pDevice->GetPhysicalDevice().GetHandle(), m_handle, &count, nullptr);
+        vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice.GetHandle(), m_handle, &count, nullptr);
         std::vector<VkSurfaceFormatKHR> formats(count);
-        VkResult result = vkGetPhysicalDeviceSurfaceFormatsKHR(m_pDevice->GetPhysicalDevice().GetHandle(), m_handle, &count, formats.data());
+        VkResult                        result = vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice.GetHandle(), m_handle, &count, formats.data());
         assert(RHI_SUCCESS(result));
         return formats;
     }
 
-    std::vector<VkPresentModeKHR> Surface::GetSupportedPresentModes()
+    std::vector<VkPresentModeKHR> Surface::GetSupportedPresentModes(const PhysicalDevice& physicalDevice)
     {
         uint32_t count = 0;
-        vkGetPhysicalDeviceSurfacePresentModesKHR(m_pDevice->GetPhysicalDevice().GetHandle(), m_handle, &count, nullptr);
+        vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice.GetHandle(), m_handle, &count, nullptr);
         std::vector<VkPresentModeKHR> modes(count);
-        VkResult result = vkGetPhysicalDeviceSurfacePresentModesKHR(m_pDevice->GetPhysicalDevice().GetHandle(), m_handle, &count, modes.data());
+        VkResult                      result = vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice.GetHandle(), m_handle, &count, modes.data());
         assert(RHI_SUCCESS(result));
         return modes;
     }
 
-    VkSurfaceCapabilities2KHR Surface::GetCapabilities2()
+    VkSurfaceCapabilitiesKHR Surface::GetCapabilities(const PhysicalDevice& physicalDevice)
     {
-        VkSurfaceCapabilities2KHR       capabilities;
-        VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo;
-        surfaceInfo.sType   = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR;
-        surfaceInfo.pNext   = nullptr;
-        surfaceInfo.surface = m_handle;
-        VkResult result     = vkGetPhysicalDeviceSurfaceCapabilities2KHR(m_pDevice->GetPhysicalDevice().GetHandle(), &surfaceInfo, &capabilities);
+        VkSurfaceCapabilitiesKHR capabilities;
+        VkResult                 result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice.GetHandle(), m_handle, &capabilities);
         assert(RHI_SUCCESS(result));
         return capabilities;
     }
@@ -174,11 +170,12 @@ namespace Vulkan
 
     VkResult Swapchain::Init(const SwapchainDesc& desc)
     {
+        m_pSurface       = desc.pSurface;
         Surface& surface = *static_cast<Surface*>(m_pSurface);
 
-        VkSurfaceCapabilities2KHR       surfaceCaps             = surface.GetCapabilities2();
-        std::vector<VkPresentModeKHR>   availablePresentModes   = surface.GetSupportedPresentModes();
-        std::vector<VkSurfaceFormatKHR> availableSurfaceFormats = surface.GetSupportedFormats();
+        VkSurfaceCapabilitiesKHR        surfaceCaps             = surface.GetCapabilities(m_pDevice->GetPhysicalDevice());
+        std::vector<VkPresentModeKHR>   availablePresentModes   = surface.GetSupportedPresentModes(m_pDevice->GetPhysicalDevice());
+        std::vector<VkSurfaceFormatKHR> availableSurfaceFormats = surface.GetSupportedFormats(m_pDevice->GetPhysicalDevice());
 
         VkSurfaceFormatKHR selectedFormat = Surface::SelectFormat(availableSurfaceFormats);
 
@@ -196,18 +193,20 @@ namespace Vulkan
         createInfo.imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE;
         createInfo.queueFamilyIndexCount = 0;
         createInfo.pQueueFamilyIndices   = nullptr;
-        createInfo.preTransform          = surfaceCaps.surfaceCapabilities.currentTransform;
+        createInfo.preTransform          = surfaceCaps.currentTransform;
         createInfo.compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
         createInfo.presentMode           = Surface::SelectPresentMode(availablePresentModes);
         createInfo.clipped               = VK_FALSE;
         createInfo.oldSwapchain          = VK_NULL_HANDLE;
-
-        RHI_RETURN_ON_FAIL(vkCreateSwapchainKHR(m_pDevice->GetHandle(), &createInfo, nullptr, &m_handle));
-        RHI_RETURN_ON_FAIL(m_imageAcquiredSemaphore->Init());
+        
+        VkResult result = vkCreateSwapchainKHR(m_pDevice->GetHandle(), &createInfo, nullptr, &m_handle);
+        RHI_RETURN_ON_FAIL(result) ;
+        result = m_imageAcquiredSemaphore->Init();
+        RHI_RETURN_ON_FAIL(result);
 
         return InitBackbuffers();
     }
-
+    
     EResultCode Swapchain::SwapBuffers()
     {
         VkAcquireNextImageInfoKHR acquireInfo;

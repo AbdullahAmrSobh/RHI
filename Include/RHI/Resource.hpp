@@ -27,14 +27,14 @@ public:
         : m_name(std::move(name))
     {
     }
-    virtual ~IShaderProgram();
+    virtual ~IShaderProgram() = default;
 
     inline std::string GetFunctionName() const
     {
         return m_name;
     }
 
-private:
+protected:
     std::string m_name;
 };
 
@@ -102,9 +102,12 @@ class IResource
 {
 public:
     virtual ~IResource() = default;
-
-    size_t GetSize() const;
-
+    
+    inline size_t GetSize() const
+    {
+        return m_memorySize;
+    }
+    
     Expected<MappedAllocationPtr> Map(size_t byteOffset, size_t byteSize);
     void                          Unmap();
 
@@ -194,10 +197,9 @@ public:
 
 enum class EBufferUsageFlagBits
 {
-    Instance = 0x000001,
-    Vertex   = 0x000002,
-    Index    = 0x000004,
-    Transfer = 0x000008,
+    Vertex   = 0x000001,
+    Index    = 0x000002,
+    Transfer = 0x000004,
 };
 using BufferUsageFlags = Flags<EBufferUsageFlagBits>;
 
