@@ -15,7 +15,11 @@ namespace Vulkan
     class Pass final : public IPass
     {
     public:
-        Pass(const Device& device, std::string name, EPassType passType);
+        Pass(const Device& device, std::string name, EPassType type)
+            : IPass(name, type)
+        {
+        }
+        
         ~Pass();
 
         VkResult Init();
@@ -29,19 +33,14 @@ namespace Vulkan
         {
             return m_framebuffer.get();
         }
-
+    
     private:
         const Device* m_pDevice;
-
+        
         Unique<RenderPass> m_renderPass;
-
         Unique<Framebuffer> m_framebuffer;
-
+        
         Unique<CommandAllocator> m_commandAllocator;
-
-        std::vector<Semaphore*> m_signalSemaphores;
-
-        std::vector<Semaphore*> m_waitSemaphores;
     };
 
 } // namespace Vulkan

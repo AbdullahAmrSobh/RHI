@@ -12,19 +12,19 @@ namespace Vulkan
 {
     
     class Pass;
-
+    
     class RenderPass final : public DeviceObject<VkRenderPass>
     {
     public:
-        static Result<Unique<RenderPass>> Create(const Device& device, const Pass& renderTargetLayout);
-
+        static Result<Unique<RenderPass>> Create(const Device& device, const Pass& pass);
+        
         RenderPass(const Device& device)
             : DeviceObject(&device)
         {
         }
-
+        
         ~RenderPass();
-
+        
         VkResult Init(const Pass& pass);
     };
     

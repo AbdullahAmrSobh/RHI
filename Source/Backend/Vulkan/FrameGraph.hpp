@@ -6,7 +6,7 @@ namespace RHI
 {
 namespace Vulkan
 {
-    class Device; 
+    class Device;
 
     class FrameGraph final : public IFrameGraph
     {
@@ -16,8 +16,18 @@ namespace Vulkan
         {
         }
 
+        virtual EResultCode BeginFrameInternal() override;
+
+        virtual EResultCode EndFrameInternal() override;
+
+        virtual EResultCode ExecuteInternal(IPassProducer& producer) override;
+
+        virtual EResultCode CompilePass(IPass& pass) override;
+
     private:
         const Device* m_pDevice;
+
+        std::vector<IPassProducer*> m_passes;
     };
 
 } // namespace Vulkan

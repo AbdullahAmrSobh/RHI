@@ -7,6 +7,7 @@ namespace RHI
 
 template <typename T>
 class PassAttachment;
+class ISwapchain;
 
 enum class EAttachmentUsage
 {
@@ -252,6 +253,11 @@ public:
         *m_desc = viewDesc;
     }
 
+    inline const ResourceView& GetView() const
+    {
+        return *m_view;
+    }
+    
     inline ResourceView& GetView()
     {
         return *m_view;

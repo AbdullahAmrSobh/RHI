@@ -36,9 +36,21 @@ inline constexpr auto GetExpectedValue(T&& t) -> typename T::value_type
     return std::move(t.value());
 }
 
-std::vector<uint32_t> ReadBinFile(std::string path)
+std::vector<std::byte> ReadBinFile(std::string filePath)
 {
-    return std::vector<uint32_t>{};
+    std::ifstream file(filePath, std::ios::ate | std::ios::binary);
+
+    assert(file.is_open());
+
+    size_t                 fileSize = (size_t)file.tellg();
+    std::vector<std::byte> buffer(fileSize);
+
+    file.seekg(0);
+    file.read(reinterpret_cast<char*>(buffer.data()), fileSize);
+
+    file.close();
+
+    return buffer;
 }
 
 struct Mesh
@@ -76,19 +88,14 @@ public:
     }
 };
 
-class PrimaryRenderPass final : public RHI::IPassCallbacks
+class PrimaryRenderPass final : public RHI::IPassProducer
 {
 public:
-    PrimaryRenderPass(RHI::IFrameGraph& frameGraph)
-        : RHI::IPassCallbacks(frameGraph, "primaryRenderPass", RHI::EPassType::Graphics)
-    {
-    }
-
     virtual ~PrimaryRenderPass() = default;
 
     virtual void Setup(RHI::FrameGraphBuilder& builder) override {}
 
-    virtual void UseAttachments(RHI::IPass& pass) override {}
+    virtual void Compile(RHI::FrameGraphContext& pass) override {}
 
     virtual void BuildCommandBuffer(RHI::ICommandBuffer& commandBuffer) override {}
 };
@@ -148,7 +155,7 @@ public:
             bufferDesc.size  = vertexBufferData.size();
             bufferDesc.usage = RHI::EBufferUsageFlagBits::Vertex;
             bufferDesc.usage = bufferDesc.usage | RHI::EBufferUsageFlagBits::Transfer;
-            
+
             m_vertexBuffer = GetExpectedValue(m_device->CreateBuffer(allocationDesc, bufferDesc));
 
             allocationDesc.memoryRequirement.byteSize = indexBufferData.size();
@@ -161,40 +168,46 @@ public:
 
         // Create the frameGraph.
         {
-        
         }
 
+#if 0
         // Create pipeline
         {
             RHI::ShaderProgramDesc desc;
-
+            
             desc.shaderCode   = ReadBinFile("./shaders.spv");
             desc.stage        = RHI::EShaderStageFlagBits::Vertex;
             desc.entryName    = "vertexShader";
             auto vertexShader = GetExpectedValue(m_device->CreateShaderProgram(desc));
-
+            
             desc.shaderCode  = ReadBinFile("./shaders.spv");
             desc.stage       = RHI::EShaderStageFlagBits::Pixel;
             desc.entryName   = "pixelShader";
             auto pixelShader = GetExpectedValue(m_device->CreateShaderProgram(desc));
-
+            
             RHI::GraphicsPipelineStateDesc pipelineDesc;
             pipelineDesc.shaderStages.pVertexShader = vertexShader.get();
             pipelineDesc.shaderStages.pPixelShader  = pixelShader.get();
             pipelineDesc.pRenderPass                = &m_primaryRenderPass->GetPass();
             pipelineDesc.vertexInputAttributes.push_back(RHI::GraphicsPipelineVertexAttributeState{"v_position", RHI::EFormat::R32G32B32Sfloat});
             pipelineDesc.vertexInputAttributes.push_back(RHI::GraphicsPipelineVertexAttributeState{"v_color", RHI::EFormat::R8G8B8A8Srgb});
-
+            
             m_pipeline = GetExpectedValue(m_device->CreateGraphicsPipelineState(pipelineDesc));
         }
+#endif
 
         // Create shader resource group allocator
         {
             m_shaderResourceGroupAllocator = GetExpectedValue(m_device->CreateShaderResourceGroupAllocator());
         }
     };
-    
-    void OnFrame(){};
+
+    void OnFrame()
+    {
+        m_frameGraph->BeginFrame();
+        m_frameGraph->Execute(*m_primaryRenderPass);
+        m_frameGraph->EndFrame();
+    };
 
 public:
     GLFWwindow* m_pWindow;
@@ -219,12 +232,12 @@ public:
 
 int main(void)
 {
-    Renderer    renderer;
+    Renderer renderer;
     if (!glfwInit())
         return -1;
-    
+
     renderer.Init();
-    
+
     while (!glfwWindowShouldClose(renderer.m_pWindow))
     {
         renderer.OnFrame();

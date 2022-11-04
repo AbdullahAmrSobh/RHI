@@ -5,7 +5,6 @@ namespace RHI
 {
 namespace Vulkan
 {
-
     Expected<Unique<IFrameGraph>> Device::CreateFrameGraph()
     {
         Unique<FrameGraph> frameGraph = CreateUnique<FrameGraph>(*this);

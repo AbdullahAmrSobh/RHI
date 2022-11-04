@@ -43,7 +43,7 @@ namespace Vulkan
 
         return VK_IMAGE_LAYOUT_UNDEFINED;
     }
-
+    
     Result<Unique<RenderPass>> RenderPass::Create(const Device& device, const Pass& pass)
     {
         Unique<RenderPass> renderPass = CreateUnique<RenderPass>(device);
@@ -125,7 +125,7 @@ namespace Vulkan
         subpassDescription.pDepthStencilAttachment = nullptr;
         subpassDescription.preserveAttachmentCount = CountElements(preserveAttachments);
         subpassDescription.pPreserveAttachments    = preserveAttachments.data();
-
+        
         if (pass.HasDepthStencil())
         {
             const ImagePassAttachment* attachment = pass.GetDepthStencilAttachment();
@@ -138,7 +138,7 @@ namespace Vulkan
             attachmentDescription.storeOp                 = VK_ATTACHMENT_STORE_OP_DONT_CARE;
             attachmentDescription.stencilLoadOp           = ConvertLoadOp(attachment->GetLoadStoreOp().loadOp);
             attachmentDescription.stencilStoreOp          = ConvertStoreOp(attachment->GetLoadStoreOp().storeOp);
-
+            
             attachmentsDescriptions.push_back(attachmentDescription);
 
             subpassDescription.pDepthStencilAttachment = &depthStencilAttachment;
