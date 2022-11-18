@@ -16,13 +16,7 @@ namespace Vulkan
         {
         }
 
-        virtual EResultCode BeginFrameInternal() override;
-
-        virtual EResultCode EndFrameInternal() override;
-
-        virtual EResultCode ExecuteInternal(IPassProducer& producer) override;
-
-        virtual EResultCode CompilePass(IPass& pass) override;
+        virtual EResultCode SubmitPass(IPassProducer& producer) override;
 
     private:
         const Device* m_pDevice;

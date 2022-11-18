@@ -31,12 +31,12 @@ namespace Vulkan
 
         if (stages & EShaderStageFlagBits::Vertex)
         {
-            flags &= VK_SHADER_STAGE_VERTEX_BIT;
+            flags |= VK_SHADER_STAGE_VERTEX_BIT;
         }
 
         if (stages & EShaderStageFlagBits::Vertex)
         {
-            flags &= VK_SHADER_STAGE_FRAGMENT_BIT;
+            flags |= VK_SHADER_STAGE_FRAGMENT_BIT;
         }
 
         return flags;
@@ -190,17 +190,17 @@ namespace Vulkan
         VkImageAspectFlags flags{};
         if (aspectFlags & EImageViewAspectFlagBits::Color)
         {
-            flags &= VK_IMAGE_ASPECT_COLOR_BIT;
+            flags |= VK_IMAGE_ASPECT_COLOR_BIT;
         }
 
         if (aspectFlags & EImageViewAspectFlagBits::Depth)
         {
-            flags &= VK_IMAGE_ASPECT_DEPTH_BIT;
+            flags |= VK_IMAGE_ASPECT_DEPTH_BIT;
         }
 
         if (aspectFlags & EImageViewAspectFlagBits::Stencil)
         {
-            flags &= VK_IMAGE_ASPECT_STENCIL_BIT;
+            flags |= VK_IMAGE_ASPECT_STENCIL_BIT;
         }
 
         return flags;
@@ -211,20 +211,20 @@ namespace Vulkan
         VkImageUsageFlags flags = 0;
         if (usageFlags & EImageUsageFlagBits::Color)
         {
-            flags &= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+            flags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
         }
         if (usageFlags & EImageUsageFlagBits::DepthStencil)
         {
-            flags &= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+            flags |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
         }
         if (usageFlags & EImageUsageFlagBits::ShaderInput)
         {
-            flags &= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+            flags |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
         }
         if (usageFlags & EImageUsageFlagBits::Transfer)
         {
-            flags &= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-            flags &= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+            flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+            flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
         }
         return flags;
     }
@@ -234,16 +234,16 @@ namespace Vulkan
         VkBufferUsageFlags flags = 0;
         if (usageFlags & EBufferUsageFlagBits::Index)
         {
-            flags &= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+            flags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
         }
         if (usageFlags & EBufferUsageFlagBits::Vertex)
         {
-            flags &= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+            flags |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
         }
         if (usageFlags & EBufferUsageFlagBits::Transfer)
         {
-            flags &= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-            flags &= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+            flags |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+            flags |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
         }
         return flags;
     }

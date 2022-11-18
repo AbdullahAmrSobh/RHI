@@ -240,7 +240,7 @@ namespace Vulkan
         return vkQueuePresentKHR(m_handle, &presentInfo);
     }
     
-    VkResult Queue::Submit(const std::vector<Queue::SubmitRequest>& submitRequests, const Fence* pFence) const 
+    VkResult Queue::Submit(const std::vector<Queue::SubmitRequest>& submitRequests, const Fence& fence) const 
     {
         std::vector<VkSubmitInfo2> submitInfos;
         submitInfos.reserve(submitRequests.size());
@@ -260,7 +260,7 @@ namespace Vulkan
             submitInfos.push_back(submitInfo);
         }
 
-        return vkQueueSubmit2(m_handle, CountElements(submitInfos), submitInfos.data(), pFence->GetHandle());
+        return vkQueueSubmit2(m_handle, CountElements(submitInfos), submitInfos.data(), fence.GetHandle());
     }
 
 } // namespace Vulkan

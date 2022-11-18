@@ -1,89 +1,43 @@
 #include "RHI/FrameGraph.hpp"
-#include "RHI/Swapchain.hpp"
-#include "RHI/Commands.hpp"
+#include "RHI/Common.hpp"
 
 namespace RHI
 {
-
-const std::vector<const ImagePassAttachment*> IPass::GetImageAttachments() const
-{
-    std::vector<const ImagePassAttachment*> attachments;
-    attachments.reserve(attachments.size());
-    for (auto& attachment : m_imageAttachments)
-    {
-        attachments.push_back(attachment.get());
-    }
-    return attachments;
-}
-
-const std::vector<const BufferPassAttachment*> IPass::GetBufferAttachments() const
-{
-    std::vector<const BufferPassAttachment*> attachments;
-    attachments.reserve(attachments.size());
-    for (auto& attachment : m_bufferAttachments)
-    {
-        attachments.push_back(attachment.get());
-    }
-    return attachments;
-}
-
-const std::vector<const ImagePassAttachment*> IPass::GetSwapchainAttachemnts() const
-{
-    std::vector<const ImagePassAttachment*> attachments;
-    attachments.reserve(attachments.size());
-    for (auto& attachment : m_swapchainImages)
-    {
-        attachments.push_back(attachment.get());
-    }
-    return attachments;
-}
 
 EResultCode IFrameGraph::BeginFrame()
 {
     for (auto& swapchain : m_swapchains)
     {
-        EResultCode result = swapchain->SwapBuffers();
-        if (result != EResultCode::Success)
-        {
-            return result;
-        }
+        swapchain->SwapBuffers();
     }
 
-    return this->BeginFrameInternal();
+    return this->BeginFrame();
 }
 
 EResultCode IFrameGraph::EndFrame()
 {
-    return this->EndFrameInternal();
+    this->EndFrame();
 }
 
-EResultCode IFrameGraph::Execute(IPassProducer& producer)
+EResultCode IFrameGraph::SubmitPass(IPassProducer& producer)
 {
-    if (!producer.m_pass->IsValid())
-    {
-        FrameGraphBuilder builder{this};
-        BeginPass(*producer.m_pass);
-        producer.Setup(builder);
-        EndPass();
-    }
-        
-    if (!producer.m_pass->IsCompiled())
-    {
-        EResultCode result = CompilePass(*producer.m_pass);
-        if (result != EResultCode::Success)
-        {
-            return result;
-        }
-    }
-    
+    return this->SubmitPass(producer);
+}
 
-    FrameGraphContext context;
-    producer.Compile(context);
-    
-    m_currentIndex = m_currentIndex % m_maxIndex;
-    producer.BuildCommandBuffer(*producer.m_pass->m_commandBuffers.at(m_currentIndex));
-    
-    return this->Submit(*producer.m_pass);
+EResultCode IFrameGraph::RegisterPass(IPassProducer& producer)
+{
+    auto result = CreatePass(producer.m_name, producer.m_passType);
+
+    if (result.has_value())
+    {
+        producer.m_pass = std::move(result.value());
+    }
+    else
+    {
+        return result.error();
+    }
+
+    return EResultCode::Success;
 }
 
 } // namespace RHI

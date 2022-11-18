@@ -57,7 +57,7 @@ namespace Vulkan
         appInfo.applicationVersion = VK_MAKE_VERSION(0, 1, 0);
         appInfo.pEngineName        = "Engine Application";
         appInfo.engineVersion      = VK_MAKE_VERSION(0, 1, 0);
-        appInfo.apiVersion         = VK_API_VERSION_1_2;
+        appInfo.apiVersion         = VK_API_VERSION_1_1;
 
         std::vector<const char*> enabledLayers;
         std::vector<const char*> enabledExtensions = {VK_KHR_SURFACE_EXTENSION_NAME};

@@ -228,8 +228,8 @@ public:
     using ResourceViewDesc = ConvertViewToDesc<ResourceView>;
     using FrameAttachment  = FrameAttachment<ResourceType>;
     
-    PassAttachment(const FrameAttachment& frameAttachment, Unique<ResourceView> view, const ResourceViewDesc& viewDesc, EAccess access, EAttachmentUsage usage)
-        : m_frameAttachment(FrameAttachment)
+    PassAttachment(const FrameAttachment& frameAttachment, Unique<ResourceView> view, const ResourceViewDesc& viewDesc, EAttachmentAccess access, EAttachmentUsage usage)
+        : m_frameAttachment(frameAttachment)
         , m_access(access)
         , m_usage(usage)
         , m_view(std::move(view))
@@ -240,9 +240,9 @@ public:
         *m_desc = viewDesc;
     }
     
-    PassAttachment(const FrameAttachment& frameAttachment, Unique<ResourceView> view, const ResourceViewDesc& viewDesc, EAccess access, EAttachmentUsage usage, EAttachmentLoadOp loadStoreOp, ESampleCount sampleCount)
+    PassAttachment(const FrameAttachment& frameAttachment, Unique<ResourceView> view, const ResourceViewDesc& viewDesc, EAttachmentAccess access, EAttachmentUsage usage, EAttachmentLoadOp loadStoreOp, ESampleCount sampleCount)
         : Internal::ImagePassAttachmentBase(loadStoreOp, sampleCount)
-        , m_frameAttachment(FrameAttachment)
+        , m_frameAttachment(frameAttachment)
         , m_access(access)
         , m_usage(usage)
         , m_view(std::move(view))
@@ -259,11 +259,6 @@ public:
     }
     
     inline ResourceView& GetView()
-    {
-        return *m_view;
-    }
-
-    inline const ResourceView& GetView() const
     {
         return *m_view;
     }

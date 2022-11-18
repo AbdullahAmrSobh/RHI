@@ -1,6 +1,8 @@
 #pragma once
+#include "RHI/Common.hpp"
 #include "RHI/FrameGraphPass.hpp"
 #include "Backend/Vulkan/RenderPass.hpp"
+#include "Backend/Vulkan/Commands.hpp"
 
 namespace RHI
 {
@@ -33,14 +35,21 @@ namespace Vulkan
         {
             return m_framebuffer.get();
         }
+
+        ICommandBuffer* GetCurrentCommandBuffer() const;
+
+        const Semaphore& GetPassFinishedSemaphore() const;  
     
     private:
         const Device* m_pDevice;
         
         Unique<RenderPass> m_renderPass;
+
         Unique<Framebuffer> m_framebuffer;
         
         Unique<CommandAllocator> m_commandAllocator;
+
+        Unique<Semaphore> m_passFinishedSemaphore;
     };
 
 } // namespace Vulkan

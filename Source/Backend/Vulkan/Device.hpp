@@ -88,7 +88,7 @@ namespace Vulkan
         bool SupportPresent() const;
 
         VkResult Present(const PresentRequest& presentRequest) const;
-        VkResult Submit(const std::vector<SubmitRequest>& submitRequests, const Fence* fence) const;
+        VkResult Submit(const std::vector<SubmitRequest>& submitRequests, const Fence& fence) const;
 
     private:
         VkQueue  m_handle;

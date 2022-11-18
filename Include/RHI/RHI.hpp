@@ -3,6 +3,8 @@
 #include "RHI/Common.hpp"
 #include "RHI/Device.hpp"
 #include "RHI/Format.hpp"
+#include "RHI/FrameGraph.hpp"
+#include "RHI/FrameGraphInterface.hpp"
 #include "RHI/FrameGraphAttachment.hpp"
 #include "RHI/FrameGraphPass.hpp"
 #include "RHI/TypeTraits.hpp"

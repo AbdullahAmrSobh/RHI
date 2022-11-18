@@ -15,8 +15,8 @@ namespace Vulkan
     {
         switch (loadOp)
         {
-        case EAttachmentLoadOp::Discard: VK_ATTACHMENT_LOAD_OP_CLEAR;
-        case EAttachmentLoadOp::DontCare: VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        case EAttachmentLoadOp::Discard: return VK_ATTACHMENT_LOAD_OP_CLEAR;
+        case EAttachmentLoadOp::DontCare: return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         case EAttachmentLoadOp::Load: return VK_ATTACHMENT_LOAD_OP_LOAD;
         };
         return VK_ATTACHMENT_LOAD_OP_MAX_ENUM;
