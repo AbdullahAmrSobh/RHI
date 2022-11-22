@@ -1,4 +1,4 @@
-.cache/
-.vscode/
 build/
-out/
+.vscode/
+.cache/
+Examples/GLFW/
