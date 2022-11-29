@@ -80,42 +80,6 @@ public:
     }
 };
 
-class PrimaryRenderPass final : public RHI::IPassProducer
-{
-public:
-    ~PrimaryRenderPass() = default;
-
-    virtual void Setup(RHI::FrameGraphBuilder& builder) override
-    {
-        RHI::ImagePassAttachmentDesc attachmentDesc{};
-        attachmentDesc.attachmentReference                       = builder.GetAttachmentsRegistry().FindSwapchainReference("swapchainAttachment");
-        attachmentDesc.loadStoreOps.loadOp                       = RHI::EAttachmentLoadOp::DontCare;
-        attachmentDesc.loadStoreOps.storeOp                      = RHI::EAttachmentStoreOp::Store;
-        attachmentDesc.attachmentViewDesc.viewAspect             = RHI::EImageViewAspectFlagBits::Color;
-        attachmentDesc.attachmentViewDesc.format                 = RHI::EFormat::R8G8B8A8Srgb;
-        attachmentDesc.attachmentViewDesc.type                   = RHI::EImageViewType::Type2D;
-        attachmentDesc.attachmentViewDesc.range.arraySize        = 1;
-        attachmentDesc.attachmentViewDesc.range.baseArrayElement = 0;
-        attachmentDesc.attachmentViewDesc.range.mipLevelsCount   = 1;
-        attachmentDesc.attachmentViewDesc.range.baseMipLevel     = 0;
-        builder.UseImageAttachment(attachmentDesc, RHI::EAttachmentUsage::RenderTarget, RHI::EAttachmentAccess::Write);
-        std::cout << "Setting up the primary render pass. \n" << std::endl;
-    }
-
-    virtual void Execute(RHI::ExecuteContext& context) override 
-    {
-        std::cout << "Executing primary render pass" << std::endl;
-    }
-
-    /*
-    struct ConstantBuffer
-    {
-
-    } m_constantBuffer;
-    RHI::Unique<RHI::IPipelineState>          m_pipelineState;
-    RHI::Unique<RHI::ShaderResourceGroupData> m_shaderData;*/
-};
-
 class Renderer
 {
 public:
@@ -197,9 +161,7 @@ public:
 
         // Create the frameGraph.
         {
-            m_frameGraph = GetExpectedValue(m_device->CreateFrameGraph());
 
-            m_frameGraph->ImportPassProducer(*m_primaryRenderPass, "primaryPass", RHI::EPassType::Graphics);
         }
 
         // Create pipeline
@@ -238,20 +200,15 @@ public:
             srgLayout.AddInputResource(bindingDesc);
             m_shaderResourceGroup = GetExpectedValue(m_shaderResourceGroupAllocator->Allocate(srgLayout));
         }
-    };  
+    };
 
     void OnFrame()
     {
-        m_frameGraph->BeginFrame();
-        m_frameGraph->Execute(*m_primaryRenderPass);
-        m_frameGraph->EndFrame();
+
     };
 
 public:
     GLFWwindow* m_pWindow;
-
-    RHI::ImageAttachmentReference swapchainImageReference{0};
-    RHI::ImageAttachmentReference depthStencilAttachmentReference{0};
 
     RHI::Rect     m_scissor;
     RHI::Viewport m_viewport;
@@ -265,8 +222,6 @@ public:
     RHI::Unique<RHI::IShaderResourceGroupAllocator> m_shaderResourceGroupAllocator;
     RHI::Unique<RHI::IShaderResourceGroup>          m_shaderResourceGroup;
     RHI::Unique<RHI::IPipelineState>                m_pipeline;
-    RHI::Unique<RHI::IFrameGraph>                   m_frameGraph;
-    RHI::Unique<PrimaryRenderPass>                  m_primaryRenderPass;
 };
 
 int main(void)

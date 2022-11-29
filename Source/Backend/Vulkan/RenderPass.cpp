@@ -1,8 +1,4 @@
-#include "RHI/FrameGraphAttachment.hpp"
-#include "RHI/FrameGraphPass.hpp"
-
 #include "Backend/Vulkan//Device.hpp"
-#include "Backend/Vulkan//FrameGraphPass.hpp"
 #include "Backend/Vulkan/Commands.hpp"
 #include "Backend/Vulkan/Common.hpp"
 
@@ -10,7 +6,7 @@ namespace RHI
 {
 namespace Vulkan
 {
-    
+#if 0
     VkAttachmentLoadOp ConvertLoadOp(EAttachmentLoadOp loadOp)
     {
         switch (loadOp)
@@ -43,7 +39,7 @@ namespace Vulkan
 
         return VK_IMAGE_LAYOUT_UNDEFINED;
     }
-    
+
     Result<Unique<RenderPass>> RenderPass::Create(const Device& device, const Pass& pass)
     {
         Unique<RenderPass> renderPass = CreateUnique<RenderPass>(device);
@@ -203,6 +199,7 @@ namespace Vulkan
 
         return vkCreateFramebuffer(m_pDevice->GetHandle(), &createInfo, nullptr, &m_handle);
     }
+#endif
 
 } // namespace Vulkan
 } // namespace RHI

@@ -48,8 +48,6 @@ enum class EResultCode
     InvalidArguments,
     FeatureNotAvailable,
     InvalidObject, 
-    FrameGraphCycle,
-
 };
 
 // template <class T, size_t S = nonstd::dynamic_extent>

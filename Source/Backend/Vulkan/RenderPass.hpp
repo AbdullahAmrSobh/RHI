@@ -1,22 +1,16 @@
 #pragma once
-#include "RHI/FrameGraphPass.hpp"
-
 #include "Backend/Vulkan/Device.hpp"
-#include "Backend/Vulkan/FrameGraphPass.hpp"
 #include "Backend/Vulkan/Resource.hpp"
 
 namespace RHI
 {
-
 namespace Vulkan
 {
-    
-    class Pass;
     
     class RenderPass final : public DeviceObject<VkRenderPass>
     {
     public:
-        static Result<Unique<RenderPass>> Create(const Device& device, const Pass& pass);
+        // static Result<Unique<RenderPass>> Create(const Device& device);
         
         RenderPass(const Device& device)
             : DeviceObject(&device)
@@ -25,7 +19,7 @@ namespace Vulkan
         
         ~RenderPass();
         
-        VkResult Init(const Pass& pass);
+        // VkResult Init(const Pass& pass);
     };
     
     class Framebuffer final : public DeviceObject<VkFramebuffer>

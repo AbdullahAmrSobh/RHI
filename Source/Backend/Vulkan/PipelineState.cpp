@@ -2,9 +2,6 @@
 
 #include "Backend/Vulkan/Common.hpp"
 #include "Backend/Vulkan/Device.hpp"
-#include "Backend/Vulkan/FrameGraphPass.hpp"
-#include "Backend/Vulkan/RenderPass.hpp"
-
 
 namespace RHI
 {
@@ -424,7 +421,7 @@ namespace Vulkan
         colorBlendStateInitalizer.Initalize(createInfo.pColorBlendState);
         dynamicStateInitalizer.Initalize(createInfo.pDynamicState);
 
-        const Pass& pass = *static_cast<const Pass*>(desc.pRenderPass);
+        // const Pass& pass = *static_cast<const Pass*>(desc.pRenderPass);
 
         // Recreate the entire PipelineStateObject if the RenderPassChanges. 
         

@@ -1,7 +1,6 @@
 #pragma once
 #include "RHI/Commands.hpp"
 #include "RHI/Common.hpp"
-#include "RHI/FrameGraph.hpp"
 #include "RHI/Memory.hpp"
 #include "RHI/PipelineState.hpp"
 #include "RHI/Resource.hpp"
@@ -90,8 +89,6 @@ public:
     virtual Expected<Unique<IBuffer>> CreateBuffer(const AllocationDesc& allocationDesc, const BufferDesc& desc) = 0;
 
     virtual Expected<Unique<IBufferView>> CreateBufferView(const IBuffer& buffer, const BufferViewDesc& desc) = 0;
-
-    virtual Expected<Unique<IFrameGraph>> CreateFrameGraph() = 0;
 
 protected:
     Unique<ITransferQueue> m_transferQueue;
