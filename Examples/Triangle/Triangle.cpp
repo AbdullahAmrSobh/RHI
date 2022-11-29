@@ -83,12 +83,12 @@ public:
 class PrimaryRenderPass final : public RHI::IPassProducer
 {
 public:
-    virtual ~PrimaryRenderPass() = default;
+    ~PrimaryRenderPass() = default;
 
     virtual void Setup(RHI::FrameGraphBuilder& builder) override
     {
         RHI::ImagePassAttachmentDesc attachmentDesc{};
-        attachmentDesc.attachmentReference                       = GetExpectedValue(builder.FindAttachmentReference("swapchainAttachment"));
+        attachmentDesc.attachmentReference                       = builder.GetAttachmentsRegistry().FindSwapchainReference("swapchainAttachment");
         attachmentDesc.loadStoreOps.loadOp                       = RHI::EAttachmentLoadOp::DontCare;
         attachmentDesc.loadStoreOps.storeOp                      = RHI::EAttachmentStoreOp::Store;
         attachmentDesc.attachmentViewDesc.viewAspect             = RHI::EImageViewAspectFlagBits::Color;
@@ -98,49 +98,22 @@ public:
         attachmentDesc.attachmentViewDesc.range.baseArrayElement = 0;
         attachmentDesc.attachmentViewDesc.range.mipLevelsCount   = 1;
         attachmentDesc.attachmentViewDesc.range.baseMipLevel     = 0;
-
         builder.UseImageAttachment(attachmentDesc, RHI::EAttachmentUsage::RenderTarget, RHI::EAttachmentAccess::Write);
-
         std::cout << "Setting up the primary render pass. \n" << std::endl;
     }
 
-    virtual void Compile(RHI::FrameGraphContext& pass) override
+    virtual void Execute(RHI::ExecuteContext& context) override 
     {
-        RHI::ImagePassAttachment& texture = *GetExpectedValue(pass.GetImagePassAttachment("triangleTexture"));
-        m_shaderData->BindImages(RHI::ShaderBindingReference{0, "triangleTexture"}, std::vector<RHI::IImageView*>{&texture.GetView()});
-        m_shaderData->SetConstant(RHI::ShaderBindingReference{0, "constantBuffer"}, std::vector<ConstantBuffer>{m_constantBuffer});
-        std::cout << "Compiling the Render Pass \n" << std::endl;
+        std::cout << "Executing primary render pass" << std::endl;
     }
 
-    virtual void BuildCommandBuffer(RHI::ICommandBuffer& commandBuffer) override
-    {
-        std::cout << "Building Command Buffer \n" << std::endl;
-        commandBuffer.Begin();
-        RHI::Rect scissor{};
-        scissor.sizeX = 640;
-        scissor.sizeY = 480;
-        scissor.x     = 0;
-        scissor.y     = 0;
-        commandBuffer.SetScissors({scissor});
-        RHI::Viewport viewport{};
-        viewport.drawingArea.x     = 0;
-        viewport.drawingArea.y     = 0;
-        viewport.drawingArea.sizeX = 640;
-        viewport.drawingArea.sizeY = 480;
-        viewport.minDepth          = 0.0f;
-        viewport.maxDepth          = 1.0f;
-        commandBuffer.SetViewports({viewport});
-        RHI::DrawCommand drawCommand{*m_pipelineState, RHI::DrawCommand::LinearData{}};
-        commandBuffer.Submit(drawCommand);
-        commandBuffer.End();
-    }
-
+    /*
     struct ConstantBuffer
     {
 
     } m_constantBuffer;
     RHI::Unique<RHI::IPipelineState>          m_pipelineState;
-    RHI::Unique<RHI::ShaderResourceGroupData> m_shaderData;
+    RHI::Unique<RHI::ShaderResourceGroupData> m_shaderData;*/
 };
 
 class Renderer
@@ -165,6 +138,7 @@ public:
 
         // Create GLFWWindow, Surface and Swapchain
         {
+            glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
             /* Create a windowed mode window and its OpenGL context */
             m_pWindow = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
             if (!m_pWindow)
@@ -172,7 +146,6 @@ public:
                 glfwTerminate();
                 std::exit(-1);
             }
-            glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
 #ifdef RHI_WINDOWS
             RHI::Win32SurfaceDesc surfaceDesc{};
@@ -224,16 +197,13 @@ public:
 
         // Create the frameGraph.
         {
-            m_frameGraph        = GetExpectedValue(m_device->CreateFrameGraph());
-            m_primaryRenderPass = RHI::CreateUnique<PrimaryRenderPass>(*m_frameGraph);
-// Because of x11
-#undef Success
-            assert(m_frameGraph->RegisterPass(*m_primaryRenderPass) == RHI::EResultCode::Success);
-            assert(m_frameGraph->Compile() == RHI::EResultCode::Success);
+            m_frameGraph = GetExpectedValue(m_device->CreateFrameGraph());
+
+            m_frameGraph->ImportPassProducer(*m_primaryRenderPass, "primaryPass", RHI::EPassType::Graphics);
         }
 
         // Create pipeline
-        {
+        /*{
             RHI::ShaderProgramDesc desc;
             desc.shaderCode   = ReadBinFile("./shaders.spv");
             desc.stage        = RHI::EShaderStageFlagBits::Vertex;
@@ -253,27 +223,27 @@ public:
             pipelineDesc.vertexInputAttributes.push_back(RHI::GraphicsPipelineVertexAttributeState{"v_color", RHI::EFormat::R8G8B8A8Srgb});
 
             m_pipeline = GetExpectedValue(m_device->CreateGraphicsPipelineState(pipelineDesc));
-        }
+        }*/
 
         // Create shader resource group allocator
         {
             m_shaderResourceGroupAllocator = GetExpectedValue(m_device->CreateShaderResourceGroupAllocator());
             RHI::ShaderInputResourceBindingDesc bindingDesc{};
             bindingDesc.access = RHI::EAccess::Read;
+            bindingDesc.type   = RHI::EShaderInputResourceType::Image;
             bindingDesc.count  = 1;
             bindingDesc.name   = "triangleTexture";
             bindingDesc.stages = RHI::EShaderStageFlagBits::Pixel;
             RHI::ShaderResourceGroupLayout srgLayout{};
             srgLayout.AddInputResource(bindingDesc);
-            bindingDesc.type      = RHI::EShaderInputResourceType::Image;
             m_shaderResourceGroup = GetExpectedValue(m_shaderResourceGroupAllocator->Allocate(srgLayout));
         }
-    };
+    };  
 
     void OnFrame()
     {
         m_frameGraph->BeginFrame();
-        m_frameGraph->SubmitPass(*m_primaryRenderPass);
+        m_frameGraph->Execute(*m_primaryRenderPass);
         m_frameGraph->EndFrame();
     };
 

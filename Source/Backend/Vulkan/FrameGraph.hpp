@@ -13,15 +13,15 @@ namespace Vulkan
     public:
         FrameGraph(const Device& device)
             : m_pDevice(&device)
-        {
-        }
+        {}
+        
+        VkResult Init();
 
-        virtual EResultCode SubmitPass(IPassProducer& producer) override;
-
+        virtual Expected<Unique<IPass>> CreatePass(std::string name, EPassType type) override;
+        virtual EResultCode             Execute(const IPassProducer& producer) override;
+    
     private:
         const Device* m_pDevice;
-
-        std::vector<IPassProducer*> m_passes;
     };
 
 } // namespace Vulkan

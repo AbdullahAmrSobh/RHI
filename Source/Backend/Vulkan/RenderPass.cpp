@@ -154,6 +154,7 @@ namespace Vulkan
         createInfo.pSubpasses      = &subpassDescription;
         createInfo.dependencyCount = 0;
         createInfo.pDependencies   = nullptr;
+        
 
         return vkCreateRenderPass(m_pDevice->GetHandle(), &createInfo, nullptr, &m_handle);
     }

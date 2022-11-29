@@ -209,6 +209,11 @@ namespace Vulkan
         return ConvertResult(vkDeviceWaitIdle(m_device));
     }
 
+    VkResult Queue::WaitIdle() const 
+    {
+        return vkQueueWaitIdle(m_handle);
+    }
+
     VkResult Queue::Present(const PresentRequest& presentRequest) const 
     {
         std::vector<VkSemaphore>    waitSemaphoresHandles;
@@ -242,25 +247,19 @@ namespace Vulkan
     
     VkResult Queue::Submit(const std::vector<Queue::SubmitRequest>& submitRequests, const Fence& fence) const 
     {
-        std::vector<VkSubmitInfo2> submitInfos;
+        std::vector<VkSubmitInfo> submitInfos;
         submitInfos.reserve(submitRequests.size());
 
         for (const auto& submitRequest : submitRequests)
         {
             VkSubmitInfo2 submitInfo;
-            submitInfo.sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+            submitInfo.sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO;
             submitInfo.pNext                    = nullptr;
             submitInfo.flags                    = 0;
-            submitInfo.waitSemaphoreInfoCount   = CountElements(submitRequest.waitSemaphores);
-            submitInfo.pWaitSemaphoreInfos      = submitRequest.waitSemaphores.data();
-            submitInfo.commandBufferInfoCount   = CountElements(submitRequest.commandBuffers);
-            submitInfo.pCommandBufferInfos      = submitRequest.commandBuffers.data();
-            submitInfo.signalSemaphoreInfoCount = CountElements(submitRequest.signalSemaphores);
-            submitInfo.pSignalSemaphoreInfos    = submitRequest.signalSemaphores.data();
-            submitInfos.push_back(submitInfo);
+
         }
 
-        return vkQueueSubmit2(m_handle, CountElements(submitInfos), submitInfos.data(), fence.GetHandle());
+        return vkQueueSubmit(m_handle, CountElements(submitInfos), submitInfos.data(), fence.GetHandle());
     }
 
 } // namespace Vulkan

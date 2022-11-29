@@ -1,61 +1,43 @@
 #pragma once
-#include <vector>
 #include "RHI/Common.hpp"
-#include "RHI/FrameGraphAttachment.hpp"
-#include "RHI/FrameGraphPass.hpp"
-#include "RHI/Resource.hpp"
-#include "RHI/Swapchain.hpp"
+#include "RHI/FrameGraphAttachmentsRegistry.hpp"
 
 namespace RHI
 {
+    
+enum class EPassType;
+enum class EAttachmentUsage;
+enum class EAttachmentAccess;
 
-class FrameGraphBuilder;
-class FrameGraphContext;
+struct ImagePassAttachmentDesc;
+struct BufferPassAttachmentDesc;
+
+class IDevice;
+class ISwapchain;
 class IPass;
-class ICommandBuffer;
-class IFrameGraph;
 class IPassProducer;
-
-class ITransientAttachmentsAllocator
-{
-public:
-    virtual ~ITransientAttachmentsAllocator() = default;
-
-    virtual Expected<Unique<ImageFrameAttachment>> AllocateImageFrameAttachment(const ImageFrameAttachmentDesc& attachmentDesc) = 0;
-
-    virtual Expected<Unique<BufferFrameAttachment>> AllocatBufferFrameAttachment(const BufferFrameAttachmentDesc& attachmentDesc) = 0;
-};
-
-class IAttachmentStorage
-{
-public:
-    virtual ~IAttachmentStorage() = default;
-
-    virtual Expected<Unique<ImagePassAttachment>> CreateImagePassAttachment() = 0;
-
-    virtual Expected<Unique<BufferPassAttachment>> CreateBufferPassAttachment() = 0;
-};
 
 class IFrameGraph
 {
 public:
     virtual ~IFrameGraph() = default;
 
-    virtual EResultCode BeginFrame();
-    virtual EResultCode EndFrame();
-    virtual EResultCode SubmitPass(IPassProducer& producer);
+    IAttachmentsRegistry& GetAttachmentsRegistry();
+    const IAttachmentsRegistry& GetAttachmentsRegistry() const;
 
-    virtual Expected<ImageAttachmentReference> ImportSwapchain(Unique<ISwapchain> swapchain) = 0;
+    EResultCode BeginFrame();
+    EResultCode EndFrame();
 
-    EResultCode RegisterPass(IPassProducer& producer);
-
-protected:
+    EResultCode ImportPassProducer(IPassProducer& producer, std::string name, EPassType type); 
+    
     virtual Expected<Unique<IPass>> CreatePass(std::string name, EPassType type) = 0;
 
-protected:
-    Unique<ITransientAttachmentsAllocator> m_allocator;
-    std::vector<IPassProducer*>            m_producers;
-    std::vector<Unique<ISwapchain>>        m_swapchains;
+    virtual EResultCode Execute(const IPassProducer& producer) = 0;
+
+private:
+    Unique<IAttachmentsRegistry> m_attachmentsRegistry; 
+    
+    std::vector<IPassProducer*> m_producers; 
 };
 
 } // namespace RHI

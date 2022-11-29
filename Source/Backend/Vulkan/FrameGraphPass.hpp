@@ -1,47 +1,48 @@
 #pragma once
-#include "RHI/Common.hpp"
-#include "RHI/FrameGraphPass.hpp"
-#include "Backend/Vulkan/RenderPass.hpp"
 #include "Backend/Vulkan/Commands.hpp"
+
+#include "RHI/FrameGraphPass.hpp"
 
 namespace RHI
 {
 namespace Vulkan
 {
-    class CommandAllocator;
-    class CommandBuffer;
-
+    class Device;
+    class FrameGraph;
     class RenderPass;
     class Framebuffer;
+    class Fence;
+    class Semaphore;
+    class CommandAllocator;
 
     class Pass final : public IPass
     {
     public:
-        Pass(const Device& device, std::string name, EPassType type)
+        Pass(const Device& device, FrameGraph& frameGraph, std::string name, EPassType type)
             : IPass(name, type)
+            , m_pDevice(&device)
+            , m_pFrameGraph(&frameGraph)
+            , m_renderPass(CreateUnique<RenderPass>(*m_pDevice))
+            , m_framebuffer(CreateUnique<Framebuffer>(*m_pDevice))
+            , m_commandAllocator(CreateUnique<CommandAllocator>(*m_pDevice))
+            , m_semaphore(CreateUnique<Semaphore>(*m_pDevice))
         {
         }
-        
-        ~Pass();
+        ~Pass() = default;
 
         VkResult Init();
 
-        inline const RenderPass* GetRenderPass() const
-        {
-            return m_renderPass.get();
-        }
+        const RenderPass& GetRenderPass() const;
+        
+        const Framebuffer& GetFramebuffer() const;
 
-        inline const Framebuffer* GetFramebuffer() const
-        {
-            return m_framebuffer.get();
-        }
+        const Fence& GetFence() const;
 
-        ICommandBuffer* GetCurrentCommandBuffer() const;
+        const Semaphore& GetSemaphore() const;
 
-        const Semaphore& GetPassFinishedSemaphore() const;  
-    
     private:
         const Device* m_pDevice;
+        FrameGraph* m_pFrameGraph;
         
         Unique<RenderPass> m_renderPass;
 
@@ -49,7 +50,7 @@ namespace Vulkan
         
         Unique<CommandAllocator> m_commandAllocator;
 
-        Unique<Semaphore> m_passFinishedSemaphore;
+        Unique<Semaphore> m_semaphore;
     };
 
 } // namespace Vulkan

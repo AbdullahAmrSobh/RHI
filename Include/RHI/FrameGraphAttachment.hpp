@@ -54,7 +54,7 @@ public:
         : m_index(UINT32_MAX)
     {
     }
-    
+
     AttachmentReference(uint32_t index)
         : m_index(index)
     {
@@ -70,11 +70,18 @@ public:
         return m_index;
     }
 
+    static inline constexpr auto Null()  
+    {
+        return AttachmentReference<EType>();
+    }
+
 private:
     uint32_t m_index;
 };
-using ImageAttachmentReference  = AttachmentReference<EAttachmentResourceType::Image>;
-using BufferAttachmentReference = AttachmentReference<EAttachmentResourceType::Buffer>;
+
+using ImageAttachmentReference     = AttachmentReference<EAttachmentResourceType::Image>;
+using BufferAttachmentReference    = AttachmentReference<EAttachmentResourceType::Buffer>;
+using SwapchainAttachmentReference = AttachmentReference<EAttachmentResourceType::Swapchain>;
 
 struct AttachmentLoadStoreOp
 {
@@ -106,11 +113,10 @@ public:
     FrameAttachment(std::string name, Unique<Resource> resource, const ResourceDesc& resourceDesc)
         : m_name(std::move(name))
         , m_resource(std::move(resource))
-        , m_desc(CreateUnique<const ResourceDesc>())
         , m_pFirstUse(nullptr)
         , m_pLastUse(nullptr)
     {
-        *m_desc = resourceDesc;
+        m_desc = CreateUnique<const ResourceDesc>(ResourceDesc(resourceDesc));
     }
 
     inline std::string_view GetName() const
@@ -165,14 +171,31 @@ protected:
     }
 
 protected:
-    const std::string             m_name;
-    Unique<Resource>              m_resource;
-    Unique<const ResourceDesc>    m_desc;
-    PassAttachment<ResourceView>* m_pFirstUse;
-    PassAttachment<ResourceView>* m_pLastUse;
+    const std::string                   m_name;
+    Unique<Resource>                    m_resource;
+    Unique<const ResourceDesc>          m_desc;
+    const PassAttachment<ResourceView>* m_pFirstUse;
+    const PassAttachment<ResourceView>* m_pLastUse;
 };
+
 using ImageFrameAttachment  = FrameAttachment<IImage>;
 using BufferFrameAttachment = FrameAttachment<IBuffer>;
+
+class SwapchainFrameAttachment final : public ImageFrameAttachment
+{
+public:
+    SwapchainFrameAttachment(std::string name, Unique<ISwapchain>& swapchain);
+
+    IImage&       GetResource();
+    const IImage& GetResource() const;
+
+    const ISwapchain& GetSwapchain() const;
+
+    const ResourceDesc& GetDesc() const;
+
+private:
+    ISwapchain* m_pSwapchain;
+};
 
 struct ImagePassAttachmentDesc
 {
@@ -183,8 +206,8 @@ struct ImagePassAttachmentDesc
 
 struct BufferPassAttachmentDesc
 {
-    std::string    attachmentReference;
-    BufferViewDesc attachmentViewDesc;
+    BufferAttachmentReference attachmentReference;
+    BufferViewDesc            attachmentViewDesc;
 };
 
 namespace Internal
@@ -210,7 +233,7 @@ namespace Internal
         {
             return m_sampleCount;
         }
-    
+
     private:
         AttachmentLoadStoreOp m_loadStoreOps;
         ESampleCount          m_sampleCount;
@@ -218,8 +241,7 @@ namespace Internal
 } // namespace Internal
 
 template <typename ResourceView>
-class PassAttachment final
-    : public std::conditional_t<std::is_same_v<ResourceView, IImageView>, Internal::ImagePassAttachmentBase, Internal::EmptyPassAttachmentBase>
+class PassAttachment : public std::conditional_t<std::is_same_v<ResourceView, IImageView>, Internal::ImagePassAttachmentBase, Internal::EmptyPassAttachmentBase>
 {
     friend class IFrameGraph;
 
@@ -227,37 +249,41 @@ public:
     using ResourceType     = ConvertViewToResource<ResourceView>;
     using ResourceViewDesc = ConvertViewToDesc<ResourceView>;
     using FrameAttachment  = FrameAttachment<ResourceType>;
-    
-    PassAttachment(const FrameAttachment& frameAttachment, Unique<ResourceView> view, const ResourceViewDesc& viewDesc, EAttachmentAccess access, EAttachmentUsage usage)
-        : m_frameAttachment(frameAttachment)
+
+    PassAttachment(const FrameAttachment& frameAttachment, Unique<ResourceView>& view, const ResourceViewDesc& viewDesc, EAttachmentAccess access, EAttachmentUsage usage)
+        : m_frameAttachment(&frameAttachment)
         , m_access(access)
         , m_usage(usage)
         , m_view(std::move(view))
-        , m_desc(CreateUnique<const ResourceViewDesc>())
+        , m_desc(new ResourceViewDesc(viewDesc))
         , m_pNext(nullptr)
         , m_pPrev(nullptr)
     {
-        *m_desc = viewDesc;
     }
     
-    PassAttachment(const FrameAttachment& frameAttachment, Unique<ResourceView> view, const ResourceViewDesc& viewDesc, EAttachmentAccess access, EAttachmentUsage usage, EAttachmentLoadOp loadStoreOp, ESampleCount sampleCount)
+    PassAttachment(const FrameAttachment& frameAttachment, 
+    Unique<ResourceView>& view, 
+    const ResourceViewDesc& viewDesc, 
+    EAttachmentAccess access, 
+    EAttachmentUsage usage, 
+    AttachmentLoadStoreOp loadStoreOp, 
+    ESampleCount sampleCount)
         : Internal::ImagePassAttachmentBase(loadStoreOp, sampleCount)
-        , m_frameAttachment(frameAttachment)
+        , m_frameAttachment(&frameAttachment)
         , m_access(access)
         , m_usage(usage)
         , m_view(std::move(view))
-        , m_desc(CreateUnique<const ResourceViewDesc>())
+        , m_desc(new ResourceViewDesc(viewDesc))
         , m_pNext(nullptr)
         , m_pPrev(nullptr)
     {
-        *m_desc = viewDesc;
     }
 
     inline const ResourceView& GetView() const
     {
         return *m_view;
     }
-    
+
     inline ResourceView& GetView()
     {
         return *m_view;
@@ -292,7 +318,7 @@ public:
     {
         return m_pNext;
     }
-    
+
     inline const PassAttachment* GetPerv() const
     {
         return m_pPrev;
@@ -320,7 +346,7 @@ protected:
     }
 
 protected:
-    FrameAttachment*         m_frameAttachment;
+    const FrameAttachment*         m_frameAttachment;
     EAttachmentAccess        m_access;
     EAttachmentUsage         m_usage;
     Unique<ResourceView>     m_view;

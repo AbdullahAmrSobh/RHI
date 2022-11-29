@@ -1,72 +1,59 @@
-#include "Backend/Vulkan/FrameGraph.hpp"
-#include <vector>
-#include "RHI/Common.hpp"
-#include "RHI/FrameGraphAttachment.hpp"
 #include "Backend/Vulkan/Commands.hpp"
+
 #include "Backend/Vulkan/Device.hpp"
+#include "Backend/Vulkan/FrameGraph.hpp"
 #include "Backend/Vulkan/FrameGraphPass.hpp"
-#include <vulkan/vulkan_core.h>
+#include "Backend/Vulkan/Resource.hpp"
+
+
+#include <iostream>
 
 namespace RHI
 {
 namespace Vulkan
 {
+
     Expected<Unique<IFrameGraph>> Device::CreateFrameGraph()
     {
         Unique<FrameGraph> frameGraph = CreateUnique<FrameGraph>(*this);
+        VkResult           result     = frameGraph->Init();
+        if (result != VK_SUCCESS)
+        {
+            return Unexpected(ConvertResult(result));
+        }
 
         return std::move(frameGraph);
     }
 
-    EResultCode FrameGraph::SubmitPass(IPassProducer& producer)
+    Expected<Unique<IPass>> FrameGraph::CreatePass(std::string name, EPassType type)
     {
-        const Pass&  pass  = static_cast<const Pass&>(producer.GetPass());
-        const Queue& queue = m_pDevice->GetGraphicsQueue();
+        Unique<Pass> pass = CreateUnique<Pass>(*m_pDevice, *this, std::move(name), type);
 
-        Queue::SubmitRequest submitRequest{};
-
-        VkCommandBufferSubmitInfo submitInfo{};
-        submitInfo.commandBuffer = static_cast<const CommandBuffer*>(pass.GetCurrentCommandBuffer())->GetHandle();
-        submitInfo.sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
-        submitInfo.pNext         = nullptr;
-        submitInfo.deviceMask    = 0;
-
-        submitRequest.commandBuffers.push_back(submitInfo);
-        
-        VkSemaphoreSubmitInfo signalSemaphore = {};
-        signalSemaphore.sType                 = VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO;
-        signalSemaphore.pNext                 = nullptr;
-        signalSemaphore.semaphore             = pass.GetPassFinishedSemaphore().GetHandle();
-        signalSemaphore.stageMask             = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
-        signalSemaphore.deviceIndex           = 0;
-        signalSemaphore.value                 = 0;
-
-        submitRequest.signalSemaphores.push_back(signalSemaphore);
-
-        for (auto passAttachment : pass.GetImageAttachments())
+        VkResult result = pass->Init();
+        if (result != VK_SUCCESS)
         {
-            // if used in a different pass, wait for it.
-
-            auto prev = passAttachment->GetPerv();
-
-            if (prev)
-            {
-                // Wait for pass's semapho
-                re
-            }
+            return Unexpected(ConvertResult(result));
         }
 
-        VkResult result = queue.Submit(std::vector<Queue::SubmitRequest>{submitRequest}, static_cast<const Fence&>(pass.GetSignalFence()));
+        return std::move(pass);
+    }
 
-        if (pass.HasSwapchainTarget())
-        {
-            Queue::PresentRequest presentRequest{};
-            presentRequest.swapchains;
-            presentRequest.waitSemaphores;
-            result = queue.Present(presentRequest);
-        }
+    EResultCode FrameGraph::Execute(const IPassProducer& passProducer)
+    {
+        std::cout << passProducer.GetPass().GetName() << " Executing pass" << std::endl;
+        return EResultCode::Fail;
+    }
 
-        return EResultCode::Success;
+    VkResult FrameGraph::Init() {
+        return VK_SUCCESS;
+    }
+
+    VkResult Pass::Init()
+    {
+        m_commandAllocator->Init(GetType() == EPassType::Graphics ? ECommandPrimaryTask::Graphics : ECommandPrimaryTask::Compute);
+        m_semaphore->Init();
+
+        return VK_SUCCESS;
     }
 
 } // namespace Vulkan

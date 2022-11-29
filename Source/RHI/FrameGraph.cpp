@@ -1,41 +1,38 @@
 #include "RHI/FrameGraph.hpp"
-#include "RHI/Common.hpp"
+#include "RHI/FrameGraphPass.hpp"
+#include "RHI/Swapchain.hpp"
 
 namespace RHI
 {
 
 EResultCode IFrameGraph::BeginFrame()
 {
-    for (auto& swapchain : m_swapchains)
+    // Swapbuffers for all imported attachments
+    for (ISwapchain* swapchain : m_attachmentsRegistry->m_swapchains)
     {
         swapchain->SwapBuffers();
     }
 
-    return this->BeginFrame();
+    return EResultCode::Success;
 }
 
 EResultCode IFrameGraph::EndFrame()
 {
-    this->EndFrame();
+    return EResultCode::Success;
 }
 
-EResultCode IFrameGraph::SubmitPass(IPassProducer& producer)
+EResultCode IFrameGraph::ImportPassProducer(IPassProducer& producer, std::string name, EPassType type)
 {
-    return this->SubmitPass(producer);
-}
+    m_producers.push_back(&producer);
 
-EResultCode IFrameGraph::RegisterPass(IPassProducer& producer)
-{
-    auto result = CreatePass(producer.m_name, producer.m_passType);
-
-    if (result.has_value())
+    auto expectedPass = this->CreatePass(std::move(name), type);
+    
+    if(!expectedPass.has_value())
     {
-        producer.m_pass = std::move(result.value());
+        return expectedPass.error();
     }
-    else
-    {
-        return result.error();
-    }
+    
+    producer.m_pass = std::move(*expectedPass);
 
     return EResultCode::Success;
 }

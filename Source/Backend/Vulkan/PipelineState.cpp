@@ -424,7 +424,7 @@ namespace Vulkan
         colorBlendStateInitalizer.Initalize(createInfo.pColorBlendState);
         dynamicStateInitalizer.Initalize(createInfo.pDynamicState);
 
-        auto pFrameGraphRenderPass = static_cast<const Pass*>(desc.pRenderPass);
+        const Pass& pass = *static_cast<const Pass*>(desc.pRenderPass);
 
         // Recreate the entire PipelineStateObject if the RenderPassChanges. 
         
@@ -432,7 +432,7 @@ namespace Vulkan
         createInfo.pNext              = nullptr;
         createInfo.flags              = 0;
         createInfo.layout             = m_layout->GetHandle();
-        createInfo.renderPass         = pFrameGraphRenderPass->GetRenderPass()->GetHandle();
+        // createInfo.renderPass         = pass.GetRenderPass().GetHandle();
         createInfo.subpass            = 0;
         createInfo.basePipelineHandle = VK_NULL_HANDLE;
         createInfo.basePipelineIndex  = 0;

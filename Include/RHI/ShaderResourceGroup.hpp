@@ -13,6 +13,7 @@ class ISampler;
 
 enum class EShaderInputResourceType
 {
+    Uninitalized,
     ConstantBuffer,
     Buffer,
     Image,
@@ -22,6 +23,7 @@ enum class EShaderInputResourceType
 
 enum class EShaderStagesFlagBits
 {
+    Uninitalized,
     Vertex,
     Pixel,
     Geometry,

@@ -10,6 +10,7 @@
 
 namespace RHI
 {
+enum class EPassType;
 
 class IPhysicalDevice
 {
@@ -92,10 +93,6 @@ public:
 
     virtual Expected<Unique<IFrameGraph>> CreateFrameGraph() = 0;
 
-    // virtual Expected<Unique<IRenderPass>> CreateRenderPass(std::string_view passName, FrameGraphBuilder& builder);
-
-    // virtual Expected<Unique<IComputePass>> CreateComputePass(std::string_view passName, FrameGraphBuilder& builder);
-    
 protected:
     Unique<ITransferQueue> m_transferQueue;
     IPhysicalDevice*       m_pPhysicalDevice;

@@ -10,12 +10,13 @@
 namespace RHI
 {
 namespace Vulkan
-{
+{    
     class Semaphore;
     class Fence;
     class PipelineLayout;
     class DescriptorSetLayout;
     class Swapchain;
+    class CommandBuffer;
 
     class PhysicalDevice final : public IPhysicalDevice
     {
@@ -57,15 +58,15 @@ namespace Vulkan
     public:
         struct PresentRequest
         {
-            std::vector<Semaphore*> waitSemaphores;
-            std::vector<Swapchain*> swapchains;
+            std::vector<const Semaphore*> waitSemaphores;
+            std::vector<const Swapchain*> swapchains;
         };
 
         struct SubmitRequest
         {
-            std::vector<VkSemaphoreSubmitInfo>     waitSemaphores;
-            std::vector<VkCommandBufferSubmitInfo> commandBuffers;
-            std::vector<VkSemaphoreSubmitInfo>     signalSemaphores;
+            std::vector<const Semaphore*>     waitSemaphores;
+            std::vector<const CommandBuffer*> commandBuffers;
+            std::vector<const Semaphore*>     signalSemaphores;
         };
 
         inline Queue(VkQueue queue, uint32_t familyIndex, uint32_t index)
@@ -85,9 +86,10 @@ namespace Vulkan
             return m_queueIndex;
         }
 
-        bool SupportPresent() const;
+        VkResult WaitIdle() const;
 
         VkResult Present(const PresentRequest& presentRequest) const;
+
         VkResult Submit(const std::vector<SubmitRequest>& submitRequests, const Fence& fence) const;
 
     private:
@@ -105,7 +107,7 @@ namespace Vulkan
         virtual Expected<DeviceMemoryPtr> Map(IResource& resource);
         virtual void                      Unmap(IResource& resource);
     };
-    
+
     class Device final : public IDevice
     {
     public:
@@ -138,6 +140,38 @@ namespace Vulkan
             return m_allocator;
         }
 
+        virtual EResultCode                                     WaitIdle() const override;
+        virtual Expected<Unique<ISwapchain>>                    CreateSwapChain(const SwapchainDesc& desc) override;
+        virtual Expected<Unique<IShaderProgram>>                CreateShaderProgram(const ShaderProgramDesc& desc) override;
+        virtual Expected<Unique<IShaderResourceGroupAllocator>> CreateShaderResourceGroupAllocator() override;
+        virtual Expected<Unique<IPipelineState>>                CreateGraphicsPipelineState(const GraphicsPipelineStateDesc& desc) override;
+        virtual Expected<Unique<IFence>>                        CreateFence() override;
+        virtual Expected<Unique<ISampler>>                      CreateSampler(const SamplerDesc& desc) override;
+        virtual Expected<Unique<IImage>>                        CreateImage(const AllocationDesc& allocationDesc, const ImageDesc& desc) override;
+        virtual Expected<Unique<IImageView>>                    CreateImageView(const IImage& image, const ImageViewDesc& desc) override;
+        virtual Expected<Unique<IBuffer>>                       CreateBuffer(const AllocationDesc& allocationDesc, const BufferDesc& desc) override;
+        virtual Expected<Unique<IBufferView>>                   CreateBufferView(const IBuffer& buffer, const BufferViewDesc& desc) override;
+        virtual Expected<Unique<IFrameGraph>>                   CreateFrameGraph() override;
+
+    private:
+        EResultCode InitQueues(std::optional<uint32_t> graphicsQueueIndex, std::optional<uint32_t> computeQueueIndex, std::optional<uint32_t> indexQueueIndex);
+
+    private:
+        const Instance* m_pInstance;
+
+        const PhysicalDevice* m_pPhysicalDevice;
+
+        VkDevice m_device;
+
+        VmaAllocator m_allocator;
+
+        std::vector<Queue> m_queues;
+
+        Queue* m_pGraphicsQueue;
+        Queue* m_pComputeQueue;
+        Queue* m_pTransferQueue;
+
+    public:
         inline const Queue& GetGraphicsQueue() const
         {
             return *m_pGraphicsQueue;
@@ -167,38 +201,6 @@ namespace Vulkan
         {
             return *m_pTransferQueue;
         }
-
-        virtual EResultCode                                     WaitIdle() const override;
-        virtual Expected<Unique<ISwapchain>>                    CreateSwapChain(const SwapchainDesc& desc) override;
-        virtual Expected<Unique<IShaderProgram>>                CreateShaderProgram(const ShaderProgramDesc& desc) override;
-        virtual Expected<Unique<IShaderResourceGroupAllocator>> CreateShaderResourceGroupAllocator() override;
-        virtual Expected<Unique<IPipelineState>>                CreateGraphicsPipelineState(const GraphicsPipelineStateDesc& desc) override;
-        virtual Expected<Unique<IFence>>                        CreateFence() override;
-        virtual Expected<Unique<ISampler>>                      CreateSampler(const SamplerDesc& desc) override;
-        virtual Expected<Unique<IImage>>                        CreateImage(const AllocationDesc& allocationDesc, const ImageDesc& desc) override;
-        virtual Expected<Unique<IImageView>>                    CreateImageView(const IImage& image, const ImageViewDesc& desc) override;
-        virtual Expected<Unique<IBuffer>>                       CreateBuffer(const AllocationDesc& allocationDesc, const BufferDesc& desc) override;
-        virtual Expected<Unique<IBufferView>>                   CreateBufferView(const IBuffer& buffer, const BufferViewDesc& desc) override;
-        virtual Expected<Unique<IFrameGraph>>                   CreateFrameGraph() override;
-
-    private:
-        EResultCode InitQueues(std::optional<uint32_t> graphicsQueueIndex, std::optional<uint32_t> computeQueueIndex, std::optional<uint32_t> indexQueueIndex);
-
-    private:
-        const Instance* m_pInstance;
-
-        const PhysicalDevice* m_pPhysicalDevice;
-
-        VkDevice m_device;
-
-        VmaAllocator m_allocator;
-
-        std::vector<Queue> m_queues;
-
-        // Pointer to dedicated queues.
-        Queue* m_pGraphicsQueue;
-        Queue* m_pComputeQueue;
-        Queue* m_pTransferQueue;
     };
 } // namespace Vulkan
 } // namespace RHI
