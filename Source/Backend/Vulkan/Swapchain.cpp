@@ -1,6 +1,12 @@
 #include "RHI/Common.hpp"
 
 #ifdef RHI_WINDOWS
+#include "RHI/Platform/Win32Surface.hpp"
+#elif defined(RHI_LINUX)
+#include "RHI/Platform/XlibSurface.hpp"
+#endif
+
+#ifdef RHI_WINDOWS
 #define VK_USE_PLATFORM_WIN32_KHR
 #elif defined(RHI_LINUX)
 #define VK_USE_PLATFORM_XLIB_KHR
@@ -8,12 +14,6 @@
 
 #include "Backend/Vulkan/Device.hpp"
 #include "Backend/Vulkan/Swapchain.hpp"
-
-#ifdef RHI_WINDOWS
-#include "RHI/Platform/Win32Surface.hpp"
-#elif defined(RHI_LINUX)
-#include "RHI/Platform/XlibSurface.hpp"
-#endif
 
 namespace RHI
 {

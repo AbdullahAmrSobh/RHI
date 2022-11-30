@@ -1,7 +1,5 @@
 #pragma once
-#include "RHI/Common.hpp"
 #include "RHI/Swapchain.hpp"
-#include "Backend/Vulkan/Device.hpp"
 #include "Backend/Vulkan/Resource.hpp"
 
 namespace RHI

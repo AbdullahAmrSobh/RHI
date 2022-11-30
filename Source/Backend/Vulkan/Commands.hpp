@@ -1,17 +1,14 @@
 #pragma once
-#include <vector>
 #include "RHI/Commands.hpp"
-#include "RHI/Common.hpp"
-#include "Backend/Vulkan/RenderPass.hpp"
 #include "Backend/Vulkan/Resource.hpp"
-#include "Backend/Vulkan/ShaderResourceGroup.hpp"
-#include <vulkan/vulkan_core.h>
 
 namespace RHI
 {
 namespace Vulkan
 {
+    class Framebuffer;
     class Semaphore;
+    class ShaderResourceGroup;
     class CommandAllocator;
 
     class CommandBuffer final

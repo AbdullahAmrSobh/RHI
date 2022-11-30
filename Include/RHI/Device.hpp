@@ -9,7 +9,6 @@
 
 namespace RHI
 {
-enum class EPassType;
 
 class IPhysicalDevice
 {

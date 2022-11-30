@@ -1,10 +1,5 @@
 #pragma once
-#include <unordered_map>
-#include "RHI/Common.hpp"
 #include "RHI/Device.hpp"
-#include "RHI/PipelineState.hpp"
-#include "RHI/Resource.hpp"
-#include "RHI/ShaderResourceGroup.hpp"
 #include "Backend/Vulkan/Instance.hpp"
 
 namespace RHI

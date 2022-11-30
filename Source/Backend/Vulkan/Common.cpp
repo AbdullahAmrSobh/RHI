@@ -3,7 +3,6 @@
 #include "RHI/Format.hpp"
 #include "RHI/PipelineState.hpp"
 #include "RHI/Resource.hpp"
-#include <vulkan/vulkan_core.h>
 
 namespace RHI
 {

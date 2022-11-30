@@ -1,7 +1,5 @@
-#include "Backend/Vulkan/PipelineState.hpp"
-
-#include "Backend/Vulkan/Common.hpp"
 #include "Backend/Vulkan/Device.hpp"
+#include "Backend/Vulkan/PipelineState.hpp"
 
 namespace RHI
 {

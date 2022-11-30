@@ -7,6 +7,8 @@ namespace RHI
 {
 namespace Vulkan
 {
+    class DescriptorSetLayout;
+
     class PipelineLayout final : public DeviceObject<VkPipelineLayout>
     {
     public:

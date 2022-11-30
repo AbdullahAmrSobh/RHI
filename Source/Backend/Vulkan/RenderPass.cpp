@@ -1,6 +1,5 @@
 #include "Backend/Vulkan//Device.hpp"
 #include "Backend/Vulkan/Commands.hpp"
-#include "Backend/Vulkan/Common.hpp"
 
 namespace RHI
 {

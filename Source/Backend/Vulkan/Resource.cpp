@@ -1,5 +1,3 @@
-#include "RHI/Resource.hpp"
-#include "Backend/Vulkan/Common.hpp"
 #include "Backend/Vulkan/Device.hpp"
 #include "Backend/Vulkan/Resource.hpp"
 

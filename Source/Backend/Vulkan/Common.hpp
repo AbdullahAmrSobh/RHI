@@ -1,12 +1,11 @@
 #pragma once
+
 #include "RHI/Common.hpp"
 #include "RHI/Format.hpp"
 #include "RHI/Resource.hpp"
 #include "RHI/PipelineState.hpp"
 
 #include "Backend/Vulkan/Vma/vk_mem_alloc.hpp"
-
-#undef SUCCESS
 
 #define RHI_ASSERT_SUCCESS(X) assert(X == VK_SUCCESS);
 

@@ -1,14 +1,9 @@
 #pragma once
-#include "RHI/Common.hpp"
 #include "RHI/Resource.hpp"
 
 namespace RHI
 {
 
-class IImage;
-class IImageView;
-class IBuffer;
-class IBufferView;
 class ISampler;
 
 enum class EShaderInputResourceType
@@ -181,8 +176,6 @@ public:
     {
         return m_constants;
     }
-
-    // inline void BindAttachment(const ShaderBindingReference& bindingReference, const std::vector<PassImageAttachment*>& pImageAttachment) {}
 
     inline void BindImages(const ShaderBindingReference& bindingReference, const std::vector<IImageView*>& images)
     {

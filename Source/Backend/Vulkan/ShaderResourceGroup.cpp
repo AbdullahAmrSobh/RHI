@@ -1,8 +1,4 @@
 #include "Backend/Vulkan/ShaderResourceGroup.hpp"
-#include <cassert>
-#include <map>
-#include "RHI/Common.hpp"
-#include "Backend/Vulkan/Common.hpp"
 #include "Backend/Vulkan/Device.hpp"
 
 namespace RHI
@@ -84,7 +80,7 @@ namespace Vulkan
     {
         vkFreeDescriptorSets(m_pDevice->GetHandle(), m_pParantPool->GetHandle(), 1, &m_handle);
     }
-    
+
     VkWriteDescriptorSet DescriptorSet::WriteImages(uint32_t bindingIndex, const std::vector<VkDescriptorImageInfo>& imageInfos) const
     {
         VkWriteDescriptorSet write;
@@ -153,7 +149,7 @@ namespace Vulkan
 
         return vkCreateDescriptorPool(m_pDevice->GetHandle(), &createInfo, nullptr, &m_handle);
     }
-    
+
     Result<Unique<DescriptorSet>> DescriptorPool::Allocate(const DescriptorSetLayout& layout)
     {
         VkDescriptorSetLayout layoutHandle = layout.GetHandle();
@@ -250,7 +246,7 @@ namespace Vulkan
             VkWriteDescriptorSet writeDesc = m_descriptorSet->WriteBuffers(binding.first, bufferInfos);
             descriptorSetWriteDescriptions.push_back(writeDesc);
         }
-        
+
         // BindTexelBuffers
         for (auto& binding : data.GetTexelBufferBinds())
         {
@@ -271,7 +267,7 @@ namespace Vulkan
 
         return EResultCode::Success;
     }
-    
+
     Expected<Unique<IShaderResourceGroupAllocator>> Device::CreateShaderResourceGroupAllocator()
     {
         Unique<ShaderResourceGroupAllocator> allocator = CreateUnique<ShaderResourceGroupAllocator>(*this);
@@ -349,7 +345,7 @@ namespace Vulkan
             {
                 return Unexpected(ConvertResult(result.error()));
             }
-            
+
             Result<Unique<DescriptorSet>> descriptorSetResult = m_descriptorPools.back()->Allocate(*pSetLayout);
             if (!descriptorSetResult.has_value())
             {
@@ -360,7 +356,7 @@ namespace Vulkan
                 descriptorSet = std::move(descriptorSetResult.value());
             }
         }
-        
+
         return std::move(CreateUnique<ShaderResourceGroup>(*m_pDevice, std::move(descriptorSet)));
     }
 

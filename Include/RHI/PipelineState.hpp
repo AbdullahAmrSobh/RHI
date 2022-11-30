@@ -72,7 +72,6 @@ struct GraphicsPipelineStateDesc
     GraphicsPipelineRasterizationState                rasterizationState;
     GraphicsPipelineColorBlendState                   colorBlendState;
     GraphicsPipelineDepthStencilState                 depthStencil;
-    const IPass*                                      pPass; 
 };
 
 class IPipelineState

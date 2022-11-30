@@ -1,5 +1,4 @@
 #pragma once
-#include "Backend/Vulkan/Device.hpp"
 #include "Backend/Vulkan/Resource.hpp"
 
 namespace RHI
