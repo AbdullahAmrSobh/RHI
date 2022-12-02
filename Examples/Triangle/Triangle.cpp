@@ -21,13 +21,6 @@
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
-template <typename T>
-inline constexpr auto GetExpectedValue(T&& t) -> typename T::value_type
-{
-    assert(t.has_value());
-    return std::move(t.value());
-}
-
 std::vector<uint32_t> ReadBinFile(std::string filePath)
 {
     std::ifstream file(filePath, std::ios::ate | std::ios::binary);
@@ -43,17 +36,6 @@ std::vector<uint32_t> ReadBinFile(std::string filePath)
     file.close();
 
     return buffer;
-}
-
-struct Mesh
-{
-    std::vector<float>    vertexBufferData;
-    std::vector<uint32_t> indexBufferData;
-};
-
-Mesh LoadMesh(std::string_view path)
-{
-    return Mesh();
 }
 
 class RHIDebugCallbacks final : public RHI::IDebugCallbacks
@@ -87,7 +69,7 @@ public:
     {
         // Create Instance and device.
         {
-            m_instance = GetExpectedValue(RHI::IInstance::Create(RHI::EBackend::Vulkan, RHI::CreateUnique<RHIDebugCallbacks>()));
+            m_instance = RHI::IInstance::Create(RHI::EBackend::Vulkan, RHI::CreateUnique<RHIDebugCallbacks>()).value();
             assert(!m_instance->GetPhysicalDevices().empty());
             RHI::IPhysicalDevice* pPhysicalDevice = m_instance->GetPhysicalDevices().front();
             for (auto* device : m_instance->GetPhysicalDevices())
@@ -97,7 +79,7 @@ public:
                     pPhysicalDevice = device;
                 }
             }
-            m_device = GetExpectedValue(m_instance->CreateDevice(*pPhysicalDevice));
+            m_device = m_instance->CreateDevice(*pPhysicalDevice).value();
         }
 
         // Create GLFWWindow, Surface and Swapchain
@@ -121,7 +103,7 @@ public:
             surfaceDesc.pDisplay = glfwGetX11Display();
 #endif
 
-            m_surface = GetExpectedValue(m_instance->CreateSurface(surfaceDesc));
+            m_surface = m_instance->CreateDevice(*pPhysicalDevice).value();
 
             RHI::SwapchainDesc swapchainDesc;
             swapchainDesc.pSurface        = m_surface.get();
@@ -149,14 +131,14 @@ public:
             bufferDesc.usage = RHI::EBufferUsageFlagBits::Vertex;
             bufferDesc.usage = bufferDesc.usage | RHI::EBufferUsageFlagBits::Transfer;
 
-            m_vertexBuffer = GetExpectedValue(m_device->CreateBuffer(allocationDesc, bufferDesc));
+            m_vertexBuffer = m_instance->CreateDevice(*pPhysicalDevice).value();
 
             allocationDesc.memoryRequirement.byteSize = indexBufferData.size();
             bufferDesc.size                           = indexBufferData.size();
             bufferDesc.usage                          = RHI::EBufferUsageFlagBits::Index;
             bufferDesc.usage                          = bufferDesc.usage | RHI::EBufferUsageFlagBits::Transfer;
 
-            m_indexBuffer = GetExpectedValue(m_device->CreateBuffer(allocationDesc, bufferDesc));
+            m_indexBuffer = m_instance->CreateDevice(*pPhysicalDevice).value();
         }
 
         // Create the frameGraph.
@@ -164,32 +146,9 @@ public:
 
         }
 
-        // Create pipeline
-        /*{
-            RHI::ShaderProgramDesc desc;
-            desc.shaderCode   = ReadBinFile("./shaders.spv");
-            desc.stage        = RHI::EShaderStageFlagBits::Vertex;
-            desc.entryName    = "vertexShader";
-            auto vertexShader = GetExpectedValue(m_device->CreateShaderProgram(desc));
-
-            desc.shaderCode  = ReadBinFile("./shaders.spv");
-            desc.stage       = RHI::EShaderStageFlagBits::Pixel;
-            desc.entryName   = "pixelShader";
-            auto pixelShader = GetExpectedValue(m_device->CreateShaderProgram(desc));
-
-            RHI::GraphicsPipelineStateDesc pipelineDesc;
-            pipelineDesc.shaderStages.pVertexShader = vertexShader.get();
-            pipelineDesc.shaderStages.pPixelShader  = pixelShader.get();
-            pipelineDesc.pRenderPass                = &m_primaryRenderPass->GetPass();
-            pipelineDesc.vertexInputAttributes.push_back(RHI::GraphicsPipelineVertexAttributeState{"v_position", RHI::EFormat::R32G32B32Sfloat});
-            pipelineDesc.vertexInputAttributes.push_back(RHI::GraphicsPipelineVertexAttributeState{"v_color", RHI::EFormat::R8G8B8A8Srgb});
-
-            m_pipeline = GetExpectedValue(m_device->CreateGraphicsPipelineState(pipelineDesc));
-        }*/
-
         // Create shader resource group allocator
         {
-            m_shaderResourceGroupAllocator = GetExpectedValue(m_device->CreateShaderResourceGroupAllocator());
+            m_shaderResourceGroupAllocator = m_device->CreateShaderResourceGroupAllocator().value();
             RHI::ShaderInputResourceBindingDesc bindingDesc{};
             bindingDesc.access = RHI::EAccess::Read;
             bindingDesc.type   = RHI::EShaderInputResourceType::Image;
@@ -198,7 +157,7 @@ public:
             bindingDesc.stages = RHI::EShaderStageFlagBits::Pixel;
             RHI::ShaderResourceGroupLayout srgLayout{};
             srgLayout.AddInputResource(bindingDesc);
-            m_shaderResourceGroup = GetExpectedValue(m_shaderResourceGroupAllocator->Allocate(srgLayout));
+            m_shaderResourceGroup = m_shaderResourceGroupAllocator->Allocate(srgLayout).value();
         }
     };
 
