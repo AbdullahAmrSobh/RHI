@@ -87,7 +87,7 @@ struct FlagTraits
 template<typename BitType>
 class Flags
 {
-  public:
+public:
     using MaskType = typename std::underlying_type<BitType>::type;
 
     // constructors
@@ -203,7 +203,7 @@ class Flags
         return m_mask;
     }
 
-  private:
+private:
     MaskType m_mask;
 };
 

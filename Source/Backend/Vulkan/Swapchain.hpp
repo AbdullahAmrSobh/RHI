@@ -12,7 +12,7 @@ class Surface final
     : public ISurface
     , public DeviceObject<VkSurfaceKHR>
 {
-  public:
+public:
     Surface(const Instance& instance)
         : DeviceObject(nullptr)
         , m_pInstance(&instance)
@@ -48,7 +48,7 @@ class Surface final
     static VkPresentModeKHR SelectPresentMode(
         const std::vector<VkPresentModeKHR>& presentModes);
 
-  private:
+private:
     const Instance* m_pInstance;
 };
 
@@ -56,7 +56,7 @@ class Swapchain final
     : public ISwapchain
     , public DeviceObject<VkSwapchainKHR>
 {
-  public:
+public:
     Swapchain(const Device& device)
         : DeviceObject(&device)
         , m_imageAcquiredSemaphore(CreateUnique<Semaphore>(device))
@@ -78,7 +78,7 @@ class Swapchain final
     virtual EResultCode Resize(Extent2D newExtent) override;
     virtual EResultCode SetFullscreenExeclusive(bool enable = true) override;
 
-  private:
+private:
     VkResult InitBackbuffers();
 
     // Operations must wait on that semaphore,

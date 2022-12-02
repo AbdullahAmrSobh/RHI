@@ -18,7 +18,7 @@ struct SwapchainDesc
 
 class ISwapchain
 {
-  public:
+public:
     virtual ~ISwapchain() = default;
 
     inline const std::vector<IImage*>& GetBackImages() const
@@ -45,7 +45,7 @@ class ISwapchain
     virtual EResultCode Resize(Extent2D newExtent)                  = 0;
     virtual EResultCode SetFullscreenExeclusive(bool enable = true) = 0;
 
-  protected:
+protected:
     ISurface*               m_pSurface          = nullptr;
     uint32_t                m_currentImageIndex = 0;
     std::vector<IImage*>    m_backBuffers;

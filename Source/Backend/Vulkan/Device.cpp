@@ -277,7 +277,7 @@ VkResult Queue::Submit(const std::vector<Queue::SubmitRequest>& submitRequests,
 {
     (void)submitRequests;
     (void)fence;
-    // TODO 
+    // TODO
     return VK_ERROR_UNKNOWN;
 }
 

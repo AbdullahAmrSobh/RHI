@@ -69,7 +69,7 @@ struct ShaderConstantBufferBindingDesc : ShaderInputResourceBindingDescBase
 
 class ShaderResourceGroupLayout
 {
-  public:
+public:
     inline size_t GetHash() const
     {
         return m_hash;
@@ -126,7 +126,7 @@ class ShaderResourceGroupLayout
         return m_bindingReferences.back();
     }
 
-  private:
+private:
     template<typename T>
     static inline constexpr size_t hasher(T x)
     {
@@ -140,7 +140,7 @@ class ShaderResourceGroupLayout
                                  ShaderResourceGroupLayout::hasher(desc.name)));
     }
 
-  private:
+private:
     size_t m_hash = 0;
 
     uint32_t                            m_resourceBindingCount       = 0;
@@ -153,7 +153,7 @@ class ShaderResourceGroupLayout
 
 class ShaderResourceGroupData
 {
-  public:
+public:
     struct ConstantBuffer
     {
         size_t byteSize;
@@ -227,7 +227,7 @@ class ShaderResourceGroupData
             ConstantBuffer(data.size(), data.data());
     }
 
-  private:
+private:
     ShaderResourceGroupLayout*                              m_pLayout;
     std::map<ShaderBindingIndex, std::vector<IImageView*>>  m_imageBinds;
     std::map<ShaderBindingIndex, std::vector<IBuffer*>>     m_buffersBinds;
@@ -238,7 +238,7 @@ class ShaderResourceGroupData
 
 class IShaderResourceGroup
 {
-  public:
+public:
     virtual ~IShaderResourceGroup() = default;
 
     inline Expected<std::string_view> GetBindingName(uint32_t index) const
@@ -267,14 +267,14 @@ class IShaderResourceGroup
 
     virtual EResultCode Update(const ShaderResourceGroupData& data) = 0;
 
-  protected:
+protected:
     std::vector<ShaderBindingReference> m_bindingReferencs;
     Unique<ShaderResourceGroupLayout>   m_layout;
 };
 
 class IShaderResourceGroupAllocator
 {
-  public:
+public:
     virtual ~IShaderResourceGroupAllocator() = default;
 
     virtual Expected<Unique<IShaderResourceGroup>> Allocate(

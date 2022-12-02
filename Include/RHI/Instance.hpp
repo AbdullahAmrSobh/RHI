@@ -19,7 +19,7 @@ enum class EDebugMessageSeverity
 
 class IDebugCallbacks
 {
-  public:
+public:
     virtual ~IDebugCallbacks() = default;
 
     virtual void Log(std::string_view message)   = 0;
@@ -36,7 +36,7 @@ enum class EBackend
 
 class IInstance
 {
-  public:
+public:
     static Expected<Unique<IInstance>> Create(
         EBackend backend, Unique<IDebugCallbacks> callbacks = nullptr);
 
@@ -60,7 +60,7 @@ class IInstance
     virtual Expected<Unique<IDevice>> CreateDevice(
         const IPhysicalDevice& physicalDevice) = 0;
 
-  protected:
+protected:
     uint32_t                             m_physicalDeviceCount = 0;
     std::vector<Unique<IPhysicalDevice>> m_physicalDevices     = {};
     Unique<IDebugCallbacks>              m_debugCallbacks      = nullptr;

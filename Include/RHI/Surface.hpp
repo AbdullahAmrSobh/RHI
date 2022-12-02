@@ -9,7 +9,7 @@ struct X11SurfaceDesc;
 
 class ISurface
 {
-  public:
+public:
     virtual ~ISurface() = default;
 };
 

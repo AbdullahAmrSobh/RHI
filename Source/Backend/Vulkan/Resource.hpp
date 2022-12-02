@@ -11,7 +11,7 @@ class Device;
 template<typename T>
 class DeviceObject
 {
-  public:
+public:
     DeviceObject(const Device* pDevice, T handle = VK_NULL_HANDLE)
         : m_pDevice(pDevice)
         , m_handle(handle)
@@ -23,7 +23,7 @@ class DeviceObject
         return m_handle;
     }
 
-  protected:
+protected:
     const Device* m_pDevice;
     T             m_handle;
 };
@@ -31,7 +31,7 @@ class DeviceObject
 template<typename T>
 class Resource : public DeviceObject<T>
 {
-  public:
+public:
     Resource(const Device* pDevice, T handle = VK_NULL_HANDLE,
              VmaAllocation allocation = VK_NULL_HANDLE)
         : DeviceObject<T>(pDevice, handle)
@@ -49,7 +49,7 @@ class Resource : public DeviceObject<T>
         return m_allocationInfo;
     }
 
-  protected:
+protected:
     VmaAllocation     m_allocation = VK_NULL_HANDLE;
     VmaAllocationInfo m_allocationInfo;
 };
@@ -58,7 +58,7 @@ class ShaderModule final
     : public IShaderProgram
     , public DeviceObject<VkShaderModule>
 {
-  public:
+public:
     ShaderModule(const Device& device, std::string name)
         : IShaderProgram(name)
         , DeviceObject(&device)
@@ -73,7 +73,7 @@ class Fence final
     : public IFence
     , public DeviceObject<VkFence>
 {
-  public:
+public:
     Fence(const Device& device)
         : DeviceObject(&device)
     {
@@ -91,7 +91,7 @@ class Image final
     : public IImage
     , public Resource<VkImage>
 {
-  public:
+public:
     Image(const Device& device, VkImage imageHandle = VK_NULL_HANDLE)
         : Resource(&device, imageHandle)
     {
@@ -105,7 +105,7 @@ class ImageView final
     : public IImageView
     , public DeviceObject<VkImageView>
 {
-  public:
+public:
     ImageView(const Device& device)
         : DeviceObject(&device)
     {
@@ -119,7 +119,7 @@ class Buffer final
     : public IBuffer
     , public Resource<VkBuffer>
 {
-  public:
+public:
     Buffer(const Device& device)
         : Resource(&device)
     {
@@ -133,7 +133,7 @@ class BufferView final
     : public IBufferView
     , public DeviceObject<VkBufferView>
 {
-  public:
+public:
     BufferView(const Device& device)
         : DeviceObject(&device)
     {
@@ -147,7 +147,7 @@ class Sampler final
     : public ISampler
     , public DeviceObject<VkSampler>
 {
-  public:
+public:
     Sampler(const Device& device)
         : DeviceObject(&device)
     {
@@ -159,7 +159,7 @@ class Sampler final
 
 class Semaphore final : public DeviceObject<VkSemaphore>
 {
-  public:
+public:
     Semaphore(const Device& device)
         : DeviceObject(&device)
     {

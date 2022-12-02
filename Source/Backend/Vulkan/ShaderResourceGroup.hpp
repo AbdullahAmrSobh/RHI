@@ -10,7 +10,7 @@ class DescriptorPool;
 
 class DescriptorSetLayout final : public DeviceObject<VkDescriptorSetLayout>
 {
-  public:
+public:
     DescriptorSetLayout(const Device& device)
         : DeviceObject(&device)
     {
@@ -35,14 +35,14 @@ class DescriptorSetLayout final : public DeviceObject<VkDescriptorSetLayout>
         return m_bindings.at(bindingIndex);
     }
 
-  private:
+private:
     std::vector<VkDescriptorSetLayoutBinding> m_bindings;
     std::vector<VkDescriptorPoolSize>         m_size;
 };
 
 class DescriptorSet final : public DeviceObject<VkDescriptorSet>
 {
-  public:
+public:
     DescriptorSet(const Device& device)
         : DeviceObject(&device)
     {
@@ -62,7 +62,7 @@ class DescriptorSet final : public DeviceObject<VkDescriptorSet>
         uint32_t                         bindingIndex,
         const std::vector<VkBufferView>& bufferViews) const;
 
-  private:
+private:
     const DescriptorPool*      m_pool;
     const DescriptorSetLayout* m_layout;
 };
@@ -71,7 +71,7 @@ class DescriptorPool final : public DeviceObject<VkDescriptorPool>
 {
     friend class DescriptorPool;
 
-  public:
+public:
     struct Capacity
     {
         uint32_t                          maxSets;
@@ -92,14 +92,14 @@ class DescriptorPool final : public DeviceObject<VkDescriptorPool>
 
     VkResult Init(const Capacity& capacity);
 
-  private:
+private:
     Capacity                    m_capacity;
     std::vector<DescriptorSet*> m_pDescriptorSets;
 };
 
 class ShaderResourceGroup final : public IShaderResourceGroup
 {
-  public:
+public:
     ShaderResourceGroup(const Device&         device,
                         Unique<DescriptorSet> descriptorSet)
         : m_pDevice(&device)
@@ -115,14 +115,14 @@ class ShaderResourceGroup final : public IShaderResourceGroup
 
     virtual EResultCode Update(const ShaderResourceGroupData& data) override;
 
-  private:
+private:
     const Device*         m_pDevice;
     Unique<DescriptorSet> m_descriptorSet;
 };
 
 class ShaderResourceGroupAllocator final : public IShaderResourceGroupAllocator
 {
-  public:
+public:
     ShaderResourceGroupAllocator(const Device& device)
         : m_pDevice(&device)
     {
@@ -131,7 +131,7 @@ class ShaderResourceGroupAllocator final : public IShaderResourceGroupAllocator
     virtual Expected<Unique<IShaderResourceGroup>> Allocate(
         const ShaderResourceGroupLayout& layout) override;
 
-  private:
+private:
     const Device*                       m_pDevice;
     std::vector<Unique<DescriptorPool>> m_descriptorPools;
 };

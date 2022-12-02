@@ -15,7 +15,7 @@ class CommandBuffer final
     : public ICommandBuffer
     , public DeviceObject<VkCommandBuffer>
 {
-  public:
+public:
     CommandBuffer(const Device& device, CommandAllocator* pParantAllocator,
                   VkCommandBuffer handle)
         : DeviceObject(&device, handle)
@@ -45,14 +45,14 @@ class CommandBuffer final
     // Method for signaling to other commands, that this command finished a
     // sage.
 
-  private:
+private:
     void BeginRenderPass(Extent2D                  extent,
                          std::vector<VkClearValue> clearValues);
     void EndRenderPass();
     void BindShaderResourceGroups(
         const std::vector<ShaderResourceGroup*>& groups);
 
-  private:
+private:
     const Framebuffer* m_renderTarget;
     CommandAllocator*  m_pParantAllocator;
 
@@ -69,7 +69,7 @@ enum class ECommandPrimaryTask
 
 class CommandAllocator final : public DeviceObject<VkCommandPool>
 {
-  public:
+public:
     CommandAllocator(const Device& device)
         : DeviceObject(&device)
     {

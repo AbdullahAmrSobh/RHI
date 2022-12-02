@@ -156,7 +156,7 @@ struct CopyCommand
 
 class ICommandBuffer
 {
-  public:
+public:
     virtual ~ICommandBuffer() = default;
 
     virtual void Begin() = 0;

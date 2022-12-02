@@ -28,7 +28,7 @@ struct AllocationMemoryRequirement
 
 class IMemoryPool
 {
-  public:
+public:
     size_t GetCapacity() const;
 };
 

@@ -8,7 +8,7 @@ namespace Vulkan
 
 class RenderPass final : public DeviceObject<VkRenderPass>
 {
-  public:
+public:
     RenderPass(const Device& device)
         : DeviceObject(&device)
     {
@@ -21,7 +21,7 @@ class RenderPass final : public DeviceObject<VkRenderPass>
 
 class Framebuffer final : public DeviceObject<VkFramebuffer>
 {
-  public:
+public:
     struct AttachmentsDesc
     {
         uint32_t         colorAttachmentsCount;
@@ -43,7 +43,7 @@ class Framebuffer final : public DeviceObject<VkFramebuffer>
         return *m_pRenderPass;
     }
 
-  private:
+private:
     const RenderPass* m_pRenderPass;
 };
 

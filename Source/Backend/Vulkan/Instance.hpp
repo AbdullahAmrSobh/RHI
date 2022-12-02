@@ -9,7 +9,7 @@ namespace Vulkan
 
 class Instance final : public IInstance
 {
-  public:
+public:
     ~Instance();
 
     VkResult Init();
@@ -29,7 +29,7 @@ class Instance final : public IInstance
     virtual Expected<Unique<IDevice>> CreateDevice(
         const IPhysicalDevice& physicalDevice) override;
 
-  private:
+private:
     VkInstance               m_instance;
     VkDebugUtilsMessengerEXT m_debugMessenger;
 };

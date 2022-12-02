@@ -12,7 +12,7 @@ namespace RHI
 
 class IPhysicalDevice
 {
-  public:
+public:
     struct Features;
     struct Properties;
 
@@ -38,14 +38,14 @@ class IPhysicalDevice
         return m_vendor;
     }
 
-  private:
+private:
     bool    m_isDiscrete;
     EVendor m_vendor;
 };
 
 class ITransferQueue
 {
-  public:
+public:
     virtual ~ITransferQueue() = default;
 
     virtual EResultCode Enqueue(const CopyCommand& copyCommand,
@@ -56,7 +56,7 @@ class ITransferQueue
 
 class IDevice
 {
-  public:
+public:
     virtual ~IDevice() = default;
 
     inline const IPhysicalDevice& GetPhysicalDevice() const
@@ -100,7 +100,7 @@ class IDevice
     virtual Expected<Unique<IBufferView>> CreateBufferView(
         const IBuffer& buffer, const BufferViewDesc& desc) const = 0;
 
-  protected:
+protected:
     Unique<ITransferQueue> m_transferQueue;
     IPhysicalDevice*       m_pPhysicalDevice;
 };

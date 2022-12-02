@@ -11,7 +11,7 @@ class DescriptorSetLayout;
 
 class PipelineLayout final : public DeviceObject<VkPipelineLayout>
 {
-  public:
+public:
     PipelineLayout(const Device& device)
         : DeviceObject(&device)
     {
@@ -32,7 +32,7 @@ class PipelineLayout final : public DeviceObject<VkPipelineLayout>
         return m_descriptorSetsLayouts;
     }
 
-  private:
+private:
     size_t                                   m_hash;
     std::vector<VkPushConstantRange>         m_pushConstantRanges;
     std::vector<Unique<DescriptorSetLayout>> m_descriptorSetsLayouts;
@@ -42,7 +42,7 @@ class PipelineState final
     : public IPipelineState
     , public DeviceObject<VkPipeline>
 {
-  public:
+public:
     PipelineState(const Device& device)
         : DeviceObject(&device)
     {
@@ -57,7 +57,7 @@ class PipelineState final
         return *m_layout;
     }
 
-  private:
+private:
     Shared<PipelineLayout> m_layout;
 };
 

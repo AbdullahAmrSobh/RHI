@@ -15,7 +15,7 @@ class CommandBuffer;
 
 class PhysicalDevice final : public IPhysicalDevice
 {
-  public:
+public:
     PhysicalDevice(VkPhysicalDevice physicalDevice)
         : m_physicalDevice(physicalDevice)
     {
@@ -46,13 +46,13 @@ class PhysicalDevice final : public IPhysicalDevice
     std::vector<VkSurfaceFormatKHR> GetSurfaceFormats(
         VkSurfaceKHR _surface) const;
 
-  private:
+private:
     VkPhysicalDevice m_physicalDevice;
 };
 
 class Queue final
 {
-  public:
+public:
     struct PresentRequest
     {
         std::vector<const Semaphore*> waitSemaphores;
@@ -90,7 +90,7 @@ class Queue final
     VkResult Submit(const std::vector<SubmitRequest>& submitRequests,
                     const Fence&                      fence) const;
 
-  private:
+private:
     VkQueue  m_handle;
     uint32_t m_familyIndex;
     uint32_t m_queueIndex;
@@ -99,7 +99,7 @@ class Queue final
 using DeviceMemoryPtr = void*;
 class DeviceContext
 {
-  public:
+public:
     virtual ~DeviceContext() = default;
 
     virtual Expected<DeviceMemoryPtr> Map(IResource& resource);
@@ -108,7 +108,7 @@ class DeviceContext
 
 class Device final : public IDevice
 {
-  public:
+public:
     Device(const Instance& instance, const PhysicalDevice& physicaldDevice)
         : m_pInstance(&instance)
         , m_pPhysicalDevice(&physicaldDevice)
@@ -161,12 +161,12 @@ class Device final : public IDevice
     virtual Expected<Unique<IBufferView>> CreateBufferView(
         const IBuffer& buffer, const BufferViewDesc& desc) const override;
 
-  private:
+private:
     EResultCode InitQueues(std::optional<uint32_t> graphicsQueueIndex,
                            std::optional<uint32_t> computeQueueIndex,
                            std::optional<uint32_t> indexQueueIndex);
 
-  private:
+private:
     const Instance* m_pInstance;
 
     const PhysicalDevice* m_pPhysicalDevice;
@@ -181,7 +181,7 @@ class Device final : public IDevice
     Queue* m_pComputeQueue;
     Queue* m_pTransferQueue;
 
-  public:
+public:
     inline const Queue& GetGraphicsQueue() const
     {
         return *m_pGraphicsQueue;
