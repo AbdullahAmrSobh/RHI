@@ -1,6 +1,8 @@
 # RHI
 
-This is the RHI project.
+RHI (Renderer Hardware Interface), is an abstraction layer for graphics, APIs such as Vulkan, and DirectX12.
+Currently, this project supports only Vulkan as a backend, with future plan to add other APIs. 
+The goal is to provide an API that facilitate GPU resource creation, and managements, and operations synchronization.  
 
 # Building and installing
 
