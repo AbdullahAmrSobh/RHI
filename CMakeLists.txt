@@ -12,7 +12,7 @@ project(
 
 include(cmake/project-is-top-level.cmake)
 include(cmake/variables.cmake)
-include(FILES.cmake)
+include(cmake/SourceFilesList.cmake)
 
 # ---- Find Dependencies 
 if (NOT CMAKE_VERSION VERSION_LESS 3.7.0)
