@@ -2,17 +2,17 @@
 
 #include "RHI/Common.hpp"
 #include "RHI/Format.hpp"
-#include "RHI/Resource.hpp"
 #include "RHI/PipelineState.hpp"
+#include "RHI/Resource.hpp"
 
 #include "Backend/Vulkan/Vma/vk_mem_alloc.hpp"
 
-#define RHI_ASSERT_SUCCESS(X) assert(X == VK_SUCCESS);
+#define RHI_VK_ASSERT_SUCCESS(X) assert(X == VK_SUCCESS);
 
-#define RHI_SUCCESS(X) (X == VK_SUCCESS)
+#define RHI_VK_IS_SUCCESS(X) (X == VK_SUCCESS)
 
-#define RHI_RETURN_ON_FAIL(X)                                                                                                                                  \
-    if (!RHI_SUCCESS(X))                                                                                                                                        \
+#define RHI_VK_RETURN_IF_FAIL(X)                                                                                                                               \
+    if (!RHI_VK_IS_SUCCESS(X))                                                                                                                                 \
     {                                                                                                                                                          \
         return X;                                                                                                                                              \
     }
@@ -28,7 +28,7 @@ namespace Vulkan
     VkShaderStageFlagBits CovnertShaderStages(EShaderStageFlagBits stages);
 
     VkCullModeFlags ConvertRasterizationStateCullMode(ERasterizationCullMode cullMode);
-    
+
     VkPolygonMode ConvertRasterizationStateFillMode(ERasterizationFillMode fillMode);
 
     VkFilter ConvertFilter(ESamplerFilter filter);
@@ -46,7 +46,7 @@ namespace Vulkan
     uint32_t FormatStrideSize(VkFormat format);
 
     VkImageViewType ConvertImageViewType(EImageViewType imageType);
-    
+
     VkImageAspectFlags ConvertViewAspect(ImageViewAspectFlags aspectFlags);
 
     inline VkExtent3D ConvertExtent(Extent3D extent)
@@ -83,7 +83,7 @@ namespace Vulkan
     VkImageUsageFlags ConvertImageUsage(ImageUsageFlags usageFlags);
 
     VkBufferUsageFlags ConvertBufferUsage(BufferUsageFlags usageFlags);
-    
+
     VmaMemoryUsage ConvertMemoryUsage(EMemoryUsage usage);
 
 } // namespace Vulkan
