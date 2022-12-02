@@ -5,7 +5,7 @@
 namespace RHI
 {
 namespace Vulkan
-{    
+{
     class Semaphore;
     class Fence;
     class PipelineLayout;
@@ -136,16 +136,17 @@ namespace Vulkan
         }
 
         virtual EResultCode                                     WaitIdle() const override;
-        virtual Expected<Unique<ISwapchain>>                    CreateSwapChain(const SwapchainDesc& desc) override;
-        virtual Expected<Unique<IShaderProgram>>                CreateShaderProgram(const ShaderProgramDesc& desc) override;
-        virtual Expected<Unique<IShaderResourceGroupAllocator>> CreateShaderResourceGroupAllocator() override;
-        virtual Expected<Unique<IPipelineState>>                CreateGraphicsPipelineState(const GraphicsPipelineStateDesc& desc) override;
-        virtual Expected<Unique<IFence>>                        CreateFence() override;
-        virtual Expected<Unique<ISampler>>                      CreateSampler(const SamplerDesc& desc) override;
-        virtual Expected<Unique<IImage>>                        CreateImage(const AllocationDesc& allocationDesc, const ImageDesc& desc) override;
-        virtual Expected<Unique<IImageView>>                    CreateImageView(const IImage& image, const ImageViewDesc& desc) override;
-        virtual Expected<Unique<IBuffer>>                       CreateBuffer(const AllocationDesc& allocationDesc, const BufferDesc& desc) override;
-        virtual Expected<Unique<IBufferView>>                   CreateBufferView(const IBuffer& buffer, const BufferViewDesc& desc) override;
+        virtual Expected<Unique<ISwapchain>>                    CreateSwapChain(const SwapchainDesc& desc) const override;
+        virtual Expected<Unique<IShaderProgram>>                CreateShaderProgram(const ShaderProgramDesc& desc) const override;
+        virtual Expected<Unique<IShaderResourceGroupAllocator>> CreateShaderResourceGroupAllocator() const override;
+        virtual Expected<Unique<IPipelineState>>                CreateGraphicsPipelineState(const GraphicsPipelineStateDesc& desc) const override;
+        virtual Expected<Unique<IFence>>                        CreateFence() const override;
+        virtual Expected<Unique<ISampler>>                      CreateSampler(const SamplerDesc& desc) const override;
+        virtual Expected<Unique<IImage>>                        CreateImage(const AllocationDesc& allocationDesc, const ImageDesc& desc) const override;
+        virtual Expected<Unique<IImageView>>                    CreateImageView(const IImage& image, const ImageViewDesc& desc) const override;
+        virtual Expected<Unique<IBuffer>>                       CreateBuffer(const AllocationDesc& allocationDesc, const BufferDesc& desc) const override;
+        virtual Expected<Unique<IBufferView>>                   CreateBufferView(const IBuffer& buffer, const BufferViewDesc& desc) const override;
+        virtual Expected<Unique<IFrameGraph>>                   CreateFrameGraph() const override;
 
     private:
         EResultCode InitQueues(std::optional<uint32_t> graphicsQueueIndex, std::optional<uint32_t> computeQueueIndex, std::optional<uint32_t> indexQueueIndex);

@@ -21,14 +21,6 @@ namespace RHI
 {
 namespace Vulkan
 {
-    template <typename T>
-    using Result = tl::expected<T, VkResult>;
-
-    using ResultError = tl::unexpected<VkResult>;
-
-    template <class T>
-    using ResultSuccess = tl::expected<T, VkResult>;
-
     EResultCode ConvertResult(VkResult resultCode);
 
     VkShaderStageFlags CovnertShaderStages(ShaderStageFlags stages);

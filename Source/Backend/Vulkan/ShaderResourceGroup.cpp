@@ -268,7 +268,7 @@ namespace Vulkan
         return EResultCode::Success;
     }
 
-    Expected<Unique<IShaderResourceGroupAllocator>> Device::CreateShaderResourceGroupAllocator()
+    Expected<Unique<IShaderResourceGroupAllocator>> Device::CreateShaderResourceGroupAllocator() const
     {
         Unique<ShaderResourceGroupAllocator> allocator = CreateUnique<ShaderResourceGroupAllocator>(*this);
         return allocator;

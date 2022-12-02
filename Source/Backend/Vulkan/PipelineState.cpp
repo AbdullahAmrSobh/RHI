@@ -375,7 +375,7 @@ namespace Vulkan
 
     } // namespace PipelineStateInitalizers
 
-    Expected<Unique<IPipelineState>> Device::CreateGraphicsPipelineState(const GraphicsPipelineStateDesc& desc)
+    Expected<Unique<IPipelineState>> Device::CreateGraphicsPipelineState(const GraphicsPipelineStateDesc& desc) const
     {
         Unique<PipelineState> pipelineState = CreateUnique<PipelineState>(*this);
         VkResult              result        = pipelineState->Init(desc);

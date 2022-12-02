@@ -36,6 +36,11 @@ public:
         return m_currentImageIndex;
     }
 
+    inline uint32_t GetBackBuffersCount() const 
+    {
+        return static_cast<uint32_t>(m_backBuffers.size());
+    }
+    
     virtual EResultCode SwapBuffers()                               = 0;
     virtual EResultCode Resize(Extent2D newExtent)                  = 0;
     virtual EResultCode SetFullscreenExeclusive(bool enable = true) = 0;

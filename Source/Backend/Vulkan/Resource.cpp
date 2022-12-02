@@ -6,7 +6,7 @@ namespace RHI
 namespace Vulkan
 {
 
-    Expected<Unique<IShaderProgram>> Device::CreateShaderProgram(const ShaderProgramDesc& desc)
+    Expected<Unique<IShaderProgram>> Device::CreateShaderProgram(const ShaderProgramDesc& desc) const
     {
         Unique<ShaderModule> shaderModule = CreateUnique<ShaderModule>(*this, desc.entryName);
         VkResult             result       = shaderModule->Init(desc);
@@ -17,7 +17,7 @@ namespace Vulkan
         return Unexpected(ConvertResult(result));
     }
 
-    Expected<Unique<IFence>> Device::CreateFence()
+    Expected<Unique<IFence>> Device::CreateFence() const
     {
         Unique<Fence> fence  = CreateUnique<Fence>(*this);
         VkResult      result = fence->Init();
@@ -28,7 +28,7 @@ namespace Vulkan
         return Unexpected(ConvertResult(result));
     }
 
-    Expected<Unique<IImage>> Device::CreateImage(const AllocationDesc& allocationDesc, const ImageDesc& desc)
+    Expected<Unique<IImage>> Device::CreateImage(const AllocationDesc& allocationDesc, const ImageDesc& desc) const
     {
         Unique<Image> image  = CreateUnique<Image>(*this);
         VkResult      result = image->Init(allocationDesc, desc);
@@ -39,7 +39,7 @@ namespace Vulkan
         return Unexpected(ConvertResult(result));
     }
 
-    Expected<Unique<IImageView>> Device::CreateImageView(const IImage& image, const ImageViewDesc& desc)
+    Expected<Unique<IImageView>> Device::CreateImageView(const IImage& image, const ImageViewDesc& desc) const
     {
         Unique<ImageView> imageView = CreateUnique<ImageView>(*this);
         VkResult          result    = imageView->Init(static_cast<const Image&>(image), desc);
@@ -50,7 +50,7 @@ namespace Vulkan
         return Unexpected(ConvertResult(result));
     }
 
-    Expected<Unique<IBuffer>> Device::CreateBuffer(const AllocationDesc& allocationDesc, const BufferDesc& desc)
+    Expected<Unique<IBuffer>> Device::CreateBuffer(const AllocationDesc& allocationDesc, const BufferDesc& desc) const
     {
         Unique<Buffer> buffer = CreateUnique<Buffer>(*this);
         VkResult       result = buffer->Init(allocationDesc, desc);
@@ -61,7 +61,7 @@ namespace Vulkan
         return Unexpected(ConvertResult(result));
     }
 
-    Expected<Unique<IBufferView>> Device::CreateBufferView(const IBuffer& buffer, const BufferViewDesc& desc)
+    Expected<Unique<IBufferView>> Device::CreateBufferView(const IBuffer& buffer, const BufferViewDesc& desc) const
     {
         Unique<BufferView> bufferView = CreateUnique<BufferView>(*this);
         VkResult           result     = bufferView->Init(static_cast<const Buffer&>(buffer), desc);
@@ -72,7 +72,7 @@ namespace Vulkan
         return Unexpected(ConvertResult(result));
     }
 
-    Expected<Unique<ISampler>> Device::CreateSampler(const SamplerDesc& desc)
+    Expected<Unique<ISampler>> Device::CreateSampler(const SamplerDesc& desc) const
     {
         Unique<Sampler> sampler = CreateUnique<Sampler>(*this);
         VkResult        result  = sampler->Init(desc);

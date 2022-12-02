@@ -21,7 +21,7 @@ namespace Vulkan
 {
 
 #ifdef RHI_LINUX
-    Expected<Unique<ISurface>> Instance::CreateSurface(const X11SurfaceDesc& desc)
+    Expected<Unique<ISurface>> Instance::CreateSurface(const X11SurfaceDesc& desc) const
     {
         Unique<Surface> surface = CreateUnique<Surface>(*this);
         VkResult        result  = surface->Init(desc);
@@ -71,7 +71,7 @@ namespace Vulkan
 
 #endif
 
-    Expected<Unique<ISwapchain>> Device::CreateSwapChain(const SwapchainDesc& desc)
+    Expected<Unique<ISwapchain>> Device::CreateSwapChain(const SwapchainDesc& desc) const
     {
         Unique<Swapchain> swapchain = CreateUnique<Swapchain>(*this);
         VkResult          result    = swapchain->Init(desc);

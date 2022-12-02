@@ -9,7 +9,7 @@ enum class EFormat;
 
 class ShaderResourceGroupLayout;
 class IShaderProgram;
-class IPass;
+class IRenderPass;
 
 enum class ERasterizationCullMode
 {
@@ -62,11 +62,10 @@ struct PipelineLayoutDesc
     std::vector<ShaderResourceGroupLayout> shaderBindingGroupLayouts;
 };
 
-
 struct GraphicsPipelineStateDesc
 {
     PipelineLayoutDesc                                pipelineLayoutDesc;
-    const IPass*                                      pRenderPass;
+    const IRenderPass*                                pRenderPass;
     GraphicsPipelineShaderStages                      shaderStages;
     std::vector<GraphicsPipelineVertexAttributeState> vertexInputAttributes;
     GraphicsPipelineRasterizationState                rasterizationState;
