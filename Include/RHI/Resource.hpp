@@ -22,7 +22,7 @@ struct ShaderProgramDesc
 
 class IShaderProgram
 {
-public:
+  public:
     IShaderProgram(std::string name)
         : m_name(std::move(name))
     {
@@ -34,13 +34,13 @@ public:
         return m_name;
     }
 
-protected:
+  protected:
     std::string m_name;
 };
 
 class IFence
 {
-public:
+  public:
     virtual ~IFence() = default;
 
     virtual EResultCode Wait() const      = 0;
@@ -63,7 +63,7 @@ enum class ESamplerAddressMode
 enum class ESamplerCompareOp
 {
     Never,
-    Equal, 
+    Equal,
     NotEqual,
     Always,
     Less,
@@ -74,7 +74,6 @@ enum class ESamplerCompareOp
 
 struct SamplerDesc
 {
-
     ESamplerFilter      filter;
     ESamplerCompareOp   compare;
     float               mipLodBias;
@@ -88,7 +87,7 @@ struct SamplerDesc
 
 class ISampler
 {
-public:
+  public:
     virtual ~ISampler() = default;
 };
 
@@ -100,18 +99,18 @@ enum class EResourceType
 
 class IResource
 {
-public:
+  public:
     virtual ~IResource() = default;
-    
+
     inline size_t GetSize() const
     {
         return m_memorySize;
     }
-    
+
     Expected<MappedAllocationPtr> Map(size_t byteOffset, size_t byteSize);
     void                          Unmap();
 
-protected:
+  protected:
     size_t m_memorySize = SIZE_MAX;
 };
 
@@ -160,7 +159,7 @@ struct ImageDesc
 
 class IImage : public IResource
 {
-public:
+  public:
     virtual ~IImage() = default;
 };
 
@@ -191,7 +190,7 @@ struct ImageViewDesc
 
 class IImageView
 {
-public:
+  public:
     virtual ~IImageView() = default;
 };
 
@@ -211,7 +210,7 @@ struct BufferDesc
 
 class IBuffer : public IResource
 {
-public:
+  public:
     virtual ~IBuffer() = default;
 };
 
@@ -229,8 +228,8 @@ struct BufferViewDesc
 
 class IBufferView
 {
-public:
+  public:
     virtual ~IBufferView() = default;
 };
 
-} // namespace RHI
+}  // namespace RHI

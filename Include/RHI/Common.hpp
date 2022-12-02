@@ -1,36 +1,36 @@
 #pragma once
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <iterator>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include <cassert>
-#include <optional>
-#include <iterator>
 
 #include "RHI/Core/Expected.hpp"
 #include "RHI/Core/Span.hpp"
 
 // #include "RHI/Core/Span.hpp"
 
-#ifdef _WIN64 
-#define RHI_WINDOWS
+#ifdef _WIN64
+#    define RHI_WINDOWS
 #elif __APPLE__
-#error "Apple Platforms are not supported yet"
+#    error "Apple Platforms are not supported yet"
 #elif __ANDROID__
-#define RHI_ANDROID
+#    define RHI_ANDROID
 #elif __linux__
-#define RHI_LINUX
+#    define RHI_LINUX
 #else
-#error "Unknown compiler"
+#    error "Unknown compiler"
 #endif
 
 namespace RHI
@@ -47,35 +47,35 @@ enum class EResultCode
     ExtensionNotAvailable,
     InvalidArguments,
     FeatureNotAvailable,
-    InvalidObject, 
+    InvalidObject,
 };
 
 // template <class T, size_t S = nonstd::dynamic_extent>
 // using Span = ::nonstd::span<T, S>;
 
-template <typename T>
+template<typename T>
 using Unique = std::unique_ptr<T>;
 
-template <typename T>
+template<typename T>
 using Shared = std::shared_ptr<T>;
 
-template <typename T, typename... Args>
+template<typename T, typename... Args>
 inline Unique<T> CreateUnique(Args&&... args)
 {
     return std::make_unique<T>(std::forward<Args>(args)...);
 }
 
-template <typename T, typename... Args>
+template<typename T, typename... Args>
 inline Shared<T> CreateShared(Args&&... args)
 {
     return std::make_shared<T>(std::forward<Args>(args)...);
 }
 
 using Unexpected = tl::unexpected<EResultCode>;
-template <class T>
+template<class T>
 using Expected = tl::expected<T, EResultCode>;
 
-template <typename FlagBitsType>
+template<typename FlagBitsType>
 struct FlagTraits
 {
     enum
@@ -84,10 +84,10 @@ struct FlagTraits
     };
 };
 
-template <typename BitType>
+template<typename BitType>
 class Flags
 {
-public:
+  public:
     using MaskType = typename std::underlying_type<BitType>::type;
 
     // constructors
@@ -171,7 +171,8 @@ public:
     }
 
     // assignment operators
-    constexpr Flags<BitType>& operator=(Flags<BitType> const& rhs) noexcept = default;
+    constexpr Flags<BitType>& operator=(Flags<BitType> const& rhs) noexcept =
+        default;
 
     constexpr Flags<BitType>& operator|=(Flags<BitType> const& rhs) noexcept
     {
@@ -202,11 +203,11 @@ public:
         return m_mask;
     }
 
-private:
+  private:
     MaskType m_mask;
 };
 
-template <typename T>
+template<typename T>
 inline constexpr uint32_t CountElements(const T& t)
 {
     return static_cast<uint32_t>(t.size());
@@ -246,7 +247,7 @@ struct Viewport
     float maxDepth;
 };
 
-template <typename T>
+template<typename T>
 T Select(const std::vector<T>& range, T desired, T fallback)
 {
     for (T t : range)
@@ -264,4 +265,4 @@ inline size_t hash_combine(std::size_t first, std::size_t second)
     return seed;
 }
 
-} // namespace RHI
+}  // namespace RHI

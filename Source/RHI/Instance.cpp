@@ -1,31 +1,32 @@
-#include "RHI/Common.hpp"
+#include "Backend/Vulkan/Instance.hpp"
 
 #include "Backend/Vulkan/Device.hpp"
-#include "Backend/Vulkan/Instance.hpp"
+#include "RHI/Common.hpp"
 
 namespace RHI
 {
 
-Expected<Unique<IInstance>> IInstance::Create(EBackend backend, Unique<IDebugCallbacks> callbacks)
+Expected<Unique<IInstance>> IInstance::Create(EBackend                backend,
+                                              Unique<IDebugCallbacks> callbacks)
 {
     switch (backend)
     {
-    case EBackend::Vulkan:
-    {
-        Unique<Vulkan::Instance> instance = CreateUnique<Vulkan::Instance>();
+        case EBackend::Vulkan: {
+            Unique<Vulkan::Instance> instance =
+                CreateUnique<Vulkan::Instance>();
 
-        instance->m_debugCallbacks = std::move(callbacks);
+            instance->m_debugCallbacks = std::move(callbacks);
 
-        VkResult result = instance->Init();
+            VkResult result = instance->Init();
 
-        if (result == VK_SUCCESS)
-        {
-            return instance;
+            if (result == VK_SUCCESS)
+            {
+                return instance;
+            }
+
+            return Unexpected(EResultCode::Fail);
         }
-
-        return Unexpected(EResultCode::Fail);
-    }
-    default: return Unexpected(EResultCode::Fail);
+        default: return Unexpected(EResultCode::Fail);
     }
 }
 
@@ -39,4 +40,4 @@ std::vector<IPhysicalDevice*> IInstance::GetPhysicalDevices() const
     return result;
 }
 
-} // namespace RHI
+}  // namespace RHI

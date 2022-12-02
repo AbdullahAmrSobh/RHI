@@ -75,8 +75,8 @@ struct GraphicsPipelineStateDesc
 
 class IPipelineState
 {
-public:
+  public:
     virtual ~IPipelineState() = default;
 };
 
-} // namespace RHI
+}  // namespace RHI

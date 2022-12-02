@@ -1,35 +1,38 @@
 #pragma once
-#include "RHI/Instance.hpp"
 #include "Backend/Vulkan/Common.hpp"
+#include "RHI/Instance.hpp"
 
 namespace RHI
 {
 namespace Vulkan
 {
 
-    class Instance final : public IInstance
+class Instance final : public IInstance
+{
+  public:
+    ~Instance();
+
+    VkResult Init();
+
+    inline VkInstance GetHandle() const
     {
-    public:
-        ~Instance();
-        
-        VkResult Init();
-        
-        inline VkInstance GetHandle() const
-        {
-            return m_instance;
-        }
+        return m_instance;
+    }
 
 #ifdef RHI_LINUX
-        virtual Expected<Unique<ISurface>> CreateSurface(const struct X11SurfaceDesc& desc) override;
+    virtual Expected<Unique<ISurface>> CreateSurface(
+        const struct X11SurfaceDesc& desc) override;
 #elif defined(RHI_WINDOWS)
-        virtual Expected<Unique<ISurface>> CreateSurface(const struct Win32SurfaceDesc& desc) override;
+    virtual Expected<Unique<ISurface>> CreateSurface(
+        const struct Win32SurfaceDesc& desc) override;
 #endif
-        virtual Expected<Unique<IDevice>> CreateDevice(const IPhysicalDevice& physicalDevice) override;
-    
-    private:
-        VkInstance               m_instance;
-        VkDebugUtilsMessengerEXT m_debugMessenger;
-    };
+    virtual Expected<Unique<IDevice>> CreateDevice(
+        const IPhysicalDevice& physicalDevice) override;
 
-} // namespace Vulkan
-} // namespace RHI
+  private:
+    VkInstance               m_instance;
+    VkDebugUtilsMessengerEXT m_debugMessenger;
+};
+
+}  // namespace Vulkan
+}  // namespace RHI

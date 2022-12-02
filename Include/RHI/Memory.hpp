@@ -4,11 +4,12 @@
 namespace RHI
 {
 
-enum class EMemoryUsage {
+enum class EMemoryUsage
+{
     Stream,
-    Stage, 
+    Stage,
     Local,
-    Hosted, 
+    Hosted,
 };
 
 enum class EMemoryType
@@ -27,7 +28,7 @@ struct AllocationMemoryRequirement
 
 class IMemoryPool
 {
-public:
+  public:
     size_t GetCapacity() const;
 };
 
@@ -40,4 +41,4 @@ struct AllocationDesc
     IMemoryPool*                pMemoryPool = nullptr;
 };
 
-} // namespace RHI
+}  // namespace RHI

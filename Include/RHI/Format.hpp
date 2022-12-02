@@ -3,7 +3,7 @@
 namespace RHI
 {
 
-//TODO Simplify this..
+// TODO Simplify this..
 
 enum class EFormat
 {
@@ -194,4 +194,4 @@ enum class EFormat
     Astc12x12SrgbBlock       = 184,
 };
 
-} // namespace RHI
+}  // namespace RHI

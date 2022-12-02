@@ -18,7 +18,7 @@ struct SwapchainDesc
 
 class ISwapchain
 {
-public:
+  public:
     virtual ~ISwapchain() = default;
 
     inline const std::vector<IImage*>& GetBackImages() const
@@ -36,20 +36,20 @@ public:
         return m_currentImageIndex;
     }
 
-    inline uint32_t GetBackBuffersCount() const 
+    inline uint32_t GetBackBuffersCount() const
     {
         return static_cast<uint32_t>(m_backBuffers.size());
     }
-    
+
     virtual EResultCode SwapBuffers()                               = 0;
     virtual EResultCode Resize(Extent2D newExtent)                  = 0;
     virtual EResultCode SetFullscreenExeclusive(bool enable = true) = 0;
 
-protected:
+  protected:
     ISurface*               m_pSurface          = nullptr;
     uint32_t                m_currentImageIndex = 0;
     std::vector<IImage*>    m_backBuffers;
     Unique<const ImageDesc> m_backBuffersDesc;
 };
 
-} // namespace RHI
+}  // namespace RHI

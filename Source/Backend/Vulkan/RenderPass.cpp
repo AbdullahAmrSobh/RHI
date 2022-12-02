@@ -200,5 +200,5 @@ namespace Vulkan
     }
 #endif
 
-} // namespace Vulkan
-} // namespace RHI
+}  // namespace Vulkan
+}  // namespace RHI

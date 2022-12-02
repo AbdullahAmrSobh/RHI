@@ -20,14 +20,16 @@ class IImageView;
 struct PipelineCommand
 {
     PipelineCommand(const IPipelineState& pipelineState);
-    
-    inline void BindShaderResourceGroup(const std::string& groupName, const IShaderResourceGroup& group)
+
+    inline void BindShaderResourceGroup(const std::string&          groupName,
+                                        const IShaderResourceGroup& group)
     {
         boundResourceGroups[groupName] = &group;
     }
-    
-    std::unordered_map<std::string, const IShaderResourceGroup*> boundResourceGroups;
-    IPipelineState*                   pPipelineState;
+
+    std::unordered_map<std::string, const IShaderResourceGroup*>
+                    boundResourceGroups;
+    IPipelineState* pPipelineState;
 };
 
 struct DispatchCommand : PipelineCommand
@@ -119,8 +121,10 @@ struct CopyCommand
 
     inline void SetSource(const IImage& image, const ImageViewRange& range);
     inline void SetSource(const IBuffer& buffer, const BufferViewRange& range);
-    inline void SetDestination(const IImage& image, const ImageViewRange& range);
-    inline void SetDestination(const IBuffer& buffer, const BufferViewRange& range);
+    inline void SetDestination(const IImage&         image,
+                               const ImageViewRange& range);
+    inline void SetDestination(const IBuffer&         buffer,
+                               const BufferViewRange& range);
 
     EResourceType sourceResourceType;
     EResourceType destinationResourceType;
@@ -152,7 +156,7 @@ struct CopyCommand
 
 class ICommandBuffer
 {
-public:
+  public:
     virtual ~ICommandBuffer() = default;
 
     virtual void Begin() = 0;
@@ -166,4 +170,4 @@ public:
     virtual void Submit(const DispatchCommand& dispatchCommand) = 0;
 };
 
-} // namespace RHI
+}  // namespace RHI

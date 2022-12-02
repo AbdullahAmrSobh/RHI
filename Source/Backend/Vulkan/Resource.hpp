@@ -1,172 +1,173 @@
 #pragma once
-#include "RHI/Resource.hpp"
 #include "Backend/Vulkan/Common.hpp"
+#include "RHI/Resource.hpp"
 
 namespace RHI
 {
 namespace Vulkan
 {
-    class Device;
+class Device;
 
-    template <typename T>
-    class DeviceObject
+template<typename T>
+class DeviceObject
+{
+  public:
+    DeviceObject(const Device* pDevice, T handle = VK_NULL_HANDLE)
+        : m_pDevice(pDevice)
+        , m_handle(handle)
     {
-    public:
-        DeviceObject(const Device* pDevice, T handle = VK_NULL_HANDLE)
-            : m_pDevice(pDevice)
-            , m_handle(handle)
-        {
-        }
-        
-        inline T GetHandle() const
-        {
-            return m_handle;
-        }
+    }
 
-    protected:
-        const Device* m_pDevice;
-        T             m_handle;
-    };
-
-    template <typename T>
-    class Resource : public DeviceObject<T>
+    inline T GetHandle() const
     {
-    public:
-        Resource(const Device* pDevice, T handle = VK_NULL_HANDLE, VmaAllocation allocation = VK_NULL_HANDLE)
-            : DeviceObject<T>(pDevice, handle)
-            , m_allocation(allocation)
-        {
-        }
-        
-        inline VmaAllocation GetAllocation() const
-        {
-            return m_allocation;
-        }
+        return m_handle;
+    }
 
-        inline const VmaAllocationInfo& GetAllocationInfo() const
-        {
-            return m_allocationInfo;
-        }
-    
-    protected:
-        VmaAllocation     m_allocation = VK_NULL_HANDLE;
-        VmaAllocationInfo m_allocationInfo;
-    };
+  protected:
+    const Device* m_pDevice;
+    T             m_handle;
+};
 
-    class ShaderModule final
-        : public IShaderProgram
-        , public DeviceObject<VkShaderModule>
+template<typename T>
+class Resource : public DeviceObject<T>
+{
+  public:
+    Resource(const Device* pDevice, T handle = VK_NULL_HANDLE,
+             VmaAllocation allocation = VK_NULL_HANDLE)
+        : DeviceObject<T>(pDevice, handle)
+        , m_allocation(allocation)
     {
-    public:
-        ShaderModule(const Device& device, std::string name)
-            : DeviceObject(&device)
-            , IShaderProgram(name)
-        {
-        }
-        ~ShaderModule();
+    }
 
-        VkResult Init(const ShaderProgramDesc& desc);
-    };
-
-    class Fence final
-        : public IFence
-        , public DeviceObject<VkFence>
+    inline VmaAllocation GetAllocation() const
     {
-    public:
-        Fence(const Device& device)
-            : DeviceObject(&device)
-        {
-        }
-        ~Fence();
+        return m_allocation;
+    }
 
-        VkResult Init();
-
-        virtual EResultCode Wait() const override;
-        virtual EResultCode Reset() const override;
-        virtual EResultCode GetStatus() const override;
-    };
-
-    class Image final
-        : public IImage
-        , public Resource<VkImage>
+    inline const VmaAllocationInfo& GetAllocationInfo() const
     {
-    public:
-        Image(const Device& device, VkImage imageHandle = VK_NULL_HANDLE)
-            : Resource(&device, imageHandle)
-        {
-        }
-        ~Image();
+        return m_allocationInfo;
+    }
 
-        VkResult Init(const AllocationDesc& allocationDesc, const ImageDesc& desc);
-    };
+  protected:
+    VmaAllocation     m_allocation = VK_NULL_HANDLE;
+    VmaAllocationInfo m_allocationInfo;
+};
 
-    class ImageView final
-        : public IImageView
-        , public DeviceObject<VkImageView>
+class ShaderModule final
+    : public IShaderProgram
+    , public DeviceObject<VkShaderModule>
+{
+  public:
+    ShaderModule(const Device& device, std::string name)
+        : DeviceObject(&device)
+        , IShaderProgram(name)
     {
-    public:
-        ImageView(const Device& device)
-            : DeviceObject(&device)
-        {
-        }
-        ~ImageView();
+    }
+    ~ShaderModule();
 
-        VkResult Init(const Image& image, const ImageViewDesc& desc);
-    };
+    VkResult Init(const ShaderProgramDesc& desc);
+};
 
-    class Buffer final
-        : public IBuffer
-        , public Resource<VkBuffer>
+class Fence final
+    : public IFence
+    , public DeviceObject<VkFence>
+{
+  public:
+    Fence(const Device& device)
+        : DeviceObject(&device)
     {
-    public:
-        Buffer(const Device& device)
-            : Resource(&device)
-        {
-        }
-        ~Buffer();
+    }
+    ~Fence();
 
-        VkResult Init(const AllocationDesc& allocationDesc, const BufferDesc& desc);
-    };
+    VkResult Init();
 
-    class BufferView final
-        : public IBufferView
-        , public DeviceObject<VkBufferView>
+    virtual EResultCode Wait() const override;
+    virtual EResultCode Reset() const override;
+    virtual EResultCode GetStatus() const override;
+};
+
+class Image final
+    : public IImage
+    , public Resource<VkImage>
+{
+  public:
+    Image(const Device& device, VkImage imageHandle = VK_NULL_HANDLE)
+        : Resource(&device, imageHandle)
     {
-    public:
-        BufferView(const Device& device)
-            : DeviceObject(&device)
-        {
-        }
-        ~BufferView();
+    }
+    ~Image();
 
-        VkResult Init(const Buffer& buffer, const BufferViewDesc& desc);
-    };
+    VkResult Init(const AllocationDesc& allocationDesc, const ImageDesc& desc);
+};
 
-    class Sampler final
-        : public ISampler
-        , public DeviceObject<VkSampler>
+class ImageView final
+    : public IImageView
+    , public DeviceObject<VkImageView>
+{
+  public:
+    ImageView(const Device& device)
+        : DeviceObject(&device)
     {
-    public:
-        Sampler(const Device& device)
-            : DeviceObject(&device)
-        {
-        }
-        ~Sampler();
+    }
+    ~ImageView();
 
-        VkResult Init(const SamplerDesc& desc);
-    };
+    VkResult Init(const Image& image, const ImageViewDesc& desc);
+};
 
-    class Semaphore final : public DeviceObject<VkSemaphore>
+class Buffer final
+    : public IBuffer
+    , public Resource<VkBuffer>
+{
+  public:
+    Buffer(const Device& device)
+        : Resource(&device)
     {
-    public:
-        Semaphore(const Device& device)
-            : DeviceObject(&device)
-        {
-        }
-        ~Semaphore();
+    }
+    ~Buffer();
 
-        VkResult Init(bool bin = true);
-    };
+    VkResult Init(const AllocationDesc& allocationDesc, const BufferDesc& desc);
+};
 
-} // namespace Vulkan
-} // namespace RHI
+class BufferView final
+    : public IBufferView
+    , public DeviceObject<VkBufferView>
+{
+  public:
+    BufferView(const Device& device)
+        : DeviceObject(&device)
+    {
+    }
+    ~BufferView();
+
+    VkResult Init(const Buffer& buffer, const BufferViewDesc& desc);
+};
+
+class Sampler final
+    : public ISampler
+    , public DeviceObject<VkSampler>
+{
+  public:
+    Sampler(const Device& device)
+        : DeviceObject(&device)
+    {
+    }
+    ~Sampler();
+
+    VkResult Init(const SamplerDesc& desc);
+};
+
+class Semaphore final : public DeviceObject<VkSemaphore>
+{
+  public:
+    Semaphore(const Device& device)
+        : DeviceObject(&device)
+    {
+    }
+    ~Semaphore();
+
+    VkResult Init(bool bin = true);
+};
+
+}  // namespace Vulkan
+}  // namespace RHI

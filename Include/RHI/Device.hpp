@@ -12,7 +12,7 @@ namespace RHI
 
 class IPhysicalDevice
 {
-public:
+  public:
     struct Features;
     struct Properties;
 
@@ -38,23 +38,25 @@ public:
         return m_vendor;
     }
 
-private:
+  private:
     bool    m_isDiscrete;
     EVendor m_vendor;
 };
 
 class ITransferQueue
 {
-public:
+  public:
     virtual ~ITransferQueue() = default;
 
-    virtual EResultCode Enqueue(const CopyCommand& copyCommand, const IFence& signalFence)             = 0;
-    virtual EResultCode Enqueue(std::span<const CopyCommand&> copyCommands, const IFence& signalFence) = 0;
+    virtual EResultCode Enqueue(const CopyCommand& copyCommand,
+                                const IFence&      signalFence) = 0;
+    virtual EResultCode Enqueue(std::span<const CopyCommand&> copyCommands,
+                                const IFence&                 signalFence) = 0;
 };
 
 class IDevice
 {
-public:
+  public:
     virtual ~IDevice() = default;
 
     inline const IPhysicalDevice& GetPhysicalDevice() const
@@ -68,30 +70,39 @@ public:
     }
 
     virtual EResultCode WaitIdle() const = 0;
-    
-    virtual Expected<Unique<ISwapchain>> CreateSwapChain(const SwapchainDesc& desc) const = 0;
 
-    virtual Expected<Unique<IShaderProgram>> CreateShaderProgram(const ShaderProgramDesc& desc) const = 0;
+    virtual Expected<Unique<ISwapchain>> CreateSwapChain(
+        const SwapchainDesc& desc) const = 0;
 
-    virtual Expected<Unique<IShaderResourceGroupAllocator>> CreateShaderResourceGroupAllocator() const = 0;
+    virtual Expected<Unique<IShaderProgram>> CreateShaderProgram(
+        const ShaderProgramDesc& desc) const = 0;
 
-    virtual Expected<Unique<IPipelineState>> CreateGraphicsPipelineState(const GraphicsPipelineStateDesc& desc) const = 0;
+    virtual Expected<Unique<IShaderResourceGroupAllocator>>
+    CreateShaderResourceGroupAllocator() const = 0;
+
+    virtual Expected<Unique<IPipelineState>> CreateGraphicsPipelineState(
+        const GraphicsPipelineStateDesc& desc) const = 0;
 
     virtual Expected<Unique<IFence>> CreateFence() const = 0;
 
-    virtual Expected<Unique<ISampler>> CreateSampler(const SamplerDesc& desc) const = 0;
+    virtual Expected<Unique<ISampler>> CreateSampler(
+        const SamplerDesc& desc) const = 0;
 
-    virtual Expected<Unique<IImage>> CreateImage(const AllocationDesc& allocationDesc, const ImageDesc& desc) const = 0;
-    
-    virtual Expected<Unique<IImageView>> CreateImageView(const IImage& image, const ImageViewDesc& desc) const = 0;
+    virtual Expected<Unique<IImage>> CreateImage(
+        const AllocationDesc& allocationDesc, const ImageDesc& desc) const = 0;
 
-    virtual Expected<Unique<IBuffer>> CreateBuffer(const AllocationDesc& allocationDesc, const BufferDesc& desc) const = 0;
+    virtual Expected<Unique<IImageView>> CreateImageView(
+        const IImage& image, const ImageViewDesc& desc) const = 0;
 
-    virtual Expected<Unique<IBufferView>> CreateBufferView(const IBuffer& buffer, const BufferViewDesc& desc) const = 0;
+    virtual Expected<Unique<IBuffer>> CreateBuffer(
+        const AllocationDesc& allocationDesc, const BufferDesc& desc) const = 0;
 
-protected:
+    virtual Expected<Unique<IBufferView>> CreateBufferView(
+        const IBuffer& buffer, const BufferViewDesc& desc) const = 0;
+
+  protected:
     Unique<ITransferQueue> m_transferQueue;
     IPhysicalDevice*       m_pPhysicalDevice;
 };
 
-} // namespace RHI
+}  // namespace RHI

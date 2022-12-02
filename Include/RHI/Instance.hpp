@@ -19,7 +19,7 @@ enum class EDebugMessageSeverity
 
 class IDebugCallbacks
 {
-public:
+  public:
     virtual ~IDebugCallbacks() = default;
 
     virtual void Log(std::string_view message)   = 0;
@@ -36,9 +36,10 @@ enum class EBackend
 
 class IInstance
 {
-public:
-    static Expected<Unique<IInstance>> Create(EBackend backend, Unique<IDebugCallbacks> callbacks = nullptr);
-    
+  public:
+    static Expected<Unique<IInstance>> Create(
+        EBackend backend, Unique<IDebugCallbacks> callbacks = nullptr);
+
     virtual ~IInstance() = default;
 
     inline uint32_t GetPhysicalDeviceCount() const
@@ -49,17 +50,20 @@ public:
     std::vector<IPhysicalDevice*> GetPhysicalDevices() const;
 
 #ifdef RHI_LINUX
-    virtual Expected<Unique<ISurface>> CreateSurface(const struct X11SurfaceDesc& desc) = 0;
+    virtual Expected<Unique<ISurface>> CreateSurface(
+        const struct X11SurfaceDesc& desc) = 0;
 #elif defined(RHI_WINDOWS)
-    virtual Expected<Unique<ISurface>> CreateSurface(const struct Win32SurfaceDesc& desc) = 0;
+    virtual Expected<Unique<ISurface>> CreateSurface(
+        const struct Win32SurfaceDesc& desc) = 0;
 #endif
 
-    virtual Expected<Unique<IDevice>> CreateDevice(const IPhysicalDevice& physicalDevice) = 0;
+    virtual Expected<Unique<IDevice>> CreateDevice(
+        const IPhysicalDevice& physicalDevice) = 0;
 
-protected:
+  protected:
     uint32_t                             m_physicalDeviceCount = 0;
     std::vector<Unique<IPhysicalDevice>> m_physicalDevices     = {};
     Unique<IDebugCallbacks>              m_debugCallbacks      = nullptr;
 };
 
-} // namespace RHI
+}  // namespace RHI

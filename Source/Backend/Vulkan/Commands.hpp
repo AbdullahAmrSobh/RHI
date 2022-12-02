@@ -1,86 +1,90 @@
 #pragma once
-#include "RHI/Commands.hpp"
 #include "Backend/Vulkan/Resource.hpp"
+#include "RHI/Commands.hpp"
 
 namespace RHI
 {
 namespace Vulkan
 {
-    class Framebuffer;
-    class Semaphore;
-    class ShaderResourceGroup;
-    class CommandAllocator;
+class Framebuffer;
+class Semaphore;
+class ShaderResourceGroup;
+class CommandAllocator;
 
-    class CommandBuffer final
-        : public ICommandBuffer
-        , public DeviceObject<VkCommandBuffer>
+class CommandBuffer final
+    : public ICommandBuffer
+    , public DeviceObject<VkCommandBuffer>
+{
+  public:
+    CommandBuffer(const Device& device, CommandAllocator* pParantAllocator,
+                  VkCommandBuffer handle)
+        : DeviceObject(&device, handle)
+        , m_pParantAllocator(pParantAllocator)
     {
-    public:
-        CommandBuffer(const Device& device, CommandAllocator* pParantAllocator, VkCommandBuffer handle)
-            : DeviceObject(&device, handle)
-            , m_pParantAllocator(pParantAllocator)
-        {
-        }
+    }
 
-        ~CommandBuffer();
+    ~CommandBuffer();
 
-        ///////////////////////////////////////////////////////////////////////////////
-        // Interface.
-        ///////////////////////////////////////////////////////////////////////////////
-        virtual void Begin() override;
-        virtual void End() override;
+    ///////////////////////////////////////////////////////////////////////////////
+    // Interface.
+    ///////////////////////////////////////////////////////////////////////////////
+    virtual void Begin() override;
+    virtual void End() override;
 
-        virtual void SetViewports(const std::vector<Viewport>& viewports) override;
-        virtual void SetScissors(const std::vector<Rect>& scissors) override;
+    virtual void SetViewports(const std::vector<Viewport>& viewports) override;
+    virtual void SetScissors(const std::vector<Rect>& scissors) override;
 
-        virtual void Submit(const DrawCommand& drawCommand) override;
-        virtual void Submit(const CopyCommand& copyCommand) override;
-        virtual void Submit(const DispatchCommand& dispatchCommand) override;
-        ///////////////////////////////////////////////////////////////////////////////
+    virtual void Submit(const DrawCommand& drawCommand) override;
+    virtual void Submit(const CopyCommand& copyCommand) override;
+    virtual void Submit(const DispatchCommand& dispatchCommand) override;
+    ///////////////////////////////////////////////////////////////////////////////
 
-        inline void SetFramebuffer(const Framebuffer& framebuffer);
-        
-        // Method for waiting on a stage (sync point), for other commands to finish.
-        // Method for signaling to other commands, that this command finished a sage.
+    inline void SetFramebuffer(const Framebuffer& framebuffer);
 
-    private:
-        void BeginRenderPass(Extent2D extent, std::vector<VkClearValue> clearValues);
-        void EndRenderPass();
-        void BindShaderResourceGroups(const std::vector<ShaderResourceGroup*>& groups);
-    
-    private:
-        const Framebuffer* m_renderTarget;
-        CommandAllocator*  m_pParantAllocator;
-        
-        std::vector<VkSemaphoreSubmitInfo*> m_waitSemaphores;
-        std::vector<VkSemaphoreSubmitInfo*> m_signalSemaphores;
-    };
-    
-    enum class ECommandPrimaryTask
+    // Method for waiting on a stage (sync point), for other commands to finish.
+    // Method for signaling to other commands, that this command finished a
+    // sage.
+
+  private:
+    void BeginRenderPass(Extent2D                  extent,
+                         std::vector<VkClearValue> clearValues);
+    void EndRenderPass();
+    void BindShaderResourceGroups(
+        const std::vector<ShaderResourceGroup*>& groups);
+
+  private:
+    const Framebuffer* m_renderTarget;
+    CommandAllocator*  m_pParantAllocator;
+
+    std::vector<VkSemaphoreSubmitInfo*> m_waitSemaphores;
+    std::vector<VkSemaphoreSubmitInfo*> m_signalSemaphores;
+};
+
+enum class ECommandPrimaryTask
+{
+    Graphics,
+    Compute,
+    Transfer,
+};
+
+class CommandAllocator final : public DeviceObject<VkCommandPool>
+{
+  public:
+    CommandAllocator(const Device& device)
+        : DeviceObject(&device)
     {
-        Graphics,
-        Compute,
-        Transfer,
-    };
-    
-    class CommandAllocator final : public DeviceObject<VkCommandPool>
-    {
-    public:
-        CommandAllocator(const Device& device)
-            : DeviceObject(&device)
-        {
-        }
+    }
 
-        ~CommandAllocator();
+    ~CommandAllocator();
 
-        VkResult Init(ECommandPrimaryTask task);
+    VkResult Init(ECommandPrimaryTask task);
 
-        VkResult Reset();
-        
-        Unique<CommandBuffer> AllocateCommandBuffer();
-        
-        std::vector<CommandBuffer> AllocateCommandBuffers(uint32_t count);
-    };
+    VkResult Reset();
 
-} // namespace Vulkan
-} // namespace RHI
+    Unique<CommandBuffer> AllocateCommandBuffer();
+
+    std::vector<CommandBuffer> AllocateCommandBuffers(uint32_t count);
+};
+
+}  // namespace Vulkan
+}  // namespace RHI

@@ -1,64 +1,65 @@
 #pragma once
-#include "RHI/PipelineState.hpp"
 #include "Backend/Vulkan/Resource.hpp"
 #include "Backend/Vulkan/ShaderResourceGroup.hpp"
+#include "RHI/PipelineState.hpp"
 
 namespace RHI
 {
 namespace Vulkan
 {
-    class DescriptorSetLayout;
+class DescriptorSetLayout;
 
-    class PipelineLayout final : public DeviceObject<VkPipelineLayout>
+class PipelineLayout final : public DeviceObject<VkPipelineLayout>
+{
+  public:
+    PipelineLayout(const Device& device)
+        : DeviceObject(&device)
     {
-    public:
-        PipelineLayout(const Device& device)
-            : DeviceObject(&device)
-        {
-        }
-        
-        ~PipelineLayout();
-        
-        VkResult Init(const PipelineLayoutDesc& layoutDesc);
+    }
 
-        inline size_t GetHash() const
-        {
-            return m_hash;
-        }
+    ~PipelineLayout();
 
-        inline const std::vector<Unique<DescriptorSetLayout>>& GetDescriptorLayouts() const
-        {
-            return m_descriptorSetsLayouts;
-        }
+    VkResult Init(const PipelineLayoutDesc& layoutDesc);
 
-    private:
-        size_t                                   m_hash;
-        std::vector<VkPushConstantRange>         m_pushConstantRanges;
-        std::vector<Unique<DescriptorSetLayout>> m_descriptorSetsLayouts;
-    };
-    
-    class PipelineState final
-        : public IPipelineState
-        , public DeviceObject<VkPipeline>
+    inline size_t GetHash() const
     {
-    public:
-        PipelineState(const Device& device)   
-            : DeviceObject(&device) 
-        {
-        }
+        return m_hash;
+    }
 
-        ~PipelineState();
+    inline const std::vector<Unique<DescriptorSetLayout>>&
+    GetDescriptorLayouts() const
+    {
+        return m_descriptorSetsLayouts;
+    }
 
-        VkResult Init(const GraphicsPipelineStateDesc& desc);
-        
-        inline const PipelineLayout& GetLayout() const
-        {
-            return *m_layout;
-        }
+  private:
+    size_t                                   m_hash;
+    std::vector<VkPushConstantRange>         m_pushConstantRanges;
+    std::vector<Unique<DescriptorSetLayout>> m_descriptorSetsLayouts;
+};
 
-    private:
-        Shared<PipelineLayout> m_layout;
-    };
+class PipelineState final
+    : public IPipelineState
+    , public DeviceObject<VkPipeline>
+{
+  public:
+    PipelineState(const Device& device)
+        : DeviceObject(&device)
+    {
+    }
 
-} // namespace Vulkan
-} // namespace RHI
+    ~PipelineState();
+
+    VkResult Init(const GraphicsPipelineStateDesc& desc);
+
+    inline const PipelineLayout& GetLayout() const
+    {
+        return *m_layout;
+    }
+
+  private:
+    Shared<PipelineLayout> m_layout;
+};
+
+}  // namespace Vulkan
+}  // namespace RHI

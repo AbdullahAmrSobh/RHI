@@ -1,200 +1,216 @@
 #pragma once
-#include "RHI/Device.hpp"
 #include "Backend/Vulkan/Instance.hpp"
+#include "RHI/Device.hpp"
 
 namespace RHI
 {
 namespace Vulkan
 {
-    class Semaphore;
-    class Fence;
-    class PipelineLayout;
-    class DescriptorSetLayout;
-    class Swapchain;
-    class CommandBuffer;
+class Semaphore;
+class Fence;
+class PipelineLayout;
+class DescriptorSetLayout;
+class Swapchain;
+class CommandBuffer;
 
-    class PhysicalDevice final : public IPhysicalDevice
+class PhysicalDevice final : public IPhysicalDevice
+{
+  public:
+    PhysicalDevice(VkPhysicalDevice physicalDevice)
+        : m_physicalDevice(physicalDevice)
     {
-    public:
-        PhysicalDevice(VkPhysicalDevice physicalDevice)
-            : m_physicalDevice(physicalDevice)
-        {
-        }
+    }
 
-        inline VkPhysicalDevice GetHandle() const
-        {
-            return m_physicalDevice;
-        }
+    inline VkPhysicalDevice GetHandle() const
+    {
+        return m_physicalDevice;
+    }
 
-        VkPhysicalDeviceProperties GetProperties() const;
+    VkPhysicalDeviceProperties GetProperties() const;
 
-        VkPhysicalDeviceFeatures GetFeatures() const;
+    VkPhysicalDeviceFeatures GetFeatures() const;
 
-        std::vector<VkQueueFamilyProperties> GetQueueFamilyProperties() const;
+    std::vector<VkQueueFamilyProperties> GetQueueFamilyProperties() const;
 
-        std::vector<VkLayerProperties> GetAvailableLayers() const;
+    std::vector<VkLayerProperties> GetAvailableLayers() const;
 
-        std::vector<VkExtensionProperties> GetAvailableExtensions() const;
+    std::vector<VkExtensionProperties> GetAvailableExtensions() const;
 
-        VkPhysicalDeviceMemoryProperties GetMemoryProperties() const;
+    VkPhysicalDeviceMemoryProperties GetMemoryProperties() const;
 
-        VkSurfaceCapabilitiesKHR GetSurfaceCapabilities(VkSurfaceKHR _surface) const;
+    VkSurfaceCapabilitiesKHR GetSurfaceCapabilities(
+        VkSurfaceKHR _surface) const;
 
-        std::vector<VkPresentModeKHR> GetPresentModes(VkSurfaceKHR _surface) const;
+    std::vector<VkPresentModeKHR> GetPresentModes(VkSurfaceKHR _surface) const;
 
-        std::vector<VkSurfaceFormatKHR> GetSurfaceFormats(VkSurfaceKHR _surface) const;
+    std::vector<VkSurfaceFormatKHR> GetSurfaceFormats(
+        VkSurfaceKHR _surface) const;
 
-    private:
-        VkPhysicalDevice m_physicalDevice;
+  private:
+    VkPhysicalDevice m_physicalDevice;
+};
+
+class Queue final
+{
+  public:
+    struct PresentRequest
+    {
+        std::vector<const Semaphore*> waitSemaphores;
+        std::vector<const Swapchain*> swapchains;
     };
 
-    class Queue final
+    struct SubmitRequest
     {
-    public:
-        struct PresentRequest
-        {
-            std::vector<const Semaphore*> waitSemaphores;
-            std::vector<const Swapchain*> swapchains;
-        };
-
-        struct SubmitRequest
-        {
-            std::vector<const Semaphore*>     waitSemaphores;
-            std::vector<const CommandBuffer*> commandBuffers;
-            std::vector<const Semaphore*>     signalSemaphores;
-        };
-
-        inline Queue(VkQueue queue, uint32_t familyIndex, uint32_t index)
-            : m_handle(queue)
-            , m_familyIndex(index)
-            , m_queueIndex(index)
-        {
-        }
-
-        inline uint32_t GetFamilyIndex() const
-        {
-            return m_familyIndex;
-        }
-
-        inline uint32_t GetQueueIndex() const
-        {
-            return m_queueIndex;
-        }
-
-        VkResult WaitIdle() const;
-
-        VkResult Present(const PresentRequest& presentRequest) const;
-
-        VkResult Submit(const std::vector<SubmitRequest>& submitRequests, const Fence& fence) const;
-
-    private:
-        VkQueue  m_handle;
-        uint32_t m_familyIndex;
-        uint32_t m_queueIndex;
+        std::vector<const Semaphore*>     waitSemaphores;
+        std::vector<const CommandBuffer*> commandBuffers;
+        std::vector<const Semaphore*>     signalSemaphores;
     };
 
-    using DeviceMemoryPtr = void*;
-    class DeviceContext
+    inline Queue(VkQueue queue, uint32_t familyIndex, uint32_t index)
+        : m_handle(queue)
+        , m_familyIndex(index)
+        , m_queueIndex(index)
     {
-    public:
-        virtual ~DeviceContext() = default;
+    }
 
-        virtual Expected<DeviceMemoryPtr> Map(IResource& resource);
-        virtual void                      Unmap(IResource& resource);
-    };
-
-    class Device final : public IDevice
+    inline uint32_t GetFamilyIndex() const
     {
-    public:
-        Device(const Instance& instance, const PhysicalDevice& physicaldDevice)
-            : m_pInstance(&instance)
-            , m_pPhysicalDevice(&physicaldDevice)
-        {
-        }
-        ~Device();
+        return m_familyIndex;
+    }
 
-        VkResult Init(Instance& instance, const PhysicalDevice& physicalDevice);
+    inline uint32_t GetQueueIndex() const
+    {
+        return m_queueIndex;
+    }
 
-        inline const PhysicalDevice& GetPhysicalDevice() const
-        {
-            return *m_pPhysicalDevice;
-        }
+    VkResult WaitIdle() const;
 
-        inline VkPhysicalDevice GetPhysicalDeviceHandle() const
-        {
-            return m_pPhysicalDevice->GetHandle();
-        }
+    VkResult Present(const PresentRequest& presentRequest) const;
 
-        inline VkDevice GetHandle() const
-        {
-            return m_device;
-        }
+    VkResult Submit(const std::vector<SubmitRequest>& submitRequests,
+                    const Fence&                      fence) const;
 
-        inline VmaAllocator GetAllocator() const
-        {
-            return m_allocator;
-        }
+  private:
+    VkQueue  m_handle;
+    uint32_t m_familyIndex;
+    uint32_t m_queueIndex;
+};
 
-        virtual EResultCode                                     WaitIdle() const override;
-        virtual Expected<Unique<ISwapchain>>                    CreateSwapChain(const SwapchainDesc& desc) const override;
-        virtual Expected<Unique<IShaderProgram>>                CreateShaderProgram(const ShaderProgramDesc& desc) const override;
-        virtual Expected<Unique<IShaderResourceGroupAllocator>> CreateShaderResourceGroupAllocator() const override;
-        virtual Expected<Unique<IPipelineState>>                CreateGraphicsPipelineState(const GraphicsPipelineStateDesc& desc) const override;
-        virtual Expected<Unique<IFence>>                        CreateFence() const override;
-        virtual Expected<Unique<ISampler>>                      CreateSampler(const SamplerDesc& desc) const override;
-        virtual Expected<Unique<IImage>>                        CreateImage(const AllocationDesc& allocationDesc, const ImageDesc& desc) const override;
-        virtual Expected<Unique<IImageView>>                    CreateImageView(const IImage& image, const ImageViewDesc& desc) const override;
-        virtual Expected<Unique<IBuffer>>                       CreateBuffer(const AllocationDesc& allocationDesc, const BufferDesc& desc) const override;
-        virtual Expected<Unique<IBufferView>>                   CreateBufferView(const IBuffer& buffer, const BufferViewDesc& desc) const override;
+using DeviceMemoryPtr = void*;
+class DeviceContext
+{
+  public:
+    virtual ~DeviceContext() = default;
 
-    private:
-        EResultCode InitQueues(std::optional<uint32_t> graphicsQueueIndex, std::optional<uint32_t> computeQueueIndex, std::optional<uint32_t> indexQueueIndex);
+    virtual Expected<DeviceMemoryPtr> Map(IResource& resource);
+    virtual void                      Unmap(IResource& resource);
+};
 
-    private:
-        const Instance* m_pInstance;
+class Device final : public IDevice
+{
+  public:
+    Device(const Instance& instance, const PhysicalDevice& physicaldDevice)
+        : m_pInstance(&instance)
+        , m_pPhysicalDevice(&physicaldDevice)
+    {
+    }
+    ~Device();
 
-        const PhysicalDevice* m_pPhysicalDevice;
+    VkResult Init(Instance& instance, const PhysicalDevice& physicalDevice);
 
-        VkDevice m_device;
+    inline const PhysicalDevice& GetPhysicalDevice() const
+    {
+        return *m_pPhysicalDevice;
+    }
 
-        VmaAllocator m_allocator;
+    inline VkPhysicalDevice GetPhysicalDeviceHandle() const
+    {
+        return m_pPhysicalDevice->GetHandle();
+    }
 
-        std::vector<Queue> m_queues;
+    inline VkDevice GetHandle() const
+    {
+        return m_device;
+    }
 
-        Queue* m_pGraphicsQueue;
-        Queue* m_pComputeQueue;
-        Queue* m_pTransferQueue;
+    inline VmaAllocator GetAllocator() const
+    {
+        return m_allocator;
+    }
 
-    public:
-        inline const Queue& GetGraphicsQueue() const
-        {
-            return *m_pGraphicsQueue;
-        }
+    virtual EResultCode                  WaitIdle() const override;
+    virtual Expected<Unique<ISwapchain>> CreateSwapChain(
+        const SwapchainDesc& desc) const override;
+    virtual Expected<Unique<IShaderProgram>> CreateShaderProgram(
+        const ShaderProgramDesc& desc) const override;
+    virtual Expected<Unique<IShaderResourceGroupAllocator>>
+    CreateShaderResourceGroupAllocator() const override;
+    virtual Expected<Unique<IPipelineState>> CreateGraphicsPipelineState(
+        const GraphicsPipelineStateDesc& desc) const override;
+    virtual Expected<Unique<IFence>>   CreateFence() const override;
+    virtual Expected<Unique<ISampler>> CreateSampler(
+        const SamplerDesc& desc) const override;
+    virtual Expected<Unique<IImage>> CreateImage(
+        const AllocationDesc& allocationDesc,
+        const ImageDesc&      desc) const override;
+    virtual Expected<Unique<IImageView>> CreateImageView(
+        const IImage& image, const ImageViewDesc& desc) const override;
+    virtual Expected<Unique<IBuffer>> CreateBuffer(
+        const AllocationDesc& allocationDesc,
+        const BufferDesc&     desc) const override;
+    virtual Expected<Unique<IBufferView>> CreateBufferView(
+        const IBuffer& buffer, const BufferViewDesc& desc) const override;
 
-        inline Queue& GetGraphicsQueue()
-        {
-            return *m_pGraphicsQueue;
-        }
+  private:
+    EResultCode InitQueues(std::optional<uint32_t> graphicsQueueIndex,
+                           std::optional<uint32_t> computeQueueIndex,
+                           std::optional<uint32_t> indexQueueIndex);
 
-        inline const Queue& GetComputeQueue() const
-        {
-            return *m_pComputeQueue;
-        }
+  private:
+    const Instance* m_pInstance;
 
-        inline Queue& GetComputeQueue()
-        {
-            return *m_pComputeQueue;
-        }
+    const PhysicalDevice* m_pPhysicalDevice;
 
-        inline Queue& GetTransferQueue()
-        {
-            return *m_pTransferQueue;
-        }
+    VkDevice m_device;
 
-        inline const Queue& GetTransferQueue() const
-        {
-            return *m_pTransferQueue;
-        }
-    };
-} // namespace Vulkan
-} // namespace RHI
+    VmaAllocator m_allocator;
+
+    std::vector<Queue> m_queues;
+
+    Queue* m_pGraphicsQueue;
+    Queue* m_pComputeQueue;
+    Queue* m_pTransferQueue;
+
+  public:
+    inline const Queue& GetGraphicsQueue() const
+    {
+        return *m_pGraphicsQueue;
+    }
+
+    inline Queue& GetGraphicsQueue()
+    {
+        return *m_pGraphicsQueue;
+    }
+
+    inline const Queue& GetComputeQueue() const
+    {
+        return *m_pComputeQueue;
+    }
+
+    inline Queue& GetComputeQueue()
+    {
+        return *m_pComputeQueue;
+    }
+
+    inline Queue& GetTransferQueue()
+    {
+        return *m_pTransferQueue;
+    }
+
+    inline const Queue& GetTransferQueue() const
+    {
+        return *m_pTransferQueue;
+    }
+};
+}  // namespace Vulkan
+}  // namespace RHI
