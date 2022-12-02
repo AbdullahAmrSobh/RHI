@@ -10,6 +10,12 @@
 
 #include <RHI/RHI.hpp>
 
+
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+
 #ifdef RHI_WINDOWS
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include "RHI/Platform/Win32Surface.hpp"
@@ -31,7 +37,7 @@ std::vector<uint32_t> ReadBinFile(std::string filePath)
     std::vector<uint32_t> buffer(fileSize / sizeof(uint32_t));
 
     file.seekg(0);
-    file.read(reinterpret_cast<char*>(buffer.data()), fileSize);
+    file.read(reinterpret_cast<char*>(buffer.data()), static_cast<std::streamsize>(fileSize));
 
     file.close();
 

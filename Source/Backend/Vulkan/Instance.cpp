@@ -22,6 +22,7 @@ static VkBool32 VKAPI_CALL DebugUtilsMessengerCallback(
     const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
 {
     auto callback = reinterpret_cast<IDebugCallbacks*>(pUserData);
+    (void)messageTypes;
     if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
     {
         callback->Log(pCallbackData->pMessage);
@@ -117,7 +118,7 @@ Expected<Unique<IDevice>> Instance::CreateDevice(
     auto device = CreateUnique<Device>(
         *this, static_cast<const PhysicalDevice&>(physicalDevice));
     VkResult result =
-        device->Init(*this, static_cast<const PhysicalDevice&>(physicalDevice));
+        device->Init(static_cast<const PhysicalDevice&>(physicalDevice));
     if (result != VK_SUCCESS)
     {
         return Unexpected(ConvertResult(result));

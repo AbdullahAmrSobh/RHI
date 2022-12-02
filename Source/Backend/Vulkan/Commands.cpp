@@ -118,6 +118,7 @@ void CommandBuffer::Submit(const CopyCommand& copyCommand)
 
 void CommandBuffer::Submit(const DispatchCommand& dispatchCommand)
 {
+    (void)dispatchCommand;
     // TODO
 }
 

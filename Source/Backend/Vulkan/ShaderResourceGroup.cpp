@@ -37,8 +37,6 @@ VkDescriptorType ConvertDescriptorType(EShaderInputResourceType resourceType,
             default: return VK_DESCRIPTOR_TYPE_MAX_ENUM;
         };
     }
-
-    return VK_DESCRIPTOR_TYPE_MAX_ENUM;
 }
 
 // DescriptorSetLayout

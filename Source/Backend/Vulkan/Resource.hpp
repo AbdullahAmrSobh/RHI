@@ -60,8 +60,8 @@ class ShaderModule final
 {
   public:
     ShaderModule(const Device& device, std::string name)
-        : DeviceObject(&device)
-        , IShaderProgram(name)
+        : IShaderProgram(name)
+        , DeviceObject(&device)
     {
     }
     ~ShaderModule();

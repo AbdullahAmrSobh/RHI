@@ -347,7 +347,7 @@ VkResult Semaphore::Init(bool bin)
     VkSemaphoreCreateInfo createInfo {};
     createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
     createInfo.pNext = nullptr;
-    createInfo.flags = 0;
+    createInfo.flags = bin? VK_SEMAPHORE_TYPE_BINARY : VkFlags{};
 
     return vkCreateSemaphore(m_pDevice->GetHandle(), &createInfo, nullptr,
                              &m_handle);

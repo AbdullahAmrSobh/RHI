@@ -256,9 +256,27 @@ struct RasterizationState
         state.rasterizerDiscardEnable = VK_FALSE;
 
         state.polygonMode = VK_POLYGON_MODE_FILL;
-        state.lineWidth   = 1.0f;
+        switch (rasterStateDesc.fillMode)
+        {
+            case ERasterizationFillMode::Point:
+                state.polygonMode = VK_POLYGON_MODE_POINT;
+            case ERasterizationFillMode::Triangle:
+                state.polygonMode = VK_POLYGON_MODE_FILL;
+            case ERasterizationFillMode::Line:
+                state.polygonMode = VK_POLYGON_MODE_LINE;
+        };
+
+        state.lineWidth = 1.0f;
         // no backface cull
-        state.cullMode  = VK_CULL_MODE_NONE;
+        switch (rasterStateDesc.cullMode)
+        {
+            case ERasterizationCullMode::None:
+                state.cullMode = VK_CULL_MODE_NONE;
+            case ERasterizationCullMode::FrontFace:
+                state.cullMode = VK_CULL_MODE_FRONT_BIT;
+            case ERasterizationCullMode::BackFace:
+                state.cullMode = VK_CULL_MODE_BACK_BIT;
+        };
         state.frontFace = VK_FRONT_FACE_CLOCKWISE;
         // no depth bias
         state.depthBiasEnable         = VK_FALSE;
@@ -333,6 +351,9 @@ struct ColorBlendState
 {
     ColorBlendState(const GraphicsPipelineColorBlendState& stateDesc)
     {
+        // TODO 
+        (void)stateDesc;
+
         state.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
         state.pNext = nullptr;
         state.flags = 0;

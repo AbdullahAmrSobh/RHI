@@ -68,7 +68,7 @@ class Queue final
 
     inline Queue(VkQueue queue, uint32_t familyIndex, uint32_t index)
         : m_handle(queue)
-        , m_familyIndex(index)
+        , m_familyIndex(familyIndex)
         , m_queueIndex(index)
     {
     }
@@ -116,7 +116,7 @@ class Device final : public IDevice
     }
     ~Device();
 
-    VkResult Init(Instance& instance, const PhysicalDevice& physicalDevice);
+    VkResult Init(const PhysicalDevice& physicalDevice);
 
     inline const PhysicalDevice& GetPhysicalDevice() const
     {

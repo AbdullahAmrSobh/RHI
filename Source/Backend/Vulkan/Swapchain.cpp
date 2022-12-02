@@ -257,11 +257,15 @@ EResultCode Swapchain::SwapBuffers()
 
 EResultCode Swapchain::Resize(Extent2D newExtent)
 {
+    // TODO 
+    (void)newExtent;
     return EResultCode::Fail;
 }
 
 EResultCode Swapchain::SetFullscreenExeclusive(bool enable)
 {
+    // TODO 
+    (void)enable;
     return EResultCode::Fail;
 }
 

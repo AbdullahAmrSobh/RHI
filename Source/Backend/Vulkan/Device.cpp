@@ -102,7 +102,7 @@ Device::~Device()
     vkDestroyDevice(m_device, nullptr);
 }
 
-VkResult Device::Init(Instance& instance, const PhysicalDevice& physicalDevice)
+VkResult Device::Init(const PhysicalDevice& physicalDevice)
 {
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 
@@ -275,19 +275,10 @@ VkResult Queue::Present(const PresentRequest& presentRequest) const
 VkResult Queue::Submit(const std::vector<Queue::SubmitRequest>& submitRequests,
                        const Fence&                             fence) const
 {
-    std::vector<VkSubmitInfo> submitInfos;
-    submitInfos.reserve(submitRequests.size());
-
-    for (const auto& submitRequest : submitRequests)
-    {
-        VkSubmitInfo2 submitInfo;
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.pNext = nullptr;
-        submitInfo.flags = 0;
-    }
-
-    return vkQueueSubmit(m_handle, CountElements(submitInfos),
-                         submitInfos.data(), fence.GetHandle());
+    (void)submitRequests;
+    (void)fence;
+    // TODO 
+    return VK_ERROR_UNKNOWN;
 }
 
 }  // namespace Vulkan
