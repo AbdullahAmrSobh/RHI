@@ -9,8 +9,6 @@ namespace Vulkan
     class RenderPass final : public DeviceObject<VkRenderPass>
     {
     public:
-        // static Result<Unique<RenderPass>> Create(const Device& device);
-        
         RenderPass(const Device& device)
             : DeviceObject(&device)
         {
@@ -31,8 +29,6 @@ namespace Vulkan
             const ImageView* pDepthStencilAttachment;
         };
         
-        static Result<Unique<Framebuffer>> Create(const Device& device, VkExtent2D extent, const AttachmentsDesc& attachments, const RenderPass& renderPass);
-
         Framebuffer(const Device& device)
             : DeviceObject(&device)
         {

@@ -5,20 +5,6 @@ namespace RHI
 {
 namespace Vulkan
 {
-
-    Result<Unique<PipelineLayout>> PipelineLayout::Create(const Device& device, PipelineLayoutDesc& layoutDesc)
-    {
-        Unique<PipelineLayout> pipelineLayout = CreateUnique<PipelineLayout>(device);
-        VkResult               result         = pipelineLayout->Init(layoutDesc);
-        
-        if (RHI_SUCCESS(result))
-        {
-            return ResultError(result);
-        }
-        
-        return std::move(pipelineLayout);
-    }
-    
     PipelineLayout::~PipelineLayout()
     {
         vkDestroyPipelineLayout(m_pDevice->GetHandle(), m_handle, nullptr);

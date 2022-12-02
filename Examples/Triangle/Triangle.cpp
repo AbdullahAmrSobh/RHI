@@ -103,14 +103,14 @@ public:
             surfaceDesc.pDisplay = glfwGetX11Display();
 #endif
 
-            m_surface = m_instance->CreateDevice(*pPhysicalDevice).value();
+            m_surface = m_instance->CreateSurface(surfaceDesc).value();
 
             RHI::SwapchainDesc swapchainDesc;
             swapchainDesc.pSurface        = m_surface.get();
             swapchainDesc.backImagesCount = 2;
             swapchainDesc.extent          = {640, 480};
             swapchainDesc.pSurface        = m_surface.get();
-            m_swapchain                   = GetExpectedValue(m_device->CreateSwapChain(swapchainDesc));
+            m_swapchain                   = m_device->CreateSwapChain(swapchainDesc).value();
         }
 
         std::vector<float>    vertexBufferData = {0.0f, -0.5f, 1.0f, 0.0f, 0.0f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f};
@@ -118,7 +118,7 @@ public:
 
         // Vertex Buffer Creation
         {
-            RHI::AllocationDesc allocationDesc;
+            RHI::AllocationDesc allocationDesc {};
             allocationDesc.type                            = RHI::EMemoryType::Device;
             allocationDesc.byteOffset                      = 0;
             allocationDesc.pMemoryPool                     = nullptr;
@@ -126,26 +126,21 @@ public:
             allocationDesc.memoryRequirement.byteAlignment = alignof(uint32_t);
             allocationDesc.usage                           = RHI::EMemoryUsage::Stage;
 
-            RHI::BufferDesc bufferDesc;
+            RHI::BufferDesc bufferDesc {};
             bufferDesc.size  = vertexBufferData.size();
             bufferDesc.usage = RHI::EBufferUsageFlagBits::Vertex;
             bufferDesc.usage = bufferDesc.usage | RHI::EBufferUsageFlagBits::Transfer;
 
-            m_vertexBuffer = m_instance->CreateDevice(*pPhysicalDevice).value();
+            m_vertexBuffer = m_device->CreateBuffer(allocationDesc, bufferDesc).value();
 
             allocationDesc.memoryRequirement.byteSize = indexBufferData.size();
             bufferDesc.size                           = indexBufferData.size();
             bufferDesc.usage                          = RHI::EBufferUsageFlagBits::Index;
             bufferDesc.usage                          = bufferDesc.usage | RHI::EBufferUsageFlagBits::Transfer;
 
-            m_indexBuffer = m_instance->CreateDevice(*pPhysicalDevice).value();
+            m_indexBuffer = m_device->CreateBuffer(allocationDesc, bufferDesc).value();
         }
-
-        // Create the frameGraph.
-        {
-
-        }
-
+        
         // Create shader resource group allocator
         {
             m_shaderResourceGroupAllocator = m_device->CreateShaderResourceGroupAllocator().value();

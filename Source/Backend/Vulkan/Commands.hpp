@@ -66,8 +66,6 @@ namespace Vulkan
     class CommandAllocator final : public DeviceObject<VkCommandPool>
     {
     public:
-        static Result<Unique<CommandAllocator>> Create(const Device& device);
-
         CommandAllocator(const Device& device)
             : DeviceObject(&device)
         {

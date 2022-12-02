@@ -7,30 +7,28 @@ namespace RHI
 namespace Vulkan
 {
     class DescriptorPool;
-    
+
     class DescriptorSetLayout final : public DeviceObject<VkDescriptorSetLayout>
     {
     public:
-        static Result<Unique<DescriptorSetLayout>> Create(const Device& device, const ShaderResourceGroupLayout& layout);
-        
         DescriptorSetLayout(const Device& device)
             : DeviceObject(&device)
         {
         }
         ~DescriptorSetLayout();
-        
+
         VkResult Init(const ShaderResourceGroupLayout& layout);
 
-        inline const std::vector<VkDescriptorPoolSize>& GetSize() const
+        inline std::span<const VkDescriptorPoolSize> GetSize() const
         {
-            return m_size;
+            return {m_size.begin(), m_size.end()};
         }
 
         inline const VkDescriptorPoolSize& GetBindingSize(uint32_t bindingIndex) const
         {
             return m_size.at(bindingIndex);
         }
-        
+
         inline VkDescriptorSetLayoutBinding GetBinding(uint32_t bindingIndex) const
         {
             return m_bindings.at(bindingIndex);
@@ -44,53 +42,47 @@ namespace Vulkan
     class DescriptorSet final : public DeviceObject<VkDescriptorSet>
     {
     public:
-        DescriptorSet(const Device& device, const DescriptorSetLayout& layout, VkDescriptorSet handle, const DescriptorPool& parant)
-            : DeviceObject(&device, handle)
-            , m_pLayout(&layout)
-            , m_pParantPool(&parant)
+        DescriptorSet(const Device& device)
+            : DeviceObject(&device)
         {
         }
         ~DescriptorSet();
-        
-        inline const DescriptorSetLayout& GetLayout() const
-        {
-            return *m_pLayout;
-        }
+
+        VkResult Init(const DescriptorPool& pool, const DescriptorSetLayout& layout);
 
         VkWriteDescriptorSet WriteImages(uint32_t bindingIndex, const std::vector<VkDescriptorImageInfo>& imageInfos) const;
         VkWriteDescriptorSet WriteBuffers(uint32_t bindingIndex, const std::vector<VkDescriptorBufferInfo>& bufferInfos) const;
         VkWriteDescriptorSet WriteTexelBuffers(uint32_t bindingIndex, const std::vector<VkBufferView>& bufferViews) const;
-    
+
     private:
-        const DescriptorPool*      m_pParantPool;
-        const DescriptorSetLayout* m_pLayout;
+        const DescriptorPool*      m_pool;
+        const DescriptorSetLayout* m_layout;
     };
 
     class DescriptorPool final : public DeviceObject<VkDescriptorPool>
     {
+        friend class DescriptorPool;
+
     public:
         struct Capacity
         {
             uint32_t                          maxSets;
             std::vector<VkDescriptorPoolSize> sizes;
         };
-        
-        static Result<Unique<DescriptorPool>> Create(const Device& device, const Capacity& capacity);
 
         DescriptorPool(const Device& device)
             : DeviceObject(&device)
-        {}
-        
+        {
+        }
+
         ~DescriptorPool();
-        
+
         inline Capacity GetCapacity() const
         {
             return m_capacity;
         }
 
         VkResult Init(const Capacity& capacity);
-
-        Result<Unique<DescriptorSet>> Allocate(const DescriptorSetLayout& layout);
 
     private:
         Capacity                    m_capacity;
@@ -106,19 +98,19 @@ namespace Vulkan
         {
         }
         ~ShaderResourceGroup() = default;
-        
+
         inline const DescriptorSet& GetDescriptorSet() const
         {
             return *m_descriptorSet;
         }
-        
+
         virtual EResultCode Update(const ShaderResourceGroupData& data) override;
-    
+
     private:
-        const Device*               m_pDevice;
+        const Device*         m_pDevice;
         Unique<DescriptorSet> m_descriptorSet;
     };
-    
+
     class ShaderResourceGroupAllocator final : public IShaderResourceGroupAllocator
     {
     public:

@@ -6,7 +6,6 @@
 #include "RHI/Resource.hpp"
 #include "RHI/ShaderResourceGroup.hpp"
 #include "RHI/Swapchain.hpp"
-#include "RHI/FrameGraph.hpp"
 
 namespace RHI
 {
@@ -90,8 +89,6 @@ public:
 
     virtual Expected<Unique<IBufferView>> CreateBufferView(const IBuffer& buffer, const BufferViewDesc& desc) const = 0;
 
-    virtual Expected<Unique<IFrameGraph>> CreateFrameGraph() const = 0;
-    
 protected:
     Unique<ITransferQueue> m_transferQueue;
     IPhysicalDevice*       m_pPhysicalDevice;

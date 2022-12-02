@@ -12,8 +12,6 @@ namespace Vulkan
     class PipelineLayout final : public DeviceObject<VkPipelineLayout>
     {
     public:
-        static Result<Unique<PipelineLayout>> Create(const Device& device, PipelineLayoutDesc& layoutDesc);
-
         PipelineLayout(const Device& device)
             : DeviceObject(&device)
         {

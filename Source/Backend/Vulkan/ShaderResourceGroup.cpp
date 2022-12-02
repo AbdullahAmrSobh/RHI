@@ -33,13 +33,6 @@ namespace Vulkan
     }
 
     // DescriptorSetLayout
-    Result<Unique<DescriptorSetLayout>> DescriptorSetLayout::Create(const Device& device, const ShaderResourceGroupLayout& layout)
-    {
-        Unique<DescriptorSetLayout> descriptorSetLayout = CreateUnique<DescriptorSetLayout>(device);
-        VkResult                    result              = descriptorSetLayout->Init(layout);
-        return std::move(descriptorSetLayout);
-    }
-
     DescriptorSetLayout::~DescriptorSetLayout()
     {
         vkDestroyDescriptorSetLayout(m_pDevice->GetHandle(), m_handle, nullptr);
@@ -78,7 +71,25 @@ namespace Vulkan
 
     DescriptorSet::~DescriptorSet()
     {
-        vkFreeDescriptorSets(m_pDevice->GetHandle(), m_pParantPool->GetHandle(), 1, &m_handle);
+        vkFreeDescriptorSets(m_pDevice->GetHandle(), m_pool->GetHandle(), 1, &m_handle);
+    }
+
+    VkResult DescriptorSet::Init(const DescriptorPool& pool, const DescriptorSetLayout& layout)
+    {
+        m_pool   = &pool;
+        m_layout = &layout;
+
+        VkDescriptorSetLayout layoutHandle = layout.GetHandle();
+        VkDescriptorSet       setHandle    = VK_NULL_HANDLE;
+
+        VkDescriptorSetAllocateInfo allocateInfo = {};
+        allocateInfo.sType                       = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocateInfo.pNext                       = nullptr;
+        allocateInfo.descriptorSetCount          = 1;
+        allocateInfo.pSetLayouts                 = &layoutHandle;
+        allocateInfo.descriptorPool              = m_pool->GetHandle();
+
+        return vkAllocateDescriptorSets(m_pDevice->GetHandle(), &allocateInfo, &setHandle);
     }
 
     VkWriteDescriptorSet DescriptorSet::WriteImages(uint32_t bindingIndex, const std::vector<VkDescriptorImageInfo>& imageInfos) const
@@ -90,7 +101,7 @@ namespace Vulkan
         write.dstBinding      = bindingIndex;
         write.dstArrayElement = 0;
         write.descriptorCount = CountElements(imageInfos);
-        write.descriptorType  = m_pLayout->GetBinding(bindingIndex).descriptorType;
+        write.descriptorType  = m_layout->GetBinding(bindingIndex).descriptorType;
         write.pImageInfo      = imageInfos.data();
         return write;
     }
@@ -104,7 +115,7 @@ namespace Vulkan
         write.dstBinding      = bindingIndex;
         write.dstArrayElement = 0;
         write.descriptorCount = CountElements(bufferInfos);
-        write.descriptorType  = m_pLayout->GetBinding(bindingIndex).descriptorType;
+        write.descriptorType  = m_layout->GetBinding(bindingIndex).descriptorType;
         write.pBufferInfo     = bufferInfos.data();
         return write;
     }
@@ -118,20 +129,12 @@ namespace Vulkan
         write.dstBinding       = bindingIndex;
         write.dstArrayElement  = 0;
         write.descriptorCount  = CountElements(bufferViews);
-        write.descriptorType   = m_pLayout->GetBinding(bindingIndex).descriptorType;
+        write.descriptorType   = m_layout->GetBinding(bindingIndex).descriptorType;
         write.pTexelBufferView = bufferViews.data();
         return write;
     }
 
     // DescriptorPool
-
-    Result<Unique<DescriptorPool>> DescriptorPool::Create(const Device& device, const Capacity& capacity)
-    {
-        Unique<DescriptorPool> descriptorPool = CreateUnique<DescriptorPool>(device);
-        VkResult               result         = descriptorPool->Init(capacity);
-        return std::move(descriptorPool);
-    }
-
     DescriptorPool::~DescriptorPool()
     {
         vkDestroyDescriptorPool(m_pDevice->GetHandle(), m_handle, nullptr);
@@ -150,32 +153,9 @@ namespace Vulkan
         return vkCreateDescriptorPool(m_pDevice->GetHandle(), &createInfo, nullptr, &m_handle);
     }
 
-    Result<Unique<DescriptorSet>> DescriptorPool::Allocate(const DescriptorSetLayout& layout)
-    {
-        VkDescriptorSetLayout layoutHandle = layout.GetHandle();
-        VkDescriptorSet       setHandle    = VK_NULL_HANDLE;
-
-        VkDescriptorSetAllocateInfo allocateInfo = {};
-        allocateInfo.sType                       = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocateInfo.pNext                       = nullptr;
-        allocateInfo.descriptorSetCount          = 1;
-        allocateInfo.pSetLayouts                 = &layoutHandle;
-        allocateInfo.descriptorPool              = m_handle;
-
-        VkResult result = vkAllocateDescriptorSets(m_pDevice->GetHandle(), &allocateInfo, &setHandle);
-
-        if (result != VK_SUCCESS)
-        {
-            return ResultError(result);
-        }
-
-        return std::move(CreateUnique<DescriptorSet>(*m_pDevice, layout, setHandle, *this));
-    }
-
     // ShaderResourceGroup
     EResultCode ShaderResourceGroup::Update(const ShaderResourceGroupData& data)
     {
-
         std::vector<VkWriteDescriptorSet> descriptorSetWriteDescriptions = {};
 
         std::vector<std::vector<VkDescriptorImageInfo>> imageBindingInfos;
@@ -281,25 +261,19 @@ namespace Vulkan
         static std::map<size_t, Unique<DescriptorSetLayout>> s_layoutCache;
         auto                                                 cacheResult = s_layoutCache.find(layout.GetHash());
 
-        const DescriptorSetLayout* pSetLayout = nullptr;
-        if (cacheResult != s_layoutCache.end())
-        {
-            pSetLayout = cacheResult->second.get();
-        }
-        else
+        if (cacheResult == s_layoutCache.end())
         {
             s_layoutCache[layout.GetHash()] = CreateUnique<DescriptorSetLayout>(*m_pDevice);
             VkResult result                 = s_layoutCache[layout.GetHash()]->Init(layout);
-            if (!RHI_SUCCESS(result))
+            if (result != VK_SUCCESS)
             {
                 return Unexpected(ConvertResult(result));
             }
-
-            pSetLayout = s_layoutCache.find(layout.GetHash())->second.get();
         }
 
-        const DescriptorSetLayout& descriptorSetLayout = *pSetLayout;
-        Unique<DescriptorSet>      descriptorSet       = nullptr;
+        const DescriptorSetLayout& descriptorSetLayout     = *s_layoutCache[layout.GetHash()];
+        Unique<DescriptorSet>      descriptorSet           = CreateUnique<DescriptorSet>(*m_pDevice);
+        bool                       descriptorSetInitalized = false;
 
         for (auto& pool : m_descriptorPools)
         {
@@ -308,52 +282,43 @@ namespace Vulkan
             //     continue;
             // }
 
-            auto allocationResult = pool->Allocate(descriptorSetLayout);
+            VkResult result = descriptorSet->Init(*pool, descriptorSetLayout);
 
-            if (allocationResult.has_value())
+            if (result != VK_SUCCESS)
             {
-                descriptorSet = std::move(allocationResult.value());
+                descriptorSetInitalized = true;
                 break;
             }
-            else
+            else if (result != VK_ERROR_FRAGMENTED_POOL && result != VK_ERROR_OUT_OF_POOL_MEMORY)
             {
-                VkResult result = allocationResult.error();
-                if (result != VK_ERROR_FRAGMENTED_POOL && result != VK_ERROR_OUT_OF_POOL_MEMORY)
-                {
-                    // TODO if fragmented bool and all allocated descriptorSets are unactive
-                    // then Reset the pool
-
-                    // Allocation failed unexpectedly
-                    return Unexpected(ConvertResult(result));
-                }
+                // TODO if fragmented bool and all allocated descriptorSets are unactive
+                // then Reset the pool
+                // Allocation failed unexpectedly
+                return Unexpected(ConvertResult(result));
             }
         }
 
         // Create a new pool if all the previous pools fails to allocate.
-        if (descriptorSet == nullptr)
+        if (!descriptorSetInitalized)
         {
-            DescriptorPool::Capacity capacity;
+            DescriptorPool::Capacity capacity{};
             capacity.maxSets = 3;
-            capacity.sizes   = descriptorSetLayout.GetSize();
+            capacity.sizes   = { descriptorSetLayout.GetSize().begin(), descriptorSetLayout.GetSize().end() };
 
-            Result<Unique<DescriptorPool>> result = DescriptorPool::Create(*m_pDevice, capacity);
-            if (result.has_value())
+            DescriptorPool& descriptorPool = *m_descriptorPools.emplace_back(CreateUnique<DescriptorPool>(*m_pDevice));
+
+            VkResult result = descriptorPool.Init(capacity);
+
+            if (result != VK_SUCCESS)
             {
-                m_descriptorPools.push_back(std::move(result.value()));
-            }
-            else
-            {
-                return Unexpected(ConvertResult(result.error()));
+                return Unexpected(ConvertResult(result));
             }
 
-            Result<Unique<DescriptorSet>> descriptorSetResult = m_descriptorPools.back()->Allocate(*pSetLayout);
-            if (!descriptorSetResult.has_value())
+            result = descriptorSet->Init(descriptorPool, descriptorSetLayout);
+
+            if (result != VK_SUCCESS)
             {
-                return Unexpected(ConvertResult(descriptorSetResult.error()));
-            }
-            else
-            {
-                descriptorSet = std::move(descriptorSetResult.value());
+                return Unexpected(ConvertResult(result));
             }
         }
 
