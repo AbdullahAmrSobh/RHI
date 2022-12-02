@@ -33,8 +33,8 @@ using ShaderBindingIndex = uint32_t;
 struct ShaderBindingReference
 {
     ShaderBindingReference(ShaderBindingIndex index, std::string_view name)
-        : index(index)
-        , name(name)
+        : name(name) 
+        , index(index)
     {
     }
 

@@ -14,6 +14,16 @@ include(cmake/project-is-top-level.cmake)
 include(cmake/variables.cmake)
 include(FILES.cmake)
 
+# ---- Find Dependencies 
+if (NOT CMAKE_VERSION VERSION_LESS 3.7.0)
+	message(STATUS "Using module to find Vulkan")
+	find_package(Vulkan)
+endif()
+
+if (NOT VULKAN_FOUND) 
+    message(FATEL_ERROR "Failed to find Vulkan")
+endif()
+
 # ---- Declare library ----
 
 add_library(
@@ -48,6 +58,10 @@ target_include_directories(
     RHI_RHI ${warning_guard}
     PUBLIC
     "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
+    PRIVATE
+    "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/source>"
+    PRIVATE
+    ${Vulkan_INCLUDE_DIRS}
 )
 
 target_include_directories(
@@ -55,6 +69,8 @@ target_include_directories(
     PUBLIC
     "$<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/export>"
 )
+
+target_link_libraries(RHI_RHI PRIVATE ${Vulkan_LIBRARIES})
 
 target_compile_features(RHI_RHI PUBLIC cxx_std_20)
 

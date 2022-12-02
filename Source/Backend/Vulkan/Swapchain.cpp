@@ -26,7 +26,7 @@ namespace Vulkan
         Unique<Surface> surface = CreateUnique<Surface>(*this);
         VkResult        result  = surface->Init(desc);
 
-        if (RHI_SUCCESS(result))
+        if (RHI_VK_IS_SUCCESS(result))
             return std::move(surface);
 
         return Unexpected(ConvertResult(result));
@@ -49,7 +49,7 @@ namespace Vulkan
         Unique<Surface> surface = CreateUnique<Surface>(*this);
         VkResult        result  = surface->Init(desc);
 
-        if (RHI_SUCCESS(result))
+        if (RHI_VK_IS_SUCCESS(result))
             return std::move(surface);
 
         return Unexpected(ConvertResult(result));
@@ -76,7 +76,7 @@ namespace Vulkan
         Unique<Swapchain> swapchain = CreateUnique<Swapchain>(*this);
         VkResult          result    = swapchain->Init(desc);
 
-        if (RHI_SUCCESS(result))
+        if (RHI_VK_IS_SUCCESS(result))
             return std::move(swapchain);
 
         return Unexpected(ConvertResult(result));
@@ -92,7 +92,7 @@ namespace Vulkan
         VkBool32 support = VK_FALSE;
         VkResult result  = vkGetPhysicalDeviceSurfaceSupportKHR(static_cast<const PhysicalDevice&>(m_pDevice->GetPhysicalDevice()).GetHandle(),
                                                                 queue.GetFamilyIndex(), m_handle, &support);
-        if (!RHI_SUCCESS(result))
+        if (!RHI_VK_IS_SUCCESS(result))
         {
             return VK_FALSE;
         }
@@ -105,7 +105,7 @@ namespace Vulkan
         vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice.GetHandle(), m_handle, &count, nullptr);
         std::vector<VkSurfaceFormatKHR> formats(count);
         VkResult                        result = vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice.GetHandle(), m_handle, &count, formats.data());
-        assert(RHI_SUCCESS(result));
+        assert(RHI_VK_IS_SUCCESS(result));
         return formats;
     }
 
@@ -115,7 +115,7 @@ namespace Vulkan
         vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice.GetHandle(), m_handle, &count, nullptr);
         std::vector<VkPresentModeKHR> modes(count);
         VkResult                      result = vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice.GetHandle(), m_handle, &count, modes.data());
-        assert(RHI_SUCCESS(result));
+        assert(RHI_VK_IS_SUCCESS(result));
         return modes;
     }
 
@@ -123,7 +123,7 @@ namespace Vulkan
     {
         VkSurfaceCapabilitiesKHR capabilities;
         VkResult                 result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice.GetHandle(), m_handle, &capabilities);
-        assert(RHI_SUCCESS(result));
+        assert(RHI_VK_IS_SUCCESS(result));
         return capabilities;
     }
 
@@ -200,9 +200,9 @@ namespace Vulkan
         createInfo.oldSwapchain          = VK_NULL_HANDLE;
         
         VkResult result = vkCreateSwapchainKHR(m_pDevice->GetHandle(), &createInfo, nullptr, &m_handle);
-        RHI_RETURN_ON_FAIL(result) ;
+        RHI_VK_RETURN_IF_FAIL(result) ;
         result = m_imageAcquiredSemaphore->Init();
-        RHI_RETURN_ON_FAIL(result);
+        RHI_VK_RETURN_IF_FAIL(result);
 
         return InitBackbuffers();
     }
@@ -238,14 +238,14 @@ namespace Vulkan
         std::vector<VkImage> backImagesHandles;
         VkResult             result = vkGetSwapchainImagesKHR(m_pDevice->GetHandle(), m_handle, &backBuffersCount, nullptr);
 
-        if (!RHI_SUCCESS(result))
+        if (!RHI_VK_IS_SUCCESS(result))
             return result;
 
         backImagesHandles.resize(backBuffersCount);
 
         vkGetSwapchainImagesKHR(m_pDevice->GetHandle(), m_handle, &backBuffersCount, backImagesHandles.data());
 
-        if (!RHI_SUCCESS(result))
+        if (!RHI_VK_IS_SUCCESS(result))
             return result;
 
         m_backBuffers.reserve(backBuffersCount);

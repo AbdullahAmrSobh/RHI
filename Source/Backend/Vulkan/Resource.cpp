@@ -11,7 +11,7 @@ namespace Vulkan
         Unique<ShaderModule> shaderModule = CreateUnique<ShaderModule>(*this, desc.entryName);
         VkResult             result       = shaderModule->Init(desc);
 
-        if (RHI_SUCCESS(result))
+        if (RHI_VK_IS_SUCCESS(result))
             return std::move(shaderModule);
 
         return Unexpected(ConvertResult(result));
@@ -22,7 +22,7 @@ namespace Vulkan
         Unique<Fence> fence  = CreateUnique<Fence>(*this);
         VkResult      result = fence->Init();
 
-        if (RHI_SUCCESS(result))
+        if (RHI_VK_IS_SUCCESS(result))
             return std::move(fence);
 
         return Unexpected(ConvertResult(result));
@@ -33,7 +33,7 @@ namespace Vulkan
         Unique<Image> image  = CreateUnique<Image>(*this);
         VkResult      result = image->Init(allocationDesc, desc);
 
-        if (RHI_SUCCESS(result))
+        if (RHI_VK_IS_SUCCESS(result))
             return std::move(image);
 
         return Unexpected(ConvertResult(result));
@@ -44,7 +44,7 @@ namespace Vulkan
         Unique<ImageView> imageView = CreateUnique<ImageView>(*this);
         VkResult          result    = imageView->Init(static_cast<const Image&>(image), desc);
 
-        if (RHI_SUCCESS(result))
+        if (RHI_VK_IS_SUCCESS(result))
             return std::move(imageView);
 
         return Unexpected(ConvertResult(result));
@@ -55,7 +55,7 @@ namespace Vulkan
         Unique<Buffer> buffer = CreateUnique<Buffer>(*this);
         VkResult       result = buffer->Init(allocationDesc, desc);
 
-        if (RHI_SUCCESS(result))
+        if (RHI_VK_IS_SUCCESS(result))
             return std::move(buffer);
 
         return Unexpected(ConvertResult(result));
@@ -66,7 +66,7 @@ namespace Vulkan
         Unique<BufferView> bufferView = CreateUnique<BufferView>(*this);
         VkResult           result     = bufferView->Init(static_cast<const Buffer&>(buffer), desc);
 
-        if (RHI_SUCCESS(result))
+        if (RHI_VK_IS_SUCCESS(result))
             return std::move(bufferView);
 
         return Unexpected(ConvertResult(result));
@@ -77,7 +77,7 @@ namespace Vulkan
         Unique<Sampler> sampler = CreateUnique<Sampler>(*this);
         VkResult        result  = sampler->Init(desc);
 
-        if (RHI_SUCCESS(result))
+        if (RHI_VK_IS_SUCCESS(result))
             return std::move(sampler);
 
         return Unexpected(ConvertResult(result));
@@ -179,7 +179,7 @@ namespace Vulkan
 
         VkResult result = vmaCreateImage(m_pDevice->GetAllocator(), &createInfo, &allocationCreateInfo, &m_handle, &m_allocation, &m_allocationInfo);
 
-        if (RHI_SUCCESS(result))
+        if (RHI_VK_IS_SUCCESS(result))
         {
             m_memorySize = m_allocationInfo.size;
         }
@@ -242,7 +242,7 @@ namespace Vulkan
         
         VkResult result = vmaCreateBuffer(m_pDevice->GetAllocator(), &createInfo, &allocationCreateInfo, &m_handle, &m_allocation, &m_allocationInfo);
         
-        if (RHI_SUCCESS(result))
+        if (RHI_VK_IS_SUCCESS(result))
         {
             m_memorySize = m_allocationInfo.size;
         }

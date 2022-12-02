@@ -16,9 +16,12 @@ FetchContent_Declare(
 )
 
 FetchContent_GetProperties(glfw)
+
 if(NOT glfw_POPULATED)
   FetchContent_Populate(glfw)
-
+  set(GLFW_STANDALONE OFF CACHE INTERNAL "Build cmake as standalone")
+  set(glfw_PKG_DEPS OFF CACHE INTERNAL "Build cmake with waylane")
+  set(GLFW_USE_WAYLAND OFF CACHE INTERNAL "Build cmake with waylane")
   set(GLFW_BUILD_EXAMPLES OFF CACHE INTERNAL "Build the GLFW example programs")
   set(GLFW_BUILD_TESTS OFF CACHE INTERNAL "Build the GLFW test programs")
   set(GLFW_BUILD_DOCS OFF CACHE INTERNAL "Build the GLFW documentation")

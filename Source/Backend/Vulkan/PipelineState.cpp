@@ -366,7 +366,7 @@ namespace Vulkan
         Unique<PipelineState> pipelineState = CreateUnique<PipelineState>(*this);
         VkResult              result        = pipelineState->Init(desc);
 
-        if (RHI_SUCCESS(result))
+        if (RHI_VK_IS_SUCCESS(result))
         {
             return Unexpected(ConvertResult(result));
         }

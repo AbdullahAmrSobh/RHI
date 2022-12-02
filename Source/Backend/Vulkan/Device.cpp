@@ -159,7 +159,7 @@ namespace Vulkan
             createInfo.ppEnabledExtensionNames = enabledExtensions.data();
             createInfo.pEnabledFeatures        = &features;
             
-            RHI_RETURN_ON_FAIL(vkCreateDevice(physicalDevice.GetHandle(), &createInfo, nullptr, &m_device))
+            RHI_VK_RETURN_IF_FAIL(vkCreateDevice(physicalDevice.GetHandle(), &createInfo, nullptr, &m_device))
         }
 
         // Create Queue

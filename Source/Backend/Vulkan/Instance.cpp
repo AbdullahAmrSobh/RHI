@@ -91,7 +91,7 @@ namespace Vulkan
 
         VkResult result = vkCreateInstance(&createInfo, nullptr, &m_instance);
 
-        RHI_RETURN_ON_FAIL(result);
+        RHI_VK_RETURN_IF_FAIL(result);
 
         for (VkPhysicalDevice physicalDevice : ::RHI::Vulkan::GetPhysicalDevices(m_instance))
         {
