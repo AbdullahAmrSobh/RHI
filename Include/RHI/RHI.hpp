@@ -1,4 +1,5 @@
 #pragma once
+#include "RHI/RHI_export.hpp"
 #include "RHI/Commands.hpp"
 #include "RHI/Common.hpp"
 #include "RHI/Device.hpp"
