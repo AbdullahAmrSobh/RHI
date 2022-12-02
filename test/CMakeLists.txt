@@ -15,7 +15,7 @@ endif()
 
 # ---- Tests ----
 
-add_executable(RHI_test source/RHI_test.cpp)
+add_executable(RHI_test source/create_instance_test.cpp)
 target_link_libraries(RHI_test PRIVATE RHI::RHI)
 target_compile_features(RHI_test PRIVATE cxx_std_20)
 
