@@ -20,23 +20,23 @@
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
-std::vector<uint32_t> ReadBinFile(std::string filePath)
-{
-    std::ifstream file(filePath, std::ios::ate | std::ios::binary);
-
-    assert(file.is_open());
-
-    auto                  fileSize = file.tellg();
-    std::vector<uint32_t> buffer(fileSize / sizeof(uint32_t));
-
-    file.seekg(0);
-    file.read(reinterpret_cast<char*>(buffer.data()),
-              static_cast<std::streamsize>(fileSize));
-
-    file.close();
-
-    return buffer;
-}
+// std::vector<uint32_t> ReadBinFile(std::string filePath)
+// {
+//     std::ifstream file(filePath, std::ios::ate | std::ios::binary);
+// 
+//     assert(file.is_open());
+// 
+//     auto                  fileSize = file.tellg();
+//     std::vector<uint32_t> buffer(fileSize / sizeof(uint32_t));
+// 
+//     file.seekg(0);
+//     file.read(reinterpret_cast<char*>(buffer.data()),
+//               static_cast<std::streamsize>(fileSize));
+// 
+//     file.close();
+// 
+//     return buffer;
+// }
 
 class RHIDebugCallbacks final : public RHI::IDebugCallbacks
 {
@@ -74,7 +74,7 @@ public:
                                        RHI::CreateUnique<RHIDebugCallbacks>())
                     .value();
             assert(!m_instance->GetPhysicalDevices().empty());
-            RHI::IPhysicalDevice* pPhysicalDevice =
+            const RHI::IPhysicalDevice* pPhysicalDevice =
                 m_instance->GetPhysicalDevices().front();
             for (auto* device : m_instance->GetPhysicalDevices())
             {

@@ -44,8 +44,8 @@ VkResult Surface::Init(const X11SurfaceDesc& desc)
     static PFN_vkCreateXlibSurfaceKHR createSurface =
         (PFN_vkCreateXlibSurfaceKHR)vkGetInstanceProcAddr(
             m_pInstance->GetHandle(), "vkCreateXlibSurfaceKHR");
-    return createSurface(m_pInstance->GetHandle(), &createInfo, nullptr,
-                         &m_handle);
+    return createSurface(
+        m_pInstance->GetHandle(), &createInfo, nullptr, &m_handle);
 }
 #elif defined(RHI_WINDOWS)
 Expected<Unique<ISurface>> Instance::CreateSurface(const Win32SurfaceDesc& desc)
@@ -71,8 +71,8 @@ VkResult Surface::Init(const Win32SurfaceDesc& desc)
     static PFN_vkCreateWin32SurfaceKHR createSurface =
         (PFN_vkCreateWin32SurfaceKHR)vkGetInstanceProcAddr(
             m_pInstance->GetHandle(), "vkCreateWin32SurfaceKHR");
-    return createSurface(m_pInstance->GetHandle(), &createInfo, nullptr,
-                         &m_handle);
+    return createSurface(
+        m_pInstance->GetHandle(), &createInfo, nullptr, &m_handle);
 }
 
 #endif
@@ -94,17 +94,19 @@ Surface::~Surface()
     vkDestroySurfaceKHR(m_pInstance->GetHandle(), m_handle, nullptr);
 }
 
-VkBool32 Surface::QueueSupportPresent(const class Queue& queue) const
+VkBool32 Surface::QueryQueueFamilyPresentSupport(uint32_t familyIndex) const
 {
     VkBool32 support = VK_FALSE;
-    VkResult result  = vkGetPhysicalDeviceSurfaceSupportKHR(
+
+    VkResult result = vkGetPhysicalDeviceSurfaceSupportKHR(
         static_cast<const PhysicalDevice&>(m_pDevice->GetPhysicalDevice())
             .GetHandle(),
-        queue.GetFamilyIndex(), m_handle, &support);
-    if (!RHI_VK_IS_SUCCESS(result))
-    {
-        return VK_FALSE;
-    }
+        familyIndex,
+        m_handle,
+        &support);
+
+    RHI_VK_ASSERT_SUCCESS(result);
+
     return support;
 }
 
@@ -112,8 +114,8 @@ std::vector<VkSurfaceFormatKHR> Surface::GetSupportedFormats(
     const PhysicalDevice& physicalDevice)
 {
     uint32_t count;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice.GetHandle(), m_handle,
-                                         &count, nullptr);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(
+        physicalDevice.GetHandle(), m_handle, &count, nullptr);
     std::vector<VkSurfaceFormatKHR> formats(count);
     VkResult result = vkGetPhysicalDeviceSurfaceFormatsKHR(
         physicalDevice.GetHandle(), m_handle, &count, formats.data());
@@ -125,8 +127,8 @@ std::vector<VkPresentModeKHR> Surface::GetSupportedPresentModes(
     const PhysicalDevice& physicalDevice)
 {
     uint32_t count = 0;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice.GetHandle(),
-                                              m_handle, &count, nullptr);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(
+        physicalDevice.GetHandle(), m_handle, &count, nullptr);
     std::vector<VkPresentModeKHR> modes(count);
     VkResult result = vkGetPhysicalDeviceSurfacePresentModesKHR(
         physicalDevice.GetHandle(), m_handle, &count, modes.data());
@@ -167,17 +169,20 @@ VkExtent2D Surface::ClampExtent(VkExtent2D actualExtent,
     }
     else
     {
-        return {std::clamp(actualExtent.width, minImageExtent.width,
-                           maxImageExtent.width),
-                std::clamp(actualExtent.height, minImageExtent.height,
-                           maxImageExtent.height)};
+        return {
+            std::clamp(
+                actualExtent.width, minImageExtent.width, maxImageExtent.width),
+            std::clamp(actualExtent.height,
+                       minImageExtent.height,
+                       maxImageExtent.height)};
     }
 }
 
 VkPresentModeKHR Surface::SelectPresentMode(
     const std::vector<VkPresentModeKHR>& presentModes)
 {
-    return std::find_if(presentModes.begin(), presentModes.end(),
+    return std::find_if(presentModes.begin(),
+                        presentModes.end(),
                         [](VkPresentModeKHR mode)
                         { return mode == VK_PRESENT_MODE_MAILBOX_KHR; })
                    == presentModes.end()
@@ -230,8 +235,8 @@ VkResult Swapchain::Init(const SwapchainDesc& desc)
     createInfo.clipped      = VK_FALSE;
     createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-    VkResult result = vkCreateSwapchainKHR(m_pDevice->GetHandle(), &createInfo,
-                                           nullptr, &m_handle);
+    VkResult result = vkCreateSwapchainKHR(
+        m_pDevice->GetHandle(), &createInfo, nullptr, &m_handle);
     RHI_VK_RETURN_IF_FAIL(result);
     result = m_imageAcquiredSemaphore->Init();
     RHI_VK_RETURN_IF_FAIL(result);
@@ -273,15 +278,17 @@ VkResult Swapchain::InitBackbuffers()
 {
     uint32_t             backBuffersCount;
     std::vector<VkImage> backImagesHandles;
-    VkResult result = vkGetSwapchainImagesKHR(m_pDevice->GetHandle(), m_handle,
-                                              &backBuffersCount, nullptr);
+    VkResult             result = vkGetSwapchainImagesKHR(
+        m_pDevice->GetHandle(), m_handle, &backBuffersCount, nullptr);
 
     if (!RHI_VK_IS_SUCCESS(result))
         return result;
 
     backImagesHandles.resize(backBuffersCount);
 
-    vkGetSwapchainImagesKHR(m_pDevice->GetHandle(), m_handle, &backBuffersCount,
+    vkGetSwapchainImagesKHR(m_pDevice->GetHandle(),
+                            m_handle,
+                            &backBuffersCount,
                             backImagesHandles.data());
 
     if (!RHI_VK_IS_SUCCESS(result))

@@ -25,8 +25,8 @@ std::vector<VkQueueFamilyProperties> PhysicalDevice::GetQueueFamilyProperties()
     const
 {
     uint32_t queueFamilyCount = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(m_physicalDevice,
-                                             &queueFamilyCount, nullptr);
+    vkGetPhysicalDeviceQueueFamilyProperties(
+        m_physicalDevice, &queueFamilyCount, nullptr);
     std::vector<VkQueueFamilyProperties> queueFamilyProperties(
         queueFamilyCount);
     vkGetPhysicalDeviceQueueFamilyProperties(
@@ -39,8 +39,8 @@ std::vector<VkLayerProperties> PhysicalDevice::GetAvailableLayers() const
     uint32_t layerCount = 0;
     vkEnumerateDeviceLayerProperties(m_physicalDevice, &layerCount, nullptr);
     std::vector<VkLayerProperties> layerProperties(layerCount);
-    vkEnumerateDeviceLayerProperties(m_physicalDevice, &layerCount,
-                                     layerProperties.data());
+    vkEnumerateDeviceLayerProperties(
+        m_physicalDevice, &layerCount, layerProperties.data());
     return layerProperties;
 }
 
@@ -48,8 +48,8 @@ std::vector<VkExtensionProperties> PhysicalDevice::GetAvailableExtensions()
     const
 {
     uint32_t extensionCount = 0;
-    vkEnumerateDeviceExtensionProperties(m_physicalDevice, nullptr,
-                                         &extensionCount, nullptr);
+    vkEnumerateDeviceExtensionProperties(
+        m_physicalDevice, nullptr, &extensionCount, nullptr);
     std::vector<VkExtensionProperties> extensionProperties(extensionCount);
     vkEnumerateDeviceExtensionProperties(
         m_physicalDevice, nullptr, &extensionCount, extensionProperties.data());
@@ -67,8 +67,8 @@ VkSurfaceCapabilitiesKHR PhysicalDevice::GetSurfaceCapabilities(
     VkSurfaceKHR surface) const
 {
     VkSurfaceCapabilitiesKHR capabilities;
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_physicalDevice, surface,
-                                              &capabilities);
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+        m_physicalDevice, surface, &capabilities);
     return capabilities;
 }
 
@@ -76,8 +76,8 @@ std::vector<VkPresentModeKHR> PhysicalDevice::GetPresentModes(
     VkSurfaceKHR surface) const
 {
     uint32_t presentModeCount = 0;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(m_physicalDevice, surface,
-                                              &presentModeCount, nullptr);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(
+        m_physicalDevice, surface, &presentModeCount, nullptr);
     std::vector<VkPresentModeKHR> presentModes(presentModeCount);
     vkGetPhysicalDeviceSurfacePresentModesKHR(
         m_physicalDevice, surface, &presentModeCount, presentModes.data());
@@ -88,8 +88,8 @@ std::vector<VkSurfaceFormatKHR> PhysicalDevice::GetSurfaceFormats(
     VkSurfaceKHR surface) const
 {
     uint32_t surfaceFormatCount = 0;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, surface,
-                                         &surfaceFormatCount, nullptr);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(
+        m_physicalDevice, surface, &surfaceFormatCount, nullptr);
     std::vector<VkSurfaceFormatKHR> surfaceFormats(surfaceFormatCount);
     vkGetPhysicalDeviceSurfaceFormatsKHR(
         m_physicalDevice, surface, &surfaceFormatCount, surfaceFormats.data());
@@ -106,20 +106,18 @@ VkResult Device::Init(const PhysicalDevice& physicalDevice)
 {
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 
-    std::optional<uint32_t> dedicatedGraphicsQueueFamilyIndex = {};
-    std::optional<uint32_t> dedicatedComputeQueueFamilyIndex  = {};
-    std::optional<uint32_t> dedicatedTransferQueueFamilyIndex = {};
+    uint32_t graphicsQueueFamilyIndex = UINT32_MAX;
 
     float priority                = 1.0f;
     auto  queueFamiliesProperties = physicalDevice.GetQueueFamilyProperties();
     for (uint32_t queueFamilyIndex = 0;
-         queueFamilyIndex < queueFamiliesProperties.size(); queueFamilyIndex++)
+         queueFamilyIndex < queueFamiliesProperties.size();
+         queueFamilyIndex++)
     {
         VkQueueFamilyProperties queueFamilyProperty =
             queueFamiliesProperties[queueFamilyIndex];
 
-        if (!dedicatedGraphicsQueueFamilyIndex.has_value()
-            && queueFamilyProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+        if (queueFamilyProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT)
         {
             VkDeviceQueueCreateInfo queueCreateInfo;
             queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -130,37 +128,7 @@ VkResult Device::Init(const PhysicalDevice& physicalDevice)
             queueCreateInfo.pQueuePriorities = &priority;
             queueCreateInfos.push_back(queueCreateInfo);
 
-            dedicatedGraphicsQueueFamilyIndex = queueFamilyIndex;
-        }
-
-        if (!dedicatedGraphicsQueueFamilyIndex.has_value()
-            && queueFamilyProperty.queueFlags & VK_QUEUE_COMPUTE_BIT)
-        {
-            VkDeviceQueueCreateInfo queueCreateInfo;
-            queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-            queueCreateInfo.pNext = nullptr;
-            queueCreateInfo.flags = 0;
-            queueCreateInfo.queueFamilyIndex = queueFamilyIndex;
-            queueCreateInfo.queueCount       = 1;
-            queueCreateInfo.pQueuePriorities = &priority;
-            queueCreateInfos.push_back(queueCreateInfo);
-
-            dedicatedGraphicsQueueFamilyIndex = queueFamilyIndex;
-        }
-
-        if (!dedicatedGraphicsQueueFamilyIndex.has_value()
-            && queueFamilyProperty.queueFlags == VK_QUEUE_TRANSFER_BIT)
-        {
-            VkDeviceQueueCreateInfo queueCreateInfo;
-            queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-            queueCreateInfo.pNext = nullptr;
-            queueCreateInfo.flags = 0;
-            queueCreateInfo.queueFamilyIndex = queueFamilyIndex;
-            queueCreateInfo.queueCount       = 1;
-            queueCreateInfo.pQueuePriorities = &priority;
-            queueCreateInfos.push_back(queueCreateInfo);
-
-            dedicatedGraphicsQueueFamilyIndex = queueFamilyIndex;
+            graphicsQueueFamilyIndex = queueFamilyIndex;
         }
     }
 
@@ -182,43 +150,15 @@ VkResult Device::Init(const PhysicalDevice& physicalDevice)
         createInfo.ppEnabledExtensionNames = enabledExtensions.data();
         createInfo.pEnabledFeatures        = &features;
 
-        RHI_VK_RETURN_IF_FAIL(vkCreateDevice(physicalDevice.GetHandle(),
-                                             &createInfo, nullptr, &m_device))
+        RHI_VK_RETURN_IF_FAIL(vkCreateDevice(
+            physicalDevice.GetHandle(), &createInfo, nullptr, &m_device))
     }
 
     // Create Queue
     {
         VkQueue queueHandle = VK_NULL_HANDLE;
-
-        if (dedicatedGraphicsQueueFamilyIndex.has_value())
-        {
-            m_queues.push_back(Queue(
-                queueHandle, dedicatedGraphicsQueueFamilyIndex.value(), 0));
-            m_pGraphicsQueue = &m_queues.back();
-
-            // Use the graphics queue as a fall back if there is no dedicated
-            // compute or transfer queues.
-            m_pComputeQueue  = m_pGraphicsQueue;
-            m_pTransferQueue = m_pGraphicsQueue;
-        }
-        else
-        {
-            return VK_ERROR_UNKNOWN;
-        }
-
-        if (dedicatedComputeQueueFamilyIndex.has_value())
-        {
-            m_queues.push_back(Queue(
-                queueHandle, dedicatedComputeQueueFamilyIndex.value(), 0));
-            m_pComputeQueue = &m_queues.back();
-        }
-
-        if (dedicatedTransferQueueFamilyIndex.has_value())
-        {
-            m_queues.push_back(Queue(
-                queueHandle, dedicatedTransferQueueFamilyIndex.value(), 0));
-            m_pTransferQueue = &m_queues.back();
-        }
+        vkGetDeviceQueue(m_device, graphicsQueueFamilyIndex, 0, &queueHandle);
+        m_graphicsQueue = CreateUnique<CommandQueue>(queueHandle);
     }
 
     VmaAllocatorCreateInfo createInfo = {};
@@ -233,52 +173,6 @@ VkResult Device::Init(const PhysicalDevice& physicalDevice)
 EResultCode Device::WaitIdle() const
 {
     return ConvertResult(vkDeviceWaitIdle(m_device));
-}
-
-VkResult Queue::WaitIdle() const
-{
-    return vkQueueWaitIdle(m_handle);
-}
-
-VkResult Queue::Present(const PresentRequest& presentRequest) const
-{
-    std::vector<VkSemaphore>    waitSemaphoresHandles;
-    std::vector<VkSwapchainKHR> swapchainsHandles;
-    std::vector<uint32_t>       imageIndices;
-    std::vector<VkResult>       results;
-
-    for (auto swapchain : presentRequest.swapchains)
-    {
-        imageIndices.push_back(swapchain->GetCurrentBackBufferIndex());
-        swapchainsHandles.push_back(swapchain->GetHandle());
-        waitSemaphoresHandles.push_back(
-            swapchain->GetBackbufferReadSemaphore().GetHandle());
-        results.push_back(VkResult());
-    }
-
-    results.resize(presentRequest.swapchains.size());
-    imageIndices.reserve(presentRequest.swapchains.size());
-
-    VkPresentInfoKHR presentInfo;
-    presentInfo.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    presentInfo.pNext              = nullptr;
-    presentInfo.waitSemaphoreCount = CountElements(waitSemaphoresHandles);
-    presentInfo.pWaitSemaphores    = waitSemaphoresHandles.data();
-    presentInfo.swapchainCount     = CountElements(swapchainsHandles);
-    presentInfo.pSwapchains        = swapchainsHandles.data();
-    presentInfo.pImageIndices      = imageIndices.data();
-    presentInfo.pResults           = results.data();
-
-    return vkQueuePresentKHR(m_handle, &presentInfo);
-}
-
-VkResult Queue::Submit(const std::vector<Queue::SubmitRequest>& submitRequests,
-                       const Fence&                             fence) const
-{
-    (void)submitRequests;
-    (void)fence;
-    // TODO
-    return VK_ERROR_UNKNOWN;
 }
 
 }  // namespace Vulkan

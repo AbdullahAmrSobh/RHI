@@ -28,7 +28,7 @@ def save_to_cmake_file(files, variable_name, cmake_filename):
         cmake_file.write(')\n\n')
 
 # path to the cmake file        
-CMAKE_FILE_PATH = './FILES.cmake'
+CMAKE_FILE_PATH = './cmake/SourceFilesList.cmake'
 
 # remove old _FILES.cmake if exists
 if os.path.exists(CMAKE_FILE_PATH):

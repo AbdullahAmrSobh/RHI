@@ -16,8 +16,9 @@ class CommandBuffer final
     , public DeviceObject<VkCommandBuffer>
 {
 public:
-    CommandBuffer(const Device& device, CommandAllocator* pParantAllocator,
-                  VkCommandBuffer handle)
+    CommandBuffer(const Device&     device,
+                  CommandAllocator* pParantAllocator,
+                  VkCommandBuffer   handle)
         : DeviceObject(&device, handle)
         , m_pParantAllocator(pParantAllocator)
     {
@@ -28,36 +29,17 @@ public:
     ///////////////////////////////////////////////////////////////////////////////
     // Interface.
     ///////////////////////////////////////////////////////////////////////////////
-    virtual void Begin() override;
-    virtual void End() override;
+    void Begin() override;
+    void End() override;
 
-    virtual void SetViewports(const std::vector<Viewport>& viewports) override;
-    virtual void SetScissors(const std::vector<Rect>& scissors) override;
+    void SetViewports(const std::vector<Viewport>& viewports) override;
+    void SetScissors(const std::vector<Rect>& scissors) override;
 
-    virtual void Submit(const DrawCommand& drawCommand) override;
-    virtual void Submit(const CopyCommand& copyCommand) override;
-    virtual void Submit(const DispatchCommand& dispatchCommand) override;
+    void Submit(const DrawCommand& drawCommand) override;
     ///////////////////////////////////////////////////////////////////////////////
 
-    inline void SetFramebuffer(const Framebuffer& framebuffer);
-
-    // Method for waiting on a stage (sync point), for other commands to finish.
-    // Method for signaling to other commands, that this command finished a
-    // sage.
-
 private:
-    void BeginRenderPass(Extent2D                  extent,
-                         std::vector<VkClearValue> clearValues);
-    void EndRenderPass();
-    void BindShaderResourceGroups(
-        const std::vector<ShaderResourceGroup*>& groups);
-
-private:
-    const Framebuffer* m_renderTarget;
     CommandAllocator*  m_pParantAllocator;
-
-    std::vector<VkSemaphoreSubmitInfo*> m_waitSemaphores;
-    std::vector<VkSemaphoreSubmitInfo*> m_signalSemaphores;
 };
 
 enum class ECommandPrimaryTask

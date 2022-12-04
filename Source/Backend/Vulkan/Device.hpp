@@ -1,4 +1,5 @@
 #pragma once
+#include "Backend/Vulkan/CommandQueue.hpp"
 #include "Backend/Vulkan/Instance.hpp"
 #include "RHI/Device.hpp"
 
@@ -6,12 +7,6 @@ namespace RHI
 {
 namespace Vulkan
 {
-class Semaphore;
-class Fence;
-class PipelineLayout;
-class DescriptorSetLayout;
-class Swapchain;
-class CommandBuffer;
 
 class PhysicalDevice final : public IPhysicalDevice
 {
@@ -21,7 +16,7 @@ public:
     {
     }
 
-    inline VkPhysicalDevice GetHandle() const
+    VkPhysicalDevice GetHandle() const
     {
         return m_physicalDevice;
     }
@@ -50,62 +45,6 @@ private:
     VkPhysicalDevice m_physicalDevice;
 };
 
-class Queue final
-{
-public:
-    struct PresentRequest
-    {
-        std::vector<const Semaphore*> waitSemaphores;
-        std::vector<const Swapchain*> swapchains;
-    };
-
-    struct SubmitRequest
-    {
-        std::vector<const Semaphore*>     waitSemaphores;
-        std::vector<const CommandBuffer*> commandBuffers;
-        std::vector<const Semaphore*>     signalSemaphores;
-    };
-
-    inline Queue(VkQueue queue, uint32_t familyIndex, uint32_t index)
-        : m_handle(queue)
-        , m_familyIndex(familyIndex)
-        , m_queueIndex(index)
-    {
-    }
-
-    inline uint32_t GetFamilyIndex() const
-    {
-        return m_familyIndex;
-    }
-
-    inline uint32_t GetQueueIndex() const
-    {
-        return m_queueIndex;
-    }
-
-    VkResult WaitIdle() const;
-
-    VkResult Present(const PresentRequest& presentRequest) const;
-
-    VkResult Submit(const std::vector<SubmitRequest>& submitRequests,
-                    const Fence&                      fence) const;
-
-private:
-    VkQueue  m_handle;
-    uint32_t m_familyIndex;
-    uint32_t m_queueIndex;
-};
-
-using DeviceMemoryPtr = void*;
-class DeviceContext
-{
-public:
-    virtual ~DeviceContext() = default;
-
-    virtual Expected<DeviceMemoryPtr> Map(IResource& resource);
-    virtual void                      Unmap(IResource& resource);
-};
-
 class Device final : public IDevice
 {
 public:
@@ -114,57 +53,64 @@ public:
         , m_pPhysicalDevice(&physicaldDevice)
     {
     }
+
     ~Device();
 
     VkResult Init(const PhysicalDevice& physicalDevice);
 
-    inline const PhysicalDevice& GetPhysicalDevice() const
+    const PhysicalDevice& GetPhysicalDevice() const
     {
         return *m_pPhysicalDevice;
     }
 
-    inline VkPhysicalDevice GetPhysicalDeviceHandle() const
+    VkPhysicalDevice GetPhysicalDeviceHandle() const
     {
         return m_pPhysicalDevice->GetHandle();
     }
 
-    inline VkDevice GetHandle() const
+    VkDevice GetHandle() const
     {
         return m_device;
     }
 
-    inline VmaAllocator GetAllocator() const
+    VmaAllocator GetAllocator() const
     {
         return m_allocator;
     }
 
-    virtual EResultCode                  WaitIdle() const override;
-    virtual Expected<Unique<ISwapchain>> CreateSwapChain(
+    EResultCode WaitIdle() const override;
+
+    Expected<Unique<ISwapchain>> CreateSwapChain(
         const SwapchainDesc& desc) const override;
-    virtual Expected<Unique<IShaderProgram>> CreateShaderProgram(
+
+    Expected<Unique<IShaderProgram>> CreateShaderProgram(
         const ShaderProgramDesc& desc) const override;
-    virtual Expected<Unique<IShaderResourceGroupAllocator>>
+
+    Expected<Unique<IShaderResourceGroupAllocator>>
     CreateShaderResourceGroupAllocator() const override;
-    virtual Expected<Unique<IPipelineState>> CreateGraphicsPipelineState(
+
+    Expected<Unique<IPipelineState>> CreateGraphicsPipelineState(
         const GraphicsPipelineStateDesc& desc) const override;
-    virtual Expected<Unique<IFence>>   CreateFence() const override;
-    virtual Expected<Unique<ISampler>> CreateSampler(
+
+    Expected<Unique<IFence>> CreateFence() const override;
+
+    Expected<Unique<ISampler>> CreateSampler(
         const SamplerDesc& desc) const override;
-    virtual Expected<Unique<IImage>> CreateImage(
-        const AllocationDesc& allocationDesc,
-        const ImageDesc&      desc) const override;
-    virtual Expected<Unique<IImageView>> CreateImageView(
-        const IImage& image, const ImageViewDesc& desc) const override;
-    virtual Expected<Unique<IBuffer>> CreateBuffer(
+
+    Expected<Unique<IImage>> CreateImage(const AllocationDesc& allocationDesc,
+                                         const ImageDesc& desc) const override;
+
+    Expected<Unique<IImageView>> CreateImageView(
+        const IImage&        image,
+        const ImageViewDesc& desc) const override;
+
+    Expected<Unique<IBuffer>> CreateBuffer(
         const AllocationDesc& allocationDesc,
         const BufferDesc&     desc) const override;
-    virtual Expected<Unique<IBufferView>> CreateBufferView(
-        const IBuffer& buffer, const BufferViewDesc& desc) const override;
 
-private:
-    EResultCode InitQueues(std::optional<uint32_t> graphicsQueueIndex,
-                           std::optional<uint32_t> computeQueueIndex,
-                           std::optional<uint32_t> indexQueueIndex);
+    Expected<Unique<IBufferView>> CreateBufferView(
+        const IBuffer&        buffer,
+        const BufferViewDesc& desc) const override;
 
 private:
     const Instance* m_pInstance;
@@ -175,41 +121,17 @@ private:
 
     VmaAllocator m_allocator;
 
-    std::vector<Queue> m_queues;
-
-    Queue* m_pGraphicsQueue;
-    Queue* m_pComputeQueue;
-    Queue* m_pTransferQueue;
+    Unique<CommandQueue> m_graphicsQueue;
 
 public:
-    inline const Queue& GetGraphicsQueue() const
+    const CommandQueue& GetGraphicsQueue() const
     {
-        return *m_pGraphicsQueue;
+        return *m_graphicsQueue;
     }
 
-    inline Queue& GetGraphicsQueue()
+    CommandQueue& GetGraphicsQueue()
     {
-        return *m_pGraphicsQueue;
-    }
-
-    inline const Queue& GetComputeQueue() const
-    {
-        return *m_pComputeQueue;
-    }
-
-    inline Queue& GetComputeQueue()
-    {
-        return *m_pComputeQueue;
-    }
-
-    inline Queue& GetTransferQueue()
-    {
-        return *m_pTransferQueue;
-    }
-
-    inline const Queue& GetTransferQueue() const
-    {
-        return *m_pTransferQueue;
+        return *m_graphicsQueue;
     }
 };
 }  // namespace Vulkan

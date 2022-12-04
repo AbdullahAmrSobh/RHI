@@ -20,18 +20,20 @@ set(HEADER_FILES
 )
 
 set(SOURCE_FILES
+	"Source/Backend/Vulkan/CommandQueue.cpp"
+	"Source/Backend/Vulkan/CommandQueue.hpp"
 	"Source/Backend/Vulkan/Commands.cpp"
 	"Source/Backend/Vulkan/Commands.hpp"
 	"Source/Backend/Vulkan/Common.cpp"
 	"Source/Backend/Vulkan/Common.hpp"
 	"Source/Backend/Vulkan/Device.cpp"
 	"Source/Backend/Vulkan/Device.hpp"
+	"Source/Backend/Vulkan/Framebuffer.cpp"
+	"Source/Backend/Vulkan/Framebuffer.hpp"
 	"Source/Backend/Vulkan/Instance.cpp"
 	"Source/Backend/Vulkan/Instance.hpp"
 	"Source/Backend/Vulkan/PipelineState.cpp"
 	"Source/Backend/Vulkan/PipelineState.hpp"
-	"Source/Backend/Vulkan/RenderPass.cpp"
-	"Source/Backend/Vulkan/RenderPass.hpp"
 	"Source/Backend/Vulkan/Resource.cpp"
 	"Source/Backend/Vulkan/Resource.hpp"
 	"Source/Backend/Vulkan/ShaderResourceGroup.cpp"

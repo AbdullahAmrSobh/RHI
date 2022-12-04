@@ -13,9 +13,6 @@ namespace RHI
 class IPhysicalDevice
 {
 public:
-    struct Features;
-    struct Properties;
-
     enum class EVendor : uint8_t
     {
         Nvidia,
@@ -23,17 +20,17 @@ public:
         AMD,
     };
 
-    inline bool IsDiscrete() const
+    bool IsDiscrete() const
     {
         return m_isDiscrete;
     }
 
-    inline bool IsIntegrated() const
+    bool IsIntegrated() const
     {
         return !m_isDiscrete;
     }
 
-    inline EVendor GetVendor() const
+    EVendor GetVendor() const
     {
         return m_vendor;
     }
@@ -41,17 +38,6 @@ public:
 private:
     bool    m_isDiscrete;
     EVendor m_vendor;
-};
-
-class ITransferQueue
-{
-public:
-    virtual ~ITransferQueue() = default;
-
-    virtual EResultCode Enqueue(const CopyCommand& copyCommand,
-                                const IFence&      signalFence) = 0;
-    virtual EResultCode Enqueue(std::span<const CopyCommand&> copyCommands,
-                                const IFence&                 signalFence) = 0;
 };
 
 class IDevice
@@ -62,11 +48,6 @@ public:
     inline const IPhysicalDevice& GetPhysicalDevice() const
     {
         return *m_pPhysicalDevice;
-    }
-
-    inline const ITransferQueue& GetTransferQueue() const
-    {
-        return *m_transferQueue;
     }
 
     virtual EResultCode WaitIdle() const = 0;
@@ -89,20 +70,23 @@ public:
         const SamplerDesc& desc) const = 0;
 
     virtual Expected<Unique<IImage>> CreateImage(
-        const AllocationDesc& allocationDesc, const ImageDesc& desc) const = 0;
+        const AllocationDesc& allocationDesc,
+        const ImageDesc&      desc) const = 0;
 
     virtual Expected<Unique<IImageView>> CreateImageView(
-        const IImage& image, const ImageViewDesc& desc) const = 0;
+        const IImage&        image,
+        const ImageViewDesc& desc) const = 0;
 
     virtual Expected<Unique<IBuffer>> CreateBuffer(
-        const AllocationDesc& allocationDesc, const BufferDesc& desc) const = 0;
+        const AllocationDesc& allocationDesc,
+        const BufferDesc&     desc) const = 0;
 
     virtual Expected<Unique<IBufferView>> CreateBufferView(
-        const IBuffer& buffer, const BufferViewDesc& desc) const = 0;
+        const IBuffer&        buffer,
+        const BufferViewDesc& desc) const = 0;
 
 protected:
-    Unique<ITransferQueue> m_transferQueue;
-    IPhysicalDevice*       m_pPhysicalDevice;
+    IPhysicalDevice* m_pPhysicalDevice;
 };
 
 }  // namespace RHI

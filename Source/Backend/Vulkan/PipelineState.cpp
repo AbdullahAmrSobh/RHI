@@ -46,8 +46,8 @@ VkResult PipelineLayout::Init(const PipelineLayoutDesc& layoutDesc)
     createInfo.pushConstantRangeCount = CountElements(m_pushConstantRanges);
     createInfo.pPushConstantRanges    = m_pushConstantRanges.data();
 
-    return vkCreatePipelineLayout(m_pDevice->GetHandle(), &createInfo, nullptr,
-                                  &m_handle);
+    return vkCreatePipelineLayout(
+        m_pDevice->GetHandle(), &createInfo, nullptr, &m_handle);
 }
 
 namespace PipelineStateInitalizers
@@ -473,8 +473,12 @@ VkResult PipelineState::Init(const GraphicsPipelineStateDesc& desc)
     createInfo.basePipelineHandle = VK_NULL_HANDLE;
     createInfo.basePipelineIndex  = 0;
 
-    return vkCreateGraphicsPipelines(m_pDevice->GetHandle(), VK_NULL_HANDLE, 1,
-                                     &createInfo, nullptr, &m_handle);
+    return vkCreateGraphicsPipelines(m_pDevice->GetHandle(),
+                                     VK_NULL_HANDLE,
+                                     1,
+                                     &createInfo,
+                                     nullptr,
+                                     &m_handle);
 }
 
 }  // namespace Vulkan

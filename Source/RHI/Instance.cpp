@@ -30,9 +30,9 @@ Expected<Unique<IInstance>> IInstance::Create(EBackend                backend,
     }
 }
 
-std::vector<IPhysicalDevice*> IInstance::GetPhysicalDevices() const
+std::vector<const IPhysicalDevice*> IInstance::GetPhysicalDevices() const
 {
-    std::vector<IPhysicalDevice*> result;
+    std::vector<const IPhysicalDevice*> result;
     for (auto& physicalDevice : m_physicalDevices)
     {
         result.push_back(physicalDevice.get());

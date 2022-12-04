@@ -47,7 +47,7 @@ public:
         return m_physicalDeviceCount;
     }
 
-    std::vector<IPhysicalDevice*> GetPhysicalDevices() const;
+    std::vector<const IPhysicalDevice*> GetPhysicalDevices() const;
 
 #ifdef RHI_LINUX
     virtual Expected<Unique<ISurface>> CreateSurface(

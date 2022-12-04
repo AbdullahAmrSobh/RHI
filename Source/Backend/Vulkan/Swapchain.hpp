@@ -26,7 +26,7 @@ public:
     VkResult Init(const X11SurfaceDesc& desc);
 #endif
 
-    VkBool32 QueueSupportPresent(const class Queue& queue) const;
+    VkBool32 QueryQueueFamilyPresentSupport(uint32_t familyIndex) const;
 
     std::vector<VkSurfaceFormatKHR> GetSupportedFormats(
         const PhysicalDevice& physicalDevice);
