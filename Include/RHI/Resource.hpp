@@ -160,11 +160,32 @@ struct ImageDesc
 class IImage : public IResource
 {
 public:
+    IImage()
+        : m_desc(CreateUnique<ImageDesc>())
+    {
+    }
+
     virtual ~IImage() = default;
+
+    const ImageDesc& GetDescription() const
+    {
+        return *m_desc;
+    }
+
+protected:
+    Unique<ImageDesc> m_desc;
 };
 
 struct ImageViewRange
 {
+    ImageViewRange()
+        : baseArrayElement(0)
+        , arraySize(1)
+        , baseMipLevel(0)
+        , mipLevelsCount(1)
+    {
+    }
+
     uint32_t baseArrayElement;
     uint32_t arraySize;
     uint32_t baseMipLevel;
@@ -191,7 +212,20 @@ struct ImageViewDesc
 class IImageView
 {
 public:
+    IImageView()
+        : m_desc(CreateUnique<ImageViewDesc>())
+    {
+    }
+
     virtual ~IImageView() = default;
+
+    const ImageViewDesc& GetDescription() const
+    {
+        return *m_desc;
+    }
+
+protected:
+    Unique<ImageViewDesc> m_desc;
 };
 
 enum class EBufferUsageFlagBits
@@ -211,7 +245,20 @@ struct BufferDesc
 class IBuffer : public IResource
 {
 public:
+    IBuffer()
+        : m_desc(CreateUnique<BufferDesc>())
+    {
+    }
+
     virtual ~IBuffer() = default;
+
+    const BufferDesc& GetDescription() const
+    {
+        return *m_desc;
+    }
+
+protected:
+    Unique<BufferDesc> m_desc;
 };
 
 struct BufferRange
@@ -229,7 +276,20 @@ struct BufferViewDesc
 class IBufferView
 {
 public:
+    IBufferView()
+        : m_desc(CreateUnique<BufferViewDesc>())
+    {
+    }
+
     virtual ~IBufferView() = default;
+
+    const BufferViewDesc& GetDescription() const
+    {
+        return *m_desc;
+    }
+
+protected:
+    Unique<BufferViewDesc> m_desc;
 };
 
 }  // namespace RHI

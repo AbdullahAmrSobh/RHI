@@ -158,6 +158,8 @@ Image::~Image()
 VkResult Image::Init(const AllocationDesc& allocationDesc,
                      const ImageDesc&      desc)
 {
+    *m_desc = desc;
+    
     VkImageCreateInfo createInfo {};
     createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     createInfo.pNext = nullptr;
@@ -211,6 +213,8 @@ ImageView::~ImageView()
 
 VkResult ImageView::Init(const Image& image, const ImageViewDesc& desc)
 {
+    *m_desc = desc;
+ 
     VkImageViewCreateInfo createInfo {};
     createInfo.sType        = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     createInfo.pNext        = nullptr;
@@ -243,6 +247,8 @@ Buffer::~Buffer()
 VkResult Buffer::Init(const AllocationDesc& allocationDesc,
                       const BufferDesc&     desc)
 {
+    *m_desc = desc;
+    
     VkBufferCreateInfo createInfo {};
     createInfo.sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     createInfo.pNext                 = nullptr;
@@ -278,6 +284,8 @@ BufferView::~BufferView()
 
 VkResult BufferView::Init(const Buffer& buffer, const BufferViewDesc& desc)
 {
+    *m_desc = desc;
+    
     VkBufferViewCreateInfo createInfo {};
     createInfo.sType  = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
     createInfo.pNext  = nullptr;
