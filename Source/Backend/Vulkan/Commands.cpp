@@ -2,7 +2,6 @@
 
 #include "Backend/Vulkan/Device.hpp"
 #include "Backend/Vulkan/PipelineState.hpp"
-#include "Backend/Vulkan/RenderPass.hpp"
 
 namespace RHI
 {
@@ -59,28 +58,13 @@ CommandAllocator::~CommandAllocator()
     vkDestroyCommandPool(m_pDevice->GetHandle(), m_handle, nullptr);
 }
 
-VkResult CommandAllocator::Init(ECommandPrimaryTask task)
+VkResult CommandAllocator::Init()
 {
     VkCommandPoolCreateInfo createInfo;
-    createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    createInfo.pNext = nullptr;
-    createInfo.flags = 0;
-
-    switch (task)
-    {
-        case ECommandPrimaryTask::Graphics:
-            createInfo.queueFamilyIndex =
-                m_pDevice->GetTransferQueue().GetFamilyIndex();
-            break;
-        case ECommandPrimaryTask::Compute:
-            createInfo.queueFamilyIndex =
-                m_pDevice->GetTransferQueue().GetFamilyIndex();
-            break;
-        case ECommandPrimaryTask::Transfer:
-            createInfo.queueFamilyIndex =
-                m_pDevice->GetTransferQueue().GetFamilyIndex();
-            break;
-    }
+    createInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    createInfo.pNext            = nullptr;
+    createInfo.flags            = 0;
+    createInfo.queueFamilyIndex = m_pDevice->GetGraphicsQueue().m_familyIndex;
 
     return vkCreateCommandPool(
         m_pDevice->GetHandle(), &createInfo, nullptr, &m_handle);

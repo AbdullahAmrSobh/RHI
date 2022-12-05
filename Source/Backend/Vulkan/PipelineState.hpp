@@ -21,13 +21,12 @@ public:
 
     VkResult Init(const PipelineLayoutDesc& layoutDesc);
 
-    inline size_t GetHash() const
+    size_t GetHash() const
     {
         return m_hash;
     }
 
-    inline const std::vector<Unique<DescriptorSetLayout>>&
-    GetDescriptorLayouts() const
+    const std::vector<Unique<DescriptorSetLayout>>& GetDescriptorLayouts() const
     {
         return m_descriptorSetsLayouts;
     }
@@ -52,7 +51,7 @@ public:
 
     VkResult Init(const GraphicsPipelineStateDesc& desc);
 
-    inline const PipelineLayout& GetLayout() const
+    const PipelineLayout& GetLayout() const
     {
         return *m_layout;
     }

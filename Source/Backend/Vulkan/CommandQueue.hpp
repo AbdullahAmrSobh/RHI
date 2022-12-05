@@ -3,15 +3,17 @@
 
 namespace RHI
 {
+namespace Vulkan
+{
 
-class Semaphore; 
-class CommandBuffer; 
+class Semaphore;
+class CommandBuffer;
 class Swapchain;
 
 struct WaitPoint
 {
-    Semaphore*            semaphore;
-    VkShaderStageFlagBits stage;
+    Semaphore*           semaphore;
+    VkPipelineStageFlags stage;
 };
 
 struct SubmitRequest
@@ -24,21 +26,25 @@ struct SubmitRequest
 class CommandQueue
 {
 public:
-    CommandQueue(VkQueue queue)
-        : m_handle(queue)
+    CommandQueue(VkQueue queue, uint32_t familyIndex)
+        : m_familyIndex(familyIndex)
+        , m_handle(queue)
     {
     }
 
-    VkResult WaitIdle(uint32_t timeoutMiliseconds);
+    void WaitIdle();
 
-    VkResult Submit(std::span<const SubmitRequest*> submitList,
-                    IFence*                           signalFence = nullptr);
+    void Submit(std::span<const SubmitRequest*> submitList,
+                    IFence*                         signalFence = nullptr);
 
-    VkResult Present(std::span<const WaitPoint*>,
-                     std::vector<const Swapchain*> swapchains);
+    VkResult Present(std::span<const Semaphore*> waitSemaphores,
+                     const Swapchain& swapchain);
+
+    const uint32_t m_familyIndex;
 
 private:
-    VkQueue m_handle; 
+    VkQueue m_handle;
 };
 
+}  // namespace Vulkan
 }  // namespace RHI

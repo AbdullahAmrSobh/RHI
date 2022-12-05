@@ -15,9 +15,9 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include <span>
 
 #include "RHI/Core/Expected.hpp"
-#include "RHI/Core/Span.hpp"
 
 // #include "RHI/Core/Span.hpp"
 

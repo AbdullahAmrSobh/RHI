@@ -5,6 +5,8 @@
 namespace RHI
 {
 
+class IPipelineState;
+
 struct DrawCommand
 {
     struct LinearDrawData

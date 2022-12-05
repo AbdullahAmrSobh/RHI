@@ -6,6 +6,7 @@ namespace RHI
 {
 namespace Vulkan
 {
+
 class Framebuffer;
 class Semaphore;
 class ShaderResourceGroup;
@@ -39,14 +40,7 @@ public:
     ///////////////////////////////////////////////////////////////////////////////
 
 private:
-    CommandAllocator*  m_pParantAllocator;
-};
-
-enum class ECommandPrimaryTask
-{
-    Graphics,
-    Compute,
-    Transfer,
+    CommandAllocator* m_pParantAllocator;
 };
 
 class CommandAllocator final : public DeviceObject<VkCommandPool>
@@ -59,7 +53,7 @@ public:
 
     ~CommandAllocator();
 
-    VkResult Init(ECommandPrimaryTask task);
+    VkResult Init();
 
     VkResult Reset();
 

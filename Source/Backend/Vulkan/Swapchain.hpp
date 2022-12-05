@@ -7,6 +7,7 @@ namespace RHI
 namespace Vulkan
 {
 class Instance;
+class PhysicalDevice;
 
 class Surface final
     : public ISurface

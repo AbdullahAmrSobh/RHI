@@ -158,7 +158,7 @@ VkResult Device::Init(const PhysicalDevice& physicalDevice)
     {
         VkQueue queueHandle = VK_NULL_HANDLE;
         vkGetDeviceQueue(m_device, graphicsQueueFamilyIndex, 0, &queueHandle);
-        m_graphicsQueue = CreateUnique<CommandQueue>(queueHandle);
+        m_graphicsQueue = CreateUnique<CommandQueue>(queueHandle, graphicsQueueFamilyIndex);
     }
 
     VmaAllocatorCreateInfo createInfo = {};

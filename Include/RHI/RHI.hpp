@@ -11,4 +11,3 @@
 #include "RHI/ShaderResourceGroup.hpp"
 #include "RHI/Surface.hpp"
 #include "RHI/Swapchain.hpp"
-#include "RHI/TypeTraits.hpp"
