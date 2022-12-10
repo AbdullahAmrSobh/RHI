@@ -6,8 +6,6 @@
 #include "RHI/PipelineState.hpp"
 #include "RHI/Resource.hpp"
 
-#define RHI_VK_ASSERT_SUCCESS(X) assert(X == VK_SUCCESS);
-
 #define RHI_VK_IS_SUCCESS(X) (X == VK_SUCCESS)
 
 #define RHI_VK_RETURN_IF_FAIL(X)                                               \
@@ -20,6 +18,7 @@ namespace RHI
 {
 namespace Vulkan
 {
+
 EResultCode ConvertResult(VkResult resultCode);
 
 VkShaderStageFlags CovnertShaderStages(ShaderStageFlags stages);
@@ -87,6 +86,31 @@ VkImageUsageFlags ConvertImageUsage(ImageUsageFlags usageFlags);
 VkBufferUsageFlags ConvertBufferUsage(BufferUsageFlags usageFlags);
 
 VmaMemoryUsage ConvertMemoryUsage(EMemoryUsage usage);
+
+namespace Utils
+{
+
+inline void AssertSuccess(VkResult result)
+{
+    assert(result == VK_SUCCESS);
+}
+
+inline bool IsSuccess(VkResult result)
+{
+    return result >= 0;
+}
+
+inline bool IsError(VkResult result)
+{
+    return !(IsSuccess(result));
+}
+
+inline auto Unexpected(VkResult result)
+{
+    return ::RHI::Unexpected(ConvertResult(result));
+}
+
+}  // namespace Utils
 
 }  // namespace Vulkan
 }  // namespace RHI

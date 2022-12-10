@@ -12,8 +12,10 @@
 #    define VK_USE_PLATFORM_XLIB_KHR
 #endif
 
+#include "Backend/Vulkan/Common.hpp"
 #include "Backend/Vulkan/Device.hpp"
 #include "Backend/Vulkan/Swapchain.hpp"
+#include "Backend/Vulkan/CommandQueue.hpp"
 
 namespace RHI
 {
@@ -105,7 +107,7 @@ VkBool32 Surface::QueryQueueFamilyPresentSupport(uint32_t familyIndex) const
         m_handle,
         &support);
 
-    RHI_VK_ASSERT_SUCCESS(result);
+    Utils::AssertSuccess(result);
 
     return support;
 }
@@ -119,7 +121,7 @@ std::vector<VkSurfaceFormatKHR> Surface::GetSupportedFormats(
     std::vector<VkSurfaceFormatKHR> formats(count);
     VkResult result = vkGetPhysicalDeviceSurfaceFormatsKHR(
         physicalDevice.GetHandle(), m_handle, &count, formats.data());
-    assert(RHI_VK_IS_SUCCESS(result));
+    Utils::AssertSuccess(result);
     return formats;
 }
 
@@ -132,7 +134,7 @@ std::vector<VkPresentModeKHR> Surface::GetSupportedPresentModes(
     std::vector<VkPresentModeKHR> modes(count);
     VkResult result = vkGetPhysicalDeviceSurfacePresentModesKHR(
         physicalDevice.GetHandle(), m_handle, &count, modes.data());
-    assert(RHI_VK_IS_SUCCESS(result));
+    Utils::AssertSuccess(result);
     return modes;
 }
 
@@ -142,7 +144,7 @@ VkSurfaceCapabilitiesKHR Surface::GetCapabilities(
     VkSurfaceCapabilitiesKHR capabilities;
     VkResult                 result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
         physicalDevice.GetHandle(), m_handle, &capabilities);
-    assert(RHI_VK_IS_SUCCESS(result));
+    Utils::AssertSuccess(result);
     return capabilities;
 }
 
