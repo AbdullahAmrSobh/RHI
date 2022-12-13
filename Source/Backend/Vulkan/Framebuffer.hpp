@@ -6,15 +6,19 @@ namespace RHI
 namespace Vulkan
 {
 
-class FramebufferLayout final : public DeviceObject<VkRenderPass>
+class ImagePassAttachment;
+
+class RenderPassLayout final : public DeviceObject<VkRenderPass>
 {
 public:
-    RenderPass(const Device& device)
+    RenderPassLayout(const Device& device)
         : DeviceObject(&device)
     {
     }
 
-    ~RenderPass();
+    ~RenderPassLayout();
+
+    VkResult Init(const std::span<const ImagePassAttachment*> passAttachment);
 };
 
 class Framebuffer final : public DeviceObject<VkFramebuffer>
@@ -26,8 +30,12 @@ public:
     }
     ~Framebuffer();
 
-    VkResult Init(VkExtent2D extent, const AttachmentsDesc& attachmentsDesc,
-                  const RenderPass& renderPass);
+    VkResult Init(const RenderPassLayout&     layout,
+                  std::span<ImageView* const> attachments);
+
+private:
+    const RenderPassLayout* m_layout;
+    
 };
 
 }  // namespace Vulkan

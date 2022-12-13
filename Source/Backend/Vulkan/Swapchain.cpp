@@ -12,10 +12,10 @@
 #    define VK_USE_PLATFORM_XLIB_KHR
 #endif
 
+#include "Backend/Vulkan/CommandQueue.hpp"
 #include "Backend/Vulkan/Common.hpp"
 #include "Backend/Vulkan/Device.hpp"
 #include "Backend/Vulkan/Swapchain.hpp"
-#include "Backend/Vulkan/CommandQueue.hpp"
 
 namespace RHI
 {
@@ -29,7 +29,7 @@ Expected<Unique<ISurface>> Instance::CreateSurface(
     Unique<Surface> surface = CreateUnique<Surface>(*this);
     VkResult        result  = surface->Init(desc);
 
-    if (RHI_VK_IS_SUCCESS(result))
+    if (Utils::IsSuccess(result))
         return std::move(surface);
 
     return Unexpected(ConvertResult(result));
@@ -55,7 +55,7 @@ Expected<Unique<ISurface>> Instance::CreateSurface(const Win32SurfaceDesc& desc)
     Unique<Surface> surface = CreateUnique<Surface>(*this);
     VkResult        result  = surface->Init(desc);
 
-    if (RHI_VK_IS_SUCCESS(result))
+    if (Utils::IsSuccess(result))
         return std::move(surface);
 
     return Unexpected(ConvertResult(result));
@@ -85,7 +85,7 @@ Expected<Unique<ISwapchain>> Device::CreateSwapChain(
     Unique<Swapchain> swapchain = CreateUnique<Swapchain>(*this);
     VkResult          result    = swapchain->Init(desc);
 
-    if (RHI_VK_IS_SUCCESS(result))
+    if (Utils::IsSuccess(result))
         return std::move(swapchain);
 
     return Unexpected(ConvertResult(result));
@@ -194,7 +194,7 @@ VkPresentModeKHR Surface::SelectPresentMode(
 
 Swapchain::~Swapchain()
 {
-    for (auto image : m_backBuffers)
+    for (auto image : m_images)
     {
         delete image;
     }
@@ -204,6 +204,8 @@ Swapchain::~Swapchain()
 
 VkResult Swapchain::Init(const SwapchainDesc& desc)
 {
+    m_imageReadySemaphore = Semaphore::Create(*m_pDevice);
+
     m_pSurface       = desc.pSurface;
     Surface& surface = *static_cast<Surface*>(m_pSurface);
 
@@ -239,72 +241,44 @@ VkResult Swapchain::Init(const SwapchainDesc& desc)
 
     VkResult result = vkCreateSwapchainKHR(
         m_pDevice->GetHandle(), &createInfo, nullptr, &m_handle);
-    RHI_VK_RETURN_IF_FAIL(result);
-    result = m_imageAcquiredSemaphore->Init();
-    RHI_VK_RETURN_IF_FAIL(result);
 
-    return InitBackbuffers();
+    VK_RETURN_ON_ERROR(result);
+
+    uint32_t             backBuffersCount;
+    std::vector<VkImage> backImagesHandles;
+
+    // clang-format off
+    Utils::AssertSuccess(vkGetSwapchainImagesKHR(m_pDevice->GetHandle(), m_handle, &backBuffersCount, nullptr));
+    backImagesHandles.resize(backBuffersCount);
+    Utils::AssertSuccess(vkGetSwapchainImagesKHR(m_pDevice->GetHandle(), m_handle, &backBuffersCount, backImagesHandles.data()));
+    // clang-format on
+
+    m_images.reserve(backBuffersCount);
+
+    for (VkImage imageHandle : backImagesHandles)
+    {
+        m_images.push_back(
+            static_cast<IImage*>(new Image(*m_pDevice, imageHandle)));
+    }
+
+    return result;
 }
 
-EResultCode Swapchain::SwapBuffers()
+void Swapchain::SwapImages()
 {
     VkAcquireNextImageInfoKHR acquireInfo;
     acquireInfo.sType      = VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHR;
     acquireInfo.pNext      = nullptr;
     acquireInfo.swapchain  = m_handle;
     acquireInfo.timeout    = UINT32_MAX;
-    acquireInfo.semaphore  = m_imageAcquiredSemaphore->GetHandle();
+    acquireInfo.semaphore  = m_imageReadySemaphore->GetHandle();
     acquireInfo.fence      = VK_NULL_HANDLE;
     acquireInfo.deviceMask = 0;
 
     VkResult result = vkAcquireNextImage2KHR(
         m_pDevice->GetHandle(), &acquireInfo, &m_currentImageIndex);
-    return ConvertResult(result);
-}
 
-EResultCode Swapchain::Resize(Extent2D newExtent)
-{
-    // TODO
-    (void)newExtent;
-    return EResultCode::Fail;
-}
-
-EResultCode Swapchain::SetFullscreenExeclusive(bool enable)
-{
-    // TODO
-    (void)enable;
-    return EResultCode::Fail;
-}
-
-VkResult Swapchain::InitBackbuffers()
-{
-    uint32_t             backBuffersCount;
-    std::vector<VkImage> backImagesHandles;
-    VkResult             result = vkGetSwapchainImagesKHR(
-        m_pDevice->GetHandle(), m_handle, &backBuffersCount, nullptr);
-
-    if (!RHI_VK_IS_SUCCESS(result))
-        return result;
-
-    backImagesHandles.resize(backBuffersCount);
-
-    vkGetSwapchainImagesKHR(m_pDevice->GetHandle(),
-                            m_handle,
-                            &backBuffersCount,
-                            backImagesHandles.data());
-
-    if (!RHI_VK_IS_SUCCESS(result))
-        return result;
-
-    m_backBuffers.reserve(backBuffersCount);
-
-    for (VkImage imageHandle : backImagesHandles)
-    {
-        m_backBuffers.push_back(
-            static_cast<IImage*>(new Image(*m_pDevice, imageHandle)));
-    }
-
-    return result;
+    Utils::AssertSuccess(result);
 }
 
 }  // namespace Vulkan

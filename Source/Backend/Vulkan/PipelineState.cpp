@@ -121,8 +121,8 @@ struct ShaderStage
         }
     }
 
-    inline void Initalize(uint32_t&                               count,
-                          VkPipelineShaderStageCreateInfo const*& pState)
+    void Initalize(uint32_t&                               count,
+                   VkPipelineShaderStageCreateInfo const*& pState)
     {
         count  = CountElements(states);
         pState = states.data();
@@ -168,8 +168,7 @@ struct VertexInputState
         state.pVertexAttributeDescriptions = attributes.data();
     }
 
-    inline void Initalize(
-        VkPipelineVertexInputStateCreateInfo const*& pState) const
+    void Initalize(VkPipelineVertexInputStateCreateInfo const*& pState) const
     {
         pState = &state;
     }
@@ -191,8 +190,7 @@ struct InputAssemblyState
         state.primitiveRestartEnable = VK_FALSE;
     }
 
-    inline void Initalize(
-        VkPipelineInputAssemblyStateCreateInfo const*& pState) const
+    void Initalize(VkPipelineInputAssemblyStateCreateInfo const*& pState) const
     {
         pState = &state;
     }
@@ -210,8 +208,7 @@ struct TessellationState
         state.patchControlPoints = 0;
     }
 
-    inline void Initalize(
-        VkPipelineTessellationStateCreateInfo const*& pState) const
+    void Initalize(VkPipelineTessellationStateCreateInfo const*& pState) const
     {
         pState = &state;
     }
@@ -232,8 +229,7 @@ struct ViewportState
         state.pScissors     = nullptr;
     }
 
-    inline void Initalize(
-        VkPipelineViewportStateCreateInfo const*& pState) const
+    void Initalize(VkPipelineViewportStateCreateInfo const*& pState) const
     {
         pState = &state;
     }
@@ -285,8 +281,7 @@ struct RasterizationState
         state.depthBiasSlopeFactor    = 0.0f;
     }
 
-    inline void Initalize(
-        VkPipelineRasterizationStateCreateInfo const*& pState) const
+    void Initalize(VkPipelineRasterizationStateCreateInfo const*& pState) const
     {
         pState = &state;
     }
@@ -309,8 +304,7 @@ struct MultisampleState
         state.alphaToOneEnable      = VK_FALSE;
     }
 
-    inline void Initalize(
-        VkPipelineMultisampleStateCreateInfo const*& pState) const
+    void Initalize(VkPipelineMultisampleStateCreateInfo const*& pState) const
     {
         pState = &state;
     }
@@ -338,8 +332,7 @@ struct DepthStencilState
         state.maxDepthBounds = 1.0f;
     }
 
-    inline void Initalize(
-        VkPipelineDepthStencilStateCreateInfo const*& pState) const
+    void Initalize(VkPipelineDepthStencilStateCreateInfo const*& pState) const
     {
         pState = &state;
     }
@@ -367,8 +360,7 @@ struct ColorBlendState
         state.blendConstants[3] = 0.0f;
     }
 
-    inline void Initalize(
-        VkPipelineColorBlendStateCreateInfo const*& pState) const
+    void Initalize(VkPipelineColorBlendStateCreateInfo const*& pState) const
     {
         pState = &state;
     }
@@ -381,16 +373,6 @@ struct DynamicState
 {
     DynamicState()
     {
-        VkDynamicState dynamicStates[] = {
-            VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR,
-            // VK_DYNAMIC_STATE_LINE_WIDTH,
-            // VK_DYNAMIC_STATE_DEPTH_BIAS,
-            // VK_DYNAMIC_STATE_BLEND_CONSTANTS,
-            // VK_DYNAMIC_STATE_DEPTH_BOUNDS,
-            // VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK,
-            // VK_DYNAMIC_STATE_STENCIL_WRITE_MASK,
-            // VK_DYNAMIC_STATE_STENCIL_REFERENCE,
-        };
         state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
         state.pNext = nullptr;
         state.flags = 0;
@@ -398,12 +380,24 @@ struct DynamicState
         state.pDynamicStates    = dynamicStates;
     }
 
-    inline void Initalize(VkPipelineDynamicStateCreateInfo const*& pState) const
+    void Initalize(VkPipelineDynamicStateCreateInfo const*& pState) const
     {
         pState = &state;
     }
 
     VkPipelineDynamicStateCreateInfo state;
+
+    VkDynamicState dynamicStates[2] = {
+        VK_DYNAMIC_STATE_VIEWPORT,
+        VK_DYNAMIC_STATE_SCISSOR,
+        // VK_DYNAMIC_STATE_LINE_WIDTH,
+        // VK_DYNAMIC_STATE_DEPTH_BIAS,
+        // VK_DYNAMIC_STATE_BLEND_CONSTANTS,
+        // VK_DYNAMIC_STATE_DEPTH_BOUNDS,
+        // VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK,
+        // VK_DYNAMIC_STATE_STENCIL_WRITE_MASK,
+        // VK_DYNAMIC_STATE_STENCIL_REFERENCE,
+    };
 };
 
 }  // namespace PipelineStateInitalizers
@@ -414,7 +408,7 @@ Expected<Unique<IPipelineState>> Device::CreateGraphicsPipelineState(
     Unique<PipelineState> pipelineState = CreateUnique<PipelineState>(*this);
     VkResult              result        = pipelineState->Init(desc);
 
-    if (RHI_VK_IS_SUCCESS(result))
+    if (Utils::IsSuccess(result))
     {
         return Unexpected(ConvertResult(result));
     }
@@ -429,27 +423,32 @@ PipelineState::~PipelineState()
 
 VkResult PipelineState::Init(const GraphicsPipelineStateDesc& desc)
 {
-    VkGraphicsPipelineCreateInfo createInfo;
+    m_layout        = CreateUnique<PipelineLayout>(*m_pDevice);
+    VkResult result = m_layout->Init(desc.pipelineLayoutDesc);
+    VK_RETURN_ON_ERROR(result);
 
-    PipelineStateInitalizers::ShaderStage shaderStageStateInitalizer(
-        desc.shaderStages);
-    PipelineStateInitalizers::VertexInputState vertexInputStateInitalizer(
-        desc.vertexInputAttributes);
+    // clang-format off
+    VkGraphicsPipelineCreateInfo createInfo;
+    createInfo.sType  = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    createInfo.pNext  = nullptr;
+    createInfo.flags  = 0;
+    createInfo.layout = m_layout->GetHandle();
+    // createInfo.renderPass         = pass.GetRenderPass().GetHandle();
+    createInfo.subpass            = 0;
+    createInfo.basePipelineHandle = VK_NULL_HANDLE;
+    createInfo.basePipelineIndex  = 0;
+    PipelineStateInitalizers::ShaderStage        shaderStageStateInitalizer(desc.shaderStages);
+    PipelineStateInitalizers::VertexInputState   vertexInputStateInitalizer(desc.vertexInputAttributes);
     PipelineStateInitalizers::InputAssemblyState inputAssemblyStateInitalizer;
     PipelineStateInitalizers::TessellationState  tessellationStateInitalizer;
     PipelineStateInitalizers::ViewportState      viewportStateInitalizer;
-    PipelineStateInitalizers::RasterizationState rasterizationStateInitalizer(
-        desc.rasterizationState);
-    PipelineStateInitalizers::MultisampleState multisampleStateInitalizer(
-        ESampleCount::Count1);
-    PipelineStateInitalizers::DepthStencilState depthStencilStateInitalizer(
-        desc.depthStencil);
-    PipelineStateInitalizers::ColorBlendState colorBlendStateInitalizer(
-        desc.colorBlendState);
-    PipelineStateInitalizers::DynamicState dynamicStateInitalizer;
+    PipelineStateInitalizers::RasterizationState rasterizationStateInitalizer(desc.rasterizationState);
+    PipelineStateInitalizers::MultisampleState   multisampleStateInitalizer(ESampleCount::Count1);
+    PipelineStateInitalizers::DepthStencilState  depthStencilStateInitalizer(desc.depthStencil);
+    PipelineStateInitalizers::ColorBlendState    colorBlendStateInitalizer(desc.colorBlendState);
+    PipelineStateInitalizers::DynamicState       dynamicStateInitalizer;
 
-    shaderStageStateInitalizer.Initalize(createInfo.stageCount,
-                                         createInfo.pStages);
+    shaderStageStateInitalizer.Initalize(createInfo.stageCount, createInfo.pStages);
     vertexInputStateInitalizer.Initalize(createInfo.pVertexInputState);
     inputAssemblyStateInitalizer.Initalize(createInfo.pInputAssemblyState);
     tessellationStateInitalizer.Initalize(createInfo.pTessellationState);
@@ -464,21 +463,9 @@ VkResult PipelineState::Init(const GraphicsPipelineStateDesc& desc)
 
     // Recreate the entire PipelineStateObject if the RenderPassChanges.
 
-    createInfo.sType  = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    createInfo.pNext  = nullptr;
-    createInfo.flags  = 0;
-    createInfo.layout = m_layout->GetHandle();
-    // createInfo.renderPass         = pass.GetRenderPass().GetHandle();
-    createInfo.subpass            = 0;
-    createInfo.basePipelineHandle = VK_NULL_HANDLE;
-    createInfo.basePipelineIndex  = 0;
+    return vkCreateGraphicsPipelines(m_pDevice->GetHandle(), VK_NULL_HANDLE, 1, &createInfo, nullptr, &m_handle);
 
-    return vkCreateGraphicsPipelines(m_pDevice->GetHandle(),
-                                     VK_NULL_HANDLE,
-                                     1,
-                                     &createInfo,
-                                     nullptr,
-                                     &m_handle);
+    // clang-format on
 }
 
 }  // namespace Vulkan

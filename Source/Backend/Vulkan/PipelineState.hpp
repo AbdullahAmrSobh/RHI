@@ -57,7 +57,7 @@ public:
     }
 
 private:
-    Shared<PipelineLayout> m_layout;
+    Unique<PipelineLayout> m_layout;
 };
 
 }  // namespace Vulkan

@@ -88,11 +88,11 @@ VkResult Instance::Init()
         debugCreateInfo.pUserData       = m_debugCallbacks.get();
     }
 
-    VkInstanceCreateInfo createInfo = {};
-    createInfo.sType                = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-    createInfo.pNext            = m_debugCallbacks ? &debugCreateInfo : nullptr;
-    createInfo.flags            = 0;
-    createInfo.pApplicationInfo = &appInfo;
+    VkInstanceCreateInfo createInfo    = {};
+    createInfo.sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    createInfo.pNext                   = m_debugCallbacks ? &debugCreateInfo : nullptr;
+    createInfo.flags                   = 0;
+    createInfo.pApplicationInfo        = &appInfo;
     createInfo.enabledLayerCount       = CountElements(enabledLayers);
     createInfo.ppEnabledLayerNames     = enabledLayers.data();
     createInfo.enabledExtensionCount   = CountElements(enabledExtensions);
@@ -100,7 +100,7 @@ VkResult Instance::Init()
 
     VkResult result = vkCreateInstance(&createInfo, nullptr, &m_instance);
 
-    RHI_VK_RETURN_IF_FAIL(result);
+    VK_RETURN_ON_ERROR(result);
 
     for (VkPhysicalDevice physicalDevice :
          ::RHI::Vulkan::GetPhysicalDevices(m_instance))

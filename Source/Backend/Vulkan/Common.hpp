@@ -6,14 +6,6 @@
 #include "RHI/PipelineState.hpp"
 #include "RHI/Resource.hpp"
 
-#define RHI_VK_IS_SUCCESS(X) (X == VK_SUCCESS)
-
-#define RHI_VK_RETURN_IF_FAIL(X)                                               \
-    if (!RHI_VK_IS_SUCCESS(X))                                                 \
-    {                                                                          \
-        return X;                                                              \
-    }
-
 namespace RHI
 {
 namespace Vulkan
@@ -114,3 +106,6 @@ inline auto Unexpected(VkResult result)
 
 }  // namespace Vulkan
 }  // namespace RHI
+
+
+#define VK_RETURN_ON_ERROR(result) if(::RHI::Vulkan::Utils::IsError(result)) { return result; }

@@ -21,35 +21,38 @@ class ISwapchain
 public:
     virtual ~ISwapchain() = default;
 
-    inline const std::vector<IImage*>& GetBackImages() const
+    IImage& GetCurrentImage() const
     {
-        return m_backBuffers;
+        return *m_images[m_currentImageIndex];
     }
 
-    inline const ImageDesc& GetBackBuffersDesc() const
+    const std::vector<IImage*>& GetImages() const
     {
-        return *m_backBuffersDesc;
+        return m_images;
     }
 
-    inline uint32_t GetCurrentBackBufferIndex() const
+    const ImageDesc& GetImageDescription() const
+    {
+        return *m_imageDescription;
+    }
+
+    uint32_t GetCurrentImageIndex() const
     {
         return m_currentImageIndex;
     }
 
-    inline uint32_t GetBackBuffersCount() const
+    uint32_t GetImagesCount() const
     {
-        return static_cast<uint32_t>(m_backBuffers.size());
+        return CountElements(m_images);
     }
 
-    virtual EResultCode SwapBuffers()                               = 0;
-    virtual EResultCode Resize(Extent2D newExtent)                  = 0;
-    virtual EResultCode SetFullscreenExeclusive(bool enable = true) = 0;
+    virtual void SwapImages() = 0;
 
 protected:
-    ISurface*               m_pSurface          = nullptr;
-    uint32_t                m_currentImageIndex = 0;
-    std::vector<IImage*>    m_backBuffers;
-    Unique<const ImageDesc> m_backBuffersDesc;
+    ISurface*            m_pSurface          = nullptr;
+    uint32_t             m_currentImageIndex = 0;
+    std::vector<IImage*> m_images;
+    Unique<ImageDesc>    m_imageDescription;
 };
 
 }  // namespace RHI

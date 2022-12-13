@@ -28,8 +28,6 @@ public:
     ~CommandBuffer();
 
     ///////////////////////////////////////////////////////////////////////////////
-    // Interface.
-    ///////////////////////////////////////////////////////////////////////////////
     void Begin() override;
     void End() override;
 
@@ -37,7 +35,6 @@ public:
     void SetScissors(const std::vector<Rect>& scissors) override;
 
     void Submit(const DrawCommand& drawCommand) override;
-    ///////////////////////////////////////////////////////////////////////////////
 
 private:
     CommandAllocator* m_pParantAllocator;

@@ -150,8 +150,12 @@ VkResult Device::Init(const PhysicalDevice& physicalDevice)
         createInfo.ppEnabledExtensionNames = enabledExtensions.data();
         createInfo.pEnabledFeatures        = &features;
 
-        RHI_VK_RETURN_IF_FAIL(vkCreateDevice(
-            physicalDevice.GetHandle(), &createInfo, nullptr, &m_device))
+        VkResult result = vkCreateDevice(physicalDevice.GetHandle(), &createInfo, nullptr, &m_device);
+
+        if (Utils::IsError(result))
+        {
+            return result;
+        }
     }
 
     // Create Queue
@@ -167,7 +171,9 @@ VkResult Device::Init(const PhysicalDevice& physicalDevice)
     createInfo.device                 = m_device;
     createInfo.instance               = m_pInstance->GetHandle();
     // createInfo.vulkanApiVersion = VK_VERSION_1_2;
-    return vmaCreateAllocator(&createInfo, &m_allocator);
+    Utils::AssertSuccess(vmaCreateAllocator(&createInfo, &m_allocator));
+
+    return VK_SUCCESS;
 }
 
 EResultCode Device::WaitIdle() const

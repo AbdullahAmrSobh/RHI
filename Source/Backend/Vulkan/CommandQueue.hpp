@@ -16,7 +16,7 @@ struct WaitPoint
     VkPipelineStageFlags stage;
 };
 
-struct SubmitRequest
+struct SubmitInfo
 {
     std::vector<WaitPoint>      waitPoints;
     std::vector<CommandBuffer*> commandBuffers;
@@ -34,11 +34,10 @@ public:
 
     void WaitIdle();
 
-    void Submit(std::span<const SubmitRequest*> submitList,
-                    IFence*                         signalFence = nullptr);
+    void Submit(const SubmitInfo& submitInfo, IFence* signalFence = nullptr);
 
-    VkResult Present(std::span<const Semaphore*> waitSemaphores,
-                     const Swapchain& swapchain);
+    void Present(std::span<const Semaphore*> waitSemaphores,
+                     const Swapchain&            swapchain);
 
     const uint32_t m_familyIndex;
 

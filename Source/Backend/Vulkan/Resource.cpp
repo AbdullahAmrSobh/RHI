@@ -14,7 +14,7 @@ Expected<Unique<IShaderProgram>> Device::CreateShaderProgram(
         CreateUnique<ShaderModule>(*this, desc.entryName);
     VkResult result = shaderModule->Init(desc);
 
-    if (RHI_VK_IS_SUCCESS(result))
+    if (Utils::IsSuccess(result))
         return std::move(shaderModule);
 
     return Unexpected(ConvertResult(result));
@@ -25,56 +25,60 @@ Expected<Unique<IFence>> Device::CreateFence() const
     Unique<Fence> fence  = CreateUnique<Fence>(*this);
     VkResult      result = fence->Init();
 
-    if (RHI_VK_IS_SUCCESS(result))
+    if (Utils::IsSuccess(result))
         return std::move(fence);
 
     return Unexpected(ConvertResult(result));
 }
 
 Expected<Unique<IImage>> Device::CreateImage(
-    const AllocationDesc& allocationDesc, const ImageDesc& desc) const
+    const AllocationDesc& allocationDesc,
+    const ImageDesc&      desc) const
 {
     Unique<Image> image  = CreateUnique<Image>(*this);
     VkResult      result = image->Init(allocationDesc, desc);
 
-    if (RHI_VK_IS_SUCCESS(result))
+    if (Utils::IsSuccess(result))
         return std::move(image);
 
     return Unexpected(ConvertResult(result));
 }
 
 Expected<Unique<IImageView>> Device::CreateImageView(
-    const IImage& image, const ImageViewDesc& desc) const
+    const IImage&        image,
+    const ImageViewDesc& desc) const
 {
     Unique<ImageView> imageView = CreateUnique<ImageView>(*this);
     VkResult result = imageView->Init(static_cast<const Image&>(image), desc);
 
-    if (RHI_VK_IS_SUCCESS(result))
+    if (Utils::IsSuccess(result))
         return std::move(imageView);
 
     return Unexpected(ConvertResult(result));
 }
 
 Expected<Unique<IBuffer>> Device::CreateBuffer(
-    const AllocationDesc& allocationDesc, const BufferDesc& desc) const
+    const AllocationDesc& allocationDesc,
+    const BufferDesc&     desc) const
 {
     Unique<Buffer> buffer = CreateUnique<Buffer>(*this);
     VkResult       result = buffer->Init(allocationDesc, desc);
 
-    if (RHI_VK_IS_SUCCESS(result))
+    if (Utils::IsSuccess(result))
         return std::move(buffer);
 
     return Unexpected(ConvertResult(result));
 }
 
 Expected<Unique<IBufferView>> Device::CreateBufferView(
-    const IBuffer& buffer, const BufferViewDesc& desc) const
+    const IBuffer&        buffer,
+    const BufferViewDesc& desc) const
 {
     Unique<BufferView> bufferView = CreateUnique<BufferView>(*this);
     VkResult           result =
         bufferView->Init(static_cast<const Buffer&>(buffer), desc);
 
-    if (RHI_VK_IS_SUCCESS(result))
+    if (Utils::IsSuccess(result))
         return std::move(bufferView);
 
     return Unexpected(ConvertResult(result));
@@ -85,7 +89,7 @@ Expected<Unique<ISampler>> Device::CreateSampler(const SamplerDesc& desc) const
     Unique<Sampler> sampler = CreateUnique<Sampler>(*this);
     VkResult        result  = sampler->Init(desc);
 
-    if (RHI_VK_IS_SUCCESS(result))
+    if (Utils::IsSuccess(result))
         return std::move(sampler);
 
     return Unexpected(ConvertResult(result));
@@ -105,11 +109,11 @@ VkResult ShaderModule::Init(const ShaderProgramDesc& desc)
     createInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     createInfo.pNext    = nullptr;
     createInfo.flags    = 0;
-    createInfo.codeSize = desc.shaderCode.size();
+    createInfo.codeSize = desc.shaderCode.size() * sizeof(uint32_t);
     createInfo.pCode    = desc.shaderCode.data();
 
-    return vkCreateShaderModule(m_pDevice->GetHandle(), &createInfo, nullptr,
-                                &m_handle);
+    return vkCreateShaderModule(
+        m_pDevice->GetHandle(), &createInfo, nullptr, &m_handle);
 }
 
 Fence::~Fence()
@@ -127,14 +131,14 @@ VkResult Fence::Init()
     createInfo.pNext = nullptr;
     createInfo.flags = 0;
 
-    return vkCreateFence(m_pDevice->GetHandle(), &createInfo, nullptr,
-                         &m_handle);
+    return vkCreateFence(
+        m_pDevice->GetHandle(), &createInfo, nullptr, &m_handle);
 }
 
 EResultCode Fence::Wait() const
 {
-    return ConvertResult(vkWaitForFences(m_pDevice->GetHandle(), 1, &m_handle,
-                                         VK_TRUE, UINT64_MAX));
+    return ConvertResult(vkWaitForFences(
+        m_pDevice->GetHandle(), 1, &m_handle, VK_TRUE, UINT64_MAX));
 }
 
 EResultCode Fence::Reset() const
@@ -159,7 +163,7 @@ VkResult Image::Init(const AllocationDesc& allocationDesc,
                      const ImageDesc&      desc)
 {
     *m_desc = desc;
-    
+
     VkImageCreateInfo createInfo {};
     createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     createInfo.pNext = nullptr;
@@ -191,11 +195,14 @@ VkResult Image::Init(const AllocationDesc& allocationDesc,
     VmaAllocationCreateInfo allocationCreateInfo = {};
     allocationCreateInfo.usage = ConvertMemoryUsage(allocationDesc.usage);
 
-    VkResult result = vmaCreateImage(m_pDevice->GetAllocator(), &createInfo,
-                                     &allocationCreateInfo, &m_handle,
-                                     &m_allocation, &m_allocationInfo);
+    VkResult result = vmaCreateImage(m_pDevice->GetAllocator(),
+                                     &createInfo,
+                                     &allocationCreateInfo,
+                                     &m_handle,
+                                     &m_allocation,
+                                     &m_allocationInfo);
 
-    if (RHI_VK_IS_SUCCESS(result))
+    if (Utils::IsSuccess(result))
     {
         m_memorySize = m_allocationInfo.size;
     }
@@ -214,7 +221,7 @@ ImageView::~ImageView()
 VkResult ImageView::Init(const Image& image, const ImageViewDesc& desc)
 {
     *m_desc = desc;
- 
+
     VkImageViewCreateInfo createInfo {};
     createInfo.sType        = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     createInfo.pNext        = nullptr;
@@ -232,8 +239,8 @@ VkResult ImageView::Init(const Image& image, const ImageViewDesc& desc)
     createInfo.subresourceRange.baseArrayLayer = desc.range.baseArrayElement;
     createInfo.subresourceRange.layerCount     = desc.range.arraySize;
 
-    return vkCreateImageView(m_pDevice->GetHandle(), &createInfo, nullptr,
-                             &m_handle);
+    return vkCreateImageView(
+        m_pDevice->GetHandle(), &createInfo, nullptr, &m_handle);
 }
 
 Buffer::~Buffer()
@@ -248,7 +255,7 @@ VkResult Buffer::Init(const AllocationDesc& allocationDesc,
                       const BufferDesc&     desc)
 {
     *m_desc = desc;
-    
+
     VkBufferCreateInfo createInfo {};
     createInfo.sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     createInfo.pNext                 = nullptr;
@@ -262,11 +269,14 @@ VkResult Buffer::Init(const AllocationDesc& allocationDesc,
     VmaAllocationCreateInfo allocationCreateInfo = {};
     allocationCreateInfo.usage = ConvertMemoryUsage(allocationDesc.usage);
 
-    VkResult result = vmaCreateBuffer(m_pDevice->GetAllocator(), &createInfo,
-                                      &allocationCreateInfo, &m_handle,
-                                      &m_allocation, &m_allocationInfo);
+    VkResult result = vmaCreateBuffer(m_pDevice->GetAllocator(),
+                                      &createInfo,
+                                      &allocationCreateInfo,
+                                      &m_handle,
+                                      &m_allocation,
+                                      &m_allocationInfo);
 
-    if (RHI_VK_IS_SUCCESS(result))
+    if (Utils::IsSuccess(result))
     {
         m_memorySize = m_allocationInfo.size;
     }
@@ -285,7 +295,7 @@ BufferView::~BufferView()
 VkResult BufferView::Init(const Buffer& buffer, const BufferViewDesc& desc)
 {
     *m_desc = desc;
-    
+
     VkBufferViewCreateInfo createInfo {};
     createInfo.sType  = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
     createInfo.pNext  = nullptr;
@@ -295,8 +305,8 @@ VkResult BufferView::Init(const Buffer& buffer, const BufferViewDesc& desc)
     createInfo.offset = desc.range.byteOffset;
     createInfo.range  = desc.range.byteRange;
 
-    return vkCreateBufferView(m_pDevice->GetHandle(), &createInfo, nullptr,
-                              &m_handle);
+    return vkCreateBufferView(
+        m_pDevice->GetHandle(), &createInfo, nullptr, &m_handle);
 }
 
 Sampler::~Sampler()
@@ -338,8 +348,20 @@ VkResult Sampler::Init(const SamplerDesc& desc)
         createInfo.maxAnisotropy    = desc.maxAnisotropy;
     }
 
-    return vkCreateSampler(m_pDevice->GetHandle(), &createInfo, nullptr,
-                           &m_handle);
+    return vkCreateSampler(
+        m_pDevice->GetHandle(), &createInfo, nullptr, &m_handle);
+}
+
+Semaphore::Semaphore(const Device& device, VkSemaphoreCreateFlags flags)
+    : DeviceObject(&device)
+{
+    VkSemaphoreCreateInfo createInfo {};
+    createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    createInfo.pNext = nullptr;
+    createInfo.flags = flags;
+
+    Utils::AssertSuccess(vkCreateSemaphore(
+        m_pDevice->GetHandle(), &createInfo, nullptr, &m_handle));
 }
 
 Semaphore::~Semaphore()
@@ -348,17 +370,6 @@ Semaphore::~Semaphore()
     {
         vkDestroySemaphore(m_pDevice->GetHandle(), m_handle, nullptr);
     }
-}
-
-VkResult Semaphore::Init(bool bin)
-{
-    VkSemaphoreCreateInfo createInfo {};
-    createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    createInfo.pNext = nullptr;
-    createInfo.flags = bin ? VK_SEMAPHORE_TYPE_BINARY : VkFlags {};
-
-    return vkCreateSemaphore(m_pDevice->GetHandle(), &createInfo, nullptr,
-                             &m_handle);
 }
 
 }  // namespace Vulkan

@@ -60,31 +60,27 @@ class Swapchain final
 public:
     Swapchain(const Device& device)
         : DeviceObject(&device)
-        , m_imageAcquiredSemaphore(CreateUnique<Semaphore>(device))
     {
     }
-    ~Swapchain();
 
-    const std::vector<Image*>& GetBackImages() const;
+    ~Swapchain();
 
     VkResult Init(const SwapchainDesc& desc);
 
-    inline const Semaphore& GetBackbufferReadSemaphore() const
+    Image& GetCurrentImage()
     {
-        return *m_imageAcquiredSemaphore;
+        return static_cast<Image&>(ISwapchain::GetCurrentImage());
     }
 
-    // Swap the back buffers
-    virtual EResultCode SwapBuffers() override;
-    virtual EResultCode Resize(Extent2D newExtent) override;
-    virtual EResultCode SetFullscreenExeclusive(bool enable = true) override;
+    const Semaphore& GetImageReadySemaphore() const
+    {
+        return *m_imageReadySemaphore;
+    }
+
+    void SwapImages() override;
 
 private:
-    VkResult InitBackbuffers();
-
-    // Operations must wait on that semaphore,
-    // before using the current swapchain Image.
-    Unique<Semaphore> m_imageAcquiredSemaphore;
+    Unique<Semaphore> m_imageReadySemaphore;
 };
 
 }  // namespace Vulkan

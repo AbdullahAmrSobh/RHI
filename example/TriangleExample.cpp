@@ -20,26 +20,23 @@
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
-std::vector<uint32_t> ReadBinFile(std::string filePath)
-{
-    std::ifstream file(filePath, std::ios::ate | std::ios::binary);
-
-    assert(file.is_open());
-
-    auto fileSize = file.tellg();
-
-    assert(fileSize % 4 == 0);
-
-    std::vector<uint32_t> buffer(fileSize / sizeof(uint32_t));
-
-    file.seekg(0);
-    file.read(reinterpret_cast<char*>(buffer.data()),
-              static_cast<std::streamsize>(fileSize));
-
-    file.close();
-
-    return buffer;
-}
+// std::vector<uint32_t> ReadBinFile(std::string filePath)
+// {
+//     std::ifstream file(filePath, std::ios::ate | std::ios::binary);
+// 
+//     assert(file.is_open());
+// 
+//     auto                  fileSize = file.tellg();
+//     std::vector<uint32_t> buffer(fileSize / sizeof(uint32_t));
+// 
+//     file.seekg(0);
+//     file.read(reinterpret_cast<char*>(buffer.data()),
+//               static_cast<std::streamsize>(fileSize));
+// 
+//     file.close();
+// 
+//     return buffer;
+// }
 
 class RHIDebugCallbacks final : public RHI::IDebugCallbacks
 {
@@ -120,22 +117,10 @@ public:
             m_swapchain = m_device->CreateSwapChain(swapchainDesc).value();
         }
 
-        std::vector<float>    vertexBufferData = {0.0f,
-                                                  -0.5f,
-                                                  1.0f,
-                                                  0.0f,
-                                                  0.0f,
-                                                  0.5f,
-                                                  0.5f,
-                                                  0.0f,
-                                                  1.0f,
-                                                  0.0f,
-                                                  -0.5f,
-                                                  0.5f,
-                                                  0.0f,
-                                                  0.0f,
-                                                  1.0f};
-        std::vector<uint32_t> indexBufferData  = {0, 1, 2};
+        std::vector<float> vertexBufferData   = {0.0f,  -0.5f, 1.0f, 0.0f, 0.0f,
+                                                 0.5f,  0.5f,  0.0f, 1.0f, 0.0f,
+                                                 -0.5f, 0.5f,  0.0f, 0.0f, 1.0f};
+        std::vector<uint32_t> indexBufferData = {0, 1, 2};
 
         // Vertex Buffer Creation
         {
@@ -181,86 +166,10 @@ public:
             m_shaderResourceGroup =
                 m_shaderResourceGroupAllocator->Allocate(srgLayout).value();
         }
-
-        m_scheduler = m_device->CreateFrameScheduler().value();
-        m_scheduler->GetAttachmentsRegistry().ImportSwapchain(
-            "swapchainImage", std::move(m_swapchain));
-
-        RHI::RenderPassCallbacks::SetupAttachmentsCallback attachmentSetup =
-            [&](RHI::FrameGraphBuilder& builder)
-        {
-            std::cout << "Setting up the framegraph. " << std::endl;
-            RHI::ImagePassAttachmentDesc desc {};
-            desc.name            = "swapchainImage";
-            desc.desc.format     = RHI::EFormat::B8G8R8Srgb;
-            desc.desc.type       = RHI::EImageViewType::Type2D;
-            desc.desc.viewAspect = RHI::EImageViewAspectFlagBits::Color;
-            desc.desc.range      = RHI::ImageViewRange();
-            builder.UseImageAttachment(desc,
-                                       RHI::AttachmentUsage::RenderTarget,
-                                       RHI::AttachmentAccess::Write);
-        };
-
-        RHI::RenderPassCallbacks::BuildCommandListCallback buildCommandList =
-            [&](RHI::ICommandBuffer& commandBuffer)
-        {
-            commandBuffer.Begin();
-            commandBuffer.SetScissors({m_scissor});
-            commandBuffer.SetViewports({m_viewport});
-
-            RHI::DrawCommand drawCommand {};
-            drawCommand.pPipelineState = m_pipeline.get();
-            drawCommand.pVertexBuffer  = m_vertexBuffer.get();
-            drawCommand.pIndexBuffer   = m_indexBuffer.get();
-            drawCommand.type           = RHI::DrawCommand::EType::Indexed;
-            RHI::DrawCommand::IndexedDrawData drawData {};
-            drawData.indexCount     = RHI::CountElements(indexBufferData);
-            drawCommand.indexedData = drawData;
-            commandBuffer.Submit(drawCommand);
-
-            commandBuffer.End();
-        };
-
-        auto producer = RHI::CreateUnique<RHI::RenderPassCallbacks>(
-            attachmentSetup, buildCommandList);
-
-        m_renderpass = m_device
-                           ->CreateRenderPass("primaryRenderPass",
-                                              RHI::DeviceQueueType::Graphics)
-                           .value();
-
-        m_renderpass->SetCallbacks(std::move(producer));
-
-        m_scheduler->BuildGraph(*m_renderpass);
-
-        {
-            RHI::ShaderProgramDesc shaderDesc {};
-            shaderDesc.entryName  = "main";
-            shaderDesc.shaderCode = ReadBinFile("./shaders/triangle.vert.spv");
-            shaderDesc.stage      = RHI::EShaderStageFlagBits::Vertex;
-            auto vertexShader =
-                m_device->CreateShaderProgram(shaderDesc).value();
-            shaderDesc.shaderCode = ReadBinFile("./shaders/triangle.frag.spv");
-            shaderDesc.stage      = RHI::EShaderStageFlagBits::Pixel;
-            auto pixelShader =
-                m_device->CreateShaderProgram(shaderDesc).value();
-            RHI::GraphicsPipelineStateDesc desc {};
-            desc.pRenderPass                = m_renderpass.get();
-            desc.shaderStages.pVertexShader = vertexShader.get();
-            desc.shaderStages.pPixelShader  = pixelShader.get();
-            desc.vertexInputAttributes.push_back(
-                {"position", RHI::EFormat::R32G32Sfloat});
-            desc.vertexInputAttributes.push_back(
-                {"color", RHI::EFormat::R32G32B32Sfloat});
-            m_pipeline = m_device->CreateGraphicsPipelineState(desc).value();
-        }
     };
 
-    void OnFrame()
-    {
-        m_scheduler->BeginFrame();
-        m_scheduler->Submit(*m_renderpass);
-        m_scheduler->EndFrame();
+    void OnFrame() {
+
     };
 
 public:
@@ -279,10 +188,6 @@ public:
                                            m_shaderResourceGroupAllocator;
     RHI::Unique<RHI::IShaderResourceGroup> m_shaderResourceGroup;
     RHI::Unique<RHI::IPipelineState>       m_pipeline;
-
-    RHI::Unique<RHI::IFrameScheduler> m_scheduler;
-
-    RHI::Unique<RHI::IRenderPass> m_renderpass;
 };
 
 int main(void)

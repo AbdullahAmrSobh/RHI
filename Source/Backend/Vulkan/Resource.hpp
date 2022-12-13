@@ -32,7 +32,8 @@ template<typename T>
 class Resource : public DeviceObject<T>
 {
 public:
-    Resource(const Device* pDevice, T handle = VK_NULL_HANDLE,
+    Resource(const Device* pDevice,
+             T             handle     = VK_NULL_HANDLE,
              VmaAllocation allocation = VK_NULL_HANDLE)
         : DeviceObject<T>(pDevice, handle)
         , m_allocation(allocation)
@@ -160,13 +161,14 @@ public:
 class Semaphore final : public DeviceObject<VkSemaphore>
 {
 public:
-    Semaphore(const Device& device)
-        : DeviceObject(&device)
-    {
-    }
+    Semaphore(const Device& device, VkSemaphoreCreateFlags flags = 0);
     ~Semaphore();
 
-    VkResult Init(bool bin = true);
+    static inline Unique<Semaphore> Create(const Device&          device,
+                                           VkSemaphoreCreateFlags flags = 0)
+    {
+        return CreateUnique<Semaphore>(device, flags);
+    }
 };
 
 }  // namespace Vulkan
