@@ -1,5 +1,11 @@
+#include "RHI/Pch.hpp"
+
+#include "Backend/Vulkan/Common.hpp"
+
 #include "Backend/Vulkan/Device.hpp"
 
+#include "Backend/Vulkan/CommandQueue.hpp"
+#include "Backend/Vulkan/Instance.hpp"
 #include "Backend/Vulkan/Swapchain.hpp"
 
 namespace RHI
@@ -21,16 +27,12 @@ VkPhysicalDeviceFeatures PhysicalDevice::GetFeatures() const
     return features;
 }
 
-std::vector<VkQueueFamilyProperties> PhysicalDevice::GetQueueFamilyProperties()
-    const
+std::vector<VkQueueFamilyProperties> PhysicalDevice::GetQueueFamilyProperties() const
 {
     uint32_t queueFamilyCount = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(
-        m_physicalDevice, &queueFamilyCount, nullptr);
-    std::vector<VkQueueFamilyProperties> queueFamilyProperties(
-        queueFamilyCount);
-    vkGetPhysicalDeviceQueueFamilyProperties(
-        m_physicalDevice, &queueFamilyCount, queueFamilyProperties.data());
+    vkGetPhysicalDeviceQueueFamilyProperties(m_physicalDevice, &queueFamilyCount, nullptr);
+    std::vector<VkQueueFamilyProperties> queueFamilyProperties(queueFamilyCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(m_physicalDevice, &queueFamilyCount, queueFamilyProperties.data());
     return queueFamilyProperties;
 }
 
@@ -39,20 +41,16 @@ std::vector<VkLayerProperties> PhysicalDevice::GetAvailableLayers() const
     uint32_t layerCount = 0;
     vkEnumerateDeviceLayerProperties(m_physicalDevice, &layerCount, nullptr);
     std::vector<VkLayerProperties> layerProperties(layerCount);
-    vkEnumerateDeviceLayerProperties(
-        m_physicalDevice, &layerCount, layerProperties.data());
+    vkEnumerateDeviceLayerProperties(m_physicalDevice, &layerCount, layerProperties.data());
     return layerProperties;
 }
 
-std::vector<VkExtensionProperties> PhysicalDevice::GetAvailableExtensions()
-    const
+std::vector<VkExtensionProperties> PhysicalDevice::GetAvailableExtensions() const
 {
     uint32_t extensionCount = 0;
-    vkEnumerateDeviceExtensionProperties(
-        m_physicalDevice, nullptr, &extensionCount, nullptr);
+    vkEnumerateDeviceExtensionProperties(m_physicalDevice, nullptr, &extensionCount, nullptr);
     std::vector<VkExtensionProperties> extensionProperties(extensionCount);
-    vkEnumerateDeviceExtensionProperties(
-        m_physicalDevice, nullptr, &extensionCount, extensionProperties.data());
+    vkEnumerateDeviceExtensionProperties(m_physicalDevice, nullptr, &extensionCount, extensionProperties.data());
     return extensionProperties;
 }
 
@@ -63,43 +61,38 @@ VkPhysicalDeviceMemoryProperties PhysicalDevice::GetMemoryProperties() const
     return properties;
 }
 
-VkSurfaceCapabilitiesKHR PhysicalDevice::GetSurfaceCapabilities(
-    VkSurfaceKHR surface) const
+VkSurfaceCapabilitiesKHR PhysicalDevice::GetSurfaceCapabilities(VkSurfaceKHR surface) const
 {
     VkSurfaceCapabilitiesKHR capabilities;
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
-        m_physicalDevice, surface, &capabilities);
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_physicalDevice, surface, &capabilities);
     return capabilities;
 }
 
-std::vector<VkPresentModeKHR> PhysicalDevice::GetPresentModes(
-    VkSurfaceKHR surface) const
+std::vector<VkPresentModeKHR> PhysicalDevice::GetPresentModes(VkSurfaceKHR surface) const
 {
     uint32_t presentModeCount = 0;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(
-        m_physicalDevice, surface, &presentModeCount, nullptr);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(m_physicalDevice, surface, &presentModeCount, nullptr);
     std::vector<VkPresentModeKHR> presentModes(presentModeCount);
-    vkGetPhysicalDeviceSurfacePresentModesKHR(
-        m_physicalDevice, surface, &presentModeCount, presentModes.data());
+    vkGetPhysicalDeviceSurfacePresentModesKHR(m_physicalDevice, surface, &presentModeCount, presentModes.data());
     return presentModes;
 }
 
-std::vector<VkSurfaceFormatKHR> PhysicalDevice::GetSurfaceFormats(
-    VkSurfaceKHR surface) const
+std::vector<VkSurfaceFormatKHR> PhysicalDevice::GetSurfaceFormats(VkSurfaceKHR surface) const
 {
     uint32_t surfaceFormatCount = 0;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(
-        m_physicalDevice, surface, &surfaceFormatCount, nullptr);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, surface, &surfaceFormatCount, nullptr);
     std::vector<VkSurfaceFormatKHR> surfaceFormats(surfaceFormatCount);
-    vkGetPhysicalDeviceSurfaceFormatsKHR(
-        m_physicalDevice, surface, &surfaceFormatCount, surfaceFormats.data());
+    vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, surface, &surfaceFormatCount, surfaceFormats.data());
     return surfaceFormats;
 }
 
 Device::~Device()
 {
+    m_renderpassLayoutCache.Clear();
+    m_framebufferCache.Clear();
     WaitIdle();
-    vkDestroyDevice(m_device, nullptr);
+    vmaDestroyAllocator(m_allocator);
+    vkDestroyDevice(m_handle, nullptr);
 }
 
 VkResult Device::Init(const PhysicalDevice& physicalDevice)
@@ -110,19 +103,16 @@ VkResult Device::Init(const PhysicalDevice& physicalDevice)
 
     float priority                = 1.0f;
     auto  queueFamiliesProperties = physicalDevice.GetQueueFamilyProperties();
-    for (uint32_t queueFamilyIndex = 0;
-         queueFamilyIndex < queueFamiliesProperties.size();
-         queueFamilyIndex++)
+    for (uint32_t queueFamilyIndex = 0; queueFamilyIndex < queueFamiliesProperties.size(); queueFamilyIndex++)
     {
-        VkQueueFamilyProperties queueFamilyProperty =
-            queueFamiliesProperties[queueFamilyIndex];
+        VkQueueFamilyProperties queueFamilyProperty = queueFamiliesProperties[queueFamilyIndex];
 
         if (queueFamilyProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT)
         {
             VkDeviceQueueCreateInfo queueCreateInfo;
-            queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-            queueCreateInfo.pNext = nullptr;
-            queueCreateInfo.flags = 0;
+            queueCreateInfo.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            queueCreateInfo.pNext            = nullptr;
+            queueCreateInfo.flags            = 0;
             queueCreateInfo.queueFamilyIndex = queueFamilyIndex;
             queueCreateInfo.queueCount       = 1;
             queueCreateInfo.pQueuePriorities = &priority;
@@ -133,24 +123,24 @@ VkResult Device::Init(const PhysicalDevice& physicalDevice)
     }
 
     std::vector<const char*> enabledLayers;
-    std::vector<const char*> enabledExtensions = {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+    std::vector<const char*> enabledExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
     VkPhysicalDeviceFeatures features = {};
+    features.multiViewport            = VK_FALSE;
     {
-        VkDeviceCreateInfo createInfo    = {};
-        createInfo.sType                 = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        createInfo.pNext                 = nullptr;
-        createInfo.flags                 = 0;
-        createInfo.queueCreateInfoCount  = CountElements(queueCreateInfos);
-        createInfo.pQueueCreateInfos     = queueCreateInfos.data();
-        createInfo.enabledLayerCount     = CountElements(enabledLayers);
-        createInfo.ppEnabledLayerNames   = enabledLayers.data();
-        createInfo.enabledExtensionCount = CountElements(enabledExtensions);
+        VkDeviceCreateInfo createInfo      = {};
+        createInfo.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+        createInfo.pNext                   = nullptr;
+        createInfo.flags                   = 0;
+        createInfo.queueCreateInfoCount    = CountElements(queueCreateInfos);
+        createInfo.pQueueCreateInfos       = queueCreateInfos.data();
+        createInfo.enabledLayerCount       = CountElements(enabledLayers);
+        createInfo.ppEnabledLayerNames     = enabledLayers.data();
+        createInfo.enabledExtensionCount   = CountElements(enabledExtensions);
         createInfo.ppEnabledExtensionNames = enabledExtensions.data();
         createInfo.pEnabledFeatures        = &features;
 
-        VkResult result = vkCreateDevice(physicalDevice.GetHandle(), &createInfo, nullptr, &m_device);
+        VkResult result = vkCreateDevice(physicalDevice.GetHandle(), &createInfo, nullptr, &m_handle);
 
         if (Utils::IsError(result))
         {
@@ -161,14 +151,14 @@ VkResult Device::Init(const PhysicalDevice& physicalDevice)
     // Create Queue
     {
         VkQueue queueHandle = VK_NULL_HANDLE;
-        vkGetDeviceQueue(m_device, graphicsQueueFamilyIndex, 0, &queueHandle);
+        vkGetDeviceQueue(m_handle, graphicsQueueFamilyIndex, 0, &queueHandle);
         m_graphicsQueue = CreateUnique<CommandQueue>(queueHandle, graphicsQueueFamilyIndex);
     }
 
     VmaAllocatorCreateInfo createInfo = {};
     createInfo.flags                  = 0;
-    createInfo.physicalDevice         = m_pPhysicalDevice->GetHandle();
-    createInfo.device                 = m_device;
+    createInfo.physicalDevice         = GetPhysicalDevice().GetHandle();
+    createInfo.device                 = m_handle;
     createInfo.instance               = m_pInstance->GetHandle();
     // createInfo.vulkanApiVersion = VK_VERSION_1_2;
     Utils::AssertSuccess(vmaCreateAllocator(&createInfo, &m_allocator));
@@ -176,9 +166,9 @@ VkResult Device::Init(const PhysicalDevice& physicalDevice)
     return VK_SUCCESS;
 }
 
-EResultCode Device::WaitIdle() const
+ResultCode Device::WaitIdle() const
 {
-    return ConvertResult(vkDeviceWaitIdle(m_device));
+    return ConvertResult(vkDeviceWaitIdle(m_handle));
 }
 
 }  // namespace Vulkan

@@ -1,6 +1,8 @@
 #pragma once
-#include "Backend/Vulkan/Resource.hpp"
 #include "RHI/Swapchain.hpp"
+
+#include "Backend/Vulkan/DeviceObject.hpp"
+#include "Backend/Vulkan/Resource.hpp"
 
 namespace RHI
 {
@@ -8,48 +10,42 @@ namespace Vulkan
 {
 class Instance;
 class PhysicalDevice;
+class Image;
+class Semaphore;
 
-class Surface final
-    : public ISurface
-    , public DeviceObject<VkSurfaceKHR>
+class Surface final : public ISurface
 {
 public:
     Surface(const Instance& instance)
-        : DeviceObject(nullptr)
-        , m_pInstance(&instance)
+        : m_pInstance(&instance)
     {
     }
     ~Surface();
 
-#ifdef RHI_WINDOWS
+    VkSurfaceKHR GetHandle() const
+    {
+        return m_handle;
+    }
+
     VkResult Init(const Win32SurfaceDesc& desc);
-#elif defined(RHI_LINUX)
-    VkResult Init(const X11SurfaceDesc& desc);
-#endif
 
-    VkBool32 QueryQueueFamilyPresentSupport(uint32_t familyIndex) const;
+    VkBool32 QueryQueueFamilyPresentSupport(const PhysicalDevice& physicalDevice, uint32_t familyIndex) const;
 
-    std::vector<VkSurfaceFormatKHR> GetSupportedFormats(
-        const PhysicalDevice& physicalDevice);
+    std::vector<VkSurfaceFormatKHR> GetSupportedFormats(const PhysicalDevice& physicalDevice) const;
 
-    std::vector<VkPresentModeKHR> GetSupportedPresentModes(
-        const PhysicalDevice& physicalDevice);
+    std::vector<VkPresentModeKHR> GetSupportedPresentModes(const PhysicalDevice& physicalDevice) const;
 
-    VkSurfaceCapabilitiesKHR GetCapabilities(
-        const PhysicalDevice& physicalDevice);
+    VkSurfaceCapabilitiesKHR GetCapabilities(const PhysicalDevice& physicalDevice) const;
 
-    static VkSurfaceFormatKHR SelectFormat(
-        const std::vector<VkSurfaceFormatKHR>& formats);
+    static VkSurfaceFormatKHR SelectFormat(const std::vector<VkSurfaceFormatKHR>& formats);
 
-    static VkExtent2D ClampExtent(VkExtent2D actualExtent,
-                                  VkExtent2D currentExtent,
-                                  VkExtent2D minImageExtent,
-                                  VkExtent2D maxImageExtent);
+    static VkExtent2D ClampExtent(VkExtent2D actualExtent, VkExtent2D currentExtent, VkExtent2D minImageExtent, VkExtent2D maxImageExtent);
 
-    static VkPresentModeKHR SelectPresentMode(
-        const std::vector<VkPresentModeKHR>& presentModes);
+    static VkPresentModeKHR SelectPresentMode(const std::vector<VkPresentModeKHR>& presentModes);
 
 private:
+    VkSurfaceKHR m_handle;
+
     const Instance* m_pInstance;
 };
 
@@ -58,8 +54,8 @@ class Swapchain final
     , public DeviceObject<VkSwapchainKHR>
 {
 public:
-    Swapchain(const Device& device)
-        : DeviceObject(&device)
+    Swapchain(Device& device)
+        : DeviceObject(device)
     {
     }
 
@@ -67,12 +63,19 @@ public:
 
     VkResult Init(const SwapchainDesc& desc);
 
-    Image& GetCurrentImage()
+    Image& GetCurrentImage();
+
+    Fence& GetCurrentFence()
     {
-        return static_cast<Image&>(ISwapchain::GetCurrentImage());
+        return *m_framesInFlightFence[m_currentImageIndex];
     }
 
     const Semaphore& GetImageReadySemaphore() const
+    {
+        return *m_imageReadySemaphore;
+    }
+
+    Semaphore& GetImageReadySemaphore()
     {
         return *m_imageReadySemaphore;
     }
@@ -81,6 +84,8 @@ public:
 
 private:
     Unique<Semaphore> m_imageReadySemaphore;
+
+    std::vector<Unique<Fence>> m_framesInFlightFence;
 };
 
 }  // namespace Vulkan

@@ -1,24 +1,24 @@
 #pragma once
-#include "RHI/Common.hpp"
+
 #include "RHI/Resource.hpp"
 
 namespace RHI
 {
 
-enum class EFormat;
+enum class Format;
 
 class ShaderResourceGroupLayout;
 class IShaderProgram;
 class IRenderPass;
 
-enum class ERasterizationCullMode
+enum class RasterizationCullMode
 {
     None,
     FrontFace,
     BackFace,
 };
 
-enum class ERasterizationFillMode
+enum class RasterizationFillMode
 {
     Point,
     Triangle,
@@ -37,13 +37,13 @@ struct GraphicsPipelineShaderStages
 struct GraphicsPipelineVertexAttributeState
 {
     std::string name;
-    EFormat     format;
+    Format      format;
 };
 
 struct GraphicsPipelineRasterizationState
 {
-    ERasterizationCullMode cullMode = ERasterizationCullMode::BackFace;
-    ERasterizationFillMode fillMode = ERasterizationFillMode::Triangle;
+    RasterizationFillMode fillMode = RasterizationFillMode::Triangle;
+    RasterizationCullMode cullMode = RasterizationCullMode::BackFace;
 };
 
 struct GraphicsPipelineDepthStencilState
@@ -64,6 +64,8 @@ struct PipelineLayoutDesc
 
 struct GraphicsPipelineStateDesc
 {
+    GraphicsPipelineStateDesc() = default;
+
     PipelineLayoutDesc                                pipelineLayoutDesc;
     const IRenderPass*                                pRenderPass;
     GraphicsPipelineShaderStages                      shaderStages;

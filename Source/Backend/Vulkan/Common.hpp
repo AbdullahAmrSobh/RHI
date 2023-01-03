@@ -1,43 +1,48 @@
 #pragma once
-
-#include "Backend/Vulkan/Vma/vk_mem_alloc.hpp"
 #include "RHI/Common.hpp"
+
+#include "RHI/Debug.hpp"
 #include "RHI/Format.hpp"
 #include "RHI/PipelineState.hpp"
 #include "RHI/Resource.hpp"
+#include "RHI/Image.hpp"
+#include "RHI/Buffer.hpp"
+
+/////////////////////////////////////////////////
+#include "Backend/Vulkan/Vma/vk_mem_alloc.hpp"
+/////////////////////////////////////////////////
+#include "Backend/Vulkan/DeviceObject.hpp"
 
 namespace RHI
 {
 namespace Vulkan
 {
 
-EResultCode ConvertResult(VkResult resultCode);
+ResultCode ConvertResult(VkResult resultCode);
 
 VkShaderStageFlags CovnertShaderStages(ShaderStageFlags stages);
 
-VkShaderStageFlagBits CovnertShaderStages(EShaderStageFlagBits stages);
+VkShaderStageFlagBits CovnertShaderStages(ShaderStageFlagBits stages);
 
-VkCullModeFlags ConvertRasterizationStateCullMode(
-    ERasterizationCullMode cullMode);
+VkCullModeFlags ConvertRasterizationStateCullMode(RasterizationCullMode cullMode);
 
-VkPolygonMode ConvertRasterizationStateFillMode(
-    ERasterizationFillMode fillMode);
+VkPolygonMode ConvertRasterizationStateFillMode(RasterizationFillMode fillMode);
 
-VkFilter ConvertFilter(ESamplerFilter filter);
+VkFilter ConvertFilter(SamplerFilter filter);
 
-VkSamplerMipmapMode ConvertSamplerMipMapMode(ESamplerFilter filter);
+VkSamplerMipmapMode ConvertSamplerMipMapMode(SamplerFilter filter);
 
-VkSamplerAddressMode ConvertSamplerAddressMode(ESamplerAddressMode addressMode);
+VkSamplerAddressMode ConvertSamplerAddressMode(SamplerAddressMode addressMode);
 
-VkCompareOp ConvertSamplerCompareOp(ESamplerCompareOp compareOp);
+VkCompareOp ConvertSamplerCompareOp(SamplerCompareOp compareOp);
 
-VkFormat ConvertFormat(EFormat format);
+VkFormat ConvertFormat(Format format);
 
-uint32_t FormatStrideSize(EFormat format);
+uint32_t FormatStrideSize(Format format);
 
 uint32_t FormatStrideSize(VkFormat format);
 
-VkImageViewType ConvertImageViewType(EImageViewType imageType);
+VkImageViewType ConvertImageViewType(ImageViewType imageType);
 
 VkImageAspectFlags ConvertViewAspect(ImageViewAspectFlags aspectFlags);
 
@@ -51,10 +56,9 @@ inline VkExtent2D ConvertExtent(Extent2D extent)
     return {extent.sizeX, extent.sizeY};
 }
 
-inline VkSampleCountFlagBits ConvertSampleCount(ESampleCount sampleCount)
+inline VkSampleCountFlagBits ConvertSampleCount(SampleCount sampleCount)
 {
-    return static_cast<VkSampleCountFlagBits>(
-        static_cast<uint32_t>(sampleCount));
+    return static_cast<VkSampleCountFlagBits>(static_cast<uint32_t>(sampleCount));
 }
 
 inline VkViewport ConvertViewport(const Viewport& viewport)
@@ -77,7 +81,7 @@ VkImageUsageFlags ConvertImageUsage(ImageUsageFlags usageFlags);
 
 VkBufferUsageFlags ConvertBufferUsage(BufferUsageFlags usageFlags);
 
-VmaMemoryUsage ConvertMemoryUsage(EMemoryUsage usage);
+VmaMemoryUsage ConvertMemoryUsage(MemoryUsage usage);
 
 namespace Utils
 {
@@ -97,15 +101,12 @@ inline bool IsError(VkResult result)
     return !(IsSuccess(result));
 }
 
-inline auto Unexpected(VkResult result)
-{
-    return ::RHI::Unexpected(ConvertResult(result));
-}
-
 }  // namespace Utils
-
 }  // namespace Vulkan
 }  // namespace RHI
 
-
-#define VK_RETURN_ON_ERROR(result) if(::RHI::Vulkan::Utils::IsError(result)) { return result; }
+#define VK_RETURN_ON_ERROR(result)                                                                                                         \
+    if (::RHI::Vulkan::Utils::IsError(result))                                                                                             \
+    {                                                                                                                                      \
+        return result;                                                                                                                     \
+    }

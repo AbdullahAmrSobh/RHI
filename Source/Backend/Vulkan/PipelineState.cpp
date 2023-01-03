@@ -1,6 +1,13 @@
+#include "RHI/Pch.hpp"
+
+#include "Backend/Vulkan/Common.hpp"
+
 #include "Backend/Vulkan/PipelineState.hpp"
 
 #include "Backend/Vulkan/Device.hpp"
+#include "Backend/Vulkan/RenderPass.hpp"
+#include "Backend/Vulkan/Resource.hpp"
+#include "Backend/Vulkan/ShaderResourceGroup.hpp"
 
 namespace RHI
 {
@@ -8,7 +15,7 @@ namespace Vulkan
 {
 PipelineLayout::~PipelineLayout()
 {
-    vkDestroyPipelineLayout(m_pDevice->GetHandle(), m_handle, nullptr);
+    vkDestroyPipelineLayout(m_device->GetHandle(), m_handle, nullptr);
 }
 
 VkResult PipelineLayout::Init(const PipelineLayoutDesc& layoutDesc)
@@ -38,16 +45,15 @@ VkResult PipelineLayout::Init(const PipelineLayoutDesc& layoutDesc)
                    [](const auto& dsl) { return dsl->GetHandle(); });
 
     VkPipelineLayoutCreateInfo createInfo = {};
-    createInfo.sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    createInfo.pNext          = nullptr;
-    createInfo.flags          = 0;
-    createInfo.setLayoutCount = CountElements(descriptorSetLayouts);
-    createInfo.pSetLayouts    = descriptorSetLayouts.data();
-    createInfo.pushConstantRangeCount = CountElements(m_pushConstantRanges);
-    createInfo.pPushConstantRanges    = m_pushConstantRanges.data();
+    createInfo.sType                      = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    createInfo.pNext                      = nullptr;
+    createInfo.flags                      = 0;
+    createInfo.setLayoutCount             = CountElements(descriptorSetLayouts);
+    createInfo.pSetLayouts                = descriptorSetLayouts.data();
+    createInfo.pushConstantRangeCount     = CountElements(m_pushConstantRanges);
+    createInfo.pPushConstantRanges        = m_pushConstantRanges.data();
 
-    return vkCreatePipelineLayout(
-        m_pDevice->GetHandle(), &createInfo, nullptr, &m_handle);
+    return vkCreatePipelineLayout(m_device->GetHandle(), &createInfo, nullptr, &m_handle);
 }
 
 namespace PipelineStateInitalizers
@@ -56,73 +62,64 @@ struct ShaderStage
 {
     ShaderStage(const GraphicsPipelineShaderStages& shaderStages)
     {
-        const ShaderModule* pVertexShader =
-            static_cast<const ShaderModule*>(shaderStages.pVertexShader);
-        const ShaderModule* pTessellationControlShader =
-            static_cast<const ShaderModule*>(shaderStages.pTessControlShader);
-        const ShaderModule* pTessellationEvaluationShader =
-            static_cast<const ShaderModule*>(shaderStages.pTessEvalShader);
-        const ShaderModule* pGeometryShader =
-            static_cast<const ShaderModule*>(shaderStages.pGeometryShader);
-        const ShaderModule* pFragmentShader =
-            static_cast<const ShaderModule*>(shaderStages.pPixelShader);
+        const ShaderModule* pVertexShader                 = static_cast<const ShaderModule*>(shaderStages.pVertexShader);
+        const ShaderModule* pTessellationControlShader    = static_cast<const ShaderModule*>(shaderStages.pTessControlShader);
+        const ShaderModule* pTessellationEvaluationShader = static_cast<const ShaderModule*>(shaderStages.pTessEvalShader);
+        const ShaderModule* pGeometryShader               = static_cast<const ShaderModule*>(shaderStages.pGeometryShader);
+        const ShaderModule* pFragmentShader               = static_cast<const ShaderModule*>(shaderStages.pPixelShader);
 
         VkPipelineShaderStageCreateInfo createInfo = {};
-        createInfo.sType =
-            VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        createInfo.pNext = nullptr;
-        createInfo.flags = 0;
+        createInfo.sType                           = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        createInfo.pNext                           = nullptr;
+        createInfo.flags                           = 0;
 
         if (pVertexShader)
         {
-            createInfo.stage  = VK_SHADER_STAGE_VERTEX_BIT;
-            createInfo.module = pVertexShader->GetHandle();
-            createInfo.pName  = pVertexShader->GetFunctionName().c_str();
+            createInfo.stage               = VK_SHADER_STAGE_VERTEX_BIT;
+            createInfo.module              = pVertexShader->GetHandle();
+            createInfo.pName               = pVertexShader->m_functionName.c_str();
             createInfo.pSpecializationInfo = nullptr;
             states.push_back(createInfo);
         }
 
         if (pTessellationControlShader)
         {
-            createInfo.stage  = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-            createInfo.module = pTessellationControlShader->GetHandle();
-            createInfo.pName =
-                pTessellationControlShader->GetFunctionName().c_str();
+            createInfo.stage               = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+            createInfo.module              = pTessellationControlShader->GetHandle();
+            createInfo.pName               = pTessellationControlShader->m_functionName.c_str();
             createInfo.pSpecializationInfo = nullptr;
             states.push_back(createInfo);
         }
 
         if (pTessellationEvaluationShader)
         {
-            createInfo.stage  = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-            createInfo.module = pTessellationEvaluationShader->GetHandle();
-            createInfo.pName =
-                pTessellationEvaluationShader->GetFunctionName().c_str();
+            createInfo.stage               = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+            createInfo.module              = pTessellationEvaluationShader->GetHandle();
+            createInfo.pName               = pTessellationEvaluationShader->m_functionName.c_str();
             createInfo.pSpecializationInfo = nullptr;
             states.push_back(createInfo);
         }
 
         if (pGeometryShader)
         {
-            createInfo.stage  = VK_SHADER_STAGE_GEOMETRY_BIT;
-            createInfo.module = pGeometryShader->GetHandle();
-            createInfo.pName  = pGeometryShader->GetFunctionName().c_str();
+            createInfo.stage               = VK_SHADER_STAGE_GEOMETRY_BIT;
+            createInfo.module              = pGeometryShader->GetHandle();
+            createInfo.pName               = pGeometryShader->m_functionName.c_str();
             createInfo.pSpecializationInfo = nullptr;
             states.push_back(createInfo);
         }
 
         if (pFragmentShader)
         {
-            createInfo.stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
-            createInfo.module = pFragmentShader->GetHandle();
-            createInfo.pName  = pFragmentShader->GetFunctionName().c_str();
+            createInfo.stage               = VK_SHADER_STAGE_FRAGMENT_BIT;
+            createInfo.module              = pFragmentShader->GetHandle();
+            createInfo.pName               = pFragmentShader->m_functionName.c_str();
             createInfo.pSpecializationInfo = nullptr;
             states.push_back(createInfo);
         }
     }
 
-    void Initalize(uint32_t&                               count,
-                   VkPipelineShaderStageCreateInfo const*& pState)
+    void Initalize(uint32_t& count, VkPipelineShaderStageCreateInfo const*& pState)
     {
         count  = CountElements(states);
         pState = states.data();
@@ -133,8 +130,7 @@ struct ShaderStage
 
 struct VertexInputState
 {
-    VertexInputState(
-        std::vector<GraphicsPipelineVertexAttributeState> vertexInputAttributes)
+    VertexInputState(std::vector<GraphicsPipelineVertexAttributeState> vertexInputAttributes)
     {
         bindingDescription.stride = 0;
 
@@ -145,10 +141,10 @@ struct VertexInputState
             VkVertexInputAttributeDescription attribute = {};
             attribute.binding                           = 0;
             attribute.location                          = location;
-            attribute.format = ConvertFormat(inattribute.format);
-            attribute.offset = bindingDescription.stride;
+            attribute.format                            = ConvertFormat(inattribute.format);
+            attribute.offset                            = bindingDescription.stride;
 
-            bindingDescription.stride += FormatStrideSize(attribute.format);
+            bindingDescription.stride += GetFormatByteSize(inattribute.format);
 
             location++;
             attributes.push_back(attribute);
@@ -161,11 +157,10 @@ struct VertexInputState
         state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
         state.pNext = nullptr;
         state.flags = 0;
-        state.vertexBindingDescriptionCount = 1;
-        state.pVertexBindingDescriptions    = &bindingDescription;
-        state.vertexAttributeDescriptionCount =
-            static_cast<uint32_t>(attributes.size());
-        state.pVertexAttributeDescriptions = attributes.data();
+        state.vertexBindingDescriptionCount   = 1;
+        state.pVertexBindingDescriptions      = &bindingDescription;
+        state.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributes.size());
+        state.pVertexAttributeDescriptions    = attributes.data();
     }
 
     void Initalize(VkPipelineVertexInputStateCreateInfo const*& pState) const
@@ -182,8 +177,7 @@ struct InputAssemblyState
 {
     InputAssemblyState()
     {
-        state.sType =
-            VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        state.sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
         state.pNext                  = nullptr;
         state.flags                  = 0;
         state.topology               = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -202,9 +196,9 @@ struct TessellationState
 {
     TessellationState()
     {
-        state.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
-        state.pNext = nullptr;
-        state.flags = 0;
+        state.sType              = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
+        state.pNext              = nullptr;
+        state.flags              = 0;
         state.patchControlPoints = 0;
     }
 
@@ -220,13 +214,21 @@ struct ViewportState
 {
     ViewportState()
     {
-        state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-        state.pNext = nullptr;
-        state.flags = 0;
-        state.viewportCount = 0;
-        state.pViewports    = nullptr;
-        state.scissorCount  = 0;
-        state.pScissors     = nullptr;
+        viewport.x        = 0;
+        viewport.y        = 0;
+        viewport.width    = 640;
+        viewport.height   = 480;
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+        scissor           = {{0, 0}, {640, 480}};
+
+        state.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        state.pNext         = nullptr;
+        state.flags         = 0;
+        state.viewportCount = 1;
+        state.pViewports    = &viewport;
+        state.scissorCount  = 1;
+        state.pScissors     = &scissor;
     }
 
     void Initalize(VkPipelineViewportStateCreateInfo const*& pState) const
@@ -234,17 +236,18 @@ struct ViewportState
         pState = &state;
     }
 
+    VkViewport                        viewport;
+    VkRect2D                          scissor;
     VkPipelineViewportStateCreateInfo state;
 };
 
 struct RasterizationState
 {
-    RasterizationState(
-        const GraphicsPipelineRasterizationState& rasterStateDesc)
+    RasterizationState(const GraphicsPipelineRasterizationState& rasterStateDesc)
     {
-        state.sType =
-            VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        state.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
         state.pNext = nullptr;
+        state.flags = 0;
 
         state.depthClampEnable = VK_FALSE;
         // discards all primitives before the rasterization stage if enabled
@@ -254,24 +257,18 @@ struct RasterizationState
         state.polygonMode = VK_POLYGON_MODE_FILL;
         switch (rasterStateDesc.fillMode)
         {
-            case ERasterizationFillMode::Point:
-                state.polygonMode = VK_POLYGON_MODE_POINT;
-            case ERasterizationFillMode::Triangle:
-                state.polygonMode = VK_POLYGON_MODE_FILL;
-            case ERasterizationFillMode::Line:
-                state.polygonMode = VK_POLYGON_MODE_LINE;
+            case RasterizationFillMode::Point: state.polygonMode = VK_POLYGON_MODE_POINT; break;
+            case RasterizationFillMode::Triangle: state.polygonMode = VK_POLYGON_MODE_FILL; break;
+            case RasterizationFillMode::Line: state.polygonMode = VK_POLYGON_MODE_LINE; break;
         };
 
         state.lineWidth = 1.0f;
         // no backface cull
         switch (rasterStateDesc.cullMode)
         {
-            case ERasterizationCullMode::None:
-                state.cullMode = VK_CULL_MODE_NONE;
-            case ERasterizationCullMode::FrontFace:
-                state.cullMode = VK_CULL_MODE_FRONT_BIT;
-            case ERasterizationCullMode::BackFace:
-                state.cullMode = VK_CULL_MODE_BACK_BIT;
+            case RasterizationCullMode::None: state.cullMode = VK_CULL_MODE_NONE; break;
+            case RasterizationCullMode::FrontFace: state.cullMode = VK_CULL_MODE_FRONT_BIT; break;
+            case RasterizationCullMode::BackFace: state.cullMode = VK_CULL_MODE_BACK_BIT; break;
         };
         state.frontFace = VK_FRONT_FACE_CLOCKWISE;
         // no depth bias
@@ -291,11 +288,11 @@ struct RasterizationState
 
 struct MultisampleState
 {
-    MultisampleState(ESampleCount sampleCount)
+    MultisampleState(SampleCount sampleCount)
     {
-        state.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-        state.pNext = nullptr;
-        state.flags = 0;
+        state.sType                 = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        state.pNext                 = nullptr;
+        state.flags                 = 0;
         state.rasterizationSamples  = ConvertSampleCount(sampleCount);
         state.sampleShadingEnable   = VK_FALSE;
         state.minSampleShading      = 1.0f;
@@ -316,20 +313,18 @@ struct DepthStencilState
 {
     DepthStencilState(const GraphicsPipelineDepthStencilState& depthStencil)
     {
-        state.sType =
-            VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-        state.pNext            = nullptr;
-        state.flags            = 0;
-        state.depthTestEnable  = depthStencil.depthEnabled ? VK_TRUE : VK_FALSE;
-        state.depthWriteEnable = VK_TRUE;
-        state.depthCompareOp   = VK_COMPARE_OP_LESS;
+        state.sType                 = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        state.pNext                 = nullptr;
+        state.flags                 = 0;
+        state.depthTestEnable       = depthStencil.depthEnabled ? VK_TRUE : VK_FALSE;
+        state.depthWriteEnable      = VK_TRUE;
+        state.depthCompareOp        = VK_COMPARE_OP_LESS;
         state.depthBoundsTestEnable = VK_FALSE;
-        state.stencilTestEnable =
-            depthStencil.stencilEnable ? VK_TRUE : VK_FALSE;
-        state.front          = {};
-        state.back           = {};
-        state.minDepthBounds = 0.0f;
-        state.maxDepthBounds = 1.0f;
+        state.stencilTestEnable     = depthStencil.stencilEnable ? VK_TRUE : VK_FALSE;
+        state.front                 = {};
+        state.back                  = {};
+        state.minDepthBounds        = 0.0f;
+        state.maxDepthBounds        = 1.0f;
     }
 
     void Initalize(VkPipelineDepthStencilStateCreateInfo const*& pState) const
@@ -347,11 +342,24 @@ struct ColorBlendState
         // TODO
         (void)stateDesc;
 
-        state.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-        state.pNext = nullptr;
-        state.flags = 0;
+        VkPipelineColorBlendAttachmentState blendState = {};
+        blendState.colorWriteMask =
+            VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        blendState.blendEnable         = VK_FALSE;
+        blendState.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;   // Optional
+        blendState.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;  // Optional
+        blendState.colorBlendOp        = VK_BLEND_OP_ADD;       // Optional
+        blendState.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;   // Optional
+        blendState.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;  // Optional
+        blendState.alphaBlendOp        = VK_BLEND_OP_ADD;       // Optional
+
+        attachmentColorBlend.push_back(blendState);
+
+        state.sType             = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        state.pNext             = nullptr;
+        state.flags             = 0;
         state.logicOpEnable     = VK_FALSE;
-        state.logicOp           = VK_LOGIC_OP_SET;
+        state.logicOp           = VK_LOGIC_OP_COPY;
         state.attachmentCount   = CountElements(attachmentColorBlend);
         state.pAttachments      = attachmentColorBlend.data();
         state.blendConstants[0] = 0.0f;
@@ -373,9 +381,9 @@ struct DynamicState
 {
     DynamicState()
     {
-        state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-        state.pNext = nullptr;
-        state.flags = 0;
+        state.sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        state.pNext             = nullptr;
+        state.flags             = 0;
         state.dynamicStateCount = 2;
         state.pDynamicStates    = dynamicStates;
     }
@@ -402,13 +410,12 @@ struct DynamicState
 
 }  // namespace PipelineStateInitalizers
 
-Expected<Unique<IPipelineState>> Device::CreateGraphicsPipelineState(
-    const GraphicsPipelineStateDesc& desc) const
+Expected<Unique<IPipelineState>> Device::CreateGraphicsPipelineState(const GraphicsPipelineStateDesc& desc)
 {
     Unique<PipelineState> pipelineState = CreateUnique<PipelineState>(*this);
     VkResult              result        = pipelineState->Init(desc);
 
-    if (Utils::IsSuccess(result))
+    if (!Utils::IsSuccess(result))
     {
         return Unexpected(ConvertResult(result));
     }
@@ -418,22 +425,21 @@ Expected<Unique<IPipelineState>> Device::CreateGraphicsPipelineState(
 
 PipelineState::~PipelineState()
 {
-    vkDestroyPipeline(m_pDevice->GetHandle(), m_handle, nullptr);
+    vkDestroyPipeline(m_device->GetHandle(), m_handle, nullptr);
 }
 
 VkResult PipelineState::Init(const GraphicsPipelineStateDesc& desc)
 {
-    m_layout        = CreateUnique<PipelineLayout>(*m_pDevice);
+    m_layout        = CreateUnique<PipelineLayout>(*m_device);
     VkResult result = m_layout->Init(desc.pipelineLayoutDesc);
     VK_RETURN_ON_ERROR(result);
 
-    // clang-format off
     VkGraphicsPipelineCreateInfo createInfo;
-    createInfo.sType  = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    createInfo.pNext  = nullptr;
-    createInfo.flags  = 0;
-    createInfo.layout = m_layout->GetHandle();
-    // createInfo.renderPass         = pass.GetRenderPass().GetHandle();
+    createInfo.sType              = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    createInfo.pNext              = nullptr;
+    createInfo.flags              = 0;
+    createInfo.layout             = m_layout->GetHandle();
+    createInfo.renderPass         = static_cast<const RenderPass*>(desc.pRenderPass)->GetLayout().GetHandle();
     createInfo.subpass            = 0;
     createInfo.basePipelineHandle = VK_NULL_HANDLE;
     createInfo.basePipelineIndex  = 0;
@@ -443,7 +449,7 @@ VkResult PipelineState::Init(const GraphicsPipelineStateDesc& desc)
     PipelineStateInitalizers::TessellationState  tessellationStateInitalizer;
     PipelineStateInitalizers::ViewportState      viewportStateInitalizer;
     PipelineStateInitalizers::RasterizationState rasterizationStateInitalizer(desc.rasterizationState);
-    PipelineStateInitalizers::MultisampleState   multisampleStateInitalizer(ESampleCount::Count1);
+    PipelineStateInitalizers::MultisampleState   multisampleStateInitalizer(SampleCount::Count1);
     PipelineStateInitalizers::DepthStencilState  depthStencilStateInitalizer(desc.depthStencil);
     PipelineStateInitalizers::ColorBlendState    colorBlendStateInitalizer(desc.colorBlendState);
     PipelineStateInitalizers::DynamicState       dynamicStateInitalizer;
@@ -463,9 +469,7 @@ VkResult PipelineState::Init(const GraphicsPipelineStateDesc& desc)
 
     // Recreate the entire PipelineStateObject if the RenderPassChanges.
 
-    return vkCreateGraphicsPipelines(m_pDevice->GetHandle(), VK_NULL_HANDLE, 1, &createInfo, nullptr, &m_handle);
-
-    // clang-format on
+    return vkCreateGraphicsPipelines(m_device->GetHandle(), VK_NULL_HANDLE, 1, &createInfo, nullptr, &m_handle);
 }
 
 }  // namespace Vulkan

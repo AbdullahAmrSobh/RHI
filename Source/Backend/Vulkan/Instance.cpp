@@ -1,3 +1,6 @@
+#include "RHI/Pch.hpp"
+#include "Backend/Vulkan/Common.hpp"
+
 #include "Backend/Vulkan/Instance.hpp"
 
 #include "Backend/Vulkan/Device.hpp"
@@ -16,28 +19,25 @@ static std::vector<VkPhysicalDevice> GetPhysicalDevices(VkInstance instance)
     return devices;
 }
 
-static VkBool32 VKAPI_CALL DebugUtilsMessengerCallback(
-    VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
-    VkDebugUtilsMessageTypeFlagsEXT             messageTypes,
-    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
+static VkBool32 VKAPI_CALL DebugUtilsMessengerCallback(VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
+                                                       VkDebugUtilsMessageTypeFlagsEXT             messageTypes,
+                                                       const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+                                                       void*                                       pUserData)
 {
-    auto callback = reinterpret_cast<IDebugCallbacks*>(pUserData);
     (void)messageTypes;
+    (void)pUserData;
+
     if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
     {
-        callback->Log(pCallbackData->pMessage);
+        RHI_LOG(pCallbackData->pMessage);
     }
     else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
     {
-        callback->Warn(pCallbackData->pMessage);
+        RHI_WARN(pCallbackData->pMessage);
     }
     else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
     {
-        callback->Error(pCallbackData->pMessage);
-    }
-    else
-    {
-        callback->Fatel(pCallbackData->pMessage);
+        RHI_ERROR(pCallbackData->pMessage);
     }
 
     return VK_FALSE;
@@ -60,8 +60,7 @@ VkResult Instance::Init()
     appInfo.apiVersion         = VK_API_VERSION_1_1;
 
     std::vector<const char*> enabledLayers;
-    std::vector<const char*> enabledExtensions = {
-        VK_KHR_SURFACE_EXTENSION_NAME};
+    std::vector<const char*> enabledExtensions = {VK_KHR_SURFACE_EXTENSION_NAME};
 
 #ifdef RHI_WINDOWS
     enabledExtensions.push_back("VK_KHR_win32_surface");
@@ -70,27 +69,23 @@ VkResult Instance::Init()
 #endif
 
     VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo = {};
-    if (m_debugCallbacks)
+    // Enable debug
     {
         enabledLayers.push_back("VK_LAYER_KHRONOS_validation");
         enabledExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
-        debugCreateInfo.sType =
-            VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-        debugCreateInfo.pNext = nullptr;
-        debugCreateInfo.flags = 0;
-        debugCreateInfo.messageSeverity =
-            VK_DEBUG_UTILS_MESSAGE_SEVERITY_FLAG_BITS_MAX_ENUM_EXT;
-        debugCreateInfo.messageType =
-            VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
-            | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+        debugCreateInfo.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+        debugCreateInfo.pNext           = nullptr;
+        debugCreateInfo.flags           = 0;
+        debugCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_FLAG_BITS_MAX_ENUM_EXT;
+        debugCreateInfo.messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
         debugCreateInfo.pfnUserCallback = DebugUtilsMessengerCallback;
-        debugCreateInfo.pUserData       = m_debugCallbacks.get();
+        debugCreateInfo.pUserData       = nullptr;
     }
 
     VkInstanceCreateInfo createInfo    = {};
     createInfo.sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-    createInfo.pNext                   = m_debugCallbacks ? &debugCreateInfo : nullptr;
+    createInfo.pNext                   = &debugCreateInfo;
     createInfo.flags                   = 0;
     createInfo.pApplicationInfo        = &appInfo;
     createInfo.enabledLayerCount       = CountElements(enabledLayers);
@@ -102,23 +97,18 @@ VkResult Instance::Init()
 
     VK_RETURN_ON_ERROR(result);
 
-    for (VkPhysicalDevice physicalDevice :
-         ::RHI::Vulkan::GetPhysicalDevices(m_instance))
+    for (VkPhysicalDevice physicalDevice : ::RHI::Vulkan::GetPhysicalDevices(m_instance))
     {
-        m_physicalDevices.push_back(
-            std::move(CreateUnique<PhysicalDevice>(physicalDevice)));
+        m_physicalDevices.push_back(std::move(CreateUnique<PhysicalDevice>(physicalDevice)));
     }
 
     return result;
 }
 
-Expected<Unique<IDevice>> Instance::CreateDevice(
-    const IPhysicalDevice& physicalDevice)
+Expected<Unique<IDevice>> Instance::CreateDevice(const IPhysicalDevice& physicalDevice)
 {
-    auto device = CreateUnique<Device>(
-        *this, static_cast<const PhysicalDevice&>(physicalDevice));
-    VkResult result =
-        device->Init(static_cast<const PhysicalDevice&>(physicalDevice));
+    auto     device = CreateUnique<Device>(*this, static_cast<const PhysicalDevice&>(physicalDevice));
+    VkResult result = device->Init(static_cast<const PhysicalDevice&>(physicalDevice));
     if (result != VK_SUCCESS)
     {
         return Unexpected(ConvertResult(result));

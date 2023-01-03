@@ -1,19 +1,28 @@
 #pragma once
-#include "RHI/Surface.hpp"
+#include "RHI/Image.hpp"
 
 namespace RHI
 {
 
-enum class EFormat;
-struct ImageDesc;
-class IImage;
+// so we don't have to include Windows.h
+struct Win32SurfaceDesc
+{
+    void* hwnd;
+    void* instance;
+};
+
+class ISurface
+{
+public:
+    virtual ~ISurface() = default;
+};
 
 struct SwapchainDesc
 {
     ISurface* pSurface;
     Extent2D  extent;
     uint32_t  backImagesCount;
-    EFormat   imageFormat;
+    Format    imageFormat;
 };
 
 class ISwapchain
@@ -24,11 +33,6 @@ public:
     IImage& GetCurrentImage() const
     {
         return *m_images[m_currentImageIndex];
-    }
-
-    const std::vector<IImage*>& GetImages() const
-    {
-        return m_images;
     }
 
     const ImageDesc& GetImageDescription() const
@@ -49,10 +53,10 @@ public:
     virtual void SwapImages() = 0;
 
 protected:
-    ISurface*            m_pSurface          = nullptr;
-    uint32_t             m_currentImageIndex = 0;
-    std::vector<IImage*> m_images;
-    Unique<ImageDesc>    m_imageDescription;
+    ISurface*                   m_pSurface          = nullptr;
+    uint32_t                    m_currentImageIndex = 0;
+    std::vector<Unique<IImage>> m_images;
+    Unique<ImageDesc>           m_imageDescription;
 };
 
 }  // namespace RHI

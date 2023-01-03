@@ -1,10 +1,9 @@
 #pragma once
-#include "RHI/Common.hpp"
 
 namespace RHI
 {
 
-enum class EMemoryUsage
+enum class MemoryUsage
 {
     Stream,
     Stage,
@@ -12,13 +11,11 @@ enum class EMemoryUsage
     Hosted,
 };
 
-enum class EMemoryType
+enum class MemoryLevel
 {
     Host,
     Device,
 };
-
-using MappedAllocationPtr = void*;
 
 struct AllocationMemoryRequirement
 {
@@ -26,19 +23,12 @@ struct AllocationMemoryRequirement
     size_t byteAlignment;
 };
 
-class IMemoryPool
-{
-public:
-    size_t GetCapacity() const;
-};
-
 struct AllocationDesc
 {
-    EMemoryUsage                usage;
-    EMemoryType                 type;
+    MemoryUsage                 usage;
+    MemoryLevel                 type;
     size_t                      byteOffset;
     AllocationMemoryRequirement memoryRequirement;
-    IMemoryPool*                pMemoryPool = nullptr;
 };
 
 }  // namespace RHI

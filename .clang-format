@@ -54,7 +54,7 @@ BreakConstructorInitializersBeforeComma: true
 BreakConstructorInitializers: BeforeComma
 BreakAfterJavaFieldAnnotations: true
 BreakStringLiterals: true
-ColumnLimit: 80
+ColumnLimit: 140
 CommentPragmas: '^ IWYU pragma:'
 CompactNamespaces: false
 ConstructorInitializerAllOnOneLineOrOnePerLine: false
@@ -74,13 +74,21 @@ IncludeBlocks: Regroup
 IncludeCategories:
   # Standard library headers come before anything else
   - Regex: '^<[a-z_]+>'
+    Priority: -3
+  - Regex: '"RHI/pch.hpp"'
+    Priority: -2
+  - Regex: '"*/Common.hpp"'
     Priority: -1
-  - Regex: '^<.+\.h(pp)?>'
+  - Regex: '"RHI/*.*"'
     Priority: 1
-  - Regex: '^<.*'
+  - Regex: '"Backend/.*"'
     Priority: 2
-  - Regex: '.*'
+  - Regex: '^<.+\.h(pp)?>'
     Priority: 3
+  - Regex: '^<.*'
+    Priority: 4
+  - Regex: '.*'
+    Priority: 5
 IncludeIsMainRegex: ''
 IncludeIsMainSourceRegex: ''
 IndentCaseLabels: true

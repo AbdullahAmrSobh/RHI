@@ -1,12 +1,18 @@
 #pragma once
-#include "Backend/Vulkan/CommandQueue.hpp"
-#include "Backend/Vulkan/Instance.hpp"
 #include "RHI/Device.hpp"
+#include "RHI/ObjectCache.hpp"
+
+#include "Backend/Vulkan/CommandQueue.hpp"
+#include "Backend/Vulkan/Framebuffer.hpp"
 
 namespace RHI
 {
+class UsedImageAttachment;
+
 namespace Vulkan
 {
+
+class Instance;
 
 class PhysicalDevice final : public IPhysicalDevice
 {
@@ -33,13 +39,11 @@ public:
 
     VkPhysicalDeviceMemoryProperties GetMemoryProperties() const;
 
-    VkSurfaceCapabilitiesKHR GetSurfaceCapabilities(
-        VkSurfaceKHR _surface) const;
+    VkSurfaceCapabilitiesKHR GetSurfaceCapabilities(VkSurfaceKHR _surface) const;
 
     std::vector<VkPresentModeKHR> GetPresentModes(VkSurfaceKHR _surface) const;
 
-    std::vector<VkSurfaceFormatKHR> GetSurfaceFormats(
-        VkSurfaceKHR _surface) const;
+    std::vector<VkSurfaceFormatKHR> GetSurfaceFormats(VkSurfaceKHR _surface) const;
 
 private:
     VkPhysicalDevice m_physicalDevice;
@@ -49,8 +53,8 @@ class Device final : public IDevice
 {
 public:
     Device(const Instance& instance, const PhysicalDevice& physicaldDevice)
-        : m_pInstance(&instance)
-        , m_pPhysicalDevice(&physicaldDevice)
+        : IDevice(physicaldDevice)
+        , m_pInstance(&instance)
     {
     }
 
@@ -60,17 +64,12 @@ public:
 
     const PhysicalDevice& GetPhysicalDevice() const
     {
-        return *m_pPhysicalDevice;
-    }
-
-    VkPhysicalDevice GetPhysicalDeviceHandle() const
-    {
-        return m_pPhysicalDevice->GetHandle();
+        return static_cast<const PhysicalDevice&>(IDevice::GetPhysicalDevice());
     }
 
     VkDevice GetHandle() const
     {
-        return m_device;
+        return m_handle;
     }
 
     VmaAllocator GetAllocator() const
@@ -78,50 +77,47 @@ public:
         return m_allocator;
     }
 
-    EResultCode WaitIdle() const override;
+    ResultCode WaitIdle() const override;
 
-    Expected<Unique<ISwapchain>> CreateSwapChain(
-        const SwapchainDesc& desc) const override;
+    Expected<Unique<ISwapchain>> CreateSwapChain(const SwapchainDesc& desc) override;
 
-    Expected<Unique<IShaderProgram>> CreateShaderProgram(
-        const ShaderProgramDesc& desc) const override;
+    Expected<Unique<IShaderProgram>> CreateShaderProgram(const ShaderProgramDesc& desc) override;
 
-    Expected<Unique<IShaderResourceGroupAllocator>>
-    CreateShaderResourceGroupAllocator() const override;
+    Expected<Unique<IShaderResourceGroupAllocator>> CreateShaderResourceGroupAllocator() override;
 
-    Expected<Unique<IPipelineState>> CreateGraphicsPipelineState(
-        const GraphicsPipelineStateDesc& desc) const override;
+    Expected<Unique<IPipelineState>> CreateGraphicsPipelineState(const GraphicsPipelineStateDesc& desc) override;
 
-    Expected<Unique<IFence>> CreateFence() const override;
+    Expected<Unique<IFence>> CreateFence() override;
 
-    Expected<Unique<ISampler>> CreateSampler(
-        const SamplerDesc& desc) const override;
+    Expected<Unique<ISampler>> CreateSampler(const SamplerDesc& desc) override;
 
-    Expected<Unique<IImage>> CreateImage(const AllocationDesc& allocationDesc,
-                                         const ImageDesc& desc) const override;
+    Expected<Unique<IImage>> CreateImage(const AllocationDesc& allocationDesc, const ImageDesc& desc) override;
 
-    Expected<Unique<IImageView>> CreateImageView(
-        const IImage&        image,
-        const ImageViewDesc& desc) const override;
+    Expected<Unique<IImageView>> CreateImageView(const IImage& image, const ImageViewDesc& desc) override;
 
-    Expected<Unique<IBuffer>> CreateBuffer(
-        const AllocationDesc& allocationDesc,
-        const BufferDesc&     desc) const override;
+    Expected<Unique<IBuffer>> CreateBuffer(const AllocationDesc& allocationDesc, const BufferDesc& desc) override;
 
-    Expected<Unique<IBufferView>> CreateBufferView(
-        const IBuffer&        buffer,
-        const BufferViewDesc& desc) const override;
+    Expected<Unique<IBufferView>> CreateBufferView(const IBuffer& buffer, const BufferViewDesc& desc) override;
+
+    Expected<Unique<IFrameScheduler>> CreateFrameScheduler() override;
+
+    //////////////////////////////////////
+    // Cached objects creator
+
+    Shared<RenderPassLayout> CreateRenderpassLayout(std::span<const UsedImageAttachment* const> attachments);
+    Shared<Framebuffer>      CreateCachedFramebuffer(std::span<UsedImageAttachment* const> attachments);
 
 private:
     const Instance* m_pInstance;
 
-    const PhysicalDevice* m_pPhysicalDevice;
-
-    VkDevice m_device;
+    VkDevice m_handle;
 
     VmaAllocator m_allocator;
 
     Unique<CommandQueue> m_graphicsQueue;
+
+    ObjectCache<RenderPassLayout> m_renderpassLayoutCache;
+    ObjectCache<Framebuffer> m_framebufferCache;
 
 public:
     const CommandQueue& GetGraphicsQueue() const

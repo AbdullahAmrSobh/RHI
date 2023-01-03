@@ -1,3 +1,7 @@
+#include "RHI/Pch.hpp"
+
+#include "Backend/Vulkan/Common.hpp"
+
 #include "Backend/Vulkan/CommandQueue.hpp"
 
 #include "Backend/Vulkan/Commands.hpp"
@@ -50,13 +54,11 @@ void CommandQueue::Submit(const SubmitInfo& submitInfo, IFence* signalFence)
 
     Fence* fence = static_cast<Fence*>(signalFence);
 
-    VkResult result = vkQueueSubmit(
-        m_handle, 1, &vkSubmitInfo, fence ? fence->GetHandle() : nullptr);
+    VkResult result = vkQueueSubmit(m_handle, 1, &vkSubmitInfo, fence ? fence->GetHandle() : nullptr);
     Utils::AssertSuccess(result);
 }
 
-void CommandQueue::Present(std::span<const Semaphore*> waitSemaphores,
-                           const Swapchain&            swapchain)
+void CommandQueue::Present(std::span<const Semaphore* const> waitSemaphores, Swapchain& swapchain)
 {
     std::vector<VkSemaphore> semaphores;
     for (auto waitSemaphore : waitSemaphores)
@@ -79,6 +81,8 @@ void CommandQueue::Present(std::span<const Semaphore*> waitSemaphores,
     presentInfo.pResults           = nullptr;
 
     VkResult result = vkQueuePresentKHR(m_handle, &presentInfo);
+
+    swapchain.SwapImages();
     Utils::AssertSuccess(result);
 }
 

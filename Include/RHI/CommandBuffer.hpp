@@ -1,14 +1,16 @@
 #pragma once
 #include "RHI/Common.hpp"
-#include "RHI/Resource.hpp"
 
 namespace RHI
 {
 
 class IPipelineState;
+class IBuffer;
 
 struct DrawCommand
 {
+    DrawCommand() = default;
+
     struct LinearDrawData
     {
         uint32_t instanceCount  = 1;
@@ -26,21 +28,12 @@ struct DrawCommand
         uint32_t indexOffset    = 0;
     };
 
-    enum class EType
-    {
-        Linear,
-        Indexed
-    };
+    using DrawData = std::variant<LinearDrawData, IndexedDrawData>;
 
     IPipelineState* pPipelineState = nullptr;
     IBuffer*        pVertexBuffer  = nullptr;
     IBuffer*        pIndexBuffer   = nullptr;
-    EType           type;
-    union
-    {
-        LinearDrawData  linearData;
-        IndexedDrawData indexedData;
-    };
+    DrawData        drawData;
 };
 
 class ICommandBuffer
@@ -48,11 +41,8 @@ class ICommandBuffer
 public:
     virtual ~ICommandBuffer() = default;
 
-    virtual void Begin() = 0;
-    virtual void End()   = 0;
-
-    virtual void SetViewports(const std::vector<Viewport>& viewports) = 0;
-    virtual void SetScissors(const std::vector<Rect>& scissors)       = 0;
+    virtual void SetViewports(std::span<const Viewport> viewports) = 0;
+    virtual void SetScissors(std::span<const Rect> scissors)       = 0;
 
     virtual void Submit(const DrawCommand& drawCommand) = 0;
 };

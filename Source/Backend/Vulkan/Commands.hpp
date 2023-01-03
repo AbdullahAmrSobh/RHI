@@ -1,6 +1,7 @@
 #pragma once
-#include "Backend/Vulkan/Resource.hpp"
-#include "RHI/Commands.hpp"
+#include "RHI/CommandBuffer.hpp"
+
+#include "Backend/Vulkan/DeviceObject.hpp"
 
 namespace RHI
 {
@@ -17,22 +18,22 @@ class CommandBuffer final
     , public DeviceObject<VkCommandBuffer>
 {
 public:
-    CommandBuffer(const Device&     device,
-                  CommandAllocator* pParantAllocator,
-                  VkCommandBuffer   handle)
-        : DeviceObject(&device, handle)
+    CommandBuffer(Device& device, CommandAllocator* pParantAllocator, VkCommandBuffer handle)
+        : DeviceObject(device, handle)
         , m_pParantAllocator(pParantAllocator)
     {
     }
 
     ~CommandBuffer();
 
-    ///////////////////////////////////////////////////////////////////////////////
-    void Begin() override;
-    void End() override;
+    void Begin();
+    void End();
 
-    void SetViewports(const std::vector<Viewport>& viewports) override;
-    void SetScissors(const std::vector<Rect>& scissors) override;
+    void BeginRenderPass(Framebuffer& framebuffer);
+    void EndRenderPass();
+
+    void SetViewports(std::span<const Viewport> viewports) override;
+    void SetScissors(std::span<const Rect> scissors) override;
 
     void Submit(const DrawCommand& drawCommand) override;
 
@@ -43,8 +44,8 @@ private:
 class CommandAllocator final : public DeviceObject<VkCommandPool>
 {
 public:
-    CommandAllocator(const Device& device)
-        : DeviceObject(&device)
+    CommandAllocator(Device& device)
+        : DeviceObject(device)
     {
     }
 

@@ -1,14 +1,12 @@
 #pragma once
-#include "Backend/Vulkan/Common.hpp"
+#include "Backend/Vulkan/Swapchain.hpp"
 
 namespace RHI
 {
 namespace Vulkan
 {
 
-class Semaphore;
 class CommandBuffer;
-class Swapchain;
 
 struct WaitPoint
 {
@@ -19,8 +17,8 @@ struct WaitPoint
 struct SubmitInfo
 {
     std::vector<WaitPoint>      waitPoints;
-    std::vector<CommandBuffer*> commandBuffers;
     std::vector<Semaphore*>     signalSemaphores;
+    std::vector<CommandBuffer*> commandBuffers;
 };
 
 class CommandQueue
@@ -36,8 +34,7 @@ public:
 
     void Submit(const SubmitInfo& submitInfo, IFence* signalFence = nullptr);
 
-    void Present(std::span<const Semaphore*> waitSemaphores,
-                     const Swapchain&            swapchain);
+    void Present(std::span<const Semaphore* const> waitSemaphores, Swapchain& swapchain);
 
     const uint32_t m_familyIndex;
 

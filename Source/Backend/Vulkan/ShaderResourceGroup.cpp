@@ -1,26 +1,28 @@
+#include "RHI/Pch.hpp"
+
+#include "Backend/Vulkan/Common.hpp"
+
 #include "Backend/Vulkan/ShaderResourceGroup.hpp"
 
+#include "Backend/Vulkan/Buffer.hpp"
 #include "Backend/Vulkan/Device.hpp"
+#include "Backend/Vulkan/Image.hpp"
+#include "Backend/Vulkan/Resource.hpp"
 
 namespace RHI
 {
 namespace Vulkan
 {
-VkDescriptorType ConvertDescriptorType(EShaderInputResourceType resourceType,
-                                       EAccess                  access)
+VkDescriptorType ConvertDescriptorType(ShaderInputResourceType resourceType, AccessType access)
 {
-    if (access == EAccess::Read)
+    if (access == AccessType::Read)
     {
         switch (resourceType)
         {
-            case EShaderInputResourceType::Image:
-                return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-            case EShaderInputResourceType::TexelBuffer:
-                return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
-            case EShaderInputResourceType::Buffer:
-                return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            case EShaderInputResourceType::Sampler:
-                return VK_DESCRIPTOR_TYPE_SAMPLER;
+            case ShaderInputResourceType::Image: return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+            case ShaderInputResourceType::TexelBuffer: return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+            case ShaderInputResourceType::Buffer: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            case ShaderInputResourceType::Sampler: return VK_DESCRIPTOR_TYPE_SAMPLER;
             default: return VK_DESCRIPTOR_TYPE_MAX_ENUM;
         };
     }
@@ -28,12 +30,9 @@ VkDescriptorType ConvertDescriptorType(EShaderInputResourceType resourceType,
     {
         switch (resourceType)
         {
-            case EShaderInputResourceType::Image:
-                return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-            case EShaderInputResourceType::TexelBuffer:
-                return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-            case EShaderInputResourceType::Buffer:
-                return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            case ShaderInputResourceType::Image: return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+            case ShaderInputResourceType::TexelBuffer: return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+            case ShaderInputResourceType::Buffer: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
             default: return VK_DESCRIPTOR_TYPE_MAX_ENUM;
         };
     }
@@ -42,7 +41,7 @@ VkDescriptorType ConvertDescriptorType(EShaderInputResourceType resourceType,
 // DescriptorSetLayout
 DescriptorSetLayout::~DescriptorSetLayout()
 {
-    vkDestroyDescriptorSetLayout(m_pDevice->GetHandle(), m_handle, nullptr);
+    vkDestroyDescriptorSetLayout(m_device->GetHandle(), m_handle, nullptr);
 }
 
 VkResult DescriptorSetLayout::Init(const ShaderResourceGroupLayout& layout)
@@ -53,10 +52,9 @@ VkResult DescriptorSetLayout::Init(const ShaderResourceGroupLayout& layout)
         VkDescriptorSetLayoutBinding bindingInfo = {};
         bindingInfo.binding                      = bindingLocation++;
         bindingInfo.descriptorCount              = binding.count;
-        bindingInfo.descriptorType =
-            ConvertDescriptorType(binding.type, binding.access);
-        bindingInfo.stageFlags         = CovnertShaderStages(binding.stages);
-        bindingInfo.pImmutableSamplers = nullptr;
+        bindingInfo.descriptorType               = ConvertDescriptorType(binding.type, binding.access);
+        bindingInfo.stageFlags                   = CovnertShaderStages(binding.stages);
+        bindingInfo.pImmutableSamplers           = nullptr;
         m_bindings.push_back(bindingInfo);
 
         VkDescriptorPoolSize poolSize;
@@ -66,26 +64,23 @@ VkResult DescriptorSetLayout::Init(const ShaderResourceGroupLayout& layout)
     }
 
     VkDescriptorSetLayoutCreateInfo createInfo;
-    createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    createInfo.pNext = nullptr;
-    createInfo.flags = 0;
+    createInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    createInfo.pNext        = nullptr;
+    createInfo.flags        = 0;
     createInfo.bindingCount = CountElements(m_bindings);
     createInfo.pBindings    = m_bindings.data();
 
-    return vkCreateDescriptorSetLayout(m_pDevice->GetHandle(), &createInfo,
-                                       nullptr, &m_handle);
+    return vkCreateDescriptorSetLayout(m_device->GetHandle(), &createInfo, nullptr, &m_handle);
 }
 
 // DescriptorSet
 
 DescriptorSet::~DescriptorSet()
 {
-    vkFreeDescriptorSets(m_pDevice->GetHandle(), m_pool->GetHandle(), 1,
-                         &m_handle);
+    vkFreeDescriptorSets(m_device->GetHandle(), m_pool->GetHandle(), 1, &m_handle);
 }
 
-VkResult DescriptorSet::Init(const DescriptorPool&      pool,
-                             const DescriptorSetLayout& layout)
+VkResult DescriptorSet::Init(const DescriptorPool& pool, const DescriptorSetLayout& layout)
 {
     m_pool   = &pool;
     m_layout = &layout;
@@ -94,19 +89,16 @@ VkResult DescriptorSet::Init(const DescriptorPool&      pool,
     VkDescriptorSet       setHandle    = VK_NULL_HANDLE;
 
     VkDescriptorSetAllocateInfo allocateInfo = {};
-    allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocateInfo.pNext = nullptr;
-    allocateInfo.descriptorSetCount = 1;
-    allocateInfo.pSetLayouts        = &layoutHandle;
-    allocateInfo.descriptorPool     = m_pool->GetHandle();
+    allocateInfo.sType                       = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocateInfo.pNext                       = nullptr;
+    allocateInfo.descriptorSetCount          = 1;
+    allocateInfo.pSetLayouts                 = &layoutHandle;
+    allocateInfo.descriptorPool              = m_pool->GetHandle();
 
-    return vkAllocateDescriptorSets(m_pDevice->GetHandle(), &allocateInfo,
-                                    &setHandle);
+    return vkAllocateDescriptorSets(m_device->GetHandle(), &allocateInfo, &setHandle);
 }
 
-VkWriteDescriptorSet DescriptorSet::WriteImages(
-    uint32_t                                  bindingIndex,
-    const std::vector<VkDescriptorImageInfo>& imageInfos) const
+VkWriteDescriptorSet DescriptorSet::WriteImages(uint32_t bindingIndex, const std::vector<VkDescriptorImageInfo>& imageInfos) const
 {
     VkWriteDescriptorSet write;
     write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -120,9 +112,7 @@ VkWriteDescriptorSet DescriptorSet::WriteImages(
     return write;
 }
 
-VkWriteDescriptorSet DescriptorSet::WriteBuffers(
-    uint32_t                                   bindingIndex,
-    const std::vector<VkDescriptorBufferInfo>& bufferInfos) const
+VkWriteDescriptorSet DescriptorSet::WriteBuffers(uint32_t bindingIndex, const std::vector<VkDescriptorBufferInfo>& bufferInfos) const
 {
     VkWriteDescriptorSet write;
     write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -136,8 +126,7 @@ VkWriteDescriptorSet DescriptorSet::WriteBuffers(
     return write;
 }
 
-VkWriteDescriptorSet DescriptorSet::WriteTexelBuffers(
-    uint32_t bindingIndex, const std::vector<VkBufferView>& bufferViews) const
+VkWriteDescriptorSet DescriptorSet::WriteTexelBuffers(uint32_t bindingIndex, const std::vector<VkBufferView>& bufferViews) const
 {
     VkWriteDescriptorSet write;
     write.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -154,31 +143,29 @@ VkWriteDescriptorSet DescriptorSet::WriteTexelBuffers(
 // DescriptorPool
 DescriptorPool::~DescriptorPool()
 {
-    vkDestroyDescriptorPool(m_pDevice->GetHandle(), m_handle, nullptr);
+    vkDestroyDescriptorPool(m_device->GetHandle(), m_handle, nullptr);
 }
 
 VkResult DescriptorPool::Init(const Capacity& capacity)
 {
     VkDescriptorPoolCreateInfo createInfo = {};
-    createInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    createInfo.pNext         = nullptr;
-    createInfo.flags         = 0;
-    createInfo.maxSets       = capacity.maxSets;
-    createInfo.poolSizeCount = CountElements(capacity.sizes);
-    createInfo.pPoolSizes    = capacity.sizes.data();
+    createInfo.sType                      = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    createInfo.pNext                      = nullptr;
+    createInfo.flags                      = 0;
+    createInfo.maxSets                    = capacity.maxSets;
+    createInfo.poolSizeCount              = CountElements(capacity.sizes);
+    createInfo.pPoolSizes                 = capacity.sizes.data();
 
-    return vkCreateDescriptorPool(m_pDevice->GetHandle(), &createInfo, nullptr,
-                                  &m_handle);
+    return vkCreateDescriptorPool(m_device->GetHandle(), &createInfo, nullptr, &m_handle);
 }
 
 // ShaderResourceGroup
-EResultCode ShaderResourceGroup::Update(const ShaderResourceGroupData& data)
+ResultCode ShaderResourceGroup::Update(const ShaderResourceGroupData& data)
 {
     std::vector<VkWriteDescriptorSet> descriptorSetWriteDescriptions = {};
 
     std::vector<std::vector<VkDescriptorImageInfo>> imageBindingInfos;
-    imageBindingInfos.reserve(data.GetSamplersBinds().size()
-                              + data.GetImageBinds().size());
+    imageBindingInfos.reserve(data.GetSamplersBinds().size() + data.GetImageBinds().size());
 
     std::vector<std::vector<VkDescriptorBufferInfo>> bufferBindingInfos;
     bufferBindingInfos.reserve(data.GetBuffersBinds().size());
@@ -198,12 +185,11 @@ EResultCode ShaderResourceGroup::Update(const ShaderResourceGroupData& data)
             VkDescriptorImageInfo samplerInfo = {};
             samplerInfo.imageLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
             samplerInfo.imageView             = VK_NULL_HANDLE;
-            samplerInfo.sampler = static_cast<Sampler*>(sampler)->GetHandle();
+            samplerInfo.sampler               = static_cast<Sampler*>(sampler)->GetHandle();
             samplerInfos.push_back(samplerInfo);
         }
 
-        VkWriteDescriptorSet writeDesc =
-            m_descriptorSet->WriteImages(binding.first, samplerInfos);
+        VkWriteDescriptorSet writeDesc = m_descriptorSet->WriteImages(binding.first, samplerInfos);
         descriptorSetWriteDescriptions.push_back(writeDesc);
     }
 
@@ -218,14 +204,12 @@ EResultCode ShaderResourceGroup::Update(const ShaderResourceGroupData& data)
         {
             VkDescriptorImageInfo imageInfo = {};
             imageInfo.imageLayout           = VK_IMAGE_LAYOUT_GENERAL;
-            imageInfo.imageView =
-                static_cast<ImageView*>(imageView)->GetHandle();
-            imageInfo.sampler = VK_NULL_HANDLE;
+            imageInfo.imageView             = static_cast<ImageView*>(imageView)->GetHandle();
+            imageInfo.sampler               = VK_NULL_HANDLE;
             imageInfos.push_back(imageInfo);
         }
 
-        VkWriteDescriptorSet writeDesc =
-            m_descriptorSet->WriteImages(binding.first, imageInfos);
+        VkWriteDescriptorSet writeDesc = m_descriptorSet->WriteImages(binding.first, imageInfos);
         descriptorSetWriteDescriptions.push_back(writeDesc);
     }
 
@@ -239,14 +223,13 @@ EResultCode ShaderResourceGroup::Update(const ShaderResourceGroupData& data)
         for (auto& buffer : binding.second)
         {
             VkDescriptorBufferInfo bufferInfo = {};
-            bufferInfo.buffer = static_cast<Buffer*>(buffer)->GetHandle();
-            bufferInfo.offset = 0;
-            bufferInfo.range  = buffer->GetSize();
+            bufferInfo.buffer                 = static_cast<Buffer*>(buffer)->GetHandle();
+            bufferInfo.offset                 = 0;
+            bufferInfo.range                  = buffer->GetSize();
             bufferInfos.push_back(bufferInfo);
         }
 
-        VkWriteDescriptorSet writeDesc =
-            m_descriptorSet->WriteBuffers(binding.first, bufferInfos);
+        VkWriteDescriptorSet writeDesc = m_descriptorSet->WriteBuffers(binding.first, bufferInfos);
         descriptorSetWriteDescriptions.push_back(writeDesc);
     }
 
@@ -259,53 +242,44 @@ EResultCode ShaderResourceGroup::Update(const ShaderResourceGroupData& data)
 
         for (auto& bufferView : binding.second)
         {
-            bufferInfoHandles.push_back(
-                static_cast<BufferView*>(bufferView)->GetHandle());
+            bufferInfoHandles.push_back(static_cast<BufferView*>(bufferView)->GetHandle());
         }
 
-        VkWriteDescriptorSet writeDesc = m_descriptorSet->WriteTexelBuffers(
-            binding.first, bufferInfoHandles);
+        VkWriteDescriptorSet writeDesc = m_descriptorSet->WriteTexelBuffers(binding.first, bufferInfoHandles);
         descriptorSetWriteDescriptions.push_back(writeDesc);
     }
 
-    vkUpdateDescriptorSets(m_pDevice->GetHandle(),
-                           CountElements(descriptorSetWriteDescriptions),
-                           descriptorSetWriteDescriptions.data(), 0, nullptr);
+    vkUpdateDescriptorSets(
+        m_device->GetHandle(), CountElements(descriptorSetWriteDescriptions), descriptorSetWriteDescriptions.data(), 0, nullptr);
 
-    return EResultCode::Success;
+    return ResultCode::Success;
 }
 
-Expected<Unique<IShaderResourceGroupAllocator>>
-Device::CreateShaderResourceGroupAllocator() const
+Expected<Unique<IShaderResourceGroupAllocator>> Device::CreateShaderResourceGroupAllocator()
 {
-    Unique<ShaderResourceGroupAllocator> allocator =
-        CreateUnique<ShaderResourceGroupAllocator>(*this);
+    Unique<ShaderResourceGroupAllocator> allocator = CreateUnique<ShaderResourceGroupAllocator>(*this);
     return allocator;
 }
 
 // ShaderResourceGroupAllocator
-Expected<Unique<IShaderResourceGroup>> ShaderResourceGroupAllocator::Allocate(
-    const ShaderResourceGroupLayout& layout)
+Expected<Unique<IShaderResourceGroup>> ShaderResourceGroupAllocator::Allocate(const ShaderResourceGroupLayout& layout)
 {
     static std::map<size_t, Unique<DescriptorSetLayout>> s_layoutCache;
-    auto cacheResult = s_layoutCache.find(layout.GetHash());
+    auto                                                 cacheResult = s_layoutCache.find(layout.GetHash());
 
     if (cacheResult == s_layoutCache.end())
     {
-        s_layoutCache[layout.GetHash()] =
-            CreateUnique<DescriptorSetLayout>(*m_pDevice);
-        VkResult result = s_layoutCache[layout.GetHash()]->Init(layout);
+        s_layoutCache[layout.GetHash()] = CreateUnique<DescriptorSetLayout>(*m_device);
+        VkResult result                 = s_layoutCache[layout.GetHash()]->Init(layout);
         if (result != VK_SUCCESS)
         {
             return Unexpected(ConvertResult(result));
         }
     }
 
-    const DescriptorSetLayout& descriptorSetLayout =
-        *s_layoutCache[layout.GetHash()];
-    Unique<DescriptorSet> descriptorSet =
-        CreateUnique<DescriptorSet>(*m_pDevice);
-    bool descriptorSetInitalized = false;
+    const DescriptorSetLayout& descriptorSetLayout     = *s_layoutCache[layout.GetHash()];
+    Unique<DescriptorSet>      descriptorSet           = CreateUnique<DescriptorSet>(*m_device);
+    bool                       descriptorSetInitalized = false;
 
     for (auto& pool : m_descriptorPools)
     {
@@ -322,8 +296,7 @@ Expected<Unique<IShaderResourceGroup>> ShaderResourceGroupAllocator::Allocate(
             descriptorSetInitalized = true;
             break;
         }
-        else if (result != VK_ERROR_FRAGMENTED_POOL
-                 && result != VK_ERROR_OUT_OF_POOL_MEMORY)
+        else if (result != VK_ERROR_FRAGMENTED_POOL && result != VK_ERROR_OUT_OF_POOL_MEMORY)
         {
             // TODO if fragmented bool and all allocated descriptorSets are
             // unactive then Reset the pool Allocation failed unexpectedly
@@ -336,11 +309,9 @@ Expected<Unique<IShaderResourceGroup>> ShaderResourceGroupAllocator::Allocate(
     {
         DescriptorPool::Capacity capacity {};
         capacity.maxSets = 3;
-        capacity.sizes   = {descriptorSetLayout.GetSize().begin(),
-                            descriptorSetLayout.GetSize().end()};
+        capacity.sizes   = {descriptorSetLayout.GetSize().begin(), descriptorSetLayout.GetSize().end()};
 
-        DescriptorPool& descriptorPool = *m_descriptorPools.emplace_back(
-            CreateUnique<DescriptorPool>(*m_pDevice));
+        DescriptorPool& descriptorPool = *m_descriptorPools.emplace_back(CreateUnique<DescriptorPool>(*m_device));
 
         VkResult result = descriptorPool.Init(capacity);
 
@@ -357,8 +328,7 @@ Expected<Unique<IShaderResourceGroup>> ShaderResourceGroupAllocator::Allocate(
         }
     }
 
-    return std::move(CreateUnique<ShaderResourceGroup>(
-        *m_pDevice, std::move(descriptorSet)));
+    return CreateUnique<ShaderResourceGroup>(*m_device, std::move(descriptorSet));
 }
 
 }  // namespace Vulkan

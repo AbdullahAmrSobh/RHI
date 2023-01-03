@@ -1,21 +1,23 @@
 #pragma once
+
 #include "RHI/Common.hpp"
+
 #include "RHI/Format.hpp"
 #include "RHI/Memory.hpp"
 
 namespace RHI
 {
 
-enum class EShaderStageFlagBits
+enum class ShaderStageFlagBits
 {
     Vertex = 0x000001,
     Pixel  = 0x000002
 };
-using ShaderStageFlags = Flags<EShaderStageFlagBits>;
+using ShaderStageFlags = Flags<ShaderStageFlagBits>;
 
 struct ShaderProgramDesc
 {
-    EShaderStageFlagBits  stage;
+    ShaderStageFlagBits   stage;
     std::vector<uint32_t> shaderCode;
     std::string           entryName;
 };
@@ -24,18 +26,12 @@ class IShaderProgram
 {
 public:
     IShaderProgram(std::string name)
-        : m_name(std::move(name))
+        : m_functionName(std::move(name))
     {
     }
     virtual ~IShaderProgram() = default;
 
-    inline std::string GetFunctionName() const
-    {
-        return m_name;
-    }
-
-protected:
-    std::string m_name;
+    const std::string m_functionName;
 };
 
 class IFence
@@ -43,24 +39,24 @@ class IFence
 public:
     virtual ~IFence() = default;
 
-    virtual EResultCode Wait() const      = 0;
-    virtual EResultCode Reset() const     = 0;
-    virtual EResultCode GetStatus() const = 0;
+    virtual ResultCode Wait() const      = 0;
+    virtual ResultCode Reset() const     = 0;
+    virtual ResultCode GetStatus() const = 0;
 };
 
-enum class ESamplerFilter
+enum class SamplerFilter
 {
     Linear,
     Nearest
 };
 
-enum class ESamplerAddressMode
+enum class SamplerAddressMode
 {
     Repeat,
     Clamp
 };
 
-enum class ESamplerCompareOp
+enum class SamplerCompareOp
 {
     Never,
     Equal,
@@ -74,15 +70,15 @@ enum class ESamplerCompareOp
 
 struct SamplerDesc
 {
-    ESamplerFilter      filter;
-    ESamplerCompareOp   compare;
-    float               mipLodBias;
-    ESamplerAddressMode addressU;
-    ESamplerAddressMode addressV;
-    ESamplerAddressMode addressW;
-    float               minLod;
-    float               maxLod;
-    float               maxAnisotropy;
+    SamplerFilter      filter;
+    SamplerCompareOp   compare;
+    float              mipLodBias;
+    SamplerAddressMode addressU;
+    SamplerAddressMode addressV;
+    SamplerAddressMode addressW;
+    float              minLod;
+    float              maxLod;
+    float              maxAnisotropy;
 };
 
 class ISampler
@@ -91,205 +87,29 @@ public:
     virtual ~ISampler() = default;
 };
 
-enum class EResourceType
-{
-    Image,
-    Buffer
-};
+using MappedAllocationPtr = void*;
 
 class IResource
 {
 public:
     virtual ~IResource() = default;
 
-    inline size_t GetSize() const
+    size_t GetSize() const
     {
         return m_memorySize;
     }
 
-    Expected<MappedAllocationPtr> Map(size_t byteOffset, size_t byteSize);
-    void                          Unmap();
+    template<typename T>
+    ResultCode SetData(size_t byteOffset, std::span<T> bufferData)
+    {
+        return SetDataInternal(byteOffset, reinterpret_cast<const uint8_t*>(bufferData.data()), bufferData.size() * sizeof(T));
+    }
+
+protected:
+    virtual ResultCode SetDataInternal(size_t byteOffset, const uint8_t* bufferData, size_t bufferDataByteSize) = 0;
 
 protected:
     size_t m_memorySize = SIZE_MAX;
-};
-
-enum class ESampleCount
-{
-    Undefined = 0x0000000,
-    Count1    = 0x0000001,
-    Count2    = 0x0000002,
-    Count4    = 0x0000004,
-    Count8    = 0x0000008,
-    Count16   = 0x000000F,
-    Count32   = 0x0000020,
-    Count64   = 0x0000040
-};
-
-enum class EImageUsageFlagBits
-{
-    Undefined    = 0x000000,
-    Color        = 0x000001,
-    DepthStencil = 0x000002,
-    Transfer     = 0x000004,
-    ShaderInput  = 0x000008,
-};
-using ImageUsageFlags = Flags<EImageUsageFlagBits>;
-
-enum class EImageViewType
-{
-    Type1D,
-    Type1DArray,
-    Type2D,
-    Type2DArray,
-    Type3D,
-    TypeCubeMap,
-    TypeCubeMapArray
-};
-
-struct ImageDesc
-{
-    ImageUsageFlags usage;
-    Extent3D        extent;
-    EFormat         format;
-    ESampleCount    sampleCount;
-    uint32_t        mipLevelsCount;
-    uint32_t        arraySize;
-};
-
-class IImage : public IResource
-{
-public:
-    IImage()
-        : m_desc(CreateUnique<ImageDesc>())
-    {
-    }
-
-    virtual ~IImage() = default;
-
-    const ImageDesc& GetDescription() const
-    {
-        return *m_desc;
-    }
-
-protected:
-    Unique<ImageDesc> m_desc;
-};
-
-struct ImageViewRange
-{
-    ImageViewRange()
-        : baseArrayElement(0)
-        , arraySize(1)
-        , baseMipLevel(0)
-        , mipLevelsCount(1)
-    {
-    }
-
-    uint32_t baseArrayElement;
-    uint32_t arraySize;
-    uint32_t baseMipLevel;
-    uint32_t mipLevelsCount;
-};
-
-enum class EImageViewAspectFlagBits
-{
-    Undefined = 0x00000000,
-    Color     = 0x00000001,
-    Depth     = 0x00000002,
-    Stencil   = 0x00000004,
-};
-using ImageViewAspectFlags = Flags<EImageViewAspectFlagBits>;
-
-struct ImageViewDesc
-{
-    EFormat              format;
-    EImageViewType       type;
-    ImageViewAspectFlags viewAspect;
-    ImageViewRange       range;
-};
-
-class IImageView
-{
-public:
-    IImageView()
-        : m_desc(CreateUnique<ImageViewDesc>())
-    {
-    }
-
-    virtual ~IImageView() = default;
-
-    const ImageViewDesc& GetDescription() const
-    {
-        return *m_desc;
-    }
-
-protected:
-    Unique<ImageViewDesc> m_desc;
-};
-
-enum class EBufferUsageFlagBits
-{
-    Vertex   = 0x000001,
-    Index    = 0x000002,
-    Transfer = 0x000004,
-};
-using BufferUsageFlags = Flags<EBufferUsageFlagBits>;
-
-struct BufferDesc
-{
-    BufferUsageFlags usage;
-    size_t           size;
-};
-
-class IBuffer : public IResource
-{
-public:
-    IBuffer()
-        : m_desc(CreateUnique<BufferDesc>())
-    {
-    }
-
-    virtual ~IBuffer() = default;
-
-    const BufferDesc& GetDescription() const
-    {
-        return *m_desc;
-    }
-
-protected:
-    Unique<BufferDesc> m_desc;
-};
-
-struct BufferRange
-{
-    size_t byteOffset;
-    size_t byteRange;
-};
-
-struct BufferViewDesc
-{
-    EFormat     format;
-    BufferRange range;
-};
-
-class IBufferView
-{
-public:
-    IBufferView()
-        : m_desc(CreateUnique<BufferViewDesc>())
-    {
-    }
-
-    virtual ~IBufferView() = default;
-
-    const BufferViewDesc& GetDescription() const
-    {
-        return *m_desc;
-    }
-
-protected:
-    Unique<BufferViewDesc> m_desc;
 };
 
 }  // namespace RHI

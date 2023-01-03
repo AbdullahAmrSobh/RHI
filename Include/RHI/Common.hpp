@@ -1,42 +1,10 @@
 #pragma once
-#include <algorithm>
-#include <array>
-#include <cassert>
-#include <cstddef>
-#include <cstdint>
-#include <functional>
-#include <iterator>
-#include <map>
-#include <memory>
-#include <optional>
-#include <set>
-#include <type_traits>
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
-#include <vector>
-#include <span>
-
-#include "RHI/Core/Expected.hpp"
-
-// #include "RHI/Core/Span.hpp"
-
-#ifdef _WIN64
-#    define RHI_WINDOWS
-#elif __APPLE__
-#    error "Apple Platforms are not supported yet"
-#elif __ANDROID__
-#    define RHI_ANDROID
-#elif __linux__
-#    define RHI_LINUX
-#else
-#    error "Unknown compiler"
-#endif
+#include "RHI/Pch.hpp"
 
 namespace RHI
 {
 
-enum class EResultCode
+enum class ResultCode
 {
     Success,
     Fail,
@@ -50,8 +18,25 @@ enum class EResultCode
     InvalidObject,
 };
 
-// template <class T, size_t S = nonstd::dynamic_extent>
-// using Span = ::nonstd::span<T, S>;
+inline size_t hash_combine(std::size_t first, std::size_t second)
+{
+    size_t                   seed = first;
+    static std::hash<size_t> hasher;
+    seed ^= hasher(second) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    return seed;
+}
+
+template<typename Descriptor>
+constexpr inline size_t HashDescriptor(const Descriptor& descriptor, size_t seed = 0)
+{
+    std::hash<uint8_t> hasher {};
+    auto               bytes = std::bit_cast<std::array<uint8_t, sizeof(Descriptor)>>(descriptor);
+    for (uint8_t byte : bytes)
+    {
+        seed = hash_combine(seed, hasher(byte));
+    }
+    return seed;
+}
 
 template<typename T>
 using Unique = std::unique_ptr<T>;
@@ -71,9 +56,9 @@ inline Shared<T> CreateShared(Args&&... args)
     return std::make_shared<T>(std::forward<Args>(args)...);
 }
 
-using Unexpected = tl::unexpected<EResultCode>;
+using Unexpected = tl::unexpected<ResultCode>;
 template<class T>
-using Expected = tl::expected<T, EResultCode>;
+using Expected = tl::expected<T, ResultCode>;
 
 template<typename FlagBitsType>
 struct FlagTraits
@@ -171,8 +156,7 @@ public:
     }
 
     // assignment operators
-    constexpr Flags<BitType>& operator=(Flags<BitType> const& rhs) noexcept =
-        default;
+    constexpr Flags<BitType>& operator=(Flags<BitType> const& rhs) noexcept = default;
 
     constexpr Flags<BitType>& operator|=(Flags<BitType> const& rhs) noexcept
     {
@@ -213,7 +197,7 @@ inline constexpr uint32_t CountElements(const T& t)
     return static_cast<uint32_t>(t.size());
 }
 
-enum class EAccess
+enum class AccessType
 {
     Read,
     ReadWrite,
@@ -248,21 +232,13 @@ struct Viewport
 };
 
 template<typename T>
-T Select(const std::vector<T>& range, T desired, T fallback)
+inline constexpr T Select(std::span<const T> range, T desired, T fallback)
 {
     for (T t : range)
         if (t == desired)
             return t;
 
     return fallback;
-}
-
-inline size_t hash_combine(std::size_t first, std::size_t second)
-{
-    size_t                   seed = first;
-    static std::hash<size_t> hasher;
-    seed ^= hasher(second) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-    return seed;
 }
 
 }  // namespace RHI

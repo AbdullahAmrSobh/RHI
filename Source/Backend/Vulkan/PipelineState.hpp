@@ -1,7 +1,9 @@
 #pragma once
-#include "Backend/Vulkan/Resource.hpp"
-#include "Backend/Vulkan/ShaderResourceGroup.hpp"
 #include "RHI/PipelineState.hpp"
+
+#include "Backend/Vulkan/DeviceObject.hpp"
+#include "Backend/Vulkan/ShaderResourceGroup.hpp"
+#include "Backend/Vulkan/Framebuffer.hpp"
 
 namespace RHI
 {
@@ -12,8 +14,8 @@ class DescriptorSetLayout;
 class PipelineLayout final : public DeviceObject<VkPipelineLayout>
 {
 public:
-    PipelineLayout(const Device& device)
-        : DeviceObject(&device)
+    PipelineLayout(Device& device)
+        : DeviceObject(device)
     {
     }
 
@@ -24,11 +26,6 @@ public:
     size_t GetHash() const
     {
         return m_hash;
-    }
-
-    const std::vector<Unique<DescriptorSetLayout>>& GetDescriptorLayouts() const
-    {
-        return m_descriptorSetsLayouts;
     }
 
 private:
@@ -42,8 +39,8 @@ class PipelineState final
     , public DeviceObject<VkPipeline>
 {
 public:
-    PipelineState(const Device& device)
-        : DeviceObject(&device)
+    PipelineState(Device& device)
+        : DeviceObject(device)
     {
     }
 
@@ -57,7 +54,8 @@ public:
     }
 
 private:
-    Unique<PipelineLayout> m_layout;
+    Unique<PipelineLayout>     m_layout;
+    Shared<RenderPassLayout> m_renderTargetLayout;
 };
 
 }  // namespace Vulkan

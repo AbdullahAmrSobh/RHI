@@ -1,21 +1,34 @@
+#include "RHI/Pch.hpp"
+
+#include "RHI/Common.hpp"
+
 #include "Backend/Vulkan/Instance.hpp"
 
 #include "Backend/Vulkan/Device.hpp"
-#include "RHI/Common.hpp"
 
 namespace RHI
 {
 
-Expected<Unique<IInstance>> IInstance::Create(EBackend                backend,
-                                              Unique<IDebugCallbacks> callbacks)
+static Shared<IDebugCallbacks> s_callbacks;
+
+void Debug::Init(Unique<IDebugCallbacks> callbacks)
+{
+    s_callbacks = std::move(callbacks);
+}
+
+Shared<IDebugCallbacks>& Debug::Get()
+{
+    return s_callbacks;
+}
+
+Expected<Unique<IInstance>> IInstance::Create(BackendType backend, Unique<IDebugCallbacks> callbacks)
 {
     switch (backend)
     {
-        case EBackend::Vulkan: {
-            Unique<Vulkan::Instance> instance =
-                CreateUnique<Vulkan::Instance>();
+        case BackendType::Vulkan: {
+            Unique<Vulkan::Instance> instance = CreateUnique<Vulkan::Instance>();
 
-            instance->m_debugCallbacks = std::move(callbacks);
+            Debug::Init(std::move(callbacks));
 
             VkResult result = instance->Init();
 
@@ -24,9 +37,9 @@ Expected<Unique<IInstance>> IInstance::Create(EBackend                backend,
                 return instance;
             }
 
-            return Unexpected(EResultCode::Fail);
+            return Unexpected(ResultCode::Fail);
         }
-        default: return Unexpected(EResultCode::Fail);
+        default: return Unexpected(ResultCode::Fail);
     }
 }
 
