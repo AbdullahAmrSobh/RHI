@@ -1,5 +1,6 @@
 #pragma once
 #include "RHI/Device.hpp"
+#include "RHI/Buffer.hpp"
 #include "RHI/ObjectCache.hpp"
 
 #include "Backend/Vulkan/CommandQueue.hpp"
@@ -39,11 +40,11 @@ public:
 
     VkPhysicalDeviceMemoryProperties GetMemoryProperties() const;
 
-    VkSurfaceCapabilitiesKHR GetSurfaceCapabilities(VkSurfaceKHR _surface) const;
+    VkSurfaceCapabilitiesKHR GetSurfaceCapabilities(VkSurfaceKHR surface) const;
 
-    std::vector<VkPresentModeKHR> GetPresentModes(VkSurfaceKHR _surface) const;
+    std::vector<VkPresentModeKHR> GetPresentModes(VkSurfaceKHR surface) const;
 
-    std::vector<VkSurfaceFormatKHR> GetSurfaceFormats(VkSurfaceKHR _surface) const;
+    std::vector<VkSurfaceFormatKHR> GetSurfaceFormats(VkSurfaceKHR surface) const;
 
 private:
     VkPhysicalDevice m_physicalDevice;
@@ -118,6 +119,8 @@ private:
 
     ObjectCache<RenderPassLayout> m_renderpassLayoutCache;
     ObjectCache<Framebuffer> m_framebufferCache;
+
+    Unique<IBuffer> m_stageBuffer;
 
 public:
     const CommandQueue& GetGraphicsQueue() const

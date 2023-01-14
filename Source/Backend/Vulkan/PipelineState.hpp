@@ -34,6 +34,11 @@ private:
     std::vector<Unique<DescriptorSetLayout>> m_descriptorSetsLayouts;
 };
 
+VkShaderStageFlags CovnertShaderStages(ShaderStageFlags stages);
+
+VkCullModeFlags ConvertRasterizationStateCullMode(RasterizationCullMode cullMode);
+VkPolygonMode   ConvertRasterizationStateFillMode(RasterizationFillMode fillMode);
+
 class PipelineState final
     : public IPipelineState
     , public DeviceObject<VkPipeline>

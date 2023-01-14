@@ -4,8 +4,24 @@
 namespace RHI
 {
 
+class IShaderResourceGroup;
 class IPipelineState;
 class IBuffer;
+
+struct Rect
+{
+    int32_t  x;
+    int32_t  y;
+    uint32_t sizeX;
+    uint32_t sizeY;
+};
+
+struct Viewport
+{
+    Rect  drawingArea;
+    float minDepth;
+    float maxDepth;
+};
 
 struct DrawCommand
 {
@@ -30,16 +46,23 @@ struct DrawCommand
 
     using DrawData = std::variant<LinearDrawData, IndexedDrawData>;
 
-    IPipelineState* pPipelineState = nullptr;
-    IBuffer*        pVertexBuffer  = nullptr;
-    IBuffer*        pIndexBuffer   = nullptr;
-    DrawData        drawData;
+    void BindShaderResourceGroup(uint32_t index, IShaderResourceGroup& resourceGroup);
+
+    IPipelineState*       pipelineState            = nullptr;
+    IBuffer*              vertexBuffer             = nullptr;
+    IBuffer*              indexBuffer              = nullptr;
+    IShaderResourceGroup* shaderResourceGroup      = nullptr;
+    uint32_t              shaderResourceGroupIndex = 0;
+    DrawData              drawData;
 };
 
 class ICommandBuffer
 {
 public:
     virtual ~ICommandBuffer() = default;
+
+    void SetViewport(const Viewport& viewports);
+    void SetScissor(const Rect& scissors);
 
     virtual void SetViewports(std::span<const Viewport> viewports) = 0;
     virtual void SetScissors(std::span<const Rect> scissors)       = 0;

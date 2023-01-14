@@ -7,6 +7,7 @@
 #include "Backend/Vulkan/CommandQueue.hpp"
 #include "Backend/Vulkan/Instance.hpp"
 #include "Backend/Vulkan/Swapchain.hpp"
+#include "Backend/Vulkan/Buffer.hpp"
 
 namespace RHI
 {
@@ -163,7 +164,22 @@ VkResult Device::Init(const PhysicalDevice& physicalDevice)
     // createInfo.vulkanApiVersion = VK_VERSION_1_2;
     Utils::AssertSuccess(vmaCreateAllocator(&createInfo, &m_allocator));
 
-    return VK_SUCCESS;
+
+    auto stageBuffer = CreateUnique<Buffer>(*this);
+
+    AllocationDesc allocationDesc {};
+    allocationDesc.type = MemoryLevel::Device;
+    allocationDesc.usage = MemoryUsage::Stage;
+    allocationDesc.byteOffset = 0;
+    allocationDesc.memoryRequirement.byteSize = 3840 * 2160 * 4;
+    allocationDesc.memoryRequirement.byteAlignment = alignof(uint64_t);
+    BufferDesc bufferDesc {};
+    bufferDesc.size = allocationDesc.memoryRequirement.byteSize;
+    bufferDesc.usage = BufferUsageFlagBits::Transfer;
+    
+    auto result = stageBuffer->Init(allocationDesc, bufferDesc);
+    m_stageBuffer = std::move(stageBuffer);
+    return result;
 }
 
 ResultCode Device::WaitIdle() const

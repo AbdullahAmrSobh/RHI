@@ -4,6 +4,7 @@
 
 #include "Backend/Vulkan/Commands.hpp"
 
+#include "Backend/Vulkan/Conversion.hpp"
 #include "Backend/Vulkan/Buffer.hpp"
 #include "Backend/Vulkan/CommandQueue.hpp"
 #include "Backend/Vulkan/Device.hpp"
@@ -11,6 +12,7 @@
 #include "Backend/Vulkan/Image.hpp"
 #include "Backend/Vulkan/PipelineState.hpp"
 #include "Backend/Vulkan/Resource.hpp"
+#include "Backend/Vulkan/ShaderResourceGroup.hpp"
 
 namespace RHI
 {
@@ -90,12 +92,21 @@ struct overloaded : Ts...
 
 void CommandBuffer::Submit(const DrawCommand& drawCommand)
 {
-    vkCmdBindPipeline(m_handle, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<PipelineState&>(*drawCommand.pPipelineState).GetHandle());
+    PipelineState& pipeline = static_cast<PipelineState&>(*drawCommand.pipelineState);
+    vkCmdBindPipeline(m_handle, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.GetHandle());
+
+    if (ShaderResourceGroup* resourceGroup = static_cast<ShaderResourceGroup*>(drawCommand.shaderResourceGroup))
+    {
+        VkDescriptorSet setHandle     = resourceGroup->GetDescriptorSet().GetHandle();
+        uint32_t        dynamicOffset = 0;
+        vkCmdBindDescriptorSets(
+            m_handle, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.GetLayout().GetHandle(), 0, 1, &setHandle, 0, &dynamicOffset);
+    }
 
     auto indexedDrawCommand = [&](RHI::DrawCommand::IndexedDrawData drawData)
     {
-        VkBuffer vertexBuffer = static_cast<Buffer&>(*drawCommand.pVertexBuffer).GetHandle();
-        VkBuffer indexBuffer  = static_cast<Buffer&>(*drawCommand.pIndexBuffer).GetHandle();
+        VkBuffer vertexBuffer = static_cast<Buffer&>(*drawCommand.vertexBuffer).GetHandle();
+        VkBuffer indexBuffer  = static_cast<Buffer&>(*drawCommand.indexBuffer).GetHandle();
         size_t   offset       = 0;
         vkCmdBindVertexBuffers(m_handle, 0, 1, &vertexBuffer, &offset);
         vkCmdBindIndexBuffer(m_handle, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
@@ -110,7 +121,7 @@ void CommandBuffer::Submit(const DrawCommand& drawCommand)
 
     auto linearDrawCommand = [&](RHI::DrawCommand::LinearDrawData drawData)
     {
-        VkBuffer vertexBuffer = static_cast<Buffer&>(*drawCommand.pVertexBuffer).GetHandle();
+        VkBuffer vertexBuffer = static_cast<Buffer&>(*drawCommand.vertexBuffer).GetHandle();
         size_t   offset       = 0;
         vkCmdBindVertexBuffers(m_handle, 0, 1, &vertexBuffer, &offset);
 

@@ -8,6 +8,16 @@ namespace RHI
 namespace Vulkan
 {
 
+VkSampleCountFlagBits ConvertSampleCount(SampleCount sampleCount);
+
+VkImageType ConvertImageType(ImageType imageType);
+
+VkImageUsageFlags ConvertImageUsage(ImageUsageFlags usageFlags);
+
+VkImageViewType ConvertImageViewType(ImageViewType imageType);
+
+VkImageAspectFlags ConvertViewAspect(ImageViewAspectFlags aspectFlags);
+
 class Image final
     : public IImage
     , public Resource<VkImage>
@@ -21,7 +31,10 @@ public:
 
     VkResult Init(const AllocationDesc& allocationDesc, const ImageDesc& desc);
 
-    ResultCode SetDataInternal(size_t byteOffset, const uint8_t* bufferData, size_t bufferDataByteSize) override;
+    ResultCode SetDataInternal(size_t byteOffset, const uint8_t* bufferData, size_t bufferDataByteSize) override
+    {
+        return ConvertResult(UploadResourceData(*m_device, m_allocation, byteOffset, bufferData, bufferDataByteSize));
+    }
 };
 
 class ImageView final

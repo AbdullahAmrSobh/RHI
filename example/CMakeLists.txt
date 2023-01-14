@@ -34,7 +34,7 @@ endif()
 add_custom_target(run-examples)
 
 function(add_example NAME)
-  add_executable("${NAME}" "${NAME}.cpp")
+  add_executable("${NAME}" "${NAME}.cpp" "stb_image.cpp")
   target_link_libraries("${NAME}" PRIVATE RHI::RHI glfw )
   target_compile_features("${NAME}" PRIVATE cxx_std_20)
   add_custom_target("run_${NAME}" COMMAND "${NAME}" VERBATIM)

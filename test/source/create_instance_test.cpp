@@ -5,14 +5,17 @@ class DebugCallbacks final : public RHI::IDebugCallbacks
 public:
     void Log(std::string_view message) override
     {
+        (void)message;
     }
 
     void Warn(std::string_view message) override
     {
+        (void)message;
     }
 
     void Error(std::string_view message) override
     {
+        (void)message;
     }
 
 };

@@ -1,11 +1,12 @@
 #pragma once
 #include <utility>
 
+#include "RHI/ObjectCache.hpp"
 #include "RHI/Swapchain.hpp"
 
 namespace RHI
 {
-
+//
 class IRenderPass;
 class ISwapchain;
 class UsedImageAttachment;
@@ -80,6 +81,11 @@ public:
         return m_swapchain;
     }
 
+    bool IsSwapchainImage() const
+    {
+        return m_swapchain;
+    }
+
     IImage& GetResource()
     {
         return *m_resource;
@@ -122,6 +128,17 @@ public:
     {
         return m_usedInstances.end();
     }
+
+    const std::list<UsedImageAttachment>& GetUseList() const
+    {
+        return m_usedInstances;
+    }
+
+    std::list<UsedImageAttachment>& GetUseList()
+    {
+        return m_usedInstances;
+    }
+
 
     UsedImageAttachment* Use(UsedImageAttachment usedAttachment);
 
@@ -179,6 +196,10 @@ struct AttachmentLoadStoreOperations
     AttachmentStoreOperation storeOperation = AttachmentStoreOperation::Store;
 };
 
+struct AttachmentBlendState
+{
+};
+
 class UsedImageAttachment
 {
 public:
@@ -203,6 +224,11 @@ public:
         return *m_renderpass;
     }
 
+    const ImageAttachment& GetAttachment() const
+    {
+        return *m_attachment;
+    }
+
     ImageAttachment& GetAttachment()
     {
         return *m_attachment;
@@ -210,7 +236,7 @@ public:
 
     size_t GetViewHash() const
     {
-        return hash_combine(HashDescriptor(m_viewDesc), m_attachment->GetHash());
+        return HashCombine(HashDescriptor(m_viewDesc), m_attachment->GetHash());
     }
 
     IImageView& GetView()
@@ -238,6 +264,16 @@ public:
         return m_access;
     }
 
+    const UsedImageAttachment* GetPreviousUse() const
+    {
+        return nullptr;
+    }
+
+    const UsedImageAttachment* GetNextUse() const
+    {
+        return nullptr;
+    }
+
 private:
     friend class IFrameScheduler;
 
@@ -249,7 +285,8 @@ private:
 private:
     const IRenderPass* m_renderpass;
 
-    ImageAttachment* m_attachment;
+    ImageAttachment*          m_attachment;
+    ImageAttachment::iterator m_position;
 
     Shared<IImageView> m_view;
 

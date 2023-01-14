@@ -13,8 +13,6 @@
 #include "Backend/Vulkan/RenderPass.hpp"
 #include "Backend/Vulkan/Resource.hpp"
 
-#include "Framebuffer.hpp"
-
 namespace RHI
 {
 namespace Vulkan
@@ -25,7 +23,7 @@ Shared<RenderPassLayout> Device::CreateRenderpassLayout(std::span<const UsedImag
     size_t key = 0;
     for (auto attachment : attachments)
     {
-        key = hash_combine(attachment->GetViewHash(), key);
+        key = HashCombine(attachment->GetViewDesc().GetHash(), key);
     }
 
     Shared<RenderPassLayout> layout = m_renderpassLayoutCache.Find(key);
@@ -48,7 +46,7 @@ Shared<Framebuffer> Device::CreateCachedFramebuffer(std::span<UsedImageAttachmen
     for (auto attachment : attachments)
     {
         ImageView& view = static_cast<ImageView&>(attachment->GetView());
-        key             = hash_combine(attachment->GetViewHash(), hash_combine(key, std::bit_cast<size_t>(view.GetHandle())));
+        key             = HashCombine(attachment->GetViewHash(), HashCombine(key, std::bit_cast<size_t>(view.GetHandle())));
     }
 
     Shared<Framebuffer> framebuffer = m_framebufferCache.Find(key);
@@ -73,28 +71,25 @@ VkResult RenderPassLayout::Init(std::span<const UsedImageAttachment* const> atta
     std::vector<VkAttachmentDescription> attachmentsDescriptions = {};
     std::vector<VkAttachmentReference>   attachmentsReferences   = {};
 
-    for (auto attachment : attachments)
+    for (const UsedImageAttachment* attachment : attachments)
     {
         VkAttachmentDescription description;
         description.flags          = 0;
         description.format         = ConvertFormat(attachment->GetViewDesc().format);
-        description.samples        = VK_SAMPLE_COUNT_1_BIT;
-        description.loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        description.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
+        description.samples        = ConvertSampleCount(attachment->GetAttachment().GetResourceDesc().sampleCount);
+        description.loadOp         = ConvertAttachmentLoadOperation(attachment->GetLoadStoreOperations().loadOperation);
+        description.storeOp        = ConvertAttachmentStoreOperation(attachment->GetLoadStoreOperations().storeOperation);
         description.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         description.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        description.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
-        description.finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        description.initialLayout  = GetInitialImageLayout(*attachment);
+        description.finalLayout    = GetFinalImageLayout(*attachment);
 
-        VkAttachmentReference reference;
+        VkAttachmentReference reference {};
         reference.attachment = CountElements(attachmentsDescriptions);
-        reference.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        reference.layout     = GetOptiomalImageLayout(*attachment);
 
         attachmentsDescriptions.push_back(description);
         attachmentsReferences.push_back(reference);
-
-        RHI_WARN("Function RenderPassLayout::Init() has some hardcoded values that should be changed");
-        RHI_WARN("Function RenderPassLayout::Init() also need to initalize clearValue");
     }
 
     VkSubpassDescription subpassDesc;
@@ -137,7 +132,7 @@ VkResult Framebuffer::Init(const RenderPassLayout& layout, std::span<UsedImageAt
         handles.push_back(static_cast<const ImageView&>(attachment->GetView()).GetHandle());
         m_extent.width  = std::max(attachment->GetAttachment().GetResourceDesc().extent.sizeX, m_extent.width);
         m_extent.height = std::max(attachment->GetAttachment().GetResourceDesc().extent.sizeY, m_extent.height);
-        m_hash          = hash_combine(m_hash, attachment->GetViewHash());
+        m_hash          = HashCombine(m_hash, attachment->GetViewHash());
     }
 
     VkFramebufferCreateInfo createInfo = {};

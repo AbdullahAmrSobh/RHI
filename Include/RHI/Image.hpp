@@ -25,6 +25,13 @@ enum class ImageUsageFlagBits
 };
 using ImageUsageFlags = Flags<ImageUsageFlagBits>;
 
+enum class ImageType
+{
+    Image1D,
+    Image2D,
+    Image3D,
+};
+
 enum class ImageViewType
 {
     View1D           = 0,
@@ -36,10 +43,52 @@ enum class ImageViewType
     ViewCubeMapArray = 6
 };
 
+struct Extent2D
+{
+    uint32_t sizeX;
+    uint32_t sizeY;
+};
+
+struct Extent3D
+{
+    uint32_t sizeX;
+    uint32_t sizeY;
+    uint32_t sizeZ;
+};
+
 struct ImageDesc
 {
+    ImageDesc() = default;
+
+    static ImageDesc Create(ImageUsageFlags flags,
+                            size_t          sizeX,
+                            Format          format,
+                            SampleCount     sampleCount = SampleCount::Count1,
+                            uint32_t        mipLevels   = 1,
+                            uint32_t        arraySize   = 0);
+
+    static ImageDesc Create(ImageUsageFlags flags,
+                            Extent2D        extent,
+                            Format          format,
+                            SampleCount     sampleCount = SampleCount::Count1,
+                            uint32_t        mipLevels   = 1,
+                            uint32_t        arraySize   = 0);
+
+    static ImageDesc Create(ImageUsageFlags flags,
+                            Extent3D        extent,
+                            Format          format,
+                            SampleCount     sampleCount = SampleCount::Count1,
+                            uint32_t        mipLevels   = 1,
+                            uint32_t        arraySize   = 0);
+
+    size_t GetHash() const
+    {
+        return 0;
+    }
+
     ImageUsageFlags usage;
     Extent3D        extent;
+    ImageType       imageType;
     Format          format;
     SampleCount     sampleCount;
     uint32_t        mipLevelsCount;
@@ -67,18 +116,12 @@ protected:
 
 struct ImageViewRange
 {
-    ImageViewRange()
-        : baseArrayElement(0)
-        , arraySize(1)
-        , baseMipLevel(0)
-        , mipLevelsCount(1)
-    {
-    }
+    ImageViewRange() = default;
 
-    uint32_t baseArrayElement;
-    uint32_t arraySize;
-    uint32_t baseMipLevel;
-    uint32_t mipLevelsCount;
+    uint32_t baseArrayElement = 0;
+    uint32_t arraySize        = 1;
+    uint32_t baseMipLevel     = 0;
+    uint32_t mipLevelsCount   = 1;
 };
 
 enum class ImageViewAspectFlagBits
@@ -96,6 +139,14 @@ ImageViewAspectFlags GetImageAspectFlags(Format format);
 struct ImageViewDesc
 {
     ImageViewDesc() = default;
+
+    static ImageViewDesc Create(Format format, ImageViewType viewType, ImageViewRange range);
+    static ImageViewDesc Create(Format format, ImageViewType viewType, ImageViewAspectFlags flags, ImageViewRange range);
+
+    size_t GetHash() const
+    {
+        return 0;
+    }
 
     Format               format;
     ImageViewType        type;

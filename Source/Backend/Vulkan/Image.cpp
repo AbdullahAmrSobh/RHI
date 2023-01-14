@@ -1,4 +1,5 @@
 #include "RHI/Pch.hpp"
+
 #include "Backend/Vulkan/Common.hpp"
 
 #include "Backend/Vulkan/Image.hpp"
@@ -9,6 +10,79 @@ namespace RHI
 {
 namespace Vulkan
 {
+
+VkSampleCountFlagBits ConvertSampleCount(SampleCount sampleCount)
+{
+    return std::bit_cast<VkSampleCountFlagBits>(sampleCount);
+}
+
+VkImageType ConvertImageType(ImageType imageType)
+{
+    switch (imageType)
+    {
+        case ImageType::Image1D: return VK_IMAGE_TYPE_1D;
+        case ImageType::Image2D: return VK_IMAGE_TYPE_2D;
+        case ImageType::Image3D: return VK_IMAGE_TYPE_3D;
+        default: assert(false); return VK_IMAGE_TYPE_MAX_ENUM;
+    }
+}
+
+VkImageUsageFlags ConvertImageUsage(ImageUsageFlags usageFlags)
+{
+    VkImageUsageFlags flags = 0;
+    if (usageFlags & ImageUsageFlagBits::Color)
+    {
+        flags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    }
+    if (usageFlags & ImageUsageFlagBits::DepthStencil)
+    {
+        flags |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    }
+    if (usageFlags & ImageUsageFlagBits::ShaderInput)
+    {
+        flags |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+    }
+    if (usageFlags & ImageUsageFlagBits::Transfer)
+    {
+        flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    }
+    return flags;
+}
+
+VkImageViewType ConvertImageViewType(ImageViewType imageType)
+{
+    VkImageViewType views[] = {VK_IMAGE_VIEW_TYPE_1D,
+                               VK_IMAGE_VIEW_TYPE_1D_ARRAY,
+                               VK_IMAGE_VIEW_TYPE_2D,
+                               VK_IMAGE_VIEW_TYPE_2D_ARRAY,
+                               VK_IMAGE_VIEW_TYPE_3D,
+                               VK_IMAGE_VIEW_TYPE_CUBE,
+                               VK_IMAGE_VIEW_TYPE_CUBE_ARRAY};
+
+    return views[static_cast<uint32_t>(imageType)];
+}
+
+VkImageAspectFlags ConvertViewAspect(ImageViewAspectFlags aspectFlags)
+{
+    VkImageAspectFlags flags {};
+    if (aspectFlags & ImageViewAspectFlagBits::Color)
+    {
+        flags |= VK_IMAGE_ASPECT_COLOR_BIT;
+    }
+
+    if (aspectFlags & ImageViewAspectFlagBits::Depth)
+    {
+        flags |= VK_IMAGE_ASPECT_DEPTH_BIT;
+    }
+
+    if (aspectFlags & ImageViewAspectFlagBits::Stencil)
+    {
+        flags |= VK_IMAGE_ASPECT_STENCIL_BIT;
+    }
+
+    return flags;
+}
 
 Expected<Unique<IImage>> Device::CreateImage(const AllocationDesc& allocationDesc, const ImageDesc& desc)
 {
@@ -45,27 +119,16 @@ VkResult Image::Init(const AllocationDesc& allocationDesc, const ImageDesc& desc
     *m_desc = desc;
 
     VkImageCreateInfo createInfo {};
-    createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    createInfo.pNext = nullptr;
-    createInfo.flags = 0;
-    if (desc.extent.sizeY == 1 && desc.extent.sizeZ == 1)
-    {
-        createInfo.imageType = VK_IMAGE_TYPE_1D;
-    }
-    else if (desc.extent.sizeY == 1)
-    {
-        createInfo.imageType = VK_IMAGE_TYPE_2D;
-    }
-    else
-    {
-        createInfo.imageType = VK_IMAGE_TYPE_3D;
-    }
+    createInfo.sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    createInfo.pNext                 = nullptr;
+    createInfo.flags                 = 0;
+    createInfo.imageType             = ConvertImageType(desc.imageType);
     createInfo.format                = ConvertFormat(desc.format);
     createInfo.extent                = ConvertExtent(desc.extent);
     createInfo.mipLevels             = desc.mipLevelsCount;
     createInfo.arrayLayers           = desc.arraySize;
     createInfo.samples               = ConvertSampleCount(desc.sampleCount);
-    createInfo.tiling                = VK_IMAGE_TILING_LINEAR;
+    createInfo.tiling                = VK_IMAGE_TILING_OPTIMAL;
     createInfo.usage                 = ConvertImageUsage(desc.usage);
     createInfo.sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
     createInfo.queueFamilyIndexCount = 0;
@@ -74,32 +137,13 @@ VkResult Image::Init(const AllocationDesc& allocationDesc, const ImageDesc& desc
 
     VmaAllocationCreateInfo allocationCreateInfo = {};
     allocationCreateInfo.usage                   = ConvertMemoryUsage(allocationDesc.usage);
-
+    
     VkResult result =
         vmaCreateImage(m_device->GetAllocator(), &createInfo, &allocationCreateInfo, &m_handle, &m_allocation, &m_allocationInfo);
 
-    if (Utils::IsSuccess(result))
-    {
-        m_memorySize = m_allocationInfo.size;
-    }
+    m_memorySize = m_allocationInfo.size;
 
     return result;
-}
-
-ResultCode Image::SetDataInternal(size_t byteOffset, const uint8_t* bufferData, size_t bufferDataByteSize)
-{
-    uint8_t*    data   = nullptr;
-    VkResult result = vmaMapMemory(m_device->GetAllocator(), m_allocation, reinterpret_cast<void**>(&data));
-    if (Utils::IsError(result))
-    {
-        return ConvertResult(result);
-    }
-
-    std::memcpy(data + byteOffset, bufferData, bufferDataByteSize);
-
-    vmaUnmapMemory(m_device->GetAllocator(), m_allocation);
-
-    return ResultCode::Success;
 }
 
 ImageView::~ImageView()

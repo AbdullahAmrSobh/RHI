@@ -14,6 +14,15 @@ using BufferUsageFlags = Flags<BufferUsageFlagBits>;
 
 struct BufferDesc
 {
+    BufferDesc() = default;
+
+    static BufferDesc Create(BufferUsageFlags usage, size_t byteSize);
+
+    size_t GetHash() const
+    {
+        return 0;
+    }
+
     BufferUsageFlags usage;
     size_t           size;
 };
@@ -39,12 +48,24 @@ protected:
 
 struct BufferRange
 {
+    BufferRange() = default;
+    BufferRange(size_t byteSize);
+
     size_t byteOffset;
     size_t byteRange;
 };
 
 struct BufferViewDesc
 {
+    BufferViewDesc() = default;
+
+    static BufferViewDesc Create(Format format, BufferRange range);
+
+    size_t GetHash() const
+    {
+        return 0;
+    }
+
     Format      format;
     BufferRange range;
 };

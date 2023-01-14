@@ -25,7 +25,7 @@ VkResult PipelineLayout::Init(const PipelineLayoutDesc& layoutDesc)
     uint32_t offset = 0;
     for (auto& layout : layoutDesc.shaderBindingGroupLayouts)
     {
-        hash = hash_combine(hash, layout.GetHash());
+        hash = HashCombine(hash, layout.GetHash());
 
         // For other resources
 
@@ -153,10 +153,10 @@ struct VertexInputState
         bindingDescription.binding   = 0;
         bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-        state       = {};
-        state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        state.pNext = nullptr;
-        state.flags = 0;
+        state                                 = {};
+        state.sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        state.pNext                           = nullptr;
+        state.flags                           = 0;
         state.vertexBindingDescriptionCount   = 1;
         state.pVertexBindingDescriptions      = &bindingDescription;
         state.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributes.size());
@@ -337,23 +337,25 @@ struct DepthStencilState
 
 struct ColorBlendState
 {
-    ColorBlendState(const GraphicsPipelineColorBlendState& stateDesc)
+    ColorBlendState(const GraphicsPipelineColorBlendState& stateDesc, const RenderPass& renderpass)
     {
-        // TODO
         (void)stateDesc;
 
-        VkPipelineColorBlendAttachmentState blendState = {};
-        blendState.colorWriteMask =
-            VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-        blendState.blendEnable         = VK_FALSE;
-        blendState.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;   // Optional
-        blendState.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;  // Optional
-        blendState.colorBlendOp        = VK_BLEND_OP_ADD;       // Optional
-        blendState.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;   // Optional
-        blendState.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;  // Optional
-        blendState.alphaBlendOp        = VK_BLEND_OP_ADD;       // Optional
-
-        attachmentColorBlend.push_back(blendState);
+        for (const UsedImageAttachment* imageAttachment : renderpass.GetUsedAttachments())
+        {
+            (void)imageAttachment;
+            VkPipelineColorBlendAttachmentState blendState = {};
+            blendState.colorWriteMask =
+                VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+            blendState.blendEnable         = VK_FALSE;
+            blendState.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;   // Optional
+            blendState.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;  // Optional
+            blendState.colorBlendOp        = VK_BLEND_OP_ADD;       // Optional
+            blendState.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;   // Optional
+            blendState.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;  // Optional
+            blendState.alphaBlendOp        = VK_BLEND_OP_ADD;       // Optional
+            attachmentColorBlend.push_back(blendState);
+        }
 
         state.sType             = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
         state.pNext             = nullptr;
@@ -410,6 +412,44 @@ struct DynamicState
 
 }  // namespace PipelineStateInitalizers
 
+VkShaderStageFlags CovnertShaderStages(ShaderStageFlags stages)
+{
+    VkShaderStageFlags flags {};
+
+    if (stages & ShaderStageFlagBits::Vertex)
+    {
+        flags |= VK_SHADER_STAGE_VERTEX_BIT;
+    }
+
+    if (stages & ShaderStageFlagBits::Vertex)
+    {
+        flags |= VK_SHADER_STAGE_FRAGMENT_BIT;
+    }
+
+    return flags;
+}
+
+VkCullModeFlags ConvertRasterizationStateCullMode(RasterizationCullMode cullMode)
+{
+    VkCullModeFlagBits lookup[] = {
+        VK_CULL_MODE_NONE,
+        VK_CULL_MODE_FRONT_BIT,
+        VK_CULL_MODE_BACK_BIT,
+    };
+
+    return lookup[static_cast<uint32_t>(cullMode)];
+}
+
+VkPolygonMode ConvertRasterizationStateFillMode(RasterizationFillMode fillMode)
+{
+    VkPolygonMode polygonMode[] = {
+        VK_POLYGON_MODE_POINT,
+        VK_POLYGON_MODE_LINE,
+        VK_POLYGON_MODE_FILL,
+    };
+
+    return polygonMode[static_cast<uint32_t>(fillMode)];
+}
 Expected<Unique<IPipelineState>> Device::CreateGraphicsPipelineState(const GraphicsPipelineStateDesc& desc)
 {
     Unique<PipelineState> pipelineState = CreateUnique<PipelineState>(*this);
@@ -451,7 +491,8 @@ VkResult PipelineState::Init(const GraphicsPipelineStateDesc& desc)
     PipelineStateInitalizers::RasterizationState rasterizationStateInitalizer(desc.rasterizationState);
     PipelineStateInitalizers::MultisampleState   multisampleStateInitalizer(SampleCount::Count1);
     PipelineStateInitalizers::DepthStencilState  depthStencilStateInitalizer(desc.depthStencil);
-    PipelineStateInitalizers::ColorBlendState    colorBlendStateInitalizer(desc.colorBlendState);
+    PipelineStateInitalizers::ColorBlendState    colorBlendStateInitalizer(desc.colorBlendState,
+                                                                        *static_cast<const RenderPass*>(desc.pRenderPass));
     PipelineStateInitalizers::DynamicState       dynamicStateInitalizer;
 
     shaderStageStateInitalizer.Initalize(createInfo.stageCount, createInfo.pStages);
@@ -464,10 +505,6 @@ VkResult PipelineState::Init(const GraphicsPipelineStateDesc& desc)
     depthStencilStateInitalizer.Initalize(createInfo.pDepthStencilState);
     colorBlendStateInitalizer.Initalize(createInfo.pColorBlendState);
     dynamicStateInitalizer.Initalize(createInfo.pDynamicState);
-
-    // const Pass& pass = *static_cast<const Pass*>(desc.pRenderPass);
-
-    // Recreate the entire PipelineStateObject if the RenderPassChanges.
 
     return vkCreateGraphicsPipelines(m_device->GetHandle(), VK_NULL_HANDLE, 1, &createInfo, nullptr, &m_handle);
 }

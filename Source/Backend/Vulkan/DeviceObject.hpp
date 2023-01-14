@@ -7,24 +7,24 @@ namespace Vulkan
 {
 class Device;
 
-template<typename T>
+template<typename HandleType>
 class DeviceObject
 {
 public:
-    DeviceObject(Device& device, T handle = VK_NULL_HANDLE)
+    DeviceObject(Device& device, HandleType handle = VK_NULL_HANDLE)
         : m_device(&device)
         , m_handle(handle)
     {
     }
 
-    T GetHandle() const
+    HandleType GetHandle() const
     {
         return m_handle;
     }
 
 protected:
-    Device* m_device;
-    T       m_handle;
+    Device*    m_device;
+    HandleType m_handle;
 };
 
 }  // namespace Vulkan

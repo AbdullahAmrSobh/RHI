@@ -13,6 +13,8 @@
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
+#include "stb_image.hpp"
+
 std::vector<uint32_t> readBinFile(const std::string& filePath)
 {
     std::ifstream file(filePath, std::ios::ate | std::ios::binary);
@@ -138,22 +140,63 @@ public:
             assert(m_indexBuffer->SetData<uint32_t>(0, indexBufferData) == RHI::ResultCode::Success);
         }
 
+        {
+            // load image
+            int                  texWidth, texHeight, texChannels;
+            auto                 rawPixels = stbi_load("texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+            size_t               imageSize = static_cast<size_t>(texWidth * texHeight * 4);
+            std::vector<uint8_t> imagePixels;
+            imagePixels.resize(imageSize);
+            memcpy(imagePixels.data(), rawPixels, imageSize);
+
+            RHI::AllocationDesc allocationDesc {};
+            allocationDesc.type                            = RHI::MemoryLevel::Device;
+            allocationDesc.byteOffset                      = 0;
+            allocationDesc.memoryRequirement.byteSize      = imagePixels.size();
+            allocationDesc.memoryRequirement.byteAlignment = alignof(uint32_t);
+            allocationDesc.usage                           = RHI::MemoryUsage::Local;
+
+            RHI::ImageDesc imageDesc {};
+            imageDesc.usage          = RHI::ImageUsageFlagBits::Color;
+            imageDesc.imageType      = RHI::ImageType::Image2D;
+            imageDesc.extent.sizeX   = static_cast<uint32_t>(texWidth);
+            imageDesc.extent.sizeY   = static_cast<uint32_t>(texHeight);
+            imageDesc.extent.sizeZ   = 1;
+            imageDesc.format         = RHI::Format::R8G8B8A8_UNORM_SRGB;
+            imageDesc.sampleCount    = RHI::SampleCount::Count1;
+            imageDesc.mipLevelsCount = 1;
+            imageDesc.arraySize      = 1;
+            m_imageResource          = m_device->CreateImage(allocationDesc, imageDesc).value();
+
+            // m_imageResource->SetData<uint8_t>(0, imagePixels);
+
+            RHI::ImageViewDesc viewDesc {};
+            viewDesc.format     = RHI::Format::R8G8B8A8_UNORM_SRGB;
+            viewDesc.type       = RHI::ImageViewType::View2D;
+            viewDesc.viewAspect = RHI::GetImageAspectFlags(viewDesc.format);
+            m_imageView         = m_device->CreateImageView(*m_imageResource, viewDesc).value();
+        }
+
+        #if 0
         // Create shader resource group allocator
-        /* {
-         *     m_shaderResourceGroupAllocator =
-         *         m_device->CreateShaderResourceGroupAllocator().value();
-         *     RHI::ShaderInputResourceBindingDesc bindingDesc {};
-         *     bindingDesc.access = RHI::AccessType::Read;
-         *     bindingDesc.type   = RHI::ShaderInputResourceType::Image;
-         *     bindingDesc.count  = 1;
-         *     bindingDesc.name   = "triangleTexture";
-         *     bindingDesc.stages = RHI::ShaderStageFlagBits::Pixel;
-         *     RHI::ShaderResourceGroupLayout srgLayout {};
-         *     srgLayout.AddInputResource(bindingDesc);
-         *     m_shaderResourceGroup =
-         *         m_shaderResourceGroupAllocator->Allocate(srgLayout).value();
-         * }
-         */
+        {
+            m_shaderResourceGroupAllocator = m_device->CreateShaderResourceGroupAllocator().value();
+            RHI::ShaderInputResourceBindingDesc bindingDesc {};
+            bindingDesc.access                                   = RHI::ShaderResourceAccessType::Read;
+            bindingDesc.type                                     = RHI::ShaderInputResourceType::Image;
+            bindingDesc.count                                    = 1;
+            bindingDesc.name                                     = "triangleTexture";
+            bindingDesc.stages                                   = RHI::ShaderStageFlagBits::Pixel;
+            RHI::ShaderBindingReference imageSrgBindingReference = m_srgLayout.AddInputResource(bindingDesc);
+            m_shaderResourceGroup                                = m_shaderResourceGroupAllocator->Allocate(m_srgLayout).value();
+
+            RHI::ShaderResourceGroupData data {};
+            std::vector<RHI::IImageView*> images {m_imageView.get()};
+            data.BindImages(imageSrgBindingReference, images);
+
+            m_shaderResourceGroup->Update(data);
+        }
+        #endif
 
         {
             m_scheduler = m_device->CreateFrameScheduler().value();
@@ -182,6 +225,7 @@ public:
                     auto pixelShader      = m_device->CreateShaderProgram(shaderDesc).value();
 
                     RHI::GraphicsPipelineStateDesc desc {};
+                    desc.pipelineLayoutDesc.shaderBindingGroupLayouts.push_back(m_srgLayout);
                     desc.shaderStages.pVertexShader = vertexShader.get();
                     desc.shaderStages.pPixelShader  = pixelShader.get();
                     desc.vertexInputAttributes.push_back(RHI::GraphicsPipelineVertexAttributeState {"position", RHI::Format::R32G32_FLOAT});
@@ -196,11 +240,12 @@ public:
                 RHI::DrawCommand::IndexedDrawData drawData;
                 drawData.indexCount = RHI::CountElements(indexBufferData);
                 RHI::DrawCommand drawCommand;
-                drawCommand.drawData       = drawData;
-                drawCommand.pPipelineState = m_pipeline.get();
-                drawCommand.pVertexBuffer  = m_vertexBuffer.get();
-                drawCommand.pIndexBuffer   = m_indexBuffer.get();
-
+                drawCommand.drawData                 = drawData;
+                drawCommand.pipelineState            = m_pipeline.get();
+                drawCommand.vertexBuffer             = m_vertexBuffer.get();
+                drawCommand.indexBuffer              = m_indexBuffer.get();
+                drawCommand.shaderResourceGroup      = m_shaderResourceGroup.get();
+                drawCommand.shaderResourceGroupIndex = 0;
                 commandBuffer.Submit(drawCommand);
             };
 
@@ -231,13 +276,19 @@ public:
 
     RHI::Unique<RHI::ISwapchain> m_swapchain;
 
+    RHI::Unique<RHI::IImage> m_imageResource;
+
+    RHI::Unique<RHI::IImageView> m_imageView;
+
     RHI::Unique<RHI::IBuffer> m_vertexBuffer;
 
     RHI::Unique<RHI::IBuffer> m_indexBuffer;
 
-    // RHI::Unique<RHI::IShaderResourceGroupAllocator> m_shaderResourceGroupAllocator;
+    RHI::ShaderResourceGroupLayout m_srgLayout {};
 
-    // RHI::Unique<RHI::IShaderResourceGroup>          m_shaderResourceGroup;
+    RHI::Unique<RHI::IShaderResourceGroupAllocator> m_shaderResourceGroupAllocator;
+
+    RHI::Unique<RHI::IShaderResourceGroup> m_shaderResourceGroup;
 
     RHI::Unique<RHI::IPipelineState> m_pipeline;
 

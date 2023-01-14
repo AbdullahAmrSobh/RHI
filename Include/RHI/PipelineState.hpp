@@ -66,6 +66,11 @@ struct GraphicsPipelineStateDesc
 {
     GraphicsPipelineStateDesc() = default;
 
+    size_t GetHash() const
+    {
+        return 0;
+    }
+
     PipelineLayoutDesc                                pipelineLayoutDesc;
     const IRenderPass*                                pRenderPass;
     GraphicsPipelineShaderStages                      shaderStages;

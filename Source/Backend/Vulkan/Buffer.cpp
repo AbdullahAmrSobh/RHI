@@ -11,6 +11,25 @@ namespace RHI
 namespace Vulkan
 {
 
+VkBufferUsageFlags ConvertBufferUsage(BufferUsageFlags usageFlags)
+{
+    VkBufferUsageFlags flags = 0;
+    if (usageFlags & BufferUsageFlagBits::Index)
+    {
+        flags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+    }
+    if (usageFlags & BufferUsageFlagBits::Vertex)
+    {
+        flags |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    }
+    if (usageFlags & BufferUsageFlagBits::Transfer)
+    {
+        flags |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        flags |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    }
+    return flags;
+}
+
 Expected<Unique<IBuffer>> Device::CreateBuffer(const AllocationDesc& allocationDesc, const BufferDesc& desc)
 {
     Unique<Buffer> buffer = CreateUnique<Buffer>(*this);
@@ -67,21 +86,6 @@ VkResult Buffer::Init(const AllocationDesc& allocationDesc, const BufferDesc& de
     }
 
     return result;
-}
-
-ResultCode Buffer::SetDataInternal(size_t byteOffset, const uint8_t* bufferData, size_t bufferDataByteSize)
-{
-    uint8_t* data   = nullptr;
-    VkResult result = vmaMapMemory(m_device->GetAllocator(), m_allocation, reinterpret_cast<void**>(&data));
-    if (Utils::IsError(result))
-    {
-        return ConvertResult(result);
-    }
-
-    std::memcpy(data + byteOffset, bufferData, bufferDataByteSize);
-
-    vmaUnmapMemory(m_device->GetAllocator(), m_allocation);
-    return ResultCode::Success;
 }
 
 BufferView::~BufferView()

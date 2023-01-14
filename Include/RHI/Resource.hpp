@@ -39,8 +39,8 @@ class IFence
 public:
     virtual ~IFence() = default;
 
+    virtual ResultCode Reset()           = 0;
     virtual ResultCode Wait() const      = 0;
-    virtual ResultCode Reset() const     = 0;
     virtual ResultCode GetStatus() const = 0;
 };
 
@@ -70,12 +70,19 @@ enum class SamplerCompareOp
 
 struct SamplerDesc
 {
-    SamplerFilter      filter;
-    SamplerCompareOp   compare;
+    SamplerDesc() = default;
+
+    size_t GetHash() const
+    {
+        return 0;
+    }
+
+    SamplerFilter      filter  = SamplerFilter::Linear;
+    SamplerCompareOp   compare = SamplerCompareOp::Always;
     float              mipLodBias;
-    SamplerAddressMode addressU;
-    SamplerAddressMode addressV;
-    SamplerAddressMode addressW;
+    SamplerAddressMode addressU = SamplerAddressMode::Clamp;
+    SamplerAddressMode addressV = SamplerAddressMode::Clamp;
+    SamplerAddressMode addressW = SamplerAddressMode::Clamp;
     float              minLod;
     float              maxLod;
     float              maxAnisotropy;

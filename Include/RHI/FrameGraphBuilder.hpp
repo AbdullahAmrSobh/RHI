@@ -4,6 +4,14 @@
 
 namespace RHI
 {
+
+struct ImageAttachmentUseInfo
+{
+    ImageViewDesc                 viewDesc;
+    AttachmentLoadStoreOperations loadStoreOperations;
+    AttachmentBlendState          blendState;
+};
+
 class FrameGraphBuilder
 {
 public:
@@ -22,6 +30,9 @@ private:
     void EndPass();
 
 public:
+    const AttachmentsRegistry& GetAttachmentsRegistry() const;
+    AttachmentsRegistry&       GetAttachmentsRegistry();
+
     void UseImageAttachment(std::string                   attachmentName,
                             ImageViewDesc                 attachmentViewDesc,
                             AttachmentLoadStoreOperations loadStoreOperations = AttachmentLoadStoreOperations(),

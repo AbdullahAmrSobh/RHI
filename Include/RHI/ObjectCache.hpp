@@ -3,6 +3,7 @@
 
 namespace RHI
 {
+
 template<typename ObjectType>
 class ObjectCache
 {

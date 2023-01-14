@@ -1,12 +1,15 @@
 #pragma once
 #include "RHI/Resource.hpp"
 
+#include "Backend/Vulkan/Conversion.hpp"
 #include "Backend/Vulkan/DeviceObject.hpp"
 
 namespace RHI
 {
 namespace Vulkan
 {
+
+VkResult UploadResourceData(Device& device, VmaAllocation allocation, size_t byteOffset, const uint8_t* bufferData, size_t bufferDataByteSize);
 
 template<typename T>
 class Resource : public DeviceObject<T>
@@ -61,10 +64,15 @@ public:
 
     VkResult Init();
 
+    ResultCode Reset() override;
     ResultCode Wait() const override;
-    ResultCode Reset() const override;
     ResultCode GetStatus() const override;
 };
+
+VkFilter             ConvertFilter(SamplerFilter filter);
+VkSamplerMipmapMode  ConvertSamplerMipMapMode(SamplerFilter filter);
+VkSamplerAddressMode ConvertSamplerAddressMode(SamplerAddressMode addressMode);
+VkCompareOp          ConvertSamplerCompareOp(SamplerCompareOp compareOp);
 
 class Sampler final
     : public ISampler

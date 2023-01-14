@@ -1,10 +1,17 @@
 #pragma once
+#include "RHI/ObjectCache.hpp"
 #include "RHI/Resource.hpp"
 
 namespace RHI
 {
 
 class ISampler;
+
+enum class ShaderResourceAccessType
+{
+    Read,
+    ReadWrite,
+};
 
 enum class ShaderInputResourceType
 {
@@ -52,7 +59,7 @@ struct ShaderInputResourceBindingDescBase
 
 struct ShaderInputResourceBindingDesc : ShaderInputResourceBindingDescBase
 {
-    AccessType access;
+    ShaderResourceAccessType access;
 };
 
 struct ShaderStaticSamplerResourceBindingDesc : ShaderInputResourceBindingDescBase
@@ -74,22 +81,22 @@ public:
         return m_hash;
     }
 
-    const std::vector<ShaderBindingReference>& GetBindingReferencs() const
+    std::span<const ShaderBindingReference> GetBindingReferencs() const
     {
         return m_bindingReferences;
     }
 
-    const std::vector<ShaderInputResourceBindingDesc>& GetShaderInputResourceBindings() const
+    std::span<const ShaderInputResourceBindingDesc> GetShaderInputResourceBindings() const
     {
         return m_resourceBindings;
     }
 
-    const std::vector<ShaderConstantBufferBindingDesc>& GetShaderConstantBufferBindings() const
+    std::span<const ShaderConstantBufferBindingDesc> GetShaderConstantBufferBindings() const
     {
         return m_constantBuffersBindings;
     }
 
-    const std::vector<ShaderStaticSamplerResourceBindingDesc>& GetShaderStaticSamplerResourceBindings() const
+    std::span<const ShaderStaticSamplerResourceBindingDesc> GetShaderStaticSamplerResourceBindings() const
     {
         return m_staticSamplers;
     }
@@ -116,16 +123,9 @@ public:
     }
 
 private:
-    template<typename T>
-    static constexpr size_t hasher(T x)
-    {
-        return std::hash<T> {}(x);
-    }
-
     void UpdateHashValue(const ShaderInputResourceBindingDescBase& desc)
     {
-        m_hash =
-            hash_combine(m_hash, hash_combine(ShaderResourceGroupLayout::hasher(desc.count), ShaderResourceGroupLayout::hasher(desc.name)));
+        m_hash = HashCombine(m_hash, HashCombine(std::hash<uint32_t> {}(desc.count), std::hash<std::string> {}(desc.name)));
     }
 
 private:
@@ -178,29 +178,35 @@ public:
         return m_constants;
     }
 
-    void BindImages(const ShaderBindingReference& bindingReference, const std::vector<IImageView*>& images)
+    void BindImages(const ShaderBindingReference& bindingReference, std::span<IImageView*> images)
     {
-        m_imageBinds[bindingReference.index] = images;
+        m_imageBinds[bindingReference.index].assign(images.begin(), images.end());
     }
 
-    // TODO Take BufferRangeView
-    void BindBuffers(const ShaderBindingReference& bindingReference, const std::vector<IBuffer*>& buffers)
+    void BindBuffers(const ShaderBindingReference& bindingReference, std::span<IBuffer*> buffers)
     {
-        m_buffersBinds[bindingReference.index] = buffers;
+        m_buffersBinds[bindingReference.index].assign(buffers.begin(), buffers.end());
     }
 
-    void BindTexelBuffers(const ShaderBindingReference& bindingReference, const std::vector<IBufferView*>& bufferViews)
+    void BindTexelBuffers(const ShaderBindingReference& bindingReference, std::span<IBufferView*> bufferViews)
     {
-        m_texelBufferBinds[bindingReference.index] = bufferViews;
+        m_texelBufferBinds[bindingReference.index].assign(bufferViews.begin(), bufferViews.end());
+        ;
     }
 
-    void BindSamplers(const ShaderBindingReference& bindingReference, const std::vector<ISampler*>& samplers)
+    void BindSamplers(const ShaderBindingReference& bindingReference, std::span<ISampler*> samplers)
     {
-        m_samplersBinds[bindingReference.index] = samplers;
+        m_samplersBinds[bindingReference.index].assign(samplers.begin(), samplers.end());
     }
 
     template<typename T>
-    void SetConstant(const ShaderBindingReference& bindingReference, const std::vector<T>& data)
+    void SetConstantArray(const ShaderBindingReference& bindingReference, std::span<T> data)
+    {
+        m_constants[bindingReference.index] = ConstantBuffer(data.size(), data.data());
+    }
+
+    template<typename T>
+    void SetConstantArray(const ShaderBindingReference& bindingReference, T data)
     {
         m_constants[bindingReference.index] = ConstantBuffer(data.size(), data.data());
     }

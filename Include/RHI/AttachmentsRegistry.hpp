@@ -18,7 +18,11 @@ public:
 
     ResultCode ImportImage(std::string name, IImage& image);
 
+    const ImageAttachment* FindImageAttachment(std::string_view name) const;
+
     ImageAttachment* FindImageAttachment(std::string_view name);
+
+    const ImageAttachment* FindSwapchainAttachment(std::string_view name) const;
 
     ImageAttachment* FindSwapchainAttachment(std::string_view name);
 

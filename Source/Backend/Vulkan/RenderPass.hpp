@@ -16,6 +16,13 @@ class CommandBuffer;
 class RenderPassLayout;
 class Semaphore;
 
+VkAttachmentLoadOp  ConvertAttachmentLoadOperation(AttachmentLoadOperation operation);
+VkAttachmentStoreOp ConvertAttachmentStoreOperation(AttachmentStoreOperation operation);
+
+VkImageLayout GetInitialImageLayout(const UsedImageAttachment& attachment);
+VkImageLayout GetFinalImageLayout(const UsedImageAttachment& attachment);
+VkImageLayout GetOptiomalImageLayout(const UsedImageAttachment& attachment);
+
 class RenderPass final : public IRenderPass
 {
 public:
@@ -48,6 +55,8 @@ public:
     }
 
     CommandBuffer& GetCommandBuffer(size_t key);
+
+    std::span<VkClearValue> GetClearValues() const;
 
     void Reset()
     {

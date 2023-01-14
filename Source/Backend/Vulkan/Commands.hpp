@@ -13,6 +13,21 @@ class Semaphore;
 class ShaderResourceGroup;
 class CommandAllocator;
 
+inline constexpr VkViewport ConvertViewport(const Viewport& viewport)
+{
+    return {static_cast<float>(viewport.drawingArea.x),
+            static_cast<float>(viewport.drawingArea.y),
+            static_cast<float>(viewport.drawingArea.sizeX),
+            static_cast<float>(viewport.drawingArea.sizeY),
+            viewport.minDepth,
+            viewport.maxDepth};
+}
+
+inline constexpr VkRect2D ConvertRect(const Rect& rect)
+{
+    return {{rect.x, rect.y}, {rect.sizeX, rect.sizeY}};
+}
+
 class CommandBuffer final
     : public ICommandBuffer
     , public DeviceObject<VkCommandBuffer>
