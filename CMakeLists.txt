@@ -10,11 +10,12 @@ project(
     LANGUAGES CXX
 )
 
+include(FetchContent)
 include(cmake/project-is-top-level.cmake)
 include(cmake/variables.cmake)
 include(cmake/SourceFilesList.cmake)
 
-# ---- Find Dependencies 
+# ---- Find Dependencies ---- 
 if (NOT CMAKE_VERSION VERSION_LESS 3.7.0)
 	message(STATUS "Using module to find Vulkan")
 	find_package(Vulkan)
@@ -24,6 +25,19 @@ if (NOT VULKAN_FOUND)
     message(FATEL_ERROR "Failed to find Vulkan")
 endif()
 
+# ---- Fetch Libraries ----
+
+FetchContent_Declare(
+        EASTL
+        GIT_REPOSITORY https://github.com/electronicarts/EASTL.git
+)
+
+FetchContent_GetProperties(EASTL)
+
+if(NOT EASTL_POPULATED)
+  FetchContent_Populate(EASTL)
+  add_subdirectory(${EASTL_SOURCE_DIR} ${EASTL_BINARY_DIR})
+endif()
 # ---- Declare library ----
 
 add_library(
@@ -71,6 +85,7 @@ target_include_directories(
 )
 
 target_link_libraries(RHI_RHI PRIVATE ${Vulkan_LIBRARIES})
+# target_link_libraries(RHI_RHI PUBLIC eastl)
 
 target_compile_features(RHI_RHI PUBLIC cxx_std_20)
 

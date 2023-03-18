@@ -28,6 +28,7 @@ set(HEADER_FILES
 	"Include/RHI/ShaderResourceGroup.hpp"
 	"Include/RHI/Swapchain.hpp"
 	"Include/RHI/Core/Expected.hpp"
+	"Include/RHI/Core/Result.hpp"
 )
 
 set(SOURCE_FILES

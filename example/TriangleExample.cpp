@@ -14,8 +14,6 @@
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
-#include "stb_image.hpp"
-
 std::vector<uint32_t> readBinFile(const std::string& filePath)
 {
     std::ifstream file(filePath, std::ios::ate | std::ios::binary);
