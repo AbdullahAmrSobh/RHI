@@ -15,9 +15,9 @@ namespace RHI
 namespace Vulkan
 {
 
-Expected<Unique<ISurface>> Instance::CreateSurface(const Win32SurfaceDesc& desc)
+Expected<std::unique_ptr<ISurface>> Instance::CreateSurface(const Win32SurfaceDesc& desc)
 {
-    Unique<Surface> surface = CreateUnique<Surface>(*this);
+    std::unique_ptr<Surface> surface = std::make_unique<Surface>(*this);
     VkResult        result  = surface->Init(desc);
 
     if (Utils::IsSuccess(result))
@@ -40,9 +40,9 @@ VkResult Surface::Init(const Win32SurfaceDesc& desc)
     return createSurface(m_pInstance->GetHandle(), &createInfo, nullptr, &m_handle);
 }
 
-Expected<Unique<ISwapchain>> Device::CreateSwapChain(const SwapchainDesc& desc)
+Expected<std::unique_ptr<ISwapchain>> Device::CreateSwapChain(const SwapchainDesc& desc)
 {
-    Unique<Swapchain> swapchain = CreateUnique<Swapchain>(*this);
+    std::unique_ptr<Swapchain> swapchain = std::make_unique<Swapchain>(*this);
     VkResult          result    = swapchain->Init(desc);
 
     if (Utils::IsSuccess(result))
@@ -137,7 +137,7 @@ Swapchain::~Swapchain()
 
 VkResult Swapchain::Init(const SwapchainDesc& desc)
 {
-    m_imageDescription = CreateUnique<ImageDesc>();
+    m_imageDescription = std::make_unique<ImageDesc>();
     m_imageDescription->arraySize      = 1;
     m_imageDescription->mipLevelsCount = 1;
     m_imageDescription->extent.sizeX   = desc.extent.sizeX;
@@ -198,7 +198,7 @@ VkResult Swapchain::Init(const SwapchainDesc& desc)
 
     for(uint32_t index = 0; index < backBuffersCount; index++)
     {
-        m_framesInFlightFence.emplace_back(std::move(CreateUnique<Fence>(*m_device)));
+        m_framesInFlightFence.emplace_back(std::move(std::make_unique<Fence>(*m_device)));
         Utils::AssertSuccess(m_framesInFlightFence.back()->Init());
     }
 

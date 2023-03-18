@@ -9,24 +9,24 @@
 namespace RHI
 {
 
-static Shared<IDebugCallbacks> s_callbacks;
+static std::shared_ptr<IDebugCallbacks> s_callbacks;
 
-void Debug::Init(Unique<IDebugCallbacks> callbacks)
+void Debug::Init(std::unique_ptr<IDebugCallbacks> callbacks)
 {
     s_callbacks = std::move(callbacks);
 }
 
-Shared<IDebugCallbacks>& Debug::Get()
+std::shared_ptr<IDebugCallbacks>& Debug::Get()
 {
     return s_callbacks;
 }
 
-Expected<Unique<IInstance>> IInstance::Create(BackendType backend, Unique<IDebugCallbacks> callbacks)
+Expected<std::unique_ptr<IInstance>> IInstance::Create(BackendType backend, std::unique_ptr<IDebugCallbacks> callbacks)
 {
     switch (backend)
     {
         case BackendType::Vulkan: {
-            Unique<Vulkan::Instance> instance = CreateUnique<Vulkan::Instance>();
+            std::unique_ptr<Vulkan::Instance> instance = std::make_unique<Vulkan::Instance>();
 
             Debug::Init(std::move(callbacks));
 

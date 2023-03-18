@@ -71,15 +71,15 @@ private:
 
     Device* m_device;
 
-    Unique<CommandAllocator> m_commandsAllocator;
+    std::unique_ptr<CommandAllocator> m_commandsAllocator;
 
     ObjectCache<CommandBuffer> m_commandBuffers;
 
     const RenderPassLayout* m_layout;
 
-    Shared<Framebuffer> m_renderTargert;
+    std::shared_ptr<Framebuffer> m_renderTargert;
 
-    Unique<Semaphore> m_signalSemaphore;
+    std::unique_ptr<Semaphore> m_signalSemaphore;
 
     std::vector<WaitPoint> m_waitPoints;
 

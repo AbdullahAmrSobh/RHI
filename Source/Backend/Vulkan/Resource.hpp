@@ -94,9 +94,9 @@ public:
     Semaphore(Device& device, VkSemaphoreCreateFlags flags = 0);
     ~Semaphore();
 
-    static Unique<Semaphore> Create(Device& device, VkSemaphoreCreateFlags flags = 0)
+    static std::unique_ptr<Semaphore> Create(Device& device, VkSemaphoreCreateFlags flags = 0)
     {
-        return CreateUnique<Semaphore>(device, flags);
+        return std::make_unique<Semaphore>(device, flags);
     }
 };
 

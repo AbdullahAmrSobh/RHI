@@ -1,5 +1,7 @@
 #include "RHI/RHI.hpp"
 
+#include <memory>
+
 class DebugCallbacks final : public RHI::IDebugCallbacks
 {
 public:
@@ -22,7 +24,7 @@ public:
 
 int main()
 {
-    RHI::Unique<DebugCallbacks> debugCallbacks = RHI::CreateUnique<DebugCallbacks>();
+    std::unique_ptr<DebugCallbacks> debugCallbacks = std::make_unique<DebugCallbacks>();
     auto                        instance       = RHI::IInstance::Create(RHI::BackendType::Vulkan, std::move(debugCallbacks));
     if (instance.has_value())
     {

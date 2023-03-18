@@ -31,7 +31,7 @@ public:
 private:
     size_t                                   m_hash;
     std::vector<VkPushConstantRange>         m_pushConstantRanges;
-    std::vector<Unique<DescriptorSetLayout>> m_descriptorSetsLayouts;
+    std::vector<std::unique_ptr<DescriptorSetLayout>> m_descriptorSetsLayouts;
 };
 
 VkShaderStageFlags CovnertShaderStages(ShaderStageFlags stages);
@@ -59,8 +59,8 @@ public:
     }
 
 private:
-    Unique<PipelineLayout>     m_layout;
-    Shared<RenderPassLayout> m_renderTargetLayout;
+    std::unique_ptr<PipelineLayout>     m_layout;
+    std::shared_ptr<RenderPassLayout> m_renderTargetLayout;
 };
 
 }  // namespace Vulkan

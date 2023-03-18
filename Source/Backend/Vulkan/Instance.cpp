@@ -99,15 +99,15 @@ VkResult Instance::Init()
 
     for (VkPhysicalDevice physicalDevice : ::RHI::Vulkan::GetPhysicalDevices(m_instance))
     {
-        m_physicalDevices.push_back(std::move(CreateUnique<PhysicalDevice>(physicalDevice)));
+        m_physicalDevices.push_back(std::move(std::make_unique<PhysicalDevice>(physicalDevice)));
     }
 
     return result;
 }
 
-Expected<Unique<IDevice>> Instance::CreateDevice(const IPhysicalDevice& physicalDevice)
+Expected<std::unique_ptr<IDevice>> Instance::CreateDevice(const IPhysicalDevice& physicalDevice)
 {
-    auto     device = CreateUnique<Device>(*this, static_cast<const PhysicalDevice&>(physicalDevice));
+    auto     device = std::make_unique<Device>(*this, static_cast<const PhysicalDevice&>(physicalDevice));
     VkResult result = device->Init(static_cast<const PhysicalDevice&>(physicalDevice));
     if (result != VK_SUCCESS)
     {

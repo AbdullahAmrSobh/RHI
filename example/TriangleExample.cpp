@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -62,7 +63,7 @@ public:
     {
         // Create Instance and device.
         {
-            m_instance = RHI::IInstance::Create(RHI::BackendType::Vulkan, RHI::CreateUnique<RHIDebugCallbacks>()).value();
+            m_instance = RHI::IInstance::Create(RHI::BackendType::Vulkan, std::make_unique<RHIDebugCallbacks>()).value();
             assert(!m_instance->GetPhysicalDevices().empty());
             const RHI::IPhysicalDevice* pPhysicalDevice = m_instance->GetPhysicalDevices().front();
             for (auto* device : m_instance->GetPhysicalDevices())
@@ -140,43 +141,6 @@ public:
             assert(m_indexBuffer->SetData<uint32_t>(0, indexBufferData) == RHI::ResultCode::Success);
         }
 
-        {
-            // load image
-            int                  texWidth, texHeight, texChannels;
-            auto                 rawPixels = stbi_load("texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-            size_t               imageSize = static_cast<size_t>(texWidth * texHeight * 4);
-            std::vector<uint8_t> imagePixels;
-            imagePixels.resize(imageSize);
-            memcpy(imagePixels.data(), rawPixels, imageSize);
-
-            RHI::AllocationDesc allocationDesc {};
-            allocationDesc.type                            = RHI::MemoryLevel::Device;
-            allocationDesc.byteOffset                      = 0;
-            allocationDesc.memoryRequirement.byteSize      = imagePixels.size();
-            allocationDesc.memoryRequirement.byteAlignment = alignof(uint32_t);
-            allocationDesc.usage                           = RHI::MemoryUsage::Local;
-
-            RHI::ImageDesc imageDesc {};
-            imageDesc.usage          = RHI::ImageUsageFlagBits::Color;
-            imageDesc.imageType      = RHI::ImageType::Image2D;
-            imageDesc.extent.sizeX   = static_cast<uint32_t>(texWidth);
-            imageDesc.extent.sizeY   = static_cast<uint32_t>(texHeight);
-            imageDesc.extent.sizeZ   = 1;
-            imageDesc.format         = RHI::Format::R8G8B8A8_UNORM_SRGB;
-            imageDesc.sampleCount    = RHI::SampleCount::Count1;
-            imageDesc.mipLevelsCount = 1;
-            imageDesc.arraySize      = 1;
-            m_imageResource          = m_device->CreateImage(allocationDesc, imageDesc).value();
-
-            // m_imageResource->SetData<uint8_t>(0, imagePixels);
-
-            RHI::ImageViewDesc viewDesc {};
-            viewDesc.format     = RHI::Format::R8G8B8A8_UNORM_SRGB;
-            viewDesc.type       = RHI::ImageViewType::View2D;
-            viewDesc.viewAspect = RHI::GetImageAspectFlags(viewDesc.format);
-            m_imageView         = m_device->CreateImageView(*m_imageResource, viewDesc).value();
-        }
-
         #if 0
         // Create shader resource group allocator
         {
@@ -250,7 +214,7 @@ public:
             };
 
             m_producer =
-                RHI::CreateUnique<RHI::RenderPassProducerCallbacks>("mainRenderpass", setupAttachmentsCallback, buildCommandBufferCallback);
+                std::make_unique<RHI::RenderPassProducerCallbacks>("mainRenderpass", setupAttachmentsCallback, buildCommandBufferCallback);
         }
     }
 
@@ -268,33 +232,33 @@ public:
     RHI::Rect     m_scissor  = {};
     RHI::Viewport m_viewport = {};
 
-    RHI::Unique<RHI::IInstance> m_instance;
+    std::unique_ptr<RHI::IInstance> m_instance;
 
-    RHI::Unique<RHI::IDevice> m_device;
+    std::unique_ptr<RHI::IDevice> m_device;
 
-    RHI::Unique<RHI::ISurface> m_surface;
+    std::unique_ptr<RHI::ISurface> m_surface;
 
-    RHI::Unique<RHI::ISwapchain> m_swapchain;
+    std::unique_ptr<RHI::ISwapchain> m_swapchain;
 
-    RHI::Unique<RHI::IImage> m_imageResource;
+    std::unique_ptr<RHI::IImage> m_imageResource;
 
-    RHI::Unique<RHI::IImageView> m_imageView;
+    std::unique_ptr<RHI::IImageView> m_imageView;
 
-    RHI::Unique<RHI::IBuffer> m_vertexBuffer;
+    std::unique_ptr<RHI::IBuffer> m_vertexBuffer;
 
-    RHI::Unique<RHI::IBuffer> m_indexBuffer;
+    std::unique_ptr<RHI::IBuffer> m_indexBuffer;
 
     RHI::ShaderResourceGroupLayout m_srgLayout {};
 
-    RHI::Unique<RHI::IShaderResourceGroupAllocator> m_shaderResourceGroupAllocator;
+    std::unique_ptr<RHI::IShaderResourceGroupAllocator> m_shaderResourceGroupAllocator;
 
-    RHI::Unique<RHI::IShaderResourceGroup> m_shaderResourceGroup;
+    std::unique_ptr<RHI::IShaderResourceGroup> m_shaderResourceGroup;
 
-    RHI::Unique<RHI::IPipelineState> m_pipeline;
+    std::unique_ptr<RHI::IPipelineState> m_pipeline;
 
-    RHI::Unique<RHI::IFrameScheduler> m_scheduler;
+    std::unique_ptr<RHI::IFrameScheduler> m_scheduler;
 
-    RHI::Unique<RHI::RenderPassProducerCallbacks> m_producer;
+    std::unique_ptr<RHI::RenderPassProducerCallbacks> m_producer;
 };
 
 int main(void)

@@ -26,7 +26,7 @@ protected:
 
 private:
     std::string         m_name;
-    Unique<IRenderPass> m_renderpass;
+    std::unique_ptr<IRenderPass> m_renderpass;
 };
 
 class RenderPassProducerCallbacks final : public RenderPassProducer

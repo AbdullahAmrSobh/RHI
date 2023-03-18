@@ -11,9 +11,9 @@ namespace RHI
 namespace Vulkan
 {
 
-Expected<Unique<IShaderProgram>> Device::CreateShaderProgram(const ShaderProgramDesc& desc)
+Expected<std::unique_ptr<IShaderProgram>> Device::CreateShaderProgram(const ShaderProgramDesc& desc)
 {
-    Unique<ShaderModule> shaderModule = CreateUnique<ShaderModule>(*this, desc.entryName);
+    std::unique_ptr<ShaderModule> shaderModule = std::make_unique<ShaderModule>(*this, desc.entryName);
     VkResult             result       = shaderModule->Init(desc);
 
     if (Utils::IsSuccess(result))
@@ -22,9 +22,9 @@ Expected<Unique<IShaderProgram>> Device::CreateShaderProgram(const ShaderProgram
     return Unexpected(ConvertResult(result));
 }
 
-Expected<Unique<IFence>> Device::CreateFence()
+Expected<std::unique_ptr<IFence>> Device::CreateFence()
 {
-    Unique<Fence> fence  = CreateUnique<Fence>(*this);
+    std::unique_ptr<Fence> fence  = std::make_unique<Fence>(*this);
     VkResult      result = fence->Init();
 
     if (Utils::IsSuccess(result))
@@ -33,9 +33,9 @@ Expected<Unique<IFence>> Device::CreateFence()
     return Unexpected(ConvertResult(result));
 }
 
-Expected<Unique<ISampler>> Device::CreateSampler(const SamplerDesc& desc)
+Expected<std::unique_ptr<ISampler>> Device::CreateSampler(const SamplerDesc& desc)
 {
-    Unique<Sampler> sampler = CreateUnique<Sampler>(*this);
+    std::unique_ptr<Sampler> sampler = std::make_unique<Sampler>(*this);
     VkResult        result  = sampler->Init(desc);
 
     if (Utils::IsSuccess(result))

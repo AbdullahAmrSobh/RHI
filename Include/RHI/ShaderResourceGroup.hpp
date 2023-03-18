@@ -258,7 +258,7 @@ public:
 
 protected:
     std::vector<ShaderBindingReference> m_bindingReferencs;
-    Unique<ShaderResourceGroupLayout>   m_layout;
+    std::unique_ptr<ShaderResourceGroupLayout>   m_layout;
 };
 
 class IShaderResourceGroupAllocator
@@ -266,7 +266,7 @@ class IShaderResourceGroupAllocator
 public:
     virtual ~IShaderResourceGroupAllocator() = default;
 
-    virtual Expected<Unique<IShaderResourceGroup>> Allocate(const ShaderResourceGroupLayout& layout) = 0;
+    virtual Expected<std::unique_ptr<IShaderResourceGroup>> Allocate(const ShaderResourceGroupLayout& layout) = 0;
 };
 
 }  // namespace RHI

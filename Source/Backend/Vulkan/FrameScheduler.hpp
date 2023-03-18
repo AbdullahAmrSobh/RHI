@@ -26,7 +26,7 @@ public:
 
     VkResult Init();
 
-    Unique<IRenderPass> CreateRenderPass(std::string name) const override;
+    std::unique_ptr<IRenderPass> CreateRenderPass(std::string name) const override;
     ICommandBuffer&     BeginCommandBuffer(IRenderPass& renderpass) override;
     void                EndCommandBuffer() override;
     void                Submit(IRenderPass& renderpass) override;

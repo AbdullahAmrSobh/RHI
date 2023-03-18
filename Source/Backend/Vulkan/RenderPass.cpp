@@ -51,14 +51,14 @@ VkImageLayout GetOptiomalImageLayout(const UsedImageAttachment& attachment)
 
 VkResult RenderPass::Init()
 {
-    m_commandsAllocator = CreateUnique<CommandAllocator>(*m_device);
+    m_commandsAllocator = std::make_unique<CommandAllocator>(*m_device);
     m_signalSemaphore   = Semaphore::Create(*m_device);
     return m_commandsAllocator->Init();
 }
 
 CommandBuffer& RenderPass::GetCommandBuffer(size_t key)
 {
-    Shared<CommandBuffer> commandBuffer = m_commandBuffers.Find(key);
+    std::shared_ptr<CommandBuffer> commandBuffer = m_commandBuffers.Find(key);
     if (commandBuffer)
     {
         return *commandBuffer;

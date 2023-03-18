@@ -16,13 +16,13 @@ public:
     {
     }
 
-    Shared<IImage> GetImage(const ImageDesc& desc);
+    std::shared_ptr<IImage> GetImage(const ImageDesc& desc);
 
-    Shared<IBuffer> GetBuffer(const BufferDesc& desc);
+    std::shared_ptr<IBuffer> GetBuffer(const BufferDesc& desc);
 
-    Shared<IImageView> GetImageView(const IImage& image, const ImageViewDesc& desc);
+    std::shared_ptr<IImageView> GetImageView(const IImage& image, const ImageViewDesc& desc);
 
-    Shared<IBufferView> GetBufferView(const IBuffer& buffer, const BufferViewDesc& desc);
+    std::shared_ptr<IBufferView> GetBufferView(const IBuffer& buffer, const BufferViewDesc& desc);
 
 private:
     IDevice* m_device;

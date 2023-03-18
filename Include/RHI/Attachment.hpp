@@ -277,7 +277,7 @@ public:
 private:
     friend class IFrameScheduler;
 
-    void SetView(Shared<IImageView> view)
+    void SetView(std::shared_ptr<IImageView> view)
     {
         m_view = view;
     }
@@ -288,7 +288,7 @@ private:
     ImageAttachment*          m_attachment;
     ImageAttachment::iterator m_position;
 
-    Shared<IImageView> m_view;
+    std::shared_ptr<IImageView> m_view;
 
     ImageViewDesc m_viewDesc;
 

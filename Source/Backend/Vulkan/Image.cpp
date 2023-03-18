@@ -84,9 +84,9 @@ VkImageAspectFlags ConvertViewAspect(ImageViewAspectFlags aspectFlags)
     return flags;
 }
 
-Expected<Unique<IImage>> Device::CreateImage(const AllocationDesc& allocationDesc, const ImageDesc& desc)
+Expected<std::unique_ptr<IImage>> Device::CreateImage(const AllocationDesc& allocationDesc, const ImageDesc& desc)
 {
-    Unique<Image> image  = CreateUnique<Image>(*this);
+    std::unique_ptr<Image> image  = std::make_unique<Image>(*this);
     VkResult      result = image->Init(allocationDesc, desc);
 
     if (Utils::IsSuccess(result))
@@ -95,9 +95,9 @@ Expected<Unique<IImage>> Device::CreateImage(const AllocationDesc& allocationDes
     return Unexpected(ConvertResult(result));
 }
 
-Expected<Unique<IImageView>> Device::CreateImageView(const IImage& image, const ImageViewDesc& desc)
+Expected<std::unique_ptr<IImageView>> Device::CreateImageView(const IImage& image, const ImageViewDesc& desc)
 {
-    Unique<ImageView> imageView = CreateUnique<ImageView>(*this);
+    std::unique_ptr<ImageView> imageView = std::make_unique<ImageView>(*this);
     VkResult          result    = imageView->Init(static_cast<const Image&>(image), desc);
 
     if (Utils::IsSuccess(result))

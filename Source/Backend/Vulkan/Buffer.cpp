@@ -30,9 +30,9 @@ VkBufferUsageFlags ConvertBufferUsage(BufferUsageFlags usageFlags)
     return flags;
 }
 
-Expected<Unique<IBuffer>> Device::CreateBuffer(const AllocationDesc& allocationDesc, const BufferDesc& desc)
+Expected<std::unique_ptr<IBuffer>> Device::CreateBuffer(const AllocationDesc& allocationDesc, const BufferDesc& desc)
 {
-    Unique<Buffer> buffer = CreateUnique<Buffer>(*this);
+    std::unique_ptr<Buffer> buffer = std::make_unique<Buffer>(*this);
     VkResult       result = buffer->Init(allocationDesc, desc);
 
     if (Utils::IsSuccess(result))
@@ -41,9 +41,9 @@ Expected<Unique<IBuffer>> Device::CreateBuffer(const AllocationDesc& allocationD
     return Unexpected(ConvertResult(result));
 }
 
-Expected<Unique<IBufferView>> Device::CreateBufferView(const IBuffer& buffer, const BufferViewDesc& desc)
+Expected<std::unique_ptr<IBufferView>> Device::CreateBufferView(const IBuffer& buffer, const BufferViewDesc& desc)
 {
-    Unique<BufferView> bufferView = CreateUnique<BufferView>(*this);
+    std::unique_ptr<BufferView> bufferView = std::make_unique<BufferView>(*this);
     VkResult           result     = bufferView->Init(static_cast<const Buffer&>(buffer), desc);
 
     if (Utils::IsSuccess(result))

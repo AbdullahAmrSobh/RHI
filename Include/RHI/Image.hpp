@@ -99,7 +99,7 @@ class IImage : public IResource
 {
 public:
     IImage()
-        : m_desc(CreateUnique<ImageDesc>())
+        : m_desc(std::make_unique<ImageDesc>())
     {
     }
 
@@ -111,7 +111,7 @@ public:
     }
 
 protected:
-    Unique<ImageDesc> m_desc;
+    std::unique_ptr<ImageDesc> m_desc;
 };
 
 struct ImageViewRange
@@ -158,7 +158,7 @@ class IImageView
 {
 public:
     IImageView()
-        : m_desc(CreateUnique<ImageViewDesc>())
+        : m_desc(std::make_unique<ImageViewDesc>())
     {
     }
 
@@ -170,6 +170,6 @@ public:
     }
 
 protected:
-    Unique<ImageViewDesc> m_desc;
+    std::unique_ptr<ImageViewDesc> m_desc;
 };
 }  // namespace RHI

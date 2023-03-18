@@ -450,9 +450,9 @@ VkPolygonMode ConvertRasterizationStateFillMode(RasterizationFillMode fillMode)
 
     return polygonMode[static_cast<uint32_t>(fillMode)];
 }
-Expected<Unique<IPipelineState>> Device::CreateGraphicsPipelineState(const GraphicsPipelineStateDesc& desc)
+Expected<std::unique_ptr<IPipelineState>> Device::CreateGraphicsPipelineState(const GraphicsPipelineStateDesc& desc)
 {
-    Unique<PipelineState> pipelineState = CreateUnique<PipelineState>(*this);
+    std::unique_ptr<PipelineState> pipelineState = std::make_unique<PipelineState>(*this);
     VkResult              result        = pipelineState->Init(desc);
 
     if (!Utils::IsSuccess(result))
@@ -470,7 +470,7 @@ PipelineState::~PipelineState()
 
 VkResult PipelineState::Init(const GraphicsPipelineStateDesc& desc)
 {
-    m_layout        = CreateUnique<PipelineLayout>(*m_device);
+    m_layout        = std::make_unique<PipelineLayout>(*m_device);
     VkResult result = m_layout->Init(desc.pipelineLayoutDesc);
     VK_RETURN_ON_ERROR(result);
 

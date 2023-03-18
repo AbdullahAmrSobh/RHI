@@ -31,7 +31,7 @@ class IBuffer : public IResource
 {
 public:
     IBuffer()
-        : m_desc(CreateUnique<BufferDesc>())
+        : m_desc(std::make_unique<BufferDesc>())
     {
     }
 
@@ -43,7 +43,7 @@ public:
     }
 
 protected:
-    Unique<BufferDesc> m_desc;
+    std::unique_ptr<BufferDesc> m_desc;
 };
 
 struct BufferRange
@@ -74,7 +74,7 @@ class IBufferView
 {
 public:
     IBufferView()
-        : m_desc(CreateUnique<BufferViewDesc>())
+        : m_desc(std::make_unique<BufferViewDesc>())
     {
     }
 
@@ -86,7 +86,7 @@ public:
     }
 
 protected:
-    Unique<BufferViewDesc> m_desc;
+    std::unique_ptr<BufferViewDesc> m_desc;
 };
 
 }  // namespace RHI

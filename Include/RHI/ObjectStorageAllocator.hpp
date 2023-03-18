@@ -20,27 +20,27 @@ class IObjectStorageAllocator
 public:
     virtual ~IObjectStorageAllocator() = default;
 
-    virtual Unique<ISwapchain> AllocateSwapChain() = 0;
+    virtual std::unique_ptr<ISwapchain> AllocateSwapChain() = 0;
 
-    virtual Unique<IShaderProgram> AllocateShaderProgram() = 0;
+    virtual std::unique_ptr<IShaderProgram> AllocateShaderProgram() = 0;
 
-    virtual Unique<IShaderResourceGroupAllocator> AllocateShaderResourceGroupAllocator() = 0;
+    virtual std::unique_ptr<IShaderResourceGroupAllocator> AllocateShaderResourceGroupAllocator() = 0;
 
-    virtual Unique<IPipelineState> AllocateGraphicsPipelineState() = 0;
+    virtual std::unique_ptr<IPipelineState> AllocateGraphicsPipelineState() = 0;
 
-    virtual Unique<IFence> AllocateFence() = 0;
+    virtual std::unique_ptr<IFence> AllocateFence() = 0;
 
-    virtual Unique<ISampler> AllocateSampler() = 0;
+    virtual std::unique_ptr<ISampler> AllocateSampler() = 0;
 
-    virtual Unique<IImage> AllocateImage() = 0;
+    virtual std::unique_ptr<IImage> AllocateImage() = 0;
 
-    virtual Unique<IImageView> AllocateImageView() = 0;
+    virtual std::unique_ptr<IImageView> AllocateImageView() = 0;
 
-    virtual Unique<IBuffer> AllocateBuffer() = 0;
+    virtual std::unique_ptr<IBuffer> AllocateBuffer() = 0;
 
-    virtual Unique<IBufferView> AllocateBufferView() = 0;
+    virtual std::unique_ptr<IBufferView> AllocateBufferView() = 0;
 
-    virtual Unique<IFrameScheduler> AllocateFrameScheduler() = 0;
+    virtual std::unique_ptr<IFrameScheduler> AllocateFrameScheduler() = 0;
 };
 
 }  // namespace RHI

@@ -27,9 +27,9 @@ static std::optional<WaitPoint> GetImageAttachmentWaitPoint(UsedImageAttachment&
     return std::nullopt;
 }
 
-Expected<Unique<IFrameScheduler>> Device::CreateFrameScheduler()
+Expected<std::unique_ptr<IFrameScheduler>> Device::CreateFrameScheduler()
 {
-    Unique<FrameScheduler> scheduler = CreateUnique<FrameScheduler>(*this);
+    std::unique_ptr<FrameScheduler> scheduler = std::make_unique<FrameScheduler>(*this);
     VkResult               result    = scheduler->Init();
     if (result != VK_SUCCESS)
     {
@@ -48,9 +48,9 @@ VkResult FrameScheduler::Init()
     return VK_SUCCESS;
 }
 
-Unique<IRenderPass> FrameScheduler::CreateRenderPass(std::string name) const
+std::unique_ptr<IRenderPass> FrameScheduler::CreateRenderPass(std::string name) const
 {
-    auto renderpass = CreateUnique<RenderPass>(*m_device, std::move(name));
+    auto renderpass = std::make_unique<RenderPass>(*m_device, std::move(name));
     Utils::AssertSuccess(renderpass->Init());
     return renderpass;
 }
@@ -59,7 +59,7 @@ ICommandBuffer& FrameScheduler::BeginCommandBuffer(IRenderPass& _renderpass)
 {
     RenderPass& renderpass = static_cast<RenderPass&>(_renderpass);
 
-    Shared<Framebuffer> framebuffer = m_device->CreateCachedFramebuffer(renderpass.GetUsedAttachments());
+    std::shared_ptr<Framebuffer> framebuffer = m_device->CreateCachedFramebuffer(renderpass.GetUsedAttachments());
     renderpass.m_layout             = &framebuffer->GetLayout();
     renderpass.m_renderTargert      = framebuffer;
 

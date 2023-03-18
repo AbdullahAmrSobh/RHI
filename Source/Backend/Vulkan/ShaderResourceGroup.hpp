@@ -11,7 +11,7 @@ namespace Vulkan
 class ShaderResourceGroup final : public IShaderResourceGroup
 {
 public:
-    ShaderResourceGroup(Device& device, Unique<DescriptorSet> descriptorSet)
+    ShaderResourceGroup(Device& device, std::unique_ptr<DescriptorSet> descriptorSet)
         : m_device(&device)
         , m_descriptorSet(std::move(descriptorSet))
     {
@@ -27,7 +27,7 @@ public:
 
 private:
     Device*               m_device;
-    Unique<DescriptorSet> m_descriptorSet;
+    std::unique_ptr<DescriptorSet> m_descriptorSet;
 };
 
 class ShaderResourceGroupAllocator final : public IShaderResourceGroupAllocator
@@ -38,11 +38,11 @@ public:
     {
     }
 
-     Expected<Unique<IShaderResourceGroup>> Allocate(const ShaderResourceGroupLayout& layout) override;
+     Expected<std::unique_ptr<IShaderResourceGroup>> Allocate(const ShaderResourceGroupLayout& layout) override;
 
 private:
     Device*                             m_device;
-    std::vector<Unique<DescriptorPool>> m_descriptorPools;
+    std::vector<std::unique_ptr<DescriptorPool>> m_descriptorPools;
 };
 
 }  // namespace Vulkan

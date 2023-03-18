@@ -20,9 +20,9 @@ public:
         return m_instance;
     }
 
-    virtual Expected<Unique<ISurface>> CreateSurface(const struct Win32SurfaceDesc& desc) override;
+    virtual Expected<std::unique_ptr<ISurface>> CreateSurface(const struct Win32SurfaceDesc& desc) override;
 
-    virtual Expected<Unique<IDevice>> CreateDevice(const IPhysicalDevice& physicalDevice) override;
+    virtual Expected<std::unique_ptr<IDevice>> CreateDevice(const IPhysicalDevice& physicalDevice) override;
 
 private:
     VkInstance               m_instance;

@@ -9,10 +9,10 @@
 namespace RHI
 {
 
-Shared<IImage> ResourceCachedAllocator::GetImage(const ImageDesc& desc)
+std::shared_ptr<IImage> ResourceCachedAllocator::GetImage(const ImageDesc& desc)
 {
     size_t         key   = HashDescriptor(desc);
-    Shared<IImage> image = m_imagesCache.Find(key);
+    std::shared_ptr<IImage> image = m_imagesCache.Find(key);
     if (image)
     {
         return image;
@@ -23,10 +23,10 @@ Shared<IImage> ResourceCachedAllocator::GetImage(const ImageDesc& desc)
     return image;
 }
 
-Shared<IBuffer> ResourceCachedAllocator::GetBuffer(const BufferDesc& desc)
+std::shared_ptr<IBuffer> ResourceCachedAllocator::GetBuffer(const BufferDesc& desc)
 {
     size_t          key    = HashDescriptor(desc);
-    Shared<IBuffer> buffer = m_buffersCache.Find(key);
+    std::shared_ptr<IBuffer> buffer = m_buffersCache.Find(key);
     if (buffer)
     {
         return buffer;
@@ -37,10 +37,10 @@ Shared<IBuffer> ResourceCachedAllocator::GetBuffer(const BufferDesc& desc)
     return buffer;
 }
 
-Shared<IImageView> ResourceCachedAllocator::GetImageView(const IImage& image, const ImageViewDesc& desc)
+std::shared_ptr<IImageView> ResourceCachedAllocator::GetImageView(const IImage& image, const ImageViewDesc& desc)
 {
     size_t             key       = HashDescriptor(desc, std::bit_cast<size_t>(&image));
-    Shared<IImageView> imageView = m_imageViewsCache.Find(key);
+    std::shared_ptr<IImageView> imageView = m_imageViewsCache.Find(key);
     if (imageView)
     {
         return imageView;
@@ -51,10 +51,10 @@ Shared<IImageView> ResourceCachedAllocator::GetImageView(const IImage& image, co
     return imageView;
 }
 
-Shared<IBufferView> ResourceCachedAllocator::GetBufferView(const IBuffer& buffer, const BufferViewDesc& desc)
+std::shared_ptr<IBufferView> ResourceCachedAllocator::GetBufferView(const IBuffer& buffer, const BufferViewDesc& desc)
 {
     size_t              key        = HashDescriptor(desc, std::bit_cast<size_t>(&buffer));
-    Shared<IBufferView> bufferView = m_bufferViewsCache.Find(key);
+    std::shared_ptr<IBufferView> bufferView = m_bufferViewsCache.Find(key);
     if (bufferView)
     {
         return bufferView;

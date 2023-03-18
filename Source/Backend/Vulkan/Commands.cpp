@@ -152,7 +152,7 @@ VkResult CommandAllocator::Reset()
     return vkResetCommandPool(m_device->GetHandle(), m_handle, 0);
 }
 
-Unique<CommandBuffer> CommandAllocator::AllocateCommandBuffer()
+std::unique_ptr<CommandBuffer> CommandAllocator::AllocateCommandBuffer()
 {
     VkCommandBufferAllocateInfo allocateInfo = {};
     allocateInfo.sType                       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -164,7 +164,7 @@ Unique<CommandBuffer> CommandAllocator::AllocateCommandBuffer()
     VkCommandBuffer handle = VK_NULL_HANDLE;
     vkAllocateCommandBuffers(m_device->GetHandle(), &allocateInfo, &handle);
 
-    return CreateUnique<CommandBuffer>(*m_device, this, handle);
+    return std::make_unique<CommandBuffer>(*m_device, this, handle);
 }
 
 std::vector<CommandBuffer> CommandAllocator::AllocateCommandBuffers(uint32_t count)

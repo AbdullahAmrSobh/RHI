@@ -18,7 +18,7 @@ namespace RHI
 namespace Vulkan
 {
 
-Shared<RenderPassLayout> Device::CreateRenderpassLayout(std::span<const UsedImageAttachment* const> attachments)
+std::shared_ptr<RenderPassLayout> Device::CreateRenderpassLayout(std::span<const UsedImageAttachment* const> attachments)
 {
     size_t key = 0;
     for (auto attachment : attachments)
@@ -26,19 +26,19 @@ Shared<RenderPassLayout> Device::CreateRenderpassLayout(std::span<const UsedImag
         key = HashCombine(attachment->GetViewDesc().GetHash(), key);
     }
 
-    Shared<RenderPassLayout> layout = m_renderpassLayoutCache.Find(key);
+    std::shared_ptr<RenderPassLayout> layout = m_renderpassLayoutCache.Find(key);
     if (layout)
     {
         return layout;
     }
 
-    layout = CreateShared<RenderPassLayout>(*this);
+    layout = std::make_shared<RenderPassLayout>(*this);
     Utils::AssertSuccess(layout->Init(attachments));
     m_renderpassLayoutCache.Insert(key, layout);
     return layout;
 };
 
-Shared<Framebuffer> Device::CreateCachedFramebuffer(std::span<UsedImageAttachment* const> attachments)
+std::shared_ptr<Framebuffer> Device::CreateCachedFramebuffer(std::span<UsedImageAttachment* const> attachments)
 {
     auto layout = CreateRenderpassLayout(attachments);
 
@@ -49,13 +49,13 @@ Shared<Framebuffer> Device::CreateCachedFramebuffer(std::span<UsedImageAttachmen
         key             = HashCombine(attachment->GetViewHash(), HashCombine(key, std::bit_cast<size_t>(view.GetHandle())));
     }
 
-    Shared<Framebuffer> framebuffer = m_framebufferCache.Find(key);
+    std::shared_ptr<Framebuffer> framebuffer = m_framebufferCache.Find(key);
     if (framebuffer)
     {
         return framebuffer;
     }
 
-    framebuffer = CreateShared<Framebuffer>(*this);
+    framebuffer = std::make_shared<Framebuffer>(*this);
     Utils::AssertSuccess(framebuffer->Init(*layout, attachments));
     m_framebufferCache.Insert(key, framebuffer);
     return framebuffer;

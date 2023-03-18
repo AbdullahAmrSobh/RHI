@@ -83,9 +83,9 @@ public:
     void SwapImages() override;
 
 private:
-    Unique<Semaphore> m_imageReadySemaphore;
+    std::unique_ptr<Semaphore> m_imageReadySemaphore;
 
-    std::vector<Unique<Fence>> m_framesInFlightFence;
+    std::vector<std::unique_ptr<Fence>> m_framesInFlightFence;
 };
 
 }  // namespace Vulkan

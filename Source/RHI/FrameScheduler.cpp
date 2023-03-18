@@ -24,7 +24,7 @@ void IFrameScheduler::End()
     {
         for (UsedImageAttachment& usedAttachment : *attachment)
         {
-            Shared<IImageView> view = m_cachedResourcesAllocator->GetImageView(attachment->GetResource(), usedAttachment.GetViewDesc());
+            std::shared_ptr<IImageView> view = m_cachedResourcesAllocator->GetImageView(attachment->GetResource(), usedAttachment.GetViewDesc());
             usedAttachment.SetView(view);
         }
     }

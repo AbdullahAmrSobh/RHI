@@ -55,8 +55,8 @@ public:
 protected:
     ISurface*                   m_pSurface          = nullptr;
     uint32_t                    m_currentImageIndex = 0;
-    std::vector<Unique<IImage>> m_images;
-    Unique<ImageDesc>           m_imageDescription;
+    std::vector<std::unique_ptr<IImage>> m_images;
+    std::unique_ptr<ImageDesc>           m_imageDescription;
 };
 
 }  // namespace RHI

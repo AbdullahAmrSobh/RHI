@@ -18,7 +18,7 @@ enum class BackendType
 class IInstance
 {
 public:
-    static Expected<Unique<IInstance>> Create(BackendType backend, Unique<IDebugCallbacks> callbacks = nullptr);
+    static Expected<std::unique_ptr<IInstance>> Create(BackendType backend, std::unique_ptr<IDebugCallbacks> callbacks = nullptr);
 
     virtual ~IInstance() = default;
 
@@ -29,13 +29,13 @@ public:
 
     std::vector<const IPhysicalDevice*> GetPhysicalDevices() const;
 
-    virtual Expected<Unique<ISurface>> CreateSurface(const struct Win32SurfaceDesc& desc) = 0;
+    virtual Expected<std::unique_ptr<ISurface>> CreateSurface(const struct Win32SurfaceDesc& desc) = 0;
 
-    virtual Expected<Unique<IDevice>> CreateDevice(const IPhysicalDevice& physicalDevice) = 0;
+    virtual Expected<std::unique_ptr<IDevice>> CreateDevice(const IPhysicalDevice& physicalDevice) = 0;
 
 protected:
     uint32_t                             m_physicalDeviceCount = 0;
-    std::vector<Unique<IPhysicalDevice>> m_physicalDevices     = {};
+    std::vector<std::unique_ptr<IPhysicalDevice>> m_physicalDevices     = {};
 };
 
 }  // namespace RHI

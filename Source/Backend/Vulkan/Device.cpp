@@ -153,7 +153,7 @@ VkResult Device::Init(const PhysicalDevice& physicalDevice)
     {
         VkQueue queueHandle = VK_NULL_HANDLE;
         vkGetDeviceQueue(m_handle, graphicsQueueFamilyIndex, 0, &queueHandle);
-        m_graphicsQueue = CreateUnique<CommandQueue>(queueHandle, graphicsQueueFamilyIndex);
+        m_graphicsQueue = std::make_unique<CommandQueue>(queueHandle, graphicsQueueFamilyIndex);
     }
 
     VmaAllocatorCreateInfo createInfo = {};
@@ -165,7 +165,7 @@ VkResult Device::Init(const PhysicalDevice& physicalDevice)
     Utils::AssertSuccess(vmaCreateAllocator(&createInfo, &m_allocator));
 
 
-    auto stageBuffer = CreateUnique<Buffer>(*this);
+    auto stageBuffer = std::make_unique<Buffer>(*this);
 
     AllocationDesc allocationDesc {};
     allocationDesc.type = MemoryLevel::Device;

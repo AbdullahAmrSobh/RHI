@@ -70,7 +70,7 @@ public:
 
     VkResult Reset();
 
-    Unique<CommandBuffer> AllocateCommandBuffer();
+    std::unique_ptr<CommandBuffer> AllocateCommandBuffer();
 
     std::vector<CommandBuffer> AllocateCommandBuffers(uint32_t count);
 };

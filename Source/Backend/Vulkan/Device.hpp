@@ -80,33 +80,33 @@ public:
 
     ResultCode WaitIdle() const override;
 
-    Expected<Unique<ISwapchain>> CreateSwapChain(const SwapchainDesc& desc) override;
+    Expected<std::unique_ptr<ISwapchain>> CreateSwapChain(const SwapchainDesc& desc) override;
 
-    Expected<Unique<IShaderProgram>> CreateShaderProgram(const ShaderProgramDesc& desc) override;
+    Expected<std::unique_ptr<IShaderProgram>> CreateShaderProgram(const ShaderProgramDesc& desc) override;
 
-    Expected<Unique<IShaderResourceGroupAllocator>> CreateShaderResourceGroupAllocator() override;
+    Expected<std::unique_ptr<IShaderResourceGroupAllocator>> CreateShaderResourceGroupAllocator() override;
 
-    Expected<Unique<IPipelineState>> CreateGraphicsPipelineState(const GraphicsPipelineStateDesc& desc) override;
+    Expected<std::unique_ptr<IPipelineState>> CreateGraphicsPipelineState(const GraphicsPipelineStateDesc& desc) override;
 
-    Expected<Unique<IFence>> CreateFence() override;
+    Expected<std::unique_ptr<IFence>> CreateFence() override;
 
-    Expected<Unique<ISampler>> CreateSampler(const SamplerDesc& desc) override;
+    Expected<std::unique_ptr<ISampler>> CreateSampler(const SamplerDesc& desc) override;
 
-    Expected<Unique<IImage>> CreateImage(const AllocationDesc& allocationDesc, const ImageDesc& desc) override;
+    Expected<std::unique_ptr<IImage>> CreateImage(const AllocationDesc& allocationDesc, const ImageDesc& desc) override;
 
-    Expected<Unique<IImageView>> CreateImageView(const IImage& image, const ImageViewDesc& desc) override;
+    Expected<std::unique_ptr<IImageView>> CreateImageView(const IImage& image, const ImageViewDesc& desc) override;
 
-    Expected<Unique<IBuffer>> CreateBuffer(const AllocationDesc& allocationDesc, const BufferDesc& desc) override;
+    Expected<std::unique_ptr<IBuffer>> CreateBuffer(const AllocationDesc& allocationDesc, const BufferDesc& desc) override;
 
-    Expected<Unique<IBufferView>> CreateBufferView(const IBuffer& buffer, const BufferViewDesc& desc) override;
+    Expected<std::unique_ptr<IBufferView>> CreateBufferView(const IBuffer& buffer, const BufferViewDesc& desc) override;
 
-    Expected<Unique<IFrameScheduler>> CreateFrameScheduler() override;
+    Expected<std::unique_ptr<IFrameScheduler>> CreateFrameScheduler() override;
 
     //////////////////////////////////////
     // Cached objects creator
 
-    Shared<RenderPassLayout> CreateRenderpassLayout(std::span<const UsedImageAttachment* const> attachments);
-    Shared<Framebuffer>      CreateCachedFramebuffer(std::span<UsedImageAttachment* const> attachments);
+    std::shared_ptr<RenderPassLayout> CreateRenderpassLayout(std::span<const UsedImageAttachment* const> attachments);
+    std::shared_ptr<Framebuffer>      CreateCachedFramebuffer(std::span<UsedImageAttachment* const> attachments);
 
 private:
     const Instance* m_pInstance;
@@ -115,12 +115,12 @@ private:
 
     VmaAllocator m_allocator;
 
-    Unique<CommandQueue> m_graphicsQueue;
+    std::unique_ptr<CommandQueue> m_graphicsQueue;
 
     ObjectCache<RenderPassLayout> m_renderpassLayoutCache;
     ObjectCache<Framebuffer> m_framebufferCache;
 
-    Unique<IBuffer> m_stageBuffer;
+    std::unique_ptr<IBuffer> m_stageBuffer;
 
 public:
     const CommandQueue& GetGraphicsQueue() const

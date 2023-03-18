@@ -24,9 +24,9 @@ public:
 class Debug
 {
 public:
-    static void Init(Unique<IDebugCallbacks> callbacks);
+    static void Init(std::unique_ptr<IDebugCallbacks> callbacks);
 
-    static Shared<IDebugCallbacks>& Get();
+    static std::shared_ptr<IDebugCallbacks>& Get();
 };
 
 }  // namespace RHI

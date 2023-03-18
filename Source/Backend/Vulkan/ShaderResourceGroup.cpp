@@ -111,21 +111,21 @@ ResultCode ShaderResourceGroup::Update(const ShaderResourceGroupData& data)
     return ResultCode::Success;
 }
 
-Expected<Unique<IShaderResourceGroupAllocator>> Device::CreateShaderResourceGroupAllocator()
+Expected<std::unique_ptr<IShaderResourceGroupAllocator>> Device::CreateShaderResourceGroupAllocator()
 {
-    Unique<ShaderResourceGroupAllocator> allocator = CreateUnique<ShaderResourceGroupAllocator>(*this);
+    std::unique_ptr<ShaderResourceGroupAllocator> allocator = std::make_unique<ShaderResourceGroupAllocator>(*this);
     return allocator;
 }
 
 // ShaderResourceGroupAllocator
-Expected<Unique<IShaderResourceGroup>> ShaderResourceGroupAllocator::Allocate(const ShaderResourceGroupLayout& layout)
+Expected<std::unique_ptr<IShaderResourceGroup>> ShaderResourceGroupAllocator::Allocate(const ShaderResourceGroupLayout& layout)
 {
-    static std::map<size_t, Unique<DescriptorSetLayout>> s_layoutCache;
+    static std::map<size_t, std::unique_ptr<DescriptorSetLayout>> s_layoutCache;
     auto                                                 cacheResult = s_layoutCache.find(layout.GetHash());
 
     if (cacheResult == s_layoutCache.end())
     {
-        s_layoutCache[layout.GetHash()] = CreateUnique<DescriptorSetLayout>(*m_device);
+        s_layoutCache[layout.GetHash()] = std::make_unique<DescriptorSetLayout>(*m_device);
         VkResult result                 = s_layoutCache[layout.GetHash()]->Init(layout);
         if (result != VK_SUCCESS)
         {
@@ -134,7 +134,7 @@ Expected<Unique<IShaderResourceGroup>> ShaderResourceGroupAllocator::Allocate(co
     }
 
     const DescriptorSetLayout& descriptorSetLayout     = *s_layoutCache[layout.GetHash()];
-    Unique<DescriptorSet>      descriptorSet           = CreateUnique<DescriptorSet>(*m_device);
+    std::unique_ptr<DescriptorSet>      descriptorSet           = std::make_unique<DescriptorSet>(*m_device);
     bool                       descriptorSetInitalized = false;
 
     for (auto& pool : m_descriptorPools)
@@ -167,7 +167,7 @@ Expected<Unique<IShaderResourceGroup>> ShaderResourceGroupAllocator::Allocate(co
         capacity.maxSets = 3;
         capacity.sizes   = {descriptorSetLayout.GetSize().begin(), descriptorSetLayout.GetSize().end()};
 
-        DescriptorPool& descriptorPool = *m_descriptorPools.emplace_back(CreateUnique<DescriptorPool>(*m_device));
+        DescriptorPool& descriptorPool = *m_descriptorPools.emplace_back(std::make_unique<DescriptorPool>(*m_device));
 
         VkResult result = descriptorPool.Init(capacity);
 
@@ -184,7 +184,7 @@ Expected<Unique<IShaderResourceGroup>> ShaderResourceGroupAllocator::Allocate(co
         }
     }
 
-    return CreateUnique<ShaderResourceGroup>(*m_device, std::move(descriptorSet));
+    return std::make_unique<ShaderResourceGroup>(*m_device, std::move(descriptorSet));
 }
 
 }  // namespace Vulkan

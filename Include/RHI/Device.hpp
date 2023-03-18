@@ -56,27 +56,27 @@ public:
 
     virtual ResultCode WaitIdle() const = 0;
 
-    virtual Expected<Unique<ISwapchain>> CreateSwapChain(const SwapchainDesc& desc) = 0;
+    virtual Expected<std::unique_ptr<ISwapchain>> CreateSwapChain(const SwapchainDesc& desc) = 0;
 
-    virtual Expected<Unique<IShaderProgram>> CreateShaderProgram(const ShaderProgramDesc& desc) = 0;
+    virtual Expected<std::unique_ptr<IShaderProgram>> CreateShaderProgram(const ShaderProgramDesc& desc) = 0;
 
-    virtual Expected<Unique<IShaderResourceGroupAllocator>> CreateShaderResourceGroupAllocator() = 0;
+    virtual Expected<std::unique_ptr<IShaderResourceGroupAllocator>> CreateShaderResourceGroupAllocator() = 0;
 
-    virtual Expected<Unique<IPipelineState>> CreateGraphicsPipelineState(const GraphicsPipelineStateDesc& desc) = 0;
+    virtual Expected<std::unique_ptr<IPipelineState>> CreateGraphicsPipelineState(const GraphicsPipelineStateDesc& desc) = 0;
 
-    virtual Expected<Unique<IFence>> CreateFence() = 0;
+    virtual Expected<std::unique_ptr<IFence>> CreateFence() = 0;
 
-    virtual Expected<Unique<ISampler>> CreateSampler(const SamplerDesc& desc) = 0;
+    virtual Expected<std::unique_ptr<ISampler>> CreateSampler(const SamplerDesc& desc) = 0;
 
-    virtual Expected<Unique<IImage>> CreateImage(const AllocationDesc& allocationDesc, const ImageDesc& desc) = 0;
+    virtual Expected<std::unique_ptr<IImage>> CreateImage(const AllocationDesc& allocationDesc, const ImageDesc& desc) = 0;
 
-    virtual Expected<Unique<IImageView>> CreateImageView(const IImage& image, const ImageViewDesc& desc) = 0;
+    virtual Expected<std::unique_ptr<IImageView>> CreateImageView(const IImage& image, const ImageViewDesc& desc) = 0;
 
-    virtual Expected<Unique<IBuffer>> CreateBuffer(const AllocationDesc& allocationDesc, const BufferDesc& desc) = 0;
+    virtual Expected<std::unique_ptr<IBuffer>> CreateBuffer(const AllocationDesc& allocationDesc, const BufferDesc& desc) = 0;
 
-    virtual Expected<Unique<IBufferView>> CreateBufferView(const IBuffer& buffer, const BufferViewDesc& desc) = 0;
+    virtual Expected<std::unique_ptr<IBufferView>> CreateBufferView(const IBuffer& buffer, const BufferViewDesc& desc) = 0;
 
-    virtual Expected<Unique<IFrameScheduler>> CreateFrameScheduler() = 0;
+    virtual Expected<std::unique_ptr<IFrameScheduler>> CreateFrameScheduler() = 0;
 
 private:
     const IPhysicalDevice* m_physicalDevice;

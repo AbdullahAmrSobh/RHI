@@ -14,9 +14,9 @@ class IFrameScheduler
 {
 public:
     IFrameScheduler(IDevice& device)
-        : m_cachedResourcesAllocator(CreateUnique<ResourceCachedAllocator>(device))
-        , m_attachmentsRegistry(CreateUnique<AttachmentsRegistry>())
-        , m_frameGraphBuilder(CreateUnique<FrameGraphBuilder>(*m_attachmentsRegistry))
+        : m_cachedResourcesAllocator(std::make_unique<ResourceCachedAllocator>(device))
+        , m_attachmentsRegistry(std::make_unique<AttachmentsRegistry>())
+        , m_frameGraphBuilder(std::make_unique<FrameGraphBuilder>(*m_attachmentsRegistry))
     {
     }
 
@@ -38,7 +38,7 @@ public:
     void Schedule(RenderPassProducer& producer);
 
 private:
-    virtual Unique<IRenderPass> CreateRenderPass(std::string name) const = 0;
+    virtual std::unique_ptr<IRenderPass> CreateRenderPass(std::string name) const = 0;
 
     virtual ICommandBuffer& BeginCommandBuffer(IRenderPass& renderpass) = 0;
 
@@ -47,11 +47,11 @@ private:
     virtual void Submit(IRenderPass& renderpass) = 0;
 
 private:
-    Unique<ResourceCachedAllocator> m_cachedResourcesAllocator;
+    std::unique_ptr<ResourceCachedAllocator> m_cachedResourcesAllocator;
 
-    Unique<AttachmentsRegistry> m_attachmentsRegistry;
+    std::unique_ptr<AttachmentsRegistry> m_attachmentsRegistry;
 
-    Unique<FrameGraphBuilder> m_frameGraphBuilder;
+    std::unique_ptr<FrameGraphBuilder> m_frameGraphBuilder;
 
     std::vector<RenderPassProducer*> m_producers;
 };
