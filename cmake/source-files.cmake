@@ -1,0 +1,33 @@
+set(HEADER_FILES
+	"Include/RHI/Command.hpp"
+	"Include/RHI/Debug.hpp"
+	"Include/RHI/Flag.hpp"
+	"Include/RHI/Format.hpp"
+	"Include/RHI/FrameGraph.hpp"
+	"Include/RHI/Pipeline.hpp"
+	"Include/RHI/Resources.hpp"
+	"Include/RHI/Result.hpp"
+	"Include/RHI/RHI.hpp"
+	"Include/RHI/ShaderResourceGroup.hpp"
+)
+
+set(SOURCE_FILES
+	"Source/RHI/Format.cpp"
+	"Source/RHI/FrameGraph.cpp"
+	"Source/RHI/PCH.hpp"
+	"Source/RHI/Reosurces.cpp"
+	"Source/RHI/RHI.cpp"
+	"Source/RHI/Backend/Vulkan/Command.cpp"
+	"Source/RHI/Backend/Vulkan/Command.hpp"
+	"Source/RHI/Backend/Vulkan/FrameGraph.cpp"
+	"Source/RHI/Backend/Vulkan/FrameGraph.hpp"
+	"Source/RHI/Backend/Vulkan/Pipeline.cpp"
+	"Source/RHI/Backend/Vulkan/Pipeline.hpp"
+	"Source/RHI/Backend/Vulkan/Resources.cpp"
+	"Source/RHI/Backend/Vulkan/Resources.hpp"
+	"Source/RHI/Backend/Vulkan/RHI.cpp"
+	"Source/RHI/Backend/Vulkan/RHI.hpp"
+	"Source/RHI/Backend/Vulkan/ShaderResourceGroup.cpp"
+	"Source/RHI/Backend/Vulkan/ShaderResourceGroup.hpp"
+)
+
