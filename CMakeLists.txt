@@ -28,7 +28,7 @@ include(GenerateExportHeader)
 generate_export_header(
     RHI_RHI
     BASE_NAME RHI
-    EXPORT_FILE_NAME export/RHI/RHI_export.hpp
+    EXPORT_FILE_NAME export/RHI/Export.hpp
     CUSTOM_CONTENT_FROM_VARIABLE pragma_suppress_c4251
 )
 
@@ -50,6 +50,8 @@ target_include_directories(
     RHI_RHI ${warning_guard}
     PUBLIC
     "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
+    PRIVATE
+    "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/source>"
 )
 
 target_include_directories(

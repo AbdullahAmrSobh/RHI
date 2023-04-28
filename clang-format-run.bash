@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Specify the directories to run clang-format on
-directories=(examples include source)
+directories=(example include source)
 
 # Loop over each directory
 for directory in ${directories[@]}; do
