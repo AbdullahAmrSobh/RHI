@@ -1,4 +1,6 @@
 set(HEADER_FILES
+	"Include/RHI/Allocator.hpp"
+	"Include/RHI/Attachments.hpp"
 	"Include/RHI/Command.hpp"
 	"Include/RHI/Context.hpp"
 	"Include/RHI/Debug.hpp"
@@ -7,6 +9,7 @@ set(HEADER_FILES
 	"Include/RHI/FrameGraph.hpp"
 	"Include/RHI/FrameGraphInterface.hpp"
 	"Include/RHI/FrameScheduler.hpp"
+	"Include/RHI/LRUCache.hpp"
 	"Include/RHI/Pipeline.hpp"
 	"Include/RHI/Resources.hpp"
 	"Include/RHI/Result.hpp"
