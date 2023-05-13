@@ -1,8 +1,7 @@
 #pragma once
 
 #include "RHI/Backend/Vulkan/Vulkan.hpp"
-#include "RHI/LRUCache.hpp"
-#include "RHI/RHI.hpp"
+#include "RHI/Context.hpp"
 
 namespace RHI
 {
@@ -25,8 +24,10 @@ public:
     ~Context();
 
     RHI::ResultCode Init(const RHI::ApplicationInfo& appInfo) override;
-
     RHI::ResultCode SetDevice(uint32_t device_id) override;
+
+    void SetImageContent(RHI::Image& image, size_t byteOffset, void* data, size_t byteSize) override;
+    void SetBufferContent(RHI::Buffer& image, size_t byteOffset, void* data, size_t byteSize) override;
 
     vk::Device GetDevice()
     {
@@ -45,10 +46,6 @@ public:
 
     std::shared_ptr<vk::UniqueSurfaceKHR> CreateSurface(void* windowHandle);
 
-    std::shared_ptr<vk::UniqueDescriptorSetLayout> CreateDescriptorSetLayout(const RHI::ShaderResourceGroupLayout& layout);
-
-    std::shared_ptr<vk::UniquePipelineLayout> CreatePipelineLayout(const std::span<const RHI::ShaderResourceGroupLayout> layouts);
-
 public:
     vk::Queue m_graphicsQueue;
     vk::Queue m_computeQueue;
@@ -60,7 +57,6 @@ private:
     vk::Device         m_device;
     VmaAllocator       m_allocator;
 
-    // Cached objects
     RHI::LRUCache<vk::UniqueSurfaceKHR>          m_surfaceCache;
     RHI::LRUCache<vk::UniqueDescriptorSetLayout> m_descriptorSetLayoutCache;
     RHI::LRUCache<vk::UniquePipelineLayout>      m_pipelineLayoutCache;
