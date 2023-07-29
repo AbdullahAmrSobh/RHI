@@ -5,18 +5,25 @@
 import os
 
 def is_cxx_file(filename):
-    return filename.endswith('.cpp') or filename.endswith('.hpp') or filename.endswith('.c') or filename.endswith('.h') 
+    return filename.endswith('.cpp') or filename.endswith('.c')
+
+def is_hxx_file(filename): 
+    return filename.endswith('.hpp') or filename.endswith('.h')
 
 def generate_file_list(dir):
-    files: list[str] = []
+    headers: list[str] = []
+    sources: list[str] = []
     for (dirpath, _, filenames) in os.walk(dir):
         for filename in filenames:
             if is_cxx_file(filename):
-                files.append(os.path.join(dirpath, filename))
-    print('Adding files')
-    for file in files: 
-        print('\t - ' + file)
-    return files
+                sources.append(os.path.join(dirpath, filename))
+            elif is_hxx_file(filename):
+                headers.append(os.path.join(dirpath, filename))
+                
+    print('Adding source files')
+    for source_file in sources: 
+        print('\t - ' + source_file)
+    return (headers, sources)
 
 def save_to_cmake_file(files, variable_name, cmake_filename): 
     with open(cmake_filename, 'a+') as cmake_file:
@@ -35,5 +42,16 @@ if os.path.exists(CMAKE_FILE_PATH):
     os.remove(CMAKE_FILE_PATH)
     
 # generate _FILES.cmake
-save_to_cmake_file(generate_file_list('Include'), 'HEADER', CMAKE_FILE_PATH)
-save_to_cmake_file(generate_file_list('Source'), 'SOURCE', CMAKE_FILE_PATH)
+# include dir
+(headers, sources) = generate_file_list('Include')
+HEADERS = headers
+SOURCES = sources
+
+
+(headers, sources) = generate_file_list('Source')
+HEADERS = HEADERS + headers
+SOURCES = SOURCES + sources
+
+
+save_to_cmake_file(HEADERS, 'HEADER', CMAKE_FILE_PATH)
+save_to_cmake_file(SOURCES, 'SOURCE', CMAKE_FILE_PATH)
