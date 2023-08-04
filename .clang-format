@@ -46,6 +46,7 @@ BraceWrapping:
   SplitEmptyFunction: true
   SplitEmptyRecord: true
   SplitEmptyNamespace: true
+  AfterCaseLabel: true
 BreakBeforeBinaryOperators: NonAssignment
 BreakBeforeBraces: Custom
 # BreakBeforeInheritanceComma: true
@@ -55,7 +56,7 @@ BreakConstructorInitializersBeforeComma: true
 BreakConstructorInitializers: BeforeComma
 BreakAfterJavaFieldAnnotations: true
 BreakStringLiterals: true
-ColumnLimit: 1000
+ColumnLimit: 0
 CommentPragmas: '^ IWYU pragma:'
 CompactNamespaces: false
 ConstructorInitializerAllOnOneLineOrOnePerLine: false
