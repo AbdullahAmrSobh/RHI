@@ -1,37 +1,39 @@
 #pragma once
 
-#include "RHI/Backend/Vulkan/Vulkan.hpp"
 #include "RHI/FrameScheduler.hpp"
 
-namespace RHI
-{
-class Context;
-}
+#include "RHI/Backend/Vulkan/Vulkan.hpp"
 
 namespace Vulkan
 {
 
-class Context;
-class CommandList;
-
 class FrameScheduler final : public RHI::FrameScheduler
 {
 public:
-    FrameScheduler(RHI::Context& context);
-    ~FrameScheduler();
+    FrameScheduler(RHI::Context& context)
+        : RHI::FrameScheduler(context)
+    {
+    }
+
+    ~FrameScheduler() = default;
 
     RHI::ResultCode Init() override;
 
-    RHI::CommandList& BeginPassCommandList(uint32_t dispatchIndex) override;
-    void              EndPassCommandList() override;
+    RHI::CommandList& PassExecuteBegin(RHI::Pass& pass) override;
+    void              PassExecuteEnd(RHI::Pass& pass) override;            
 
-    void PassPresent(RHI::PassState& passState) override;
-    void PassExecute(RHI::PassState& passState) override;
+    void TransientAllocatorBegin() override;
+    void TransientAllocatorEnd() override;
+
+    RHI::Buffer* AllocateTransientBuffer(const RHI::BufferCreateInfo& createInfo) override;
+    RHI::Image*  AllocateTransientImage(const RHI::ImageCreateInfo& createInfo) override;
 
 private:
-    Context*        m_context;
     vk::CommandPool m_commandPool;
-    CommandList*    m_commandBuffer;
+
+    std::vector<Buffer*> m_availableBuffers;
+    std::vector<Image*>  m_availableImages;
+    
 };
 
-}  // namespace Vulkan
+}  // namespace Vulkan 

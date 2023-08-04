@@ -13,8 +13,16 @@
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
+#pragma warning(disable : 4081)
+
 #define STB_IMAGE_IMPLEMENTATION
+#pragma warning(disable : 4365)
+#pragma warning(disable : 4083)
+#pragma warning(disable : 4242)
 #include "stb_image.h"
+#pragma warning(default : 4365)
+#pragma warning(default : 4083)
+#pragma warning(default : 4242)
 
 struct ImageData
 {
@@ -59,22 +67,24 @@ public:
 
         {
             RHI::ApplicationInfo appInfo {};
+            appInfo.graphicsBackend = RHI::Backend::Vulkan;
             appInfo.engineName         = "RHI example";
             appInfo.engineVersion      = RHI::MakeVersion(0, 0, 1);
             appInfo.applicationName    = "RHI example";
             appInfo.applicationVersion = RHI::MakeVersion(0, 0, 1);
 
-            m_context = RHI::Context::Create({}, std::make_unique<DebugCallbacks>(), RHI::Backend::Vulkan);
+            m_context = RHI::Context::Create(appInfo, std::make_unique<DebugCallbacks>());
 
-            RHI::SwapchainCreateInfo swaphainInfo {};
-            swaphainInfo.size               = {800, 600, 0};
-            swaphainInfo.imagesFormat       = RHI::Format::R8G8B8A8_UNORM_SRGB;
-            swaphainInfo.backBuffersCount   = 2;
-            swaphainInfo.nativeWindowHandle = glfwGetWin32Window(m_window);
+            RHI::SwapchainCreateInfo swapchainInfo {};
+            swapchainInfo.imageSize          = {800, 600, 0};
+            swapchainInfo.imageUsage         = RHI::ImageUsage::Color;
+            swapchainInfo.imageFormat        = RHI::Format::RGBA8;
+            swapchainInfo.imageCount         = 2;
+            swapchainInfo.nativeWindowHandle = glfwGetWin32Window(m_window);
 
-            m_swapchain = m_context->CreateSwapchain(swaphainInfo);
+            m_swapchain = m_context->CreateSwapchain(swapchainInfo);
 
-            m_scheduler = m_context->CreateFrameScheduler();
+            // m_scheduler = m_context->CreateFrameScheduler();
         }
 
         {
@@ -83,11 +93,9 @@ public:
                                       [](GLFWwindow* window, int width, int height)
                                       {
                                           RHI::Swapchain* swapchain = reinterpret_cast<RHI::Swapchain*>(glfwGetWindowUserPointer(window));
-                                          swapchain->Resize(width, height);
+                                          swapchain->Resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
                                       });
         }
-
-        m_shaderResourceGroupAllocator = m_context->CreateShaderResourceGroupAllocator();
     }
 
     virtual ~ExampleBase()
@@ -95,21 +103,22 @@ public:
         glfwTerminate();
     }
 
-    std::vector<uint8_t> ReadBinrayFile(std::string_view filePath)
+    std::vector<uint32_t> ReadBinrayFile(std::string_view filePath)
     {
         std::ifstream file(std::string(filePath), std::ios::ate | std::ios::binary);
 
         RHI_ASSERT_MSG(file.is_open(), "Failed to open the file");
 
-        auto                 fileSize = file.tellg();
-        std::vector<uint8_t> buffer(fileSize);
+        std::streamsize fileSize = file.tellg();
+        file.seekg(0, std::ios::beg);
 
-        file.seekg(0);
-        file.read(reinterpret_cast<char*>(buffer.data()), static_cast<std::streamsize>(fileSize));
+        std::vector<uint32_t> data;
+        data.resize(fileSize / 4); 
+        file.read(reinterpret_cast<char*>(data.data()), fileSize);
 
         file.close();
 
-        return buffer;
+        return data;
     }
 
     ImageData ReadImageData(std::string_view path)
@@ -119,9 +128,9 @@ public:
         auto      img = stbi_load(path.data(), &width, &height, &channels, 0);
 
         memcpy(data.imageData.data(), img, width * height * channels);
-        data.width    = width;
-        data.height   = height;
-        data.channels = channels;
+        data.width    = static_cast<uint32_t>(width);
+        data.height   = static_cast<uint32_t>(height);
+        data.channels = static_cast<uint32_t>(channels);
 
         return data;
     }
@@ -150,10 +159,10 @@ private:
     GLFWwindow* m_window;
 
 protected:
-    std::unique_ptr<RHI::Context>                      m_context;
-    std::unique_ptr<RHI::Swapchain>                    m_swapchain;
-    std::unique_ptr<RHI::FrameScheduler>               m_scheduler;
-    std::unique_ptr<RHI::ShaderResourceGroupAllocator> m_shaderResourceGroupAllocator;
+    std::unique_ptr<RHI::Context>   m_context;
+    std::unique_ptr<RHI::Swapchain> m_swapchain;
+    // std::unique_ptr<RHI::FrameScheduler>               m_scheduler;
+    // std::unique_ptr<RHI::ShaderResourceGroupAllocator> m_shaderResourceGroupAllocator;
 };
 
 #define ENTRY_POINT(exampleName)                                                                                                           \

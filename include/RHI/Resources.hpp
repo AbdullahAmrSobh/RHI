@@ -14,6 +14,12 @@ namespace RHI
 
 class Context;
 
+enum class ResourceType
+{
+    Buffer,
+    Image,
+};
+
 enum class BufferUsage
 {
     None    = 0 << 0,
@@ -70,7 +76,6 @@ enum class ImageType
     Image2D,
     Image3D,
     ImageCubeMap,
-    Count,
 };
 
 enum class ComponentSwizzle
@@ -116,6 +121,13 @@ enum class SamplerCompareOp
     GreaterEq,
 };
 
+struct ImageOffset
+{
+    int32_t x;
+    int32_t y;
+    int32_t z;
+};
+
 struct ImageSize
 {
     uint32_t width;
@@ -135,6 +147,7 @@ struct ImageSubresource
 {
     Flags<ImageAspect> aspectMask;
     uint32_t           mipLevel;
+    uint32_t           levelsCount; 
     uint32_t           baseArrayLayer;
     uint32_t           layerCount;
 };
@@ -150,7 +163,6 @@ struct ImageCreateInfo
     Flags<ImageUsage> usageFlags;
     ImageType         type;
     ImageSize         size;
-    SampleCount       sampleCount;
     Format            format;
     uint32_t          mipLevels;
     uint32_t          arrayCount;
@@ -212,7 +224,7 @@ public:
 
     virtual ResultCode Init(const RHI::ResourceAllocationInfo& allocationInfo, const BufferCreateInfo& createInfo) = 0;
 
-    std::shared_ptr<class BufferView> CreateView(const BufferViewCreateInfo& createInfo);
+    virtual std::shared_ptr<class BufferView> CreateView(const BufferViewCreateInfo& createInfo) = 0;
 
 protected:
     Context* m_context;
@@ -230,10 +242,11 @@ public:
 
     virtual ResultCode Init(const RHI::ResourceAllocationInfo& allocationInfo, const ImageCreateInfo& createInfo) = 0;
 
-    std::shared_ptr<class ImageView> CreateView(const ImageViewCreateInfo& createInfo);
+    virtual std::shared_ptr<class ImageView> CreateView(const ImageViewCreateInfo& createInfo) = 0;
 
 protected:
     Context* m_context;
+    std::unique_ptr<ImageCreateInfo> m_desc;
 };
 
 class RHI_EXPORT BufferView
@@ -280,12 +293,17 @@ public:
 
     virtual ResultCode Init(const SwapchainCreateInfo& createInfo) = 0;
 
-    const Image& GetCurrentImage() const
+    inline uint32_t GetCurrentImageIndex() const
+    {
+        return m_currentImageIndex;
+    }
+
+    inline const Image& GetCurrentImage() const
     {
         return *m_images[m_currentImageIndex];
     }
 
-    Image& GetCurrentImage()
+    inline Image& GetCurrentImage()
     {
         return *m_images[m_currentImageIndex];
     }

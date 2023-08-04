@@ -1,44 +1,35 @@
 #include "Base.hpp"
 
-class RenderPass : public RHI::Pass
+class RenderPass : public RHI::PassInterface
 {
 public:
-    RenderPass(RHI::Buffer&              vertexBuffer,
-               RHI::Buffer&              indexBuffer,
-               RHI::PipelineState&       pipelineState,
-               RHI::ShaderResourceGroup& shaderResourceGroup)
-        : RHI::Pass("Triangle", RHI::PassQueue::Graphics)
+    RenderPass(RHI::Buffer& vertexBuffer, RHI::Buffer& indexBuffer, RHI::PipelineState& pipelineState)
+        : RHI::PassInterface("Triangle", RHI::PassQueue::Graphics)
         , m_vertexBuffer(&vertexBuffer)
         , m_indexBuffer(&indexBuffer)
         , m_pipelineState(&pipelineState)
-        , m_shaderResourceGroup(&shaderResourceGroup)
     {
     }
 
-    void SetupAttachments(RHI::FrameGraphBuilder builder) override
+    void SetupAttachments(RHI::FrameGraph& builder) override
     {
+        RHI::ImageAttachmentUseInfo useInfo {};
+        builder.UseRenderTarget("SwapchainColor", useInfo);
     }
 
-    void BindCompiledResources(RHI::CompileContext context) override
+    void BindPassResources(RHI::ShaderResourceContext& context) override
     {
         (void)context;
     }
 
-    void BuildCommandLists(uint32_t dispatchIndex, RHI::CommandList& commandList) override
+    void BuildCommandList(RHI::CommandList& commandList) override
     {
-        assert(dispatchIndex == 0);
-
-        commandList.SetPipelineState(*m_pipelineState);
-        commandList.BindShaderResourceGroup(*m_shaderResourceGroup);
-
-        RHI::DrawIndexedData drawData {};
-        drawData.instanceBuffer   = nullptr;
-        drawData.vertexBuffer     = m_vertexBuffer;
-        drawData.indexBuffer      = m_indexBuffer;
-        drawData.instanceCount    = 1;
-        drawData.indexCount     = 6;
-        drawData.firstIndexOffset = 0;
-        commandList.DrawIndexed(drawData);
+        RHI::Draw cmd {};
+        cmd.indexBuffer        = m_indexBuffer;
+        cmd.vertexBuffersCount = 1;
+        cmd.vertexBuffers      = &m_vertexBuffer;
+        cmd.indexedData.indexCount = 6;
+        commandList.Submit(cmd);
     }
 
     RHI::Buffer*              m_vertexBuffer;
@@ -57,22 +48,25 @@ public:
 
         // Create the graphics pipeline
         {
-            // auto vertexShader = RHI::ShaderFunction(RHI::ShaderType::Vertex, ReadBinrayFile("./Shaders/TriangleExample/vertex.spv"));
-            // auto pixelShader  = RHI::ShaderFunction(RHI::ShaderType::Pixel, ReadBinrayFile("./Shaders/TriangleExample/pixel.spv"));
+            RHI::ShaderFunction vertexShader {RHI::ShaderStage::Vertex, "VSMain", ReadBinrayFile("I:/repos/RHI/build/dev-win64/Shaders/triangle.vert.spriv")};
+            RHI::ShaderFunction pixelShader {RHI::ShaderStage::Pixel, "PSMain", ReadBinrayFile("I:/repos/RHI/build/dev-win64/Shaders/triangle.pixel.spriv")};
 
-            // auto graphicsPipelineCreateInfo = RHI::GraphicsPipelineCreateInfo(RHI::GraphicsPipelineShaderTypes(vertexShader,
-            // pixelShader));
+            RHI::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo = {};
+            graphicsPipelineCreateInfo.shaders.vertex                  = &vertexShader;
+            graphicsPipelineCreateInfo.shaders.pixel                   = &pixelShader;
+            graphicsPipelineCreateInfo.rasterizationState.lineWidth    = 1.0;
+            graphicsPipelineCreateInfo.multisampleState.sampleCount    = 1;
 
-            // m_pipelineStateObject = m_context->CreateGraphicsPipeline(graphicsPipelineCreateInfo);
+            m_pipelineState = m_context->CreateGraphicsPipeline(graphicsPipelineCreateInfo);
         }
 
         {
             // clang-format off
-            float    vertcies[3*4] = {
-                -0.5,  0.5, 0.0, 
-                 0.5,  0.5, 0.0, 
-                -0.5, -0.5, 0.0, 
-                 0.5, -0.5, 0.0, 
+            float vertcies[3*4] = {
+                -0.5f,  0.5f, 0.0f, 
+                 0.5f,  0.5f, 0.0f, 
+                -0.5f, -0.5f, 0.0f, 
+                 0.5f, -0.5f, 0.0f, 
             };
 
             uint32_t indcies[6]  = {
@@ -82,45 +76,51 @@ public:
             // clang-format on
 
             RHI::ResourceAllocationInfo allocationInfo {};
-            RHI::BufferCreateInfo       createInfo {};
-            createInfo.format     = RHI::Format::R32G32B32_FLOAT;
+            allocationInfo.usage = RHI::ResourceMemoryType::Stage;
+            RHI::BufferCreateInfo createInfo {};
+            createInfo.format     = RHI::Format::RGBA32Float;
             createInfo.byteSize   = sizeof(float) * 3 * 3;
             createInfo.usageFlags = RHI::BufferUsage::Vertex;
             m_vertexBuffer        = m_context->CreateBuffer(allocationInfo, createInfo);
-            createInfo.format     = RHI::Format::R32G32B32_FLOAT;
+            createInfo.format     = RHI::Format::RGBA32Float;
             createInfo.byteSize   = sizeof(float) * 3 * 3;
             createInfo.usageFlags = RHI::BufferUsage::Index;
             m_indexBuffer         = m_context->CreateBuffer(allocationInfo, createInfo);
 
-            {
-                RHI::ResultCode result = m_context->SetBufferData(*m_vertexBuffer, 0, vertcies, sizeof(float) * 3 * 4);
-                assert(result == RHI::ResultCode::Success);
-            }
-
-            {
-                RHI::ResultCode result = m_context->SetBufferData(*m_vertexBuffer, 0, indcies, sizeof(uint32_t) * 6);
-                assert(result == RHI::ResultCode::Success);
-            }
+            m_context->SetBufferContent(*m_vertexBuffer, 0, vertcies, sizeof(float) * 3 * 4);
+            m_context->SetBufferContent(*m_indexBuffer, 0, indcies, sizeof(uint32_t) * 6);
         }
 
         {
             RHI::ResourceAllocationInfo allocationInfo {};
-            RHI::ImageCreateInfo        createInfo {};
-            m_triangleTexture = m_context->CreateImage(allocationInfo, createInfo);
+            allocationInfo.usage = RHI::ResourceMemoryType::DeviceLocal;
+            RHI::ImageCreateInfo createInfo {};
+            createInfo.arrayCount  = 1;
+            createInfo.mipLevels   = 1;
+            createInfo.format      = RHI::Format::RGBA8;
+            createInfo.size.width  = 100;
+            createInfo.size.height = 100;
+            createInfo.size.depth  = 1;
+            createInfo.type        = RHI::ImageType::Image2D;
+            createInfo.usageFlags  = RHI::ImageUsage::ShaderRead;
+            m_triangleTexture      = m_context->CreateImage(allocationInfo, createInfo);
 
             RHI::ImageViewCreateInfo viewCreateInfo {};
-            m_triangleTextureView = m_triangleTexture->CreateView(viewCreateInfo);
+            viewCreateInfo.subresource.aspectMask     = RHI::ImageAspect::Color;
+            viewCreateInfo.subresource.mipLevel       = 1;
+            viewCreateInfo.subresource.layerCount     = 1;
+            viewCreateInfo.subresource.baseArrayLayer = 0;
+            m_triangleTextureView                     = m_triangleTexture->CreateView(viewCreateInfo);
         }
 
         {
-            RHI::ShaderResourceGroupLayout layout {
-                {"Texture", RHI::ShaderBindingResourceType::Image, RHI::ShaderBindingResourceAccess::Read, RHI::ShaderType::Pixel, 1}};
-            // m_resourceGroup = m_shaderResourceGroupAllocator->Allocate(layout);
-            // m_resourceGroup->BindImage(0, *m_triangleTextureView);
+            // RHI::ShaderResourceGroupLayout layout { {"Texture", RHI::ShaderResourceType::Image,
+            // RHI::ShaderResourceAccess::Read, RHI::ShaderStage::Pixel, 1}}; m_resourceGroup =
+            // m_shaderResourceGroupAllocator->Allocate(layout); m_resourceGroup->BindImage(0, *m_triangleTextureView);
         }
 
         {
-            m_renderPass = std::make_unique<RenderPass>(*m_vertexBuffer, *m_indexBuffer, *m_pipelineStateObject, *m_resourceGroup);
+            m_renderPass = std::make_unique<RenderPass>(*m_vertexBuffer, *m_indexBuffer, *m_pipelineState);
         }
     }
 
@@ -136,13 +136,15 @@ public:
     }
 
 protected:
-    std::unique_ptr<RHI::PipelineState>       m_pipelineStateObject;
-    std::unique_ptr<RHI::Buffer>              m_vertexBuffer;
-    std::unique_ptr<RHI::Buffer>              m_indexBuffer;
-    std::unique_ptr<RHI::Image>               m_triangleTexture;
-    std::shared_ptr<RHI::ImageView>           m_triangleTextureView;
-    std::unique_ptr<RHI::ShaderResourceGroup> m_resourceGroup;
-    std::unique_ptr<RenderPass>               m_renderPass;
+    std::unique_ptr<RHI::PipelineState> m_pipelineState;
+    std::unique_ptr<RHI::Buffer>        m_vertexBuffer;
+    std::unique_ptr<RHI::Buffer>        m_indexBuffer;
+    std::unique_ptr<RHI::Image>         m_triangleTexture;
+    std::shared_ptr<RHI::ImageView>     m_triangleTextureView;
+
+    // std::unique_ptr<RHI::ShaderResourceGroup> m_resourceGroup;
+    std::shared_ptr<RHI::FrameScheduler> m_scheduler;
+    std::unique_ptr<RenderPass>          m_renderPass;
 };
 
 ENTRY_POINT(TriangleExample)

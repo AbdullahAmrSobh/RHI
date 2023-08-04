@@ -1,11 +1,12 @@
 #include "RHI/Context.hpp"
 
+#include "RHI/Debug.hpp"
+
 #include "RHI/Backend/Vulkan/Context.hpp"
 #include "RHI/Backend/Vulkan/FrameScheduler.hpp"
 #include "RHI/Backend/Vulkan/Pipeline.hpp"
 #include "RHI/Backend/Vulkan/Resources.hpp"
 #include "RHI/Backend/Vulkan/ShaderResourceGroup.hpp"
-#include "RHI/Debug.hpp"
 
 namespace RHI
 {
@@ -20,14 +21,18 @@ DebugCallbacks& Debug::Get()
     return *Debug::s_callbacks;
 }
 
-std::unique_ptr<Context> Context::Create(const ApplicationInfo& appInfo, std::unique_ptr<DebugCallbacks> debugCallbacks, Backend backend)
+std::unique_ptr<Context> Context::Create(const ApplicationInfo& appInfo, std::unique_ptr<DebugCallbacks> debugCallbacks)
 {
     if (debugCallbacks)
+    {
         Debug::Init(std::move(debugCallbacks));
+    }
 
     std::unique_ptr<Context> context;
-    switch (backend)
-    case Backend::Vulkan: context = std::make_unique<Vulkan::Context>(); {
+    switch (appInfo.graphicsBackend)
+    {
+        case Backend::Validate: RHI_ASSERT_MSG(false, "This backend is not implemented yet");
+        case Backend::Vulkan: context = std::make_unique<Vulkan::Context>();
     }
 
     context->Init(appInfo);
@@ -88,20 +93,6 @@ std::unique_ptr<FrameScheduler> Context::CreateFrameScheduler()
 }
 
 std::unique_ptr<PipelineState> Context::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)
-{
-    std::unique_ptr<Vulkan::PipelineState> pipelineState = std::make_unique<Vulkan::PipelineState>(*this);
-    RHI_ASSERT_MSG(pipelineState->Init(createInfo) == ResultCode::Success, "Failed to create object");
-    return std::move(pipelineState);
-}
-
-std::unique_ptr<PipelineState> Context::CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
-{
-    std::unique_ptr<Vulkan::PipelineState> pipelineState = std::make_unique<Vulkan::PipelineState>(*this);
-    RHI_ASSERT_MSG(pipelineState->Init(createInfo) == ResultCode::Success, "Failed to create object");
-    return std::move(pipelineState);
-}
-
-std::unique_ptr<PipelineState> Context::CreateRaytraceingPipeline(const RayTracingPipelineCreateInfo& createInfo)
 {
     std::unique_ptr<Vulkan::PipelineState> pipelineState = std::make_unique<Vulkan::PipelineState>(*this);
     RHI_ASSERT_MSG(pipelineState->Init(createInfo) == ResultCode::Success, "Failed to create object");

@@ -1,12 +1,15 @@
 #pragma once
 
 #include "RHI/Backend/Vulkan/Vulkan.hpp"
+#include "RHI/LRUCache.hpp"
 #include "RHI/Resources.hpp"
 
 namespace Vulkan
 {
 
 class Context;
+class BufferView;
+class ImageView;
 
 class RHI_EXPORT Buffer final
     : public RHI::Buffer
@@ -22,9 +25,11 @@ public:
 
     RHI::ResultCode Init(const RHI::ResourceAllocationInfo& allocationInfo, const RHI::BufferCreateInfo& createInfo) override;
 
-private:
-    VmaAllocation     m_allocation;
-    VmaAllocationInfo m_allocationInfo;
+    std::shared_ptr<RHI::BufferView> CreateView(const RHI::BufferViewCreateInfo& createInfo) override;
+
+    VmaAllocation             m_allocation;
+    VmaAllocationInfo         m_allocationInfo;
+    RHI::LRUCache<BufferView> m_viewCache;
 };
 
 class RHI_EXPORT Image final
@@ -47,14 +52,21 @@ public:
 
     RHI::ResultCode Init(const RHI::ResourceAllocationInfo& allocationInfo, const RHI::ImageCreateInfo& createInfo) override;
 
+    std::shared_ptr<RHI::ImageView> CreateView(const RHI::ImageViewCreateInfo& createInfo) override;
+
     bool IsSwapchainImage() const
     {
         return m_allocation == VK_NULL_HANDLE && m_handle;
     }
 
-private:
-    VmaAllocation     m_allocation;
-    VmaAllocationInfo m_allocationInfo;
+    inline const RHI::ImageCreateInfo GetInfo() const
+    {
+        return *m_desc;
+    }
+
+    VmaAllocation            m_allocation;
+    VmaAllocationInfo        m_allocationInfo;
+    RHI::LRUCache<ImageView> m_viewCache;
 };
 
 class RHI_EXPORT BufferView final
@@ -99,6 +111,8 @@ public:
 
     ~Swapchain();
 
+    void Shutdown();
+
     RHI::ResultCode Init(const RHI::SwapchainCreateInfo& createInfo) override;
 
     RHI::ResultCode Resize(uint32_t newWidth, uint32_t newHeight) override;
@@ -107,6 +121,9 @@ public:
 
 protected:
     std::shared_ptr<vk::UniqueSurfaceKHR> m_surface;
+
+    RHI::Format                 m_format;
+    RHI::Flags<RHI::ImageUsage> m_usage;
 };
 
 class RHI_EXPORT Sampler final

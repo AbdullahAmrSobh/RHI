@@ -1,8 +1,8 @@
 #pragma once
+#include <functional>
 #include <list>
 #include <memory>
 #include <unordered_map>
-#include <functional>
 
 namespace RHI
 {
@@ -32,6 +32,11 @@ template<typename T>
 class LRUCache
 {
 public:
+    LRUCache()
+        : m_capacity(16)
+    {
+    }
+
     LRUCache(size_t capacity)
         : m_capacity(capacity)
     {

@@ -42,5 +42,4 @@ function(add_example NAME)
 endfunction()
 
 add_example(triangle)
-
 add_folders(Example)

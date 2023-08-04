@@ -13,6 +13,7 @@ project(
 include(cmake/project-is-top-level.cmake)
 include(cmake/variables.cmake)
 include(cmake/source-files.cmake)
+include(cmake/CompileShaders.cmake)
 
 # ---- Packages ----
 
@@ -91,3 +92,11 @@ elseif(NOT PROJECT_IS_TOP_LEVEL)
 endif()
 
 include(cmake/dev-mode.cmake)
+
+set(SHADER_PATH ${CMAKE_SOURCE_DIR}/Example/Data/Shaders/)
+set(SHADER_OUTPUT_DIR ${CMAKE_BINARY_DIR}/Shaders)
+
+# Call the CompileShaders function
+CompileShaders(${SHADER_PATH} ${SHADER_OUTPUT_DIR})
+
+add_dependencies(triangle Shaders)

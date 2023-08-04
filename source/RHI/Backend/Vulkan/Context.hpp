@@ -44,7 +44,17 @@ public:
         return m_allocator;
     }
 
+    // Creates a vk::ShaderModule
+    vk::UniqueShaderModule CreateModule(std::vector<uint32_t> code);
+
+    // Returns a vk::SurfaceKHR object from cache, or create new object, and add it to LRUCache
     std::shared_ptr<vk::UniqueSurfaceKHR> CreateSurface(void* windowHandle);
+
+    // Returns a vk::DescriptorSetLayout object from cache, or create new object, and add it to LRUCache
+    std::shared_ptr<vk::UniqueDescriptorSetLayout> CreateDescriptorSetLayout(const RHI::ShaderResourceGroupLayout& layout);
+
+    // Returns a vk::PipelineLayout object from cache, or create new object, and add it to LRUCache
+    std::shared_ptr<vk::UniquePipelineLayout> CreatePipelineLayout(const std::vector<RHI::ShaderResourceGroupLayout>& layouts);
 
 public:
     vk::Queue m_graphicsQueue;

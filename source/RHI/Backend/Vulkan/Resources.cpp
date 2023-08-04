@@ -2,9 +2,10 @@
 
 #include "RHI/Backend/Vulkan/Resources.hpp"
 
+#include "RHI/Result.hpp"
+
 #include "RHI/Backend/Vulkan/Context.hpp"
 #include "RHI/Backend/Vulkan/Conversion.inl"
-#include "RHI/Result.hpp"
 
 namespace Vulkan
 {
@@ -16,8 +17,9 @@ VmaMemoryUsage GetVmaMemoryUsage(RHI::ResourceMemoryType type)
         case RHI::ResourceMemoryType::Stage: return VMA_MEMORY_USAGE_CPU_TO_GPU;
         case RHI::ResourceMemoryType::DeviceLocal: return VMA_MEMORY_USAGE_GPU_ONLY;
         case RHI::ResourceMemoryType::None:
-        default: return VMA_MEMORY_USAGE_MAX_ENUM;
+        default: RHI_ASSERT_MSG(false, "Invalid usage");
     };
+    return VMA_MEMORY_USAGE_MAX_ENUM;
 }
 
 vk::BufferUsageFlags GetBufferUsageFlags(RHI::Flags<RHI::BufferUsage> usage)
@@ -98,6 +100,32 @@ vk::ImageUsageFlags GetImageUsageFlags(RHI::Flags<RHI::ImageUsage> usage)
     return flags;
 }
 
+vk::ImageType GetImageType(RHI::ImageType type)
+{
+    switch (type)
+    {
+        case RHI::ImageType::Image1D: return vk::ImageType::e1D;
+        case RHI::ImageType::Image2D: return vk::ImageType::e2D;
+        case RHI::ImageType::Image3D: return vk::ImageType::e3D;
+        default: RHI_ASSERT_MSG(false, "Invalid image type");
+    }
+
+    return {};
+}
+
+vk::ImageViewType GetImageViewType(RHI::ImageType type, bool asArray)
+{
+    switch (type)
+    {
+        case RHI::ImageType::Image1D: return asArray ? vk::ImageViewType::e1D : vk::ImageViewType::e1DArray;
+        case RHI::ImageType::Image2D: return asArray ? vk::ImageViewType::e2D : vk::ImageViewType::e2DArray;
+        case RHI::ImageType::Image3D: RHI_ASSERT(!asArray); return vk::ImageViewType::e3D;
+        default: RHI_ASSERT_MSG(false, "Invalid image type");
+    }
+
+    return {};
+}
+
 vk::SampleCountFlags GetSampleCount(RHI::SampleCount sampleCount)
 {
     return static_cast<vk::SampleCountFlags>(static_cast<uint32_t>(sampleCount));
@@ -109,8 +137,9 @@ vk::Filter GetFilter(RHI::SamplerFilter filter)
     {
         case RHI::SamplerFilter::Linear: return vk::Filter::eLinear;
         case RHI::SamplerFilter::Nearest: return vk::Filter::eNearest;
-        default: return {};
+        default: RHI_ASSERT_MSG(false, "Invalid image type");
     }
+    return {};
 }
 
 vk::SamplerAddressMode GetSamplerAddressMode(RHI::SamplerAddressMode addressMode)
@@ -119,8 +148,9 @@ vk::SamplerAddressMode GetSamplerAddressMode(RHI::SamplerAddressMode addressMode
     {
         case RHI::SamplerAddressMode::Clamp: return vk::SamplerAddressMode::eClampToEdge;
         case RHI::SamplerAddressMode::Repeat: return vk::SamplerAddressMode::eRepeat;
-        default: return {};
+        default: RHI_ASSERT_MSG(false, "Invalid image type");
     }
+    return {};
 }
 
 vk::CompareOp GetSamplerCompareOp(RHI::SamplerCompareOp compareOp)
@@ -135,23 +165,40 @@ vk::CompareOp GetSamplerCompareOp(RHI::SamplerCompareOp compareOp)
         case RHI::SamplerCompareOp::LessEq: return vk::CompareOp::eLessOrEqual;
         case RHI::SamplerCompareOp::Greater: return vk::CompareOp::eGreater;
         case RHI::SamplerCompareOp::GreaterEq: return vk::CompareOp::eGreaterOrEqual;
-        default: return {};
+        default: RHI_ASSERT_MSG(false, "Invalid image type");
     }
+    return {};
+}
+
+vk::ComponentSwizzle ConvertComponentSwizzle(RHI::ComponentSwizzle swizzle)
+{
+    switch (swizzle)
+    {
+        case RHI::ComponentSwizzle::None: return vk::ComponentSwizzle::eIdentity;
+        case RHI::ComponentSwizzle::Zero: return vk::ComponentSwizzle::eZero;
+        case RHI::ComponentSwizzle::One: return vk::ComponentSwizzle::eOne;
+        case RHI::ComponentSwizzle::R: return vk::ComponentSwizzle::eR;
+        case RHI::ComponentSwizzle::B: return vk::ComponentSwizzle::eB;
+        case RHI::ComponentSwizzle::G: return vk::ComponentSwizzle::eG;
+        case RHI::ComponentSwizzle::A: return vk::ComponentSwizzle::eA;
+        default: RHI_ASSERT_MSG(false, "Invalid image type");
+    }
+    return {};
 }
 
 Buffer::~Buffer()
 {
-    Context&     context   = static_cast<Context&>(*m_context);
-    vk::Device   device    = context.GetDevice();
-    VmaAllocator allocator = context.GetAllocator();
+    auto& context   = static_cast<Context&>(*m_context);
+    auto  device    = context.GetDevice();
+    auto  allocator = context.GetAllocator();
     vmaDestroyBuffer(allocator, m_handle, m_allocation);
 }
 
 RHI::ResultCode Buffer::Init(const RHI::ResourceAllocationInfo& allocationInfo, const RHI::BufferCreateInfo& createInfo)
 {
-    Context&     context   = static_cast<Context&>(*m_context);
-    vk::Device   device    = context.GetDevice();
-    VmaAllocator allocator = context.GetAllocator();
+    auto& context   = static_cast<Context&>(*m_context);
+    auto  device    = context.GetDevice();
+    auto  allocator = context.GetAllocator();
 
     VmaAllocationCreateInfo allocationCreateInfo {};
     allocationCreateInfo.usage = GetVmaMemoryUsage(allocationInfo.usage);
@@ -174,19 +221,31 @@ RHI::ResultCode Buffer::Init(const RHI::ResourceAllocationInfo& allocationInfo, 
     return RHI::ResultCode::Success;
 }
 
+std::shared_ptr<RHI::BufferView> Buffer::CreateView(const RHI::BufferViewCreateInfo& createInfo)
+{
+    size_t key = RHI::HashAny(createInfo);
+    if (auto view = m_viewCache.Get(key); view != nullptr)
+        return view;
+
+    std::shared_ptr<BufferView> view = std::make_shared<BufferView>(*m_context);
+    view->Init(*this, createInfo);
+    m_viewCache.Insert(key, view);
+    return view;
+}
+
 Image::~Image()
 {
-    Context&     context   = static_cast<Context&>(*m_context);
-    vk::Device   device    = context.GetDevice();
-    VmaAllocator allocator = context.GetAllocator();
+    auto& context   = static_cast<Context&>(*m_context);
+    auto  device    = context.GetDevice();
+    auto  allocator = context.GetAllocator();
     vmaDestroyImage(allocator, m_handle, m_allocation);
 }
 
 RHI::ResultCode Image::Init(const RHI::ResourceAllocationInfo& allocationInfo, const RHI::ImageCreateInfo& createInfo)
 {
-    Context&     context   = static_cast<Context&>(*m_context);
-    vk::Device   device    = context.GetDevice();
-    VmaAllocator allocator = context.GetAllocator();
+    auto& context   = static_cast<Context&>(*m_context);
+    auto  device    = context.GetDevice();
+    auto  allocator = context.GetAllocator();
 
     VmaAllocationCreateInfo allocationCreateInfo {};
     allocationCreateInfo.usage = GetVmaMemoryUsage(allocationInfo.usage);
@@ -195,16 +254,16 @@ RHI::ResultCode Image::Init(const RHI::ResourceAllocationInfo& allocationInfo, c
     imageCreateInfo.sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     imageCreateInfo.pNext                 = nullptr;
     imageCreateInfo.flags                 = {};
-    imageCreateInfo.imageType             = {};
-    imageCreateInfo.format                = (VkFormat)ConvertFormat(createInfo.format);
+    imageCreateInfo.imageType             = static_cast<VkImageType>(GetImageType(createInfo.type));
+    imageCreateInfo.format                = static_cast<VkFormat>(ConvertFormat(createInfo.format));
     imageCreateInfo.extent.width          = createInfo.size.width;
     imageCreateInfo.extent.height         = createInfo.size.height;
     imageCreateInfo.extent.depth          = createInfo.size.depth;
     imageCreateInfo.mipLevels             = createInfo.mipLevels;
     imageCreateInfo.arrayLayers           = createInfo.arrayCount;
-    imageCreateInfo.samples               = (VkSampleCountFlagBits)createInfo.sampleCount;
+    imageCreateInfo.samples               = VK_SAMPLE_COUNT_1_BIT;
     imageCreateInfo.tiling                = VK_IMAGE_TILING_OPTIMAL;
-    imageCreateInfo.usage                 = (VkImageUsageFlags)GetImageUsageFlags(createInfo.usageFlags);
+    imageCreateInfo.usage                 = static_cast<VkImageUsageFlags>(GetImageUsageFlags(createInfo.usageFlags));
     imageCreateInfo.sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
     imageCreateInfo.queueFamilyIndexCount = 0;
     imageCreateInfo.pQueueFamilyIndices   = nullptr;
@@ -218,51 +277,90 @@ RHI::ResultCode Image::Init(const RHI::ResourceAllocationInfo& allocationInfo, c
     return RHI::ResultCode::Success;
 }
 
+std::shared_ptr<RHI::ImageView> Image::CreateView(const RHI::ImageViewCreateInfo& createInfo)
+{
+    size_t key = HashAny(createInfo);
+    if (auto view = m_viewCache.Get(key); view != nullptr)
+        return view;
+
+    std::shared_ptr<ImageView> view = std::make_shared<ImageView>(*m_context);
+    view->Init(*this, createInfo);
+    m_viewCache.Insert(key, view);
+    return view;
+}
+
 BufferView::~BufferView()
 {
-    Context&   context = static_cast<Context&>(*m_context);
-    vk::Device device  = context.GetDevice();
+    auto& context = static_cast<Context&>(*m_context);
+    auto  device  = context.GetDevice();
     device.destroyBufferView(m_handle);
 }
 
-RHI::ResultCode BufferView::Init(RHI::Buffer& buffer, const RHI::BufferViewCreateInfo& createInfo)
+RHI::ResultCode BufferView::Init(RHI::Buffer& _buffer, const RHI::BufferViewCreateInfo& createInfo)
 {
-    Context&   context = static_cast<Context&>(*m_context);
-    vk::Device device  = context.GetDevice();
+    auto&   context = static_cast<Context&>(*m_context);
+    auto    device  = context.GetDevice();
+    Buffer& buffer  = static_cast<Buffer&>(_buffer);
 
     vk::BufferViewCreateInfo viewCreateInfo {};
+    viewCreateInfo.setBuffer(buffer.GetHandle());
+    viewCreateInfo.setOffset(createInfo.byteOffset);
+    viewCreateInfo.setRange(createInfo.byteSize);
+    viewCreateInfo.setFormat(ConvertFormat(createInfo.format));
+
+    m_handle = device.createBufferView(viewCreateInfo).value;
+
     return RHI::ResultCode::Success;
 }
 
 ImageView::~ImageView()
 {
-    Context&   context = static_cast<Context&>(*m_context);
-    vk::Device device  = context.GetDevice();
+    auto& context = static_cast<Context&>(*m_context);
+    auto  device  = context.GetDevice();
     device.destroyImageView(m_handle);
 }
 
-RHI::ResultCode ImageView::Init(RHI::Image& image, const RHI::ImageViewCreateInfo& createInfo)
+RHI::ResultCode ImageView::Init(RHI::Image& _image, const RHI::ImageViewCreateInfo& createInfo)
 {
-    Context&   context = static_cast<Context&>(*m_context);
-    vk::Device device  = context.GetDevice();
+    auto& context = static_cast<Context&>(*m_context);
+    auto  device  = context.GetDevice();
+    auto& image   = static_cast<Image&>(_image);
+
+    vk::ImageSubresourceRange subresourceRange {};
+    subresourceRange.setBaseArrayLayer(createInfo.subresource.baseArrayLayer);
+    subresourceRange.setLayerCount(createInfo.subresource.layerCount);
+    subresourceRange.setBaseMipLevel(createInfo.subresource.mipLevel);
+    subresourceRange.setLevelCount(createInfo.subresource.levelsCount);
+
+    vk::ComponentMapping componentMapping {};
+    componentMapping.setR(ConvertComponentSwizzle(createInfo.components.r));
+    componentMapping.setG(ConvertComponentSwizzle(createInfo.components.g));
+    componentMapping.setB(ConvertComponentSwizzle(createInfo.components.b));
+    componentMapping.setA(ConvertComponentSwizzle(createInfo.components.a));
+
+    vk::ImageViewCreateInfo viewCreateInfo {};
+    viewCreateInfo.setFormat(ConvertFormat(image.GetInfo().format));
+    viewCreateInfo.setImage(image.GetHandle());
+    viewCreateInfo.setSubresourceRange(subresourceRange);
+    viewCreateInfo.setComponents(componentMapping);
+    viewCreateInfo.setViewType(GetImageViewType(image.GetInfo().type, false));
+
+    m_handle = device.createImageView(viewCreateInfo).value;
 
     return RHI::ResultCode::Success;
 }
 
 Swapchain::~Swapchain()
 {
-    Context&   context = static_cast<Context&>(*m_context);
-    vk::Device device  = context.GetDevice();
-
-    device.destroySwapchainKHR(m_handle);
+    Shutdown();
 }
 
 RHI::ResultCode Swapchain::Init(const RHI::SwapchainCreateInfo& createInfo)
 {
     // clang-format off
-    Context&           context        = static_cast<Context&>(*m_context);
-    vk::Device         device         = context.GetDevice();
-    vk::PhysicalDevice physcialDevice = context.GetPhysicalDevice();
+    auto& context        = static_cast<Context&>(*m_context);
+    auto  device         = context.GetDevice();
+    auto  physcialDevice = context.GetPhysicalDevice();
 
     m_surface = context.CreateSurface(createInfo.nativeWindowHandle);
 
@@ -277,7 +375,7 @@ RHI::ResultCode Swapchain::Init(const RHI::SwapchainCreateInfo& createInfo)
     if (surfaceFormatResult == surfaceFormats.end())
         surfaceFormatResult = surfaceFormats.begin();
 
-    vk::PresentModeKHR presentMode = std::find_if(presentModes.begin(), presentModes.end(),  [](vk::PresentModeKHR mode) { return mode == vk::PresentModeKHR::eMailbox; }) == presentModes.end() ? vk::PresentModeKHR::eMailbox : vk::PresentModeKHR::eFifo;
+    vk::PresentModeKHR presentMode = std::find_if(presentModes.begin(), presentModes.end(), [](vk::PresentModeKHR mode) { return mode == vk::PresentModeKHR::eMailbox; }) == presentModes.end() ? vk::PresentModeKHR::eMailbox : vk::PresentModeKHR::eFifo;
 
     vk::Extent2D extent {};
     extent.setWidth(std::clamp(createInfo.imageSize.width, surfaceCapabilities.surfaceCapabilities.minImageExtent.width, surfaceCapabilities.surfaceCapabilities.maxImageExtent.width));
@@ -302,6 +400,9 @@ RHI::ResultCode Swapchain::Init(const RHI::SwapchainCreateInfo& createInfo)
 
     m_handle = device.createSwapchainKHR(swapchainCreateInfo).value;
 
+    m_usage = createInfo.imageUsage;
+    m_format = createInfo.imageFormat;
+
     // Acquire all images in the swapchain
     for (auto image : device.getSwapchainImagesKHR(m_handle).value)
         m_images.push_back(std::make_unique<Image>(*m_context, image));
@@ -310,27 +411,51 @@ RHI::ResultCode Swapchain::Init(const RHI::SwapchainCreateInfo& createInfo)
     // clang-format on
 }
 
+void Swapchain::Shutdown()
+{
+    auto& context = static_cast<Context&>(*m_context);
+    auto  device  = context.GetDevice();
+
+    device.destroySwapchainKHR(m_handle);
+}
+
 RHI::ResultCode Swapchain::Resize(uint32_t newWidth, uint32_t newHeight)
 {
-    return {};
+    RHI::SwapchainCreateInfo createInfo {};
+    createInfo.imageCount       = static_cast<uint32_t>(m_images.size());
+    createInfo.imageFormat      = m_format;
+    createInfo.imageUsage       = m_usage;
+    createInfo.imageSize.width  = newWidth;
+    createInfo.imageSize.height = newHeight;
+    createInfo.imageSize.depth  = 1;
+
+    Shutdown();
+    Init(createInfo);
+
+    return RHI::ResultCode::Success;
 }
 
 RHI::ResultCode Swapchain::SwapImages()
 {
+    auto& context = static_cast<Context&>(*m_context);
+    auto  device  = context.GetDevice();
+
+    // acquire associated attachment.
+
     return {};
 }
 
 Sampler::~Sampler()
 {
-    Context&   context = static_cast<Context&>(*m_context);
-    vk::Device device  = context.GetDevice();
+    auto& context = static_cast<Context&>(*m_context);
+    auto  device  = context.GetDevice();
     device.destroySampler(m_handle);
 }
 
 RHI::ResultCode Sampler::Init(const RHI::SamplerCreateInfo& createInfo)
 {
-    Context&   context = static_cast<Context&>(*m_context);
-    vk::Device device  = context.GetDevice();
+    auto& context = static_cast<Context&>(*m_context);
+    auto  device  = context.GetDevice();
 
     vk::SamplerCreateInfo samplerCreateInfo {};
     samplerCreateInfo.setMagFilter(GetFilter(createInfo.filter));
@@ -353,15 +478,15 @@ RHI::ResultCode Sampler::Init(const RHI::SamplerCreateInfo& createInfo)
 
 Fence::~Fence()
 {
-    Context&   context = static_cast<Context&>(*m_context);
-    vk::Device device  = context.GetDevice();
+    auto& context = static_cast<Context&>(*m_context);
+    auto  device  = context.GetDevice();
     device.destroyFence(m_handle);
 }
 
 RHI::ResultCode Fence::Init()
 {
-    Context&   context = static_cast<Context&>(*m_context);
-    vk::Device device  = context.GetDevice();
+    auto& context = static_cast<Context&>(*m_context);
+    auto  device  = context.GetDevice();
 
     vk::FenceCreateInfo createInfo {};
 
@@ -371,22 +496,26 @@ RHI::ResultCode Fence::Init()
 
 RHI::ResultCode Fence::Reset()
 {
-    Context&   context = static_cast<Context&>(*m_context);
-    vk::Device device  = context.GetDevice();
-    return ConvertResult(device.resetFences(m_handle));
+    auto&      context = static_cast<Context&>(*m_context);
+    auto       device  = context.GetDevice();
+    vk::Result result  = device.resetFences(m_handle);
+    RHI_ASSERT_MSG(result == vk::Result::eSuccess, "Operation failed");
+    return RHI::ResultCode::Success;
 }
 
 RHI::ResultCode Fence::Wait() const
 {
-    Context&   context = static_cast<Context&>(*m_context);
-    vk::Device device  = context.GetDevice();
-    return ConvertResult(device.waitForFences(1, &m_handle, VK_TRUE, UINT64_MAX));
+    auto&      context = static_cast<Context&>(*m_context);
+    auto       device  = context.GetDevice();
+    vk::Result result  = device.waitForFences(1, &m_handle, VK_TRUE, UINT64_MAX);
+    RHI_ASSERT_MSG(result == vk::Result::eSuccess, "Operation failed");
+    return RHI::ResultCode::Success;
 }
 
 RHI::FenceState Fence::GetState() const
 {
-    Context&   context = static_cast<Context&>(*m_context);
-    vk::Device device  = context.GetDevice();
+    auto& context = static_cast<Context&>(*m_context);
+    auto  device  = context.GetDevice();
     return (device.getFenceStatus(m_handle) == vk::Result::eSuccess) ? RHI::FenceState::Signaled : RHI::FenceState::Unsignaled;
 }
 

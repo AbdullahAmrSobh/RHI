@@ -8,84 +8,80 @@
 #include <unordered_map>
 #include <vector>
 
-#include "RHI/Attachments.hpp"
 #include "RHI/Export.hpp"
+#include "RHI/FrameGraphAttachments.hpp"
 #include "RHI/Resources.hpp"
 
 namespace RHI
 {
 
-enum class QueueType; 
+enum class AttachmentAccess;
+enum class AttachmentUsage;
 
-using QueueID = uint32_t; // id of the queue family this pass is executed on
+struct ImageAttachmentUseInfo;
+struct BufferAttachmentUseInfo;
 
-class PassState
-{
-    friend class FrameGraph;
+class Pass;
 
-public:
-    PassState(std::string name, PassQueue queueType);
-
-    PassQueue GetPassQueueType() const;
-
-private:
-    const std::string m_name;
-
-    const PassQueue m_queueType;
-
-    QueueID queueId; 
-    
-    std::unique_ptr<uint32_t> m_nodeIndex;
-
-    std::vector<PassState*> m_producers;
-
-    std::vector<PassState*> m_consumers;
-
-    std::vector<PassAttachment*> m_attachments;
-
-    std::vector<PassAttachment*> m_transientAttachments;
-
-    std::vector<ImagePassAttachment*> m_imageAttachments;
-
-    std::vector<BufferPassAttachment*> m_bufferAttachments;
-
-    std::vector<Fence*> m_signalFences;
-
-    Swapchain* m_swapchain;
-
-    uint32_t m_commandListCount;
-};
-
-class FrameGraph
+// Represent the Graph of dependency between Passes
+class RHI_EXPORT FrameGraph
 {
 public:
-    FrameGraph() = default;
+    FrameGraph()
+        : m_registry(std::make_unique<AttachmentsRegistry>())
+        , m_currentPass(nullptr)
+    {
+    }
+
+    inline const AttachmentsRegistry& GetRegistry() const
+    {
+        return *m_registry;
+    }
+
+    inline AttachmentsRegistry& GetRegistry()
+    {
+        return *m_registry;
+    }
 
     void Begin();
     void End();
 
-    void Reset();
+    void UseImageAttachment(AttachmentName name, const ImageAttachmentUseInfo& attachmentInfo, AttachmentUsage usage, AttachmentAccess access);
 
-    void UseImageAttachment(const ImageAttachmentUseInfo& useInfo, AttachmentUsage usage, AttachmentAccess access);
+    void UseBufferAttachment(AttachmentName name, const BufferAttachmentUseInfo& attachmentInfo, AttachmentUsage usage, AttachmentAccess access);
 
-    void UseBufferAttachment(const BufferAttachmentUseInfo& useInfo, AttachmentUsage usage, AttachmentAccess access);
+    void UseRenderTarget(AttachmentName name, const ImageAttachmentUseInfo& attachmentInfo);
 
-    void AddDependency(PassState* producer, PassState* consumer);
+    void UseDepthStencil(AttachmentName name, const ImageAttachmentUseInfo& attachmentInfo);
 
-    void TopologicalSort();
+    void UseShaderImageInput(AttachmentName name, const ImageAttachmentUseInfo& attachmentInfo, AttachmentAccess access);
+
+    void UseShaderBufferInput(AttachmentName name, const BufferAttachmentUseInfo& attachmentInfo, AttachmentAccess access);
+
+    void CopyImageAttachment(AttachmentName name, const ImageAttachmentUseInfo& attachmentInfo, AttachmentAccess access);
+
+    void CopyBufferAttachment(AttachmentName name, const BufferAttachmentUseInfo& attachmentInfo, AttachmentAccess access);
+
+    void AddSignalFence(Fence& fence);
+
+    void ReserveCommandLists(uint32_t count);
 
 private:
     friend class FrameScheduler;
 
+    std::unique_ptr<AttachmentsRegistry> m_registry;
+
     struct Node
     {
-        PassState*              pass;
-        std::vector<PassState*> producers;
-        std::vector<PassState*> consumers;
-        bool                    visited;
+        Pass*              pass;
+        std::vector<Pass*> producers;
+        std::vector<Pass*> consumers;
+        bool               visited;
     };
 
     std::vector<Node> m_graph;
+
+    Pass* m_currentPass;
 };
 
 }  // namespace RHI

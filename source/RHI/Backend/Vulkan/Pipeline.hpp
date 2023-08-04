@@ -20,9 +20,19 @@ public:
     ~PipelineState();
 
     RHI::ResultCode Init(const RHI::GraphicsPipelineCreateInfo& createInfo) override;
-    RHI::ResultCode Init(const RHI::ComputePipelineCreateInfo& createInfo) override;
-    RHI::ResultCode Init(const RHI::RayTracingPipelineCreateInfo& createInfo) override;
 
+    vk::PipelineBindPoint GetBindPoint() const
+    {
+        return m_bindPoint;
+    }
+
+    vk::PipelineLayout GetLayoutHandle() const
+    {
+        return m_layout->get();
+    }
+
+private:
+    vk::PipelineBindPoint                     m_bindPoint;
     std::shared_ptr<vk::UniquePipelineLayout> m_layout;
 };
 

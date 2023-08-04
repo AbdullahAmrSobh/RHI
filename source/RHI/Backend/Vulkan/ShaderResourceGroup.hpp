@@ -32,17 +32,14 @@ class ShaderResourceGroup final
     , public DeviceObject<vk::DescriptorSet>
 {
 public:
-    ShaderResourceGroup(RHI::Context& context, vk::DescriptorPool pool, vk::DescriptorSet setHandle)
-    {
-    }
-
+    ShaderResourceGroup(RHI::Context& context, vk::DescriptorPool pool, vk::DescriptorSet handle);
     ~ShaderResourceGroup();
 
     void Update();
 
 private:
-    Context* m_context; 
-    vk::DescriptorPool m_pool; 
+    Context*           m_context;
+    vk::DescriptorPool m_pool;
 };
 
 }  // namespace Vulkan

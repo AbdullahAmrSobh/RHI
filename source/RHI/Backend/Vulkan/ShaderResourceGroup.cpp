@@ -4,14 +4,10 @@
 
 #include "RHI/Backend/Vulkan/Context.hpp"
 #include "RHI/Backend/Vulkan/Resources.hpp"
+#include "RHI/Backend/Vulkan/Conversion.inl"
 
 namespace Vulkan
 {
-
-vk::DescriptorType GetDescriptorType(RHI::ShaderBindingResourceType type)
-{
-    return {};
-}
 
 ShaderResourceGroupAllocator::~ShaderResourceGroupAllocator()
 {
@@ -39,7 +35,9 @@ std::unique_ptr<RHI::ShaderResourceGroup> ShaderResourceGroupAllocator::Allocate
         vk::Result result = device.allocateDescriptorSets(&allocateInfo, &set);
 
         if (result == vk::Result::eSuccess)
+        {
             return std::make_unique<ShaderResourceGroup>(context, pool, set);
+        }
     }
 
     std::vector<vk::DescriptorPoolSize> poolSize {};
@@ -60,9 +58,16 @@ std::unique_ptr<RHI::ShaderResourceGroup> ShaderResourceGroupAllocator::Allocate
     m_pools.push_back(pool);
 
     allocateInfo.setDescriptorPool(pool);
-    vk::DescriptorSet set = device.allocateDescriptorSets(allocateInfo).value.front();
+    vk::DescriptorSet descriptorSet = device.allocateDescriptorSets(allocateInfo).value.front();
 
-    return std::make_unique<ShaderResourceGroup>(context, pool, set);
+    return std::make_unique<ShaderResourceGroup>(context, pool, descriptorSet);
+}
+
+ShaderResourceGroup::ShaderResourceGroup(RHI::Context& context, vk::DescriptorPool pool, vk::DescriptorSet handle)
+    : DeviceObject(handle)
+    , m_context(static_cast<Vulkan::Context*>(&context))
+    , m_pool(pool)
+{
 }
 
 ShaderResourceGroup::~ShaderResourceGroup()
@@ -87,8 +92,6 @@ void ShaderResourceGroup::Update()
         writeInfo.setDstSet(m_handle);
         writeInfo.setDescriptorCount(binding.second.arrayCount);
         writeInfo.setDescriptorType(GetDescriptorType(binding.second.type));
-        // writeInfo.set
-
 
         writeInfos.push_back(writeInfo);
     }

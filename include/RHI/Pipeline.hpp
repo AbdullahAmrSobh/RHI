@@ -9,29 +9,24 @@
 #include "RHI/Format.hpp"
 #include "RHI/Result.hpp"
 
+// #include "RHI/ShaderResourceGroup.hpp"
+
 namespace RHI
 {
 
-class Context;
-
-class ShaderFunction;
 struct ShaderResourceGroupLayout;
 
-enum class ShaderType
+class Context;
+class ShaderFunction;
+
+enum class ShaderStage
 {
     None                   = 0 << 1,
     Vertex                 = 1 << 2,
     TessellationControl    = 1 << 3,
     TessellationEvaluation = 1 << 4,
     Pixel                  = 1 << 5,
-    RayGen                 = 1 << 6,
-    RayIntersection        = 1 << 7,
-    AnyHit                 = 1 << 8,
-    ClosetHit              = 1 << 9,
-    MeshAmplification      = 1 << 10,
-    MeshTask               = 1 << 11,
-    Mesh                   = 1 << 12,
-    Compute                = 1 << 13,
+    Compute                = 1 << 6,
 };
 
 enum class PolygonMode
@@ -108,7 +103,7 @@ struct RenderTargetLayout
 
 struct GraphicsPipelineCreateInfo
 {
-    const GraphicsPipelineShaderTypes      shaders;
+    GraphicsPipelineShaderTypes            shaders;
     std::vector<ShaderResourceGroupLayout> shadersLayout;
     PipelineVertexInputLayout              vertexInputLayout;
     PipelineRasterizationState             rasterizationState;
@@ -117,31 +112,18 @@ struct GraphicsPipelineCreateInfo
     RenderTargetLayout                     renderTargetLayout;
 };
 
-struct ComputePipelineCreateInfo
-{
-    std::vector<ShaderResourceGroupLayout> shaderLayout;
-    const ShaderFunction*                  computeShader;
-};
-
-struct RayTracingPipelineCreateInfo
-{
-    RayTracingPipelineShaderTypes          shaders;
-    std::vector<ShaderResourceGroupLayout> shadersLayout;
-    uint32_t                               maxRayRecursionDepth;
-};
-
-size_t HashCombineShaderResourceGroups(const std::span<const ShaderResourceGroupLayout> layouts)
-{
-    return 0;
-}
-
 class RHI_EXPORT ShaderFunction
 {
 public:
-    ShaderFunction(ShaderType functionType, std::vector<uint32_t> code);
-    virtual ~ShaderFunction() = default;
+    ShaderFunction(ShaderStage functionType, std::string name, std::vector<uint32_t> code)
+        : m_shaderType(functionType)
+        , m_name(std::move(name))
+        , m_code(std::move(code))
+    {
+    }
 
-    const ShaderType            m_shaderType;
+    RHI_SUPPRESS_C4251
+    const ShaderStage            m_shaderType;
     const std::string           m_name;
     const std::vector<uint32_t> m_code;
 };
@@ -156,9 +138,7 @@ public:
 
     virtual ~PipelineState() = default;
 
-    virtual ResultCode Init(const GraphicsPipelineCreateInfo& createInfo)   = 0;
-    virtual ResultCode Init(const ComputePipelineCreateInfo& createInfo)    = 0;
-    virtual ResultCode Init(const RayTracingPipelineCreateInfo& createInfo) = 0;
+    virtual ResultCode Init(const GraphicsPipelineCreateInfo& createInfo) = 0;
 
 protected:
     Context* m_context;
