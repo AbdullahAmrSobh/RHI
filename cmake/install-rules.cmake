@@ -14,13 +14,13 @@ set(package RHI)
 install(
     DIRECTORY
     include/
-    "${PROJECT_BINARY_DIR}/export/"
+    "${PROJECT_BINARY_DIR}/RHI/Export/"
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
     COMPONENT RHI_Development
 )
 
 install(
-    TARGETS RHI_RHI
+    TARGETS RHI-RHI RHI-Vulkan
     EXPORT RHITargets
     RUNTIME #
     COMPONENT RHI_Runtime
@@ -37,34 +37,3 @@ write_basic_package_version_file(
     "${package}ConfigVersion.cmake"
     COMPATIBILITY SameMajorVersion
 )
-
-# Allow package maintainers to freely override the path for the configs
-set(
-    RHI_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/${package}"
-    CACHE PATH "CMake package config location relative to the install prefix"
-)
-mark_as_advanced(RHI_INSTALL_CMAKEDIR)
-
-install(
-    FILES cmake/install-config.cmake
-    DESTINATION "${RHI_INSTALL_CMAKEDIR}"
-    RENAME "${package}Config.cmake"
-    COMPONENT RHI_Development
-)
-
-install(
-    FILES "${PROJECT_BINARY_DIR}/${package}ConfigVersion.cmake"
-    DESTINATION "${RHI_INSTALL_CMAKEDIR}"
-    COMPONENT RHI_Development
-)
-
-install(
-    EXPORT RHITargets
-    NAMESPACE RHI::
-    DESTINATION "${RHI_INSTALL_CMAKEDIR}"
-    COMPONENT RHI_Development
-)
-
-if(PROJECT_IS_TOP_LEVEL)
-  include(CPack)
-endif()

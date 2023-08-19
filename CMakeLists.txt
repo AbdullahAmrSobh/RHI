@@ -1,102 +1,44 @@
 cmake_minimum_required(VERSION 3.14)
 
-include(cmake/prelude.cmake)
+include(${CMAKE_SOURCE_DIR}/CMake/prelude.cmake)
 
 project(
-    RHI
-    VERSION 0.1.0
-    DESCRIPTION "Short description"
-    HOMEPAGE_URL "https://example.com/"
-    LANGUAGES CXX
+	RHI
+	VERSION 0.1.0
+	DESCRIPTION "RHI (Render Hardware Interface) is graphics API abstraction layer"
+	HOMEPAGE_URL "https://github.com/AbdullahAmrSobh/RHI/"
+	LANGUAGES CXX
 )
 
-include(cmake/project-is-top-level.cmake)
-include(cmake/variables.cmake)
-include(cmake/source-files.cmake)
-include(cmake/CompileShaders.cmake)
-
-# ---- Packages ----
-
-# Find the Vulkan package
-find_package(Vulkan REQUIRED)
+include(${CMAKE_SOURCE_DIR}/CMake/project-is-top-level.cmake)
+include(${CMAKE_SOURCE_DIR}/CMake/variables.cmake)
 
 # ---- Declare library ----
 
-add_library(RHI_RHI ${SOURCE_FILES})
-add_library(RHI::RHI ALIAS RHI_RHI)
-
-include(GenerateExportHeader)
-generate_export_header(
-    RHI_RHI
-    BASE_NAME RHI
-    EXPORT_FILE_NAME export/RHI/Export.hpp
-    CUSTOM_CONTENT_FROM_VARIABLE pragma_suppress_c4251
-)
-
-if(NOT BUILD_SHARED_LIBS)
-  target_compile_definitions(RHI_RHI PUBLIC RHI_STATIC_DEFINE)
-endif()
-
-set_target_properties(
-    RHI_RHI PROPERTIES
-    CXX_VISIBILITY_PRESET hidden
-    VISIBILITY_INLINES_HIDDEN YES
-    VERSION "${PROJECT_VERSION}"
-    SOVERSION "${PROJECT_VERSION_MAJOR}"
-    EXPORT_NAME RHI
-    OUTPUT_NAME RHI
-)
-
-target_include_directories(
-    RHI_RHI ${warning_guard}
-    PUBLIC
-    "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
-    PRIVATE
-    "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/source>"
-)
-
-target_include_directories(
-    RHI_RHI SYSTEM
-    PUBLIC
-    "$<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/export>"
-)
-
-target_compile_features(RHI_RHI PUBLIC cxx_std_20)
-
-target_link_libraries(RHI_RHI Vulkan::Vulkan)
+add_subdirectory(RHI)
+add_subdirectory(Vulkan)
 
 # ---- Install rules ----
 
-if(NOT CMAKE_SKIP_INSTALL_RULES)
-  include(cmake/install-rules.cmake)
-endif()
+# if(NOT CMAKE_SKIP_INSTALL_RULES)
+#   include(cmake/install-rules.cmake)
+# endif()
 
-# ---- Examples ----
+# ---- Declare examples ----
 
 if(PROJECT_IS_TOP_LEVEL)
-  option(BUILD_EXAMPLES "Build examples tree." "${RHI_DEVELOPER_MODE}")
-  if(BUILD_EXAMPLES)
-    add_subdirectory(example)
-  endif()
+	option(BUILD_EXAMPLES "Build examples tree." "${RHI_DEVELOPER_MODE}")
+	if(BUILD_EXAMPLES)
+		add_subdirectory(Examples)
+	endif()
 endif()
 
 # ---- Developer mode ----
 
 if(NOT RHI_DEVELOPER_MODE)
-  return()
+	return()
 elseif(NOT PROJECT_IS_TOP_LEVEL)
-  message(
-      AUTHOR_WARNING
-      "Developer mode is intended for developers of RHI"
-  )
+	message(AUTHOR_WARNING "Developer mode is intended for developers of RHI")
 endif()
 
-include(cmake/dev-mode.cmake)
-
-set(SHADER_PATH ${CMAKE_SOURCE_DIR}/Example/Data/Shaders/)
-set(SHADER_OUTPUT_DIR ${CMAKE_BINARY_DIR}/Shaders)
-
-# Call the CompileShaders function
-CompileShaders(${SHADER_PATH} ${SHADER_OUTPUT_DIR})
-
-add_dependencies(triangle Shaders)
+include(${CMAKE_SOURCE_DIR}/CMake/dev-mode.cmake)
