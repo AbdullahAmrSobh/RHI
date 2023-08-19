@@ -1,18 +1,18 @@
 cmake_minimum_required(VERSION 3.16)
 
 # Get VmaAllocator
-# set(VMA_RECORDING_ENABLED TRUE)
-# include(FetchContent)
-# FetchContent_Declare(
-#     VulkanMemoryAllocator
-#     GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
-#     GIT_TAG v3.0.1
-# )
+set(VMA_RECORDING_ENABLED TRUE)
+include(FetchContent)
+FetchContent_Declare(
+    VulkanMemoryAllocator
+    GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+    GIT_TAG v3.0.1
+)
 
-# FetchContent_MakeAvailable(VulkanMemoryAllocator)
+FetchContent_MakeAvailable(VulkanMemoryAllocator)
 
 # # Find Vulkan
-# find_package(Vulkan REQUIRED)
+find_package(Vulkan REQUIRED)
 
 # Add header files
 set(HEADER_FILES
@@ -33,4 +33,6 @@ aams_add_target(
     SOURCES ${SOURCE_FILES}
     BUILD_DEPENDENCIES
         RHI::RHI
+        Vulkan::Vulkan
+        VulkanMemoryAllocator
 )

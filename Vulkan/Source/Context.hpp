@@ -9,7 +9,7 @@ namespace Vulkan
 class Context final : public RHI::Context
 {
 public:
-    ~Context() = default;
+    ~Context();
 
     RHI::Handle<RHI::Pass> CreatePass(const RHI::PassCreateInfo& createInfo) override;
 
