@@ -2,7 +2,7 @@
 function(aams_add_target)
     set(options STATIC SHARED HEADERONLY EXECUTABLE)
     set(single_value_args NAME NAMESPACE OUTPUT_SUBDIRECTORY OUTPUT_NAME)
-    set(multi_value_args SOURCES HEADERS BUILD_DEPENDENCIES INCLUDE_DIRECTORIES COMPILE_DEFINITIONS TARGET_PROPERTIES)
+    set(multi_value_args SOURCES HEADERS BUILD_DEPENDENCIES RUNTIME_LIBRARIES INCLUDE_DIRECTORIES COMPILE_DEFINITIONS TARGET_PROPERTIES)
 
     cmake_parse_arguments(aams_add_target "${options}" "${single_value_args}" "${multi_value_args}" ${ARGN})
 
@@ -125,6 +125,18 @@ function(aams_add_target)
 
     if(aams_add_target_TARGET_PROPERTIES)
         set_target_properties(${aams_add_target_NAME} PROPERTIES ${aams_add_target_TARGET_PROPERTIES})
+    endif()
+
+    if (aams_add_target_RUNTIME_LIBRARIES)
+        target_link_libraries(${aams_add_target_NAME} ${aams_add_target_RUNTIME_LIBRARIES})
+        foreach(runtime_lib ${aams_add_target_RUNTIME_LIBRARIES})
+            add_custom_command(TARGET ${aams_add_target_NAME} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy
+                    $<TARGET_FILE:${runtime_lib}>
+                    $<TARGET_FILE_DIR:${aams_add_target_NAME}>
+            )
+        endforeach()
+        
     endif()
 
 
