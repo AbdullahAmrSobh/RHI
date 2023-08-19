@@ -1,18 +1,18 @@
 
-#ifndef RHI_H
-#define RHI_H
+#ifndef RHI_EXPORT_H
+#define RHI_EXPORT_H
 
 #ifdef RHI_STATIC_DEFINE
-#  define RHI
+#  define RHI_EXPORT
 #  define RHI_NO_EXPORT
 #else
-#  ifndef RHI
+#  ifndef RHI_EXPORT
 #    ifdef RHI_EXPORTS
         /* We are building this library */
-#      define RHI 
+#      define RHI_EXPORT 
 #    else
         /* We are using this library */
-#      define RHI 
+#      define RHI_EXPORT 
 #    endif
 #  endif
 
@@ -26,7 +26,7 @@
 #endif
 
 #ifndef RHI_DEPRECATED_EXPORT
-#  define RHI_DEPRECATED_EXPORT RHI RHI_DEPRECATED
+#  define RHI_DEPRECATED_EXPORT RHI_EXPORT RHI_DEPRECATED
 #endif
 
 #ifndef RHI_DEPRECATED_NO_EXPORT
@@ -46,4 +46,4 @@
 #  define RHI_SUPPRESS_C4251
 #endif
 
-#endif /* RHI_H */
+#endif /* RHI_EXPORT_H */
