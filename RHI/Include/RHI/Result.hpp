@@ -40,4 +40,16 @@ struct Result
     ResultCode result;
 };
 
+/// @brief Return true if the value is a success value.
+inline static bool IsSucess(ResultCode result)
+{
+    return result == ResultCode::Success;
+}
+
+/// @brief Return true if the value is a failure value.
+inline static bool IsError(ResultCode result)
+{
+    return result != ResultCode::Success;
+}
+
 }  // namespace RHI

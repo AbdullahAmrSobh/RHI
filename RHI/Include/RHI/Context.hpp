@@ -2,41 +2,23 @@
 
 #include <functional>
 #include <memory>
-#include <span>
 #include <string>
 #include <vector>
 
 #include "RHI/Common.hpp"
 #include "RHI/Export.hpp"
-#include "RHI/Result.hpp"
 #include "RHI/Handle.hpp"
+#include "RHI/Result.hpp"
+#include "RHI/Span.hpp"
 
 namespace RHI
 {
 
-/// Forward decelerations
 struct DeviceProperties;
-struct PassCreateInfo;
-struct SwapchainCreateInfo;
-struct ResourcePoolCreateInfo;
-struct PipelineStateCacheCreateInfo;
-struct GraphicsPipelineCreateInfo;
-struct ComputePipelineCreateInfo;
-struct RayTracingPipelineCreateInfo;
-struct SamplerCreateInfo;
-
-class PassProducer;
-class Pass;
-class FrameScheduler;
-class Swapchain;
-class ResourcePool;
-class PipelineStateCache;
-class PipelineState;
-class Sampler;
 
 typedef uint32_t Version;
 
-typedef std::function<uint32_t(std::span<DeviceProperties>)> DeviceSelectionCallback;
+typedef std::function<uint32_t(TL::Span<DeviceProperties>)> DeviceSelectionCallback;
 
 /// @brief Type of backend Graphics API
 enum class Backend
@@ -65,10 +47,11 @@ enum class Vendor
 /// @brief Describes information needed to initalize the RHI context
 struct ApplicationInfo
 {
-    const char* applicationName;
-    Version     applicationVersion;
-    const char* engineName;
-    Version     engineVersion;
+    /// @brief The name of the users application.
+    std::string applicationName;
+
+    /// @brief The version of the users application.
+    Version applicationVersion;
 };
 
 /// @brief Properties about a Physical GPU
@@ -85,16 +68,20 @@ constexpr Version MakeVersion(uint32_t major, uint32_t minor, uint32_t patch)
     return (major << 16) | (minor << 8) | patch;
 }
 
+/// @brief An interface implemented by the user, which the API use to log.
 class DebugCallbacks
 {
 public:
     virtual ~DebugCallbacks() = default;
 
-    virtual void Info(std::string_view message) = 0;
+    /// @brief Log an information.
+    virtual void LogInfo(std::string_view message) = 0;
 
-    virtual void Warn(std::string_view message) = 0;
+    /// @brief Log an warnning.
+    virtual void LogWarnning(std::string_view message) = 0;
 
-    virtual void Error(std::string_view message) = 0;
+    /// @brief Log an error.
+    virtual void LogError(std::string_view message) = 0;
 };
 
 /// @brief RHI Context, represent an instance of the API.
@@ -105,44 +92,45 @@ public:
     virtual ~Context() = default;
 
     /// @brief Creates a new pass producer.
-    template<typename... Args>
-    std::unique_ptr<PassProducer> CreatePassProducer(Args... args);
+    template<typename T, typename... Args>
+    std::unique_ptr<class PassProducer> CreatePassProducer(Args... args);
 
-    /// @brief Creates a new Pass.
-    virtual Handle<Pass> CreatePass(const PassCreateInfo& createInfo) = 0;
+    /// @brief Creates a new ShaderModule
+    virtual std::unique_ptr<class ShaderModule> CreateShaderModule(TL::Span<uint32_t> code) = 0;
+
+    /// @brief Creates a shader bind group allocator.
+    virtual std::unique_ptr<class ShaderBindGroupAllocator> CreateShaderBindGroupAllocator() = 0;
 
     /// @brief Creates a new FrameScheduler.
-    virtual std::unique_ptr<FrameScheduler> CreateFrameScheduler() = 0;
+    virtual std::unique_ptr<class FrameScheduler> CreateFrameScheduler() = 0;
 
     /// @brief Creates a new Swapchain.
-    virtual std::unique_ptr<Swapchain> CreateSwapchain(const SwapchainCreateInfo& createInfo) = 0;
+    virtual std::unique_ptr<class Swapchain> CreateSwapchain(const struct SwapchainCreateInfo& createInfo) = 0;
 
     /// @brief Creates a new Pool for all resources.
-    virtual std::unique_ptr<ResourcePool> CreateResourcePool(const ResourcePoolCreateInfo& createInfo) = 0;
+    virtual std::unique_ptr<class ResourcePool> CreateResourcePool(const struct ResourcePoolCreateInfo& createInfo) = 0;
 
-    /// @brief Creates a new PipelineStateCache.
-    virtual std::unique_ptr<PipelineStateCache> CreatePipelineStateCache(const PipelineStateCacheCreateInfo& createInfo) = 0;
+    /// @brief Creates a new graphics pipeline state object for graphics.
+    virtual Handle<class GraphicsPipelineState> CreateGraphicsPipelineState(const struct GraphicsPipelineStateCreateInfo& createInfo) = 0;
 
-    /// @brief Creates a new PipelineState object for graphics.
-    virtual Handle<PipelineState> CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) = 0;
-
-    /// @brief Creates a new PipelineState object for graphics.
-    virtual Handle<PipelineState> CreateComputePipeline(const ComputePipelineCreateInfo& createInfo) = 0;
-
-    /// @brief Creates a new PipelineState object for compute.
-    virtual Handle<PipelineState> CreateRayTracingPipeline(const RayTracingPipelineCreateInfo& createInfo) = 0;
+    /// @brief Creates a new compute pipeline state object for graphics.
+    virtual Handle<class ComputePipelineState> CreateComputePipelineState(const struct ComputePipelineStateCreateInfo& createInfo) = 0;
 
     /// @brief Creates a new Sampler state.
-    virtual Handle<Sampler> CreateSampler(const SamplerCreateInfo& createInfo) = 0;
+    virtual Handle<class SamplerState> CreateSampler(const struct SamplerStateCreateInfo& createInfo) = 0;
 
-    /// @brief Frees the given pass resource.
-    virtual void Free(Handle<Pass> pass) = 0;
+    /// @brief Frees the given graphics pipeline state object.
+    virtual void Free(Handle<GraphicsPipelineState> pso) = 0;
 
-    /// @brief frees the given pipeline state object resource.
-    virtual void Free(Handle<PipelineState> pso) = 0;
+    /// @brief Frees the given compute pipeline state object.
+    virtual void Free(Handle<ComputePipelineState> pso) = 0;
 
-    /// @brief frees the given sampler resource.
-    virtual void Free(Handle<Sampler> sampler) = 0;
+    /// @brief Frees the given sampler state object.
+    virtual void Free(Handle<SamplerState> pso) = 0;
+
+protected:
+    /// @brief Creates a new Pass.
+    virtual std::unique_ptr<class Pass> CreatePass(const struct PassCreateInfo& createInfo) = 0;
 
 private:
     friend class Object;
@@ -156,5 +144,13 @@ protected:
     /// @brief Pointer to the user provided debug callbacks.
     std::unique_ptr<DebugCallbacks> m_debugCallbacks;
 };
+
+template<typename T, typename... Args>
+std::unique_ptr<PassProducer> Context::CreatePassProducer(Args... args)
+{
+    // PassCreateInfo createInfo {};
+    // auto pass = CreatePass(createInfo);
+    return std::make_unique<T>(std::forward(args)...);
+}
 
 }  // namespace RHI

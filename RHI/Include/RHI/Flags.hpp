@@ -8,7 +8,7 @@ struct FlagTraits
 {
     enum
     {
-        allFlags = 0
+        AllFlags = 0
     };
 };
 
@@ -18,7 +18,6 @@ class Flags
 public:
     using MaskType = typename std::underlying_type<BitType>::type;
 
-    // constructors
     constexpr Flags() noexcept
         : m_mask(0)
     {
@@ -36,7 +35,6 @@ public:
     {
     }
 
-    // relational operators
 #if defined(RHI_ENABLE_SPACESHIP_OPERATOR)
     auto operator<=>(Flags<BitType> const&) const = default;
 #else
@@ -71,13 +69,11 @@ public:
     }
 #endif
 
-    // logical operator
     constexpr bool operator!() const noexcept
     {
         return !m_mask;
     }
 
-    // bitwise operators
     constexpr Flags<BitType> operator&(Flags<BitType> const& rhs) const noexcept
     {
         return Flags<BitType>(m_mask & rhs.m_mask);
@@ -95,10 +91,9 @@ public:
 
     constexpr Flags<BitType> operator~() const noexcept
     {
-        return Flags<BitType>(m_mask ^ FlagTraits<BitType>::allFlags);
+        return Flags<BitType>(m_mask ^ FlagTraits<BitType>::AllFlags);
     }
 
-    // assignment operators
     constexpr Flags<BitType>& operator=(Flags<BitType> const& rhs) noexcept = default;
 
     constexpr Flags<BitType>& operator|=(Flags<BitType> const& rhs) noexcept
@@ -119,7 +114,6 @@ public:
         return *this;
     }
 
-    // cast operators
     explicit constexpr operator bool() const noexcept
     {
         return !!m_mask;

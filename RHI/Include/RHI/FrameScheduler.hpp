@@ -2,7 +2,7 @@
 
 #include <cstdint>
 #include <memory>
-#include <span>
+#include "RHI/Span.hpp"
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -32,25 +32,6 @@ enum class AttachmentType
     Image,
     Buffer,
     Swapchain,
-};
-
-enum class ImageAspect
-{
-    None    = 0 << 0,
-    Color   = 1 << 1,
-    Depth   = 1 << 2,
-    Stencil = 1 << 3,
-};
-
-enum class ComponentSwizzle
-{
-    None,
-    Zero,
-    One,
-    R,
-    G,
-    B,
-    A,
 };
 
 enum class AttachmentUsage
@@ -180,43 +161,6 @@ struct ImageAttachmentBlendInfo
     }
 };
 
-struct ComponentMapping
-{
-    ComponentSwizzle r;
-    ComponentSwizzle g;
-    ComponentSwizzle b;
-    ComponentSwizzle a;
-
-    inline bool operator==(const ComponentMapping& other) const
-    {
-        return r == other.r && g == other.g && b == other.b && a == other.a;
-    }
-
-    inline bool operator!=(const ComponentMapping& other) const
-    {
-        return !(*this == other);
-    }
-};
-
-struct ImageSubresource
-{
-    Flags<ImageAspect> aspectMask;
-    uint32_t           mipLevel;
-    uint32_t           levelsCount;
-    uint32_t           baseArrayLayer;
-    uint32_t           layerCount;
-
-    inline bool operator==(const ImageSubresource& other) const
-    {
-        return aspectMask == other.aspectMask && mipLevel == other.mipLevel && levelsCount == other.levelsCount && baseArrayLayer == other.baseArrayLayer && layerCount == other.layerCount;
-    }
-
-    inline bool operator!=(const ImageSubresource& other) const
-    {
-        return !(*this == other);
-    }
-};
-
 struct ImageAttachmentUseInfo
 {
     ComponentMapping         components;
@@ -315,7 +259,7 @@ public:
 
     /// @brief Register a pass producer, to be called this frame.
     /// @param passProducer
-    void AddPass(PassProducer& passProducer);
+    void Submit(PassProducer& passProducer);
 
 private:
     void BeignPass(Pass* pass);
@@ -374,7 +318,6 @@ protected:
 
     std::vector<Handle<Attachment>> m_transientBufferAttachments;
 
-    /// @brief List of all registered pass producers, to be executed this frame.
     std::vector<PassProducer*> m_passProducers;
 };
 

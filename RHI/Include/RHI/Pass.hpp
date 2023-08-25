@@ -1,13 +1,13 @@
 #pragma once
 
 #include <memory>
-#include <span>
 #include <string>
 #include <vector>
 
 #include "RHI/Export.hpp"
 #include "RHI/Flags.hpp"
 #include "RHI/Object.hpp"
+#include "RHI/Span.hpp"
 
 namespace RHI
 {
@@ -34,11 +34,11 @@ struct PassCreateInfo
 };
 
 /// @brief Represents a pass, which encapsulates a GPU task.
-class RHI_EXPORT Pass
+class Pass
 {
 public:
     virtual ~Pass() = default;
-    
+
 };
 
 }  // namespace RHI

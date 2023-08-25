@@ -11,7 +11,9 @@ class Context final : public RHI::Context
 public:
     ~Context();
 
-    RHI::Handle<RHI::Pass> CreatePass(const RHI::PassCreateInfo& createInfo) override;
+    std::unique_ptr<RHI::ShaderModule> CreateShaderModule(RHI::TL::Span<uint32_t> code) override;
+
+    std::unique_ptr<RHI::ShaderBindGroupAllocator> CreateShaderBindGroupAllocator() override;
 
     std::unique_ptr<RHI::FrameScheduler> CreateFrameScheduler() override;
 
@@ -19,19 +21,22 @@ public:
 
     std::unique_ptr<RHI::ResourcePool> CreateResourcePool(const RHI::ResourcePoolCreateInfo& createInfo) override;
 
-    std::unique_ptr<RHI::PipelineStateCache> CreatePipelineStateCache(const RHI::PipelineStateCacheCreateInfo& createInfo) override;
+    RHI::Handle<RHI::GraphicsPipelineState> CreateGraphicsPipelineState(const RHI::GraphicsPipelineStateCreateInfo& createInfo) override;
 
-    RHI::Handle<RHI::PipelineState> CreateGraphicsPipeline(const RHI::GraphicsPipelineCreateInfo& createInfo) override;
-    RHI::Handle<RHI::PipelineState> CreateComputePipeline(const RHI::ComputePipelineCreateInfo& createInfo) override;
-    RHI::Handle<RHI::PipelineState> CreateRayTracingPipeline(const RHI::RayTracingPipelineCreateInfo& createInfo) override;
+    RHI::Handle<RHI::ComputePipelineState> CreateComputePipelineState(const RHI::ComputePipelineStateCreateInfo& createInfo) override;
 
-    RHI::Handle<RHI::Sampler> CreateSampler(const RHI::SamplerCreateInfo& createInfo) override;
+    RHI::Handle<RHI::SamplerState> CreateSampler(const RHI::SamplerStateCreateInfo& createInfo) override;
 
-    void Free(RHI::Handle<RHI::Pass> pass) override;
-    void Free(RHI::Handle<RHI::PipelineState> pso) override;
-    void Free(RHI::Handle<RHI::Sampler> sampler) override;
+    void Free(RHI::Handle<RHI::GraphicsPipelineState> pso) override;
+
+    void Free(RHI::Handle<RHI::ComputePipelineState> pso) override;
+
+    void Free(RHI::Handle<RHI::SamplerState> pso) override;
+
+    std::unique_ptr<RHI::Pass> CreatePass(const RHI::PassCreateInfo& createInfo) override;
 
 public:
+    /// Object pools. 
     // /// @brief Pool for all image resources.
     // RHI::HandlePool<struct RHI::Image, struct RHI::ImageDescriptor> m_imagesPool;
 

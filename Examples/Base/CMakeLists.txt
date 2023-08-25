@@ -1,22 +1,17 @@
 cmake_minimum_required(VERSION 3.14)
 
 set(SOURCE_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/Triangle.cpp
-)
-
-set(SHADER_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/Triangle.hlsl
+    ${CMAKE_CURRENT_SOURCE_DIR}/ExampleBase.cpp
 )
 
 include(${CMAKE_SOURCE_DIR}/CMake/AddTarget.cmake)
 aams_add_target(
-    NAME Triangle
+    NAME Base
     NAMESPACE Examples
-    EXECUTABLE
+    STATIC
     SOURCES ${SOURCE_FILES}
     BUILD_DEPENDENCIES
         RHI::RHI
-        Examples::Base
     RUNTIME_LIBRARIES
         RHI::Vulkan
 )

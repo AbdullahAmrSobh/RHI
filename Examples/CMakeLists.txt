@@ -24,4 +24,5 @@
 # add_subdirectory(Base)
 
 # Add examples 
+add_subdirectory(Base)
 add_subdirectory(Triangle)

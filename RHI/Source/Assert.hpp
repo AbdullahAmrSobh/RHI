@@ -1,5 +1,3 @@
-#include "RHI/Debug.hpp"
-
 #if defined(_MSC_VER)
 #    define RHI_DEBUG_BREAK() __debugbreak()
 #elif defined(__GNUC__) | defined(__clang__)

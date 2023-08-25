@@ -5,3 +5,5 @@
 #else
     #define RHI_FORCE_INLINE inline __attribute__((always_inline))
 #endif
+
+#define RHI_NODISCARD [[nodiscard]]

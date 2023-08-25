@@ -13,34 +13,6 @@
 namespace RHI
 {
 
-class ResourcePool;
-
-/// @brief Represents a pointer to GPU device memory
-using DeviceMemoryPtr = void*;
-
-// Just tags, defintion is included in the backend.
-
-/// @brief Enumeration for common allocation size constants
-enum AllocationSizeConstants : uint32_t
-{
-    KB = 1024u,
-    MB = 1024u * KB,
-    GB = 1024u * MB,
-};
-
-/// @brief Enumeration representing different memory types and their locations.
-enum class MemoryType
-{
-    /// @brief The memory is located in the system main memory.
-    CPU,
-
-    /// @brief The memory is locaed in the GPU, and can't be accessed by the CPU.
-    GPULocal,
-
-    /// @brief The memory is locaed in the GPU, but can be accessed by the CPU.
-    GPUShared,
-};
-
 /// @brief  Type of the resource.
 enum class ResourceType
 {
@@ -126,13 +98,51 @@ enum class ImageType
     ImageCubeMap,
 };
 
-/// @brief Enumeration representing the memory allocation startegy of a resource pool.
-enum class AllocationAlgorithm
+/// @brief Enumeration representing the aspects of an image resource.
+enum class ImageAspect
 {
-    /// @brief Memory will be allocated linearly.
+    None         = 0,
+    Color        = 1 << 1,
+    Depth        = 1 << 2,
+    Stencil      = 1 << 3,
+    DepthStencil = Depth | Stencil,
+    All          = Color | DepthStencil,
+};
+
+/// @brief Enumeration representing the component mapping.
+enum class ComponentSwizzle
+{
+    Identity = 0,
+    Zero,
+    One,
+    R,
+    G,
+    B,
+    A,
+};
+
+enum class SamplerFilter
+{
+    Point,
     Linear,
-    Bump,
-    Ring,
+};
+
+enum class SamplerAddressMode
+{
+    Repeat,
+    Clamp,
+};
+
+enum class SamplerCompareOp
+{
+    Never,
+    Equal,
+    NotEqual,
+    Always,
+    Less,
+    LessEq,
+    Greater,
+    GreaterEq,
 };
 
 /// @brief Represent the offset into an image resource.
@@ -193,80 +203,52 @@ struct BufferCreateInfo
     size_t byteSize;
 };
 
-/// @brief Report describe the current state of the resource pool.
-struct ResourcePoolReport
+/// @brief Represent a subview into a an image resource.
+struct ImageSubresource
 {
-    MemoryType type;
+    uint32_t           arrayBase    = 0;
+    uint32_t           arrayCount   = UINT32_MAX;
+    uint32_t           mipBase      = 0;
+    uint32_t           mipCount     = UINT32_MAX;
+    Flags<ImageAspect> imageAspects = ImageAspect::All;
 
-    size_t size;
+    inline bool operator==(const ImageSubresource& other) const;
 
-    size_t alignment;
-
-    size_t allocationsCount;
+    inline bool operator!=(const ImageSubresource& other) const;
 };
 
-/// @brief Represent the creation parameters of an resource pool.
-struct ResourcePoolCreateInfo
+/// @brief ...
+struct ComponentMapping
 {
-    MemoryType          heapType;
-    AllocationAlgorithm allocationAlgorithm;
-    size_t              capacity;
-    size_t              alignment;
+    ComponentSwizzle r;
+    ComponentSwizzle g;
+    ComponentSwizzle b;
+    ComponentSwizzle a;
+
+    inline bool operator==(const ComponentMapping& other) const
+    {
+        return r == other.r && g == other.g && b == other.b && a == other.a;
+    }
+
+    inline bool operator!=(const ComponentMapping& other) const
+    {
+        return !(r == other.r && g == other.g && b == other.b && a == other.a);
+    }
 };
 
-/// @brief Empty base class for a image resource.
-/// Backends extend this type to add implementation details.
-struct Image;
-
-/// @brief Empty base class for a buffer resource.
-/// Backends extend this type to add implementation details.
-struct Buffer;
-
-/// @brief General purpose pool used to allocate all kinds of resources.
-class ResourcePool : public Object
+/// @brief Structure describing the creation parameters of a sampler state.
+struct SamplerStateCreateInfo
 {
-public:
-    using Object::Object;
-    virtual ~ResourcePool() = default;
-
-    /// @brief Get a memory report for this resource pool.
-    virtual ResourcePoolReport GetMemoryReport() const = 0;
-
-    /// @brief Report live objects in this resource pool.
-    virtual void ReportLiveObjects() const = 0;
-
-    /// @brief Allocate an image resource.
-    virtual Result<Handle<Image>> Allocate(const ImageCreateInfo& createInfo) = 0;
-
-    /// @brief Allocate a buffer resource.
-    virtual Result<Handle<Buffer>> Allocate(const BufferCreateInfo& createInfo) = 0;
-
-    /// @brief Free an allocated image resource.
-    virtual void Free(Handle<Image> image) = 0;
-
-    /// @brief Free an allocated buffer resource.
-    virtual void Free(Handle<Buffer> buffer) = 0;
-
-    /// @brief Get the size of an allocated image resource.
-    virtual size_t GetSize(Handle<Image> image) const = 0;
-
-    /// @brief Get the size of an allocated buffer resource.
-    virtual size_t GetSize(Handle<Buffer> buffer) const = 0;
-
-    /// @brief Maps the image resource for read or write operations.
-    virtual DeviceMemoryPtr MapResource(Handle<Image> image, size_t offset, size_t range) = 0;
-
-    /// @brief Maps the buffer resource for read or write operations.
-    virtual DeviceMemoryPtr MapResource(Handle<Buffer> buffer, size_t offset, size_t range) = 0;
-
-    /// @brief Unamps the image resource.
-    virtual void Unamp(Handle<Image> image) = 0;
-
-    /// @brief Unamps the buffer resource.
-    virtual void Unamp(Handle<Buffer> buffer) = 0;
-
-private:
-    Context* m_context;
+    SamplerFilter      filterMin  = SamplerFilter::Point;
+    SamplerFilter      filterMag  = SamplerFilter::Point;
+    SamplerFilter      filterMip  = SamplerFilter::Point;
+    SamplerCompareOp   compare    = SamplerCompareOp::Always;
+    float              mipLodBias = 0.0f;
+    SamplerAddressMode addressU   = SamplerAddressMode::Clamp;
+    SamplerAddressMode addressV   = SamplerAddressMode::Clamp;
+    SamplerAddressMode addressW   = SamplerAddressMode::Clamp;
+    float              minLod     = 0.0f;
+    float              maxLod     = 1.0f;
 };
 
 }  // namespace RHI

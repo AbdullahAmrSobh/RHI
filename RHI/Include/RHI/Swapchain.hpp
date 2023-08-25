@@ -6,11 +6,13 @@
 #include "RHI/Object.hpp"
 
 #ifdef RHI_PLATFORM_WINDOWS
-    #include "RHI/Platform/Windows/Windows.h"
+#    include "RHI/Platform/Windows/Windows.h"
 #endif
 
 namespace RHI
 {
+
+class Image;
 
 #ifdef RHI_PLATFORM_WINDOWS
 /// @brief struct contains win32 surface handles.
@@ -21,7 +23,7 @@ struct Win32WindowDesc
 };
 #endif
 
-/// @brief Swapchain creation info struct.
+/// @brief Structure specifying the parameters of the swapchain.
 struct SwapchainCreateInfo
 {
     /// @brief The size of the images in the swapchian.
@@ -36,13 +38,13 @@ struct SwapchainCreateInfo
     /// @brief The numer of back buffer images in the swapchain.
     uint32_t imageCount;
 
-#ifdef RHI_PLATFORM_WIN32
-    /// @brief win32 surface handles.
+#ifdef RHI_PLATFORM_WINDOWS
+    /// @brief win32 surface handles. (Availabe only on windows)
     Win32WindowDesc win32Window;
 #endif
 };
 
-/// @brief Swapchain
+/// @brief Swapchain object which is an interface between the API and a presentation surface.
 class RHI_EXPORT Swapchain : public Object
 {
 public:

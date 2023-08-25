@@ -5,73 +5,31 @@
 namespace Vulkan
 {
 
-struct Image
-{
-};
+// class ResourcePool final : public RHI::ResourcePool
+// {
+// public:
+//     static RHI::Result<ResourcePool> Create(Context* context, RHI::ResourcePoolCreateInfo& createInfo);
 
-struct ImageDescriptor
-{
-};
+//     using RHI::ResourcePool::ResourcePool;
 
-struct Buffer
-{
-};
+//     RHI::ResourcePoolReport GetMemoryReport() const override;
 
-struct BufferDescriptor
-{
-};
+//     void ReportLiveObjects() const override;
 
-struct ImageView
-{
-};
+//     RHI::Result<RHI::Handle<RHI::Image>>  Allocate(const RHI::ImageCreateInfo& createInfo) override;
+//     RHI::Result<RHI::Handle<RHI::Buffer>> Allocate(const RHI::BufferCreateInfo& createInfo) override;
 
-struct ImageViewDescriptor
-{
-};
+//     void Free(RHI::Handle<RHI::Image> image) override;
+//     void Free(RHI::Handle<RHI::Buffer> buffer) override;
 
-struct BufferView
-{
-};
+//     size_t GetSize(RHI::Handle<RHI::Image> image) const override;
+//     size_t GetSize(RHI::Handle<RHI::Buffer> buffer) const override;
 
-struct BufferViewDescriptor
-{
-};
+//     RHI::DeviceMemoryPtr MapResource(RHI::Handle<RHI::Image> image, size_t offset, size_t range) override;
+//     RHI::DeviceMemoryPtr MapResource(RHI::Handle<RHI::Buffer> buffer, size_t offset, size_t range) override;
 
-
-struct Sampler
-{
-};
-
-struct SamplerDescriptor
-{
-};
-
-class ResourcePool final : public RHI::ResourcePool
-{
-public:
-    static RHI::Result<ResourcePool> Create(Context* context, RHI::ResourcePoolCreateInfo& createInfo);
-
-    using RHI::ResourcePool::ResourcePool;
-    ~ResourcePool();
-
-    RHI::ResourcePoolReport GetMemoryReport() const override;
-
-    void ReportLiveObjects() const override;
-
-    RHI::Result<RHI::Handle<RHI::Image>>  Allocate(const RHI::ImageCreateInfo& createInfo) override;
-    RHI::Result<RHI::Handle<RHI::Buffer>> Allocate(const RHI::BufferCreateInfo& createInfo) override;
-
-    void Free(RHI::Handle<RHI::Image> image) override;
-    void Free(RHI::Handle<RHI::Buffer> buffer) override;
-
-    size_t GetSize(RHI::Handle<RHI::Image> image) const override;
-    size_t GetSize(RHI::Handle<RHI::Buffer> buffer) const override;
-
-    RHI::DeviceMemoryPtr MapResource(RHI::Handle<RHI::Image> image, size_t offset, size_t range) override;
-    RHI::DeviceMemoryPtr MapResource(RHI::Handle<RHI::Buffer> buffer, size_t offset, size_t range) override;
-
-    void Unamp(RHI::Handle<RHI::Image> image) override;
-    void Unamp(RHI::Handle<RHI::Buffer> buffer) override;
-};
+//     void Unmap(RHI::Handle<RHI::Image> image) override;
+//     void Unmap(RHI::Handle<RHI::Buffer> buffer) override;
+// };
 
 }  // namespace Vulkan

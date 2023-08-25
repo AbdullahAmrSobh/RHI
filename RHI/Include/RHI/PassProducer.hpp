@@ -79,10 +79,13 @@ public:
     virtual ~PassProducer() = default;
 
     /// @brief Sets up the attachments that will be used in this pass.
-    virtual void SetupAttachments(FrameGraphBuilder& builder) = 0;
+    virtual void SetupAttachments(class FrameGraphBuilder& builder) = 0;
+
+    /// @brief Callback used to build bind groups.
+    virtual void BuildBindGroups(class BindGroupContext& context) = 0;
 
     /// @brief Builds the CommandList for this pass.
-    virtual void BuildCommandList(CommandList& commandList) = 0;
+    virtual void BuildCommandList(class CommandList& commandList) = 0;
 };
 
 }  // namespace RHI

@@ -59,11 +59,11 @@ DeviceMemoryPtr ResourcePool::MapResource(RHI::Handle<RHI::Buffer> buffer, size_
     return {};
 }
 
-void ResourcePool::Unamp(RHI::Handle<RHI::Image> image)
+void ResourcePool::Unmap(RHI::Handle<RHI::Image> image)
 {
 }
 
-void ResourcePool::Unamp(RHI::Handle<RHI::Buffer> buffer)
+void ResourcePool::Unmap(RHI::Handle<RHI::Buffer> buffer)
 {
 }
 
