@@ -6,10 +6,6 @@ function(aams_add_target)
 
     cmake_parse_arguments(aams_add_target "${options}" "${single_value_args}" "${multi_value_args}" ${ARGN})
 
-    # Since the term "INTERFACE" used in  other context such as HEADERS, COMPILE_DEFINITIONS to specifiy property visibility
-    # It needs to be parsed after those arguments have been parsed to avoid the usage of INTERFACE as a visibility scope
-    cmake_parse_arguments(ly_add_target "INTERFACE" "" "" ${aams_add_target_UNPARSED_ARGUMENTS})
-
     if (NOT aams_add_target_NAME)
         message(FATEL_ERROR "Target must have a name")
     endif()
@@ -74,13 +70,13 @@ function(aams_add_target)
         add_executable(${aams_add_target_NAMESPACE}::${aams_add_target_NAME} ALIAS ${aams_add_target_NAME})
     endif()
 
-    if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-        target_compile_options(${aams_add_target_NAME} PRIVATE -fno-exceptions)
-        target_compile_options(${aams_add_target_NAME} PRIVATE -fno-rtti)
-    elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-        target_compile_options(${aams_add_target_NAME} PRIVATE /GR-)
-        target_compile_options(${aams_add_target_NAME} PRIVATE /EHs-c-)
-    endif()
+    # if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    #     target_compile_options(${aams_add_target_NAME} PRIVATE -fno-exceptions)
+    #     target_compile_options(${aams_add_target_NAME} PRIVATE -fno-rtti)
+    # elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    #     target_compile_options(${aams_add_target_NAME} PRIVATE /GR-)
+    #     target_compile_options(${aams_add_target_NAME} PRIVATE /EHsc)
+    # endif()
 
     # Detect the current platform
     if (WIN32 OR WIN64)
