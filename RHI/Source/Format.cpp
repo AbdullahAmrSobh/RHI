@@ -333,7 +333,75 @@ uint32_t GetFormatComponentCount(Format format)
 
 uint32_t GetFormatComponentByteSize(Format format)
 {
-    return UINT32_MAX;
+    switch (format)
+    {
+        case Format::BC1_UNORM:
+        case Format::BC1_UNORM_SRGB:
+        case Format::BC4_UNORM:
+        case Format::BC4_SNORM:
+        case Format::BC2_UNORM:
+        case Format::BC2_UNORM_SRGB:
+        case Format::BC3_UNORM:
+        case Format::BC3_UNORM_SRGB:
+        case Format::BC5_UNORM:
+        case Format::BC5_SNORM:
+        case Format::BC6H_UF16:
+        case Format::BC6H_SF16:
+        case Format::BC7_UNORM:
+        case Format::BC7_UNORM_SRGB:
+        case Format::ETC2_UNORM:
+        case Format::ETC2_UNORM_SRGB:
+        case Format::ETC2A_UNORM:
+        case Format::ETC2A_UNORM_SRGB:
+        case Format::ETC2A1_UNORM:
+        case Format::ETC2A1_UNORM_SRGB:
+        case Format::EAC_RG11_UNORM:
+        case Format::EAC_RG11_SNORM:
+        case Format::EAC_R11_UNORM:
+        case Format::EAC_R11_SNORM:
+        case Format::ASTC_4x4_UNORM:
+        case Format::ASTC_4x4_UNORM_SRGB:
+        case Format::ASTC_5x4_UNORM:
+        case Format::ASTC_5x4_UNORM_SRGB:
+        case Format::ASTC_5x5_UNORM:
+        case Format::ASTC_5x5_UNORM_SRGB:
+        case Format::ASTC_6x5_UNORM:
+        case Format::ASTC_6x5_UNORM_SRGB:
+        case Format::ASTC_6x6_UNORM:
+        case Format::ASTC_6x6_UNORM_SRGB:
+        case Format::ASTC_8x5_UNORM:
+        case Format::ASTC_8x5_UNORM_SRGB:
+        case Format::ASTC_8x6_UNORM:
+        case Format::ASTC_8x6_UNORM_SRGB:
+        case Format::ASTC_8x8_UNORM:
+        case Format::ASTC_8x8_UNORM_SRGB:
+        case Format::ASTC_10x5_UNORM:
+        case Format::ASTC_10x5_UNORM_SRGB:
+        case Format::ASTC_10x6_UNORM:
+        case Format::ASTC_10x6_UNORM_SRGB:
+        case Format::ASTC_10x8_UNORM:
+        case Format::ASTC_10x8_UNORM_SRGB:
+        case Format::ASTC_10x10_UNORM:
+        case Format::ASTC_10x10_UNORM_SRGB:
+        case Format::ASTC_12x10_UNORM:
+        case Format::ASTC_12x10_UNORM_SRGB:
+        case Format::ASTC_12x12_UNORM:
+        case Format::ASTC_12x12_UNORM_SRGB:
+            return 4;
+
+        case Format::R8G8_B8G8_UNORM:
+        case Format::G8R8_G8B8_UNORM:
+        case Format::YUY2:
+        case Format::Y210:
+        case Format::Y216:
+        case Format::NV12:
+        case Format::P010:
+        case Format::P016:
+            return 2;
+
+        default:
+            return 1;
+    }
 }
 
 }  // namespace RHI
