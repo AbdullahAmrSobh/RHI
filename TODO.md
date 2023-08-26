@@ -1,8 +1,8 @@
 
-- [] Abstract std unique_ptr
-- [] Abstract std span with a new view that support initializer list
-- [] Abstract STL vectors?
-- [] Implement LRUCache data structures
+<!-- - [] Abstract std unique_ptr -->
+- [x] Abstract std span with a new view that support initializer list
+<!-- - [] Abstract STL vectors? -->
+<!-- - [] Implement LRUCache data structures -->
     - [] Consider using HandlesPool as base
 - [] Implement ShaderCompile and deploy CMake module
 - [] Finalize API initial design.
