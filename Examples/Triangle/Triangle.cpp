@@ -4,24 +4,6 @@
 #include <Examples-Base/ExampleBase.hpp>
 #include <RHI/RHI.hpp>
 
-class RenderPass final : public RHI::PassProducer
-{
-public:
-    RenderPass(RHI::Swapchain& swapchain);
-
-    void SetupAttachments(RHI::FrameGraphBuilder& builder) override
-    {
-        // auto handle = builder.ImportImage();
-    }
-
-    void BuildCommandList(RHI::CommandList& commandList) override
-    {
-    }
-
-private:
-    RHI::Swapchain* m_swapchain;
-};
-
 class TriangleExample final : public ExampleBase
 {
 public:
@@ -39,42 +21,6 @@ public:
             createInfo.win32Window.hinstance = windowInfo.hinstance;
 
             m_swapchain = m_context->CreateSwapchain(createInfo);
-        }
-
-        // m_renderPass = m_context->CreatePassProducer<RenderPass>(*m_swapchain);
-
-        // create frame scheduler
-        {
-            m_frameScheduler = m_context->CreateFrameScheduler();
-        }
-
-        // create shader bind group layout
-        RHI::ShaderBindGroupLayout layout = {{RHI::ShaderBinding {RHI::ShaderBindingType::Image, RHI::ShaderBindingAccess::OnlyRead, 1}}};
-
-        // create shader bind group allocator
-        {
-            m_bindGroupAllocator = m_context->CreateShaderBindGroupAllocator();
-
-            m_shaderBindGroup = m_bindGroupAllocator->Allocate(layout);
-        }
-
-        // create pipeline
-        {
-            auto shaderCode   = ReadBinaryFile("./Shaders/triangle.spirv");
-            auto shaderModule = m_context->CreateShaderModule(shaderCode);
-
-            RHI::GraphicsPipelineStateCreateInfo createInfo {};
-            createInfo.vertexShader.entryName                    = "VSMain";
-            createInfo.vertexShader.shader                       = shaderModule.get();
-            createInfo.vertexShader.stage                        = RHI::ShaderStage::Vertex;
-            createInfo.pixelShader.entryName                     = "PSMain";
-            createInfo.pixelShader.shader                        = shaderModule.get();
-            createInfo.pixelShader.stage                         = RHI::ShaderStage::Pixel;
-            createInfo.bindGroupLayouts                          = {layout};
-            createInfo.renderTargetLayout.colorAttachmentsFormat = {RHI::Format::R8G8B8A8_UINT};
-            createInfo.renderTargetLayout.depthAttachmentFormat  = RHI::Format::D32_FLOAT;
-
-            m_pipelineState = m_context->CreateGraphicsPipelineState(createInfo);
         }
 
         // create resources pool
@@ -118,7 +64,7 @@ public:
             m_resourcePool->Unmap(m_indexBuffer);
         }
 
-        // create image resourcez
+        // create image resource
         {
             auto imageData = LoadImage("Resources/Images/image.png");
 
@@ -140,6 +86,70 @@ public:
             memcpy(dataPtr, imageData.GetPtr(), imageData.GetSize());
             m_resourcePool->Unmap(m_image);
         }
+
+        // create shader bind group layout
+        RHI::ShaderBindGroupLayout layout = {{RHI::ShaderBinding {RHI::ShaderBindingType::Image, RHI::ShaderBindingAccess::OnlyRead, 1}}};
+
+        // create shader bind group allocator
+        {
+            
+        }
+
+        // create pipeline
+        {
+            auto shaderCode   = ReadBinaryFile("./Shaders/triangle.spirv");
+            auto shaderModule = m_context->CreateShaderModule(shaderCode);
+
+            RHI::GraphicsPipelineStateCreateInfo createInfo {};
+            createInfo.vertexShader.entryName                    = "VSMain";
+            createInfo.vertexShader.shader                       = shaderModule.get();
+            createInfo.vertexShader.stage                        = RHI::ShaderStage::Vertex;
+            createInfo.pixelShader.entryName                     = "PSMain";
+            createInfo.pixelShader.shader                        = shaderModule.get();
+            createInfo.pixelShader.stage                         = RHI::ShaderStage::Pixel;
+            createInfo.bindGroupLayouts                          = {layout};
+            createInfo.renderTargetLayout.colorAttachmentsFormat = {RHI::Format::R8G8B8A8_UINT};
+            createInfo.renderTargetLayout.depthAttachmentFormat  = RHI::Format::D32_FLOAT;
+
+            m_pipelineState = m_context->CreateGraphicsPipeline(createInfo);
+        }
+
+        // create frame scheduler
+        {
+            m_frameScheduler = m_context->CreateFrameScheduler();
+        }
+
+        // Creates a render pass
+        {
+            auto setupAttachmentCallback = [=](RHI::FrameGraphBuilder& builder) {
+                RHI::ImageAttachmentUseInfo useInfo {};
+                useInfo.clearValue                         = {1.0f, 1.0f, 1.0f, 1.0f};
+                useInfo.loadStoreOperations.loadOperation  = RHI::ImageLoadOperation::Load;
+                useInfo.loadStoreOperations.storeOperation = RHI::ImageStoreOperation::Store;
+
+                builder.UseRenderTarget("ColorOutput", useInfo);
+
+                RHI::ImageAttachmentCreateInfo createInfo {};
+                // builder.UseDepthTarget("DepthOutput", );
+            };
+
+            auto buildCommandListCallback = [=](RHI::CommandList& commandList) {
+                RHI::CommandDraw cmdDraw {};
+                cmdDraw.indexBuffers             = m_indexBuffer;
+                cmdDraw.vertexBuffers            = {m_vertexBuffer};
+                cmdDraw.pipelineState            = m_pipelineState;
+                cmdDraw.shaderBindGroups         = {m_shaderBindGroup};
+                cmdDraw.parameters.elementCount  = 6;
+                cmdDraw.parameters.firstElement  = 0;
+                cmdDraw.parameters.firstInstance = 0;
+                cmdDraw.parameters.vertexOffset  = 0;
+                cmdDraw.parameters.instanceCount = 1;
+
+                commandList.Submit(cmdDraw);
+            };
+
+            m_renderPass = std::make_unique<RHI::PassProducerCallbacks>("RenderPass", RHI::PassQueue::Graphics, setupAttachmentCallback, buildCommandListCallback);
+        }
     }
 
     void OnShutdown() override
@@ -149,8 +159,6 @@ public:
         m_resourcePool->Free(m_vertexBuffer);
 
         m_resourcePool->Free(m_image);
-
-        m_bindGroupAllocator->Free(m_shaderBindGroup);
     }
 
     void OnUpdate() override
@@ -171,7 +179,7 @@ private:
 
     std::unique_ptr<RHI::ShaderBindGroupAllocator> m_bindGroupAllocator;
 
-    RHI::Handle<RHI::GraphicsPipelineState> m_pipelineState;
+    RHI::Handle<RHI::GraphicsPipeline> m_pipelineState;
 
     RHI::Handle<RHI::Image> m_image;
 
@@ -181,7 +189,7 @@ private:
 
     RHI::Handle<RHI::ShaderBindGroup> m_shaderBindGroup;
 
-    std::unique_ptr<RenderPass> m_renderPass;
+    std::unique_ptr<RHI::PassProducerCallbacks> m_renderPass;
 };
 
 EXAMPLE_ENTRY_POINT(TriangleExample)

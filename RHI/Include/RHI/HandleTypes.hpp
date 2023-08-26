@@ -3,6 +3,14 @@
 namespace RHI
 {
 
+class ImageView
+{
+};
+
+class BufferView
+{
+};
+
 class Image
 {
 };

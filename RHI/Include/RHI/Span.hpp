@@ -15,37 +15,6 @@ namespace RHI
 namespace TL
 {
 
-namespace internal
-{
-
-inline constexpr std::size_t dynamic_extent = SIZE_MAX;
-
-template<typename ElementType>
-struct SpanExtent
-{
-public:
-
-    SpanExtent() = default;
-    
-    constexpr SpanExtent(ElementType* elements, size_t count) noexcept
-        : m_elements {elements}
-        , m_size(count)
-    {
-    }
-
-    constexpr SpanExtent(ElementType* begin, ElementType* end) noexcept
-        : m_elements {begin}
-        , m_size {end - begin}
-    {
-    }
-
-private:
-    size_t       m_size     = 0;
-    ElementType* m_elements = nullptr;
-};
-
-}  // namespace internal
-
 template<typename ElementType>
 class Span
 {
@@ -71,74 +40,78 @@ public:
     Span() = default;
 
     constexpr Span(pointer element, size_type count) noexcept
-        : m_storage(element, count)
+        : m_values(element)
+        , m_count(count)
     {
     }
 
     constexpr Span(pointer firstElement, pointer lastElement) noexcept
-        : m_storage(firstElement, lastElement - firstElement)
+        : m_values(firstElement)
+        , m_count(lastElement - firstElement)
     {
         assert(lastElement > firstElement);
     }
 
     constexpr Span(std::initializer_list<ElementType> elements) noexcept
+        : m_values(elements.begin())
+        , m_count(elements.end() - elements.end())
     {
     }
 
     constexpr Span(std::vector<ElementType>& elements) noexcept
-        : m_storage(elements.data(), elements.size())
+        : m_values(elements.data())
+        , m_count(elements.size())
     {
     }
 
     RHI_NODISCARD constexpr size_t size() const noexcept
     {
-        return m_storage.m_size;
+        return m_count;
     }
 
     RHI_NODISCARD constexpr size_type size_bytes() const noexcept
     {
-        return m_storage.m_size * sizeof(element_type);
+        return m_count * sizeof(element_type);
     }
 
     RHI_NODISCARD constexpr bool empty() const noexcept
     {
-        return m_storage.m_size == 0;
+        return m_count == 0;
     }
 
     RHI_NODISCARD constexpr reference operator[](const size_type index) const noexcept
     {
-        return m_storage.m_elements[index];
+        return m_values[index];
     }
 
     RHI_NODISCARD constexpr reference front() const noexcept
     {
-        return m_storage.m_elements[0];
+        return m_values[0];
     }
 
     RHI_NODISCARD constexpr reference back() const noexcept
     {
-        return m_storage.m_elements[m_storage.m_size - 1];
+        return m_values[m_count - 1];
     }
 
     RHI_NODISCARD constexpr pointer data() const noexcept
     {
-        return m_storage.m_elements;
+        return m_values;
     }
 
     RHI_NODISCARD constexpr iterator begin() const noexcept
     {
-        return m_storage.m_elements;
+        return m_values;
     }
 
     RHI_NODISCARD constexpr iterator end() const noexcept
     {
-        return m_storage.m_elements + m_storage.m_size;
+        return m_values + m_count;
     }
 
 private:
-    using StorageType = internal::SpanExtent<ElementType>;
-
-    StorageType m_storage;
+    const ElementType* m_values;
+    size_type    m_count;
 };
 
 }  // namespace TL

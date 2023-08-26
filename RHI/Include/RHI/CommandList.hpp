@@ -13,7 +13,8 @@ class Handle;
 class ShaderBindGroup;
 class Image;
 class Buffer;
-class PipelineState;
+class GraphicsPipeline;
+class ComputePipeline;
 
 enum class CopyCommandType
 {
@@ -28,9 +29,9 @@ struct CopyBufferDescriptor
 {
     CopyBufferDescriptor() = default;
 
-    Handle<Buffer> sourceBuffer      = {};
-    uint32_t       sourceOffset      = 0;
-    Handle<Buffer> destinationBuffer = {};
+    Handle<Buffer> sourceBuffer;
+    uint32_t       sourceOffset = 0;
+    Handle<Buffer> destinationBuffer;
     uint32_t       destinationOffset = 0;
     uint32_t       size              = 0;
 };
@@ -39,11 +40,11 @@ struct CopyImageDescriptor
 {
     CopyImageDescriptor() = default;
 
-    Handle<Image>    sourceImage = {};
+    Handle<Image>    sourceImage;
     ImageSubresource sourceSubresource;
     ImageOffset      sourceOffset;
     ImageSize        sourceSize;
-    Handle<Image>    destinationImage = {};
+    Handle<Image>    destinationImage;
     ImageSubresource destinationSubresource;
     ImageOffset      destinationOffset;
 };
@@ -52,12 +53,12 @@ struct CopyBufferToImageDescriptor
 {
     CopyBufferToImageDescriptor() = default;
 
-    Handle<Buffer>   sourceBuffer        = {};
+    Handle<Buffer>   sourceBuffer;
     uint32_t         sourceOffset        = 0;
     uint32_t         sourceBytesPerRow   = 0;
     uint32_t         sourceBytesPerImage = 0;
     ImageSize        sourceSize;
-    Handle<Image>    destinationImage = {};
+    Handle<Image>    destinationImage;
     ImageSubresource destinationSubresource;
     ImageOffset      destinationOffset;
 };
@@ -66,11 +67,11 @@ struct CopyImageToBufferDescriptor
 {
     CopyImageToBufferDescriptor() = default;
 
-    Handle<Image>    sourceImage = {};
+    Handle<Image>    sourceImage;
     ImageSubresource sourceSubresource;
     ImageOffset      sourceOffset;
     ImageSize        sourceSize;
-    Handle<Buffer>   destinationBuffer        = {};
+    Handle<Buffer>   destinationBuffer;
     uint32_t         destinationOffset        = 0;
     uint32_t         destinationBytesPerRow   = 0;
     uint32_t         destinationBytesPerImage = 0;
@@ -105,7 +106,7 @@ struct DispatchParameters
 /// @brief Structure describing a draw command.
 struct CommandDraw
 {
-    Handle<PipelineState> pipelineState;
+    Handle<GraphicsPipeline> pipelineState;
 
     TL::Span<Handle<ShaderBindGroup>> shaderBindGroups;
 
@@ -163,7 +164,7 @@ struct CommandCopy
 /// @brief Structure describing a compute command.
 struct CommandCompute
 {
-    Handle<PipelineState> pipelineState;
+    Handle<ComputePipeline> pipelineState;
 
     TL::Span<Handle<ShaderBindGroup>> shaderBindGroups;
 

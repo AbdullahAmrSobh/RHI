@@ -44,13 +44,15 @@ protected:
     std::unique_ptr<RHI::Context> m_context;
 };
 
-        // example->OnInit(RHI::WindowInfo{});                                   \
+// example->OnInit(RHI::WindowInfo{});                                   \
 
 #define EXAMPLE_ENTRY_POINT(exampleClassName)                \
     int main(int argc, const char* argv[])                   \
     {                                                        \
-        auto example = std::make_unique<exampleClassName>(); \
+        (void)argc;                                          \
+        (void)argv;                                          \
                                                              \
+        auto example = std::make_unique<exampleClassName>(); \
                                                              \
         example->OnUpdate();                                 \
                                                              \

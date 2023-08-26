@@ -1,10 +1,12 @@
 #pragma once
+#include "RHI/Attachment.hpp"
 #include "RHI/CommandList.hpp"
 #include "RHI/Common.hpp"
 #include "RHI/Context.hpp"
 #include "RHI/Export.hpp"
 #include "RHI/Flags.hpp"
 #include "RHI/Format.hpp"
+#include "RHI/FrameGraphBuilder.hpp"
 #include "RHI/FrameScheduler.hpp"
 #include "RHI/Handle.hpp"
 #include "RHI/HandleTypes.hpp"

@@ -98,8 +98,15 @@ public:
     /// @param layout layout of the shader binding group resources
     virtual Handle<ShaderBindGroup> Allocate(const ShaderBindGroupLayout& layout) = 0;
 
+    /// @brief Allocates a group of shader binding group objects.
+    /// @param layout a list of the layouts of each binding group.
+    virtual std::vector<Handle<ShaderBindGroup>> Allocate(TL::Span<ShaderBindGroupLayout> layout) = 0;
+
     /// @brief Frees the given shader binding group object.
     virtual void Free(Handle<ShaderBindGroup> shaderBindGroup) = 0;
+
+    /// @brief Frees the list of shader binding group objects.
+    virtual void Free(TL::Span<Handle<ShaderBindGroup>> shaderBindGroup) = 0;
 };
 
 }  // namespace RHI

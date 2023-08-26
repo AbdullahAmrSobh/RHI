@@ -111,19 +111,19 @@ public:
     virtual std::unique_ptr<class ResourcePool> CreateResourcePool(const struct ResourcePoolCreateInfo& createInfo) = 0;
 
     /// @brief Creates a new graphics pipeline state object for graphics.
-    virtual Handle<class GraphicsPipelineState> CreateGraphicsPipelineState(const struct GraphicsPipelineStateCreateInfo& createInfo) = 0;
+    virtual Handle<class GraphicsPipeline> CreateGraphicsPipeline(const struct GraphicsPipelineStateCreateInfo& createInfo) = 0;
 
     /// @brief Creates a new compute pipeline state object for graphics.
-    virtual Handle<class ComputePipelineState> CreateComputePipelineState(const struct ComputePipelineStateCreateInfo& createInfo) = 0;
+    virtual Handle<class ComputePipeline> CreateComputePipeline(const struct ComputePipelineStateCreateInfo& createInfo) = 0;
 
     /// @brief Creates a new Sampler state.
     virtual Handle<class SamplerState> CreateSampler(const struct SamplerStateCreateInfo& createInfo) = 0;
 
     /// @brief Frees the given graphics pipeline state object.
-    virtual void Free(Handle<GraphicsPipelineState> pso) = 0;
+    virtual void Free(Handle<GraphicsPipeline> pso) = 0;
 
     /// @brief Frees the given compute pipeline state object.
-    virtual void Free(Handle<ComputePipelineState> pso) = 0;
+    virtual void Free(Handle<ComputePipeline> pso) = 0;
 
     /// @brief Frees the given sampler state object.
     virtual void Free(Handle<SamplerState> pso) = 0;

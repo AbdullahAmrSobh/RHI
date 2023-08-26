@@ -206,24 +206,34 @@ struct BufferCreateInfo
 /// @brief Represent a subview into a an image resource.
 struct ImageSubresource
 {
+    ImageSubresource() = default;
+
     uint32_t           arrayBase    = 0;
-    uint32_t           arrayCount   = UINT32_MAX;
+    uint32_t           arrayCount   = 1;
     uint32_t           mipBase      = 0;
-    uint32_t           mipCount     = UINT32_MAX;
+    uint32_t           mipCount     = 1;
     Flags<ImageAspect> imageAspects = ImageAspect::All;
 
-    inline bool operator==(const ImageSubresource& other) const;
+    inline bool operator==(const ImageSubresource& other) const
+    {
+        return arrayBase == other.arrayBase && arrayCount == other.arrayCount && mipBase == other.mipBase && mipCount == other.mipCount;
+    }
 
-    inline bool operator!=(const ImageSubresource& other) const;
+    inline bool operator!=(const ImageSubresource& other) const
+    {
+        return !(arrayBase == other.arrayBase && arrayCount == other.arrayCount && mipBase == other.mipBase && mipCount == other.mipCount);
+    }
 };
 
 /// @brief ...
 struct ComponentMapping
 {
-    ComponentSwizzle r;
-    ComponentSwizzle g;
-    ComponentSwizzle b;
-    ComponentSwizzle a;
+    ComponentMapping() = default;
+
+    ComponentSwizzle r = ComponentSwizzle::R;
+    ComponentSwizzle g = ComponentSwizzle::G;
+    ComponentSwizzle b = ComponentSwizzle::B;
+    ComponentSwizzle a = ComponentSwizzle::A;
 
     inline bool operator==(const ComponentMapping& other) const
     {

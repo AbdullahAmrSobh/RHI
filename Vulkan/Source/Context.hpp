@@ -21,15 +21,15 @@ public:
 
     std::unique_ptr<RHI::ResourcePool> CreateResourcePool(const RHI::ResourcePoolCreateInfo& createInfo) override;
 
-    RHI::Handle<RHI::GraphicsPipelineState> CreateGraphicsPipelineState(const RHI::GraphicsPipelineStateCreateInfo& createInfo) override;
+    RHI::Handle<RHI::GraphicsPipeline> CreateGraphicsPipeline(const RHI::GraphicsPipelineStateCreateInfo& createInfo) override;
 
-    RHI::Handle<RHI::ComputePipelineState> CreateComputePipelineState(const RHI::ComputePipelineStateCreateInfo& createInfo) override;
+    RHI::Handle<RHI::ComputePipeline> CreateComputePipeline(const RHI::ComputePipelineStateCreateInfo& createInfo) override;
 
     RHI::Handle<RHI::SamplerState> CreateSampler(const RHI::SamplerStateCreateInfo& createInfo) override;
 
-    void Free(RHI::Handle<RHI::GraphicsPipelineState> pso) override;
+    void Free(RHI::Handle<RHI::GraphicsPipeline> pso) override;
 
-    void Free(RHI::Handle<RHI::ComputePipelineState> pso) override;
+    void Free(RHI::Handle<RHI::ComputePipeline> pso) override;
 
     void Free(RHI::Handle<RHI::SamplerState> pso) override;
 
