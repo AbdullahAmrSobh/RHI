@@ -1,12 +1,16 @@
 #pragma once
 #include "RHI/Handle.hpp"
-#include "RHI/Span.hpp"
 #include "RHI/ShaderBindGroup.hpp"
+#include "RHI/Span.hpp"
+#include "RHI/Format.hpp"
+#include "RHI/Flags.hpp"
 
 namespace RHI
 {
 
-class ShaderModule;
+class GraphicsPipeline;
+class ComputePipeline;
+class Sampler;
 
 /// @brief Pipeline shader stage type.
 enum class ShaderStage
@@ -62,6 +66,33 @@ enum class CompareOperator
     Always,
 };
 
+/// @brief Enumeration representing the sampler filtering.
+enum class SamplerFilter
+{
+    Point,
+    Linear,
+};
+
+/// @brief Enumeration representing the sampler addressing mode.
+enum class SamplerAddressMode
+{
+    Repeat,
+    Clamp,
+};
+
+/// @brief Enumeration representing the sampler compare opertion.
+enum class SamplerCompareOperation
+{
+    Never,
+    Equal,
+    NotEqual,
+    Always,
+    Less,
+    LessEq,
+    Greater,
+    GreaterEq,
+};
+
 /// @brief Structure specifying a shader stage state.
 struct PipelineShaderStage
 {
@@ -76,7 +107,7 @@ struct PipelineShaderStage
 struct PipelineRenderTargetLayout
 {
     /// @brief List of the formats of color attachments.
-    TL::Span<Format> colorAttachmentsFormat;
+    TL::Span<const Format> colorAttachmentsFormat;
 
     /// @brief Format of an optional depth and/or stencil attachment.
     /// Could be Format::None.
@@ -122,13 +153,13 @@ struct PipelineDepthStencilStateDesc
 };
 
 /// @brief Description of a graphics pipeline states.
-struct GraphicsPipelineStateCreateInfo
+struct GraphicsPipelineCreateInfo
 {
     PipelineShaderStage vertexShader;
 
     PipelineShaderStage pixelShader;
 
-    TL::Span<ShaderBindGroupLayout> bindGroupLayouts;
+    TL::Span<const ShaderBindGroupLayout> bindGroupLayouts;
 
     PipelineRenderTargetLayout renderTargetLayout;
 
@@ -142,11 +173,53 @@ struct GraphicsPipelineStateCreateInfo
 };
 
 /// @brief Description of a compute pipeline state.
-struct ComputePipelineStateCreateInfo
+struct ComputePipelineCreateInfo
 {
     PipelineShaderStage computeShader;
 
-    TL::Span<ShaderBindGroupLayout> shaderInputLayout;
+    TL::Span<const ShaderBindGroupLayout> shaderInputLayout;
+};
+
+/// @brief Structure describing the creation parameters of a sampler state.
+struct SamplerCreateInfo
+{
+    SamplerCreateInfo() = default;
+
+    SamplerFilter           filterMin  = SamplerFilter::Point;
+    SamplerFilter           filterMag  = SamplerFilter::Point;
+    SamplerFilter           filterMip  = SamplerFilter::Point;
+    SamplerCompareOperation compare    = SamplerCompareOperation::Always;
+    float                   mipLodBias = 0.0f;
+    SamplerAddressMode      addressU   = SamplerAddressMode::Clamp;
+    SamplerAddressMode      addressV   = SamplerAddressMode::Clamp;
+    SamplerAddressMode      addressW   = SamplerAddressMode::Clamp;
+    float                   minLod     = 0.0f;
+    float                   maxLod     = 1.0f;
+
+    inline bool operator==(const SamplerCreateInfo& other) const
+    {
+        return filterMin == other.filterMin && filterMag == other.filterMag && filterMip == other.filterMip && compare == other.compare && mipLodBias == other.mipLodBias && addressU == other.addressU && addressV == other.addressV && addressW == other.addressW && minLod == other.minLod && maxLod == other.maxLod;
+    }
+
+    inline bool operator!=(const SamplerCreateInfo& other) const
+    {
+        return !(filterMin == other.filterMin && filterMag == other.filterMag && filterMip == other.filterMip && compare == other.compare && mipLodBias == other.mipLodBias && addressU == other.addressU && addressV == other.addressV && addressW == other.addressW && minLod == other.minLod && maxLod == other.maxLod);
+    }
+};
+
+class ShaderModule : public Object
+{
+public:
+    using Object::Object;
+    virtual ~ShaderModule() = default;
+
+    const Flags<ShaderStage> m_shaderStages;
+
+    const char* const m_vertexShaderName;
+    const char* const m_pixelShaderName;
+    const char* const m_computeShaderName;
+
+    const std::vector<ShaderBindGroupLayout> m_bindGroupLayouts; // reflected from the actual shader data
 };
 
 }  // namespace RHI

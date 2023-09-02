@@ -1,8 +1,8 @@
 #pragma once
 #include <array>
+#include <variant>
 #include <vector>
 
-#include "RHI/Handle.hpp"
 #include "RHI/Object.hpp"
 #include "RHI/Span.hpp"
 
@@ -42,11 +42,11 @@ struct ShaderBinding
 /// @brief A shader bind group layout is an list of shader bindings.
 struct ShaderBindGroupLayout
 {
-    TL::Span<ShaderBinding> bindings;
+    TL::Span<const ShaderBinding> bindings;
 };
 
 /// @brief An object that groups shader resources that are bound together.
-class ShaderBindGroup
+class ShaderBindGroup final : public Object
 {
 public:
     virtual ~ShaderBindGroup() = default;
@@ -56,57 +56,38 @@ public:
     /// @param index index of the resource binding decelration in the shader.
     /// @param images list of handles of an actual resources to bind.
     /// @param arrayOffset starting offset. In case of an resources array it binds the resources starting at this number.
-    virtual void BindImages(uint32_t index, TL::Span<Handle<ImageView>> images, uint32_t arrayOffset = 0) = 0;
+    void BindImages(uint32_t index, TL::Span<const Handle<ImageView>> images, uint32_t arrayOffset = 0);
 
     /// @brief Binds an image resource to the provided binding index and offset array index.
     /// NOTE: offset + buffers count should not exceed the count of the resources decalred in the layout or the shader.
     /// @param index index of the resource binding decelration in the shader.
     /// @param buffers list of handles of an actual resources to bind.
     /// @param arrayOffset starting offset. In case of an resources array it binds the resources starting at this number.
-    virtual void BindBuffers(uint32_t index, TL::Span<Handle<BufferView>> buffers, uint32_t arrayOffset = 0) = 0;
+    void BindBuffers(uint32_t index, TL::Span<const Handle<BufferView>> buffers, uint32_t arrayOffset = 0);
 
     /// @brief Binds an image resource to the provided binding index and offset array index.
     /// NOTE: offset + samplers count should not exceed the count of the resources decalred in the layout or the shader.
     /// @param index index of the resource binding decelration in the shader.
     /// @param samplers list of handles of an actual resources to bind.
     /// @param arrayOffset starting offset. In case of an resources array it binds the resources starting at this number.
-    virtual void BindSamplers(uint32_t index, TL::Span<Handle<SamplerState>> samplers, uint32_t arrayOffset = 0) = 0;
+    void BindSamplers(uint32_t index, TL::Span<const Handle<Sampler>> samplers, uint32_t arrayOffset = 0);
 
 protected:
+    using BindingResourceList = std::variant<std::vector<Handle<ImageView>>, 
+                                             std::vector<Handle<BufferView>>, 
+                                             std::vector<Handle<Sampler>>>;
+
     struct BindingData
     {
-        uint32_t                          index;
-        uint32_t                          bindArrayStartOffset = 0;
-        ShaderBindingType                 type;
-        std::vector<Handle<ImageView>>    images;
-        std::vector<Handle<BufferView>>   buffers;
-        std::vector<Handle<SamplerState>> samplers;
+        uint32_t            index;
+        uint32_t            bindArrayStartOffset = 0;
+        ShaderBindingType   type;
+        BindingResourceList resources;
     };
 
-    Context* m_context;
-
     std::vector<BindingData> m_data;
-};
 
-/// @brief ShaderBindGroupAllocator allocator used to allocate shader bind group.
-class ShaderBindGroupAllocator : public Object
-{
-public:
-    virtual ~ShaderBindGroupAllocator() = default;
-
-    /// @brief Allocates a new shader binding group object.
-    /// @param layout layout of the shader binding group resources
-    virtual Handle<ShaderBindGroup> Allocate(const ShaderBindGroupLayout& layout) = 0;
-
-    /// @brief Allocates a group of shader binding group objects.
-    /// @param layout a list of the layouts of each binding group.
-    virtual std::vector<Handle<ShaderBindGroup>> Allocate(TL::Span<ShaderBindGroupLayout> layout) = 0;
-
-    /// @brief Frees the given shader binding group object.
-    virtual void Free(Handle<ShaderBindGroup> shaderBindGroup) = 0;
-
-    /// @brief Frees the list of shader binding group objects.
-    virtual void Free(TL::Span<Handle<ShaderBindGroup>> shaderBindGroup) = 0;
+    uint32_t m_imagesCount, m_bufferCount, m_samplerCount;
 };
 
 }  // namespace RHI

@@ -1,10 +1,14 @@
 #include "Swapchain.hpp"
 
+#include "Context.hpp"
+
 namespace Vulkan
 {
 
-Result<Swapchain*> Swapchain::Create(Context* context, const SwapchainCreateInfo& createInfo)
+RHI::Result<Swapchain*> Swapchain::Create(Context* context, const RHI::SwapchainCreateInfo& createInfo)
 {
+    auto swapchain = new Swapchain(context);
+    return {swapchain, RHI::ResultCode::Success};
 }
 
 Swapchain::~Swapchain()
@@ -15,28 +19,34 @@ void Swapchain::SetVSync(uint32_t vsync)
 {
 }
 
-ResultCode Swapchain::Resize(uint32_t newWidth, uint32_t newHeight)
+RHI::ResultCode Swapchain::Resize(uint32_t newWidth, uint32_t newHeight)
 {
+    return {};
 }
 
-ResultCode Swapchain::SetExclusiveFullScreenMode(bool enable_fullscreen)
+RHI::ResultCode Swapchain::SetExclusiveFullScreenMode(bool enableFullscreen)
 {
+    return {};
 }
 
 uint32_t Swapchain::GetCurrentImageIndex() const
 {
+    return {};
 }
 
-uint32_t Swapchain::GetImageCount() const
+uint32_t Swapchain::GetImagesCount() const
 {
+    return {};
 }
 
-Image& Swapchain::GetCurrentImage()
+RHI::Handle<RHI::Image> Swapchain::GetImage()
 {
+    return {};
 }
 
-ResultCode Swapchain::Present() override
+RHI::ResultCode Swapchain::Present()
 {
+    return {};
 }
 
 }  // namespace Vulkan

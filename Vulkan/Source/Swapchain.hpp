@@ -5,6 +5,8 @@
 namespace Vulkan
 {
 
+class Context;
+
 class Swapchain final : public RHI::Swapchain
 {
 public:
@@ -21,11 +23,18 @@ public:
 
     uint32_t GetCurrentImageIndex() const override;
 
-    uint32_t GetImageCount() const override;
+    uint32_t GetImagesCount() const override;
 
-    RHI::Image& GetCurrentImage() override;
+    RHI::Handle<RHI::Image> GetImage() override;
 
     RHI::ResultCode Present() override;
+
+private:
+    uint32_t m_currentImageIndex;
+
+    uint32_t m_imagesCount;
+
+    std::vector<RHI::Handle<RHI::Image>> m_images;
 };
 
 }  // namespace Vulkan

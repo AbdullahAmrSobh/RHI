@@ -1,40 +1,47 @@
 #pragma once
-#include <vector>
 
 #include <RHI/RHI.hpp>
 
-typedef void* HWND;
-typedef void* HINSTANCE;
-
-class WindowInfo
-{
-public:
-    HWND      hwnd;
-    HINSTANCE hinstance;
-    uint32_t  width, height;
-};
-
 struct ImageData
 {
-    uint32_t width, height, depth;
-    uint32_t channels, bytesPerChannel;
-    void*    data;
+    uint32_t             width;
+    uint32_t             height;
+    uint32_t             depth;
+    uint32_t             channels;
+    uint32_t             bytesPerChannel;
+    std::vector<uint8_t> data;
+};
 
-    size_t GetSize();
-    void*  GetPtr();
+struct WindowInfo
+{
+    void*    hwnd;
+    void*    hinstance;
+    uint32_t width;
+    uint32_t height;
 };
 
 class ExampleBase
 {
 public:
-    ExampleBase();
+    ExampleBase(std::string windowName, uint32_t width, uint32_t height);
     virtual ~ExampleBase() = default;
 
-    std::vector<uint32_t> ReadBinaryFile(std::string_view path);
+    /// @brief Loads an image from disk.
+    ImageData LoadImage(std::string_view path) const;
 
-    ImageData LoadImage(std::string_view path);
+    /// @brief Reads (in binary mode) a file from disk.
+    std::vector<uint8_t> ReadBinaryFile(std::string_view path) const;
 
-    virtual void OnInit(const WindowInfo& windowInfo) = 0;
+    /// @brief Init.
+    void Init();
+
+    /// @brief Shutdown.
+    void Shutdown();
+
+    /// @brief Run.
+    void Run();
+
+    virtual void OnInit(WindowInfo windowInfo) = 0;
 
     virtual void OnShutdown() = 0;
 
@@ -42,19 +49,18 @@ public:
 
 protected:
     std::unique_ptr<RHI::Context> m_context;
-};
 
-// example->OnInit(RHI::WindowInfo{});                                   \
+    void* m_window;
+};
 
 #define EXAMPLE_ENTRY_POINT(exampleClassName)                \
     int main(int argc, const char* argv[])                   \
     {                                                        \
         (void)argc;                                          \
         (void)argv;                                          \
-                                                             \
         auto example = std::make_unique<exampleClassName>(); \
-                                                             \
-        example->OnUpdate();                                 \
-                                                             \
-        example->OnShutdown();                               \
+        example->Init();                                     \
+        example->Run();                                      \
+        example->Shutdown();                                 \
     }\
+\

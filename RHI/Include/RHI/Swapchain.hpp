@@ -4,9 +4,10 @@
 #include "RHI/Format.hpp"
 #include "RHI/Handle.hpp"
 #include "RHI/Object.hpp"
+#include "RHI/ResourcePool.hpp"
 
 #ifdef RHI_PLATFORM_WINDOWS
-#    include "RHI/Platform/Windows/Windows.h"
+#    include "RHI/Platform/Windows/Windows.hpp"
 #endif
 
 namespace RHI
@@ -18,8 +19,8 @@ class Image;
 /// @brief struct contains win32 surface handles.
 struct Win32WindowDesc
 {
-    HWND      hwnd;
-    HINSTANCE hinstance;
+    void* hwnd;
+    void* hinstance;
 };
 #endif
 
@@ -64,10 +65,10 @@ public:
     virtual uint32_t GetCurrentImageIndex() const = 0;
 
     /// @brief Get the number of images in the swapchain.
-    virtual uint32_t GetImageCount() const = 0;
+    virtual uint32_t GetImagesCount() const = 0;
 
     /// @brief Get the current acquired swapchain image.
-    virtual Image& GetCurrentImage() = 0;
+    virtual Handle<Image> GetImage() = 0;
 
     /// @brief Presents the current image to the window, and acquires the next image in the swapchain.
     virtual ResultCode Present() = 0;

@@ -1,11 +1,15 @@
 #pragma once
 
+#include <type_traits>
+
+#include "RHI/Format.hpp"
 #include "RHI/Handle.hpp"
-#include "RHI/HandleTypes.hpp"
-#include "RHI/Resources.hpp"
+#include "RHI/ResourcePool.hpp"
 
 namespace RHI
 {
+
+class Pass;
 
 /// @brief Enumerates the different types of attachments that can be used.
 enum class AttachmentType
@@ -124,8 +128,8 @@ struct ClearValue
 /// @brief Structure specifying the load and store opertions for image attachment.
 struct ImageLoadStoreOperations
 {
-    ImageLoadOperation  loadOperation;
-    ImageStoreOperation storeOperation;
+    ImageLoadOperation  loadOperation  = ImageLoadOperation::Load;
+    ImageStoreOperation storeOperation = ImageStoreOperation::Store;
 
     inline bool operator==(const ImageLoadStoreOperations& other) const
     {
@@ -141,7 +145,7 @@ struct ImageLoadStoreOperations
 /// @brief Structure specifying the blending parameters for an image render target attachment.
 struct ImageAttachmentBlendInfo
 {
-    bool          blendEnable;
+    bool          blendEnable = false;
     BlendEquation colorBlendOp;
     BlendFactor   srcColor;
     BlendFactor   dstColor;
@@ -183,9 +187,9 @@ struct ImageAttachmentUseInfo
 /// @brief Structure specifying the parameters of an buffer attachment.
 struct BufferAttachmentUseInfo
 {
-    Format format;
-    size_t byteOffset;
-    size_t byteSize;
+    Format        format;
+    size_t        byteOffset;
+    size_t        byteSize;
 
     inline bool operator==(const BufferAttachmentUseInfo& other) const
     {
@@ -198,14 +202,47 @@ struct BufferAttachmentUseInfo
     }
 };
 
+
+struct TransientImageCreateInfo
+{
+    ImageCreateInfo createInfo;
+    ImageAttachmentUseInfo useInfo;
+
+    inline bool operator==(const TransientImageCreateInfo& other) const
+    {
+        return createInfo == other.createInfo && useInfo == other.useInfo;
+    }
+
+    inline bool operator!=(const TransientImageCreateInfo& other) const
+    {
+        return !(createInfo == other.createInfo && useInfo == other.useInfo);
+    }
+};
+
+struct TransientBufferCreateInfo
+{
+    BufferCreateInfo createInfo;
+    BufferAttachmentUseInfo useInfo;
+
+    inline bool operator==(const TransientBufferCreateInfo& other) const
+    {
+        return createInfo == other.createInfo && useInfo == other.useInfo;
+    }
+
+    inline bool operator!=(const TransientBufferCreateInfo& other) const
+    {
+        return !(createInfo == other.createInfo && useInfo == other.useInfo);
+    }
+};
+
 /// @brief Attachment
 struct Attachment
 {
     std::string name;
 
-    const AttachmentLifetime lifetime;
+    AttachmentLifetime lifetime;
 
-    const AttachmentType type;
+    AttachmentType type;
 
     union
     {
@@ -230,65 +267,22 @@ struct AttachmentView
     AttachmentUsage  usage;
     AttachmentAccess access;
 
-    union
-    {
-        Handle<ImageView> imageView;
-        Handle<ImageView> bufferView;
-    };
+    uint32_t index;
 
     union
     {
-        BufferAttachmentUseInfo bufferInfo;
-        ImageAttachmentUseInfo  imageInfo;
+        Handle<ImageView>  imageView;
+        Handle<BufferView> bufferView;
     };
-};
 
-class AttachmentRegistry
-{
-public:
-    enum class AttachmentType
+    union
     {
-        TransientImage,
-        TransientBuffer,
-        ImportedImage,
-        ImportedBuffer,
+        BufferSubregion  bufferInfo;
+        ImageSubresource subresource;
     };
-
-    template<AttachmentType type>
-    Pass* GetAttachmentFirstPass(Handle<Attachment> attachment);
-
-    template<AttachmentType type>
-    Pass* GetAttachmentLastPass(Handle<Attachment> attachment);
-
-    template<AttachmentType type>
-    Handle<AttachmentView> GetFirstUse(Handle<Attachment> attachment);
-
-    template<AttachmentType type>
-    Handle<AttachmentView> GetLastUse(Handle<Attachment> attachment);
-
-    template<AttachmentType type>
-    Handle<AttachmentView> GetNextUse(Handle<AttachmentView> attachment);
-
-    template<AttachmentType type>
-    Handle<AttachmentView> GetPrevUse(Handle<AttachmentView> attachment);
-
-    template<AttachmentType type>
-    Attachment GetAttachment(Handle<Attachment> handle);
-
-    template<AttachmentType type>
-    AttachmentView GetAttachmentView(Handle<AttachmentView> handle);
-
-private:
-    using AttachmentViewList = std::vector<AttachmentView>;
-    using AttachmentPool     = HandlePool<Attachment, AttachmentViewList>;
-
-    AttachmentPool m_transientImageAttachments;
-
-    AttachmentPool m_transientBufferAttachments;
-
-    AttachmentPool m_importedImageAttachments;
-
-    AttachmentPool m_importedBufferAttachments;
 };
+
+using AttachmentViewList = std::vector<AttachmentView>;
+using AttachmentPool     = HandlePool<Attachment, AttachmentViewList>;
 
 }  // namespace RHI

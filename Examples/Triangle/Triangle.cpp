@@ -7,18 +7,23 @@
 class TriangleExample final : public ExampleBase
 {
 public:
-    void OnInit(const WindowInfo& windowInfo) override
+    TriangleExample()
+        : ExampleBase("Hello, Triangle", 800, 600)
+    {
+    }
+
+    void OnInit(WindowInfo windowInfo) override
     {
         // create swapchain
         {
             RHI::SwapchainCreateInfo createInfo {};
+            createInfo.win32Window.hwnd      = windowInfo.hwnd;
+            createInfo.win32Window.hinstance = windowInfo.hinstance;
             createInfo.imageSize.width       = windowInfo.width;
             createInfo.imageSize.height      = windowInfo.height;
             createInfo.imageUsage            = RHI::ImageUsage::Color;
             createInfo.imageFormat           = RHI::Format::R8G8B8A8_UINT;
             createInfo.imageCount            = 2;
-            createInfo.win32Window.hwnd      = windowInfo.hwnd;
-            createInfo.win32Window.hinstance = windowInfo.hinstance;
 
             m_swapchain = m_context->CreateSwapchain(createInfo);
         }
@@ -28,7 +33,7 @@ public:
             RHI::ResourcePoolCreateInfo createInfo {};
             createInfo.heapType            = RHI::MemoryType::GPULocal;
             createInfo.allocationAlgorithm = RHI::AllocationAlgorithm::Linear;
-            createInfo.capacity            = 10 * RHI::AllocationSizeConstants::MB;
+            createInfo.capacity            = 10 * RHI::AllocationSizeConstants::KB;
             createInfo.alignment           = alignof(uint64_t);
 
             m_resourcePool = m_context->CreateResourcePool(createInfo);
@@ -36,8 +41,17 @@ public:
 
         // create buffer resource
         {
-            constexpr float    vertexData[6] = {};
-            constexpr uint32_t indexData[6]  = {};
+            // clang-format off
+            constexpr float vertexData[4 * 3] =
+                {
+                    1.0f, -1.0f, 0.0f,
+                    1.0f, 1.0f, 0.0f,
+                    -1.0f, -1.0f,  0.0f,
+                    -1.0f, 1.0f, 0.0f,
+                };
+
+            constexpr uint32_t indexData[6] = { 0, 1, 2, 2, 3, 1};
+            // clang-format on
 
             RHI::BufferCreateInfo createInfo {};
             createInfo.usageFlags = RHI::BufferUsage::Vertex;
@@ -83,24 +97,22 @@ public:
 
             RHI::DeviceMemoryPtr dataPtr = m_resourcePool->MapResource(m_image, 0, sizeof(uint32_t) * 6);
             assert(dataPtr != nullptr);
-            memcpy(dataPtr, imageData.GetPtr(), imageData.GetSize());
+            memcpy(dataPtr, imageData.data.data(), imageData.data.size());
             m_resourcePool->Unmap(m_image);
         }
 
         // create shader bind group layout
         RHI::ShaderBindGroupLayout layout = {{RHI::ShaderBinding {RHI::ShaderBindingType::Image, RHI::ShaderBindingAccess::OnlyRead, 1}}};
 
-        // create shader bind group allocator
-        {
-            
-        }
+        // create shader bind group
+        m_shaderBindGroup = m_context->CreateShaderBindGroup(layout);
 
         // create pipeline
         {
             auto shaderCode   = ReadBinaryFile("./Shaders/triangle.spirv");
             auto shaderModule = m_context->CreateShaderModule(shaderCode);
 
-            RHI::GraphicsPipelineStateCreateInfo createInfo {};
+            RHI::GraphicsPipelineCreateInfo createInfo {};
             createInfo.vertexShader.entryName                    = "VSMain";
             createInfo.vertexShader.shader                       = shaderModule.get();
             createInfo.vertexShader.stage                        = RHI::ShaderStage::Vertex;
@@ -114,58 +126,81 @@ public:
             m_pipelineState = m_context->CreateGraphicsPipeline(createInfo);
         }
 
-        // create frame scheduler
+        // create frame graph
         {
+            // create frame scheduler
             m_frameScheduler = m_context->CreateFrameScheduler();
+
+            RHI::PassCreateInfo createInfo {};
+            createInfo.name = "RenderPass";
+            createInfo.type = RHI::QueueType::Graphics;
+            m_renderpass    = m_frameScheduler->CreatePass(createInfo);
         }
+    }
 
-        // Creates a render pass
-        {
-            auto setupAttachmentCallback = [=](RHI::FrameGraphBuilder& builder) {
-                RHI::ImageAttachmentUseInfo useInfo {};
-                useInfo.clearValue                         = {1.0f, 1.0f, 1.0f, 1.0f};
-                useInfo.loadStoreOperations.loadOperation  = RHI::ImageLoadOperation::Load;
-                useInfo.loadStoreOperations.storeOperation = RHI::ImageStoreOperation::Store;
+    void SetupRenderPass()
+    {
+        m_renderpass->Begin();
 
-                builder.UseRenderTarget("ColorOutput", useInfo);
+        // setup attachments
+        RHI::TransientImageCreateInfo createInfo {};
+        m_renderpass->CreateTransientImageResource(createInfo, RHI::AttachmentUsage::Depth, RHI::AttachmentAccess::Write);
 
-                RHI::ImageAttachmentCreateInfo createInfo {};
-                // builder.UseDepthTarget("DepthOutput", );
-            };
+        RHI::ImageAttachmentUseInfo useInfo {};
+        useInfo.clearValue = {0.3f, 0.6f, 0.9f, 1.0f};
+        m_renderpass->ImportImageResource(m_swapchain->GetImage(), useInfo, RHI::AttachmentUsage::RenderTarget, RHI::AttachmentAccess::Write);
 
-            auto buildCommandListCallback = [=](RHI::CommandList& commandList) {
-                RHI::CommandDraw cmdDraw {};
-                cmdDraw.indexBuffers             = m_indexBuffer;
-                cmdDraw.vertexBuffers            = {m_vertexBuffer};
-                cmdDraw.pipelineState            = m_pipelineState;
-                cmdDraw.shaderBindGroups         = {m_shaderBindGroup};
-                cmdDraw.parameters.elementCount  = 6;
-                cmdDraw.parameters.firstElement  = 0;
-                cmdDraw.parameters.firstInstance = 0;
-                cmdDraw.parameters.vertexOffset  = 0;
-                cmdDraw.parameters.instanceCount = 1;
+        useInfo.clearValue    = {1.0f};
+        auto shaderAttachment = m_renderpass->ImportImageResource(m_image, useInfo, RHI::AttachmentUsage::ShaderResource, RHI::AttachmentAccess::Read);
 
-                commandList.Submit(cmdDraw);
-            };
+        // setup bind elements
+        m_shaderBindGroup->BindImages(0u, shaderAttachment);
 
-            m_renderPass = std::make_unique<RHI::PassProducerCallbacks>("RenderPass", RHI::PassQueue::Graphics, setupAttachmentCallback, buildCommandListCallback);
-        }
+        m_renderpass->End();
+    }
+
+    void SetupCommandList()
+    {
+        auto& cmd = m_renderpass->GetCommandList();
+
+        cmd.Begin();
+
+        // setup command list
+        RHI::CommandDraw cmdDraw {
+            .pipelineState {m_pipelineState},
+            .shaderBindGroups {m_shaderBindGroup.get()},
+            .vertexBuffers {m_vertexBuffer},
+            .indexBuffers {m_indexBuffer},
+            .parameters {.elementCount = 6},
+        };
+
+        cmd.Submit(cmdDraw);
+
+        cmd.End();
     }
 
     void OnShutdown() override
     {
-        m_resourcePool->Free(m_indexBuffer);
+        m_context->Free(m_pipelineState);
+
+        m_resourcePool->Free(m_image);
 
         m_resourcePool->Free(m_vertexBuffer);
 
-        m_resourcePool->Free(m_image);
+        m_resourcePool->Free(m_indexBuffer);
     }
 
     void OnUpdate() override
     {
         m_frameScheduler->Begin();
 
-        m_frameScheduler->Submit(*m_renderPass);
+        SetupRenderPass();
+
+        m_frameScheduler->Submit(*m_renderpass);
+
+        m_frameScheduler->Compile();
+
+        SetupCommandList();
 
         m_frameScheduler->End();
     }
@@ -177,8 +212,6 @@ private:
 
     std::unique_ptr<RHI::ResourcePool> m_resourcePool;
 
-    std::unique_ptr<RHI::ShaderBindGroupAllocator> m_bindGroupAllocator;
-
     RHI::Handle<RHI::GraphicsPipeline> m_pipelineState;
 
     RHI::Handle<RHI::Image> m_image;
@@ -187,9 +220,9 @@ private:
 
     RHI::Handle<RHI::Buffer> m_indexBuffer;
 
-    RHI::Handle<RHI::ShaderBindGroup> m_shaderBindGroup;
+    std::unique_ptr<RHI::ShaderBindGroup> m_shaderBindGroup;
 
-    std::unique_ptr<RHI::PassProducerCallbacks> m_renderPass;
+    std::unique_ptr<RHI::Pass> m_renderpass;
 };
 
 EXAMPLE_ENTRY_POINT(TriangleExample)

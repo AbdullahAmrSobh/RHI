@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-#include "RHI/Resources.hpp"
+#include "RHI/ResourcePool.hpp"
 #include "RHI/Span.hpp"
 
 namespace RHI
@@ -84,13 +84,13 @@ struct DrawParameters
 {
     uint32_t elementCount;
 
-    uint32_t instanceCount;
+    uint32_t instanceCount = 1;
 
-    uint32_t firstElement;
+    uint32_t firstElement = 0;
 
-    uint32_t vertexOffset;
+    uint32_t vertexOffset = 0;
 
-    uint32_t firstInstance;
+    uint32_t firstInstance = 0;
 };
 
 struct DispatchParameters
@@ -108,9 +108,9 @@ struct CommandDraw
 {
     Handle<GraphicsPipeline> pipelineState;
 
-    TL::Span<Handle<ShaderBindGroup>> shaderBindGroups;
+    TL::Span<ShaderBindGroup* const> shaderBindGroups;
 
-    TL::Span<Handle<Buffer>> vertexBuffers;
+    TL::Span<const Handle<Buffer>> vertexBuffers;
 
     Handle<Buffer> indexBuffers;
 
@@ -166,7 +166,7 @@ struct CommandCompute
 {
     Handle<ComputePipeline> pipelineState;
 
-    TL::Span<Handle<ShaderBindGroup>> shaderBindGroups;
+    TL::Span<ShaderBindGroup* const> shaderBindGroups;
 
     DispatchParameters parameters;
 };
@@ -176,6 +176,12 @@ class CommandList
 {
 public:
     virtual ~CommandList() = default;
+
+    /// @brief Begins the building phase of command list
+    virtual void Begin() = 0;
+
+    /// @brief Begins the building phase of command list
+    virtual void End() = 0;
 
     /// @brief Submit a draw command.
     virtual void Submit(const CommandDraw& command) = 0;

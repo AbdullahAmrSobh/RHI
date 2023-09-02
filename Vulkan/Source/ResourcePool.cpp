@@ -1,11 +1,14 @@
-#include "RHI/Resources.hpp"
+#include "ResourcePool.hpp"
+
+#include "Context.hpp"
 
 namespace Vulkan
 {
 
-Result<ResourcePool> ResourcePool::Create(Context* context, RHI::ResourcePoolCreateInfo& createInfo)
+RHI::Result<ResourcePool*> ResourcePool::Create(Context* context, RHI::ResourcePoolCreateInfo& createInfo)
 {
-    return {};
+    auto resourcePool = new ResourcePool(context);
+    return {resourcePool, RHI::ResultCode::Success};
 }
 
 ResourcePool::~ResourcePool()
@@ -21,12 +24,12 @@ void ResourcePool::ReportLiveObjects() const
 {
 }
 
-RHI::Result<RHI::Handle<RHI::Image>> ResourcePool::Allocate(const ImageCreateInfo& createInfo)
+RHI::Result<RHI::Handle<RHI::Image>> ResourcePool::Allocate(const RHI::ImageCreateInfo& createInfo)
 {
     return {};
 }
 
-RHI::Result<RHI::Handle<RHI::Buffer>> ResourcePool::Allocate(const BufferCreateInfo& createInfo)
+RHI::Result<RHI::Handle<RHI::Buffer>> ResourcePool::Allocate(const RHI::BufferCreateInfo& createInfo)
 {
     return {};
 }
@@ -49,12 +52,12 @@ size_t ResourcePool::GetSize(RHI::Handle<RHI::Buffer> buffer) const
     return {};
 }
 
-DeviceMemoryPtr ResourcePool::MapResource(RHI::Handle<RHI::Image> image, size_t offset, size_t range)
+RHI::DeviceMemoryPtr ResourcePool::MapResource(RHI::Handle<RHI::Image> image, size_t offset, size_t range)
 {
     return {};
 }
 
-DeviceMemoryPtr ResourcePool::MapResource(RHI::Handle<RHI::Buffer> buffer, size_t offset, size_t range)
+RHI::DeviceMemoryPtr ResourcePool::MapResource(RHI::Handle<RHI::Buffer> buffer, size_t offset, size_t range)
 {
     return {};
 }

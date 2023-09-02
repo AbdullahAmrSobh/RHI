@@ -2,36 +2,33 @@
 
 #include <cstdint>
 #include <memory>
-#include "RHI/Span.hpp"
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
 
+#include "RHI/Attachment.hpp"
 #include "RHI/Export.hpp"
 #include "RHI/Handle.hpp"
-#include "RHI/Resources.hpp"
+#include "RHI/Span.hpp"
 
 namespace RHI
 {
 
-struct ImageCreateInfo;
-struct BufferCreateInfo;
-struct AttachmentView;
+struct PassCreateInfo;
 
-class Context;
-class PassProducer;
+class Swapchain;
 class Pass;
 
 class Fence;
 
-
 /// @brief A frame scheduler is a frame-graph system breaks down the final frame
 /// into a set of passes, each pass represent a GPU workload. Passes share resources
 /// as Attachments. The frame scheduler tracks every attachment state accross passe.
-class RHI_EXPORT FrameScheduler
+class RHI_EXPORT FrameScheduler : public Object
 {
 public:
+    using Object::Object;
     virtual ~FrameScheduler() = default;
 
     /// @brief Called at the beginning of the render-loop.
@@ -43,24 +40,21 @@ public:
     void End();
 
     /// @brief Register a pass producer, to be called this frame.
-    /// @param passProducer
-    void Submit(PassProducer& passProducer);
+    void Submit(Pass& pass);
 
-private:
-    void BeignPass(Pass* pass);
+    /// @brief Compiles the frame graph, no new passes are allowed to be submitted 
+    /// in the current frame after a this function is called.
+    void Compile();
 
-    void EndPass();
-
-    /// @brief Adds a dependency between consumer, and producer passes.
-    void AddPassDependency(Pass* consumer, Pass* producer);
+    virtual std::unique_ptr<Pass> CreatePass(const PassCreateInfo& createInfo) = 0;
 
 protected:
     virtual void BeginInternal() = 0;
 
     virtual void EndInternal() = 0;
 
-private:
-    Context* m_context;
+protected:
+    friend class Pass;
 
     struct Node
     {
@@ -71,6 +65,17 @@ private:
 
     std::vector<Node> m_graphNodes;
 
+    std::vector<Pass*> m_passList;
+
+    AttachmentPool m_imageAttachments;
+
+    AttachmentPool m_bufferAttachments;
+
+    std::vector<Handle<Attachment>> m_transientImagesAttachments;
+
+    std::vector<Handle<Attachment>> m_transientBuffersAttachments;
+
+    std::vector<Swapchain*> m_swapchainsToPresent;
 };
 
 }  // namespace RHI

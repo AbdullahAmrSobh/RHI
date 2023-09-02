@@ -1,6 +1,7 @@
 #pragma once
 #include <algorithm>
 #include <cstdint>
+#include <vector>
 
 #include "RHI/Common.hpp"
 
@@ -19,8 +20,8 @@ public:
 
     Handle(uint32_t id, uint16_t genId)
     {
-        m_index        = id;
-        m_generationId = genId;
+        m_data.index        = id;
+        m_data.generationId = genId;
     }
 
     RHI_FORCE_INLINE bool operator==(Handle other) const
@@ -42,15 +43,16 @@ public:
     }
 
 private:
+    struct HandleData
+    {
+        uint64_t index        : 48;
+        uint64_t generationId : 16;
+    };
+
     union
     {
-        struct
-        {
-            uint64_t m_index        : 48;
-            uint64_t m_generationId : 16;
-        };
-
-        uint64_t m_packedHandle;
+        HandleData m_data;
+        uint64_t   m_packedHandle;
     };
 };
 
@@ -78,10 +80,10 @@ public:
     // Remove all stored handles, and resets the graph
     RHI_FORCE_INLINE void Reset()
     {
-        m_resources.Clear();
-        m_descriptors.Clear();
-        m_generetionID.Clear();
-        m_availableSlots.Clear();
+        m_resources.clear();
+        m_descriptors.clear();
+        m_generetionID.clear();
+        m_availableSlots.clear();
     }
 
     RHI_FORCE_INLINE bool IsValid(Handle<Resource> handle) const
