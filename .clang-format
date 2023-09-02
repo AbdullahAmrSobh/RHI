@@ -47,7 +47,6 @@ BraceWrapping:
   SplitEmptyRecord: true
   SplitEmptyNamespace: true
   AfterCaseLabel: true
-  BeforeLambdaBody: false
 BreakBeforeBinaryOperators: NonAssignment
 BreakBeforeBraces: Custom
 # BreakBeforeInheritanceComma: true

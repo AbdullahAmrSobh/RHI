@@ -115,7 +115,7 @@ function(aams_add_target)
     endif()
 
     if (aams_add_target_COMPILE_DEFINITIONS)
-        target_compile_definitions(${aams_add_target_NAME} ${aams_add_target_COMPILE_DEFINITIONS})
+        target_compile_definitions(${aams_add_target_NAME} PRIVATE ${aams_add_target_COMPILE_DEFINITIONS})
     endif()
 
     if (aams_add_target_BUILD_DEPENDENCIES)
