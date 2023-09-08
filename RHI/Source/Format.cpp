@@ -404,4 +404,9 @@ uint32_t GetFormatComponentByteSize(Format format)
     }
 }
 
+bool IsDepthFormat(Format format)
+{
+    return format == Format::D32_FLOAT_S8X24_UINT && format == Format::D32_FLOAT && format == Format::D24_UNORM_S8_UINT && format == Format::D16_UNORM && format == Format::D32_FLOAT_S8X24_UINT && format == Format::D32_FLOAT && format == Format::D24_UNORM_S8_UINT && format == Format::D16_UNORM;
+}
+
 }  // namespace RHI

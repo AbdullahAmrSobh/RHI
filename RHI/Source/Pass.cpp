@@ -4,9 +4,13 @@
 
 namespace RHI
 {
-    
+
 void Pass::Begin()
 {
+    /// Unuse all attachments
+    m_waitPasses.clear();
+    m_usedImages.clear();
+    m_usedBuffers.clear();
 }
 
 void Pass::End()
@@ -23,32 +27,32 @@ void Pass::ExecuteBefore(Pass& pass)
     pass.m_waitPasses.push_back(this);
 }
 
-Handle<ImageView> Pass::ImportImageResource(Handle<Image> image, const ImageAttachmentUseInfo& useInfo, AttachmentUsage usage, AttachmentAccess access)
+ImagePassAttachment Pass::ImportImageResource(std::string name, Handle<Image> image, const ImageAttachmentUseInfo& useInfo)
 {
     return {};
 }
 
-Handle<BufferView> Pass::ImportBufferResource(Handle<Buffer> buffer, const BufferAttachmentUseInfo& useInfo, AttachmentUsage usage, AttachmentAccess access)
+BufferPassAttachment Pass::ImportBufferResource(std::string name, Handle<Buffer> buffer, const BufferAttachmentUseInfo& useInfo)
 {
     return {};
 }
 
-Handle<ImageView> Pass::CreateTransientImageResource(const TransientImageCreateInfo& createInfo, AttachmentUsage usage, AttachmentAccess access)
+ImagePassAttachment Pass::CreateTransientImageResource(std::string name, const ImageCreateInfo& createInfo, const ImageAttachmentUseInfo& useInfo)
 {
     return {};
 }
 
-Handle<BufferView> Pass::CreateTransientBufferResource(const TransientBufferCreateInfo& createInfo, AttachmentUsage usage, AttachmentAccess access)
+BufferPassAttachment Pass::CreateTransientBufferResource(std::string name, const BufferCreateInfo& createInfo, const BufferAttachmentUseInfo& useInfo)
 {
     return {};
 }
 
-Handle<ImageView> Pass::UseImageResource(Handle<ImageView> view, const ImageAttachmentUseInfo& useInfo, AttachmentUsage usage, AttachmentAccess access)
-{
+ImagePassAttachment Pass::UseImageResource(const ImagePassAttachment& view, const ImageAttachmentUseInfo& useInfo)
+{   
     return {};
 }
 
-Handle<BufferView> Pass::UseBufferResource(Handle<BufferView> view, const BufferAttachmentUseInfo& useInfo, AttachmentUsage usage, AttachmentAccess access)
+BufferPassAttachment Pass::UseBufferResource(const BufferPassAttachment& view, const BufferAttachmentUseInfo& useInfo)
 {
     return {};
 }

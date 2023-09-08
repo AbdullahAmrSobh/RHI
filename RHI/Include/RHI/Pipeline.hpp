@@ -1,9 +1,10 @@
 #pragma once
+#include "RHI/Constants.hpp"
+#include "RHI/Flags.hpp"
+#include "RHI/Format.hpp"
 #include "RHI/Handle.hpp"
 #include "RHI/ShaderBindGroup.hpp"
 #include "RHI/Span.hpp"
-#include "RHI/Format.hpp"
-#include "RHI/Flags.hpp"
 
 namespace RHI
 {
@@ -93,6 +94,57 @@ enum class SamplerCompareOperation
     GreaterEq,
 };
 
+/// @brief Enumerates ...
+enum class BlendFactor
+{
+    Zero,
+    One,
+    SrcColor,
+    OneMinusSrcColor,
+    DstColor,
+    OneMinusDstColor,
+    SrcAlpha,
+    OneMinusSrcAlpha,
+    DstAlpha,
+    OneMinusDstAlpha,
+    ConstantColor,
+    OneMinusConstantColor,
+    ConstantAlpha,
+    OneMinusConstantAlpha,
+};
+
+/// @brief Enumerates ...
+enum class BlendEquation
+{
+    Add,
+    Subtract,
+    ReverseSubtract,
+    Min,
+    Max,
+};
+
+/// @brief Structure specifying the blending parameters for an image render target attachment.
+struct ColorAttachmentBlendStateDesc
+{
+    bool          blendEnable = false;
+    BlendEquation colorBlendOp;
+    BlendFactor   srcColor;
+    BlendFactor   dstColor;
+    BlendEquation alphaBlendOp;
+    BlendFactor   srcAlpha;
+    BlendFactor   dstAlpha;
+
+    inline bool operator==(const ColorAttachmentBlendStateDesc& other) const
+    {
+        return blendEnable == other.blendEnable && colorBlendOp == other.colorBlendOp && srcColor == other.srcColor && dstColor == other.dstColor && alphaBlendOp == other.alphaBlendOp && srcAlpha == other.srcAlpha && dstAlpha == other.dstAlpha;
+    }
+
+    inline bool operator!=(const ColorAttachmentBlendStateDesc& other) const
+    {
+        return !(blendEnable == other.blendEnable && colorBlendOp == other.colorBlendOp && srcColor == other.srcColor && dstColor == other.dstColor && alphaBlendOp == other.alphaBlendOp && srcAlpha == other.srcAlpha && dstAlpha == other.dstAlpha);
+    }
+};
+
 /// @brief Structure specifying a shader stage state.
 struct PipelineShaderStage
 {
@@ -152,7 +204,17 @@ struct PipelineDepthStencilStateDesc
     bool stencilTestEnable;
 };
 
-/// @brief Description of a graphics pipeline states.
+/// @brief Structure specifying the color attachments blend state.
+struct PipelineColorBlendStateDesc
+{
+    bool independentBlending;
+
+    TL::Span<const ColorAttachmentBlendStateDesc> blendStates;
+
+    float blendConstants[4];
+};
+
+/// @brief Description of the graphics pipeline states.
 struct GraphicsPipelineCreateInfo
 {
     PipelineShaderStage vertexShader;
@@ -170,6 +232,8 @@ struct GraphicsPipelineCreateInfo
     PipelineMultisampleStateDesc multisampleState;
 
     PipelineDepthStencilStateDesc depthStencilState;
+
+    PipelineColorBlendStateDesc colorBlendState;
 };
 
 /// @brief Description of a compute pipeline state.
@@ -215,11 +279,11 @@ public:
 
     const Flags<ShaderStage> m_shaderStages;
 
-    const char* const m_vertexShaderName;
-    const char* const m_pixelShaderName;
-    const char* const m_computeShaderName;
+    std::string m_vertexShaderName;
+    std::string m_pixelShaderName;
+    std::string m_computeShaderName;
 
-    const std::vector<ShaderBindGroupLayout> m_bindGroupLayouts; // reflected from the actual shader data
+    const std::vector<ShaderBindGroupLayout> m_bindGroupLayouts;  // reflected from the actual shader data
 };
 
 }  // namespace RHI

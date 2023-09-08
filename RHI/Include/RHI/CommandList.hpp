@@ -108,7 +108,7 @@ struct CommandDraw
 {
     Handle<GraphicsPipeline> pipelineState;
 
-    TL::Span<ShaderBindGroup* const> shaderBindGroups;
+    TL::Span<Handle<ShaderBindGroup>> shaderBindGroups;
 
     TL::Span<const Handle<Buffer>> vertexBuffers;
 
@@ -166,7 +166,7 @@ struct CommandCompute
 {
     Handle<ComputePipeline> pipelineState;
 
-    TL::Span<ShaderBindGroup* const> shaderBindGroups;
+    TL::Span<Handle<ShaderBindGroup>> shaderBindGroups;
 
     DispatchParameters parameters;
 };
@@ -176,12 +176,6 @@ class CommandList
 {
 public:
     virtual ~CommandList() = default;
-
-    /// @brief Begins the building phase of command list
-    virtual void Begin() = 0;
-
-    /// @brief Begins the building phase of command list
-    virtual void End() = 0;
 
     /// @brief Submit a draw command.
     virtual void Submit(const CommandDraw& command) = 0;

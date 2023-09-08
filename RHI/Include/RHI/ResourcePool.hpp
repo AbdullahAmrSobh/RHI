@@ -8,22 +8,23 @@
 namespace RHI
 {
 
-class ResourcePool;
-class Image;
-class Buffer;
-class ImageView;
-class BufferView;
-
-/// @brief Represents a pointer to GPU device memory
-using DeviceMemoryPtr = void*;
 
 /// @brief Enumeration for common allocation size constants
 namespace AllocationSizeConstants
 {
-inline static constexpr uint32_t KB = 1024;
-inline static constexpr uint32_t MB = 1024 * KB;
-inline static constexpr uint32_t GB = 1024 * MB;
+
+    inline static constexpr uint32_t KB = 1024;
+
+    inline static constexpr uint32_t MB = 1024 * KB;
+
+    inline static constexpr uint32_t GB = 1024 * MB;
+
 };  // namespace AllocationSizeConstants
+
+class ResourcePool;
+
+/// @brief Represents a pointer to GPU device memory
+using DeviceMemoryPtr = void*;
 
 /// @brief  Type of the resource.
 enum class ResourceType
@@ -217,10 +218,10 @@ struct ImageCreateInfo
     Format format;
 
     /// @brief The number of mip levels in the image.
-    uint32_t mipLevels;
+    uint32_t mipLevels = 1;
 
     /// @brief The number of images in the images array.
-    uint32_t arrayCount;
+    uint32_t arrayCount = 1;
 
     inline bool operator==(const ImageCreateInfo& other) const
     {
@@ -343,6 +344,14 @@ struct ResourcePoolCreateInfo
     size_t capacity;
 
     size_t alignment;
+};
+
+class Image
+{
+};
+
+class Buffer
+{
 };
 
 /// @brief General purpose pool used to allocate all kinds of resources.

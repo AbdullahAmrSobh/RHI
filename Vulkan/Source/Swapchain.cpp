@@ -29,21 +29,6 @@ RHI::ResultCode Swapchain::SetExclusiveFullScreenMode(bool enableFullscreen)
     return {};
 }
 
-uint32_t Swapchain::GetCurrentImageIndex() const
-{
-    return {};
-}
-
-uint32_t Swapchain::GetImagesCount() const
-{
-    return {};
-}
-
-RHI::Handle<RHI::Image> Swapchain::GetImage()
-{
-    return {};
-}
-
 RHI::ResultCode Swapchain::Present()
 {
     return {};

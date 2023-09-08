@@ -44,10 +44,10 @@ public:
             // clang-format off
             constexpr float vertexData[4 * 3] =
                 {
-                    1.0f, -1.0f, 0.0f,
-                    1.0f, 1.0f, 0.0f,
-                    -1.0f, -1.0f,  0.0f,
-                    -1.0f, 1.0f, 0.0f,
+                     1.0f, -1.0f, 0.0f,
+                     1.0f,  1.0f, 0.0f,
+                    -1.0f, -1.0f, 0.0f,
+                    -1.0f,  1.0f, 0.0f,
                 };
 
             constexpr uint32_t indexData[6] = { 0, 1, 2, 2, 3, 1};
@@ -105,7 +105,8 @@ public:
         RHI::ShaderBindGroupLayout layout = {{RHI::ShaderBinding {RHI::ShaderBindingType::Image, RHI::ShaderBindingAccess::OnlyRead, 1}}};
 
         // create shader bind group
-        m_shaderBindGroup = m_context->CreateShaderBindGroup(layout);
+        m_shaderBindGroupAllocator = m_context->CreateShaderBindGroupAllocator();
+        m_shaderBindGroup          = m_shaderBindGroupAllocator->AllocateShaderBindGroups(layout).front();
 
         // create pipeline
         {
@@ -138,47 +139,6 @@ public:
         }
     }
 
-    void SetupRenderPass()
-    {
-        m_renderpass->Begin();
-
-        // setup attachments
-        RHI::TransientImageCreateInfo createInfo {};
-        m_renderpass->CreateTransientImageResource(createInfo, RHI::AttachmentUsage::Depth, RHI::AttachmentAccess::Write);
-
-        RHI::ImageAttachmentUseInfo useInfo {};
-        useInfo.clearValue = {0.3f, 0.6f, 0.9f, 1.0f};
-        m_renderpass->ImportImageResource(m_swapchain->GetImage(), useInfo, RHI::AttachmentUsage::RenderTarget, RHI::AttachmentAccess::Write);
-
-        useInfo.clearValue    = {1.0f};
-        auto shaderAttachment = m_renderpass->ImportImageResource(m_image, useInfo, RHI::AttachmentUsage::ShaderResource, RHI::AttachmentAccess::Read);
-
-        // setup bind elements
-        m_shaderBindGroup->BindImages(0u, shaderAttachment);
-
-        m_renderpass->End();
-    }
-
-    void SetupCommandList()
-    {
-        auto& cmd = m_renderpass->GetCommandList();
-
-        cmd.Begin();
-
-        // setup command list
-        RHI::CommandDraw cmdDraw {
-            .pipelineState {m_pipelineState},
-            .shaderBindGroups {m_shaderBindGroup.get()},
-            .vertexBuffers {m_vertexBuffer},
-            .indexBuffers {m_indexBuffer},
-            .parameters {.elementCount = 6},
-        };
-
-        cmd.Submit(cmdDraw);
-
-        cmd.End();
-    }
-
     void OnShutdown() override
     {
         m_context->Free(m_pipelineState);
@@ -194,13 +154,56 @@ public:
     {
         m_frameScheduler->Begin();
 
-        SetupRenderPass();
+        // setup render pass.
+        {
+            m_renderpass->Begin();
+
+            // setup attachments
+            RHI::ImageCreateInfo createInfo {};
+            createInfo.size.width = 800;
+            createInfo.size.width = 600;
+            createInfo.format     = RHI::Format::D32_FLOAT;
+
+            RHI::ImageAttachmentUseInfo useInfo {};
+            useInfo.clearValue.depth.depthValue = 1.0f;
+            m_renderpass->CreateTransientImageResource("depth-attachment", createInfo, useInfo);
+
+            useInfo.clearValue.color = {0.3f, 0.6f, 0.9f, 1.0f};
+            m_renderpass->ImportImageResource("color-attachment", m_swapchain->GetImage(), useInfo);
+
+            auto textureAttachment = m_renderpass->ImportImageResource("texture", m_image, useInfo);
+            auto textureView       = m_frameScheduler->GetImageView(textureAttachment);
+
+            // setup bind elements
+            m_renderpass->End();
+
+            RHI::ShaderBindGroupData shaderBindGroupData {};
+            shaderBindGroupData.BindImages(0u, textureView);
+
+            m_shaderBindGroupAllocator->Update(m_shaderBindGroup, shaderBindGroupData);
+        }
 
         m_frameScheduler->Submit(*m_renderpass);
 
         m_frameScheduler->Compile();
 
-        SetupCommandList();
+        // Build command lists
+        {
+            auto& cmd = m_renderpass->BeginCommandList();
+
+            // setup command list
+            RHI::CommandDraw cmdDraw {
+                .pipelineState {m_pipelineState},
+                .shaderBindGroups {m_shaderBindGroup},
+                .vertexBuffers {m_vertexBuffer},
+                .indexBuffers {m_indexBuffer},
+                .parameters {.elementCount = 6},
+            };
+
+            cmd.Submit(cmdDraw);
+
+            m_renderpass->EndCommandList();
+        }
 
         m_frameScheduler->End();
     }
@@ -212,6 +215,8 @@ private:
 
     std::unique_ptr<RHI::ResourcePool> m_resourcePool;
 
+    std::unique_ptr<RHI::ShaderBindGroupAllocator> m_shaderBindGroupAllocator;
+
     RHI::Handle<RHI::GraphicsPipeline> m_pipelineState;
 
     RHI::Handle<RHI::Image> m_image;
@@ -220,7 +225,7 @@ private:
 
     RHI::Handle<RHI::Buffer> m_indexBuffer;
 
-    std::unique_ptr<RHI::ShaderBindGroup> m_shaderBindGroup;
+    RHI::Handle<RHI::ShaderBindGroup> m_shaderBindGroup;
 
     std::unique_ptr<RHI::Pass> m_renderpass;
 };

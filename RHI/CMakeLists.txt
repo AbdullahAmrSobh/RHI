@@ -2,10 +2,10 @@ cmake_minimum_required(VERSION 3.16)
 
 # Add header files
 set(HEADER_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Attachment.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/CommandList.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Context.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Constants.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Export.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Flags.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Format.hpp
@@ -26,10 +26,10 @@ set(HEADER_FILES
 
 # Add source files
 set(SOURCE_FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Assert.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Format.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/FrameScheduler.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Pass.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/ShaderBindGroup.cpp
 )
 
 include(${CMAKE_SOURCE_DIR}/CMake/AddTarget.cmake)

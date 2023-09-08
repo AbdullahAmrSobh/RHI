@@ -187,4 +187,6 @@ uint32_t GetFormatComponentCount(Format format);
 
 uint32_t GetFormatComponentByteSize(Format format);
 
+bool IsDepthFormat(Format format);
+
 }  // namespace RHI

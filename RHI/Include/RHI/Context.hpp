@@ -14,6 +14,8 @@
 namespace RHI
 {
 
+class ShaderBindGroup;
+
 struct DeviceProperties;
 
 typedef uint32_t Version;
@@ -103,26 +105,26 @@ public:
     /// @brief Creates a new ShaderModule
     virtual std::unique_ptr<class ShaderModule> CreateShaderModule(TL::Span<uint8_t> code) = 0;
 
-    /// @brief Creates a shader bind group.
-    virtual std::unique_ptr<class ShaderBindGroup> CreateShaderBindGroup(const struct ShaderBindGroupLayout& layout) = 0;
-
     /// @brief Creates a new Swapchain.
     virtual std::unique_ptr<class Swapchain> CreateSwapchain(const struct SwapchainCreateInfo& createInfo) = 0;
 
     /// @brief Creates a new Pool for all resources.
     virtual std::unique_ptr<class ResourcePool> CreateResourcePool(const struct ResourcePoolCreateInfo& createInfo) = 0;
 
-    /// @brief Creates a new graphics pipeline state object for graphics.
+    /// @brief Creates a new graphics pipeline state for graphics.
     virtual Handle<class GraphicsPipeline> CreateGraphicsPipeline(const struct GraphicsPipelineCreateInfo& createInfo) = 0;
 
-    /// @brief Creates a new compute pipeline state object for graphics.
+    /// @brief Creates a new compute pipeline state for graphics.
     virtual Handle<class ComputePipeline> CreateComputePipeline(const struct ComputePipelineCreateInfo& createInfo) = 0;
 
-    /// @brief Creates a new Sampler.
+    /// @brief Creates a new Sampler state.
     virtual Handle<class Sampler> CreateSampler(const struct SamplerCreateInfo& createInfo) = 0;
 
-    /// @brief Creates a new FrameScheduler.
+    /// @brief Creates a new FrameScheduler object.
     virtual std::unique_ptr<class FrameScheduler> CreateFrameScheduler() = 0;
+
+    /// @brief Creates a ShaderBindGroupAllocator object.
+    virtual std::unique_ptr<class ShaderBindGroupAllocator> CreateShaderBindGroupAllocator() = 0;
 
     /// @brief Frees the given graphics pipeline object.
     virtual void Free(Handle<GraphicsPipeline> pso) = 0;
@@ -136,7 +138,6 @@ public:
 protected:
     /// @brief Pointer to the user provided debug callbacks.
     std::unique_ptr<DebugCallbacks> m_debugCallbacks;
-
 };
 
 }  // namespace RHI

@@ -19,14 +19,13 @@ void FrameScheduler::End()
         swapchain->Present();
     }
 
-    // Clear the graph
+    // reset the graph state.
     m_graphNodes.clear();
     m_passList.clear();
+    m_swapchainsToPresent.clear();
     m_imageAttachments.Reset();
     m_bufferAttachments.Reset();
-    m_transientImagesAttachments.clear();
-    m_transientBuffersAttachments.clear();
-    m_swapchainsToPresent.clear();
+
 }
 
 void FrameScheduler::Submit(Pass& pass)
@@ -40,6 +39,7 @@ void FrameScheduler::Submit(Pass& pass)
 
 void FrameScheduler::Compile()
 {
+    CompileInternal();
 }
 
 }  // namespace RHI

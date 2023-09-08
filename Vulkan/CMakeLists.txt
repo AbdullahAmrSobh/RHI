@@ -27,7 +27,8 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Pipeline.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/ResourcePool.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.hpp
-    
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/ShaderBindGroup.hpp
+
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/FrameScheduler.cpp
@@ -35,6 +36,7 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Pipeline.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/ResourcePool.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/ShaderBindGroup.cpp
 )
 
 include(${CMAKE_SOURCE_DIR}/CMake/AddTarget.cmake)

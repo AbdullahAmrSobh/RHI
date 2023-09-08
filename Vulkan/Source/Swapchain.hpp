@@ -21,20 +21,7 @@ public:
 
     RHI::ResultCode SetExclusiveFullScreenMode(bool enable_fullscreen) override;
 
-    uint32_t GetCurrentImageIndex() const override;
-
-    uint32_t GetImagesCount() const override;
-
-    RHI::Handle<RHI::Image> GetImage() override;
-
     RHI::ResultCode Present() override;
-
-private:
-    uint32_t m_currentImageIndex;
-
-    uint32_t m_imagesCount;
-
-    std::vector<RHI::Handle<RHI::Image>> m_images;
 };
 
 }  // namespace Vulkan

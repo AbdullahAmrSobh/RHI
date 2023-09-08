@@ -9,7 +9,6 @@ class CommandList final : public RHI::CommandList
 {
 public:
 
-
     void Submit(const RHI::CommandDraw& command) override;
 
     void Submit(const RHI::CommandCopy& command) override;
