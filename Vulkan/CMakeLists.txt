@@ -50,6 +50,4 @@ aams_add_target(
         RHI::RHI
         Vulkan::Vulkan
         VulkanMemoryAllocator
-    COMPILE_DEFINITIONS
-        VULKAN_HPP_NOEXCEPT
 )
