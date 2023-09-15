@@ -5,6 +5,7 @@
 #include "RHI/Handle.hpp"
 #include "RHI/ShaderBindGroup.hpp"
 #include "RHI/Span.hpp"
+#include "RHI/ResourcePool.hpp"
 
 namespace RHI
 {
@@ -21,12 +22,20 @@ enum class ShaderStage
     Compute,
 };
 
+/// @brief Pipeline vertex 
+enum class PipelineVertexInputRate
+{
+    PerInstance,
+    PerVertex,
+};
+
 /// @brief Pipeline rasterizer state cull mode.
 enum class PipelineRasterizerStateCullMode
 {
     None,
     FrontFace,
     BackFace,
+    Discard,
 };
 
 /// @brief Pipeline rasterizer state fill mode.
@@ -37,21 +46,17 @@ enum class PipelineRasterizerStateFillMode
     Line
 };
 
+/// @brief Pipeline topology mode.
+enum class PipelineTopologyMode
+{
+    // ...
+};
+
 /// @brief The orientation of triangle fornt faces
 enum class PipelineRasterizerStateFrontFace
 {
     Clockwise,
     CounterClockwise,
-};
-
-/// @brief The number of samples in multisample state.
-enum class PipelineMultisampleSampleCount
-{
-    Count1,
-    Count2,
-    Count4,
-    Count8,
-    Count16,
 };
 
 /// @brief Operator used to compare two values
@@ -169,6 +174,8 @@ struct PipelineRenderTargetLayout
 /// @brief Structure specifying the vertex input state.
 struct PipelineVertexInputStateDesc
 {
+    TL::Span<const Format> vertexAttributes;
+    TL::Span<const Format> instanceAttributes;
 };
 
 /// @brief Structure specifying the rasterizer state.
@@ -187,7 +194,7 @@ struct PipelineRasterizerStateDesc
 /// @brief Structure specifying the multisample state.
 struct PipelineMultisampleStateDesc
 {
-    PipelineMultisampleSampleCount sampleCount;
+    SampleCount sampleCount;
 
     bool sampleShading;
 };
@@ -269,6 +276,21 @@ struct SamplerCreateInfo
     {
         return !(filterMin == other.filterMin && filterMag == other.filterMag && filterMip == other.filterMip && compare == other.compare && mipLodBias == other.mipLodBias && addressU == other.addressU && addressV == other.addressV && addressW == other.addressW && minLod == other.minLod && maxLod == other.maxLod);
     }
+};
+
+struct ShaderModuleCreateInfo
+{
+    Flags<ShaderStage> stages;
+
+    TL::Span<uint8_t> code;
+
+    std::string m_vertexStageName;
+
+    std::string m_pixelStageName;
+
+    std::string m_computeStageName;
+
+    TL::Span<ShaderBindGroupLayout> m_bindGroupLayouts;
 };
 
 class ShaderModule : public Object

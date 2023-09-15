@@ -2,16 +2,22 @@
 
 #include "RHI/Swapchain.hpp"
 
+#include "RHI/Profiler.hpp"
+
 namespace RHI
 {
 
 void FrameScheduler::Begin()
 {
+    RHI_PROFILE_SCOPE;
+
     BeginInternal();
 }
 
 void FrameScheduler::End()
 {
+    RHI_PROFILE_SCOPE;
+
     EndInternal();
 
     for (Swapchain* swapchain : m_swapchainsToPresent)
@@ -30,6 +36,8 @@ void FrameScheduler::End()
 
 void FrameScheduler::Submit(Pass& pass)
 {
+    RHI_PROFILE_SCOPE;
+
     Node node {};
     node.pass = m_passList.back();
 
@@ -39,6 +47,8 @@ void FrameScheduler::Submit(Pass& pass)
 
 void FrameScheduler::Compile()
 {
+    RHI_PROFILE_SCOPE;
+
     CompileInternal();
 }
 

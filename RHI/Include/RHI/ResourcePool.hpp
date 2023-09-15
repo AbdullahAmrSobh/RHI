@@ -217,6 +217,8 @@ struct ImageCreateInfo
     /// @brief The format of the image.
     Format format;
 
+    ImageSampleCount sampleCount;
+
     /// @brief The number of mip levels in the image.
     uint32_t mipLevels = 1;
 
@@ -298,7 +300,7 @@ struct BufferSubregion
     }
 };
 
-/// @brief ...
+/// @brief Represent the texel color swizzling operation
 struct ComponentMapping
 {
     ComponentMapping() = default;

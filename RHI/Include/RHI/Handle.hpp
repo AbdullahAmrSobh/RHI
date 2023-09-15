@@ -18,7 +18,12 @@ public:
         m_packedHandle = UINT64_MAX;
     }
 
-    Handle(uint64_t id, uint16_t genId)
+    explicit Handle(uint64_t handle)
+    {
+        m_packedHandle = handle;
+    }
+
+    explicit Handle(uint64_t id, uint16_t genId)
     {
         m_data.index        = id;
         m_data.generationId = genId;
@@ -68,6 +73,7 @@ template<typename Resource, typename Descriptor>
 class HandlePool
 {
 public:
+    HandlePool() = default;
     HandlePool(const HandlePool& handles) = delete;
 
     RHI_FORCE_INLINE HandlePool(uint32_t capacity)
@@ -88,8 +94,8 @@ public:
 
     RHI_FORCE_INLINE bool IsValid(Handle<Resource> handle) const
     {
-        uint32_t index        = handle.m_index;
-        uint16_t generationID = handle.m_generetionId;
+        uint32_t index        = handle.m_data.index;
+        uint16_t generationID = handle.m_data.generetionId;
         if (index < m_resources.size() && generationID == m_generetionID[index])
         {
             return true;
@@ -100,10 +106,10 @@ public:
     // Gets the resource associated with handle.
     RHI_FORCE_INLINE Resource GetResource(Handle<Resource> handle) const
     {
-        uint32_t index        = handle.m_index;
-        uint16_t generationID = handle.m_generetionId;
+        uint32_t index        = handle.m_data.index;
+        uint16_t generationID = handle.m_data.generationId;
 
-        if (!IsValid(Handle))
+        if (!IsValid(handle))
         {
             return {};
         }
@@ -116,8 +122,8 @@ public:
     // Gets the descriptor associated with handle.
     RHI_FORCE_INLINE Descriptor& GetDescriptor(Handle<Descriptor> handle) const
     {
-        uint32_t index        = handle.m_index;
-        uint16_t generationID = handle.m_generetionId;
+        uint32_t index        = handle.m_data.index;
+        uint16_t generationID = handle.m_data.generetionId;
 
         if (!IsValid(Handle))
         {
@@ -177,8 +183,8 @@ public:
     // Removes a resource from the owner.
     RHI_FORCE_INLINE void Remove(Handle<Resource> handle)
     {
-        uint32_t index        = handle.m_index;
-        uint16_t generationID = handle.m_generetionId;
+        uint32_t index        = handle.m_data.index;
+        uint16_t generationID = handle.m_data.generetionId;
 
         if (index < m_resources.size() && generationID == m_generetionID[index])
         {
@@ -222,8 +228,8 @@ public:
 
     RHI_FORCE_INLINE bool IsValid(Handle<Resource> handle) const
     {
-        uint32_t index        = handle.m_index;
-        uint16_t generationID = handle.m_generetionId;
+        uint32_t index        = handle.m_data.index;
+        uint16_t generationID = handle.m_data.generetionId;
         if (index < m_resources.size() && generationID == m_generetionID[index])
         {
             return true;
@@ -234,8 +240,8 @@ public:
     // Gets the resource associated with handle.
     RHI_FORCE_INLINE Resource GetResource(Handle<Resource> handle) const
     {
-        uint32_t index        = handle.m_index;
-        uint16_t generationID = handle.m_generetionId;
+        uint32_t index        = handle.m_data.index;
+        uint16_t generationID = handle.m_data.generetionId;
 
         if (!IsValid(Handle))
         {
@@ -293,8 +299,8 @@ public:
     // Removes a resource from the owner.
     RHI_FORCE_INLINE void Remove(Handle<Resource> handle)
     {
-        uint32_t index        = handle.m_index;
-        uint16_t generationID = handle.m_generetionId;
+        uint32_t index        = handle.m_data.index;
+        uint16_t generationID = handle.m_data.generetionId;
 
         if (index < m_resources.size() && generationID == m_generetionID[index])
         {

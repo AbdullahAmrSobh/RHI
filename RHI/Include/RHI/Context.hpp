@@ -33,8 +33,10 @@ enum class Backend
 /// @brief The type of the Physical GPU
 enum class DeviceType
 {
+    CPU,
     Integerated,
-    Dedicated
+    Dedicated,
+    Virtual
 };
 
 // Identify the manufactuerer for the reported device
@@ -98,12 +100,11 @@ private:
     }
 
 public:
-
     Context()          = default;
     virtual ~Context() = default;
 
     /// @brief Creates a new ShaderModule
-    virtual std::unique_ptr<class ShaderModule> CreateShaderModule(TL::Span<uint8_t> code) = 0;
+    virtual std::unique_ptr<class ShaderModule> CreateShaderModule(const struct ShaderModuleCreateInfo& createInfo) = 0;
 
     /// @brief Creates a new Swapchain.
     virtual std::unique_ptr<class Swapchain> CreateSwapchain(const struct SwapchainCreateInfo& createInfo) = 0;

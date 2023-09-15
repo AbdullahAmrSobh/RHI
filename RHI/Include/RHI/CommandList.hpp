@@ -121,43 +121,43 @@ struct CommandDraw
 struct CommandCopy
 {
     CommandCopy()
-        : m_type {CopyCommandType::Buffer}
-        , m_buffer {}
+        : type {CopyCommandType::Buffer}
+        , buffer {}
     {
     }
 
     CommandCopy(const CopyBufferDescriptor& descriptor)
-        : m_type {CopyCommandType::Buffer}
-        , m_buffer {descriptor}
+        : type {CopyCommandType::Buffer}
+        , buffer {descriptor}
     {
     }
 
     CommandCopy(const CopyImageDescriptor& descriptor)
-        : m_type {CopyCommandType::Image}
-        , m_image {descriptor}
+        : type {CopyCommandType::Image}
+        , image {descriptor}
     {
     }
 
     CommandCopy(const CopyBufferToImageDescriptor& descriptor)
-        : m_type {CopyCommandType::BufferToImage}
-        , m_bufferToImage {descriptor}
+        : type {CopyCommandType::BufferToImage}
+        , bufferToImage {descriptor}
     {
     }
 
     CommandCopy(const CopyImageToBufferDescriptor& descriptor)
-        : m_type {CopyCommandType::ImageToBuffer}
-        , m_imageToBuffer {descriptor}
+        : type {CopyCommandType::ImageToBuffer}
+        , imageToBuffer {descriptor}
     {
     }
 
-    CopyCommandType m_type;
+    CopyCommandType type;
 
     union
     {
-        CopyBufferDescriptor        m_buffer;
-        CopyImageDescriptor         m_image;
-        CopyBufferToImageDescriptor m_bufferToImage;
-        CopyImageToBufferDescriptor m_imageToBuffer;
+        CopyBufferDescriptor        buffer;
+        CopyImageDescriptor         image;
+        CopyBufferToImageDescriptor bufferToImage;
+        CopyImageToBufferDescriptor imageToBuffer;
     };
 };
 
