@@ -7,6 +7,22 @@ namespace Vulkan
 
 class Context;
 
+struct Image : RHI::Image
+{
+    struct Descriptor
+    {
+        
+    };
+};
+
+struct Buffer : RHI::Buffer
+{
+    struct Descriptor
+    {
+        
+    };
+};
+
 class ResourcePool final : public RHI::ResourcePool
 {
 public:
@@ -34,5 +50,8 @@ public:
     void Unmap(RHI::Handle<RHI::Image> image) override;
     void Unmap(RHI::Handle<RHI::Buffer> buffer) override;
 };
+
+using ImagePool = RHI::HandlePool<Image, Image::Descriptor>;
+using BufferPool = RHI::HandlePool<Buffer, Buffer::Descriptor>;
 
 }  // namespace Vulkan

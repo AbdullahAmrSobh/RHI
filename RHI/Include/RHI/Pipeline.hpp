@@ -1,28 +1,13 @@
 #pragma once
-#include "RHI/Constants.hpp"
-#include "RHI/Flags.hpp"
-#include "RHI/Format.hpp"
-#include "RHI/Handle.hpp"
-#include "RHI/ShaderBindGroup.hpp"
+#include "RHI/Common.hpp"
+#include "RHI/SampleCount.hpp"
+#include "RHI/ShaderModule.hpp"
 #include "RHI/Span.hpp"
-#include "RHI/ResourcePool.hpp"
 
 namespace RHI
 {
 
-class GraphicsPipeline;
-class ComputePipeline;
-class Sampler;
-
-/// @brief Pipeline shader stage type.
-enum class ShaderStage
-{
-    Vertex,
-    Pixel,
-    Compute,
-};
-
-/// @brief Pipeline vertex 
+/// @brief Pipeline vertex
 enum class PipelineVertexInputRate
 {
     PerInstance,
@@ -278,34 +263,10 @@ struct SamplerCreateInfo
     }
 };
 
-struct ShaderModuleCreateInfo
-{
-    Flags<ShaderStage> stages;
-
-    TL::Span<uint8_t> code;
-
-    std::string m_vertexStageName;
-
-    std::string m_pixelStageName;
-
-    std::string m_computeStageName;
-
-    TL::Span<ShaderBindGroupLayout> m_bindGroupLayouts;
-};
-
-class ShaderModule : public Object
-{
-public:
-    using Object::Object;
-    virtual ~ShaderModule() = default;
-
-    const Flags<ShaderStage> m_shaderStages;
-
-    std::string m_vertexShaderName;
-    std::string m_pixelShaderName;
-    std::string m_computeShaderName;
-
-    const std::vector<ShaderBindGroupLayout> m_bindGroupLayouts;  // reflected from the actual shader data
-};
+// clang-format off
+struct GraphicsPipeline {};
+struct ComputePipeline {};
+struct Sampler {};
+// clang-format on
 
 }  // namespace RHI

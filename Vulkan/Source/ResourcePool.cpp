@@ -1,3 +1,5 @@
+#include "pch.hpp"
+
 #include "ResourcePool.hpp"
 
 #include "Context.hpp"
@@ -7,8 +9,7 @@ namespace Vulkan
 
 RHI::Result<ResourcePool*> ResourcePool::Create(Context* context, RHI::ResourcePoolCreateInfo& createInfo)
 {
-    auto resourcePool = new ResourcePool(context);
-    return {resourcePool, RHI::ResultCode::Success};
+    return {};
 }
 
 ResourcePool::~ResourcePool()

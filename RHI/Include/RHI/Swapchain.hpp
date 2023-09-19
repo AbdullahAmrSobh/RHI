@@ -1,9 +1,4 @@
 #pragma once
-#include "RHI/Export.hpp"
-#include "RHI/Flags.hpp"
-#include "RHI/Format.hpp"
-#include "RHI/Handle.hpp"
-#include "RHI/Object.hpp"
 #include "RHI/ResourcePool.hpp"
 
 #ifdef RHI_PLATFORM_WINDOWS
@@ -12,8 +7,6 @@
 
 namespace RHI
 {
-
-class Image;
 
 #ifdef RHI_PLATFORM_WINDOWS
 /// @brief struct contains win32 surface handles.

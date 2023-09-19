@@ -1,16 +1,6 @@
 #pragma once
 
-#include <cstdint>
-#include <memory>
-#include <string>
-#include <string_view>
-#include <unordered_map>
-#include <vector>
-
 #include "RHI/Export.hpp"
-#include "RHI/Handle.hpp"
-#include "RHI/Object.hpp"
-#include "RHI/Span.hpp"
 #include "RHI/Pass.hpp"
 
 namespace RHI

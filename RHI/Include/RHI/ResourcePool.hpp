@@ -1,23 +1,21 @@
 #pragma once
 
-#include "RHI/Flags.hpp"
-#include "RHI/Format.hpp"
+#include "RHI/Common.hpp"
 #include "RHI/Object.hpp"
-#include "RHI/Result.hpp"
+#include "RHI/SampleCount.hpp"
 
 namespace RHI
 {
-
 
 /// @brief Enumeration for common allocation size constants
 namespace AllocationSizeConstants
 {
 
-    inline static constexpr uint32_t KB = 1024;
+inline static constexpr uint32_t KB = 1024;
 
-    inline static constexpr uint32_t MB = 1024 * KB;
+inline static constexpr uint32_t MB = 1024 * KB;
 
-    inline static constexpr uint32_t GB = 1024 * MB;
+inline static constexpr uint32_t GB = 1024 * MB;
 
 };  // namespace AllocationSizeConstants
 
@@ -79,18 +77,6 @@ enum class ImageUsage
 
     /// @brief The image content will be overwritten by a copy command.
     CopyDst = 1 << 7,
-};
-
-/// @brief Enumeration how many samples a multisampled image contain.
-enum class ImageSampleCount
-{
-    None      = 0 << 0,
-    Samples1  = 1 << 1,
-    Samples2  = 1 << 2,
-    Samples4  = 1 << 3,
-    Samples8  = 1 << 4,
-    Samples16 = 1 << 5,
-    Samples32 = 1 << 6,
 };
 
 /// @brief Enumeration representing the dimensions of an image resource.
@@ -217,7 +203,8 @@ struct ImageCreateInfo
     /// @brief The format of the image.
     Format format;
 
-    ImageSampleCount sampleCount;
+    /// @brief The number of samples in each texel.
+    SampleCount sampleCount;
 
     /// @brief The number of mip levels in the image.
     uint32_t mipLevels = 1;
@@ -348,13 +335,11 @@ struct ResourcePoolCreateInfo
     size_t alignment;
 };
 
-class Image
-{
-};
+// clang-format off
+struct Image { };
+struct Buffer { };
 
-class Buffer
-{
-};
+// clang-format on
 
 /// @brief General purpose pool used to allocate all kinds of resources.
 class ResourcePool : public Object

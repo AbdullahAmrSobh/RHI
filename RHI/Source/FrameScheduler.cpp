@@ -1,3 +1,5 @@
+#include "pch.hpp"
+
 #include "RHI/FrameScheduler.hpp"
 
 #include "RHI/Swapchain.hpp"

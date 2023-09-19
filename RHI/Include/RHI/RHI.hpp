@@ -12,6 +12,8 @@
 #include "RHI/Pipeline.hpp"
 #include "RHI/ResourcePool.hpp"
 #include "RHI/Result.hpp"
+#include "RHI/SampleCount.hpp"
+#include "RHI/ShaderModule.hpp"
 #include "RHI/ShaderBindGroup.hpp"
 #include "RHI/Span.hpp"
 #include "RHI/Swapchain.hpp"

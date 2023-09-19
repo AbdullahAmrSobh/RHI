@@ -1,25 +1,16 @@
 #pragma once
 
-#include <memory>
-#include <string>
-#include <vector>
-
 #include "RHI/Export.hpp"
-#include "RHI/Flags.hpp"
-#include "RHI/Format.hpp"
-#include "RHI/Object.hpp"
 #include "RHI/ResourcePool.hpp"
-#include "RHI/Span.hpp"
+#include "RHI/Handle.hpp"
 
 namespace RHI
 {
 
-class Pass;
 class Context;
+class Pass;
 class FrameScheduler;
 class CommandList;
-class ImageView;
-class BufferView;
 
 enum class PassQueueState
 {
@@ -260,7 +251,7 @@ struct ImagePassAttachment
 
     ImageAttachmentUseInfo info;
 
-    Handle<ImageView> view;
+    Handle<struct ImageView> view;
 };
 
 struct BufferPassAttachment
@@ -271,11 +262,16 @@ struct BufferPassAttachment
 
     BufferAttachmentUseInfo info;
 
-    Handle<BufferView> view;
+    Handle<struct BufferView> view;
 };
 
 using ImagePassAttachmentList  = std::vector<ImagePassAttachment>;
 using BufferPassAttachmentList = std::vector<BufferPassAttachment>;
+
+// clang-format off
+struct ImageView  {};
+struct BufferView {};
+// clang-format on
 
 /// @brief Represents a pass, which encapsulates a GPU task.
 class Pass : public Object

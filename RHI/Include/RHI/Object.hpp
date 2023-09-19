@@ -1,11 +1,12 @@
 #pragma once
+
 #include "RHI/Context.hpp"
 
 namespace RHI
 {
 
-/// Forward declerations.
 class DebugCallbacks;
+class Context;
 
 /// @brief A base class for all RHI objects.
 class Object

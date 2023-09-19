@@ -6,6 +6,13 @@ namespace Vulkan
 
 class Context;
 
+struct DescriptorSet : RHI::ShaderBindGroup
+{
+    struct Descriptor
+    {
+    };
+};
+
 class ShaderBindGroupAllocator final : public RHI::ShaderBindGroupAllocator
 {
 public:
@@ -21,4 +28,4 @@ public:
     void Update(RHI::Handle<RHI::ShaderBindGroup> group, const RHI::ShaderBindGroupData& data) override;
 };
 
-}
+}  // namespace Vulkan

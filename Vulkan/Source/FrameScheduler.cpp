@@ -1,3 +1,5 @@
+#include "pch.hpp"
+
 #include "FrameScheduler.hpp"
 
 namespace Vulkan

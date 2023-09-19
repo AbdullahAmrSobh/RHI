@@ -1,8 +1,6 @@
 #pragma once
 
 #include <RHI/Context.hpp>
-#include <RHI/Handle.hpp>
-#include <vulkan/vulkan.h>
 
 namespace Vulkan
 {
@@ -17,7 +15,7 @@ public:
                            RHI::DeviceSelectionCallback         deviceSelectionCallbacks,
                            std::unique_ptr<RHI::DebugCallbacks> debugCallbacks);
 
-    std::unique_ptr<RHI::ShaderModule> CreateShaderModule(RHI::TL::Span<uint8_t> code) override;
+    std::unique_ptr<RHI::ShaderModule> CreateShaderModule(const RHI::ShaderModuleCreateInfo& createInfo) override;
 
     std::unique_ptr<RHI::Swapchain> CreateSwapchain(const RHI::SwapchainCreateInfo& createInfo) override;
 

@@ -1,3 +1,5 @@
+#include "pch.hpp"
+
 #include "RHI/Pass.hpp"
 
 #include "RHI/FrameScheduler.hpp"

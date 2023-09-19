@@ -1,26 +1,17 @@
 #pragma once
 
-#include <functional>
-#include <memory>
-#include <string>
-#include <vector>
+#include "RHI/Export.hpp"
 
 #include "RHI/Common.hpp"
-#include "RHI/Export.hpp"
 #include "RHI/Handle.hpp"
-#include "RHI/Result.hpp"
 #include "RHI/Span.hpp"
 
 namespace RHI
 {
 
-class ShaderBindGroup;
-
 struct DeviceProperties;
 
 typedef uint32_t Version;
-
-typedef std::function<uint32_t(TL::Span<const DeviceProperties>)> DeviceSelectionCallback;
 
 /// @brief Type of backend Graphics API
 enum class Backend
@@ -65,6 +56,8 @@ struct DeviceProperties
     DeviceType  type;
     Vendor      vendor;
 };
+
+typedef std::function<uint32_t(TL::Span<const DeviceProperties>)> DeviceSelectionCallback;
 
 /// @brief Creates a Version from major.minor.patch
 constexpr Version MakeVersion(uint32_t major, uint32_t minor, uint32_t patch)
@@ -113,13 +106,13 @@ public:
     virtual std::unique_ptr<class ResourcePool> CreateResourcePool(const struct ResourcePoolCreateInfo& createInfo) = 0;
 
     /// @brief Creates a new graphics pipeline state for graphics.
-    virtual Handle<class GraphicsPipeline> CreateGraphicsPipeline(const struct GraphicsPipelineCreateInfo& createInfo) = 0;
+    virtual Handle<struct GraphicsPipeline> CreateGraphicsPipeline(const struct GraphicsPipelineCreateInfo& createInfo) = 0;
 
     /// @brief Creates a new compute pipeline state for graphics.
-    virtual Handle<class ComputePipeline> CreateComputePipeline(const struct ComputePipelineCreateInfo& createInfo) = 0;
+    virtual Handle<struct ComputePipeline> CreateComputePipeline(const struct ComputePipelineCreateInfo& createInfo) = 0;
 
     /// @brief Creates a new Sampler state.
-    virtual Handle<class Sampler> CreateSampler(const struct SamplerCreateInfo& createInfo) = 0;
+    virtual Handle<struct Sampler> CreateSampler(const struct SamplerCreateInfo& createInfo) = 0;
 
     /// @brief Creates a new FrameScheduler object.
     virtual std::unique_ptr<class FrameScheduler> CreateFrameScheduler() = 0;

@@ -110,21 +110,28 @@ public:
 
         // create pipeline
         {
-            auto shaderCode   = ReadBinaryFile("./Shaders/triangle.spirv");
-            auto shaderModule = m_context->CreateShaderModule(shaderCode);
+            auto shaderCode = ReadBinaryFile("./Shaders/triangle.spirv");
 
-            RHI::GraphicsPipelineCreateInfo createInfo {};
-            createInfo.vertexShader.entryName                    = "VSMain";
-            createInfo.vertexShader.shader                       = shaderModule.get();
-            createInfo.vertexShader.stage                        = RHI::ShaderStage::Vertex;
-            createInfo.pixelShader.entryName                     = "PSMain";
-            createInfo.pixelShader.shader                        = shaderModule.get();
-            createInfo.pixelShader.stage                         = RHI::ShaderStage::Pixel;
-            createInfo.bindGroupLayouts                          = {layout};
-            createInfo.renderTargetLayout.colorAttachmentsFormat = {RHI::Format::R8G8B8A8_UINT};
-            createInfo.renderTargetLayout.depthAttachmentFormat  = RHI::Format::D32_FLOAT;
+            RHI::ShaderModuleCreateInfo createInfo {};
+            createInfo.stages     = RHI::ShaderStage::Pixel | RHI::ShaderStage::Vertex;
+            createInfo.code       = shaderCode.data();
+            createInfo.size       = shaderCode.size();
+            createInfo.vertexName = "VSMain";
+            createInfo.pixelName  = "PSMain";
+            auto shaderModule     = m_context->CreateShaderModule(createInfo);
 
-            m_pipelineState = m_context->CreateGraphicsPipeline(createInfo);
+            RHI::GraphicsPipelineCreateInfo psoCreateInfo {};
+            // createInfo.vertexShader.entryName                    = "VSMain";
+            // createInfo.vertexShader.shader                       = shaderModule.get();
+            // createInfo.vertexShader.stage                        = RHI::ShaderStage::Vertex;
+            // createInfo.pixelShader.entryName                     = "PSMain";
+            // createInfo.pixelShader.shader                        = shaderModule.get();
+            // createInfo.pixelShader.stage                         = RHI::ShaderStage::Pixel;
+            // createInfo.bindGroupLayouts                          = {layout};
+            // createInfo.renderTargetLayout.colorAttachmentsFormat = {RHI::Format::R8G8B8A8_UINT};
+            // createInfo.renderTargetLayout.depthAttachmentFormat  = RHI::Format::D32_FLOAT;
+
+            m_pipelineState = m_context->CreateGraphicsPipeline(psoCreateInfo);
         }
 
         // create frame graph

@@ -1,19 +1,18 @@
 #pragma once
-#include <array>
-#include <variant>
-#include <vector>
+#include "RHI/Common.hpp"
 
 #include "RHI/Object.hpp"
 #include "RHI/Span.hpp"
+#include "RHI/Handle.hpp"
 
 namespace RHI
 {
 
 /// Resources forward declaration.
+struct ImageView;
+struct BufferView;
+struct Sampler;
 class Context;
-class ImageView;
-class BufferView;
-class Sampler;
 
 /// @brief The type of the shader resource to be bound.
 enum class ShaderBindingType
@@ -56,84 +55,45 @@ public:
     /// @param index index of the resource binding decelration in the shader.
     /// @param images list of handles of an actual resources to bind.
     /// @param arrayOffset starting offset. In case of an resources array it binds the resources starting at this number.
-    inline void BindImages(uint32_t index, TL::Span<const Handle<ImageView>> images, uint32_t arrayOffset = 0)
-    {
-        BindingData data {};
-        data.index = index;
-        data.resources = std::vector<Handle<ImageView>>(images.begin(), images.end());
-        data.bindArrayStartOffset = arrayOffset;
-        
-        m_data.push_back(data);
-        
-        std::sort(m_data.begin(), m_data.end(), [](auto lhs, auto rhs){
-            return lhs.index < rhs.index;
-        });
-    } 
+    void BindImages(uint32_t index, TL::Span<const Handle<ImageView>> images, uint32_t arrayOffset = 0);
 
     /// @brief Binds an image resource to the provided binding index and offset array index.
     /// NOTE: offset + buffers count should not exceed the count of the resources decalred in the layout or the shader.
     /// @param index index of the resource binding decelration in the shader.
     /// @param buffers list of handles of an actual resources to bind.
     /// @param arrayOffset starting offset. In case of an resources array it binds the resources starting at this number.
-    inline void BindBuffers(uint32_t index, TL::Span<const Handle<BufferView>> buffers, uint32_t arrayOffset = 0)
-    {
-        BindingData data {};
-        data.index = index;
-        data.resources = std::vector<Handle<BufferView>>(buffers.begin(), buffers.end());
-        data.bindArrayStartOffset = arrayOffset;
-        
-        m_data.push_back(data);
-        
-        std::sort(m_data.begin(), m_data.end(), [](auto lhs, auto rhs){
-            return lhs.index < rhs.index;
-        });
-    }
+    void BindBuffers(uint32_t index, TL::Span<const Handle<BufferView>> buffers, uint32_t arrayOffset = 0);
 
     /// @brief Binds an image resource to the provided binding index and offset array index.
     /// NOTE: offset + samplers count should not exceed the count of the resources decalred in the layout or the shader.
     /// @param index index of the resource binding decelration in the shader.
     /// @param samplers list of handles of an actual resources to bind.
     /// @param arrayOffset starting offset. In case of an resources array it binds the resources starting at this number.
-    inline void BindSamplers(uint32_t index, TL::Span<const Handle<Sampler>> samplers, uint32_t arrayOffset = 0)
-    {
-        BindingData data {};
-        data.index = index;
-        data.resources = std::vector<Handle<Sampler>>(samplers.begin(), samplers.end());
-        data.bindArrayStartOffset = arrayOffset;
-        
-        m_data.push_back(data);
-        
-        std::sort(m_data.begin(), m_data.end(), [](auto lhs, auto rhs){
-            return lhs.index < rhs.index;
-        });
-    }
+    void BindSamplers(uint32_t index, TL::Span<const Handle<Sampler>> samplers, uint32_t arrayOffset = 0);
 
 private:
-    using BindingResourceList = std::variant<std::vector<Handle<ImageView>>,
-                                             std::vector<Handle<BufferView>>,
-                                             std::vector<Handle<Sampler>>>;
+    // struct BindingData
+    // {
+    //     uint32_t index;
 
-    struct BindingData
-    {
-        uint32_t index;
+    //     uint32_t bindArrayStartOffset = 0;
 
-        uint32_t bindArrayStartOffset = 0;
+    //     BindingResourceList resources;
+    // };
 
-        BindingResourceList resources;
-    };
+    // std::vector<BindingData> m_data;
 
-    std::vector<BindingData> m_data;
+    // uint32_t m_imagesCount;
 
-    uint32_t m_imagesCount;
+    // uint32_t m_bufferCount;
 
-    uint32_t m_bufferCount;
-
-    uint32_t m_samplerCount;
+    // uint32_t m_samplerCount;
 };
 
-class ShaderBindGroup
-{
-};
+// clang-format off
+// Handles
+struct ShaderBindGroup { };
+// clang-format on
 
 class ShaderBindGroupAllocator : public Object
 {

@@ -1,20 +1,11 @@
 #pragma once
 
-#include <cstdint>
-
 #include "RHI/ResourcePool.hpp"
+#include "RHI/ShaderBindGroup.hpp"
 #include "RHI/Span.hpp"
 
 namespace RHI
 {
-
-template<typename T>
-class Handle;
-class ShaderBindGroup;
-class Image;
-class Buffer;
-class GraphicsPipeline;
-class ComputePipeline;
 
 enum class CopyCommandType
 {

@@ -13,12 +13,10 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Handle.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Object.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Pass.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Pipeline.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Platform/Windows.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/ResourcePool.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Result.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Resources.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RHI.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/ShaderBindGroup.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Span.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Swapchain.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Assert.hpp
