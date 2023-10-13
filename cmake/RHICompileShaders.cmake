@@ -1,6 +1,5 @@
 include(CMakeParseArguments)
 
-# Compiles the resources to OUTPUT_DIR and creates a new target "{TARGET}-compile-shaders"
 function(RHICompileShaders)
 	cmake_parse_arguments(
 		RHI_ARG # prefix of output variables
@@ -10,7 +9,6 @@ function(RHICompileShaders)
 		${ARGN} # the argument that will be parsed
 	)
 
-	# Generate shader files after compilation
 	set(RHI_OUTPUT_SHADER_FILES)
 	foreach(RHI_SHADER_ABS_PATH ${RHI_ARG_SHADER_FILES})
 		get_filename_component(RHI_SHADER_NAME ${RHI_SHADER_ABS_PATH} NAME_WE)
@@ -50,12 +48,10 @@ function(RHICompileShaders)
 		list(APPEND RHI_OUTPUT_SHADER_FILES "${RHI_OUTPUT_SPV_SHADER_MODULE_NAME}")
 	endforeach(RHI_SHADER_ABS_PATH)
 
-	# If we don't have any shaders we don't need to create a custom target for them
 	if (RHI_OUTPUT_SHADER_FILES)
 		add_custom_target(${RHI_ARG_TARGET}-shaders-${RHI_ARG_NAME} DEPENDS ${RHI_OUTPUT_SHADER_FILES})
 	endif()
 
-	# Make a new compile-resources target and add it to ${RHI_ARG_TARGET} dependencies
 	add_custom_target(${RHI_ARG_TARGET}-compile-shaders)
 
 	if (RHI_OUTPUT_SHADER_FILES)
