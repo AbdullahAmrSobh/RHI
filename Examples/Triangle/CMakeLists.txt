@@ -4,9 +4,11 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Triangle.cpp
 )
 
-set(SHADER_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/Triangle.hlsl
+set(SHADER_FILES_LIST
+    ${CMAKE_CURRENT_SOURCE_DIR}/Resources/Shaders/Triangle.hlsl
 )
+
+set(RHI_DEBUG ON)
 
 include(${CMAKE_SOURCE_DIR}/CMake/AddTarget.cmake)
 aams_add_target(
@@ -19,4 +21,12 @@ aams_add_target(
         Examples::Base
     RUNTIME_LIBRARIES
         RHI::Vulkan
+)
+
+include(${CMAKE_SOURCE_DIR}/CMake/RHICompileShaders.cmake)
+RHICompileShaders(
+    NAME Triangle-Shaders
+    OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/Resources/Shaders"
+    TARGET Triangle
+    SHADER_FILES ${SHADER_FILES_LIST}
 )
