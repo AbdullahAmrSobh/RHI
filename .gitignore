@@ -8,3 +8,4 @@ prefix/
 CMakeLists.txt.user
 CMakeUserPresets.json
 /Export.hpp
+.cache/
