@@ -30,7 +30,7 @@ public:
     ImageData LoadImage(std::string_view path) const;
 
     /// @brief Reads (in binary mode) a file from disk.
-    std::vector<uint8_t> ReadBinaryFile(std::string_view path) const;
+    std::vector<uint32_t> ReadBinaryFile(std::string_view path) const;
 
     /// @brief Init.
     void Init();
@@ -49,6 +49,10 @@ public:
 
 protected:
     std::unique_ptr<RHI::Context> m_context;
+
+    std::unique_ptr<RHI::Swapchain> m_swapchain;
+
+    std::unique_ptr<RHI::FrameScheduler> m_frameScheduler;
 
     void* m_window;
 };

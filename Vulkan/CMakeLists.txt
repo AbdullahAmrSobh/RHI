@@ -24,19 +24,14 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/FrameScheduler.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Pipeline.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/ResourcePool.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/ShaderBindGroup.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.hpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/FrameScheduler.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Loader.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Pipeline.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/ResourcePool.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/ShaderBindGroup.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Pass.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.cpp
 )
 
 include(${CMAKE_SOURCE_DIR}/CMake/AddTarget.cmake)
