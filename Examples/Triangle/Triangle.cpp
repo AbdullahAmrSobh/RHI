@@ -49,12 +49,12 @@ public:
         // Build command lists
         auto& cmd = pass.BeginCommandList();
 
-        RHI::Viewport viewport {};
+        RHI::Viewport viewport{};
         viewport.width = 800;
         viewport.height = 600;
         viewport.minDepth = 0.0;
         viewport.maxDepth = 1.0;
-        RHI::Scissor scissor {};
+        RHI::Scissor scissor{};
         scissor.width = viewport.width;
         scissor.height = viewport.height;
 

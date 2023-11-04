@@ -7,14 +7,17 @@ namespace RHI
     template<typename Resource>
     class Handle final
     {
-        template<typename U> friend class HandlePool;
-        template<typename U> friend class Handle;
+        template<typename U>
+        friend class HandlePool;
+        template<typename U>
+        friend class Handle;
+
     public:
         Handle()
         {
             m_handle = UINT64_MAX;
         }
-        
+
         template<typename BaseResource>
         Handle(Handle<BaseResource> baseHandle)
         {
@@ -45,14 +48,13 @@ namespace RHI
             m_rawHandle.genId = genId;
         }
 
-
         struct RawHandle
         {
             uint64_t index : 48;
             uint64_t genId : 16;
         };
 
-        union 
+        union
         {
             RawHandle m_rawHandle;
             uint64_t m_handle;

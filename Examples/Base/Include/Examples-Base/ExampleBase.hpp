@@ -2,24 +2,24 @@
 
 #include <RHI/RHI.hpp>
 
+#include <memory>
 #include <string>
 #include <string_view>
-#include <memory>
 
 struct ImageData
 {
-    uint32_t             width;
-    uint32_t             height;
-    uint32_t             depth;
-    uint32_t             channels;
-    uint32_t             bytesPerChannel;
+    uint32_t width;
+    uint32_t height;
+    uint32_t depth;
+    uint32_t channels;
+    uint32_t bytesPerChannel;
     std::vector<uint8_t> data;
 };
 
 struct WindowInfo
 {
-    void*    hwnd;
-    void*    hinstance;
+    void* hwnd;
+    void* hinstance;
     uint32_t width;
     uint32_t height;
 };

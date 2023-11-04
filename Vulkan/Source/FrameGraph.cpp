@@ -8,7 +8,6 @@
 #include <bitset>
 #include <memory>
 
-
 namespace Vulkan
 {
     ///////////////////////////////////////////////////////////////////////////
@@ -63,7 +62,6 @@ namespace Vulkan
             vmaDestroyVirtualBlock(block.virtualBlock);
         }
     }
-
 
     bool TransientResourceAllocator::Activate(RHI::Handle<RHI::Image> imageHandle)
     {
@@ -314,8 +312,6 @@ namespace Vulkan
 
             vkResetFences(context->m_device, 1, &fence->handle);
         }
-
-
     }
 
     void Pass::OnEnd()

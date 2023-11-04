@@ -1,8 +1,8 @@
 #pragma once
 
+#include "Allocator.hpp"
 #include <RHI/Resources.hpp>
 #include <RHI/Swapchain.hpp>
-#include "Allocator.hpp"
 
 namespace RHI
 {
@@ -72,9 +72,9 @@ namespace Vulkan
 
     struct Image : RHI::Image
     {
-        // allocation backing this resource. 
-        Allocation allocation; 
-       
+        // allocation backing this resource.
+        Allocation allocation;
+
         // Pointer to the pool this resource is created from.
         ResourcePool* pool;
 
@@ -95,12 +95,12 @@ namespace Vulkan
 
     struct Buffer : RHI::Buffer
     {
-        // allocation backing this resource. 
-        Allocation allocation; 
-        
+        // allocation backing this resource.
+        Allocation allocation;
+
         // Pointer to the pool this resource is created from.
         ResourcePool* pool;
-        
+
         // Handle to valid VkImage resource (Might not be backed by an allocation).
         VkBuffer handle;
 
@@ -109,42 +109,42 @@ namespace Vulkan
 
         // Querys the memory requirements of this resource.
         VkMemoryRequirements GetMemoryRequirements(VkDevice device) const;
-    
+
         void Shutdown(Context* context);
     };
 
     struct ImageView : RHI::ImageView
     {
         VkImageView handle;
-    
+
         void Shutdown(Context* context);
     };
 
     struct BufferView : RHI::BufferView
     {
         VkBufferView handle;
-    
+
         void Shutdown(Context* context);
     };
 
     struct DescriptorSetLayout
     {
         VkDescriptorSetLayout handle;
-    
+
         void Shutdown(Context* context);
     };
 
     struct DescriptorSet : RHI::ShaderBindGroup
     {
         VkDescriptorSet handle;
-    
+
         void Shutdown(Context* context);
     };
 
     struct PipelineLayout
     {
         VkPipelineLayout handle;
-    
+
         void Shutdown(Context* context);
     };
 
@@ -152,7 +152,7 @@ namespace Vulkan
     {
         VkPipeline handle;
         RHI::Handle<PipelineLayout> layout;
-    
+
         void Shutdown(Context* context);
     };
 
@@ -160,21 +160,21 @@ namespace Vulkan
     {
         VkPipeline handle;
         RHI::Handle<PipelineLayout> layout;
-    
+
         void Shutdown(Context* context);
     };
 
     struct Sampler : RHI::Sampler
     {
         VkSampler handle;
-    
+
         void Shutdown(Context* context);
     };
 
     struct Fence
     {
         VkFence handle;
-    
+
         void Shutdown(Context* context);
     };
 

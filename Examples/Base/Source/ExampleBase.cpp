@@ -4,7 +4,6 @@
 #include <memory>
 #include <string>
 
-
 #include "Examples-Base/ExampleBase.hpp"
 
 #include <RHI-Vulkan/Loader.hpp>

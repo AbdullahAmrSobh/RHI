@@ -162,7 +162,6 @@ namespace RHI
 
         /// @brief Frees the given sampler object.
         virtual void Free(Handle<Sampler> sampler) = 0;
-
     };
 
 } // namespace RHI

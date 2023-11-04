@@ -8,11 +8,11 @@ namespace Vulkan
 
     enum class AllocationType
     {
-        Default, 
+        Default,
         /// @brief allocation is made from blocks managed internally
-        Dedicated, 
+        Dedicated,
         /// @brief allocation creates its own dedicated block
-        Aliasing, 
+        Aliasing,
         /// @brief multiple resources may share the same allocation
     };
 

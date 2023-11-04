@@ -1,8 +1,8 @@
 #pragma once
 
+#include "RHI/CommandList.hpp"
 #include "RHI/Export.hpp"
 #include "RHI/Resources.hpp"
-#include "RHI/CommandList.hpp"
 
 #include <deque>
 #include <memory>
@@ -461,6 +461,7 @@ namespace RHI
     class RHI_EXPORT FrameScheduler
     {
         friend class Pass;
+
     public:
         FrameScheduler(Context* context)
             : m_context(context)
