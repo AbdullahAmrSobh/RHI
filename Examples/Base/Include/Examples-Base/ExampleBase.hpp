@@ -2,6 +2,10 @@
 
 #include <RHI/RHI.hpp>
 
+#include <string>
+#include <string_view>
+#include <memory>
+
 struct ImageData
 {
     uint32_t             width;

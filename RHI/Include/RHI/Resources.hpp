@@ -1,10 +1,13 @@
 #pragma once
 
-#include "RHI/Common.hpp"
+#include "RHI/Flags.hpp"
+#include "RHI/Format.hpp"
 #include "RHI/Handle.hpp"
-#include "RHI/Object.hpp"
 #include "RHI/Result.hpp"
 #include "RHI/Span.hpp"
+
+#include <unordered_map>
+#include <variant>
 
 namespace RHI
 {
@@ -63,11 +66,11 @@ namespace RHI
     /// @brief Enumerates the multisample count in an image or an graphics pipeline multisample state
     enum class SampleCount
     {
-        None      = 0 << 0,
-        Samples1  = 1 << 0,
-        Samples2  = 1 << 1,
-        Samples4  = 1 << 2,
-        Samples8  = 1 << 3,
+        None = 0 << 0,
+        Samples1 = 1 << 0,
+        Samples2 = 1 << 1,
+        Samples4 = 1 << 2,
+        Samples8 = 1 << 3,
         Samples16 = 1 << 4,
         Samples32 = 1 << 5,
         Samples64 = 1 << 6,
@@ -299,6 +302,13 @@ namespace RHI
         All = Red | Green | Blue | Alpha,
     };
 
+    enum class MemoryAllocationFlags
+    {
+        None,
+        LazilyAllocated,
+        Mappable
+    };
+
     /// @brief Report describe the current state of the resource pool.
     struct ResourcePoolReport
     {
@@ -330,7 +340,7 @@ namespace RHI
 
         inline bool operator!=(const ImageOffset& other) const
         {
-            return !(x == other.x && y == other.y && z == other.z);
+            return !(*this == other);
         }
     };
 
@@ -353,7 +363,7 @@ namespace RHI
 
         inline bool operator!=(const ImageSize& other) const
         {
-            return !(width == other.width && height == other.height && depth == other.depth);
+            return !(*this == other);
         }
     };
 
@@ -377,7 +387,7 @@ namespace RHI
 
         inline bool operator!=(const ComponentMapping& other) const
         {
-            return !(r == other.r && g == other.g && b == other.b && a == other.a);
+            return !(*this == other);
         }
     };
 
@@ -399,8 +409,7 @@ namespace RHI
 
         inline bool operator!=(const ImageSubresource& other) const
         {
-            return !(
-                arrayBase == other.arrayBase && arrayCount == other.arrayCount && mipBase == other.mipBase && mipCount == other.mipCount);
+            return !(*this == other);
         }
     };
 
@@ -422,7 +431,7 @@ namespace RHI
 
         inline bool operator!=(const BufferSubregion& other) const
         {
-            return !(byteSize == other.byteSize && byteOffset == other.byteOffset && format == other.format);
+            return !(*this == other);
         }
     };
 
@@ -438,7 +447,12 @@ namespace RHI
     /// @brief A shader bind group layout is an list of shader bindings.
     struct ShaderBindGroupLayout
     {
-        TL::Span<const ShaderBinding> bindings;
+        ShaderBindGroupLayout(std::initializer_list<ShaderBinding> initList)
+            : bindings(initList)
+        {
+        }
+
+        std::vector<ShaderBinding> bindings;
     };
 
     /// @brief Structure specifying the blending parameters for an image render target attachment.
@@ -452,19 +466,15 @@ namespace RHI
         BlendFactor srcAlpha;
         BlendFactor dstAlpha;
         Flags<ColorWriteMask> writeMask = ColorWriteMask::All;
+
         inline bool operator==(const ColorAttachmentBlendStateDesc& other) const
         {
-            return blendEnable == other.blendEnable && colorBlendOp == other.colorBlendOp && srcColor == other.srcColor &&
-                dstColor == other.dstColor && alphaBlendOp == other.alphaBlendOp && srcAlpha == other.srcAlpha &&
-                dstAlpha == other.dstAlpha;
+            return blendEnable == other.blendEnable && colorBlendOp == other.colorBlendOp && srcColor == other.srcColor && dstColor == other.dstColor && alphaBlendOp == other.alphaBlendOp && srcAlpha == other.srcAlpha && dstAlpha == other.dstAlpha;
         }
 
         inline bool operator!=(const ColorAttachmentBlendStateDesc& other) const
         {
-            return !(
-                blendEnable == other.blendEnable && colorBlendOp == other.colorBlendOp && srcColor == other.srcColor &&
-                dstColor == other.dstColor && alphaBlendOp == other.alphaBlendOp && srcAlpha == other.srcAlpha &&
-                dstAlpha == other.dstAlpha);
+            return !(*this == other);
         }
     };
 
@@ -511,14 +521,13 @@ namespace RHI
     /// @brief Structure specifying the rasterizer state.
     struct PipelineRasterizerStateDesc
     {
-        PipelineRasterizerStateCullMode cullMode;
+        PipelineRasterizerStateCullMode cullMode = PipelineRasterizerStateCullMode::BackFace;
 
-        PipelineRasterizerStateFillMode fillMode;
+        PipelineRasterizerStateFillMode fillMode = PipelineRasterizerStateFillMode::Triangle;
 
-        PipelineRasterizerStateFrontFace frontFace;
+        PipelineRasterizerStateFrontFace frontFace = PipelineRasterizerStateFrontFace::CounterClockwise;
 
-        /// in line rendering specifies the width a the rasterized lines.
-        float lineWidth;
+        float lineWidth = 1.0f;
     };
 
     /// @brief Structure specifying the multisample state.
@@ -581,7 +590,7 @@ namespace RHI
         Format format;
 
         /// @brief The number of samples in each texel.
-        SampleCount sampleCount;
+        SampleCount sampleCount = RHI::SampleCount::Samples1;
 
         /// @brief The number of mip levels in the image.
         uint32_t mipLevels = 1;
@@ -591,15 +600,12 @@ namespace RHI
 
         inline bool operator==(const ImageCreateInfo& other) const
         {
-            return usageFlags == other.usageFlags && type == other.type && size == other.size && format == other.format &&
-                mipLevels == other.mipLevels && arrayCount == other.arrayCount;
+            return usageFlags == other.usageFlags && type == other.type && size == other.size && format == other.format && mipLevels == other.mipLevels && arrayCount == other.arrayCount;
         }
 
         inline bool operator!=(const ImageCreateInfo& other) const
         {
-            return !(
-                usageFlags == other.usageFlags && type == other.type && size == other.size && format == other.format &&
-                mipLevels == other.mipLevels && arrayCount == other.arrayCount);
+            return !(*this == other);
         }
     };
 
@@ -619,7 +625,7 @@ namespace RHI
 
         inline bool operator!=(const BufferCreateInfo& other) const
         {
-            return !(usageFlags == other.usageFlags && byteSize == other.byteSize);
+            return !(*this == other);
         }
     };
 
@@ -640,7 +646,7 @@ namespace RHI
 
         PipelineInputAssemblerStateDesc inputAssemblerState;
 
-        PipelineTopologyMode topologyMode;
+        PipelineTopologyMode topologyMode = RHI::PipelineTopologyMode::Triangles;
 
         TL::Span<const ShaderBindGroupLayout> bindGroupLayouts;
 
@@ -663,7 +669,7 @@ namespace RHI
         const char* shaderName;
         ShaderModule* shaderModule;
 
-        TL::Span<const ShaderBindGroupLayout> shaderInputLayout;
+        TL::Span<const ShaderBindGroupLayout> bindGroupLayouts;
     };
 
     /// @brief Structure describing the creation parameters of a sampler state.
@@ -684,25 +690,13 @@ namespace RHI
 
         inline bool operator==(const SamplerCreateInfo& other) const
         {
-            return filterMin == other.filterMin && filterMag == other.filterMag && filterMip == other.filterMip &&
-                compare == other.compare && mipLodBias == other.mipLodBias && addressU == other.addressU && addressV == other.addressV &&
-                addressW == other.addressW && minLod == other.minLod && maxLod == other.maxLod;
+            return filterMin == other.filterMin && filterMag == other.filterMag && filterMip == other.filterMip && compare == other.compare && mipLodBias == other.mipLodBias && addressU == other.addressU && addressV == other.addressV && addressW == other.addressW && minLod == other.minLod && maxLod == other.maxLod;
         }
 
         inline bool operator!=(const SamplerCreateInfo& other) const
         {
-            return !(
-                filterMin == other.filterMin && filterMag == other.filterMag && filterMip == other.filterMip && compare == other.compare &&
-                mipLodBias == other.mipLodBias && addressU == other.addressU && addressV == other.addressV && addressW == other.addressW &&
-                minLod == other.minLod && maxLod == other.maxLod);
+            return !(*this == other);
         }
-    };
-
-    class ShaderModule : public Object
-    {
-    public:
-        using RHI::Object::Object;
-        virtual ~ShaderModule() = default;
     };
 
     /// @brief An object that groups shader resources that are bound together.
@@ -716,58 +710,70 @@ namespace RHI
         /// @param index index of the resource binding decelration in the shader.
         /// @param images list of handles of an actual resources to bind.
         /// @param arrayOffset starting offset. In case of an resources array it binds the resources starting at this number.
-        void BindImages(uint32_t index, TL::Span<ImagePassAttachment*> images, uint32_t arrayOffset = 0);
+        inline void BindImages(uint32_t index, TL::Span<ImagePassAttachment*> images, uint32_t arrayOffset = 0)
+        {
+            ResourceImageBinding binding{};
+            binding.arrayOffset = arrayOffset;
+            binding.views = { images.begin(), images.end() };
+            m_bindings[index] = binding;
+        }
 
         /// @brief Binds an image resource to the provided binding index and offset array index.
         /// NOTE: offset + buffers count should not exceed the count of the resources decalred in the layout or the shader.
         /// @param index index of the resource binding decelration in the shader.
         /// @param buffers list of handles of an actual resources to bind.
         /// @param arrayOffset starting offset. In case of an resources array it binds the resources starting at this number.
-        void BindBuffers(uint32_t index, TL::Span<BufferPassAttachment*> buffers, uint32_t arrayOffset = 0);
+        inline void BindBuffers(uint32_t index, TL::Span<BufferPassAttachment*> buffers, uint32_t arrayOffset = 0)
+        {
+            ResourceBufferBinding binding{};
+            binding.arrayOffset = arrayOffset;
+            binding.views = { buffers.begin(), buffers.end() };
+            m_bindings[index] = binding;
+        }
 
         /// @brief Binds an image resource to the provided binding index and offset array index.
         /// NOTE: offset + samplers count should not exceed the count of the resources decalred in the layout or the shader.
         /// @param index index of the resource binding decelration in the shader.
         /// @param samplers list of handles of an actual resources to bind.
         /// @param arrayOffset starting offset. In case of an resources array it binds the resources starting at this number.
-        void BindSamplers(uint32_t index, TL::Span<Handle<Sampler>> samplers, uint32_t arrayOffset = 0);
+        inline void BindSamplers(uint32_t index, TL::Span<Handle<Sampler>> samplers, uint32_t arrayOffset = 0)
+        {
+            ResourceSamplerBinding binding{};
+            binding.arrayOffset = arrayOffset;
+            binding.samplers = { samplers.begin(), samplers.end() };
+            m_bindings[index] = binding;
+        }
 
         struct ResourceImageBinding
         {
-            uint32_t index;
             uint32_t arrayOffset;
-            uint32_t elementsCount;
 
-            std::vector<Handle<ImagePassAttachment>> views;
+            std::vector<ImagePassAttachment*> views;
         };
 
         struct ResourceBufferBinding
         {
-            uint32_t index;
             uint32_t arrayOffset;
-            uint32_t elementsCount;
 
-            std::vector<Handle<BufferPassAttachment>> views;
+            std::vector<BufferPassAttachment*> views;
         };
 
         struct ResourceSamplerBinding
         {
-            uint32_t index;
             uint32_t arrayOffset;
-            uint32_t elementsCount;
 
             std::vector<Handle<Sampler>> samplers;
         };
 
-        std::vector<ResourceImageBinding> m_imageBindings{};
-        std::vector<ResourceSamplerBinding> m_samplerBindings{};
-        std::vector<ResourceBufferBinding> m_bufferBindings{};
+        using ResourceBinding = std::variant<ResourceImageBinding, ResourceBufferBinding, ResourceSamplerBinding>;
+
+        std::unordered_map<uint32_t, ResourceBinding> m_bindings;
     };
 
-    class ShaderBindGroupAllocator : public Object
+    class ShaderBindGroupAllocator
     {
     public:
-        using Object::Object;
+        ShaderBindGroupAllocator() = default;
         virtual ~ShaderBindGroupAllocator() = default;
 
         virtual std::vector<Handle<ShaderBindGroup>> AllocateShaderBindGroups(TL::Span<const ShaderBindGroupLayout> layouts) = 0;
@@ -777,11 +783,18 @@ namespace RHI
         virtual void Update(Handle<ShaderBindGroup> group, const ShaderBindGroupData& data) = 0;
     };
 
-    /// @brief General purpose pool used to allocate all kinds of resources.
-    class ResourcePool : public Object
+    class ShaderModule
     {
     public:
-        using Object::Object;
+        ShaderModule() = default;
+        virtual ~ShaderModule() = default;
+    };
+
+    /// @brief General purpose pool used to allocate all kinds of resources.
+    class ResourcePool
+    {
+    public:
+        ResourcePool() = default;
         virtual ~ResourcePool() = default;
 
         /// @brief Allocate an image resource.

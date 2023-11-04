@@ -3,53 +3,71 @@
 namespace RHI
 {
 
-/// @brief Indicate the result of the operation.
-enum class ResultCode
-{
-    /// @brief The operation succeeded without any issues.
-    Success,
+    /// @brief Indicate the result of the operation.
+    enum class ResultCode
+    {
+        /// @brief The operation succeeded without any issues.
+        Success,
 
-    /// @brief The operation failed for an unkowen reason.
-    ErrorUnkowen,
+        /// @brief The operation failed for an unkowen reason.
+        ErrorUnkown,
 
-    /// @brief The resource creation/allocation failed due to lack of memory in allocator.
-    ErrorOutOfMemory,
+        /// @brief The resource creation/allocation failed due to lack of memory in allocator.
+        ErrorOutOfMemory,
 
-    /// @brief The resource creation/allocation failed due to lack of device (GPU) memory.
-    ErrorDeviceOutOfMemory,
+        /// @brief The resource creation/allocation failed due to lack of device (GPU) memory.
+        ErrorDeviceOutOfMemory,
 
-    /// @brief The resource allocation failed.
-    ErrorAllocationFailed,
+        /// @brief The resource allocation failed.
+        ErrorAllocationFailed,
 
-    /// @brief The frame graph cycle dependency.
-    ErrorCyclicFrameGraph,
+        /// @brief The frame graph cycle dependency.
+        ErrorCyclicFrameGraph,
 
-    /// @brief Attempted to access a resource after it was deleted.
-    ErrorResourceUsedAfterFree,
-};
+        /// @brief Attempted to access a resource after it was deleted.
+        ErrorResourceUsedAfterFree,
+    };
 
-/// @brief Encapsulate an value and a result code for error handling.
-/// @tparam T The type of the value created if the result is a success.
-template<typename T>
-struct Result
-{
-    /// @brief The actual value (only valid if result is a success value).
-    T value;
+    /// @brief Encapsulate an value and a result code for error handling.
+    /// @tparam T The type of the value created if the result is a success.
+    template<typename T>
+    struct Result
+    {
+        Result(ResultCode code)
+            : value()
+            , result(code)
+        {
+        }
 
-    /// @brief The result of the operation.
-    ResultCode result;
-};
+        Result(T t)
+            : value(t)
+            , result(RHI::ResultCode::Success)
+        {
+        }
 
-/// @brief Return true if the value is a success value.
-inline static bool IsSucess(ResultCode result)
-{
-    return result == ResultCode::Success;
-}
+        Result(T t, ResultCode code)
+            : value(t)
+            , result(code)
+        {
+        }
 
-/// @brief Return true if the value is a failure value.
-inline static bool IsError(ResultCode result)
-{
-    return result != ResultCode::Success;
-}
+        /// @brief The actual value (only valid if result is a success value).
+        T value;
 
-}  // namespace RHI
+        /// @brief The result of the operation.
+        ResultCode result;
+    };
+
+    /// @brief Return true if the value is a success value.
+    inline static bool IsSucess(ResultCode result)
+    {
+        return result == ResultCode::Success;
+    }
+
+    /// @brief Return true if the value is a failure value.
+    inline static bool IsError(ResultCode result)
+    {
+        return result != ResultCode::Success;
+    }
+
+} // namespace RHI

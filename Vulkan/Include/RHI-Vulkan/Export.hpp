@@ -9,10 +9,10 @@
 #  ifndef RHI_Vulkan_EXPORT
 #    ifdef Vulkan_EXPORTS
         /* We are building this library */
-#      define RHI_Vulkan_EXPORT __declspec(dllexport)
+#      define RHI_Vulkan_EXPORT 
 #    else
         /* We are using this library */
-#      define RHI_Vulkan_EXPORT __declspec(dllimport)
+#      define RHI_Vulkan_EXPORT 
 #    endif
 #  endif
 

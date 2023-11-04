@@ -21,24 +21,22 @@ set(HEADER_FILES
 
 # Add source files
 set(SOURCE_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/FrameScheduler.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/FrameGraph.hpp
 
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/FrameScheduler.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Loader.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Pass.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/FrameGraph.cpp
 )
 
 include(${CMAKE_SOURCE_DIR}/CMake/AddTarget.cmake)
 aams_add_target(
     NAME Vulkan
     NAMESPACE RHI
-    SHARED
+    STATIC
     HEADERS ${HEADER_FILES}
     SOURCES ${SOURCE_FILES}
     BUILD_DEPENDENCIES

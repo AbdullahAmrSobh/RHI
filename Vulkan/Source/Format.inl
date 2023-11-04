@@ -3,6 +3,7 @@
 #include <vulkan/vulkan.h>
 
 #include <RHI/Format.hpp>
+#include <RHI/Assert.hpp>
 #include <RHI/Result.hpp>
 
 namespace Vulkan
@@ -26,6 +27,8 @@ namespace Vulkan
     {
         switch (format)
         {
+        case RHI::Format::None:
+            return VK_FORMAT_UNDEFINED;
         case RHI::Format::B8G8R8A8_UNORM:
             return VK_FORMAT_B8G8R8A8_UNORM;
         case RHI::Format::R32G32B32A32_FLOAT:
@@ -130,30 +133,6 @@ namespace Vulkan
             RHI_UNREACHABLE();
             return VK_FORMAT_UNDEFINED;
         }
-    }
-
-    inline static VkSampleCountFlagBits GetSampleCount(RHI::SampleCount sampleCount)
-    {
-        switch (sampleCount)
-        {
-        case RHI::SampleCount::Samples1:
-            return VK_SAMPLE_COUNT_1_BIT;
-        case RHI::SampleCount::Samples2:
-            return VK_SAMPLE_COUNT_2_BIT;
-        case RHI::SampleCount::Samples4:
-            return VK_SAMPLE_COUNT_4_BIT;
-        case RHI::SampleCount::Samples8:
-            return VK_SAMPLE_COUNT_8_BIT;
-        case RHI::SampleCount::Samples16:
-            return VK_SAMPLE_COUNT_16_BIT;
-        case RHI::SampleCount::Samples32:
-            return VK_SAMPLE_COUNT_32_BIT;
-        case RHI::SampleCount::Samples64:
-            return VK_SAMPLE_COUNT_64_BIT;
-        default:
-            RHI_UNREACHABLE();
-            return VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM;
-        };
     }
 
 } // namespace Vulkan

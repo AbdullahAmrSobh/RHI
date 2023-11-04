@@ -8,7 +8,7 @@
 #include <type_traits>
 #include <vector>
 
-#include "RHI/Common.hpp"
+#include "RHI/Assert.hpp"
 
 namespace RHI
 {
@@ -43,7 +43,7 @@ public:
         : m_data(firstElement)
         , m_count(lastElement - firstElement)
     {
-        assert(lastElement > firstElement);
+        RHI_ASSERT(lastElement >= firstElement);
     }
 
     constexpr Span(const std::initializer_list<ElementType>& elements) noexcept

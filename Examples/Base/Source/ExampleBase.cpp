@@ -18,17 +18,17 @@
 class DebugCallbacks final : public RHI::DebugCallbacks
 {
 public:
-    void LogInfo(std::string_view message) override
+    void LogInfo(std::string_view message, ...) override
     {
         std::cout << "INFO: " << message << "\n";
     }
 
-    void LogWarnning(std::string_view message) override
+    void LogWarnning(std::string_view message, ...) override
     {
         std::cout << "WARNNING: " << message << "\n";
     }
 
-    void LogError(std::string_view message) override
+    void LogError(std::string_view message, ...) override
     {
         std::cout << "ERROR: " << message << "\n";
     }
@@ -75,7 +75,8 @@ ExampleBase::ExampleBase(std::string name, uint32_t width, uint32_t height)
     RHI::ApplicationInfo appInfo{};
     appInfo.applicationName = "RHI-App";
     appInfo.applicationVersion = RHI::MakeVersion(0, 1, 0);
-    m_context = RHI::CreateVulkanRHI(appInfo, std::make_unique<DebugCallbacks>());
+    auto debugCallbacks = std::make_unique<DebugCallbacks>();
+    m_context = RHI::CreateVulkanRHI(appInfo, std::move(debugCallbacks));
 }
 
 void ExampleBase::Init()
@@ -115,7 +116,6 @@ void ExampleBase::Run()
     while (!glfwWindowShouldClose(window))
     {
         OnUpdate();
-
         glfwPollEvents();
     }
 }

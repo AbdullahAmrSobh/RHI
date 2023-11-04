@@ -1,6 +1,3 @@
-#include <cassert>
-#include <iostream>
-
 #include <Examples-Base/ExampleBase.hpp>
 #include <RHI/RHI.hpp>
 
@@ -10,6 +7,72 @@ public:
     TriangleExample()
         : ExampleBase("Hello, Triangle", 800, 600)
     {
+    }
+
+    void SetupRenderPass(RHI::Pass& pass)
+    {
+        pass.Begin();
+
+        // setup attachments
+        RHI::ImageCreateInfo createInfo{};
+        createInfo.size.width = 800;
+        createInfo.size.height = 600;
+        createInfo.size.depth = 1;
+        createInfo.usageFlags = RHI::ImageUsage::Depth;
+        createInfo.format = RHI::Format::D32_FLOAT;
+        createInfo.type = RHI::ImageType::Image2D;
+
+        RHI::ImageAttachmentUseInfo useInfo{};
+
+        useInfo.clearValue.depth.depthValue = 1.0f;
+        useInfo.usage = RHI::AttachmentUsage::Depth;
+        useInfo.subresource.imageAspects = RHI::ImageAspect::Depth;
+        pass.CreateTransientImageResource("depth-attachment", createInfo, useInfo);
+
+        useInfo.clearValue.color = { 0.3f, 0.6f, 0.9f, 1.0f };
+        useInfo.usage = RHI::AttachmentUsage::RenderTarget;
+        useInfo.subresource.imageAspects = RHI::ImageAspect::Color;
+        pass.ImportImageResource("color-attachment", m_swapchain->GetImage(), useInfo);
+
+        // auto textureAttachment = pass.ImportImageResource("texture", m_image, useInfo);
+
+        // setup bind elements
+        pass.End();
+
+        // RHI::ShaderBindGroupData shaderBindGroupData{};
+        // shaderBindGroupData.BindImages(0u, textureAttachment);
+        // m_shaderBindGroupAllocator->Update(m_shaderBindGroup, shaderBindGroupData);
+    }
+
+    void SetupCommandList(RHI::Pass& pass)
+    {
+        // Build command lists
+        auto& cmd = pass.BeginCommandList();
+
+        RHI::Viewport viewport {};
+        viewport.width = 800;
+        viewport.height = 600;
+        viewport.minDepth = 0.0;
+        viewport.maxDepth = 1.0;
+        RHI::Scissor scissor {};
+        scissor.width = viewport.width;
+        scissor.height = viewport.height;
+
+        cmd.SetViewport(viewport);
+        cmd.SetSicssor(scissor);
+
+        // setup command list
+        RHI::CommandDraw cmdDraw{
+            .pipelineState{ m_pipelineState },
+            .shaderBindGroups{ m_shaderBindGroup },
+            .vertexBuffers{ m_vertexBuffer },
+            .indexBuffers{ m_indexBuffer },
+            .parameters{ .elementCount = 6 },
+        };
+
+        cmd.Submit(cmdDraw);
+
+        pass.EndCommandList();
     }
 
     void OnInit(WindowInfo windowInfo) override
@@ -44,59 +107,61 @@ public:
             createInfo.byteSize = 6 * sizeof(float);
             {
                 auto [vertexBuffer, result] = m_resourcePool->Allocate(createInfo);
+                RHI_ASSERT(result == RHI::ResultCode::Success);
                 m_vertexBuffer = vertexBuffer;
             }
             createInfo.usageFlags = RHI::BufferUsage::Index;
             createInfo.byteSize = 6 * sizeof(uint32_t);
             {
                 auto [indexBuffer, result] = m_resourcePool->Allocate(createInfo);
+                RHI_ASSERT(result == RHI::ResultCode::Success);
                 m_indexBuffer = indexBuffer;
             }
 
             RHI::DeviceMemoryPtr vertexBufferPtr = m_context->MapResource(m_vertexBuffer);
-            assert(vertexBufferPtr != nullptr);
+            RHI_ASSERT(vertexBufferPtr != nullptr);
             memcpy(vertexBufferPtr, vertexData, sizeof(float) * 6);
             m_context->Unmap(m_vertexBuffer);
 
             RHI::DeviceMemoryPtr indexBufferPtr = m_context->MapResource(m_indexBuffer);
-            assert(indexBufferPtr != nullptr);
+            RHI_ASSERT(indexBufferPtr != nullptr);
             memcpy(indexBufferPtr, indexData, sizeof(uint32_t) * 6);
             m_context->Unmap(m_indexBuffer);
         }
 
-        // create image resource
-        {
-            auto imageData = LoadImage("Resources/Images/image.png");
+        // // create image resource
+        // {
+        //     auto imageData = LoadImage("Resources/Images/image.png");
 
-            RHI::ImageCreateInfo createInfo {};
-            createInfo.usageFlags  = RHI::ImageUsage::ShaderResource;
-            createInfo.type        = RHI::ImageType::Image2D;
-            createInfo.size.width  = imageData.width;
-            createInfo.size.height = imageData.height;
-            createInfo.size.depth  = imageData.depth;
-            createInfo.format      = RHI::Format::R8G8B8A8_UNORM;
-            createInfo.mipLevels   = 1;
-            createInfo.arrayCount  = 1;
+        //     RHI::ImageCreateInfo createInfo{};
+        //     createInfo.usageFlags = RHI::ImageUsage::ShaderResource;
+        //     createInfo.type = RHI::ImageType::Image2D;
+        //     createInfo.size.width = imageData.width;
+        //     createInfo.size.height = imageData.height;
+        //     createInfo.size.depth = imageData.depth;
+        //     createInfo.format = RHI::Format::B8G8R8A8_UNORM;
+        //     createInfo.mipLevels = 1;
+        //     createInfo.arrayCount = 1;
 
-            auto [image, result] = m_resourcePool->Allocate(createInfo);
-            m_image              = image;
+        //     auto [image, result] = m_resourcePool->Allocate(createInfo);
+        //     m_image = image;
 
-            RHI::DeviceMemoryPtr dataPtr = m_context->MapResource(m_image);
-            assert(dataPtr != nullptr);
-            memcpy(dataPtr, imageData.data.data(), imageData.data.size());
-            m_context->Unmap(m_image);
-        }
+        //     RHI::DeviceMemoryPtr dataPtr = m_context->MapResource(m_image);
+        //     RHI_ASSERT(dataPtr != nullptr);
+        //     memcpy(dataPtr, imageData.data.data(), imageData.data.size());
+        //     m_context->Unmap(m_image);
+        // }
 
         // create shader bind group layout
-        RHI::ShaderBindGroupLayout layout = {{RHI::ShaderBinding {RHI::ShaderBindingType::Image, RHI::ShaderBindingAccess::OnlyRead, 1}}};
+        RHI::ShaderBindGroupLayout layout = { { RHI::ShaderBinding{ RHI::ShaderBindingType::Image, RHI::ShaderBindingAccess::OnlyRead, 1 } } };
 
         // create shader bind group
         m_shaderBindGroupAllocator = m_context->CreateShaderBindGroupAllocator();
-        m_shaderBindGroup          = m_shaderBindGroupAllocator->AllocateShaderBindGroups(layout).front();
+        m_shaderBindGroup = m_shaderBindGroupAllocator->AllocateShaderBindGroups(layout).front();
 
         // create pipeline
         {
-            auto shaderCode = ReadBinaryFile("I:/repos/RHI/Examples/Triangle/Resources/Shaders/triangle.spv");
+            auto shaderCode = ReadBinaryFile("./Resources/Shaders/triangle.spv");
 
             RHI::ShaderModuleCreateInfo createInfo{};
             createInfo.code = shaderCode.data();
@@ -108,11 +173,11 @@ public:
             psoCreateInfo.vertexShaderName = "VSMain";
             psoCreateInfo.pixelShaderModule = shaderModule.get();
             psoCreateInfo.pixelShaderName = "PSMain";
-            psoCreateInfo.renderTargetLayout = { { RHI::Format::R8G8B8A8_UNORM }, RHI::Format::D32_FLOAT, RHI::Format::None };
+            psoCreateInfo.renderTargetLayout = { { RHI::Format::B8G8R8A8_UNORM }, RHI::Format::D32_FLOAT, RHI::Format::None };
             psoCreateInfo.depthStencilState.depthTestEnable = true;
             psoCreateInfo.depthStencilState.depthWriteEnable = true;
             // psoCreateInfo.bindGroupLayouts                          = {layout};
-            psoCreateInfo.renderTargetLayout.colorAttachmentsFormats = { RHI::Format::R8G8B8A8_UINT };
+            psoCreateInfo.renderTargetLayout.colorAttachmentsFormats = { RHI::Format::B8G8R8A8_UNORM };
             psoCreateInfo.renderTargetLayout.depthAttachmentFormat = RHI::Format::D32_FLOAT;
 
             m_pipelineState = m_context->CreateGraphicsPipeline(psoCreateInfo);
@@ -123,7 +188,7 @@ public:
             RHI::PassCreateInfo createInfo{};
             createInfo.name = "RenderPass";
             createInfo.type = RHI::QueueType::Graphics;
-            m_renderpass = m_context->CreatePass(createInfo);
+            m_renderpass = m_frameScheduler->CreatePass(createInfo);
         }
     }
 
@@ -142,56 +207,13 @@ public:
     {
         m_frameScheduler->Begin();
 
-        // setup render pass.
-        {
-            m_renderpass->Begin();
-
-            // setup attachments
-            RHI::ImageCreateInfo createInfo{};
-            createInfo.size.width = 800;
-            createInfo.size.height = 600;
-            createInfo.format = RHI::Format::D32_FLOAT;
-
-            RHI::ImageAttachmentUseInfo useInfo{};
-            useInfo.clearValue.depth.depthValue = 1.0f;
-            useInfo.usage = RHI::AttachmentUsage::Depth;
-            m_renderpass->CreateTransientImageResource("depth-attachment", createInfo, useInfo);
-
-            useInfo.clearValue.color = { 0.3f, 0.6f, 0.9f, 1.0f };
-            m_renderpass->ImportImageResource("color-attachment", m_swapchain->GetImage(), useInfo);
-
-            auto textureAttachment = m_renderpass->ImportImageResource("texture", m_image, useInfo);
-
-            // setup bind elements
-            m_renderpass->End();
-
-            RHI::ShaderBindGroupData shaderBindGroupData{};
-            shaderBindGroupData.BindImages(0u, textureAttachment);
-
-            m_shaderBindGroupAllocator->Update(m_shaderBindGroup, shaderBindGroupData);
-        }
+        SetupRenderPass(*m_renderpass);
 
         m_frameScheduler->Submit(*m_renderpass);
 
         m_frameScheduler->Compile();
 
-        // Build command lists
-        {
-            auto& cmd = m_renderpass->BeginCommandList();
-
-            // setup command list
-            RHI::CommandDraw cmdDraw{
-                .pipelineState{ m_pipelineState },
-                .shaderBindGroups{ m_shaderBindGroup },
-                .vertexBuffers{ m_vertexBuffer },
-                .indexBuffers{ m_indexBuffer },
-                .parameters{ .elementCount = 6 },
-            };
-
-            cmd.Submit(cmdDraw);
-
-            m_renderpass->EndCommandList();
-        }
+        SetupCommandList(*m_renderpass);
 
         m_frameScheduler->End();
     }
