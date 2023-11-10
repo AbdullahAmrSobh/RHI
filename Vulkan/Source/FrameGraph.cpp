@@ -14,7 +14,7 @@ namespace Vulkan
     /// Utility functions /////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////
 
-    VkAttachmentLoadOp ConvertToVkLoadOp(RHI::ImageLoadOperation op)
+    VkAttachmentLoadOp ConvertLoadOp(RHI::ImageLoadOperation op)
     {
         switch (op)
         {
@@ -25,7 +25,7 @@ namespace Vulkan
         }
     }
 
-    VkAttachmentStoreOp ConvertToVkStoreOp(RHI::ImageStoreOperation op)
+    VkAttachmentStoreOp ConvertStoreOp(RHI::ImageStoreOperation op)
     {
         switch (op)
         {
@@ -36,7 +36,7 @@ namespace Vulkan
         }
     }
 
-    VkImageLayout ConvertToVkImageLayout(RHI::AttachmentUsage usage, RHI::AttachmentAccess access)
+    VkImageLayout ConvertImageLayout(RHI::AttachmentUsage usage, RHI::AttachmentAccess access)
     {
         switch (usage)
         {
@@ -528,7 +528,7 @@ namespace Vulkan
             submitInfo.pNext = nullptr;
             submitInfo.semaphore = pass->m_signalSemaphore;
             // submitInfo.value;
-            submitInfo.stageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT_KHR; // ConvertToVkShaderStage(pass);
+            submitInfo.stageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT_KHR; // ConvertShaderStage(pass);
             // submitInfo.deviceIndex;
             submitInfos.push_back(submitInfo);
         }

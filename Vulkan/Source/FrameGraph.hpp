@@ -15,11 +15,11 @@ namespace Vulkan
     class CommandList;
     class Allocation;
 
-    VkAttachmentLoadOp ConvertToVkLoadOp(RHI::ImageLoadOperation op);
+    VkAttachmentLoadOp ConvertLoadOp(RHI::ImageLoadOperation op);
 
-    VkAttachmentStoreOp ConvertToVkStoreOp(RHI::ImageStoreOperation op);
+    VkAttachmentStoreOp ConvertStoreOp(RHI::ImageStoreOperation op);
 
-    VkImageLayout ConvertToVkImageLayout(RHI::AttachmentUsage usage, RHI::AttachmentAccess access);
+    VkImageLayout ConvertImageLayout(RHI::AttachmentUsage usage, RHI::AttachmentAccess access);
 
     template<typename T>
     inline static bool IsPow2(T x)

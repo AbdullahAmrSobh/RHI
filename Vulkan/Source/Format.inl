@@ -89,7 +89,7 @@ namespace Vulkan
     } };
     // clang-format on
 
-    inline static RHI::ResultCode ConvertToRhiResult(VkResult result)
+    inline static RHI::ResultCode ConvertResult(VkResult result)
     {
         switch (result)
         {

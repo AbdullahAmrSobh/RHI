@@ -35,7 +35,7 @@ namespace Vulkan
     /// Utility functions /////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////
 
-    VkSampleCountFlagBits ConvertToVkSampleCount(RHI::SampleCount sampleCount)
+    VkSampleCountFlagBits ConvertSampleCount(RHI::SampleCount sampleCount)
     {
         switch (sampleCount)
         {
@@ -51,7 +51,7 @@ namespace Vulkan
         }
     }
 
-    VkSampleCountFlags ConvertToVkSampleCountFlags(RHI::Flags<RHI::SampleCount> sampleCountFlags)
+    VkSampleCountFlags ConvertSampleCountFlags(RHI::Flags<RHI::SampleCount> sampleCountFlags)
     {
         VkSampleCountFlags result = 0;
         if (sampleCountFlags & RHI::SampleCount::Samples1)
@@ -71,7 +71,7 @@ namespace Vulkan
         return result;
     }
 
-    VkImageUsageFlagBits ConvertToVkImageUsage(RHI::ImageUsage imageUsage)
+    VkImageUsageFlagBits ConvertImageUsage(RHI::ImageUsage imageUsage)
     {
         switch (imageUsage)
         {
@@ -86,7 +86,7 @@ namespace Vulkan
         }
     }
 
-    VkImageUsageFlags ConvertToVkImageUsageFlags(RHI::Flags<RHI::ImageUsage> imageUsageFlags)
+    VkImageUsageFlags ConvertImageUsageFlags(RHI::Flags<RHI::ImageUsage> imageUsageFlags)
     {
         VkImageUsageFlags result = 0;
         if (imageUsageFlags & RHI::ImageUsage::ShaderResource)
@@ -104,7 +104,7 @@ namespace Vulkan
         return result;
     }
 
-    VkImageType ConvertToVkImageType(RHI::ImageType imageType)
+    VkImageType ConvertImageType(RHI::ImageType imageType)
     {
         switch (imageType)
         {
@@ -116,7 +116,7 @@ namespace Vulkan
         }
     }
 
-    VkImageAspectFlagBits ConvertToVkImageAspect(RHI::Flags<RHI::ImageAspect> imageAspect)
+    VkImageAspectFlagBits ConvertImageAspect(RHI::Flags<RHI::ImageAspect> imageAspect)
     {
         if (imageAspect & RHI::ImageAspect::Color)
             return VK_IMAGE_ASPECT_COLOR_BIT;
@@ -128,7 +128,7 @@ namespace Vulkan
         return VK_IMAGE_ASPECT_FLAG_BITS_MAX_ENUM;
     }
 
-    VkImageAspectFlags ConvertToVkImageAspect(RHI::ImageAspect imageAspect)
+    VkImageAspectFlags ConvertImageAspect(RHI::ImageAspect imageAspect)
     {
         switch (imageAspect)
         {
@@ -142,7 +142,7 @@ namespace Vulkan
         }
     }
 
-    VkComponentSwizzle ConvertToVkComponentSwizzle(RHI::ComponentSwizzle componentSwizzle)
+    VkComponentSwizzle ConvertComponentSwizzle(RHI::ComponentSwizzle componentSwizzle)
     {
         switch (componentSwizzle)
         {
@@ -157,7 +157,7 @@ namespace Vulkan
         }
     }
 
-    VkBufferUsageFlagBits ConvertToVkBufferUsage(RHI::BufferUsage bufferUsage)
+    VkBufferUsageFlagBits ConvertBufferUsage(RHI::BufferUsage bufferUsage)
     {
         switch (bufferUsage)
         {
@@ -172,7 +172,7 @@ namespace Vulkan
         }
     }
 
-    VkBufferUsageFlags ConvertToVkBufferUsageFlags(RHI::Flags<RHI::BufferUsage> bufferUsageFlags)
+    VkBufferUsageFlags ConvertBufferUsageFlags(RHI::Flags<RHI::BufferUsage> bufferUsageFlags)
     {
         VkBufferUsageFlags result = 0;
         if (bufferUsageFlags & RHI::BufferUsage::Storage)
@@ -190,7 +190,7 @@ namespace Vulkan
         return result;
     }
 
-    VkShaderStageFlagBits ConvertToVkShaderStage(RHI::ShaderStage shaderStage)
+    VkShaderStageFlagBits ConvertShaderStage(RHI::ShaderStage shaderStage)
     {
         switch (shaderStage)
         {
@@ -201,7 +201,7 @@ namespace Vulkan
         }
     }
 
-    VkShaderStageFlags ConvertToVkShaderStage(RHI::Flags<RHI::ShaderStage> shaderStageFlags)
+    VkShaderStageFlags ConvertShaderStage(RHI::Flags<RHI::ShaderStage> shaderStageFlags)
     {
         VkShaderStageFlags result = 0;
         if (shaderStageFlags & RHI::ShaderStage::Vertex)
@@ -213,7 +213,7 @@ namespace Vulkan
         return result;
     }
 
-    VkDescriptorType ConvertToVkDescriptorType(RHI::ShaderBindingType bindingType)
+    VkDescriptorType ConvertDescriptorType(RHI::ShaderBindingType bindingType)
     {
         switch (bindingType)
         {
@@ -225,7 +225,7 @@ namespace Vulkan
         }
     }
 
-    VkAccessFlags ConvertToVkAccessFlags(RHI::ShaderBindingAccess bindingAccess)
+    VkAccessFlags ConvertAccessFlags(RHI::ShaderBindingAccess bindingAccess)
     {
         switch (bindingAccess)
         {
@@ -235,7 +235,7 @@ namespace Vulkan
         }
     }
 
-    VkVertexInputRate ConvertToVkVertexInputRate(RHI::PipelineVertexInputRate inputRate)
+    VkVertexInputRate ConvertVertexInputRate(RHI::PipelineVertexInputRate inputRate)
     {
         switch (inputRate)
         {
@@ -245,7 +245,7 @@ namespace Vulkan
         }
     }
 
-    VkCullModeFlags ConvertToVkCullModeFlags(RHI::PipelineRasterizerStateCullMode cullMode)
+    VkCullModeFlags ConvertCullModeFlags(RHI::PipelineRasterizerStateCullMode cullMode)
     {
         switch (cullMode)
         {
@@ -257,7 +257,7 @@ namespace Vulkan
         }
     }
 
-    VkPolygonMode ConvertToVkPolygonMode(RHI::PipelineRasterizerStateFillMode fillMode)
+    VkPolygonMode ConvertPolygonMode(RHI::PipelineRasterizerStateFillMode fillMode)
     {
         switch (fillMode)
         {
@@ -268,7 +268,7 @@ namespace Vulkan
         }
     }
 
-    VkPrimitiveTopology ConvertToVkPrimitiveTopology(RHI::PipelineTopologyMode topologyMode)
+    VkPrimitiveTopology ConvertPrimitiveTopology(RHI::PipelineTopologyMode topologyMode)
     {
         switch (topologyMode)
         {
@@ -279,7 +279,7 @@ namespace Vulkan
         }
     }
 
-    VkFrontFace ConvertToVkFrontFace(RHI::PipelineRasterizerStateFrontFace frontFace)
+    VkFrontFace ConvertFrontFace(RHI::PipelineRasterizerStateFrontFace frontFace)
     {
         switch (frontFace)
         {
@@ -289,7 +289,7 @@ namespace Vulkan
         }
     }
 
-    VkCompareOp ConvertToVkCompareOp(RHI::CompareOperator compareOperator)
+    VkCompareOp ConvertCompareOp(RHI::CompareOperator compareOperator)
     {
         switch (compareOperator)
         {
@@ -305,7 +305,7 @@ namespace Vulkan
         }
     }
 
-    VkFilter ConvertToVkFilter(RHI::SamplerFilter samplerFilter)
+    VkFilter ConvertFilter(RHI::SamplerFilter samplerFilter)
     {
         switch (samplerFilter)
         {
@@ -315,7 +315,7 @@ namespace Vulkan
         }
     }
 
-    VkSamplerAddressMode ConvertToVkSamplerAddressMode(RHI::SamplerAddressMode addressMode)
+    VkSamplerAddressMode ConvertSamplerAddressMode(RHI::SamplerAddressMode addressMode)
     {
         switch (addressMode)
         {
@@ -325,7 +325,7 @@ namespace Vulkan
         }
     }
 
-    VkCompareOp ConvertToVkCompareOp(RHI::SamplerCompareOperation compareOperation)
+    VkCompareOp ConvertCompareOp(RHI::SamplerCompareOperation compareOperation)
     {
         switch (compareOperation)
         {
@@ -341,7 +341,7 @@ namespace Vulkan
         }
     }
 
-    VkBlendFactor ConvertToVkBlendFactor(RHI::BlendFactor blendFactor)
+    VkBlendFactor ConvertBlendFactor(RHI::BlendFactor blendFactor)
     {
         switch (blendFactor)
         {
@@ -363,7 +363,7 @@ namespace Vulkan
         }
     }
 
-    VkBlendOp ConvertToVkBlendOp(RHI::BlendEquation blendEquation)
+    VkBlendOp ConvertBlendOp(RHI::BlendEquation blendEquation)
     {
         switch (blendEquation)
         {
@@ -825,7 +825,7 @@ namespace Vulkan
 
         result = CreateNativeSwapchain();
 
-        return ConvertToRhiResult(result);
+        return ConvertResult(result);
     }
 
     RHI::ResultCode Swapchain::Present()
@@ -880,7 +880,7 @@ namespace Vulkan
         createInfo.imageExtent.width = minImageWidth;
         createInfo.imageExtent.height = minImageHeight;
         createInfo.imageArrayLayers = 1;
-        createInfo.imageUsage = ConvertToVkImageUsageFlags(m_swapchainInfo.imageUsage);
+        createInfo.imageUsage = ConvertImageUsageFlags(m_swapchainInfo.imageUsage);
         createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
         createInfo.queueFamilyIndexCount = 0;
         createInfo.pQueueFamilyIndices = nullptr;
@@ -1039,16 +1039,16 @@ namespace Vulkan
         vkCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         vkCreateInfo.pNext = nullptr;
         vkCreateInfo.flags = {};
-        vkCreateInfo.imageType = ConvertToVkImageType(createInfo.type);
+        vkCreateInfo.imageType = ConvertImageType(createInfo.type);
         vkCreateInfo.format = ConvertFormat(createInfo.format);
         vkCreateInfo.extent.width = createInfo.size.width;
         vkCreateInfo.extent.height = createInfo.size.height;
         vkCreateInfo.extent.depth = createInfo.size.depth;
         vkCreateInfo.mipLevels = createInfo.mipLevels;
         vkCreateInfo.arrayLayers = createInfo.arrayCount;
-        vkCreateInfo.samples = ConvertToVkSampleCount(createInfo.sampleCount);
+        vkCreateInfo.samples = ConvertSampleCount(createInfo.sampleCount);
         vkCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-        vkCreateInfo.usage = ConvertToVkImageUsageFlags(createInfo.usageFlags);
+        vkCreateInfo.usage = ConvertImageUsageFlags(createInfo.usageFlags);
         vkCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         vkCreateInfo.queueFamilyIndexCount = 0;
         vkCreateInfo.pQueueFamilyIndices = nullptr;
@@ -1074,7 +1074,7 @@ namespace Vulkan
             return m_imageOwner.Insert(resource);
         }
 
-        return ConvertToRhiResult(result);
+        return ConvertResult(result);
     }
 
     RHI::Result<RHI::Handle<Buffer>> ResourceManager::CreateBuffer(const VmaAllocationCreateInfo allocationInfo, const RHI::BufferCreateInfo& createInfo, ResourcePool* parentPool, bool isTransientResource)
@@ -1084,7 +1084,7 @@ namespace Vulkan
         vkCreateInfo.pNext = nullptr;
         vkCreateInfo.flags = {};
         vkCreateInfo.size = createInfo.byteSize;
-        vkCreateInfo.usage = ConvertToVkBufferUsageFlags(createInfo.usageFlags);
+        vkCreateInfo.usage = ConvertBufferUsageFlags(createInfo.usageFlags);
         vkCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         vkCreateInfo.queueFamilyIndexCount = 0;
         vkCreateInfo.pQueueFamilyIndices = nullptr;
@@ -1108,7 +1108,7 @@ namespace Vulkan
             return m_bufferOwner.Insert(resource);
         }
 
-        return ConvertToRhiResult(result);
+        return ConvertResult(result);
     }
 
     RHI::Result<RHI::Handle<ImageView>> ResourceManager::CreateImageView(RHI::Handle<Image> imageHandle, const RHI::ImageAttachmentUseInfo& useInfo)
@@ -1131,11 +1131,11 @@ namespace Vulkan
         }
 
         vkCreateInfo.format = image->createInfo.format;
-        vkCreateInfo.components.r = ConvertToVkComponentSwizzle(useInfo.components.r);
-        vkCreateInfo.components.g = ConvertToVkComponentSwizzle(useInfo.components.g);
-        vkCreateInfo.components.b = ConvertToVkComponentSwizzle(useInfo.components.b);
-        vkCreateInfo.components.a = ConvertToVkComponentSwizzle(useInfo.components.a);
-        vkCreateInfo.subresourceRange.aspectMask = ConvertToVkImageAspect(useInfo.subresource.imageAspects);
+        vkCreateInfo.components.r = ConvertComponentSwizzle(useInfo.components.r);
+        vkCreateInfo.components.g = ConvertComponentSwizzle(useInfo.components.g);
+        vkCreateInfo.components.b = ConvertComponentSwizzle(useInfo.components.b);
+        vkCreateInfo.components.a = ConvertComponentSwizzle(useInfo.components.a);
+        vkCreateInfo.subresourceRange.aspectMask = ConvertImageAspect(useInfo.subresource.imageAspects);
         vkCreateInfo.subresourceRange.baseMipLevel = useInfo.subresource.mipBase;
         vkCreateInfo.subresourceRange.levelCount = useInfo.subresource.mipCount;
         vkCreateInfo.subresourceRange.baseArrayLayer = useInfo.subresource.arrayBase;
@@ -1184,9 +1184,9 @@ namespace Vulkan
         {
             auto& binding = bindings[bindingsCount];
             binding.binding = bindingsCount++;
-            binding.descriptorType = ConvertToVkDescriptorType(shaderBinding.type);
+            binding.descriptorType = ConvertDescriptorType(shaderBinding.type);
             binding.descriptorCount = shaderBinding.arrayCount;
-            binding.stageFlags = ConvertToVkShaderStage(shaderBinding.stages);
+            binding.stageFlags = ConvertShaderStage(shaderBinding.stages);
             binding.pImmutableSamplers = nullptr;
         }
 
@@ -1339,7 +1339,7 @@ namespace Vulkan
         inputAssemblyStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
         inputAssemblyStateCreateInfo.pNext = nullptr;
         inputAssemblyStateCreateInfo.flags = 0;
-        inputAssemblyStateCreateInfo.topology = ConvertToVkPrimitiveTopology(createInfo.topologyMode);
+        inputAssemblyStateCreateInfo.topology = ConvertPrimitiveTopology(createInfo.topologyMode);
         inputAssemblyStateCreateInfo.primitiveRestartEnable = VK_FALSE;
 
         VkPipelineTessellationStateCreateInfo tessellationStateCreateInfo{};
@@ -1363,9 +1363,9 @@ namespace Vulkan
         rasterizationStateCreateInfo.flags = 0;
         rasterizationStateCreateInfo.depthClampEnable = VK_FALSE;
         rasterizationStateCreateInfo.rasterizerDiscardEnable = VK_FALSE;
-        rasterizationStateCreateInfo.polygonMode = ConvertToVkPolygonMode(createInfo.rasterizationState.fillMode);
-        rasterizationStateCreateInfo.cullMode = ConvertToVkCullModeFlags(createInfo.rasterizationState.cullMode);
-        rasterizationStateCreateInfo.frontFace = ConvertToVkFrontFace(createInfo.rasterizationState.frontFace);
+        rasterizationStateCreateInfo.polygonMode = ConvertPolygonMode(createInfo.rasterizationState.fillMode);
+        rasterizationStateCreateInfo.cullMode = ConvertCullModeFlags(createInfo.rasterizationState.cullMode);
+        rasterizationStateCreateInfo.frontFace = ConvertFrontFace(createInfo.rasterizationState.frontFace);
         rasterizationStateCreateInfo.depthBiasEnable = VK_FALSE;
         rasterizationStateCreateInfo.depthBiasConstantFactor = 0.0f;
         rasterizationStateCreateInfo.depthBiasClamp = 0.0f;
@@ -1376,7 +1376,7 @@ namespace Vulkan
         multisampleStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
         multisampleStateCreateInfo.pNext = nullptr;
         multisampleStateCreateInfo.flags = 0;
-        multisampleStateCreateInfo.rasterizationSamples = ConvertToVkSampleCount(createInfo.multisampleState.sampleCount);
+        multisampleStateCreateInfo.rasterizationSamples = ConvertSampleCount(createInfo.multisampleState.sampleCount);
         multisampleStateCreateInfo.sampleShadingEnable = createInfo.multisampleState.sampleShading ? VK_TRUE : VK_FALSE;
         multisampleStateCreateInfo.minSampleShading = multisampleStateCreateInfo.rasterizationSamples / 2;
         multisampleStateCreateInfo.pSampleMask = nullptr;
@@ -1389,7 +1389,7 @@ namespace Vulkan
         depthStencilStateCreateInfo.flags = 0;
         depthStencilStateCreateInfo.depthTestEnable = createInfo.depthStencilState.depthTestEnable ? VK_TRUE : VK_FALSE;
         depthStencilStateCreateInfo.depthWriteEnable = createInfo.depthStencilState.depthWriteEnable ? VK_TRUE : VK_FALSE;
-        depthStencilStateCreateInfo.depthCompareOp = ConvertToVkCompareOp(createInfo.depthStencilState.compareOperator);
+        depthStencilStateCreateInfo.depthCompareOp = ConvertCompareOp(createInfo.depthStencilState.compareOperator);
         depthStencilStateCreateInfo.depthBoundsTestEnable = VK_FALSE;
         depthStencilStateCreateInfo.stencilTestEnable = createInfo.depthStencilState.stencilTestEnable ? VK_TRUE : VK_FALSE;
         // depthStencilStateCreateInfo.front;
@@ -1404,12 +1404,12 @@ namespace Vulkan
         {
             auto& state = pipelineColorBlendAttachmentStates[pipelineColorBlendAttachmentStateCount++];
             state.blendEnable = blendState.blendEnable ? VK_TRUE : VK_FALSE;
-            state.srcColorBlendFactor = ConvertToVkBlendFactor(blendState.srcColor);
-            state.dstColorBlendFactor = ConvertToVkBlendFactor(blendState.dstColor);
-            state.colorBlendOp = ConvertToVkBlendOp(blendState.colorBlendOp);
-            state.srcAlphaBlendFactor = ConvertToVkBlendFactor(blendState.srcAlpha);
-            state.dstAlphaBlendFactor = ConvertToVkBlendFactor(blendState.dstAlpha);
-            state.alphaBlendOp = ConvertToVkBlendOp(blendState.alphaBlendOp);
+            state.srcColorBlendFactor = ConvertBlendFactor(blendState.srcColor);
+            state.dstColorBlendFactor = ConvertBlendFactor(blendState.dstColor);
+            state.colorBlendOp = ConvertBlendOp(blendState.colorBlendOp);
+            state.srcAlphaBlendFactor = ConvertBlendFactor(blendState.srcAlpha);
+            state.dstAlphaBlendFactor = ConvertBlendFactor(blendState.dstAlpha);
+            state.alphaBlendOp = ConvertBlendOp(blendState.alphaBlendOp);
             state.colorWriteMask = 0;
             if (blendState.writeMask & RHI::ColorWriteMask::Red)
             {
@@ -1549,17 +1549,17 @@ namespace Vulkan
         vkCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
         vkCreateInfo.pNext = nullptr;
         vkCreateInfo.flags = 0;
-        vkCreateInfo.magFilter = ConvertToVkFilter(createInfo.filterMag);
-        vkCreateInfo.minFilter = ConvertToVkFilter(createInfo.filterMin);
-        vkCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR; // ConvertToVkFilter(createInfo.filterMip);
-        vkCreateInfo.addressModeU = ConvertToVkSamplerAddressMode(createInfo.addressU);
-        vkCreateInfo.addressModeV = ConvertToVkSamplerAddressMode(createInfo.addressV);
-        vkCreateInfo.addressModeW = ConvertToVkSamplerAddressMode(createInfo.addressW);
+        vkCreateInfo.magFilter = ConvertFilter(createInfo.filterMag);
+        vkCreateInfo.minFilter = ConvertFilter(createInfo.filterMin);
+        vkCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR; // ConvertFilter(createInfo.filterMip);
+        vkCreateInfo.addressModeU = ConvertSamplerAddressMode(createInfo.addressU);
+        vkCreateInfo.addressModeV = ConvertSamplerAddressMode(createInfo.addressV);
+        vkCreateInfo.addressModeW = ConvertSamplerAddressMode(createInfo.addressW);
         vkCreateInfo.mipLodBias = createInfo.mipLodBias;
         vkCreateInfo.anisotropyEnable = VK_TRUE;
         vkCreateInfo.maxAnisotropy = 1.0f;
         vkCreateInfo.compareEnable = VK_TRUE;
-        vkCreateInfo.compareOp = ConvertToVkCompareOp(createInfo.compare);
+        vkCreateInfo.compareOp = ConvertCompareOp(createInfo.compare);
         vkCreateInfo.minLod = createInfo.minLod;
         vkCreateInfo.maxLod = createInfo.maxLod;
         vkCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;

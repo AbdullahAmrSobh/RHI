@@ -6,7 +6,7 @@
 namespace Vulkan
 {
 
-    inline static VkPipelineStageFlags2 ConvertToVkPipelineStage(RHI::AttachmentUsage usage, RHI::Flags<RHI::PipelineAccessStage> accessStage)
+    inline static VkPipelineStageFlags2 ConvertPipelineStage(RHI::AttachmentUsage usage, RHI::Flags<RHI::PipelineAccessStage> accessStage)
     {
         switch (usage)
         {
@@ -36,7 +36,7 @@ namespace Vulkan
         }
     }
 
-    inline static VkAccessFlags2 ConvertToVkAccessFlags(RHI::AttachmentUsage usage, RHI::AttachmentAccess access)
+    inline static VkAccessFlags2 ConvertAccessFlags(RHI::AttachmentUsage usage, RHI::AttachmentAccess access)
     {
         switch (usage)
         {
@@ -92,7 +92,7 @@ namespace Vulkan
         barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
         barrier.pNext = nullptr;
         barrier.image = image->handle;
-        barrier.subresourceRange.aspectMask = ConvertToVkImageAspect(passAttachment->info.subresource.imageAspects);
+        barrier.subresourceRange.aspectMask = ConvertImageAspect(passAttachment->info.subresource.imageAspects);
         barrier.subresourceRange.baseArrayLayer = passAttachment->info.subresource.arrayBase;
         barrier.subresourceRange.layerCount = passAttachment->info.subresource.arrayCount;
         barrier.subresourceRange.baseMipLevel = passAttachment->info.subresource.mipBase;
@@ -104,25 +104,25 @@ namespace Vulkan
 
         if (resourceBefore == nullptr)
         {
-            barrier.srcStageMask = ConvertToVkPipelineStage(resourceAfter->info.usage, resourceAfter->stages);
+            barrier.srcStageMask = ConvertPipelineStage(resourceAfter->info.usage, resourceAfter->stages);
             barrier.dstStageMask = barrier.srcStageMask;
 
-            barrier.srcAccessMask = ConvertToVkAccessFlags(resourceAfter->info.usage, resourceAfter->info.access);
+            barrier.srcAccessMask = ConvertAccessFlags(resourceAfter->info.usage, resourceAfter->info.access);
             barrier.dstAccessMask = barrier.srcAccessMask;
 
             barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            barrier.newLayout = ConvertToVkImageLayout(resourceAfter->info.usage, resourceAfter->info.access);
+            barrier.newLayout = ConvertImageLayout(resourceAfter->info.usage, resourceAfter->info.access);
         }
         else if (resourceAfter == nullptr)
         {
-            barrier.srcStageMask = ConvertToVkPipelineStage(resourceBefore->info.usage, resourceBefore->stages);
+            barrier.srcStageMask = ConvertPipelineStage(resourceBefore->info.usage, resourceBefore->stages);
             barrier.dstStageMask = barrier.srcStageMask;
 
-            barrier.srcAccessMask = ConvertToVkAccessFlags(resourceBefore->info.usage, resourceBefore->info.access);
+            barrier.srcAccessMask = ConvertAccessFlags(resourceBefore->info.usage, resourceBefore->info.access);
             barrier.dstAccessMask = barrier.srcAccessMask;
 
             barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            barrier.newLayout = ConvertToVkImageLayout(resourceBefore->info.usage, resourceBefore->info.access);
+            barrier.newLayout = ConvertImageLayout(resourceBefore->info.usage, resourceBefore->info.access);
 
             if (image->swapchain)
             {
@@ -134,12 +134,12 @@ namespace Vulkan
             auto nextPass = resourceAfter->pass;
             auto currentPass = resourceAfter->pass;
 
-            barrier.srcStageMask = ConvertToVkPipelineStage(passAttachment->info.usage, passAttachment->stages);
-            barrier.dstStageMask = ConvertToVkPipelineStage(passAttachment->next->info.usage, passAttachment->next->stages);
-            barrier.srcAccessMask = ConvertToVkAccessFlags(passAttachment->info.usage, passAttachment->info.access);
-            barrier.dstAccessMask = ConvertToVkAccessFlags(passAttachment->next->info.usage, passAttachment->next->info.access);
-            barrier.oldLayout = ConvertToVkImageLayout(passAttachment->info.usage, passAttachment->info.access);
-            barrier.newLayout = ConvertToVkImageLayout(passAttachment->next->info.usage, passAttachment->next->info.access);
+            barrier.srcStageMask = ConvertPipelineStage(passAttachment->info.usage, passAttachment->stages);
+            barrier.dstStageMask = ConvertPipelineStage(passAttachment->next->info.usage, passAttachment->next->stages);
+            barrier.srcAccessMask = ConvertAccessFlags(passAttachment->info.usage, passAttachment->info.access);
+            barrier.dstAccessMask = ConvertAccessFlags(passAttachment->next->info.usage, passAttachment->next->info.access);
+            barrier.oldLayout = ConvertImageLayout(passAttachment->info.usage, passAttachment->info.access);
+            barrier.newLayout = ConvertImageLayout(passAttachment->next->info.usage, passAttachment->next->info.access);
 
             barrier.srcQueueFamilyIndex = m_context->GetQueueFamilyIndex(currentPass->GetQueueInfo().type);
             barrier.dstQueueFamilyIndex = m_context->GetQueueFamilyIndex(nextPass->GetQueueInfo().type);
@@ -245,9 +245,9 @@ namespace Vulkan
                 depthAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
                 depthAttachmentInfo.pNext = nullptr;
                 depthAttachmentInfo.imageView = view->handle;
-                depthAttachmentInfo.imageLayout = ConvertToVkImageLayout(attachment.info.usage, attachment.info.access);
-                depthAttachmentInfo.loadOp = ConvertToVkLoadOp(attachment.info.loadStoreOperations.loadOperation);
-                depthAttachmentInfo.storeOp = ConvertToVkStoreOp(attachment.info.loadStoreOperations.storeOperation);
+                depthAttachmentInfo.imageLayout = ConvertImageLayout(attachment.info.usage, attachment.info.access);
+                depthAttachmentInfo.loadOp = ConvertLoadOp(attachment.info.loadStoreOperations.loadOperation);
+                depthAttachmentInfo.storeOp = ConvertStoreOp(attachment.info.loadStoreOperations.storeOperation);
                 depthAttachmentInfo.clearValue.depthStencil.depth = attachment.info.clearValue.depth.depthValue;
                 renderingInfo.pDepthAttachment = &depthAttachmentInfo;
             }
@@ -258,9 +258,9 @@ namespace Vulkan
                 stencilAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
                 stencilAttachmentInfo.pNext = nullptr;
                 stencilAttachmentInfo.imageView = view->handle;
-                stencilAttachmentInfo.imageLayout = ConvertToVkImageLayout(attachment.info.usage, attachment.info.access);
-                stencilAttachmentInfo.loadOp = ConvertToVkLoadOp(attachment.info.loadStoreOperations.loadOperation);
-                stencilAttachmentInfo.storeOp = ConvertToVkStoreOp(attachment.info.loadStoreOperations.storeOperation);
+                stencilAttachmentInfo.imageLayout = ConvertImageLayout(attachment.info.usage, attachment.info.access);
+                stencilAttachmentInfo.loadOp = ConvertLoadOp(attachment.info.loadStoreOperations.loadOperation);
+                stencilAttachmentInfo.storeOp = ConvertStoreOp(attachment.info.loadStoreOperations.storeOperation);
                 stencilAttachmentInfo.clearValue.depthStencil.stencil = attachment.info.clearValue.depth.stencilValue;
                 renderingInfo.pStencilAttachment = &stencilAttachmentInfo;
             }
@@ -274,9 +274,9 @@ namespace Vulkan
             attachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
             attachmentInfo.pNext = nullptr;
             attachmentInfo.imageView = view->handle;
-            attachmentInfo.imageLayout = ConvertToVkImageLayout(attachment.info.usage, attachment.info.access);
-            attachmentInfo.loadOp = ConvertToVkLoadOp(attachment.info.loadStoreOperations.loadOperation);
-            attachmentInfo.storeOp = ConvertToVkStoreOp(attachment.info.loadStoreOperations.storeOperation);
+            attachmentInfo.imageLayout = ConvertImageLayout(attachment.info.usage, attachment.info.access);
+            attachmentInfo.loadOp = ConvertLoadOp(attachment.info.loadStoreOperations.loadOperation);
+            attachmentInfo.storeOp = ConvertStoreOp(attachment.info.loadStoreOperations.storeOperation);
             attachmentInfo.clearValue.color.float32[0] = attachment.info.clearValue.color.r;
             attachmentInfo.clearValue.color.float32[1] = attachment.info.clearValue.color.g;
             attachmentInfo.clearValue.color.float32[2] = attachment.info.clearValue.color.b;
@@ -462,14 +462,14 @@ namespace Vulkan
                 auto dstImage = resourceManager->m_imageOwner.Get(command.destinationImage);
 
                 VkImageCopy copyInfo{};
-                copyInfo.srcSubresource.aspectMask = ConvertToVkImageAspect(command.sourceSubresource.imageAspects);
+                copyInfo.srcSubresource.aspectMask = ConvertImageAspect(command.sourceSubresource.imageAspects);
                 copyInfo.srcSubresource.baseArrayLayer = command.sourceSubresource.arrayBase;
                 copyInfo.srcSubresource.layerCount = command.sourceSubresource.arrayCount;
                 copyInfo.srcSubresource.mipLevel = command.sourceSubresource.mipBase;
                 copyInfo.srcOffset.x = command.sourceOffset.x;
                 copyInfo.srcOffset.y = command.sourceOffset.y;
                 copyInfo.srcOffset.z = command.sourceOffset.z;
-                copyInfo.dstSubresource.aspectMask = ConvertToVkImageAspect(command.destinationSubresource.imageAspects);
+                copyInfo.dstSubresource.aspectMask = ConvertImageAspect(command.destinationSubresource.imageAspects);
                 copyInfo.dstSubresource.baseArrayLayer = command.destinationSubresource.arrayBase;
                 copyInfo.dstSubresource.layerCount = command.destinationSubresource.arrayCount;
                 copyInfo.dstSubresource.mipLevel = command.destinationSubresource.mipBase;

@@ -12,11 +12,11 @@
 #define RHIVK_RETURN_ERR(result)                   \
     if (result != VK_SUCCESS)                      \
     {                                              \
-        return { {}, ConvertToRhiResult(result) }; \
+        return { {}, ConvertResult(result) }; \
     }
 
 #define RHIVK_RETURN_ERR_CODE(result)      \
     if (result != VK_SUCCESS)              \
     {                                      \
-        return ConvertToRhiResult(result); \
+        return ConvertResult(result); \
     }

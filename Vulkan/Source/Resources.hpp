@@ -20,55 +20,55 @@ namespace Vulkan
     class ResourcePool;
     class Swapchain;
 
-    VkSampleCountFlagBits ConvertToVkSampleCount(RHI::SampleCount sampleCount);
+    VkSampleCountFlagBits ConvertSampleCount(RHI::SampleCount sampleCount);
 
-    VkSampleCountFlags ConvertToVkSampleCountFlags(RHI::Flags<RHI::SampleCount> sampleCountFlags);
+    VkSampleCountFlags ConvertSampleCountFlags(RHI::Flags<RHI::SampleCount> sampleCountFlags);
 
-    VkImageUsageFlagBits ConvertToVkImageUsage(RHI::ImageUsage imageUsage);
+    VkImageUsageFlagBits ConvertImageUsage(RHI::ImageUsage imageUsage);
 
-    VkImageUsageFlags ConvertToVkImageUsageFlags(RHI::Flags<RHI::ImageUsage> imageUsageFlags);
+    VkImageUsageFlags ConvertImageUsageFlags(RHI::Flags<RHI::ImageUsage> imageUsageFlags);
 
-    VkImageType ConvertToVkImageType(RHI::ImageType imageType);
+    VkImageType ConvertImageType(RHI::ImageType imageType);
 
-    VkImageAspectFlagBits ConvertToVkImageAspect(RHI::Flags<RHI::ImageAspect> imageAspect);
+    VkImageAspectFlagBits ConvertImageAspect(RHI::Flags<RHI::ImageAspect> imageAspect);
 
-    VkImageAspectFlags ConvertToVkImageAspect(RHI::ImageAspect imageAspect);
+    VkImageAspectFlags ConvertImageAspect(RHI::ImageAspect imageAspect);
 
-    VkComponentSwizzle ConvertToVkComponentSwizzle(RHI::ComponentSwizzle componentSwizzle);
+    VkComponentSwizzle ConvertComponentSwizzle(RHI::ComponentSwizzle componentSwizzle);
 
-    VkBufferUsageFlagBits ConvertToVkBufferUsage(RHI::BufferUsage bufferUsage);
+    VkBufferUsageFlagBits ConvertBufferUsage(RHI::BufferUsage bufferUsage);
 
-    VkBufferUsageFlags ConvertToVkBufferUsageFlags(RHI::Flags<RHI::BufferUsage> bufferUsageFlags);
+    VkBufferUsageFlags ConvertBufferUsageFlags(RHI::Flags<RHI::BufferUsage> bufferUsageFlags);
 
-    VkShaderStageFlagBits ConvertToVkShaderStage(RHI::ShaderStage shaderStage);
+    VkShaderStageFlagBits ConvertShaderStage(RHI::ShaderStage shaderStage);
 
-    VkShaderStageFlags ConvertToVkShaderStage(RHI::Flags<RHI::ShaderStage> shaderStageFlags);
+    VkShaderStageFlags ConvertShaderStage(RHI::Flags<RHI::ShaderStage> shaderStageFlags);
 
-    VkDescriptorType ConvertToVkDescriptorType(RHI::ShaderBindingType bindingType);
+    VkDescriptorType ConvertDescriptorType(RHI::ShaderBindingType bindingType);
 
-    VkAccessFlags ConvertToVkAccessFlags(RHI::ShaderBindingAccess bindingAccess);
+    VkAccessFlags ConvertAccessFlags(RHI::ShaderBindingAccess bindingAccess);
 
-    VkVertexInputRate ConvertToVkVertexInputRate(RHI::PipelineVertexInputRate inputRate);
+    VkVertexInputRate ConvertVertexInputRate(RHI::PipelineVertexInputRate inputRate);
 
-    VkCullModeFlags ConvertToVkCullModeFlags(RHI::PipelineRasterizerStateCullMode cullMode);
+    VkCullModeFlags ConvertCullModeFlags(RHI::PipelineRasterizerStateCullMode cullMode);
 
-    VkPolygonMode ConvertToVkPolygonMode(RHI::PipelineRasterizerStateFillMode fillMode);
+    VkPolygonMode ConvertPolygonMode(RHI::PipelineRasterizerStateFillMode fillMode);
 
-    VkPrimitiveTopology ConvertToVkPrimitiveTopology(RHI::PipelineTopologyMode topologyMode);
+    VkPrimitiveTopology ConvertPrimitiveTopology(RHI::PipelineTopologyMode topologyMode);
 
-    VkFrontFace ConvertToVkFrontFace(RHI::PipelineRasterizerStateFrontFace frontFace);
+    VkFrontFace ConvertFrontFace(RHI::PipelineRasterizerStateFrontFace frontFace);
 
-    VkCompareOp ConvertToVkCompareOp(RHI::CompareOperator compareOperator);
+    VkCompareOp ConvertCompareOp(RHI::CompareOperator compareOperator);
 
-    VkFilter ConvertToVkFilter(RHI::SamplerFilter samplerFilter);
+    VkFilter ConvertFilter(RHI::SamplerFilter samplerFilter);
 
-    VkSamplerAddressMode ConvertToVkSamplerAddressMode(RHI::SamplerAddressMode addressMode);
+    VkSamplerAddressMode ConvertSamplerAddressMode(RHI::SamplerAddressMode addressMode);
 
-    VkCompareOp ConvertToVkCompareOp(RHI::SamplerCompareOperation compareOperation);
+    VkCompareOp ConvertCompareOp(RHI::SamplerCompareOperation compareOperation);
 
-    VkBlendFactor ConvertToVkBlendFactor(RHI::BlendFactor blendFactor);
+    VkBlendFactor ConvertBlendFactor(RHI::BlendFactor blendFactor);
 
-    VkBlendOp ConvertToVkBlendOp(RHI::BlendEquation blendEquation);
+    VkBlendOp ConvertBlendOp(RHI::BlendEquation blendEquation);
 
     struct Image : RHI::Image
     {
