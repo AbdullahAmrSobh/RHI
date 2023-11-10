@@ -1,88 +1,118 @@
 #pragma once
 
 #include <cstdint>
+#include "RHI/Export.hpp"
 
 namespace RHI
 {
-
-    enum class Format
+enum class Format : uint8_t
     {
-        None = 0,
+        Unkown,
 
-        R32G32B32A32_FLOAT,
-        R32G32B32A32_UINT,
-        R32G32B32A32_SINT,
-
-        R32G32B32_FLOAT,
-        R32G32B32_UINT,
-        R32G32B32_SINT,
-
-        R16G16B16A16_FLOAT,
-        R16G16B16A16_UNORM,
-        R16G16B16A16_UINT,
-        R16G16B16A16_SNORM,
-        R16G16B16A16_SINT,
-
-        R32G32_FLOAT,
-        R32G32_UINT,
-        R32G32_SINT,
-
-        D32_FLOAT_S8X24_UINT,
-
+        R8_UINT,
+        R8_SINT,
+        R8_UNORM,
+        R8_SNORM,
+        RG8_UINT,
+        RG8_SINT,
+        RG8_UNORM,
+        RG8_SNORM,
+        R16_UINT,
+        R16_SINT,
+        R16_UNORM,
+        R16_SNORM,
+        R16_FLOAT,
+        BGRA4_UNORM,
+        B5G6R5_UNORM,
+        B5G5R5A1_UNORM,
+        RGBA8_UINT,
+        RGBA8_SINT,
+        RGBA8_UNORM,
+        RGBA8_SNORM,
+        BGRA8_UNORM,
+        SRGBA8_UNORM,
+        SBGRA8_UNORM,
         R10G10B10A2_UNORM,
-        R10G10B10A2_UINT,
-
         R11G11B10_FLOAT,
-
-        R8G8B8A8_UNORM,
-        R8G8B8A8_UNORM_SRGB,
-        R8G8B8A8_UINT,
-        R8G8B8A8_SNORM,
-        R8G8B8A8_SINT,
-
-        R16G16_FLOAT,
-        R16G16_UNORM,
-        R16G16_UINT,
-        R16G16_SNORM,
-        R16G16_SINT,
-
-        D32_FLOAT,
-        R32_FLOAT,
+        RG16_UINT,
+        RG16_SINT,
+        RG16_UNORM,
+        RG16_SNORM,
+        RG16_FLOAT,
         R32_UINT,
         R32_SINT,
+        R32_FLOAT,
+        RGBA16_UINT,
+        RGBA16_SINT,
+        RGBA16_FLOAT,
+        RGBA16_UNORM,
+        RGBA16_SNORM,
+        RG32_UINT,
+        RG32_SINT,
+        RG32_FLOAT,
+        RGB32_UINT,
+        RGB32_SINT,
+        RGB32_FLOAT,
+        RGBA32_UINT,
+        RGBA32_SINT,
+        RGBA32_FLOAT,
+        
+        D16,
+        D24S8,
+        X24G8_UINT,
+        D32,
+        D32S8,
+        X32G8_UINT,
 
-        D24_UNORM_S8_UINT,
+        BC1_UNORM,
+        BC1_UNORM_SRGB,
+        BC2_UNORM,
+        BC2_UNORM_SRGB,
+        BC3_UNORM,
+        BC3_UNORM_SRGB,
+        BC4_UNORM,
+        BC4_SNORM,
+        BC5_UNORM,
+        BC5_SNORM,
+        BC6H_UFLOAT,
+        BC6H_SFLOAT,
+        BC7_UNORM,
+        BC7_UNORM_SRGB,
 
-        R8G8_UNORM,
-        R8G8_UNORM_SRGB,
-        R8G8_UINT,
-        R8G8_SNORM,
-        R8G8_SINT,
-
-        R16_FLOAT,
-        D16_UNORM,
-        R16_UNORM,
-        R16_UINT,
-        R16_SNORM,
-        R16_SINT,
-
-        R8_UNORM,
-        R8_UNORM_SRGB,
-        R8_UINT,
-        R8_SNORM,
-        R8_SINT,
-        A8_UNORM,
-        R1_UNORM,
-
-        B8G8R8A8_UNORM, // swapchain color format
+        COUNT,
     };
 
-    uint32_t GetFormatByteSize(Format format);
+    enum class FormatType : uint8_t
+    {
+        Integer,
+        Normalized,
+        Float,
+        DepthStencil,
+    };
 
-    uint32_t GetFormatComponentCount(Format format);
+    struct FormatInfo
+    {
+        Format format;
+        const char* name;
+        uint8_t bytesPerBlock;
+        uint8_t blockSize;
+        FormatType type;
+        bool hasRed : 1;
+        bool hasGreen : 1;
+        bool hasBlue : 1;
+        bool hasAlpha : 1;
+        bool hasDepth : 1;
+        bool hasStencil : 1;
+        bool isSigned : 1;
+        bool isSRGB : 1;
+    };
 
-    uint32_t GetFormatComponentByteSize(Format format);
+    RHI_EXPORT const FormatInfo& ConvertFormatInfo(Format format);
 
-    bool IsDepthFormat(Format format);
+    RHI_EXPORT uint32_t ConvertFormatByteSize(Format format);
+
+    RHI_EXPORT uint32_t ConvertFormatComponentByteSize(Format format);
+
+    RHI_EXPORT FormatType ConvertFormatType(Format format);
 
 } // namespace RHI

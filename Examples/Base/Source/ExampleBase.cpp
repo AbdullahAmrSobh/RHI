@@ -91,7 +91,7 @@ void ExampleBase::Init()
     createInfo.imageSize.width = windowInfo.width;
     createInfo.imageSize.height = windowInfo.height;
     createInfo.imageUsage = RHI::ImageUsage::Color;
-    createInfo.imageFormat = RHI::Format::B8G8R8A8_UNORM;
+    createInfo.imageFormat = RHI::Format::BGRA8_UNORM;
     createInfo.imageCount = 3;
 
     m_swapchain = m_context->CreateSwapchain(createInfo);

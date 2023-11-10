@@ -19,7 +19,7 @@ public:
         createInfo.size.height = 600;
         createInfo.size.depth = 1;
         createInfo.usageFlags = RHI::ImageUsage::Depth;
-        createInfo.format = RHI::Format::D32_FLOAT;
+        createInfo.format = RHI::Format::D32;
         createInfo.type = RHI::ImageType::Image2D;
 
         RHI::ImageAttachmentUseInfo useInfo{};
@@ -139,7 +139,7 @@ public:
         //     createInfo.size.width = imageData.width;
         //     createInfo.size.height = imageData.height;
         //     createInfo.size.depth = imageData.depth;
-        //     createInfo.format = RHI::Format::B8G8R8A8_UNORM;
+        //     createInfo.format = RHI::Format::BGRA8_UNORM;
         //     createInfo.mipLevels = 1;
         //     createInfo.arrayCount = 1;
 
@@ -173,12 +173,12 @@ public:
             psoCreateInfo.vertexShaderName = "VSMain";
             psoCreateInfo.pixelShaderModule = shaderModule.get();
             psoCreateInfo.pixelShaderName = "PSMain";
-            psoCreateInfo.renderTargetLayout = { { RHI::Format::B8G8R8A8_UNORM }, RHI::Format::D32_FLOAT, RHI::Format::None };
+            psoCreateInfo.renderTargetLayout = { { RHI::Format::BGRA8_UNORM }, RHI::Format::D32, RHI::Format::Unkown };
             psoCreateInfo.depthStencilState.depthTestEnable = true;
             psoCreateInfo.depthStencilState.depthWriteEnable = true;
             // psoCreateInfo.bindGroupLayouts                          = {layout};
-            psoCreateInfo.renderTargetLayout.colorAttachmentsFormats = { RHI::Format::B8G8R8A8_UNORM };
-            psoCreateInfo.renderTargetLayout.depthAttachmentFormat = RHI::Format::D32_FLOAT;
+            psoCreateInfo.renderTargetLayout.colorAttachmentsFormats = { RHI::Format::BGRA8_UNORM };
+            psoCreateInfo.renderTargetLayout.depthAttachmentFormat = RHI::Format::D32;
 
             m_pipelineState = m_context->CreateGraphicsPipeline(psoCreateInfo);
         }

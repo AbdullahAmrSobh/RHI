@@ -489,11 +489,11 @@ namespace RHI
         TL::Span<const Format> colorAttachmentsFormats;
 
         /// @brief Format of an optional depth and/or stencil attachment.
-        /// Could be Format::None.
+        /// Could be Format::Unkown.
         Format depthAttachmentFormat;
 
         /// @brief Format of an optional depth and/or stencil attachment.
-        /// Could be Format::None.
+        /// Could be Format::Unkown.
         Format stencilAttachmentFormat;
     };
 

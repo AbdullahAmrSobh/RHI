@@ -864,7 +864,7 @@ namespace Vulkan
         VkResult result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_context->m_physicalDevice, m_surface, &surfaceCapabilities);
         RHI_ASSERT(result == VK_SUCCESS);
 
-        auto surfaceFormat = GetSurfaceFormat(GetFormat(m_swapchainInfo.imageFormat));
+        auto surfaceFormat = GetSurfaceFormat(ConvertFormat(m_swapchainInfo.imageFormat));
         auto minImageCount = std::clamp(m_swapchainInfo.imageCount, surfaceCapabilities.minImageCount, surfaceCapabilities.maxImageCount);
         auto minImageWidth = std::clamp(m_swapchainInfo.imageSize.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
         auto minImageHeight = std::clamp(m_swapchainInfo.imageSize.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
@@ -1040,7 +1040,7 @@ namespace Vulkan
         vkCreateInfo.pNext = nullptr;
         vkCreateInfo.flags = {};
         vkCreateInfo.imageType = ConvertToVkImageType(createInfo.type);
-        vkCreateInfo.format = GetFormat(createInfo.format);
+        vkCreateInfo.format = ConvertFormat(createInfo.format);
         vkCreateInfo.extent.width = createInfo.size.width;
         vkCreateInfo.extent.height = createInfo.size.height;
         vkCreateInfo.extent.depth = createInfo.size.depth;
@@ -1158,7 +1158,7 @@ namespace Vulkan
         vkCreateInfo.pNext = nullptr;
         vkCreateInfo.flags = 0;
         vkCreateInfo.buffer = buffer->handle;
-        vkCreateInfo.format = GetFormat(useInfo.format);
+        vkCreateInfo.format = ConvertFormat(useInfo.format);
         vkCreateInfo.offset = useInfo.byteOffset;
         vkCreateInfo.range = useInfo.byteSize;
 
@@ -1312,7 +1312,7 @@ namespace Vulkan
             VkVertexInputAttributeDescription attribute{};
             attribute.location = attributeDesc.location;
             attribute.binding = attributeDesc.binding;
-            attribute.format = GetFormat(attributeDesc.format);
+            attribute.format = ConvertFormat(attributeDesc.format);
             attribute.offset = attributeDesc.offset;
             inputAttributeDescriptions.push_back(attribute);
         }
@@ -1462,7 +1462,7 @@ namespace Vulkan
 
         uint32_t index = 0;
         for (auto format : createInfo.renderTargetLayout.colorAttachmentsFormats)
-            colorAttachmentFormats[index++] = GetFormat(format);
+            colorAttachmentFormats[index++] = ConvertFormat(format);
 
         VkPipelineRenderingCreateInfo renderTargetLayout{};
         renderTargetLayout.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
@@ -1470,8 +1470,8 @@ namespace Vulkan
         // renderTargetLayout.viewMask;
         renderTargetLayout.colorAttachmentCount = colorAttachmentFormatCount;
         renderTargetLayout.pColorAttachmentFormats = colorAttachmentFormats;
-        renderTargetLayout.depthAttachmentFormat = GetFormat(createInfo.renderTargetLayout.depthAttachmentFormat);
-        renderTargetLayout.stencilAttachmentFormat = GetFormat(createInfo.renderTargetLayout.stencilAttachmentFormat);
+        renderTargetLayout.depthAttachmentFormat = ConvertFormat(createInfo.renderTargetLayout.depthAttachmentFormat);
+        renderTargetLayout.stencilAttachmentFormat = ConvertFormat(createInfo.renderTargetLayout.stencilAttachmentFormat);
 
         VkGraphicsPipelineCreateInfo vkCreateInfo{};
         vkCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
