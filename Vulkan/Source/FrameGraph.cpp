@@ -138,13 +138,13 @@ namespace Vulkan
         allocationCreateInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
         auto result = vmaAllocateMemory(m_context->m_allocator, &minRequirements, &allocationCreateInfo, &block.allocation, &block.info);
-        RHIVK_ASSERT_SUCCESS(result);
+        VULKAN_ASSERT_SUCCESS(result);
 
         VmaVirtualBlockCreateInfo virtualBlockCreateInfo{};
         virtualBlockCreateInfo.size = block.info.size;
         virtualBlockCreateInfo.flags = VMA_VIRTUAL_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT;
         result = vmaCreateVirtualBlock(&virtualBlockCreateInfo, &block.virtualBlock);
-        RHIVK_ASSERT_SUCCESS(result);
+        VULKAN_ASSERT_SUCCESS(result);
 
         return block;
     }
@@ -225,7 +225,7 @@ namespace Vulkan
         VkSemaphoreCreateInfo semaphoreInfo{};
         semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
         auto result = vkCreateSemaphore(context->m_device, &semaphoreInfo, nullptr, &m_signalSemaphore);
-        RHIVK_RETURN_VKERR_CODE(result);
+        VULKAN_RETURN_VKERR_CODE(result);
 
         m_commandList = std::make_unique<CommandList>(context);
         m_queuInfo.type = createInfo.type;
@@ -254,7 +254,7 @@ namespace Vulkan
         }
 
         result = vkCreateCommandPool(context->m_device, &vkCreateInfo, nullptr, &m_commandPool);
-        RHIVK_RETURN_VKERR_CODE(result);
+        VULKAN_RETURN_VKERR_CODE(result);
         if (result != VK_SUCCESS)
             return result;
 
@@ -266,7 +266,7 @@ namespace Vulkan
         allocateInfo.commandBufferCount = 1;
 
         result = m_commandList->Init(allocateInfo);
-        RHIVK_RETURN_VKERR_CODE(result);
+        VULKAN_RETURN_VKERR_CODE(result);
         if (result != VK_SUCCESS)
             return result;
 

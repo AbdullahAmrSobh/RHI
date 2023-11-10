@@ -151,7 +151,7 @@ namespace Vulkan
         createInfo.ppEnabledExtensionNames = enabledExtensionsNames.data();
 
         VkResult result = vkCreateInstance(&createInfo, nullptr, &m_instance);
-        RHIVK_RETURN_VKERR_CODE(result);
+        VULKAN_RETURN_VKERR_CODE(result);
 
         for (VkPhysicalDevice physicalDevice : GetAvailablePhysicalDevices())
         {
@@ -296,7 +296,7 @@ namespace Vulkan
             deviceCreateInfo.pEnabledFeatures = &enabledFeatures;
 
             VkResult result = vkCreateDevice(m_physicalDevice, &deviceCreateInfo, nullptr, &m_device);
-            RHIVK_RETURN_VKERR_CODE(result);
+            VULKAN_RETURN_VKERR_CODE(result);
 
             vkGetDeviceQueue(m_device, m_graphicsQueueFamilyIndex, 0, &m_graphicsQueue);
 
@@ -321,7 +321,7 @@ namespace Vulkan
             createInfo.vulkanApiVersion = VK_API_VERSION_1_3;
 
             VkResult result = vmaCreateAllocator(&createInfo, &m_allocator);
-            RHIVK_RETURN_VKERR_CODE(result);
+            VULKAN_RETURN_VKERR_CODE(result);
         }
 
         // load function pointers

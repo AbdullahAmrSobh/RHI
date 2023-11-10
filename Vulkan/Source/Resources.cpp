@@ -566,7 +566,7 @@ namespace Vulkan
 
             VkDescriptorPool newDescriptorPool{};
             auto result = vkCreateDescriptorPool(context->m_device, &poolCreateInfo, nullptr, &newDescriptorPool);
-            RHIVK_ASSERT_SUCCESS(result);
+            VULKAN_ASSERT_SUCCESS(result);
             m_descriptorPools.push_back(newDescriptorPool);
 
             allocateInfo.descriptorPool = newDescriptorPool;
@@ -789,7 +789,7 @@ namespace Vulkan
         semaphoreCreateInfo.pNext = nullptr;
         semaphoreCreateInfo.flags = 0;
         VkResult result = vkCreateSemaphore(context->m_device, &semaphoreCreateInfo, nullptr, &m_imageReadySemaphore);
-        RHIVK_RETURN_VKERR_CODE(result);
+        VULKAN_RETURN_VKERR_CODE(result);
 
 #ifdef RHI_PLATFORM_WINDOWS
         // create win32 surface
@@ -800,7 +800,7 @@ namespace Vulkan
         // vkCreateInfo.hinstance = static_cast<HINSTANCE>(createInfo.win32Window.hinstance);
         vkCreateInfo.hwnd = static_cast<HWND>(createInfo.win32Window.hwnd);
         result = vkCreateWin32SurfaceKHR(context->m_instance, &vkCreateInfo, nullptr, &m_surface);
-        RHIVK_RETURN_VKERR_CODE(result);
+        VULKAN_RETURN_VKERR_CODE(result);
 #endif
 
         VkBool32 surfaceSupportPresent = VK_FALSE;
@@ -809,7 +809,7 @@ namespace Vulkan
         RHI_ASSERT(result == VK_SUCCESS && surfaceSupportPresent == VK_TRUE);
 
         result = CreateNativeSwapchain();
-        RHIVK_RETURN_VKERR_CODE(result);
+        VULKAN_RETURN_VKERR_CODE(result);
         return result;
     }
 

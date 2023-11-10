@@ -89,21 +89,6 @@ namespace Vulkan
     } };
     // clang-format on
 
-    inline static RHI::ResultCode ConvertResult(VkResult result)
-    {
-        switch (result)
-        {
-        case VK_SUCCESS:
-            return RHI::ResultCode::Success;
-        case VK_ERROR_OUT_OF_HOST_MEMORY:
-            return RHI::ResultCode::ErrorOutOfMemory;
-        case VK_ERROR_OUT_OF_DEVICE_MEMORY:
-            return RHI::ResultCode::ErrorDeviceOutOfMemory;
-        default:
-            return RHI::ResultCode::ErrorUnkown;
-        }
-    }
-
     VkFormat ConvertFormat(RHI::Format format)
     {
         RHI_ASSERT(format < RHI::Format::COUNT);
