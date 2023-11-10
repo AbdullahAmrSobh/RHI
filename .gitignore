@@ -7,5 +7,5 @@ cmake-build-*/
 prefix/
 CMakeLists.txt.user
 CMakeUserPresets.json
-/Export.hpp
+Export.hpp
 .cache/
