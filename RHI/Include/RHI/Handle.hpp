@@ -57,7 +57,7 @@ namespace RHI
         union
         {
             RawHandle m_rawHandle;
-            uint64_t m_handle;
+            uint64_t  m_handle;
         };
     };
 
@@ -66,37 +66,37 @@ namespace RHI
     class HandlePool final
     {
     public:
-        using HandleType = Handle<Resource>;
+        using HandleType   = Handle<Resource>;
         using ResourceType = Resource;
         // using ResourceInfo = Info;
 
         inline HandlePool(uint32_t capacity = 512);
         ~HandlePool();
 
-        inline void Reset();
+        inline void             Reset();
 
         // Gets the resource associated with handle.
-        inline Resource* Get(Handle<Resource> handle) const;
+        inline Resource*        Get(Handle<Resource> handle) const;
 
         // Inserts a new resource and returns its handle.
         inline Handle<Resource> Insert(Resource resource);
 
         // Removes a resource from the owner.
-        inline void Remove(Handle<Resource> handle);
+        inline void             Remove(Handle<Resource> handle);
 
     private:
         inline void Resize(uint32_t newSize);
 
     private:
-        size_t m_capacity;
+        size_t    m_capacity;
 
-        size_t m_count;
+        size_t    m_count;
 
         Resource* m_resources;
 
         uint16_t* m_genIds;
 
-        size_t m_freeSlotsCount;
+        size_t    m_freeSlotsCount;
 
         uint32_t* m_freeSlots;
     };
@@ -107,9 +107,9 @@ namespace RHI
         , m_count(0)
         , m_freeSlotsCount(0)
     {
-        m_capacity = capacity;
+        m_capacity  = capacity;
         m_resources = (Resource*)malloc(capacity * sizeof(Resource));
-        m_genIds = (uint16_t*)malloc(capacity * sizeof(uint16_t));
+        m_genIds    = (uint16_t*)malloc(capacity * sizeof(uint16_t));
         m_freeSlots = (uint32_t*)malloc(capacity * sizeof(uint32_t));
         memset(m_resources, 0, sizeof(m_capacity));
         memset(m_genIds, 0, sizeof(m_capacity));
@@ -127,7 +127,7 @@ namespace RHI
     template<typename Resource>
     inline void HandlePool<Resource>::Reset()
     {
-        m_count = 0;
+        m_count          = 0;
         m_freeSlotsCount = 0;
         memset(m_resources, 0, sizeof(m_capacity));
         memset(m_genIds, 0, sizeof(m_capacity));
@@ -138,7 +138,7 @@ namespace RHI
     inline Resource* HandlePool<Resource>::Get(Handle<Resource> handle) const
     {
         auto index = handle.m_rawHandle.index;
-        auto id = handle.m_rawHandle.genId;
+        auto id    = handle.m_rawHandle.genId;
 
         if (index < m_count && id == m_genIds[index])
         {

@@ -2,8 +2,8 @@
 
 #include <vulkan/vulkan.h>
 
-#include <RHI/Format.hpp>
 #include <RHI/Assert.hpp>
+#include <RHI/Format.hpp>
 #include <RHI/Result.hpp>
 
 #include <array>
@@ -13,7 +13,7 @@ namespace Vulkan
     struct FormatMapping
     {
         RHI::Format rhiFormat;
-        VkFormat vkFormat;
+        VkFormat    vkFormat;
     };
 
     // clang-format off

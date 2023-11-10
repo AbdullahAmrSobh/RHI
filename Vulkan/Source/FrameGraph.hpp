@@ -15,11 +15,11 @@ namespace Vulkan
     class CommandList;
     class Allocation;
 
-    VkAttachmentLoadOp ConvertLoadOp(RHI::ImageLoadOperation op);
+    VkAttachmentLoadOp  ConvertLoadOp(RHI::ImageLoadOperation op);
 
     VkAttachmentStoreOp ConvertStoreOp(RHI::ImageStoreOperation op);
 
-    VkImageLayout ConvertImageLayout(RHI::AttachmentUsage usage, RHI::AttachmentAccess access);
+    VkImageLayout       ConvertImageLayout(RHI::AttachmentUsage usage, RHI::AttachmentAccess access);
 
     template<typename T>
     inline static bool IsPow2(T x)
@@ -61,22 +61,22 @@ namespace Vulkan
     private:
         std::optional<Allocation> Allocate(VkMemoryRequirements requirements);
 
-        void Free(Allocation allocation);
+        void                      Free(Allocation allocation);
 
         struct Block
         {
-            VmaAllocation allocation;
+            VmaAllocation     allocation;
             VmaAllocationInfo info;
-            VmaVirtualBlock virtualBlock;
+            VmaVirtualBlock   virtualBlock;
             VkMemoryHeapFlags memoryProperties;
         };
 
         size_t CalculatePreferredBlockSize(uint32_t memTypeIndex);
 
-        Block CreateBlockNewBlock(VkMemoryRequirements minRequirements);
+        Block  CreateBlockNewBlock(VkMemoryRequirements minRequirements);
 
     private:
-        Context* m_context;
+        Context*           m_context;
 
         std::vector<Block> m_blocks;
     };
@@ -90,25 +90,25 @@ namespace Vulkan
         Pass(Context* context);
         ~Pass();
 
-        VkResult Init(const RHI::PassCreateInfo& createInfo);
+        VkResult                     Init(const RHI::PassCreateInfo& createInfo);
 
-        RHI::CommandList& BeginCommandList(uint32_t commandsCount = 1) override;
+        RHI::CommandList&            BeginCommandList(uint32_t commandsCount = 1) override;
 
-        void EndCommandList() override;
+        void                         EndCommandList() override;
 
-        void OnBegin() override;
+        void                         OnBegin() override;
 
-        void OnEnd() override;
+        void                         OnEnd() override;
 
-        RHI::PassQueueState GetPassQueueStateInternal() const override;
+        RHI::PassQueueState          GetPassQueueStateInternal() const override;
 
-        uint32_t m_queueFamilyIndex;
+        uint32_t                     m_queueFamilyIndex;
 
-        VkCommandPool m_commandPool;
+        VkCommandPool                m_commandPool;
 
-        VkSemaphore m_signalSemaphore;
+        VkSemaphore                  m_signalSemaphore;
 
-        RHI::Handle<Fence> m_signalFence;
+        RHI::Handle<Fence>           m_signalFence;
 
         std::unique_ptr<CommandList> m_commandList;
     };
@@ -119,32 +119,32 @@ namespace Vulkan
         FrameScheduler(Context* context);
         ~FrameScheduler();
 
-        VkResult Init();
+        VkResult                     Init();
 
-        std::unique_ptr<RHI::Pass> CreatePass(const RHI::PassCreateInfo& createInfo) override;
+        std::unique_ptr<RHI::Pass>   CreatePass(const RHI::PassCreateInfo& createInfo) override;
 
-        void BeginInternal() override;
-        void EndInternal() override;
+        void                         BeginInternal() override;
+        void                         EndInternal() override;
 
-        void ExecutePass(RHI::Pass* pass) override;
+        void                         ExecutePass(RHI::Pass* pass) override;
 
-        void Allocate(RHI::Handle<RHI::Attachment> handle) override;
-        void Release(RHI::Handle<RHI::Attachment> handle) override;
+        void                         Allocate(RHI::Handle<RHI::Attachment> handle) override;
+        void                         Release(RHI::Handle<RHI::Attachment> handle) override;
 
-        RHI::Handle<RHI::Image> CreateTransientImageResource(const RHI::ImageCreateInfo& createInfo) override;
-        RHI::Handle<RHI::Buffer> CreateTransientBufferResource(const RHI::BufferCreateInfo& createInfo) override;
+        RHI::Handle<RHI::Image>      CreateTransientImageResource(const RHI::ImageCreateInfo& createInfo) override;
+        RHI::Handle<RHI::Buffer>     CreateTransientBufferResource(const RHI::BufferCreateInfo& createInfo) override;
 
-        RHI::Handle<RHI::ImageView> CreateImageView(RHI::Attachment* attachment, const RHI::ImageAttachmentUseInfo& useInfo) override;
+        RHI::Handle<RHI::ImageView>  CreateImageView(RHI::Attachment* attachment, const RHI::ImageAttachmentUseInfo& useInfo) override;
         RHI::Handle<RHI::BufferView> CreateBufferView(RHI::Attachment* attachment, const RHI::BufferAttachmentUseInfo& useInfo) override;
 
-        void FreeTransientBufferResource(RHI::Handle<RHI::Buffer> handle) override;
-        void FreeTransientImageResource(RHI::Handle<RHI::Image> handle) override;
+        void                         FreeTransientBufferResource(RHI::Handle<RHI::Buffer> handle) override;
+        void                         FreeTransientImageResource(RHI::Handle<RHI::Image> handle) override;
 
-        void FreeImageView(RHI::Handle<RHI::ImageView> handle) override;
-        void FreeBufferView(RHI::Handle<RHI::BufferView> handle) override;
+        void                         FreeImageView(RHI::Handle<RHI::ImageView> handle) override;
+        void                         FreeBufferView(RHI::Handle<RHI::BufferView> handle) override;
 
     private:
-        std::vector<VkSemaphoreSubmitInfo> GetSemaphores(const std::vector<RHI::Pass*>& passes) const;
+        std::vector<VkSemaphoreSubmitInfo>          GetSemaphores(const std::vector<RHI::Pass*>& passes) const;
 
         std::unique_ptr<TransientResourceAllocator> m_transientAllocator;
     };

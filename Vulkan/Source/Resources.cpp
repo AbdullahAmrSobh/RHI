@@ -20,7 +20,7 @@ namespace Vulkan
     template<typename T>
     inline static uint64_t HashAny(const T& data)
     {
-        auto stream = std::string(reinterpret_cast<const char*>(&data), sizeof(data));
+        auto                   stream = std::string(reinterpret_cast<const char*>(&data), sizeof(data));
         std::hash<std::string> hasher;
         return hasher(stream);
     }
@@ -476,14 +476,14 @@ namespace Vulkan
 
     VkResult ShaderModule::Init(const RHI::ShaderModuleCreateInfo& createInfo)
     {
-        auto context = static_cast<Context*>(m_context);
+        auto                     context = static_cast<Context*>(m_context);
 
         VkShaderModuleCreateInfo moduleCreateInfo{};
-        moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        moduleCreateInfo.pNext = nullptr;
-        moduleCreateInfo.flags = {};
+        moduleCreateInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        moduleCreateInfo.pNext    = nullptr;
+        moduleCreateInfo.flags    = {};
         moduleCreateInfo.codeSize = createInfo.size * 4;
-        moduleCreateInfo.pCode = (uint32_t*)createInfo.code;
+        moduleCreateInfo.pCode    = (uint32_t*)createInfo.code;
         RHI_ASSERT(moduleCreateInfo.codeSize % 4 == 0);
 
         return vkCreateShaderModule(context->m_device, &moduleCreateInfo, nullptr, &m_shaderModule);
@@ -508,7 +508,7 @@ namespace Vulkan
 
     std::vector<RHI::Handle<RHI::ShaderBindGroup>> ShaderBindGroupAllocator::AllocateShaderBindGroups(RHI::TL::Span<const RHI::ShaderBindGroupLayout> layouts)
     {
-        auto context = static_cast<Context*>(m_context);
+        auto                               context = static_cast<Context*>(m_context);
 
         std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
 
@@ -520,19 +520,19 @@ namespace Vulkan
         }
 
         VkDescriptorSetAllocateInfo allocateInfo{};
-        allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocateInfo.pNext = nullptr;
-        allocateInfo.descriptorSetCount = descriptorSetLayouts.size();
-        allocateInfo.pSetLayouts = descriptorSetLayouts.data();
+        allocateInfo.sType                   = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocateInfo.pNext                   = nullptr;
+        allocateInfo.descriptorSetCount      = descriptorSetLayouts.size();
+        allocateInfo.pSetLayouts             = descriptorSetLayouts.data();
 
-        bool success = false;
+        bool                         success = false;
         std::vector<VkDescriptorSet> descriptorSets;
         descriptorSets.resize(layouts.size());
         for (auto descriptorPool : m_descriptorPools)
         {
             allocateInfo.descriptorPool = descriptorPool;
 
-            auto result = vkAllocateDescriptorSets(context->m_device, &allocateInfo, descriptorSets.data());
+            auto result                 = vkAllocateDescriptorSets(context->m_device, &allocateInfo, descriptorSets.data());
 
             if (result == VK_SUCCESS)
             {
@@ -557,21 +557,21 @@ namespace Vulkan
             };
 
             VkDescriptorPoolCreateInfo poolCreateInfo{};
-            poolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-            poolCreateInfo.pNext = nullptr;
-            poolCreateInfo.flags = 0;
-            poolCreateInfo.maxSets = 8;
+            poolCreateInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+            poolCreateInfo.pNext         = nullptr;
+            poolCreateInfo.flags         = 0;
+            poolCreateInfo.maxSets       = 8;
             poolCreateInfo.poolSizeCount = sizeof(poolSizes) / sizeof(VkDescriptorPoolSize); // todo recheck this
-            poolCreateInfo.pPoolSizes = poolSizes;
+            poolCreateInfo.pPoolSizes    = poolSizes;
 
             VkDescriptorPool newDescriptorPool{};
-            auto result = vkCreateDescriptorPool(context->m_device, &poolCreateInfo, nullptr, &newDescriptorPool);
+            auto             result = vkCreateDescriptorPool(context->m_device, &poolCreateInfo, nullptr, &newDescriptorPool);
             VULKAN_ASSERT_SUCCESS(result);
             m_descriptorPools.push_back(newDescriptorPool);
 
             allocateInfo.descriptorPool = newDescriptorPool;
 
-            result = vkAllocateDescriptorSets(context->m_device, &allocateInfo, descriptorSets.data());
+            result                      = vkAllocateDescriptorSets(context->m_device, &allocateInfo, descriptorSets.data());
             RHI_ASSERT(result == VK_SUCCESS);
             if (result != VK_SUCCESS)
                 return {};
@@ -582,7 +582,7 @@ namespace Vulkan
         {
             DescriptorSet resource;
             resource.handle = descriptorSet;
-            auto handle = context->m_resourceManager->m_descriptorSetOwner.Insert(resource);
+            auto handle     = context->m_resourceManager->m_descriptorSetOwner.Insert(resource);
             shaderBindGroups.push_back(handle);
         }
 
@@ -591,7 +591,7 @@ namespace Vulkan
 
     void ShaderBindGroupAllocator::Free(RHI::TL::Span<RHI::Handle<RHI::ShaderBindGroup>> groups)
     {
-        auto context = static_cast<Context*>(m_context);
+        auto                         context = static_cast<Context*>(m_context);
 
         std::vector<VkDescriptorSet> descriptorSetHandles;
         descriptorSetHandles.reserve(groups.size());
@@ -607,22 +607,22 @@ namespace Vulkan
 
     void ShaderBindGroupAllocator::Update(RHI::Handle<RHI::ShaderBindGroup> group, const RHI::ShaderBindGroupData& data)
     {
-        auto context = static_cast<Context*>(m_context);
-        auto resourcesManager = context->m_resourceManager.get();
-        auto descriptorSet = resourcesManager->m_descriptorSetOwner.Get(group);
+        auto                                             context          = static_cast<Context*>(m_context);
+        auto                                             resourcesManager = context->m_resourceManager.get();
+        auto                                             descriptorSet    = resourcesManager->m_descriptorSetOwner.Get(group);
 
-        std::vector<std::vector<VkDescriptorImageInfo>> descriptorImageInfos;
+        std::vector<std::vector<VkDescriptorImageInfo>>  descriptorImageInfos;
         std::vector<std::vector<VkDescriptorBufferInfo>> descriptorBufferInfos;
-        std::vector<std::vector<VkBufferView>> descriptorBufferViews;
+        std::vector<std::vector<VkBufferView>>           descriptorBufferViews;
 
-        std::vector<VkWriteDescriptorSet> writeInfos;
+        std::vector<VkWriteDescriptorSet>                writeInfos;
 
         for (auto [binding, resourceVarient] : data.m_bindings)
         {
             VkWriteDescriptorSet writeInfo{};
-            writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            writeInfo.pNext = nullptr;
-            writeInfo.dstSet = descriptorSet->handle;
+            writeInfo.sType      = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            writeInfo.pNext      = nullptr;
+            writeInfo.dstSet     = descriptorSet->handle;
             writeInfo.dstBinding = binding;
             if (auto resources = std::get_if<0>(&resourceVarient))
             {
@@ -630,18 +630,18 @@ namespace Vulkan
 
                 for (auto passAttachment : resources->views)
                 {
-                    auto view = resourcesManager->m_imageViewOwner.Get(passAttachment->view);
+                    auto                  view = resourcesManager->m_imageViewOwner.Get(passAttachment->view);
 
                     VkDescriptorImageInfo imageInfo{};
                     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                    imageInfo.imageView = view->handle;
+                    imageInfo.imageView   = view->handle;
                     imageInfos.push_back(imageInfo);
                 }
 
                 writeInfo.dstArrayElement = resources->arrayOffset;
-                writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+                writeInfo.descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
                 writeInfo.descriptorCount = imageInfos.size();
-                writeInfo.pImageInfo = imageInfos.data();
+                writeInfo.pImageInfo      = imageInfos.data();
             }
             else if (auto resources = std::get_if<1>(&resourceVarient))
             {
@@ -649,19 +649,19 @@ namespace Vulkan
 
                 for (auto passAttachment : resources->views)
                 {
-                    auto buffer = resourcesManager->m_bufferOwner.Get(passAttachment->attachment);
+                    auto                   buffer = resourcesManager->m_bufferOwner.Get(passAttachment->attachment);
 
                     VkDescriptorBufferInfo imageInfo{};
                     imageInfo.buffer = buffer->handle;
                     imageInfo.offset = passAttachment->info.byteOffset;
-                    imageInfo.range = passAttachment->info.byteSize;
+                    imageInfo.range  = passAttachment->info.byteSize;
                     bufferInfos.push_back(imageInfo);
                 }
 
                 writeInfo.dstArrayElement = resources->arrayOffset;
-                writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; // todo support storage buffers, and more complex types
+                writeInfo.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; // todo support storage buffers, and more complex types
                 writeInfo.descriptorCount = bufferInfos.size();
-                writeInfo.pBufferInfo = bufferInfos.data();
+                writeInfo.pBufferInfo     = bufferInfos.data();
             }
             else if (auto resources = std::get_if<2>(&resourceVarient))
             {
@@ -669,7 +669,7 @@ namespace Vulkan
 
                 for (auto samplerHandle : resources->samplers)
                 {
-                    auto sampler = resourcesManager->m_samplerOwner.Get(samplerHandle);
+                    auto                  sampler = resourcesManager->m_samplerOwner.Get(samplerHandle);
 
                     VkDescriptorImageInfo imageInfo{};
                     imageInfo.sampler = sampler->handle;
@@ -677,9 +677,9 @@ namespace Vulkan
                 }
 
                 writeInfo.dstArrayElement = resources->arrayOffset;
-                writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+                writeInfo.descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
                 writeInfo.descriptorCount = imageInfos.size();
-                writeInfo.pImageInfo = imageInfos.data();
+                writeInfo.pImageInfo      = imageInfos.data();
             }
             else
             {
@@ -708,14 +708,14 @@ namespace Vulkan
         m_poolInfo = createInfo;
 
         VmaPoolCreateInfo poolCreateInfo{};
-        poolCreateInfo.flags = VMA_POOL_CREATE_IGNORE_BUFFER_IMAGE_GRANULARITY_BIT;
-        poolCreateInfo.blockSize = createInfo.blockSize;
-        poolCreateInfo.minBlockCount = createInfo.minBlockCount;
-        poolCreateInfo.maxBlockCount = createInfo.maxBlockCount;
-        poolCreateInfo.priority = 1.0f;
+        poolCreateInfo.flags                  = VMA_POOL_CREATE_IGNORE_BUFFER_IMAGE_GRANULARITY_BIT;
+        poolCreateInfo.blockSize              = createInfo.blockSize;
+        poolCreateInfo.minBlockCount          = createInfo.minBlockCount;
+        poolCreateInfo.maxBlockCount          = createInfo.maxBlockCount;
+        poolCreateInfo.priority               = 1.0f;
         poolCreateInfo.minAllocationAlignment = createInfo.minBlockAlignment;
-        poolCreateInfo.pMemoryAllocateNext = nullptr;
-        poolCreateInfo.memoryTypeIndex = 2; // hardcoded for my GPU please change it later
+        poolCreateInfo.pMemoryAllocateNext    = nullptr;
+        poolCreateInfo.memoryTypeIndex        = 2; // hardcoded for my GPU please change it later
 
         return vmaCreatePool(m_context->m_allocator, &poolCreateInfo, &m_pool);
     }
@@ -723,7 +723,7 @@ namespace Vulkan
     RHI::Result<RHI::Handle<RHI::Image>> ResourcePool::Allocate(const RHI::ImageCreateInfo& createInfo)
     {
         VmaAllocationCreateInfo allocationInfo{};
-        allocationInfo.pool = m_pool;
+        allocationInfo.pool  = m_pool;
 
         auto [image, result] = m_context->m_resourceManager->CreateImage(allocationInfo, createInfo, this);
         return { image, result };
@@ -732,7 +732,7 @@ namespace Vulkan
     RHI::Result<RHI::Handle<RHI::Buffer>> ResourcePool::Allocate(const RHI::BufferCreateInfo& createInfo)
     {
         VmaAllocationCreateInfo allocationInfo{};
-        allocationInfo.pool = m_pool;
+        allocationInfo.pool   = m_pool;
 
         auto [buffer, result] = m_context->m_resourceManager->CreateBuffer(allocationInfo, createInfo, this);
         return { buffer, result };
@@ -780,7 +780,7 @@ namespace Vulkan
 
     VkResult Swapchain::Init(const RHI::SwapchainCreateInfo& createInfo)
     {
-        auto context = static_cast<Context*>(m_context);
+        auto context    = static_cast<Context*>(m_context);
 
         m_swapchainInfo = createInfo;
 
@@ -788,7 +788,7 @@ namespace Vulkan
         semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
         semaphoreCreateInfo.pNext = nullptr;
         semaphoreCreateInfo.flags = 0;
-        VkResult result = vkCreateSemaphore(context->m_device, &semaphoreCreateInfo, nullptr, &m_imageReadySemaphore);
+        VkResult result           = vkCreateSemaphore(context->m_device, &semaphoreCreateInfo, nullptr, &m_imageReadySemaphore);
         VULKAN_RETURN_VKERR_CODE(result);
 
 #ifdef RHI_PLATFORM_WINDOWS
@@ -799,12 +799,12 @@ namespace Vulkan
         vkCreateInfo.flags = 0;
         // vkCreateInfo.hinstance = static_cast<HINSTANCE>(createInfo.win32Window.hinstance);
         vkCreateInfo.hwnd = static_cast<HWND>(createInfo.win32Window.hwnd);
-        result = vkCreateWin32SurfaceKHR(context->m_instance, &vkCreateInfo, nullptr, &m_surface);
+        result            = vkCreateWin32SurfaceKHR(context->m_instance, &vkCreateInfo, nullptr, &m_surface);
         VULKAN_RETURN_VKERR_CODE(result);
 #endif
 
         VkBool32 surfaceSupportPresent = VK_FALSE;
-        result = vkGetPhysicalDeviceSurfaceSupportKHR(
+        result                         = vkGetPhysicalDeviceSurfaceSupportKHR(
             context->m_physicalDevice, context->m_graphicsQueueFamilyIndex, m_surface, &surfaceSupportPresent);
         RHI_ASSERT(result == VK_SUCCESS && surfaceSupportPresent == VK_TRUE);
 
@@ -815,11 +815,11 @@ namespace Vulkan
 
     RHI::ResultCode Swapchain::Resize(uint32_t newWidth, uint32_t newHeight)
     {
-        auto context = static_cast<Context*>(m_context);
+        auto context              = static_cast<Context*>(m_context);
 
         m_swapchainInfo.imageSize = { newWidth, newHeight };
 
-        VkResult result = vkQueueWaitIdle(context->m_graphicsQueue);
+        VkResult result           = vkQueueWaitIdle(context->m_graphicsQueue);
 
         vkDestroySwapchainKHR(context->m_device, m_swapchain, nullptr);
 
@@ -830,26 +830,26 @@ namespace Vulkan
 
     RHI::ResultCode Swapchain::Present()
     {
-        VkSemaphore waitSemaphore{};
+        VkSemaphore           waitSemaphore{};
         VkSemaphoreCreateInfo semaphoreInfo{};
         semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
         vkCreateSemaphore(m_context->m_device, &semaphoreInfo, nullptr, &waitSemaphore);
 
-        auto currentImageHandle = m_images[m_currentImageIndex];
-        auto image = m_context->m_resourceManager->m_imageOwner.Get(currentImageHandle);
+        auto             currentImageHandle = m_images[m_currentImageIndex];
+        auto             image              = m_context->m_resourceManager->m_imageOwner.Get(currentImageHandle);
         // auto waitSemaphore = static_cast<Pass*>(image->attachment->asImage.lastUse->pass)->m_signalSemaphore;
 
         // Present current image to be rendered.
         VkPresentInfoKHR presentInfo{};
-        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        presentInfo.pNext = nullptr;
+        presentInfo.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        presentInfo.pNext              = nullptr;
         presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = &waitSemaphore;
-        presentInfo.swapchainCount = 1;
-        presentInfo.pSwapchains = &m_swapchain;
-        presentInfo.pImageIndices = &m_currentImageIndex;
-        presentInfo.pResults = &m_lastPresentResult;
-        VkResult result = vkQueuePresentKHR(m_context->m_graphicsQueue, &presentInfo);
+        presentInfo.pWaitSemaphores    = &waitSemaphore;
+        presentInfo.swapchainCount     = 1;
+        presentInfo.pSwapchains        = &m_swapchain;
+        presentInfo.pImageIndices      = &m_currentImageIndex;
+        presentInfo.pResults           = &m_lastPresentResult;
+        VkResult result                = vkQueuePresentKHR(m_context->m_graphicsQueue, &presentInfo);
         RHI_ASSERT(result == VK_SUCCESS);
 
         result = vkAcquireNextImageKHR(m_context->m_device, m_swapchain, 1000000, m_imageReadySemaphore, VK_NULL_HANDLE, &m_currentImageIndex);
@@ -861,36 +861,36 @@ namespace Vulkan
     VkResult Swapchain::CreateNativeSwapchain()
     {
         VkSurfaceCapabilitiesKHR surfaceCapabilities{};
-        VkResult result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_context->m_physicalDevice, m_surface, &surfaceCapabilities);
+        VkResult                 result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_context->m_physicalDevice, m_surface, &surfaceCapabilities);
         RHI_ASSERT(result == VK_SUCCESS);
 
-        auto surfaceFormat = GetSurfaceFormat(ConvertFormat(m_swapchainInfo.imageFormat));
-        auto minImageCount = std::clamp(m_swapchainInfo.imageCount, surfaceCapabilities.minImageCount, surfaceCapabilities.maxImageCount);
-        auto minImageWidth = std::clamp(m_swapchainInfo.imageSize.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
-        auto minImageHeight = std::clamp(m_swapchainInfo.imageSize.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
+        auto                     surfaceFormat  = GetSurfaceFormat(ConvertFormat(m_swapchainInfo.imageFormat));
+        auto                     minImageCount  = std::clamp(m_swapchainInfo.imageCount, surfaceCapabilities.minImageCount, surfaceCapabilities.maxImageCount);
+        auto                     minImageWidth  = std::clamp(m_swapchainInfo.imageSize.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
+        auto                     minImageHeight = std::clamp(m_swapchainInfo.imageSize.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
 
         VkSwapchainCreateInfoKHR createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-        createInfo.pNext = nullptr;
-        createInfo.flags = 0;
-        createInfo.surface = m_surface;
-        createInfo.minImageCount = minImageCount;
-        createInfo.imageFormat = surfaceFormat.format;
-        createInfo.imageColorSpace = surfaceFormat.colorSpace;
-        createInfo.imageExtent.width = minImageWidth;
-        createInfo.imageExtent.height = minImageHeight;
-        createInfo.imageArrayLayers = 1;
-        createInfo.imageUsage = ConvertImageUsageFlags(m_swapchainInfo.imageUsage);
-        createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        createInfo.sType                 = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+        createInfo.pNext                 = nullptr;
+        createInfo.flags                 = 0;
+        createInfo.surface               = m_surface;
+        createInfo.minImageCount         = minImageCount;
+        createInfo.imageFormat           = surfaceFormat.format;
+        createInfo.imageColorSpace       = surfaceFormat.colorSpace;
+        createInfo.imageExtent.width     = minImageWidth;
+        createInfo.imageExtent.height    = minImageHeight;
+        createInfo.imageArrayLayers      = 1;
+        createInfo.imageUsage            = ConvertImageUsageFlags(m_swapchainInfo.imageUsage);
+        createInfo.imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE;
         createInfo.queueFamilyIndexCount = 0;
-        createInfo.pQueueFamilyIndices = nullptr;
-        createInfo.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
-        createInfo.compositeAlpha = GetCompositeAlpha(surfaceCapabilities);
-        createInfo.presentMode = GetPresentMode();
-        createInfo.clipped = VK_TRUE;
-        createInfo.oldSwapchain = m_swapchain;
+        createInfo.pQueueFamilyIndices   = nullptr;
+        createInfo.preTransform          = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+        createInfo.compositeAlpha        = GetCompositeAlpha(surfaceCapabilities);
+        createInfo.presentMode           = GetPresentMode();
+        createInfo.clipped               = VK_TRUE;
+        createInfo.oldSwapchain          = m_swapchain;
 
-        result = vkCreateSwapchainKHR(m_context->m_device, &createInfo, nullptr, &m_swapchain);
+        result                           = vkCreateSwapchainKHR(m_context->m_device, &createInfo, nullptr, &m_swapchain);
         RHI_ASSERT(result == VK_SUCCESS);
         if (result != VK_SUCCESS)
             return result;
@@ -905,32 +905,32 @@ namespace Vulkan
             return result;
 
         VkImageCreateInfo imageInfo{};
-        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        imageInfo.pNext = nullptr;
-        imageInfo.flags = 0;
-        imageInfo.imageType = VK_IMAGE_TYPE_2D;
-        imageInfo.format = surfaceFormat.format;
-        imageInfo.extent.width = createInfo.imageExtent.width;
-        imageInfo.extent.height = createInfo.imageExtent.height;
-        imageInfo.extent.depth = 1;
-        imageInfo.mipLevels = 1;
-        imageInfo.arrayLayers = createInfo.imageArrayLayers;
-        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-        imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-        imageInfo.usage = createInfo.imageUsage;
-        imageInfo.sharingMode = createInfo.imageSharingMode;
+        imageInfo.sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        imageInfo.pNext                 = nullptr;
+        imageInfo.flags                 = 0;
+        imageInfo.imageType             = VK_IMAGE_TYPE_2D;
+        imageInfo.format                = surfaceFormat.format;
+        imageInfo.extent.width          = createInfo.imageExtent.width;
+        imageInfo.extent.height         = createInfo.imageExtent.height;
+        imageInfo.extent.depth          = 1;
+        imageInfo.mipLevels             = 1;
+        imageInfo.arrayLayers           = createInfo.imageArrayLayers;
+        imageInfo.samples               = VK_SAMPLE_COUNT_1_BIT;
+        imageInfo.tiling                = VK_IMAGE_TILING_OPTIMAL;
+        imageInfo.usage                 = createInfo.imageUsage;
+        imageInfo.sharingMode           = createInfo.imageSharingMode;
         imageInfo.queueFamilyIndexCount = createInfo.queueFamilyIndexCount;
-        imageInfo.pQueueFamilyIndices = createInfo.pQueueFamilyIndices;
-        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        imageInfo.pQueueFamilyIndices   = createInfo.pQueueFamilyIndices;
+        imageInfo.initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED;
 
         for (auto imageHandles : images)
         {
             Vulkan::Image image{};
-            image.handle = imageHandles;
+            image.handle     = imageHandles;
             image.createInfo = imageInfo;
-            image.swapchain = this;
+            image.swapchain  = this;
 
-            auto handle = m_context->m_resourceManager->m_imageOwner.Insert(image);
+            auto handle      = m_context->m_resourceManager->m_imageOwner.Insert(image);
             m_images.push_back(handle);
         }
 
@@ -942,9 +942,9 @@ namespace Vulkan
 
     VkSurfaceFormatKHR Swapchain::GetSurfaceFormat(VkFormat format)
     {
-        uint32_t formatsCount;
+        uint32_t                        formatsCount;
 
-        VkResult result = vkGetPhysicalDeviceSurfaceFormatsKHR(m_context->m_physicalDevice, m_surface, &formatsCount, nullptr);
+        VkResult                        result = vkGetPhysicalDeviceSurfaceFormatsKHR(m_context->m_physicalDevice, m_surface, &formatsCount, nullptr);
 
         std::vector<VkSurfaceFormatKHR> formats{};
         formats.resize(formatsCount);
@@ -983,13 +983,13 @@ namespace Vulkan
 
     VkPresentModeKHR Swapchain::GetPresentMode()
     {
-        auto context = static_cast<Context*>(m_context);
+        auto                          context = static_cast<Context*>(m_context);
 
-        uint32_t presentModesCount;
-        auto result = vkGetPhysicalDeviceSurfacePresentModesKHR(context->m_physicalDevice, m_surface, &presentModesCount, nullptr);
+        uint32_t                      presentModesCount;
+        auto                          result = vkGetPhysicalDeviceSurfacePresentModesKHR(context->m_physicalDevice, m_surface, &presentModesCount, nullptr);
         std::vector<VkPresentModeKHR> presentModes{};
         presentModes.resize(presentModesCount);
-        result = vkGetPhysicalDeviceSurfacePresentModesKHR(context->m_physicalDevice, m_surface, &presentModesCount, presentModes.data());
+        result                            = vkGetPhysicalDeviceSurfacePresentModesKHR(context->m_physicalDevice, m_surface, &presentModesCount, presentModes.data());
 
         VkPresentModeKHR preferredModes[] = { VK_PRESENT_MODE_FIFO_KHR, VK_PRESENT_MODE_IMMEDIATE_KHR, VK_PRESENT_MODE_MAILBOX_KHR };
 
@@ -1036,37 +1036,37 @@ namespace Vulkan
     RHI::Result<RHI::Handle<Image>> ResourceManager::CreateImage(const VmaAllocationCreateInfo allocationInfo, const RHI::ImageCreateInfo& createInfo, ResourcePool* parentPool, bool isTransientResource)
     {
         VkImageCreateInfo vkCreateInfo{};
-        vkCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        vkCreateInfo.pNext = nullptr;
-        vkCreateInfo.flags = {};
-        vkCreateInfo.imageType = ConvertImageType(createInfo.type);
-        vkCreateInfo.format = ConvertFormat(createInfo.format);
-        vkCreateInfo.extent.width = createInfo.size.width;
-        vkCreateInfo.extent.height = createInfo.size.height;
-        vkCreateInfo.extent.depth = createInfo.size.depth;
-        vkCreateInfo.mipLevels = createInfo.mipLevels;
-        vkCreateInfo.arrayLayers = createInfo.arrayCount;
-        vkCreateInfo.samples = ConvertSampleCount(createInfo.sampleCount);
-        vkCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-        vkCreateInfo.usage = ConvertImageUsageFlags(createInfo.usageFlags);
-        vkCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        vkCreateInfo.sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        vkCreateInfo.pNext                 = nullptr;
+        vkCreateInfo.flags                 = {};
+        vkCreateInfo.imageType             = ConvertImageType(createInfo.type);
+        vkCreateInfo.format                = ConvertFormat(createInfo.format);
+        vkCreateInfo.extent.width          = createInfo.size.width;
+        vkCreateInfo.extent.height         = createInfo.size.height;
+        vkCreateInfo.extent.depth          = createInfo.size.depth;
+        vkCreateInfo.mipLevels             = createInfo.mipLevels;
+        vkCreateInfo.arrayLayers           = createInfo.arrayCount;
+        vkCreateInfo.samples               = ConvertSampleCount(createInfo.sampleCount);
+        vkCreateInfo.tiling                = VK_IMAGE_TILING_OPTIMAL;
+        vkCreateInfo.usage                 = ConvertImageUsageFlags(createInfo.usageFlags);
+        vkCreateInfo.sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
         vkCreateInfo.queueFamilyIndexCount = 0;
-        vkCreateInfo.pQueueFamilyIndices = nullptr;
-        vkCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        vkCreateInfo.pQueueFamilyIndices   = nullptr;
+        vkCreateInfo.initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED;
 
         Image resource{};
         resource.createInfo = vkCreateInfo;
-        VkResult result = VK_ERROR_UNKNOWN;
+        VkResult result     = VK_ERROR_UNKNOWN;
 
         if (isTransientResource)
         {
             resource.allocation.type = AllocationType::Aliasing;
-            result = vkCreateImage(m_context->m_device, &vkCreateInfo, nullptr, &resource.handle);
+            result                   = vkCreateImage(m_context->m_device, &vkCreateInfo, nullptr, &resource.handle);
         }
         else
         {
             resource.allocation.type = AllocationType::Default;
-            result = vmaCreateImage(m_context->m_allocator, &vkCreateInfo, &allocationInfo, &resource.handle, &resource.allocation.handle, &resource.allocation.info);
+            result                   = vmaCreateImage(m_context->m_allocator, &vkCreateInfo, &allocationInfo, &resource.handle, &resource.allocation.handle, &resource.allocation.info);
         }
 
         if (result == VK_SUCCESS)
@@ -1080,27 +1080,27 @@ namespace Vulkan
     RHI::Result<RHI::Handle<Buffer>> ResourceManager::CreateBuffer(const VmaAllocationCreateInfo allocationInfo, const RHI::BufferCreateInfo& createInfo, ResourcePool* parentPool, bool isTransientResource)
     {
         VkBufferCreateInfo vkCreateInfo{};
-        vkCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        vkCreateInfo.pNext = nullptr;
-        vkCreateInfo.flags = {};
-        vkCreateInfo.size = createInfo.byteSize;
-        vkCreateInfo.usage = ConvertBufferUsageFlags(createInfo.usageFlags);
-        vkCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        vkCreateInfo.sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        vkCreateInfo.pNext                 = nullptr;
+        vkCreateInfo.flags                 = {};
+        vkCreateInfo.size                  = createInfo.byteSize;
+        vkCreateInfo.usage                 = ConvertBufferUsageFlags(createInfo.usageFlags);
+        vkCreateInfo.sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
         vkCreateInfo.queueFamilyIndexCount = 0;
-        vkCreateInfo.pQueueFamilyIndices = nullptr;
+        vkCreateInfo.pQueueFamilyIndices   = nullptr;
 
-        Buffer resource{};
+        Buffer   resource{};
         VkResult result = VK_ERROR_UNKNOWN;
 
         if (isTransientResource)
         {
             resource.allocation.type = AllocationType::Aliasing;
-            result = vkCreateBuffer(m_context->m_device, &vkCreateInfo, nullptr, &resource.handle);
+            result                   = vkCreateBuffer(m_context->m_device, &vkCreateInfo, nullptr, &resource.handle);
         }
         else
         {
             resource.allocation.type = AllocationType::Default;
-            result = vmaCreateBuffer(m_context->m_allocator, &vkCreateInfo, &allocationInfo, &resource.handle, &resource.allocation.handle, &resource.allocation.info);
+            result                   = vmaCreateBuffer(m_context->m_allocator, &vkCreateInfo, &allocationInfo, &resource.handle, &resource.allocation.handle, &resource.allocation.info);
         }
 
         if (result == VK_SUCCESS)
@@ -1130,20 +1130,20 @@ namespace Vulkan
         default:               RHI_UNREACHABLE(); break;
         }
 
-        vkCreateInfo.format = image->createInfo.format;
-        vkCreateInfo.components.r = ConvertComponentSwizzle(useInfo.components.r);
-        vkCreateInfo.components.g = ConvertComponentSwizzle(useInfo.components.g);
-        vkCreateInfo.components.b = ConvertComponentSwizzle(useInfo.components.b);
-        vkCreateInfo.components.a = ConvertComponentSwizzle(useInfo.components.a);
-        vkCreateInfo.subresourceRange.aspectMask = ConvertImageAspect(useInfo.subresource.imageAspects);
-        vkCreateInfo.subresourceRange.baseMipLevel = useInfo.subresource.mipBase;
-        vkCreateInfo.subresourceRange.levelCount = useInfo.subresource.mipCount;
+        vkCreateInfo.format                          = image->createInfo.format;
+        vkCreateInfo.components.r                    = ConvertComponentSwizzle(useInfo.components.r);
+        vkCreateInfo.components.g                    = ConvertComponentSwizzle(useInfo.components.g);
+        vkCreateInfo.components.b                    = ConvertComponentSwizzle(useInfo.components.b);
+        vkCreateInfo.components.a                    = ConvertComponentSwizzle(useInfo.components.a);
+        vkCreateInfo.subresourceRange.aspectMask     = ConvertImageAspect(useInfo.subresource.imageAspects);
+        vkCreateInfo.subresourceRange.baseMipLevel   = useInfo.subresource.mipBase;
+        vkCreateInfo.subresourceRange.levelCount     = useInfo.subresource.mipCount;
         vkCreateInfo.subresourceRange.baseArrayLayer = useInfo.subresource.arrayBase;
-        vkCreateInfo.subresourceRange.layerCount = useInfo.subresource.arrayCount;
+        vkCreateInfo.subresourceRange.layerCount     = useInfo.subresource.arrayCount;
 
         ImageView resource{};
 
-        auto result = vkCreateImageView(m_context->m_device, &vkCreateInfo, nullptr, &resource.handle);
+        auto      result = vkCreateImageView(m_context->m_device, &vkCreateInfo, nullptr, &resource.handle);
         RHI_ASSERT(result == VK_SUCCESS);
         return m_imageViewOwner.Insert(resource);
     }
@@ -1154,17 +1154,17 @@ namespace Vulkan
         RHI_ASSERT(buffer);
 
         VkBufferViewCreateInfo vkCreateInfo{};
-        vkCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
-        vkCreateInfo.pNext = nullptr;
-        vkCreateInfo.flags = 0;
+        vkCreateInfo.sType  = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
+        vkCreateInfo.pNext  = nullptr;
+        vkCreateInfo.flags  = 0;
         vkCreateInfo.buffer = buffer->handle;
         vkCreateInfo.format = ConvertFormat(useInfo.format);
         vkCreateInfo.offset = useInfo.byteOffset;
-        vkCreateInfo.range = useInfo.byteSize;
+        vkCreateInfo.range  = useInfo.byteSize;
 
         BufferView resource{};
 
-        auto result = vkCreateBufferView(m_context->m_device, &vkCreateInfo, nullptr, &resource.handle);
+        auto       result = vkCreateBufferView(m_context->m_device, &vkCreateInfo, nullptr, &resource.handle);
         RHI_ASSERT(result == VK_SUCCESS);
         return m_bufferViewOwner.Insert(resource);
     }
@@ -1177,29 +1177,29 @@ namespace Vulkan
             return dsl->second;
         }
 
-        uint32_t bindingsCount = 0;
+        uint32_t                     bindingsCount = 0;
         VkDescriptorSetLayoutBinding bindings[32];
 
         for (auto shaderBinding : layout.bindings)
         {
-            auto& binding = bindings[bindingsCount];
-            binding.binding = bindingsCount++;
-            binding.descriptorType = ConvertDescriptorType(shaderBinding.type);
-            binding.descriptorCount = shaderBinding.arrayCount;
-            binding.stageFlags = ConvertShaderStage(shaderBinding.stages);
+            auto& binding              = bindings[bindingsCount];
+            binding.binding            = bindingsCount++;
+            binding.descriptorType     = ConvertDescriptorType(shaderBinding.type);
+            binding.descriptorCount    = shaderBinding.arrayCount;
+            binding.stageFlags         = ConvertShaderStage(shaderBinding.stages);
             binding.pImmutableSamplers = nullptr;
         }
 
         VkDescriptorSetLayoutCreateInfo createInfo;
-        createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        createInfo.pNext = nullptr;
-        createInfo.flags = 0;
+        createInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        createInfo.pNext        = nullptr;
+        createInfo.flags        = 0;
         createInfo.bindingCount = bindingsCount;
-        createInfo.pBindings = bindings;
+        createInfo.pBindings    = bindings;
 
         DescriptorSetLayout resource;
 
-        auto result = vkCreateDescriptorSetLayout(m_context->m_device, &createInfo, nullptr, &resource.handle);
+        auto                result = vkCreateDescriptorSetLayout(m_context->m_device, &createInfo, nullptr, &resource.handle);
         RHI_ASSERT(result == VK_SUCCESS);
         auto handle = m_descriptorSetLayoutOwner.Insert(resource);
         if (result != VK_SUCCESS)
@@ -1212,17 +1212,17 @@ namespace Vulkan
 
     RHI::Result<RHI::Handle<DescriptorSet>> ResourceManager::CreateDescriptorSet(VkDescriptorPool pool, RHI::Handle<DescriptorSetLayout> descriptorSetLayout)
     {
-        auto dsl = m_descriptorSetLayoutOwner.Get(descriptorSetLayout);
+        auto                        dsl = m_descriptorSetLayoutOwner.Get(descriptorSetLayout);
 
         VkDescriptorSetAllocateInfo allocateInfo{};
-        allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocateInfo.pNext = nullptr;
-        allocateInfo.descriptorPool = pool;
+        allocateInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocateInfo.pNext              = nullptr;
+        allocateInfo.descriptorPool     = pool;
         allocateInfo.descriptorSetCount = 1;
-        allocateInfo.pSetLayouts = &dsl->handle;
+        allocateInfo.pSetLayouts        = &dsl->handle;
 
         DescriptorSet resource{};
-        auto result = vkAllocateDescriptorSets(m_context->m_device, &allocateInfo, &resource.handle);
+        auto          result = vkAllocateDescriptorSets(m_context->m_device, &allocateInfo, &resource.handle);
         RHI_ASSERT(result == VK_SUCCESS);
         return m_descriptorSetOwner.Insert(resource);
     }
@@ -1233,7 +1233,7 @@ namespace Vulkan
         for (uint32_t i = 1; i < layouts.size(); i++)
         {
             uint64_t otherKey = HashAny(layouts[i]);
-            key = HashCombine(key, otherKey);
+            key               = HashCombine(key, otherKey);
         }
 
         if (auto pipelineLayout = m_pipelineLayoutCache.find(key); pipelineLayout != m_pipelineLayoutCache.end())
@@ -1257,16 +1257,16 @@ namespace Vulkan
         }
 
         VkPipelineLayoutCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        createInfo.pNext = nullptr;
-        createInfo.flags = 0;
-        createInfo.setLayoutCount = descriptorSetLayouts.size();
-        createInfo.pSetLayouts = descriptorSetLayouts.data();
+        createInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        createInfo.pNext                  = nullptr;
+        createInfo.flags                  = 0;
+        createInfo.setLayoutCount         = descriptorSetLayouts.size();
+        createInfo.pSetLayouts            = descriptorSetLayouts.data();
         createInfo.pushConstantRangeCount = 0;
-        createInfo.pPushConstantRanges = nullptr;
+        createInfo.pPushConstantRanges    = nullptr;
 
         PipelineLayout resource{};
-        auto result = vkCreatePipelineLayout(m_context->m_device, &createInfo, nullptr, &resource.handle);
+        auto           result = vkCreatePipelineLayout(m_context->m_device, &createInfo, nullptr, &resource.handle);
         RHI_ASSERT(result == VK_SUCCESS);
         auto handle = m_pipelineLayoutOwner.Insert(resource);
         if (result != VK_SUCCESS)
@@ -1283,63 +1283,63 @@ namespace Vulkan
         if (rhiResult != RHI::ResultCode::Success)
             return RHI::ResultCode::ErrorUnkown;
 
-        VkPipelineLayout pipelineLayout = m_pipelineLayoutOwner.Get(pipelinelayoutHandle)->handle;
+        VkPipelineLayout                pipelineLayout        = m_pipelineLayoutOwner.Get(pipelinelayoutHandle)->handle;
 
-        uint32_t stagesCreateInfoCount = 2;
+        uint32_t                        stagesCreateInfoCount = 2;
         VkPipelineShaderStageCreateInfo stagesCreateInfos[4];
         {
             VkPipelineShaderStageCreateInfo stageInfo{};
-            stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            stageInfo.pNext = nullptr;
-            stageInfo.flags = 0;
+            stageInfo.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            stageInfo.pNext               = nullptr;
+            stageInfo.flags               = 0;
             stageInfo.pSpecializationInfo = nullptr;
-            stageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-            stageInfo.module = static_cast<ShaderModule*>(createInfo.vertexShaderModule)->m_shaderModule;
-            stageInfo.pName = createInfo.vertexShaderName;
-            stagesCreateInfos[0] = stageInfo;
+            stageInfo.stage               = VK_SHADER_STAGE_VERTEX_BIT;
+            stageInfo.module              = static_cast<ShaderModule*>(createInfo.vertexShaderModule)->m_shaderModule;
+            stageInfo.pName               = createInfo.vertexShaderName;
+            stagesCreateInfos[0]          = stageInfo;
 
-            stageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-            stageInfo.module = static_cast<ShaderModule*>(createInfo.pixelShaderModule)->m_shaderModule;
-            stageInfo.pName = createInfo.pixelShaderName;
-            stagesCreateInfos[1] = stageInfo;
+            stageInfo.stage               = VK_SHADER_STAGE_FRAGMENT_BIT;
+            stageInfo.module              = static_cast<ShaderModule*>(createInfo.pixelShaderModule)->m_shaderModule;
+            stageInfo.pName               = createInfo.pixelShaderName;
+            stagesCreateInfos[1]          = stageInfo;
         }
 
-        std::vector<VkVertexInputBindingDescription> vertexInputBindingDescriptions;
+        std::vector<VkVertexInputBindingDescription>   vertexInputBindingDescriptions;
         std::vector<VkVertexInputAttributeDescription> inputAttributeDescriptions;
 
         for (auto attributeDesc : createInfo.inputAssemblerState.attributes)
         {
             VkVertexInputAttributeDescription attribute{};
             attribute.location = attributeDesc.location;
-            attribute.binding = attributeDesc.binding;
-            attribute.format = ConvertFormat(attributeDesc.format);
-            attribute.offset = attributeDesc.offset;
+            attribute.binding  = attributeDesc.binding;
+            attribute.format   = ConvertFormat(attributeDesc.format);
+            attribute.offset   = attributeDesc.offset;
             inputAttributeDescriptions.push_back(attribute);
         }
 
         for (auto bindingDesc : createInfo.inputAssemblerState.bindings)
         {
             VkVertexInputBindingDescription binding{};
-            binding.binding = bindingDesc.binding;
-            binding.stride = bindingDesc.stride;
+            binding.binding   = bindingDesc.binding;
+            binding.stride    = bindingDesc.stride;
             binding.inputRate = bindingDesc.stepRate == RHI::PipelineVertexInputRate::PerVertex ? VK_VERTEX_INPUT_RATE_VERTEX : VK_VERTEX_INPUT_RATE_INSTANCE;
             vertexInputBindingDescriptions.push_back(binding);
         }
 
         VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{};
-        vertexInputStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        vertexInputStateCreateInfo.pNext = nullptr;
-        vertexInputStateCreateInfo.flags = 0;
-        vertexInputStateCreateInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(vertexInputBindingDescriptions.size());
-        vertexInputStateCreateInfo.pVertexBindingDescriptions = vertexInputBindingDescriptions.data();
+        vertexInputStateCreateInfo.sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        vertexInputStateCreateInfo.pNext                           = nullptr;
+        vertexInputStateCreateInfo.flags                           = 0;
+        vertexInputStateCreateInfo.vertexBindingDescriptionCount   = static_cast<uint32_t>(vertexInputBindingDescriptions.size());
+        vertexInputStateCreateInfo.pVertexBindingDescriptions      = vertexInputBindingDescriptions.data();
         vertexInputStateCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(inputAttributeDescriptions.size());
-        vertexInputStateCreateInfo.pVertexAttributeDescriptions = inputAttributeDescriptions.data();
+        vertexInputStateCreateInfo.pVertexAttributeDescriptions    = inputAttributeDescriptions.data();
 
         VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo{};
-        inputAssemblyStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-        inputAssemblyStateCreateInfo.pNext = nullptr;
-        inputAssemblyStateCreateInfo.flags = 0;
-        inputAssemblyStateCreateInfo.topology = ConvertPrimitiveTopology(createInfo.topologyMode);
+        inputAssemblyStateCreateInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        inputAssemblyStateCreateInfo.pNext                  = nullptr;
+        inputAssemblyStateCreateInfo.flags                  = 0;
+        inputAssemblyStateCreateInfo.topology               = ConvertPrimitiveTopology(createInfo.topologyMode);
         inputAssemblyStateCreateInfo.primitiveRestartEnable = VK_FALSE;
 
         VkPipelineTessellationStateCreateInfo tessellationStateCreateInfo{};
@@ -1349,68 +1349,68 @@ namespace Vulkan
         // tessellationStateCreateInfo.patchControlPoints;
 
         VkPipelineViewportStateCreateInfo viewportStateCreateInfo{};
-        viewportStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-        viewportStateCreateInfo.pNext = nullptr;
-        viewportStateCreateInfo.flags = 0;
+        viewportStateCreateInfo.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        viewportStateCreateInfo.pNext         = nullptr;
+        viewportStateCreateInfo.flags         = 0;
         viewportStateCreateInfo.viewportCount = 1;
-        viewportStateCreateInfo.scissorCount = 1;
-        viewportStateCreateInfo.pScissors = nullptr;
-        viewportStateCreateInfo.pViewports = nullptr;
+        viewportStateCreateInfo.scissorCount  = 1;
+        viewportStateCreateInfo.pScissors     = nullptr;
+        viewportStateCreateInfo.pViewports    = nullptr;
 
         VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo{};
-        rasterizationStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-        rasterizationStateCreateInfo.pNext = nullptr;
-        rasterizationStateCreateInfo.flags = 0;
-        rasterizationStateCreateInfo.depthClampEnable = VK_FALSE;
+        rasterizationStateCreateInfo.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        rasterizationStateCreateInfo.pNext                   = nullptr;
+        rasterizationStateCreateInfo.flags                   = 0;
+        rasterizationStateCreateInfo.depthClampEnable        = VK_FALSE;
         rasterizationStateCreateInfo.rasterizerDiscardEnable = VK_FALSE;
-        rasterizationStateCreateInfo.polygonMode = ConvertPolygonMode(createInfo.rasterizationState.fillMode);
-        rasterizationStateCreateInfo.cullMode = ConvertCullModeFlags(createInfo.rasterizationState.cullMode);
-        rasterizationStateCreateInfo.frontFace = ConvertFrontFace(createInfo.rasterizationState.frontFace);
-        rasterizationStateCreateInfo.depthBiasEnable = VK_FALSE;
+        rasterizationStateCreateInfo.polygonMode             = ConvertPolygonMode(createInfo.rasterizationState.fillMode);
+        rasterizationStateCreateInfo.cullMode                = ConvertCullModeFlags(createInfo.rasterizationState.cullMode);
+        rasterizationStateCreateInfo.frontFace               = ConvertFrontFace(createInfo.rasterizationState.frontFace);
+        rasterizationStateCreateInfo.depthBiasEnable         = VK_FALSE;
         rasterizationStateCreateInfo.depthBiasConstantFactor = 0.0f;
-        rasterizationStateCreateInfo.depthBiasClamp = 0.0f;
-        rasterizationStateCreateInfo.depthBiasSlopeFactor = 0.0f;
-        rasterizationStateCreateInfo.lineWidth = createInfo.rasterizationState.lineWidth;
+        rasterizationStateCreateInfo.depthBiasClamp          = 0.0f;
+        rasterizationStateCreateInfo.depthBiasSlopeFactor    = 0.0f;
+        rasterizationStateCreateInfo.lineWidth               = createInfo.rasterizationState.lineWidth;
 
         VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo{};
-        multisampleStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-        multisampleStateCreateInfo.pNext = nullptr;
-        multisampleStateCreateInfo.flags = 0;
-        multisampleStateCreateInfo.rasterizationSamples = ConvertSampleCount(createInfo.multisampleState.sampleCount);
-        multisampleStateCreateInfo.sampleShadingEnable = createInfo.multisampleState.sampleShading ? VK_TRUE : VK_FALSE;
-        multisampleStateCreateInfo.minSampleShading = multisampleStateCreateInfo.rasterizationSamples / 2;
-        multisampleStateCreateInfo.pSampleMask = nullptr;
+        multisampleStateCreateInfo.sType                 = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        multisampleStateCreateInfo.pNext                 = nullptr;
+        multisampleStateCreateInfo.flags                 = 0;
+        multisampleStateCreateInfo.rasterizationSamples  = ConvertSampleCount(createInfo.multisampleState.sampleCount);
+        multisampleStateCreateInfo.sampleShadingEnable   = createInfo.multisampleState.sampleShading ? VK_TRUE : VK_FALSE;
+        multisampleStateCreateInfo.minSampleShading      = multisampleStateCreateInfo.rasterizationSamples / 2;
+        multisampleStateCreateInfo.pSampleMask           = nullptr;
         multisampleStateCreateInfo.alphaToCoverageEnable = VK_FALSE;
-        multisampleStateCreateInfo.alphaToOneEnable = VK_FALSE;
+        multisampleStateCreateInfo.alphaToOneEnable      = VK_FALSE;
 
         VkPipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo{};
-        depthStencilStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-        depthStencilStateCreateInfo.pNext = nullptr;
-        depthStencilStateCreateInfo.flags = 0;
-        depthStencilStateCreateInfo.depthTestEnable = createInfo.depthStencilState.depthTestEnable ? VK_TRUE : VK_FALSE;
-        depthStencilStateCreateInfo.depthWriteEnable = createInfo.depthStencilState.depthWriteEnable ? VK_TRUE : VK_FALSE;
-        depthStencilStateCreateInfo.depthCompareOp = ConvertCompareOp(createInfo.depthStencilState.compareOperator);
+        depthStencilStateCreateInfo.sType                 = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        depthStencilStateCreateInfo.pNext                 = nullptr;
+        depthStencilStateCreateInfo.flags                 = 0;
+        depthStencilStateCreateInfo.depthTestEnable       = createInfo.depthStencilState.depthTestEnable ? VK_TRUE : VK_FALSE;
+        depthStencilStateCreateInfo.depthWriteEnable      = createInfo.depthStencilState.depthWriteEnable ? VK_TRUE : VK_FALSE;
+        depthStencilStateCreateInfo.depthCompareOp        = ConvertCompareOp(createInfo.depthStencilState.compareOperator);
         depthStencilStateCreateInfo.depthBoundsTestEnable = VK_FALSE;
-        depthStencilStateCreateInfo.stencilTestEnable = createInfo.depthStencilState.stencilTestEnable ? VK_TRUE : VK_FALSE;
+        depthStencilStateCreateInfo.stencilTestEnable     = createInfo.depthStencilState.stencilTestEnable ? VK_TRUE : VK_FALSE;
         // depthStencilStateCreateInfo.front;
         // depthStencilStateCreateInfo.back;
-        depthStencilStateCreateInfo.minDepthBounds = 0.0;
-        depthStencilStateCreateInfo.maxDepthBounds = 1.0;
+        depthStencilStateCreateInfo.minDepthBounds                                 = 0.0;
+        depthStencilStateCreateInfo.maxDepthBounds                                 = 1.0;
 
-        uint32_t pipelineColorBlendAttachmentStateCount = 0;
+        uint32_t                            pipelineColorBlendAttachmentStateCount = 0;
         VkPipelineColorBlendAttachmentState pipelineColorBlendAttachmentStates[8];
 
         for (auto blendState : createInfo.colorBlendState.blendStates)
         {
-            auto& state = pipelineColorBlendAttachmentStates[pipelineColorBlendAttachmentStateCount++];
-            state.blendEnable = blendState.blendEnable ? VK_TRUE : VK_FALSE;
+            auto& state               = pipelineColorBlendAttachmentStates[pipelineColorBlendAttachmentStateCount++];
+            state.blendEnable         = blendState.blendEnable ? VK_TRUE : VK_FALSE;
             state.srcColorBlendFactor = ConvertBlendFactor(blendState.srcColor);
             state.dstColorBlendFactor = ConvertBlendFactor(blendState.dstColor);
-            state.colorBlendOp = ConvertBlendOp(blendState.colorBlendOp);
+            state.colorBlendOp        = ConvertBlendOp(blendState.colorBlendOp);
             state.srcAlphaBlendFactor = ConvertBlendFactor(blendState.srcAlpha);
             state.dstAlphaBlendFactor = ConvertBlendFactor(blendState.dstAlpha);
-            state.alphaBlendOp = ConvertBlendOp(blendState.alphaBlendOp);
-            state.colorWriteMask = 0;
+            state.alphaBlendOp        = ConvertBlendOp(blendState.alphaBlendOp);
+            state.colorWriteMask      = 0;
             if (blendState.writeMask & RHI::ColorWriteMask::Red)
             {
                 state.colorWriteMask |= VK_COLOR_COMPONENT_R_BIT;
@@ -1433,34 +1433,34 @@ namespace Vulkan
         }
 
         VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo{};
-        colorBlendStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-        colorBlendStateCreateInfo.pNext = nullptr;
-        colorBlendStateCreateInfo.flags = 0;
-        colorBlendStateCreateInfo.logicOpEnable = VK_FALSE;
-        colorBlendStateCreateInfo.logicOp = VK_LOGIC_OP_SET;
-        colorBlendStateCreateInfo.attachmentCount = pipelineColorBlendAttachmentStateCount;
-        colorBlendStateCreateInfo.pAttachments = pipelineColorBlendAttachmentStates;
+        colorBlendStateCreateInfo.sType             = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        colorBlendStateCreateInfo.pNext             = nullptr;
+        colorBlendStateCreateInfo.flags             = 0;
+        colorBlendStateCreateInfo.logicOpEnable     = VK_FALSE;
+        colorBlendStateCreateInfo.logicOp           = VK_LOGIC_OP_SET;
+        colorBlendStateCreateInfo.attachmentCount   = pipelineColorBlendAttachmentStateCount;
+        colorBlendStateCreateInfo.pAttachments      = pipelineColorBlendAttachmentStates;
         colorBlendStateCreateInfo.blendConstants[0] = createInfo.colorBlendState.blendConstants[0];
         colorBlendStateCreateInfo.blendConstants[1] = createInfo.colorBlendState.blendConstants[1];
         colorBlendStateCreateInfo.blendConstants[2] = createInfo.colorBlendState.blendConstants[2];
         colorBlendStateCreateInfo.blendConstants[3] = createInfo.colorBlendState.blendConstants[3];
 
-        std::vector<VkDynamicState> dynamicStates = {
+        std::vector<VkDynamicState> dynamicStates   = {
             VK_DYNAMIC_STATE_VIEWPORT,
             VK_DYNAMIC_STATE_SCISSOR,
         };
 
         VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo{};
-        dynamicStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-        dynamicStateCreateInfo.pNext = nullptr;
-        dynamicStateCreateInfo.flags = 0;
+        dynamicStateCreateInfo.sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dynamicStateCreateInfo.pNext             = nullptr;
+        dynamicStateCreateInfo.flags             = 0;
         dynamicStateCreateInfo.dynamicStateCount = dynamicStates.size();
-        dynamicStateCreateInfo.pDynamicStates = dynamicStates.data();
+        dynamicStateCreateInfo.pDynamicStates    = dynamicStates.data();
 
-        uint32_t colorAttachmentFormatCount = static_cast<uint32_t>(createInfo.renderTargetLayout.colorAttachmentsFormats.size());
-        VkFormat colorAttachmentFormats[8] = {};
+        uint32_t colorAttachmentFormatCount      = static_cast<uint32_t>(createInfo.renderTargetLayout.colorAttachmentsFormats.size());
+        VkFormat colorAttachmentFormats[8]       = {};
 
-        uint32_t index = 0;
+        uint32_t index                           = 0;
         for (auto format : createInfo.renderTargetLayout.colorAttachmentsFormats)
             colorAttachmentFormats[index++] = ConvertFormat(format);
 
@@ -1468,35 +1468,35 @@ namespace Vulkan
         renderTargetLayout.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
         renderTargetLayout.pNext = nullptr;
         // renderTargetLayout.viewMask;
-        renderTargetLayout.colorAttachmentCount = colorAttachmentFormatCount;
+        renderTargetLayout.colorAttachmentCount    = colorAttachmentFormatCount;
         renderTargetLayout.pColorAttachmentFormats = colorAttachmentFormats;
-        renderTargetLayout.depthAttachmentFormat = ConvertFormat(createInfo.renderTargetLayout.depthAttachmentFormat);
+        renderTargetLayout.depthAttachmentFormat   = ConvertFormat(createInfo.renderTargetLayout.depthAttachmentFormat);
         renderTargetLayout.stencilAttachmentFormat = ConvertFormat(createInfo.renderTargetLayout.stencilAttachmentFormat);
 
         VkGraphicsPipelineCreateInfo vkCreateInfo{};
-        vkCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-        vkCreateInfo.pNext = &renderTargetLayout;
-        vkCreateInfo.flags = 0;
-        vkCreateInfo.stageCount = stagesCreateInfoCount;
-        vkCreateInfo.pStages = stagesCreateInfos;
-        vkCreateInfo.pVertexInputState = &vertexInputStateCreateInfo;
+        vkCreateInfo.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        vkCreateInfo.pNext               = &renderTargetLayout;
+        vkCreateInfo.flags               = 0;
+        vkCreateInfo.stageCount          = stagesCreateInfoCount;
+        vkCreateInfo.pStages             = stagesCreateInfos;
+        vkCreateInfo.pVertexInputState   = &vertexInputStateCreateInfo;
         vkCreateInfo.pInputAssemblyState = &inputAssemblyStateCreateInfo;
-        vkCreateInfo.pTessellationState = &tessellationStateCreateInfo;
-        vkCreateInfo.pViewportState = &viewportStateCreateInfo;
+        vkCreateInfo.pTessellationState  = &tessellationStateCreateInfo;
+        vkCreateInfo.pViewportState      = &viewportStateCreateInfo;
         vkCreateInfo.pRasterizationState = &rasterizationStateCreateInfo;
-        vkCreateInfo.pMultisampleState = &multisampleStateCreateInfo;
-        vkCreateInfo.pDepthStencilState = &depthStencilStateCreateInfo;
-        vkCreateInfo.pColorBlendState = &colorBlendStateCreateInfo;
-        vkCreateInfo.pDynamicState = &dynamicStateCreateInfo;
-        vkCreateInfo.layout = pipelineLayout;
-        vkCreateInfo.renderPass = VK_NULL_HANDLE;
-        vkCreateInfo.subpass = 0;
-        vkCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
-        vkCreateInfo.basePipelineIndex = 0;
+        vkCreateInfo.pMultisampleState   = &multisampleStateCreateInfo;
+        vkCreateInfo.pDepthStencilState  = &depthStencilStateCreateInfo;
+        vkCreateInfo.pColorBlendState    = &colorBlendStateCreateInfo;
+        vkCreateInfo.pDynamicState       = &dynamicStateCreateInfo;
+        vkCreateInfo.layout              = pipelineLayout;
+        vkCreateInfo.renderPass          = VK_NULL_HANDLE;
+        vkCreateInfo.subpass             = 0;
+        vkCreateInfo.basePipelineHandle  = VK_NULL_HANDLE;
+        vkCreateInfo.basePipelineIndex   = 0;
 
         GraphicsPipeline pipeline{};
 
-        auto result = vkCreateGraphicsPipelines(m_context->m_device, VK_NULL_HANDLE, 1, &vkCreateInfo, nullptr, &pipeline.handle);
+        auto             result = vkCreateGraphicsPipelines(m_context->m_device, VK_NULL_HANDLE, 1, &vkCreateInfo, nullptr, &pipeline.handle);
 
         if (result == VK_SUCCESS)
             return m_graphicsPipelineOwner.Insert(pipeline);
@@ -1506,36 +1506,36 @@ namespace Vulkan
 
     RHI::Result<RHI::Handle<ComputePipeline>> ResourceManager::CreateComputePipeline(const RHI::ComputePipelineCreateInfo& createInfo)
     {
-        auto shaderModule = static_cast<ShaderModule*>(createInfo.shaderModule);
+        auto shaderModule                      = static_cast<ShaderModule*>(createInfo.shaderModule);
 
         auto [pipelinelayoutHandle, rhiResult] = CreatePipelineLayout({ createInfo.bindGroupLayouts.begin(), createInfo.bindGroupLayouts.end() });
         RHI_ASSERT(rhiResult == RHI::ResultCode::Success);
         if (rhiResult != RHI::ResultCode::Success)
             return RHI::ResultCode::ErrorUnkown;
 
-        VkPipelineLayout pipelineLayout = m_pipelineLayoutOwner.Get(pipelinelayoutHandle)->handle;
+        VkPipelineLayout                pipelineLayout = m_pipelineLayoutOwner.Get(pipelinelayoutHandle)->handle;
 
         VkPipelineShaderStageCreateInfo shaderStage{};
-        shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        shaderStage.pNext = nullptr;
-        shaderStage.flags = 0;
-        shaderStage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-        shaderStage.module = shaderModule->m_shaderModule;
-        shaderStage.pName = createInfo.shaderName;
+        shaderStage.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        shaderStage.pNext               = nullptr;
+        shaderStage.flags               = 0;
+        shaderStage.stage               = VK_SHADER_STAGE_COMPUTE_BIT;
+        shaderStage.module              = shaderModule->m_shaderModule;
+        shaderStage.pName               = createInfo.shaderName;
         shaderStage.pSpecializationInfo = nullptr;
 
         VkComputePipelineCreateInfo vkCreateInfo{};
-        vkCreateInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-        vkCreateInfo.pNext = nullptr;
-        vkCreateInfo.flags = {};
-        vkCreateInfo.stage = shaderStage;
-        vkCreateInfo.layout = pipelineLayout;
+        vkCreateInfo.sType              = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+        vkCreateInfo.pNext              = nullptr;
+        vkCreateInfo.flags              = {};
+        vkCreateInfo.stage              = shaderStage;
+        vkCreateInfo.layout             = pipelineLayout;
         vkCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
-        vkCreateInfo.basePipelineIndex = 0;
+        vkCreateInfo.basePipelineIndex  = 0;
 
         ComputePipeline pipeline{};
 
-        auto result = vkCreateComputePipelines(m_context->m_device, VK_NULL_HANDLE, 1, &vkCreateInfo, nullptr, &pipeline.handle);
+        auto            result = vkCreateComputePipelines(m_context->m_device, VK_NULL_HANDLE, 1, &vkCreateInfo, nullptr, &pipeline.handle);
 
         if (result == VK_SUCCESS)
             return m_computePipelineOwner.Insert(pipeline);
@@ -1546,28 +1546,28 @@ namespace Vulkan
     RHI::Result<RHI::Handle<Sampler>> ResourceManager::CreateSampler(const RHI::SamplerCreateInfo& createInfo)
     {
         VkSamplerCreateInfo vkCreateInfo{};
-        vkCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        vkCreateInfo.pNext = nullptr;
-        vkCreateInfo.flags = 0;
-        vkCreateInfo.magFilter = ConvertFilter(createInfo.filterMag);
-        vkCreateInfo.minFilter = ConvertFilter(createInfo.filterMin);
-        vkCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR; // ConvertFilter(createInfo.filterMip);
-        vkCreateInfo.addressModeU = ConvertSamplerAddressMode(createInfo.addressU);
-        vkCreateInfo.addressModeV = ConvertSamplerAddressMode(createInfo.addressV);
-        vkCreateInfo.addressModeW = ConvertSamplerAddressMode(createInfo.addressW);
-        vkCreateInfo.mipLodBias = createInfo.mipLodBias;
-        vkCreateInfo.anisotropyEnable = VK_TRUE;
-        vkCreateInfo.maxAnisotropy = 1.0f;
-        vkCreateInfo.compareEnable = VK_TRUE;
-        vkCreateInfo.compareOp = ConvertCompareOp(createInfo.compare);
-        vkCreateInfo.minLod = createInfo.minLod;
-        vkCreateInfo.maxLod = createInfo.maxLod;
-        vkCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+        vkCreateInfo.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        vkCreateInfo.pNext                   = nullptr;
+        vkCreateInfo.flags                   = 0;
+        vkCreateInfo.magFilter               = ConvertFilter(createInfo.filterMag);
+        vkCreateInfo.minFilter               = ConvertFilter(createInfo.filterMin);
+        vkCreateInfo.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR; // ConvertFilter(createInfo.filterMip);
+        vkCreateInfo.addressModeU            = ConvertSamplerAddressMode(createInfo.addressU);
+        vkCreateInfo.addressModeV            = ConvertSamplerAddressMode(createInfo.addressV);
+        vkCreateInfo.addressModeW            = ConvertSamplerAddressMode(createInfo.addressW);
+        vkCreateInfo.mipLodBias              = createInfo.mipLodBias;
+        vkCreateInfo.anisotropyEnable        = VK_TRUE;
+        vkCreateInfo.maxAnisotropy           = 1.0f;
+        vkCreateInfo.compareEnable           = VK_TRUE;
+        vkCreateInfo.compareOp               = ConvertCompareOp(createInfo.compare);
+        vkCreateInfo.minLod                  = createInfo.minLod;
+        vkCreateInfo.maxLod                  = createInfo.maxLod;
+        vkCreateInfo.borderColor             = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
         vkCreateInfo.unnormalizedCoordinates = VK_FALSE;
 
         Sampler sampler{};
 
-        auto result = vkCreateSampler(m_context->m_device, &vkCreateInfo, nullptr, &sampler.handle);
+        auto    result = vkCreateSampler(m_context->m_device, &vkCreateInfo, nullptr, &sampler.handle);
 
         if (result == VK_SUCCESS)
             return m_samplerOwner.Insert(sampler);
@@ -1577,11 +1577,11 @@ namespace Vulkan
 
     RHI::Result<RHI::Handle<Fence>> ResourceManager::CreateFence()
     {
-        Fence fence{};
+        Fence             fence{};
 
         VkFenceCreateInfo createInfo{ VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, nullptr, {} };
 
-        auto result = vkCreateFence(m_context->m_device, &createInfo, nullptr, &fence.handle);
+        auto              result = vkCreateFence(m_context->m_device, &createInfo, nullptr, &fence.handle);
 
         if (result == VK_SUCCESS)
             return m_fenceOwner.Insert(fence);

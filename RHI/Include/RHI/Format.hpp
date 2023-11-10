@@ -1,11 +1,11 @@
 #pragma once
 
-#include <cstdint>
 #include "RHI/Export.hpp"
+#include <cstdint>
 
 namespace RHI
 {
-enum class Format : uint8_t
+    enum class Format : uint8_t
     {
         Unkown,
 
@@ -56,7 +56,7 @@ enum class Format : uint8_t
         RGBA32_UINT,
         RGBA32_SINT,
         RGBA32_FLOAT,
-        
+
         D16,
         D24S8,
         X24G8_UINT,
@@ -92,27 +92,27 @@ enum class Format : uint8_t
 
     struct FormatInfo
     {
-        Format format;
+        Format      format;
         const char* name;
-        uint8_t bytesPerBlock;
-        uint8_t blockSize;
-        FormatType type;
-        bool hasRed : 1;
-        bool hasGreen : 1;
-        bool hasBlue : 1;
-        bool hasAlpha : 1;
-        bool hasDepth : 1;
-        bool hasStencil : 1;
-        bool isSigned : 1;
-        bool isSRGB : 1;
+        uint8_t     bytesPerBlock;
+        uint8_t     blockSize;
+        FormatType  type;
+        bool        hasRed : 1;
+        bool        hasGreen : 1;
+        bool        hasBlue : 1;
+        bool        hasAlpha : 1;
+        bool        hasDepth : 1;
+        bool        hasStencil : 1;
+        bool        isSigned : 1;
+        bool        isSRGB : 1;
     };
 
     RHI_EXPORT const FormatInfo& ConvertFormatInfo(Format format);
 
-    RHI_EXPORT uint32_t ConvertFormatByteSize(Format format);
+    RHI_EXPORT uint32_t          ConvertFormatByteSize(Format format);
 
-    RHI_EXPORT uint32_t ConvertFormatComponentByteSize(Format format);
+    RHI_EXPORT uint32_t          ConvertFormatComponentByteSize(Format format);
 
-    RHI_EXPORT FormatType ConvertFormatType(Format format);
+    RHI_EXPORT FormatType        ConvertFormatType(Format format);
 
 } // namespace RHI

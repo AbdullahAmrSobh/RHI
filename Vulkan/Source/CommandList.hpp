@@ -28,7 +28,7 @@ namespace Vulkan
         CommandListAllocator(Context* context);
         ~CommandListAllocator();
 
-        std::vector<CommandList> AllocateCommandLists(CommandLevel level, uint32_t count) const;
+        std::vector<CommandList>     AllocateCommandLists(CommandLevel level, uint32_t count) const;
         std::unique_ptr<CommandList> AllocateCommandList(CommandLevel level) const;
     };
 
@@ -46,36 +46,36 @@ namespace Vulkan
 
         VkResult Init(const VkCommandBufferAllocateInfo& allocateInfo);
 
-        void Begin();
-        void End();
+        void     Begin();
+        void     End();
 
-        void TransitionPassAttachments(FrameScheduler* scheduler, RHI::TL::Span<RHI::ImagePassAttachment*> passAttachments);
-        void TransitionPassAttachments(FrameScheduler* scheduler, RHI::TL::Span<RHI::BufferPassAttachment*> passAttachments);
+        void     TransitionPassAttachments(FrameScheduler* scheduler, RHI::TL::Span<RHI::ImagePassAttachment*> passAttachments);
+        void     TransitionPassAttachments(FrameScheduler* scheduler, RHI::TL::Span<RHI::BufferPassAttachment*> passAttachments);
 
-        void RenderingBegin(FrameScheduler& scheduler, Pass& pass);
-        void RenderingEnd(FrameScheduler& scheduler, Pass& pass);
+        void     RenderingBegin(FrameScheduler& scheduler, Pass& pass);
+        void     RenderingEnd(FrameScheduler& scheduler, Pass& pass);
 
-        void PushDebugMarker(const char* name);
-        void PopDebugMarker();
+        void     PushDebugMarker(const char* name);
+        void     PopDebugMarker();
 
-        void SetViewport(const RHI::Viewport& viewport) override;
+        void     SetViewport(const RHI::Viewport& viewport) override;
 
-        void SetSicssor(const RHI::Scissor& sicssor) override;
+        void     SetSicssor(const RHI::Scissor& sicssor) override;
 
-        void Submit(const RHI::CommandDraw& command) override;
+        void     Submit(const RHI::CommandDraw& command) override;
 
-        void Submit(const RHI::CommandCopy& command) override;
+        void     Submit(const RHI::CommandCopy& command) override;
 
-        void Submit(const RHI::CommandCompute& command) override;
+        void     Submit(const RHI::CommandCompute& command) override;
 
     private:
-        VkImageMemoryBarrier2 TransitionResource(FrameScheduler* scheduler, RHI::ImagePassAttachment* resourceBefore, RHI::ImagePassAttachment* resourceAfter);
+        VkImageMemoryBarrier2  TransitionResource(FrameScheduler* scheduler, RHI::ImagePassAttachment* resourceBefore, RHI::ImagePassAttachment* resourceAfter);
         VkBufferMemoryBarrier2 TransitionResource(FrameScheduler* scheduler, RHI::BufferPassAttachment* resourceBefore, RHI::BufferPassAttachment* resourceAfter);
 
     public:
-        Context* m_context;
+        Context*        m_context;
 
-        VkCommandPool m_commandPool = VK_NULL_HANDLE;
+        VkCommandPool   m_commandPool   = VK_NULL_HANDLE;
         VkCommandBuffer m_commandBuffer = VK_NULL_HANDLE;
     };
 

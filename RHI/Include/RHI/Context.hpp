@@ -38,7 +38,7 @@ namespace RHI
     class ShaderBindGroupAllocator;
 
     typedef uint32_t Version;
-    typedef void* DeviceMemoryPtr;
+    typedef void*    DeviceMemoryPtr;
 
     /// @brief Type of backend Graphics API
     enum class Backend
@@ -73,16 +73,16 @@ namespace RHI
         std::string applicationName;
 
         /// @brief The version of the users application.
-        Version applicationVersion;
+        Version     applicationVersion;
     };
 
     /// @brief Properties about a Physical GPU
     struct DeviceProperties
     {
-        uint32_t id;
+        uint32_t    id;
         std::string name;
-        DeviceType type;
-        Vendor vendor;
+        DeviceType  type;
+        Vendor      vendor;
     };
 
     /// @brief Creates a Version from major.minor.patch
@@ -111,57 +111,57 @@ namespace RHI
     class RHI_EXPORT Context
     {
     public:
-        Context() = default;
+        Context()          = default;
         virtual ~Context() = default;
 
-        DebugCallbacks& GetDebugMessenger() const;
+        DebugCallbacks&                                   GetDebugMessenger() const;
 
         /// @brief Creates a new ShaderModule
-        virtual std::unique_ptr<ShaderModule> CreateShaderModule(const ShaderModuleCreateInfo& createInfo) = 0;
+        virtual std::unique_ptr<ShaderModule>             CreateShaderModule(const ShaderModuleCreateInfo& createInfo) = 0;
 
         /// @brief Creates a new Swapchain.
-        virtual std::unique_ptr<Swapchain> CreateSwapchain(const SwapchainCreateInfo& createInfo) = 0;
+        virtual std::unique_ptr<Swapchain>                CreateSwapchain(const SwapchainCreateInfo& createInfo) = 0;
 
         /// @brief Creates a new Pool for all resources.
-        virtual std::unique_ptr<ResourcePool> CreateResourcePool(const ResourcePoolCreateInfo& createInfo) = 0;
+        virtual std::unique_ptr<ResourcePool>             CreateResourcePool(const ResourcePoolCreateInfo& createInfo) = 0;
 
         /// @brief Creates a new graphics pipeline state for graphics.
-        virtual Handle<GraphicsPipeline> CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) = 0;
+        virtual Handle<GraphicsPipeline>                  CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) = 0;
 
         /// @brief Creates a new compute pipeline state for graphics.
-        virtual Handle<ComputePipeline> CreateComputePipeline(const ComputePipelineCreateInfo& createInfo) = 0;
+        virtual Handle<ComputePipeline>                   CreateComputePipeline(const ComputePipelineCreateInfo& createInfo) = 0;
 
         /// @brief Creates a new Sampler state.
-        virtual Handle<Sampler> CreateSampler(const SamplerCreateInfo& createInfo) = 0;
+        virtual Handle<Sampler>                           CreateSampler(const SamplerCreateInfo& createInfo) = 0;
 
         /// @brief Creates a new FrameScheduler object.
-        virtual std::unique_ptr<FrameScheduler> CreateFrameScheduler() = 0;
+        virtual std::unique_ptr<FrameScheduler>           CreateFrameScheduler() = 0;
 
         /// @brief Creates a ShaderBindGroupAllocator object.
         virtual std::unique_ptr<ShaderBindGroupAllocator> CreateShaderBindGroupAllocator() = 0;
 
         /// @brief Maps the image resource for read or write operations.
         /// @return returns a pointer to GPU memory, or a nullptr in case of failure
-        virtual DeviceMemoryPtr MapResource(Handle<Image> image) = 0;
+        virtual DeviceMemoryPtr                           MapResource(Handle<Image> image) = 0;
 
         /// @brief Maps the buffer resource for read or write operations.
         /// @return returns a pointer to GPU memory, or a nullptr in case of failure
-        virtual DeviceMemoryPtr MapResource(Handle<Buffer> buffer) = 0;
+        virtual DeviceMemoryPtr                           MapResource(Handle<Buffer> buffer) = 0;
 
         /// @brief Unamps the image resource.
-        virtual void Unmap(Handle<Image> image) = 0;
+        virtual void                                      Unmap(Handle<Image> image) = 0;
 
         /// @brief Unmaps the buffer resource.
-        virtual void Unmap(Handle<Buffer> buffer) = 0;
+        virtual void                                      Unmap(Handle<Buffer> buffer) = 0;
 
         /// @brief Frees the given graphics pipeline object.
-        virtual void Free(Handle<GraphicsPipeline> pso) = 0;
+        virtual void                                      Free(Handle<GraphicsPipeline> pso) = 0;
 
         /// @brief Frees the given compute pipeline object.
-        virtual void Free(Handle<ComputePipeline> pso) = 0;
+        virtual void                                      Free(Handle<ComputePipeline> pso) = 0;
 
         /// @brief Frees the given sampler object.
-        virtual void Free(Handle<Sampler> sampler) = 0;
+        virtual void                                      Free(Handle<Sampler> sampler) = 0;
     };
 
 } // namespace RHI

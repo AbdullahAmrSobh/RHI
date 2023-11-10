@@ -29,8 +29,8 @@ namespace RHI
 
     struct Scissor
     {
-        int32_t offsetX;
-        int32_t offsetY;
+        int32_t  offsetX;
+        int32_t  offsetY;
         uint32_t width;
         uint32_t height;
     };
@@ -38,56 +38,56 @@ namespace RHI
     struct CopyBufferDescriptor
     {
         Handle<Buffer> sourceBuffer;
-        uint32_t sourceOffset = 0;
+        uint32_t       sourceOffset = 0;
         Handle<Buffer> destinationBuffer;
-        uint32_t destinationOffset = 0;
-        uint32_t size = 0;
+        uint32_t       destinationOffset = 0;
+        uint32_t       size              = 0;
     };
 
     struct CopyImageDescriptor
     {
-        Handle<Image> sourceImage;
+        Handle<Image>    sourceImage;
         ImageSubresource sourceSubresource;
-        ImageOffset sourceOffset;
-        ImageSize sourceSize;
-        Handle<Image> destinationImage;
+        ImageOffset      sourceOffset;
+        ImageSize        sourceSize;
+        Handle<Image>    destinationImage;
         ImageSubresource destinationSubresource;
-        ImageOffset destinationOffset;
+        ImageOffset      destinationOffset;
     };
 
     struct CopyBufferToImageDescriptor
     {
-        Handle<Buffer> srcBuffer;
-        uint32_t srcOffset = 0;
-        uint32_t srcBytesPerRow = 0;
-        uint32_t srcBytesPerImage = 0;
-        ImageSize srcSize;
-        Handle<Image> dstImage;
+        Handle<Buffer>   srcBuffer;
+        uint32_t         srcOffset        = 0;
+        uint32_t         srcBytesPerRow   = 0;
+        uint32_t         srcBytesPerImage = 0;
+        ImageSize        srcSize;
+        Handle<Image>    dstImage;
         ImageSubresource dstSubresource;
-        ImageOffset dstOffset;
+        ImageOffset      dstOffset;
     };
 
     struct CopyImageToBufferDescriptor
     {
-        Handle<Image> sourceImage;
+        Handle<Image>    sourceImage;
         ImageSubresource sourceSubresource;
-        ImageOffset sourceOffset;
-        ImageSize sourceSize;
-        Handle<Buffer> destinationBuffer;
-        uint32_t destinationOffset = 0;
-        uint32_t destinationBytesPerRow = 0;
-        uint32_t destinationBytesPerImage = 0;
+        ImageOffset      sourceOffset;
+        ImageSize        sourceSize;
+        Handle<Buffer>   destinationBuffer;
+        uint32_t         destinationOffset        = 0;
+        uint32_t         destinationBytesPerRow   = 0;
+        uint32_t         destinationBytesPerImage = 0;
         // The destinationBuffer format is usually same as sourceImage's format. When source image contains more than one aspect,
         // the format should be compatiable with the aspect of the source image's subresource
-        Format destinationFormat;
+        Format           destinationFormat;
     };
 
     struct DrawParameters
     {
         uint32_t elementCount;
         uint32_t instanceCount = 1;
-        uint32_t firstElement = 0;
-        uint32_t vertexOffset = 0;
+        uint32_t firstElement  = 0;
+        uint32_t vertexOffset  = 0;
         uint32_t firstInstance = 0;
     };
 
@@ -96,23 +96,23 @@ namespace RHI
         uint32_t offsetX = 0u;
         uint32_t offsetY = 0u;
         uint32_t offsetZ = 0u;
-        uint32_t countX = 32u;
-        uint32_t countY = 32u;
-        uint32_t countZ = 32u;
+        uint32_t countX  = 32u;
+        uint32_t countY  = 32u;
+        uint32_t countZ  = 32u;
     };
 
     /// @brief Structure describing a draw command.
     struct CommandDraw
     {
-        Handle<GraphicsPipeline> pipelineState;
+        Handle<GraphicsPipeline>          pipelineState;
 
         TL::Span<Handle<ShaderBindGroup>> shaderBindGroups;
 
-        TL::Span<const Handle<Buffer>> vertexBuffers;
+        TL::Span<const Handle<Buffer>>    vertexBuffers;
 
-        Handle<Buffer> indexBuffers;
+        Handle<Buffer>                    indexBuffers;
 
-        DrawParameters parameters;
+        DrawParameters                    parameters;
     };
 
     /// @brief Structure describing a copy command.
@@ -152,8 +152,8 @@ namespace RHI
 
         union
         {
-            CopyBufferDescriptor buffer;
-            CopyImageDescriptor image;
+            CopyBufferDescriptor        buffer;
+            CopyImageDescriptor         image;
             CopyBufferToImageDescriptor bufferToImage;
             CopyImageToBufferDescriptor imageToBuffer;
         };
@@ -162,18 +162,18 @@ namespace RHI
     /// @brief Structure describing a compute command.
     struct CommandCompute
     {
-        Handle<ComputePipeline> pipelineState;
+        Handle<ComputePipeline>           pipelineState;
 
         TL::Span<Handle<ShaderBindGroup>> shaderBindGroups;
 
-        DispatchParameters parameters;
+        DispatchParameters                parameters;
     };
 
     /// @brief Command list record a list of GPU commands that are exectued in the same pass.
     class CommandList
     {
     public:
-        CommandList() = default;
+        CommandList()          = default;
         virtual ~CommandList() = default;
 
         /// @brief Sets the rendering viewport

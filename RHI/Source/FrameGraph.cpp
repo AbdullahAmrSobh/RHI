@@ -32,11 +32,11 @@ namespace RHI
     ImagePassAttachment* Pass::ImportImageResource(const char* name, Handle<Image> image, const ImageAttachmentUseInfo& useInfo)
     {
         Attachment attachment{};
-        attachment.name = name;
-        attachment.lifetime = AttachmentLifetime::Persistent;
-        attachment.type = AttachmentType::Image;
+        attachment.name           = name;
+        attachment.lifetime       = AttachmentLifetime::Persistent;
+        attachment.type           = AttachmentType::Image;
         attachment.asImage.handle = image;
-        auto attachmentHandle = m_scheduler->m_attachments.Insert(attachment);
+        auto attachmentHandle     = m_scheduler->m_attachments.Insert(attachment);
 
         return UseAttachment(attachmentHandle, useInfo);
     }
@@ -44,11 +44,11 @@ namespace RHI
     BufferPassAttachment* Pass::ImportBufferResource(const char* name, Handle<Buffer> buffer, const BufferAttachmentUseInfo& useInfo)
     {
         Attachment attachment{};
-        attachment.name = name;
-        attachment.lifetime = AttachmentLifetime::Persistent;
-        attachment.type = AttachmentType::Buffer;
+        attachment.name            = name;
+        attachment.lifetime        = AttachmentLifetime::Persistent;
+        attachment.type            = AttachmentType::Buffer;
         attachment.asBuffer.handle = buffer;
-        auto attachmentHandle = m_scheduler->m_attachments.Insert(attachment);
+        auto attachmentHandle      = m_scheduler->m_attachments.Insert(attachment);
 
         return UseAttachment(attachmentHandle, useInfo);
     }
@@ -56,12 +56,12 @@ namespace RHI
     ImagePassAttachment* Pass::CreateTransientImageResource(const char* name, const ImageCreateInfo& createInfo, const ImageAttachmentUseInfo& useInfo)
     {
         Attachment attachment{};
-        attachment.name = name;
-        attachment.lifetime = AttachmentLifetime::Transient;
-        attachment.type = AttachmentType::Image;
-        attachment.asImage.info = createInfo;
+        attachment.name           = name;
+        attachment.lifetime       = AttachmentLifetime::Transient;
+        attachment.type           = AttachmentType::Image;
+        attachment.asImage.info   = createInfo;
         attachment.asImage.handle = m_scheduler->CreateTransientImageResource(createInfo);
-        auto attachmentHandle = m_scheduler->m_attachments.Insert(attachment);
+        auto attachmentHandle     = m_scheduler->m_attachments.Insert(attachment);
         m_scheduler->m_transientAttachment.push_back(attachmentHandle);
 
         return UseAttachment(attachmentHandle, useInfo);
@@ -70,12 +70,12 @@ namespace RHI
     BufferPassAttachment* Pass::CreateTransientBufferResource(const char* name, const BufferCreateInfo& createInfo, const BufferAttachmentUseInfo& useInfo)
     {
         Attachment attachment{};
-        attachment.name = name;
-        attachment.lifetime = AttachmentLifetime::Transient;
-        attachment.type = AttachmentType::Buffer;
-        attachment.asBuffer.info = createInfo;
+        attachment.name            = name;
+        attachment.lifetime        = AttachmentLifetime::Transient;
+        attachment.type            = AttachmentType::Buffer;
+        attachment.asBuffer.info   = createInfo;
         attachment.asBuffer.handle = m_scheduler->CreateTransientBufferResource(createInfo);
-        auto attachmentHandle = m_scheduler->m_attachments.Insert(attachment);
+        auto attachmentHandle      = m_scheduler->m_attachments.Insert(attachment);
         m_scheduler->m_transientAttachment.push_back(attachmentHandle);
 
         return UseAttachment(attachmentHandle, useInfo);
@@ -97,28 +97,28 @@ namespace RHI
 
     ImagePassAttachment* Pass::UseAttachment(Handle<Attachment> attachmentHandle, const ImageAttachmentUseInfo& useInfo)
     {
-        auto attachment = m_scheduler->m_attachments.Get(attachmentHandle);
+        auto                attachment = m_scheduler->m_attachments.Get(attachmentHandle);
 
         ImagePassAttachment passAttachment{};
-        passAttachment.attachment = attachmentHandle;
-        passAttachment.pass = this;
-        passAttachment.info = useInfo;
-        passAttachment.prev = attachment->asImage.lastUse;
-        passAttachment.next = nullptr;
+        passAttachment.attachment   = attachmentHandle;
+        passAttachment.pass         = this;
+        passAttachment.info         = useInfo;
+        passAttachment.prev         = attachment->asImage.lastUse;
+        passAttachment.next         = nullptr;
         attachment->asImage.lastUse = &m_imagePassAttachments.emplace_back(passAttachment);
         return attachment->asImage.lastUse;
     }
 
     BufferPassAttachment* Pass::UseAttachment(Handle<Attachment> attachmentHandle, const BufferAttachmentUseInfo& useInfo)
     {
-        auto attachment = m_scheduler->m_attachments.Get(attachmentHandle);
+        auto                 attachment = m_scheduler->m_attachments.Get(attachmentHandle);
 
         BufferPassAttachment passAttachment{};
-        passAttachment.attachment = attachmentHandle;
-        passAttachment.pass = this;
-        passAttachment.info = useInfo;
-        passAttachment.prev = attachment->asBuffer.lastUse;
-        passAttachment.next = nullptr;
+        passAttachment.attachment    = attachmentHandle;
+        passAttachment.pass          = this;
+        passAttachment.info          = useInfo;
+        passAttachment.prev          = attachment->asBuffer.lastUse;
+        passAttachment.next          = nullptr;
         attachment->asBuffer.lastUse = &m_bufferPassAttachment.emplace_back(passAttachment);
         return attachment->asBuffer.lastUse;
     }
@@ -216,13 +216,13 @@ namespace RHI
         {
             for (auto& passAttachment : pass->m_imagePassAttachments)
             {
-                auto attachment = GetAttachment(passAttachment.attachment);
+                auto attachment     = GetAttachment(passAttachment.attachment);
                 passAttachment.view = CreateImageView(attachment, passAttachment.info);
             }
 
             for (auto& passAttachment : pass->m_bufferPassAttachment)
             {
-                auto attachment = GetAttachment(passAttachment.attachment);
+                auto attachment     = GetAttachment(passAttachment.attachment);
                 passAttachment.view = CreateBufferView(attachment, passAttachment.info);
             }
         }

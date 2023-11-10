@@ -67,9 +67,9 @@ namespace Vulkan
     void CommandList::Begin()
     {
         VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.pNext = nullptr;
-        beginInfo.flags = 0;
+        beginInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.pNext            = nullptr;
+        beginInfo.flags            = 0;
         beginInfo.pInheritanceInfo = nullptr;
 
         vkBeginCommandBuffer(m_commandBuffer, &beginInfo);
@@ -84,45 +84,45 @@ namespace Vulkan
     {
         RHI_ASSERT(resourceBefore || resourceAfter);
 
-        auto passAttachment = resourceBefore ? resourceBefore : resourceAfter;
-        auto attachment = scheduler->GetAttachment(passAttachment->attachment);
-        auto image = m_context->m_resourceManager->m_imageOwner.Get(attachment->asImage.handle);
+        auto                  passAttachment = resourceBefore ? resourceBefore : resourceAfter;
+        auto                  attachment     = scheduler->GetAttachment(passAttachment->attachment);
+        auto                  image          = m_context->m_resourceManager->m_imageOwner.Get(attachment->asImage.handle);
 
         VkImageMemoryBarrier2 barrier{};
-        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-        barrier.pNext = nullptr;
-        barrier.image = image->handle;
-        barrier.subresourceRange.aspectMask = ConvertImageAspect(passAttachment->info.subresource.imageAspects);
+        barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+        barrier.pNext                           = nullptr;
+        barrier.image                           = image->handle;
+        barrier.subresourceRange.aspectMask     = ConvertImageAspect(passAttachment->info.subresource.imageAspects);
         barrier.subresourceRange.baseArrayLayer = passAttachment->info.subresource.arrayBase;
-        barrier.subresourceRange.layerCount = passAttachment->info.subresource.arrayCount;
-        barrier.subresourceRange.baseMipLevel = passAttachment->info.subresource.mipBase;
-        barrier.subresourceRange.levelCount = passAttachment->info.subresource.mipCount;
+        barrier.subresourceRange.layerCount     = passAttachment->info.subresource.arrayCount;
+        barrier.subresourceRange.baseMipLevel   = passAttachment->info.subresource.mipBase;
+        barrier.subresourceRange.levelCount     = passAttachment->info.subresource.mipCount;
 
-        auto queueFamilyIndex = m_context->GetQueueFamilyIndex(passAttachment->pass->GetQueueInfo().type);
-        barrier.srcQueueFamilyIndex = queueFamilyIndex;
-        barrier.dstQueueFamilyIndex = queueFamilyIndex;
+        auto queueFamilyIndex                   = m_context->GetQueueFamilyIndex(passAttachment->pass->GetQueueInfo().type);
+        barrier.srcQueueFamilyIndex             = queueFamilyIndex;
+        barrier.dstQueueFamilyIndex             = queueFamilyIndex;
 
         if (resourceBefore == nullptr)
         {
-            barrier.srcStageMask = ConvertPipelineStage(resourceAfter->info.usage, resourceAfter->stages);
-            barrier.dstStageMask = barrier.srcStageMask;
+            barrier.srcStageMask  = ConvertPipelineStage(resourceAfter->info.usage, resourceAfter->stages);
+            barrier.dstStageMask  = barrier.srcStageMask;
 
             barrier.srcAccessMask = ConvertAccessFlags(resourceAfter->info.usage, resourceAfter->info.access);
             barrier.dstAccessMask = barrier.srcAccessMask;
 
-            barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            barrier.newLayout = ConvertImageLayout(resourceAfter->info.usage, resourceAfter->info.access);
+            barrier.oldLayout     = VK_IMAGE_LAYOUT_UNDEFINED;
+            barrier.newLayout     = ConvertImageLayout(resourceAfter->info.usage, resourceAfter->info.access);
         }
         else if (resourceAfter == nullptr)
         {
-            barrier.srcStageMask = ConvertPipelineStage(resourceBefore->info.usage, resourceBefore->stages);
-            barrier.dstStageMask = barrier.srcStageMask;
+            barrier.srcStageMask  = ConvertPipelineStage(resourceBefore->info.usage, resourceBefore->stages);
+            barrier.dstStageMask  = barrier.srcStageMask;
 
             barrier.srcAccessMask = ConvertAccessFlags(resourceBefore->info.usage, resourceBefore->info.access);
             barrier.dstAccessMask = barrier.srcAccessMask;
 
-            barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            barrier.newLayout = ConvertImageLayout(resourceBefore->info.usage, resourceBefore->info.access);
+            barrier.oldLayout     = VK_IMAGE_LAYOUT_UNDEFINED;
+            barrier.newLayout     = ConvertImageLayout(resourceBefore->info.usage, resourceBefore->info.access);
 
             if (image->swapchain)
             {
@@ -131,15 +131,15 @@ namespace Vulkan
         }
         else
         {
-            auto nextPass = resourceAfter->pass;
-            auto currentPass = resourceAfter->pass;
+            auto nextPass               = resourceAfter->pass;
+            auto currentPass            = resourceAfter->pass;
 
-            barrier.srcStageMask = ConvertPipelineStage(passAttachment->info.usage, passAttachment->stages);
-            barrier.dstStageMask = ConvertPipelineStage(passAttachment->next->info.usage, passAttachment->next->stages);
-            barrier.srcAccessMask = ConvertAccessFlags(passAttachment->info.usage, passAttachment->info.access);
-            barrier.dstAccessMask = ConvertAccessFlags(passAttachment->next->info.usage, passAttachment->next->info.access);
-            barrier.oldLayout = ConvertImageLayout(passAttachment->info.usage, passAttachment->info.access);
-            barrier.newLayout = ConvertImageLayout(passAttachment->next->info.usage, passAttachment->next->info.access);
+            barrier.srcStageMask        = ConvertPipelineStage(passAttachment->info.usage, passAttachment->stages);
+            barrier.dstStageMask        = ConvertPipelineStage(passAttachment->next->info.usage, passAttachment->next->stages);
+            barrier.srcAccessMask       = ConvertAccessFlags(passAttachment->info.usage, passAttachment->info.access);
+            barrier.dstAccessMask       = ConvertAccessFlags(passAttachment->next->info.usage, passAttachment->next->info.access);
+            barrier.oldLayout           = ConvertImageLayout(passAttachment->info.usage, passAttachment->info.access);
+            barrier.newLayout           = ConvertImageLayout(passAttachment->next->info.usage, passAttachment->next->info.access);
 
             barrier.srcQueueFamilyIndex = m_context->GetQueueFamilyIndex(currentPass->GetQueueInfo().type);
             barrier.dstQueueFamilyIndex = m_context->GetQueueFamilyIndex(nextPass->GetQueueInfo().type);
@@ -167,7 +167,7 @@ namespace Vulkan
 
     void CommandList::TransitionPassAttachments(FrameScheduler* scheduler, RHI::TL::Span<RHI::ImagePassAttachment*> passAttachments)
     {
-        auto resourceManager = m_context->m_resourceManager.get();
+        auto                               resourceManager = m_context->m_resourceManager.get();
 
         std::vector<VkImageMemoryBarrier2> barriers;
 
@@ -184,14 +184,14 @@ namespace Vulkan
         // dependencyInfo.memoryBarrierCount;
         // dependencyInfo.pMemoryBarriers;
         dependencyInfo.imageMemoryBarrierCount = barriers.size();
-        dependencyInfo.pImageMemoryBarriers = barriers.data();
+        dependencyInfo.pImageMemoryBarriers    = barriers.data();
 
         vkCmdPipelineBarrier2(m_commandBuffer, &dependencyInfo);
     }
 
     void CommandList::TransitionPassAttachments(FrameScheduler* scheduler, RHI::TL::Span<RHI::BufferPassAttachment*> passAttachments)
     {
-        auto resourceManager = m_context->m_resourceManager.get();
+        auto                                resourceManager = m_context->m_resourceManager.get();
 
         std::vector<VkBufferMemoryBarrier2> barriers;
 
@@ -208,16 +208,16 @@ namespace Vulkan
         // dependencyInfo.memoryBarrierCount;
         // dependencyInfo.pMemoryBarriers;
         dependencyInfo.bufferMemoryBarrierCount = barriers.size();
-        dependencyInfo.pBufferMemoryBarriers = barriers.data();
+        dependencyInfo.pBufferMemoryBarriers    = barriers.data();
 
         vkCmdPipelineBarrier2(m_commandBuffer, &dependencyInfo);
     }
 
     void CommandList::RenderingBegin(FrameScheduler& scheduler, Pass& pass)
     {
-        auto resourceManager = m_context->m_resourceManager.get();
+        auto                                   resourceManager = m_context->m_resourceManager.get();
 
-        uint32_t width = 0, height = 0;
+        uint32_t                               width = 0, height = 0;
 
         std::vector<RHI::ImagePassAttachment*> passAttachments;
         for (auto& attachment : pass.m_imagePassAttachments)
@@ -226,43 +226,43 @@ namespace Vulkan
         }
         TransitionPassAttachments(&scheduler, passAttachments);
 
-        uint32_t colorAttachmentsCount;
+        uint32_t                               colorAttachmentsCount;
         std::vector<VkRenderingAttachmentInfo> colorAttachmentInfo;
-        VkRenderingInfo renderingInfo{};
+        VkRenderingInfo                        renderingInfo{};
 
         for (const auto& attachment : pass.m_imagePassAttachments)
         {
-            auto view = resourceManager->m_imageViewOwner.Get(attachment.view);
+            auto view            = resourceManager->m_imageViewOwner.Get(attachment.view);
             auto frameAttachment = scheduler.GetAttachment(attachment.attachment);
-            auto image = m_context->m_resourceManager->m_imageOwner.Get(frameAttachment->asImage.handle);
+            auto image           = m_context->m_resourceManager->m_imageOwner.Get(frameAttachment->asImage.handle);
 
-            width = std::max(image->createInfo.extent.width, width);
-            height = std::max(image->createInfo.extent.height, height);
+            width                = std::max(image->createInfo.extent.width, width);
+            height               = std::max(image->createInfo.extent.height, height);
 
             if (attachment.info.usage == RHI::AttachmentUsage::Depth)
             {
                 VkRenderingAttachmentInfo depthAttachmentInfo{};
-                depthAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-                depthAttachmentInfo.pNext = nullptr;
-                depthAttachmentInfo.imageView = view->handle;
-                depthAttachmentInfo.imageLayout = ConvertImageLayout(attachment.info.usage, attachment.info.access);
-                depthAttachmentInfo.loadOp = ConvertLoadOp(attachment.info.loadStoreOperations.loadOperation);
-                depthAttachmentInfo.storeOp = ConvertStoreOp(attachment.info.loadStoreOperations.storeOperation);
+                depthAttachmentInfo.sType                         = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+                depthAttachmentInfo.pNext                         = nullptr;
+                depthAttachmentInfo.imageView                     = view->handle;
+                depthAttachmentInfo.imageLayout                   = ConvertImageLayout(attachment.info.usage, attachment.info.access);
+                depthAttachmentInfo.loadOp                        = ConvertLoadOp(attachment.info.loadStoreOperations.loadOperation);
+                depthAttachmentInfo.storeOp                       = ConvertStoreOp(attachment.info.loadStoreOperations.storeOperation);
                 depthAttachmentInfo.clearValue.depthStencil.depth = attachment.info.clearValue.depth.depthValue;
-                renderingInfo.pDepthAttachment = &depthAttachmentInfo;
+                renderingInfo.pDepthAttachment                    = &depthAttachmentInfo;
             }
 
             if (attachment.info.usage == RHI::AttachmentUsage::Stencil)
             {
                 VkRenderingAttachmentInfo stencilAttachmentInfo{};
-                stencilAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-                stencilAttachmentInfo.pNext = nullptr;
-                stencilAttachmentInfo.imageView = view->handle;
-                stencilAttachmentInfo.imageLayout = ConvertImageLayout(attachment.info.usage, attachment.info.access);
-                stencilAttachmentInfo.loadOp = ConvertLoadOp(attachment.info.loadStoreOperations.loadOperation);
-                stencilAttachmentInfo.storeOp = ConvertStoreOp(attachment.info.loadStoreOperations.storeOperation);
+                stencilAttachmentInfo.sType                           = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+                stencilAttachmentInfo.pNext                           = nullptr;
+                stencilAttachmentInfo.imageView                       = view->handle;
+                stencilAttachmentInfo.imageLayout                     = ConvertImageLayout(attachment.info.usage, attachment.info.access);
+                stencilAttachmentInfo.loadOp                          = ConvertLoadOp(attachment.info.loadStoreOperations.loadOperation);
+                stencilAttachmentInfo.storeOp                         = ConvertStoreOp(attachment.info.loadStoreOperations.storeOperation);
                 stencilAttachmentInfo.clearValue.depthStencil.stencil = attachment.info.clearValue.depth.stencilValue;
-                renderingInfo.pStencilAttachment = &stencilAttachmentInfo;
+                renderingInfo.pStencilAttachment                      = &stencilAttachmentInfo;
             }
 
             if ((attachment.info.usage == RHI::AttachmentUsage::Depth) || (attachment.info.usage == RHI::AttachmentUsage::Stencil))
@@ -271,12 +271,12 @@ namespace Vulkan
             }
 
             VkRenderingAttachmentInfo attachmentInfo{};
-            attachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-            attachmentInfo.pNext = nullptr;
-            attachmentInfo.imageView = view->handle;
-            attachmentInfo.imageLayout = ConvertImageLayout(attachment.info.usage, attachment.info.access);
-            attachmentInfo.loadOp = ConvertLoadOp(attachment.info.loadStoreOperations.loadOperation);
-            attachmentInfo.storeOp = ConvertStoreOp(attachment.info.loadStoreOperations.storeOperation);
+            attachmentInfo.sType                       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+            attachmentInfo.pNext                       = nullptr;
+            attachmentInfo.imageView                   = view->handle;
+            attachmentInfo.imageLayout                 = ConvertImageLayout(attachment.info.usage, attachment.info.access);
+            attachmentInfo.loadOp                      = ConvertLoadOp(attachment.info.loadStoreOperations.loadOperation);
+            attachmentInfo.storeOp                     = ConvertStoreOp(attachment.info.loadStoreOperations.storeOperation);
             attachmentInfo.clearValue.color.float32[0] = attachment.info.clearValue.color.r;
             attachmentInfo.clearValue.color.float32[1] = attachment.info.clearValue.color.g;
             attachmentInfo.clearValue.color.float32[2] = attachment.info.clearValue.color.b;
@@ -284,16 +284,16 @@ namespace Vulkan
             colorAttachmentInfo.push_back(attachmentInfo);
         }
 
-        renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-        renderingInfo.pNext = nullptr;
-        renderingInfo.flags = 0;
-        renderingInfo.renderArea.extent.width = width;
+        renderingInfo.sType                    = VK_STRUCTURE_TYPE_RENDERING_INFO;
+        renderingInfo.pNext                    = nullptr;
+        renderingInfo.flags                    = 0;
+        renderingInfo.renderArea.extent.width  = width;
         renderingInfo.renderArea.extent.height = height;
-        renderingInfo.renderArea.offset.x = 0;
-        renderingInfo.renderArea.offset.y = 0;
-        renderingInfo.layerCount = 1;
-        renderingInfo.colorAttachmentCount = colorAttachmentInfo.size();
-        renderingInfo.pColorAttachments = colorAttachmentInfo.data();
+        renderingInfo.renderArea.offset.x      = 0;
+        renderingInfo.renderArea.offset.y      = 0;
+        renderingInfo.layerCount               = 1;
+        renderingInfo.colorAttachmentCount     = colorAttachmentInfo.size();
+        renderingInfo.pColorAttachments        = colorAttachmentInfo.data();
 
         vkCmdBeginRendering(m_commandBuffer, &renderingInfo);
     }
@@ -312,8 +312,8 @@ namespace Vulkan
     void CommandList::PushDebugMarker(const char* name)
     {
         VkDebugMarkerMarkerInfoEXT info{};
-        info.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT;
-        info.pNext = nullptr;
+        info.sType       = VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT;
+        info.pNext       = nullptr;
         info.pMarkerName = name;
         // info.color
         m_context->m_vkCmdDebugMarkerBeginEXT(m_commandBuffer, &info);
@@ -327,10 +327,10 @@ namespace Vulkan
     void CommandList::SetViewport(const RHI::Viewport& viewport)
     {
         VkViewport vkViewport{};
-        vkViewport.x = viewport.offsetX;
-        vkViewport.y = viewport.offsetY;
-        vkViewport.width = viewport.width;
-        vkViewport.height = viewport.height;
+        vkViewport.x        = viewport.offsetX;
+        vkViewport.y        = viewport.offsetY;
+        vkViewport.width    = viewport.width;
+        vkViewport.height   = viewport.height;
         vkViewport.minDepth = viewport.minDepth;
         vkViewport.maxDepth = viewport.maxDepth;
 
@@ -340,10 +340,10 @@ namespace Vulkan
     void CommandList::SetSicssor(const RHI::Scissor& scissor)
     {
         VkRect2D vkScissor{};
-        vkScissor.extent.width = scissor.width;
+        vkScissor.extent.width  = scissor.width;
         vkScissor.extent.height = scissor.height;
-        vkScissor.offset.x = scissor.offsetX;
-        vkScissor.offset.y = scissor.offsetY;
+        vkScissor.offset.x      = scissor.offsetX;
+        vkScissor.offset.y      = scissor.offsetY;
         vkCmdSetScissor(m_commandBuffer, 0, 1, &vkScissor);
     }
 
@@ -351,16 +351,16 @@ namespace Vulkan
     {
         auto resourceManager = m_context->m_resourceManager.get();
 
-        auto pipeline = resourceManager->m_graphicsPipelineOwner.Get(command.pipelineState);
+        auto pipeline        = resourceManager->m_graphicsPipelineOwner.Get(command.pipelineState);
 
         vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->handle);
 
         if (command.shaderBindGroups.size())
         {
-            auto layout = resourceManager->m_pipelineLayoutOwner.Get(pipeline->layout);
+            auto                         layout = resourceManager->m_pipelineLayoutOwner.Get(pipeline->layout);
 
             std::vector<VkDescriptorSet> descriptorSets;
-            std::vector<uint32_t> descriptorSetOffsets;
+            std::vector<uint32_t>        descriptorSetOffsets;
 
             for (auto bindGroup : command.shaderBindGroups)
             {
@@ -380,7 +380,7 @@ namespace Vulkan
             //     descriptorSetOffsets.data());
         }
 
-        std::vector<VkBuffer> vertexBuffers;
+        std::vector<VkBuffer>     vertexBuffers;
         std::vector<VkDeviceSize> vertexBufferSizes;
 
         for (auto vertexBuffer : command.vertexBuffers)
@@ -441,54 +441,54 @@ namespace Vulkan
         {
         case RHI::CopyCommandType::Buffer:
             {
-                auto& command = _command.buffer;
+                auto&        command           = _command.buffer;
 
-                auto srcBuffer = resourceManager->m_bufferOwner.Get(command.sourceBuffer);
-                auto destinationBuffer = resourceManager->m_bufferOwner.Get(command.destinationBuffer);
+                auto         srcBuffer         = resourceManager->m_bufferOwner.Get(command.sourceBuffer);
+                auto         destinationBuffer = resourceManager->m_bufferOwner.Get(command.destinationBuffer);
 
                 VkBufferCopy copyInfo{};
                 copyInfo.srcOffset = command.sourceOffset;
                 copyInfo.dstOffset = command.destinationOffset;
-                copyInfo.size = command.size;
+                copyInfo.size      = command.size;
 
                 vkCmdCopyBuffer(m_commandBuffer, srcBuffer->handle, destinationBuffer->handle, 1, &copyInfo);
                 break;
             }
         case RHI::CopyCommandType::Image:
             {
-                auto& command = _command.image;
+                auto&       command  = _command.image;
 
-                auto srcImage = resourceManager->m_imageOwner.Get(command.sourceImage);
-                auto dstImage = resourceManager->m_imageOwner.Get(command.destinationImage);
+                auto        srcImage = resourceManager->m_imageOwner.Get(command.sourceImage);
+                auto        dstImage = resourceManager->m_imageOwner.Get(command.destinationImage);
 
                 VkImageCopy copyInfo{};
-                copyInfo.srcSubresource.aspectMask = ConvertImageAspect(command.sourceSubresource.imageAspects);
+                copyInfo.srcSubresource.aspectMask     = ConvertImageAspect(command.sourceSubresource.imageAspects);
                 copyInfo.srcSubresource.baseArrayLayer = command.sourceSubresource.arrayBase;
-                copyInfo.srcSubresource.layerCount = command.sourceSubresource.arrayCount;
-                copyInfo.srcSubresource.mipLevel = command.sourceSubresource.mipBase;
-                copyInfo.srcOffset.x = command.sourceOffset.x;
-                copyInfo.srcOffset.y = command.sourceOffset.y;
-                copyInfo.srcOffset.z = command.sourceOffset.z;
-                copyInfo.dstSubresource.aspectMask = ConvertImageAspect(command.destinationSubresource.imageAspects);
+                copyInfo.srcSubresource.layerCount     = command.sourceSubresource.arrayCount;
+                copyInfo.srcSubresource.mipLevel       = command.sourceSubresource.mipBase;
+                copyInfo.srcOffset.x                   = command.sourceOffset.x;
+                copyInfo.srcOffset.y                   = command.sourceOffset.y;
+                copyInfo.srcOffset.z                   = command.sourceOffset.z;
+                copyInfo.dstSubresource.aspectMask     = ConvertImageAspect(command.destinationSubresource.imageAspects);
                 copyInfo.dstSubresource.baseArrayLayer = command.destinationSubresource.arrayBase;
-                copyInfo.dstSubresource.layerCount = command.destinationSubresource.arrayCount;
-                copyInfo.dstSubresource.mipLevel = command.destinationSubresource.mipBase;
-                copyInfo.dstOffset.x = command.destinationOffset.x;
-                copyInfo.dstOffset.y = command.destinationOffset.y;
-                copyInfo.dstOffset.z = command.destinationOffset.z;
-                copyInfo.extent.width = command.sourceSize.width;
-                copyInfo.extent.height = command.sourceSize.height;
-                copyInfo.extent.depth = command.sourceSize.depth;
+                copyInfo.dstSubresource.layerCount     = command.destinationSubresource.arrayCount;
+                copyInfo.dstSubresource.mipLevel       = command.destinationSubresource.mipBase;
+                copyInfo.dstOffset.x                   = command.destinationOffset.x;
+                copyInfo.dstOffset.y                   = command.destinationOffset.y;
+                copyInfo.dstOffset.z                   = command.destinationOffset.z;
+                copyInfo.extent.width                  = command.sourceSize.width;
+                copyInfo.extent.height                 = command.sourceSize.height;
+                copyInfo.extent.depth                  = command.sourceSize.depth;
 
                 vkCmdCopyImage(m_commandBuffer, srcImage->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyInfo);
                 break;
             }
         case RHI::CopyCommandType::BufferToImage:
             {
-                auto& command = _command.bufferToImage;
+                auto&             command   = _command.bufferToImage;
 
-                auto srcBuffer = resourceManager->m_bufferOwner.Get(command.srcBuffer);
-                auto dstImage = resourceManager->m_imageOwner.Get(command.dstImage);
+                auto              srcBuffer = resourceManager->m_bufferOwner.Get(command.srcBuffer);
+                auto              dstImage  = resourceManager->m_imageOwner.Get(command.dstImage);
 
                 VkBufferImageCopy copyInfo{};
                 vkCmdCopyBufferToImage(m_commandBuffer, srcBuffer->handle, dstImage->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyInfo);
@@ -496,10 +496,10 @@ namespace Vulkan
             }
         case RHI::CopyCommandType::ImageToBuffer:
             {
-                auto& command = _command.imageToBuffer;
+                auto&             command           = _command.imageToBuffer;
 
-                auto srcImage = resourceManager->m_imageOwner.Get(command.sourceImage);
-                auto destinationBuffer = resourceManager->m_bufferOwner.Get(command.destinationBuffer);
+                auto              srcImage          = resourceManager->m_imageOwner.Get(command.sourceImage);
+                auto              destinationBuffer = resourceManager->m_bufferOwner.Get(command.destinationBuffer);
 
                 VkBufferImageCopy copyInfo{};
                 vkCmdCopyImageToBuffer(m_commandBuffer, srcImage->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, destinationBuffer->handle, 1, &copyInfo);
@@ -517,16 +517,16 @@ namespace Vulkan
     {
         auto resourceManager = m_context->m_resourceManager.get();
 
-        auto pipeline = resourceManager->m_computePipelineOwner.Get(command.pipelineState);
+        auto pipeline        = resourceManager->m_computePipelineOwner.Get(command.pipelineState);
 
         vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->handle);
 
         if (command.shaderBindGroups.size())
         {
-            auto layout = resourceManager->m_pipelineLayoutOwner.Get(pipeline->layout);
+            auto                         layout = resourceManager->m_pipelineLayoutOwner.Get(pipeline->layout);
 
             std::vector<VkDescriptorSet> descriptorSets;
-            std::vector<uint32_t> descriptorSetOffsets;
+            std::vector<uint32_t>        descriptorSetOffsets;
 
             for (auto bindGroup : command.shaderBindGroups)
             {

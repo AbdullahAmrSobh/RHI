@@ -54,12 +54,12 @@ namespace RHI
         }
 
         /// @brief The actual value (only valid if result is a success value).
-        T value;
+        T          value;
 
         /// @brief The result of the operation.
         ResultCode result;
 
-        inline T GetValue()
+        inline T   GetValue()
         {
             RHI_ASSERT(result == ResultCode::Success);
             return std::move(value);

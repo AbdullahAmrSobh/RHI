@@ -18,16 +18,16 @@ namespace Vulkan
 
     struct VirtualAllocation
     {
-        VmaVirtualBlock blockHandle;
+        VmaVirtualBlock      blockHandle;
         VmaVirtualAllocation handle;
-        size_t offset;
+        size_t               offset;
     };
 
     struct Allocation
     {
-        VmaAllocation handle;
+        VmaAllocation     handle;
         VmaAllocationInfo info;
-        AllocationType type;
+        AllocationType    type;
         VirtualAllocation virtualAllocation;
     };
 

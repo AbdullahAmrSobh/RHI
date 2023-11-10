@@ -19,16 +19,16 @@ namespace RHI
     struct SwapchainCreateInfo
     {
         /// @brief The size of the images in the swapchian.
-        ImageSize imageSize;
+        ImageSize         imageSize;
 
         /// @brief Image usage flags applied to all created images.
         Flags<ImageUsage> imageUsage;
 
         /// @brief The format of created swapchain image.
-        Format imageFormat;
+        Format            imageFormat;
 
         /// @brief The numer of back buffer images in the swapchain.
-        uint32_t imageCount;
+        uint32_t          imageCount;
 
 #ifdef RHI_PLATFORM_WINDOWS
         /// @brief win32 surface handles. (Availabe only on windows)
@@ -40,7 +40,7 @@ namespace RHI
     class RHI_EXPORT Swapchain
     {
     public:
-        Swapchain() = default;
+        Swapchain()          = default;
         virtual ~Swapchain() = default;
 
         /// @brief Get the current image index of the swapchain.
@@ -68,9 +68,9 @@ namespace RHI
         virtual ResultCode Present() = 0;
 
     protected:
-        uint32_t m_currentImageIndex;
+        uint32_t                   m_currentImageIndex;
 
-        uint32_t m_swapchainImagesCount;
+        uint32_t                   m_swapchainImagesCount;
 
         std::vector<Handle<Image>> m_images;
     };

@@ -114,14 +114,14 @@ namespace Vulkan
 
     size_t TransientResourceAllocator::CalculatePreferredBlockSize(uint32_t memTypeIndex)
     {
-        constexpr size_t VMA_SMALL_HEAP_MAX_SIZE = (1024ull * 1024 * 1024);
-        constexpr size_t VMA_DEFAULT_LARGE_HEAP_BLOCK_SIZE = (256ull * 1024 * 1024);
+        constexpr size_t                 VMA_SMALL_HEAP_MAX_SIZE           = (1024ull * 1024 * 1024);
+        constexpr size_t                 VMA_DEFAULT_LARGE_HEAP_BLOCK_SIZE = (256ull * 1024 * 1024);
 
         VkPhysicalDeviceMemoryProperties properties;
         vkGetPhysicalDeviceMemoryProperties(m_context->m_physicalDevice, &properties);
 
-        auto heapIndex = properties.memoryTypes[memTypeIndex].heapIndex;
-        auto heapSize = properties.memoryHeaps[heapIndex].size;
+        auto heapIndex   = properties.memoryTypes[memTypeIndex].heapIndex;
+        auto heapSize    = properties.memoryHeaps[heapIndex].size;
         auto isSmallHeap = heapSize <= VMA_SMALL_HEAP_MAX_SIZE;
         return AlignUp(isSmallHeap ? (heapSize / 8) : VMA_DEFAULT_LARGE_HEAP_BLOCK_SIZE, (size_t)32);
     }
@@ -131,19 +131,19 @@ namespace Vulkan
         // TODO: Hardcoded for my local machine, should probably handle this later.
         minRequirements.size = CalculatePreferredBlockSize(2);
 
-        Block block{};
+        Block                   block{};
 
         VmaAllocationCreateInfo allocationCreateInfo{};
-        allocationCreateInfo.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+        allocationCreateInfo.flags         = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
         allocationCreateInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-        auto result = vmaAllocateMemory(m_context->m_allocator, &minRequirements, &allocationCreateInfo, &block.allocation, &block.info);
+        auto result                        = vmaAllocateMemory(m_context->m_allocator, &minRequirements, &allocationCreateInfo, &block.allocation, &block.info);
         VULKAN_ASSERT_SUCCESS(result);
 
         VmaVirtualBlockCreateInfo virtualBlockCreateInfo{};
-        virtualBlockCreateInfo.size = block.info.size;
+        virtualBlockCreateInfo.size  = block.info.size;
         virtualBlockCreateInfo.flags = VMA_VIRTUAL_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT;
-        result = vmaCreateVirtualBlock(&virtualBlockCreateInfo, &block.virtualBlock);
+        result                       = vmaCreateVirtualBlock(&virtualBlockCreateInfo, &block.virtualBlock);
         VULKAN_ASSERT_SUCCESS(result);
 
         return block;
@@ -162,30 +162,30 @@ namespace Vulkan
             }
 
             VmaVirtualAllocationCreateInfo createInfo{};
-            createInfo.size = block.info.size;
+            createInfo.size      = block.info.size;
             createInfo.alignment = requirements.size;
-            createInfo.flags = VMA_VIRTUAL_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT;
+            createInfo.flags     = VMA_VIRTUAL_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT;
             createInfo.pUserData = nullptr;
-            auto result = vmaVirtualAllocate(block.virtualBlock, &createInfo, &allocation.virtualAllocation.handle, &allocation.virtualAllocation.offset);
+            auto result          = vmaVirtualAllocate(block.virtualBlock, &createInfo, &allocation.virtualAllocation.handle, &allocation.virtualAllocation.offset);
 
             if (result == VK_SUCCESS)
             {
                 allocation.handle = block.allocation;
-                allocation.info = block.info;
+                allocation.info   = block.info;
                 return allocation;
             }
         }
 
-        Block block = m_blocks.emplace_back(CreateBlockNewBlock(requirements));
+        Block block       = m_blocks.emplace_back(CreateBlockNewBlock(requirements));
         allocation.handle = block.allocation;
 
         VmaVirtualAllocationCreateInfo createInfo{};
-        createInfo.size = block.info.size;
+        createInfo.size      = block.info.size;
         createInfo.alignment = requirements.size;
-        createInfo.flags = VMA_VIRTUAL_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT;
+        createInfo.flags     = VMA_VIRTUAL_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT;
         createInfo.pUserData = nullptr;
-        allocation.info = block.info;
-        auto result = vmaVirtualAllocate(block.virtualBlock, &createInfo, &allocation.virtualAllocation.handle, &allocation.virtualAllocation.offset);
+        allocation.info      = block.info;
+        auto result          = vmaVirtualAllocate(block.virtualBlock, &createInfo, &allocation.virtualAllocation.handle, &allocation.virtualAllocation.offset);
 
         if (result == VK_SUCCESS)
         {
@@ -220,16 +220,16 @@ namespace Vulkan
 
     VkResult Pass::Init(const RHI::PassCreateInfo& createInfo)
     {
-        auto context = static_cast<Context*>(m_context);
+        auto                  context = static_cast<Context*>(m_context);
 
         VkSemaphoreCreateInfo semaphoreInfo{};
         semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-        auto result = vkCreateSemaphore(context->m_device, &semaphoreInfo, nullptr, &m_signalSemaphore);
+        auto result         = vkCreateSemaphore(context->m_device, &semaphoreInfo, nullptr, &m_signalSemaphore);
         VULKAN_RETURN_VKERR_CODE(result);
 
-        m_commandList = std::make_unique<CommandList>(context);
+        m_commandList   = std::make_unique<CommandList>(context);
         m_queuInfo.type = createInfo.type;
-        m_queuInfo.id = context->GetQueueFamilyIndex(createInfo.type);
+        m_queuInfo.id   = context->GetQueueFamilyIndex(createInfo.type);
 
         VkCommandPoolCreateInfo vkCreateInfo{};
         vkCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -259,13 +259,13 @@ namespace Vulkan
             return result;
 
         VkCommandBufferAllocateInfo allocateInfo{};
-        allocateInfo.commandPool = m_commandPool;
-        allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocateInfo.pNext = nullptr;
+        allocateInfo.commandPool        = m_commandPool;
+        allocateInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocateInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocateInfo.pNext              = nullptr;
         allocateInfo.commandBufferCount = 1;
 
-        result = m_commandList->Init(allocateInfo);
+        result                          = m_commandList->Init(allocateInfo);
         VULKAN_RETURN_VKERR_CODE(result);
         if (result != VK_SUCCESS)
             return result;
@@ -347,8 +347,8 @@ namespace Vulkan
     std::unique_ptr<RHI::Pass> FrameScheduler::CreatePass(const RHI::PassCreateInfo& createInfo)
     {
         std::unique_ptr<Pass> pass = std::make_unique<Pass>(static_cast<Context*>(m_context));
-        pass->m_scheduler = this;
-        auto result = pass->Init(createInfo);
+        pass->m_scheduler          = this;
+        auto result                = pass->Init(createInfo);
         RHI_ASSERT(result == VK_SUCCESS);
         return pass;
     }
@@ -375,33 +375,33 @@ namespace Vulkan
 
     void FrameScheduler::ExecutePass(RHI::Pass* passBase)
     {
-        auto context = static_cast<Context*>(m_context);
-        auto pass = static_cast<Pass*>(passBase);
+        auto                      context          = static_cast<Context*>(m_context);
+        auto                      pass             = static_cast<Pass*>(passBase);
 
-        auto commandList = static_cast<CommandList*>(pass->m_commandList.get());
+        auto                      commandList      = static_cast<CommandList*>(pass->m_commandList.get());
 
-        auto waitSemaphores = GetSemaphores(pass->m_producers);
-        auto signalSemaphores = GetSemaphores(pass->m_consumers);
+        auto                      waitSemaphores   = GetSemaphores(pass->m_producers);
+        auto                      signalSemaphores = GetSemaphores(pass->m_consumers);
 
         VkCommandBufferSubmitInfo commandSubmitInfo{};
-        commandSubmitInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
-        commandSubmitInfo.pNext = nullptr;
+        commandSubmitInfo.sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+        commandSubmitInfo.pNext         = nullptr;
         commandSubmitInfo.commandBuffer = commandList->m_commandBuffer;
 
         VkSubmitInfo2 submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
-        submitInfo.pNext = nullptr;
-        submitInfo.flags = 0;
-        submitInfo.waitSemaphoreInfoCount = waitSemaphores.size();
-        submitInfo.pWaitSemaphoreInfos = waitSemaphores.data();
-        submitInfo.commandBufferInfoCount = 1;
-        submitInfo.pCommandBufferInfos = &commandSubmitInfo;
+        submitInfo.sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+        submitInfo.pNext                    = nullptr;
+        submitInfo.flags                    = 0;
+        submitInfo.waitSemaphoreInfoCount   = waitSemaphores.size();
+        submitInfo.pWaitSemaphoreInfos      = waitSemaphores.data();
+        submitInfo.commandBufferInfoCount   = 1;
+        submitInfo.pCommandBufferInfos      = &commandSubmitInfo;
         submitInfo.signalSemaphoreInfoCount = signalSemaphores.size();
-        submitInfo.pSignalSemaphoreInfos = signalSemaphores.data();
+        submitInfo.pSignalSemaphoreInfos    = signalSemaphores.data();
 
-        auto signalFence = context->m_resourceManager->m_fenceOwner.Get(pass->m_signalFence);
+        auto signalFence                    = context->m_resourceManager->m_fenceOwner.Get(pass->m_signalFence);
 
-        auto result = vkQueueSubmit2(context->m_graphicsQueue, 1, &submitInfo, signalFence->handle);
+        auto result                         = vkQueueSubmit2(context->m_graphicsQueue, 1, &submitInfo, signalFence->handle);
         RHI_ASSERT(result == VK_SUCCESS);
     }
 
@@ -446,7 +446,7 @@ namespace Vulkan
 
     RHI::Handle<RHI::Image> FrameScheduler::CreateTransientImageResource(const RHI::ImageCreateInfo& createInfo)
     {
-        auto context = static_cast<Context*>(m_context);
+        auto context         = static_cast<Context*>(m_context);
         auto [image, result] = context->m_resourceManager->CreateImage({}, createInfo, nullptr, true);
         RHI_ASSERT(result == RHI::ResultCode::Success);
         return image;
@@ -454,7 +454,7 @@ namespace Vulkan
 
     RHI::Handle<RHI::Buffer> FrameScheduler::CreateTransientBufferResource(const RHI::BufferCreateInfo& createInfo)
     {
-        auto context = static_cast<Context*>(m_context);
+        auto context          = static_cast<Context*>(m_context);
         auto [buffer, result] = context->m_resourceManager->CreateBuffer({}, createInfo, nullptr, true);
         RHI_ASSERT(result == RHI::ResultCode::Success);
         return buffer;
@@ -462,7 +462,7 @@ namespace Vulkan
 
     RHI::Handle<RHI::ImageView> FrameScheduler::CreateImageView(RHI::Attachment* attachment, const RHI::ImageAttachmentUseInfo& useInfo)
     {
-        auto context = static_cast<Context*>(m_context);
+        auto context        = static_cast<Context*>(m_context);
         auto [view, result] = context->m_resourceManager->CreateImageView(attachment->asImage.handle, useInfo);
         RHI_ASSERT(result == RHI::ResultCode::Success);
         return view;
@@ -470,7 +470,7 @@ namespace Vulkan
 
     RHI::Handle<RHI::BufferView> FrameScheduler::CreateBufferView(RHI::Attachment* attachment, const RHI::BufferAttachmentUseInfo& useInfo)
     {
-        auto context = static_cast<Context*>(m_context);
+        auto context        = static_cast<Context*>(m_context);
         auto [view, result] = context->m_resourceManager->CreateBufferView(attachment->asBuffer.handle, useInfo);
         RHI_ASSERT(result == RHI::ResultCode::Success);
         return view;
@@ -478,7 +478,7 @@ namespace Vulkan
 
     void FrameScheduler::FreeTransientBufferResource(RHI::Handle<RHI::Buffer> handle)
     {
-        auto context = static_cast<Context*>(m_context);
+        auto context  = static_cast<Context*>(m_context);
         auto resource = context->m_resourceManager->m_bufferOwner.Get(handle);
 
         resource->Shutdown(context);
@@ -488,7 +488,7 @@ namespace Vulkan
 
     void FrameScheduler::FreeTransientImageResource(RHI::Handle<RHI::Image> handle)
     {
-        auto context = static_cast<Context*>(m_context);
+        auto context  = static_cast<Context*>(m_context);
         auto resource = context->m_resourceManager->m_imageOwner.Get(handle);
 
         resource->Shutdown(context);
@@ -498,7 +498,7 @@ namespace Vulkan
 
     void FrameScheduler::FreeImageView(RHI::Handle<RHI::ImageView> handle)
     {
-        auto context = static_cast<Context*>(m_context);
+        auto context  = static_cast<Context*>(m_context);
         auto resource = context->m_resourceManager->m_imageViewOwner.Get(handle);
 
         resource->Shutdown(context);
@@ -508,7 +508,7 @@ namespace Vulkan
 
     void FrameScheduler::FreeBufferView(RHI::Handle<RHI::BufferView> handle)
     {
-        auto context = static_cast<Context*>(m_context);
+        auto context  = static_cast<Context*>(m_context);
         auto resource = context->m_resourceManager->m_bufferViewOwner.Get(handle);
 
         resource->Shutdown(context);
@@ -521,11 +521,11 @@ namespace Vulkan
         std::vector<VkSemaphoreSubmitInfo> submitInfos{};
         for (auto passBase : passes)
         {
-            auto pass = static_cast<Pass*>(passBase);
+            auto                  pass = static_cast<Pass*>(passBase);
 
             VkSemaphoreSubmitInfo submitInfo{};
-            submitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-            submitInfo.pNext = nullptr;
+            submitInfo.sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+            submitInfo.pNext     = nullptr;
             submitInfo.semaphore = pass->m_signalSemaphore;
             // submitInfo.value;
             submitInfo.stageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT_KHR; // ConvertShaderStage(pass);

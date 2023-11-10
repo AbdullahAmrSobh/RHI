@@ -134,8 +134,8 @@ namespace RHI
     Flags<T> operator|(T lhs, T rhs)
     {
         using underlaying_type = typename std::underlying_type<T>::type;
-        auto lhs_num = static_cast<underlaying_type>(lhs);
-        auto rhs_num = static_cast<underlaying_type>(rhs);
+        auto lhs_num           = static_cast<underlaying_type>(lhs);
+        auto rhs_num           = static_cast<underlaying_type>(rhs);
 
         return Flags<T>(lhs_num | rhs_num);
     }
@@ -144,8 +144,8 @@ namespace RHI
     Flags<T> operator&(T lhs, T rhs)
     {
         using underlaying_type = typename std::underlying_type<T>::type;
-        auto lhs_num = static_cast<underlaying_type>(lhs);
-        auto rhs_num = static_cast<underlaying_type>(rhs);
+        auto lhs_num           = static_cast<underlaying_type>(lhs);
+        auto rhs_num           = static_cast<underlaying_type>(rhs);
 
         return Flags<T>(lhs_num & rhs_num);
     }
@@ -154,8 +154,8 @@ namespace RHI
     Flags<T> operator^(T lhs, T rhs)
     {
         using underlaying_type = typename std::underlying_type<T>::type;
-        auto lhs_num = static_cast<underlaying_type>(lhs);
-        auto rhs_num = static_cast<underlaying_type>(rhs);
+        auto lhs_num           = static_cast<underlaying_type>(lhs);
+        auto rhs_num           = static_cast<underlaying_type>(rhs);
 
         return Flags<T>(lhs_num ^ rhs_num);
     }

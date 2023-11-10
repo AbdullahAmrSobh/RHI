@@ -34,7 +34,7 @@
 std::unique_ptr<RHI::Context> RHI::CreateVulkanRHI(const RHI::ApplicationInfo& appInfo, std::unique_ptr<RHI::DebugCallbacks> debugCallbacks)
 {
     auto context = std::make_unique<Vulkan::Context>();
-    auto result = context->Init(appInfo, std::move(debugCallbacks));
+    auto result  = context->Init(appInfo, std::move(debugCallbacks));
     RHI_ASSERT(result == VK_SUCCESS);
     return context;
 }
@@ -43,10 +43,10 @@ namespace Vulkan
 {
 
     inline static VkBool32 VKAPI_CALL DebugMessengerCallbacks(
-        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-        VkDebugUtilsMessageTypeFlagsEXT messageTypes,
+        VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
+        VkDebugUtilsMessageTypeFlagsEXT             messageTypes,
         const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-        void* pUserData)
+        void*                                       pUserData)
     {
         (void)messageTypes;
         (void)pUserData;
@@ -100,26 +100,26 @@ namespace Vulkan
             VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
         };
 
-        uint32_t version = VK_MAKE_VERSION(0, 1, 0);
+        uint32_t          version = VK_MAKE_VERSION(0, 1, 0);
 
         VkApplicationInfo applicationInfo{};
-        applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-        applicationInfo.pNext = nullptr;
-        applicationInfo.pApplicationName = appInfo.applicationName.c_str();
+        applicationInfo.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+        applicationInfo.pNext              = nullptr;
+        applicationInfo.pApplicationName   = appInfo.applicationName.c_str();
         applicationInfo.applicationVersion = version;
-        applicationInfo.pEngineName = "AAMS Renderer Hardware Engine (RHI)";
-        applicationInfo.engineVersion = version;
-        applicationInfo.apiVersion = VK_API_VERSION_1_3;
+        applicationInfo.pEngineName        = "AAMS Renderer Hardware Engine (RHI)";
+        applicationInfo.engineVersion      = version;
+        applicationInfo.apiVersion         = VK_API_VERSION_1_3;
 
         VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
-        debugCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-        debugCreateInfo.flags = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT;
+        debugCreateInfo.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+        debugCreateInfo.flags           = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT;
         debugCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-        debugCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT;
+        debugCreateInfo.messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT;
         debugCreateInfo.pfnUserCallback = DebugMessengerCallbacks;
-        debugCreateInfo.pUserData = debugCallbacks.get();
+        debugCreateInfo.pUserData       = debugCallbacks.get();
 
-        bool debugExtensionFound = false;
+        bool debugExtensionFound        = false;
 
         for (VkExtensionProperties extension : GetAvailableInstanceExtensions())
         {
@@ -141,25 +141,25 @@ namespace Vulkan
 #endif
 
         VkInstanceCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-        createInfo.pNext = debugExtensionFound ? &debugCreateInfo : nullptr;
-        createInfo.flags = {};
-        createInfo.pApplicationInfo = &applicationInfo;
-        createInfo.enabledLayerCount = static_cast<uint32_t>(enabledLayersNames.size());
-        createInfo.ppEnabledLayerNames = enabledLayersNames.data();
-        createInfo.enabledExtensionCount = static_cast<uint32_t>(enabledExtensionsNames.size());
+        createInfo.sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+        createInfo.pNext                   = debugExtensionFound ? &debugCreateInfo : nullptr;
+        createInfo.flags                   = {};
+        createInfo.pApplicationInfo        = &applicationInfo;
+        createInfo.enabledLayerCount       = static_cast<uint32_t>(enabledLayersNames.size());
+        createInfo.ppEnabledLayerNames     = enabledLayersNames.data();
+        createInfo.enabledExtensionCount   = static_cast<uint32_t>(enabledExtensionsNames.size());
         createInfo.ppEnabledExtensionNames = enabledExtensionsNames.data();
 
-        VkResult result = vkCreateInstance(&createInfo, nullptr, &m_instance);
+        VkResult result                    = vkCreateInstance(&createInfo, nullptr, &m_instance);
         VULKAN_RETURN_VKERR_CODE(result);
 
         for (VkPhysicalDevice physicalDevice : GetAvailablePhysicalDevices())
         {
-            bool swapchainExtension = false;
-            bool dynamicRenderingExtension = false;
-            bool maintenance2Extension = false;
-            bool multiviewExtension = false;
-            bool createRenderpass2Extension = false;
+            bool swapchainExtension           = false;
+            bool dynamicRenderingExtension    = false;
+            bool maintenance2Extension        = false;
+            bool multiviewExtension           = false;
+            bool createRenderpass2Extension   = false;
             bool depthStencilResolveExtension = false;
 
             for (auto extension : GetAvailableDeviceExtensions(physicalDevice))
@@ -238,10 +238,10 @@ namespace Vulkan
                     m_computeQueueFamilyIndex = queueFamilyIndex;
             }
 
-            float queuePriority = 1.0f;
+            float                                queuePriority = 1.0f;
             std::vector<VkDeviceQueueCreateInfo> queueCreateInfos{};
 
-            VkDeviceQueueCreateInfo queueCreateInfo{};
+            VkDeviceQueueCreateInfo              queueCreateInfo{};
             queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
             queueCreateInfo.pNext = nullptr;
             queueCreateInfo.flags = 0;
@@ -249,21 +249,21 @@ namespace Vulkan
             if (m_graphicsQueueFamilyIndex != UINT32_MAX)
             {
                 queueCreateInfo.queueFamilyIndex = m_graphicsQueueFamilyIndex;
-                queueCreateInfo.queueCount = 1;
+                queueCreateInfo.queueCount       = 1;
                 queueCreateInfo.pQueuePriorities = &queuePriority;
                 queueCreateInfos.push_back(queueCreateInfo);
             }
             else if (m_computeQueueFamilyIndex != UINT32_MAX)
             {
                 queueCreateInfo.queueFamilyIndex = m_computeQueueFamilyIndex;
-                queueCreateInfo.queueCount = 1;
+                queueCreateInfo.queueCount       = 1;
                 queueCreateInfo.pQueuePriorities = &queuePriority;
                 queueCreateInfos.push_back(queueCreateInfo);
             }
             else if (m_transferQueueFamilyIndex != UINT32_MAX)
             {
                 queueCreateInfo.queueFamilyIndex = m_transferQueueFamilyIndex;
-                queueCreateInfo.queueCount = 1;
+                queueCreateInfo.queueCount       = 1;
                 queueCreateInfo.pQueuePriorities = &queuePriority;
                 queueCreateInfos.push_back(queueCreateInfo);
             }
@@ -272,35 +272,35 @@ namespace Vulkan
                 RHI_UNREACHABLE();
             }
 
-            VkPhysicalDeviceFeatures enabledFeatures{};
+            VkPhysicalDeviceFeatures                 enabledFeatures{};
 
             VkPhysicalDeviceSynchronization2Features syncFeature{};
-            syncFeature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES;
+            syncFeature.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES;
             syncFeature.synchronization2 = VK_TRUE;
 
             VkPhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures{};
-            dynamicRenderingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
-            dynamicRenderingFeatures.pNext = &syncFeature;
+            dynamicRenderingFeatures.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
+            dynamicRenderingFeatures.pNext            = &syncFeature;
             dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
 
             VkDeviceCreateInfo deviceCreateInfo{};
-            deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-            deviceCreateInfo.pNext = &dynamicRenderingFeatures;
-            deviceCreateInfo.flags = 0;
-            deviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
-            deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
-            deviceCreateInfo.enabledLayerCount = static_cast<uint32_t>(deviceLayerNames.size());
-            deviceCreateInfo.ppEnabledLayerNames = deviceLayerNames.data();
-            deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensionNames.size());
+            deviceCreateInfo.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+            deviceCreateInfo.pNext                   = &dynamicRenderingFeatures;
+            deviceCreateInfo.flags                   = 0;
+            deviceCreateInfo.queueCreateInfoCount    = static_cast<uint32_t>(queueCreateInfos.size());
+            deviceCreateInfo.pQueueCreateInfos       = queueCreateInfos.data();
+            deviceCreateInfo.enabledLayerCount       = static_cast<uint32_t>(deviceLayerNames.size());
+            deviceCreateInfo.ppEnabledLayerNames     = deviceLayerNames.data();
+            deviceCreateInfo.enabledExtensionCount   = static_cast<uint32_t>(deviceExtensionNames.size());
             deviceCreateInfo.ppEnabledExtensionNames = deviceExtensionNames.data();
-            deviceCreateInfo.pEnabledFeatures = &enabledFeatures;
+            deviceCreateInfo.pEnabledFeatures        = &enabledFeatures;
 
-            VkResult result = vkCreateDevice(m_physicalDevice, &deviceCreateInfo, nullptr, &m_device);
+            VkResult result                          = vkCreateDevice(m_physicalDevice, &deviceCreateInfo, nullptr, &m_device);
             VULKAN_RETURN_VKERR_CODE(result);
 
             vkGetDeviceQueue(m_device, m_graphicsQueueFamilyIndex, 0, &m_graphicsQueue);
 
-            m_computeQueue = m_graphicsQueue;
+            m_computeQueue  = m_graphicsQueue;
             m_transferQueue = m_graphicsQueue;
 
             // if (m_computeQueueFamilyIndex != UINT32_MAX)
@@ -315,19 +315,19 @@ namespace Vulkan
 
         {
             VmaAllocatorCreateInfo createInfo{};
-            createInfo.physicalDevice = m_physicalDevice;
-            createInfo.device = m_device;
-            createInfo.instance = m_instance;
+            createInfo.physicalDevice   = m_physicalDevice;
+            createInfo.device           = m_device;
+            createInfo.instance         = m_instance;
             createInfo.vulkanApiVersion = VK_API_VERSION_1_3;
 
-            VkResult result = vmaCreateAllocator(&createInfo, &m_allocator);
+            VkResult result             = vmaCreateAllocator(&createInfo, &m_allocator);
             VULKAN_RETURN_VKERR_CODE(result);
         }
 
         // load function pointers
-        m_vkCmdDebugMarkerBeginEXT = reinterpret_cast<PFN_vkCmdDebugMarkerBeginEXT>(vkGetDeviceProcAddr(m_device, "vkCmdDebugMarkerBeginEXT"));
+        m_vkCmdDebugMarkerBeginEXT  = reinterpret_cast<PFN_vkCmdDebugMarkerBeginEXT>(vkGetDeviceProcAddr(m_device, "vkCmdDebugMarkerBeginEXT"));
         m_vkCmdDebugMarkerInsertEXT = reinterpret_cast<PFN_vkCmdDebugMarkerInsertEXT>(vkGetDeviceProcAddr(m_device, "vkCmdDebugMarkerInsertEXT"));
-        m_vkCmdDebugMarkerEndEXT = reinterpret_cast<PFN_vkCmdDebugMarkerEndEXT>(vkGetDeviceProcAddr(m_device, "vkCmdDebugMarkerEndEXT"));
+        m_vkCmdDebugMarkerEndEXT    = reinterpret_cast<PFN_vkCmdDebugMarkerEndEXT>(vkGetDeviceProcAddr(m_device, "vkCmdDebugMarkerEndEXT"));
 
         // RHI_ASSERT(m_vkCmdDebugMarkerBeginEXT != nullptr);
         // RHI_ASSERT(m_vkCmdDebugMarkerInsertEXT != nullptr);
@@ -339,7 +339,7 @@ namespace Vulkan
     std::unique_ptr<RHI::Swapchain> Context::CreateSwapchain(const RHI::SwapchainCreateInfo& createInfo)
     {
         auto swapchain = std::make_unique<Swapchain>(this);
-        auto result = swapchain->Init(createInfo);
+        auto result    = swapchain->Init(createInfo);
         RHI_ASSERT(result == VK_SUCCESS);
         return swapchain;
     }
@@ -347,7 +347,7 @@ namespace Vulkan
     std::unique_ptr<RHI::ShaderModule> Context::CreateShaderModule(const RHI::ShaderModuleCreateInfo& createInfo)
     {
         auto shaderModule = std::make_unique<ShaderModule>(this);
-        auto result = shaderModule->Init(createInfo);
+        auto result       = shaderModule->Init(createInfo);
         RHI_ASSERT(result == VK_SUCCESS);
         return shaderModule;
     }
@@ -355,7 +355,7 @@ namespace Vulkan
     std::unique_ptr<RHI::ResourcePool> Context::CreateResourcePool(const RHI::ResourcePoolCreateInfo& createInfo)
     {
         auto resourcePool = std::make_unique<ResourcePool>(this);
-        auto result = resourcePool->Init(createInfo);
+        auto result       = resourcePool->Init(createInfo);
         RHI_ASSERT(result == VK_SUCCESS);
         return resourcePool;
     }
@@ -384,7 +384,7 @@ namespace Vulkan
     std::unique_ptr<RHI::FrameScheduler> Context::CreateFrameScheduler()
     {
         auto scheduler = std::make_unique<FrameScheduler>(this);
-        auto result = scheduler->Init();
+        auto result    = scheduler->Init();
         RHI_ASSERT(result == VK_SUCCESS);
         return scheduler;
     }
@@ -392,7 +392,7 @@ namespace Vulkan
     std::unique_ptr<RHI::ShaderBindGroupAllocator> Context::CreateShaderBindGroupAllocator()
     {
         auto allocator = std::make_unique<ShaderBindGroupAllocator>(this);
-        auto result = allocator->Init();
+        auto result    = allocator->Init();
         RHI_ASSERT(result == VK_SUCCESS);
         return allocator;
     }
@@ -402,10 +402,10 @@ namespace Vulkan
         auto resource = m_resourceManager->m_imageOwner.Get(image);
         RHI_ASSERT(resource);
 
-        auto allocation = resource->allocation.handle;
+        auto                 allocation = resource->allocation.handle;
 
-        RHI::DeviceMemoryPtr memoryPtr = nullptr;
-        VkResult result = vmaMapMemory(m_allocator, allocation, &memoryPtr);
+        RHI::DeviceMemoryPtr memoryPtr  = nullptr;
+        VkResult             result     = vmaMapMemory(m_allocator, allocation, &memoryPtr);
         RHI_ASSERT(result == VK_SUCCESS);
         return memoryPtr;
     }
@@ -415,10 +415,10 @@ namespace Vulkan
         auto resource = m_resourceManager->m_bufferOwner.Get(buffer);
         RHI_ASSERT(resource);
 
-        auto allocation = resource->allocation.handle;
+        auto                 allocation = resource->allocation.handle;
 
-        RHI::DeviceMemoryPtr memoryPtr = nullptr;
-        VkResult result = vmaMapMemory(m_allocator, allocation, &memoryPtr);
+        RHI::DeviceMemoryPtr memoryPtr  = nullptr;
+        VkResult             result     = vmaMapMemory(m_allocator, allocation, &memoryPtr);
         RHI_ASSERT(result == VK_SUCCESS);
         return memoryPtr;
     }
@@ -497,7 +497,7 @@ namespace Vulkan
         uint32_t physicalDeviceCount;
         vkEnumeratePhysicalDevices(m_instance, &physicalDeviceCount, nullptr);
         std::vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount, VK_NULL_HANDLE);
-        VkResult result = vkEnumeratePhysicalDevices(m_instance, &physicalDeviceCount, physicalDevices.data());
+        VkResult                      result = vkEnumeratePhysicalDevices(m_instance, &physicalDeviceCount, physicalDevices.data());
         RHI_ASSERT(result == VK_SUCCESS);
         return physicalDevices;
     }
