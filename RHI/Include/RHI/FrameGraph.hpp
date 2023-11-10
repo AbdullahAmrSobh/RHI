@@ -143,7 +143,7 @@ namespace RHI
 
         inline bool operator!=(const ColorValue& other) const
         {
-            return !(r == other.r && g == other.g && b == other.b && a == other.a);
+            return !(*this == other);
         }
     };
 
@@ -159,7 +159,7 @@ namespace RHI
 
         inline bool operator!=(const DepthStencilValue& other) const
         {
-            return !(depthValue == other.depthValue && stencilValue == other.stencilValue);
+            return !(*this == other);
         }
     };
 
@@ -175,7 +175,7 @@ namespace RHI
 
         inline bool operator!=(const ClearValue& other) const
         {
-            return !(color == other.color && depth == other.depth);
+            return !(*this == other);
         }
     };
 
@@ -192,7 +192,7 @@ namespace RHI
 
         inline bool operator!=(const ImageLoadStoreOperations& other) const
         {
-            return !(loadOperation == other.loadOperation && storeOperation == other.storeOperation);
+            return !(*this == other);
         }
     };
 
@@ -211,10 +211,9 @@ namespace RHI
         {
             return components == other.components && subresource == other.subresource && loadStoreOperations == other.loadStoreOperations && clearValue == other.clearValue && usage == other.usage && access == other.access;
         }
-
-        inline bool              operator!=(const ImageAttachmentUseInfo& other) const
+        inline bool operator!=(const ImageAttachmentUseInfo& other) const
         {
-            return !(components == other.components && subresource == other.subresource && loadStoreOperations == other.loadStoreOperations && clearValue == other.clearValue && usage == other.usage && access == other.access);
+            return !(*this == other);
         }
     };
 
@@ -235,7 +234,7 @@ namespace RHI
 
         inline bool operator!=(const BufferAttachmentUseInfo& other) const
         {
-            return !(format == other.format && byteOffset == other.byteOffset && byteSize == other.byteSize && usage == other.usage && access == other.access);
+            return !(*this == other);
         }
     };
 
