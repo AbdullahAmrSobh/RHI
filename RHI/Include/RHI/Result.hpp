@@ -1,5 +1,7 @@
 #pragma once
 
+#include <utility>
+
 namespace RHI
 {
 
@@ -56,6 +58,12 @@ namespace RHI
 
         /// @brief The result of the operation.
         ResultCode result;
+
+        inline T GetValue()
+        {
+            RHI_ASSERT(result == ResultCode::Success);
+            return std::move(value);
+        }
     };
 
     /// @brief Return true if the value is a success value.
