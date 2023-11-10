@@ -798,8 +798,8 @@ namespace Vulkan
         vkCreateInfo.pNext = nullptr;
         vkCreateInfo.flags = 0;
         // vkCreateInfo.hinstance = static_cast<HINSTANCE>(createInfo.win32Window.hinstance);
-        vkCreateInfo.hwnd = static_cast<HWND>(createInfo.win32Window.hwnd);
-        result            = vkCreateWin32SurfaceKHR(context->m_instance, &vkCreateInfo, nullptr, &m_surface);
+        vkCreateInfo.hwnd  = static_cast<HWND>(createInfo.win32Window.hwnd);
+        result             = vkCreateWin32SurfaceKHR(context->m_instance, &vkCreateInfo, nullptr, &m_surface);
         VULKAN_RETURN_VKERR_CODE(result);
 #endif
 
@@ -1384,14 +1384,14 @@ namespace Vulkan
         multisampleStateCreateInfo.alphaToOneEnable      = VK_FALSE;
 
         VkPipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo{};
-        depthStencilStateCreateInfo.sType                 = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-        depthStencilStateCreateInfo.pNext                 = nullptr;
-        depthStencilStateCreateInfo.flags                 = 0;
-        depthStencilStateCreateInfo.depthTestEnable       = createInfo.depthStencilState.depthTestEnable ? VK_TRUE : VK_FALSE;
-        depthStencilStateCreateInfo.depthWriteEnable      = createInfo.depthStencilState.depthWriteEnable ? VK_TRUE : VK_FALSE;
-        depthStencilStateCreateInfo.depthCompareOp        = ConvertCompareOp(createInfo.depthStencilState.compareOperator);
-        depthStencilStateCreateInfo.depthBoundsTestEnable = VK_FALSE;
-        depthStencilStateCreateInfo.stencilTestEnable     = createInfo.depthStencilState.stencilTestEnable ? VK_TRUE : VK_FALSE;
+        depthStencilStateCreateInfo.sType                                          = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        depthStencilStateCreateInfo.pNext                                          = nullptr;
+        depthStencilStateCreateInfo.flags                                          = 0;
+        depthStencilStateCreateInfo.depthTestEnable                                = createInfo.depthStencilState.depthTestEnable ? VK_TRUE : VK_FALSE;
+        depthStencilStateCreateInfo.depthWriteEnable                               = createInfo.depthStencilState.depthWriteEnable ? VK_TRUE : VK_FALSE;
+        depthStencilStateCreateInfo.depthCompareOp                                 = ConvertCompareOp(createInfo.depthStencilState.compareOperator);
+        depthStencilStateCreateInfo.depthBoundsTestEnable                          = VK_FALSE;
+        depthStencilStateCreateInfo.stencilTestEnable                              = createInfo.depthStencilState.stencilTestEnable ? VK_TRUE : VK_FALSE;
         // depthStencilStateCreateInfo.front;
         // depthStencilStateCreateInfo.back;
         depthStencilStateCreateInfo.minDepthBounds                                 = 0.0;
@@ -1465,8 +1465,8 @@ namespace Vulkan
             colorAttachmentFormats[index++] = ConvertFormat(format);
 
         VkPipelineRenderingCreateInfo renderTargetLayout{};
-        renderTargetLayout.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
-        renderTargetLayout.pNext = nullptr;
+        renderTargetLayout.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+        renderTargetLayout.pNext                   = nullptr;
         // renderTargetLayout.viewMask;
         renderTargetLayout.colorAttachmentCount    = colorAttachmentFormatCount;
         renderTargetLayout.pColorAttachmentFormats = colorAttachmentFormats;

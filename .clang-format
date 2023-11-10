@@ -5,7 +5,7 @@ AlignAfterOpenBracket: AlwaysBreak
 AlignConsecutiveAssignments: 
   Enabled: true
   AcrossEmptyLines: true
-  AcrossComments: false
+  AcrossComments: true
 AlignConsecutiveDeclarations: 
   Enabled: true
   AcrossEmptyLines: true

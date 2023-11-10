@@ -318,19 +318,6 @@ namespace RHI
         BufferPassAttachment*      prev;
     };
 
-    struct RenderTargetInfo
-    {
-        ImageSize           size;
-        std::vector<Format> colorFormats;
-        Format              depthFormat;
-    };
-
-    struct GraphResourceID
-    {
-        uint32_t resourceIndex;
-        uint32_t resourceBaseIndex;
-    };
-
     /// @brief Represents a pass, which encapsulates a GPU task.
     class Pass
     {
@@ -398,7 +385,7 @@ namespace RHI
         virtual CommandList&  BeginCommandList(uint32_t commandsCount = 1) = 0;
 
         /// @brief Ends the command list of assoicated with this pass.
-        virtual void          EndCommandList() = 0;
+        virtual void          EndCommandList()                             = 0;
 
         /// @brief Returns the queue info, which this pass is executed on
         QueueInfo             GetQueueInfo() const
@@ -411,8 +398,8 @@ namespace RHI
         BufferPassAttachment* UseAttachment(Handle<Attachment> handle, const BufferAttachmentUseInfo& useInfo);
 
     protected:
-        virtual void           OnBegin() = 0;
-        virtual void           OnEnd()   = 0;
+        virtual void           OnBegin()                         = 0;
+        virtual void           OnEnd()                           = 0;
 
         /// @brief Used to inspect the current state of this pass in the command queue.
         virtual PassQueueState GetPassQueueStateInternal() const = 0;
@@ -452,6 +439,15 @@ namespace RHI
         /// @brief Index to last attachment used by this pass.
         uint32_t                         m_lastImageAttachmentIndex;
         uint32_t                         m_lastBufferAttachmentIndex;
+    };
+
+    class TransientAttachmentAllocator
+    {
+    public:
+        virtual ~TransientAttachmentAllocator() = default;
+
+        virtual void Allocate(Attachment* attachment);
+        virtual void Free(Attachment* attachment);
     };
 
     /// @brief A frame scheduler is a frame-graph system breaks down the final frame
@@ -500,31 +496,7 @@ namespace RHI
         void CleanupTransientResources();
 
     protected:
-        virtual void               BeginInternal()                                                                  = 0;
-
-        virtual void               EndInternal()                                                                    = 0;
-
-        virtual void               ExecutePass(Pass* pass)                                                          = 0;
-
-        virtual void               Allocate(Handle<Attachment> handle)                                              = 0;
-
-        virtual void               Release(Handle<Attachment> handle)                                               = 0;
-
-        virtual Handle<Image>      CreateTransientImageResource(const ImageCreateInfo& createInfo)                  = 0;
-
-        virtual Handle<Buffer>     CreateTransientBufferResource(const BufferCreateInfo& createInfo)                = 0;
-
-        virtual Handle<ImageView>  CreateImageView(Attachment* attachment, const ImageAttachmentUseInfo& useInfo)   = 0;
-
-        virtual Handle<BufferView> CreateBufferView(Attachment* attachment, const BufferAttachmentUseInfo& useInfo) = 0;
-
-        virtual void               FreeTransientBufferResource(Handle<Buffer> handle)                               = 0;
-
-        virtual void               FreeTransientImageResource(Handle<Image> handle)                                 = 0;
-
-        virtual void               FreeImageView(Handle<ImageView> handle)                                          = 0;
-
-        virtual void               FreeBufferView(Handle<BufferView> handle)                                        = 0;
+        virtual void ExecutePass(Pass* pass) = 0;
 
     protected:
         Context* m_context;

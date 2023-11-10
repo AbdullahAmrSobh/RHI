@@ -79,25 +79,25 @@ namespace RHI
     /// @brief Enumeration representing how the image resource is intented to used.
     enum class ImageUsage
     {
-        None = 0 << 0,
+        None           = 0 << 0,
 
         /// @brief The image will be used in an shader as bind resource.
         ShaderResource = 1 << 1,
 
         /// @brief The image will be the render target color attachment.
-        Color = 1 << 3,
+        Color          = 1 << 3,
 
         /// @brief The image will be the render target depth attachment.
-        Depth = 1 << 4,
+        Depth          = 1 << 4,
 
         /// @brief The image will be the render target stencil attachment.
-        Stencil = 1 << 5,
+        Stencil        = 1 << 5,
 
         /// @brief The image content will be copied.
-        CopySrc = 1 << 6,
+        CopySrc        = 1 << 6,
 
         /// @brief The image content will be overwritten by a copy command.
-        CopyDst = 1 << 7,
+        CopyDst        = 1 << 7,
     };
 
     /// @brief Enumeration representing the dimensions of an image resource.
@@ -141,7 +141,7 @@ namespace RHI
     /// @brief Enumeration representing how the buffer resource is intented to used.
     enum class BufferUsage
     {
-        None = 0 << 0,
+        None    = 0 << 0,
 
         /// @brief The buffer will be used as a storage buffer object.
         Storage = 1 << 1,
@@ -150,10 +150,10 @@ namespace RHI
         Uniform = 1 << 2,
 
         /// @brief The buffer will be used as a vertex buffer object.
-        Vertex = 1 << 3,
+        Vertex  = 1 << 3,
 
         /// @brief The buffer will be used as a index buffer object.
-        Index = 1 << 4,
+        Index   = 1 << 4,
 
         /// @brief This buffer content will be copied from.
         CopySrc = 1 << 5,
@@ -593,10 +593,10 @@ namespace RHI
         SampleCount       sampleCount = RHI::SampleCount::Samples1;
 
         /// @brief The number of mip levels in the image.
-        uint32_t          mipLevels = 1;
+        uint32_t          mipLevels   = 1;
 
         /// @brief The number of images in the images array.
-        uint32_t          arrayCount = 1;
+        uint32_t          arrayCount  = 1;
 
         inline bool       operator==(const ImageCreateInfo& other) const
         {
@@ -794,26 +794,26 @@ namespace RHI
     class ResourcePool
     {
     public:
-        ResourcePool()          = default;
-        virtual ~ResourcePool() = default;
+        ResourcePool()                                                              = default;
+        virtual ~ResourcePool()                                                     = default;
 
         /// @brief Allocate an image resource.
-        virtual Result<Handle<Image>>  Allocate(const ImageCreateInfo& createInfo) = 0;
+        virtual Result<Handle<Image>>  Allocate(const ImageCreateInfo& createInfo)  = 0;
 
         /// @brief Allocate a buffer resource.
         virtual Result<Handle<Buffer>> Allocate(const BufferCreateInfo& createInfo) = 0;
 
         /// @brief Free an allocated image resource.
-        virtual void                   Free(Handle<Image> image) = 0;
+        virtual void                   Free(Handle<Image> image)                    = 0;
 
         /// @brief Free an allocated buffer resource.
-        virtual void                   Free(Handle<Buffer> buffer) = 0;
+        virtual void                   Free(Handle<Buffer> buffer)                  = 0;
 
         /// @brief Get the size of an allocated image resource.
-        virtual size_t                 GetSize(Handle<Image> image) const = 0;
+        virtual size_t                 GetSize(Handle<Image> image) const           = 0;
 
         /// @brief Get the size of an allocated buffer resource.
-        virtual size_t                 GetSize(Handle<Buffer> buffer) const = 0;
+        virtual size_t                 GetSize(Handle<Buffer> buffer) const         = 0;
     };
 
 } // namespace RHI

@@ -173,20 +173,20 @@ namespace RHI
     class CommandList
     {
     public:
-        CommandList()          = default;
-        virtual ~CommandList() = default;
+        CommandList()                                      = default;
+        virtual ~CommandList()                             = default;
 
         /// @brief Sets the rendering viewport
         virtual void SetViewport(const Viewport& viewport) = 0;
 
         /// @brief Sets the rendering scissor
-        virtual void SetSicssor(const Scissor& sicssor) = 0;
+        virtual void SetSicssor(const Scissor& sicssor)    = 0;
 
         /// @brief Submit a draw command.
-        virtual void Submit(const CommandDraw& command) = 0;
+        virtual void Submit(const CommandDraw& command)    = 0;
 
         /// @brief Submit a copy command.
-        virtual void Submit(const CommandCopy& command) = 0;
+        virtual void Submit(const CommandCopy& command)    = 0;
 
         /// @brief Submit a compute command.
         virtual void Submit(const CommandCompute& command) = 0;

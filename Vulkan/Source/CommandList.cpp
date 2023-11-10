@@ -178,8 +178,8 @@ namespace Vulkan
         }
 
         VkDependencyInfo dependencyInfo{};
-        dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-        dependencyInfo.pNext = nullptr;
+        dependencyInfo.sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+        dependencyInfo.pNext                   = nullptr;
         // dependencyInfo.dependencyFlags;
         // dependencyInfo.memoryBarrierCount;
         // dependencyInfo.pMemoryBarriers;
@@ -202,8 +202,8 @@ namespace Vulkan
         }
 
         VkDependencyInfo dependencyInfo{};
-        dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-        dependencyInfo.pNext = nullptr;
+        dependencyInfo.sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+        dependencyInfo.pNext                    = nullptr;
         // dependencyInfo.dependencyFlags;
         // dependencyInfo.memoryBarrierCount;
         // dependencyInfo.pMemoryBarriers;
