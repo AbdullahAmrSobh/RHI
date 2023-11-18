@@ -5,6 +5,7 @@
 
 namespace RHI
 {
+    class Pass;
 
 #ifdef RHI_PLATFORM_WINDOWS
     /// @brief struct contains win32 surface handles.
@@ -65,7 +66,7 @@ namespace RHI
         virtual ResultCode Resize(uint32_t newWidth, uint32_t newHeight) = 0;
 
         /// @brief Presents the current image to the window, and acquires the next image in the swapchain.
-        virtual ResultCode Present()                                     = 0;
+        virtual ResultCode Present(Pass& pass) = 0;
 
     protected:
         uint32_t                   m_currentImageIndex;

@@ -9,6 +9,23 @@
 #include <string>
 #include <vector>
 
+#define RHI_HASH_HANDLE(handle)                               \
+    namespace std                                             \
+    {                                                         \
+        template<>                                            \
+        struct hash<handle>                                   \
+        {                                                     \
+            size_t operator()(handle const& s) const noexcept \
+            {                                                 \
+                auto h = static_cast<uint64_t>(s);            \
+                return hash<uint64_t>{}(h);                   \
+            }                                                 \
+        };                                                    \
+    }
+
+RHI_HASH_HANDLE(RHI::Handle<RHI::Image>);
+RHI_HASH_HANDLE(RHI::Handle<RHI::Buffer>);
+
 namespace RHI
 {
 
@@ -54,8 +71,6 @@ namespace RHI
         ShaderStorage,
         RenderTarget,
         Depth,
-        Stencil,
-        DepthStencil,
         ShaderResource,
         Copy,
         Resolve,
@@ -114,13 +129,6 @@ namespace RHI
         Vertex,
         Pixel,
         Compute,
-        Graphics,
-    };
-
-    struct QueueInfo
-    {
-        QueueType type;
-        uint32_t  id;
     };
 
     struct PassCreateInfo
@@ -211,6 +219,7 @@ namespace RHI
         {
             return components == other.components && subresource == other.subresource && loadStoreOperations == other.loadStoreOperations && clearValue == other.clearValue && usage == other.usage && access == other.access;
         }
+
         inline bool operator!=(const ImageAttachmentUseInfo& other) const
         {
             return !(*this == other);
@@ -240,55 +249,123 @@ namespace RHI
 
     struct Attachment
     {
+        Attachment(const char* name, AttachmentLifetime lifetime, AttachmentType type)
+            : name(name)
+            , lifetime(lifetime)
+            , type(type)
+        {
+        }
+
         // Name of the attachment
-        const char*        name;
+        const char*              name;
 
         // Lifetime of the attachment
-        AttachmentLifetime lifetime;
+        const AttachmentLifetime lifetime;
 
         // Type of the attachment
-        AttachmentType     type;
+        const AttachmentType     type;
 
-        // Union for holding either ImageAttachment or BufferAttachment
-        union
+        virtual void             Reset() = 0;
+    };
+
+    // Structure for ImageAttachment
+    struct ImageAttachment final : Attachment
+    {
+        ImageAttachment(const char* name, Swapchain* swapchain)
+            : Attachment(name, AttachmentLifetime::Persistent, AttachmentType::Swapchain)
+            , swapchain(swapchain)
+            , firstUse(nullptr)
+            , lastUse(nullptr)
         {
-            // Structure for ImageAttachment
-            struct ImageAttachment
-            {
-                // Handle to the image
-                Handle<Image>        handle;
+        }
 
-                // Information about the image
-                ImageCreateInfo      info;
+        ImageAttachment(const char* name, Handle<Image> handle)
+            : Attachment(name, AttachmentLifetime::Persistent, AttachmentType::Image)
+            , handle(handle)
+            , swapchain(nullptr)
+            , firstUse(nullptr)
+            , lastUse(nullptr)
+        {
+        }
 
-                // Pointer to the first usage in an image pass
-                ImagePassAttachment* firstUse;
+        ImageAttachment(const char* name, const ImageCreateInfo& createInfo)
+            : Attachment(name, AttachmentLifetime::Transient, AttachmentType::Image)
+            , info(createInfo)
+            , firstUse(nullptr)
+            , lastUse(nullptr)
+        {
+        }
 
-                // Pointer to the last usage in an image pass
-                ImagePassAttachment* lastUse;
-            } asImage;
+        ImageAttachment(const ImageAttachment& other) = delete;
 
-            // Structure for BufferAttachment
-            struct BufferAttachment
-            {
-                // Handle to the buffer
-                Handle<Buffer>        handle;
+        void Reset() override
+        {
+            firstUse = nullptr;
+            lastUse  = nullptr;
+        }
 
-                // Information about the buffer
-                BufferCreateInfo      info;
+        Swapchain*           swapchain = nullptr;
 
-                // Pointer to the first usage in a buffer pass
-                BufferPassAttachment* firstUse;
+        // Handle to the image
+        Handle<Image>        handle = {};
 
-                // Pointer to the last usage in a buffer pass
-                BufferPassAttachment* lastUse;
-            } asBuffer;
-        };
+        // Information about the image
+        ImageCreateInfo      info = {};
+
+        // Pointer to the first usage in an image pass
+        ImagePassAttachment* firstUse = nullptr;
+
+        // Pointer to the last usage in an image pass
+        ImagePassAttachment* lastUse = nullptr;
+    };
+
+    // Structure for BufferAttachment
+    struct BufferAttachment final : Attachment
+    {
+        BufferAttachment(const char* name, Handle<Buffer> handle)
+            : Attachment(name, AttachmentLifetime::Persistent, AttachmentType::Buffer)
+            , handle(handle)
+            , firstUse(nullptr)
+            , lastUse(nullptr)
+        {
+        }
+
+        BufferAttachment(const char* name, const BufferCreateInfo& createInfo)
+            : Attachment(name, AttachmentLifetime::Transient, AttachmentType::Buffer)
+            , info(createInfo)
+            , firstUse(nullptr)
+            , lastUse(nullptr)
+        {
+        }
+
+        BufferAttachment(const BufferAttachment& other) = delete;
+
+        void Reset() override
+        {
+            firstUse = nullptr;
+            lastUse  = nullptr;
+        }
+
+        // Handle to the buffer
+        Handle<Buffer>        handle = {};
+
+        // Information about the buffer
+        BufferCreateInfo      info = {};
+
+        // Pointer to the first usage in a buffer pass
+        BufferPassAttachment* firstUse = nullptr;
+
+        // Pointer to the last usage in a buffer pass
+        BufferPassAttachment* lastUse = nullptr;
     };
 
     struct ImagePassAttachment
     {
-        Handle<Attachment>         attachment;
+        ImagePassAttachment()                                 = default;
+        ImagePassAttachment(const ImagePassAttachment& other) = delete;
+        ImagePassAttachment(ImagePassAttachment&& other)      = default;
+
+        ImageAttachment*           attachment;
 
         Pass*                      pass;
 
@@ -304,7 +381,11 @@ namespace RHI
 
     struct BufferPassAttachment
     {
-        Handle<Attachment>         attachment;
+        BufferPassAttachment()                                  = default;
+        BufferPassAttachment(const BufferPassAttachment& other) = delete;
+        BufferPassAttachment(BufferPassAttachment&& other)      = default;
+
+        BufferAttachment*          attachment;
 
         Pass*                      pass;
 
@@ -318,6 +399,63 @@ namespace RHI
         BufferPassAttachment*      prev;
     };
 
+    class TransientAttachmentAllocator
+    {
+    public:
+        virtual ~TransientAttachmentAllocator() = default;
+
+        virtual void Begin() = 0;
+        virtual void End()   = 0;
+
+        /// @brief bind the given resource to a memory allocation (may alias).
+        virtual void Allocate(ImageAttachment* attachment) = 0;
+
+        /// @brief returns the memory used by this resource to allocator, to be reused.
+        /// @note this means that this resource wont be used in any subsequent operations.
+        virtual void Free(ImageAttachment* attachment) = 0;
+
+        /// @brief bind the given resource to a memory allocation (may alias).
+        virtual void Allocate(BufferAttachment* attachment) = 0;
+
+        /// @brief returns the memory used by this resource to allocator, to be reused.
+        /// @note this means that this resource wont be used in any subsequent operations.
+        virtual void Free(BufferAttachment* attachment) = 0;
+    };
+
+    class AttachmentsRegistry
+    {
+    public:
+        virtual ~AttachmentsRegistry() = default;
+
+        void                                           Reset();
+
+        ImageAttachment*                               ImportSwapchainImageAttachment(const char* name, Swapchain* swapchain);
+
+        ImageAttachment*                               ImportImageAttachment(const char* name, Handle<Image> handle);
+
+        BufferAttachment*                              ImportBufferAttachment(const char* name, Handle<Buffer> handle);
+
+        ImageAttachment*                               CreateTransientImageAttachment(const char* name, const ImageCreateInfo& createInfo);
+
+        BufferAttachment*                              CreateTransientBufferAttachment(const char* name, const BufferCreateInfo& createInfo);
+
+        std::vector<std::unique_ptr<ImageAttachment>>  m_imageAttachments;
+
+        std::vector<std::unique_ptr<BufferAttachment>> m_bufferAttachments;
+
+        std::vector<Attachment*>                       m_attachments;
+
+        std::vector<ImageAttachment*>                  m_swapchainAttachments;
+
+        std::vector<ImageAttachment*>                  m_importedImageAttachments;
+
+        std::vector<BufferAttachment*>                 m_importedBufferAttachments;
+
+        std::vector<ImageAttachment*>                  m_transientImageAttachments;
+
+        std::vector<BufferAttachment*>                 m_transientBufferAttachments;
+    };
+
     /// @brief Represents a pass, which encapsulates a GPU task.
     class Pass
     {
@@ -326,9 +464,17 @@ namespace RHI
     public:
         Pass(Context* context)
             : m_context(context)
+            , m_width(0)
+            , m_height(0)
         {
         }
-        virtual ~Pass() = default;
+
+        Pass(const Pass& other) = delete;
+
+        virtual ~Pass()
+        {
+            RHI_DEBUG_BREAK();
+        }
 
         /// @brief Called at the beginning of this pass building phase.
         void                  Begin();
@@ -344,6 +490,12 @@ namespace RHI
 
         /// @brief Adds a pass to the signal list.
         void                  ExecuteBefore(Pass& pass);
+
+        /// @brief Imports an external image resource to be used in this pass.
+        /// @param image handle to the image resource.
+        /// @param useInfo resource use information.
+        /// @return Handle to an image view into the used resource.
+        ImagePassAttachment*  ImportSwapchainImageResource(const char* name, Swapchain* swapchain, const ImageAttachmentUseInfo& useInfo);
 
         /// @brief Imports an external image resource to be used in this pass.
         /// @param image handle to the image resource.
@@ -385,35 +537,33 @@ namespace RHI
         virtual CommandList&  BeginCommandList(uint32_t commandsCount = 1) = 0;
 
         /// @brief Ends the command list of assoicated with this pass.
-        virtual void          EndCommandList()                             = 0;
-
-        /// @brief Returns the queue info, which this pass is executed on
-        QueueInfo             GetQueueInfo() const
-        {
-            return m_queuInfo;
-        }
+        virtual void          EndCommandList() = 0;
 
     private:
-        ImagePassAttachment*  UseAttachment(Handle<Attachment> handle, const ImageAttachmentUseInfo& useInfo);
-        BufferPassAttachment* UseAttachment(Handle<Attachment> handle, const BufferAttachmentUseInfo& useInfo);
+        ImagePassAttachment*  UseAttachment(ImageAttachment*& attachment, const ImageAttachmentUseInfo& useInfo);
+
+        BufferPassAttachment* UseAttachment(BufferAttachment*& attachment, const BufferAttachmentUseInfo& useInfo);
 
     protected:
-        virtual void           OnBegin()                         = 0;
-        virtual void           OnEnd()                           = 0;
-
         /// @brief Used to inspect the current state of this pass in the command queue.
-        virtual PassQueueState GetPassQueueStateInternal() const = 0;
+        virtual PassQueueState           GetPassQueueStateInternal() const = 0;
 
-    protected:
         Context*                         m_context;
 
         FrameScheduler*                  m_scheduler;
 
+        std::string                      m_name;
+
+        uint32_t                         m_width, m_height;
+
         /// @brief A pointer to swapchain which would be presented into.
         Swapchain*                       m_swapchain;
 
-        /// @brief Information about the queue this pass is executed on
-        QueueInfo                        m_queuInfo;
+        /// @brief Pointer to the current command list executing this pass.
+        CommandList*                     m_commandList;
+
+        /// @brief The type of the Hardware Queue needed to execute this pass.
+        QueueType                        m_queueType;
 
         /// @brief The size of the rendering area in the render pass.
         ImageSize                        m_size;
@@ -424,9 +574,6 @@ namespace RHI
         /// @brief A list of all passes that depends on this pass.
         std::vector<Pass*>               m_consumers;
 
-        /// @brief The command list used to execute this pass.
-        std::unique_ptr<CommandList>     m_commandlist;
-
         /// NOTE: PassAttachment pointers, must not be invalidated during the lifetime Frame.
         /// Therefore, a deque is used instead of a vector.
 
@@ -435,19 +582,6 @@ namespace RHI
 
         /// @brief A list of all buffer pass attachment used by this pass.
         std::deque<BufferPassAttachment> m_bufferPassAttachment;
-
-        /// @brief Index to last attachment used by this pass.
-        uint32_t                         m_lastImageAttachmentIndex;
-        uint32_t                         m_lastBufferAttachmentIndex;
-    };
-
-    class TransientAttachmentAllocator
-    {
-    public:
-        virtual ~TransientAttachmentAllocator() = default;
-
-        virtual void Allocate(Attachment* attachment);
-        virtual void Free(Attachment* attachment);
     };
 
     /// @brief A frame scheduler is a frame-graph system breaks down the final frame
@@ -460,8 +594,10 @@ namespace RHI
     public:
         FrameScheduler(Context* context)
             : m_context(context)
+            , m_attachmentsRegistry(std::make_unique<AttachmentsRegistry>())
         {
         }
+
         virtual ~FrameScheduler() = default;
 
         /// @brief Called at the beginning of the render-loop.
@@ -475,54 +611,51 @@ namespace RHI
         /// @brief Register a pass producer, to be called this frame.
         void                          Submit(Pass& pass);
 
-        /// @brief Compiles the frame graph, no new passes are allowed to be submitted
-        /// in the current frame after a this function is called.
-        void                          Compile();
-
-        /// @brief Returns a pointer to the attachment resource.
-        Attachment*                   GetAttachment(Handle<Attachment> attachmentHandle);
-
         virtual std::unique_ptr<Pass> CreatePass(const PassCreateInfo& createInfo) = 0;
 
-    private:
-        void TopologicalSort();
-
-        void ResetPasses();
-
-        void InitTransientResources();
-
-        void CreateAttachmentViews();
-
-        void CleanupTransientResources();
-
     protected:
-        virtual void ExecutePass(Pass* pass) = 0;
-
-    protected:
-        Context* m_context;
-
-        struct FrameGraphNode
+        enum FrameGraphState
         {
-            Pass*                 pass;
-
-            bool                  enabled;
-
-            std::vector<uint32_t> edges;
+            Invalid,
+            Ready,
         };
 
-        std::vector<FrameGraphNode>                   m_frameGraph;
+        virtual void                                           ExecutePass(Pass& pass) = 0;
 
-        std::vector<Pass*>                            m_passList;
+        virtual void                                           ResetPass(Pass& pass) = 0;
 
-        std::vector<Swapchain*>                       m_swapchainsToPresent;
+        virtual CommandList*                                   GetCommandList(uint32_t frameIndex) = 0;
 
-        HandlePool<Attachment>                        m_attachments;
+        virtual void                                           OnFrameEnd() = 0;
 
-        std::vector<Handle<Attachment>>               m_transientAttachment;
+        Context*                                               m_context;
 
-        std::unordered_map<size_t, Handle<ImageView>> m_cachedImageViews;
+        std::vector<Pass*>                                     m_passList;
 
-        std::unordered_map<size_t, Handle<ImageView>> m_cachedBufferView;
+        std::unique_ptr<TransientAttachmentAllocator>          m_transientAttachmentAllocator;
+
+        std::unique_ptr<AttachmentsRegistry>                   m_attachmentsRegistry;
+
+        FrameGraphState                                        m_state;
+
+        std::unordered_map<Handle<Image>, Handle<ImageView>>   m_imageViewsLut;
+
+        std::unordered_map<Handle<Buffer>, Handle<BufferView>> m_bufferViewLut;
+
+    private:
+        void Reset();
+
+        void Compile();
+
+        void TopologicalSort();
+
+        void CompileTransientAttachments();
+
+        void CompileAttachmentsViews();
+
+        void CompileSwapchainViews();
+
+        void Execute();
     };
 
 } // namespace RHI

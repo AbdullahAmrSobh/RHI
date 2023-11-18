@@ -2,14 +2,13 @@
 
 #include <RHI/Context.hpp>
 #include <RHI/FrameGraph.hpp>
-
-#include <vk_mem_alloc.h>
-
 #include <span>
+#include <vk_mem_alloc.h>
 
 namespace Vulkan
 {
     class ResourceManager;
+    class CommandListAllocator;
 
     class Context final : public RHI::Context
     {
@@ -17,18 +16,9 @@ namespace Vulkan
         Context();
         ~Context();
 
-        VkResult Init(const RHI::ApplicationInfo& appInfo, std::unique_ptr<RHI::DebugCallbacks> debugCallbacks);
+        VkResult                                       Init(const RHI::ApplicationInfo& appInfo, std::unique_ptr<RHI::DebugCallbacks> debugCallbacks);
 
-        uint32_t GetQueueFamilyIndex(RHI::QueueType queueType) const
-        {
-            switch (queueType)
-            {
-            case RHI::QueueType::Graphics: return m_graphicsQueueFamilyIndex;
-            case RHI::QueueType::Compute:  return m_computeQueueFamilyIndex;
-            case RHI::QueueType::Transfer: return m_transferQueueFamilyIndex;
-            default:                       RHI_UNREACHABLE(); return UINT32_MAX;
-            }
-        }
+        uint32_t                                       GetQueueFamilyIndex(RHI::QueueType queueType) const;
 
         std::unique_ptr<RHI::ShaderModule>             CreateShaderModule(const RHI::ShaderModuleCreateInfo& createInfo) override;
 
@@ -41,6 +31,10 @@ namespace Vulkan
         RHI::Handle<RHI::ComputePipeline>              CreateComputePipeline(const RHI::ComputePipelineCreateInfo& createInfo) override;
 
         RHI::Handle<RHI::Sampler>                      CreateSampler(const RHI::SamplerCreateInfo& createInfo) override;
+
+        RHI::Handle<RHI::ImageView>                    CreateImageView(RHI::Handle<RHI::Image> handle, const RHI::ImageAttachmentUseInfo& useInfo) override;
+
+        RHI::Handle<RHI::BufferView>                   CreateBufferView(RHI::Handle<RHI::Buffer> handle, const RHI::BufferAttachmentUseInfo& useInfo) override;
 
         std::unique_ptr<RHI::FrameScheduler>           CreateFrameScheduler() override;
 
@@ -60,39 +54,59 @@ namespace Vulkan
 
         void                                           Free(RHI::Handle<RHI::Sampler> sampler) override;
 
-    private:
-        std::vector<VkLayerProperties>       GetAvailableInstanceLayerExtensions() const;
+        void                                           Free(RHI::Handle<RHI::ImageView> view) override;
 
-        std::vector<VkExtensionProperties>   GetAvailableInstanceExtensions() const;
+        void                                           Free(RHI::Handle<RHI::BufferView> view) override;
 
-        std::vector<VkLayerProperties>       GetAvailableDeviceLayerExtensions(VkPhysicalDevice physicalDevice) const;
+        VkSemaphore                                    CreateSemaphore();
 
-        std::vector<VkExtensionProperties>   GetAvailableDeviceExtensions(VkPhysicalDevice physicalDevice) const;
+        void                                           FreeSemaphore(VkSemaphore semaphore);
 
-        std::vector<VkPhysicalDevice>        GetAvailablePhysicalDevices() const;
+        VkFence                                        CreateFence();
 
-        std::vector<VkQueueFamilyProperties> GetPhysicalDeviceQueueFamilyProperties(VkPhysicalDevice physicalDevice) const;
+        void                                           FreeFence(VkFence fence);
 
-    public:
-        VkInstance                       m_instance                 = VK_NULL_HANDLE;
-        VkPhysicalDevice                 m_physicalDevice           = VK_NULL_HANDLE;
-        VkDevice                         m_device                   = VK_NULL_HANDLE;
-        VmaAllocator                     m_allocator                = VK_NULL_HANDLE;
+        std::vector<VkLayerProperties>                 GetAvailableInstanceLayerExtensions() const;
 
-        uint32_t                         m_graphicsQueueFamilyIndex = UINT32_MAX;
-        uint32_t                         m_computeQueueFamilyIndex  = UINT32_MAX;
-        uint32_t                         m_transferQueueFamilyIndex = UINT32_MAX;
+        std::vector<VkExtensionProperties>             GetAvailableInstanceExtensions() const;
 
-        VkQueue                          m_graphicsQueue            = VK_NULL_HANDLE;
-        VkQueue                          m_computeQueue             = VK_NULL_HANDLE;
-        VkQueue                          m_transferQueue            = VK_NULL_HANDLE;
+        std::vector<VkLayerProperties>                 GetAvailableDeviceLayerExtensions(VkPhysicalDevice physicalDevice) const;
 
-        std::unique_ptr<ResourceManager> m_resourceManager;
+        std::vector<VkExtensionProperties>             GetAvailableDeviceExtensions(VkPhysicalDevice physicalDevice) const;
 
-        // Vulkan extension functions
-        PFN_vkCmdDebugMarkerBeginEXT     m_vkCmdDebugMarkerBeginEXT  = nullptr;
-        PFN_vkCmdDebugMarkerInsertEXT    m_vkCmdDebugMarkerInsertEXT = nullptr;
-        PFN_vkCmdDebugMarkerEndEXT       m_vkCmdDebugMarkerEndEXT    = nullptr;
+        std::vector<VkPhysicalDevice>                  GetAvailablePhysicalDevices() const;
+
+        std::vector<VkQueueFamilyProperties>           GetPhysicalDeviceQueueFamilyProperties(VkPhysicalDevice physicalDevice) const;
+
+        VkInstance                                     m_instance       = VK_NULL_HANDLE;
+        VkPhysicalDevice                               m_physicalDevice = VK_NULL_HANDLE;
+        VkDevice                                       m_device         = VK_NULL_HANDLE;
+        VmaAllocator                                   m_allocator      = VK_NULL_HANDLE;
+
+        uint32_t                                       m_graphicsQueueFamilyIndex = UINT32_MAX;
+        uint32_t                                       m_computeQueueFamilyIndex  = UINT32_MAX;
+        uint32_t                                       m_transferQueueFamilyIndex = UINT32_MAX;
+
+        VkQueue                                        m_graphicsQueue = VK_NULL_HANDLE;
+        VkQueue                                        m_computeQueue  = VK_NULL_HANDLE;
+        VkQueue                                        m_transferQueue = VK_NULL_HANDLE;
+
+        PFN_vkCmdDebugMarkerBeginEXT                   m_vkCmdDebugMarkerBeginEXT  = nullptr;
+        PFN_vkCmdDebugMarkerInsertEXT                  m_vkCmdDebugMarkerInsertEXT = nullptr;
+        PFN_vkCmdDebugMarkerEndEXT                     m_vkCmdDebugMarkerEndEXT    = nullptr;
+
+        std::unique_ptr<ResourceManager>               m_resourceManager = {};
     };
+
+    inline uint32_t Context::GetQueueFamilyIndex(RHI::QueueType queueType) const
+    {
+        switch (queueType)
+        {
+        case RHI::QueueType::Graphics: return m_graphicsQueueFamilyIndex;
+        case RHI::QueueType::Compute:  return m_computeQueueFamilyIndex;
+        case RHI::QueueType::Transfer: return m_transferQueueFamilyIndex;
+        default:                       RHI_UNREACHABLE(); return UINT32_MAX;
+        }
+    }
 
 } // namespace Vulkan

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "RHI/Assert.hpp"
+
 #include <utility>
 
 namespace RHI
@@ -53,13 +55,15 @@ namespace RHI
         {
         }
 
-        /// @brief The actual value (only valid if result is a success value).
-        T          value;
+        T           value;
 
-        /// @brief The result of the operation.
-        ResultCode result;
+        ResultCode  result;
 
-        inline T   GetValue()
+        inline bool IsSucess() { return result == ResultCode::Success; }
+
+        inline bool IsError() { return result != ResultCode::Success; }
+
+        inline T    GetValue()
         {
             RHI_ASSERT(result == ResultCode::Success);
             return std::move(value);

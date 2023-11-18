@@ -8,31 +8,12 @@
 #include "Resources.hpp"
 
 #include <Windows.h>
-
 #include <algorithm>
 
 namespace Vulkan
 {
     ///////////////////////////////////////////////////////////////////////////
-    /// Utility functions /////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////////
-
-    template<typename T>
-    inline static uint64_t HashAny(const T& data)
-    {
-        auto                   stream = std::string(reinterpret_cast<const char*>(&data), sizeof(data));
-        std::hash<std::string> hasher;
-        return hasher(stream);
-    }
-
-    inline static uint64_t HashCombine(uint64_t seed, uint64_t value)
-    {
-        seed ^= value + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-        return seed;
-    }
-
-    ///////////////////////////////////////////////////////////////////////////
-    /// Utility functions /////////////////////////////////////////////////////
+    /// Utility functions
     ///////////////////////////////////////////////////////////////////////////
 
     VkSampleCountFlagBits ConvertSampleCount(RHI::SampleCount sampleCount)
@@ -384,8 +365,6 @@ namespace Vulkan
         case RHI::AttachmentUsage::VertexInputBuffer:
         case RHI::AttachmentUsage::RenderTarget:
         case RHI::AttachmentUsage::Depth:
-        case RHI::AttachmentUsage::Stencil:
-        case RHI::AttachmentUsage::DepthStencil:
         case RHI::AttachmentUsage::Copy:
         case RHI::AttachmentUsage::Resolve:
         case RHI::AttachmentUsage::ShaderStorage:     return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -394,8 +373,60 @@ namespace Vulkan
         return VK_DESCRIPTOR_TYPE_MAX_ENUM;
     }
 
+    VkImageSubresource ConvertSubresource(const RHI::ImageSubresource& subresource)
+    {
+        auto vkSubresource       = VkImageSubresource{};
+        vkSubresource.aspectMask = ConvertImageAspect(subresource.imageAspects);
+        vkSubresource.mipLevel   = subresource.mipBase;
+        vkSubresource.arrayLayer = subresource.arrayBase;
+        return vkSubresource;
+    }
+
+    VkImageSubresourceLayers ConvertSubresourceLayer(const RHI::ImageSubresource& subresource)
+    {
+        auto vkSubresource           = VkImageSubresourceLayers{};
+        vkSubresource.aspectMask     = ConvertImageAspect(subresource.imageAspects);
+        vkSubresource.mipLevel       = subresource.mipBase;
+        vkSubresource.baseArrayLayer = subresource.arrayBase;
+        vkSubresource.layerCount     = subresource.arrayCount;
+        return vkSubresource;
+    }
+
+    VkImageSubresourceRange ConvertSubresourceRange(const RHI::ImageSubresource& subresource)
+    {
+        auto vkSubresource           = VkImageSubresourceRange{};
+        vkSubresource.aspectMask     = ConvertImageAspect(subresource.imageAspects);
+        vkSubresource.baseMipLevel   = subresource.mipBase;
+        vkSubresource.levelCount     = subresource.mipCount;
+        vkSubresource.baseArrayLayer = subresource.arrayBase;
+        vkSubresource.layerCount     = subresource.arrayCount;
+        return vkSubresource;
+    }
+
+    VkExtent3D ConvertExtent3D(RHI::ImageSize size)
+    {
+        return { size.width, size.height, size.depth };
+    }
+
+    VkExtent2D ConvertExtent2D(RHI::ImageSize size)
+    {
+        RHI_ASSERT(size.depth == 0);
+        return { size.width, size.height };
+    }
+
+    VkOffset3D ConvertOffset3D(RHI::ImageOffset offset)
+    {
+        return { offset.x, offset.y, offset.z };
+    }
+
+    VkOffset3D ConvertOffset2D(RHI::ImageOffset offset)
+    {
+        RHI_ASSERT(offset.z == 0);
+        return { offset.x, offset.y, offset.z };
+    }
+
     ///////////////////////////////////////////////////////////////////////////
-    /// Image /////////////////////////////////////////////////////////////////
+    /// Image
     ///////////////////////////////////////////////////////////////////////////
 
     VkMemoryRequirements Image::GetMemoryRequirements(VkDevice device) const
@@ -406,7 +437,7 @@ namespace Vulkan
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    /// Buffer ////////////////////////////////////////////////////////////////
+    /// Buffer
     ///////////////////////////////////////////////////////////////////////////
 
     VkMemoryRequirements Buffer::GetMemoryRequirements(VkDevice device) const
@@ -461,12 +492,8 @@ namespace Vulkan
     {
     }
 
-    void Fence::Shutdown(Context* context)
-    {
-    }
-
     ///////////////////////////////////////////////////////////////////////////
-    /// ShaderModule //////////////////////////////////////////////////////////
+    /// ShaderModule
     ///////////////////////////////////////////////////////////////////////////
 
     ShaderModule::~ShaderModule()
@@ -490,7 +517,7 @@ namespace Vulkan
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    /// ShaderBindGroupAllocator //////////////////////////////////////////////
+    /// ShaderBindGroupAllocator
     ///////////////////////////////////////////////////////////////////////////
 
     ShaderBindGroupAllocator::~ShaderBindGroupAllocator()
@@ -506,7 +533,7 @@ namespace Vulkan
         return VK_SUCCESS;
     }
 
-    std::vector<RHI::Handle<RHI::ShaderBindGroup>> ShaderBindGroupAllocator::AllocateShaderBindGroups(RHI::TL::Span<const RHI::ShaderBindGroupLayout> layouts)
+    std::vector<RHI::Handle<RHI::ShaderBindGroup>> ShaderBindGroupAllocator::AllocateShaderBindGroups(TL::Span<const RHI::ShaderBindGroupLayout> layouts)
     {
         auto                               context = static_cast<Context*>(m_context);
 
@@ -520,10 +547,10 @@ namespace Vulkan
         }
 
         VkDescriptorSetAllocateInfo allocateInfo{};
-        allocateInfo.sType                   = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocateInfo.pNext                   = nullptr;
-        allocateInfo.descriptorSetCount      = descriptorSetLayouts.size();
-        allocateInfo.pSetLayouts             = descriptorSetLayouts.data();
+        allocateInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocateInfo.pNext              = nullptr;
+        allocateInfo.descriptorSetCount = descriptorSetLayouts.size();
+        allocateInfo.pSetLayouts        = descriptorSetLayouts.data();
 
         bool                         success = false;
         std::vector<VkDescriptorSet> descriptorSets;
@@ -532,7 +559,7 @@ namespace Vulkan
         {
             allocateInfo.descriptorPool = descriptorPool;
 
-            auto result                 = vkAllocateDescriptorSets(context->m_device, &allocateInfo, descriptorSets.data());
+            auto result = vkAllocateDescriptorSets(context->m_device, &allocateInfo, descriptorSets.data());
 
             if (result == VK_SUCCESS)
             {
@@ -571,7 +598,7 @@ namespace Vulkan
 
             allocateInfo.descriptorPool = newDescriptorPool;
 
-            result                      = vkAllocateDescriptorSets(context->m_device, &allocateInfo, descriptorSets.data());
+            result = vkAllocateDescriptorSets(context->m_device, &allocateInfo, descriptorSets.data());
             RHI_ASSERT(result == VK_SUCCESS);
             if (result != VK_SUCCESS)
                 return {};
@@ -589,7 +616,7 @@ namespace Vulkan
         return shaderBindGroups;
     }
 
-    void ShaderBindGroupAllocator::Free(RHI::TL::Span<RHI::Handle<RHI::ShaderBindGroup>> groups)
+    void ShaderBindGroupAllocator::Free(TL::Span<RHI::Handle<RHI::ShaderBindGroup>> groups)
     {
         auto                         context = static_cast<Context*>(m_context);
 
@@ -649,7 +676,7 @@ namespace Vulkan
 
                 for (auto passAttachment : resources->views)
                 {
-                    auto                   buffer = resourcesManager->m_bufferOwner.Get(passAttachment->attachment);
+                    auto                   buffer = resourcesManager->m_bufferOwner.Get(passAttachment->attachment->handle);
 
                     VkDescriptorBufferInfo imageInfo{};
                     imageInfo.buffer = buffer->handle;
@@ -695,7 +722,7 @@ namespace Vulkan
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    /// ResourcePool  /////////////////////////////////////////////////////////
+    /// ResourcePool
     ///////////////////////////////////////////////////////////////////////////
 
     ResourcePool::~ResourcePool()
@@ -723,7 +750,7 @@ namespace Vulkan
     RHI::Result<RHI::Handle<RHI::Image>> ResourcePool::Allocate(const RHI::ImageCreateInfo& createInfo)
     {
         VmaAllocationCreateInfo allocationInfo{};
-        allocationInfo.pool  = m_pool;
+        allocationInfo.pool = m_pool;
 
         auto [image, result] = m_context->m_resourceManager->CreateImage(allocationInfo, createInfo, this);
         return { image, result };
@@ -732,7 +759,7 @@ namespace Vulkan
     RHI::Result<RHI::Handle<RHI::Buffer>> ResourcePool::Allocate(const RHI::BufferCreateInfo& createInfo)
     {
         VmaAllocationCreateInfo allocationInfo{};
-        allocationInfo.pool   = m_pool;
+        allocationInfo.pool = m_pool;
 
         auto [buffer, result] = m_context->m_resourceManager->CreateBuffer(allocationInfo, createInfo, this);
         return { buffer, result };
@@ -767,7 +794,7 @@ namespace Vulkan
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    /// Swapchain  ////////////////////////////////////////////////////////////
+    /// Swapchain
     ///////////////////////////////////////////////////////////////////////////
 
     Swapchain::~Swapchain()
@@ -780,7 +807,7 @@ namespace Vulkan
 
     VkResult Swapchain::Init(const RHI::SwapchainCreateInfo& createInfo)
     {
-        auto context    = static_cast<Context*>(m_context);
+        auto context = static_cast<Context*>(m_context);
 
         m_swapchainInfo = createInfo;
 
@@ -815,11 +842,11 @@ namespace Vulkan
 
     RHI::ResultCode Swapchain::Resize(uint32_t newWidth, uint32_t newHeight)
     {
-        auto context              = static_cast<Context*>(m_context);
+        auto context = static_cast<Context*>(m_context);
 
         m_swapchainInfo.imageSize = { newWidth, newHeight };
 
-        VkResult result           = vkQueueWaitIdle(context->m_graphicsQueue);
+        VkResult result = vkQueueWaitIdle(context->m_graphicsQueue);
 
         vkDestroySwapchainKHR(context->m_device, m_swapchain, nullptr);
 
@@ -828,23 +855,16 @@ namespace Vulkan
         return ConvertResult(result);
     }
 
-    RHI::ResultCode Swapchain::Present()
+    RHI::ResultCode Swapchain::Present(RHI::Pass& passBase)
     {
-        VkSemaphore           waitSemaphore{};
-        VkSemaphoreCreateInfo semaphoreInfo{};
-        semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-        vkCreateSemaphore(m_context->m_device, &semaphoreInfo, nullptr, &waitSemaphore);
-
-        auto             currentImageHandle = m_images[m_currentImageIndex];
-        auto             image              = m_context->m_resourceManager->m_imageOwner.Get(currentImageHandle);
-        // auto waitSemaphore = static_cast<Pass*>(image->attachment->asImage.lastUse->pass)->m_signalSemaphore;
+        auto&            pass = static_cast<Pass&>(passBase);
 
         // Present current image to be rendered.
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         presentInfo.pNext              = nullptr;
         presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores    = &waitSemaphore;
+        presentInfo.pWaitSemaphores    = &pass.m_signalSemaphore;
         presentInfo.swapchainCount     = 1;
         presentInfo.pSwapchains        = &m_swapchain;
         presentInfo.pImageIndices      = &m_currentImageIndex;
@@ -890,7 +910,7 @@ namespace Vulkan
         createInfo.clipped               = VK_TRUE;
         createInfo.oldSwapchain          = m_swapchain;
 
-        result                           = vkCreateSwapchainKHR(m_context->m_device, &createInfo, nullptr, &m_swapchain);
+        result = vkCreateSwapchainKHR(m_context->m_device, &createInfo, nullptr, &m_swapchain);
         RHI_ASSERT(result == VK_SUCCESS);
         if (result != VK_SUCCESS)
             return result;
@@ -930,7 +950,7 @@ namespace Vulkan
             image.createInfo = imageInfo;
             image.swapchain  = this;
 
-            auto handle      = m_context->m_resourceManager->m_imageOwner.Insert(image);
+            auto handle = m_context->m_resourceManager->m_imageOwner.Insert(image);
             m_images.push_back(handle);
         }
 
@@ -989,7 +1009,7 @@ namespace Vulkan
         auto                          result = vkGetPhysicalDeviceSurfacePresentModesKHR(context->m_physicalDevice, m_surface, &presentModesCount, nullptr);
         std::vector<VkPresentModeKHR> presentModes{};
         presentModes.resize(presentModesCount);
-        result                            = vkGetPhysicalDeviceSurfacePresentModesKHR(context->m_physicalDevice, m_surface, &presentModesCount, presentModes.data());
+        result = vkGetPhysicalDeviceSurfacePresentModesKHR(context->m_physicalDevice, m_surface, &presentModesCount, presentModes.data());
 
         VkPresentModeKHR preferredModes[] = { VK_PRESENT_MODE_FIFO_KHR, VK_PRESENT_MODE_IMMEDIATE_KHR, VK_PRESENT_MODE_MAILBOX_KHR };
 
@@ -1010,7 +1030,7 @@ namespace Vulkan
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    /// ResourceManager ///////// /////////////////////////////////////////////
+    /// ResourceManager
     ///////////////////////////////////////////////////////////////////////////
 
     ResourceManager::ResourceManager(Context* context)
@@ -1025,7 +1045,6 @@ namespace Vulkan
         , m_graphicsPipelineOwner(512u)
         , m_computePipelineOwner(512u)
         , m_samplerOwner(512u)
-        , m_fenceOwner(512u)
     {
     }
 
@@ -1227,7 +1246,7 @@ namespace Vulkan
         return m_descriptorSetOwner.Insert(resource);
     }
 
-    RHI::Result<RHI::Handle<PipelineLayout>> ResourceManager::CreatePipelineLayout(RHI::TL::Span<const RHI::ShaderBindGroupLayout> layouts)
+    RHI::Result<RHI::Handle<PipelineLayout>> ResourceManager::CreatePipelineLayout(TL::Span<const RHI::ShaderBindGroupLayout> layouts)
     {
         uint64_t key = HashAny(layouts.begin());
         for (uint32_t i = 1; i < layouts.size(); i++)
@@ -1283,7 +1302,7 @@ namespace Vulkan
         if (rhiResult != RHI::ResultCode::Success)
             return RHI::ResultCode::ErrorUnkown;
 
-        VkPipelineLayout                pipelineLayout        = m_pipelineLayoutOwner.Get(pipelinelayoutHandle)->handle;
+        VkPipelineLayout                pipelineLayout = m_pipelineLayoutOwner.Get(pipelinelayoutHandle)->handle;
 
         uint32_t                        stagesCreateInfoCount = 2;
         VkPipelineShaderStageCreateInfo stagesCreateInfos[4];
@@ -1298,10 +1317,10 @@ namespace Vulkan
             stageInfo.pName               = createInfo.vertexShaderName;
             stagesCreateInfos[0]          = stageInfo;
 
-            stageInfo.stage               = VK_SHADER_STAGE_FRAGMENT_BIT;
-            stageInfo.module              = static_cast<ShaderModule*>(createInfo.pixelShaderModule)->m_shaderModule;
-            stageInfo.pName               = createInfo.pixelShaderName;
-            stagesCreateInfos[1]          = stageInfo;
+            stageInfo.stage      = VK_SHADER_STAGE_FRAGMENT_BIT;
+            stageInfo.module     = static_cast<ShaderModule*>(createInfo.pixelShaderModule)->m_shaderModule;
+            stageInfo.pName      = createInfo.pixelShaderName;
+            stagesCreateInfos[1] = stageInfo;
         }
 
         std::vector<VkVertexInputBindingDescription>   vertexInputBindingDescriptions;
@@ -1384,18 +1403,18 @@ namespace Vulkan
         multisampleStateCreateInfo.alphaToOneEnable      = VK_FALSE;
 
         VkPipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo{};
-        depthStencilStateCreateInfo.sType                                          = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-        depthStencilStateCreateInfo.pNext                                          = nullptr;
-        depthStencilStateCreateInfo.flags                                          = 0;
-        depthStencilStateCreateInfo.depthTestEnable                                = createInfo.depthStencilState.depthTestEnable ? VK_TRUE : VK_FALSE;
-        depthStencilStateCreateInfo.depthWriteEnable                               = createInfo.depthStencilState.depthWriteEnable ? VK_TRUE : VK_FALSE;
-        depthStencilStateCreateInfo.depthCompareOp                                 = ConvertCompareOp(createInfo.depthStencilState.compareOperator);
-        depthStencilStateCreateInfo.depthBoundsTestEnable                          = VK_FALSE;
-        depthStencilStateCreateInfo.stencilTestEnable                              = createInfo.depthStencilState.stencilTestEnable ? VK_TRUE : VK_FALSE;
+        depthStencilStateCreateInfo.sType                 = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        depthStencilStateCreateInfo.pNext                 = nullptr;
+        depthStencilStateCreateInfo.flags                 = 0;
+        depthStencilStateCreateInfo.depthTestEnable       = createInfo.depthStencilState.depthTestEnable ? VK_TRUE : VK_FALSE;
+        depthStencilStateCreateInfo.depthWriteEnable      = createInfo.depthStencilState.depthWriteEnable ? VK_TRUE : VK_FALSE;
+        depthStencilStateCreateInfo.depthCompareOp        = ConvertCompareOp(createInfo.depthStencilState.compareOperator);
+        depthStencilStateCreateInfo.depthBoundsTestEnable = VK_FALSE;
+        depthStencilStateCreateInfo.stencilTestEnable     = createInfo.depthStencilState.stencilTestEnable ? VK_TRUE : VK_FALSE;
         // depthStencilStateCreateInfo.front;
         // depthStencilStateCreateInfo.back;
-        depthStencilStateCreateInfo.minDepthBounds                                 = 0.0;
-        depthStencilStateCreateInfo.maxDepthBounds                                 = 1.0;
+        depthStencilStateCreateInfo.minDepthBounds        = 0.0;
+        depthStencilStateCreateInfo.maxDepthBounds        = 1.0;
 
         uint32_t                            pipelineColorBlendAttachmentStateCount = 0;
         VkPipelineColorBlendAttachmentState pipelineColorBlendAttachmentStates[8];
@@ -1445,7 +1464,7 @@ namespace Vulkan
         colorBlendStateCreateInfo.blendConstants[2] = createInfo.colorBlendState.blendConstants[2];
         colorBlendStateCreateInfo.blendConstants[3] = createInfo.colorBlendState.blendConstants[3];
 
-        std::vector<VkDynamicState> dynamicStates   = {
+        std::vector<VkDynamicState> dynamicStates = {
             VK_DYNAMIC_STATE_VIEWPORT,
             VK_DYNAMIC_STATE_SCISSOR,
         };
@@ -1457,10 +1476,10 @@ namespace Vulkan
         dynamicStateCreateInfo.dynamicStateCount = dynamicStates.size();
         dynamicStateCreateInfo.pDynamicStates    = dynamicStates.data();
 
-        uint32_t colorAttachmentFormatCount      = static_cast<uint32_t>(createInfo.renderTargetLayout.colorAttachmentsFormats.size());
-        VkFormat colorAttachmentFormats[8]       = {};
+        uint32_t colorAttachmentFormatCount = static_cast<uint32_t>(createInfo.renderTargetLayout.colorAttachmentsFormats.size());
+        VkFormat colorAttachmentFormats[8]  = {};
 
-        uint32_t index                           = 0;
+        uint32_t index = 0;
         for (auto format : createInfo.renderTargetLayout.colorAttachmentsFormats)
             colorAttachmentFormats[index++] = ConvertFormat(format);
 
@@ -1506,7 +1525,7 @@ namespace Vulkan
 
     RHI::Result<RHI::Handle<ComputePipeline>> ResourceManager::CreateComputePipeline(const RHI::ComputePipelineCreateInfo& createInfo)
     {
-        auto shaderModule                      = static_cast<ShaderModule*>(createInfo.shaderModule);
+        auto shaderModule = static_cast<ShaderModule*>(createInfo.shaderModule);
 
         auto [pipelinelayoutHandle, rhiResult] = CreatePipelineLayout({ createInfo.bindGroupLayouts.begin(), createInfo.bindGroupLayouts.end() });
         RHI_ASSERT(rhiResult == RHI::ResultCode::Success);
@@ -1571,20 +1590,6 @@ namespace Vulkan
 
         if (result == VK_SUCCESS)
             return m_samplerOwner.Insert(sampler);
-
-        return RHI::ResultCode::ErrorUnkown;
-    }
-
-    RHI::Result<RHI::Handle<Fence>> ResourceManager::CreateFence()
-    {
-        Fence             fence{};
-
-        VkFenceCreateInfo createInfo{ VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, nullptr, {} };
-
-        auto              result = vkCreateFence(m_context->m_device, &createInfo, nullptr, &fence.handle);
-
-        if (result == VK_SUCCESS)
-            return m_fenceOwner.Insert(fence);
 
         return RHI::ResultCode::ErrorUnkown;
     }
@@ -1666,12 +1671,104 @@ namespace Vulkan
         vkDestroySampler(m_context->m_device, sampler->handle, nullptr);
     }
 
-    void ResourceManager::FreeFence(RHI::Handle<Fence> handle)
-    {
-        auto fence = m_fenceOwner.Get(handle);
-        RHI_ASSERT(fence);
+    // const Image* ResourceManager::Get(const RHI::Handle<Image> handle) const
+    // {
+    //     return m_imageOwner.Get(handle);
+    // }
 
-        vkDestroyFence(m_context->m_device, fence->handle, nullptr);
-    }
+    // Image* ResourceManager::Get(RHI::Handle<Image> handle)
+    // {
+    //     return m_imageOwner.Get(handle);
+    // }
+
+    // const Buffer* ResourceManager::Get(const RHI::Handle<Buffer> handle) const
+    // {
+    //     return m_bufferOwner.Get(handle);
+    // }
+
+    // Buffer* ResourceManager::Get(RHI::Handle<Buffer> handle)
+    // {
+    //     return m_bufferOwner.Get(handle);
+    // }
+
+    // const ImageView* ResourceManager::Get(const RHI::Handle<ImageView> handle) const
+    // {
+    //     return m_imageViewOwner.Get(handle);
+    // }
+
+    // ImageView* ResourceManager::Get(RHI::Handle<ImageView> handle)
+    // {
+    //     return m_imageViewOwner.Get(handle);
+    // }
+
+    // const BufferView* ResourceManager::Get(const RHI::Handle<BufferView> handle) const
+    // {
+    //     return m_bufferViewOwner.Get(handle);
+    // }
+
+    // BufferView* ResourceManager::Get(RHI::Handle<BufferView> handle)
+    // {
+    //     return m_bufferViewOwner.Get(handle);
+    // }
+
+    // const DescriptorSetLayout* ResourceManager::Get(const RHI::Handle<DescriptorSetLayout> handle) const
+    // {
+    //     return m_descriptorSetLayoutOwner.Get(handle);
+    // }
+
+    // DescriptorSetLayout* ResourceManager::Get(RHI::Handle<DescriptorSetLayout> handle)
+    // {
+    //     return m_descriptorSetLayoutOwner.Get(handle);
+    // }
+
+    // const DescriptorSet* ResourceManager::Get(const RHI::Handle<DescriptorSet> handle) const
+    // {
+    //     return m_descriptorSetOwner.Get(handle);
+    // }
+
+    // DescriptorSet* ResourceManager::Get(RHI::Handle<DescriptorSet> handle)
+    // {
+    //     return m_descriptorSetOwner.Get(handle);
+    // }
+
+    // const PipelineLayout* ResourceManager::Get(const RHI::Handle<PipelineLayout> handle) const
+    // {
+    //     return m_pipelineLayoutOwner.Get(handle);
+    // }
+
+    // PipelineLayout* ResourceManager::Get(RHI::Handle<PipelineLayout> handle)
+    // {
+    //     return m_pipelineLayoutOwner.Get(handle);
+    // }
+
+    // const GraphicsPipeline* ResourceManager::Get(const RHI::Handle<GraphicsPipeline> handle) const
+    // {
+    //     return m_graphicsPipelineOwner.Get(handle);
+    // }
+
+    // GraphicsPipeline* ResourceManager::Get(RHI::Handle<GraphicsPipeline> handle)
+    // {
+    //     return m_graphicsPipelineOwner.Get(handle);
+    // }
+
+    // const ComputePipeline* ResourceManager::Get(const RHI::Handle<ComputePipeline> handle) const
+    // {
+    //     return m_computePipelineOwner.Get(handle);
+    // }
+
+    // ComputePipeline* ResourceManager::Get(RHI::Handle<ComputePipeline> handle)
+    // {
+    //     return m_computePipelineOwner.Get(handle);
+    // }
+
+    // const Sampler* ResourceManager::Get(const RHI::Handle<Sampler> handle) const
+    // {
+    //     return m_samplerOwner.Get(handle);
+    // }
+
+    // Sampler* ResourceManager::Get(RHI::Handle<Sampler> handle)
+    // {
+    //     return m_samplerOwner.Get(handle);
+    // }
 
 } // namespace Vulkan

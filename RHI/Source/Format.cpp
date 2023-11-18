@@ -5,9 +5,9 @@ namespace RHI
 {
     // clang-format off
     // Format mapping table. The rows must be in the exactly same order as Format enum members are defined.
-    static const FormatInfo c_FormatInfo[] = {
+    static const FormatInfo k_FormatInfoLUT[] = {
     //        format                   name             bytes blk         type               red   green   blue  alpha  depth  stencl signed  srgb
-        { Format::Unkown,           "UNKNOWN",           0,   0, FormatType::Integer,      false, false, false, false, false, false, false, false },
+        { Format::Unknown,           "Unknown",           0,   0, FormatType::Integer,      false, false, false, false, false, false, false, false },
         { Format::R8_UINT,           "R8_UINT",           1,   1, FormatType::Integer,      true,  false, false, false, false, false, false, false },
         { Format::R8_SINT,           "R8_SINT",           1,   1, FormatType::Integer,      true,  false, false, false, false, false, true,  false },
         { Format::R8_UNORM,          "R8_UNORM",          1,   1, FormatType::Normalized,   true,  false, false, false, false, false, false, false },
@@ -78,33 +78,33 @@ namespace RHI
     };
     // clang-format on
 
-    const FormatInfo& ConvertFormatInfo(Format format)
+    const FormatInfo& GetFormatInfo(Format format)
     {
-        static_assert(sizeof(c_FormatInfo) / sizeof(FormatInfo) == size_t(Format::COUNT), "The format info table doesn't have the right number of elements");
+        static_assert(sizeof(k_FormatInfoLUT) / sizeof(FormatInfo) == size_t(Format::COUNT), "The format info table doesn't have the right number of elements");
 
         if (uint32_t(format) >= uint32_t(Format::COUNT))
-            return c_FormatInfo[0]; // UNKNOWN
+            return k_FormatInfoLUT[0]; // UNKNOWN
 
-        const FormatInfo& info = c_FormatInfo[uint32_t(format)];
+        const FormatInfo& info = k_FormatInfoLUT[uint32_t(format)];
         RHI_ASSERT(info.format == format);
         return info;
     }
 
-    uint32_t ConvertFormatByteSize(Format format)
+    uint32_t GetFormatByteSize(Format format)
     {
-        auto info = ConvertFormatInfo(format);
+        auto info = GetFormatInfo(format);
         return info.blockSize;
     }
 
-    uint32_t ConvertFormatComponentByteSize(Format format)
+    uint32_t GetFormatComponentByteSize(Format format)
     {
-        auto info = ConvertFormatInfo(format);
+        auto info = GetFormatInfo(format);
         return info.bytesPerBlock;
     }
 
-    FormatType ConvertFormatType(Format format)
+    FormatType GetFormatType(Format format)
     {
-        auto info = ConvertFormatInfo(format);
+        auto info = GetFormatInfo(format);
         return info.type;
     }
 

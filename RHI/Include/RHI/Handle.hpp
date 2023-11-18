@@ -41,6 +41,11 @@ namespace RHI
             return m_handle != other.m_handle;
         }
 
+        explicit operator uint64_t() const
+        {
+            return m_handle;
+        }
+
     private:
         Handle(uint64_t id, uint16_t genId)
         {

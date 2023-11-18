@@ -1,17 +1,17 @@
 #include "FrameGraph.hpp"
+
 #include "Allocator.hpp"
 #include "CommandList.hpp"
 #include "Common.hpp"
 #include "Context.hpp"
 #include "Resources.hpp"
 
-#include <bitset>
 #include <memory>
 
 namespace Vulkan
 {
     ///////////////////////////////////////////////////////////////////////////
-    /// Utility functions /////////////////////////////////////////////////////
+    /// Utility functions
     ///////////////////////////////////////////////////////////////////////////
 
     VkAttachmentLoadOp ConvertLoadOp(RHI::ImageLoadOperation op)
@@ -40,10 +40,10 @@ namespace Vulkan
     {
         switch (usage)
         {
-        case RHI::AttachmentUsage::RenderTarget:   return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        case RHI::AttachmentUsage::Depth:          return access == RHI::AttachmentAccess::Read ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-        case RHI::AttachmentUsage::Stencil:        return access == RHI::AttachmentAccess::Read ? VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
-        case RHI::AttachmentUsage::DepthStencil:   return access == RHI::AttachmentAccess::Read ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        case RHI::AttachmentUsage::RenderTarget: return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        case RHI::AttachmentUsage::Depth:        return access == RHI::AttachmentAccess::Read ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+        // case RHI::AttachmentUsage::Stencil:        return access == RHI::AttachmentAccess::Read ? VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
+        // case RHI::AttachmentUsage::DepthStencil:   return access == RHI::AttachmentAccess::Read ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         case RHI::AttachmentUsage::ShaderResource: return access == RHI::AttachmentAccess::Read ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
         case RHI::AttachmentUsage::Copy:           return access == RHI::AttachmentAccess::Read ? VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL : VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         default:                                   RHI_UNREACHABLE(); return VK_IMAGE_LAYOUT_GENERAL;
@@ -51,10 +51,15 @@ namespace Vulkan
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    /// TransientResourceAllocator definition /////////////////////////////////
+    /// TransientAttachmentAllocator
     ///////////////////////////////////////////////////////////////////////////
 
-    TransientResourceAllocator::~TransientResourceAllocator()
+    TransientAttachmentAllocator::TransientAttachmentAllocator(Context* context)
+        : m_context(context)
+    {
+    }
+
+    TransientAttachmentAllocator::~TransientAttachmentAllocator()
     {
         for (auto block : m_blocks)
         {
@@ -63,10 +68,32 @@ namespace Vulkan
         }
     }
 
-    bool TransientResourceAllocator::Activate(RHI::Handle<RHI::Image> imageHandle)
+    void TransientAttachmentAllocator::Begin()
     {
-        auto image = m_context->m_resourceManager->m_imageOwner.Get(imageHandle);
-        RHI_ASSERT(image != nullptr);
+    }
+
+    void TransientAttachmentAllocator::End()
+    {
+        std::vector<VmaDetailedStatistics> statistics;
+        statistics.resize(m_blocks.size());
+        for (auto block : m_blocks)
+        {
+            vmaCalculateVirtualBlockStatistics(block.virtualBlock, &statistics.back());
+        }
+
+        // for (auto stats : statistics)
+        // {
+
+        // }
+    }
+
+    void TransientAttachmentAllocator::Allocate(RHI::ImageAttachment* attachment)
+    {
+        RHI_ASSERT(attachment->lifetime == RHI::AttachmentLifetime::Transient);
+
+        attachment->handle = m_context->m_resourceManager->CreateImage({}, attachment->info, nullptr, true).GetValue();
+
+        auto image = m_context->m_resourceManager->m_imageOwner.Get(attachment->handle);
         RHI_ASSERT(image->swapchain == nullptr);
 
         auto requirements = image->GetMemoryRequirements(m_context->m_device);
@@ -74,15 +101,25 @@ namespace Vulkan
         {
             RHI_ASSERT(allocation->type == AllocationType::Aliasing);
             auto result = vmaBindImageMemory2(m_context->m_allocator, allocation->handle, allocation->virtualAllocation.offset, image->handle, nullptr);
-            return result == VK_SUCCESS;
+            VULKAN_ASSERT_SUCCESS(result);
         }
-
-        return false;
     }
 
-    bool TransientResourceAllocator::Activate(RHI::Handle<RHI::Buffer> bufferHandle)
+    void TransientAttachmentAllocator::Free(RHI::ImageAttachment* attachment)
     {
-        auto buffer = m_context->m_resourceManager->m_bufferOwner.Get(bufferHandle);
+        auto image = m_context->m_resourceManager->m_imageOwner.Get(attachment->handle);
+        RHI_ASSERT(image);
+
+        Free(image->allocation);
+    }
+
+    void TransientAttachmentAllocator::Allocate(RHI::BufferAttachment* attachment)
+    {
+        RHI_ASSERT(attachment->lifetime == RHI::AttachmentLifetime::Transient);
+
+        attachment->handle = m_context->m_resourceManager->CreateBuffer({}, attachment->info, nullptr, true).GetValue();
+
+        auto buffer = m_context->m_resourceManager->m_bufferOwner.Get(attachment->handle);
         RHI_ASSERT(buffer);
 
         auto requirements = buffer->GetMemoryRequirements(m_context->m_device);
@@ -90,29 +127,19 @@ namespace Vulkan
         {
             RHI_ASSERT(allocation->type == AllocationType::Aliasing);
             auto result = vmaBindBufferMemory2(m_context->m_allocator, allocation->handle, allocation->virtualAllocation.offset, buffer->handle, nullptr);
-            return result == VK_SUCCESS;
+            VULKAN_ASSERT_SUCCESS(result);
         }
-
-        return false;
     }
 
-    void TransientResourceAllocator::Shutdown(RHI::Handle<RHI::Image> handle)
+    void TransientAttachmentAllocator::Free(RHI::BufferAttachment* attachment)
     {
-        auto image = m_context->m_resourceManager->m_imageOwner.Get(handle);
-        RHI_ASSERT(image);
-
-        Free(image->allocation);
-    }
-
-    void TransientResourceAllocator::Shutdown(RHI::Handle<RHI::Buffer> handle)
-    {
-        auto buffer = m_context->m_resourceManager->m_imageOwner.Get(handle);
+        auto buffer = m_context->m_resourceManager->m_imageOwner.Get(attachment->handle);
         RHI_ASSERT(buffer);
 
         Free(buffer->allocation);
     }
 
-    size_t TransientResourceAllocator::CalculatePreferredBlockSize(uint32_t memTypeIndex)
+    size_t TransientAttachmentAllocator::CalculatePreferredBlockSize(uint32_t memTypeIndex)
     {
         constexpr size_t                 VMA_SMALL_HEAP_MAX_SIZE           = (1024ull * 1024 * 1024);
         constexpr size_t                 VMA_DEFAULT_LARGE_HEAP_BLOCK_SIZE = (256ull * 1024 * 1024);
@@ -126,7 +153,7 @@ namespace Vulkan
         return AlignUp(isSmallHeap ? (heapSize / 8) : VMA_DEFAULT_LARGE_HEAP_BLOCK_SIZE, (size_t)32);
     }
 
-    TransientResourceAllocator::Block TransientResourceAllocator::CreateBlockNewBlock(VkMemoryRequirements minRequirements)
+    TransientAttachmentAllocator::Block TransientAttachmentAllocator::CreateBlockNewBlock(VkMemoryRequirements minRequirements)
     {
         // TODO: Hardcoded for my local machine, should probably handle this later.
         minRequirements.size = CalculatePreferredBlockSize(2);
@@ -137,7 +164,7 @@ namespace Vulkan
         allocationCreateInfo.flags         = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
         allocationCreateInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-        auto result                        = vmaAllocateMemory(m_context->m_allocator, &minRequirements, &allocationCreateInfo, &block.allocation, &block.info);
+        auto result = vmaAllocateMemory(m_context->m_allocator, &minRequirements, &allocationCreateInfo, &block.allocation, &block.info);
         VULKAN_ASSERT_SUCCESS(result);
 
         VmaVirtualBlockCreateInfo virtualBlockCreateInfo{};
@@ -149,7 +176,7 @@ namespace Vulkan
         return block;
     }
 
-    std::optional<Allocation> TransientResourceAllocator::Allocate(VkMemoryRequirements requirements)
+    std::optional<Allocation> TransientAttachmentAllocator::Allocate(VkMemoryRequirements requirements)
     {
         Allocation allocation;
         allocation.type = AllocationType::Aliasing;
@@ -195,144 +222,92 @@ namespace Vulkan
         return std::nullopt;
     }
 
-    void TransientResourceAllocator::Free(Allocation allocation)
+    void TransientAttachmentAllocator::Free(Allocation allocation)
     {
         vmaVirtualFree(allocation.virtualAllocation.blockHandle, allocation.virtualAllocation.handle);
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    /// Pass definition ///////////////////////////////////////////////////////
+    /// Pass
     ///////////////////////////////////////////////////////////////////////////
 
     Pass::Pass(Context* context)
-        : RHI::Pass(static_cast<RHI::Context*>(context))
+        : RHI::Pass(context)
     {
     }
 
     Pass::~Pass()
     {
-        auto context = static_cast<Context*>(m_context);
+        RHI_DEBUG_BREAK();
 
+        auto context = static_cast<Context*>(m_context);
         vkDeviceWaitIdle(context->m_device);
 
-        vkDestroyCommandPool(context->m_device, m_commandPool, nullptr);
+        if (m_signalSemaphore)
+        {
+            vkDestroySemaphore(context->m_device, m_signalSemaphore, nullptr);
+        }
+
+        if (m_signalFence)
+        {
+            vkDestroyFence(context->m_device, m_signalFence, nullptr);
+        }
     }
 
     VkResult Pass::Init(const RHI::PassCreateInfo& createInfo)
     {
-        auto                  context = static_cast<Context*>(m_context);
+        m_name             = createInfo.name;
+        m_queueType        = createInfo.type;
+        m_queueFamilyIndex = static_cast<Context*>(m_context)->GetQueueFamilyIndex(m_queueType);
 
-        VkSemaphoreCreateInfo semaphoreInfo{};
-        semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-        auto result         = vkCreateSemaphore(context->m_device, &semaphoreInfo, nullptr, &m_signalSemaphore);
-        VULKAN_RETURN_VKERR_CODE(result);
+        auto context = static_cast<Context*>(m_context);
 
-        m_commandList   = std::make_unique<CommandList>(context);
-        m_queuInfo.type = createInfo.type;
-        m_queuInfo.id   = context->GetQueueFamilyIndex(createInfo.type);
+        m_signalSemaphore = context->CreateSemaphore();
+        m_signalFence     = context->CreateFence();
 
-        VkCommandPoolCreateInfo vkCreateInfo{};
-        vkCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        vkCreateInfo.pNext = nullptr;
-        vkCreateInfo.flags = 0;
-
-        if (createInfo.type == RHI::QueueType::Graphics)
-        {
-            vkCreateInfo.queueFamilyIndex = context->m_graphicsQueueFamilyIndex;
-        }
-        else if (createInfo.type == RHI::QueueType::Compute)
-        {
-            vkCreateInfo.queueFamilyIndex = context->m_computeQueueFamilyIndex;
-        }
-        else if (createInfo.type == RHI::QueueType::Transfer)
-        {
-            vkCreateInfo.queueFamilyIndex = context->m_transferQueueFamilyIndex;
-        }
-        else
-        {
-            RHI_UNREACHABLE();
-        }
-
-        result = vkCreateCommandPool(context->m_device, &vkCreateInfo, nullptr, &m_commandPool);
-        VULKAN_RETURN_VKERR_CODE(result);
-        if (result != VK_SUCCESS)
-            return result;
-
-        VkCommandBufferAllocateInfo allocateInfo{};
-        allocateInfo.commandPool        = m_commandPool;
-        allocateInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocateInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocateInfo.pNext              = nullptr;
-        allocateInfo.commandBufferCount = 1;
-
-        result                          = m_commandList->Init(allocateInfo);
-        VULKAN_RETURN_VKERR_CODE(result);
-        if (result != VK_SUCCESS)
-            return result;
-
-        m_signalFence = context->m_resourceManager->CreateFence().value;
-
-        return result;
+        return VK_SUCCESS;
     }
 
     RHI::CommandList& Pass::BeginCommandList(uint32_t commandsCount)
     {
-        m_commandList->Begin();
+        auto context     = static_cast<Context*>(m_context);
+        auto commandList = static_cast<CommandList*>(m_commandList);
 
-        auto scheduler = static_cast<FrameScheduler*>(m_scheduler);
-        auto queueInfo = GetQueueInfo();
-        if (queueInfo.type == RHI::QueueType::Graphics)
+        commandList->Begin();
+        if (m_queueType == RHI::QueueType::Graphics)
         {
-            m_commandList->RenderingBegin(*scheduler, *this);
+            commandList->RenderingBegin(*this);
         }
 
-        return *m_commandList;
+        return *commandList;
     }
 
     void Pass::EndCommandList()
     {
-        auto scheduler = static_cast<FrameScheduler*>(m_scheduler);
-        auto queueInfo = GetQueueInfo();
-        if (queueInfo.type == RHI::QueueType::Graphics)
+        auto context     = static_cast<Context*>(m_context);
+        auto commandList = static_cast<CommandList*>(m_commandList);
+
+        if (m_queueType == RHI::QueueType::Graphics)
         {
-            m_commandList->RenderingEnd(*scheduler, *this);
+            commandList->RenderingEnd(*this);
         }
-
-        m_commandList->End();
-    }
-
-    void Pass::OnBegin()
-    {
-        auto context = static_cast<Context*>(m_context);
-
-        if (m_signalFence)
-        {
-            auto fence = context->m_resourceManager->m_fenceOwner.Get(m_signalFence);
-            RHI_ASSERT(fence);
-
-            vkResetFences(context->m_device, 1, &fence->handle);
-        }
-    }
-
-    void Pass::OnEnd()
-    {
+        commandList->End();
     }
 
     RHI::PassQueueState Pass::GetPassQueueStateInternal() const
     {
-        auto context = static_cast<Context*>(m_context);
-
-        return RHI::PassQueueState::NotSubmitted;
+        return {};
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    /// FrameScheduler definition /////////////////////////////////////////////
+    /// FrameScheduler
     ///////////////////////////////////////////////////////////////////////////
 
     FrameScheduler::FrameScheduler(Context* context)
         : RHI::FrameScheduler(static_cast<RHI::Context*>(context))
     {
-        m_transientAllocator = std::make_unique<TransientResourceAllocator>(context);
+        m_transientAttachmentAllocator = std::make_unique<TransientAttachmentAllocator>(context);
+        m_graphicsCommandlistAllocator = std::make_unique<CommandListAllocator>(context);
     }
 
     FrameScheduler::~FrameScheduler()
@@ -341,6 +316,16 @@ namespace Vulkan
 
     VkResult FrameScheduler::Init()
     {
+        auto context = static_cast<Context*>(m_context);
+
+        auto result = m_graphicsCommandlistAllocator->Init(context->m_graphicsQueueFamilyIndex, 3);
+        VULKAN_RETURN_VKERR_CODE(result);
+
+        for (uint32_t i = 0; i < 3; i++)
+        {
+            m_framesInflightFences.push_back(context->CreateFence());
+        }
+
         return VK_SUCCESS;
     }
 
@@ -351,169 +336,6 @@ namespace Vulkan
         auto result                = pass->Init(createInfo);
         RHI_ASSERT(result == VK_SUCCESS);
         return pass;
-    }
-
-    void FrameScheduler::BeginInternal()
-    {
-        auto context = static_cast<Context*>(m_context);
-        vkDeviceWaitIdle(context->m_device);
-
-        for (auto passBase : m_passList)
-        {
-            auto pass = static_cast<Pass*>(passBase);
-            if (pass->m_commandList)
-            {
-                vkResetCommandPool(context->m_device, pass->m_commandPool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
-            }
-        }
-    }
-
-    void FrameScheduler::EndInternal()
-    {
-        auto context = static_cast<Context*>(m_context);
-    }
-
-    void FrameScheduler::ExecutePass(RHI::Pass* passBase)
-    {
-        auto                      context          = static_cast<Context*>(m_context);
-        auto                      pass             = static_cast<Pass*>(passBase);
-
-        auto                      commandList      = static_cast<CommandList*>(pass->m_commandList.get());
-
-        auto                      waitSemaphores   = GetSemaphores(pass->m_producers);
-        auto                      signalSemaphores = GetSemaphores(pass->m_consumers);
-
-        VkCommandBufferSubmitInfo commandSubmitInfo{};
-        commandSubmitInfo.sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
-        commandSubmitInfo.pNext         = nullptr;
-        commandSubmitInfo.commandBuffer = commandList->m_commandBuffer;
-
-        VkSubmitInfo2 submitInfo{};
-        submitInfo.sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
-        submitInfo.pNext                    = nullptr;
-        submitInfo.flags                    = 0;
-        submitInfo.waitSemaphoreInfoCount   = waitSemaphores.size();
-        submitInfo.pWaitSemaphoreInfos      = waitSemaphores.data();
-        submitInfo.commandBufferInfoCount   = 1;
-        submitInfo.pCommandBufferInfos      = &commandSubmitInfo;
-        submitInfo.signalSemaphoreInfoCount = signalSemaphores.size();
-        submitInfo.pSignalSemaphoreInfos    = signalSemaphores.data();
-
-        auto signalFence                    = context->m_resourceManager->m_fenceOwner.Get(pass->m_signalFence);
-
-        auto result                         = vkQueueSubmit2(context->m_graphicsQueue, 1, &submitInfo, signalFence->handle);
-        RHI_ASSERT(result == VK_SUCCESS);
-    }
-
-    void FrameScheduler::Allocate(RHI::Handle<RHI::Attachment> handle)
-    {
-        auto attachment = m_attachments.Get(handle);
-
-        if (attachment->lifetime == RHI::AttachmentLifetime::Persistent)
-            return;
-
-        if (attachment->type == RHI::AttachmentType::Image)
-        {
-            m_transientAllocator->Activate(attachment->asImage.handle);
-        }
-        else if (attachment->type == RHI::AttachmentType::Buffer)
-        {
-            m_transientAllocator->Activate(attachment->asBuffer.handle);
-        }
-        else
-        {
-            RHI_UNREACHABLE();
-        }
-    }
-
-    void FrameScheduler::Release(RHI::Handle<RHI::Attachment> handle)
-    {
-        auto attachment = m_attachments.Get(handle);
-
-        if (attachment->type == RHI::AttachmentType::Image)
-        {
-            m_transientAllocator->Shutdown(attachment->asImage.handle);
-        }
-        else if (attachment->type == RHI::AttachmentType::Buffer)
-        {
-            m_transientAllocator->Shutdown(attachment->asBuffer.handle);
-        }
-        else
-        {
-            RHI_UNREACHABLE();
-        }
-    }
-
-    RHI::Handle<RHI::Image> FrameScheduler::CreateTransientImageResource(const RHI::ImageCreateInfo& createInfo)
-    {
-        auto context         = static_cast<Context*>(m_context);
-        auto [image, result] = context->m_resourceManager->CreateImage({}, createInfo, nullptr, true);
-        RHI_ASSERT(result == RHI::ResultCode::Success);
-        return image;
-    }
-
-    RHI::Handle<RHI::Buffer> FrameScheduler::CreateTransientBufferResource(const RHI::BufferCreateInfo& createInfo)
-    {
-        auto context          = static_cast<Context*>(m_context);
-        auto [buffer, result] = context->m_resourceManager->CreateBuffer({}, createInfo, nullptr, true);
-        RHI_ASSERT(result == RHI::ResultCode::Success);
-        return buffer;
-    }
-
-    RHI::Handle<RHI::ImageView> FrameScheduler::CreateImageView(RHI::Attachment* attachment, const RHI::ImageAttachmentUseInfo& useInfo)
-    {
-        auto context        = static_cast<Context*>(m_context);
-        auto [view, result] = context->m_resourceManager->CreateImageView(attachment->asImage.handle, useInfo);
-        RHI_ASSERT(result == RHI::ResultCode::Success);
-        return view;
-    }
-
-    RHI::Handle<RHI::BufferView> FrameScheduler::CreateBufferView(RHI::Attachment* attachment, const RHI::BufferAttachmentUseInfo& useInfo)
-    {
-        auto context        = static_cast<Context*>(m_context);
-        auto [view, result] = context->m_resourceManager->CreateBufferView(attachment->asBuffer.handle, useInfo);
-        RHI_ASSERT(result == RHI::ResultCode::Success);
-        return view;
-    }
-
-    void FrameScheduler::FreeTransientBufferResource(RHI::Handle<RHI::Buffer> handle)
-    {
-        auto context  = static_cast<Context*>(m_context);
-        auto resource = context->m_resourceManager->m_bufferOwner.Get(handle);
-
-        resource->Shutdown(context);
-
-        context->m_resourceManager->m_bufferOwner.Remove(handle);
-    }
-
-    void FrameScheduler::FreeTransientImageResource(RHI::Handle<RHI::Image> handle)
-    {
-        auto context  = static_cast<Context*>(m_context);
-        auto resource = context->m_resourceManager->m_imageOwner.Get(handle);
-
-        resource->Shutdown(context);
-
-        context->m_resourceManager->m_imageOwner.Remove(handle);
-    }
-
-    void FrameScheduler::FreeImageView(RHI::Handle<RHI::ImageView> handle)
-    {
-        auto context  = static_cast<Context*>(m_context);
-        auto resource = context->m_resourceManager->m_imageViewOwner.Get(handle);
-
-        resource->Shutdown(context);
-
-        context->m_resourceManager->m_imageViewOwner.Remove(handle);
-    }
-
-    void FrameScheduler::FreeBufferView(RHI::Handle<RHI::BufferView> handle)
-    {
-        auto context  = static_cast<Context*>(m_context);
-        auto resource = context->m_resourceManager->m_bufferViewOwner.Get(handle);
-
-        resource->Shutdown(context);
-
-        context->m_resourceManager->m_bufferViewOwner.Remove(handle);
     }
 
     std::vector<VkSemaphoreSubmitInfo> FrameScheduler::GetSemaphores(const std::vector<RHI::Pass*>& passes) const
@@ -533,6 +355,93 @@ namespace Vulkan
             submitInfos.push_back(submitInfo);
         }
         return submitInfos;
+    }
+
+    void FrameScheduler::ExecutePass(RHI::Pass& passBase)
+    {
+        auto  context          = static_cast<Context*>(m_context);
+        auto& pass             = static_cast<Pass&>(passBase);
+        auto  commandList      = static_cast<CommandList*>(pass.m_commandList);
+        auto  waitSemaphores   = GetSemaphores(pass.m_producers);
+        auto  signalSemaphores = GetSemaphores(pass.m_consumers);
+
+        if (pass.m_swapchain)
+        {
+            auto imageReadySemaphore = static_cast<Swapchain*>(pass.m_swapchain)->m_imageReadySemaphore;
+
+            auto submitInfo      = VkSemaphoreSubmitInfo{};
+            submitInfo.sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+            submitInfo.pNext     = nullptr;
+            submitInfo.semaphore = imageReadySemaphore;
+            submitInfo.stageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT_KHR; // ConvertShaderStage(pass);
+            waitSemaphores.push_back(submitInfo);
+        }
+
+        auto signalSemaphore      = VkSemaphoreSubmitInfo{};
+        signalSemaphore.sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+        signalSemaphore.pNext     = nullptr;
+        signalSemaphore.semaphore = pass.m_signalSemaphore;
+        signalSemaphore.stageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT_KHR; // ConvertShaderStage(pass);
+
+        auto commandSubmitInfo          = VkCommandBufferSubmitInfo{};
+        commandSubmitInfo.sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+        commandSubmitInfo.pNext         = nullptr;
+        commandSubmitInfo.commandBuffer = commandList->m_commandBuffer;
+
+        auto submitInfo                     = VkSubmitInfo2{};
+        submitInfo.sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+        submitInfo.pNext                    = nullptr;
+        submitInfo.flags                    = 0;
+        submitInfo.waitSemaphoreInfoCount   = waitSemaphores.size();
+        submitInfo.pWaitSemaphoreInfos      = waitSemaphores.data();
+        submitInfo.commandBufferInfoCount   = 1;
+        submitInfo.pCommandBufferInfos      = &commandSubmitInfo;
+        submitInfo.signalSemaphoreInfoCount = 1;
+        submitInfo.pSignalSemaphoreInfos    = &signalSemaphore;
+
+        auto currentFrameFence = m_framesInflightFences[m_currentFrameIndex];
+
+        auto result = vkQueueSubmit2(context->m_graphicsQueue, 1, &submitInfo, currentFrameFence);
+        VULKAN_ASSERT_SUCCESS(result);
+    }
+
+    void FrameScheduler::ResetPass(RHI::Pass& passBase)
+    {
+        auto& pass    = static_cast<Pass&>(passBase);
+        auto  context = static_cast<Context*>(m_context);
+        auto  result  = vkResetFences(context->m_device, 1, &pass.m_signalFence);
+        VULKAN_ASSERT_SUCCESS(result);
+    }
+
+    RHI::CommandList* FrameScheduler::GetCommandList(uint32_t frameIndex)
+    {
+        m_graphicsCommandlistAllocator->SetFrameIndex(frameIndex);
+        return m_graphicsCommandlistAllocator->Allocate();
+    }
+
+    void FrameScheduler::OnFrameEnd()
+    {
+        auto context = static_cast<Context*>(m_context);
+
+        m_currentFrameIndex = 0;
+        if (m_attachmentsRegistry->m_swapchainAttachments.empty() == false)
+        {
+            m_currentFrameIndex = m_attachmentsRegistry->m_swapchainAttachments.front()->swapchain->GetCurrentImageIndex();
+        }
+
+        // todo
+        static uint32_t init = 0;
+
+        if (init < 3)
+        {
+            init++;
+            return;
+        }
+
+        auto currentFrameFence = m_framesInflightFences[m_currentFrameIndex];
+        auto result            = vkWaitForFences(context->m_device, 1, &currentFrameFence, VK_TRUE, UINT64_MAX);
+        result                 = vkResetFences(context->m_device, 1, &currentFrameFence);
+        VULKAN_ASSERT_SUCCESS(result);
     }
 
 } // namespace Vulkan

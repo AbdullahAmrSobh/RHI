@@ -7,7 +7,7 @@ namespace RHI
 {
     enum class Format : uint8_t
     {
-        Unkown,
+        Unknown,
 
         R8_UINT,
         R8_SINT,
@@ -97,22 +97,22 @@ namespace RHI
         uint8_t     bytesPerBlock;
         uint8_t     blockSize;
         FormatType  type;
-        bool        hasRed : 1;
-        bool        hasGreen : 1;
-        bool        hasBlue : 1;
-        bool        hasAlpha : 1;
-        bool        hasDepth : 1;
+        bool        hasRed     : 1;
+        bool        hasGreen   : 1;
+        bool        hasBlue    : 1;
+        bool        hasAlpha   : 1;
+        bool        hasDepth   : 1;
         bool        hasStencil : 1;
-        bool        isSigned : 1;
-        bool        isSRGB : 1;
+        bool        isSigned   : 1;
+        bool        isSRGB     : 1;
     };
 
-    RHI_EXPORT const FormatInfo& ConvertFormatInfo(Format format);
+    RHI_EXPORT const FormatInfo& GetFormatInfo(Format format);
 
-    RHI_EXPORT uint32_t          ConvertFormatByteSize(Format format);
+    RHI_EXPORT uint32_t          GetFormatByteSize(Format format);
 
-    RHI_EXPORT uint32_t          ConvertFormatComponentByteSize(Format format);
+    RHI_EXPORT uint32_t          GetFormatComponentByteSize(Format format);
 
-    RHI_EXPORT FormatType        ConvertFormatType(Format format);
+    RHI_EXPORT FormatType        GetFormatType(Format format);
 
 } // namespace RHI

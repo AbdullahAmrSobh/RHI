@@ -19,7 +19,7 @@ public:
             createInfo.blockSize           = 10 * RHI::AllocationSizeConstants::KB;
             createInfo.minBlockAlignment   = alignof(uint64_t);
 
-            m_resourcePool                 = m_context->CreateResourcePool(createInfo);
+            m_resourcePool = m_context->CreateResourcePool(createInfo);
         }
 
         // create buffer resource
@@ -33,28 +33,25 @@ public:
                     -1.0f,  1.0f, 0.0f,
                 };
 
-            constexpr uint32_t indexData[6] = { 0, 1, 2, 2, 3, 1};
+            constexpr uint32_t indexData[6] = 
+                { 
+                    0, 1, 2, 
+                    2, 3, 1
+                };
             // clang-format on
 
             RHI::BufferCreateInfo createInfo{};
             createInfo.usageFlags = RHI::BufferUsage::Vertex;
-            createInfo.byteSize   = 6 * sizeof(float);
-            {
-                auto [vertexBuffer, result] = m_resourcePool->Allocate(createInfo);
-                RHI_ASSERT(result == RHI::ResultCode::Success);
-                m_vertexBuffer = vertexBuffer;
-            }
+            createInfo.byteSize   = sizeof(float) * 4 * 3;
+            m_vertexBuffer        = m_resourcePool->Allocate(createInfo).GetValue();
+
             createInfo.usageFlags = RHI::BufferUsage::Index;
             createInfo.byteSize   = 6 * sizeof(uint32_t);
-            {
-                auto [indexBuffer, result] = m_resourcePool->Allocate(createInfo);
-                RHI_ASSERT(result == RHI::ResultCode::Success);
-                m_indexBuffer = indexBuffer;
-            }
+            m_indexBuffer         = m_resourcePool->Allocate(createInfo ).GetValue();
 
             RHI::DeviceMemoryPtr vertexBufferPtr = m_context->MapResource(m_vertexBuffer);
             RHI_ASSERT(vertexBufferPtr != nullptr);
-            memcpy(vertexBufferPtr, vertexData, sizeof(float) * 6);
+            memcpy(vertexBufferPtr, vertexData, sizeof(float) * 4 * 3);
             m_context->Unmap(m_vertexBuffer);
 
             RHI::DeviceMemoryPtr indexBufferPtr = m_context->MapResource(m_indexBuffer);
@@ -77,8 +74,7 @@ public:
         //     createInfo.mipLevels = 1;
         //     createInfo.arrayCount = 1;
 
-        //     auto [image, result] = m_resourcePool->Allocate(createInfo);
-        //     m_image = image;
+        //     m_image = m_resourcePool->Allocate(createInfo).GetValue();
 
         //     RHI::DeviceMemoryPtr dataPtr = m_context->MapResource(m_image);
         //     RHI_ASSERT(dataPtr != nullptr);
@@ -98,25 +94,26 @@ public:
             auto                        shaderCode = ReadBinaryFile("./Resources/Shaders/triangle.spv");
 
             RHI::ShaderModuleCreateInfo createInfo{};
-            createInfo.code                              = shaderCode.data();
-            createInfo.size                              = shaderCode.size();
+            createInfo.code = shaderCode.data();
+            createInfo.size = shaderCode.size();
+
             auto                            shaderModule = m_context->CreateShaderModule(createInfo);
 
             RHI::GraphicsPipelineCreateInfo psoCreateInfo{};
-            psoCreateInfo.vertexShaderModule                 = shaderModule.get();
-            psoCreateInfo.vertexShaderName                   = "VSMain";
-            psoCreateInfo.pixelShaderModule                  = shaderModule.get();
-            psoCreateInfo.pixelShaderName                    = "PSMain";
-            psoCreateInfo.renderTargetLayout                 = { { RHI::Format::BGRA8_UNORM }, RHI::Format::D32, RHI::Format::Unkown };
-            psoCreateInfo.depthStencilState.depthTestEnable  = true;
-            psoCreateInfo.depthStencilState.depthWriteEnable = true;
+            psoCreateInfo.vertexShaderModule                         = shaderModule.get();
+            psoCreateInfo.vertexShaderName                           = "VSMain";
+            psoCreateInfo.pixelShaderModule                          = shaderModule.get();
+            psoCreateInfo.pixelShaderName                            = "PSMain";
+            psoCreateInfo.renderTargetLayout                         = { { RHI::Format::BGRA8_UNORM }, RHI::Format::D32, RHI::Format::Unknown };
+            psoCreateInfo.depthStencilState.depthTestEnable          = true;
+            psoCreateInfo.depthStencilState.depthWriteEnable         = true;
             // psoCreateInfo.bindGroupLayouts                          = {layout};
             psoCreateInfo.renderTargetLayout.colorAttachmentsFormats = { RHI::Format::BGRA8_UNORM };
             psoCreateInfo.renderTargetLayout.depthAttachmentFormat   = RHI::Format::D32;
             psoCreateInfo.renderTargetLayout.colorAttachmentsFormats = { RHI::Format::BGRA8_UNORM };
             psoCreateInfo.renderTargetLayout.depthAttachmentFormat   = RHI::Format::D32;
 
-            m_pipelineState                                          = m_context->CreateGraphicsPipeline(psoCreateInfo);
+            m_pipelineState = m_context->CreateGraphicsPipeline(psoCreateInfo);
         }
 
         // create frame graph
@@ -132,14 +129,16 @@ public:
 
             // setup attachments
             RHI::ImageCreateInfo createInfo{};
+            createInfo.usageFlags  = RHI::ImageUsage::Depth;
             createInfo.size.width  = 800;
             createInfo.size.height = 600;
             createInfo.size.depth  = 1;
-            createInfo.usageFlags  = RHI::ImageUsage::Depth;
             createInfo.format      = RHI::Format::D32;
             createInfo.type        = RHI::ImageType::Image2D;
 
             RHI::ImageAttachmentUseInfo useInfo{};
+            useInfo.loadStoreOperations.loadOperation = RHI::ImageLoadOperation::Load;
+            useInfo.loadStoreOperations.storeOperation = RHI::ImageStoreOperation::Store;
 
             useInfo.clearValue.depth.depthValue = 1.0f;
             useInfo.usage                       = RHI::AttachmentUsage::Depth;
@@ -149,7 +148,7 @@ public:
             useInfo.clearValue.color         = { 0.3f, 0.6f, 0.9f, 1.0f };
             useInfo.usage                    = RHI::AttachmentUsage::RenderTarget;
             useInfo.subresource.imageAspects = RHI::ImageAspect::Color;
-            m_renderpass->ImportImageResource("color-attachment", m_swapchain->GetImage(), useInfo);
+            m_renderpass->ImportSwapchainImageResource("color-attachment", m_swapchain.get(), useInfo);
 
             // auto textureAttachment = pass.ImportImageResource("texture", m_image, useInfo);
 
@@ -162,8 +161,6 @@ public:
 
             m_frameScheduler->Submit(*m_renderpass);
         }
-
-        m_frameScheduler->Compile();
     }
 
     void OnShutdown() override
@@ -189,16 +186,18 @@ public:
             .minDepth = 0.0,
             .maxDepth = 1.0,
         });
+
         cmd.SetSicssor({
             .width  = 800,
             .height = 600,
         });
+
         cmd.Submit({
-            .pipelineState{ m_pipelineState },
-            .shaderBindGroups{ m_shaderBindGroup },
-            .vertexBuffers{ m_vertexBuffer },
-            .indexBuffers{ m_indexBuffer },
-            .parameters{ .elementCount = 6 },
+            .pipelineState    = m_pipelineState,
+            .shaderBindGroups = m_shaderBindGroup,
+            .vertexBuffers    = m_vertexBuffer,
+            .indexBuffers     = m_indexBuffer,
+            .parameters       = { .elementCount = 6 },
         });
 
         m_renderpass->EndCommandList();

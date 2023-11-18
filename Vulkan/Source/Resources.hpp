@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Allocator.hpp"
+
 #include <RHI/Resources.hpp>
 #include <RHI/Swapchain.hpp>
 
@@ -14,61 +15,76 @@ namespace RHI
 
 namespace Vulkan
 {
+    namespace TL = ::RHI::TL;
 
     class Context;
     class ShaderModule;
     class ResourcePool;
     class Swapchain;
 
-    VkSampleCountFlagBits ConvertSampleCount(RHI::SampleCount sampleCount);
+    VkSampleCountFlagBits    ConvertSampleCount(RHI::SampleCount sampleCount);
 
-    VkSampleCountFlags    ConvertSampleCountFlags(RHI::Flags<RHI::SampleCount> sampleCountFlags);
+    VkSampleCountFlags       ConvertSampleCountFlags(RHI::Flags<RHI::SampleCount> sampleCountFlags);
 
-    VkImageUsageFlagBits  ConvertImageUsage(RHI::ImageUsage imageUsage);
+    VkImageUsageFlagBits     ConvertImageUsage(RHI::ImageUsage imageUsage);
 
-    VkImageUsageFlags     ConvertImageUsageFlags(RHI::Flags<RHI::ImageUsage> imageUsageFlags);
+    VkImageUsageFlags        ConvertImageUsageFlags(RHI::Flags<RHI::ImageUsage> imageUsageFlags);
 
-    VkImageType           ConvertImageType(RHI::ImageType imageType);
+    VkImageType              ConvertImageType(RHI::ImageType imageType);
 
-    VkImageAspectFlagBits ConvertImageAspect(RHI::Flags<RHI::ImageAspect> imageAspect);
+    VkImageAspectFlagBits    ConvertImageAspect(RHI::Flags<RHI::ImageAspect> imageAspect);
 
-    VkImageAspectFlags    ConvertImageAspect(RHI::ImageAspect imageAspect);
+    VkImageAspectFlags       ConvertImageAspect(RHI::ImageAspect imageAspect);
 
-    VkComponentSwizzle    ConvertComponentSwizzle(RHI::ComponentSwizzle componentSwizzle);
+    VkComponentSwizzle       ConvertComponentSwizzle(RHI::ComponentSwizzle componentSwizzle);
 
-    VkBufferUsageFlagBits ConvertBufferUsage(RHI::BufferUsage bufferUsage);
+    VkBufferUsageFlagBits    ConvertBufferUsage(RHI::BufferUsage bufferUsage);
 
-    VkBufferUsageFlags    ConvertBufferUsageFlags(RHI::Flags<RHI::BufferUsage> bufferUsageFlags);
+    VkBufferUsageFlags       ConvertBufferUsageFlags(RHI::Flags<RHI::BufferUsage> bufferUsageFlags);
 
-    VkShaderStageFlagBits ConvertShaderStage(RHI::ShaderStage shaderStage);
+    VkShaderStageFlagBits    ConvertShaderStage(RHI::ShaderStage shaderStage);
 
-    VkShaderStageFlags    ConvertShaderStage(RHI::Flags<RHI::ShaderStage> shaderStageFlags);
+    VkShaderStageFlags       ConvertShaderStage(RHI::Flags<RHI::ShaderStage> shaderStageFlags);
 
-    VkDescriptorType      ConvertDescriptorType(RHI::ShaderBindingType bindingType);
+    VkDescriptorType         ConvertDescriptorType(RHI::ShaderBindingType bindingType);
 
-    VkAccessFlags         ConvertAccessFlags(RHI::ShaderBindingAccess bindingAccess);
+    VkAccessFlags            ConvertAccessFlags(RHI::ShaderBindingAccess bindingAccess);
 
-    VkVertexInputRate     ConvertVertexInputRate(RHI::PipelineVertexInputRate inputRate);
+    VkVertexInputRate        ConvertVertexInputRate(RHI::PipelineVertexInputRate inputRate);
 
-    VkCullModeFlags       ConvertCullModeFlags(RHI::PipelineRasterizerStateCullMode cullMode);
+    VkCullModeFlags          ConvertCullModeFlags(RHI::PipelineRasterizerStateCullMode cullMode);
 
-    VkPolygonMode         ConvertPolygonMode(RHI::PipelineRasterizerStateFillMode fillMode);
+    VkPolygonMode            ConvertPolygonMode(RHI::PipelineRasterizerStateFillMode fillMode);
 
-    VkPrimitiveTopology   ConvertPrimitiveTopology(RHI::PipelineTopologyMode topologyMode);
+    VkPrimitiveTopology      ConvertPrimitiveTopology(RHI::PipelineTopologyMode topologyMode);
 
-    VkFrontFace           ConvertFrontFace(RHI::PipelineRasterizerStateFrontFace frontFace);
+    VkFrontFace              ConvertFrontFace(RHI::PipelineRasterizerStateFrontFace frontFace);
 
-    VkCompareOp           ConvertCompareOp(RHI::CompareOperator compareOperator);
+    VkCompareOp              ConvertCompareOp(RHI::CompareOperator compareOperator);
 
-    VkFilter              ConvertFilter(RHI::SamplerFilter samplerFilter);
+    VkFilter                 ConvertFilter(RHI::SamplerFilter samplerFilter);
 
-    VkSamplerAddressMode  ConvertSamplerAddressMode(RHI::SamplerAddressMode addressMode);
+    VkSamplerAddressMode     ConvertSamplerAddressMode(RHI::SamplerAddressMode addressMode);
 
-    VkCompareOp           ConvertCompareOp(RHI::SamplerCompareOperation compareOperation);
+    VkCompareOp              ConvertCompareOp(RHI::SamplerCompareOperation compareOperation);
 
-    VkBlendFactor         ConvertBlendFactor(RHI::BlendFactor blendFactor);
+    VkBlendFactor            ConvertBlendFactor(RHI::BlendFactor blendFactor);
 
-    VkBlendOp             ConvertBlendOp(RHI::BlendEquation blendEquation);
+    VkBlendOp                ConvertBlendOp(RHI::BlendEquation blendEquation);
+
+    VkImageSubresource       ConvertSubresource(const RHI::ImageSubresource& subresource);
+
+    VkImageSubresourceLayers ConvertSubresourceLayer(const RHI::ImageSubresource& subresource);
+
+    VkImageSubresourceRange  ConvertSubresourceRange(const RHI::ImageSubresource& subresource);
+
+    VkExtent3D               ConvertExtent3D(RHI::ImageSize size);
+    
+    VkExtent2D               ConvertExtent2D(RHI::ImageSize size);
+
+    VkOffset3D               ConvertOffset3D(RHI::ImageOffset offset);
+
+    VkOffset3D               ConvertOffset2D(RHI::ImageOffset offset);
 
     struct Image : RHI::Image
     {
@@ -171,13 +187,6 @@ namespace Vulkan
         void      Shutdown(Context* context);
     };
 
-    struct Fence
-    {
-        VkFence handle;
-
-        void    Shutdown(Context* context);
-    };
-
     class ShaderModule final : public RHI::ShaderModule
     {
     public:
@@ -185,6 +194,7 @@ namespace Vulkan
             : m_context(context)
         {
         }
+
         ~ShaderModule();
 
         VkResult Init(const RHI::ShaderModuleCreateInfo& createInfo);
@@ -201,13 +211,14 @@ namespace Vulkan
             : m_context(context)
         {
         }
+
         ~ShaderBindGroupAllocator();
 
         VkResult                                       Init();
 
-        std::vector<RHI::Handle<RHI::ShaderBindGroup>> AllocateShaderBindGroups(RHI::TL::Span<const RHI::ShaderBindGroupLayout> layouts) override;
+        std::vector<RHI::Handle<RHI::ShaderBindGroup>> AllocateShaderBindGroups(TL::Span<const RHI::ShaderBindGroupLayout> layouts) override;
 
-        void                                           Free(RHI::TL::Span<RHI::Handle<RHI::ShaderBindGroup>> groups) override;
+        void                                           Free(TL::Span<RHI::Handle<RHI::ShaderBindGroup>> groups) override;
 
         void                                           Update(RHI::Handle<RHI::ShaderBindGroup> group, const RHI::ShaderBindGroupData& data) override;
 
@@ -223,6 +234,7 @@ namespace Vulkan
             : m_context(context)
         {
         }
+
         ~ResourcePool();
 
         VkResult                              Init(const RHI::ResourcePoolCreateInfo& createInfo);
@@ -251,13 +263,14 @@ namespace Vulkan
             : m_context(context)
         {
         }
+
         ~Swapchain();
 
         VkResult        Init(const RHI::SwapchainCreateInfo& createInfo);
 
         RHI::ResultCode Resize(uint32_t newWidth, uint32_t newHeight) override;
 
-        RHI::ResultCode Present() override;
+        RHI::ResultCode Present(RHI::Pass& pass) override;
 
     private:
         VkResult                    CreateNativeSwapchain();
@@ -273,11 +286,11 @@ namespace Vulkan
 
         VkSemaphore              m_imageReadySemaphore = VK_NULL_HANDLE;
 
-        VkSwapchainKHR           m_swapchain           = VK_NULL_HANDLE;
+        VkSwapchainKHR           m_swapchain = VK_NULL_HANDLE;
 
-        VkSurfaceKHR             m_surface             = VK_NULL_HANDLE;
+        VkSurfaceKHR             m_surface = VK_NULL_HANDLE;
 
-        VkResult                 m_lastPresentResult   = VK_ERROR_UNKNOWN;
+        VkResult                 m_lastPresentResult = VK_ERROR_UNKNOWN;
 
         RHI::SwapchainCreateInfo m_swapchainInfo;
     };
@@ -288,49 +301,77 @@ namespace Vulkan
         ResourceManager(Context* context);
         ~ResourceManager();
 
-        RHI::Result<RHI::Handle<Image>>                                CreateImage(const VmaAllocationCreateInfo allocationInfo, const RHI::ImageCreateInfo& createInfo, ResourcePool* parentPool = nullptr, bool isTransientResource = false);
+        RHI::Result<RHI::Handle<Image>>               CreateImage(const VmaAllocationCreateInfo allocationInfo, const RHI::ImageCreateInfo& createInfo, ResourcePool* parentPool = nullptr, bool isTransientResource = false);
 
-        RHI::Result<RHI::Handle<Buffer>>                               CreateBuffer(const VmaAllocationCreateInfo allocationInfo, const RHI::BufferCreateInfo& createInfo, ResourcePool* parentPool = nullptr, bool isTransientResource = false);
+        RHI::Result<RHI::Handle<Buffer>>              CreateBuffer(const VmaAllocationCreateInfo allocationInfo, const RHI::BufferCreateInfo& createInfo, ResourcePool* parentPool = nullptr, bool isTransientResource = false);
 
-        RHI::Result<RHI::Handle<ImageView>>                            CreateImageView(RHI::Handle<Image> image, const RHI::ImageAttachmentUseInfo& useInfo);
+        RHI::Result<RHI::Handle<ImageView>>           CreateImageView(RHI::Handle<Image> image, const RHI::ImageAttachmentUseInfo& useInfo);
 
-        RHI::Result<RHI::Handle<BufferView>>                           CreateBufferView(RHI::Handle<Buffer> buffer, const RHI::BufferAttachmentUseInfo& useInfo);
+        RHI::Result<RHI::Handle<BufferView>>          CreateBufferView(RHI::Handle<Buffer> buffer, const RHI::BufferAttachmentUseInfo& useInfo);
 
-        RHI::Result<RHI::Handle<DescriptorSetLayout>>                  CreateDescriptorSetLayout(const RHI::ShaderBindGroupLayout& layout);
+        RHI::Result<RHI::Handle<DescriptorSetLayout>> CreateDescriptorSetLayout(const RHI::ShaderBindGroupLayout& layout);
 
-        RHI::Result<RHI::Handle<DescriptorSet>>                        CreateDescriptorSet(VkDescriptorPool pool, RHI::Handle<DescriptorSetLayout> descriptorSetLayout);
+        RHI::Result<RHI::Handle<DescriptorSet>>       CreateDescriptorSet(VkDescriptorPool pool, RHI::Handle<DescriptorSetLayout> descriptorSetLayout);
 
-        RHI::Result<RHI::Handle<PipelineLayout>>                       CreatePipelineLayout(RHI::TL::Span<const RHI::ShaderBindGroupLayout> shaderBindGroupLayouts);
+        RHI::Result<RHI::Handle<PipelineLayout>>      CreatePipelineLayout(TL::Span<const RHI::ShaderBindGroupLayout> shaderBindGroupLayouts);
 
-        RHI::Result<RHI::Handle<GraphicsPipeline>>                     CreateGraphicsPipeline(const RHI::GraphicsPipelineCreateInfo& createInfo);
+        RHI::Result<RHI::Handle<GraphicsPipeline>>    CreateGraphicsPipeline(const RHI::GraphicsPipelineCreateInfo& createInfo);
 
-        RHI::Result<RHI::Handle<ComputePipeline>>                      CreateComputePipeline(const RHI::ComputePipelineCreateInfo& createInfo);
+        RHI::Result<RHI::Handle<ComputePipeline>>     CreateComputePipeline(const RHI::ComputePipelineCreateInfo& createInfo);
 
-        RHI::Result<RHI::Handle<Sampler>>                              CreateSampler(const RHI::SamplerCreateInfo& createInfo);
+        RHI::Result<RHI::Handle<Sampler>>             CreateSampler(const RHI::SamplerCreateInfo& createInfo);
 
-        RHI::Result<RHI::Handle<Fence>>                                CreateFence();
+        void                                          FreeImage(RHI::Handle<Image> handle);
 
-        void                                                           FreeImage(RHI::Handle<Image> handle);
+        void                                          FreeBuffer(RHI::Handle<Buffer> handle);
 
-        void                                                           FreeBuffer(RHI::Handle<Buffer> handle);
+        void                                          FreeImageView(RHI::Handle<ImageView> handle);
 
-        void                                                           FreeImageView(RHI::Handle<ImageView> handle);
+        void                                          FreeBufferView(RHI::Handle<BufferView> handle);
 
-        void                                                           FreeBufferView(RHI::Handle<BufferView> handle);
+        void                                          FreeDescriptorSetLayout(RHI::Handle<DescriptorSetLayout> handle);
 
-        void                                                           FreeDescriptorSetLayout(RHI::Handle<DescriptorSetLayout> handle);
+        void                                          FreeDescriptorSet(RHI::Handle<DescriptorSet> handle);
 
-        void                                                           FreeDescriptorSet(RHI::Handle<DescriptorSet> handle);
+        void                                          FreePipelineLayout(RHI::Handle<PipelineLayout> handle);
 
-        void                                                           FreePipelineLayout(RHI::Handle<PipelineLayout> handle);
+        void                                          FreeGraphicsPipeline(RHI::Handle<GraphicsPipeline> handle);
 
-        void                                                           FreeGraphicsPipeline(RHI::Handle<GraphicsPipeline> handle);
+        void                                          FreeComputePipeline(RHI::Handle<ComputePipeline> handle);
 
-        void                                                           FreeComputePipeline(RHI::Handle<ComputePipeline> handle);
+        void                                          FreeSampler(RHI::Handle<Sampler> handle);
 
-        void                                                           FreeSampler(RHI::Handle<Sampler> handle);
+        // const Image*                                  Get(const RHI::Handle<RHI::Image> handle) const;
+        // Image*                                        Get(RHI::Handle<RHI::Image> handle);
 
-        void                                                           FreeFence(RHI::Handle<Fence> handle);
+        // const Buffer*                                 Get(const RHI::Handle<RHI::Buffer> handle) const;
+        // Buffer*                                       Get(RHI::Handle<RHI::Buffer> handle);
+
+        // const ImageView*                              Get(const RHI::Handle<RHI::ImageView> handle) const;
+        // ImageView*                                    Get(RHI::Handle<RHI::ImageView> handle);
+
+        // const BufferView*                             Get(const RHI::Handle<RHI::BufferView> handle) const;
+        // BufferView*                                   Get(RHI::Handle<RHI::BufferView> handle);
+
+        // const DescriptorSetLayout*                    Get(const RHI::Handle<DescriptorSetLayout> handle) const;
+        // DescriptorSetLayout*                          Get(RHI::Handle<DescriptorSetLayout> handle);
+
+        // const DescriptorSet*                          Get(const RHI::Handle<DescriptorSet> handle) const;
+        // DescriptorSet*                                Get(RHI::Handle<DescriptorSet> handle);
+
+        // const PipelineLayout*                         Get(const RHI::Handle<RHI::PipelineLayout> handle) const;
+        // PipelineLayout*                               Get(RHI::Handle<RHI::PipelineLayout> handle);
+
+        // const GraphicsPipeline*                       Get(const RHI::Handle<RHI::GraphicsPipeline> handle) const;
+        // GraphicsPipeline*                             Get(RHI::Handle<RHI::GraphicsPipeline> handle);
+
+        // const ComputePipeline*                        Get(const RHI::Handle<RHI::ComputePipeline> handle) const;
+        // ComputePipeline*                              Get(RHI::Handle<RHI::ComputePipeline> handle);
+
+        // const Sampler*                                Get(const RHI::Handle<RHI::Sampler> handle) const;
+        // Sampler*                                      Get(RHI::Handle<Sampler> handle);
+
+        friend class Swapchain;
 
         Context*                                                       m_context;
 
@@ -353,8 +394,6 @@ namespace Vulkan
         RHI::HandlePool<ComputePipeline>                               m_computePipelineOwner;
 
         RHI::HandlePool<Sampler>                                       m_samplerOwner;
-
-        RHI::HandlePool<Fence>                                         m_fenceOwner;
 
         std::unordered_map<uint64_t, RHI::Handle<DescriptorSetLayout>> m_descriptorSetLayoutCache;
 

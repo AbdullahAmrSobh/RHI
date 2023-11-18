@@ -1,14 +1,11 @@
 #pragma once
 
-#include <compare>
+#include "RHI/Assert.hpp"
+
 #include <cstddef>
-#include <cstdint>
 #include <initializer_list>
-#include <iterator>
 #include <type_traits>
 #include <vector>
-
-#include "RHI/Assert.hpp"
 
 namespace RHI
 {

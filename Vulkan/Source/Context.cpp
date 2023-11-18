@@ -1,31 +1,34 @@
 #define VK_USE_PLATFORM_WIN32_KHR
-#include "RHI-Vulkan/Loader.hpp"
 
+#include "CommandList.hpp"
 #include "Common.hpp"
-#include "Context.hpp"
 #include "FrameGraph.hpp"
+#include "RHI-Vulkan/Loader.hpp"
 #include "Resources.hpp"
 
+#undef CreateSemaphore
+#include "Context.hpp"
+
 #ifdef VK_USE_PLATFORM_WIN32_KHR
-#define RHI_VULKAN_USE_CURRENT_PLATFORM_SURFACE_EXTENSION_NAME VK_KHR_WIN32_SURFACE_EXTENSION_NAME
+    #define RHI_VULKAN_USE_CURRENT_PLATFORM_SURFACE_EXTENSION_NAME VK_KHR_WIN32_SURFACE_EXTENSION_NAME
 #elif defined(VK_USE_PLATFORM_MACOS_MVK)
-#define RHI_VULKAN_USE_CURRENT_PLATFORM_SURFACE_EXTENSION_NAME VK_MVK_MACOS_SURFACE_EXTENSION_NAME
+    #define RHI_VULKAN_USE_CURRENT_PLATFORM_SURFACE_EXTENSION_NAME VK_MVK_MACOS_SURFACE_EXTENSION_NAME
 #elif defined(VK_USE_PLATFORM_XCB_KHR)
-#define RHI_VULKAN_USE_CURRENT_PLATFORM_SURFACE_EXTENSION_NAME VK_KHR_XCB_SURFACE_EXTENSION_NAME
+    #define RHI_VULKAN_USE_CURRENT_PLATFORM_SURFACE_EXTENSION_NAME VK_KHR_XCB_SURFACE_EXTENSION_NAME
 #elif defined(VK_USE_PLATFORM_ANDROID_KHR)
-#define RHI_VULKAN_USE_CURRENT_PLATFORM_SURFACE_EXTENSION_NAME VK_KHR_ANDROID_SURFACE_EXTENSION_NAME
+    #define RHI_VULKAN_USE_CURRENT_PLATFORM_SURFACE_EXTENSION_NAME VK_KHR_ANDROID_SURFACE_EXTENSION_NAME
 #elif defined(VK_USE_PLATFORM_XLIB_KHR)
-#define RHI_VULKAN_USE_CURRENT_PLATFORM_SURFACE_EXTENSION_NAME VK_KHR_XLIB_SURFACE_EXTENSION_NAME
+    #define RHI_VULKAN_USE_CURRENT_PLATFORM_SURFACE_EXTENSION_NAME VK_KHR_XLIB_SURFACE_EXTENSION_NAME
 #elif defined(VK_USE_PLATFORM_XCB_KHR)
-#define RHI_VULKAN_USE_CURRENT_PLATFORM_SURFACE_EXTENSION_NAME VK_KHR_XCB_SURFACE_EXTENSION_NAME
+    #define RHI_VULKAN_USE_CURRENT_PLATFORM_SURFACE_EXTENSION_NAME VK_KHR_XCB_SURFACE_EXTENSION_NAME
 #elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
-#define RHI_VULKAN_USE_CURRENT_PLATFORM_SURFACE_EXTENSION_NAME VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME
+    #define RHI_VULKAN_USE_CURRENT_PLATFORM_SURFACE_EXTENSION_NAME VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME
 #elif defined(VK_USE_PLATFORM_MIR_KHR || VK_USE_PLATFORM_DISPLAY_KHR)
-#define RHI_VULKAN_USE_CURRENT_PLATFORM_SURFACE_EXTENSION_NAME VK_KHR_DISPLAY_EXTENSION_NAME
+    #define RHI_VULKAN_USE_CURRENT_PLATFORM_SURFACE_EXTENSION_NAME VK_KHR_DISPLAY_EXTENSION_NAME
 #elif defined(VK_USE_PLATFORM_ANDROID_KHR)
-#define RHI_VULKAN_USE_CURRENT_PLATFORM_SURFACE_EXTENSION_NAME VK_KHR_ANDROID_SURFACE_EXTENSION_NAME
+    #define RHI_VULKAN_USE_CURRENT_PLATFORM_SURFACE_EXTENSION_NAME VK_KHR_ANDROID_SURFACE_EXTENSION_NAME
 #elif defined(VK_USE_PLATFORM_IOS_MVK)
-#define RHI_VULKAN_USE_CURRENT_PLATFORM_SURFACE_EXTENSION_NAME VK_MVK_IOS_SURFACE_EXTENSION_NAME
+    #define RHI_VULKAN_USE_CURRENT_PLATFORM_SURFACE_EXTENSION_NAME VK_MVK_IOS_SURFACE_EXTENSION_NAME
 #endif // VK_USE_PLATFORM_WIN32_KHR
 
 // todo: make this a cmake build option
@@ -36,7 +39,7 @@ std::unique_ptr<RHI::Context> RHI::CreateVulkanRHI(const RHI::ApplicationInfo& a
     auto context = std::make_unique<Vulkan::Context>();
     auto result  = context->Init(appInfo, std::move(debugCallbacks));
     RHI_ASSERT(result == VK_SUCCESS);
-    return context;
+    return std::move(context);
 }
 
 namespace Vulkan
@@ -119,7 +122,7 @@ namespace Vulkan
         debugCreateInfo.pfnUserCallback = DebugMessengerCallbacks;
         debugCreateInfo.pUserData       = debugCallbacks.get();
 
-        bool debugExtensionFound        = false;
+        bool debugExtensionFound = false;
 
         for (VkExtensionProperties extension : GetAvailableInstanceExtensions())
         {
@@ -150,7 +153,7 @@ namespace Vulkan
         createInfo.enabledExtensionCount   = static_cast<uint32_t>(enabledExtensionsNames.size());
         createInfo.ppEnabledExtensionNames = enabledExtensionsNames.data();
 
-        VkResult result                    = vkCreateInstance(&createInfo, nullptr, &m_instance);
+        VkResult result = vkCreateInstance(&createInfo, nullptr, &m_instance);
         VULKAN_RETURN_VKERR_CODE(result);
 
         for (VkPhysicalDevice physicalDevice : GetAvailablePhysicalDevices())
@@ -206,9 +209,9 @@ namespace Vulkan
             };
 
             std::vector<const char*> deviceExtensionNames = {
-                // #if RHI_DEBUG
-                // VK_EXT_DEBUG_MARKER_EXTENSION_NAME
-                // #endif
+#if RHI_DEBUG
+                VK_EXT_DEBUG_MARKER_EXTENSION_NAME,
+#endif
                 VK_KHR_SWAPCHAIN_EXTENSION_NAME,
                 VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
                 VK_KHR_MAINTENANCE2_EXTENSION_NAME,
@@ -295,7 +298,7 @@ namespace Vulkan
             deviceCreateInfo.ppEnabledExtensionNames = deviceExtensionNames.data();
             deviceCreateInfo.pEnabledFeatures        = &enabledFeatures;
 
-            VkResult result                          = vkCreateDevice(m_physicalDevice, &deviceCreateInfo, nullptr, &m_device);
+            VkResult result = vkCreateDevice(m_physicalDevice, &deviceCreateInfo, nullptr, &m_device);
             VULKAN_RETURN_VKERR_CODE(result);
 
             vkGetDeviceQueue(m_device, m_graphicsQueueFamilyIndex, 0, &m_graphicsQueue);
@@ -320,19 +323,24 @@ namespace Vulkan
             createInfo.instance         = m_instance;
             createInfo.vulkanApiVersion = VK_API_VERSION_1_3;
 
-            VkResult result             = vmaCreateAllocator(&createInfo, &m_allocator);
+            VkResult result = vmaCreateAllocator(&createInfo, &m_allocator);
             VULKAN_RETURN_VKERR_CODE(result);
         }
 
         // load function pointers
-        m_vkCmdDebugMarkerBeginEXT  = reinterpret_cast<PFN_vkCmdDebugMarkerBeginEXT>(vkGetDeviceProcAddr(m_device, "vkCmdDebugMarkerBeginEXT"));
-        m_vkCmdDebugMarkerInsertEXT = reinterpret_cast<PFN_vkCmdDebugMarkerInsertEXT>(vkGetDeviceProcAddr(m_device, "vkCmdDebugMarkerInsertEXT"));
-        m_vkCmdDebugMarkerEndEXT    = reinterpret_cast<PFN_vkCmdDebugMarkerEndEXT>(vkGetDeviceProcAddr(m_device, "vkCmdDebugMarkerEndEXT"));
 
-        // RHI_ASSERT(m_vkCmdDebugMarkerBeginEXT != nullptr);
-        // RHI_ASSERT(m_vkCmdDebugMarkerInsertEXT != nullptr);
-        // RHI_ASSERT(m_vkCmdDebugMarkerEndEXT != nullptr);
+        if (debugExtensionFound)
+        {
+            m_vkCmdDebugMarkerBeginEXT  = VULKAN_LOAD_PROC(m_device, vkCmdDebugMarkerBeginEXT);
+            m_vkCmdDebugMarkerInsertEXT = VULKAN_LOAD_PROC(m_device, vkCmdDebugMarkerInsertEXT);
+            m_vkCmdDebugMarkerEndEXT    = VULKAN_LOAD_PROC(m_device, vkCmdDebugMarkerEndEXT);
 
+            RHI_ASSERT(m_vkCmdDebugMarkerBeginEXT != nullptr);
+            RHI_ASSERT(m_vkCmdDebugMarkerInsertEXT != nullptr);
+            RHI_ASSERT(m_vkCmdDebugMarkerEndEXT != nullptr);
+        }
+
+        VULKAN_ASSERT_SUCCESS(result);
         return result;
     }
 
@@ -381,6 +389,20 @@ namespace Vulkan
         return handle;
     }
 
+    RHI::Handle<RHI::ImageView> Context::CreateImageView(RHI::Handle<RHI::Image> handle, const RHI::ImageAttachmentUseInfo& useInfo)
+    {
+        auto [viewHandle, result] = m_resourceManager->CreateImageView(handle, useInfo);
+        RHI_ASSERT(result == RHI::ResultCode::Success);
+        return viewHandle;
+    }
+
+    RHI::Handle<RHI::BufferView> Context::CreateBufferView(RHI::Handle<RHI::Buffer> handle, const RHI::BufferAttachmentUseInfo& useInfo)
+    {
+        auto [viewHandle, result] = m_resourceManager->CreateBufferView(handle, useInfo);
+        RHI_ASSERT(result == RHI::ResultCode::Success);
+        return viewHandle;
+    }
+
     std::unique_ptr<RHI::FrameScheduler> Context::CreateFrameScheduler()
     {
         auto scheduler = std::make_unique<FrameScheduler>(this);
@@ -404,8 +426,8 @@ namespace Vulkan
 
         auto                 allocation = resource->allocation.handle;
 
-        RHI::DeviceMemoryPtr memoryPtr  = nullptr;
-        VkResult             result     = vmaMapMemory(m_allocator, allocation, &memoryPtr);
+        RHI::DeviceMemoryPtr memoryPtr = nullptr;
+        VkResult             result    = vmaMapMemory(m_allocator, allocation, &memoryPtr);
         RHI_ASSERT(result == VK_SUCCESS);
         return memoryPtr;
     }
@@ -417,8 +439,8 @@ namespace Vulkan
 
         auto                 allocation = resource->allocation.handle;
 
-        RHI::DeviceMemoryPtr memoryPtr  = nullptr;
-        VkResult             result     = vmaMapMemory(m_allocator, allocation, &memoryPtr);
+        RHI::DeviceMemoryPtr memoryPtr = nullptr;
+        VkResult             result    = vmaMapMemory(m_allocator, allocation, &memoryPtr);
         RHI_ASSERT(result == VK_SUCCESS);
         return memoryPtr;
     }
@@ -450,6 +472,50 @@ namespace Vulkan
     void Context::Free(RHI::Handle<RHI::Sampler> sampler)
     {
         m_resourceManager->FreeSampler(RHI::Handle<Sampler>(sampler));
+    }
+
+    void Context::Free(RHI::Handle<RHI::ImageView> view)
+    {
+        m_resourceManager->FreeImageView(view);
+    }
+
+    void Context::Free(RHI::Handle<RHI::BufferView> view)
+    {
+        m_resourceManager->FreeBufferView(view);
+    }
+
+    VkSemaphore Context::CreateSemaphore()
+    {
+        VkSemaphoreCreateInfo createInfo{};
+        createInfo.sType      = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        createInfo.pNext      = nullptr;
+        createInfo.flags      = 0;
+        VkSemaphore semaphore = VK_NULL_HANDLE;
+        auto        result    = vkCreateSemaphore(m_device, &createInfo, nullptr, &semaphore);
+        VULKAN_ASSERT_SUCCESS(result);
+        return semaphore;
+    }
+
+    void Context::FreeSemaphore(VkSemaphore semaphore)
+    {
+        vkDestroySemaphore(m_device, semaphore, nullptr);
+    }
+
+    VkFence Context::CreateFence()
+    {
+        VkFenceCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        createInfo.pNext = nullptr;
+        createInfo.flags = 0;
+        VkFence fence    = VK_NULL_HANDLE;
+        auto    result   = vkCreateFence(m_device, &createInfo, nullptr, &fence);
+        VULKAN_ASSERT_SUCCESS(result);
+        return fence;
+    }
+
+    void Context::FreeFence(VkFence fence)
+    {
+        vkDestroyFence(m_device, fence, nullptr);
     }
 
     std::vector<VkLayerProperties> Context::GetAvailableInstanceLayerExtensions() const
