@@ -14,6 +14,7 @@
 
 #undef LoadImage
 
+#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 class DebugCallbacks final : public RHI::DebugCallbacks
