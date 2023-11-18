@@ -1,3 +1,9 @@
+struct VSInput
+{
+	[[vk::location(0)]] float2 Pos : POSITION0;
+	[[vk::location(1)]] float4 Color : COLOR0;
+};
+
 struct VSOutput
 {
 	float4 position : SV_POSITION;
@@ -9,14 +15,11 @@ struct PSOutput
 	float4 color : SV_TARGET0;
 };
 
-VSOutput VSMain(uint index: SV_VertexID)
+VSOutput VSMain(VSInput input)
 {
-	float4 trianglePositions[3] = { float4(0, -1, 0, 1), float4(-1, 1, 0, 1), float4(1, 1, 0, 1) };
-	float4 triangleColors[3]    = { float4(1, 0, 0, 1), float4(0, 1, 0, 1), float4(0, 0, 1, 1) };
-
 	VSOutput output; 
-	output.position = trianglePositions[index];
-	output.color    = triangleColors[index];
+	output.position = float4(input.Pos, 0, 1);
+	output.color    = input.Color;
 	return output;
 }
 

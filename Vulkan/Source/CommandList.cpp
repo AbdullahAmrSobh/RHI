@@ -302,8 +302,8 @@ namespace Vulkan
         renderingInfo.sType                    = VK_STRUCTURE_TYPE_RENDERING_INFO;
         renderingInfo.pNext                    = nullptr;
         renderingInfo.flags                    = 0;
-        renderingInfo.renderArea.extent.width  = pass.m_width;
-        renderingInfo.renderArea.extent.height = pass.m_height;
+        renderingInfo.renderArea.extent.width  = 800;
+        renderingInfo.renderArea.extent.height = 600;
         renderingInfo.renderArea.offset.x      = 0;
         renderingInfo.renderArea.offset.y      = 0;
         renderingInfo.layerCount               = 1;
@@ -586,7 +586,10 @@ namespace Vulkan
         attachmentInfo.imageLayout                   = ConvertImageLayout(passAttachment.info.usage, passAttachment.info.access);
         attachmentInfo.loadOp                        = ConvertLoadOp(passAttachment.info.loadStoreOperations.loadOperation);
         attachmentInfo.storeOp                       = ConvertStoreOp(passAttachment.info.loadStoreOperations.storeOperation);
-        attachmentInfo.clearValue.depthStencil.depth = passAttachment.info.clearValue.depth.depthValue;
+        attachmentInfo.clearValue.color.float32[0]      = passAttachment.info.clearValue.color.r;
+        attachmentInfo.clearValue.color.float32[1]      = passAttachment.info.clearValue.color.g;
+        attachmentInfo.clearValue.color.float32[2]      = passAttachment.info.clearValue.color.b;
+        attachmentInfo.clearValue.color.float32[3]      = passAttachment.info.clearValue.color.a;
         return attachmentInfo;
     }
 

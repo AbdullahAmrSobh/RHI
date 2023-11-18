@@ -458,14 +458,14 @@ namespace RHI
     /// @brief Structure specifying the blending parameters for an image render target attachment.
     struct ColorAttachmentBlendStateDesc
     {
-        bool                  blendEnable = false;
-        BlendEquation         colorBlendOp;
-        BlendFactor           srcColor;
-        BlendFactor           dstColor;
-        BlendEquation         alphaBlendOp;
-        BlendFactor           srcAlpha;
-        BlendFactor           dstAlpha;
-        Flags<ColorWriteMask> writeMask = ColorWriteMask::All;
+        bool                  blendEnable  = false;
+        BlendEquation         colorBlendOp = BlendEquation::Add;
+        BlendFactor           srcColor     = BlendFactor::One;
+        BlendFactor           dstColor     = BlendFactor::Zero;
+        BlendEquation         alphaBlendOp = BlendEquation::Add;
+        BlendFactor           srcAlpha     = BlendFactor::One;
+        BlendFactor           dstAlpha     = BlendFactor::Zero;
+        Flags<ColorWriteMask> writeMask    = ColorWriteMask::All;
 
         inline bool           operator==(const ColorAttachmentBlendStateDesc& other) const
         {
@@ -648,11 +648,9 @@ namespace RHI
 
         PipelineTopologyMode                  topologyMode = RHI::PipelineTopologyMode::Triangles;
 
-        TL::Span<const ShaderBindGroupLayout> bindGroupLayouts;
+        TL::Span<const ShaderBindGroupLayout> bindGroupLayouts = {};
 
         PipelineRenderTargetLayout            renderTargetLayout;
-
-        PipelineInputAssemblerStateDesc       vertexInputState;
 
         PipelineRasterizerStateDesc           rasterizationState;
 
@@ -660,7 +658,7 @@ namespace RHI
 
         PipelineDepthStencilStateDesc         depthStencilState;
 
-        PipelineColorBlendStateDesc           colorBlendState;
+        PipelineColorBlendStateDesc           colorBlendState = PipelineColorBlendStateDesc{};
     };
 
     /// @brief Description of a compute pipeline state.
