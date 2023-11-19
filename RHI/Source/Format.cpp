@@ -1,4 +1,5 @@
 #include "RHI/Format.hpp"
+
 #include "RHI/Assert.hpp"
 
 namespace RHI
@@ -76,6 +77,7 @@ namespace RHI
         { Format::BC7_UNORM,         "BC7_UNORM",         16,  4, FormatType::Normalized,   true,  true,  true,  true,  false, false, false, false },
         { Format::BC7_UNORM_SRGB,    "BC7_UNORM_SRGB",    16,  4, FormatType::Normalized,   true,  true,  true,  true,  false, false, false, true  },
     };
+
     // clang-format on
 
     const FormatInfo& GetFormatInfo(Format format)

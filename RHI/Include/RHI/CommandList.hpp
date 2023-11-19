@@ -79,7 +79,7 @@ namespace RHI
         uint32_t         destinationBytesPerImage = 0;
         // The destinationBuffer format is usually same as sourceImage's format. When source image contains more than one aspect,
         // the format should be compatiable with the aspect of the source image's subresource
-        Format           destinationFormat;
+        Format destinationFormat;
     };
 
     struct DrawParameters
@@ -105,13 +105,9 @@ namespace RHI
     struct CommandDraw
     {
         Handle<GraphicsPipeline>          pipelineState;
-
         TL::Span<Handle<ShaderBindGroup>> shaderBindGroups;
-
         TL::Span<const Handle<Buffer>>    vertexBuffers;
-
         Handle<Buffer>                    indexBuffers;
-
         DrawParameters                    parameters;
     };
 
@@ -163,9 +159,7 @@ namespace RHI
     struct CommandCompute
     {
         Handle<ComputePipeline>           pipelineState;
-
         TL::Span<Handle<ShaderBindGroup>> shaderBindGroups;
-
         DispatchParameters                parameters;
     };
 

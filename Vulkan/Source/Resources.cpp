@@ -503,7 +503,7 @@ namespace Vulkan
 
     VkResult ShaderModule::Init(const RHI::ShaderModuleCreateInfo& createInfo)
     {
-        auto                     context = static_cast<Context*>(m_context);
+        auto context = static_cast<Context*>(m_context);
 
         VkShaderModuleCreateInfo moduleCreateInfo{};
         moduleCreateInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -535,7 +535,7 @@ namespace Vulkan
 
     std::vector<RHI::Handle<RHI::ShaderBindGroup>> ShaderBindGroupAllocator::AllocateShaderBindGroups(TL::Span<const RHI::ShaderBindGroupLayout> layouts)
     {
-        auto                               context = static_cast<Context*>(m_context);
+        auto context = static_cast<Context*>(m_context);
 
         std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
 
@@ -618,7 +618,7 @@ namespace Vulkan
 
     void ShaderBindGroupAllocator::Free(TL::Span<RHI::Handle<RHI::ShaderBindGroup>> groups)
     {
-        auto                         context = static_cast<Context*>(m_context);
+        auto context = static_cast<Context*>(m_context);
 
         std::vector<VkDescriptorSet> descriptorSetHandles;
         descriptorSetHandles.reserve(groups.size());
@@ -634,15 +634,15 @@ namespace Vulkan
 
     void ShaderBindGroupAllocator::Update(RHI::Handle<RHI::ShaderBindGroup> group, const RHI::ShaderBindGroupData& data)
     {
-        auto                                             context          = static_cast<Context*>(m_context);
-        auto                                             resourcesManager = context->m_resourceManager.get();
-        auto                                             descriptorSet    = resourcesManager->m_descriptorSetOwner.Get(group);
+        auto context          = static_cast<Context*>(m_context);
+        auto resourcesManager = context->m_resourceManager.get();
+        auto descriptorSet    = resourcesManager->m_descriptorSetOwner.Get(group);
 
         std::vector<std::vector<VkDescriptorImageInfo>>  descriptorImageInfos;
         std::vector<std::vector<VkDescriptorBufferInfo>> descriptorBufferInfos;
         std::vector<std::vector<VkBufferView>>           descriptorBufferViews;
 
-        std::vector<VkWriteDescriptorSet>                writeInfos;
+        std::vector<VkWriteDescriptorSet> writeInfos;
 
         for (auto [binding, resourceVarient] : data.m_bindings)
         {
@@ -657,7 +657,7 @@ namespace Vulkan
 
                 for (auto passAttachment : resources->views)
                 {
-                    auto                  view = resourcesManager->m_imageViewOwner.Get(passAttachment->view);
+                    auto view = resourcesManager->m_imageViewOwner.Get(passAttachment->view);
 
                     VkDescriptorImageInfo imageInfo{};
                     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -676,7 +676,7 @@ namespace Vulkan
 
                 for (auto passAttachment : resources->views)
                 {
-                    auto                   buffer = resourcesManager->m_bufferOwner.Get(passAttachment->attachment->handle);
+                    auto buffer = resourcesManager->m_bufferOwner.Get(passAttachment->attachment->handle);
 
                     VkDescriptorBufferInfo imageInfo{};
                     imageInfo.buffer = buffer->handle;
@@ -696,7 +696,7 @@ namespace Vulkan
 
                 for (auto samplerHandle : resources->samplers)
                 {
-                    auto                  sampler = resourcesManager->m_samplerOwner.Get(samplerHandle);
+                    auto sampler = resourcesManager->m_samplerOwner.Get(samplerHandle);
 
                     VkDescriptorImageInfo imageInfo{};
                     imageInfo.sampler = sampler->handle;
@@ -857,7 +857,7 @@ namespace Vulkan
 
     RHI::ResultCode Swapchain::Present(RHI::Pass& passBase)
     {
-        auto&            pass = static_cast<Pass&>(passBase);
+        auto& pass = static_cast<Pass&>(passBase);
 
         // Present current image to be rendered.
         VkPresentInfoKHR presentInfo{};
@@ -884,10 +884,10 @@ namespace Vulkan
         VkResult                 result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_context->m_physicalDevice, m_surface, &surfaceCapabilities);
         RHI_ASSERT(result == VK_SUCCESS);
 
-        auto                     surfaceFormat  = GetSurfaceFormat(ConvertFormat(m_swapchainInfo.imageFormat));
-        auto                     minImageCount  = std::clamp(m_swapchainInfo.imageCount, surfaceCapabilities.minImageCount, surfaceCapabilities.maxImageCount);
-        auto                     minImageWidth  = std::clamp(m_swapchainInfo.imageSize.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
-        auto                     minImageHeight = std::clamp(m_swapchainInfo.imageSize.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
+        auto surfaceFormat  = GetSurfaceFormat(ConvertFormat(m_swapchainInfo.imageFormat));
+        auto minImageCount  = std::clamp(m_swapchainInfo.imageCount, surfaceCapabilities.minImageCount, surfaceCapabilities.maxImageCount);
+        auto minImageWidth  = std::clamp(m_swapchainInfo.imageSize.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
+        auto minImageHeight = std::clamp(m_swapchainInfo.imageSize.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
 
         VkSwapchainCreateInfoKHR createInfo{};
         createInfo.sType                 = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -962,9 +962,9 @@ namespace Vulkan
 
     VkSurfaceFormatKHR Swapchain::GetSurfaceFormat(VkFormat format)
     {
-        uint32_t                        formatsCount;
+        uint32_t formatsCount;
 
-        VkResult                        result = vkGetPhysicalDeviceSurfaceFormatsKHR(m_context->m_physicalDevice, m_surface, &formatsCount, nullptr);
+        VkResult result = vkGetPhysicalDeviceSurfaceFormatsKHR(m_context->m_physicalDevice, m_surface, &formatsCount, nullptr);
 
         std::vector<VkSurfaceFormatKHR> formats{};
         formats.resize(formatsCount);
@@ -1003,7 +1003,7 @@ namespace Vulkan
 
     VkPresentModeKHR Swapchain::GetPresentMode()
     {
-        auto                          context = static_cast<Context*>(m_context);
+        auto context = static_cast<Context*>(m_context);
 
         uint32_t                      presentModesCount;
         auto                          result = vkGetPhysicalDeviceSurfacePresentModesKHR(context->m_physicalDevice, m_surface, &presentModesCount, nullptr);
@@ -1162,7 +1162,7 @@ namespace Vulkan
 
         ImageView resource{};
 
-        auto      result = vkCreateImageView(m_context->m_device, &vkCreateInfo, nullptr, &resource.handle);
+        auto result = vkCreateImageView(m_context->m_device, &vkCreateInfo, nullptr, &resource.handle);
         RHI_ASSERT(result == VK_SUCCESS);
         return m_imageViewOwner.Insert(resource);
     }
@@ -1183,7 +1183,7 @@ namespace Vulkan
 
         BufferView resource{};
 
-        auto       result = vkCreateBufferView(m_context->m_device, &vkCreateInfo, nullptr, &resource.handle);
+        auto result = vkCreateBufferView(m_context->m_device, &vkCreateInfo, nullptr, &resource.handle);
         RHI_ASSERT(result == VK_SUCCESS);
         return m_bufferViewOwner.Insert(resource);
     }
@@ -1218,7 +1218,7 @@ namespace Vulkan
 
         DescriptorSetLayout resource;
 
-        auto                result = vkCreateDescriptorSetLayout(m_context->m_device, &createInfo, nullptr, &resource.handle);
+        auto result = vkCreateDescriptorSetLayout(m_context->m_device, &createInfo, nullptr, &resource.handle);
         RHI_ASSERT(result == VK_SUCCESS);
         auto handle = m_descriptorSetLayoutOwner.Insert(resource);
         if (result != VK_SUCCESS)
@@ -1231,7 +1231,7 @@ namespace Vulkan
 
     RHI::Result<RHI::Handle<DescriptorSet>> ResourceManager::CreateDescriptorSet(VkDescriptorPool pool, RHI::Handle<DescriptorSetLayout> descriptorSetLayout)
     {
-        auto                        dsl = m_descriptorSetLayoutOwner.Get(descriptorSetLayout);
+        auto dsl = m_descriptorSetLayoutOwner.Get(descriptorSetLayout);
 
         VkDescriptorSetAllocateInfo allocateInfo{};
         allocateInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -1302,7 +1302,7 @@ namespace Vulkan
         if (rhiResult != RHI::ResultCode::Success)
             return RHI::ResultCode::ErrorUnkown;
 
-        VkPipelineLayout                pipelineLayout = m_pipelineLayoutOwner.Get(pipelinelayoutHandle)->handle;
+        VkPipelineLayout pipelineLayout = m_pipelineLayoutOwner.Get(pipelinelayoutHandle)->handle;
 
         uint32_t                        stagesCreateInfoCount = 2;
         VkPipelineShaderStageCreateInfo stagesCreateInfos[4];
@@ -1515,7 +1515,7 @@ namespace Vulkan
 
         GraphicsPipeline pipeline{};
 
-        auto             result = vkCreateGraphicsPipelines(m_context->m_device, VK_NULL_HANDLE, 1, &vkCreateInfo, nullptr, &pipeline.handle);
+        auto result = vkCreateGraphicsPipelines(m_context->m_device, VK_NULL_HANDLE, 1, &vkCreateInfo, nullptr, &pipeline.handle);
 
         if (result == VK_SUCCESS)
             return m_graphicsPipelineOwner.Insert(pipeline);
@@ -1532,7 +1532,7 @@ namespace Vulkan
         if (rhiResult != RHI::ResultCode::Success)
             return RHI::ResultCode::ErrorUnkown;
 
-        VkPipelineLayout                pipelineLayout = m_pipelineLayoutOwner.Get(pipelinelayoutHandle)->handle;
+        VkPipelineLayout pipelineLayout = m_pipelineLayoutOwner.Get(pipelinelayoutHandle)->handle;
 
         VkPipelineShaderStageCreateInfo shaderStage{};
         shaderStage.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -1554,7 +1554,7 @@ namespace Vulkan
 
         ComputePipeline pipeline{};
 
-        auto            result = vkCreateComputePipelines(m_context->m_device, VK_NULL_HANDLE, 1, &vkCreateInfo, nullptr, &pipeline.handle);
+        auto result = vkCreateComputePipelines(m_context->m_device, VK_NULL_HANDLE, 1, &vkCreateInfo, nullptr, &pipeline.handle);
 
         if (result == VK_SUCCESS)
             return m_computePipelineOwner.Insert(pipeline);
@@ -1586,7 +1586,7 @@ namespace Vulkan
 
         Sampler sampler{};
 
-        auto    result = vkCreateSampler(m_context->m_device, &vkCreateInfo, nullptr, &sampler.handle);
+        auto result = vkCreateSampler(m_context->m_device, &vkCreateInfo, nullptr, &sampler.handle);
 
         if (result == VK_SUCCESS)
             return m_samplerOwner.Insert(sampler);

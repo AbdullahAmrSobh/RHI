@@ -14,11 +14,11 @@ namespace Vulkan
     class Allocation;
     class CommandListAllocator;
 
-    VkAttachmentLoadOp                 ConvertLoadOp(RHI::ImageLoadOperation op);
+    VkAttachmentLoadOp ConvertLoadOp(RHI::ImageLoadOperation op);
 
-    VkAttachmentStoreOp                ConvertStoreOp(RHI::ImageStoreOperation op);
+    VkAttachmentStoreOp ConvertStoreOp(RHI::ImageStoreOperation op);
 
-    VkImageLayout                      ConvertImageLayout(RHI::AttachmentUsage usage, RHI::AttachmentAccess access);
+    VkImageLayout ConvertImageLayout(RHI::AttachmentUsage usage, RHI::AttachmentAccess access);
 
     /// @brief Memory allocator use for allocating transient resource backing memory.
     class TransientAttachmentAllocator final : public RHI::TransientAttachmentAllocator
@@ -35,28 +35,28 @@ namespace Vulkan
         TransientAttachmentAllocator(Context* context);
         ~TransientAttachmentAllocator();
 
-        void                      Begin() override;
-        void                      End() override;
+        void Begin() override;
+        void End() override;
 
-        void                      Allocate(RHI::ImageAttachment* attachment) override;
+        void Allocate(RHI::ImageAttachment* attachment) override;
 
-        void                      Free(RHI::ImageAttachment* attachment) override;
+        void Free(RHI::ImageAttachment* attachment) override;
 
-        void                      Allocate(RHI::BufferAttachment* attachment) override;
+        void Allocate(RHI::BufferAttachment* attachment) override;
 
-        void                      Free(RHI::BufferAttachment* attachment) override;
+        void Free(RHI::BufferAttachment* attachment) override;
 
         std::optional<Allocation> Allocate(VkMemoryRequirements requirements);
 
-        void                      Free(Allocation allocation);
+        void Free(Allocation allocation);
 
-        size_t                    CalculatePreferredBlockSize(uint32_t memTypeIndex);
+        size_t CalculatePreferredBlockSize(uint32_t memTypeIndex);
 
-        Block                     CreateBlockNewBlock(VkMemoryRequirements minRequirements);
+        Block CreateBlockNewBlock(VkMemoryRequirements minRequirements);
 
-        Context*                  m_context;
+        Context* m_context;
 
-        std::vector<Block>        m_blocks;
+        std::vector<Block> m_blocks;
     };
 
     class Pass final : public RHI::Pass
@@ -68,19 +68,19 @@ namespace Vulkan
         Pass(Context* context);
         ~Pass();
 
-        VkResult            Init(const RHI::PassCreateInfo& createInfo);
+        VkResult Init(const RHI::PassCreateInfo& createInfo);
 
-        RHI::CommandList&   BeginCommandList(uint32_t commandsCount = 1) override;
+        RHI::CommandList& BeginCommandList(uint32_t commandsCount = 1) override;
 
-        void                EndCommandList() override;
+        void EndCommandList() override;
 
         RHI::PassQueueState GetPassQueueStateInternal() const override;
 
-        uint32_t            m_queueFamilyIndex;
+        uint32_t m_queueFamilyIndex;
 
-        VkSemaphore         m_signalSemaphore;
+        VkSemaphore m_signalSemaphore;
 
-        VkFence             m_signalFence;
+        VkFence m_signalFence;
     };
 
     class FrameScheduler final : public RHI::FrameScheduler
@@ -89,25 +89,25 @@ namespace Vulkan
         FrameScheduler(Context* context);
         ~FrameScheduler();
 
-        VkResult                              Init();
+        VkResult Init();
 
-        std::unique_ptr<RHI::Pass>            CreatePass(const RHI::PassCreateInfo& createInfo) override;
+        std::unique_ptr<RHI::Pass> CreatePass(const RHI::PassCreateInfo& createInfo) override;
 
-        std::vector<VkSemaphoreSubmitInfo>    GetSemaphores(const std::vector<RHI::Pass*>& passes) const;
+        std::vector<VkSemaphoreSubmitInfo> GetSemaphores(const std::vector<RHI::Pass*>& passes) const;
 
-        void                                  ExecutePass(RHI::Pass& pass) override;
+        void ExecutePass(RHI::Pass& pass) override;
 
-        void                                  ResetPass(RHI::Pass& pass) override;
+        void ResetPass(RHI::Pass& pass) override;
 
-        RHI::CommandList*                     GetCommandList(uint32_t frameIndex) override;
+        RHI::CommandList* GetCommandList(uint32_t frameIndex) override;
 
         void OnFrameEnd() override;
 
-        uint32_t                              m_currentFrameIndex;
+        uint32_t m_currentFrameIndex;
 
         std::unique_ptr<CommandListAllocator> m_graphicsCommandlistAllocator;
 
-        std::vector<VkFence>                  m_framesInflightFences;
+        std::vector<VkFence> m_framesInflightFences;
     };
 
 } // namespace Vulkan

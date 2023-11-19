@@ -8,8 +8,8 @@ AlignConsecutiveAssignments:
   AcrossComments: true
 AlignConsecutiveDeclarations: 
   Enabled: true
-  AcrossEmptyLines: true
-  AcrossComments: true
+  AcrossEmptyLines: false
+  AcrossComments: false
 AlignEscapedNewlines: Right
 AlignOperands: true
 AlignTrailingComments: true

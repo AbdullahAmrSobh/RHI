@@ -200,12 +200,12 @@ namespace RHI
         // prepare command lists
         {
             uint32_t frameIndex = 0;
-            
+
             if (m_attachmentsRegistry->m_swapchainAttachments.empty() == false)
             {
                 frameIndex = m_attachmentsRegistry->m_swapchainAttachments.front()->swapchain->GetCurrentImageIndex();
             }
-            
+
             for (auto& pass : m_passList)
             {
                 pass->m_commandList = GetCommandList(frameIndex);
@@ -328,7 +328,7 @@ namespace RHI
                 else
                 {
                     passAttachment.view = m_context->CreateImageView(passAttachment.attachment->handle, passAttachment.info);
-                    m_imageViewsLut.insert({attachment->handle, passAttachment.view});
+                    m_imageViewsLut.insert({ attachment->handle, passAttachment.view });
                 }
             }
 
@@ -343,7 +343,7 @@ namespace RHI
                 else
                 {
                     passAttachment.view = m_context->CreateBufferView(passAttachment.attachment->handle, passAttachment.info);
-                    m_bufferViewLut.insert({attachment->handle, passAttachment.view});
+                    m_bufferViewLut.insert({ attachment->handle, passAttachment.view });
                 }
             }
         }
@@ -359,7 +359,7 @@ namespace RHI
         for (auto attachment : m_attachmentsRegistry->m_swapchainAttachments)
         {
             auto swapchain = attachment->swapchain;
-            auto result = swapchain->Present(*attachment->lastUse->pass);
+            auto result    = swapchain->Present(*attachment->lastUse->pass);
             RHI_ASSERT(result == ResultCode::Success);
         }
     }

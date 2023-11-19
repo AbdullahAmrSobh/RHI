@@ -1,9 +1,8 @@
 #pragma once
-#include <memory>
-
 #include "RHI-Vulkan/Export.hpp"
 
 #include <RHI/Context.hpp>
+#include <memory>
 
 namespace RHI
 {

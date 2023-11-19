@@ -103,7 +103,7 @@ namespace Vulkan
             VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
         };
 
-        uint32_t          version = VK_MAKE_VERSION(0, 1, 0);
+        uint32_t version = VK_MAKE_VERSION(0, 1, 0);
 
         VkApplicationInfo applicationInfo{};
         applicationInfo.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -244,7 +244,7 @@ namespace Vulkan
             float                                queuePriority = 1.0f;
             std::vector<VkDeviceQueueCreateInfo> queueCreateInfos{};
 
-            VkDeviceQueueCreateInfo              queueCreateInfo{};
+            VkDeviceQueueCreateInfo queueCreateInfo{};
             queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
             queueCreateInfo.pNext = nullptr;
             queueCreateInfo.flags = 0;
@@ -275,7 +275,7 @@ namespace Vulkan
                 RHI_UNREACHABLE();
             }
 
-            VkPhysicalDeviceFeatures                 enabledFeatures{};
+            VkPhysicalDeviceFeatures enabledFeatures{};
 
             VkPhysicalDeviceSynchronization2Features syncFeature{};
             syncFeature.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES;
@@ -424,7 +424,7 @@ namespace Vulkan
         auto resource = m_resourceManager->m_imageOwner.Get(image);
         RHI_ASSERT(resource);
 
-        auto                 allocation = resource->allocation.handle;
+        auto allocation = resource->allocation.handle;
 
         RHI::DeviceMemoryPtr memoryPtr = nullptr;
         VkResult             result    = vmaMapMemory(m_allocator, allocation, &memoryPtr);
@@ -437,7 +437,7 @@ namespace Vulkan
         auto resource = m_resourceManager->m_bufferOwner.Get(buffer);
         RHI_ASSERT(resource);
 
-        auto                 allocation = resource->allocation.handle;
+        auto allocation = resource->allocation.handle;
 
         RHI::DeviceMemoryPtr memoryPtr = nullptr;
         VkResult             result    = vmaMapMemory(m_allocator, allocation, &memoryPtr);

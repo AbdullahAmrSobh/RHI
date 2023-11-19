@@ -382,7 +382,7 @@ namespace Vulkan
 
         if (command.shaderBindGroups.size())
         {
-            auto                         layout = resourceManager->m_pipelineLayoutOwner.Get(pipeline->layout);
+            auto layout = resourceManager->m_pipelineLayoutOwner.Get(pipeline->layout);
 
             std::vector<VkDescriptorSet> descriptorSets;
             std::vector<uint32_t>        descriptorSetOffsets;
@@ -461,10 +461,10 @@ namespace Vulkan
             {
                 auto& command = _command.buffer;
 
-                auto  srcBuffer         = resourceManager->m_bufferOwner.Get(command.sourceBuffer);
-                auto  destinationBuffer = resourceManager->m_bufferOwner.Get(command.destinationBuffer);
+                auto srcBuffer         = resourceManager->m_bufferOwner.Get(command.sourceBuffer);
+                auto destinationBuffer = resourceManager->m_bufferOwner.Get(command.destinationBuffer);
 
-                auto  copyInfo     = VkBufferCopy{};
+                auto copyInfo      = VkBufferCopy{};
                 copyInfo.srcOffset = command.sourceOffset;
                 copyInfo.dstOffset = command.destinationOffset;
                 copyInfo.size      = command.size;
@@ -475,10 +475,10 @@ namespace Vulkan
             {
                 auto& command = _command.image;
 
-                auto  srcImage = resourceManager->m_imageOwner.Get(command.sourceImage);
-                auto  dstImage = resourceManager->m_imageOwner.Get(command.destinationImage);
+                auto srcImage = resourceManager->m_imageOwner.Get(command.sourceImage);
+                auto dstImage = resourceManager->m_imageOwner.Get(command.destinationImage);
 
-                auto  copyInfo          = VkImageCopy{};
+                auto copyInfo           = VkImageCopy{};
                 copyInfo.srcSubresource = ConvertSubresourceLayer(command.sourceSubresource);
                 copyInfo.srcOffset      = ConvertOffset3D(command.sourceOffset);
                 copyInfo.dstSubresource = ConvertSubresourceLayer(command.destinationSubresource);
@@ -491,10 +491,10 @@ namespace Vulkan
             {
                 auto& command = _command.bufferToImage;
 
-                auto  srcBuffer = resourceManager->m_bufferOwner.Get(command.srcBuffer);
-                auto  dstImage  = resourceManager->m_imageOwner.Get(command.dstImage);
+                auto srcBuffer = resourceManager->m_bufferOwner.Get(command.srcBuffer);
+                auto dstImage  = resourceManager->m_imageOwner.Get(command.dstImage);
 
-                auto  copyInfo            = VkBufferImageCopy{};
+                auto copyInfo             = VkBufferImageCopy{};
                 copyInfo.bufferOffset     = command.srcOffset;
                 copyInfo.bufferRowLength  = command.srcBytesPerRow;
                 // copyInfo.bufferImageHeight;
@@ -508,10 +508,10 @@ namespace Vulkan
             {
                 auto& command = _command.imageToBuffer;
 
-                auto  srcImage  = resourceManager->m_imageOwner.Get(command.sourceImage);
-                auto  dstBuffer = resourceManager->m_bufferOwner.Get(command.destinationBuffer);
+                auto srcImage  = resourceManager->m_imageOwner.Get(command.sourceImage);
+                auto dstBuffer = resourceManager->m_bufferOwner.Get(command.destinationBuffer);
 
-                auto  copyInfo            = VkBufferImageCopy{};
+                auto copyInfo             = VkBufferImageCopy{};
                 copyInfo.bufferOffset     = command.destinationOffset;
                 copyInfo.bufferRowLength  = command.destinationBytesPerRow;
                 // copyInfo.bufferImageHeight;
@@ -539,7 +539,7 @@ namespace Vulkan
 
         if (command.shaderBindGroups.size())
         {
-            auto                         layout = resourceManager->m_pipelineLayoutOwner.Get(pipeline->layout);
+            auto layout = resourceManager->m_pipelineLayoutOwner.Get(pipeline->layout);
 
             std::vector<VkDescriptorSet> descriptorSets;
             std::vector<uint32_t>        descriptorSetOffsets;
@@ -579,17 +579,17 @@ namespace Vulkan
         auto imageView  = m_context->m_resourceManager->m_imageViewOwner.Get(passAttachment.view);
         auto attachment = passAttachment.attachment;
 
-        auto attachmentInfo                          = VkRenderingAttachmentInfo{};
-        attachmentInfo.sType                         = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-        attachmentInfo.pNext                         = nullptr;
-        attachmentInfo.imageView                     = imageView->handle;
-        attachmentInfo.imageLayout                   = ConvertImageLayout(passAttachment.info.usage, passAttachment.info.access);
-        attachmentInfo.loadOp                        = ConvertLoadOp(passAttachment.info.loadStoreOperations.loadOperation);
-        attachmentInfo.storeOp                       = ConvertStoreOp(passAttachment.info.loadStoreOperations.storeOperation);
-        attachmentInfo.clearValue.color.float32[0]      = passAttachment.info.clearValue.color.r;
-        attachmentInfo.clearValue.color.float32[1]      = passAttachment.info.clearValue.color.g;
-        attachmentInfo.clearValue.color.float32[2]      = passAttachment.info.clearValue.color.b;
-        attachmentInfo.clearValue.color.float32[3]      = passAttachment.info.clearValue.color.a;
+        auto attachmentInfo                        = VkRenderingAttachmentInfo{};
+        attachmentInfo.sType                       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+        attachmentInfo.pNext                       = nullptr;
+        attachmentInfo.imageView                   = imageView->handle;
+        attachmentInfo.imageLayout                 = ConvertImageLayout(passAttachment.info.usage, passAttachment.info.access);
+        attachmentInfo.loadOp                      = ConvertLoadOp(passAttachment.info.loadStoreOperations.loadOperation);
+        attachmentInfo.storeOp                     = ConvertStoreOp(passAttachment.info.loadStoreOperations.storeOperation);
+        attachmentInfo.clearValue.color.float32[0] = passAttachment.info.clearValue.color.r;
+        attachmentInfo.clearValue.color.float32[1] = passAttachment.info.clearValue.color.g;
+        attachmentInfo.clearValue.color.float32[2] = passAttachment.info.clearValue.color.b;
+        attachmentInfo.clearValue.color.float32[3] = passAttachment.info.clearValue.color.a;
         return attachmentInfo;
     }
 

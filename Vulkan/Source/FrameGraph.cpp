@@ -141,8 +141,8 @@ namespace Vulkan
 
     size_t TransientAttachmentAllocator::CalculatePreferredBlockSize(uint32_t memTypeIndex)
     {
-        constexpr size_t                 VMA_SMALL_HEAP_MAX_SIZE           = (1024ull * 1024 * 1024);
-        constexpr size_t                 VMA_DEFAULT_LARGE_HEAP_BLOCK_SIZE = (256ull * 1024 * 1024);
+        constexpr size_t VMA_SMALL_HEAP_MAX_SIZE           = (1024ull * 1024 * 1024);
+        constexpr size_t VMA_DEFAULT_LARGE_HEAP_BLOCK_SIZE = (256ull * 1024 * 1024);
 
         VkPhysicalDeviceMemoryProperties properties;
         vkGetPhysicalDeviceMemoryProperties(m_context->m_physicalDevice, &properties);
@@ -158,7 +158,7 @@ namespace Vulkan
         // TODO: Hardcoded for my local machine, should probably handle this later.
         minRequirements.size = CalculatePreferredBlockSize(2);
 
-        Block                   block{};
+        Block block{};
 
         VmaAllocationCreateInfo allocationCreateInfo{};
         allocationCreateInfo.flags         = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
@@ -341,7 +341,7 @@ namespace Vulkan
         std::vector<VkSemaphoreSubmitInfo> submitInfos{};
         for (auto passBase : passes)
         {
-            auto                  pass = static_cast<Pass*>(passBase);
+            auto pass = static_cast<Pass*>(passBase);
 
             VkSemaphoreSubmitInfo submitInfo{};
             submitInfo.sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
