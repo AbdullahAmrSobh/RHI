@@ -9,23 +9,6 @@
 #include <string>
 #include <vector>
 
-#define RHI_HASH_HANDLE(handle)                               \
-    namespace std                                             \
-    {                                                         \
-        template<>                                            \
-        struct hash<handle>                                   \
-        {                                                     \
-            size_t operator()(handle const& s) const noexcept \
-            {                                                 \
-                auto h = static_cast<uint64_t>(s);            \
-                return hash<uint64_t>{}(h);                   \
-            }                                                 \
-        };                                                    \
-    }
-
-RHI_HASH_HANDLE(RHI::Handle<RHI::Image>);
-RHI_HASH_HANDLE(RHI::Handle<RHI::Buffer>);
-
 namespace RHI
 {
 
@@ -471,10 +454,7 @@ namespace RHI
 
         Pass(const Pass& other) = delete;
 
-        virtual ~Pass()
-        {
-            RHI_DEBUG_BREAK();
-        }
+        virtual ~Pass() = default;
 
         /// @brief Called at the beginning of this pass building phase.
         void                  Begin();

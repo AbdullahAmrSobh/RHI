@@ -187,3 +187,17 @@ namespace RHI
     }
 
 } // namespace RHI
+
+namespace std
+{
+    template<typename T>
+    struct hash<RHI::Handle<T>>
+    {
+        size_t operator()(RHI::Handle<T> const& s) const noexcept
+        {
+            auto h = static_cast<uint64_t>(s);
+            return hash<uint64_t>{}(h);
+        }
+    };
+
+} // namespace std

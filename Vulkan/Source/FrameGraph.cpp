@@ -238,8 +238,6 @@ namespace Vulkan
 
     Pass::~Pass()
     {
-        RHI_DEBUG_BREAK();
-
         auto context = static_cast<Context*>(m_context);
         vkDeviceWaitIdle(context->m_device);
 

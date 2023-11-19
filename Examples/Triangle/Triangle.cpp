@@ -192,11 +192,11 @@ public:
     {
         m_context->Free(m_pipelineState);
 
-        m_resourcePool->Free(m_image);
-
         m_resourcePool->Free(m_vertexBuffer);
 
         m_resourcePool->Free(m_indexBuffer);
+
+        // m_resourcePool->Free(m_image);
     }
 
     void OnUpdate() override
