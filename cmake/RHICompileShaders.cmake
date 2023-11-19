@@ -49,12 +49,7 @@ function(RHICompileShaders)
 	endforeach(RHI_SHADER_ABS_PATH)
 
 	if (RHI_OUTPUT_SHADER_FILES)
-		add_custom_target(${RHI_ARG_TARGET}-shaders-${RHI_ARG_NAME} DEPENDS ${RHI_OUTPUT_SHADER_FILES})
-	endif()
-
-	add_custom_target(${RHI_ARG_TARGET}-compile-shaders)
-
-	if (RHI_OUTPUT_SHADER_FILES)
-		add_dependencies(${RHI_ARG_TARGET}-compile-shaders ${RHI_ARG_TARGET}-shaders-${RHI_ARG_NAME})
+		add_custom_target(${RHI_ARG_TARGET}-compile-shaders DEPENDS ${RHI_OUTPUT_SHADER_FILES})
+		add_dependencies(${RHI_ARG_TARGET} ${RHI_ARG_TARGET}-compile-shaders)
 	endif()
 endfunction(RHICompileShaders)
