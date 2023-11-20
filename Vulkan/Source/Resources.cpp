@@ -1131,7 +1131,7 @@ namespace Vulkan
             writeInfo.dstBinding = binding;
             if (auto resources = std::get_if<0>(&resourceVarient))
             {
-                auto imageInfos = descriptorImageInfos.emplace_back();
+                auto& imageInfos = descriptorImageInfos.emplace_back();
 
                 for (auto passAttachment : resources->views)
                 {
@@ -1150,17 +1150,17 @@ namespace Vulkan
             }
             else if (auto resources = std::get_if<1>(&resourceVarient))
             {
-                auto bufferInfos = descriptorBufferInfos.emplace_back();
+                auto& bufferInfos = descriptorBufferInfos.emplace_back();
 
                 for (auto passAttachment : resources->views)
                 {
                     auto buffer = m_context->m_bufferOwner.Get(passAttachment->attachment->handle);
 
-                    VkDescriptorBufferInfo imageInfo{};
-                    imageInfo.buffer = buffer->handle;
-                    imageInfo.offset = passAttachment->info.byteOffset;
-                    imageInfo.range  = passAttachment->info.byteSize;
-                    bufferInfos.push_back(imageInfo);
+                    VkDescriptorBufferInfo bufferInfo{};
+                    bufferInfo.buffer = buffer->handle;
+                    bufferInfo.offset = passAttachment->info.byteOffset;
+                    bufferInfo.range  = passAttachment->info.byteSize == 0 ? VK_WHOLE_SIZE : passAttachment->info.byteSize;
+                    bufferInfos.push_back(bufferInfo);
                 }
 
                 writeInfo.dstArrayElement = resources->arrayOffset;
@@ -1170,7 +1170,7 @@ namespace Vulkan
             }
             else if (auto resources = std::get_if<2>(&resourceVarient))
             {
-                auto imageInfos = descriptorImageInfos.emplace_back();
+                auto& imageInfos = descriptorImageInfos.emplace_back();
 
                 for (auto samplerHandle : resources->samplers)
                 {

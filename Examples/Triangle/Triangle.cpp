@@ -66,6 +66,10 @@ public:
             };
 
             UniformData data{};
+            data.r = 1.0f;
+            data.g = 0.3f;
+            data.b = 0.4f;
+            data.a = 0.7f;
             m_uniformData = CreateBuffer<UniformData>(data, RHI::BufferUsage::Uniform);
         }
 
@@ -92,13 +96,13 @@ public:
         // }
 
         // create shader bind group layout
-        auto bindGroupLayout = m_context->CreateBindGroupLayout({ RHI::ShaderBinding{ RHI::ShaderBindingType::Buffer, RHI::ShaderBindingAccess::OnlyRead, 1 } });
-        auto pipelineLayout  = m_context->CreatePipelineLayout({bindGroupLayout});
-        
+        auto bindGroupLayout = m_context->CreateBindGroupLayout({ 
+            RHI::ShaderBinding{ RHI::ShaderBindingType::Buffer, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Pixel } });
+        auto pipelineLayout  = m_context->CreatePipelineLayout({ bindGroupLayout });
 
         // create shader bind group
-        m_BindGroupAllocator = m_context->CreateBindGroupAllocator();
-        m_BindGroup          = m_BindGroupAllocator->AllocateBindGroups(bindGroupLayout).front();
+        m_bindGroupAllocator = m_context->CreateBindGroupAllocator();
+        m_bindGroup          = m_bindGroupAllocator->AllocateBindGroups(bindGroupLayout).front();
 
         // create pipeline
         {
@@ -136,6 +140,7 @@ public:
             psoCreateInfo.vertexShaderName                           = "VSMain";
             psoCreateInfo.pixelShaderModule                          = shaderModule.get();
             psoCreateInfo.pixelShaderName                            = "PSMain";
+            psoCreateInfo.topologyMode                               = RHI::PipelineTopologyMode::Triangles;
             psoCreateInfo.rasterizationState.cullMode                = RHI::PipelineRasterizerStateCullMode::None;
             psoCreateInfo.renderTargetLayout                         = { { RHI::Format::BGRA8_UNORM }, RHI::Format::Unknown, RHI::Format::Unknown };
             psoCreateInfo.depthStencilState.depthTestEnable          = false;
@@ -188,12 +193,17 @@ public:
 
             // auto textureAttachment = pass.ImportImageResource("texture", m_image, useInfo);
 
+            RHI::BufferAttachmentUseInfo bufferUseInfo {};
+            bufferUseInfo.access = RHI::AttachmentAccess::Read;
+            bufferUseInfo.usage = RHI::AttachmentUsage::ShaderResource;
+            auto uniformBuffer = m_renderpass->ImportBufferResource("uniform-buffer", m_uniformData, bufferUseInfo);
+
             // setup bind elements
             m_renderpass->End();
 
-            // RHI::BindGroupData BindGroupData{};
-            // BindGroupData.BindImages(0u, textureAttachment);
-            // m_BindGroupAllocator->Update(m_BindGroup, BindGroupData);
+            RHI::BindGroupData BindGroupData{};
+            BindGroupData.BindBuffers(0u, uniformBuffer);
+            m_bindGroupAllocator->Update(m_bindGroup, BindGroupData);
 
             m_frameScheduler->Submit(*m_renderpass);
         }
@@ -230,7 +240,7 @@ public:
 
         cmd.Submit({
             .pipelineState = m_pipelineState,
-            .BindGroups    = m_BindGroup,
+            .BindGroups    = m_bindGroup,
             .vertexBuffers = m_vertexBuffer,
             .indexBuffers  = m_indexBuffer,
             .parameters    = { .elementCount = 6 },
@@ -244,7 +254,11 @@ public:
 private:
     std::unique_ptr<RHI::ResourcePool> m_resourcePool;
 
-    std::unique_ptr<RHI::BindGroupAllocator> m_BindGroupAllocator;
+    std::unique_ptr<RHI::BindGroupAllocator> m_bindGroupAllocator;
+
+    RHI::Handle<RHI::BindGroup> m_bindGroup;
+
+    RHI::Handle<RHI::PipelineLayout> m_pipelineLayout;
 
     RHI::Handle<RHI::GraphicsPipeline> m_pipelineState;
 
@@ -255,8 +269,6 @@ private:
     RHI::Handle<RHI::Buffer> m_vertexBuffer;
 
     RHI::Handle<RHI::Buffer> m_indexBuffer;
-
-    RHI::Handle<RHI::BindGroup> m_BindGroup;
 
     std::unique_ptr<RHI::Pass> m_renderpass;
 };

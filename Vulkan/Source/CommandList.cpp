@@ -380,25 +380,7 @@ namespace Vulkan
 
         if (command.BindGroups.size())
         {
-            std::vector<VkDescriptorSet> descriptorSets;
-            std::vector<uint32_t>        descriptorSetOffsets;
-
-            for (auto bindGroup : command.BindGroups)
-            {
-                auto descriptorSet = m_context->m_bindGroupOwner.Get(bindGroup);
-                descriptorSets.push_back(descriptorSet->handle);
-                descriptorSetOffsets.push_back(0);
-            }
-
-            vkCmdBindDescriptorSets(
-                m_commandBuffer,
-                VK_PIPELINE_BIND_POINT_COMPUTE,
-                pipeline->layout,
-                0,
-                static_cast<uint32_t>(descriptorSets.size()),
-                descriptorSets.data(),
-                static_cast<uint32_t>(descriptorSetOffsets.size()),
-                descriptorSetOffsets.data());
+            BindShaderBindGroups(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->layout, command.BindGroups);
         }
 
         std::vector<VkBuffer>     vertexBuffers;
@@ -531,25 +513,7 @@ namespace Vulkan
 
         if (command.BindGroups.size())
         {
-            std::vector<VkDescriptorSet> descriptorSets;
-            std::vector<uint32_t>        descriptorSetOffsets;
-
-            for (auto bindGroup : command.BindGroups)
-            {
-                auto descriptorSet = m_context->m_bindGroupOwner.Get(bindGroup);
-                descriptorSets.push_back(descriptorSet->handle);
-                descriptorSetOffsets.push_back(0);
-            }
-
-            vkCmdBindDescriptorSets(
-                m_commandBuffer,
-                VK_PIPELINE_BIND_POINT_COMPUTE,
-                pipeline->layout,
-                0,
-                static_cast<uint32_t>(descriptorSets.size()),
-                descriptorSets.data(),
-                static_cast<uint32_t>(descriptorSetOffsets.size()),
-                descriptorSetOffsets.data());
+            BindShaderBindGroups(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->layout, command.BindGroups);
         }
 
         vkCmdDispatchBase(
@@ -560,6 +524,19 @@ namespace Vulkan
             command.parameters.countX,
             command.parameters.countY,
             command.parameters.countZ);
+    }
+
+    void CommandList::BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<RHI::Handle<RHI::BindGroup>> bindGroups)
+    {
+        std::vector<VkDescriptorSet> descriptorSets;
+
+        for (auto bindGroupHandle : bindGroups)
+        {
+            auto bindGroup = m_context->m_bindGroupOwner.Get(bindGroupHandle);
+            descriptorSets.push_back(bindGroup->handle);
+        }
+
+        vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, descriptorSets.size(), descriptorSets.data(), 0, nullptr);
     }
 
     VkRenderingAttachmentInfo CommandList::GetAttachmentInfo(const RHI::ImagePassAttachment& passAttachment) const

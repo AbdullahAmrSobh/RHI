@@ -101,6 +101,8 @@ namespace Vulkan
 
         void Submit(const RHI::CommandCompute& command) override;
 
+        void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<RHI::Handle<RHI::BindGroup>> bindGroups);
+
         VkRenderingAttachmentInfo GetAttachmentInfo(const RHI::ImagePassAttachment& passAttachment) const;
 
         std::optional<VkImageMemoryBarrier2> TransitionResource(BarrierType barrierType, RHI::ImagePassAttachment* passAttachment) const;

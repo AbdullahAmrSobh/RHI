@@ -26,6 +26,8 @@
 - [x] cmake cleanup
 - [] remove handles (for now)
 - [] re add handles when everything is finished and is working proberly
+- [] dont create vkBufferView when not needed (base on attachment usage)
+- [] add CreateInfo structs validation layer
 
 ==========================================================================================
 - abstract standard template library
