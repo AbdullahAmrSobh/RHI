@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 
 namespace RHI
 {
@@ -86,6 +87,9 @@ namespace RHI
         // Inserts a new resource and returns its handle.
         inline Handle<Resource> Insert(Resource resource);
 
+        // Inserted a zerod resource and returns its handle.
+        inline std::pair<Handle<Resource>, Resource&> InsertZerod();
+
         // Removes a resource from the owner.
         inline void Remove(Handle<Resource> handle);
 
@@ -169,6 +173,23 @@ namespace RHI
         m_count++;
         m_resources[index] = resource;
         return { index, ++m_genIds[index] };
+    }
+
+    template<typename Resource>
+    inline std::pair<Handle<Resource>, Resource&> HandlePool<Resource>::InsertZerod()
+    {
+        auto index = m_count;
+        if (m_freeSlotsCount)
+        {
+            index = m_freeSlots[m_freeSlotsCount--];
+        }
+        else if (m_count == m_capacity)
+        {
+            Resize(m_count * 1.5);
+        }
+
+        m_count++;
+        return { Handle<Resource>(index, ++m_genIds[index]), m_resources[index] };
     }
 
     template<typename Resource>

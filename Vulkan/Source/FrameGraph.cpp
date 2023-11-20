@@ -91,23 +91,24 @@ namespace Vulkan
     {
         RHI_ASSERT(attachment->lifetime == RHI::AttachmentLifetime::Transient);
 
-        attachment->handle = m_context->m_resourceManager->CreateImage({}, attachment->info, nullptr, true).GetValue();
+        auto [handle, image] = m_context->m_imageOwner.InsertZerod();
+        attachment->handle = handle;
 
-        auto image = m_context->m_resourceManager->m_imageOwner.Get(attachment->handle);
-        RHI_ASSERT(image->swapchain == nullptr);
+        auto result = image.Init(m_context, {}, attachment->info, nullptr, true);
+        RHI_ASSERT(result == RHI::ResultCode::Success);
 
-        auto requirements = image->GetMemoryRequirements(m_context->m_device);
+        auto requirements = image.GetMemoryRequirements(m_context->m_device);
         if (auto allocation = Allocate(requirements); allocation.has_value())
         {
             RHI_ASSERT(allocation->type == AllocationType::Aliasing);
-            auto result = vmaBindImageMemory2(m_context->m_allocator, allocation->handle, allocation->virtualAllocation.offset, image->handle, nullptr);
+            auto result = vmaBindImageMemory2(m_context->m_allocator, allocation->handle, allocation->virtualAllocation.offset, image.handle, nullptr);
             VULKAN_ASSERT_SUCCESS(result);
         }
     }
 
     void TransientAttachmentAllocator::Free(RHI::ImageAttachment* attachment)
     {
-        auto image = m_context->m_resourceManager->m_imageOwner.Get(attachment->handle);
+        auto image = m_context->m_imageOwner.Get(attachment->handle);
         RHI_ASSERT(image);
 
         Free(image->allocation);
@@ -116,24 +117,25 @@ namespace Vulkan
     void TransientAttachmentAllocator::Allocate(RHI::BufferAttachment* attachment)
     {
         RHI_ASSERT(attachment->lifetime == RHI::AttachmentLifetime::Transient);
+        
+        auto [handle, buffer] = m_context->m_bufferOwner.InsertZerod();
+        attachment->handle = handle;
 
-        attachment->handle = m_context->m_resourceManager->CreateBuffer({}, attachment->info, nullptr, true).GetValue();
+        auto result = buffer.Init(m_context, {}, attachment->info, nullptr, true);
+        RHI_ASSERT(result == RHI::ResultCode::Success);
 
-        auto buffer = m_context->m_resourceManager->m_bufferOwner.Get(attachment->handle);
-        RHI_ASSERT(buffer);
-
-        auto requirements = buffer->GetMemoryRequirements(m_context->m_device);
+        auto requirements = buffer.GetMemoryRequirements(m_context->m_device);
         if (auto allocation = Allocate(requirements); allocation.has_value())
         {
             RHI_ASSERT(allocation->type == AllocationType::Aliasing);
-            auto result = vmaBindBufferMemory2(m_context->m_allocator, allocation->handle, allocation->virtualAllocation.offset, buffer->handle, nullptr);
+            auto result = vmaBindBufferMemory2(m_context->m_allocator, allocation->handle, allocation->virtualAllocation.offset, buffer.handle, nullptr);
             VULKAN_ASSERT_SUCCESS(result);
         }
     }
 
     void TransientAttachmentAllocator::Free(RHI::BufferAttachment* attachment)
     {
-        auto buffer = m_context->m_resourceManager->m_imageOwner.Get(attachment->handle);
+        auto buffer = m_context->m_imageOwner.Get(attachment->handle);
         RHI_ASSERT(buffer);
 
         Free(buffer->allocation);

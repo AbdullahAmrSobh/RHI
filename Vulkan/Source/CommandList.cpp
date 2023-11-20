@@ -374,35 +374,31 @@ namespace Vulkan
 
     void CommandList::Submit(const RHI::CommandDraw& command)
     {
-        auto resourceManager = m_context->m_resourceManager.get();
-
-        auto pipeline = resourceManager->m_graphicsPipelineOwner.Get(command.pipelineState);
+        auto pipeline = m_context->m_graphicsPipelineOwner.Get(command.pipelineState);
 
         vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->handle);
 
-        if (command.shaderBindGroups.size())
+        if (command.BindGroups.size())
         {
-            auto layout = resourceManager->m_pipelineLayoutOwner.Get(pipeline->layout);
-
             std::vector<VkDescriptorSet> descriptorSets;
             std::vector<uint32_t>        descriptorSetOffsets;
 
-            for (auto bindGroup : command.shaderBindGroups)
+            for (auto bindGroup : command.BindGroups)
             {
-                auto descriptorSet = resourceManager->m_descriptorSetOwner.Get(bindGroup);
+                auto descriptorSet = m_context->m_bindGroupOwner.Get(bindGroup);
                 descriptorSets.push_back(descriptorSet->handle);
                 descriptorSetOffsets.push_back(0);
             }
 
-            // vkCmdBindDescriptorSets(
-            //     m_commandBuffer,
-            //     VK_PIPELINE_BIND_POINT_COMPUTE,
-            //     layout->handle,
-            //     0,
-            //     static_cast<uint32_t>(descriptorSets.size()),
-            //     descriptorSets.data(),
-            //     static_cast<uint32_t>(descriptorSetOffsets.size()),
-            //     descriptorSetOffsets.data());
+            vkCmdBindDescriptorSets(
+                m_commandBuffer,
+                VK_PIPELINE_BIND_POINT_COMPUTE,
+                pipeline->layout,
+                0,
+                static_cast<uint32_t>(descriptorSets.size()),
+                descriptorSets.data(),
+                static_cast<uint32_t>(descriptorSetOffsets.size()),
+                descriptorSetOffsets.data());
         }
 
         std::vector<VkBuffer>     vertexBuffers;
@@ -410,7 +406,7 @@ namespace Vulkan
 
         for (auto vertexBuffer : command.vertexBuffers)
         {
-            auto buffer = resourceManager->m_bufferOwner.Get(vertexBuffer);
+            auto buffer = m_context->m_bufferOwner.Get(vertexBuffer);
 
             vertexBuffers.push_back(buffer->handle);
             vertexBufferSizes.push_back(0);
@@ -428,7 +424,7 @@ namespace Vulkan
 
         if (command.indexBuffers)
         {
-            auto buffer = resourceManager->m_bufferOwner.Get(command.indexBuffers);
+            auto buffer = m_context->m_bufferOwner.Get(command.indexBuffers);
 
             vkCmdBindIndexBuffer(m_commandBuffer, buffer->handle, 0, VK_INDEX_TYPE_UINT32);
 
@@ -453,16 +449,14 @@ namespace Vulkan
 
     void CommandList::Submit(const RHI::CommandCopy& _command)
     {
-        auto resourceManager = m_context->m_resourceManager.get();
-
         switch (_command.type)
         {
         case RHI::CopyCommandType::Buffer:
             {
                 auto& command = _command.buffer;
 
-                auto srcBuffer         = resourceManager->m_bufferOwner.Get(command.sourceBuffer);
-                auto destinationBuffer = resourceManager->m_bufferOwner.Get(command.destinationBuffer);
+                auto srcBuffer         = m_context->m_bufferOwner.Get(command.sourceBuffer);
+                auto destinationBuffer = m_context->m_bufferOwner.Get(command.destinationBuffer);
 
                 auto copyInfo      = VkBufferCopy{};
                 copyInfo.srcOffset = command.sourceOffset;
@@ -475,8 +469,8 @@ namespace Vulkan
             {
                 auto& command = _command.image;
 
-                auto srcImage = resourceManager->m_imageOwner.Get(command.sourceImage);
-                auto dstImage = resourceManager->m_imageOwner.Get(command.destinationImage);
+                auto srcImage = m_context->m_imageOwner.Get(command.sourceImage);
+                auto dstImage = m_context->m_imageOwner.Get(command.destinationImage);
 
                 auto copyInfo           = VkImageCopy{};
                 copyInfo.srcSubresource = ConvertSubresourceLayer(command.sourceSubresource);
@@ -491,8 +485,8 @@ namespace Vulkan
             {
                 auto& command = _command.bufferToImage;
 
-                auto srcBuffer = resourceManager->m_bufferOwner.Get(command.srcBuffer);
-                auto dstImage  = resourceManager->m_imageOwner.Get(command.dstImage);
+                auto srcBuffer = m_context->m_bufferOwner.Get(command.srcBuffer);
+                auto dstImage  = m_context->m_imageOwner.Get(command.dstImage);
 
                 auto copyInfo             = VkBufferImageCopy{};
                 copyInfo.bufferOffset     = command.srcOffset;
@@ -508,8 +502,8 @@ namespace Vulkan
             {
                 auto& command = _command.imageToBuffer;
 
-                auto srcImage  = resourceManager->m_imageOwner.Get(command.sourceImage);
-                auto dstBuffer = resourceManager->m_bufferOwner.Get(command.destinationBuffer);
+                auto srcImage  = m_context->m_imageOwner.Get(command.sourceImage);
+                auto dstBuffer = m_context->m_bufferOwner.Get(command.destinationBuffer);
 
                 auto copyInfo             = VkBufferImageCopy{};
                 copyInfo.bufferOffset     = command.destinationOffset;
@@ -531,22 +525,18 @@ namespace Vulkan
 
     void CommandList::Submit(const RHI::CommandCompute& command)
     {
-        auto resourceManager = m_context->m_resourceManager.get();
-
-        auto pipeline = resourceManager->m_computePipelineOwner.Get(command.pipelineState);
+        auto pipeline = m_context->m_computePipelineOwner.Get(command.pipelineState);
 
         vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->handle);
 
-        if (command.shaderBindGroups.size())
+        if (command.BindGroups.size())
         {
-            auto layout = resourceManager->m_pipelineLayoutOwner.Get(pipeline->layout);
-
             std::vector<VkDescriptorSet> descriptorSets;
             std::vector<uint32_t>        descriptorSetOffsets;
 
-            for (auto bindGroup : command.shaderBindGroups)
+            for (auto bindGroup : command.BindGroups)
             {
-                auto descriptorSet = resourceManager->m_descriptorSetOwner.Get(bindGroup);
+                auto descriptorSet = m_context->m_bindGroupOwner.Get(bindGroup);
                 descriptorSets.push_back(descriptorSet->handle);
                 descriptorSetOffsets.push_back(0);
             }
@@ -554,7 +544,7 @@ namespace Vulkan
             vkCmdBindDescriptorSets(
                 m_commandBuffer,
                 VK_PIPELINE_BIND_POINT_COMPUTE,
-                layout->handle,
+                pipeline->layout,
                 0,
                 static_cast<uint32_t>(descriptorSets.size()),
                 descriptorSets.data(),
@@ -574,9 +564,7 @@ namespace Vulkan
 
     VkRenderingAttachmentInfo CommandList::GetAttachmentInfo(const RHI::ImagePassAttachment& passAttachment) const
     {
-        auto resourceManager = m_context->m_resourceManager.get();
-
-        auto imageView  = m_context->m_resourceManager->m_imageViewOwner.Get(passAttachment.view);
+        auto imageView  = m_context->m_imageViewOwner.Get(passAttachment.view);
         auto attachment = passAttachment.attachment;
 
         auto attachmentInfo                        = VkRenderingAttachmentInfo{};
@@ -597,7 +585,7 @@ namespace Vulkan
     {
         RHI_ASSERT(passAttachment);
 
-        auto image = m_context->m_resourceManager->m_imageOwner.Get(passAttachment->attachment->handle);
+        auto image = m_context->m_imageOwner.Get(passAttachment->attachment->handle);
         RHI_ASSERT(image);
 
         auto barrier                            = VkImageMemoryBarrier2{};
@@ -669,7 +657,7 @@ namespace Vulkan
     {
         RHI_ASSERT(passAttachment);
 
-        auto buffer = m_context->m_resourceManager->m_bufferOwner.Get(passAttachment->attachment->handle);
+        auto buffer = m_context->m_bufferOwner.Get(passAttachment->attachment->handle);
         RHI_ASSERT(buffer);
 
         auto barrier   = VkBufferMemoryBarrier2{};

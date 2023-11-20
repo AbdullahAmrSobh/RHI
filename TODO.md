@@ -1,9 +1,68 @@
-- [] Make Rename resources and name spaces 
-- [] Make Frame Graph reference resource directly 
-- [] rename Frame graph to Render graph
-- [] Make Separate types for graphics, compute and ray tracing pipelines
+- [x] Resource bindings
+- [] async compute
+- [] ray tracing support
+- [] mesh shaders support
+- [] dynamic shader bind groups / bindless draws
+- [] validation layer
+- [] multi-pass setup
+- [] fix memory leaks
+- [] unify interface (RAII vs raw-handles make a decision) 
+- [] make Separate types for graphics, compute and ray tracing pipelines
+- [] rename resources and name spaces 
+- [] reference Frame Graph resource directly (no attachments interface)
+- [] rename Frame Graph to Render graph
 - [] memory defragmentation for graph and pool resources
 - [] resource delete queue
+- [] swapchain resize
+- [] multithreading support
+- [] select memory type for images
+- [] stream resources support
+- [] add profiling/instrumentation
+- [] multithreading support
+- [] resource copy / staging
+- [] multiple command list per pass
+- [x] bind group layout object
+- [x] command list reuse
+- [x] cmake cleanup
+- [] remove handles (for now)
+- [] re add handles when everything is finished and is working proberly
+
+==========================================================================================
+- abstract standard template library
+- [] Add basic containers
+    - [] memory
+        - [] allocator interface
+        - [] arena allocators
+        - [] buddy allocators
+        - [] local allocators
+        - [] stack based allocators
+    - [] thread context
+    - [] job system
+    - [] string
+    - [] string view
+    - [] map
+    - [] set
+    - [] array
+    - [] vector
+    - [] linked list
+    - [] span
+    - [] iterators library
+    - [] expected/result
+    - [] dynamic library loader
+    - [] std types u32, i32, ...etc
+
+==========================================================================================
+- [] support library 
+    - [] logging
+    - [] file system
+
+==========================================================================================
+- [] examples
+    - [] basic mesh
+
+==========================================================================================
+iterate on interface
+    
 
 ==========================================================================================
 Frame life cycle

@@ -18,14 +18,19 @@ struct PSOutput
 VSOutput VSMain(VSInput input)
 {
 	VSOutput output; 
-	output.position = float4(input.Pos, 0, 1);
+	output.position = float4(input.Pos * 0.5, 0, 1) ;
 	output.color    = input.Color;
 	return output;
 }
 
+cbuffer UBO : register(b0)
+{
+	float4 color;
+};
+
 PSOutput PSMain(VSOutput input)
 {
 	PSOutput output;
-	output.color = input.color; 
+	output.color = input.color + color; 
 	return output;
 }

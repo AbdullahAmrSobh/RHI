@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.14)
 
 include(${CMAKE_SOURCE_DIR}/CMake/prelude.cmake)
+include(${CMAKE_SOURCE_DIR}/CMake/lint.cmake)
 
 project(
 	RHI

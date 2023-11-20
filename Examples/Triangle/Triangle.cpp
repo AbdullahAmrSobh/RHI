@@ -1,12 +1,45 @@
 #include <Examples-Base/ExampleBase.hpp>
 #include <RHI/RHI.hpp>
 
+// clang-format off
+std::vector<float> vertexData
+    {
+        -1.0, -1.0, 1.0, 1.0, 0.0, 1.0,
+            1.0, -1.0, 0.0, 1.0, 1.0, 1.0,
+            1.0,  1.0, 1.0, 0.0, 1.0, 1.0,
+        -1.0,  1.0, 1.0, 1.0, 0.0, 1.0,
+    };
+
+std::vector<uint32_t> indexData = 
+    { 
+        0, 1, 3,
+        1, 3, 2,
+    };
+
+// clang-format on
+
 class TriangleExample final : public ExampleBase
 {
 public:
     TriangleExample()
         : ExampleBase("Hello, Triangle", 800, 600)
     {
+    }
+
+    template<typename T>
+    RHI::Handle<RHI::Buffer> CreateBuffer(RHI::TL::Span<T> data, RHI::Flags<RHI::BufferUsage> usageFlags)
+    {
+        auto createInfo       = RHI::BufferCreateInfo{};
+        createInfo.usageFlags = usageFlags;
+        createInfo.byteSize   = data.size() * sizeof(T);
+
+        auto                 buffer          = m_resourcePool->Allocate(createInfo).GetValue();
+        RHI::DeviceMemoryPtr vertexBufferPtr = m_context->MapResource(buffer);
+        RHI_ASSERT(vertexBufferPtr != nullptr);
+        memcpy(vertexBufferPtr, data.data(), data.size() * sizeof(float));
+        m_context->Unmap(buffer);
+
+        return buffer;
     }
 
     void OnInit(WindowInfo windowInfo) override
@@ -24,40 +57,16 @@ public:
 
         // create buffer resource
         {
-            // clang-format off
-            std::vector<float> vertexData
-                {
-                    -1.0, -1.0, 1.0, 1.0, 0.0, 1.0,
-                     1.0, -1.0, 0.0, 1.0, 1.0, 1.0,
-                     1.0,  1.0, 1.0, 0.0, 1.0, 1.0,
-                    -1.0,  1.0, 1.0, 1.0, 0.0, 1.0,
-                };
+            m_vertexBuffer = CreateBuffer<float>({ vertexData.data(), vertexData.size() }, RHI::BufferUsage::Vertex);
+            m_indexBuffer  = CreateBuffer<uint32_t>({ indexData.data(), indexData.size() }, RHI::BufferUsage::Index);
 
-            std::vector<uint32_t> indexData = 
-                { 
-                    0, 1, 3,
-                    1, 3, 2,
-                };
-            // clang-format on
+            struct UniformData
+            {
+                float r, g, b, a;
+            };
 
-            RHI::BufferCreateInfo createInfo{};
-            createInfo.usageFlags = RHI::BufferUsage::Vertex;
-            createInfo.byteSize   = vertexData.size() * sizeof(float);
-            m_vertexBuffer        = m_resourcePool->Allocate(createInfo).GetValue();
-
-            createInfo.usageFlags = RHI::BufferUsage::Index;
-            createInfo.byteSize   = indexData.size() * sizeof(uint32_t);
-            m_indexBuffer         = m_resourcePool->Allocate(createInfo).GetValue();
-
-            RHI::DeviceMemoryPtr vertexBufferPtr = m_context->MapResource(m_vertexBuffer);
-            RHI_ASSERT(vertexBufferPtr != nullptr);
-            memcpy(vertexBufferPtr, vertexData.data(), vertexData.size() * sizeof(float));
-            m_context->Unmap(m_vertexBuffer);
-
-            RHI::DeviceMemoryPtr indexBufferPtr = m_context->MapResource(m_indexBuffer);
-            RHI_ASSERT(indexBufferPtr != nullptr);
-            memcpy(indexBufferPtr, indexData.data(), indexData.size() * sizeof(uint32_t));
-            m_context->Unmap(m_indexBuffer);
+            UniformData data{};
+            m_uniformData = CreateBuffer<UniformData>(data, RHI::BufferUsage::Uniform);
         }
 
         // // create image resource
@@ -83,21 +92,23 @@ public:
         // }
 
         // create shader bind group layout
-        RHI::ShaderBindGroupLayout layout = { { RHI::ShaderBinding{ RHI::ShaderBindingType::Image, RHI::ShaderBindingAccess::OnlyRead, 1 } } };
+        auto bindGroupLayout = m_context->CreateBindGroupLayout({ RHI::ShaderBinding{ RHI::ShaderBindingType::Buffer, RHI::ShaderBindingAccess::OnlyRead, 1 } });
+        auto pipelineLayout  = m_context->CreatePipelineLayout({bindGroupLayout});
+        
 
         // create shader bind group
-        m_shaderBindGroupAllocator = m_context->CreateShaderBindGroupAllocator();
-        m_shaderBindGroup          = m_shaderBindGroupAllocator->AllocateShaderBindGroups(layout).front();
+        m_BindGroupAllocator = m_context->CreateBindGroupAllocator();
+        m_BindGroup          = m_BindGroupAllocator->AllocateBindGroups(bindGroupLayout).front();
 
         // create pipeline
         {
-            auto                        shaderCode = ReadBinaryFile("./Resources/Shaders/triangle.spv");
+            auto shaderCode = ReadBinaryFile("./Resources/Shaders/triangle.spv");
 
             RHI::ShaderModuleCreateInfo createInfo{};
             createInfo.code = shaderCode.data();
             createInfo.size = shaderCode.size();
 
-            auto                            shaderModule = m_context->CreateShaderModule(createInfo);
+            auto shaderModule = m_context->CreateShaderModule(createInfo);
 
             RHI::GraphicsPipelineCreateInfo psoCreateInfo{};
             psoCreateInfo.inputAssemblerState.attributes = {
@@ -129,7 +140,7 @@ public:
             psoCreateInfo.renderTargetLayout                         = { { RHI::Format::BGRA8_UNORM }, RHI::Format::Unknown, RHI::Format::Unknown };
             psoCreateInfo.depthStencilState.depthTestEnable          = false;
             psoCreateInfo.depthStencilState.depthWriteEnable         = false;
-            // psoCreateInfo.bindGroupLayouts                          = {layout};
+            psoCreateInfo.layout                                     = pipelineLayout;
             psoCreateInfo.renderTargetLayout.colorAttachmentsFormats = { RHI::Format::BGRA8_UNORM };
             psoCreateInfo.renderTargetLayout.depthAttachmentFormat   = RHI::Format::D32;
             psoCreateInfo.colorBlendState.blendStates                = {
@@ -180,9 +191,9 @@ public:
             // setup bind elements
             m_renderpass->End();
 
-            // RHI::ShaderBindGroupData shaderBindGroupData{};
-            // shaderBindGroupData.BindImages(0u, textureAttachment);
-            // m_shaderBindGroupAllocator->Update(m_shaderBindGroup, shaderBindGroupData);
+            // RHI::BindGroupData BindGroupData{};
+            // BindGroupData.BindImages(0u, textureAttachment);
+            // m_BindGroupAllocator->Update(m_BindGroup, BindGroupData);
 
             m_frameScheduler->Submit(*m_renderpass);
         }
@@ -218,11 +229,11 @@ public:
         });
 
         cmd.Submit({
-            .pipelineState    = m_pipelineState,
-            .shaderBindGroups = m_shaderBindGroup,
-            .vertexBuffers    = m_vertexBuffer,
-            .indexBuffers     = m_indexBuffer,
-            .parameters       = { .elementCount = 6 },
+            .pipelineState = m_pipelineState,
+            .BindGroups    = m_BindGroup,
+            .vertexBuffers = m_vertexBuffer,
+            .indexBuffers  = m_indexBuffer,
+            .parameters    = { .elementCount = 6 },
         });
 
         m_renderpass->EndCommandList();
@@ -231,21 +242,23 @@ public:
     }
 
 private:
-    std::unique_ptr<RHI::ResourcePool>             m_resourcePool;
+    std::unique_ptr<RHI::ResourcePool> m_resourcePool;
 
-    std::unique_ptr<RHI::ShaderBindGroupAllocator> m_shaderBindGroupAllocator;
+    std::unique_ptr<RHI::BindGroupAllocator> m_BindGroupAllocator;
 
-    RHI::Handle<RHI::GraphicsPipeline>             m_pipelineState;
+    RHI::Handle<RHI::GraphicsPipeline> m_pipelineState;
 
-    RHI::Handle<RHI::Image>                        m_image;
+    RHI::Handle<RHI::Image> m_image;
 
-    RHI::Handle<RHI::Buffer>                       m_vertexBuffer;
+    RHI::Handle<RHI::Buffer> m_uniformData;
 
-    RHI::Handle<RHI::Buffer>                       m_indexBuffer;
+    RHI::Handle<RHI::Buffer> m_vertexBuffer;
 
-    RHI::Handle<RHI::ShaderBindGroup>              m_shaderBindGroup;
+    RHI::Handle<RHI::Buffer> m_indexBuffer;
 
-    std::unique_ptr<RHI::Pass>                     m_renderpass;
+    RHI::Handle<RHI::BindGroup> m_BindGroup;
+
+    std::unique_ptr<RHI::Pass> m_renderpass;
 };
 
 EXAMPLE_ENTRY_POINT(TriangleExample)

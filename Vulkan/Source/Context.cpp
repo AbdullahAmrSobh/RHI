@@ -6,6 +6,8 @@
 #include "RHI-Vulkan/Loader.hpp"
 #include "Resources.hpp"
 
+#include <RHI/Result.hpp>
+
 #undef CreateSemaphore
 #include "Context.hpp"
 
@@ -74,11 +76,6 @@ namespace Vulkan
         }
 
         return VK_FALSE;
-    }
-
-    Context::Context()
-        : m_resourceManager(std::make_unique<ResourceManager>(this))
-    {
     }
 
     Context::~Context()
@@ -360,6 +357,52 @@ namespace Vulkan
         return shaderModule;
     }
 
+    std::unique_ptr<RHI::FrameScheduler> Context::CreateFrameScheduler()
+    {
+        auto scheduler = std::make_unique<FrameScheduler>(this);
+        auto result    = scheduler->Init();
+        RHI_ASSERT(result == VK_SUCCESS);
+        return scheduler;
+    }
+
+    RHI::Handle<RHI::BindGroupLayout> Context::CreateBindGroupLayout(const RHI::BindGroupLayoutCreateInfo& createInfo)
+    {
+        auto [handle, bindGroupLayout] = m_bindGroupLayoutsOwner.InsertZerod();
+        auto result                    = bindGroupLayout.Init(this, createInfo);
+        RHI_ASSERT(result == RHI::ResultCode::Success);
+        return handle;
+    }
+
+    void Context::FreeBindGroupLayout(RHI::Handle<RHI::BindGroupLayout> handle)
+    {
+        auto layout = m_bindGroupLayoutsOwner.Get(handle);
+        layout->Shutdown(this);
+        m_bindGroupLayoutsOwner.Remove(handle);
+    }
+
+    RHI::Handle<RHI::PipelineLayout> Context::CreatePipelineLayout(const RHI::PipelineLayoutCreateInfo& createInfo)
+    {
+        auto [handle, pipelineLayout] = m_pipelineLayoutOwner.InsertZerod();
+        auto result                   = pipelineLayout.Init(this, createInfo);
+        RHI_ASSERT(result == RHI::ResultCode::Success);
+        return handle;
+    }
+
+    void Context::FreePipelineLayout(RHI::Handle<RHI::PipelineLayout> handle)
+    {
+        auto layout = m_pipelineLayoutOwner.Get(handle);
+        layout->Shutdown(this);
+        m_pipelineLayoutOwner.Remove(handle);
+    }
+
+    std::unique_ptr<RHI::BindGroupAllocator> Context::CreateBindGroupAllocator()
+    {
+        auto bindGroupAllocator = std::make_unique<BindGroupAllocator>(this);
+        auto result             = bindGroupAllocator->Init();
+        RHI_ASSERT(result == VK_SUCCESS);
+        return bindGroupAllocator;
+    }
+
     std::unique_ptr<RHI::ResourcePool> Context::CreateResourcePool(const RHI::ResourcePoolCreateInfo& createInfo)
     {
         auto resourcePool = std::make_unique<ResourcePool>(this);
@@ -370,118 +413,110 @@ namespace Vulkan
 
     RHI::Handle<RHI::GraphicsPipeline> Context::CreateGraphicsPipeline(const RHI::GraphicsPipelineCreateInfo& createInfo)
     {
-        auto [handle, result] = m_resourceManager->CreateGraphicsPipeline(createInfo);
+        auto [handle, pipeline] = m_graphicsPipelineOwner.InsertZerod();
+        auto result             = pipeline.Init(this, createInfo);
         RHI_ASSERT(result == RHI::ResultCode::Success);
         return handle;
+    }
+
+    void Context::Free(RHI::Handle<RHI::GraphicsPipeline> handle)
+    {
+        auto layout = m_graphicsPipelineOwner.Get(handle);
+        layout->Shutdown(this);
+        m_graphicsPipelineOwner.Remove(handle);
     }
 
     RHI::Handle<RHI::ComputePipeline> Context::CreateComputePipeline(const RHI::ComputePipelineCreateInfo& createInfo)
     {
-        auto [handle, result] = m_resourceManager->CreateComputePipeline(createInfo);
+        auto [handle, pipeline] = m_computePipelineOwner.InsertZerod();
+        auto result             = pipeline.Init(this, createInfo);
         RHI_ASSERT(result == RHI::ResultCode::Success);
         return handle;
+    }
+
+    void Context::Free(RHI::Handle<RHI::ComputePipeline> handle)
+    {
+        auto layout = m_computePipelineOwner.Get(handle);
+        layout->Shutdown(this);
+        m_computePipelineOwner.Remove(handle);
     }
 
     RHI::Handle<RHI::Sampler> Context::CreateSampler(const RHI::SamplerCreateInfo& createInfo)
     {
-        auto [handle, result] = m_resourceManager->CreateSampler(createInfo);
+        auto [handle, sampler] = m_samplerOwner.InsertZerod();
+        auto result            = sampler.Init(this, createInfo);
         RHI_ASSERT(result == RHI::ResultCode::Success);
         return handle;
     }
 
-    RHI::Handle<RHI::ImageView> Context::CreateImageView(RHI::Handle<RHI::Image> handle, const RHI::ImageAttachmentUseInfo& useInfo)
+    void Context::Free(RHI::Handle<RHI::Sampler> handle)
     {
-        auto [viewHandle, result] = m_resourceManager->CreateImageView(handle, useInfo);
+        auto sampler = m_samplerOwner.Get(handle);
+        sampler->Shutdown(this);
+        m_samplerOwner.Remove(handle);
+    }
+
+    RHI::Handle<RHI::ImageView> Context::CreateImageView(RHI::Handle<RHI::Image> imageHandle, const RHI::ImageAttachmentUseInfo& useInfo)
+    {
+        auto [handle, imageView] = m_imageViewOwner.InsertZerod();
+        auto result              = imageView.Init(this, imageHandle, useInfo);
         RHI_ASSERT(result == RHI::ResultCode::Success);
-        return viewHandle;
+        return handle;
     }
 
-    RHI::Handle<RHI::BufferView> Context::CreateBufferView(RHI::Handle<RHI::Buffer> handle, const RHI::BufferAttachmentUseInfo& useInfo)
+    void Context::Free(RHI::Handle<RHI::ImageView> handle)
     {
-        auto [viewHandle, result] = m_resourceManager->CreateBufferView(handle, useInfo);
+        auto imageView = m_imageViewOwner.Get(handle);
+        imageView->Shutdown(this);
+        m_imageViewOwner.Remove(handle);
+    }
+
+    RHI::Handle<RHI::BufferView> Context::CreateBufferView(RHI::Handle<RHI::Buffer> bufferHandle, const RHI::BufferAttachmentUseInfo& useInfo)
+    {
+        auto [handle, bufferView] = m_bufferViewOwner.InsertZerod();
+        auto result               = bufferView.Init(this, bufferHandle, useInfo);
         RHI_ASSERT(result == RHI::ResultCode::Success);
-        return viewHandle;
+        return handle;
     }
 
-    std::unique_ptr<RHI::FrameScheduler> Context::CreateFrameScheduler()
+    void Context::Free(RHI::Handle<RHI::BufferView> handle)
     {
-        auto scheduler = std::make_unique<FrameScheduler>(this);
-        auto result    = scheduler->Init();
-        RHI_ASSERT(result == VK_SUCCESS);
-        return scheduler;
-    }
-
-    std::unique_ptr<RHI::ShaderBindGroupAllocator> Context::CreateShaderBindGroupAllocator()
-    {
-        auto allocator = std::make_unique<ShaderBindGroupAllocator>(this);
-        auto result    = allocator->Init();
-        RHI_ASSERT(result == VK_SUCCESS);
-        return allocator;
+        auto bufferView = m_bufferViewOwner.Get(handle);
+        bufferView->Shutdown(this);
     }
 
     RHI::DeviceMemoryPtr Context::MapResource(RHI::Handle<RHI::Image> image)
     {
-        auto resource = m_resourceManager->m_imageOwner.Get(image);
-        RHI_ASSERT(resource);
-
+        auto resource   = m_imageOwner.Get(image);
         auto allocation = resource->allocation.handle;
 
         RHI::DeviceMemoryPtr memoryPtr = nullptr;
         VkResult             result    = vmaMapMemory(m_allocator, allocation, &memoryPtr);
-        RHI_ASSERT(result == VK_SUCCESS);
-        return memoryPtr;
-    }
-
-    RHI::DeviceMemoryPtr Context::MapResource(RHI::Handle<RHI::Buffer> buffer)
-    {
-        auto resource = m_resourceManager->m_bufferOwner.Get(buffer);
-        RHI_ASSERT(resource);
-
-        auto allocation = resource->allocation.handle;
-
-        RHI::DeviceMemoryPtr memoryPtr = nullptr;
-        VkResult             result    = vmaMapMemory(m_allocator, allocation, &memoryPtr);
-        RHI_ASSERT(result == VK_SUCCESS);
+        VULKAN_ASSERT_SUCCESS(result);
         return memoryPtr;
     }
 
     void Context::Unmap(RHI::Handle<RHI::Image> image)
     {
-        auto resource = m_resourceManager->m_bufferOwner.Get(image)->allocation.handle;
-
+        auto resource = m_bufferOwner.Get(image)->allocation.handle;
         vmaUnmapMemory(m_allocator, resource);
+    }
+
+    RHI::DeviceMemoryPtr Context::MapResource(RHI::Handle<RHI::Buffer> buffer)
+    {
+        auto resource   = m_bufferOwner.Get(buffer);
+        auto allocation = resource->allocation.handle;
+
+        RHI::DeviceMemoryPtr memoryPtr = nullptr;
+        VkResult             result    = vmaMapMemory(m_allocator, allocation, &memoryPtr);
+        VULKAN_ASSERT_SUCCESS(result);
+        return memoryPtr;
     }
 
     void Context::Unmap(RHI::Handle<RHI::Buffer> buffer)
     {
-        auto resource = m_resourceManager->m_bufferOwner.Get(buffer)->allocation.handle;
-
+        auto resource = m_bufferOwner.Get(buffer)->allocation.handle;
         vmaUnmapMemory(m_allocator, resource);
-    }
-
-    void Context::Free(RHI::Handle<RHI::GraphicsPipeline> pso)
-    {
-        m_resourceManager->FreeGraphicsPipeline(RHI::Handle<GraphicsPipeline>(pso));
-    }
-
-    void Context::Free(RHI::Handle<RHI::ComputePipeline> pso)
-    {
-        m_resourceManager->FreeComputePipeline(RHI::Handle<ComputePipeline>(pso));
-    }
-
-    void Context::Free(RHI::Handle<RHI::Sampler> sampler)
-    {
-        m_resourceManager->FreeSampler(RHI::Handle<Sampler>(sampler));
-    }
-
-    void Context::Free(RHI::Handle<RHI::ImageView> view)
-    {
-        m_resourceManager->FreeImageView(view);
-    }
-
-    void Context::Free(RHI::Handle<RHI::BufferView> view)
-    {
-        m_resourceManager->FreeBufferView(view);
     }
 
     VkSemaphore Context::CreateSemaphore()

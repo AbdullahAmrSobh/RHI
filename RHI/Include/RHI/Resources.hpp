@@ -19,7 +19,8 @@ namespace RHI
     struct Buffer {};
     struct ImageView {};
     struct BufferView {};
-    struct ShaderBindGroup {};
+    struct BindGroupLayout {};
+    struct BindGroup {};
     struct PipelineLayout {};
     struct GraphicsPipeline {};
     struct ComputePipeline {};
@@ -445,14 +446,25 @@ namespace RHI
     };
 
     /// @brief A shader bind group layout is an list of shader bindings.
-    struct ShaderBindGroupLayout
+    struct BindGroupLayoutCreateInfo
     {
-        ShaderBindGroupLayout(std::initializer_list<ShaderBinding> initList)
+        BindGroupLayoutCreateInfo(std::initializer_list<ShaderBinding> initList)
             : bindings(initList)
         {
         }
 
         std::vector<ShaderBinding> bindings;
+    };
+
+    // @brief the layout of pipeline shaders
+    struct PipelineLayoutCreateInfo
+    {
+        PipelineLayoutCreateInfo(TL::Span<Handle<BindGroupLayout>> bindGroupLayouts)
+            : layouts{ bindGroupLayouts.begin(), bindGroupLayouts.end() }
+        {
+        }
+
+        std::vector<Handle<BindGroupLayout>> layouts;
     };
 
     /// @brief Structure specifying the blending parameters for an image render target attachment.
@@ -644,21 +656,15 @@ namespace RHI
         const char*   pixelShaderName;
         ShaderModule* pixelShaderModule;
 
+        Handle<PipelineLayout> layout;
+
         PipelineInputAssemblerStateDesc inputAssemblerState;
-
-        PipelineTopologyMode topologyMode = RHI::PipelineTopologyMode::Triangles;
-
-        TL::Span<const ShaderBindGroupLayout> bindGroupLayouts = {};
-
-        PipelineRenderTargetLayout renderTargetLayout;
-
-        PipelineRasterizerStateDesc rasterizationState;
-
-        PipelineMultisampleStateDesc multisampleState;
-
-        PipelineDepthStencilStateDesc depthStencilState;
-
-        PipelineColorBlendStateDesc colorBlendState = PipelineColorBlendStateDesc{};
+        PipelineTopologyMode            topologyMode;
+        PipelineRenderTargetLayout      renderTargetLayout;
+        PipelineRasterizerStateDesc     rasterizationState;
+        PipelineMultisampleStateDesc    multisampleState;
+        PipelineDepthStencilStateDesc   depthStencilState;
+        PipelineColorBlendStateDesc     colorBlendState;
     };
 
     /// @brief Description of a compute pipeline state.
@@ -667,7 +673,7 @@ namespace RHI
         const char*   shaderName;
         ShaderModule* shaderModule;
 
-        TL::Span<const ShaderBindGroupLayout> bindGroupLayouts;
+        Handle<PipelineLayout> layout;
     };
 
     /// @brief Structure describing the creation parameters of a sampler state.
@@ -697,11 +703,29 @@ namespace RHI
         }
     };
 
+    // struct PipelineFactoryCreateInfo
+    // {
+    //     void*  cacheData;
+    //     size_t dataSize;
+    // };
+
+    // class PipelineCache {};
+
+    // class PipelineFactory
+    // {
+    // public:
+    //     ~PipelineFactory() = default;
+    //     virtual PipelineCache GetCache() const = 0;
+    //     virtual std::unique_ptr<GraphicsPipeline> CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) = 0;
+    //     virtual std::unique_ptr<ComputePipeline> CreateComputePipeline(const ComputePipelineCreateInfo& createInfo) = 0;
+    //     virtual std::unique_ptr<RayTracingPipeline> CreateRayTracingPipeline(const RayTracingPipelineCreateInfo& createInfo) = 0;
+    // };
+
     /// @brief An object that groups shader resources that are bound together.
-    class ShaderBindGroupData final
+    class BindGroupData final
     {
     public:
-        ShaderBindGroupData() = default;
+        BindGroupData() = default;
 
         /// @brief Binds an image resource to the provided binding index and offset array index.
         /// NOTE: offset + images count should not exceed the count of the resources decalred in the layout or the shader.
@@ -768,17 +792,17 @@ namespace RHI
         std::unordered_map<uint32_t, ResourceBinding> m_bindings;
     };
 
-    class ShaderBindGroupAllocator
+    class BindGroupAllocator
     {
     public:
-        ShaderBindGroupAllocator()          = default;
-        virtual ~ShaderBindGroupAllocator() = default;
+        BindGroupAllocator()          = default;
+        virtual ~BindGroupAllocator() = default;
 
-        virtual std::vector<Handle<ShaderBindGroup>> AllocateShaderBindGroups(TL::Span<const ShaderBindGroupLayout> layouts) = 0;
+        virtual std::vector<Handle<BindGroup>> AllocateBindGroups(TL::Span<Handle<BindGroupLayout>> bindGroupLayouts) = 0;
 
-        virtual void Free(TL::Span<Handle<ShaderBindGroup>> groups) = 0;
+        virtual void Free(TL::Span<Handle<BindGroup>> groups) = 0;
 
-        virtual void Update(Handle<ShaderBindGroup> group, const ShaderBindGroupData& data) = 0;
+        virtual void Update(Handle<BindGroup> group, const BindGroupData& data) = 0;
     };
 
     class ShaderModule

@@ -105,7 +105,7 @@ namespace RHI
     struct CommandDraw
     {
         Handle<GraphicsPipeline>          pipelineState;
-        TL::Span<Handle<ShaderBindGroup>> shaderBindGroups;
+        TL::Span<Handle<BindGroup>> BindGroups;
         TL::Span<const Handle<Buffer>>    vertexBuffers;
         Handle<Buffer>                    indexBuffers;
         DrawParameters                    parameters;
@@ -159,7 +159,7 @@ namespace RHI
     struct CommandCompute
     {
         Handle<ComputePipeline>           pipelineState;
-        TL::Span<Handle<ShaderBindGroup>> shaderBindGroups;
+        TL::Span<Handle<BindGroup>> BindGroups;
         DispatchParameters                parameters;
     };
 
