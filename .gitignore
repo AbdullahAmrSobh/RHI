@@ -7,5 +7,6 @@ cmake-build-*/
 prefix/
 CMakeLists.txt.user
 CMakeUserPresets.json
-Export.hpp
 .cache/
+./RHI/Include/RHI/Export.hpp
+./Vulkan/Include/RHI-Vulkan/Export.hpp
