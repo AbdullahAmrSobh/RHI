@@ -146,6 +146,11 @@ namespace RHI
         passAttachment.next                 = nullptr;
         passAttachment.prev                 = attachment->lastUse;
 
+        if (attachment->lifetime == RHI::AttachmentLifetime::Persistent && attachment->swapchain == nullptr)
+        {
+            passAttachment.view = m_context->CreateImageView(attachment->handle, passAttachment.info);
+        }
+
         if (attachment->firstUse == nullptr)
         {
             attachment->firstUse = &passAttachment;
@@ -174,6 +179,10 @@ namespace RHI
         passAttachment.next                  = nullptr;
         passAttachment.prev                  = attachment->lastUse;
 
+        if (attachment->lifetime == RHI::AttachmentLifetime::Persistent)
+        {
+            // passAttachment.view = m_context->CreateBufferView(attachment->handle, passAttachment.info);
+        }
         if (attachment->firstUse == nullptr)
         {
             attachment->firstUse = &passAttachment;
@@ -321,6 +330,8 @@ namespace RHI
                     attachment->handle = swapchain->GetImage();
                 }
 
+                if (passAttachment.view) continue;
+
                 if (auto it = m_imageViewsLut.find(attachment->handle); it != m_imageViewsLut.end())
                 {
                     passAttachment.view = it->second;
@@ -335,6 +346,8 @@ namespace RHI
             for (auto& passAttachment : pass->m_bufferPassAttachment)
             {
                 auto attachment = passAttachment.attachment;
+
+                if (passAttachment.view) continue;
 
                 if (auto it = m_bufferViewLut.find(attachment->handle); it != m_bufferViewLut.end())
                 {

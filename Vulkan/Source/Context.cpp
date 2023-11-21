@@ -498,7 +498,7 @@ namespace Vulkan
 
     void Context::Unmap(RHI::Handle<RHI::Image> image)
     {
-        auto resource = m_bufferOwner.Get(image)->allocation.handle;
+        auto resource = m_imageOwner.Get(image)->allocation.handle;
         vmaUnmapMemory(m_allocator, resource);
     }
 
@@ -611,6 +611,36 @@ namespace Vulkan
         queueFamilyProperties.resize(queueFamilyPropertiesCount);
         vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyPropertiesCount, queueFamilyProperties.data());
         return queueFamilyProperties;
+    }
+
+    uint32_t Context::GetMemoryTypeIndex(RHI::MemoryType memoryType)
+    {
+        VkMemoryPropertyFlags flags = 0;
+        VkMemoryPropertyFlags negateFlags = 0;
+        switch (memoryType)
+        {
+        case RHI::MemoryType::CPU:       flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; break;
+        case RHI::MemoryType::GPULocal:  flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT; negateFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; break;
+        case RHI::MemoryType::GPUShared: flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; break;
+        }
+
+        VkPhysicalDeviceMemoryProperties memoryProperties;
+        vkGetPhysicalDeviceMemoryProperties(m_physicalDevice, &memoryProperties);
+
+        // TODO: if multiple memory types with the desired flags are present,
+        // then select the based on size, performance charactersitcs ...
+        uint32_t index = UINT32_MAX;
+        for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++)
+        {
+            VkMemoryType type = memoryProperties.memoryTypes[i];
+
+            if ((type.propertyFlags & flags) == flags && (type.propertyFlags & negateFlags) == 0)
+            {
+                index = type.heapIndex;
+            }
+        }
+
+        return index;
     }
 
 } // namespace Vulkan

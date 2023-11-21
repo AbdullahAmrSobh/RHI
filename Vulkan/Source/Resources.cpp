@@ -470,6 +470,14 @@ namespace Vulkan
 
     void Image::Shutdown(Context* context)
     {
+        if (pool)
+        {
+            vmaDestroyImage(context->m_allocator, handle, allocation.handle);
+        }
+        else
+        {
+            vkDestroyImage(context->m_device, handle, nullptr);
+        }
     }
 
     VkMemoryRequirements Image::GetMemoryRequirements(VkDevice device) const
@@ -512,6 +520,14 @@ namespace Vulkan
 
     void Buffer::Shutdown(Context* context)
     {
+        if (pool)
+        {
+            vmaDestroyBuffer(context->m_allocator, handle, allocation.handle);
+        }
+        else
+        {
+            vkDestroyBuffer(context->m_device, handle, nullptr);
+        }
     }
 
     VkMemoryRequirements Buffer::GetMemoryRequirements(VkDevice device) const
@@ -1213,14 +1229,14 @@ namespace Vulkan
         m_poolInfo = createInfo;
 
         VmaPoolCreateInfo poolCreateInfo{};
-        poolCreateInfo.flags                  = VMA_POOL_CREATE_IGNORE_BUFFER_IMAGE_GRANULARITY_BIT;
+        poolCreateInfo.flags                  = VMA_POOL_CREATE_LINEAR_ALGORITHM_BIT;
         poolCreateInfo.blockSize              = createInfo.blockSize;
         poolCreateInfo.minBlockCount          = createInfo.minBlockCount;
         poolCreateInfo.maxBlockCount          = createInfo.maxBlockCount;
         poolCreateInfo.priority               = 1.0f;
         poolCreateInfo.minAllocationAlignment = createInfo.minBlockAlignment;
         poolCreateInfo.pMemoryAllocateNext    = nullptr;
-        poolCreateInfo.memoryTypeIndex        = 2; // hardcoded for my GPU please change it later
+        poolCreateInfo.memoryTypeIndex        = m_context->GetMemoryTypeIndex(createInfo.heapType);
 
         return vmaCreatePool(m_context->m_allocator, &poolCreateInfo, &m_pool);
     }
@@ -1235,7 +1251,7 @@ namespace Vulkan
         {
             return result;
         }
-        
+
         return RHI::Handle<RHI::Image>(handle);
     }
 
@@ -1249,7 +1265,7 @@ namespace Vulkan
         {
             return result;
         }
-        
+
         return RHI::Handle<RHI::Buffer>(handle);
     }
 

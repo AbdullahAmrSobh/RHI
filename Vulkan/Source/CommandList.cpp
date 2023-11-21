@@ -279,7 +279,10 @@ namespace Vulkan
 
         for (auto& attachment : pass.m_imagePassAttachments)
         {
-            passAttachments.push_back(&attachment);
+            if (attachment.info.usage == RHI::AttachmentUsage::RenderTarget)
+            {
+                passAttachments.push_back(&attachment);
+            }
         }
         TransitionPassAttachments(BarrierType::PrePass, passAttachments);
 
@@ -294,8 +297,11 @@ namespace Vulkan
                 continue;
             }
 
-            auto attachmentInfo = GetAttachmentInfo(passAttachment);
-            colorAttachmentInfo.push_back(attachmentInfo);
+            if (passAttachment.info.usage == RHI::AttachmentUsage::RenderTarget)
+            {
+                auto attachmentInfo = GetAttachmentInfo(passAttachment);
+                colorAttachmentInfo.push_back(attachmentInfo);
+            }
         }
 
         auto renderingInfo                     = VkRenderingInfo{};
@@ -319,7 +325,10 @@ namespace Vulkan
         std::vector<RHI::ImagePassAttachment*> passAttachments;
         for (auto& attachment : pass.m_imagePassAttachments)
         {
-            passAttachments.push_back(&attachment);
+            if (attachment.info.usage == RHI::AttachmentUsage::RenderTarget)
+            {
+                passAttachments.push_back(&attachment);
+            }
         }
         TransitionPassAttachments(BarrierType::PostPass, passAttachments);
     }
@@ -581,6 +590,13 @@ namespace Vulkan
             barrier.srcQueueFamilyIndex = static_cast<Pass*>(passAttachment->pass)->m_queueFamilyIndex;
             barrier.dstQueueFamilyIndex = static_cast<Pass*>(passAttachment->next->pass)->m_queueFamilyIndex;
 
+            if (barrier.srcQueueFamilyIndex == barrier.dstQueueFamilyIndex &&
+                passAttachment->info.access == RHI::AttachmentAccess::Read &&
+                passAttachment->next->info.access == RHI::AttachmentAccess::Read)
+            {
+                return std::nullopt;
+            }
+
             barrier.srcStageMask  = flags.stages;
             barrier.srcAccessMask = flags.access;
             barrier.oldLayout     = flags.attachmentLayout;
@@ -612,6 +628,11 @@ namespace Vulkan
         {
             if (passAttachment->prev == nullptr)
             {
+                if (passAttachment->info.access == RHI::AttachmentAccess::Read)
+                {
+                    return std::nullopt;
+                }
+
                 barrier.srcStageMask  = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
                 barrier.srcAccessMask = 0;
                 barrier.oldLayout     = VK_IMAGE_LAYOUT_UNDEFINED;

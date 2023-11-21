@@ -5,6 +5,11 @@
 #include <RHI/FrameGraph.hpp>
 #include <vk_mem_alloc.h>
 
+namespace RHI
+{
+    enum class MemoryType;
+}
+
 namespace Vulkan
 {
     struct Image;
@@ -72,6 +77,8 @@ namespace Vulkan
         std::vector<VkPhysicalDevice> GetAvailablePhysicalDevices() const;
 
         std::vector<VkQueueFamilyProperties> GetPhysicalDeviceQueueFamilyProperties(VkPhysicalDevice physicalDevice) const;
+
+        uint32_t GetMemoryTypeIndex(RHI::MemoryType memoryType);
 
         VkInstance       m_instance       = VK_NULL_HANDLE;
         VkPhysicalDevice m_physicalDevice = VK_NULL_HANDLE;
