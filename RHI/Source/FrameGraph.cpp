@@ -355,8 +355,8 @@ namespace RHI
                 }
                 else
                 {
-                    passAttachment.view = m_context->CreateBufferView(passAttachment.attachment->handle, passAttachment.info);
-                    m_bufferViewLut.insert({ attachment->handle, passAttachment.view });
+                    // passAttachment.view = m_context->CreateBufferView(passAttachment.attachment->handle, passAttachment.info);
+                    // m_bufferViewLut.insert({ attachment->handle, passAttachment.view });
                 }
             }
         }
