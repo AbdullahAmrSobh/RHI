@@ -1,6 +1,5 @@
 #pragma once
 
-#include <RHI/Handle.hpp>
 #include <vk_mem_alloc.h>
 
 namespace Vulkan

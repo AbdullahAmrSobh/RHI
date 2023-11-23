@@ -264,8 +264,8 @@ namespace RHI
 
         ImageAttachment(const char* name, Handle<Image> handle)
             : Attachment(name, AttachmentLifetime::Persistent, AttachmentType::Image)
-            , handle(handle)
             , swapchain(nullptr)
+            , handle(handle)
             , firstUse(nullptr)
             , lastUse(nullptr)
         {

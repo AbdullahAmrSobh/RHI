@@ -10,7 +10,7 @@ namespace RHI
     struct ImageAttachmentUseInfo;
     struct BufferAttachmentUseInfo;
 
-    class Attachment;
+    struct Attachment;
 } // namespace RHI
 
 namespace Vulkan

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <RHI/RHI.hpp>
-
 #include <memory>
 #include <string>
 #include <string_view>
@@ -31,34 +30,34 @@ public:
     virtual ~ExampleBase() = default;
 
     /// @brief Loads an image from disk.
-    ImageData             LoadImage(std::string_view path) const;
+    ImageData LoadImage(std::string_view path) const;
 
     /// @brief Reads (in binary mode) a file from disk.
     std::vector<uint32_t> ReadBinaryFile(std::string_view path) const;
 
     /// @brief Init.
-    void                  Init();
+    void Init();
 
     /// @brief Shutdown.
-    void                  Shutdown();
+    void Shutdown();
 
     /// @brief Run.
-    void                  Run();
+    void Run();
 
-    virtual void          OnInit(WindowInfo windowInfo) = 0;
+    virtual void OnInit(WindowInfo windowInfo) = 0;
 
-    virtual void          OnShutdown()                  = 0;
+    virtual void OnShutdown() = 0;
 
-    virtual void          OnUpdate()                    = 0;
+    virtual void OnUpdate() = 0;
 
 protected:
-    std::unique_ptr<RHI::Context>        m_context;
+    std::unique_ptr<RHI::Context> m_context;
 
-    std::unique_ptr<RHI::Swapchain>      m_swapchain;
+    std::unique_ptr<RHI::Swapchain> m_swapchain;
 
     std::unique_ptr<RHI::FrameScheduler> m_frameScheduler;
 
-    void*                                m_window;
+    void* m_window;
 };
 
 #define EXAMPLE_ENTRY_POINT(exampleClassName)                \
