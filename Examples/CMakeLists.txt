@@ -1,21 +1,43 @@
-# Add GLFW for window
-include(FetchContent)
-FetchContent_Declare(glfw GIT_REPOSITORY https://github.com/glfw/glfw)
+include(${CMAKE_SOURCE_DIR}/CMake/CPM.cmake)
 
-FetchContent_GetProperties(glfw)
+# Add dependencies
+CPMAddPackage(
+    NAME             RHI_GLFW
+	GIT_REPOSITORY   git@github.com:glfw/glfw.git
+	GIT_TAG          3.3.8
+	
+)
 
-if(NOT glfw_POPULATED)
-    FetchContent_Populate(glfw)
-    set(GLFW_STANDALONE OFF CACHE INTERNAL "Build cmake as standalone")
-    set(glfw_PKG_DEPS OFF CACHE INTERNAL "Build cmake with waylane")
-    set(GLFW_USE_WAYLAND OFF CACHE INTERNAL "Build cmake with waylane")
-    set(GLFW_BUILD_EXAMPLES OFF CACHE INTERNAL "Build the GLFW example programs")
-    set(GLFW_BUILD_TESTS OFF CACHE INTERNAL "Build the GLFW test programs")
-    set(GLFW_BUILD_DOCS OFF CACHE INTERNAL "Build the GLFW documentation")
-    set(GLFW_INSTALL OFF CACHE INTERNAL "Generate installation target")
+CPMAddPackage(
+	NAME             RHI_glm
+	GIT_REPOSITORY   git@github.com:g-truc/glm.git
+	GIT_TAG          0.9.9.8
+)
 
-    add_subdirectory(${glfw_SOURCE_DIR} ${glfw_BINARY_DIR})
-endif()
+CPMAddPackage(
+	NAME             RHI_assimp
+	GIT_REPOSITORY   git@github.com:assimp/assimp.git
+	GIT_TAG          v5.3.1
+	OPTIONS
+		# "BUILD_SHARED_LIBS ON"
+		# "ASSIMP_BUILD_FRAMEWORK OFF"
+		# "ASSIMP_DOUBLE_PRECISION OFF"
+		# "ASSIMP_OPT_BUILD_PACKAGES OFF"
+		# "ASSIMP_ANDROID_JNIIOSYSTEM OFF"
+		"ASSIMP_NO_EXPORT OFF"
+		# "ASSIMP_BUILD_ASSIMP_TOOLS OFF"
+		# "ASSIMP_BUILD_SAMPLES OFF"
+		"ASSIMP_BUILD_TESTS OFF"
+		# "ASSIMP_COVERALLS OFF"
+		# "ASSIMP_INSTALL ON"
+		# "ASSIMP_WARNINGS_AS_ERRORS OFF"
+		# "ASSIMP_ASAN OFF"
+		# "ASSIMP_UBSAN OFF"
+		# "ASSIMP_BUILD_DOCS OFF"
+		# "ASSIMP_INJECT_DEBUG_POSTFIX ON"
+		# "ASSIMP_IGNORE_GIT_HASH OFF"
+		# "ASSIMP_BUILD_ZLIB ON"
+)
 
 # Add examples
 add_subdirectory(Base)

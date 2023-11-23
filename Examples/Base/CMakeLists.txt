@@ -12,6 +12,8 @@ aams_add_target(
     SOURCES ${SOURCE_FILES}
     BUILD_DEPENDENCIES
         glfw
+        glm
+        assimp
         RHI::RHI
     RUNTIME_LIBRARIES
         RHI::Vulkan

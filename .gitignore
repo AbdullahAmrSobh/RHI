@@ -1,12 +1,14 @@
+**/.DS_Store
 .idea/
 .vs/
 .vscode/
 build/
-cmake/open-cpp-coverage.cmake
 cmake-build-*/
 prefix/
+.clangd
 CMakeLists.txt.user
 CMakeUserPresets.json
+compile_commands.json
+env.bat
+env.ps1
 .cache/
-./RHI/Include/RHI/Export.hpp
-./Vulkan/Include/RHI-Vulkan/Export.hpp

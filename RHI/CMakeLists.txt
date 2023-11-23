@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.16)
 
+if (MSVC)
+#   set(CMAKE_CXX_FLAGS /WX)
+endif()
+
 # Add header files
 set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Assert.hpp

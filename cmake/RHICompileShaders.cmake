@@ -24,7 +24,7 @@ function(RHICompileShaders)
         # compile vertex stage
 		add_custom_command(
 			OUTPUT ${RHI_OUTPUT_VERT_SPV_SHADER_NAME}
-			COMMAND dxc -spirv ${RHI_SHADER_ABS_PATH} -fspv-target-env=vulkan1.3 -E VSMain -T vs_6_0 -Fo ${RHI_OUTPUT_VERT_SPV_SHADER_NAME}
+			COMMAND $ENV{VULKAN_SDK}/bin/dxc.exe -spirv ${RHI_SHADER_ABS_PATH} -fspv-target-env=vulkan1.3 -E VSMain -T vs_6_0 -Fo ${RHI_OUTPUT_VERT_SPV_SHADER_NAME}
 			DEPENDS ${RHI_SHADER_ABS_PATH} ${RHI_ARG_DEPENDENCIES}
 			COMMENT "Compiling ${RHI_SHADER_NAME} vertex stage"
 		)
@@ -32,7 +32,7 @@ function(RHICompileShaders)
         # compile pixel stage
 		add_custom_command(
 			OUTPUT ${RHI_OUTPUT_PIXEL_SPV_SHADER_NAME}
-			COMMAND dxc -spirv ${RHI_SHADER_ABS_PATH} -fspv-target-env=vulkan1.3 -E PSMain -T ps_6_0 -Fo ${RHI_OUTPUT_PIXEL_SPV_SHADER_NAME}
+			COMMAND $ENV{VULKAN_SDK}/bin/dxc.exe -spirv ${RHI_SHADER_ABS_PATH} -fspv-target-env=vulkan1.3 -E PSMain -T ps_6_0 -Fo ${RHI_OUTPUT_PIXEL_SPV_SHADER_NAME}
 			DEPENDS ${RHI_SHADER_ABS_PATH} ${RHI_ARG_DEPENDENCIES}
 			COMMENT "Compiling ${RHI_SHADER_NAME} pixel stage"
 		)
@@ -40,7 +40,7 @@ function(RHICompileShaders)
         # generate library
 		add_custom_command(
 			OUTPUT ${RHI_OUTPUT_SPV_SHADER_MODULE_NAME}
-			COMMAND spirv-link -o ${RHI_OUTPUT_SPV_SHADER_MODULE_NAME} --create-library ${RHI_OUTPUT_VERT_SPV_SHADER_NAME} ${RHI_OUTPUT_PIXEL_SPV_SHADER_NAME}
+			COMMAND $ENV{VULKAN_SDK}/bin/spirv-link.exe -o ${RHI_OUTPUT_SPV_SHADER_MODULE_NAME} --create-library ${RHI_OUTPUT_VERT_SPV_SHADER_NAME} ${RHI_OUTPUT_PIXEL_SPV_SHADER_NAME}
 			DEPENDS ${RHI_OUTPUT_VERT_SPV_SHADER_NAME} ${RHI_OUTPUT_PIXEL_SPV_SHADER_NAME}
 			COMMENT "Generating Library  ${RHI_SHADER_ABS_PATH}"
 		)

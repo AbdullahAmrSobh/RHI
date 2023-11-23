@@ -8,8 +8,6 @@ set(SHADER_FILES_LIST
     ${CMAKE_CURRENT_SOURCE_DIR}/Resources/Shaders/Triangle.hlsl
 )
 
-set(RHI_DEBUG ON)
-
 include(${CMAKE_SOURCE_DIR}/CMake/AddTarget.cmake)
 aams_add_target(
     NAME Triangle

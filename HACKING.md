@@ -68,12 +68,24 @@ the project:
 ```
 
 You should replace `<os>` in your newly created presets file with the name of
-the operating system you have, which may be `win64` or `unix`. You can see what
-these correspond to in the [`CMakePresets.json`](CMakePresets.json) file.
+the operating system you have, which may be `win64`, `linux` or `darwin`. You
+can see what these correspond to in the
+[`CMakePresets.json`](CMakePresets.json) file.
 
 `CMakeUserPresets.json` is also the perfect place in which you can put all
 sorts of things that you would otherwise want to pass to the configure command
 in the terminal.
+
+> **Note**
+> Some editors are pretty greedy with how they open projects with presets.
+> Some just randomly pick a preset and start configuring without your consent,
+> which can be confusing. Make sure that your editor configures when you
+> actually want it to, for example in CLion you have to make sure only the
+> `dev-dev preset` has `Enable profile` ticked in
+> `File > Settings... > Build, Execution, Deployment > CMake` and in Visual
+> Studio you have to set the option `Never run configure step automatically`
+> in `Tools > Options > CMake` **prior to opening the project**, after which
+> you can manually configure using `Project > Configure Cache`.
 
 ### Configure, build and test
 
@@ -108,7 +120,7 @@ the previously run tests when built with coverage configuration. The commands
 this target runs can be found in the `COVERAGE_TRACE_COMMAND` and
 `COVERAGE_HTML_COMMAND` cache variables. The trace command produces an info
 file by default, which can be submitted to services with CI integration. The
-HTML command uses the trace command's output to generate a HTML document to
+HTML command uses the trace command's output to generate an HTML document to
 `<binary-dir>/coverage_html` by default.
 
 #### `docs`
@@ -132,6 +144,31 @@ Runs all the examples created by the `add_example` command.
 These targets run the codespell tool on the codebase to check errors and to fix
 them respectively. Customization available using the `SPELL_COMMAND` cache
 variable.
+
+## Running tests on Windows with `BUILD_SHARED_LIBS=ON`
+
+If you are building a shared library on Windows, you must add the path to the
+DLL file to `PATH` when you want to run tests. One way you could do that is by
+using PowerShell and writing a script for it, e.g. `env.ps1` at the project
+root:
+
+```powershell
+$oldPrompt = (Get-Command prompt).ScriptBlock
+
+function prompt() { "(Debug) $(& $oldPrompt)" }
+
+$VsInstallPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -Property InstallationPath
+$Env:Path += ";$VsInstallPath\Common7\IDE;$Pwd\build\dev\Debug"
+```
+
+Then you can source this script by running `. env.ps1`. This particular
+example will only work for Debug builds.
+
+### Passing `PATH` to editors
+
+Make sure you launch your editor of choice from the console with the above
+script sourced. Look for `(Debug)` in the prompt to confirm, then run e.g.
+`code .` for VScode or `devenv .` for Visual Studio.
 
 [1]: https://cmake.org/cmake/help/latest/manual/cmake-presets.7.html
 [2]: https://cmake.org/download/

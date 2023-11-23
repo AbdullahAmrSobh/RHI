@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.16)
 
+if (MSVC)
+#   set(CMAKE_CXX_FLAGS /WX)
+endif()
+
 # Get VmaAllocator
 set(VMA_RECORDING_ENABLED TRUE)
 include(FetchContent)
