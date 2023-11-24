@@ -1,19 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
 
-if (MSVC)
-#   set(CMAKE_CXX_FLAGS /WX)
-endif()
-
-# Get VmaAllocator
-set(VMA_RECORDING_ENABLED TRUE)
-include(FetchContent)
-FetchContent_Declare(
-    VulkanMemoryAllocator
-    GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
-    GIT_TAG v3.0.1
+# Add dependencies
+CPMAddPackage(
+    NAME           RHI_vma
+	GIT_REPOSITORY git@github.com:GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+	GIT_TAG        v3.0.1
 )
-
-FetchContent_MakeAvailable(VulkanMemoryAllocator)
 
 # # Find Vulkan
 find_package(Vulkan REQUIRED)

@@ -2,22 +2,21 @@ include(${CMAKE_SOURCE_DIR}/CMake/CPM.cmake)
 
 # Add dependencies
 CPMAddPackage(
-    NAME             RHI_GLFW
-	GIT_REPOSITORY   git@github.com:glfw/glfw.git
-	GIT_TAG          3.3.8
-	
+    NAME           RHI_GLFW
+	GIT_REPOSITORY git@github.com:glfw/glfw.git
+	GIT_TAG        3.3.8
 )
 
 CPMAddPackage(
-	NAME             RHI_glm
-	GIT_REPOSITORY   git@github.com:g-truc/glm.git
-	GIT_TAG          0.9.9.8
+	NAME           RHI_glm
+	GIT_REPOSITORY git@github.com:g-truc/glm.git
+	GIT_TAG        0.9.9.8
 )
 
 CPMAddPackage(
-	NAME             RHI_assimp
-	GIT_REPOSITORY   git@github.com:assimp/assimp.git
-	GIT_TAG          v5.3.1
+	NAME           RHI_assimp
+	GIT_REPOSITORY git@github.com:assimp/assimp.git
+	GIT_TAG        v5.3.1
 	OPTIONS
 		# "BUILD_SHARED_LIBS ON"
 		# "ASSIMP_BUILD_FRAMEWORK OFF"
