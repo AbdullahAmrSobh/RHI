@@ -1,49 +1,18 @@
 {
     "version": 4,
-    "version": 4,
     "cmakeMinimumRequired": {
         "major": 3,
-        "minor": 23,
         "minor": 23,
         "patch": 0
     },
     "configurePresets": [
         {
-            "name": "default",
+            "name": "base",
             "description": "Placeholder configuration that buildPresets and testPresets can inherit from",
-            "hidden": true
-        },
-        {
-            "name": "debug",
-            "description": "Specifies build type for single-configuration generators: debug",
             "hidden": true,
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": {
-                    "type": "STRING",
-                    "value": "debug"
-                }
-            }
-        },
-        {
-            "name": "release",
-            "description": "Specifies build type for single-configuration generators: release",
-            "hidden": true,
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": {
-                    "type": "STRING",
-                    "value": "release"
-                }
-            }
-        },
-        {
-            "name": "compile-commands-json",
-            "description": "Generate compile_commands.json file when used with a Makefile or Ninja Generator",
-            "hidden": true,
-            "cacheVariables": {
-                "CMAKE_EXPORT_COMPILE_COMMANDS": {
-                    "type": "BOOL",
-                    "value": "ON"
-                }
+                "RHI_DEVELOPER_MODE": "ON",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
             }
         },
         {
@@ -52,18 +21,8 @@
             "description": "Configure using Ninja generator",
             "hidden": true,
             "generator": "Ninja",
-            "inherits":[
-                "compile-commands-json"
-            ]
-        },
-        {
-            "name": "vs2022",
-            "displayName": "Visual Studio 2022",
-            "description": "Configure using VS2022 generator",
-            "generator": "Visual Studio 17 2022",
-            "hidden": true,
             "inherits": [
-                "host-windows"
+                "base"
             ]
         },
         {
@@ -76,7 +35,7 @@
                 "lhs": "${hostSystemName}",
                 "rhs": "Windows"
             },
-            "architecture":{
+            "architecture": {
                 "value": "x64",
                 "strategy": "external"
             },
@@ -88,26 +47,6 @@
                 "CMAKE_C_COMPILER": "cl.exe",
                 "CMAKE_CXX_COMPILER": "cl.exe"
             }
-        },
-        {
-            "name": "host-linux",
-            "displayName": "Host OS - Linux",
-            "description": "Specifies Linux host condition for configure preset",
-            "hidden": true,
-            "condition": {
-                "type": "equals",
-                "lhs": "${hostSystemName}",
-                "rhs": "Linux"
-            }
-        },
-        {
-            "name": "windows-vs2022",
-            "displayName": "Windows Visual Studio 2022",
-            "description": "Configure Windows to use the VS2022 generator",
-            "binaryDir": "${sourceDir}/build",
-            "inherits": [
-                "vs2022"
-            ]
         },
         {
             "name": "windows-ninja",

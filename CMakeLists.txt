@@ -1,9 +1,25 @@
 cmake_minimum_required(VERSION 3.14)
 
-include(cmake/prelude.cmake)
-include(cmake/project-is-top-level.cmake)
 include(cmake/variables.cmake)
 include(cmake/CPM.cmake)
+
+# ---- In-source guard ----
+
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
+  message(
+      FATAL_ERROR
+      "In-source builds are not supported. "
+      "Please read the BUILDING document before trying to build this project. "
+      "You may need to delete 'CMakeCache.txt' and 'CMakeFiles/' first."
+  )
+endif()
+
+# This variable is set by project() in CMake 3.21+
+string(
+    COMPARE EQUAL
+    "${CMAKE_SOURCE_DIR}" "${PROJECT_SOURCE_DIR}"
+    PROJECT_IS_TOP_LEVEL
+)
 
 project(
     RHI
@@ -20,12 +36,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_subdirectory(RHI)
 add_subdirectory(Vulkan)
-
-# ---- Install rules ----
-
-if(NOT CMAKE_SKIP_INSTALL_RULES)
-  include(cmake/install-rules.cmake)
-endif()
 
 # ---- Examples ----
 
