@@ -21,7 +21,7 @@ install(
 )
 
 install(
-    TARGETS RHI::RHI
+    TARGETS RHI
     EXPORT RHITargets
     RUNTIME #
     COMPONENT RHI_Runtime
