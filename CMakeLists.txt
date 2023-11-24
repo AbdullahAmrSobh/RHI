@@ -23,9 +23,9 @@ add_subdirectory(Vulkan)
 
 # ---- Install rules ----
 
-# if(NOT CMAKE_SKIP_INSTALL_RULES)
-#   include(cmake/install-rules.cmake)
-# endif()
+if(NOT CMAKE_SKIP_INSTALL_RULES)
+  include(cmake/install-rules.cmake)
+endif()
 
 # ---- Examples ----
 

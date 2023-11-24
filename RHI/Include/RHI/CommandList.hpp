@@ -104,11 +104,11 @@ namespace RHI
     /// @brief Structure describing a draw command.
     struct CommandDraw
     {
-        Handle<GraphicsPipeline>          pipelineState;
-        TL::Span<Handle<BindGroup>> BindGroups;
-        TL::Span<const Handle<Buffer>>    vertexBuffers;
-        Handle<Buffer>                    indexBuffers;
-        DrawParameters                    parameters;
+        Handle<GraphicsPipeline>       pipelineState;
+        TL::Span<Handle<BindGroup>>    BindGroups;
+        TL::Span<const Handle<Buffer>> vertexBuffers;
+        Handle<Buffer>                 indexBuffers;
+        DrawParameters                 parameters;
     };
 
     /// @brief Structure describing a copy command.
@@ -158,9 +158,9 @@ namespace RHI
     /// @brief Structure describing a compute command.
     struct CommandCompute
     {
-        Handle<ComputePipeline>           pipelineState;
+        Handle<ComputePipeline>     pipelineState;
         TL::Span<Handle<BindGroup>> BindGroups;
-        DispatchParameters                parameters;
+        DispatchParameters          parameters;
     };
 
     /// @brief Command list record a list of GPU commands that are exectued in the same pass.
