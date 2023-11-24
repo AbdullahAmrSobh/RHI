@@ -21,15 +21,15 @@ find_package(Vulkan REQUIRED)
 # Add header files
 set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI-Vulkan/Loader.hpp
-)
-
-# Add source files
-set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/FrameGraph.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Format.inl
+)
 
+# Add source files
+set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.cpp
