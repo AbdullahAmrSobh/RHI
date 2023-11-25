@@ -44,7 +44,7 @@ ConstructorInitializerIndentWidth: 4
 ContinuationIndentWidth: 4
 Cpp11BracedListStyle: false
 FixNamespaceComments: true
-IncludeBlocks: Regroup
+IncludeBlocks: Preserve
 IndentCaseBlocks: true
 IndentCaseLabels: false
 IndentPPDirectives: BeforeHash
@@ -54,7 +54,7 @@ MaxEmptyLinesToKeep: 1
 NamespaceIndentation: All
 PenaltyReturnTypeOnItsOwnLine: 1000
 PointerAlignment: Left
-SortIncludes: true
+SortIncludes: false
 SpaceAfterLogicalNot: false
 SpaceAfterTemplateKeyword: false
 SpaceBeforeAssignmentOperators: true
