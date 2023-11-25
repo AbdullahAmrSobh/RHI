@@ -3,6 +3,11 @@ cmake_minimum_required(VERSION 3.14)
 include(cmake/variables.cmake)
 include(cmake/CPM.cmake)
 
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(RHI_DEVELOPER_MODE ON)
+
 # ---- In-source guard ----
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
@@ -14,19 +19,19 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
   )
 endif()
 
-# This variable is set by project() in CMake 3.21+
-string(
-    COMPARE EQUAL
-    "${CMAKE_SOURCE_DIR}" "${PROJECT_SOURCE_DIR}"
-    PROJECT_IS_TOP_LEVEL
-)
-
 project(
     RHI
     VERSION 0.1.0
     DESCRIPTION "Renderer Hardware Interface"
     HOMEPAGE_URL "https://github.com/AbdullahAmrSobh/RHI"
     LANGUAGES CXX
+)
+
+# This variable is set by project() in CMake 3.21+
+string(
+    COMPARE EQUAL
+    "${CMAKE_SOURCE_DIR}" "${PROJECT_SOURCE_DIR}"
+    PROJECT_IS_TOP_LEVEL
 )
 
 # ---- Declare library ----

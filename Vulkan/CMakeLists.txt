@@ -12,7 +12,6 @@ find_package(Vulkan REQUIRED)
 
 # Add header files
 set(HEADER_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI-Vulkan/Loader.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.hpp

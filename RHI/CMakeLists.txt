@@ -9,7 +9,6 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Assert.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/CommandList.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Context.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Export.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Flags.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Format.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/FrameGraph.hpp

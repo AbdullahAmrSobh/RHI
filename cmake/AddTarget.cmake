@@ -48,14 +48,12 @@ function(aams_add_target)
         add_library(${aams_add_target_NAME} ${target_library_type} ${aams_add_target_SOURCES} ${aams_add_target_HEADERS})
         add_library(${aams_add_target_NAMESPACE}::${aams_add_target_NAME} ALIAS ${aams_add_target_NAME})
 
-        if (aams_add_target_STATIC OR aams_add_target_SHARED)
-            target_include_directories(
-                ${aams_add_target_NAME} ${warning_guard}
-                PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/Include/"
-                PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/Export>"
-                PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source"
-            )
-        endif()
+        target_include_directories(
+            ${aams_add_target_NAME} ${warning_guard}
+            PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/Include/"
+            PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/Export>"
+            PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source"
+        )
 
         include(GenerateExportHeader)
         generate_export_header(
@@ -70,6 +68,7 @@ function(aams_add_target)
         add_executable(${aams_add_target_NAMESPACE}::${aams_add_target_NAME} ALIAS ${aams_add_target_NAME})
     endif()
 
+    # Disable exceptions and runtime type information
     if(MSVC)
         target_compile_options(${aams_add_target_NAME} PRIVATE /GR-)
         target_compile_options(${aams_add_target_NAME} PRIVATE /EHsc)
@@ -107,25 +106,29 @@ function(aams_add_target)
         set(SYSTEM_ARCH_NAME ${aams_add_target_NAME}_SYSTEM_ARCHITECTURE_UNKNOWN)
     endif()
 
-    target_compile_definitions(${aams_add_target_NAME} PUBLIC ${PLATFORM_NAME})
-    target_compile_definitions(${aams_add_target_NAME} PUBLIC ${SYSTEM_ARCH_NAME})
-
-    if (aams_add_target_INCLUDE_DIRECTORIES)
-        target_include_directories(${aams_add_target_NAME} PRIVATE ${aams_add_target_INCLUDE_DIRECTORIES})
-    endif()
+    # Specify target compile definitions
+    target_compile_definitions(${aams_add_target_NAME} PUBLIC ${PLATFORM_NAME} ${SYSTEM_ARCH_NAME})
 
     if (aams_add_target_COMPILE_DEFINITIONS)
         target_compile_definitions(${aams_add_target_NAME} PRIVATE ${aams_add_target_COMPILE_DEFINITIONS})
     endif()
-
-    if (aams_add_target_BUILD_DEPENDENCIES)
-        target_link_libraries(${aams_add_target_NAME} ${aams_add_target_BUILD_DEPENDENCIES})
+    
+    # Specify target include directories
+    if (aams_add_target_INCLUDE_DIRECTORIES)
+        target_include_directories(${aams_add_target_NAME} PRIVATE ${aams_add_target_INCLUDE_DIRECTORIES})
     endif()
-
+    
+    # Specify target custome properties
     if(aams_add_target_TARGET_PROPERTIES)
         set_target_properties(${aams_add_target_NAME} PROPERTIES ${aams_add_target_TARGET_PROPERTIES})
     endif()
 
+    # Specify target link static libraries
+    if (aams_add_target_BUILD_DEPENDENCIES)
+        target_link_libraries(${aams_add_target_NAME} ${aams_add_target_BUILD_DEPENDENCIES})
+    endif()
+
+    # Specify target link dynamic shared libraries
     if (aams_add_target_RUNTIME_LIBRARIES)
         target_link_libraries(${aams_add_target_NAME} ${aams_add_target_RUNTIME_LIBRARIES})
         foreach(runtime_lib ${aams_add_target_RUNTIME_LIBRARIES})
@@ -135,8 +138,6 @@ function(aams_add_target)
                     $<TARGET_FILE_DIR:${aams_add_target_NAME}>
             )
         endforeach()
-        
     endif()
-
 
 endfunction(aams_add_target)
