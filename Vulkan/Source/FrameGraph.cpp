@@ -270,7 +270,7 @@ namespace Vulkan
 
     RHI::CommandList& Pass::BeginCommandList(uint32_t commandsCount)
     {
-        auto context     = static_cast<Context*>(m_context);
+        (void)commandsCount;
         auto commandList = static_cast<CommandList*>(m_commandList);
 
         commandList->Begin();
@@ -284,7 +284,6 @@ namespace Vulkan
 
     void Pass::EndCommandList()
     {
-        auto context     = static_cast<Context*>(m_context);
         auto commandList = static_cast<CommandList*>(m_commandList);
 
         if (m_queueType == RHI::QueueType::Graphics)

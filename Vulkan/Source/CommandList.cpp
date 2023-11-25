@@ -46,9 +46,9 @@ namespace Vulkan
 
     inline static PipelineBarrierFlags ConvertPipelineStageAccessFlags(RHI::AttachmentUsage usage, RHI::Flags<RHI::PipelineAccessStage> stages, RHI::AttachmentAccess access)
     {
-        VkPipelineStageFlags2 _stages;
-        VkAccessFlags2        _access;
-        VkImageLayout         _layout;
+        VkPipelineStageFlags2 _stages = {};
+        VkAccessFlags2        _access = {};
+        VkImageLayout         _layout = {};
 
         switch (usage)
         {
@@ -202,6 +202,7 @@ namespace Vulkan
 
     void CommandPool::Release(Context* context, CommandList* commandList)
     {
+        (void)context;
         m_availableCommandLists.push_back(commandList);
     }
 
@@ -335,6 +336,7 @@ namespace Vulkan
 
     void CommandList::PushDebugMarker(const char* name)
     {
+        (void)name;
 #if RHI_DEBUG
         if (m_context->m_vkCmdDebugMarkerBeginEXT)
         {
@@ -551,7 +553,6 @@ namespace Vulkan
     VkRenderingAttachmentInfo CommandList::GetAttachmentInfo(const RHI::ImagePassAttachment& passAttachment) const
     {
         auto imageView  = m_context->m_imageViewOwner.Get(passAttachment.view);
-        auto attachment = passAttachment.attachment;
 
         auto attachmentInfo                        = VkRenderingAttachmentInfo{};
         attachmentInfo.sType                       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;

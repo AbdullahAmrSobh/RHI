@@ -360,6 +360,7 @@ namespace Vulkan
 
     VkDescriptorType DescriptorTypeFromAttachmentUsage(RHI::AttachmentUsage usage, RHI::AttachmentAccess access)
     {
+        (void)access;
         switch (usage)
         {
         case RHI::AttachmentUsage::None:
@@ -432,6 +433,7 @@ namespace Vulkan
 
     RHI::ResultCode Image::Init(Context* context, const VmaAllocationCreateInfo allocationInfo, const RHI::ImageCreateInfo& createInfo, ResourcePool* parentPool, bool isTransientResource)
     {
+        (void)parentPool;
         VkImageCreateInfo vkCreateInfo{};
         vkCreateInfo.sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         vkCreateInfo.pNext                 = nullptr;
@@ -493,6 +495,7 @@ namespace Vulkan
 
     RHI::ResultCode Buffer::Init(Context* context, const VmaAllocationCreateInfo allocationInfo, const RHI::BufferCreateInfo& createInfo, ResourcePool* parentPool, bool isTransientResource)
     {
+        (void)parentPool;
         VkBufferCreateInfo vkCreateInfo{};
         vkCreateInfo.sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         vkCreateInfo.pNext                 = nullptr;
@@ -659,6 +662,7 @@ namespace Vulkan
 
     void BindGroup::Shutdown(Context* context)
     {
+        (void)context;
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -1348,9 +1352,10 @@ namespace Vulkan
     {
         auto context = static_cast<Context*>(m_context);
 
-        m_swapchainInfo.imageSize = { newWidth, newHeight };
+        m_swapchainInfo.imageSize = { newWidth, newHeight, 0 };
 
         VkResult result = vkQueueWaitIdle(context->m_graphicsQueue);
+        VULKAN_ASSERT_SUCCESS(result);
 
         vkDestroySwapchainKHR(context->m_device, m_swapchain, nullptr);
 
@@ -1469,6 +1474,7 @@ namespace Vulkan
         uint32_t formatsCount;
 
         VkResult result = vkGetPhysicalDeviceSurfaceFormatsKHR(m_context->m_physicalDevice, m_surface, &formatsCount, nullptr);
+        VULKAN_ASSERT_SUCCESS(result);
 
         std::vector<VkSurfaceFormatKHR> formats{};
         formats.resize(formatsCount);
@@ -1509,8 +1515,9 @@ namespace Vulkan
     {
         auto context = static_cast<Context*>(m_context);
 
-        uint32_t                      presentModesCount;
-        auto                          result = vkGetPhysicalDeviceSurfacePresentModesKHR(context->m_physicalDevice, m_surface, &presentModesCount, nullptr);
+        uint32_t presentModesCount;
+        auto     result = vkGetPhysicalDeviceSurfacePresentModesKHR(context->m_physicalDevice, m_surface, &presentModesCount, nullptr);
+        VULKAN_ASSERT_SUCCESS(result);
         std::vector<VkPresentModeKHR> presentModes{};
         presentModes.resize(presentModesCount);
         result = vkGetPhysicalDeviceSurfacePresentModesKHR(context->m_physicalDevice, m_surface, &presentModesCount, presentModes.data());

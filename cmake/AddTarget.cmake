@@ -140,4 +140,11 @@ function(aams_add_target)
         endforeach()
     endif()
 
+    # Enable all warnings as errors for the target
+    target_compile_options(${aams_add_target_NAME} PRIVATE
+        $<$<CXX_COMPILER_ID:MSVC>:/WX /W4>
+        $<$<CXX_COMPILER_ID:GNU>:-Werror -Wall -Wextra>
+        $<$<CXX_COMPILER_ID:Clang>:-Werror -Wall -Wextra>
+    )
+
 endfunction(aams_add_target)

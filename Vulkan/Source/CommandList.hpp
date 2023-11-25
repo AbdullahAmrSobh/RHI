@@ -61,7 +61,6 @@ namespace Vulkan
 
     private:
         Context*                 m_context;
-        uint32_t                 m_queueFamilyIndex;
         uint32_t                 m_frameIndex;
         std::vector<CommandPool> m_commandPools;
     };

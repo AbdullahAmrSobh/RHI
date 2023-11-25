@@ -44,6 +44,7 @@ public:
 
     void OnInit(WindowInfo windowInfo) override
     {
+        (void)windowInfo;
         // create resources pool
         {
             RHI::ResourcePoolCreateInfo createInfo{};

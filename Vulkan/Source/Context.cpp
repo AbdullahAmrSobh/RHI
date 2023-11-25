@@ -118,17 +118,17 @@ namespace Vulkan
 
         bool debugExtensionFound = false;
 
+#if RHI_DEBUG
         for (VkExtensionProperties extension : GetAvailableInstanceExtensions())
         {
             auto extensionName = extension.extensionName;
-#if RHI_DEBUG
             if (!strcmp(extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
             {
                 debugExtensionFound = true;
                 continue;
             }
-#endif
         }
+#endif
 
 #if RHI_DEBUG
         if (debugExtensionFound)

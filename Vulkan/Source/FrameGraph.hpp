@@ -11,7 +11,6 @@ namespace Vulkan
 
     class Context;
     class CommandList;
-    class Allocation;
     class CommandListAllocator;
 
     VkAttachmentLoadOp ConvertLoadOp(RHI::ImageLoadOperation op);
