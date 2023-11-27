@@ -1,7 +1,6 @@
 #pragma once
 
 #include <RHI/CommandList.hpp>
-#include <RHI/Span.hpp>
 #include <memory>
 #include <optional>
 #include <vulkan/vulkan.h>

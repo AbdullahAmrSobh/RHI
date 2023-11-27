@@ -1,6 +1,6 @@
 #include "RHI/Format.hpp"
 
-#include "RHI/Assert.hpp"
+#include "RHI/Common/Assert.hpp"
 
 namespace RHI
 {

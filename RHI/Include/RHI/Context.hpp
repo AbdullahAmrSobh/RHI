@@ -1,7 +1,8 @@
 #pragma once
 
 #include "RHI/Export.hpp"
-#include "RHI/Handle.hpp"
+#include "RHI/Common/Handle.hpp"
+#include "RHI/Swapchain.hpp"
 
 #include <memory>
 #include <string>
@@ -42,8 +43,8 @@ namespace RHI
     class FrameScheduler;
     class BindGroupAllocator;
 
-    typedef uint32_t Version;
-    typedef void*    DeviceMemoryPtr;
+    using Version = uint32_t;
+    using DeviceMemoryPtr = void *;
 
     /// @brief Type of backend Graphics API
     enum class Backend

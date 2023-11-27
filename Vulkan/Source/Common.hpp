@@ -1,5 +1,5 @@
 #pragma once
-#include <RHI/Result.hpp>
+#include <RHI/Common/Result.hpp>
 #include <string>
 #include <vk_mem_alloc.h>
 

@@ -6,8 +6,6 @@
 #include "RHI-Vulkan/Loader.hpp"
 #include "Resources.hpp"
 
-#include <RHI/Result.hpp>
-
 #undef CreateSemaphore
 #include "Context.hpp"
 

@@ -1,10 +1,10 @@
 #pragma once
 
-#include "RHI/Flags.hpp"
+#include "RHI/Common/Flags.hpp"
+#include "RHI/Common/Handle.hpp"
+#include "RHI/Common/Result.hpp"
+#include "RHI/Common/Span.hpp"
 #include "RHI/Format.hpp"
-#include "RHI/Handle.hpp"
-#include "RHI/Result.hpp"
-#include "RHI/Span.hpp"
 
 #include <unordered_map>
 #include <variant>

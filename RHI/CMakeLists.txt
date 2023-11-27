@@ -6,17 +6,17 @@ endif()
 
 # Add header files
 set(HEADER_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Assert.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Assert.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Flags.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Handle.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Span.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Result.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/CommandList.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Context.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Flags.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Format.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/FrameGraph.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Handle.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Resources.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Result.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RHI.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Span.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Swapchain.hpp
 )
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RHI/Assert.hpp"
+#include "RHI/Common/Assert.hpp"
 
 #include <utility>
 
