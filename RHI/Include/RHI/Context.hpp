@@ -1,8 +1,8 @@
 #pragma once
 
-#include "RHI/Export.hpp"
 #include "RHI/Common/Handle.hpp"
-#include "RHI/Swapchain.hpp"
+#include "RHI/Resources.hpp"
+#include "RHI/Export.hpp"
 
 #include <memory>
 #include <string>
@@ -43,8 +43,8 @@ namespace RHI
     class FrameScheduler;
     class BindGroupAllocator;
 
-    using Version = uint32_t;
-    using DeviceMemoryPtr = void *;
+    using Version         = uint32_t;
+    using DeviceMemoryPtr = void*;
 
     /// @brief Type of backend Graphics API
     enum class Backend
@@ -172,7 +172,7 @@ namespace RHI
 
         /// @brief Frees the given compute pipeline object.
         virtual void Free(Handle<ImageView> view) = 0;
-        
+
         /// @brief Creates a new BufferView.
         virtual Handle<BufferView> CreateBufferView(Handle<Buffer> handle, const BufferAttachmentUseInfo& useInfo) = 0;
 

@@ -3,7 +3,6 @@
 #include "Allocator.hpp"
 
 #include <RHI/Resources.hpp>
-#include <RHI/Swapchain.hpp>
 
 namespace RHI
 {

@@ -13,6 +13,7 @@ namespace RHI
 {
     class Context;
     class ShaderModule;
+    class Pass;
 
     // clang-format off
     struct Image {};
@@ -35,11 +36,8 @@ namespace RHI
     /// @brief Enumeration for common allocation size constants
     namespace AllocationSizeConstants
     {
-
         inline static constexpr uint32_t KB = 1024;
-
         inline static constexpr uint32_t MB = 1024 * KB;
-
         inline static constexpr uint32_t GB = 1024 * MB;
 
     }; // namespace AllocationSizeConstants
@@ -54,14 +52,9 @@ namespace RHI
     /// @brief Enumeration representing different memory types and their locations.
     enum class MemoryType
     {
-        /// @brief The memory is located in the system main memory.
-        CPU,
-
-        /// @brief The memory is locaed in the GPU, and can't be accessed by the CPU.
-        GPULocal,
-
-        /// @brief The memory is locaed in the GPU, but can be accessed by the CPU.
-        GPUShared,
+        CPU,       // The memory is located in the system main memory.
+        GPULocal,  // The memory is locaed in the GPU, and can't be accessed by the CPU.
+        GPUShared, // The memory is locaed in the GPU, but can be accessed by the CPU.
     };
 
     /// @brief Enumerates the multisample count in an image or an graphics pipeline multisample state
@@ -80,40 +73,22 @@ namespace RHI
     /// @brief Enumeration representing how the image resource is intented to used.
     enum class ImageUsage
     {
-        None = 0 << 0,
-
-        /// @brief The image will be used in an shader as bind resource.
-        ShaderResource = 1 << 1,
-
-        /// @brief The image will be the render target color attachment.
-        Color = 1 << 3,
-
-        /// @brief The image will be the render target depth attachment.
-        Depth = 1 << 4,
-
-        /// @brief The image will be the render target stencil attachment.
-        Stencil = 1 << 5,
-
-        /// @brief The image content will be copied.
-        CopySrc = 1 << 6,
-
-        /// @brief The image content will be overwritten by a copy command.
-        CopyDst = 1 << 7,
+        None           = 0 << 0,
+        ShaderResource = 1 << 1, // The image will be used in an shader as bind resource.
+        Color          = 1 << 3, // The image will be the render target color attachment.
+        Depth          = 1 << 4, // The image will be the render target depth attachment.
+        Stencil        = 1 << 5, // The image will be the render target stencil attachment.
+        CopySrc        = 1 << 6, // The image content will be copied.
+        CopyDst        = 1 << 7, // The image content will be overwritten by a copy command.
     };
 
     /// @brief Enumeration representing the dimensions of an image resource.
     enum class ImageType
     {
         None,
-
-        /// @brief Image is 1 dimentional.
-        Image1D,
-
-        /// @brief Image is 2 dimentional.
-        Image2D,
-
-        /// @brief Image is 3 dimentional.
-        Image3D,
+        Image1D, //  Image is 1 dimentional.
+        Image2D, //  Image is 2 dimentional.
+        Image3D, //  Image is 3 dimentional.
     };
 
     /// @brief Enumeration representing the aspects of an image resource.
@@ -142,25 +117,13 @@ namespace RHI
     /// @brief Enumeration representing how the buffer resource is intented to used.
     enum class BufferUsage
     {
-        None = 0 << 0,
-
-        /// @brief The buffer will be used as a storage buffer object.
-        Storage = 1 << 1,
-
-        /// @brief The buffer will be used as an uniform buffer object.
-        Uniform = 1 << 2,
-
-        /// @brief The buffer will be used as a vertex buffer object.
-        Vertex = 1 << 3,
-
-        /// @brief The buffer will be used as a index buffer object.
-        Index = 1 << 4,
-
-        /// @brief This buffer content will be copied from.
-        CopySrc = 1 << 5,
-
-        /// @brief This buffer content will be overwritten by a copy command.
-        CopyDst = 1 << 6,
+        None    = 0 << 0,
+        Storage = 1 << 1, // The buffer will be used as a storage buffer object.
+        Uniform = 1 << 2, // The buffer will be used as an uniform buffer object.
+        Vertex  = 1 << 3, // The buffer will be used as a vertex buffer object.
+        Index   = 1 << 4, // The buffer will be used as a index buffer object.
+        CopySrc = 1 << 5, // This buffer content will be copied from.
+        CopyDst = 1 << 6, // This buffer content will be overwritten by a copy command.
     };
 
     enum class ShaderStage
@@ -310,29 +273,30 @@ namespace RHI
         Mappable
     };
 
+#ifdef RHI_PLATFORM_WINDOWS
+    /// @brief struct contains win32 surface handles.
+    struct Win32WindowDesc
+    {
+        void* hwnd;
+        void* hinstance;
+    };
+#endif
+
     /// @brief Report describe the current state of the resource pool.
     struct ResourcePoolReport
     {
         MemoryType type;
-
-        size_t size;
-
-        size_t alignment;
-
-        size_t allocationsCount;
+        size_t     size;
+        size_t     alignment;
+        size_t     allocationsCount;
     };
 
     /// @brief Represent the offset into an image resource.
     struct ImageOffset
     {
-        /// @brief Offset in the X direction.
-        int32_t x;
-
-        /// @brief Offset in the Y direction.
-        int32_t y;
-
-        /// @brief Offset in the Z direction.
-        int32_t z;
+        int32_t     x; // Offset in the X direction
+        int32_t     y; // Offset in the Y direction
+        int32_t     z; // Offset in the Z direction
 
         inline bool operator==(const ImageOffset& other) const
         {
@@ -348,14 +312,9 @@ namespace RHI
     /// @brief Represent the size of an image resource or subregion.
     struct ImageSize
     {
-        /// @brief The width of the image.
-        uint32_t width;
-
-        /// @brief The height of the image.
-        uint32_t height;
-
-        /// @brief The depth of the image.
-        uint32_t depth;
+        uint32_t    width;  // The width of the image.
+        uint32_t    height; // The height of the image.
+        uint32_t    depth;  // The depth of the image.
 
         inline bool operator==(const ImageSize& other) const
         {
@@ -374,14 +333,11 @@ namespace RHI
         ComponentMapping() = default;
 
         ComponentSwizzle r = ComponentSwizzle::R;
-
         ComponentSwizzle g = ComponentSwizzle::G;
-
         ComponentSwizzle b = ComponentSwizzle::B;
-
         ComponentSwizzle a = ComponentSwizzle::A;
 
-        inline bool operator==(const ComponentMapping& other) const
+        inline bool      operator==(const ComponentMapping& other) const
         {
             return r == other.r && g == other.g && b == other.b && a == other.a;
         }
@@ -395,7 +351,7 @@ namespace RHI
     /// @brief Represent a subview into a an image resource.
     struct ImageSubresource
     {
-        ImageSubresource() = default;
+        ImageSubresource()              = default;
 
         uint32_t           arrayBase    = 0;
         uint32_t           arrayCount   = 1;
@@ -403,7 +359,7 @@ namespace RHI
         uint32_t           mipCount     = 1;
         Flags<ImageAspect> imageAspects = ImageAspect::All;
 
-        inline bool operator==(const ImageSubresource& other) const
+        inline bool        operator==(const ImageSubresource& other) const
         {
             return arrayBase == other.arrayBase && arrayCount == other.arrayCount && mipBase == other.mipBase && mipCount == other.mipCount;
         }
@@ -419,11 +375,9 @@ namespace RHI
     {
         BufferSubregion() = default;
 
-        size_t byteSize;
-
-        size_t byteOffset;
-
-        Format format;
+        size_t      byteSize;
+        size_t      byteOffset;
+        Format      format;
 
         inline bool operator==(const BufferSubregion& other) const
         {
@@ -479,7 +433,7 @@ namespace RHI
         BlendFactor           dstAlpha     = BlendFactor::Zero;
         Flags<ColorWriteMask> writeMask    = ColorWriteMask::All;
 
-        inline bool operator==(const ColorAttachmentBlendStateDesc& other) const
+        inline bool           operator==(const ColorAttachmentBlendStateDesc& other) const
         {
             return blendEnable == other.blendEnable && colorBlendOp == other.colorBlendOp && srcColor == other.srcColor && dstColor == other.dstColor && alphaBlendOp == other.alphaBlendOp && srcAlpha == other.srcAlpha && dstAlpha == other.dstAlpha;
         }
@@ -497,16 +451,9 @@ namespace RHI
     /// @brief Structure specifying the render target layout.
     struct PipelineRenderTargetLayout
     {
-        /// @brief List of the formats of color attachments.
-        TL::Span<const Format> colorAttachmentsFormats;
-
-        /// @brief Format of an optional depth and/or stencil attachment.
-        /// Could be Format::Unkown.
-        Format depthAttachmentFormat;
-
-        /// @brief Format of an optional depth and/or stencil attachment.
-        /// Could be Format::Unkown.
-        Format stencilAttachmentFormat;
+        TL::Span<const Format> colorAttachmentsFormats; // List of the formats of color attachments.
+        Format                 depthAttachmentFormat;   // Format of an optional depth and/or stencil attachment.
+        Format                 stencilAttachmentFormat; // Format of an optional depth and/or stencil attachment.
     };
 
     struct PipelineVertexBindingDesc
@@ -533,84 +480,58 @@ namespace RHI
     /// @brief Structure specifying the rasterizer state.
     struct PipelineRasterizerStateDesc
     {
-        PipelineRasterizerStateCullMode cullMode = PipelineRasterizerStateCullMode::BackFace;
-
-        PipelineRasterizerStateFillMode fillMode = PipelineRasterizerStateFillMode::Triangle;
-
+        PipelineRasterizerStateCullMode  cullMode  = PipelineRasterizerStateCullMode::BackFace;
+        PipelineRasterizerStateFillMode  fillMode  = PipelineRasterizerStateFillMode::Triangle;
         PipelineRasterizerStateFrontFace frontFace = PipelineRasterizerStateFrontFace::CounterClockwise;
-
-        float lineWidth = 1.0f;
+        float                            lineWidth = 1.0f;
     };
 
     /// @brief Structure specifying the multisample state.
     struct PipelineMultisampleStateDesc
     {
         SampleCount sampleCount;
-
-        bool sampleShading;
+        bool        sampleShading;
     };
 
     /// @brief Structure specifying the depth and stencil state.
     struct PipelineDepthStencilStateDesc
     {
-        bool depthTestEnable;
-
-        bool depthWriteEnable;
-
+        bool            depthTestEnable;
+        bool            depthWriteEnable;
         CompareOperator compareOperator;
-
-        bool stencilTestEnable;
+        bool            stencilTestEnable;
     };
 
     /// @brief Structure specifying the color attachments blend state.
     struct PipelineColorBlendStateDesc
     {
         TL::Span<const ColorAttachmentBlendStateDesc> blendStates;
-
-        float blendConstants[4];
+        float                                         blendConstants[4];
     };
 
     /// @brief Represent the creation parameters of an resource pool.
     struct ResourcePoolCreateInfo
     {
         AllocationAlgorithm allocationAlgorithm = AllocationAlgorithm::Linear;
-
-        MemoryType heapType;
-
-        size_t blockSize;
-
-        size_t minBlockCount;
-
-        size_t maxBlockCount;
-
-        size_t minBlockAlignment;
+        MemoryType          heapType;
+        size_t              blockSize;
+        size_t              minBlockCount;
+        size_t              maxBlockCount;
+        size_t              minBlockAlignment;
     };
 
     /// @brief Represent the creation parameters of an image resource.
     struct ImageCreateInfo
     {
-        /// @brief Usage flags.
-        Flags<ImageUsage> usageFlags;
+        Flags<ImageUsage> usageFlags;                               // Usage flags.
+        ImageType         type;                                     // The type of the image.
+        ImageSize         size;                                     // The size of the image.
+        Format            format;                                   // The format of the image.
+        SampleCount       sampleCount = RHI::SampleCount::Samples1; // The number of samples in each texel.
+        uint32_t          mipLevels   = 1;                          // The number of mip levels in the image.
+        uint32_t          arrayCount  = 1;                          // The number of images in the images array.
 
-        /// @brief The type of the image.
-        ImageType type;
-
-        /// @brief The size of the image.
-        ImageSize size;
-
-        /// @brief The format of the image.
-        Format format;
-
-        /// @brief The number of samples in each texel.
-        SampleCount sampleCount = RHI::SampleCount::Samples1;
-
-        /// @brief The number of mip levels in the image.
-        uint32_t mipLevels = 1;
-
-        /// @brief The number of images in the images array.
-        uint32_t arrayCount = 1;
-
-        inline bool operator==(const ImageCreateInfo& other) const
+        inline bool       operator==(const ImageCreateInfo& other) const
         {
             return usageFlags == other.usageFlags && type == other.type && size == other.size && format == other.format && mipLevels == other.mipLevels && arrayCount == other.arrayCount;
         }
@@ -624,13 +545,10 @@ namespace RHI
     /// @brief Represent the creation parameters of an buffer resource.
     struct BufferCreateInfo
     {
-        /// @brief Usage flags.
-        Flags<BufferUsage> usageFlags;
+        Flags<BufferUsage> usageFlags; // Usage flags.
+        size_t             byteSize;   // The size of the buffer.
 
-        /// @brief The size of the buffer.
-        size_t byteSize;
-
-        inline bool operator==(const BufferCreateInfo& other) const
+        inline bool        operator==(const BufferCreateInfo& other) const
         {
             return usageFlags == other.usageFlags && byteSize == other.byteSize;
         }
@@ -650,13 +568,13 @@ namespace RHI
     /// @brief Description of the graphics pipeline states.
     struct GraphicsPipelineCreateInfo
     {
-        const char*   vertexShaderName;
-        ShaderModule* vertexShaderModule;
+        const char*                     vertexShaderName;
+        ShaderModule*                   vertexShaderModule;
 
-        const char*   pixelShaderName;
-        ShaderModule* pixelShaderModule;
+        const char*                     pixelShaderName;
+        ShaderModule*                   pixelShaderModule;
 
-        Handle<PipelineLayout> layout;
+        Handle<PipelineLayout>          layout;
 
         PipelineInputAssemblerStateDesc inputAssemblerState;
         PipelineTopologyMode            topologyMode;
@@ -670,16 +588,15 @@ namespace RHI
     /// @brief Description of a compute pipeline state.
     struct ComputePipelineCreateInfo
     {
-        const char*   shaderName;
-        ShaderModule* shaderModule;
-
+        const char*            shaderName;
+        ShaderModule*          shaderModule;
         Handle<PipelineLayout> layout;
     };
 
     /// @brief Structure describing the creation parameters of a sampler state.
     struct SamplerCreateInfo
     {
-        SamplerCreateInfo() = default;
+        SamplerCreateInfo()                = default;
 
         SamplerFilter           filterMin  = SamplerFilter::Point;
         SamplerFilter           filterMag  = SamplerFilter::Point;
@@ -692,7 +609,7 @@ namespace RHI
         float                   minLod     = 0.0f;
         float                   maxLod     = 1.0f;
 
-        inline bool operator==(const SamplerCreateInfo& other) const
+        inline bool             operator==(const SamplerCreateInfo& other) const
         {
             return filterMin == other.filterMin && filterMag == other.filterMag && filterMip == other.filterMip && compare == other.compare && mipLodBias == other.mipLodBias && addressU == other.addressU && addressV == other.addressV && addressW == other.addressW && minLod == other.minLod && maxLod == other.maxLod;
         }
@@ -701,6 +618,18 @@ namespace RHI
         {
             return !(*this == other);
         }
+    };
+
+    /// @brief Structure specifying the parameters of the swapchain.
+    struct SwapchainCreateInfo
+    {
+        ImageSize         imageSize;   // The size of the images in the swapchian.
+        Flags<ImageUsage> imageUsage;  // Image usage flags applied to all created images.
+        Format            imageFormat; // The format of created swapchain image.
+        uint32_t          imageCount;  // The numer of back buffer images in the swapchain.
+#ifdef RHI_PLATFORM_WINDOWS
+        Win32WindowDesc win32Window; // win32 surface handles. (Availabe only on windows)
+#endif
     };
 
     // struct PipelineFactoryCreateInfo
@@ -732,57 +661,39 @@ namespace RHI
         /// @param index index of the resource binding decelration in the shader.
         /// @param images list of handles of an actual resources to bind.
         /// @param arrayOffset starting offset. In case of an resources array it binds the resources starting at this number.
-        inline void BindImages(uint32_t index, TL::Span<ImagePassAttachment*> images, uint32_t arrayOffset = 0)
-        {
-            ResourceImageBinding binding{};
-            binding.arrayOffset = arrayOffset;
-            binding.views       = { images.begin(), images.end() };
-            m_bindings[index]   = binding;
-        }
+        void BindImages(uint32_t index, TL::Span<ImagePassAttachment*> images, uint32_t arrayOffset = 0);
 
         /// @brief Binds an image resource to the provided binding index and offset array index.
         /// NOTE: offset + buffers count should not exceed the count of the resources decalred in the layout or the shader.
         /// @param index index of the resource binding decelration in the shader.
         /// @param buffers list of handles of an actual resources to bind.
         /// @param arrayOffset starting offset. In case of an resources array it binds the resources starting at this number.
-        inline void BindBuffers(uint32_t index, TL::Span<BufferPassAttachment*> buffers, uint32_t arrayOffset = 0)
-        {
-            ResourceBufferBinding binding{};
-            binding.arrayOffset = arrayOffset;
-            binding.views       = { buffers.begin(), buffers.end() };
-            m_bindings[index]   = binding;
-        }
+        void BindBuffers(uint32_t index, TL::Span<BufferPassAttachment*> buffers, uint32_t arrayOffset = 0);
 
         /// @brief Binds an image resource to the provided binding index and offset array index.
         /// NOTE: offset + samplers count should not exceed the count of the resources decalred in the layout or the shader.
         /// @param index index of the resource binding decelration in the shader.
         /// @param samplers list of handles of an actual resources to bind.
         /// @param arrayOffset starting offset. In case of an resources array it binds the resources starting at this number.
-        inline void BindSamplers(uint32_t index, TL::Span<Handle<Sampler>> samplers, uint32_t arrayOffset = 0)
-        {
-            ResourceSamplerBinding binding{};
-            binding.arrayOffset = arrayOffset;
-            binding.samplers    = { samplers.begin(), samplers.end() };
-            m_bindings[index]   = binding;
-        }
+        void BindSamplers(uint32_t index, TL::Span<Handle<Sampler>> samplers, uint32_t arrayOffset = 0);
 
         struct ResourceImageBinding
         {
-            uint32_t arrayOffset;
+            uint32_t                          arrayOffset;
 
             std::vector<ImagePassAttachment*> views;
         };
 
         struct ResourceBufferBinding
         {
-            uint32_t arrayOffset;
+            uint32_t                           arrayOffset;
 
             std::vector<BufferPassAttachment*> views;
         };
 
         struct ResourceSamplerBinding
         {
-            uint32_t arrayOffset;
+            uint32_t                     arrayOffset;
 
             std::vector<Handle<Sampler>> samplers;
         };
@@ -795,14 +706,14 @@ namespace RHI
     class BindGroupAllocator
     {
     public:
-        BindGroupAllocator()          = default;
-        virtual ~BindGroupAllocator() = default;
+        BindGroupAllocator()                                                                                          = default;
+        virtual ~BindGroupAllocator()                                                                                 = default;
 
         virtual std::vector<Handle<BindGroup>> AllocateBindGroups(TL::Span<Handle<BindGroupLayout>> bindGroupLayouts) = 0;
 
-        virtual void Free(TL::Span<Handle<BindGroup>> groups) = 0;
+        virtual void                           Free(TL::Span<Handle<BindGroup>> groups)                               = 0;
 
-        virtual void Update(Handle<BindGroup> group, const BindGroupData& data) = 0;
+        virtual void                           Update(Handle<BindGroup> group, const BindGroupData& data)             = 0;
     };
 
     class ShaderModule
@@ -816,26 +727,93 @@ namespace RHI
     class ResourcePool
     {
     public:
-        ResourcePool()          = default;
-        virtual ~ResourcePool() = default;
+        ResourcePool()                                                              = default;
+        virtual ~ResourcePool()                                                     = default;
 
         /// @brief Allocate an image resource.
-        virtual Result<Handle<Image>> Allocate(const ImageCreateInfo& createInfo) = 0;
+        virtual Result<Handle<Image>>  Allocate(const ImageCreateInfo& createInfo)  = 0;
 
         /// @brief Allocate a buffer resource.
         virtual Result<Handle<Buffer>> Allocate(const BufferCreateInfo& createInfo) = 0;
 
         /// @brief Free an allocated image resource.
-        virtual void Free(Handle<Image> image) = 0;
+        virtual void                   Free(Handle<Image> image)                    = 0;
 
         /// @brief Free an allocated buffer resource.
-        virtual void Free(Handle<Buffer> buffer) = 0;
+        virtual void                   Free(Handle<Buffer> buffer)                  = 0;
 
         /// @brief Get the size of an allocated image resource.
-        virtual size_t GetSize(Handle<Image> image) const = 0;
+        virtual size_t                 GetSize(Handle<Image> image) const           = 0;
 
         /// @brief Get the size of an allocated buffer resource.
-        virtual size_t GetSize(Handle<Buffer> buffer) const = 0;
+        virtual size_t                 GetSize(Handle<Buffer> buffer) const         = 0;
     };
+
+    /// @brief Swapchain object which is an interface between the API and a presentation surface.
+    class RHI_EXPORT Swapchain
+    {
+    public:
+        Swapchain()          = default;
+        virtual ~Swapchain() = default;
+
+        /// @brief Get the current image index of the swapchain.
+        uint32_t           GetCurrentImageIndex() const;
+
+        /// @brief Get the number of images in the swapchain.
+        uint32_t           GetImagesCount() const;
+
+        /// @brief Get the current acquired swapchain image.
+        Handle<Image>      GetImage() const;
+
+        /// @brief Called to invalidate the current swapchain state, when the window is resized.
+        virtual ResultCode Resize(uint32_t newWidth, uint32_t newHeight) = 0;
+
+        /// @brief Presents the current image to the window, and acquires the next image in the swapchain.
+        virtual ResultCode Present(Pass& pass)                           = 0;
+
+    protected:
+        uint32_t                   m_currentImageIndex;
+        uint32_t                   m_swapchainImagesCount;
+        std::vector<Handle<Image>> m_images;
+    };
+
+    inline void BindGroupData::BindImages(uint32_t index, TL::Span<ImagePassAttachment*> images, uint32_t arrayOffset)
+    {
+        BindGroupData::ResourceImageBinding binding{};
+        binding.arrayOffset = arrayOffset;
+        binding.views       = { images.begin(), images.end() };
+        m_bindings[index]   = binding;
+    }
+
+    inline void BindGroupData::BindBuffers(uint32_t index, TL::Span<BufferPassAttachment*> buffers, uint32_t arrayOffset)
+    {
+        BindGroupData::ResourceBufferBinding binding{};
+        binding.arrayOffset = arrayOffset;
+        binding.views       = { buffers.begin(), buffers.end() };
+        m_bindings[index]   = binding;
+    }
+
+    inline void BindGroupData::BindSamplers(uint32_t index, TL::Span<Handle<Sampler>> samplers, uint32_t arrayOffset)
+    {
+        BindGroupData::ResourceSamplerBinding binding{};
+        binding.arrayOffset = arrayOffset;
+        binding.samplers    = { samplers.begin(), samplers.end() };
+        m_bindings[index]   = binding;
+    }
+
+    inline uint32_t Swapchain::GetCurrentImageIndex() const
+    {
+        return m_currentImageIndex;
+    }
+
+    inline uint32_t Swapchain::GetImagesCount() const
+    {
+        return m_swapchainImagesCount;
+    }
+
+    inline Handle<Image> Swapchain::GetImage() const
+    {
+        return m_images[m_currentImageIndex];
+    }
 
 } // namespace RHI
