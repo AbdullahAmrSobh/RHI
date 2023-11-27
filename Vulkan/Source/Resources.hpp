@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Allocator.hpp"
-
 #include <RHI/Resources.hpp>
+
+#include <vk_mem_alloc.h>
 
 namespace RHI
 {
@@ -84,6 +84,28 @@ namespace Vulkan
     VkOffset3D ConvertOffset3D(RHI::ImageOffset offset);
 
     VkOffset3D ConvertOffset2D(RHI::ImageOffset offset);
+
+    enum class AllocationType
+    {
+        Default,   // allocation is made from blocks managed internally
+        Dedicated, // allocation creates its own dedicated block
+        Aliasing,  // multiple resources may share the same allocation
+    };
+
+    struct VirtualAllocation
+    {
+        VmaVirtualBlock      blockHandle;
+        VmaVirtualAllocation handle;
+        size_t               offset;
+    };
+
+    struct Allocation
+    {
+        VmaAllocation     handle;
+        VmaAllocationInfo info;
+        AllocationType    type;
+        VirtualAllocation virtualAllocation;
+    };
 
     struct Image : RHI::Image
     {
