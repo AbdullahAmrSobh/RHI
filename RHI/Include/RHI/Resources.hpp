@@ -651,7 +651,7 @@ namespace RHI
     // };
 
     /// @brief An object that groups shader resources that are bound together.
-    class BindGroupData final
+    class RHI_EXPORT BindGroupData final
     {
     public:
         BindGroupData() = default;
@@ -703,7 +703,7 @@ namespace RHI
         std::unordered_map<uint32_t, ResourceBinding> m_bindings;
     };
 
-    class BindGroupAllocator
+    class RHI_EXPORT BindGroupAllocator
     {
     public:
         BindGroupAllocator()                                                                                          = default;
@@ -716,7 +716,7 @@ namespace RHI
         virtual void                           Update(Handle<BindGroup> group, const BindGroupData& data)             = 0;
     };
 
-    class ShaderModule
+    class RHI_EXPORT ShaderModule
     {
     public:
         ShaderModule()          = default;
@@ -724,7 +724,7 @@ namespace RHI
     };
 
     /// @brief General purpose pool used to allocate all kinds of resources.
-    class ResourcePool
+    class RHI_EXPORT ResourcePool
     {
     public:
         ResourcePool()                                                              = default;

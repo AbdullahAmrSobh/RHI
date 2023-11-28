@@ -405,7 +405,7 @@ namespace RHI
         virtual void Free(BufferAttachment* attachment) = 0;
     };
 
-    class AttachmentsRegistry
+    class RHI_EXPORT AttachmentsRegistry
     {
     public:
         virtual ~AttachmentsRegistry() = default;
@@ -440,7 +440,7 @@ namespace RHI
     };
 
     /// @brief Represents a pass, which encapsulates a GPU task.
-    class Pass
+    class RHI_EXPORT Pass
     {
         friend class FrameScheduler;
 
