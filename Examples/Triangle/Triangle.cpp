@@ -241,7 +241,7 @@ public:
 
         cmd.Submit({
             .pipelineState = m_pipelineState,
-            .BindGroups    = m_bindGroup,
+            .bindGroups    = m_bindGroup,
             .vertexBuffers = m_vertexBuffer,
             .indexBuffers  = m_indexBuffer,
             .parameters    = { .elementCount = 6 },

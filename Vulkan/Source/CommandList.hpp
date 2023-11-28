@@ -1,8 +1,9 @@
 #pragma once
 
 #include <RHI/CommandList.hpp>
+
 #include <memory>
-#include <optional>
+
 #include <vulkan/vulkan.h>
 
 namespace Vulkan
@@ -95,21 +96,24 @@ namespace Vulkan
 
         void Submit(const RHI::CommandDraw& command) override;
 
-        void Submit(const RHI::CommandCopy& command) override;
-
         void Submit(const RHI::CommandCompute& command) override;
+
+        void Submit(const RHI::CopyBufferDescriptor& command)        override;
+
+        void Submit(const RHI::CopyImageDescriptor& command)         override;
+
+        void Submit(const RHI::CopyBufferToImageDescriptor& command) override;
+
+        void Submit(const RHI::CopyImageToBufferDescriptor& command) override;
+
 
         void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<RHI::Handle<RHI::BindGroup>> bindGroups);
 
         VkRenderingAttachmentInfo GetAttachmentInfo(const RHI::ImagePassAttachment& passAttachment) const;
 
-        std::optional<VkImageMemoryBarrier2> TransitionResource(BarrierType barrierType, RHI::ImagePassAttachment* passAttachment) const;
+        void TransitionPassAttachments(BarrierType barrierType, TL::Span<RHI::ImagePassAttachment*> passAttachments) const;
 
-        std::optional<VkBufferMemoryBarrier2> TransitionResource(BarrierType barrierType, RHI::BufferPassAttachment* passAttachment) const;
-
-        void TransitionPassAttachments(BarrierType barrierType, TL::Span<RHI::ImagePassAttachment*> passAttachments);
-
-        void TransitionPassAttachments(BarrierType barrierType, TL::Span<RHI::BufferPassAttachment*> passAttachments);
+        void TransitionPassAttachments(BarrierType barrierType, TL::Span<RHI::BufferPassAttachment*> passAttachments) const; 
 
         Context* m_context = nullptr;
 

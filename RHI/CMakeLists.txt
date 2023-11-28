@@ -17,7 +17,6 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/FrameGraph.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Resources.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RHI.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Swapchain.hpp
 )
 
 # Add source files

@@ -8,15 +8,6 @@ namespace RHI
     struct GraphicsPipeline;
     struct ComputePipeline;
 
-    enum class CopyCommandType
-    {
-        Buffer = 0,
-        Image,
-        BufferToImage,
-        ImageToBuffer,
-        Invalid
-    };
-
     struct Viewport
     {
         float offsetX;
@@ -79,7 +70,7 @@ namespace RHI
         uint32_t         destinationBytesPerImage = 0;
         // The destinationBuffer format is usually same as sourceImage's format. When source image contains more than one aspect,
         // the format should be compatiable with the aspect of the source image's subresource
-        Format destinationFormat;
+        Format           destinationFormat;
     };
 
     struct DrawParameters
@@ -105,61 +96,17 @@ namespace RHI
     struct CommandDraw
     {
         Handle<GraphicsPipeline>       pipelineState;
-        TL::Span<Handle<BindGroup>>    BindGroups;
+        TL::Span<Handle<BindGroup>>    bindGroups;
         TL::Span<const Handle<Buffer>> vertexBuffers;
         Handle<Buffer>                 indexBuffers;
         DrawParameters                 parameters;
-    };
-
-    /// @brief Structure describing a copy command.
-    struct CommandCopy
-    {
-        CommandCopy()
-            : type{ CopyCommandType::Buffer }
-            , buffer{}
-        {
-        }
-
-        CommandCopy(const CopyBufferDescriptor& descriptor)
-            : type{ CopyCommandType::Buffer }
-            , buffer{ descriptor }
-        {
-        }
-
-        CommandCopy(const CopyImageDescriptor& descriptor)
-            : type{ CopyCommandType::Image }
-            , image{ descriptor }
-        {
-        }
-
-        CommandCopy(const CopyBufferToImageDescriptor& descriptor)
-            : type{ CopyCommandType::BufferToImage }
-            , bufferToImage{ descriptor }
-        {
-        }
-
-        CommandCopy(const CopyImageToBufferDescriptor& descriptor)
-            : type{ CopyCommandType::ImageToBuffer }
-            , imageToBuffer{ descriptor }
-        {
-        }
-
-        CopyCommandType type;
-
-        union
-        {
-            CopyBufferDescriptor        buffer;
-            CopyImageDescriptor         image;
-            CopyBufferToImageDescriptor bufferToImage;
-            CopyImageToBufferDescriptor imageToBuffer;
-        };
     };
 
     /// @brief Structure describing a compute command.
     struct CommandCompute
     {
         Handle<ComputePipeline>     pipelineState;
-        TL::Span<Handle<BindGroup>> BindGroups;
+        TL::Span<Handle<BindGroup>> bindGroups;
         DispatchParameters          parameters;
     };
 
@@ -167,25 +114,34 @@ namespace RHI
     class CommandList
     {
     public:
-        CommandList()                         = default;
-        CommandList(const CommandList& other) = delete;
-        CommandList(CommandList&& other)      = default;
-        virtual ~CommandList()                = default;
+        CommandList()                                                   = default;
+        CommandList(const CommandList& other)                           = delete;
+        CommandList(CommandList&& other)                                = default;
+        virtual ~CommandList()                                          = default;
 
         /// @brief Sets the rendering viewport
-        virtual void SetViewport(const Viewport& viewport) = 0;
+        virtual void SetViewport(const Viewport& viewport)              = 0;
 
         /// @brief Sets the rendering scissor
-        virtual void SetSicssor(const Scissor& sicssor) = 0;
+        virtual void SetSicssor(const Scissor& sicssor)                 = 0;
 
         /// @brief Submit a draw command.
-        virtual void Submit(const CommandDraw& command) = 0;
-
-        /// @brief Submit a copy command.
-        virtual void Submit(const CommandCopy& command) = 0;
+        virtual void Submit(const CommandDraw& command)                 = 0;
 
         /// @brief Submit a compute command.
-        virtual void Submit(const CommandCompute& command) = 0;
+        virtual void Submit(const CommandCompute& command)              = 0;
+
+        /// @brief Submit a buffer copy command.
+        virtual void Submit(const CopyBufferDescriptor& command)        = 0;
+
+        /// @brief Submit a image copy command.
+        virtual void Submit(const CopyImageDescriptor& command)         = 0;
+
+        /// @brief Submit a buffer to image copy command.
+        virtual void Submit(const CopyBufferToImageDescriptor& command) = 0;
+
+        /// @brief Submit a image to buffer copy command.
+        virtual void Submit(const CopyImageToBufferDescriptor& command) = 0;
     };
 
 } // namespace RHI

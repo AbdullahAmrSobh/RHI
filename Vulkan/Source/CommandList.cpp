@@ -389,9 +389,9 @@ namespace Vulkan
 
         vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->handle);
 
-        if (command.BindGroups.size())
+        if (command.bindGroups.size())
         {
-            BindShaderBindGroups(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->layout, command.BindGroups);
+            BindShaderBindGroups(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->layout, command.bindGroups);
         }
 
         std::vector<VkBuffer>     vertexBuffers;
@@ -440,80 +440,60 @@ namespace Vulkan
         }
     }
 
-    void CommandList::Submit(const RHI::CommandCopy& _command)
+    void CommandList::Submit(const RHI::CopyBufferDescriptor& command)
     {
-        switch (_command.type)
-        {
-        case RHI::CopyCommandType::Buffer:
-            {
-                auto& command = _command.buffer;
+        auto srcBuffer         = m_context->m_bufferOwner.Get(command.sourceBuffer);
+        auto destinationBuffer = m_context->m_bufferOwner.Get(command.destinationBuffer);
 
-                auto srcBuffer         = m_context->m_bufferOwner.Get(command.sourceBuffer);
-                auto destinationBuffer = m_context->m_bufferOwner.Get(command.destinationBuffer);
+        auto copyInfo      = VkBufferCopy{};
+        copyInfo.srcOffset = command.sourceOffset;
+        copyInfo.dstOffset = command.destinationOffset;
+        copyInfo.size      = command.size;
+        vkCmdCopyBuffer(m_commandBuffer, srcBuffer->handle, destinationBuffer->handle, 1, &copyInfo);
+    }
 
-                auto copyInfo      = VkBufferCopy{};
-                copyInfo.srcOffset = command.sourceOffset;
-                copyInfo.dstOffset = command.destinationOffset;
-                copyInfo.size      = command.size;
-                vkCmdCopyBuffer(m_commandBuffer, srcBuffer->handle, destinationBuffer->handle, 1, &copyInfo);
-                break;
-            }
-        case RHI::CopyCommandType::Image:
-            {
-                auto& command = _command.image;
+    void CommandList::Submit(const RHI::CopyImageDescriptor& command)
+    {
+        auto srcImage = m_context->m_imageOwner.Get(command.sourceImage);
+        auto dstImage = m_context->m_imageOwner.Get(command.destinationImage);
 
-                auto srcImage = m_context->m_imageOwner.Get(command.sourceImage);
-                auto dstImage = m_context->m_imageOwner.Get(command.destinationImage);
+        auto copyInfo           = VkImageCopy{};
+        copyInfo.srcSubresource = ConvertSubresourceLayer(command.sourceSubresource);
+        copyInfo.srcOffset      = ConvertOffset3D(command.sourceOffset);
+        copyInfo.dstSubresource = ConvertSubresourceLayer(command.destinationSubresource);
+        copyInfo.dstOffset      = ConvertOffset3D(command.destinationOffset);
+        copyInfo.extent         = ConvertExtent3D(command.sourceSize);
+        vkCmdCopyImage(m_commandBuffer, srcImage->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyInfo);
+    }
 
-                auto copyInfo           = VkImageCopy{};
-                copyInfo.srcSubresource = ConvertSubresourceLayer(command.sourceSubresource);
-                copyInfo.srcOffset      = ConvertOffset3D(command.sourceOffset);
-                copyInfo.dstSubresource = ConvertSubresourceLayer(command.destinationSubresource);
-                copyInfo.dstOffset      = ConvertOffset3D(command.destinationOffset);
-                copyInfo.extent         = ConvertExtent3D(command.sourceSize);
-                vkCmdCopyImage(m_commandBuffer, srcImage->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyInfo);
-                break;
-            }
-        case RHI::CopyCommandType::BufferToImage:
-            {
-                auto& command = _command.bufferToImage;
+    void CommandList::Submit(const RHI::CopyBufferToImageDescriptor& command)
+    {
+        auto srcBuffer = m_context->m_bufferOwner.Get(command.srcBuffer);
+        auto dstImage  = m_context->m_imageOwner.Get(command.dstImage);
 
-                auto srcBuffer = m_context->m_bufferOwner.Get(command.srcBuffer);
-                auto dstImage  = m_context->m_imageOwner.Get(command.dstImage);
+        auto copyInfo             = VkBufferImageCopy{};
+        copyInfo.bufferOffset     = command.srcOffset;
+        copyInfo.bufferRowLength  = command.srcBytesPerRow;
+        // copyInfo.bufferImageHeight;
+        copyInfo.imageSubresource = ConvertSubresourceLayer(command.dstSubresource);
+        copyInfo.imageOffset      = ConvertOffset3D(command.dstOffset);
+        copyInfo.imageExtent      = ConvertExtent3D(command.srcSize);
+        vkCmdCopyBufferToImage(m_commandBuffer, srcBuffer->handle, dstImage->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyInfo);
+    }
 
-                auto copyInfo             = VkBufferImageCopy{};
-                copyInfo.bufferOffset     = command.srcOffset;
-                copyInfo.bufferRowLength  = command.srcBytesPerRow;
-                // copyInfo.bufferImageHeight;
-                copyInfo.imageSubresource = ConvertSubresourceLayer(command.dstSubresource);
-                copyInfo.imageOffset      = ConvertOffset3D(command.dstOffset);
-                copyInfo.imageExtent      = ConvertExtent3D(command.srcSize);
-                vkCmdCopyBufferToImage(m_commandBuffer, srcBuffer->handle, dstImage->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyInfo);
-                break;
-            }
-        case RHI::CopyCommandType::ImageToBuffer:
-            {
-                auto& command = _command.imageToBuffer;
+    void CommandList::Submit(const RHI::CopyImageToBufferDescriptor& command)
+    {
+        auto srcImage  = m_context->m_imageOwner.Get(command.sourceImage);
+        auto dstBuffer = m_context->m_bufferOwner.Get(command.destinationBuffer);
 
-                auto srcImage  = m_context->m_imageOwner.Get(command.sourceImage);
-                auto dstBuffer = m_context->m_bufferOwner.Get(command.destinationBuffer);
-
-                auto copyInfo             = VkBufferImageCopy{};
-                copyInfo.bufferOffset     = command.destinationOffset;
-                copyInfo.bufferRowLength  = command.destinationBytesPerRow;
-                // copyInfo.bufferImageHeight;
-                copyInfo.imageSubresource = ConvertSubresourceLayer(command.sourceSubresource);
-                copyInfo.imageOffset      = ConvertOffset3D(command.sourceOffset);
-                copyInfo.imageExtent      = ConvertExtent3D(command.sourceSize);
-                vkCmdCopyImageToBuffer(m_commandBuffer, srcImage->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstBuffer->handle, 1, &copyInfo);
-                break;
-            }
-        default:
-            {
-                RHI_UNREACHABLE();
-                break;
-            }
-        }
+        auto copyInfo             = VkBufferImageCopy{};
+        copyInfo.bufferOffset     = command.destinationOffset;
+        copyInfo.bufferRowLength  = command.destinationBytesPerRow;
+        // copyInfo.bufferImageHeight;
+        copyInfo.imageSubresource = ConvertSubresourceLayer(command.sourceSubresource);
+        copyInfo.imageOffset      = ConvertOffset3D(command.sourceOffset);
+        copyInfo.imageExtent      = ConvertExtent3D(command.sourceSize);
+        vkCmdCopyImageToBuffer(m_commandBuffer, srcImage->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstBuffer->handle, 1, &copyInfo);
     }
 
     void CommandList::Submit(const RHI::CommandCompute& command)
@@ -522,9 +502,9 @@ namespace Vulkan
 
         vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->handle);
 
-        if (command.BindGroups.size())
+        if (command.bindGroups.size())
         {
-            BindShaderBindGroups(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->layout, command.BindGroups);
+            BindShaderBindGroups(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->layout, command.bindGroups);
         }
 
         vkCmdDispatchBase(
@@ -552,7 +532,7 @@ namespace Vulkan
 
     VkRenderingAttachmentInfo CommandList::GetAttachmentInfo(const RHI::ImagePassAttachment& passAttachment) const
     {
-        auto imageView  = m_context->m_imageViewOwner.Get(passAttachment.view);
+        auto imageView = m_context->m_imageViewOwner.Get(passAttachment.view);
 
         auto attachmentInfo                        = VkRenderingAttachmentInfo{};
         attachmentInfo.sType                       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
@@ -568,49 +548,48 @@ namespace Vulkan
         return attachmentInfo;
     }
 
-    std::optional<VkImageMemoryBarrier2> CommandList::TransitionResource(BarrierType barrierType, RHI::ImagePassAttachment* passAttachment) const
+    void CommandList::TransitionPassAttachments(BarrierType barrierType, TL::Span<RHI::ImagePassAttachment*> passAttachments) const
     {
-        RHI_ASSERT(passAttachment);
+        std::vector<VkImageMemoryBarrier2> barriers;
 
-        auto image = m_context->m_imageOwner.Get(passAttachment->attachment->handle);
-        RHI_ASSERT(image);
-
-        auto barrier                            = VkImageMemoryBarrier2{};
-        barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-        barrier.pNext                           = nullptr;
-        barrier.image                           = image->handle;
-        barrier.subresourceRange.aspectMask     = ConvertImageAspect(passAttachment->info.subresource.imageAspects);
-        barrier.subresourceRange.baseArrayLayer = passAttachment->info.subresource.arrayBase;
-        barrier.subresourceRange.layerCount     = passAttachment->info.subresource.arrayCount;
-        barrier.subresourceRange.baseMipLevel   = passAttachment->info.subresource.mipBase;
-        barrier.subresourceRange.levelCount     = passAttachment->info.subresource.mipCount;
-
-        auto flags = ConvertPipelineStageAccessFlags(passAttachment->info.usage, passAttachment->stages, passAttachment->info.access);
-        if (passAttachment->next)
+        for (auto passAttachment : passAttachments)
         {
-            barrier.srcQueueFamilyIndex = static_cast<Pass*>(passAttachment->pass)->m_queueFamilyIndex;
-            barrier.dstQueueFamilyIndex = static_cast<Pass*>(passAttachment->next->pass)->m_queueFamilyIndex;
+            auto image = m_context->m_imageOwner.Get(passAttachment->attachment->handle);
 
-            if (barrier.srcQueueFamilyIndex == barrier.dstQueueFamilyIndex &&
-                passAttachment->info.access == RHI::AttachmentAccess::Read &&
-                passAttachment->next->info.access == RHI::AttachmentAccess::Read)
+            auto barrier                            = VkImageMemoryBarrier2{};
+            barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+            barrier.pNext                           = nullptr;
+            barrier.image                           = image->handle;
+            barrier.subresourceRange.aspectMask     = ConvertImageAspect(passAttachment->info.subresource.imageAspects);
+            barrier.subresourceRange.baseArrayLayer = passAttachment->info.subresource.arrayBase;
+            barrier.subresourceRange.layerCount     = passAttachment->info.subresource.arrayCount;
+            barrier.subresourceRange.baseMipLevel   = passAttachment->info.subresource.mipBase;
+            barrier.subresourceRange.levelCount     = passAttachment->info.subresource.mipCount;
+
+            auto flags = ConvertPipelineStageAccessFlags(passAttachment->info.usage, passAttachment->stages, passAttachment->info.access);
+            if (passAttachment->next)
             {
-                return std::nullopt;
+                barrier.srcQueueFamilyIndex = static_cast<Pass*>(passAttachment->pass)->m_queueFamilyIndex;
+                barrier.dstQueueFamilyIndex = static_cast<Pass*>(passAttachment->next->pass)->m_queueFamilyIndex;
+
+                if (barrier.srcQueueFamilyIndex == barrier.dstQueueFamilyIndex &&
+                    passAttachment->info.access == RHI::AttachmentAccess::Read &&
+                    passAttachment->next->info.access == RHI::AttachmentAccess::Read)
+                {
+                    continue;
+                }
+
+                barrier.srcStageMask  = flags.stages;
+                barrier.srcAccessMask = flags.access;
+                barrier.oldLayout     = flags.attachmentLayout;
+
+                auto dstFlags         = ConvertPipelineStageAccessFlags(passAttachment->next->info.usage, passAttachment->next->stages, passAttachment->next->info.access);
+                barrier.dstStageMask  = dstFlags.stages;
+                barrier.dstAccessMask = dstFlags.access;
+                barrier.newLayout     = dstFlags.attachmentLayout;
+                barriers.push_back(barrier);
             }
-
-            barrier.srcStageMask  = flags.stages;
-            barrier.srcAccessMask = flags.access;
-            barrier.oldLayout     = flags.attachmentLayout;
-
-            auto dstFlags         = ConvertPipelineStageAccessFlags(passAttachment->next->info.usage, passAttachment->next->stages, passAttachment->next->info.access);
-            barrier.dstStageMask  = dstFlags.stages;
-            barrier.dstAccessMask = dstFlags.access;
-            barrier.newLayout     = dstFlags.attachmentLayout;
-            return barrier;
-        }
-        else if (barrierType == BarrierType::PostPass)
-        {
-            if (passAttachment->attachment->swapchain)
+            else if (barrierType == BarrierType::PostPass && passAttachment->attachment->swapchain)
             {
                 barrier.srcStageMask  = flags.stages;
                 barrier.srcAccessMask = flags.access;
@@ -618,111 +597,17 @@ namespace Vulkan
                 barrier.dstStageMask  = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
                 barrier.dstAccessMask = 0;
                 barrier.newLayout     = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+                barriers.push_back(barrier);
             }
-            else
+            else if (barrierType == BarrierType::PrePass && passAttachment->prev == nullptr && passAttachment->info.access != RHI::AttachmentAccess::Read)
             {
-                // No passes uses the attachment anymore, no need to transition
-                return std::nullopt;
-            }
-        }
-        else if (barrierType == BarrierType::PrePass)
-        {
-            if (passAttachment->prev == nullptr)
-            {
-                if (passAttachment->info.access == RHI::AttachmentAccess::Read)
-                {
-                    return std::nullopt;
-                }
-
                 barrier.srcStageMask  = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
                 barrier.srcAccessMask = 0;
                 barrier.oldLayout     = VK_IMAGE_LAYOUT_UNDEFINED;
                 barrier.dstStageMask  = flags.stages;
                 barrier.dstAccessMask = flags.access;
                 barrier.newLayout     = flags.attachmentLayout;
-            }
-            else
-            {
-                // assume the previous pass transitioned into this attachment
-                // no need for another transition barrier here.
-                return std::nullopt;
-            }
-        }
-
-        return barrier;
-    }
-
-    std::optional<VkBufferMemoryBarrier2> CommandList::TransitionResource(BarrierType barrierType, RHI::BufferPassAttachment* passAttachment) const
-    {
-        RHI_ASSERT(passAttachment);
-
-        auto buffer = m_context->m_bufferOwner.Get(passAttachment->attachment->handle);
-        RHI_ASSERT(buffer);
-
-        auto barrier   = VkBufferMemoryBarrier2{};
-        barrier.sType  = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
-        barrier.pNext  = nullptr;
-        barrier.buffer = buffer->handle;
-        barrier.offset = passAttachment->info.byteOffset;
-        barrier.size   = passAttachment->info.byteSize;
-
-        auto flags = ConvertPipelineStageAccessFlags(passAttachment->info.usage, passAttachment->stages, passAttachment->info.access);
-        if (passAttachment->next)
-        {
-            barrier.srcQueueFamilyIndex = static_cast<Pass*>(passAttachment->pass)->m_queueFamilyIndex;
-            barrier.dstQueueFamilyIndex = static_cast<Pass*>(passAttachment->next->pass)->m_queueFamilyIndex;
-
-            if (barrier.srcQueueFamilyIndex == barrier.dstQueueFamilyIndex &&
-                passAttachment->info.access == RHI::AttachmentAccess::Read &&
-                passAttachment->next->info.access == RHI::AttachmentAccess::Read)
-            {
-                return std::nullopt;
-            }
-
-            barrier.srcStageMask  = flags.stages;
-            barrier.srcAccessMask = flags.access;
-
-            auto dstFlags         = ConvertPipelineStageAccessFlags(passAttachment->next->info.usage, passAttachment->next->stages, passAttachment->next->info.access);
-            barrier.dstStageMask  = dstFlags.stages;
-            barrier.dstAccessMask = dstFlags.access;
-            return barrier;
-        }
-        else if (barrierType == BarrierType::PostPass)
-        {
-            // No passes uses the attachment anymore, no need to transition
-            return std::nullopt;
-        }
-        else if (barrierType == BarrierType::PrePass)
-        {
-            if (passAttachment->prev == nullptr && passAttachment->attachment->lifetime == RHI::AttachmentLifetime::Transient)
-            {
-                barrier.srcStageMask  = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
-                barrier.srcAccessMask = 0;
-                barrier.dstStageMask  = flags.stages;
-                barrier.dstAccessMask = flags.access;
-            }
-            else
-            {
-                // assume the previous pass transitioned into this attachment
-                // no need for another transition barrier here.
-                return std::nullopt;
-            }
-        }
-
-        return barrier;
-    }
-
-    void CommandList::TransitionPassAttachments(BarrierType barrierType, TL::Span<RHI::ImagePassAttachment*> passAttachments)
-    {
-        std::vector<VkImageMemoryBarrier2> barriers;
-
-        for (auto passAttachment : passAttachments)
-        {
-            // only if needs to transitioned where new layout does not match the current layout
-            // or a next pass depends on write operation by the current pass
-            if (auto barrier = TransitionResource(barrierType, passAttachment); barrier.has_value())
-            {
-                barriers.push_back(barrier.value());
+                barriers.push_back(barrier);
             }
         }
 
@@ -734,17 +619,53 @@ namespace Vulkan
         vkCmdPipelineBarrier2(m_commandBuffer, &dependencyInfo);
     }
 
-    void CommandList::TransitionPassAttachments(BarrierType barrierType, TL::Span<RHI::BufferPassAttachment*> passAttachments)
+    void CommandList::TransitionPassAttachments(BarrierType barrierType, TL::Span<RHI::BufferPassAttachment*> passAttachments) const
     {
         std::vector<VkBufferMemoryBarrier2> barriers;
 
         for (auto passAttachment : passAttachments)
         {
-            // only if needs to transitioned where new layout does not match the current layout
-            // or a next pass depends on write operation by the current pass
-            if (auto barrier = TransitionResource(barrierType, passAttachment); barrier.has_value())
+            auto buffer = m_context->m_bufferOwner.Get(passAttachment->attachment->handle);
+
+            auto barrier   = VkBufferMemoryBarrier2{};
+            barrier.sType  = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
+            barrier.pNext  = nullptr;
+            barrier.buffer = buffer->handle;
+            barrier.offset = passAttachment->info.byteOffset;
+            barrier.size   = passAttachment->info.byteSize;
+
+            auto flags = ConvertPipelineStageAccessFlags(passAttachment->info.usage, passAttachment->stages, passAttachment->info.access);
+            if (passAttachment->next)
             {
-                barriers.push_back(barrier.value());
+                barrier.srcQueueFamilyIndex = static_cast<Pass*>(passAttachment->pass)->m_queueFamilyIndex;
+                barrier.dstQueueFamilyIndex = static_cast<Pass*>(passAttachment->next->pass)->m_queueFamilyIndex;
+
+                if (barrier.srcQueueFamilyIndex == barrier.dstQueueFamilyIndex &&
+                    passAttachment->info.access == RHI::AttachmentAccess::Read &&
+                    passAttachment->next->info.access == RHI::AttachmentAccess::Read)
+                {
+                    continue;
+                }
+
+                barrier.srcStageMask  = flags.stages;
+                barrier.srcAccessMask = flags.access;
+
+                auto dstFlags         = ConvertPipelineStageAccessFlags(passAttachment->next->info.usage, passAttachment->next->stages, passAttachment->next->info.access);
+                barrier.dstStageMask  = dstFlags.stages;
+                barrier.dstAccessMask = dstFlags.access;
+                barriers.push_back(barrier);
+            }
+            else if (barrierType == BarrierType::PostPass)
+            {
+                // Nothing to do
+            }
+            else if (barrierType == BarrierType::PrePass && passAttachment->prev == nullptr && passAttachment->attachment->lifetime == RHI::AttachmentLifetime::Transient)
+            {
+                barrier.srcStageMask  = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+                barrier.srcAccessMask = 0;
+                barrier.dstStageMask  = flags.stages;
+                barrier.dstAccessMask = flags.access;
+                barriers.push_back(barrier);
             }
         }
 
