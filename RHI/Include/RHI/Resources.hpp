@@ -73,7 +73,7 @@ namespace RHI
     /// @brief Enumeration representing how the image resource is intented to used.
     enum class ImageUsage
     {
-        None           = 0 << 0,
+        None           = 0 << 0, // Invalid flag
         ShaderResource = 1 << 1, // The image will be used in an shader as bind resource.
         Color          = 1 << 3, // The image will be the render target color attachment.
         Depth          = 1 << 4, // The image will be the render target depth attachment.
@@ -85,10 +85,10 @@ namespace RHI
     /// @brief Enumeration representing the dimensions of an image resource.
     enum class ImageType
     {
-        None,
-        Image1D, //  Image is 1 dimentional.
-        Image2D, //  Image is 2 dimentional.
-        Image3D, //  Image is 3 dimentional.
+        None,    // Invalid flag
+        Image1D, // Image is 1 dimentional.
+        Image2D, // Image is 2 dimentional.
+        Image3D, // Image is 3 dimentional.
     };
 
     /// @brief Enumeration representing the aspects of an image resource.
@@ -304,6 +304,23 @@ namespace RHI
         }
 
         inline bool operator!=(const ImageOffset& other) const
+        {
+            return !(*this == other);
+        }
+    };
+
+    /// @brief Represent the size of an image resource or subregion.
+    struct ImageSize2D
+    {
+        uint32_t    width;  // The width of the image.
+        uint32_t    height; // The height of the image.
+
+        inline bool operator==(const ImageSize2D& other) const
+        {
+            return width == other.width && height == other.height;
+        }
+
+        inline bool operator!=(const ImageSize2D& other) const
         {
             return !(*this == other);
         }
