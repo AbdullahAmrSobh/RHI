@@ -36,9 +36,9 @@ namespace Vulkan
         void Release(Context* context, CommandList* commandList);
 
     private:
-        VkCommandPool                             m_commandPool;
+        VkCommandPool m_commandPool;
         std::vector<std::unique_ptr<CommandList>> m_commandLists;
-        std::vector<CommandList*>                 m_availableCommandLists;
+        std::vector<CommandList*> m_availableCommandLists;
     };
 
     class CommandListAllocator final
@@ -60,8 +60,8 @@ namespace Vulkan
         void Release(CommandList* commandList);
 
     private:
-        Context*                 m_context;
-        uint32_t                 m_frameIndex;
+        Context* m_context;
+        uint32_t m_frameIndex;
         std::vector<CommandPool> m_commandPools;
     };
 
@@ -98,14 +98,13 @@ namespace Vulkan
 
         void Submit(const RHI::CommandCompute& command) override;
 
-        void Submit(const RHI::CopyBufferDescriptor& command)        override;
+        void Submit(const RHI::CopyBufferDescriptor& command) override;
 
-        void Submit(const RHI::CopyImageDescriptor& command)         override;
+        void Submit(const RHI::CopyImageDescriptor& command) override;
 
         void Submit(const RHI::CopyBufferToImageDescriptor& command) override;
 
         void Submit(const RHI::CopyImageToBufferDescriptor& command) override;
-
 
         void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<RHI::Handle<RHI::BindGroup>> bindGroups);
 
@@ -113,7 +112,7 @@ namespace Vulkan
 
         void TransitionPassAttachments(BarrierType barrierType, TL::Span<RHI::ImagePassAttachment*> passAttachments) const;
 
-        void TransitionPassAttachments(BarrierType barrierType, TL::Span<RHI::BufferPassAttachment*> passAttachments) const; 
+        void TransitionPassAttachments(BarrierType barrierType, TL::Span<RHI::BufferPassAttachment*> passAttachments) const;
 
         Context* m_context = nullptr;
 

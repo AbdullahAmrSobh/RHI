@@ -79,33 +79,33 @@ namespace RHI
         inline HandlePool(uint32_t capacity = 512);
         ~HandlePool();
 
-        inline void Reset();
+        inline void                                   Reset();
 
         // Gets the resource associated with handle.
-        inline Resource* Get(Handle<Resource> handle) const;
+        inline Resource*                              Get(Handle<Resource> handle) const;
 
         // Inserts a new resource and returns its handle.
-        inline Handle<Resource> Insert(Resource resource);
+        inline Handle<Resource>                       Insert(Resource resource);
 
         // Inserted a zerod resource and returns its handle.
         inline std::pair<Handle<Resource>, Resource&> InsertZerod();
 
         // Removes a resource from the owner.
-        inline void Remove(Handle<Resource> handle);
+        inline void                                   Remove(Handle<Resource> handle);
 
     private:
         inline void Resize(uint32_t newSize);
 
     private:
-        size_t m_capacity;
+        size_t    m_capacity;
 
-        size_t m_count;
+        size_t    m_count;
 
         Resource* m_resources;
 
         uint16_t* m_genIds;
 
-        size_t m_freeSlotsCount;
+        size_t    m_freeSlotsCount;
 
         uint32_t* m_freeSlots;
     };

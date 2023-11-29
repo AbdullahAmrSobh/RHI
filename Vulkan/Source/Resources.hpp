@@ -94,16 +94,16 @@ namespace Vulkan
 
     struct VirtualAllocation
     {
-        VmaVirtualBlock      blockHandle;
+        VmaVirtualBlock blockHandle;
         VmaVirtualAllocation handle;
-        size_t               offset;
+        size_t offset;
     };
 
     struct Allocation
     {
-        VmaAllocation     handle;
+        VmaAllocation handle;
         VmaAllocationInfo info;
-        AllocationType    type;
+        AllocationType type;
         VirtualAllocation virtualAllocation;
     };
 
@@ -124,8 +124,8 @@ namespace Vulkan
         // pointer to swapchain (if this image is backed by swapchain).
         Swapchain* swapchain;
 
-        RHI::ResultCode      Init(Context* context, const VmaAllocationCreateInfo allocationInfo, const RHI::ImageCreateInfo& createInfo, ResourcePool* parentPool, bool isTransientResource);
-        void                 Shutdown(Context* context);
+        RHI::ResultCode Init(Context* context, const VmaAllocationCreateInfo allocationInfo, const RHI::ImageCreateInfo& createInfo, ResourcePool* parentPool, bool isTransientResource);
+        void Shutdown(Context* context);
         VkMemoryRequirements GetMemoryRequirements(VkDevice device) const;
     };
 
@@ -143,8 +143,8 @@ namespace Vulkan
         // description of the resource.
         VkBufferCreateInfo createInfo;
 
-        RHI::ResultCode      Init(Context* context, const VmaAllocationCreateInfo allocationInfo, const RHI::BufferCreateInfo& createInfo, ResourcePool* parentPool, bool isTransientResource);
-        void                 Shutdown(Context* context);
+        RHI::ResultCode Init(Context* context, const VmaAllocationCreateInfo allocationInfo, const RHI::BufferCreateInfo& createInfo, ResourcePool* parentPool, bool isTransientResource);
+        void Shutdown(Context* context);
         VkMemoryRequirements GetMemoryRequirements(VkDevice device) const;
     };
 
@@ -153,7 +153,7 @@ namespace Vulkan
         VkImageView handle;
 
         RHI::ResultCode Init(Context* context, RHI::Handle<Image> imageHandle, const RHI::ImageAttachmentUseInfo& useInfo);
-        void            Shutdown(Context* context);
+        void Shutdown(Context* context);
     };
 
     struct BufferView : RHI::BufferView
@@ -161,7 +161,7 @@ namespace Vulkan
         VkBufferView handle;
 
         RHI::ResultCode Init(Context* context, RHI::Handle<Buffer> bufferHandle, const RHI::BufferAttachmentUseInfo& useInfo);
-        void            Shutdown(Context* context);
+        void Shutdown(Context* context);
     };
 
     struct BindGroupLayout : RHI::BindGroupLayout
@@ -169,16 +169,16 @@ namespace Vulkan
         VkDescriptorSetLayout handle;
 
         RHI::ResultCode Init(Context* context, const RHI::BindGroupLayoutCreateInfo& createInfo);
-        void            Shutdown(Context* context);
+        void Shutdown(Context* context);
     };
 
     struct BindGroup : RHI::BindGroup
     {
-        VkDescriptorSet  handle;
+        VkDescriptorSet handle;
         VkDescriptorPool pool;
 
         RHI::ResultCode Init(Context* context, VkDescriptorSetLayout layout, VkDescriptorPool pool);
-        void            Shutdown(Context* context);
+        void Shutdown(Context* context);
     };
 
     struct PipelineLayout : RHI::PipelineLayout
@@ -186,25 +186,25 @@ namespace Vulkan
         VkPipelineLayout handle;
 
         RHI::ResultCode Init(Context* context, const RHI::PipelineLayoutCreateInfo& createInfo);
-        void            Shutdown(Context* context);
+        void Shutdown(Context* context);
     };
 
     struct GraphicsPipeline : RHI::GraphicsPipeline
     {
-        VkPipeline       handle;
+        VkPipeline handle;
         VkPipelineLayout layout;
 
         RHI::ResultCode Init(Context* context, const RHI::GraphicsPipelineCreateInfo& createInfo);
-        void            Shutdown(Context* context);
+        void Shutdown(Context* context);
     };
 
     struct ComputePipeline : RHI::ComputePipeline
     {
-        VkPipeline       handle;
+        VkPipeline handle;
         VkPipelineLayout layout;
 
         RHI::ResultCode Init(Context* context, const RHI::ComputePipelineCreateInfo& createInfo);
-        void            Shutdown(Context* context);
+        void Shutdown(Context* context);
     };
 
     struct Sampler : RHI::Sampler
@@ -212,7 +212,7 @@ namespace Vulkan
         VkSampler handle;
 
         RHI::ResultCode Init(Context* context, const RHI::SamplerCreateInfo& createInfo);
-        void            Shutdown(Context* context);
+        void Shutdown(Context* context);
     };
 
     class ShaderModule final : public RHI::ShaderModule
@@ -228,7 +228,7 @@ namespace Vulkan
         VkResult Init(const RHI::ShaderModuleCreateInfo& createInfo);
 
     public:
-        Context*       m_context;
+        Context* m_context;
         VkShaderModule m_shaderModule;
     };
 
@@ -245,8 +245,8 @@ namespace Vulkan
         VkResult Init();
 
         std::vector<RHI::Handle<RHI::BindGroup>> AllocateBindGroups(TL::Span<RHI::Handle<RHI::BindGroupLayout>> bindGroupLayouts) override;
-        void                                     Free(TL::Span<RHI::Handle<RHI::BindGroup>> bindGroup) override;
-        void                                     Update(RHI::Handle<RHI::BindGroup> bindGroup, const RHI::BindGroupData& data) override;
+        void Free(TL::Span<RHI::Handle<RHI::BindGroup>> bindGroup) override;
+        void Update(RHI::Handle<RHI::BindGroup> bindGroup, const RHI::BindGroupData& data) override;
 
         Context* m_context;
 
@@ -265,12 +265,12 @@ namespace Vulkan
 
         VkResult Init(const RHI::ResourcePoolCreateInfo& createInfo);
 
-        RHI::Result<RHI::Handle<RHI::Image>>  Allocate(const RHI::ImageCreateInfo& createInfo) override;
+        RHI::Result<RHI::Handle<RHI::Image>> Allocate(const RHI::ImageCreateInfo& createInfo) override;
         RHI::Result<RHI::Handle<RHI::Buffer>> Allocate(const RHI::BufferCreateInfo& createInfo) override;
-        void                                  Free(RHI::Handle<RHI::Image> image) override;
-        void                                  Free(RHI::Handle<RHI::Buffer> buffer) override;
-        size_t                                GetSize(RHI::Handle<RHI::Image> image) const override;
-        size_t                                GetSize(RHI::Handle<RHI::Buffer> buffer) const override;
+        void Free(RHI::Handle<RHI::Image> image) override;
+        void Free(RHI::Handle<RHI::Buffer> buffer) override;
+        size_t GetSize(RHI::Handle<RHI::Image> image) const override;
+        size_t GetSize(RHI::Handle<RHI::Buffer> buffer) const override;
 
     public:
         Context* m_context;

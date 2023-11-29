@@ -55,15 +55,15 @@ namespace RHI
         {
         }
 
-        T value;
+        T           value;
 
-        ResultCode result;
+        ResultCode  result;
 
         inline bool IsSucess() { return result == ResultCode::Success; }
 
         inline bool IsError() { return result != ResultCode::Success; }
 
-        inline T GetValue()
+        inline T    GetValue()
         {
             RHI_ASSERT(result == ResultCode::Success);
             return std::move(value);

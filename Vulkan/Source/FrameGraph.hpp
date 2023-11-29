@@ -25,9 +25,9 @@ namespace Vulkan
     public:
         struct Block
         {
-            VmaAllocation     allocation;
+            VmaAllocation allocation;
             VmaAllocationInfo info;
-            VmaVirtualBlock   virtualBlock;
+            VmaVirtualBlock virtualBlock;
             VkMemoryHeapFlags memoryProperties;
         };
 

@@ -110,10 +110,10 @@ namespace RHI
 
     RHI_EXPORT const FormatInfo& GetFormatInfo(Format format);
 
-    RHI_EXPORT uint32_t GetFormatByteSize(Format format);
+    RHI_EXPORT uint32_t          GetFormatByteSize(Format format);
 
-    RHI_EXPORT uint32_t GetFormatComponentByteSize(Format format);
+    RHI_EXPORT uint32_t          GetFormatComponentByteSize(Format format);
 
-    RHI_EXPORT FormatType GetFormatType(Format format);
+    RHI_EXPORT FormatType        GetFormatType(Format format);
 
 } // namespace RHI

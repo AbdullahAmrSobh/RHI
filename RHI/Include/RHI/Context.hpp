@@ -79,7 +79,7 @@ namespace RHI
         std::string applicationName;
 
         /// @brief The version of the users application.
-        Version applicationVersion;
+        Version     applicationVersion;
     };
 
     /// @brief Properties about a Physical GPU
@@ -101,16 +101,16 @@ namespace RHI
     class DebugCallbacks
     {
     public:
-        virtual ~DebugCallbacks() = default;
+        virtual ~DebugCallbacks()                               = default;
 
         /// @brief Log an information.
-        virtual void LogInfo(std::string_view message, ...) = 0;
+        virtual void LogInfo(std::string_view message, ...)     = 0;
 
         /// @brief Log an warnning.
         virtual void LogWarnning(std::string_view message, ...) = 0;
 
         /// @brief Log an error.
-        virtual void LogError(std::string_view message, ...) = 0;
+        virtual void LogError(std::string_view message, ...)    = 0;
     };
 
     /// @brief RHI Context, represent an instance of the API.
@@ -120,78 +120,78 @@ namespace RHI
         Context()          = default;
         virtual ~Context() = default;
 
-        DebugCallbacks& GetDebugMessenger() const;
+        DebugCallbacks&                             GetDebugMessenger() const;
 
         /// @brief Creates a new Swapchain.
-        virtual std::unique_ptr<Swapchain> CreateSwapchain(const SwapchainCreateInfo& createInfo) = 0;
+        virtual std::unique_ptr<Swapchain>          CreateSwapchain(const SwapchainCreateInfo& createInfo)                          = 0;
 
         /// @brief Creates a new ShaderModule
-        virtual std::unique_ptr<ShaderModule> CreateShaderModule(const ShaderModuleCreateInfo& createInfo) = 0;
+        virtual std::unique_ptr<ShaderModule>       CreateShaderModule(const ShaderModuleCreateInfo& createInfo)                    = 0;
 
         /// @brief Creates a new FrameScheduler object.
-        virtual std::unique_ptr<FrameScheduler> CreateFrameScheduler() = 0;
+        virtual std::unique_ptr<FrameScheduler>     CreateFrameScheduler()                                                          = 0;
 
         /// @brief Creates a shader bind group layout object.
-        virtual Handle<BindGroupLayout> CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) = 0;
+        virtual Handle<BindGroupLayout>             CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)              = 0;
 
         /// @brief Frees the given shader bind group layout
-        virtual void FreeBindGroupLayout(Handle<BindGroupLayout> layout) = 0;
+        virtual void                                FreeBindGroupLayout(Handle<BindGroupLayout> layout)                             = 0;
 
         /// @brief Creates a shader bind group layout object.
-        virtual Handle<PipelineLayout> CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo) = 0;
+        virtual Handle<PipelineLayout>              CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)                = 0;
 
         /// @brief Frees the given shader bind group layout
-        virtual void FreePipelineLayout(Handle<PipelineLayout> layout) = 0;
+        virtual void                                FreePipelineLayout(Handle<PipelineLayout> layout)                               = 0;
 
         /// @brief Creates a BindGroupAllocator object.
-        virtual std::unique_ptr<BindGroupAllocator> CreateBindGroupAllocator() = 0;
+        virtual std::unique_ptr<BindGroupAllocator> CreateBindGroupAllocator()                                                      = 0;
 
         /// @brief Creates a new Pool for all resources.
-        virtual std::unique_ptr<ResourcePool> CreateResourcePool(const ResourcePoolCreateInfo& createInfo) = 0;
+        virtual std::unique_ptr<ResourcePool>       CreateResourcePool(const ResourcePoolCreateInfo& createInfo)                    = 0;
 
         /// @brief Creates a new graphics pipeline state for graphics.
-        virtual Handle<GraphicsPipeline> CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) = 0;
+        virtual Handle<GraphicsPipeline>            CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)            = 0;
 
         /// @brief Frees the given graphics pipeline object.
-        virtual void Free(Handle<GraphicsPipeline> pso) = 0;
+        virtual void                                Free(Handle<GraphicsPipeline> pso)                                              = 0;
 
         /// @brief Creates a new compute pipeline state for graphics.
-        virtual Handle<ComputePipeline> CreateComputePipeline(const ComputePipelineCreateInfo& createInfo) = 0;
+        virtual Handle<ComputePipeline>             CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)              = 0;
 
         /// @brief Frees the given compute pipeline object.
-        virtual void Free(Handle<ComputePipeline> pso) = 0;
+        virtual void                                Free(Handle<ComputePipeline> pso)                                               = 0;
 
         /// @brief Creates a new Sampler state.
-        virtual Handle<Sampler> CreateSampler(const SamplerCreateInfo& createInfo) = 0;
+        virtual Handle<Sampler>                     CreateSampler(const SamplerCreateInfo& createInfo)                              = 0;
 
         /// @brief Frees the given sampler object.
-        virtual void Free(Handle<Sampler> sampler) = 0;
+        virtual void                                Free(Handle<Sampler> sampler)                                                   = 0;
 
         /// @brief Creates a new ImageView.
-        virtual Handle<ImageView> CreateImageView(Handle<Image> handle, const ImageAttachmentUseInfo& useInfo) = 0;
+        virtual Handle<ImageView>                   CreateImageView(Handle<Image> handle, const ImageAttachmentUseInfo& useInfo)    = 0;
 
         /// @brief Frees the given compute pipeline object.
-        virtual void Free(Handle<ImageView> view) = 0;
+        virtual void                                Free(Handle<ImageView> view)                                                    = 0;
 
         /// @brief Creates a new BufferView.
-        virtual Handle<BufferView> CreateBufferView(Handle<Buffer> handle, const BufferAttachmentUseInfo& useInfo) = 0;
+        virtual Handle<BufferView>                  CreateBufferView(Handle<Buffer> handle, const BufferAttachmentUseInfo& useInfo) = 0;
 
         /// @brief Frees the given sampler object.
-        virtual void Free(Handle<BufferView> view) = 0;
+        virtual void                                Free(Handle<BufferView> view)                                                   = 0;
 
         /// @brief Maps the image resource for read or write operations.
         /// @return returns a pointer to GPU memory, or a nullptr in case of failure
-        virtual DeviceMemoryPtr MapResource(Handle<Image> image) = 0;
+        virtual DeviceMemoryPtr                     MapResource(Handle<Image> image)                                                = 0;
 
         /// @brief Unamps the image resource.
-        virtual void Unmap(Handle<Image> image) = 0;
+        virtual void                                Unmap(Handle<Image> image)                                                      = 0;
 
         /// @brief Maps the buffer resource for read or write operations.
         /// @return returns a pointer to GPU memory, or a nullptr in case of failure
-        virtual DeviceMemoryPtr MapResource(Handle<Buffer> buffer) = 0;
+        virtual DeviceMemoryPtr                     MapResource(Handle<Buffer> buffer)                                              = 0;
 
         /// @brief Unmaps the buffer resource.
-        virtual void Unmap(Handle<Buffer> buffer) = 0;
+        virtual void                                Unmap(Handle<Buffer> buffer)                                                    = 0;
     };
 
 } // namespace RHI

@@ -92,7 +92,7 @@ namespace RHI
 
     ImagePassAttachment* Pass::ImportSwapchainImageResource(const char* name, Swapchain* swapchain, const ImageAttachmentUseInfo& useInfo)
     {
-        m_swapchain     = swapchain;
+        m_swapchain = swapchain;
         auto attachemnt = m_scheduler->m_attachmentsRegistry->ImportSwapchainImageAttachment(name, swapchain);
         return UseAttachment(attachemnt, useInfo);
     }
@@ -139,11 +139,11 @@ namespace RHI
         }
 
         ImagePassAttachment& passAttachment = m_imagePassAttachments.emplace_back(ImagePassAttachment{});
-        passAttachment.attachment           = attachment;
-        passAttachment.pass                 = this;
-        passAttachment.info                 = useInfo;
-        passAttachment.next                 = nullptr;
-        passAttachment.prev                 = attachment->lastUse;
+        passAttachment.attachment = attachment;
+        passAttachment.pass = this;
+        passAttachment.info = useInfo;
+        passAttachment.next = nullptr;
+        passAttachment.prev = attachment->lastUse;
 
         if (attachment->lifetime == RHI::AttachmentLifetime::Persistent && attachment->swapchain == nullptr)
         {
@@ -153,12 +153,12 @@ namespace RHI
         if (attachment->firstUse == nullptr)
         {
             attachment->firstUse = &passAttachment;
-            attachment->lastUse  = &passAttachment;
+            attachment->lastUse = &passAttachment;
         }
         else
         {
             attachment->lastUse->next = &passAttachment;
-            attachment->lastUse       = attachment->lastUse->next;
+            attachment->lastUse = attachment->lastUse->next;
         }
 
         return &passAttachment;
@@ -172,11 +172,11 @@ namespace RHI
         }
 
         BufferPassAttachment& passAttachment = m_bufferPassAttachment.emplace_back(BufferPassAttachment{});
-        passAttachment.attachment            = attachment;
-        passAttachment.pass                  = this;
-        passAttachment.info                  = useInfo;
-        passAttachment.next                  = nullptr;
-        passAttachment.prev                  = attachment->lastUse;
+        passAttachment.attachment = attachment;
+        passAttachment.pass = this;
+        passAttachment.info = useInfo;
+        passAttachment.next = nullptr;
+        passAttachment.prev = attachment->lastUse;
 
         if (attachment->lifetime == RHI::AttachmentLifetime::Persistent)
         {
@@ -185,12 +185,12 @@ namespace RHI
         if (attachment->firstUse == nullptr)
         {
             attachment->firstUse = &passAttachment;
-            attachment->lastUse  = &passAttachment;
+            attachment->lastUse = &passAttachment;
         }
         else
         {
             attachment->lastUse->next = &passAttachment;
-            attachment->lastUse       = attachment->lastUse->next;
+            attachment->lastUse = attachment->lastUse->next;
         }
         return &passAttachment;
     }
@@ -329,7 +329,8 @@ namespace RHI
                     attachment->handle = swapchain->GetImage();
                 }
 
-                if (passAttachment.view) continue;
+                if (passAttachment.view)
+                    continue;
 
                 if (auto it = m_imageViewsLut.find(attachment->handle); it != m_imageViewsLut.end())
                 {
@@ -346,7 +347,8 @@ namespace RHI
             {
                 auto attachment = passAttachment.attachment;
 
-                if (passAttachment.view) continue;
+                if (passAttachment.view)
+                    continue;
 
                 if (auto it = m_bufferViewLut.find(attachment->handle); it != m_bufferViewLut.end())
                 {
@@ -371,7 +373,7 @@ namespace RHI
         for (auto attachment : m_attachmentsRegistry->m_swapchainAttachments)
         {
             auto swapchain = attachment->swapchain;
-            auto result    = swapchain->Present(*attachment->lastUse->pass);
+            auto result = swapchain->Present(*attachment->lastUse->pass);
             RHI_ASSERT(result == ResultCode::Success);
         }
     }

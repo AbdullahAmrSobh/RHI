@@ -38,7 +38,7 @@ namespace Vulkan
     template<typename T>
     inline static uint64_t HashAny(const T& data)
     {
-        auto                   stream = std::string(reinterpret_cast<const char*>(&data), sizeof(data));
+        auto stream = std::string(reinterpret_cast<const char*>(&data), sizeof(data));
         std::hash<std::string> hasher;
         return hasher(stream);
     }
