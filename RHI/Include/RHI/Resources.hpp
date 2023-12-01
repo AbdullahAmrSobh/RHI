@@ -14,10 +14,9 @@ namespace RHI
     class Context;
     class ShaderModule;
     class Pass;
+    class Swapchain;
 
     // clang-format off
-    struct Image {};
-    struct Buffer {};
     struct ImageView {};
     struct BufferView {};
     struct BindGroupLayout {};
@@ -41,6 +40,21 @@ namespace RHI
         inline static constexpr uint32_t GB = 1024 * MB;
 
     }; // namespace AllocationSizeConstants
+
+    /// @brief Enumerates the different types of attachment's lifetime.
+    enum class Lifetime
+    {
+        // Attachment resource is created outside of the frame
+        Persistent,
+        // Attachment resource is only valid for the duration of the current frame
+        Transient,
+    };
+
+    enum class ResourceType
+    {
+        Image,
+        Buffer,
+    };
 
     /// @brief Enumeration representing the memory allocation startegy of a resource pool.
     enum class AllocationAlgorithm
@@ -73,13 +87,13 @@ namespace RHI
     /// @brief Enumeration representing how the image resource is intented to used.
     enum class ImageUsage
     {
-        None           = 0 << 0, // Invalid flag
-        ShaderResource = 1 << 1, // The image will be used in an shader as bind resource.
-        Color          = 1 << 3, // The image will be the render target color attachment.
-        Depth          = 1 << 4, // The image will be the render target depth attachment.
-        Stencil        = 1 << 5, // The image will be the render target stencil attachment.
-        CopySrc        = 1 << 6, // The image content will be copied.
-        CopyDst        = 1 << 7, // The image content will be overwritten by a copy command.
+        None         = 0 << 0, // Invalid flag
+        SampledImage = 1 << 1, // The image will be used as shader sampled image.
+        StorageImage = 1 << 2, // The image will be used as shader uniform image.
+        Color        = 1 << 3, // The image will be the render target color attachment.
+        Depth        = 1 << 4, // The image will be the render target depth attachment.
+        Stencil      = 1 << 5, // The image will be the render target stencil attachment.
+        Copy         = 1 << 6, // The image will be used in copy operations.
     };
 
     /// @brief Enumeration representing the dimensions of an image resource.
@@ -122,8 +136,7 @@ namespace RHI
         Uniform = 1 << 2, // The buffer will be used as an uniform buffer object.
         Vertex  = 1 << 3, // The buffer will be used as a vertex buffer object.
         Index   = 1 << 4, // The buffer will be used as a index buffer object.
-        CopySrc = 1 << 5, // This buffer content will be copied from.
-        CopyDst = 1 << 6, // This buffer content will be overwritten by a copy command.
+        Copy    = 1 << 5, // This buffer will be used in a copy operations.
     };
 
     enum class ShaderStage
@@ -131,6 +144,14 @@ namespace RHI
         Vertex,
         Pixel,
         Compute,
+    };
+
+    enum class ShaderAccess
+    {
+        None      = 0 << 0,
+        Read      = 1 << 1,
+        Write     = 1 << 2,
+        ReadWrite = Read | Write,
     };
 
     /// @brief The type of the shader resource to be bound.
@@ -667,6 +688,53 @@ namespace RHI
     //     virtual std::unique_ptr<RayTracingPipeline> CreateRayTracingPipeline(const RayTracingPipelineCreateInfo& createInfo) = 0;
     // };
 
+    struct ImagePassAttachment;
+    struct BufferPassAttachment;
+
+    class Resource
+    {
+    public:
+        ~Resource() = default;
+
+        const char*  name;
+
+        Lifetime     lifetime;
+
+        ResourceType type;
+    };
+
+    class Image : public Resource
+    {
+    public:
+        ~Image()                       = default;
+
+        Swapchain*           swapchain = nullptr;
+
+        // Information about the image
+        ImageCreateInfo      info      = {};
+
+        // Pointer to the first usage in an image pass
+        ImagePassAttachment* firstUse  = nullptr;
+
+        // Pointer to the last usage in an image pass
+        ImagePassAttachment* lastUse   = nullptr;
+    };
+
+    class Buffer : public Resource
+    {
+    public:
+        ~Buffer()                      = default;
+
+        // Information about the buffer
+        BufferCreateInfo      info     = {};
+
+        // Pointer to the first usage in a buffer pass
+        BufferPassAttachment* firstUse = nullptr;
+
+        // Pointer to the last usage in a buffer pass
+        BufferPassAttachment* lastUse  = nullptr;
+    };
+
     /// @brief An object that groups shader resources that are bound together.
     class RHI_EXPORT BindGroupData final
     {
@@ -786,12 +854,12 @@ namespace RHI
         virtual ResultCode Resize(uint32_t newWidth, uint32_t newHeight) = 0;
 
         /// @brief Presents the current image to the window, and acquires the next image in the swapchain.
-        virtual ResultCode Present(Pass& pass)                           = 0;
+        virtual ResultCode Present()                                     = 0;
 
     protected:
-        uint32_t                   m_currentImageIndex;
-        uint32_t                   m_swapchainImagesCount;
-        std::vector<Handle<Image>> m_images;
+        uint32_t      m_currentImageIndex;
+        uint32_t      m_swapchainImagesCount;
+        Handle<Image> m_image;
     };
 
     inline void BindGroupData::BindImages(uint32_t index, TL::Span<ImagePassAttachment*> images, uint32_t arrayOffset)
@@ -830,7 +898,7 @@ namespace RHI
 
     inline Handle<Image> Swapchain::GetImage() const
     {
-        return m_images[m_currentImageIndex];
+        return m_image;
     }
 
 } // namespace RHI

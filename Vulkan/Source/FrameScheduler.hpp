@@ -13,12 +13,6 @@ namespace Vulkan
     class CommandList;
     class CommandListAllocator;
 
-    VkAttachmentLoadOp ConvertLoadOp(RHI::ImageLoadOperation op);
-
-    VkAttachmentStoreOp ConvertStoreOp(RHI::ImageStoreOperation op);
-
-    VkImageLayout ConvertImageLayout(RHI::AttachmentUsage usage, RHI::AttachmentAccess access);
-
     /// @brief Memory allocator use for allocating transient resource backing memory.
     class TransientAttachmentAllocator final : public RHI::TransientAttachmentAllocator
     {
@@ -36,14 +30,12 @@ namespace Vulkan
 
         void Begin() override;
         void End() override;
-
-        void Allocate(RHI::ImageAttachment* attachment) override;
-
-        void Free(RHI::ImageAttachment* attachment) override;
-
-        void Allocate(RHI::BufferAttachment* attachment) override;
-
-        void Free(RHI::BufferAttachment* attachment) override;
+        void Activate(RHI::Image* resource) override;
+        void Deactivate(RHI::Image* resource) override;
+        void Activate(RHI::Buffer* resource) override;
+        void Deactivate(RHI::Buffer* resource) override;
+        RHI::Handle<RHI::Image> CreateTransientImage(const RHI::ImageCreateInfo& createInfo) override;
+        RHI::Handle<RHI::Buffer> CreateTransientBuffer(const RHI::BufferCreateInfo& createInfo) override;
 
         std::optional<Allocation> Allocate(VkMemoryRequirements requirements);
 
@@ -69,11 +61,8 @@ namespace Vulkan
 
         VkResult Init(const RHI::PassCreateInfo& createInfo);
 
-        RHI::CommandList& BeginCommandList(uint32_t commandsCount = 1) override;
-
+        RHI::CommandList& BeginCommandList(uint32_t commandsCount) override;
         void EndCommandList() override;
-
-        RHI::PassQueueState GetPassQueueStateInternal() const override;
 
         uint32_t m_queueFamilyIndex;
 
@@ -90,19 +79,15 @@ namespace Vulkan
 
         VkResult Init();
 
-        std::unique_ptr<RHI::Pass> CreatePass(const RHI::PassCreateInfo& createInfo) override;
-
         std::vector<VkSemaphoreSubmitInfo> GetSemaphores(const std::vector<RHI::Pass*>& passes) const;
 
+        std::unique_ptr<RHI::Pass> CreatePass(const RHI::PassCreateInfo& createInfo) override;
         void ExecutePass(RHI::Pass& pass) override;
-
         void ResetPass(RHI::Pass& pass) override;
-
         RHI::CommandList* GetCommandList(uint32_t frameIndex) override;
-
         void OnFrameEnd() override;
 
-        uint32_t m_currentFrameIndex;
+        uint64_t m_frameNumber;
 
         std::unique_ptr<CommandListAllocator> m_graphicsCommandlistAllocator;
 

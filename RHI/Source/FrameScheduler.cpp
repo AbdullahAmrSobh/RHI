@@ -5,68 +5,6 @@
 namespace RHI
 {
     //////////////////////////////////////////////////////////////////////////////////////////
-    /// AttachmentsRegistry
-    //////////////////////////////////////////////////////////////////////////////////////////
-
-    void AttachmentsRegistry::Reset()
-    {
-        for (auto attachment : m_attachments)
-        {
-            attachment->Reset();
-        }
-    }
-
-    ImageAttachment* AttachmentsRegistry::ImportSwapchainImageAttachment(const char* name, Swapchain* swapchain)
-    {
-        auto& attachment = m_imageAttachments.emplace_back(std::make_unique<ImageAttachment>(name, swapchain));
-
-        m_swapchainAttachments.push_back(attachment.get());
-        m_attachments.push_back(attachment.get());
-
-        return attachment.get();
-    }
-
-    ImageAttachment* AttachmentsRegistry::ImportImageAttachment(const char* name, Handle<Image> handle)
-    {
-        auto& attachment = m_imageAttachments.emplace_back(std::make_unique<ImageAttachment>(name, handle));
-
-        m_importedImageAttachments.push_back(attachment.get());
-        m_attachments.push_back(attachment.get());
-
-        return attachment.get();
-    }
-
-    BufferAttachment* AttachmentsRegistry::ImportBufferAttachment(const char* name, Handle<Buffer> handle)
-    {
-        auto& attachment = m_bufferAttachments.emplace_back(std::make_unique<BufferAttachment>(name, handle));
-
-        m_importedBufferAttachments.push_back(attachment.get());
-        m_attachments.push_back(attachment.get());
-
-        return attachment.get();
-    }
-
-    ImageAttachment* AttachmentsRegistry::CreateTransientImageAttachment(const char* name, const ImageCreateInfo& createInfo)
-    {
-        auto& attachment = m_imageAttachments.emplace_back(std::make_unique<ImageAttachment>(name, createInfo));
-
-        m_transientImageAttachments.push_back(attachment.get());
-        m_attachments.push_back(attachment.get());
-
-        return attachment.get();
-    }
-
-    BufferAttachment* AttachmentsRegistry::CreateTransientBufferAttachment(const char* name, const BufferCreateInfo& createInfo)
-    {
-        auto& attachment = m_bufferAttachments.emplace_back(std::make_unique<BufferAttachment>(name, createInfo));
-
-        m_transientBufferAttachments.push_back(attachment.get());
-        m_attachments.push_back(attachment.get());
-
-        return attachment.get();
-    }
-
-    //////////////////////////////////////////////////////////////////////////////////////////
     /// Pass
     //////////////////////////////////////////////////////////////////////////////////////////
 
@@ -90,107 +28,98 @@ namespace RHI
         pass.m_producers.push_back(&pass);
     }
 
-    ImagePassAttachment* Pass::ImportSwapchainImageResource(const char* name, Swapchain* swapchain, const ImageAttachmentUseInfo& useInfo)
+    ImagePassAttachment* Pass::ImportSwapchainImageResource(Swapchain* swapchain, const ImageAttachmentUseInfo& useInfo)
     {
         m_swapchain = swapchain;
-        auto attachemnt = m_scheduler->m_attachmentsRegistry->ImportSwapchainImageAttachment(name, swapchain);
-        return UseAttachment(attachemnt, useInfo);
+        return UseAttachment(swapchain->GetImage(), useInfo);
     }
 
-    ImagePassAttachment* Pass::ImportImageResource(const char* name, Handle<Image> image, const ImageAttachmentUseInfo& useInfo)
+    ImagePassAttachment* Pass::ImportImageResource(Handle<Image> image, const ImageAttachmentUseInfo& useInfo)
     {
-        auto attachemnt = m_scheduler->m_attachmentsRegistry->ImportImageAttachment(name, image);
-        return UseAttachment(attachemnt, useInfo);
+        return UseAttachment(image, useInfo);
     }
 
-    BufferPassAttachment* Pass::ImportBufferResource(const char* name, Handle<Buffer> buffer, const BufferAttachmentUseInfo& useInfo)
+    BufferPassAttachment* Pass::ImportBufferResource(Handle<Buffer> buffer, const BufferAttachmentUseInfo& useInfo)
     {
-        auto attachemnt = m_scheduler->m_attachmentsRegistry->ImportBufferAttachment(name, buffer);
-        return UseAttachment(attachemnt, useInfo);
+        return UseAttachment(buffer, useInfo);
     }
 
-    ImagePassAttachment* Pass::CreateTransientImageResource(const char* name, const ImageCreateInfo& createInfo, const ImageAttachmentUseInfo& useInfo)
+    ImagePassAttachment* Pass::CreateTransientImageResource(const ImageCreateInfo& createInfo, const ImageAttachmentUseInfo& useInfo)
     {
-        auto attachemnt = m_scheduler->m_attachmentsRegistry->CreateTransientImageAttachment(name, createInfo);
-        return UseAttachment(attachemnt, useInfo);
+        auto image = m_scheduler->m_transientAttachmentAllocator->CreateTransientImage(createInfo);
+        return UseAttachment(image, useInfo);
     }
 
-    BufferPassAttachment* Pass::CreateTransientBufferResource(const char* name, const BufferCreateInfo& createInfo, const BufferAttachmentUseInfo& useInfo)
+    BufferPassAttachment* Pass::CreateTransientBufferResource(const BufferCreateInfo& createInfo, const BufferAttachmentUseInfo& useInfo)
     {
-        auto attachemnt = m_scheduler->m_attachmentsRegistry->CreateTransientBufferAttachment(name, createInfo);
-        return UseAttachment(attachemnt, useInfo);
+        auto buffer = m_scheduler->m_transientAttachmentAllocator->CreateTransientBuffer(createInfo);
+        return UseAttachment(buffer, useInfo);
     }
 
     ImagePassAttachment* Pass::UseImageResource(ImagePassAttachment* attachment, const ImageAttachmentUseInfo& useInfo)
     {
-        return UseAttachment(attachment->attachment, useInfo);
+        return UseAttachment(attachment->resourceHandle, useInfo);
     }
 
     BufferPassAttachment* Pass::UseBufferResource(BufferPassAttachment* attachment, const BufferAttachmentUseInfo& useInfo)
     {
-        return UseAttachment(attachment->attachment, useInfo);
+        return UseAttachment(attachment->resourceHandle, useInfo);
     }
 
-    ImagePassAttachment* Pass::UseAttachment(ImageAttachment*& attachment, const ImageAttachmentUseInfo& useInfo)
+    ImagePassAttachment* Pass::UseAttachment(Handle<Image> handle, const ImageAttachmentUseInfo& useInfo)
     {
-        if (m_scheduler->m_state != FrameScheduler::Invalid)
-        {
-            m_scheduler->Reset();
-        }
+        auto image = m_context->AccessImage(handle);
 
         ImagePassAttachment& passAttachment = m_imagePassAttachments.emplace_back(ImagePassAttachment{});
-        passAttachment.attachment = attachment;
+        passAttachment.resourceHandle = handle;
         passAttachment.pass = this;
         passAttachment.info = useInfo;
         passAttachment.next = nullptr;
-        passAttachment.prev = attachment->lastUse;
+        passAttachment.prev = image->lastUse;
 
-        if (attachment->lifetime == RHI::AttachmentLifetime::Persistent && attachment->swapchain == nullptr)
+        if (image->lifetime == RHI::Lifetime::Persistent && image->swapchain == nullptr)
         {
-            passAttachment.view = m_context->CreateImageView(attachment->handle, passAttachment.info);
+            passAttachment.viewHandle = m_context->CreateImageView(handle, passAttachment.info);
         }
 
-        if (attachment->firstUse == nullptr)
+        if (image->firstUse == nullptr)
         {
-            attachment->firstUse = &passAttachment;
-            attachment->lastUse = &passAttachment;
+            image->firstUse = &passAttachment;
+            image->lastUse = &passAttachment;
         }
         else
         {
-            attachment->lastUse->next = &passAttachment;
-            attachment->lastUse = attachment->lastUse->next;
+            image->lastUse->next = &passAttachment;
+            image->lastUse = image->lastUse->next;
         }
 
         return &passAttachment;
     }
 
-    BufferPassAttachment* Pass::UseAttachment(BufferAttachment*& attachment, const BufferAttachmentUseInfo& useInfo)
+    BufferPassAttachment* Pass::UseAttachment(Handle<Buffer> handle, const BufferAttachmentUseInfo& useInfo)
     {
-        if (m_scheduler->m_state != FrameScheduler::Invalid)
-        {
-            m_scheduler->Reset();
-        }
+        auto buffer = m_context->AccessBuffer(handle);
 
         BufferPassAttachment& passAttachment = m_bufferPassAttachment.emplace_back(BufferPassAttachment{});
-        passAttachment.attachment = attachment;
+        passAttachment.resourceHandle = handle;
         passAttachment.pass = this;
         passAttachment.info = useInfo;
         passAttachment.next = nullptr;
-        passAttachment.prev = attachment->lastUse;
+        passAttachment.prev = buffer->lastUse;
 
-        if (attachment->lifetime == RHI::AttachmentLifetime::Persistent)
+        // if (buffer->lifetime == RHI::Lifetime::Persistent)
+        // {
+        //     // passAttachment.view = m_context->CreateBufferView(buffer->handle, passAttachment.info);
+        // }
+        if (buffer->firstUse == nullptr)
         {
-            // passAttachment.view = m_context->CreateBufferView(attachment->handle, passAttachment.info);
-        }
-        if (attachment->firstUse == nullptr)
-        {
-            attachment->firstUse = &passAttachment;
-            attachment->lastUse = &passAttachment;
+            buffer->firstUse = &passAttachment;
+            buffer->lastUse = &passAttachment;
         }
         else
         {
-            attachment->lastUse->next = &passAttachment;
-            attachment->lastUse = attachment->lastUse->next;
+            buffer->lastUse->next = &passAttachment;
+            buffer->lastUse = buffer->lastUse->next;
         }
         return &passAttachment;
     }
@@ -209,11 +138,6 @@ namespace RHI
         {
             uint32_t frameIndex = 0;
 
-            if (m_attachmentsRegistry->m_swapchainAttachments.empty() == false)
-            {
-                frameIndex = m_attachmentsRegistry->m_swapchainAttachments.front()->swapchain->GetCurrentImageIndex();
-            }
-
             for (auto& pass : m_passList)
             {
                 pass->m_commandList = GetCommandList(frameIndex);
@@ -231,30 +155,13 @@ namespace RHI
         m_passList.push_back(&pass);
     }
 
-    void FrameScheduler::Reset()
-    {
-        m_attachmentsRegistry->Reset();
-
-        m_state = FrameGraphState::Invalid;
-    }
-
     void FrameScheduler::Compile()
     {
-        TopologicalSort();
-
         CompileTransientAttachments();
 
         CompileAttachmentsViews();
 
         m_state = FrameGraphState::Ready;
-    }
-
-    void FrameScheduler::TopologicalSort()
-    {
-        if (m_state == FrameGraphState::Ready)
-        {
-            return;
-        }
     }
 
     void FrameScheduler::CompileTransientAttachments()
@@ -270,46 +177,50 @@ namespace RHI
         {
             for (auto& passAttachment : pass->m_imagePassAttachments)
             {
-                if (passAttachment.attachment->lifetime != AttachmentLifetime::Transient)
+                auto image = m_context->AccessImage(passAttachment.resourceHandle);
+
+                if (image->lifetime != Lifetime::Transient)
                     continue;
                 else if (passAttachment.prev != nullptr)
                     continue;
 
-                auto attachment = passAttachment.attachment;
-                m_transientAttachmentAllocator->Allocate(attachment);
+                m_transientAttachmentAllocator->Activate(image);
             }
 
             for (auto& passAttachment : pass->m_bufferPassAttachment)
             {
-                if (passAttachment.attachment->lifetime != AttachmentLifetime::Transient)
+                auto buffer = m_context->AccessBuffer(passAttachment.resourceHandle);
+
+                if (buffer->lifetime != Lifetime::Transient)
                     continue;
                 else if (passAttachment.prev != nullptr)
                     continue;
 
-                auto attachment = passAttachment.attachment;
-                m_transientAttachmentAllocator->Allocate(attachment);
+                m_transientAttachmentAllocator->Activate(buffer);
             }
 
             for (auto& passAttachment : pass->m_imagePassAttachments)
             {
-                if (passAttachment.attachment->lifetime != AttachmentLifetime::Transient)
+                auto image = m_context->AccessImage(passAttachment.resourceHandle);
+
+                if (image->lifetime != Lifetime::Transient)
                     continue;
                 else if (passAttachment.next != nullptr)
                     continue;
 
-                auto attachment = passAttachment.attachment;
-                m_transientAttachmentAllocator->Free(attachment);
+                m_transientAttachmentAllocator->Deactivate(image);
             }
 
             for (auto& passAttachment : pass->m_bufferPassAttachment)
             {
-                if (passAttachment.attachment->lifetime != AttachmentLifetime::Transient)
+                auto buffer = m_context->AccessBuffer(passAttachment.resourceHandle);
+
+                if (buffer->lifetime != Lifetime::Transient)
                     continue;
                 else if (passAttachment.next != nullptr)
                     continue;
 
-                auto attachment = passAttachment.attachment;
-                m_transientAttachmentAllocator->Free(attachment);
+                m_transientAttachmentAllocator->Deactivate(buffer);
             }
         }
 
@@ -322,37 +233,37 @@ namespace RHI
         {
             for (auto& passAttachment : pass->m_imagePassAttachments)
             {
-                auto attachment = passAttachment.attachment;
+                auto image = m_context->AccessImage(passAttachment.resourceHandle);
 
-                if (auto swapchain = attachment->swapchain)
+                if (auto swapchain = image->swapchain)
                 {
-                    attachment->handle = swapchain->GetImage();
+                    // attachment->handle = swapchain->GetImage();
                 }
 
-                if (passAttachment.view)
+                if (passAttachment.viewHandle)
                     continue;
 
-                if (auto it = m_imageViewsLut.find(attachment->handle); it != m_imageViewsLut.end())
+                if (auto it = m_imageViewsLut.find(passAttachment.resourceHandle); it != m_imageViewsLut.end())
                 {
-                    passAttachment.view = it->second;
+                    passAttachment.viewHandle = it->second;
                 }
                 else
                 {
-                    passAttachment.view = m_context->CreateImageView(passAttachment.attachment->handle, passAttachment.info);
-                    m_imageViewsLut.insert({ attachment->handle, passAttachment.view });
+                    passAttachment.viewHandle = m_context->CreateImageView(passAttachment.resourceHandle, passAttachment.info);
+                    m_imageViewsLut.insert({ passAttachment.resourceHandle, passAttachment.viewHandle });
                 }
             }
 
             for (auto& passAttachment : pass->m_bufferPassAttachment)
             {
-                auto attachment = passAttachment.attachment;
+                // auto attachment = passAttachment.attachment;
 
-                if (passAttachment.view)
+                if (passAttachment.viewHandle)
                     continue;
 
-                if (auto it = m_bufferViewLut.find(attachment->handle); it != m_bufferViewLut.end())
+                if (auto it = m_bufferViewLut.find(passAttachment.resourceHandle); it != m_bufferViewLut.end())
                 {
-                    passAttachment.view = it->second;
+                    passAttachment.viewHandle = it->second;
                 }
                 else
                 {
@@ -368,13 +279,6 @@ namespace RHI
         for (auto pass : m_passList)
         {
             ExecutePass(*pass);
-        }
-
-        for (auto attachment : m_attachmentsRegistry->m_swapchainAttachments)
-        {
-            auto swapchain = attachment->swapchain;
-            auto result = swapchain->Present(*attachment->lastUse->pass);
-            RHI_ASSERT(result == ResultCode::Success);
         }
     }
 

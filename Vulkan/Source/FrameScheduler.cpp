@@ -10,46 +10,6 @@
 namespace Vulkan
 {
     ///////////////////////////////////////////////////////////////////////////
-    /// Utility functions
-    ///////////////////////////////////////////////////////////////////////////
-
-    VkAttachmentLoadOp ConvertLoadOp(RHI::ImageLoadOperation op)
-    {
-        switch (op)
-        {
-        case RHI::ImageLoadOperation::DontCare: return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        case RHI::ImageLoadOperation::Load:     return VK_ATTACHMENT_LOAD_OP_LOAD;
-        case RHI::ImageLoadOperation::Discard:  return VK_ATTACHMENT_LOAD_OP_CLEAR;
-        default:                                RHI_UNREACHABLE(); return VK_ATTACHMENT_LOAD_OP_MAX_ENUM;
-        }
-    }
-
-    VkAttachmentStoreOp ConvertStoreOp(RHI::ImageStoreOperation op)
-    {
-        switch (op)
-        {
-        case RHI::ImageStoreOperation::DontCare: return VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        case RHI::ImageStoreOperation::Store:    return VK_ATTACHMENT_STORE_OP_STORE;
-        case RHI::ImageStoreOperation::Discard:  return VK_ATTACHMENT_STORE_OP_NONE;
-        default:                                 RHI_UNREACHABLE(); return VK_ATTACHMENT_STORE_OP_MAX_ENUM;
-        }
-    }
-
-    VkImageLayout ConvertImageLayout(RHI::AttachmentUsage usage, RHI::AttachmentAccess access)
-    {
-        switch (usage)
-        {
-        case RHI::AttachmentUsage::RenderTarget: return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        case RHI::AttachmentUsage::Depth:        return access == RHI::AttachmentAccess::Read ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-        // case RHI::AttachmentUsage::Stencil:        return access == RHI::AttachmentAccess::Read ? VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
-        // case RHI::AttachmentUsage::DepthStencil:   return access == RHI::AttachmentAccess::Read ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        case RHI::AttachmentUsage::ShaderResource: return access == RHI::AttachmentAccess::Read ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
-        case RHI::AttachmentUsage::Copy:           return access == RHI::AttachmentAccess::Read ? VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL : VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        default:                                   RHI_UNREACHABLE(); return VK_IMAGE_LAYOUT_GENERAL;
-        }
-    }
-
-    ///////////////////////////////////////////////////////////////////////////
     /// TransientAttachmentAllocator
     ///////////////////////////////////////////////////////////////////////////
 
@@ -79,65 +39,60 @@ namespace Vulkan
         {
             vmaCalculateVirtualBlockStatistics(block.virtualBlock, &statistics.back());
         }
-
-        // for (auto stats : statistics)
-        // {
-
-        // }
     }
 
-    void TransientAttachmentAllocator::Allocate(RHI::ImageAttachment* attachment)
+    void TransientAttachmentAllocator::Activate(RHI::Image* resourceBase)
     {
-        RHI_ASSERT(attachment->lifetime == RHI::AttachmentLifetime::Transient);
+        auto image = static_cast<Image*>(resourceBase);
+        auto requirements = image->GetMemoryRequirements(m_context->m_device);
 
-        auto [handle, image] = m_context->m_imageOwner.InsertZerod();
-        attachment->handle = handle;
-
-        auto result = image.Init(m_context, {}, attachment->info, nullptr, true);
-        RHI_ASSERT(result == RHI::ResultCode::Success);
-
-        auto requirements = image.GetMemoryRequirements(m_context->m_device);
         if (auto allocation = Allocate(requirements); allocation.has_value())
         {
             RHI_ASSERT(allocation->type == AllocationType::Aliasing);
-            auto result = vmaBindImageMemory2(m_context->m_allocator, allocation->handle, allocation->virtualAllocation.offset, image.handle, nullptr);
+            auto result = vmaBindImageMemory2(m_context->m_allocator, allocation->handle, allocation->virtualAllocation.offset, image->handle, nullptr);
             VULKAN_ASSERT_SUCCESS(result);
         }
     }
 
-    void TransientAttachmentAllocator::Free(RHI::ImageAttachment* attachment)
+    void TransientAttachmentAllocator::Deactivate(RHI::Image* resourceBase)
     {
-        auto image = m_context->m_imageOwner.Get(attachment->handle);
-        RHI_ASSERT(image);
-
+        auto image = static_cast<Image*>(resourceBase);
         Free(image->allocation);
     }
 
-    void TransientAttachmentAllocator::Allocate(RHI::BufferAttachment* attachment)
+    void TransientAttachmentAllocator::Activate(RHI::Buffer* resourceBase)
     {
-        RHI_ASSERT(attachment->lifetime == RHI::AttachmentLifetime::Transient);
+        auto buffer = static_cast<Buffer*>(resourceBase);
+        auto requirements = buffer->GetMemoryRequirements(m_context->m_device);
 
-        auto [handle, buffer] = m_context->m_bufferOwner.InsertZerod();
-        attachment->handle = handle;
-
-        auto result = buffer.Init(m_context, {}, attachment->info, nullptr, true);
-        RHI_ASSERT(result == RHI::ResultCode::Success);
-
-        auto requirements = buffer.GetMemoryRequirements(m_context->m_device);
         if (auto allocation = Allocate(requirements); allocation.has_value())
         {
             RHI_ASSERT(allocation->type == AllocationType::Aliasing);
-            auto result = vmaBindBufferMemory2(m_context->m_allocator, allocation->handle, allocation->virtualAllocation.offset, buffer.handle, nullptr);
+            auto result = vmaBindBufferMemory2(m_context->m_allocator, allocation->handle, allocation->virtualAllocation.offset, buffer->handle, nullptr);
             VULKAN_ASSERT_SUCCESS(result);
         }
     }
 
-    void TransientAttachmentAllocator::Free(RHI::BufferAttachment* attachment)
+    void TransientAttachmentAllocator::Deactivate(RHI::Buffer* resourceBase)
     {
-        auto buffer = m_context->m_imageOwner.Get(attachment->handle);
-        RHI_ASSERT(buffer);
-
+        auto buffer = static_cast<Buffer*>(resourceBase);
         Free(buffer->allocation);
+    }
+
+    RHI::Handle<RHI::Image> TransientAttachmentAllocator::CreateTransientImage(const RHI::ImageCreateInfo& createInfo)
+    {
+        auto [handle, image] = m_context->m_imageOwner.InsertZerod();
+        auto result = image.Init(m_context, {}, createInfo, nullptr);
+        RHI_ASSERT(result == RHI::ResultCode::Success);
+        return handle;
+    }
+
+    RHI::Handle<RHI::Buffer> TransientAttachmentAllocator::CreateTransientBuffer(const RHI::BufferCreateInfo& createInfo)
+    {
+        auto [handle, buffer] = m_context->m_bufferOwner.InsertZerod();
+        auto result = buffer.Init(m_context, {}, createInfo, nullptr);
+        RHI_ASSERT(result == RHI::ResultCode::Success);
+        return handle;
     }
 
     size_t TransientAttachmentAllocator::CalculatePreferredBlockSize(uint32_t memTypeIndex)
@@ -292,11 +247,6 @@ namespace Vulkan
         commandList->End();
     }
 
-    RHI::PassQueueState Pass::GetPassQueueStateInternal() const
-    {
-        return {};
-    }
-
     ///////////////////////////////////////////////////////////////////////////
     /// FrameScheduler
     ///////////////////////////////////////////////////////////////////////////
@@ -397,7 +347,7 @@ namespace Vulkan
         submitInfo.signalSemaphoreInfoCount = 1;
         submitInfo.pSignalSemaphoreInfos = &signalSemaphore;
 
-        auto currentFrameFence = m_framesInflightFences[m_currentFrameIndex];
+        auto currentFrameFence = m_framesInflightFences[m_frameNumber % 3];
 
         auto result = vkQueueSubmit2(context->m_graphicsQueue, 1, &submitInfo, currentFrameFence);
         VULKAN_ASSERT_SUCCESS(result);
@@ -420,24 +370,8 @@ namespace Vulkan
     void FrameScheduler::OnFrameEnd()
     {
         auto context = static_cast<Context*>(m_context);
-
-        m_currentFrameIndex = 0;
-        if (m_attachmentsRegistry->m_swapchainAttachments.empty() == false)
-        {
-            m_currentFrameIndex = m_attachmentsRegistry->m_swapchainAttachments.front()->swapchain->GetCurrentImageIndex();
-        }
-
-        // todo
-        static uint32_t init = 0;
-
-        if (init < 3)
-        {
-            init++;
-            return;
-        }
-
-        auto currentFrameFence = m_framesInflightFences[m_currentFrameIndex];
-        auto result = vkWaitForFences(context->m_device, 1, &currentFrameFence, VK_TRUE, UINT64_MAX);
+        auto currentFrameFence = m_framesInflightFences[m_frameNumber % 3];
+        auto result = vkWaitForFences(context->m_device, 1, &currentFrameFence, VK_TRUE, 1000);
         result = vkResetFences(context->m_device, 1, &currentFrameFence);
         VULKAN_ASSERT_SUCCESS(result);
     }

@@ -52,36 +52,27 @@ namespace Vulkan
         return result;
     }
 
-    VkImageUsageFlagBits ConvertImageUsage(RHI::ImageUsage imageUsage)
-    {
-        switch (imageUsage)
-        {
-        case RHI::ImageUsage::None:           return VK_IMAGE_USAGE_FLAG_BITS_MAX_ENUM;
-        case RHI::ImageUsage::ShaderResource: return VK_IMAGE_USAGE_SAMPLED_BIT;
-        case RHI::ImageUsage::Color:          return VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-        case RHI::ImageUsage::Depth:          return VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-        case RHI::ImageUsage::Stencil:        return VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-        case RHI::ImageUsage::CopySrc:        return VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-        case RHI::ImageUsage::CopyDst:        return VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-        default:                              RHI_UNREACHABLE(); return VK_IMAGE_USAGE_FLAG_BITS_MAX_ENUM;
-        }
-    }
-
-    VkImageUsageFlags ConvertImageUsageFlags(RHI::Flags<RHI::ImageUsage> imageUsageFlags)
+    VkImageUsageFlags ConvertImageUsageFlags(RHI::Flags<RHI::ImageUsage> imageUsageFlags, RHI::Flags<RHI::ShaderAccess> access)
     {
         VkImageUsageFlags result = 0;
-        if (imageUsageFlags & RHI::ImageUsage::ShaderResource)
+        if (imageUsageFlags & RHI::ImageUsage::StorageImage)
             result |= VK_IMAGE_USAGE_SAMPLED_BIT;
+        if (imageUsageFlags & RHI::ImageUsage::StorageImage)
+            result |= VK_IMAGE_USAGE_STORAGE_BIT;
         if (imageUsageFlags & RHI::ImageUsage::Color)
             result |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
         if (imageUsageFlags & RHI::ImageUsage::Depth)
             result |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
         if (imageUsageFlags & RHI::ImageUsage::Stencil)
             result |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-        if (imageUsageFlags & RHI::ImageUsage::CopySrc)
-            result |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-        if (imageUsageFlags & RHI::ImageUsage::CopyDst)
-            result |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        if (imageUsageFlags & RHI::ImageUsage::Copy)
+        {
+            if (access & RHI::ShaderAccess::Read)
+                result |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+
+            if (access & RHI::ShaderAccess::Write)
+                result |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        }
         return result;
     }
 
@@ -138,22 +129,7 @@ namespace Vulkan
         }
     }
 
-    VkBufferUsageFlagBits ConvertBufferUsage(RHI::BufferUsage bufferUsage)
-    {
-        switch (bufferUsage)
-        {
-        case RHI::BufferUsage::None:    return VK_BUFFER_USAGE_FLAG_BITS_MAX_ENUM;
-        case RHI::BufferUsage::Storage: return VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-        case RHI::BufferUsage::Uniform: return VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-        case RHI::BufferUsage::Vertex:  return VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-        case RHI::BufferUsage::Index:   return VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-        case RHI::BufferUsage::CopySrc: return VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-        case RHI::BufferUsage::CopyDst: return VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-        default:                        RHI_UNREACHABLE(); return VK_BUFFER_USAGE_FLAG_BITS_MAX_ENUM;
-        }
-    }
-
-    VkBufferUsageFlags ConvertBufferUsageFlags(RHI::Flags<RHI::BufferUsage> bufferUsageFlags)
+    VkBufferUsageFlags ConvertBufferUsageFlags(RHI::Flags<RHI::BufferUsage> bufferUsageFlags, RHI::Flags<RHI::ShaderAccess> access)
     {
         VkBufferUsageFlags result = 0;
         if (bufferUsageFlags & RHI::BufferUsage::Storage)
@@ -164,10 +140,15 @@ namespace Vulkan
             result |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
         if (bufferUsageFlags & RHI::BufferUsage::Index)
             result |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-        if (bufferUsageFlags & RHI::BufferUsage::CopySrc)
-            result |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-        if (bufferUsageFlags & RHI::BufferUsage::CopyDst)
-            result |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        if (bufferUsageFlags & RHI::BufferUsage::Copy)
+        {
+            if (access & RHI::ShaderAccess::Read)
+                result |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+
+            if (access & RHI::ShaderAccess::Write)
+                result |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        }
+        return result;
         return result;
     }
 
@@ -358,23 +339,6 @@ namespace Vulkan
         }
     }
 
-    VkDescriptorType DescriptorTypeFromAttachmentUsage(RHI::AttachmentUsage usage, RHI::AttachmentAccess access)
-    {
-        (void)access;
-        switch (usage)
-        {
-        case RHI::AttachmentUsage::None:
-        case RHI::AttachmentUsage::VertexInputBuffer:
-        case RHI::AttachmentUsage::RenderTarget:
-        case RHI::AttachmentUsage::Depth:
-        case RHI::AttachmentUsage::Copy:
-        case RHI::AttachmentUsage::Resolve:
-        case RHI::AttachmentUsage::ShaderStorage:     return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        case RHI::AttachmentUsage::ShaderResource:    return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        }
-        return VK_DESCRIPTOR_TYPE_MAX_ENUM;
-    }
-
     VkImageSubresource ConvertSubresource(const RHI::ImageSubresource& subresource)
     {
         auto vkSubresource = VkImageSubresource{};
@@ -431,9 +395,12 @@ namespace Vulkan
     /// Image
     ///////////////////////////////////////////////////////////////////////////
 
-    RHI::ResultCode Image::Init(Context* context, const VmaAllocationCreateInfo allocationInfo, const RHI::ImageCreateInfo& createInfo, ResourcePool* parentPool, bool isTransientResource)
+    RHI::ResultCode Image::Init(Context* context, const VmaAllocationCreateInfo allocationInfo, const RHI::ImageCreateInfo& createInfo, ResourcePool* parentPool)
     {
-        (void)parentPool;
+        memset(this, 0, sizeof(Buffer));
+
+        pool = parentPool;
+
         VkImageCreateInfo vkCreateInfo{};
         vkCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         vkCreateInfo.pNext = nullptr;
@@ -447,7 +414,7 @@ namespace Vulkan
         vkCreateInfo.arrayLayers = createInfo.arrayCount;
         vkCreateInfo.samples = ConvertSampleCount(createInfo.sampleCount);
         vkCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-        vkCreateInfo.usage = ConvertImageUsageFlags(createInfo.usageFlags);
+        vkCreateInfo.usage = ConvertImageUsageFlags(createInfo.usageFlags, RHI::ShaderAccess::Read | RHI::ShaderAccess::Write);
         vkCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         vkCreateInfo.queueFamilyIndexCount = 0;
         vkCreateInfo.pQueueFamilyIndices = nullptr;
@@ -456,7 +423,7 @@ namespace Vulkan
         this->createInfo = vkCreateInfo;
         VkResult result = VK_ERROR_UNKNOWN;
 
-        if (isTransientResource)
+        if (parentPool == nullptr)
         {
             allocation.type = AllocationType::Aliasing;
             result = vkCreateImage(context->m_device, &vkCreateInfo, nullptr, &handle);
@@ -493,21 +460,24 @@ namespace Vulkan
     /// Buffer
     ///////////////////////////////////////////////////////////////////////////
 
-    RHI::ResultCode Buffer::Init(Context* context, const VmaAllocationCreateInfo allocationInfo, const RHI::BufferCreateInfo& createInfo, ResourcePool* parentPool, bool isTransientResource)
+    RHI::ResultCode Buffer::Init(Context* context, const VmaAllocationCreateInfo allocationInfo, const RHI::BufferCreateInfo& createInfo, ResourcePool* parentPool)
     {
-        (void)parentPool;
+        memset(this, 0, sizeof(Buffer));
+
+        pool = parentPool;
+
         VkBufferCreateInfo vkCreateInfo{};
         vkCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         vkCreateInfo.pNext = nullptr;
         vkCreateInfo.flags = {};
         vkCreateInfo.size = createInfo.byteSize;
-        vkCreateInfo.usage = ConvertBufferUsageFlags(createInfo.usageFlags);
+        vkCreateInfo.usage = ConvertBufferUsageFlags(createInfo.usageFlags, RHI::ShaderAccess::Read | RHI::ShaderAccess::Write);
         vkCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         vkCreateInfo.queueFamilyIndexCount = 0;
         vkCreateInfo.pQueueFamilyIndices = nullptr;
 
         VkResult result = VK_ERROR_UNKNOWN;
-        if (isTransientResource)
+        if (parentPool == nullptr)
         {
             allocation.type = AllocationType::Aliasing;
             result = vkCreateBuffer(context->m_device, &vkCreateInfo, nullptr, &handle);
@@ -1155,7 +1125,7 @@ namespace Vulkan
 
                 for (auto passAttachment : resources->views)
                 {
-                    auto view = context->m_imageViewOwner.Get(passAttachment->view);
+                    auto view = context->m_imageViewOwner.Get(passAttachment->viewHandle);
 
                     VkDescriptorImageInfo imageInfo{};
                     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1174,7 +1144,7 @@ namespace Vulkan
 
                 for (auto passAttachment : resources->views)
                 {
-                    auto buffer = m_context->m_bufferOwner.Get(passAttachment->attachment->handle);
+                    auto buffer = m_context->m_bufferOwner.Get(passAttachment->resourceHandle);
 
                     VkDescriptorBufferInfo bufferInfo{};
                     bufferInfo.buffer = buffer->handle;
@@ -1251,7 +1221,7 @@ namespace Vulkan
         allocationInfo.pool = m_pool;
 
         auto [handle, image] = m_context->m_imageOwner.InsertZerod();
-        if (auto result = image.Init(m_context, allocationInfo, createInfo, this, false); RHI::IsError(result))
+        if (auto result = image.Init(m_context, allocationInfo, createInfo, this); RHI::IsError(result))
         {
             return result;
         }
@@ -1265,7 +1235,7 @@ namespace Vulkan
         allocationInfo.pool = m_pool;
 
         auto [handle, buffer] = m_context->m_bufferOwner.InsertZerod();
-        if (auto result = buffer.Init(m_context, allocationInfo, createInfo, this, false); RHI::IsError(result))
+        if (auto result = buffer.Init(m_context, allocationInfo, createInfo, this); RHI::IsError(result))
         {
             return result;
         }
@@ -1364,16 +1334,17 @@ namespace Vulkan
         return ConvertResult(result);
     }
 
-    RHI::ResultCode Swapchain::Present(RHI::Pass& passBase)
+    RHI::ResultCode Swapchain::Present()
     {
-        auto& pass = static_cast<Pass&>(passBase);
+        auto image = m_context->m_imageOwner.Get(GetImage());
+        auto* pass = static_cast<Pass*>(image->lastUse->pass);
 
         // Present current image to be rendered.
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         presentInfo.pNext = nullptr;
         presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = &pass.m_signalSemaphore;
+        presentInfo.pWaitSemaphores = &pass->m_signalSemaphore;
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = &m_swapchain;
         presentInfo.pImageIndices = &m_currentImageIndex;
@@ -1383,6 +1354,8 @@ namespace Vulkan
 
         result = vkAcquireNextImageKHR(m_context->m_device, m_swapchain, 1000000, m_imageReadySemaphore, VK_NULL_HANDLE, &m_currentImageIndex);
         VULKAN_RETURN_ERR_CODE(result);
+
+        image->handle = m_swapchainImages[m_currentImageIndex];
 
         return RHI::ResultCode::Success;
     }
@@ -1409,7 +1382,7 @@ namespace Vulkan
         createInfo.imageExtent.width = minImageWidth;
         createInfo.imageExtent.height = minImageHeight;
         createInfo.imageArrayLayers = 1;
-        createInfo.imageUsage = ConvertImageUsageFlags(m_swapchainInfo.imageUsage);
+        createInfo.imageUsage = ConvertImageUsageFlags(m_swapchainInfo.imageUsage, RHI::ShaderAccess::Read | RHI::ShaderAccess::Write);
         createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
         createInfo.queueFamilyIndexCount = 0;
         createInfo.pQueueFamilyIndices = nullptr;
@@ -1426,9 +1399,8 @@ namespace Vulkan
 
         uint32_t imagesCount;
         result = vkGetSwapchainImagesKHR(m_context->m_device, m_swapchain, &imagesCount, nullptr);
-        std::vector<VkImage> images;
-        images.resize(imagesCount);
-        result = vkGetSwapchainImagesKHR(m_context->m_device, m_swapchain, &imagesCount, images.data());
+        m_swapchainImages.resize(imagesCount);
+        result = vkGetSwapchainImagesKHR(m_context->m_device, m_swapchain, &imagesCount, m_swapchainImages.data());
         VULKAN_RETURN_VKERR_CODE(result);
         if (result != VK_SUCCESS)
             return result;
@@ -1452,19 +1424,14 @@ namespace Vulkan
         imageInfo.pQueueFamilyIndices = createInfo.pQueueFamilyIndices;
         imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-        for (auto imageHandles : images)
-        {
-            Vulkan::Image image{};
-            image.handle = imageHandles;
-            image.createInfo = imageInfo;
-            image.swapchain = this;
-
-            auto handle = m_context->m_imageOwner.Insert(image);
-            m_images.push_back(handle);
-        }
-
         result = vkAcquireNextImageKHR(m_context->m_device, m_swapchain, 1000000, m_imageReadySemaphore, VK_NULL_HANDLE, &m_currentImageIndex);
         VULKAN_RETURN_VKERR_CODE(result);
+
+        Vulkan::Image image{};
+        image.handle = m_swapchainImages[m_currentImageIndex];
+        image.createInfo = imageInfo;
+        image.swapchain = this;
+        m_image = m_context->m_imageOwner.Insert(image);
 
         return result;
     }

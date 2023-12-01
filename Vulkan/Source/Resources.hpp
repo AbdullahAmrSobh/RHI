@@ -124,7 +124,7 @@ namespace Vulkan
         // pointer to swapchain (if this image is backed by swapchain).
         Swapchain* swapchain;
 
-        RHI::ResultCode Init(Context* context, const VmaAllocationCreateInfo allocationInfo, const RHI::ImageCreateInfo& createInfo, ResourcePool* parentPool, bool isTransientResource);
+        RHI::ResultCode Init(Context* context, const VmaAllocationCreateInfo allocationInfo, const RHI::ImageCreateInfo& createInfo, ResourcePool* parentPool);
         void Shutdown(Context* context);
         VkMemoryRequirements GetMemoryRequirements(VkDevice device) const;
     };
@@ -143,7 +143,7 @@ namespace Vulkan
         // description of the resource.
         VkBufferCreateInfo createInfo;
 
-        RHI::ResultCode Init(Context* context, const VmaAllocationCreateInfo allocationInfo, const RHI::BufferCreateInfo& createInfo, ResourcePool* parentPool, bool isTransientResource);
+        RHI::ResultCode Init(Context* context, const VmaAllocationCreateInfo allocationInfo, const RHI::BufferCreateInfo& createInfo, ResourcePool* parentPool);
         void Shutdown(Context* context);
         VkMemoryRequirements GetMemoryRequirements(VkDevice device) const;
     };
@@ -293,7 +293,7 @@ namespace Vulkan
         VkResult Init(const RHI::SwapchainCreateInfo& createInfo);
 
         RHI::ResultCode Resize(uint32_t newWidth, uint32_t newHeight) override;
-        RHI::ResultCode Present(RHI::Pass& pass) override;
+        RHI::ResultCode Present() override;
 
     private:
         VkResult CreateNativeSwapchain();
@@ -314,6 +314,8 @@ namespace Vulkan
         VkSurfaceKHR m_surface = VK_NULL_HANDLE;
 
         VkResult m_lastPresentResult = VK_ERROR_UNKNOWN;
+
+        std::vector<VkImage> m_swapchainImages;
 
         RHI::SwapchainCreateInfo m_swapchainInfo;
     };

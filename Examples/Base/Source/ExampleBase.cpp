@@ -119,7 +119,7 @@ void ExampleBase::Init()
     createInfo.imageSize.height      = windowInfo.height;
     createInfo.imageUsage            = RHI::ImageUsage::Color;
     createInfo.imageFormat           = RHI::Format::BGRA8_UNORM;
-    createInfo.imageCount            = 3;
+    createInfo.imageCount            = 1;
 
     m_swapchain = m_context->CreateSwapchain(createInfo);
 
@@ -142,6 +142,9 @@ void ExampleBase::Run()
     while (!glfwWindowShouldClose(window))
     {
         OnUpdate();
+
+        m_swapchain->Present();
+
         glfwPollEvents();
     }
 }

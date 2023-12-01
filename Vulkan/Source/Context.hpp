@@ -53,6 +53,9 @@ namespace Vulkan
         RHI::DeviceMemoryPtr MapResource(RHI::Handle<RHI::Buffer> buffer) override;
         void Unmap(RHI::Handle<RHI::Buffer> buffer) override;
 
+        RHI::Image* AccessImage(RHI::Handle<RHI::Image> image) override;
+        RHI::Buffer* AccessBuffer(RHI::Handle<RHI::Buffer> buffer) override;
+
         uint32_t GetQueueFamilyIndex(RHI::QueueType queueType) const;
 
         VkSemaphore CreateSemaphore();

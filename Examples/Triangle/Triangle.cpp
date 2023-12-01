@@ -29,11 +29,11 @@ public:
     template<typename T>
     RHI::Handle<RHI::Buffer> CreateBuffer(RHI::TL::Span<T> data, RHI::Flags<RHI::BufferUsage> usageFlags)
     {
-        auto createInfo       = RHI::BufferCreateInfo{};
+        auto createInfo = RHI::BufferCreateInfo{};
         createInfo.usageFlags = usageFlags;
-        createInfo.byteSize   = data.size() * sizeof(T);
+        createInfo.byteSize = data.size() * sizeof(T);
 
-        auto                 buffer          = m_resourcePool->Allocate(createInfo).GetValue();
+        auto buffer = m_resourcePool->Allocate(createInfo).GetValue();
         RHI::DeviceMemoryPtr vertexBufferPtr = m_context->MapResource(buffer);
         RHI_ASSERT(vertexBufferPtr != nullptr);
         memcpy(vertexBufferPtr, data.data(), data.size() * sizeof(float));
@@ -48,10 +48,10 @@ public:
         // create resources pool
         {
             RHI::ResourcePoolCreateInfo createInfo{};
-            createInfo.heapType            = RHI::MemoryType::CPU;
+            createInfo.heapType = RHI::MemoryType::CPU;
             createInfo.allocationAlgorithm = RHI::AllocationAlgorithm::Linear;
-            createInfo.blockSize           = 10 * RHI::AllocationSizeConstants::KB;
-            createInfo.minBlockAlignment   = alignof(uint64_t);
+            createInfo.blockSize = 10 * RHI::AllocationSizeConstants::KB;
+            createInfo.minBlockAlignment = alignof(uint64_t);
 
             m_resourcePool = m_context->CreateResourcePool(createInfo);
         }
@@ -59,7 +59,7 @@ public:
         // create buffer resource
         {
             m_vertexBuffer = CreateBuffer<float>({ vertexData.data(), vertexData.size() }, RHI::BufferUsage::Vertex);
-            m_indexBuffer  = CreateBuffer<uint32_t>({ indexData.data(), indexData.size() }, RHI::BufferUsage::Index);
+            m_indexBuffer = CreateBuffer<uint32_t>({ indexData.data(), indexData.size() }, RHI::BufferUsage::Index);
 
             struct UniformData
             {
@@ -97,13 +97,12 @@ public:
         // }
 
         // create shader bind group layout
-        auto bindGroupLayout = m_context->CreateBindGroupLayout({ 
-            RHI::ShaderBinding{ RHI::ShaderBindingType::Buffer, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Pixel } });
-        auto pipelineLayout  = m_context->CreatePipelineLayout({ bindGroupLayout });
+        auto bindGroupLayout = m_context->CreateBindGroupLayout({ RHI::ShaderBinding{ RHI::ShaderBindingType::Buffer, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Pixel } });
+        auto pipelineLayout = m_context->CreatePipelineLayout({ bindGroupLayout });
 
         // create shader bind group
         m_bindGroupAllocator = m_context->CreateBindGroupAllocator();
-        m_bindGroup          = m_bindGroupAllocator->AllocateBindGroups(bindGroupLayout).front();
+        m_bindGroup = m_bindGroupAllocator->AllocateBindGroups(bindGroupLayout).front();
 
         // create pipeline
         {
@@ -119,45 +118,45 @@ public:
             psoCreateInfo.inputAssemblerState.attributes = {
                 {
                     .location = 0,
-                    .binding  = 0,
-                    .format   = RHI::Format::RG32_FLOAT,
-                    .offset   = 0,
+                    .binding = 0,
+                    .format = RHI::Format::RG32_FLOAT,
+                    .offset = 0,
                 },
                 {
                     .location = 1,
-                    .binding  = 0,
-                    .format   = RHI::Format::RGBA32_FLOAT,
-                    .offset   = RHI::GetFormatInfo(RHI::Format::RG32_FLOAT).bytesPerBlock,
+                    .binding = 0,
+                    .format = RHI::Format::RGBA32_FLOAT,
+                    .offset = RHI::GetFormatInfo(RHI::Format::RG32_FLOAT).bytesPerBlock,
                 },
             };
             psoCreateInfo.inputAssemblerState.bindings = {
                 {
-                    .binding  = 0,
-                    .stride   = uint32_t(RHI::GetFormatInfo(RHI::Format::RG32_FLOAT).bytesPerBlock + RHI::GetFormatInfo(RHI::Format::RGBA32_FLOAT).bytesPerBlock),
+                    .binding = 0,
+                    .stride = uint32_t(RHI::GetFormatInfo(RHI::Format::RG32_FLOAT).bytesPerBlock + RHI::GetFormatInfo(RHI::Format::RGBA32_FLOAT).bytesPerBlock),
                     .stepRate = RHI::PipelineVertexInputRate::PerVertex,
                 }
             };
-            psoCreateInfo.vertexShaderModule                         = shaderModule.get();
-            psoCreateInfo.vertexShaderName                           = "VSMain";
-            psoCreateInfo.pixelShaderModule                          = shaderModule.get();
-            psoCreateInfo.pixelShaderName                            = "PSMain";
-            psoCreateInfo.topologyMode                               = RHI::PipelineTopologyMode::Triangles;
-            psoCreateInfo.rasterizationState.cullMode                = RHI::PipelineRasterizerStateCullMode::None;
-            psoCreateInfo.renderTargetLayout                         = { { RHI::Format::BGRA8_UNORM }, RHI::Format::Unknown, RHI::Format::Unknown };
-            psoCreateInfo.depthStencilState.depthTestEnable          = false;
-            psoCreateInfo.depthStencilState.depthWriteEnable         = false;
-            psoCreateInfo.layout                                     = pipelineLayout;
+            psoCreateInfo.vertexShaderModule = shaderModule.get();
+            psoCreateInfo.vertexShaderName = "VSMain";
+            psoCreateInfo.pixelShaderModule = shaderModule.get();
+            psoCreateInfo.pixelShaderName = "PSMain";
+            psoCreateInfo.topologyMode = RHI::PipelineTopologyMode::Triangles;
+            psoCreateInfo.rasterizationState.cullMode = RHI::PipelineRasterizerStateCullMode::None;
+            psoCreateInfo.renderTargetLayout = { { RHI::Format::BGRA8_UNORM }, RHI::Format::Unknown, RHI::Format::Unknown };
+            psoCreateInfo.depthStencilState.depthTestEnable = false;
+            psoCreateInfo.depthStencilState.depthWriteEnable = false;
+            psoCreateInfo.layout = pipelineLayout;
             psoCreateInfo.renderTargetLayout.colorAttachmentsFormats = { RHI::Format::BGRA8_UNORM };
-            psoCreateInfo.renderTargetLayout.depthAttachmentFormat   = RHI::Format::D32;
-            psoCreateInfo.colorBlendState.blendStates                = {
+            psoCreateInfo.renderTargetLayout.depthAttachmentFormat = RHI::Format::D32;
+            psoCreateInfo.colorBlendState.blendStates = {
                 {
-                                   .blendEnable  = true,
-                                   .colorBlendOp = RHI::BlendEquation::Add,
-                                   .srcColor     = RHI::BlendFactor::One,
-                                   .dstColor     = RHI::BlendFactor::Zero,
-                                   .alphaBlendOp = RHI::BlendEquation::Add,
-                                   .srcAlpha     = RHI::BlendFactor::One,
-                                   .dstAlpha     = RHI::BlendFactor::Zero,
+                    .blendEnable = true,
+                    .colorBlendOp = RHI::BlendEquation::Add,
+                    .srcColor = RHI::BlendFactor::One,
+                    .dstColor = RHI::BlendFactor::Zero,
+                    .alphaBlendOp = RHI::BlendEquation::Add,
+                    .srcAlpha = RHI::BlendFactor::One,
+                    .dstAlpha = RHI::BlendFactor::Zero,
                 }
             };
 
@@ -169,7 +168,7 @@ public:
             RHI::PassCreateInfo createInfo{};
             createInfo.name = "RenderPass";
             createInfo.type = RHI::QueueType::Graphics;
-            m_renderpass    = m_frameScheduler->CreatePass(createInfo);
+            m_renderpass = m_frameScheduler->CreatePass(createInfo);
         }
 
         {
@@ -177,27 +176,27 @@ public:
 
             // setup attachments
             RHI::ImageCreateInfo createInfo{};
-            createInfo.usageFlags  = RHI::ImageUsage::Depth;
-            createInfo.size.width  = 800;
+            createInfo.usageFlags = RHI::ImageUsage::Depth;
+            createInfo.size.width = 800;
             createInfo.size.height = 600;
-            createInfo.size.depth  = 1;
-            createInfo.format      = RHI::Format::D32;
-            createInfo.type        = RHI::ImageType::Image2D;
+            createInfo.size.depth = 1;
+            createInfo.format = RHI::Format::D32;
+            createInfo.type = RHI::ImageType::Image2D;
 
             RHI::ImageAttachmentUseInfo useInfo{};
-            useInfo.usage                              = RHI::AttachmentUsage::RenderTarget;
-            useInfo.subresource.imageAspects           = RHI::ImageAspect::Color;
-            useInfo.loadStoreOperations.loadOperation  = RHI::ImageLoadOperation::Discard;
+            useInfo.usage = RHI::ImageUsage::Color;
+            useInfo.subresource.imageAspects = RHI::ImageAspect::Color;
+            useInfo.loadStoreOperations.loadOperation = RHI::ImageLoadOperation::Discard;
             useInfo.loadStoreOperations.storeOperation = RHI::ImageStoreOperation::Store;
-            useInfo.clearValue.color                   = { 0.3f, 0.6f, 0.9f, 1.0f };
-            m_renderpass->ImportSwapchainImageResource("color-attachment", m_swapchain.get(), useInfo);
+            useInfo.clearValue.color = { 0.3f, 0.6f, 0.9f, 1.0f };
+            m_renderpass->ImportSwapchainImageResource(m_swapchain.get(), useInfo);
 
-            // auto textureAttachment = pass.ImportImageResource("texture", m_image, useInfo);
+            // auto textureAttachment = pass.ImportImageResource(m_image, useInfo);
 
-            RHI::BufferAttachmentUseInfo bufferUseInfo {};
-            bufferUseInfo.access = RHI::AttachmentAccess::Read;
-            bufferUseInfo.usage = RHI::AttachmentUsage::ShaderResource;
-            auto uniformBuffer = m_renderpass->ImportBufferResource("uniform-buffer", m_uniformData, bufferUseInfo);
+            RHI::BufferAttachmentUseInfo bufferUseInfo{};
+            bufferUseInfo.access = RHI::ShaderAccess::Read;
+            bufferUseInfo.usage = RHI::BufferUsage::Uniform;
+            auto uniformBuffer = m_renderpass->ImportBufferResource(m_uniformData, bufferUseInfo);
 
             // setup bind elements
             m_renderpass->End();
@@ -228,23 +227,23 @@ public:
         auto& cmd = m_renderpass->BeginCommandList();
 
         cmd.SetViewport({
-            .width    = 800,
-            .height   = 600,
+            .width = 800,
+            .height = 600,
             .minDepth = 0.0,
             .maxDepth = 1.0,
         });
 
         cmd.SetSicssor({
-            .width  = 800,
+            .width = 800,
             .height = 600,
         });
 
         cmd.Submit({
             .pipelineState = m_pipelineState,
-            .bindGroups    = m_bindGroup,
+            .bindGroups = m_bindGroup,
             .vertexBuffers = m_vertexBuffer,
-            .indexBuffers  = m_indexBuffer,
-            .parameters    = { .elementCount = 6 },
+            .indexBuffers = m_indexBuffer,
+            .parameters = { .elementCount = 6 },
         });
 
         m_renderpass->EndCommandList();

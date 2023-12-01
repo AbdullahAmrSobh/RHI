@@ -192,6 +192,14 @@ namespace RHI
 
         /// @brief Unmaps the buffer resource.
         virtual void                                Unmap(Handle<Buffer> buffer)                                                    = 0;
+
+    protected:
+        friend class FrameScheduler;
+        friend class Pass;
+
+        virtual Image*         AccessImage(Handle<Image> image)                          = 0;
+
+        virtual Buffer*        AccessBuffer(Handle<Buffer> buffer)                       = 0;
     };
 
 } // namespace RHI

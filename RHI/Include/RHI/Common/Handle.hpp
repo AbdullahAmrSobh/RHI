@@ -189,6 +189,7 @@ namespace RHI
         }
 
         m_count++;
+        memset(&m_resources[index], 0, sizeof(Resource));
         return { Handle<Resource>(index, ++m_genIds[index]), m_resources[index] };
     }
 

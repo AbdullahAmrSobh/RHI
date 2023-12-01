@@ -1,5 +1,5 @@
 #include "CommandList.hpp"
-
+#include "Conversion.hpp"
 #include "Common.hpp"
 #include "Context.hpp"
 #include "FrameScheduler.hpp"
@@ -9,148 +9,6 @@
 
 namespace Vulkan
 {
-
-    struct PipelineBarrierFlags
-    {
-        VkPipelineStageFlags2 stages;
-        VkAccessFlags2 access;
-        VkImageLayout attachmentLayout;
-    };
-
-    inline static bool IsWriteAccess(RHI::AttachmentAccess access)
-    {
-        return access == RHI::AttachmentAccess::Write || access == RHI::AttachmentAccess::ReadWrite;
-    }
-
-    inline static VkPipelineStageFlags2 GetPipelineShaderStages(RHI::Flags<RHI::PipelineAccessStage> stages)
-    {
-        auto _stages = VkPipelineStageFlags2{};
-
-        if (stages & RHI::PipelineAccessStage::Vertex)
-        {
-            _stages = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
-        }
-
-        if (stages & RHI::PipelineAccessStage::Pixel)
-        {
-            _stages = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-        }
-
-        if (stages & RHI::PipelineAccessStage::Compute)
-        {
-            _stages = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-        }
-
-        return _stages;
-    }
-
-    inline static PipelineBarrierFlags ConvertPipelineStageAccessFlags(RHI::AttachmentUsage usage, RHI::Flags<RHI::PipelineAccessStage> stages, RHI::AttachmentAccess access)
-    {
-        VkPipelineStageFlags2 _stages = {};
-        VkAccessFlags2 _access = {};
-        VkImageLayout _layout = {};
-
-        switch (usage)
-        {
-        case RHI::AttachmentUsage::None:
-            {
-                RHI_UNREACHABLE();
-                break;
-            }
-        case RHI::AttachmentUsage::VertexInputBuffer:
-            {
-                _stages = VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT;
-                _access = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
-                _layout = VK_IMAGE_LAYOUT_MAX_ENUM;
-                break;
-            }
-        case RHI::AttachmentUsage::ShaderStorage:
-            {
-                _stages = GetPipelineShaderStages(stages);
-                RHI_ASSERT(stages);
-
-                switch (access)
-                {
-                case RHI::AttachmentAccess::Read:
-                    {
-                        _access = VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
-                        _layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                        break;
-                    }
-                case RHI::AttachmentAccess::Write:
-                    {
-                        _access = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
-
-                        break;
-                    }
-                case RHI::AttachmentAccess::ReadWrite:
-                    {
-                        _access = VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
-                        break;
-                    }
-                default:
-                    {
-                        RHI_UNREACHABLE();
-                        break;
-                    }
-                }
-
-                break;
-            }
-        case RHI::AttachmentUsage::RenderTarget:
-            {
-                _stages = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-                _access = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                _layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-                break;
-            }
-        case RHI::AttachmentUsage::Depth:
-            {
-                _stages = VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
-                _access = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-                _layout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-                break;
-            }
-        case RHI::AttachmentUsage::ShaderResource:
-            {
-                _stages = GetPipelineShaderStages(stages);
-
-                if (_stages & VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT)
-                    _access |= VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
-
-                if (_stages & VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT)
-                    _access |= IsWriteAccess(access) ? VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT : VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
-
-                if (_stages == VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT)
-                    _access |= IsWriteAccess(access) ? VK_ACCESS_2_MEMORY_WRITE_BIT : VK_ACCESS_2_MEMORY_READ_BIT;
-
-                _layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-                break;
-            }
-        case RHI::AttachmentUsage::Copy:
-            {
-                _stages = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-                _access = IsWriteAccess(access) ? VK_ACCESS_2_TRANSFER_WRITE_BIT : VK_ACCESS_2_TRANSFER_READ_BIT;
-                _layout = IsWriteAccess(access) ? VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL : VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-                break;
-            }
-        case RHI::AttachmentUsage::Resolve:
-            {
-                _stages = VK_PIPELINE_STAGE_2_RESOLVE_BIT;
-                _access = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                _layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-                break;
-            }
-        default:
-            {
-                RHI_UNREACHABLE();
-                break;
-            };
-        }
-
-        return { _stages, _access, _layout };
-    }
 
     //////////////////////////////////////////////////////////////////////////////////////////
     /// CommandPool
@@ -280,7 +138,7 @@ namespace Vulkan
 
         for (auto& attachment : pass.m_imagePassAttachments)
         {
-            if (attachment.info.usage == RHI::AttachmentUsage::RenderTarget)
+            if (IsRenderTarget(attachment.info.usage))
             {
                 passAttachments.push_back(&attachment);
             }
@@ -292,13 +150,13 @@ namespace Vulkan
 
         for (const auto& passAttachment : pass.m_imagePassAttachments)
         {
-            if (passAttachment.info.usage == RHI::AttachmentUsage::Depth)
+            if (passAttachment.info.usage == RHI::ImageUsage::Depth)
             {
                 depthAttachmentInfo = GetAttachmentInfo(passAttachment);
                 continue;
             }
 
-            if (passAttachment.info.usage == RHI::AttachmentUsage::RenderTarget)
+            if (IsRenderTarget(passAttachment.info.usage))
             {
                 auto attachmentInfo = GetAttachmentInfo(passAttachment);
                 colorAttachmentInfo.push_back(attachmentInfo);
@@ -326,7 +184,7 @@ namespace Vulkan
         std::vector<RHI::ImagePassAttachment*> passAttachments;
         for (auto& attachment : pass.m_imagePassAttachments)
         {
-            if (attachment.info.usage == RHI::AttachmentUsage::RenderTarget)
+            if (IsRenderTarget(attachment.info.usage))
             {
                 passAttachments.push_back(&attachment);
             }
@@ -532,7 +390,7 @@ namespace Vulkan
 
     VkRenderingAttachmentInfo CommandList::GetAttachmentInfo(const RHI::ImagePassAttachment& passAttachment) const
     {
-        auto imageView = m_context->m_imageViewOwner.Get(passAttachment.view);
+        auto imageView = m_context->m_imageViewOwner.Get(passAttachment.viewHandle);
 
         auto attachmentInfo = VkRenderingAttachmentInfo{};
         attachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
@@ -554,7 +412,7 @@ namespace Vulkan
 
         for (auto passAttachment : passAttachments)
         {
-            auto image = m_context->m_imageOwner.Get(passAttachment->attachment->handle);
+            auto image = m_context->m_imageOwner.Get(passAttachment->resourceHandle);
 
             auto barrier = VkImageMemoryBarrier2{};
             barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
@@ -566,47 +424,45 @@ namespace Vulkan
             barrier.subresourceRange.baseMipLevel = passAttachment->info.subresource.mipBase;
             barrier.subresourceRange.levelCount = passAttachment->info.subresource.mipCount;
 
-            auto flags = ConvertPipelineStageAccessFlags(passAttachment->info.usage, passAttachment->stages, passAttachment->info.access);
             if (passAttachment->next)
             {
                 barrier.srcQueueFamilyIndex = static_cast<Pass*>(passAttachment->pass)->m_queueFamilyIndex;
                 barrier.dstQueueFamilyIndex = static_cast<Pass*>(passAttachment->next->pass)->m_queueFamilyIndex;
 
                 if (barrier.srcQueueFamilyIndex == barrier.dstQueueFamilyIndex &&
-                    passAttachment->info.access == RHI::AttachmentAccess::Read &&
-                    passAttachment->next->info.access == RHI::AttachmentAccess::Read)
+                    passAttachment->info.access == RHI::ShaderAccess::Read &&
+                    passAttachment->next->info.access == RHI::ShaderAccess::Read)
                 {
                     continue;
                 }
 
-                barrier.srcStageMask = flags.stages;
-                barrier.srcAccessMask = flags.access;
-                barrier.oldLayout = flags.attachmentLayout;
-
-                auto dstFlags = ConvertPipelineStageAccessFlags(passAttachment->next->info.usage, passAttachment->next->stages, passAttachment->next->info.access);
-                barrier.dstStageMask = dstFlags.stages;
-                barrier.dstAccessMask = dstFlags.access;
-                barrier.newLayout = dstFlags.attachmentLayout;
+                barrier.srcStageMask = ConvertPipelineStageFlags(passAttachment->info.usage, passAttachment->stages);
+                barrier.srcAccessMask = ConvertPipelineAccess(passAttachment->info.usage, passAttachment->info.access, false);
+                barrier.oldLayout = ConvertImageLayout(passAttachment->info.usage, passAttachment->info.access);
+                barrier.dstStageMask = ConvertPipelineStageFlags(passAttachment->next->info.usage, passAttachment->next->stages);
+                barrier.dstAccessMask = ConvertPipelineAccess(passAttachment->next->info.usage, passAttachment->next->info.access, true);
+                barrier.newLayout = ConvertImageLayout(passAttachment->next->info.usage, passAttachment->next->info.access);
                 barriers.push_back(barrier);
             }
-            else if (barrierType == BarrierType::PostPass && passAttachment->attachment->swapchain)
+            else if (auto image = m_context->m_imageOwner.Get(passAttachment->resourceHandle);
+                     barrierType == BarrierType::PostPass && image->swapchain != nullptr)
             {
-                barrier.srcStageMask = flags.stages;
-                barrier.srcAccessMask = flags.access;
-                barrier.oldLayout = flags.attachmentLayout;
+                barrier.srcStageMask = ConvertPipelineStageFlags(passAttachment->info.usage, passAttachment->stages);
+                barrier.srcAccessMask = ConvertPipelineAccess(passAttachment->info.usage, passAttachment->info.access, true);
+                barrier.oldLayout = ConvertImageLayout(passAttachment->info.usage, passAttachment->info.access);
                 barrier.dstStageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
                 barrier.dstAccessMask = 0;
                 barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
                 barriers.push_back(barrier);
             }
-            else if (barrierType == BarrierType::PrePass && passAttachment->prev == nullptr && passAttachment->info.access != RHI::AttachmentAccess::Read)
+            else if (barrierType == BarrierType::PrePass && passAttachment->prev == nullptr && passAttachment->info.access != RHI::ShaderAccess::Read)
             {
                 barrier.srcStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
                 barrier.srcAccessMask = 0;
                 barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-                barrier.dstStageMask = flags.stages;
-                barrier.dstAccessMask = flags.access;
-                barrier.newLayout = flags.attachmentLayout;
+                barrier.dstStageMask = ConvertPipelineStageFlags(passAttachment->info.usage, passAttachment->stages);
+                barrier.dstAccessMask = ConvertPipelineAccess(passAttachment->info.usage, passAttachment->info.access, false);
+                barrier.newLayout = ConvertImageLayout(passAttachment->info.usage, passAttachment->info.access);
                 barriers.push_back(barrier);
             }
         }
@@ -621,11 +477,12 @@ namespace Vulkan
 
     void CommandList::TransitionPassAttachments(BarrierType barrierType, TL::Span<RHI::BufferPassAttachment*> passAttachments) const
     {
+        (void)barrierType;
         std::vector<VkBufferMemoryBarrier2> barriers;
 
         for (auto passAttachment : passAttachments)
         {
-            auto buffer = m_context->m_bufferOwner.Get(passAttachment->attachment->handle);
+            auto buffer = m_context->m_bufferOwner.Get(passAttachment->resourceHandle);
 
             auto barrier = VkBufferMemoryBarrier2{};
             barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
@@ -634,38 +491,27 @@ namespace Vulkan
             barrier.offset = passAttachment->info.byteOffset;
             barrier.size = passAttachment->info.byteSize;
 
-            auto flags = ConvertPipelineStageAccessFlags(passAttachment->info.usage, passAttachment->stages, passAttachment->info.access);
             if (passAttachment->next)
             {
                 barrier.srcQueueFamilyIndex = static_cast<Pass*>(passAttachment->pass)->m_queueFamilyIndex;
                 barrier.dstQueueFamilyIndex = static_cast<Pass*>(passAttachment->next->pass)->m_queueFamilyIndex;
 
                 if (barrier.srcQueueFamilyIndex == barrier.dstQueueFamilyIndex &&
-                    passAttachment->info.access == RHI::AttachmentAccess::Read &&
-                    passAttachment->next->info.access == RHI::AttachmentAccess::Read)
+                    passAttachment->info.access == RHI::ShaderAccess::Read &&
+                    passAttachment->next->info.access == RHI::ShaderAccess::Read)
                 {
                     continue;
                 }
 
-                barrier.srcStageMask = flags.stages;
-                barrier.srcAccessMask = flags.access;
-
-                auto dstFlags = ConvertPipelineStageAccessFlags(passAttachment->next->info.usage, passAttachment->next->stages, passAttachment->next->info.access);
-                barrier.dstStageMask = dstFlags.stages;
-                barrier.dstAccessMask = dstFlags.access;
+                barrier.srcStageMask = ConvertPipelineStageFlags(passAttachment->info.usage, passAttachment->stages);
+                barrier.srcAccessMask = ConvertPipelineAccess(passAttachment->info.usage, passAttachment->info.access);
+                barrier.dstStageMask = ConvertPipelineStageFlags(passAttachment->next->info.usage, passAttachment->next->stages);
+                barrier.dstAccessMask = ConvertPipelineAccess(passAttachment->next->info.usage, passAttachment->next->info.access);
                 barriers.push_back(barrier);
             }
-            else if (barrierType == BarrierType::PostPass)
+            else
             {
-                // Nothing to do
-            }
-            else if (barrierType == BarrierType::PrePass && passAttachment->prev == nullptr && passAttachment->attachment->lifetime == RHI::AttachmentLifetime::Transient)
-            {
-                barrier.srcStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
-                barrier.srcAccessMask = 0;
-                barrier.dstStageMask = flags.stages;
-                barrier.dstAccessMask = flags.access;
-                barriers.push_back(barrier);
+                RHI_UNREACHABLE();
             }
         }
 

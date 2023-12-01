@@ -514,6 +514,16 @@ namespace Vulkan
         vmaUnmapMemory(m_allocator, resource);
     }
 
+    RHI::Image* Context::AccessImage(RHI::Handle<RHI::Image> image)
+    {
+        return m_imageOwner.Get(image);
+    }
+
+    RHI::Buffer* Context::AccessBuffer(RHI::Handle<RHI::Buffer> buffer)
+    {
+        return m_bufferOwner.Get(buffer);
+    }
+
     VkSemaphore Context::CreateSemaphore()
     {
         VkSemaphoreCreateInfo createInfo{};
