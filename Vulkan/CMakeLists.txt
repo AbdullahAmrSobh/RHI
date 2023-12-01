@@ -15,7 +15,7 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/FrameGraph.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/FrameScheduler.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Format.inl
 )
 
@@ -24,7 +24,7 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/FrameGraph.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/FrameScheduler.cpp
 )
 
 include(${CMAKE_SOURCE_DIR}/CMake/AddTarget.cmake)

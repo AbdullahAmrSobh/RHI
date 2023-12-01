@@ -14,7 +14,7 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/CommandList.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Context.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Format.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/FrameGraph.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/FrameScheduler.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Resources.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RHI.hpp
 )
@@ -22,7 +22,7 @@ set(HEADER_FILES
 # Add source files
 set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Format.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/FrameGraph.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/FrameScheduler.cpp
 )
 
 include(${CMAKE_SOURCE_DIR}/CMake/AddTarget.cmake)

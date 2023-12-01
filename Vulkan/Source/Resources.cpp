@@ -4,7 +4,7 @@
 #include "Common.hpp"
 #include "Context.hpp"
 #include "Format.inl"
-#include "FrameGraph.hpp"
+#include "FrameScheduler.hpp"
 #include "Resources.hpp"
 
 #include <Windows.h>

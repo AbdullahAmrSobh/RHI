@@ -1,5 +1,5 @@
 #pragma once
-#include <RHI/FrameGraph.hpp>
+#include <RHI/FrameScheduler.hpp>
 #include <optional>
 #include <vk_mem_alloc.h>
 

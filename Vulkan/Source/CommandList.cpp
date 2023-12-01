@@ -2,7 +2,7 @@
 
 #include "Common.hpp"
 #include "Context.hpp"
-#include "FrameGraph.hpp"
+#include "FrameScheduler.hpp"
 #include "Resources.hpp"
 
 #include <RHI/Format.hpp>

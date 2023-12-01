@@ -1,4 +1,4 @@
-#include "FrameGraph.hpp"
+#include "FrameScheduler.hpp"
 
 #include "CommandList.hpp"
 #include "Common.hpp"

@@ -2,7 +2,7 @@
 
 #include "CommandList.hpp"
 #include "Common.hpp"
-#include "FrameGraph.hpp"
+#include "FrameScheduler.hpp"
 #include "RHI-Vulkan/Loader.hpp"
 #include "Resources.hpp"
 

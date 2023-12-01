@@ -1,7 +1,7 @@
 #pragma once
 
 #include <RHI/Context.hpp>
-#include <RHI/FrameGraph.hpp>
+#include <RHI/FrameScheduler.hpp>
 
 #include <vk_mem_alloc.h>
 

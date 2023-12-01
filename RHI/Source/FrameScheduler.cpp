@@ -1,4 +1,4 @@
-#include "RHI/FrameGraph.hpp"
+#include "RHI/FrameScheduler.hpp"
 
 #include "RHI/Context.hpp"
 
