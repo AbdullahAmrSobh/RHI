@@ -8,6 +8,9 @@ namespace RHI
     struct GraphicsPipeline;
     struct ComputePipeline;
 
+    class Pass;
+    class CommandList;
+
     struct Viewport
     {
         float offsetX;
@@ -110,14 +113,36 @@ namespace RHI
         DispatchParameters          parameters;
     };
 
+    /// @brief Allocates or reuse existing command lists (create on object per thread).
+    class RHI_EXPORT CommandListAllocator
+    {
+    public:
+        virtual ~CommandListAllocator() = default;
+
+        virtual void         Flush()    = 0;
+        virtual CommandList* Allocate() = 0;
+    };
+
     /// @brief Command list record a list of GPU commands that are exectued in the same pass.
-    class CommandList
+    class RHI_EXPORT CommandList
     {
     public:
         CommandList()                                                   = default;
         CommandList(const CommandList& other)                           = delete;
         CommandList(CommandList&& other)                                = default;
         virtual ~CommandList()                                          = default;
+
+        /// @brief Resets the command lists.
+        virtual void Reset()                                            = 0;
+
+        /// @brief Marks the begining of this command list recording.
+        virtual void Begin()                                            = 0;
+
+        /// @brief Marks the begining of this command list recording inside a pass.
+        virtual void Begin(Pass& pass)                                  = 0;
+
+        /// @brief Marks the ending of this command list recording.
+        virtual void End()                                              = 0;
 
         /// @brief Sets the rendering viewport
         virtual void SetViewport(const Viewport& viewport)              = 0;

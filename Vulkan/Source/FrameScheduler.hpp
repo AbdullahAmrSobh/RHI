@@ -13,13 +13,6 @@ namespace Vulkan
     class CommandList;
     class CommandListAllocator;
 
-    VkAttachmentLoadOp ConvertLoadOp(RHI::ImageLoadOperation op);
-
-    VkAttachmentStoreOp ConvertStoreOp(RHI::ImageStoreOperation op);
-
-    VkImageLayout ConvertImageLayout(RHI::AttachmentUsage usage, RHI::AttachmentAccess access);
-
-    /// @brief Memory allocator use for allocating transient resource backing memory.
     class TransientAttachmentAllocator final : public RHI::TransientAttachmentAllocator
     {
     public:
@@ -69,11 +62,9 @@ namespace Vulkan
 
         VkResult Init(const RHI::PassCreateInfo& createInfo);
 
-        RHI::CommandList& BeginCommandList(uint32_t commandsCount = 1) override;
+        std::vector<VkSemaphoreSubmitInfo> GetWaitSemaphoreSubmitInfos() const;
 
-        void EndCommandList() override;
-
-        RHI::PassQueueState GetPassQueueStateInternal() const override;
+        std::vector<VkSemaphoreSubmitInfo> GetSignalSemaphoreSubmitInfos() const;
 
         uint32_t m_queueFamilyIndex;
 
@@ -92,19 +83,12 @@ namespace Vulkan
 
         std::unique_ptr<RHI::Pass> CreatePass(const RHI::PassCreateInfo& createInfo) override;
 
-        std::vector<VkSemaphoreSubmitInfo> GetSemaphores(const std::vector<RHI::Pass*>& passes) const;
-
         void ExecutePass(RHI::Pass& pass) override;
 
-        void ResetPass(RHI::Pass& pass) override;
-
-        RHI::CommandList* GetCommandList(uint32_t frameIndex) override;
-
+        void OnFrameBegin() override;
         void OnFrameEnd() override;
 
-        uint32_t m_currentFrameIndex;
-
-        std::unique_ptr<CommandListAllocator> m_graphicsCommandlistAllocator;
+        VkFence GetCurrentFrameFence() const;
 
         std::vector<VkFence> m_framesInflightFences;
     };

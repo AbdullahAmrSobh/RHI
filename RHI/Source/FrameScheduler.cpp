@@ -133,11 +133,6 @@ namespace RHI
 
     ImagePassAttachment* Pass::UseAttachment(ImageAttachment*& attachment, const ImageAttachmentUseInfo& useInfo)
     {
-        if (m_scheduler->m_state != FrameScheduler::Invalid)
-        {
-            m_scheduler->Reset();
-        }
-
         ImagePassAttachment& passAttachment = m_imagePassAttachments.emplace_back(ImagePassAttachment{});
         passAttachment.attachment = attachment;
         passAttachment.pass = this;
@@ -166,11 +161,6 @@ namespace RHI
 
     BufferPassAttachment* Pass::UseAttachment(BufferAttachment*& attachment, const BufferAttachmentUseInfo& useInfo)
     {
-        if (m_scheduler->m_state != FrameScheduler::Invalid)
-        {
-            m_scheduler->Reset();
-        }
-
         BufferPassAttachment& passAttachment = m_bufferPassAttachment.emplace_back(BufferPassAttachment{});
         passAttachment.attachment = attachment;
         passAttachment.pass = this;
@@ -195,6 +185,11 @@ namespace RHI
         return &passAttachment;
     }
 
+    void Pass::Execute(TL::Span<CommandList*> commandLists)
+    {
+        m_commandLists.insert(m_commandLists.end(), commandLists.begin(), commandLists.end());
+    }
+
     //////////////////////////////////////////////////////////////////////////////////////////
     /// FrameScheduler
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -203,27 +198,16 @@ namespace RHI
     {
         Compile();
 
-        OnFrameEnd();
-
-        // prepare command lists
-        {
-            uint32_t frameIndex = 0;
-
-            if (m_attachmentsRegistry->m_swapchainAttachments.empty() == false)
-            {
-                frameIndex = m_attachmentsRegistry->m_swapchainAttachments.front()->swapchain->GetCurrentImageIndex();
-            }
-
-            for (auto& pass : m_passList)
-            {
-                pass->m_commandList = GetCommandList(frameIndex);
-            }
-        }
+        OnFrameBegin();
     }
 
     void FrameScheduler::End()
     {
         Execute();
+
+        OnFrameEnd();
+
+        m_frameIndex++;
     }
 
     void FrameScheduler::Submit(Pass& pass)
@@ -234,36 +218,17 @@ namespace RHI
     void FrameScheduler::Reset()
     {
         m_attachmentsRegistry->Reset();
-
-        m_state = FrameGraphState::Invalid;
     }
 
     void FrameScheduler::Compile()
     {
-        TopologicalSort();
-
         CompileTransientAttachments();
 
         CompileAttachmentsViews();
-
-        m_state = FrameGraphState::Ready;
-    }
-
-    void FrameScheduler::TopologicalSort()
-    {
-        if (m_state == FrameGraphState::Ready)
-        {
-            return;
-        }
     }
 
     void FrameScheduler::CompileTransientAttachments()
     {
-        if (m_state == FrameGraphState::Ready)
-        {
-            return;
-        }
-
         m_transientAttachmentAllocator->Begin();
 
         for (auto pass : m_passList)
@@ -328,9 +293,6 @@ namespace RHI
                 {
                     attachment->handle = swapchain->GetImage();
                 }
-
-                if (passAttachment.view)
-                    continue;
 
                 if (auto it = m_imageViewsLut.find(attachment->handle); it != m_imageViewsLut.end())
                 {

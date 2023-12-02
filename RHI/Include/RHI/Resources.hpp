@@ -128,9 +128,10 @@ namespace RHI
 
     enum class ShaderStage
     {
-        Vertex,
-        Pixel,
-        Compute,
+        None    = 0 << 0,
+        Vertex  = 1 << 1,
+        Pixel   = 1 << 2,
+        Compute = 1 << 3,
     };
 
     /// @brief The type of the shader resource to be bound.

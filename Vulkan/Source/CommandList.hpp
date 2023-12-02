@@ -3,6 +3,7 @@
 #include <RHI/CommandList.hpp>
 
 #include <memory>
+#include <array>
 
 #include <vulkan/vulkan.h>
 
@@ -21,7 +22,6 @@ namespace Vulkan
         Transition,
     };
 
-    // per frame
     class CommandPool
     {
     public:
@@ -33,7 +33,7 @@ namespace Vulkan
 
         CommandList* Allocate(Context* context);
 
-        void Release(Context* context, CommandList* commandList);
+        void Release(CommandList* commandList);
 
     private:
         VkCommandPool m_commandPool;
@@ -41,54 +41,46 @@ namespace Vulkan
         std::vector<CommandList*> m_availableCommandLists;
     };
 
-    class CommandListAllocator final
+    class CommandListAllocator final : public RHI::CommandListAllocator
     {
     public:
-        CommandListAllocator(Context* context)
+        CommandListAllocator(Context* context, uint32_t maxFrameBufferingCount)
             : m_context(context)
+            , m_maxFrameBufferingCount(maxFrameBufferingCount)
         {
         }
 
         ~CommandListAllocator();
 
-        VkResult Init(uint32_t queueFamilyIndex, uint32_t frameCount);
+        VkResult Init(uint32_t queueFamilyIndex);
 
-        void SetFrameIndex(uint32_t frameIndex);
-
-        CommandList* Allocate();
-
-        void Release(CommandList* commandList);
+        void Flush() override;
+        RHI::CommandList* Allocate() override;
 
     private:
         Context* m_context;
-        uint32_t m_frameIndex;
-        std::vector<CommandPool> m_commandPools;
+        uint32_t m_maxFrameBufferingCount;
+        uint32_t m_currentFrameIndex;
+        std::array<CommandPool, 3> m_commandPools;
     };
 
     class CommandList final : public RHI::CommandList
     {
     public:
-        CommandList() = default;
-
         CommandList(Context* context, VkCommandBuffer commandBuffer)
             : m_context(context)
+            , m_pass(nullptr)
             , m_commandBuffer(commandBuffer)
         {
         }
 
-        void Reset();
+        void Reset() override;
 
-        void Begin();
+        void Begin() override;
 
-        void End();
+        void Begin(RHI::Pass& pass) override;
 
-        void RenderingBegin(Pass& pass);
-
-        void RenderingEnd(Pass& pass);
-
-        void PushDebugMarker(const char* name);
-
-        void PopDebugMarker();
+        void End() override;
 
         void SetViewport(const RHI::Viewport& viewport) override;
 
@@ -106,17 +98,29 @@ namespace Vulkan
 
         void Submit(const RHI::CopyImageToBufferDescriptor& command) override;
 
-        void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<RHI::Handle<RHI::BindGroup>> bindGroups);
-
         VkRenderingAttachmentInfo GetAttachmentInfo(const RHI::ImagePassAttachment& passAttachment) const;
+
+        void RenderingBegin(Pass& pass);
+
+        void RenderingEnd(Pass& pass);
+
+        void PushDebugMarker(const char* name);
+
+        void PopDebugMarker();
+
+        void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<RHI::Handle<RHI::BindGroup>> bindGroups);
 
         void TransitionPassAttachments(BarrierType barrierType, TL::Span<RHI::ImagePassAttachment*> passAttachments) const;
 
         void TransitionPassAttachments(BarrierType barrierType, TL::Span<RHI::BufferPassAttachment*> passAttachments) const;
 
-        Context* m_context = nullptr;
+        Context* m_context;
 
-        VkCommandBuffer m_commandBuffer = VK_NULL_HANDLE;
+        Pass* m_pass;
+
+        CommandPool* m_parentPool;
+
+        VkCommandBuffer m_commandBuffer;
     };
 
 } // namespace Vulkan

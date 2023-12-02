@@ -31,6 +31,7 @@ namespace Vulkan
 
         std::unique_ptr<RHI::Swapchain> CreateSwapchain(const RHI::SwapchainCreateInfo& createInfo) override;
         std::unique_ptr<RHI::FrameScheduler> CreateFrameScheduler() override;
+        std::unique_ptr<RHI::CommandListAllocator> CreateCommandListAllocator(RHI::QueueType queueType) override;
         std::unique_ptr<RHI::ShaderModule> CreateShaderModule(const RHI::ShaderModuleCreateInfo& createInfo) override;
         RHI::Handle<RHI::BindGroupLayout> CreateBindGroupLayout(const RHI::BindGroupLayoutCreateInfo& createInfo) override;
         void FreeBindGroupLayout(RHI::Handle<RHI::BindGroupLayout> layout) override;

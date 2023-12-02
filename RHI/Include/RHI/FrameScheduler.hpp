@@ -106,14 +106,6 @@ namespace RHI
         Discard,
     };
 
-    enum class PipelineAccessStage
-    {
-        None,
-        Vertex,
-        Pixel,
-        Compute,
-    };
-
     struct PassCreateInfo
     {
         std::string name;
@@ -348,18 +340,18 @@ namespace RHI
         ImagePassAttachment(const ImagePassAttachment& other) = delete;
         ImagePassAttachment(ImagePassAttachment&& other)      = default;
 
-        ImageAttachment*           attachment;
+        ImageAttachment*       attachment;
 
-        Pass*                      pass;
+        Pass*                  pass;
 
-        ImageAttachmentUseInfo     info;
+        ImageAttachmentUseInfo info;
 
-        Handle<ImageView>          view;
+        Handle<ImageView>      view;
 
-        Flags<PipelineAccessStage> stages;
+        ShaderStage            stage;
 
-        ImagePassAttachment*       next;
-        ImagePassAttachment*       prev;
+        ImagePassAttachment*   next;
+        ImagePassAttachment*   prev;
     };
 
     struct BufferPassAttachment
@@ -368,18 +360,18 @@ namespace RHI
         BufferPassAttachment(const BufferPassAttachment& other) = delete;
         BufferPassAttachment(BufferPassAttachment&& other)      = default;
 
-        BufferAttachment*          attachment;
+        BufferAttachment*       attachment;
 
-        Pass*                      pass;
+        Pass*                   pass;
 
-        BufferAttachmentUseInfo    info;
+        BufferAttachmentUseInfo info;
 
-        Handle<BufferView>         view;
+        Handle<BufferView>      view;
 
-        Flags<PipelineAccessStage> stages;
+        ShaderStage             stage;
 
-        BufferPassAttachment*      next;
-        BufferPassAttachment*      prev;
+        BufferPassAttachment*   next;
+        BufferPassAttachment*   prev;
     };
 
     class TransientAttachmentAllocator
@@ -447,8 +439,7 @@ namespace RHI
     public:
         Pass(Context* context)
             : m_context(context)
-            , m_width(0)
-            , m_height(0)
+            , m_size({ 0, 0, 0 })
         {
         }
 
@@ -461,9 +452,6 @@ namespace RHI
 
         /// @brief Called at the end of this pass building phase.
         void                  End();
-
-        /// @brief Used to inspect the current state of this pass.
-        PassQueueState        GetPassQueueState() const;
 
         /// @brief Adds a pass to the wait list.
         void                  ExecuteAfter(Pass& pass);
@@ -511,13 +499,8 @@ namespace RHI
         /// @return Handle to an buffer resource.
         BufferPassAttachment* UseBufferResource(BufferPassAttachment* attachment, const BufferAttachmentUseInfo& useInfo);
 
-        /// @brief Begins the command list associated with this pass.
-        /// @param commandsCount Number of commands to be submitted.
-        /// @return reference to the command lists
-        virtual CommandList&  BeginCommandList(uint32_t commandsCount = 1) = 0;
-
-        /// @brief Ends the command list of assoicated with this pass.
-        virtual void          EndCommandList()                             = 0;
+        /// @brief Submits a list of command lists for execution on this pass.
+        void                  Execute(TL::Span<CommandList*> commandLists);
 
     private:
         ImagePassAttachment*  UseAttachment(ImageAttachment*& attachment, const ImageAttachmentUseInfo& useInfo);
@@ -525,25 +508,20 @@ namespace RHI
         BufferPassAttachment* UseAttachment(BufferAttachment*& attachment, const BufferAttachmentUseInfo& useInfo);
 
     protected:
-        /// @brief Used to inspect the current state of this pass in the command queue.
-        virtual PassQueueState           GetPassQueueStateInternal() const = 0;
-
         Context*                         m_context;
 
         FrameScheduler*                  m_scheduler;
 
         std::string                      m_name;
 
-        uint32_t                         m_width, m_height;
-
         /// @brief A pointer to swapchain which would be presented into.
         Swapchain*                       m_swapchain;
 
-        /// @brief Pointer to the current command list executing this pass.
-        CommandList*                     m_commandList;
-
         /// @brief The type of the Hardware Queue needed to execute this pass.
         QueueType                        m_queueType;
+
+        /// @brief A list of command lists that executes on this pass.
+        std::vector<CommandList*>        m_commandLists;
 
         /// @brief The size of the rendering area in the render pass.
         ImageSize                        m_size;
@@ -591,22 +569,14 @@ namespace RHI
         /// @brief Register a pass producer, to be called this frame.
         void                          Submit(Pass& pass);
 
+        /// @brief Creates a pass resource
         virtual std::unique_ptr<Pass> CreatePass(const PassCreateInfo& createInfo) = 0;
 
     protected:
-        enum FrameGraphState
-        {
-            Invalid,
-            Ready,
-        };
+        virtual void                                           ExecutePass(Pass& pass) = 0;
 
-        virtual void                                           ExecutePass(Pass& pass)             = 0;
-
-        virtual void                                           ResetPass(Pass& pass)               = 0;
-
-        virtual CommandList*                                   GetCommandList(uint32_t frameIndex) = 0;
-
-        virtual void                                           OnFrameEnd()                        = 0;
+        virtual void                                           OnFrameBegin()          = 0;
+        virtual void                                           OnFrameEnd()            = 0;
 
         Context*                                               m_context;
 
@@ -616,18 +586,18 @@ namespace RHI
 
         std::unique_ptr<AttachmentsRegistry>                   m_attachmentsRegistry;
 
-        FrameGraphState                                        m_state;
-
         std::unordered_map<Handle<Image>, Handle<ImageView>>   m_imageViewsLut;
 
         std::unordered_map<Handle<Buffer>, Handle<BufferView>> m_bufferViewLut;
+
+        uint64_t                                               m_frameIndex;
+
+        const uint64_t                                         m_frameBufferingMaxCount = 3;
 
     private:
         void Reset();
 
         void Compile();
-
-        void TopologicalSort();
 
         void CompileTransientAttachments();
 

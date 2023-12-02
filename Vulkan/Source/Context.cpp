@@ -360,6 +360,14 @@ namespace Vulkan
         return scheduler;
     }
 
+    std::unique_ptr<RHI::CommandListAllocator> Context::CreateCommandListAllocator(RHI::QueueType queueType)
+    {
+        auto allocator = std::make_unique<CommandListAllocator>(this, 3);
+        auto result = allocator->Init(GetQueueFamilyIndex(queueType));
+        RHI_ASSERT(result == VK_SUCCESS);
+        return allocator;
+    }
+
     RHI::Handle<RHI::BindGroupLayout> Context::CreateBindGroupLayout(const RHI::BindGroupLayoutCreateInfo& createInfo)
     {
         auto [handle, bindGroupLayout] = m_bindGroupLayoutsOwner.InsertZerod();

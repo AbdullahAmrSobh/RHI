@@ -1,5 +1,5 @@
 #include "CommandList.hpp"
-
+#include "Conversion.hpp"
 #include "Common.hpp"
 #include "Context.hpp"
 #include "FrameScheduler.hpp"
@@ -9,149 +9,6 @@
 
 namespace Vulkan
 {
-
-    struct PipelineBarrierFlags
-    {
-        VkPipelineStageFlags2 stages;
-        VkAccessFlags2 access;
-        VkImageLayout attachmentLayout;
-    };
-
-    inline static bool IsWriteAccess(RHI::AttachmentAccess access)
-    {
-        return access == RHI::AttachmentAccess::Write || access == RHI::AttachmentAccess::ReadWrite;
-    }
-
-    inline static VkPipelineStageFlags2 GetPipelineShaderStages(RHI::Flags<RHI::PipelineAccessStage> stages)
-    {
-        auto _stages = VkPipelineStageFlags2{};
-
-        if (stages & RHI::PipelineAccessStage::Vertex)
-        {
-            _stages = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
-        }
-
-        if (stages & RHI::PipelineAccessStage::Pixel)
-        {
-            _stages = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-        }
-
-        if (stages & RHI::PipelineAccessStage::Compute)
-        {
-            _stages = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-        }
-
-        return _stages;
-    }
-
-    inline static PipelineBarrierFlags ConvertPipelineStageAccessFlags(RHI::AttachmentUsage usage, RHI::Flags<RHI::PipelineAccessStage> stages, RHI::AttachmentAccess access)
-    {
-        VkPipelineStageFlags2 _stages = {};
-        VkAccessFlags2 _access = {};
-        VkImageLayout _layout = {};
-
-        switch (usage)
-        {
-        case RHI::AttachmentUsage::None:
-            {
-                RHI_UNREACHABLE();
-                break;
-            }
-        case RHI::AttachmentUsage::VertexInputBuffer:
-            {
-                _stages = VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT;
-                _access = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
-                _layout = VK_IMAGE_LAYOUT_MAX_ENUM;
-                break;
-            }
-        case RHI::AttachmentUsage::ShaderStorage:
-            {
-                _stages = GetPipelineShaderStages(stages);
-                RHI_ASSERT(stages);
-
-                switch (access)
-                {
-                case RHI::AttachmentAccess::Read:
-                    {
-                        _access = VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
-                        _layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                        break;
-                    }
-                case RHI::AttachmentAccess::Write:
-                    {
-                        _access = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
-
-                        break;
-                    }
-                case RHI::AttachmentAccess::ReadWrite:
-                    {
-                        _access = VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
-                        break;
-                    }
-                default:
-                    {
-                        RHI_UNREACHABLE();
-                        break;
-                    }
-                }
-
-                break;
-            }
-        case RHI::AttachmentUsage::RenderTarget:
-            {
-                _stages = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-                _access = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                _layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-                break;
-            }
-        case RHI::AttachmentUsage::Depth:
-            {
-                _stages = VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
-                _access = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-                _layout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-                break;
-            }
-        case RHI::AttachmentUsage::ShaderResource:
-            {
-                _stages = GetPipelineShaderStages(stages);
-
-                if (_stages & VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT)
-                    _access |= VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
-
-                if (_stages & VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT)
-                    _access |= IsWriteAccess(access) ? VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT : VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
-
-                if (_stages == VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT)
-                    _access |= IsWriteAccess(access) ? VK_ACCESS_2_MEMORY_WRITE_BIT : VK_ACCESS_2_MEMORY_READ_BIT;
-
-                _layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-                break;
-            }
-        case RHI::AttachmentUsage::Copy:
-            {
-                _stages = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-                _access = IsWriteAccess(access) ? VK_ACCESS_2_TRANSFER_WRITE_BIT : VK_ACCESS_2_TRANSFER_READ_BIT;
-                _layout = IsWriteAccess(access) ? VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL : VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-                break;
-            }
-        case RHI::AttachmentUsage::Resolve:
-            {
-                _stages = VK_PIPELINE_STAGE_2_RESOLVE_BIT;
-                _access = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                _layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-                break;
-            }
-        default:
-            {
-                RHI_UNREACHABLE();
-                break;
-            };
-        }
-
-        return { _stages, _access, _layout };
-    }
-
     //////////////////////////////////////////////////////////////////////////////////////////
     /// CommandPool
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -174,84 +31,88 @@ namespace Vulkan
     void CommandPool::Reset(Context* context)
     {
         vkResetCommandPool(context->m_device, m_commandPool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
+
+        m_availableCommandLists.clear();
+        for (auto& commandList : m_commandLists)
+        {
+            m_availableCommandLists.push_back(commandList.get());
+        }
     }
 
     CommandList* CommandPool::Allocate(Context* context)
     {
-        if (m_availableCommandLists.empty())
+        if (!m_availableCommandLists.empty())
         {
-            auto allocateInfo = VkCommandBufferAllocateInfo{};
-            allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-            allocateInfo.pNext = nullptr;
-            allocateInfo.commandPool = m_commandPool;
-            allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-            allocateInfo.commandBufferCount = 1;
-
-            auto commandBuffer = VkCommandBuffer{ VK_NULL_HANDLE };
-            auto result = vkAllocateCommandBuffers(context->m_device, &allocateInfo, &commandBuffer);
-            VULKAN_ASSERT_SUCCESS(result);
-
-            auto commandList = m_commandLists.emplace_back(std::make_unique<CommandList>(context, commandBuffer)).get();
-            m_availableCommandLists.push_back(commandList);
+            auto commandList = m_availableCommandLists.back();
+            m_availableCommandLists.pop_back();
+            return commandList;
         }
 
-        auto commandList = m_availableCommandLists.back();
-        m_availableCommandLists.pop_back();
-        return commandList;
+        VkCommandBufferAllocateInfo allocateInfo = {};
+        allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocateInfo.pNext = nullptr;
+        allocateInfo.commandPool = m_commandPool;
+        allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocateInfo.commandBufferCount = 1;
+
+        VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
+        auto result = vkAllocateCommandBuffers(context->m_device, &allocateInfo, &commandBuffer);
+        VULKAN_ASSERT_SUCCESS(result);
+
+        return m_commandLists.emplace_back(std::make_unique<CommandList>(context, commandBuffer)).get();
     }
 
-    void CommandPool::Release(Context* context, CommandList* commandList)
+    void CommandPool::Release(CommandList* commandList)
     {
-        (void)context;
         m_availableCommandLists.push_back(commandList);
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////
     /// CommandListAllocator
-    ////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////
 
     CommandListAllocator::~CommandListAllocator()
     {
-        for (auto& pool : m_commandPools)
+        for (auto& commandPool : m_commandPools)
         {
-            pool.Shutdown(m_context);
+            commandPool.Shutdown(m_context);
         }
     }
 
-    VkResult CommandListAllocator::Init(uint32_t queueFamilyIndex, uint32_t frameCount)
+    VkResult CommandListAllocator::Init(uint32_t queueFamilyIndex)
     {
-        for (uint32_t i = 0; i < frameCount; i++)
+        m_currentFrameIndex = 0;
+        for (uint32_t i = 0; i < m_maxFrameBufferingCount; i++)
         {
-            auto& pool = m_commandPools.emplace_back();
-            auto result = pool.Init(m_context, queueFamilyIndex);
-            VULKAN_ASSERT_SUCCESS(result);
+            auto& commandPool = m_commandPools[i];
+            auto result = commandPool.Init(m_context, queueFamilyIndex);
+            VULKAN_RETURN_VKERR_CODE(result);
         }
 
         return VK_SUCCESS;
     }
 
-    void CommandListAllocator::SetFrameIndex(uint32_t frameIndex)
+    void CommandListAllocator::Flush()
     {
-        auto& pool = m_commandPools[frameIndex];
-        pool.Reset(m_context);
-        m_frameIndex = frameIndex;
+        m_currentFrameIndex = (m_currentFrameIndex + 1) % m_maxFrameBufferingCount;
+        auto& commandPool = m_commandPools[m_currentFrameIndex];
+        commandPool.Reset(m_context);
     }
 
-    CommandList* CommandListAllocator::Allocate()
+    RHI::CommandList* CommandListAllocator::Allocate()
     {
-        auto& pool = m_commandPools[m_frameIndex];
-        return pool.Allocate(m_context);
-    }
-
-    void CommandListAllocator::Release(CommandList* commandList)
-    {
-        auto& pool = m_commandPools[m_frameIndex];
-        pool.Release(m_context, commandList);
+        auto& commandPool = m_commandPools[m_currentFrameIndex];
+        return commandPool.Allocate(m_context);
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
     /// CommandList
     //////////////////////////////////////////////////////////////////////////////////////////
+
+    void CommandList::Reset()
+    {
+        vkResetCommandBuffer(m_commandBuffer, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
+    }
 
     void CommandList::Begin()
     {
@@ -264,100 +125,31 @@ namespace Vulkan
         vkBeginCommandBuffer(m_commandBuffer, &beginInfo);
     }
 
+    void CommandList::Begin(RHI::Pass& passBase)
+    {
+        auto& pass = static_cast<Pass&>(passBase);
+
+        m_pass = &pass;
+
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.pNext = nullptr;
+        beginInfo.flags = 0;
+        beginInfo.pInheritanceInfo = nullptr;
+
+        vkBeginCommandBuffer(m_commandBuffer, &beginInfo);
+
+        RenderingBegin(pass);
+    }
+
     void CommandList::End()
     {
+        if (m_pass)
+        {
+            RenderingEnd(*m_pass);
+        }
+
         vkEndCommandBuffer(m_commandBuffer);
-    }
-
-    void CommandList::Reset()
-    {
-        vkResetCommandBuffer(m_commandBuffer, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
-    }
-
-    void CommandList::RenderingBegin(Pass& pass)
-    {
-        std::vector<RHI::ImagePassAttachment*> passAttachments;
-
-        for (auto& attachment : pass.m_imagePassAttachments)
-        {
-            if (attachment.info.usage == RHI::AttachmentUsage::RenderTarget)
-            {
-                passAttachments.push_back(&attachment);
-            }
-        }
-        TransitionPassAttachments(BarrierType::PrePass, passAttachments);
-
-        std::vector<VkRenderingAttachmentInfo> colorAttachmentInfo;
-        std::optional<VkRenderingAttachmentInfo> depthAttachmentInfo;
-
-        for (const auto& passAttachment : pass.m_imagePassAttachments)
-        {
-            if (passAttachment.info.usage == RHI::AttachmentUsage::Depth)
-            {
-                depthAttachmentInfo = GetAttachmentInfo(passAttachment);
-                continue;
-            }
-
-            if (passAttachment.info.usage == RHI::AttachmentUsage::RenderTarget)
-            {
-                auto attachmentInfo = GetAttachmentInfo(passAttachment);
-                colorAttachmentInfo.push_back(attachmentInfo);
-            }
-        }
-
-        auto renderingInfo = VkRenderingInfo{};
-        renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-        renderingInfo.pNext = nullptr;
-        renderingInfo.flags = 0;
-        renderingInfo.renderArea.extent.width = 800;
-        renderingInfo.renderArea.extent.height = 600;
-        renderingInfo.renderArea.offset.x = 0;
-        renderingInfo.renderArea.offset.y = 0;
-        renderingInfo.layerCount = 1;
-        renderingInfo.colorAttachmentCount = colorAttachmentInfo.size();
-        renderingInfo.pColorAttachments = colorAttachmentInfo.data();
-        renderingInfo.pDepthAttachment = depthAttachmentInfo.has_value() ? &depthAttachmentInfo.value() : nullptr;
-        vkCmdBeginRendering(m_commandBuffer, &renderingInfo);
-    }
-
-    void CommandList::RenderingEnd(Pass& pass)
-    {
-        vkCmdEndRendering(m_commandBuffer);
-        std::vector<RHI::ImagePassAttachment*> passAttachments;
-        for (auto& attachment : pass.m_imagePassAttachments)
-        {
-            if (attachment.info.usage == RHI::AttachmentUsage::RenderTarget)
-            {
-                passAttachments.push_back(&attachment);
-            }
-        }
-        TransitionPassAttachments(BarrierType::PostPass, passAttachments);
-    }
-
-    void CommandList::PushDebugMarker(const char* name)
-    {
-        (void)name;
-#if RHI_DEBUG
-        if (m_context->m_vkCmdDebugMarkerBeginEXT)
-        {
-            VkDebugMarkerMarkerInfoEXT info{};
-            info.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT;
-            info.pNext = nullptr;
-            info.pMarkerName = name;
-            // info.color
-            m_context->m_vkCmdDebugMarkerBeginEXT(m_commandBuffer, &info);
-        }
-#endif
-    }
-
-    void CommandList::PopDebugMarker()
-    {
-#if RHI_DEUG
-        if (m_context->m_vkCmdDebugMarkerEndEXT)
-        {
-            m_context->m_vkCmdDebugMarkerEndEXT(m_commandBuffer);
-        }
-#endif
     }
 
     void CommandList::SetViewport(const RHI::Viewport& viewport)
@@ -413,21 +205,21 @@ namespace Vulkan
                 static_cast<uint32_t>(vertexBuffers.size()),
                 vertexBuffers.data(),
                 vertexBufferSizes.data());
-        }
 
-        if (command.indexBuffers)
-        {
-            auto buffer = m_context->m_bufferOwner.Get(command.indexBuffers);
+            if (command.indexBuffers)
+            {
+                auto buffer = m_context->m_bufferOwner.Get(command.indexBuffers);
 
-            vkCmdBindIndexBuffer(m_commandBuffer, buffer->handle, 0, VK_INDEX_TYPE_UINT32);
+                vkCmdBindIndexBuffer(m_commandBuffer, buffer->handle, 0, VK_INDEX_TYPE_UINT32);
 
-            vkCmdDrawIndexed(
-                m_commandBuffer,
-                command.parameters.elementCount,
-                command.parameters.instanceCount,
-                command.parameters.firstElement,
-                command.parameters.vertexOffset,
-                static_cast<int32_t>(command.parameters.firstInstance));
+                vkCmdDrawIndexed(
+                    m_commandBuffer,
+                    command.parameters.elementCount,
+                    command.parameters.instanceCount,
+                    command.parameters.firstElement,
+                    command.parameters.vertexOffset,
+                    static_cast<int32_t>(command.parameters.firstInstance));
+            }
         }
         else
         {
@@ -517,19 +309,6 @@ namespace Vulkan
             command.parameters.countZ);
     }
 
-    void CommandList::BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<RHI::Handle<RHI::BindGroup>> bindGroups)
-    {
-        std::vector<VkDescriptorSet> descriptorSets;
-
-        for (auto bindGroupHandle : bindGroups)
-        {
-            auto bindGroup = m_context->m_bindGroupOwner.Get(bindGroupHandle);
-            descriptorSets.push_back(bindGroup->handle);
-        }
-
-        vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, descriptorSets.size(), descriptorSets.data(), 0, nullptr);
-    }
-
     VkRenderingAttachmentInfo CommandList::GetAttachmentInfo(const RHI::ImagePassAttachment& passAttachment) const
     {
         auto imageView = m_context->m_imageViewOwner.Get(passAttachment.view);
@@ -546,6 +325,105 @@ namespace Vulkan
         attachmentInfo.clearValue.color.float32[2] = passAttachment.info.clearValue.color.b;
         attachmentInfo.clearValue.color.float32[3] = passAttachment.info.clearValue.color.a;
         return attachmentInfo;
+    }
+
+    void CommandList::RenderingBegin(Pass& pass)
+    {
+        std::vector<RHI::ImagePassAttachment*> passAttachments;
+
+        for (auto& attachment : pass.m_imagePassAttachments)
+        {
+            if (attachment.info.usage == RHI::AttachmentUsage::RenderTarget)
+            {
+                passAttachments.push_back(&attachment);
+            }
+        }
+        TransitionPassAttachments(BarrierType::PrePass, passAttachments);
+
+        std::vector<VkRenderingAttachmentInfo> colorAttachmentInfo;
+        std::optional<VkRenderingAttachmentInfo> depthAttachmentInfo;
+
+        for (const auto& passAttachment : pass.m_imagePassAttachments)
+        {
+            if (passAttachment.info.usage == RHI::AttachmentUsage::Depth)
+            {
+                depthAttachmentInfo = GetAttachmentInfo(passAttachment);
+                continue;
+            }
+
+            if (passAttachment.info.usage == RHI::AttachmentUsage::RenderTarget)
+            {
+                auto attachmentInfo = GetAttachmentInfo(passAttachment);
+                colorAttachmentInfo.push_back(attachmentInfo);
+            }
+        }
+
+        auto renderingInfo = VkRenderingInfo{};
+        renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+        renderingInfo.pNext = nullptr;
+        renderingInfo.flags = 0;
+        renderingInfo.renderArea.extent.width = 800;
+        renderingInfo.renderArea.extent.height = 600;
+        renderingInfo.renderArea.offset.x = 0;
+        renderingInfo.renderArea.offset.y = 0;
+        renderingInfo.layerCount = 1;
+        renderingInfo.colorAttachmentCount = colorAttachmentInfo.size();
+        renderingInfo.pColorAttachments = colorAttachmentInfo.data();
+        renderingInfo.pDepthAttachment = depthAttachmentInfo.has_value() ? &depthAttachmentInfo.value() : nullptr;
+        vkCmdBeginRendering(m_commandBuffer, &renderingInfo);
+    }
+
+    void CommandList::RenderingEnd(Pass& pass)
+    {
+        vkCmdEndRendering(m_commandBuffer);
+        std::vector<RHI::ImagePassAttachment*> passAttachments;
+        for (auto& attachment : pass.m_imagePassAttachments)
+        {
+            if (attachment.info.usage == RHI::AttachmentUsage::RenderTarget)
+            {
+                passAttachments.push_back(&attachment);
+            }
+        }
+        TransitionPassAttachments(BarrierType::PostPass, passAttachments);
+    }
+
+    void CommandList::PushDebugMarker(const char* name)
+    {
+        (void)name;
+#if RHI_DEBUG
+        if (m_context->m_vkCmdDebugMarkerBeginEXT)
+        {
+            VkDebugMarkerMarkerInfoEXT info{};
+            info.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT;
+            info.pNext = nullptr;
+            info.pMarkerName = name;
+            // info.color
+            m_context->m_vkCmdDebugMarkerBeginEXT(m_commandBuffer, &info);
+        }
+#endif
+    }
+
+    void CommandList::PopDebugMarker()
+    {
+#if RHI_DEUG
+        if (m_context->m_vkCmdDebugMarkerEndEXT)
+        {
+            m_context->m_vkCmdDebugMarkerEndEXT(m_commandBuffer);
+        }
+#endif
+    }
+
+    void CommandList::BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<RHI::Handle<RHI::BindGroup>> bindGroups)
+    {
+        std::vector<VkDescriptorSet> descriptorSets;
+
+        for (auto bindGroupHandle : bindGroups)
+        {
+            auto bindGroup = m_context->m_bindGroupOwner.Get(bindGroupHandle);
+            descriptorSets.push_back(bindGroup->handle);
+        }
+
+        vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, descriptorSets.size(), descriptorSets.data(), 0, nullptr);
     }
 
     void CommandList::TransitionPassAttachments(BarrierType barrierType, TL::Span<RHI::ImagePassAttachment*> passAttachments) const
@@ -566,7 +444,6 @@ namespace Vulkan
             barrier.subresourceRange.baseMipLevel = passAttachment->info.subresource.mipBase;
             barrier.subresourceRange.levelCount = passAttachment->info.subresource.mipCount;
 
-            auto flags = ConvertPipelineStageAccessFlags(passAttachment->info.usage, passAttachment->stages, passAttachment->info.access);
             if (passAttachment->next)
             {
                 barrier.srcQueueFamilyIndex = static_cast<Pass*>(passAttachment->pass)->m_queueFamilyIndex;
@@ -579,21 +456,19 @@ namespace Vulkan
                     continue;
                 }
 
-                barrier.srcStageMask = flags.stages;
-                barrier.srcAccessMask = flags.access;
-                barrier.oldLayout = flags.attachmentLayout;
-
-                auto dstFlags = ConvertPipelineStageAccessFlags(passAttachment->next->info.usage, passAttachment->next->stages, passAttachment->next->info.access);
-                barrier.dstStageMask = dstFlags.stages;
-                barrier.dstAccessMask = dstFlags.access;
-                barrier.newLayout = dstFlags.attachmentLayout;
+                barrier.srcStageMask = ConvertPipelineStageFlags(passAttachment->info.usage, passAttachment->stage);
+                barrier.srcAccessMask = ConvertPipelineAccess(passAttachment->info.usage, passAttachment->info.access, false);
+                barrier.oldLayout = ConvertImageLayout(passAttachment->info.usage, passAttachment->info.access);
+                barrier.dstStageMask = ConvertPipelineStageFlags(passAttachment->next->info.usage, passAttachment->next->stage);
+                barrier.dstAccessMask = ConvertPipelineAccess(passAttachment->next->info.usage, passAttachment->next->info.access, true);
+                barrier.newLayout = ConvertImageLayout(passAttachment->next->info.usage, passAttachment->next->info.access);
                 barriers.push_back(barrier);
             }
             else if (barrierType == BarrierType::PostPass && passAttachment->attachment->swapchain)
             {
-                barrier.srcStageMask = flags.stages;
-                barrier.srcAccessMask = flags.access;
-                barrier.oldLayout = flags.attachmentLayout;
+                barrier.srcStageMask = ConvertPipelineStageFlags(passAttachment->info.usage, passAttachment->stage);
+                barrier.srcAccessMask = ConvertPipelineAccess(passAttachment->info.usage, passAttachment->info.access, true);
+                barrier.oldLayout = ConvertImageLayout(passAttachment->info.usage, passAttachment->info.access);
                 barrier.dstStageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
                 barrier.dstAccessMask = 0;
                 barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
@@ -604,9 +479,9 @@ namespace Vulkan
                 barrier.srcStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
                 barrier.srcAccessMask = 0;
                 barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-                barrier.dstStageMask = flags.stages;
-                barrier.dstAccessMask = flags.access;
-                barrier.newLayout = flags.attachmentLayout;
+                barrier.dstStageMask = ConvertPipelineStageFlags(passAttachment->info.usage, passAttachment->stage);
+                barrier.dstAccessMask = ConvertPipelineAccess(passAttachment->info.usage, passAttachment->info.access, false);
+                barrier.newLayout = ConvertImageLayout(passAttachment->info.usage, passAttachment->info.access);
                 barriers.push_back(barrier);
             }
         }
@@ -621,6 +496,7 @@ namespace Vulkan
 
     void CommandList::TransitionPassAttachments(BarrierType barrierType, TL::Span<RHI::BufferPassAttachment*> passAttachments) const
     {
+        (void)barrierType;
         std::vector<VkBufferMemoryBarrier2> barriers;
 
         for (auto passAttachment : passAttachments)
@@ -634,7 +510,6 @@ namespace Vulkan
             barrier.offset = passAttachment->info.byteOffset;
             barrier.size = passAttachment->info.byteSize;
 
-            auto flags = ConvertPipelineStageAccessFlags(passAttachment->info.usage, passAttachment->stages, passAttachment->info.access);
             if (passAttachment->next)
             {
                 barrier.srcQueueFamilyIndex = static_cast<Pass*>(passAttachment->pass)->m_queueFamilyIndex;
@@ -647,25 +522,15 @@ namespace Vulkan
                     continue;
                 }
 
-                barrier.srcStageMask = flags.stages;
-                barrier.srcAccessMask = flags.access;
-
-                auto dstFlags = ConvertPipelineStageAccessFlags(passAttachment->next->info.usage, passAttachment->next->stages, passAttachment->next->info.access);
-                barrier.dstStageMask = dstFlags.stages;
-                barrier.dstAccessMask = dstFlags.access;
+                barrier.srcStageMask = ConvertPipelineStageFlags(passAttachment->info.usage, passAttachment->stage);
+                barrier.srcAccessMask = ConvertPipelineAccess(passAttachment->info.usage, passAttachment->info.access, false);
+                barrier.dstStageMask = ConvertPipelineStageFlags(passAttachment->next->info.usage, passAttachment->next->stage);
+                barrier.dstAccessMask = ConvertPipelineAccess(passAttachment->next->info.usage, passAttachment->next->info.access, true);
                 barriers.push_back(barrier);
             }
-            else if (barrierType == BarrierType::PostPass)
+            else
             {
-                // Nothing to do
-            }
-            else if (barrierType == BarrierType::PrePass && passAttachment->prev == nullptr && passAttachment->attachment->lifetime == RHI::AttachmentLifetime::Transient)
-            {
-                barrier.srcStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
-                barrier.srcAccessMask = 0;
-                barrier.dstStageMask = flags.stages;
-                barrier.dstAccessMask = flags.access;
-                barriers.push_back(barrier);
+                RHI_UNREACHABLE();
             }
         }
 
