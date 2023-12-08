@@ -78,11 +78,11 @@ Frame life cycle
             - [x] allocate transient resources
             - [x] create resource views
                 - [x] for swapchain images create view for each image attachment
-    - [] prepare command lists
-        - [] get current frame pool
-            - [] for every pass in pass list
-                - [] allocate command list
-                    - [] if command list reused reset and begin
+    - [ ] prepare command lists
+        - [ ] get current frame pool
+            - [ ] for every pass in pass list
+                - [ ] allocate command list
+                    - [ ] if command list reused reset and begin
 - [x] Frame End
     - [x] execute
         - [x] for every pass
@@ -105,3 +105,17 @@ Command List allocations requirements
     is equal to the number of maximum of all swapchains swap image values.
 
 For every image attachment associated with swapchain, create image views per every swapchain image there is
+
+
+1. Main function
+2. Application Base class and loop
+3. Window system
+4. Input and events
+5. Time stamp
+6. Camera and basic rendering pipeline
+
+- Logging and profiling
+
+Resource Loader 
+
+Scene Graph

@@ -263,6 +263,24 @@ namespace Vulkan
 
     FrameScheduler::~FrameScheduler()
     {
+        auto context = static_cast<Context*>(m_context);
+
+        vkDeviceWaitIdle(context->m_device);
+
+        for (auto [_, handle] : m_imageViewsLut)
+        {
+            m_context->DestroyImageView(handle);
+        }
+
+        for (auto [_, handle] : m_bufferViewLut)
+        {
+            m_context->DestroyImageView(handle);
+        }
+
+        for (auto fence : m_framesInflightFences)
+        {
+            vkDestroyFence(context->m_device, fence, nullptr);
+        }
     }
 
     VkResult FrameScheduler::Init()

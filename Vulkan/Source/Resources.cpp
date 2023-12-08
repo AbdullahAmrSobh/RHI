@@ -658,23 +658,25 @@ namespace Vulkan
 
         if (success == false)
         {
+            // clang-format off
             VkDescriptorPoolSize poolSizes[] = {
-                { VK_DESCRIPTOR_TYPE_SAMPLER, 16 },
-                { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 16 },
-                { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 16 },
-                { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 16 },
-                { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 16 },
-                { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 16 },
-                { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 16 },
+                { VK_DESCRIPTOR_TYPE_SAMPLER,                16 },
+                { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          16 },
+                { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          16 },
+                { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         16 },
+                { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         16 },
+                { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   16 },
+                { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   16 },
                 { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 16 },
                 { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 16 },
-                { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 16 },
+                { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,       16 },
             };
+            // clang-format on
 
             VkDescriptorPoolCreateInfo poolCreateInfo{};
             poolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
             poolCreateInfo.pNext = nullptr;
-            poolCreateInfo.flags = 0;
+            poolCreateInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
             poolCreateInfo.maxSets = 8;
             poolCreateInfo.poolSizeCount = sizeof(poolSizes) / sizeof(VkDescriptorPoolSize); // todo recheck this
             poolCreateInfo.pPoolSizes = poolSizes;
@@ -704,17 +706,11 @@ namespace Vulkan
 
     void BindGroupAllocator::Free(TL::Span<RHI::Handle<RHI::BindGroup>> bindGroups)
     {
-        std::vector<VkDescriptorSet> descriptorSetHandles;
-        descriptorSetHandles.reserve(bindGroups.size());
-
         for (auto group : bindGroups)
         {
             auto set = m_context->m_bindGroupOwner.Get(group);
-            descriptorSetHandles.push_back(set->handle);
+            vkFreeDescriptorSets(m_context->m_device, set->pool, 1, &set->handle);
         }
-
-        // vkFreeDescriptorSets(m_context->m_device, );
-        RHI_UNREACHABLE();
     }
 
     void BindGroupAllocator::Update(RHI::Handle<RHI::BindGroup> _bindGroup, const RHI::BindGroupData& data)
@@ -940,6 +936,8 @@ namespace Vulkan
 
         vkDestroySwapchainKHR(context->m_device, m_swapchain, nullptr);
         vkDestroySurfaceKHR(context->m_instance, m_surface, nullptr);
+
+        vkDestroySemaphore(context->m_device, m_imageReadySemaphore, nullptr);
     }
 
     VkResult Swapchain::Init(const RHI::SwapchainCreateInfo& createInfo)

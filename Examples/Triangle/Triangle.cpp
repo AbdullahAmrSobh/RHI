@@ -36,7 +36,7 @@ public:
         auto buffer = m_bufferPool->Allocate(createInfo).GetValue();
         RHI::DeviceMemoryPtr vertexBufferPtr = m_bufferPool->MapBuffer(buffer);
         RHI_ASSERT(vertexBufferPtr != nullptr);
-        memcpy(vertexBufferPtr, data.data(), data.size() * sizeof(float));
+        memcpy(vertexBufferPtr, data.data(), data.size() * sizeof(T));
         m_bufferPool->UnmapBuffer(buffer);
 
         return buffer;
@@ -44,7 +44,7 @@ public:
 
     void SetupPipelines(RHI::Handle<RHI::BindGroupLayout> bindGroupLayout)
     {
-        auto pipelineLayout = m_context->CreatePipelineLayout({ bindGroupLayout });
+        m_pipelineLayout = m_context->CreatePipelineLayout({ bindGroupLayout });
 
         auto shaderCode = ReadBinaryFile("./Resources/Shaders/triangle.spv");
 
@@ -85,7 +85,7 @@ public:
         psoCreateInfo.renderTargetLayout = { { RHI::Format::BGRA8_UNORM }, RHI::Format::Unknown, RHI::Format::Unknown };
         psoCreateInfo.depthStencilState.depthTestEnable = false;
         psoCreateInfo.depthStencilState.depthWriteEnable = false;
-        psoCreateInfo.layout = pipelineLayout;
+        psoCreateInfo.layout = m_pipelineLayout;
         psoCreateInfo.renderTargetLayout.colorAttachmentsFormats = { RHI::Format::BGRA8_UNORM };
         psoCreateInfo.renderTargetLayout.depthAttachmentFormat = RHI::Format::D32;
         psoCreateInfo.colorBlendState.blendStates = {
@@ -136,12 +136,11 @@ public:
         }
 
         // create shader bind group layout
-        auto bindGroupLayout = m_context->CreateBindGroupLayout({ RHI::ShaderBinding{ RHI::ShaderBindingType::Buffer, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Pixel } });
-        SetupPipelines(bindGroupLayout);
+        m_bindGroupLayout = m_context->CreateBindGroupLayout({ RHI::ShaderBinding{ RHI::ShaderBindingType::Buffer, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Pixel } });
+        SetupPipelines(m_bindGroupLayout);
         // create shader bind group
         m_bindGroupAllocator = m_context->CreateBindGroupAllocator();
-        m_bindGroup = m_bindGroupAllocator->AllocateBindGroups(bindGroupLayout).front();
-        m_context->DestroyBindGroupLayout(bindGroupLayout);
+        m_bindGroup = m_bindGroupAllocator->AllocateBindGroups(m_bindGroupLayout).front();
 
         m_commandListAllocator = m_context->CreateCommandListAllocator(RHI::QueueType::Graphics);
 
@@ -198,12 +197,12 @@ public:
 
         m_bindGroupAllocator->Free(m_bindGroup);
 
+        m_context->DestroyBindGroupLayout(m_bindGroupLayout);
         m_context->DestroyPipelineLayout(m_pipelineLayout);
         m_context->DestroyGraphicsPipeline(m_pipelineState);
 
         m_bufferPool->FreeBuffer(m_indexBuffer);
         m_bufferPool->FreeBuffer(m_vertexBuffer);
-        m_bufferPool->FreeBuffer(m_stagingBuffer);
         m_bufferPool->FreeBuffer(m_uniformData);
     }
 
@@ -251,6 +250,8 @@ private:
 
     std::unique_ptr<RHI::CommandListAllocator> m_commandListAllocator;
 
+    RHI::Handle<RHI::BindGroupLayout> m_bindGroupLayout;
+
     RHI::Handle<RHI::BindGroup> m_bindGroup;
 
     RHI::Handle<RHI::PipelineLayout> m_pipelineLayout;
@@ -258,8 +259,6 @@ private:
     RHI::Handle<RHI::GraphicsPipeline> m_pipelineState;
 
     RHI::Handle<RHI::Buffer> m_uniformData;
-
-    RHI::Handle<RHI::Buffer> m_stagingBuffer;
 
     RHI::Handle<RHI::Buffer> m_vertexBuffer;
 
