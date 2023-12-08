@@ -83,6 +83,8 @@ namespace Vulkan
 
         std::unique_ptr<RHI::Pass> CreatePass(const RHI::PassCreateInfo& createInfo) override;
 
+        bool WaitIdle(uint64_t waitTimeNano) override;
+
         void ExecutePass(RHI::Pass& pass) override;
 
         void OnFrameBegin() override;

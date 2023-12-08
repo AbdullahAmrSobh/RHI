@@ -572,6 +572,8 @@ namespace RHI
         /// @brief Creates a pass resource
         virtual std::unique_ptr<Pass> CreatePass(const PassCreateInfo& createInfo) = 0;
 
+        virtual bool                  WaitIdle(uint64_t waitTimeNano)              = 0;
+
     protected:
         virtual void                                           ExecutePass(Pass& pass) = 0;
 

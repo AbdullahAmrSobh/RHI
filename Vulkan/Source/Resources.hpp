@@ -18,7 +18,8 @@ namespace Vulkan
 
     class Context;
     class ShaderModule;
-    class ResourcePool;
+    class ImagePool;
+    class BufferPool;
     class Swapchain;
 
     enum class AllocationType
@@ -49,7 +50,7 @@ namespace Vulkan
         Allocation allocation;
 
         // Pointer to the pool this resource is created from.
-        ResourcePool* pool;
+        ImagePool* pool;
 
         // Handle to valid VkImage resource (Might not be backed by an allocation).
         VkImage handle;
@@ -60,7 +61,7 @@ namespace Vulkan
         // pointer to swapchain (if this image is backed by swapchain).
         Swapchain* swapchain;
 
-        RHI::ResultCode Init(Context* context, const VmaAllocationCreateInfo allocationInfo, const RHI::ImageCreateInfo& createInfo, ResourcePool* parentPool, bool isTransientResource);
+        RHI::ResultCode Init(Context* context, const VmaAllocationCreateInfo allocationInfo, const RHI::ImageCreateInfo& createInfo, ImagePool* parentPool, bool isTransientResource);
         void Shutdown(Context* context);
         VkMemoryRequirements GetMemoryRequirements(VkDevice device) const;
     };
@@ -71,7 +72,7 @@ namespace Vulkan
         Allocation allocation;
 
         // Pointer to the pool this resource is created from.
-        ResourcePool* pool;
+        BufferPool* pool;
 
         // Handle to valid VkImage resource (Might not be backed by an allocation).
         VkBuffer handle;
@@ -79,7 +80,7 @@ namespace Vulkan
         // description of the resource.
         VkBufferCreateInfo createInfo;
 
-        RHI::ResultCode Init(Context* context, const VmaAllocationCreateInfo allocationInfo, const RHI::BufferCreateInfo& createInfo, ResourcePool* parentPool, bool isTransientResource);
+        RHI::ResultCode Init(Context* context, const VmaAllocationCreateInfo allocationInfo, const RHI::BufferCreateInfo& createInfo, BufferPool* parentPool, bool isTransientResource);
         void Shutdown(Context* context);
         VkMemoryRequirements GetMemoryRequirements(VkDevice device) const;
     };
@@ -189,31 +190,54 @@ namespace Vulkan
         std::vector<VkDescriptorPool> m_descriptorPools;
     };
 
-    class ResourcePool final : public RHI::ResourcePool
+    class BufferPool final : public RHI::BufferPool
     {
     public:
-        ResourcePool(Context* context)
+        BufferPool(Context* context)
             : m_context(context)
         {
         }
 
-        ~ResourcePool();
+        ~BufferPool();
 
-        VkResult Init(const RHI::ResourcePoolCreateInfo& createInfo);
+        VkResult Init(const RHI::PoolCreateInfo& createInfo);
 
-        RHI::Result<RHI::Handle<RHI::Image>> Allocate(const RHI::ImageCreateInfo& createInfo) override;
         RHI::Result<RHI::Handle<RHI::Buffer>> Allocate(const RHI::BufferCreateInfo& createInfo) override;
-        void Free(RHI::Handle<RHI::Image> image) override;
-        void Free(RHI::Handle<RHI::Buffer> buffer) override;
-        size_t GetSize(RHI::Handle<RHI::Image> image) const override;
-        size_t GetSize(RHI::Handle<RHI::Buffer> buffer) const override;
+        void FreeBuffer(RHI::Handle<RHI::Buffer> handle) override;
+        size_t GetSize(RHI::Handle<RHI::Buffer> handle) const override;
+        RHI::DeviceMemoryPtr MapBuffer(RHI::Handle<RHI::Buffer> handle) override;
+        void UnmapBuffer(RHI::Handle<RHI::Buffer> handle) override;
 
     public:
         Context* m_context;
 
         VmaPool m_pool;
 
-        RHI::ResourcePoolCreateInfo m_poolInfo;
+        RHI::PoolCreateInfo m_poolInfo;
+    };
+
+    class ImagePool final : public RHI::ImagePool
+    {
+    public:
+        ImagePool(Context* context)
+            : m_context(context)
+        {
+        }
+
+        ~ImagePool();
+
+        VkResult Init(const RHI::PoolCreateInfo& createInfo);
+
+        RHI::Result<RHI::Handle<RHI::Image>> Allocate(const RHI::ImageCreateInfo& createInfo) override;
+        void FreeImage(RHI::Handle<RHI::Image> handle) override;
+        size_t GetSize(RHI::Handle<RHI::Image> handle) const override;
+
+    public:
+        Context* m_context;
+
+        VmaPool m_pool;
+
+        RHI::PoolCreateInfo m_poolInfo;
     };
 
     class Swapchain final : public RHI::Swapchain

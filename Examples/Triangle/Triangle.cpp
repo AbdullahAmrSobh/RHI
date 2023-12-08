@@ -34,10 +34,10 @@ public:
         createInfo.byteSize = data.size() * sizeof(T);
 
         auto buffer = m_bufferPool->Allocate(createInfo).GetValue();
-        RHI::DeviceMemoryPtr vertexBufferPtr = m_context->MapResource(buffer);
+        RHI::DeviceMemoryPtr vertexBufferPtr = m_bufferPool->MapBuffer(buffer);
         RHI_ASSERT(vertexBufferPtr != nullptr);
         memcpy(vertexBufferPtr, data.data(), data.size() * sizeof(float));
-        m_context->Unmap(buffer);
+        m_bufferPool->UnmapBuffer(buffer);
 
         return buffer;
     }
@@ -108,13 +108,13 @@ public:
         (void)windowInfo;
         // create resources pool
         {
-            RHI::ResourcePoolCreateInfo createInfo{};
+            RHI::PoolCreateInfo createInfo{};
             createInfo.heapType = RHI::MemoryType::CPU;
             createInfo.allocationAlgorithm = RHI::AllocationAlgorithm::Linear;
             createInfo.blockSize = 10 * RHI::AllocationSizeConstants::KB;
             createInfo.minBlockAlignment = alignof(uint64_t);
 
-            m_bufferPool = m_context->CreateResourcePool(createInfo);
+            m_bufferPool = m_context->CreateBufferPool(createInfo);
         }
 
         // create buffer resource
@@ -135,42 +135,13 @@ public:
             m_uniformData = CreateBuffer<UniformData>(data, RHI::BufferUsage::Uniform);
         }
 
-        // // create image resource
-        // {
-        //     auto imageData = LoadImage("Resources/Images/image.png");
-
-        //     RHI::ImageCreateInfo createInfo{};
-        //     createInfo.usageFlags = RHI::ImageUsage::ShaderResource;
-        //     createInfo.type = RHI::ImageType::Image2D;
-        //     createInfo.size.width = imageData.width;
-        //     createInfo.size.height = imageData.height;
-        //     createInfo.size.depth = imageData.depth;
-        //     createInfo.format = RHI::Format::BGRA8_UNORM;
-        //     createInfo.mipLevels = 1;
-        //     createInfo.arrayCount = 1;
-        //     m_image = m_bufferPool->Allocate(createInfo).GetValue();
-
-        //     auto dataSize = imageData.width * imageData.height * imageData.channels * imageData.bytesPerChannel;
-        //     auto cpyCmd = m_commandListAllocator->Allocate();
-        //     cpyCmd->Begin();
-        //     cpyCmd->Submit(RHI::CopyBufferToImageDescriptor{
-        //         .srcBuffer = m_stagingBuffer,
-        //         .srcOffset = 0,
-        //         .srcBytesPerRow = 0,
-        //         .srcBytesPerImage = dataSize,
-        //         .srcSize = { .width = imageData.width, .height = imageData.height, .depth = imageData.depth },
-        //         .dstImage = m_image,
-        //         .dstOffset = { 0, 0, 0 } });
-        //     cpyCmd->End();
-        // }
-
         // create shader bind group layout
         auto bindGroupLayout = m_context->CreateBindGroupLayout({ RHI::ShaderBinding{ RHI::ShaderBindingType::Buffer, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Pixel } });
         SetupPipelines(bindGroupLayout);
-
         // create shader bind group
         m_bindGroupAllocator = m_context->CreateBindGroupAllocator();
         m_bindGroup = m_bindGroupAllocator->AllocateBindGroups(bindGroupLayout).front();
+        m_context->DestroyBindGroupLayout(bindGroupLayout);
 
         m_commandListAllocator = m_context->CreateCommandListAllocator(RHI::QueueType::Graphics);
 
@@ -223,13 +194,17 @@ public:
 
     void OnShutdown() override
     {
-        m_context->Free(m_pipelineState);
+        m_frameScheduler->WaitIdle(UINT64_MAX);
 
-        m_bufferPool->Free(m_vertexBuffer);
+        m_bindGroupAllocator->Free(m_bindGroup);
 
-        m_bufferPool->Free(m_indexBuffer);
+        m_context->DestroyPipelineLayout(m_pipelineLayout);
+        m_context->DestroyGraphicsPipeline(m_pipelineState);
 
-        // m_bufferPool->Free(m_image);
+        m_bufferPool->FreeBuffer(m_indexBuffer);
+        m_bufferPool->FreeBuffer(m_vertexBuffer);
+        m_bufferPool->FreeBuffer(m_stagingBuffer);
+        m_bufferPool->FreeBuffer(m_uniformData);
     }
 
     void OnUpdate() override
@@ -270,9 +245,7 @@ public:
     }
 
 private:
-    std::unique_ptr<RHI::ResourcePool> m_bufferPool;
-
-    std::unique_ptr<RHI::ResourcePool> m_imagePool;
+    std::unique_ptr<RHI::BufferPool> m_bufferPool;
 
     std::unique_ptr<RHI::BindGroupAllocator> m_bindGroupAllocator;
 
@@ -283,8 +256,6 @@ private:
     RHI::Handle<RHI::PipelineLayout> m_pipelineLayout;
 
     RHI::Handle<RHI::GraphicsPipeline> m_pipelineState;
-
-    RHI::Handle<RHI::Image> m_image;
 
     RHI::Handle<RHI::Buffer> m_uniformData;
 

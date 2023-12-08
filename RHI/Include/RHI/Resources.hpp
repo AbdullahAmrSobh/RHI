@@ -32,6 +32,7 @@ namespace RHI
     struct BufferPassAttachment;
 
     /// @brief Represents a pointer to GPU device memory
+    using DeviceMemoryPtr = void*;
 
     /// @brief Enumeration for common allocation size constants
     namespace AllocationSizeConstants
@@ -284,9 +285,10 @@ namespace RHI
 #endif
 
     /// @brief Report describe the current state of the resource pool.
-    struct ResourcePoolReport
+    struct PoolReport
     {
         MemoryType type;
+        float      fragmentation;
         size_t     size;
         size_t     alignment;
         size_t     allocationsCount;
@@ -528,7 +530,7 @@ namespace RHI
     };
 
     /// @brief Represent the creation parameters of an resource pool.
-    struct ResourcePoolCreateInfo
+    struct PoolCreateInfo
     {
         AllocationAlgorithm allocationAlgorithm = AllocationAlgorithm::Linear;
         MemoryType          heapType;
@@ -741,30 +743,42 @@ namespace RHI
         virtual ~ShaderModule() = default;
     };
 
-    /// @brief General purpose pool used to allocate all kinds of resources.
-    class RHI_EXPORT ResourcePool
+    /// @brief Pool used to allocate buffer resources.
+    class RHI_EXPORT BufferPool
     {
     public:
-        ResourcePool()                                                              = default;
-        virtual ~ResourcePool()                                                     = default;
-
-        /// @brief Allocate an image resource.
-        virtual Result<Handle<Image>>  Allocate(const ImageCreateInfo& createInfo)  = 0;
+        BufferPool()                                                                = default;
+        virtual ~BufferPool()                                                       = default;
 
         /// @brief Allocate a buffer resource.
         virtual Result<Handle<Buffer>> Allocate(const BufferCreateInfo& createInfo) = 0;
 
-        /// @brief Free an allocated image resource.
-        virtual void                   Free(Handle<Image> image)                    = 0;
-
         /// @brief Free an allocated buffer resource.
-        virtual void                   Free(Handle<Buffer> buffer)                  = 0;
-
-        /// @brief Get the size of an allocated image resource.
-        virtual size_t                 GetSize(Handle<Image> image) const           = 0;
+        virtual void                   FreeBuffer(Handle<Buffer> handle)            = 0;
 
         /// @brief Get the size of an allocated buffer resource.
-        virtual size_t                 GetSize(Handle<Buffer> buffer) const         = 0;
+        virtual size_t                 GetSize(Handle<Buffer> handle) const         = 0;
+
+        /// @brief Maps the buffer resource for read or write operations.
+        /// @return returns a pointer to GPU memory, or a nullptr in case of failure
+        virtual DeviceMemoryPtr        MapBuffer(Handle<Buffer> handle)             = 0;
+
+        /// @brief UnmapBuffers the buffer resource.
+        virtual void                   UnmapBuffer(Handle<Buffer> handle)           = 0;
+    };
+
+    /// @brief Pool used to allocate image resources.
+    class RHI_EXPORT ImagePool
+    {
+    public:
+        /// @brief Allocate an image resource.
+        virtual Result<Handle<Image>> Allocate(const ImageCreateInfo& createInfo) = 0;
+
+        /// @brief Free an allocated image resource.
+        virtual void                  FreeImage(Handle<Image> handle)              = 0;
+
+        /// @brief Get the size of an allocated image resource.
+        virtual size_t                GetSize(Handle<Image> handle) const          = 0;
     };
 
     /// @brief Swapchain object which is an interface between the API and a presentation surface.

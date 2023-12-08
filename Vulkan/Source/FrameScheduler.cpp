@@ -286,6 +286,14 @@ namespace Vulkan
         return pass;
     }
 
+    bool FrameScheduler::WaitIdle(uint64_t waitTimeNano)
+    {
+        (void)waitTimeNano;
+        auto context = static_cast<Context*>(m_context);
+        vkDeviceWaitIdle(context->m_device);
+        return true;
+    }
+
     void FrameScheduler::ExecutePass(RHI::Pass& passBase)
     {
         auto context = static_cast<Context*>(m_context);

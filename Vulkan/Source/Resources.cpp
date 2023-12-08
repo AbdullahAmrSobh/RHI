@@ -17,7 +17,7 @@ namespace Vulkan
     /// Image
     ///////////////////////////////////////////////////////////////////////////
 
-    RHI::ResultCode Image::Init(Context* context, const VmaAllocationCreateInfo allocationInfo, const RHI::ImageCreateInfo& createInfo, ResourcePool* parentPool, bool isTransientResource)
+    RHI::ResultCode Image::Init(Context* context, const VmaAllocationCreateInfo allocationInfo, const RHI::ImageCreateInfo& createInfo, ImagePool* parentPool, bool isTransientResource)
     {
         (void)parentPool;
         VkImageCreateInfo vkCreateInfo{};
@@ -79,7 +79,7 @@ namespace Vulkan
     /// Buffer
     ///////////////////////////////////////////////////////////////////////////
 
-    RHI::ResultCode Buffer::Init(Context* context, const VmaAllocationCreateInfo allocationInfo, const RHI::BufferCreateInfo& createInfo, ResourcePool* parentPool, bool isTransientResource)
+    RHI::ResultCode Buffer::Init(Context* context, const VmaAllocationCreateInfo allocationInfo, const RHI::BufferCreateInfo& createInfo, BufferPool* parentPool, bool isTransientResource)
     {
         (void)parentPool;
         VkBufferCreateInfo vkCreateInfo{};
@@ -806,20 +806,20 @@ namespace Vulkan
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    /// ResourcePool
+    /// BufferPool
     ///////////////////////////////////////////////////////////////////////////
 
-    ResourcePool::~ResourcePool()
+    BufferPool::~BufferPool()
     {
         vmaDestroyPool(m_context->m_allocator, m_pool);
     }
 
-    VkResult ResourcePool::Init(const RHI::ResourcePoolCreateInfo& createInfo)
+    VkResult BufferPool::Init(const RHI::PoolCreateInfo& createInfo)
     {
         m_poolInfo = createInfo;
 
         VmaPoolCreateInfo poolCreateInfo{};
-        poolCreateInfo.flags = VMA_POOL_CREATE_LINEAR_ALGORITHM_BIT;
+        poolCreateInfo.flags = VMA_POOL_CREATE_IGNORE_BUFFER_IMAGE_GRANULARITY_BIT;
         poolCreateInfo.blockSize = createInfo.blockSize;
         poolCreateInfo.minBlockCount = createInfo.minBlockCount;
         poolCreateInfo.maxBlockCount = createInfo.maxBlockCount;
@@ -831,21 +831,7 @@ namespace Vulkan
         return vmaCreatePool(m_context->m_allocator, &poolCreateInfo, &m_pool);
     }
 
-    RHI::Result<RHI::Handle<RHI::Image>> ResourcePool::Allocate(const RHI::ImageCreateInfo& createInfo)
-    {
-        VmaAllocationCreateInfo allocationInfo{};
-        allocationInfo.pool = m_pool;
-
-        auto [handle, image] = m_context->m_imageOwner.InsertZerod();
-        if (auto result = image.Init(m_context, allocationInfo, createInfo, this, false); RHI::IsError(result))
-        {
-            return result;
-        }
-
-        return RHI::Handle<RHI::Image>(handle);
-    }
-
-    RHI::Result<RHI::Handle<RHI::Buffer>> ResourcePool::Allocate(const RHI::BufferCreateInfo& createInfo)
+    RHI::Result<RHI::Handle<RHI::Buffer>> BufferPool::Allocate(const RHI::BufferCreateInfo& createInfo)
     {
         VmaAllocationCreateInfo allocationInfo{};
         allocationInfo.pool = m_pool;
@@ -859,15 +845,7 @@ namespace Vulkan
         return RHI::Handle<RHI::Buffer>(handle);
     }
 
-    void ResourcePool::Free(RHI::Handle<RHI::Image> image)
-    {
-        auto resource = m_context->m_imageOwner.Get(image);
-        RHI_ASSERT(resource);
-
-        vmaDestroyImage(m_context->m_allocator, resource->handle, resource->allocation.handle);
-    }
-
-    void ResourcePool::Free(RHI::Handle<RHI::Buffer> buffer)
+    void BufferPool::FreeBuffer(RHI::Handle<RHI::Buffer> buffer)
     {
         auto resource = m_context->m_bufferOwner.Get(buffer);
         RHI_ASSERT(resource);
@@ -875,16 +853,81 @@ namespace Vulkan
         vmaDestroyBuffer(m_context->m_allocator, resource->handle, resource->allocation.handle);
     }
 
-    size_t ResourcePool::GetSize(RHI::Handle<RHI::Image> image) const
-    {
-        auto& owner = m_context->m_imageOwner;
-        return owner.Get(image)->GetMemoryRequirements(m_context->m_device).size;
-    }
-
-    size_t ResourcePool::GetSize(RHI::Handle<RHI::Buffer> buffer) const
+    size_t BufferPool::GetSize(RHI::Handle<RHI::Buffer> buffer) const
     {
         auto& owner = m_context->m_bufferOwner;
         return owner.Get(buffer)->GetMemoryRequirements(m_context->m_device).size;
+    }
+
+    RHI::DeviceMemoryPtr BufferPool::MapBuffer(RHI::Handle<RHI::Buffer> handle)
+    {
+        auto resource = m_context->m_bufferOwner.Get(handle);
+        auto allocation = resource->allocation.handle;
+
+        RHI::DeviceMemoryPtr memoryPtr = nullptr;
+        VkResult result = vmaMapMemory(m_context->m_allocator, allocation, &memoryPtr);
+        VULKAN_ASSERT_SUCCESS(result);
+        return memoryPtr;
+    }
+
+    void BufferPool::UnmapBuffer(RHI::Handle<RHI::Buffer> handle)
+    {
+        auto resource = m_context->m_bufferOwner.Get(handle)->allocation.handle;
+        vmaUnmapMemory(m_context->m_allocator, resource);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// ImagePool
+    ///////////////////////////////////////////////////////////////////////////
+
+    ImagePool::~ImagePool()
+    {
+        vmaDestroyPool(m_context->m_allocator, m_pool);
+    }
+
+    VkResult ImagePool::Init(const RHI::PoolCreateInfo& createInfo)
+    {
+        m_poolInfo = createInfo;
+
+        VmaPoolCreateInfo poolCreateInfo{};
+        poolCreateInfo.flags = VMA_POOL_CREATE_IGNORE_BUFFER_IMAGE_GRANULARITY_BIT;
+        poolCreateInfo.blockSize = createInfo.blockSize;
+        poolCreateInfo.minBlockCount = createInfo.minBlockCount;
+        poolCreateInfo.maxBlockCount = createInfo.maxBlockCount;
+        poolCreateInfo.priority = 1.0f;
+        poolCreateInfo.minAllocationAlignment = createInfo.minBlockAlignment;
+        poolCreateInfo.pMemoryAllocateNext = nullptr;
+        poolCreateInfo.memoryTypeIndex = m_context->GetMemoryTypeIndex(createInfo.heapType);
+
+        return vmaCreatePool(m_context->m_allocator, &poolCreateInfo, &m_pool);
+    }
+
+    RHI::Result<RHI::Handle<RHI::Image>> ImagePool::Allocate(const RHI::ImageCreateInfo& createInfo)
+    {
+        VmaAllocationCreateInfo allocationInfo{};
+        allocationInfo.pool = m_pool;
+
+        auto [handle, image] = m_context->m_imageOwner.InsertZerod();
+        if (auto result = image.Init(m_context, allocationInfo, createInfo, this, false); RHI::IsError(result))
+        {
+            return result;
+        }
+
+        return RHI::Handle<RHI::Image>(handle);
+    }
+
+    void ImagePool::FreeImage(RHI::Handle<RHI::Image> handle)
+    {
+        auto resource = m_context->m_imageOwner.Get(handle);
+        RHI_ASSERT(resource);
+
+        vmaDestroyImage(m_context->m_allocator, resource->handle, resource->allocation.handle);
+    }
+
+    size_t ImagePool::GetSize(RHI::Handle<RHI::Image> handle) const
+    {
+        auto& owner = m_context->m_imageOwner;
+        return owner.Get(handle)->GetMemoryRequirements(m_context->m_device).size;
     }
 
     ///////////////////////////////////////////////////////////////////////////

@@ -376,7 +376,7 @@ namespace Vulkan
         return handle;
     }
 
-    void Context::FreeBindGroupLayout(RHI::Handle<RHI::BindGroupLayout> handle)
+    void Context::DestroyBindGroupLayout(RHI::Handle<RHI::BindGroupLayout> handle)
     {
         auto layout = m_bindGroupLayoutsOwner.Get(handle);
         layout->Shutdown(this);
@@ -391,7 +391,7 @@ namespace Vulkan
         return handle;
     }
 
-    void Context::FreePipelineLayout(RHI::Handle<RHI::PipelineLayout> handle)
+    void Context::DestroyPipelineLayout(RHI::Handle<RHI::PipelineLayout> handle)
     {
         auto layout = m_pipelineLayoutOwner.Get(handle);
         layout->Shutdown(this);
@@ -406,12 +406,20 @@ namespace Vulkan
         return bindGroupAllocator;
     }
 
-    std::unique_ptr<RHI::ResourcePool> Context::CreateResourcePool(const RHI::ResourcePoolCreateInfo& createInfo)
+    std::unique_ptr<RHI::BufferPool> Context::CreateBufferPool(const RHI::PoolCreateInfo& createInfo)
     {
-        auto resourcePool = std::make_unique<ResourcePool>(this);
-        auto result = resourcePool->Init(createInfo);
+        auto pool = std::make_unique<BufferPool>(this);
+        auto result = pool->Init(createInfo);
         RHI_ASSERT(result == VK_SUCCESS);
-        return resourcePool;
+        return pool;
+    }
+
+    std::unique_ptr<RHI::ImagePool> Context::CreateImagePool(const RHI::PoolCreateInfo& createInfo)
+    {
+        auto pool = std::make_unique<ImagePool>(this);
+        auto result = pool->Init(createInfo);
+        RHI_ASSERT(result == VK_SUCCESS);
+        return pool;
     }
 
     RHI::Handle<RHI::GraphicsPipeline> Context::CreateGraphicsPipeline(const RHI::GraphicsPipelineCreateInfo& createInfo)
@@ -422,7 +430,7 @@ namespace Vulkan
         return handle;
     }
 
-    void Context::Free(RHI::Handle<RHI::GraphicsPipeline> handle)
+    void Context::DestroyGraphicsPipeline(RHI::Handle<RHI::GraphicsPipeline> handle)
     {
         auto layout = m_graphicsPipelineOwner.Get(handle);
         layout->Shutdown(this);
@@ -437,7 +445,7 @@ namespace Vulkan
         return handle;
     }
 
-    void Context::Free(RHI::Handle<RHI::ComputePipeline> handle)
+    void Context::DestroyComputePipeline(RHI::Handle<RHI::ComputePipeline> handle)
     {
         auto layout = m_computePipelineOwner.Get(handle);
         layout->Shutdown(this);
@@ -452,7 +460,7 @@ namespace Vulkan
         return handle;
     }
 
-    void Context::Free(RHI::Handle<RHI::Sampler> handle)
+    void Context::DestroySampler(RHI::Handle<RHI::Sampler> handle)
     {
         auto sampler = m_samplerOwner.Get(handle);
         sampler->Shutdown(this);
@@ -467,7 +475,7 @@ namespace Vulkan
         return handle;
     }
 
-    void Context::Free(RHI::Handle<RHI::ImageView> handle)
+    void Context::DestroyImageView(RHI::Handle<RHI::ImageView> handle)
     {
         auto imageView = m_imageViewOwner.Get(handle);
         imageView->Shutdown(this);
@@ -482,44 +490,10 @@ namespace Vulkan
         return handle;
     }
 
-    void Context::Free(RHI::Handle<RHI::BufferView> handle)
+    void Context::DestroyBufferView(RHI::Handle<RHI::BufferView> handle)
     {
         auto bufferView = m_bufferViewOwner.Get(handle);
         bufferView->Shutdown(this);
-    }
-
-    RHI::DeviceMemoryPtr Context::MapResource(RHI::Handle<RHI::Image> image)
-    {
-        auto resource = m_imageOwner.Get(image);
-        auto allocation = resource->allocation.handle;
-
-        RHI::DeviceMemoryPtr memoryPtr = nullptr;
-        VkResult result = vmaMapMemory(m_allocator, allocation, &memoryPtr);
-        VULKAN_ASSERT_SUCCESS(result);
-        return memoryPtr;
-    }
-
-    void Context::Unmap(RHI::Handle<RHI::Image> image)
-    {
-        auto resource = m_imageOwner.Get(image)->allocation.handle;
-        vmaUnmapMemory(m_allocator, resource);
-    }
-
-    RHI::DeviceMemoryPtr Context::MapResource(RHI::Handle<RHI::Buffer> buffer)
-    {
-        auto resource = m_bufferOwner.Get(buffer);
-        auto allocation = resource->allocation.handle;
-
-        RHI::DeviceMemoryPtr memoryPtr = nullptr;
-        VkResult result = vmaMapMemory(m_allocator, allocation, &memoryPtr);
-        VULKAN_ASSERT_SUCCESS(result);
-        return memoryPtr;
-    }
-
-    void Context::Unmap(RHI::Handle<RHI::Buffer> buffer)
-    {
-        auto resource = m_bufferOwner.Get(buffer)->allocation.handle;
-        vmaUnmapMemory(m_allocator, resource);
     }
 
     VkSemaphore Context::CreateSemaphore()

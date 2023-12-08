@@ -15,7 +15,7 @@ namespace RHI
 
     struct ShaderModuleCreateInfo;
     struct SwapchainCreateInfo;
-    struct ResourcePoolCreateInfo;
+    struct PoolCreateInfo;
     struct ImageCreateInfo;
     struct BufferCreateInfo;
     struct BindGroupLayoutCreateInfo;
@@ -40,14 +40,14 @@ namespace RHI
 
     class ShaderModule;
     class Swapchain;
-    class ResourcePool;
+    class BufferPool;
+    class ImagePool;
     class Pass;
     class FrameScheduler;
     class CommandListAllocator;
     class BindGroupAllocator;
 
-    using Version         = uint32_t;
-    using DeviceMemoryPtr = void*;
+    using Version = uint32_t;
 
     /// @brief Type of backend Graphics API
     enum class Backend
@@ -141,63 +141,52 @@ namespace RHI
         virtual Handle<BindGroupLayout>               CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)              = 0;
 
         /// @brief Frees the given shader bind group layout
-        virtual void                                  FreeBindGroupLayout(Handle<BindGroupLayout> layout)                             = 0;
+        virtual void                                  DestroyBindGroupLayout(Handle<BindGroupLayout> layout)                          = 0;
 
         /// @brief Creates a shader bind group layout object.
         virtual Handle<PipelineLayout>                CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)                = 0;
 
         /// @brief Frees the given shader bind group layout
-        virtual void                                  FreePipelineLayout(Handle<PipelineLayout> layout)                               = 0;
+        virtual void                                  DestroyPipelineLayout(Handle<PipelineLayout> layout)                            = 0;
 
         /// @brief Creates a BindGroupAllocator object.
         virtual std::unique_ptr<BindGroupAllocator>   CreateBindGroupAllocator()                                                      = 0;
 
-        /// @brief Creates a new Pool for all resources.
-        virtual std::unique_ptr<ResourcePool>         CreateResourcePool(const ResourcePoolCreateInfo& createInfo)                    = 0;
+        /// @brief Creates a new Pool for all buffer resources.
+        virtual std::unique_ptr<BufferPool>           CreateBufferPool(const PoolCreateInfo& createInfo)                              = 0;
+
+        /// @brief Creates a new Pool for all image resources.
+        virtual std::unique_ptr<ImagePool>            CreateImagePool(const PoolCreateInfo& createInfo)                               = 0;
 
         /// @brief Creates a new graphics pipeline state for graphics.
         virtual Handle<GraphicsPipeline>              CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)            = 0;
 
         /// @brief Frees the given graphics pipeline object.
-        virtual void                                  Free(Handle<GraphicsPipeline> pso)                                              = 0;
+        virtual void                                  DestroyGraphicsPipeline(Handle<GraphicsPipeline> pso)                           = 0;
 
         /// @brief Creates a new compute pipeline state for graphics.
         virtual Handle<ComputePipeline>               CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)              = 0;
 
         /// @brief Frees the given compute pipeline object.
-        virtual void                                  Free(Handle<ComputePipeline> pso)                                               = 0;
+        virtual void                                  DestroyComputePipeline(Handle<ComputePipeline> pso)                             = 0;
 
         /// @brief Creates a new Sampler state.
         virtual Handle<Sampler>                       CreateSampler(const SamplerCreateInfo& createInfo)                              = 0;
 
         /// @brief Frees the given sampler object.
-        virtual void                                  Free(Handle<Sampler> sampler)                                                   = 0;
+        virtual void                                  DestroySampler(Handle<Sampler> sampler)                                         = 0;
 
         /// @brief Creates a new ImageView.
         virtual Handle<ImageView>                     CreateImageView(Handle<Image> handle, const ImageAttachmentUseInfo& useInfo)    = 0;
 
         /// @brief Frees the given compute pipeline object.
-        virtual void                                  Free(Handle<ImageView> view)                                                    = 0;
+        virtual void                                  DestroyImageView(Handle<ImageView> view)                                        = 0;
 
         /// @brief Creates a new BufferView.
         virtual Handle<BufferView>                    CreateBufferView(Handle<Buffer> handle, const BufferAttachmentUseInfo& useInfo) = 0;
 
         /// @brief Frees the given sampler object.
-        virtual void                                  Free(Handle<BufferView> view)                                                   = 0;
-
-        /// @brief Maps the image resource for read or write operations.
-        /// @return returns a pointer to GPU memory, or a nullptr in case of failure
-        virtual DeviceMemoryPtr                       MapResource(Handle<Image> image)                                                = 0;
-
-        /// @brief Unamps the image resource.
-        virtual void                                  Unmap(Handle<Image> image)                                                      = 0;
-
-        /// @brief Maps the buffer resource for read or write operations.
-        /// @return returns a pointer to GPU memory, or a nullptr in case of failure
-        virtual DeviceMemoryPtr                       MapResource(Handle<Buffer> buffer)                                              = 0;
-
-        /// @brief Unmaps the buffer resource.
-        virtual void                                  Unmap(Handle<Buffer> buffer)                                                    = 0;
+        virtual void                                  DestroyBufferView(Handle<BufferView> view)                                      = 0;
     };
 
 } // namespace RHI

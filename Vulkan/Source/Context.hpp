@@ -30,29 +30,38 @@ namespace Vulkan
         VkResult Init(const RHI::ApplicationInfo& appInfo, std::unique_ptr<RHI::DebugCallbacks> debugCallbacks);
 
         std::unique_ptr<RHI::Swapchain> CreateSwapchain(const RHI::SwapchainCreateInfo& createInfo) override;
+
         std::unique_ptr<RHI::FrameScheduler> CreateFrameScheduler() override;
+
         std::unique_ptr<RHI::CommandListAllocator> CreateCommandListAllocator(RHI::QueueType queueType) override;
+
         std::unique_ptr<RHI::ShaderModule> CreateShaderModule(const RHI::ShaderModuleCreateInfo& createInfo) override;
+
         RHI::Handle<RHI::BindGroupLayout> CreateBindGroupLayout(const RHI::BindGroupLayoutCreateInfo& createInfo) override;
-        void FreeBindGroupLayout(RHI::Handle<RHI::BindGroupLayout> layout) override;
+        void DestroyBindGroupLayout(RHI::Handle<RHI::BindGroupLayout> layout) override;
+
         RHI::Handle<RHI::PipelineLayout> CreatePipelineLayout(const RHI::PipelineLayoutCreateInfo& createInfo) override;
-        void FreePipelineLayout(RHI::Handle<RHI::PipelineLayout> layout) override;
+        void DestroyPipelineLayout(RHI::Handle<RHI::PipelineLayout> layout) override;
+
         std::unique_ptr<RHI::BindGroupAllocator> CreateBindGroupAllocator() override;
-        std::unique_ptr<RHI::ResourcePool> CreateResourcePool(const RHI::ResourcePoolCreateInfo& createInfo) override;
+
+        std::unique_ptr<RHI::BufferPool> CreateBufferPool(const RHI::PoolCreateInfo& createInfo) override;
+        std::unique_ptr<RHI::ImagePool> CreateImagePool(const RHI::PoolCreateInfo& createInfo) override;
+
         RHI::Handle<RHI::GraphicsPipeline> CreateGraphicsPipeline(const RHI::GraphicsPipelineCreateInfo& createInfo) override;
-        void Free(RHI::Handle<RHI::GraphicsPipeline> pso) override;
+        void DestroyGraphicsPipeline(RHI::Handle<RHI::GraphicsPipeline> pso) override;
+
         RHI::Handle<RHI::ComputePipeline> CreateComputePipeline(const RHI::ComputePipelineCreateInfo& createInfo) override;
-        void Free(RHI::Handle<RHI::ComputePipeline> pso) override;
+        void DestroyComputePipeline(RHI::Handle<RHI::ComputePipeline> pso) override;
+
         RHI::Handle<RHI::Sampler> CreateSampler(const RHI::SamplerCreateInfo& createInfo) override;
-        void Free(RHI::Handle<RHI::Sampler> sampler) override;
+        void DestroySampler(RHI::Handle<RHI::Sampler> sampler) override;
+
         RHI::Handle<RHI::ImageView> CreateImageView(RHI::Handle<RHI::Image> handle, const RHI::ImageAttachmentUseInfo& useInfo) override;
-        void Free(RHI::Handle<RHI::ImageView> view) override;
+        void DestroyImageView(RHI::Handle<RHI::ImageView> view) override;
+
         RHI::Handle<RHI::BufferView> CreateBufferView(RHI::Handle<RHI::Buffer> handle, const RHI::BufferAttachmentUseInfo& useInfo) override;
-        void Free(RHI::Handle<RHI::BufferView> view) override;
-        RHI::DeviceMemoryPtr MapResource(RHI::Handle<RHI::Image> image) override;
-        void Unmap(RHI::Handle<RHI::Image> image) override;
-        RHI::DeviceMemoryPtr MapResource(RHI::Handle<RHI::Buffer> buffer) override;
-        void Unmap(RHI::Handle<RHI::Buffer> buffer) override;
+        void DestroyBufferView(RHI::Handle<RHI::BufferView> view) override;
 
         uint32_t GetQueueFamilyIndex(RHI::QueueType queueType) const;
 
