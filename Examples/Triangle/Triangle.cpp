@@ -18,6 +18,11 @@ std::vector<uint32_t> indexData =
 
 // clang-format on
 
+struct UniformBufferContent
+{
+    glm::mat4 viewProjection;
+};
+
 class TriangleExample final : public ExampleBase
 {
 public:
@@ -34,9 +39,9 @@ public:
         createInfo.byteSize = data.size() * sizeof(T);
 
         auto buffer = m_bufferPool->Allocate(createInfo).GetValue();
-        RHI::DeviceMemoryPtr vertexBufferPtr = m_bufferPool->MapBuffer(buffer);
-        RHI_ASSERT(vertexBufferPtr != nullptr);
-        memcpy(vertexBufferPtr, data.data(), data.size() * sizeof(T));
+        RHI::DeviceMemoryPtr bufferPtr = m_bufferPool->MapBuffer(buffer);
+        RHI_ASSERT(bufferPtr != nullptr);
+        memcpy(bufferPtr, data.data(), data.size() * sizeof(T));
         m_bufferPool->UnmapBuffer(buffer);
 
         return buffer;
@@ -105,6 +110,8 @@ public:
 
     void OnInit(WindowInfo windowInfo) override
     {
+        m_uniformData.viewProjection = glm::identity<glm::mat4x4>();
+
         (void)windowInfo;
         // create resources pool
         {
@@ -115,28 +122,15 @@ public:
             createInfo.minBlockAlignment = alignof(uint64_t);
 
             m_bufferPool = m_context->CreateBufferPool(createInfo);
-        }
 
-        // create buffer resource
-        {
+            // create buffer resource
             m_vertexBuffer = CreateBuffer<float>({ vertexData.data(), vertexData.size() }, RHI::BufferUsage::Vertex);
             m_indexBuffer = CreateBuffer<uint32_t>({ indexData.data(), indexData.size() }, RHI::BufferUsage::Index);
-
-            struct UniformData
-            {
-                float r, g, b, a;
-            };
-
-            UniformData data{};
-            data.r = 1.0f;
-            data.g = 0.3f;
-            data.b = 0.4f;
-            data.a = 0.7f;
-            m_uniformData = CreateBuffer<UniformData>(data, RHI::BufferUsage::Uniform);
+            m_uniformBuffer = CreateBuffer<UniformBufferContent>(m_uniformData, RHI::BufferUsage::Uniform);
         }
 
         // create shader bind group layout
-        m_bindGroupLayout = m_context->CreateBindGroupLayout({ RHI::ShaderBinding{ RHI::ShaderBindingType::Buffer, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Pixel } });
+        m_bindGroupLayout = m_context->CreateBindGroupLayout({ RHI::ShaderBinding{ RHI::ShaderBindingType::Buffer, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Vertex } });
         SetupPipelines(m_bindGroupLayout);
         // create shader bind group
         m_bindGroupAllocator = m_context->CreateBindGroupAllocator();
@@ -177,7 +171,7 @@ public:
             RHI::BufferAttachmentUseInfo bufferUseInfo{};
             bufferUseInfo.access = RHI::AttachmentAccess::Read;
             bufferUseInfo.usage = RHI::AttachmentUsage::ShaderResource;
-            auto uniformBuffer = m_renderpass->ImportBufferResource("uniform-buffer", m_uniformData, bufferUseInfo);
+            auto uniformBuffer = m_renderpass->ImportBufferResource("uniform-buffer", m_uniformBuffer, bufferUseInfo);
 
             // setup bind elements
             m_renderpass->End();
@@ -203,7 +197,7 @@ public:
 
         m_bufferPool->FreeBuffer(m_indexBuffer);
         m_bufferPool->FreeBuffer(m_vertexBuffer);
-        m_bufferPool->FreeBuffer(m_uniformData);
+        m_bufferPool->FreeBuffer(m_uniformBuffer);
     }
 
     void OnUpdate() override
@@ -244,6 +238,9 @@ public:
     }
 
 private:
+    UniformBufferContent m_uniformData;
+
+private:
     std::unique_ptr<RHI::BufferPool> m_bufferPool;
 
     std::unique_ptr<RHI::BindGroupAllocator> m_bindGroupAllocator;
@@ -258,7 +255,7 @@ private:
 
     RHI::Handle<RHI::GraphicsPipeline> m_pipelineState;
 
-    RHI::Handle<RHI::Buffer> m_uniformData;
+    RHI::Handle<RHI::Buffer> m_uniformBuffer;
 
     RHI::Handle<RHI::Buffer> m_vertexBuffer;
 

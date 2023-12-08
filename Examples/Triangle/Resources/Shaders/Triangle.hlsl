@@ -15,22 +15,22 @@ struct PSOutput
 	float4 color : SV_TARGET0;
 };
 
+cbuffer UBO : register(b0)
+{
+	float4x4 viewProjection;
+};
+
 VSOutput VSMain(VSInput input)
 {
 	VSOutput output; 
-	output.position = float4(input.Pos * 0.5, 0, 1) ;
+	output.position = mul(viewProjection, float4(input.Pos * 0.5, 0, 1));
 	output.color    = input.Color;
 	return output;
 }
 
-cbuffer UBO : register(b0)
-{
-	float4 color;
-};
-
 PSOutput PSMain(VSOutput input)
 {
 	PSOutput output;
-	output.color = input.color + color; 
+	output.color = input.color; 
 	return output;
 }
