@@ -113,16 +113,7 @@ public:
     void OnInit() override
     {
         {
-            glm::mat4 modelMatrix = glm::translate(glm::identity<glm::mat4>(), glm::vec3{ 0.0f, 0.0f, 1.0f });
-
-            glm::mat4 viewMatrix = glm::lookAtLH(glm::vec3{ 0.0f, 0.0f, -1.0f },
-                                                 glm::vec3{ 0.0f, 0.0f, 1.0f },
-                                                 glm::vec3{ 0.0f, 1.0f, 0.0f });
-
-            // glm::mat4 projection = glm::orthoLH(-float(m_windowWidth) / 2.0f, float(m_windowWidth) / 2.0f, -float(m_windowHeight) / 2.0f, float(m_windowHeight) / 2.0f, 0.1f, 100000.0f);
-            glm::mat4 projection = glm::perspectiveLH(60.0f, float(m_windowWidth) / float(m_windowHeight), 0.1f, 10000.0f);
-
-            m_uniformData.viewProjection = projection * viewMatrix * modelMatrix;
+            m_uniformData.viewProjection = m_camera.GetProjection() * m_camera.GetView();
         }
 
         // create resources pool
@@ -214,6 +205,13 @@ public:
 
     void OnUpdate(Timestep timestep) override
     {
+        m_camera.Update(timestep);
+
+        auto projection = m_camera.GetProjection() * m_camera.GetView();
+        auto ptr = m_bufferPool->MapBuffer(m_uniformBuffer);
+        memcpy(ptr, &projection, sizeof(glm::mat4));
+        m_bufferPool->UnmapBuffer(m_uniformBuffer);
+
         (void)timestep;
 
         m_frameScheduler->Begin();

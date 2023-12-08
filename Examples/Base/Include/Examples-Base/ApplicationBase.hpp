@@ -7,6 +7,7 @@
 
 #include <Examples-Base/Timestep.hpp>
 #include <Examples-Base/Log.hpp>
+#include <Examples-Base/Camera.hpp>
 
 #include <glm/matrix.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -59,6 +60,8 @@ protected:
     virtual void OnShutdown() = 0;
 
     virtual void OnUpdate(Timestep timestep) = 0;
+
+    Camera m_camera;
 
     std::unique_ptr<RHI::Context> m_context;
 

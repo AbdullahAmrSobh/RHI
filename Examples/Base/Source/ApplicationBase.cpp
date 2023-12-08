@@ -101,6 +101,8 @@ ApplicationBase::ApplicationBase(std::string name, uint32_t width, uint32_t heig
 
     m_window = window;
 
+    m_camera.SetPerspective(60.0f, float(m_windowWidth) / float(m_windowHeight), 0.1f, 10000.0f);
+
     RHI::ApplicationInfo appInfo{};
     appInfo.applicationName = "RHI-App";
     appInfo.applicationVersion = RHI::MakeVersion(0, 1, 0);
@@ -143,9 +145,11 @@ void ApplicationBase::Run()
     double accumulator = 0.0;
     double deltaTime = 0.01;
 
+    using CursorPos = glm::vec<3, double>;
+    CursorPos previousCursorPos = {};
+
     while (!glfwWindowShouldClose(window))
     {
-        
         auto newTime = std::chrono::high_resolution_clock::now().time_since_epoch();
         double frameTime = std::chrono::duration<double>(newTime - currentTime).count();
         currentTime = newTime;
@@ -155,15 +159,27 @@ void ApplicationBase::Run()
 
         while (accumulator >= deltaTime)
         {
-            // TODO: do physics simulation here and input handling
+            CursorPos currentCursorPos = {};
+            glfwGetCursorPos(window, &currentCursorPos.x, &currentCursorPos.y);
+            auto cursorDelta = currentCursorPos - previousCursorPos;
+            previousCursorPos = currentCursorPos;
+
+            m_camera.keys.down = glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS;
+            m_camera.keys.up = glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS;
+            m_camera.keys.right = glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS;
+            m_camera.keys.left = glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS;
+
+            if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+            {
+                m_camera.Rotate({ -cursorDelta.y, cursorDelta.x, 0.0 });
+            }
 
             glfwPollEvents();
 
             accumulator -= deltaTime;
         }
 
-
-        // Render        
+        // Render
         OnUpdate(Timestep(deltaTime));
     }
 }
