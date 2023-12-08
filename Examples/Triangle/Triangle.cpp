@@ -1,5 +1,7 @@
-#include <Examples-Base/ExampleBase.hpp>
+#include <Examples-Base/ApplicationBase.hpp>
 #include <RHI/RHI.hpp>
+
+#include <iostream>
 
 // clang-format off
 std::vector<float> vertexData
@@ -23,11 +25,11 @@ struct UniformBufferContent
     glm::mat4 viewProjection;
 };
 
-class TriangleExample final : public ExampleBase
+class TriangleExample final : public ApplicationBase
 {
 public:
     TriangleExample()
-        : ExampleBase("Hello, Triangle", 800, 600)
+        : ApplicationBase("Hello, Triangle", 800, 600)
     {
     }
 
@@ -200,8 +202,10 @@ public:
         m_bufferPool->FreeBuffer(m_uniformBuffer);
     }
 
-    void OnUpdate() override
+    void OnUpdate(Timestep timestep) override
     {
+        std::cout << "Time now is: " << timestep << "\n";
+
         m_frameScheduler->Begin();
 
         m_commandListAllocator->Flush();
@@ -264,4 +268,10 @@ private:
     std::unique_ptr<RHI::Pass> m_renderpass;
 };
 
-EXAMPLE_ENTRY_POINT(TriangleExample)
+int main(int argc, const char** argv)
+{
+    (void)argc;
+    (void)argv;
+
+    return ApplicationBase::Entry<TriangleExample>();
+}

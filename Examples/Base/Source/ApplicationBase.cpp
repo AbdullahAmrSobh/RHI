@@ -1,4 +1,4 @@
-#include "Examples-Base/ExampleBase.hpp"
+#include "Examples-Base/ApplicationBase.hpp"
 
 #include <RHI-Vulkan/Loader.hpp>
 #include <cassert>
@@ -6,6 +6,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <chrono>
 
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3.h>
@@ -35,7 +36,7 @@ public:
     }
 };
 
-ImageData ExampleBase::LoadImage(std::string_view path) const
+ImageData ApplicationBase::LoadImage(std::string_view path) const
 {
     // Load the image using stb_image
     int width, height, channels;
@@ -50,10 +51,10 @@ ImageData ExampleBase::LoadImage(std::string_view path) const
 
     // Create ImageData object
     ImageData imageData;
-    imageData.width           = width;
-    imageData.height          = height;
-    imageData.depth           = 1; // Assuming single-layer images
-    imageData.channels        = channels;
+    imageData.width = width;
+    imageData.height = height;
+    imageData.depth = 1; // Assuming single-layer images
+    imageData.channels = channels;
     imageData.bytesPerChannel = 1; // Assuming 8-bit per channel data
 
     // Convert image data to std::vector<uint8_t>
@@ -65,7 +66,7 @@ ImageData ExampleBase::LoadImage(std::string_view path) const
     return imageData;
 }
 
-std::vector<uint32_t> ExampleBase::ReadBinaryFile(std::string_view path) const
+std::vector<uint32_t> ApplicationBase::ReadBinaryFile(std::string_view path) const
 {
     std::ifstream stream(path.data(), std::ios::ate | std::ios::binary);
 
@@ -84,7 +85,7 @@ std::vector<uint32_t> ExampleBase::ReadBinaryFile(std::string_view path) const
     return buffer;
 }
 
-ExampleBase::ExampleBase(std::string name, uint32_t width, uint32_t height)
+ApplicationBase::ApplicationBase(std::string name, uint32_t width, uint32_t height)
 {
     auto result = glfwInit();
     assert(result);
@@ -99,27 +100,27 @@ ExampleBase::ExampleBase(std::string name, uint32_t width, uint32_t height)
     m_window = window;
 
     RHI::ApplicationInfo appInfo{};
-    appInfo.applicationName    = "RHI-App";
+    appInfo.applicationName = "RHI-App";
     appInfo.applicationVersion = RHI::MakeVersion(0, 1, 0);
-    auto debugCallbacks        = std::make_unique<DebugCallbacks>();
-    m_context                  = RHI::CreateVulkanRHI(appInfo, std::move(debugCallbacks));
+    auto debugCallbacks = std::make_unique<DebugCallbacks>();
+    m_context = RHI::CreateVulkanRHI(appInfo, std::move(debugCallbacks));
 }
 
-void ExampleBase::Init()
+void ApplicationBase::Init()
 {
     WindowInfo windowInfo{};
-    windowInfo.hwnd      = glfwGetWin32Window(static_cast<GLFWwindow*>(m_window));
+    windowInfo.hwnd = glfwGetWin32Window(static_cast<GLFWwindow*>(m_window));
     windowInfo.hinstance = NULL;
 
     // create swapchain
     RHI::SwapchainCreateInfo createInfo{};
-    createInfo.win32Window.hwnd      = windowInfo.hwnd;
+    createInfo.win32Window.hwnd = windowInfo.hwnd;
     createInfo.win32Window.hinstance = windowInfo.hinstance;
-    createInfo.imageSize.width       = windowInfo.width;
-    createInfo.imageSize.height      = windowInfo.height;
-    createInfo.imageUsage            = RHI::ImageUsage::Color;
-    createInfo.imageFormat           = RHI::Format::BGRA8_UNORM;
-    createInfo.imageCount            = 3;
+    createInfo.imageSize.width = windowInfo.width;
+    createInfo.imageSize.height = windowInfo.height;
+    createInfo.imageUsage = RHI::ImageUsage::Color;
+    createInfo.imageFormat = RHI::Format::BGRA8_UNORM;
+    createInfo.imageCount = 3;
 
     m_swapchain = m_context->CreateSwapchain(createInfo);
 
@@ -129,19 +130,42 @@ void ExampleBase::Init()
     OnInit(windowInfo);
 }
 
-void ExampleBase::Shutdown()
+void ApplicationBase::Shutdown()
 {
     OnShutdown();
     glfwTerminate();
 }
 
-void ExampleBase::Run()
+void ApplicationBase::Run()
 {
     GLFWwindow* window = reinterpret_cast<GLFWwindow*>(m_window);
 
+    auto currentTime = std::chrono::high_resolution_clock::now().time_since_epoch();
+
+    double accumulator = 0.0;
+    double deltaTime = 0.01;
+
     while (!glfwWindowShouldClose(window))
     {
-        OnUpdate();
-        glfwPollEvents();
+        
+        auto newTime = std::chrono::high_resolution_clock::now().time_since_epoch();
+        double frameTime = std::chrono::duration<double>(newTime - currentTime).count();
+        currentTime = newTime;
+
+        frameTime = min(frameTime, 0.25);
+        accumulator += frameTime;
+
+        while (accumulator >= deltaTime)
+        {
+            // TODO: do physics simulation here and input handling
+
+            glfwPollEvents();
+
+            accumulator -= deltaTime;
+        }
+
+
+        // Render        
+        OnUpdate(Timestep(deltaTime));
     }
 }
