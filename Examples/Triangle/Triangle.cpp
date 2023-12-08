@@ -29,7 +29,7 @@ class TriangleExample final : public ApplicationBase
 {
 public:
     TriangleExample()
-        : ApplicationBase("Hello, Triangle", 800, 600)
+        : ApplicationBase("Hello, Triangle", 1600, 1200)
     {
     }
 
@@ -110,11 +110,21 @@ public:
         m_pipelineState = m_context->CreateGraphicsPipeline(psoCreateInfo);
     }
 
-    void OnInit(WindowInfo windowInfo) override
+    void OnInit() override
     {
-        m_uniformData.viewProjection = glm::identity<glm::mat4x4>();
+        {
+            glm::mat4 modelMatrix = glm::translate(glm::identity<glm::mat4>(), glm::vec3{ 0.0f, 0.0f, 1.0f });
 
-        (void)windowInfo;
+            glm::mat4 viewMatrix = glm::lookAtLH(glm::vec3{ 0.0f, 0.0f, -1.0f },
+                                                 glm::vec3{ 0.0f, 0.0f, 1.0f },
+                                                 glm::vec3{ 0.0f, 1.0f, 0.0f });
+
+            // glm::mat4 projection = glm::orthoLH(-float(m_windowWidth) / 2.0f, float(m_windowWidth) / 2.0f, -float(m_windowHeight) / 2.0f, float(m_windowHeight) / 2.0f, 0.1f, 100000.0f);
+            glm::mat4 projection = glm::perspectiveLH(60.0f, float(m_windowWidth) / float(m_windowHeight), 0.1f, 10000.0f);
+
+            m_uniformData.viewProjection = projection * viewMatrix * modelMatrix;
+        }
+
         // create resources pool
         {
             RHI::PoolCreateInfo createInfo{};
@@ -154,8 +164,8 @@ public:
             // setup attachments
             RHI::ImageCreateInfo createInfo{};
             createInfo.usageFlags = RHI::ImageUsage::Depth;
-            createInfo.size.width = 800;
-            createInfo.size.height = 600;
+            createInfo.size.width = m_windowWidth;
+            createInfo.size.height = m_windowHeight;
             createInfo.size.depth = 1;
             createInfo.format = RHI::Format::D32;
             createInfo.type = RHI::ImageType::Image2D;
@@ -204,7 +214,7 @@ public:
 
     void OnUpdate(Timestep timestep) override
     {
-        std::cout << "Time now is: " << timestep << "\n";
+        (void)timestep;
 
         m_frameScheduler->Begin();
 
@@ -215,15 +225,15 @@ public:
         cmd->Begin(*m_renderpass);
 
         cmd->SetViewport({
-            .width = 800,
-            .height = 600,
+            .width = float(m_windowWidth),
+            .height = float(m_windowHeight),
             .minDepth = 0.0,
             .maxDepth = 1.0,
         });
 
         cmd->SetSicssor({
-            .width = 800,
-            .height = 600,
+            .width = m_windowWidth,
+            .height = m_windowHeight,
         });
 
         cmd->Submit({

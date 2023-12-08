@@ -14,8 +14,6 @@
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
 
-
-
 struct ImageData
 {
     uint32_t width;
@@ -26,17 +24,12 @@ struct ImageData
     std::vector<uint8_t> data;
 };
 
-struct WindowInfo
-{
-    void* hwnd;
-    void* hinstance;
-    uint32_t width;
-    uint32_t height;
-};
-
 class ApplicationBase
 {
 public:
+    const uint32_t m_windowWidth;
+    const uint32_t m_windowHeight;
+
     ApplicationBase(std::string name, uint32_t width, uint32_t height);
     virtual ~ApplicationBase() = default;
 
@@ -61,7 +54,7 @@ protected:
 
     std::vector<uint32_t> ReadBinaryFile(std::string_view path) const;
 
-    virtual void OnInit(WindowInfo windowInfo) = 0;
+    virtual void OnInit() = 0;
 
     virtual void OnShutdown() = 0;
 

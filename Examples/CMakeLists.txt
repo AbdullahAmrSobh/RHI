@@ -17,6 +17,9 @@ CPMAddPackage(
 	NAME           RHI_glm
 	GIT_REPOSITORY git@github.com:g-truc/glm.git
 	GIT_TAG        0.9.9.8
+	OPTIONS
+		"GLM_CONFIG_CLIP_CONTROL ON"
+		"GLM_CLIP_CONTROL_ZO_BIT ON"
 )
 
 CPMAddPackage(

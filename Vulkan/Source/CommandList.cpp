@@ -329,6 +329,8 @@ namespace Vulkan
 
     void CommandList::RenderingBegin(Pass& pass)
     {
+
+        RHI::ImageSize2D renderArea {1600, 1200};
         std::vector<RHI::ImagePassAttachment*> passAttachments;
 
         for (auto& attachment : pass.m_imagePassAttachments)
@@ -362,8 +364,8 @@ namespace Vulkan
         renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
         renderingInfo.pNext = nullptr;
         renderingInfo.flags = 0;
-        renderingInfo.renderArea.extent.width = 800;
-        renderingInfo.renderArea.extent.height = 600;
+        renderingInfo.renderArea.extent.width = renderArea.width;
+        renderingInfo.renderArea.extent.height = renderArea.height;
         renderingInfo.renderArea.offset.x = 0;
         renderingInfo.renderArea.offset.y = 0;
         renderingInfo.layerCount = 1;

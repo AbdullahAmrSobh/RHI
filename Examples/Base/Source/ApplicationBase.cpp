@@ -86,13 +86,15 @@ std::vector<uint32_t> ApplicationBase::ReadBinaryFile(std::string_view path) con
 }
 
 ApplicationBase::ApplicationBase(std::string name, uint32_t width, uint32_t height)
+    : m_windowWidth(width)
+    , m_windowHeight(height)
 {
     auto result = glfwInit();
     assert(result);
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-    auto window = glfwCreateWindow(static_cast<uint32_t>(width), static_cast<uint32_t>(height), name.c_str(), nullptr, nullptr);
+    auto window = glfwCreateWindow(m_windowWidth, m_windowHeight, name.c_str(), nullptr, nullptr);
     assert(window);
 
     glfwMakeContextCurrent(window);
@@ -108,16 +110,12 @@ ApplicationBase::ApplicationBase(std::string name, uint32_t width, uint32_t heig
 
 void ApplicationBase::Init()
 {
-    WindowInfo windowInfo{};
-    windowInfo.hwnd = glfwGetWin32Window(static_cast<GLFWwindow*>(m_window));
-    windowInfo.hinstance = NULL;
-
     // create swapchain
     RHI::SwapchainCreateInfo createInfo{};
-    createInfo.win32Window.hwnd = windowInfo.hwnd;
-    createInfo.win32Window.hinstance = windowInfo.hinstance;
-    createInfo.imageSize.width = windowInfo.width;
-    createInfo.imageSize.height = windowInfo.height;
+    createInfo.win32Window.hwnd = glfwGetWin32Window(static_cast<GLFWwindow*>(m_window));
+    createInfo.win32Window.hinstance = NULL;
+    createInfo.imageSize.width = m_windowWidth;
+    createInfo.imageSize.height = m_windowHeight;
     createInfo.imageUsage = RHI::ImageUsage::Color;
     createInfo.imageFormat = RHI::Format::BGRA8_UNORM;
     createInfo.imageCount = 3;
@@ -127,7 +125,7 @@ void ApplicationBase::Init()
     // create frame scheduler
     m_frameScheduler = m_context->CreateFrameScheduler();
 
-    OnInit(windowInfo);
+    OnInit();
 }
 
 void ApplicationBase::Shutdown()

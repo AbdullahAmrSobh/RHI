@@ -23,7 +23,7 @@ cbuffer UBO : register(b0)
 VSOutput VSMain(VSInput input)
 {
 	VSOutput output; 
-	output.position = mul(viewProjection, float4(input.Pos * 0.5, 0, 1));
+	output.position = mul(viewProjection, float4(input.Pos, 0, 1));
 	output.color    = input.Color;
 	return output;
 }
