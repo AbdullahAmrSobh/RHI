@@ -84,26 +84,15 @@ public:
         auto shaderModule = m_context->CreateShaderModule(createInfo);
 
         RHI::GraphicsPipelineCreateInfo psoCreateInfo{};
-        psoCreateInfo.inputAssemblerState.attributes = {
-            {
-                .location = 0,
-                .binding = 0,
-                .format = RHI::Format::RGB32_FLOAT,
-                .offset = 0,
-            },
-            // {
-            //     .location = 1,
-            //     .binding = 0,
-            //     .format = RHI::Format::RGBA32_FLOAT,
-            //     .offset = RHI::GetFormatInfo(RHI::Format::RG32_FLOAT).bytesPerBlock,
-            // },
+        psoCreateInfo.inputAssemblerState.attributes = 
+        {
+            { .location = 0, .binding = 0, .format = RHI::Format::RGB32_FLOAT, .offset = 0, },
+            { .location = 1, .binding = 1, .format = RHI::Format::RGB32_FLOAT, .offset = 0, },
         };
-        psoCreateInfo.inputAssemblerState.bindings = {
-            {
-                .binding = 0,
-                .stride = uint32_t(RHI::GetFormatInfo(RHI::Format::RGB32_FLOAT).bytesPerBlock),
-                .stepRate = RHI::PipelineVertexInputRate::PerVertex,
-            }
+        psoCreateInfo.inputAssemblerState.bindings =
+        {
+            { .binding = 0, .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT), .stepRate = RHI::PipelineVertexInputRate::PerVertex, },
+            { .binding = 1, .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT), .stepRate = RHI::PipelineVertexInputRate::PerVertex, },
         };
         psoCreateInfo.vertexShaderModule = shaderModule.get();
         psoCreateInfo.vertexShaderName = "VSMain";
@@ -112,8 +101,9 @@ public:
         psoCreateInfo.topologyMode = RHI::PipelineTopologyMode::Triangles;
         psoCreateInfo.rasterizationState.cullMode = RHI::PipelineRasterizerStateCullMode::None;
         psoCreateInfo.renderTargetLayout = { { RHI::Format::BGRA8_UNORM }, RHI::Format::Unknown, RHI::Format::Unknown };
-        psoCreateInfo.depthStencilState.depthTestEnable = false;
-        psoCreateInfo.depthStencilState.depthWriteEnable = false;
+        psoCreateInfo.depthStencilState.depthTestEnable = true;
+        psoCreateInfo.depthStencilState.depthWriteEnable = true;
+        psoCreateInfo.depthStencilState.compareOperator = RHI::CompareOperator::Greater;
         psoCreateInfo.layout = m_pipelineLayout;
         psoCreateInfo.renderTargetLayout.colorAttachmentsFormats = { RHI::Format::BGRA8_UNORM };
         psoCreateInfo.renderTargetLayout.depthAttachmentFormat = RHI::Format::D32;
@@ -174,6 +164,14 @@ public:
             m_renderpass->Begin();
 
             // setup attachments
+            RHI::ImageAttachmentUseInfo useInfo{};
+            useInfo.usage = RHI::AttachmentUsage::RenderTarget;
+            useInfo.subresource.imageAspects = RHI::ImageAspect::Color;
+            useInfo.loadStoreOperations.loadOperation = RHI::ImageLoadOperation::Discard;
+            useInfo.loadStoreOperations.storeOperation = RHI::ImageStoreOperation::Store;
+            useInfo.clearValue.color = { 0.3f, 0.6f, 0.9f, 1.0f };
+            m_renderpass->ImportSwapchainImageResource("color-attachment", m_swapchain.get(), useInfo);
+
             RHI::ImageCreateInfo createInfo{};
             createInfo.usageFlags = RHI::ImageUsage::Depth;
             createInfo.size.width = m_windowWidth;
@@ -182,13 +180,10 @@ public:
             createInfo.format = RHI::Format::D32;
             createInfo.type = RHI::ImageType::Image2D;
 
-            RHI::ImageAttachmentUseInfo useInfo{};
-            useInfo.usage = RHI::AttachmentUsage::RenderTarget;
-            useInfo.subresource.imageAspects = RHI::ImageAspect::Color;
-            useInfo.loadStoreOperations.loadOperation = RHI::ImageLoadOperation::Discard;
-            useInfo.loadStoreOperations.storeOperation = RHI::ImageStoreOperation::Store;
-            useInfo.clearValue.color = { 0.3f, 0.6f, 0.9f, 1.0f };
-            m_renderpass->ImportSwapchainImageResource("color-attachment", m_swapchain.get(), useInfo);
+            useInfo.usage = RHI::AttachmentUsage::Depth;
+            useInfo.subresource.imageAspects = RHI::ImageAspect::Depth;
+            useInfo.clearValue.depth.depthValue = 1.0f;
+            m_renderpass->CreateTransientImageResource("depth-attachment", createInfo, useInfo);
 
             // auto textureAttachment = m_renderpass->ImportImageResource("texture", m_image, useInfo);
 
@@ -258,7 +253,7 @@ public:
         cmd->Submit({
             .pipelineState = m_pipelineState,
             .bindGroups = m_bindGroup,
-            .vertexBuffers = m_mesh.positionsBuffer,
+            .vertexBuffers = { m_mesh.positionsBuffer, m_mesh.normalsBuffer },
             .indexBuffers = m_mesh.indexBuffer,
             .parameters = { .elementCount = m_mesh.drawElementsCount },
         });

@@ -31,17 +31,18 @@ namespace Vulkan
 
     struct VirtualAllocation
     {
-        VmaVirtualBlock blockHandle;
-        VmaVirtualAllocation handle;
-        size_t offset;
+
     };
 
     struct Allocation
     {
         VmaAllocation handle;
         VmaAllocationInfo info;
-        AllocationType type;
-        VirtualAllocation virtualAllocation;
+
+        size_t offset;
+
+        VmaVirtualBlock virtualBlock;
+        VmaVirtualAllocation virtualHandle;
     };
 
     struct Image : RHI::Image

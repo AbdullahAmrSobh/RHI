@@ -383,18 +383,11 @@ namespace RHI
         virtual void End()                                  = 0;
 
         /// @brief bind the given resource to a memory allocation (may alias).
-        virtual void Allocate(ImageAttachment* attachment)  = 0;
+        virtual void Allocate(Attachment* attachment)  = 0;
 
         /// @brief returns the memory used by this resource to allocator, to be reused.
         /// @note this means that this resource wont be used in any subsequent operations.
-        virtual void Free(ImageAttachment* attachment)      = 0;
-
-        /// @brief bind the given resource to a memory allocation (may alias).
-        virtual void Allocate(BufferAttachment* attachment) = 0;
-
-        /// @brief returns the memory used by this resource to allocator, to be reused.
-        /// @note this means that this resource wont be used in any subsequent operations.
-        virtual void Free(BufferAttachment* attachment)     = 0;
+        virtual void Free(Attachment* attachment)      = 0;
     };
 
     class RHI_EXPORT AttachmentsRegistry

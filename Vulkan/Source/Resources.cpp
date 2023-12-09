@@ -44,12 +44,10 @@ namespace Vulkan
 
         if (isTransientResource)
         {
-            allocation.type = AllocationType::Aliasing;
             result = vkCreateImage(context->m_device, &vkCreateInfo, nullptr, &handle);
         }
         else
         {
-            allocation.type = AllocationType::Default;
             result = vmaCreateImage(context->m_allocator, &vkCreateInfo, &allocationInfo, &handle, &allocation.handle, &allocation.info);
         }
 
@@ -95,12 +93,10 @@ namespace Vulkan
         VkResult result = VK_ERROR_UNKNOWN;
         if (isTransientResource)
         {
-            allocation.type = AllocationType::Aliasing;
             result = vkCreateBuffer(context->m_device, &vkCreateInfo, nullptr, &handle);
         }
         else
         {
-            allocation.type = AllocationType::Default;
             result = vmaCreateBuffer(context->m_allocator, &vkCreateInfo, &allocationInfo, &handle, &allocation.handle, &allocation.info);
         }
 

@@ -222,7 +222,13 @@ namespace RHI
 
     void FrameScheduler::Compile()
     {
-        CompileTransientAttachments();
+        // TODO hack to avoid over allocating
+        static bool shouldCompile = true;
+        if (shouldCompile)
+        {
+            CompileTransientAttachments();
+            shouldCompile = false;
+        }
 
         CompileAttachmentsViews();
     }

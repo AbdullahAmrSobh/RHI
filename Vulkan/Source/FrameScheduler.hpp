@@ -30,17 +30,11 @@ namespace Vulkan
         void Begin() override;
         void End() override;
 
-        void Allocate(RHI::ImageAttachment* attachment) override;
+        void Allocate(RHI::Attachment* attachment) override;
 
-        void Free(RHI::ImageAttachment* attachment) override;
+        void Free(RHI::Attachment* attachment) override;
 
-        void Allocate(RHI::BufferAttachment* attachment) override;
-
-        void Free(RHI::BufferAttachment* attachment) override;
-
-        std::optional<Allocation> Allocate(VkMemoryRequirements requirements);
-
-        void Free(Allocation allocation);
+        Allocation AllocateInternal(VkMemoryRequirements requirements);
 
         size_t CalculatePreferredBlockSize(uint32_t memTypeIndex);
 

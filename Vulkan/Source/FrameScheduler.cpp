@@ -41,58 +41,81 @@ namespace Vulkan
         }
     }
 
-    void TransientAttachmentAllocator::Allocate(RHI::ImageAttachment* attachment)
+    void TransientAttachmentAllocator::Allocate(RHI::Attachment* attachment)
     {
         RHI_ASSERT(attachment->lifetime == RHI::AttachmentLifetime::Transient);
 
-        auto [handle, image] = m_context->m_imageOwner.InsertZerod();
-        attachment->handle = handle;
-
-        auto result = image.Init(m_context, {}, attachment->info, nullptr, true);
-        RHI_ASSERT(result == RHI::ResultCode::Success);
-
-        auto requirements = image.GetMemoryRequirements(m_context->m_device);
-        if (auto allocation = Allocate(requirements); allocation.has_value())
+        switch (attachment->type)
         {
-            RHI_ASSERT(allocation->type == AllocationType::Aliasing);
-            auto result = vmaBindImageMemory2(m_context->m_allocator, allocation->handle, allocation->virtualAllocation.offset, image.handle, nullptr);
-            VULKAN_ASSERT_SUCCESS(result);
+        case RHI::AttachmentType::Image:
+            {
+                auto imageAttachment = (RHI::ImageAttachment*)attachment;
+                auto [handle, image] = m_context->m_imageOwner.InsertZerod();
+                imageAttachment->handle = handle;
+
+                {
+                    auto result = image.Init(m_context, {}, imageAttachment->info, nullptr, true);
+                    RHI_ASSERT(result == RHI::ResultCode::Success);
+                }
+
+                auto memoryRequirements = image.GetMemoryRequirements(m_context->m_device);
+                image.allocation = AllocateInternal(memoryRequirements);
+                {
+                    auto result = vmaBindImageMemory2(m_context->m_allocator, image.allocation.handle, image.allocation.offset, image.handle, nullptr);
+                    VULKAN_ASSERT_SUCCESS(result);
+                }
+
+                break;
+            }
+        case RHI::AttachmentType::Buffer:
+            {
+                auto bufferAttachment = (RHI::BufferAttachment*)attachment;
+                auto [handle, buffer] = m_context->m_bufferOwner.InsertZerod();
+                bufferAttachment->handle = handle;
+
+                {
+                    auto result = buffer.Init(m_context, {}, bufferAttachment->info, nullptr, true);
+                    RHI_ASSERT(result == RHI::ResultCode::Success);
+                }
+
+                auto memoryRequirements = buffer.GetMemoryRequirements(m_context->m_device);
+                buffer.allocation = AllocateInternal(memoryRequirements);
+                {
+                    auto result = vmaBindBufferMemory2(m_context->m_allocator, buffer.allocation.handle, buffer.allocation.offset, buffer.handle, nullptr);
+                    VULKAN_ASSERT_SUCCESS(result);
+                }
+                break;
+            }
+        default: RHI_UNREACHABLE();
         }
     }
 
-    void TransientAttachmentAllocator::Free(RHI::ImageAttachment* attachment)
-    {
-        auto image = m_context->m_imageOwner.Get(attachment->handle);
-        RHI_ASSERT(image);
-
-        Free(image->allocation);
-    }
-
-    void TransientAttachmentAllocator::Allocate(RHI::BufferAttachment* attachment)
+    void TransientAttachmentAllocator::Free(RHI::Attachment* attachment)
     {
         RHI_ASSERT(attachment->lifetime == RHI::AttachmentLifetime::Transient);
 
-        auto [handle, buffer] = m_context->m_bufferOwner.InsertZerod();
-        attachment->handle = handle;
+        Allocation allocation{};
 
-        auto result = buffer.Init(m_context, {}, attachment->info, nullptr, true);
-        RHI_ASSERT(result == RHI::ResultCode::Success);
-
-        auto requirements = buffer.GetMemoryRequirements(m_context->m_device);
-        if (auto allocation = Allocate(requirements); allocation.has_value())
+        switch (attachment->type)
         {
-            RHI_ASSERT(allocation->type == AllocationType::Aliasing);
-            auto result = vmaBindBufferMemory2(m_context->m_allocator, allocation->handle, allocation->virtualAllocation.offset, buffer.handle, nullptr);
-            VULKAN_ASSERT_SUCCESS(result);
+        case RHI::AttachmentType::Image:
+            {
+                auto imageAttachment = (RHI::ImageAttachment*)attachment;
+                auto image = m_context->m_imageOwner.Get(imageAttachment->handle);
+                allocation = image->allocation;
+                break;
+            }
+        case RHI::AttachmentType::Buffer:
+            {
+                auto bufferAttachment = (RHI::BufferAttachment*)attachment;
+                auto buffer = m_context->m_bufferOwner.Get(bufferAttachment->handle);
+                allocation = buffer->allocation;
+                break;
+            }
+        default: RHI_UNREACHABLE();
         }
-    }
 
-    void TransientAttachmentAllocator::Free(RHI::BufferAttachment* attachment)
-    {
-        auto buffer = m_context->m_imageOwner.Get(attachment->handle);
-        RHI_ASSERT(buffer);
-
-        Free(buffer->allocation);
+        vmaVirtualFree(allocation.virtualBlock, allocation.virtualHandle);
     }
 
     size_t TransientAttachmentAllocator::CalculatePreferredBlockSize(uint32_t memTypeIndex)
@@ -132,12 +155,12 @@ namespace Vulkan
         return block;
     }
 
-    std::optional<Allocation> TransientAttachmentAllocator::Allocate(VkMemoryRequirements requirements)
+    Allocation TransientAttachmentAllocator::AllocateInternal(VkMemoryRequirements requirements)
     {
-        Allocation allocation;
-        allocation.type = AllocationType::Aliasing;
+        size_t offset = SIZE_MAX;
+        VmaVirtualAllocation virtualHandle = VK_NULL_HANDLE;
 
-        for (auto& block : m_blocks)
+        for (const auto& block : m_blocks)
         {
             if ((block.memoryProperties & requirements.memoryTypeBits) != requirements.memoryTypeBits)
             {
@@ -149,38 +172,36 @@ namespace Vulkan
             createInfo.alignment = requirements.size;
             createInfo.flags = VMA_VIRTUAL_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT;
             createInfo.pUserData = nullptr;
-            auto result = vmaVirtualAllocate(block.virtualBlock, &createInfo, &allocation.virtualAllocation.handle, &allocation.virtualAllocation.offset);
+            auto result = vmaVirtualAllocate(block.virtualBlock, &createInfo, &virtualHandle, &offset);
+            VULKAN_ASSERT_SUCCESS(result);
 
-            if (result == VK_SUCCESS)
-            {
-                allocation.handle = block.allocation;
-                allocation.info = block.info;
-                return allocation;
-            }
+            Allocation allocation{};
+            allocation.handle = block.allocation;
+            vmaGetAllocationInfo(m_context->m_allocator, block.allocation, &allocation.info);
+            allocation.offset = offset;
+            allocation.virtualBlock = block.virtualBlock;
+            allocation.virtualHandle = virtualHandle;
+            return allocation;
         }
 
-        Block block = m_blocks.emplace_back(CreateBlockNewBlock(requirements));
-        allocation.handle = block.allocation;
+        const auto& block = m_blocks.emplace_back(CreateBlockNewBlock(requirements));
 
         VmaVirtualAllocationCreateInfo createInfo{};
         createInfo.size = block.info.size;
         createInfo.alignment = requirements.size;
         createInfo.flags = VMA_VIRTUAL_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT;
         createInfo.pUserData = nullptr;
-        allocation.info = block.info;
-        auto result = vmaVirtualAllocate(block.virtualBlock, &createInfo, &allocation.virtualAllocation.handle, &allocation.virtualAllocation.offset);
 
-        if (result == VK_SUCCESS)
-        {
-            return allocation;
-        }
+        auto result = vmaVirtualAllocate(block.virtualBlock, &createInfo, &virtualHandle, &offset);
+        VULKAN_ASSERT_SUCCESS(result);
 
-        return std::nullopt;
-    }
-
-    void TransientAttachmentAllocator::Free(Allocation allocation)
-    {
-        vmaVirtualFree(allocation.virtualAllocation.blockHandle, allocation.virtualAllocation.handle);
+        Allocation allocation{};
+        allocation.handle = block.allocation;
+        vmaGetAllocationInfo(m_context->m_allocator, block.allocation, &allocation.info);
+        allocation.offset = offset;
+        allocation.virtualBlock = block.virtualBlock;
+        allocation.virtualHandle = virtualHandle;
+        return allocation;
     }
 
     ///////////////////////////////////////////////////////////////////////////

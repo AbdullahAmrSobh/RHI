@@ -95,7 +95,7 @@ namespace RHI
     uint32_t GetFormatByteSize(Format format)
     {
         auto info = GetFormatInfo(format);
-        return info.blockSize;
+        return info.bytesPerBlock;
     }
 
     uint32_t GetFormatComponentByteSize(Format format)
