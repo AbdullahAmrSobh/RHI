@@ -15,6 +15,7 @@ aams_add_target(
         glm
         assimp
         RHI::RHI
+        ImGui
     RUNTIME_LIBRARIES
         RHI::Vulkan
 )

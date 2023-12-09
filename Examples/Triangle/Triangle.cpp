@@ -37,8 +37,10 @@ public:
     struct Mesh
     {
         uint32_t drawElementsCount;
-        RHI::Handle<RHI::Buffer> vertexBuffer;
+
         RHI::Handle<RHI::Buffer> indexBuffer;
+        RHI::Handle<RHI::Buffer> positionsBuffer;
+        RHI::Handle<RHI::Buffer> normalsBuffer;
     };
 
     Mesh LoadScene(const char* path)
@@ -58,12 +60,14 @@ public:
         }
 
         auto indexBuffer = CreateBuffer<uint32_t>(indexBufferData, RHI::BufferUsage::Index);
-        auto vertexBuffer = CreateBuffer(RHI::TL::Span{mesh->mVertices, mesh->mNumVertices}, RHI::BufferUsage::Vertex);
+        auto positionsBuffer = CreateBuffer<aiVector3D>({ mesh->mVertices, mesh->mNumVertices }, RHI::BufferUsage::Vertex);
+        auto normalsBuffer = CreateBuffer<aiVector3D>({ mesh->mNormals, mesh->mNumVertices }, RHI::BufferUsage::Vertex);
 
         Mesh result{};
         result.drawElementsCount = indexBufferData.size();
         result.indexBuffer = indexBuffer;
-        result.vertexBuffer = vertexBuffer;
+        result.positionsBuffer = positionsBuffer;
+        result.normalsBuffer = normalsBuffer;
         return result;
     }
 
@@ -216,7 +220,7 @@ public:
         m_context->DestroyGraphicsPipeline(m_pipelineState);
 
         m_bufferPool->FreeBuffer(m_mesh.indexBuffer);
-        m_bufferPool->FreeBuffer(m_mesh.vertexBuffer);
+        m_bufferPool->FreeBuffer(m_mesh.positionsBuffer);
         m_bufferPool->FreeBuffer(m_uniformBuffer);
     }
 
@@ -254,7 +258,7 @@ public:
         cmd->Submit({
             .pipelineState = m_pipelineState,
             .bindGroups = m_bindGroup,
-            .vertexBuffers = m_mesh.vertexBuffer,
+            .vertexBuffers = m_mesh.positionsBuffer,
             .indexBuffers = m_mesh.indexBuffer,
             .parameters = { .elementCount = m_mesh.drawElementsCount },
         });

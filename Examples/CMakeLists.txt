@@ -47,6 +47,8 @@ CPMAddPackage(
 		# "ASSIMP_BUILD_ZLIB ON"
 )
 
+add_subdirectory(ImGui-1.90.0)
+
 # Add examples
 add_subdirectory(Base)
 add_subdirectory(Triangle)
