@@ -3,29 +3,24 @@
 - [] ray tracing support
 - [] mesh shaders support
 - [] dynamic shader bind groups / bindless draws
-- [] validation layer
+- [x] validation layer
 - [] multi-pass setup
-- [] fix memory leaks
+- [x] fix memory leaks
 - [] unify interface (RAII vs raw-handles make a decision) 
-- [] make Separate types for graphics, compute and ray tracing pipelines
 - [] rename resources and name spaces 
 - [] reference Frame Graph resource directly (no attachments interface)
-- [] rename Frame Graph to Render graph
 - [] memory defragmentation for graph and pool resources
-- [] resource delete queue
 - [] swapchain resize
 - [] multithreading support
-- [] select memory type for images
+- [x] select memory type for images
 - [] stream resources support
 - [] add profiling/instrumentation
 - [] multithreading support
-- [] resource copy / staging
-- [] multiple command list per pass
+- [x] resource copy / staging
+- [x] multiple command list per pass
 - [x] bind group layout object
 - [x] command list reuse
 - [x] cmake cleanup
-- [] remove handles (for now)
-- [] re add handles when everything is finished and is working proberly
 - [] dont create vkBufferView when not needed (base on attachment usage)
 - [] add CreateInfo structs validation layer
 
@@ -119,3 +114,6 @@ For every image attachment associated with swapchain, create image views per eve
 Resource Loader 
 
 Scene Graph
+
+convert aiMatrix4x4 to glm::mat4
+create scene graph

@@ -220,6 +220,15 @@ namespace Vulkan
                     command.parameters.vertexOffset,
                     static_cast<int32_t>(command.parameters.firstInstance));
             }
+            else
+            {
+                vkCmdDraw(
+                    m_commandBuffer,
+                    command.parameters.elementCount,
+                    command.parameters.instanceCount,
+                    command.parameters.firstElement,
+                    command.parameters.firstInstance);
+            }
         }
         else
         {
@@ -329,8 +338,7 @@ namespace Vulkan
 
     void CommandList::RenderingBegin(Pass& pass)
     {
-
-        RHI::ImageSize2D renderArea {1600, 1200};
+        RHI::ImageSize2D renderArea{ 1600, 1200 };
         std::vector<RHI::ImagePassAttachment*> passAttachments;
 
         for (auto& attachment : pass.m_imagePassAttachments)

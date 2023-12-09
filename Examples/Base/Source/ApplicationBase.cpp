@@ -102,6 +102,8 @@ ApplicationBase::ApplicationBase(std::string name, uint32_t width, uint32_t heig
     m_window = window;
 
     m_camera.SetPerspective(60.0f, float(m_windowWidth) / float(m_windowHeight), 0.1f, 10000.0f);
+    m_camera.SetMovementSpeed(0.5);
+    m_camera.SetRotationSpeed(0.5);
 
     RHI::ApplicationInfo appInfo{};
     appInfo.applicationName = "RHI-App";

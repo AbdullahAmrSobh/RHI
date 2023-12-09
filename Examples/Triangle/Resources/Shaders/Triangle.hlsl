@@ -1,7 +1,6 @@
 struct VSInput
 {
-	[[vk::location(0)]] float2 Pos : POSITION0;
-	[[vk::location(1)]] float4 Color : COLOR0;
+	[[vk::location(0)]] float3 position : POSITION0;
 };
 
 struct VSOutput
@@ -23,8 +22,8 @@ cbuffer UBO : register(b0)
 VSOutput VSMain(VSInput input)
 {
 	VSOutput output; 
-	output.position = mul(viewProjection, float4(input.Pos, 0, 1));
-	output.color    = input.Color;
+	output.position = mul(viewProjection, float4(input.position, 1));
+	output.color    = float4(1.0, 1.0, 1.0, 1.0);
 	return output;
 }
 

@@ -1,24 +1,9 @@
 #include <Examples-Base/ApplicationBase.hpp>
 #include <RHI/RHI.hpp>
 
-#include <iostream>
-
-// clang-format off
-std::vector<float> vertexData
-    {
-        -1.0, -1.0, 1.0, 1.0, 0.0, 1.0,
-         1.0, -1.0, 0.0, 1.0, 1.0, 1.0,
-         1.0,  1.0, 1.0, 0.0, 1.0, 1.0,
-        -1.0,  1.0, 1.0, 1.0, 0.0, 1.0,
-    };
-
-std::vector<uint32_t> indexData = 
-    { 
-        0, 1, 3,
-        1, 3, 2,
-    };
-
-// clang-format on
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
 
 struct UniformBufferContent
 {
@@ -49,6 +34,39 @@ public:
         return buffer;
     }
 
+    struct Mesh
+    {
+        uint32_t drawElementsCount;
+        RHI::Handle<RHI::Buffer> vertexBuffer;
+        RHI::Handle<RHI::Buffer> indexBuffer;
+    };
+
+    Mesh LoadScene(const char* path)
+    {
+        Assimp::Importer importer{};
+        auto scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_GenSmoothNormals);
+        auto mesh = scene->mMeshes[0];
+
+        std::vector<uint32_t> indexBufferData;
+        indexBufferData.reserve(mesh->mNumFaces * 3);
+        for (uint32_t i = 0; i < mesh->mNumFaces; i++)
+        {
+            for (uint32_t j = 0; j < mesh->mFaces[i].mNumIndices; j++)
+            {
+                indexBufferData.push_back(mesh->mFaces[i].mIndices[j]);
+            }
+        }
+
+        auto indexBuffer = CreateBuffer<uint32_t>(indexBufferData, RHI::BufferUsage::Index);
+        auto vertexBuffer = CreateBuffer(RHI::TL::Span{mesh->mVertices, mesh->mNumVertices}, RHI::BufferUsage::Vertex);
+
+        Mesh result{};
+        result.drawElementsCount = indexBufferData.size();
+        result.indexBuffer = indexBuffer;
+        result.vertexBuffer = vertexBuffer;
+        return result;
+    }
+
     void SetupPipelines(RHI::Handle<RHI::BindGroupLayout> bindGroupLayout)
     {
         m_pipelineLayout = m_context->CreatePipelineLayout({ bindGroupLayout });
@@ -66,20 +84,20 @@ public:
             {
                 .location = 0,
                 .binding = 0,
-                .format = RHI::Format::RG32_FLOAT,
+                .format = RHI::Format::RGB32_FLOAT,
                 .offset = 0,
             },
-            {
-                .location = 1,
-                .binding = 0,
-                .format = RHI::Format::RGBA32_FLOAT,
-                .offset = RHI::GetFormatInfo(RHI::Format::RG32_FLOAT).bytesPerBlock,
-            },
+            // {
+            //     .location = 1,
+            //     .binding = 0,
+            //     .format = RHI::Format::RGBA32_FLOAT,
+            //     .offset = RHI::GetFormatInfo(RHI::Format::RG32_FLOAT).bytesPerBlock,
+            // },
         };
         psoCreateInfo.inputAssemblerState.bindings = {
             {
                 .binding = 0,
-                .stride = uint32_t(RHI::GetFormatInfo(RHI::Format::RG32_FLOAT).bytesPerBlock + RHI::GetFormatInfo(RHI::Format::RGBA32_FLOAT).bytesPerBlock),
+                .stride = uint32_t(RHI::GetFormatInfo(RHI::Format::RGB32_FLOAT).bytesPerBlock),
                 .stepRate = RHI::PipelineVertexInputRate::PerVertex,
             }
         };
@@ -121,14 +139,13 @@ public:
             RHI::PoolCreateInfo createInfo{};
             createInfo.heapType = RHI::MemoryType::CPU;
             createInfo.allocationAlgorithm = RHI::AllocationAlgorithm::Linear;
-            createInfo.blockSize = 10 * RHI::AllocationSizeConstants::KB;
+            createInfo.blockSize = 64 * RHI::AllocationSizeConstants::MB;
             createInfo.minBlockAlignment = alignof(uint64_t);
 
             m_bufferPool = m_context->CreateBufferPool(createInfo);
 
             // create buffer resource
-            m_vertexBuffer = CreateBuffer<float>({ vertexData.data(), vertexData.size() }, RHI::BufferUsage::Vertex);
-            m_indexBuffer = CreateBuffer<uint32_t>({ indexData.data(), indexData.size() }, RHI::BufferUsage::Index);
+            m_mesh = LoadScene("./Resources/Meshes/StanfordBunny.obj");
             m_uniformBuffer = CreateBuffer<UniformBufferContent>(m_uniformData, RHI::BufferUsage::Uniform);
         }
 
@@ -198,8 +215,8 @@ public:
         m_context->DestroyPipelineLayout(m_pipelineLayout);
         m_context->DestroyGraphicsPipeline(m_pipelineState);
 
-        m_bufferPool->FreeBuffer(m_indexBuffer);
-        m_bufferPool->FreeBuffer(m_vertexBuffer);
+        m_bufferPool->FreeBuffer(m_mesh.indexBuffer);
+        m_bufferPool->FreeBuffer(m_mesh.vertexBuffer);
         m_bufferPool->FreeBuffer(m_uniformBuffer);
     }
 
@@ -237,9 +254,9 @@ public:
         cmd->Submit({
             .pipelineState = m_pipelineState,
             .bindGroups = m_bindGroup,
-            .vertexBuffers = m_vertexBuffer,
-            .indexBuffers = m_indexBuffer,
-            .parameters = { .elementCount = 6 },
+            .vertexBuffers = m_mesh.vertexBuffer,
+            .indexBuffers = m_mesh.indexBuffer,
+            .parameters = { .elementCount = m_mesh.drawElementsCount },
         });
 
         cmd->End();
@@ -269,9 +286,7 @@ private:
 
     RHI::Handle<RHI::Buffer> m_uniformBuffer;
 
-    RHI::Handle<RHI::Buffer> m_vertexBuffer;
-
-    RHI::Handle<RHI::Buffer> m_indexBuffer;
+    Mesh m_mesh;
 
     std::unique_ptr<RHI::Pass> m_renderpass;
 };

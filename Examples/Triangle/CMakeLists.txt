@@ -28,3 +28,17 @@ RHICompileShaders(
     TARGET Triangle
     SHADER_FILES ${SHADER_FILES_LIST}
 )
+
+function(copy_resources)
+  # Get the source and destination directories
+  set(source_dir ${CMAKE_CURRENT_SOURCE_DIR}/Resources)
+  set(destination_dir ${CMAKE_CURRENT_BINARY_DIR}/Resources)
+
+  # Make sure the destination directory exists
+  file(MAKE_DIRECTORY ${destination_dir})
+
+  # Recursively copy all files
+  file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/Resources DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
+endfunction()
+
+copy_resources()
