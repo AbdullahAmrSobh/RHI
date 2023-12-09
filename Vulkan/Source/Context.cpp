@@ -268,6 +268,7 @@ namespace Vulkan
             }
 
             VkPhysicalDeviceFeatures enabledFeatures{};
+            enabledFeatures.samplerAnisotropy = VK_TRUE;
 
             VkPhysicalDeviceSynchronization2Features syncFeature{};
             syncFeature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES;

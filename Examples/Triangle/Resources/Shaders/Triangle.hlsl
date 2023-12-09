@@ -1,13 +1,15 @@
 struct VSInput
 {
-	[[vk::location(0)]] float3 position : POSITION0 : register(c0);
-	[[vk::location(1)]] float3 normal   : NORMAL0   : register(c1);
+	[[vk::location(0)]] float3 position : POSITION0;
+	[[vk::location(1)]] float3 normal   : NORMAL0;
+	[[vk::location(2)]] float2 uv0      : TEXCOORD0;
 };
 
 struct VSOutput
 {
 	float4 position : SV_POSITION;
-	float4 color : TEXCOORD;
+	float2 uv: TEXCOORD;
+	float4 color : COLOR;
 };
 
 struct PSOutput
@@ -15,10 +17,13 @@ struct PSOutput
 	float4 color : SV_TARGET0;
 };
 
-cbuffer UBO : register(b0)
+[[vk::binding(0)]] cbuffer UBO : register(b0)
 {
 	float4x4 viewProjection;
 };
+
+[[vk::binding(1)]] Texture2D texture : register(t0);
+[[vk::binding(2)]] SamplerState textureSampler : register(s0);
 
 float4 NormalToColor(float3 normal)
 {
@@ -33,12 +38,15 @@ VSOutput VSMain(VSInput input)
 	VSOutput output;
 	output.position = mul(viewProjection, finalPosition);
 	output.color    = NormalToColor(input.normal);
+	output.uv       = input.uv0;
 	return output;
 }
 
 PSOutput PSMain(VSOutput input)
 {
+	float4 finalColor = texture.Sample(textureSampler, input.uv);
+
 	PSOutput output;
-	output.color = input.color;
+	output.color = finalColor;
 	return output;
 }

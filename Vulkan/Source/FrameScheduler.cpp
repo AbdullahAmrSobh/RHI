@@ -333,6 +333,38 @@ namespace Vulkan
         return true;
     }
 
+    bool FrameScheduler::Execute(RHI::TL::Span<RHI::CommandList*> commandLists)
+    {
+        auto context = static_cast<Context*>(m_context);
+
+        std::vector<VkCommandBufferSubmitInfo> commandBuffers = {};
+
+        for (auto commandList : commandLists)
+        {
+            VkCommandBufferSubmitInfo submitInfo{};
+            submitInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+            submitInfo.commandBuffer = static_cast<CommandList*>(commandList)->m_commandBuffer;
+            commandBuffers.push_back(submitInfo);
+        }
+
+        auto fence = context->CreateFence();
+
+        VkSubmitInfo2 submitInfo = {};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+        submitInfo.pNext = nullptr;
+        submitInfo.flags = 0;
+        submitInfo.commandBufferInfoCount = commandBuffers.size();
+        submitInfo.pCommandBufferInfos = commandBuffers.data();
+        auto result = vkQueueSubmit2(context->m_graphicsQueue, 1, &submitInfo, fence);
+        VULKAN_ASSERT_SUCCESS(result);
+
+        result = vkWaitForFences(context->m_device, 1, &fence, VK_TRUE, UINT64_MAX);
+        VULKAN_ASSERT_SUCCESS(result);
+
+        return true;
+    }
+
+
     void FrameScheduler::ExecutePass(RHI::Pass& passBase)
     {
         auto context = static_cast<Context*>(m_context);
@@ -363,7 +395,6 @@ namespace Vulkan
         // submitInfo.pSignalSemaphoreInfos = signalSemaphores.data();
 
         auto fence = GetCurrentFrameFence();
-        // auto fence = VK_NULL_HANDLE;
 
         auto result = vkQueueSubmit2(context->m_graphicsQueue, 1, &submitInfo, fence);
         VULKAN_ASSERT_SUCCESS(result);

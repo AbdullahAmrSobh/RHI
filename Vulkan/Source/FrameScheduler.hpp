@@ -79,6 +79,8 @@ namespace Vulkan
 
         bool WaitIdle(uint64_t waitTimeNano) override;
 
+        bool Execute(RHI::TL::Span<RHI::CommandList*> commandLsits) override;
+
         void ExecutePass(RHI::Pass& pass) override;
 
         void OnFrameBegin() override;

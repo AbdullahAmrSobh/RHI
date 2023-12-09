@@ -19,7 +19,8 @@ namespace Vulkan
 
     RHI::ResultCode Image::Init(Context* context, const VmaAllocationCreateInfo allocationInfo, const RHI::ImageCreateInfo& createInfo, ImagePool* parentPool, bool isTransientResource)
     {
-        (void)parentPool;
+        pool = parentPool;
+
         VkImageCreateInfo vkCreateInfo{};
         vkCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         vkCreateInfo.pNext = nullptr;
@@ -79,7 +80,8 @@ namespace Vulkan
 
     RHI::ResultCode Buffer::Init(Context* context, const VmaAllocationCreateInfo allocationInfo, const RHI::BufferCreateInfo& createInfo, BufferPool* parentPool, bool isTransientResource)
     {
-        (void)parentPool;
+        pool = parentPool;
+
         VkBufferCreateInfo vkCreateInfo{};
         vkCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         vkCreateInfo.pNext = nullptr;
@@ -780,7 +782,7 @@ namespace Vulkan
                 }
 
                 writeInfo.dstArrayElement = resources->arrayOffset;
-                writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+                writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
                 writeInfo.descriptorCount = imageInfos.size();
                 writeInfo.pImageInfo = imageInfos.data();
             }
@@ -889,7 +891,7 @@ namespace Vulkan
         poolCreateInfo.priority = 1.0f;
         poolCreateInfo.minAllocationAlignment = createInfo.minBlockAlignment;
         poolCreateInfo.pMemoryAllocateNext = nullptr;
-        poolCreateInfo.memoryTypeIndex = m_context->GetMemoryTypeIndex(createInfo.heapType);
+        poolCreateInfo.memoryTypeIndex = m_context->GetMemoryTypeIndex(RHI::MemoryType::GPULocal);
 
         return vmaCreatePool(m_context->m_allocator, &poolCreateInfo, &m_pool);
     }

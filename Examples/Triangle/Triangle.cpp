@@ -10,6 +10,19 @@ struct UniformBufferContent
     glm::mat4 viewProjection;
 };
 
+struct Mesh
+{
+    uint32_t drawElementsCount;
+
+    RHI::Handle<RHI::Buffer> indexBuffer;
+    RHI::Handle<RHI::Buffer> positionsBuffer;
+    RHI::Handle<RHI::Buffer> normalsBuffer;
+    RHI::Handle<RHI::Buffer> texCoordBuffer;
+
+    RHI::ImageSize textureSize;
+    RHI::Handle<RHI::Buffer> textureStagingBuffer;
+};
+
 class TriangleExample final : public ApplicationBase
 {
 public:
@@ -34,23 +47,16 @@ public:
         return buffer;
     }
 
-    struct Mesh
-    {
-        uint32_t drawElementsCount;
-
-        RHI::Handle<RHI::Buffer> indexBuffer;
-        RHI::Handle<RHI::Buffer> positionsBuffer;
-        RHI::Handle<RHI::Buffer> normalsBuffer;
-    };
-
     Mesh LoadScene(const char* path)
     {
         Assimp::Importer importer{};
         auto scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_GenSmoothNormals);
         auto mesh = scene->mMeshes[0];
+        auto texture = LoadImage("./Resources/Images/image.png");
 
         std::vector<uint32_t> indexBufferData;
         indexBufferData.reserve(mesh->mNumFaces * 3);
+
         for (uint32_t i = 0; i < mesh->mNumFaces; i++)
         {
             for (uint32_t j = 0; j < mesh->mFaces[i].mNumIndices; j++)
@@ -59,15 +65,27 @@ public:
             }
         }
 
-        auto indexBuffer = CreateBuffer<uint32_t>(indexBufferData, RHI::BufferUsage::Index);
-        auto positionsBuffer = CreateBuffer<aiVector3D>({ mesh->mVertices, mesh->mNumVertices }, RHI::BufferUsage::Vertex);
-        auto normalsBuffer = CreateBuffer<aiVector3D>({ mesh->mNormals, mesh->mNumVertices }, RHI::BufferUsage::Vertex);
+        std::vector<glm::vec2> texCoordData;
+        texCoordData.reserve(mesh->mNumFaces * 3);
 
-        Mesh result{};
-        result.drawElementsCount = indexBufferData.size();
-        result.indexBuffer = indexBuffer;
-        result.positionsBuffer = positionsBuffer;
-        result.normalsBuffer = normalsBuffer;
+        auto uv = mesh->mTextureCoords[0];
+        for (uint32_t i = 0; i < mesh->mNumVertices; i++)
+        {
+            texCoordData.push_back({ uv[i].x, uv[i].y });
+        }
+
+        Mesh result{
+            .drawElementsCount = uint32_t(indexBufferData.size()),
+            .indexBuffer = CreateBuffer<uint32_t>(indexBufferData, RHI::BufferUsage::Index),
+            .positionsBuffer = CreateBuffer<aiVector3D>({ mesh->mVertices, mesh->mNumVertices }, RHI::BufferUsage::Vertex),
+            .normalsBuffer = CreateBuffer<aiVector3D>({ mesh->mNormals, mesh->mNumVertices }, RHI::BufferUsage::Vertex),
+            .texCoordBuffer = CreateBuffer<glm::vec2>(texCoordData, RHI::BufferUsage::Vertex),
+            .textureSize = {
+                .width = texture.width,
+                .height = texture.height,
+            },
+            .textureStagingBuffer = CreateBuffer<uint8_t>({ texture.data.data(), texture.data.size() }, RHI::BufferUsage::CopySrc)
+        };
         return result;
     }
 
@@ -84,15 +102,42 @@ public:
         auto shaderModule = m_context->CreateShaderModule(createInfo);
 
         RHI::GraphicsPipelineCreateInfo psoCreateInfo{};
-        psoCreateInfo.inputAssemblerState.attributes = 
-        {
-            { .location = 0, .binding = 0, .format = RHI::Format::RGB32_FLOAT, .offset = 0, },
-            { .location = 1, .binding = 1, .format = RHI::Format::RGB32_FLOAT, .offset = 0, },
+        psoCreateInfo.inputAssemblerState.attributes = {
+            {
+                .location = 0,
+                .binding = 0,
+                .format = RHI::Format::RGB32_FLOAT,
+                .offset = 0,
+            },
+            {
+                .location = 1,
+                .binding = 1,
+                .format = RHI::Format::RGB32_FLOAT,
+                .offset = 0,
+            },
+            {
+                .location = 2,
+                .binding = 2,
+                .format = RHI::Format::RG32_FLOAT,
+                .offset = 0,
+            },
         };
-        psoCreateInfo.inputAssemblerState.bindings =
-        {
-            { .binding = 0, .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT), .stepRate = RHI::PipelineVertexInputRate::PerVertex, },
-            { .binding = 1, .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT), .stepRate = RHI::PipelineVertexInputRate::PerVertex, },
+        psoCreateInfo.inputAssemblerState.bindings = {
+            {
+                .binding = 0,
+                .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT),
+                .stepRate = RHI::PipelineVertexInputRate::PerVertex,
+            },
+            {
+                .binding = 1,
+                .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT),
+                .stepRate = RHI::PipelineVertexInputRate::PerVertex,
+            },
+            {
+                .binding = 2,
+                .stride = RHI::GetFormatByteSize(RHI::Format::RG32_FLOAT),
+                .stepRate = RHI::PipelineVertexInputRate::PerVertex,
+            },
         };
         psoCreateInfo.vertexShaderModule = shaderModule.get();
         psoCreateInfo.vertexShaderName = "VSMain";
@@ -128,29 +173,82 @@ public:
             m_uniformData.viewProjection = m_camera.GetProjection() * m_camera.GetView();
         }
 
-        // create resources pool
+        // create buffer resource pool
         {
             RHI::PoolCreateInfo createInfo{};
             createInfo.heapType = RHI::MemoryType::CPU;
             createInfo.allocationAlgorithm = RHI::AllocationAlgorithm::Linear;
             createInfo.blockSize = 64 * RHI::AllocationSizeConstants::MB;
             createInfo.minBlockAlignment = alignof(uint64_t);
-
             m_bufferPool = m_context->CreateBufferPool(createInfo);
 
             // create buffer resource
-            m_mesh = LoadScene("./Resources/Meshes/StanfordBunny.obj");
+            m_mesh = LoadScene("./Resources/Meshes/simple_cube.obj");
             m_uniformBuffer = CreateBuffer<UniformBufferContent>(m_uniformData, RHI::BufferUsage::Uniform);
         }
 
+        // create image resource pool
+        {
+            RHI::PoolCreateInfo createInfo{};
+            createInfo.heapType = RHI::MemoryType::GPULocal;
+            createInfo.allocationAlgorithm = RHI::AllocationAlgorithm::Linear;
+            createInfo.blockSize = 64 * RHI::AllocationSizeConstants::MB;
+            createInfo.minBlockAlignment = alignof(uint64_t);
+            m_imagePool = m_context->CreateImagePool(createInfo);
+        }
+
+        // create image
+        {
+            RHI::ImageCreateInfo createInfo{};
+            createInfo.usageFlags = RHI::ImageUsage::ShaderResource | RHI::ImageUsage::CopyDst;
+            createInfo.type = RHI::ImageType::Image2D;
+            createInfo.size = m_mesh.textureSize;
+            createInfo.size.depth = 1;
+            createInfo.format = RHI::Format::RGBA8_UNORM;
+            createInfo.sampleCount = RHI::SampleCount::Samples1;
+            createInfo.mipLevels = 1;
+            createInfo.arrayCount = 1;
+            m_image = m_imagePool->Allocate(createInfo).GetValue();
+        }
+
+        m_commandListAllocator = m_context->CreateCommandListAllocator(RHI::QueueType::Graphics);
+
+        // upload image data to the gpu
+        {
+            // copy data from the staging buffer to the image.
+            RHI::CopyBufferToImageDescriptor copyCommand = {};
+            copyCommand.srcBuffer = m_mesh.textureStagingBuffer;
+            copyCommand.srcOffset = 0;
+            // copyCommand.srcBytesPerRow;
+            // copyCommand.srcBytesPerImage;
+            copyCommand.srcSize = m_mesh.textureSize;
+            copyCommand.srcSize.depth = 1;
+            copyCommand.dstImage = m_image;
+            copyCommand.dstOffset.x = 0;
+            copyCommand.dstOffset.y = 0;
+            copyCommand.dstOffset.z = 0;
+            auto commandList = m_commandListAllocator->Allocate();
+            commandList->Begin();
+            commandList->Submit(copyCommand);
+            commandList->End();
+            m_frameScheduler->Execute(commandList);
+            m_bufferPool->FreeBuffer(m_mesh.textureStagingBuffer);
+        }
+
         // create shader bind group layout
-        m_bindGroupLayout = m_context->CreateBindGroupLayout({ RHI::ShaderBinding{ RHI::ShaderBindingType::Buffer, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Vertex } });
+        {
+            RHI::BindGroupLayoutCreateInfo createInfo = {
+                { RHI::ShaderBindingType::Buffer, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Vertex },
+                { RHI::ShaderBindingType::Image, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Pixel },
+                { RHI::ShaderBindingType::Sampler, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Pixel },
+            };
+            m_bindGroupLayout = m_context->CreateBindGroupLayout(createInfo);
+        }
+
         SetupPipelines(m_bindGroupLayout);
         // create shader bind group
         m_bindGroupAllocator = m_context->CreateBindGroupAllocator();
         m_bindGroup = m_bindGroupAllocator->AllocateBindGroups(m_bindGroupLayout).front();
-
-        m_commandListAllocator = m_context->CreateCommandListAllocator(RHI::QueueType::Graphics);
 
         // create frame graph
         {
@@ -158,6 +256,12 @@ public:
             createInfo.name = "RenderPass";
             createInfo.type = RHI::QueueType::Graphics;
             m_renderpass = m_frameScheduler->CreatePass(createInfo);
+        }
+
+        // create a sampler state
+        {
+            RHI::SamplerCreateInfo createInfo{};
+            m_sampler = m_context->CreateSampler(createInfo);
         }
 
         {
@@ -185,20 +289,24 @@ public:
             useInfo.clearValue.depth.depthValue = 1.0f;
             m_renderpass->CreateTransientImageResource("depth-attachment", createInfo, useInfo);
 
-            // auto textureAttachment = m_renderpass->ImportImageResource("texture", m_image, useInfo);
-
             RHI::BufferAttachmentUseInfo bufferUseInfo{};
             bufferUseInfo.access = RHI::AttachmentAccess::Read;
             bufferUseInfo.usage = RHI::AttachmentUsage::ShaderResource;
             auto uniformBuffer = m_renderpass->ImportBufferResource("uniform-buffer", m_uniformBuffer, bufferUseInfo);
 
+
+            useInfo.usage = RHI::AttachmentUsage::ShaderResource;
+            useInfo.subresource.imageAspects = RHI::ImageAspect::Color;
+            auto textureAttachment = m_renderpass->ImportImageResource("texture", m_image, useInfo);
+
             // setup bind elements
             m_renderpass->End();
 
-            RHI::BindGroupData BindGroupData{};
-            BindGroupData.BindBuffers(0u, uniformBuffer);
-            // BindGroupData.BindImages(1u, textureAttachment);
-            m_bindGroupAllocator->Update(m_bindGroup, BindGroupData);
+            RHI::BindGroupData bindGroupData{};
+            bindGroupData.BindBuffers(0u, uniformBuffer);
+            bindGroupData.BindImages(1u, textureAttachment);
+            bindGroupData.BindSamplers(2u, m_sampler);
+            m_bindGroupAllocator->Update(m_bindGroup, bindGroupData);
 
             m_frameScheduler->Submit(*m_renderpass);
         }
@@ -217,6 +325,8 @@ public:
         m_bufferPool->FreeBuffer(m_mesh.indexBuffer);
         m_bufferPool->FreeBuffer(m_mesh.positionsBuffer);
         m_bufferPool->FreeBuffer(m_uniformBuffer);
+
+        m_imagePool->FreeImage(m_image);
     }
 
     void OnUpdate(Timestep timestep) override
@@ -241,8 +351,8 @@ public:
         cmd->SetViewport({
             .width = float(m_windowWidth),
             .height = float(m_windowHeight),
-            .minDepth = 0.0,
-            .maxDepth = 1.0,
+            .minDepth = 0.0f,
+            .maxDepth = 1.0f,
         });
 
         cmd->SetSicssor({
@@ -253,7 +363,7 @@ public:
         cmd->Submit({
             .pipelineState = m_pipelineState,
             .bindGroups = m_bindGroup,
-            .vertexBuffers = { m_mesh.positionsBuffer, m_mesh.normalsBuffer },
+            .vertexBuffers = { m_mesh.positionsBuffer, m_mesh.normalsBuffer, m_mesh.texCoordBuffer },
             .indexBuffers = m_mesh.indexBuffer,
             .parameters = { .elementCount = m_mesh.drawElementsCount },
         });
@@ -271,6 +381,8 @@ private:
 private:
     std::unique_ptr<RHI::BufferPool> m_bufferPool;
 
+    std::unique_ptr<RHI::ImagePool> m_imagePool;
+
     std::unique_ptr<RHI::BindGroupAllocator> m_bindGroupAllocator;
 
     std::unique_ptr<RHI::CommandListAllocator> m_commandListAllocator;
@@ -284,6 +396,10 @@ private:
     RHI::Handle<RHI::GraphicsPipeline> m_pipelineState;
 
     RHI::Handle<RHI::Buffer> m_uniformBuffer;
+
+    RHI::Handle<RHI::Image> m_image;
+
+    RHI::Handle<RHI::Sampler> m_sampler;
 
     Mesh m_mesh;
 

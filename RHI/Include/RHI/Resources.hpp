@@ -652,24 +652,6 @@ namespace RHI
 #endif
     };
 
-    // struct PipelineFactoryCreateInfo
-    // {
-    //     void*  cacheData;
-    //     size_t dataSize;
-    // };
-
-    // class PipelineCache {};
-
-    // class PipelineFactory
-    // {
-    // public:
-    //     ~PipelineFactory() = default;
-    //     virtual PipelineCache GetCache() const = 0;
-    //     virtual std::unique_ptr<GraphicsPipeline> CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) = 0;
-    //     virtual std::unique_ptr<ComputePipeline> CreateComputePipeline(const ComputePipelineCreateInfo& createInfo) = 0;
-    //     virtual std::unique_ptr<RayTracingPipeline> CreateRayTracingPipeline(const RayTracingPipelineCreateInfo& createInfo) = 0;
-    // };
-
     /// @brief An object that groups shader resources that are bound together.
     class RHI_EXPORT BindGroupData final
     {
