@@ -44,8 +44,11 @@ namespace Vulkan
         // Handle to valid VkImage resource (Might not be backed by an allocation).
         VkImage handle;
 
-        // description of the resource.
-        VkImageCreateInfo createInfo;
+        // Image pixel Format
+        VkFormat format;
+
+        // Image dimensions
+        VkImageType imageType;
 
         // pointer to swapchain (if this image is backed by swapchain).
         Swapchain* swapchain;
@@ -65,9 +68,6 @@ namespace Vulkan
 
         // Handle to valid VkImage resource (Might not be backed by an allocation).
         VkBuffer handle;
-
-        // description of the resource.
-        VkBufferCreateInfo createInfo;
 
         RHI::ResultCode Init(Context* context, const VmaAllocationCreateInfo allocationInfo, const RHI::BufferCreateInfo& createInfo, BufferPool* parentPool, bool isTransientResource);
         void Shutdown(Context* context);

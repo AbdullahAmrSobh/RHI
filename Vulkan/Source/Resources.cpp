@@ -40,7 +40,8 @@ namespace Vulkan
         vkCreateInfo.pQueueFamilyIndices = nullptr;
         vkCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-        this->createInfo = vkCreateInfo;
+        this->format = vkCreateInfo.format;
+        this->imageType = vkCreateInfo.imageType;
         VkResult result = VK_ERROR_UNKNOWN;
 
         if (isTransientResource)
@@ -139,7 +140,7 @@ namespace Vulkan
         vkCreateInfo.flags = 0;
         vkCreateInfo.image = image->handle;
 
-        switch (image->createInfo.imageType)
+        switch (image->imageType)
         {
         case VK_IMAGE_TYPE_1D: vkCreateInfo.viewType = useInfo.subresource.arrayCount == 1 ? VK_IMAGE_VIEW_TYPE_1D : VK_IMAGE_VIEW_TYPE_1D_ARRAY; break;
         case VK_IMAGE_TYPE_2D: vkCreateInfo.viewType = useInfo.subresource.arrayCount == 1 ? VK_IMAGE_VIEW_TYPE_2D : VK_IMAGE_VIEW_TYPE_2D_ARRAY; break;
@@ -147,7 +148,7 @@ namespace Vulkan
         default:               RHI_UNREACHABLE(); break;
         }
 
-        vkCreateInfo.format = image->createInfo.format;
+        vkCreateInfo.format = image->format;
         vkCreateInfo.components.r = ConvertComponentSwizzle(useInfo.components.r);
         vkCreateInfo.components.g = ConvertComponentSwizzle(useInfo.components.g);
         vkCreateInfo.components.b = ConvertComponentSwizzle(useInfo.components.b);
@@ -1048,30 +1049,12 @@ namespace Vulkan
         result = vkGetSwapchainImagesKHR(m_context->m_device, m_swapchain, &imagesCount, images.data());
         VULKAN_RETURN_VKERR_CODE(result);
 
-        VkImageCreateInfo imageInfo{};
-        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        imageInfo.pNext = nullptr;
-        imageInfo.flags = 0;
-        imageInfo.imageType = VK_IMAGE_TYPE_2D;
-        imageInfo.format = surfaceFormat.format;
-        imageInfo.extent.width = createInfo.imageExtent.width;
-        imageInfo.extent.height = createInfo.imageExtent.height;
-        imageInfo.extent.depth = 1;
-        imageInfo.mipLevels = 1;
-        imageInfo.arrayLayers = createInfo.imageArrayLayers;
-        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-        imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-        imageInfo.usage = createInfo.imageUsage;
-        imageInfo.sharingMode = createInfo.imageSharingMode;
-        imageInfo.queueFamilyIndexCount = createInfo.queueFamilyIndexCount;
-        imageInfo.pQueueFamilyIndices = createInfo.pQueueFamilyIndices;
-        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-
         for (auto imageHandles : images)
         {
             Vulkan::Image image{};
             image.handle = imageHandles;
-            image.createInfo = imageInfo;
+            image.format = surfaceFormat.format;
+            image.imageType = VK_IMAGE_TYPE_2D;
             image.swapchain = this;
 
             auto handle = m_context->m_imageOwner.Insert(image);
