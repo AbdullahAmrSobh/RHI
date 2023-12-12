@@ -43,11 +43,10 @@ namespace RHI
     /// @brief Describes information needed to initalize the RHI context
     struct ApplicationInfo
     {
-        /// @brief The name of the users application.
-        std::string applicationName;
-
-        /// @brief The version of the users application.
-        Version     applicationVersion;
+        const char* applicationName;    // The name of the users application.
+        Version     applicationVersion; // The version of the users application.
+        const char* engineName;         // The version of the users application.
+        Version     engineVersion;      // The version of the users application.
     };
 
     /// @brief Properties about a Physical GPU

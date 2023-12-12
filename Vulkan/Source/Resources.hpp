@@ -254,7 +254,7 @@ namespace Vulkan
         VkResult Init(const RHI::SwapchainCreateInfo& createInfo);
 
         RHI::ResultCode Resize(uint32_t newWidth, uint32_t newHeight) override;
-        RHI::ResultCode Present(RHI::Pass& pass) override;
+        RHI::ResultCode Present() override;
 
     private:
         VkResult CreateNativeSwapchain();

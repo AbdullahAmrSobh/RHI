@@ -182,6 +182,9 @@ void ApplicationBase::Run()
         }
 
         // Render
-        OnUpdate(Timestep(deltaTime));
+        {
+            OnUpdate(Timestep(deltaTime));
+            m_swapchain->Present();
+        }
     }
 }

@@ -989,12 +989,8 @@ namespace Vulkan
         return ConvertResult(result);
     }
 
-    RHI::ResultCode Swapchain::Present(RHI::Pass& passBase)
+    RHI::ResultCode Swapchain::Present()
     {
-        auto& pass = static_cast<Pass&>(passBase);
-
-        (void)pass;
-
         // Present current image to be rendered.
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;

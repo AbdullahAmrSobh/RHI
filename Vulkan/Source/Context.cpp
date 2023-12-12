@@ -95,15 +95,13 @@ namespace Vulkan
             VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
         };
 
-        uint32_t version = VK_MAKE_VERSION(0, 1, 0);
-
         VkApplicationInfo applicationInfo{};
         applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
         applicationInfo.pNext = nullptr;
-        applicationInfo.pApplicationName = appInfo.applicationName.c_str();
-        applicationInfo.applicationVersion = version;
-        applicationInfo.pEngineName = "AAMS Renderer Hardware Engine (RHI)";
-        applicationInfo.engineVersion = version;
+        applicationInfo.pApplicationName = appInfo.applicationName;
+        applicationInfo.applicationVersion = appInfo.engineVersion;
+        applicationInfo.pEngineName = appInfo.engineName;
+        applicationInfo.engineVersion = appInfo.engineVersion;
         applicationInfo.apiVersion = VK_API_VERSION_1_3;
 
         VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
@@ -132,7 +130,7 @@ namespace Vulkan
         if (debugExtensionFound)
             enabledExtensionsNames.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
         else
-            debugCallbacks->LogWarnning("RHI Vulkan: Debug extension not present.\n Vulkan layer validation is disabled.");
+            m_debugMessenger->LogWarnning("RHI Vulkan: Debug extension not present.\n Vulkan layer validation is disabled.");
 #endif
 
         VkInstanceCreateInfo createInfo{};
@@ -159,34 +157,15 @@ namespace Vulkan
 
             for (auto extension : GetAvailableDeviceExtensions(physicalDevice))
             {
-                if (strcmp(extension.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0)
-                {
-                    swapchainExtension = true;
-                }
-                else if (strcmp(extension.extensionName, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME) == 0)
-                {
-                    dynamicRenderingExtension = true;
-                }
-                else if (strcmp(extension.extensionName, VK_KHR_MAINTENANCE2_EXTENSION_NAME) == 0)
-                {
-                    maintenance2Extension = true;
-                }
-                else if (strcmp(extension.extensionName, VK_KHR_MULTIVIEW_EXTENSION_NAME) == 0)
-                {
-                    multiviewExtension = true;
-                }
-                else if (strcmp(extension.extensionName, VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME) == 0)
-                {
-                    createRenderpass2Extension = true;
-                }
-                else if (strcmp(extension.extensionName, VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME) == 0)
-                {
-                    depthStencilResolveExtension = true;
-                }
+                swapchainExtension |= strcmp(extension.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0;
+                dynamicRenderingExtension |= strcmp(extension.extensionName, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME) == 0;
+                maintenance2Extension |= strcmp(extension.extensionName, VK_KHR_MAINTENANCE2_EXTENSION_NAME) == 0;
+                multiviewExtension |= strcmp(extension.extensionName, VK_KHR_MULTIVIEW_EXTENSION_NAME) == 0;
+                createRenderpass2Extension |= strcmp(extension.extensionName, VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME) == 0;
+                depthStencilResolveExtension |= strcmp(extension.extensionName, VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME) == 0;
             }
 
-            if (swapchainExtension && dynamicRenderingExtension && maintenance2Extension && multiviewExtension &&
-                createRenderpass2Extension && depthStencilResolveExtension)
+            if (swapchainExtension && dynamicRenderingExtension && maintenance2Extension && multiviewExtension && createRenderpass2Extension && depthStencilResolveExtension)
             {
                 // extensions required for a physical device to be eligable
                 m_physicalDevice = physicalDevice;
@@ -226,11 +205,15 @@ namespace Vulkan
 
                 // Search for transfer queue
                 if ((queueFamilyProperty.queueFlags & VK_QUEUE_TRANSFER_BIT) == VK_QUEUE_TRANSFER_BIT && (queueFamilyProperty.queueFlags & VK_QUEUE_COMPUTE_BIT) == 0)
+                {
                     m_transferQueueFamilyIndex = queueFamilyIndex;
+                }
 
                 // Search for transfer queue
                 if ((queueFamilyProperty.queueFlags & VK_QUEUE_COMPUTE_BIT) == VK_QUEUE_COMPUTE_BIT && (queueFamilyProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0)
+                {
                     m_computeQueueFamilyIndex = queueFamilyIndex;
+                }
             }
 
             float queuePriority = 1.0f;

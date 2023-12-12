@@ -337,13 +337,6 @@ namespace RHI
         {
             ExecutePass(*pass);
         }
-
-        for (auto attachment : m_attachmentsRegistry->m_swapchainAttachments)
-        {
-            auto swapchain = attachment->swapchain;
-            auto result = swapchain->Present(*attachment->lastUse->pass);
-            RHI_ASSERT(result == ResultCode::Success);
-        }
     }
 
 } // namespace RHI

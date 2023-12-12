@@ -757,10 +757,10 @@ namespace RHI
         virtual Result<Handle<Image>> Allocate(const ImageCreateInfo& createInfo) = 0;
 
         /// @brief Free an allocated image resource.
-        virtual void                  FreeImage(Handle<Image> handle)              = 0;
+        virtual void                  FreeImage(Handle<Image> handle)             = 0;
 
         /// @brief Get the size of an allocated image resource.
-        virtual size_t                GetSize(Handle<Image> handle) const          = 0;
+        virtual size_t                GetSize(Handle<Image> handle) const         = 0;
     };
 
     /// @brief Swapchain object which is an interface between the API and a presentation surface.
@@ -783,7 +783,7 @@ namespace RHI
         virtual ResultCode Resize(uint32_t newWidth, uint32_t newHeight) = 0;
 
         /// @brief Presents the current image to the window, and acquires the next image in the swapchain.
-        virtual ResultCode Present(Pass& pass)                           = 0;
+        virtual ResultCode Present()                                     = 0;
 
     protected:
         uint32_t                   m_currentImageIndex;
