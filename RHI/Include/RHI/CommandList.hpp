@@ -40,40 +40,40 @@ namespace RHI
 
     struct CopyImageDescriptor
     {
-        Handle<Image>    sourceImage;
-        ImageSubresource sourceSubresource;
-        ImageOffset      sourceOffset;
-        ImageSize3D        sourceSize;
-        Handle<Image>    destinationImage;
-        ImageSubresource destinationSubresource;
-        ImageOffset      destinationOffset;
+        Handle<Image>          sourceImage;
+        ImageSubresourceLayers sourceSubresource;
+        ImageOffset            sourceOffset;
+        ImageSize3D            sourceSize;
+        Handle<Image>          destinationImage;
+        ImageSubresourceLayers destinationSubresource;
+        ImageOffset            destinationOffset;
     };
 
     struct CopyBufferToImageDescriptor
     {
-        Handle<Buffer>   srcBuffer;
-        uint32_t         srcOffset        = 0;
-        uint32_t         srcBytesPerRow   = 0;
-        uint32_t         srcBytesPerImage = 0;
-        ImageSize3D        srcSize;
-        Handle<Image>    dstImage;
-        ImageSubresource dstSubresource;
-        ImageOffset      dstOffset;
+        Handle<Buffer>         srcBuffer;
+        uint32_t               srcOffset        = 0;
+        uint32_t               srcBytesPerRow   = 0;
+        uint32_t               srcBytesPerImage = 0;
+        ImageSize3D            srcSize;
+        Handle<Image>          dstImage;
+        ImageSubresourceLayers dstSubresource;
+        ImageOffset            dstOffset;
     };
 
     struct CopyImageToBufferDescriptor
     {
-        Handle<Image>    sourceImage;
-        ImageSubresource sourceSubresource;
-        ImageOffset      sourceOffset;
-        ImageSize3D        sourceSize;
-        Handle<Buffer>   destinationBuffer;
-        uint32_t         destinationOffset        = 0;
-        uint32_t         destinationBytesPerRow   = 0;
-        uint32_t         destinationBytesPerImage = 0;
+        Handle<Image>          sourceImage;
+        ImageSubresourceLayers sourceSubresource;
+        ImageOffset            sourceOffset;
+        ImageSize3D            sourceSize;
+        Handle<Buffer>         destinationBuffer;
+        uint32_t               destinationOffset        = 0;
+        uint32_t               destinationBytesPerRow   = 0;
+        uint32_t               destinationBytesPerImage = 0;
         // The destinationBuffer format is usually same as sourceImage's format. When source image contains more than one aspect,
         // the format should be compatiable with the aspect of the source image's subresource
-        Format           destinationFormat;
+        Format                 destinationFormat;
     };
 
     struct DrawParameters

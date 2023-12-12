@@ -481,11 +481,7 @@ namespace Vulkan
             barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
             barrier.pNext = nullptr;
             barrier.image = image->handle;
-            barrier.subresourceRange.aspectMask = ConvertImageAspect(passAttachment->info.subresource.imageAspects);
-            barrier.subresourceRange.baseArrayLayer = passAttachment->info.subresource.arrayBase;
-            barrier.subresourceRange.layerCount = passAttachment->info.subresource.arrayCount;
-            barrier.subresourceRange.baseMipLevel = passAttachment->info.subresource.mipBase;
-            barrier.subresourceRange.levelCount = passAttachment->info.subresource.mipCount;
+            barrier.subresourceRange = ConvertSubresourceRange(passAttachment->info.subresource);
 
             if (passAttachment->next)
             {

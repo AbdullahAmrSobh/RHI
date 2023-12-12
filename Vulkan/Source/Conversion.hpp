@@ -455,27 +455,27 @@ namespace Vulkan
     {
         auto vkSubresource = VkImageSubresource{};
         vkSubresource.aspectMask = ConvertImageAspect(subresource.imageAspects);
-        vkSubresource.mipLevel = subresource.mipBase;
-        vkSubresource.arrayLayer = subresource.arrayBase;
+        vkSubresource.mipLevel = subresource.mipLevel;
+        vkSubresource.arrayLayer = subresource.arrayLayer;
         return vkSubresource;
     }
 
-    inline static VkImageSubresourceLayers ConvertSubresourceLayer(const RHI::ImageSubresource& subresource)
+    inline static VkImageSubresourceLayers ConvertSubresourceLayer(const RHI::ImageSubresourceLayers& subresource)
     {
         auto vkSubresource = VkImageSubresourceLayers{};
         vkSubresource.aspectMask = ConvertImageAspect(subresource.imageAspects);
-        vkSubresource.mipLevel = subresource.mipBase;
+        vkSubresource.mipLevel = subresource.mipLevel;
         vkSubresource.baseArrayLayer = subresource.arrayBase;
         vkSubresource.layerCount = subresource.arrayCount;
         return vkSubresource;
     }
 
-    inline static VkImageSubresourceRange ConvertSubresourceRange(const RHI::ImageSubresource& subresource)
+    inline static VkImageSubresourceRange ConvertSubresourceRange(const RHI::ImageSubresourceRange& subresource)
     {
         auto vkSubresource = VkImageSubresourceRange{};
         vkSubresource.aspectMask = ConvertImageAspect(subresource.imageAspects);
         vkSubresource.baseMipLevel = subresource.mipBase;
-        vkSubresource.levelCount = subresource.mipCount;
+        vkSubresource.levelCount = subresource.mipLevelCount;
         vkSubresource.baseArrayLayer = subresource.arrayBase;
         vkSubresource.layerCount = subresource.arrayCount;
         return vkSubresource;

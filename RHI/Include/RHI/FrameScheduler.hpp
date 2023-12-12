@@ -183,7 +183,7 @@ namespace RHI
     struct ImageAttachmentUseInfo
     {
         ComponentMapping         components;
-        ImageSubresource         subresource;
+        ImageSubresourceRange    subresource;
         ImageLoadStoreOperations loadStoreOperations;
         ClearValue               clearValue;
 
@@ -517,7 +517,7 @@ namespace RHI
         std::vector<CommandList*>        m_commandLists;
 
         /// @brief The size of the rendering area in the render pass.
-        ImageSize3D                        m_size;
+        ImageSize3D                      m_size;
 
         /// @brief A list of all passes that this pass depends on.
         std::vector<Pass*>               m_producers;

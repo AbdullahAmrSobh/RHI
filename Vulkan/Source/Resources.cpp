@@ -152,11 +152,7 @@ namespace Vulkan
         vkCreateInfo.components.g = ConvertComponentSwizzle(useInfo.components.g);
         vkCreateInfo.components.b = ConvertComponentSwizzle(useInfo.components.b);
         vkCreateInfo.components.a = ConvertComponentSwizzle(useInfo.components.a);
-        vkCreateInfo.subresourceRange.aspectMask = ConvertImageAspect(useInfo.subresource.imageAspects);
-        vkCreateInfo.subresourceRange.baseMipLevel = useInfo.subresource.mipBase;
-        vkCreateInfo.subresourceRange.levelCount = useInfo.subresource.mipCount;
-        vkCreateInfo.subresourceRange.baseArrayLayer = useInfo.subresource.arrayBase;
-        vkCreateInfo.subresourceRange.layerCount = useInfo.subresource.arrayCount;
+        vkCreateInfo.subresourceRange = ConvertSubresourceRange(useInfo.subresource);
 
         auto result = vkCreateImageView(context->m_device, &vkCreateInfo, nullptr, &handle);
         return ConvertResult(result);

@@ -373,21 +373,42 @@ namespace RHI
     {
         ImageSubresource()              = default;
 
+        Flags<ImageAspect> imageAspects = RHI::ImageAspect::All;
+        uint32_t           mipLevel     = 0;
+        uint32_t           arrayLayer   = 0;
+
+        inline bool        operator==(const ImageSubresource& other) const { return imageAspects == other.imageAspects && mipLevel == other.mipLevel && arrayLayer == other.arrayLayer; }
+
+        inline bool        operator!=(const ImageSubresource& other) const { return !(*this == other); }
+    };
+
+    struct ImageSubresourceLayers
+    {
+        ImageSubresourceLayers()        = default;
+
+        Flags<ImageAspect> imageAspects = RHI::ImageAspect::All;
+        uint32_t           mipLevel     = 0;
         uint32_t           arrayBase    = 0;
         uint32_t           arrayCount   = 1;
-        uint32_t           mipBase      = 0;
-        uint32_t           mipCount     = 1;
-        Flags<ImageAspect> imageAspects = ImageAspect::All;
 
-        inline bool        operator==(const ImageSubresource& other) const
-        {
-            return arrayBase == other.arrayBase && arrayCount == other.arrayCount && mipBase == other.mipBase && mipCount == other.mipCount;
-        }
+        inline bool        operator==(const ImageSubresourceLayers& other) const { return imageAspects == other.imageAspects && mipLevel == other.mipLevel && arrayBase == other.arrayBase && arrayCount == other.arrayCount; }
 
-        inline bool operator!=(const ImageSubresource& other) const
-        {
-            return !(*this == other);
-        }
+        inline bool        operator!=(const ImageSubresourceLayers& other) const { return !(*this == other); }
+    };
+
+    struct ImageSubresourceRange
+    {
+        ImageSubresourceRange()          = default;
+
+        Flags<ImageAspect> imageAspects  = RHI::ImageAspect::All;
+        uint32_t           mipBase       = 0;
+        uint32_t           mipLevelCount = 1;
+        uint32_t           arrayBase     = 0;
+        uint32_t           arrayCount    = 1;
+
+        inline bool        operator==(const ImageSubresourceRange& other) const { return imageAspects == other.imageAspects && mipBase == other.mipBase && mipLevelCount == other.mipLevelCount && arrayBase == other.arrayBase && arrayCount == other.arrayCount; }
+
+        inline bool        operator!=(const ImageSubresourceRange& other) const { return !(*this == other); }
     };
 
     /// @brief Represent a subview into a an buffer resource.
@@ -545,7 +566,7 @@ namespace RHI
     {
         Flags<ImageUsage> usageFlags;                               // Usage flags.
         ImageType         type;                                     // The type of the image.
-        ImageSize3D         size;                                     // The size of the image.
+        ImageSize3D       size;                                     // The size of the image.
         Format            format;                                   // The format of the image.
         SampleCount       sampleCount = RHI::SampleCount::Samples1; // The number of samples in each texel.
         uint32_t          mipLevels   = 1;                          // The number of mip levels in the image.
@@ -643,7 +664,7 @@ namespace RHI
     /// @brief Structure specifying the parameters of the swapchain.
     struct SwapchainCreateInfo
     {
-        ImageSize3D         imageSize;   // The size of the images in the swapchian.
+        ImageSize3D       imageSize;   // The size of the images in the swapchian.
         Flags<ImageUsage> imageUsage;  // Image usage flags applied to all created images.
         Format            imageFormat; // The format of created swapchain image.
         uint32_t          imageCount;  // The numer of back buffer images in the swapchain.
