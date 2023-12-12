@@ -19,7 +19,7 @@ struct Mesh
     RHI::Handle<RHI::Buffer> normalsBuffer;
     RHI::Handle<RHI::Buffer> texCoordBuffer;
 
-    RHI::ImageSize textureSize;
+    RHI::ImageSize3D textureSize;
     RHI::Handle<RHI::Buffer> textureStagingBuffer;
 };
 

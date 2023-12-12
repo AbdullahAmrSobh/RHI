@@ -43,7 +43,7 @@ namespace RHI
         Handle<Image>    sourceImage;
         ImageSubresource sourceSubresource;
         ImageOffset      sourceOffset;
-        ImageSize        sourceSize;
+        ImageSize3D        sourceSize;
         Handle<Image>    destinationImage;
         ImageSubresource destinationSubresource;
         ImageOffset      destinationOffset;
@@ -55,7 +55,7 @@ namespace RHI
         uint32_t         srcOffset        = 0;
         uint32_t         srcBytesPerRow   = 0;
         uint32_t         srcBytesPerImage = 0;
-        ImageSize        srcSize;
+        ImageSize3D        srcSize;
         Handle<Image>    dstImage;
         ImageSubresource dstSubresource;
         ImageOffset      dstOffset;
@@ -66,7 +66,7 @@ namespace RHI
         Handle<Image>    sourceImage;
         ImageSubresource sourceSubresource;
         ImageOffset      sourceOffset;
-        ImageSize        sourceSize;
+        ImageSize3D        sourceSize;
         Handle<Buffer>   destinationBuffer;
         uint32_t         destinationOffset        = 0;
         uint32_t         destinationBytesPerRow   = 0;

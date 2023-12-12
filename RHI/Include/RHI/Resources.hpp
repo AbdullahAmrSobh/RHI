@@ -330,18 +330,18 @@ namespace RHI
     };
 
     /// @brief Represent the size of an image resource or subregion.
-    struct ImageSize
+    struct ImageSize3D
     {
         uint32_t    width;  // The width of the image.
         uint32_t    height; // The height of the image.
         uint32_t    depth;  // The depth of the image.
 
-        inline bool operator==(const ImageSize& other) const
+        inline bool operator==(const ImageSize3D& other) const
         {
             return width == other.width && height == other.height && depth == other.depth;
         }
 
-        inline bool operator!=(const ImageSize& other) const
+        inline bool operator!=(const ImageSize3D& other) const
         {
             return !(*this == other);
         }
@@ -545,7 +545,7 @@ namespace RHI
     {
         Flags<ImageUsage> usageFlags;                               // Usage flags.
         ImageType         type;                                     // The type of the image.
-        ImageSize         size;                                     // The size of the image.
+        ImageSize3D         size;                                     // The size of the image.
         Format            format;                                   // The format of the image.
         SampleCount       sampleCount = RHI::SampleCount::Samples1; // The number of samples in each texel.
         uint32_t          mipLevels   = 1;                          // The number of mip levels in the image.
@@ -643,7 +643,7 @@ namespace RHI
     /// @brief Structure specifying the parameters of the swapchain.
     struct SwapchainCreateInfo
     {
-        ImageSize         imageSize;   // The size of the images in the swapchian.
+        ImageSize3D         imageSize;   // The size of the images in the swapchian.
         Flags<ImageUsage> imageUsage;  // Image usage flags applied to all created images.
         Format            imageFormat; // The format of created swapchain image.
         uint32_t          imageCount;  // The numer of back buffer images in the swapchain.

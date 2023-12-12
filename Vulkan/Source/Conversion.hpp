@@ -481,12 +481,12 @@ namespace Vulkan
         return vkSubresource;
     }
 
-    inline static VkExtent3D ConvertExtent3D(RHI::ImageSize size)
+    inline static VkExtent3D ConvertExtent3D(RHI::ImageSize3D size)
     {
         return { size.width, size.height, size.depth };
     }
 
-    inline static VkExtent2D ConvertExtent2D(RHI::ImageSize size)
+    inline static VkExtent2D ConvertExtent2D(RHI::ImageSize3D size)
     {
         RHI_ASSERT(size.depth == 0);
         return { size.width, size.height };

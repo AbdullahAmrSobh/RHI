@@ -22,18 +22,6 @@ namespace Vulkan
     class BufferPool;
     class Swapchain;
 
-    enum class AllocationType
-    {
-        Default,   // allocation is made from blocks managed internally
-        Dedicated, // allocation creates its own dedicated block
-        Aliasing,  // multiple resources may share the same allocation
-    };
-
-    struct VirtualAllocation
-    {
-
-    };
-
     struct Allocation
     {
         VmaAllocation handle;
