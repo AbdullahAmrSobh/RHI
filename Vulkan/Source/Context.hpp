@@ -24,10 +24,14 @@ namespace Vulkan
     class Context final : public RHI::Context
     {
     public:
-        Context() = default;
+        Context(std::unique_ptr<RHI::DebugCallbacks> debugMessengerCallbacks)
+            : RHI::Context(std::move(debugMessengerCallbacks))
+        {
+        }
+
         ~Context();
 
-        VkResult Init(const RHI::ApplicationInfo& appInfo, std::unique_ptr<RHI::DebugCallbacks> debugCallbacks);
+        VkResult Init(const RHI::ApplicationInfo& appInfo);
 
         std::unique_ptr<RHI::Swapchain> CreateSwapchain(const RHI::SwapchainCreateInfo& createInfo) override;
 

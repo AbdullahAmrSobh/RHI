@@ -33,8 +33,8 @@
 
 std::unique_ptr<RHI::Context> RHI::CreateVulkanRHI(const RHI::ApplicationInfo& appInfo, std::unique_ptr<RHI::DebugCallbacks> debugCallbacks)
 {
-    auto context = std::make_unique<Vulkan::Context>();
-    auto result = context->Init(appInfo, std::move(debugCallbacks));
+    auto context = std::make_unique<Vulkan::Context>(std::move(debugCallbacks));
+    auto result = context->Init(appInfo);
     RHI_ASSERT(result == VK_SUCCESS);
     return std::move(context);
 }
@@ -81,7 +81,7 @@ namespace Vulkan
         vkDestroyInstance(m_instance, nullptr);
     }
 
-    VkResult Context::Init(const RHI::ApplicationInfo& appInfo, std::unique_ptr<RHI::DebugCallbacks> debugCallbacks)
+    VkResult Context::Init(const RHI::ApplicationInfo& appInfo)
     {
         // Create Vulkan instance
         std::vector<const char*> enabledLayersNames = {
@@ -112,7 +112,7 @@ namespace Vulkan
         debugCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
         debugCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT;
         debugCreateInfo.pfnUserCallback = DebugMessengerCallbacks;
-        debugCreateInfo.pUserData = debugCallbacks.get();
+        debugCreateInfo.pUserData = m_debugMessenger.get();
 
         bool debugExtensionFound = false;
 

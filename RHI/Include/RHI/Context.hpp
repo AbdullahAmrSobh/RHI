@@ -85,7 +85,11 @@ namespace RHI
     class RHI_EXPORT Context
     {
     public:
-        Context()          = default;
+        Context(std::unique_ptr<DebugCallbacks> debugMessengerCallbacks)
+            : m_debugMessenger(std::move(debugMessengerCallbacks))
+        {
+        }
+
         virtual ~Context() = default;
 
         DebugCallbacks&                               GetDebugMessenger() const;
@@ -152,6 +156,9 @@ namespace RHI
 
         /// @brief Frees the given sampler object.
         virtual void                                  DestroyBufferView(Handle<BufferView> view)                                      = 0;
+
+    protected:
+        std::unique_ptr<DebugCallbacks> m_debugMessenger;
     };
 
 } // namespace RHI
