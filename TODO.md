@@ -2,6 +2,19 @@
 - [] Fix `Swapchain::Resize`
 - [] Refactor CreateInfo strcuts to make them easier to use, by using better defaults
 - [] Add validation on interface functions
+    - [] SwapchainCreateInfo
+    - [] ShaderModuleCreateInfo
+    - [] BindGroupLayoutCreateInfo
+    - [] PipelineLayoutCreateInfo
+    - [] PoolCreateInfo
+    - [] PoolCreateInfo
+    - [] GraphicsPipelineCreateInfo
+    - [] ComputePipelineCreateInfo
+    - [] SamplerCreateInfo
+    - [] ImageAttachmentUseInfo
+    - [] BufferAttachmentUseInfo
+    - [] ImageCreateInfo
+    - [] BufferCreateInfo
 - [] Refactor Pass Interface to make it easier and more consistant to use
 - [] Reference attachments by a unique id object (maybe name), this should allow for building passes independently at different locations of the code
 - [] Design a resource streaming interface for GPU upload and download

@@ -301,15 +301,9 @@ namespace RHI
         int32_t     y; // Offset in the Y direction
         int32_t     z; // Offset in the Z direction
 
-        inline bool operator==(const ImageOffset& other) const
-        {
-            return x == other.x && y == other.y && z == other.z;
-        }
+        inline bool operator==(const ImageOffset& other) const { return x == other.x && y == other.y && z == other.z; }
 
-        inline bool operator!=(const ImageOffset& other) const
-        {
-            return !(*this == other);
-        }
+        inline bool operator!=(const ImageOffset& other) const { return !(*this == other); }
     };
 
     /// @brief Represent the size of an image resource or subregion.
@@ -318,15 +312,9 @@ namespace RHI
         uint32_t    width;  // The width of the image.
         uint32_t    height; // The height of the image.
 
-        inline bool operator==(const ImageSize2D& other) const
-        {
-            return width == other.width && height == other.height;
-        }
+        inline bool operator==(const ImageSize2D& other) const { return width == other.width && height == other.height; }
 
-        inline bool operator!=(const ImageSize2D& other) const
-        {
-            return !(*this == other);
-        }
+        inline bool operator!=(const ImageSize2D& other) const { return !(*this == other); }
     };
 
     /// @brief Represent the size of an image resource or subregion.
@@ -336,15 +324,9 @@ namespace RHI
         uint32_t    height; // The height of the image.
         uint32_t    depth;  // The depth of the image.
 
-        inline bool operator==(const ImageSize3D& other) const
-        {
-            return width == other.width && height == other.height && depth == other.depth;
-        }
+        inline bool operator==(const ImageSize3D& other) const { return width == other.width && height == other.height && depth == other.depth; }
 
-        inline bool operator!=(const ImageSize3D& other) const
-        {
-            return !(*this == other);
-        }
+        inline bool operator!=(const ImageSize3D& other) const { return !(*this == other); }
     };
 
     /// @brief Represent the texel color swizzling operation
@@ -357,15 +339,9 @@ namespace RHI
         ComponentSwizzle b = ComponentSwizzle::B;
         ComponentSwizzle a = ComponentSwizzle::A;
 
-        inline bool      operator==(const ComponentMapping& other) const
-        {
-            return r == other.r && g == other.g && b == other.b && a == other.a;
-        }
+        inline bool      operator==(const ComponentMapping& other) const { return r == other.r && g == other.g && b == other.b && a == other.a; }
 
-        inline bool operator!=(const ComponentMapping& other) const
-        {
-            return !(*this == other);
-        }
+        inline bool      operator!=(const ComponentMapping& other) const { return !(*this == other); }
     };
 
     /// @brief Represent a subview into a an image resource.
@@ -373,7 +349,7 @@ namespace RHI
     {
         ImageSubresource()              = default;
 
-        Flags<ImageAspect> imageAspects = RHI::ImageAspect::All;
+        Flags<ImageAspect> imageAspects = ImageAspect::All;
         uint32_t           mipLevel     = 0;
         uint32_t           arrayLayer   = 0;
 
@@ -386,7 +362,7 @@ namespace RHI
     {
         ImageSubresourceLayers()        = default;
 
-        Flags<ImageAspect> imageAspects = RHI::ImageAspect::All;
+        Flags<ImageAspect> imageAspects = ImageAspect::All;
         uint32_t           mipLevel     = 0;
         uint32_t           arrayBase    = 0;
         uint32_t           arrayCount   = 1;
@@ -400,7 +376,7 @@ namespace RHI
     {
         ImageSubresourceRange()          = default;
 
-        Flags<ImageAspect> imageAspects  = RHI::ImageAspect::All;
+        Flags<ImageAspect> imageAspects  = ImageAspect::All;
         uint32_t           mipBase       = 0;
         uint32_t           mipLevelCount = 1;
         uint32_t           arrayBase     = 0;
@@ -420,24 +396,18 @@ namespace RHI
         size_t      byteOffset;
         Format      format;
 
-        inline bool operator==(const BufferSubregion& other) const
-        {
-            return byteSize == other.byteSize && byteOffset == other.byteOffset && format == other.format;
-        }
+        inline bool operator==(const BufferSubregion& other) const { return byteSize == other.byteSize && byteOffset == other.byteOffset && format == other.format; }
 
-        inline bool operator!=(const BufferSubregion& other) const
-        {
-            return !(*this == other);
-        }
+        inline bool operator!=(const BufferSubregion& other) const { return !(*this == other); }
     };
 
     /// @brief Specifies a single shader resource binding.
     struct ShaderBinding
     {
-        ShaderBindingType       type;
-        ShaderBindingAccess     access;
-        uint32_t                arrayCount;
-        Flags<RHI::ShaderStage> stages;
+        ShaderBindingType   type;
+        ShaderBindingAccess access;
+        uint32_t            arrayCount;
+        Flags<ShaderStage>  stages;
     };
 
     /// @brief A shader bind group layout is an list of shader bindings.
@@ -474,27 +444,17 @@ namespace RHI
         BlendFactor           dstAlpha     = BlendFactor::Zero;
         Flags<ColorWriteMask> writeMask    = ColorWriteMask::All;
 
-        inline bool           operator==(const ColorAttachmentBlendStateDesc& other) const
-        {
-            return blendEnable == other.blendEnable && colorBlendOp == other.colorBlendOp && srcColor == other.srcColor && dstColor == other.dstColor && alphaBlendOp == other.alphaBlendOp && srcAlpha == other.srcAlpha && dstAlpha == other.dstAlpha;
-        }
+        inline bool           operator==(const ColorAttachmentBlendStateDesc& other) const { return blendEnable == other.blendEnable && colorBlendOp == other.colorBlendOp && srcColor == other.srcColor && dstColor == other.dstColor && alphaBlendOp == other.alphaBlendOp && srcAlpha == other.srcAlpha && dstAlpha == other.dstAlpha; }
 
-        inline bool operator!=(const ColorAttachmentBlendStateDesc& other) const
-        {
-            return !(*this == other);
-        }
-    };
-
-    struct ShaderStageDesc
-    {
+        inline bool           operator!=(const ColorAttachmentBlendStateDesc& other) const { return !(*this == other); }
     };
 
     /// @brief Structure specifying the render target layout.
     struct PipelineRenderTargetLayout
     {
-        TL::Span<const Format> colorAttachmentsFormats; // List of the formats of color attachments.
-        Format                 depthAttachmentFormat;   // Format of an optional depth and/or stencil attachment.
-        Format                 stencilAttachmentFormat; // Format of an optional depth and/or stencil attachment.
+        TL::Span<const Format> colorAttachmentsFormats = { Format::BGRA8_UNORM }; // default: BGRA8 List of the formats of color attachments.
+        Format                 depthAttachmentFormat   = Format::Unknown;         // default: none Format of an optional depth and/or stencil attachment.
+        Format                 stencilAttachmentFormat = Format::Unknown;         // default: none Format of an optional depth and/or stencil attachment.
     };
 
     struct PipelineVertexBindingDesc
@@ -530,24 +490,24 @@ namespace RHI
     /// @brief Structure specifying the multisample state.
     struct PipelineMultisampleStateDesc
     {
-        SampleCount sampleCount;
-        bool        sampleShading;
+        SampleCount sampleCount   = SampleCount::Samples1;
+        bool        sampleShading = false;
     };
 
     /// @brief Structure specifying the depth and stencil state.
     struct PipelineDepthStencilStateDesc
     {
-        bool            depthTestEnable;
-        bool            depthWriteEnable;
-        CompareOperator compareOperator;
-        bool            stencilTestEnable;
+        bool            depthTestEnable   = false;
+        bool            depthWriteEnable  = false;
+        CompareOperator compareOperator   = CompareOperator::Always;
+        bool            stencilTestEnable = false;
     };
 
     /// @brief Structure specifying the color attachments blend state.
     struct PipelineColorBlendStateDesc
     {
-        TL::Span<const ColorAttachmentBlendStateDesc> blendStates;
-        float                                         blendConstants[4];
+        TL::Span<const ColorAttachmentBlendStateDesc> blendStates       = ColorAttachmentBlendStateDesc{};
+        float                                         blendConstants[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
     };
 
     /// @brief Represent the creation parameters of an resource pool.
@@ -564,23 +524,17 @@ namespace RHI
     /// @brief Represent the creation parameters of an image resource.
     struct ImageCreateInfo
     {
-        Flags<ImageUsage> usageFlags;                               // Usage flags.
-        ImageType         type;                                     // The type of the image.
-        ImageSize3D       size;                                     // The size of the image.
-        Format            format;                                   // The format of the image.
-        SampleCount       sampleCount = RHI::SampleCount::Samples1; // The number of samples in each texel.
-        uint32_t          mipLevels   = 1;                          // The number of mip levels in the image.
-        uint32_t          arrayCount  = 1;                          // The number of images in the images array.
+        Flags<ImageUsage> usageFlags;                          // Usage flags.
+        ImageType         type;                                // The type of the image.
+        ImageSize3D       size;                                // The size of the image.
+        Format            format;                              // The format of the image.
+        SampleCount       sampleCount = SampleCount::Samples1; // The number of samples in each texel.
+        uint32_t          mipLevels   = 1;                     // The number of mip levels in the image.
+        uint32_t          arrayCount  = 1;                     // The number of images in the images array.
 
-        inline bool       operator==(const ImageCreateInfo& other) const
-        {
-            return usageFlags == other.usageFlags && type == other.type && size == other.size && format == other.format && mipLevels == other.mipLevels && arrayCount == other.arrayCount;
-        }
+        inline bool       operator==(const ImageCreateInfo& other) const { return usageFlags == other.usageFlags && type == other.type && size == other.size && format == other.format && mipLevels == other.mipLevels && arrayCount == other.arrayCount; }
 
-        inline bool operator!=(const ImageCreateInfo& other) const
-        {
-            return !(*this == other);
-        }
+        inline bool       operator!=(const ImageCreateInfo& other) const { return !(*this == other); }
     };
 
     /// @brief Represent the creation parameters of an buffer resource.
@@ -589,15 +543,9 @@ namespace RHI
         Flags<BufferUsage> usageFlags; // Usage flags.
         size_t             byteSize;   // The size of the buffer.
 
-        inline bool        operator==(const BufferCreateInfo& other) const
-        {
-            return usageFlags == other.usageFlags && byteSize == other.byteSize;
-        }
+        inline bool        operator==(const BufferCreateInfo& other) const { return usageFlags == other.usageFlags && byteSize == other.byteSize; }
 
-        inline bool operator!=(const BufferCreateInfo& other) const
-        {
-            return !(*this == other);
-        }
+        inline bool        operator!=(const BufferCreateInfo& other) const { return !(*this == other); }
     };
 
     struct ShaderModuleCreateInfo
@@ -609,6 +557,8 @@ namespace RHI
     /// @brief Description of the graphics pipeline states.
     struct GraphicsPipelineCreateInfo
     {
+        // TODO: Add several helper constructors/builder functions
+
         const char*                     vertexShaderName;
         ShaderModule*                   vertexShaderModule;
 
@@ -616,14 +566,13 @@ namespace RHI
         ShaderModule*                   pixelShaderModule;
 
         Handle<PipelineLayout>          layout;
-
         PipelineInputAssemblerStateDesc inputAssemblerState;
-        PipelineTopologyMode            topologyMode;
         PipelineRenderTargetLayout      renderTargetLayout;
-        PipelineRasterizerStateDesc     rasterizationState;
-        PipelineMultisampleStateDesc    multisampleState;
-        PipelineDepthStencilStateDesc   depthStencilState;
-        PipelineColorBlendStateDesc     colorBlendState;
+        PipelineColorBlendStateDesc     colorBlendState    = PipelineColorBlendStateDesc{};
+        PipelineTopologyMode            topologyMode       = PipelineTopologyMode::Triangles;
+        PipelineRasterizerStateDesc     rasterizationState = PipelineRasterizerStateDesc{};
+        PipelineMultisampleStateDesc    multisampleState   = PipelineMultisampleStateDesc{};
+        PipelineDepthStencilStateDesc   depthStencilState  = PipelineDepthStencilStateDesc{};
     };
 
     /// @brief Description of a compute pipeline state.
@@ -650,15 +599,9 @@ namespace RHI
         float                   minLod     = 0.0f;
         float                   maxLod     = 1.0f;
 
-        inline bool             operator==(const SamplerCreateInfo& other) const
-        {
-            return filterMin == other.filterMin && filterMag == other.filterMag && filterMip == other.filterMip && compare == other.compare && mipLodBias == other.mipLodBias && addressU == other.addressU && addressV == other.addressV && addressW == other.addressW && minLod == other.minLod && maxLod == other.maxLod;
-        }
+        inline bool             operator==(const SamplerCreateInfo& other) const { return filterMin == other.filterMin && filterMag == other.filterMag && filterMip == other.filterMip && compare == other.compare && mipLodBias == other.mipLodBias && addressU == other.addressU && addressV == other.addressV && addressW == other.addressW && minLod == other.minLod && maxLod == other.maxLod; }
 
-        inline bool operator!=(const SamplerCreateInfo& other) const
-        {
-            return !(*this == other);
-        }
+        inline bool             operator!=(const SamplerCreateInfo& other) const { return !(*this == other); }
     };
 
     /// @brief Structure specifying the parameters of the swapchain.
@@ -703,21 +646,18 @@ namespace RHI
         struct ResourceImageBinding
         {
             uint32_t                          arrayOffset;
-
             std::vector<ImagePassAttachment*> views;
         };
 
         struct ResourceBufferBinding
         {
             uint32_t                           arrayOffset;
-
             std::vector<BufferPassAttachment*> views;
         };
 
         struct ResourceSamplerBinding
         {
             uint32_t                     arrayOffset;
-
             std::vector<Handle<Sampler>> samplers;
         };
 

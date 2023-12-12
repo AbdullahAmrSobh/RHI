@@ -102,67 +102,28 @@ public:
         auto shaderModule = m_context->CreateShaderModule(createInfo);
 
         RHI::GraphicsPipelineCreateInfo psoCreateInfo{};
-        psoCreateInfo.inputAssemblerState.attributes = {
-            {
-                .location = 0,
-                .binding = 0,
-                .format = RHI::Format::RGB32_FLOAT,
-                .offset = 0,
-            },
-            {
-                .location = 1,
-                .binding = 1,
-                .format = RHI::Format::RGB32_FLOAT,
-                .offset = 0,
-            },
-            {
-                .location = 2,
-                .binding = 2,
-                .format = RHI::Format::RG32_FLOAT,
-                .offset = 0,
-            },
+        // clang-format off
+        psoCreateInfo.inputAssemblerState.attributes = {  
+            { .location = 0, .binding = 0, .format = RHI::Format::RGB32_FLOAT, .offset = 0,  }, 
+            { .location = 1, .binding = 1, .format = RHI::Format::RGB32_FLOAT, .offset = 0,  },  
+            { .location = 2, .binding = 2, .format = RHI::Format::RG32_FLOAT, .offset = 0,  },  
+        };  
+        psoCreateInfo.inputAssemblerState.bindings = { 
+            { .binding = 0, .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT), .stepRate = RHI::PipelineVertexInputRate::PerVertex,  },  
+            { .binding = 1, .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT), .stepRate = RHI::PipelineVertexInputRate::PerVertex,  },  
+            { .binding = 2, .stride = RHI::GetFormatByteSize(RHI::Format::RG32_FLOAT),  .stepRate = RHI::PipelineVertexInputRate::PerVertex,  },
         };
-        psoCreateInfo.inputAssemblerState.bindings = {
-            {
-                .binding = 0,
-                .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT),
-                .stepRate = RHI::PipelineVertexInputRate::PerVertex,
-            },
-            {
-                .binding = 1,
-                .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT),
-                .stepRate = RHI::PipelineVertexInputRate::PerVertex,
-            },
-            {
-                .binding = 2,
-                .stride = RHI::GetFormatByteSize(RHI::Format::RG32_FLOAT),
-                .stepRate = RHI::PipelineVertexInputRate::PerVertex,
-            },
-        };
+        // clang-format on
         psoCreateInfo.vertexShaderModule = shaderModule.get();
         psoCreateInfo.vertexShaderName = "VSMain";
         psoCreateInfo.pixelShaderModule = shaderModule.get();
         psoCreateInfo.pixelShaderName = "PSMain";
-        psoCreateInfo.topologyMode = RHI::PipelineTopologyMode::Triangles;
-        psoCreateInfo.rasterizationState.cullMode = RHI::PipelineRasterizerStateCullMode::None;
-        psoCreateInfo.renderTargetLayout = { { RHI::Format::BGRA8_UNORM }, RHI::Format::Unknown, RHI::Format::Unknown };
-        psoCreateInfo.depthStencilState.depthTestEnable = true;
-        psoCreateInfo.depthStencilState.depthWriteEnable = true;
-        psoCreateInfo.depthStencilState.compareOperator = RHI::CompareOperator::Greater;
         psoCreateInfo.layout = m_pipelineLayout;
         psoCreateInfo.renderTargetLayout.colorAttachmentsFormats = { RHI::Format::BGRA8_UNORM };
         psoCreateInfo.renderTargetLayout.depthAttachmentFormat = RHI::Format::D32;
-        psoCreateInfo.colorBlendState.blendStates = {
-            {
-                .blendEnable = true,
-                .colorBlendOp = RHI::BlendEquation::Add,
-                .srcColor = RHI::BlendFactor::One,
-                .dstColor = RHI::BlendFactor::Zero,
-                .alphaBlendOp = RHI::BlendEquation::Add,
-                .srcAlpha = RHI::BlendFactor::One,
-                .dstAlpha = RHI::BlendFactor::Zero,
-            }
-        };
+        psoCreateInfo.depthStencilState.depthTestEnable = true;
+        psoCreateInfo.depthStencilState.depthWriteEnable = true;
+        psoCreateInfo.depthStencilState.compareOperator = RHI::CompareOperator::Greater;
 
         m_pipelineState = m_context->CreateGraphicsPipeline(psoCreateInfo);
     }
@@ -293,7 +254,6 @@ public:
             bufferUseInfo.access = RHI::AttachmentAccess::Read;
             bufferUseInfo.usage = RHI::AttachmentUsage::ShaderResource;
             auto uniformBuffer = m_renderpass->ImportBufferResource("uniform-buffer", m_uniformBuffer, bufferUseInfo);
-
 
             useInfo.usage = RHI::AttachmentUsage::ShaderResource;
             useInfo.subresource.imageAspects = RHI::ImageAspect::Color;
