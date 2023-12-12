@@ -2,6 +2,8 @@
 
 #include "RHI/Common/Handle.hpp"
 #include "RHI/Resources.hpp"
+#include "RHI/CommandList.hpp"
+#include "RHI/FrameScheduler.hpp"
 #include "RHI/Export.hpp"
 
 #include <memory>
@@ -10,43 +12,6 @@
 
 namespace RHI
 {
-    // Forward decelerations
-    enum class QueueType;
-
-    struct ShaderModuleCreateInfo;
-    struct SwapchainCreateInfo;
-    struct PoolCreateInfo;
-    struct ImageCreateInfo;
-    struct BufferCreateInfo;
-    struct BindGroupLayoutCreateInfo;
-    struct PipelineLayoutCreateInfo;
-    struct GraphicsPipelineCreateInfo;
-    struct ComputePipelineCreateInfo;
-    struct SamplerCreateInfo;
-    struct PassCreateInfo;
-    struct DeviceProperties;
-    struct ImageAttachmentUseInfo;
-    struct BufferAttachmentUseInfo;
-
-    struct Image;
-    struct Buffer;
-    struct ImageView;
-    struct BufferView;
-    struct BindGroupLayout;
-    struct PipelineLayout;
-    struct GraphicsPipeline;
-    struct ComputePipeline;
-    struct Sampler;
-
-    class ShaderModule;
-    class Swapchain;
-    class BufferPool;
-    class ImagePool;
-    class Pass;
-    class FrameScheduler;
-    class CommandListAllocator;
-    class BindGroupAllocator;
-
     using Version = uint32_t;
 
     /// @brief Type of backend Graphics API
