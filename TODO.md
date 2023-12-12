@@ -1,4 +1,4 @@
-- [] Remove Pass from `Swapchain::Present`
+- [x] Remove Pass from `Swapchain::Present`
 - [] Fix `Swapchain::Resize`
 - [] Refactor CreateInfo strcuts to make them easier to use, by using better defaults
 - [] Add validation on interface functions
