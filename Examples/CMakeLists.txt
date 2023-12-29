@@ -4,7 +4,7 @@ include(${CMAKE_SOURCE_DIR}/CMake/CPM.cmake)
 CPMAddPackage(
     NAME           RHI_spdlog
 	GIT_REPOSITORY git@github.com:gabime/spdlog.git
-	GIT_TAG        1.12.0
+	GIT_TAG        v1.12.0
 )
 
 CPMAddPackage(
