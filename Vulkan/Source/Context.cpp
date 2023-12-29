@@ -133,18 +133,20 @@ namespace Vulkan
             m_debugMessenger->LogWarnning("RHI Vulkan: Debug extension not present.\n Vulkan layer validation is disabled.");
 #endif
 
-        VkInstanceCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-        createInfo.pNext = debugExtensionFound ? &debugCreateInfo : nullptr;
-        createInfo.flags = {};
-        createInfo.pApplicationInfo = &applicationInfo;
-        createInfo.enabledLayerCount = static_cast<uint32_t>(enabledLayersNames.size());
-        createInfo.ppEnabledLayerNames = enabledLayersNames.data();
-        createInfo.enabledExtensionCount = static_cast<uint32_t>(enabledExtensionsNames.size());
-        createInfo.ppEnabledExtensionNames = enabledExtensionsNames.data();
+        {
+            VkInstanceCreateInfo createInfo{};
+            createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+            createInfo.pNext = debugExtensionFound ? &debugCreateInfo : nullptr;
+            createInfo.flags = {};
+            createInfo.pApplicationInfo = &applicationInfo;
+            createInfo.enabledLayerCount = static_cast<uint32_t>(enabledLayersNames.size());
+            createInfo.ppEnabledLayerNames = enabledLayersNames.data();
+            createInfo.enabledExtensionCount = static_cast<uint32_t>(enabledExtensionsNames.size());
+            createInfo.ppEnabledExtensionNames = enabledExtensionsNames.data();
 
-        VkResult result = vkCreateInstance(&createInfo, nullptr, &m_instance);
-        VULKAN_RETURN_VKERR_CODE(result);
+            VkResult result = vkCreateInstance(&createInfo, nullptr, &m_instance);
+            VULKAN_RETURN_VKERR_CODE(result);
+        }
 
         for (VkPhysicalDevice physicalDevice : GetAvailablePhysicalDevices())
         {
@@ -316,8 +318,7 @@ namespace Vulkan
             RHI_ASSERT(m_vkCmdDebugMarkerEndEXT != nullptr);
         }
 
-        VULKAN_ASSERT_SUCCESS(result);
-        return result;
+        return VK_SUCCESS;
     }
 
     std::unique_ptr<RHI::Swapchain> Context::CreateSwapchain(const RHI::SwapchainCreateInfo& createInfo)

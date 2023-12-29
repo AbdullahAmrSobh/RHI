@@ -56,12 +56,6 @@ namespace RHI
             {
             }
 
-            constexpr Span(const std::vector<ElementType>& elements) noexcept
-                : m_data(elements.data())
-                , m_count(elements.size())
-            {
-            }
-
             template<size_t N>
             constexpr Span(ElementType (&array)[N])
                 : m_data(array)

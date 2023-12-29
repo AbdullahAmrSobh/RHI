@@ -11,6 +11,8 @@
 #include <Windows.h>
 #include <algorithm>
 
+#define TIMEOUT_DURATION 9000000
+
 namespace Vulkan
 {
     ///////////////////////////////////////////////////////////////////////////
@@ -201,7 +203,7 @@ namespace Vulkan
         for (auto shaderBinding : createInfo.bindings)
         {
             auto& binding = bindings.emplace_back<VkDescriptorSetLayoutBinding>({});
-            binding.binding = bindings.size() - 1;
+            binding.binding = uint32_t(bindings.size() - 1);
             binding.descriptorType = ConvertDescriptorType(shaderBinding.type);
             binding.descriptorCount = shaderBinding.arrayCount;
             binding.stageFlags = ConvertShaderStage(shaderBinding.stages);
@@ -212,7 +214,7 @@ namespace Vulkan
         vkCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         vkCreateInfo.pNext = nullptr;
         vkCreateInfo.flags = 0;
-        vkCreateInfo.bindingCount = bindings.size();
+        vkCreateInfo.bindingCount = uint32_t(bindings.size());
         vkCreateInfo.pBindings = bindings.data();
 
         auto result = vkCreateDescriptorSetLayout(context->m_device, &vkCreateInfo, nullptr, &handle);
@@ -228,12 +230,12 @@ namespace Vulkan
     /// BindGroup
     ///////////////////////////////////////////////////////////////////////////
 
-    RHI::ResultCode BindGroup::Init(Context* context, VkDescriptorSetLayout layout, VkDescriptorPool pool)
+    RHI::ResultCode BindGroup::Init(Context* context, VkDescriptorSetLayout layout, VkDescriptorPool descriptorPool)
     {
         VkDescriptorSetAllocateInfo allocateInfo{};
         allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocateInfo.pNext = nullptr;
-        allocateInfo.descriptorPool = pool;
+        allocateInfo.descriptorPool = descriptorPool;
         allocateInfo.descriptorSetCount = 1;
         allocateInfo.pSetLayouts = &layout;
 
@@ -263,7 +265,7 @@ namespace Vulkan
         vkCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         vkCreateInfo.pNext = nullptr;
         vkCreateInfo.flags = 0;
-        vkCreateInfo.setLayoutCount = descriptorSetLayouts.size();
+        vkCreateInfo.setLayoutCount = uint32_t(descriptorSetLayouts.size());
         vkCreateInfo.pSetLayouts = descriptorSetLayouts.data();
         vkCreateInfo.pushConstantRangeCount = 0;
         vkCreateInfo.pPushConstantRanges = nullptr;
@@ -376,7 +378,7 @@ namespace Vulkan
         multisampleStateCreateInfo.flags = 0;
         multisampleStateCreateInfo.rasterizationSamples = ConvertSampleCount(createInfo.multisampleState.sampleCount);
         multisampleStateCreateInfo.sampleShadingEnable = createInfo.multisampleState.sampleShading ? VK_TRUE : VK_FALSE;
-        multisampleStateCreateInfo.minSampleShading = multisampleStateCreateInfo.rasterizationSamples / 2;
+        multisampleStateCreateInfo.minSampleShading = float(multisampleStateCreateInfo.rasterizationSamples / 2);
         multisampleStateCreateInfo.pSampleMask = nullptr;
         multisampleStateCreateInfo.alphaToCoverageEnable = VK_FALSE;
         multisampleStateCreateInfo.alphaToOneEnable = VK_FALSE;
@@ -452,7 +454,7 @@ namespace Vulkan
         dynamicStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
         dynamicStateCreateInfo.pNext = nullptr;
         dynamicStateCreateInfo.flags = 0;
-        dynamicStateCreateInfo.dynamicStateCount = dynamicStates.size();
+        dynamicStateCreateInfo.dynamicStateCount = uint32_t(dynamicStates.size());
         dynamicStateCreateInfo.pDynamicStates = dynamicStates.data();
 
         uint32_t colorAttachmentFormatCount = static_cast<uint32_t>(createInfo.renderTargetLayout.colorAttachmentsFormats.size());
@@ -632,7 +634,7 @@ namespace Vulkan
         VkDescriptorSetAllocateInfo allocateInfo{};
         allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocateInfo.pNext = nullptr;
-        allocateInfo.descriptorSetCount = descriptorSetLayouts.size();
+        allocateInfo.descriptorSetCount = uint32_t(descriptorSetLayouts.size());
         allocateInfo.pSetLayouts = descriptorSetLayouts.data();
 
         bool success = false;
@@ -742,45 +744,45 @@ namespace Vulkan
 
                 writeInfo.dstArrayElement = resources->arrayOffset;
                 writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-                writeInfo.descriptorCount = imageInfos.size();
+                writeInfo.descriptorCount = uint32_t(imageInfos.size());
                 writeInfo.pImageInfo = imageInfos.data();
             }
-            else if (auto resources = std::get_if<1>(&resourceVarient))
+            else if (auto buffer = std::get_if<1>(&resourceVarient))
             {
                 auto& bufferInfos = descriptorBufferInfos.emplace_back();
 
-                for (auto passAttachment : resources->views)
+                for (auto passAttachment : buffer->views)
                 {
-                    auto buffer = m_context->m_bufferOwner.Get(passAttachment->attachment->handle);
+                    auto buffer2 = m_context->m_bufferOwner.Get(passAttachment->attachment->handle);
 
                     VkDescriptorBufferInfo bufferInfo{};
-                    bufferInfo.buffer = buffer->handle;
+                    bufferInfo.buffer = buffer2->handle;
                     bufferInfo.offset = passAttachment->info.byteOffset;
                     bufferInfo.range = passAttachment->info.byteSize == 0 ? VK_WHOLE_SIZE : passAttachment->info.byteSize;
                     bufferInfos.push_back(bufferInfo);
                 }
 
-                writeInfo.dstArrayElement = resources->arrayOffset;
+                writeInfo.dstArrayElement = buffer->arrayOffset;
                 writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; // todo support storage buffers, and more complex types
-                writeInfo.descriptorCount = bufferInfos.size();
+                writeInfo.descriptorCount = uint32_t(bufferInfos.size());
                 writeInfo.pBufferInfo = bufferInfos.data();
             }
-            else if (auto resources = std::get_if<2>(&resourceVarient))
+            else if (auto sampler = std::get_if<2>(&resourceVarient))
             {
                 auto& imageInfos = descriptorImageInfos.emplace_back();
 
-                for (auto samplerHandle : resources->samplers)
+                for (auto samplerHandle : sampler->samplers)
                 {
-                    auto sampler = m_context->m_samplerOwner.Get(samplerHandle);
+                    auto sampler2 = m_context->m_samplerOwner.Get(samplerHandle);
 
                     VkDescriptorImageInfo imageInfo{};
-                    imageInfo.sampler = sampler->handle;
+                    imageInfo.sampler = sampler2->handle;
                     imageInfos.push_back(imageInfo);
                 }
 
-                writeInfo.dstArrayElement = resources->arrayOffset;
+                writeInfo.dstArrayElement = sampler->arrayOffset;
                 writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-                writeInfo.descriptorCount = imageInfos.size();
+                writeInfo.descriptorCount = uint32_t(imageInfos.size());
                 writeInfo.pImageInfo = imageInfos.data();
             }
             else
@@ -793,7 +795,7 @@ namespace Vulkan
             writeInfos.push_back(writeInfo);
         }
 
-        vkUpdateDescriptorSets(m_context->m_device, writeInfos.size(), writeInfos.data(), 0, nullptr);
+        vkUpdateDescriptorSets(m_context->m_device, uint32_t(writeInfos.size()), writeInfos.data(), 0, nullptr);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -1001,7 +1003,7 @@ namespace Vulkan
         VkResult result = vkQueuePresentKHR(m_context->m_graphicsQueue, &presentInfo);
         VULKAN_RETURN_ERR_CODE(result);
 
-        result = vkAcquireNextImageKHR(m_context->m_device, m_swapchain, 1e+9, m_imageReadySemaphore, VK_NULL_HANDLE, &m_currentImageIndex);
+        result = vkAcquireNextImageKHR(m_context->m_device, m_swapchain, TIMEOUT_DURATION, m_imageReadySemaphore, VK_NULL_HANDLE, &m_currentImageIndex);
         VULKAN_RETURN_ERR_CODE(result);
 
         return RHI::ResultCode::Success;
@@ -1061,7 +1063,7 @@ namespace Vulkan
             m_images.push_back(handle);
         }
 
-        result = vkAcquireNextImageKHR(m_context->m_device, m_swapchain, 1e+9, m_imageReadySemaphore, VK_NULL_HANDLE, &m_currentImageIndex);
+        result = vkAcquireNextImageKHR(m_context->m_device, m_swapchain, TIMEOUT_DURATION, m_imageReadySemaphore, VK_NULL_HANDLE, &m_currentImageIndex);
         VULKAN_RETURN_VKERR_CODE(result);
 
         return result;

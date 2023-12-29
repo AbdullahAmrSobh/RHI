@@ -410,7 +410,7 @@ namespace Vulkan
         renderingInfo.renderArea.offset.x = 0;
         renderingInfo.renderArea.offset.y = 0;
         renderingInfo.layerCount = 1;
-        renderingInfo.colorAttachmentCount = colorAttachmentInfo.size();
+        renderingInfo.colorAttachmentCount = uint32_t(colorAttachmentInfo.size());
         renderingInfo.pColorAttachments = colorAttachmentInfo.data();
         renderingInfo.pDepthAttachment = depthAttachmentInfo.has_value() ? &depthAttachmentInfo.value() : nullptr;
         vkCmdBeginRendering(m_commandBuffer, &renderingInfo);
@@ -466,7 +466,7 @@ namespace Vulkan
             descriptorSets.push_back(bindGroup->handle);
         }
 
-        vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, descriptorSets.size(), descriptorSets.data(), 0, nullptr);
+        vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, uint32_t(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
     }
 
     void CommandList::TransitionPassAttachments(BarrierType barrierType, TL::Span<RHI::ImagePassAttachment*> passAttachments) const
@@ -528,7 +528,7 @@ namespace Vulkan
         auto dependencyInfo = VkDependencyInfo{};
         dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
         dependencyInfo.pNext = nullptr;
-        dependencyInfo.imageMemoryBarrierCount = barriers.size();
+        dependencyInfo.imageMemoryBarrierCount = uint32_t(barriers.size());
         dependencyInfo.pImageMemoryBarriers = barriers.data();
         vkCmdPipelineBarrier2(m_commandBuffer, &dependencyInfo);
     }
@@ -576,7 +576,7 @@ namespace Vulkan
         auto dependencyInfo = VkDependencyInfo{};
         dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
         dependencyInfo.pNext = nullptr;
-        dependencyInfo.bufferMemoryBarrierCount = barriers.size();
+        dependencyInfo.bufferMemoryBarrierCount = uint32_t(barriers.size());
         dependencyInfo.pBufferMemoryBarriers = barriers.data();
         vkCmdPipelineBarrier2(m_commandBuffer, &dependencyInfo);
     }

@@ -73,8 +73,6 @@ namespace Vulkan
         case RHI::AttachmentUsage::Copy:           return IsWriteAccess(access) ? VK_ACCESS_2_TRANSFER_READ_BIT : VK_ACCESS_2_TRANSFER_WRITE_BIT;
         default:                                   RHI_UNREACHABLE(); return {};
         }
-
-        return VK_ACCESS_2_NONE;
     }
 
     inline static VkPipelineStageFlags2 ConvertPipelineStageFlags(RHI::ShaderStage stage)

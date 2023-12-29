@@ -7,6 +7,8 @@
 
 #include <memory>
 
+#define TIMEOUT_DURATION 9000000
+
 namespace Vulkan
 {
     ///////////////////////////////////////////////////////////////////////////
@@ -353,7 +355,7 @@ namespace Vulkan
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
         submitInfo.pNext = nullptr;
         submitInfo.flags = 0;
-        submitInfo.commandBufferInfoCount = commandBuffers.size();
+        submitInfo.commandBufferInfoCount = uint32_t(commandBuffers.size());
         submitInfo.pCommandBufferInfos = commandBuffers.data();
         auto result = vkQueueSubmit2(context->m_graphicsQueue, 1, &submitInfo, fence);
         VULKAN_ASSERT_SUCCESS(result);
@@ -387,9 +389,9 @@ namespace Vulkan
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
         submitInfo.pNext = nullptr;
         submitInfo.flags = 0;
-        submitInfo.waitSemaphoreInfoCount = waitSemaphores.size();
+        submitInfo.waitSemaphoreInfoCount = uint32_t(waitSemaphores.size());
         submitInfo.pWaitSemaphoreInfos = waitSemaphores.data();
-        submitInfo.commandBufferInfoCount = commandBuffers.size();
+        submitInfo.commandBufferInfoCount = uint32_t(commandBuffers.size());
         submitInfo.pCommandBufferInfos = commandBuffers.data();
         // submitInfo.signalSemaphoreInfoCount = signalSemaphores.size();
         // submitInfo.pSignalSemaphoreInfos = signalSemaphores.data();
@@ -406,7 +408,7 @@ namespace Vulkan
     {
         auto context = static_cast<Context*>(m_context);
         auto fence = GetCurrentFrameFence();
-        vkWaitForFences(context->m_device, 1, &fence, VK_TRUE, 1e+9);
+        vkWaitForFences(context->m_device, 1, &fence, VK_TRUE, TIMEOUT_DURATION);
         vkResetFences(context->m_device, 1, &fence);
     }
 
