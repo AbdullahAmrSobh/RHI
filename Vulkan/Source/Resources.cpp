@@ -131,7 +131,7 @@ namespace Vulkan
     /// ImageView
     ///////////////////////////////////////////////////////////////////////////
 
-    RHI::ResultCode ImageView::Init(Context* context, RHI::Handle<Image> imageHandle, const RHI::ImageAttachmentUseInfo& useInfo)
+    RHI::ResultCode ImageView::Init(Context* context, RHI::Handle<Image> imageHandle, const RHI::ImageViewCreateInfo& createInfo)
     {
         auto image = context->m_imageOwner.Get(imageHandle);
         RHI_ASSERT(image);
@@ -144,18 +144,18 @@ namespace Vulkan
 
         switch (image->imageType)
         {
-        case VK_IMAGE_TYPE_1D: vkCreateInfo.viewType = useInfo.subresource.arrayCount == 1 ? VK_IMAGE_VIEW_TYPE_1D : VK_IMAGE_VIEW_TYPE_1D_ARRAY; break;
-        case VK_IMAGE_TYPE_2D: vkCreateInfo.viewType = useInfo.subresource.arrayCount == 1 ? VK_IMAGE_VIEW_TYPE_2D : VK_IMAGE_VIEW_TYPE_2D_ARRAY; break;
+        case VK_IMAGE_TYPE_1D: vkCreateInfo.viewType = createInfo.subresource.arrayCount == 1 ? VK_IMAGE_VIEW_TYPE_1D : VK_IMAGE_VIEW_TYPE_1D_ARRAY; break;
+        case VK_IMAGE_TYPE_2D: vkCreateInfo.viewType = createInfo.subresource.arrayCount == 1 ? VK_IMAGE_VIEW_TYPE_2D : VK_IMAGE_VIEW_TYPE_2D_ARRAY; break;
         case VK_IMAGE_TYPE_3D: vkCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_3D; break;
         default:               RHI_UNREACHABLE(); break;
         }
 
         vkCreateInfo.format = image->format;
-        vkCreateInfo.components.r = ConvertComponentSwizzle(useInfo.components.r);
-        vkCreateInfo.components.g = ConvertComponentSwizzle(useInfo.components.g);
-        vkCreateInfo.components.b = ConvertComponentSwizzle(useInfo.components.b);
-        vkCreateInfo.components.a = ConvertComponentSwizzle(useInfo.components.a);
-        vkCreateInfo.subresourceRange = ConvertSubresourceRange(useInfo.subresource);
+        vkCreateInfo.components.r = ConvertComponentSwizzle(createInfo.components.r);
+        vkCreateInfo.components.g = ConvertComponentSwizzle(createInfo.components.g);
+        vkCreateInfo.components.b = ConvertComponentSwizzle(createInfo.components.b);
+        vkCreateInfo.components.a = ConvertComponentSwizzle(createInfo.components.a);
+        vkCreateInfo.subresourceRange = ConvertSubresourceRange(createInfo.subresource);
 
         auto result = vkCreateImageView(context->m_device, &vkCreateInfo, nullptr, &handle);
         return ConvertResult(result);
@@ -170,7 +170,7 @@ namespace Vulkan
     /// BufferView
     ///////////////////////////////////////////////////////////////////////////
 
-    RHI::ResultCode BufferView::Init(Context* context, RHI::Handle<Buffer> bufferHandle, const RHI::BufferAttachmentUseInfo& useInfo)
+    RHI::ResultCode BufferView::Init(Context* context, RHI::Handle<Buffer> bufferHandle, const RHI::BufferViewCreateInfo& createInfo)
     {
         auto buffer = context->m_bufferOwner.Get(bufferHandle);
         RHI_ASSERT(buffer);
@@ -180,9 +180,9 @@ namespace Vulkan
         vkCreateInfo.pNext = nullptr;
         vkCreateInfo.flags = 0;
         vkCreateInfo.buffer = buffer->handle;
-        vkCreateInfo.format = ConvertFormat(useInfo.format);
-        vkCreateInfo.offset = useInfo.byteOffset;
-        vkCreateInfo.range = useInfo.byteSize;
+        vkCreateInfo.format = ConvertFormat(createInfo.format);
+        vkCreateInfo.offset = createInfo.byteOffset;
+        vkCreateInfo.range = createInfo.byteSize;
 
         auto result = vkCreateBufferView(context->m_device, &vkCreateInfo, nullptr, &handle);
         return ConvertResult(result);
@@ -732,9 +732,9 @@ namespace Vulkan
             {
                 auto& imageInfos = descriptorImageInfos.emplace_back();
 
-                for (auto passAttachment : resources->views)
+                for (auto viewHandle : resources->views)
                 {
-                    auto view = context->m_imageViewOwner.Get(passAttachment->view);
+                    auto view = context->m_imageViewOwner.Get(viewHandle);
 
                     VkDescriptorImageInfo imageInfo{};
                     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -751,14 +751,12 @@ namespace Vulkan
             {
                 auto& bufferInfos = descriptorBufferInfos.emplace_back();
 
-                for (auto passAttachment : buffer->views)
+                for (auto viewHandle : buffer->views)
                 {
-                    auto buffer2 = m_context->m_bufferOwner.Get(passAttachment->attachment->handle);
-
                     VkDescriptorBufferInfo bufferInfo{};
-                    bufferInfo.buffer = buffer2->handle;
-                    bufferInfo.offset = passAttachment->info.byteOffset;
-                    bufferInfo.range = passAttachment->info.byteSize == 0 ? VK_WHOLE_SIZE : passAttachment->info.byteSize;
+                    bufferInfo.buffer = context->m_bufferOwner.Get(viewHandle)->handle;
+                    bufferInfo.offset = 0;
+                    bufferInfo.range = VK_WHOLE_SIZE;
                     bufferInfos.push_back(bufferInfo);
                 }
 
@@ -972,11 +970,11 @@ namespace Vulkan
         return result;
     }
 
-    RHI::ResultCode Swapchain::Resize(uint32_t newWidth, uint32_t newHeight)
+    RHI::ResultCode Swapchain::Resize(RHI::ImageSize2D newSize)
     {
         auto context = static_cast<Context*>(m_context);
 
-        m_swapchainInfo.imageSize = { newWidth, newHeight, 0 };
+        m_swapchainInfo.imageSize = { newSize.width, newSize.height, 0 };
 
         VkResult result = vkQueueWaitIdle(context->m_graphicsQueue);
         VULKAN_ASSERT_SUCCESS(result);
@@ -990,12 +988,14 @@ namespace Vulkan
 
     RHI::ResultCode Swapchain::Present()
     {
+        auto frameReadySemaphore = static_cast<Pass*>(m_attachment->lastUse->pass)->m_signalSemaphore;
+
         // Present current image to be rendered.
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         presentInfo.pNext = nullptr;
-        presentInfo.waitSemaphoreCount = 0;
-        // presentInfo.pWaitSemaphores = &pass.m_signalSemaphore;
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores = &frameReadySemaphore;
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = &m_swapchain;
         presentInfo.pImageIndices = &m_currentImageIndex;

@@ -4,339 +4,444 @@
 
 namespace RHI
 {
+
+    //////////////////////////////////////////////////////////////////////////////////////////
+    /// ImageAttachment
+    //////////////////////////////////////////////////////////////////////////////////////////
+
+    ImageAttachment::ImageAttachment(const char* name, Handle<Image> handle)
+        : Attachment(name, Attachment::Lifetime::Persistent, Attachment::Type::Image)
+        , swapchain(nullptr)
+        , handle(handle)
+        , info()
+        , firstUse(nullptr)
+        , lastUse(nullptr)
+    {
+    }
+
+    ImageAttachment::ImageAttachment(const char* name, Swapchain* swapchain)
+        : Attachment(name, Attachment::Lifetime::Persistent, Attachment::Type::Image)
+        , swapchain(swapchain)
+        , handle(swapchain->GetImage())
+        , info()
+        , firstUse(nullptr)
+        , lastUse(nullptr)
+    {
+    }
+
+    ImageAttachment::ImageAttachment(const char* name, const ImageCreateInfo& createInfo)
+        : Attachment(name, Attachment::Lifetime::Transient, Attachment::Type::Image)
+        , swapchain(nullptr)
+        , handle()
+        , info(createInfo)
+        , firstUse(nullptr)
+        , lastUse(nullptr)
+    {
+    }
+
+    void ImageAttachment::PushPassAttachment(ImagePassAttachment* passAttachment)
+    {
+        if (firstUse && lastUse)
+        {
+            lastUse->next = passAttachment;
+            lastUse = lastUse->next;
+        }
+        else
+        {
+            firstUse = passAttachment;
+            lastUse = passAttachment;
+        }
+    }
+
+    void ImageAttachment::Reset()
+    {
+        firstUse = nullptr;
+        lastUse = nullptr;
+    }
+
+    Handle<Image> ImageAttachment::GetImage()
+    {
+        if (swapchain)
+        {
+            return swapchain->GetImage();
+        }
+
+        return handle;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////////////////
+    /// BufferAttachment
+    //////////////////////////////////////////////////////////////////////////////////////////
+
+    BufferAttachment::BufferAttachment(const char* name, Handle<Buffer> handle)
+        : Attachment(name, Attachment::Lifetime::Persistent, Attachment::Type::Buffer)
+        , handle(handle)
+        , info()
+        , firstUse(nullptr)
+        , lastUse(nullptr)
+    {
+    }
+
+    BufferAttachment::BufferAttachment(const char* name, const BufferCreateInfo& createInfo)
+        : Attachment(name, Attachment::Lifetime::Transient, Attachment::Type::Buffer)
+        , handle()
+        , info(createInfo)
+        , firstUse(nullptr)
+        , lastUse(nullptr)
+    {
+    }
+
+    void BufferAttachment::PushPassAttachment(BufferPassAttachment* passAttachment)
+    {
+        if (firstUse && lastUse)
+        {
+            lastUse->next = passAttachment;
+            lastUse = lastUse->next;
+        }
+        else
+        {
+            firstUse = passAttachment;
+            lastUse = passAttachment;
+        }
+    }
+
+    void BufferAttachment::Reset()
+    {
+        firstUse = nullptr;
+        lastUse = nullptr;
+    }
+
+    Handle<Image> BufferAttachment::GetBuffer()
+    {
+        return handle;
+    }
+
     //////////////////////////////////////////////////////////////////////////////////////////
     /// AttachmentsRegistry
     //////////////////////////////////////////////////////////////////////////////////////////
 
     void AttachmentsRegistry::Reset()
     {
-        for (auto attachment : m_attachments)
+        m_imageAttachments.clear();
+        m_bufferAttachments.clear();
+        m_swapchainAttachments.clear();
+    }
+
+    ImageAttachment* AttachmentsRegistry::ImportSwapchainImage(const char* name, Swapchain* swapchain)
+    {
+        m_imageAttachments[name] = new ImageAttachment(name, swapchain);
+        auto attachment = m_imageAttachments[name];
+        m_swapchainAttachments.push_back(name);
+        swapchain->m_attachment = attachment;
+        return attachment;
+    }
+
+    ImageAttachment* AttachmentsRegistry::ImportImage(const char* name, Handle<Image> handle)
+    {
+        m_imageAttachments[name] = new ImageAttachment(name, handle);
+        auto attachment = m_imageAttachments[name];
+        return attachment;
+    }
+
+    BufferAttachment* AttachmentsRegistry::ImportBuffer(const char* name, Handle<Buffer> handle)
+    {
+        m_bufferAttachments[name] = new BufferAttachment(name, handle);
+        auto attachment = m_bufferAttachments[name];
+        return attachment;
+    }
+
+    ImageAttachment* AttachmentsRegistry::CreateTransientImage(const char* name, const ImageCreateInfo& createInfo)
+    {
+        m_imageAttachments[name] = new ImageAttachment(name, createInfo);
+        auto attachment = m_imageAttachments[name];
+        return attachment;
+    }
+
+    BufferAttachment* AttachmentsRegistry::CreateTransientBuffer(const char* name, const BufferCreateInfo& createInfo)
+    {
+        m_bufferAttachments[name] = new BufferAttachment(name, createInfo);
+        auto attachment = m_bufferAttachments[name];
+        return attachment;
+    }
+
+    ImageAttachment* AttachmentsRegistry::FindImage(AttachmentID id)
+    {
+        if (auto it = m_imageAttachments.find(id); it != m_imageAttachments.end())
         {
-            attachment->Reset();
+            return it->second;
         }
+        return nullptr;
     }
 
-    ImageAttachment* AttachmentsRegistry::ImportSwapchainImageAttachment(const char* name, Swapchain* swapchain)
+    BufferAttachment* AttachmentsRegistry::FindBuffer(AttachmentID id)
     {
-        auto& attachment = m_imageAttachments.emplace_back(std::make_unique<ImageAttachment>(name, swapchain));
-
-        m_swapchainAttachments.push_back(attachment.get());
-        m_attachments.push_back(attachment.get());
-
-        return attachment.get();
-    }
-
-    ImageAttachment* AttachmentsRegistry::ImportImageAttachment(const char* name, Handle<Image> handle)
-    {
-        auto& attachment = m_imageAttachments.emplace_back(std::make_unique<ImageAttachment>(name, handle));
-
-        m_importedImageAttachments.push_back(attachment.get());
-        m_attachments.push_back(attachment.get());
-
-        return attachment.get();
-    }
-
-    BufferAttachment* AttachmentsRegistry::ImportBufferAttachment(const char* name, Handle<Buffer> handle)
-    {
-        auto& attachment = m_bufferAttachments.emplace_back(std::make_unique<BufferAttachment>(name, handle));
-
-        m_importedBufferAttachments.push_back(attachment.get());
-        m_attachments.push_back(attachment.get());
-
-        return attachment.get();
-    }
-
-    ImageAttachment* AttachmentsRegistry::CreateTransientImageAttachment(const char* name, const ImageCreateInfo& createInfo)
-    {
-        auto& attachment = m_imageAttachments.emplace_back(std::make_unique<ImageAttachment>(name, createInfo));
-
-        m_transientImageAttachments.push_back(attachment.get());
-        m_attachments.push_back(attachment.get());
-
-        return attachment.get();
-    }
-
-    BufferAttachment* AttachmentsRegistry::CreateTransientBufferAttachment(const char* name, const BufferCreateInfo& createInfo)
-    {
-        auto& attachment = m_bufferAttachments.emplace_back(std::make_unique<BufferAttachment>(name, createInfo));
-
-        m_transientBufferAttachments.push_back(attachment.get());
-        m_attachments.push_back(attachment.get());
-
-        return attachment.get();
+        if (auto it = m_bufferAttachments.find(id); it != m_bufferAttachments.end())
+        {
+            return it->second;
+        }
+        return nullptr;
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
     /// Pass
     //////////////////////////////////////////////////////////////////////////////////////////
 
-    void Pass::Begin()
+    // FIXME: fix memory leaks here
+
+    ImagePassAttachment* Pass::UseColorAttachment(ImageAttachment* attachment, ColorValue value, LoadStoreOperations loadStoreOperations, const ImageViewCreateInfo& viewInfo)
     {
+        auto passAttachment = new ImagePassAttachment;
+        memset(passAttachment, 0, sizeof(decltype(*passAttachment)));
+        passAttachment->pass = this;
+        passAttachment->attachment = attachment;
+        passAttachment->usage = AttachmentUsage::Color;
+        passAttachment->access = AttachmentAccess::None;
+        passAttachment->viewInfo = viewInfo;
+        passAttachment->clearValue = value;
+        passAttachment->loadStoreOperations = loadStoreOperations;
+        attachment->PushPassAttachment(passAttachment);
+        m_imagePassAttachments.push_back(passAttachment);
+        return passAttachment;
     }
 
-    void Pass::End()
+    ImagePassAttachment* Pass::UseDepthAttachment(ImageAttachment* attachment, DepthStencilValue value, LoadStoreOperations loadStoreOperations, const ImageViewCreateInfo& viewInfo)
     {
+        auto passAttachment = new ImagePassAttachment;
+        memset(passAttachment, 0, sizeof(decltype(*passAttachment)));
+        passAttachment->pass = this;
+        passAttachment->attachment = attachment;
+        passAttachment->usage = AttachmentUsage::Depth;
+        passAttachment->access = AttachmentAccess::None;
+        passAttachment->viewInfo = viewInfo;
+        passAttachment->clearValue = value;
+        passAttachment->loadStoreOperations = loadStoreOperations;
+        attachment->PushPassAttachment(passAttachment);
+        m_imagePassAttachments.push_back(passAttachment);
+        return passAttachment;
     }
 
-    void Pass::ExecuteAfter(Pass& pass)
+    ImagePassAttachment* Pass::UseStencilAttachment(ImageAttachment* attachment, DepthStencilValue value, LoadStoreOperations loadStoreOperations, const ImageViewCreateInfo& viewInfo)
     {
-        m_producers.push_back(&pass);
-        pass.m_consumers.push_back(&pass);
+        auto passAttachment = new ImagePassAttachment;
+        memset(passAttachment, 0, sizeof(decltype(*passAttachment)));
+        passAttachment->pass = this;
+        passAttachment->attachment = attachment;
+        passAttachment->usage = AttachmentUsage::Stencil;
+        passAttachment->access = AttachmentAccess::None;
+        passAttachment->viewInfo = viewInfo;
+        passAttachment->clearValue = value;
+        passAttachment->loadStoreOperations = loadStoreOperations;
+        attachment->PushPassAttachment(passAttachment);
+        m_imagePassAttachments.push_back(passAttachment);
+        return passAttachment;
     }
 
-    void Pass::ExecuteBefore(Pass& pass)
+    ImagePassAttachment* Pass::UseDepthStencilAttachment(ImageAttachment* attachment, DepthStencilValue value, LoadStoreOperations loadStoreOperations, const ImageViewCreateInfo& viewInfo)
     {
-        m_consumers.push_back(&pass);
-        pass.m_producers.push_back(&pass);
+        auto passAttachment = new ImagePassAttachment;
+        memset(passAttachment, 0, sizeof(decltype(*passAttachment)));
+        passAttachment->pass = this;
+        passAttachment->attachment = attachment;
+        passAttachment->usage = AttachmentUsage::DepthStencil;
+        passAttachment->access = AttachmentAccess::None;
+        passAttachment->viewInfo = viewInfo;
+        passAttachment->clearValue = value;
+        passAttachment->loadStoreOperations = loadStoreOperations;
+        attachment->PushPassAttachment(passAttachment);
+        m_imagePassAttachments.push_back(passAttachment);
+        return passAttachment;
     }
 
-    ImagePassAttachment* Pass::ImportSwapchainImageResource(const char* name, Swapchain* swapchain, const ImageAttachmentUseInfo& useInfo)
+    ImagePassAttachment* Pass::UseShaderImageResource(ImageAttachment* attachment, const ImageViewCreateInfo& viewInfo)
     {
-        m_swapchain = swapchain;
-        auto attachemnt = m_scheduler->m_attachmentsRegistry->ImportSwapchainImageAttachment(name, swapchain);
-        return UseAttachment(attachemnt, useInfo);
+        auto passAttachment = new ImagePassAttachment;
+        memset(passAttachment, 0, sizeof(decltype(*passAttachment)));
+        passAttachment->pass = this;
+        passAttachment->attachment = attachment;
+        passAttachment->usage = AttachmentUsage::ShaderResource;
+        passAttachment->access = AttachmentAccess::Read;
+        passAttachment->viewInfo = viewInfo;
+        attachment->PushPassAttachment(passAttachment);
+        m_imagePassAttachments.push_back(passAttachment);
+        return passAttachment;
     }
 
-    ImagePassAttachment* Pass::ImportImageResource(const char* name, Handle<Image> image, const ImageAttachmentUseInfo& useInfo)
+    BufferPassAttachment* Pass::UseShaderBufferResource(BufferAttachment* attachment, const BufferViewCreateInfo& viewInfo)
     {
-        auto attachemnt = m_scheduler->m_attachmentsRegistry->ImportImageAttachment(name, image);
-        return UseAttachment(attachemnt, useInfo);
+        auto passAttachment = new BufferPassAttachment;
+        memset(passAttachment, 0, sizeof(decltype(*passAttachment)));
+        passAttachment->pass = this;
+        passAttachment->attachment = attachment;
+        passAttachment->usage = AttachmentUsage::Color;
+        passAttachment->access = AttachmentAccess::None;
+        passAttachment->viewInfo = viewInfo;
+        attachment->PushPassAttachment(passAttachment);
+        m_bufferPassAttachment.push_back(passAttachment);
+        return passAttachment;
     }
 
-    BufferPassAttachment* Pass::ImportBufferResource(const char* name, Handle<Buffer> buffer, const BufferAttachmentUseInfo& useInfo)
+    ImagePassAttachment* Pass::UseShaderImageStorage(ImageAttachment* attachment, const ImageViewCreateInfo& viewInfo, AttachmentAccess access)
     {
-        auto attachemnt = m_scheduler->m_attachmentsRegistry->ImportBufferAttachment(name, buffer);
-        return UseAttachment(attachemnt, useInfo);
+        auto passAttachment = new ImagePassAttachment;
+        memset(passAttachment, 0, sizeof(decltype(*passAttachment)));
+        passAttachment->pass = this;
+        passAttachment->attachment = attachment;
+        passAttachment->usage = AttachmentUsage::Color;
+        passAttachment->access = access;
+        passAttachment->viewInfo = viewInfo;
+        attachment->PushPassAttachment(passAttachment);
+        m_imagePassAttachments.push_back(passAttachment);
+        return passAttachment;
     }
 
-    ImagePassAttachment* Pass::CreateTransientImageResource(const char* name, const ImageCreateInfo& createInfo, const ImageAttachmentUseInfo& useInfo)
+    BufferPassAttachment* Pass::UseShaderBufferStorage(BufferAttachment* attachment, const BufferViewCreateInfo& viewInfo, AttachmentAccess access)
     {
-        auto attachemnt = m_scheduler->m_attachmentsRegistry->CreateTransientImageAttachment(name, createInfo);
-        return UseAttachment(attachemnt, useInfo);
+        auto passAttachment = new BufferPassAttachment;
+        memset(passAttachment, 0, sizeof(decltype(*passAttachment)));
+        passAttachment->pass = this;
+        passAttachment->attachment = attachment;
+        passAttachment->usage = AttachmentUsage::Color;
+        passAttachment->access = access;
+        passAttachment->viewInfo = viewInfo;
+        attachment->PushPassAttachment(passAttachment);
+        m_bufferPassAttachment.push_back(passAttachment);
+        return passAttachment;
     }
 
-    BufferPassAttachment* Pass::CreateTransientBufferResource(const char* name, const BufferCreateInfo& createInfo, const BufferAttachmentUseInfo& useInfo)
+    ImagePassAttachment* Pass::UseCopyImageResource(ImageAttachment* attachment, const ImageViewCreateInfo& viewInfo, AttachmentAccess access)
     {
-        auto attachemnt = m_scheduler->m_attachmentsRegistry->CreateTransientBufferAttachment(name, createInfo);
-        return UseAttachment(attachemnt, useInfo);
+        auto passAttachment = new ImagePassAttachment;
+        memset(passAttachment, 0, sizeof(decltype(*passAttachment)));
+        passAttachment->pass = this;
+        passAttachment->attachment = attachment;
+        passAttachment->usage = AttachmentUsage::Color;
+        passAttachment->access = access;
+        passAttachment->viewInfo = viewInfo;
+        attachment->PushPassAttachment(passAttachment);
+        m_imagePassAttachments.push_back(passAttachment);
+        return passAttachment;
     }
 
-    ImagePassAttachment* Pass::UseImageResource(ImagePassAttachment* attachment, const ImageAttachmentUseInfo& useInfo)
+    BufferPassAttachment* Pass::UseCopyBufferResource(BufferAttachment* attachment, const BufferViewCreateInfo& viewInfo, AttachmentAccess access)
     {
-        return UseAttachment(attachment->attachment, useInfo);
-    }
-
-    BufferPassAttachment* Pass::UseBufferResource(BufferPassAttachment* attachment, const BufferAttachmentUseInfo& useInfo)
-    {
-        return UseAttachment(attachment->attachment, useInfo);
-    }
-
-    ImagePassAttachment* Pass::UseAttachment(ImageAttachment*& attachment, const ImageAttachmentUseInfo& useInfo)
-    {
-        ImagePassAttachment& passAttachment = m_imagePassAttachments.emplace_back(ImagePassAttachment{});
-        passAttachment.attachment = attachment;
-        passAttachment.pass = this;
-        passAttachment.info = useInfo;
-        passAttachment.next = nullptr;
-        passAttachment.prev = attachment->lastUse;
-
-        if (attachment->lifetime == RHI::AttachmentLifetime::Persistent && attachment->swapchain == nullptr)
-        {
-            passAttachment.view = m_context->CreateImageView(attachment->handle, passAttachment.info);
-        }
-
-        if (attachment->firstUse == nullptr)
-        {
-            attachment->firstUse = &passAttachment;
-            attachment->lastUse = &passAttachment;
-        }
-        else
-        {
-            attachment->lastUse->next = &passAttachment;
-            attachment->lastUse = attachment->lastUse->next;
-        }
-
-        return &passAttachment;
-    }
-
-    BufferPassAttachment* Pass::UseAttachment(BufferAttachment*& attachment, const BufferAttachmentUseInfo& useInfo)
-    {
-        BufferPassAttachment& passAttachment = m_bufferPassAttachment.emplace_back(BufferPassAttachment{});
-        passAttachment.attachment = attachment;
-        passAttachment.pass = this;
-        passAttachment.info = useInfo;
-        passAttachment.next = nullptr;
-        passAttachment.prev = attachment->lastUse;
-
-        if (attachment->lifetime == RHI::AttachmentLifetime::Persistent)
-        {
-            // passAttachment.view = m_context->CreateBufferView(attachment->handle, passAttachment.info);
-        }
-        if (attachment->firstUse == nullptr)
-        {
-            attachment->firstUse = &passAttachment;
-            attachment->lastUse = &passAttachment;
-        }
-        else
-        {
-            attachment->lastUse->next = &passAttachment;
-            attachment->lastUse = attachment->lastUse->next;
-        }
-        return &passAttachment;
-    }
-
-    void Pass::Execute(TL::Span<CommandList*> commandLists)
-    {
-        m_commandLists.insert(m_commandLists.end(), commandLists.begin(), commandLists.end());
+        auto passAttachment = new BufferPassAttachment;
+        memset(passAttachment, 0, sizeof(decltype(*passAttachment)));
+        passAttachment->pass = this;
+        passAttachment->attachment = attachment;
+        passAttachment->usage = AttachmentUsage::Color;
+        passAttachment->access = access;
+        passAttachment->viewInfo = viewInfo;
+        attachment->PushPassAttachment(passAttachment);
+        m_bufferPassAttachment.push_back(passAttachment);
+        return passAttachment;
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
     /// FrameScheduler
     //////////////////////////////////////////////////////////////////////////////////////////
 
+    FrameScheduler::FrameScheduler(Context* context)
+        : m_attachmentsRegistry(std::make_unique<AttachmentsRegistry>())
+        , m_context(context)
+    {
+    }
+
     void FrameScheduler::Begin()
     {
-        Compile();
+        auto registry = GetRegistry();
+
+        // FIXME: no need to iterate over all pass attachments, just update swapchain's
+        for (auto pass : m_passList)
+        {
+            for (auto passAttachment : pass->m_imagePassAttachments)
+            {
+                auto attachment = passAttachment->attachment;
+                passAttachment->view = FindOrCreateImageView(attachment->GetImage(), passAttachment->viewInfo);
+            }
+        }
 
         OnFrameBegin();
     }
 
     void FrameScheduler::End()
     {
-        Execute();
+        for (auto pass : m_passList)
+        {
+            ExecutePass(*pass);
+            // clear the commandlists after execution.
+            pass->m_commandLists.clear();
+        }
 
         OnFrameEnd();
-
-        m_frameIndex++;
     }
 
-    void FrameScheduler::Submit(Pass& pass)
+    void FrameScheduler::RegisterPass(Pass& pass)
     {
         m_passList.push_back(&pass);
     }
 
-    void FrameScheduler::Reset()
-    {
-        m_attachmentsRegistry->Reset();
-    }
-
     void FrameScheduler::Compile()
-    {
-        // TODO hack to avoid over allocating
-        static bool shouldCompile = true;
-        if (shouldCompile)
-        {
-            CompileTransientAttachments();
-            shouldCompile = false;
-        }
-
-        CompileAttachmentsViews();
-    }
-
-    void FrameScheduler::CompileTransientAttachments()
     {
         m_transientAttachmentAllocator->Begin();
 
+        /// TODO: Add topological sort that minimize passes overlaping
+        /// TODO: This should be replaced with more sophisticated breadth-first-search
+        /// on the frame graph, to maximize the aliasing between non overlaping passes.
         for (auto pass : m_passList)
         {
             for (auto& passAttachment : pass->m_imagePassAttachments)
             {
-                if (passAttachment.attachment->lifetime != AttachmentLifetime::Transient)
-                    continue;
-                else if (passAttachment.prev != nullptr)
-                    continue;
+                auto attachment = passAttachment->attachment;
+                if (attachment->lifetime == Attachment::Lifetime::Transient &&
+                    passAttachment->prev == nullptr)
+                {
+                    m_transientAttachmentAllocator->Allocate(attachment);
+                }
 
-                auto attachment = passAttachment.attachment;
-                m_transientAttachmentAllocator->Allocate(attachment);
+                if (attachment->type == Attachment::Type::Buffer)
+                {
+                    passAttachment->view = FindOrCreateBufferView(attachment->GetImage(), passAttachment->viewInfo);
+                }
+                else
+                {
+                    passAttachment->view = FindOrCreateImageView(attachment->GetImage(), passAttachment->viewInfo);
+                }
             }
 
             for (auto& passAttachment : pass->m_bufferPassAttachment)
             {
-                if (passAttachment.attachment->lifetime != AttachmentLifetime::Transient)
-                    continue;
-                else if (passAttachment.prev != nullptr)
-                    continue;
-
-                auto attachment = passAttachment.attachment;
-                m_transientAttachmentAllocator->Allocate(attachment);
-            }
-
-            for (auto& passAttachment : pass->m_imagePassAttachments)
-            {
-                if (passAttachment.attachment->lifetime != AttachmentLifetime::Transient)
-                    continue;
-                else if (passAttachment.next != nullptr)
-                    continue;
-
-                auto attachment = passAttachment.attachment;
-                m_transientAttachmentAllocator->Free(attachment);
-            }
-
-            for (auto& passAttachment : pass->m_bufferPassAttachment)
-            {
-                if (passAttachment.attachment->lifetime != AttachmentLifetime::Transient)
-                    continue;
-                else if (passAttachment.next != nullptr)
-                    continue;
-
-                auto attachment = passAttachment.attachment;
-                m_transientAttachmentAllocator->Free(attachment);
+                auto attachment = passAttachment->attachment;
+                if (attachment->lifetime == Attachment::Lifetime::Transient &&
+                    passAttachment->next == nullptr)
+                {
+                    m_transientAttachmentAllocator->Free(attachment);
+                }
             }
         }
 
         m_transientAttachmentAllocator->End();
     }
 
-    void FrameScheduler::CompileAttachmentsViews()
+    Handle<ImageView> FrameScheduler::FindOrCreateImageView(Handle<Image> image, const ImageViewCreateInfo& createInfo)
     {
-        for (auto pass : m_passList)
+        if (auto it = m_imageViewsLut.find(image); it != m_imageViewsLut.end())
         {
-            for (auto& passAttachment : pass->m_imagePassAttachments)
-            {
-                auto attachment = passAttachment.attachment;
-
-                if (auto swapchain = attachment->swapchain)
-                {
-                    attachment->handle = swapchain->GetImage();
-                }
-
-                if (auto it = m_imageViewsLut.find(attachment->handle); it != m_imageViewsLut.end())
-                {
-                    passAttachment.view = it->second;
-                }
-                else
-                {
-                    passAttachment.view = m_context->CreateImageView(passAttachment.attachment->handle, passAttachment.info);
-                    m_imageViewsLut.insert({ attachment->handle, passAttachment.view });
-                }
-            }
-
-            for (auto& passAttachment : pass->m_bufferPassAttachment)
-            {
-                auto attachment = passAttachment.attachment;
-
-                if (passAttachment.view)
-                    continue;
-
-                if (auto it = m_bufferViewLut.find(attachment->handle); it != m_bufferViewLut.end())
-                {
-                    passAttachment.view = it->second;
-                }
-                else
-                {
-                    // passAttachment.view = m_context->CreateBufferView(passAttachment.attachment->handle, passAttachment.info);
-                    // m_bufferViewLut.insert({ attachment->handle, passAttachment.view });
-                }
-            }
+            return it->second;
         }
+
+        auto result = m_imageViewsLut[image] = m_context->CreateImageView(image, createInfo);
+        return result;
     }
 
-    void FrameScheduler::Execute()
+    Handle<BufferView> FrameScheduler::FindOrCreateBufferView(Handle<Buffer> buffer, const ImageViewCreateInfo& createInfo)
     {
-        for (auto pass : m_passList)
+        if (auto it = m_imageViewsLut.find(buffer); it != m_imageViewsLut.end())
         {
-            ExecutePass(*pass);
+            return it->second;
         }
+
+        auto result = m_imageViewsLut[buffer] = m_context->CreateImageView(buffer, createInfo);
+        return result;
     }
 
 } // namespace RHI

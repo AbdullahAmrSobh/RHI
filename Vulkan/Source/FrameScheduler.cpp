@@ -45,11 +45,11 @@ namespace Vulkan
 
     void TransientAttachmentAllocator::Allocate(RHI::Attachment* attachment)
     {
-        RHI_ASSERT(attachment->lifetime == RHI::AttachmentLifetime::Transient);
+        RHI_ASSERT(attachment->lifetime == RHI::Attachment::Lifetime::Transient);
 
         switch (attachment->type)
         {
-        case RHI::AttachmentType::Image:
+        case RHI::Attachment::Type::Image:
             {
                 auto imageAttachment = (RHI::ImageAttachment*)attachment;
                 auto [handle, image] = m_context->m_imageOwner.InsertZerod();
@@ -69,7 +69,7 @@ namespace Vulkan
 
                 break;
             }
-        case RHI::AttachmentType::Buffer:
+        case RHI::Attachment::Type::Buffer:
             {
                 auto bufferAttachment = (RHI::BufferAttachment*)attachment;
                 auto [handle, buffer] = m_context->m_bufferOwner.InsertZerod();
@@ -94,20 +94,20 @@ namespace Vulkan
 
     void TransientAttachmentAllocator::Free(RHI::Attachment* attachment)
     {
-        RHI_ASSERT(attachment->lifetime == RHI::AttachmentLifetime::Transient);
+        RHI_ASSERT(attachment->lifetime == RHI::Attachment::Lifetime::Transient);
 
         Allocation allocation{};
 
         switch (attachment->type)
         {
-        case RHI::AttachmentType::Image:
+        case RHI::Attachment::Type::Image:
             {
                 auto imageAttachment = (RHI::ImageAttachment*)attachment;
                 auto image = m_context->m_imageOwner.Get(imageAttachment->handle);
                 allocation = image->allocation;
                 break;
             }
-        case RHI::AttachmentType::Buffer:
+        case RHI::Attachment::Type::Buffer:
             {
                 auto bufferAttachment = (RHI::BufferAttachment*)attachment;
                 auto buffer = m_context->m_bufferOwner.Get(bufferAttachment->handle);
@@ -210,8 +210,8 @@ namespace Vulkan
     /// Pass
     ///////////////////////////////////////////////////////////////////////////
 
-    Pass::Pass(Context* context)
-        : RHI::Pass(context)
+    Pass::Pass(Context* context, const char* name, RHI::QueueType queueType)
+        : RHI::Pass((Context*)context, name, queueType)
     {
     }
 
@@ -231,10 +231,8 @@ namespace Vulkan
         }
     }
 
-    VkResult Pass::Init(const RHI::PassCreateInfo& createInfo)
+    VkResult Pass::Init()
     {
-        m_name = createInfo.name;
-        m_queueType = createInfo.type;
         m_queueFamilyIndex = static_cast<Context*>(m_context)->GetQueueFamilyIndex(m_queueType);
 
         auto context = static_cast<Context*>(m_context);
@@ -254,10 +252,10 @@ namespace Vulkan
 
         for (auto& imageAttachments : m_imagePassAttachments)
         {
-            if (auto swapchainBase = imageAttachments.attachment->swapchain)
+            if (auto swapchainBase = imageAttachments->attachment->swapchain)
             {
                 auto swapchain = static_cast<Swapchain*>(swapchainBase);
-                submitInfo.stageMask = ConvertPipelineStageFlags(imageAttachments.info.usage, imageAttachments.stage);
+                submitInfo.stageMask = ConvertPipelineStageFlags(imageAttachments->usage, imageAttachments->stage);
                 submitInfo.semaphore = swapchain->m_imageReadySemaphore;
                 result.push_back(submitInfo);
             }
@@ -270,6 +268,7 @@ namespace Vulkan
         VkSemaphoreSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
         submitInfo.semaphore = m_signalSemaphore;
+        submitInfo.stageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
 
         return std::vector<VkSemaphoreSubmitInfo>{ submitInfo };
     }
@@ -310,19 +309,21 @@ namespace Vulkan
     {
         auto context = static_cast<Context*>(m_context);
 
-        for (uint32_t i = 0; i < m_frameBufferingMaxCount; i++)
+        for (uint32_t i = 0; i < 3; i++)
         {
             m_framesInflightFences.push_back(context->CreateFence());
         }
 
+        m_currentFrameIndex = 0;
+
         return VK_SUCCESS;
     }
 
-    std::unique_ptr<RHI::Pass> FrameScheduler::CreatePass(const RHI::PassCreateInfo& createInfo)
+    std::unique_ptr<RHI::Pass> FrameScheduler::CreatePass(const char* name, RHI::QueueType queueType)
     {
-        std::unique_ptr<Pass> pass = std::make_unique<Pass>(static_cast<Context*>(m_context));
-        pass->m_scheduler = this;
-        auto result = pass->Init(createInfo);
+        auto context = static_cast<Context*>(m_context);
+        std::unique_ptr<Pass> pass = std::make_unique<Pass>(context, name, queueType);
+        auto result = pass->Init();
         RHI_ASSERT(result == VK_SUCCESS);
         return pass;
     }
@@ -366,7 +367,6 @@ namespace Vulkan
         return true;
     }
 
-
     void FrameScheduler::ExecutePass(RHI::Pass& passBase)
     {
         auto context = static_cast<Context*>(m_context);
@@ -383,7 +383,7 @@ namespace Vulkan
         }
 
         auto waitSemaphores = pass.GetWaitSemaphoreSubmitInfos();
-        // auto signalSemaphores = pass.GetSignalSemaphoreSubmitInfos();
+        auto signalSemaphores = pass.GetSignalSemaphoreSubmitInfos();
 
         VkSubmitInfo2 submitInfo = {};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
@@ -393,10 +393,10 @@ namespace Vulkan
         submitInfo.pWaitSemaphoreInfos = waitSemaphores.data();
         submitInfo.commandBufferInfoCount = uint32_t(commandBuffers.size());
         submitInfo.pCommandBufferInfos = commandBuffers.data();
-        // submitInfo.signalSemaphoreInfoCount = signalSemaphores.size();
-        // submitInfo.pSignalSemaphoreInfos = signalSemaphores.data();
+        submitInfo.signalSemaphoreInfoCount = uint32_t(signalSemaphores.size());
+        submitInfo.pSignalSemaphoreInfos = signalSemaphores.data();
 
-        auto fence = GetCurrentFrameFence();
+        auto fence = m_framesInflightFences[m_currentFrameIndex];
 
         auto result = vkQueueSubmit2(context->m_graphicsQueue, 1, &submitInfo, fence);
         VULKAN_ASSERT_SUCCESS(result);
@@ -414,11 +414,12 @@ namespace Vulkan
 
     void FrameScheduler::OnFrameEnd()
     {
+        m_currentFrameIndex = (m_currentFrameIndex + 1) % 3;
     }
 
-    VkFence FrameScheduler::GetCurrentFrameFence() const
+    VkFence FrameScheduler::GetCurrentFrameFence()
     {
-        auto fence = m_framesInflightFences[m_frameIndex % m_frameBufferingMaxCount];
+        auto fence = m_framesInflightFences[m_currentFrameIndex];
         return fence;
     }
 

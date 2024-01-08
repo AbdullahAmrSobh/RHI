@@ -15,34 +15,37 @@ namespace Vulkan
 
     inline static bool IsRenderTarget(RHI::AttachmentUsage usage)
     {
-        return usage == RHI::AttachmentUsage::RenderTarget | usage == RHI::AttachmentUsage::Depth;
+        return usage == RHI::AttachmentUsage::Color |
+               usage == RHI::AttachmentUsage::Stencil |
+               usage == RHI::AttachmentUsage::Depth |
+               usage == RHI::AttachmentUsage::DepthStencil;
     }
 
-    inline static VkAttachmentLoadOp ConvertLoadOp(RHI::ImageLoadOperation op)
+    inline static VkAttachmentLoadOp ConvertLoadOp(RHI::LoadOperation op)
     {
         switch (op)
         {
-        case RHI::ImageLoadOperation::DontCare: return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        case RHI::ImageLoadOperation::Load:     return VK_ATTACHMENT_LOAD_OP_LOAD;
-        case RHI::ImageLoadOperation::Discard:  return VK_ATTACHMENT_LOAD_OP_CLEAR;
-        default:                                RHI_UNREACHABLE(); return VK_ATTACHMENT_LOAD_OP_MAX_ENUM;
+        case RHI::LoadOperation::DontCare: return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        case RHI::LoadOperation::Load:     return VK_ATTACHMENT_LOAD_OP_LOAD;
+        case RHI::LoadOperation::Discard:  return VK_ATTACHMENT_LOAD_OP_CLEAR;
+        default:                           RHI_UNREACHABLE(); return VK_ATTACHMENT_LOAD_OP_MAX_ENUM;
         }
     }
 
-    inline static VkAttachmentStoreOp ConvertStoreOp(RHI::ImageStoreOperation op)
+    inline static VkAttachmentStoreOp ConvertStoreOp(RHI::StoreOperation op)
     {
         switch (op)
         {
-        case RHI::ImageStoreOperation::DontCare: return VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        case RHI::ImageStoreOperation::Store:    return VK_ATTACHMENT_STORE_OP_STORE;
-        case RHI::ImageStoreOperation::Discard:  return VK_ATTACHMENT_STORE_OP_NONE;
-        default:                                 RHI_UNREACHABLE(); return VK_ATTACHMENT_STORE_OP_MAX_ENUM;
+        case RHI::StoreOperation::DontCare: return VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        case RHI::StoreOperation::Store:    return VK_ATTACHMENT_STORE_OP_STORE;
+        case RHI::StoreOperation::Discard:  return VK_ATTACHMENT_STORE_OP_NONE;
+        default:                            RHI_UNREACHABLE(); return VK_ATTACHMENT_STORE_OP_MAX_ENUM;
         }
     }
 
     inline static VkImageLayout ConvertImageLayout(RHI::AttachmentUsage usage, RHI::AttachmentAccess access)
     {
-        if (usage == RHI::AttachmentUsage::ShaderStorage && IsWriteAccess(access))
+        if (usage == RHI::AttachmentUsage::ShaderResource && IsWriteAccess(access))
         {
             return VK_IMAGE_LAYOUT_GENERAL;
         }
@@ -50,7 +53,7 @@ namespace Vulkan
         switch (usage)
         {
         case RHI::AttachmentUsage::ShaderResource: return VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
-        case RHI::AttachmentUsage::RenderTarget:   return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        case RHI::AttachmentUsage::Color:          return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         case RHI::AttachmentUsage::Depth:          return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL_KHR;
         case RHI::AttachmentUsage::Copy:           return IsWriteAccess(access) ? VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL : VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
         default:
@@ -62,17 +65,34 @@ namespace Vulkan
         return VK_IMAGE_LAYOUT_MAX_ENUM;
     }
 
-    inline static VkAccessFlags2 ConvertPipelineAccess(RHI::AttachmentUsage usage, RHI::AttachmentAccess access, bool access2)
+    inline static VkAccessFlags2 ConvertPipelineAccess(RHI::AttachmentUsage usage, RHI::AttachmentAccess access)
     {
+        // clang-format off
         switch (usage)
         {
-        case RHI::AttachmentUsage::ShaderResource: return VK_IMAGE_USAGE_SAMPLED_BIT;
-        case RHI::AttachmentUsage::ShaderStorage:  return IsWriteAccess(access) ? VK_ACCESS_2_SHADER_READ_BIT : VK_ACCESS_2_SHADER_WRITE_BIT;
-        case RHI::AttachmentUsage::RenderTarget:   return access2 ? VK_ACCESS_2_NONE : VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-        case RHI::AttachmentUsage::Depth:          return access2 ? VK_ACCESS_2_NONE : VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        case RHI::AttachmentUsage::Copy:           return IsWriteAccess(access) ? VK_ACCESS_2_TRANSFER_READ_BIT : VK_ACCESS_2_TRANSFER_WRITE_BIT;
-        default:                                   RHI_UNREACHABLE(); return {};
+        case RHI::AttachmentUsage::ShaderResource:
+            return VK_IMAGE_USAGE_SAMPLED_BIT;
+        case RHI::AttachmentUsage::StorageResource:
+            return  (access == RHI::AttachmentAccess::Read) ? VK_ACCESS_2_SHADER_READ_BIT :
+                    (access == RHI::AttachmentAccess::Write) ? VK_ACCESS_2_SHADER_WRITE_BIT :
+                        VK_ACCESS_2_SHADER_READ_BIT & VK_ACCESS_2_SHADER_WRITE_BIT;
+        case RHI::AttachmentUsage::Color:
+            return  (access == RHI::AttachmentAccess::Read) ? VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT :
+                    (access == RHI::AttachmentAccess::Write) ? VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT :
+                        VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT & VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+        case RHI::AttachmentUsage::Depth:
+            return  (access == RHI::AttachmentAccess::Read) ? VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT :
+                    (access == RHI::AttachmentAccess::Write) ? VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT :
+                        VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT & VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        case RHI::AttachmentUsage::Copy:
+            return  (access == RHI::AttachmentAccess::Read) ? VK_ACCESS_2_TRANSFER_READ_BIT :
+                    (access == RHI::AttachmentAccess::Write) ? VK_ACCESS_2_TRANSFER_WRITE_BIT :
+                        VK_ACCESS_2_TRANSFER_READ_BIT & VK_ACCESS_2_TRANSFER_WRITE_BIT;
+        default:
+            RHI_UNREACHABLE();
+            return {};
         }
+        // clang-format on
     }
 
     inline static VkPipelineStageFlags2 ConvertPipelineStageFlags(RHI::ShaderStage stage)
@@ -95,13 +115,12 @@ namespace Vulkan
     {
         switch (usage)
         {
-        case RHI::AttachmentUsage::None:           return VK_PIPELINE_STAGE_2_NONE;
-        case RHI::AttachmentUsage::ShaderResource: return ConvertPipelineStageFlags(stage);
-        case RHI::AttachmentUsage::ShaderStorage:  return ConvertPipelineStageFlags(stage);
-        case RHI::AttachmentUsage::RenderTarget:   return VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-        case RHI::AttachmentUsage::Depth:          return VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
-        case RHI::AttachmentUsage::Copy:           return VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-        default:                                   RHI_UNREACHABLE();
+        case RHI::AttachmentUsage::ShaderResource:  return ConvertPipelineStageFlags(stage);
+        case RHI::AttachmentUsage::StorageResource: return ConvertPipelineStageFlags(stage);
+        case RHI::AttachmentUsage::Color:           return VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+        case RHI::AttachmentUsage::Depth:           return VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+        case RHI::AttachmentUsage::Copy:            return VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+        default:                                    RHI_UNREACHABLE();
         }
 
         return VK_PIPELINE_STAGE_FLAG_BITS_MAX_ENUM;

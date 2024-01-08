@@ -1,6 +1,5 @@
 #pragma once
 #include <RHI/FrameScheduler.hpp>
-#include <optional>
 #include <vk_mem_alloc.h>
 
 namespace Vulkan
@@ -51,10 +50,11 @@ namespace Vulkan
         friend class CommandList;
 
     public:
-        Pass(Context* context);
+        Pass(Context* context, const char* name, RHI::QueueType queueType);
+
         ~Pass();
 
-        VkResult Init(const RHI::PassCreateInfo& createInfo);
+        VkResult Init();
 
         std::vector<VkSemaphoreSubmitInfo> GetWaitSemaphoreSubmitInfos() const;
 
@@ -75,7 +75,9 @@ namespace Vulkan
 
         VkResult Init();
 
-        std::unique_ptr<RHI::Pass> CreatePass(const RHI::PassCreateInfo& createInfo) override;
+        std::unique_ptr<RHI::Pass> CreatePass(const char* name, RHI::QueueType queueType) override;
+
+        VkFence GetCurrentFrameFence();
 
         bool WaitIdle(uint64_t waitTimeNano) override;
 
@@ -86,7 +88,8 @@ namespace Vulkan
         void OnFrameBegin() override;
         void OnFrameEnd() override;
 
-        VkFence GetCurrentFrameFence() const;
+    private:
+        uint32_t m_currentFrameIndex;
 
         std::vector<VkFence> m_framesInflightFences;
     };

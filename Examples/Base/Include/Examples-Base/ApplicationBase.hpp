@@ -61,6 +61,9 @@ protected:
 
     virtual void OnUpdate(Timestep timestep) = 0;
 
+    RHI::Pass* SetupImguiPass(RHI::ImageAttachment* colorAttachment, RHI::ImageAttachment* depthAttachment);
+
+protected:
     Camera m_camera;
 
     std::unique_ptr<RHI::Context> m_context;

@@ -275,6 +275,14 @@ namespace RHI
         Mappable
     };
 
+    enum class SwapchainPresentMode
+    {
+        Immediate,
+        Fifo,
+        FifoRelaxed,
+        Mailbox,
+    };
+
 #ifdef RHI_PLATFORM_WINDOWS
     /// @brief struct contains win32 surface handles.
     struct Win32WindowDesc
@@ -548,6 +556,31 @@ namespace RHI
         inline bool        operator!=(const BufferCreateInfo& other) const { return !(*this == other); }
     };
 
+    /// @brief Structure specifying the parameters of an image attachment.
+    struct ImageViewCreateInfo
+    {
+        ImageViewCreateInfo() = default;
+
+        ComponentMapping      components;
+        ImageSubresourceRange subresource;
+
+        inline bool           operator==(const ImageViewCreateInfo& other) const { return components == other.components && subresource == other.subresource; }
+
+        inline bool           operator!=(const ImageViewCreateInfo& other) const { return !(*this == other); }
+    };
+
+    /// @brief Structure specifying the parameters of an buffer attachment.
+    struct BufferViewCreateInfo
+    {
+        Format      format;
+        size_t      byteOffset;
+        size_t      byteSize;
+
+        inline bool operator==(const BufferViewCreateInfo& other) const { return byteOffset == other.byteOffset && byteSize == other.byteSize && format == other.format; }
+
+        inline bool operator!=(const BufferViewCreateInfo& other) const { return !(*this == other); }
+    };
+
     struct ShaderModuleCreateInfo
     {
         void*  code;
@@ -614,6 +647,7 @@ namespace RHI
 #ifdef RHI_PLATFORM_WINDOWS
         Win32WindowDesc win32Window; // win32 surface handles. (Availabe only on windows)
 #endif
+        SwapchainPresentMode presentMode;
     };
 
     /// @brief An object that groups shader resources that are bound together.
@@ -622,37 +656,30 @@ namespace RHI
     public:
         BindGroupData() = default;
 
-        /// @brief Binds an image resource to the provided binding index and offset array index.
-        /// NOTE: offset + images count should not exceed the count of the resources decalred in the layout or the shader.
-        /// @param index index of the resource binding decelration in the shader.
-        /// @param images list of handles of an actual resources to bind.
-        /// @param arrayOffset starting offset. In case of an resources array it binds the resources starting at this number.
-        void BindImages(uint32_t index, TL::Span<ImagePassAttachment*> images, uint32_t arrayOffset = 0);
+        void BindImages(uint32_t index, TL::Span<Handle<ImageView>> handles, uint32_t arrayOffset = 0);
 
-        /// @brief Binds an image resource to the provided binding index and offset array index.
-        /// NOTE: offset + buffers count should not exceed the count of the resources decalred in the layout or the shader.
-        /// @param index index of the resource binding decelration in the shader.
-        /// @param buffers list of handles of an actual resources to bind.
-        /// @param arrayOffset starting offset. In case of an resources array it binds the resources starting at this number.
-        void BindBuffers(uint32_t index, TL::Span<BufferPassAttachment*> buffers, uint32_t arrayOffset = 0);
+        void BindBuffers(uint32_t index, TL::Span<Handle<Buffer>> handles, uint32_t arrayOffset = 0);
 
-        /// @brief Binds an image resource to the provided binding index and offset array index.
-        /// NOTE: offset + samplers count should not exceed the count of the resources decalred in the layout or the shader.
-        /// @param index index of the resource binding decelration in the shader.
-        /// @param samplers list of handles of an actual resources to bind.
-        /// @param arrayOffset starting offset. In case of an resources array it binds the resources starting at this number.
+        void BindBuffers(uint32_t index, TL::Span<Handle<BufferView>> handles, uint32_t arrayOffset = 0);
+
         void BindSamplers(uint32_t index, TL::Span<Handle<Sampler>> samplers, uint32_t arrayOffset = 0);
 
         struct ResourceImageBinding
         {
-            uint32_t                          arrayOffset;
-            std::vector<ImagePassAttachment*> views;
+            uint32_t                       arrayOffset;
+            std::vector<Handle<ImageView>> views;
         };
 
         struct ResourceBufferBinding
         {
-            uint32_t                           arrayOffset;
-            std::vector<BufferPassAttachment*> views;
+            uint32_t                    arrayOffset;
+            std::vector<Handle<Buffer>> views;
+        };
+
+        struct ResourceBufferViewBinding
+        {
+            uint32_t                        arrayOffset;
+            std::vector<Handle<BufferView>> views;
         };
 
         struct ResourceSamplerBinding
@@ -741,30 +768,33 @@ namespace RHI
         Handle<Image>      GetImage() const;
 
         /// @brief Called to invalidate the current swapchain state, when the window is resized.
-        virtual ResultCode Resize(uint32_t newWidth, uint32_t newHeight) = 0;
+        virtual ResultCode Resize(ImageSize2D newSize) = 0;
 
         /// @brief Presents the current image to the window, and acquires the next image in the swapchain.
-        virtual ResultCode Present()                                     = 0;
+        virtual ResultCode Present()                   = 0;
 
     protected:
         uint32_t                   m_currentImageIndex;
         uint32_t                   m_swapchainImagesCount;
         std::vector<Handle<Image>> m_images;
+
+        friend class AttachmentsRegistry;
+        class ImageAttachment*           m_attachment;
     };
 
-    inline void BindGroupData::BindImages(uint32_t index, TL::Span<ImagePassAttachment*> images, uint32_t arrayOffset)
+    inline void BindGroupData::BindImages(uint32_t index, TL::Span<Handle<ImageView>> handles, uint32_t arrayOffset)
     {
         BindGroupData::ResourceImageBinding binding{};
         binding.arrayOffset = arrayOffset;
-        binding.views       = { images.begin(), images.end() };
+        binding.views       = { handles.begin(), handles.end() };
         m_bindings[index]   = binding;
     }
 
-    inline void BindGroupData::BindBuffers(uint32_t index, TL::Span<BufferPassAttachment*> buffers, uint32_t arrayOffset)
+    inline void BindGroupData::BindBuffers(uint32_t index, TL::Span<Handle<Buffer>> handles, uint32_t arrayOffset)
     {
         BindGroupData::ResourceBufferBinding binding{};
         binding.arrayOffset = arrayOffset;
-        binding.views       = { buffers.begin(), buffers.end() };
+        binding.views       = { handles.begin(), handles.end() };
         m_bindings[index]   = binding;
     }
 

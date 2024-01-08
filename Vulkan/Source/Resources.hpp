@@ -6,9 +6,6 @@
 
 namespace RHI
 {
-    struct ImageAttachmentUseInfo;
-    struct BufferAttachmentUseInfo;
-
     struct Attachment;
 } // namespace RHI
 
@@ -78,7 +75,7 @@ namespace Vulkan
     {
         VkImageView handle;
 
-        RHI::ResultCode Init(Context* context, RHI::Handle<Image> imageHandle, const RHI::ImageAttachmentUseInfo& useInfo);
+        RHI::ResultCode Init(Context* context, RHI::Handle<Image> imageHandle, const RHI::ImageViewCreateInfo& useInfo);
         void Shutdown(Context* context);
     };
 
@@ -86,7 +83,7 @@ namespace Vulkan
     {
         VkBufferView handle;
 
-        RHI::ResultCode Init(Context* context, RHI::Handle<Buffer> bufferHandle, const RHI::BufferAttachmentUseInfo& useInfo);
+        RHI::ResultCode Init(Context* context, RHI::Handle<Buffer> bufferHandle, const RHI::BufferViewCreateInfo& useInfo);
         void Shutdown(Context* context);
     };
 
@@ -241,7 +238,7 @@ namespace Vulkan
 
         VkResult Init(const RHI::SwapchainCreateInfo& createInfo);
 
-        RHI::ResultCode Resize(uint32_t newWidth, uint32_t newHeight) override;
+        RHI::ResultCode Resize(RHI::ImageSize2D newSize) override;
         RHI::ResultCode Present() override;
 
     private:

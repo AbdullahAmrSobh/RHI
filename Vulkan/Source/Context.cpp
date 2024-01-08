@@ -91,7 +91,6 @@ namespace Vulkan
         std::vector<const char*> enabledExtensionsNames = {
             VK_KHR_SURFACE_EXTENSION_NAME,
             RHI_VULKAN_USE_CURRENT_PLATFORM_SURFACE_EXTENSION_NAME,
-            VK_EXT_DEBUG_REPORT_EXTENSION_NAME,
             VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
         };
 
@@ -186,11 +185,6 @@ namespace Vulkan
                 VK_EXT_DEBUG_MARKER_EXTENSION_NAME,
 #endif
                 VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-                VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
-                VK_KHR_MAINTENANCE2_EXTENSION_NAME,
-                VK_KHR_MULTIVIEW_EXTENSION_NAME,
-                VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
-                VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME,
             };
 
             auto queueFamilyProperties = GetPhysicalDeviceQueueFamilyProperties(m_physicalDevice);
@@ -452,7 +446,7 @@ namespace Vulkan
         m_samplerOwner.Remove(handle);
     }
 
-    RHI::Handle<RHI::ImageView> Context::CreateImageView(RHI::Handle<RHI::Image> imageHandle, const RHI::ImageAttachmentUseInfo& useInfo)
+    RHI::Handle<RHI::ImageView> Context::CreateImageView(RHI::Handle<RHI::Image> imageHandle, const RHI::ImageViewCreateInfo& useInfo)
     {
         auto [handle, imageView] = m_imageViewOwner.InsertZerod();
         auto result = imageView.Init(this, imageHandle, useInfo);
@@ -467,7 +461,7 @@ namespace Vulkan
         m_imageViewOwner.Remove(handle);
     }
 
-    RHI::Handle<RHI::BufferView> Context::CreateBufferView(RHI::Handle<RHI::Buffer> bufferHandle, const RHI::BufferAttachmentUseInfo& useInfo)
+    RHI::Handle<RHI::BufferView> Context::CreateBufferView(RHI::Handle<RHI::Buffer> bufferHandle, const RHI::BufferViewCreateInfo& useInfo)
     {
         auto [handle, bufferView] = m_bufferViewOwner.InsertZerod();
         auto result = bufferView.Init(this, bufferHandle, useInfo);

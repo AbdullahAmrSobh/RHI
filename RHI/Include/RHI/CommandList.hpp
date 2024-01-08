@@ -132,9 +132,6 @@ namespace RHI
         CommandList(CommandList&& other)                                = default;
         virtual ~CommandList()                                          = default;
 
-        /// @brief Resets the command lists.
-        virtual void Reset()                                            = 0;
-
         /// @brief Marks the begining of this command list recording.
         virtual void Begin()                                            = 0;
 

@@ -19,17 +19,6 @@ namespace RHI
     class Pass;
     class FrameScheduler;
 
-    enum class PassQueueState
-    {
-        NotSubmitted,
-        Pending,
-        Executing,
-        Finished,
-        Building,
-        Compiling,
-        Failed,
-    };
-
     enum class QueueType
     {
         Graphics,
@@ -37,79 +26,42 @@ namespace RHI
         Transfer,
     };
 
-    /// @brief Enumerates the different types of attachments that can be used.
-    enum class AttachmentType
-    {
-        Image,
-        Buffer,
-        Swapchain,
-        Resolve,
-    };
-
-    /// @brief Enumerates the different types the attachment can be used as.
-    enum class AttachmentUsage
-    {
-        None,
-        VertexInputBuffer,
-        ShaderStorage,
-        RenderTarget,
-        Depth,
-        ShaderResource,
-        Copy,
-        Resolve,
-    };
-
     /// @brief Enumerates how an attachment is access
     enum class AttachmentAccess
     {
-        /// @brief Invalid option.
-        None,
-        /// @brief Attachment is read as a shader resource.
-        Read,
-        /// @brief Attachment is renderTargetOutput.
-        Write,
-        /// @brief Attachment is available for read and write as a shader resource.
-        ReadWrite,
+        None,      // Invalid option.
+        Read,      // Attachment is read as a shader resource.
+        Write,     // Attachment is renderTargetOutput.
+        ReadWrite, // Attachment is available for read and write as a shader resource.
     };
 
-    /// @brief Enumerates the different types of attachment's lifetime.
-    enum class AttachmentLifetime
+    /// @brief Enumerates the different types the image attachment can be used as.
+    enum class AttachmentUsage
     {
-        // Attachment resource is created outside of the frame
-        Persistent,
-        // Attachment resource is only valid for the duration of the current frame
-        Transient,
-    };
-
-    /// @brief Enumerates ...
-    enum class ImageLoadOperation
-    {
-        /// @brief The attachment load operation undefined.
-
-        DontCare,
-        /// @brief Load attachment content.
-
-        Load,
-        /// @brief Discard attachment content.
-
-        Discard,
+        Color,                 // Color attachment in a render target
+        Depth,                 // Depth attachment in a render target
+        Stencil,               // Stencil attachment in a render target
+        DepthStencil,          // Depth and Stencil attachment in a render target
+        PipelineInputAssembly, // Resource is Index or Vertex buffer attribute pipeline vertex assembler state
+        ShaderResource,        // Resource will be bound and read by a shader (e.g. sampled image, or uniform buffer)
+        StorageResource,       // Resource will be bound and read (or written to) by a shader (e.g. storage buffers, storage image)
+        Copy,                  // Resource will be used for transfer operations
     };
 
     /// @brief Enumerates ...
-    enum class ImageStoreOperation
+    enum class LoadOperation
     {
-        // Attachment Store operation is undefined
-        DontCare,
-        // Writes to the attachment are stored
-        Store,
-        // Writes to the attachment are discarded
-        Discard,
+        DontCare, // The attachment load operation undefined.
+        Load,     // Load attachment content.
+        Discard,  // Discard attachment content.
     };
 
-    struct PassCreateInfo
+    /// @brief Enumerates ...
+    enum class StoreOperation
     {
-        std::string name;
-        QueueType   type;
+        DontCare, // Attachment Store operation is undefined
+        Store,    // Writes to the attachment are stored
+        Discard,  // Writes to the attachment are discarded
     };
 
     struct ColorValue
@@ -146,77 +98,20 @@ namespace RHI
         }
     };
 
-    struct ClearValue
-    {
-        ColorValue        color;
-        DepthStencilValue depth;
-
-        inline bool       operator==(const ClearValue& other) const
-        {
-            return color == other.color && depth == other.depth;
-        }
-
-        inline bool operator!=(const ClearValue& other) const
-        {
-            return !(*this == other);
-        }
-    };
+    using ClearValue = std::variant<ColorValue, DepthStencilValue>;
 
     /// @brief Structure specifying the load and store opertions for image attachment.
-    struct ImageLoadStoreOperations
+    struct LoadStoreOperations
     {
-        ImageLoadOperation  loadOperation  = ImageLoadOperation::Load;
-        ImageStoreOperation storeOperation = ImageStoreOperation::Store;
+        LoadOperation  loadOperation  = LoadOperation::Load;
+        StoreOperation storeOperation = StoreOperation::Store;
 
-        inline bool         operator==(const ImageLoadStoreOperations& other) const
+        inline bool    operator==(const LoadStoreOperations& other) const
         {
             return loadOperation == other.loadOperation && storeOperation == other.storeOperation;
         }
 
-        inline bool operator!=(const ImageLoadStoreOperations& other) const
-        {
-            return !(*this == other);
-        }
-    };
-
-    /// @brief Structure specifying the parameters of an image attachment.
-    struct ImageAttachmentUseInfo
-    {
-        ComponentMapping         components;
-        ImageSubresourceRange    subresource;
-        ImageLoadStoreOperations loadStoreOperations;
-        ClearValue               clearValue;
-
-        AttachmentUsage          usage  = AttachmentUsage::None;
-        AttachmentAccess         access = AttachmentAccess::None;
-
-        inline bool              operator==(const ImageAttachmentUseInfo& other) const
-        {
-            return components == other.components && subresource == other.subresource && loadStoreOperations == other.loadStoreOperations && clearValue == other.clearValue && usage == other.usage && access == other.access;
-        }
-
-        inline bool operator!=(const ImageAttachmentUseInfo& other) const
-        {
-            return !(*this == other);
-        }
-    };
-
-    /// @brief Structure specifying the parameters of an buffer attachment.
-    struct BufferAttachmentUseInfo
-    {
-        Format           format;
-        size_t           byteOffset;
-        size_t           byteSize;
-
-        AttachmentUsage  usage  = AttachmentUsage::None;
-        AttachmentAccess access = AttachmentAccess::None;
-
-        inline bool      operator==(const BufferAttachmentUseInfo& other) const
-        {
-            return format == other.format && byteOffset == other.byteOffset && byteSize == other.byteSize && usage == other.usage && access == other.access;
-        }
-
-        inline bool operator!=(const BufferAttachmentUseInfo& other) const
+        inline bool operator!=(const LoadStoreOperations& other) const
         {
             return !(*this == other);
         }
@@ -224,114 +119,69 @@ namespace RHI
 
     struct Attachment
     {
-        Attachment(const char* name, AttachmentLifetime lifetime, AttachmentType type)
-            : name(name)
+        enum class Type
+        {
+            Image,
+            SwapchainImage,
+            Resolve,
+            Buffer,
+        };
+
+        enum class Lifetime
+        {
+            Persistent,
+            Transient,
+        };
+
+        Attachment(const char* name, Lifetime lifetime, Type type)
+            : referenceCount(0)
+            , name(name)
             , lifetime(lifetime)
             , type(type)
         {
         }
 
-        // Name of the attachment
-        const char*              name;
+        virtual ~Attachment() = default;
 
-        // Lifetime of the attachment
-        const AttachmentLifetime lifetime;
+        std::atomic<uint32_t> referenceCount;
 
-        // Type of the attachment
-        const AttachmentType     type;
-
-        virtual void             Reset() = 0;
+        const char*           name;     // Name of the attachment
+        const Lifetime        lifetime; // Lifetime of the attachment
+        const Type            type;     // Type of the attachment
     };
 
     // Structure for ImageAttachment
-    struct ImageAttachment final : Attachment
+    struct ImageAttachment final : public Attachment
     {
-        ImageAttachment(const char* name, Swapchain* swapchain)
-            : Attachment(name, AttachmentLifetime::Persistent, AttachmentType::Swapchain)
-            , swapchain(swapchain)
-            , firstUse(nullptr)
-            , lastUse(nullptr)
-        {
-        }
+        ImageAttachment(const char* name, Handle<Image> handle);
+        ImageAttachment(const char* name, Swapchain* swapchain);
+        ImageAttachment(const char* name, const ImageCreateInfo& createInfo);
 
-        ImageAttachment(const char* name, Handle<Image> handle)
-            : Attachment(name, AttachmentLifetime::Persistent, AttachmentType::Image)
-            , swapchain(nullptr)
-            , handle(handle)
-            , firstUse(nullptr)
-            , lastUse(nullptr)
-        {
-        }
+        Swapchain*           swapchain; // pointer to swapchain, if this is an swapchain image attachment
+        Handle<Image>        handle;    // Handle to the image
+        ImageCreateInfo      info;      // Information about the image
+        ImagePassAttachment* firstUse;  // Pointer to the first usage in an image pass
+        ImagePassAttachment* lastUse;   // Pointer to the last usage in an image pass
 
-        ImageAttachment(const char* name, const ImageCreateInfo& createInfo)
-            : Attachment(name, AttachmentLifetime::Transient, AttachmentType::Image)
-            , info(createInfo)
-            , firstUse(nullptr)
-            , lastUse(nullptr)
-        {
-        }
-
-        ImageAttachment(const ImageAttachment& other) = delete;
-
-        void Reset() override
-        {
-            firstUse = nullptr;
-            lastUse  = nullptr;
-        }
-
-        Swapchain*           swapchain = nullptr;
-
-        // Handle to the image
-        Handle<Image>        handle    = {};
-
-        // Information about the image
-        ImageCreateInfo      info      = {};
-
-        // Pointer to the first usage in an image pass
-        ImagePassAttachment* firstUse  = nullptr;
-
-        // Pointer to the last usage in an image pass
-        ImagePassAttachment* lastUse   = nullptr;
+        void                 PushPassAttachment(ImagePassAttachment* passAttachment);
+        void                 Reset();
+        Handle<Image>        GetImage();
     };
 
     // Structure for BufferAttachment
-    struct BufferAttachment final : Attachment
+    struct BufferAttachment final : public Attachment
     {
-        BufferAttachment(const char* name, Handle<Buffer> handle)
-            : Attachment(name, AttachmentLifetime::Persistent, AttachmentType::Buffer)
-            , handle(handle)
-            , firstUse(nullptr)
-            , lastUse(nullptr)
-        {
-        }
+        BufferAttachment(const char* name, Handle<Buffer> handle);
+        BufferAttachment(const char* name, const BufferCreateInfo& createInfo);
 
-        BufferAttachment(const char* name, const BufferCreateInfo& createInfo)
-            : Attachment(name, AttachmentLifetime::Transient, AttachmentType::Buffer)
-            , info(createInfo)
-            , firstUse(nullptr)
-            , lastUse(nullptr)
-        {
-        }
+        Handle<Buffer>        handle;   // Handle to the buffer
+        BufferCreateInfo      info;     // Information about the buffer
+        BufferPassAttachment* firstUse; // Pointer to the first usage in a buffer pass
+        BufferPassAttachment* lastUse;  // Pointer to the last usage in a buffer pass
 
-        BufferAttachment(const BufferAttachment& other) = delete;
-
-        void Reset() override
-        {
-            firstUse = nullptr;
-            lastUse  = nullptr;
-        }
-
-        // Handle to the buffer
-        Handle<Buffer>        handle   = {};
-
-        // Information about the buffer
-        BufferCreateInfo      info     = {};
-
-        // Pointer to the first usage in a buffer pass
-        BufferPassAttachment* firstUse = nullptr;
-
-        // Pointer to the last usage in a buffer pass
-        BufferPassAttachment* lastUse  = nullptr;
+        void                  PushPassAttachment(BufferPassAttachment* passAttachment);
+        void                  Reset();
+        Handle<Image>         GetBuffer();
     };
 
     struct ImagePassAttachment
@@ -340,18 +190,20 @@ namespace RHI
         ImagePassAttachment(const ImagePassAttachment& other) = delete;
         ImagePassAttachment(ImagePassAttachment&& other)      = default;
 
-        ImageAttachment*       attachment;
+        Pass*                pass;
+        ImageAttachment*     attachment;
+        ImagePassAttachment* next;
+        ImagePassAttachment* prev;
+        AttachmentUsage      usage;
+        AttachmentAccess     access;
+        ImageViewCreateInfo  viewInfo;
+        Handle<ImageView>    view;
 
-        Pass*                  pass;
+        // Render target related
+        ClearValue           clearValue;
+        LoadStoreOperations  loadStoreOperations;
 
-        ImageAttachmentUseInfo info;
-
-        Handle<ImageView>      view;
-
-        ShaderStage            stage;
-
-        ImagePassAttachment*   next;
-        ImagePassAttachment*   prev;
+        RHI::ShaderStage     stage;
     };
 
     struct BufferPassAttachment
@@ -360,18 +212,16 @@ namespace RHI
         BufferPassAttachment(const BufferPassAttachment& other) = delete;
         BufferPassAttachment(BufferPassAttachment&& other)      = default;
 
-        BufferAttachment*       attachment;
+        Pass*                 pass;
+        BufferAttachment*     attachment;
+        BufferPassAttachment* next;
+        BufferPassAttachment* prev;
+        AttachmentUsage       usage;
+        AttachmentAccess      access;
+        BufferViewCreateInfo  viewInfo;
+        Handle<BufferView>    view;
 
-        Pass*                   pass;
-
-        BufferAttachmentUseInfo info;
-
-        Handle<BufferView>      view;
-
-        ShaderStage             stage;
-
-        BufferPassAttachment*   next;
-        BufferPassAttachment*   prev;
+        RHI::ShaderStage      stage;
     };
 
     class TransientAttachmentAllocator
@@ -393,35 +243,58 @@ namespace RHI
     class RHI_EXPORT AttachmentsRegistry
     {
     public:
-        virtual ~AttachmentsRegistry() = default;
+        using AttachmentID    = const char*;
 
-        void                                           Reset();
+        AttachmentsRegistry() = default;
 
-        ImageAttachment*                               ImportSwapchainImageAttachment(const char* name, Swapchain* swapchain);
+        /// @brief Resets the registry to empty state
+        void              Reset();
 
-        ImageAttachment*                               ImportImageAttachment(const char* name, Handle<Image> handle);
+        /// @brief Imports an external image resource to be used in this pass.
+        /// @param image handle to the image resource.
+        /// @param useInfo resource use information.
+        /// @return Handle to an image view into the used resource.
+        ImageAttachment*  ImportSwapchainImage(const char* name, Swapchain* swapchain);
 
-        BufferAttachment*                              ImportBufferAttachment(const char* name, Handle<Buffer> handle);
+        /// @brief Imports an external image resource to be used in this pass.
+        /// @param image handle to the image resource.
+        /// @param useInfo resource use information.
+        /// @return Handle to an image view into the used resource.
+        ImageAttachment*  ImportImage(const char* name, Handle<Image> handle);
 
-        ImageAttachment*                               CreateTransientImageAttachment(const char* name, const ImageCreateInfo& createInfo);
+        /// @brief Imports an external buffer resource to be used in this pass.
+        /// @param buffer handle to the buffer resource.
+        /// @param useInfo resource use information.
+        /// @return Handle to an buffer view into the used resource.
+        BufferAttachment* ImportBuffer(const char* name, Handle<Buffer> handle);
 
-        BufferAttachment*                              CreateTransientBufferAttachment(const char* name, const BufferCreateInfo& createInfo);
+        /// @brief Creates a new transient image resource, and use it in this pass.
+        /// @param createInfo transient image create info.
+        /// @return Handle to an image view into the used resource.
+        ImageAttachment*  CreateTransientImage(const char* name, const ImageCreateInfo& createInfo);
 
-        std::vector<std::unique_ptr<ImageAttachment>>  m_imageAttachments;
+        /// @brief Creates a new transient buffer resource, and use it in this pass.
+        /// @param createInfo transient buffer create info.
+        /// @return Handle to an buffer view into the used resource.
+        BufferAttachment* CreateTransientBuffer(const char* name, const BufferCreateInfo& createInfo);
 
-        std::vector<std::unique_ptr<BufferAttachment>> m_bufferAttachments;
+        /// @brief Lookup for an resource with the given name in the registery
+        /// returns nullptr, if not found.
+        ImageAttachment*  FindImage(AttachmentID id);
 
-        std::vector<Attachment*>                       m_attachments;
+        /// @brief Lookup for an resource with the given name in the registery
+        /// returns nullptr, if not found.
+        BufferAttachment* FindBuffer(AttachmentID id);
 
-        std::vector<ImageAttachment*>                  m_swapchainAttachments;
+    private:
+        friend class FrameScheduler;
+        template<typename AttachmentType>
+        using AttachmentLookup = std::unordered_map<const char*, AttachmentType*>;
 
-        std::vector<ImageAttachment*>                  m_importedImageAttachments;
+        AttachmentLookup<ImageAttachment>  m_imageAttachments;
+        AttachmentLookup<BufferAttachment> m_bufferAttachments;
 
-        std::vector<BufferAttachment*>                 m_importedBufferAttachments;
-
-        std::vector<ImageAttachment*>                  m_transientImageAttachments;
-
-        std::vector<BufferAttachment*>                 m_transientBufferAttachments;
+        std::vector<AttachmentID>          m_swapchainAttachments;
     };
 
     /// @brief Represents a pass, which encapsulates a GPU task.
@@ -430,109 +303,45 @@ namespace RHI
         friend class FrameScheduler;
 
     public:
-        Pass(Context* context)
+        Pass(Context* context, const char* name, QueueType type)
             : m_context(context)
-            , m_size({ 0, 0, 0 })
+            , m_name(name)
+            , m_queueType(type)
         {
         }
 
-        Pass(const Pass& other) = delete;
+        virtual ~Pass() = default;
 
-        virtual ~Pass()         = default;
+        // void OnCompile();
+        // void OnShutdown();
 
-        /// @brief Called at the beginning of this pass building phase.
-        void                  Begin();
+        // void OnResize(ImageSize2D newSize);
 
-        /// @brief Called at the end of this pass building phase.
-        void                  End();
-
-        /// @brief Adds a pass to the wait list.
-        void                  ExecuteAfter(Pass& pass);
-
-        /// @brief Adds a pass to the signal list.
-        void                  ExecuteBefore(Pass& pass);
-
-        /// @brief Imports an external image resource to be used in this pass.
-        /// @param image handle to the image resource.
-        /// @param useInfo resource use information.
-        /// @return Handle to an image view into the used resource.
-        ImagePassAttachment*  ImportSwapchainImageResource(const char* name, Swapchain* swapchain, const ImageAttachmentUseInfo& useInfo);
-
-        /// @brief Imports an external image resource to be used in this pass.
-        /// @param image handle to the image resource.
-        /// @param useInfo resource use information.
-        /// @return Handle to an image view into the used resource.
-        ImagePassAttachment*  ImportImageResource(const char* name, Handle<Image> image, const ImageAttachmentUseInfo& useInfo);
-
-        /// @brief Imports an external buffer resource to be used in this pass.
-        /// @param buffer handle to the buffer resource.
-        /// @param useInfo resource use information.
-        /// @return Handle to an buffer view into the used resource.
-        BufferPassAttachment* ImportBufferResource(const char* name, Handle<Buffer> buffer, const BufferAttachmentUseInfo& useInfo);
-
-        /// @brief Creates a new transient image resource, and use it in this pass.
-        /// @param createInfo transient image create info.
-        /// @return Handle to an image view into the used resource.
-        ImagePassAttachment*  CreateTransientImageResource(const char* name, const ImageCreateInfo& createInfo, const ImageAttachmentUseInfo& useInfo);
-
-        /// @brief Creates a new transient buffer resource, and use it in this pass.
-        /// @param createInfo transient buffer create info.
-        /// @return Handle to an buffer view into the used resource.
-        BufferPassAttachment* CreateTransientBufferResource(const char* name, const BufferCreateInfo& createInfo, const BufferAttachmentUseInfo& useInfo);
-
-        /// @brief Use an existing image resource in this pass.
-        /// @param view Handle to the used resource.
-        /// @param useInfo image resource use information.
-        /// @return Handle to an image resource.
-        ImagePassAttachment*  UseImageResource(ImagePassAttachment* attachment, const ImageAttachmentUseInfo& useInfo);
-
-        /// @brief Use an existing buffer resource in this pass.
-        /// @param view Handle to the used resource.
-        /// @param useInfo buffer resource use information.
-        /// @return Handle to an buffer resource.
-        BufferPassAttachment* UseBufferResource(BufferPassAttachment* attachment, const BufferAttachmentUseInfo& useInfo);
-
-        /// @brief Submits a list of command lists for execution on this pass.
-        void                  Execute(TL::Span<CommandList*> commandLists);
-
-    private:
-        ImagePassAttachment*  UseAttachment(ImageAttachment*& attachment, const ImageAttachmentUseInfo& useInfo);
-
-        BufferPassAttachment* UseAttachment(BufferAttachment*& attachment, const BufferAttachmentUseInfo& useInfo);
+        /// TODO: move to to FrameGraphBuilder interface, and template this
+        /// Pass builder interface
+        ImagePassAttachment*  UseColorAttachment(ImageAttachment* attachment, ColorValue value, LoadStoreOperations loadStoreOperations = {}, const ImageViewCreateInfo& viewInfo = {});
+        ImagePassAttachment*  UseDepthAttachment(ImageAttachment* attachment, DepthStencilValue value, LoadStoreOperations loadStoreOperations = {}, const ImageViewCreateInfo& viewInfo = {});
+        ImagePassAttachment*  UseStencilAttachment(ImageAttachment* attachment, DepthStencilValue value, LoadStoreOperations loadStoreOperations = {}, const ImageViewCreateInfo& viewInfo = {});
+        ImagePassAttachment*  UseDepthStencilAttachment(ImageAttachment* attachment, DepthStencilValue value, LoadStoreOperations loadStoreOperations = {}, const ImageViewCreateInfo& viewInfo = {});
+        ImagePassAttachment*  UseShaderImageResource(ImageAttachment* attachment, const ImageViewCreateInfo& viewInfo = {});
+        BufferPassAttachment* UseShaderBufferResource(BufferAttachment* attachment, const BufferViewCreateInfo& viewInfo = {});
+        ImagePassAttachment*  UseShaderImageStorage(ImageAttachment* attachment, const ImageViewCreateInfo& viewInfo = {}, AttachmentAccess access = AttachmentAccess::Read);
+        BufferPassAttachment* UseShaderBufferStorage(BufferAttachment* attachment, const BufferViewCreateInfo& viewInfo = {}, AttachmentAccess access = AttachmentAccess::Read);
+        ImagePassAttachment*  UseCopyImageResource(ImageAttachment* attachment, const ImageViewCreateInfo& viewInfo = {}, AttachmentAccess access = AttachmentAccess::Read);
+        BufferPassAttachment* UseCopyBufferResource(BufferAttachment* attachment, const BufferViewCreateInfo& viewInfo = {}, AttachmentAccess access = AttachmentAccess::Read);
 
     protected:
-        Context*                         m_context;
-
-        FrameScheduler*                  m_scheduler;
-
-        std::string                      m_name;
-
-        /// @brief A pointer to swapchain which would be presented into.
-        Swapchain*                       m_swapchain;
-
-        /// @brief The type of the Hardware Queue needed to execute this pass.
-        QueueType                        m_queueType;
-
-        /// @brief A list of command lists that executes on this pass.
-        std::vector<CommandList*>        m_commandLists;
-
-        /// @brief The size of the rendering area in the render pass.
-        ImageSize3D                      m_size;
-
-        /// @brief A list of all passes that this pass depends on.
-        std::vector<Pass*>               m_producers;
-
-        /// @brief A list of all passes that depends on this pass.
-        std::vector<Pass*>               m_consumers;
-
-        /// NOTE: PassAttachment pointers, must not be invalidated during the lifetime Frame.
-        /// Therefore, a deque is used instead of a vector.
-
-        /// @brief A list of all image pass attachment used by this pass.
-        std::deque<ImagePassAttachment>  m_imagePassAttachments;
-
-        /// @brief A list of all buffer pass attachment used by this pass.
-        std::deque<BufferPassAttachment> m_bufferPassAttachment;
+        Context*                          m_context;
+        std::string                       m_name;
+        QueueType                         m_queueType;    // The type of the Hardware Queue needed to execute this pass.
+        Swapchain*                        m_swapchain;    // A pointer to swapchain which would be presented into.
+        ImageSize2D                       m_size;         // The size of the rendering area in the render pass.
+        std::vector<Pass*>                m_producers;    // A list of all passes that this pass depends on.
+        std::vector<Pass*>                m_consumers;    // A list of all passes that depends on this pass.
+        std::vector<CommandList*>         m_commandLists; // A list of command lists that executes on this pass.
+        /// NOTE: pointers to PassAttachments must be stable, therefore a deque is used.
+        std::deque<ImagePassAttachment*>  m_imagePassAttachments; // A list of all image pass attachment used by this pass.
+        std::deque<BufferPassAttachment*> m_bufferPassAttachment; // A list of all buffer pass attachment used by this pass.
     };
 
     /// @brief A frame scheduler is a frame-graph system breaks down the final frame
@@ -543,13 +352,11 @@ namespace RHI
         friend class Pass;
 
     public:
-        FrameScheduler(Context* context)
-            : m_context(context)
-            , m_attachmentsRegistry(std::make_unique<AttachmentsRegistry>())
-        {
-        }
+        FrameScheduler(Context* context);
 
         virtual ~FrameScheduler() = default;
+
+        AttachmentsRegistry&          GetRegistry() { return *m_attachmentsRegistry; }
 
         /// @brief Called at the beginning of the render-loop.
         /// This marks the begining of a graphics frame.
@@ -560,49 +367,45 @@ namespace RHI
         void                          End();
 
         /// @brief Register a pass producer, to be called this frame.
-        void                          Submit(Pass& pass);
+        void                          RegisterPass(Pass& pass);
 
-        /// @brief Creates a pass resource
-        virtual std::unique_ptr<Pass> CreatePass(const PassCreateInfo& createInfo) = 0;
+        /// @brief Called after all passes inside the Frame Graph are setup, to finialize the graph
+        void                          Compile();
 
-        virtual bool                  WaitIdle(uint64_t waitTimeNano)              = 0;
+        /// @brief Called when the Render Target is resized, to recreate all graph resources, with the new sizes.
+        // void                          OnRenderTargetResize(ImageSize2D newSize);
+
+        virtual bool                  WaitIdle(uint64_t timeout)                   = 0;
 
         virtual bool                  Execute(TL::Span<CommandList*> commandLsits) = 0;
 
-    protected:
-        virtual void                                           ExecutePass(Pass& pass) = 0;
+        /// @brief Creates a pass resource
+        virtual std::unique_ptr<Pass> CreatePass(const char* name, QueueType type) = 0;
 
-        virtual void                                           OnFrameBegin()          = 0;
-        virtual void                                           OnFrameEnd()            = 0;
+    private:
+        Handle<ImageView>  FindOrCreateImageView(Handle<Image> image, const ImageViewCreateInfo& createInfo);
+
+        Handle<BufferView> FindOrCreateBufferView(Handle<Buffer> buffer, const ImageViewCreateInfo& createInfo);
+
+    protected:
+        virtual void ExecutePass(Pass& pass) = 0;
+
+        virtual void OnFrameBegin()          = 0;
+        virtual void OnFrameEnd()            = 0;
+
+    private:
+        std::unique_ptr<AttachmentsRegistry> m_attachmentsRegistry;
+
+    protected:
+        std::unordered_map<Handle<Image>, Handle<ImageView>>   m_imageViewsLut;
+
+        std::unordered_map<Handle<Buffer>, Handle<BufferView>> m_bufferViewLut;
 
         Context*                                               m_context;
 
         std::vector<Pass*>                                     m_passList;
 
         std::unique_ptr<TransientAttachmentAllocator>          m_transientAttachmentAllocator;
-
-        std::unique_ptr<AttachmentsRegistry>                   m_attachmentsRegistry;
-
-        std::unordered_map<Handle<Image>, Handle<ImageView>>   m_imageViewsLut;
-
-        std::unordered_map<Handle<Buffer>, Handle<BufferView>> m_bufferViewLut;
-
-        uint64_t                                               m_frameIndex;
-
-        const uint64_t                                         m_frameBufferingMaxCount = 3;
-
-    private:
-        void Reset();
-
-        void Compile();
-
-        void CompileTransientAttachments();
-
-        void CompileAttachmentsViews();
-
-        void CompileSwapchainViews();
-
-        void Execute();
     };
 
 } // namespace RHI

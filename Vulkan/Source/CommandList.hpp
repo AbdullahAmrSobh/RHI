@@ -74,8 +74,6 @@ namespace Vulkan
         {
         }
 
-        void Reset() override;
-
         void Begin() override;
 
         void Begin(RHI::Pass& pass) override;

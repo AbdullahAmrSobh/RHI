@@ -7,6 +7,8 @@
 
 #include <RHI/Format.hpp>
 
+#include <optional>
+
 namespace Vulkan
 {
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -109,11 +111,6 @@ namespace Vulkan
     /// CommandList
     //////////////////////////////////////////////////////////////////////////////////////////
 
-    void CommandList::Reset()
-    {
-        vkResetCommandBuffer(m_commandBuffer, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
-    }
-
     void CommandList::Begin()
     {
         VkCommandBufferBeginInfo beginInfo{};
@@ -128,6 +125,8 @@ namespace Vulkan
     void CommandList::Begin(RHI::Pass& passBase)
     {
         auto& pass = static_cast<Pass&>(passBase);
+
+        pass.m_commandLists.push_back(this);
 
         m_pass = &pass;
 
@@ -359,13 +358,27 @@ namespace Vulkan
         attachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
         attachmentInfo.pNext = nullptr;
         attachmentInfo.imageView = imageView->handle;
-        attachmentInfo.imageLayout = ConvertImageLayout(passAttachment.info.usage, passAttachment.info.access);
-        attachmentInfo.loadOp = ConvertLoadOp(passAttachment.info.loadStoreOperations.loadOperation);
-        attachmentInfo.storeOp = ConvertStoreOp(passAttachment.info.loadStoreOperations.storeOperation);
-        attachmentInfo.clearValue.color.float32[0] = passAttachment.info.clearValue.color.r;
-        attachmentInfo.clearValue.color.float32[1] = passAttachment.info.clearValue.color.g;
-        attachmentInfo.clearValue.color.float32[2] = passAttachment.info.clearValue.color.b;
-        attachmentInfo.clearValue.color.float32[3] = passAttachment.info.clearValue.color.a;
+        attachmentInfo.imageLayout = ConvertImageLayout(passAttachment.usage, passAttachment.access);
+        attachmentInfo.loadOp = ConvertLoadOp(passAttachment.loadStoreOperations.loadOperation);
+        attachmentInfo.storeOp = ConvertStoreOp(passAttachment.loadStoreOperations.storeOperation);
+
+        if (auto colorValue = std::get_if<RHI::ColorValue>(&passAttachment.clearValue))
+        {
+            attachmentInfo.clearValue.color.float32[0] = colorValue->r;
+            attachmentInfo.clearValue.color.float32[1] = colorValue->g;
+            attachmentInfo.clearValue.color.float32[2] = colorValue->b;
+            attachmentInfo.clearValue.color.float32[3] = colorValue->a;
+        }
+        else if (auto depthValue = std::get_if<RHI::DepthStencilValue>(&passAttachment.clearValue))
+        {
+            attachmentInfo.clearValue.depthStencil.depth = depthValue->depthValue;
+            attachmentInfo.clearValue.depthStencil.stencil = depthValue->stencilValue;
+        }
+        else
+        {
+            RHI_UNREACHABLE();
+        }
+
         return attachmentInfo;
     }
 
@@ -376,11 +389,15 @@ namespace Vulkan
 
         for (auto& attachment : pass.m_imagePassAttachments)
         {
-            if (attachment.info.usage == RHI::AttachmentUsage::RenderTarget)
+            if (attachment->usage == RHI::AttachmentUsage::Color ||
+                attachment->usage == RHI::AttachmentUsage::Depth || 
+                attachment->usage == RHI::AttachmentUsage::Stencil ||
+                attachment->usage == RHI::AttachmentUsage::DepthStencil)
             {
-                passAttachments.push_back(&attachment);
+                passAttachments.push_back(attachment);
             }
         }
+
         TransitionPassAttachments(BarrierType::PrePass, passAttachments);
 
         std::vector<VkRenderingAttachmentInfo> colorAttachmentInfo;
@@ -388,15 +405,15 @@ namespace Vulkan
 
         for (const auto& passAttachment : pass.m_imagePassAttachments)
         {
-            if (passAttachment.info.usage == RHI::AttachmentUsage::Depth)
+            if (passAttachment->usage == RHI::AttachmentUsage::Depth)
             {
-                depthAttachmentInfo = GetAttachmentInfo(passAttachment);
+                depthAttachmentInfo = GetAttachmentInfo(*passAttachment);
                 continue;
             }
 
-            if (passAttachment.info.usage == RHI::AttachmentUsage::RenderTarget)
+            if (passAttachment->usage == RHI::AttachmentUsage::Color)
             {
-                auto attachmentInfo = GetAttachmentInfo(passAttachment);
+                auto attachmentInfo = GetAttachmentInfo(*passAttachment);
                 colorAttachmentInfo.push_back(attachmentInfo);
             }
         }
@@ -422,9 +439,12 @@ namespace Vulkan
         std::vector<RHI::ImagePassAttachment*> passAttachments;
         for (auto& attachment : pass.m_imagePassAttachments)
         {
-            if (attachment.info.usage == RHI::AttachmentUsage::RenderTarget)
+            if (attachment->usage == RHI::AttachmentUsage::Color || 
+                attachment->usage == RHI::AttachmentUsage::Depth || 
+                attachment->usage == RHI::AttachmentUsage::Stencil || 
+                attachment->usage == RHI::AttachmentUsage::DepthStencil)
             {
-                passAttachments.push_back(&attachment);
+                passAttachments.push_back(attachment);
             }
         }
         TransitionPassAttachments(BarrierType::PostPass, passAttachments);
@@ -475,13 +495,18 @@ namespace Vulkan
 
         for (auto passAttachment : passAttachments)
         {
-            auto image = m_context->m_imageOwner.Get(passAttachment->attachment->handle);
+            auto image = m_context->m_imageOwner.Get(passAttachment->attachment->GetImage());
+
+            if (auto swapchain = passAttachment->attachment->swapchain)
+            {
+                image = m_context->m_imageOwner.Get(swapchain->GetImage());
+            }
 
             auto barrier = VkImageMemoryBarrier2{};
             barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
             barrier.pNext = nullptr;
             barrier.image = image->handle;
-            barrier.subresourceRange = ConvertSubresourceRange(passAttachment->info.subresource);
+            barrier.subresourceRange = ConvertSubresourceRange(passAttachment->viewInfo.subresource);
 
             if (passAttachment->next)
             {
@@ -489,38 +514,38 @@ namespace Vulkan
                 barrier.dstQueueFamilyIndex = static_cast<Pass*>(passAttachment->next->pass)->m_queueFamilyIndex;
 
                 if (barrier.srcQueueFamilyIndex == barrier.dstQueueFamilyIndex &&
-                    passAttachment->info.access == RHI::AttachmentAccess::Read &&
-                    passAttachment->next->info.access == RHI::AttachmentAccess::Read)
+                    passAttachment->access == RHI::AttachmentAccess::Read &&
+                    passAttachment->next->access == RHI::AttachmentAccess::Read)
                 {
                     continue;
                 }
 
-                barrier.srcStageMask = ConvertPipelineStageFlags(passAttachment->info.usage, passAttachment->stage);
-                barrier.srcAccessMask = ConvertPipelineAccess(passAttachment->info.usage, passAttachment->info.access, false);
-                barrier.oldLayout = ConvertImageLayout(passAttachment->info.usage, passAttachment->info.access);
-                barrier.dstStageMask = ConvertPipelineStageFlags(passAttachment->next->info.usage, passAttachment->next->stage);
-                barrier.dstAccessMask = ConvertPipelineAccess(passAttachment->next->info.usage, passAttachment->next->info.access, true);
-                barrier.newLayout = ConvertImageLayout(passAttachment->next->info.usage, passAttachment->next->info.access);
+                barrier.srcStageMask = ConvertPipelineStageFlags(passAttachment->usage, passAttachment->stage);
+                barrier.srcAccessMask = ConvertPipelineAccess(passAttachment->usage, passAttachment->access);
+                barrier.oldLayout = ConvertImageLayout(passAttachment->usage, passAttachment->access);
+                barrier.dstStageMask = ConvertPipelineStageFlags(passAttachment->next->usage, passAttachment->next->stage);
+                barrier.dstAccessMask = ConvertPipelineAccess(passAttachment->next->usage, passAttachment->next->access);
+                barrier.newLayout = ConvertImageLayout(passAttachment->next->usage, passAttachment->next->access);
                 barriers.push_back(barrier);
             }
             else if (barrierType == BarrierType::PostPass && passAttachment->attachment->swapchain)
             {
-                barrier.srcStageMask = ConvertPipelineStageFlags(passAttachment->info.usage, passAttachment->stage);
-                barrier.srcAccessMask = ConvertPipelineAccess(passAttachment->info.usage, passAttachment->info.access, true);
-                barrier.oldLayout = ConvertImageLayout(passAttachment->info.usage, passAttachment->info.access);
+                barrier.srcStageMask = ConvertPipelineStageFlags(passAttachment->usage, passAttachment->stage);
+                barrier.srcAccessMask = ConvertPipelineAccess(passAttachment->usage, passAttachment->access);
+                barrier.oldLayout = ConvertImageLayout(passAttachment->usage, passAttachment->access);
                 barrier.dstStageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
                 barrier.dstAccessMask = 0;
                 barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
                 barriers.push_back(barrier);
             }
-            else if (barrierType == BarrierType::PrePass && passAttachment->prev == nullptr && passAttachment->info.access != RHI::AttachmentAccess::Read)
+            else if (barrierType == BarrierType::PrePass && passAttachment->prev == nullptr && passAttachment->access != RHI::AttachmentAccess::Read)
             {
-                barrier.srcStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+                barrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
                 barrier.srcAccessMask = 0;
                 barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-                barrier.dstStageMask = ConvertPipelineStageFlags(passAttachment->info.usage, passAttachment->stage);
-                barrier.dstAccessMask = ConvertPipelineAccess(passAttachment->info.usage, passAttachment->info.access, false);
-                barrier.newLayout = ConvertImageLayout(passAttachment->info.usage, passAttachment->info.access);
+                barrier.dstStageMask = ConvertPipelineStageFlags(passAttachment->usage, passAttachment->stage);
+                barrier.dstAccessMask = ConvertPipelineAccess(passAttachment->usage, passAttachment->access);
+                barrier.newLayout = ConvertImageLayout(passAttachment->usage, passAttachment->access);
                 barriers.push_back(barrier);
             }
         }
@@ -540,14 +565,14 @@ namespace Vulkan
 
         for (auto passAttachment : passAttachments)
         {
-            auto buffer = m_context->m_bufferOwner.Get(passAttachment->attachment->handle);
+            auto buffer = m_context->m_bufferOwner.Get(passAttachment->attachment->GetBuffer());
 
             auto barrier = VkBufferMemoryBarrier2{};
             barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
             barrier.pNext = nullptr;
             barrier.buffer = buffer->handle;
-            barrier.offset = passAttachment->info.byteOffset;
-            barrier.size = passAttachment->info.byteSize;
+            barrier.offset = passAttachment->viewInfo.byteOffset;
+            barrier.size = passAttachment->viewInfo.byteSize;
 
             if (passAttachment->next)
             {
@@ -555,16 +580,16 @@ namespace Vulkan
                 barrier.dstQueueFamilyIndex = static_cast<Pass*>(passAttachment->next->pass)->m_queueFamilyIndex;
 
                 if (barrier.srcQueueFamilyIndex == barrier.dstQueueFamilyIndex &&
-                    passAttachment->info.access == RHI::AttachmentAccess::Read &&
-                    passAttachment->next->info.access == RHI::AttachmentAccess::Read)
+                    passAttachment->access == RHI::AttachmentAccess::Read &&
+                    passAttachment->next->access == RHI::AttachmentAccess::Read)
                 {
                     continue;
                 }
 
-                barrier.srcStageMask = ConvertPipelineStageFlags(passAttachment->info.usage, passAttachment->stage);
-                barrier.srcAccessMask = ConvertPipelineAccess(passAttachment->info.usage, passAttachment->info.access, false);
-                barrier.dstStageMask = ConvertPipelineStageFlags(passAttachment->next->info.usage, passAttachment->next->stage);
-                barrier.dstAccessMask = ConvertPipelineAccess(passAttachment->next->info.usage, passAttachment->next->info.access, true);
+                barrier.srcStageMask = ConvertPipelineStageFlags(passAttachment->usage, passAttachment->stage);
+                barrier.srcAccessMask = ConvertPipelineAccess(passAttachment->usage, passAttachment->access);
+                barrier.dstStageMask = ConvertPipelineStageFlags(passAttachment->next->usage, passAttachment->next->stage);
+                barrier.dstAccessMask = ConvertPipelineAccess(passAttachment->next->usage, passAttachment->next->access);
                 barriers.push_back(barrier);
             }
             else

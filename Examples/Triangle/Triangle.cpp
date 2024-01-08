@@ -128,6 +128,38 @@ public:
         m_pipelineState = m_context->CreateGraphicsPipeline(psoCreateInfo);
     }
 
+    void SetupRenderGraph()
+    {
+        auto& frameGraph = *m_frameScheduler.get();
+        auto& registry = frameGraph.GetRegistry();
+        m_renderpass = frameGraph.CreatePass("Render-Pass", RHI::QueueType::Graphics);
+
+        RHI::ImageCreateInfo depthInfo{};
+        depthInfo.usageFlags = RHI::ImageUsage::Depth;
+        depthInfo.format = RHI::Format::D32;
+        depthInfo.type = RHI::ImageType::Image2D;
+        depthInfo.size.width = m_windowWidth;
+        depthInfo.size.height = m_windowHeight;
+        depthInfo.size.depth = 1;
+
+        auto colorAttachment = registry.ImportSwapchainImage("back-buffer", m_swapchain.get());
+        auto depthAttachment = registry.CreateTransientImage("depth-buffer", depthInfo);
+        m_renderpass->UseColorAttachment(colorAttachment, { 0.1f, 0.2f, 0.3f, 1.0f });
+
+        RHI::ImageViewCreateInfo viewCreateInfo {};
+        viewCreateInfo.subresource.imageAspects = RHI::ImageAspect::Depth;
+        viewCreateInfo.subresource.arrayCount  = 1;
+        viewCreateInfo.subresource.mipLevelCount = 1;
+        m_renderpass->UseDepthAttachment(depthAttachment, { 1.0 }, {}, viewCreateInfo);
+
+        // auto imguiPass = SetupImguiPass(colorAttachment, depthAttachment);
+
+        frameGraph.RegisterPass(*m_renderpass);
+        // frameGraph.RegisterPass(*imguiPass);
+
+        frameGraph.Compile();
+    }
+
     void OnInit() override
     {
         {
@@ -170,6 +202,8 @@ public:
             createInfo.mipLevels = 1;
             createInfo.arrayCount = 1;
             m_image = m_imagePool->Allocate(createInfo).GetValue();
+            RHI::ImageViewCreateInfo viewInfo {};
+            m_imageView = m_context->CreateImageView(m_image, viewInfo);
         }
 
         m_commandListAllocator = m_context->CreateCommandListAllocator(RHI::QueueType::Graphics);
@@ -207,68 +241,23 @@ public:
         }
 
         SetupPipelines(m_bindGroupLayout);
-        // create shader bind group
-        m_bindGroupAllocator = m_context->CreateBindGroupAllocator();
-        m_bindGroup = m_bindGroupAllocator->AllocateBindGroups(m_bindGroupLayout).front();
 
-        // create frame graph
-        {
-            RHI::PassCreateInfo createInfo{};
-            createInfo.name = "RenderPass";
-            createInfo.type = RHI::QueueType::Graphics;
-            m_renderpass = m_frameScheduler->CreatePass(createInfo);
-        }
+        SetupRenderGraph();
 
         // create a sampler state
         {
-            RHI::SamplerCreateInfo createInfo{};
-            m_sampler = m_context->CreateSampler(createInfo);
-        }
+            // create shader bind group
+            m_bindGroupAllocator = m_context->CreateBindGroupAllocator();
 
-        {
-            m_renderpass->Begin();
-
-            // setup attachments
-            RHI::ImageAttachmentUseInfo useInfo{};
-            useInfo.usage = RHI::AttachmentUsage::RenderTarget;
-            useInfo.subresource.imageAspects = RHI::ImageAspect::Color;
-            useInfo.loadStoreOperations.loadOperation = RHI::ImageLoadOperation::Discard;
-            useInfo.loadStoreOperations.storeOperation = RHI::ImageStoreOperation::Store;
-            useInfo.clearValue.color = { 0.3f, 0.6f, 0.9f, 1.0f };
-            m_renderpass->ImportSwapchainImageResource("color-attachment", m_swapchain.get(), useInfo);
-
-            RHI::ImageCreateInfo createInfo{};
-            createInfo.usageFlags = RHI::ImageUsage::Depth;
-            createInfo.size.width = m_windowWidth;
-            createInfo.size.height = m_windowHeight;
-            createInfo.size.depth = 1;
-            createInfo.format = RHI::Format::D32;
-            createInfo.type = RHI::ImageType::Image2D;
-
-            useInfo.usage = RHI::AttachmentUsage::Depth;
-            useInfo.subresource.imageAspects = RHI::ImageAspect::Depth;
-            useInfo.clearValue.depth.depthValue = 1.0f;
-            m_renderpass->CreateTransientImageResource("depth-attachment", createInfo, useInfo);
-
-            RHI::BufferAttachmentUseInfo bufferUseInfo{};
-            bufferUseInfo.access = RHI::AttachmentAccess::Read;
-            bufferUseInfo.usage = RHI::AttachmentUsage::ShaderResource;
-            auto uniformBuffer = m_renderpass->ImportBufferResource("uniform-buffer", m_uniformBuffer, bufferUseInfo);
-
-            useInfo.usage = RHI::AttachmentUsage::ShaderResource;
-            useInfo.subresource.imageAspects = RHI::ImageAspect::Color;
-            auto textureAttachment = m_renderpass->ImportImageResource("texture", m_image, useInfo);
-
-            // setup bind elements
-            m_renderpass->End();
+            RHI::SamplerCreateInfo samplerCreateInfo{};
+            m_sampler = m_context->CreateSampler(samplerCreateInfo);
 
             RHI::BindGroupData bindGroupData{};
-            bindGroupData.BindBuffers(0u, uniformBuffer);
-            bindGroupData.BindImages(1u, textureAttachment);
+            bindGroupData.BindBuffers(0u, m_uniformBuffer);
+            bindGroupData.BindImages(1u, m_imageView);
             bindGroupData.BindSamplers(2u, m_sampler);
+            m_bindGroup = m_bindGroupAllocator->AllocateBindGroups(m_bindGroupLayout).front();
             m_bindGroupAllocator->Update(m_bindGroup, bindGroupData);
-
-            m_frameScheduler->Submit(*m_renderpass);
         }
     }
 
@@ -330,8 +319,6 @@ public:
 
         cmd->End();
 
-        m_renderpass->Execute(cmd);
-
         m_frameScheduler->End();
     }
 
@@ -358,6 +345,7 @@ private:
     RHI::Handle<RHI::Buffer> m_uniformBuffer;
 
     RHI::Handle<RHI::Image> m_image;
+    RHI::Handle<RHI::ImageView> m_imageView;
 
     RHI::Handle<RHI::Sampler> m_sampler;
 
