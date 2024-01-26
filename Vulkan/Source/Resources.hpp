@@ -4,6 +4,8 @@
 
 #include <vk_mem_alloc.h>
 
+#include <memory>
+
 namespace RHI
 {
     struct Attachment;
@@ -226,6 +228,32 @@ namespace Vulkan
         RHI::PoolCreateInfo m_poolInfo;
     };
 
+    /// @brief Fence object used to preform CPU-GPU sync
+    class Fence final : public RHI::Fence
+    {
+    public:
+        Fence(Context* context)
+            : m_context(context)
+        {
+        }
+
+        ~Fence();
+
+        VkResult Init();
+
+        void Reset() override;
+        bool Wait(uint64_t timeout) override;
+        State GetState() override;
+
+        // This should only be called when passing the fence to a vulkan siganl command
+        VkFence UseFence();
+
+    private:
+        Context* m_context;
+        VkFence m_fence;
+        State m_state;
+    };
+
     class Swapchain final : public RHI::Swapchain
     {
     public:
@@ -238,10 +266,16 @@ namespace Vulkan
 
         VkResult Init(const RHI::SwapchainCreateInfo& createInfo);
 
+        VkSemaphore GetPresentReadySemaphore();
+
+        void AcquireNextImage(Fence& fence);
+        void AcquireNextImage(VkSemaphore semaphore);
+
         RHI::ResultCode Resize(RHI::ImageSize2D newSize) override;
-        RHI::ResultCode Present() override;
 
     private:
+        VkSurfaceKHR CreateSurface(RHI::SwapchainCreateInfo createInfo);
+
         VkResult CreateNativeSwapchain();
 
         VkSurfaceFormatKHR GetSurfaceFormat(VkFormat format);
@@ -251,15 +285,17 @@ namespace Vulkan
         VkPresentModeKHR GetPresentMode();
 
     public:
+        friend class FrameScheduler;
+
         Context* m_context;
 
-        VkSemaphore m_imageReadySemaphore = VK_NULL_HANDLE;
+        VkSemaphore m_presentReadySemaphore[c_MaxSwapchainBackBuffersCount];
 
-        VkSwapchainKHR m_swapchain = VK_NULL_HANDLE;
+        VkSwapchainKHR m_swapchain;
 
-        VkSurfaceKHR m_surface = VK_NULL_HANDLE;
+        VkSurfaceKHR m_surface;
 
-        VkResult m_lastPresentResult = VK_ERROR_UNKNOWN;
+        VkResult m_lastPresentResult;
 
         RHI::SwapchainCreateInfo m_swapchainInfo;
     };

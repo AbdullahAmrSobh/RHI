@@ -8,12 +8,13 @@
 
 #include <unordered_map>
 #include <variant>
+#include <memory>
 
 namespace RHI
 {
     class Context;
     class ShaderModule;
-    class Pass;
+    class ImageAttachment;
 
     // clang-format off
     struct Image {};
@@ -26,10 +27,8 @@ namespace RHI
     struct GraphicsPipeline {};
     struct ComputePipeline {};
     struct Sampler {};
-    // clang-format on
 
-    struct ImagePassAttachment;
-    struct BufferPassAttachment;
+    // clang-format on
 
     /// @brief Represents a pointer to GPU device memory
     using DeviceMemoryPtr = void*;
@@ -561,6 +560,13 @@ namespace RHI
     {
         ImageViewCreateInfo() = default;
 
+        inline ImageViewCreateInfo(RHI::ImageAspect aspect)
+            : components{}
+            , subresource{}
+        {
+            subresource.imageAspects = aspect;
+        }
+
         ComponentMapping      components;
         ImageSubresourceRange subresource;
 
@@ -751,12 +757,33 @@ namespace RHI
         virtual size_t                GetSize(Handle<Image> handle) const         = 0;
     };
 
+    /// @brief Fence object used to preform CPU-GPU sync
+    class RHI_EXPORT Fence
+    {
+    public:
+        Fence()          = default;
+        virtual ~Fence() = default;
+
+        enum class State
+        {
+            NotSubmitted,
+            Pending,
+            Signaled,
+        };
+
+        virtual void  Reset()                = 0;
+        virtual bool  Wait(uint64_t timeout) = 0;
+        virtual State GetState()             = 0;
+    };
+
     /// @brief Swapchain object which is an interface between the API and a presentation surface.
     class RHI_EXPORT Swapchain
     {
     public:
-        Swapchain()          = default;
-        virtual ~Swapchain() = default;
+        inline static constexpr uint32_t c_MaxSwapchainBackBuffersCount = 3;
+
+        Swapchain()                                                     = default;
+        virtual ~Swapchain()                                            = default;
 
         /// @brief Get the current image index of the swapchain.
         uint32_t           GetCurrentImageIndex() const;
@@ -767,58 +794,17 @@ namespace RHI
         /// @brief Get the current acquired swapchain image.
         Handle<Image>      GetImage() const;
 
+        /// @brief A fence which is signaled if the current image is acquired and ready t obe used.
+        Fence&             GetCurrentFrameFence();
+
         /// @brief Called to invalidate the current swapchain state, when the window is resized.
         virtual ResultCode Resize(ImageSize2D newSize) = 0;
 
-        /// @brief Presents the current image to the window, and acquires the next image in the swapchain.
-        virtual ResultCode Present()                   = 0;
-
     protected:
-        uint32_t                   m_currentImageIndex;
-        uint32_t                   m_swapchainImagesCount;
-        std::vector<Handle<Image>> m_images;
-
-        friend class AttachmentsRegistry;
-        class ImageAttachment*           m_attachment;
+        uint32_t                            m_currentImageIndex;
+        uint32_t                            m_swapchainImagesCount;
+        std::vector<Handle<Image>>          m_images;
+        std::vector<std::unique_ptr<Fence>> m_frameReadyFence;
     };
-
-    inline void BindGroupData::BindImages(uint32_t index, TL::Span<Handle<ImageView>> handles, uint32_t arrayOffset)
-    {
-        BindGroupData::ResourceImageBinding binding{};
-        binding.arrayOffset = arrayOffset;
-        binding.views       = { handles.begin(), handles.end() };
-        m_bindings[index]   = binding;
-    }
-
-    inline void BindGroupData::BindBuffers(uint32_t index, TL::Span<Handle<Buffer>> handles, uint32_t arrayOffset)
-    {
-        BindGroupData::ResourceBufferBinding binding{};
-        binding.arrayOffset = arrayOffset;
-        binding.views       = { handles.begin(), handles.end() };
-        m_bindings[index]   = binding;
-    }
-
-    inline void BindGroupData::BindSamplers(uint32_t index, TL::Span<Handle<Sampler>> samplers, uint32_t arrayOffset)
-    {
-        BindGroupData::ResourceSamplerBinding binding{};
-        binding.arrayOffset = arrayOffset;
-        binding.samplers    = { samplers.begin(), samplers.end() };
-        m_bindings[index]   = binding;
-    }
-
-    inline uint32_t Swapchain::GetCurrentImageIndex() const
-    {
-        return m_currentImageIndex;
-    }
-
-    inline uint32_t Swapchain::GetImagesCount() const
-    {
-        return m_swapchainImagesCount;
-    }
-
-    inline Handle<Image> Swapchain::GetImage() const
-    {
-        return m_images[m_currentImageIndex];
-    }
 
 } // namespace RHI

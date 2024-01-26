@@ -118,15 +118,12 @@ namespace Vulkan
         beginInfo.pNext = nullptr;
         beginInfo.flags = 0;
         beginInfo.pInheritanceInfo = nullptr;
-
         vkBeginCommandBuffer(m_commandBuffer, &beginInfo);
     }
 
     void CommandList::Begin(RHI::Pass& passBase)
     {
         auto& pass = static_cast<Pass&>(passBase);
-
-        pass.m_commandLists.push_back(this);
 
         m_pass = &pass;
 
@@ -135,7 +132,6 @@ namespace Vulkan
         beginInfo.pNext = nullptr;
         beginInfo.flags = 0;
         beginInfo.pInheritanceInfo = nullptr;
-
         vkBeginCommandBuffer(m_commandBuffer, &beginInfo);
 
         RenderingBegin(pass);
@@ -394,7 +390,7 @@ namespace Vulkan
                 attachment->usage == RHI::AttachmentUsage::Stencil ||
                 attachment->usage == RHI::AttachmentUsage::DepthStencil)
             {
-                passAttachments.push_back(attachment);
+                passAttachments.push_back(attachment.get());
             }
         }
 
@@ -444,7 +440,7 @@ namespace Vulkan
                 attachment->usage == RHI::AttachmentUsage::Stencil || 
                 attachment->usage == RHI::AttachmentUsage::DepthStencil)
             {
-                passAttachments.push_back(attachment);
+                passAttachments.push_back(attachment.get());
             }
         }
         TransitionPassAttachments(BarrierType::PostPass, passAttachments);
@@ -510,8 +506,8 @@ namespace Vulkan
 
             if (passAttachment->next)
             {
-                barrier.srcQueueFamilyIndex = static_cast<Pass*>(passAttachment->pass)->m_queueFamilyIndex;
-                barrier.dstQueueFamilyIndex = static_cast<Pass*>(passAttachment->next->pass)->m_queueFamilyIndex;
+                barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 
                 if (barrier.srcQueueFamilyIndex == barrier.dstQueueFamilyIndex &&
                     passAttachment->access == RHI::AttachmentAccess::Read &&
@@ -576,8 +572,8 @@ namespace Vulkan
 
             if (passAttachment->next)
             {
-                barrier.srcQueueFamilyIndex = static_cast<Pass*>(passAttachment->pass)->m_queueFamilyIndex;
-                barrier.dstQueueFamilyIndex = static_cast<Pass*>(passAttachment->next->pass)->m_queueFamilyIndex;
+                barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 
                 if (barrier.srcQueueFamilyIndex == barrier.dstQueueFamilyIndex &&
                     passAttachment->access == RHI::AttachmentAccess::Read &&
@@ -604,6 +600,31 @@ namespace Vulkan
         dependencyInfo.bufferMemoryBarrierCount = uint32_t(barriers.size());
         dependencyInfo.pBufferMemoryBarriers = barriers.data();
         vkCmdPipelineBarrier2(m_commandBuffer, &dependencyInfo);
+    }
+
+    void QueueSubmit(VkQueue queue, TL::Span<CommandList*> commandlists, Fence* signalFence)
+    {
+        std::vector<VkCommandBufferSubmitInfo> submitInfos{};
+        for (auto commandList : commandlists)
+        {
+            VkCommandBufferSubmitInfo submitInfo{};
+            submitInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+            submitInfo.commandBuffer = commandList->m_commandBuffer;
+            submitInfos.push_back(submitInfo);
+        }
+
+        VkSubmitInfo2 submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+        submitInfo.pNext = nullptr;
+        submitInfo.flags = 0;
+        submitInfo.waitSemaphoreInfoCount = 0;
+        submitInfo.pWaitSemaphoreInfos = nullptr;
+        submitInfo.commandBufferInfoCount = uint32_t(submitInfos.size());
+        submitInfo.pCommandBufferInfos = submitInfos.data();
+        submitInfo.signalSemaphoreInfoCount = 0;
+        submitInfo.pSignalSemaphoreInfos = nullptr;
+        auto result = vkQueueSubmit2(queue, 1, &submitInfo, signalFence->UseFence());
+        VULKAN_ASSERT_SUCCESS(result);
     }
 
 } // namespace Vulkan

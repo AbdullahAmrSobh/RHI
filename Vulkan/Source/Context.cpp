@@ -323,6 +323,22 @@ namespace Vulkan
         return swapchain;
     }
 
+    std::unique_ptr<RHI::Fence> Context::CreateFence()
+    {
+        auto fence = std::make_unique<Fence>(this);
+        auto result = fence->Init();
+        RHI_ASSERT(result == VK_SUCCESS);
+        return fence;
+    }
+
+    std::unique_ptr<RHI::Pass> Context::CreatePass(const char* name, RHI::QueueType type)
+    {
+        auto pass = std::make_unique<Pass>(this, name, type);
+        auto result = pass->Init();
+        RHI_ASSERT(result == VK_SUCCESS);
+        return pass;
+    }
+
     std::unique_ptr<RHI::ShaderModule> Context::CreateShaderModule(const RHI::ShaderModuleCreateInfo& createInfo)
     {
         auto shaderModule = std::make_unique<ShaderModule>(this);
@@ -490,23 +506,6 @@ namespace Vulkan
     void Context::FreeSemaphore(VkSemaphore semaphore)
     {
         vkDestroySemaphore(m_device, semaphore, nullptr);
-    }
-
-    VkFence Context::CreateFence()
-    {
-        VkFenceCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        createInfo.pNext = nullptr;
-        createInfo.flags = 0;
-        VkFence fence = VK_NULL_HANDLE;
-        auto result = vkCreateFence(m_device, &createInfo, nullptr, &fence);
-        VULKAN_ASSERT_SUCCESS(result);
-        return fence;
-    }
-
-    void Context::FreeFence(VkFence fence)
-    {
-        vkDestroyFence(m_device, fence, nullptr);
     }
 
     std::vector<VkLayerProperties> Context::GetAvailableInstanceLayerExtensions() const

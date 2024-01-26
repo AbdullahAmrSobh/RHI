@@ -132,31 +132,23 @@ public:
     {
         auto& frameGraph = *m_frameScheduler.get();
         auto& registry = frameGraph.GetRegistry();
-        m_renderpass = frameGraph.CreatePass("Render-Pass", RHI::QueueType::Graphics);
+        m_renderpass = m_context->CreatePass("Render-Pass", RHI::QueueType::Graphics);
 
         RHI::ImageCreateInfo depthInfo{};
         depthInfo.usageFlags = RHI::ImageUsage::Depth;
         depthInfo.format = RHI::Format::D32;
         depthInfo.type = RHI::ImageType::Image2D;
-        depthInfo.size.width = m_windowWidth;
-        depthInfo.size.height = m_windowHeight;
-        depthInfo.size.depth = 1;
-
         auto colorAttachment = registry.ImportSwapchainImage("back-buffer", m_swapchain.get());
         auto depthAttachment = registry.CreateTransientImage("depth-buffer", depthInfo);
         m_renderpass->UseColorAttachment(colorAttachment, { 0.1f, 0.2f, 0.3f, 1.0f });
-
-        RHI::ImageViewCreateInfo viewCreateInfo {};
-        viewCreateInfo.subresource.imageAspects = RHI::ImageAspect::Depth;
-        viewCreateInfo.subresource.arrayCount  = 1;
-        viewCreateInfo.subresource.mipLevelCount = 1;
-        m_renderpass->UseDepthAttachment(depthAttachment, { 1.0 }, {}, viewCreateInfo);
+        m_renderpass->UseDepthAttachment(depthAttachment, { 1.0 });
 
         // auto imguiPass = SetupImguiPass(colorAttachment, depthAttachment);
 
         frameGraph.RegisterPass(*m_renderpass);
         // frameGraph.RegisterPass(*imguiPass);
 
+        frameGraph.ResizeFrame({ m_windowWidth, m_windowHeight });
         frameGraph.Compile();
     }
 
@@ -210,6 +202,8 @@ public:
 
         // upload image data to the gpu
         {
+            auto fence = m_context->CreateFence();
+
             // copy data from the staging buffer to the image.
             RHI::CopyBufferToImageDescriptor copyCommand = {};
             copyCommand.srcBuffer = m_mesh.textureStagingBuffer;
@@ -226,7 +220,8 @@ public:
             commandList->Begin();
             commandList->Submit(copyCommand);
             commandList->End();
-            m_frameScheduler->Execute(commandList);
+            m_frameScheduler->ExecuteCommandList(commandList, *fence);
+            fence->Wait(UINT64_MAX);
             m_bufferPool->FreeBuffer(m_mesh.textureStagingBuffer);
         }
 
@@ -263,8 +258,6 @@ public:
 
     void OnShutdown() override
     {
-        m_frameScheduler->WaitIdle(UINT64_MAX);
-
         m_bindGroupAllocator->Free(m_bindGroup);
 
         m_context->DestroyBindGroupLayout(m_bindGroupLayout);

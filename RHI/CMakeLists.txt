@@ -23,6 +23,8 @@ set(HEADER_FILES
 set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Format.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/FrameScheduler.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.cpp
 )
 
 include(${CMAKE_SOURCE_DIR}/CMake/AddTarget.cmake)

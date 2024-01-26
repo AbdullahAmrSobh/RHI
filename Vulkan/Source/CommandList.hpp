@@ -1,5 +1,6 @@
 #pragma once
 
+#include <RHI/FrameScheduler.hpp>
 #include <RHI/CommandList.hpp>
 
 #include <memory>
@@ -14,6 +15,7 @@ namespace Vulkan
     class Pass;
     class Context;
     class CommandList;
+    class Fence;
 
     enum class BarrierType
     {
@@ -120,5 +122,7 @@ namespace Vulkan
 
         VkCommandBuffer m_commandBuffer;
     };
+
+    void QueueSubmit(VkQueue queue, TL::Span<CommandList> commandlists, Fence* signalFence);
 
 } // namespace Vulkan

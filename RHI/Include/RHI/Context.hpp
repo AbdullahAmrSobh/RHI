@@ -5,6 +5,7 @@
 #include "RHI/CommandList.hpp"
 #include "RHI/FrameScheduler.hpp"
 #include "RHI/Export.hpp"
+#include "RHI/Common/Allocator.hpp"
 
 #include <memory>
 #include <string>
@@ -99,6 +100,12 @@ namespace RHI
         /// @brief Creates a new ShaderModule
         virtual std::unique_ptr<ShaderModule>         CreateShaderModule(const ShaderModuleCreateInfo& createInfo)                 = 0;
 
+        /// @brief Creates a fence object.
+        virtual std::unique_ptr<Fence>                CreateFence()                                                                = 0;
+
+        /// @brief Creates a Frame Graph Pass object.
+        virtual std::unique_ptr<Pass>                 CreatePass(const char* name, QueueType type)                                 = 0;
+
         /// @brief Creates a new FrameScheduler object.
         virtual std::unique_ptr<FrameScheduler>       CreateFrameScheduler()                                                       = 0;
 
@@ -155,6 +162,8 @@ namespace RHI
 
         /// @brief Frees the given sampler object.
         virtual void                                  DestroyBufferView(Handle<BufferView> view)                                   = 0;
+
+        std::unique_ptr<Allocator> m_allocator;
 
     protected:
         std::unique_ptr<DebugCallbacks> m_debugMessenger;

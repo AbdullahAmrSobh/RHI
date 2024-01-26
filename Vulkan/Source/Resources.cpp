@@ -1,6 +1,5 @@
 #include <RHI/Common/Assert.hpp>
 
-#define VK_USE_PLATFORM_WIN32_KHR
 #include "Conversion.hpp"
 #include "Common.hpp"
 #include "Context.hpp"
@@ -922,6 +921,61 @@ namespace Vulkan
     }
 
     ///////////////////////////////////////////////////////////////////////////
+    /// Fence
+    ///////////////////////////////////////////////////////////////////////////
+
+    Fence::~Fence()
+    {
+        vkDestroyFence(m_context->m_device, m_fence, nullptr);
+    }
+
+    VkResult Fence::Init()
+    {
+        m_state = State::NotSubmitted;
+
+        VkFenceCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        createInfo.pNext = nullptr;
+        createInfo.flags = 0;
+        auto result = vkCreateFence(m_context->m_device, &createInfo, nullptr, &m_fence);
+        VULKAN_ASSERT_SUCCESS(result);
+        return result;
+    }
+
+    void Fence::Reset()
+    {
+        m_state = State::NotSubmitted;
+        auto result = vkResetFences(m_context->m_device, 1, &m_fence);
+        VULKAN_ASSERT_SUCCESS(result);
+    }
+
+    bool Fence::Wait(uint64_t timeout)
+    {
+        if (m_state == State::NotSubmitted)
+            return VK_SUCCESS;
+
+        auto result = vkWaitForFences(m_context->m_device, 1, &m_fence, VK_TRUE, timeout);
+        return result == VK_SUCCESS;
+    }
+
+    Fence::State Fence::GetState()
+    {
+        if (m_state == State::Pending)
+        {
+            auto result = vkGetFenceStatus(m_context->m_device, m_fence);
+            return result == VK_SUCCESS ? State::Signaled : State::Pending;
+        }
+
+        return State::NotSubmitted;
+    }
+
+    VkFence Fence::UseFence()
+    {
+        m_state = State::Pending;
+        return m_fence;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
     /// Swapchain
     ///////////////////////////////////////////////////////////////////////////
 
@@ -932,7 +986,10 @@ namespace Vulkan
         vkDestroySwapchainKHR(context->m_device, m_swapchain, nullptr);
         vkDestroySurfaceKHR(context->m_instance, m_surface, nullptr);
 
-        vkDestroySemaphore(context->m_device, m_imageReadySemaphore, nullptr);
+        for (auto semaphore : m_presentReadySemaphore)
+        {
+            if (semaphore != VK_NULL_HANDLE) vkDestroySemaphore(context->m_device, semaphore, nullptr);
+        }
     }
 
     VkResult Swapchain::Init(const RHI::SwapchainCreateInfo& createInfo)
@@ -941,33 +998,39 @@ namespace Vulkan
 
         m_swapchainInfo = createInfo;
 
-        VkSemaphoreCreateInfo semaphoreCreateInfo{};
-        semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-        semaphoreCreateInfo.pNext = nullptr;
-        semaphoreCreateInfo.flags = 0;
-        VkResult result = vkCreateSemaphore(context->m_device, &semaphoreCreateInfo, nullptr, &m_imageReadySemaphore);
-        VULKAN_RETURN_VKERR_CODE(result);
+        m_surface = CreateSurface(createInfo);
 
-#ifdef RHI_PLATFORM_WINDOWS
-        // create win32 surface
-        VkWin32SurfaceCreateInfoKHR vkCreateInfo;
-        vkCreateInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-        vkCreateInfo.pNext = nullptr;
-        vkCreateInfo.flags = 0;
-        // vkCreateInfo.hinstance = static_cast<HINSTANCE>(createInfo.win32Window.hinstance);
-        vkCreateInfo.hwnd = static_cast<HWND>(createInfo.win32Window.hwnd);
-        result = vkCreateWin32SurfaceKHR(context->m_instance, &vkCreateInfo, nullptr, &m_surface);
-        VULKAN_RETURN_VKERR_CODE(result);
-#endif
-
-        VkBool32 surfaceSupportPresent = VK_FALSE;
-        result = vkGetPhysicalDeviceSurfaceSupportKHR(
-            context->m_physicalDevice, context->m_graphicsQueueFamilyIndex, m_surface, &surfaceSupportPresent);
+        VkBool32 surfaceSupportPresent;
+        auto result = vkGetPhysicalDeviceSurfaceSupportKHR(context->m_physicalDevice, context->m_graphicsQueueFamilyIndex, m_surface, &surfaceSupportPresent);
         RHI_ASSERT(result == VK_SUCCESS && surfaceSupportPresent == VK_TRUE);
 
         result = CreateNativeSwapchain();
-        VULKAN_RETURN_VKERR_CODE(result);
+        VULKAN_ASSERT_SUCCESS(result);
+
+        for (uint32_t i = 0; i < GetImagesCount(); i++)
+        {
+            m_presentReadySemaphore[i] = context->CreateVulkanSemaphore();
+            m_frameReadyFence.push_back(context->CreateFence()); 
+        }
+
         return result;
+    }
+
+    VkSemaphore Swapchain::GetPresentReadySemaphore()
+    {
+        return m_presentReadySemaphore[m_currentImageIndex];
+    }
+
+    void Swapchain::AcquireNextImage(Fence& fence)
+    {
+        auto result = vkAcquireNextImageKHR(m_context->m_device, m_swapchain, UINT64_MAX, VK_NULL_HANDLE, fence.UseFence(), &m_currentImageIndex);
+        VULKAN_ASSERT_SUCCESS(result);
+    }
+
+    void Swapchain::AcquireNextImage(VkSemaphore semaphore)
+    {
+        auto result = vkAcquireNextImageKHR(m_context->m_device, m_swapchain, UINT64_MAX, semaphore, VK_NULL_HANDLE, &m_currentImageIndex);
+        VULKAN_ASSERT_SUCCESS(result);
     }
 
     RHI::ResultCode Swapchain::Resize(RHI::ImageSize2D newSize)
@@ -984,29 +1047,6 @@ namespace Vulkan
         result = CreateNativeSwapchain();
 
         return ConvertResult(result);
-    }
-
-    RHI::ResultCode Swapchain::Present()
-    {
-        auto frameReadySemaphore = static_cast<Pass*>(m_attachment->lastUse->pass)->m_signalSemaphore;
-
-        // Present current image to be rendered.
-        VkPresentInfoKHR presentInfo{};
-        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        presentInfo.pNext = nullptr;
-        presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = &frameReadySemaphore;
-        presentInfo.swapchainCount = 1;
-        presentInfo.pSwapchains = &m_swapchain;
-        presentInfo.pImageIndices = &m_currentImageIndex;
-        presentInfo.pResults = &m_lastPresentResult;
-        VkResult result = vkQueuePresentKHR(m_context->m_graphicsQueue, &presentInfo);
-        VULKAN_RETURN_ERR_CODE(result);
-
-        result = vkAcquireNextImageKHR(m_context->m_device, m_swapchain, TIMEOUT_DURATION, m_imageReadySemaphore, VK_NULL_HANDLE, &m_currentImageIndex);
-        VULKAN_RETURN_ERR_CODE(result);
-
-        return RHI::ResultCode::Success;
     }
 
     VkResult Swapchain::CreateNativeSwapchain()
@@ -1063,8 +1103,7 @@ namespace Vulkan
             m_images.push_back(handle);
         }
 
-        result = vkAcquireNextImageKHR(m_context->m_device, m_swapchain, TIMEOUT_DURATION, m_imageReadySemaphore, VK_NULL_HANDLE, &m_currentImageIndex);
-        VULKAN_RETURN_VKERR_CODE(result);
+        AcquireNextImage((Fence&)GetCurrentFrameFence());
 
         return result;
     }

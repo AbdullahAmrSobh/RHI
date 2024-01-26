@@ -24,6 +24,22 @@ namespace RHI
             using Reference = ElementType&;
             using Iterator  = Pointer;
 
+            constexpr Span() noexcept
+                : m_data(nullptr)
+                , m_count(0)
+            {
+            }
+
+            template<typename BaseElementType>
+            constexpr Span(Span<BaseElementType> span)
+                : m_data(span.data())
+                , m_count(span.size())
+            {
+                using T1 = std::remove_pointer_t<BaseElementType>;
+                using T2 = std::remove_pointer_t<ElementType>;
+                static_assert(std::is_base_of_v<T1, T2>, "Invalid cast");
+            }
+
             constexpr Span(ElementType& type) noexcept
                 : m_data(&type)
                 , m_count(1)

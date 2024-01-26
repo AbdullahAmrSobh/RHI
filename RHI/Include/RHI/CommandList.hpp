@@ -4,9 +4,11 @@
 
 namespace RHI
 {
-
     struct GraphicsPipeline;
     struct ComputePipeline;
+
+    struct ImagePassAttachment;
+    struct BufferPassAttachment;
 
     class Pass;
     class CommandList;

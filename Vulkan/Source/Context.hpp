@@ -35,6 +35,10 @@ namespace Vulkan
 
         std::unique_ptr<RHI::Swapchain> CreateSwapchain(const RHI::SwapchainCreateInfo& createInfo) override;
 
+        std::unique_ptr<RHI::Fence> CreateFence() override;
+
+        std::unique_ptr<RHI::Pass> CreatePass(const char* name, RHI::QueueType type) override;
+
         std::unique_ptr<RHI::FrameScheduler> CreateFrameScheduler() override;
 
         std::unique_ptr<RHI::CommandListAllocator> CreateCommandListAllocator(RHI::QueueType queueType) override;
@@ -68,12 +72,12 @@ namespace Vulkan
         void DestroyBufferView(RHI::Handle<RHI::BufferView> view) override;
 
         uint32_t GetQueueFamilyIndex(RHI::QueueType queueType) const;
+        VkQueue GetQueue(RHI::QueueType queueType) const;
+
+        inline VkSemaphore CreateVulkanSemaphore() { return CreateSemaphore(); }
 
         VkSemaphore CreateSemaphore();
         void FreeSemaphore(VkSemaphore semaphore);
-
-        VkFence CreateFence();
-        void FreeFence(VkFence fence);
 
         std::vector<VkLayerProperties> GetAvailableInstanceLayerExtensions() const;
 
@@ -126,6 +130,17 @@ namespace Vulkan
         case RHI::QueueType::Compute:  return m_computeQueueFamilyIndex;
         case RHI::QueueType::Transfer: return m_transferQueueFamilyIndex;
         default:                       RHI_UNREACHABLE(); return UINT32_MAX;
+        }
+    }
+
+    inline VkQueue Context::GetQueue(RHI::QueueType queueType) const
+    {
+        switch (queueType)
+        {
+        case RHI::QueueType::Graphics: return m_graphicsQueue;
+        case RHI::QueueType::Compute:  return m_computeQueue;
+        case RHI::QueueType::Transfer: return m_transferQueue;
+        default:                       RHI_UNREACHABLE(); return VK_NULL_HANDLE;
         }
     }
 
