@@ -8,16 +8,14 @@
 #include "Context.hpp"
 #include "Common.hpp"
 
-// Platform specifc surface creation are contained witihn this file, 
+// Platform specifc surface creation are contained witihn this file,
 // to avoid polluting the global namespace with OS specific symbols
 
 namespace Vulkan
 {
-    VkSurfaceKHR Swapchain::CreateSurface(RHI::SwapchainCreateInfo createInfo)
+    VkResult Swapchain::InitSurface()
     {
         auto context = static_cast<Context*>(m_context);
-
-        VkSurfaceKHR surfaceHandle = VK_NULL_HANDLE;
 
 #ifdef VK_USE_PLATFORM_WIN32_KHR
         // create win32 surface
@@ -26,10 +24,14 @@ namespace Vulkan
         vkCreateInfo.pNext = nullptr;
         vkCreateInfo.flags = 0;
         // vkCreateInfo.hinstance = static_cast<HINSTANCE>(createInfo.win32Window.hinstance);
-        vkCreateInfo.hwnd = static_cast<HWND>(createInfo.win32Window.hwnd);
-        auto result = vkCreateWin32SurfaceKHR(context->m_instance, &vkCreateInfo, nullptr, &surfaceHandle);
+        vkCreateInfo.hwnd = static_cast<HWND>(m_swapchainInfo.win32Window.hwnd);
+        auto result = vkCreateWin32SurfaceKHR(context->m_instance, &vkCreateInfo, nullptr, &m_surface);
         VULKAN_ASSERT_SUCCESS(result);
 #endif
-        return surfaceHandle;
+
+        VkBool32 surfaceSupportPresent;
+        result = vkGetPhysicalDeviceSurfaceSupportKHR(context->m_physicalDevice, context->m_graphicsQueueFamilyIndex, m_surface, &surfaceSupportPresent);
+        RHI_ASSERT(result == VK_SUCCESS && surfaceSupportPresent == VK_TRUE);
+        return result;
     }
-}
+} // namespace Vulkan

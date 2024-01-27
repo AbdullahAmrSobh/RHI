@@ -318,7 +318,6 @@ public:
 private:
     UniformBufferContent m_uniformData;
 
-private:
     std::unique_ptr<RHI::BufferPool> m_bufferPool;
 
     std::unique_ptr<RHI::ImagePool> m_imagePool;

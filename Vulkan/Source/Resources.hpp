@@ -242,7 +242,7 @@ namespace Vulkan
         VkResult Init();
 
         void Reset() override;
-        bool Wait(uint64_t timeout) override;
+        bool WaitInternal(uint64_t timeout) override;
         State GetState() override;
 
         // This should only be called when passing the fence to a vulkan siganl command
@@ -257,11 +257,7 @@ namespace Vulkan
     class Swapchain final : public RHI::Swapchain
     {
     public:
-        Swapchain(Context* context)
-            : m_context(context)
-        {
-        }
-
+        Swapchain(Context* context);
         ~Swapchain();
 
         VkResult Init(const RHI::SwapchainCreateInfo& createInfo);
@@ -274,9 +270,8 @@ namespace Vulkan
         RHI::ResultCode Resize(RHI::ImageSize2D newSize) override;
 
     private:
-        VkSurfaceKHR CreateSurface(RHI::SwapchainCreateInfo createInfo);
-
-        VkResult CreateNativeSwapchain();
+        VkResult InitSurface();
+        VkResult InitSwapchain();
 
         VkSurfaceFormatKHR GetSurfaceFormat(VkFormat format);
 

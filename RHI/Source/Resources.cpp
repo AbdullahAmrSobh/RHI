@@ -50,6 +50,11 @@ namespace RHI
         return m_images[m_currentImageIndex];
     }
 
+    Handle<Image> Swapchain::GetImage(uint32_t index) const
+    {
+        return m_images[index];
+    }
+
     Fence& Swapchain::GetCurrentFrameFence()
     {
         return *m_frameReadyFence[GetCurrentImageIndex()];

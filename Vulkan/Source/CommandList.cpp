@@ -126,6 +126,7 @@ namespace Vulkan
         auto& pass = static_cast<Pass&>(passBase);
 
         m_pass = &pass;
+        m_pass->m_commandLists.push_back(this);
 
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -349,6 +350,7 @@ namespace Vulkan
     VkRenderingAttachmentInfo CommandList::GetAttachmentInfo(const RHI::ImagePassAttachment& passAttachment) const
     {
         auto imageView = m_context->m_imageViewOwner.Get(passAttachment.view);
+        RHI_ASSERT(imageView != nullptr);
 
         auto attachmentInfo = VkRenderingAttachmentInfo{};
         attachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
@@ -390,7 +392,7 @@ namespace Vulkan
                 attachment->usage == RHI::AttachmentUsage::Stencil ||
                 attachment->usage == RHI::AttachmentUsage::DepthStencil)
             {
-                passAttachments.push_back(attachment.get());
+                passAttachments.push_back(attachment);
             }
         }
 
@@ -440,7 +442,7 @@ namespace Vulkan
                 attachment->usage == RHI::AttachmentUsage::Stencil || 
                 attachment->usage == RHI::AttachmentUsage::DepthStencil)
             {
-                passAttachments.push_back(attachment.get());
+                passAttachments.push_back(attachment);
             }
         }
         TransitionPassAttachments(BarrierType::PostPass, passAttachments);
@@ -527,7 +529,7 @@ namespace Vulkan
             else if (barrierType == BarrierType::PostPass && passAttachment->attachment->swapchain)
             {
                 barrier.srcStageMask = ConvertPipelineStageFlags(passAttachment->usage, passAttachment->stage);
-                barrier.srcAccessMask = ConvertPipelineAccess(passAttachment->usage, passAttachment->access);
+                barrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
                 barrier.oldLayout = ConvertImageLayout(passAttachment->usage, passAttachment->access);
                 barrier.dstStageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
                 barrier.dstAccessMask = 0;

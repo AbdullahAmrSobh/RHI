@@ -949,7 +949,7 @@ namespace Vulkan
         VULKAN_ASSERT_SUCCESS(result);
     }
 
-    bool Fence::Wait(uint64_t timeout)
+    bool Fence::WaitInternal(uint64_t timeout)
     {
         if (m_state == State::NotSubmitted)
             return VK_SUCCESS;
@@ -978,6 +978,15 @@ namespace Vulkan
     ///////////////////////////////////////////////////////////////////////////
     /// Swapchain
     ///////////////////////////////////////////////////////////////////////////
+    Swapchain::Swapchain(Context* context)
+        : m_context(context)
+        , m_presentReadySemaphore{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}
+        , m_swapchain(VK_NULL_HANDLE)
+        , m_surface(VK_NULL_HANDLE)
+        , m_lastPresentResult(VK_ERROR_UNKNOWN)
+        , m_swapchainInfo()
+    {
+    }
 
     Swapchain::~Swapchain()
     {
@@ -988,7 +997,8 @@ namespace Vulkan
 
         for (auto semaphore : m_presentReadySemaphore)
         {
-            if (semaphore != VK_NULL_HANDLE) vkDestroySemaphore(context->m_device, semaphore, nullptr);
+            if (semaphore != VK_NULL_HANDLE)
+                vkDestroySemaphore(context->m_device, semaphore, nullptr);
         }
     }
 
@@ -997,21 +1007,20 @@ namespace Vulkan
         auto context = static_cast<Context*>(m_context);
 
         m_swapchainInfo = createInfo;
+        m_swapchainImagesCount = createInfo.imageCount;
 
-        m_surface = CreateSurface(createInfo);
-
-        VkBool32 surfaceSupportPresent;
-        auto result = vkGetPhysicalDeviceSurfaceSupportKHR(context->m_physicalDevice, context->m_graphicsQueueFamilyIndex, m_surface, &surfaceSupportPresent);
-        RHI_ASSERT(result == VK_SUCCESS && surfaceSupportPresent == VK_TRUE);
-
-        result = CreateNativeSwapchain();
-        VULKAN_ASSERT_SUCCESS(result);
-
-        for (uint32_t i = 0; i < GetImagesCount(); i++)
+        for (uint32_t i = 0; i < createInfo.imageCount; i++)
         {
             m_presentReadySemaphore[i] = context->CreateVulkanSemaphore();
-            m_frameReadyFence.push_back(context->CreateFence()); 
+            m_frameReadyFence.push_back(context->CreateFence());
         }
+
+        VkResult result;
+        result = InitSurface();
+        VULKAN_ASSERT_SUCCESS(result);
+
+        result = InitSwapchain();
+        VULKAN_ASSERT_SUCCESS(result);
 
         return result;
     }
@@ -1035,21 +1044,17 @@ namespace Vulkan
 
     RHI::ResultCode Swapchain::Resize(RHI::ImageSize2D newSize)
     {
-        auto context = static_cast<Context*>(m_context);
+        // auto context = static_cast<Context*>(m_context);
+        // TODO Wait idle
 
-        m_swapchainInfo.imageSize = { newSize.width, newSize.height, 0 };
+        m_swapchainInfo.imageSize = { newSize.width, newSize.height, 1 };
 
-        VkResult result = vkQueueWaitIdle(context->m_graphicsQueue);
+        auto result = InitSwapchain();
         VULKAN_ASSERT_SUCCESS(result);
-
-        vkDestroySwapchainKHR(context->m_device, m_swapchain, nullptr);
-
-        result = CreateNativeSwapchain();
-
         return ConvertResult(result);
     }
 
-    VkResult Swapchain::CreateNativeSwapchain()
+    VkResult Swapchain::InitSwapchain()
     {
         VkSurfaceCapabilitiesKHR surfaceCapabilities{};
         VkResult result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_context->m_physicalDevice, m_surface, &surfaceCapabilities);
@@ -1103,7 +1108,7 @@ namespace Vulkan
             m_images.push_back(handle);
         }
 
-        AcquireNextImage((Fence&)GetCurrentFrameFence());
+        AcquireNextImage((Fence&)*m_frameReadyFence.front());
 
         return result;
     }

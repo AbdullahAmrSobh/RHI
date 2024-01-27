@@ -1,16 +1,13 @@
- #include "RHI/FrameScheduler.hpp"
+#include "RHI/FrameScheduler.hpp"
 
 #include "RHI/Context.hpp"
+#include "RHI/Common/Hash.hpp"
 
 namespace RHI
 {
-
-    template<typename T>
-    inline static uint64_t HashAny(const T& data)
+    bool IsRenderTarget(Flags<AttachmentUsage> usage)
     {
-        auto stream = std::string(reinterpret_cast<const char*>(&data), sizeof(data));
-        std::hash<std::string> hasher;
-        return hasher(stream);
+        return usage & AttachmentUsage::Color || usage & AttachmentUsage::Depth || usage & AttachmentUsage::Stencil || usage & AttachmentUsage::DepthStencil;
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -20,7 +17,20 @@ namespace RHI
     Pass::Pass(const char* name, QueueType type)
         : m_name(name)
         , m_queueType(type)
+        , m_swapchain(nullptr)
+        , m_size(0, 0)
+        , m_producers()
+        , m_commandLists()
+        , m_swapchainImageAttachment(nullptr)
+        , m_imagePassAttachments()
+        , m_bufferPassAttachments()
     {
+    }
+
+    Pass::~Pass()
+    {
+        for (auto passAttachment : m_imagePassAttachments) delete passAttachment;
+        for (auto passAttachment : m_bufferPassAttachments) delete passAttachment;
     }
 
     ImagePassAttachment* Pass::UseColorAttachment(ImageAttachment* attachment, const ImageViewCreateInfo& viewInfo, ColorValue value, LoadStoreOperations loadStoreOperations)
@@ -39,7 +49,6 @@ namespace RHI
     ImagePassAttachment* Pass::UseDepthAttachment(ImageAttachment* attachment, const ImageViewCreateInfo& viewInfo, DepthStencilValue value, LoadStoreOperations loadStoreOperations)
     {
         auto passAttachment = EmplaceNewPassAttachment(attachment);
-        memset(passAttachment, 0, sizeof(decltype(*passAttachment)));
         passAttachment->pass = this;
         passAttachment->attachment = attachment;
         passAttachment->usage = AttachmentUsage::Depth;
@@ -144,14 +153,24 @@ namespace RHI
 
     ImagePassAttachment* Pass::EmplaceNewPassAttachment(ImageAttachment* attachment)
     {
-        auto passAttachment = m_imagePassAttachments.emplace_back(std::make_unique<ImagePassAttachment>()).get();
+        if (auto swapchain = attachment->swapchain; swapchain != nullptr)
+        {
+            m_imagePassAttachments.emplace_back(new SwapchainImagePassAttachment());
+            m_swapchainImageAttachment = (SwapchainImagePassAttachment*)m_imagePassAttachments.back();
+        }
+        else
+        {
+            m_imagePassAttachments.emplace_back(new ImagePassAttachment());
+        }
+
+        auto passAttachment = m_imagePassAttachments.back();
         attachment->PushPassAttachment(passAttachment);
         return passAttachment;
     }
 
     BufferPassAttachment* Pass::EmplaceNewPassAttachment(BufferAttachment* attachment)
     {
-        auto passAttachment = m_bufferPassAttachments.emplace_back(std::make_unique<BufferPassAttachment>()).get();
+        auto passAttachment = m_bufferPassAttachments.emplace_back(new BufferPassAttachment());
         attachment->PushPassAttachment(passAttachment);
         return passAttachment;
     }
@@ -162,49 +181,43 @@ namespace RHI
 
     FrameScheduler::FrameScheduler(Context* context)
         : m_context(context)
-        , m_passList()
-        , m_imageViewsLut()
-        , m_bufferViewsLut()
         , m_attachmentsRegistry(std::make_unique<AttachmentsRegistry>())
-        , m_transientResourceAllocator()
-        , m_maxFrameBufferingCount(0)
-        , m_currentFrameIndex(0)
-        , m_frameSize()
+        , m_transientResourceAllocator(nullptr)
+        , m_frameSize(0, 0)
+        , m_swapchainImageAttachment(nullptr)
     {
-        m_fences.resize(3);
-        for (auto i = 0; i < 3; i++)
-        {
-            m_fences[i] = m_context->CreateFence();
-        }
     }
 
     void FrameScheduler::Begin()
     {
-        auto fence = GetCurrentFrameFence();
-        
-        fence->Wait(UINT64_MAX);
-        fence->Reset();
+        // FIXME
+        m_swapchainImageAttachment = m_attachmentsRegistry->FindImage(m_attachmentsRegistry->m_swapchainAttachments.front());
 
-        for (auto id : m_attachmentsRegistry->m_swapchainAttachments)
+        auto& fence = GetFrameCurrentFence();
+        fence.Wait();
+        fence.Reset();
+
+        // prepare pass attachments
+        for (auto passAttachment = (SwapchainImagePassAttachment*)m_swapchainImageAttachment->firstUse; passAttachment->next != nullptr;
+             passAttachment = (SwapchainImagePassAttachment*)passAttachment->next)
         {
-            auto attachment = m_attachmentsRegistry->FindImage(id);
-            for (auto passAttachment = attachment->firstUse; passAttachment != nullptr; passAttachment = passAttachment->next)
-            {
-                passAttachment->view = FindOrCreateView(attachment->GetImage(), passAttachment->viewInfo);
-            }
+            passAttachment->view = passAttachment->views[m_swapchainImageAttachment->swapchain->GetCurrentImageIndex()];
+        }
+
+        for (auto pass : m_passList)
+        {
+            pass->m_commandLists.clear();
         }
     }
 
     void FrameScheduler::End()
     {
-        auto fence = GetCurrentFrameFence();
-
         for (auto pass : m_passList)
         {
             QueuePassSubmit(pass, nullptr);
         }
 
-        QueueImagePresent(m_swapchainAttachment, fence);
+        QueueImagePresent(m_swapchainImageAttachment, GetFrameCurrentFence());
     }
 
     void FrameScheduler::RegisterPass(Pass& pass)
@@ -212,59 +225,28 @@ namespace RHI
         m_passList.push_back(&pass);
     }
 
-    void FrameScheduler::ResizeFrame(ImageSize2D newSize)
-    {
-        DeviceWaitIdle();
-
-        // Cleanup(); need to be called after initial compilation
-
-        m_frameSize = newSize;
-
-        // Resize all transient attachments
-        for (auto& [_, attachment] : m_attachmentsRegistry->m_imageAttachments)
-        {
-            if (attachment->lifetime == Attachment::Lifetime::Transient)
-            {
-                attachment->info.size.width = newSize.width;
-                attachment->info.size.height = newSize.height;
-                attachment->info.size.depth = 1;
-            }
-        }
-
-        Compile();
-    }
-
     void FrameScheduler::Compile()
     {
-        m_swapchainAttachment = m_attachmentsRegistry->FindImage(m_attachmentsRegistry->m_swapchainAttachments.front());
-
         // Allocate transient resources, and generate resource views
         for (auto pass : m_passList)
         {
             for (auto& passAttachment : pass->m_imagePassAttachments)
             {
                 auto& attachemnt = passAttachment->attachment;
-
-                if (attachemnt->info.type == ImageType::Image2D)
-                {
-                    attachemnt->info.size.width = m_frameSize.width;
-                    attachemnt->info.size.height = m_frameSize.height;
-                    attachemnt->info.size.depth = 1;
-                }
-
                 if (attachemnt->lifetime == Attachment::Lifetime::Transient)
                 {
-                    if (passAttachment->prev == nullptr)
+                    if (attachemnt->info.type == ImageType::Image2D)
                     {
-                        m_transientResourceAllocator->Allocate(m_context, attachemnt);
+                        attachemnt->info.size.width = m_frameSize.width;
+                        attachemnt->info.size.height = m_frameSize.height;
+                        attachemnt->info.size.depth = 1;
                     }
-                    else if (passAttachment->next == nullptr)
-                    {
-                        m_transientResourceAllocator->Release(m_context, attachemnt);
-                    }
-                }
 
-                passAttachment->view = FindOrCreateView(attachemnt->GetImage(), passAttachment->viewInfo);
+                    if (passAttachment->prev == nullptr)
+                        m_transientResourceAllocator->Allocate(m_context, attachemnt);
+                    if (passAttachment->next == nullptr)
+                        m_transientResourceAllocator->Release(m_context, attachemnt);
+                }
             }
 
             for (auto& passAttachment : pass->m_bufferPassAttachments)
@@ -273,109 +255,102 @@ namespace RHI
                 if (attachemnt->lifetime == Attachment::Lifetime::Transient)
                 {
                     if (passAttachment->prev == nullptr)
-                    {
                         m_transientResourceAllocator->Allocate(m_context, attachemnt);
-                    }
-                    else if (passAttachment->next == nullptr)
-                    {
+                    if (passAttachment->next == nullptr)
                         m_transientResourceAllocator->Release(m_context, attachemnt);
-                    }
-                }
-
-                passAttachment->view = FindOrCreateView(attachemnt->GetBuffer(), passAttachment->viewInfo);
-            }
-        }
-    }
-
-    void FrameScheduler::ExecuteCommandList(TL::Span<CommandList*> commandLists, Fence& signalFence)
-    {
-        QueueCommandsSubmit(RHI::QueueType::Graphics, commandLists, &signalFence);
-    }
-
-    void FrameScheduler::Cleanup()
-    {
-        for (auto [_, view] : m_imageViewsLut)
-        {
-            m_context->DestroyImageView(view);
-        }
-
-        for (auto [_, view] : m_bufferViewsLut)
-        {
-            m_context->DestroyBufferView(view);
-        }
-
-        for (auto& pass : m_passList)
-        {
-            for (auto& passAttachment : pass->m_imagePassAttachments)
-            {
-                auto attachment = passAttachment->attachment;
-
-                if (attachment->lifetime == Attachment::Lifetime::Transient)
-                {
-                    m_transientResourceAllocator->Destroy(m_context, attachment);
-                }
-            }
-
-            for (auto& passAttachment : pass->m_bufferPassAttachments)
-            {
-                auto attachment = passAttachment->attachment;
-                if (attachment->lifetime == Attachment::Lifetime::Transient)
-                {
-                    m_transientResourceAllocator->Destroy(m_context, attachment);
                 }
             }
         }
 
-        m_transientResourceAllocator->Reset(m_context);
-    }
-
-    Fence* FrameScheduler::GetCurrentFrameFence()
-    {
-        return m_fences[m_currentFrameIndex].get();
-    }
-
-    Handle<ImageView> FrameScheduler::FindOrCreateView(Handle<Image> handle, const ImageViewCreateInfo& createInfo)
-    {
         struct ImageViewKey
         {
             Handle<Image> handle;
             ImageViewCreateInfo createInfo;
         };
 
-        ImageViewKey lookupKey{};
-        lookupKey.createInfo = createInfo;
-        lookupKey.handle = handle;
-
-        auto key = HashAny(lookupKey);
-
-        if (auto it = m_imageViewsLut.find(key); it != m_imageViewsLut.end())
-        {
-            return it->second;
-        }
-
-        return m_imageViewsLut[key] = m_context->CreateImageView(handle, createInfo);
-    }
-
-    Handle<BufferView> FrameScheduler::FindOrCreateView(Handle<Buffer> handle, const BufferViewCreateInfo& createInfo)
-    {
         struct BufferViewKey
         {
             Handle<Image> handle;
             BufferViewCreateInfo createInfo;
         };
 
-        BufferViewKey lookupKey{};
-        lookupKey.createInfo = createInfo;
-        lookupKey.handle = handle;
+        std::unordered_map<size_t, Handle<ImageView>> imageViewsLut;
+        std::unordered_map<size_t, Handle<ImageView>> bufferViewsLut;
 
-        auto key = HashAny(lookupKey);
-
-        if (auto it = m_bufferViewsLut.find(key); it != m_bufferViewsLut.end())
+        auto findOrCreateImageView = [&](Handle<Image> handle, const ImageViewCreateInfo& createInfo)
         {
-            return it->second;
-        }
+            ImageViewKey lookupKey{};
+            lookupKey.createInfo = createInfo;
+            lookupKey.handle = handle;
+            auto key = HashAny(lookupKey);
+            if (auto it = imageViewsLut.find(key); it != imageViewsLut.end())
+                return it->second;
+            return imageViewsLut[key] = m_context->CreateImageView(handle, createInfo);
+        };
 
-        return m_bufferViewsLut[key] = m_context->CreateBufferView(handle, createInfo);
+        auto findOrCreateBufferView = [&](Handle<Buffer> handle, const BufferViewCreateInfo& createInfo)
+        {
+            BufferViewKey lookupKey{};
+            lookupKey.createInfo = createInfo;
+            lookupKey.handle = handle;
+            auto key = HashAny(lookupKey);
+            if (auto it = bufferViewsLut.find(key); it != bufferViewsLut.end())
+                return it->second;
+            return bufferViewsLut[key] = m_context->CreateBufferView(handle, createInfo);
+        };
+
+        for (auto pass : m_passList)
+        {
+            for (auto passAttachment : pass->m_imagePassAttachments)
+            {
+                auto swapchain = passAttachment->attachment->swapchain;
+                if (swapchain == nullptr)
+                {
+                    auto image = passAttachment->attachment->GetImage();
+                    passAttachment->view = findOrCreateImageView(image, passAttachment->viewInfo);
+                    continue;
+                }
+        
+                auto swapchainPassAttachment = (SwapchainImagePassAttachment*)passAttachment;
+                for (uint32_t i = 0; i < swapchain->GetImagesCount(); i++)
+                {
+                    swapchainPassAttachment->views[i] = findOrCreateImageView(swapchain->GetImage(i), passAttachment->viewInfo);
+                }
+
+                swapchainPassAttachment->view = swapchainPassAttachment->views[swapchain->GetCurrentImageIndex()];
+            }
+
+            for (auto passAttachment : pass->m_bufferPassAttachments)
+            {
+                auto buffer = passAttachment->attachment->GetBuffer();
+                passAttachment->view = findOrCreateBufferView(buffer, passAttachment->viewInfo);
+            }
+        }
+    }
+
+    void FrameScheduler::ResizeFrame(ImageSize2D newSize)
+    {
+        m_frameSize = newSize;
+        Cleanup();
+        Compile();
+    }
+
+    void FrameScheduler::ExecuteCommandList(TL::Span<CommandList*> commandLists, Fence& fence)
+    {
+        QueueCommandsSubmit(QueueType::Graphics, commandLists, fence);
+    }
+
+    void FrameScheduler::Cleanup()
+    {
+        DeviceWaitIdle();
+
+        m_transientResourceAllocator->Reset(m_context);
+    }
+
+    Fence& FrameScheduler::GetFrameCurrentFence()
+    {
+        auto swapchain = m_swapchainImageAttachment->swapchain;
+        return swapchain->GetCurrentFrameFence();
     }
 
 } // namespace RHI

@@ -30,7 +30,7 @@ namespace RHI
     {
     public:
         Pass(const char* name, QueueType type);
-        virtual ~Pass() = default;
+        virtual ~Pass();
 
         inline ImagePassAttachment* UseColorAttachment(ImageAttachment* attachment, ColorValue value, LoadStoreOperations loadStoreOperations = LoadStoreOperations{})
         {
@@ -80,14 +80,18 @@ namespace RHI
         friend class FrameScheduler;
 
         template<typename PassAttachmentType>
-        using PassAttachmentStorage = std::vector<std::unique_ptr<PassAttachmentType>>;
+        using PassAttachmentStorage = std::vector<PassAttachmentType*>;
 
         std::string                                 m_name;
-        QueueType                                   m_queueType;             // The type of the Hardware Queue needed to execute this pass.
-        Swapchain*                                  m_swapchain;             // A pointer to swapchain which would be presented into.
-        ImageSize2D                                 m_size;                  // The size of the rendering area in the render pass.
-        std::vector<Pass*>                          m_producers;             // A list of all passes that this pass will wait for.
-        std::vector<CommandList*>                   m_commandLists;          // A list of command lists that executes this pass.
+        QueueType                                   m_queueType;    // The type of the Hardware Queue needed to execute this pass.
+        Swapchain*                                  m_swapchain;    // A pointer to swapchain which would be presented into.
+        ImageSize2D                                 m_size;         // The size of the rendering area in the render pass.
+        std::vector<Pass*>                          m_producers;    // A list of all passes that this pass will wait for.
+        std::vector<CommandList*>                   m_commandLists; // A list of command lists that executes this pass.
+
+        RHI::SwapchainImagePassAttachment*          m_swapchainImageAttachment;
+        // RHI::ImagePassAttachment*                   m_depthStencilAttachment;
+
         PassAttachmentStorage<ImagePassAttachment>  m_imagePassAttachments;  // A list of all image pass attachment used by this pass.
         PassAttachmentStorage<BufferPassAttachment> m_bufferPassAttachments; // A list of all buffer pass attachment used by this pass.
     };
@@ -104,12 +108,6 @@ namespace RHI
         virtual ~FrameScheduler() = default;
 
         inline AttachmentsRegistry& GetRegistry() { return *m_attachmentsRegistry; }
-
-        inline uint32_t             GetFrameBufferingCount() const { return m_maxFrameBufferingCount; }
-
-        inline void                 SetFrameBufferingCount(uint32_t count) { m_maxFrameBufferingCount = count; }
-
-        inline uint32_t             GetCurrentFrameBufferIndex() const { return m_currentFrameIndex; }
 
         /// @brief Called at the beginning of the render-loop.
         /// This marks the begining of a graphics frame.
@@ -129,43 +127,31 @@ namespace RHI
         void                        ResizeFrame(ImageSize2D newSize);
 
         /// @brief Executes a list of command lists, and signal the provided fence when complete
-        void                        ExecuteCommandList(TL::Span<CommandList*> commandLists, Fence& signalFence);
+        void                        ExecuteCommandList(TL::Span<CommandList*> commandLists, Fence& fence);
 
     private:
-        void Cleanup();
+        void   Cleanup();
+
+        Fence& GetFrameCurrentFence();
 
     protected:
-        Fence*             GetCurrentFrameFence();
-
-        Handle<ImageView>  FindOrCreateView(Handle<Image> handle, const ImageViewCreateInfo& createInfo);
-        Handle<BufferView> FindOrCreateView(Handle<Buffer> handle, const BufferViewCreateInfo& createInfo);
-
-        virtual void       OnBegin()                                                                                         = 0;
-        virtual void       OnEnd()                                                                                           = 0;
-
-        virtual void       DeviceWaitIdle()                                                                                  = 0;
-        virtual void       QueuePassSubmit(Pass* pass, Fence* signalFence)                                                   = 0;
-        virtual void       QueueImagePresent(ImageAttachment* attachments, Fence* signalFence)                               = 0;
-        virtual void       QueueCommandsSubmit(QueueType queueType, TL::Span<CommandList*> commandLists, Fence* signalFence) = 0;
+        virtual void DeviceWaitIdle()                                                                            = 0;
+        virtual void QueuePassSubmit(Pass* pass, Fence* fence)                                                   = 0;
+        virtual void QueueCommandsSubmit(QueueType queueType, TL::Span<CommandList*> commandLists, Fence& fence) = 0;
+        virtual void QueueImagePresent(ImageAttachment* attachments, Fence& fence)                               = 0;
 
     protected:
-        Context*                                      m_context;
+        Context*                                    m_context;
 
-        std::vector<Pass*>                            m_passList;
+        std::vector<Pass*>                          m_passList;
 
-        std::unordered_map<size_t, Handle<ImageView>> m_imageViewsLut;
-        std::unordered_map<size_t, Handle<ImageView>> m_bufferViewsLut;
+        std::unique_ptr<AttachmentsRegistry>        m_attachmentsRegistry;
 
-        std::unique_ptr<AttachmentsRegistry>          m_attachmentsRegistry;
-        std::unique_ptr<TransientResourceAllocator>   m_transientResourceAllocator;
+        std::unique_ptr<TransientResourceAllocator> m_transientResourceAllocator;
 
-        uint32_t                                      m_maxFrameBufferingCount;
-        uint32_t                                      m_currentFrameIndex;
-        ImageSize2D                                   m_frameSize;
+        ImageSize2D                                 m_frameSize;
 
-        ImageAttachment*                              m_swapchainAttachment;
-
-        std::vector<std::unique_ptr<Fence>>           m_fences;
+        ImageAttachment*                            m_swapchainImageAttachment;
     };
 
 } // namespace RHI

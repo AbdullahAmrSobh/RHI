@@ -771,9 +771,13 @@ namespace RHI
             Signaled,
         };
 
-        virtual void  Reset()                = 0;
-        virtual bool  Wait(uint64_t timeout) = 0;
-        virtual State GetState()             = 0;
+        inline bool   Wait(uint64_t timeout = UINT64_MAX) { return WaitInternal(timeout); }
+
+        virtual void  Reset()    = 0;
+        virtual State GetState() = 0;
+
+    protected:
+        virtual bool WaitInternal(uint64_t timeout) = 0;
     };
 
     /// @brief Swapchain object which is an interface between the API and a presentation surface.
@@ -793,6 +797,9 @@ namespace RHI
 
         /// @brief Get the current acquired swapchain image.
         Handle<Image>      GetImage() const;
+
+        /// @brief Get th
+        Handle<Image>      GetImage(uint32_t index) const;
 
         /// @brief A fence which is signaled if the current image is acquired and ready t obe used.
         Fence&             GetCurrentFrameFence();

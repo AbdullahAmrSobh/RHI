@@ -26,7 +26,6 @@ namespace Vulkan
         VkResult Init();
 
         Context* m_context;
-        VkSemaphore m_signalSemaphore;
     };
 
     class FrameScheduler final : public RHI::FrameScheduler
@@ -37,15 +36,11 @@ namespace Vulkan
 
         VkResult Init();
 
-        void OnBegin() override;
-        void OnEnd() override;
-
         void DeviceWaitIdle() override;
-        void QueuePassSubmit(RHI::Pass* pass, RHI::Fence* signalFence) override;
-        void QueueImagePresent(RHI::ImageAttachment* attachments, RHI::Fence* signalFence) override;
-        void QueueCommandsSubmit(RHI::QueueType queueType, RHI::TL::Span<RHI::CommandList*> commandLists, RHI::Fence* signalFence) override;
+        void QueuePassSubmit(RHI::Pass* pass, RHI::Fence* fence) override;
+        void QueueCommandsSubmit(RHI::QueueType queueType, RHI::TL::Span<RHI::CommandList*> commandLists, RHI::Fence& fence) override;
+        void QueueImagePresent(RHI::ImageAttachment* attachments, RHI::Fence& fence) override;
 
-        static VkSemaphoreSubmitInfo GetPassSignalSemaphoreSubmitInfo(Pass* pass);
         static std::vector<VkSemaphoreSubmitInfo> GetPassWaitSemaphoresInfos(RHI::TL::Span<Pass*> passes);
         static std::vector<VkCommandBufferSubmitInfo> GetPassCommandBuffersSubmitInfos(RHI::TL::Span<CommandList*> commandLists);
     };
