@@ -194,11 +194,11 @@ public:
             createInfo.mipLevels = 1;
             createInfo.arrayCount = 1;
             m_image = m_imagePool->Allocate(createInfo).GetValue();
-            RHI::ImageViewCreateInfo viewInfo {};
+            RHI::ImageViewCreateInfo viewInfo{};
             m_imageView = m_context->CreateImageView(m_image, viewInfo);
         }
 
-        m_commandListAllocator = m_context->CreateCommandListAllocator(RHI::QueueType::Graphics);
+        m_commandListAllocator = m_context->CreateCommandListAllocator(RHI::QueueType::Graphics, m_frameScheduler->GetBufferedFramesCount());
 
         // upload image data to the gpu
         {
@@ -282,37 +282,48 @@ public:
 
         (void)timestep;
 
+        Render();
+    }
+
+    void Render()
+    {
         m_frameScheduler->Begin();
 
-        m_commandListAllocator->Flush();
+        auto currentFrameIndex = m_frameScheduler->GetCurrentFrameIndex();
+        m_swapchain->AcquireNextImage(nullptr);
 
-        auto cmd = m_commandListAllocator->Allocate();
+        m_commandListAllocator->Flush(currentFrameIndex);
+        auto commandList = m_commandListAllocator->Allocate();
 
-        cmd->Begin(*m_renderpass);
-
-        cmd->SetViewport({
+        RHI::Viewport viewport = {
             .width = float(m_windowWidth),
             .height = float(m_windowHeight),
             .minDepth = 0.0f,
             .maxDepth = 1.0f,
-        });
+        };
 
-        cmd->SetSicssor({
+        RHI::Scissor scissor = {
             .width = m_windowWidth,
-            .height = m_windowHeight,
-        });
+            .height = m_windowHeight
+        };
 
-        cmd->Submit({
+        RHI::CommandDraw drawCommand = {
             .pipelineState = m_pipelineState,
             .bindGroups = m_bindGroup,
             .vertexBuffers = { m_mesh.positionsBuffer, m_mesh.normalsBuffer, m_mesh.texCoordBuffer },
             .indexBuffers = m_mesh.indexBuffer,
             .parameters = { .elementCount = m_mesh.drawElementsCount },
-        });
+        };
 
-        cmd->End();
+        commandList->Begin(*m_renderpass);
+        commandList->SetViewport(viewport);
+        commandList->SetSicssor(scissor);
+        commandList->Submit(drawCommand);
+        commandList->End();
 
         m_frameScheduler->End();
+
+        m_swapchain->Present();
     }
 
 private:

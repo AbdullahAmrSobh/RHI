@@ -4,8 +4,6 @@
 
 #include <vk_mem_alloc.h>
 
-#include <memory>
-
 namespace RHI
 {
     struct Attachment;
@@ -262,12 +260,14 @@ namespace Vulkan
 
         VkResult Init(const RHI::SwapchainCreateInfo& createInfo);
 
-        VkSemaphore GetPresentReadySemaphore();
+        VkSemaphore GetCurrentImageSemaphore();
 
-        void AcquireNextImage(Fence& fence);
-        void AcquireNextImage(VkSemaphore semaphore);
+        uint32_t AcquireNextImage(Fence& fence);
+        uint32_t AcquireNextImage(VkSemaphore semaphore);
 
         RHI::ResultCode Resize(RHI::ImageSize2D newSize) override;
+        RHI::ResultCode Present() override;
+        RHI::ResultCode AcquireNextImage(RHI::Fence* optionalSignalFence) override;
 
     private:
         VkResult InitSurface();
@@ -284,7 +284,7 @@ namespace Vulkan
 
         Context* m_context;
 
-        VkSemaphore m_presentReadySemaphore[c_MaxSwapchainBackBuffersCount];
+        VkSemaphore m_imageReady[c_MaxSwapchainBackBuffersCount];
 
         VkSwapchainKHR m_swapchain;
 

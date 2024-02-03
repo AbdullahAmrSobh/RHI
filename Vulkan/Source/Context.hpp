@@ -41,7 +41,7 @@ namespace Vulkan
 
         std::unique_ptr<RHI::FrameScheduler> CreateFrameScheduler() override;
 
-        std::unique_ptr<RHI::CommandListAllocator> CreateCommandListAllocator(RHI::QueueType queueType) override;
+        std::unique_ptr<RHI::CommandListAllocator> CreateCommandListAllocator(RHI::QueueType queueType, uint32_t bufferedFramesCount) override;
 
         std::unique_ptr<RHI::ShaderModule> CreateShaderModule(const RHI::ShaderModuleCreateInfo& createInfo) override;
 

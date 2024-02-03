@@ -936,7 +936,7 @@ namespace Vulkan
         VkFenceCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         createInfo.pNext = nullptr;
-        createInfo.flags = 0;
+        createInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
         auto result = vkCreateFence(m_context->m_device, &createInfo, nullptr, &m_fence);
         VULKAN_ASSERT_SUCCESS(result);
         return result;
@@ -951,9 +951,8 @@ namespace Vulkan
 
     bool Fence::WaitInternal(uint64_t timeout)
     {
-        if (m_state == State::NotSubmitted)
-            return VK_SUCCESS;
-
+        // if (m_state == State::NotSubmitted)
+        //     return VK_SUCCESS; 
         auto result = vkWaitForFences(m_context->m_device, 1, &m_fence, VK_TRUE, timeout);
         return result == VK_SUCCESS;
     }
@@ -980,7 +979,7 @@ namespace Vulkan
     ///////////////////////////////////////////////////////////////////////////
     Swapchain::Swapchain(Context* context)
         : m_context(context)
-        , m_presentReadySemaphore{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}
+        , m_imageReady{ VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE }
         , m_swapchain(VK_NULL_HANDLE)
         , m_surface(VK_NULL_HANDLE)
         , m_lastPresentResult(VK_ERROR_UNKNOWN)
@@ -995,7 +994,7 @@ namespace Vulkan
         vkDestroySwapchainKHR(context->m_device, m_swapchain, nullptr);
         vkDestroySurfaceKHR(context->m_instance, m_surface, nullptr);
 
-        for (auto semaphore : m_presentReadySemaphore)
+        for (auto semaphore : m_imageReady)
         {
             if (semaphore != VK_NULL_HANDLE)
                 vkDestroySemaphore(context->m_device, semaphore, nullptr);
@@ -1011,8 +1010,7 @@ namespace Vulkan
 
         for (uint32_t i = 0; i < createInfo.imageCount; i++)
         {
-            m_presentReadySemaphore[i] = context->CreateVulkanSemaphore();
-            m_frameReadyFence.push_back(context->CreateFence());
+            m_imageReady[i] = context->CreateVulkanSemaphore();
         }
 
         VkResult result;
@@ -1025,21 +1023,25 @@ namespace Vulkan
         return result;
     }
 
-    VkSemaphore Swapchain::GetPresentReadySemaphore()
+    VkSemaphore Swapchain::GetCurrentImageSemaphore()
     {
-        return m_presentReadySemaphore[m_currentImageIndex];
+        return m_imageReady[m_currentImageIndex];
     }
 
-    void Swapchain::AcquireNextImage(Fence& fence)
+    uint32_t Swapchain::AcquireNextImage(Fence& fence)
     {
-        auto result = vkAcquireNextImageKHR(m_context->m_device, m_swapchain, UINT64_MAX, VK_NULL_HANDLE, fence.UseFence(), &m_currentImageIndex);
+        uint32_t acquiredImageIndex;
+        auto result = vkAcquireNextImageKHR(m_context->m_device, m_swapchain, UINT64_MAX, VK_NULL_HANDLE, fence.UseFence(), &acquiredImageIndex);
         VULKAN_ASSERT_SUCCESS(result);
+        return acquiredImageIndex;
     }
 
-    void Swapchain::AcquireNextImage(VkSemaphore semaphore)
+    uint32_t Swapchain::AcquireNextImage(VkSemaphore semaphore)
     {
-        auto result = vkAcquireNextImageKHR(m_context->m_device, m_swapchain, UINT64_MAX, semaphore, VK_NULL_HANDLE, &m_currentImageIndex);
+        uint32_t acquiredImageIndex;
+        auto result = vkAcquireNextImageKHR(m_context->m_device, m_swapchain, UINT64_MAX, semaphore, VK_NULL_HANDLE, &acquiredImageIndex);
         VULKAN_ASSERT_SUCCESS(result);
+        return acquiredImageIndex;
     }
 
     RHI::ResultCode Swapchain::Resize(RHI::ImageSize2D newSize)
@@ -1053,6 +1055,19 @@ namespace Vulkan
         VULKAN_ASSERT_SUCCESS(result);
         return ConvertResult(result);
     }
+
+    RHI::ResultCode Swapchain::Present()
+    {
+        return RHI::ResultCode::Success;
+    }
+
+    RHI::ResultCode Swapchain::AcquireNextImage(RHI::Fence* optionalSignalFence)
+    {
+        m_currentImageIndex =  AcquireNextImage(*(Fence*)(optionalSignalFence));
+        return RHI::ResultCode::Success;
+    }
+
+
 
     VkResult Swapchain::InitSwapchain()
     {
@@ -1108,7 +1123,7 @@ namespace Vulkan
             m_images.push_back(handle);
         }
 
-        AcquireNextImage((Fence&)*m_frameReadyFence.front());
+        m_currentImageIndex = AcquireNextImage(GetCurrentImageSemaphore());
 
         return result;
     }

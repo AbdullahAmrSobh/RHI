@@ -105,8 +105,6 @@ namespace RHI
         }
     };
 
-
-
     struct Attachment
     {
         enum class Type
@@ -297,4 +295,4 @@ namespace RHI
         virtual void Destroy(Context* context, Attachment* attachment)  = 0;
     };
 
-}
+} // namespace RHI

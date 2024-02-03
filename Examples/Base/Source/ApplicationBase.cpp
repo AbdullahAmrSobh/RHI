@@ -109,7 +109,7 @@ ApplicationBase::ApplicationBase(std::string name, uint32_t width, uint32_t heig
     appInfo.applicationName = "RHI-App";
     appInfo.applicationVersion = RHI::MakeVersion(0, 1, 0);
     auto debugCallbacks = std::make_unique<DebugCallbacks>();
-    m_context = RHI::CreateVulkanRHI(appInfo, std::move(debugCallbacks));
+    m_context = RHI::CreateVulkanContext(appInfo, std::move(debugCallbacks));
 }
 
 void ApplicationBase::Init()

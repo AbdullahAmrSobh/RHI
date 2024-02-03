@@ -29,8 +29,10 @@ namespace RHI
 
     Pass::~Pass()
     {
-        for (auto passAttachment : m_imagePassAttachments) delete passAttachment;
-        for (auto passAttachment : m_bufferPassAttachments) delete passAttachment;
+        for (auto passAttachment : m_imagePassAttachments)
+            delete passAttachment;
+        for (auto passAttachment : m_bufferPassAttachments)
+            delete passAttachment;
     }
 
     ImagePassAttachment* Pass::UseColorAttachment(ImageAttachment* attachment, const ImageViewCreateInfo& viewInfo, ColorValue value, LoadStoreOperations loadStoreOperations)
@@ -188,15 +190,23 @@ namespace RHI
     {
     }
 
+    void FrameScheduler::SetBufferedFramesCount(uint32_t count)
+    {
+        m_frameCount = count;
+    }
+
+    uint32_t FrameScheduler::GetBufferedFramesCount() const
+    {
+        return m_frameCount;
+    }
+
+    uint32_t FrameScheduler::GetCurrentFrameIndex()
+    {
+        return m_currentFrameIndex;
+    }
+
     void FrameScheduler::Begin()
     {
-        // FIXME
-        m_swapchainImageAttachment = m_attachmentsRegistry->FindImage(m_attachmentsRegistry->m_swapchainAttachments.front());
-
-        auto& fence = GetFrameCurrentFence();
-        fence.Wait();
-        fence.Reset();
-
         // prepare pass attachments
         for (auto passAttachment = (SwapchainImagePassAttachment*)m_swapchainImageAttachment->firstUse; passAttachment->next != nullptr;
              passAttachment = (SwapchainImagePassAttachment*)passAttachment->next)
@@ -217,7 +227,7 @@ namespace RHI
             QueuePassSubmit(pass, nullptr);
         }
 
-        QueueImagePresent(m_swapchainImageAttachment, GetFrameCurrentFence());
+        QueueImagePresent(m_swapchainImageAttachment);
     }
 
     void FrameScheduler::RegisterPass(Pass& pass)
@@ -306,14 +316,19 @@ namespace RHI
                 auto swapchain = passAttachment->attachment->swapchain;
                 if (swapchain == nullptr)
                 {
+                    if (passAttachment->view)
+                        continue;
+
                     auto image = passAttachment->attachment->GetImage();
                     passAttachment->view = findOrCreateImageView(image, passAttachment->viewInfo);
                     continue;
                 }
-        
+
                 auto swapchainPassAttachment = (SwapchainImagePassAttachment*)passAttachment;
                 for (uint32_t i = 0; i < swapchain->GetImagesCount(); i++)
                 {
+                    if (swapchainPassAttachment->views[i])
+                        continue;
                     swapchainPassAttachment->views[i] = findOrCreateImageView(swapchain->GetImage(i), passAttachment->viewInfo);
                 }
 
@@ -323,6 +338,8 @@ namespace RHI
             for (auto passAttachment : pass->m_bufferPassAttachments)
             {
                 auto buffer = passAttachment->attachment->GetBuffer();
+                if (passAttachment->view)
+                    continue;
                 passAttachment->view = findOrCreateBufferView(buffer, passAttachment->viewInfo);
             }
         }
@@ -347,10 +364,15 @@ namespace RHI
         m_transientResourceAllocator->Reset(m_context);
     }
 
+    Swapchain* FrameScheduler::GetSwapchain()
+    {
+        m_swapchainImageAttachment = m_attachmentsRegistry->FindImage(m_attachmentsRegistry->m_swapchainAttachments.front());
+        return m_swapchainImageAttachment->swapchain;
+    }
+
     Fence& FrameScheduler::GetFrameCurrentFence()
     {
-        auto swapchain = m_swapchainImageAttachment->swapchain;
-        return swapchain->GetCurrentFrameFence();
+        return *m_frameReadyFence[GetCurrentFrameIndex()];
     }
 
 } // namespace RHI

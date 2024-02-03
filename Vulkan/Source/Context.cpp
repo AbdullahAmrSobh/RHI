@@ -31,7 +31,7 @@
     #define RHI_VULKAN_USE_CURRENT_PLATFORM_SURFACE_EXTENSION_NAME VK_MVK_IOS_SURFACE_EXTENSION_NAME
 #endif // VK_USE_PLATFORM_WIN32_KHR
 
-std::unique_ptr<RHI::Context> RHI::CreateVulkanRHI(const RHI::ApplicationInfo& appInfo, std::unique_ptr<RHI::DebugCallbacks> debugCallbacks)
+std::unique_ptr<RHI::Context> RHI::CreateVulkanContext(const RHI::ApplicationInfo& appInfo, std::unique_ptr<RHI::DebugCallbacks> debugCallbacks)
 {
     auto context = std::make_unique<Vulkan::Context>(std::move(debugCallbacks));
     auto result = context->Init(appInfo);
@@ -355,9 +355,9 @@ namespace Vulkan
         return scheduler;
     }
 
-    std::unique_ptr<RHI::CommandListAllocator> Context::CreateCommandListAllocator(RHI::QueueType queueType)
+    std::unique_ptr<RHI::CommandListAllocator> Context::CreateCommandListAllocator(RHI::QueueType queueType, uint32_t bufferedFramesCount)
     {
-        auto allocator = std::make_unique<CommandListAllocator>(this, 3);
+        auto allocator = std::make_unique<CommandListAllocator>(this, bufferedFramesCount);
         auto result = allocator->Init(GetQueueFamilyIndex(queueType));
         RHI_ASSERT(result == VK_SUCCESS);
         return allocator;

@@ -121,7 +121,7 @@ namespace RHI
     public:
         virtual ~CommandListAllocator() = default;
 
-        virtual void         Flush()    = 0;
+        virtual void         Flush(uint32_t newFrameIndex)        = 0;
         virtual CommandList* Allocate() = 0;
     };
 

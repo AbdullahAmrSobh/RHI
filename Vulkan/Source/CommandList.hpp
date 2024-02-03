@@ -56,7 +56,7 @@ namespace Vulkan
 
         VkResult Init(uint32_t queueFamilyIndex);
 
-        void Flush() override;
+        void Flush(uint32_t newFrameIndex) override;
         RHI::CommandList* Allocate() override;
 
     private:

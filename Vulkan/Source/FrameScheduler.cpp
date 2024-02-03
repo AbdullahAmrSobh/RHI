@@ -65,7 +65,7 @@ namespace Vulkan
         if (auto passAttachment = pass->m_swapchainImageAttachment; passAttachment && passAttachment->next == nullptr)
         {
             auto swapchain = (Swapchain*)passAttachment->attachment->swapchain;
-            presentReadySemaphore.semaphore = swapchain->GetPresentReadySemaphore();
+            presentReadySemaphore.semaphore = swapchain->GetCurrentImageSemaphore();
         }
 
         auto waitSemaphores = GetPassWaitSemaphoresInfos({ (Pass**)pass->m_producers.data(), pass->m_producers.size() });
@@ -114,13 +114,13 @@ namespace Vulkan
         VULKAN_ASSERT_SUCCESS(result);
     }
 
-    void FrameScheduler::QueueImagePresent(RHI::ImageAttachment* attachment, RHI::Fence& _fence)
+    void FrameScheduler::QueueImagePresent(RHI::ImageAttachment* attachment)
     {
         auto context = (Context*)m_context;
         auto queue = context->GetQueue(RHI::QueueType::Graphics);
         auto swapchain = (Swapchain*)attachment->swapchain;
 
-        auto presentReadySemaphore = swapchain->GetPresentReadySemaphore();
+        auto presentReadySemaphore = swapchain->GetCurrentImageSemaphore();
 
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -134,8 +134,10 @@ namespace Vulkan
         auto result = vkQueuePresentKHR(queue, &presentInfo);
         VULKAN_ASSERT_SUCCESS(result);
 
-        auto& fence = (Fence&)_fence;
-        swapchain->AcquireNextImage(fence);
+        auto semaphore = swapchain->GetCurrentImageSemaphore();
+        swapchain->AcquireNextImage(semaphore);
+
+        vkDeviceWaitIdle(context->m_device);
     }
 
     std::vector<VkCommandBufferSubmitInfo> FrameScheduler::GetPassCommandBuffersSubmitInfos(RHI::TL::Span<CommandList*> commandLists)
@@ -151,10 +153,21 @@ namespace Vulkan
         return submitInfos;
     }
 
-    std::vector<VkSemaphoreSubmitInfo> FrameScheduler::GetPassWaitSemaphoresInfos(RHI::TL::Span<Pass*> passes)
+    std::vector<VkSemaphoreSubmitInfo> FrameScheduler::GetPassWaitSemaphoresInfos(RHI::TL::Span<Pass*> passList)
     {
-        (void)passes;
-        return {};
+        std::vector<VkSemaphoreSubmitInfo> semaphores;
+        for (auto pass : passList)
+        {
+            if (auto swapchain = (Swapchain*)pass->m_swapchain)
+            {
+                VkSemaphoreSubmitInfo submitInfo {};
+                submitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
+                submitInfo.semaphore = swapchain->GetCurrentImageSemaphore();
+                submitInfo.stageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+                semaphores.push_back(submitInfo);
+            }
+        }
+        return semaphores;
     }
 
 

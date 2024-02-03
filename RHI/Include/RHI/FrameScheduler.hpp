@@ -109,6 +109,12 @@ namespace RHI
 
         inline AttachmentsRegistry& GetRegistry() { return *m_attachmentsRegistry; }
 
+        void                        SetBufferedFramesCount(uint32_t count);
+
+        uint32_t                    GetBufferedFramesCount() const;
+
+        uint32_t                    GetCurrentFrameIndex();
+
         /// @brief Called at the beginning of the render-loop.
         /// This marks the begining of a graphics frame.
         void                        Begin();
@@ -130,15 +136,25 @@ namespace RHI
         void                        ExecuteCommandList(TL::Span<CommandList*> commandLists, Fence& fence);
 
     private:
-        void   Cleanup();
+        void       Cleanup();
 
-        Fence& GetFrameCurrentFence();
+        Swapchain* GetSwapchain();
+
+        Fence&     GetFrameCurrentFence();
 
     protected:
         virtual void DeviceWaitIdle()                                                                            = 0;
         virtual void QueuePassSubmit(Pass* pass, Fence* fence)                                                   = 0;
         virtual void QueueCommandsSubmit(QueueType queueType, TL::Span<CommandList*> commandLists, Fence& fence) = 0;
-        virtual void QueueImagePresent(ImageAttachment* attachments, Fence& fence)                               = 0;
+        virtual void QueueImagePresent(ImageAttachment* attachments)                               = 0;
+
+    private:
+        uint32_t                            m_frameCount;
+        uint32_t                            m_currentFrameIndex;
+        uint64_t                            m_frameNumber;
+
+        // A list of fences for each frame in flight
+        std::vector<std::unique_ptr<Fence>> m_frameReadyFence;
 
     protected:
         Context*                                    m_context;

@@ -786,8 +786,8 @@ namespace RHI
     public:
         inline static constexpr uint32_t c_MaxSwapchainBackBuffersCount = 3;
 
-        Swapchain()                                                     = default;
-        virtual ~Swapchain()                                            = default;
+        Swapchain();
+        virtual ~Swapchain() = default;
 
         /// @brief Get the current image index of the swapchain.
         uint32_t           GetCurrentImageIndex() const;
@@ -798,20 +798,20 @@ namespace RHI
         /// @brief Get the current acquired swapchain image.
         Handle<Image>      GetImage() const;
 
-        /// @brief Get th
+        /// @brief Get the indexed image in the swapchain images.
         Handle<Image>      GetImage(uint32_t index) const;
 
-        /// @brief A fence which is signaled if the current image is acquired and ready t obe used.
-        Fence&             GetCurrentFrameFence();
-
         /// @brief Called to invalidate the current swapchain state, when the window is resized.
-        virtual ResultCode Resize(ImageSize2D newSize) = 0;
+        virtual ResultCode Resize(ImageSize2D newSize)                  = 0;
+
+        virtual ResultCode Present()                                    = 0;
+
+        virtual ResultCode AcquireNextImage(Fence* optionalSignalFence) = 0;
 
     protected:
-        uint32_t                            m_currentImageIndex;
-        uint32_t                            m_swapchainImagesCount;
-        std::vector<Handle<Image>>          m_images;
-        std::vector<std::unique_ptr<Fence>> m_frameReadyFence;
+        uint32_t                   m_currentImageIndex;
+        uint32_t                   m_swapchainImagesCount;
+        std::vector<Handle<Image>> m_images;
     };
 
 } // namespace RHI

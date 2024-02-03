@@ -94,17 +94,17 @@ namespace Vulkan
         return VK_SUCCESS;
     }
 
-    void CommandListAllocator::Flush()
+    void CommandListAllocator::Flush(uint32_t newFrameIndex)
     {
-        m_currentFrameIndex = (m_currentFrameIndex + 1) % m_maxFrameBufferingCount;
-        auto& commandPool = m_commandPools[m_currentFrameIndex];
-        commandPool.Reset(m_context);
+        m_currentFrameIndex = newFrameIndex;
+        auto& pool = m_commandPools[m_currentFrameIndex];
+        pool.Reset(m_context);
     }
 
     RHI::CommandList* CommandListAllocator::Allocate()
     {
-        auto& commandPool = m_commandPools[m_currentFrameIndex];
-        return commandPool.Allocate(m_context);
+        auto& pool = m_commandPools[m_currentFrameIndex];
+        return pool.Allocate(m_context);
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -388,7 +388,7 @@ namespace Vulkan
         for (auto& attachment : pass.m_imagePassAttachments)
         {
             if (attachment->usage == RHI::AttachmentUsage::Color ||
-                attachment->usage == RHI::AttachmentUsage::Depth || 
+                attachment->usage == RHI::AttachmentUsage::Depth ||
                 attachment->usage == RHI::AttachmentUsage::Stencil ||
                 attachment->usage == RHI::AttachmentUsage::DepthStencil)
             {
@@ -437,9 +437,9 @@ namespace Vulkan
         std::vector<RHI::ImagePassAttachment*> passAttachments;
         for (auto& attachment : pass.m_imagePassAttachments)
         {
-            if (attachment->usage == RHI::AttachmentUsage::Color || 
-                attachment->usage == RHI::AttachmentUsage::Depth || 
-                attachment->usage == RHI::AttachmentUsage::Stencil || 
+            if (attachment->usage == RHI::AttachmentUsage::Color ||
+                attachment->usage == RHI::AttachmentUsage::Depth ||
+                attachment->usage == RHI::AttachmentUsage::Stencil ||
                 attachment->usage == RHI::AttachmentUsage::DepthStencil)
             {
                 passAttachments.push_back(attachment);
