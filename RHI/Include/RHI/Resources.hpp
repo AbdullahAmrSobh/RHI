@@ -646,7 +646,7 @@ namespace RHI
     /// @brief Structure specifying the parameters of the swapchain.
     struct SwapchainCreateInfo
     {
-        ImageSize3D       imageSize;   // The size of the images in the swapchian.
+        ImageSize2D       imageSize;   // The size of the images in the swapchian.
         Flags<ImageUsage> imageUsage;  // Image usage flags applied to all created images.
         Format            imageFormat; // The format of created swapchain image.
         uint32_t          imageCount;  // The numer of back buffer images in the swapchain.
@@ -802,13 +802,17 @@ namespace RHI
         Handle<Image>      GetImage(uint32_t index) const;
 
         /// @brief Called to invalidate the current swapchain state, when the window is resized.
-        virtual ResultCode Resize(ImageSize2D newSize)                  = 0;
+        virtual ResultCode Recreate(ImageSize2D newSize, uint32_t imageCount, SwapchainPresentMode presentMode) = 0;
 
-        virtual ResultCode Present(ImageAttachment& attachment)         = 0;
+        virtual ResultCode Present(ImageAttachment& attachment)                                                 = 0;
 
     protected:
         uint32_t                   m_currentImageIndex;
         uint32_t                   m_swapchainImagesCount;
+        ImageSize2D                m_imageSize;
+        Format                     m_format;
+        SwapchainPresentMode       m_presentMode;
+        Flags<ImageUsage>          m_imageUsage;
         std::vector<Handle<Image>> m_images;
     };
 

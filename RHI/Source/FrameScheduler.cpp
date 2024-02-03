@@ -17,7 +17,6 @@ namespace RHI
     Pass::Pass(const char* name, QueueType type)
         : m_name(name)
         , m_queueType(type)
-        , m_swapchain(nullptr)
         , m_size(0, 0)
         , m_producers()
         , m_commandLists()
@@ -212,6 +211,10 @@ namespace RHI
 
     void FrameScheduler::Begin()
     {
+        auto& fence = GetFrameCurrentFence();
+        fence.Wait();
+        fence.Reset();
+
         m_swapchainImage = m_attachmentsRegistry->FindImage(m_attachmentsRegistry->m_swapchainAttachments.front());
 
         // prepare pass attachments
@@ -232,10 +235,14 @@ namespace RHI
 
     void FrameScheduler::End()
     {
+        auto& fence = GetFrameCurrentFence();
         for (auto pass : m_passList)
         {
-            QueuePassSubmit(pass, nullptr);
+            QueuePassSubmit(pass, &fence);
         }
+
+        m_frameCount++;
+        m_currentFrameIndex = m_frameCount % GetBufferedFramesCount();
     }
 
     void FrameScheduler::RegisterPass(Pass& pass)

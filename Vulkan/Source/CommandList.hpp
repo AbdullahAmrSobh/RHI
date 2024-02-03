@@ -65,12 +65,7 @@ namespace Vulkan
     class CommandList final : public RHI::CommandList
     {
     public:
-        CommandList(Context* context, VkCommandBuffer commandBuffer)
-            : m_context(context)
-            , m_pass(nullptr)
-            , m_commandBuffer(commandBuffer)
-        {
-        }
+        CommandList(Context* context, VkCommandBuffer commandBuffer);
 
         void Begin() override;
         void Begin(RHI::Pass& pass) override;

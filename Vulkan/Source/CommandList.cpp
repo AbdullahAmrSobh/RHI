@@ -118,6 +118,13 @@ namespace Vulkan
     /// CommandList
     //////////////////////////////////////////////////////////////////////////////////////////
 
+    CommandList::CommandList(Context* context, VkCommandBuffer commandBuffer)
+        : m_context(context)
+        , m_pass(nullptr)
+        , m_commandBuffer(commandBuffer)
+    {
+    }
+
     void CommandList::Begin()
     {
         VkCommandBufferBeginInfo beginInfo{};

@@ -45,6 +45,12 @@ namespace Vulkan
     VkResult FrameScheduler::Init()
     {
         m_transientResourceAllocator = TransientResourceAllocator::Create();
+
+        for (uint32_t i = 0; i < 2; i++)
+        {
+            m_frameReadyFence.emplace_back( m_context->CreateFence());
+        }
+
         return VK_SUCCESS;
     }
 
@@ -73,6 +79,15 @@ namespace Vulkan
         auto waitSemaphores = GetPassWaitSemaphoresInfos({ (Pass**)pass->m_producers.data(), pass->m_producers.size() });
         auto commandBuffers = GetPassCommandBuffersSubmitInfos({ (CommandList**)pass->m_commandLists.data(), pass->m_commandLists.size() });
 
+        if (auto swapchain = (Swapchain*)pass->m_swapchainImageAttachment->attachment->swapchain; swapchain != nullptr)
+        {
+            VkSemaphoreSubmitInfo submitInfo {};
+            submitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
+            submitInfo.semaphore = swapchain->GetCurrentImageSemaphore();
+            submitInfo.stageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+            waitSemaphores.push_back(submitInfo);
+        }
+
         VkSubmitInfo2 submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
         submitInfo.pNext = nullptr;
@@ -82,10 +97,14 @@ namespace Vulkan
         submitInfo.commandBufferInfoCount = uint32_t(commandBuffers.size());
         submitInfo.pCommandBufferInfos = commandBuffers.data();
 
+        VkSemaphoreSubmitInfo signalSemaphore {};
         if (presentReadySemaphore.semaphore != VK_NULL_HANDLE)
         {
+            signalSemaphore.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
+            signalSemaphore.semaphore = pass->m_signalSemaphore;
+            signalSemaphore.stageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
             submitInfo.signalSemaphoreInfoCount = 1;
-            submitInfo.pSignalSemaphoreInfos = &presentReadySemaphore;
+            submitInfo.pSignalSemaphoreInfos = &signalSemaphore;
         }
 
         auto fence = (Fence*)_fence;
@@ -134,7 +153,7 @@ namespace Vulkan
         std::vector<VkSemaphoreSubmitInfo> semaphores;
         for (auto pass : passList)
         {
-            if (auto swapchain = (Swapchain*)pass->m_swapchain)
+            if (auto swapchain = (Swapchain*)pass->m_swapchainImageAttachment)
             {
                 VkSemaphoreSubmitInfo submitInfo {};
                 submitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;

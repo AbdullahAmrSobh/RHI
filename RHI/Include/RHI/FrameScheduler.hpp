@@ -84,7 +84,6 @@ namespace RHI
 
         std::string                                 m_name;
         QueueType                                   m_queueType;    // The type of the Hardware Queue needed to execute this pass.
-        Swapchain*                                  m_swapchain;    // A pointer to swapchain which would be presented into.
         ImageSize2D                                 m_size;         // The size of the rendering area in the render pass.
         std::vector<Pass*>                          m_producers;    // A list of all passes that this pass will wait for.
         std::vector<CommandList*>                   m_commandLists; // A list of command lists that executes this pass.
@@ -151,7 +150,6 @@ namespace RHI
         uint64_t                            m_frameNumber;
 
         // A list of fences for each frame in flight
-        std::vector<std::unique_ptr<Fence>> m_frameReadyFence;
 
     protected:
         Context*                                    m_context;
@@ -165,6 +163,8 @@ namespace RHI
         ImageSize2D                                 m_frameSize;
 
         ImageAttachment*                            m_swapchainImage;
+
+        std::vector<std::unique_ptr<Fence>> m_frameReadyFence;
     };
 
 } // namespace RHI

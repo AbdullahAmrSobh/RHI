@@ -257,21 +257,13 @@ namespace Vulkan
 
         VkSemaphore GetCurrentImageSemaphore();
 
-        uint32_t AcquireNextImage(Fence& fence);
-        uint32_t AcquireNextImage(VkSemaphore semaphore);
-
-        RHI::ResultCode Resize(RHI::ImageSize2D newSize) override;
+        RHI::ResultCode Recreate(RHI::ImageSize2D newSize, uint32_t imageCount, RHI::SwapchainPresentMode presentMode) override;
         RHI::ResultCode Present(RHI::ImageAttachment& attachemnt) override;
 
     private:
-        VkResult InitSurface();
+        VkPresentModeKHR ConvertPresentMode(RHI::SwapchainPresentMode presentMode);
+        VkResult InitSurface(const RHI::SwapchainCreateInfo& createInfo);
         VkResult InitSwapchain();
-
-        VkSurfaceFormatKHR GetSurfaceFormat(VkFormat format);
-
-        VkCompositeAlphaFlagBitsKHR GetCompositeAlpha(VkSurfaceCapabilitiesKHR surfaceCapabilities);
-
-        VkPresentModeKHR GetPresentMode();
 
     public:
         friend class FrameScheduler;
@@ -279,14 +271,12 @@ namespace Vulkan
         Context* m_context;
 
         VkSemaphore m_imageReady[c_MaxSwapchainBackBuffersCount];
-
         VkSwapchainKHR m_swapchain;
-
         VkSurfaceKHR m_surface;
 
         VkResult m_lastPresentResult;
-
-        RHI::SwapchainCreateInfo m_swapchainInfo;
+        VkCompositeAlphaFlagBitsKHR m_compositeAlpha;
+        VkSurfaceFormatKHR m_surfaceFormat;
     };
 
 }; // namespace Vulkan

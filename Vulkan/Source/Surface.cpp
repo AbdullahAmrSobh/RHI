@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #ifdef RHI_PLATFORM_WINDOWS
     #define VK_USE_PLATFORM_WIN32_KHR
 #else
@@ -7,13 +9,14 @@
 #include "Resources.hpp"
 #include "Context.hpp"
 #include "Common.hpp"
+#include "Format.inl"
 
 // Platform specifc surface creation are contained witihn this file,
 // to avoid polluting the global namespace with OS specific symbols
 
 namespace Vulkan
 {
-    VkResult Swapchain::InitSurface()
+    VkResult Swapchain::InitSurface(const RHI::SwapchainCreateInfo& createInfo)
     {
         auto context = static_cast<Context*>(m_context);
 
@@ -24,7 +27,7 @@ namespace Vulkan
         vkCreateInfo.pNext = nullptr;
         vkCreateInfo.flags = 0;
         // vkCreateInfo.hinstance = static_cast<HINSTANCE>(createInfo.win32Window.hinstance);
-        vkCreateInfo.hwnd = static_cast<HWND>(m_swapchainInfo.win32Window.hwnd);
+        vkCreateInfo.hwnd = static_cast<HWND>(createInfo.win32Window.hwnd);
         auto result = vkCreateWin32SurfaceKHR(context->m_instance, &vkCreateInfo, nullptr, &m_surface);
         VULKAN_ASSERT_SUCCESS(result);
 #endif
