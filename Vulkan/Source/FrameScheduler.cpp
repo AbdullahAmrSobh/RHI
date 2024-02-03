@@ -15,6 +15,7 @@ namespace Vulkan
     Pass::Pass(Context* context, const char* name, RHI::QueueType queueType)
         : RHI::Pass(name, queueType)
         , m_context(context)
+        , m_signalSemaphore(VK_NULL_HANDLE)
     {
     }
 
@@ -24,6 +25,7 @@ namespace Vulkan
 
     VkResult Pass::Init()
     {
+        m_signalSemaphore = m_context->CreateSemaphore();
         return VK_SUCCESS;
     }
 
@@ -112,32 +114,6 @@ namespace Vulkan
         submitInfo.pSignalSemaphoreInfos = nullptr;
         auto result = vkQueueSubmit2(queue, 1, &submitInfo, fence.UseFence());
         VULKAN_ASSERT_SUCCESS(result);
-    }
-
-    void FrameScheduler::QueueImagePresent(RHI::ImageAttachment* attachment)
-    {
-        auto context = (Context*)m_context;
-        auto queue = context->GetQueue(RHI::QueueType::Graphics);
-        auto swapchain = (Swapchain*)attachment->swapchain;
-
-        auto presentReadySemaphore = swapchain->GetCurrentImageSemaphore();
-
-        VkPresentInfoKHR presentInfo{};
-        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        presentInfo.pNext = nullptr;
-        presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = &presentReadySemaphore;
-        presentInfo.swapchainCount = 1;
-        presentInfo.pSwapchains = &swapchain->m_swapchain;
-        presentInfo.pImageIndices = &swapchain->m_currentImageIndex;
-        presentInfo.pResults = &swapchain->m_lastPresentResult;
-        auto result = vkQueuePresentKHR(queue, &presentInfo);
-        VULKAN_ASSERT_SUCCESS(result);
-
-        auto semaphore = swapchain->GetCurrentImageSemaphore();
-        swapchain->AcquireNextImage(semaphore);
-
-        vkDeviceWaitIdle(context->m_device);
     }
 
     std::vector<VkCommandBufferSubmitInfo> FrameScheduler::GetPassCommandBuffersSubmitInfos(RHI::TL::Span<CommandList*> commandLists)

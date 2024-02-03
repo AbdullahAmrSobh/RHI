@@ -172,7 +172,6 @@ namespace Vulkan
         void Update(RHI::Handle<RHI::BindGroup> bindGroup, const RHI::BindGroupData& data) override;
 
         Context* m_context;
-
         std::vector<VkDescriptorPool> m_descriptorPools;
     };
 
@@ -196,9 +195,7 @@ namespace Vulkan
 
     public:
         Context* m_context;
-
         VmaPool m_pool;
-
         RHI::PoolCreateInfo m_poolInfo;
     };
 
@@ -220,9 +217,7 @@ namespace Vulkan
 
     public:
         Context* m_context;
-
         VmaPool m_pool;
-
         RHI::PoolCreateInfo m_poolInfo;
     };
 
@@ -266,8 +261,7 @@ namespace Vulkan
         uint32_t AcquireNextImage(VkSemaphore semaphore);
 
         RHI::ResultCode Resize(RHI::ImageSize2D newSize) override;
-        RHI::ResultCode Present() override;
-        RHI::ResultCode AcquireNextImage(RHI::Fence* optionalSignalFence) override;
+        RHI::ResultCode Present(RHI::ImageAttachment& attachemnt) override;
 
     private:
         VkResult InitSurface();

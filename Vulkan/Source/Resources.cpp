@@ -951,8 +951,9 @@ namespace Vulkan
 
     bool Fence::WaitInternal(uint64_t timeout)
     {
-        // if (m_state == State::NotSubmitted)
-        //     return VK_SUCCESS; 
+        if (m_state == State::NotSubmitted)
+            return VK_SUCCESS;
+
         auto result = vkWaitForFences(m_context->m_device, 1, &m_fence, VK_TRUE, timeout);
         return result == VK_SUCCESS;
     }
@@ -1056,18 +1057,31 @@ namespace Vulkan
         return ConvertResult(result);
     }
 
-    RHI::ResultCode Swapchain::Present()
+    RHI::ResultCode Swapchain::Present(RHI::ImageAttachment& attachemnt)
     {
+        auto context = (Context*)m_context;
+        auto queue = context->GetQueue(RHI::QueueType::Graphics);
+        auto swapchain = (Swapchain*)attachemnt.swapchain;
+        auto waitPass = (Pass*)attachemnt.lastUse->pass;
+        auto waitSemaphore = waitPass->m_signalSemaphore;
+        auto signalSemaphore = swapchain->GetCurrentImageSemaphore();
+
+        VkPresentInfoKHR presentInfo{};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        presentInfo.pNext = nullptr;
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores = &waitSemaphore;
+        presentInfo.swapchainCount = 1;
+        presentInfo.pSwapchains = &swapchain->m_swapchain;
+        presentInfo.pImageIndices = &swapchain->m_currentImageIndex;
+        presentInfo.pResults = &swapchain->m_lastPresentResult;
+        auto result = vkQueuePresentKHR(queue, &presentInfo);
+        VULKAN_ASSERT_SUCCESS(result);
+
+        swapchain->AcquireNextImage(signalSemaphore);
+
         return RHI::ResultCode::Success;
     }
-
-    RHI::ResultCode Swapchain::AcquireNextImage(RHI::Fence* optionalSignalFence)
-    {
-        m_currentImageIndex =  AcquireNextImage(*(Fence*)(optionalSignalFence));
-        return RHI::ResultCode::Success;
-    }
-
-
 
     VkResult Swapchain::InitSwapchain()
     {

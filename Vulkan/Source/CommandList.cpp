@@ -73,6 +73,13 @@ namespace Vulkan
     /// CommandListAllocator
     //////////////////////////////////////////////////////////////////////////////////////////
 
+    CommandListAllocator::CommandListAllocator(Context* context, uint32_t maxFrameBufferingCount)
+        : m_context(context)
+        , m_maxFrameBufferingCount(maxFrameBufferingCount)
+        , m_commandPools()
+    {
+    }
+
     CommandListAllocator::~CommandListAllocator()
     {
         for (auto& commandPool : m_commandPools)
@@ -602,31 +609,6 @@ namespace Vulkan
         dependencyInfo.bufferMemoryBarrierCount = uint32_t(barriers.size());
         dependencyInfo.pBufferMemoryBarriers = barriers.data();
         vkCmdPipelineBarrier2(m_commandBuffer, &dependencyInfo);
-    }
-
-    void QueueSubmit(VkQueue queue, TL::Span<CommandList*> commandlists, Fence* signalFence)
-    {
-        std::vector<VkCommandBufferSubmitInfo> submitInfos{};
-        for (auto commandList : commandlists)
-        {
-            VkCommandBufferSubmitInfo submitInfo{};
-            submitInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
-            submitInfo.commandBuffer = commandList->m_commandBuffer;
-            submitInfos.push_back(submitInfo);
-        }
-
-        VkSubmitInfo2 submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
-        submitInfo.pNext = nullptr;
-        submitInfo.flags = 0;
-        submitInfo.waitSemaphoreInfoCount = 0;
-        submitInfo.pWaitSemaphoreInfos = nullptr;
-        submitInfo.commandBufferInfoCount = uint32_t(submitInfos.size());
-        submitInfo.pCommandBufferInfos = submitInfos.data();
-        submitInfo.signalSemaphoreInfoCount = 0;
-        submitInfo.pSignalSemaphoreInfos = nullptr;
-        auto result = vkQueueSubmit2(queue, 1, &submitInfo, signalFence->UseFence());
-        VULKAN_ASSERT_SUCCESS(result);
     }
 
 } // namespace Vulkan

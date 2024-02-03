@@ -804,9 +804,7 @@ namespace RHI
         /// @brief Called to invalidate the current swapchain state, when the window is resized.
         virtual ResultCode Resize(ImageSize2D newSize)                  = 0;
 
-        virtual ResultCode Present()                                    = 0;
-
-        virtual ResultCode AcquireNextImage(Fence* optionalSignalFence) = 0;
+        virtual ResultCode Present(ImageAttachment& attachment)         = 0;
 
     protected:
         uint32_t                   m_currentImageIndex;

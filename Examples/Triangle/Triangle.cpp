@@ -138,12 +138,12 @@ public:
         depthInfo.usageFlags = RHI::ImageUsage::Depth;
         depthInfo.format = RHI::Format::D32;
         depthInfo.type = RHI::ImageType::Image2D;
-        auto colorAttachment = registry.ImportSwapchainImage("back-buffer", m_swapchain.get());
+        m_swapchainAttachment = registry.ImportSwapchainImage("back-buffer", m_swapchain.get());
         auto depthAttachment = registry.CreateTransientImage("depth-buffer", depthInfo);
-        m_renderpass->UseColorAttachment(colorAttachment, { 0.1f, 0.2f, 0.3f, 1.0f });
+        m_renderpass->UseColorAttachment(m_swapchainAttachment, { 0.1f, 0.2f, 0.3f, 1.0f });
         m_renderpass->UseDepthAttachment(depthAttachment, { 1.0 });
 
-        // auto imguiPass = SetupImguiPass(colorAttachment, depthAttachment);
+        // auto imguiPass = SetupImguiPass(m_swapchainAttachment, depthAttachment);
 
         frameGraph.RegisterPass(*m_renderpass);
         // frameGraph.RegisterPass(*imguiPass);
@@ -154,6 +154,8 @@ public:
 
     void OnInit() override
     {
+        m_frameScheduler->SetBufferedFramesCount(2);
+
         {
             m_uniformData.viewProjection = m_camera.GetProjection() * m_camera.GetView();
         }
@@ -283,6 +285,7 @@ public:
         (void)timestep;
 
         Render();
+        m_swapchain->Present(*m_swapchainAttachment);
     }
 
     void Render()
@@ -290,7 +293,6 @@ public:
         m_frameScheduler->Begin();
 
         auto currentFrameIndex = m_frameScheduler->GetCurrentFrameIndex();
-        m_swapchain->AcquireNextImage(nullptr);
 
         m_commandListAllocator->Flush(currentFrameIndex);
         auto commandList = m_commandListAllocator->Allocate();
@@ -322,8 +324,6 @@ public:
         commandList->End();
 
         m_frameScheduler->End();
-
-        m_swapchain->Present();
     }
 
 private:
@@ -355,6 +355,7 @@ private:
     Mesh m_mesh;
 
     std::unique_ptr<RHI::Pass> m_renderpass;
+    RHI::ImageAttachment* m_swapchainAttachment;
 };
 
 int main(int argc, const char** argv)

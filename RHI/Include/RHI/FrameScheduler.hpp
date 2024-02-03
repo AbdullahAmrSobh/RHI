@@ -138,15 +138,12 @@ namespace RHI
     private:
         void       Cleanup();
 
-        Swapchain* GetSwapchain();
-
         Fence&     GetFrameCurrentFence();
 
     protected:
         virtual void DeviceWaitIdle()                                                                            = 0;
         virtual void QueuePassSubmit(Pass* pass, Fence* fence)                                                   = 0;
         virtual void QueueCommandsSubmit(QueueType queueType, TL::Span<CommandList*> commandLists, Fence& fence) = 0;
-        virtual void QueueImagePresent(ImageAttachment* attachments)                               = 0;
 
     private:
         uint32_t                            m_frameCount;
@@ -167,7 +164,7 @@ namespace RHI
 
         ImageSize2D                                 m_frameSize;
 
-        ImageAttachment*                            m_swapchainImageAttachment;
+        ImageAttachment*                            m_swapchainImage;
     };
 
 } // namespace RHI

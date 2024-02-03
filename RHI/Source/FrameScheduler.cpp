@@ -182,11 +182,16 @@ namespace RHI
     //////////////////////////////////////////////////////////////////////////////////////////
 
     FrameScheduler::FrameScheduler(Context* context)
-        : m_context(context)
+        : m_frameCount(0)
+        , m_currentFrameIndex(0)
+        , m_frameNumber(0)
+        , m_frameReadyFence()
+        , m_context(context)
+        , m_passList()
         , m_attachmentsRegistry(std::make_unique<AttachmentsRegistry>())
         , m_transientResourceAllocator(nullptr)
         , m_frameSize(0, 0)
-        , m_swapchainImageAttachment(nullptr)
+        , m_swapchainImage(nullptr)
     {
     }
 
@@ -207,11 +212,16 @@ namespace RHI
 
     void FrameScheduler::Begin()
     {
+        m_swapchainImage = m_attachmentsRegistry->FindImage(m_attachmentsRegistry->m_swapchainAttachments.front());
+
         // prepare pass attachments
-        for (auto passAttachment = (SwapchainImagePassAttachment*)m_swapchainImageAttachment->firstUse; passAttachment->next != nullptr;
-             passAttachment = (SwapchainImagePassAttachment*)passAttachment->next)
+        for (auto _passAttachment = m_swapchainImage->firstUse; 
+             _passAttachment->next != nullptr;
+             _passAttachment = _passAttachment->next)
         {
-            passAttachment->view = passAttachment->views[m_swapchainImageAttachment->swapchain->GetCurrentImageIndex()];
+            auto swapchain = m_swapchainImage->swapchain;
+            auto passAttachment = (SwapchainImagePassAttachment*)_passAttachment;
+            passAttachment->view = passAttachment->views[swapchain->GetCurrentImageIndex()];
         }
 
         for (auto pass : m_passList)
@@ -226,8 +236,6 @@ namespace RHI
         {
             QueuePassSubmit(pass, nullptr);
         }
-
-        QueueImagePresent(m_swapchainImageAttachment);
     }
 
     void FrameScheduler::RegisterPass(Pass& pass)
@@ -362,12 +370,6 @@ namespace RHI
         DeviceWaitIdle();
 
         m_transientResourceAllocator->Reset(m_context);
-    }
-
-    Swapchain* FrameScheduler::GetSwapchain()
-    {
-        m_swapchainImageAttachment = m_attachmentsRegistry->FindImage(m_attachmentsRegistry->m_swapchainAttachments.front());
-        return m_swapchainImageAttachment->swapchain;
     }
 
     Fence& FrameScheduler::GetFrameCurrentFence()

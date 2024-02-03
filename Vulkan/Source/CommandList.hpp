@@ -46,11 +46,7 @@ namespace Vulkan
     class CommandListAllocator final : public RHI::CommandListAllocator
     {
     public:
-        CommandListAllocator(Context* context, uint32_t maxFrameBufferingCount)
-            : m_context(context)
-            , m_maxFrameBufferingCount(maxFrameBufferingCount)
-        {
-        }
+        CommandListAllocator(Context* context, uint32_t maxFrameBufferingCount);
 
         ~CommandListAllocator();
 
@@ -77,25 +73,15 @@ namespace Vulkan
         }
 
         void Begin() override;
-
         void Begin(RHI::Pass& pass) override;
-
         void End() override;
-
         void SetViewport(const RHI::Viewport& viewport) override;
-
         void SetSicssor(const RHI::Scissor& sicssor) override;
-
         void Submit(const RHI::CommandDraw& command) override;
-
         void Submit(const RHI::CommandCompute& command) override;
-
         void Submit(const RHI::CopyBufferDescriptor& command) override;
-
         void Submit(const RHI::CopyImageDescriptor& command) override;
-
         void Submit(const RHI::CopyBufferToImageDescriptor& command) override;
-
         void Submit(const RHI::CopyImageToBufferDescriptor& command) override;
 
         VkRenderingAttachmentInfo GetAttachmentInfo(const RHI::ImagePassAttachment& passAttachment) const;
@@ -122,7 +108,5 @@ namespace Vulkan
 
         VkCommandBuffer m_commandBuffer;
     };
-
-    void QueueSubmit(VkQueue queue, TL::Span<CommandList> commandlists, Fence* signalFence);
 
 } // namespace Vulkan
