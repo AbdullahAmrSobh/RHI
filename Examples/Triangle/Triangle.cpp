@@ -141,7 +141,7 @@ public:
         m_swapchainAttachment = registry.ImportSwapchainImage("back-buffer", m_swapchain.get());
         auto depthAttachment = registry.CreateTransientImage("depth-buffer", depthInfo);
         m_renderpass->UseColorAttachment(m_swapchainAttachment, { 0.1f, 0.2f, 0.3f, 1.0f });
-        m_renderpass->UseDepthAttachment(depthAttachment, { 1.0 });
+        m_renderpass->UseDepthAttachment(depthAttachment, { 0.0 });
 
         // auto imguiPass = SetupImguiPass(m_swapchainAttachment, depthAttachment);
 

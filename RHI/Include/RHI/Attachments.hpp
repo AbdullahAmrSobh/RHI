@@ -91,7 +91,7 @@ namespace RHI
     /// @brief Structure specifying the load and store opertions for image attachment.
     struct LoadStoreOperations
     {
-        LoadOperation  loadOperation  = LoadOperation::DontCare;
+        LoadOperation  loadOperation  = LoadOperation::Discard;
         StoreOperation storeOperation = StoreOperation::Store;
 
         inline bool    operator==(const LoadStoreOperations& other) const
