@@ -256,6 +256,8 @@ namespace RHI
         // Allocate transient resources, and generate resource views
         for (auto pass : m_passList)
         {
+            pass->m_size = m_frameSize;
+
             for (auto& passAttachment : pass->m_imagePassAttachments)
             {
                 auto& attachemnt = passAttachment->attachment;

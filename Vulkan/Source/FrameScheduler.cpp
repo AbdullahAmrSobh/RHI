@@ -86,7 +86,7 @@ namespace Vulkan
             if (passAttachment->prev == nullptr)
             {
                 semaphoreSubmitInfo.semaphore = swapchain->m_semaphores.imageAcquired;
-                semaphoreSubmitInfo.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+                semaphoreSubmitInfo.stageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT ;
                 waitSemaphores.push_back(semaphoreSubmitInfo);
             }
 

@@ -12,6 +12,88 @@
 namespace Vulkan
 {
     //////////////////////////////////////////////////////////////////////////////////////////
+    /// Utills functions
+    //////////////////////////////////////////////////////////////////////////////////////////
+
+    inline static VkAccessFlags2 GetAccessFlags(VkImageLayout layout)
+    {
+        switch (layout)
+        {
+        case VK_IMAGE_LAYOUT_UNDEFINED:
+        case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:                              return 0;
+        case VK_IMAGE_LAYOUT_PREINITIALIZED:                               return VK_ACCESS_2_HOST_WRITE_BIT;
+        case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:                     return VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+        case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL:                     return VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        case VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR: return VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR;
+        case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:                     return VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT;
+        case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:                         return VK_ACCESS_2_TRANSFER_READ_BIT;
+        case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:                         return VK_ACCESS_2_TRANSFER_WRITE_BIT;
+        case VK_IMAGE_LAYOUT_GENERAL:
+            RHI_UNREACHABLE();
+            return 0;
+        default:
+            RHI_UNREACHABLE();
+            return 0;
+        }
+    }
+
+    inline static VkPipelineStageFlags2 GetPipelineStageFlags(VkImageLayout layout)
+    {
+        switch (layout)
+        {
+        case VK_IMAGE_LAYOUT_UNDEFINED:                                    return VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+        case VK_IMAGE_LAYOUT_PREINITIALIZED:                               return VK_PIPELINE_STAGE_2_HOST_BIT;
+        case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+        case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:                         return VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+        case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:                     return VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+        case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL:                     return VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+        case VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR: return VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
+        case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:                     return VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+        case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:                              return VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
+        case VK_IMAGE_LAYOUT_GENERAL:
+            RHI_UNREACHABLE();
+            return 0;
+        default:
+            RHI_UNREACHABLE();
+            return 0;
+        }
+    }
+
+    inline static VkImageMemoryBarrier2 CreateImageMemoryBarrier2(VkImage image,
+                                                                  VkPipelineStageFlags2 srcStageMask,
+                                                                  VkPipelineStageFlags2 dstStageMask,
+                                                                  VkAccessFlags2 srcAccessMask,
+                                                                  VkAccessFlags2 dstAccessMask,
+                                                                  VkImageLayout oldLayout,
+                                                                  VkImageLayout newLayout,
+                                                                  const VkImageSubresourceRange& subresourceRange)
+    {
+        VkImageMemoryBarrier2 image_memory_barrier{};
+        image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+        image_memory_barrier.srcStageMask = srcStageMask;
+        image_memory_barrier.dstStageMask = dstStageMask;
+        image_memory_barrier.srcAccessMask = srcAccessMask;
+        image_memory_barrier.dstAccessMask = dstAccessMask;
+        image_memory_barrier.oldLayout = oldLayout;
+        image_memory_barrier.newLayout = newLayout;
+        image_memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        image_memory_barrier.image = image;
+        image_memory_barrier.subresourceRange = subresourceRange;
+        return image_memory_barrier;
+    }
+
+    inline static VkImageMemoryBarrier2 CreateImageMemoryBarrier2(VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout, const VkImageSubresourceRange& subresourceRange)
+    {
+        VkPipelineStageFlags2 srcStageMask = GetPipelineStageFlags(oldLayout);
+        VkPipelineStageFlags2 dstStageMask = GetPipelineStageFlags(newLayout);
+        VkAccessFlags2 srcAccessMask = GetAccessFlags(oldLayout);
+        VkAccessFlags2 dstAccessMask = GetAccessFlags(newLayout);
+
+        return CreateImageMemoryBarrier2(image, srcStageMask, dstStageMask, srcAccessMask, dstAccessMask, oldLayout, newLayout, subresourceRange);
+    }
+
+    //////////////////////////////////////////////////////////////////////////////////////////
     /// CommandPool
     //////////////////////////////////////////////////////////////////////////////////////////
 
@@ -396,7 +478,7 @@ namespace Vulkan
 
     void CommandList::RenderingBegin(Pass& pass)
     {
-        RHI::ImageSize2D renderArea{ 1600, 1200 };
+        RHI::ImageSize2D renderArea = pass.m_size;
         std::vector<RHI::ImagePassAttachment*> passAttachments;
 
         for (auto& attachment : pass.m_imagePassAttachments)
@@ -544,44 +626,36 @@ namespace Vulkan
             {
                 if (barrierType == BarrierType::PrePass)
                 {
-                    barrier.srcAccessMask = 0;
-                    barrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                    barrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-                    barrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-                    barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-                    barrier.newLayout = ConvertImageLayout(passAttachment->usage, passAttachment->access);
+                    auto oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                    auto newLayout = ConvertImageLayout(passAttachment->usage, passAttachment->access);
+                    barrier = CreateImageMemoryBarrier2(image->handle, oldLayout, newLayout, barrier.subresourceRange);
+                    barriers.push_back(barrier);
                 }
                 else if (barrierType == BarrierType::PostPass)
                 {
-                    barrier.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-                    barrier.dstStageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
-                    barrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                    barrier.dstAccessMask = 0;
-                    barrier.oldLayout = ConvertImageLayout(passAttachment->usage, passAttachment->access);
-                    barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+                    auto oldLayout = ConvertImageLayout(passAttachment->usage, passAttachment->access);
+                    auto newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+                    barrier = CreateImageMemoryBarrier2(image->handle, oldLayout, newLayout, barrier.subresourceRange);
+                    barriers.push_back(barrier);
                 }
                 else
                 {
                     RHI_UNREACHABLE();
                 }
+            }
+            else if (barrierType == BarrierType::PrePass && passAttachment->prev == nullptr)
+            {
+                auto oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                auto newLayout = ConvertImageLayout(passAttachment->usage, passAttachment->access);
+                barrier = CreateImageMemoryBarrier2(image->handle, oldLayout, newLayout, barrier.subresourceRange);
                 barriers.push_back(barrier);
             }
-            if (barrierType == BarrierType::PrePass && passAttachment->prev == nullptr)
-            {
-                barrier.srcAccessMask = VK_ACCESS_2_NONE;
-                barrier.dstAccessMask = ConvertPipelineAccess(passAttachment->usage, passAttachment->access);
-                barrier.srcStageMask = VK_PIPELINE_STAGE_2_NONE;
-                barrier.dstStageMask = ConvertPipelineStageFlags(passAttachment->usage, passAttachment->stage);
-                barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-                barrier.newLayout = ConvertImageLayout(passAttachment->usage, passAttachment->access);
-                barriers.push_back(barrier);
-            }
-            else if (barrierType == BarrierType::PostPass && passAttachment->next == nullptr)
-            {
-            }
-            else
-            {
-            }
+            // else if (barrierType == BarrierType::PostPass && passAttachment->next == nullptr)
+            // {
+            // }
+            // else
+            // {
+            // }
         }
 
         auto dependencyInfo = VkDependencyInfo{};
