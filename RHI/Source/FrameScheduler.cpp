@@ -219,12 +219,13 @@ namespace RHI
 
         // prepare pass attachments
         for (auto _passAttachment = m_swapchainImage->firstUse; 
-             _passAttachment->next != nullptr;
+             _passAttachment != nullptr;
              _passAttachment = _passAttachment->next)
         {
             auto swapchain = m_swapchainImage->swapchain;
             auto passAttachment = (SwapchainImagePassAttachment*)_passAttachment;
-            passAttachment->view = passAttachment->views[swapchain->GetCurrentImageIndex()];
+            auto imageIndex = swapchain->GetCurrentImageIndex();
+            passAttachment->view = passAttachment->views[imageIndex];
         }
 
         for (auto pass : m_passList)
@@ -241,8 +242,8 @@ namespace RHI
             QueuePassSubmit(pass, &fence);
         }
 
-        m_frameCount++;
-        m_currentFrameIndex = m_frameCount % GetBufferedFramesCount();
+        m_frameNumber++;
+        m_currentFrameIndex = m_frameNumber % m_frameCount;
     }
 
     void FrameScheduler::RegisterPass(Pass& pass)

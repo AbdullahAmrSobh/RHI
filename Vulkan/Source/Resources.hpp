@@ -255,10 +255,8 @@ namespace Vulkan
 
         VkResult Init(const RHI::SwapchainCreateInfo& createInfo);
 
-        VkSemaphore GetCurrentImageSemaphore();
-
         RHI::ResultCode Recreate(RHI::ImageSize2D newSize, uint32_t imageCount, RHI::SwapchainPresentMode presentMode) override;
-        RHI::ResultCode Present(RHI::ImageAttachment& attachemnt) override;
+        RHI::ResultCode Present() override;
 
     private:
         VkPresentModeKHR ConvertPresentMode(RHI::SwapchainPresentMode presentMode);
@@ -270,7 +268,13 @@ namespace Vulkan
 
         Context* m_context;
 
-        VkSemaphore m_imageReady[c_MaxSwapchainBackBuffersCount];
+
+        struct Semaphores
+        {
+            VkSemaphore imageAcquired;
+            VkSemaphore imageRenderComplete;
+        } m_semaphores;
+
         VkSwapchainKHR m_swapchain;
         VkSurfaceKHR m_surface;
 

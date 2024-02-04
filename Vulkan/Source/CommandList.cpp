@@ -540,25 +540,47 @@ namespace Vulkan
                 barrier.newLayout = ConvertImageLayout(passAttachment->next->usage, passAttachment->next->access);
                 barriers.push_back(barrier);
             }
-            else if (barrierType == BarrierType::PostPass && passAttachment->attachment->swapchain)
+            else if (passAttachment->attachment->swapchain)
             {
-                barrier.srcStageMask = ConvertPipelineStageFlags(passAttachment->usage, passAttachment->stage);
-                barrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                barrier.oldLayout = ConvertImageLayout(passAttachment->usage, passAttachment->access);
-                barrier.dstStageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
-                barrier.dstAccessMask = 0;
-                barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+                if (barrierType == BarrierType::PrePass)
+                {
+                    barrier.srcAccessMask = 0;
+                    barrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+                    barrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+                    barrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+                    barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                    barrier.newLayout = ConvertImageLayout(passAttachment->usage, passAttachment->access);
+                }
+                else if (barrierType == BarrierType::PostPass)
+                {
+                    barrier.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+                    barrier.dstStageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
+                    barrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+                    barrier.dstAccessMask = 0;
+                    barrier.oldLayout = ConvertImageLayout(passAttachment->usage, passAttachment->access);
+                    barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+                }
+                else
+                {
+                    RHI_UNREACHABLE();
+                }
                 barriers.push_back(barrier);
             }
-            else if (barrierType == BarrierType::PrePass && passAttachment->prev == nullptr && passAttachment->access != RHI::AttachmentAccess::Read)
+            if (barrierType == BarrierType::PrePass && passAttachment->prev == nullptr)
             {
-                barrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-                barrier.srcAccessMask = 0;
-                barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-                barrier.dstStageMask = ConvertPipelineStageFlags(passAttachment->usage, passAttachment->stage);
+                barrier.srcAccessMask = VK_ACCESS_2_NONE;
                 barrier.dstAccessMask = ConvertPipelineAccess(passAttachment->usage, passAttachment->access);
+                barrier.srcStageMask = VK_PIPELINE_STAGE_2_NONE;
+                barrier.dstStageMask = ConvertPipelineStageFlags(passAttachment->usage, passAttachment->stage);
+                barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
                 barrier.newLayout = ConvertImageLayout(passAttachment->usage, passAttachment->access);
                 barriers.push_back(barrier);
+            }
+            else if (barrierType == BarrierType::PostPass && passAttachment->next == nullptr)
+            {
+            }
+            else
+            {
             }
         }
 

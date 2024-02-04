@@ -285,7 +285,7 @@ public:
         (void)timestep;
 
         Render();
-        m_swapchain->Present(*m_swapchainAttachment);
+        m_swapchain->Present();
     }
 
     void Render()

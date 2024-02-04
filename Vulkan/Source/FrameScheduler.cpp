@@ -15,7 +15,6 @@ namespace Vulkan
     Pass::Pass(Context* context, const char* name, RHI::QueueType queueType)
         : RHI::Pass(name, queueType)
         , m_context(context)
-        , m_signalSemaphore(VK_NULL_HANDLE)
     {
     }
 
@@ -25,7 +24,6 @@ namespace Vulkan
 
     VkResult Pass::Init()
     {
-        m_signalSemaphore = m_context->CreateSemaphore();
         return VK_SUCCESS;
     }
 
@@ -67,25 +65,37 @@ namespace Vulkan
         auto pass = (Pass*)_pass;
         auto queue = context->GetQueue(pass->m_queueType);
 
-        VkSemaphoreSubmitInfo presentReadySemaphore = {};
-        presentReadySemaphore.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-        presentReadySemaphore.stageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
-        if (auto passAttachment = pass->m_swapchainImageAttachment; passAttachment && passAttachment->next == nullptr)
+        std::vector<VkCommandBufferSubmitInfo> commandBuffers{};
+        for (auto _commandList : pass->m_commandLists)
+        {
+            auto commandList = (CommandList*)_commandList;
+            VkCommandBufferSubmitInfo submitInfo{};
+            submitInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+            submitInfo.commandBuffer = commandList->m_commandBuffer;
+            commandBuffers.push_back(submitInfo);
+        }
+        
+        std::vector<VkSemaphoreSubmitInfo> waitSemaphores {};
+        std::vector<VkSemaphoreSubmitInfo> signalSemaphores {};
+
+        if (auto passAttachment = pass->m_swapchainImageAttachment)
         {
             auto swapchain = (Swapchain*)passAttachment->attachment->swapchain;
-            presentReadySemaphore.semaphore = swapchain->GetCurrentImageSemaphore();
-        }
+            VkSemaphoreSubmitInfo semaphoreSubmitInfo {};
+            semaphoreSubmitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+            if (passAttachment->prev == nullptr)
+            {
+                semaphoreSubmitInfo.semaphore = swapchain->m_semaphores.imageAcquired;
+                semaphoreSubmitInfo.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+                waitSemaphores.push_back(semaphoreSubmitInfo);
+            }
 
-        auto waitSemaphores = GetPassWaitSemaphoresInfos({ (Pass**)pass->m_producers.data(), pass->m_producers.size() });
-        auto commandBuffers = GetPassCommandBuffersSubmitInfos({ (CommandList**)pass->m_commandLists.data(), pass->m_commandLists.size() });
-
-        if (auto swapchain = (Swapchain*)pass->m_swapchainImageAttachment->attachment->swapchain; swapchain != nullptr)
-        {
-            VkSemaphoreSubmitInfo submitInfo {};
-            submitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
-            submitInfo.semaphore = swapchain->GetCurrentImageSemaphore();
-            submitInfo.stageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
-            waitSemaphores.push_back(submitInfo);
+            if (passAttachment->next == nullptr)
+            {
+                semaphoreSubmitInfo.semaphore = swapchain->m_semaphores.imageRenderComplete;
+                semaphoreSubmitInfo.stageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
+                signalSemaphores.push_back(semaphoreSubmitInfo);
+            }
         }
 
         VkSubmitInfo2 submitInfo{};
@@ -94,32 +104,31 @@ namespace Vulkan
         submitInfo.flags = 0;
         submitInfo.waitSemaphoreInfoCount = uint32_t(waitSemaphores.size());
         submitInfo.pWaitSemaphoreInfos = waitSemaphores.data();
+        submitInfo.signalSemaphoreInfoCount = uint32_t(signalSemaphores.size());
+        submitInfo.pSignalSemaphoreInfos = signalSemaphores.data();
         submitInfo.commandBufferInfoCount = uint32_t(commandBuffers.size());
         submitInfo.pCommandBufferInfos = commandBuffers.data();
-
-        VkSemaphoreSubmitInfo signalSemaphore {};
-        if (presentReadySemaphore.semaphore != VK_NULL_HANDLE)
-        {
-            signalSemaphore.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
-            signalSemaphore.semaphore = pass->m_signalSemaphore;
-            signalSemaphore.stageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
-            submitInfo.signalSemaphoreInfoCount = 1;
-            submitInfo.pSignalSemaphoreInfos = &signalSemaphore;
-        }
 
         auto fence = (Fence*)_fence;
         auto result = vkQueueSubmit2(queue, 1, &submitInfo, fence ? fence->UseFence() : VK_NULL_HANDLE);
         VULKAN_ASSERT_SUCCESS(result);
     }
 
-    void FrameScheduler::QueueCommandsSubmit(RHI::QueueType queueType, RHI::TL::Span<RHI::CommandList*> _commandLists, RHI::Fence& _fence)
+    void FrameScheduler::QueueCommandsSubmit(RHI::QueueType queueType, RHI::TL::Span<RHI::CommandList*> commandLists, RHI::Fence& _fence)
     {
         auto context = (Context*)m_context;
         auto& fence = (Fence&)_fence;
         auto queue = context->GetQueue(queueType);
 
-        auto commandLists = RHI::TL::Span<CommandList*>((CommandList**)_commandLists.data(), _commandLists.size());
-        auto commandBuffersSubmitInfos = GetPassCommandBuffersSubmitInfos(commandLists);
+        std::vector<VkCommandBufferSubmitInfo> commandBuffers{};
+        for (auto _commandList : commandLists)
+        {
+            auto commandList = (CommandList*)_commandList;
+            VkCommandBufferSubmitInfo submitInfo{};
+            submitInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+            submitInfo.commandBuffer = commandList->m_commandBuffer;
+            commandBuffers.push_back(submitInfo);
+        }
 
         VkSubmitInfo2 submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
@@ -127,43 +136,12 @@ namespace Vulkan
         submitInfo.flags = 0;
         submitInfo.waitSemaphoreInfoCount = 0;
         submitInfo.pWaitSemaphoreInfos = nullptr;
-        submitInfo.commandBufferInfoCount = uint32_t(commandLists.size());
-        submitInfo.pCommandBufferInfos = commandBuffersSubmitInfos.data();
+        submitInfo.commandBufferInfoCount = uint32_t(commandBuffers.size());
+        submitInfo.pCommandBufferInfos = commandBuffers.data();
         submitInfo.signalSemaphoreInfoCount = 0;
         submitInfo.pSignalSemaphoreInfos = nullptr;
         auto result = vkQueueSubmit2(queue, 1, &submitInfo, fence.UseFence());
         VULKAN_ASSERT_SUCCESS(result);
     }
-
-    std::vector<VkCommandBufferSubmitInfo> FrameScheduler::GetPassCommandBuffersSubmitInfos(RHI::TL::Span<CommandList*> commandLists)
-    {
-        std::vector<VkCommandBufferSubmitInfo> submitInfos{};
-        for (auto commandList : commandLists)
-        {
-            VkCommandBufferSubmitInfo submitInfo{};
-            submitInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
-            submitInfo.commandBuffer = commandList->m_commandBuffer;
-            submitInfos.push_back(submitInfo);
-        }
-        return submitInfos;
-    }
-
-    std::vector<VkSemaphoreSubmitInfo> FrameScheduler::GetPassWaitSemaphoresInfos(RHI::TL::Span<Pass*> passList)
-    {
-        std::vector<VkSemaphoreSubmitInfo> semaphores;
-        for (auto pass : passList)
-        {
-            if (auto swapchain = (Swapchain*)pass->m_swapchainImageAttachment)
-            {
-                VkSemaphoreSubmitInfo submitInfo {};
-                submitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
-                submitInfo.semaphore = swapchain->GetCurrentImageSemaphore();
-                submitInfo.stageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
-                semaphores.push_back(submitInfo);
-            }
-        }
-        return semaphores;
-    }
-
 
 } // namespace Vulkan

@@ -804,7 +804,7 @@ namespace RHI
         /// @brief Called to invalidate the current swapchain state, when the window is resized.
         virtual ResultCode Recreate(ImageSize2D newSize, uint32_t imageCount, SwapchainPresentMode presentMode) = 0;
 
-        virtual ResultCode Present(ImageAttachment& attachment)                                                 = 0;
+        virtual ResultCode Present()                                                                            = 0;
 
     protected:
         uint32_t                   m_currentImageIndex;
