@@ -6,8 +6,8 @@
 #include <string_view>
 
 #include <Examples-Base/Timestep.hpp>
-#include <Examples-Base/Log.hpp>
 #include <Examples-Base/Camera.hpp>
+#include <Examples-Base/ImGuiRenderer.hpp>
 
 #include <glm/matrix.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -71,6 +71,16 @@ protected:
     std::unique_ptr<RHI::Swapchain> m_swapchain;
 
     std::unique_ptr<RHI::FrameScheduler> m_frameScheduler;
+
+    std::unique_ptr<ImGuiRenderer> m_imguiRenderer;
+    
+    std::unique_ptr<RHI::CommandListAllocator> m_commandListAllocator;
+
+    std::unique_ptr<RHI::ImagePool> m_imagePool;
+
+    std::unique_ptr<RHI::BufferPool> m_bufferPool;
+
+    std::unique_ptr<RHI::BindGroupAllocator> m_bindGroupAllocator;
 
     void* m_window;
 

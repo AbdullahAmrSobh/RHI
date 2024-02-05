@@ -7,40 +7,35 @@
 class IMGUI_IMPL_API ImGuiRenderer
 {
 public:
-    bool Init(RHI::Context* context);
+    void Init(RHI::Context* context, RHI::FrameScheduler* scheduler, RHI::CommandListAllocator* commandListAllocator, RHI::BindGroupAllocator* bindGroupAllocator, RHI::ImagePool& imagePool, RHI::BufferPool& bufferPool, const std::vector<uint32_t>& shaderModuleBlob);
     void Shutdown();
 
     void NewFrame();
     void RenderDrawData(ImDrawData* draw_data, RHI::CommandList& commandList);
 
 private:
-    std::unique_ptr<RHI::ShaderModule> LoadVertexShaderModule();
-    std::unique_ptr<RHI::ShaderModule> LoadPixelShaderModule();
+    void InitGraphicsPipeline();
+    void UpdateBuffers(ImDrawData* drawData);
 
-private:
+public:
     RHI::Context* m_context;
 
-    RHI::CommandList* m_currentCommandList;
+    ImGuiContext* m_imguiContext;
 
-    std::unique_ptr<RHI::BindGroupAllocator> m_bindGroupAllocator;
-
-    RHI::Handle<RHI::BindGroupLayout> m_bindGroupLayout;
-
+    RHI::BindGroupAllocator* m_bindGroupAllocator;
     RHI::Handle<RHI::BindGroup> m_bindGroup;
 
+    RHI::Handle<RHI::BindGroupLayout> m_bindGroupLayout;
     RHI::Handle<RHI::PipelineLayout> m_pipelineLayout;
-
     RHI::Handle<RHI::GraphicsPipeline> m_pipeline;
 
-    std::unique_ptr<RHI::BufferPool> m_bufferPool;
+    RHI::ImagePool* m_imagePool;
+    RHI::Handle<RHI::Image> m_image;
+    RHI::Handle<RHI::ImageView> m_imageView;
+    RHI::Handle<RHI::Sampler> m_sampler;
 
+    RHI::BufferPool* m_bufferPool; // pool used to allocate resources
     RHI::Handle<RHI::Buffer> m_vertexBuffer;
-
     RHI::Handle<RHI::Buffer> m_indexBuffer;
-
     RHI::Handle<RHI::Buffer> m_uniformBuffer;
-
-    size_t m_vertexBufferSize;
-
-    size_t m_indexBufferSize;
 };

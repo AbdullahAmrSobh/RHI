@@ -154,34 +154,15 @@ public:
 
     void OnInit() override
     {
-        m_frameScheduler->SetBufferedFramesCount(2);
-
         {
             m_uniformData.viewProjection = m_camera.GetProjection() * m_camera.GetView();
         }
 
         // create buffer resource pool
         {
-            RHI::PoolCreateInfo createInfo{};
-            createInfo.heapType = RHI::MemoryType::CPU;
-            createInfo.allocationAlgorithm = RHI::AllocationAlgorithm::Linear;
-            createInfo.blockSize = 64 * RHI::AllocationSizeConstants::MB;
-            createInfo.minBlockAlignment = alignof(uint64_t);
-            m_bufferPool = m_context->CreateBufferPool(createInfo);
-
             // create buffer resource
             m_mesh = LoadScene("./Resources/Meshes/simple_cube.obj");
             m_uniformBuffer = CreateBuffer<UniformBufferContent>(m_uniformData, RHI::BufferUsage::Uniform);
-        }
-
-        // create image resource pool
-        {
-            RHI::PoolCreateInfo createInfo{};
-            createInfo.heapType = RHI::MemoryType::GPULocal;
-            createInfo.allocationAlgorithm = RHI::AllocationAlgorithm::Linear;
-            createInfo.blockSize = 64 * RHI::AllocationSizeConstants::MB;
-            createInfo.minBlockAlignment = alignof(uint64_t);
-            m_imagePool = m_context->CreateImagePool(createInfo);
         }
 
         // create image
@@ -199,8 +180,6 @@ public:
             RHI::ImageViewCreateInfo viewInfo{};
             m_imageView = m_context->CreateImageView(m_image, viewInfo);
         }
-
-        m_commandListAllocator = m_context->CreateCommandListAllocator(RHI::QueueType::Graphics, m_frameScheduler->GetBufferedFramesCount());
 
         // upload image data to the gpu
         {
@@ -243,9 +222,6 @@ public:
 
         // create a sampler state
         {
-            // create shader bind group
-            m_bindGroupAllocator = m_context->CreateBindGroupAllocator();
-
             RHI::SamplerCreateInfo samplerCreateInfo{};
             m_sampler = m_context->CreateSampler(samplerCreateInfo);
 
@@ -284,6 +260,14 @@ public:
 
         (void)timestep;
 
+        ImGui::NewFrame();
+
+        ImGui::Begin("Hello, ImGui");
+        ImGui::Text("Hello world");
+        ImGui::End();
+
+        ImGui::Render();
+
         Render();
         m_swapchain->Present();
     }
@@ -321,6 +305,9 @@ public:
         commandList->SetViewport(viewport);
         commandList->SetSicssor(scissor);
         commandList->Submit(drawCommand);
+
+        auto drawData = ImGui::GetDrawData();
+        m_imguiRenderer->RenderDrawData(drawData, *commandList);
         commandList->End();
 
         m_frameScheduler->End();
@@ -328,14 +315,6 @@ public:
 
 private:
     UniformBufferContent m_uniformData;
-
-    std::unique_ptr<RHI::BufferPool> m_bufferPool;
-
-    std::unique_ptr<RHI::ImagePool> m_imagePool;
-
-    std::unique_ptr<RHI::BindGroupAllocator> m_bindGroupAllocator;
-
-    std::unique_ptr<RHI::CommandListAllocator> m_commandListAllocator;
 
     RHI::Handle<RHI::BindGroupLayout> m_bindGroupLayout;
 

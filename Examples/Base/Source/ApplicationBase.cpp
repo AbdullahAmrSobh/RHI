@@ -88,6 +88,7 @@ std::vector<uint32_t> ApplicationBase::ReadBinaryFile(std::string_view path) con
 ApplicationBase::ApplicationBase(std::string name, uint32_t width, uint32_t height)
     : m_windowWidth(width)
     , m_windowHeight(height)
+    , m_imguiRenderer(std::make_unique<ImGuiRenderer>())
 {
     auto result = glfwInit();
     assert(result);
@@ -129,7 +130,44 @@ void ApplicationBase::Init()
     // create frame scheduler
     m_frameScheduler = m_context->CreateFrameScheduler();
 
+    {
+        RHI::PoolCreateInfo poolCreateInfo{};
+        poolCreateInfo.heapType = RHI::MemoryType::CPU;
+        poolCreateInfo.allocationAlgorithm = RHI::AllocationAlgorithm::Linear;
+        poolCreateInfo.blockSize = 64 * RHI::AllocationSizeConstants::MB;
+        poolCreateInfo.minBlockAlignment = alignof(uint64_t);
+        m_bufferPool = m_context->CreateBufferPool(poolCreateInfo);
+    }
+    {
+        RHI::PoolCreateInfo poolCreateInfo{};
+        poolCreateInfo.heapType = RHI::MemoryType::GPULocal;
+        poolCreateInfo.allocationAlgorithm = RHI::AllocationAlgorithm::Linear;
+        poolCreateInfo.blockSize = 64 * RHI::AllocationSizeConstants::MB;
+        poolCreateInfo.minBlockAlignment = alignof(uint64_t);
+        m_imagePool = m_context->CreateImagePool(poolCreateInfo);
+    }
+
+    m_frameScheduler->SetBufferedFramesCount(2);
+
+    m_commandListAllocator = m_context->CreateCommandListAllocator(RHI::QueueType::Graphics, m_frameScheduler->GetBufferedFramesCount());
+
+    // create shader bind group
+    m_bindGroupAllocator = m_context->CreateBindGroupAllocator();
+
     OnInit();
+
+    auto imguiShaderBlob = ReadBinaryFile("./Resources/Shaders/imgui.spirv");
+    m_imguiRenderer->Init(m_context.get(),
+                          m_frameScheduler.get(),
+                          m_commandListAllocator.get(),
+                          m_bindGroupAllocator.get(),
+                          *m_imagePool,
+                          *m_bufferPool,
+                          imguiShaderBlob);
+    ImGuiIO& io = ImGui::GetIO();
+    io.DisplaySize.x = float(m_windowWidth);
+    io.DisplaySize.y = float(m_windowHeight);
+
 }
 
 void ApplicationBase::Shutdown()
