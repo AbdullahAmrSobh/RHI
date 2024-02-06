@@ -335,27 +335,27 @@ namespace Vulkan
 
     void CommandList::Submit(const RHI::CopyBufferDescriptor& command)
     {
-        auto srcBuffer = m_context->m_bufferOwner.Get(command.sourceBuffer);
-        auto destinationBuffer = m_context->m_bufferOwner.Get(command.destinationBuffer);
+        auto srcBuffer = m_context->m_bufferOwner.Get(command.srcBuffer);
+        auto destinationBuffer = m_context->m_bufferOwner.Get(command.dstBuffer);
 
         auto copyInfo = VkBufferCopy{};
-        copyInfo.srcOffset = command.sourceOffset;
-        copyInfo.dstOffset = command.destinationOffset;
+        copyInfo.srcOffset = command.srcOffset;
+        copyInfo.dstOffset = command.dstOffset;
         copyInfo.size = command.size;
         vkCmdCopyBuffer(m_commandBuffer, srcBuffer->handle, destinationBuffer->handle, 1, &copyInfo);
     }
 
     void CommandList::Submit(const RHI::CopyImageDescriptor& command)
     {
-        auto srcImage = m_context->m_imageOwner.Get(command.sourceImage);
-        auto dstImage = m_context->m_imageOwner.Get(command.destinationImage);
+        auto srcImage = m_context->m_imageOwner.Get(command.srcImage);
+        auto dstImage = m_context->m_imageOwner.Get(command.dstImage);
 
         auto copyInfo = VkImageCopy{};
-        copyInfo.srcSubresource = ConvertSubresourceLayer(command.sourceSubresource);
-        copyInfo.srcOffset = ConvertOffset3D(command.sourceOffset);
-        copyInfo.dstSubresource = ConvertSubresourceLayer(command.destinationSubresource);
-        copyInfo.dstOffset = ConvertOffset3D(command.destinationOffset);
-        copyInfo.extent = ConvertExtent3D(command.sourceSize);
+        copyInfo.srcSubresource = ConvertSubresourceLayer(command.srcSubresource);
+        copyInfo.srcOffset = ConvertOffset3D(command.srcOffset);
+        copyInfo.dstSubresource = ConvertSubresourceLayer(command.dstSubresource);
+        copyInfo.dstOffset = ConvertOffset3D(command.dstOffset);
+        copyInfo.extent = ConvertExtent3D(command.srcSize);
         vkCmdCopyImage(m_commandBuffer, srcImage->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyInfo);
     }
 
@@ -409,16 +409,16 @@ namespace Vulkan
 
     void CommandList::Submit(const RHI::CopyImageToBufferDescriptor& command)
     {
-        auto srcImage = m_context->m_imageOwner.Get(command.sourceImage);
-        auto dstBuffer = m_context->m_bufferOwner.Get(command.destinationBuffer);
+        auto srcImage = m_context->m_imageOwner.Get(command.srcImage);
+        auto dstBuffer = m_context->m_bufferOwner.Get(command.dstBuffer);
 
         auto copyInfo = VkBufferImageCopy{};
-        copyInfo.bufferOffset = command.destinationOffset;
-        copyInfo.bufferRowLength = command.destinationBytesPerRow;
+        copyInfo.bufferOffset = command.dstOffset;
+        copyInfo.bufferRowLength = command.dstBytesPerRow;
         // copyInfo.bufferImageHeight;
-        copyInfo.imageSubresource = ConvertSubresourceLayer(command.sourceSubresource);
-        copyInfo.imageOffset = ConvertOffset3D(command.sourceOffset);
-        copyInfo.imageExtent = ConvertExtent3D(command.sourceSize);
+        copyInfo.imageSubresource = ConvertSubresourceLayer(command.srcSubresource);
+        copyInfo.imageOffset = ConvertOffset3D(command.srcOffset);
+        copyInfo.imageExtent = ConvertExtent3D(command.srcSize);
         vkCmdCopyImageToBuffer(m_commandBuffer, srcImage->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstBuffer->handle, 1, &copyInfo);
     }
 
