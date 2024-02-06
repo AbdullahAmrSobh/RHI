@@ -1,0 +1,15 @@
+name: Github Format Action
+on: [push]
+jobs:
+    Format-Linux:
+        runs-on: ubuntu-latest
+        steps:
+        - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
+        - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
+        - run: clang-format -i ./RHI/Include/RHI/**.hpp
+        - run: clang-format -i ./RHI/Include/RHI/Common/**.hpp
+        - run: clang-format -i ./RHI/Source/RHI/**.cpp
+        - run: clang-format -i ./RHI/Source/RHI/**.hpp
+        - run: clang-format -i ./Vulkan/Include/RHI-Vulkan/**.hpp
+        - run: clang-format -i ./Vulkan/Source/**.hpp
+        - run: clang-format -i ./Vulkan/Source/**.cpp
