@@ -6,6 +6,7 @@ set(SOURCE_FILES
 
 set(SHADER_FILES_LIST
     ${CMAKE_CURRENT_SOURCE_DIR}/Resources/Shaders/Triangle.hlsl
+    ${CMAKE_CURRENT_SOURCE_DIR}/Resources/Shaders/ImGui.hlsl
 )
 
 include(${CMAKE_SOURCE_DIR}/CMake/AddTarget.cmake)

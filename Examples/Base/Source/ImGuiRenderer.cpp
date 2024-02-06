@@ -148,6 +148,7 @@ void ImGuiRenderer::Init(RHI::Context* context, RHI::FrameScheduler* scheduler, 
         createInfo.topologyMode = RHI::PipelineTopologyMode::Triangles;
         createInfo.depthStencilState.depthTestEnable = false;
         createInfo.depthStencilState.depthWriteEnable = true;
+        createInfo.rasterizationState.cullMode = RHI::PipelineRasterizerStateCullMode::None;
         m_pipeline = m_context->CreateGraphicsPipeline(createInfo);
     }
 }
@@ -221,26 +222,32 @@ void ImGuiRenderer::RenderDrawData(ImDrawData* drawData, RHI::CommandList& comma
     }
 }
 
+// Same as IM_MEMALIGN(). 'alignment' must be a power of two.
+static inline size_t AlignBufferSize(size_t size, size_t alignment)
+{
+    return (size + alignment - 1) & ~(alignment - 1);
+}
+
 void ImGuiRenderer::UpdateBuffers(ImDrawData* drawData)
 {
-    if (!m_vertexBuffer || m_bufferPool->GetSize(m_vertexBuffer) < uint32_t(drawData->TotalVtxCount))
+    if (!m_vertexBuffer || (m_vertexBuffer && m_bufferPool->GetSize(m_vertexBuffer) < uint32_t(drawData->TotalVtxCount)) )
     {
         if (m_vertexBuffer)
             m_bufferPool->FreeBuffer(m_vertexBuffer);
 
         RHI::BufferCreateInfo createInfo{};
-        createInfo.byteSize = drawData->TotalVtxCount + 5000;
+        createInfo.byteSize = AlignBufferSize((drawData->TotalVtxCount + 1)  * sizeof(ImDrawVert), 256);
         createInfo.usageFlags = RHI::BufferUsage::Vertex;
         m_vertexBuffer = m_bufferPool->Allocate(createInfo).GetValue();
     }
 
-    if (!m_indexBuffer || m_bufferPool->GetSize(m_indexBuffer) < uint32_t(drawData->TotalIdxCount))
+    if (!m_indexBuffer || (m_indexBuffer && m_bufferPool->GetSize(m_indexBuffer) < uint32_t(drawData->TotalIdxCount)))
     {
         if (m_indexBuffer)
             m_bufferPool->FreeBuffer(m_indexBuffer);
 
         RHI::BufferCreateInfo createInfo{};
-        createInfo.byteSize = drawData->TotalIdxCount + 5000;
+        createInfo.byteSize = AlignBufferSize((drawData->TotalIdxCount + 1) * sizeof(ImDrawIdx), 256);
         createInfo.usageFlags = RHI::BufferUsage::Index;
         m_indexBuffer = m_bufferPool->Allocate(createInfo).GetValue();
     }

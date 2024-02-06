@@ -156,7 +156,7 @@ void ApplicationBase::Init()
 
     OnInit();
 
-    auto imguiShaderBlob = ReadBinaryFile("./Resources/Shaders/imgui.spirv");
+    auto imguiShaderBlob = ReadBinaryFile("./Resources/Shaders/ImGui.spv");
     m_imguiRenderer->Init(m_context.get(),
                           m_frameScheduler.get(),
                           m_commandListAllocator.get(),

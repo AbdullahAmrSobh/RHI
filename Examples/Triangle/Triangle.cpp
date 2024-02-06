@@ -262,9 +262,8 @@ public:
 
         ImGui::NewFrame();
 
-        ImGui::Begin("Hello, ImGui");
-        ImGui::Text("Hello world");
-        ImGui::End();
+        ImGui::ShowDemoWindow();
+
 
         ImGui::Render();
 
