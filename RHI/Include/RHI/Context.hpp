@@ -152,13 +152,13 @@ namespace RHI
         virtual void                                  DestroySampler(Handle<Sampler> sampler)                                       = 0;
 
         /// @brief Creates a new ImageView.
-        virtual Handle<ImageView>                     CreateImageView(Handle<Image> handle, const ImageViewCreateInfo& useInfo)     = 0;
+        virtual Handle<ImageView>                     CreateImageView(const ImageViewCreateInfo& useInfo)     = 0;
 
         /// @brief Frees the given compute pipeline object.
         virtual void                                  DestroyImageView(Handle<ImageView> view)                                      = 0;
 
         /// @brief Creates a new BufferView.
-        virtual Handle<BufferView>                    CreateBufferView(Handle<Buffer> handle, const BufferViewCreateInfo& useInfo)  = 0;
+        virtual Handle<BufferView>                    CreateBufferView(const BufferViewCreateInfo& useInfo)  = 0;
 
         /// @brief Frees the given sampler object.
         virtual void                                  DestroyBufferView(Handle<BufferView> view)                                    = 0;

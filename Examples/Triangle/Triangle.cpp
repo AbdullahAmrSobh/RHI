@@ -179,7 +179,8 @@ public:
             createInfo.arrayCount = 1;
             m_image = m_imagePool->Allocate(createInfo).GetValue();
             RHI::ImageViewCreateInfo viewInfo{};
-            m_imageView = m_context->CreateImageView(m_image, viewInfo);
+            viewInfo.image = m_image;
+            m_imageView = m_context->CreateImageView(viewInfo);
         }
 
         // upload image data to the gpu

@@ -31,23 +31,12 @@ namespace RHI::Vulkan
 
     struct IImage : Image
     {
-        // allocation backing this resource.
-        Allocation allocation;
-
-        // Pointer to the pool this resource is created from.
-        IImagePool* pool;
-
-        // Handle to valid VkImage resource (Might not be backed by an allocation).
-        VkImage handle;
-
-        // Image pixel Format
-        VkFormat format;
-
-        // Image dimensions
-        VkImageType imageType;
-
-        // pointer to swapchain (if this image is backed by swapchain).
-        ISwapchain* swapchain;
+        Allocation allocation; // allocation backing this resource.
+        IImagePool* pool; // Pointer to the pool this resource is created from.
+        VkImage handle; // Handle to valid VkImage resource (Might not be backed by an allocation).
+        VkFormat format; // Image pixel Format
+        VkImageType imageType; // Image dimensions
+        ISwapchain* swapchain; // pointer to swapchain (if this image is backed by swapchain).
 
         ResultCode Init(IContext* context, const VmaAllocationCreateInfo allocationInfo, const ImageCreateInfo& createInfo, IImagePool* parentPool, bool isTransientResource);
         void Shutdown(IContext* context);
@@ -56,16 +45,11 @@ namespace RHI::Vulkan
 
     struct IBuffer : Buffer
     {
-        // allocation backing this resource.
-        Allocation allocation;
-
-        // Pointer to the pool this resource is created from.
-        IBufferPool* pool;
-
-        // Handle to valid VkImage resource (Might not be backed by an allocation).
-        VkBuffer handle;
-
+        Allocation allocation; // allocation backing this resource.
+        IBufferPool* pool; // Pointer to the pool this resource is created from.
+        VkBuffer handle; // Handle to valid VkImage resource (Might not be backed by an allocation).
         ResultCode Init(IContext* context, const VmaAllocationCreateInfo allocationInfo, const BufferCreateInfo& createInfo, IBufferPool* parentPool, bool isTransientResource);
+
         void Shutdown(IContext* context);
         VkMemoryRequirements GetMemoryRequirements(VkDevice device) const;
     };
@@ -74,7 +58,7 @@ namespace RHI::Vulkan
     {
         VkImageView handle;
 
-        ResultCode Init(IContext* context, Handle<IImage> imageHandle, const ImageViewCreateInfo& useInfo);
+        ResultCode Init(IContext* context, const ImageViewCreateInfo& useInfo);
         void Shutdown(IContext* context);
     };
 
@@ -82,7 +66,7 @@ namespace RHI::Vulkan
     {
         VkBufferView handle;
 
-        ResultCode Init(IContext* context, Handle<IBuffer> bufferHandle, const BufferViewCreateInfo& useInfo);
+        ResultCode Init(IContext* context, const BufferViewCreateInfo& useInfo);
         void Shutdown(IContext* context);
     };
 

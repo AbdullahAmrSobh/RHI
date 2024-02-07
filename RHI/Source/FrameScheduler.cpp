@@ -290,41 +290,23 @@ namespace RHI
             }
         }
 
-        struct ImageViewKey
-        {
-            Handle<Image> handle;
-            ImageViewCreateInfo createInfo;
-        };
-
-        struct BufferViewKey
-        {
-            Handle<Image> handle;
-            BufferViewCreateInfo createInfo;
-        };
-
         std::unordered_map<size_t, Handle<ImageView>> imageViewsLut;
         std::unordered_map<size_t, Handle<ImageView>> bufferViewsLut;
 
-        auto findOrCreateImageView = [&](Handle<Image> handle, const ImageViewCreateInfo& createInfo)
+        auto findOrCreateImageView = [&](const ImageViewCreateInfo& createInfo)
         {
-            ImageViewKey lookupKey{};
-            lookupKey.createInfo = createInfo;
-            lookupKey.handle = handle;
-            auto key = HashAny(lookupKey);
+            auto key = HashAny(createInfo);
             if (auto it = imageViewsLut.find(key); it != imageViewsLut.end())
                 return it->second;
-            return imageViewsLut[key] = m_context->CreateImageView(handle, createInfo);
+            return imageViewsLut[key] = m_context->CreateImageView(createInfo);
         };
 
-        auto findOrCreateBufferView = [&](Handle<Buffer> handle, const BufferViewCreateInfo& createInfo)
+        auto findOrCreateBufferView = [&](const BufferViewCreateInfo& createInfo)
         {
-            BufferViewKey lookupKey{};
-            lookupKey.createInfo = createInfo;
-            lookupKey.handle = handle;
-            auto key = HashAny(lookupKey);
+            auto key = HashAny(createInfo);
             if (auto it = bufferViewsLut.find(key); it != bufferViewsLut.end())
                 return it->second;
-            return bufferViewsLut[key] = m_context->CreateBufferView(handle, createInfo);
+            return bufferViewsLut[key] = m_context->CreateBufferView(createInfo);
         };
 
         for (auto pass : m_passList)
@@ -338,7 +320,8 @@ namespace RHI
                         continue;
 
                     auto image = passAttachment->attachment->GetImage();
-                    passAttachment->view = findOrCreateImageView(image, passAttachment->viewInfo);
+                    passAttachment->viewInfo.image = image;
+                    passAttachment->view = findOrCreateImageView(passAttachment->viewInfo);
                     continue;
                 }
 
@@ -347,7 +330,8 @@ namespace RHI
                 {
                     if (swapchainPassAttachment->views[i])
                         continue;
-                    swapchainPassAttachment->views[i] = findOrCreateImageView(swapchain->GetImage(i), passAttachment->viewInfo);
+                    passAttachment->viewInfo.image = swapchain->GetImage(i);
+                    swapchainPassAttachment->views[i] = findOrCreateImageView(passAttachment->viewInfo);
                 }
 
                 swapchainPassAttachment->view = swapchainPassAttachment->views[swapchain->GetCurrentImageIndex()];
@@ -358,7 +342,8 @@ namespace RHI
                 auto buffer = passAttachment->attachment->GetBuffer();
                 if (passAttachment->view)
                     continue;
-                passAttachment->view = findOrCreateBufferView(buffer, passAttachment->viewInfo);
+                passAttachment->viewInfo.buffer = buffer;
+                passAttachment->view = findOrCreateBufferView(passAttachment->viewInfo);
             }
         }
     }

@@ -462,10 +462,10 @@ namespace RHI::Vulkan
         m_samplerOwner.Remove(handle);
     }
 
-    Handle<ImageView> IContext::CreateImageView(Handle<Image> imageHandle, const ImageViewCreateInfo& useInfo)
+    Handle<ImageView> IContext::CreateImageView(const ImageViewCreateInfo& useInfo)
     {
         auto [handle, imageView] = m_imageViewOwner.InsertZerod();
-        auto result = imageView.Init(this, imageHandle, useInfo);
+        auto result = imageView.Init(this, useInfo);
         RHI_ASSERT(result == ResultCode::Success);
         return handle;
     }
@@ -477,10 +477,10 @@ namespace RHI::Vulkan
         m_imageViewOwner.Remove(handle);
     }
 
-    Handle<BufferView> IContext::CreateBufferView(Handle<Buffer> bufferHandle, const BufferViewCreateInfo& useInfo)
+    Handle<BufferView> IContext::CreateBufferView(const BufferViewCreateInfo& useInfo)
     {
         auto [handle, bufferView] = m_bufferViewOwner.InsertZerod();
-        auto result = bufferView.Init(this, bufferHandle, useInfo);
+        auto result = bufferView.Init(this, useInfo);
         RHI_ASSERT(result == ResultCode::Success);
         return handle;
     }

@@ -339,9 +339,10 @@ void ImGuiRenderer::Init(RHI::Context* context, RHI::FrameScheduler* scheduler, 
         imageInfo.arrayCount = 1;
         m_image = m_imagePool->Allocate(imageInfo).GetValue();
 
-        RHI::ImageViewCreateInfo useInfo{};
-        useInfo.subresource.imageAspects = RHI::ImageAspect::Color;
-        m_imageView = m_context->CreateImageView(m_image, useInfo);
+        RHI::ImageViewCreateInfo viewInfo{};
+        viewInfo.image = m_image;
+        viewInfo.subresource.imageAspects = RHI::ImageAspect::Color;
+        m_imageView = m_context->CreateImageView(viewInfo);
 
         RHI::BufferCreateInfo stagingBufferCreateInfo{};
         stagingBufferCreateInfo.usageFlags = RHI::BufferUsage::CopySrc;

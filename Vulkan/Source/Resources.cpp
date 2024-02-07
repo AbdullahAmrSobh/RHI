@@ -130,9 +130,9 @@ namespace RHI::Vulkan
     /// ImageView
     ///////////////////////////////////////////////////////////////////////////
 
-    ResultCode IImageView::Init(IContext* context, Handle<IImage> imageHandle, const ImageViewCreateInfo& createInfo)
+    ResultCode IImageView::Init(IContext* context, const ImageViewCreateInfo& createInfo)
     {
-        auto image = context->m_imageOwner.Get(imageHandle);
+        auto image = context->m_imageOwner.Get(createInfo.image);
         RHI_ASSERT(image);
 
         VkImageViewCreateInfo vkCreateInfo{};
@@ -169,9 +169,9 @@ namespace RHI::Vulkan
     /// BufferView
     ///////////////////////////////////////////////////////////////////////////
 
-    ResultCode IBufferView::Init(IContext* context, Handle<IBuffer> bufferHandle, const BufferViewCreateInfo& createInfo)
+    ResultCode IBufferView::Init(IContext* context, const BufferViewCreateInfo& createInfo)
     {
-        auto buffer = context->m_bufferOwner.Get(bufferHandle);
+        auto buffer = context->m_bufferOwner.Get(createInfo.buffer);
         RHI_ASSERT(buffer);
 
         VkBufferViewCreateInfo vkCreateInfo{};

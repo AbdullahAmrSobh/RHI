@@ -62,10 +62,10 @@ namespace RHI::Vulkan
         Handle<Sampler> CreateSampler(const SamplerCreateInfo& createInfo) override;
         void DestroySampler(Handle<Sampler> sampler) override;
 
-        Handle<ImageView> CreateImageView(Handle<Image> handle, const ImageViewCreateInfo& useInfo) override;
+        Handle<ImageView> CreateImageView(const ImageViewCreateInfo& useInfo) override;
         void DestroyImageView(Handle<ImageView> view) override;
 
-        Handle<BufferView> CreateBufferView(Handle<Buffer> handle, const BufferViewCreateInfo& useInfo) override;
+        Handle<BufferView> CreateBufferView(const BufferViewCreateInfo& useInfo) override;
         void DestroyBufferView(Handle<BufferView> view) override;
 
         uint32_t GetQueueFamilyIndex(QueueType queueType) const;

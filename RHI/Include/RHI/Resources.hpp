@@ -572,6 +572,7 @@ namespace RHI
             subresource.imageAspects = aspect;
         }
 
+        Handle<Image>         image;
         ComponentMapping      components;
         ImageSubresourceRange subresource;
 
@@ -583,6 +584,7 @@ namespace RHI
     /// @brief Structure specifying the parameters of an buffer attachment.
     struct BufferViewCreateInfo
     {
+        Handle<Image> buffer;
         Format      format;
         size_t      byteOffset;
         size_t      byteSize;
