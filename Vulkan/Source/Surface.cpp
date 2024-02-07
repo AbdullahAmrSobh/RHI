@@ -1,5 +1,3 @@
-#include <algorithm>
-
 #ifdef RHI_PLATFORM_WINDOWS
     #define VK_USE_PLATFORM_WIN32_KHR
 #else
@@ -9,7 +7,6 @@
 #include "Resources.hpp"
 #include "Context.hpp"
 #include "Common.hpp"
-#include "Format.inl"
 
 // Platform specifc surface creation are contained witihn this file,
 // to avoid polluting the global namespace with OS specific symbols

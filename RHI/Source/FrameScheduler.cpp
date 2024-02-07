@@ -3,6 +3,29 @@
 #include "RHI/Context.hpp"
 #include "RHI/Common/Hash.hpp"
 
+namespace std
+{
+    template<>
+    class hash<RHI::ImageViewCreateInfo>
+    {
+    public:
+        inline size_t operator()(const RHI::ImageViewCreateInfo& createInfo) const
+        {
+            return RHI::HashAny(createInfo);
+        }
+    };
+
+    template<>
+    class hash<RHI::BufferViewCreateInfo>
+    {
+    public:
+        inline size_t operator()(const RHI::BufferViewCreateInfo& createInfo) const
+        {
+            return RHI::HashAny(createInfo);
+        }
+    };
+} // namespace std
+
 namespace RHI
 {
     bool IsRenderTarget(Flags<AttachmentUsage> usage)
@@ -218,7 +241,7 @@ namespace RHI
         m_swapchainImage = m_attachmentsRegistry->FindImage(m_attachmentsRegistry->m_swapchainAttachments.front());
 
         // prepare pass attachments
-        for (auto _passAttachment = m_swapchainImage->firstUse; 
+        for (auto _passAttachment = m_swapchainImage->firstUse;
              _passAttachment != nullptr;
              _passAttachment = _passAttachment->next)
         {
@@ -290,23 +313,21 @@ namespace RHI
             }
         }
 
-        std::unordered_map<size_t, Handle<ImageView>> imageViewsLut;
-        std::unordered_map<size_t, Handle<ImageView>> bufferViewsLut;
+        std::unordered_map<ImageViewCreateInfo, Handle<ImageView>> imageViewsLut;
+        std::unordered_map<BufferViewCreateInfo, Handle<ImageView>> bufferViewsLut;
 
         auto findOrCreateImageView = [&](const ImageViewCreateInfo& createInfo)
         {
-            auto key = HashAny(createInfo);
-            if (auto it = imageViewsLut.find(key); it != imageViewsLut.end())
+            if (auto it = imageViewsLut.find(createInfo); it != imageViewsLut.end())
                 return it->second;
-            return imageViewsLut[key] = m_context->CreateImageView(createInfo);
+            return imageViewsLut[createInfo] = m_context->CreateImageView(createInfo);
         };
 
         auto findOrCreateBufferView = [&](const BufferViewCreateInfo& createInfo)
         {
-            auto key = HashAny(createInfo);
-            if (auto it = bufferViewsLut.find(key); it != bufferViewsLut.end())
+            if (auto it = bufferViewsLut.find(createInfo); it != bufferViewsLut.end())
                 return it->second;
-            return bufferViewsLut[key] = m_context->CreateBufferView(createInfo);
+            return bufferViewsLut[createInfo] = m_context->CreateBufferView(createInfo);
         };
 
         for (auto pass : m_passList)
