@@ -168,6 +168,9 @@ void ApplicationBase::Init()
     io.DisplaySize.x = float(m_windowWidth);
     io.DisplaySize.y = float(m_windowHeight);
 
+    m_imguiRenderer->m_window = (GLFWwindow*)m_window;
+    glfwSetWindowUserPointer((GLFWwindow*)m_window, m_imguiRenderer.get());
+    m_imguiRenderer->InstallGlfwCallbacks((GLFWwindow*)m_window);
 }
 
 void ApplicationBase::Shutdown()

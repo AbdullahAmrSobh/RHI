@@ -4,6 +4,8 @@
 
 #include <RHI/RHI.hpp>
 
+#include <GLFW/glfw3.h>
+
 class IMGUI_IMPL_API ImGuiRenderer
 {
 public:
@@ -12,6 +14,8 @@ public:
 
     void NewFrame();
     void RenderDrawData(ImDrawData* draw_data, RHI::CommandList& commandList);
+
+    void InstallGlfwCallbacks(GLFWwindow* window);
 
 private:
     void InitGraphicsPipeline();
@@ -38,4 +42,22 @@ public:
     RHI::Handle<RHI::Buffer> m_vertexBuffer;
     RHI::Handle<RHI::Buffer> m_indexBuffer;
     RHI::Handle<RHI::Buffer> m_uniformBuffer;
+
+    GLFWwindow*             m_window;
+    double                  m_time;
+    GLFWwindow*             m_mouseWindow;
+    GLFWcursor*             m_mouseCursors[ImGuiMouseCursor_COUNT];
+    ImVec2                  m_lastValidMousePos;
+    bool                    m_installedCallbacks;
+    bool                    m_callbacksChainForAllWindows;
+    // Chain GLFW callbacks: our callbacks will call the user's previously installed callbacks, if any.
+    GLFWwindowfocusfun      m_prevUserCallbackWindowFocus;
+    GLFWcursorposfun        m_prevUserCallbackCursorPos;
+    GLFWcursorenterfun      m_prevUserCallbackCursorEnter;
+    GLFWmousebuttonfun      m_prevUserCallbackMousebutton;
+    GLFWscrollfun           m_prevUserCallbackScroll;
+    GLFWkeyfun              m_prevUserCallbackKey;
+    GLFWcharfun             m_prevUserCallbackChar;
+    GLFWmonitorfun          m_prevUserCallbackMonitor;
+    
 };
