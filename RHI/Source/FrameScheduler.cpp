@@ -184,13 +184,13 @@ namespace RHI
         : m_frameCount(0)
         , m_currentFrameIndex(0)
         , m_frameNumber(0)
-        , m_frameReadyFence()
         , m_context(context)
         , m_passList()
         , m_attachmentsRegistry(std::make_unique<AttachmentsRegistry>())
         , m_transientResourceAllocator(nullptr)
         , m_frameSize(0, 0)
         , m_swapchainImage(nullptr)
+        , m_frameReadyFence()
     {
     }
 
