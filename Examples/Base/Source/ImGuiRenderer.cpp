@@ -150,6 +150,16 @@ void ImGuiRenderer::Init(RHI::Context* context, RHI::FrameScheduler* scheduler, 
         createInfo.depthStencilState.depthTestEnable = false;
         createInfo.depthStencilState.depthWriteEnable = true;
         createInfo.rasterizationState.cullMode = RHI::PipelineRasterizerStateCullMode::None;
+        createInfo.colorBlendState.blendStates = {{
+            true,
+            RHI::BlendEquation::Add,
+            RHI::BlendFactor::SrcAlpha,
+            RHI::BlendFactor::OneMinusSrcAlpha,
+            RHI::BlendEquation::Add,
+            RHI::BlendFactor::One,
+            RHI::BlendFactor::OneMinusSrcAlpha,
+            RHI::ColorWriteMask::All,
+        }};
         m_pipeline = m_context->CreateGraphicsPipeline(createInfo);
     }
 }
