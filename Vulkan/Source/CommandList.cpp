@@ -97,7 +97,7 @@ namespace Vulkan
     /// CommandPool
     //////////////////////////////////////////////////////////////////////////////////////////
 
-    VkResult CommandPool::Init(Context* context, uint32_t queueFamilyIndex)
+    VkResult CommandPool::Init(IContext* context, uint32_t queueFamilyIndex)
     {
         auto createInfo = VkCommandPoolCreateInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -107,12 +107,12 @@ namespace Vulkan
         return vkCreateCommandPool(context->m_device, &createInfo, nullptr, &m_commandPool);
     }
 
-    void CommandPool::Shutdown(Context* context)
+    void CommandPool::Shutdown(IContext* context)
     {
         vkDestroyCommandPool(context->m_device, m_commandPool, nullptr);
     }
 
-    void CommandPool::Reset(Context* context)
+    void CommandPool::Reset(IContext* context)
     {
         vkResetCommandPool(context->m_device, m_commandPool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
 
@@ -123,7 +123,7 @@ namespace Vulkan
         }
     }
 
-    CommandList* CommandPool::Allocate(Context* context)
+    ICommandList* CommandPool::Allocate(IContext* context)
     {
         if (!m_availableCommandLists.empty())
         {
@@ -143,10 +143,10 @@ namespace Vulkan
         auto result = vkAllocateCommandBuffers(context->m_device, &allocateInfo, &commandBuffer);
         VULKAN_ASSERT_SUCCESS(result);
 
-        return m_commandLists.emplace_back(std::make_unique<CommandList>(context, commandBuffer)).get();
+        return m_commandLists.emplace_back(std::make_unique<ICommandList>(context, commandBuffer)).get();
     }
 
-    void CommandPool::Release(CommandList* commandList)
+    void CommandPool::Release(ICommandList* commandList)
     {
         m_availableCommandLists.push_back(commandList);
     }
@@ -155,7 +155,7 @@ namespace Vulkan
     /// CommandListAllocator
     //////////////////////////////////////////////////////////////////////////////////////////
 
-    CommandListAllocator::CommandListAllocator(Context* context, uint32_t maxFrameBufferingCount)
+    CommandListAllocator::CommandListAllocator(IContext* context, uint32_t maxFrameBufferingCount)
         : m_context(context)
         , m_maxFrameBufferingCount(maxFrameBufferingCount)
         , m_commandPools()
@@ -200,14 +200,14 @@ namespace Vulkan
     /// CommandList
     //////////////////////////////////////////////////////////////////////////////////////////
 
-    CommandList::CommandList(Context* context, VkCommandBuffer commandBuffer)
+    ICommandList::ICommandList(IContext* context, VkCommandBuffer commandBuffer)
         : m_context(context)
         , m_pass(nullptr)
         , m_commandBuffer(commandBuffer)
     {
     }
 
-    void CommandList::Begin()
+    void ICommandList::Begin()
     {
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -217,9 +217,9 @@ namespace Vulkan
         vkBeginCommandBuffer(m_commandBuffer, &beginInfo);
     }
 
-    void CommandList::Begin(RHI::Pass& passBase)
+    void ICommandList::Begin(RHI::Pass& passBase)
     {
-        auto& pass = static_cast<Pass&>(passBase);
+        auto& pass = static_cast<IPass&>(passBase);
 
         m_pass = &pass;
         m_pass->m_commandLists.push_back(this);
@@ -234,7 +234,7 @@ namespace Vulkan
         RenderingBegin(pass);
     }
 
-    void CommandList::End()
+    void ICommandList::End()
     {
         if (m_pass)
         {
@@ -244,7 +244,7 @@ namespace Vulkan
         vkEndCommandBuffer(m_commandBuffer);
     }
 
-    void CommandList::SetViewport(const RHI::Viewport& viewport)
+    void ICommandList::SetViewport(const RHI::Viewport& viewport)
     {
         VkViewport vkViewport{};
         vkViewport.x = viewport.offsetX;
@@ -257,7 +257,7 @@ namespace Vulkan
         vkCmdSetViewport(m_commandBuffer, 0, 1, &vkViewport);
     }
 
-    void CommandList::SetSicssor(const RHI::Scissor& scissor)
+    void ICommandList::SetSicssor(const RHI::Scissor& scissor)
     {
         VkRect2D vkScissor{};
         vkScissor.extent.width = scissor.width;
@@ -267,7 +267,7 @@ namespace Vulkan
         vkCmdSetScissor(m_commandBuffer, 0, 1, &vkScissor);
     }
 
-    void CommandList::Submit(const RHI::CommandDraw& command)
+    void ICommandList::Submit(const RHI::CommandDraw& command)
     {
         auto pipeline = m_context->m_graphicsPipelineOwner.Get(command.pipelineState);
 
@@ -333,7 +333,7 @@ namespace Vulkan
         }
     }
 
-    void CommandList::Submit(const RHI::CopyBufferDescriptor& command)
+    void ICommandList::Submit(const RHI::CopyBufferDescriptor& command)
     {
         auto srcBuffer = m_context->m_bufferOwner.Get(command.srcBuffer);
         auto destinationBuffer = m_context->m_bufferOwner.Get(command.dstBuffer);
@@ -345,7 +345,7 @@ namespace Vulkan
         vkCmdCopyBuffer(m_commandBuffer, srcBuffer->handle, destinationBuffer->handle, 1, &copyInfo);
     }
 
-    void CommandList::Submit(const RHI::CopyImageDescriptor& command)
+    void ICommandList::Submit(const RHI::CopyImageDescriptor& command)
     {
         auto srcImage = m_context->m_imageOwner.Get(command.srcImage);
         auto dstImage = m_context->m_imageOwner.Get(command.dstImage);
@@ -359,7 +359,7 @@ namespace Vulkan
         vkCmdCopyImage(m_commandBuffer, srcImage->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyInfo);
     }
 
-    void CommandList::Submit(const RHI::CopyBufferToImageDescriptor& command)
+    void ICommandList::Submit(const RHI::CopyBufferToImageDescriptor& command)
     {
         auto srcBuffer = m_context->m_bufferOwner.Get(command.srcBuffer);
         auto dstImage = m_context->m_imageOwner.Get(command.dstImage);
@@ -407,7 +407,7 @@ namespace Vulkan
         vkCmdPipelineBarrier2(m_commandBuffer, &barrier);
     }
 
-    void CommandList::Submit(const RHI::CopyImageToBufferDescriptor& command)
+    void ICommandList::Submit(const RHI::CopyImageToBufferDescriptor& command)
     {
         auto srcImage = m_context->m_imageOwner.Get(command.srcImage);
         auto dstBuffer = m_context->m_bufferOwner.Get(command.dstBuffer);
@@ -422,7 +422,7 @@ namespace Vulkan
         vkCmdCopyImageToBuffer(m_commandBuffer, srcImage->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstBuffer->handle, 1, &copyInfo);
     }
 
-    void CommandList::Submit(const RHI::CommandCompute& command)
+    void ICommandList::Submit(const RHI::CommandCompute& command)
     {
         auto pipeline = m_context->m_computePipelineOwner.Get(command.pipelineState);
 
@@ -443,7 +443,7 @@ namespace Vulkan
             command.parameters.countZ);
     }
 
-    VkRenderingAttachmentInfo CommandList::GetAttachmentInfo(const RHI::ImagePassAttachment& passAttachment) const
+    VkRenderingAttachmentInfo ICommandList::GetAttachmentInfo(const RHI::ImagePassAttachment& passAttachment) const
     {
         auto imageView = m_context->m_imageViewOwner.Get(passAttachment.view);
         RHI_ASSERT(imageView != nullptr);
@@ -476,7 +476,7 @@ namespace Vulkan
         return attachmentInfo;
     }
 
-    void CommandList::RenderingBegin(Pass& pass)
+    void ICommandList::RenderingBegin(IPass& pass)
     {
         RHI::ImageSize2D renderArea = pass.m_size;
         std::vector<RHI::ImagePassAttachment*> passAttachments;
@@ -527,7 +527,7 @@ namespace Vulkan
         vkCmdBeginRendering(m_commandBuffer, &renderingInfo);
     }
 
-    void CommandList::RenderingEnd(Pass& pass)
+    void ICommandList::RenderingEnd(IPass& pass)
     {
         vkCmdEndRendering(m_commandBuffer);
         std::vector<RHI::ImagePassAttachment*> passAttachments;
@@ -544,7 +544,7 @@ namespace Vulkan
         TransitionPassAttachments(BarrierType::PostPass, passAttachments);
     }
 
-    void CommandList::PushDebugMarker(const char* name)
+    void ICommandList::PushDebugMarker(const char* name)
     {
         (void)name;
 #if RHI_DEBUG
@@ -560,7 +560,7 @@ namespace Vulkan
 #endif
     }
 
-    void CommandList::PopDebugMarker()
+    void ICommandList::PopDebugMarker()
     {
 #if RHI_DEUG
         if (m_context->m_vkCmdDebugMarkerEndEXT)
@@ -570,7 +570,7 @@ namespace Vulkan
 #endif
     }
 
-    void CommandList::BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<RHI::Handle<RHI::BindGroup>> bindGroups)
+    void ICommandList::BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<RHI::Handle<RHI::BindGroup>> bindGroups)
     {
         std::vector<VkDescriptorSet> descriptorSets;
 
@@ -583,7 +583,7 @@ namespace Vulkan
         vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, uint32_t(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
     }
 
-    void CommandList::TransitionPassAttachments(BarrierType barrierType, TL::Span<RHI::ImagePassAttachment*> passAttachments) const
+    void ICommandList::TransitionPassAttachments(BarrierType barrierType, TL::Span<RHI::ImagePassAttachment*> passAttachments) const
     {
         std::vector<VkImageMemoryBarrier2> barriers;
 
@@ -666,7 +666,7 @@ namespace Vulkan
         vkCmdPipelineBarrier2(m_commandBuffer, &dependencyInfo);
     }
 
-    void CommandList::TransitionPassAttachments(BarrierType barrierType, TL::Span<RHI::BufferPassAttachment*> passAttachments) const
+    void ICommandList::TransitionPassAttachments(BarrierType barrierType, TL::Span<RHI::BufferPassAttachment*> passAttachments) const
     {
         (void)barrierType;
         std::vector<VkBufferMemoryBarrier2> barriers;

@@ -12,17 +12,17 @@ namespace Vulkan
     /// Pass
     ///////////////////////////////////////////////////////////////////////////
 
-    Pass::Pass(Context* context, const char* name, RHI::QueueType queueType)
+    IPass::IPass(IContext* context, const char* name, RHI::QueueType queueType)
         : RHI::Pass(name, queueType)
         , m_context(context)
     {
     }
 
-    Pass::~Pass()
+    IPass::~IPass()
     {
     }
 
-    VkResult Pass::Init()
+    VkResult IPass::Init()
     {
         return VK_SUCCESS;
     }
@@ -31,18 +31,18 @@ namespace Vulkan
     /// FrameScheduler
     ///////////////////////////////////////////////////////////////////////////
 
-    FrameScheduler::FrameScheduler(Context* context)
+    IFrameScheduler::IFrameScheduler(IContext* context)
         : RHI::FrameScheduler(context)
     {
     }
 
-    FrameScheduler::~FrameScheduler()
+    IFrameScheduler::~IFrameScheduler()
     {
     }
 
-    VkResult FrameScheduler::Init()
+    VkResult IFrameScheduler::Init()
     {
-        m_transientResourceAllocator = TransientResourceAllocator::Create();
+        m_transientResourceAllocator = ITransientResourceAllocator::Create();
 
         for (uint32_t i = 0; i < 2; i++)
         {
@@ -52,23 +52,23 @@ namespace Vulkan
         return VK_SUCCESS;
     }
 
-    void FrameScheduler::DeviceWaitIdle()
+    void IFrameScheduler::DeviceWaitIdle()
     {
-        auto context = (Context*)m_context;
+        auto context = (IContext*)m_context;
         auto result = vkDeviceWaitIdle(context->m_device);
         VULKAN_ASSERT_SUCCESS(result);
     }
 
-    void FrameScheduler::QueuePassSubmit(RHI::Pass* _pass, RHI::Fence* _fence)
+    void IFrameScheduler::QueuePassSubmit(RHI::Pass* _pass, RHI::Fence* _fence)
     {
-        auto context = (Context*)m_context;
-        auto pass = (Pass*)_pass;
+        auto context = (IContext*)m_context;
+        auto pass = (IPass*)_pass;
         auto queue = context->GetQueue(pass->m_queueType);
 
         std::vector<VkCommandBufferSubmitInfo> commandBuffers{};
         for (auto _commandList : pass->m_commandLists)
         {
-            auto commandList = (CommandList*)_commandList;
+            auto commandList = (ICommandList*)_commandList;
             VkCommandBufferSubmitInfo submitInfo{};
             submitInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
             submitInfo.commandBuffer = commandList->m_commandBuffer;
@@ -80,7 +80,7 @@ namespace Vulkan
 
         if (auto passAttachment = pass->m_swapchainImageAttachment)
         {
-            auto swapchain = (Swapchain*)passAttachment->attachment->swapchain;
+            auto swapchain = (ISwapchain*)passAttachment->attachment->swapchain;
             VkSemaphoreSubmitInfo semaphoreSubmitInfo {};
             semaphoreSubmitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
             if (passAttachment->prev == nullptr)
@@ -109,21 +109,21 @@ namespace Vulkan
         submitInfo.commandBufferInfoCount = uint32_t(commandBuffers.size());
         submitInfo.pCommandBufferInfos = commandBuffers.data();
 
-        auto fence = (Fence*)_fence;
+        auto fence = (IFence*)_fence;
         auto result = vkQueueSubmit2(queue, 1, &submitInfo, fence ? fence->UseFence() : VK_NULL_HANDLE);
         VULKAN_ASSERT_SUCCESS(result);
     }
 
-    void FrameScheduler::QueueCommandsSubmit(RHI::QueueType queueType, RHI::TL::Span<RHI::CommandList*> commandLists, RHI::Fence& _fence)
+    void IFrameScheduler::QueueCommandsSubmit(RHI::QueueType queueType, RHI::TL::Span<RHI::CommandList*> commandLists, RHI::Fence& _fence)
     {
-        auto context = (Context*)m_context;
-        auto& fence = (Fence&)_fence;
+        auto context = (IContext*)m_context;
+        auto& fence = (IFence&)_fence;
         auto queue = context->GetQueue(queueType);
 
         std::vector<VkCommandBufferSubmitInfo> commandBuffers{};
         for (auto _commandList : commandLists)
         {
-            auto commandList = (CommandList*)_commandList;
+            auto commandList = (ICommandList*)_commandList;
             VkCommandBufferSubmitInfo submitInfo{};
             submitInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
             submitInfo.commandBuffer = commandList->m_commandBuffer;

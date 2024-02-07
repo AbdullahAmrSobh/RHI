@@ -33,7 +33,7 @@
 
 std::unique_ptr<RHI::Context> RHI::CreateVulkanContext(const RHI::ApplicationInfo& appInfo, std::unique_ptr<RHI::DebugCallbacks> debugCallbacks)
 {
-    auto context = std::make_unique<Vulkan::Context>(std::move(debugCallbacks));
+    auto context = std::make_unique<Vulkan::IContext>(std::move(debugCallbacks));
     auto result = context->Init(appInfo);
     RHI_ASSERT(result == VK_SUCCESS);
     return std::move(context);
@@ -73,7 +73,7 @@ namespace Vulkan
         return VK_FALSE;
     }
 
-    Context::~Context()
+    IContext::~IContext()
     {
         vkDeviceWaitIdle(m_device);
         vkDestroyDevice(m_device, nullptr);
@@ -81,7 +81,7 @@ namespace Vulkan
         vkDestroyInstance(m_instance, nullptr);
     }
 
-    VkResult Context::Init(const RHI::ApplicationInfo& appInfo)
+    VkResult IContext::Init(const RHI::ApplicationInfo& appInfo)
     {
         // Create Vulkan instance
         std::vector<const char*> enabledLayersNames = {
@@ -315,47 +315,47 @@ namespace Vulkan
         return VK_SUCCESS;
     }
 
-    std::unique_ptr<RHI::Swapchain> Context::CreateSwapchain(const RHI::SwapchainCreateInfo& createInfo)
+    std::unique_ptr<RHI::Swapchain> IContext::CreateSwapchain(const RHI::SwapchainCreateInfo& createInfo)
     {
-        auto swapchain = std::make_unique<Swapchain>(this);
+        auto swapchain = std::make_unique<ISwapchain>(this);
         auto result = swapchain->Init(createInfo);
         RHI_ASSERT(result == VK_SUCCESS);
         return swapchain;
     }
 
-    std::unique_ptr<RHI::Fence> Context::CreateFence()
+    std::unique_ptr<RHI::Fence> IContext::CreateFence()
     {
-        auto fence = std::make_unique<Fence>(this);
+        auto fence = std::make_unique<IFence>(this);
         auto result = fence->Init();
         RHI_ASSERT(result == VK_SUCCESS);
         return fence;
     }
 
-    std::unique_ptr<RHI::Pass> Context::CreatePass(const char* name, RHI::QueueType type)
+    std::unique_ptr<RHI::Pass> IContext::CreatePass(const char* name, RHI::QueueType type)
     {
-        auto pass = std::make_unique<Pass>(this, name, type);
+        auto pass = std::make_unique<IPass>(this, name, type);
         auto result = pass->Init();
         RHI_ASSERT(result == VK_SUCCESS);
         return pass;
     }
 
-    std::unique_ptr<RHI::ShaderModule> Context::CreateShaderModule(const RHI::ShaderModuleCreateInfo& createInfo)
+    std::unique_ptr<RHI::ShaderModule> IContext::CreateShaderModule(const RHI::ShaderModuleCreateInfo& createInfo)
     {
-        auto shaderModule = std::make_unique<ShaderModule>(this);
+        auto shaderModule = std::make_unique<IShaderModule>(this);
         auto result = shaderModule->Init(createInfo);
         RHI_ASSERT(result == VK_SUCCESS);
         return shaderModule;
     }
 
-    std::unique_ptr<RHI::FrameScheduler> Context::CreateFrameScheduler()
+    std::unique_ptr<RHI::FrameScheduler> IContext::CreateFrameScheduler()
     {
-        auto scheduler = std::make_unique<FrameScheduler>(this);
+        auto scheduler = std::make_unique<IFrameScheduler>(this);
         auto result = scheduler->Init();
         RHI_ASSERT(result == VK_SUCCESS);
         return scheduler;
     }
 
-    std::unique_ptr<RHI::CommandListAllocator> Context::CreateCommandListAllocator(RHI::QueueType queueType, uint32_t bufferedFramesCount)
+    std::unique_ptr<RHI::CommandListAllocator> IContext::CreateCommandListAllocator(RHI::QueueType queueType, uint32_t bufferedFramesCount)
     {
         auto allocator = std::make_unique<CommandListAllocator>(this, bufferedFramesCount);
         auto result = allocator->Init(GetQueueFamilyIndex(queueType));
@@ -363,7 +363,7 @@ namespace Vulkan
         return allocator;
     }
 
-    RHI::Handle<RHI::BindGroupLayout> Context::CreateBindGroupLayout(const RHI::BindGroupLayoutCreateInfo& createInfo)
+    RHI::Handle<RHI::BindGroupLayout> IContext::CreateBindGroupLayout(const RHI::BindGroupLayoutCreateInfo& createInfo)
     {
         auto [handle, bindGroupLayout] = m_bindGroupLayoutsOwner.InsertZerod();
         auto result = bindGroupLayout.Init(this, createInfo);
@@ -371,14 +371,14 @@ namespace Vulkan
         return handle;
     }
 
-    void Context::DestroyBindGroupLayout(RHI::Handle<RHI::BindGroupLayout> handle)
+    void IContext::DestroyBindGroupLayout(RHI::Handle<RHI::BindGroupLayout> handle)
     {
         auto layout = m_bindGroupLayoutsOwner.Get(handle);
         layout->Shutdown(this);
         m_bindGroupLayoutsOwner.Remove(handle);
     }
 
-    RHI::Handle<RHI::PipelineLayout> Context::CreatePipelineLayout(const RHI::PipelineLayoutCreateInfo& createInfo)
+    RHI::Handle<RHI::PipelineLayout> IContext::CreatePipelineLayout(const RHI::PipelineLayoutCreateInfo& createInfo)
     {
         auto [handle, pipelineLayout] = m_pipelineLayoutOwner.InsertZerod();
         auto result = pipelineLayout.Init(this, createInfo);
@@ -386,38 +386,38 @@ namespace Vulkan
         return handle;
     }
 
-    void Context::DestroyPipelineLayout(RHI::Handle<RHI::PipelineLayout> handle)
+    void IContext::DestroyPipelineLayout(RHI::Handle<RHI::PipelineLayout> handle)
     {
         auto layout = m_pipelineLayoutOwner.Get(handle);
         layout->Shutdown(this);
         m_pipelineLayoutOwner.Remove(handle);
     }
 
-    std::unique_ptr<RHI::BindGroupAllocator> Context::CreateBindGroupAllocator()
+    std::unique_ptr<RHI::BindGroupAllocator> IContext::CreateBindGroupAllocator()
     {
-        auto bindGroupAllocator = std::make_unique<BindGroupAllocator>(this);
+        auto bindGroupAllocator = std::make_unique<IBindGroupAllocator>(this);
         auto result = bindGroupAllocator->Init();
         RHI_ASSERT(result == VK_SUCCESS);
         return bindGroupAllocator;
     }
 
-    std::unique_ptr<RHI::BufferPool> Context::CreateBufferPool(const RHI::PoolCreateInfo& createInfo)
+    std::unique_ptr<RHI::BufferPool> IContext::CreateBufferPool(const RHI::PoolCreateInfo& createInfo)
     {
-        auto pool = std::make_unique<BufferPool>(this);
+        auto pool = std::make_unique<IBufferPool>(this);
         auto result = pool->Init(createInfo);
         RHI_ASSERT(result == VK_SUCCESS);
         return pool;
     }
 
-    std::unique_ptr<RHI::ImagePool> Context::CreateImagePool(const RHI::PoolCreateInfo& createInfo)
+    std::unique_ptr<RHI::ImagePool> IContext::CreateImagePool(const RHI::PoolCreateInfo& createInfo)
     {
-        auto pool = std::make_unique<ImagePool>(this);
+        auto pool = std::make_unique<IImagePool>(this);
         auto result = pool->Init(createInfo);
         RHI_ASSERT(result == VK_SUCCESS);
         return pool;
     }
 
-    RHI::Handle<RHI::GraphicsPipeline> Context::CreateGraphicsPipeline(const RHI::GraphicsPipelineCreateInfo& createInfo)
+    RHI::Handle<RHI::GraphicsPipeline> IContext::CreateGraphicsPipeline(const RHI::GraphicsPipelineCreateInfo& createInfo)
     {
         auto [handle, pipeline] = m_graphicsPipelineOwner.InsertZerod();
         auto result = pipeline.Init(this, createInfo);
@@ -425,14 +425,14 @@ namespace Vulkan
         return handle;
     }
 
-    void Context::DestroyGraphicsPipeline(RHI::Handle<RHI::GraphicsPipeline> handle)
+    void IContext::DestroyGraphicsPipeline(RHI::Handle<RHI::GraphicsPipeline> handle)
     {
         auto layout = m_graphicsPipelineOwner.Get(handle);
         layout->Shutdown(this);
         m_graphicsPipelineOwner.Remove(handle);
     }
 
-    RHI::Handle<RHI::ComputePipeline> Context::CreateComputePipeline(const RHI::ComputePipelineCreateInfo& createInfo)
+    RHI::Handle<RHI::ComputePipeline> IContext::CreateComputePipeline(const RHI::ComputePipelineCreateInfo& createInfo)
     {
         auto [handle, pipeline] = m_computePipelineOwner.InsertZerod();
         auto result = pipeline.Init(this, createInfo);
@@ -440,14 +440,14 @@ namespace Vulkan
         return handle;
     }
 
-    void Context::DestroyComputePipeline(RHI::Handle<RHI::ComputePipeline> handle)
+    void IContext::DestroyComputePipeline(RHI::Handle<RHI::ComputePipeline> handle)
     {
         auto layout = m_computePipelineOwner.Get(handle);
         layout->Shutdown(this);
         m_computePipelineOwner.Remove(handle);
     }
 
-    RHI::Handle<RHI::Sampler> Context::CreateSampler(const RHI::SamplerCreateInfo& createInfo)
+    RHI::Handle<RHI::Sampler> IContext::CreateSampler(const RHI::SamplerCreateInfo& createInfo)
     {
         auto [handle, sampler] = m_samplerOwner.InsertZerod();
         auto result = sampler.Init(this, createInfo);
@@ -455,14 +455,14 @@ namespace Vulkan
         return handle;
     }
 
-    void Context::DestroySampler(RHI::Handle<RHI::Sampler> handle)
+    void IContext::DestroySampler(RHI::Handle<RHI::Sampler> handle)
     {
         auto sampler = m_samplerOwner.Get(handle);
         sampler->Shutdown(this);
         m_samplerOwner.Remove(handle);
     }
 
-    RHI::Handle<RHI::ImageView> Context::CreateImageView(RHI::Handle<RHI::Image> imageHandle, const RHI::ImageViewCreateInfo& useInfo)
+    RHI::Handle<RHI::ImageView> IContext::CreateImageView(RHI::Handle<RHI::Image> imageHandle, const RHI::ImageViewCreateInfo& useInfo)
     {
         auto [handle, imageView] = m_imageViewOwner.InsertZerod();
         auto result = imageView.Init(this, imageHandle, useInfo);
@@ -470,14 +470,14 @@ namespace Vulkan
         return handle;
     }
 
-    void Context::DestroyImageView(RHI::Handle<RHI::ImageView> handle)
+    void IContext::DestroyImageView(RHI::Handle<RHI::ImageView> handle)
     {
         auto imageView = m_imageViewOwner.Get(handle);
         imageView->Shutdown(this);
         m_imageViewOwner.Remove(handle);
     }
 
-    RHI::Handle<RHI::BufferView> Context::CreateBufferView(RHI::Handle<RHI::Buffer> bufferHandle, const RHI::BufferViewCreateInfo& useInfo)
+    RHI::Handle<RHI::BufferView> IContext::CreateBufferView(RHI::Handle<RHI::Buffer> bufferHandle, const RHI::BufferViewCreateInfo& useInfo)
     {
         auto [handle, bufferView] = m_bufferViewOwner.InsertZerod();
         auto result = bufferView.Init(this, bufferHandle, useInfo);
@@ -485,13 +485,13 @@ namespace Vulkan
         return handle;
     }
 
-    void Context::DestroyBufferView(RHI::Handle<RHI::BufferView> handle)
+    void IContext::DestroyBufferView(RHI::Handle<RHI::BufferView> handle)
     {
         auto bufferView = m_bufferViewOwner.Get(handle);
         bufferView->Shutdown(this);
     }
 
-    VkSemaphore Context::CreateSemaphore()
+    VkSemaphore IContext::CreateSemaphore()
     {
         VkSemaphoreCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -503,12 +503,12 @@ namespace Vulkan
         return semaphore;
     }
 
-    void Context::FreeSemaphore(VkSemaphore semaphore)
+    void IContext::FreeSemaphore(VkSemaphore semaphore)
     {
         vkDestroySemaphore(m_device, semaphore, nullptr);
     }
 
-    std::vector<VkLayerProperties> Context::GetAvailableInstanceLayerExtensions() const
+    std::vector<VkLayerProperties> IContext::GetAvailableInstanceLayerExtensions() const
     {
         uint32_t instanceLayerCount;
         vkEnumerateInstanceLayerProperties(&instanceLayerCount, nullptr);
@@ -518,7 +518,7 @@ namespace Vulkan
         return layers;
     }
 
-    std::vector<VkExtensionProperties> Context::GetAvailableInstanceExtensions() const
+    std::vector<VkExtensionProperties> IContext::GetAvailableInstanceExtensions() const
     {
         uint32_t instanceExtensionsCount;
         vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionsCount, nullptr);
@@ -528,7 +528,7 @@ namespace Vulkan
         return extensions;
     }
 
-    std::vector<VkLayerProperties> Context::GetAvailableDeviceLayerExtensions(VkPhysicalDevice physicalDevice) const
+    std::vector<VkLayerProperties> IContext::GetAvailableDeviceLayerExtensions(VkPhysicalDevice physicalDevice) const
     {
         uint32_t instanceLayerCount;
         vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, nullptr);
@@ -538,7 +538,7 @@ namespace Vulkan
         return layers;
     }
 
-    std::vector<VkExtensionProperties> Context::GetAvailableDeviceExtensions(VkPhysicalDevice physicalDevice) const
+    std::vector<VkExtensionProperties> IContext::GetAvailableDeviceExtensions(VkPhysicalDevice physicalDevice) const
     {
         uint32_t extensionsCount;
         vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, nullptr);
@@ -548,7 +548,7 @@ namespace Vulkan
         return extnesions;
     }
 
-    std::vector<VkPhysicalDevice> Context::GetAvailablePhysicalDevices() const
+    std::vector<VkPhysicalDevice> IContext::GetAvailablePhysicalDevices() const
     {
         uint32_t physicalDeviceCount;
         vkEnumeratePhysicalDevices(m_instance, &physicalDeviceCount, nullptr);
@@ -558,7 +558,7 @@ namespace Vulkan
         return physicalDevices;
     }
 
-    std::vector<VkQueueFamilyProperties> Context::GetPhysicalDeviceQueueFamilyProperties(VkPhysicalDevice physicalDevice) const
+    std::vector<VkQueueFamilyProperties> IContext::GetPhysicalDeviceQueueFamilyProperties(VkPhysicalDevice physicalDevice) const
     {
         uint32_t queueFamilyPropertiesCount;
         vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyPropertiesCount, nullptr);
@@ -568,7 +568,7 @@ namespace Vulkan
         return queueFamilyProperties;
     }
 
-    uint32_t Context::GetMemoryTypeIndex(RHI::MemoryType memoryType)
+    uint32_t IContext::GetMemoryTypeIndex(RHI::MemoryType memoryType)
     {
         VkMemoryPropertyFlags flags = 0;
         VkMemoryPropertyFlags negateFlags = 0;

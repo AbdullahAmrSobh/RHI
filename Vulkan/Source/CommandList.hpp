@@ -12,10 +12,10 @@ namespace Vulkan
 {
     namespace TL = ::RHI::TL;
 
-    class Pass;
-    class Context;
-    class CommandList;
-    class Fence;
+    class IPass;
+    class IContext;
+    class ICommandList;
+    class IFence;
 
     enum class BarrierType
     {
@@ -27,27 +27,26 @@ namespace Vulkan
     class CommandPool
     {
     public:
-        VkResult Init(Context* context, uint32_t queueFamilyIndex);
+        VkResult Init(IContext* context, uint32_t queueFamilyIndex);
 
-        void Shutdown(Context* context);
+        void Shutdown(IContext* context);
 
-        void Reset(Context* context);
+        void Reset(IContext* context);
 
-        CommandList* Allocate(Context* context);
+        ICommandList* Allocate(IContext* context);
 
-        void Release(CommandList* commandList);
+        void Release(ICommandList* commandList);
 
     private:
         VkCommandPool m_commandPool;
-        std::vector<std::unique_ptr<CommandList>> m_commandLists;
-        std::vector<CommandList*> m_availableCommandLists;
+        std::vector<std::unique_ptr<ICommandList>> m_commandLists;
+        std::vector<ICommandList*> m_availableCommandLists;
     };
 
     class CommandListAllocator final : public RHI::CommandListAllocator
     {
     public:
-        CommandListAllocator(Context* context, uint32_t maxFrameBufferingCount);
-
+        CommandListAllocator(IContext* context, uint32_t maxFrameBufferingCount);
         ~CommandListAllocator();
 
         VkResult Init(uint32_t queueFamilyIndex);
@@ -56,16 +55,16 @@ namespace Vulkan
         RHI::CommandList* Allocate() override;
 
     private:
-        Context* m_context;
+        IContext* m_context;
         uint32_t m_maxFrameBufferingCount;
         uint32_t m_currentFrameIndex;
         std::array<CommandPool, 3> m_commandPools;
     };
 
-    class CommandList final : public RHI::CommandList
+    class ICommandList final : public RHI::CommandList
     {
     public:
-        CommandList(Context* context, VkCommandBuffer commandBuffer);
+        ICommandList(IContext* context, VkCommandBuffer commandBuffer);
 
         void Begin() override;
         void Begin(RHI::Pass& pass) override;
@@ -81,9 +80,9 @@ namespace Vulkan
 
         VkRenderingAttachmentInfo GetAttachmentInfo(const RHI::ImagePassAttachment& passAttachment) const;
 
-        void RenderingBegin(Pass& pass);
+        void RenderingBegin(IPass& pass);
 
-        void RenderingEnd(Pass& pass);
+        void RenderingEnd(IPass& pass);
 
         void PushDebugMarker(const char* name);
 
@@ -95,9 +94,9 @@ namespace Vulkan
 
         void TransitionPassAttachments(BarrierType barrierType, TL::Span<RHI::BufferPassAttachment*> passAttachments) const;
 
-        Context* m_context;
+        IContext* m_context;
 
-        Pass* m_pass;
+        IPass* m_pass;
 
         CommandPool* m_parentPool;
 

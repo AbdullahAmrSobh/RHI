@@ -16,9 +16,9 @@
 
 namespace Vulkan
 {
-    VkResult Swapchain::InitSurface(const RHI::SwapchainCreateInfo& createInfo)
+    VkResult ISwapchain::InitSurface(const RHI::SwapchainCreateInfo& createInfo)
     {
-        auto context = static_cast<Context*>(m_context);
+        auto context = static_cast<IContext*>(m_context);
 
 #ifdef VK_USE_PLATFORM_WIN32_KHR
         // create win32 surface

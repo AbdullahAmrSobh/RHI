@@ -7,29 +7,26 @@
 
 namespace Vulkan
 {
-    struct Image;
-    struct Buffer;
-    struct ImageView;
-    struct BufferView;
-    struct BindGroupLayout;
-    struct BindGroup;
-    struct PipelineLayout;
-    struct GraphicsPipeline;
-    struct ComputePipeline;
-    struct Sampler;
+    struct IImage;
+    struct IBuffer;
+    struct IImageView;
+    struct IBufferView;
+    struct IBindGroupLayout;
+    struct IBindGroup;
+    struct IPipelineLayout;
+    struct IGraphicsPipeline;
+    struct IComputePipeline;
+    struct ISampler;
 
-    class ResourceManager;
-    class CommandListAllocator;
-
-    class Context final : public RHI::Context
+    class IContext final : public RHI::Context
     {
     public:
-        Context(std::unique_ptr<RHI::DebugCallbacks> debugMessengerCallbacks)
+        IContext(std::unique_ptr<RHI::DebugCallbacks> debugMessengerCallbacks)
             : RHI::Context(std::move(debugMessengerCallbacks))
         {
         }
 
-        ~Context();
+        ~IContext();
 
         VkResult Init(const RHI::ApplicationInfo& appInfo);
 
@@ -110,19 +107,19 @@ namespace Vulkan
         PFN_vkCmdDebugMarkerInsertEXT m_vkCmdDebugMarkerInsertEXT = nullptr;
         PFN_vkCmdDebugMarkerEndEXT m_vkCmdDebugMarkerEndEXT = nullptr;
 
-        RHI::HandlePool<Image> m_imageOwner = RHI::HandlePool<Image>();
-        RHI::HandlePool<Buffer> m_bufferOwner = RHI::HandlePool<Buffer>();
-        RHI::HandlePool<ImageView> m_imageViewOwner = RHI::HandlePool<ImageView>();
-        RHI::HandlePool<BufferView> m_bufferViewOwner = RHI::HandlePool<BufferView>();
-        RHI::HandlePool<BindGroupLayout> m_bindGroupLayoutsOwner = RHI::HandlePool<BindGroupLayout>();
-        RHI::HandlePool<BindGroup> m_bindGroupOwner = RHI::HandlePool<BindGroup>();
-        RHI::HandlePool<PipelineLayout> m_pipelineLayoutOwner = RHI::HandlePool<PipelineLayout>();
-        RHI::HandlePool<GraphicsPipeline> m_graphicsPipelineOwner = RHI::HandlePool<GraphicsPipeline>();
-        RHI::HandlePool<ComputePipeline> m_computePipelineOwner = RHI::HandlePool<ComputePipeline>();
-        RHI::HandlePool<Sampler> m_samplerOwner = RHI::HandlePool<Sampler>();
+        RHI::HandlePool<IImage> m_imageOwner = RHI::HandlePool<IImage>();
+        RHI::HandlePool<IBuffer> m_bufferOwner = RHI::HandlePool<IBuffer>();
+        RHI::HandlePool<IImageView> m_imageViewOwner = RHI::HandlePool<IImageView>();
+        RHI::HandlePool<IBufferView> m_bufferViewOwner = RHI::HandlePool<IBufferView>();
+        RHI::HandlePool<IBindGroupLayout> m_bindGroupLayoutsOwner = RHI::HandlePool<IBindGroupLayout>();
+        RHI::HandlePool<IBindGroup> m_bindGroupOwner = RHI::HandlePool<IBindGroup>();
+        RHI::HandlePool<IPipelineLayout> m_pipelineLayoutOwner = RHI::HandlePool<IPipelineLayout>();
+        RHI::HandlePool<IGraphicsPipeline> m_graphicsPipelineOwner = RHI::HandlePool<IGraphicsPipeline>();
+        RHI::HandlePool<IComputePipeline> m_computePipelineOwner = RHI::HandlePool<IComputePipeline>();
+        RHI::HandlePool<ISampler> m_samplerOwner = RHI::HandlePool<ISampler>();
     };
 
-    inline uint32_t Context::GetQueueFamilyIndex(RHI::QueueType queueType) const
+    inline uint32_t IContext::GetQueueFamilyIndex(RHI::QueueType queueType) const
     {
         switch (queueType)
         {
@@ -133,7 +130,7 @@ namespace Vulkan
         }
     }
 
-    inline VkQueue Context::GetQueue(RHI::QueueType queueType) const
+    inline VkQueue IContext::GetQueue(RHI::QueueType queueType) const
     {
         switch (queueType)
         {

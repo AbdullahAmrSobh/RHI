@@ -8,31 +8,30 @@ namespace Vulkan
 {
     struct Allocation;
 
-    struct Fence;
+    struct IFence;
 
-    class Context;
-    class CommandList;
-    class CommandListAllocator;
+    class IContext;
+    class ICommandList;
 
-    class Pass final : public RHI::Pass
+    class IPass final : public RHI::Pass
     {
-        friend class CommandList;
-        friend class FrameScheduler;
+        friend class ICommandList;
+        friend class IFrameScheduler;
 
     public:
-        Pass(Context* context, const char* name, RHI::QueueType queueType);
-        ~Pass();
+        IPass(IContext* context, const char* name, RHI::QueueType queueType);
+        ~IPass();
 
         VkResult Init();
 
-        Context* m_context;
+        IContext* m_context;
     };
 
-    class FrameScheduler final : public RHI::FrameScheduler
+    class IFrameScheduler final : public RHI::FrameScheduler
     {
     public:
-        FrameScheduler(Context* context);
-        ~FrameScheduler();
+        IFrameScheduler(IContext* context);
+        ~IFrameScheduler();
 
         VkResult Init();
 

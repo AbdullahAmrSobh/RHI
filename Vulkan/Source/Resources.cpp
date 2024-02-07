@@ -18,7 +18,7 @@ namespace Vulkan
     /// Image
     ///////////////////////////////////////////////////////////////////////////
 
-    RHI::ResultCode Image::Init(Context* context, const VmaAllocationCreateInfo allocationInfo, const RHI::ImageCreateInfo& createInfo, ImagePool* parentPool, bool isTransientResource)
+    RHI::ResultCode IImage::Init(IContext* context, const VmaAllocationCreateInfo allocationInfo, const RHI::ImageCreateInfo& createInfo, IImagePool* parentPool, bool isTransientResource)
     {
         pool = parentPool;
 
@@ -57,7 +57,7 @@ namespace Vulkan
         return ConvertResult(result);
     }
 
-    void Image::Shutdown(Context* context)
+    void IImage::Shutdown(IContext* context)
     {
         if (pool)
         {
@@ -69,7 +69,7 @@ namespace Vulkan
         }
     }
 
-    VkMemoryRequirements Image::GetMemoryRequirements(VkDevice device) const
+    VkMemoryRequirements IImage::GetMemoryRequirements(VkDevice device) const
     {
         VkMemoryRequirements requirements{};
         vkGetImageMemoryRequirements(device, handle, &requirements);
@@ -80,7 +80,7 @@ namespace Vulkan
     /// Buffer
     ///////////////////////////////////////////////////////////////////////////
 
-    RHI::ResultCode Buffer::Init(Context* context, const VmaAllocationCreateInfo allocationInfo, const RHI::BufferCreateInfo& createInfo, BufferPool* parentPool, bool isTransientResource)
+    RHI::ResultCode IBuffer::Init(IContext* context, const VmaAllocationCreateInfo allocationInfo, const RHI::BufferCreateInfo& createInfo, IBufferPool* parentPool, bool isTransientResource)
     {
         pool = parentPool;
 
@@ -107,7 +107,7 @@ namespace Vulkan
         return ConvertResult(result);
     }
 
-    void Buffer::Shutdown(Context* context)
+    void IBuffer::Shutdown(IContext* context)
     {
         if (pool)
         {
@@ -119,7 +119,7 @@ namespace Vulkan
         }
     }
 
-    VkMemoryRequirements Buffer::GetMemoryRequirements(VkDevice device) const
+    VkMemoryRequirements IBuffer::GetMemoryRequirements(VkDevice device) const
     {
         VkMemoryRequirements requirements{};
         vkGetBufferMemoryRequirements(device, handle, &requirements);
@@ -130,7 +130,7 @@ namespace Vulkan
     /// ImageView
     ///////////////////////////////////////////////////////////////////////////
 
-    RHI::ResultCode ImageView::Init(Context* context, RHI::Handle<Image> imageHandle, const RHI::ImageViewCreateInfo& createInfo)
+    RHI::ResultCode IImageView::Init(IContext* context, RHI::Handle<IImage> imageHandle, const RHI::ImageViewCreateInfo& createInfo)
     {
         auto image = context->m_imageOwner.Get(imageHandle);
         RHI_ASSERT(image);
@@ -160,7 +160,7 @@ namespace Vulkan
         return ConvertResult(result);
     }
 
-    void ImageView::Shutdown(Context* context)
+    void IImageView::Shutdown(IContext* context)
     {
         vkDestroyImageView(context->m_device, handle, nullptr);
     }
@@ -169,7 +169,7 @@ namespace Vulkan
     /// BufferView
     ///////////////////////////////////////////////////////////////////////////
 
-    RHI::ResultCode BufferView::Init(Context* context, RHI::Handle<Buffer> bufferHandle, const RHI::BufferViewCreateInfo& createInfo)
+    RHI::ResultCode IBufferView::Init(IContext* context, RHI::Handle<IBuffer> bufferHandle, const RHI::BufferViewCreateInfo& createInfo)
     {
         auto buffer = context->m_bufferOwner.Get(bufferHandle);
         RHI_ASSERT(buffer);
@@ -187,7 +187,7 @@ namespace Vulkan
         return ConvertResult(result);
     }
 
-    void BufferView::Shutdown(Context* context)
+    void IBufferView::Shutdown(IContext* context)
     {
         vkDestroyBufferView(context->m_device, handle, nullptr);
     }
@@ -196,7 +196,7 @@ namespace Vulkan
     /// BindGroupLayout
     ///////////////////////////////////////////////////////////////////////////
 
-    RHI::ResultCode BindGroupLayout::Init(Context* context, const RHI::BindGroupLayoutCreateInfo& createInfo)
+    RHI::ResultCode IBindGroupLayout::Init(IContext* context, const RHI::BindGroupLayoutCreateInfo& createInfo)
     {
         std::vector<VkDescriptorSetLayoutBinding> bindings;
         for (auto shaderBinding : createInfo.bindings)
@@ -220,7 +220,7 @@ namespace Vulkan
         return ConvertResult(result);
     }
 
-    void BindGroupLayout::Shutdown(Context* context)
+    void IBindGroupLayout::Shutdown(IContext* context)
     {
         vkDestroyDescriptorSetLayout(context->m_device, handle, nullptr);
     }
@@ -229,7 +229,7 @@ namespace Vulkan
     /// BindGroup
     ///////////////////////////////////////////////////////////////////////////
 
-    RHI::ResultCode BindGroup::Init(Context* context, VkDescriptorSetLayout layout, VkDescriptorPool descriptorPool)
+    RHI::ResultCode IBindGroup::Init(IContext* context, VkDescriptorSetLayout layout, VkDescriptorPool descriptorPool)
     {
         VkDescriptorSetAllocateInfo allocateInfo{};
         allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -242,7 +242,7 @@ namespace Vulkan
         return ConvertResult(result);
     }
 
-    void BindGroup::Shutdown(Context* context)
+    void IBindGroup::Shutdown(IContext* context)
     {
         (void)context;
     }
@@ -251,7 +251,7 @@ namespace Vulkan
     /// PipelineLayout
     ///////////////////////////////////////////////////////////////////////////
 
-    RHI::ResultCode PipelineLayout::Init(Context* context, const RHI::PipelineLayoutCreateInfo& createInfo)
+    RHI::ResultCode IPipelineLayout::Init(IContext* context, const RHI::PipelineLayoutCreateInfo& createInfo)
     {
         std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
         for (auto bindGroupLayout : createInfo.layouts)
@@ -273,7 +273,7 @@ namespace Vulkan
         return ConvertResult(result);
     }
 
-    void PipelineLayout::Shutdown(Context* context)
+    void IPipelineLayout::Shutdown(IContext* context)
     {
         vkDestroyPipelineLayout(context->m_device, handle, nullptr);
     }
@@ -282,7 +282,7 @@ namespace Vulkan
     /// GraphicsPipeline
     ///////////////////////////////////////////////////////////////////////////
 
-    RHI::ResultCode GraphicsPipeline::Init(Context* context, const RHI::GraphicsPipelineCreateInfo& createInfo)
+    RHI::ResultCode IGraphicsPipeline::Init(IContext* context, const RHI::GraphicsPipelineCreateInfo& createInfo)
     {
         uint32_t stagesCreateInfoCount = 2;
         VkPipelineShaderStageCreateInfo stagesCreateInfos[4];
@@ -293,12 +293,12 @@ namespace Vulkan
             stageInfo.flags = 0;
             stageInfo.pSpecializationInfo = nullptr;
             stageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-            stageInfo.module = static_cast<ShaderModule*>(createInfo.vertexShaderModule)->m_shaderModule;
+            stageInfo.module = static_cast<IShaderModule*>(createInfo.vertexShaderModule)->m_shaderModule;
             stageInfo.pName = createInfo.vertexShaderName;
             stagesCreateInfos[0] = stageInfo;
 
             stageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-            stageInfo.module = static_cast<ShaderModule*>(createInfo.pixelShaderModule)->m_shaderModule;
+            stageInfo.module = static_cast<IShaderModule*>(createInfo.pixelShaderModule)->m_shaderModule;
             stageInfo.pName = createInfo.pixelShaderName;
             stagesCreateInfos[1] = stageInfo;
         }
@@ -499,7 +499,7 @@ namespace Vulkan
         return ConvertResult(result);
     }
 
-    void GraphicsPipeline::Shutdown(Context* context)
+    void IGraphicsPipeline::Shutdown(IContext* context)
     {
         vkDestroyPipeline(context->m_device, handle, nullptr);
     }
@@ -508,9 +508,9 @@ namespace Vulkan
     /// ComputePipeline
     ///////////////////////////////////////////////////////////////////////////
 
-    RHI::ResultCode ComputePipeline::Init(Context* context, const RHI::ComputePipelineCreateInfo& createInfo)
+    RHI::ResultCode IComputePipeline::Init(IContext* context, const RHI::ComputePipelineCreateInfo& createInfo)
     {
-        auto shaderModule = static_cast<ShaderModule*>(createInfo.shaderModule);
+        auto shaderModule = static_cast<IShaderModule*>(createInfo.shaderModule);
 
         layout = context->m_pipelineLayoutOwner.Get(createInfo.layout)->handle;
 
@@ -532,13 +532,13 @@ namespace Vulkan
         vkCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
         vkCreateInfo.basePipelineIndex = 0;
 
-        ComputePipeline pipeline{};
+        IComputePipeline pipeline{};
 
         auto result = vkCreateComputePipelines(context->m_device, VK_NULL_HANDLE, 1, &vkCreateInfo, nullptr, &pipeline.handle);
         return ConvertResult(result);
     }
 
-    void ComputePipeline::Shutdown(Context* context)
+    void IComputePipeline::Shutdown(IContext* context)
     {
         vkDestroyPipeline(context->m_device, handle, nullptr);
     }
@@ -547,7 +547,7 @@ namespace Vulkan
     /// Sampler
     ///////////////////////////////////////////////////////////////////////////
 
-    RHI::ResultCode Sampler::Init(Context* context, const RHI::SamplerCreateInfo& createInfo)
+    RHI::ResultCode ISampler::Init(IContext* context, const RHI::SamplerCreateInfo& createInfo)
     {
         VkSamplerCreateInfo vkCreateInfo{};
         vkCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -573,7 +573,7 @@ namespace Vulkan
         return ConvertResult(result);
     }
 
-    void Sampler::Shutdown(Context* context)
+    void ISampler::Shutdown(IContext* context)
     {
         vkDestroySampler(context->m_device, handle, nullptr);
     }
@@ -582,14 +582,14 @@ namespace Vulkan
     /// ShaderModule
     ///////////////////////////////////////////////////////////////////////////
 
-    ShaderModule::~ShaderModule()
+    IShaderModule::~IShaderModule()
     {
         vkDestroyShaderModule(m_context->m_device, m_shaderModule, nullptr);
     }
 
-    VkResult ShaderModule::Init(const RHI::ShaderModuleCreateInfo& createInfo)
+    VkResult IShaderModule::Init(const RHI::ShaderModuleCreateInfo& createInfo)
     {
-        auto context = static_cast<Context*>(m_context);
+        auto context = static_cast<IContext*>(m_context);
 
         VkShaderModuleCreateInfo moduleCreateInfo{};
         moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -606,22 +606,22 @@ namespace Vulkan
     /// BindGroupAllocator
     ///////////////////////////////////////////////////////////////////////////
 
-    BindGroupAllocator::~BindGroupAllocator()
+    IBindGroupAllocator::~IBindGroupAllocator()
     {
-        auto context = static_cast<Context*>(m_context);
+        auto context = static_cast<IContext*>(m_context);
 
         for (auto pool : m_descriptorPools)
             vkDestroyDescriptorPool(context->m_device, pool, nullptr);
     }
 
-    VkResult BindGroupAllocator::Init()
+    VkResult IBindGroupAllocator::Init()
     {
         return VK_SUCCESS;
     }
 
-    std::vector<RHI::Handle<RHI::BindGroup>> BindGroupAllocator::AllocateBindGroups(TL::Span<RHI::Handle<RHI::BindGroupLayout>> bindGroupLayouts)
+    std::vector<RHI::Handle<RHI::BindGroup>> IBindGroupAllocator::AllocateBindGroups(TL::Span<RHI::Handle<RHI::BindGroupLayout>> bindGroupLayouts)
     {
-        auto context = static_cast<Context*>(m_context);
+        auto context = static_cast<IContext*>(m_context);
 
         std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
         for (auto bindGroupLayoutHandle : bindGroupLayouts)
@@ -700,7 +700,7 @@ namespace Vulkan
         return bindGroups;
     }
 
-    void BindGroupAllocator::Free(TL::Span<RHI::Handle<RHI::BindGroup>> bindGroups)
+    void IBindGroupAllocator::Free(TL::Span<RHI::Handle<RHI::BindGroup>> bindGroups)
     {
         for (auto group : bindGroups)
         {
@@ -709,9 +709,9 @@ namespace Vulkan
         }
     }
 
-    void BindGroupAllocator::Update(RHI::Handle<RHI::BindGroup> _bindGroup, const RHI::BindGroupData& data)
+    void IBindGroupAllocator::Update(RHI::Handle<RHI::BindGroup> _bindGroup, const RHI::BindGroupData& data)
     {
-        auto context = static_cast<Context*>(m_context);
+        auto context = static_cast<IContext*>(m_context);
         auto bindGroup = m_context->m_bindGroupOwner.Get(_bindGroup);
 
         std::vector<std::vector<VkDescriptorImageInfo>> descriptorImageInfos;
@@ -799,12 +799,12 @@ namespace Vulkan
     /// BufferPool
     ///////////////////////////////////////////////////////////////////////////
 
-    BufferPool::~BufferPool()
+    IBufferPool::~IBufferPool()
     {
         vmaDestroyPool(m_context->m_allocator, m_pool);
     }
 
-    VkResult BufferPool::Init(const RHI::PoolCreateInfo& createInfo)
+    VkResult IBufferPool::Init(const RHI::PoolCreateInfo& createInfo)
     {
         m_poolInfo = createInfo;
 
@@ -821,7 +821,7 @@ namespace Vulkan
         return vmaCreatePool(m_context->m_allocator, &poolCreateInfo, &m_pool);
     }
 
-    RHI::Result<RHI::Handle<RHI::Buffer>> BufferPool::Allocate(const RHI::BufferCreateInfo& createInfo)
+    RHI::Result<RHI::Handle<RHI::Buffer>> IBufferPool::Allocate(const RHI::BufferCreateInfo& createInfo)
     {
         VmaAllocationCreateInfo allocationInfo{};
         allocationInfo.pool = m_pool;
@@ -835,7 +835,7 @@ namespace Vulkan
         return RHI::Handle<RHI::Buffer>(handle);
     }
 
-    void BufferPool::FreeBuffer(RHI::Handle<RHI::Buffer> buffer)
+    void IBufferPool::FreeBuffer(RHI::Handle<RHI::Buffer> buffer)
     {
         auto resource = m_context->m_bufferOwner.Get(buffer);
         RHI_ASSERT(resource);
@@ -843,13 +843,13 @@ namespace Vulkan
         vmaDestroyBuffer(m_context->m_allocator, resource->handle, resource->allocation.handle);
     }
 
-    size_t BufferPool::GetSize(RHI::Handle<RHI::Buffer> buffer) const
+    size_t IBufferPool::GetSize(RHI::Handle<RHI::Buffer> buffer) const
     {
         auto& owner = m_context->m_bufferOwner;
         return owner.Get(buffer)->GetMemoryRequirements(m_context->m_device).size;
     }
 
-    RHI::DeviceMemoryPtr BufferPool::MapBuffer(RHI::Handle<RHI::Buffer> handle)
+    RHI::DeviceMemoryPtr IBufferPool::MapBuffer(RHI::Handle<RHI::Buffer> handle)
     {
         auto resource = m_context->m_bufferOwner.Get(handle);
         auto allocation = resource->allocation.handle;
@@ -860,7 +860,7 @@ namespace Vulkan
         return memoryPtr;
     }
 
-    void BufferPool::UnmapBuffer(RHI::Handle<RHI::Buffer> handle)
+    void IBufferPool::UnmapBuffer(RHI::Handle<RHI::Buffer> handle)
     {
         auto resource = m_context->m_bufferOwner.Get(handle)->allocation.handle;
         vmaUnmapMemory(m_context->m_allocator, resource);
@@ -870,12 +870,12 @@ namespace Vulkan
     /// ImagePool
     ///////////////////////////////////////////////////////////////////////////
 
-    ImagePool::~ImagePool()
+    IImagePool::~IImagePool()
     {
         vmaDestroyPool(m_context->m_allocator, m_pool);
     }
 
-    VkResult ImagePool::Init(const RHI::PoolCreateInfo& createInfo)
+    VkResult IImagePool::Init(const RHI::PoolCreateInfo& createInfo)
     {
         m_poolInfo = createInfo;
 
@@ -892,7 +892,7 @@ namespace Vulkan
         return vmaCreatePool(m_context->m_allocator, &poolCreateInfo, &m_pool);
     }
 
-    RHI::Result<RHI::Handle<RHI::Image>> ImagePool::Allocate(const RHI::ImageCreateInfo& createInfo)
+    RHI::Result<RHI::Handle<RHI::Image>> IImagePool::Allocate(const RHI::ImageCreateInfo& createInfo)
     {
         VmaAllocationCreateInfo allocationInfo{};
         allocationInfo.pool = m_pool;
@@ -906,7 +906,7 @@ namespace Vulkan
         return RHI::Handle<RHI::Image>(handle);
     }
 
-    void ImagePool::FreeImage(RHI::Handle<RHI::Image> handle)
+    void IImagePool::FreeImage(RHI::Handle<RHI::Image> handle)
     {
         auto resource = m_context->m_imageOwner.Get(handle);
         RHI_ASSERT(resource);
@@ -914,7 +914,7 @@ namespace Vulkan
         vmaDestroyImage(m_context->m_allocator, resource->handle, resource->allocation.handle);
     }
 
-    size_t ImagePool::GetSize(RHI::Handle<RHI::Image> handle) const
+    size_t IImagePool::GetSize(RHI::Handle<RHI::Image> handle) const
     {
         auto& owner = m_context->m_imageOwner;
         return owner.Get(handle)->GetMemoryRequirements(m_context->m_device).size;
@@ -924,12 +924,12 @@ namespace Vulkan
     /// Fence
     ///////////////////////////////////////////////////////////////////////////
 
-    Fence::~Fence()
+    IFence::~IFence()
     {
         vkDestroyFence(m_context->m_device, m_fence, nullptr);
     }
 
-    VkResult Fence::Init()
+    VkResult IFence::Init()
     {
         m_state = State::NotSubmitted;
 
@@ -942,14 +942,14 @@ namespace Vulkan
         return result;
     }
 
-    void Fence::Reset()
+    void IFence::Reset()
     {
         m_state = State::NotSubmitted;
         auto result = vkResetFences(m_context->m_device, 1, &m_fence);
         VULKAN_ASSERT_SUCCESS(result);
     }
 
-    bool Fence::WaitInternal(uint64_t timeout)
+    bool IFence::WaitInternal(uint64_t timeout)
     {
         if (m_state == State::NotSubmitted)
             return VK_SUCCESS;
@@ -958,7 +958,7 @@ namespace Vulkan
         return result == VK_SUCCESS;
     }
 
-    Fence::State Fence::GetState()
+    IFence::State IFence::GetState()
     {
         if (m_state == State::Pending)
         {
@@ -969,7 +969,7 @@ namespace Vulkan
         return State::NotSubmitted;
     }
 
-    VkFence Fence::UseFence()
+    VkFence IFence::UseFence()
     {
         m_state = State::Pending;
         return m_fence;
@@ -978,7 +978,7 @@ namespace Vulkan
     ///////////////////////////////////////////////////////////////////////////
     /// Swapchain
     ///////////////////////////////////////////////////////////////////////////
-    Swapchain::Swapchain(Context* context)
+    ISwapchain::ISwapchain(IContext* context)
         : m_context(context)
         , m_semaphores(VK_NULL_HANDLE, VK_NULL_HANDLE)
         , m_swapchain(VK_NULL_HANDLE)
@@ -987,18 +987,18 @@ namespace Vulkan
     {
     }
 
-    Swapchain::~Swapchain()
+    ISwapchain::~ISwapchain()
     {
-        auto context = static_cast<Context*>(m_context);
+        auto context = static_cast<IContext*>(m_context);
         vkDestroySwapchainKHR(context->m_device, m_swapchain, nullptr);
         vkDestroySurfaceKHR(context->m_instance, m_surface, nullptr);
         vkDestroySemaphore(context->m_device, m_semaphores.imageAcquired, nullptr);
         vkDestroySemaphore(context->m_device, m_semaphores.imageRenderComplete, nullptr);
     }
 
-    VkResult Swapchain::Init(const RHI::SwapchainCreateInfo& createInfo)
+    VkResult ISwapchain::Init(const RHI::SwapchainCreateInfo& createInfo)
     {
-        auto context = static_cast<Context*>(m_context);
+        auto context = static_cast<IContext*>(m_context);
 
         m_currentImageIndex = 0;
         m_swapchainImagesCount = createInfo.imageCount;
@@ -1094,7 +1094,7 @@ namespace Vulkan
         return VK_SUCCESS;
     }
 
-    RHI::ResultCode Swapchain::Recreate(RHI::ImageSize2D newSize, uint32_t imageCount, RHI::SwapchainPresentMode presentMode)
+    RHI::ResultCode ISwapchain::Recreate(RHI::ImageSize2D newSize, uint32_t imageCount, RHI::SwapchainPresentMode presentMode)
     {
         m_imageSize = newSize;
         m_presentMode = presentMode;
@@ -1105,9 +1105,9 @@ namespace Vulkan
         return ConvertResult(result);
     }
 
-    RHI::ResultCode Swapchain::Present()
+    RHI::ResultCode ISwapchain::Present()
     {
-        auto context = (Context*)m_context;
+        auto context = (IContext*)m_context;
         auto queue = context->GetQueue(RHI::QueueType::Graphics);
 
         VkPresentInfoKHR presentInfo{};
@@ -1128,7 +1128,7 @@ namespace Vulkan
         return RHI::ResultCode::Success;
     }
 
-    VkPresentModeKHR Swapchain::ConvertPresentMode(RHI::SwapchainPresentMode presentMode)
+    VkPresentModeKHR ISwapchain::ConvertPresentMode(RHI::SwapchainPresentMode presentMode)
     {
         switch (presentMode)
         {
@@ -1140,7 +1140,7 @@ namespace Vulkan
         }
     }
 
-    VkResult Swapchain::InitSwapchain()
+    VkResult ISwapchain::InitSwapchain()
     {
         VkSwapchainCreateInfoKHR createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -1175,7 +1175,7 @@ namespace Vulkan
 
         for (auto imageHandles : images)
         {
-            Vulkan::Image image{};
+            IImage image{};
             image.handle = imageHandles;
             image.format = m_surfaceFormat.format;
             image.imageType = VK_IMAGE_TYPE_2D;

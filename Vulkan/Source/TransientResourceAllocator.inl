@@ -10,7 +10,7 @@
 namespace Vulkan
 {
 
-    class TransientResourceAllocator final : public RHI::TransientResourceAllocator
+    class ITransientResourceAllocator final : public RHI::TransientResourceAllocator
     {
         struct Block
         {
@@ -23,10 +23,10 @@ namespace Vulkan
         std::vector<Block> m_blocks;
 
     public:
-        static std::unique_ptr<TransientResourceAllocator> Create();
+        static std::unique_ptr<ITransientResourceAllocator> Create();
 
-        TransientResourceAllocator() = default;
-        ~TransientResourceAllocator() = default;
+        ITransientResourceAllocator() = default;
+        ~ITransientResourceAllocator() = default;
 
         void Begin(RHI::Context* context) override;
         void End(RHI::Context* context) override;
@@ -38,43 +38,43 @@ namespace Vulkan
         void Destroy(RHI::Context* context, RHI::Attachment* attachment) override;
 
     private:
-        Allocation AllocateInternal(Context* context, VkMemoryRequirements requirements);
+        Allocation AllocateInternal(IContext* context, VkMemoryRequirements requirements);
 
-        size_t CalculatePreferredBlockSize(Context* context, uint32_t memTypeIndex);
+        size_t CalculatePreferredBlockSize(IContext* context, uint32_t memTypeIndex);
 
-        Block CreateBlockNewBlock(Context* context, VkMemoryRequirements minRequirements);
+        Block CreateBlockNewBlock(IContext* context, VkMemoryRequirements minRequirements);
     };
 
     ///////////////////////////////////////////////////////////////////////////
     /// TransientResourceAllocator
     ///////////////////////////////////////////////////////////////////////////
 
-    inline std::unique_ptr<TransientResourceAllocator> TransientResourceAllocator::Create()
+    inline std::unique_ptr<ITransientResourceAllocator> ITransientResourceAllocator::Create()
     {
-        return std::make_unique<TransientResourceAllocator>();
+        return std::make_unique<ITransientResourceAllocator>();
     }
 
-    inline void TransientResourceAllocator::Begin(RHI::Context* _context)
+    inline void ITransientResourceAllocator::Begin(RHI::Context* _context)
     {
-        auto context = (Context*)_context;
+        auto context = (IContext*)_context;
         (void)context;
     }
 
-    inline void TransientResourceAllocator::End(RHI::Context* _context)
+    inline void ITransientResourceAllocator::End(RHI::Context* _context)
     {
-        auto context = (Context*)_context;
+        auto context = (IContext*)_context;
         (void)context;
     }
 
-    inline void TransientResourceAllocator::Reset(RHI::Context* _context)
+    inline void ITransientResourceAllocator::Reset(RHI::Context* _context)
     {
-        auto context = (Context*)_context;
+        auto context = (IContext*)_context;
         (void)context;
     }
 
-    inline void TransientResourceAllocator::Allocate(RHI::Context* _context, RHI::Attachment* attachment)
+    inline void ITransientResourceAllocator::Allocate(RHI::Context* _context, RHI::Attachment* attachment)
     {
-        auto context = (Context*)_context;
+        auto context = (IContext*)_context;
 
         RHI_ASSERT(attachment->lifetime == RHI::Attachment::Lifetime::Transient);
 
@@ -123,9 +123,9 @@ namespace Vulkan
         }
     }
 
-    inline void TransientResourceAllocator::Release(RHI::Context* _context, RHI::Attachment* attachment)
+    inline void ITransientResourceAllocator::Release(RHI::Context* _context, RHI::Attachment* attachment)
     {
-        auto context = (Context*)_context;
+        auto context = (IContext*)_context;
 
         RHI_ASSERT(attachment->lifetime == RHI::Attachment::Lifetime::Transient);
 
@@ -153,9 +153,9 @@ namespace Vulkan
         vmaVirtualFree(allocation.virtualBlock, allocation.virtualHandle);
     }
 
-    inline void TransientResourceAllocator::Destroy(RHI::Context* _context, RHI::Attachment* attachment)
+    inline void ITransientResourceAllocator::Destroy(RHI::Context* _context, RHI::Attachment* attachment)
     {
-        auto context = (Context*)_context;
+        auto context = (IContext*)_context;
         switch (attachment->type)
         {
         case RHI::Attachment::Type::Image:
@@ -178,7 +178,7 @@ namespace Vulkan
         }
     }
 
-    inline Allocation TransientResourceAllocator::AllocateInternal(Context* context, VkMemoryRequirements requirements)
+    inline Allocation ITransientResourceAllocator::AllocateInternal(IContext* context, VkMemoryRequirements requirements)
     {
         size_t offset = SIZE_MAX;
         VmaVirtualAllocation virtualHandle = VK_NULL_HANDLE;
@@ -227,7 +227,7 @@ namespace Vulkan
         return allocation;
     }
 
-    inline size_t TransientResourceAllocator::CalculatePreferredBlockSize(Context* context, uint32_t memTypeIndex)
+    inline size_t ITransientResourceAllocator::CalculatePreferredBlockSize(IContext* context, uint32_t memTypeIndex)
     {
         constexpr size_t VMA_SMALL_HEAP_MAX_SIZE = (1024ull * 1024 * 1024);
         constexpr size_t VMA_DEFAULT_LARGE_HEAP_BLOCK_SIZE = (256ull * 1024 * 1024);
@@ -241,7 +241,7 @@ namespace Vulkan
         return AlignUp(isSmallHeap ? (heapSize / 8) : VMA_DEFAULT_LARGE_HEAP_BLOCK_SIZE, (size_t)32);
     }
 
-    inline TransientResourceAllocator::Block TransientResourceAllocator::CreateBlockNewBlock(Context* context, VkMemoryRequirements minRequirements)
+    inline ITransientResourceAllocator::Block ITransientResourceAllocator::CreateBlockNewBlock(IContext* context, VkMemoryRequirements minRequirements)
     {
         // TODO: Hardcoded for my local machine, should probably handle this later.
         minRequirements.size = CalculatePreferredBlockSize(context, 2);
