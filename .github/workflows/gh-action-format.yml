@@ -1,19 +1,11 @@
-name: Clang-Format Lint
-
-on:
-  pull_request:
-    branches:
-      - main
-
+on: push
+name: clang-format Code Formatter
 jobs:
-  clang-format-lint:
+  lint:
+    name: clang-format Code Formatter
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Run clang-format linting
-        run: |
-          docker run --rm -v $(pwd):/src gnuradio/clang-format-lint
-        working-directory: ${{ github.workspace }}
+    - name: Clang Code Formatter
+      uses: ivanludvig/clang-format-action@v1.4
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
