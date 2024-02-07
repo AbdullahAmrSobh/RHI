@@ -19,7 +19,7 @@
         return ConvertResult(result);  \
     }
 
-namespace Vulkan
+namespace RHI::Vulkan
 {
 
     template<typename T>
@@ -49,18 +49,18 @@ namespace Vulkan
         return seed;
     }
 
-    inline static RHI::ResultCode ConvertResult(VkResult result)
+    inline static ResultCode ConvertResult(VkResult result)
     {
         switch (result)
         {
         case VK_SUCCESS:
-            return RHI::ResultCode::Success;
+            return ResultCode::Success;
         case VK_ERROR_OUT_OF_HOST_MEMORY:
-            return RHI::ResultCode::ErrorOutOfMemory;
+            return ResultCode::ErrorOutOfMemory;
         case VK_ERROR_OUT_OF_DEVICE_MEMORY:
-            return RHI::ResultCode::ErrorDeviceOutOfMemory;
+            return ResultCode::ErrorDeviceOutOfMemory;
         default:
-            return RHI::ResultCode::ErrorUnkown;
+            return ResultCode::ErrorUnkown;
         }
     }
-} // namespace Vulkan
+} // namespace RHI::Vulkan

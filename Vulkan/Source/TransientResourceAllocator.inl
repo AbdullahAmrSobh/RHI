@@ -7,10 +7,10 @@
 
 #include <vk_mem_alloc.h>
 
-namespace Vulkan
+namespace RHI::Vulkan
 {
 
-    class ITransientResourceAllocator final : public RHI::TransientResourceAllocator
+    class ITransientResourceAllocator final : public TransientResourceAllocator
     {
         struct Block
         {
@@ -28,14 +28,14 @@ namespace Vulkan
         ITransientResourceAllocator() = default;
         ~ITransientResourceAllocator() = default;
 
-        void Begin(RHI::Context* context) override;
-        void End(RHI::Context* context) override;
+        void Begin(Context* context) override;
+        void End(Context* context) override;
 
-        void Reset(RHI::Context* context) override;
+        void Reset(Context* context) override;
 
-        void Allocate(RHI::Context* context, RHI::Attachment* attachment) override;
-        void Release(RHI::Context* context, RHI::Attachment* attachment) override;
-        void Destroy(RHI::Context* context, RHI::Attachment* attachment) override;
+        void Allocate(Context* context, Attachment* attachment) override;
+        void Release(Context* context, Attachment* attachment) override;
+        void Destroy(Context* context, Attachment* attachment) override;
 
     private:
         Allocation AllocateInternal(IContext* context, VkMemoryRequirements requirements);
@@ -54,41 +54,41 @@ namespace Vulkan
         return std::make_unique<ITransientResourceAllocator>();
     }
 
-    inline void ITransientResourceAllocator::Begin(RHI::Context* _context)
+    inline void ITransientResourceAllocator::Begin(Context* _context)
     {
         auto context = (IContext*)_context;
         (void)context;
     }
 
-    inline void ITransientResourceAllocator::End(RHI::Context* _context)
+    inline void ITransientResourceAllocator::End(Context* _context)
     {
         auto context = (IContext*)_context;
         (void)context;
     }
 
-    inline void ITransientResourceAllocator::Reset(RHI::Context* _context)
+    inline void ITransientResourceAllocator::Reset(Context* _context)
     {
         auto context = (IContext*)_context;
         (void)context;
     }
 
-    inline void ITransientResourceAllocator::Allocate(RHI::Context* _context, RHI::Attachment* attachment)
+    inline void ITransientResourceAllocator::Allocate(Context* _context, Attachment* attachment)
     {
         auto context = (IContext*)_context;
 
-        RHI_ASSERT(attachment->lifetime == RHI::Attachment::Lifetime::Transient);
+        RHI_ASSERT(attachment->lifetime == Attachment::Lifetime::Transient);
 
         switch (attachment->type)
         {
-        case RHI::Attachment::Type::Image:
+        case Attachment::Type::Image:
             {
-                auto imageAttachment = (RHI::ImageAttachment*)attachment;
+                auto imageAttachment = (ImageAttachment*)attachment;
                 auto [handle, image] = context->m_imageOwner.InsertZerod();
                 imageAttachment->handle = handle;
 
                 {
                     auto result = image.Init(context, {}, imageAttachment->info, nullptr, true);
-                    RHI_ASSERT(result == RHI::ResultCode::Success);
+                    RHI_ASSERT(result == ResultCode::Success);
                 }
 
                 auto memoryRequirements = image.GetMemoryRequirements(context->m_device);
@@ -100,15 +100,15 @@ namespace Vulkan
 
                 break;
             }
-        case RHI::Attachment::Type::Buffer:
+        case Attachment::Type::Buffer:
             {
-                auto bufferAttachment = (RHI::BufferAttachment*)attachment;
+                auto bufferAttachment = (BufferAttachment*)attachment;
                 auto [handle, buffer] = context->m_bufferOwner.InsertZerod();
                 bufferAttachment->handle = handle;
 
                 {
                     auto result = buffer.Init(context, {}, bufferAttachment->info, nullptr, true);
-                    RHI_ASSERT(result == RHI::ResultCode::Success);
+                    RHI_ASSERT(result == ResultCode::Success);
                 }
 
                 auto memoryRequirements = buffer.GetMemoryRequirements(context->m_device);
@@ -123,26 +123,26 @@ namespace Vulkan
         }
     }
 
-    inline void ITransientResourceAllocator::Release(RHI::Context* _context, RHI::Attachment* attachment)
+    inline void ITransientResourceAllocator::Release(Context* _context, Attachment* attachment)
     {
         auto context = (IContext*)_context;
 
-        RHI_ASSERT(attachment->lifetime == RHI::Attachment::Lifetime::Transient);
+        RHI_ASSERT(attachment->lifetime == Attachment::Lifetime::Transient);
 
         Allocation allocation{};
 
         switch (attachment->type)
         {
-        case RHI::Attachment::Type::Image:
+        case Attachment::Type::Image:
             {
-                auto imageAttachment = (RHI::ImageAttachment*)attachment;
+                auto imageAttachment = (ImageAttachment*)attachment;
                 auto image = context->m_imageOwner.Get(imageAttachment->handle);
                 allocation = image->allocation;
                 break;
             }
-        case RHI::Attachment::Type::Buffer:
+        case Attachment::Type::Buffer:
             {
-                auto bufferAttachment = (RHI::BufferAttachment*)attachment;
+                auto bufferAttachment = (BufferAttachment*)attachment;
                 auto buffer = context->m_bufferOwner.Get(bufferAttachment->handle);
                 allocation = buffer->allocation;
                 break;
@@ -153,22 +153,22 @@ namespace Vulkan
         vmaVirtualFree(allocation.virtualBlock, allocation.virtualHandle);
     }
 
-    inline void ITransientResourceAllocator::Destroy(RHI::Context* _context, RHI::Attachment* attachment)
+    inline void ITransientResourceAllocator::Destroy(Context* _context, Attachment* attachment)
     {
         auto context = (IContext*)_context;
         switch (attachment->type)
         {
-        case RHI::Attachment::Type::Image:
+        case Attachment::Type::Image:
             {
-                auto imageAttachment = (RHI::ImageAttachment*)attachment;
+                auto imageAttachment = (ImageAttachment*)attachment;
                 auto image = context->m_imageOwner.Get(imageAttachment->handle);
                 image->Shutdown(context);
                 context->m_imageOwner.Remove(imageAttachment->handle);
                 break;
             }
-        case RHI::Attachment::Type::Buffer:
+        case Attachment::Type::Buffer:
             {
-                auto bufferAttachment = (RHI::BufferAttachment*)attachment;
+                auto bufferAttachment = (BufferAttachment*)attachment;
                 auto buffer = context->m_bufferOwner.Get(bufferAttachment->handle);
                 buffer->Shutdown(context);
                 context->m_bufferOwner.Remove(bufferAttachment->handle);
@@ -264,4 +264,4 @@ namespace Vulkan
         return block;
     }
 
-} // namespace Vulkan
+} // namespace RHI::Vulkan

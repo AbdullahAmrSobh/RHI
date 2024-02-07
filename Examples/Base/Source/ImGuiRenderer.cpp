@@ -54,7 +54,8 @@ void ImGuiRenderer::Init(RHI::Context* context, RHI::FrameScheduler* scheduler, 
         imageInfo.size.depth = 1;
         imageInfo.type = RHI::ImageType::Image2D;
         imageInfo.format = RHI::Format::RGBA8_UNORM;
-        imageInfo.usageFlags = RHI::ImageUsage::ShaderResource | RHI::ImageUsage::CopyDst;
+        imageInfo.usageFlags = RHI::ImageUsage::ShaderResource;
+        imageInfo.usageFlags |= RHI::ImageUsage::CopyDst;
         imageInfo.arrayCount = 1;
         m_image = m_imagePool->Allocate(imageInfo).GetValue();
 

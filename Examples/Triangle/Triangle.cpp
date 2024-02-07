@@ -168,7 +168,8 @@ public:
         // create image
         {
             RHI::ImageCreateInfo createInfo{};
-            createInfo.usageFlags = RHI::ImageUsage::ShaderResource | RHI::ImageUsage::CopyDst;
+            createInfo.usageFlags = RHI::ImageUsage::ShaderResource;
+            createInfo.usageFlags |= RHI::ImageUsage::CopyDst;
             createInfo.type = RHI::ImageType::Image2D;
             createInfo.size = m_mesh.textureSize;
             createInfo.size.depth = 1;

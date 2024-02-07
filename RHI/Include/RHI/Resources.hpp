@@ -134,6 +134,11 @@ namespace RHI
         Compute = 1 << 3,
     };
 
+    RHI_DEFINE_FLAG_OPERATORS(SampleCount);
+    RHI_DEFINE_FLAG_OPERATORS(ImageAspect);
+    RHI_DEFINE_FLAG_OPERATORS(BufferUsage);
+    RHI_DEFINE_FLAG_OPERATORS(ShaderStage);
+
     /// @brief The type of the shader resource to be bound.
     enum class ShaderBindingType
     {

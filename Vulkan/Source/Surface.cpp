@@ -14,9 +14,9 @@
 // Platform specifc surface creation are contained witihn this file,
 // to avoid polluting the global namespace with OS specific symbols
 
-namespace Vulkan
+namespace RHI::Vulkan
 {
-    VkResult ISwapchain::InitSurface(const RHI::SwapchainCreateInfo& createInfo)
+    VkResult ISwapchain::InitSurface(const SwapchainCreateInfo& createInfo)
     {
         auto context = static_cast<IContext*>(m_context);
 
@@ -37,4 +37,4 @@ namespace Vulkan
         RHI_ASSERT(result == VK_SUCCESS && surfaceSupportPresent == VK_TRUE);
         return result;
     }
-} // namespace Vulkan
+} // namespace RHI::Vulkan

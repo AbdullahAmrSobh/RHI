@@ -5,15 +5,15 @@
 #include "CommandList.hpp"
 #include "TransientResourceAllocator.inl"
 
-namespace Vulkan
+namespace RHI::Vulkan
 {
 
     ///////////////////////////////////////////////////////////////////////////
     /// Pass
     ///////////////////////////////////////////////////////////////////////////
 
-    IPass::IPass(IContext* context, const char* name, RHI::QueueType queueType)
-        : RHI::Pass(name, queueType)
+    IPass::IPass(IContext* context, const char* name, QueueType queueType)
+        : Pass(name, queueType)
         , m_context(context)
     {
     }
@@ -32,7 +32,7 @@ namespace Vulkan
     ///////////////////////////////////////////////////////////////////////////
 
     IFrameScheduler::IFrameScheduler(IContext* context)
-        : RHI::FrameScheduler(context)
+        : FrameScheduler(context)
     {
     }
 
@@ -59,7 +59,7 @@ namespace Vulkan
         VULKAN_ASSERT_SUCCESS(result);
     }
 
-    void IFrameScheduler::QueuePassSubmit(RHI::Pass* _pass, RHI::Fence* _fence)
+    void IFrameScheduler::QueuePassSubmit(Pass* _pass, Fence* _fence)
     {
         auto context = (IContext*)m_context;
         auto pass = (IPass*)_pass;
@@ -114,7 +114,7 @@ namespace Vulkan
         VULKAN_ASSERT_SUCCESS(result);
     }
 
-    void IFrameScheduler::QueueCommandsSubmit(RHI::QueueType queueType, RHI::TL::Span<RHI::CommandList*> commandLists, RHI::Fence& _fence)
+    void IFrameScheduler::QueueCommandsSubmit(QueueType queueType, TL::Span<CommandList*> commandLists, Fence& _fence)
     {
         auto context = (IContext*)m_context;
         auto& fence = (IFence&)_fence;
@@ -144,4 +144,4 @@ namespace Vulkan
         VULKAN_ASSERT_SUCCESS(result);
     }
 
-} // namespace Vulkan
+} // namespace RHI::Vulkan

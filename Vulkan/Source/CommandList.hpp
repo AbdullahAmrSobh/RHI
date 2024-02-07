@@ -8,10 +8,8 @@
 
 #include <vulkan/vulkan.h>
 
-namespace Vulkan
+namespace RHI::Vulkan
 {
-    namespace TL = ::RHI::TL;
-
     class IPass;
     class IContext;
     class ICommandList;
@@ -43,16 +41,16 @@ namespace Vulkan
         std::vector<ICommandList*> m_availableCommandLists;
     };
 
-    class CommandListAllocator final : public RHI::CommandListAllocator
+    class ICommandListAllocator final : public CommandListAllocator
     {
     public:
-        CommandListAllocator(IContext* context, uint32_t maxFrameBufferingCount);
-        ~CommandListAllocator();
+        ICommandListAllocator(IContext* context, uint32_t maxFrameBufferingCount);
+        ~ICommandListAllocator();
 
         VkResult Init(uint32_t queueFamilyIndex);
 
         void Flush(uint32_t newFrameIndex) override;
-        RHI::CommandList* Allocate() override;
+        CommandList* Allocate() override;
 
     private:
         IContext* m_context;
@@ -61,24 +59,24 @@ namespace Vulkan
         std::array<CommandPool, 3> m_commandPools;
     };
 
-    class ICommandList final : public RHI::CommandList
+    class ICommandList final : public CommandList
     {
     public:
         ICommandList(IContext* context, VkCommandBuffer commandBuffer);
 
         void Begin() override;
-        void Begin(RHI::Pass& pass) override;
+        void Begin(Pass& pass) override;
         void End() override;
-        void SetViewport(const RHI::Viewport& viewport) override;
-        void SetSicssor(const RHI::Scissor& sicssor) override;
-        void Submit(const RHI::CommandDraw& command) override;
-        void Submit(const RHI::CommandCompute& command) override;
-        void Submit(const RHI::CopyBufferDescriptor& command) override;
-        void Submit(const RHI::CopyImageDescriptor& command) override;
-        void Submit(const RHI::CopyBufferToImageDescriptor& command) override;
-        void Submit(const RHI::CopyImageToBufferDescriptor& command) override;
+        void SetViewport(const Viewport& viewport) override;
+        void SetSicssor(const Scissor& sicssor) override;
+        void Submit(const CommandDraw& command) override;
+        void Submit(const CommandCompute& command) override;
+        void Submit(const CopyBufferDescriptor& command) override;
+        void Submit(const CopyImageDescriptor& command) override;
+        void Submit(const CopyBufferToImageDescriptor& command) override;
+        void Submit(const CopyImageToBufferDescriptor& command) override;
 
-        VkRenderingAttachmentInfo GetAttachmentInfo(const RHI::ImagePassAttachment& passAttachment) const;
+        VkRenderingAttachmentInfo GetAttachmentInfo(const ImagePassAttachment& passAttachment) const;
 
         void RenderingBegin(IPass& pass);
 
@@ -88,11 +86,11 @@ namespace Vulkan
 
         void PopDebugMarker();
 
-        void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<RHI::Handle<RHI::BindGroup>> bindGroups);
+        void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<Handle<BindGroup>> bindGroups);
 
-        void TransitionPassAttachments(BarrierType barrierType, TL::Span<RHI::ImagePassAttachment*> passAttachments) const;
+        void TransitionPassAttachments(BarrierType barrierType, TL::Span<ImagePassAttachment*> passAttachments) const;
 
-        void TransitionPassAttachments(BarrierType barrierType, TL::Span<RHI::BufferPassAttachment*> passAttachments) const;
+        void TransitionPassAttachments(BarrierType barrierType, TL::Span<BufferPassAttachment*> passAttachments) const;
 
         IContext* m_context;
 
@@ -103,4 +101,4 @@ namespace Vulkan
         VkCommandBuffer m_commandBuffer;
     };
 
-} // namespace Vulkan
+} // namespace RHI::Vulkan

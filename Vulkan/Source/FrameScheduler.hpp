@@ -4,7 +4,7 @@
 
 #include <vk_mem_alloc.h>
 
-namespace Vulkan
+namespace RHI::Vulkan
 {
     struct Allocation;
 
@@ -13,13 +13,13 @@ namespace Vulkan
     class IContext;
     class ICommandList;
 
-    class IPass final : public RHI::Pass
+    class IPass final : public Pass
     {
         friend class ICommandList;
         friend class IFrameScheduler;
 
     public:
-        IPass(IContext* context, const char* name, RHI::QueueType queueType);
+        IPass(IContext* context, const char* name, QueueType queueType);
         ~IPass();
 
         VkResult Init();
@@ -27,7 +27,7 @@ namespace Vulkan
         IContext* m_context;
     };
 
-    class IFrameScheduler final : public RHI::FrameScheduler
+    class IFrameScheduler final : public FrameScheduler
     {
     public:
         IFrameScheduler(IContext* context);
@@ -36,8 +36,8 @@ namespace Vulkan
         VkResult Init();
 
         void DeviceWaitIdle() override;
-        void QueuePassSubmit(RHI::Pass* pass, RHI::Fence* fence) override;
-        void QueueCommandsSubmit(RHI::QueueType queueType, RHI::TL::Span<RHI::CommandList*> commandLists, RHI::Fence& fence) override;
+        void QueuePassSubmit(Pass* pass, Fence* fence) override;
+        void QueueCommandsSubmit(QueueType queueType, TL::Span<CommandList*> commandLists, Fence& fence) override;
     };
 
-} // namespace Vulkan
+} // namespace RHI::Vulkan
