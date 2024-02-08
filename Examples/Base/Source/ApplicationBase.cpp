@@ -138,6 +138,7 @@ void ApplicationBase::Init()
         poolCreateInfo.minBlockAlignment = alignof(uint64_t);
         m_bufferPool = m_context->CreateBufferPool(poolCreateInfo);
     }
+
     {
         RHI::PoolCreateInfo poolCreateInfo{};
         poolCreateInfo.heapType = RHI::MemoryType::GPULocal;
@@ -207,10 +208,7 @@ void ApplicationBase::Run()
             auto cursorDelta = currentCursorPos - previousCursorPos;
             previousCursorPos = currentCursorPos;
 
-            m_camera.keys.down = glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS;
-            m_camera.keys.up = glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS;
-            m_camera.keys.right = glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS;
-            m_camera.keys.left = glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS;
+            ProcessInput();
 
             if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
             {
@@ -227,4 +225,14 @@ void ApplicationBase::Run()
             OnUpdate(Timestep(deltaTime));
         }
     }
+}
+
+void ApplicationBase::ProcessInput()
+{
+    GLFWwindow* window = reinterpret_cast<GLFWwindow*>(m_window);
+
+    m_camera.keys.down = glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS;
+    m_camera.keys.up = glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS;
+    m_camera.keys.right = glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS;
+    m_camera.keys.left = glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS;
 }

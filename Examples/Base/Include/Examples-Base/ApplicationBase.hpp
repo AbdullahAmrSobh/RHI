@@ -50,6 +50,8 @@ private:
 
     void Run();
 
+    void ProcessInput();
+
 protected:
     ImageData LoadImage(std::string_view path) const;
 

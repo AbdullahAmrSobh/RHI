@@ -32,9 +32,9 @@ namespace RHI::Vulkan
     struct IImage : Image
     {
         Allocation allocation; // allocation backing this resource.
-        IImagePool* pool; // Pointer to the pool this resource is created from.
-        VkImage handle; // Handle to valid VkImage resource (Might not be backed by an allocation).
-        VkFormat format; // Image pixel Format
+        IImagePool* pool;      // Pointer to the pool this resource is created from.
+        VkImage handle;        // Handle to valid VkImage resource (Might not be backed by an allocation).
+        VkFormat format;       // Image pixel Format
         VkImageType imageType; // Image dimensions
         ISwapchain* swapchain; // pointer to swapchain (if this image is backed by swapchain).
 
@@ -46,10 +46,10 @@ namespace RHI::Vulkan
     struct IBuffer : Buffer
     {
         Allocation allocation; // allocation backing this resource.
-        IBufferPool* pool; // Pointer to the pool this resource is created from.
-        VkBuffer handle; // Handle to valid VkImage resource (Might not be backed by an allocation).
-        ResultCode Init(IContext* context, const VmaAllocationCreateInfo allocationInfo, const BufferCreateInfo& createInfo, IBufferPool* parentPool, bool isTransientResource);
+        IBufferPool* pool;     // Pointer to the pool this resource is created from.
+        VkBuffer handle;       // Handle to valid VkImage resource (Might not be backed by an allocation).
 
+        ResultCode Init(IContext* context, const VmaAllocationCreateInfo allocationInfo, const BufferCreateInfo& createInfo, IBufferPool* parentPool, bool isTransientResource);
         void Shutdown(IContext* context);
         VkMemoryRequirements GetMemoryRequirements(VkDevice device) const;
     };

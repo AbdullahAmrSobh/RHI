@@ -85,14 +85,7 @@ namespace RHI
     class RHI_EXPORT Context
     {
     public:
-        Context(std::unique_ptr<DebugCallbacks> debugMessengerCallbacks)
-            : m_debugMessenger(std::move(debugMessengerCallbacks))
-        {
-        }
-
-        virtual ~Context() = default;
-
-        DebugCallbacks&                               GetDebugMessenger() const;
+        virtual ~Context()                                                                                                          = default;
 
         /// @brief Creates a new Swapchain.
         virtual std::unique_ptr<Swapchain>            CreateSwapchain(const SwapchainCreateInfo& createInfo)                        = 0;
@@ -152,21 +145,25 @@ namespace RHI
         virtual void                                  DestroySampler(Handle<Sampler> sampler)                                       = 0;
 
         /// @brief Creates a new ImageView.
-        virtual Handle<ImageView>                     CreateImageView(const ImageViewCreateInfo& useInfo)     = 0;
+        virtual Handle<ImageView>                     CreateImageView(const ImageViewCreateInfo& useInfo)                           = 0;
 
         /// @brief Frees the given compute pipeline object.
         virtual void                                  DestroyImageView(Handle<ImageView> view)                                      = 0;
 
         /// @brief Creates a new BufferView.
-        virtual Handle<BufferView>                    CreateBufferView(const BufferViewCreateInfo& useInfo)  = 0;
+        virtual Handle<BufferView>                    CreateBufferView(const BufferViewCreateInfo& useInfo)                         = 0;
 
         /// @brief Frees the given sampler object.
         virtual void                                  DestroyBufferView(Handle<BufferView> view)                                    = 0;
 
-        std::unique_ptr<Allocator>                    m_allocator;
-
     protected:
+        Context(std::unique_ptr<DebugCallbacks> debugMessengerCallbacks)
+            : m_debugMessenger(std::move(debugMessengerCallbacks))
+        {
+        }
+
         std::unique_ptr<DebugCallbacks> m_debugMessenger;
+        std::unique_ptr<Allocator>      m_allocator;
     };
 
 } // namespace RHI
