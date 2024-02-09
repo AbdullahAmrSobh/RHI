@@ -21,52 +21,39 @@ namespace RHI::Vulkan
     class IContext final : public Context
     {
     public:
-        IContext(std::unique_ptr<DebugCallbacks> debugMessengerCallbacks)
+        IContext(Ptr<DebugCallbacks> debugMessengerCallbacks)
             : Context(std::move(debugMessengerCallbacks))
         {
         }
 
         ~IContext();
 
+        // clang-format off
         VkResult Init(const ApplicationInfo& appInfo);
-
-        std::unique_ptr<Swapchain> CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
-
-        std::unique_ptr<Fence> CreateFence() override;
-
-        std::unique_ptr<Pass> CreatePass(const char* name, QueueType type) override;
-
-        std::unique_ptr<FrameScheduler> CreateFrameScheduler() override;
-
-        std::unique_ptr<CommandListAllocator> CreateCommandListAllocator(QueueType queueType, uint32_t bufferedFramesCount) override;
-
-        std::unique_ptr<ShaderModule> CreateShaderModule(const ShaderModuleCreateInfo& createInfo) override;
-
-        Handle<BindGroupLayout> CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) override;
-        void DestroyBindGroupLayout(Handle<BindGroupLayout> layout) override;
-
-        Handle<PipelineLayout> CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo) override;
-        void DestroyPipelineLayout(Handle<PipelineLayout> layout) override;
-
-        std::unique_ptr<BindGroupAllocator> CreateBindGroupAllocator() override;
-
-        std::unique_ptr<BufferPool> CreateBufferPool(const PoolCreateInfo& createInfo) override;
-        std::unique_ptr<ImagePool> CreateImagePool(const PoolCreateInfo& createInfo) override;
-
-        Handle<GraphicsPipeline> CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) override;
-        void DestroyGraphicsPipeline(Handle<GraphicsPipeline> pso) override;
-
-        Handle<ComputePipeline> CreateComputePipeline(const ComputePipelineCreateInfo& createInfo) override;
-        void DestroyComputePipeline(Handle<ComputePipeline> pso) override;
-
-        Handle<Sampler> CreateSampler(const SamplerCreateInfo& createInfo) override;
-        void DestroySampler(Handle<Sampler> sampler) override;
-
-        Handle<ImageView> CreateImageView(const ImageViewCreateInfo& useInfo) override;
-        void DestroyImageView(Handle<ImageView> view) override;
-
-        Handle<BufferView> CreateBufferView(const BufferViewCreateInfo& useInfo) override;
-        void DestroyBufferView(Handle<BufferView> view) override;
+        Ptr<Swapchain>            CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
+        Ptr<ShaderModule>         CreateShaderModule(const ShaderModuleCreateInfo& createInfo) override;
+        Ptr<Fence>                CreateFence() override;
+        Ptr<Pass>                 CreatePass(const char* name, QueueType type) override;
+        Ptr<FrameScheduler>       CreateFrameScheduler() override;
+        Ptr<CommandListAllocator> CreateCommandListAllocator(QueueType queueType, uint32_t bufferedFramesCount) override;
+        Handle<BindGroupLayout>   CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) override;
+        void                      DestroyBindGroupLayout(Handle<BindGroupLayout> layout) override;
+        Handle<PipelineLayout>    CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo) override;
+        void                      DestroyPipelineLayout(Handle<PipelineLayout> layout) override;
+        Ptr<BindGroupAllocator>   CreateBindGroupAllocator() override;
+        Ptr<BufferPool>           CreateBufferPool(const PoolCreateInfo& createInfo) override;
+        Ptr<ImagePool>            CreateImagePool(const PoolCreateInfo& createInfo) override;
+        Handle<GraphicsPipeline>  CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) override;
+        void                      DestroyGraphicsPipeline(Handle<GraphicsPipeline> pso) override;
+        Handle<ComputePipeline>   CreateComputePipeline(const ComputePipelineCreateInfo& createInfo) override;
+        void                      DestroyComputePipeline(Handle<ComputePipeline> pso) override;
+        Handle<Sampler>           CreateSampler(const SamplerCreateInfo& createInfo) override;
+        void                      DestroySampler(Handle<Sampler> sampler) override;
+        Handle<ImageView>         CreateImageView(const ImageViewCreateInfo& useInfo) override;
+        void                      DestroyImageView(Handle<ImageView> view) override;
+        Handle<BufferView>        CreateBufferView(const BufferViewCreateInfo& useInfo) override;
+        void                      DestroyBufferView(Handle<BufferView> view) override;
+        // clang-format on
 
         uint32_t GetQueueFamilyIndex(QueueType queueType) const;
         VkQueue GetQueue(QueueType queueType) const;
@@ -90,33 +77,35 @@ namespace RHI::Vulkan
 
         uint32_t GetMemoryTypeIndex(MemoryType memoryType);
 
-        VkInstance m_instance = VK_NULL_HANDLE;
+        // clang-format off
+        VkInstance       m_instance       = VK_NULL_HANDLE;
         VkPhysicalDevice m_physicalDevice = VK_NULL_HANDLE;
-        VkDevice m_device = VK_NULL_HANDLE;
-        VmaAllocator m_allocator = VK_NULL_HANDLE;
+        VkDevice         m_device         = VK_NULL_HANDLE;
+        VmaAllocator     m_allocator      = VK_NULL_HANDLE;
 
         uint32_t m_graphicsQueueFamilyIndex = UINT32_MAX;
-        uint32_t m_computeQueueFamilyIndex = UINT32_MAX;
+        uint32_t m_computeQueueFamilyIndex  = UINT32_MAX;
         uint32_t m_transferQueueFamilyIndex = UINT32_MAX;
 
         VkQueue m_graphicsQueue = VK_NULL_HANDLE;
-        VkQueue m_computeQueue = VK_NULL_HANDLE;
+        VkQueue m_computeQueue  = VK_NULL_HANDLE;
         VkQueue m_transferQueue = VK_NULL_HANDLE;
 
-        PFN_vkCmdDebugMarkerBeginEXT m_vkCmdDebugMarkerBeginEXT = nullptr;
+        PFN_vkCmdDebugMarkerBeginEXT  m_vkCmdDebugMarkerBeginEXT  = nullptr;
         PFN_vkCmdDebugMarkerInsertEXT m_vkCmdDebugMarkerInsertEXT = nullptr;
-        PFN_vkCmdDebugMarkerEndEXT m_vkCmdDebugMarkerEndEXT = nullptr;
+        PFN_vkCmdDebugMarkerEndEXT    m_vkCmdDebugMarkerEndEXT    = nullptr;
 
-        HandlePool<IImage> m_imageOwner = HandlePool<IImage>();
-        HandlePool<IBuffer> m_bufferOwner = HandlePool<IBuffer>();
-        HandlePool<IImageView> m_imageViewOwner = HandlePool<IImageView>();
-        HandlePool<IBufferView> m_bufferViewOwner = HandlePool<IBufferView>();
-        HandlePool<IBindGroupLayout> m_bindGroupLayoutsOwner = HandlePool<IBindGroupLayout>();
-        HandlePool<IBindGroup> m_bindGroupOwner = HandlePool<IBindGroup>();
-        HandlePool<IPipelineLayout> m_pipelineLayoutOwner = HandlePool<IPipelineLayout>();
-        HandlePool<IGraphicsPipeline> m_graphicsPipelineOwner = HandlePool<IGraphicsPipeline>();
-        HandlePool<IComputePipeline> m_computePipelineOwner = HandlePool<IComputePipeline>();
-        HandlePool<ISampler> m_samplerOwner = HandlePool<ISampler>();
+        HandlePool<IImage>            m_imageOwner             = HandlePool<IImage>();
+        HandlePool<IBuffer>           m_bufferOwner            = HandlePool<IBuffer>();
+        HandlePool<IImageView>        m_imageViewOwner         = HandlePool<IImageView>();
+        HandlePool<IBufferView>       m_bufferViewOwner        = HandlePool<IBufferView>();
+        HandlePool<IBindGroupLayout>  m_bindGroupLayoutsOwner  = HandlePool<IBindGroupLayout>();
+        HandlePool<IBindGroup>        m_bindGroupOwner         = HandlePool<IBindGroup>();
+        HandlePool<IPipelineLayout>   m_pipelineLayoutOwner    = HandlePool<IPipelineLayout>();
+        HandlePool<IGraphicsPipeline> m_graphicsPipelineOwner  = HandlePool<IGraphicsPipeline>();
+        HandlePool<IComputePipeline>  m_computePipelineOwner   = HandlePool<IComputePipeline>();
+        HandlePool<ISampler>          m_samplerOwner           = HandlePool<ISampler>();
+        // clang-format on
     };
 
     inline uint32_t IContext::GetQueueFamilyIndex(QueueType queueType) const
@@ -126,7 +115,7 @@ namespace RHI::Vulkan
         case QueueType::Graphics: return m_graphicsQueueFamilyIndex;
         case QueueType::Compute:  return m_computeQueueFamilyIndex;
         case QueueType::Transfer: return m_transferQueueFamilyIndex;
-        default:                       RHI_UNREACHABLE(); return UINT32_MAX;
+        default:                  RHI_UNREACHABLE(); return UINT32_MAX;
         }
     }
 
@@ -137,7 +126,7 @@ namespace RHI::Vulkan
         case QueueType::Graphics: return m_graphicsQueue;
         case QueueType::Compute:  return m_computeQueue;
         case QueueType::Transfer: return m_transferQueue;
-        default:                       RHI_UNREACHABLE(); return VK_NULL_HANDLE;
+        default:                  RHI_UNREACHABLE(); return VK_NULL_HANDLE;
         }
     }
 

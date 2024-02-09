@@ -2,7 +2,6 @@
 #include "RHI-Vulkan/Export.hpp"
 
 #include <RHI/Context.hpp>
-#include <memory>
 
 namespace RHI
 {
@@ -16,6 +15,6 @@ namespace RHI
     /// @param appInfo Information regarding the application using this API.
     /// @param debugCallbacks debug callbacks called to log info about the API to the application.
     /// @return return a vulkan implementation of RHI context.
-    RHI_Vulkan_EXPORT std::unique_ptr<Context> CreateVulkanContext(const ApplicationInfo& appInfo, std::unique_ptr<DebugCallbacks> debugCallbacks = nullptr);
+    RHI_Vulkan_EXPORT Ptr<Context> CreateVulkanContext(const ApplicationInfo& appInfo, Ptr<DebugCallbacks> debugCallbacks = nullptr);
 
 } // namespace RHI

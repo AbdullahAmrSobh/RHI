@@ -6,8 +6,8 @@
 #include "RHI/FrameScheduler.hpp"
 #include "RHI/Export.hpp"
 #include "RHI/Common/Allocator.hpp"
+#include "RHI/Common/Ptr.h"
 
-#include <memory>
 #include <string>
 #include <string_view>
 
@@ -85,85 +85,85 @@ namespace RHI
     class RHI_EXPORT Context
     {
     public:
-        virtual ~Context()                                                                                                          = default;
+        virtual ~Context()                                                                                              = default;
 
         /// @brief Creates a new Swapchain.
-        virtual std::unique_ptr<Swapchain>            CreateSwapchain(const SwapchainCreateInfo& createInfo)                        = 0;
+        virtual Ptr<Swapchain>            CreateSwapchain(const SwapchainCreateInfo& createInfo)                        = 0;
 
         /// @brief Creates a new ShaderModule
-        virtual std::unique_ptr<ShaderModule>         CreateShaderModule(const ShaderModuleCreateInfo& createInfo)                  = 0;
+        virtual Ptr<ShaderModule>         CreateShaderModule(const ShaderModuleCreateInfo& createInfo)                  = 0;
 
         /// @brief Creates a fence object.
-        virtual std::unique_ptr<Fence>                CreateFence()                                                                 = 0;
+        virtual Ptr<Fence>                CreateFence()                                                                 = 0;
 
         /// @brief Creates a Frame Graph Pass object.
-        virtual std::unique_ptr<Pass>                 CreatePass(const char* name, QueueType type)                                  = 0;
+        virtual Ptr<Pass>                 CreatePass(const char* name, QueueType type)                                  = 0;
 
         /// @brief Creates a new FrameScheduler object.
-        virtual std::unique_ptr<FrameScheduler>       CreateFrameScheduler()                                                        = 0;
+        virtual Ptr<FrameScheduler>       CreateFrameScheduler()                                                        = 0;
 
         /// @brief Creates a new command list allocator object.
-        virtual std::unique_ptr<CommandListAllocator> CreateCommandListAllocator(QueueType queueType, uint32_t bufferedFramesCount) = 0;
+        virtual Ptr<CommandListAllocator> CreateCommandListAllocator(QueueType queueType, uint32_t bufferedFramesCount) = 0;
 
         /// @brief Creates a shader bind group layout object.
-        virtual Handle<BindGroupLayout>               CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)            = 0;
+        virtual Handle<BindGroupLayout>   CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)            = 0;
 
         /// @brief Frees the given shader bind group layout
-        virtual void                                  DestroyBindGroupLayout(Handle<BindGroupLayout> layout)                        = 0;
+        virtual void                      DestroyBindGroupLayout(Handle<BindGroupLayout> layout)                        = 0;
 
         /// @brief Creates a shader bind group layout object.
-        virtual Handle<PipelineLayout>                CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)              = 0;
+        virtual Handle<PipelineLayout>    CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)              = 0;
 
         /// @brief Frees the given shader bind group layout
-        virtual void                                  DestroyPipelineLayout(Handle<PipelineLayout> layout)                          = 0;
+        virtual void                      DestroyPipelineLayout(Handle<PipelineLayout> layout)                          = 0;
 
         /// @brief Creates a BindGroupAllocator object.
-        virtual std::unique_ptr<BindGroupAllocator>   CreateBindGroupAllocator()                                                    = 0;
+        virtual Ptr<BindGroupAllocator>   CreateBindGroupAllocator()                                                    = 0;
 
         /// @brief Creates a new Pool for all buffer resources.
-        virtual std::unique_ptr<BufferPool>           CreateBufferPool(const PoolCreateInfo& createInfo)                            = 0;
+        virtual Ptr<BufferPool>           CreateBufferPool(const PoolCreateInfo& createInfo)                            = 0;
 
         /// @brief Creates a new Pool for all image resources.
-        virtual std::unique_ptr<ImagePool>            CreateImagePool(const PoolCreateInfo& createInfo)                             = 0;
+        virtual Ptr<ImagePool>            CreateImagePool(const PoolCreateInfo& createInfo)                             = 0;
 
         /// @brief Creates a new graphics pipeline state for graphics.
-        virtual Handle<GraphicsPipeline>              CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)          = 0;
+        virtual Handle<GraphicsPipeline>  CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)          = 0;
 
         /// @brief Frees the given graphics pipeline object.
-        virtual void                                  DestroyGraphicsPipeline(Handle<GraphicsPipeline> pso)                         = 0;
+        virtual void                      DestroyGraphicsPipeline(Handle<GraphicsPipeline> pso)                         = 0;
 
         /// @brief Creates a new compute pipeline state for graphics.
-        virtual Handle<ComputePipeline>               CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)            = 0;
+        virtual Handle<ComputePipeline>   CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)            = 0;
 
         /// @brief Frees the given compute pipeline object.
-        virtual void                                  DestroyComputePipeline(Handle<ComputePipeline> pso)                           = 0;
+        virtual void                      DestroyComputePipeline(Handle<ComputePipeline> pso)                           = 0;
 
         /// @brief Creates a new Sampler state.
-        virtual Handle<Sampler>                       CreateSampler(const SamplerCreateInfo& createInfo)                            = 0;
+        virtual Handle<Sampler>           CreateSampler(const SamplerCreateInfo& createInfo)                            = 0;
 
         /// @brief Frees the given sampler object.
-        virtual void                                  DestroySampler(Handle<Sampler> sampler)                                       = 0;
+        virtual void                      DestroySampler(Handle<Sampler> sampler)                                       = 0;
 
         /// @brief Creates a new ImageView.
-        virtual Handle<ImageView>                     CreateImageView(const ImageViewCreateInfo& useInfo)                           = 0;
+        virtual Handle<ImageView>         CreateImageView(const ImageViewCreateInfo& useInfo)                           = 0;
 
         /// @brief Frees the given compute pipeline object.
-        virtual void                                  DestroyImageView(Handle<ImageView> view)                                      = 0;
+        virtual void                      DestroyImageView(Handle<ImageView> view)                                      = 0;
 
         /// @brief Creates a new BufferView.
-        virtual Handle<BufferView>                    CreateBufferView(const BufferViewCreateInfo& useInfo)                         = 0;
+        virtual Handle<BufferView>        CreateBufferView(const BufferViewCreateInfo& useInfo)                         = 0;
 
         /// @brief Frees the given sampler object.
-        virtual void                                  DestroyBufferView(Handle<BufferView> view)                                    = 0;
+        virtual void                      DestroyBufferView(Handle<BufferView> view)                                    = 0;
 
     protected:
-        Context(std::unique_ptr<DebugCallbacks> debugMessengerCallbacks)
+        Context(Ptr<DebugCallbacks> debugMessengerCallbacks)
             : m_debugMessenger(std::move(debugMessengerCallbacks))
         {
         }
 
-        std::unique_ptr<DebugCallbacks> m_debugMessenger;
-        std::unique_ptr<Allocator>      m_allocator;
+        Ptr<DebugCallbacks> m_debugMessenger;
+        Ptr<Allocator>      m_allocator;
     };
 
 } // namespace RHI

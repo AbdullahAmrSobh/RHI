@@ -1182,7 +1182,7 @@ namespace RHI::Vulkan
             image.swapchain = this;
 
             auto handle = m_context->m_imageOwner.Insert(image);
-            m_images.push_back(handle);
+            m_images.emplace_back(handle);
         }
         result = vkAcquireNextImageKHR(m_context->m_device, m_swapchain, UINT64_MAX, m_semaphores.imageAcquired, VK_NULL_HANDLE, &m_currentImageIndex);
         VULKAN_ASSERT_SUCCESS(result);

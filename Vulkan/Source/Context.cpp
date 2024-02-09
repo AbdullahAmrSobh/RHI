@@ -31,13 +31,17 @@
     #define RHI_VULKAN_USE_CURRENT_PLATFORM_SURFACE_EXTENSION_NAME VK_MVK_IOS_SURFACE_EXTENSION_NAME
 #endif // VK_USE_PLATFORM_WIN32_KHR
 
-std::unique_ptr<RHI::Context> RHI::CreateVulkanContext(const RHI::ApplicationInfo& appInfo, std::unique_ptr<RHI::DebugCallbacks> debugCallbacks)
+namespace RHI
 {
-    auto context = std::make_unique<RHI::Vulkan::IContext>(std::move(debugCallbacks));
-    auto result = context->Init(appInfo);
-    RHI_ASSERT(result == VK_SUCCESS);
-    return std::move(context);
-}
+
+    Ptr<Context> CreateVulkanContext(const ApplicationInfo& appInfo, Ptr<DebugCallbacks> debugCallbacks)
+    {
+        auto context = CreatePtr<Vulkan::IContext>(std::move(debugCallbacks));
+        auto result = context->Init(appInfo);
+        RHI_ASSERT(result == VK_SUCCESS);
+        return std::move(context);
+    }
+} // namespace RHI
 
 namespace RHI::Vulkan
 {
@@ -315,49 +319,49 @@ namespace RHI::Vulkan
         return VK_SUCCESS;
     }
 
-    std::unique_ptr<Swapchain> IContext::CreateSwapchain(const SwapchainCreateInfo& createInfo)
+    Ptr<Swapchain> IContext::CreateSwapchain(const SwapchainCreateInfo& createInfo)
     {
-        auto swapchain = std::make_unique<ISwapchain>(this);
+        auto swapchain = CreatePtr<ISwapchain>(this);
         auto result = swapchain->Init(createInfo);
         RHI_ASSERT(result == VK_SUCCESS);
         return swapchain;
     }
 
-    std::unique_ptr<Fence> IContext::CreateFence()
+    Ptr<Fence> IContext::CreateFence()
     {
-        auto fence = std::make_unique<IFence>(this);
+        auto fence = CreatePtr<IFence>(this);
         auto result = fence->Init();
         RHI_ASSERT(result == VK_SUCCESS);
         return fence;
     }
 
-    std::unique_ptr<Pass> IContext::CreatePass(const char* name, QueueType type)
+    Ptr<Pass> IContext::CreatePass(const char* name, QueueType type)
     {
-        auto pass = std::make_unique<IPass>(this, name, type);
+        auto pass = CreatePtr<IPass>(this, name, type);
         auto result = pass->Init();
         RHI_ASSERT(result == VK_SUCCESS);
         return pass;
     }
 
-    std::unique_ptr<ShaderModule> IContext::CreateShaderModule(const ShaderModuleCreateInfo& createInfo)
+    Ptr<ShaderModule> IContext::CreateShaderModule(const ShaderModuleCreateInfo& createInfo)
     {
-        auto shaderModule = std::make_unique<IShaderModule>(this);
+        auto shaderModule = CreatePtr<IShaderModule>(this);
         auto result = shaderModule->Init(createInfo);
         RHI_ASSERT(result == VK_SUCCESS);
         return shaderModule;
     }
 
-    std::unique_ptr<FrameScheduler> IContext::CreateFrameScheduler()
+    Ptr<FrameScheduler> IContext::CreateFrameScheduler()
     {
-        auto scheduler = std::make_unique<IFrameScheduler>(this);
+        auto scheduler = CreatePtr<IFrameScheduler>(this);
         auto result = scheduler->Init();
         RHI_ASSERT(result == VK_SUCCESS);
         return scheduler;
     }
 
-    std::unique_ptr<CommandListAllocator> IContext::CreateCommandListAllocator(QueueType queueType, uint32_t bufferedFramesCount)
+    Ptr<CommandListAllocator> IContext::CreateCommandListAllocator(QueueType queueType, uint32_t bufferedFramesCount)
     {
-        auto allocator = std::make_unique<ICommandListAllocator>(this, bufferedFramesCount);
+        auto allocator = CreatePtr<ICommandListAllocator>(this, bufferedFramesCount);
         auto result = allocator->Init(GetQueueFamilyIndex(queueType));
         RHI_ASSERT(result == VK_SUCCESS);
         return allocator;
@@ -393,25 +397,25 @@ namespace RHI::Vulkan
         m_pipelineLayoutOwner.Remove(handle);
     }
 
-    std::unique_ptr<BindGroupAllocator> IContext::CreateBindGroupAllocator()
+    Ptr<BindGroupAllocator> IContext::CreateBindGroupAllocator()
     {
-        auto bindGroupAllocator = std::make_unique<IBindGroupAllocator>(this);
+        auto bindGroupAllocator = CreatePtr<IBindGroupAllocator>(this);
         auto result = bindGroupAllocator->Init();
         RHI_ASSERT(result == VK_SUCCESS);
         return bindGroupAllocator;
     }
 
-    std::unique_ptr<BufferPool> IContext::CreateBufferPool(const PoolCreateInfo& createInfo)
+    Ptr<BufferPool> IContext::CreateBufferPool(const PoolCreateInfo& createInfo)
     {
-        auto pool = std::make_unique<IBufferPool>(this);
+        auto pool = CreatePtr<IBufferPool>(this);
         auto result = pool->Init(createInfo);
         RHI_ASSERT(result == VK_SUCCESS);
         return pool;
     }
 
-    std::unique_ptr<ImagePool> IContext::CreateImagePool(const PoolCreateInfo& createInfo)
+    Ptr<ImagePool> IContext::CreateImagePool(const PoolCreateInfo& createInfo)
     {
-        auto pool = std::make_unique<IImagePool>(this);
+        auto pool = CreatePtr<IImagePool>(this);
         auto result = pool->Init(createInfo);
         RHI_ASSERT(result == VK_SUCCESS);
         return pool;
