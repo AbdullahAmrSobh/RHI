@@ -44,10 +44,10 @@ namespace RHI::Vulkan
     class ICommandListAllocator final : public CommandListAllocator
     {
     public:
-        ICommandListAllocator(IContext* context, uint32_t maxFrameBufferingCount);
+        ICommandListAllocator(IContext* context);
         ~ICommandListAllocator();
 
-        VkResult Init(uint32_t queueFamilyIndex);
+        VkResult Init(QueueType queueType);
 
         void Flush(uint32_t newFrameIndex) override;
         CommandList* Allocate() override;

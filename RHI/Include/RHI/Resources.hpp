@@ -6,15 +6,25 @@
 #include "RHI/Common/Span.hpp"
 #include "RHI/Format.hpp"
 
-#include <unordered_map>
-#include <variant>
-#include <memory>
-
 namespace RHI
 {
+    inline static constexpr uint32_t c_MaxRenderTargetAttachmentsCount           = 16u;
+    inline static constexpr uint32_t c_MaxSwapchainBackBuffersCount              = 3u;
+    inline static constexpr uint32_t c_MaxImageBindingArrayElementsCount         = 32u;
+    inline static constexpr uint32_t c_MaxBufferBindingArrayElementsCount        = 32u;
+    inline static constexpr uint32_t c_MaxBufferViewBindingArrayElementsCount    = 32u;
+    inline static constexpr uint32_t c_MaxBufferSamplerBindingArrayElementsCount = 32u;
+    inline static constexpr uint32_t c_MaxBindGroupElementsCount                 = 32u;
+    inline static constexpr uint32_t c_MaxPipelineVertexBindings                 = 32u;
+    inline static constexpr uint32_t c_MaxPipelineVertexAttributes               = 32u;
+    inline static constexpr uint32_t c_MaxPipelineBindGroupsCount                = 4u;
+    inline static constexpr uint32_t KiloByte                                    = 1000u;
+    inline static constexpr uint32_t MegaByte                                    = 1000u * KiloByte;
+
     class Context;
     class ShaderModule;
     class ImageAttachment;
+    class ResourcePool;
 
     // clang-format off
     struct Image {};
@@ -33,20 +43,11 @@ namespace RHI
     /// @brief Represents a pointer to GPU device memory
     using DeviceMemoryPtr = void*;
 
-    /// @brief Enumeration for common allocation size constants
-    namespace AllocationSizeConstants
-    {
-        inline static constexpr uint32_t KB = 1024;
-        inline static constexpr uint32_t MB = 1024 * KB;
-        inline static constexpr uint32_t GB = 1024 * MB;
-
-    }; // namespace AllocationSizeConstants
-
     /// @brief Enumeration representing the memory allocation startegy of a resource pool.
     enum class AllocationAlgorithm
     {
-        /// @brief Memory will be allocated linearly.
-        Linear,
+        Linear, /// @brief Memory will be allocated linearly.
+        Optimal,
     };
 
     /// @brief Enumeration representing different memory types and their locations.
@@ -146,6 +147,7 @@ namespace RHI
         Sampler,
         Image,
         Buffer,
+        BufferView,
     };
 
     /// @brief How the resource will be accessed in the shader.
@@ -287,6 +289,13 @@ namespace RHI
         Mailbox,
     };
 
+    enum class FenceState
+    {
+        NotSubmitted,
+        Pending,
+        Signaled,
+    };
+
 #ifdef RHI_PLATFORM_WINDOWS
     /// @brief struct contains win32 surface handles.
     struct Win32WindowDesc
@@ -425,23 +434,47 @@ namespace RHI
     /// @brief A shader bind group layout is an list of shader bindings.
     struct BindGroupLayoutCreateInfo
     {
-        BindGroupLayoutCreateInfo(std::initializer_list<ShaderBinding> initList)
-            : bindings(initList)
-        {
-        }
+        ShaderBinding bindings[c_MaxBindGroupElementsCount];
+    };
 
-        std::vector<ShaderBinding> bindings;
+    /// @brief An object that groups shader resources that are bound together.
+    struct BindGroupData
+    {
+    public:
+        BindGroupData() = default;
+
+        inline void BindImages(uint32_t index, TL::Span<Handle<ImageView>> handles, uint32_t arrayOffset = 0);
+
+        inline void BindBuffers(uint32_t index, TL::Span<Handle<Buffer>> handles, uint32_t arrayOffset = 0);
+
+        inline void BindBuffers(uint32_t index, TL::Span<Handle<BufferView>> handles, uint32_t arrayOffset = 0);
+
+        inline void BindSamplers(uint32_t index, TL::Span<Handle<Sampler>> samplers, uint32_t arrayOffset = 0);
+
+        struct Binding
+        {
+            Binding() = default;
+
+            uint32_t          index;
+            ShaderBindingType type;
+
+            union List
+            {
+                List(){};
+                Handle<ImageView>  m_asImageBinding[c_MaxImageBindingArrayElementsCount];
+                Handle<Buffer>     m_asBufferBinding[c_MaxBufferBindingArrayElementsCount];
+                Handle<BufferView> m_asBufferViewBinding[c_MaxBufferViewBindingArrayElementsCount];
+                Handle<Sampler>    m_asSamplerBinding[c_MaxBufferSamplerBindingArrayElementsCount];
+            } binding;
+        };
+
+        Binding m_bindings[c_MaxBindGroupElementsCount];
     };
 
     // @brief the layout of pipeline shaders
     struct PipelineLayoutCreateInfo
     {
-        PipelineLayoutCreateInfo(TL::Span<Handle<BindGroupLayout>> bindGroupLayouts)
-            : layouts{ bindGroupLayouts.begin(), bindGroupLayouts.end() }
-        {
-        }
-
-        std::vector<Handle<BindGroupLayout>> layouts;
+        Handle<BindGroupLayout> layouts[c_MaxPipelineBindGroupsCount]; // remove this
     };
 
     /// @brief Structure specifying the blending parameters for an image render target attachment.
@@ -464,9 +497,9 @@ namespace RHI
     /// @brief Structure specifying the render target layout.
     struct PipelineRenderTargetLayout
     {
-        TL::Span<const Format> colorAttachmentsFormats = { Format::BGRA8_UNORM }; // default: BGRA8 List of the formats of color attachments.
-        Format                 depthAttachmentFormat   = Format::Unknown;         // default: none Format of an optional depth and/or stencil attachment.
-        Format                 stencilAttachmentFormat = Format::Unknown;         // default: none Format of an optional depth and/or stencil attachment.
+        Format colorAttachmentsFormats[c_MaxRenderTargetAttachmentsCount] = { Format::BGRA8_UNORM }; // default: BGRA8 List of the formats of color attachments.
+        Format depthAttachmentFormat                                      = Format::Unknown;         // default: none Format of an optional depth and/or stencil attachment.
+        Format stencilAttachmentFormat                                    = Format::Unknown;         // default: none Format of an optional depth and/or stencil attachment.
     };
 
     struct PipelineVertexBindingDesc
@@ -486,8 +519,8 @@ namespace RHI
 
     struct PipelineInputAssemblerStateDesc
     {
-        std::vector<PipelineVertexBindingDesc>   bindings;
-        std::vector<PipelineVertexAttributeDesc> attributes;
+        PipelineVertexBindingDesc   bindings[c_MaxPipelineVertexBindings];
+        PipelineVertexAttributeDesc attributes[c_MaxPipelineVertexAttributes];
     };
 
     /// @brief Structure specifying the rasterizer state.
@@ -518,12 +551,12 @@ namespace RHI
     /// @brief Structure specifying the color attachments blend state.
     struct PipelineColorBlendStateDesc
     {
-        TL::Span<const ColorAttachmentBlendStateDesc> blendStates       = ColorAttachmentBlendStateDesc{};
-        float                                         blendConstants[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+        ColorAttachmentBlendStateDesc blendStates[c_MaxRenderTargetAttachmentsCount];
+        float                         blendConstants[4];
     };
 
     /// @brief Represent the creation parameters of an resource pool.
-    struct PoolCreateInfo
+    struct ResourcePoolCreateInfo
     {
         AllocationAlgorithm allocationAlgorithm = AllocationAlgorithm::Linear;
         MemoryType          heapType;
@@ -536,6 +569,7 @@ namespace RHI
     /// @brief Represent the creation parameters of an image resource.
     struct ImageCreateInfo
     {
+        ResourcePool*     pool;
         Flags<ImageUsage> usageFlags;                          // Usage flags.
         ImageType         type;                                // The type of the image.
         ImageSize3D       size;                                // The size of the image.
@@ -552,6 +586,7 @@ namespace RHI
     /// @brief Represent the creation parameters of an buffer resource.
     struct BufferCreateInfo
     {
+        ResourcePool*      pool;
         Flags<BufferUsage> usageFlags; // Usage flags.
         size_t             byteSize;   // The size of the buffer.
 
@@ -585,19 +620,13 @@ namespace RHI
     struct BufferViewCreateInfo
     {
         Handle<Image> buffer;
-        Format      format;
-        size_t      byteOffset;
-        size_t      byteSize;
+        Format        format;
+        size_t        byteOffset;
+        size_t        byteSize;
 
-        inline bool operator==(const BufferViewCreateInfo& other) const { return byteOffset == other.byteOffset && byteSize == other.byteSize && format == other.format; }
+        inline bool   operator==(const BufferViewCreateInfo& other) const { return byteOffset == other.byteOffset && byteSize == other.byteSize && format == other.format; }
 
-        inline bool operator!=(const BufferViewCreateInfo& other) const { return !(*this == other); }
-    };
-
-    struct ShaderModuleCreateInfo
-    {
-        void*  code;
-        size_t size;
+        inline bool   operator!=(const BufferViewCreateInfo& other) const { return !(*this == other); }
     };
 
     /// @brief Description of the graphics pipeline states.
@@ -632,7 +661,13 @@ namespace RHI
     /// @brief Structure describing the creation parameters of a sampler state.
     struct SamplerCreateInfo
     {
-        SamplerCreateInfo()                = default;
+        SamplerCreateInfo() = default;
+        SamplerCreateInfo(SamplerFilter           filter,
+                          SamplerAddressMode      addressMode,
+                          SamplerCompareOperation compare    = SamplerCompareOperation::Always,
+                          float                   mipLodBias = 0.0f,
+                          float                   minLod     = 0.0f,
+                          float                   maxLod     = 1.0f);
 
         SamplerFilter           filterMin  = SamplerFilter::Point;
         SamplerFilter           filterMag  = SamplerFilter::Point;
@@ -663,60 +698,22 @@ namespace RHI
         SwapchainPresentMode presentMode;
     };
 
-    /// @brief An object that groups shader resources that are bound together.
-    class RHI_EXPORT BindGroupData final
+    class RHI_EXPORT StagingBuffer
     {
     public:
-        BindGroupData() = default;
+        virtual ~StagingBuffer() = default;
 
-        void BindImages(uint32_t index, TL::Span<Handle<ImageView>> handles, uint32_t arrayOffset = 0);
-
-        void BindBuffers(uint32_t index, TL::Span<Handle<Buffer>> handles, uint32_t arrayOffset = 0);
-
-        void BindBuffers(uint32_t index, TL::Span<Handle<BufferView>> handles, uint32_t arrayOffset = 0);
-
-        void BindSamplers(uint32_t index, TL::Span<Handle<Sampler>> samplers, uint32_t arrayOffset = 0);
-
-        struct ResourceImageBinding
+        struct TempBuffer
         {
-            uint32_t                       arrayOffset;
-            std::vector<Handle<ImageView>> views;
+            DeviceMemoryPtr pData;
+            Handle<Buffer>  buffer;
+            size_t          offset;
+            size_t          size;
         };
 
-        struct ResourceBufferBinding
-        {
-            uint32_t                    arrayOffset;
-            std::vector<Handle<Buffer>> views;
-        };
-
-        struct ResourceBufferViewBinding
-        {
-            uint32_t                        arrayOffset;
-            std::vector<Handle<BufferView>> views;
-        };
-
-        struct ResourceSamplerBinding
-        {
-            uint32_t                     arrayOffset;
-            std::vector<Handle<Sampler>> samplers;
-        };
-
-        using ResourceBinding = std::variant<ResourceImageBinding, ResourceBufferBinding, ResourceSamplerBinding>;
-
-        std::unordered_map<uint32_t, ResourceBinding> m_bindings;
-    };
-
-    class RHI_EXPORT BindGroupAllocator
-    {
-    public:
-        BindGroupAllocator()                                                                                          = default;
-        virtual ~BindGroupAllocator()                                                                                 = default;
-
-        virtual std::vector<Handle<BindGroup>> AllocateBindGroups(TL::Span<Handle<BindGroupLayout>> bindGroupLayouts) = 0;
-
-        virtual void                           Free(TL::Span<Handle<BindGroup>> groups)                               = 0;
-
-        virtual void                           Update(Handle<BindGroup> group, const BindGroupData& data)             = 0;
+        virtual TempBuffer Allocate(size_t newSize)      = 0;
+        virtual void       Free(TempBuffer mappedBuffer) = 0;
+        virtual void       Flush()                       = 0;
     };
 
     class RHI_EXPORT ShaderModule
@@ -727,41 +724,11 @@ namespace RHI
     };
 
     /// @brief Pool used to allocate buffer resources.
-    class RHI_EXPORT BufferPool
+    class RHI_EXPORT ResourcePool
     {
     public:
-        BufferPool()                                                                = default;
-        virtual ~BufferPool()                                                       = default;
-
-        /// @brief Allocate a buffer resource.
-        virtual Result<Handle<Buffer>> Allocate(const BufferCreateInfo& createInfo) = 0;
-
-        /// @brief Free an allocated buffer resource.
-        virtual void                   FreeBuffer(Handle<Buffer> handle)            = 0;
-
-        /// @brief Get the size of an allocated buffer resource.
-        virtual size_t                 GetSize(Handle<Buffer> handle) const         = 0;
-
-        /// @brief Maps the buffer resource for read or write operations.
-        /// @return returns a pointer to GPU memory, or a nullptr in case of failure
-        virtual DeviceMemoryPtr        MapBuffer(Handle<Buffer> handle)             = 0;
-
-        /// @brief UnmapBuffers the buffer resource.
-        virtual void                   UnmapBuffer(Handle<Buffer> handle)           = 0;
-    };
-
-    /// @brief Pool used to allocate image resources.
-    class RHI_EXPORT ImagePool
-    {
-    public:
-        /// @brief Allocate an image resource.
-        virtual Result<Handle<Image>> Allocate(const ImageCreateInfo& createInfo) = 0;
-
-        /// @brief Free an allocated image resource.
-        virtual void                  FreeImage(Handle<Image> handle)             = 0;
-
-        /// @brief Get the size of an allocated image resource.
-        virtual size_t                GetSize(Handle<Image> handle) const         = 0;
+        ResourcePool()          = default;
+        virtual ~ResourcePool() = default;
     };
 
     /// @brief Fence object used to preform CPU-GPU sync
@@ -771,17 +738,10 @@ namespace RHI
         Fence()          = default;
         virtual ~Fence() = default;
 
-        enum class State
-        {
-            NotSubmitted,
-            Pending,
-            Signaled,
-        };
+        inline bool        Wait(uint64_t timeout = UINT64_MAX);
 
-        inline bool   Wait(uint64_t timeout = UINT64_MAX) { return WaitInternal(timeout); }
-
-        virtual void  Reset()    = 0;
-        virtual State GetState() = 0;
+        virtual void       Reset()    = 0;
+        virtual FenceState GetState() = 0;
 
     protected:
         virtual bool WaitInternal(uint64_t timeout) = 0;
@@ -791,8 +751,6 @@ namespace RHI
     class RHI_EXPORT Swapchain
     {
     public:
-        inline static constexpr uint32_t c_MaxSwapchainBackBuffersCount = 3;
-
         Swapchain();
         virtual ~Swapchain() = default;
 
@@ -814,13 +772,9 @@ namespace RHI
         virtual ResultCode Present()                                                                            = 0;
 
     protected:
-        uint32_t                   m_currentImageIndex;
-        uint32_t                   m_swapchainImagesCount;
-        ImageSize2D                m_imageSize;
-        Format                     m_format;
-        SwapchainPresentMode       m_presentMode;
-        Flags<ImageUsage>          m_imageUsage;
-        std::vector<Handle<Image>> m_images;
+        uint32_t            m_swapchainImagesCount;
+        uint32_t            m_currentImageIndex;
+        SwapchainCreateInfo m_createInfo;
+        Handle<Image>       m_images[c_MaxSwapchainBackBuffersCount];
     };
-
 } // namespace RHI

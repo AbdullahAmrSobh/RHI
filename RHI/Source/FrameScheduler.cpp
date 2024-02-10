@@ -65,7 +65,7 @@ namespace RHI
         passAttachment->usage = AttachmentUsage::Color;
         passAttachment->access = AttachmentAccess::None;
         passAttachment->viewInfo = viewInfo;
-        passAttachment->clearValue = value;
+        passAttachment->clearValue.colorValue = value;
         passAttachment->loadStoreOperations = loadStoreOperations;
         return passAttachment;
     }
@@ -78,7 +78,7 @@ namespace RHI
         passAttachment->usage = AttachmentUsage::Depth;
         passAttachment->access = AttachmentAccess::None;
         passAttachment->viewInfo = viewInfo;
-        passAttachment->clearValue = value;
+        passAttachment->clearValue.depthStencilValue = value;
         passAttachment->loadStoreOperations = loadStoreOperations;
         return passAttachment;
     }
@@ -91,7 +91,7 @@ namespace RHI
         passAttachment->usage = AttachmentUsage::Stencil;
         passAttachment->access = AttachmentAccess::None;
         passAttachment->viewInfo = viewInfo;
-        passAttachment->clearValue = value;
+        passAttachment->clearValue.depthStencilValue = value;
         passAttachment->loadStoreOperations = loadStoreOperations;
         return passAttachment;
     }
@@ -104,7 +104,7 @@ namespace RHI
         passAttachment->usage = AttachmentUsage::DepthStencil;
         passAttachment->access = AttachmentAccess::None;
         passAttachment->viewInfo = viewInfo;
-        passAttachment->clearValue = value;
+        passAttachment->clearValue.depthStencilValue = value;
         passAttachment->loadStoreOperations = loadStoreOperations;
         return passAttachment;
     }
@@ -374,11 +374,6 @@ namespace RHI
         m_frameSize = newSize;
         Cleanup();
         Compile();
-    }
-
-    void FrameScheduler::ExecuteCommandList(TL::Span<CommandList*> commandLists, Fence& fence)
-    {
-        QueueCommandsSubmit(QueueType::Graphics, commandLists, fence);
     }
 
     void FrameScheduler::Cleanup()

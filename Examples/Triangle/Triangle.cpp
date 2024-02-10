@@ -20,7 +20,7 @@ struct Mesh
     RHI::Handle<RHI::Buffer> texCoordBuffer;
 
     RHI::ImageSize3D textureSize;
-    RHI::Handle<RHI::Buffer> textureStagingBuffer;
+    std::vector<uint8_t> textureContent;
 };
 
 class TriangleExample final : public ApplicationBase
@@ -38,11 +38,11 @@ public:
         createInfo.usageFlags = usageFlags;
         createInfo.byteSize = data.size() * sizeof(T);
 
-        auto buffer = m_bufferPool->Allocate(createInfo).GetValue();
-        RHI::DeviceMemoryPtr bufferPtr = m_bufferPool->MapBuffer(buffer);
+        auto buffer = m_context->CreateBuffer(createInfo).GetValue();
+        RHI::DeviceMemoryPtr bufferPtr = m_context->MapBuffer(buffer);
         RHI_ASSERT(bufferPtr != nullptr);
         memcpy(bufferPtr, data.data(), data.size() * sizeof(T));
-        m_bufferPool->UnmapBuffer(buffer);
+        m_context->UnmapBuffer(buffer);
 
         return buffer;
     }
@@ -84,7 +84,7 @@ public:
                 .width = texture.width,
                 .height = texture.height,
             },
-            .textureStagingBuffer = CreateBuffer<uint8_t>({ texture.data.data(), texture.data.size() }, RHI::BufferUsage::CopySrc)
+            .textureContent = texture.data
         };
         return result;
     }
@@ -94,32 +94,23 @@ public:
         m_pipelineLayout = m_context->CreatePipelineLayout({ bindGroupLayout });
 
         auto shaderCode = ReadBinaryFile("./Resources/Shaders/triangle.spv");
-
-        RHI::ShaderModuleCreateInfo createInfo{};
-        createInfo.code = shaderCode.data();
-        createInfo.size = shaderCode.size();
-
-        auto shaderModule = m_context->CreateShaderModule(createInfo);
+        auto shaderModule = m_context->CreateShaderModule(shaderCode);
 
         RHI::GraphicsPipelineCreateInfo psoCreateInfo{};
         // clang-format off
-        psoCreateInfo.inputAssemblerState.attributes = {  
-            { .location = 0, .binding = 0, .format = RHI::Format::RGB32_FLOAT, .offset = 0,  }, 
-            { .location = 1, .binding = 1, .format = RHI::Format::RGB32_FLOAT, .offset = 0,  },  
-            { .location = 2, .binding = 2, .format = RHI::Format::RG32_FLOAT, .offset = 0,  },  
-        };  
-        psoCreateInfo.inputAssemblerState.bindings = { 
-            { .binding = 0, .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT), .stepRate = RHI::PipelineVertexInputRate::PerVertex,  },  
-            { .binding = 1, .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT), .stepRate = RHI::PipelineVertexInputRate::PerVertex,  },  
-            { .binding = 2, .stride = RHI::GetFormatByteSize(RHI::Format::RG32_FLOAT),  .stepRate = RHI::PipelineVertexInputRate::PerVertex,  },
-        };
+        psoCreateInfo.inputAssemblerState.attributes[0] = { .location = 0, .binding = 0, .format = RHI::Format::RGB32_FLOAT, .offset = 0,  }; 
+        psoCreateInfo.inputAssemblerState.attributes[1] = { .location = 1, .binding = 1, .format = RHI::Format::RGB32_FLOAT, .offset = 0,  };  
+        psoCreateInfo.inputAssemblerState.attributes[2] = { .location = 2, .binding = 2, .format = RHI::Format::RG32_FLOAT, .offset = 0,  };  
+        psoCreateInfo.inputAssemblerState.bindings[0] = { .binding = 0, .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT), .stepRate = RHI::PipelineVertexInputRate::PerVertex,  };  
+        psoCreateInfo.inputAssemblerState.bindings[1] = { .binding = 1, .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT), .stepRate = RHI::PipelineVertexInputRate::PerVertex,  };  
+        psoCreateInfo.inputAssemblerState.bindings[2] = { .binding = 2, .stride = RHI::GetFormatByteSize(RHI::Format::RG32_FLOAT),  .stepRate = RHI::PipelineVertexInputRate::PerVertex,  };
         // clang-format on
-        psoCreateInfo.vertexShaderModule = shaderModule.get();
         psoCreateInfo.vertexShaderName = "VSMain";
-        psoCreateInfo.pixelShaderModule = shaderModule.get();
         psoCreateInfo.pixelShaderName = "PSMain";
+        psoCreateInfo.vertexShaderModule = shaderModule.get();
+        psoCreateInfo.pixelShaderModule = shaderModule.get();
         psoCreateInfo.layout = m_pipelineLayout;
-        psoCreateInfo.renderTargetLayout.colorAttachmentsFormats = { RHI::Format::BGRA8_UNORM };
+        psoCreateInfo.renderTargetLayout.colorAttachmentsFormats[0] = RHI::Format::BGRA8_UNORM;
         psoCreateInfo.renderTargetLayout.depthAttachmentFormat = RHI::Format::D32;
         psoCreateInfo.depthStencilState.depthTestEnable = true;
         psoCreateInfo.depthStencilState.depthWriteEnable = true;
@@ -130,26 +121,24 @@ public:
 
     void SetupRenderGraph()
     {
-        auto& frameGraph = *m_frameScheduler.get();
-        auto& registry = frameGraph.GetRegistry();
-        m_renderpass = m_context->CreatePass("Render-Pass", RHI::QueueType::Graphics);
+    //     auto scheduler = m_context->GetScheduler();
+    //     auto& registry = scheduler->GetRegistry();
+    //     m_renderpass = scheduler->CreatePass<RenderPass>("Render-Pass", RHI::QueueType::Graphics);
 
-        RHI::ImageCreateInfo depthInfo{};
-        depthInfo.usageFlags = RHI::ImageUsage::Depth;
-        depthInfo.format = RHI::Format::D32;
-        depthInfo.type = RHI::ImageType::Image2D;
-        m_swapchainAttachment = registry.ImportSwapchainImage("back-buffer", m_swapchain.get());
-        auto depthAttachment = registry.CreateTransientImage("depth-buffer", depthInfo);
-        m_renderpass->UseColorAttachment(m_swapchainAttachment, { 0.1f, 0.2f, 0.3f, 1.0f });
-        m_renderpass->UseDepthAttachment(depthAttachment, { 0.0 });
+    //     RHI::ImageCreateInfo depthInfo{};
+    //     depthInfo.usageFlags = RHI::ImageUsage::Depth;
+    //     depthInfo.format = RHI::Format::D32;
+    //     depthInfo.type = RHI::ImageType::Image2D;
+    //     m_swapchainAttachment = registry.ImportSwapchainImage("back-buffer", m_swapchain.get());
+    //     auto depthAttachment = registry.CreateTransientImage("depth-buffer", depthInfo);
+    //     m_renderpass->UseColorAttachment(m_swapchainAttachment, { 0.1f, 0.2f, 0.3f, 1.0f });
+    //     m_renderpass->UseDepthAttachment(depthAttachment, { 0.0 });
 
-        // auto imguiPass = SetupImguiPass(m_swapchainAttachment, depthAttachment);
+    //     // auto imguiPass = SetupImguiPass(m_swapchainAttachment, depthAttachment);
 
-        frameGraph.RegisterPass(*m_renderpass);
-        // frameGraph.RegisterPass(*imguiPass);
-
-        frameGraph.ResizeFrame({ m_windowWidth, m_windowHeight });
-        frameGraph.Compile();
+    //     scheduler->RegisterPass(*m_renderpass);
+    //     scheduler->ResizeFrame({ m_windowWidth, m_windowHeight });
+    //     scheduler->Compile();
     }
 
     void OnInit() override
@@ -177,44 +166,18 @@ public:
             createInfo.sampleCount = RHI::SampleCount::Samples1;
             createInfo.mipLevels = 1;
             createInfo.arrayCount = 1;
-            m_image = m_imagePool->Allocate(createInfo).GetValue();
+            m_image = m_context->CreateImageWithContent(createInfo, m_mesh.textureContent).GetValue();
             RHI::ImageViewCreateInfo viewInfo{};
             viewInfo.image = m_image;
             m_imageView = m_context->CreateImageView(viewInfo);
         }
 
-        // upload image data to the gpu
-        {
-            auto fence = m_context->CreateFence();
-
-            // copy data from the staging buffer to the image.
-            RHI::CopyBufferToImageDescriptor copyCommand = {};
-            copyCommand.srcBuffer = m_mesh.textureStagingBuffer;
-            copyCommand.srcOffset = 0;
-            // copyCommand.srcBytesPerRow;
-            // copyCommand.srcBytesPerImage;
-            copyCommand.srcSize = m_mesh.textureSize;
-            copyCommand.srcSize.depth = 1;
-            copyCommand.dstImage = m_image;
-            copyCommand.dstOffset.x = 0;
-            copyCommand.dstOffset.y = 0;
-            copyCommand.dstOffset.z = 0;
-            auto commandList = m_commandListAllocator->Allocate();
-            commandList->Begin();
-            commandList->Submit(copyCommand);
-            commandList->End();
-            m_frameScheduler->ExecuteCommandList(commandList, *fence);
-            fence->Wait(UINT64_MAX);
-            m_bufferPool->FreeBuffer(m_mesh.textureStagingBuffer);
-        }
-
         // create shader bind group layout
         {
-            RHI::BindGroupLayoutCreateInfo createInfo = {
-                { RHI::ShaderBindingType::Buffer, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Vertex },
-                { RHI::ShaderBindingType::Image, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Pixel },
-                { RHI::ShaderBindingType::Sampler, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Pixel },
-            };
+            RHI::BindGroupLayoutCreateInfo createInfo = {};
+            createInfo.bindings[0] = { RHI::ShaderBindingType::Buffer, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Vertex };
+            createInfo.bindings[1] = { RHI::ShaderBindingType::Image, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Pixel };
+            createInfo.bindings[2] = { RHI::ShaderBindingType::Sampler, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Pixel };
             m_bindGroupLayout = m_context->CreateBindGroupLayout(createInfo);
         }
 
@@ -224,31 +187,27 @@ public:
 
         // create a sampler state
         {
-            RHI::SamplerCreateInfo samplerCreateInfo{};
-            m_sampler = m_context->CreateSampler(samplerCreateInfo);
+            m_sampler = m_context->CreateSampler(RHI::SamplerCreateInfo{});
 
             RHI::BindGroupData bindGroupData{};
             bindGroupData.BindBuffers(0u, m_uniformBuffer);
             bindGroupData.BindImages(1u, m_imageView);
             bindGroupData.BindSamplers(2u, m_sampler);
-            m_bindGroup = m_bindGroupAllocator->AllocateBindGroups(m_bindGroupLayout).front();
-            m_bindGroupAllocator->Update(m_bindGroup, bindGroupData);
+            m_bindGroup = m_context->CreateBindGroup(m_bindGroupLayout);
+            m_context->UpdateBindGroup(m_bindGroup, bindGroupData);
         }
     }
 
     void OnShutdown() override
     {
-        m_bindGroupAllocator->Free(m_bindGroup);
-
         m_context->DestroyBindGroupLayout(m_bindGroupLayout);
         m_context->DestroyPipelineLayout(m_pipelineLayout);
         m_context->DestroyGraphicsPipeline(m_pipelineState);
 
-        m_bufferPool->FreeBuffer(m_mesh.indexBuffer);
-        m_bufferPool->FreeBuffer(m_mesh.positionsBuffer);
-        m_bufferPool->FreeBuffer(m_uniformBuffer);
-
-        m_imagePool->FreeImage(m_image);
+        m_context->DestroyBuffer(m_mesh.indexBuffer);
+        m_context->DestroyBuffer(m_mesh.positionsBuffer);
+        m_context->DestroyBuffer(m_uniformBuffer);
+        m_context->DestroyImage(m_image);
     }
 
     void OnUpdate(Timestep timestep) override
@@ -256,16 +215,15 @@ public:
         m_camera.Update(timestep);
 
         auto projection = m_camera.GetProjection() * m_camera.GetView();
-        auto ptr = m_bufferPool->MapBuffer(m_uniformBuffer);
+        auto ptr = m_context->MapBuffer(m_uniformBuffer);
         memcpy(ptr, &projection, sizeof(glm::mat4));
-        m_bufferPool->UnmapBuffer(m_uniformBuffer);
+        m_context->UnmapBuffer(m_uniformBuffer);
 
         (void)timestep;
 
         ImGui::NewFrame();
 
         ImGui::ShowDemoWindow();
-
 
         ImGui::Render();
 
@@ -275,9 +233,10 @@ public:
 
     void Render()
     {
-        m_frameScheduler->Begin();
+        auto scheduler = m_context->GetScheduler();
+        scheduler->Begin();
 
-        auto currentFrameIndex = m_frameScheduler->GetCurrentFrameIndex();
+        auto currentFrameIndex = scheduler->GetCurrentFrameIndex();
 
         m_commandListAllocator->Flush(currentFrameIndex);
         auto commandList = m_commandListAllocator->Allocate();
@@ -311,7 +270,7 @@ public:
         m_imguiRenderer->RenderDrawData(drawData, *commandList);
         commandList->End();
 
-        m_frameScheduler->End();
+        scheduler->End();
     }
 
 private:
@@ -335,7 +294,6 @@ private:
     Mesh m_mesh;
 
     std::unique_ptr<RHI::Pass> m_renderpass;
-    RHI::ImageAttachment* m_swapchainAttachment;
 };
 
 int main(int argc, const char** argv)

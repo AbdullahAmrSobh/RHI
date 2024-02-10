@@ -11,6 +11,7 @@ namespace RHI
 {
     struct ImagePassAttachment;
     struct BufferPassAttachment;
+    struct StagingBuffer;
 
     class Context;
     class Swapchain;
@@ -114,12 +115,7 @@ namespace RHI
 
         uint32_t                    GetCurrentFrameIndex();
 
-        /// @brief Called at the beginning of the render-loop.
-        /// This marks the begining of a graphics frame.
         void                        Begin();
-
-        /// @brief Called at the ending of the render-loop.
-        /// This marks the ending of a graphics frame.
         void                        End();
 
         /// @brief Register a pass producer, to be called this frame.
@@ -131,27 +127,28 @@ namespace RHI
         /// @brief Called when the Render Target is resized, to recreate all graph resources, with the new sizes.
         void                        ResizeFrame(ImageSize2D newSize);
 
-        /// @brief Executes a list of command lists, and signal the provided fence when complete
-        void                        ExecuteCommandList(TL::Span<CommandList*> commandLists, Fence& fence);
-
     private:
-        void       Cleanup();
+        void   Cleanup();
 
-        Fence&     GetFrameCurrentFence();
+        Fence& GetFrameCurrentFence();
 
     protected:
-        virtual void DeviceWaitIdle()                                                                            = 0;
-        virtual void QueuePassSubmit(Pass* pass, Fence* fence)                                                   = 0;
-        virtual void QueueCommandsSubmit(QueueType queueType, TL::Span<CommandList*> commandLists, Fence& fence) = 0;
+        virtual void DeviceWaitIdle()                                                                                               = 0;
+        virtual void QueuePassSubmit(Pass* pass, Fence* fence)                                                                      = 0;
+        virtual void QueueCommandsSubmit(QueueType queueType, TL::Span<CommandList*> commandLists, Fence& fence)                    = 0;
+
+        virtual void StreamResource(Handle<Image> dst, ImageOffset offset, ImageSize3D size, StagingBuffer::TempBuffer& tempBuffer) = 0;
+        virtual void StreamResource(Handle<Buffer> dst, size_t offset, size_t size, StagingBuffer::TempBuffer& tempBuffer)          = 0;
 
     private:
-        uint32_t                            m_frameCount;
-        uint32_t                            m_currentFrameIndex;
-        uint64_t                            m_frameNumber;
+        uint32_t m_frameCount;
+        uint32_t m_currentFrameIndex;
+        uint64_t m_frameNumber;
 
         // A list of fences for each frame in flight
 
     protected:
+        friend class Context;
         Context*                                    m_context;
 
         std::vector<Pass*>                          m_passList;
@@ -164,7 +161,7 @@ namespace RHI
 
         ImageAttachment*                            m_swapchainImage;
 
-        std::vector<std::unique_ptr<Fence>> m_frameReadyFence;
+        std::vector<std::unique_ptr<Fence>>         m_frameReadyFence;
     };
 
 } // namespace RHI

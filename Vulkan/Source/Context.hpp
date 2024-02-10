@@ -21,46 +21,52 @@ namespace RHI::Vulkan
     class IContext final : public Context
     {
     public:
-        IContext(Ptr<DebugCallbacks> debugMessengerCallbacks)
-            : Context(std::move(debugMessengerCallbacks))
-        {
-        }
-
+        IContext(Ptr<DebugCallbacks> debugCallbacks);
         ~IContext();
 
-        // clang-format off
         VkResult Init(const ApplicationInfo& appInfo);
-        Ptr<Swapchain>            CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
-        Ptr<ShaderModule>         CreateShaderModule(const ShaderModuleCreateInfo& createInfo) override;
-        Ptr<Fence>                CreateFence() override;
-        Ptr<Pass>                 CreatePass(const char* name, QueueType type) override;
-        Ptr<FrameScheduler>       CreateFrameScheduler() override;
-        Ptr<CommandListAllocator> CreateCommandListAllocator(QueueType queueType, uint32_t bufferedFramesCount) override;
-        Handle<BindGroupLayout>   CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) override;
-        void                      DestroyBindGroupLayout(Handle<BindGroupLayout> layout) override;
-        Handle<PipelineLayout>    CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo) override;
-        void                      DestroyPipelineLayout(Handle<PipelineLayout> layout) override;
-        Ptr<BindGroupAllocator>   CreateBindGroupAllocator() override;
-        Ptr<BufferPool>           CreateBufferPool(const PoolCreateInfo& createInfo) override;
-        Ptr<ImagePool>            CreateImagePool(const PoolCreateInfo& createInfo) override;
-        Handle<GraphicsPipeline>  CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) override;
-        void                      DestroyGraphicsPipeline(Handle<GraphicsPipeline> pso) override;
-        Handle<ComputePipeline>   CreateComputePipeline(const ComputePipelineCreateInfo& createInfo) override;
-        void                      DestroyComputePipeline(Handle<ComputePipeline> pso) override;
-        Handle<Sampler>           CreateSampler(const SamplerCreateInfo& createInfo) override;
-        void                      DestroySampler(Handle<Sampler> sampler) override;
-        Handle<ImageView>         CreateImageView(const ImageViewCreateInfo& useInfo) override;
-        void                      DestroyImageView(Handle<ImageView> view) override;
-        Handle<BufferView>        CreateBufferView(const BufferViewCreateInfo& useInfo) override;
-        void                      DestroyBufferView(Handle<BufferView> view) override;
+
+        // clang-format off
+        Ptr<Swapchain>            CreateSwapchain(const SwapchainCreateInfo& createInfo)                                 override;
+        Ptr<ShaderModule>         CreateShaderModule(TL::Span<const uint8_t> shaderBlob)                                 override;
+        Ptr<Fence>                CreateFence()                                                                          override;
+        Ptr<CommandListAllocator> CreateCommandListAllocator(QueueType queueType)                                        override;
+        Ptr<ResourcePool>         CreateResourcePool(const ResourcePoolCreateInfo& createInfo)                           override;
+        Handle<BindGroupLayout>   CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)                     override;
+        void                      DestroyBindGroupLayout(Handle<BindGroupLayout> handle)                                 override;
+        Handle<BindGroup>         CreateBindGroup(Handle<BindGroupLayout> handle)                                        override;
+        void                      DestroyBindGroup(Handle<BindGroup> handle)                                             override;
+        void                      UpdateBindGroup(Handle<BindGroup> handle, const BindGroupData& data)                   override;
+        Handle<PipelineLayout>    CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)                       override;
+        void                      DestroyPipelineLayout(Handle<PipelineLayout> handle)                                   override;
+        Handle<GraphicsPipeline>  CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)                   override;
+        void                      DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle)                               override;
+        Handle<ComputePipeline>   CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)                     override;
+        void                      DestroyComputePipeline(Handle<ComputePipeline> handle)                                 override;
+        Handle<Sampler>           CreateSampler(const SamplerCreateInfo& createInfo)                                     override;
+        void                      DestroySampler(Handle<Sampler> handle)                                                 override;
+        Result<Handle<Image>>     CreateImage(const ImageCreateInfo& createInfo)                                         override;
+        void                      DestroyImage(Handle<Image> handle)                                                     override;
+        Result<Handle<Buffer>>    CreateBuffer(const BufferCreateInfo& createInfo)                                       override;
+        void                      DestroyBuffer(Handle<Buffer> handle)                                                   override;
+        Handle<ImageView>         CreateImageView(const ImageViewCreateInfo& createInfo)                                 override;
+        void                      DestroyImageView(Handle<ImageView> handle)                                             override;
+        Handle<BufferView>        CreateBufferView(const BufferViewCreateInfo& createInfo)                               override;
+        void                      DestroyBufferView(Handle<BufferView> handle)                                           override;
+        DeviceMemoryPtr           MapBuffer(Handle<Buffer> handle)                                                       override;
+        void                      UnmapBuffer(Handle<Buffer> handle)                                                     override;
         // clang-format on
 
+        using Context::DebugLogError;
+        using Context::DebugLogInfo;
+        using Context::DebugLogWarn;
+
         uint32_t GetQueueFamilyIndex(QueueType queueType) const;
+
         VkQueue GetQueue(QueueType queueType) const;
 
-        inline VkSemaphore CreateVulkanSemaphore() { return CreateSemaphore(); }
-
         VkSemaphore CreateSemaphore();
+
         void FreeSemaphore(VkSemaphore semaphore);
 
         std::vector<VkLayerProperties> GetAvailableInstanceLayerExtensions() const;
@@ -77,6 +83,7 @@ namespace RHI::Vulkan
 
         uint32_t GetMemoryTypeIndex(MemoryType memoryType);
 
+    public:
         // clang-format off
         VkInstance       m_instance       = VK_NULL_HANDLE;
         VkPhysicalDevice m_physicalDevice = VK_NULL_HANDLE;
@@ -106,6 +113,11 @@ namespace RHI::Vulkan
         HandlePool<IComputePipeline>  m_computePipelineOwner   = HandlePool<IComputePipeline>();
         HandlePool<ISampler>          m_samplerOwner           = HandlePool<ISampler>();
         // clang-format on
+
+        using DestroyResource = std::function<void()>;
+        std::vector<DestroyResource> m_deferDeleteQueue;
+
+        Ptr<class BindGroupAllocator> m_bindGroupAllocator;
     };
 
     inline uint32_t IContext::GetQueueFamilyIndex(QueueType queueType) const

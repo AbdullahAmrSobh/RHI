@@ -155,9 +155,9 @@ namespace RHI::Vulkan
     /// ICommandListAllocator
     //////////////////////////////////////////////////////////////////////////////////////////
 
-    ICommandListAllocator::ICommandListAllocator(IContext* context, uint32_t maxFrameBufferingCount)
+    ICommandListAllocator::ICommandListAllocator(IContext* context)
         : m_context(context)
-        , m_maxFrameBufferingCount(maxFrameBufferingCount)
+        , m_maxFrameBufferingCount(2)
         , m_commandPools()
     {
     }
@@ -170,10 +170,12 @@ namespace RHI::Vulkan
         }
     }
 
-    VkResult ICommandListAllocator::Init(uint32_t queueFamilyIndex)
+    VkResult ICommandListAllocator::Init(QueueType queueType)
     {
+        auto framesCount = m_context->GetScheduler()->GetBufferedFramesCount();
+        auto queueFamilyIndex = m_context->GetQueueFamilyIndex(queueType);
         m_currentFrameIndex = 0;
-        for (uint32_t i = 0; i < m_maxFrameBufferingCount; i++)
+        for (uint32_t i = 0; i < framesCount; i++)
         {
             auto& commandPool = m_commandPools[i];
             auto result = commandPool.Init(m_context, queueFamilyIndex);
@@ -456,22 +458,8 @@ namespace RHI::Vulkan
         attachmentInfo.loadOp = ConvertLoadOp(passAttachment.loadStoreOperations.loadOperation);
         attachmentInfo.storeOp = ConvertStoreOp(passAttachment.loadStoreOperations.storeOperation);
 
-        if (auto colorValue = std::get_if<ColorValue>(&passAttachment.clearValue))
-        {
-            attachmentInfo.clearValue.color.float32[0] = colorValue->r;
-            attachmentInfo.clearValue.color.float32[1] = colorValue->g;
-            attachmentInfo.clearValue.color.float32[2] = colorValue->b;
-            attachmentInfo.clearValue.color.float32[3] = colorValue->a;
-        }
-        else if (auto depthValue = std::get_if<DepthStencilValue>(&passAttachment.clearValue))
-        {
-            attachmentInfo.clearValue.depthStencil.depth = depthValue->depthValue;
-            attachmentInfo.clearValue.depthStencil.stencil = depthValue->stencilValue;
-        }
-        else
-        {
-            RHI_UNREACHABLE();
-        }
+        static_assert(sizeof(VkClearValue) == sizeof(ClearValue));
+        memcpy(&attachmentInfo.clearValue, &passAttachment.clearValue, sizeof(VkClearValue));
 
         return attachmentInfo;
     }
@@ -577,7 +565,7 @@ namespace RHI::Vulkan
         for (auto bindGroupHandle : bindGroups)
         {
             auto bindGroup = m_context->m_bindGroupOwner.Get(bindGroupHandle);
-            descriptorSets.push_back(bindGroup->handle);
+            descriptorSets.push_back(bindGroup->set);
         }
 
         vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, uint32_t(descriptorSets.size()), descriptorSets.data(), 0, nullptr);

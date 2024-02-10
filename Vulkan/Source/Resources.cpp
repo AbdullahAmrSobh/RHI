@@ -7,9 +7,6 @@
 #include "FrameScheduler.hpp"
 #include "Resources.hpp"
 
-#include <Windows.h>
-#include <algorithm>
-
 #define TIMEOUT_DURATION 9000000
 
 namespace RHI::Vulkan
@@ -18,10 +15,8 @@ namespace RHI::Vulkan
     /// Image
     ///////////////////////////////////////////////////////////////////////////
 
-    ResultCode IImage::Init(IContext* context, const VmaAllocationCreateInfo allocationInfo, const ImageCreateInfo& createInfo, IImagePool* parentPool, bool isTransientResource)
+    ResultCode IImage::Init(IContext* context, const ImageCreateInfo& createInfo)
     {
-        pool = parentPool;
-
         VkImageCreateInfo vkCreateInfo{};
         vkCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         vkCreateInfo.pNext = nullptr;
@@ -45,12 +40,14 @@ namespace RHI::Vulkan
         this->imageType = vkCreateInfo.imageType;
         VkResult result = VK_ERROR_UNKNOWN;
 
-        if (isTransientResource)
+        if (createInfo.pool == nullptr)
         {
             result = vkCreateImage(context->m_device, &vkCreateInfo, nullptr, &handle);
         }
         else
         {
+            VmaAllocationCreateInfo allocationInfo{};
+
             result = vmaCreateImage(context->m_allocator, &vkCreateInfo, &allocationInfo, &handle, &allocation.handle, &allocation.info);
         }
 
@@ -80,10 +77,8 @@ namespace RHI::Vulkan
     /// Buffer
     ///////////////////////////////////////////////////////////////////////////
 
-    ResultCode IBuffer::Init(IContext* context, const VmaAllocationCreateInfo allocationInfo, const BufferCreateInfo& createInfo, IBufferPool* parentPool, bool isTransientResource)
+    ResultCode IBuffer::Init(IContext* context, const BufferCreateInfo& createInfo)
     {
-        pool = parentPool;
-
         VkBufferCreateInfo vkCreateInfo{};
         vkCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         vkCreateInfo.pNext = nullptr;
@@ -95,12 +90,13 @@ namespace RHI::Vulkan
         vkCreateInfo.pQueueFamilyIndices = nullptr;
 
         VkResult result = VK_ERROR_UNKNOWN;
-        if (isTransientResource)
+        if (createInfo.pool == nullptr)
         {
             result = vkCreateBuffer(context->m_device, &vkCreateInfo, nullptr, &handle);
         }
         else
         {
+            VmaAllocationCreateInfo allocationInfo{};
             result = vmaCreateBuffer(context->m_allocator, &vkCreateInfo, &allocationInfo, &handle, &allocation.handle, &allocation.info);
         }
 
@@ -229,22 +225,24 @@ namespace RHI::Vulkan
     /// BindGroup
     ///////////////////////////////////////////////////////////////////////////
 
-    ResultCode IBindGroup::Init(IContext* context, VkDescriptorSetLayout layout, VkDescriptorPool descriptorPool)
+    ResultCode IBindGroup::Init(IContext* context, VkDescriptorPool _pool, VkDescriptorSet _set)
     {
-        VkDescriptorSetAllocateInfo allocateInfo{};
-        allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocateInfo.pNext = nullptr;
-        allocateInfo.descriptorPool = descriptorPool;
-        allocateInfo.descriptorSetCount = 1;
-        allocateInfo.pSetLayouts = &layout;
+        (void)_pool;
+        (void)_set;
+        (void)context;
 
-        auto result = vkAllocateDescriptorSets(context->m_device, &allocateInfo, &handle);
-        return ConvertResult(result);
+        return ResultCode::Success;
     }
 
     void IBindGroup::Shutdown(IContext* context)
     {
         (void)context;
+    }
+
+    void IBindGroup::Write(IContext* context, const BindGroupData& data)
+    {
+        (void)context;
+        (void)data;
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -456,12 +454,17 @@ namespace RHI::Vulkan
         dynamicStateCreateInfo.dynamicStateCount = uint32_t(dynamicStates.size());
         dynamicStateCreateInfo.pDynamicStates = dynamicStates.data();
 
-        uint32_t colorAttachmentFormatCount = static_cast<uint32_t>(createInfo.renderTargetLayout.colorAttachmentsFormats.size());
+        uint32_t colorAttachmentFormatCount = 0;
         VkFormat colorAttachmentFormats[8] = {};
 
-        uint32_t index = 0;
-        for (auto format : createInfo.renderTargetLayout.colorAttachmentsFormats)
-            colorAttachmentFormats[index++] = ConvertFormat(format);
+        for (uint32_t formatIndex = 0; formatIndex < c_MaxRenderTargetAttachmentsCount; formatIndex++)
+        {
+            auto format = createInfo.renderTargetLayout.colorAttachmentsFormats[formatIndex];
+            if (format == Format::Unknown)
+                break;
+            colorAttachmentFormatCount++;
+            colorAttachmentFormats[formatIndex] = ConvertFormat(format);
+        }
 
         VkPipelineRenderingCreateInfo renderTargetLayout{};
         renderTargetLayout.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
@@ -582,300 +585,98 @@ namespace RHI::Vulkan
     /// ShaderModule
     ///////////////////////////////////////////////////////////////////////////
 
+    IStagingBuffer::IStagingBuffer(IContext* context)
+        : m_context(context)
+    {
+    }
+
+    IStagingBuffer::~IStagingBuffer() {}
+
+    VkResult IStagingBuffer::Init()
+    {
+        return VK_SUCCESS;
+    }
+
+    StagingBuffer::TempBuffer IStagingBuffer::Allocate(size_t newSize)
+    {
+        (void)newSize;
+        return {};
+    }
+
+    void IStagingBuffer::Free(TempBuffer mappedBuffer) 
+    {
+        (void)mappedBuffer;
+    }
+
+    void IStagingBuffer::Flush() {}
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// ShaderModule
+    ///////////////////////////////////////////////////////////////////////////
+
     IShaderModule::~IShaderModule()
     {
         vkDestroyShaderModule(m_context->m_device, m_shaderModule, nullptr);
     }
 
-    VkResult IShaderModule::Init(const ShaderModuleCreateInfo& createInfo)
+    VkResult IShaderModule::Init(TL::Span<const uint8_t> shaderBlob)
     {
         auto context = static_cast<IContext*>(m_context);
 
-        VkShaderModuleCreateInfo moduleCreateInfo{};
-        moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        moduleCreateInfo.pNext = nullptr;
-        moduleCreateInfo.flags = {};
-        moduleCreateInfo.codeSize = createInfo.size * 4;
-        moduleCreateInfo.pCode = (uint32_t*)createInfo.code;
-        RHI_ASSERT(moduleCreateInfo.codeSize % 4 == 0);
-
-        return vkCreateShaderModule(context->m_device, &moduleCreateInfo, nullptr, &m_shaderModule);
-    }
-
-    ///////////////////////////////////////////////////////////////////////////
-    /// BindGroupAllocator
-    ///////////////////////////////////////////////////////////////////////////
-
-    IBindGroupAllocator::~IBindGroupAllocator()
-    {
-        auto context = static_cast<IContext*>(m_context);
-
-        for (auto pool : m_descriptorPools)
-            vkDestroyDescriptorPool(context->m_device, pool, nullptr);
-    }
-
-    VkResult IBindGroupAllocator::Init()
-    {
-        return VK_SUCCESS;
-    }
-
-    std::vector<Handle<BindGroup>> IBindGroupAllocator::AllocateBindGroups(TL::Span<Handle<BindGroupLayout>> bindGroupLayouts)
-    {
-        auto context = static_cast<IContext*>(m_context);
-
-        std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
-        for (auto bindGroupLayoutHandle : bindGroupLayouts)
+        // Check alignment and log warning if necessary
+        if (reinterpret_cast<uintptr_t>(shaderBlob.data()) % 4 != 0)
         {
-            auto bindGroupLayout = m_context->m_bindGroupLayoutsOwner.Get(bindGroupLayoutHandle);
-            descriptorSetLayouts.push_back(bindGroupLayout->handle);
-        }
+            context->DebugLogWarn("Shader blob requires 4-byte alignment. Reallocating and copying for Vulkan compatibility.");
 
-        VkDescriptorSetAllocateInfo allocateInfo{};
-        allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocateInfo.pNext = nullptr;
-        allocateInfo.descriptorSetCount = uint32_t(descriptorSetLayouts.size());
-        allocateInfo.pSetLayouts = descriptorSetLayouts.data();
+            // Calculate aligned size and allocate memory
+            size_t alignedSize = shaderBlob.size() + 4 - reinterpret_cast<uintptr_t>(shaderBlob.data()) % 4;
+            uint8_t* alignedData = new uint8_t[alignedSize];
 
-        bool success = false;
-        std::vector<VkDescriptorSet> descriptorSets;
-        descriptorSets.resize(descriptorSetLayouts.size());
-        for (auto descriptorPool : m_descriptorPools)
-        {
-            allocateInfo.descriptorPool = descriptorPool;
+            // Copy data and set alignedBlob
+            std::memcpy(alignedData, shaderBlob.data(), shaderBlob.size());
+            TL::Span<uint8_t> alignedBlob = { alignedData, alignedSize };
 
-            auto result = vkAllocateDescriptorSets(context->m_device, &allocateInfo, descriptorSets.data());
-
-            if (result == VK_SUCCESS)
-            {
-                success = true;
-                break;
-            }
-        }
-
-        if (success == false)
-        {
-            // clang-format off
-            VkDescriptorPoolSize poolSizes[] = {
-                { VK_DESCRIPTOR_TYPE_SAMPLER,                16 },
-                { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          16 },
-                { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          16 },
-                { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         16 },
-                { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         16 },
-                { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   16 },
-                { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   16 },
-                { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 16 },
-                { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 16 },
-                { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,       16 },
+            // Use alignedBlob for shader module creation
+            VkShaderModuleCreateInfo moduleCreateInfo{
+                .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = {},
+                .codeSize = alignedBlob.size(),
+                .pCode = reinterpret_cast<const uint32_t*>(alignedBlob.data()),
             };
-            // clang-format on
 
-            VkDescriptorPoolCreateInfo poolCreateInfo{};
-            poolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-            poolCreateInfo.pNext = nullptr;
-            poolCreateInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-            poolCreateInfo.maxSets = 8;
-            poolCreateInfo.poolSizeCount = sizeof(poolSizes) / sizeof(VkDescriptorPoolSize); // todo recheck this
-            poolCreateInfo.pPoolSizes = poolSizes;
+            VkResult res = vkCreateShaderModule(context->m_device, &moduleCreateInfo, nullptr, &m_shaderModule);
 
-            VkDescriptorPool newDescriptorPool{};
-            auto result = vkCreateDescriptorPool(context->m_device, &poolCreateInfo, nullptr, &newDescriptorPool);
-            VULKAN_ASSERT_SUCCESS(result);
-            m_descriptorPools.push_back(newDescriptorPool);
+            // Deallocate temporary buffer
+            delete[] alignedData;
 
-            allocateInfo.descriptorPool = newDescriptorPool;
-
-            result = vkAllocateDescriptorSets(context->m_device, &allocateInfo, descriptorSets.data());
-            VULKAN_ASSERT_SUCCESS(result);
+            return res;
         }
-
-        std::vector<Handle<BindGroup>> bindGroups;
-        for (auto descriptorSet : descriptorSets)
+        else
         {
-            auto [handle, bindGroup] = m_context->m_bindGroupOwner.InsertZerod();
-            bindGroup.handle = descriptorSet;
-            bindGroup.pool = allocateInfo.descriptorPool;
-            bindGroups.push_back(handle);
+            // No alignment needed, use original blob
+            VkShaderModuleCreateInfo moduleCreateInfo{
+                .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = {},
+                .codeSize = shaderBlob.size(),
+                .pCode = reinterpret_cast<const uint32_t*>(shaderBlob.data()),
+            };
+
+            return vkCreateShaderModule(context->m_device, &moduleCreateInfo, nullptr, &m_shaderModule);
         }
-
-        return bindGroups;
-    }
-
-    void IBindGroupAllocator::Free(TL::Span<Handle<BindGroup>> bindGroups)
-    {
-        for (auto group : bindGroups)
-        {
-            auto set = m_context->m_bindGroupOwner.Get(group);
-            vkFreeDescriptorSets(m_context->m_device, set->pool, 1, &set->handle);
-        }
-    }
-
-    void IBindGroupAllocator::Update(Handle<BindGroup> _bindGroup, const BindGroupData& data)
-    {
-        auto context = static_cast<IContext*>(m_context);
-        auto bindGroup = m_context->m_bindGroupOwner.Get(_bindGroup);
-
-        std::vector<std::vector<VkDescriptorImageInfo>> descriptorImageInfos;
-        std::vector<std::vector<VkDescriptorBufferInfo>> descriptorBufferInfos;
-        std::vector<std::vector<VkBufferView>> descriptorBufferViews;
-
-        std::vector<VkWriteDescriptorSet> writeInfos;
-
-        for (auto [binding, resourceVarient] : data.m_bindings)
-        {
-            VkWriteDescriptorSet writeInfo{};
-            writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            writeInfo.pNext = nullptr;
-            writeInfo.dstSet = bindGroup->handle;
-            writeInfo.dstBinding = binding;
-            if (auto resources = std::get_if<0>(&resourceVarient))
-            {
-                auto& imageInfos = descriptorImageInfos.emplace_back();
-
-                for (auto viewHandle : resources->views)
-                {
-                    auto view = context->m_imageViewOwner.Get(viewHandle);
-
-                    VkDescriptorImageInfo imageInfo{};
-                    imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                    imageInfo.imageView = view->handle;
-                    imageInfos.push_back(imageInfo);
-                }
-
-                writeInfo.dstArrayElement = resources->arrayOffset;
-                writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-                writeInfo.descriptorCount = uint32_t(imageInfos.size());
-                writeInfo.pImageInfo = imageInfos.data();
-            }
-            else if (auto buffer = std::get_if<1>(&resourceVarient))
-            {
-                auto& bufferInfos = descriptorBufferInfos.emplace_back();
-
-                for (auto viewHandle : buffer->views)
-                {
-                    VkDescriptorBufferInfo bufferInfo{};
-                    bufferInfo.buffer = context->m_bufferOwner.Get(viewHandle)->handle;
-                    bufferInfo.offset = 0;
-                    bufferInfo.range = VK_WHOLE_SIZE;
-                    bufferInfos.push_back(bufferInfo);
-                }
-
-                writeInfo.dstArrayElement = buffer->arrayOffset;
-                writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; // todo support storage buffers, and more complex types
-                writeInfo.descriptorCount = uint32_t(bufferInfos.size());
-                writeInfo.pBufferInfo = bufferInfos.data();
-            }
-            else if (auto sampler = std::get_if<2>(&resourceVarient))
-            {
-                auto& imageInfos = descriptorImageInfos.emplace_back();
-
-                for (auto samplerHandle : sampler->samplers)
-                {
-                    auto sampler2 = m_context->m_samplerOwner.Get(samplerHandle);
-
-                    VkDescriptorImageInfo imageInfo{};
-                    imageInfo.sampler = sampler2->handle;
-                    imageInfos.push_back(imageInfo);
-                }
-
-                writeInfo.dstArrayElement = sampler->arrayOffset;
-                writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-                writeInfo.descriptorCount = uint32_t(imageInfos.size());
-                writeInfo.pImageInfo = imageInfos.data();
-            }
-            else
-            {
-                RHI_UNREACHABLE();
-            }
-
-            // writeInfo.pTexelBufferView; todo
-
-            writeInfos.push_back(writeInfo);
-        }
-
-        vkUpdateDescriptorSets(m_context->m_device, uint32_t(writeInfos.size()), writeInfos.data(), 0, nullptr);
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    /// BufferPool
+    /// ResourcePool
     ///////////////////////////////////////////////////////////////////////////
 
-    IBufferPool::~IBufferPool()
+    IResourcePool::~IResourcePool()
     {
         vmaDestroyPool(m_context->m_allocator, m_pool);
     }
 
-    VkResult IBufferPool::Init(const PoolCreateInfo& createInfo)
-    {
-        m_poolInfo = createInfo;
-
-        VmaPoolCreateInfo poolCreateInfo{};
-        poolCreateInfo.flags = VMA_POOL_CREATE_IGNORE_BUFFER_IMAGE_GRANULARITY_BIT;
-        poolCreateInfo.blockSize = createInfo.blockSize;
-        poolCreateInfo.minBlockCount = createInfo.minBlockCount;
-        poolCreateInfo.maxBlockCount = createInfo.maxBlockCount;
-        poolCreateInfo.priority = 1.0f;
-        poolCreateInfo.minAllocationAlignment = createInfo.minBlockAlignment;
-        poolCreateInfo.pMemoryAllocateNext = nullptr;
-        poolCreateInfo.memoryTypeIndex = m_context->GetMemoryTypeIndex(createInfo.heapType);
-
-        return vmaCreatePool(m_context->m_allocator, &poolCreateInfo, &m_pool);
-    }
-
-    Result<Handle<Buffer>> IBufferPool::Allocate(const BufferCreateInfo& createInfo)
-    {
-        VmaAllocationCreateInfo allocationInfo{};
-        allocationInfo.pool = m_pool;
-
-        auto [handle, buffer] = m_context->m_bufferOwner.InsertZerod();
-        if (auto result = buffer.Init(m_context, allocationInfo, createInfo, this, false); IsError(result))
-        {
-            return result;
-        }
-
-        return Handle<Buffer>(handle);
-    }
-
-    void IBufferPool::FreeBuffer(Handle<Buffer> buffer)
-    {
-        auto resource = m_context->m_bufferOwner.Get(buffer);
-        RHI_ASSERT(resource);
-
-        vmaDestroyBuffer(m_context->m_allocator, resource->handle, resource->allocation.handle);
-    }
-
-    size_t IBufferPool::GetSize(Handle<Buffer> buffer) const
-    {
-        auto& owner = m_context->m_bufferOwner;
-        return owner.Get(buffer)->GetMemoryRequirements(m_context->m_device).size;
-    }
-
-    DeviceMemoryPtr IBufferPool::MapBuffer(Handle<Buffer> handle)
-    {
-        auto resource = m_context->m_bufferOwner.Get(handle);
-        auto allocation = resource->allocation.handle;
-
-        DeviceMemoryPtr memoryPtr = nullptr;
-        VkResult result = vmaMapMemory(m_context->m_allocator, allocation, &memoryPtr);
-        VULKAN_ASSERT_SUCCESS(result);
-        return memoryPtr;
-    }
-
-    void IBufferPool::UnmapBuffer(Handle<Buffer> handle)
-    {
-        auto resource = m_context->m_bufferOwner.Get(handle)->allocation.handle;
-        vmaUnmapMemory(m_context->m_allocator, resource);
-    }
-
-    ///////////////////////////////////////////////////////////////////////////
-    /// ImagePool
-    ///////////////////////////////////////////////////////////////////////////
-
-    IImagePool::~IImagePool()
-    {
-        vmaDestroyPool(m_context->m_allocator, m_pool);
-    }
-
-    VkResult IImagePool::Init(const PoolCreateInfo& createInfo)
+    VkResult IResourcePool::Init(const ResourcePoolCreateInfo& createInfo)
     {
         m_poolInfo = createInfo;
 
@@ -888,36 +689,7 @@ namespace RHI::Vulkan
         poolCreateInfo.minAllocationAlignment = createInfo.minBlockAlignment;
         poolCreateInfo.pMemoryAllocateNext = nullptr;
         poolCreateInfo.memoryTypeIndex = m_context->GetMemoryTypeIndex(MemoryType::GPULocal);
-
         return vmaCreatePool(m_context->m_allocator, &poolCreateInfo, &m_pool);
-    }
-
-    Result<Handle<Image>> IImagePool::Allocate(const ImageCreateInfo& createInfo)
-    {
-        VmaAllocationCreateInfo allocationInfo{};
-        allocationInfo.pool = m_pool;
-
-        auto [handle, image] = m_context->m_imageOwner.InsertZerod();
-        if (auto result = image.Init(m_context, allocationInfo, createInfo, this, false); IsError(result))
-        {
-            return result;
-        }
-
-        return Handle<Image>(handle);
-    }
-
-    void IImagePool::FreeImage(Handle<Image> handle)
-    {
-        auto resource = m_context->m_imageOwner.Get(handle);
-        RHI_ASSERT(resource);
-
-        vmaDestroyImage(m_context->m_allocator, resource->handle, resource->allocation.handle);
-    }
-
-    size_t IImagePool::GetSize(Handle<Image> handle) const
-    {
-        auto& owner = m_context->m_imageOwner;
-        return owner.Get(handle)->GetMemoryRequirements(m_context->m_device).size;
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -931,7 +703,7 @@ namespace RHI::Vulkan
 
     VkResult IFence::Init()
     {
-        m_state = State::NotSubmitted;
+        m_state = FenceState::NotSubmitted;
 
         VkFenceCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
@@ -944,34 +716,34 @@ namespace RHI::Vulkan
 
     void IFence::Reset()
     {
-        m_state = State::NotSubmitted;
+        m_state = FenceState::NotSubmitted;
         auto result = vkResetFences(m_context->m_device, 1, &m_fence);
         VULKAN_ASSERT_SUCCESS(result);
     }
 
     bool IFence::WaitInternal(uint64_t timeout)
     {
-        if (m_state == State::NotSubmitted)
+        if (m_state == FenceState::NotSubmitted)
             return VK_SUCCESS;
 
         auto result = vkWaitForFences(m_context->m_device, 1, &m_fence, VK_TRUE, timeout);
         return result == VK_SUCCESS;
     }
 
-    IFence::State IFence::GetState()
+    FenceState IFence::GetState()
     {
-        if (m_state == State::Pending)
+        if (m_state == FenceState::Pending)
         {
             auto result = vkGetFenceStatus(m_context->m_device, m_fence);
-            return result == VK_SUCCESS ? State::Signaled : State::Pending;
+            return result == VK_SUCCESS ? FenceState::Signaled : FenceState::Pending;
         }
 
-        return State::NotSubmitted;
+        return FenceState::NotSubmitted;
     }
 
     VkFence IFence::UseFence()
     {
-        m_state = State::Pending;
+        m_state = FenceState::Pending;
         return m_fence;
     }
 
@@ -1000,15 +772,10 @@ namespace RHI::Vulkan
     {
         auto context = static_cast<IContext*>(m_context);
 
-        m_currentImageIndex = 0;
-        m_swapchainImagesCount = createInfo.imageCount;
-        m_imageSize = createInfo.imageSize;
-        m_format = createInfo.imageFormat;
-        m_presentMode = createInfo.presentMode;
-        m_imageUsage = createInfo.imageUsage;
+        m_createInfo = createInfo;
 
-        m_semaphores.imageAcquired = context->CreateVulkanSemaphore();
-        m_semaphores.imageRenderComplete = context->CreateVulkanSemaphore();
+        m_semaphores.imageAcquired = context->CreateSemaphore();
+        m_semaphores.imageRenderComplete = context->CreateSemaphore();
 
         InitSurface(createInfo);
 
@@ -1021,10 +788,10 @@ namespace RHI::Vulkan
             return VK_ERROR_UNKNOWN;
         }
 
-        if ((m_imageSize.width >= surfaceCapabilities.minImageExtent.width &&
-             m_imageSize.width <= surfaceCapabilities.maxImageExtent.width &&
-             m_imageSize.height >= surfaceCapabilities.minImageExtent.height &&
-             m_imageSize.height <= surfaceCapabilities.maxImageExtent.height) == false)
+        if ((m_createInfo.imageSize.width >= surfaceCapabilities.minImageExtent.width &&
+             m_createInfo.imageSize.width <= surfaceCapabilities.maxImageExtent.width &&
+             m_createInfo.imageSize.height >= surfaceCapabilities.minImageExtent.height &&
+             m_createInfo.imageSize.height <= surfaceCapabilities.maxImageExtent.height) == false)
         {
             return VK_ERROR_UNKNOWN;
         }
@@ -1086,7 +853,7 @@ namespace RHI::Vulkan
             if (presentMode == VK_PRESENT_MODE_MAX_ENUM_KHR)
                 return VK_ERROR_UNKNOWN;
 
-            m_presentMode = createInfo.presentMode;
+            m_createInfo.presentMode = createInfo.presentMode;
         }
 
         InitSwapchain();
@@ -1096,9 +863,9 @@ namespace RHI::Vulkan
 
     ResultCode ISwapchain::Recreate(ImageSize2D newSize, uint32_t imageCount, SwapchainPresentMode presentMode)
     {
-        m_imageSize = newSize;
-        m_presentMode = presentMode;
-        m_swapchainImagesCount = imageCount;
+        m_createInfo.imageSize = newSize;
+        m_createInfo.imageCount = imageCount;
+        m_createInfo.presentMode = presentMode;
 
         auto result = InitSwapchain();
         VULKAN_ASSERT_SUCCESS(result);
@@ -1136,7 +903,7 @@ namespace RHI::Vulkan
         case SwapchainPresentMode::Fifo:        return VK_PRESENT_MODE_FIFO_KHR;
         case SwapchainPresentMode::FifoRelaxed: return VK_PRESENT_MODE_FIFO_RELAXED_KHR;
         case SwapchainPresentMode::Mailbox:     return VK_PRESENT_MODE_MAILBOX_KHR;
-        default:                                     return VK_PRESENT_MODE_MAX_ENUM_KHR;
+        default:                                return VK_PRESENT_MODE_MAX_ENUM_KHR;
         }
     }
 
@@ -1150,16 +917,16 @@ namespace RHI::Vulkan
         createInfo.minImageCount = m_swapchainImagesCount;
         createInfo.imageFormat = m_surfaceFormat.format;
         createInfo.imageColorSpace = m_surfaceFormat.colorSpace;
-        createInfo.imageExtent.width = m_imageSize.width;
-        createInfo.imageExtent.height = m_imageSize.height;
+        createInfo.imageExtent.width = m_createInfo.imageSize.width;
+        createInfo.imageExtent.height = m_createInfo.imageSize.height;
         createInfo.imageArrayLayers = 1;
-        createInfo.imageUsage = ConvertImageUsageFlags(m_imageUsage);
+        createInfo.imageUsage = ConvertImageUsageFlags(m_createInfo.imageUsage);
         createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
         createInfo.queueFamilyIndexCount = 0;
         createInfo.pQueueFamilyIndices = nullptr;
         createInfo.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
         createInfo.compositeAlpha = m_compositeAlpha;
-        createInfo.presentMode = ConvertPresentMode(m_presentMode);
+        createInfo.presentMode = ConvertPresentMode(m_createInfo.presentMode);
         createInfo.clipped = VK_TRUE;
         createInfo.oldSwapchain = m_swapchain;
 
@@ -1173,16 +940,15 @@ namespace RHI::Vulkan
         result = vkGetSwapchainImagesKHR(m_context->m_device, m_swapchain, &imagesCount, images.data());
         VULKAN_RETURN_VKERR_CODE(result);
 
-        for (auto imageHandles : images)
+        for (uint32_t imageIndex = 0; imageIndex < m_swapchainImagesCount; imageIndex++)
         {
             IImage image{};
-            image.handle = imageHandles;
+            image.pool = nullptr;
+            image.handle = images[imageIndex];
             image.format = m_surfaceFormat.format;
             image.imageType = VK_IMAGE_TYPE_2D;
             image.swapchain = this;
-
-            auto handle = m_context->m_imageOwner.Insert(image);
-            m_images.emplace_back(handle);
+            m_images[imageIndex] = m_context->m_imageOwner.Insert(image);
         }
         result = vkAcquireNextImageKHR(m_context->m_device, m_swapchain, UINT64_MAX, m_semaphores.imageAcquired, VK_NULL_HANDLE, &m_currentImageIndex);
         VULKAN_ASSERT_SUCCESS(result);

@@ -66,7 +66,7 @@ namespace RHI
             {
             }
 
-            constexpr Span(std::vector<ElementType>& elements) noexcept
+            constexpr Span(std::vector<std::remove_cv_t<ElementType>>& elements) noexcept
                 : m_data(elements.data())
                 , m_count(elements.size())
             {
