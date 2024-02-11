@@ -46,7 +46,7 @@ namespace RHI::Vulkan
 
         for (uint32_t i = 0; i < 2; i++)
         {
-            m_frameReadyFence.emplace_back( m_context->CreateFence());
+            m_frameReadyFence.emplace_back(m_context->CreateFence());
         }
 
         return VK_SUCCESS;
@@ -74,19 +74,19 @@ namespace RHI::Vulkan
             submitInfo.commandBuffer = commandList->m_commandBuffer;
             commandBuffers.push_back(submitInfo);
         }
-        
-        std::vector<VkSemaphoreSubmitInfo> waitSemaphores {};
-        std::vector<VkSemaphoreSubmitInfo> signalSemaphores {};
+
+        std::vector<VkSemaphoreSubmitInfo> waitSemaphores{};
+        std::vector<VkSemaphoreSubmitInfo> signalSemaphores{};
 
         if (auto passAttachment = pass->m_swapchainImageAttachment)
         {
             auto swapchain = (ISwapchain*)passAttachment->attachment->swapchain;
-            VkSemaphoreSubmitInfo semaphoreSubmitInfo {};
+            VkSemaphoreSubmitInfo semaphoreSubmitInfo{};
             semaphoreSubmitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
             if (passAttachment->prev == nullptr)
             {
                 semaphoreSubmitInfo.semaphore = swapchain->m_semaphores.imageAcquired;
-                semaphoreSubmitInfo.stageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT ;
+                semaphoreSubmitInfo.stageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
                 waitSemaphores.push_back(semaphoreSubmitInfo);
             }
 
@@ -142,6 +142,29 @@ namespace RHI::Vulkan
         submitInfo.pSignalSemaphoreInfos = nullptr;
         auto result = vkQueueSubmit2(queue, 1, &submitInfo, fence.UseFence());
         VULKAN_ASSERT_SUCCESS(result);
+    }
+
+    void IFrameScheduler::StreamResource(CommandList& commandList, Handle<Image> dst, ImageOffset offset, ImageSize3D size, StagingBuffer::TempBuffer& tempBuffer)
+    {
+        BufferToImageCopyInfo copyInfo{};
+        copyInfo.dstImage = dst;
+        copyInfo.srcBuffer = tempBuffer.buffer;
+        copyInfo.srcSize = size;
+        // copyInfo.srcOffset = tempBuffer.offset;
+        copyInfo.dstOffset = offset;
+        copyInfo.dstSubresource.imageAspects = ImageAspect::Color;
+        commandList.Copy(copyInfo);
+    }
+
+    void IFrameScheduler::StreamResource(CommandList& commandList, Handle<Buffer> dst, size_t offset, size_t size, StagingBuffer::TempBuffer& tempBuffer)
+    {
+        BufferCopyInfo copyInfo{};
+        copyInfo.srcBuffer = tempBuffer.buffer;
+        copyInfo.srcOffset = tempBuffer.offset;
+        copyInfo.dstBuffer = dst;
+        copyInfo.dstOffset = offset;
+        copyInfo.size = size;
+        commandList.Copy(copyInfo);
     }
 
 } // namespace RHI::Vulkan

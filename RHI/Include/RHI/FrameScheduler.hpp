@@ -137,8 +137,8 @@ namespace RHI
         virtual void QueuePassSubmit(Pass* pass, Fence* fence)                                                                      = 0;
         virtual void QueueCommandsSubmit(QueueType queueType, TL::Span<CommandList*> commandLists, Fence& fence)                    = 0;
 
-        virtual void StreamResource(Handle<Image> dst, ImageOffset offset, ImageSize3D size, StagingBuffer::TempBuffer& tempBuffer) = 0;
-        virtual void StreamResource(Handle<Buffer> dst, size_t offset, size_t size, StagingBuffer::TempBuffer& tempBuffer)          = 0;
+        virtual void StreamResource(CommandList& commandList, Handle<Image> dst, ImageOffset offset, ImageSize3D size, StagingBuffer::TempBuffer& tempBuffer) = 0;
+        virtual void StreamResource(CommandList& commandList, Handle<Buffer> dst, size_t offset, size_t size, StagingBuffer::TempBuffer& tempBuffer)          = 0;
 
     private:
         uint32_t m_frameCount;

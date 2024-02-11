@@ -11,6 +11,102 @@
 
 namespace RHI::Vulkan
 {
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// BindGroupAllocator
+    ///////////////////////////////////////////////////////////////////////////
+
+    ResultCode BindGroupAllocator::InitBindGroup(IBindGroup* bindGroup, IBindGroupLayout* bindGroupLayout)
+    {
+        for (auto poolHandle : m_descriptorPools)
+        {
+            auto pool = m_descriptorPoolOwner.Get(poolHandle);
+            auto descriptorSet = AllocateDescriptorSet(pool->descriptorPool, bindGroupLayout->handle);
+            if (descriptorSet)
+            {
+                bindGroup->poolHandle = poolHandle;
+                bindGroup->descriptorSet = descriptorSet;
+                return ResultCode::Success;
+            }
+        }
+
+        auto [handle, pool] = CreateDescriptorPool();
+        auto descriptorSet = AllocateDescriptorSet(pool.descriptorPool, bindGroupLayout->handle);
+        if (descriptorSet)
+        {
+            bindGroup->poolHandle = handle;
+            bindGroup->descriptorSet = descriptorSet;
+            return ResultCode::Success;
+        }
+
+        return ResultCode::ErrorUnkown;
+    }
+
+    void BindGroupAllocator::FreePool(Handle<DescriptorPool> handle)
+    {
+        auto pool = m_descriptorPoolOwner.Get(handle);
+        RHI_ASSERT(pool->referenceCount >= 1);
+        pool->referenceCount--;
+        if (pool == 0)
+        {
+            vkDestroyDescriptorPool(m_device, pool->descriptorPool, nullptr);
+            m_descriptorPoolOwner.Remove(handle);
+            m_descriptorPools.erase(handle);
+        }
+    }
+
+    std::pair<Handle<DescriptorPool>, DescriptorPool> BindGroupAllocator::CreateDescriptorPool()
+    {
+        // clang-format off
+            VkDescriptorPoolSize poolSizes[] = {
+                { VK_DESCRIPTOR_TYPE_SAMPLER,                16 },
+                { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          16 },
+                { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          16 },
+                { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         16 },
+                { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         16 },
+                { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   16 },
+                { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   16 },
+                { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 16 },
+                { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 16 },
+                { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,       16 },
+            };
+        // clang-format on
+
+        VkDescriptorPoolCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        createInfo.pNext = nullptr;
+        createInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+        createInfo.maxSets = 8;
+        createInfo.poolSizeCount = sizeof(poolSizes) / sizeof(VkDescriptorPoolSize);
+        createInfo.pPoolSizes = poolSizes;
+
+        VkDescriptorPool pool = VK_NULL_HANDLE;
+        auto result = vkCreateDescriptorPool(m_device, &createInfo, nullptr, &pool);
+        VULKAN_ASSERT_SUCCESS(result);
+
+        auto [handle, _pool] = m_descriptorPoolOwner.InsertZerod();
+        m_descriptorPools.insert(handle);
+        _pool.descriptorPool = pool;
+        _pool.referenceCount = 1;
+        return std::make_pair(handle, _pool);
+    }
+
+    VkDescriptorSet BindGroupAllocator::AllocateDescriptorSet(VkDescriptorPool descriptorPool, VkDescriptorSetLayout layout)
+    {
+        VkDescriptorSetAllocateInfo allocateInfo{};
+        allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocateInfo.pNext = nullptr;
+        allocateInfo.descriptorSetCount = 1;
+        allocateInfo.pSetLayouts = &layout;
+        allocateInfo.descriptorPool = descriptorPool;
+
+        VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
+        auto result = vkAllocateDescriptorSets(m_device, &allocateInfo, &descriptorSet);
+        if (result != VK_SUCCESS)
+            return VK_NULL_HANDLE;
+        return descriptorSet;
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     /// Image
     ///////////////////////////////////////////////////////////////////////////
@@ -225,24 +321,101 @@ namespace RHI::Vulkan
     /// BindGroup
     ///////////////////////////////////////////////////////////////////////////
 
-    ResultCode IBindGroup::Init(IContext* context, VkDescriptorPool _pool, VkDescriptorSet _set)
+    ResultCode IBindGroup::Init(IContext* context, Handle<BindGroupLayout> layoutHandle)
     {
-        (void)_pool;
-        (void)_set;
-        (void)context;
+        auto allocator = context->m_bindGroupAllocator.get();
+        auto layout = context->m_bindGroupLayoutsOwner.Get(layoutHandle);
 
-        return ResultCode::Success;
+        return allocator->InitBindGroup(this, layout);
     }
 
     void IBindGroup::Shutdown(IContext* context)
     {
-        (void)context;
+        auto allocator = context->m_bindGroupAllocator.get();
+        allocator->FreePool(poolHandle);
     }
 
-    void IBindGroup::Write(IContext* context, const BindGroupData& data)
+    void IBindGroup::Write(IContext* context, BindGroupData data)
     {
-        (void)context;
-        (void)data;
+        std::vector<std::vector<VkDescriptorImageInfo>> descriptorImageInfos;
+        std::vector<std::vector<VkDescriptorBufferInfo>> descriptorBufferInfos;
+        std::vector<std::vector<VkBufferView>> descriptorBufferViews;
+
+        std::vector<VkWriteDescriptorSet> writeInfos;
+
+        for (auto [binding, resourceVarient] : data.m_bindings)
+        {
+            VkWriteDescriptorSet writeInfo{};
+            writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            writeInfo.pNext = nullptr;
+            writeInfo.dstSet = descriptorSet;
+            writeInfo.dstBinding = binding;
+            if (auto resources = std::get_if<0>(&resourceVarient))
+            {
+                auto& imageInfos = descriptorImageInfos.emplace_back();
+
+                for (auto viewHandle : resources->views)
+                {
+                    auto view = context->m_imageViewOwner.Get(viewHandle);
+
+                    VkDescriptorImageInfo imageInfo{};
+                    imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                    imageInfo.imageView = view->handle;
+                    imageInfos.push_back(imageInfo);
+                }
+
+                writeInfo.dstArrayElement = resources->arrayOffset;
+                writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+                writeInfo.descriptorCount = uint32_t(imageInfos.size());
+                writeInfo.pImageInfo = imageInfos.data();
+            }
+            else if (auto buffer = std::get_if<1>(&resourceVarient))
+            {
+                auto& bufferInfos = descriptorBufferInfos.emplace_back();
+
+                for (auto viewHandle : buffer->views)
+                {
+                    VkDescriptorBufferInfo bufferInfo{};
+                    bufferInfo.buffer = context->m_bufferOwner.Get(viewHandle)->handle;
+                    bufferInfo.offset = 0;
+                    bufferInfo.range = VK_WHOLE_SIZE;
+                    bufferInfos.push_back(bufferInfo);
+                }
+
+                writeInfo.dstArrayElement = buffer->arrayOffset;
+                writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; // todo support storage buffers, and more complex types
+                writeInfo.descriptorCount = uint32_t(bufferInfos.size());
+                writeInfo.pBufferInfo = bufferInfos.data();
+            }
+            else if (auto sampler = std::get_if<2>(&resourceVarient))
+            {
+                auto& imageInfos = descriptorImageInfos.emplace_back();
+
+                for (auto samplerHandle : sampler->samplers)
+                {
+                    auto sampler2 = context->m_samplerOwner.Get(samplerHandle);
+
+                    VkDescriptorImageInfo imageInfo{};
+                    imageInfo.sampler = sampler2->handle;
+                    imageInfos.push_back(imageInfo);
+                }
+
+                writeInfo.dstArrayElement = sampler->arrayOffset;
+                writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+                writeInfo.descriptorCount = uint32_t(imageInfos.size());
+                writeInfo.pImageInfo = imageInfos.data();
+            }
+            else
+            {
+                RHI_UNREACHABLE();
+            }
+
+            // writeInfo.pTexelBufferView; todo
+
+            writeInfos.push_back(writeInfo);
+        }
+
+        vkUpdateDescriptorSets(context->m_device, uint32_t(writeInfos.size()), writeInfos.data(), 0, nullptr);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -585,35 +758,6 @@ namespace RHI::Vulkan
     /// ShaderModule
     ///////////////////////////////////////////////////////////////////////////
 
-    IStagingBuffer::IStagingBuffer(IContext* context)
-        : m_context(context)
-    {
-    }
-
-    IStagingBuffer::~IStagingBuffer() {}
-
-    VkResult IStagingBuffer::Init()
-    {
-        return VK_SUCCESS;
-    }
-
-    StagingBuffer::TempBuffer IStagingBuffer::Allocate(size_t newSize)
-    {
-        (void)newSize;
-        return {};
-    }
-
-    void IStagingBuffer::Free(TempBuffer mappedBuffer) 
-    {
-        (void)mappedBuffer;
-    }
-
-    void IStagingBuffer::Flush() {}
-
-    ///////////////////////////////////////////////////////////////////////////
-    /// ShaderModule
-    ///////////////////////////////////////////////////////////////////////////
-
     IShaderModule::~IShaderModule()
     {
         vkDestroyShaderModule(m_context->m_device, m_shaderModule, nullptr);
@@ -691,6 +835,49 @@ namespace RHI::Vulkan
         poolCreateInfo.memoryTypeIndex = m_context->GetMemoryTypeIndex(MemoryType::GPULocal);
         return vmaCreatePool(m_context->m_allocator, &poolCreateInfo, &m_pool);
     }
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// ShaderModule
+    ///////////////////////////////////////////////////////////////////////////
+
+    IStagingBuffer::IStagingBuffer(IContext* context)
+        : m_context(context)
+    {
+    }
+
+    IStagingBuffer::~IStagingBuffer() 
+    {
+
+    }
+
+    VkResult IStagingBuffer::Init()
+    {
+        return VK_SUCCESS;
+    }
+
+    StagingBuffer::TempBuffer IStagingBuffer::Allocate(size_t newSize)
+    {
+        BufferCreateInfo createInfo = {};
+        createInfo.usageFlags = BufferUsage::CopySrc;
+        createInfo.usageFlags = BufferUsage::CopyDst;
+        createInfo.byteSize = newSize;
+        auto buffer = m_context->CreateBuffer(createInfo).GetValue();
+
+        StagingBuffer::TempBuffer tmpBuffer {};
+        tmpBuffer.buffer = buffer;
+        tmpBuffer.size = newSize;
+        tmpBuffer.offset = 0;
+        tmpBuffer.pData = m_context->MapBuffer(tmpBuffer.buffer);
+        return tmpBuffer;
+    }
+
+    void IStagingBuffer::Free(TempBuffer mappedBuffer)
+    {
+        m_context->UnmapBuffer(mappedBuffer.buffer);
+        m_context->DestroyBuffer(mappedBuffer.buffer);
+    }
+
+    void IStagingBuffer::Flush() {}
 
     ///////////////////////////////////////////////////////////////////////////
     /// Fence

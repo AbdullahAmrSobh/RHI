@@ -443,15 +443,15 @@ void ImGuiRenderer::RenderDrawData(ImDrawData* drawData, RHI::CommandList& comma
             commandList.SetViewport(viewport);
 
             // Bind texture, Draw
-            RHI::CommandDraw draw{};
-            draw.bindGroups = m_bindGroup;
-            draw.pipelineState = m_pipeline;
-            draw.indexBuffers = m_indexBuffer;
-            draw.vertexBuffers = m_vertexBuffer;
-            draw.parameters.elementCount = pcmd->ElemCount;
-            draw.parameters.vertexOffset = pcmd->VtxOffset + globalVtxOffset;
-            draw.parameters.firstElement = pcmd->IdxOffset + globalIdxOffset;
-            commandList.Submit(draw);
+            RHI::DrawInfo drawInfo{};
+            drawInfo.bindGroups = m_bindGroup;
+            drawInfo.pipelineState = m_pipeline;
+            drawInfo.indexBuffers = m_indexBuffer;
+            drawInfo.vertexBuffers = m_vertexBuffer;
+            drawInfo.parameters.elementCount = pcmd->ElemCount;
+            drawInfo.parameters.vertexOffset = pcmd->VtxOffset + globalVtxOffset;
+            drawInfo.parameters.firstElement = pcmd->IdxOffset + globalIdxOffset;
+            commandList.Draw(drawInfo);
         }
 
         globalIdxOffset += cmdList->IdxBuffer.Size;

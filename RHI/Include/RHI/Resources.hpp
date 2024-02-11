@@ -5,6 +5,7 @@
 #include "RHI/Common/Result.hpp"
 #include "RHI/Common/Span.hpp"
 #include "RHI/Format.hpp"
+#include <variant>
 
 namespace RHI
 {
@@ -443,32 +444,41 @@ namespace RHI
     public:
         BindGroupData() = default;
 
-        inline void BindImages(uint32_t index, TL::Span<Handle<ImageView>> handles, uint32_t arrayOffset = 0);
+        void BindImages(uint32_t index, TL::Span<Handle<ImageView>> handles, uint32_t arrayOffset = 0);
 
-        inline void BindBuffers(uint32_t index, TL::Span<Handle<Buffer>> handles, uint32_t arrayOffset = 0);
+        void BindBuffers(uint32_t index, TL::Span<Handle<Buffer>> handles, uint32_t arrayOffset = 0);
 
-        inline void BindBuffers(uint32_t index, TL::Span<Handle<BufferView>> handles, uint32_t arrayOffset = 0);
+        void BindBuffers(uint32_t index, TL::Span<Handle<BufferView>> handles, uint32_t arrayOffset = 0);
 
-        inline void BindSamplers(uint32_t index, TL::Span<Handle<Sampler>> samplers, uint32_t arrayOffset = 0);
+        void BindSamplers(uint32_t index, TL::Span<Handle<Sampler>> samplers, uint32_t arrayOffset = 0);
 
-        struct Binding
+        struct ResourceImageBinding
         {
-            Binding() = default;
-
-            uint32_t          index;
-            ShaderBindingType type;
-
-            union List
-            {
-                List(){};
-                Handle<ImageView>  m_asImageBinding[c_MaxImageBindingArrayElementsCount];
-                Handle<Buffer>     m_asBufferBinding[c_MaxBufferBindingArrayElementsCount];
-                Handle<BufferView> m_asBufferViewBinding[c_MaxBufferViewBindingArrayElementsCount];
-                Handle<Sampler>    m_asSamplerBinding[c_MaxBufferSamplerBindingArrayElementsCount];
-            } binding;
+            uint32_t                       arrayOffset;
+            std::vector<Handle<ImageView>> views;
         };
 
-        Binding m_bindings[c_MaxBindGroupElementsCount];
+        struct ResourceBufferBinding
+        {
+            uint32_t                    arrayOffset;
+            std::vector<Handle<Buffer>> views;
+        };
+
+        struct ResourceBufferViewBinding
+        {
+            uint32_t                        arrayOffset;
+            std::vector<Handle<BufferView>> views;
+        };
+
+        struct ResourceSamplerBinding
+        {
+            uint32_t                     arrayOffset;
+            std::vector<Handle<Sampler>> samplers;
+        };
+
+        using ResourceBinding = std::variant<ResourceImageBinding, ResourceBufferBinding, ResourceSamplerBinding>;
+
+        std::unordered_map<uint32_t, ResourceBinding> m_bindings;
     };
 
     // @brief the layout of pipeline shaders
@@ -662,12 +672,25 @@ namespace RHI
     struct SamplerCreateInfo
     {
         SamplerCreateInfo() = default;
+
         SamplerCreateInfo(SamplerFilter           filter,
                           SamplerAddressMode      addressMode,
                           SamplerCompareOperation compare    = SamplerCompareOperation::Always,
                           float                   mipLodBias = 0.0f,
                           float                   minLod     = 0.0f,
-                          float                   maxLod     = 1.0f);
+                          float                   maxLod     = 1.0f)
+            : filterMin(filter)
+            , filterMag(filter)
+            , filterMip(filter)
+            , compare(compare)
+            , mipLodBias(mipLodBias)
+            , addressU(addressMode)
+            , addressV(addressMode)
+            , addressW(addressMode)
+            , minLod(minLod)
+            , maxLod(maxLod)
+        {
+        }
 
         SamplerFilter           filterMin  = SamplerFilter::Point;
         SamplerFilter           filterMag  = SamplerFilter::Point;
@@ -698,6 +721,20 @@ namespace RHI
         SwapchainPresentMode presentMode;
     };
 
+    class RHI_EXPORT ShaderModule
+    {
+    public:
+        ShaderModule()          = default;
+        virtual ~ShaderModule() = default;
+    };
+
+    class RHI_EXPORT ResourcePool
+    {
+    public:
+        ResourcePool()          = default;
+        virtual ~ResourcePool() = default;
+    };
+
     class RHI_EXPORT StagingBuffer
     {
     public:
@@ -716,21 +753,6 @@ namespace RHI
         virtual void       Flush()                       = 0;
     };
 
-    class RHI_EXPORT ShaderModule
-    {
-    public:
-        ShaderModule()          = default;
-        virtual ~ShaderModule() = default;
-    };
-
-    /// @brief Pool used to allocate buffer resources.
-    class RHI_EXPORT ResourcePool
-    {
-    public:
-        ResourcePool()          = default;
-        virtual ~ResourcePool() = default;
-    };
-
     /// @brief Fence object used to preform CPU-GPU sync
     class RHI_EXPORT Fence
     {
@@ -738,7 +760,10 @@ namespace RHI
         Fence()          = default;
         virtual ~Fence() = default;
 
-        inline bool        Wait(uint64_t timeout = UINT64_MAX);
+        inline bool Wait(uint64_t timeout = UINT64_MAX)
+        {
+            return WaitInternal(timeout);
+        }
 
         virtual void       Reset()    = 0;
         virtual FenceState GetState() = 0;
@@ -772,8 +797,8 @@ namespace RHI
         virtual ResultCode Present()                                                                            = 0;
 
     protected:
-        uint32_t            m_swapchainImagesCount;
         uint32_t            m_currentImageIndex;
+        uint32_t            m_swapchainImagesCount;
         SwapchainCreateInfo m_createInfo;
         Handle<Image>       m_images[c_MaxSwapchainBackBuffersCount];
     };

@@ -38,8 +38,8 @@ namespace RHI::Vulkan
         void DeviceWaitIdle() override;
         void QueuePassSubmit(Pass* pass, Fence* fence) override;
         void QueueCommandsSubmit(QueueType queueType, TL::Span<CommandList*> commandLists, Fence& fence) override;
-        void StreamResource(Handle<Image> dst, ImageOffset offset, ImageSize3D size, StagingBuffer::TempBuffer& tempBuffer) override;
-        void StreamResource(Handle<Buffer> dst, size_t offset, size_t size, StagingBuffer::TempBuffer& tempBuffer) override;
+        void StreamResource(CommandList& commandList, Handle<Image> dst, ImageOffset offset, ImageSize3D size, StagingBuffer::TempBuffer& tempBuffer) override;
+        void StreamResource(CommandList& commandList, Handle<Buffer> dst, size_t offset, size_t size, StagingBuffer::TempBuffer& tempBuffer) override;
     };
 
 } // namespace RHI::Vulkan

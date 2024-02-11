@@ -45,120 +45,6 @@ namespace RHI
     }
 } // namespace RHI
 
-
-namespace RHI::Vulkan
-{
-    // TODO: refactor this mess section!
-    // I hacked this to get stuff working for now.
-    struct DescriptorPool
-    {
-        VkDescriptorPool descriptorPool;
-        uint32_t referenceCount;
-    };
-
-    inline static VkDescriptorPool CreateDescriptorPool(VkDevice device)
-    {
-        // clang-format off
-            VkDescriptorPoolSize poolSizes[] = {
-                { VK_DESCRIPTOR_TYPE_SAMPLER,                16 },
-                { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          16 },
-                { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          16 },
-                { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         16 },
-                { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         16 },
-                { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   16 },
-                { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   16 },
-                { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 16 },
-                { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 16 },
-                { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,       16 },
-            };
-        // clang-format on
-
-        VkDescriptorPoolCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        createInfo.pNext = nullptr;
-        createInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-        createInfo.maxSets = 8;
-        createInfo.poolSizeCount = sizeof(poolSizes) / sizeof(VkDescriptorPoolSize);
-        createInfo.pPoolSizes = poolSizes;
-
-        VkDescriptorPool pool = VK_NULL_HANDLE;
-        auto result = vkCreateDescriptorPool(device, &createInfo, nullptr, &pool);
-        VULKAN_ASSERT_SUCCESS(result);
-        return pool;
-    }
-
-    inline static VkDescriptorSet AllocateDescriptorSet(VkDevice device, VkDescriptorPool descriptorPool, VkDescriptorSetLayout layout)
-    {
-        VkDescriptorSetAllocateInfo allocateInfo{};
-        allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocateInfo.pNext = nullptr;
-        allocateInfo.descriptorSetCount = 1;
-        allocateInfo.pSetLayouts = &layout;
-        allocateInfo.descriptorPool = descriptorPool;
-
-        VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
-        auto result = vkAllocateDescriptorSets(device, &allocateInfo, &descriptorSet);
-        if (result != VK_SUCCESS)
-            return VK_NULL_HANDLE;
-        return descriptorSet;
-    }
-
-    class BindGroupAllocator
-    {
-    public:
-        BindGroupAllocator() = default;
-
-        VkResult Allocate(VkDevice device, IBindGroup& bindGroup, IBindGroupLayout& bindGroupLayout)
-        {
-            for (auto handle : m_poolHandles)
-            {
-                auto descriptorPool = m_descriptorPoolOwner.Get(handle);
-                auto descriptorSet = AllocateDescriptorSet(device, descriptorPool->descriptorPool, bindGroupLayout.handle);
-                if (descriptorSet != VK_NULL_HANDLE)
-                {
-                    descriptorPool->referenceCount++;
-
-                    bindGroup.poolHandle = handle;
-                    bindGroup.set = descriptorSet;
-                    return VK_SUCCESS;
-                }
-            }
-
-            auto [handle, descriptorPool] = m_descriptorPoolOwner.InsertZerod();
-            descriptorPool.descriptorPool = CreateDescriptorPool(device);
-            descriptorPool.referenceCount = 1;
-            m_poolHandles.insert(handle);
-
-            return VK_SUCCESS;
-        }
-
-        void Free(VkDevice device, Handle<DescriptorPool> handle)
-        {
-            auto descriptorPool = m_descriptorPoolOwner.Get(handle);
-            RHI_ASSERT(descriptorPool->referenceCount >= 1)
-            descriptorPool->referenceCount--;
-
-            if (descriptorPool->referenceCount == 0)
-            {
-                vkDestroyDescriptorPool(device, descriptorPool->descriptorPool, nullptr);
-                m_descriptorPoolOwner.Remove(handle);
-                m_poolHandles.erase(handle);
-            }
-        }
-
-        // void Write(IBindGroup& bindGroup, const BindGroupData& data)
-        // {
-            
-        // }
-
-    private:
-        HandlePool<DescriptorPool> m_descriptorPoolOwner;
-        std::unordered_set<Handle<DescriptorPool>> m_poolHandles;
-    };
-
-} // namespace RHI::Vulkan
-
-
 namespace RHI::Vulkan
 {
 
@@ -197,8 +83,8 @@ namespace RHI::Vulkan
     {
         m_debugCallbacks = std::move(debugCallbacks);
         m_frameScheduler = CreatePtr<IFrameScheduler>(this);
-        m_bindGroupAllocator = CreatePtr<BindGroupAllocator>();
-        // m_streamingBuffer = CreatePtr<IStagingBuffer>(this);
+        m_bindGroupAllocator = CreatePtr<BindGroupAllocator>(m_device);
+        m_streamingBuffer = CreatePtr<IStagingBuffer>(this);
     }
 
     IContext::~IContext()
@@ -523,9 +409,8 @@ namespace RHI::Vulkan
     Handle<BindGroup> IContext::CreateBindGroup(Handle<BindGroupLayout> layoutHandle)
     {
         auto [handle, bindGroup] = m_bindGroupOwner.InsertZerod();
-        auto layout = m_bindGroupLayoutsOwner.Get(layoutHandle);
-        auto result = m_bindGroupAllocator->Allocate(m_device, bindGroup, *layout);
-        if (result != VK_SUCCESS)
+        auto result = bindGroup.Init(this, layoutHandle);
+        if (IsError(result))
         {
             DebugLogError("Failed to create bindGroup");
         }
@@ -723,17 +608,17 @@ namespace RHI::Vulkan
     // Interface implementation
     ////////////////////////////////////////////////////////////
 
-    VkSemaphore IContext::CreateSemaphore()
-    {
-        VkSemaphoreCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-        createInfo.pNext = nullptr;
-        createInfo.flags = 0;
-        VkSemaphore semaphore = VK_NULL_HANDLE;
-        auto result = vkCreateSemaphore(m_device, &createInfo, nullptr, &semaphore);
-        VULKAN_ASSERT_SUCCESS(result);
-        return semaphore;
-    }
+    // VkSemaphore IContext::CreateSemaphore()
+    // {
+    //     VkSemaphoreCreateInfo createInfo{};
+    //     createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    //     createInfo.pNext = nullptr;
+    //     createInfo.flags = 0;
+    //     VkSemaphore semaphore = VK_NULL_HANDLE;
+    //     auto result = vkCreateSemaphore(m_device, &createInfo, nullptr, &semaphore);
+    //     VULKAN_ASSERT_SUCCESS(result);
+    //     return semaphore;
+    // }
 
     void IContext::FreeSemaphore(VkSemaphore semaphore)
     {

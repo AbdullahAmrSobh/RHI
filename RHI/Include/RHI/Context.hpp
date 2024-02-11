@@ -91,8 +91,9 @@ namespace RHI
         /// @return Reference to the FrameScheduler object.
         /// @const If called through a const reference to the Context object,
         ///        returns a const reference to the FrameScheduler.
-        inline FrameScheduler*            GetScheduler();
-        inline const FrameScheduler*      GetScheduler() const;
+        inline FrameScheduler*            GetScheduler() { return m_frameScheduler.get(); }
+
+        inline const FrameScheduler*      GetScheduler() const { return m_frameScheduler.get(); }
 
         /// Creates an image object and copies the provided content into it.
         ///
@@ -309,9 +310,10 @@ namespace RHI
     protected:
         Context() = default;
 
-        Ptr<DebugCallbacks> m_debugCallbacks;
-        Ptr<FrameScheduler> m_frameScheduler;
-        Ptr<StagingBuffer>  m_streamingBuffer;
+        Ptr<DebugCallbacks>       m_debugCallbacks;
+        Ptr<FrameScheduler>       m_frameScheduler;
+        Ptr<StagingBuffer>        m_streamingBuffer;
+        Ptr<CommandListAllocator> m_copyCommandsAllocator;
     };
 
 } // namespace RHI

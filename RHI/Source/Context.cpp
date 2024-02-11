@@ -10,13 +10,21 @@ namespace RHI
         {
             return result;
         }
-
+        
         auto tempBuffer = m_streamingBuffer->Allocate(content.size());
         memcpy(tempBuffer.pData, content.data(), content.size());
         m_streamingBuffer->Free(tempBuffer);
 
         RHI_ASSERT(CalculateRequiredSize(createInfo) == content.size());
-        m_frameScheduler->StreamResource(handle, {}, createInfo.size, tempBuffer);
+
+        auto cmdList = m_copyCommandsAllocator->Allocate();
+        cmdList->Begin();
+        m_frameScheduler->StreamResource(*cmdList, handle, {}, createInfo.size, tempBuffer);
+        cmdList->End();
+
+        auto fence = CreateFence();
+        GetScheduler()->QueueCommandsSubmit(QueueType::Transfer, cmdList, *fence);
+        fence->Wait();
 
         return handle;
     }
@@ -35,7 +43,15 @@ namespace RHI
         m_streamingBuffer->Free(tempBuffer);
 
         RHI_ASSERT(CalculateRequiredSize(createInfo) == content.size());
-        m_frameScheduler->StreamResource(handle, {}, createInfo.byteSize, tempBuffer);
+        
+        auto cmdList = m_copyCommandsAllocator->Allocate();
+        cmdList->Begin();
+        m_frameScheduler->StreamResource(*cmdList, handle, {}, createInfo.byteSize, tempBuffer);
+        cmdList->End();
+        
+        auto fence = CreateFence();
+        GetScheduler()->QueueCommandsSubmit(QueueType::Transfer, cmdList, *fence);
+        fence->Wait();
 
         return handle;
     }
@@ -68,6 +84,18 @@ namespace RHI
 #else
         (void)message;
 #endif
+    }
+
+
+    size_t Context::CalculateRequiredSize(const ImageCreateInfo& createInfo)
+    {
+        auto formatInfo = GetFormatInfo(createInfo.format);
+        return formatInfo.bytesPerBlock * createInfo.size.width * createInfo.size.height * createInfo.size.depth;
+    }
+
+    size_t Context::CalculateRequiredSize(const BufferCreateInfo& createInfo)
+    {
+        return createInfo.byteSize;
     }
 
 } // namespace RHI

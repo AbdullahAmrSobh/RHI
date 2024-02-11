@@ -4,8 +4,14 @@
 
 #include <vk_mem_alloc.h>
 
+#include <unordered_set>
+
 namespace RHI::Vulkan
 {
+
+    struct IBindGroup;
+    struct IBindGroupLayout;
+
     class IContext;
     class IResourcePool;
     class ISwapchain;
@@ -19,6 +25,33 @@ namespace RHI::Vulkan
 
         VmaVirtualBlock virtualBlock;
         VmaVirtualAllocation virtualHandle;
+    };
+
+    struct DescriptorPool
+    {
+        VkDescriptorPool descriptorPool;
+        uint32_t referenceCount;
+    };
+
+    class BindGroupAllocator
+    {
+    public:
+        BindGroupAllocator(VkDevice device)
+            : m_device(device)
+        {
+        }
+
+        ResultCode InitBindGroup(IBindGroup* bindGroup, IBindGroupLayout* bindGroupLayout);
+        void FreePool(Handle<DescriptorPool> handle);
+
+    private:
+        std::pair<Handle<DescriptorPool>, DescriptorPool> CreateDescriptorPool();
+        VkDescriptorSet AllocateDescriptorSet(VkDescriptorPool descriptorPool, VkDescriptorSetLayout layout);
+
+    private:
+        VkDevice m_device;
+        HandlePool<DescriptorPool> m_descriptorPoolOwner;
+        std::unordered_set<Handle<DescriptorPool>> m_descriptorPools;
     };
 
     struct IImage : Image
@@ -74,13 +107,13 @@ namespace RHI::Vulkan
 
     struct IBindGroup : BindGroup
     {
-        VkDescriptorSet set;
-        Handle<struct DescriptorPool> poolHandle;
+        VkDescriptorSet descriptorSet;
+        Handle<DescriptorPool> poolHandle;
 
-        ResultCode Init(IContext* context, VkDescriptorPool pool, VkDescriptorSet set);
+        ResultCode Init(IContext* context, Handle<BindGroupLayout> layout);
         void Shutdown(IContext* context);
 
-        void Write(IContext* context, const BindGroupData& data);
+        void Write(IContext* context, BindGroupData data);
     };
 
     struct IPipelineLayout : PipelineLayout
@@ -117,21 +150,6 @@ namespace RHI::Vulkan
         void Shutdown(IContext* context);
     };
 
-    class IStagingBuffer final : public StagingBuffer
-    {
-    public:
-        IStagingBuffer(IContext* context);
-        ~IStagingBuffer();
-
-        VkResult Init();
-
-        StagingBuffer::TempBuffer Allocate(size_t newSize) override;
-        void Free(TempBuffer mappedBuffer) override;
-        void Flush() override;
-    private:
-        IContext* m_context;
-    };
-
     class IShaderModule final : public ShaderModule
     {
     public:
@@ -165,6 +183,22 @@ namespace RHI::Vulkan
         IContext* m_context;
         VmaPool m_pool;
         ResourcePoolCreateInfo m_poolInfo;
+    };
+
+    class IStagingBuffer final : public StagingBuffer
+    {
+    public:
+        IStagingBuffer(IContext* context);
+        ~IStagingBuffer();
+
+        VkResult Init();
+
+        StagingBuffer::TempBuffer Allocate(size_t newSize) override;
+        void Free(TempBuffer mappedBuffer) override;
+        void Flush() override;
+
+    private:
+        IContext* m_context;
     };
 
     /// @brief Fence object used to preform CPU-GPU sync

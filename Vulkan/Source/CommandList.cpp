@@ -269,7 +269,7 @@ namespace RHI::Vulkan
         vkCmdSetScissor(m_commandBuffer, 0, 1, &vkScissor);
     }
 
-    void ICommandList::Submit(const CommandDraw& command)
+    void ICommandList::Draw(const DrawInfo& command)
     {
         auto pipeline = m_context->m_graphicsPipelineOwner.Get(command.pipelineState);
 
@@ -335,7 +335,28 @@ namespace RHI::Vulkan
         }
     }
 
-    void ICommandList::Submit(const CopyBufferDescriptor& command)
+    void ICommandList::Dispatch(const DispatchInfo& command)
+    {
+        auto pipeline = m_context->m_computePipelineOwner.Get(command.pipelineState);
+
+        vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->handle);
+
+        if (command.bindGroups.size())
+        {
+            BindShaderBindGroups(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->layout, command.bindGroups);
+        }
+
+        vkCmdDispatchBase(
+            m_commandBuffer,
+            command.parameters.offsetX,
+            command.parameters.offsetY,
+            command.parameters.offsetZ,
+            command.parameters.countX,
+            command.parameters.countY,
+            command.parameters.countZ);
+    }
+
+    void ICommandList::Copy(const BufferCopyInfo& command)
     {
         auto srcBuffer = m_context->m_bufferOwner.Get(command.srcBuffer);
         auto destinationBuffer = m_context->m_bufferOwner.Get(command.dstBuffer);
@@ -347,7 +368,7 @@ namespace RHI::Vulkan
         vkCmdCopyBuffer(m_commandBuffer, srcBuffer->handle, destinationBuffer->handle, 1, &copyInfo);
     }
 
-    void ICommandList::Submit(const CopyImageDescriptor& command)
+    void ICommandList::Copy(const ImageCopyInfo& command)
     {
         auto srcImage = m_context->m_imageOwner.Get(command.srcImage);
         auto dstImage = m_context->m_imageOwner.Get(command.dstImage);
@@ -361,7 +382,7 @@ namespace RHI::Vulkan
         vkCmdCopyImage(m_commandBuffer, srcImage->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyInfo);
     }
 
-    void ICommandList::Submit(const CopyBufferToImageDescriptor& command)
+    void ICommandList::Copy(const BufferToImageCopyInfo& command)
     {
         auto srcBuffer = m_context->m_bufferOwner.Get(command.srcBuffer);
         auto dstImage = m_context->m_imageOwner.Get(command.dstImage);
@@ -409,7 +430,7 @@ namespace RHI::Vulkan
         vkCmdPipelineBarrier2(m_commandBuffer, &barrier);
     }
 
-    void ICommandList::Submit(const CopyImageToBufferDescriptor& command)
+    void ICommandList::Copy(const ImageToBufferCopyInfo& command)
     {
         auto srcImage = m_context->m_imageOwner.Get(command.srcImage);
         auto dstBuffer = m_context->m_bufferOwner.Get(command.dstBuffer);
@@ -422,27 +443,6 @@ namespace RHI::Vulkan
         copyInfo.imageOffset = ConvertOffset3D(command.srcOffset);
         copyInfo.imageExtent = ConvertExtent3D(command.srcSize);
         vkCmdCopyImageToBuffer(m_commandBuffer, srcImage->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstBuffer->handle, 1, &copyInfo);
-    }
-
-    void ICommandList::Submit(const CommandCompute& command)
-    {
-        auto pipeline = m_context->m_computePipelineOwner.Get(command.pipelineState);
-
-        vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->handle);
-
-        if (command.bindGroups.size())
-        {
-            BindShaderBindGroups(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->layout, command.bindGroups);
-        }
-
-        vkCmdDispatchBase(
-            m_commandBuffer,
-            command.parameters.offsetX,
-            command.parameters.offsetY,
-            command.parameters.offsetZ,
-            command.parameters.countX,
-            command.parameters.countY,
-            command.parameters.countZ);
     }
 
     VkRenderingAttachmentInfo ICommandList::GetAttachmentInfo(const ImagePassAttachment& passAttachment) const
@@ -565,7 +565,7 @@ namespace RHI::Vulkan
         for (auto bindGroupHandle : bindGroups)
         {
             auto bindGroup = m_context->m_bindGroupOwner.Get(bindGroupHandle);
-            descriptorSets.push_back(bindGroup->set);
+            descriptorSets.push_back(bindGroup->descriptorSet);
         }
 
         vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, uint32_t(descriptorSets.size()), descriptorSets.data(), 0, nullptr);

@@ -65,7 +65,16 @@ namespace RHI::Vulkan
 
         VkQueue GetQueue(QueueType queueType) const;
 
-        VkSemaphore CreateSemaphore();
+        inline VkSemaphore CreateSemaphore()
+        {
+            VkSemaphoreCreateInfo createInfo{};
+            createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+            createInfo.pNext = nullptr;
+            createInfo.flags = 0;
+            VkSemaphore semaphore = VK_NULL_HANDLE;
+            vkCreateSemaphore(m_device, &createInfo, nullptr, &semaphore);
+            return semaphore;
+        }
 
         void FreeSemaphore(VkSemaphore semaphore);
 

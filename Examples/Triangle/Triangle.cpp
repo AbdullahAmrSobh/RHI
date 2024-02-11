@@ -253,7 +253,7 @@ public:
             .height = m_windowHeight
         };
 
-        RHI::CommandDraw drawCommand = {
+        RHI::DrawInfo drawCommand = {
             .pipelineState = m_pipelineState,
             .bindGroups = m_bindGroup,
             .vertexBuffers = { m_mesh.positionsBuffer, m_mesh.normalsBuffer, m_mesh.texCoordBuffer },
@@ -264,7 +264,7 @@ public:
         commandList->Begin(*m_renderpass);
         commandList->SetViewport(viewport);
         commandList->SetSicssor(scissor);
-        commandList->Submit(drawCommand);
+        commandList->Draw(drawCommand);
 
         auto drawData = ImGui::GetDrawData();
         m_imguiRenderer->RenderDrawData(drawData, *commandList);
