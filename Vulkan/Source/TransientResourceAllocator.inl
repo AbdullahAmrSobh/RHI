@@ -1,8 +1,8 @@
 #pragma once
 #include "Context.hpp"
 #include "Resources.hpp"
-#include "Common.hpp"
 
+#include <RHI/Common/Hash.hpp>
 #include <RHI/FrameScheduler.hpp>
 
 #include <vk_mem_alloc.h>
