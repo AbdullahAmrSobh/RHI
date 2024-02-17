@@ -5,15 +5,11 @@
 #include "RHI/CommandList.hpp"
 #include "RHI/FrameScheduler.hpp"
 #include "RHI/Export.hpp"
-#include "RHI/Common/Allocator.hpp"
 #include "RHI/Common/Ptr.h"
-
-#include <string>
-#include <string_view>
 
 namespace RHI
 {
-    using Version = uint32_t;
+    struct StagingBuffer;
 
     /// @brief Type of backend Graphics API
     enum class Backend
@@ -41,6 +37,13 @@ namespace RHI
         Other,
     };
 
+    struct Version
+    {
+        uint16_t major;
+        uint16_t minor;
+        uint32_t patch;
+    };
+
     /// @brief Describes information needed to initalize the RHI context
     struct ApplicationInfo
     {
@@ -54,116 +57,261 @@ namespace RHI
     struct DeviceProperties
     {
         uint32_t    id;
-        std::string name;
+        const char* name;
         DeviceType  type;
         Vendor      vendor;
     };
-
-    /// @brief Creates a Version from major.minor.patch
-    constexpr Version MakeVersion(uint32_t major, uint32_t minor, uint32_t patch)
-    {
-        return (major << 16) | (minor << 8) | patch;
-    }
 
     /// @brief An interface implemented by the user, which the API use to log.
     class DebugCallbacks
     {
     public:
-        virtual ~DebugCallbacks()                               = default;
+        virtual ~DebugCallbacks()                          = default;
 
         /// @brief Log an information.
-        virtual void LogInfo(std::string_view message, ...)     = 0;
+        virtual void LogInfo(const char* message, ...)     = 0;
 
         /// @brief Log an warnning.
-        virtual void LogWarnning(std::string_view message, ...) = 0;
+        virtual void LogWarnning(const char* message, ...) = 0;
 
         /// @brief Log an error.
-        virtual void LogError(std::string_view message, ...)    = 0;
+        virtual void LogError(const char* message, ...)    = 0;
     };
 
-    /// @brief RHI Context, represent an instance of the API.
+    // This class provides the core interface for interacting with the graphics rendering API.
+    // It allows for creating and managing various resources like images, buffers, pipelines,
+    // and shaders.
     class RHI_EXPORT Context
     {
     public:
-        virtual ~Context()                                                                                              = default;
+        virtual ~Context() = default;
 
-        /// @brief Creates a new Swapchain.
-        virtual Ptr<Swapchain>            CreateSwapchain(const SwapchainCreateInfo& createInfo)                        = 0;
+        /// Returns a reference to the frame scheduler object.
+        ///
+        /// @return Reference to the FrameScheduler object.
+        /// @const If called through a const reference to the Context object,
+        ///        returns a const reference to the FrameScheduler.
+        inline FrameScheduler&            GetScheduler() { return *m_frameScheduler; }
 
-        /// @brief Creates a new ShaderModule
-        virtual Ptr<ShaderModule>         CreateShaderModule(const ShaderModuleCreateInfo& createInfo)                  = 0;
+        /// Creates an image object and copies the provided content into it.
+        ///
+        /// @param createInfo Information describing the desired image characteristics.
+        /// @param content The raw data to be copied into the image.
+        /// @return Result object indicating success or failure of the operation.
+        ///         On success, it also contains a handle to the created image.
+        Result<Handle<Image>>             CreateImageWithContent(const ImageCreateInfo& createInfo, TL::Span<uint8_t> content);
 
-        /// @brief Creates a fence object.
-        virtual Ptr<Fence>                CreateFence()                                                                 = 0;
+        /// Creates a buffer object and copies the provided content into it.
+        ///
+        /// @param createInfo Information describing the desired buffer characteristics.
+        /// @param content The raw data to be copied into the buffer.
+        /// @return Result object indicating success or failure of the operation.
+        ///         On success, it also contains a handle to the created buffer.
+        Result<Handle<Buffer>>            CreateBufferWithContent(const BufferCreateInfo& createInfo, TL::Span<uint8_t> content);
 
-        /// @brief Creates a Frame Graph Pass object.
-        virtual Ptr<Pass>                 CreatePass(const char* name, QueueType type)                                  = 0;
+        /// Reads data from an image object into a provided memory location.
+        ///
+        /// @param handle The handle to the image object to read from.
+        /// @param offset The starting offset within the image data to read from.
+        /// @param size The size of the data to read in bytes.
+        /// @param signalFence (Optional) A fence to be signaled once the read operation completes.
+        /// @param outPtr The pointer to the memory location to write the read data to.
+        /// @return ResultCode indicating success or failure of the operation.
+        ResultCode                        ReadImageContent(Handle<Image> handle, ImageOffset offset, ImageSize3D size, Fence& signalFence, void* outPtr);
 
-        /// @brief Creates a new FrameScheduler object.
-        virtual Ptr<FrameScheduler>       CreateFrameScheduler()                                                        = 0;
+        /// Reads data from an image object into a provided memory location.
+        ///
+        /// @param handle The handle to the image object to read from.
+        /// @param offset The starting offset within the image data to read from.
+        /// @param size The size of the data to read in bytes.
+        /// @param signalFence (Optional) A fence to be signaled once the read operation completes.
+        /// @param outPtr The pointer to the memory location to write the read data to.
+        /// @return ResultCode indicating success or failure of the operation.
+        ResultCode                        ReadBufferContent(Handle<Buffer> handle, size_t offset, size_t range, Fence& signalFence, void* outPtr);
 
-        /// @brief Creates a new command list allocator object.
-        virtual Ptr<CommandListAllocator> CreateCommandListAllocator(QueueType queueType, uint32_t bufferedFramesCount) = 0;
+        /// Creates a new swapchain object with specified configuration.
+        ///
+        /// @param createInfo [in] Information describing the desired charactersitics of the swapchain object.
+        /// @return RAII scoped pointer containing a pointer to the created swapchain
+        virtual Ptr<Swapchain>            CreateSwapchain(const SwapchainCreateInfo& createInfo)               = 0;
 
-        /// @brief Creates a shader bind group layout object.
-        virtual Handle<BindGroupLayout>   CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)            = 0;
+        /// Creates a new shader module object with specified configuration.
+        ///
+        /// @param createInfo [in] Information describing the desired charactersitics of the shader module object.
+        /// @return RAII scoped pointer containing a pointer to the created shader module
+        virtual Ptr<ShaderModule>         CreateShaderModule(TL::Span<const uint8_t> shaderBlob)               = 0;
 
-        /// @brief Frees the given shader bind group layout
-        virtual void                      DestroyBindGroupLayout(Handle<BindGroupLayout> layout)                        = 0;
+        /// Creates a new fence object with specified configuration.
+        ///
+        /// @return RAII scoped pointer containing a pointer to the created fence
+        virtual Ptr<Fence>                CreateFence()                                                        = 0;
 
-        /// @brief Creates a shader bind group layout object.
-        virtual Handle<PipelineLayout>    CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)              = 0;
+        /// Creates a new command list allocator object with specified configuration.
+        ///
+        /// @param createInfo [in] Information describing the desired charactersitics of the command list allocator object.
+        /// @return RAII scoped pointer containing a pointer to the created command list allocator
+        virtual Ptr<CommandListAllocator> CreateCommandListAllocator(QueueType queueType)                      = 0;
 
-        /// @brief Frees the given shader bind group layout
-        virtual void                      DestroyPipelineLayout(Handle<PipelineLayout> layout)                          = 0;
+        /// Creates a new resource pool object with specified configuration.
+        ///
+        /// @param createInfo [in] Information describing the desired charactersitics of the resource pool object.
+        /// @return RAII scoped pointer containing a pointer to the created resource pool
+        virtual Ptr<ResourcePool>         CreateResourcePool(const ResourcePoolCreateInfo& createInfo)         = 0;
 
-        /// @brief Creates a BindGroupAllocator object.
-        virtual Ptr<BindGroupAllocator>   CreateBindGroupAllocator()                                                    = 0;
+        /// Creates a new bind group layout object with the specified configuration.
+        ///
+        /// @param createInfo [in] Information describing the desired characteristics of the bind group layout object.
+        /// @return A handle to the created bind group layout object.
+        virtual Handle<BindGroupLayout>   CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)   = 0;
 
-        /// @brief Creates a new Pool for all buffer resources.
-        virtual Ptr<BufferPool>           CreateBufferPool(const PoolCreateInfo& createInfo)                            = 0;
+        /// Destroys the specified bind group layout object and releases its associated resources.
+        ///
+        /// @param handle [in] The handle to the bind group layout object to destroy.
+        virtual void                      DestroyBindGroupLayout(Handle<BindGroupLayout> handle)               = 0;
 
-        /// @brief Creates a new Pool for all image resources.
-        virtual Ptr<ImagePool>            CreateImagePool(const PoolCreateInfo& createInfo)                             = 0;
+        /// Creates a new bind group object with the specified configuration.
+        ///
+        /// @param createInfo [in] Information describing the desired characteristics of the bind group object.
+        /// @return A handle to the created bind group object.
+        virtual Handle<BindGroup>         CreateBindGroup(Handle<BindGroupLayout> handle)                      = 0;
 
-        /// @brief Creates a new graphics pipeline state for graphics.
-        virtual Handle<GraphicsPipeline>  CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)          = 0;
+        /// Destroys the specified bind group object and releases its associated resources.
+        ///
+        /// @param handle [in] The handle to the bind group object to destroy.
+        virtual void                      DestroyBindGroup(Handle<BindGroup> handle)                           = 0;
 
-        /// @brief Frees the given graphics pipeline object.
-        virtual void                      DestroyGraphicsPipeline(Handle<GraphicsPipeline> pso)                         = 0;
+        /// Updates the contents of a bind group with the provided data.
+        ///
+        /// @todo: Should this method allows modifying individual bindings within a bind group without creating a new one?
+        /// It's efficient for updating frequently changing data like uniforms or textures within a bind group.
+        ///
+        /// @param handle The handle to the bind group to update.
+        /// @param content The data to update in the bind group, containing binding indices and corresponding data pointers.
+        virtual void                      UpdateBindGroup(Handle<BindGroup> handle, const BindGroupData& data) = 0;
 
-        /// @brief Creates a new compute pipeline state for graphics.
-        virtual Handle<ComputePipeline>   CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)            = 0;
+        /// Creates a new pipeline layout object with the specified configuration.
+        ///
+        /// @param createInfo [in] Information describing the desired characteristics of the pipeline layout object.
+        /// @return A handle to the created pipeline layout object.
+        virtual Handle<PipelineLayout>    CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)     = 0;
 
-        /// @brief Frees the given compute pipeline object.
-        virtual void                      DestroyComputePipeline(Handle<ComputePipeline> pso)                           = 0;
+        /// Destroys the specified pipeline object and releases its associated resources.
+        ///
+        /// @param handle [in] The handle to the pipeline layout object to destroy.
+        virtual void                      DestroyPipelineLayout(Handle<PipelineLayout> handle)                 = 0;
 
-        /// @brief Creates a new Sampler state.
-        virtual Handle<Sampler>           CreateSampler(const SamplerCreateInfo& createInfo)                            = 0;
+        /// Creates a new graphics pipeline object with the specified configuration.
+        ///
+        /// @param createInfo [in] Information describing the desired characteristics of the graphics pipeline object.
+        /// @return A Result object indicating success or failure.
+        ///         On success, it also contains a handle to the created graphics pipeline object.
+        virtual Handle<GraphicsPipeline>  CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) = 0;
 
-        /// @brief Frees the given sampler object.
-        virtual void                      DestroySampler(Handle<Sampler> sampler)                                       = 0;
+        /// Destroys the specified graphics pipeline object and releases its associated resources.
+        ///
+        /// @param handle [in] The handle to the graphics pipeline object to destroy.
+        virtual void                      DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle)             = 0;
 
-        /// @brief Creates a new ImageView.
-        virtual Handle<ImageView>         CreateImageView(const ImageViewCreateInfo& useInfo)                           = 0;
+        /// Creates a new compute pipeline object with the specified configuration.
+        ///
+        /// @param createInfo [in] Information describing the desired characteristics of the compute pipeline object.
+        /// @return A Result object indicating success or failure.
+        ///         On success, it also contains a handle to the created compute pipeline object.
+        virtual Handle<ComputePipeline>   CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)   = 0;
 
-        /// @brief Frees the given compute pipeline object.
-        virtual void                      DestroyImageView(Handle<ImageView> view)                                      = 0;
+        /// Destroys the specified compute pipeline object and releases its associated resources.
+        ///
+        /// @param handle [in] The handle to the compute pipeline object to destroy.
+        virtual void                      DestroyComputePipeline(Handle<ComputePipeline> handle)               = 0;
 
-        /// @brief Creates a new BufferView.
-        virtual Handle<BufferView>        CreateBufferView(const BufferViewCreateInfo& useInfo)                         = 0;
+        /// Creates a new sampler object with the specified configuration.
+        ///
+        /// @param createInfo [in] Information describing the desired characteristics of the sampler object.
+        /// @return A Result object indicating success or failure.
+        ///         On success, it also contains a handle to the created sampler object.
+        virtual Handle<Sampler>           CreateSampler(const SamplerCreateInfo& createInfo)                   = 0;
 
-        /// @brief Frees the given sampler object.
-        virtual void                      DestroyBufferView(Handle<BufferView> view)                                    = 0;
+        /// Destroys the specified sampler object and releases its associated resources.
+        ///
+        /// @param handle [in] The handle to the sampler object to destroy.
+        virtual void                      DestroySampler(Handle<Sampler> handle)                               = 0;
+
+        /// Creates a new image object with the specified configuration.
+        ///
+        /// @param createInfo [in] Information describing the desired characteristics of the image object.
+        /// @return A Result object indicating success or failure.
+        ///         On success, it also contains a handle to the created image object.
+        virtual Result<Handle<Image>>     CreateImage(const ImageCreateInfo& createInfo)                       = 0;
+
+        /// Destroys the specified image object and releases its associated resources.
+        ///
+        /// @param handle [in] The handle to the image object to destroy.
+        virtual void                      DestroyImage(Handle<Image> handle)                                   = 0;
+
+        /// Creates a new buffer object with the specified configuration.
+        ///
+        /// @param createInfo [in] Information describing the desired characteristics of the buffer object.
+        /// @return A Result object indicating success or failure.
+        ///         On success, it also contains a handle to the created buffer object.
+        virtual Result<Handle<Buffer>>    CreateBuffer(const BufferCreateInfo& createInfo)                     = 0;
+
+        /// Destroys the specified buffer object and releases its associated resources.
+        ///
+        /// @param handle [in] The handle to the buffer object to destroy.
+        virtual void                      DestroyBuffer(Handle<Buffer> handle)                                 = 0;
+
+        /// Creates a new image view object with the specified configuration.
+        ///
+        /// @param createInfo [in] Information describing the desired characteristics of the image view object.
+        /// @return A Result object indicating success or failure.
+        ///         On success, it also contains a handle to the created image view object.
+        virtual Handle<ImageView>         CreateImageView(const ImageViewCreateInfo& createInfo)               = 0;
+
+        /// Destroys the specified image view object and releases its associated resources.
+        ///
+        /// @param handle [in] The handle to the image view object to destroy.
+        virtual void                      DestroyImageView(Handle<ImageView> handle)                           = 0;
+
+        /// Creates a new buffer view object with the specified configuration.
+        ///
+        /// @param createInfo [in] Information describing the desired characteristics of the buffer view object.
+        /// @return A Result object indicating success or failure.
+        ///         On success, it also contains a handle to the created buffer view object.
+        virtual Handle<BufferView>        CreateBufferView(const BufferViewCreateInfo& createInfo)             = 0;
+
+        /// Destroys the specified buffer view object and releases its associated resources.
+        ///
+        /// @param handle [in] The handle to the buffer view object to destroy.
+        virtual void                      DestroyBufferView(Handle<BufferView> handle)                         = 0;
+
+        /// Maps the contents of a buffer into host memory, allowing direct access for reading and writing.
+        /// This method is typically used for smaller, frequently accessed buffers to avoid performance overhead
+        /// associated with individual read/write operations.
+        ///
+        /// @param handle The handle to the buffer object to map.
+        /// @return A pointer to the mapped memory region, or nullptr on failure.
+        virtual DeviceMemoryPtr           MapBuffer(Handle<Buffer> handle)                                     = 0;
+
+        /// Unmaps a previously mapped buffer, releasing the host memory access previously granted by `MapBuffer`.
+        ///
+        /// @param handle The handle to the buffer object to unmap.
+        virtual void                      UnmapBuffer(Handle<Buffer> handle)                                   = 0;
 
     protected:
-        Context(Ptr<DebugCallbacks> debugMessengerCallbacks)
-            : m_debugMessenger(std::move(debugMessengerCallbacks))
-        {
-        }
+        void   DebugLogError(const char* message, ...);
+        void   DebugLogWarn(const char* message, ...);
+        void   DebugLogInfo(const char* message, ...);
 
-        Ptr<DebugCallbacks> m_debugMessenger;
-        Ptr<Allocator>      m_allocator;
+        size_t CalculateRequiredSize(const ImageCreateInfo& createInfo);
+        size_t CalculateRequiredSize(const BufferCreateInfo& createInfo);
+
+    protected:
+        Context() = default;
+
+        Ptr<DebugCallbacks>       m_debugCallbacks;
+        Ptr<FrameScheduler>       m_frameScheduler;
+        Ptr<StagingBuffer>        m_stagingBuffer;
+        Ptr<CommandListAllocator> m_transferCommandsAllocator;
     };
 
 } // namespace RHI

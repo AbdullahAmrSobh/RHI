@@ -1,12 +1,12 @@
-#define VK_USE_PLATFORM_WIN32_KHR
 
-#include "CommandList.hpp"
-#include "Common.hpp"
-#include "FrameScheduler.hpp"
 #include "RHI-Vulkan/Loader.hpp"
-#include "Resources.hpp"
 
-#undef CreateSemaphore
+#define VK_USE_PLATFORM_WIN32_KHR
+#include "Common.hpp"
+#include "Resources.hpp"
+#include "CommandList.hpp"
+#include "FrameScheduler.hpp"
+
 #include "Context.hpp"
 
 #ifdef VK_USE_PLATFORM_WIN32_KHR
@@ -77,6 +77,14 @@ namespace RHI::Vulkan
         return VK_FALSE;
     }
 
+    IContext::IContext(Ptr<DebugCallbacks> debugCallbacks)
+    {
+        m_debugCallbacks = std::move(debugCallbacks);
+        m_frameScheduler = CreatePtr<IFrameScheduler>(this);
+        m_bindGroupAllocator = CreatePtr<BindGroupAllocator>(m_device);
+        m_stagingBuffer = CreatePtr<IStagingBuffer>(this);
+    }
+
     IContext::~IContext()
     {
         vkDeviceWaitIdle(m_device);
@@ -102,9 +110,9 @@ namespace RHI::Vulkan
         applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
         applicationInfo.pNext = nullptr;
         applicationInfo.pApplicationName = appInfo.applicationName;
-        applicationInfo.applicationVersion = appInfo.engineVersion;
+        applicationInfo.applicationVersion = VK_MAKE_API_VERSION(0, appInfo.applicationVersion.major, appInfo.applicationVersion.minor, appInfo.applicationVersion.patch);
         applicationInfo.pEngineName = appInfo.engineName;
-        applicationInfo.engineVersion = appInfo.engineVersion;
+        applicationInfo.engineVersion = VK_MAKE_API_VERSION(0, appInfo.engineVersion.major, appInfo.engineVersion.minor, appInfo.engineVersion.patch);
         applicationInfo.apiVersion = VK_API_VERSION_1_3;
 
         VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
@@ -113,7 +121,7 @@ namespace RHI::Vulkan
         debugCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
         debugCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT;
         debugCreateInfo.pfnUserCallback = DebugMessengerCallbacks;
-        debugCreateInfo.pUserData = m_debugMessenger.get();
+        debugCreateInfo.pUserData = m_debugCallbacks.get();
 
         bool debugExtensionFound = false;
 
@@ -316,200 +324,321 @@ namespace RHI::Vulkan
             RHI_ASSERT(m_vkCmdDebugMarkerEndEXT != nullptr);
         }
 
+        auto scheduler = (IFrameScheduler*)m_frameScheduler.get();
+        scheduler->Init();
+        scheduler->SetBufferedFramesCount(2);
+
+        m_bindGroupAllocator = CreatePtr<BindGroupAllocator>(m_device);
+
         return VK_SUCCESS;
     }
 
+    ////////////////////////////////////////////////////////////
+    // Interface implementation
+    ////////////////////////////////////////////////////////////
     Ptr<Swapchain> IContext::CreateSwapchain(const SwapchainCreateInfo& createInfo)
     {
         auto swapchain = CreatePtr<ISwapchain>(this);
         auto result = swapchain->Init(createInfo);
-        RHI_ASSERT(result == VK_SUCCESS);
+        if (result != VK_SUCCESS)
+        {
+            DebugLogError("Failed to create swapchain object");
+        }
         return swapchain;
+    }
+
+    Ptr<ShaderModule> IContext::CreateShaderModule(TL::Span<const uint8_t> shaderBlob)
+    {
+        auto shaderModule = CreatePtr<IShaderModule>(this);
+        auto result = shaderModule->Init(shaderBlob);
+        if (result != VK_SUCCESS)
+        {
+            DebugLogError("Failed to create shader module");
+        }
+        return shaderModule;
     }
 
     Ptr<Fence> IContext::CreateFence()
     {
         auto fence = CreatePtr<IFence>(this);
         auto result = fence->Init();
-        RHI_ASSERT(result == VK_SUCCESS);
+        if (result != VK_SUCCESS)
+        {
+            DebugLogError("Failed to create a fence object");
+        }
         return fence;
     }
 
-    Ptr<Pass> IContext::CreatePass(const char* name, QueueType type)
+    Ptr<CommandListAllocator> IContext::CreateCommandListAllocator(QueueType queueType)
     {
-        auto pass = CreatePtr<IPass>(this, name, type);
-        auto result = pass->Init();
-        RHI_ASSERT(result == VK_SUCCESS);
-        return pass;
+        auto commandListAllocator = CreatePtr<ICommandListAllocator>(this);
+        auto result = commandListAllocator->Init(queueType);
+        if (result != VK_SUCCESS)
+        {
+            DebugLogError("Failed to create a command_list_allocator object");
+        }
+        return commandListAllocator;
     }
 
-    Ptr<ShaderModule> IContext::CreateShaderModule(const ShaderModuleCreateInfo& createInfo)
+    Ptr<ResourcePool> IContext::CreateResourcePool(const ResourcePoolCreateInfo& createInfo)
     {
-        auto shaderModule = CreatePtr<IShaderModule>(this);
-        auto result = shaderModule->Init(createInfo);
-        RHI_ASSERT(result == VK_SUCCESS);
-        return shaderModule;
-    }
-
-    Ptr<FrameScheduler> IContext::CreateFrameScheduler()
-    {
-        auto scheduler = CreatePtr<IFrameScheduler>(this);
-        auto result = scheduler->Init();
-        RHI_ASSERT(result == VK_SUCCESS);
-        return scheduler;
-    }
-
-    Ptr<CommandListAllocator> IContext::CreateCommandListAllocator(QueueType queueType, uint32_t bufferedFramesCount)
-    {
-        auto allocator = CreatePtr<ICommandListAllocator>(this, bufferedFramesCount);
-        auto result = allocator->Init(GetQueueFamilyIndex(queueType));
-        RHI_ASSERT(result == VK_SUCCESS);
-        return allocator;
+        auto resourcePool = CreatePtr<IResourcePool>(this);
+        auto result = resourcePool->Init(createInfo);
+        if (result != VK_SUCCESS)
+        {
+            DebugLogError("Failed to create a resource_pool object");
+        }
+        return resourcePool;
     }
 
     Handle<BindGroupLayout> IContext::CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)
     {
         auto [handle, bindGroupLayout] = m_bindGroupLayoutsOwner.InsertZerod();
         auto result = bindGroupLayout.Init(this, createInfo);
-        RHI_ASSERT(result == ResultCode::Success);
+        if (IsError(result))
+        {
+            DebugLogError("Failed to create bindGroupLayout");
+        }
         return handle;
     }
 
     void IContext::DestroyBindGroupLayout(Handle<BindGroupLayout> handle)
     {
-        auto layout = m_bindGroupLayoutsOwner.Get(handle);
-        layout->Shutdown(this);
-        m_bindGroupLayoutsOwner.Remove(handle);
+        auto bindGroupLayout = m_bindGroupLayoutsOwner.Get(handle);
+        // clang-format off
+        m_deferDeleteQueue.push_back([&](){ bindGroupLayout->Shutdown(this); });
+        // clang-format on
+    }
+
+    Handle<BindGroup> IContext::CreateBindGroup(Handle<BindGroupLayout> layoutHandle)
+    {
+        auto [handle, bindGroup] = m_bindGroupOwner.InsertZerod();
+        auto result = bindGroup.Init(this, layoutHandle);
+        if (IsError(result))
+        {
+            DebugLogError("Failed to create bindGroup");
+        }
+        return handle;
+    }
+
+    void IContext::DestroyBindGroup(Handle<BindGroup> handle)
+    {
+        auto bindGroup = m_bindGroupOwner.Get(handle);
+        // clang-format off
+        m_deferDeleteQueue.push_back([&](){ bindGroup->Shutdown(this); });
+        // clang-format on
+    }
+
+    void IContext::UpdateBindGroup(Handle<BindGroup> handle, const BindGroupData& data)
+    {
+        auto bindGroup = m_bindGroupOwner.Get(handle);
+        bindGroup->Write(this, data);
     }
 
     Handle<PipelineLayout> IContext::CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)
     {
         auto [handle, pipelineLayout] = m_pipelineLayoutOwner.InsertZerod();
         auto result = pipelineLayout.Init(this, createInfo);
-        RHI_ASSERT(result == ResultCode::Success);
+        if (IsError(result))
+        {
+            DebugLogError("Failed to create pipelineLayout");
+        }
         return handle;
     }
 
     void IContext::DestroyPipelineLayout(Handle<PipelineLayout> handle)
     {
-        auto layout = m_pipelineLayoutOwner.Get(handle);
-        layout->Shutdown(this);
-        m_pipelineLayoutOwner.Remove(handle);
-    }
-
-    Ptr<BindGroupAllocator> IContext::CreateBindGroupAllocator()
-    {
-        auto bindGroupAllocator = CreatePtr<IBindGroupAllocator>(this);
-        auto result = bindGroupAllocator->Init();
-        RHI_ASSERT(result == VK_SUCCESS);
-        return bindGroupAllocator;
-    }
-
-    Ptr<BufferPool> IContext::CreateBufferPool(const PoolCreateInfo& createInfo)
-    {
-        auto pool = CreatePtr<IBufferPool>(this);
-        auto result = pool->Init(createInfo);
-        RHI_ASSERT(result == VK_SUCCESS);
-        return pool;
-    }
-
-    Ptr<ImagePool> IContext::CreateImagePool(const PoolCreateInfo& createInfo)
-    {
-        auto pool = CreatePtr<IImagePool>(this);
-        auto result = pool->Init(createInfo);
-        RHI_ASSERT(result == VK_SUCCESS);
-        return pool;
+        auto pipelineLayout = m_pipelineLayoutOwner.Get(handle);
+        // clang-format off
+        m_deferDeleteQueue.push_back([&](){ pipelineLayout->Shutdown(this); });
+        // clang-format on
     }
 
     Handle<GraphicsPipeline> IContext::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)
     {
-        auto [handle, pipeline] = m_graphicsPipelineOwner.InsertZerod();
-        auto result = pipeline.Init(this, createInfo);
-        RHI_ASSERT(result == ResultCode::Success);
+        auto [handle, graphicsPipeline] = m_graphicsPipelineOwner.InsertZerod();
+        auto result = graphicsPipeline.Init(this, createInfo);
+        if (IsError(result))
+        {
+            DebugLogError("Failed to create graphicsPipeline");
+        }
         return handle;
     }
 
     void IContext::DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle)
     {
-        auto layout = m_graphicsPipelineOwner.Get(handle);
-        layout->Shutdown(this);
-        m_graphicsPipelineOwner.Remove(handle);
+        auto graphicsPipeline = m_graphicsPipelineOwner.Get(handle);
+        // clang-format off
+        m_deferDeleteQueue.push_back([&](){ graphicsPipeline->Shutdown(this); });
+        // clang-format on
     }
 
     Handle<ComputePipeline> IContext::CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
     {
-        auto [handle, pipeline] = m_computePipelineOwner.InsertZerod();
-        auto result = pipeline.Init(this, createInfo);
-        RHI_ASSERT(result == ResultCode::Success);
+        auto [handle, computePipeline] = m_computePipelineOwner.InsertZerod();
+        auto result = computePipeline.Init(this, createInfo);
+        if (IsError(result))
+        {
+            DebugLogError("Failed to create computePipeline");
+        }
         return handle;
     }
 
     void IContext::DestroyComputePipeline(Handle<ComputePipeline> handle)
     {
-        auto layout = m_computePipelineOwner.Get(handle);
-        layout->Shutdown(this);
-        m_computePipelineOwner.Remove(handle);
+        auto computePipeline = m_computePipelineOwner.Get(handle);
+        // clang-format off
+        m_deferDeleteQueue.push_back([&](){ computePipeline->Shutdown(this); });
+        // clang-format on
     }
 
     Handle<Sampler> IContext::CreateSampler(const SamplerCreateInfo& createInfo)
     {
         auto [handle, sampler] = m_samplerOwner.InsertZerod();
         auto result = sampler.Init(this, createInfo);
-        RHI_ASSERT(result == ResultCode::Success);
+        if (IsError(result))
+        {
+            DebugLogError("Failed to create sampler");
+        }
         return handle;
     }
 
     void IContext::DestroySampler(Handle<Sampler> handle)
     {
         auto sampler = m_samplerOwner.Get(handle);
-        sampler->Shutdown(this);
-        m_samplerOwner.Remove(handle);
+        // clang-format off
+        m_deferDeleteQueue.push_back([&](){ sampler->Shutdown(this); });
+        // clang-format on
     }
 
-    Handle<ImageView> IContext::CreateImageView(const ImageViewCreateInfo& useInfo)
+    Result<Handle<Image>> IContext::CreateImage(const ImageCreateInfo& createInfo)
+    {
+        auto [handle, image] = m_imageOwner.InsertZerod();
+        auto result = image.Init(this, createInfo);
+        if (IsError(result))
+        {
+            DebugLogError("Failed to create image");
+            return result;
+        }
+        return Result<Handle<Image>>(handle);
+    }
+
+    void IContext::DestroyImage(Handle<Image> handle)
+    {
+        auto image = m_imageOwner.Get(handle);
+        // clang-format off
+        m_deferDeleteQueue.push_back([&](){ image->Shutdown(this); });
+        // clang-format on
+    }
+
+    Result<Handle<Buffer>> IContext::CreateBuffer(const BufferCreateInfo& createInfo)
+    {
+        auto [handle, buffer] = m_bufferOwner.InsertZerod();
+        auto result = buffer.Init(this, createInfo);
+        if (IsError(result))
+        {
+            DebugLogError("Failed to create buffer");
+            return result;
+        }
+        return Result<Handle<Buffer>>(handle);
+    }
+
+    void IContext::DestroyBuffer(Handle<Buffer> handle)
+    {
+        auto buffer = m_bufferOwner.Get(handle);
+        // clang-format off
+        m_deferDeleteQueue.push_back([&](){ buffer->Shutdown(this); });
+        // clang-format on
+    }
+
+    Handle<ImageView> IContext::CreateImageView(const ImageViewCreateInfo& createInfo)
     {
         auto [handle, imageView] = m_imageViewOwner.InsertZerod();
-        auto result = imageView.Init(this, useInfo);
-        RHI_ASSERT(result == ResultCode::Success);
+        auto result = imageView.Init(this, createInfo);
+        if (IsError(result))
+        {
+            DebugLogError("Failed to create image view");
+        }
         return handle;
     }
 
     void IContext::DestroyImageView(Handle<ImageView> handle)
     {
         auto imageView = m_imageViewOwner.Get(handle);
-        imageView->Shutdown(this);
-        m_imageViewOwner.Remove(handle);
+        // clang-format off
+        m_deferDeleteQueue.push_back([&](){ imageView->Shutdown(this); });
+        // clang-format on
     }
 
-    Handle<BufferView> IContext::CreateBufferView(const BufferViewCreateInfo& useInfo)
+    Handle<BufferView> IContext::CreateBufferView(const BufferViewCreateInfo& createInfo)
     {
         auto [handle, bufferView] = m_bufferViewOwner.InsertZerod();
-        auto result = bufferView.Init(this, useInfo);
-        RHI_ASSERT(result == ResultCode::Success);
+        auto result = bufferView.Init(this, createInfo);
+        if (IsError(result))
+        {
+            DebugLogError("Failed to create buffer view");
+        }
         return handle;
     }
 
     void IContext::DestroyBufferView(Handle<BufferView> handle)
     {
-        auto bufferView = m_bufferViewOwner.Get(handle);
-        bufferView->Shutdown(this);
+        auto imageView = m_imageViewOwner.Get(handle);
+        // clang-format off
+        m_deferDeleteQueue.push_back([&](){ imageView->Shutdown(this); });
+        // clang-format on
     }
 
-    VkSemaphore IContext::CreateSemaphore()
+    DeviceMemoryPtr IContext::MapBuffer(Handle<Buffer> handle)
     {
-        VkSemaphoreCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-        createInfo.pNext = nullptr;
-        createInfo.flags = 0;
-        VkSemaphore semaphore = VK_NULL_HANDLE;
-        auto result = vkCreateSemaphore(m_device, &createInfo, nullptr, &semaphore);
+        // TODO: Remove from here (wrap as new function Resources.hpp)
+        auto resource = m_bufferOwner.Get(handle);
+        auto allocation = resource->allocation.handle;
+
+        DeviceMemoryPtr memoryPtr = nullptr;
+        VkResult result = vmaMapMemory(m_allocator, allocation, &memoryPtr);
         VULKAN_ASSERT_SUCCESS(result);
-        return semaphore;
+        return memoryPtr;
     }
+
+    void IContext::UnmapBuffer(Handle<Buffer> handle)
+    {
+        // TODO: Remove from here (wrap as new function Resources.hpp)
+        auto resource = m_bufferOwner.Get(handle)->allocation.handle;
+        vmaUnmapMemory(m_allocator, resource);
+    }
+
+    ////////////////////////////////////////////////////////////
+    // Interface implementation
+    ////////////////////////////////////////////////////////////
+
+    void IContext::DestroyResources()
+    {
+        for (auto destroyItem : m_deferDeleteQueue)
+        {
+            destroyItem();
+        }
+        m_deferDeleteQueue.clear();
+    }
+
+    // VkSemaphore IContext::CreateSemaphore()
+    // {
+    //     VkSemaphoreCreateInfo createInfo{};
+    //     createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    //     createInfo.pNext = nullptr;
+    //     createInfo.flags = 0;
+    //     VkSemaphore semaphore = VK_NULL_HANDLE;
+    //     auto result = vkCreateSemaphore(m_device, &createInfo, nullptr, &semaphore);
+    //     VULKAN_ASSERT_SUCCESS(result);
+    //     return semaphore;
+    // }
 
     void IContext::FreeSemaphore(VkSemaphore semaphore)
     {
-        vkDestroySemaphore(m_device, semaphore, nullptr);
+        if (semaphore != VK_NULL_HANDLE)
+        {
+            vkDestroySemaphore(m_device, semaphore, nullptr);
+        }
     }
 
     std::vector<VkLayerProperties> IContext::GetAvailableInstanceLayerExtensions() const

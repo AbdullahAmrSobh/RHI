@@ -35,6 +35,7 @@ namespace RHI::Vulkan
 
         VkResult Init();
 
+        Ptr<Pass> CreatePass(const char* name, QueueType queueType) override;
         void DeviceWaitIdle() override;
         void QueuePassSubmit(Pass* pass, Fence* fence) override;
         void QueueCommandsSubmit(QueueType queueType, TL::Span<CommandList*> commandLists, Fence& fence) override;

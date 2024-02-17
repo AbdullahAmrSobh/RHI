@@ -44,12 +44,11 @@ namespace RHI::Vulkan
     class ICommandListAllocator final : public CommandListAllocator
     {
     public:
-        ICommandListAllocator(IContext* context, uint32_t maxFrameBufferingCount);
+        ICommandListAllocator(IContext* context);
         ~ICommandListAllocator();
 
-        VkResult Init(uint32_t queueFamilyIndex);
+        VkResult Init(QueueType queueType);
 
-        void Flush(uint32_t newFrameIndex) override;
         CommandList* Allocate() override;
 
     private:
@@ -69,12 +68,12 @@ namespace RHI::Vulkan
         void End() override;
         void SetViewport(const Viewport& viewport) override;
         void SetSicssor(const Scissor& sicssor) override;
-        void Submit(const CommandDraw& command) override;
-        void Submit(const CommandCompute& command) override;
-        void Submit(const CopyBufferDescriptor& command) override;
-        void Submit(const CopyImageDescriptor& command) override;
-        void Submit(const CopyBufferToImageDescriptor& command) override;
-        void Submit(const CopyImageToBufferDescriptor& command) override;
+        void Draw(const DrawInfo& command) override;
+        void Dispatch(const DispatchInfo& command) override;
+        void Copy(const BufferCopyInfo& command) override;
+        void Copy(const ImageCopyInfo& command) override;
+        void Copy(const BufferToImageCopyInfo& command) override;
+        void Copy(const ImageToBufferCopyInfo& command) override;
 
         VkRenderingAttachmentInfo GetAttachmentInfo(const ImagePassAttachment& passAttachment) const;
 

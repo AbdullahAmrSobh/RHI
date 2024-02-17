@@ -1,11 +1,7 @@
 #pragma once
 #include "RHI/Export.hpp"
 #include "RHI/Resources.hpp"
-
-#include <memory>
-#include <string>
-#include <vector>
-#include <unordered_map>
+#include "RHI/Common/Ptr.h"
 
 namespace RHI
 {
@@ -86,7 +82,16 @@ namespace RHI
         }
     };
 
-    using ClearValue = std::variant<ColorValue, DepthStencilValue>;
+    union ClearValue
+    {
+        ClearValue()
+        {
+            memset(this, 0, sizeof(ClearValue));
+        }
+
+        ColorValue        colorValue;
+        DepthStencilValue depthStencilValue;
+    };
 
     /// @brief Structure specifying the load and store opertions for image attachment.
     struct LoadStoreOperations
@@ -122,16 +127,13 @@ namespace RHI
         };
 
         Attachment(const char* name, Lifetime lifetime, Type type)
-            : referenceCount(0)
-            , name(name)
+            : name(name)
             , lifetime(lifetime)
             , type(type)
         {
         }
 
         virtual ~Attachment() = default;
-
-        std::atomic<uint32_t> referenceCount;
 
         const char*           name;     // Name of the attachment
         const Lifetime        lifetime; // Lifetime of the attachment
@@ -218,7 +220,7 @@ namespace RHI
         SwapchainImagePassAttachment(const SwapchainImagePassAttachment& other) = delete;
         SwapchainImagePassAttachment(SwapchainImagePassAttachment&& other)      = delete;
 
-        Handle<ImageView> views[Swapchain::c_MaxSwapchainBackBuffersCount];
+        Handle<ImageView> views[c_MaxSwapchainBackBuffersCount];
 
         Handle<ImageView> GetView();
     };
@@ -272,7 +274,7 @@ namespace RHI
     private:
         friend class FrameScheduler;
         template<typename AttachmentType>
-        using AttachmentLookup = std::unordered_map<const char*, std::unique_ptr<AttachmentType>>;
+        using AttachmentLookup = std::unordered_map<const char*, Ptr<AttachmentType>>;
 
         AttachmentLookup<ImageAttachment>  m_imageAttachments;
         AttachmentLookup<BufferAttachment> m_bufferAttachments;

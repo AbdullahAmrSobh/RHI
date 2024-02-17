@@ -1,7 +1,6 @@
 #pragma once
 
 #include <RHI/RHI.hpp>
-#include <memory>
 #include <string>
 #include <string_view>
 
@@ -55,7 +54,7 @@ private:
 protected:
     ImageData LoadImage(std::string_view path) const;
 
-    std::vector<uint32_t> ReadBinaryFile(std::string_view path) const;
+    std::vector<uint8_t> ReadBinaryFile(std::string_view path) const;
 
     virtual void OnInit() = 0;
 
@@ -63,26 +62,16 @@ protected:
 
     virtual void OnUpdate(Timestep timestep) = 0;
 
-    RHI::Pass* SetupImguiPass(RHI::ImageAttachment* colorAttachment, RHI::ImageAttachment* depthAttachment);
-
 protected:
     Camera m_camera;
 
-    std::unique_ptr<RHI::Context> m_context;
+    RHI::Ptr<RHI::Context> m_context;
 
-    std::unique_ptr<RHI::Swapchain> m_swapchain;
+    RHI::Ptr<RHI::Swapchain> m_swapchain;
 
-    std::unique_ptr<RHI::FrameScheduler> m_frameScheduler;
-
-    std::unique_ptr<ImGuiRenderer> m_imguiRenderer;
+    RHI::Ptr<ImGuiRenderer> m_imguiRenderer;
     
-    std::unique_ptr<RHI::CommandListAllocator> m_commandListAllocator;
-
-    std::unique_ptr<RHI::ImagePool> m_imagePool;
-
-    std::unique_ptr<RHI::BufferPool> m_bufferPool;
-
-    std::unique_ptr<RHI::BindGroupAllocator> m_bindGroupAllocator;
+    RHI::Ptr<RHI::CommandListAllocator> m_commandListAllocator;
 
     void* m_window;
 

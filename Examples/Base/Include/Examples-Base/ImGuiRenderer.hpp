@@ -6,10 +6,18 @@
 
 #include <GLFW/glfw3.h>
 
+struct ImGuiRendererCreateInfo
+{
+    RHI::Context* context;
+    RHI::FrameScheduler* scheduler;
+    std::vector<uint8_t> shaderBlob;
+    RHI::CommandListAllocator* commandAllocator;
+};
+
 class IMGUI_IMPL_API ImGuiRenderer
 {
 public:
-    void Init(RHI::Context* context, RHI::FrameScheduler* scheduler, RHI::CommandListAllocator* commandListAllocator, RHI::BindGroupAllocator* bindGroupAllocator, RHI::ImagePool& imagePool, RHI::BufferPool& bufferPool, const std::vector<uint32_t>& shaderModuleBlob);
+    void Init(ImGuiRendererCreateInfo createInfo);
     void Shutdown();
 
     void NewFrame();
@@ -26,23 +34,22 @@ public:
 
     ImGuiContext* m_imguiContext;
 
-    RHI::BindGroupAllocator* m_bindGroupAllocator;
     RHI::Handle<RHI::BindGroup> m_bindGroup;
 
     RHI::Handle<RHI::BindGroupLayout> m_bindGroupLayout;
     RHI::Handle<RHI::PipelineLayout> m_pipelineLayout;
     RHI::Handle<RHI::GraphicsPipeline> m_pipeline;
 
-    RHI::ImagePool* m_imagePool;
     RHI::Handle<RHI::Image> m_image;
     RHI::Handle<RHI::ImageView> m_imageView;
     RHI::Handle<RHI::Sampler> m_sampler;
 
-    RHI::BufferPool* m_bufferPool; // pool used to allocate resources
+    size_t m_vertexBufferSize, m_indexBufferSize;
     RHI::Handle<RHI::Buffer> m_vertexBuffer;
     RHI::Handle<RHI::Buffer> m_indexBuffer;
     RHI::Handle<RHI::Buffer> m_uniformBuffer;
 
+    // clang-format off
     GLFWwindow*             m_window;
     double                  m_time;
     GLFWwindow*             m_mouseWindow;
@@ -59,5 +66,5 @@ public:
     GLFWkeyfun              m_prevUserCallbackKey;
     GLFWcharfun             m_prevUserCallbackChar;
     GLFWmonitorfun          m_prevUserCallbackMonitor;
-    
+    // clang-format on
 };

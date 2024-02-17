@@ -4,18 +4,15 @@
 
 #include <vk_mem_alloc.h>
 
-namespace RHI
-{
-    struct Attachment;
-} // namespace RHI
+#include <unordered_set>
 
 namespace RHI::Vulkan
 {
+    struct IBindGroup;
+    struct IBindGroupLayout;
 
     class IContext;
-    class IShaderModule;
-    class IImagePool;
-    class IBufferPool;
+    class IResourcePool;
     class ISwapchain;
 
     struct Allocation
@@ -29,28 +26,57 @@ namespace RHI::Vulkan
         VmaVirtualAllocation virtualHandle;
     };
 
+    struct DescriptorPool
+    {
+        VkDescriptorPool descriptorPool;
+        uint32_t referenceCount;
+    };
+
+    class BindGroupAllocator
+    {
+    public:
+        BindGroupAllocator(VkDevice device)
+            : m_device(device)
+        {
+        }
+
+        ResultCode InitBindGroup(IBindGroup* bindGroup, IBindGroupLayout* bindGroupLayout);
+        void FreePool(Handle<DescriptorPool> handle);
+
+    private:
+        std::pair<Handle<DescriptorPool>, DescriptorPool> CreateDescriptorPool();
+        VkDescriptorSet AllocateDescriptorSet(VkDescriptorPool descriptorPool, VkDescriptorSetLayout layout);
+
+    public:
+        VkDevice m_device;
+        HandlePool<DescriptorPool> m_descriptorPoolOwner;
+        std::unordered_set<Handle<DescriptorPool>> m_descriptorPools;
+    };
+
     struct IImage : Image
     {
         Allocation allocation; // allocation backing this resource.
-        IImagePool* pool;      // Pointer to the pool this resource is created from.
+        IResourcePool* pool;   // Pointer to the pool this resource is created from.
         VkImage handle;        // Handle to valid VkImage resource (Might not be backed by an allocation).
         VkFormat format;       // Image pixel Format
         VkImageType imageType; // Image dimensions
         ISwapchain* swapchain; // pointer to swapchain (if this image is backed by swapchain).
 
-        ResultCode Init(IContext* context, const VmaAllocationCreateInfo allocationInfo, const ImageCreateInfo& createInfo, IImagePool* parentPool, bool isTransientResource);
+        ResultCode Init(IContext* context, const ImageCreateInfo& createInfo, bool isTransient = false);
         void Shutdown(IContext* context);
+
         VkMemoryRequirements GetMemoryRequirements(VkDevice device) const;
     };
 
     struct IBuffer : Buffer
     {
         Allocation allocation; // allocation backing this resource.
-        IBufferPool* pool;     // Pointer to the pool this resource is created from.
+        IResourcePool* pool;   // Pointer to the pool this resource is created from.
         VkBuffer handle;       // Handle to valid VkImage resource (Might not be backed by an allocation).
 
-        ResultCode Init(IContext* context, const VmaAllocationCreateInfo allocationInfo, const BufferCreateInfo& createInfo, IBufferPool* parentPool, bool isTransientResource);
+        ResultCode Init(IContext* context, const BufferCreateInfo& createInfo, bool isTransient = false);
         void Shutdown(IContext* context);
+
         VkMemoryRequirements GetMemoryRequirements(VkDevice device) const;
     };
 
@@ -80,11 +106,13 @@ namespace RHI::Vulkan
 
     struct IBindGroup : BindGroup
     {
-        VkDescriptorSet handle;
-        VkDescriptorPool pool;
+        VkDescriptorSet descriptorSet;
+        Handle<DescriptorPool> poolHandle;
 
-        ResultCode Init(IContext* context, VkDescriptorSetLayout layout, VkDescriptorPool pool);
+        ResultCode Init(IContext* context, Handle<BindGroupLayout> layout);
         void Shutdown(IContext* context);
+
+        void Write(IContext* context, BindGroupData data);
     };
 
     struct IPipelineLayout : PipelineLayout
@@ -131,77 +159,45 @@ namespace RHI::Vulkan
 
         ~IShaderModule();
 
-        VkResult Init(const ShaderModuleCreateInfo& createInfo);
+        VkResult Init(TL::Span<const uint8_t> shaderBlob);
 
     public:
         IContext* m_context;
         VkShaderModule m_shaderModule;
     };
 
-    class IBindGroupAllocator final : public BindGroupAllocator
+    class IResourcePool final : public ResourcePool
     {
     public:
-        IBindGroupAllocator(IContext* context)
+        IResourcePool(IContext* context)
             : m_context(context)
         {
         }
 
-        ~IBindGroupAllocator();
+        ~IResourcePool();
+
+        VkResult Init(const ResourcePoolCreateInfo& createInfo);
+
+    public:
+        IContext* m_context;
+        VmaPool m_pool;
+        ResourcePoolCreateInfo m_poolInfo;
+    };
+
+    class IStagingBuffer final : public StagingBuffer
+    {
+    public:
+        IStagingBuffer(IContext* context);
+        ~IStagingBuffer();
 
         VkResult Init();
 
-        std::vector<Handle<BindGroup>> AllocateBindGroups(TL::Span<Handle<BindGroupLayout>> bindGroupLayouts) override;
-        void Free(TL::Span<Handle<BindGroup>> bindGroup) override;
-        void Update(Handle<BindGroup> bindGroup, const BindGroupData& data) override;
+        StagingBuffer::TempBuffer Allocate(size_t newSize) override;
+        void Free(TempBuffer mappedBuffer) override;
+        void Flush() override;
 
+    private:
         IContext* m_context;
-        std::vector<VkDescriptorPool> m_descriptorPools;
-    };
-
-    class IBufferPool final : public BufferPool
-    {
-    public:
-        IBufferPool(IContext* context)
-            : m_context(context)
-        {
-        }
-
-        ~IBufferPool();
-
-        VkResult Init(const PoolCreateInfo& createInfo);
-
-        Result<Handle<Buffer>> Allocate(const BufferCreateInfo& createInfo) override;
-        void FreeBuffer(Handle<Buffer> handle) override;
-        size_t GetSize(Handle<Buffer> handle) const override;
-        DeviceMemoryPtr MapBuffer(Handle<Buffer> handle) override;
-        void UnmapBuffer(Handle<Buffer> handle) override;
-
-    public:
-        IContext* m_context;
-        VmaPool m_pool;
-        PoolCreateInfo m_poolInfo;
-    };
-
-    class IImagePool final : public ImagePool
-    {
-    public:
-        IImagePool(IContext* context)
-            : m_context(context)
-        {
-        }
-
-        ~IImagePool();
-
-        VkResult Init(const PoolCreateInfo& createInfo);
-
-        Result<Handle<Image>> Allocate(const ImageCreateInfo& createInfo) override;
-        void FreeImage(Handle<Image> handle) override;
-        size_t GetSize(Handle<Image> handle) const override;
-
-    public:
-        IContext* m_context;
-        VmaPool m_pool;
-        PoolCreateInfo m_poolInfo;
     };
 
     /// @brief Fence object used to preform CPU-GPU sync
@@ -219,7 +215,7 @@ namespace RHI::Vulkan
 
         void Reset() override;
         bool WaitInternal(uint64_t timeout) override;
-        State GetState() override;
+        FenceState GetState() override;
 
         // This should only be called when passing the fence to a vulkan siganl command
         VkFence UseFence();
@@ -227,7 +223,7 @@ namespace RHI::Vulkan
     private:
         IContext* m_context;
         VkFence m_fence;
-        State m_state;
+        FenceState m_state;
     };
 
     class ISwapchain final : public Swapchain

@@ -1,4 +1,5 @@
 #include "Examples-Base/ImGuiRenderer.hpp"
+#include <RHI/Common/Hash.hpp>
 
 inline static bool ImGui_ImplGlfw_ShouldChainCallback(GLFWwindow* window)
 {
@@ -292,7 +293,7 @@ IMGUI_IMPL_API void ImGui_ImplGlfw_MonitorCallback(GLFWmonitor*, int)
     // Unused in 'master' branch but 'docking' branch will use this, so we declare it ahead of it so if you have to install callbacks you can install this one too.
 }
 
-void ImGuiRenderer::Init(RHI::Context* context, RHI::FrameScheduler* scheduler, RHI::CommandListAllocator* commandListAllocator, RHI::BindGroupAllocator* bindGroupAllocator, RHI::ImagePool& imagePool, RHI::BufferPool& bufferPool, const std::vector<uint32_t>& shaderModuleBlob)
+void ImGuiRenderer::Init(ImGuiRendererCreateInfo createInfo)
 {
     m_imguiContext = ImGui::CreateContext();
     ImGui::SetCurrentContext(m_imguiContext);
@@ -300,37 +301,23 @@ void ImGuiRenderer::Init(RHI::Context* context, RHI::FrameScheduler* scheduler, 
     ImGuiIO& io = ImGui::GetIO();
     IM_ASSERT(io.BackendRendererUserData == nullptr && "Already initialized a renderer backend!");
 
-    m_context = context;
-    m_imagePool = &imagePool;
-    m_bufferPool = &bufferPool;
+    m_context = createInfo.context;
 
     // create sampler state
-    {
-        RHI::SamplerCreateInfo samplerCreateInfo{};
-        samplerCreateInfo.filterMag = RHI::SamplerFilter::Linear;
-        samplerCreateInfo.filterMin = RHI::SamplerFilter::Linear;
-        samplerCreateInfo.filterMip = RHI::SamplerFilter::Linear;
-        samplerCreateInfo.addressU = RHI::SamplerAddressMode::Repeat;
-        samplerCreateInfo.addressV = RHI::SamplerAddressMode::Repeat;
-        samplerCreateInfo.addressW = RHI::SamplerAddressMode::Repeat;
-        m_sampler = m_context->CreateSampler(samplerCreateInfo);
-    }
+    m_sampler = m_context->CreateSampler(RHI::SamplerCreateInfo{ RHI::SamplerFilter::Linear, RHI::SamplerAddressMode::Repeat });
 
     {
-        RHI::BindGroupLayoutCreateInfo createInfo{};
-        createInfo.bindings = {
-            RHI::ShaderBinding{ .type = RHI::ShaderBindingType::Buffer, .access = RHI::ShaderBindingAccess::OnlyRead, .arrayCount = 1, .stages = RHI::ShaderStage::Vertex },
-            RHI::ShaderBinding{ .type = RHI::ShaderBindingType::Sampler, .access = RHI::ShaderBindingAccess::OnlyRead, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel },
-            RHI::ShaderBinding{ .type = RHI::ShaderBindingType::Image, .access = RHI::ShaderBindingAccess::OnlyRead, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel },
-        };
-
-        m_bindGroupLayout = m_context->CreateBindGroupLayout(createInfo);
+        RHI::BindGroupLayoutCreateInfo bindGroupLayoutCreateInfo{};
+        bindGroupLayoutCreateInfo.bindings[0] = RHI::ShaderBinding{ .type = RHI::ShaderBindingType::Buffer, .access = RHI::ShaderBindingAccess::OnlyRead, .arrayCount = 1, .stages = RHI::ShaderStage::Vertex };
+        bindGroupLayoutCreateInfo.bindings[1] = RHI::ShaderBinding{ .type = RHI::ShaderBindingType::Sampler, .access = RHI::ShaderBindingAccess::OnlyRead, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel };
+        bindGroupLayoutCreateInfo.bindings[2] = RHI::ShaderBinding{ .type = RHI::ShaderBindingType::Image, .access = RHI::ShaderBindingAccess::OnlyRead, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel };
+        m_bindGroupLayout = m_context->CreateBindGroupLayout(bindGroupLayoutCreateInfo);
 
         {
             RHI::BufferCreateInfo bufferCreateInfo{};
             bufferCreateInfo.byteSize = sizeof(float) * 4 * 4;
             bufferCreateInfo.usageFlags = RHI::BufferUsage::Uniform;
-            m_uniformBuffer = m_bufferPool->Allocate(bufferCreateInfo).GetValue();
+            m_uniformBuffer = m_context->CreateBuffer(bufferCreateInfo).GetValue();
         }
     }
 
@@ -349,7 +336,7 @@ void ImGuiRenderer::Init(RHI::Context* context, RHI::FrameScheduler* scheduler, 
         imageInfo.usageFlags = RHI::ImageUsage::ShaderResource;
         imageInfo.usageFlags |= RHI::ImageUsage::CopyDst;
         imageInfo.arrayCount = 1;
-        m_image = m_imagePool->Allocate(imageInfo).GetValue();
+        m_image = m_context->CreateImage(imageInfo).GetValue();
 
         RHI::ImageViewCreateInfo viewInfo{};
         viewInfo.image = m_image;
@@ -358,14 +345,14 @@ void ImGuiRenderer::Init(RHI::Context* context, RHI::FrameScheduler* scheduler, 
 
         RHI::BufferCreateInfo stagingBufferCreateInfo{};
         stagingBufferCreateInfo.usageFlags = RHI::BufferUsage::CopySrc;
-        stagingBufferCreateInfo.byteSize = 64 * RHI::AllocationSizeConstants::MB;
-        auto stagingBuffer = m_bufferPool->Allocate(stagingBufferCreateInfo).GetValue();
-
-        auto stagingBufferPtr = m_bufferPool->MapBuffer(stagingBuffer);
+        stagingBufferCreateInfo.byteSize = 64 * RHI::MegaByte;
+        auto stagingBuffer = m_context->CreateBuffer(stagingBufferCreateInfo).GetValue();
+        auto stagingBufferPtr = m_context->MapBuffer(stagingBuffer);
         memcpy(stagingBufferPtr, pixels, width * height * 4);
-        m_bufferPool->UnmapBuffer(stagingBuffer);
+        m_context->UnmapBuffer(stagingBuffer);
+        delete pixels;
 
-        RHI::CopyBufferToImageDescriptor copyInfo{};
+        RHI::BufferToImageCopyInfo copyInfo{};
         copyInfo.srcBuffer = stagingBuffer;
         copyInfo.srcOffset = 0;
         copyInfo.srcSize.width = width;
@@ -373,77 +360,57 @@ void ImGuiRenderer::Init(RHI::Context* context, RHI::FrameScheduler* scheduler, 
         copyInfo.srcSize.depth = 1;
         copyInfo.dstImage = m_image;
         copyInfo.dstSubresource.imageAspects = RHI::ImageAspect::Color;
-        RHI::CommandList* commandList = commandListAllocator->Allocate();
+        RHI::CommandList* commandList = createInfo.commandAllocator->Allocate();
         commandList->Begin();
-        commandList->Submit(copyInfo);
+        commandList->Copy(copyInfo);
         commandList->End();
 
         auto fence = m_context->CreateFence();
-        scheduler->ExecuteCommandList(commandList, *fence);
+        createInfo.scheduler->ExecuteCommandList(commandList, *fence);
         fence->Wait();
 
-        delete pixels;
-        m_bufferPool->FreeBuffer(stagingBuffer);
+        m_context->DestroyBuffer(stagingBuffer);
     }
 
     {
-        m_bindGroup = bindGroupAllocator->AllocateBindGroups(m_bindGroupLayout).front();
+        m_bindGroup = m_context->CreateBindGroup(m_bindGroupLayout);
+    }
+
+    {
+        m_bindGroup = m_context->CreateBindGroup(m_bindGroupLayout);
         RHI::BindGroupData data{};
         data.BindBuffers(0, m_uniformBuffer);
         data.BindSamplers(1, m_sampler);
         data.BindImages(2, m_imageView);
-        bindGroupAllocator->Update(m_bindGroup, data);
+        m_context->UpdateBindGroup(m_bindGroup, data);
     }
 
     {
         RHI::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{ m_bindGroupLayout };
         m_pipelineLayout = m_context->CreatePipelineLayout(pipelineLayoutCreateInfo);
 
-        RHI::ShaderModuleCreateInfo shaderModuleCreateInfo{};
-        shaderModuleCreateInfo.code = (void*)shaderModuleBlob.data();
-        shaderModuleCreateInfo.size = shaderModuleBlob.size();
-        auto shaderModule = m_context->CreateShaderModule(shaderModuleCreateInfo);
+        auto shaderModule = m_context->CreateShaderModule(createInfo.shaderBlob);
 
-        RHI::GraphicsPipelineCreateInfo createInfo{};
-        createInfo.pixelShaderName = "PSMain";
-        createInfo.vertexShaderName = "VSMain";
-        createInfo.pixelShaderModule = shaderModule.get();
-        createInfo.vertexShaderModule = shaderModule.get();
-        createInfo.layout = m_pipelineLayout;
-        createInfo.inputAssemblerState = {
-            .bindings{ {
-                .binding = 0,
-                .stride = sizeof(ImDrawVert),
-                .stepRate = RHI::PipelineVertexInputRate::PerVertex,
-            } },
-            .attributes{
-                {
-                    .location = 0,
-                    .binding = 0,
-                    .format = RHI::Format::RG32_FLOAT,
-                    .offset = offsetof(ImDrawVert, pos),
-                },
-                {
-                    .location = 1,
-                    .binding = 0,
-                    .format = RHI::Format::RG32_FLOAT,
-                    .offset = offsetof(ImDrawVert, uv),
-                },
-                {
-                    .location = 2,
-                    .binding = 0,
-                    .format = RHI::Format::RGBA8_UNORM,
-                    .offset = offsetof(ImDrawVert, col),
-                },
-            }
-        };
-        createInfo.renderTargetLayout.colorAttachmentsFormats = RHI::Format::BGRA8_UNORM;
-        createInfo.renderTargetLayout.depthAttachmentFormat = RHI::Format::D32;
-        createInfo.topologyMode = RHI::PipelineTopologyMode::Triangles;
-        createInfo.depthStencilState.depthTestEnable = false;
-        createInfo.depthStencilState.depthWriteEnable = true;
-        createInfo.rasterizationState.cullMode = RHI::PipelineRasterizerStateCullMode::None;
-        createInfo.colorBlendState.blendStates = { {
+        RHI::GraphicsPipelineCreateInfo pipelineCreateInfo{};
+        pipelineCreateInfo.pixelShaderName = "PSMain";
+        pipelineCreateInfo.vertexShaderName = "VSMain";
+        pipelineCreateInfo.pixelShaderModule = shaderModule.get();
+        pipelineCreateInfo.vertexShaderModule = shaderModule.get();
+        pipelineCreateInfo.layout = m_pipelineLayout;
+        // clang-format off
+        pipelineCreateInfo.inputAssemblerState = {
+            .bindings{ { .binding = 0, .stride = sizeof(ImDrawVert), .stepRate = RHI::PipelineVertexInputRate::PerVertex, } },
+            .attributes{ { .location = 0, .binding = 0, .format = RHI::Format::RG32_FLOAT, .offset = offsetof(ImDrawVert, pos), },
+                         { .location = 1, .binding = 0, .format = RHI::Format::RG32_FLOAT, .offset = offsetof(ImDrawVert, uv), },
+                         { .location = 2, .binding = 0, .format = RHI::Format::RGBA8_UNORM, .offset = offsetof(ImDrawVert, col), }} };
+        // clang-format on
+        pipelineCreateInfo.renderTargetLayout.colorAttachmentsFormats[0] = RHI::Format::BGRA8_UNORM;
+        pipelineCreateInfo.renderTargetLayout.depthAttachmentFormat = RHI::Format::D32;
+        pipelineCreateInfo.topologyMode = RHI::PipelineTopologyMode::Triangles;
+        pipelineCreateInfo.depthStencilState.depthTestEnable = false;
+        pipelineCreateInfo.depthStencilState.depthWriteEnable = true;
+        pipelineCreateInfo.rasterizationState.cullMode = RHI::PipelineRasterizerStateCullMode::None;
+        pipelineCreateInfo.colorBlendState.blendStates[0] = {
             true,
             RHI::BlendEquation::Add,
             RHI::BlendFactor::SrcAlpha,
@@ -452,20 +419,20 @@ void ImGuiRenderer::Init(RHI::Context* context, RHI::FrameScheduler* scheduler, 
             RHI::BlendFactor::One,
             RHI::BlendFactor::OneMinusSrcAlpha,
             RHI::ColorWriteMask::All,
-        } };
-        m_pipeline = m_context->CreateGraphicsPipeline(createInfo);
+        };
+        m_pipeline = m_context->CreateGraphicsPipeline(pipelineCreateInfo);
     }
 }
 
 void ImGuiRenderer::Shutdown()
 {
-    m_bindGroupAllocator->Free(m_bindGroup);
-    m_imagePool->FreeImage(m_image);
+    m_context->DestroyBindGroup(m_bindGroup);
     m_context->DestroyImageView(m_imageView);
     m_context->DestroySampler(m_sampler);
-    m_bufferPool->FreeBuffer(m_indexBuffer);
-    m_bufferPool->FreeBuffer(m_vertexBuffer);
-    m_bufferPool->FreeBuffer(m_uniformBuffer);
+    m_context->DestroyImage(m_image);
+    m_context->DestroyBuffer(m_indexBuffer);
+    m_context->DestroyBuffer(m_vertexBuffer);
+    m_context->DestroyBuffer(m_uniformBuffer);
 }
 
 void ImGuiRenderer::NewFrame()
@@ -510,15 +477,15 @@ void ImGuiRenderer::RenderDrawData(ImDrawData* drawData, RHI::CommandList& comma
             commandList.SetViewport(viewport);
 
             // Bind texture, Draw
-            RHI::CommandDraw draw{};
-            draw.bindGroups = m_bindGroup;
-            draw.pipelineState = m_pipeline;
-            draw.indexBuffers = m_indexBuffer;
-            draw.vertexBuffers = m_vertexBuffer;
-            draw.parameters.elementCount = pcmd->ElemCount;
-            draw.parameters.vertexOffset = pcmd->VtxOffset + globalVtxOffset;
-            draw.parameters.firstElement = pcmd->IdxOffset + globalIdxOffset;
-            commandList.Submit(draw);
+            RHI::DrawInfo drawInfo{};
+            drawInfo.bindGroups = m_bindGroup;
+            drawInfo.pipelineState = m_pipeline;
+            drawInfo.indexBuffers = m_indexBuffer;
+            drawInfo.vertexBuffers = m_vertexBuffer;
+            drawInfo.parameters.elementCount = pcmd->ElemCount;
+            drawInfo.parameters.vertexOffset = pcmd->VtxOffset + globalVtxOffset;
+            drawInfo.parameters.firstElement = pcmd->IdxOffset + globalIdxOffset;
+            commandList.Draw(drawInfo);
         }
 
         globalIdxOffset += cmdList->IdxBuffer.Size;
@@ -549,32 +516,32 @@ static inline size_t AlignBufferSize(size_t size, size_t alignment)
 
 void ImGuiRenderer::UpdateBuffers(ImDrawData* drawData)
 {
-    auto requiredVertexBufferSize = AlignBufferSize((drawData->TotalVtxCount + 5000) * sizeof(ImDrawVert), 256);
-    if (!m_vertexBuffer || (m_vertexBuffer && m_bufferPool->GetSize(m_vertexBuffer) < requiredVertexBufferSize))
+    auto requiredVertexBufferSize = RHI::AlignUp((drawData->TotalVtxCount + 5000) * sizeof(ImDrawVert), 256ull);
+    if (!m_vertexBuffer || (m_vertexBuffer && m_vertexBufferSize < requiredVertexBufferSize))
     {
         if (m_vertexBuffer)
-            m_bufferPool->FreeBuffer(m_vertexBuffer);
+            m_context->DestroyBuffer(m_vertexBuffer);
 
         RHI::BufferCreateInfo createInfo{};
         createInfo.byteSize = requiredVertexBufferSize;
         createInfo.usageFlags = RHI::BufferUsage::Vertex;
-        m_vertexBuffer = m_bufferPool->Allocate(createInfo).GetValue();
+        m_vertexBuffer = m_context->CreateBuffer(createInfo).GetValue();
     }
 
     auto requiredIndexBufferSize = AlignBufferSize((drawData->TotalIdxCount + 5000) * sizeof(ImDrawIdx), 256);
-    if (!m_indexBuffer || (m_indexBuffer && m_bufferPool->GetSize(m_indexBuffer) < requiredIndexBufferSize))
+    if (!m_indexBuffer || (m_indexBuffer && m_indexBufferSize < requiredIndexBufferSize))
     {
         if (m_indexBuffer)
-            m_bufferPool->FreeBuffer(m_indexBuffer);
+            m_context->DestroyBuffer(m_indexBuffer);
 
         RHI::BufferCreateInfo createInfo{};
         createInfo.byteSize = requiredIndexBufferSize;
         createInfo.usageFlags = RHI::BufferUsage::Index;
-        m_indexBuffer = m_bufferPool->Allocate(createInfo).GetValue();
+        m_indexBuffer = m_context->CreateBuffer(createInfo).GetValue();
     }
 
-    auto indexBufferPtr = (ImDrawVert*)m_bufferPool->MapBuffer(m_indexBuffer);
-    auto vertexBufferPtr = (ImDrawIdx*)m_bufferPool->MapBuffer(m_vertexBuffer);
+    auto indexBufferPtr = (ImDrawVert*)m_context->MapBuffer(m_indexBuffer);
+    auto vertexBufferPtr = (ImDrawIdx*)m_context->MapBuffer(m_vertexBuffer);
     for (int n = 0; n < drawData->CmdListsCount; n++)
     {
         const ImDrawList* cmdList = drawData->CmdLists[n];
@@ -583,8 +550,8 @@ void ImGuiRenderer::UpdateBuffers(ImDrawData* drawData)
         indexBufferPtr += cmdList->IdxBuffer.Size;
         vertexBufferPtr += cmdList->VtxBuffer.Size;
     }
-    m_bufferPool->UnmapBuffer(m_vertexBuffer);
-    m_bufferPool->UnmapBuffer(m_indexBuffer);
+    m_context->UnmapBuffer(m_vertexBuffer);
+    m_context->UnmapBuffer(m_indexBuffer);
 
     {
         float L = drawData->DisplayPos.x;
@@ -597,8 +564,8 @@ void ImGuiRenderer::UpdateBuffers(ImDrawData* drawData)
             { 0.0f, 0.0f, 0.5f, 0.0f },
             { (R + L) / (L - R), (T + B) / (B - T), 0.5f, 1.0f },
         };
-        auto uniformBufferPtr = m_bufferPool->MapBuffer(m_uniformBuffer);
+        auto uniformBufferPtr = m_context->MapBuffer(m_uniformBuffer);
         memcpy(uniformBufferPtr, mvp, sizeof(mvp));
-        m_bufferPool->UnmapBuffer(m_uniformBuffer);
+        m_context->UnmapBuffer(m_uniformBuffer);
     }
 }

@@ -31,16 +31,16 @@ namespace RHI
         uint32_t height;
     };
 
-    struct CopyBufferDescriptor
+    struct BufferCopyInfo
     {
         Handle<Buffer> srcBuffer;
-        uint32_t       srcOffset = 0;
+        size_t       srcOffset = 0;
         Handle<Buffer> dstBuffer;
-        uint32_t       dstOffset = 0;
-        uint32_t       size              = 0;
+        size_t       dstOffset = 0;
+        size_t       size      = 0;
     };
 
-    struct CopyImageDescriptor
+    struct ImageCopyInfo
     {
         Handle<Image>          srcImage;
         ImageSubresourceLayers srcSubresource;
@@ -51,7 +51,7 @@ namespace RHI
         ImageOffset            dstOffset;
     };
 
-    struct CopyBufferToImageDescriptor
+    struct BufferToImageCopyInfo
     {
         Handle<Buffer>         srcBuffer;
         uint32_t               srcOffset        = 0;
@@ -63,7 +63,7 @@ namespace RHI
         ImageOffset            dstOffset;
     };
 
-    struct CopyImageToBufferDescriptor
+    struct ImageToBufferCopyInfo
     {
         Handle<Image>          srcImage;
         ImageSubresourceLayers srcSubresource;
@@ -98,7 +98,7 @@ namespace RHI
     };
 
     /// @brief Structure describing a draw command.
-    struct CommandDraw
+    struct DrawInfo
     {
         Handle<GraphicsPipeline>       pipelineState;
         TL::Span<Handle<BindGroup>>    bindGroups;
@@ -108,7 +108,7 @@ namespace RHI
     };
 
     /// @brief Structure describing a compute command.
-    struct CommandCompute
+    struct DispatchInfo
     {
         Handle<ComputePipeline>     pipelineState;
         TL::Span<Handle<BindGroup>> bindGroups;
@@ -119,53 +119,52 @@ namespace RHI
     class RHI_EXPORT CommandListAllocator
     {
     public:
-        virtual ~CommandListAllocator() = default;
+        virtual ~CommandListAllocator()                    = default;
 
-        virtual void         Flush(uint32_t newFrameIndex)        = 0;
-        virtual CommandList* Allocate() = 0;
+        virtual CommandList* Allocate()                    = 0;
     };
 
     /// @brief Command list record a list of GPU commands that are exectued in the same pass.
     class RHI_EXPORT CommandList
     {
     public:
-        CommandList()                                                   = default;
-        CommandList(const CommandList& other)                           = delete;
-        CommandList(CommandList&& other)                                = default;
-        virtual ~CommandList()                                          = default;
+        CommandList()                                           = default;
+        CommandList(const CommandList& other)                   = delete;
+        CommandList(CommandList&& other)                        = default;
+        virtual ~CommandList()                                  = default;
 
         /// @brief Marks the begining of this command list recording.
-        virtual void Begin()                                            = 0;
+        virtual void Begin()                                    = 0;
 
         /// @brief Marks the begining of this command list recording inside a pass.
-        virtual void Begin(Pass& pass)                                  = 0;
+        virtual void Begin(Pass& pass)                          = 0;
 
         /// @brief Marks the ending of this command list recording.
-        virtual void End()                                              = 0;
+        virtual void End()                                      = 0;
 
         /// @brief Sets the rendering viewport
-        virtual void SetViewport(const Viewport& viewport)              = 0;
+        virtual void SetViewport(const Viewport& viewport)      = 0;
 
         /// @brief Sets the rendering scissor
-        virtual void SetSicssor(const Scissor& sicssor)                 = 0;
+        virtual void SetSicssor(const Scissor& sicssor)         = 0;
 
         /// @brief Submit a draw command.
-        virtual void Submit(const CommandDraw& command)                 = 0;
+        virtual void Draw(const DrawInfo& command)              = 0;
 
         /// @brief Submit a compute command.
-        virtual void Submit(const CommandCompute& command)              = 0;
+        virtual void Dispatch(const DispatchInfo& command)      = 0;
 
         /// @brief Submit a buffer copy command.
-        virtual void Submit(const CopyBufferDescriptor& command)        = 0;
+        virtual void Copy(const BufferCopyInfo& command)        = 0;
 
         /// @brief Submit a image copy command.
-        virtual void Submit(const CopyImageDescriptor& command)         = 0;
+        virtual void Copy(const ImageCopyInfo& command)         = 0;
 
         /// @brief Submit a buffer to image copy command.
-        virtual void Submit(const CopyBufferToImageDescriptor& command) = 0;
+        virtual void Copy(const BufferToImageCopyInfo& command) = 0;
 
         /// @brief Submit a image to buffer copy command.
-        virtual void Submit(const CopyImageToBufferDescriptor& command) = 0;
+        virtual void Copy(const ImageToBufferCopyInfo& command) = 0;
     };
 
 } // namespace RHI

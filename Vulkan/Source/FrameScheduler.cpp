@@ -7,7 +7,6 @@
 
 namespace RHI::Vulkan
 {
-
     ///////////////////////////////////////////////////////////////////////////
     /// Pass
     ///////////////////////////////////////////////////////////////////////////
@@ -46,7 +45,7 @@ namespace RHI::Vulkan
 
         for (uint32_t i = 0; i < 2; i++)
         {
-            m_frameReadyFence.emplace_back( m_context->CreateFence());
+            m_frameReadyFence.emplace_back(m_context->CreateFence());
         }
 
         return VK_SUCCESS;
@@ -57,6 +56,13 @@ namespace RHI::Vulkan
         auto context = (IContext*)m_context;
         auto result = vkDeviceWaitIdle(context->m_device);
         VULKAN_ASSERT_SUCCESS(result);
+    }
+
+    Ptr<Pass> IFrameScheduler::CreatePass(const char* name, QueueType queueType)
+    {
+        auto pass = CreatePtr<IPass>((IContext*)m_context, name, queueType);
+        pass->Init();
+        return pass;
     }
 
     void IFrameScheduler::QueuePassSubmit(Pass* _pass, Fence* _fence)
@@ -74,19 +80,19 @@ namespace RHI::Vulkan
             submitInfo.commandBuffer = commandList->m_commandBuffer;
             commandBuffers.push_back(submitInfo);
         }
-        
-        std::vector<VkSemaphoreSubmitInfo> waitSemaphores {};
-        std::vector<VkSemaphoreSubmitInfo> signalSemaphores {};
+
+        std::vector<VkSemaphoreSubmitInfo> waitSemaphores{};
+        std::vector<VkSemaphoreSubmitInfo> signalSemaphores{};
 
         if (auto passAttachment = pass->m_swapchainImageAttachment)
         {
             auto swapchain = (ISwapchain*)passAttachment->attachment->swapchain;
-            VkSemaphoreSubmitInfo semaphoreSubmitInfo {};
+            VkSemaphoreSubmitInfo semaphoreSubmitInfo{};
             semaphoreSubmitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
             if (passAttachment->prev == nullptr)
             {
                 semaphoreSubmitInfo.semaphore = swapchain->m_semaphores.imageAcquired;
-                semaphoreSubmitInfo.stageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT ;
+                semaphoreSubmitInfo.stageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
                 waitSemaphores.push_back(semaphoreSubmitInfo);
             }
 

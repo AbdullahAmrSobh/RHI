@@ -122,8 +122,9 @@ namespace RHI
         /// This marks the ending of a graphics frame.
         void                        End();
 
-        /// @brief Register a pass producer, to be called this frame.
-        void                        RegisterPass(Pass& pass);
+        void RegisterPass(Pass& pass);
+
+        virtual Ptr<Pass>           CreatePass(const char* name, QueueType queueType) = 0;
 
         /// @brief Called after all passes inside the Frame Graph are setup, to finialize the graph
         void                        Compile();
@@ -135,9 +136,9 @@ namespace RHI
         void                        ExecuteCommandList(TL::Span<CommandList*> commandLists, Fence& fence);
 
     private:
-        void       Cleanup();
+        void   Cleanup();
 
-        Fence&     GetFrameCurrentFence();
+        Fence& GetFrameCurrentFence();
 
     protected:
         virtual void DeviceWaitIdle()                                                                            = 0;
@@ -145,9 +146,9 @@ namespace RHI
         virtual void QueueCommandsSubmit(QueueType queueType, TL::Span<CommandList*> commandLists, Fence& fence) = 0;
 
     private:
-        uint32_t                            m_frameCount;
-        uint32_t                            m_currentFrameIndex;
-        uint64_t                            m_frameNumber;
+        uint32_t m_frameCount;
+        uint32_t m_currentFrameIndex;
+        uint64_t m_frameNumber;
 
         // A list of fences for each frame in flight
 
@@ -164,7 +165,7 @@ namespace RHI
 
         ImageAttachment*                            m_swapchainImage;
 
-        std::vector<std::unique_ptr<Fence>> m_frameReadyFence;
+        std::vector<std::unique_ptr<Fence>>         m_frameReadyFence;
     };
 
 } // namespace RHI

@@ -5,16 +5,27 @@
 #include "RHI/Common/Result.hpp"
 #include "RHI/Common/Span.hpp"
 #include "RHI/Format.hpp"
-
-#include <unordered_map>
 #include <variant>
-#include <memory>
 
 namespace RHI
 {
+    inline static constexpr uint32_t c_MaxRenderTargetAttachmentsCount           = 16u;
+    inline static constexpr uint32_t c_MaxSwapchainBackBuffersCount              = 3u;
+    inline static constexpr uint32_t c_MaxImageBindingArrayElementsCount         = 32u;
+    inline static constexpr uint32_t c_MaxBufferBindingArrayElementsCount        = 32u;
+    inline static constexpr uint32_t c_MaxBufferViewBindingArrayElementsCount    = 32u;
+    inline static constexpr uint32_t c_MaxBufferSamplerBindingArrayElementsCount = 32u;
+    inline static constexpr uint32_t c_MaxBindGroupElementsCount                 = 32u;
+    inline static constexpr uint32_t c_MaxPipelineVertexBindings                 = 32u;
+    inline static constexpr uint32_t c_MaxPipelineVertexAttributes               = 32u;
+    inline static constexpr uint32_t c_MaxPipelineBindGroupsCount                = 4u;
+    inline static constexpr uint32_t KiloByte                                    = 1000u;
+    inline static constexpr uint32_t MegaByte                                    = 1000u * KiloByte;
+
     class Context;
     class ShaderModule;
     class ImageAttachment;
+    class ResourcePool;
 
     // clang-format off
     struct Image {};
@@ -33,20 +44,11 @@ namespace RHI
     /// @brief Represents a pointer to GPU device memory
     using DeviceMemoryPtr = void*;
 
-    /// @brief Enumeration for common allocation size constants
-    namespace AllocationSizeConstants
-    {
-        inline static constexpr uint32_t KB = 1024;
-        inline static constexpr uint32_t MB = 1024 * KB;
-        inline static constexpr uint32_t GB = 1024 * MB;
-
-    }; // namespace AllocationSizeConstants
-
     /// @brief Enumeration representing the memory allocation startegy of a resource pool.
     enum class AllocationAlgorithm
     {
-        /// @brief Memory will be allocated linearly.
-        Linear,
+        Linear, /// @brief Memory will be allocated linearly.
+        Optimal,
     };
 
     /// @brief Enumeration representing different memory types and their locations.
@@ -146,6 +148,7 @@ namespace RHI
         Sampler,
         Image,
         Buffer,
+        BufferView,
     };
 
     /// @brief How the resource will be accessed in the shader.
@@ -158,6 +161,7 @@ namespace RHI
     /// @brief Pipeline vertex
     enum class PipelineVertexInputRate
     {
+        None,
         PerInstance,
         PerVertex,
     };
@@ -285,6 +289,13 @@ namespace RHI
         Fifo,
         FifoRelaxed,
         Mailbox,
+    };
+
+    enum class FenceState
+    {
+        NotSubmitted,
+        Pending,
+        Signaled,
     };
 
 #ifdef RHI_PLATFORM_WINDOWS
@@ -425,246 +436,11 @@ namespace RHI
     /// @brief A shader bind group layout is an list of shader bindings.
     struct BindGroupLayoutCreateInfo
     {
-        BindGroupLayoutCreateInfo(std::initializer_list<ShaderBinding> initList)
-            : bindings(initList)
-        {
-        }
-
-        std::vector<ShaderBinding> bindings;
-    };
-
-    // @brief the layout of pipeline shaders
-    struct PipelineLayoutCreateInfo
-    {
-        PipelineLayoutCreateInfo(TL::Span<Handle<BindGroupLayout>> bindGroupLayouts)
-            : layouts{ bindGroupLayouts.begin(), bindGroupLayouts.end() }
-        {
-        }
-
-        std::vector<Handle<BindGroupLayout>> layouts;
-    };
-
-    /// @brief Structure specifying the blending parameters for an image render target attachment.
-    struct ColorAttachmentBlendStateDesc
-    {
-        bool                  blendEnable  = false;
-        BlendEquation         colorBlendOp = BlendEquation::Add;
-        BlendFactor           srcColor     = BlendFactor::One;
-        BlendFactor           dstColor     = BlendFactor::Zero;
-        BlendEquation         alphaBlendOp = BlendEquation::Add;
-        BlendFactor           srcAlpha     = BlendFactor::One;
-        BlendFactor           dstAlpha     = BlendFactor::Zero;
-        Flags<ColorWriteMask> writeMask    = ColorWriteMask::All;
-
-        inline bool           operator==(const ColorAttachmentBlendStateDesc& other) const { return blendEnable == other.blendEnable && colorBlendOp == other.colorBlendOp && srcColor == other.srcColor && dstColor == other.dstColor && alphaBlendOp == other.alphaBlendOp && srcAlpha == other.srcAlpha && dstAlpha == other.dstAlpha; }
-
-        inline bool           operator!=(const ColorAttachmentBlendStateDesc& other) const { return !(*this == other); }
-    };
-
-    /// @brief Structure specifying the render target layout.
-    struct PipelineRenderTargetLayout
-    {
-        TL::Span<const Format> colorAttachmentsFormats = { Format::BGRA8_UNORM }; // default: BGRA8 List of the formats of color attachments.
-        Format                 depthAttachmentFormat   = Format::Unknown;         // default: none Format of an optional depth and/or stencil attachment.
-        Format                 stencilAttachmentFormat = Format::Unknown;         // default: none Format of an optional depth and/or stencil attachment.
-    };
-
-    struct PipelineVertexBindingDesc
-    {
-        uint32_t                binding;
-        uint32_t                stride;
-        PipelineVertexInputRate stepRate;
-    };
-
-    struct PipelineVertexAttributeDesc
-    {
-        uint32_t location;
-        uint32_t binding;
-        Format   format;
-        uint32_t offset;
-    };
-
-    struct PipelineInputAssemblerStateDesc
-    {
-        std::vector<PipelineVertexBindingDesc>   bindings;
-        std::vector<PipelineVertexAttributeDesc> attributes;
-    };
-
-    /// @brief Structure specifying the rasterizer state.
-    struct PipelineRasterizerStateDesc
-    {
-        PipelineRasterizerStateCullMode  cullMode  = PipelineRasterizerStateCullMode::BackFace;
-        PipelineRasterizerStateFillMode  fillMode  = PipelineRasterizerStateFillMode::Triangle;
-        PipelineRasterizerStateFrontFace frontFace = PipelineRasterizerStateFrontFace::CounterClockwise;
-        float                            lineWidth = 1.0f;
-    };
-
-    /// @brief Structure specifying the multisample state.
-    struct PipelineMultisampleStateDesc
-    {
-        SampleCount sampleCount   = SampleCount::Samples1;
-        bool        sampleShading = false;
-    };
-
-    /// @brief Structure specifying the depth and stencil state.
-    struct PipelineDepthStencilStateDesc
-    {
-        bool            depthTestEnable   = false;
-        bool            depthWriteEnable  = false;
-        CompareOperator compareOperator   = CompareOperator::Always;
-        bool            stencilTestEnable = false;
-    };
-
-    /// @brief Structure specifying the color attachments blend state.
-    struct PipelineColorBlendStateDesc
-    {
-        TL::Span<const ColorAttachmentBlendStateDesc> blendStates       = ColorAttachmentBlendStateDesc{};
-        float                                         blendConstants[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-    };
-
-    /// @brief Represent the creation parameters of an resource pool.
-    struct PoolCreateInfo
-    {
-        AllocationAlgorithm allocationAlgorithm = AllocationAlgorithm::Linear;
-        MemoryType          heapType;
-        size_t              blockSize;
-        size_t              minBlockCount;
-        size_t              maxBlockCount;
-        size_t              minBlockAlignment;
-    };
-
-    /// @brief Represent the creation parameters of an image resource.
-    struct ImageCreateInfo
-    {
-        Flags<ImageUsage> usageFlags;                          // Usage flags.
-        ImageType         type;                                // The type of the image.
-        ImageSize3D       size;                                // The size of the image.
-        Format            format;                              // The format of the image.
-        SampleCount       sampleCount = SampleCount::Samples1; // The number of samples in each texel.
-        uint32_t          mipLevels   = 1;                     // The number of mip levels in the image.
-        uint32_t          arrayCount  = 1;                     // The number of images in the images array.
-
-        inline bool       operator==(const ImageCreateInfo& other) const { return usageFlags == other.usageFlags && type == other.type && size == other.size && format == other.format && mipLevels == other.mipLevels && arrayCount == other.arrayCount; }
-
-        inline bool       operator!=(const ImageCreateInfo& other) const { return !(*this == other); }
-    };
-
-    /// @brief Represent the creation parameters of an buffer resource.
-    struct BufferCreateInfo
-    {
-        Flags<BufferUsage> usageFlags; // Usage flags.
-        size_t             byteSize;   // The size of the buffer.
-
-        inline bool        operator==(const BufferCreateInfo& other) const { return usageFlags == other.usageFlags && byteSize == other.byteSize; }
-
-        inline bool        operator!=(const BufferCreateInfo& other) const { return !(*this == other); }
-    };
-
-    /// @brief Structure specifying the parameters of an image attachment.
-    struct ImageViewCreateInfo
-    {
-        ImageViewCreateInfo() = default;
-
-        inline ImageViewCreateInfo(RHI::ImageAspect aspect)
-            : components{}
-            , subresource{}
-        {
-            subresource.imageAspects = aspect;
-        }
-
-        Handle<Image>         image;
-        ComponentMapping      components;
-        ImageSubresourceRange subresource;
-
-        inline bool           operator==(const ImageViewCreateInfo& other) const { return components == other.components && subresource == other.subresource; }
-
-        inline bool           operator!=(const ImageViewCreateInfo& other) const { return !(*this == other); }
-    };
-
-    /// @brief Structure specifying the parameters of an buffer attachment.
-    struct BufferViewCreateInfo
-    {
-        Handle<Image> buffer;
-        Format      format;
-        size_t      byteOffset;
-        size_t      byteSize;
-
-        inline bool operator==(const BufferViewCreateInfo& other) const { return byteOffset == other.byteOffset && byteSize == other.byteSize && format == other.format; }
-
-        inline bool operator!=(const BufferViewCreateInfo& other) const { return !(*this == other); }
-    };
-
-    struct ShaderModuleCreateInfo
-    {
-        void*  code;
-        size_t size;
-    };
-
-    /// @brief Description of the graphics pipeline states.
-    struct GraphicsPipelineCreateInfo
-    {
-        // TODO: Add several helper constructors/builder functions
-
-        const char*                     vertexShaderName;
-        ShaderModule*                   vertexShaderModule;
-
-        const char*                     pixelShaderName;
-        ShaderModule*                   pixelShaderModule;
-
-        Handle<PipelineLayout>          layout;
-        PipelineInputAssemblerStateDesc inputAssemblerState;
-        PipelineRenderTargetLayout      renderTargetLayout;
-        PipelineColorBlendStateDesc     colorBlendState    = PipelineColorBlendStateDesc{};
-        PipelineTopologyMode            topologyMode       = PipelineTopologyMode::Triangles;
-        PipelineRasterizerStateDesc     rasterizationState = PipelineRasterizerStateDesc{};
-        PipelineMultisampleStateDesc    multisampleState   = PipelineMultisampleStateDesc{};
-        PipelineDepthStencilStateDesc   depthStencilState  = PipelineDepthStencilStateDesc{};
-    };
-
-    /// @brief Description of a compute pipeline state.
-    struct ComputePipelineCreateInfo
-    {
-        const char*            shaderName;
-        ShaderModule*          shaderModule;
-        Handle<PipelineLayout> layout;
-    };
-
-    /// @brief Structure describing the creation parameters of a sampler state.
-    struct SamplerCreateInfo
-    {
-        SamplerCreateInfo()                = default;
-
-        SamplerFilter           filterMin  = SamplerFilter::Point;
-        SamplerFilter           filterMag  = SamplerFilter::Point;
-        SamplerFilter           filterMip  = SamplerFilter::Point;
-        SamplerCompareOperation compare    = SamplerCompareOperation::Always;
-        float                   mipLodBias = 0.0f;
-        SamplerAddressMode      addressU   = SamplerAddressMode::Clamp;
-        SamplerAddressMode      addressV   = SamplerAddressMode::Clamp;
-        SamplerAddressMode      addressW   = SamplerAddressMode::Clamp;
-        float                   minLod     = 0.0f;
-        float                   maxLod     = 1.0f;
-
-        inline bool             operator==(const SamplerCreateInfo& other) const { return filterMin == other.filterMin && filterMag == other.filterMag && filterMip == other.filterMip && compare == other.compare && mipLodBias == other.mipLodBias && addressU == other.addressU && addressV == other.addressV && addressW == other.addressW && minLod == other.minLod && maxLod == other.maxLod; }
-
-        inline bool             operator!=(const SamplerCreateInfo& other) const { return !(*this == other); }
-    };
-
-    /// @brief Structure specifying the parameters of the swapchain.
-    struct SwapchainCreateInfo
-    {
-        ImageSize2D       imageSize;   // The size of the images in the swapchian.
-        Flags<ImageUsage> imageUsage;  // Image usage flags applied to all created images.
-        Format            imageFormat; // The format of created swapchain image.
-        uint32_t          imageCount;  // The numer of back buffer images in the swapchain.
-#ifdef RHI_PLATFORM_WINDOWS
-        Win32WindowDesc win32Window; // win32 surface handles. (Availabe only on windows)
-#endif
-        SwapchainPresentMode presentMode;
+        ShaderBinding bindings[c_MaxBindGroupElementsCount];
     };
 
     /// @brief An object that groups shader resources that are bound together.
-    class RHI_EXPORT BindGroupData final
+    struct BindGroupData
     {
     public:
         BindGroupData() = default;
@@ -706,17 +482,263 @@ namespace RHI
         std::unordered_map<uint32_t, ResourceBinding> m_bindings;
     };
 
-    class RHI_EXPORT BindGroupAllocator
+    // @brief the layout of pipeline shaders
+    struct PipelineLayoutCreateInfo
     {
-    public:
-        BindGroupAllocator()                                                                                          = default;
-        virtual ~BindGroupAllocator()                                                                                 = default;
+        Handle<BindGroupLayout> layouts[c_MaxPipelineBindGroupsCount]; // remove this
+    };
 
-        virtual std::vector<Handle<BindGroup>> AllocateBindGroups(TL::Span<Handle<BindGroupLayout>> bindGroupLayouts) = 0;
+    /// @brief Structure specifying the blending parameters for an image render target attachment.
+    struct ColorAttachmentBlendStateDesc
+    {
+        bool                  blendEnable  = false;
+        BlendEquation         colorBlendOp = BlendEquation::Add;
+        BlendFactor           srcColor     = BlendFactor::One;
+        BlendFactor           dstColor     = BlendFactor::Zero;
+        BlendEquation         alphaBlendOp = BlendEquation::Add;
+        BlendFactor           srcAlpha     = BlendFactor::One;
+        BlendFactor           dstAlpha     = BlendFactor::Zero;
+        Flags<ColorWriteMask> writeMask    = ColorWriteMask::All;
 
-        virtual void                           Free(TL::Span<Handle<BindGroup>> groups)                               = 0;
+        inline bool           operator==(const ColorAttachmentBlendStateDesc& other) const { return blendEnable == other.blendEnable && colorBlendOp == other.colorBlendOp && srcColor == other.srcColor && dstColor == other.dstColor && alphaBlendOp == other.alphaBlendOp && srcAlpha == other.srcAlpha && dstAlpha == other.dstAlpha; }
 
-        virtual void                           Update(Handle<BindGroup> group, const BindGroupData& data)             = 0;
+        inline bool           operator!=(const ColorAttachmentBlendStateDesc& other) const { return !(*this == other); }
+    };
+
+    /// @brief Structure specifying the render target layout.
+    struct PipelineRenderTargetLayout
+    {
+        Format colorAttachmentsFormats[c_MaxRenderTargetAttachmentsCount] = { Format::BGRA8_UNORM }; // default: BGRA8 List of the formats of color attachments.
+        Format depthAttachmentFormat                                      = Format::Unknown;         // default: none Format of an optional depth and/or stencil attachment.
+        Format stencilAttachmentFormat                                    = Format::Unknown;         // default: none Format of an optional depth and/or stencil attachment.
+    };
+
+    struct PipelineVertexBindingDesc
+    {
+        uint32_t                binding;
+        uint32_t                stride;
+        PipelineVertexInputRate stepRate;
+    };
+
+    struct PipelineVertexAttributeDesc
+    {
+        uint32_t location;
+        uint32_t binding;
+        Format   format;
+        uint32_t offset;
+    };
+
+    struct PipelineInputAssemblerStateDesc
+    {
+        PipelineVertexBindingDesc   bindings[c_MaxPipelineVertexBindings];
+        PipelineVertexAttributeDesc attributes[c_MaxPipelineVertexAttributes];
+    };
+
+    /// @brief Structure specifying the rasterizer state.
+    struct PipelineRasterizerStateDesc
+    {
+        PipelineRasterizerStateCullMode  cullMode  = PipelineRasterizerStateCullMode::BackFace;
+        PipelineRasterizerStateFillMode  fillMode  = PipelineRasterizerStateFillMode::Triangle;
+        PipelineRasterizerStateFrontFace frontFace = PipelineRasterizerStateFrontFace::CounterClockwise;
+        float                            lineWidth = 1.0f;
+    };
+
+    /// @brief Structure specifying the multisample state.
+    struct PipelineMultisampleStateDesc
+    {
+        SampleCount sampleCount   = SampleCount::Samples1;
+        bool        sampleShading = false;
+    };
+
+    /// @brief Structure specifying the depth and stencil state.
+    struct PipelineDepthStencilStateDesc
+    {
+        bool            depthTestEnable   = false;
+        bool            depthWriteEnable  = false;
+        CompareOperator compareOperator   = CompareOperator::Always;
+        bool            stencilTestEnable = false;
+    };
+
+    /// @brief Structure specifying the color attachments blend state.
+    struct PipelineColorBlendStateDesc
+    {
+        ColorAttachmentBlendStateDesc blendStates[c_MaxRenderTargetAttachmentsCount];
+        float                         blendConstants[4];
+    };
+
+    /// @brief Represent the creation parameters of an resource pool.
+    struct ResourcePoolCreateInfo
+    {
+        AllocationAlgorithm allocationAlgorithm = AllocationAlgorithm::Linear;
+        MemoryType          heapType;
+        size_t              blockSize;
+        size_t              minBlockCount;
+        size_t              maxBlockCount;
+        size_t              minBlockAlignment;
+    };
+
+    struct AllocationInfo
+    {
+        // optional pool which the resource will be allocated from
+        /// @note: if a pool specified, the pool's settings will override
+        ResourcePool* pool;
+        MemoryType    heapType;
+    };
+
+    /// @brief Represent the creation parameters of an resource pool.
+    struct PoolCreateInfo
+    {
+        AllocationAlgorithm allocationAlgorithm = AllocationAlgorithm::Linear;
+        MemoryType          heapType;
+        size_t              blockSize;
+        size_t              minBlockCount;
+        size_t              maxBlockCount;
+        size_t              minBlockAlignment;
+    };
+
+    /// @brief Represent the creation parameters of an image resource.
+    struct ImageCreateInfo
+    {
+        AllocationInfo    allocationInfo;
+        Flags<ImageUsage> usageFlags;                          // Usage flags.
+        ImageType         type;                                // The type of the image.
+        ImageSize3D       size;                                // The size of the image.
+        Format            format;                              // The format of the image.
+        SampleCount       sampleCount = SampleCount::Samples1; // The number of samples in each texel.
+        uint32_t          mipLevels   = 1;                     // The number of mip levels in the image.
+        uint32_t          arrayCount  = 1;                     // The number of images in the images array.
+
+        inline bool       operator==(const ImageCreateInfo& other) const { return usageFlags == other.usageFlags && type == other.type && size == other.size && format == other.format && mipLevels == other.mipLevels && arrayCount == other.arrayCount; }
+
+        inline bool       operator!=(const ImageCreateInfo& other) const { return !(*this == other); }
+    };
+
+    /// @brief Represent the creation parameters of an buffer resource.
+    struct BufferCreateInfo
+    {
+        AllocationInfo     allocationInfo;
+        Flags<BufferUsage> usageFlags; // Usage flags.
+        size_t             byteSize;   // The size of the buffer.
+
+        inline bool        operator==(const BufferCreateInfo& other) const { return usageFlags == other.usageFlags && byteSize == other.byteSize; }
+
+        inline bool        operator!=(const BufferCreateInfo& other) const { return !(*this == other); }
+    };
+
+    /// @brief Structure specifying the parameters of an image attachment.
+    struct ImageViewCreateInfo
+    {
+        ImageViewCreateInfo() = default;
+
+        inline ImageViewCreateInfo(RHI::ImageAspect aspect)
+            : components{}
+            , subresource{}
+        {
+            subresource.imageAspects = aspect;
+        }
+
+        Handle<Image>         image;
+        ComponentMapping      components;
+        ImageSubresourceRange subresource;
+
+        inline bool           operator==(const ImageViewCreateInfo& other) const { return components == other.components && subresource == other.subresource; }
+
+        inline bool           operator!=(const ImageViewCreateInfo& other) const { return !(*this == other); }
+    };
+
+    /// @brief Structure specifying the parameters of an buffer attachment.
+    struct BufferViewCreateInfo
+    {
+        Handle<Image> buffer;
+        Format        format;
+        size_t        byteOffset;
+        size_t        byteSize;
+
+        inline bool   operator==(const BufferViewCreateInfo& other) const { return byteOffset == other.byteOffset && byteSize == other.byteSize && format == other.format; }
+
+        inline bool   operator!=(const BufferViewCreateInfo& other) const { return !(*this == other); }
+    };
+
+    /// @brief Description of the graphics pipeline states.
+    struct GraphicsPipelineCreateInfo
+    {
+        // TODO: Add several helper constructors/builder functions
+
+        const char*                     vertexShaderName;
+        ShaderModule*                   vertexShaderModule;
+
+        const char*                     pixelShaderName;
+        ShaderModule*                   pixelShaderModule;
+
+        Handle<PipelineLayout>          layout;
+        PipelineInputAssemblerStateDesc inputAssemblerState;
+        PipelineRenderTargetLayout      renderTargetLayout;
+        PipelineColorBlendStateDesc     colorBlendState    = PipelineColorBlendStateDesc{};
+        PipelineTopologyMode            topologyMode       = PipelineTopologyMode::Triangles;
+        PipelineRasterizerStateDesc     rasterizationState = PipelineRasterizerStateDesc{};
+        PipelineMultisampleStateDesc    multisampleState   = PipelineMultisampleStateDesc{};
+        PipelineDepthStencilStateDesc   depthStencilState  = PipelineDepthStencilStateDesc{};
+    };
+
+    /// @brief Description of a compute pipeline state.
+    struct ComputePipelineCreateInfo
+    {
+        const char*            shaderName;
+        ShaderModule*          shaderModule;
+        Handle<PipelineLayout> layout;
+    };
+
+    /// @brief Structure describing the creation parameters of a sampler state.
+    struct SamplerCreateInfo
+    {
+        SamplerCreateInfo() = default;
+
+        SamplerCreateInfo(SamplerFilter           filter,
+                          SamplerAddressMode      addressMode,
+                          SamplerCompareOperation compare    = SamplerCompareOperation::Always,
+                          float                   mipLodBias = 0.0f,
+                          float                   minLod     = 0.0f,
+                          float                   maxLod     = 1.0f)
+            : filterMin(filter)
+            , filterMag(filter)
+            , filterMip(filter)
+            , compare(compare)
+            , mipLodBias(mipLodBias)
+            , addressU(addressMode)
+            , addressV(addressMode)
+            , addressW(addressMode)
+            , minLod(minLod)
+            , maxLod(maxLod)
+        {
+        }
+
+        SamplerFilter           filterMin  = SamplerFilter::Point;
+        SamplerFilter           filterMag  = SamplerFilter::Point;
+        SamplerFilter           filterMip  = SamplerFilter::Point;
+        SamplerCompareOperation compare    = SamplerCompareOperation::Always;
+        float                   mipLodBias = 0.0f;
+        SamplerAddressMode      addressU   = SamplerAddressMode::Clamp;
+        SamplerAddressMode      addressV   = SamplerAddressMode::Clamp;
+        SamplerAddressMode      addressW   = SamplerAddressMode::Clamp;
+        float                   minLod     = 0.0f;
+        float                   maxLod     = 1.0f;
+
+        inline bool             operator==(const SamplerCreateInfo& other) const { return filterMin == other.filterMin && filterMag == other.filterMag && filterMip == other.filterMip && compare == other.compare && mipLodBias == other.mipLodBias && addressU == other.addressU && addressV == other.addressV && addressW == other.addressW && minLod == other.minLod && maxLod == other.maxLod; }
+
+        inline bool             operator!=(const SamplerCreateInfo& other) const { return !(*this == other); }
+    };
+
+    /// @brief Structure specifying the parameters of the swapchain.
+    struct SwapchainCreateInfo
+    {
+        ImageSize2D       imageSize;   // The size of the images in the swapchian.
+        Flags<ImageUsage> imageUsage;  // Image usage flags applied to all created images.
+        Format            imageFormat; // The format of created swapchain image.
+        uint32_t          imageCount;  // The numer of back buffer images in the swapchain.
+#ifdef RHI_PLATFORM_WINDOWS
+        Win32WindowDesc win32Window; // win32 surface handles. (Availabe only on windows)
+#endif
+        SwapchainPresentMode presentMode;
     };
 
     class RHI_EXPORT ShaderModule
@@ -726,42 +748,29 @@ namespace RHI
         virtual ~ShaderModule() = default;
     };
 
-    /// @brief Pool used to allocate buffer resources.
-    class RHI_EXPORT BufferPool
+    class RHI_EXPORT ResourcePool
     {
     public:
-        BufferPool()                                                                = default;
-        virtual ~BufferPool()                                                       = default;
-
-        /// @brief Allocate a buffer resource.
-        virtual Result<Handle<Buffer>> Allocate(const BufferCreateInfo& createInfo) = 0;
-
-        /// @brief Free an allocated buffer resource.
-        virtual void                   FreeBuffer(Handle<Buffer> handle)            = 0;
-
-        /// @brief Get the size of an allocated buffer resource.
-        virtual size_t                 GetSize(Handle<Buffer> handle) const         = 0;
-
-        /// @brief Maps the buffer resource for read or write operations.
-        /// @return returns a pointer to GPU memory, or a nullptr in case of failure
-        virtual DeviceMemoryPtr        MapBuffer(Handle<Buffer> handle)             = 0;
-
-        /// @brief UnmapBuffers the buffer resource.
-        virtual void                   UnmapBuffer(Handle<Buffer> handle)           = 0;
+        ResourcePool()          = default;
+        virtual ~ResourcePool() = default;
     };
 
-    /// @brief Pool used to allocate image resources.
-    class RHI_EXPORT ImagePool
+    class RHI_EXPORT StagingBuffer
     {
     public:
-        /// @brief Allocate an image resource.
-        virtual Result<Handle<Image>> Allocate(const ImageCreateInfo& createInfo) = 0;
+        virtual ~StagingBuffer() = default;
 
-        /// @brief Free an allocated image resource.
-        virtual void                  FreeImage(Handle<Image> handle)             = 0;
+        struct TempBuffer
+        {
+            DeviceMemoryPtr pData;
+            Handle<Buffer>  buffer;
+            size_t          offset;
+            size_t          size;
+        };
 
-        /// @brief Get the size of an allocated image resource.
-        virtual size_t                GetSize(Handle<Image> handle) const         = 0;
+        virtual TempBuffer Allocate(size_t newSize)      = 0;
+        virtual void       Free(TempBuffer mappedBuffer) = 0;
+        virtual void       Flush()                       = 0;
     };
 
     /// @brief Fence object used to preform CPU-GPU sync
@@ -771,17 +780,13 @@ namespace RHI
         Fence()          = default;
         virtual ~Fence() = default;
 
-        enum class State
+        inline bool Wait(uint64_t timeout = UINT64_MAX)
         {
-            NotSubmitted,
-            Pending,
-            Signaled,
-        };
+            return WaitInternal(timeout);
+        }
 
-        inline bool   Wait(uint64_t timeout = UINT64_MAX) { return WaitInternal(timeout); }
-
-        virtual void  Reset()    = 0;
-        virtual State GetState() = 0;
+        virtual void       Reset()    = 0;
+        virtual FenceState GetState() = 0;
 
     protected:
         virtual bool WaitInternal(uint64_t timeout) = 0;
@@ -791,8 +796,6 @@ namespace RHI
     class RHI_EXPORT Swapchain
     {
     public:
-        inline static constexpr uint32_t c_MaxSwapchainBackBuffersCount = 3;
-
         Swapchain();
         virtual ~Swapchain() = default;
 
@@ -814,13 +817,9 @@ namespace RHI
         virtual ResultCode Present()                                                                            = 0;
 
     protected:
-        uint32_t                   m_currentImageIndex;
-        uint32_t                   m_swapchainImagesCount;
-        ImageSize2D                m_imageSize;
-        Format                     m_format;
-        SwapchainPresentMode       m_presentMode;
-        Flags<ImageUsage>          m_imageUsage;
-        std::vector<Handle<Image>> m_images;
+        uint32_t            m_currentImageIndex;
+        uint32_t            m_swapchainImagesCount;
+        SwapchainCreateInfo m_createInfo;
+        Handle<Image>       m_images[c_MaxSwapchainBackBuffersCount];
     };
-
 } // namespace RHI

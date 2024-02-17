@@ -20,17 +20,17 @@
 class DebugCallbacks final : public RHI::DebugCallbacks
 {
 public:
-    void LogInfo(std::string_view message, ...) override
+    void LogInfo(const char* message, ...) override
     {
         std::cout << "INFO: " << message << "\n";
     }
 
-    void LogWarnning(std::string_view message, ...) override
+    void LogWarnning(const char* message, ...) override
     {
         std::cout << "WARNNING: " << message << "\n";
     }
 
-    void LogError(std::string_view message, ...) override
+    void LogError(const char* message, ...) override
     {
         std::cout << "ERROR: " << message << "\n";
     }
@@ -66,22 +66,15 @@ ImageData ApplicationBase::LoadImage(std::string_view path) const
     return imageData;
 }
 
-std::vector<uint32_t> ApplicationBase::ReadBinaryFile(std::string_view path) const
+std::vector<uint8_t> ApplicationBase::ReadBinaryFile(std::string_view path) const
 {
     std::ifstream stream(path.data(), std::ios::ate | std::ios::binary);
-
     RHI_ASSERT(stream.is_open());
-
     auto fileSize = (size_t)stream.tellg();
-
     stream.seekg(0);
-
-    std::vector<uint32_t> buffer(fileSize / sizeof(uint32_t));
-
+    std::vector<uint8_t> buffer(fileSize);
     stream.read((char*)buffer.data(), fileSize);
-
     stream.close();
-
     return buffer;
 }
 
@@ -108,7 +101,7 @@ ApplicationBase::ApplicationBase(std::string name, uint32_t width, uint32_t heig
 
     RHI::ApplicationInfo appInfo{};
     appInfo.applicationName = "RHI-App";
-    appInfo.applicationVersion = RHI::MakeVersion(0, 1, 0);
+    appInfo.applicationVersion = { 0, 1, 0 };
     auto debugCallbacks = std::make_unique<DebugCallbacks>();
     m_context = RHI::CreateVulkanContext(appInfo, std::move(debugCallbacks));
 }
@@ -128,43 +121,19 @@ void ApplicationBase::Init()
     m_swapchain = m_context->CreateSwapchain(createInfo);
 
     // create frame scheduler
-    m_frameScheduler = m_context->CreateFrameScheduler();
+    auto& scheduler = m_context->GetScheduler();
 
-    {
-        RHI::PoolCreateInfo poolCreateInfo{};
-        poolCreateInfo.heapType = RHI::MemoryType::CPU;
-        poolCreateInfo.allocationAlgorithm = RHI::AllocationAlgorithm::Linear;
-        poolCreateInfo.blockSize = 64 * RHI::AllocationSizeConstants::MB;
-        poolCreateInfo.minBlockAlignment = alignof(uint64_t);
-        m_bufferPool = m_context->CreateBufferPool(poolCreateInfo);
-    }
-
-    {
-        RHI::PoolCreateInfo poolCreateInfo{};
-        poolCreateInfo.heapType = RHI::MemoryType::GPULocal;
-        poolCreateInfo.allocationAlgorithm = RHI::AllocationAlgorithm::Linear;
-        poolCreateInfo.blockSize = 64 * RHI::AllocationSizeConstants::MB;
-        poolCreateInfo.minBlockAlignment = alignof(uint64_t);
-        m_imagePool = m_context->CreateImagePool(poolCreateInfo);
-    }
-
-    m_frameScheduler->SetBufferedFramesCount(2);
-
-    m_commandListAllocator = m_context->CreateCommandListAllocator(RHI::QueueType::Graphics, m_frameScheduler->GetBufferedFramesCount());
-
-    // create shader bind group
-    m_bindGroupAllocator = m_context->CreateBindGroupAllocator();
+    m_commandListAllocator = m_context->CreateCommandListAllocator(RHI::QueueType::Graphics);
 
     OnInit();
 
-    auto imguiShaderBlob = ReadBinaryFile("./Resources/Shaders/ImGui.spv");
-    m_imguiRenderer->Init(m_context.get(),
-                          m_frameScheduler.get(),
-                          m_commandListAllocator.get(),
-                          m_bindGroupAllocator.get(),
-                          *m_imagePool,
-                          *m_bufferPool,
-                          imguiShaderBlob);
+    ImGuiRendererCreateInfo imguiRendererCreateInfo{};
+    imguiRendererCreateInfo.context = m_context.get();
+    imguiRendererCreateInfo.scheduler = &scheduler;
+    imguiRendererCreateInfo.shaderBlob = ReadBinaryFile("./Resources/Shaders/ImGui.spv");
+    imguiRendererCreateInfo.commandAllocator = m_commandListAllocator.get();
+    m_imguiRenderer->Init(imguiRendererCreateInfo);
+
     ImGuiIO& io = ImGui::GetIO();
     io.DisplaySize.x = float(m_windowWidth);
     io.DisplaySize.y = float(m_windowHeight);

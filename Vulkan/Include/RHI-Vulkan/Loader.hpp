@@ -1,13 +1,10 @@
 #pragma once
-#include "RHI-Vulkan/Export.hpp"
-
+#include <RHI-Vulkan/Export.hpp>
 #include <RHI/Context.hpp>
 
 namespace RHI
 {
-
     struct ApplicationInfo;
-
     class Context;
     class DebugCallbacks;
 
@@ -16,5 +13,4 @@ namespace RHI
     /// @param debugCallbacks debug callbacks called to log info about the API to the application.
     /// @return return a vulkan implementation of RHI context.
     RHI_Vulkan_EXPORT Ptr<Context> CreateVulkanContext(const ApplicationInfo& appInfo, Ptr<DebugCallbacks> debugCallbacks = nullptr);
-
 } // namespace RHI

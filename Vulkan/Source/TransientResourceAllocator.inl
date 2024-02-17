@@ -87,7 +87,7 @@ namespace RHI::Vulkan
                 imageAttachment->handle = handle;
 
                 {
-                    auto result = image.Init(context, {}, imageAttachment->info, nullptr, true);
+                    auto result = image.Init(context, imageAttachment->info, true);
                     RHI_ASSERT(result == ResultCode::Success);
                 }
 
@@ -107,7 +107,7 @@ namespace RHI::Vulkan
                 bufferAttachment->handle = handle;
 
                 {
-                    auto result = buffer.Init(context, {}, bufferAttachment->info, nullptr, true);
+                    auto result = buffer.Init(context, bufferAttachment->info, true);
                     RHI_ASSERT(result == ResultCode::Success);
                 }
 
