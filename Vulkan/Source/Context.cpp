@@ -125,7 +125,7 @@ namespace RHI::Vulkan
 
         bool debugExtensionFound = false;
 
-#if RHI_DEBUG
+#ifdef RHI_DEBUG
         for (VkExtensionProperties extension : GetAvailableInstanceExtensions())
         {
             auto extensionName = extension.extensionName;
@@ -137,7 +137,7 @@ namespace RHI::Vulkan
         }
 #endif
 
-#if RHI_DEBUG
+#ifdef RHI_DEBUG
         if (debugExtensionFound)
             enabledExtensionsNames.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
         else
@@ -193,7 +193,7 @@ namespace RHI::Vulkan
             };
 
             std::vector<const char*> deviceExtensionNames = {
-#if RHI_DEBUG
+#ifdef RHI_DEBUG
                 VK_EXT_DEBUG_MARKER_EXTENSION_NAME,
 #endif
                 VK_KHR_SWAPCHAIN_EXTENSION_NAME,

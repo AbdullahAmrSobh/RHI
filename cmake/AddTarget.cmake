@@ -68,15 +68,6 @@ function(aams_add_target)
         add_executable(${aams_add_target_NAMESPACE}::${aams_add_target_NAME} ALIAS ${aams_add_target_NAME})
     endif()
 
-    # Disable exceptions and runtime type information
-    if(MSVC)
-        target_compile_options(${aams_add_target_NAME} PRIVATE /GR-)
-        target_compile_options(${aams_add_target_NAME} PRIVATE /EHsc)
-    elseif()
-        target_compile_options(${aams_add_target_NAME} PRIVATE -fno-exceptions)
-        target_compile_options(${aams_add_target_NAME} PRIVATE -fno-rtti)
-    endif()
-
     # Detect the current platform
     if (WIN32 OR WIN64)
         set(PLATFORM_NAME ${aams_add_target_NAME}_PLATFORM_WINDOWS)
