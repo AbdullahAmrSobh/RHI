@@ -4,7 +4,7 @@
     #error "Current platfrom is not supported yet"
 #endif
 
-#include "Resources.hpp"
+#include "Swapchain.hpp"
 #include "Context.hpp"
 #include "Common.hpp"
 

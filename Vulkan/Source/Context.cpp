@@ -6,6 +6,7 @@
 #include "Resources.hpp"
 #include "CommandList.hpp"
 #include "FrameScheduler.hpp"
+#include "Swapchain.hpp"
 
 #include "Context.hpp"
 

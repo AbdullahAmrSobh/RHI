@@ -1,6 +1,7 @@
 #pragma once
 #include "RHI/Export.hpp"
 #include "RHI/Resources.hpp"
+#include "RHI/Swapchain.hpp"
 #include "RHI/Common/Ptr.h"
 
 namespace RHI

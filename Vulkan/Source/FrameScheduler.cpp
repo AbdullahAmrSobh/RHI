@@ -4,6 +4,7 @@
 #include "Resources.hpp"
 #include "CommandList.hpp"
 #include "TransientResourceAllocator.inl"
+#include "Swapchain.hpp"
 
 namespace RHI::Vulkan
 {

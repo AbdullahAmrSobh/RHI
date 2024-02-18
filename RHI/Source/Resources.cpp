@@ -2,7 +2,6 @@
 
 namespace RHI
 {
-
     //////////////////////////////////////////////////////////////////////////////////////////
     /// BindGroupData
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -29,37 +28,6 @@ namespace RHI
         binding.arrayOffset = arrayOffset;
         binding.samplers = { samplers.begin(), samplers.end() };
         m_bindings[index] = binding;
-    }
-
-    //////////////////////////////////////////////////////////////////////////////////////////
-    /// Swapchain
-    //////////////////////////////////////////////////////////////////////////////////////////
-
-    Swapchain::Swapchain()
-        : m_currentImageIndex(0)
-        , m_swapchainImagesCount(0)
-        , m_images()
-    {
-    }
-
-    uint32_t Swapchain::GetCurrentImageIndex() const
-    {
-        return m_currentImageIndex;
-    }
-
-    uint32_t Swapchain::GetImagesCount() const
-    {
-        return m_swapchainImagesCount;
-    }
-
-    Handle<Image> Swapchain::GetImage() const
-    {
-        return m_images[m_currentImageIndex];
-    }
-
-    Handle<Image> Swapchain::GetImage(uint32_t index) const
-    {
-        return m_images[index];
     }
 
 } // namespace RHI

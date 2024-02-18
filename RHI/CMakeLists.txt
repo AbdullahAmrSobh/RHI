@@ -17,6 +17,7 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/FrameScheduler.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Resources.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Attachments.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Swapchain.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RHI.hpp
 )
 
