@@ -34,10 +34,10 @@ namespace RHI
     struct BufferCopyInfo
     {
         Handle<Buffer> srcBuffer;
-        size_t       srcOffset = 0;
+        size_t         srcOffset = 0;
         Handle<Buffer> dstBuffer;
-        size_t       dstOffset = 0;
-        size_t       size      = 0;
+        size_t         dstOffset = 0;
+        size_t         size      = 0;
     };
 
     struct ImageCopyInfo
@@ -84,7 +84,7 @@ namespace RHI
         uint32_t instanceCount = 1;
         uint32_t firstElement  = 0;
         uint32_t vertexOffset  = 0;
-        uint32_t firstInstance = 0;
+        int32_t  firstInstance = 0;
     };
 
     struct DispatchParameters
@@ -119,9 +119,9 @@ namespace RHI
     class RHI_EXPORT CommandListAllocator
     {
     public:
-        virtual ~CommandListAllocator()                    = default;
+        virtual ~CommandListAllocator() = default;
 
-        virtual CommandList* Allocate()                    = 0;
+        virtual CommandList* Allocate() = 0;
     };
 
     /// @brief Command list record a list of GPU commands that are exectued in the same pass.

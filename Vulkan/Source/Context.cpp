@@ -329,6 +329,7 @@ namespace RHI::Vulkan
         scheduler->SetBufferedFramesCount(2);
 
         m_bindGroupAllocator = CreatePtr<BindGroupAllocator>(m_device);
+        m_transferCommandsAllocator = CreateCommandListAllocator(QueueType::Graphics);
 
         return VK_SUCCESS;
     }

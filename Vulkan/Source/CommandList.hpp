@@ -87,9 +87,23 @@ namespace RHI::Vulkan
 
         void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<Handle<BindGroup>> bindGroups);
 
-        void TransitionPassAttachments(BarrierType barrierType, TL::Span<ImagePassAttachment*> passAttachments) const;
+        void TransitionPassAttachments(BarrierType barrierType, TL::Span<ImagePassAttachment*> passAttachments);
 
-        void TransitionPassAttachments(BarrierType barrierType, TL::Span<BufferPassAttachment*> passAttachments) const;
+        void TransitionPassAttachments(BarrierType barrierType, TL::Span<BufferPassAttachment*> passAttachments);
+
+        VkImageMemoryBarrier2 TransitionPassAttachment(ImagePassAttachment& passAttachment);
+
+        VkImageMemoryBarrier2 TransitionPassAttachment(BufferPassAttachment& passAttachment);
+
+        VkImageMemoryBarrier2 TransitionToPresent(ImagePassAttachment& passAttachment);
+
+        void PipelineBarrier(TL::Span<VkMemoryBarrier2> memoryBarriers, TL::Span<VkBufferMemoryBarrier2> bufferBarriers, TL::Span<VkImageMemoryBarrier2> imageBarriers);
+
+        inline void PipelineBarrier(TL::Span<VkMemoryBarrier2> memoryBarriers) { PipelineBarrier(memoryBarriers, {}, {}); }
+
+        inline void PipelineBarrier(TL::Span<VkBufferMemoryBarrier2> bufferBarriers) { PipelineBarrier({}, bufferBarriers, {}); }
+
+        inline void PipelineBarrier(TL::Span<VkImageMemoryBarrier2> imageBarriers) { PipelineBarrier({}, {}, imageBarriers); }
 
         IContext* m_context;
 

@@ -179,6 +179,7 @@ namespace RHI
         ImagePassAttachment()                                 = default;
         ImagePassAttachment(const ImagePassAttachment& other) = delete;
         ImagePassAttachment(ImagePassAttachment&& other)      = default;
+        virtual ~ImagePassAttachment() = default;
 
         Pass*                pass;
         ImageAttachment*     attachment;

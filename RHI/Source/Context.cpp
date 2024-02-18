@@ -10,8 +10,31 @@ namespace RHI
         {
             return result;
         }
-        (void)content;
-        RHI_UNREACHABLE();
+
+        BufferCreateInfo stagingBufferInfo{};
+        stagingBufferInfo.byteSize = CalculateRequiredSize(createInfo);
+        stagingBufferInfo.usageFlags = RHI::BufferUsage::CopySrc;
+        auto stagingBuffer = CreateBuffer(stagingBufferInfo).GetValue();
+        auto ptr = MapBuffer(stagingBuffer);
+        memcpy(ptr, content.data(), content.size());
+        UnmapBuffer(stagingBuffer);
+
+        auto fence = CreateFence();
+        auto command = m_transferCommandsAllocator->Allocate();
+        BufferToImageCopyInfo copyInfo{};
+        copyInfo.srcBuffer = stagingBuffer;
+        copyInfo.srcOffset = 0;
+        copyInfo.srcSize.width = createInfo.size.width;
+        copyInfo.srcSize.height = createInfo.size.height;
+        copyInfo.srcSize.depth = createInfo.size.depth;
+        copyInfo.dstImage = handle;
+        copyInfo.dstSubresource.imageAspects = RHI::ImageAspect::Color;
+        command->Begin();
+        command->Copy(copyInfo);
+        command->End();
+        m_frameScheduler->ExecuteCommandList(command, *fence);
+        fence->Wait();
+
         return handle;
     }
 

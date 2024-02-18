@@ -336,40 +336,11 @@ void ImGuiRenderer::Init(ImGuiRendererCreateInfo createInfo)
         imageInfo.usageFlags = RHI::ImageUsage::ShaderResource;
         imageInfo.usageFlags |= RHI::ImageUsage::CopyDst;
         imageInfo.arrayCount = 1;
-        m_image = m_context->CreateImage(imageInfo).GetValue();
-
+        m_image = m_context->CreateImageWithContent(imageInfo, RHI::TL::Span<uint8_t>{ pixels, size_t(width * height) }).GetValue();
         RHI::ImageViewCreateInfo viewInfo{};
         viewInfo.image = m_image;
         viewInfo.subresource.imageAspects = RHI::ImageAspect::Color;
         m_imageView = m_context->CreateImageView(viewInfo);
-
-        RHI::BufferCreateInfo stagingBufferCreateInfo{};
-        stagingBufferCreateInfo.usageFlags = RHI::BufferUsage::CopySrc;
-        stagingBufferCreateInfo.byteSize = 64 * RHI::MegaByte;
-        auto stagingBuffer = m_context->CreateBuffer(stagingBufferCreateInfo).GetValue();
-        auto stagingBufferPtr = m_context->MapBuffer(stagingBuffer);
-        memcpy(stagingBufferPtr, pixels, width * height * 4);
-        m_context->UnmapBuffer(stagingBuffer);
-        delete pixels;
-
-        RHI::BufferToImageCopyInfo copyInfo{};
-        copyInfo.srcBuffer = stagingBuffer;
-        copyInfo.srcOffset = 0;
-        copyInfo.srcSize.width = width;
-        copyInfo.srcSize.height = height;
-        copyInfo.srcSize.depth = 1;
-        copyInfo.dstImage = m_image;
-        copyInfo.dstSubresource.imageAspects = RHI::ImageAspect::Color;
-        RHI::CommandList* commandList = createInfo.commandAllocator->Allocate();
-        commandList->Begin();
-        commandList->Copy(copyInfo);
-        commandList->End();
-
-        auto fence = m_context->CreateFence();
-        createInfo.scheduler->ExecuteCommandList(commandList, *fence);
-        fence->Wait();
-
-        m_context->DestroyBuffer(stagingBuffer);
     }
 
     {

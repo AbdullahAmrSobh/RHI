@@ -603,7 +603,7 @@ namespace RHI::Vulkan
         depthStencilStateCreateInfo.minDepthBounds = 0.0;
         depthStencilStateCreateInfo.maxDepthBounds = 1.0;
 
-        std::vector<VkDynamicState> dynamicStates = {
+        VkDynamicState dynamicStates[] = {
             VK_DYNAMIC_STATE_VIEWPORT,
             VK_DYNAMIC_STATE_SCISSOR,
         };
@@ -612,8 +612,8 @@ namespace RHI::Vulkan
         dynamicStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
         dynamicStateCreateInfo.pNext = nullptr;
         dynamicStateCreateInfo.flags = 0;
-        dynamicStateCreateInfo.dynamicStateCount = uint32_t(dynamicStates.size());
-        dynamicStateCreateInfo.pDynamicStates = dynamicStates.data();
+        dynamicStateCreateInfo.dynamicStateCount = sizeof(dynamicStates) / sizeof(VkDynamicState);
+        dynamicStateCreateInfo.pDynamicStates = dynamicStates;
 
         uint32_t colorAttachmentFormatCount = 0;
         VkFormat colorAttachmentFormats[c_MaxRenderTargetAttachmentsCount] = {};

@@ -247,7 +247,6 @@ namespace RHI::Vulkan
         vkViewport.height = viewport.height;
         vkViewport.minDepth = viewport.minDepth;
         vkViewport.maxDepth = viewport.maxDepth;
-
         vkCmdSetViewport(m_commandBuffer, 0, 1, &vkViewport);
     }
 
@@ -264,88 +263,51 @@ namespace RHI::Vulkan
     void ICommandList::Draw(const DrawInfo& command)
     {
         auto pipeline = m_context->m_graphicsPipelineOwner.Get(command.pipelineState);
-
         vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->handle);
 
-        if (command.bindGroups.size())
+        if (command.bindGroups.empty() == false)
         {
             BindShaderBindGroups(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->layout, command.bindGroups);
         }
 
-        std::vector<VkBuffer> vertexBuffers;
-        std::vector<VkDeviceSize> vertexBufferSizes;
-
-        for (auto vertexBuffer : command.vertexBuffers)
+        if (command.vertexBuffers.empty() == false)
         {
-            auto buffer = m_context->m_bufferOwner.Get(vertexBuffer);
-
-            vertexBuffers.push_back(buffer->handle);
-            vertexBufferSizes.push_back(0);
+            uint32_t vertexBuffersCount = 0;
+            VkBuffer vertexBuffers[c_MaxPipelineVertexBindings] = {};
+            VkDeviceSize vertexBufferOffsets[c_MaxPipelineVertexBindings] = {};
+            for (auto handle : command.vertexBuffers)
+            {
+                auto buffer = m_context->m_bufferOwner.Get(handle);
+                auto index = vertexBuffersCount++;
+                vertexBuffers[index] = buffer->handle;
+                vertexBufferOffsets[index] = 0;
+            }
+            vkCmdBindVertexBuffers(m_commandBuffer, 0, vertexBuffersCount, vertexBuffers, vertexBufferOffsets);
         }
 
-        if (command.vertexBuffers.size())
+        auto parameters = command.parameters;
+        if (command.indexBuffers)
         {
-            vkCmdBindVertexBuffers(
-                m_commandBuffer,
-                0,
-                static_cast<uint32_t>(vertexBuffers.size()),
-                vertexBuffers.data(),
-                vertexBufferSizes.data());
-
-            if (command.indexBuffers)
-            {
-                auto buffer = m_context->m_bufferOwner.Get(command.indexBuffers);
-
-                vkCmdBindIndexBuffer(m_commandBuffer, buffer->handle, 0, VK_INDEX_TYPE_UINT32);
-
-                vkCmdDrawIndexed(
-                    m_commandBuffer,
-                    command.parameters.elementCount,
-                    command.parameters.instanceCount,
-                    command.parameters.firstElement,
-                    command.parameters.vertexOffset,
-                    static_cast<int32_t>(command.parameters.firstInstance));
-            }
-            else
-            {
-                vkCmdDraw(
-                    m_commandBuffer,
-                    command.parameters.elementCount,
-                    command.parameters.instanceCount,
-                    command.parameters.firstElement,
-                    command.parameters.firstInstance);
-            }
+            auto buffer = m_context->m_bufferOwner.Get(command.indexBuffers);
+            vkCmdBindIndexBuffer(m_commandBuffer, buffer->handle, 0, VK_INDEX_TYPE_UINT32);
+            vkCmdDrawIndexed(m_commandBuffer, parameters.elementCount, parameters.instanceCount, parameters.firstElement, parameters.vertexOffset, parameters.firstInstance);
         }
         else
         {
-            vkCmdDraw(
-                m_commandBuffer,
-                command.parameters.elementCount,
-                command.parameters.instanceCount,
-                command.parameters.firstElement,
-                command.parameters.firstInstance);
+            vkCmdDraw(m_commandBuffer, parameters.elementCount, parameters.instanceCount, parameters.firstElement, parameters.firstInstance);
         }
     }
 
     void ICommandList::Dispatch(const DispatchInfo& command)
     {
         auto pipeline = m_context->m_computePipelineOwner.Get(command.pipelineState);
-
         vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->handle);
-
         if (command.bindGroups.size())
         {
             BindShaderBindGroups(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->layout, command.bindGroups);
         }
-
-        vkCmdDispatchBase(
-            m_commandBuffer,
-            command.parameters.offsetX,
-            command.parameters.offsetY,
-            command.parameters.offsetZ,
-            command.parameters.countX,
-            command.parameters.countY,
-            command.parameters.countZ);
+        auto parameters = command.parameters;
+        vkCmdDispatchBase(m_commandBuffer, parameters.offsetX, parameters.offsetY, parameters.offsetZ, parameters.countX, parameters.countY, parameters.countZ);
     }
 
     void ICommandList::Copy(const BufferCopyInfo& command)
@@ -463,10 +425,7 @@ namespace RHI::Vulkan
 
         for (auto& attachment : pass.m_imagePassAttachments)
         {
-            if (attachment->usage == AttachmentUsage::Color ||
-                attachment->usage == AttachmentUsage::Depth ||
-                attachment->usage == AttachmentUsage::Stencil ||
-                attachment->usage == AttachmentUsage::DepthStencil)
+            if (IsRenderTarget(attachment->usage))
             {
                 passAttachments.push_back(attachment);
             }
@@ -513,10 +472,7 @@ namespace RHI::Vulkan
         std::vector<ImagePassAttachment*> passAttachments;
         for (auto& attachment : pass.m_imagePassAttachments)
         {
-            if (attachment->usage == AttachmentUsage::Color ||
-                attachment->usage == AttachmentUsage::Depth ||
-                attachment->usage == AttachmentUsage::Stencil ||
-                attachment->usage == AttachmentUsage::DepthStencil)
+            if (IsRenderTarget(attachment->usage))
             {
                 passAttachments.push_back(attachment);
             }
@@ -552,18 +508,17 @@ namespace RHI::Vulkan
 
     void ICommandList::BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<Handle<BindGroup>> bindGroups)
     {
-        std::vector<VkDescriptorSet> descriptorSets;
-
+        uint32_t count = 0;
+        VkDescriptorSet descriptorSets[c_MaxPipelineBindGroupsCount] = {};
         for (auto bindGroupHandle : bindGroups)
         {
             auto bindGroup = m_context->m_bindGroupOwner.Get(bindGroupHandle);
-            descriptorSets.push_back(bindGroup->descriptorSet);
+            descriptorSets[count++] = bindGroup->descriptorSet;
         }
-
-        vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, uint32_t(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
+        vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, count, descriptorSets, 0, nullptr);
     }
 
-    void ICommandList::TransitionPassAttachments(BarrierType barrierType, TL::Span<ImagePassAttachment*> passAttachments) const
+    void ICommandList::TransitionPassAttachments(BarrierType barrierType, TL::Span<ImagePassAttachment*> passAttachments)
     {
         std::vector<VkImageMemoryBarrier2> barriers;
 
@@ -640,15 +595,10 @@ namespace RHI::Vulkan
             // }
         }
 
-        auto dependencyInfo = VkDependencyInfo{};
-        dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-        dependencyInfo.pNext = nullptr;
-        dependencyInfo.imageMemoryBarrierCount = uint32_t(barriers.size());
-        dependencyInfo.pImageMemoryBarriers = barriers.data();
-        vkCmdPipelineBarrier2(m_commandBuffer, &dependencyInfo);
+        PipelineBarrier(barriers);
     }
 
-    void ICommandList::TransitionPassAttachments(BarrierType barrierType, TL::Span<BufferPassAttachment*> passAttachments) const
+    void ICommandList::TransitionPassAttachments(BarrierType barrierType, TL::Span<BufferPassAttachment*> passAttachments)
     {
         (void)barrierType;
         std::vector<VkBufferMemoryBarrier2> barriers;
@@ -688,11 +638,21 @@ namespace RHI::Vulkan
             }
         }
 
-        auto dependencyInfo = VkDependencyInfo{};
+        PipelineBarrier(barriers);
+    }
+
+    void ICommandList::PipelineBarrier(TL::Span<VkMemoryBarrier2> memoryBarriers, TL::Span<VkBufferMemoryBarrier2> bufferBarriers, TL::Span<VkImageMemoryBarrier2> imageBarriers)
+    {
+        VkDependencyInfo dependencyInfo{};
         dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
         dependencyInfo.pNext = nullptr;
-        dependencyInfo.bufferMemoryBarrierCount = uint32_t(barriers.size());
-        dependencyInfo.pBufferMemoryBarriers = barriers.data();
+        dependencyInfo.dependencyFlags = 0;
+        dependencyInfo.memoryBarrierCount = uint32_t(memoryBarriers.size());
+        dependencyInfo.pMemoryBarriers = memoryBarriers.data();
+        dependencyInfo.bufferMemoryBarrierCount = uint32_t(bufferBarriers.size());
+        dependencyInfo.pBufferMemoryBarriers = bufferBarriers.data();
+        dependencyInfo.imageMemoryBarrierCount = uint32_t(imageBarriers.size());
+        dependencyInfo.pImageMemoryBarriers = imageBarriers.data();
         vkCmdPipelineBarrier2(m_commandBuffer, &dependencyInfo);
     }
 

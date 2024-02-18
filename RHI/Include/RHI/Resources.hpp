@@ -19,8 +19,6 @@ namespace RHI
     inline static constexpr uint32_t c_MaxPipelineVertexBindings                 = 32u;
     inline static constexpr uint32_t c_MaxPipelineVertexAttributes               = 32u;
     inline static constexpr uint32_t c_MaxPipelineBindGroupsCount                = 4u;
-    inline static constexpr uint32_t KiloByte                                    = 1000u;
-    inline static constexpr uint32_t MegaByte                                    = 1000u * KiloByte;
 
     class Context;
     class ShaderModule;
