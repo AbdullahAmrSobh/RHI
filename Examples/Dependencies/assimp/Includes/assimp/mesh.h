@@ -52,7 +52,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 #ifdef _MSC_VER
-#pragma warning(disable : 4351)
+// #pragma warning(disable : 4351)
 #endif // _MSC_VER
 
 #include <assimp/aabb.h>
@@ -658,7 +658,7 @@ struct aiMesh {
 
     /**
      * @brief Vertex positions.
-     * 
+     *
      * This array is always present in a mesh. The array is
      * mNumVertices in size.
      */
@@ -666,7 +666,7 @@ struct aiMesh {
 
     /**
      * @brief Vertex normals.
-     * 
+     *
      * The array contains normalized vectors, nullptr if not present.
      * The array is mNumVertices in size. Normals are undefined for
      * point and line primitives. A mesh consisting of points and
@@ -690,7 +690,7 @@ struct aiMesh {
 
     /**
      * @brief Vertex tangents.
-     * 
+     *
      * The tangent of a vertex points in the direction of the positive
      * X texture axis. The array contains normalized vectors, nullptr if
      * not present. The array is mNumVertices in size. A mesh consisting
@@ -706,7 +706,7 @@ struct aiMesh {
 
     /**
      * @brief Vertex bitangents.
-     * 
+     *
      * The bitangent of a vertex points in the direction of the positive
      * Y texture axis. The array contains normalized vectors, nullptr if not
      * present. The array is mNumVertices in size.
@@ -717,7 +717,7 @@ struct aiMesh {
 
     /**
      * @brief Vertex color sets.
-     * 
+     *
      * A mesh may contain 0 to #AI_MAX_NUMBER_OF_COLOR_SETS vertex
      * colors per vertex. nullptr if not present. Each array is
      * mNumVertices in size if present.
@@ -726,7 +726,7 @@ struct aiMesh {
 
     /**
      * @brief Vertex texture coordinates, also known as UV channels.
-     * 
+     *
      * A mesh may contain 0 to AI_MAX_NUMBER_OF_TEXTURECOORDS per
      * vertex. nullptr if not present. The array is mNumVertices in size.
      */
@@ -734,7 +734,7 @@ struct aiMesh {
 
     /**
      * @brief Specifies the number of components for a given UV channel.
-     * 
+     *
      * Up to three channels are supported (UVW, for accessing volume
      * or cube maps). If the value is 2 for a given channel n, the
      * component p.z of mTextureCoords[n][p] is set to 0.0f.
@@ -745,7 +745,7 @@ struct aiMesh {
 
     /**
      * @brief The faces the mesh is constructed from.
-     * 
+     *
      * Each face refers to a number of vertices by their indices.
      * This array is always present in a mesh, its size is given
      *  in mNumFaces. If the #AI_SCENE_FLAGS_NON_VERBOSE_FORMAT
@@ -760,7 +760,7 @@ struct aiMesh {
 
     /**
      * @brief The bones of this mesh.
-     * 
+     *
      * A bone consists of a name by which it can be found in the
      * frame hierarchy and a set of vertex weights.
      */
@@ -768,7 +768,7 @@ struct aiMesh {
 
     /**
      * @brief The material used by this mesh.
-     * 
+     *
      * A mesh uses only a single material. If an imported model uses
      * multiple materials, the import splits up the mesh. Use this value
      * as index into the scene's material list.
@@ -911,7 +911,7 @@ struct aiMesh {
     }
 
     //! @brief Check whether the mesh contains tangent and bitangent vectors.
-    //! 
+    //!
     //! It is not possible that it contains tangents and no bitangents
     //! (or the other way round). The existence of one of them
     //! implies that the second is there, too.
@@ -927,7 +927,7 @@ struct aiMesh {
         if (index >= AI_MAX_NUMBER_OF_COLOR_SETS) {
             return false;
         }
-        return mColors[index] != nullptr && mNumVertices > 0;        
+        return mColors[index] != nullptr && mNumVertices > 0;
     }
 
     //! @brief Check whether the mesh contains a texture coordinate set
@@ -1095,7 +1095,7 @@ struct aiSkeletonBone {
     /// @brief The class constructor with its parent
     /// @param  parent      The parent node index.
     aiSkeletonBone(unsigned int parent) :
-            mParent(parent),
+            mParent(int(parent)),
 #ifndef ASSIMP_BUILD_NO_ARMATUREPOPULATE_PROCESS
             mArmature(nullptr),
             mNode(nullptr),

@@ -328,8 +328,8 @@ void ImGuiRenderer::Init(ImGuiRendererCreateInfo createInfo)
         io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
         RHI::ImageCreateInfo imageInfo{};
-        imageInfo.size.width = width;
-        imageInfo.size.height = height;
+        imageInfo.size.width = uint32_t(width);
+        imageInfo.size.height = uint32_t(height);
         imageInfo.size.depth = 1;
         imageInfo.type = RHI::ImageType::Image2D;
         imageInfo.format = RHI::Format::RGBA8_UNORM;

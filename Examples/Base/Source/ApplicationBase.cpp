@@ -4,6 +4,7 @@
 #include <cassert>
 #include <fstream>
 #include <iostream>
+#include <vector>
 #include <memory>
 #include <string>
 #include <chrono>
@@ -51,10 +52,10 @@ ImageData ApplicationBase::LoadImage(std::string_view path) const
 
     // Create ImageData object
     ImageData imageData;
-    imageData.width = width;
-    imageData.height = height;
+    imageData.width = uint32_t(width);
+    imageData.height = uint32_t(height);
     imageData.depth = 1; // Assuming single-layer images
-    imageData.channels = channels;
+    imageData.channels = uint32_t(channels);
     imageData.bytesPerChannel = 1; // Assuming 8-bit per channel data
 
     // Convert image data to std::vector<uint8_t>
@@ -73,7 +74,7 @@ std::vector<uint8_t> ApplicationBase::ReadBinaryFile(std::string_view path) cons
     auto fileSize = (size_t)stream.tellg();
     stream.seekg(0);
     std::vector<uint8_t> buffer(fileSize);
-    stream.read((char*)buffer.data(), fileSize);
+    stream.read((char*)buffer.data(), (std::streamsize)fileSize);
     stream.close();
     return buffer;
 }
@@ -88,7 +89,7 @@ ApplicationBase::ApplicationBase(std::string name, uint32_t width, uint32_t heig
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-    auto window = glfwCreateWindow(m_windowWidth, m_windowHeight, name.c_str(), nullptr, nullptr);
+    auto window = glfwCreateWindow(int(m_windowWidth), int(m_windowHeight), name.c_str(), nullptr, nullptr);
     assert(window);
 
     glfwMakeContextCurrent(window);

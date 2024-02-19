@@ -22,7 +22,7 @@
 #endif
 
 #ifndef BASE_DEPRECATED
-#  define BASE_DEPRECATED __declspec(deprecated)
+#  define BASE_DEPRECATED 
 #endif
 
 #ifndef BASE_DEPRECATED_EXPORT
