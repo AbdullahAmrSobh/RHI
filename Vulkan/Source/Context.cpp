@@ -88,6 +88,8 @@ namespace RHI::Vulkan
 
     IContext::~IContext()
     {
+        DestroyResources();
+        
         vkDeviceWaitIdle(m_device);
         vkDestroyDevice(m_device, nullptr);
         vmaDestroyAllocator(m_allocator);

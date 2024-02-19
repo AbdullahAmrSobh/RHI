@@ -274,18 +274,18 @@ public:
             .height = m_windowHeight
         };
 
-        // RHI::DrawInfo drawCommand = {
-        //     .pipelineState = m_pipelineState,
-        //     .bindGroups = m_bindGroup,
-        //     .vertexBuffers = { m_mesh.positionsBuffer, m_mesh.normalsBuffer, m_mesh.texCoordBuffer },
-        //     .indexBuffers = m_mesh.indexBuffer,
-        //     .parameters = { .elementCount = m_mesh.drawElementsCount },
-        // };
+        RHI::DrawInfo drawCommand = {
+            .pipelineState = m_pipelineState,
+            .bindGroups = m_bindGroup,
+            .vertexBuffers = { m_mesh.positionsBuffer, m_mesh.normalsBuffer, m_mesh.texCoordBuffer },
+            .indexBuffers = m_mesh.indexBuffer,
+            .parameters = { .elementCount = m_mesh.drawElementsCount },
+        };
 
         commandList->Begin(*m_renderpass);
         commandList->SetViewport(viewport);
         commandList->SetSicssor(scissor);
-        // commandList->Draw(drawCommand);
+        commandList->Draw(drawCommand);
 
         // auto drawData = ImGui::GetDrawData();
         // m_imguiRenderer->RenderDrawData(drawData, *commandList);
