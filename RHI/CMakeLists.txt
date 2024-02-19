@@ -29,6 +29,8 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Attachments.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Pass.cpp
+
+    ${CMAKE_SOURCE_DIR}/tracy/public/TracyClient.cpp
 )
 
 include(${CMAKE_SOURCE_DIR}/CMake/AddTarget.cmake)
@@ -39,3 +41,5 @@ aams_add_target(
     HEADERS ${HEADER_FILES}
     SOURCES ${SOURCE_FILES}
 )
+
+target_include_directories(RHI SYSTEM PUBLIC "${CMAKE_SOURCE_DIR}/tracy/public")

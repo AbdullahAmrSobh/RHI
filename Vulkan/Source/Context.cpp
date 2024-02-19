@@ -10,6 +10,8 @@
 
 #include "Context.hpp"
 
+#include <tracy/Tracy.hpp>
+
 #ifdef VK_USE_PLATFORM_WIN32_KHR
     #define RHI_VULKAN_USE_CURRENT_PLATFORM_SURFACE_EXTENSION_NAME VK_KHR_WIN32_SURFACE_EXTENSION_NAME
 #elif defined(VK_USE_PLATFORM_MACOS_MVK)
@@ -88,6 +90,8 @@ namespace RHI::Vulkan
 
     IContext::~IContext()
     {
+        ZoneScoped;
+
         DestroyResources();
         
         vkDeviceWaitIdle(m_device);
@@ -98,6 +102,8 @@ namespace RHI::Vulkan
 
     VkResult IContext::Init(const ApplicationInfo& appInfo)
     {
+        ZoneScoped;
+
         // Create Vulkan instance
         std::vector<const char*> enabledLayersNames = {
             "VK_LAYER_KHRONOS_validation",
@@ -342,6 +348,8 @@ namespace RHI::Vulkan
     ////////////////////////////////////////////////////////////
     Ptr<Swapchain> IContext::CreateSwapchain(const SwapchainCreateInfo& createInfo)
     {
+        ZoneScoped;
+
         auto swapchain = CreatePtr<ISwapchain>(this);
         auto result = swapchain->Init(createInfo);
         if (result != VK_SUCCESS)
@@ -353,6 +361,8 @@ namespace RHI::Vulkan
 
     Ptr<ShaderModule> IContext::CreateShaderModule(TL::Span<const uint8_t> shaderBlob)
     {
+        ZoneScoped;
+
         auto shaderModule = CreatePtr<IShaderModule>(this);
         auto result = shaderModule->Init(shaderBlob);
         if (result != VK_SUCCESS)
@@ -364,6 +374,8 @@ namespace RHI::Vulkan
 
     Ptr<Fence> IContext::CreateFence()
     {
+        ZoneScoped;
+
         auto fence = CreatePtr<IFence>(this);
         auto result = fence->Init();
         if (result != VK_SUCCESS)
@@ -375,6 +387,8 @@ namespace RHI::Vulkan
 
     Ptr<CommandListAllocator> IContext::CreateCommandListAllocator(QueueType queueType)
     {
+        ZoneScoped;
+
         auto commandListAllocator = CreatePtr<ICommandListAllocator>(this);
         auto result = commandListAllocator->Init(queueType);
         if (result != VK_SUCCESS)
@@ -386,6 +400,8 @@ namespace RHI::Vulkan
 
     Ptr<ResourcePool> IContext::CreateResourcePool(const ResourcePoolCreateInfo& createInfo)
     {
+        ZoneScoped;
+
         auto resourcePool = CreatePtr<IResourcePool>(this);
         auto result = resourcePool->Init(createInfo);
         if (result != VK_SUCCESS)
@@ -397,6 +413,8 @@ namespace RHI::Vulkan
 
     Handle<BindGroupLayout> IContext::CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)
     {
+        ZoneScoped;
+
         auto [handle, bindGroupLayout] = m_bindGroupLayoutsOwner.InsertZerod();
         auto result = bindGroupLayout.Init(this, createInfo);
         if (IsError(result))
@@ -408,6 +426,8 @@ namespace RHI::Vulkan
 
     void IContext::DestroyBindGroupLayout(Handle<BindGroupLayout> handle)
     {
+        ZoneScoped;
+
         auto bindGroupLayout = m_bindGroupLayoutsOwner.Get(handle);
         // clang-format off
         m_deferDeleteQueue.push_back([&](){ bindGroupLayout->Shutdown(this); });
@@ -416,6 +436,8 @@ namespace RHI::Vulkan
 
     Handle<BindGroup> IContext::CreateBindGroup(Handle<BindGroupLayout> layoutHandle)
     {
+        ZoneScoped;
+
         auto [handle, bindGroup] = m_bindGroupOwner.InsertZerod();
         auto result = bindGroup.Init(this, layoutHandle);
         if (IsError(result))
@@ -427,6 +449,8 @@ namespace RHI::Vulkan
 
     void IContext::DestroyBindGroup(Handle<BindGroup> handle)
     {
+        ZoneScoped;
+
         auto bindGroup = m_bindGroupOwner.Get(handle);
         // clang-format off
         m_deferDeleteQueue.push_back([&](){ bindGroup->Shutdown(this); });
@@ -435,12 +459,16 @@ namespace RHI::Vulkan
 
     void IContext::UpdateBindGroup(Handle<BindGroup> handle, const BindGroupData& data)
     {
+        ZoneScoped;
+
         auto bindGroup = m_bindGroupOwner.Get(handle);
         bindGroup->Write(this, data);
     }
 
     Handle<PipelineLayout> IContext::CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)
     {
+        ZoneScoped;
+
         auto [handle, pipelineLayout] = m_pipelineLayoutOwner.InsertZerod();
         auto result = pipelineLayout.Init(this, createInfo);
         if (IsError(result))
@@ -452,6 +480,8 @@ namespace RHI::Vulkan
 
     void IContext::DestroyPipelineLayout(Handle<PipelineLayout> handle)
     {
+        ZoneScoped;
+
         auto pipelineLayout = m_pipelineLayoutOwner.Get(handle);
         // clang-format off
         m_deferDeleteQueue.push_back([&](){ pipelineLayout->Shutdown(this); });
@@ -460,6 +490,8 @@ namespace RHI::Vulkan
 
     Handle<GraphicsPipeline> IContext::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)
     {
+        ZoneScoped;
+
         auto [handle, graphicsPipeline] = m_graphicsPipelineOwner.InsertZerod();
         auto result = graphicsPipeline.Init(this, createInfo);
         if (IsError(result))
@@ -471,6 +503,8 @@ namespace RHI::Vulkan
 
     void IContext::DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle)
     {
+        ZoneScoped;
+
         auto graphicsPipeline = m_graphicsPipelineOwner.Get(handle);
         // clang-format off
         m_deferDeleteQueue.push_back([&](){ graphicsPipeline->Shutdown(this); });
@@ -479,6 +513,8 @@ namespace RHI::Vulkan
 
     Handle<ComputePipeline> IContext::CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
     {
+        ZoneScoped;
+
         auto [handle, computePipeline] = m_computePipelineOwner.InsertZerod();
         auto result = computePipeline.Init(this, createInfo);
         if (IsError(result))
@@ -490,6 +526,8 @@ namespace RHI::Vulkan
 
     void IContext::DestroyComputePipeline(Handle<ComputePipeline> handle)
     {
+        ZoneScoped;
+
         auto computePipeline = m_computePipelineOwner.Get(handle);
         // clang-format off
         m_deferDeleteQueue.push_back([&](){ computePipeline->Shutdown(this); });
@@ -498,6 +536,8 @@ namespace RHI::Vulkan
 
     Handle<Sampler> IContext::CreateSampler(const SamplerCreateInfo& createInfo)
     {
+        ZoneScoped;
+
         auto [handle, sampler] = m_samplerOwner.InsertZerod();
         auto result = sampler.Init(this, createInfo);
         if (IsError(result))
@@ -509,6 +549,8 @@ namespace RHI::Vulkan
 
     void IContext::DestroySampler(Handle<Sampler> handle)
     {
+        ZoneScoped;
+
         auto sampler = m_samplerOwner.Get(handle);
         // clang-format off
         m_deferDeleteQueue.push_back([&](){ sampler->Shutdown(this); });
@@ -517,6 +559,8 @@ namespace RHI::Vulkan
 
     Result<Handle<Image>> IContext::CreateImage(const ImageCreateInfo& createInfo)
     {
+        ZoneScoped;
+
         auto [handle, image] = m_imageOwner.InsertZerod();
         auto result = image.Init(this, createInfo);
         if (IsError(result))
@@ -529,6 +573,8 @@ namespace RHI::Vulkan
 
     void IContext::DestroyImage(Handle<Image> handle)
     {
+        ZoneScoped;
+
         auto image = m_imageOwner.Get(handle);
         // clang-format off
         m_deferDeleteQueue.push_back([&](){ image->Shutdown(this); });
@@ -537,6 +583,8 @@ namespace RHI::Vulkan
 
     Result<Handle<Buffer>> IContext::CreateBuffer(const BufferCreateInfo& createInfo)
     {
+        ZoneScoped;
+
         auto [handle, buffer] = m_bufferOwner.InsertZerod();
         auto result = buffer.Init(this, createInfo);
         if (IsError(result))
@@ -549,6 +597,8 @@ namespace RHI::Vulkan
 
     void IContext::DestroyBuffer(Handle<Buffer> handle)
     {
+        ZoneScoped;
+
         auto buffer = m_bufferOwner.Get(handle);
         // clang-format off
         m_deferDeleteQueue.push_back([&](){ buffer->Shutdown(this); });
@@ -557,6 +607,8 @@ namespace RHI::Vulkan
 
     Handle<ImageView> IContext::CreateImageView(const ImageViewCreateInfo& createInfo)
     {
+        ZoneScoped;
+
         auto [handle, imageView] = m_imageViewOwner.InsertZerod();
         auto result = imageView.Init(this, createInfo);
         if (IsError(result))
@@ -568,6 +620,8 @@ namespace RHI::Vulkan
 
     void IContext::DestroyImageView(Handle<ImageView> handle)
     {
+        ZoneScoped;
+
         auto imageView = m_imageViewOwner.Get(handle);
         // clang-format off
         m_deferDeleteQueue.push_back([&](){ imageView->Shutdown(this); });
@@ -576,6 +630,8 @@ namespace RHI::Vulkan
 
     Handle<BufferView> IContext::CreateBufferView(const BufferViewCreateInfo& createInfo)
     {
+        ZoneScoped;
+
         auto [handle, bufferView] = m_bufferViewOwner.InsertZerod();
         auto result = bufferView.Init(this, createInfo);
         if (IsError(result))
@@ -587,6 +643,8 @@ namespace RHI::Vulkan
 
     void IContext::DestroyBufferView(Handle<BufferView> handle)
     {
+        ZoneScoped;
+
         auto imageView = m_imageViewOwner.Get(handle);
         // clang-format off
         m_deferDeleteQueue.push_back([&](){ imageView->Shutdown(this); });
@@ -595,6 +653,8 @@ namespace RHI::Vulkan
 
     DeviceMemoryPtr IContext::MapBuffer(Handle<Buffer> handle)
     {
+        ZoneScoped;
+
         // TODO: Remove from here (wrap as new function Resources.hpp)
         auto resource = m_bufferOwner.Get(handle);
         auto allocation = resource->allocation.handle;
@@ -607,6 +667,8 @@ namespace RHI::Vulkan
 
     void IContext::UnmapBuffer(Handle<Buffer> handle)
     {
+        ZoneScoped;
+
         // TODO: Remove from here (wrap as new function Resources.hpp)
         auto resource = m_bufferOwner.Get(handle)->allocation.handle;
         vmaUnmapMemory(m_allocator, resource);
@@ -618,6 +680,8 @@ namespace RHI::Vulkan
 
     void IContext::DestroyResources()
     {
+        ZoneScoped;
+
         for (auto destroyItem : m_deferDeleteQueue)
         {
             destroyItem();
@@ -639,6 +703,8 @@ namespace RHI::Vulkan
 
     void IContext::FreeSemaphore(VkSemaphore semaphore)
     {
+        ZoneScoped;
+
         if (semaphore != VK_NULL_HANDLE)
         {
             vkDestroySemaphore(m_device, semaphore, nullptr);

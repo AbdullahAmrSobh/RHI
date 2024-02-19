@@ -1,9 +1,13 @@
 #include "RHI/Context.hpp"
 
+#include <tracy/Tracy.hpp>
+
 namespace RHI
 {
     Result<Handle<Image>> Context::CreateImageWithContent(const ImageCreateInfo& createInfo, TL::Span<uint8_t> content)
     {
+        ZoneScoped;
+
         auto [handle, result] = CreateImage(createInfo);
 
         if (IsError(result))
@@ -40,6 +44,8 @@ namespace RHI
 
     Result<Handle<Buffer>> Context::CreateBufferWithContent(const BufferCreateInfo& createInfo, TL::Span<uint8_t> content)
     {
+        ZoneScoped;
+
         auto [handle, result] = CreateBuffer(createInfo);
 
         if (IsError(result))
@@ -53,6 +59,8 @@ namespace RHI
 
     void Context::DebugLogError(const char* message, ...)
     {
+        ZoneScoped;
+
 #if RHI_DEBUG
         if (m_debugCallbacks)
             m_debugCallbacks->LogError(message, __VA_ARGS__);
@@ -63,6 +71,8 @@ namespace RHI
 
     void Context::DebugLogWarn(const char* message, ...)
     {
+        ZoneScoped;
+
 #if RHI_DEBUG
         if (m_debugCallbacks)
             m_debugCallbacks->LogWarnning(message, __VA_ARGS__);
@@ -73,6 +83,8 @@ namespace RHI
 
     void Context::DebugLogInfo(const char* message, ...)
     {
+        ZoneScoped;
+
 #if RHI_DEBUG
         if (m_debugCallbacks)
             m_debugCallbacks->LogInfo(message, __VA_ARGS__);

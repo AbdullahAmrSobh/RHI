@@ -3,6 +3,8 @@
 #include "Common.hpp"
 #include "Resources.hpp"
 
+#include <tracy/Tracy.hpp>
+
 namespace RHI::Vulkan
 {
     VkPresentModeKHR ConvertPresentMode(SwapchainPresentMode presentMode)
@@ -24,10 +26,14 @@ namespace RHI::Vulkan
         , m_surface(VK_NULL_HANDLE)
         , m_lastPresentResult(VK_ERROR_UNKNOWN)
     {
+        ZoneScoped;
+
     }
 
     ISwapchain::~ISwapchain()
     {
+        ZoneScoped;
+
         auto context = static_cast<IContext*>(m_context);
         vkDestroySwapchainKHR(context->m_device, m_swapchain, nullptr);
         vkDestroySurfaceKHR(context->m_instance, m_surface, nullptr);
@@ -37,6 +43,8 @@ namespace RHI::Vulkan
 
     VkResult ISwapchain::Init(const SwapchainCreateInfo& createInfo)
     {
+        ZoneScoped;
+
         auto context = static_cast<IContext*>(m_context);
 
         m_createInfo = createInfo;
@@ -132,6 +140,8 @@ namespace RHI::Vulkan
 
     ResultCode ISwapchain::Recreate(ImageSize2D newSize, uint32_t imageCount, SwapchainPresentMode presentMode)
     {
+        ZoneScoped;
+
         m_createInfo.imageSize = newSize;
         m_createInfo.imageCount = imageCount;
         m_createInfo.presentMode = presentMode;
@@ -143,6 +153,8 @@ namespace RHI::Vulkan
 
     ResultCode ISwapchain::Present()
     {
+        ZoneScoped;
+
         auto context = (IContext*)m_context;
         auto queue = context->GetQueue(QueueType::Graphics);
 

@@ -8,6 +8,8 @@
 
 #include <optional>
 
+#include <tracy/Tracy.hpp>
+
 namespace RHI::Vulkan
 {
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -171,6 +173,8 @@ namespace RHI::Vulkan
 
     VkResult ICommandListAllocator::Init(QueueType queueType)
     {
+        ZoneScoped;
+
         auto framesCount = m_context->GetScheduler().GetBufferedFramesCount();
         auto queueFamilyIndex = m_context->GetQueueFamilyIndex(queueType);
         m_currentFrameIndex = 0;
@@ -186,6 +190,8 @@ namespace RHI::Vulkan
 
     CommandList* ICommandListAllocator::Allocate()
     {
+        ZoneScoped;
+
         auto& pool = m_commandPools[m_currentFrameIndex];
         return pool.Allocate(m_context);
     }
@@ -203,6 +209,8 @@ namespace RHI::Vulkan
 
     void ICommandList::Begin()
     {
+        ZoneScoped;
+
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.pNext = nullptr;
@@ -213,6 +221,8 @@ namespace RHI::Vulkan
 
     void ICommandList::Begin(Pass& passBase)
     {
+        ZoneScoped;
+
         auto& pass = static_cast<IPass&>(passBase);
 
         m_pass = &pass;
@@ -230,6 +240,8 @@ namespace RHI::Vulkan
 
     void ICommandList::End()
     {
+        ZoneScoped;
+
         if (m_pass)
         {
             RenderingEnd(*m_pass);
@@ -240,6 +252,8 @@ namespace RHI::Vulkan
 
     void ICommandList::SetViewport(const Viewport& viewport)
     {
+        ZoneScoped;
+
         VkViewport vkViewport{};
         vkViewport.x = viewport.offsetX;
         vkViewport.y = viewport.offsetY;
@@ -252,6 +266,8 @@ namespace RHI::Vulkan
 
     void ICommandList::SetSicssor(const Scissor& scissor)
     {
+        ZoneScoped;
+
         VkRect2D vkScissor{};
         vkScissor.extent.width = scissor.width;
         vkScissor.extent.height = scissor.height;
@@ -262,6 +278,8 @@ namespace RHI::Vulkan
 
     void ICommandList::Draw(const DrawInfo& command)
     {
+        ZoneScoped;
+
         auto pipeline = m_context->m_graphicsPipelineOwner.Get(command.pipelineState);
         vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->handle);
 
@@ -300,6 +318,8 @@ namespace RHI::Vulkan
 
     void ICommandList::Dispatch(const DispatchInfo& command)
     {
+        ZoneScoped;
+
         auto pipeline = m_context->m_computePipelineOwner.Get(command.pipelineState);
         vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->handle);
         if (command.bindGroups.size())
@@ -312,6 +332,8 @@ namespace RHI::Vulkan
 
     void ICommandList::Copy(const BufferCopyInfo& command)
     {
+        ZoneScoped;
+
         auto srcBuffer = m_context->m_bufferOwner.Get(command.srcBuffer);
         auto destinationBuffer = m_context->m_bufferOwner.Get(command.dstBuffer);
 
@@ -324,6 +346,8 @@ namespace RHI::Vulkan
 
     void ICommandList::Copy(const ImageCopyInfo& command)
     {
+        ZoneScoped;
+
         auto srcImage = m_context->m_imageOwner.Get(command.srcImage);
         auto dstImage = m_context->m_imageOwner.Get(command.dstImage);
 
@@ -338,6 +362,8 @@ namespace RHI::Vulkan
 
     void ICommandList::Copy(const BufferToImageCopyInfo& command)
     {
+        ZoneScoped;
+
         auto srcBuffer = m_context->m_bufferOwner.Get(command.srcBuffer);
         auto dstImage = m_context->m_imageOwner.Get(command.dstImage);
 
@@ -386,6 +412,8 @@ namespace RHI::Vulkan
 
     void ICommandList::Copy(const ImageToBufferCopyInfo& command)
     {
+        ZoneScoped;
+
         auto srcImage = m_context->m_imageOwner.Get(command.srcImage);
         auto dstBuffer = m_context->m_bufferOwner.Get(command.dstBuffer);
 
@@ -401,6 +429,8 @@ namespace RHI::Vulkan
 
     VkRenderingAttachmentInfo ICommandList::GetAttachmentInfo(const ImagePassAttachment& passAttachment) const
     {
+        ZoneScoped;
+
         auto imageView = m_context->m_imageViewOwner.Get(passAttachment.view);
         RHI_ASSERT(imageView != nullptr);
 
@@ -420,6 +450,8 @@ namespace RHI::Vulkan
 
     void ICommandList::RenderingBegin(IPass& pass)
     {
+        ZoneScoped;
+
         ImageSize2D renderArea = pass.m_size;
         std::vector<ImagePassAttachment*> passAttachments;
 
@@ -468,6 +500,8 @@ namespace RHI::Vulkan
 
     void ICommandList::RenderingEnd(IPass& pass)
     {
+        ZoneScoped;
+
         vkCmdEndRendering(m_commandBuffer);
         std::vector<ImagePassAttachment*> passAttachments;
         for (auto& attachment : pass.m_imagePassAttachments)
@@ -482,6 +516,8 @@ namespace RHI::Vulkan
 
     void ICommandList::PushDebugMarker(const char* name)
     {
+        ZoneScoped;
+
         (void)name;
 #if RHI_DEBUG
         if (m_context->m_vkCmdDebugMarkerBeginEXT)
@@ -498,6 +534,8 @@ namespace RHI::Vulkan
 
     void ICommandList::PopDebugMarker()
     {
+        ZoneScoped;
+
 #if RHI_DEUG
         if (m_context->m_vkCmdDebugMarkerEndEXT)
         {
@@ -508,6 +546,8 @@ namespace RHI::Vulkan
 
     void ICommandList::BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<Handle<BindGroup>> bindGroups)
     {
+        ZoneScoped;
+
         uint32_t count = 0;
         VkDescriptorSet descriptorSets[c_MaxPipelineBindGroupsCount] = {};
         for (auto bindGroupHandle : bindGroups)
@@ -520,6 +560,8 @@ namespace RHI::Vulkan
 
     void ICommandList::TransitionPassAttachments(BarrierType barrierType, TL::Span<ImagePassAttachment*> passAttachments)
     {
+        ZoneScoped;
+
         std::vector<VkImageMemoryBarrier2> barriers;
 
         for (auto passAttachment : passAttachments)
@@ -600,6 +642,8 @@ namespace RHI::Vulkan
 
     void ICommandList::TransitionPassAttachments(BarrierType barrierType, TL::Span<BufferPassAttachment*> passAttachments)
     {
+        ZoneScoped;
+
         (void)barrierType;
         std::vector<VkBufferMemoryBarrier2> barriers;
 
@@ -643,6 +687,8 @@ namespace RHI::Vulkan
 
     void ICommandList::PipelineBarrier(TL::Span<VkMemoryBarrier2> memoryBarriers, TL::Span<VkBufferMemoryBarrier2> bufferBarriers, TL::Span<VkImageMemoryBarrier2> imageBarriers)
     {
+        ZoneScoped;
+
         VkDependencyInfo dependencyInfo{};
         dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
         dependencyInfo.pNext = nullptr;

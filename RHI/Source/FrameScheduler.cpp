@@ -3,6 +3,8 @@
 #include "RHI/Context.hpp"
 #include "RHI/Common/Hash.hpp"
 
+#include <tracy/Tracy.hpp>
+
 namespace std
 {
     template<>
@@ -59,6 +61,9 @@ namespace RHI
 
     void FrameScheduler::Begin()
     {
+        FrameMark;
+        ZoneScoped;
+
         auto& fence = GetFrameCurrentFence();
         fence.Wait();
         fence.Reset();
@@ -84,6 +89,8 @@ namespace RHI
 
     void FrameScheduler::End()
     {
+        ZoneScoped;
+
         auto& fence = GetFrameCurrentFence();
         for (auto pass : m_passList)
         {
@@ -196,6 +203,8 @@ namespace RHI
 
     void FrameScheduler::ResizeFrame(ImageSize2D newSize)
     {
+        ZoneScoped;
+
         m_frameSize = newSize;
         Cleanup();
         Compile();
@@ -203,11 +212,15 @@ namespace RHI
 
     void FrameScheduler::ExecuteCommandList(TL::Span<CommandList*> commandLists, Fence& fence)
     {
+        ZoneScoped;
+
         QueueCommandsSubmit(QueueType::Graphics, commandLists, fence);
     }
 
     void FrameScheduler::Cleanup()
     {
+        ZoneScoped;
+
         DeviceWaitIdle();
 
         m_transientResourceAllocator->Reset(m_context);
