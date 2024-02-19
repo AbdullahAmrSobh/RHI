@@ -43,3 +43,9 @@ function(copy_resources)
 endfunction()
 
 copy_resources()
+
+add_custom_command(TARGET Triangle POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+        "${CMAKE_SOURCE_DIR}/Examples/Dependencies/assimp/Bin/assimp-vc143-mtd.dll"
+        $<TARGET_FILE_DIR:Triangle>
+)

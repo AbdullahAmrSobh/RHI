@@ -14,9 +14,12 @@ aams_add_target(
     BUILD_DEPENDENCIES
         glfw
         glm
-        assimp
         RHI::RHI
         ImGui
+        "${CMAKE_SOURCE_DIR}/Examples/Dependencies/assimp/Bin/assimp-vc143-mtd.lib"
     RUNTIME_LIBRARIES
         RHI::Vulkan
 )
+
+# target_link_libraries(Base PUBLIC )
+target_include_directories(Base PUBLIC ${CMAKE_SOURCE_DIR}/Examples/Dependencies/assimp/Includes)
