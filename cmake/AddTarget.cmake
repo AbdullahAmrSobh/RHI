@@ -2,7 +2,7 @@
 function(aams_add_target)
     set(options STATIC SHARED HEADERONLY EXECUTABLE)
     set(single_value_args NAME NAMESPACE OUTPUT_SUBDIRECTORY OUTPUT_NAME)
-    set(multi_value_args SOURCES HEADERS BUILD_DEPENDENCIES RUNTIME_LIBRARIES INCLUDE_DIRECTORIES COMPILE_DEFINITIONS TARGET_PROPERTIES)
+    set(multi_value_args SOURCES HEADERS BUILD_DEPENDENCIES RUNTIME_LIBRARIES INCLUDE_DIRECTORIES PUBLIC_INCLUDE_DIRECTORIES COMPILE_DEFINITIONS TARGET_PROPERTIES)
 
     cmake_parse_arguments(aams_add_target "${options}" "${single_value_args}" "${multi_value_args}" ${ARGN})
 
@@ -109,6 +109,11 @@ function(aams_add_target)
         target_include_directories(${aams_add_target_NAME} PRIVATE ${aams_add_target_INCLUDE_DIRECTORIES})
     endif()
     
+    # Specify target public include directories
+    if (aams_add_target_PUBLIC_INCLUDE_DIRECTORIES)
+        target_include_directories(${aams_add_target_NAME} PUBLIC ${aams_add_target_PUBLIC_INCLUDE_DIRECTORIES})
+    endif()
+
     # Specify target custome properties
     if(aams_add_target_TARGET_PROPERTIES)
         set_target_properties(${aams_add_target_NAME} PROPERTIES ${aams_add_target_TARGET_PROPERTIES})
