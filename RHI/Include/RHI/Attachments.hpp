@@ -136,9 +136,9 @@ namespace RHI
 
         virtual ~Attachment() = default;
 
-        const char*           name;     // Name of the attachment
-        const Lifetime        lifetime; // Lifetime of the attachment
-        const Type            type;     // Type of the attachment
+        const char*    name;     // Name of the attachment
+        const Lifetime lifetime; // Lifetime of the attachment
+        const Type     type;     // Type of the attachment
     };
 
     // Structure for ImageAttachment
@@ -180,7 +180,7 @@ namespace RHI
         ImagePassAttachment()                                 = default;
         ImagePassAttachment(const ImagePassAttachment& other) = delete;
         ImagePassAttachment(ImagePassAttachment&& other)      = default;
-        virtual ~ImagePassAttachment() = default;
+        virtual ~ImagePassAttachment()                        = default;
 
         Pass*                pass;
         ImageAttachment*     attachment;
@@ -298,5 +298,15 @@ namespace RHI
         virtual void Release(Context* context, Attachment* attachment)  = 0;
         virtual void Destroy(Context* context, Attachment* attachment)  = 0;
     };
+
+    inline static bool IsWriteAccess(AttachmentAccess access)
+    {
+        return (access == AttachmentAccess::Write) || (access == AttachmentAccess::ReadWrite);
+    }
+
+    inline static bool IsRenderTarget(AttachmentUsage usage)
+    {
+        return usage == AttachmentUsage::Color | usage == AttachmentUsage::Stencil | usage == AttachmentUsage::Depth | usage == AttachmentUsage::DepthStencil;
+    }
 
 } // namespace RHI

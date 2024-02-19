@@ -28,6 +28,7 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Attachments.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Pass.cpp
 )
 
 include(${CMAKE_SOURCE_DIR}/CMake/AddTarget.cmake)

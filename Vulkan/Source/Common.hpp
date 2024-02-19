@@ -189,19 +189,6 @@ namespace RHI::Vulkan
         }
     }
 
-    inline static bool IsWriteAccess(AttachmentAccess access)
-    {
-        return (access == AttachmentAccess::Write) || (access == AttachmentAccess::ReadWrite);
-    }
-
-    inline static bool IsRenderTarget(AttachmentUsage usage)
-    {
-        return usage == AttachmentUsage::Color |
-               usage == AttachmentUsage::Stencil |
-               usage == AttachmentUsage::Depth |
-               usage == AttachmentUsage::DepthStencil;
-    }
-
     inline static VkAttachmentLoadOp ConvertLoadOp(LoadOperation op)
     {
         switch (op)

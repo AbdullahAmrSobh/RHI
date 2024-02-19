@@ -1,6 +1,7 @@
 #pragma once
 #include "RHI/Export.hpp"
 #include "RHI/Resources.hpp"
+#include "RHI/Common/Result.hpp"
 
 namespace RHI
 {
