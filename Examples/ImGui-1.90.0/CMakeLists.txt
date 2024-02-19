@@ -31,10 +31,4 @@ aams_add_target(
 target_include_directories(ImGui ${warning_guard} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Set compiler flags for your target
-target_compile_options(ImGui PRIVATE
-                       "$<$<CXX_COMPILER_ID:MSVC>:/W3>" # Set your preferred warning level (e.g., /W3)
-                       "$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall;-Wextra>") # Set your preferred options for non-MSVC compilers
-
-# Remove /Wall and /W4 specifically for ImGui
-string(REPLACE "/W4" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-string(REPLACE "/Wall" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+target_compile_options(ImGui PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/W3>" "$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall;-Wextra>")
