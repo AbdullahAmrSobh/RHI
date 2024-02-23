@@ -8,6 +8,7 @@
 #include "RHI/Common/Handle.hpp"
 #include "RHI/Common/Result.hpp"
 #include "RHI/Common/Debug.hpp"
+#include "RHI/Common/LeakDetector.hpp"
 
 namespace RHI
 {
@@ -288,6 +289,8 @@ namespace RHI
         void   DebugLogWarn(std::string_view message);
         void   DebugLogInfo(std::string_view message);
 
+        void   DebugReportLiveResources();
+
         size_t CalculateRequiredSize(const ImageCreateInfo& createInfo);
         size_t CalculateRequiredSize(const BufferCreateInfo& createInfo);
 
@@ -297,6 +300,20 @@ namespace RHI
         Ptr<FrameScheduler>       m_frameScheduler;
         Ptr<StagingBuffer>        m_stagingBuffer;
         Ptr<CommandListAllocator> m_transferCommandsAllocator;
+
+        struct
+        {
+            ResourceLeakDetector<Image>            m_images;
+            ResourceLeakDetector<Buffer>           m_buffers;
+            ResourceLeakDetector<ImageView>        m_imageViews;
+            ResourceLeakDetector<BufferView>       m_bufferViews;
+            ResourceLeakDetector<BindGroupLayout>  m_bindGroupLayouts;
+            ResourceLeakDetector<BindGroup>        m_bindGroups;
+            ResourceLeakDetector<PipelineLayout>   m_pipelineLayouts;
+            ResourceLeakDetector<GraphicsPipeline> m_graphicsPipelines;
+            ResourceLeakDetector<ComputePipeline>  m_computePipelines;
+            ResourceLeakDetector<Sampler>          m_samplers;
+        } m_LeakDetector;
 
     private:
         Ptr<DebugCallbacks> m_debugCallbacks;

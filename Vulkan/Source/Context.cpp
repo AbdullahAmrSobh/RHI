@@ -123,6 +123,8 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
+        DebugReportLiveResources();
+
         vkDeviceWaitIdle(m_device);
 
         DestroyResources();
@@ -453,6 +455,7 @@ namespace RHI::Vulkan
         {
             DebugLogError("Failed to create bindGroupLayout");
         }
+        m_LeakDetector.m_bindGroupLayouts.OnCreate(handle);
         return handle;
     }
 
@@ -464,6 +467,7 @@ namespace RHI::Vulkan
         // clang-format off
         m_deferDeleteQueue.push_back([&](){ bindGroupLayout->Shutdown(this); });
         // clang-format on
+        m_LeakDetector.m_bindGroupLayouts.OnDestroy(handle);
     }
 
     Handle<BindGroup> IContext::CreateBindGroup(Handle<BindGroupLayout> layoutHandle)
@@ -476,6 +480,7 @@ namespace RHI::Vulkan
         {
             DebugLogError("Failed to create bindGroup");
         }
+        m_LeakDetector.m_bindGroups.OnCreate(handle);
         return handle;
     }
 
@@ -487,6 +492,7 @@ namespace RHI::Vulkan
         // clang-format off
         m_deferDeleteQueue.push_back([&](){ bindGroup->Shutdown(this); });
         // clang-format on
+        m_LeakDetector.m_bindGroups.OnDestroy(handle);
     }
 
     void IContext::UpdateBindGroup(Handle<BindGroup> handle, const BindGroupData& data)
@@ -507,6 +513,7 @@ namespace RHI::Vulkan
         {
             DebugLogError("Failed to create pipelineLayout");
         }
+        m_LeakDetector.m_pipelineLayouts.OnCreate(handle);
         return handle;
     }
 
@@ -518,6 +525,7 @@ namespace RHI::Vulkan
         // clang-format off
         m_deferDeleteQueue.push_back([&](){ pipelineLayout->Shutdown(this); });
         // clang-format on
+        m_LeakDetector.m_pipelineLayouts.OnDestroy(handle);
     }
 
     Handle<GraphicsPipeline> IContext::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)
@@ -530,6 +538,7 @@ namespace RHI::Vulkan
         {
             DebugLogError("Failed to create graphicsPipeline");
         }
+        m_LeakDetector.m_graphicsPipelines.OnCreate(handle);
         return handle;
     }
 
@@ -541,6 +550,7 @@ namespace RHI::Vulkan
         // clang-format off
         m_deferDeleteQueue.push_back([&](){ graphicsPipeline->Shutdown(this); });
         // clang-format on
+        m_LeakDetector.m_graphicsPipelines.OnDestroy(handle);
     }
 
     Handle<ComputePipeline> IContext::CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
@@ -553,6 +563,7 @@ namespace RHI::Vulkan
         {
             DebugLogError("Failed to create computePipeline");
         }
+        m_LeakDetector.m_computePipelines.OnCreate(handle);
         return handle;
     }
 
@@ -564,6 +575,7 @@ namespace RHI::Vulkan
         // clang-format off
         m_deferDeleteQueue.push_back([&](){ computePipeline->Shutdown(this); });
         // clang-format on
+        m_LeakDetector.m_computePipelines.OnDestroy(handle);
     }
 
     Handle<Sampler> IContext::CreateSampler(const SamplerCreateInfo& createInfo)
@@ -576,6 +588,7 @@ namespace RHI::Vulkan
         {
             DebugLogError("Failed to create sampler");
         }
+        m_LeakDetector.m_samplers.OnCreate(handle);
         return handle;
     }
 
@@ -587,6 +600,7 @@ namespace RHI::Vulkan
         // clang-format off
         m_deferDeleteQueue.push_back([&](){ sampler->Shutdown(this); });
         // clang-format on
+        m_LeakDetector.m_samplers.OnDestroy(handle);
     }
 
     Result<Handle<Image>> IContext::CreateImage(const ImageCreateInfo& createInfo)
@@ -600,6 +614,7 @@ namespace RHI::Vulkan
             DebugLogError("Failed to create image");
             return result;
         }
+        m_LeakDetector.m_images.OnCreate(handle);
         return Result<Handle<Image>>(handle);
     }
 
@@ -611,6 +626,7 @@ namespace RHI::Vulkan
         // clang-format off
         m_deferDeleteQueue.push_back([&](){ image->Shutdown(this); });
         // clang-format on
+        m_LeakDetector.m_images.OnDestroy(handle);
     }
 
     Result<Handle<Buffer>> IContext::CreateBuffer(const BufferCreateInfo& createInfo)
@@ -624,6 +640,7 @@ namespace RHI::Vulkan
             DebugLogError("Failed to create buffer");
             return result;
         }
+        m_LeakDetector.m_buffers.OnCreate(handle);
         return Result<Handle<Buffer>>(handle);
     }
 
@@ -635,6 +652,7 @@ namespace RHI::Vulkan
         // clang-format off
         m_deferDeleteQueue.push_back([&](){ buffer->Shutdown(this); });
         // clang-format on
+        m_LeakDetector.m_buffers.OnDestroy(handle);
     }
 
     Handle<ImageView> IContext::CreateImageView(const ImageViewCreateInfo& createInfo)
@@ -647,6 +665,7 @@ namespace RHI::Vulkan
         {
             DebugLogError("Failed to create image view");
         }
+        m_LeakDetector.m_imageViews.OnCreate(handle);
         return handle;
     }
 
@@ -658,6 +677,7 @@ namespace RHI::Vulkan
         // clang-format off
         m_deferDeleteQueue.push_back([&](){ imageView->Shutdown(this); });
         // clang-format on
+        m_LeakDetector.m_imageViews.OnDestroy(handle);
     }
 
     Handle<BufferView> IContext::CreateBufferView(const BufferViewCreateInfo& createInfo)
@@ -670,6 +690,7 @@ namespace RHI::Vulkan
         {
             DebugLogError("Failed to create buffer view");
         }
+        m_LeakDetector.m_bufferViews.OnCreate(handle);
         return handle;
     }
 
@@ -681,6 +702,7 @@ namespace RHI::Vulkan
         // clang-format off
         m_deferDeleteQueue.push_back([&](){ imageView->Shutdown(this); });
         // clang-format on
+        m_LeakDetector.m_bufferViews.OnDestroy(handle);
     }
 
     DeviceMemoryPtr IContext::MapBuffer(Handle<Buffer> handle)

@@ -16,12 +16,12 @@ namespace RHI
     }
 #endif
 
-    Callstack CaptureCallstack()
+    Callstack CaptureCallstack(uint32_t skipFramesCount)
     {
 #if RHI_PLATFORM_WINDOWS
         Callstack callstack = {};
         _InitializeSymbolHandler();
-        ::CaptureStackBackTrace(1, RHI_STACK_CALLSTACK_DEPTH, callstack.data(), nullptr);
+        ::CaptureStackBackTrace(skipFramesCount, RHI_STACK_CALLSTACK_DEPTH, callstack.data(), nullptr);
         return callstack;
 #else
     #error "This function not implemented for the target paltform"

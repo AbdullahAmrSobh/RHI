@@ -14,7 +14,7 @@ namespace RHI
     using Callstack = std::array<void*, RHI_STACK_CALLSTACK_DEPTH>;
 
     // Capture the current callstack
-    RHI_EXPORT Callstack CaptureCallstack();
+    RHI_EXPORT Callstack CaptureCallstack(uint32_t skipFramesCount = 1);
 
     // Report the callstack to the debug callbacks
     RHI_EXPORT std::string ReportCallstack(Callstack callstack);
