@@ -70,13 +70,13 @@ namespace RHI
         virtual ~DebugCallbacks()                          = default;
 
         /// @brief Log an information.
-        virtual void LogInfo(const char* message, ...)     = 0;
+        virtual void LogInfo(std::string_view message)     = 0;
 
         /// @brief Log an warnning.
-        virtual void LogWarnning(const char* message, ...) = 0;
+        virtual void LogWarnning(std::string_view message) = 0;
 
         /// @brief Log an error.
-        virtual void LogError(const char* message, ...)    = 0;
+        virtual void LogError(std::string_view message)    = 0;
     };
 
     // This class provides the core interface for interacting with the graphics rendering API.
@@ -299,9 +299,9 @@ namespace RHI
         virtual void                      UnmapBuffer(Handle<Buffer> handle)                                   = 0;
 
     protected:
-        void   DebugLogError(const char* message, ...);
-        void   DebugLogWarn(const char* message, ...);
-        void   DebugLogInfo(const char* message, ...);
+        void   DebugLogError(std::string_view message);
+        void   DebugLogWarn(std::string_view message);
+        void   DebugLogInfo(std::string_view message);
 
         size_t CalculateRequiredSize(const ImageCreateInfo& createInfo);
         size_t CalculateRequiredSize(const BufferCreateInfo& createInfo);

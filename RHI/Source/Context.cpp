@@ -57,7 +57,7 @@ namespace RHI
         return handle;
     }
 
-    void Context::DebugLogError(const char* message, ...)
+    void Context::DebugLogError(std::string_view message)
     {
         ZoneScoped;
 
@@ -69,7 +69,7 @@ namespace RHI
 #endif
     }
 
-    void Context::DebugLogWarn(const char* message, ...)
+    void Context::DebugLogWarn(std::string_view message)
     {
         ZoneScoped;
 
@@ -81,7 +81,7 @@ namespace RHI
 #endif
     }
 
-    void Context::DebugLogInfo(const char* message, ...)
+    void Context::DebugLogInfo(std::string_view message)
     {
         ZoneScoped;
 

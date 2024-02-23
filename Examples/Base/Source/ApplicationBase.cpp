@@ -24,17 +24,17 @@
 class DebugCallbacks final : public RHI::DebugCallbacks
 {
 public:
-    void LogInfo(const char* message, ...) override
+    void LogInfo(std::string_view message) override
     {
         std::cout << "INFO: " << message << "\n";
     }
 
-    void LogWarnning(const char* message, ...) override
+    void LogWarnning(std::string_view message) override
     {
         std::cout << "WARNNING: " << message << "\n";
     }
 
-    void LogError(const char* message, ...) override
+    void LogError(std::string_view message) override
     {
         std::cout << "ERROR: " << message << "\n";
     }
