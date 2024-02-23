@@ -1,36 +1,22 @@
 #pragma once
 
-#include "RHI/Export.hpp"
+#include <string_view>
 
-#include <stacktrace>
-#include <memory>
-#include <format>
-
-#define RHI_LOG_INFO(msg, ...)    Log(MessageLevel::Log, msg, __VA_ARGS__)
-#define RHI_LOG_WARNING(msg, ...) Log(MessageLevel::Warnning, msg, __VA_ARGS__)
-#define RHI_LOG_ERROR(msg, ...)   Log(MessageLevel::Error, msg, __VA_ARGS__)
-
-namespace RHI::Debug
+namespace RHI
 {
-
-    struct Stacktrace {};
-
-    std::unique_ptr<Stacktrace> GetCurrentCallstack();
-
-    enum class MessageLevel 
+    /// @brief An interface implemented by the user, which the API use to log.
+    class DebugCallbacks
     {
-        Log,
-        Warnning,
-        Error,
+    public:
+        virtual ~DebugCallbacks()                          = default;
+
+        /// @brief Log an information.
+        virtual void LogInfo(std::string_view message)     = 0;
+
+        /// @brief Log an warnning.
+        virtual void LogWarnning(std::string_view message) = 0;
+
+        /// @brief Log an error.
+        virtual void LogError(std::string_view message)    = 0;
     };
-
-    void log(MessageLevel level, std::string message);
-
-    template<typename ...Args>
-    inline static void Log(MessageLevel level, std::string_view message, Args ... args)
-    {
-        auto formattedMessage = std::format(message, std::forward(args) ...);
-        log(level, formattedMessage);
-    }
-
 }

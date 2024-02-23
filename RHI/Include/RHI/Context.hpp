@@ -3,10 +3,11 @@
 #include "RHI/CommandList.hpp"
 #include "RHI/FrameScheduler.hpp"
 #include "RHI/Export.hpp"
-#include "RHI/Common/Ptr.h"
 
+#include "RHI/Common/Ptr.h"
 #include "RHI/Common/Handle.hpp"
 #include "RHI/Common/Result.hpp"
+#include "RHI/Common/Debug.hpp"
 
 namespace RHI
 {
@@ -61,22 +62,6 @@ namespace RHI
         const char* name;
         DeviceType  type;
         Vendor      vendor;
-    };
-
-    /// @brief An interface implemented by the user, which the API use to log.
-    class DebugCallbacks
-    {
-    public:
-        virtual ~DebugCallbacks()                          = default;
-
-        /// @brief Log an information.
-        virtual void LogInfo(std::string_view message)     = 0;
-
-        /// @brief Log an warnning.
-        virtual void LogWarnning(std::string_view message) = 0;
-
-        /// @brief Log an error.
-        virtual void LogError(std::string_view message)    = 0;
     };
 
     // This class provides the core interface for interacting with the graphics rendering API.
@@ -307,12 +292,19 @@ namespace RHI
         size_t CalculateRequiredSize(const BufferCreateInfo& createInfo);
 
     protected:
-        Context() = default;
+        Context(Ptr<DebugCallbacks> debugCallbacks);
 
-        Ptr<DebugCallbacks>       m_debugCallbacks;
         Ptr<FrameScheduler>       m_frameScheduler;
         Ptr<StagingBuffer>        m_stagingBuffer;
         Ptr<CommandListAllocator> m_transferCommandsAllocator;
+
+    private:
+        Ptr<DebugCallbacks> m_debugCallbacks;
     };
+
+    inline Context::Context(Ptr<DebugCallbacks> debugCallbacks)
+        : m_debugCallbacks(std::move(debugCallbacks))
+    {
+    }
 
 } // namespace RHI

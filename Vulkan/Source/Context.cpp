@@ -51,37 +51,6 @@ namespace RHI
 
 namespace RHI::Vulkan
 {
-
-    inline static VkBool32 VKAPI_CALL DebugMessengerCallbacks(
-        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-        VkDebugUtilsMessageTypeFlagsEXT messageTypes,
-        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-        void* pUserData)
-    {
-        (void)messageTypes;
-
-        auto debugCallback = reinterpret_cast<DebugCallbacks*>(pUserData);
-
-        if ((messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
-        {
-            debugCallback->LogError(pCallbackData->pMessage);
-        }
-        else if ((messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
-        {
-            debugCallback->LogWarnning(pCallbackData->pMessage);
-        }
-        else if ((messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) == VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
-        {
-            debugCallback->LogInfo(pCallbackData->pMessage);
-        }
-        else if ((messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) == VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
-        {
-            debugCallback->LogInfo(pCallbackData->pMessage);
-        }
-
-        return VK_FALSE;
-    }
-
     std::vector<VkLayerProperties> _GetAvailableInstanceLayerExtensions()
     {
         uint32_t instanceLayerCount;
@@ -143,8 +112,8 @@ namespace RHI::Vulkan
     }
 
     IContext::IContext(Ptr<DebugCallbacks> debugCallbacks)
+        : Context(std::move(debugCallbacks))
     {
-        m_debugCallbacks = std::move(debugCallbacks);
         m_frameScheduler = CreatePtr<IFrameScheduler>(this);
         m_bindGroupAllocator = CreatePtr<BindGroupAllocator>(m_device);
         m_stagingBuffer = CreatePtr<IStagingBuffer>(this);
@@ -193,7 +162,7 @@ namespace RHI::Vulkan
         debugCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
         debugCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT;
         debugCreateInfo.pfnUserCallback = DebugMessengerCallbacks;
-        debugCreateInfo.pUserData = m_debugCallbacks.get();
+        debugCreateInfo.pUserData = this;
 
         bool debugExtensionFound = false;
 
@@ -740,6 +709,35 @@ namespace RHI::Vulkan
     ////////////////////////////////////////////////////////////
     // Interface implementation
     ////////////////////////////////////////////////////////////
+
+    VkBool32 IContext::DebugMessengerCallbacks(
+        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+        VkDebugUtilsMessageTypeFlagsEXT messageTypes,
+        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+        void* pUserData)
+    {
+        (void)messageTypes;
+        auto context = (IContext*)pUserData;
+
+        if ((messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+        {
+            context->DebugLogError(pCallbackData->pMessage);
+        }
+        else if ((messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+        {
+            context->DebugLogWarn(pCallbackData->pMessage);
+        }
+        else if ((messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) == VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+        {
+            context->DebugLogInfo(pCallbackData->pMessage);
+        }
+        else if ((messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) == VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
+        {
+            context->DebugLogInfo(pCallbackData->pMessage);
+        }
+
+        return VK_FALSE;
+    }
 
     void IContext::DestroyResources()
     {

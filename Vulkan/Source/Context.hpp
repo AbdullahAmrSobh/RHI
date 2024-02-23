@@ -65,6 +65,8 @@ namespace RHI::Vulkan
         void                      UnmapBuffer(Handle<Buffer> handle)                                   override;
         // clang-format on
 
+        static VkBool32 VKAPI_CALL DebugMessengerCallbacks(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
+
         void DestroyResources();
 
         uint32_t GetQueueFamilyIndex(QueueType queueType) const;
