@@ -71,71 +71,13 @@ public:
     {
     }
 
-    void SetupPipelines(RHI::Handle<RHI::BindGroupLayout> bindGroupLayout)
-    {
-        m_pipelineLayout = m_context->CreatePipelineLayout({ bindGroupLayout });
-
-        auto shaderCode = ReadBinaryFile("./Resources/Shaders/triangle.spv");
-        auto shaderModule = m_context->CreateShaderModule(shaderCode);
-
-        RHI::GraphicsPipelineCreateInfo psoCreateInfo{};
-        // clang-format off
-        psoCreateInfo.inputAssemblerState.attributes[0] = { .location = 0, .binding = 0, .format = RHI::Format::RGB32_FLOAT, .offset = 0,  }; 
-        psoCreateInfo.inputAssemblerState.attributes[1] = { .location = 1, .binding = 1, .format = RHI::Format::RGB32_FLOAT, .offset = 0,  };  
-        psoCreateInfo.inputAssemblerState.attributes[2] = { .location = 2, .binding = 2, .format = RHI::Format::RG32_FLOAT, .offset = 0,  };  
-        psoCreateInfo.inputAssemblerState.bindings[0] = { .binding = 0, .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT), .stepRate = RHI::PipelineVertexInputRate::PerVertex,  };  
-        psoCreateInfo.inputAssemblerState.bindings[1] = { .binding = 1, .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT), .stepRate = RHI::PipelineVertexInputRate::PerVertex,  };  
-        psoCreateInfo.inputAssemblerState.bindings[2] = { .binding = 2, .stride = RHI::GetFormatByteSize(RHI::Format::RG32_FLOAT),  .stepRate = RHI::PipelineVertexInputRate::PerVertex,  };
-        // clang-format on
-        psoCreateInfo.vertexShaderName = "VSMain";
-        psoCreateInfo.pixelShaderName = "PSMain";
-        psoCreateInfo.vertexShaderModule = shaderModule.get();
-        psoCreateInfo.pixelShaderModule = shaderModule.get();
-        psoCreateInfo.layout = m_pipelineLayout;
-        psoCreateInfo.renderTargetLayout.colorAttachmentsFormats[0] = RHI::Format::BGRA8_UNORM;
-        psoCreateInfo.renderTargetLayout.depthAttachmentFormat = RHI::Format::D32;
-        psoCreateInfo.depthStencilState.depthTestEnable = true;
-        psoCreateInfo.depthStencilState.depthWriteEnable = true;
-        psoCreateInfo.depthStencilState.compareOperator = RHI::CompareOperator::Greater;
-
-        m_pipelineState = m_context->CreateGraphicsPipeline(psoCreateInfo);
-    }
-
-    void SetupRenderGraph()
-    {
-        auto& scheduler = m_context->GetScheduler();
-        auto& registry = scheduler.GetRegistry();
-        m_renderpass = scheduler.CreatePass("Render-Pass", RHI::QueueType::Graphics);
-
-        auto swapchainAttachment = registry.ImportSwapchainImage("back-buffer", m_swapchain.get());
-        m_renderpass->UseColorAttachment(swapchainAttachment, { 0.1f, 0.2f, 0.3f, 1.0f });
-
-        RHI::ImageCreateInfo depthInfo{};
-        depthInfo.usageFlags = RHI::ImageUsage::Depth;
-        depthInfo.format = RHI::Format::D32;
-        depthInfo.type = RHI::ImageType::Image2D;
-        auto depthAttachment = registry.CreateTransientImage("depth-buffer", depthInfo);
-        m_renderpass->UseDepthAttachment(depthAttachment, { 0.0 });
-
-        scheduler.ResizeFrame({ m_windowWidth, m_windowHeight });
-        scheduler.RegisterPass(*m_renderpass);
-        scheduler.Compile();
-    }
-
     void OnInit() override
     {
         ZoneScopedN("triangle-update");
 
-        {
-            m_uniformData.viewProjection = m_camera.GetProjection() * m_camera.GetView();
-        }
-
-        // create buffer resource pool
-        {
-            // create buffer resource
-            m_mesh.Init(*m_context, "./Resources/Meshes/simple_cube.obj");
-            m_uniformBuffer = m_context->CreateBufferWithContentT<uint8_t>(RHI::BufferUsage::Uniform, { (uint8_t*)&m_uniformData, sizeof(UniformBufferContent) }).GetValue();
-        }
+        m_uniformData.viewProjection = m_camera.GetProjection() * m_camera.GetView();
+        m_uniformBuffer = m_context->CreateBufferWithContentT<uint8_t>(RHI::BufferUsage::Uniform, { (uint8_t*)&m_uniformData, sizeof(UniformBufferContent) }).GetValue();
+        m_mesh.Init(*m_context, "./Resources/Meshes/simple_cube.obj");
 
         // create image
         {
@@ -165,11 +107,34 @@ public:
             createInfo.bindings[1] = { RHI::ShaderBindingType::Image, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Pixel };
             createInfo.bindings[2] = { RHI::ShaderBindingType::Sampler, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Pixel };
             m_bindGroupLayout = m_context->CreateBindGroupLayout(createInfo);
+
+            m_pipelineLayout = m_context->CreatePipelineLayout({ m_bindGroupLayout });
+
+            auto shaderCode = ReadBinaryFile("./Resources/Shaders/triangle.spv");
+            auto shaderModule = m_context->CreateShaderModule(shaderCode);
+
+            RHI::GraphicsPipelineCreateInfo psoCreateInfo{};
+            // clang-format off
+            psoCreateInfo.inputAssemblerState.attributes[0] = { .location = 0, .binding = 0, .format = RHI::Format::RGB32_FLOAT, .offset = 0,  }; 
+            psoCreateInfo.inputAssemblerState.attributes[1] = { .location = 1, .binding = 1, .format = RHI::Format::RGB32_FLOAT, .offset = 0,  };  
+            psoCreateInfo.inputAssemblerState.attributes[2] = { .location = 2, .binding = 2, .format = RHI::Format::RG32_FLOAT, .offset = 0,  };  
+            psoCreateInfo.inputAssemblerState.bindings[0] = { .binding = 0, .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT), .stepRate = RHI::PipelineVertexInputRate::PerVertex };  
+            psoCreateInfo.inputAssemblerState.bindings[1] = { .binding = 1, .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT), .stepRate = RHI::PipelineVertexInputRate::PerVertex };  
+            psoCreateInfo.inputAssemblerState.bindings[2] = { .binding = 2, .stride = RHI::GetFormatByteSize(RHI::Format::RG32_FLOAT),  .stepRate = RHI::PipelineVertexInputRate::PerVertex };
+            // clang-format on
+            psoCreateInfo.vertexShaderName = "VSMain";
+            psoCreateInfo.pixelShaderName = "PSMain";
+            psoCreateInfo.vertexShaderModule = shaderModule.get();
+            psoCreateInfo.pixelShaderModule = shaderModule.get();
+            psoCreateInfo.layout = m_pipelineLayout;
+            psoCreateInfo.renderTargetLayout.colorAttachmentsFormats[0] = RHI::Format::BGRA8_UNORM;
+            psoCreateInfo.renderTargetLayout.depthAttachmentFormat = RHI::Format::D32;
+            psoCreateInfo.depthStencilState.depthTestEnable = true;
+            psoCreateInfo.depthStencilState.depthWriteEnable = true;
+            psoCreateInfo.depthStencilState.compareOperator = RHI::CompareOperator::Greater;
+
+            m_pipelineState = m_context->CreateGraphicsPipeline(psoCreateInfo);
         }
-
-        SetupPipelines(m_bindGroupLayout);
-
-        SetupRenderGraph();
 
         // create a sampler state
         {
@@ -181,6 +146,27 @@ public:
             bindGroupData.BindSamplers(2u, m_sampler);
             m_bindGroup = m_context->CreateBindGroup(m_bindGroupLayout);
             m_context->UpdateBindGroup(m_bindGroup, bindGroupData);
+        }
+
+        // setup the render graph
+        {
+            auto& scheduler = m_context->GetScheduler();
+            auto& registry = scheduler.GetRegistry();
+            m_renderpass = scheduler.CreatePass("Render-Pass", RHI::QueueType::Graphics);
+
+            auto swapchainAttachment = registry.ImportSwapchainImage("back-buffer", m_swapchain.get());
+            m_renderpass->UseColorAttachment(swapchainAttachment, { 0.1f, 0.2f, 0.3f, 1.0f });
+
+            RHI::ImageCreateInfo depthInfo{};
+            depthInfo.usageFlags = RHI::ImageUsage::Depth;
+            depthInfo.format = RHI::Format::D32;
+            depthInfo.type = RHI::ImageType::Image2D;
+            auto depthAttachment = registry.CreateTransientImage("depth-buffer", depthInfo);
+            m_renderpass->UseDepthAttachment(depthAttachment, { 0.0 });
+
+            scheduler.ResizeFrame({ m_windowWidth, m_windowHeight });
+            scheduler.RegisterPass(*m_renderpass);
+            scheduler.Compile();
         }
     }
 
@@ -199,7 +185,6 @@ public:
         m_context->DestroyBindGroupLayout(m_bindGroupLayout);
         m_context->DestroyGraphicsPipeline(m_pipelineState);
         m_context->DestroyBindGroup(m_bindGroup);
-
     }
 
     void OnUpdate(Timestep timestep) override
