@@ -2,8 +2,6 @@
 
 #include <tracy/Tracy.hpp>
 
-#include <format>
-
 namespace RHI
 {
     Result<Handle<Image>> Context::CreateImageWithContent(const ImageCreateInfo& createInfo, TL::Span<uint8_t> content)
@@ -54,8 +52,11 @@ namespace RHI
         {
             return result;
         }
-        (void)content;
-        RHI_UNREACHABLE();
+
+        auto ptr = MapBuffer(handle);
+        memcpy(ptr, content.data(), content.size());
+        UnmapBuffer(handle);
+
         return handle;
     }
 

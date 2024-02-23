@@ -345,10 +345,6 @@ void ImGuiRenderer::Init(ImGuiRendererCreateInfo createInfo)
 
     {
         m_bindGroup = m_context->CreateBindGroup(m_bindGroupLayout);
-    }
-
-    {
-        m_bindGroup = m_context->CreateBindGroup(m_bindGroupLayout);
         RHI::BindGroupData data{};
         data.BindBuffers(0, m_uniformBuffer);
         data.BindSamplers(1, m_sampler);
@@ -397,13 +393,19 @@ void ImGuiRenderer::Init(ImGuiRendererCreateInfo createInfo)
 
 void ImGuiRenderer::Shutdown()
 {
+    m_context->DestroyPipelineLayout(m_pipelineLayout);
+    m_context->DestroyGraphicsPipeline(m_pipeline);
+    m_context->DestroyBindGroupLayout(m_bindGroupLayout);
     m_context->DestroyBindGroup(m_bindGroup);
     m_context->DestroyImageView(m_imageView);
     m_context->DestroySampler(m_sampler);
     m_context->DestroyImage(m_image);
-    m_context->DestroyBuffer(m_indexBuffer);
-    m_context->DestroyBuffer(m_vertexBuffer);
-    m_context->DestroyBuffer(m_uniformBuffer);
+    if (m_indexBuffer)
+        m_context->DestroyBuffer(m_indexBuffer);
+    if (m_vertexBuffer)
+        m_context->DestroyBuffer(m_vertexBuffer);
+    if (m_uniformBuffer)
+        m_context->DestroyBuffer(m_uniformBuffer);
 }
 
 void ImGuiRenderer::NewFrame()

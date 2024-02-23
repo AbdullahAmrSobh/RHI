@@ -152,6 +152,7 @@ void ApplicationBase::Init()
 void ApplicationBase::Shutdown()
 {
     ZoneScopedN("app-base-shutdown");
+    m_imguiRenderer->Shutdown();
     OnShutdown();
     glfwTerminate();
 }

@@ -14,47 +14,11 @@ struct UniformBufferContent
 
 struct Mesh
 {
-    uint32_t drawElementsCount;
-
-    RHI::Handle<RHI::Buffer> indexBuffer;
-    RHI::Handle<RHI::Buffer> positionsBuffer;
-    RHI::Handle<RHI::Buffer> normalsBuffer;
-    RHI::Handle<RHI::Buffer> texCoordBuffer;
-
-    RHI::ImageSize3D textureSize;
-    RHI::Handle<RHI::Buffer> textureStagingBuffer;
-};
-
-class TriangleExample final : public ApplicationBase
-{
-public:
-    TriangleExample()
-        : ApplicationBase("Hello, Triangle", 1600, 1200)
-    {
-    }
-
-    template<typename T>
-    RHI::Handle<RHI::Buffer> CreateBuffer(RHI::TL::Span<T> data, RHI::Flags<RHI::BufferUsage> usageFlags)
-    {
-        auto createInfo = RHI::BufferCreateInfo{};
-        createInfo.usageFlags = usageFlags;
-        createInfo.byteSize = data.size() * sizeof(T);
-
-        auto buffer = m_context->CreateBuffer(createInfo).GetValue();
-        RHI::DeviceMemoryPtr bufferPtr = m_context->MapBuffer(buffer);
-        RHI_ASSERT(bufferPtr != nullptr);
-        memcpy(bufferPtr, data.data(), data.size() * sizeof(T));
-        m_context->UnmapBuffer(buffer);
-
-        return buffer;
-    }
-
-    Mesh LoadScene(const char* path)
+    void Init(RHI::Context& context, const char* path)
     {
         Assimp::Importer importer{};
         auto scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_GenSmoothNormals);
         auto mesh = scene->mMeshes[0];
-        auto texture = LoadImage("./Resources/Images/image.png");
 
         std::vector<uint32_t> indexBufferData;
         indexBufferData.reserve(mesh->mNumFaces * 3);
@@ -76,20 +40,35 @@ public:
             texCoordData.push_back({ uv[i].x, uv[i].y });
         }
 
-        Mesh result{
-            .drawElementsCount = uint32_t(indexBufferData.size()),
-            .indexBuffer       = CreateBuffer<uint32_t>(indexBufferData, RHI::BufferUsage::Index),
-            .positionsBuffer   = CreateBuffer<aiVector3D>({ mesh->mVertices, mesh->mNumVertices }, RHI::BufferUsage::Vertex),
-            .normalsBuffer     = CreateBuffer<aiVector3D>({ mesh->mNormals, mesh->mNumVertices }, RHI::BufferUsage::Vertex),
-            .texCoordBuffer    = CreateBuffer<glm::vec2>(texCoordData, RHI::BufferUsage::Vertex),
-            .textureSize = 
-            {
-                .width    = texture.width,
-                .height   = texture.height,
-            },
-            .textureStagingBuffer = CreateBuffer<uint8_t>({ texture.data.data(), texture.data.size() }, RHI::BufferUsage::CopySrc)
-        };
-        return result;
+        drawElementsCount = uint32_t(indexBufferData.size());
+        indexBuffer = context.CreateBufferWithContentT<uint32_t>(RHI::BufferUsage::Index, indexBufferData).GetValue();
+        positionsBuffer = context.CreateBufferWithContentT<aiVector3D>(RHI::BufferUsage::Vertex, { mesh->mVertices, mesh->mNumVertices }).GetValue();
+        normalsBuffer = context.CreateBufferWithContentT<aiVector3D>(RHI::BufferUsage::Vertex, { mesh->mNormals, mesh->mNumVertices }).GetValue();
+        texCoordBuffer = context.CreateBufferWithContentT<glm::vec2>(RHI::BufferUsage::Vertex, texCoordData).GetValue();
+    }
+
+    void Shutdown(RHI::Context& context)
+    {
+        context.DestroyBuffer(indexBuffer);
+        context.DestroyBuffer(positionsBuffer);
+        context.DestroyBuffer(normalsBuffer);
+        context.DestroyBuffer(texCoordBuffer);
+    }
+
+    uint32_t drawElementsCount;
+
+    RHI::Handle<RHI::Buffer> indexBuffer;
+    RHI::Handle<RHI::Buffer> positionsBuffer;
+    RHI::Handle<RHI::Buffer> normalsBuffer;
+    RHI::Handle<RHI::Buffer> texCoordBuffer;
+};
+
+class TriangleExample final : public ApplicationBase
+{
+public:
+    TriangleExample()
+        : ApplicationBase("Hello, Triangle", 1600, 1200)
+    {
     }
 
     void SetupPipelines(RHI::Handle<RHI::BindGroupLayout> bindGroupLayout)
@@ -154,51 +133,29 @@ public:
         // create buffer resource pool
         {
             // create buffer resource
-            m_mesh = LoadScene("./Resources/Meshes/simple_cube.obj");
-            m_uniformBuffer = CreateBuffer<UniformBufferContent>(m_uniformData, RHI::BufferUsage::Uniform);
+            m_mesh.Init(*m_context, "./Resources/Meshes/simple_cube.obj");
+            m_uniformBuffer = m_context->CreateBufferWithContentT<uint8_t>(RHI::BufferUsage::Uniform, { (uint8_t*)&m_uniformData, sizeof(UniformBufferContent) }).GetValue();
         }
 
         // create image
         {
+            auto textureData = LoadImage("./Resources/Images/image.png");
+
             RHI::ImageCreateInfo createInfo{};
             createInfo.usageFlags = RHI::ImageUsage::ShaderResource;
             createInfo.usageFlags |= RHI::ImageUsage::CopyDst;
             createInfo.type = RHI::ImageType::Image2D;
-            createInfo.size = m_mesh.textureSize;
+            createInfo.size.width = textureData.width;
+            createInfo.size.height = textureData.height;
             createInfo.size.depth = 1;
             createInfo.format = RHI::Format::RGBA8_UNORM;
             createInfo.sampleCount = RHI::SampleCount::Samples1;
             createInfo.mipLevels = 1;
             createInfo.arrayCount = 1;
-            m_image = m_context->CreateImage(createInfo).GetValue();
+            m_image = m_context->CreateImageWithContent(createInfo, textureData.data).GetValue();
             RHI::ImageViewCreateInfo viewInfo{};
             viewInfo.image = m_image;
             m_imageView = m_context->CreateImageView(viewInfo);
-        }
-
-        // upload image data to the gpu
-        {
-            auto fence = m_context->CreateFence();
-
-            // copy data from the staging buffer to the image.
-            RHI::BufferToImageCopyInfo copyCommand = {};
-            copyCommand.srcBuffer = m_mesh.textureStagingBuffer;
-            copyCommand.srcOffset = 0;
-            // copyCommand.srcBytesPerRow;
-            // copyCommand.srcBytesPerImage;
-            copyCommand.srcSize = m_mesh.textureSize;
-            copyCommand.srcSize.depth = 1;
-            copyCommand.dstImage = m_image;
-            copyCommand.dstOffset.x = 0;
-            copyCommand.dstOffset.y = 0;
-            copyCommand.dstOffset.z = 0;
-            auto commandList = m_commandListAllocator->Allocate();
-            commandList->Begin();
-            commandList->Copy(copyCommand);
-            commandList->End();
-            m_context->GetScheduler().ExecuteCommandList(commandList, *fence);
-            fence->Wait(UINT64_MAX);
-            m_context->DestroyBuffer(m_mesh.textureStagingBuffer);
         }
 
         // create shader bind group layout
@@ -231,14 +188,18 @@ public:
     {
         ZoneScopedN("triangle-update");
 
-        m_context->DestroyBindGroupLayout(m_bindGroupLayout);
-        m_context->DestroyPipelineLayout(m_pipelineLayout);
-        m_context->DestroyGraphicsPipeline(m_pipelineState);
-
-        m_context->DestroyBuffer(m_mesh.indexBuffer);
-        m_context->DestroyBuffer(m_mesh.positionsBuffer);
-        m_context->DestroyBuffer(m_uniformBuffer);
+        m_mesh.Shutdown(*m_context);
         m_context->DestroyImage(m_image);
+        m_context->DestroyImageView(m_imageView);
+
+        m_context->DestroyBuffer(m_uniformBuffer);
+        m_context->DestroySampler(m_sampler);
+
+        m_context->DestroyPipelineLayout(m_pipelineLayout);
+        m_context->DestroyBindGroupLayout(m_bindGroupLayout);
+        m_context->DestroyGraphicsPipeline(m_pipelineState);
+        m_context->DestroyBindGroup(m_bindGroup);
+
     }
 
     void OnUpdate(Timestep timestep) override
