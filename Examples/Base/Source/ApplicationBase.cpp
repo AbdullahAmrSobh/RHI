@@ -18,6 +18,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+#include <tracy/Tracy.hpp>
+
 class DebugCallbacks final : public RHI::DebugCallbacks
 {
 public:
@@ -109,6 +111,8 @@ ApplicationBase::ApplicationBase(std::string name, uint32_t width, uint32_t heig
 
 void ApplicationBase::Init()
 {
+    ZoneScopedN("app-base-ini");
+
     // create swapchain
     RHI::SwapchainCreateInfo createInfo{};
     createInfo.win32Window.hwnd = glfwGetWin32Window(static_cast<GLFWwindow*>(m_window));
@@ -146,6 +150,7 @@ void ApplicationBase::Init()
 
 void ApplicationBase::Shutdown()
 {
+    ZoneScopedN("app-base-shutdown");
     OnShutdown();
     glfwTerminate();
 }
@@ -192,6 +197,7 @@ void ApplicationBase::Run()
 
         // Render
         {
+            ZoneScopedN("app-base-update");
             OnUpdate(Timestep(deltaTime));
         }
     }

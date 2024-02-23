@@ -27,7 +27,6 @@ namespace RHI::Vulkan
         , m_lastPresentResult(VK_ERROR_UNKNOWN)
     {
         ZoneScoped;
-
     }
 
     ISwapchain::~ISwapchain()

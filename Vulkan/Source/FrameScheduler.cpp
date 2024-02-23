@@ -6,6 +6,8 @@
 #include "TransientResourceAllocator.inl"
 #include "Swapchain.hpp"
 
+#include <tracy/Tracy.hpp>
+
 namespace RHI::Vulkan
 {
     ///////////////////////////////////////////////////////////////////////////
@@ -38,6 +40,8 @@ namespace RHI::Vulkan
 
     IFrameScheduler::~IFrameScheduler()
     {
+        ZoneScoped;
+
     }
 
     VkResult IFrameScheduler::Init()
@@ -54,6 +58,8 @@ namespace RHI::Vulkan
 
     void IFrameScheduler::DeviceWaitIdle()
     {
+        ZoneScoped;
+
         auto context = (IContext*)m_context;
         auto result = vkDeviceWaitIdle(context->m_device);
         VULKAN_ASSERT_SUCCESS(result);
@@ -61,6 +67,8 @@ namespace RHI::Vulkan
 
     Ptr<Pass> IFrameScheduler::CreatePass(const char* name, QueueType queueType)
     {
+        ZoneScoped;
+
         auto pass = CreatePtr<IPass>((IContext*)m_context, name, queueType);
         pass->Init();
         return pass;
@@ -68,6 +76,8 @@ namespace RHI::Vulkan
 
     void IFrameScheduler::QueuePassSubmit(Pass* _pass, Fence* _fence)
     {
+        ZoneScoped;
+
         auto context = (IContext*)m_context;
         auto pass = (IPass*)_pass;
         auto queue = context->GetQueue(pass->m_queueType);
@@ -123,6 +133,8 @@ namespace RHI::Vulkan
 
     void IFrameScheduler::QueueCommandsSubmit(QueueType queueType, TL::Span<CommandList*> commandLists, Fence& _fence)
     {
+        ZoneScoped;
+
         auto context = (IContext*)m_context;
         auto& fence = (IFence&)_fence;
         auto queue = context->GetQueue(queueType);

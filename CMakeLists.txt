@@ -10,6 +10,8 @@ set(RHI_DEVELOPER_MODE ON)
 
 option(TRACY_ENABLE ON)
 add_compile_definitions(TRACY_ENABLE)
+option(RHI_DEBUG ON)
+add_compile_definitions(RHI_DEBUG)
 
 # ---- In-source guard ----
 

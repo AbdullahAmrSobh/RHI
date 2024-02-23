@@ -63,7 +63,7 @@ namespace RHI
 
 #if RHI_DEBUG
         if (m_debugCallbacks)
-            m_debugCallbacks->LogError(message, __VA_ARGS__);
+            m_debugCallbacks->LogError(message, "no-va-args");
 #else
         (void)message;
 #endif
@@ -75,7 +75,7 @@ namespace RHI
 
 #if RHI_DEBUG
         if (m_debugCallbacks)
-            m_debugCallbacks->LogWarnning(message, __VA_ARGS__);
+            m_debugCallbacks->LogWarnning(message, "no-va-args");
 #else
         (void)message;
 #endif
@@ -87,7 +87,7 @@ namespace RHI
 
 #if RHI_DEBUG
         if (m_debugCallbacks)
-            m_debugCallbacks->LogInfo(message, __VA_ARGS__);
+            m_debugCallbacks->LogInfo(message, "no-va-args");
 #else
         (void)message;
 #endif

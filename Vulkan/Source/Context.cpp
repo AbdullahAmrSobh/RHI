@@ -92,11 +92,12 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
+        vkDeviceWaitIdle(m_device);
+
         DestroyResources();
         
-        vkDeviceWaitIdle(m_device);
-        vkDestroyDevice(m_device, nullptr);
         vmaDestroyAllocator(m_allocator);
+        vkDestroyDevice(m_device, nullptr);
         vkDestroyInstance(m_instance, nullptr);
     }
 
@@ -149,8 +150,8 @@ namespace RHI::Vulkan
 #ifdef RHI_DEBUG
         if (debugExtensionFound)
             enabledExtensionsNames.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-        else
-            m_debugMessenger->LogWarnning("RHI Vulkan: Debug extension not present.\n Vulkan layer validation is disabled.");
+        // else
+            // m_debugMessenger->LogWarnning("RHI Vulkan: Debug extension not present.\n Vulkan layer validation is disabled.");
 #endif
 
         {

@@ -5,6 +5,8 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
+#include <tracy/Tracy.hpp>
+
 struct UniformBufferContent
 {
     glm::mat4 viewProjection;
@@ -76,13 +78,14 @@ public:
 
         Mesh result{
             .drawElementsCount = uint32_t(indexBufferData.size()),
-            .indexBuffer = CreateBuffer<uint32_t>(indexBufferData, RHI::BufferUsage::Index),
-            .positionsBuffer = CreateBuffer<aiVector3D>({ mesh->mVertices, mesh->mNumVertices }, RHI::BufferUsage::Vertex),
-            .normalsBuffer = CreateBuffer<aiVector3D>({ mesh->mNormals, mesh->mNumVertices }, RHI::BufferUsage::Vertex),
-            .texCoordBuffer = CreateBuffer<glm::vec2>(texCoordData, RHI::BufferUsage::Vertex),
-            .textureSize = {
-                .width = texture.width,
-                .height = texture.height,
+            .indexBuffer       = CreateBuffer<uint32_t>(indexBufferData, RHI::BufferUsage::Index),
+            .positionsBuffer   = CreateBuffer<aiVector3D>({ mesh->mVertices, mesh->mNumVertices }, RHI::BufferUsage::Vertex),
+            .normalsBuffer     = CreateBuffer<aiVector3D>({ mesh->mNormals, mesh->mNumVertices }, RHI::BufferUsage::Vertex),
+            .texCoordBuffer    = CreateBuffer<glm::vec2>(texCoordData, RHI::BufferUsage::Vertex),
+            .textureSize = 
+            {
+                .width    = texture.width,
+                .height   = texture.height,
             },
             .textureStagingBuffer = CreateBuffer<uint8_t>({ texture.data.data(), texture.data.size() }, RHI::BufferUsage::CopySrc)
         };
@@ -142,6 +145,8 @@ public:
 
     void OnInit() override
     {
+        ZoneScopedN("triangle-update");
+
         {
             m_uniformData.viewProjection = m_camera.GetProjection() * m_camera.GetView();
         }
@@ -224,6 +229,8 @@ public:
 
     void OnShutdown() override
     {
+        ZoneScopedN("triangle-update");
+
         m_context->DestroyBindGroupLayout(m_bindGroupLayout);
         m_context->DestroyPipelineLayout(m_pipelineLayout);
         m_context->DestroyGraphicsPipeline(m_pipelineState);
@@ -236,6 +243,8 @@ public:
 
     void OnUpdate(Timestep timestep) override
     {
+        ZoneScopedN("triangle-update");
+
         m_camera.Update(timestep);
 
         auto projection = m_camera.GetProjection() * m_camera.GetView();
