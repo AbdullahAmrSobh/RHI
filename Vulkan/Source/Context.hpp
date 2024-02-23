@@ -65,8 +65,6 @@ namespace RHI::Vulkan
         void                      UnmapBuffer(Handle<Buffer> handle)                                   override;
         // clang-format on
 
-        static VkBool32 VKAPI_CALL DebugMessengerCallbacks(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
-
         void DestroyResources();
 
         uint32_t GetQueueFamilyIndex(QueueType queueType) const;
@@ -78,6 +76,17 @@ namespace RHI::Vulkan
         VkQueue GetQueue(QueueType queueType) const;
 
         uint32_t GetMemoryTypeIndex(MemoryType memoryType);
+
+    private:
+        static VkBool32 VKAPI_CALL DebugMessengerCallbacks(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
+
+        VkResult InitInstance(const ApplicationInfo& appInfo, bool* debugExtensionEnabled);
+        VkResult InitDevice();
+        VkResult InitDeviceQueues();
+        VkResult InitMemoryAllocator();
+        VkResult LoadFunctions(bool debugExtensionEnabled);
+        VkResult InitFrameScheduler();
+        VkResult InitStagingBuffer();
 
     public:
         // clang-format off
@@ -136,17 +145,4 @@ namespace RHI::Vulkan
         default:                  RHI_UNREACHABLE(); return VK_NULL_HANDLE;
         }
     }
-
-    inline VkSemaphore IContext::CreateSemaphore()
-    {
-        VkSemaphoreCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-        createInfo.pNext = nullptr;
-        createInfo.flags = 0;
-        VkSemaphore semaphore = VK_NULL_HANDLE;
-        auto result = vkCreateSemaphore(m_device, &createInfo, nullptr, &semaphore);
-        (void)result;
-        return semaphore;
-    }
-
 } // namespace RHI::Vulkan
