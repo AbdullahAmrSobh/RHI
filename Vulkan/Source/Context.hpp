@@ -68,25 +68,14 @@ namespace RHI::Vulkan
         void DestroyResources();
 
         uint32_t GetQueueFamilyIndex(QueueType queueType) const;
+
         VkSemaphore CreateSemaphore();
+
         void FreeSemaphore(VkSemaphore semaphore);
 
         VkQueue GetQueue(QueueType queueType) const;
 
         uint32_t GetMemoryTypeIndex(MemoryType memoryType);
-
-    private:
-        std::vector<VkLayerProperties> GetAvailableInstanceLayerExtensions() const;
-
-        std::vector<VkExtensionProperties> GetAvailableInstanceExtensions() const;
-
-        std::vector<VkLayerProperties> GetAvailableDeviceLayerExtensions(VkPhysicalDevice physicalDevice) const;
-
-        std::vector<VkExtensionProperties> GetAvailableDeviceExtensions(VkPhysicalDevice physicalDevice) const;
-
-        std::vector<VkPhysicalDevice> GetAvailablePhysicalDevices() const;
-
-        std::vector<VkQueueFamilyProperties> GetPhysicalDeviceQueueFamilyProperties(VkPhysicalDevice physicalDevice) const;
 
     public:
         // clang-format off

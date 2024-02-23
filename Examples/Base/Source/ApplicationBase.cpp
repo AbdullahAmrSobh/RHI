@@ -1,13 +1,6 @@
 #include "Examples-Base/ApplicationBase.hpp"
 
 #include <RHI-Vulkan/Loader.hpp>
-#include <cassert>
-#include <fstream>
-#include <iostream>
-#include <vector>
-#include <memory>
-#include <string>
-#include <chrono>
 
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3.h>
@@ -19,6 +12,14 @@
 #include "stb_image.h"
 
 #include <tracy/Tracy.hpp>
+
+#include <cassert>
+#include <fstream>
+#include <iostream>
+#include <vector>
+#include <memory>
+#include <string>
+#include <chrono>
 
 class DebugCallbacks final : public RHI::DebugCallbacks
 {

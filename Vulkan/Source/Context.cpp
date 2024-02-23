@@ -1,3 +1,4 @@
+#include "RHI/Common//Callstack.hpp"
 
 #include "RHI-Vulkan/Loader.hpp"
 
@@ -39,6 +40,8 @@ namespace RHI
 
     Ptr<Context> CreateVulkanContext(const ApplicationInfo& appInfo, Ptr<DebugCallbacks> debugCallbacks)
     {
+        ZoneScoped;
+
         auto context = CreatePtr<Vulkan::IContext>(std::move(debugCallbacks));
         auto result = context->Init(appInfo);
         RHI_ASSERT(result == VK_SUCCESS);
@@ -56,28 +59,87 @@ namespace RHI::Vulkan
         void* pUserData)
     {
         (void)messageTypes;
-        (void)pUserData;
 
         auto debugCallback = reinterpret_cast<DebugCallbacks*>(pUserData);
 
-        if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
-        {
-            debugCallback->LogInfo(pCallbackData->pMessage);
-        }
-        else if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
-        {
-            debugCallback->LogInfo(pCallbackData->pMessage);
-        }
-        else if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
-        {
-            debugCallback->LogWarnning(pCallbackData->pMessage);
-        }
-        else if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+        if ((messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
         {
             debugCallback->LogError(pCallbackData->pMessage);
         }
+        else if ((messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+        {
+            debugCallback->LogWarnning(pCallbackData->pMessage);
+        }
+        else if ((messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) == VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+        {
+            debugCallback->LogInfo(pCallbackData->pMessage);
+        }
+        else if ((messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) == VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
+        {
+            debugCallback->LogInfo(pCallbackData->pMessage);
+        }
 
         return VK_FALSE;
+    }
+
+    std::vector<VkLayerProperties> _GetAvailableInstanceLayerExtensions()
+    {
+        uint32_t instanceLayerCount;
+        vkEnumerateInstanceLayerProperties(&instanceLayerCount, nullptr);
+        std::vector<VkLayerProperties> layers;
+        layers.resize(instanceLayerCount);
+        vkEnumerateInstanceLayerProperties(&instanceLayerCount, layers.data());
+        return layers;
+    }
+
+    std::vector<VkExtensionProperties> _GetAvailableInstanceExtensions()
+    {
+        uint32_t instanceExtensionsCount;
+        vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionsCount, nullptr);
+        std::vector<VkExtensionProperties> extensions;
+        extensions.resize(instanceExtensionsCount);
+        vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionsCount, extensions.data());
+        return extensions;
+    }
+
+    std::vector<VkLayerProperties> _GetAvailableDeviceLayerExtensions(VkPhysicalDevice physicalDevice)
+    {
+        uint32_t instanceLayerCount;
+        vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, nullptr);
+        std::vector<VkLayerProperties> layers;
+        layers.resize(instanceLayerCount);
+        vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, layers.data());
+        return layers;
+    }
+
+    std::vector<VkExtensionProperties> _GetAvailableDeviceExtensions(VkPhysicalDevice physicalDevice)
+    {
+        uint32_t extensionsCount;
+        vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, nullptr);
+        std::vector<VkExtensionProperties> extnesions;
+        extnesions.resize(extensionsCount);
+        vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, extnesions.data());
+        return extnesions;
+    }
+
+    std::vector<VkPhysicalDevice> _GetAvailablePhysicalDevices(VkInstance instance)
+    {
+        uint32_t physicalDeviceCount;
+        vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
+        std::vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount, VK_NULL_HANDLE);
+        VkResult result = vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, physicalDevices.data());
+        RHI_ASSERT(result == VK_SUCCESS);
+        return physicalDevices;
+    }
+
+    std::vector<VkQueueFamilyProperties> _GetPhysicalDeviceQueueFamilyProperties(VkPhysicalDevice physicalDevice)
+    {
+        uint32_t queueFamilyPropertiesCount;
+        vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyPropertiesCount, nullptr);
+        std::vector<VkQueueFamilyProperties> queueFamilyProperties{};
+        queueFamilyProperties.resize(queueFamilyPropertiesCount);
+        vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyPropertiesCount, queueFamilyProperties.data());
+        return queueFamilyProperties;
     }
 
     IContext::IContext(Ptr<DebugCallbacks> debugCallbacks)
@@ -95,7 +157,7 @@ namespace RHI::Vulkan
         vkDeviceWaitIdle(m_device);
 
         DestroyResources();
-        
+
         vmaDestroyAllocator(m_allocator);
         vkDestroyDevice(m_device, nullptr);
         vkDestroyInstance(m_instance, nullptr);
@@ -136,7 +198,7 @@ namespace RHI::Vulkan
         bool debugExtensionFound = false;
 
 #ifdef RHI_DEBUG
-        for (VkExtensionProperties extension : GetAvailableInstanceExtensions())
+        for (VkExtensionProperties extension : _GetAvailableInstanceExtensions())
         {
             auto extensionName = extension.extensionName;
             if (!strcmp(extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
@@ -150,7 +212,7 @@ namespace RHI::Vulkan
 #ifdef RHI_DEBUG
         if (debugExtensionFound)
             enabledExtensionsNames.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-        // else
+            // else
             // m_debugMessenger->LogWarnning("RHI Vulkan: Debug extension not present.\n Vulkan layer validation is disabled.");
 #endif
 
@@ -169,7 +231,7 @@ namespace RHI::Vulkan
             VULKAN_RETURN_VKERR_CODE(result);
         }
 
-        for (VkPhysicalDevice physicalDevice : GetAvailablePhysicalDevices())
+        for (VkPhysicalDevice physicalDevice : _GetAvailablePhysicalDevices(m_instance))
         {
             bool swapchainExtension = false;
             bool dynamicRenderingExtension = false;
@@ -178,7 +240,7 @@ namespace RHI::Vulkan
             bool createRenderpass2Extension = false;
             bool depthStencilResolveExtension = false;
 
-            for (auto extension : GetAvailableDeviceExtensions(physicalDevice))
+            for (auto extension : _GetAvailableDeviceExtensions(physicalDevice))
             {
                 swapchainExtension |= strcmp(extension.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0;
                 dynamicRenderingExtension |= strcmp(extension.extensionName, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME) == 0;
@@ -209,7 +271,7 @@ namespace RHI::Vulkan
                 VK_KHR_SWAPCHAIN_EXTENSION_NAME,
             };
 
-            auto queueFamilyProperties = GetPhysicalDeviceQueueFamilyProperties(m_physicalDevice);
+            auto queueFamilyProperties = _GetPhysicalDeviceQueueFamilyProperties(m_physicalDevice);
             for (uint32_t queueFamilyIndex = 0; queueFamilyIndex < queueFamilyProperties.size(); queueFamilyIndex++)
             {
                 auto queueFamilyProperty = queueFamilyProperties[queueFamilyIndex];
@@ -710,66 +772,6 @@ namespace RHI::Vulkan
         {
             vkDestroySemaphore(m_device, semaphore, nullptr);
         }
-    }
-
-    std::vector<VkLayerProperties> IContext::GetAvailableInstanceLayerExtensions() const
-    {
-        uint32_t instanceLayerCount;
-        vkEnumerateInstanceLayerProperties(&instanceLayerCount, nullptr);
-        std::vector<VkLayerProperties> layers;
-        layers.resize(instanceLayerCount);
-        vkEnumerateInstanceLayerProperties(&instanceLayerCount, layers.data());
-        return layers;
-    }
-
-    std::vector<VkExtensionProperties> IContext::GetAvailableInstanceExtensions() const
-    {
-        uint32_t instanceExtensionsCount;
-        vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionsCount, nullptr);
-        std::vector<VkExtensionProperties> extensions;
-        extensions.resize(instanceExtensionsCount);
-        vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionsCount, extensions.data());
-        return extensions;
-    }
-
-    std::vector<VkLayerProperties> IContext::GetAvailableDeviceLayerExtensions(VkPhysicalDevice physicalDevice) const
-    {
-        uint32_t instanceLayerCount;
-        vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, nullptr);
-        std::vector<VkLayerProperties> layers;
-        layers.resize(instanceLayerCount);
-        vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, layers.data());
-        return layers;
-    }
-
-    std::vector<VkExtensionProperties> IContext::GetAvailableDeviceExtensions(VkPhysicalDevice physicalDevice) const
-    {
-        uint32_t extensionsCount;
-        vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, nullptr);
-        std::vector<VkExtensionProperties> extnesions;
-        extnesions.resize(extensionsCount);
-        vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, extnesions.data());
-        return extnesions;
-    }
-
-    std::vector<VkPhysicalDevice> IContext::GetAvailablePhysicalDevices() const
-    {
-        uint32_t physicalDeviceCount;
-        vkEnumeratePhysicalDevices(m_instance, &physicalDeviceCount, nullptr);
-        std::vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount, VK_NULL_HANDLE);
-        VkResult result = vkEnumeratePhysicalDevices(m_instance, &physicalDeviceCount, physicalDevices.data());
-        RHI_ASSERT(result == VK_SUCCESS);
-        return physicalDevices;
-    }
-
-    std::vector<VkQueueFamilyProperties> IContext::GetPhysicalDeviceQueueFamilyProperties(VkPhysicalDevice physicalDevice) const
-    {
-        uint32_t queueFamilyPropertiesCount;
-        vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyPropertiesCount, nullptr);
-        std::vector<VkQueueFamilyProperties> queueFamilyProperties{};
-        queueFamilyProperties.resize(queueFamilyPropertiesCount);
-        vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyPropertiesCount, queueFamilyProperties.data());
-        return queueFamilyProperties;
     }
 
     uint32_t IContext::GetMemoryTypeIndex(MemoryType memoryType)
