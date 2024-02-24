@@ -109,8 +109,6 @@ namespace RHI::Vulkan
 
         IPass* m_pass;
 
-        CommandPool* m_parentPool;
-
         VkCommandBuffer m_commandBuffer;
     };
 

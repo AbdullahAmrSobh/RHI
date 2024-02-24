@@ -107,8 +107,9 @@ namespace RHI::Vulkan
         : Context(std::move(debugCallbacks))
     {
         m_frameScheduler = CreatePtr<IFrameScheduler>(this);
-        m_bindGroupAllocator = CreatePtr<BindGroupAllocator>(m_device);
+        // m_bindGroupAllocator = CreatePtr<BindGroupAllocator>();
         m_stagingBuffer = CreatePtr<IStagingBuffer>(this);
+        m_transferCommandsAllocator = CreatePtr<ICommandListAllocator>(this);
     }
 
     IContext::~IContext()
@@ -156,7 +157,18 @@ namespace RHI::Vulkan
         VULKAN_RETURN_VKERR_CODE(result);
 
         m_bindGroupAllocator = CreatePtr<BindGroupAllocator>(m_device);
-        m_transferCommandsAllocator = CreateCommandListAllocator(QueueType::Graphics);
+
+        auto scheduler = (IFrameScheduler*)m_frameScheduler.get();
+        result = scheduler->Init();
+        VULKAN_RETURN_VKERR_CODE(result);
+
+        auto stagingBuffer = (IStagingBuffer*)m_stagingBuffer.get();
+        result = stagingBuffer->Init();
+        VULKAN_RETURN_VKERR_CODE(result);
+
+        auto commandAllocator = (ICommandListAllocator*)m_transferCommandsAllocator.get();
+        result = commandAllocator->Init(QueueType::Graphics);
+        VULKAN_RETURN_VKERR_CODE(result);
 
         return VK_SUCCESS;
     }
@@ -654,6 +666,8 @@ namespace RHI::Vulkan
         if (*debugExtensionEnabled)
         {
             enabledExtensionsNames.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+            enabledExtensionsNames.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+            
         }
         else
         {

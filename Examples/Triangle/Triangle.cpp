@@ -91,9 +91,6 @@ public:
             createInfo.size.height = textureData.height;
             createInfo.size.depth = 1;
             createInfo.format = RHI::Format::RGBA8_UNORM;
-            createInfo.sampleCount = RHI::SampleCount::Samples1;
-            createInfo.mipLevels = 1;
-            createInfo.arrayCount = 1;
             m_image = m_context->CreateImageWithContent(createInfo, textureData.data).GetValue();
             RHI::ImageViewCreateInfo viewInfo{};
             viewInfo.image = m_image;
@@ -115,9 +112,9 @@ public:
 
             RHI::GraphicsPipelineCreateInfo psoCreateInfo{};
             // clang-format off
-            psoCreateInfo.inputAssemblerState.attributes[0] = { .location = 0, .binding = 0, .format = RHI::Format::RGB32_FLOAT, .offset = 0,  }; 
-            psoCreateInfo.inputAssemblerState.attributes[1] = { .location = 1, .binding = 1, .format = RHI::Format::RGB32_FLOAT, .offset = 0,  };  
-            psoCreateInfo.inputAssemblerState.attributes[2] = { .location = 2, .binding = 2, .format = RHI::Format::RG32_FLOAT, .offset = 0,  };  
+            psoCreateInfo.inputAssemblerState.attributes[0] = { .location = 0, .binding = 0, .format = RHI::Format::RGB32_FLOAT, .offset = 0 }; 
+            psoCreateInfo.inputAssemblerState.attributes[1] = { .location = 1, .binding = 1, .format = RHI::Format::RGB32_FLOAT, .offset = 0 };  
+            psoCreateInfo.inputAssemblerState.attributes[2] = { .location = 2, .binding = 2, .format = RHI::Format::RG32_FLOAT,  .offset = 0 };  
             psoCreateInfo.inputAssemblerState.bindings[0] = { .binding = 0, .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT), .stepRate = RHI::PipelineVertexInputRate::PerVertex };  
             psoCreateInfo.inputAssemblerState.bindings[1] = { .binding = 1, .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT), .stepRate = RHI::PipelineVertexInputRate::PerVertex };  
             psoCreateInfo.inputAssemblerState.bindings[2] = { .binding = 2, .stride = RHI::GetFormatByteSize(RHI::Format::RG32_FLOAT),  .stepRate = RHI::PipelineVertexInputRate::PerVertex };
