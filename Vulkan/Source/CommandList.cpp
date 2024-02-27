@@ -702,4 +702,19 @@ namespace RHI::Vulkan
         vkCmdPipelineBarrier2(m_commandBuffer, &dependencyInfo);
     }
 
+    void ICommandList::PipelineBarrier(TL::Span<VkMemoryBarrier2> memoryBarriers)
+    {
+        PipelineBarrier(memoryBarriers, {}, {});
+    }
+
+    void ICommandList::PipelineBarrier(TL::Span<VkBufferMemoryBarrier2> bufferBarriers)
+    {
+        PipelineBarrier({}, bufferBarriers, {});
+    }
+
+    void ICommandList::PipelineBarrier(TL::Span<VkImageMemoryBarrier2> imageBarriers)
+    {
+        PipelineBarrier({}, {}, imageBarriers);
+    }
+
 } // namespace RHI::Vulkan

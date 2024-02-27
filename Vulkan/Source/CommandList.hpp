@@ -99,11 +99,11 @@ namespace RHI::Vulkan
 
         void PipelineBarrier(TL::Span<VkMemoryBarrier2> memoryBarriers, TL::Span<VkBufferMemoryBarrier2> bufferBarriers, TL::Span<VkImageMemoryBarrier2> imageBarriers);
 
-        inline void PipelineBarrier(TL::Span<VkMemoryBarrier2> memoryBarriers) { PipelineBarrier(memoryBarriers, {}, {}); }
+        void PipelineBarrier(TL::Span<VkMemoryBarrier2> memoryBarriers);
 
-        inline void PipelineBarrier(TL::Span<VkBufferMemoryBarrier2> bufferBarriers) { PipelineBarrier({}, bufferBarriers, {}); }
+        void PipelineBarrier(TL::Span<VkBufferMemoryBarrier2> bufferBarriers);
 
-        inline void PipelineBarrier(TL::Span<VkImageMemoryBarrier2> imageBarriers) { PipelineBarrier({}, {}, imageBarriers); }
+        void PipelineBarrier(TL::Span<VkImageMemoryBarrier2> imageBarriers);
 
         IContext* m_context;
 
