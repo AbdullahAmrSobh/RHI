@@ -223,7 +223,7 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto& pass = static_cast<IPass&>(passBase);
+        auto& pass = static_cast<Pass&>(passBase);
 
         m_pass = &pass;
         m_pass->m_commandLists.push_back(this);
@@ -448,7 +448,7 @@ namespace RHI::Vulkan
         return attachmentInfo;
     }
 
-    void ICommandList::RenderingBegin(IPass& pass)
+    void ICommandList::RenderingBegin(Pass& pass)
     {
         ZoneScoped;
 
@@ -498,7 +498,7 @@ namespace RHI::Vulkan
         vkCmdBeginRendering(m_commandBuffer, &renderingInfo);
     }
 
-    void ICommandList::RenderingEnd(IPass& pass)
+    void ICommandList::RenderingEnd(Pass& pass)
     {
         ZoneScoped;
 

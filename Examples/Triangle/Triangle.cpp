@@ -162,7 +162,6 @@ public:
             m_renderpass->UseDepthAttachment(depthAttachment, { 0.0 });
 
             scheduler.ResizeFrame({ m_windowWidth, m_windowHeight });
-            scheduler.RegisterPass(*m_renderpass);
             scheduler.Compile();
         }
     }

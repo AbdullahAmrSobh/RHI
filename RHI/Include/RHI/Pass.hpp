@@ -9,6 +9,13 @@ namespace RHI
 {
     class CommandList;
 
+    // FIXME: fwd decl
+    namespace Vulkan
+    {
+        class IFrameScheduler;
+        class ICommandList;
+    } // namespace Vulkan
+
     enum class QueueType
     {
         Graphics,
@@ -69,6 +76,8 @@ namespace RHI
 
     protected:
         friend class FrameScheduler;
+        friend class Vulkan::IFrameScheduler;
+        friend class Vulkan::ICommandList;
 
         std::string                                 m_name;
         QueueType                                   m_queueType;    // The type of the Hardware Queue needed to execute this pass.

@@ -10,7 +10,6 @@
 
 namespace RHI::Vulkan
 {
-    class IPass;
     class IContext;
     class ICommandList;
     class IFence;
@@ -77,9 +76,9 @@ namespace RHI::Vulkan
 
         VkRenderingAttachmentInfo GetAttachmentInfo(const ImagePassAttachment& passAttachment) const;
 
-        void RenderingBegin(IPass& pass);
+        void RenderingBegin(Pass& pass);
 
-        void RenderingEnd(IPass& pass);
+        void RenderingEnd(Pass& pass);
 
         void PushDebugMarker(const char* name);
 
@@ -107,7 +106,7 @@ namespace RHI::Vulkan
 
         IContext* m_context;
 
-        IPass* m_pass;
+        Pass* m_pass;
 
         VkCommandBuffer m_commandBuffer;
     };

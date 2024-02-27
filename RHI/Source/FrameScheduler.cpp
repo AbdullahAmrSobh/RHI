@@ -101,9 +101,12 @@ namespace RHI
         m_currentFrameIndex = m_frameNumber % m_frameCount;
     }
 
-    void FrameScheduler::RegisterPass(Pass& pass)
+    Ptr<Pass> FrameScheduler::CreatePass(const char* name, QueueType queueType)
     {
-        m_passList.push_back(&pass);
+        ZoneScoped;
+        auto pass = CreatePtr<Pass>(name, queueType);
+        m_passList.push_back(pass.get());
+        return pass;
     }
 
     void FrameScheduler::Compile()

@@ -39,9 +39,7 @@ namespace RHI
         /// This marks the ending of a graphics frame.
         void                        End();
 
-        void RegisterPass(Pass& pass);
-
-        virtual Ptr<Pass>           CreatePass(const char* name, QueueType queueType) = 0;
+        Ptr<Pass>                   CreatePass(const char* name, QueueType queueType);
 
         /// @brief Called after all passes inside the Frame Graph are setup, to finialize the graph
         void                        Compile();

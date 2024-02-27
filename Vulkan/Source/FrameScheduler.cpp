@@ -10,29 +10,6 @@
 
 namespace RHI::Vulkan
 {
-    ///////////////////////////////////////////////////////////////////////////
-    /// Pass
-    ///////////////////////////////////////////////////////////////////////////
-
-    IPass::IPass(IContext* context, const char* name, QueueType queueType)
-        : Pass(name, queueType)
-        , m_context(context)
-    {
-    }
-
-    IPass::~IPass()
-    {
-    }
-
-    VkResult IPass::Init()
-    {
-        return VK_SUCCESS;
-    }
-
-    ///////////////////////////////////////////////////////////////////////////
-    /// FrameScheduler
-    ///////////////////////////////////////////////////////////////////////////
-
     IFrameScheduler::IFrameScheduler(IContext* context)
         : FrameScheduler(context)
     {
@@ -65,21 +42,11 @@ namespace RHI::Vulkan
         VULKAN_ASSERT_SUCCESS(result);
     }
 
-    Ptr<Pass> IFrameScheduler::CreatePass(const char* name, QueueType queueType)
-    {
-        ZoneScoped;
-
-        auto pass = CreatePtr<IPass>((IContext*)m_context, name, queueType);
-        pass->Init();
-        return pass;
-    }
-
-    void IFrameScheduler::QueuePassSubmit(Pass* _pass, Fence* _fence)
+    void IFrameScheduler::QueuePassSubmit(Pass* pass, Fence* _fence)
     {
         ZoneScoped;
 
         auto context = (IContext*)m_context;
-        auto pass = (IPass*)_pass;
         auto queue = context->GetQueue(pass->m_queueType);
 
         std::vector<VkCommandBufferSubmitInfo> commandBuffers{};
