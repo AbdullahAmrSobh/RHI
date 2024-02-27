@@ -16,7 +16,7 @@ namespace RHI::Vulkan
 
         VkResult Init(const SwapchainCreateInfo& createInfo);
 
-        ResultCode Recreate(ImageSize2D newSize, uint32_t imageCount, SwapchainPresentMode presentMode) override;
+        ResultCode Recreate(ImageSize2D newSize) override;
         ResultCode Present() override;
 
     private:

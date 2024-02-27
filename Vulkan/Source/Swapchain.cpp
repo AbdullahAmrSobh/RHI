@@ -137,13 +137,11 @@ namespace RHI::Vulkan
         return VK_SUCCESS;
     }
 
-    ResultCode ISwapchain::Recreate(ImageSize2D newSize, uint32_t imageCount, SwapchainPresentMode presentMode)
+    ResultCode ISwapchain::Recreate(ImageSize2D newSize)
     {
         ZoneScoped;
 
         m_createInfo.imageSize = newSize;
-        m_createInfo.imageCount = imageCount;
-        m_createInfo.presentMode = presentMode;
 
         auto result = InitSwapchain();
         VULKAN_ASSERT_SUCCESS(result);
