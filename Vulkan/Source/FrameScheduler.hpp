@@ -2,16 +2,11 @@
 
 #include <RHI/FrameScheduler.hpp>
 
-#include <vk_mem_alloc.h>
+#include <vulkan/vulkan.h>
 
 namespace RHI::Vulkan
 {
-    struct Allocation;
-
-    struct IFence;
-
     class IContext;
-    class ICommandList;
 
     class IFrameScheduler final : public FrameScheduler
     {
@@ -25,5 +20,4 @@ namespace RHI::Vulkan
         void QueuePassSubmit(Pass* pass, Fence* fence) override;
         void QueueCommandsSubmit(QueueType queueType, TL::Span<CommandList*> commandLists, Fence& fence) override;
     };
-
 } // namespace RHI::Vulkan

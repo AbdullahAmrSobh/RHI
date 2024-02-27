@@ -1,5 +1,6 @@
 #pragma once
 
+#include <RHI/Common/Result.hpp>
 #include <RHI/Resources.hpp>
 
 #include <vk_mem_alloc.h>
@@ -200,7 +201,6 @@ namespace RHI::Vulkan
         IContext* m_context;
     };
 
-    /// @brief Fence object used to preform CPU-GPU sync
     class IFence final : public Fence
     {
     public:

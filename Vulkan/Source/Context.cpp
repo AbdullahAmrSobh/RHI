@@ -652,7 +652,7 @@ namespace RHI::Vulkan
         debugCreateInfo.pfnUserCallback = DebugMessengerCallbacks;
         debugCreateInfo.pUserData = this;
 
-#ifdef RHI_DEBUG
+#if RHI_DEBUG
         for (VkExtensionProperties extension : _GetAvailableInstanceExtensions())
         {
             auto extensionName = extension.extensionName;

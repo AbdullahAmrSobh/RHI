@@ -1,5 +1,6 @@
 #pragma once
 #include "Context.hpp"
+#include "Common.hpp"
 #include "Resources.hpp"
 
 #include <RHI/Common/Hash.hpp>

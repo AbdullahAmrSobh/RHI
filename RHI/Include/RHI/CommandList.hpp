@@ -166,5 +166,4 @@ namespace RHI
         /// @brief Submit a image to buffer copy command.
         virtual void Copy(const ImageToBufferCopyInfo& command) = 0;
     };
-
 } // namespace RHI
