@@ -109,7 +109,7 @@ namespace RHI
         lastUse = nullptr;
     }
 
-    Handle<Image> BufferAttachment::GetBuffer()
+    Handle<Buffer> BufferAttachment::GetBuffer()
     {
         return handle;
     }

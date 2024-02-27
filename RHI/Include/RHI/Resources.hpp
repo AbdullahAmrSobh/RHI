@@ -646,7 +646,7 @@ namespace RHI
     /// @brief Structure specifying the parameters of an buffer attachment.
     struct BufferViewCreateInfo
     {
-        Handle<Image> buffer;
+        Handle<Buffer> buffer;
         Format        format;
         size_t        byteOffset;
         size_t        byteSize;

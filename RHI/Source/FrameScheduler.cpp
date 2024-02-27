@@ -146,7 +146,7 @@ namespace RHI
         }
 
         std::unordered_map<ImageViewCreateInfo, Handle<ImageView>> imageViewsLut;
-        std::unordered_map<BufferViewCreateInfo, Handle<ImageView>> bufferViewsLut;
+        std::unordered_map<BufferViewCreateInfo, Handle<BufferView>> bufferViewsLut;
 
         auto findOrCreateImageView = [&](const ImageViewCreateInfo& createInfo)
         {

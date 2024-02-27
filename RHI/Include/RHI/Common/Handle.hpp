@@ -20,9 +20,9 @@ namespace RHI
         }
 
         template<typename BaseResource>
+            requires (std::is_base_of_v<BaseResource, Resource> || std::is_base_of_v<Resource , BaseResource>)
         Handle(Handle<BaseResource> baseHandle)
         {
-            // static_assert(!std::is_same_v<BaseResource, Resource> && (std::is_base_of_v<BaseResource, Resource> || std::is_base_of_v<Resource, BaseResource>), "Invalid cast");
             m_rawHandle.index = baseHandle.m_rawHandle.index;
             m_rawHandle.genId = baseHandle.m_rawHandle.genId;
         }

@@ -494,7 +494,7 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto imageView = m_imageViewOwner.Get(handle);
+        auto imageView = m_bufferViewOwner.Get(handle);
         // clang-format off
         m_deferDeleteQueue.push_back([&](){ imageView->Shutdown(this); });
         // clang-format on

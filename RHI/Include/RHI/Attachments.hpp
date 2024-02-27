@@ -172,7 +172,7 @@ namespace RHI
 
         void                  PushPassAttachment(BufferPassAttachment* passAttachment);
         void                  Reset();
-        Handle<Image>         GetBuffer();
+        Handle<Buffer>         GetBuffer();
     };
 
     struct ImagePassAttachment
