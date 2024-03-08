@@ -1,177 +1,240 @@
 #include "RHI/Attachments.hpp"
+#include "RHI/Context.hpp"
 
 namespace RHI
 {
-
-    //////////////////////////////////////////////////////////////////////////////////////////
-    /// ImageAttachment
-    //////////////////////////////////////////////////////////////////////////////////////////
-
-    ImageAttachment::ImageAttachment(const char* name, Handle<Image> handle)
-        : Attachment(name, Attachment::Lifetime::Persistent, Attachment::Type::Image)
-        , swapchain(nullptr)
-        , handle(handle)
-        , info()
-        , firstUse(nullptr)
-        , lastUse(nullptr)
+    void Attachment::Insert(PassAttachment* passAttachment)
     {
-    }
+        m_referenceCount++;
 
-    ImageAttachment::ImageAttachment(const char* name, Swapchain* swapchain)
-        : Attachment(name, Attachment::Lifetime::Persistent, Attachment::Type::Image)
-        , swapchain(swapchain)
-        , handle(swapchain->GetImage())
-        , info()
-        , firstUse(nullptr)
-        , lastUse(nullptr)
-    {
-    }
-
-    ImageAttachment::ImageAttachment(const char* name, const ImageCreateInfo& createInfo)
-        : Attachment(name, Attachment::Lifetime::Transient, Attachment::Type::Image)
-        , swapchain(nullptr)
-        , handle()
-        , info(createInfo)
-        , firstUse(nullptr)
-        , lastUse(nullptr)
-    {
-    }
-
-    void ImageAttachment::PushPassAttachment(ImagePassAttachment* passAttachment)
-    {
-        if (firstUse && lastUse)
+        if (m_firstPassAttachment == nullptr && m_lastPassAttachment == nullptr)
         {
-            lastUse->next = passAttachment;
-            lastUse = lastUse->next;
+            m_lastPassAttachment = passAttachment;
         }
         else
         {
-            firstUse = passAttachment;
-            lastUse = passAttachment;
+            m_lastPassAttachment->m_next = passAttachment;
+            passAttachment->m_prev = m_lastPassAttachment;
+            m_lastPassAttachment = passAttachment;
         }
-    }
 
-    void ImageAttachment::Reset()
-    {
-        firstUse = nullptr;
-        lastUse = nullptr;
-    }
-
-    Handle<Image> ImageAttachment::GetImage()
-    {
-        if (swapchain)
+        if (m_lifetime == Lifetime::Transient)
         {
-            return swapchain->GetImage();
+            if (m_type == Type::Image)
+            {
+                auto imagePassAttachment = (ImagePassAttachment*)passAttachment;
+                m_asImage.info.usageFlags |= imagePassAttachment->m_usage;
+                m_asImage.info.mipLevels = std::max(m_asImage.info.mipLevels, imagePassAttachment->m_viewInfo.subresource.mipLevelCount);
+                m_asImage.info.arrayCount = std::max(m_asImage.info.arrayCount, imagePassAttachment->m_viewInfo.subresource.arrayCount);
+            }
+            else if (m_type == Type::Buffer)
+            {
+                auto bufferPassAttachment = (BufferPassAttachment*)passAttachment;
+                m_asBuffer.info.usageFlags |= bufferPassAttachment->m_usage;
+            }
+            else
+            {
+                RHI_UNREACHABLE();
+            }
         }
-
-        return handle;
     }
 
-    //////////////////////////////////////////////////////////////////////////////////////////
-    /// BufferAttachment
-    //////////////////////////////////////////////////////////////////////////////////////////
-
-    BufferAttachment::BufferAttachment(const char* name, Handle<Buffer> handle)
-        : Attachment(name, Attachment::Lifetime::Persistent, Attachment::Type::Buffer)
-        , handle(handle)
-        , info()
-        , firstUse(nullptr)
-        , lastUse(nullptr)
+    void Attachment::Remove(PassAttachment* passAttachment)
     {
-    }
+        m_referenceCount--;
 
-    BufferAttachment::BufferAttachment(const char* name, const BufferCreateInfo& createInfo)
-        : Attachment(name, Attachment::Lifetime::Transient, Attachment::Type::Buffer)
-        , handle()
-        , info(createInfo)
-        , firstUse(nullptr)
-        , lastUse(nullptr)
-    {
-    }
+        auto prev = passAttachment->m_prev;
+        auto next = passAttachment->m_next;
 
-    void BufferAttachment::PushPassAttachment(BufferPassAttachment* passAttachment)
-    {
-        if (firstUse && lastUse)
-        {
-            lastUse->next = passAttachment;
-            lastUse = lastUse->next;
-        }
+        if (prev)
+            prev->m_next = next;
         else
+            m_firstPassAttachment = next;
+
+        if (next)
+            next->m_prev = prev;
+        else
+            m_lastPassAttachment = prev;
+
+        if (m_lifetime == Lifetime::Transient)
         {
-            firstUse = passAttachment;
-            lastUse = passAttachment;
+            if (m_type == Type::Image)
+            {
+                auto format = m_asImage.info.format;
+                m_asImage.info = {};
+                m_asImage.info.format = format;
+            }
+            else if (m_type == Type::Buffer)
+            {
+                m_asBuffer.info = {};
+            }
+            else
+            {
+                RHI_UNREACHABLE();
+            }
+
+            for (auto passAttachment2 = m_firstPassAttachment;
+                 passAttachment2 != nullptr;
+                 passAttachment2 = passAttachment2->GetNext())
+            {
+                if (m_type == Type::Image)
+                {
+                    auto imagePassAttachment = (ImagePassAttachment*)passAttachment2;
+                    m_asImage.info.usageFlags |= imagePassAttachment->m_usage;
+                    m_asImage.info.mipLevels = std::max(m_asImage.info.mipLevels, imagePassAttachment->m_viewInfo.subresource.mipLevelCount);
+                    m_asImage.info.arrayCount = std::max(m_asImage.info.arrayCount, imagePassAttachment->m_viewInfo.subresource.arrayCount);
+                }
+                else if (m_type == Type::Buffer)
+                {
+                    auto bufferPassAttachment = (BufferPassAttachment*)passAttachment2;
+                    m_asBuffer.info.usageFlags |= bufferPassAttachment->m_usage;
+                }
+                else
+                {
+                    RHI_UNREACHABLE();
+                }
+            }
         }
     }
 
-    void BufferAttachment::Reset()
+    ///////////////////////////////////////////////////////////////////////////
+    /// AttachmentsPool
+    ///////////////////////////////////////////////////////////////////////////
+
+    AttachmentsPool::AttachmentsPool(Context* context)
+        : m_context(context)
     {
-        firstUse = nullptr;
-        lastUse = nullptr;
     }
 
-    Handle<Buffer> BufferAttachment::GetBuffer()
+    void AttachmentsPool::InitPassAttachment(PassAttachment* passAttachment)
     {
-        return handle;
-    }
-
-    //////////////////////////////////////////////////////////////////////////////////////////
-    /// AttachmentsRegistry
-    //////////////////////////////////////////////////////////////////////////////////////////
-
-    void AttachmentsRegistry::Reset()
-    {
-        m_imageAttachments.clear();
-        m_bufferAttachments.clear();
-        m_swapchainAttachments.clear();
-    }
-
-    ImageAttachment* AttachmentsRegistry::ImportSwapchainImage(const char* name, Swapchain* swapchain)
-    {
-        auto& attachment = m_imageAttachments[name] = std::make_unique<ImageAttachment>(name, swapchain);
-        m_swapchainAttachments.push_back(name);
-        return attachment.get();
-    }
-
-    ImageAttachment* AttachmentsRegistry::ImportImage(const char* name, Handle<Image> handle)
-    {
-        auto& attachment = m_imageAttachments[name] = std::make_unique<ImageAttachment>(name, handle);
-        return attachment.get();
-    }
-
-    BufferAttachment* AttachmentsRegistry::ImportBuffer(const char* name, Handle<Buffer> handle)
-    {
-        auto& attachment = m_bufferAttachments[name] = std::make_unique<BufferAttachment>(name, handle);
-        return attachment.get();
-    }
-
-    ImageAttachment* AttachmentsRegistry::CreateTransientImage(const char* name, const ImageCreateInfo& createInfo)
-    {
-        auto& attachment = m_imageAttachments[name] = std::make_unique<ImageAttachment>(name, createInfo);
-        return attachment.get();
-    }
-
-    BufferAttachment* AttachmentsRegistry::CreateTransientBuffer(const char* name, const BufferCreateInfo& createInfo)
-    {
-        auto& attachment = m_bufferAttachments[name] = std::make_unique<BufferAttachment>(name, createInfo);
-        return attachment.get();
-    }
-
-    ImageAttachment* AttachmentsRegistry::FindImage(AttachmentID id)
-    {
-        if (auto it = m_imageAttachments.find(id); it != m_imageAttachments.end())
+        switch (passAttachment->GetAttachment()->m_type)
         {
-            return it->second.get();
+        case Attachment::Type::Image:
+            {
+                auto imagePassAttachment = (ImagePassAttachment*)passAttachment;
+                imagePassAttachment->m_view = CreateImageView(imagePassAttachment->m_viewInfo);
+                break;
+            }
+        case Attachment::Type::Buffer:
+            {
+                auto bufferPassAttachment = (BufferPassAttachment*)passAttachment;
+                bufferPassAttachment->m_view = CreateBufferView(bufferPassAttachment->m_viewInfo);
+                break;
+            }
+        default:
+            {
+                RHI_UNREACHABLE();
+                break;
+            }
         }
-        return nullptr;
     }
 
-    BufferAttachment* AttachmentsRegistry::FindBuffer(AttachmentID id)
+    void AttachmentsPool::ShutdownPassAttachment(PassAttachment* passAttachment)
     {
-        if (auto it = m_bufferAttachments.find(id); it != m_bufferAttachments.end())
+        switch (passAttachment->GetAttachment()->m_type)
         {
-            return it->second.get();
+        case Attachment::Type::Image:
+            {
+                auto imagePassAttachment = (ImagePassAttachment*)passAttachment;
+                m_context->DestroyImageView(imagePassAttachment->m_view);
+                break;
+            }
+        case Attachment::Type::Buffer:
+            {
+                auto bufferPassAttachment = (BufferPassAttachment*)passAttachment;
+                m_context->DestroyBufferView(bufferPassAttachment->m_view);
+                break;
+            }
+        default:
+            {
+                RHI_UNREACHABLE();
+                break;
+            }
         }
-        return nullptr;
     }
 
-}
+    ImageAttachment* AttachmentsPool::NewImageAttachment(const char* name, Handle<Image> handle)
+    {
+        auto attachment = (ImageAttachment*)m_attachmentsLut.insert(std::make_pair(name, CreatePtr<ImageAttachment>(name, handle))).first->second.get();
+        m_attachments.push_back(attachment);
+        m_imageAttachments.push_back(attachment);
+        return attachment;
+    }
+
+    ImageAttachment* AttachmentsPool::NewImageAttachment(const char* name, Format format, ImageType type, ImageSize3D size, SampleCount sampleCount, uint32_t mipLevelsCount, uint32_t arrayLayersCount)
+    {
+        ImageCreateInfo createInfo{};
+        createInfo.format = format;
+        createInfo.type = type;
+        createInfo.size = size;
+        createInfo.sampleCount = sampleCount;
+        createInfo.mipLevels = mipLevelsCount;
+        createInfo.arrayCount = arrayLayersCount;
+
+        auto attachment = (ImageAttachment*)m_attachmentsLut.insert(std::make_pair(name, CreatePtr<ImageAttachment>(name, createInfo))).first->second.get();
+        m_attachments.push_back(attachment);
+        m_transientAttachments.push_back(attachment);
+        m_imageAttachments.push_back(attachment);
+        return attachment;
+    }
+
+    BufferAttachment* AttachmentsPool::NewBufferAttachment(const char* name, size_t size)
+    {
+        auto attachment = (BufferAttachment*)m_attachmentsLut.insert(std::make_pair(name, CreatePtr<BufferAttachment>(name, size))).first->second.get();
+        m_attachments.push_back(attachment);
+        m_transientAttachments.push_back(attachment);
+        m_bufferAttachments.push_back(attachment);
+        return attachment;
+    }
+
+    void AttachmentsPool::DestroyAttachment(Attachment* attachment)
+    {
+        for (auto passAttachment = attachment->GetFirstPassAttachment(); passAttachment != nullptr; passAttachment = passAttachment->GetNext())
+        {
+            ShutdownPassAttachment(passAttachment);
+        }
+
+        switch (attachment->m_type)
+        {
+        case Attachment::Type::Image:
+            {
+                auto imageAttachment = (ImageAttachment*)attachment;
+                m_context->DestroyImage(imageAttachment->GetHandle());
+                break;
+            }
+        case Attachment::Type::Buffer:
+            {
+                auto bufferAttachment = (BufferAttachment*)attachment;
+                m_context->DestroyBuffer(bufferAttachment->GetHandle());
+                break;
+            }
+        default:
+            {
+                RHI_UNREACHABLE();
+                break;
+            }
+        }
+    }
+
+    Handle<ImageView> AttachmentsPool::CreateImageView(const ImageViewCreateInfo& createInfo)
+    {
+        if (auto it = m_imageViewsLRU.find(createInfo); it != m_imageViewsLRU.end())
+        {
+            return it->second;
+        }
+
+        return m_imageViewsLRU[createInfo] = m_context->CreateImageView(createInfo);
+    }
+
+    Handle<BufferView> AttachmentsPool::CreateBufferView(const BufferViewCreateInfo& createInfo)
+    {
+        if (auto it = m_bufferViewsLRU.find(createInfo); it != m_bufferViewsLRU.end())
+        {
+            return it->second;
+        }
+
+        return m_bufferViewsLRU[createInfo] = m_context->CreateBufferView(createInfo);
+    }
+
+} // namespace RHI

@@ -16,8 +16,29 @@ namespace RHI::Vulkan
 
         VkResult Init();
 
-        void DeviceWaitIdle() override;
-        void QueuePassSubmit(Pass* pass, Fence* fence) override;
-        void QueueCommandsSubmit(QueueType queueType, TL::Span<CommandList*> commandLists, Fence& fence) override;
+        void Flush() override;
+
+        void WaitIdle() override;
+        void PassSubmit(Pass* pass, Fence* fence) override;
+
+        void StageImageWrite(Handle<Image> handle) override;
+        void StageBufferWrite(Handle<Buffer> handle) override;
+
+        void ExecuteCommandLists(CommandList& commandList, Fence* fence) override;
+
+        VkSemaphore CreateTempSemaphore();
+
+    private:
+        VkQueue m_graphicsQueue;
+        VkQueue m_computeQueue;
+        VkQueue m_transferQueue;
+
+        std::vector<Handle<Image>> m_stagedWriteImages;
+        std::vector<Handle<Buffer>> m_stagedWriteBuffers;
+        std::vector<Handle<Image>> m_stagedReadImages;
+        std::vector<Handle<Buffer>> m_stagedReadBuffers;
+
+        uint32_t m_tmpSemaphoreHead = 0;
+        std::vector<VkSemaphore> m_tmpSemaphores;
     };
 } // namespace RHI::Vulkan

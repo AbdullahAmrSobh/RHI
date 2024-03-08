@@ -1,5 +1,6 @@
 #include <Examples-Base/ApplicationBase.hpp>
 #include <RHI/RHI.hpp>
+#include <RHI/Pass.hpp>
 
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
@@ -73,10 +74,10 @@ public:
 
     void OnInit() override
     {
-        ZoneScopedN("triangle-update");
+        ZoneScoped;
 
         m_uniformData.viewProjection = m_camera.GetProjection() * m_camera.GetView();
-        m_uniformBuffer = m_context->CreateBufferWithContentT<uint8_t>(RHI::BufferUsage::Uniform, { (uint8_t*)&m_uniformData, sizeof(UniformBufferContent) }).GetValue();
+        m_uniformBuffer = m_context->CreateBufferWithContentT<uint8_t>(RHI::BufferUsage::Uniform, RHI::TL::ToBytes(m_uniformData)).GetValue();
         m_mesh.Init(*m_context, "./Resources/Meshes/simple_cube.obj");
 
         // create image
@@ -103,72 +104,126 @@ public:
             createInfo.bindings[0] = { RHI::ShaderBindingType::Buffer, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Vertex };
             createInfo.bindings[1] = { RHI::ShaderBindingType::Image, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Pixel };
             createInfo.bindings[2] = { RHI::ShaderBindingType::Sampler, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Pixel };
-            m_bindGroupLayout = m_context->CreateBindGroupLayout(createInfo);
-
-            m_pipelineLayout = m_context->CreatePipelineLayout({ m_bindGroupLayout });
-
+            m_renderBindGroupLayout = m_context->CreateBindGroupLayout(createInfo);
+            m_renderPipelineLayout = m_context->CreatePipelineLayout({ m_renderBindGroupLayout });
+        }
+        {
             auto shaderCode = ReadBinaryFile("./Resources/Shaders/triangle.spv");
             auto shaderModule = m_context->CreateShaderModule(shaderCode);
-
-            RHI::GraphicsPipelineCreateInfo psoCreateInfo{};
+            RHI::GraphicsPipelineCreateInfo createInfo{};
             // clang-format off
-            psoCreateInfo.inputAssemblerState.attributes[0] = { .location = 0, .binding = 0, .format = RHI::Format::RGB32_FLOAT, .offset = 0 }; 
-            psoCreateInfo.inputAssemblerState.attributes[1] = { .location = 1, .binding = 1, .format = RHI::Format::RGB32_FLOAT, .offset = 0 };  
-            psoCreateInfo.inputAssemblerState.attributes[2] = { .location = 2, .binding = 2, .format = RHI::Format::RG32_FLOAT,  .offset = 0 };  
-            psoCreateInfo.inputAssemblerState.bindings[0] = { .binding = 0, .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT), .stepRate = RHI::PipelineVertexInputRate::PerVertex };  
-            psoCreateInfo.inputAssemblerState.bindings[1] = { .binding = 1, .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT), .stepRate = RHI::PipelineVertexInputRate::PerVertex };  
-            psoCreateInfo.inputAssemblerState.bindings[2] = { .binding = 2, .stride = RHI::GetFormatByteSize(RHI::Format::RG32_FLOAT),  .stepRate = RHI::PipelineVertexInputRate::PerVertex };
+            createInfo.inputAssemblerState.attributes[0] = { .location = 0, .binding = 0, .format = RHI::Format::RGB32_FLOAT, .offset = 0 }; 
+            createInfo.inputAssemblerState.attributes[1] = { .location = 1, .binding = 1, .format = RHI::Format::RGB32_FLOAT, .offset = 0 };  
+            createInfo.inputAssemblerState.attributes[2] = { .location = 2, .binding = 2, .format = RHI::Format::RG32_FLOAT,  .offset = 0 };  
+            createInfo.inputAssemblerState.bindings[0] = { .binding = 0, .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT), .stepRate = RHI::PipelineVertexInputRate::PerVertex };  
+            createInfo.inputAssemblerState.bindings[1] = { .binding = 1, .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT), .stepRate = RHI::PipelineVertexInputRate::PerVertex };  
+            createInfo.inputAssemblerState.bindings[2] = { .binding = 2, .stride = RHI::GetFormatByteSize(RHI::Format::RG32_FLOAT),  .stepRate = RHI::PipelineVertexInputRate::PerVertex };
             // clang-format on
-            psoCreateInfo.vertexShaderName = "VSMain";
-            psoCreateInfo.pixelShaderName = "PSMain";
-            psoCreateInfo.vertexShaderModule = shaderModule.get();
-            psoCreateInfo.pixelShaderModule = shaderModule.get();
-            psoCreateInfo.layout = m_pipelineLayout;
-            psoCreateInfo.renderTargetLayout.colorAttachmentsFormats[0] = RHI::Format::BGRA8_UNORM;
-            psoCreateInfo.renderTargetLayout.depthAttachmentFormat = RHI::Format::D32;
-            psoCreateInfo.depthStencilState.depthTestEnable = true;
-            psoCreateInfo.depthStencilState.depthWriteEnable = true;
-            psoCreateInfo.depthStencilState.compareOperator = RHI::CompareOperator::Greater;
-
-            m_pipelineState = m_context->CreateGraphicsPipeline(psoCreateInfo);
+            createInfo.vertexShaderName = "VSMain";
+            createInfo.pixelShaderName = "PSMain";
+            createInfo.vertexShaderModule = shaderModule.get();
+            createInfo.pixelShaderModule = shaderModule.get();
+            createInfo.layout = m_renderPipelineLayout;
+            createInfo.renderTargetLayout.colorAttachmentsFormats[0] = RHI::Format::BGRA8_UNORM;
+            createInfo.renderTargetLayout.depthAttachmentFormat = RHI::Format::D32;
+            createInfo.depthStencilState.depthTestEnable = true;
+            createInfo.depthStencilState.depthWriteEnable = true;
+            createInfo.depthStencilState.compareOperator = RHI::CompareOperator::Greater;
+            m_renderPipelineState = m_context->CreateGraphicsPipeline(createInfo);
         }
-
-        // create a sampler state
+        // create shader bind group layout compute pipeline
         {
-            m_sampler = m_context->CreateSampler(RHI::SamplerCreateInfo{});
-
-            RHI::BindGroupData bindGroupData{};
-            bindGroupData.BindBuffers(0u, m_uniformBuffer);
-            bindGroupData.BindImages(1u, m_imageView);
-            bindGroupData.BindSamplers(2u, m_sampler);
-            m_bindGroup = m_context->CreateBindGroup(m_bindGroupLayout);
-            m_context->UpdateBindGroup(m_bindGroup, bindGroupData);
+            RHI::BindGroupLayoutCreateInfo createInfo = {};
+            createInfo.bindings[0] = { RHI::ShaderBindingType::StorageImage, RHI::ShaderBindingAccess::ReadWrite, 1, RHI::ShaderStage::Compute };
+            m_computeBindGroupLayout = m_context->CreateBindGroupLayout(createInfo);
+            m_computePipelineLayout = m_context->CreatePipelineLayout({ m_computeBindGroupLayout });
+        }
+        {
+            auto shaderCode = ReadBinaryFile("./Resources/Shaders/compute.spv");
+            auto shaderModule = m_context->CreateShaderModule(shaderCode);
+            RHI::ComputePipelineCreateInfo createInfo{};
+            createInfo.shaderName = "CSMain";
+            createInfo.shaderModule = shaderModule.get();
+            createInfo.layout = m_computePipelineLayout;
+            m_computePipelineState = m_context->CreateComputePipeline(createInfo);
+        }
+        // create shader bind group compose pipeline
+        {
+            RHI::BindGroupLayoutCreateInfo createInfo = {};
+            createInfo.bindings[0] = { RHI::ShaderBindingType::Image, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Pixel };
+            createInfo.bindings[1] = { RHI::ShaderBindingType::Image, RHI::ShaderBindingAccess::ReadWrite, 1, RHI::ShaderStage::Pixel };
+            createInfo.bindings[2] = { RHI::ShaderBindingType::Sampler, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Pixel };
+            createInfo.bindings[3] = { RHI::ShaderBindingType::Buffer, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Pixel };
+            m_composeBindGroupLayout = m_context->CreateBindGroupLayout(createInfo);
+            m_composePipelineLayout = m_context->CreatePipelineLayout({ m_composeBindGroupLayout });
+        }
+        {
+            auto shaderCode = ReadBinaryFile("./Resources/Shaders/compose.spv");
+            auto shaderModule = m_context->CreateShaderModule(shaderCode);
+            RHI::GraphicsPipelineCreateInfo createInfo{};
+            createInfo.vertexShaderName = "VSMain";
+            createInfo.pixelShaderName = "PSMain";
+            createInfo.vertexShaderModule = shaderModule.get();
+            createInfo.pixelShaderModule = shaderModule.get();
+            createInfo.layout = m_composePipelineLayout;
+            createInfo.renderTargetLayout.colorAttachmentsFormats[0] = RHI::Format::BGRA8_UNORM;
+            createInfo.renderTargetLayout.depthAttachmentFormat = RHI::Format::D32;
+            createInfo.depthStencilState.depthTestEnable = true;
+            createInfo.depthStencilState.depthWriteEnable = true;
+            createInfo.depthStencilState.compareOperator = RHI::CompareOperator::Greater;
+            m_composePipelineState = m_context->CreateGraphicsPipeline(createInfo);
         }
 
         // setup the render graph
+        RHI::ImagePassAttachment* colorAttachment;
+        RHI::ImagePassAttachment* maskAttachment;
+        auto& scheduler = m_context->GetScheduler();
         {
-            auto& scheduler = m_context->GetScheduler();
-            auto& registry = scheduler.GetRegistry();
-            m_renderpass = scheduler.CreatePass("Render-Pass", RHI::QueueType::Graphics);
-
-            auto swapchainAttachment = registry.ImportSwapchainImage("back-buffer", m_swapchain.get());
-            m_renderpass->UseColorAttachment(swapchainAttachment, { 0.1f, 0.2f, 0.3f, 1.0f });
-
-            RHI::ImageCreateInfo depthInfo{};
-            depthInfo.usageFlags = RHI::ImageUsage::Depth;
-            depthInfo.format = RHI::Format::D32;
-            depthInfo.type = RHI::ImageType::Image2D;
-            auto depthAttachment = registry.CreateTransientImage("depth-buffer", depthInfo);
-            m_renderpass->UseDepthAttachment(depthAttachment, { 0.0 });
-
-            scheduler.ResizeFrame({ m_windowWidth, m_windowHeight });
-            scheduler.Compile();
+            m_renderPass = scheduler.CreatePass("Render-Pass", RHI::QueueType::Graphics);
+            m_renderPass->CreateRenderTarget("depth-target", RHI::Format::D32, RHI::DepthStencilValue{ 1.0f });
+            colorAttachment = m_renderPass->UseRenderTarget("color-target", m_swapchain.get(), RHI::ColorValue{ 0.0f, 0.2f, 0.3f, 1.0f });
         }
+        {
+            m_computePass = scheduler.CreatePass("Compute-Pass", RHI::QueueType::Compute);
+            maskAttachment = m_computePass->CreateTransientImage("mask", RHI::Format::R8_UNORM, RHI::ImageUsage::ShaderResource, RHI::ImageSize2D{ m_windowWidth, m_windowHeight });
+        }
+        {
+            m_composePass = scheduler.CreatePass("Compose-Pass", RHI::QueueType::Graphics);
+            m_composePass->UseRenderTarget(colorAttachment, RHI::ColorValue{ 0.0f });
+            m_composePass->UseImageResource(maskAttachment, RHI::ImageUsage::ShaderResource, RHI::Access::Read);
+        }
+
+        scheduler.Compile();
+        std::cout << "Graph dump:\n"
+                  << scheduler.GetGraphviz() << "\n";
+
+
+        m_sampler = m_context->CreateSampler(RHI::SamplerCreateInfo{});
+
+        RHI::BindGroupData bindGroupData{};
+        bindGroupData.BindBuffers(0u, m_uniformBuffer);
+        bindGroupData.BindImages(1u, m_imageView);
+        bindGroupData.BindSamplers(2u, m_sampler);
+        m_renderBindGroup = m_context->CreateBindGroup(m_renderBindGroupLayout);
+        m_context->UpdateBindGroup(m_renderBindGroup, bindGroupData);
+
+        // bindGroupData = RHI::BindGroupData {};
+        // bindGroupData.BindImages(0u, maskAttachment->m_view);
+        // m_computeBindGroup = m_context->CreateBindGroup(m_computeBindGroupLayout);
+        // m_context->UpdateBindGroup(m_computeBindGroup, bindGroupData);
+
+        // bindGroupData = RHI::BindGroupData {};
+        // bindGroupData.BindImages(0u, maskAttachment->m_view);
+        // bindGroupData.BindImages(1u, colorAttachment->m_view);
+        // bindGroupData.BindSamplers(2u, m_sampler);
+        // bindGroupData.BindBuffers(3u, m_uniformBuffer);
+        // m_composeBindGroup = m_context->CreateBindGroup(m_composeBindGroupLayout);
+        // m_context->UpdateBindGroup(m_composeBindGroup, bindGroupData);
     }
 
     void OnShutdown() override
     {
-        ZoneScopedN("triangle-update");
+        ZoneScoped;
 
         m_mesh.Shutdown(*m_context);
         m_context->DestroyImage(m_image);
@@ -177,15 +232,25 @@ public:
         m_context->DestroyBuffer(m_uniformBuffer);
         m_context->DestroySampler(m_sampler);
 
-        m_context->DestroyPipelineLayout(m_pipelineLayout);
-        m_context->DestroyBindGroupLayout(m_bindGroupLayout);
-        m_context->DestroyGraphicsPipeline(m_pipelineState);
-        m_context->DestroyBindGroup(m_bindGroup);
+        m_context->DestroyBindGroupLayout(m_renderBindGroupLayout);
+        m_context->DestroyPipelineLayout(m_renderPipelineLayout);
+        m_context->DestroyGraphicsPipeline(m_renderPipelineState);
+        m_context->DestroyBindGroup(m_renderBindGroup);
+
+        m_context->DestroyBindGroupLayout(m_computeBindGroupLayout);
+        m_context->DestroyPipelineLayout(m_computePipelineLayout);
+        m_context->DestroyComputePipeline(m_computePipelineState);
+        m_context->DestroyBindGroup(m_computeBindGroup);
+
+        m_context->DestroyBindGroupLayout(m_composeBindGroupLayout);
+        m_context->DestroyPipelineLayout(m_composePipelineLayout);
+        m_context->DestroyGraphicsPipeline(m_composePipelineState);
+        m_context->DestroyBindGroup(m_composeBindGroup);
     }
 
     void OnUpdate(Timestep timestep) override
     {
-        ZoneScopedN("triangle-update");
+        ZoneScoped;
 
         m_camera.Update(timestep);
 
@@ -211,36 +276,62 @@ public:
         auto& scheduler = m_context->GetScheduler();
         scheduler.Begin();
 
-        auto commandList = m_commandListAllocator->Allocate();
+        RHI::Viewport viewport = {};
+        viewport.width = float(m_windowWidth);
+        viewport.height = float(m_windowHeight);
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
 
-        RHI::Viewport viewport = {
-            .width = float(m_windowWidth),
-            .height = float(m_windowHeight),
-            .minDepth = 0.0f,
-            .maxDepth = 1.0f,
-        };
+        RHI::Scissor scissor = {};
+        scissor.width = m_windowWidth;
+        scissor.height = m_windowHeight;
+        {
+            RHI::DrawInfo drawCommand = {};
+            drawCommand.pipelineState = m_renderPipelineState;
+            drawCommand.bindGroups = m_renderBindGroup;
+            drawCommand.vertexBuffers = { m_mesh.positionsBuffer, m_mesh.normalsBuffer, m_mesh.texCoordBuffer };
+            drawCommand.indexBuffers = m_mesh.indexBuffer;
+            drawCommand.parameters = { .elementCount = m_mesh.drawElementsCount };
 
-        RHI::Scissor scissor = {
-            .width = m_windowWidth,
-            .height = m_windowHeight
-        };
+            auto commandList = m_graphicsCommandsAllocator->Allocate();
+            commandList->Begin(*m_renderPass);
+            commandList->SetViewport(viewport);
+            commandList->SetSicssor(scissor);
+            commandList->Draw(drawCommand);
+            commandList->End();
+            m_renderPass->SubmitCommandList(commandList);
+        }
 
-        RHI::DrawInfo drawCommand = {
-            .pipelineState = m_pipelineState,
-            .bindGroups = m_bindGroup,
-            .vertexBuffers = { m_mesh.positionsBuffer, m_mesh.normalsBuffer, m_mesh.texCoordBuffer },
-            .indexBuffers = m_mesh.indexBuffer,
-            .parameters = { .elementCount = m_mesh.drawElementsCount },
-        };
+        {
+            RHI::DispatchInfo dispatchInfo{};
+            dispatchInfo.pipelineState = m_computePipelineState;
+            dispatchInfo.bindGroups = m_computeBindGroup;
+            dispatchInfo.parameters.countX = 32;
+            dispatchInfo.parameters.countY = 32;
+            dispatchInfo.parameters.countZ = 32;
+            auto commandList = m_computeCommandsAllocator->Allocate();
+            commandList->Begin(*m_computePass);
+            commandList->Dispatch(dispatchInfo);
+            commandList->End();
+            m_computePass->SubmitCommandList(commandList);
+        }
 
-        commandList->Begin(*m_renderpass);
-        commandList->SetViewport(viewport);
-        commandList->SetSicssor(scissor);
-        commandList->Draw(drawCommand);
+        {
+            RHI::DrawInfo drawCommand = {};
+            drawCommand.pipelineState = m_renderPipelineState;
+            drawCommand.bindGroups = m_renderBindGroup;
+            drawCommand.parameters = { .elementCount = 6 };
 
-        // auto drawData = ImGui::GetDrawData();
-        // m_imguiRenderer->RenderDrawData(drawData, *commandList);
-        commandList->End();
+            auto commandList = m_graphicsCommandsAllocator->Allocate();
+            commandList->Begin(*m_renderPass);
+            commandList->SetViewport(viewport);
+            commandList->SetSicssor(scissor);
+            commandList->Draw(drawCommand);
+            auto drawData = ImGui::GetDrawData();
+            m_imguiRenderer->RenderDrawData(drawData, *commandList);
+            commandList->End();
+            m_composePass->SubmitCommandList(commandList);
+        }
 
         scheduler.End();
     }
@@ -248,24 +339,31 @@ public:
 private:
     UniformBufferContent m_uniformData;
 
-    RHI::Handle<RHI::BindGroupLayout> m_bindGroupLayout;
-
-    RHI::Handle<RHI::BindGroup> m_bindGroup;
-
-    RHI::Handle<RHI::PipelineLayout> m_pipelineLayout;
-
-    RHI::Handle<RHI::GraphicsPipeline> m_pipelineState;
-
     RHI::Handle<RHI::Buffer> m_uniformBuffer;
-
     RHI::Handle<RHI::Image> m_image;
     RHI::Handle<RHI::ImageView> m_imageView;
-
     RHI::Handle<RHI::Sampler> m_sampler;
 
     Mesh m_mesh;
 
-    std::unique_ptr<RHI::Pass> m_renderpass;
+    RHI::Handle<RHI::BindGroupLayout> m_renderBindGroupLayout;
+    RHI::Handle<RHI::PipelineLayout> m_renderPipelineLayout;
+    RHI::Handle<RHI::GraphicsPipeline> m_renderPipelineState;
+    RHI::Handle<RHI::BindGroup> m_renderBindGroup;
+
+    RHI::Handle<RHI::BindGroupLayout> m_computeBindGroupLayout;
+    RHI::Handle<RHI::PipelineLayout> m_computePipelineLayout;
+    RHI::Handle<RHI::ComputePipeline> m_computePipelineState;
+    RHI::Handle<RHI::BindGroup> m_computeBindGroup;
+
+    RHI::Handle<RHI::BindGroupLayout> m_composeBindGroupLayout;
+    RHI::Handle<RHI::PipelineLayout> m_composePipelineLayout;
+    RHI::Handle<RHI::GraphicsPipeline> m_composePipelineState;
+    RHI::Handle<RHI::BindGroup> m_composeBindGroup;
+
+    RHI::Ptr<RHI::Pass> m_renderPass;
+    RHI::Ptr<RHI::Pass> m_computePass;
+    RHI::Ptr<RHI::Pass> m_composePass;
 };
 
 int main(int argc, const char** argv)

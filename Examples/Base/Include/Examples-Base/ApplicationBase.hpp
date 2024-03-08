@@ -71,7 +71,8 @@ protected:
 
     RHI::Ptr<ImGuiRenderer> m_imguiRenderer;
     
-    RHI::Ptr<RHI::CommandListAllocator> m_commandListAllocator;
+    RHI::Ptr<RHI::CommandListAllocator> m_graphicsCommandsAllocator;
+    RHI::Ptr<RHI::CommandListAllocator> m_computeCommandsAllocator;
 
     void* m_window;
 

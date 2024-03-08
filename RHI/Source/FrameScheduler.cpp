@@ -1,237 +1,147 @@
 #include "RHI/FrameScheduler.hpp"
-
+#include "RHI/Resources.hpp"
 #include "RHI/Context.hpp"
-#include "RHI/Common/Hash.hpp"
 
 #include <tracy/Tracy.hpp>
-
-namespace std
-{
-    template<>
-    class hash<RHI::ImageViewCreateInfo>
-    {
-    public:
-        inline size_t operator()(const RHI::ImageViewCreateInfo& createInfo) const
-        {
-            return RHI::HashAny(createInfo);
-        }
-    };
-
-    template<>
-    class hash<RHI::BufferViewCreateInfo>
-    {
-    public:
-        inline size_t operator()(const RHI::BufferViewCreateInfo& createInfo) const
-        {
-            return RHI::HashAny(createInfo);
-        }
-    };
-} // namespace std
 
 namespace RHI
 {
     FrameScheduler::FrameScheduler(Context* context)
-        : m_frameCount(0)
-        , m_currentFrameIndex(0)
-        , m_frameNumber(0)
-        , m_context(context)
-        , m_passList()
-        , m_attachmentsRegistry(std::make_unique<AttachmentsRegistry>())
-        , m_transientResourceAllocator(nullptr)
-        , m_frameSize(0, 0)
-        , m_swapchainImage(nullptr)
-        , m_frameReadyFence()
+        : m_context(context)
+        , m_stagingBuffer()
+        , m_transientAllocator(nullptr)
+        , m_attachmentsPool(CreatePtr<AttachmentsPool>(m_context))
     {
     }
 
-    void FrameScheduler::SetBufferedFramesCount(uint32_t count)
+    void FrameScheduler::Reset()
     {
-        m_frameCount = count;
-    }
-
-    uint32_t FrameScheduler::GetBufferedFramesCount() const
-    {
-        return m_frameCount;
-    }
-
-    uint32_t FrameScheduler::GetCurrentFrameIndex()
-    {
-        return m_currentFrameIndex;
     }
 
     void FrameScheduler::Begin()
     {
-        FrameMark;
-        ZoneScoped;
-
-        auto& fence = GetFrameCurrentFence();
-        fence.Wait();
-        fence.Reset();
-
-        m_swapchainImage = m_attachmentsRegistry->FindImage(m_attachmentsRegistry->m_swapchainAttachments.front());
-
-        // prepare pass attachments
-        for (auto _passAttachment = m_swapchainImage->firstUse;
-             _passAttachment != nullptr;
-             _passAttachment = _passAttachment->next)
-        {
-            auto swapchain = m_swapchainImage->swapchain;
-            auto passAttachment = (SwapchainImagePassAttachment*)_passAttachment;
-            auto imageIndex = swapchain->GetCurrentImageIndex();
-            passAttachment->view = passAttachment->views[imageIndex];
-        }
-
-        for (auto pass : m_passList)
-        {
-            pass->m_commandLists.clear();
-        }
     }
 
     void FrameScheduler::End()
     {
-        ZoneScoped;
-
-        auto& fence = GetFrameCurrentFence();
-        for (auto pass : m_passList)
-        {
-            QueuePassSubmit(pass, &fence);
-        }
-
-        m_frameNumber++;
-        m_currentFrameIndex = m_frameNumber % m_frameCount;
     }
 
     Ptr<Pass> FrameScheduler::CreatePass(const char* name, QueueType queueType)
     {
-        ZoneScoped;
-        auto pass = CreatePtr<Pass>(name, queueType);
-        m_passList.push_back(pass.get());
-        return pass;
+        return CreatePtr<Pass>(this, name, queueType);
     }
 
-    void FrameScheduler::Compile()
+    ResultCode FrameScheduler::DestroyPass(Pass* pass)
     {
-        // Allocate transient resources, and generate resource views
-        for (auto pass : m_passList)
-        {
-            pass->m_size = m_frameSize;
-
-            for (auto& passAttachment : pass->m_imagePassAttachments)
-            {
-                auto& attachemnt = passAttachment->attachment;
-                if (attachemnt->lifetime == Attachment::Lifetime::Transient)
-                {
-                    if (attachemnt->info.type == ImageType::Image2D)
-                    {
-                        attachemnt->info.size.width = m_frameSize.width;
-                        attachemnt->info.size.height = m_frameSize.height;
-                        attachemnt->info.size.depth = 1;
-                    }
-
-                    if (passAttachment->prev == nullptr)
-                        m_transientResourceAllocator->Allocate(m_context, attachemnt);
-                    if (passAttachment->next == nullptr)
-                        m_transientResourceAllocator->Release(m_context, attachemnt);
-                }
-            }
-
-            for (auto& passAttachment : pass->m_bufferPassAttachments)
-            {
-                auto& attachemnt = passAttachment->attachment;
-                if (attachemnt->lifetime == Attachment::Lifetime::Transient)
-                {
-                    if (passAttachment->prev == nullptr)
-                        m_transientResourceAllocator->Allocate(m_context, attachemnt);
-                    if (passAttachment->next == nullptr)
-                        m_transientResourceAllocator->Release(m_context, attachemnt);
-                }
-            }
-        }
-
-        std::unordered_map<ImageViewCreateInfo, Handle<ImageView>> imageViewsLut;
-        std::unordered_map<BufferViewCreateInfo, Handle<BufferView>> bufferViewsLut;
-
-        auto findOrCreateImageView = [&](const ImageViewCreateInfo& createInfo)
-        {
-            if (auto it = imageViewsLut.find(createInfo); it != imageViewsLut.end())
-                return it->second;
-            return imageViewsLut[createInfo] = m_context->CreateImageView(createInfo);
-        };
-
-        auto findOrCreateBufferView = [&](const BufferViewCreateInfo& createInfo)
-        {
-            if (auto it = bufferViewsLut.find(createInfo); it != bufferViewsLut.end())
-                return it->second;
-            return bufferViewsLut[createInfo] = m_context->CreateBufferView(createInfo);
-        };
-
-        for (auto pass : m_passList)
-        {
-            for (auto passAttachment : pass->m_imagePassAttachments)
-            {
-                auto swapchain = passAttachment->attachment->swapchain;
-                if (swapchain == nullptr)
-                {
-                    if (passAttachment->view)
-                        continue;
-
-                    auto image = passAttachment->attachment->GetImage();
-                    passAttachment->viewInfo.image = image;
-                    passAttachment->view = findOrCreateImageView(passAttachment->viewInfo);
-                    continue;
-                }
-
-                auto swapchainPassAttachment = (SwapchainImagePassAttachment*)passAttachment;
-                for (uint32_t i = 0; i < swapchain->GetImagesCount(); i++)
-                {
-                    if (swapchainPassAttachment->views[i])
-                        continue;
-                    passAttachment->viewInfo.image = swapchain->GetImage(i);
-                    swapchainPassAttachment->views[i] = findOrCreateImageView(passAttachment->viewInfo);
-                }
-
-                swapchainPassAttachment->view = swapchainPassAttachment->views[swapchain->GetCurrentImageIndex()];
-            }
-
-            for (auto passAttachment : pass->m_bufferPassAttachments)
-            {
-                auto buffer = passAttachment->attachment->GetBuffer();
-                if (passAttachment->view)
-                    continue;
-                passAttachment->viewInfo.buffer = buffer;
-                passAttachment->view = findOrCreateBufferView(passAttachment->viewInfo);
-            }
-        }
+        delete pass;
+        return ResultCode::Success;
     }
 
-    void FrameScheduler::ResizeFrame(ImageSize2D newSize)
+    void FrameScheduler::WriteImageContent(Handle<Image> handle, ImageOffset offset, ImageSize3D size, ImageSubresourceLayers subresource, TL::Span<uint8_t> data)
     {
-        ZoneScoped;
+        auto buffer = m_stagingBuffer->Allocate(data.size_bytes());
+        memcpy(buffer.pData, data.data(), data.size_bytes());
 
-        m_frameSize = newSize;
-        Cleanup();
-        Compile();
+        // StageImageWrite(handle);
+
+        BufferToImageCopyInfo copyInfo{};
+        copyInfo.srcBuffer = buffer.buffer;
+        copyInfo.srcOffset = 0;
+        copyInfo.srcSize = size;
+        copyInfo.dstImage = handle;
+        copyInfo.dstSubresource = subresource;
+        copyInfo.dstOffset = offset;
+
+        auto commandList = m_copyCommandListAllocator->Allocate();
+        commandList->Begin();
+        commandList->Copy(copyInfo);
+        commandList->End();
+
+        auto fence = m_context->CreateFence();
+        ExecuteCommandLists(*commandList, fence.get());
+        fence->Wait();
     }
 
-    void FrameScheduler::ExecuteCommandList(TL::Span<CommandList*> commandLists, Fence& fence)
+    void FrameScheduler::WriteBufferContent(Handle<Buffer> handle, TL::Span<uint8_t> data)
     {
-        ZoneScoped;
+        auto buffer = m_stagingBuffer->Allocate(data.size());
+        memcpy(buffer.pData, data.data(), data.size());
 
-        QueueCommandsSubmit(QueueType::Graphics, commandLists, fence);
+        StageBufferWrite(handle);
+
+        BufferCopyInfo copyInfo{};
+
+        auto commandList = m_copyCommandListAllocator->Allocate();
+        commandList->Begin();
+        commandList->Copy(copyInfo);
+        commandList->End();
     }
 
-    void FrameScheduler::Cleanup()
+    ResultCode FrameScheduler::Compile()
     {
-        ZoneScoped;
+        CompileTransientResources();
+        CompileResourceViews();
+        return ResultCode::Success;
+    }
 
-        DeviceWaitIdle();
-
-        m_transientResourceAllocator->Reset(m_context);
+    std::string FrameScheduler::GetGraphviz()
+    {
+        // return m_renderGraph->GetGraphviz();
+        return "";
     }
 
     Fence& FrameScheduler::GetFrameCurrentFence()
     {
-        return *m_frameReadyFence[GetCurrentFrameIndex()];
+        return *m_frameReadyFence[m_currentFrameIndex];
+    }
+
+    void FrameScheduler::CompileTransientResources()
+    {
+        m_transientAllocator->Begin();
+        for (auto attachment : m_attachmentsPool->GetAttachments())
+        {
+            if (attachment->m_lifetime == Attachment::Lifetime::Transient)
+            {
+                auto imageAttachment = (ImageAttachment*)attachment;
+                imageAttachment->SetSize({1600, 800});
+                m_transientAllocator->Allocate(attachment);
+            }
+        }
+        m_transientAllocator->End();
+    }
+
+    void FrameScheduler::CompileResourceViews()
+    {
+        for (auto attachment : m_attachmentsPool->GetAttachments())
+        {
+            for (auto passAttachment = attachment->GetFirstPassAttachment(); passAttachment != nullptr; passAttachment = passAttachment->GetNext())
+            {
+                m_attachmentsPool->InitPassAttachment(passAttachment);
+            }
+        }
+    }
+
+    void FrameScheduler::CleanupTransientResources()
+    {
+        for (auto transientAttachment : m_attachmentsPool->GetTransientAttachments())
+        {
+            for (auto passAttachment = transientAttachment->GetFirstPassAttachment(); passAttachment != nullptr; passAttachment = passAttachment->GetNext())
+            {
+                m_attachmentsPool->ShutdownPassAttachment(passAttachment);
+            }
+            m_transientAllocator->Destroy(transientAttachment);
+        }
+    }
+
+    void FrameScheduler::CleanupResourceViews()
+    {
+        for (auto attachment : m_attachmentsPool->GetAttachments())
+        {
+            for (auto passAttachment = attachment->GetFirstPassAttachment(); passAttachment != nullptr; passAttachment = passAttachment->GetNext())
+            {
+                m_attachmentsPool->ShutdownPassAttachment(passAttachment);
+            }
+        }
     }
 
 } // namespace RHI

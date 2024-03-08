@@ -56,12 +56,21 @@ namespace RHI::Vulkan
 
     struct IImage : Image
     {
+        // TODO: break down to several parallel structures 
         Allocation allocation; // allocation backing this resource.
         IResourcePool* pool;   // Pointer to the pool this resource is created from.
         VkImage handle;        // Handle to valid VkImage resource (Might not be backed by an allocation).
         VkFormat format;       // Image pixel Format
         VkImageType imageType; // Image dimensions
         ISwapchain* swapchain; // pointer to swapchain (if this image is backed by swapchain).
+
+        VkSemaphore waitSemaphore;   // wait semaphore: if the content of this resource is being written by the framescheduler (wait on this semaphore)
+        VkSemaphore signalSemaphore; // signal semaphore: if the content of this resource is being read by the frameschduler (signal this semaphore)
+
+        uint32_t queueFamilyIndex;
+        VkImageLayout initalLayout;
+
+        class ImageAttachment* attachment;
 
         ResultCode Init(IContext* context, const ImageCreateInfo& createInfo, bool isTransient = false);
         void Shutdown(IContext* context);
@@ -71,9 +80,17 @@ namespace RHI::Vulkan
 
     struct IBuffer : Buffer
     {
+        // TODO: break down to several parallel structures 
         Allocation allocation; // allocation backing this resource.
         IResourcePool* pool;   // Pointer to the pool this resource is created from.
         VkBuffer handle;       // Handle to valid VkImage resource (Might not be backed by an allocation).
+
+        VkSemaphore waitSemaphore;   // wait semaphore: if the content of this resource is being written by the framescheduler (wait on this semaphore)
+        VkSemaphore signalSemaphore; // signal semaphore: if the content of this resource is being read by the frameschduler (signal this semaphore)
+
+        uint32_t queueFamilyIndex;
+
+        class BufferAttachment* attachment;
 
         ResultCode Init(IContext* context, const BufferCreateInfo& createInfo, bool isTransient = false);
         void Shutdown(IContext* context);
@@ -183,22 +200,6 @@ namespace RHI::Vulkan
         IContext* m_context;
         VmaPool m_pool;
         ResourcePoolCreateInfo m_poolInfo;
-    };
-
-    class IStagingBuffer final : public StagingBuffer
-    {
-    public:
-        IStagingBuffer(IContext* context);
-        ~IStagingBuffer();
-
-        VkResult Init();
-
-        StagingBuffer::TempBuffer Allocate(size_t newSize) override;
-        void Free(TempBuffer mappedBuffer) override;
-        void Flush() override;
-
-    private:
-        IContext* m_context;
     };
 
     class IFence final : public Fence

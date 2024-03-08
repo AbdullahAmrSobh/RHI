@@ -5,6 +5,7 @@
 
 #include <memory>
 #include <array>
+#include <optional>
 
 #include <vulkan/vulkan.h>
 
@@ -73,6 +74,16 @@ namespace RHI::Vulkan
         void Copy(const ImageCopyInfo& command) override;
         void Copy(const BufferToImageCopyInfo& command) override;
         void Copy(const ImageToBufferCopyInfo& command) override;
+        void DebugMarkerPush(const char* name, const ColorValue& color) override;
+        void DebugMarkerPop() override;
+
+        VkCommandBuffer m_commandBuffer;
+
+        std::vector<VkSemaphoreSubmitInfo> m_signalSemaphores;
+        std::vector<VkSemaphoreSubmitInfo> m_waitSemaphores;
+
+    private:
+        void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<Handle<BindGroup>> bindGroups);
 
         VkRenderingAttachmentInfo GetAttachmentInfo(const ImagePassAttachment& passAttachment) const;
 
@@ -80,23 +91,9 @@ namespace RHI::Vulkan
 
         void RenderingEnd(Pass& pass);
 
-        void PushDebugMarker(const char* name);
-
-        void PopDebugMarker();
-
-        void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<Handle<BindGroup>> bindGroups);
-
-        void TransitionPassAttachments(BarrierType barrierType, TL::Span<ImagePassAttachment*> passAttachments);
-
-        void TransitionPassAttachments(BarrierType barrierType, TL::Span<BufferPassAttachment*> passAttachments);
-
-        VkImageMemoryBarrier2 TransitionPassAttachment(ImagePassAttachment& passAttachment);
-
-        VkImageMemoryBarrier2 TransitionPassAttachment(BufferPassAttachment& passAttachment);
-
-        VkImageMemoryBarrier2 TransitionToPresent(ImagePassAttachment& passAttachment);
-
         void PipelineBarrier(TL::Span<VkMemoryBarrier2> memoryBarriers, TL::Span<VkBufferMemoryBarrier2> bufferBarriers, TL::Span<VkImageMemoryBarrier2> imageBarriers);
+
+        void PipelineBarrier(TL::Span<VkBufferMemoryBarrier2> bufferBarriers, TL::Span<VkImageMemoryBarrier2> imageBarriers);
 
         void PipelineBarrier(TL::Span<VkMemoryBarrier2> memoryBarriers);
 
@@ -104,11 +101,29 @@ namespace RHI::Vulkan
 
         void PipelineBarrier(TL::Span<VkImageMemoryBarrier2> imageBarriers);
 
+    private:
         IContext* m_context;
-
         Pass* m_pass;
-
-        VkCommandBuffer m_commandBuffer;
     };
+
+    inline void ICommandList::PipelineBarrier(TL::Span<VkBufferMemoryBarrier2> bufferBarriers, TL::Span<VkImageMemoryBarrier2> imageBarriers)
+    {
+        PipelineBarrier({}, bufferBarriers, imageBarriers);
+    }
+
+    inline void ICommandList::PipelineBarrier(TL::Span<VkMemoryBarrier2> memoryBarriers)
+    {
+        PipelineBarrier(memoryBarriers, {}, {});
+    }
+
+    inline void ICommandList::PipelineBarrier(TL::Span<VkBufferMemoryBarrier2> bufferBarriers)
+    {
+        PipelineBarrier({}, bufferBarriers, {});
+    }
+
+    inline void ICommandList::PipelineBarrier(TL::Span<VkImageMemoryBarrier2> imageBarriers)
+    {
+        PipelineBarrier({}, {}, imageBarriers);
+    }
 
 } // namespace RHI::Vulkan

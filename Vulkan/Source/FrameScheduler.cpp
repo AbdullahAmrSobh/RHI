@@ -1,10 +1,9 @@
 #include "FrameScheduler.hpp"
 #include "Context.hpp"
-#include "Common.hpp"
 #include "Resources.hpp"
+#include "StagingBuffer.hpp"
 #include "CommandList.hpp"
-#include "TransientResourceAllocator.inl"
-#include "Swapchain.hpp"
+#include "TransientAllocator.hpp"
 
 #include <tracy/Tracy.hpp>
 
@@ -13,73 +12,90 @@ namespace RHI::Vulkan
     IFrameScheduler::IFrameScheduler(IContext* context)
         : FrameScheduler(context)
     {
+        m_stagingBuffer = CreatePtr<IStagingBuffer>(context);
+        m_copyCommandListAllocator = CreatePtr<ICommandListAllocator>(context);
+        m_transientAllocator = CreatePtr<ITransientAllocator>(context);
     }
 
     IFrameScheduler::~IFrameScheduler()
     {
-        ZoneScoped;
-
     }
 
     VkResult IFrameScheduler::Init()
     {
-        m_transientResourceAllocator = ITransientResourceAllocator::Create();
+        auto context = (IContext*)m_context;
+        vkGetDeviceQueue(context->m_device, context->m_graphicsQueueFamilyIndex, 0, &m_graphicsQueue);
+        vkGetDeviceQueue(context->m_device, context->m_computeQueueFamilyIndex, 0, &m_computeQueue);
+        vkGetDeviceQueue(context->m_device, context->m_transferQueueFamilyIndex, 0, &m_transferQueue);
 
-        for (uint32_t i = 0; i < 2; i++)
-        {
-            m_frameReadyFence.emplace_back(m_context->CreateFence());
-        }
+        ((IStagingBuffer*)m_stagingBuffer.get())->Init();
+        ((ICommandListAllocator*)m_copyCommandListAllocator.get())->Init(QueueType::Graphics);
 
         return VK_SUCCESS;
     }
 
-    void IFrameScheduler::DeviceWaitIdle()
+    void IFrameScheduler::Flush()
     {
-        ZoneScoped;
-
         auto context = (IContext*)m_context;
-        auto result = vkDeviceWaitIdle(context->m_device);
-        VULKAN_ASSERT_SUCCESS(result);
-    }
 
-    void IFrameScheduler::QueuePassSubmit(Pass* pass, Fence* _fence)
-    {
-        ZoneScoped;
-
-        auto context = (IContext*)m_context;
-        auto queue = context->GetQueue(pass->m_queueType);
-
-        std::vector<VkCommandBufferSubmitInfo> commandBuffers{};
-        for (auto _commandList : pass->m_commandLists)
+        for (auto imageHandle : m_stagedWriteImages)
         {
-            auto commandList = (ICommandList*)_commandList;
-            VkCommandBufferSubmitInfo submitInfo{};
-            submitInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
-            submitInfo.commandBuffer = commandList->m_commandBuffer;
-            commandBuffers.push_back(submitInfo);
+            auto image = context->m_imageOwner.Get(imageHandle);
+            context->FreeSemaphore(image->signalSemaphore);
+            image->signalSemaphore = VK_NULL_HANDLE;
         }
 
-        std::vector<VkSemaphoreSubmitInfo> waitSemaphores{};
-        std::vector<VkSemaphoreSubmitInfo> signalSemaphores{};
-
-        if (auto passAttachment = pass->m_swapchainImageAttachment)
+        for (auto bufferHandle : m_stagedWriteBuffers)
         {
-            auto swapchain = (ISwapchain*)passAttachment->attachment->swapchain;
-            VkSemaphoreSubmitInfo semaphoreSubmitInfo{};
-            semaphoreSubmitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-            if (passAttachment->prev == nullptr)
-            {
-                semaphoreSubmitInfo.semaphore = swapchain->m_semaphores.imageAcquired;
-                semaphoreSubmitInfo.stageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-                waitSemaphores.push_back(semaphoreSubmitInfo);
-            }
+            auto buffer = context->m_bufferOwner.Get(bufferHandle);
+            context->FreeSemaphore(buffer->waitSemaphore);
+            buffer->waitSemaphore = VK_NULL_HANDLE;
+        }
 
-            if (passAttachment->next == nullptr)
-            {
-                semaphoreSubmitInfo.semaphore = swapchain->m_semaphores.imageRenderComplete;
-                semaphoreSubmitInfo.stageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
-                signalSemaphores.push_back(semaphoreSubmitInfo);
-            }
+        for (auto imageHandle : m_stagedReadImages)
+        {
+            auto image = context->m_imageOwner.Get(imageHandle);
+            context->FreeSemaphore(image->signalSemaphore);
+            image->signalSemaphore = VK_NULL_HANDLE;
+        }
+
+        for (auto bufferHandle : m_stagedReadBuffers)
+        {
+            auto buffer = context->m_bufferOwner.Get(bufferHandle);
+            context->FreeSemaphore(buffer->waitSemaphore);
+            buffer->waitSemaphore = VK_NULL_HANDLE;
+        }
+    }
+
+    void IFrameScheduler::WaitIdle()
+    {
+        auto context = (IContext*)m_context;
+        vkDeviceWaitIdle(context->m_device);
+    }
+
+    void IFrameScheduler::PassSubmit(Pass* pass, Fence* _fence)
+    {
+        auto fence = (IFence*)_fence;
+        auto queue = pass->m_queueType == QueueType::Graphics ? m_graphicsQueue : m_computeQueue;
+        auto& commandlists = pass->m_commandLists;
+
+        std::vector<VkSemaphoreSubmitInfo> waitSemaphores;
+        std::vector<VkSemaphoreSubmitInfo> signalSemaphores;
+        std::vector<VkCommandBufferSubmitInfo> commandBuffers;
+
+        for (auto _commandList : commandlists)
+        {
+            auto commandList = (ICommandList*)_commandList;
+            waitSemaphores.insert(waitSemaphores.end(), commandList->m_waitSemaphores.begin(), commandList->m_waitSemaphores.end());
+            signalSemaphores.insert(signalSemaphores.end(), commandList->m_signalSemaphores.begin(), commandList->m_signalSemaphores.end());
+
+            commandList->m_signalSemaphores.clear();
+            commandList->m_waitSemaphores.clear();
+
+            auto& commandBuffer = commandBuffers.emplace_back();
+            commandBuffer.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+            commandBuffer.pNext = nullptr;
+            commandBuffer.commandBuffer = commandList->m_commandBuffer;
         }
 
         VkSubmitInfo2 submitInfo{};
@@ -92,29 +108,51 @@ namespace RHI::Vulkan
         submitInfo.pSignalSemaphoreInfos = signalSemaphores.data();
         submitInfo.commandBufferInfoCount = uint32_t(commandBuffers.size());
         submitInfo.pCommandBufferInfos = commandBuffers.data();
+        vkQueueSubmit2(queue, 1, &submitInfo, fence ? fence->UseFence() : VK_NULL_HANDLE);
 
-        auto fence = (IFence*)_fence;
-        auto result = vkQueueSubmit2(queue, 1, &submitInfo, fence ? fence->UseFence() : VK_NULL_HANDLE);
-        VULKAN_ASSERT_SUCCESS(result);
+        commandlists.clear();
     }
 
-    void IFrameScheduler::QueueCommandsSubmit(QueueType queueType, TL::Span<CommandList*> commandLists, Fence& _fence)
+    void IFrameScheduler::StageImageWrite(Handle<Image> handle)
     {
-        ZoneScoped;
-
         auto context = (IContext*)m_context;
-        auto& fence = (IFence&)_fence;
-        auto queue = context->GetQueue(queueType);
+        auto image = context->m_imageOwner.Get(handle);
+        image->waitSemaphore = context->CreateSemaphore();
+    }
 
-        std::vector<VkCommandBufferSubmitInfo> commandBuffers{};
-        for (auto _commandList : commandLists)
+    void IFrameScheduler::StageBufferWrite(Handle<Buffer> handle)
+    {
+        auto context = (IContext*)m_context;
+        auto buffer = context->m_bufferOwner.Get(handle);
+        buffer->waitSemaphore = context->CreateSemaphore();
+    }
+
+    VkSemaphore IFrameScheduler::CreateTempSemaphore()
+    {
+        if (m_tmpSemaphoreHead < m_tmpSemaphores.size())
         {
-            auto commandList = (ICommandList*)_commandList;
-            VkCommandBufferSubmitInfo submitInfo{};
-            submitInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
-            submitInfo.commandBuffer = commandList->m_commandBuffer;
-            commandBuffers.push_back(submitInfo);
+            return m_tmpSemaphores[m_tmpSemaphoreHead++];
         }
+
+        m_tmpSemaphoreHead++;
+        return m_tmpSemaphores.emplace_back(((IContext*)m_context)->CreateSemaphore());
+    }
+
+    void IFrameScheduler::ExecuteCommandLists(CommandList& commandList, Fence* _fence)
+    {
+        auto fence = (IFence*)_fence;
+        // VkSemaphoreSubmitInfo semaphoreSubmitInfo{};
+        // semaphoreSubmitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+        // semaphoreSubmitInfo.pNext = nullptr;
+        // semaphoreSubmitInfo.semaphore = ;
+        // semaphoreSubmitInfo.value;
+        // semaphoreSubmitInfo.stageMask;
+        // semaphoreSubmitInfo.deviceIndex;
+
+        VkCommandBufferSubmitInfo commandBufferSubmitInfo{};
+        commandBufferSubmitInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+        commandBufferSubmitInfo.pNext = nullptr;
+        commandBufferSubmitInfo.commandBuffer = ((ICommandList&)commandList).m_commandBuffer;
 
         VkSubmitInfo2 submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
@@ -122,12 +160,11 @@ namespace RHI::Vulkan
         submitInfo.flags = 0;
         submitInfo.waitSemaphoreInfoCount = 0;
         submitInfo.pWaitSemaphoreInfos = nullptr;
-        submitInfo.commandBufferInfoCount = uint32_t(commandBuffers.size());
-        submitInfo.pCommandBufferInfos = commandBuffers.data();
+        submitInfo.commandBufferInfoCount = 1;
+        submitInfo.pCommandBufferInfos = &commandBufferSubmitInfo;
         submitInfo.signalSemaphoreInfoCount = 0;
-        submitInfo.pSignalSemaphoreInfos = nullptr;
-        auto result = vkQueueSubmit2(queue, 1, &submitInfo, fence.UseFence());
-        VULKAN_ASSERT_SUCCESS(result);
+        // submitInfo.pSignalSemaphoreInfos = &semaphoreSubmitInfo;
+        vkQueueSubmit2(m_graphicsQueue, 1, &submitInfo, fence->UseFence());
     }
 
 } // namespace RHI::Vulkan

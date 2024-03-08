@@ -1,7 +1,9 @@
 #pragma once
+
 #include "RHI/Resources.hpp"
 #include "RHI/CommandList.hpp"
 #include "RHI/FrameScheduler.hpp"
+#include "RHI/Swapchain.hpp"
 #include "RHI/Export.hpp"
 
 #include "RHI/Common/Ptr.h"
@@ -63,6 +65,11 @@ namespace RHI
         const char* name;
         DeviceType  type;
         Vendor      vendor;
+    };
+
+    struct Limits
+    {
+        size_t stagingMemoryLimit;
     };
 
     // This class provides the core interface for interacting with the graphics rendering API.
@@ -337,9 +344,8 @@ namespace RHI
     protected:
         Context(Ptr<DebugCallbacks> debugCallbacks);
 
-        Ptr<FrameScheduler>       m_frameScheduler;
-        Ptr<StagingBuffer>        m_stagingBuffer;
-        Ptr<CommandListAllocator> m_transferCommandsAllocator;
+        Ptr<FrameScheduler> m_frameScheduler;
+        Ptr<Limits>         m_limits;
 
         struct
         {
@@ -360,7 +366,8 @@ namespace RHI
     };
 
     inline Context::Context(Ptr<DebugCallbacks> debugCallbacks)
-        : m_debugCallbacks(std::move(debugCallbacks))
+        : m_limits(CreatePtr<Limits>())
+        , m_debugCallbacks(std::move(debugCallbacks))
     {
     }
 

@@ -16,9 +16,10 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Format.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/FrameScheduler.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Resources.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Attachments.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Swapchain.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RHI.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Attachments.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/TransientAllocator.hpp
 )
 
 # Add source files
@@ -27,10 +28,12 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/FrameScheduler.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Attachments.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Pass.cpp
-
+    # ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraph.cpp
+    
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Common/Callstack.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Attachments.cpp
+
 
     ${CMAKE_SOURCE_DIR}/tracy/public/TracyClient.cpp
 )

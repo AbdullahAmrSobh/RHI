@@ -211,57 +211,6 @@ namespace RHI::Vulkan
         }
     }
 
-    inline static VkImageLayout ConvertImageLayout(AttachmentUsage usage, AttachmentAccess access)
-    {
-        if (usage == AttachmentUsage::ShaderResource && IsWriteAccess(access))
-        {
-            return VK_IMAGE_LAYOUT_GENERAL;
-        }
-
-        switch (usage)
-        {
-        case AttachmentUsage::ShaderResource: return VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
-        case AttachmentUsage::Color:          return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        case AttachmentUsage::Depth:          return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL_KHR;
-        case AttachmentUsage::Copy:           return IsWriteAccess(access) ? VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL : VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        default:
-            {
-                RHI_UNREACHABLE();
-            }
-        }
-
-        return VK_IMAGE_LAYOUT_MAX_ENUM;
-    }
-
-    inline static VkAccessFlags2 ConvertPipelineAccess(AttachmentUsage usage, AttachmentAccess access)
-    {
-        // clang-format off
-        switch (usage)
-        {
-        case AttachmentUsage::ShaderResource:
-            return VK_IMAGE_USAGE_SAMPLED_BIT;
-        case AttachmentUsage::StorageResource:
-            return  (access == AttachmentAccess::Read) ? VK_ACCESS_2_SHADER_READ_BIT :
-                    (access == AttachmentAccess::Write) ? VK_ACCESS_2_SHADER_WRITE_BIT :
-                        VK_ACCESS_2_SHADER_READ_BIT & VK_ACCESS_2_SHADER_WRITE_BIT;
-        case AttachmentUsage::Color:
-            return  (access == AttachmentAccess::Read) ? VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT :
-                    (access == AttachmentAccess::Write) ? VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT :
-                        VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT & VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-        case AttachmentUsage::Depth:
-            return  (access == AttachmentAccess::Read) ? VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT :
-                    (access == AttachmentAccess::Write) ? VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT :
-                        VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT & VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        case AttachmentUsage::Copy:
-            return  (access == AttachmentAccess::Read) ? VK_ACCESS_2_TRANSFER_READ_BIT :
-                    (access == AttachmentAccess::Write) ? VK_ACCESS_2_TRANSFER_WRITE_BIT :
-                        VK_ACCESS_2_TRANSFER_READ_BIT & VK_ACCESS_2_TRANSFER_WRITE_BIT;
-        default:
-            RHI_UNREACHABLE();
-            return {};
-        }
-        // clang-format on
-    }
 
     inline static VkPipelineStageFlags2 ConvertPipelineStageFlags(ShaderStage stage)
     {
@@ -277,21 +226,6 @@ namespace RHI::Vulkan
         }
 
         return VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
-    }
-
-    inline static VkPipelineStageFlags2 ConvertPipelineStageFlags(AttachmentUsage usage, ShaderStage stage)
-    {
-        switch (usage)
-        {
-        case AttachmentUsage::ShaderResource:  return ConvertPipelineStageFlags(stage);
-        case AttachmentUsage::StorageResource: return ConvertPipelineStageFlags(stage);
-        case AttachmentUsage::Color:           return VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-        case AttachmentUsage::Depth:           return VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
-        case AttachmentUsage::Copy:            return VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-        default:                               RHI_UNREACHABLE();
-        }
-
-        return VK_PIPELINE_STAGE_FLAG_BITS_MAX_ENUM;
     }
 
     inline static VkSampleCountFlagBits ConvertSampleCount(SampleCount sampleCount)
@@ -479,6 +413,7 @@ namespace RHI::Vulkan
         case ShaderBindingType::None:    return VK_DESCRIPTOR_TYPE_MAX_ENUM;
         case ShaderBindingType::Sampler: return VK_DESCRIPTOR_TYPE_SAMPLER;
         case ShaderBindingType::Image:   return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        case ShaderBindingType::StorageImage:   return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
         case ShaderBindingType::Buffer:  return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         // todo add storage buffers
         default: RHI_UNREACHABLE(); return VK_DESCRIPTOR_TYPE_MAX_ENUM;

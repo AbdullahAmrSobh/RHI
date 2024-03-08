@@ -4,7 +4,8 @@
 #include "RHI/Common/Handle.hpp"
 #include "RHI/Common/Span.hpp"
 #include "RHI/Format.hpp"
-#include <variant>
+
+#include <variant> // todo: remove
 
 namespace RHI
 {
@@ -77,6 +78,7 @@ namespace RHI
         Color          = 1 << 3, // The image will be the render target color attachment.
         Depth          = 1 << 4, // The image will be the render target depth attachment.
         Stencil        = 1 << 5, // The image will be the render target stencil attachment.
+        DepthStencil   = Depth | Stencil,
         CopySrc        = 1 << 6, // The image content will be copied.
         CopyDst        = 1 << 7, // The image content will be overwritten by a copy command.
     };
@@ -143,13 +145,15 @@ namespace RHI
     {
         None,
         Sampler,
+        StorageImage,
         Image,
+        // StorageBuffer,
         Buffer,
         BufferView,
     };
 
     /// @brief How the resource will be accessed in the shader.
-    enum class ShaderBindingAccess
+    enum class ShaderBindingAccess // replace with access enum
     {
         OnlyRead,
         ReadWrite,
@@ -414,9 +418,8 @@ namespace RHI
 
         size_t      byteSize;
         size_t      byteOffset;
-        Format      format;
 
-        inline bool operator==(const BufferSubregion& other) const { return byteSize == other.byteSize && byteOffset == other.byteOffset && format == other.format; }
+        inline bool operator==(const BufferSubregion& other) const { return byteSize == other.byteSize && byteOffset == other.byteOffset; }
 
         inline bool operator!=(const BufferSubregion& other) const { return !(*this == other); }
     };
@@ -647,13 +650,13 @@ namespace RHI
     struct BufferViewCreateInfo
     {
         Handle<Buffer> buffer;
-        Format        format;
-        size_t        byteOffset;
-        size_t        byteSize;
+        Format         format;
+        size_t         byteOffset;
+        size_t         byteSize;
 
-        inline bool   operator==(const BufferViewCreateInfo& other) const { return byteOffset == other.byteOffset && byteSize == other.byteSize && format == other.format; }
+        inline bool    operator==(const BufferViewCreateInfo& other) const { return byteOffset == other.byteOffset && byteSize == other.byteSize && format == other.format; }
 
-        inline bool   operator!=(const BufferViewCreateInfo& other) const { return !(*this == other); }
+        inline bool    operator!=(const BufferViewCreateInfo& other) const { return !(*this == other); }
     };
 
     /// @brief Description of the graphics pipeline states.
@@ -737,24 +740,6 @@ namespace RHI
     public:
         ResourcePool()          = default;
         virtual ~ResourcePool() = default;
-    };
-
-    class RHI_EXPORT StagingBuffer
-    {
-    public:
-        virtual ~StagingBuffer() = default;
-
-        struct TempBuffer
-        {
-            DeviceMemoryPtr pData;
-            Handle<Buffer>  buffer;
-            size_t          offset;
-            size_t          size;
-        };
-
-        virtual TempBuffer Allocate(size_t newSize)      = 0;
-        virtual void       Free(TempBuffer mappedBuffer) = 0;
-        virtual void       Flush()                       = 0;
     };
 
     /// @brief Fence object used to preform CPU-GPU sync

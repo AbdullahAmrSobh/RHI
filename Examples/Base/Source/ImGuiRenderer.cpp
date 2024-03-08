@@ -332,7 +332,7 @@ void ImGuiRenderer::Init(ImGuiRendererCreateInfo createInfo)
         imageInfo.size.height = uint32_t(height);
         imageInfo.size.depth = 1;
         imageInfo.type = RHI::ImageType::Image2D;
-        imageInfo.format = RHI::Format::RGBA8_UNORM;
+        imageInfo.format = RHI::Format::R8_UNORM;
         imageInfo.usageFlags = RHI::ImageUsage::ShaderResource;
         imageInfo.usageFlags |= RHI::ImageUsage::CopyDst;
         imageInfo.arrayCount = 1;

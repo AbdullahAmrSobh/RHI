@@ -128,42 +128,48 @@ namespace RHI
     class RHI_EXPORT CommandList
     {
     public:
-        CommandList()                                           = default;
-        CommandList(const CommandList& other)                   = delete;
-        CommandList(CommandList&& other)                        = default;
-        virtual ~CommandList()                                  = default;
+        CommandList()                                                                  = default;
+        CommandList(const CommandList& other)                                          = delete;
+        CommandList(CommandList&& other)                                               = default;
+        virtual ~CommandList()                                                         = default;
 
-        /// @brief Marks the begining of this command list recording.
-        virtual void Begin()                                    = 0;
+        /// @brief Marks the begining of this command list recording
+        virtual void Begin()                                                           = 0;
 
-        /// @brief Marks the begining of this command list recording inside a pass.
-        virtual void Begin(Pass& pass)                          = 0;
+        /// @brief Marks the begining of this command list recording inside a pass
+        virtual void Begin(Pass& pass)                                                 = 0;
 
-        /// @brief Marks the ending of this command list recording.
-        virtual void End()                                      = 0;
+        /// @brief Marks the ending of this command list recording
+        virtual void End()                                                             = 0;
 
         /// @brief Sets the rendering viewport
-        virtual void SetViewport(const Viewport& viewport)      = 0;
+        virtual void SetViewport(const Viewport& viewport)                             = 0;
 
         /// @brief Sets the rendering scissor
-        virtual void SetSicssor(const Scissor& sicssor)         = 0;
+        virtual void SetSicssor(const Scissor& sicssor)                                = 0;
 
-        /// @brief Submit a draw command.
-        virtual void Draw(const DrawInfo& command)              = 0;
+        /// @brief Submit a draw command
+        virtual void Draw(const DrawInfo& command)                                     = 0;
 
-        /// @brief Submit a compute command.
-        virtual void Dispatch(const DispatchInfo& command)      = 0;
+        /// @brief Submit a compute command
+        virtual void Dispatch(const DispatchInfo& command)                             = 0;
 
-        /// @brief Submit a buffer copy command.
-        virtual void Copy(const BufferCopyInfo& command)        = 0;
+        /// @brief Submit a buffer copy command
+        virtual void Copy(const BufferCopyInfo& command)                               = 0;
 
-        /// @brief Submit a image copy command.
-        virtual void Copy(const ImageCopyInfo& command)         = 0;
+        /// @brief Submit a image copy command
+        virtual void Copy(const ImageCopyInfo& command)                                = 0;
 
-        /// @brief Submit a buffer to image copy command.
-        virtual void Copy(const BufferToImageCopyInfo& command) = 0;
+        /// @brief Submit a buffer to image copy command
+        virtual void Copy(const BufferToImageCopyInfo& command)                        = 0;
 
-        /// @brief Submit a image to buffer copy command.
-        virtual void Copy(const ImageToBufferCopyInfo& command) = 0;
+        /// @brief Submit a image to buffer copy command
+        virtual void Copy(const ImageToBufferCopyInfo& command)                        = 0;
+
+        /// @brief Begins a new debug marker region
+        virtual void DebugMarkerPush(const char* name, const struct ColorValue& color) = 0;
+
+        /// @brief Ends the last debug marker region
+        virtual void DebugMarkerPop()                                                  = 0;
     };
 } // namespace RHI

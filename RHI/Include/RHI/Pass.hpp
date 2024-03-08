@@ -1,20 +1,19 @@
 #pragma once
 #include "RHI/Export.hpp"
-#include "RHI/Attachments.hpp"
 #include "RHI/Resources.hpp"
+#include "RHI/Attachments.hpp"
 
 #include <string>
 
 namespace RHI
 {
-    class CommandList;
-
-    // FIXME: fwd decl
     namespace Vulkan
     {
         class IFrameScheduler;
         class ICommandList;
     } // namespace Vulkan
+
+    class FrameScheduler;
 
     enum class QueueType
     {
@@ -23,87 +22,104 @@ namespace RHI
         Transfer,
     };
 
+    /// Represents a rendering pass, which is a logical unit of rendering work.
+    /// This class provides functionality for defining and configuring rendering passes within a rendering pipeline.
     class RHI_EXPORT Pass
     {
     public:
-        Pass(const char* name, QueueType type);
+        /// Constructs a rendering pass with the given name and queue type.
+        ///
+        /// @param name The name of the pass.
+        /// @param type The type of queue on which the pass will execute.
+        Pass(FrameScheduler* scheduler, const char* name, QueueType type);
+
         ~Pass();
 
-        struct TransientRenderTargetInfo
-        {
-            Format              format; // usage deduced from format
-            ClearValue          clearValue;
-            LoadStoreOperations loadStoreOperations;
-            uint32_t            mipLevelsCount;
-            uint32_t            arrayLayerCount;
-        };
+        void                  SetRenderTargetSize(ImageSize2D size);
 
-        struct TransientShaderResource;
-        struct TransientCopyResource;
+        QueueType             GetQueueType() const { return QueueType::Graphics; }
 
-        ImagePassAttachment*  CreateTransientImage(const char* name, TransientRenderTargetInfo info);
-        ImagePassAttachment*  UseImage(ImagePassAttachment* attachment);
+        ImagePassAttachment*  CreateRenderTarget(const char* name, Format format, ClearValue clearValue, LoadStoreOperations loadStoreOps = {}, uint32_t mipLevelsCount = 1, uint32_t arrayLayersCount = 1);
 
-        ImagePassAttachment*  ImportSwapchainImage(const char* name, Swapchain* swapchain);
-        ImagePassAttachment*  ImportImage(const char* name, Handle<Image> handle);
-        BufferPassAttachment* ImportBuffer(const char* name, Handle<Buffer> handle);
-        ImagePassAttachment*  CreateTransientImage(const char* name, const ImageCreateInfo& createInfo);
-        BufferPassAttachment* CreateTransientBuffer(const char* name, const BufferCreateInfo& createInfo);
-        ImagePassAttachment*  UseColorAttachment(ImageAttachment* attachment, ColorValue value, LoadStoreOperations loadStoreOperations = LoadStoreOperations{});
-        ImagePassAttachment*  UseDepthAttachment(ImageAttachment* attachment, DepthStencilValue value, LoadStoreOperations loadStoreOperations = LoadStoreOperations{});
-        ImagePassAttachment*  UseStencilAttachment(ImageAttachment* attachment, DepthStencilValue value, LoadStoreOperations loadStoreOperations = LoadStoreOperations{});
-        ImagePassAttachment*  UseDepthStencilAttachment(ImageAttachment* attachment, DepthStencilValue value, LoadStoreOperations loadStoreOperations = LoadStoreOperations{});
-        ImagePassAttachment*  UseColorAttachment(ImageAttachment* attachment, const ImageViewCreateInfo& viewInfo, ColorValue value, LoadStoreOperations loadStoreOperations);
-        ImagePassAttachment*  UseDepthAttachment(ImageAttachment* attachment, const ImageViewCreateInfo& viewInfo, DepthStencilValue value, LoadStoreOperations loadStoreOperations);
-        ImagePassAttachment*  UseStencilAttachment(ImageAttachment* attachment, const ImageViewCreateInfo& viewInfo, DepthStencilValue value, LoadStoreOperations loadStoreOperations);
-        ImagePassAttachment*  UseDepthStencilAttachment(ImageAttachment* attachment, const ImageViewCreateInfo& viewInfo, DepthStencilValue value, LoadStoreOperations loadStoreOperations);
-        ImagePassAttachment*  UseShaderImageResource(ImageAttachment* attachment, const ImageViewCreateInfo& viewInfo);
-        BufferPassAttachment* UseShaderBufferResource(BufferAttachment* attachment, const BufferViewCreateInfo& viewInfo);
-        ImagePassAttachment*  UseShaderImageStorage(ImageAttachment* attachment, const ImageViewCreateInfo& viewInfo, AttachmentAccess access);
-        BufferPassAttachment* UseShaderBufferStorage(BufferAttachment* attachment, const BufferViewCreateInfo& viewInfo, AttachmentAccess access);
-        ImagePassAttachment*  UseCopyImageResource(ImageAttachment* attachment, const ImageViewCreateInfo& viewInfo, AttachmentAccess access);
-        BufferPassAttachment* UseCopyBufferResource(BufferAttachment* attachment, const BufferViewCreateInfo& viewInfo, AttachmentAccess access);
+        ImagePassAttachment*  CreateTransientImage(const char* name, Format format, ImageUsage usage, ImageSize2D size, ImageSubresourceRange subresource = {});
+
+        ImagePassAttachment*  CreateTransientImage(const char* name, Format format, ImageUsage usage, ImageSize3D size, ImageSubresourceRange subresource = {});
+
+        BufferPassAttachment* CreateTransientBuffer(const char* name, BufferUsage usage, size_t size);
+
+        ImagePassAttachment*  UseRenderTarget(const char* name, Handle<Image> handle, ClearValue clearValue, LoadStoreOperations loadStoreOps = {}, ImageSubresourceRange subresource = {});
+
+        ImagePassAttachment*  UseRenderTarget(const char* name, Swapchain* swapchain, ClearValue clearValue, LoadStoreOperations loadStoreOps = {}, ImageSubresourceRange subresource = {});
+
+        ImagePassAttachment*  UseRenderTarget(ImagePassAttachment* attachment, ClearValue clearValue, LoadStoreOperations loadStoreOps = {}, ImageSubresourceRange subresource = {});
+
+        ImagePassAttachment*  UseImageResource(ImagePassAttachment* attachment, ImageUsage usage, Access access, ImageSubresourceRange subresource = {}, ComponentMapping mapping = {});
+
+        BufferPassAttachment* UseBufferResource(BufferPassAttachment* attachment, BufferUsage usage, Access access, BufferSubregion subregion);
+
+        void                  SubmitCommandList(TL::Span<class CommandList*> commandList);
+
+    public:
+        TL::Span<ImagePassAttachment*>  GetColorAttachments() { return m_colorAttachments; }
+
+        ImagePassAttachment*            GetDepthStencilAttachment() { return m_depthStencilAttachment; }
+
+        TL::Span<ImagePassAttachment*>  GetImageShaderResources() { return m_imageShaderResources; }
+
+        TL::Span<ImagePassAttachment*>  GetImageCopyResources() { return m_imageCopyResources; }
+
+        TL::Span<BufferPassAttachment*> GetBufferShaderResources() { return m_bufferShaderResources; }
+
+        TL::Span<BufferPassAttachment*> GetBufferCopyResources() { return m_bufferCopyResources; }
+
+        TL::Span<PassAttachment*>       GetPassAttachments() { return m_passAttachments; } // return transient only
 
     private:
-        ImagePassAttachment*  EmplaceNewPassAttachment(ImageAttachment* attachment);
-        BufferPassAttachment* EmplaceNewPassAttachment(BufferAttachment* attachment);
+        ImagePassAttachment* UseRenderTargetInternal(
+            ImageAttachment*      attachment,
+            ClearValue            clearValue,
+            LoadStoreOperations   loadStoreOps,
+            ImageSubresourceRange subresourceRange);
+
+        ImagePassAttachment* UseImageResourceInternal(
+            ImageAttachment*      attachment,
+            ImageUsage            usage,
+            Access                access,
+            ImageSubresourceRange subresource,
+            ComponentMapping      mapping);
+
+        BufferPassAttachment* UseBufferResourceInternal(
+            BufferAttachment* attachment,
+            BufferUsage       usage,
+            Access            access,
+            BufferSubregion   subregion);
+
+        void UseAttachment(PassAttachment* attachment);
 
     protected:
+        friend class CommandList;
         friend class FrameScheduler;
         friend class Vulkan::IFrameScheduler;
         friend class Vulkan::ICommandList;
 
-        std::string                        m_name;
-        QueueType                          m_queueType;    // The type of the Hardware Queue needed to execute this pass.
-        ImageSize2D                        m_size;         // The size of the rendering area in the render pass.
-        std::vector<Pass*>                 m_producers;    // A list of all passes that this pass will wait for.
-        std::vector<CommandList*>          m_commandLists; // A list of command lists that executes this pass.
+        FrameScheduler*                        m_scheduler;
+        std::string                            m_name;
+        QueueType                              m_queueType;
+        ImageSize2D                            m_frameSize;
 
-        RHI::SwapchainImagePassAttachment* m_swapchainImageAttachment;
-        // RHI::ImagePassAttachment*                   m_depthStencilAttachment;
+        std::vector<Ptr<ImagePassAttachment>>  m_imagePassAttachments;
+        std::vector<Ptr<BufferPassAttachment>> m_bufferPassAttachments;
+        std::vector<CommandList*>              m_commandLists;
 
-        std::vector<ImagePassAttachment*>  m_imagePassAttachments;  // A list of all image pass attachment used by this pass.
-        std::vector<BufferPassAttachment*> m_bufferPassAttachments; // A list of all buffer pass attachment used by this pass.
+        std::vector<PassAttachment*>           m_passAttachments;
+        std::vector<ImagePassAttachment*>      m_colorAttachments;
+        ImagePassAttachment*                   m_depthStencilAttachment;
+        std::vector<ImagePassAttachment*>      m_imageShaderResources;
+        std::vector<ImagePassAttachment*>      m_imageCopyResources;
+        std::vector<BufferPassAttachment*>     m_bufferShaderResources;
+        std::vector<BufferPassAttachment*>     m_bufferCopyResources;
+
+        // NodeIndex                              m_node;
+        // RenderGraph*                           m_renderGraph;
     };
-
-    inline ImagePassAttachment* Pass::UseColorAttachment(ImageAttachment* attachment, ColorValue value, LoadStoreOperations loadStoreOperations)
-    {
-        return UseColorAttachment(attachment, ImageViewCreateInfo{ ImageAspect::Color }, value, loadStoreOperations);
-    }
-
-    inline ImagePassAttachment* Pass::UseDepthAttachment(ImageAttachment* attachment, DepthStencilValue value, LoadStoreOperations loadStoreOperations)
-    {
-        return UseDepthAttachment(attachment, ImageViewCreateInfo{ ImageAspect::Depth }, value, loadStoreOperations);
-    }
-
-    inline ImagePassAttachment* Pass::UseStencilAttachment(ImageAttachment* attachment, DepthStencilValue value, LoadStoreOperations loadStoreOperations)
-    {
-        return UseStencilAttachment(attachment, ImageViewCreateInfo{ ImageAspect::Stencil }, value, loadStoreOperations);
-    }
-
-    inline ImagePassAttachment* Pass::UseDepthStencilAttachment(ImageAttachment* attachment, DepthStencilValue value, LoadStoreOperations loadStoreOperations)
-    {
-        return UseDepthStencilAttachment(attachment, ImageViewCreateInfo{ ImageAspect::DepthStencil }, value, loadStoreOperations);
-    }
-
 } // namespace RHI

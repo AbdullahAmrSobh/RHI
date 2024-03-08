@@ -1,4 +1,5 @@
 #include "RHI/Context.hpp"
+#include "RHI/FrameScheduler.hpp"
 
 #include <tracy/Tracy.hpp>
 
@@ -7,56 +8,29 @@ namespace RHI
     Result<Handle<Image>> Context::CreateImageWithContent(const ImageCreateInfo& createInfo, TL::Span<uint8_t> content)
     {
         ZoneScoped;
-
         auto [handle, result] = CreateImage(createInfo);
-
         if (IsError(result))
-        {
             return result;
-        }
-
-        BufferCreateInfo stagingBufferInfo{};
-        stagingBufferInfo.byteSize = CalculateRequiredSize(createInfo);
-        stagingBufferInfo.usageFlags = RHI::BufferUsage::CopySrc;
-        auto stagingBuffer = CreateBuffer(stagingBufferInfo).GetValue();
-        auto ptr = MapBuffer(stagingBuffer);
-        memcpy(ptr, content.data(), content.size());
-        UnmapBuffer(stagingBuffer);
-
-        auto fence = CreateFence();
-        auto command = m_transferCommandsAllocator->Allocate();
-        BufferToImageCopyInfo copyInfo{};
-        copyInfo.srcBuffer = stagingBuffer;
-        copyInfo.srcOffset = 0;
-        copyInfo.srcSize.width = createInfo.size.width;
-        copyInfo.srcSize.height = createInfo.size.height;
-        copyInfo.srcSize.depth = createInfo.size.depth;
-        copyInfo.dstImage = handle;
-        copyInfo.dstSubresource.imageAspects = RHI::ImageAspect::Color;
-        command->Begin();
-        command->Copy(copyInfo);
-        command->End();
-        m_frameScheduler->ExecuteCommandList(command, *fence);
-        fence->Wait();
-
+        m_frameScheduler->WriteImageContent(handle,  {}, createInfo.size, {}, content);
         return handle;
     }
 
     Result<Handle<Buffer>> Context::CreateBufferWithContent(const BufferCreateInfo& createInfo, TL::Span<uint8_t> content)
     {
         ZoneScoped;
-
         auto [handle, result] = CreateBuffer(createInfo);
-
         if (IsError(result))
-        {
             return result;
+        if (m_limits->stagingMemoryLimit >= createInfo.byteSize)
+        {
+            auto ptr = MapBuffer(handle);
+            memcpy(ptr, content.data(), content.size());
+            UnmapBuffer(handle);
         }
-
-        auto ptr = MapBuffer(handle);
-        memcpy(ptr, content.data(), content.size());
-        UnmapBuffer(handle);
-
+        else
+        {
+            m_frameScheduler->WriteBufferContent(handle, content);
+        }
         return handle;
     }
 

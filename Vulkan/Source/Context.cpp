@@ -107,9 +107,6 @@ namespace RHI::Vulkan
         : Context(std::move(debugCallbacks))
     {
         m_frameScheduler = CreatePtr<IFrameScheduler>(this);
-        // m_bindGroupAllocator = CreatePtr<BindGroupAllocator>();
-        m_stagingBuffer = CreatePtr<IStagingBuffer>(this);
-        m_transferCommandsAllocator = CreatePtr<ICommandListAllocator>(this);
     }
 
     IContext::~IContext()
@@ -141,9 +138,6 @@ namespace RHI::Vulkan
         result = InitDevice();
         VULKAN_RETURN_VKERR_CODE(result);
 
-        result = InitDeviceQueues();
-        VULKAN_RETURN_VKERR_CODE(result);
-
         result = InitMemoryAllocator();
         VULKAN_RETURN_VKERR_CODE(result);
 
@@ -160,14 +154,6 @@ namespace RHI::Vulkan
 
         auto scheduler = (IFrameScheduler*)m_frameScheduler.get();
         result = scheduler->Init();
-        VULKAN_RETURN_VKERR_CODE(result);
-
-        auto stagingBuffer = (IStagingBuffer*)m_stagingBuffer.get();
-        result = stagingBuffer->Init();
-        VULKAN_RETURN_VKERR_CODE(result);
-
-        auto commandAllocator = (ICommandListAllocator*)m_transferCommandsAllocator.get();
-        result = commandAllocator->Init(QueueType::Graphics);
         VULKAN_RETURN_VKERR_CODE(result);
 
         return VK_SUCCESS;
@@ -667,7 +653,6 @@ namespace RHI::Vulkan
         {
             enabledExtensionsNames.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
             enabledExtensionsNames.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
-            
         }
         else
         {
@@ -735,7 +720,10 @@ namespace RHI::Vulkan
             if ((queueFamilyProperty.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT)) == (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT))
             {
                 m_graphicsQueueFamilyIndex = queueFamilyIndex;
-                break; // todo remove this;
+
+                m_transferQueueFamilyIndex = queueFamilyIndex;
+                m_computeQueueFamilyIndex = queueFamilyIndex;
+                break;
             }
 
             // Search for transfer queue
@@ -808,23 +796,12 @@ namespace RHI::Vulkan
         createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensionNames.size());
         createInfo.ppEnabledExtensionNames = deviceExtensionNames.data();
         createInfo.pEnabledFeatures = &enabledFeatures;
-        return vkCreateDevice(m_physicalDevice, &createInfo, nullptr, &m_device);
-    }
+        auto result = vkCreateDevice(m_physicalDevice, &createInfo, nullptr, &m_device);
+        vkGetDeviceQueue(m_device, m_graphicsQueueFamilyIndex, 0, &m_presentQueue);
 
-    VkResult IContext::InitDeviceQueues()
-    {
-        vkGetDeviceQueue(m_device, m_graphicsQueueFamilyIndex, 0, &m_graphicsQueue);
+        m_limits->stagingMemoryLimit = 256 * 1000 * 1000;
 
-        m_computeQueue = m_graphicsQueue;
-        m_transferQueue = m_graphicsQueue;
-
-        // if (m_computeQueueFamilyIndex != UINT32_MAX)
-        //     vkGetDeviceQueue(m_device, m_computeQueueFamilyIndex, 0, &m_computeQueue);
-
-        // if (m_transferQueueFamilyIndex != UINT32_MAX)
-        //     vkGetDeviceQueue(m_device, m_transferQueueFamilyIndex, 0, &m_transferQueue);
-
-        return VK_SUCCESS;
+        return result;
     }
 
     VkResult IContext::InitMemoryAllocator()
@@ -858,13 +835,23 @@ namespace RHI::Vulkan
     {
         auto scheduler = (IFrameScheduler*)m_frameScheduler.get();
         scheduler->Init();
-        scheduler->SetBufferedFramesCount(2);
         return VK_SUCCESS;
     }
 
     VkResult IContext::InitStagingBuffer()
     {
         return VK_SUCCESS;
+    }
+
+    uint32_t IContext::GetQueueFamilyIndex(QueueType queueType)
+    {
+        switch (queueType)
+        {
+        case QueueType::Graphics: return m_graphicsQueueFamilyIndex;
+        case QueueType::Compute:  return m_computeQueueFamilyIndex;
+        case QueueType::Transfer: return m_transferQueueFamilyIndex;
+        default: RHI_UNREACHABLE(); return UINT32_MAX;
+        }
     }
 
 } // namespace RHI::Vulkan

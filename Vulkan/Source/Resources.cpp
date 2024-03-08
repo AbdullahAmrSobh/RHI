@@ -108,49 +108,49 @@ namespace RHI::Vulkan
     /// Image
     ///////////////////////////////////////////////////////////////////////////
 
-    ResultCode IImage::Init(IContext* context, const ImageCreateInfo& createInfo, bool isTransient)
+    ResultCode IImage::Init(IContext* context, const ImageCreateInfo& _createInfo, bool isTransient)
     {
-        VkImageCreateInfo vkCreateInfo{};
-        vkCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        vkCreateInfo.pNext = nullptr;
-        vkCreateInfo.flags = {};
-        vkCreateInfo.imageType = ConvertImageType(createInfo.type);
-        vkCreateInfo.format = ConvertFormat(createInfo.format);
-        vkCreateInfo.extent.width = createInfo.size.width;
-        vkCreateInfo.extent.height = createInfo.size.height;
-        vkCreateInfo.extent.depth = createInfo.size.depth;
-        vkCreateInfo.mipLevels = createInfo.mipLevels;
-        vkCreateInfo.arrayLayers = createInfo.arrayCount;
-        vkCreateInfo.samples = ConvertSampleCount(createInfo.sampleCount);
-        vkCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-        vkCreateInfo.usage = ConvertImageUsageFlags(createInfo.usageFlags);
-        vkCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        vkCreateInfo.queueFamilyIndexCount = 0;
-        vkCreateInfo.pQueueFamilyIndices = nullptr;
-        vkCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        VkImageCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        createInfo.pNext = nullptr;
+        createInfo.flags = {};
+        createInfo.imageType = ConvertImageType(_createInfo.type);
+        createInfo.format = ConvertFormat(_createInfo.format);
+        createInfo.extent.width = _createInfo.size.width;
+        createInfo.extent.height = _createInfo.size.height;
+        createInfo.extent.depth = _createInfo.size.depth;
+        createInfo.mipLevels = _createInfo.mipLevels;
+        createInfo.arrayLayers = _createInfo.arrayCount;
+        createInfo.samples = ConvertSampleCount(_createInfo.sampleCount);
+        createInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+        createInfo.usage = ConvertImageUsageFlags(_createInfo.usageFlags);
+        createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        createInfo.queueFamilyIndexCount = 0;
+        createInfo.pQueueFamilyIndices = nullptr;
+        createInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-        this->format = vkCreateInfo.format;
-        this->imageType = vkCreateInfo.imageType;
+        this->format = createInfo.format;
+        this->imageType = createInfo.imageType;
         VkResult result = VK_ERROR_UNKNOWN;
 
         if (isTransient)
         {
-            result = vkCreateImage(context->m_device, &vkCreateInfo, nullptr, &handle);
+            result = vkCreateImage(context->m_device, &createInfo, nullptr, &handle);
         }
         else
         {
             VmaAllocationCreateInfo allocationInfo{};
 
-            if (createInfo.allocationInfo.pool)
+            if (_createInfo.allocationInfo.pool)
             {
-                auto resourcePool = (IResourcePool*)createInfo.allocationInfo.pool;
+                auto resourcePool = (IResourcePool*)_createInfo.allocationInfo.pool;
                 allocationInfo.pool = resourcePool->m_pool;
             }
             else
             {
             }
 
-            result = vmaCreateImage(context->m_allocator, &vkCreateInfo, &allocationInfo, &handle, &allocation.handle, &allocation.info);
+            result = vmaCreateImage(context->m_allocator, &createInfo, &allocationInfo, &handle, &allocation.handle, &allocation.info);
         }
 
         return ConvertResult(result);
@@ -179,39 +179,39 @@ namespace RHI::Vulkan
     /// Buffer
     ///////////////////////////////////////////////////////////////////////////
 
-    ResultCode IBuffer::Init(IContext* context, const BufferCreateInfo& createInfo, bool isTransient)
+    ResultCode IBuffer::Init(IContext* context, const BufferCreateInfo& _createInfo, bool isTransient)
     {
-        VkBufferCreateInfo vkCreateInfo{};
-        vkCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        vkCreateInfo.pNext = nullptr;
-        vkCreateInfo.flags = {};
-        vkCreateInfo.size = createInfo.byteSize;
-        vkCreateInfo.usage = ConvertBufferUsageFlags(createInfo.usageFlags);
-        vkCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        vkCreateInfo.queueFamilyIndexCount = 0;
-        vkCreateInfo.pQueueFamilyIndices = nullptr;
+        VkBufferCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        createInfo.pNext = nullptr;
+        createInfo.flags = {};
+        createInfo.size = _createInfo.byteSize;
+        createInfo.usage = ConvertBufferUsageFlags(_createInfo.usageFlags);
+        createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        createInfo.queueFamilyIndexCount = 0;
+        createInfo.pQueueFamilyIndices = nullptr;
 
         VkResult result = VK_ERROR_UNKNOWN;
         if (isTransient)
         {
-            result = vkCreateBuffer(context->m_device, &vkCreateInfo, nullptr, &handle);
+            result = vkCreateBuffer(context->m_device, &createInfo, nullptr, &handle);
         }
         else
         {
             VmaAllocationCreateInfo allocationInfo{};
 
-            if (createInfo.allocationInfo.pool)
+            if (_createInfo.allocationInfo.pool)
             {
-                auto resourcePool = (IResourcePool*)createInfo.allocationInfo.pool;
+                auto resourcePool = (IResourcePool*)_createInfo.allocationInfo.pool;
                 allocationInfo.pool = resourcePool->m_pool;
             }
             else
             {
-                allocationInfo.usage = createInfo.allocationInfo.heapType == MemoryType::GPUShared ? VMA_MEMORY_USAGE_AUTO_PREFER_HOST : VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+                allocationInfo.usage = _createInfo.allocationInfo.heapType == MemoryType::GPUShared ? VMA_MEMORY_USAGE_AUTO_PREFER_HOST : VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
                 allocationInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
             }
 
-            result = vmaCreateBuffer(context->m_allocator, &vkCreateInfo, &allocationInfo, &handle, &allocation.handle, &allocation.info);
+            result = vmaCreateBuffer(context->m_allocator, &createInfo, &allocationInfo, &handle, &allocation.handle, &allocation.info);
         }
 
         return ConvertResult(result);
@@ -240,33 +240,33 @@ namespace RHI::Vulkan
     /// ImageView
     ///////////////////////////////////////////////////////////////////////////
 
-    ResultCode IImageView::Init(IContext* context, const ImageViewCreateInfo& createInfo)
+    ResultCode IImageView::Init(IContext* context, const ImageViewCreateInfo& _createInfo)
     {
-        auto image = context->m_imageOwner.Get(createInfo.image);
+        auto image = context->m_imageOwner.Get(_createInfo.image);
         RHI_ASSERT(image);
 
-        VkImageViewCreateInfo vkCreateInfo{};
-        vkCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        vkCreateInfo.pNext = nullptr;
-        vkCreateInfo.flags = 0;
-        vkCreateInfo.image = image->handle;
+        VkImageViewCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        createInfo.pNext = nullptr;
+        createInfo.flags = 0;
+        createInfo.image = image->handle;
 
         switch (image->imageType)
         {
-        case VK_IMAGE_TYPE_1D: vkCreateInfo.viewType = createInfo.subresource.arrayCount == 1 ? VK_IMAGE_VIEW_TYPE_1D : VK_IMAGE_VIEW_TYPE_1D_ARRAY; break;
-        case VK_IMAGE_TYPE_2D: vkCreateInfo.viewType = createInfo.subresource.arrayCount == 1 ? VK_IMAGE_VIEW_TYPE_2D : VK_IMAGE_VIEW_TYPE_2D_ARRAY; break;
-        case VK_IMAGE_TYPE_3D: vkCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_3D; break;
+        case VK_IMAGE_TYPE_1D: createInfo.viewType = _createInfo.subresource.arrayCount == 1 ? VK_IMAGE_VIEW_TYPE_1D : VK_IMAGE_VIEW_TYPE_1D_ARRAY; break;
+        case VK_IMAGE_TYPE_2D: createInfo.viewType = _createInfo.subresource.arrayCount == 1 ? VK_IMAGE_VIEW_TYPE_2D : VK_IMAGE_VIEW_TYPE_2D_ARRAY; break;
+        case VK_IMAGE_TYPE_3D: createInfo.viewType = VK_IMAGE_VIEW_TYPE_3D; break;
         default:               RHI_UNREACHABLE(); break;
         }
 
-        vkCreateInfo.format = image->format;
-        vkCreateInfo.components.r = ConvertComponentSwizzle(createInfo.components.r);
-        vkCreateInfo.components.g = ConvertComponentSwizzle(createInfo.components.g);
-        vkCreateInfo.components.b = ConvertComponentSwizzle(createInfo.components.b);
-        vkCreateInfo.components.a = ConvertComponentSwizzle(createInfo.components.a);
-        vkCreateInfo.subresourceRange = ConvertSubresourceRange(createInfo.subresource);
+        createInfo.format = image->format;
+        createInfo.components.r = ConvertComponentSwizzle(_createInfo.components.r);
+        createInfo.components.g = ConvertComponentSwizzle(_createInfo.components.g);
+        createInfo.components.b = ConvertComponentSwizzle(_createInfo.components.b);
+        createInfo.components.a = ConvertComponentSwizzle(_createInfo.components.a);
+        createInfo.subresourceRange = ConvertSubresourceRange(_createInfo.subresource);
 
-        auto result = vkCreateImageView(context->m_device, &vkCreateInfo, nullptr, &handle);
+        auto result = vkCreateImageView(context->m_device, &createInfo, nullptr, &handle);
         return ConvertResult(result);
     }
 
@@ -877,48 +877,6 @@ namespace RHI::Vulkan
         poolCreateInfo.memoryTypeIndex = m_context->GetMemoryTypeIndex(MemoryType::GPULocal);
         return vmaCreatePool(m_context->m_allocator, &poolCreateInfo, &m_pool);
     }
-
-    ///////////////////////////////////////////////////////////////////////////
-    /// ShaderModule
-    ///////////////////////////////////////////////////////////////////////////
-
-    IStagingBuffer::IStagingBuffer(IContext* context)
-        : m_context(context)
-    {
-    }
-
-    IStagingBuffer::~IStagingBuffer()
-    {
-    }
-
-    VkResult IStagingBuffer::Init()
-    {
-        return VK_SUCCESS;
-    }
-
-    StagingBuffer::TempBuffer IStagingBuffer::Allocate(size_t newSize)
-    {
-        BufferCreateInfo createInfo = {};
-        createInfo.usageFlags = BufferUsage::CopySrc;
-        createInfo.usageFlags = BufferUsage::CopyDst;
-        createInfo.byteSize = newSize;
-        auto buffer = m_context->CreateBuffer(createInfo).GetValue();
-
-        StagingBuffer::TempBuffer tmpBuffer{};
-        tmpBuffer.buffer = buffer;
-        tmpBuffer.size = newSize;
-        tmpBuffer.offset = 0;
-        tmpBuffer.pData = m_context->MapBuffer(tmpBuffer.buffer);
-        return tmpBuffer;
-    }
-
-    void IStagingBuffer::Free(TempBuffer mappedBuffer)
-    {
-        m_context->UnmapBuffer(mappedBuffer.buffer);
-        m_context->DestroyBuffer(mappedBuffer.buffer);
-    }
-
-    void IStagingBuffer::Flush() {}
 
     ///////////////////////////////////////////////////////////////////////////
     /// Fence

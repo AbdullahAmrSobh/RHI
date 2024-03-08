@@ -152,8 +152,7 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto context = (IContext*)m_context;
-        auto queue = context->GetQueue(QueueType::Graphics);
+        vkDeviceWaitIdle(m_context->m_device);
 
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -164,7 +163,7 @@ namespace RHI::Vulkan
         presentInfo.pSwapchains = &m_swapchain;
         presentInfo.pImageIndices = &m_currentImageIndex;
         presentInfo.pResults = &m_lastPresentResult;
-        auto result = vkQueuePresentKHR(queue, &presentInfo);
+        auto result = vkQueuePresentKHR(m_context->m_presentQueue, &presentInfo);
         VULKAN_ASSERT_SUCCESS(result);
 
         result = vkAcquireNextImageKHR(m_context->m_device, m_swapchain, UINT64_MAX, m_semaphores.imageAcquired, VK_NULL_HANDLE, &m_currentImageIndex);

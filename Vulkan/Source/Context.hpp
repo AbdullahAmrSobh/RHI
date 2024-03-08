@@ -67,22 +67,19 @@ namespace RHI::Vulkan
 
         void DestroyResources();
 
-        uint32_t GetQueueFamilyIndex(QueueType queueType) const;
-
         VkSemaphore CreateSemaphore();
 
         void FreeSemaphore(VkSemaphore semaphore);
 
-        VkQueue GetQueue(QueueType queueType) const;
-
         uint32_t GetMemoryTypeIndex(MemoryType memoryType);
+
+        uint32_t GetQueueFamilyIndex(QueueType queueType);
 
     private:
         static VkBool32 VKAPI_CALL DebugMessengerCallbacks(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
 
         VkResult InitInstance(const ApplicationInfo& appInfo, bool* debugExtensionEnabled);
         VkResult InitDevice();
-        VkResult InitDeviceQueues();
         VkResult InitMemoryAllocator();
         VkResult LoadFunctions(bool debugExtensionEnabled);
         VkResult InitFrameScheduler();
@@ -94,14 +91,11 @@ namespace RHI::Vulkan
         VkPhysicalDevice m_physicalDevice = VK_NULL_HANDLE;
         VkDevice         m_device         = VK_NULL_HANDLE;
         VmaAllocator     m_allocator      = VK_NULL_HANDLE;
+        VkQueue          m_presentQueue   = VK_NULL_HANDLE;
 
         uint32_t m_graphicsQueueFamilyIndex = UINT32_MAX;
         uint32_t m_computeQueueFamilyIndex  = UINT32_MAX;
         uint32_t m_transferQueueFamilyIndex = UINT32_MAX;
-
-        VkQueue m_graphicsQueue = VK_NULL_HANDLE;
-        VkQueue m_computeQueue  = VK_NULL_HANDLE;
-        VkQueue m_transferQueue = VK_NULL_HANDLE;
 
         PFN_vkCmdDebugMarkerBeginEXT  m_vkCmdDebugMarkerBeginEXT  = nullptr;
         PFN_vkCmdDebugMarkerInsertEXT m_vkCmdDebugMarkerInsertEXT = nullptr;
@@ -124,25 +118,5 @@ namespace RHI::Vulkan
         Ptr<BindGroupAllocator> m_bindGroupAllocator;
     };
 
-    inline uint32_t IContext::GetQueueFamilyIndex(QueueType queueType) const
-    {
-        switch (queueType)
-        {
-        case QueueType::Graphics: return m_graphicsQueueFamilyIndex;
-        case QueueType::Compute:  return m_computeQueueFamilyIndex;
-        case QueueType::Transfer: return m_transferQueueFamilyIndex;
-        default:                  RHI_UNREACHABLE(); return UINT32_MAX;
-        }
-    }
 
-    inline VkQueue IContext::GetQueue(QueueType queueType) const
-    {
-        switch (queueType)
-        {
-        case QueueType::Graphics: return m_graphicsQueue;
-        case QueueType::Compute:  return m_computeQueue;
-        case QueueType::Transfer: return m_transferQueue;
-        default:                  RHI_UNREACHABLE(); return VK_NULL_HANDLE;
-        }
-    }
 } // namespace RHI::Vulkan

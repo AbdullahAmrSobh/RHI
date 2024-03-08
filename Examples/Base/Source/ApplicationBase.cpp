@@ -129,7 +129,7 @@ void ApplicationBase::Init()
     // create frame scheduler
     auto& scheduler = m_context->GetScheduler();
 
-    m_commandListAllocator = m_context->CreateCommandListAllocator(RHI::QueueType::Graphics);
+    m_graphicsCommandsAllocator = m_context->CreateCommandListAllocator(RHI::QueueType::Graphics);
 
     OnInit();
 
@@ -137,7 +137,7 @@ void ApplicationBase::Init()
     imguiRendererCreateInfo.context = m_context.get();
     imguiRendererCreateInfo.scheduler = &scheduler;
     imguiRendererCreateInfo.shaderBlob = ReadBinaryFile("./Resources/Shaders/ImGui.spv");
-    imguiRendererCreateInfo.commandAllocator = m_commandListAllocator.get();
+    imguiRendererCreateInfo.commandAllocator = m_graphicsCommandsAllocator.get();
     m_imguiRenderer->Init(imguiRendererCreateInfo);
 
     ImGuiIO& io = ImGui::GetIO();
