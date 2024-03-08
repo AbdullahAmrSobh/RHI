@@ -19,4 +19,4 @@ namespace RHI
         /// @brief Log an error.
         virtual void LogError(std::string_view message)    = 0;
     };
-}
+} // namespace RHI

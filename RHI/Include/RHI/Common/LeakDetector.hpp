@@ -60,7 +60,7 @@ namespace RHI
     inline std::string ResourceLeakDetector<T>::ReportLiveResources()
     {
         auto breakline = "\n=============================================================================\n";
-        auto message = std::format("{}{} leak count {} \n", breakline, typeid(T).name(), m_liveResources.size());
+        auto message   = std::format("{}{} leak count {} \n", breakline, typeid(T).name(), m_liveResources.size());
 
         for (auto resource : m_liveResources)
         {

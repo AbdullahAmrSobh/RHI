@@ -20,7 +20,7 @@ namespace RHI
         }
 
         template<typename BaseResource>
-            requires (std::is_base_of_v<BaseResource, Resource> || std::is_base_of_v<Resource , BaseResource>)
+            requires(std::is_base_of_v<BaseResource, Resource> || std::is_base_of_v<Resource, BaseResource>)
         Handle(Handle<BaseResource> baseHandle)
         {
             m_rawHandle.index = baseHandle.m_rawHandle.index;
