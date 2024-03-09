@@ -58,13 +58,13 @@ namespace RHI
         void   CleanupResourceViews();
 
     protected:
-        virtual void Flush()                                 = 0;
+        virtual void Flush()                                                     = 0;
 
-        virtual void WaitIdle()                              = 0;
-        virtual void PassSubmit(Pass* pass, Fence* fence)    = 0;
+        virtual void WaitIdle()                                                  = 0;
+        virtual void PassSubmit(Pass* pass, Fence* fence)                        = 0;
 
-        virtual void StageImageWrite(Handle<Image> handle)   = 0;
-        virtual void StageBufferWrite(Handle<Buffer> handle) = 0;
+        virtual void StageImageWrite(Handle<Image> handle)                       = 0;
+        virtual void StageBufferWrite(Handle<Buffer> handle)                     = 0;
 
         virtual void ExecuteCommandLists(CommandList& commandList, Fence* fence) = 0;
 
@@ -75,6 +75,8 @@ namespace RHI
         Ptr<TransientAllocator>   m_transientAllocator;
         Ptr<AttachmentsPool>      m_attachmentsPool;
         Ptr<CommandListAllocator> m_copyCommandListAllocator;
+
+        std::vector<Pass*>        m_passList;
 
     private:
         std::vector<Ptr<Fence>> m_frameReadyFence;

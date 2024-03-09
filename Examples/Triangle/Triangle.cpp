@@ -175,23 +175,24 @@ public:
         }
 
         // setup the render graph
-        RHI::ImagePassAttachment* colorAttachment;
-        RHI::ImagePassAttachment* maskAttachment;
+        // RHI::ImagePassAttachment* colorAttachment;
+        // RHI::ImagePassAttachment* maskAttachment;
         {
             auto& scheduler = m_context->GetScheduler();
 
             m_renderPass = scheduler.CreatePass("Render-Pass", RHI::QueueType::Graphics);
-            m_renderPass->SetRenderTargetSize({ 1600, 800 });
-            m_renderPass->CreateRenderTarget("depth-target", RHI::Format::D32, RHI::DepthStencilValue{ 1.0f });
-            colorAttachment = m_renderPass->UseRenderTarget("color-target", m_swapchain.get(), RHI::ColorValue{ 0.0f, 0.2f, 0.3f, 1.0f });
+            m_renderPass->SetRenderTargetSize({ 1600, 1200 });
+            m_renderPass->CreateRenderTarget("depth-target", RHI::Format::D32, RHI::DepthStencilValue{ 0.0f });
+            // colorAttachment = m_renderPass->UseRenderTarget("color-target", m_swapchain.get(), RHI::ColorValue{ 0.0f, 0.2f, 0.3f, 1.0f });
+            m_renderPass->UseRenderTarget("color-target", m_swapchain.get(), RHI::ColorValue{ 0.0f, 0.2f, 0.3f, 1.0f });
 
-            m_computePass = scheduler.CreatePass("Compute-Pass", RHI::QueueType::Compute);
-            maskAttachment = m_computePass->CreateTransientImage("mask", RHI::Format::R8_UNORM, RHI::ImageUsage::StorageResource, RHI::ImageSize2D{ m_windowWidth, m_windowHeight });
+            // m_computePass = scheduler.CreatePass("Compute-Pass", RHI::QueueType::Compute);
+            // maskAttachment = m_computePass->CreateTransientImage("mask", RHI::Format::R8_UNORM, RHI::ImageUsage::StorageResource, RHI::ImageSize2D{ m_windowWidth, m_windowHeight });
 
-            m_composePass = scheduler.CreatePass("Compose-Pass", RHI::QueueType::Graphics);
-            m_composePass->SetRenderTargetSize({ 1600, 800 });
-            m_composePass->UseRenderTarget(colorAttachment, RHI::ColorValue{ 0.0f });
-            m_composePass->UseImageResource(maskAttachment, RHI::ImageUsage::ShaderResource, RHI::Access::Read);
+            // m_composePass = scheduler.CreatePass("Compose-Pass", RHI::QueueType::Graphics);
+            // m_composePass->SetRenderTargetSize({ 1600, 1200 });
+            // m_composePass->UseRenderTarget(colorAttachment, RHI::ColorValue{ 0.0f });
+            // m_composePass->UseImageResource(maskAttachment, RHI::ImageUsage::ShaderResource, RHI::Access::Read);
             scheduler.Compile();
         }
 
@@ -204,19 +205,19 @@ public:
         m_renderBindGroup = m_context->CreateBindGroup(m_renderBindGroupLayout);
         m_context->UpdateBindGroup(m_renderBindGroup, bindGroupData);
 
-        bindGroupData = RHI::BindGroupData{};
-        maskAttachment->m_stage |= RHI::ShaderStage::Compute;
-        bindGroupData.BindImages(0u, maskAttachment->m_view);
-        m_computeBindGroup = m_context->CreateBindGroup(m_computeBindGroupLayout);
-        m_context->UpdateBindGroup(m_computeBindGroup, bindGroupData);
+        // bindGroupData = RHI::BindGroupData{};
+        // maskAttachment->m_stage |= RHI::ShaderStage::Compute;
+        // bindGroupData.BindImages(0u, maskAttachment->m_view);
+        // m_computeBindGroup = m_context->CreateBindGroup(m_computeBindGroupLayout);
+        // m_context->UpdateBindGroup(m_computeBindGroup, bindGroupData);
 
-        bindGroupData = RHI::BindGroupData {};
-        bindGroupData.BindImages(0u, maskAttachment->m_view);
-        bindGroupData.BindImages(1u, colorAttachment->m_view);
-        bindGroupData.BindSamplers(2u, m_sampler);
-        bindGroupData.BindBuffers(3u, m_uniformBuffer);
-        m_composeBindGroup = m_context->CreateBindGroup(m_composeBindGroupLayout);
-        m_context->UpdateBindGroup(m_composeBindGroup, bindGroupData);
+        // bindGroupData = RHI::BindGroupData {};
+        // bindGroupData.BindImages(0u, maskAttachment->m_view);
+        // bindGroupData.BindImages(1u, colorAttachment->m_view);
+        // bindGroupData.BindSamplers(2u, m_sampler);
+        // bindGroupData.BindBuffers(3u, m_uniformBuffer);
+        // m_composeBindGroup = m_context->CreateBindGroup(m_composeBindGroupLayout);
+        // m_context->UpdateBindGroup(m_composeBindGroup, bindGroupData);
     }
 
     void OnShutdown() override
@@ -300,36 +301,34 @@ public:
             m_renderPass->SubmitCommandList(commandList);
         }
 
-        {
-            RHI::DispatchInfo dispatchInfo{};
-            dispatchInfo.pipelineState = m_computePipelineState;
-            dispatchInfo.bindGroups = m_computeBindGroup;
-            dispatchInfo.parameters.countX = 32;
-            dispatchInfo.parameters.countY = 32;
-            dispatchInfo.parameters.countZ = 32;
-            auto commandList = m_graphicsCommandsAllocator->Allocate();
-            commandList->Begin(*m_computePass);
-            commandList->Dispatch(dispatchInfo);
-            commandList->End();
-            m_computePass->SubmitCommandList(commandList);
-        }
+        // {
+        //     RHI::DispatchInfo dispatchInfo{};
+        //     dispatchInfo.pipelineState = m_computePipelineState;
+        //     dispatchInfo.bindGroups = m_computeBindGroup;
+        //     dispatchInfo.parameters.countX = 32;
+        //     dispatchInfo.parameters.countY = 32;
+        //     dispatchInfo.parameters.countZ = 32;
+        //     auto commandList = m_graphicsCommandsAllocator->Allocate();
+        //     commandList->Begin(*m_computePass);
+        //     commandList->Dispatch(dispatchInfo);
+        //     commandList->End();
+        //     m_computePass->SubmitCommandList(commandList);
+        // }
 
-        {
-            RHI::DrawInfo drawCommand = {};
-            drawCommand.pipelineState = m_renderPipelineState;
-            drawCommand.bindGroups = m_renderBindGroup;
-            drawCommand.parameters = { .elementCount = 6 };
+        // {
+        //     RHI::DrawInfo drawCommand = {};
+        //     drawCommand.pipelineState = m_renderPipelineState;
+        //     drawCommand.bindGroups = m_renderBindGroup;
+        //     drawCommand.parameters = { .elementCount = 6 };
 
-            auto commandList = m_graphicsCommandsAllocator->Allocate();
-            commandList->Begin(*m_renderPass);
-            commandList->SetViewport(viewport);
-            commandList->SetSicssor(scissor);
-            commandList->Draw(drawCommand);
-            auto drawData = ImGui::GetDrawData();
-            m_imguiRenderer->RenderDrawData(drawData, *commandList);
-            commandList->End();
-            m_composePass->SubmitCommandList(commandList);
-        }
+        //     auto commandList = m_graphicsCommandsAllocator->Allocate();
+        //     commandList->Begin(*m_renderPass);
+        //     commandList->SetViewport(viewport);
+        //     commandList->SetSicssor(scissor);
+        //     commandList->Draw(drawCommand);
+        //     commandList->End();
+        //     m_composePass->SubmitCommandList(commandList);
+        // }
 
         scheduler.End();
     }

@@ -372,8 +372,13 @@ namespace RHI::Vulkan
         
         auto bindGroupLayout = context->m_bindGroupLayoutsOwner.Get(layout);
 
-        for (auto [binding, resourceVarient] : data.m_bindings)
+        for (uint32_t binding = 0; binding < c_MaxShaderBindGroupElementsCount; binding++)
         {
+            auto resourceVarient = data.m_bindings[binding];
+
+            if (bindGroupLayout->layoutInfo.bindings[binding].type == ShaderBindingType::None)
+                break;
+
             VkWriteDescriptorSet writeInfo{};
             writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             writeInfo.pNext = nullptr;

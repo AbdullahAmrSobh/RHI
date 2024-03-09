@@ -152,8 +152,6 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        vkDeviceWaitIdle(m_context->m_device);
-
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         presentInfo.pNext = nullptr;

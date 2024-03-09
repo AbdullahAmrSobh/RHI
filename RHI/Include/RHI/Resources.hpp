@@ -20,6 +20,7 @@ namespace RHI
     inline static constexpr uint32_t c_MaxPipelineVertexBindings                 = 32u;
     inline static constexpr uint32_t c_MaxPipelineVertexAttributes               = 32u;
     inline static constexpr uint32_t c_MaxPipelineBindGroupsCount                = 4u;
+    inline static constexpr uint32_t c_MaxShaderBindGroupElementsCount           = 32u;
 
     class Context;
     class ShaderModule;
@@ -474,9 +475,9 @@ namespace RHI
             std::vector<Handle<Sampler>> samplers;
         };
 
-        using ResourceBinding = std::variant<ResourceImageBinding, ResourceBufferBinding, ResourceSamplerBinding>;
+        using ResourceBinding                                         = std::variant<ResourceImageBinding, ResourceBufferBinding, ResourceSamplerBinding>;
 
-        std::unordered_map<uint32_t, ResourceBinding> m_bindings;
+        ResourceBinding m_bindings[c_MaxShaderBindGroupElementsCount] = {};
     };
 
     // @brief the layout of pipeline shaders

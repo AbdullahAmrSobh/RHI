@@ -7,6 +7,7 @@
 
 #include <RHI/Format.hpp>
 
+#include <Swapchain.hpp>
 #include <tracy/Tracy.hpp>
 
 namespace RHI::Vulkan
@@ -56,13 +57,13 @@ namespace RHI::Vulkan
         (void)access;
         switch (usage)
         {
-        case ImageUsage::Color:          return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        case ImageUsage::Depth:          return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-        case ImageUsage::Stencil:        return VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
-        case ImageUsage::DepthStencil:   return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        case ImageUsage::CopySrc:        return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        case ImageUsage::CopyDst:        return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        case ImageUsage::ShaderResource: return VK_IMAGE_LAYOUT_GENERAL;
+        case ImageUsage::Color:           return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        case ImageUsage::Depth:           return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+        case ImageUsage::Stencil:         return VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
+        case ImageUsage::DepthStencil:    return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        case ImageUsage::CopySrc:         return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        case ImageUsage::CopyDst:         return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        case ImageUsage::ShaderResource:  return VK_IMAGE_LAYOUT_GENERAL;
         case ImageUsage::StorageResource: return VK_IMAGE_LAYOUT_GENERAL;
         default:
             RHI_UNREACHABLE();
@@ -309,7 +310,6 @@ namespace RHI::Vulkan
         auto& pass = static_cast<Pass&>(passBase);
 
         m_pass = &pass;
-        m_pass->m_commandLists.push_back(this);
 
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -357,6 +357,15 @@ namespace RHI::Vulkan
                 waitSemaphore.stageMask = srcInfo.stage;
                 waitSemaphore.semaphore = ((IFrameScheduler&)m_context->GetScheduler()).CreateTempSemaphore();
             }
+
+            if (passAttachment->GetPrev() == nullptr && IsSwapchainAttachment(*passAttachment))
+            {
+                auto swapchain = (ISwapchain*)passAttachment->GetAttachment()->m_swapchain;
+                auto& waitSemaphore = m_waitSemaphores.emplace_back();
+                waitSemaphore.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+                waitSemaphore.semaphore = swapchain->m_semaphores.imageAcquired;
+                waitSemaphore.stageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+            }
         }
 
         for (auto& passAttachment : pass.m_bufferPassAttachments)
@@ -401,7 +410,7 @@ namespace RHI::Vulkan
         {
             RenderingBegin(pass);
         }
-    }
+        }
 
     void ICommandList::End()
     {
@@ -432,6 +441,11 @@ namespace RHI::Vulkan
                 else if (IsSwapchainAttachment(*passAttachment.get()))
                 {
                     dstInfo = GetTransitionToPresentInfo();
+                    auto& signalSemaphore = m_signalSemaphores.emplace_back();
+                    auto swapchain = (ISwapchain*)passAttachment->GetAttachment()->m_swapchain;
+                    signalSemaphore.semaphore = swapchain->m_semaphores.imageRenderComplete;
+                    signalSemaphore.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+                    signalSemaphore.stageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
                 }
                 else
                 {

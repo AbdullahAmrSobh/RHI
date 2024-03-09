@@ -344,9 +344,6 @@ namespace RHI
     protected:
         Context(Ptr<DebugCallbacks> debugCallbacks);
 
-        Ptr<FrameScheduler> m_frameScheduler;
-        Ptr<Limits>         m_limits;
-
         struct
         {
             ResourceLeakDetector<Image>            m_images;
@@ -360,6 +357,9 @@ namespace RHI
             ResourceLeakDetector<ComputePipeline>  m_computePipelines;
             ResourceLeakDetector<Sampler>          m_samplers;
         } m_LeakDetector;
+
+        Ptr<FrameScheduler> m_frameScheduler;
+        Ptr<Limits>         m_limits;
 
     private:
         Ptr<DebugCallbacks> m_debugCallbacks;

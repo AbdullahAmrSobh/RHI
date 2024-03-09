@@ -24,11 +24,19 @@ namespace RHI
 
     void FrameScheduler::End()
     {
+        CompileResourceViews();
+
+        for (auto pass : m_passList)
+        {
+            PassSubmit(pass, nullptr);
+        }
     }
 
     Ptr<Pass> FrameScheduler::CreatePass(const char* name, QueueType queueType)
     {
-        return CreatePtr<Pass>(this, name, queueType);
+        auto pass = CreatePtr<Pass>(this, name, queueType);
+        m_passList.push_back(pass.get());
+        return pass;
     }
 
     ResultCode FrameScheduler::DestroyPass(Pass* pass)
@@ -103,7 +111,7 @@ namespace RHI
             if (attachment->m_lifetime == Attachment::Lifetime::Transient)
             {
                 auto imageAttachment = (ImageAttachment*)attachment;
-                imageAttachment->SetSize({1600, 800});
+                imageAttachment->SetSize({1600, 1200});
                 m_transientAllocator->Allocate(attachment);
             }
         }

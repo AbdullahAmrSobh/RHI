@@ -8,6 +8,8 @@
 #include <unordered_map>
 #include <string>
 
+#include "Rhi/Swapchain.hpp"
+
 namespace std
 {
     template<>
@@ -239,9 +241,16 @@ namespace RHI
             m_asImage.info.size.depth  = 1;
         }
 
-        inline const ImageCreateInfo&     GetCreateInfo() const { return m_asImage.info; }
+        inline const ImageCreateInfo& GetCreateInfo() const { return m_asImage.info; }
 
-        inline Handle<Image>              GetHandle() { return m_asImage.handle; }
+        inline Handle<Image>          GetHandle()
+        {
+            if (m_swapchain)
+            {
+                return m_swapchain->GetImage();
+            }
+            return m_asImage.handle;
+        }
 
         inline void                       SetHandle(Handle<Image> handle) { m_asImage.handle = handle; }
 
