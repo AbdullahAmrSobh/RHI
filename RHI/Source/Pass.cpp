@@ -117,15 +117,19 @@ namespace RHI
         if (formatInfo.hasDepth)
         {
             passAttachment->m_usage = ImageUsage::Depth;
+            passAttachment->m_viewInfo.subresource.imageAspects = ImageAspect::Depth;
+            m_depthStencilAttachment = passAttachment;
         }
         else
         {
             passAttachment->m_usage = ImageUsage::Color;
+            m_colorAttachments.push_back(passAttachment);
         }
 
         attachment->Insert(passAttachment);
 
         UseAttachment(passAttachment);
+
 
         return passAttachment;
     }

@@ -308,9 +308,9 @@ void ImGuiRenderer::Init(ImGuiRendererCreateInfo createInfo)
 
     {
         RHI::BindGroupLayoutCreateInfo bindGroupLayoutCreateInfo{};
-        bindGroupLayoutCreateInfo.bindings[0] = RHI::ShaderBinding{ .type = RHI::ShaderBindingType::Buffer, .access = RHI::ShaderBindingAccess::OnlyRead, .arrayCount = 1, .stages = RHI::ShaderStage::Vertex };
-        bindGroupLayoutCreateInfo.bindings[1] = RHI::ShaderBinding{ .type = RHI::ShaderBindingType::Sampler, .access = RHI::ShaderBindingAccess::OnlyRead, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel };
-        bindGroupLayoutCreateInfo.bindings[2] = RHI::ShaderBinding{ .type = RHI::ShaderBindingType::Image, .access = RHI::ShaderBindingAccess::OnlyRead, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel };
+        bindGroupLayoutCreateInfo.bindings[0] = RHI::ShaderBinding{ .type = RHI::ShaderBindingType::UniformBuffer, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Vertex };
+        bindGroupLayoutCreateInfo.bindings[1] = RHI::ShaderBinding{ .type = RHI::ShaderBindingType::Sampler, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel };
+        bindGroupLayoutCreateInfo.bindings[2] = RHI::ShaderBinding{ .type = RHI::ShaderBindingType::SampledImage, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel };
         m_bindGroupLayout = m_context->CreateBindGroupLayout(bindGroupLayoutCreateInfo);
 
         {

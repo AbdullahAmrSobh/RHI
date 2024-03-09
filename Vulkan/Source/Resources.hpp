@@ -116,6 +116,7 @@ namespace RHI::Vulkan
 
     struct IBindGroupLayout : BindGroupLayout
     {
+        BindGroupLayoutCreateInfo layoutInfo;
         VkDescriptorSetLayout handle;
 
         ResultCode Init(IContext* context, const BindGroupLayoutCreateInfo& createInfo);
@@ -126,6 +127,7 @@ namespace RHI::Vulkan
     {
         VkDescriptorSet descriptorSet;
         Handle<DescriptorPool> poolHandle;
+        Handle<BindGroupLayout> layout;
 
         ResultCode Init(IContext* context, Handle<BindGroupLayout> layout);
         void Shutdown(IContext* context);

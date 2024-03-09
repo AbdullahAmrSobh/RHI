@@ -9,6 +9,7 @@ namespace RHI
 
         if (m_firstPassAttachment == nullptr && m_lastPassAttachment == nullptr)
         {
+            m_firstPassAttachment = passAttachment;
             m_lastPassAttachment = passAttachment;
         }
         else
@@ -113,12 +114,14 @@ namespace RHI
         case Attachment::Type::Image:
             {
                 auto imagePassAttachment = (ImagePassAttachment*)passAttachment;
+                imagePassAttachment->m_viewInfo.image = imagePassAttachment->GetAttachment()->GetHandle();
                 imagePassAttachment->m_view = CreateImageView(imagePassAttachment->m_viewInfo);
                 break;
             }
         case Attachment::Type::Buffer:
             {
                 auto bufferPassAttachment = (BufferPassAttachment*)passAttachment;
+                bufferPassAttachment->m_viewInfo.buffer = bufferPassAttachment->GetAttachment()->GetHandle();
                 bufferPassAttachment->m_view = CreateBufferView(bufferPassAttachment->m_viewInfo);
                 break;
             }

@@ -121,6 +121,7 @@ void ApplicationBase::Init()
     createInfo.imageSize.width = m_windowWidth;
     createInfo.imageSize.height = m_windowHeight;
     createInfo.imageUsage = RHI::ImageUsage::Color;
+    createInfo.imageUsage |= RHI::ImageUsage::ShaderResource;
     createInfo.imageFormat = RHI::Format::BGRA8_UNORM;
     createInfo.imageCount = 3;
 

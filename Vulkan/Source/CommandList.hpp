@@ -3,24 +3,12 @@
 #include <RHI/FrameScheduler.hpp>
 #include <RHI/CommandList.hpp>
 
-#include <memory>
-#include <array>
-#include <optional>
-
 #include <vulkan/vulkan.h>
 
 namespace RHI::Vulkan
 {
     class IContext;
     class ICommandList;
-    class IFence;
-
-    enum class BarrierType
-    {
-        PrePass,
-        PostPass,
-        Transition,
-    };
 
     class CommandPool
     {
@@ -55,7 +43,7 @@ namespace RHI::Vulkan
         IContext* m_context;
         uint32_t m_maxFrameBufferingCount;
         uint32_t m_currentFrameIndex;
-        std::array<CommandPool, 3> m_commandPools;
+        CommandPool m_commandPools[3];
     };
 
     class ICommandList final : public CommandList
@@ -84,8 +72,6 @@ namespace RHI::Vulkan
 
     private:
         void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<Handle<BindGroup>> bindGroups);
-
-        VkRenderingAttachmentInfo GetAttachmentInfo(const ImagePassAttachment& passAttachment) const;
 
         void RenderingBegin(Pass& pass);
 

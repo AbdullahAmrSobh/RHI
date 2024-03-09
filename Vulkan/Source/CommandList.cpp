@@ -7,8 +7,6 @@
 
 #include <RHI/Format.hpp>
 
-#include <optional>
-
 #include <tracy/Tracy.hpp>
 
 namespace RHI::Vulkan
@@ -26,11 +24,6 @@ namespace RHI::Vulkan
         uint32_t dstQueueFamilyIndex;
     };
 
-    inline static bool IsWriteAccess(Access access)
-    {
-        return access == Access::ReadWrite || access == Access::Write;
-    }
-
     inline static bool IsSwapchainAttachment(const ImagePassAttachment& passAttachment)
     {
         return passAttachment.GetAttachment()->m_swapchain != nullptr;
@@ -38,7 +31,7 @@ namespace RHI::Vulkan
 
     inline static QueueOwnershipTransferInfo GetQueueOwnershipTransferInfo(IContext* context, const PassAttachment* srcPassAttachment, const PassAttachment* dstPassAttachment)
     {
-        if (srcPassAttachment == nullptr || 
+        if (srcPassAttachment == nullptr ||
             dstPassAttachment == nullptr)
         {
             return { VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED };
@@ -60,6 +53,7 @@ namespace RHI::Vulkan
 
     inline static VkImageLayout GetImageLayout(ImageUsage usage, Access access)
     {
+        (void)access;
         switch (usage)
         {
         case ImageUsage::Color:          return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -68,7 +62,8 @@ namespace RHI::Vulkan
         case ImageUsage::DepthStencil:   return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         case ImageUsage::CopySrc:        return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
         case ImageUsage::CopyDst:        return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        case ImageUsage::ShaderResource: return IsWriteAccess(access) ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        case ImageUsage::ShaderResource: return VK_IMAGE_LAYOUT_GENERAL;
+        case ImageUsage::StorageResource: return VK_IMAGE_LAYOUT_GENERAL;
         default:
             RHI_UNREACHABLE();
             return VK_IMAGE_LAYOUT_GENERAL;
@@ -92,12 +87,37 @@ namespace RHI::Vulkan
         switch (usage)
         {
         case ImageUsage::Color:        return { VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, renderTargetAccessFlags, GetImageLayout(usage, access) };
-        case ImageUsage::Depth:        return { VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, renderTargetAccessFlags, GetImageLayout(usage, access) };
-        case ImageUsage::Stencil:      return { VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, renderTargetAccessFlags, GetImageLayout(usage, access) };
-        case ImageUsage::DepthStencil: return { VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, renderTargetAccessFlags, GetImageLayout(usage, access) };
+        case ImageUsage::Depth:        return { VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT, renderTargetAccessFlags, GetImageLayout(usage, access) };
+        case ImageUsage::Stencil:      return { VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT, renderTargetAccessFlags, GetImageLayout(usage, access) };
+        case ImageUsage::DepthStencil: return { VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT, renderTargetAccessFlags, GetImageLayout(usage, access) };
         case ImageUsage::CopySrc:      return { VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, GetImageLayout(usage, access) };
         case ImageUsage::CopyDst:      return { VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, GetImageLayout(usage, access) };
         case ImageUsage::ShaderResource:
+            {
+                VkPipelineStageFlags2 pipelineStages = {};
+                VkAccessFlags2 pipelineAccess = {};
+                VkImageLayout imageLayout = GetImageLayout(usage, access);
+
+                if (stages & ShaderStage::Compute)
+                {
+                    return { VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, IsWriteAccess(access) ? VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_READ_BIT : VK_ACCESS_2_SHADER_READ_BIT, GetImageLayout(usage, access) };
+                }
+
+                if (stages & ShaderStage::Vertex)
+                {
+                    pipelineStages |= VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
+                    pipelineAccess |= VK_ACCESS_2_SHADER_READ_BIT;
+                }
+
+                if (stages & ShaderStage::Pixel)
+                {
+                    pipelineStages |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+                    pipelineAccess = IsWriteAccess(access) ? VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_READ_BIT : VK_ACCESS_2_SHADER_READ_BIT;
+                }
+
+                return { pipelineStages, pipelineAccess, imageLayout };
+            }
+        case RHI::ImageUsage::StorageResource:
             {
                 VkPipelineStageFlags2 pipelineStages = {};
                 VkAccessFlags2 pipelineAccess = {};
@@ -377,14 +397,17 @@ namespace RHI::Vulkan
 
         PipelineBarrier(bufferBarriers, imageBarriers);
 
-        RenderingBegin(pass);
+        if (m_pass && m_pass->GetQueueType() == QueueType::Graphics)
+        {
+            RenderingBegin(pass);
+        }
     }
 
     void ICommandList::End()
     {
         ZoneScoped;
 
-        if (m_pass)
+        if (m_pass && m_pass->GetQueueType() == QueueType::Graphics)
         {
             RenderingEnd(*m_pass);
         }
@@ -397,16 +420,22 @@ namespace RHI::Vulkan
             for (auto& passAttachment : m_pass->m_imagePassAttachments)
             {
                 IImage* image = m_context->m_imageOwner.Get(passAttachment->GetAttachment()->GetHandle());
-                ImagePassAttachment* srcPassAttachment = passAttachment->GetPrev();
-                ImagePassAttachment* dstPassAttachment = passAttachment.get();
+                ImagePassAttachment* srcPassAttachment = passAttachment.get();
+                ImagePassAttachment* dstPassAttachment = passAttachment->GetNext();
 
                 auto dstInfo = TransitionInfo{ VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, VK_ACCESS_2_NONE, VK_IMAGE_LAYOUT_UNDEFINED };
-                auto srcInfo = GetImageTransitionInfo(dstPassAttachment->m_usage, dstPassAttachment->m_access, dstPassAttachment->m_stage, dstPassAttachment->m_loadStoreOperations);
+                auto srcInfo = GetImageTransitionInfo(srcPassAttachment->m_usage, srcPassAttachment->m_access, srcPassAttachment->m_stage, srcPassAttachment->m_loadStoreOperations);
                 if (dstPassAttachment)
-                    dstInfo = GetImageTransitionInfo(srcPassAttachment->m_usage, srcPassAttachment->m_access, srcPassAttachment->m_stage, dstPassAttachment->m_loadStoreOperations);
+                {
+                    dstInfo = GetImageTransitionInfo(dstPassAttachment->m_usage, dstPassAttachment->m_access, dstPassAttachment->m_stage, dstPassAttachment->m_loadStoreOperations);
+                }
                 else if (IsSwapchainAttachment(*passAttachment.get()))
                 {
                     dstInfo = GetTransitionToPresentInfo();
+                }
+                else
+                {
+                    continue;
                 }
 
                 auto [srcQueueFamily, dstQueueFamily] = GetQueueOwnershipTransferInfo(m_context, srcPassAttachment, dstPassAttachment);

@@ -37,7 +37,7 @@ namespace RHI
 
         void                  SetRenderTargetSize(ImageSize2D size);
 
-        QueueType             GetQueueType() const { return QueueType::Graphics; }
+        QueueType             GetQueueType() const { return m_queueType; }
 
         ImagePassAttachment*  CreateRenderTarget(const char* name, Format format, ClearValue clearValue, LoadStoreOperations loadStoreOps = {}, uint32_t mipLevelsCount = 1, uint32_t arrayLayersCount = 1);
 

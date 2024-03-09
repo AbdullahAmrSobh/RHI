@@ -308,6 +308,8 @@ namespace RHI::Vulkan
 
     ResultCode IBindGroupLayout::Init(IContext* context, const BindGroupLayoutCreateInfo& createInfo)
     {
+        layoutInfo = createInfo;
+
         std::vector<VkDescriptorSetLayoutBinding> bindings;
         for (auto shaderBinding : createInfo.bindings)
         {
@@ -346,10 +348,12 @@ namespace RHI::Vulkan
 
     ResultCode IBindGroup::Init(IContext* context, Handle<BindGroupLayout> layoutHandle)
     {
-        auto allocator = context->m_bindGroupAllocator.get();
-        auto layout = context->m_bindGroupLayoutsOwner.Get(layoutHandle);
+        layout = layoutHandle;
 
-        return allocator->InitBindGroup(this, layout);
+        auto allocator = context->m_bindGroupAllocator.get();
+        auto layoutObject = context->m_bindGroupLayoutsOwner.Get(layoutHandle);
+
+        return allocator->InitBindGroup(this, layoutObject);
     }
 
     void IBindGroup::Shutdown(IContext* context)
@@ -365,6 +369,8 @@ namespace RHI::Vulkan
         std::vector<std::vector<VkBufferView>> descriptorBufferViews;
 
         std::vector<VkWriteDescriptorSet> writeInfos;
+        
+        auto bindGroupLayout = context->m_bindGroupLayoutsOwner.Get(layout);
 
         for (auto [binding, resourceVarient] : data.m_bindings)
         {
@@ -381,14 +387,16 @@ namespace RHI::Vulkan
                 {
                     auto view = context->m_imageViewOwner.Get(viewHandle);
 
+                    auto type = ConvertDescriptorType(bindGroupLayout->layoutInfo.bindings[binding].type);
+
                     VkDescriptorImageInfo imageInfo{};
-                    imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                    imageInfo.imageLayout = type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                     imageInfo.imageView = view->handle;
                     imageInfos.push_back(imageInfo);
                 }
 
                 writeInfo.dstArrayElement = resources->arrayOffset;
-                writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+                writeInfo.descriptorType = ConvertDescriptorType(bindGroupLayout->layoutInfo.bindings[binding].type);
                 writeInfo.descriptorCount = uint32_t(imageInfos.size());
                 writeInfo.pImageInfo = imageInfos.data();
             }
@@ -750,9 +758,7 @@ namespace RHI::Vulkan
         vkCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
         vkCreateInfo.basePipelineIndex = 0;
 
-        IComputePipeline pipeline{};
-
-        auto result = vkCreateComputePipelines(context->m_device, VK_NULL_HANDLE, 1, &vkCreateInfo, nullptr, &pipeline.handle);
+        auto result = vkCreateComputePipelines(context->m_device, VK_NULL_HANDLE, 1, &vkCreateInfo, nullptr, &handle);
         return ConvertResult(result);
     }
 

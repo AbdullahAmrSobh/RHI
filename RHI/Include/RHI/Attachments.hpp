@@ -3,6 +3,7 @@
 #include "RHI/Resources.hpp"
 #include "RHI/Common/Ptr.h"
 #include "RHI/Common/Hash.hpp"
+#include "RHI/Access.hpp"
 
 #include <unordered_map>
 #include <string>
@@ -40,15 +41,6 @@ namespace RHI
     class BufferPassAttachment;
     class Swapchain;
     class Pass;
-
-    // todo move to resource.hpp and replace shaderbindingaccess
-    enum class Access
-    {
-        None      = 0,            // Invalid option.
-        Read      = 1 << 0,       // Attachment is read as a shader resource.
-        Write     = 1 << 1,       // Attachment is renderTargetOutput.
-        ReadWrite = Read | Write, // Attachment is available for read and write as a shader resource.
-    };
 
     enum class LoadOperation
     {

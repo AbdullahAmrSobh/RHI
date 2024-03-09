@@ -101,9 +101,9 @@ public:
         // create shader bind group layout
         {
             RHI::BindGroupLayoutCreateInfo createInfo = {};
-            createInfo.bindings[0] = { RHI::ShaderBindingType::Buffer, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Vertex };
-            createInfo.bindings[1] = { RHI::ShaderBindingType::Image, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Pixel };
-            createInfo.bindings[2] = { RHI::ShaderBindingType::Sampler, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Pixel };
+            createInfo.bindings[0] = { RHI::ShaderBindingType::UniformBuffer, RHI::Access::Read, 1, RHI::ShaderStage::Vertex };
+            createInfo.bindings[1] = { RHI::ShaderBindingType::SampledImage, RHI::Access::Read, 1, RHI::ShaderStage::Pixel };
+            createInfo.bindings[2] = { RHI::ShaderBindingType::Sampler, RHI::Access::Read, 1, RHI::ShaderStage::Pixel };
             m_renderBindGroupLayout = m_context->CreateBindGroupLayout(createInfo);
             m_renderPipelineLayout = m_context->CreatePipelineLayout({ m_renderBindGroupLayout });
         }
@@ -134,7 +134,7 @@ public:
         // create shader bind group layout compute pipeline
         {
             RHI::BindGroupLayoutCreateInfo createInfo = {};
-            createInfo.bindings[0] = { RHI::ShaderBindingType::StorageImage, RHI::ShaderBindingAccess::ReadWrite, 1, RHI::ShaderStage::Compute };
+            createInfo.bindings[0] = { RHI::ShaderBindingType::StorageImage, RHI::Access::ReadWrite, 1, RHI::ShaderStage::Compute };
             m_computeBindGroupLayout = m_context->CreateBindGroupLayout(createInfo);
             m_computePipelineLayout = m_context->CreatePipelineLayout({ m_computeBindGroupLayout });
         }
@@ -150,10 +150,10 @@ public:
         // create shader bind group compose pipeline
         {
             RHI::BindGroupLayoutCreateInfo createInfo = {};
-            createInfo.bindings[0] = { RHI::ShaderBindingType::Image, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Pixel };
-            createInfo.bindings[1] = { RHI::ShaderBindingType::Image, RHI::ShaderBindingAccess::ReadWrite, 1, RHI::ShaderStage::Pixel };
-            createInfo.bindings[2] = { RHI::ShaderBindingType::Sampler, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Pixel };
-            createInfo.bindings[3] = { RHI::ShaderBindingType::Buffer, RHI::ShaderBindingAccess::OnlyRead, 1, RHI::ShaderStage::Pixel };
+            createInfo.bindings[0] = { RHI::ShaderBindingType::SampledImage, RHI::Access::Read, 1, RHI::ShaderStage::Pixel };
+            createInfo.bindings[1] = { RHI::ShaderBindingType::SampledImage, RHI::Access::ReadWrite, 1, RHI::ShaderStage::Pixel };
+            createInfo.bindings[2] = { RHI::ShaderBindingType::Sampler, RHI::Access::Read, 1, RHI::ShaderStage::Pixel };
+            createInfo.bindings[3] = { RHI::ShaderBindingType::UniformBuffer, RHI::Access::Read, 1, RHI::ShaderStage::Pixel };
             m_composeBindGroupLayout = m_context->CreateBindGroupLayout(createInfo);
             m_composePipelineLayout = m_context->CreatePipelineLayout({ m_composeBindGroupLayout });
         }
@@ -177,26 +177,23 @@ public:
         // setup the render graph
         RHI::ImagePassAttachment* colorAttachment;
         RHI::ImagePassAttachment* maskAttachment;
-        auto& scheduler = m_context->GetScheduler();
         {
+            auto& scheduler = m_context->GetScheduler();
+
             m_renderPass = scheduler.CreatePass("Render-Pass", RHI::QueueType::Graphics);
+            m_renderPass->SetRenderTargetSize({ 1600, 800 });
             m_renderPass->CreateRenderTarget("depth-target", RHI::Format::D32, RHI::DepthStencilValue{ 1.0f });
             colorAttachment = m_renderPass->UseRenderTarget("color-target", m_swapchain.get(), RHI::ColorValue{ 0.0f, 0.2f, 0.3f, 1.0f });
-        }
-        {
+
             m_computePass = scheduler.CreatePass("Compute-Pass", RHI::QueueType::Compute);
-            maskAttachment = m_computePass->CreateTransientImage("mask", RHI::Format::R8_UNORM, RHI::ImageUsage::ShaderResource, RHI::ImageSize2D{ m_windowWidth, m_windowHeight });
-        }
-        {
+            maskAttachment = m_computePass->CreateTransientImage("mask", RHI::Format::R8_UNORM, RHI::ImageUsage::StorageResource, RHI::ImageSize2D{ m_windowWidth, m_windowHeight });
+
             m_composePass = scheduler.CreatePass("Compose-Pass", RHI::QueueType::Graphics);
+            m_composePass->SetRenderTargetSize({ 1600, 800 });
             m_composePass->UseRenderTarget(colorAttachment, RHI::ColorValue{ 0.0f });
             m_composePass->UseImageResource(maskAttachment, RHI::ImageUsage::ShaderResource, RHI::Access::Read);
+            scheduler.Compile();
         }
-
-        scheduler.Compile();
-        std::cout << "Graph dump:\n"
-                  << scheduler.GetGraphviz() << "\n";
-
 
         m_sampler = m_context->CreateSampler(RHI::SamplerCreateInfo{});
 
@@ -207,18 +204,19 @@ public:
         m_renderBindGroup = m_context->CreateBindGroup(m_renderBindGroupLayout);
         m_context->UpdateBindGroup(m_renderBindGroup, bindGroupData);
 
-        // bindGroupData = RHI::BindGroupData {};
-        // bindGroupData.BindImages(0u, maskAttachment->m_view);
-        // m_computeBindGroup = m_context->CreateBindGroup(m_computeBindGroupLayout);
-        // m_context->UpdateBindGroup(m_computeBindGroup, bindGroupData);
+        bindGroupData = RHI::BindGroupData{};
+        maskAttachment->m_stage |= RHI::ShaderStage::Compute;
+        bindGroupData.BindImages(0u, maskAttachment->m_view);
+        m_computeBindGroup = m_context->CreateBindGroup(m_computeBindGroupLayout);
+        m_context->UpdateBindGroup(m_computeBindGroup, bindGroupData);
 
-        // bindGroupData = RHI::BindGroupData {};
-        // bindGroupData.BindImages(0u, maskAttachment->m_view);
-        // bindGroupData.BindImages(1u, colorAttachment->m_view);
-        // bindGroupData.BindSamplers(2u, m_sampler);
-        // bindGroupData.BindBuffers(3u, m_uniformBuffer);
-        // m_composeBindGroup = m_context->CreateBindGroup(m_composeBindGroupLayout);
-        // m_context->UpdateBindGroup(m_composeBindGroup, bindGroupData);
+        bindGroupData = RHI::BindGroupData {};
+        bindGroupData.BindImages(0u, maskAttachment->m_view);
+        bindGroupData.BindImages(1u, colorAttachment->m_view);
+        bindGroupData.BindSamplers(2u, m_sampler);
+        bindGroupData.BindBuffers(3u, m_uniformBuffer);
+        m_composeBindGroup = m_context->CreateBindGroup(m_composeBindGroupLayout);
+        m_context->UpdateBindGroup(m_composeBindGroup, bindGroupData);
     }
 
     void OnShutdown() override
@@ -309,7 +307,7 @@ public:
             dispatchInfo.parameters.countX = 32;
             dispatchInfo.parameters.countY = 32;
             dispatchInfo.parameters.countZ = 32;
-            auto commandList = m_computeCommandsAllocator->Allocate();
+            auto commandList = m_graphicsCommandsAllocator->Allocate();
             commandList->Begin(*m_computePass);
             commandList->Dispatch(dispatchInfo);
             commandList->End();

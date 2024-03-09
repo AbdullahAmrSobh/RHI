@@ -2,10 +2,6 @@
 
 namespace RHI
 {
-    //////////////////////////////////////////////////////////////////////////////////////////
-    /// BindGroupData
-    //////////////////////////////////////////////////////////////////////////////////////////
-
     void BindGroupData::BindImages(uint32_t index, TL::Span<Handle<ImageView>> handles, uint32_t arrayOffset)
     {
         BindGroupData::ResourceImageBinding binding{};
@@ -29,5 +25,4 @@ namespace RHI
         binding.samplers = { samplers.begin(), samplers.end() };
         m_bindings[index] = binding;
     }
-
 } // namespace RHI

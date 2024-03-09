@@ -1,5 +1,7 @@
 #pragma once
 
+#include "RHI/Common/Assert.hpp"
+
 #include <cstdint>
 #include <functional>
 
@@ -146,6 +148,8 @@ namespace RHI
     template<typename Resource>
     inline Resource* HandlePool<Resource>::Get(Handle<Resource> handle) const
     {
+        RHI_ASSERT(handle != Handle<Resource>());
+
         auto index = handle.m_rawHandle.index;
         auto id    = handle.m_rawHandle.genId;
 

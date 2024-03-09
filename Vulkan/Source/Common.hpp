@@ -211,7 +211,6 @@ namespace RHI::Vulkan
         }
     }
 
-
     inline static VkPipelineStageFlags2 ConvertPipelineStageFlags(ShaderStage stage)
     {
         switch (stage)
@@ -268,14 +267,15 @@ namespace RHI::Vulkan
     {
         switch (imageUsage)
         {
-        case ImageUsage::None:           return VK_IMAGE_USAGE_FLAG_BITS_MAX_ENUM;
-        case ImageUsage::ShaderResource: return VK_IMAGE_USAGE_SAMPLED_BIT;
-        case ImageUsage::Color:          return VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-        case ImageUsage::Depth:          return VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-        case ImageUsage::Stencil:        return VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-        case ImageUsage::CopySrc:        return VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-        case ImageUsage::CopyDst:        return VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-        default:                         RHI_UNREACHABLE(); return VK_IMAGE_USAGE_FLAG_BITS_MAX_ENUM;
+        case ImageUsage::None:            return VK_IMAGE_USAGE_FLAG_BITS_MAX_ENUM;
+        case ImageUsage::ShaderResource:  return VK_IMAGE_USAGE_SAMPLED_BIT;
+        case ImageUsage::StorageResource: return VK_IMAGE_USAGE_STORAGE_BIT;
+        case ImageUsage::Color:           return VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        case ImageUsage::Depth:           return VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        case ImageUsage::Stencil:         return VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        case ImageUsage::CopySrc:         return VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+        case ImageUsage::CopyDst:         return VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        default:                          RHI_UNREACHABLE(); return VK_IMAGE_USAGE_FLAG_BITS_MAX_ENUM;
         }
     }
 
@@ -284,6 +284,8 @@ namespace RHI::Vulkan
         VkImageUsageFlags result = 0;
         if (imageUsageFlags & ImageUsage::ShaderResource)
             result |= VK_IMAGE_USAGE_SAMPLED_BIT;
+        if (imageUsageFlags & ImageUsage::StorageResource)
+            result |= VK_IMAGE_USAGE_STORAGE_BIT;
         if (imageUsageFlags & ImageUsage::Color)
             result |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
         if (imageUsageFlags & ImageUsage::Depth)
@@ -394,6 +396,7 @@ namespace RHI::Vulkan
         }
     }
 
+
     inline static VkShaderStageFlags ConvertShaderStage(Flags<ShaderStage> shaderStageFlags)
     {
         VkShaderStageFlags result = 0;
@@ -410,23 +413,14 @@ namespace RHI::Vulkan
     {
         switch (bindingType)
         {
-        case ShaderBindingType::None:    return VK_DESCRIPTOR_TYPE_MAX_ENUM;
-        case ShaderBindingType::Sampler: return VK_DESCRIPTOR_TYPE_SAMPLER;
-        case ShaderBindingType::Image:   return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        case ShaderBindingType::StorageImage:   return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        case ShaderBindingType::Buffer:  return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        // todo add storage buffers
-        default: RHI_UNREACHABLE(); return VK_DESCRIPTOR_TYPE_MAX_ENUM;
-        }
-    }
-
-    inline static VkAccessFlags ConvertAccessFlags(ShaderBindingAccess bindingAccess)
-    {
-        switch (bindingAccess)
-        {
-        case ShaderBindingAccess::OnlyRead:  return VK_ACCESS_SHADER_READ_BIT;
-        case ShaderBindingAccess::ReadWrite: return VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
-        default:                             RHI_UNREACHABLE(); return VK_ACCESS_FLAG_BITS_MAX_ENUM;
+        case ShaderBindingType::Sampler:           return VK_DESCRIPTOR_TYPE_SAMPLER;
+        case ShaderBindingType::SampledImage:      return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        case ShaderBindingType::StorageImage:      return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        case ShaderBindingType::UniformBuffer:     return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        case ShaderBindingType::StorageBuffer:     return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        case ShaderBindingType::BufferView:        return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+        case ShaderBindingType::StorageBufferView: return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+        default:                                   RHI_UNREACHABLE(); return VK_DESCRIPTOR_TYPE_MAX_ENUM;
         }
     }
 

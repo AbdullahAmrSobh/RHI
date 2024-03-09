@@ -4,6 +4,7 @@
 #include "RHI/Common/Handle.hpp"
 #include "RHI/Common/Span.hpp"
 #include "RHI/Format.hpp"
+#include "RHI/Access.hpp"
 
 #include <variant> // todo: remove
 
@@ -73,14 +74,15 @@ namespace RHI
     /// @brief Enumeration representing how the image resource is intented to used.
     enum class ImageUsage
     {
-        None           = 0 << 0, // Invalid flag
-        ShaderResource = 1 << 1, // The image will be used in an shader as bind resource.
-        Color          = 1 << 3, // The image will be the render target color attachment.
-        Depth          = 1 << 4, // The image will be the render target depth attachment.
-        Stencil        = 1 << 5, // The image will be the render target stencil attachment.
-        DepthStencil   = Depth | Stencil,
-        CopySrc        = 1 << 6, // The image content will be copied.
-        CopyDst        = 1 << 7, // The image content will be overwritten by a copy command.
+        None            = 0 << 0, // Invalid flag
+        ShaderResource  = 1 << 1, // The image will be used in an shader as bind resource.
+        StorageResource = 1 << 2,
+        Color           = 1 << 3, // The image will be the render target color attachment.
+        Depth           = 1 << 4, // The image will be the render target depth attachment.
+        Stencil         = 1 << 5, // The image will be the render target stencil attachment.
+        DepthStencil    = Depth | Stencil,
+        CopySrc         = 1 << 6, // The image content will be copied.
+        CopyDst         = 1 << 7, // The image content will be overwritten by a copy command.
     };
 
     /// @brief Enumeration representing the dimensions of an image resource.
@@ -145,18 +147,13 @@ namespace RHI
     {
         None,
         Sampler,
+        SampledImage,
         StorageImage,
-        Image,
-        // StorageBuffer,
-        Buffer,
+        UniformBuffer,
+        StorageBuffer,
         BufferView,
-    };
-
-    /// @brief How the resource will be accessed in the shader.
-    enum class ShaderBindingAccess // replace with access enum
-    {
-        OnlyRead,
-        ReadWrite,
+        StorageBufferView,
+        Count,
     };
 
     /// @brief Pipeline vertex
@@ -427,10 +424,10 @@ namespace RHI
     /// @brief Specifies a single shader resource binding.
     struct ShaderBinding
     {
-        ShaderBindingType   type;
-        ShaderBindingAccess access;
-        uint32_t            arrayCount;
-        Flags<ShaderStage>  stages;
+        ShaderBindingType  type;
+        Access             access;
+        uint32_t           arrayCount;
+        Flags<ShaderStage> stages;
     };
 
     /// @brief A shader bind group layout is an list of shader bindings.
