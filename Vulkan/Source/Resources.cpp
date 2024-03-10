@@ -116,9 +116,7 @@ namespace RHI::Vulkan
         createInfo.flags = {};
         createInfo.imageType = ConvertImageType(_createInfo.type);
         createInfo.format = ConvertFormat(_createInfo.format);
-        createInfo.extent.width = _createInfo.size.width;
-        createInfo.extent.height = _createInfo.size.height;
-        createInfo.extent.depth = _createInfo.size.depth;
+        createInfo.extent = ConvertExtent3D(_createInfo.size);
         createInfo.mipLevels = _createInfo.mipLevels;
         createInfo.arrayLayers = _createInfo.arrayCount;
         createInfo.samples = ConvertSampleCount(_createInfo.sampleCount);
@@ -260,10 +258,7 @@ namespace RHI::Vulkan
         }
 
         createInfo.format = image->format;
-        createInfo.components.r = ConvertComponentSwizzle(_createInfo.components.r);
-        createInfo.components.g = ConvertComponentSwizzle(_createInfo.components.g);
-        createInfo.components.b = ConvertComponentSwizzle(_createInfo.components.b);
-        createInfo.components.a = ConvertComponentSwizzle(_createInfo.components.a);
+        createInfo.components = ConvertComponentMapping(_createInfo.components);
         createInfo.subresourceRange = ConvertSubresourceRange(_createInfo.subresource);
 
         auto result = vkCreateImageView(context->m_device, &createInfo, nullptr, &handle);
@@ -369,7 +364,7 @@ namespace RHI::Vulkan
         std::vector<std::vector<VkBufferView>> descriptorBufferViews;
 
         std::vector<VkWriteDescriptorSet> writeInfos;
-        
+
         auto bindGroupLayout = context->m_bindGroupLayoutsOwner.Get(layout);
 
         for (uint32_t binding = 0; binding < c_MaxShaderBindGroupElementsCount; binding++)

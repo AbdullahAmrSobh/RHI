@@ -410,7 +410,7 @@ namespace RHI::Vulkan
         {
             RenderingBegin(pass);
         }
-        }
+    }
 
     void ICommandList::End()
     {
@@ -723,7 +723,7 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-#if RHI_DEUG
+#if RHI_DEBUG
         if (m_context->m_vkCmdDebugMarkerEndEXT)
         {
             m_context->m_vkCmdDebugMarkerEndEXT(m_commandBuffer);
@@ -762,10 +762,7 @@ namespace RHI::Vulkan
             attachmentInfo.imageLayout = GetImageLayout(passAttachment->m_usage, Access::None);
             attachmentInfo.loadOp = ConvertLoadOp(passAttachment->m_loadStoreOperations.loadOperation);
             attachmentInfo.storeOp = ConvertStoreOp(passAttachment->m_loadStoreOperations.storeOperation);
-            attachmentInfo.clearValue.color.float32[0] = passAttachment->m_clearValue.colorValue.r;
-            attachmentInfo.clearValue.color.float32[1] = passAttachment->m_clearValue.colorValue.g;
-            attachmentInfo.clearValue.color.float32[2] = passAttachment->m_clearValue.colorValue.b;
-            attachmentInfo.clearValue.color.float32[3] = passAttachment->m_clearValue.colorValue.a;
+            attachmentInfo.clearValue.color = ConvertColorValue(passAttachment->m_clearValue.colorValue);
         }
 
         if (auto passAttachment = pass.GetDepthStencilAttachment(); passAttachment != nullptr)
@@ -778,8 +775,7 @@ namespace RHI::Vulkan
             depthAttachment.imageLayout = GetImageLayout(passAttachment->m_usage, Access::None);
             depthAttachment.loadOp = ConvertLoadOp(passAttachment->m_loadStoreOperations.loadOperation);
             depthAttachment.storeOp = ConvertStoreOp(passAttachment->m_loadStoreOperations.storeOperation);
-            depthAttachment.clearValue.depthStencil.depth = passAttachment->m_clearValue.depthStencilValue.depthValue;
-            depthAttachment.clearValue.depthStencil.stencil = passAttachment->m_clearValue.depthStencilValue.stencilValue;
+            depthAttachment.clearValue.depthStencil = ConvertDepthStencilValue(passAttachment->m_clearValue.depthStencilValue);
             hasDepthAttachment = true;
         }
 
@@ -787,10 +783,8 @@ namespace RHI::Vulkan
         renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
         renderingInfo.pNext = nullptr;
         renderingInfo.flags = 0;
-        renderingInfo.renderArea.extent.width = pass.m_frameSize.width;
-        renderingInfo.renderArea.extent.height = pass.m_frameSize.height;
-        renderingInfo.renderArea.offset.x = 0;
-        renderingInfo.renderArea.offset.y = 0;
+        renderingInfo.renderArea.extent = ConvertExtent2D(pass.m_frameSize);
+        renderingInfo.renderArea.offset = ConvertOffset2D({0u, 0u, 0u});
         renderingInfo.layerCount = 1;
         renderingInfo.colorAttachmentCount = uint32_t(attachmentInfos.size());
         renderingInfo.pColorAttachments = attachmentInfos.data();

@@ -62,7 +62,6 @@ namespace RHI::Vulkan
         VkImage handle;        // Handle to valid VkImage resource (Might not be backed by an allocation).
         VkFormat format;       // Image pixel Format
         VkImageType imageType; // Image dimensions
-        ISwapchain* swapchain; // pointer to swapchain (if this image is backed by swapchain).
 
         VkSemaphore waitSemaphore;   // wait semaphore: if the content of this resource is being written by the framescheduler (wait on this semaphore)
         VkSemaphore signalSemaphore; // signal semaphore: if the content of this resource is being read by the frameschduler (signal this semaphore)

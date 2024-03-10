@@ -396,7 +396,6 @@ namespace RHI::Vulkan
         }
     }
 
-
     inline static VkShaderStageFlags ConvertShaderStage(Flags<ShaderStage> shaderStageFlags)
     {
         VkShaderStageFlags result = 0;
@@ -595,6 +594,11 @@ namespace RHI::Vulkan
         return vkSubresource;
     }
 
+    inline static VkExtent2D ConvertExtent2D(ImageSize2D size)
+    {
+        return { size.width, size.height };
+    }
+
     inline static VkExtent3D ConvertExtent3D(ImageSize3D size)
     {
         return { size.width, size.height, size.depth };
@@ -611,10 +615,38 @@ namespace RHI::Vulkan
         return { offset.x, offset.y, offset.z };
     }
 
-    inline static VkOffset3D ConvertOffset2D(ImageOffset offset)
+    inline static VkOffset2D ConvertOffset2D(ImageOffset offset)
     {
         RHI_ASSERT(offset.z == 0);
-        return { offset.x, offset.y, offset.z };
+        return { offset.x, offset.y };
+    }
+
+    inline static VkClearColorValue ConvertColorValue(ColorValue value)
+    {
+        VkClearColorValue clearValue = {};
+        clearValue.float32[0] = value.r;
+        clearValue.float32[1] = value.g;
+        clearValue.float32[2] = value.b;
+        clearValue.float32[3] = value.a;
+        return clearValue;
+    }
+
+    inline static VkClearDepthStencilValue ConvertDepthStencilValue(DepthStencilValue value)
+    {
+        VkClearDepthStencilValue clearValue = {};
+        clearValue.depth = value.depthValue;
+        clearValue.stencil = value.stencilValue;
+        return clearValue;
+    }
+
+    inline static VkComponentMapping ConvertComponentMapping(ComponentMapping componentMapping)
+    {
+        VkComponentMapping mapping{};
+        mapping.r = ConvertComponentSwizzle(componentMapping.r);
+        mapping.g = ConvertComponentSwizzle(componentMapping.g);
+        mapping.b = ConvertComponentSwizzle(componentMapping.b);
+        mapping.a = ConvertComponentSwizzle(componentMapping.a);
+        return mapping;
     }
 
 } // namespace RHI::Vulkan

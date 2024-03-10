@@ -210,7 +210,6 @@ namespace RHI::Vulkan
             image.handle = images[imageIndex];
             image.format = m_surfaceFormat.format;
             image.imageType = VK_IMAGE_TYPE_2D;
-            image.swapchain = this;
             m_images[imageIndex] = m_context->m_imageOwner.Insert(image);
         }
         result = vkAcquireNextImageKHR(m_context->m_device, m_swapchain, UINT64_MAX, m_semaphores.imageAcquired, VK_NULL_HANDLE, &m_currentImageIndex);
