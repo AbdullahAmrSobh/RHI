@@ -19,20 +19,19 @@ namespace RHI::Vulkan
         ResultCode Recreate(ImageSize2D newSize) override;
         ResultCode Present() override;
 
+        inline VkSemaphore GetImageReadySemaphore() { return m_imageAcquiredSemaphore; }
+
+        inline VkSemaphore GetFrameReadySemaphore() { return m_imageRenderCompleteSemaphore; }
+
     private:
         VkResult InitSurface(const SwapchainCreateInfo& createInfo);
         VkResult InitSwapchain();
 
-    public:
-        friend class IFrameScheduler;
-
+    private:
         IContext* m_context;
 
-        struct Semaphores
-        {
-            VkSemaphore imageAcquired;
-            VkSemaphore imageRenderComplete;
-        } m_semaphores;
+        VkSemaphore m_imageAcquiredSemaphore;
+        VkSemaphore m_imageRenderCompleteSemaphore;
 
         VkSwapchainKHR m_swapchain;
         VkSurfaceKHR m_surface;

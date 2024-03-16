@@ -21,7 +21,8 @@ namespace RHI::Vulkan
 
     ISwapchain::ISwapchain(IContext* context)
         : m_context(context)
-        , m_semaphores(VK_NULL_HANDLE, VK_NULL_HANDLE)
+        , m_imageAcquiredSemaphore(VK_NULL_HANDLE)
+        , m_imageRenderCompleteSemaphore(VK_NULL_HANDLE)
         , m_swapchain(VK_NULL_HANDLE)
         , m_surface(VK_NULL_HANDLE)
         , m_lastPresentResult(VK_ERROR_UNKNOWN)
@@ -36,8 +37,8 @@ namespace RHI::Vulkan
         auto context = static_cast<IContext*>(m_context);
         vkDestroySwapchainKHR(context->m_device, m_swapchain, nullptr);
         vkDestroySurfaceKHR(context->m_instance, m_surface, nullptr);
-        vkDestroySemaphore(context->m_device, m_semaphores.imageAcquired, nullptr);
-        vkDestroySemaphore(context->m_device, m_semaphores.imageRenderComplete, nullptr);
+        vkDestroySemaphore(context->m_device, m_imageAcquiredSemaphore, nullptr);
+        vkDestroySemaphore(context->m_device, m_imageRenderCompleteSemaphore, nullptr);
     }
 
     VkResult ISwapchain::Init(const SwapchainCreateInfo& createInfo)
@@ -48,8 +49,8 @@ namespace RHI::Vulkan
 
         m_createInfo = createInfo;
 
-        m_semaphores.imageAcquired = context->CreateSemaphore();
-        m_semaphores.imageRenderComplete = context->CreateSemaphore();
+        m_imageAcquiredSemaphore = context->CreateSemaphore();
+        m_imageRenderCompleteSemaphore = context->CreateSemaphore();
 
         InitSurface(createInfo);
 
@@ -156,7 +157,7 @@ namespace RHI::Vulkan
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         presentInfo.pNext = nullptr;
         presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = &m_semaphores.imageRenderComplete;
+        presentInfo.pWaitSemaphores = &m_imageRenderCompleteSemaphore;
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = &m_swapchain;
         presentInfo.pImageIndices = &m_currentImageIndex;
@@ -164,7 +165,7 @@ namespace RHI::Vulkan
         auto result = vkQueuePresentKHR(m_context->m_presentQueue, &presentInfo);
         VULKAN_ASSERT_SUCCESS(result);
 
-        result = vkAcquireNextImageKHR(m_context->m_device, m_swapchain, UINT64_MAX, m_semaphores.imageAcquired, VK_NULL_HANDLE, &m_currentImageIndex);
+        result = vkAcquireNextImageKHR(m_context->m_device, m_swapchain, UINT64_MAX, m_imageAcquiredSemaphore, VK_NULL_HANDLE, &m_currentImageIndex);
         VULKAN_ASSERT_SUCCESS(result);
 
         return ResultCode::Success;
@@ -212,7 +213,7 @@ namespace RHI::Vulkan
             image.imageType = VK_IMAGE_TYPE_2D;
             m_images[imageIndex] = m_context->m_imageOwner.Insert(image);
         }
-        result = vkAcquireNextImageKHR(m_context->m_device, m_swapchain, UINT64_MAX, m_semaphores.imageAcquired, VK_NULL_HANDLE, &m_currentImageIndex);
+        result = vkAcquireNextImageKHR(m_context->m_device, m_swapchain, UINT64_MAX, m_imageAcquiredSemaphore, VK_NULL_HANDLE, &m_currentImageIndex);
         VULKAN_ASSERT_SUCCESS(result);
 
         return result;

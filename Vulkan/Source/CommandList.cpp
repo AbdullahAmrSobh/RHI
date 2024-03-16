@@ -363,7 +363,7 @@ namespace RHI::Vulkan
                 auto swapchain = (ISwapchain*)passAttachment->GetAttachment()->m_swapchain;
                 auto& waitSemaphore = m_waitSemaphores.emplace_back();
                 waitSemaphore.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-                waitSemaphore.semaphore = swapchain->m_semaphores.imageAcquired;
+                waitSemaphore.semaphore = swapchain->GetImageReadySemaphore();
                 waitSemaphore.stageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
             }
         }
@@ -443,7 +443,7 @@ namespace RHI::Vulkan
                     dstInfo = GetTransitionToPresentInfo();
                     auto& signalSemaphore = m_signalSemaphores.emplace_back();
                     auto swapchain = (ISwapchain*)passAttachment->GetAttachment()->m_swapchain;
-                    signalSemaphore.semaphore = swapchain->m_semaphores.imageRenderComplete;
+                    signalSemaphore.semaphore = swapchain->GetFrameReadySemaphore();
                     signalSemaphore.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
                     signalSemaphore.stageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
                 }
