@@ -42,10 +42,10 @@ struct Mesh
         }
 
         drawElementsCount = uint32_t(indexBufferData.size());
-        indexBuffer = context.CreateBufferWithContentT<uint32_t>(RHI::BufferUsage::Index, indexBufferData).GetValue();
-        positionsBuffer = context.CreateBufferWithContentT<aiVector3D>(RHI::BufferUsage::Vertex, { mesh->mVertices, mesh->mNumVertices }).GetValue();
-        normalsBuffer = context.CreateBufferWithContentT<aiVector3D>(RHI::BufferUsage::Vertex, { mesh->mNormals, mesh->mNumVertices }).GetValue();
-        texCoordBuffer = context.CreateBufferWithContentT<glm::vec2>(RHI::BufferUsage::Vertex, texCoordData).GetValue();
+        indexBuffer = context.CreateBuffer<uint32_t>(RHI::BufferUsage::Index, indexBufferData).GetValue();
+        positionsBuffer = context.CreateBuffer<aiVector3D>(RHI::BufferUsage::Vertex, { mesh->mVertices, mesh->mNumVertices }).GetValue();
+        normalsBuffer = context.CreateBuffer<aiVector3D>(RHI::BufferUsage::Vertex, { mesh->mNormals, mesh->mNumVertices }).GetValue();
+        texCoordBuffer = context.CreateBuffer<glm::vec2>(RHI::BufferUsage::Vertex, texCoordData).GetValue();
     }
 
     void Shutdown(RHI::Context& context)
@@ -77,7 +77,7 @@ public:
         ZoneScoped;
 
         m_uniformData.viewProjection = m_camera.GetProjection() * m_camera.GetView();
-        m_uniformBuffer = m_context->CreateBufferWithContentT<uint8_t>(RHI::BufferUsage::Uniform, RHI::TL::ToBytes(m_uniformData)).GetValue();
+        m_uniformBuffer = m_context->CreateBuffer(RHI::BufferUsage::Uniform, RHI::TL::ToBytes(m_uniformData)).GetValue();
         m_mesh.Init(*m_context, "./Resources/Meshes/simple_cube.obj");
 
         // create image
@@ -92,7 +92,7 @@ public:
             createInfo.size.height = textureData.height;
             createInfo.size.depth = 1;
             createInfo.format = RHI::Format::RGBA8_UNORM;
-            m_image = m_context->CreateImageWithContent(createInfo, textureData.data).GetValue();
+            m_image = m_context->CreateImage(createInfo, textureData.data).GetValue();
             RHI::ImageViewCreateInfo viewInfo{};
             viewInfo.image = m_image;
             m_imageView = m_context->CreateImageView(viewInfo);

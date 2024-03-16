@@ -336,7 +336,7 @@ void ImGuiRenderer::Init(ImGuiRendererCreateInfo createInfo)
         imageInfo.usageFlags = RHI::ImageUsage::ShaderResource;
         imageInfo.usageFlags |= RHI::ImageUsage::CopyDst;
         imageInfo.arrayCount = 1;
-        m_image = m_context->CreateImageWithContent(imageInfo, RHI::TL::Span<uint8_t>{ pixels, size_t(width * height) }).GetValue();
+        m_image = m_context->CreateImage(imageInfo, RHI::TL::Span<const uint8_t>{ pixels, size_t(width * height) }).GetValue();
         RHI::ImageViewCreateInfo viewInfo{};
         viewInfo.image = m_image;
         viewInfo.subresource.imageAspects = RHI::ImageAspect::Color;

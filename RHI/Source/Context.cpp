@@ -5,17 +5,17 @@
 
 namespace RHI
 {
-    Result<Handle<Image>> Context::CreateImageWithContent(const ImageCreateInfo& createInfo, TL::Span<uint8_t> content)
+    Result<Handle<Image>> Context::CreateImage(const ImageCreateInfo& createInfo, TL::Span<const uint8_t> content)
     {
         ZoneScoped;
         auto [handle, result] = CreateImage(createInfo);
         if (IsError(result))
             return result;
-        m_frameScheduler->WriteImageContent(handle,  {}, createInfo.size, {}, content);
+        m_frameScheduler->WriteImageContent(handle, {}, createInfo.size, {}, content);
         return handle;
     }
 
-    Result<Handle<Buffer>> Context::CreateBufferWithContent(const BufferCreateInfo& createInfo, TL::Span<uint8_t> content)
+    Result<Handle<Buffer>> Context::CreateBuffer(const BufferCreateInfo& createInfo, TL::Span<const uint8_t> content)
     {
         ZoneScoped;
         auto [handle, result] = CreateBuffer(createInfo);

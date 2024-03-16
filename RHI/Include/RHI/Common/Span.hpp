@@ -127,15 +127,14 @@ namespace RHI::TL
     };
 
     template<typename T>
-    inline static Span<uint8_t> ToBytes(const T& t)
+    inline static Span<const uint8_t> ToBytes(const T& t)
     {
-        return Span<uint8_t>((uint8_t*)&t, sizeof(T));
+        return Span<const uint8_t>((uint8_t*)&t, sizeof(T));
     }
 
     template<typename T>
-    inline static Span<uint8_t> ToBytes(const Span<T>& t)
+    inline static Span<const uint8_t> ToBytes(const Span<T>& t)
     {
-        return Span<uint8_t>(t.data(), t.size_bytes());
+        return Span<const uint8_t>((uint8_t*)t.data(), t.size_bytes());
     }
-
 } // namespace RHI::TL

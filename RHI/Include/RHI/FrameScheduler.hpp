@@ -40,8 +40,12 @@ namespace RHI
         Ptr<Pass>   CreatePass(const char* name, QueueType queueType);
         ResultCode  DestroyPass(Pass* pass);
 
-        void        WriteImageContent(Handle<Image> handle, ImageOffset offset, ImageSize3D size, ImageSubresourceLayers subresource, TL::Span<uint8_t> data);
-        void        WriteBufferContent(Handle<Buffer> handle, TL::Span<uint8_t> data);
+        void        WriteImageContent(Handle<Image>           handle,
+                                      ImageOffset             offset,
+                                      ImageSize3D             size,
+                                      ImageSubresourceLayers  subresource,
+                                      TL::Span<const uint8_t> content);
+        void        WriteBufferContent(Handle<Buffer> handle, TL::Span<const uint8_t> content);
 
         ResultCode  Compile();
 

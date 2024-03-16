@@ -14,8 +14,6 @@
 
 namespace RHI
 {
-    struct StagingBuffer;
-
     /// @brief Type of backend Graphics API
     enum class Backend
     {
@@ -83,8 +81,6 @@ namespace RHI
         /// Returns a reference to the frame scheduler object.
         ///
         /// @return Reference to the FrameScheduler object.
-        /// @const If called through a const reference to the Context object,
-        ///        returns a const reference to the FrameScheduler.
         inline FrameScheduler& GetScheduler() { return *m_frameScheduler; }
 
         /// Creates an image object and copies the provided content into it.
@@ -94,38 +90,7 @@ namespace RHI
         /// @return Result object indicating success or failure of the operation.
         ///         On success, it also contains a handle to the created image.
         template<typename T>
-        inline Result<Handle<Image>> CreateImageWithContentT(const ImageCreateInfo& createInfo, TL::Span<T> content)
-        {
-            return CreateImageWithContent(createInfo, { (uint8_t*)content.data(), content.size() * sizeof(T) });
-        }
-
-        /// Creates a buffer object and copies the provided content into it.
-        ///
-        /// @param createInfo Information describing the desired buffer characteristics.
-        /// @param content The raw data to be copied into the buffer.
-        /// @return Result object indicating success or failure of the operation.
-        ///         On success, it also contains a handle to the created buffer.
-        template<typename T>
-        inline Result<Handle<Buffer>> CreateBufferWithContentT(const BufferCreateInfo& createInfo, TL::Span<T> content)
-        {
-            return CreateBufferWithContent(createInfo, { (uint8_t*)content.data(), content.size() * sizeof(T) });
-        }
-
-        /// Creates a buffer object and copies the provided content into it.
-        ///
-        /// @param createInfo Information describing the desired buffer characteristics.
-        /// @param content The raw data to be copied into the buffer.
-        /// @return Result object indicating success or failure of the operation.
-        ///         On success, it also contains a handle to the created buffer.
-        template<typename T>
-        inline Result<Handle<Buffer>> CreateBufferWithContentT(const Flags<BufferUsage>& usage, TL::Span<T> content)
-        {
-            BufferCreateInfo createInfo{};
-            createInfo.byteSize   = content.size_bytes();
-            createInfo.usageFlags = usage;
-
-            return CreateBufferWithContent(createInfo, { (uint8_t*)content.data(), content.size() * sizeof(T) });
-        }
+        Result<Handle<Image>> CreateImage(const ImageCreateInfo& createInfo, TL::Span<const T> content);
 
         /// Creates an image object and copies the provided content into it.
         ///
@@ -133,7 +98,25 @@ namespace RHI
         /// @param content The raw data to be copied into the image.
         /// @return Result object indicating success or failure of the operation.
         ///         On success, it also contains a handle to the created image.
-        Result<Handle<Image>>             CreateImageWithContent(const ImageCreateInfo& createInfo, TL::Span<uint8_t> content);
+        Result<Handle<Image>> CreateImage(const ImageCreateInfo& createInfo, TL::Span<const uint8_t> content);
+
+        /// Creates a buffer object and copies the provided content into it.
+        ///
+        /// @param usage Flags indicating the usage of the buffer.
+        /// @param content The raw data to be copied into the buffer.
+        /// @return Result object indicating success or failure of the operation.
+        ///         On success, it also contains a handle to the created buffer.
+        template<typename T>
+        Result<Handle<Buffer>> CreateBuffer(Flags<BufferUsage> usage, const T& content);
+
+        /// Creates a buffer object and copies the provided content into it.
+        ///
+        /// @param usage Flags indicating the usage of the buffer.
+        /// @param content The raw data to be copied into the buffer.
+        /// @return Result object indicating success or failure of the operation.
+        ///         On success, it also contains a handle to the created buffer.
+        template<typename T>
+        Result<Handle<Buffer>> CreateBuffer(Flags<BufferUsage> usage, TL::Span<const T> content);
 
         /// Creates a buffer object and copies the provided content into it.
         ///
@@ -141,27 +124,25 @@ namespace RHI
         /// @param content The raw data to be copied into the buffer.
         /// @return Result object indicating success or failure of the operation.
         ///         On success, it also contains a handle to the created buffer.
-        Result<Handle<Buffer>>            CreateBufferWithContent(const BufferCreateInfo& createInfo, TL::Span<uint8_t> content);
+        template<typename T>
+        Result<Handle<Buffer>> CreateBuffer(const BufferCreateInfo& createInfo, const T& content);
 
-        /// Reads data from an image object into a provided memory location.
+        /// Creates a buffer object and copies the provided content into it.
         ///
-        /// @param handle The handle to the image object to read from.
-        /// @param offset The starting offset within the image data to read from.
-        /// @param size The size of the data to read in bytes.
-        /// @param signalFence (Optional) A fence to be signaled once the read operation completes.
-        /// @param outPtr The pointer to the memory location to write the read data to.
-        /// @return ResultCode indicating success or failure of the operation.
-        ResultCode                        ReadImageContent(Handle<Image> handle, ImageOffset offset, ImageSize3D size, Fence& signalFence, void* outPtr);
+        /// @param createInfo Information describing the desired buffer characteristics.
+        /// @param content The raw data to be copied into the buffer.
+        /// @return Result object indicating success or failure of the operation.
+        ///         On success, it also contains a handle to the created buffer.
+        template<typename T>
+        Result<Handle<Buffer>>            CreateBuffer(const BufferCreateInfo& createInfo, TL::Span<const T> content);
 
-        /// Reads data from an image object into a provided memory location.
+        /// Creates a buffer object and copies the provided content into it.
         ///
-        /// @param handle The handle to the image object to read from.
-        /// @param offset The starting offset within the image data to read from.
-        /// @param size The size of the data to read in bytes.
-        /// @param signalFence (Optional) A fence to be signaled once the read operation completes.
-        /// @param outPtr The pointer to the memory location to write the read data to.
-        /// @return ResultCode indicating success or failure of the operation.
-        ResultCode                        ReadBufferContent(Handle<Buffer> handle, size_t offset, size_t range, Fence& signalFence, void* outPtr);
+        /// @param createInfo Information describing the desired buffer characteristics.
+        /// @param content The raw data to be copied into the buffer.
+        /// @return Result object indicating success or failure of the operation.
+        ///         On success, it also contains a handle to the created buffer.
+        Result<Handle<Buffer>>            CreateBuffer(const BufferCreateInfo& createInfo, TL::Span<const uint8_t> content);
 
         /// Creates a new swapchain object with specified configuration.
         ///
@@ -369,6 +350,42 @@ namespace RHI
         : m_limits(CreatePtr<Limits>())
         , m_debugCallbacks(std::move(debugCallbacks))
     {
+    }
+
+    template<typename T>
+    inline Result<Handle<Image>> Context::CreateImage(const ImageCreateInfo& createInfo, TL::Span<const T> content)
+    {
+        return CreateImage(createInfo, { content.data(), content.size_bytes() });
+    }
+
+    template<typename T>
+    inline Result<Handle<Buffer>> Context::CreateBuffer(const BufferCreateInfo& createInfo, const T& content)
+    {
+        return CreateBuffer(createInfo, TL::Span{ (uint8_t*)&content, sizeof(T) });
+    }
+
+    template<typename T>
+    inline Result<Handle<Buffer>> Context::CreateBuffer(const BufferCreateInfo& createInfo, TL::Span<const T> content)
+    {
+        return CreateBuffer(createInfo, TL::ToBytes(content));
+    }
+
+    template<typename T>
+    inline Result<Handle<Buffer>> Context::CreateBuffer(Flags<BufferUsage> usage, const T& content)
+    {
+        BufferCreateInfo createInfo{};
+        createInfo.byteSize   = sizeof(T);
+        createInfo.usageFlags = usage;
+        return CreateBuffer(createInfo, content);
+    }
+
+    template<typename T>
+    inline Result<Handle<Buffer>> Context::CreateBuffer(Flags<BufferUsage> usage, TL::Span<const T> content)
+    {
+        BufferCreateInfo createInfo{};
+        createInfo.byteSize   = content.size_bytes();
+        createInfo.usageFlags = usage;
+        return CreateBuffer(createInfo, content);
     }
 
 } // namespace RHI

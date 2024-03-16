@@ -45,10 +45,14 @@ namespace RHI
         return ResultCode::Success;
     }
 
-    void FrameScheduler::WriteImageContent(Handle<Image> handle, ImageOffset offset, ImageSize3D size, ImageSubresourceLayers subresource, TL::Span<uint8_t> data)
+    void FrameScheduler::WriteImageContent(Handle<Image> handle,
+                                           ImageOffset offset,
+                                           ImageSize3D size,
+                                           ImageSubresourceLayers subresource,
+                                           TL::Span<const uint8_t> content)
     {
-        auto buffer = m_stagingBuffer->Allocate(data.size_bytes());
-        memcpy(buffer.pData, data.data(), data.size_bytes());
+        auto buffer = m_stagingBuffer->Allocate(content.size_bytes());
+        memcpy(buffer.pData, content.data(), content.size_bytes());
 
         // StageImageWrite(handle);
 
@@ -70,10 +74,10 @@ namespace RHI
         fence->Wait();
     }
 
-    void FrameScheduler::WriteBufferContent(Handle<Buffer> handle, TL::Span<uint8_t> data)
+    void FrameScheduler::WriteBufferContent(Handle<Buffer> handle, TL::Span<const uint8_t> content)
     {
-        auto buffer = m_stagingBuffer->Allocate(data.size());
-        memcpy(buffer.pData, data.data(), data.size());
+        auto buffer = m_stagingBuffer->Allocate(content.size());
+        memcpy(buffer.pData, content.data(), content.size());
 
         StageBufferWrite(handle);
 
@@ -111,7 +115,7 @@ namespace RHI
             if (attachment->m_lifetime == Attachment::Lifetime::Transient)
             {
                 auto imageAttachment = (ImageAttachment*)attachment;
-                imageAttachment->SetSize({1600, 1200});
+                imageAttachment->SetSize({ 1600, 1200 });
                 m_transientAllocator->Allocate(attachment);
             }
         }
