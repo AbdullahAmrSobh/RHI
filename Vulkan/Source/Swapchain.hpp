@@ -21,7 +21,7 @@ namespace RHI::Vulkan
 
         inline VkSemaphore GetImageReadySemaphore() { return m_imageAcquiredSemaphore; }
 
-        inline VkSemaphore GetFrameReadySemaphore() { return m_imageRenderCompleteSemaphore; }
+        inline VkSemaphore GetFrameReadySemaphore() { return m_frameReadySemaphore; }
 
     private:
         VkResult InitSurface(const SwapchainCreateInfo& createInfo);
@@ -31,7 +31,7 @@ namespace RHI::Vulkan
         IContext* m_context;
 
         VkSemaphore m_imageAcquiredSemaphore;
-        VkSemaphore m_imageRenderCompleteSemaphore;
+        VkSemaphore m_frameReadySemaphore;
 
         VkSwapchainKHR m_swapchain;
         VkSurfaceKHR m_surface;

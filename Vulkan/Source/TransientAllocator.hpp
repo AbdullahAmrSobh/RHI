@@ -13,10 +13,10 @@ namespace RHI::Vulkan
     class ITransientAllocator final : public TransientAllocator
     {
     public:
-
-        ITransientAllocator(IContext* context) : m_context(context) {};
-
+        ITransientAllocator(IContext* context)
+            : m_context(context){};
         ~ITransientAllocator();
+
         void Begin() override;
         void End() override;
         void Allocate(Attachment* attachment) override;

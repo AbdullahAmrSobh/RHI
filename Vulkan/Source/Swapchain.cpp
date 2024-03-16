@@ -22,7 +22,7 @@ namespace RHI::Vulkan
     ISwapchain::ISwapchain(IContext* context)
         : m_context(context)
         , m_imageAcquiredSemaphore(VK_NULL_HANDLE)
-        , m_imageRenderCompleteSemaphore(VK_NULL_HANDLE)
+        , m_frameReadySemaphore(VK_NULL_HANDLE)
         , m_swapchain(VK_NULL_HANDLE)
         , m_surface(VK_NULL_HANDLE)
         , m_lastPresentResult(VK_ERROR_UNKNOWN)
@@ -38,7 +38,7 @@ namespace RHI::Vulkan
         vkDestroySwapchainKHR(context->m_device, m_swapchain, nullptr);
         vkDestroySurfaceKHR(context->m_instance, m_surface, nullptr);
         vkDestroySemaphore(context->m_device, m_imageAcquiredSemaphore, nullptr);
-        vkDestroySemaphore(context->m_device, m_imageRenderCompleteSemaphore, nullptr);
+        vkDestroySemaphore(context->m_device, m_frameReadySemaphore, nullptr);
     }
 
     VkResult ISwapchain::Init(const SwapchainCreateInfo& createInfo)
@@ -50,7 +50,7 @@ namespace RHI::Vulkan
         m_createInfo = createInfo;
 
         m_imageAcquiredSemaphore = context->CreateSemaphore();
-        m_imageRenderCompleteSemaphore = context->CreateSemaphore();
+        m_frameReadySemaphore = context->CreateSemaphore();
 
         InitSurface(createInfo);
 
@@ -157,7 +157,7 @@ namespace RHI::Vulkan
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         presentInfo.pNext = nullptr;
         presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = &m_imageRenderCompleteSemaphore;
+        presentInfo.pWaitSemaphores = &m_frameReadySemaphore;
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = &m_swapchain;
         presentInfo.pImageIndices = &m_currentImageIndex;
