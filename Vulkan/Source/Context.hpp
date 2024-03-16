@@ -38,7 +38,7 @@ namespace RHI::Vulkan
         Ptr<Swapchain>            CreateSwapchain(const SwapchainCreateInfo& createInfo)               override;
         Ptr<ShaderModule>         CreateShaderModule(TL::Span<const uint8_t> shaderBlob)               override;
         Ptr<Fence>                CreateFence()                                                        override;
-        Ptr<CommandListAllocator> CreateCommandListAllocator(QueueType queueType)                      override;
+        Ptr<CommandListAllocator> CreateCommandListAllocator()                                         override;
         Ptr<ResourcePool>         CreateResourcePool(const ResourcePoolCreateInfo& createInfo)         override;
         Handle<BindGroupLayout>   CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)   override;
         void                      DestroyBindGroupLayout(Handle<BindGroupLayout> handle)               override;
@@ -74,6 +74,8 @@ namespace RHI::Vulkan
         uint32_t GetMemoryTypeIndex(MemoryType memoryType);
 
         uint32_t GetQueueFamilyIndex(QueueType queueType);
+
+        uint32_t GetCurrentFrameIndex() const;
 
     private:
         static VkBool32 VKAPI_CALL DebugMessengerCallbacks(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);

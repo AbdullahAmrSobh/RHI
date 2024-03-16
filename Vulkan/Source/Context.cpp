@@ -144,17 +144,13 @@ namespace RHI::Vulkan
         result = LoadFunctions(debugExtensionEnabled);
         VULKAN_RETURN_VKERR_CODE(result);
 
-        result = InitFrameScheduler();
-        VULKAN_RETURN_VKERR_CODE(result);
-
         result = InitStagingBuffer();
         VULKAN_RETURN_VKERR_CODE(result);
 
-        m_bindGroupAllocator = CreatePtr<BindGroupAllocator>(m_device);
-
-        auto scheduler = (IFrameScheduler*)m_frameScheduler.get();
-        result = scheduler->Init();
+        result = InitFrameScheduler();
         VULKAN_RETURN_VKERR_CODE(result);
+
+        m_bindGroupAllocator = CreatePtr<BindGroupAllocator>(m_device);
 
         return VK_SUCCESS;
     }
@@ -201,12 +197,12 @@ namespace RHI::Vulkan
         return fence;
     }
 
-    Ptr<CommandListAllocator> IContext::CreateCommandListAllocator(QueueType queueType)
+    Ptr<CommandListAllocator> IContext::CreateCommandListAllocator()
     {
         ZoneScoped;
 
         auto commandListAllocator = CreatePtr<ICommandListAllocator>(this);
-        auto result = commandListAllocator->Init(queueType);
+        auto result = commandListAllocator->Init();
         if (result != VK_SUCCESS)
         {
             DebugLogError("Failed to create a command_list_allocator object");
@@ -845,13 +841,21 @@ namespace RHI::Vulkan
 
     uint32_t IContext::GetQueueFamilyIndex(QueueType queueType)
     {
-        switch (queueType)
-        {
-        case QueueType::Graphics: return m_graphicsQueueFamilyIndex;
-        case QueueType::Compute:  return m_computeQueueFamilyIndex;
-        case QueueType::Transfer: return m_transferQueueFamilyIndex;
-        default: RHI_UNREACHABLE(); return UINT32_MAX;
-        }
+        (void)queueType;
+        return m_graphicsQueueFamilyIndex;
+
+        // switch (queueType)
+        // {
+        // case QueueType::Graphics: return m_graphicsQueueFamilyIndex;
+        // case QueueType::Compute:  return m_computeQueueFamilyIndex;
+        // case QueueType::Transfer: return m_transferQueueFamilyIndex;
+        // default:                  RHI_UNREACHABLE(); return UINT32_MAX;
+        // }
+    }
+
+    uint32_t IContext::GetCurrentFrameIndex() const
+    {
+        return ((IFrameScheduler*)m_frameScheduler.get())->GetCurrentFrameIndex();
     }
 
 } // namespace RHI::Vulkan

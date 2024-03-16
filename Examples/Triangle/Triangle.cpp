@@ -292,13 +292,14 @@ public:
             drawCommand.indexBuffers = m_mesh.indexBuffer;
             drawCommand.parameters = { .elementCount = m_mesh.drawElementsCount };
 
-            auto commandList = m_graphicsCommandsAllocator->Allocate();
+            auto commandList = m_commandListAllocator->Allocate(RHI::QueueType::Graphics);
             commandList->Begin(*m_renderPass);
             commandList->SetViewport(viewport);
             commandList->SetSicssor(scissor);
             commandList->Draw(drawCommand);
             commandList->End();
             m_renderPass->SubmitCommandList(commandList);
+            m_commandListAllocator->Release(commandList);
         }
 
         // {
@@ -308,7 +309,7 @@ public:
         //     dispatchInfo.parameters.countX = 32;
         //     dispatchInfo.parameters.countY = 32;
         //     dispatchInfo.parameters.countZ = 32;
-        //     auto commandList = m_graphicsCommandsAllocator->Allocate();
+        //     auto commandList = m_commandListAllocator->Allocate();
         //     commandList->Begin(*m_computePass);
         //     commandList->Dispatch(dispatchInfo);
         //     commandList->End();
@@ -321,7 +322,7 @@ public:
         //     drawCommand.bindGroups = m_renderBindGroup;
         //     drawCommand.parameters = { .elementCount = 6 };
 
-        //     auto commandList = m_graphicsCommandsAllocator->Allocate();
+        //     auto commandList = m_commandListAllocator->Allocate();
         //     commandList->Begin(*m_renderPass);
         //     commandList->SetViewport(viewport);
         //     commandList->SetSicssor(scissor);

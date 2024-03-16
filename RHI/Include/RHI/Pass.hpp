@@ -20,6 +20,7 @@ namespace RHI
         Graphics,
         Compute,
         Transfer,
+        Count,
     };
 
     /// Represents a rendering pass, which is a logical unit of rendering work.

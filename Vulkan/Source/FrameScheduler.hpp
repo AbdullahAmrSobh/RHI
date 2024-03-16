@@ -28,6 +28,8 @@ namespace RHI::Vulkan
 
         VkSemaphore CreateTempSemaphore();
 
+        uint32_t GetCurrentFrameIndex() const { return m_currentFrameIndex; }
+
     private:
         VkQueue m_graphicsQueue;
         VkQueue m_computeQueue;

@@ -13,8 +13,9 @@ namespace RHI::Vulkan
         : FrameScheduler(context)
     {
         m_stagingBuffer = CreatePtr<IStagingBuffer>(context);
-        m_copyCommandListAllocator = CreatePtr<ICommandListAllocator>(context);
         m_transientAllocator = CreatePtr<ITransientAllocator>(context);
+        m_copyCommandListAllocator = CreatePtr<ICommandListAllocator>(context);
+        m_currentFrameIndex = 0;
     }
 
     IFrameScheduler::~IFrameScheduler()
@@ -29,7 +30,8 @@ namespace RHI::Vulkan
         vkGetDeviceQueue(context->m_device, context->m_transferQueueFamilyIndex, 0, &m_transferQueue);
 
         ((IStagingBuffer*)m_stagingBuffer.get())->Init();
-        ((ICommandListAllocator*)m_copyCommandListAllocator.get())->Init(QueueType::Graphics);
+
+        ((ICommandListAllocator*)m_copyCommandListAllocator.get())->Init();
 
         return VK_SUCCESS;
     }

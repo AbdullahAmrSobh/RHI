@@ -82,7 +82,6 @@ namespace RHI
 
         std::vector<Pass*>        m_passList;
 
-    private:
         std::vector<Ptr<Fence>> m_frameReadyFence;
         uint32_t                m_frameCount;
         uint32_t                m_currentFrameIndex;

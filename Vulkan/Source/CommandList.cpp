@@ -183,109 +183,113 @@ namespace RHI::Vulkan
     /// CommandPool
     //////////////////////////////////////////////////////////////////////////////////////////
 
-    VkResult CommandPool::Init(IContext* context, uint32_t queueFamilyIndex)
-    {
-        auto createInfo = VkCommandPoolCreateInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        createInfo.pNext = nullptr;
-        createInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-        createInfo.queueFamilyIndex = queueFamilyIndex;
-        return vkCreateCommandPool(context->m_device, &createInfo, nullptr, &m_commandPool);
-    }
-
-    void CommandPool::Shutdown(IContext* context)
-    {
-        vkDestroyCommandPool(context->m_device, m_commandPool, nullptr);
-    }
-
-    void CommandPool::Reset(IContext* context)
-    {
-        vkResetCommandPool(context->m_device, m_commandPool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
-
-        m_availableCommandLists.clear();
-        for (auto& commandList : m_commandLists)
-        {
-            m_availableCommandLists.push_back(commandList.get());
-        }
-    }
-
-    ICommandList* CommandPool::Allocate(IContext* context)
-    {
-        if (!m_availableCommandLists.empty())
-        {
-            auto commandList = m_availableCommandLists.back();
-            m_availableCommandLists.pop_back();
-            return commandList;
-        }
-
-        VkCommandBufferAllocateInfo allocateInfo = {};
-        allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocateInfo.pNext = nullptr;
-        allocateInfo.commandPool = m_commandPool;
-        allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocateInfo.commandBufferCount = 1;
-
-        VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
-        auto result = vkAllocateCommandBuffers(context->m_device, &allocateInfo, &commandBuffer);
-        VULKAN_ASSERT_SUCCESS(result);
-
-        return m_commandLists.emplace_back(std::make_unique<ICommandList>(context, commandBuffer)).get();
-    }
-
-    void CommandPool::Release(ICommandList* commandList)
-    {
-        m_availableCommandLists.push_back(commandList);
-    }
-
-    //////////////////////////////////////////////////////////////////////////////////////////
-    /// ICommandListAllocator
-    //////////////////////////////////////////////////////////////////////////////////////////
-
     ICommandListAllocator::ICommandListAllocator(IContext* context)
         : m_context(context)
-        , m_maxFrameBufferingCount(2)
-        , m_commandPools()
     {
     }
 
     ICommandListAllocator::~ICommandListAllocator()
     {
-        for (auto& commandPool : m_commandPools)
+        for (auto queueCommandPool : m_commandPools)
         {
-            commandPool.Shutdown(m_context);
+            for (auto commandPool : queueCommandPool)
+            {
+                vkDestroyCommandPool(m_context->m_device, commandPool, nullptr);
+            }
         }
     }
 
-    VkResult ICommandListAllocator::Init(QueueType queueType)
+    VkResult ICommandListAllocator::Init()
     {
-        ZoneScoped;
-
-        uint32_t framesCount = 2; // TODO: fix this
-        auto queueFamilyIndex = queueType == QueueType::Graphics ? m_context->m_graphicsQueueFamilyIndex : m_context->m_computeQueueFamilyIndex;
-        for (uint32_t i = 0; i < framesCount; i++)
+        for (uint32_t queueType = 0; queueType < uint32_t(QueueType::Count); queueType++)
         {
-            auto& commandPool = m_commandPools[i];
-            auto result = commandPool.Init(m_context, queueFamilyIndex);
-            VULKAN_RETURN_VKERR_CODE(result);
+            m_commandPools[(queueType)].resize(2);
+            for (auto& commandPool : m_commandPools[(queueType)])
+            {
+                
+                VkCommandPoolCreateInfo createInfo;
+                createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+                createInfo.pNext = nullptr;
+                createInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+                createInfo.queueFamilyIndex = m_context->GetQueueFamilyIndex(QueueType(queueType));
+                auto result = vkCreateCommandPool(m_context->m_device, &createInfo, nullptr, &commandPool);
+                RHI_ASSERT(result == VK_SUCCESS);
+                if (result != VK_SUCCESS)
+                {
+                    return result;
+                }
+            }
         }
 
         return VK_SUCCESS;
     }
 
-    CommandList* ICommandListAllocator::Allocate()
+    void ICommandListAllocator::Reset()
     {
-        ZoneScoped;
+        for (auto queueCommandPool : m_commandPools)
+        {
+            for (auto commandPool : queueCommandPool)
+            {
+                vkTrimCommandPool(m_context->m_device, commandPool, 0);
+                vkResetCommandPool(m_context->m_device, commandPool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
+            }
+        }
+    }
 
-        auto& pool = m_commandPools[m_currentFrameIndex];
-        return pool.Allocate(m_context);
+    CommandList* ICommandListAllocator::Allocate(QueueType queueType)
+    {
+        return Allocate(queueType, 1).front();
+    }
+
+    std::vector<CommandList*> ICommandListAllocator::Allocate(QueueType queueType, uint32_t count)
+    {
+        auto commandPool = m_commandPools[uint32_t(queueType)][0];
+        auto commandBuffers = AllocateCommandBuffers(commandPool, count, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+        std::vector<CommandList*> commandLists;
+        commandLists.reserve(count);
+        for (auto commandBuffer : commandBuffers)
+        {
+            commandLists.push_back(new ICommandList(m_context, commandPool, commandBuffer));
+        }
+        return commandLists;
+    }
+
+    void ICommandListAllocator::Release(TL::Span<CommandList*> _commandLists)
+    {
+        auto commandList = TL::Span((ICommandList*)_commandLists.data(), _commandLists.size());
+        std::vector<VkCommandBuffer> commandBuffers(_commandLists.size());
+        auto commandPool = commandList[0].m_commandPool;
+        auto device = m_context->m_device;
+        m_context->m_deferDeleteQueue.push_back([=](){
+            vkFreeCommandBuffers(device, commandPool, uint32_t(commandBuffers.size()), commandBuffers.data());
+        });
+    }
+
+    std::vector<VkCommandBuffer> ICommandListAllocator::AllocateCommandBuffers(VkCommandPool pool, uint32_t count, VkCommandBufferLevel level)
+    {
+        std::vector<VkCommandBuffer> commandBuffers(count);
+        VkCommandBufferAllocateInfo allocateInfo{};
+        allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocateInfo.pNext = nullptr;
+        allocateInfo.commandPool = pool;
+        allocateInfo.level = level;
+        allocateInfo.commandBufferCount = count;
+        vkAllocateCommandBuffers(m_context->m_device, &allocateInfo, commandBuffers.data());
+        return commandBuffers;
+    }
+
+    void ICommandListAllocator::ReleaseCommandBuffers(VkCommandPool pool, TL::Span<VkCommandBuffer> commandBuffers)
+    {
+        vkFreeCommandBuffers(m_context->m_device, pool, uint32_t(commandBuffers.size()), commandBuffers.data());
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
     /// CommandList
     //////////////////////////////////////////////////////////////////////////////////////////
 
-    ICommandList::ICommandList(IContext* context, VkCommandBuffer commandBuffer)
+    ICommandList::ICommandList(IContext* context, VkCommandPool commandPool, VkCommandBuffer commandBuffer)
         : m_commandBuffer(commandBuffer)
+        , m_commandPool(commandPool)
         , m_context(context)
         , m_pass(nullptr)
     {
@@ -784,7 +788,7 @@ namespace RHI::Vulkan
         renderingInfo.pNext = nullptr;
         renderingInfo.flags = 0;
         renderingInfo.renderArea.extent = ConvertExtent2D(pass.m_frameSize);
-        renderingInfo.renderArea.offset = ConvertOffset2D({0u, 0u, 0u});
+        renderingInfo.renderArea.offset = ConvertOffset2D({ 0u, 0u, 0u });
         renderingInfo.layerCount = 1;
         renderingInfo.colorAttachmentCount = uint32_t(attachmentInfos.size());
         renderingInfo.pColorAttachments = attachmentInfos.data();

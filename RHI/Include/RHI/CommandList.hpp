@@ -4,12 +4,9 @@
 
 namespace RHI
 {
+    enum class QueueType;
     struct GraphicsPipeline;
     struct ComputePipeline;
-
-    struct ImagePassAttachment;
-    struct BufferPassAttachment;
-
     class Pass;
     class CommandList;
 
@@ -119,18 +116,33 @@ namespace RHI
     class RHI_EXPORT CommandListAllocator
     {
     public:
-        virtual ~CommandListAllocator() = default;
+        CommandListAllocator() = default;
+        CommandListAllocator(const CommandListAllocator&) = delete;
+        CommandListAllocator(CommandListAllocator&&) = delete;
+        virtual ~CommandListAllocator()                                                 = default;
 
-        virtual CommandList* Allocate() = 0;
+        /// @brief Resets all command lists allocated from this allocator
+        virtual void                      Reset()                                       = 0;
+
+        /// @brief Allocates a new command list object
+        virtual CommandList*              Allocate(QueueType queueType)                 = 0;
+
+        /// @brief Allocates a new command list object
+        virtual std::vector<CommandList*> Allocate(QueueType queueType, uint32_t count) = 0;
+
+        /// @brief Releases a command list object (must be allocated through here)
+        virtual void                      Release(TL::Span<CommandList*> commandLists)  = 0;
     };
 
     /// @brief Command list record a list of GPU commands that are exectued in the same pass.
     class RHI_EXPORT CommandList
     {
+    protected:
+        CommandList()                         = default;
+        CommandList(const CommandList& other) = delete;
+        CommandList(CommandList&& other)      = default;
+
     public:
-        CommandList()                                                                  = default;
-        CommandList(const CommandList& other)                                          = delete;
-        CommandList(CommandList&& other)                                               = default;
         virtual ~CommandList()                                                         = default;
 
         /// @brief Marks the begining of this command list recording

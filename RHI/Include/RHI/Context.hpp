@@ -165,7 +165,7 @@ namespace RHI
         ///
         /// @param createInfo [in] Information describing the desired charactersitics of the command list allocator object.
         /// @return RAII scoped pointer containing a pointer to the created command list allocator
-        virtual Ptr<CommandListAllocator> CreateCommandListAllocator(QueueType queueType)                      = 0;
+        virtual Ptr<CommandListAllocator> CreateCommandListAllocator()                                         = 0;
 
         /// Creates a new resource pool object with specified configuration.
         ///

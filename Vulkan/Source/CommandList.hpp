@@ -10,46 +10,33 @@ namespace RHI::Vulkan
     class IContext;
     class ICommandList;
 
-    class CommandPool
-    {
-    public:
-        VkResult Init(IContext* context, uint32_t queueFamilyIndex);
-
-        void Shutdown(IContext* context);
-
-        void Reset(IContext* context);
-
-        ICommandList* Allocate(IContext* context);
-
-        void Release(ICommandList* commandList);
-
-    private:
-        VkCommandPool m_commandPool;
-        std::vector<std::unique_ptr<ICommandList>> m_commandLists;
-        std::vector<ICommandList*> m_availableCommandLists;
-    };
-
     class ICommandListAllocator final : public CommandListAllocator
     {
     public:
         ICommandListAllocator(IContext* context);
+
         ~ICommandListAllocator();
 
-        VkResult Init(QueueType queueType);
+        VkResult Init();
 
-        CommandList* Allocate() override;
+        void Reset() override;
+        CommandList* Allocate(QueueType queueType) override;
+        std::vector<CommandList*> Allocate(QueueType queueType, uint32_t count) override;
+        void Release(TL::Span<CommandList*> commandLists) override;
+
+    private:
+        std::vector<VkCommandBuffer> AllocateCommandBuffers(VkCommandPool pool, uint32_t count, VkCommandBufferLevel level);
+        void ReleaseCommandBuffers(VkCommandPool pool, TL::Span<VkCommandBuffer> commandBuffers);
 
     private:
         IContext* m_context;
-        uint32_t m_maxFrameBufferingCount;
-        uint32_t m_currentFrameIndex;
-        CommandPool m_commandPools[3];
+        std::vector<VkCommandPool> m_commandPools[uint32_t(QueueType::Count)];
     };
 
     class ICommandList final : public CommandList
     {
     public:
-        ICommandList(IContext* context, VkCommandBuffer commandBuffer);
+        ICommandList(IContext* context, VkCommandPool commandPool, VkCommandBuffer commandBuffer);
 
         void Begin() override;
         void Begin(Pass& pass) override;
@@ -66,6 +53,7 @@ namespace RHI::Vulkan
         void DebugMarkerPop() override;
 
         VkCommandBuffer m_commandBuffer;
+        VkCommandPool m_commandPool;
 
         std::vector<VkSemaphoreSubmitInfo> m_signalSemaphores;
         std::vector<VkSemaphoreSubmitInfo> m_waitSemaphores;
