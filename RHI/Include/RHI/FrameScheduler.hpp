@@ -74,18 +74,17 @@ namespace RHI
 
     protected:
         Context*                  m_context;
-        // Ptr<RenderGraph>          m_renderGraph;
         Ptr<StagingBuffer>        m_stagingBuffer;
         Ptr<TransientAllocator>   m_transientAllocator;
         Ptr<AttachmentsPool>      m_attachmentsPool;
-        Ptr<CommandListAllocator> m_copyCommandListAllocator;
+        Ptr<CommandListAllocator> m_commandListAllocator;
 
         std::vector<Pass*>        m_passList;
 
-        std::vector<Ptr<Fence>> m_frameReadyFence;
-        uint32_t                m_frameCount;
-        uint32_t                m_currentFrameIndex;
-        uint64_t                m_frameNumber;
+        std::vector<Ptr<Fence>>   m_frameReadyFence;
+        uint32_t                  m_frameCount;
+        uint32_t                  m_currentFrameIndex;
+        uint64_t                  m_frameNumber;
     };
 
 } // namespace RHI

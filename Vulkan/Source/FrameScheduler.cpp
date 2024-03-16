@@ -14,7 +14,7 @@ namespace RHI::Vulkan
     {
         m_stagingBuffer = CreatePtr<IStagingBuffer>(context);
         m_transientAllocator = CreatePtr<ITransientAllocator>(context);
-        m_copyCommandListAllocator = CreatePtr<ICommandListAllocator>(context);
+        m_commandListAllocator = CreatePtr<ICommandListAllocator>(context);
         m_currentFrameIndex = 0;
     }
 
@@ -31,7 +31,7 @@ namespace RHI::Vulkan
 
         ((IStagingBuffer*)m_stagingBuffer.get())->Init();
 
-        ((ICommandListAllocator*)m_copyCommandListAllocator.get())->Init();
+        ((ICommandListAllocator*)m_commandListAllocator.get())->Init();
 
         return VK_SUCCESS;
     }
@@ -67,6 +67,8 @@ namespace RHI::Vulkan
             context->FreeSemaphore(buffer->waitSemaphore);
             buffer->waitSemaphore = VK_NULL_HANDLE;
         }
+
+        context->DestroyResources();
     }
 
     void IFrameScheduler::WaitIdle()

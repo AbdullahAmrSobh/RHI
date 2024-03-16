@@ -256,18 +256,28 @@ namespace RHI::Vulkan
 
     void ICommandListAllocator::Release(TL::Span<CommandList*> _commandLists)
     {
-        auto commandList = TL::Span((ICommandList*)_commandLists.data(), _commandLists.size());
-        std::vector<VkCommandBuffer> commandBuffers(_commandLists.size());
-        auto commandPool = commandList[0].m_commandPool;
-        auto device = m_context->m_device;
-        m_context->m_deferDeleteQueue.push_back([=](){
-            vkFreeCommandBuffers(device, commandPool, uint32_t(commandBuffers.size()), commandBuffers.data());
-        });
+        (void)_commandLists;
+        // auto commandLists = TL::Span((ICommandList*)_commandLists.data(), _commandLists.size());
+        // std::vector<VkCommandBuffer> commandBuffers; 
+        // commandBuffers.reserve(_commandLists.size());
+        // auto commandPool = commandLists[0].m_commandPool;
+        // auto device = m_context->m_device;
+
+        // for (auto& commandList : commandLists)
+        // {
+        //     commandBuffers.push_back(commandList.m_commandBuffer);
+        // }
+
+        // m_context->m_deferDeleteQueue.push_back([=](){
+        //     vkFreeCommandBuffers(device, commandPool, uint32_t(commandBuffers.size()), commandBuffers.data());
+        // });
     }
 
     std::vector<VkCommandBuffer> ICommandListAllocator::AllocateCommandBuffers(VkCommandPool pool, uint32_t count, VkCommandBufferLevel level)
     {
-        std::vector<VkCommandBuffer> commandBuffers(count);
+        std::vector<VkCommandBuffer> commandBuffers;
+        commandBuffers.resize(count);
+
         VkCommandBufferAllocateInfo allocateInfo{};
         allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         allocateInfo.pNext = nullptr;

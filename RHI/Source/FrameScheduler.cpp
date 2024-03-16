@@ -33,6 +33,8 @@ namespace RHI
 
         m_currentFrameIndex++;
         m_currentFrameIndex %= 2;
+
+        Flush();
     }
 
     Ptr<Pass> FrameScheduler::CreatePass(const char* name, QueueType queueType)
@@ -67,7 +69,7 @@ namespace RHI
         copyInfo.dstSubresource = subresource;
         copyInfo.dstOffset = offset;
 
-        auto commandList = m_copyCommandListAllocator->Allocate(RHI::QueueType::Transfer);
+        auto commandList = m_commandListAllocator->Allocate(RHI::QueueType::Transfer);
         commandList->Begin();
         commandList->Copy(copyInfo);
         commandList->End();
@@ -86,7 +88,7 @@ namespace RHI
 
         BufferCopyInfo copyInfo{};
 
-        auto commandList = m_copyCommandListAllocator->Allocate(RHI::QueueType::Transfer);
+        auto commandList = m_commandListAllocator->Allocate(RHI::QueueType::Transfer);
         commandList->Begin();
         commandList->Copy(copyInfo);
         commandList->End();
