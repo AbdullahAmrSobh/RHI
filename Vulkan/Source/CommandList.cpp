@@ -3,11 +3,11 @@
 #include "Context.hpp"
 #include "FrameScheduler.hpp"
 #include "Resources.hpp"
-#include <RHI/Attachments.hpp>
+#include "Swapchain.hpp"
 
+#include <RHI/Attachments.hpp>
 #include <RHI/Format.hpp>
 
-#include <Swapchain.hpp>
 #include <tracy/Tracy.hpp>
 
 namespace RHI::Vulkan
@@ -206,7 +206,6 @@ namespace RHI::Vulkan
             m_commandPools[(queueType)].resize(2);
             for (auto& commandPool : m_commandPools[(queueType)])
             {
-                
                 VkCommandPoolCreateInfo createInfo;
                 createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
                 createInfo.pNext = nullptr;
@@ -258,7 +257,7 @@ namespace RHI::Vulkan
     {
         (void)_commandLists;
         // auto commandLists = TL::Span((ICommandList*)_commandLists.data(), _commandLists.size());
-        // std::vector<VkCommandBuffer> commandBuffers; 
+        // std::vector<VkCommandBuffer> commandBuffers;
         // commandBuffers.reserve(_commandLists.size());
         // auto commandPool = commandLists[0].m_commandPool;
         // auto device = m_context->m_device;
@@ -418,7 +417,7 @@ namespace RHI::Vulkan
             }
         }
 
-        PipelineBarrier(bufferBarriers, imageBarriers);
+        PipelineBarrier({}, bufferBarriers, imageBarriers);
 
         if (m_pass && m_pass->GetQueueType() == QueueType::Graphics)
         {
@@ -432,7 +431,7 @@ namespace RHI::Vulkan
 
         if (m_pass && m_pass->GetQueueType() == QueueType::Graphics)
         {
-            RenderingEnd(*m_pass);
+            RenderingEnd();
         }
 
         std::vector<VkImageMemoryBarrier2> imageBarriers;
@@ -529,10 +528,93 @@ namespace RHI::Vulkan
                 }
             }
 
-            PipelineBarrier(bufferBarriers, imageBarriers);
+            PipelineBarrier({}, bufferBarriers, imageBarriers);
         }
 
         vkEndCommandBuffer(m_commandBuffer);
+    }
+
+    void ICommandList::DebugMarkerPush(const char* name, const ColorValue& color)
+    {
+        ZoneScoped;
+
+        (void)name;
+        (void)color;
+
+#if RHI_DEBUG
+        if (m_context->m_vkCmdDebugMarkerBeginEXT)
+        {
+            VkDebugMarkerMarkerInfoEXT info{};
+            info.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT;
+            info.pNext = nullptr;
+            info.pMarkerName = name;
+            info.color[0] = color.r;
+            info.color[1] = color.g;
+            info.color[2] = color.b;
+            info.color[3] = color.a;
+            m_context->m_vkCmdDebugMarkerBeginEXT(m_commandBuffer, &info);
+        }
+#endif
+    }
+
+    void ICommandList::DebugMarkerPop()
+    {
+        ZoneScoped;
+
+#if RHI_DEBUG
+        if (m_context->m_vkCmdDebugMarkerEndEXT)
+        {
+            m_context->m_vkCmdDebugMarkerEndEXT(m_commandBuffer);
+        }
+#endif
+    }
+
+    void ICommandList::BeginConditionalCommands(Handle<Buffer> handle, size_t offset, bool inverted)
+    {
+        ZoneScoped;
+
+        if (m_context->m_vkCmdBeginConditionalRenderingEXT)
+        {
+            m_context->DebugLogWarn("This function is not available");
+            return;
+        }
+
+        auto buffer = m_context->m_bufferOwner.Get(handle);
+
+        VkConditionalRenderingBeginInfoEXT beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_CONDITIONAL_RENDERING_BEGIN_INFO_EXT;
+        beginInfo.pNext = nullptr;
+        beginInfo.buffer = buffer->handle;
+        beginInfo.offset = offset;
+        beginInfo.flags = inverted ? VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT : 0u;
+        m_context->m_vkCmdBeginConditionalRenderingEXT(m_commandBuffer, &beginInfo);
+    }
+
+    void ICommandList::EndConditionalCommands()
+    {
+        ZoneScoped;
+
+        if (m_context->m_vkCmdEndConditionalRenderingEXT)
+        {
+            m_context->DebugLogWarn("This function is not available");
+            return;
+        }
+
+        m_context->m_vkCmdEndConditionalRenderingEXT(m_commandBuffer);
+    }
+
+    void ICommandList::Execute(TL::Span<const CommandList*> commandLists)
+    {
+        ZoneScoped;
+
+        std::vector<VkCommandBuffer> commandBuffers;
+        commandBuffers.reserve(commandLists.size());
+        for (auto _commandList : commandLists)
+        {
+            auto commandList = (const ICommandList*)_commandList;
+            commandBuffers.push_back(commandList->m_commandBuffer);
+        }
+        vkCmdExecuteCommands(m_commandBuffer, uint32_t(commandBuffers.size()), commandBuffers.data());
     }
 
     void ICommandList::SetViewport(const Viewport& viewport)
@@ -712,39 +794,6 @@ namespace RHI::Vulkan
         vkCmdCopyImageToBuffer(m_commandBuffer, srcImage->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstBuffer->handle, 1, &copyInfo);
     }
 
-    void ICommandList::DebugMarkerPush(const char* name, const ColorValue& color)
-    {
-        ZoneScoped;
-
-        (void)name;
-#if RHI_DEBUG
-        if (m_context->m_vkCmdDebugMarkerBeginEXT)
-        {
-            VkDebugMarkerMarkerInfoEXT info{};
-            info.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT;
-            info.pNext = nullptr;
-            info.pMarkerName = name;
-            info.color[0] = color.r;
-            info.color[1] = color.g;
-            info.color[2] = color.b;
-            info.color[3] = color.a;
-            m_context->m_vkCmdDebugMarkerBeginEXT(m_commandBuffer, &info);
-        }
-#endif
-    }
-
-    void ICommandList::DebugMarkerPop()
-    {
-        ZoneScoped;
-
-#if RHI_DEBUG
-        if (m_context->m_vkCmdDebugMarkerEndEXT)
-        {
-            m_context->m_vkCmdDebugMarkerEndEXT(m_commandBuffer);
-        }
-#endif
-    }
-
     void ICommandList::BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<Handle<BindGroup>> bindGroups)
     {
         uint32_t count = 0;
@@ -806,10 +855,9 @@ namespace RHI::Vulkan
         vkCmdBeginRendering(m_commandBuffer, &renderingInfo);
     }
 
-    void ICommandList::RenderingEnd(Pass& pass)
+    void ICommandList::RenderingEnd()
     {
         ZoneScoped;
-        (void)pass;
         vkCmdEndRendering(m_commandBuffer);
     }
 

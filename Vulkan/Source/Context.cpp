@@ -113,11 +113,13 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        DebugReportLiveResources();
-
         vkDeviceWaitIdle(m_device);
 
+        // Destroy resource in the delete queue
         DestroyResources();
+
+        // Cleanup base
+        OnDestruct();
 
         vmaDestroyAllocator(m_allocator);
         vkDestroyDevice(m_device, nullptr);
@@ -824,6 +826,10 @@ namespace RHI::Vulkan
             RHI_ASSERT(m_vkCmdDebugMarkerEndEXT);
         }
 #endif
+
+        m_vkCmdBeginConditionalRenderingEXT = VULKAN_LOAD_PROC(m_device, vkCmdBeginConditionalRenderingEXT);
+        m_vkCmdEndConditionalRenderingEXT = VULKAN_LOAD_PROC(m_device, vkCmdEndConditionalRenderingEXT);
+
         return VK_SUCCESS;
     }
 

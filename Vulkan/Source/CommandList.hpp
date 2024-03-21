@@ -37,20 +37,27 @@ namespace RHI::Vulkan
     {
     public:
         ICommandList(IContext* context, VkCommandPool commandPool, VkCommandBuffer commandBuffer);
+        ~ICommandList() = default;
 
-        void Begin() override;
-        void Begin(Pass& pass) override;
-        void End() override;
-        void SetViewport(const Viewport& viewport) override;
-        void SetSicssor(const Scissor& sicssor) override;
-        void Draw(const DrawInfo& command) override;
-        void Dispatch(const DispatchInfo& command) override;
-        void Copy(const BufferCopyInfo& command) override;
-        void Copy(const ImageCopyInfo& command) override;
-        void Copy(const BufferToImageCopyInfo& command) override;
-        void Copy(const ImageToBufferCopyInfo& command) override;
-        void DebugMarkerPush(const char* name, const ColorValue& color) override;
-        void DebugMarkerPop() override;
+        // clang-format off
+        void Begin()                                                                       override;
+        void Begin(Pass& pass)                                                             override;
+        void End()                                                                         override;
+        void DebugMarkerPush(const char* name, const struct ColorValue& color)             override;
+        void DebugMarkerPop()                                                              override;
+        void BeginConditionalCommands(Handle<Buffer> buffer, size_t offset, bool inverted) override;
+        void EndConditionalCommands()                                                      override;
+        // TODO: add indirect commands here
+        void Execute(TL::Span<const CommandList*> commandLists)                            override;
+        void SetViewport(const Viewport& viewport)                                         override;
+        void SetSicssor(const Scissor& sicssor)                                            override;
+        void Draw(const DrawInfo& drawInfo)                                                override;
+        void Dispatch(const DispatchInfo& dispatchInfo)                                    override;
+        void Copy(const BufferCopyInfo& copyInfo)                                          override;
+        void Copy(const ImageCopyInfo& copyInfo)                                           override;
+        void Copy(const BufferToImageCopyInfo& copyInfo)                                   override;
+        void Copy(const ImageToBufferCopyInfo& copyInfo)                                   override;
+        // clang-format on
 
         VkCommandBuffer m_commandBuffer;
         VkCommandPool m_commandPool;
@@ -62,42 +69,16 @@ namespace RHI::Vulkan
         void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<Handle<BindGroup>> bindGroups);
 
         void RenderingBegin(Pass& pass);
+        void RenderingEnd();
 
-        void RenderingEnd(Pass& pass);
-
-        void PipelineBarrier(TL::Span<VkMemoryBarrier2> memoryBarriers, TL::Span<VkBufferMemoryBarrier2> bufferBarriers, TL::Span<VkImageMemoryBarrier2> imageBarriers);
-
-        void PipelineBarrier(TL::Span<VkBufferMemoryBarrier2> bufferBarriers, TL::Span<VkImageMemoryBarrier2> imageBarriers);
-
-        void PipelineBarrier(TL::Span<VkMemoryBarrier2> memoryBarriers);
-
-        void PipelineBarrier(TL::Span<VkBufferMemoryBarrier2> bufferBarriers);
-
-        void PipelineBarrier(TL::Span<VkImageMemoryBarrier2> imageBarriers);
+        void PipelineBarrier(
+            TL::Span<VkMemoryBarrier2> memoryBarriers,
+            TL::Span<VkBufferMemoryBarrier2> bufferBarriers,
+            TL::Span<VkImageMemoryBarrier2> imageBarriers);
 
     private:
         IContext* m_context;
         Pass* m_pass;
     };
-
-    inline void ICommandList::PipelineBarrier(TL::Span<VkBufferMemoryBarrier2> bufferBarriers, TL::Span<VkImageMemoryBarrier2> imageBarriers)
-    {
-        PipelineBarrier({}, bufferBarriers, imageBarriers);
-    }
-
-    inline void ICommandList::PipelineBarrier(TL::Span<VkMemoryBarrier2> memoryBarriers)
-    {
-        PipelineBarrier(memoryBarriers, {}, {});
-    }
-
-    inline void ICommandList::PipelineBarrier(TL::Span<VkBufferMemoryBarrier2> bufferBarriers)
-    {
-        PipelineBarrier({}, bufferBarriers, {});
-    }
-
-    inline void ICommandList::PipelineBarrier(TL::Span<VkImageMemoryBarrier2> imageBarriers)
-    {
-        PipelineBarrier({}, {}, imageBarriers);
-    }
 
 } // namespace RHI::Vulkan

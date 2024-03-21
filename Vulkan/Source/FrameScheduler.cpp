@@ -68,7 +68,7 @@ namespace RHI::Vulkan
             buffer->waitSemaphore = VK_NULL_HANDLE;
         }
 
-        context->DestroyResources();
+        // context->DestroyResources();
     }
 
     void IFrameScheduler::WaitIdle()

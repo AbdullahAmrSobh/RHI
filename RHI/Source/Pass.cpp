@@ -12,8 +12,6 @@ namespace RHI
     {
     }
 
-    Pass::~Pass() {}
-
     void Pass::SetRenderTargetSize(ImageSize2D size)
     {
         m_frameSize = size;
@@ -96,7 +94,7 @@ namespace RHI
         return UseBufferResourceInternal(attachment->GetAttachment(), usage, access, subregion);
     }
 
-    void Pass::SubmitCommandList(TL::Span<CommandList*> commandList)
+    void Pass::Submit(TL::Span<CommandList*> commandList)
     {
         m_commandLists.insert(m_commandLists.end(), commandList.begin(), commandList.end());
     }
@@ -129,7 +127,6 @@ namespace RHI
         attachment->Insert(passAttachment);
 
         UseAttachment(passAttachment);
-
 
         return passAttachment;
     }

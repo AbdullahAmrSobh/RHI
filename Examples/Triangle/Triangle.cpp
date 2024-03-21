@@ -132,47 +132,47 @@ public:
             m_renderPipelineState = m_context->CreateGraphicsPipeline(createInfo);
         }
         // create shader bind group layout compute pipeline
-        {
-            RHI::BindGroupLayoutCreateInfo createInfo = {};
-            createInfo.bindings[0] = { RHI::ShaderBindingType::StorageImage, RHI::Access::ReadWrite, 1, RHI::ShaderStage::Compute };
-            m_computeBindGroupLayout = m_context->CreateBindGroupLayout(createInfo);
-            m_computePipelineLayout = m_context->CreatePipelineLayout({ m_computeBindGroupLayout });
-        }
-        {
-            auto shaderCode = ReadBinaryFile("./Resources/Shaders/compute.spv");
-            auto shaderModule = m_context->CreateShaderModule(shaderCode);
-            RHI::ComputePipelineCreateInfo createInfo{};
-            createInfo.shaderName = "CSMain";
-            createInfo.shaderModule = shaderModule.get();
-            createInfo.layout = m_computePipelineLayout;
-            m_computePipelineState = m_context->CreateComputePipeline(createInfo);
-        }
-        // create shader bind group compose pipeline
-        {
-            RHI::BindGroupLayoutCreateInfo createInfo = {};
-            createInfo.bindings[0] = { RHI::ShaderBindingType::SampledImage, RHI::Access::Read, 1, RHI::ShaderStage::Pixel };
-            createInfo.bindings[1] = { RHI::ShaderBindingType::SampledImage, RHI::Access::ReadWrite, 1, RHI::ShaderStage::Pixel };
-            createInfo.bindings[2] = { RHI::ShaderBindingType::Sampler, RHI::Access::Read, 1, RHI::ShaderStage::Pixel };
-            createInfo.bindings[3] = { RHI::ShaderBindingType::UniformBuffer, RHI::Access::Read, 1, RHI::ShaderStage::Pixel };
-            m_composeBindGroupLayout = m_context->CreateBindGroupLayout(createInfo);
-            m_composePipelineLayout = m_context->CreatePipelineLayout({ m_composeBindGroupLayout });
-        }
-        {
-            auto shaderCode = ReadBinaryFile("./Resources/Shaders/compose.spv");
-            auto shaderModule = m_context->CreateShaderModule(shaderCode);
-            RHI::GraphicsPipelineCreateInfo createInfo{};
-            createInfo.vertexShaderName = "VSMain";
-            createInfo.pixelShaderName = "PSMain";
-            createInfo.vertexShaderModule = shaderModule.get();
-            createInfo.pixelShaderModule = shaderModule.get();
-            createInfo.layout = m_composePipelineLayout;
-            createInfo.renderTargetLayout.colorAttachmentsFormats[0] = RHI::Format::BGRA8_UNORM;
-            createInfo.renderTargetLayout.depthAttachmentFormat = RHI::Format::D32;
-            createInfo.depthStencilState.depthTestEnable = true;
-            createInfo.depthStencilState.depthWriteEnable = true;
-            createInfo.depthStencilState.compareOperator = RHI::CompareOperator::Greater;
-            m_composePipelineState = m_context->CreateGraphicsPipeline(createInfo);
-        }
+        // {
+        //     RHI::BindGroupLayoutCreateInfo createInfo = {};
+        //     createInfo.bindings[0] = { RHI::ShaderBindingType::StorageImage, RHI::Access::ReadWrite, 1, RHI::ShaderStage::Compute };
+        //     m_computeBindGroupLayout = m_context->CreateBindGroupLayout(createInfo);
+        //     m_computePipelineLayout = m_context->CreatePipelineLayout({ m_computeBindGroupLayout });
+        // }
+        // {
+        //     auto shaderCode = ReadBinaryFile("./Resources/Shaders/compute.spv");
+        //     auto shaderModule = m_context->CreateShaderModule(shaderCode);
+        //     RHI::ComputePipelineCreateInfo createInfo{};
+        //     createInfo.shaderName = "CSMain";
+        //     createInfo.shaderModule = shaderModule.get();
+        //     createInfo.layout = m_computePipelineLayout;
+        //     m_computePipelineState = m_context->CreateComputePipeline(createInfo);
+        // }
+        // // create shader bind group compose pipeline
+        // {
+        //     RHI::BindGroupLayoutCreateInfo createInfo = {};
+        //     createInfo.bindings[0] = { RHI::ShaderBindingType::SampledImage, RHI::Access::Read, 1, RHI::ShaderStage::Pixel };
+        //     createInfo.bindings[1] = { RHI::ShaderBindingType::SampledImage, RHI::Access::ReadWrite, 1, RHI::ShaderStage::Pixel };
+        //     createInfo.bindings[2] = { RHI::ShaderBindingType::Sampler, RHI::Access::Read, 1, RHI::ShaderStage::Pixel };
+        //     createInfo.bindings[3] = { RHI::ShaderBindingType::UniformBuffer, RHI::Access::Read, 1, RHI::ShaderStage::Pixel };
+        //     m_composeBindGroupLayout = m_context->CreateBindGroupLayout(createInfo);
+        //     m_composePipelineLayout = m_context->CreatePipelineLayout({ m_composeBindGroupLayout });
+        // }
+        // {
+        //     auto shaderCode = ReadBinaryFile("./Resources/Shaders/compose.spv");
+        //     auto shaderModule = m_context->CreateShaderModule(shaderCode);
+        //     RHI::GraphicsPipelineCreateInfo createInfo{};
+        //     createInfo.vertexShaderName = "VSMain";
+        //     createInfo.pixelShaderName = "PSMain";
+        //     createInfo.vertexShaderModule = shaderModule.get();
+        //     createInfo.pixelShaderModule = shaderModule.get();
+        //     createInfo.layout = m_composePipelineLayout;
+        //     createInfo.renderTargetLayout.colorAttachmentsFormats[0] = RHI::Format::BGRA8_UNORM;
+        //     createInfo.renderTargetLayout.depthAttachmentFormat = RHI::Format::D32;
+        //     createInfo.depthStencilState.depthTestEnable = true;
+        //     createInfo.depthStencilState.depthWriteEnable = true;
+        //     createInfo.depthStencilState.compareOperator = RHI::CompareOperator::Greater;
+        //     m_composePipelineState = m_context->CreateGraphicsPipeline(createInfo);
+        // }
 
         // setup the render graph
         // RHI::ImagePassAttachment* colorAttachment;
@@ -181,7 +181,7 @@ public:
             auto& scheduler = m_context->GetScheduler();
 
             m_renderPass = scheduler.CreatePass("Render-Pass", RHI::QueueType::Graphics);
-            m_renderPass->SetRenderTargetSize({ 1600, 1200 });
+            m_renderPass->SetRenderTargetSize({ m_windowWidth, m_windowHeight });
             m_renderPass->CreateRenderTarget("depth-target", RHI::Format::D32, RHI::DepthStencilValue{ 0.0f });
             // colorAttachment = m_renderPass->UseRenderTarget("color-target", m_swapchain.get(), RHI::ColorValue{ 0.0f, 0.2f, 0.3f, 1.0f });
             m_renderPass->UseRenderTarget("color-target", m_swapchain.get(), RHI::ColorValue{ 0.0f, 0.2f, 0.3f, 1.0f });
@@ -190,7 +190,7 @@ public:
             // maskAttachment = m_computePass->CreateTransientImage("mask", RHI::Format::R8_UNORM, RHI::ImageUsage::StorageResource, RHI::ImageSize2D{ m_windowWidth, m_windowHeight });
 
             // m_composePass = scheduler.CreatePass("Compose-Pass", RHI::QueueType::Graphics);
-            // m_composePass->SetRenderTargetSize({ 1600, 1200 });
+            // m_composePass->SetRenderTargetSize({ m_windowWidth, m_windowHeight });
             // m_composePass->UseRenderTarget(colorAttachment, RHI::ColorValue{ 0.0f });
             // m_composePass->UseImageResource(maskAttachment, RHI::ImageUsage::ShaderResource, RHI::Access::Read);
             scheduler.Compile();
@@ -236,15 +236,15 @@ public:
         m_context->DestroyGraphicsPipeline(m_renderPipelineState);
         m_context->DestroyBindGroup(m_renderBindGroup);
 
-        m_context->DestroyBindGroupLayout(m_computeBindGroupLayout);
-        m_context->DestroyPipelineLayout(m_computePipelineLayout);
-        m_context->DestroyComputePipeline(m_computePipelineState);
-        m_context->DestroyBindGroup(m_computeBindGroup);
+        // m_context->DestroyBindGroupLayout(m_computeBindGroupLayout);
+        // m_context->DestroyPipelineLayout(m_computePipelineLayout);
+        // m_context->DestroyComputePipeline(m_computePipelineState);
+        // m_context->DestroyBindGroup(m_computeBindGroup);
 
-        m_context->DestroyBindGroupLayout(m_composeBindGroupLayout);
-        m_context->DestroyPipelineLayout(m_composePipelineLayout);
-        m_context->DestroyGraphicsPipeline(m_composePipelineState);
-        m_context->DestroyBindGroup(m_composeBindGroup);
+        // m_context->DestroyBindGroupLayout(m_composeBindGroupLayout);
+        // m_context->DestroyPipelineLayout(m_composePipelineLayout);
+        // m_context->DestroyGraphicsPipeline(m_composePipelineState);
+        // m_context->DestroyBindGroup(m_composeBindGroup);
     }
 
     void OnUpdate(Timestep timestep) override
@@ -297,8 +297,11 @@ public:
             commandList->SetViewport(viewport);
             commandList->SetSicssor(scissor);
             commandList->Draw(drawCommand);
+
+            // m_imguiRenderer->RenderDrawData(ImGui::GetDrawData(), *commandList);
+
             commandList->End();
-            m_renderPass->SubmitCommandList(commandList);
+            m_renderPass->Submit(commandList);
             m_commandListAllocator->Release(commandList);
         }
 
@@ -309,11 +312,11 @@ public:
         //     dispatchInfo.parameters.countX = 32;
         //     dispatchInfo.parameters.countY = 32;
         //     dispatchInfo.parameters.countZ = 32;
-        //     auto commandList = m_commandListAllocator->Allocate();
+        //     auto commandList = m_commandListAllocator->Allocate(RHI::QueueType::Graphics);
         //     commandList->Begin(*m_computePass);
         //     commandList->Dispatch(dispatchInfo);
         //     commandList->End();
-        //     m_computePass->SubmitCommandList(commandList);
+        //     m_computePass->Submit(commandList);
         // }
 
         // {
@@ -322,13 +325,13 @@ public:
         //     drawCommand.bindGroups = m_renderBindGroup;
         //     drawCommand.parameters = { .elementCount = 6 };
 
-        //     auto commandList = m_commandListAllocator->Allocate();
-        //     commandList->Begin(*m_renderPass);
+        //     auto commandList = m_commandListAllocator->Allocate(RHI::QueueType::Graphics);
+        //     commandList->Begin(*m_composePass);
         //     commandList->SetViewport(viewport);
         //     commandList->SetSicssor(scissor);
         //     commandList->Draw(drawCommand);
         //     commandList->End();
-        //     m_composePass->SubmitCommandList(commandList);
+        //     m_composePass->Submit(commandList);
         // }
 
         scheduler.End();
@@ -349,15 +352,15 @@ private:
     RHI::Handle<RHI::GraphicsPipeline> m_renderPipelineState;
     RHI::Handle<RHI::BindGroup> m_renderBindGroup;
 
-    RHI::Handle<RHI::BindGroupLayout> m_computeBindGroupLayout;
-    RHI::Handle<RHI::PipelineLayout> m_computePipelineLayout;
-    RHI::Handle<RHI::ComputePipeline> m_computePipelineState;
-    RHI::Handle<RHI::BindGroup> m_computeBindGroup;
+    // RHI::Handle<RHI::BindGroupLayout> m_computeBindGroupLayout;
+    // RHI::Handle<RHI::PipelineLayout> m_computePipelineLayout;
+    // RHI::Handle<RHI::ComputePipeline> m_computePipelineState;
+    // RHI::Handle<RHI::BindGroup> m_computeBindGroup;
 
-    RHI::Handle<RHI::BindGroupLayout> m_composeBindGroupLayout;
-    RHI::Handle<RHI::PipelineLayout> m_composePipelineLayout;
-    RHI::Handle<RHI::GraphicsPipeline> m_composePipelineState;
-    RHI::Handle<RHI::BindGroup> m_composeBindGroup;
+    // RHI::Handle<RHI::BindGroupLayout> m_composeBindGroupLayout;
+    // RHI::Handle<RHI::PipelineLayout> m_composePipelineLayout;
+    // RHI::Handle<RHI::GraphicsPipeline> m_composePipelineState;
+    // RHI::Handle<RHI::BindGroup> m_composeBindGroup;
 
     RHI::Ptr<RHI::Pass> m_renderPass;
     RHI::Ptr<RHI::Pass> m_computePass;

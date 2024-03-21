@@ -24,5 +24,4 @@ namespace RHI
 
     // return the file and line of the symbol address
     RHI_EXPORT std::string GetSymbolFileAndLine(void* address);
-
 } // namespace RHI

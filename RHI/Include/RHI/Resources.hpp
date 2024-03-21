@@ -3,6 +3,7 @@
 #include "RHI/Common/Flags.hpp"
 #include "RHI/Common/Handle.hpp"
 #include "RHI/Common/Span.hpp"
+#include "RHI/Common/Hash.hpp"
 #include "RHI/Format.hpp"
 #include "RHI/Access.hpp"
 
@@ -760,3 +761,20 @@ namespace RHI
     };
 
 } // namespace RHI
+
+#define DEFINE_POD_HASH_SPECIALIZATION(Type)                         \
+    namespace std                                                    \
+    {                                                                \
+        template<>                                                   \
+        struct hash<Type>                                            \
+        {                                                            \
+            std::size_t operator()(const Type& value) const noexcept \
+            {                                                        \
+                return ::RHI::HashAny<Type>(value);                  \
+            }                                                        \
+        };                                                           \
+    }
+
+DEFINE_POD_HASH_SPECIALIZATION(RHI::ImageCreateInfo);
+DEFINE_POD_HASH_SPECIALIZATION(RHI::BufferCreateInfo);
+DEFINE_POD_HASH_SPECIALIZATION(RHI::SamplerCreateInfo);

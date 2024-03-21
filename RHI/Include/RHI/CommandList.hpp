@@ -116,9 +116,9 @@ namespace RHI
     class RHI_EXPORT CommandListAllocator
     {
     public:
-        CommandListAllocator() = default;
-        CommandListAllocator(const CommandListAllocator&) = delete;
-        CommandListAllocator(CommandListAllocator&&) = delete;
+        CommandListAllocator()                                                          = default;
+        CommandListAllocator(const CommandListAllocator&)                               = delete;
+        CommandListAllocator(CommandListAllocator&&)                                    = delete;
         virtual ~CommandListAllocator()                                                 = default;
 
         /// @brief Resets all command lists allocated from this allocator
@@ -143,45 +143,56 @@ namespace RHI
         CommandList(CommandList&& other)      = default;
 
     public:
-        virtual ~CommandList()                                                         = default;
+        virtual ~CommandList()                                                                     = default;
 
         /// @brief Marks the begining of this command list recording
-        virtual void Begin()                                                           = 0;
+        virtual void Begin()                                                                       = 0;
 
         /// @brief Marks the begining of this command list recording inside a pass
-        virtual void Begin(Pass& pass)                                                 = 0;
+        virtual void Begin(Pass& pass)                                                             = 0;
 
         /// @brief Marks the ending of this command list recording
-        virtual void End()                                                             = 0;
-
-        /// @brief Sets the rendering viewport
-        virtual void SetViewport(const Viewport& viewport)                             = 0;
-
-        /// @brief Sets the rendering scissor
-        virtual void SetSicssor(const Scissor& sicssor)                                = 0;
-
-        /// @brief Submit a draw command
-        virtual void Draw(const DrawInfo& command)                                     = 0;
-
-        /// @brief Submit a compute command
-        virtual void Dispatch(const DispatchInfo& command)                             = 0;
-
-        /// @brief Submit a buffer copy command
-        virtual void Copy(const BufferCopyInfo& command)                               = 0;
-
-        /// @brief Submit a image copy command
-        virtual void Copy(const ImageCopyInfo& command)                                = 0;
-
-        /// @brief Submit a buffer to image copy command
-        virtual void Copy(const BufferToImageCopyInfo& command)                        = 0;
-
-        /// @brief Submit a image to buffer copy command
-        virtual void Copy(const ImageToBufferCopyInfo& command)                        = 0;
+        virtual void End()                                                                         = 0;
 
         /// @brief Begins a new debug marker region
-        virtual void DebugMarkerPush(const char* name, const struct ColorValue& color) = 0;
+        virtual void DebugMarkerPush(const char* name, const struct ColorValue& color)             = 0;
 
         /// @brief Ends the last debug marker region
-        virtual void DebugMarkerPop()                                                  = 0;
+        virtual void DebugMarkerPop()                                                              = 0;
+
+        /// @brief Define the beginning of a conditional command list block
+        virtual void BeginConditionalCommands(Handle<Buffer> buffer, size_t offset, bool inverted) = 0;
+
+        /// @brief Define the ending of a conditional command list block
+        virtual void EndConditionalCommands()                                                      = 0;
+
+        // TODO: add indirect commands here
+
+        /// @brief Execute a secondary command list from a primary command list
+        virtual void Execute(TL::Span<const CommandList*> commandLists)                            = 0;
+
+        /// @brief Sets the rendering viewport
+        virtual void SetViewport(const Viewport& viewport)                                         = 0;
+
+        /// @brief Sets the rendering scissor
+        virtual void SetSicssor(const Scissor& sicssor)                                            = 0;
+
+        /// @brief Submit a draw command
+        virtual void Draw(const DrawInfo& drawInfo)                                                = 0;
+
+        /// @brief Submit a compute command
+        virtual void Dispatch(const DispatchInfo& dispatchInfo)                                    = 0;
+
+        /// @brief Submit a buffer copy command
+        virtual void Copy(const BufferCopyInfo& copyInfo)                                          = 0;
+
+        /// @brief Submit a image copy command
+        virtual void Copy(const ImageCopyInfo& copyInfo)                                           = 0;
+
+        /// @brief Submit a buffer to image copy command
+        virtual void Copy(const BufferToImageCopyInfo& copyInfo)                                   = 0;
+
+        /// @brief Submit a image to buffer copy command
+        virtual void Copy(const ImageToBufferCopyInfo& copyInfo)                                   = 0;
     };
 } // namespace RHI

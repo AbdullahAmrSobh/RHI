@@ -34,43 +34,7 @@ namespace RHI
         return handle;
     }
 
-    void Context::DebugLogError(std::string_view message)
-    {
-        ZoneScoped;
-
-#if RHI_DEBUG
-        if (m_debugCallbacks)
-            m_debugCallbacks->LogError(message);
-#else
-        (void)message;
-#endif
-    }
-
-    void Context::DebugLogWarn(std::string_view message)
-    {
-        ZoneScoped;
-
-#if RHI_DEBUG
-        if (m_debugCallbacks)
-            m_debugCallbacks->LogWarnning(message);
-#else
-        (void)message;
-#endif
-    }
-
-    void Context::DebugLogInfo(std::string_view message)
-    {
-        ZoneScoped;
-
-#if RHI_DEBUG
-        if (m_debugCallbacks)
-            m_debugCallbacks->LogInfo(message);
-#else
-        (void)message;
-#endif
-    }
-
-    void Context::DebugReportLiveResources()
+    void Context::OnDestruct()
     {
         ZoneScoped;
 
@@ -124,6 +88,45 @@ namespace RHI
         {
             DebugLogInfo(m_LeakDetector.m_samplers.ReportLiveResources());
         }
+#endif
+
+        m_frameScheduler.reset();
+        m_limits.reset();
+    }
+
+    void Context::DebugLogError(std::string_view message)
+    {
+        ZoneScoped;
+
+#if RHI_DEBUG
+        if (m_debugCallbacks)
+            m_debugCallbacks->LogError(message);
+#else
+        (void)message;
+#endif
+    }
+
+    void Context::DebugLogWarn(std::string_view message)
+    {
+        ZoneScoped;
+
+#if RHI_DEBUG
+        if (m_debugCallbacks)
+            m_debugCallbacks->LogWarnning(message);
+#else
+        (void)message;
+#endif
+    }
+
+    void Context::DebugLogInfo(std::string_view message)
+    {
+        ZoneScoped;
+
+#if RHI_DEBUG
+        if (m_debugCallbacks)
+            m_debugCallbacks->LogInfo(message);
+#else
+        (void)message;
 #endif
     }
 

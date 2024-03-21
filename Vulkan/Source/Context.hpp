@@ -77,6 +77,76 @@ namespace RHI::Vulkan
 
         uint32_t GetCurrentFrameIndex() const;
 
+        // [[nodiscard]] inline IImage* Get(Handle<IImage> handle)
+        // {
+        //     auto result = m_imageOwner.Get(handle);
+        //     RHI_ASSERT(result);
+        //     return result;
+        // }
+
+        // [[nodiscard]] inline IBuffer* Get(Handle<IBuffer> handle)
+        // {
+        //     auto result = m_bufferOwner.Get(handle);
+        //     RHI_ASSERT(result);
+        //     return result;
+        // }
+
+        // [[nodiscard]] inline IImageView* Get(Handle<IImageView> handle)
+        // {
+        //     auto result = m_imageViewOwner.Get(handle);
+        //     RHI_ASSERT(result);
+        //     return result;
+        // }
+
+        // [[nodiscard]] inline IBufferView* Get(Handle<IBufferView> handle)
+        // {
+        //     auto result = m_bufferViewOwner.Get(handle);
+        //     RHI_ASSERT(result);
+        //     return result;
+        // }
+
+        // [[nodiscard]] inline IBindGroupLayout* Get(Handle<IBindGroupLayout> handle)
+        // {
+        //     auto result = m_bindGroupLayoutsOwner.Get(handle);
+        //     RHI_ASSERT(result);
+        //     return result;
+        // }
+
+        // [[nodiscard]] inline IBindGroup* Get(Handle<IBindGroup> handle)
+        // {
+        //     auto result = m_bindGroupOwner.Get(handle);
+        //     RHI_ASSERT(result);
+        //     return result;
+        // }
+
+        // [[nodiscard]] inline IPipelineLayout* Get(Handle<IPipelineLayout> handle)
+        // {
+        //     auto result = m_pipelineLayoutOwner.Get(handle);
+        //     RHI_ASSERT(result);
+        //     return result;
+        // }
+
+        // [[nodiscard]] inline IGraphicsPipeline Get(Handle<IGraphicsPipeline> handle)
+        // {
+        //     auto result = m_graphicsPipelineOwner.Get(handle);
+        //     RHI_ASSERT(result);
+        //     return result;
+        // }
+
+        // [[nodiscard]] inline IComputePipeline* Get(Handle<IComputePipeline> handle)
+        // {
+        //     auto result = m_computePipelineOwner.Get(handle);
+        //     RHI_ASSERT(result);
+        //     return result;
+        // }
+
+        // [[nodiscard]] inline ISampler* Get(Handle<ISampler> handle)
+        // {
+        //     auto result = m_samplerOwner.Get(handle);
+        //     RHI_ASSERT(result);
+        //     return result;
+        // }
+
     private:
         static VkBool32 VKAPI_CALL DebugMessengerCallbacks(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
 
@@ -99,9 +169,11 @@ namespace RHI::Vulkan
         uint32_t m_computeQueueFamilyIndex  = UINT32_MAX;
         uint32_t m_transferQueueFamilyIndex = UINT32_MAX;
 
-        PFN_vkCmdDebugMarkerBeginEXT  m_vkCmdDebugMarkerBeginEXT  = nullptr;
-        PFN_vkCmdDebugMarkerInsertEXT m_vkCmdDebugMarkerInsertEXT = nullptr;
-        PFN_vkCmdDebugMarkerEndEXT    m_vkCmdDebugMarkerEndEXT    = nullptr;
+        PFN_vkCmdDebugMarkerBeginEXT          m_vkCmdDebugMarkerBeginEXT          = nullptr;
+        PFN_vkCmdDebugMarkerInsertEXT         m_vkCmdDebugMarkerInsertEXT         = nullptr;
+        PFN_vkCmdDebugMarkerEndEXT            m_vkCmdDebugMarkerEndEXT            = nullptr;
+        PFN_vkCmdBeginConditionalRenderingEXT m_vkCmdBeginConditionalRenderingEXT = nullptr;
+        PFN_vkCmdEndConditionalRenderingEXT   m_vkCmdEndConditionalRenderingEXT   = nullptr;
 
         HandlePool<IImage>            m_imageOwner             = HandlePool<IImage>();
         HandlePool<IBuffer>           m_bufferOwner            = HandlePool<IBuffer>();
@@ -119,6 +191,5 @@ namespace RHI::Vulkan
 
         Ptr<BindGroupAllocator> m_bindGroupAllocator;
     };
-
 
 } // namespace RHI::Vulkan

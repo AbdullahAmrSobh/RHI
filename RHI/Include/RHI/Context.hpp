@@ -90,7 +90,7 @@ namespace RHI
         /// @return Result object indicating success or failure of the operation.
         ///         On success, it also contains a handle to the created image.
         template<typename T>
-        Result<Handle<Image>> CreateImage(const ImageCreateInfo& createInfo, TL::Span<const T> content);
+        [[nodiscard]] Result<Handle<Image>> CreateImage(const ImageCreateInfo& createInfo, TL::Span<const T> content);
 
         /// Creates an image object and copies the provided content into it.
         ///
@@ -98,7 +98,7 @@ namespace RHI
         /// @param content The raw data to be copied into the image.
         /// @return Result object indicating success or failure of the operation.
         ///         On success, it also contains a handle to the created image.
-        Result<Handle<Image>> CreateImage(const ImageCreateInfo& createInfo, TL::Span<const uint8_t> content);
+        [[nodiscard]] Result<Handle<Image>> CreateImage(const ImageCreateInfo& createInfo, TL::Span<const uint8_t> content);
 
         /// Creates a buffer object and copies the provided content into it.
         ///
@@ -107,7 +107,7 @@ namespace RHI
         /// @return Result object indicating success or failure of the operation.
         ///         On success, it also contains a handle to the created buffer.
         template<typename T>
-        Result<Handle<Buffer>> CreateBuffer(Flags<BufferUsage> usage, const T& content);
+        [[nodiscard]] Result<Handle<Buffer>> CreateBuffer(Flags<BufferUsage> usage, const T& content);
 
         /// Creates a buffer object and copies the provided content into it.
         ///
@@ -116,7 +116,7 @@ namespace RHI
         /// @return Result object indicating success or failure of the operation.
         ///         On success, it also contains a handle to the created buffer.
         template<typename T>
-        Result<Handle<Buffer>> CreateBuffer(Flags<BufferUsage> usage, TL::Span<const T> content);
+        [[nodiscard]] Result<Handle<Buffer>> CreateBuffer(Flags<BufferUsage> usage, TL::Span<const T> content);
 
         /// Creates a buffer object and copies the provided content into it.
         ///
@@ -125,7 +125,7 @@ namespace RHI
         /// @return Result object indicating success or failure of the operation.
         ///         On success, it also contains a handle to the created buffer.
         template<typename T>
-        Result<Handle<Buffer>> CreateBuffer(const BufferCreateInfo& createInfo, const T& content);
+        [[nodiscard]] Result<Handle<Buffer>> CreateBuffer(const BufferCreateInfo& createInfo, const T& content);
 
         /// Creates a buffer object and copies the provided content into it.
         ///
@@ -134,7 +134,7 @@ namespace RHI
         /// @return Result object indicating success or failure of the operation.
         ///         On success, it also contains a handle to the created buffer.
         template<typename T>
-        Result<Handle<Buffer>>            CreateBuffer(const BufferCreateInfo& createInfo, TL::Span<const T> content);
+        [[nodiscard]] Result<Handle<Buffer>>            CreateBuffer(const BufferCreateInfo& createInfo, TL::Span<const T> content);
 
         /// Creates a buffer object and copies the provided content into it.
         ///
@@ -142,58 +142,58 @@ namespace RHI
         /// @param content The raw data to be copied into the buffer.
         /// @return Result object indicating success or failure of the operation.
         ///         On success, it also contains a handle to the created buffer.
-        Result<Handle<Buffer>>            CreateBuffer(const BufferCreateInfo& createInfo, TL::Span<const uint8_t> content);
+        [[nodiscard]] Result<Handle<Buffer>>            CreateBuffer(const BufferCreateInfo& createInfo, TL::Span<const uint8_t> content);
 
         /// Creates a new swapchain object with specified configuration.
         ///
         /// @param createInfo [in] Information describing the desired charactersitics of the swapchain object.
         /// @return RAII scoped pointer containing a pointer to the created swapchain
-        virtual Ptr<Swapchain>            CreateSwapchain(const SwapchainCreateInfo& createInfo)               = 0;
+        [[nodiscard]] virtual Ptr<Swapchain>            CreateSwapchain(const SwapchainCreateInfo& createInfo)               = 0;
 
         /// Creates a new shader module object with specified configuration.
         ///
         /// @param createInfo [in] Information describing the desired charactersitics of the shader module object.
         /// @return RAII scoped pointer containing a pointer to the created shader module
-        virtual Ptr<ShaderModule>         CreateShaderModule(TL::Span<const uint8_t> shaderBlob)               = 0;
+        [[nodiscard]] virtual Ptr<ShaderModule>         CreateShaderModule(TL::Span<const uint8_t> shaderBlob)               = 0;
 
         /// Creates a new fence object with specified configuration.
         ///
         /// @return RAII scoped pointer containing a pointer to the created fence
-        virtual Ptr<Fence>                CreateFence()                                                        = 0;
+        [[nodiscard]] virtual Ptr<Fence>                CreateFence()                                                        = 0;
 
         /// Creates a new command list allocator object with specified configuration.
         ///
         /// @param createInfo [in] Information describing the desired charactersitics of the command list allocator object.
         /// @return RAII scoped pointer containing a pointer to the created command list allocator
-        virtual Ptr<CommandListAllocator> CreateCommandListAllocator()                                         = 0;
+        [[nodiscard]] virtual Ptr<CommandListAllocator> CreateCommandListAllocator()                                         = 0;
 
         /// Creates a new resource pool object with specified configuration.
         ///
         /// @param createInfo [in] Information describing the desired charactersitics of the resource pool object.
         /// @return RAII scoped pointer containing a pointer to the created resource pool
-        virtual Ptr<ResourcePool>         CreateResourcePool(const ResourcePoolCreateInfo& createInfo)         = 0;
+        [[nodiscard]] virtual Ptr<ResourcePool>         CreateResourcePool(const ResourcePoolCreateInfo& createInfo)         = 0;
 
         /// Creates a new bind group layout object with the specified configuration.
         ///
         /// @param createInfo [in] Information describing the desired characteristics of the bind group layout object.
         /// @return A handle to the created bind group layout object.
-        virtual Handle<BindGroupLayout>   CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)   = 0;
+        [[nodiscard]] virtual Handle<BindGroupLayout>   CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)   = 0;
 
         /// Destroys the specified bind group layout object and releases its associated resources.
         ///
         /// @param handle [in] The handle to the bind group layout object to destroy.
-        virtual void                      DestroyBindGroupLayout(Handle<BindGroupLayout> handle)               = 0;
+        virtual void                                    DestroyBindGroupLayout(Handle<BindGroupLayout> handle)               = 0;
 
         /// Creates a new bind group object with the specified configuration.
         ///
         /// @param createInfo [in] Information describing the desired characteristics of the bind group object.
         /// @return A handle to the created bind group object.
-        virtual Handle<BindGroup>         CreateBindGroup(Handle<BindGroupLayout> handle)                      = 0;
+        [[nodiscard]] virtual Handle<BindGroup>         CreateBindGroup(Handle<BindGroupLayout> handle)                      = 0;
 
         /// Destroys the specified bind group object and releases its associated resources.
         ///
         /// @param handle [in] The handle to the bind group object to destroy.
-        virtual void                      DestroyBindGroup(Handle<BindGroup> handle)                           = 0;
+        virtual void                                    DestroyBindGroup(Handle<BindGroup> handle)                           = 0;
 
         /// Updates the contents of a bind group with the provided data.
         ///
@@ -202,102 +202,102 @@ namespace RHI
         ///
         /// @param handle The handle to the bind group to update.
         /// @param content The data to update in the bind group, containing binding indices and corresponding data pointers.
-        virtual void                      UpdateBindGroup(Handle<BindGroup> handle, const BindGroupData& data) = 0;
+        virtual void                                    UpdateBindGroup(Handle<BindGroup> handle, const BindGroupData& data) = 0;
 
         /// Creates a new pipeline layout object with the specified configuration.
         ///
         /// @param createInfo [in] Information describing the desired characteristics of the pipeline layout object.
         /// @return A handle to the created pipeline layout object.
-        virtual Handle<PipelineLayout>    CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)     = 0;
+        [[nodiscard]] virtual Handle<PipelineLayout>    CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)     = 0;
 
         /// Destroys the specified pipeline object and releases its associated resources.
         ///
         /// @param handle [in] The handle to the pipeline layout object to destroy.
-        virtual void                      DestroyPipelineLayout(Handle<PipelineLayout> handle)                 = 0;
+        virtual void                                    DestroyPipelineLayout(Handle<PipelineLayout> handle)                 = 0;
 
         /// Creates a new graphics pipeline object with the specified configuration.
         ///
         /// @param createInfo [in] Information describing the desired characteristics of the graphics pipeline object.
         /// @return A Result object indicating success or failure.
         ///         On success, it also contains a handle to the created graphics pipeline object.
-        virtual Handle<GraphicsPipeline>  CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) = 0;
+        [[nodiscard]] virtual Handle<GraphicsPipeline>  CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) = 0;
 
         /// Destroys the specified graphics pipeline object and releases its associated resources.
         ///
         /// @param handle [in] The handle to the graphics pipeline object to destroy.
-        virtual void                      DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle)             = 0;
+        virtual void                                    DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle)             = 0;
 
         /// Creates a new compute pipeline object with the specified configuration.
         ///
         /// @param createInfo [in] Information describing the desired characteristics of the compute pipeline object.
         /// @return A Result object indicating success or failure.
         ///         On success, it also contains a handle to the created compute pipeline object.
-        virtual Handle<ComputePipeline>   CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)   = 0;
+        [[nodiscard]] virtual Handle<ComputePipeline>   CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)   = 0;
 
         /// Destroys the specified compute pipeline object and releases its associated resources.
         ///
         /// @param handle [in] The handle to the compute pipeline object to destroy.
-        virtual void                      DestroyComputePipeline(Handle<ComputePipeline> handle)               = 0;
+        virtual void                                    DestroyComputePipeline(Handle<ComputePipeline> handle)               = 0;
 
         /// Creates a new sampler object with the specified configuration.
         ///
         /// @param createInfo [in] Information describing the desired characteristics of the sampler object.
         /// @return A Result object indicating success or failure.
         ///         On success, it also contains a handle to the created sampler object.
-        virtual Handle<Sampler>           CreateSampler(const SamplerCreateInfo& createInfo)                   = 0;
+        [[nodiscard]] virtual Handle<Sampler>           CreateSampler(const SamplerCreateInfo& createInfo)                   = 0;
 
         /// Destroys the specified sampler object and releases its associated resources.
         ///
         /// @param handle [in] The handle to the sampler object to destroy.
-        virtual void                      DestroySampler(Handle<Sampler> handle)                               = 0;
+        virtual void                                    DestroySampler(Handle<Sampler> handle)                               = 0;
 
         /// Creates a new image object with the specified configuration.
         ///
         /// @param createInfo [in] Information describing the desired characteristics of the image object.
         /// @return A Result object indicating success or failure.
         ///         On success, it also contains a handle to the created image object.
-        virtual Result<Handle<Image>>     CreateImage(const ImageCreateInfo& createInfo)                       = 0;
+        [[nodiscard]] virtual Result<Handle<Image>>     CreateImage(const ImageCreateInfo& createInfo)                       = 0;
 
         /// Destroys the specified image object and releases its associated resources.
         ///
         /// @param handle [in] The handle to the image object to destroy.
-        virtual void                      DestroyImage(Handle<Image> handle)                                   = 0;
+        virtual void                                    DestroyImage(Handle<Image> handle)                                   = 0;
 
         /// Creates a new buffer object with the specified configuration.
         ///
         /// @param createInfo [in] Information describing the desired characteristics of the buffer object.
         /// @return A Result object indicating success or failure.
         ///         On success, it also contains a handle to the created buffer object.
-        virtual Result<Handle<Buffer>>    CreateBuffer(const BufferCreateInfo& createInfo)                     = 0;
+        [[nodiscard]] virtual Result<Handle<Buffer>>    CreateBuffer(const BufferCreateInfo& createInfo)                     = 0;
 
         /// Destroys the specified buffer object and releases its associated resources.
         ///
         /// @param handle [in] The handle to the buffer object to destroy.
-        virtual void                      DestroyBuffer(Handle<Buffer> handle)                                 = 0;
+        virtual void                                    DestroyBuffer(Handle<Buffer> handle)                                 = 0;
 
         /// Creates a new image view object with the specified configuration.
         ///
         /// @param createInfo [in] Information describing the desired characteristics of the image view object.
         /// @return A Result object indicating success or failure.
         ///         On success, it also contains a handle to the created image view object.
-        virtual Handle<ImageView>         CreateImageView(const ImageViewCreateInfo& createInfo)               = 0;
+        [[nodiscard]] virtual Handle<ImageView>         CreateImageView(const ImageViewCreateInfo& createInfo)               = 0;
 
         /// Destroys the specified image view object and releases its associated resources.
         ///
         /// @param handle [in] The handle to the image view object to destroy.
-        virtual void                      DestroyImageView(Handle<ImageView> handle)                           = 0;
+        virtual void                                    DestroyImageView(Handle<ImageView> handle)                           = 0;
 
         /// Creates a new buffer view object with the specified configuration.
         ///
         /// @param createInfo [in] Information describing the desired characteristics of the buffer view object.
         /// @return A Result object indicating success or failure.
         ///         On success, it also contains a handle to the created buffer view object.
-        virtual Handle<BufferView>        CreateBufferView(const BufferViewCreateInfo& createInfo)             = 0;
+        [[nodiscard]] virtual Handle<BufferView>        CreateBufferView(const BufferViewCreateInfo& createInfo)             = 0;
 
         /// Destroys the specified buffer view object and releases its associated resources.
         ///
         /// @param handle [in] The handle to the buffer view object to destroy.
-        virtual void                      DestroyBufferView(Handle<BufferView> handle)                         = 0;
+        virtual void                                    DestroyBufferView(Handle<BufferView> handle)                         = 0;
 
         /// Maps the contents of a buffer into host memory, allowing direct access for reading and writing.
         /// This method is typically used for smaller, frequently accessed buffers to avoid performance overhead
@@ -305,26 +305,26 @@ namespace RHI
         ///
         /// @param handle The handle to the buffer object to map.
         /// @return A pointer to the mapped memory region, or nullptr on failure.
-        virtual DeviceMemoryPtr           MapBuffer(Handle<Buffer> handle)                                     = 0;
+        [[nodiscard]] virtual DeviceMemoryPtr           MapBuffer(Handle<Buffer> handle)                                     = 0;
 
         /// Unmaps a previously mapped buffer, releasing the host memory access previously granted by `MapBuffer`.
         ///
         /// @param handle The handle to the buffer object to unmap.
-        virtual void                      UnmapBuffer(Handle<Buffer> handle)                                   = 0;
+        virtual void                                    UnmapBuffer(Handle<Buffer> handle)                                   = 0;
 
     protected:
+        Context(Ptr<DebugCallbacks> debugCallbacks);
+
+        void   OnDestruct();
+
         void   DebugLogError(std::string_view message);
         void   DebugLogWarn(std::string_view message);
         void   DebugLogInfo(std::string_view message);
-
-        void   DebugReportLiveResources();
 
         size_t CalculateRequiredSize(const ImageCreateInfo& createInfo);
         size_t CalculateRequiredSize(const BufferCreateInfo& createInfo);
 
     protected:
-        Context(Ptr<DebugCallbacks> debugCallbacks);
-
         struct
         {
             ResourceLeakDetector<Image>            m_images;

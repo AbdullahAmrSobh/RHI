@@ -34,7 +34,7 @@ namespace RHI
         /// @param type The type of queue on which the pass will execute.
         Pass(FrameScheduler* scheduler, const char* name, QueueType type);
 
-        ~Pass();
+        ~Pass() = default;
 
         void                  SetRenderTargetSize(ImageSize2D size);
 
@@ -58,7 +58,7 @@ namespace RHI
 
         BufferPassAttachment* UseBufferResource(BufferPassAttachment* attachment, BufferUsage usage, Access access, BufferSubregion subregion);
 
-        void                  SubmitCommandList(TL::Span<class CommandList*> commandList);
+        void                  Submit(TL::Span<class CommandList*> commandList);
 
     public:
         TL::Span<ImagePassAttachment*>  GetColorAttachments() { return m_colorAttachments; }
