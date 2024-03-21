@@ -762,19 +762,19 @@ namespace RHI
 
 } // namespace RHI
 
-#define DEFINE_POD_HASH_SPECIALIZATION(Type)                         \
-    namespace std                                                    \
-    {                                                                \
-        template<>                                                   \
-        struct hash<Type>                                            \
-        {                                                            \
-            std::size_t operator()(const Type& value) const noexcept \
-            {                                                        \
-                return ::RHI::HashAny<Type>(value);                  \
-            }                                                        \
-        };                                                           \
-    }
+#define DEFINE_POD_HASH_SPECIALIZATION(Type)            \
+    template<>                                          \
+    struct hash<Type>                                   \
+    {                                                   \
+        std::size_t operator()(const Type& value) const \
+        {                                               \
+            return ::RHI::HashAny<Type>(value);         \
+        }                                               \
+    };
 
-DEFINE_POD_HASH_SPECIALIZATION(RHI::ImageCreateInfo);
-DEFINE_POD_HASH_SPECIALIZATION(RHI::BufferCreateInfo);
-DEFINE_POD_HASH_SPECIALIZATION(RHI::SamplerCreateInfo);
+namespace std
+{
+    DEFINE_POD_HASH_SPECIALIZATION(RHI::ImageViewCreateInfo);
+    DEFINE_POD_HASH_SPECIALIZATION(RHI::BufferViewCreateInfo);
+    DEFINE_POD_HASH_SPECIALIZATION(RHI::SamplerCreateInfo);
+} // namespace std

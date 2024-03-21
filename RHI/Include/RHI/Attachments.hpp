@@ -2,36 +2,12 @@
 #include "RHI/Export.hpp"
 #include "RHI/Resources.hpp"
 #include "RHI/Common/Ptr.h"
-#include "RHI/Common/Hash.hpp"
 #include "RHI/Access.hpp"
+#include "RHI/Swapchain.hpp"
 
 #include <unordered_map>
 #include <string>
 
-#include "Rhi/Swapchain.hpp"
-
-namespace std
-{
-    template<>
-    class hash<RHI::ImageViewCreateInfo>
-    {
-    public:
-        inline size_t operator()(const RHI::ImageViewCreateInfo& createInfo) const
-        {
-            return RHI::HashAny(createInfo);
-        }
-    };
-
-    template<>
-    class hash<RHI::BufferViewCreateInfo>
-    {
-    public:
-        inline size_t operator()(const RHI::BufferViewCreateInfo& createInfo) const
-        {
-            return RHI::HashAny(createInfo);
-        }
-    };
-} // namespace std
 
 namespace RHI
 {
