@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RHI/Common/Assert.hpp"
+#include "RHI/Common/Containers.h"
 
 #include <cstddef>
 #include <initializer_list>
@@ -64,6 +65,12 @@ namespace RHI::TL
         }
 
         constexpr Span(std::vector<std::remove_cv_t<ElementType>>& elements) noexcept
+            : m_data(elements.data())
+            , m_count(elements.size())
+        {
+        }
+
+        constexpr Span(TL::Vector<std::remove_cv_t<ElementType>>& elements) noexcept
             : m_data(elements.data())
             , m_count(elements.size())
         {

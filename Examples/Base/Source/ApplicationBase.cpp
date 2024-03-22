@@ -85,7 +85,7 @@ std::vector<uint8_t> ApplicationBase::ReadBinaryFile(std::string_view path) cons
 ApplicationBase::ApplicationBase(std::string name, uint32_t width, uint32_t height)
     : m_windowWidth(width)
     , m_windowHeight(height)
-    , m_imguiRenderer(std::make_unique<ImGuiRenderer>())
+    , m_imguiRenderer(RHI::CreatePtr<ImGuiRenderer>())
 {
     auto result = glfwInit();
     assert(result);

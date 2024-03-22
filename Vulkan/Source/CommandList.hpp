@@ -21,16 +21,16 @@ namespace RHI::Vulkan
 
         void Reset() override;
         CommandList* Allocate(QueueType queueType) override;
-        std::vector<CommandList*> Allocate(QueueType queueType, uint32_t count) override;
+        TL::Vector<CommandList*> Allocate(QueueType queueType, uint32_t count) override;
         void Release(TL::Span<CommandList*> commandLists) override;
 
     private:
-        std::vector<VkCommandBuffer> AllocateCommandBuffers(VkCommandPool pool, uint32_t count, VkCommandBufferLevel level);
+        TL::Vector<VkCommandBuffer> AllocateCommandBuffers(VkCommandPool pool, uint32_t count, VkCommandBufferLevel level);
         void ReleaseCommandBuffers(VkCommandPool pool, TL::Span<VkCommandBuffer> commandBuffers);
 
     private:
         IContext* m_context;
-        std::vector<VkCommandPool> m_commandPools[uint32_t(QueueType::Count)];
+        TL::Vector<VkCommandPool> m_commandPools[uint32_t(QueueType::Count)];
     };
 
     class ICommandList final : public CommandList
@@ -62,8 +62,8 @@ namespace RHI::Vulkan
         VkCommandBuffer m_commandBuffer;
         VkCommandPool m_commandPool;
 
-        std::vector<VkSemaphoreSubmitInfo> m_signalSemaphores;
-        std::vector<VkSemaphoreSubmitInfo> m_waitSemaphores;
+        TL::Vector<VkSemaphoreSubmitInfo> m_signalSemaphores;
+        TL::Vector<VkSemaphoreSubmitInfo> m_waitSemaphores;
 
     private:
         void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<Handle<BindGroup>> bindGroups);

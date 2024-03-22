@@ -2,6 +2,8 @@
 
 #include <RHI/FrameScheduler.hpp>
 
+#include <RHI/Common/Containers.h>
+
 #include <vulkan/vulkan.h>
 
 namespace RHI::Vulkan
@@ -35,12 +37,12 @@ namespace RHI::Vulkan
         VkQueue m_computeQueue;
         VkQueue m_transferQueue;
 
-        std::vector<Handle<Image>> m_stagedWriteImages;
-        std::vector<Handle<Buffer>> m_stagedWriteBuffers;
-        std::vector<Handle<Image>> m_stagedReadImages;
-        std::vector<Handle<Buffer>> m_stagedReadBuffers;
+        TL::Vector<Handle<Image>> m_stagedWriteImages;
+        TL::Vector<Handle<Buffer>> m_stagedWriteBuffers;
+        TL::Vector<Handle<Image>> m_stagedReadImages;
+        TL::Vector<Handle<Buffer>> m_stagedReadBuffers;
 
         uint32_t m_tmpSemaphoreHead = 0;
-        std::vector<VkSemaphore> m_tmpSemaphores;
+        TL::Vector<VkSemaphore> m_tmpSemaphores;
     };
 } // namespace RHI::Vulkan

@@ -1,9 +1,9 @@
 #pragma once
 #include <RHI/TransientAllocator.hpp>
 
-#include <vk_mem_alloc.h>
+#include <RHI/Common/Containers.h>
 
-#include <vector>
+#include <vk_mem_alloc.h>
 
 namespace RHI::Vulkan
 {
@@ -40,6 +40,6 @@ namespace RHI::Vulkan
 
     private:
         IContext* m_context;
-        std::vector<Block> m_blocks;
+        TL::Vector<Block> m_blocks;
     };
 } // namespace RHI::Vulkan

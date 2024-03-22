@@ -305,7 +305,7 @@ namespace RHI::Vulkan
     {
         layoutInfo = createInfo;
 
-        std::vector<VkDescriptorSetLayoutBinding> bindings;
+        TL::Vector<VkDescriptorSetLayoutBinding> bindings;
         for (auto shaderBinding : createInfo.bindings)
         {
             if (shaderBinding.type == ShaderBindingType::None)
@@ -359,11 +359,11 @@ namespace RHI::Vulkan
 
     void IBindGroup::Write(IContext* context, BindGroupData data)
     {
-        std::vector<std::vector<VkDescriptorImageInfo>> descriptorImageInfos;
-        std::vector<std::vector<VkDescriptorBufferInfo>> descriptorBufferInfos;
-        std::vector<std::vector<VkBufferView>> descriptorBufferViews;
+        TL::Vector<TL::Vector<VkDescriptorImageInfo>> descriptorImageInfos;
+        TL::Vector<TL::Vector<VkDescriptorBufferInfo>> descriptorBufferInfos;
+        TL::Vector<TL::Vector<VkBufferView>> descriptorBufferViews;
 
-        std::vector<VkWriteDescriptorSet> writeInfos;
+        TL::Vector<VkWriteDescriptorSet> writeInfos;
 
         auto bindGroupLayout = context->m_bindGroupLayoutsOwner.Get(layout);
 
@@ -455,7 +455,7 @@ namespace RHI::Vulkan
 
     ResultCode IPipelineLayout::Init(IContext* context, const PipelineLayoutCreateInfo& createInfo)
     {
-        std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
+        TL::Vector<VkDescriptorSetLayout> descriptorSetLayouts;
         for (auto bindGroupLayout : createInfo.layouts)
         {
             if (bindGroupLayout == false)

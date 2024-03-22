@@ -1,11 +1,13 @@
 #pragma once
 
-#include "RHI/Common/Flags.hpp"
-#include "RHI/Common/Handle.hpp"
-#include "RHI/Common/Span.hpp"
-#include "RHI/Common/Hash.hpp"
 #include "RHI/Format.hpp"
 #include "RHI/Access.hpp"
+
+#include "RHI/Common/Handle.hpp"
+#include "RHI/Common/Flags.hpp"
+#include "RHI/Common/Span.hpp"
+#include "RHI/Common/Hash.hpp"
+#include "RHI/Common/Containers.h"
 
 #include <variant> // todo: remove
 
@@ -454,26 +456,26 @@ namespace RHI
 
         struct ResourceImageBinding
         {
-            uint32_t                       arrayOffset;
-            std::vector<Handle<ImageView>> views;
+            uint32_t                      arrayOffset;
+            TL::Vector<Handle<ImageView>> views;
         };
 
         struct ResourceBufferBinding
         {
-            uint32_t                    arrayOffset;
-            std::vector<Handle<Buffer>> views;
+            uint32_t                   arrayOffset;
+            TL::Vector<Handle<Buffer>> views;
         };
 
         struct ResourceBufferViewBinding
         {
-            uint32_t                        arrayOffset;
-            std::vector<Handle<BufferView>> views;
+            uint32_t                       arrayOffset;
+            TL::Vector<Handle<BufferView>> views;
         };
 
         struct ResourceSamplerBinding
         {
-            uint32_t                     arrayOffset;
-            std::vector<Handle<Sampler>> samplers;
+            uint32_t                    arrayOffset;
+            TL::Vector<Handle<Sampler>> samplers;
         };
 
         using ResourceBinding                                         = std::variant<ResourceImageBinding, ResourceBufferBinding, ResourceSamplerBinding>;

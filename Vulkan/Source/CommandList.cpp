@@ -240,11 +240,11 @@ namespace RHI::Vulkan
         return Allocate(queueType, 1).front();
     }
 
-    std::vector<CommandList*> ICommandListAllocator::Allocate(QueueType queueType, uint32_t count)
+    TL::Vector<CommandList*> ICommandListAllocator::Allocate(QueueType queueType, uint32_t count)
     {
         auto commandPool = m_commandPools[uint32_t(queueType)][0];
         auto commandBuffers = AllocateCommandBuffers(commandPool, count, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-        std::vector<CommandList*> commandLists;
+        TL::Vector<CommandList*> commandLists;
         commandLists.reserve(count);
         for (auto commandBuffer : commandBuffers)
         {
@@ -257,7 +257,7 @@ namespace RHI::Vulkan
     {
         (void)_commandLists;
         // auto commandLists = TL::Span((ICommandList*)_commandLists.data(), _commandLists.size());
-        // std::vector<VkCommandBuffer> commandBuffers;
+        // TL::Vector<VkCommandBuffer> commandBuffers;
         // commandBuffers.reserve(_commandLists.size());
         // auto commandPool = commandLists[0].m_commandPool;
         // auto device = m_context->m_device;
@@ -272,9 +272,9 @@ namespace RHI::Vulkan
         // });
     }
 
-    std::vector<VkCommandBuffer> ICommandListAllocator::AllocateCommandBuffers(VkCommandPool pool, uint32_t count, VkCommandBufferLevel level)
+    TL::Vector<VkCommandBuffer> ICommandListAllocator::AllocateCommandBuffers(VkCommandPool pool, uint32_t count, VkCommandBufferLevel level)
     {
-        std::vector<VkCommandBuffer> commandBuffers;
+        TL::Vector<VkCommandBuffer> commandBuffers;
         commandBuffers.resize(count);
 
         VkCommandBufferAllocateInfo allocateInfo{};
@@ -331,8 +331,8 @@ namespace RHI::Vulkan
         beginInfo.pInheritanceInfo = nullptr;
         vkBeginCommandBuffer(m_commandBuffer, &beginInfo);
 
-        std::vector<VkImageMemoryBarrier2> imageBarriers;
-        std::vector<VkBufferMemoryBarrier2> bufferBarriers;
+        TL::Vector<VkImageMemoryBarrier2> imageBarriers;
+        TL::Vector<VkBufferMemoryBarrier2> bufferBarriers;
 
         for (auto& passAttachment : pass.m_imagePassAttachments)
         {
@@ -434,8 +434,8 @@ namespace RHI::Vulkan
             RenderingEnd();
         }
 
-        std::vector<VkImageMemoryBarrier2> imageBarriers;
-        std::vector<VkBufferMemoryBarrier2> bufferBarriers;
+        TL::Vector<VkImageMemoryBarrier2> imageBarriers;
+        TL::Vector<VkBufferMemoryBarrier2> bufferBarriers;
 
         if (m_pass)
         {
@@ -607,7 +607,7 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        std::vector<VkCommandBuffer> commandBuffers;
+        TL::Vector<VkCommandBuffer> commandBuffers;
         commandBuffers.reserve(commandLists.size());
         for (auto _commandList : commandLists)
         {
@@ -810,7 +810,7 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        std::vector<VkRenderingAttachmentInfo> attachmentInfos{};
+        TL::Vector<VkRenderingAttachmentInfo> attachmentInfos{};
         VkRenderingAttachmentInfo depthAttachment{};
         bool hasDepthAttachment = false;
 

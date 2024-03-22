@@ -1,13 +1,14 @@
 #pragma once
 #include "RHI/Export.hpp"
 #include "RHI/Resources.hpp"
-#include "RHI/Common/Ptr.h"
 #include "RHI/Access.hpp"
 #include "RHI/Swapchain.hpp"
 
+#include "RHI/Common/Ptr.h"
+#include "RHI/Common/Containers.h"
+
 #include <unordered_map>
 #include <string>
-
 
 namespace RHI
 {
@@ -384,13 +385,14 @@ namespace RHI
         TL::Span<Attachment*> GetTransientAttachments() { return m_transientAttachments; }
 
     private:
-        Context*                                                     m_context;
+        Context*                                                   m_context;
 
-        std::unordered_map<std::string, Ptr<Attachment>>             m_attachmentsLut;
-        std::vector<Attachment*>                                     m_attachments;
-        std::vector<Attachment*>                                     m_transientAttachments;
-        std::vector<ImageAttachment*>                                m_imageAttachments;
-        std::vector<BufferAttachment*>                               m_bufferAttachments;
+        std::unordered_map<std::string, Ptr<Attachment>>           m_attachmentsLut;
+
+        TL::Vector<Attachment*>                                    m_attachments;
+        TL::Vector<Attachment*>                                    m_transientAttachments;
+        TL::Vector<ImageAttachment*>                               m_imageAttachments;
+        TL::Vector<BufferAttachment*>                              m_bufferAttachments;
 
         std::unordered_map<ImageViewCreateInfo, Handle<ImageView>>   m_imageViewsLRU;
         std::unordered_map<BufferViewCreateInfo, Handle<BufferView>> m_bufferViewsLRU;

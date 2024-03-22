@@ -2,6 +2,8 @@
 
 #include "RHI/Resources.hpp"
 
+#include "RHI/Common/Containers.h"
+
 namespace RHI
 {
     enum class QueueType;
@@ -116,22 +118,22 @@ namespace RHI
     class RHI_EXPORT CommandListAllocator
     {
     public:
-        CommandListAllocator()                                                          = default;
-        CommandListAllocator(const CommandListAllocator&)                               = delete;
-        CommandListAllocator(CommandListAllocator&&)                                    = delete;
-        virtual ~CommandListAllocator()                                                 = default;
+        CommandListAllocator()                                                         = default;
+        CommandListAllocator(const CommandListAllocator&)                              = delete;
+        CommandListAllocator(CommandListAllocator&&)                                   = delete;
+        virtual ~CommandListAllocator()                                                = default;
 
         /// @brief Resets all command lists allocated from this allocator
-        virtual void                      Reset()                                       = 0;
+        virtual void                     Reset()                                       = 0;
 
         /// @brief Allocates a new command list object
-        virtual CommandList*              Allocate(QueueType queueType)                 = 0;
+        virtual CommandList*             Allocate(QueueType queueType)                 = 0;
 
         /// @brief Allocates a new command list object
-        virtual std::vector<CommandList*> Allocate(QueueType queueType, uint32_t count) = 0;
+        virtual TL::Vector<CommandList*> Allocate(QueueType queueType, uint32_t count) = 0;
 
         /// @brief Releases a command list object (must be allocated through here)
-        virtual void                      Release(TL::Span<CommandList*> commandLists)  = 0;
+        virtual void                     Release(TL::Span<CommandList*> commandLists)  = 0;
     };
 
     /// @brief Command list record a list of GPU commands that are exectued in the same pass.

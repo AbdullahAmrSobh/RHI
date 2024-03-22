@@ -43,61 +43,61 @@ namespace RHI
 
 namespace RHI::Vulkan
 {
-    std::vector<VkLayerProperties> _GetAvailableInstanceLayerExtensions()
+    TL::Vector<VkLayerProperties> _GetAvailableInstanceLayerExtensions()
     {
         uint32_t instanceLayerCount;
         vkEnumerateInstanceLayerProperties(&instanceLayerCount, nullptr);
-        std::vector<VkLayerProperties> layers;
+        TL::Vector<VkLayerProperties> layers;
         layers.resize(instanceLayerCount);
         vkEnumerateInstanceLayerProperties(&instanceLayerCount, layers.data());
         return layers;
     }
 
-    std::vector<VkExtensionProperties> _GetAvailableInstanceExtensions()
+    TL::Vector<VkExtensionProperties> _GetAvailableInstanceExtensions()
     {
         uint32_t instanceExtensionsCount;
         vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionsCount, nullptr);
-        std::vector<VkExtensionProperties> extensions;
+        TL::Vector<VkExtensionProperties> extensions;
         extensions.resize(instanceExtensionsCount);
         vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionsCount, extensions.data());
         return extensions;
     }
 
-    std::vector<VkLayerProperties> _GetAvailableDeviceLayerExtensions(VkPhysicalDevice physicalDevice)
+    TL::Vector<VkLayerProperties> _GetAvailableDeviceLayerExtensions(VkPhysicalDevice physicalDevice)
     {
         uint32_t instanceLayerCount;
         vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, nullptr);
-        std::vector<VkLayerProperties> layers;
+        TL::Vector<VkLayerProperties> layers;
         layers.resize(instanceLayerCount);
         vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, layers.data());
         return layers;
     }
 
-    std::vector<VkExtensionProperties> _GetAvailableDeviceExtensions(VkPhysicalDevice physicalDevice)
+    TL::Vector<VkExtensionProperties> _GetAvailableDeviceExtensions(VkPhysicalDevice physicalDevice)
     {
         uint32_t extensionsCount;
         vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, nullptr);
-        std::vector<VkExtensionProperties> extnesions;
+        TL::Vector<VkExtensionProperties> extnesions;
         extnesions.resize(extensionsCount);
         vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, extnesions.data());
         return extnesions;
     }
 
-    std::vector<VkPhysicalDevice> _GetAvailablePhysicalDevices(VkInstance instance)
+    TL::Vector<VkPhysicalDevice> _GetAvailablePhysicalDevices(VkInstance instance)
     {
         uint32_t physicalDeviceCount;
         vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
-        std::vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount, VK_NULL_HANDLE);
+        TL::Vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount, VK_NULL_HANDLE);
         VkResult result = vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, physicalDevices.data());
         RHI_ASSERT(result == VK_SUCCESS);
         return physicalDevices;
     }
 
-    std::vector<VkQueueFamilyProperties> _GetPhysicalDeviceQueueFamilyProperties(VkPhysicalDevice physicalDevice)
+    TL::Vector<VkQueueFamilyProperties> _GetPhysicalDeviceQueueFamilyProperties(VkPhysicalDevice physicalDevice)
     {
         uint32_t queueFamilyPropertiesCount;
         vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyPropertiesCount, nullptr);
-        std::vector<VkQueueFamilyProperties> queueFamilyProperties{};
+        TL::Vector<VkQueueFamilyProperties> queueFamilyProperties{};
         queueFamilyProperties.resize(queueFamilyPropertiesCount);
         vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyPropertiesCount, queueFamilyProperties.data());
         return queueFamilyProperties;
@@ -609,11 +609,11 @@ namespace RHI::Vulkan
 
     VkResult IContext::InitInstance(const ApplicationInfo& appInfo, bool* debugExtensionEnabled)
     {
-        std::vector<const char*> enabledLayersNames = {
+        TL::Vector<const char*> enabledLayersNames = {
             "VK_LAYER_KHRONOS_validation",
         };
 
-        std::vector<const char*> enabledExtensionsNames = {
+        TL::Vector<const char*> enabledExtensionsNames = {
             VK_KHR_SURFACE_EXTENSION_NAME,
             VULKAN_SURFACE_OS_EXTENSION_NAME,
             VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
@@ -698,11 +698,11 @@ namespace RHI::Vulkan
             }
         }
 
-        std::vector<const char*> deviceLayerNames = {
+        TL::Vector<const char*> deviceLayerNames = {
 
         };
 
-        std::vector<const char*> deviceExtensionNames = {
+        TL::Vector<const char*> deviceExtensionNames = {
 #if RHI_DEBUG
             VK_EXT_DEBUG_MARKER_EXTENSION_NAME,
 #endif
@@ -738,7 +738,7 @@ namespace RHI::Vulkan
         }
 
         float queuePriority = 1.0f;
-        std::vector<VkDeviceQueueCreateInfo> queueCreateInfos{};
+        TL::Vector<VkDeviceQueueCreateInfo> queueCreateInfos{};
 
         VkDeviceQueueCreateInfo queueCreateInfo{};
         queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;

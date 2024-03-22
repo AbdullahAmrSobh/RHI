@@ -2,6 +2,7 @@
 
 #include "RHI/Common/Handle.hpp"
 #include "RHI/Common/Callstack.hpp"
+#include "RHI/Common/Containers.h"
 
 #include <algorithm>
 #include <format>
@@ -28,10 +29,10 @@ namespace RHI
         uint32_t    LeakedResourcesCount();
 
     private:
-        std::vector<Resource>::iterator FindResource(Handle<HandleType> handle);
+        TL::Vector<Resource>::iterator FindResource(Handle<HandleType> handle);
 
     private:
-        std::vector<Resource> m_liveResources;
+        TL::Vector<Resource> m_liveResources;
     };
 
     template<typename T>
@@ -73,7 +74,7 @@ namespace RHI
     }
 
     template<typename T>
-    std::vector<typename ResourceLeakDetector<T>::Resource>::iterator ResourceLeakDetector<T>::FindResource(Handle<T> handle)
+    TL::Vector<typename ResourceLeakDetector<T>::Resource>::iterator ResourceLeakDetector<T>::FindResource(Handle<T> handle)
     {
         return std::find_if(m_liveResources.begin(), m_liveResources.end(), [handle](auto resource)
                             {

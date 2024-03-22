@@ -3,6 +3,8 @@
 #include "RHI/Resources.hpp"
 #include "RHI/Attachments.hpp"
 
+#include "RHI/Common/Containers.h"
+
 #include <string>
 
 namespace RHI
@@ -108,17 +110,17 @@ namespace RHI
         QueueType                              m_queueType;
         ImageSize2D                            m_frameSize;
 
-        std::vector<Ptr<ImagePassAttachment>>  m_imagePassAttachments;
-        std::vector<Ptr<BufferPassAttachment>> m_bufferPassAttachments;
-        std::vector<CommandList*>              m_commandLists;
+        TL::Vector<Ptr<ImagePassAttachment>>  m_imagePassAttachments;
+        TL::Vector<Ptr<BufferPassAttachment>> m_bufferPassAttachments;
+        TL::Vector<CommandList*>              m_commandLists;
 
-        std::vector<PassAttachment*>           m_passAttachments;
-        std::vector<ImagePassAttachment*>      m_colorAttachments;
+        TL::Vector<PassAttachment*>           m_passAttachments;
+        TL::Vector<ImagePassAttachment*>      m_colorAttachments;
         ImagePassAttachment*                   m_depthStencilAttachment;
-        std::vector<ImagePassAttachment*>      m_imageShaderResources;
-        std::vector<ImagePassAttachment*>      m_imageCopyResources;
-        std::vector<BufferPassAttachment*>     m_bufferShaderResources;
-        std::vector<BufferPassAttachment*>     m_bufferCopyResources;
+        TL::Vector<ImagePassAttachment*>      m_imageShaderResources;
+        TL::Vector<ImagePassAttachment*>      m_imageCopyResources;
+        TL::Vector<BufferPassAttachment*>     m_bufferShaderResources;
+        TL::Vector<BufferPassAttachment*>     m_bufferCopyResources;
 
         // NodeIndex                              m_node;
         // RenderGraph*                           m_renderGraph;

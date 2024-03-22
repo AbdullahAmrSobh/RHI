@@ -83,9 +83,9 @@ namespace RHI::Vulkan
         auto queue = pass->m_queueType == QueueType::Graphics ? m_graphicsQueue : m_computeQueue;
         auto& commandlists = pass->m_commandLists;
 
-        std::vector<VkSemaphoreSubmitInfo> waitSemaphores;
-        std::vector<VkSemaphoreSubmitInfo> signalSemaphores;
-        std::vector<VkCommandBufferSubmitInfo> commandBuffers;
+        TL::Vector<VkSemaphoreSubmitInfo> waitSemaphores;
+        TL::Vector<VkSemaphoreSubmitInfo> signalSemaphores;
+        TL::Vector<VkCommandBufferSubmitInfo> commandBuffers;
 
         for (auto _commandList : commandlists)
         {

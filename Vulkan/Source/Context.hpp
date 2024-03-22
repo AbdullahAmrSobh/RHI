@@ -3,6 +3,8 @@
 #include <RHI/Context.hpp>
 #include <RHI/FrameScheduler.hpp>
 
+#include <RHI/Common/Containers.h>
+
 #include <vk_mem_alloc.h>
 
 namespace RHI::Vulkan
@@ -187,7 +189,7 @@ namespace RHI::Vulkan
         HandlePool<ISampler>          m_samplerOwner           = HandlePool<ISampler>();
         // clang-format on
 
-        std::vector<DestroyResource> m_deferDeleteQueue;
+        TL::Vector<DestroyResource> m_deferDeleteQueue;
 
         Ptr<BindGroupAllocator> m_bindGroupAllocator;
     };

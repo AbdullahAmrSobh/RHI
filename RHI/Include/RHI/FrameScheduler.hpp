@@ -1,9 +1,11 @@
 #pragma once
 #include "RHI/Export.hpp"
-#include "RHI/Common/Result.hpp"
-#include "RHI/Common/Ptr.h"
 #include "RHI/Resources.hpp"
 #include "RHI/Pass.hpp" // todo remove
+
+#include "RHI/Common/Ptr.h"
+#include "RHI/Common/Containers.h"
+#include "RHI/Common/Result.hpp"
 
 #include "RHI/TransientAllocator.hpp"
 #include "RHI/StagingBuffer.hpp"
@@ -79,9 +81,9 @@ namespace RHI
         Ptr<AttachmentsPool>      m_attachmentsPool;
         Ptr<CommandListAllocator> m_commandListAllocator;
 
-        std::vector<Pass*>        m_passList;
+        TL::Vector<Pass*>         m_passList;
 
-        std::vector<Ptr<Fence>>   m_frameReadyFence;
+        TL::Vector<Ptr<Fence>>    m_frameReadyFence;
         uint32_t                  m_frameCount;
         uint32_t                  m_currentFrameIndex;
         uint64_t                  m_frameNumber;

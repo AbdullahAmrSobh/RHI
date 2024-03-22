@@ -1,6 +1,8 @@
 #pragma once
 #include <RHI/StagingBuffer.hpp>
 
+#include <RHI/Common/Containers.h>
+
 #include <vulkan/vulkan.h>
 
 namespace RHI::Vulkan
@@ -22,6 +24,6 @@ namespace RHI::Vulkan
     private:
         IContext* m_context;
 
-        std::vector<TempBuffer> m_tempBuffers;
+        TL::Vector<TempBuffer> m_tempBuffers;
     };
 } // namespace RHI::Vulkan

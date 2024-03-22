@@ -77,7 +77,7 @@ namespace RHI::Vulkan
             uint32_t formatsCount;
             result = vkGetPhysicalDeviceSurfaceFormatsKHR(m_context->m_physicalDevice, m_surface, &formatsCount, nullptr);
             VULKAN_ASSERT_SUCCESS(result);
-            std::vector<VkSurfaceFormatKHR> formats{};
+            TL::Vector<VkSurfaceFormatKHR> formats{};
             formats.resize(formatsCount);
             vkGetPhysicalDeviceSurfaceFormatsKHR(m_context->m_physicalDevice, m_surface, &formatsCount, formats.data());
 
@@ -114,7 +114,7 @@ namespace RHI::Vulkan
             uint32_t presentModesCount;
             result = vkGetPhysicalDeviceSurfacePresentModesKHR(context->m_physicalDevice, m_surface, &presentModesCount, nullptr);
             VULKAN_ASSERT_SUCCESS(result);
-            std::vector<VkPresentModeKHR> presentModes{};
+            TL::Vector<VkPresentModeKHR> presentModes{};
             presentModes.resize(presentModesCount);
             vkGetPhysicalDeviceSurfacePresentModesKHR(context->m_physicalDevice, m_surface, &presentModesCount, presentModes.data());
 
@@ -199,7 +199,7 @@ namespace RHI::Vulkan
 
         uint32_t imagesCount;
         result = vkGetSwapchainImagesKHR(m_context->m_device, m_swapchain, &imagesCount, nullptr);
-        std::vector<VkImage> images;
+        TL::Vector<VkImage> images;
         images.resize(imagesCount);
         result = vkGetSwapchainImagesKHR(m_context->m_device, m_swapchain, &imagesCount, images.data());
         VULKAN_RETURN_VKERR_CODE(result);
