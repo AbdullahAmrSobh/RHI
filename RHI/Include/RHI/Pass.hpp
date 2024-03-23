@@ -25,17 +25,10 @@ namespace RHI
         Count,
     };
 
-    /// Represents a rendering pass, which is a logical unit of rendering work.
-    /// This class provides functionality for defining and configuring rendering passes within a rendering pipeline.
     class RHI_EXPORT Pass
     {
     public:
-        /// Constructs a rendering pass with the given name and queue type.
-        ///
-        /// @param name The name of the pass.
-        /// @param type The type of queue on which the pass will execute.
         Pass(FrameScheduler* scheduler, const char* name, QueueType type);
-
         ~Pass() = default;
 
         void                  SetRenderTargetSize(ImageSize2D size);

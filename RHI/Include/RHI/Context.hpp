@@ -90,7 +90,7 @@ namespace RHI
         /// @return Result object indicating success or failure of the operation.
         ///         On success, it also contains a handle to the created image.
         template<typename T>
-        [[nodiscard]] Result<Handle<Image>> CreateImage(const ImageCreateInfo& createInfo, TL::Span<const T> content);
+        RHI_NODISCARD Result<Handle<Image>> CreateImage(const ImageCreateInfo& createInfo, TL::Span<const T> content);
 
         /// Creates an image object and copies the provided content into it.
         ///
@@ -98,7 +98,7 @@ namespace RHI
         /// @param content The raw data to be copied into the image.
         /// @return Result object indicating success or failure of the operation.
         ///         On success, it also contains a handle to the created image.
-        [[nodiscard]] Result<Handle<Image>> CreateImage(const ImageCreateInfo& createInfo, TL::Span<const uint8_t> content);
+        RHI_NODISCARD Result<Handle<Image>> CreateImage(const ImageCreateInfo& createInfo, TL::Span<const uint8_t> content);
 
         /// Creates a buffer object and copies the provided content into it.
         ///
@@ -107,7 +107,7 @@ namespace RHI
         /// @return Result object indicating success or failure of the operation.
         ///         On success, it also contains a handle to the created buffer.
         template<typename T>
-        [[nodiscard]] Result<Handle<Buffer>> CreateBuffer(Flags<BufferUsage> usage, const T& content);
+        RHI_NODISCARD Result<Handle<Buffer>> CreateBuffer(Flags<BufferUsage> usage, const T& content);
 
         /// Creates a buffer object and copies the provided content into it.
         ///
@@ -116,7 +116,7 @@ namespace RHI
         /// @return Result object indicating success or failure of the operation.
         ///         On success, it also contains a handle to the created buffer.
         template<typename T>
-        [[nodiscard]] Result<Handle<Buffer>> CreateBuffer(Flags<BufferUsage> usage, TL::Span<const T> content);
+        RHI_NODISCARD Result<Handle<Buffer>> CreateBuffer(Flags<BufferUsage> usage, TL::Span<const T> content);
 
         /// Creates a buffer object and copies the provided content into it.
         ///
@@ -125,7 +125,7 @@ namespace RHI
         /// @return Result object indicating success or failure of the operation.
         ///         On success, it also contains a handle to the created buffer.
         template<typename T>
-        [[nodiscard]] Result<Handle<Buffer>> CreateBuffer(const BufferCreateInfo& createInfo, const T& content);
+        RHI_NODISCARD Result<Handle<Buffer>> CreateBuffer(const BufferCreateInfo& createInfo, const T& content);
 
         /// Creates a buffer object and copies the provided content into it.
         ///
@@ -134,7 +134,7 @@ namespace RHI
         /// @return Result object indicating success or failure of the operation.
         ///         On success, it also contains a handle to the created buffer.
         template<typename T>
-        [[nodiscard]] Result<Handle<Buffer>>            CreateBuffer(const BufferCreateInfo& createInfo, TL::Span<const T> content);
+        RHI_NODISCARD Result<Handle<Buffer>> CreateBuffer(const BufferCreateInfo& createInfo, TL::Span<const T> content);
 
         /// Creates a buffer object and copies the provided content into it.
         ///
@@ -142,42 +142,42 @@ namespace RHI
         /// @param content The raw data to be copied into the buffer.
         /// @return Result object indicating success or failure of the operation.
         ///         On success, it also contains a handle to the created buffer.
-        [[nodiscard]] Result<Handle<Buffer>>            CreateBuffer(const BufferCreateInfo& createInfo, TL::Span<const uint8_t> content);
+        RHI_NODISCARD Result<Handle<Buffer>>            CreateBuffer(const BufferCreateInfo& createInfo, TL::Span<const uint8_t> content);
 
         /// Creates a new swapchain object with specified configuration.
         ///
         /// @param createInfo [in] Information describing the desired charactersitics of the swapchain object.
         /// @return RAII scoped pointer containing a pointer to the created swapchain
-        [[nodiscard]] virtual Ptr<Swapchain>            CreateSwapchain(const SwapchainCreateInfo& createInfo)               = 0;
+        RHI_NODISCARD virtual Ptr<Swapchain>            CreateSwapchain(const SwapchainCreateInfo& createInfo)               = 0;
 
         /// Creates a new shader module object with specified configuration.
         ///
         /// @param createInfo [in] Information describing the desired charactersitics of the shader module object.
         /// @return RAII scoped pointer containing a pointer to the created shader module
-        [[nodiscard]] virtual Ptr<ShaderModule>         CreateShaderModule(TL::Span<const uint8_t> shaderBlob)               = 0;
+        RHI_NODISCARD virtual Ptr<ShaderModule>         CreateShaderModule(TL::Span<const uint8_t> shaderBlob)               = 0;
 
         /// Creates a new fence object with specified configuration.
         ///
         /// @return RAII scoped pointer containing a pointer to the created fence
-        [[nodiscard]] virtual Ptr<Fence>                CreateFence()                                                        = 0;
+        RHI_NODISCARD virtual Ptr<Fence>                CreateFence()                                                        = 0;
 
         /// Creates a new command list allocator object with specified configuration.
         ///
         /// @param createInfo [in] Information describing the desired charactersitics of the command list allocator object.
         /// @return RAII scoped pointer containing a pointer to the created command list allocator
-        [[nodiscard]] virtual Ptr<CommandListAllocator> CreateCommandListAllocator()                                         = 0;
+        RHI_NODISCARD virtual Ptr<CommandListAllocator> CreateCommandListAllocator()                                         = 0;
 
         /// Creates a new resource pool object with specified configuration.
         ///
         /// @param createInfo [in] Information describing the desired charactersitics of the resource pool object.
         /// @return RAII scoped pointer containing a pointer to the created resource pool
-        [[nodiscard]] virtual Ptr<ResourcePool>         CreateResourcePool(const ResourcePoolCreateInfo& createInfo)         = 0;
+        RHI_NODISCARD virtual Ptr<ResourcePool>         CreateResourcePool(const ResourcePoolCreateInfo& createInfo)         = 0;
 
         /// Creates a new bind group layout object with the specified configuration.
         ///
         /// @param createInfo [in] Information describing the desired characteristics of the bind group layout object.
         /// @return A handle to the created bind group layout object.
-        [[nodiscard]] virtual Handle<BindGroupLayout>   CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)   = 0;
+        RHI_NODISCARD virtual Handle<BindGroupLayout>   CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)   = 0;
 
         /// Destroys the specified bind group layout object and releases its associated resources.
         ///
@@ -188,7 +188,7 @@ namespace RHI
         ///
         /// @param createInfo [in] Information describing the desired characteristics of the bind group object.
         /// @return A handle to the created bind group object.
-        [[nodiscard]] virtual Handle<BindGroup>         CreateBindGroup(Handle<BindGroupLayout> handle)                      = 0;
+        RHI_NODISCARD virtual Handle<BindGroup>         CreateBindGroup(Handle<BindGroupLayout> handle)                      = 0;
 
         /// Destroys the specified bind group object and releases its associated resources.
         ///
@@ -205,7 +205,7 @@ namespace RHI
         ///
         /// @param createInfo [in] Information describing the desired characteristics of the pipeline layout object.
         /// @return A handle to the created pipeline layout object.
-        [[nodiscard]] virtual Handle<PipelineLayout>    CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)     = 0;
+        RHI_NODISCARD virtual Handle<PipelineLayout>    CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)     = 0;
 
         /// Destroys the specified pipeline object and releases its associated resources.
         ///
@@ -217,7 +217,7 @@ namespace RHI
         /// @param createInfo [in] Information describing the desired characteristics of the graphics pipeline object.
         /// @return A Result object indicating success or failure.
         ///         On success, it also contains a handle to the created graphics pipeline object.
-        [[nodiscard]] virtual Handle<GraphicsPipeline>  CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) = 0;
+        RHI_NODISCARD virtual Handle<GraphicsPipeline>  CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) = 0;
 
         /// Destroys the specified graphics pipeline object and releases its associated resources.
         ///
@@ -229,7 +229,7 @@ namespace RHI
         /// @param createInfo [in] Information describing the desired characteristics of the compute pipeline object.
         /// @return A Result object indicating success or failure.
         ///         On success, it also contains a handle to the created compute pipeline object.
-        [[nodiscard]] virtual Handle<ComputePipeline>   CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)   = 0;
+        RHI_NODISCARD virtual Handle<ComputePipeline>   CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)   = 0;
 
         /// Destroys the specified compute pipeline object and releases its associated resources.
         ///
@@ -241,7 +241,7 @@ namespace RHI
         /// @param createInfo [in] Information describing the desired characteristics of the sampler object.
         /// @return A Result object indicating success or failure.
         ///         On success, it also contains a handle to the created sampler object.
-        [[nodiscard]] virtual Handle<Sampler>           CreateSampler(const SamplerCreateInfo& createInfo)                   = 0;
+        RHI_NODISCARD virtual Handle<Sampler>           CreateSampler(const SamplerCreateInfo& createInfo)                   = 0;
 
         /// Destroys the specified sampler object and releases its associated resources.
         ///
@@ -253,7 +253,7 @@ namespace RHI
         /// @param createInfo [in] Information describing the desired characteristics of the image object.
         /// @return A Result object indicating success or failure.
         ///         On success, it also contains a handle to the created image object.
-        [[nodiscard]] virtual Result<Handle<Image>>     CreateImage(const ImageCreateInfo& createInfo)                       = 0;
+        RHI_NODISCARD virtual Result<Handle<Image>>     CreateImage(const ImageCreateInfo& createInfo)                       = 0;
 
         /// Destroys the specified image object and releases its associated resources.
         ///
@@ -265,7 +265,7 @@ namespace RHI
         /// @param createInfo [in] Information describing the desired characteristics of the buffer object.
         /// @return A Result object indicating success or failure.
         ///         On success, it also contains a handle to the created buffer object.
-        [[nodiscard]] virtual Result<Handle<Buffer>>    CreateBuffer(const BufferCreateInfo& createInfo)                     = 0;
+        RHI_NODISCARD virtual Result<Handle<Buffer>>    CreateBuffer(const BufferCreateInfo& createInfo)                     = 0;
 
         /// Destroys the specified buffer object and releases its associated resources.
         ///
@@ -277,7 +277,7 @@ namespace RHI
         /// @param createInfo [in] Information describing the desired characteristics of the image view object.
         /// @return A Result object indicating success or failure.
         ///         On success, it also contains a handle to the created image view object.
-        [[nodiscard]] virtual Handle<ImageView>         CreateImageView(const ImageViewCreateInfo& createInfo)               = 0;
+        RHI_NODISCARD virtual Handle<ImageView>         CreateImageView(const ImageViewCreateInfo& createInfo)               = 0;
 
         /// Destroys the specified image view object and releases its associated resources.
         ///
@@ -289,7 +289,7 @@ namespace RHI
         /// @param createInfo [in] Information describing the desired characteristics of the buffer view object.
         /// @return A Result object indicating success or failure.
         ///         On success, it also contains a handle to the created buffer view object.
-        [[nodiscard]] virtual Handle<BufferView>        CreateBufferView(const BufferViewCreateInfo& createInfo)             = 0;
+        RHI_NODISCARD virtual Handle<BufferView>        CreateBufferView(const BufferViewCreateInfo& createInfo)             = 0;
 
         /// Destroys the specified buffer view object and releases its associated resources.
         ///
@@ -302,7 +302,7 @@ namespace RHI
         ///
         /// @param handle The handle to the buffer object to map.
         /// @return A pointer to the mapped memory region, or nullptr on failure.
-        [[nodiscard]] virtual DeviceMemoryPtr           MapBuffer(Handle<Buffer> handle)                                     = 0;
+        RHI_NODISCARD virtual DeviceMemoryPtr           MapBuffer(Handle<Buffer> handle)                                     = 0;
 
         /// Unmaps a previously mapped buffer, releasing the host memory access previously granted by `MapBuffer`.
         ///

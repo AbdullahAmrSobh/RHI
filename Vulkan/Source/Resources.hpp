@@ -27,36 +27,23 @@ namespace RHI::Vulkan
         VmaVirtualAllocation virtualHandle;
     };
 
-    struct DescriptorPool
-    {
-        VkDescriptorPool descriptorPool;
-        uint32_t referenceCount;
-    };
-
     class BindGroupAllocator
     {
     public:
-        BindGroupAllocator(VkDevice device)
-            : m_device(device)
-        {
-        }
+        BindGroupAllocator(VkDevice device);
+        ~BindGroupAllocator();
 
         ResultCode InitBindGroup(IBindGroup* bindGroup, IBindGroupLayout* bindGroupLayout);
-        void FreePool(Handle<DescriptorPool> handle);
-
-    private:
-        std::pair<Handle<DescriptorPool>, DescriptorPool> CreateDescriptorPool();
-        VkDescriptorSet AllocateDescriptorSet(VkDescriptorPool descriptorPool, VkDescriptorSetLayout layout);
+        void       ShutdownBindGroup(IBindGroup* bindGroup);
 
     public:
         VkDevice m_device;
-        HandlePool<DescriptorPool> m_descriptorPoolOwner;
-        std::unordered_set<Handle<DescriptorPool>> m_descriptorPools;
+        VkDescriptorPool m_descriptorPool;
     };
 
     struct IImage : Image
     {
-        // TODO: break down to several parallel structures 
+        // TODO: break down to several parallel structures
         Allocation allocation; // allocation backing this resource.
         IResourcePool* pool;   // Pointer to the pool this resource is created from.
         VkImage handle;        // Handle to valid VkImage resource (Might not be backed by an allocation).
@@ -79,7 +66,7 @@ namespace RHI::Vulkan
 
     struct IBuffer : Buffer
     {
-        // TODO: break down to several parallel structures 
+        // TODO: break down to several parallel structures
         Allocation allocation; // allocation backing this resource.
         IResourcePool* pool;   // Pointer to the pool this resource is created from.
         VkBuffer handle;       // Handle to valid VkImage resource (Might not be backed by an allocation).
@@ -125,7 +112,6 @@ namespace RHI::Vulkan
     struct IBindGroup : BindGroup
     {
         VkDescriptorSet descriptorSet;
-        Handle<DescriptorPool> poolHandle;
         Handle<BindGroupLayout> layout;
 
         ResultCode Init(IContext* context, Handle<BindGroupLayout> layout);

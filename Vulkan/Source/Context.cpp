@@ -245,7 +245,8 @@ namespace RHI::Vulkan
 
         auto bindGroupLayout = m_bindGroupLayoutsOwner.Get(handle);
         // clang-format off
-        m_deferDeleteQueue.push_back([&](){ bindGroupLayout->Shutdown(this); });
+        IContext* self = this;
+        m_deferDeleteQueue.push_back([=](){ bindGroupLayout->Shutdown(self); });
         // clang-format on
         m_LeakDetector.m_bindGroupLayouts.OnDestroy(handle);
     }
@@ -270,7 +271,8 @@ namespace RHI::Vulkan
 
         auto bindGroup = m_bindGroupOwner.Get(handle);
         // clang-format off
-        m_deferDeleteQueue.push_back([&](){ bindGroup->Shutdown(this); });
+        IContext* self = this;
+        m_deferDeleteQueue.push_back([=](){ bindGroup->Shutdown(self); });
         // clang-format on
         m_LeakDetector.m_bindGroups.OnDestroy(handle);
     }
@@ -303,7 +305,8 @@ namespace RHI::Vulkan
 
         auto pipelineLayout = m_pipelineLayoutOwner.Get(handle);
         // clang-format off
-        m_deferDeleteQueue.push_back([&](){ pipelineLayout->Shutdown(this); });
+        IContext* self = this;
+        m_deferDeleteQueue.push_back([=](){ pipelineLayout->Shutdown(self); });
         // clang-format on
         m_LeakDetector.m_pipelineLayouts.OnDestroy(handle);
     }
@@ -328,7 +331,8 @@ namespace RHI::Vulkan
 
         auto graphicsPipeline = m_graphicsPipelineOwner.Get(handle);
         // clang-format off
-        m_deferDeleteQueue.push_back([&](){ graphicsPipeline->Shutdown(this); });
+        IContext* self = this;
+        m_deferDeleteQueue.push_back([=](){ graphicsPipeline->Shutdown(self); });
         // clang-format on
         m_LeakDetector.m_graphicsPipelines.OnDestroy(handle);
     }
@@ -353,7 +357,8 @@ namespace RHI::Vulkan
 
         auto computePipeline = m_computePipelineOwner.Get(handle);
         // clang-format off
-        m_deferDeleteQueue.push_back([&](){ computePipeline->Shutdown(this); });
+        IContext* self = this;
+        m_deferDeleteQueue.push_back([=](){ computePipeline->Shutdown(self); });
         // clang-format on
         m_LeakDetector.m_computePipelines.OnDestroy(handle);
     }
@@ -378,7 +383,8 @@ namespace RHI::Vulkan
 
         auto sampler = m_samplerOwner.Get(handle);
         // clang-format off
-        m_deferDeleteQueue.push_back([&](){ sampler->Shutdown(this); });
+        IContext* self = this;
+        m_deferDeleteQueue.push_back([=](){ sampler->Shutdown(self); });
         // clang-format on
         m_LeakDetector.m_samplers.OnDestroy(handle);
     }
@@ -404,7 +410,8 @@ namespace RHI::Vulkan
 
         auto image = m_imageOwner.Get(handle);
         // clang-format off
-        m_deferDeleteQueue.push_back([&](){ image->Shutdown(this); });
+        IContext* self = this;
+        m_deferDeleteQueue.push_back([=](){ image->Shutdown(self); });
         // clang-format on
         m_LeakDetector.m_images.OnDestroy(handle);
     }
@@ -430,7 +437,8 @@ namespace RHI::Vulkan
 
         auto buffer = m_bufferOwner.Get(handle);
         // clang-format off
-        m_deferDeleteQueue.push_back([&](){ buffer->Shutdown(this); });
+        IContext* self = this;
+        m_deferDeleteQueue.push_back([=](){ buffer->Shutdown(self); });
         // clang-format on
         m_LeakDetector.m_buffers.OnDestroy(handle);
     }
@@ -455,7 +463,8 @@ namespace RHI::Vulkan
 
         auto imageView = m_imageViewOwner.Get(handle);
         // clang-format off
-        m_deferDeleteQueue.push_back([&](){ imageView->Shutdown(this); });
+        IContext* self = this;
+        m_deferDeleteQueue.push_back([=](){ imageView->Shutdown(self); });
         // clang-format on
         m_LeakDetector.m_imageViews.OnDestroy(handle);
     }
@@ -480,7 +489,8 @@ namespace RHI::Vulkan
 
         auto imageView = m_bufferViewOwner.Get(handle);
         // clang-format off
-        m_deferDeleteQueue.push_back([&](){ imageView->Shutdown(this); });
+        IContext* self = this;
+        m_deferDeleteQueue.push_back([=](){ imageView->Shutdown(self); });
         // clang-format on
         m_LeakDetector.m_bufferViews.OnDestroy(handle);
     }

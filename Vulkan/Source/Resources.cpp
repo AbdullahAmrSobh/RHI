@@ -13,59 +13,21 @@ namespace RHI::Vulkan
     /// BindGroupAllocator
     ///////////////////////////////////////////////////////////////////////////
 
-    ResultCode BindGroupAllocator::InitBindGroup(IBindGroup* bindGroup, IBindGroupLayout* bindGroupLayout)
-    {
-        for (auto poolHandle : m_descriptorPools)
-        {
-            auto pool = m_descriptorPoolOwner.Get(poolHandle);
-            auto descriptorSet = AllocateDescriptorSet(pool->descriptorPool, bindGroupLayout->handle);
-            if (descriptorSet)
-            {
-                bindGroup->poolHandle = poolHandle;
-                bindGroup->descriptorSet = descriptorSet;
-                return ResultCode::Success;
-            }
-        }
-
-        auto [handle, pool] = CreateDescriptorPool();
-        auto descriptorSet = AllocateDescriptorSet(pool.descriptorPool, bindGroupLayout->handle);
-        if (descriptorSet)
-        {
-            bindGroup->poolHandle = handle;
-            bindGroup->descriptorSet = descriptorSet;
-            return ResultCode::Success;
-        }
-
-        return ResultCode::ErrorUnkown;
-    }
-
-    void BindGroupAllocator::FreePool(Handle<DescriptorPool> handle)
-    {
-        auto pool = m_descriptorPoolOwner.Get(handle);
-        RHI_ASSERT(pool->referenceCount >= 1);
-        pool->referenceCount--;
-        if (pool == 0)
-        {
-            vkDestroyDescriptorPool(m_device, pool->descriptorPool, nullptr);
-            m_descriptorPoolOwner.Remove(handle);
-            m_descriptorPools.erase(handle);
-        }
-    }
-
-    std::pair<Handle<DescriptorPool>, DescriptorPool> BindGroupAllocator::CreateDescriptorPool()
+    BindGroupAllocator::BindGroupAllocator(VkDevice device)
+        : m_device(device)
     {
         // clang-format off
             VkDescriptorPoolSize poolSizes[] = {
-                { VK_DESCRIPTOR_TYPE_SAMPLER,                16 },
-                { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          16 },
-                { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          16 },
-                { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         16 },
-                { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         16 },
-                { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   16 },
-                { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   16 },
-                { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 16 },
-                { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 16 },
-                { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,       16 },
+                { VK_DESCRIPTOR_TYPE_SAMPLER,                1024 },
+                { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          1024 },
+                { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          1024 },
+                { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         1024 },
+                { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         1024 },
+                { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   1024 },
+                { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   1024 },
+                { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1024 },
+                { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1024 },
+                { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,       1024 },
             };
         // clang-format on
 
@@ -77,31 +39,33 @@ namespace RHI::Vulkan
         createInfo.poolSizeCount = sizeof(poolSizes) / sizeof(VkDescriptorPoolSize);
         createInfo.pPoolSizes = poolSizes;
 
-        VkDescriptorPool pool = VK_NULL_HANDLE;
-        auto result = vkCreateDescriptorPool(m_device, &createInfo, nullptr, &pool);
+        auto result = vkCreateDescriptorPool(m_device, &createInfo, nullptr, &m_descriptorPool);
         VULKAN_ASSERT_SUCCESS(result);
-
-        auto [handle, _pool] = m_descriptorPoolOwner.InsertZerod();
-        m_descriptorPools.insert(handle);
-        _pool.descriptorPool = pool;
-        _pool.referenceCount = 1;
-        return std::make_pair(handle, _pool);
     }
 
-    VkDescriptorSet BindGroupAllocator::AllocateDescriptorSet(VkDescriptorPool descriptorPool, VkDescriptorSetLayout layout)
+    BindGroupAllocator::~BindGroupAllocator()
+    {
+        vkDestroyDescriptorPool(m_device, m_descriptorPool, nullptr);
+    }
+
+    ResultCode BindGroupAllocator::InitBindGroup(IBindGroup* bindGroup, IBindGroupLayout* bindGroupLayout)
     {
         VkDescriptorSetAllocateInfo allocateInfo{};
         allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocateInfo.pNext = nullptr;
         allocateInfo.descriptorSetCount = 1;
-        allocateInfo.pSetLayouts = &layout;
-        allocateInfo.descriptorPool = descriptorPool;
-
-        VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
-        auto result = vkAllocateDescriptorSets(m_device, &allocateInfo, &descriptorSet);
+        allocateInfo.pSetLayouts = &bindGroupLayout->handle;
+        allocateInfo.descriptorPool = m_descriptorPool;
+        auto result = vkAllocateDescriptorSets(m_device, &allocateInfo, &bindGroup->descriptorSet);
         if (result != VK_SUCCESS)
-            return VK_NULL_HANDLE;
-        return descriptorSet;
+            return ResultCode::ErrorOutOfMemory;
+
+        return ResultCode::Success;
+    }
+
+    void BindGroupAllocator::ShutdownBindGroup(IBindGroup* bindGroup)
+    {
+        vkFreeDescriptorSets(m_device, m_descriptorPool, 1, &bindGroup->descriptorSet);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -354,7 +318,7 @@ namespace RHI::Vulkan
     void IBindGroup::Shutdown(IContext* context)
     {
         auto allocator = context->m_bindGroupAllocator.get();
-        allocator->FreePool(poolHandle);
+        allocator->ShutdownBindGroup(this);
     }
 
     void IBindGroup::Write(IContext* context, BindGroupData data)
