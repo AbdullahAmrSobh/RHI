@@ -289,7 +289,11 @@ namespace RHI::Vulkan
 
     void ICommandListAllocator::ReleaseCommandBuffers(VkCommandPool pool, TL::Span<VkCommandBuffer> commandBuffers)
     {
-        vkFreeCommandBuffers(m_context->m_device, pool, uint32_t(commandBuffers.size()), commandBuffers.data());
+        auto device = m_context->m_device;
+        m_context->m_deferDeleteQueue.push_back([=]()
+                                                {
+                                                    vkFreeCommandBuffers(device, pool, uint32_t(commandBuffers.size()), commandBuffers.data());
+                                                });
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////

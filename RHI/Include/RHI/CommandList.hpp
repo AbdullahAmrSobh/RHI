@@ -145,7 +145,7 @@ namespace RHI
         CommandList(CommandList&& other)      = default;
 
     public:
-        virtual ~CommandList()                                                                     = default;
+        virtual ~CommandList() = default;
 
         /// @brief Marks the begining of this command list recording
         virtual void Begin()                                                                       = 0;

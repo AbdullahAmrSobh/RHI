@@ -300,25 +300,6 @@ namespace RHI
         Signaled,
     };
 
-#ifdef RHI_PLATFORM_WINDOWS
-    /// @brief struct contains win32 surface handles.
-    struct Win32WindowDesc
-    {
-        void* hwnd;
-        void* hinstance;
-    };
-#endif
-
-    /// @brief Report describe the current state of the resource pool.
-    struct PoolReport
-    {
-        MemoryType type;
-        float      fragmentation;
-        size_t     size;
-        size_t     alignment;
-        size_t     allocationsCount;
-    };
-
     /// @brief Represent the offset into an image resource.
     struct ImageOffset
     {
@@ -443,7 +424,6 @@ namespace RHI
     /// @brief An object that groups shader resources that are bound together.
     struct BindGroupData
     {
-    public:
         BindGroupData() = default;
 
         void BindImages(uint32_t index, TL::Span<Handle<ImageView>> handles, uint32_t arrayOffset = 0);
@@ -586,17 +566,6 @@ namespace RHI
         MemoryType    heapType;
     };
 
-    /// @brief Represent the creation parameters of an resource pool.
-    struct PoolCreateInfo
-    {
-        AllocationAlgorithm allocationAlgorithm = AllocationAlgorithm::Linear;
-        MemoryType          heapType;
-        size_t              blockSize;
-        size_t              minBlockCount;
-        size_t              maxBlockCount;
-        size_t              minBlockAlignment;
-    };
-
     /// @brief Represent the creation parameters of an image resource.
     struct ImageCreateInfo
     {
@@ -663,11 +632,8 @@ namespace RHI
     /// @brief Description of the graphics pipeline states.
     struct GraphicsPipelineCreateInfo
     {
-        // TODO: Add several helper constructors/builder functions
-
         const char*                     vertexShaderName;
         ShaderModule*                   vertexShaderModule;
-
         const char*                     pixelShaderName;
         ShaderModule*                   pixelShaderModule;
 
@@ -764,7 +730,7 @@ namespace RHI
 
 } // namespace RHI
 
-#define DEFINE_POD_HASH_SPECIALIZATION(Type)            \
+#define RHI_DEFINE_POD_HASH_SPECIALIZATION(Type)        \
     template<>                                          \
     struct hash<Type>                                   \
     {                                                   \
@@ -776,7 +742,7 @@ namespace RHI
 
 namespace std
 {
-    DEFINE_POD_HASH_SPECIALIZATION(RHI::ImageViewCreateInfo);
-    DEFINE_POD_HASH_SPECIALIZATION(RHI::BufferViewCreateInfo);
-    DEFINE_POD_HASH_SPECIALIZATION(RHI::SamplerCreateInfo);
+    RHI_DEFINE_POD_HASH_SPECIALIZATION(RHI::ImageViewCreateInfo);
+    RHI_DEFINE_POD_HASH_SPECIALIZATION(RHI::BufferViewCreateInfo);
+    RHI_DEFINE_POD_HASH_SPECIALIZATION(RHI::SamplerCreateInfo);
 } // namespace std

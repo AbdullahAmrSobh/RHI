@@ -197,9 +197,6 @@ namespace RHI
 
         /// Updates the contents of a bind group with the provided data.
         ///
-        /// @todo: Should this method allows modifying individual bindings within a bind group without creating a new one?
-        /// It's efficient for updating frequently changing data like uniforms or textures within a bind group.
-        ///
         /// @param handle The handle to the bind group to update.
         /// @param content The data to update in the bind group, containing binding indices and corresponding data pointers.
         virtual void                                    UpdateBindGroup(Handle<BindGroup> handle, const BindGroupData& data) = 0;

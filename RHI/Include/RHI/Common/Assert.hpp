@@ -9,7 +9,7 @@
 #endif
 
 #define RHI_ASSERT(expression) \
-    if (!(expression))         \
+    while (!(expression))      \
     {                          \
         RHI_DEBUG_BREAK();     \
     }

@@ -5,6 +5,15 @@
 
 namespace RHI
 {
+#ifdef RHI_PLATFORM_WINDOWS
+    /// @brief struct contains win32 surface handles.
+    struct Win32WindowDesc
+    {
+        void* hwnd;
+        void* hinstance;
+    };
+#endif
+
     /// @brief Structure specifying the parameters of the swapchain.
     struct SwapchainCreateInfo
     {
