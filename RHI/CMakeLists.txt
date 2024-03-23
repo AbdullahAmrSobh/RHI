@@ -33,6 +33,7 @@ set(SOURCE_FILES
     
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Common/Callstack.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Attachments.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/ResourceCache.cpp
 
 
     ${CMAKE_SOURCE_DIR}/tracy/public/TracyClient.cpp

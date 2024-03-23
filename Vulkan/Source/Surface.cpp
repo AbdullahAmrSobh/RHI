@@ -23,7 +23,7 @@ namespace RHI::Vulkan
         vkCreateInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
         vkCreateInfo.pNext = nullptr;
         vkCreateInfo.flags = 0;
-        // vkCreateInfo.hinstance = static_cast<HINSTANCE>(createInfo.win32Window.hinstance);
+        vkCreateInfo.hinstance = static_cast<HINSTANCE>(createInfo.win32Window.hinstance);
         vkCreateInfo.hwnd = static_cast<HWND>(createInfo.win32Window.hwnd);
         auto result = vkCreateWin32SurfaceKHR(context->m_instance, &vkCreateInfo, nullptr, &m_surface);
         VULKAN_ASSERT_SUCCESS(result);
