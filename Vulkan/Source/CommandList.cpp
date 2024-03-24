@@ -425,7 +425,42 @@ namespace RHI::Vulkan
 
         if (m_pass && m_pass->GetQueueType() == QueueType::Graphics)
         {
-            RenderingBegin(pass);
+            std::vector<VkRenderingAttachmentInfo> colorAttachmentInfos;
+            VkRenderingAttachmentInfo depthAttachmentInfo = {};
+            bool hasDepthAttachment = false;
+
+            for (auto passAttachment : m_pass->GetColorAttachments())
+            {
+                auto view = m_context->m_imageViewOwner.Get(passAttachment->m_view);
+
+                VkRenderingAttachmentInfo& attachmentInfo = colorAttachmentInfos.emplace_back();
+                attachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+                attachmentInfo.pNext = nullptr;
+                attachmentInfo.imageView = view->handle;
+                attachmentInfo.imageLayout = GetImageLayout(passAttachment->m_usage, Access::None);
+                attachmentInfo.loadOp = ConvertLoadOp(passAttachment->m_loadStoreOperations.loadOperation);
+                attachmentInfo.storeOp = ConvertStoreOp(passAttachment->m_loadStoreOperations.storeOperation);
+                attachmentInfo.clearValue.color = ConvertColorValue(passAttachment->m_clearValue.colorValue);
+            }
+
+            if (auto passAttachment = m_pass->GetDepthStencilAttachment(); passAttachment != nullptr)
+            {
+                auto view = m_context->m_imageViewOwner.Get(passAttachment->m_view);
+
+                depthAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+                depthAttachmentInfo.pNext = nullptr;
+                depthAttachmentInfo.imageView = view->handle;
+                depthAttachmentInfo.imageLayout = GetImageLayout(passAttachment->m_usage, Access::None);
+                depthAttachmentInfo.loadOp = ConvertLoadOp(passAttachment->m_loadStoreOperations.loadOperation);
+                depthAttachmentInfo.storeOp = ConvertStoreOp(passAttachment->m_loadStoreOperations.storeOperation);
+                depthAttachmentInfo.clearValue.depthStencil = ConvertDepthStencilValue(passAttachment->m_clearValue.depthStencilValue);
+                hasDepthAttachment = true;
+            }
+
+            RenderingBegin(
+                colorAttachmentInfos,
+                hasDepthAttachment ? &depthAttachmentInfo : nullptr,
+                m_pass->m_frameSize);
         }
     }
 
@@ -810,52 +845,23 @@ namespace RHI::Vulkan
         vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, count, descriptorSets, 0, nullptr);
     }
 
-    void ICommandList::RenderingBegin(Pass& pass)
+    void ICommandList::RenderingBegin(
+        TL::Span<const VkRenderingAttachmentInfo> attachmentInfos,
+        const VkRenderingAttachmentInfo* depthAttachmentInfo,
+        ImageSize2D extent)
     {
         ZoneScoped;
-
-        TL::Vector<VkRenderingAttachmentInfo> attachmentInfos{};
-        VkRenderingAttachmentInfo depthAttachment{};
-        bool hasDepthAttachment = false;
-
-        for (auto passAttachment : pass.GetColorAttachments())
-        {
-            auto view = m_context->m_imageViewOwner.Get(passAttachment->m_view);
-
-            auto& attachmentInfo = attachmentInfos.emplace_back();
-            attachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-            attachmentInfo.pNext = nullptr;
-            attachmentInfo.imageView = view->handle;
-            attachmentInfo.imageLayout = GetImageLayout(passAttachment->m_usage, Access::None);
-            attachmentInfo.loadOp = ConvertLoadOp(passAttachment->m_loadStoreOperations.loadOperation);
-            attachmentInfo.storeOp = ConvertStoreOp(passAttachment->m_loadStoreOperations.storeOperation);
-            attachmentInfo.clearValue.color = ConvertColorValue(passAttachment->m_clearValue.colorValue);
-        }
-
-        if (auto passAttachment = pass.GetDepthStencilAttachment(); passAttachment != nullptr)
-        {
-            auto view = m_context->m_imageViewOwner.Get(passAttachment->m_view);
-
-            depthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-            depthAttachment.pNext = nullptr;
-            depthAttachment.imageView = view->handle;
-            depthAttachment.imageLayout = GetImageLayout(passAttachment->m_usage, Access::None);
-            depthAttachment.loadOp = ConvertLoadOp(passAttachment->m_loadStoreOperations.loadOperation);
-            depthAttachment.storeOp = ConvertStoreOp(passAttachment->m_loadStoreOperations.storeOperation);
-            depthAttachment.clearValue.depthStencil = ConvertDepthStencilValue(passAttachment->m_clearValue.depthStencilValue);
-            hasDepthAttachment = true;
-        }
 
         VkRenderingInfo renderingInfo = {};
         renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
         renderingInfo.pNext = nullptr;
         renderingInfo.flags = 0;
-        renderingInfo.renderArea.extent = ConvertExtent2D(pass.m_frameSize);
+        renderingInfo.renderArea.extent = ConvertExtent2D(extent);
         renderingInfo.renderArea.offset = ConvertOffset2D({ 0u, 0u, 0u });
         renderingInfo.layerCount = 1;
         renderingInfo.colorAttachmentCount = uint32_t(attachmentInfos.size());
         renderingInfo.pColorAttachments = attachmentInfos.data();
-        renderingInfo.pDepthAttachment = hasDepthAttachment ? &depthAttachment : nullptr;
+        renderingInfo.pDepthAttachment = depthAttachmentInfo;
         vkCmdBeginRendering(m_commandBuffer, &renderingInfo);
     }
 
@@ -865,7 +871,10 @@ namespace RHI::Vulkan
         vkCmdEndRendering(m_commandBuffer);
     }
 
-    void ICommandList::PipelineBarrier(TL::Span<VkMemoryBarrier2> memoryBarriers, TL::Span<VkBufferMemoryBarrier2> bufferBarriers, TL::Span<VkImageMemoryBarrier2> imageBarriers)
+    void ICommandList::PipelineBarrier(
+        TL::Span<const VkMemoryBarrier2> memoryBarriers,
+        TL::Span<const VkBufferMemoryBarrier2> bufferBarriers,
+        TL::Span<const VkImageMemoryBarrier2> imageBarriers)
     {
         VkDependencyInfo dependencyInfo{};
         dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;

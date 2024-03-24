@@ -19,10 +19,12 @@ namespace RHI::Vulkan
 
         VkResult Init();
 
-        void Reset() override;
-        CommandList* Allocate(QueueType queueType) override;
+        // clang-format off
+        void                     Reset()                                       override;
+        CommandList*             Allocate(QueueType queueType)                 override;
         TL::Vector<CommandList*> Allocate(QueueType queueType, uint32_t count) override;
-        void Release(TL::Span<CommandList*> commandLists) override;
+        void                     Release(TL::Span<CommandList*> commandLists)  override;
+        // clang-format on
 
     private:
         TL::Vector<VkCommandBuffer> AllocateCommandBuffers(VkCommandPool pool, uint32_t count, VkCommandBufferLevel level);
@@ -59,6 +61,18 @@ namespace RHI::Vulkan
         void Copy(const ImageToBufferCopyInfo& copyInfo)                                   override;
         // clang-format on
 
+        void PipelineBarrier(
+            TL::Span<const VkMemoryBarrier2> memoryBarriers,
+            TL::Span<const VkBufferMemoryBarrier2> bufferBarriers,
+            TL::Span<const VkImageMemoryBarrier2> imageBarriers);
+
+        void RenderingBegin(
+            TL::Span<const VkRenderingAttachmentInfo> attachmentInfos,
+            const VkRenderingAttachmentInfo* depthAttachmentInfo,
+            ImageSize2D extent);
+
+        void RenderingEnd();
+
         VkCommandBuffer m_commandBuffer;
         VkCommandPool m_commandPool;
 
@@ -67,14 +81,6 @@ namespace RHI::Vulkan
 
     private:
         void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<Handle<BindGroup>> bindGroups);
-
-        void RenderingBegin(Pass& pass);
-        void RenderingEnd();
-
-        void PipelineBarrier(
-            TL::Span<VkMemoryBarrier2> memoryBarriers,
-            TL::Span<VkBufferMemoryBarrier2> bufferBarriers,
-            TL::Span<VkImageMemoryBarrier2> imageBarriers);
 
     private:
         IContext* m_context;
