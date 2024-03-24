@@ -74,6 +74,9 @@ namespace RHI::Vulkan
 
     ResultCode IImage::Init(IContext* context, const ImageCreateInfo& _createInfo, bool isTransient)
     {
+        signalSemaphore = VK_NULL_HANDLE;
+        waitSemaphore   = VK_NULL_HANDLE;
+
         VkImageCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         createInfo.pNext = nullptr;

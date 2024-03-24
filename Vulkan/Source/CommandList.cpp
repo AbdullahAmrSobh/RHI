@@ -180,13 +180,36 @@ namespace RHI::Vulkan
             auto dstPassAttachment = passAttachment.get();
             auto image = m_context->m_imageOwner.Get(attachemnt->GetHandle());
 
-            if (srcPassAttachment == nullptr && image->initalLayout != VK_IMAGE_LAYOUT_UNDEFINED)
-            {
-                continue;
-            }
-
             auto srcInfo = GetImageTransitionInfo(BarrierType::PrePass, srcPassAttachment);
             auto dstInfo = GetImageTransitionInfo(BarrierType::PrePass, dstPassAttachment);
+
+            // if first use then collect all semaphore we need to wait on
+            if (srcPassAttachment == nullptr)
+            {
+                // swapchain semaphore
+                if (IsSwapchainAttachment(*passAttachment))
+                {
+                    auto swapchain = (ISwapchain*)attachemnt->m_swapchain;
+
+                    auto& semaphoreInfo = m_waitSemaphores.emplace_back();
+                    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+                    semaphoreInfo.semaphore = swapchain->GetImageReadySemaphore();
+                    semaphoreInfo.stageMask = dstInfo.stage;
+                }
+                // transient resource nothing to do
+                else if (image->waitSemaphore != VK_NULL_HANDLE)
+                {
+                    // resource is being streamed wait for it
+                    auto& semaphoreInfo = m_waitSemaphores.emplace_back();
+                    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+                    semaphoreInfo.semaphore = image->waitSemaphore;
+                    semaphoreInfo.stageMask = dstInfo.stage;
+                }
+                else if (image->initalLayout != VK_IMAGE_LAYOUT_UNDEFINED)
+                {
+                    continue;
+                }
+            }
 
             VkImageMemoryBarrier2& barrier = imageBarriers.emplace_back();
             barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
@@ -307,7 +330,15 @@ namespace RHI::Vulkan
                     auto& signalSemaphore = m_signalSemaphores.emplace_back();
                     signalSemaphore.semaphore = swapchain->GetFrameReadySemaphore();
                     signalSemaphore.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-                    signalSemaphore.stageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
+                    signalSemaphore.stageMask = dstInfo.stage;
+                }
+                // a read operation is staged
+                else if (image->signalSemaphore != VK_NULL_HANDLE)
+                {
+                    auto& signalSemaphore = m_signalSemaphores.emplace_back();
+                    signalSemaphore.semaphore = image->signalSemaphore;
+                    signalSemaphore.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+                    signalSemaphore.stageMask = dstInfo.stage;
                 }
                 else
                 {

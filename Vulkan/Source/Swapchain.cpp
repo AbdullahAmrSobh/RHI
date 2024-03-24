@@ -165,6 +165,10 @@ namespace RHI::Vulkan
         auto result = vkQueuePresentKHR(m_context->m_presentQueue, &presentInfo);
         VULKAN_ASSERT_SUCCESS(result);
 
+
+        /// @todo: fix this by using per image semaphore
+        vkDeviceWaitIdle(m_context->m_device);
+
         result = vkAcquireNextImageKHR(m_context->m_device, m_swapchain, UINT64_MAX, m_imageAcquiredSemaphore, VK_NULL_HANDLE, &m_currentImageIndex);
         VULKAN_ASSERT_SUCCESS(result);
 
