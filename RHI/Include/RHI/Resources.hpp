@@ -569,6 +569,7 @@ namespace RHI
     /// @brief Represent the creation parameters of an image resource.
     struct ImageCreateInfo
     {
+        const char*       debugName;
         AllocationInfo    allocationInfo;
         Flags<ImageUsage> usageFlags;                          // Usage flags.
         ImageType         type;                                // The type of the image.
@@ -586,6 +587,7 @@ namespace RHI
     /// @brief Represent the creation parameters of an buffer resource.
     struct BufferCreateInfo
     {
+        const char*        debugName;
         AllocationInfo     allocationInfo;
         Flags<BufferUsage> usageFlags; // Usage flags.
         size_t             byteSize;   // The size of the buffer.
@@ -607,6 +609,7 @@ namespace RHI
             subresource.imageAspects = aspect;
         }
 
+        const char*           debugName;
         Handle<Image>         image;
         ComponentMapping      components;
         ImageSubresourceRange subresource;
@@ -619,6 +622,7 @@ namespace RHI
     /// @brief Structure specifying the parameters of an buffer attachment.
     struct BufferViewCreateInfo
     {
+        const char*    debugName;
         Handle<Buffer> buffer;
         Format         format;
         size_t         byteOffset;
@@ -632,6 +636,8 @@ namespace RHI
     /// @brief Description of the graphics pipeline states.
     struct GraphicsPipelineCreateInfo
     {
+        const char*                     debugName;
+
         const char*                     vertexShaderName;
         ShaderModule*                   vertexShaderModule;
         const char*                     pixelShaderName;
@@ -650,6 +656,8 @@ namespace RHI
     /// @brief Description of a compute pipeline state.
     struct ComputePipelineCreateInfo
     {
+        const char*            debugName;
+
         const char*            shaderName;
         ShaderModule*          shaderModule;
         Handle<PipelineLayout> layout;
@@ -678,6 +686,8 @@ namespace RHI
             , maxLod(maxLod)
         {
         }
+
+        const char*             debugName;
 
         SamplerFilter           filterMin  = SamplerFilter::Point;
         SamplerFilter           filterMag  = SamplerFilter::Point;

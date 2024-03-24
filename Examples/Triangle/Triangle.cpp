@@ -85,6 +85,7 @@ public:
             auto textureData = LoadImage("./Resources/Images/image.png");
 
             RHI::ImageCreateInfo createInfo{};
+            createInfo.debugName = "Image.png";
             createInfo.usageFlags = RHI::ImageUsage::ShaderResource;
             createInfo.usageFlags |= RHI::ImageUsage::CopyDst;
             createInfo.type = RHI::ImageType::Image2D;

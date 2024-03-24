@@ -115,6 +115,8 @@ namespace RHI::Vulkan
             result = vmaCreateImage(context->m_allocator, &createInfo, &allocationInfo, &handle, &allocation.handle, &allocation.info);
         }
 
+        context->SetDebugName(VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, uint64_t(handle), _createInfo.debugName);
+
         return ConvertResult(result);
     }
 

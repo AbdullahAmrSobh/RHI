@@ -522,6 +522,20 @@ namespace RHI::Vulkan
     // Interface implementation
     ////////////////////////////////////////////////////////////
 
+    void IContext::SetDebugName(VkDebugReportObjectTypeEXT type, uint64_t handle, const char* name)
+    {
+        if (m_vkDebugMarkerSetObjectNameEXT && name != nullptr)
+        {
+            VkDebugMarkerObjectNameInfoEXT nameInfo{};
+            nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT;
+            nameInfo.pNext = nullptr;
+            nameInfo.pObjectName = name;
+            nameInfo.object = handle;
+            nameInfo.objectType = type;
+            m_vkDebugMarkerSetObjectNameEXT(m_device, &nameInfo);
+        }
+    }
+
     void IContext::DestroyResources()
     {
         ZoneScoped;
@@ -830,10 +844,12 @@ namespace RHI::Vulkan
             m_vkCmdDebugMarkerBeginEXT = VULKAN_LOAD_PROC(m_device, vkCmdDebugMarkerBeginEXT);
             m_vkCmdDebugMarkerInsertEXT = VULKAN_LOAD_PROC(m_device, vkCmdDebugMarkerInsertEXT);
             m_vkCmdDebugMarkerEndEXT = VULKAN_LOAD_PROC(m_device, vkCmdDebugMarkerEndEXT);
+            m_vkDebugMarkerSetObjectNameEXT = VULKAN_LOAD_PROC(m_device, vkDebugMarkerSetObjectNameEXT);
 
             RHI_ASSERT(m_vkCmdDebugMarkerBeginEXT);
             RHI_ASSERT(m_vkCmdDebugMarkerInsertEXT);
             RHI_ASSERT(m_vkCmdDebugMarkerEndEXT);
+            RHI_ASSERT(m_vkDebugMarkerSetObjectNameEXT);
         }
 #endif
 

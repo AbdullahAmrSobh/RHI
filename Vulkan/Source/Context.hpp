@@ -67,6 +67,8 @@ namespace RHI::Vulkan
         void                      UnmapBuffer(Handle<Buffer> handle)                                   override;
         // clang-format on
 
+        void SetDebugName(VkDebugReportObjectTypeEXT type, uint64_t handle, const char* name);
+
         void DestroyResources();
 
         VkSemaphore CreateSemaphore();
@@ -110,6 +112,7 @@ namespace RHI::Vulkan
         PFN_vkCmdDebugMarkerEndEXT            m_vkCmdDebugMarkerEndEXT            = nullptr;
         PFN_vkCmdBeginConditionalRenderingEXT m_vkCmdBeginConditionalRenderingEXT = nullptr;
         PFN_vkCmdEndConditionalRenderingEXT   m_vkCmdEndConditionalRenderingEXT   = nullptr;
+        PFN_vkDebugMarkerSetObjectNameEXT     m_vkDebugMarkerSetObjectNameEXT     = nullptr;
 
         HandlePool<IImage>            m_imageOwner             = HandlePool<IImage>();
         HandlePool<IBuffer>           m_bufferOwner            = HandlePool<IBuffer>();
