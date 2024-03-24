@@ -3,6 +3,7 @@
 #include "Resources.hpp"
 #include "StagingBuffer.hpp"
 #include "CommandList.hpp"
+#include "CommandListAllocator.hpp"
 #include "TransientAllocator.hpp"
 
 #include <tracy/Tracy.hpp>

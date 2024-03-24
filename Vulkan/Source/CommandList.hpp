@@ -10,31 +10,6 @@ namespace RHI::Vulkan
     class IContext;
     class ICommandList;
 
-    class ICommandListAllocator final : public CommandListAllocator
-    {
-    public:
-        ICommandListAllocator(IContext* context);
-
-        ~ICommandListAllocator();
-
-        VkResult Init();
-
-        // clang-format off
-        void                     Reset()                                       override;
-        CommandList*             Allocate(QueueType queueType)                 override;
-        TL::Vector<CommandList*> Allocate(QueueType queueType, uint32_t count) override;
-        void                     Release(TL::Span<CommandList*> commandLists)  override;
-        // clang-format on
-
-    private:
-        TL::Vector<VkCommandBuffer> AllocateCommandBuffers(VkCommandPool pool, uint32_t count, VkCommandBufferLevel level);
-        void ReleaseCommandBuffers(VkCommandPool pool, TL::Span<VkCommandBuffer> commandBuffers);
-
-    private:
-        IContext* m_context;
-        TL::Vector<VkCommandPool> m_commandPools[uint32_t(QueueType::Count)];
-    };
-
     class ICommandList final : public CommandList
     {
     public:
@@ -49,7 +24,6 @@ namespace RHI::Vulkan
         void DebugMarkerPop()                                                              override;
         void BeginConditionalCommands(Handle<Buffer> buffer, size_t offset, bool inverted) override;
         void EndConditionalCommands()                                                      override;
-        // TODO: add indirect commands here
         void Execute(TL::Span<const CommandList*> commandLists)                            override;
         void SetViewport(const Viewport& viewport)                                         override;
         void SetSicssor(const Scissor& sicssor)                                            override;
@@ -76,11 +50,15 @@ namespace RHI::Vulkan
         VkCommandBuffer m_commandBuffer;
         VkCommandPool m_commandPool;
 
+        // TODO: Move to pass
         TL::Vector<VkSemaphoreSubmitInfo> m_signalSemaphores;
         TL::Vector<VkSemaphoreSubmitInfo> m_waitSemaphores;
 
     private:
-        void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<Handle<BindGroup>> bindGroups);
+        void BindShaderBindGroups(
+            VkPipelineBindPoint bindPoint,
+            VkPipelineLayout pipelineLayout,
+            TL::Span<Handle<BindGroup>> bindGroups);
 
     private:
         IContext* m_context;
