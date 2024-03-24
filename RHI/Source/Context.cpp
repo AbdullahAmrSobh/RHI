@@ -29,7 +29,7 @@ namespace RHI
         }
         else
         {
-            m_frameScheduler->WriteBufferContent(handle, content);
+            RHI_UNREACHABLE();
         }
         return handle;
     }

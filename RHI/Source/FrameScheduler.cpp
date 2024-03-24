@@ -33,8 +33,6 @@ namespace RHI
 
         m_currentFrameIndex++;
         m_currentFrameIndex %= 2;
-
-        Flush();
     }
 
     Ptr<Pass> FrameScheduler::CreatePass(const char* name, QueueType queueType)
@@ -59,8 +57,6 @@ namespace RHI
         auto buffer = m_stagingBuffer->Allocate(content.size_bytes());
         memcpy(buffer.pData, content.data(), content.size_bytes());
 
-        // StageImageWrite(handle);
-
         BufferToImageCopyInfo copyInfo{};
         copyInfo.srcBuffer = buffer.buffer;
         copyInfo.srcOffset = 0;
@@ -68,30 +64,7 @@ namespace RHI
         copyInfo.dstImage = handle;
         copyInfo.dstSubresource = subresource;
         copyInfo.dstOffset = offset;
-
-        auto commandList = m_commandListAllocator->Allocate(RHI::QueueType::Transfer);
-        commandList->Begin();
-        commandList->Copy(copyInfo);
-        commandList->End();
-
-        auto fence = m_context->CreateFence();
-        ExecuteCommandLists(*commandList, fence.get());
-        fence->Wait();
-    }
-
-    void FrameScheduler::WriteBufferContent(Handle<Buffer> handle, TL::Span<const uint8_t> content)
-    {
-        auto buffer = m_stagingBuffer->Allocate(content.size());
-        memcpy(buffer.pData, content.data(), content.size());
-
-        StageBufferWrite(handle);
-
-        BufferCopyInfo copyInfo{};
-
-        auto commandList = m_commandListAllocator->Allocate(RHI::QueueType::Transfer);
-        commandList->Begin();
-        commandList->Copy(copyInfo);
-        commandList->End();
+        StageImageWrite(copyInfo);
     }
 
     ResultCode FrameScheduler::Compile()
@@ -99,12 +72,6 @@ namespace RHI
         CompileTransientResources();
         CompileResourceViews();
         return ResultCode::Success;
-    }
-
-    std::string FrameScheduler::GetGraphviz()
-    {
-        // return m_renderGraph->GetGraphviz();
-        return "";
     }
 
     Fence& FrameScheduler::GetFrameCurrentFence()

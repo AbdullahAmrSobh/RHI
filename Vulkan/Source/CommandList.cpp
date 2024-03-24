@@ -591,32 +591,6 @@ namespace RHI::Vulkan
         auto srcBuffer = m_context->m_bufferOwner.Get(command.srcBuffer);
         auto dstImage = m_context->m_imageOwner.Get(command.dstImage);
 
-        /// @todo: remove those fixed barriers
-
-        VkImageMemoryBarrier2 transitionImage{};
-        transitionImage.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-        transitionImage.pNext = nullptr;
-        transitionImage.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-        transitionImage.srcAccessMask = 0;
-        transitionImage.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-        transitionImage.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-        transitionImage.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        transitionImage.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        transitionImage.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        transitionImage.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        transitionImage.image = dstImage->handle;
-        auto layer = ConvertSubresourceLayer(command.dstSubresource);
-        transitionImage.subresourceRange.aspectMask = layer.aspectMask;
-        transitionImage.subresourceRange.levelCount = 1;
-        transitionImage.subresourceRange.layerCount = 1;
-
-        VkDependencyInfo barrier{};
-        barrier.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-        barrier.imageMemoryBarrierCount = 1;
-        barrier.pImageMemoryBarriers = &transitionImage;
-
-        vkCmdPipelineBarrier2(m_commandBuffer, &barrier);
-
         auto copyInfo = VkBufferImageCopy{};
         copyInfo.bufferOffset = command.srcOffset;
         copyInfo.bufferRowLength = command.srcBytesPerRow;
@@ -625,15 +599,6 @@ namespace RHI::Vulkan
         copyInfo.imageOffset = ConvertOffset3D(command.dstOffset);
         copyInfo.imageExtent = ConvertExtent3D(command.srcSize);
         vkCmdCopyBufferToImage(m_commandBuffer, srcBuffer->handle, dstImage->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyInfo);
-
-        transitionImage.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-        transitionImage.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-        transitionImage.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-        transitionImage.dstAccessMask = 0;
-        transitionImage.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        transitionImage.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-        vkCmdPipelineBarrier2(m_commandBuffer, &barrier);
     }
 
     void ICommandList::Copy(const ImageToBufferCopyInfo& command)

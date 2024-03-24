@@ -47,11 +47,8 @@ namespace RHI
                                       ImageSize3D             size,
                                       ImageSubresourceLayers  subresource,
                                       TL::Span<const uint8_t> content);
-        void        WriteBufferContent(Handle<Buffer> handle, TL::Span<const uint8_t> content);
 
         ResultCode  Compile();
-
-        std::string GetGraphviz();
 
     private:
         Fence& GetFrameCurrentFence();
@@ -64,15 +61,8 @@ namespace RHI
         void   CleanupResourceViews();
 
     protected:
-        virtual void Flush()                                                     = 0;
-
-        virtual void WaitIdle()                                                  = 0;
-        virtual void PassSubmit(Pass* pass, Fence* fence)                        = 0;
-
-        virtual void StageImageWrite(Handle<Image> handle)                       = 0;
-        virtual void StageBufferWrite(Handle<Buffer> handle)                     = 0;
-
-        virtual void ExecuteCommandLists(CommandList& commandList, Fence* fence) = 0;
+        virtual void PassSubmit(Pass* pass, Fence* fence)                          = 0;
+        virtual void StageImageWrite(const struct BufferToImageCopyInfo& copyInfo) = 0;
 
     protected:
         Context*                  m_context;
