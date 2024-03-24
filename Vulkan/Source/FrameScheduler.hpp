@@ -21,14 +21,9 @@ namespace RHI::Vulkan
         void PassSubmit(Pass* pass, Fence* fence) override;
         void StageImageWrite(const BufferToImageCopyInfo& copyInfo) override;
 
-        uint32_t GetCurrentFrameIndex() const { return m_currentFrameIndex; }
-
     private:
         VkQueue m_graphicsQueue;
         VkQueue m_computeQueue;
         VkQueue m_transferQueue;
-
-        uint32_t m_tmpSemaphoreHead = 0;
-        TL::Vector<VkSemaphore> m_tmpSemaphores;
     };
 } // namespace RHI::Vulkan

@@ -19,7 +19,6 @@ namespace RHI::TL
         static_assert(!std::is_function_v<_Ty>, "The C++ Standard forbids allocators for function elements because of [allocator.requirements].");
         static_assert(!std::is_reference_v<_Ty>, "The C++ Standard forbids allocators for reference elements because of [allocator.requirements].");
 
-        using _From_primary   = DefaultAllocator;
         using value_type      = _Ty;
         using size_type       = size_t;
         using difference_type = ptrdiff_t;
@@ -29,27 +28,37 @@ namespace RHI::TL
         constexpr DefaultAllocator(const DefaultAllocator&) noexcept = default;
 
         template<class _Other>
-        constexpr DefaultAllocator(const DefaultAllocator<_Other>&) noexcept
-        {
-        }
+        constexpr DefaultAllocator(const DefaultAllocator<_Other>&) noexcept;
 
         constexpr ~DefaultAllocator()                                              = default;
 
         constexpr DefaultAllocator&             operator=(const DefaultAllocator&) = default;
 
-        RHI_NODISCARD constexpr RHI_EXPORT _Ty* allocate(const size_t count)
-        {
-            static_assert(sizeof(value_type) > 0, "value_type must be complete before calling allocate.");
-            auto ptr = static_cast<_Ty*>(_aligned_malloc(sizeof(value_type) * count, alignof(value_type)));
-            TracyAlloc(ptr, count * sizeof(value_type));
-            return ptr;
-        }
+        RHI_NODISCARD constexpr RHI_EXPORT _Ty* allocate(const size_t count);
 
-        constexpr void deallocate(_Ty* const ptr, const size_t count)
-        {
-            RHI_ASSERT(ptr != nullptr || count == 0);
-            TracyFree(ptr);
-            _aligned_free(ptr);
-        }
+        constexpr void                          deallocate(_Ty* const ptr, const size_t count);
     };
+
+    template<typename _Ty>
+    template<class _Other>
+    constexpr DefaultAllocator<_Ty>::DefaultAllocator(const DefaultAllocator<_Other>&) noexcept
+    {
+    }
+
+    template<typename _Ty>
+    constexpr _Ty* DefaultAllocator<_Ty>::allocate(const size_t count)
+    {
+        static_assert(sizeof(value_type) > 0, "value_type must be complete before calling allocate.");
+        auto ptr = static_cast<_Ty*>(_aligned_malloc(sizeof(value_type) * count, alignof(value_type)));
+        TracyAlloc(ptr, count * sizeof(value_type));
+        return ptr;
+    }
+
+    template<typename _Ty>
+    constexpr void DefaultAllocator<_Ty>::deallocate(_Ty* const ptr, const size_t count)
+    {
+        RHI_ASSERT(ptr != nullptr || count == 0);
+        TracyFree(ptr);
+        _aligned_free(ptr);
+    }
 } // namespace RHI::TL

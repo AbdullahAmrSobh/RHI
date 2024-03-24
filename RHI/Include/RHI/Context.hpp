@@ -83,6 +83,7 @@ namespace RHI
         /// @return Reference to the FrameScheduler object.
         inline FrameScheduler& GetScheduler() { return *m_frameScheduler; }
 
+        // clang-format off
         /// Creates an image object and copies the provided content into it.
         ///
         /// @param createInfo Information describing the desired image characteristics.
@@ -90,7 +91,7 @@ namespace RHI
         /// @return Result object indicating success or failure of the operation.
         ///         On success, it also contains a handle to the created image.
         template<typename T>
-        RHI_NODISCARD Result<Handle<Image>> CreateImage(const ImageCreateInfo& createInfo, TL::Span<const T> content);
+        RHI_NODISCARD Result<Handle<Image>>            CreateImage(const ImageCreateInfo& createInfo, TL::Span<const T> content);
 
         /// Creates an image object and copies the provided content into it.
         ///
@@ -98,7 +99,7 @@ namespace RHI
         /// @param content The raw data to be copied into the image.
         /// @return Result object indicating success or failure of the operation.
         ///         On success, it also contains a handle to the created image.
-        RHI_NODISCARD Result<Handle<Image>> CreateImage(const ImageCreateInfo& createInfo, TL::Span<const uint8_t> content);
+        RHI_NODISCARD Result<Handle<Image>>            CreateImage(const ImageCreateInfo& createInfo, TL::Span<const uint8_t> content);
 
         /// Creates a buffer object and copies the provided content into it.
         ///
@@ -107,7 +108,7 @@ namespace RHI
         /// @return Result object indicating success or failure of the operation.
         ///         On success, it also contains a handle to the created buffer.
         template<typename T>
-        RHI_NODISCARD Result<Handle<Buffer>> CreateBuffer(Flags<BufferUsage> usage, const T& content);
+        RHI_NODISCARD Result<Handle<Buffer>>            CreateBuffer(Flags<BufferUsage> usage, const T& content);
 
         /// Creates a buffer object and copies the provided content into it.
         ///
@@ -116,7 +117,7 @@ namespace RHI
         /// @return Result object indicating success or failure of the operation.
         ///         On success, it also contains a handle to the created buffer.
         template<typename T>
-        RHI_NODISCARD Result<Handle<Buffer>> CreateBuffer(Flags<BufferUsage> usage, TL::Span<const T> content);
+        RHI_NODISCARD Result<Handle<Buffer>>            CreateBuffer(Flags<BufferUsage> usage, TL::Span<const T> content);
 
         /// Creates a buffer object and copies the provided content into it.
         ///
@@ -125,7 +126,7 @@ namespace RHI
         /// @return Result object indicating success or failure of the operation.
         ///         On success, it also contains a handle to the created buffer.
         template<typename T>
-        RHI_NODISCARD Result<Handle<Buffer>> CreateBuffer(const BufferCreateInfo& createInfo, const T& content);
+        RHI_NODISCARD Result<Handle<Buffer>>            CreateBuffer(const BufferCreateInfo& createInfo, const T& content);
 
         /// Creates a buffer object and copies the provided content into it.
         ///
@@ -134,7 +135,7 @@ namespace RHI
         /// @return Result object indicating success or failure of the operation.
         ///         On success, it also contains a handle to the created buffer.
         template<typename T>
-        RHI_NODISCARD Result<Handle<Buffer>> CreateBuffer(const BufferCreateInfo& createInfo, TL::Span<const T> content);
+        RHI_NODISCARD Result<Handle<Buffer>>            CreateBuffer(const BufferCreateInfo& createInfo, TL::Span<const T> content);
 
         /// Creates a buffer object and copies the provided content into it.
         ///
@@ -308,6 +309,8 @@ namespace RHI
         ///
         /// @param handle The handle to the buffer object to unmap.
         virtual void                                    UnmapBuffer(Handle<Buffer> handle)                                   = 0;
+
+        // clang-format on
 
     protected:
         Context(Ptr<DebugCallbacks> debugCallbacks);

@@ -56,8 +56,6 @@ namespace RHI::Vulkan
         uint32_t queueFamilyIndex;
         VkImageLayout initalLayout;
 
-        class ImageAttachment* attachment;
-
         ResultCode Init(IContext* context, const ImageCreateInfo& createInfo, bool isTransient = false);
         void Shutdown(IContext* context);
 
@@ -75,8 +73,6 @@ namespace RHI::Vulkan
         VkSemaphore signalSemaphore; // signal semaphore: if the content of this resource is being read by the frameschduler (signal this semaphore)
 
         uint32_t queueFamilyIndex;
-
-        class BufferAttachment* attachment;
 
         ResultCode Init(IContext* context, const BufferCreateInfo& createInfo, bool isTransient = false);
         void Shutdown(IContext* context);

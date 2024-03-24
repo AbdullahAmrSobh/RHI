@@ -886,9 +886,4 @@ namespace RHI::Vulkan
         // }
     }
 
-    uint32_t IContext::GetCurrentFrameIndex() const
-    {
-        return ((IFrameScheduler*)m_frameScheduler.get())->GetCurrentFrameIndex();
-    }
-
 } // namespace RHI::Vulkan

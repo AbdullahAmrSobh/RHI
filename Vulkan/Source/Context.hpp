@@ -79,8 +79,6 @@ namespace RHI::Vulkan
 
         uint32_t GetQueueFamilyIndex(QueueType queueType);
 
-        uint32_t GetCurrentFrameIndex() const;
-
     private:
         static VkBool32 VKAPI_CALL DebugMessengerCallbacks(
             VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
