@@ -129,16 +129,4 @@ namespace RHI
         (void)message;
 #endif
     }
-
-    size_t Context::CalculateRequiredSize(const ImageCreateInfo& createInfo)
-    {
-        auto formatInfo = GetFormatInfo(createInfo.format);
-        return formatInfo.bytesPerBlock * createInfo.size.width * createInfo.size.height * createInfo.size.depth;
-    }
-
-    size_t Context::CalculateRequiredSize(const BufferCreateInfo& createInfo)
-    {
-        return createInfo.byteSize;
-    }
-
 } // namespace RHI

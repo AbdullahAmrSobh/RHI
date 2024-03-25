@@ -40,7 +40,6 @@ namespace RHI
         void        End();
 
         Ptr<Pass>   CreatePass(const char* name, QueueType queueType);
-        ResultCode  DestroyPass(Pass* pass);
 
         void        WriteImageContent(Handle<Image>           handle,
                                       ImageOffset             offset,

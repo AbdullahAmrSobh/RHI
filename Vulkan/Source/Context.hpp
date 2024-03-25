@@ -69,7 +69,7 @@ namespace RHI::Vulkan
 
         void SetDebugName(VkDebugReportObjectTypeEXT type, uint64_t handle, const char* name);
 
-        void DestroyResources();
+        void DestroyResources() override;
 
         VkSemaphore CreateSemaphore();
 
@@ -91,7 +91,6 @@ namespace RHI::Vulkan
         VkResult InitMemoryAllocator();
         VkResult LoadFunctions(bool debugExtensionEnabled);
         VkResult InitFrameScheduler();
-        VkResult InitStagingBuffer();
 
     public:
         // clang-format off

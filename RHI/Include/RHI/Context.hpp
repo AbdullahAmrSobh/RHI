@@ -75,6 +75,7 @@ namespace RHI
     // and shaders.
     class RHI_EXPORT Context
     {
+        friend class FrameScheduler;
     public:
         virtual ~Context() = default;
 
@@ -315,14 +316,13 @@ namespace RHI
     protected:
         Context(Ptr<DebugCallbacks> debugCallbacks);
 
+        virtual void DestroyResources() = 0;
+
         void   OnDestruct();
 
         void   DebugLogError(std::string_view message);
         void   DebugLogWarn(std::string_view message);
         void   DebugLogInfo(std::string_view message);
-
-        size_t CalculateRequiredSize(const ImageCreateInfo& createInfo);
-        size_t CalculateRequiredSize(const BufferCreateInfo& createInfo);
 
     protected:
         struct

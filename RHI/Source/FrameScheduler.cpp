@@ -33,6 +33,8 @@ namespace RHI
 
         m_currentFrameIndex++;
         m_currentFrameIndex %= 2;
+
+        m_context->DestroyResources();
     }
 
     Ptr<Pass> FrameScheduler::CreatePass(const char* name, QueueType queueType)
@@ -40,12 +42,6 @@ namespace RHI
         auto pass = CreatePtr<Pass>(this, name, queueType);
         m_passList.push_back(pass.get());
         return pass;
-    }
-
-    ResultCode FrameScheduler::DestroyPass(Pass* pass)
-    {
-        delete pass;
-        return ResultCode::Success;
     }
 
     void FrameScheduler::WriteImageContent(Handle<Image> handle,

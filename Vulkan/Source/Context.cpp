@@ -147,9 +147,6 @@ namespace RHI::Vulkan
         result = LoadFunctions(debugExtensionEnabled);
         VULKAN_RETURN_VKERR_CODE(result);
 
-        result = InitStagingBuffer();
-        VULKAN_RETURN_VKERR_CODE(result);
-
         result = InitFrameScheduler();
         VULKAN_RETURN_VKERR_CODE(result);
 
@@ -864,11 +861,6 @@ namespace RHI::Vulkan
     {
         auto scheduler = (IFrameScheduler*)m_frameScheduler.get();
         scheduler->Init();
-        return VK_SUCCESS;
-    }
-
-    VkResult IContext::InitStagingBuffer()
-    {
         return VK_SUCCESS;
     }
 
