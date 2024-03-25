@@ -16,7 +16,7 @@ namespace RHI
 
     private:
         Context*                                                     m_context;
-        std::unordered_map<ImageViewCreateInfo, Handle<ImageView>>   m_imageViewCache;
-        std::unordered_map<BufferViewCreateInfo, Handle<BufferView>> m_bufferViewCache;
+        TL::UnorderedMap<ImageViewCreateInfo, Handle<ImageView>>   m_imageViewCache;
+        TL::UnorderedMap<BufferViewCreateInfo, Handle<BufferView>> m_bufferViewCache;
     };
 } // namespace RHI
