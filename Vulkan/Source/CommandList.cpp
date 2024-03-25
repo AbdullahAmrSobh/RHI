@@ -57,23 +57,6 @@ namespace RHI::Vulkan
         return {};
     }
 
-    inline static VkImageLayout GetImageLayout(ImageUsage usage, Access access)
-    {
-        (void)access;
-        switch (usage)
-        {
-        case ImageUsage::Color:           return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        case ImageUsage::Depth:           return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-        case ImageUsage::Stencil:         return VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
-        case ImageUsage::DepthStencil:    return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        case ImageUsage::CopySrc:         return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        case ImageUsage::CopyDst:         return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        case ImageUsage::ShaderResource:  return VK_IMAGE_LAYOUT_GENERAL;
-        case ImageUsage::StorageResource: return VK_IMAGE_LAYOUT_GENERAL;
-        default:                          RHI_UNREACHABLE(); return VK_IMAGE_LAYOUT_GENERAL;
-        }
-    }
-
     inline static BarrierStage GetImageTransitionInfo(BarrierType barrierType, const ImagePassAttachment* passAttachment)
     {
         if (passAttachment == nullptr)
@@ -95,14 +78,14 @@ namespace RHI::Vulkan
         // clang-format off
         switch (usage)
         {
-        case ImageUsage::Color:           return { VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, renderTargetAccessFlags,             GetImageLayout(usage, access) };
-        case ImageUsage::Depth:           return { VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,    renderTargetAccessFlags,             GetImageLayout(usage, access) };
-        case ImageUsage::Stencil:         return { VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,    renderTargetAccessFlags,             GetImageLayout(usage, access) };
-        case ImageUsage::DepthStencil:    return { VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,    renderTargetAccessFlags,             GetImageLayout(usage, access) };
-        case ImageUsage::CopySrc:         return { VK_PIPELINE_STAGE_2_TRANSFER_BIT,                VK_ACCESS_2_TRANSFER_READ_BIT,       GetImageLayout(usage, access) };
-        case ImageUsage::CopyDst:         return { VK_PIPELINE_STAGE_2_TRANSFER_BIT,                VK_ACCESS_2_TRANSFER_WRITE_BIT,      GetImageLayout(usage, access) };
-        case ImageUsage::ShaderResource:  return { GetPipelineStageFromShaderStage(stages),         GetShaderAccessFlags(access, false), GetImageLayout(usage, access) };
-        case ImageUsage::StorageResource: return { GetPipelineStageFromShaderStage(stages),         GetShaderAccessFlags(access, true),  GetImageLayout(usage, access) };
+        case ImageUsage::Color:           return { VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, renderTargetAccessFlags,             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL         };
+        case ImageUsage::Depth:           return { VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,    renderTargetAccessFlags,             VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL         };
+        case ImageUsage::Stencil:         return { VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,    renderTargetAccessFlags,             VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL       };
+        case ImageUsage::DepthStencil:    return { VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,    renderTargetAccessFlags,             VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
+        case ImageUsage::CopySrc:         return { VK_PIPELINE_STAGE_2_TRANSFER_BIT,                VK_ACCESS_2_TRANSFER_READ_BIT,       VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL             };
+        case ImageUsage::CopyDst:         return { VK_PIPELINE_STAGE_2_TRANSFER_BIT,                VK_ACCESS_2_TRANSFER_WRITE_BIT,      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL             };
+        case ImageUsage::ShaderResource:  return { GetPipelineStageFromShaderStage(stages),         GetShaderAccessFlags(access, false), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL         };
+        case ImageUsage::StorageResource: return { GetPipelineStageFromShaderStage(stages),         GetShaderAccessFlags(access, true),  VK_IMAGE_LAYOUT_GENERAL                          };
         default:                          RHI_UNREACHABLE(); return {};
         }
         // clang-format on
@@ -272,7 +255,7 @@ namespace RHI::Vulkan
                 attachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
                 attachmentInfo.pNext = nullptr;
                 attachmentInfo.imageView = view->handle;
-                attachmentInfo.imageLayout = GetImageLayout(passAttachment->m_usage, Access::None);
+                attachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
                 attachmentInfo.loadOp = ConvertLoadOp(passAttachment->m_loadStoreOperations.loadOperation);
                 attachmentInfo.storeOp = ConvertStoreOp(passAttachment->m_loadStoreOperations.storeOperation);
                 attachmentInfo.clearValue.color = ConvertColorValue(passAttachment->m_clearValue.colorValue);
@@ -285,9 +268,10 @@ namespace RHI::Vulkan
                 depthAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
                 depthAttachmentInfo.pNext = nullptr;
                 depthAttachmentInfo.imageView = view->handle;
-                depthAttachmentInfo.imageLayout = GetImageLayout(passAttachment->m_usage, Access::None);
                 depthAttachmentInfo.loadOp = ConvertLoadOp(passAttachment->m_loadStoreOperations.loadOperation);
                 depthAttachmentInfo.storeOp = ConvertStoreOp(passAttachment->m_loadStoreOperations.storeOperation);
+                depthAttachmentInfo.imageLayout =
+                    depthAttachmentInfo.storeOp != VK_ATTACHMENT_STORE_OP_STORE ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
                 depthAttachmentInfo.clearValue.depthStencil = ConvertDepthStencilValue(passAttachment->m_clearValue.depthStencilValue);
                 hasDepthAttachment = true;
             }
