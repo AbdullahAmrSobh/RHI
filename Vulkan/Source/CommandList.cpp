@@ -188,10 +188,6 @@ namespace RHI::Vulkan
                     semaphoreInfo.semaphore = image->waitSemaphore;
                     semaphoreInfo.stageMask = dstInfo.stage;
                 }
-                else if (image->initalLayout != VK_IMAGE_LAYOUT_UNDEFINED)
-                {
-                    continue;
-                }
             }
 
             VkImageMemoryBarrier2& barrier = imageBarriers.emplace_back();
