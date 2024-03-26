@@ -56,7 +56,7 @@ namespace RHI
         uint32_t               srcOffset        = 0;
         uint32_t               srcBytesPerRow   = 0;
         uint32_t               srcBytesPerImage = 0;
-        ImageSize3D            srcSize;
+        ImageSize3D            dstSize;
         Handle<Image>          dstImage;
         ImageSubresourceLayers dstSubresource;
         ImageOffset            dstOffset;

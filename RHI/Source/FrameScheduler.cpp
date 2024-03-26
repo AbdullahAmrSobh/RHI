@@ -56,7 +56,7 @@ namespace RHI
         BufferToImageCopyInfo copyInfo{};
         copyInfo.srcBuffer = buffer.buffer;
         copyInfo.srcOffset = 0;
-        copyInfo.srcSize = size;
+        copyInfo.dstSize = size;
         copyInfo.dstImage = handle;
         copyInfo.dstSubresource = subresource;
         copyInfo.dstOffset = offset;

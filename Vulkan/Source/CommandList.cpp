@@ -480,24 +480,24 @@ namespace RHI::Vulkan
         vkCmdSetScissor(m_commandBuffer, 0, 1, &vkScissor);
     }
 
-    void ICommandList::Draw(const DrawInfo& command)
+    void ICommandList::Draw(const DrawInfo& drawInfo)
     {
         ZoneScoped;
 
-        auto pipeline = m_context->m_graphicsPipelineOwner.Get(command.pipelineState);
+        auto pipeline = m_context->m_graphicsPipelineOwner.Get(drawInfo.pipelineState);
         vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->handle);
 
-        if (command.bindGroups.empty() == false)
+        if (drawInfo.bindGroups.empty() == false)
         {
-            BindShaderBindGroups(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->layout, command.bindGroups);
+            BindShaderBindGroups(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->layout, drawInfo.bindGroups);
         }
 
-        if (command.vertexBuffers.empty() == false)
+        if (drawInfo.vertexBuffers.empty() == false)
         {
             uint32_t vertexBuffersCount = 0;
             VkBuffer vertexBuffers[c_MaxPipelineVertexBindings] = {};
             VkDeviceSize vertexBufferOffsets[c_MaxPipelineVertexBindings] = {};
-            for (auto handle : command.vertexBuffers)
+            for (auto handle : drawInfo.vertexBuffers)
             {
                 auto buffer = m_context->m_bufferOwner.Get(handle);
                 auto index = vertexBuffersCount++;
@@ -507,10 +507,10 @@ namespace RHI::Vulkan
             vkCmdBindVertexBuffers(m_commandBuffer, 0, vertexBuffersCount, vertexBuffers, vertexBufferOffsets);
         }
 
-        auto parameters = command.parameters;
-        if (command.indexBuffers)
+        auto parameters = drawInfo.parameters;
+        if (drawInfo.indexBuffers)
         {
-            auto buffer = m_context->m_bufferOwner.Get(command.indexBuffers);
+            auto buffer = m_context->m_bufferOwner.Get(drawInfo.indexBuffers);
             vkCmdBindIndexBuffer(m_commandBuffer, buffer->handle, 0, VK_INDEX_TYPE_UINT32);
             vkCmdDrawIndexed(m_commandBuffer, parameters.elementCount, parameters.instanceCount, parameters.firstElement, int32_t(parameters.vertexOffset), uint32_t(parameters.firstInstance));
         }
@@ -520,82 +520,82 @@ namespace RHI::Vulkan
         }
     }
 
-    void ICommandList::Dispatch(const DispatchInfo& command)
+    void ICommandList::Dispatch(const DispatchInfo& dispatchInfo)
     {
         ZoneScoped;
 
-        auto pipeline = m_context->m_computePipelineOwner.Get(command.pipelineState);
+        auto pipeline = m_context->m_computePipelineOwner.Get(dispatchInfo.pipelineState);
         vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->handle);
-        if (command.bindGroups.size())
+        if (dispatchInfo.bindGroups.size())
         {
-            BindShaderBindGroups(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->layout, command.bindGroups);
+            BindShaderBindGroups(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->layout, dispatchInfo.bindGroups);
         }
-        auto parameters = command.parameters;
+        auto parameters = dispatchInfo.parameters;
         vkCmdDispatchBase(m_commandBuffer, parameters.offsetX, parameters.offsetY, parameters.offsetZ, parameters.countX, parameters.countY, parameters.countZ);
     }
 
-    void ICommandList::Copy(const BufferCopyInfo& command)
+    void ICommandList::Copy(const BufferCopyInfo& copyInfo)
     {
         ZoneScoped;
 
-        auto srcBuffer = m_context->m_bufferOwner.Get(command.srcBuffer);
-        auto destinationBuffer = m_context->m_bufferOwner.Get(command.dstBuffer);
+        auto srcBuffer = m_context->m_bufferOwner.Get(copyInfo.srcBuffer);
+        auto dstBuffer = m_context->m_bufferOwner.Get(copyInfo.dstBuffer);
 
-        auto copyInfo = VkBufferCopy{};
-        copyInfo.srcOffset = command.srcOffset;
-        copyInfo.dstOffset = command.dstOffset;
-        copyInfo.size = command.size;
-        vkCmdCopyBuffer(m_commandBuffer, srcBuffer->handle, destinationBuffer->handle, 1, &copyInfo);
+        VkBufferCopy bufferCopy{};
+        bufferCopy.srcOffset = copyInfo.srcOffset;
+        bufferCopy.dstOffset = copyInfo.dstOffset;
+        bufferCopy.size = copyInfo.size;
+        vkCmdCopyBuffer(m_commandBuffer, srcBuffer->handle, dstBuffer->handle, 1, &bufferCopy);
     }
 
-    void ICommandList::Copy(const ImageCopyInfo& command)
+    void ICommandList::Copy(const ImageCopyInfo& copyInfo)
     {
         ZoneScoped;
 
-        auto srcImage = m_context->m_imageOwner.Get(command.srcImage);
-        auto dstImage = m_context->m_imageOwner.Get(command.dstImage);
+        auto srcImage = m_context->m_imageOwner.Get(copyInfo.srcImage);
+        auto dstImage = m_context->m_imageOwner.Get(copyInfo.dstImage);
 
-        auto copyInfo = VkImageCopy{};
-        copyInfo.srcSubresource = ConvertSubresourceLayer(command.srcSubresource);
-        copyInfo.srcOffset = ConvertOffset3D(command.srcOffset);
-        copyInfo.dstSubresource = ConvertSubresourceLayer(command.dstSubresource);
-        copyInfo.dstOffset = ConvertOffset3D(command.dstOffset);
-        copyInfo.extent = ConvertExtent3D(command.srcSize);
-        vkCmdCopyImage(m_commandBuffer, srcImage->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyInfo);
+        VkImageCopy imageCopy {};
+        imageCopy.srcSubresource = ConvertSubresourceLayer(copyInfo.srcSubresource);
+        imageCopy.srcOffset = ConvertOffset3D(copyInfo.srcOffset);
+        imageCopy.dstSubresource = ConvertSubresourceLayer(copyInfo.dstSubresource);
+        imageCopy.dstOffset = ConvertOffset3D(copyInfo.dstOffset);
+        imageCopy.extent = ConvertExtent3D(copyInfo.srcSize);
+        vkCmdCopyImage(m_commandBuffer, srcImage->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
     }
 
-    void ICommandList::Copy(const BufferToImageCopyInfo& command)
+    void ICommandList::Copy(const BufferToImageCopyInfo& copyInfo)
     {
         ZoneScoped;
 
-        auto srcBuffer = m_context->m_bufferOwner.Get(command.srcBuffer);
-        auto dstImage = m_context->m_imageOwner.Get(command.dstImage);
+        auto srcBuffer = m_context->m_bufferOwner.Get(copyInfo.srcBuffer);
+        auto dstImage = m_context->m_imageOwner.Get(copyInfo.dstImage);
 
-        auto copyInfo = VkBufferImageCopy{};
-        copyInfo.bufferOffset = command.srcOffset;
-        copyInfo.bufferRowLength = command.srcBytesPerRow;
-        // copyInfo.bufferImageHeight;
-        copyInfo.imageSubresource = ConvertSubresourceLayer(command.dstSubresource);
-        copyInfo.imageOffset = ConvertOffset3D(command.dstOffset);
-        copyInfo.imageExtent = ConvertExtent3D(command.srcSize);
-        vkCmdCopyBufferToImage(m_commandBuffer, srcBuffer->handle, dstImage->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyInfo);
+        VkBufferImageCopy bufferImageCopy {};
+        bufferImageCopy.bufferOffset = copyInfo.srcOffset;
+        bufferImageCopy.bufferRowLength = copyInfo.srcBytesPerRow;
+        bufferImageCopy.bufferImageHeight = copyInfo.srcBytesPerImage;
+        bufferImageCopy.imageSubresource = ConvertSubresourceLayer(copyInfo.dstSubresource);
+        bufferImageCopy.imageOffset = ConvertOffset3D(copyInfo.dstOffset);
+        bufferImageCopy.imageExtent = ConvertExtent3D(copyInfo.dstSize);
+        vkCmdCopyBufferToImage(m_commandBuffer, srcBuffer->handle, dstImage->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferImageCopy);
     }
 
-    void ICommandList::Copy(const ImageToBufferCopyInfo& command)
+    void ICommandList::Copy(const ImageToBufferCopyInfo& copyInfo)
     {
         ZoneScoped;
 
-        auto srcImage = m_context->m_imageOwner.Get(command.srcImage);
-        auto dstBuffer = m_context->m_bufferOwner.Get(command.dstBuffer);
+        auto srcImage = m_context->m_imageOwner.Get(copyInfo.srcImage);
+        auto dstBuffer = m_context->m_bufferOwner.Get(copyInfo.dstBuffer);
 
-        auto copyInfo = VkBufferImageCopy{};
-        copyInfo.bufferOffset = command.dstOffset;
-        copyInfo.bufferRowLength = command.dstBytesPerRow;
-        // copyInfo.bufferImageHeight;
-        copyInfo.imageSubresource = ConvertSubresourceLayer(command.srcSubresource);
-        copyInfo.imageOffset = ConvertOffset3D(command.srcOffset);
-        copyInfo.imageExtent = ConvertExtent3D(command.srcSize);
-        vkCmdCopyImageToBuffer(m_commandBuffer, srcImage->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstBuffer->handle, 1, &copyInfo);
+        VkBufferImageCopy bufferImageCopy {};
+        bufferImageCopy.bufferOffset = copyInfo.dstOffset;
+        bufferImageCopy.bufferRowLength = copyInfo.dstBytesPerRow;
+        bufferImageCopy.bufferImageHeight = copyInfo.dstBytesPerImage;
+        bufferImageCopy.imageSubresource = ConvertSubresourceLayer(copyInfo.srcSubresource);
+        bufferImageCopy.imageOffset = ConvertOffset3D(copyInfo.srcOffset);
+        bufferImageCopy.imageExtent = ConvertExtent3D(copyInfo.srcSize);
+        vkCmdCopyImageToBuffer(m_commandBuffer, srcImage->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstBuffer->handle, 1, &bufferImageCopy);
     }
 
     void ICommandList::BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<Handle<BindGroup>> bindGroups)
