@@ -9,7 +9,6 @@ namespace RHI
     FrameScheduler::FrameScheduler(Context* context)
         : m_context(context)
         , m_stagingBuffer()
-        , m_transientAllocator(nullptr)
         , m_attachmentsPool(CreatePtr<AttachmentsPool>(m_context))
     {
     }
@@ -20,19 +19,58 @@ namespace RHI
 
     void FrameScheduler::Begin()
     {
+        for (auto attachment : m_attachmentsPool->GetAttachments())
+        {
+            for (auto passAttachment = attachment->GetFirstPassAttachment();
+                 passAttachment;
+                 passAttachment = passAttachment->GetNext())
+            {
+                if (attachment->m_type == Attachment::Type::Image)
+                {
+                    auto imagePassAttachment = (ImagePassAttachment*)passAttachment;
+                    imagePassAttachment->m_viewInfo.image = imagePassAttachment->GetAttachment()->GetHandle();
+
+                    if (auto it = m_imageViewLUT.find(imagePassAttachment->m_viewInfo); it != m_imageViewLUT.end())
+                    {
+                        imagePassAttachment->m_view = it->second;
+                    }
+                    else
+                    {
+                        imagePassAttachment->m_view = m_context->CreateImageView(imagePassAttachment->m_viewInfo);
+                        m_imageViewLUT[imagePassAttachment->m_viewInfo] = imagePassAttachment->m_view;
+                    }
+                    
+                }
+                else if (attachment->m_type == Attachment::Type::Buffer)
+                {
+                    auto bufferPassAttachment = (BufferPassAttachment*)passAttachment;
+                    bufferPassAttachment->m_viewInfo.buffer = bufferPassAttachment->GetAttachment()->GetHandle();
+
+                    if (auto it = m_bufferViewLUT.find(bufferPassAttachment->m_viewInfo); it != m_bufferViewLUT.end())
+                    {
+                        bufferPassAttachment->m_view = it->second;
+                    }
+                    else
+                    {
+                        bufferPassAttachment->m_view = m_context->CreateBufferView(bufferPassAttachment->m_viewInfo);
+                        m_bufferViewLUT[bufferPassAttachment->m_viewInfo] = bufferPassAttachment->m_view;
+                    }
+                    
+                }
+                else
+                {
+                    RHI_UNREACHABLE();
+                }
+            }
+        }
     }
 
     void FrameScheduler::End()
     {
-        CompileResourceViews();
-
         for (auto pass : m_passList)
         {
             PassSubmit(pass, nullptr);
         }
-
-        m_currentFrameIndex++;
-        m_currentFrameIndex %= 2;
 
         m_context->DestroyResources();
     }
@@ -63,65 +101,59 @@ namespace RHI
         StageImageWrite(copyInfo);
     }
 
-    ResultCode FrameScheduler::Compile()
+    void FrameScheduler::Compile()
     {
-        CompileTransientResources();
-        CompileResourceViews();
-        return ResultCode::Success;
-    }
-
-    Fence& FrameScheduler::GetFrameCurrentFence()
-    {
-        return *m_frameReadyFence[m_currentFrameIndex];
-    }
-
-    void FrameScheduler::CompileTransientResources()
-    {
-        m_transientAllocator->Begin();
-        for (auto attachment : m_attachmentsPool->GetAttachments())
+        for (auto& attachment : m_attachmentsPool->GetTransientAttachments())
         {
-            if (attachment->m_lifetime == Attachment::Lifetime::Transient)
+            if (attachment->m_type == Attachment::Type::Image)
             {
-                auto imageAttachment = (ImageAttachment*)attachment;
-                imageAttachment->SetSize({ 1600, 1200 });
-                m_transientAllocator->Allocate(attachment);
+                auto imageAttachment = attachment->As<ImageAttachment>();
+                auto createInfo = imageAttachment->GetCreateInfo();
+                createInfo.size.width = 1600;
+                createInfo.size.height = 1200;
+                imageAttachment->SetHandle(m_context->CreateImage(createInfo).GetValue());
             }
-        }
-        m_transientAllocator->End();
-    }
-
-    void FrameScheduler::CompileResourceViews()
-    {
-        for (auto attachment : m_attachmentsPool->GetAttachments())
-        {
-            for (auto passAttachment = attachment->GetFirstPassAttachment(); passAttachment != nullptr; passAttachment = passAttachment->GetNext())
+            else if (attachment->m_type == Attachment::Type::Buffer)
             {
-                m_attachmentsPool->InitPassAttachment(passAttachment);
+                auto bufferAttachment = attachment->As<BufferAttachment>();
+                bufferAttachment->SetHandle(m_context->CreateBuffer(bufferAttachment->GetCreateInfo()).GetValue());
+            }
+            else
+            {
+                RHI_UNREACHABLE();
             }
         }
     }
 
-    void FrameScheduler::CleanupTransientResources()
+    void FrameScheduler::Cleanup()
     {
-        for (auto transientAttachment : m_attachmentsPool->GetTransientAttachments())
+        for (auto [_, view] : m_imageViewLUT)
         {
-            for (auto passAttachment = transientAttachment->GetFirstPassAttachment(); passAttachment != nullptr; passAttachment = passAttachment->GetNext())
+            m_context->DestroyImageView(view);
+        }
+
+        
+        for (auto [_, view] : m_bufferViewLUT)
+        {
+            m_context->DestroyBufferView(view);
+        }
+
+        for (auto attachment : m_attachmentsPool->GetTransientAttachments())
+        {
+            if (attachment->m_type == Attachment::Type::Image)
             {
-                m_attachmentsPool->ShutdownPassAttachment(passAttachment);
+                auto imageAttachment = attachment->As<ImageAttachment>();
+                m_context->DestroyImage(imageAttachment->GetHandle());
             }
-            m_transientAllocator->Destroy(transientAttachment);
+            else if (attachment->m_type == Attachment::Type::Buffer)
+            {
+                auto bufferAttachment = attachment->As<BufferAttachment>();
+                m_context->DestroyBuffer(bufferAttachment->GetHandle());
+            }
+            else
+            {
+                RHI_UNREACHABLE();
+            }
         }
     }
-
-    void FrameScheduler::CleanupResourceViews()
-    {
-        for (auto attachment : m_attachmentsPool->GetAttachments())
-        {
-            for (auto passAttachment = attachment->GetFirstPassAttachment(); passAttachment != nullptr; passAttachment = passAttachment->GetNext())
-            {
-                m_attachmentsPool->ShutdownPassAttachment(passAttachment);
-            }
-        }
-    }
-
 } // namespace RHI

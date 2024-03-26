@@ -33,10 +33,10 @@ namespace RHI
     struct BufferCopyInfo
     {
         Handle<Buffer> srcBuffer;
-        size_t         srcOffset = 0;
+        size_t         srcOffset;
         Handle<Buffer> dstBuffer;
-        size_t         dstOffset = 0;
-        size_t         size      = 0;
+        size_t         dstOffset;
+        size_t         size;
     };
 
     struct ImageCopyInfo
@@ -53,13 +53,13 @@ namespace RHI
     struct BufferToImageCopyInfo
     {
         Handle<Buffer>         srcBuffer;
-        uint32_t               srcOffset        = 0;
-        uint32_t               srcBytesPerRow   = 0;
-        uint32_t               srcBytesPerImage = 0;
-        ImageSize3D            dstSize;
+        uint32_t               srcOffset;
+        uint32_t               srcBytesPerRow;
+        uint32_t               srcBytesPerImage;
         Handle<Image>          dstImage;
-        ImageSubresourceLayers dstSubresource;
         ImageOffset            dstOffset;
+        ImageSize3D            dstSize;
+        ImageSubresourceLayers dstSubresource;
     };
 
     struct ImageToBufferCopyInfo
@@ -69,9 +69,9 @@ namespace RHI
         ImageOffset            srcOffset;
         ImageSize3D            srcSize;
         Handle<Buffer>         dstBuffer;
-        uint32_t               dstOffset        = 0;
-        uint32_t               dstBytesPerRow   = 0;
-        uint32_t               dstBytesPerImage = 0;
+        uint32_t               dstOffset;
+        uint32_t               dstBytesPerRow;
+        uint32_t               dstBytesPerImage;
         // The destinationBuffer format is usually same as sourceImage's format. When source image contains more than one aspect,
         // the format should be compatiable with the aspect of the source image's subresource
         Format                 dstFormat;
@@ -145,7 +145,7 @@ namespace RHI
         CommandList(CommandList&& other)      = default;
 
     public:
-        virtual ~CommandList() = default;
+        virtual ~CommandList()                                                                     = default;
 
         /// @brief Marks the begining of this command list recording
         virtual void Begin()                                                                       = 0;

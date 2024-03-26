@@ -4,7 +4,6 @@
 #include "StagingBuffer.hpp"
 #include "CommandList.hpp"
 #include "CommandListAllocator.hpp"
-#include "TransientAllocator.hpp"
 #include "Common.hpp"
 
 #include <tracy/Tracy.hpp>
@@ -15,9 +14,7 @@ namespace RHI::Vulkan
         : FrameScheduler(context)
     {
         m_stagingBuffer = CreatePtr<IStagingBuffer>(context);
-        m_transientAllocator = CreatePtr<ITransientAllocator>(context);
         m_commandListAllocator = CreatePtr<ICommandListAllocator>(context);
-        m_currentFrameIndex = 0;
     }
 
     IFrameScheduler::~IFrameScheduler()

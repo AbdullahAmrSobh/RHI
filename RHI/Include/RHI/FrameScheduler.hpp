@@ -7,7 +7,6 @@
 #include "RHI/Common/Containers.h"
 #include "RHI/Common/Result.hpp"
 
-#include "RHI/TransientAllocator.hpp"
 #include "RHI/StagingBuffer.hpp"
 
 namespace RHI
@@ -19,7 +18,6 @@ namespace RHI
     class Context;
     class Swapchain;
     class CommandList;
-    class TransientAllocator;
     class AttachmentsPool;
     class StagingBuffer;
     class CommandListAllocator;
@@ -46,36 +44,23 @@ namespace RHI
                                       ImageSize3D             size,
                                       ImageSubresourceLayers  subresource,
                                       TL::Span<const uint8_t> content);
-
-        ResultCode  Compile();
-
-    private:
-        Fence& GetFrameCurrentFence();
-
-        void   CompileTransientResources();
-        void   CompileResourceViews();
-
-        void   CleanupTransientResourcesViews();
-        void   CleanupTransientResources();
-        void   CleanupResourceViews();
-
+        void Compile();
     protected:
+        void Cleanup();
+
         virtual void PassSubmit(Pass* pass, Fence* fence)                          = 0;
         virtual void StageImageWrite(const struct BufferToImageCopyInfo& copyInfo) = 0;
 
     protected:
         Context*                  m_context;
         Ptr<StagingBuffer>        m_stagingBuffer;
-        Ptr<TransientAllocator>   m_transientAllocator;
         Ptr<AttachmentsPool>      m_attachmentsPool;
         Ptr<CommandListAllocator> m_commandListAllocator;
 
         TL::Vector<Pass*>         m_passList;
 
-        TL::Vector<Ptr<Fence>>    m_frameReadyFence;
-        uint32_t                  m_frameCount;
-        uint32_t                  m_currentFrameIndex;
-        uint64_t                  m_frameNumber;
+        TL::UnorderedMap<ImageViewCreateInfo, Handle<ImageView>> m_imageViewLUT;
+        TL::UnorderedMap<BufferViewCreateInfo, Handle<BufferView>> m_bufferViewLUT;
     };
 
 } // namespace RHI
