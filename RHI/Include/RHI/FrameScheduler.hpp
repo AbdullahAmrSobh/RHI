@@ -5,9 +5,6 @@
 
 #include "RHI/Common/Ptr.h"
 #include "RHI/Common/Containers.h"
-#include "RHI/Common/Result.hpp"
-
-#include "RHI/StagingBuffer.hpp"
 
 namespace RHI
 {
@@ -19,7 +16,6 @@ namespace RHI
     class Swapchain;
     class CommandList;
     class AttachmentsPool;
-    class StagingBuffer;
     class CommandListAllocator;
 
     /// @brief A frame scheduler is a frame-graph system breaks down the final frame
@@ -53,7 +49,6 @@ namespace RHI
 
     protected:
         Context*                  m_context;
-        Ptr<StagingBuffer>        m_stagingBuffer;
         Ptr<AttachmentsPool>      m_attachmentsPool;
         Ptr<CommandListAllocator> m_commandListAllocator;
 

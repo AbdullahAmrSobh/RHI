@@ -8,7 +8,6 @@ namespace RHI
 {
     FrameScheduler::FrameScheduler(Context* context)
         : m_context(context)
-        , m_stagingBuffer()
         , m_attachmentsPool(CreatePtr<AttachmentsPool>(m_context))
     {
     }
@@ -88,11 +87,16 @@ namespace RHI
                                            ImageSubresourceLayers subresource,
                                            TL::Span<const uint8_t> content)
     {
-        auto buffer = m_stagingBuffer->Allocate(content.size_bytes());
-        memcpy(buffer.pData, content.data(), content.size_bytes());
+        BufferCreateInfo tmpBufferCreateInfo {};
+        tmpBufferCreateInfo.usageFlags = BufferUsage::CopySrc;
+        tmpBufferCreateInfo.byteSize = content.size_bytes();
+        auto buffer = m_context->CreateBuffer(tmpBufferCreateInfo).GetValue();
+        memcpy(m_context->MapBuffer(buffer), content.data(), content.size_bytes());
+        m_context->UnmapBuffer(buffer);
+        m_context->DestroyBuffer(buffer);
 
         BufferToImageCopyInfo copyInfo{};
-        copyInfo.srcBuffer = buffer.buffer;
+        copyInfo.srcBuffer = buffer;
         copyInfo.srcOffset = 0;
         copyInfo.dstSize = size;
         copyInfo.dstImage = handle;

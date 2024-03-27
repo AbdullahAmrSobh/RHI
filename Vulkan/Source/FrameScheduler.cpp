@@ -1,7 +1,6 @@
 #include "FrameScheduler.hpp"
 #include "Context.hpp"
 #include "Resources.hpp"
-#include "StagingBuffer.hpp"
 #include "CommandList.hpp"
 #include "CommandListAllocator.hpp"
 #include "Common.hpp"
@@ -13,7 +12,6 @@ namespace RHI::Vulkan
     IFrameScheduler::IFrameScheduler(IContext* context)
         : FrameScheduler(context)
     {
-        m_stagingBuffer = CreatePtr<IStagingBuffer>(context);
         m_commandListAllocator = CreatePtr<ICommandListAllocator>(context);
     }
 
@@ -27,8 +25,6 @@ namespace RHI::Vulkan
         vkGetDeviceQueue(context->m_device, context->m_graphicsQueueFamilyIndex, 0, &m_graphicsQueue);
         vkGetDeviceQueue(context->m_device, context->m_computeQueueFamilyIndex, 0, &m_computeQueue);
         vkGetDeviceQueue(context->m_device, context->m_transferQueueFamilyIndex, 0, &m_transferQueue);
-
-        ((IStagingBuffer*)m_stagingBuffer.get())->Init();
 
         ((ICommandListAllocator*)m_commandListAllocator.get())->Init();
 

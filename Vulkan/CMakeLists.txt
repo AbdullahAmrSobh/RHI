@@ -17,7 +17,6 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/FrameScheduler.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/StagingBuffer.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.hpp
 )
 
@@ -30,7 +29,6 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/FrameScheduler.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Surface.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/StagingBuffer.cpp
 )
 
 include(${CMAKE_SOURCE_DIR}/CMake/AddTarget.cmake)
