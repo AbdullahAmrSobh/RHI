@@ -130,6 +130,8 @@ namespace RHI::Vulkan
         // submitInfo.pSignalSemaphoreInfos = &semaphoreSubmitInfo;
         vkQueueSubmit2(m_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
 
-        // TODO: defer cleanup
+        context->m_deferDeleteQueue.push_back([=](){
+            context->FreeSemaphore(image->waitSemaphore);
+        });
     }
 } // namespace RHI::Vulkan
