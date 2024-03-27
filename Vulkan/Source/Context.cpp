@@ -116,11 +116,13 @@ namespace RHI::Vulkan
 
         vkDeviceWaitIdle(m_device);
 
+        // Cleanup base
+        OnDestruct();
+
         // Destroy resource in the delete queue
         DestroyResources();
 
-        // Cleanup base
-        OnDestruct();
+        m_bindGroupAllocator->Shutdown();
 
         vmaDestroyAllocator(m_allocator);
         vkDestroyDevice(m_device, nullptr);

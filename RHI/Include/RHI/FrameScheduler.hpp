@@ -29,7 +29,6 @@ namespace RHI
         FrameScheduler(Context* context);
         virtual ~FrameScheduler() = default;
 
-        void        Reset();
         void        Begin();
         void        End();
 
@@ -41,7 +40,6 @@ namespace RHI
                                       ImageSubresourceLayers  subresource,
                                       TL::Span<const uint8_t> content);
         void Compile();
-    protected:
         void Cleanup();
 
         virtual void PassSubmit(Pass* pass, Fence* fence)                          = 0;

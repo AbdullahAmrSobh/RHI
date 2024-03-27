@@ -38,6 +38,8 @@ namespace RHI
     {
         ZoneScoped;
 
+        m_frameScheduler->Cleanup();
+
 #if RHI_DEBUG
         if (auto count = m_LeakDetector.m_images.LeakedResourcesCount(); count != 0)
         {

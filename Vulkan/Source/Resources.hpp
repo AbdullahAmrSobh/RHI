@@ -31,7 +31,9 @@ namespace RHI::Vulkan
     {
     public:
         BindGroupAllocator(VkDevice device);
-        ~BindGroupAllocator();
+        ~BindGroupAllocator() = default;
+
+        void Shutdown();
 
         ResultCode InitBindGroup(IBindGroup* bindGroup, IBindGroupLayout* bindGroupLayout);
         void       ShutdownBindGroup(IBindGroup* bindGroup);

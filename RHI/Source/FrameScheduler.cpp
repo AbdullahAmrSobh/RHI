@@ -12,10 +12,6 @@ namespace RHI
     {
     }
 
-    void FrameScheduler::Reset()
-    {
-    }
-
     void FrameScheduler::Begin()
     {
         for (auto attachment : m_attachmentsPool->GetAttachments())
@@ -159,5 +155,7 @@ namespace RHI
                 RHI_UNREACHABLE();
             }
         }
+
+        m_context->DestroyResources();
     }
 } // namespace RHI

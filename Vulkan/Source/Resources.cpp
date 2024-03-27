@@ -43,7 +43,7 @@ namespace RHI::Vulkan
         VULKAN_ASSERT_SUCCESS(result);
     }
 
-    BindGroupAllocator::~BindGroupAllocator()
+    void BindGroupAllocator::Shutdown()
     {
         vkDestroyDescriptorPool(m_device, m_descriptorPool, nullptr);
     }
