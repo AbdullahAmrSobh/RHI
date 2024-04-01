@@ -11,7 +11,7 @@ struct ImGuiRendererCreateInfo
     RHI::Context* context;
     RHI::FrameScheduler* scheduler;
     std::vector<uint8_t> shaderBlob;
-    RHI::CommandListAllocator* commandAllocator;
+    RHI::CommandPool* commandAllocator;
 };
 
 class IMGUI_IMPL_API ImGuiRenderer

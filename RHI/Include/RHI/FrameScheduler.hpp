@@ -16,7 +16,7 @@ namespace RHI
     class Swapchain;
     class CommandList;
     class AttachmentsPool;
-    class CommandListAllocator;
+    class CommandPool;
 
     /// @brief A frame scheduler is a frame-graph system breaks down the final frame
     /// into a set of passes, each pass represent a GPU workload. Passes share resources
@@ -48,7 +48,7 @@ namespace RHI
     protected:
         Context*                  m_context;
         Ptr<AttachmentsPool>      m_attachmentsPool;
-        Ptr<CommandListAllocator> m_commandListAllocator;
+        Ptr<CommandPool> m_commandPool;
 
         TL::Vector<Pass*>         m_passList;
 

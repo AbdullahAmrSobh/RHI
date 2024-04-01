@@ -116,13 +116,13 @@ namespace RHI
     };
 
     /// @brief Allocates or reuse existing command lists (create on object per thread).
-    class RHI_EXPORT CommandListAllocator
+    class RHI_EXPORT CommandPool
     {
     public:
-        CommandListAllocator()                                                         = default;
-        CommandListAllocator(const CommandListAllocator&)                              = delete;
-        CommandListAllocator(CommandListAllocator&&)                                   = delete;
-        virtual ~CommandListAllocator()                                                = default;
+        CommandPool()                                                         = default;
+        CommandPool(const CommandPool&)                              = delete;
+        CommandPool(CommandPool&&)                                   = delete;
+        virtual ~CommandPool()                                                = default;
 
         /// @brief Resets all command lists allocated from this allocator
         virtual void                     Reset()                                       = 0;

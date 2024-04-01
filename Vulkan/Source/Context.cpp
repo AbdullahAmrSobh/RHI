@@ -5,7 +5,7 @@
 #include "Common.hpp"
 #include "Resources.hpp"
 #include "CommandList.hpp"
-#include "CommandListAllocator.hpp"
+#include "CommandPool.hpp"
 #include "FrameScheduler.hpp"
 #include "Swapchain.hpp"
 
@@ -199,17 +199,17 @@ namespace RHI::Vulkan
         return fence;
     }
 
-    Ptr<CommandListAllocator> IContext::CreateCommandListAllocator()
+    Ptr<CommandPool> IContext::CreateCommandListAllocator()
     {
         ZoneScoped;
 
-        auto commandListAllocator = CreatePtr<ICommandListAllocator>(this);
-        auto result = commandListAllocator->Init();
+        auto commandPool = CreatePtr<ICommandListAllocator>(this);
+        auto result = commandPool->Init();
         if (result != VK_SUCCESS)
         {
             DebugLogError("Failed to create a command_list_allocator object");
         }
-        return commandListAllocator;
+        return commandPool;
     }
 
     Ptr<ResourcePool> IContext::CreateResourcePool(const ResourcePoolCreateInfo& createInfo)

@@ -2,7 +2,7 @@
 #include "Context.hpp"
 #include "Resources.hpp"
 #include "CommandList.hpp"
-#include "CommandListAllocator.hpp"
+#include "CommandPool.hpp"
 #include "Common.hpp"
 
 #include <tracy/Tracy.hpp>
@@ -12,7 +12,7 @@ namespace RHI::Vulkan
     IFrameScheduler::IFrameScheduler(IContext* context)
         : FrameScheduler(context)
     {
-        m_commandListAllocator = CreatePtr<ICommandListAllocator>(context);
+        m_commandPool = CreatePtr<ICommandListAllocator>(context);
     }
 
     IFrameScheduler::~IFrameScheduler()
@@ -26,7 +26,7 @@ namespace RHI::Vulkan
         vkGetDeviceQueue(context->m_device, context->m_computeQueueFamilyIndex, 0, &m_computeQueue);
         vkGetDeviceQueue(context->m_device, context->m_transferQueueFamilyIndex, 0, &m_transferQueue);
 
-        ((ICommandListAllocator*)m_commandListAllocator.get())->Init();
+        ((ICommandListAllocator*)m_commandPool.get())->Init();
 
         return VK_SUCCESS;
     }
@@ -78,7 +78,7 @@ namespace RHI::Vulkan
 
         image->waitSemaphore = context->CreateSemaphore();
 
-        auto commandList = (ICommandList*)m_commandListAllocator->Allocate(QueueType::Transfer);
+        auto commandList = (ICommandList*)m_commandPool->Allocate(QueueType::Transfer);
 
         VkImageMemoryBarrier2 barrier{};
         barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;

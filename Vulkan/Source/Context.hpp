@@ -40,7 +40,7 @@ namespace RHI::Vulkan
         RHI_NODISCARD Ptr<Swapchain>            CreateSwapchain(const SwapchainCreateInfo& createInfo)               override;
         RHI_NODISCARD Ptr<ShaderModule>         CreateShaderModule(TL::Span<const uint8_t> shaderBlob)               override;
         RHI_NODISCARD Ptr<Fence>                CreateFence()                                                        override;
-        RHI_NODISCARD Ptr<CommandListAllocator> CreateCommandListAllocator()                                         override;
+        RHI_NODISCARD Ptr<CommandPool> CreateCommandListAllocator()                                         override;
         RHI_NODISCARD Ptr<ResourcePool>         CreateResourcePool(const ResourcePoolCreateInfo& createInfo)         override;
         RHI_NODISCARD Handle<BindGroupLayout>   CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)   override;
                       void                      DestroyBindGroupLayout(Handle<BindGroupLayout> handle)               override;

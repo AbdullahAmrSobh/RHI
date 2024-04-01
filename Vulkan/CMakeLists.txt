@@ -25,7 +25,7 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandListAllocator.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandPool.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/FrameScheduler.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Surface.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.cpp

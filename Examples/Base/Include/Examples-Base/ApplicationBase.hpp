@@ -70,8 +70,8 @@ protected:
     RHI::Ptr<RHI::Swapchain> m_swapchain;
 
     RHI::Ptr<ImGuiRenderer> m_imguiRenderer;
-    
-    RHI::Ptr<RHI::CommandListAllocator> m_commandListAllocator;
+
+    RHI::Ptr<RHI::CommandPool> m_commandPool;
 
     void* m_window;
 
