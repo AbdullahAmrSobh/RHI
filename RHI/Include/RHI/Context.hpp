@@ -76,75 +76,16 @@ namespace RHI
     class RHI_EXPORT Context
     {
         friend class FrameScheduler;
+
     public:
         virtual ~Context() = default;
+
+        inline Limits&                                  GetLimits() { return *m_limits; }
 
         /// Returns a reference to the frame scheduler object.
         ///
         /// @return Reference to the FrameScheduler object.
-        inline FrameScheduler& GetScheduler() { return *m_frameScheduler; }
-
-        // clang-format off
-        /// Creates an image object and copies the provided content into it.
-        ///
-        /// @param createInfo Information describing the desired image characteristics.
-        /// @param content The raw data to be copied into the image.
-        /// @return Result object indicating success or failure of the operation.
-        ///         On success, it also contains a handle to the created image.
-        template<typename T>
-        RHI_NODISCARD Result<Handle<Image>>            CreateImage(const ImageCreateInfo& createInfo, TL::Span<const T> content);
-
-        /// Creates an image object and copies the provided content into it.
-        ///
-        /// @param createInfo Information describing the desired image characteristics.
-        /// @param content The raw data to be copied into the image.
-        /// @return Result object indicating success or failure of the operation.
-        ///         On success, it also contains a handle to the created image.
-        RHI_NODISCARD Result<Handle<Image>>            CreateImage(const ImageCreateInfo& createInfo, TL::Span<const uint8_t> content);
-
-        /// Creates a buffer object and copies the provided content into it.
-        ///
-        /// @param usage Flags indicating the usage of the buffer.
-        /// @param content The raw data to be copied into the buffer.
-        /// @return Result object indicating success or failure of the operation.
-        ///         On success, it also contains a handle to the created buffer.
-        template<typename T>
-        RHI_NODISCARD Result<Handle<Buffer>>            CreateBuffer(Flags<BufferUsage> usage, const T& content);
-
-        /// Creates a buffer object and copies the provided content into it.
-        ///
-        /// @param usage Flags indicating the usage of the buffer.
-        /// @param content The raw data to be copied into the buffer.
-        /// @return Result object indicating success or failure of the operation.
-        ///         On success, it also contains a handle to the created buffer.
-        template<typename T>
-        RHI_NODISCARD Result<Handle<Buffer>>            CreateBuffer(Flags<BufferUsage> usage, TL::Span<const T> content);
-
-        /// Creates a buffer object and copies the provided content into it.
-        ///
-        /// @param createInfo Information describing the desired buffer characteristics.
-        /// @param content The raw data to be copied into the buffer.
-        /// @return Result object indicating success or failure of the operation.
-        ///         On success, it also contains a handle to the created buffer.
-        template<typename T>
-        RHI_NODISCARD Result<Handle<Buffer>>            CreateBuffer(const BufferCreateInfo& createInfo, const T& content);
-
-        /// Creates a buffer object and copies the provided content into it.
-        ///
-        /// @param createInfo Information describing the desired buffer characteristics.
-        /// @param content The raw data to be copied into the buffer.
-        /// @return Result object indicating success or failure of the operation.
-        ///         On success, it also contains a handle to the created buffer.
-        template<typename T>
-        RHI_NODISCARD Result<Handle<Buffer>>            CreateBuffer(const BufferCreateInfo& createInfo, TL::Span<const T> content);
-
-        /// Creates a buffer object and copies the provided content into it.
-        ///
-        /// @param createInfo Information describing the desired buffer characteristics.
-        /// @param content The raw data to be copied into the buffer.
-        /// @return Result object indicating success or failure of the operation.
-        ///         On success, it also contains a handle to the created buffer.
-        RHI_NODISCARD Result<Handle<Buffer>>            CreateBuffer(const BufferCreateInfo& createInfo, TL::Span<const uint8_t> content);
+        inline FrameScheduler&                          GetScheduler() { return *m_frameScheduler; }
 
         /// Creates a new swapchain object with specified configuration.
         ///
@@ -311,18 +252,16 @@ namespace RHI
         /// @param handle The handle to the buffer object to unmap.
         virtual void                                    UnmapBuffer(Handle<Buffer> handle)                                   = 0;
 
-        // clang-format on
-
     protected:
         Context(Ptr<DebugCallbacks> debugCallbacks);
 
         virtual void DestroyResources() = 0;
 
-        void   OnDestruct();
+        void         OnDestruct();
 
-        void   DebugLogError(std::string_view message);
-        void   DebugLogWarn(std::string_view message);
-        void   DebugLogInfo(std::string_view message);
+        void         DebugLogError(std::string_view message);
+        void         DebugLogWarn(std::string_view message);
+        void         DebugLogInfo(std::string_view message);
 
     protected:
         struct
@@ -353,39 +292,59 @@ namespace RHI
     }
 
     template<typename T>
-    inline Result<Handle<Image>> Context::CreateImage(const ImageCreateInfo& createInfo, TL::Span<const T> content)
+    RHI_EXPORT Result<Handle<Image>> CreateImageWithData(Context& context, const ImageCreateInfo& createInfo, TL::Span<const T> content)
     {
-        return CreateImage(createInfo, { content.data(), content.size_bytes() });
+        // clang-format off
+        auto& scheduler = context.GetScheduler();
+
+        auto [handle, result] = context.CreateImage(createInfo);
+
+        if (result != ResultCode::Success)
+            return result;
+
+        RHI::BufferCreateInfo _createInfo {};
+        _createInfo.byteSize = content.size_bytes();
+        _createInfo.usageFlags = BufferUsage::CopySrc;
+        auto tmpBuffer = context.CreateBuffer(_createInfo).GetValue();
+
+        BufferToImageCopyInfo copyInfo{};
+        copyInfo.srcBuffer = tmpBuffer;
+        copyInfo.srcOffset = 0;
+        copyInfo.dstImage  = handle;
+        auto ptr = context.MapBuffer(tmpBuffer);
+        memcpy(ptr, content.data(), content.size_bytes());
+        context.UnmapBuffer(tmpBuffer);
+
+        scheduler.WriteImageContent(handle, {}, createInfo.size, {}, content);
+
+
+        return handle;
+        // clang-format on
     }
 
     template<typename T>
-    inline Result<Handle<Buffer>> Context::CreateBuffer(const BufferCreateInfo& createInfo, const T& content)
+    RHI_EXPORT Result<Handle<Buffer>> CreateBufferWithData(Context& context, Flags<BufferUsage> usageFlags, TL::Span<const T> content)
     {
-        return CreateBuffer(createInfo, TL::Span{ (uint8_t*)&content, sizeof(T) });
-    }
+        BufferCreateInfo createInfo {};
+        createInfo.byteSize = content.size_bytes();
+        createInfo.usageFlags = usageFlags;
 
-    template<typename T>
-    inline Result<Handle<Buffer>> Context::CreateBuffer(const BufferCreateInfo& createInfo, TL::Span<const T> content)
-    {
-        return CreateBuffer(createInfo, TL::ToBytes(content));
-    }
+        auto [handle, result] = context.CreateBuffer(createInfo);
 
-    template<typename T>
-    inline Result<Handle<Buffer>> Context::CreateBuffer(Flags<BufferUsage> usage, const T& content)
-    {
-        BufferCreateInfo createInfo{};
-        createInfo.byteSize   = sizeof(T);
-        createInfo.usageFlags = usage;
-        return CreateBuffer(createInfo, content);
-    }
+        if (result != ResultCode::Success)
+            return result;
 
-    template<typename T>
-    inline Result<Handle<Buffer>> Context::CreateBuffer(Flags<BufferUsage> usage, TL::Span<const T> content)
-    {
-        BufferCreateInfo createInfo{};
-        createInfo.byteSize   = content.size_bytes();
-        createInfo.usageFlags = usage;
-        return CreateBuffer(createInfo, content);
-    }
+        if (content.size_bytes() <= context.GetLimits().stagingMemoryLimit)
+        {
+            auto ptr = context.MapBuffer(handle);
+            memcpy(ptr, content.data(), content.size_bytes());
+            context.UnmapBuffer(handle);
+        }
+        else
+        {
+            RHI_UNREACHABLE();
+        }
 
+        return handle;
+    }
 } // namespace RHI

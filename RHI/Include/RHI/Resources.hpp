@@ -1,7 +1,6 @@
 #pragma once
 
 #include "RHI/Format.hpp"
-#include "RHI/Access.hpp"
 
 #include "RHI/Common/Handle.hpp"
 #include "RHI/Common/Flags.hpp"
@@ -25,9 +24,10 @@ namespace RHI
     inline static constexpr uint32_t c_MaxPipelineBindGroupsCount                = 4u;
     inline static constexpr uint32_t c_MaxShaderBindGroupElementsCount           = 32u;
 
-    class Context;
+    struct ImagePassAttachment;
+    struct BufferPassAttachment;
+
     class ShaderModule;
-    class ImageAttachment;
     class ResourcePool;
 
     // clang-format off
@@ -46,6 +46,14 @@ namespace RHI
 
     /// @brief Represents a pointer to GPU device memory
     using DeviceMemoryPtr = void*;
+
+    enum class Access
+    {
+        None      = 0,
+        Read      = 1 << 0,
+        Write     = 1 << 1,
+        ReadWrite = Read | Write,
+    };
 
     /// @brief Enumeration representing the memory allocation startegy of a resource pool.
     enum class AllocationAlgorithm
@@ -87,15 +95,27 @@ namespace RHI
         DepthStencil    = Depth | Stencil,
         CopySrc         = 1 << 6, // The image content will be copied.
         CopyDst         = 1 << 7, // The image content will be overwritten by a copy command.
+        Resolve         = CopyDst
     };
 
     /// @brief Enumeration representing the dimensions of an image resource.
     enum class ImageType
     {
-        None,    // Invalid flag
-        Image1D, // Image is 1 dimentional.
-        Image2D, // Image is 2 dimentional.
-        Image3D, // Image is 3 dimentional.
+        None,
+        Image1D,
+        Image2D,
+        Image3D,
+    };
+
+    /// @brief Enumeration representing the dimensions of an image resource.
+    enum class ImageViewType
+    {
+        None,
+        View1D,
+        View1DArray,
+        View2DArray,
+        View3D,
+        CubeMap,
     };
 
     /// @brief Enumeration representing the aspects of an image resource.
@@ -301,15 +321,26 @@ namespace RHI
     };
 
     /// @brief Represent the offset into an image resource.
-    struct ImageOffset
+    struct ImageOffset2D
+    {
+        int32_t     x; // Offset in the X direction
+        int32_t     y; // Offset in the Y direction
+
+        inline bool operator==(const ImageOffset2D& other) const { return x == other.x && y == other.y; }
+
+        inline bool operator!=(const ImageOffset2D& other) const { return !(*this == other); }
+    };
+
+    /// @brief Represent the offset into an image resource.
+    struct ImageOffset3D
     {
         int32_t     x; // Offset in the X direction
         int32_t     y; // Offset in the Y direction
         int32_t     z; // Offset in the Z direction
 
-        inline bool operator==(const ImageOffset& other) const { return x == other.x && y == other.y && z == other.z; }
+        inline bool operator==(const ImageOffset3D& other) const { return x == other.x && y == other.y && z == other.z; }
 
-        inline bool operator!=(const ImageOffset& other) const { return !(*this == other); }
+        inline bool operator!=(const ImageOffset3D& other) const { return !(*this == other); }
     };
 
     /// @brief Represent the size of an image resource or subregion.
@@ -611,6 +642,7 @@ namespace RHI
 
         const char*           debugName;
         Handle<Image>         image;
+        ImageViewType         viewType;
         ComponentMapping      components;
         ImageSubresourceRange subresource;
 
@@ -738,17 +770,12 @@ namespace RHI
         virtual bool WaitInternal(uint64_t timeout) = 0;
     };
 
-} // namespace RHI
+    inline static bool IsAccessWrite(Access access)
+    {
+        return access == Access::ReadWrite || access == Access::Write;
+    }
 
-#define RHI_DEFINE_POD_HASH_SPECIALIZATION(Type)        \
-    template<>                                          \
-    struct hash<Type>                                   \
-    {                                                   \
-        std::size_t operator()(const Type& value) const \
-        {                                               \
-            return ::RHI::HashAny<Type>(value);         \
-        }                                               \
-    };
+} // namespace RHI
 
 namespace std
 {

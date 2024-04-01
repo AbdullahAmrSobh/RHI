@@ -4,6 +4,16 @@
 
 #include <string>
 
+#define RHI_DEFINE_POD_HASH_SPECIALIZATION(Type)        \
+    template<>                                          \
+    struct hash<Type>                                   \
+    {                                                   \
+        std::size_t operator()(const Type& value) const \
+        {                                               \
+            return ::RHI::HashAny<Type>(value);         \
+        }                                               \
+    };
+
 namespace RHI
 {
     template<typename T>

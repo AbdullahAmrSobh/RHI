@@ -2,6 +2,8 @@
 
 #include <memory>
 
+#include "RHI/Common/Containers.h"
+
 namespace RHI
 {
     template<typename T>
@@ -11,5 +13,11 @@ namespace RHI
     inline constexpr Ptr<T> CreatePtr(Args... args)
     {
         return std::make_unique<T, Args...>(std::forward<Args>(args)...);
+    }
+
+    template<typename T, typename U, typename... Args>
+    inline constexpr T* EmplacePtr(TL::Vector<Ptr<U>>& container, Args... args)
+    {
+        return (T*)container.emplace_back(CreatePtr<T>(args...)).get();
     }
 } // namespace RHI

@@ -254,7 +254,7 @@ namespace RHI::Vulkan
                 attachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
                 attachmentInfo.loadOp = ConvertLoadOp(passAttachment->m_loadStoreOperations.loadOperation);
                 attachmentInfo.storeOp = ConvertStoreOp(passAttachment->m_loadStoreOperations.storeOperation);
-                attachmentInfo.clearValue.color = ConvertColorValue(passAttachment->m_clearValue.colorValue);
+                attachmentInfo.clearValue.color = ConvertClearValue(passAttachment->m_clearValue);
             }
 
             if (auto passAttachment = m_pass->GetDepthStencilAttachment(); passAttachment != nullptr)
@@ -267,8 +267,8 @@ namespace RHI::Vulkan
                 depthAttachmentInfo.loadOp = ConvertLoadOp(passAttachment->m_loadStoreOperations.loadOperation);
                 depthAttachmentInfo.storeOp = ConvertStoreOp(passAttachment->m_loadStoreOperations.storeOperation);
                 depthAttachmentInfo.imageLayout =
-                    depthAttachmentInfo.storeOp != VK_ATTACHMENT_STORE_OP_STORE ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
-                depthAttachmentInfo.clearValue.depthStencil = ConvertDepthStencilValue(passAttachment->m_clearValue.depthStencilValue);
+                depthAttachmentInfo.storeOp != VK_ATTACHMENT_STORE_OP_STORE ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                depthAttachmentInfo.clearValue.depthStencil = ConvertDepthStencilValue(passAttachment->m_clearValue.depthStencil);
                 hasDepthAttachment = true;
             }
 
@@ -371,7 +371,7 @@ namespace RHI::Vulkan
         vkEndCommandBuffer(m_commandBuffer);
     }
 
-    void ICommandList::DebugMarkerPush(const char* name, const ColorValue& color)
+    void ICommandList::DebugMarkerPush(const char* name, ColorValue<float> color)
     {
         ZoneScoped;
 
@@ -622,7 +622,7 @@ namespace RHI::Vulkan
         renderingInfo.pNext = nullptr;
         renderingInfo.flags = 0;
         renderingInfo.renderArea.extent = ConvertExtent2D(extent);
-        renderingInfo.renderArea.offset = ConvertOffset2D({ 0u, 0u, 0u });
+        renderingInfo.renderArea.offset = ConvertOffset2D({ 0u, 0u  });
         renderingInfo.layerCount = 1;
         renderingInfo.colorAttachmentCount = uint32_t(attachmentInfos.size());
         renderingInfo.pColorAttachments = attachmentInfos.data();

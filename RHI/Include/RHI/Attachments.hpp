@@ -1,16 +1,17 @@
 #pragma once
 #include "RHI/Export.hpp"
 #include "RHI/Resources.hpp"
-#include "RHI/Access.hpp"
 #include "RHI/Swapchain.hpp"
 
 #include "RHI/Common/Ptr.h"
 #include "RHI/Common/Containers.h"
+#include "RHI/RenderTarget.hpp"
 
 #include <string>
 
 namespace RHI
 {
+    class Context;
     class Attachment;
     class ImageAttachment;
     class BufferAttachment;
@@ -19,91 +20,6 @@ namespace RHI
     class BufferPassAttachment;
     class Swapchain;
     class Pass;
-
-    enum class LoadOperation
-    {
-        DontCare, // The attachment load operation undefined.
-        Load,     // Load attachment content.
-        Discard,  // Discard attachment content.
-    };
-
-    enum class StoreOperation
-    {
-        DontCare, // Attachment Store operation is undefined
-        Store,    // Writes to the attachment are stored
-        Discard,  // Writes to the attachment are discarded
-    };
-
-    struct ColorValue
-    {
-        float       r = 1.0f;
-        float       g = 1.0f;
-        float       b = 1.0f;
-        float       a = 1.0f;
-
-        inline bool operator==(const ColorValue& other) const
-        {
-            return r == other.r && g == other.g && b == other.b && a == other.a;
-        }
-
-        inline bool operator!=(const ColorValue& other) const
-        {
-            return !(*this == other);
-        }
-    };
-
-    struct DepthStencilValue
-    {
-        float       depthValue   = 1.0f;
-        uint8_t     stencilValue = 0xff;
-
-        inline bool operator==(const DepthStencilValue& other) const
-        {
-            return depthValue == other.depthValue && stencilValue == other.stencilValue;
-        }
-
-        inline bool operator!=(const DepthStencilValue& other) const
-        {
-            return !(*this == other);
-        }
-    };
-
-    union ClearValue
-    {
-        ClearValue()
-        {
-            colorValue = {};
-        }
-
-        ClearValue(ColorValue value)
-        {
-            colorValue = value;
-        }
-
-        ClearValue(DepthStencilValue value)
-        {
-            depthStencilValue = value;
-        }
-
-        ColorValue        colorValue;
-        DepthStencilValue depthStencilValue;
-    };
-
-    struct LoadStoreOperations
-    {
-        LoadOperation  loadOperation  = LoadOperation::Discard;
-        StoreOperation storeOperation = StoreOperation::Store;
-
-        inline bool    operator==(const LoadStoreOperations& other) const
-        {
-            return loadOperation == other.loadOperation && storeOperation == other.storeOperation;
-        }
-
-        inline bool operator!=(const LoadStoreOperations& other) const
-        {
-            return !(*this == other);
-        }
-    };
 
     class RHI_EXPORT Attachment
     {

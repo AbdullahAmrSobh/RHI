@@ -35,7 +35,7 @@ namespace RHI
         Ptr<Pass>   CreatePass(const char* name, QueueType queueType);
 
         void        WriteImageContent(Handle<Image>           handle,
-                                      ImageOffset             offset,
+                                      ImageOffset3D           offset,
                                       ImageSize3D             size,
                                       ImageSubresourceLayers  subresource,
                                       TL::Span<const uint8_t> content);

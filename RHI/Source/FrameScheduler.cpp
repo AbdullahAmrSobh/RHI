@@ -34,7 +34,7 @@ namespace RHI
                         imagePassAttachment->m_view = m_context->CreateImageView(imagePassAttachment->m_viewInfo);
                         m_imageViewLUT[imagePassAttachment->m_viewInfo] = imagePassAttachment->m_view;
                     }
-                    
+
                 }
                 else if (attachment->m_type == Attachment::Type::Buffer)
                 {
@@ -50,7 +50,7 @@ namespace RHI
                         bufferPassAttachment->m_view = m_context->CreateBufferView(bufferPassAttachment->m_viewInfo);
                         m_bufferViewLUT[bufferPassAttachment->m_viewInfo] = bufferPassAttachment->m_view;
                     }
-                    
+
                 }
                 else
                 {
@@ -78,7 +78,7 @@ namespace RHI
     }
 
     void FrameScheduler::WriteImageContent(Handle<Image> handle,
-                                           ImageOffset offset,
+                                           ImageOffset3D offset,
                                            ImageSize3D size,
                                            ImageSubresourceLayers subresource,
                                            TL::Span<const uint8_t> content)
@@ -132,7 +132,7 @@ namespace RHI
             m_context->DestroyImageView(view);
         }
 
-        
+
         for (auto [_, view] : m_bufferViewLUT)
         {
             m_context->DestroyBufferView(view);

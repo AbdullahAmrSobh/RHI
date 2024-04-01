@@ -131,7 +131,7 @@ namespace RHI::Vulkan
         vkQueueSubmit2(m_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
 
         context->m_deferDeleteQueue.push_back([=](){
-            context->FreeSemaphore(image->waitSemaphore);
+            context->DestroySemaphore(image->waitSemaphore);
         });
     }
 } // namespace RHI::Vulkan

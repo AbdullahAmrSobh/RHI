@@ -518,6 +518,17 @@ namespace RHI::Vulkan
         vmaUnmapMemory(m_allocator, resource);
     }
 
+    void IContext::DestroyResources()
+    {
+        ZoneScoped;
+
+        for (auto destroyItem : m_deferDeleteQueue)
+        {
+            destroyItem();
+        }
+        m_deferDeleteQueue.clear();
+    }
+
     ////////////////////////////////////////////////////////////
     // Interface implementation
     ////////////////////////////////////////////////////////////
@@ -536,22 +547,16 @@ namespace RHI::Vulkan
         }
     }
 
-    void IContext::DestroyResources()
+    VkSemaphore IContext::CreateSemaphore(bool timeline, uint64_t initialValue)
     {
-        ZoneScoped;
+        VkSemaphoreTypeCreateInfo timelineInfo{};
+        timelineInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
+        timelineInfo.initialValue = initialValue;
+        timelineInfo.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
 
-        for (auto destroyItem : m_deferDeleteQueue)
-        {
-            destroyItem();
-        }
-        m_deferDeleteQueue.clear();
-    }
-
-    VkSemaphore IContext::CreateSemaphore()
-    {
         VkSemaphoreCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-        createInfo.pNext = nullptr;
+        createInfo.pNext = timeline ? &timelineInfo : nullptr;
         createInfo.flags = 0;
         VkSemaphore semaphore = VK_NULL_HANDLE;
         auto result = vkCreateSemaphore(m_device, &createInfo, nullptr, &semaphore);
@@ -559,7 +564,7 @@ namespace RHI::Vulkan
         return semaphore;
     }
 
-    void IContext::FreeSemaphore(VkSemaphore semaphore)
+    void IContext::DestroySemaphore(VkSemaphore semaphore)
     {
         ZoneScoped;
 

@@ -1,7 +1,9 @@
 #pragma once
-#include <RHI/Common/Result.hpp>
 #include <RHI/Resources.hpp>
+#include <RHI/Attachments.hpp>
 #include <RHI/FrameScheduler.hpp>
+
+#include <RHI/Common/Result.hpp>
 
 #include <vk_mem_alloc.h>
 
@@ -610,18 +612,18 @@ namespace RHI::Vulkan
         return { size.width, size.height };
     }
 
-    inline static VkOffset3D ConvertOffset3D(ImageOffset offset)
+    inline static VkOffset2D ConvertOffset2D(ImageOffset2D offset)
+    {
+        return { offset.x, offset.y };
+    }
+
+    inline static VkOffset3D ConvertOffset3D(ImageOffset3D offset)
     {
         return { offset.x, offset.y, offset.z };
     }
 
-    inline static VkOffset2D ConvertOffset2D(ImageOffset offset)
-    {
-        RHI_ASSERT(offset.z == 0);
-        return { offset.x, offset.y };
-    }
-
-    inline static VkClearColorValue ConvertColorValue(ColorValue value)
+    template<typename T>
+    inline static VkClearColorValue ConvertColorValue(ColorValue<T> value)
     {
         VkClearColorValue clearValue = {};
         clearValue.float32[0] = value.r;
@@ -638,6 +640,11 @@ namespace RHI::Vulkan
         clearValue.stencil = value.stencilValue;
         return clearValue;
     }
+
+    inline static VkClearColorValue ConvertClearValue(ClearValue clearValue)
+    {
+        return ConvertColorValue(clearValue.f32);
+    };
 
     inline static VkComponentMapping ConvertComponentMapping(ComponentMapping componentMapping)
     {

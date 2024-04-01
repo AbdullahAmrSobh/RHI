@@ -21,7 +21,7 @@ struct Mesh
         auto scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_GenSmoothNormals);
         auto mesh = scene->mMeshes[0];
 
-        std::vector<uint32_t> indexBufferData;
+        RHI::TL::Vector<uint32_t> indexBufferData;
         indexBufferData.reserve(mesh->mNumFaces * 3);
 
         for (uint32_t i = 0; i < mesh->mNumFaces; i++)
@@ -32,7 +32,7 @@ struct Mesh
             }
         }
 
-        std::vector<glm::vec2> texCoordData;
+        RHI::TL::Vector<glm::vec2> texCoordData;
         texCoordData.reserve(mesh->mNumFaces * 3);
 
         auto uv = mesh->mTextureCoords[0];
@@ -42,10 +42,10 @@ struct Mesh
         }
 
         drawElementsCount = uint32_t(indexBufferData.size());
-        indexBuffer = context.CreateBuffer<uint32_t>(RHI::BufferUsage::Index, indexBufferData).GetValue();
-        positionsBuffer = context.CreateBuffer<aiVector3D>(RHI::BufferUsage::Vertex, { mesh->mVertices, mesh->mNumVertices }).GetValue();
-        normalsBuffer = context.CreateBuffer<aiVector3D>(RHI::BufferUsage::Vertex, { mesh->mNormals, mesh->mNumVertices }).GetValue();
-        texCoordBuffer = context.CreateBuffer<glm::vec2>(RHI::BufferUsage::Vertex, texCoordData).GetValue();
+        indexBuffer = RHI::CreateBufferWithData<uint32_t>(context, RHI::BufferUsage::Index, indexBufferData).GetValue();
+        positionsBuffer = RHI::CreateBufferWithData<aiVector3D>(context, RHI::BufferUsage::Vertex, { mesh->mVertices, mesh->mNumVertices }).GetValue();
+        normalsBuffer = RHI::CreateBufferWithData<aiVector3D>(context, RHI::BufferUsage::Vertex, { mesh->mNormals, mesh->mNumVertices }).GetValue();
+        texCoordBuffer = RHI::CreateBufferWithData<glm::vec2>(context, RHI::BufferUsage::Vertex, texCoordData).GetValue();
     }
 
     void Shutdown(RHI::Context& context)
@@ -77,7 +77,7 @@ public:
         ZoneScoped;
 
         m_uniformData.viewProjection = m_camera.GetProjection() * m_camera.GetView();
-        m_uniformBuffer = m_context->CreateBuffer(RHI::BufferUsage::Uniform, RHI::TL::ToBytes(m_uniformData)).GetValue();
+        m_uniformBuffer = RHI::CreateBufferWithData<UniformBufferContent>(*m_context, RHI::BufferUsage::Uniform, m_uniformData).GetValue();
         m_mesh.Init(*m_context, "./Resources/Meshes/simple_cube.obj");
 
         // create image
@@ -93,7 +93,7 @@ public:
             createInfo.size.height = textureData.height;
             createInfo.size.depth = 1;
             createInfo.format = RHI::Format::RGBA8_UNORM;
-            m_image = m_context->CreateImage(createInfo, textureData.data).GetValue();
+            m_image = RHI::CreateImageWithData<uint8_t>(*m_context, createInfo, textureData.data).GetValue();
             RHI::ImageViewCreateInfo viewInfo{};
             viewInfo.image = m_image;
             m_imageView = m_context->CreateImageView(viewInfo);
@@ -108,16 +108,17 @@ public:
             m_renderBindGroupLayout = m_context->CreateBindGroupLayout(createInfo);
             m_renderPipelineLayout = m_context->CreatePipelineLayout({ m_renderBindGroupLayout });
         }
+
         {
             auto shaderCode = ReadBinaryFile("./Resources/Shaders/triangle.spv");
             auto shaderModule = m_context->CreateShaderModule(shaderCode);
             RHI::GraphicsPipelineCreateInfo createInfo{};
             // clang-format off
-            createInfo.inputAssemblerState.attributes[0] = { .location = 0, .binding = 0, .format = RHI::Format::RGB32_FLOAT, .offset = 0 }; 
-            createInfo.inputAssemblerState.attributes[1] = { .location = 1, .binding = 1, .format = RHI::Format::RGB32_FLOAT, .offset = 0 };  
-            createInfo.inputAssemblerState.attributes[2] = { .location = 2, .binding = 2, .format = RHI::Format::RG32_FLOAT,  .offset = 0 };  
-            createInfo.inputAssemblerState.bindings[0] = { .binding = 0, .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT), .stepRate = RHI::PipelineVertexInputRate::PerVertex };  
-            createInfo.inputAssemblerState.bindings[1] = { .binding = 1, .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT), .stepRate = RHI::PipelineVertexInputRate::PerVertex };  
+            createInfo.inputAssemblerState.attributes[0] = { .location = 0, .binding = 0, .format = RHI::Format::RGB32_FLOAT, .offset = 0 };
+            createInfo.inputAssemblerState.attributes[1] = { .location = 1, .binding = 1, .format = RHI::Format::RGB32_FLOAT, .offset = 0 };
+            createInfo.inputAssemblerState.attributes[2] = { .location = 2, .binding = 2, .format = RHI::Format::RG32_FLOAT,  .offset = 0 };
+            createInfo.inputAssemblerState.bindings[0] = { .binding = 0, .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT), .stepRate = RHI::PipelineVertexInputRate::PerVertex };
+            createInfo.inputAssemblerState.bindings[1] = { .binding = 1, .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT), .stepRate = RHI::PipelineVertexInputRate::PerVertex };
             createInfo.inputAssemblerState.bindings[2] = { .binding = 2, .stride = RHI::GetFormatByteSize(RHI::Format::RG32_FLOAT),  .stepRate = RHI::PipelineVertexInputRate::PerVertex };
             // clang-format on
             createInfo.vertexShaderName = "VSMain";
@@ -132,6 +133,7 @@ public:
             createInfo.depthStencilState.compareOperator = RHI::CompareOperator::Greater;
             m_renderPipelineState = m_context->CreateGraphicsPipeline(createInfo);
         }
+
         // create shader bind group layout compute pipeline
         // {
         //     RHI::BindGroupLayoutCreateInfo createInfo = {};
@@ -139,6 +141,7 @@ public:
         //     m_computeBindGroupLayout = m_context->CreateBindGroupLayout(createInfo);
         //     m_computePipelineLayout = m_context->CreatePipelineLayout({ m_computeBindGroupLayout });
         // }
+
         // {
         //     auto shaderCode = ReadBinaryFile("./Resources/Shaders/compute.spv");
         //     auto shaderModule = m_context->CreateShaderModule(shaderCode);
@@ -148,6 +151,7 @@ public:
         //     createInfo.layout = m_computePipelineLayout;
         //     m_computePipelineState = m_context->CreateComputePipeline(createInfo);
         // }
+
         // // create shader bind group compose pipeline
         // {
         //     RHI::BindGroupLayoutCreateInfo createInfo = {};
@@ -158,6 +162,7 @@ public:
         //     m_composeBindGroupLayout = m_context->CreateBindGroupLayout(createInfo);
         //     m_composePipelineLayout = m_context->CreatePipelineLayout({ m_composeBindGroupLayout });
         // }
+
         // {
         //     auto shaderCode = ReadBinaryFile("./Resources/Shaders/compose.spv");
         //     auto shaderModule = m_context->CreateShaderModule(shaderCode);
@@ -184,8 +189,8 @@ public:
             m_renderPass = scheduler.CreatePass("Render-Pass", RHI::QueueType::Graphics);
             m_renderPass->SetRenderTargetSize({ m_windowWidth, m_windowHeight });
             m_renderPass->CreateRenderTarget("depth-target", RHI::Format::D32, RHI::DepthStencilValue{ 0.0f });
-            // colorAttachment = m_renderPass->UseRenderTarget("color-target", m_swapchain.get(), RHI::ColorValue{ 0.0f, 0.2f, 0.3f, 1.0f });
-            m_renderPass->UseRenderTarget("color-target", m_swapchain.get(), RHI::ColorValue{ 0.0f, 0.2f, 0.3f, 1.0f });
+            // colorAttachment = m_renderPass->UseRenderTarget("color-target", m_swapchain.get(), RHI::ColorValue(0.0f, 0.2f, 0.3f, 1.0f));
+            m_renderPass->UseRenderTarget("color-target", m_swapchain.get(), RHI::ColorValue(0.0f, 0.2f, 0.3f, 1.0f));
 
             // m_computePass = scheduler.CreatePass("Compute-Pass", RHI::QueueType::Compute);
             // maskAttachment = m_computePass->CreateTransientImage("mask", RHI::Format::R8_UNORM, RHI::ImageUsage::StorageResource, RHI::ImageSize2D{ m_windowWidth, m_windowHeight });

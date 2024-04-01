@@ -20,7 +20,7 @@ namespace RHI::Vulkan
         void Begin()                                                                       override;
         void Begin(Pass& pass)                                                             override;
         void End()                                                                         override;
-        void DebugMarkerPush(const char* name, const struct ColorValue& color)             override;
+        void DebugMarkerPush(const char* name, ColorValue<float> color)                    override;
         void DebugMarkerPop()                                                              override;
         void BeginConditionalCommands(Handle<Buffer> buffer, size_t offset, bool inverted) override;
         void EndConditionalCommands()                                                      override;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RHI/Resources.hpp"
+#include "RHI/RenderTarget.hpp"
 
 #include "RHI/Common/Containers.h"
 
@@ -43,11 +44,11 @@ namespace RHI
     {
         Handle<Image>          srcImage;
         ImageSubresourceLayers srcSubresource;
-        ImageOffset            srcOffset;
+        ImageOffset3D          srcOffset;
         ImageSize3D            srcSize;
         Handle<Image>          dstImage;
         ImageSubresourceLayers dstSubresource;
-        ImageOffset            dstOffset;
+        ImageOffset3D          dstOffset;
     };
 
     struct BufferToImageCopyInfo
@@ -57,16 +58,16 @@ namespace RHI
         uint32_t               srcBytesPerRow;
         uint32_t               srcBytesPerImage;
         Handle<Image>          dstImage;
-        ImageOffset            dstOffset;
-        ImageSize3D            dstSize;
-        ImageSubresourceLayers dstSubresource;
+        ImageOffset3D          dstOffset;
+        ImageSize3D            dstSize; // covers the whole image size if not specified
+        ImageSubresourceLayers dstSubresource; // primary subresource if not specified
     };
 
     struct ImageToBufferCopyInfo
     {
         Handle<Image>          srcImage;
         ImageSubresourceLayers srcSubresource;
-        ImageOffset            srcOffset;
+        ImageOffset3D          srcOffset;
         ImageSize3D            srcSize;
         Handle<Buffer>         dstBuffer;
         uint32_t               dstOffset;
@@ -139,12 +140,10 @@ namespace RHI
     /// @brief Command list record a list of GPU commands that are exectued in the same pass.
     class RHI_EXPORT CommandList
     {
-    protected:
-        CommandList()                         = default;
-        CommandList(const CommandList& other) = delete;
-        CommandList(CommandList&& other)      = default;
-
     public:
+        CommandList()                                                                              = default;
+        CommandList(const CommandList& other)                                                      = delete;
+        CommandList(CommandList&& other)                                                           = default;
         virtual ~CommandList()                                                                     = default;
 
         /// @brief Marks the begining of this command list recording
@@ -157,7 +156,7 @@ namespace RHI
         virtual void End()                                                                         = 0;
 
         /// @brief Begins a new debug marker region
-        virtual void DebugMarkerPush(const char* name, const struct ColorValue& color)             = 0;
+        virtual void DebugMarkerPush(const char* name, ColorValue<float> color)                    = 0;
 
         /// @brief Ends the last debug marker region
         virtual void DebugMarkerPop()                                                              = 0;
@@ -167,8 +166,6 @@ namespace RHI
 
         /// @brief Define the ending of a conditional command list block
         virtual void EndConditionalCommands()                                                      = 0;
-
-        // TODO: add indirect commands here
 
         /// @brief Execute a secondary command list from a primary command list
         virtual void Execute(TL::Span<const CommandList*> commandLists)                            = 0;

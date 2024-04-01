@@ -26,4 +26,5 @@ namespace RHI::TL
 
     template<typename T>
     using Set = std::set<T, DefaultAllocator<T>>;
+
 } // namespace RHI::TL
