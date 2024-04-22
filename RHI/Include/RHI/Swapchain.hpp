@@ -5,6 +5,14 @@
 
 namespace RHI
 {
+    enum class SwapchainPresentMode
+    {
+        Immediate,
+        Fifo,
+        FifoRelaxed,
+        Mailbox,
+    };
+
 #ifdef RHI_PLATFORM_WINDOWS
     /// @brief struct contains win32 surface handles.
     struct Win32WindowDesc

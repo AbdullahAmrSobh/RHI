@@ -306,14 +306,6 @@ namespace RHI
         Mappable
     };
 
-    enum class SwapchainPresentMode
-    {
-        Immediate,
-        Fifo,
-        FifoRelaxed,
-        Mailbox,
-    };
-
     enum class FenceState
     {
         NotSubmitted,
