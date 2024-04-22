@@ -199,7 +199,7 @@ namespace RHI::Vulkan
         return fence;
     }
 
-    Ptr<CommandPool> IContext::CreateCommandListAllocator()
+    Ptr<CommandPool> IContext::CreateCommandPool()
     {
         ZoneScoped;
 
@@ -607,11 +607,10 @@ namespace RHI::Vulkan
         return index;
     }
 
-    VkBool32 IContext::DebugMessengerCallbacks(
-        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-        VkDebugUtilsMessageTypeFlagsEXT messageTypes,
-        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-        void* pUserData)
+    VkBool32 IContext::DebugMessengerCallbacks(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+                                               VkDebugUtilsMessageTypeFlagsEXT messageTypes,
+                                               const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+                                               void* pUserData)
     {
         (void)messageTypes;
         auto context = (IContext*)pUserData;

@@ -113,6 +113,7 @@ namespace RHI
         None,
         View1D,
         View1DArray,
+        View2D,
         View2DArray,
         View3D,
         CubeMap,

@@ -130,7 +130,7 @@ void ApplicationBase::Init()
     // create frame scheduler
     auto& scheduler = m_context->GetScheduler();
 
-    m_commandPool = m_context->CreateCommandListAllocator();
+    m_commandPool = m_context->CreateCommandPool();
 
     OnInit();
 

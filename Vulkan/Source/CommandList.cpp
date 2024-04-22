@@ -622,7 +622,7 @@ namespace RHI::Vulkan
         renderingInfo.pNext = nullptr;
         renderingInfo.flags = 0;
         renderingInfo.renderArea.extent = ConvertExtent2D(extent);
-        renderingInfo.renderArea.offset = ConvertOffset2D({ 0u, 0u  });
+        // renderingInfo.renderArea.offset = ConvertOffset2D({ 0u, 0u  });
         renderingInfo.layerCount = 1;
         renderingInfo.colorAttachmentCount = uint32_t(attachmentInfos.size());
         renderingInfo.pColorAttachments = attachmentInfos.data();

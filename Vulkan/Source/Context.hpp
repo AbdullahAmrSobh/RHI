@@ -40,7 +40,7 @@ namespace RHI::Vulkan
         RHI_NODISCARD Ptr<Swapchain>            CreateSwapchain(const SwapchainCreateInfo& createInfo)               override;
         RHI_NODISCARD Ptr<ShaderModule>         CreateShaderModule(TL::Span<const uint8_t> shaderBlob)               override;
         RHI_NODISCARD Ptr<Fence>                CreateFence()                                                        override;
-        RHI_NODISCARD Ptr<CommandPool> CreateCommandListAllocator()                                         override;
+        RHI_NODISCARD Ptr<CommandPool>          CreateCommandPool()                                                  override;
         RHI_NODISCARD Ptr<ResourcePool>         CreateResourcePool(const ResourcePoolCreateInfo& createInfo)         override;
         RHI_NODISCARD Handle<BindGroupLayout>   CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)   override;
                       void                      DestroyBindGroupLayout(Handle<BindGroupLayout> handle)               override;
@@ -80,11 +80,10 @@ namespace RHI::Vulkan
         uint32_t GetQueueFamilyIndex(QueueType queueType);
 
     private:
-        static VkBool32 VKAPI_CALL DebugMessengerCallbacks(
-            VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-            VkDebugUtilsMessageTypeFlagsEXT messageTypes,
-            const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-            void* pUserData);
+        static VkBool32 VKAPI_CALL DebugMessengerCallbacks(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+                                                           VkDebugUtilsMessageTypeFlagsEXT messageTypes,
+                                                           const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+                                                           void* pUserData);
 
         VkResult InitInstance(const ApplicationInfo& appInfo, bool* debugExtensionEnabled);
         VkResult InitDevice();
