@@ -13,4 +13,4 @@ env.bat
 env.ps1
 .cache/
 
-**/Export.hpp
+Export.hpp
