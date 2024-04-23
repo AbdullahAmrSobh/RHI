@@ -13,8 +13,4 @@ env.bat
 env.ps1
 .cache/
 
-# Export macros
-Examples/Base/Include/Examples-Base/Export.hpp
-Examples/ImGui-1.90.0/Include/Thirdparty-ImGui/Export.hpp
-RHI/Include/RHI/Export.hpp
-Vulkan/Include/RHI-Vulkan/Export.hpp
+**/Export.hpp
