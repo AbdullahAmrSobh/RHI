@@ -59,7 +59,7 @@ namespace RHI
         uint32_t               srcBytesPerImage;
         Handle<Image>          dstImage;
         ImageOffset3D          dstOffset;
-        ImageSize3D            dstSize; // covers the whole image size if not specified
+        ImageSize3D            dstSize;        // covers the whole image size if not specified
         ImageSubresourceLayers dstSubresource; // primary subresource if not specified
     };
 
@@ -119,10 +119,10 @@ namespace RHI
     class RHI_EXPORT CommandPool
     {
     public:
-        CommandPool()                                                         = default;
-        CommandPool(const CommandPool&)                              = delete;
-        CommandPool(CommandPool&&)                                   = delete;
-        virtual ~CommandPool()                                                = default;
+        CommandPool()                                                                  = default;
+        CommandPool(const CommandPool&)                                                = delete;
+        CommandPool(CommandPool&&)                                                     = delete;
+        virtual ~CommandPool()                                                         = default;
 
         /// @brief Resets all command lists allocated from this allocator
         virtual void                     Reset()                                       = 0;

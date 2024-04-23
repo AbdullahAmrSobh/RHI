@@ -29,30 +29,30 @@ namespace RHI
         FrameScheduler(Context* context);
         virtual ~FrameScheduler() = default;
 
-        void        Begin();
-        void        End();
+        void         Begin();
+        void         End();
 
-        Ptr<Pass>   CreatePass(const char* name, QueueType queueType);
+        Ptr<Pass>    CreatePass(const char* name, QueueType queueType);
 
-        void        WriteImageContent(Handle<Image>           handle,
-                                      ImageOffset3D           offset,
-                                      ImageSize3D             size,
-                                      ImageSubresourceLayers  subresource,
-                                      TL::Span<const uint8_t> content);
-        void Compile();
-        void Cleanup();
+        void         WriteImageContent(Handle<Image>           handle,
+                                       ImageOffset3D           offset,
+                                       ImageSize3D             size,
+                                       ImageSubresourceLayers  subresource,
+                                       TL::Span<const uint8_t> content);
+        void         Compile();
+        void         Cleanup();
 
         virtual void PassSubmit(Pass* pass, Fence* fence)                          = 0;
         virtual void StageImageWrite(const struct BufferToImageCopyInfo& copyInfo) = 0;
 
     protected:
-        Context*                  m_context;
-        Ptr<AttachmentsPool>      m_attachmentsPool;
-        Ptr<CommandPool> m_commandPool;
+        Context*                                                   m_context;
+        Ptr<AttachmentsPool>                                       m_attachmentsPool;
+        Ptr<CommandPool>                                           m_commandPool;
 
-        TL::Vector<Pass*>         m_passList;
+        TL::Vector<Pass*>                                          m_passList;
 
-        TL::UnorderedMap<ImageViewCreateInfo, Handle<ImageView>> m_imageViewLUT;
+        TL::UnorderedMap<ImageViewCreateInfo, Handle<ImageView>>   m_imageViewLUT;
         TL::UnorderedMap<BufferViewCreateInfo, Handle<BufferView>> m_bufferViewLUT;
     };
 

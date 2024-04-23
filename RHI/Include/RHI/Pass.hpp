@@ -98,10 +98,10 @@ namespace RHI
         friend class Vulkan::IFrameScheduler;
         friend class Vulkan::ICommandList;
 
-        FrameScheduler*                        m_scheduler;
-        std::string                            m_name;
-        QueueType                              m_queueType;
-        ImageSize2D                            m_frameSize;
+        FrameScheduler*                       m_scheduler;
+        std::string                           m_name;
+        QueueType                             m_queueType;
+        ImageSize2D                           m_frameSize;
 
         TL::Vector<Ptr<ImagePassAttachment>>  m_imagePassAttachments;
         TL::Vector<Ptr<BufferPassAttachment>> m_bufferPassAttachments;
@@ -109,7 +109,7 @@ namespace RHI
 
         TL::Vector<PassAttachment*>           m_passAttachments;
         TL::Vector<ImagePassAttachment*>      m_colorAttachments;
-        ImagePassAttachment*                   m_depthStencilAttachment;
+        ImagePassAttachment*                  m_depthStencilAttachment;
         TL::Vector<ImagePassAttachment*>      m_imageShaderResources;
         TL::Vector<ImagePassAttachment*>      m_imageCopyResources;
         TL::Vector<BufferPassAttachment*>     m_bufferShaderResources;

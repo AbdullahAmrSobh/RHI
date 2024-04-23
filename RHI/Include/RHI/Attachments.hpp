@@ -302,7 +302,7 @@ namespace RHI
     private:
         Context*                                                   m_context;
 
-        TL::UnorderedMap<std::string, Ptr<Attachment>>           m_attachmentsLut;
+        TL::UnorderedMap<std::string, Ptr<Attachment>>             m_attachmentsLut;
 
         TL::Vector<Attachment*>                                    m_attachments;
         TL::Vector<Attachment*>                                    m_transientAttachments;

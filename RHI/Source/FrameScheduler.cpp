@@ -34,7 +34,6 @@ namespace RHI
                         imagePassAttachment->m_view = m_context->CreateImageView(imagePassAttachment->m_viewInfo);
                         m_imageViewLUT[imagePassAttachment->m_viewInfo] = imagePassAttachment->m_view;
                     }
-
                 }
                 else if (attachment->m_type == Attachment::Type::Buffer)
                 {
@@ -50,7 +49,6 @@ namespace RHI
                         bufferPassAttachment->m_view = m_context->CreateBufferView(bufferPassAttachment->m_viewInfo);
                         m_bufferViewLUT[bufferPassAttachment->m_viewInfo] = bufferPassAttachment->m_view;
                     }
-
                 }
                 else
                 {
@@ -83,7 +81,7 @@ namespace RHI
                                            ImageSubresourceLayers subresource,
                                            TL::Span<const uint8_t> content)
     {
-        BufferCreateInfo tmpBufferCreateInfo {};
+        BufferCreateInfo tmpBufferCreateInfo{};
         tmpBufferCreateInfo.usageFlags = BufferUsage::CopySrc;
         tmpBufferCreateInfo.byteSize = content.size_bytes();
         auto buffer = m_context->CreateBuffer(tmpBufferCreateInfo).GetValue();
@@ -131,7 +129,6 @@ namespace RHI
         {
             m_context->DestroyImageView(view);
         }
-
 
         for (auto [_, view] : m_bufferViewLUT)
         {
