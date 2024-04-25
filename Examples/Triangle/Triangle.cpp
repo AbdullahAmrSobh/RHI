@@ -313,7 +313,7 @@ public:
             commandList->SetSicssor(scissor);
             commandList->Draw(drawCommand);
 
-            // m_imguiRenderer->RenderDrawData(ImGui::GetDrawData(), *commandList);
+            m_imguiRenderer->RenderDrawData(ImGui::GetDrawData(), *commandList);
 
             commandList->End();
             m_renderPass->Submit(commandList);

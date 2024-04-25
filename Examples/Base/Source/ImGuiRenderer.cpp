@@ -490,7 +490,7 @@ static inline size_t AlignBufferSize(size_t size, size_t alignment)
 void ImGuiRenderer::UpdateBuffers(ImDrawData* drawData)
 {
     auto requiredVertexBufferSize = RHI::AlignUp((drawData->TotalVtxCount + 5000) * sizeof(ImDrawVert), 256ull);
-    if (!m_vertexBuffer || (m_vertexBuffer && m_vertexBufferSize < requiredVertexBufferSize))
+    if (m_vertexBufferSize < requiredVertexBufferSize)
     {
         if (m_vertexBuffer)
             m_context->DestroyBuffer(m_vertexBuffer);
@@ -499,10 +499,11 @@ void ImGuiRenderer::UpdateBuffers(ImDrawData* drawData)
         createInfo.byteSize = requiredVertexBufferSize;
         createInfo.usageFlags = RHI::BufferUsage::Vertex;
         m_vertexBuffer = m_context->CreateBuffer(createInfo).GetValue();
+        m_vertexBufferSize = requiredVertexBufferSize;
     }
 
     auto requiredIndexBufferSize = AlignBufferSize((drawData->TotalIdxCount + 5000) * sizeof(ImDrawIdx), 256);
-    if (!m_indexBuffer || (m_indexBuffer && m_indexBufferSize < requiredIndexBufferSize))
+    if (m_indexBufferSize < requiredIndexBufferSize)
     {
         if (m_indexBuffer)
             m_context->DestroyBuffer(m_indexBuffer);
@@ -511,6 +512,7 @@ void ImGuiRenderer::UpdateBuffers(ImDrawData* drawData)
         createInfo.byteSize = requiredIndexBufferSize;
         createInfo.usageFlags = RHI::BufferUsage::Index;
         m_indexBuffer = m_context->CreateBuffer(createInfo).GetValue();
+        m_indexBufferSize = requiredIndexBufferSize;
     }
 
     auto indexBufferPtr = (ImDrawVert*)m_context->MapBuffer(m_indexBuffer);

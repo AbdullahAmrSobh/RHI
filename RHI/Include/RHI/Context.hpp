@@ -293,6 +293,7 @@ namespace RHI
 
 namespace RHI
 {
+    // clang-format off
 
     inline Context::Context(Ptr<DebugCallbacks> debugCallbacks)
         : m_limits(CreatePtr<Limits>())
@@ -303,7 +304,6 @@ namespace RHI
     template<typename T>
     RHI_EXPORT Result<Handle<Image>> CreateImageWithData(Context& context, const ImageCreateInfo& createInfo, TL::Span<const T> content)
     {
-        // clang-format off
         auto& scheduler = context.GetScheduler();
 
         auto [handle, result] = context.CreateImage(createInfo);
@@ -328,7 +328,6 @@ namespace RHI
 
 
         return handle;
-        // clang-format on
     }
 
     template<typename T>
@@ -356,4 +355,6 @@ namespace RHI
 
         return handle;
     }
+
+    // clang-format on
 } // namespace RHI

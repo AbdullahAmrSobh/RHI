@@ -14,9 +14,6 @@
 
 #include "Examples-Base/Timestep.hpp"
 
-#include <iostream>
-#include <format>
-
 class Camera
 {
 private:
