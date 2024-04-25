@@ -1,6 +1,8 @@
 #include "RHI/FrameScheduler.hpp"
 #include "RHI/Resources.hpp"
 #include "RHI/Context.hpp"
+#include "RHI/Attachments.hpp"
+#include "RHI/Swapchain.hpp"
 
 #include <tracy/Tracy.hpp>
 
@@ -8,33 +10,49 @@ namespace RHI
 {
     FrameScheduler::FrameScheduler(Context* context)
         : m_context(context)
-        , m_attachmentsPool(CreatePtr<AttachmentsPool>(m_context))
     {
     }
 
     ImageAttachment* FrameScheduler::CreateImage(const ImageCreateInfo& createInfo)
     {
-        return m_attachmentsPool->CreateAttachment(createInfo);
+        auto attachment = (ImageAttachment*)m_attachmentsLut.insert(std::make_pair(createInfo.debugName, CreatePtr<ImageAttachment>(createInfo.debugName, createInfo))).first->second.get();
+        m_attachments.push_back(attachment);
+        m_imageAttachments.push_back(attachment);
+        m_transientAttachments.push_back(attachment);
+        return attachment;
     }
 
     BufferAttachment* FrameScheduler::CreateBuffer(const BufferCreateInfo& createInfo)
     {
-        return m_attachmentsPool->CreateAttachment(createInfo);
+        auto attachment = (BufferAttachment*)m_attachmentsLut.insert(std::make_pair(createInfo.debugName, CreatePtr<BufferAttachment>(createInfo.debugName, createInfo.byteSize))).first->second.get();
+        m_attachments.push_back(attachment);
+        m_transientAttachments.push_back(attachment);
+        m_bufferAttachments.push_back(attachment);
+        return attachment;
     }
 
     ImageAttachment* FrameScheduler::ImportSwapchain(const char* name, Swapchain& swapchain)
     {
-        return m_attachmentsPool->CreateAttachment(name, &swapchain);
+        auto attachment = ImportImage(name, swapchain.GetImage());
+        attachment->m_swapchain = &swapchain;
+        attachment->m_asImage.info.type = ImageType::Image2D;
+        return attachment;
     }
 
     ImageAttachment* FrameScheduler::ImportImage(const char* name, Handle<Image> image)
     {
-        return m_attachmentsPool->CreateAttachment(name, image);
+        auto attachment = (ImageAttachment*)m_attachmentsLut.insert(std::make_pair(name, CreatePtr<ImageAttachment>(name, image))).first->second.get();
+        m_attachments.push_back(attachment);
+        m_imageAttachments.push_back(attachment);
+        return attachment;
     }
 
     BufferAttachment* FrameScheduler::ImportBuffer(const char* name, Handle<Buffer> buffer)
     {
-        return m_attachmentsPool->CreateAttachment(name, buffer);
+        auto attachment = (BufferAttachment*)m_attachmentsLut.insert(std::make_pair(name, CreatePtr<BufferAttachment>(name, buffer))).first->second.get();
+        m_attachments.push_back(attachment);
+        m_bufferAttachments.push_back(attachment);
+        return attachment;
     }
 
     void FrameScheduler::Begin()
@@ -84,7 +102,7 @@ namespace RHI
 
     void FrameScheduler::Compile()
     {
-        for (auto& attachment : m_attachmentsPool->GetTransientAttachments())
+        for (auto& attachment : m_transientAttachments)
         {
             if (attachment->m_type == Attachment::Type::Image)
             {
@@ -120,7 +138,7 @@ namespace RHI
 
     void FrameScheduler::Cleanup()
     {
-        for (auto attachment : m_attachmentsPool->GetTransientAttachments())
+        for (auto attachment : m_transientAttachments)
         {
             if (attachment->m_type == Attachment::Type::Image)
             {
@@ -139,5 +157,51 @@ namespace RHI
         }
 
         m_context->DestroyResources();
+    }
+
+    void FrameScheduler::DestroyAttachment(Attachment* attachment)
+    {
+        for (auto passAttachment = attachment->GetFirstPassAttachment(); passAttachment != nullptr; passAttachment = passAttachment->GetNext())
+        {
+            // ShutdownPassAttachment(passAttachment);
+        }
+
+        switch (attachment->m_type)
+        {
+        case Attachment::Type::Image:
+            {
+                auto imageAttachment = (ImageAttachment*)attachment;
+                m_context->DestroyImage(imageAttachment->GetHandle());
+                break;
+            }
+        case Attachment::Type::Buffer:
+            {
+                auto bufferAttachment = (BufferAttachment*)attachment;
+                m_context->DestroyBuffer(bufferAttachment->GetHandle());
+                break;
+            }
+        default:
+            {
+                RHI_UNREACHABLE();
+                break;
+            }
+        }
+    }
+
+    Handle<ImageView> FrameScheduler::GetImageView(ImagePassAttachment* passAttachment)
+    {
+        passAttachment->m_viewInfo.image = passAttachment->GetAttachment()->GetHandle();
+
+        if (auto swapchain = passAttachment->GetAttachment()->m_swapchain)
+        {
+            return swapchain->GetImageView(m_context, passAttachment->m_viewInfo);
+        }
+
+        return passAttachment->m_view;
+    }
+
+    Handle<BufferView> FrameScheduler::GetBufferView(BufferPassAttachment* passAttachment)
+    {
+        return passAttachment->m_view;
     }
 } // namespace RHI

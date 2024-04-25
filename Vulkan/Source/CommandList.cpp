@@ -147,7 +147,6 @@ namespace RHI::Vulkan
         auto& pass = static_cast<Pass&>(passBase);
 
         m_pass = &pass;
-        auto& attachmentsPool = *m_pass->m_scheduler->m_attachmentsPool;
 
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -246,7 +245,7 @@ namespace RHI::Vulkan
 
             for (auto passAttachment : m_pass->GetColorAttachments())
             {
-                auto view = m_context->m_imageViewOwner.Get(attachmentsPool.GetImageView(passAttachment));
+                auto view = m_context->m_imageViewOwner.Get(m_pass->m_scheduler->GetImageView(passAttachment));
 
                 VkRenderingAttachmentInfo& attachmentInfo = colorAttachmentInfos.emplace_back();
                 attachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
@@ -260,7 +259,7 @@ namespace RHI::Vulkan
 
             if (auto passAttachment = m_pass->GetDepthStencilAttachment(); passAttachment != nullptr)
             {
-                auto view = m_context->m_imageViewOwner.Get(attachmentsPool.GetImageView(passAttachment));
+                auto view = m_context->m_imageViewOwner.Get(m_pass->m_scheduler->GetImageView(passAttachment));
 
                 depthAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
                 depthAttachmentInfo.pNext = nullptr;

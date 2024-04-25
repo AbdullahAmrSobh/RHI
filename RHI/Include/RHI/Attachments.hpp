@@ -113,7 +113,7 @@ namespace RHI
 
     class RHI_EXPORT ImageAttachment final : public Attachment
     {
-        friend class AttachmentsPool;
+        friend class FrameScheduler;
 
     public:
         inline ImageAttachment(const char* name, Handle<Image> handle)
@@ -281,39 +281,5 @@ namespace RHI
         BufferUsage                        m_usage;
         BufferViewCreateInfo               m_viewInfo;
         Handle<BufferView>                 m_view;
-    };
-
-    class AttachmentsPool final
-    {
-    public:
-        AttachmentsPool(Context* context);
-
-        void                  InitPassAttachment(PassAttachment* passAttachment);
-        void                  ShutdownPassAttachment(PassAttachment* passAttachment);
-
-        ImageAttachment*      CreateAttachment(const char* name, Swapchain* swapchain);
-        ImageAttachment*      CreateAttachment(const char* name, Handle<Image> handle);
-        ImageAttachment*      CreateAttachment(const ImageCreateInfo& createInfo);
-        BufferAttachment*     CreateAttachment(const char* name, Handle<Buffer> handle);
-        BufferAttachment*     CreateAttachment(const BufferCreateInfo& createInfo);
-
-        void                  DestroyAttachment(Attachment* attachment);
-
-        Handle<ImageView>     GetImageView(ImagePassAttachment* passAttachment);
-        Handle<BufferView>    GetBufferView(BufferPassAttachment* passAttachment);
-
-        TL::Span<Attachment*> GetAttachments() { return m_attachments; }
-
-        TL::Span<Attachment*> GetTransientAttachments() { return m_transientAttachments; }
-
-    private:
-        Context*                                       m_context;
-
-        TL::UnorderedMap<std::string, Ptr<Attachment>> m_attachmentsLut;
-
-        TL::Vector<Attachment*>                        m_attachments;
-        TL::Vector<Attachment*>                        m_transientAttachments;
-        TL::Vector<ImageAttachment*>                   m_imageAttachments;
-        TL::Vector<BufferAttachment*>                  m_bufferAttachments;
     };
 } // namespace RHI
