@@ -1,5 +1,8 @@
 #include "RHI/Resources.hpp"
 
+#include "RHI/Context.hpp"
+#include "RHI/Swapchain.hpp"
+
 namespace RHI
 {
     void BindGroupData::BindImages(uint32_t index, TL::Span<Handle<ImageView>> handles, uint32_t arrayOffset)
@@ -24,5 +27,17 @@ namespace RHI
         binding.arrayOffset = arrayOffset;
         binding.samplers = { samplers.begin(), samplers.end() };
         m_bindings[index] = binding;
+    }
+
+    /// TODO: move to a new Swapchain.cpp file
+
+    Handle<ImageView> Swapchain::GetImageView(Context* context, const ImageViewCreateInfo& createInfo)
+    {
+        if (auto it = m_imageViewsLRU.find(createInfo); it != m_imageViewsLRU.end())
+            return it->second;
+
+        auto imageView = context->CreateImageView(createInfo);
+        m_imageViewsLRU[createInfo] = imageView;
+        return imageView;
     }
 } // namespace RHI

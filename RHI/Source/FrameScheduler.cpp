@@ -39,48 +39,6 @@ namespace RHI
 
     void FrameScheduler::Begin()
     {
-        for (auto attachment : m_attachmentsPool->GetAttachments())
-        {
-            for (auto passAttachment = attachment->GetFirstPassAttachment();
-                 passAttachment;
-                 passAttachment = passAttachment->GetNext())
-            {
-                if (attachment->m_type == Attachment::Type::Image)
-                {
-                    auto imagePassAttachment = (ImagePassAttachment*)passAttachment;
-                    imagePassAttachment->m_viewInfo.image = imagePassAttachment->GetAttachment()->GetHandle();
-
-                    if (auto it = m_imageViewLUT.find(imagePassAttachment->m_viewInfo); it != m_imageViewLUT.end())
-                    {
-                        imagePassAttachment->m_view = it->second;
-                    }
-                    else
-                    {
-                        imagePassAttachment->m_view = m_context->CreateImageView(imagePassAttachment->m_viewInfo);
-                        m_imageViewLUT[imagePassAttachment->m_viewInfo] = imagePassAttachment->m_view;
-                    }
-                }
-                else if (attachment->m_type == Attachment::Type::Buffer)
-                {
-                    auto bufferPassAttachment = (BufferPassAttachment*)passAttachment;
-                    bufferPassAttachment->m_viewInfo.buffer = bufferPassAttachment->GetAttachment()->GetHandle();
-
-                    if (auto it = m_bufferViewLUT.find(bufferPassAttachment->m_viewInfo); it != m_bufferViewLUT.end())
-                    {
-                        bufferPassAttachment->m_view = it->second;
-                    }
-                    else
-                    {
-                        bufferPassAttachment->m_view = m_context->CreateBufferView(bufferPassAttachment->m_viewInfo);
-                        m_bufferViewLUT[bufferPassAttachment->m_viewInfo] = bufferPassAttachment->m_view;
-                    }
-                }
-                else
-                {
-                    RHI_UNREACHABLE();
-                }
-            }
-        }
     }
 
     void FrameScheduler::End()
@@ -131,15 +89,27 @@ namespace RHI
             if (attachment->m_type == Attachment::Type::Image)
             {
                 auto imageAttachment = attachment->As<ImageAttachment>();
+                if (imageAttachment->m_swapchain)
+                    continue;
                 auto createInfo = imageAttachment->GetCreateInfo();
                 createInfo.size.width = 1600;
                 createInfo.size.height = 1200;
                 imageAttachment->SetHandle(m_context->CreateImage(createInfo).GetValue());
+                for (auto passAttachment = imageAttachment->GetFirstPassAttachment(); passAttachment; passAttachment = passAttachment->GetNext())
+                {
+                    passAttachment->m_viewInfo.image = imageAttachment->GetHandle();
+                    passAttachment->m_view = m_context->CreateImageView(passAttachment->m_viewInfo);
+                }
             }
             else if (attachment->m_type == Attachment::Type::Buffer)
             {
                 auto bufferAttachment = attachment->As<BufferAttachment>();
                 bufferAttachment->SetHandle(m_context->CreateBuffer(bufferAttachment->GetCreateInfo()).GetValue());
+
+                for (auto passAttachment = bufferAttachment->GetFirstPassAttachment(); passAttachment; passAttachment = passAttachment->GetNext())
+                {
+                    passAttachment->m_view = m_context->CreateBufferView(passAttachment->m_viewInfo);
+                }
             }
             else
             {
@@ -150,16 +120,6 @@ namespace RHI
 
     void FrameScheduler::Cleanup()
     {
-        for (auto [_, view] : m_imageViewLUT)
-        {
-            m_context->DestroyImageView(view);
-        }
-
-        for (auto [_, view] : m_bufferViewLUT)
-        {
-            m_context->DestroyBufferView(view);
-        }
-
         for (auto attachment : m_attachmentsPool->GetTransientAttachments())
         {
             if (attachment->m_type == Attachment::Type::Image)

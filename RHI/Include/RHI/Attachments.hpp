@@ -114,6 +114,7 @@ namespace RHI
     class RHI_EXPORT ImageAttachment final : public Attachment
     {
         friend class AttachmentsPool;
+
     public:
         inline ImageAttachment(const char* name, Handle<Image> handle)
             : Attachment(name, Lifetime::Persistent, Type::Image)
@@ -298,24 +299,21 @@ namespace RHI
 
         void                  DestroyAttachment(Attachment* attachment);
 
-        Handle<ImageView>     CreateImageView(const ImageViewCreateInfo& createInfo);
-        Handle<BufferView>    CreateBufferView(const BufferViewCreateInfo& createInfo);
+        Handle<ImageView>     GetImageView(ImagePassAttachment* passAttachment);
+        Handle<BufferView>    GetBufferView(BufferPassAttachment* passAttachment);
 
         TL::Span<Attachment*> GetAttachments() { return m_attachments; }
 
         TL::Span<Attachment*> GetTransientAttachments() { return m_transientAttachments; }
 
     private:
-        Context*                                                   m_context;
+        Context*                                       m_context;
 
-        TL::UnorderedMap<std::string, Ptr<Attachment>>             m_attachmentsLut;
+        TL::UnorderedMap<std::string, Ptr<Attachment>> m_attachmentsLut;
 
-        TL::Vector<Attachment*>                                    m_attachments;
-        TL::Vector<Attachment*>                                    m_transientAttachments;
-        TL::Vector<ImageAttachment*>                               m_imageAttachments;
-        TL::Vector<BufferAttachment*>                              m_bufferAttachments;
-
-        TL::UnorderedMap<ImageViewCreateInfo, Handle<ImageView>>   m_imageViewsLRU;
-        TL::UnorderedMap<BufferViewCreateInfo, Handle<BufferView>> m_bufferViewsLRU;
+        TL::Vector<Attachment*>                        m_attachments;
+        TL::Vector<Attachment*>                        m_transientAttachments;
+        TL::Vector<ImageAttachment*>                   m_imageAttachments;
+        TL::Vector<BufferAttachment*>                  m_bufferAttachments;
     };
 } // namespace RHI

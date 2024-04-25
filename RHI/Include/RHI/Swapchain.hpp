@@ -59,15 +59,26 @@ namespace RHI
         /// @brief Called to invalidate the current swapchain state, when the window is resized.
         virtual ResultCode Recreate(ImageSize2D newSize) = 0;
 
+        /// @brief Presents the current image.
         virtual ResultCode Present()                     = 0;
+
+        /// @brief Get the swapchain image view.
+        Handle<ImageView>  GetImageView(class Context* context, const ImageViewCreateInfo& createInfo);
 
     protected:
         uint32_t            m_currentImageIndex;
         uint32_t            m_swapchainImagesCount;
         SwapchainCreateInfo m_createInfo;
         Handle<Image>       m_images[c_MaxSwapchainBackBuffersCount];
-    };
 
+        // clang-format off
+        TL::UnorderedMap<ImageViewCreateInfo, Handle<ImageView>>   m_imageViewsLRU;
+        // clang-format on
+    };
+} // namespace RHI
+
+namespace RHI
+{
     inline Swapchain::Swapchain()
         : m_currentImageIndex(0)
         , m_swapchainImagesCount(0)
@@ -90,8 +101,4 @@ namespace RHI
         return m_images[m_currentImageIndex];
     }
 
-    inline Handle<Image> Swapchain::GetImage(uint32_t index) const
-    {
-        return m_images[index];
-    }
 } // namespace RHI

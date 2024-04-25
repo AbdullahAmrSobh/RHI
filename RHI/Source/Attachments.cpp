@@ -114,15 +114,18 @@ namespace RHI
         case Attachment::Type::Image:
             {
                 auto imagePassAttachment = (ImagePassAttachment*)passAttachment;
+                if (imagePassAttachment->GetAttachment()->m_swapchain)
+                    return;
+
                 imagePassAttachment->m_viewInfo.image = imagePassAttachment->GetAttachment()->GetHandle();
-                imagePassAttachment->m_view = CreateImageView(imagePassAttachment->m_viewInfo);
+                imagePassAttachment->m_view = m_context->CreateImageView(imagePassAttachment->m_viewInfo);
                 break;
             }
         case Attachment::Type::Buffer:
             {
                 auto bufferPassAttachment = (BufferPassAttachment*)passAttachment;
                 bufferPassAttachment->m_viewInfo.buffer = bufferPassAttachment->GetAttachment()->GetHandle();
-                bufferPassAttachment->m_view = CreateBufferView(bufferPassAttachment->m_viewInfo);
+                bufferPassAttachment->m_view = m_context->CreateBufferView(bufferPassAttachment->m_viewInfo);
                 break;
             }
         default:
@@ -228,24 +231,21 @@ namespace RHI
         }
     }
 
-    Handle<ImageView> AttachmentsPool::CreateImageView(const ImageViewCreateInfo& createInfo)
+    Handle<ImageView> AttachmentsPool::GetImageView(ImagePassAttachment* passAttachment)
     {
-        if (auto it = m_imageViewsLRU.find(createInfo); it != m_imageViewsLRU.end())
+        passAttachment->m_viewInfo.image = passAttachment->GetAttachment()->GetHandle();
+
+        if (auto swapchain = passAttachment->GetAttachment()->m_swapchain)
         {
-            return it->second;
+            return swapchain->GetImageView(m_context, passAttachment->m_viewInfo);
         }
 
-        return m_imageViewsLRU[createInfo] = m_context->CreateImageView(createInfo);
+        return passAttachment->m_view;
     }
 
-    Handle<BufferView> AttachmentsPool::CreateBufferView(const BufferViewCreateInfo& createInfo)
+    Handle<BufferView> AttachmentsPool::GetBufferView(BufferPassAttachment* passAttachment)
     {
-        if (auto it = m_bufferViewsLRU.find(createInfo); it != m_bufferViewsLRU.end())
-        {
-            return it->second;
-        }
-
-        return m_bufferViewsLRU[createInfo] = m_context->CreateBufferView(createInfo);
+        return passAttachment->m_view;
     }
 
 } // namespace RHI

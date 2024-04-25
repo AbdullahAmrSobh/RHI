@@ -147,6 +147,7 @@ namespace RHI::Vulkan
         auto& pass = static_cast<Pass&>(passBase);
 
         m_pass = &pass;
+        auto& attachmentsPool = *m_pass->m_scheduler->m_attachmentsPool;
 
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -245,7 +246,7 @@ namespace RHI::Vulkan
 
             for (auto passAttachment : m_pass->GetColorAttachments())
             {
-                auto view = m_context->m_imageViewOwner.Get(passAttachment->m_view);
+                auto view = m_context->m_imageViewOwner.Get(attachmentsPool.GetImageView(passAttachment));
 
                 VkRenderingAttachmentInfo& attachmentInfo = colorAttachmentInfos.emplace_back();
                 attachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
@@ -259,7 +260,7 @@ namespace RHI::Vulkan
 
             if (auto passAttachment = m_pass->GetDepthStencilAttachment(); passAttachment != nullptr)
             {
-                auto view = m_context->m_imageViewOwner.Get(passAttachment->m_view);
+                auto view = m_context->m_imageViewOwner.Get(attachmentsPool.GetImageView(passAttachment));
 
                 depthAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
                 depthAttachmentInfo.pNext = nullptr;
@@ -267,7 +268,7 @@ namespace RHI::Vulkan
                 depthAttachmentInfo.loadOp = ConvertLoadOp(passAttachment->m_loadStoreOperations.loadOperation);
                 depthAttachmentInfo.storeOp = ConvertStoreOp(passAttachment->m_loadStoreOperations.storeOperation);
                 depthAttachmentInfo.imageLayout =
-                depthAttachmentInfo.storeOp != VK_ATTACHMENT_STORE_OP_STORE ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                    depthAttachmentInfo.storeOp != VK_ATTACHMENT_STORE_OP_STORE ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
                 depthAttachmentInfo.clearValue.depthStencil = ConvertDepthStencilValue(passAttachment->m_clearValue.depthStencil);
                 hasDepthAttachment = true;
             }
@@ -555,7 +556,7 @@ namespace RHI::Vulkan
         auto srcImage = m_context->m_imageOwner.Get(copyInfo.srcImage);
         auto dstImage = m_context->m_imageOwner.Get(copyInfo.dstImage);
 
-        VkImageCopy imageCopy {};
+        VkImageCopy imageCopy{};
         imageCopy.srcSubresource = ConvertSubresourceLayer(copyInfo.srcSubresource);
         imageCopy.srcOffset = ConvertOffset3D(copyInfo.srcOffset);
         imageCopy.dstSubresource = ConvertSubresourceLayer(copyInfo.dstSubresource);
@@ -571,7 +572,7 @@ namespace RHI::Vulkan
         auto srcBuffer = m_context->m_bufferOwner.Get(copyInfo.srcBuffer);
         auto dstImage = m_context->m_imageOwner.Get(copyInfo.dstImage);
 
-        VkBufferImageCopy bufferImageCopy {};
+        VkBufferImageCopy bufferImageCopy{};
         bufferImageCopy.bufferOffset = copyInfo.srcOffset;
         bufferImageCopy.bufferRowLength = copyInfo.srcBytesPerRow;
         bufferImageCopy.bufferImageHeight = copyInfo.srcBytesPerImage;
@@ -588,7 +589,7 @@ namespace RHI::Vulkan
         auto srcImage = m_context->m_imageOwner.Get(copyInfo.srcImage);
         auto dstBuffer = m_context->m_bufferOwner.Get(copyInfo.dstBuffer);
 
-        VkBufferImageCopy bufferImageCopy {};
+        VkBufferImageCopy bufferImageCopy{};
         bufferImageCopy.bufferOffset = copyInfo.dstOffset;
         bufferImageCopy.bufferRowLength = copyInfo.dstBytesPerRow;
         bufferImageCopy.bufferImageHeight = copyInfo.dstBytesPerImage;

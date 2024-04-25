@@ -29,38 +29,34 @@ namespace RHI
         FrameScheduler(Context* context);
         virtual ~FrameScheduler() = default;
 
-        /// New interface
-        ImageAttachment*  CreateImage(const ImageCreateInfo& createInfo);
-        BufferAttachment* CreateBuffer(const BufferCreateInfo& useInfo);
-        ImageAttachment*  ImportSwapchain(const char* name, Swapchain& swapchain);
-        ImageAttachment*  ImportImage(const char* name, Handle<Image> image);
-        BufferAttachment* ImportBuffer(const char* name, Handle<Buffer> buffer);
+        ImageAttachment*     CreateImage(const ImageCreateInfo& createInfo);
+        BufferAttachment*    CreateBuffer(const BufferCreateInfo& useInfo);
+        ImageAttachment*     ImportSwapchain(const char* name, Swapchain& swapchain);
+        ImageAttachment*     ImportImage(const char* name, Handle<Image> image);
+        BufferAttachment*    ImportBuffer(const char* name, Handle<Buffer> buffer);
 
-        void              Begin();
-        void              End();
+        void                 Begin();
+        void                 End();
 
-        Ptr<Pass>         CreatePass(const char* name, QueueType queueType);
+        Ptr<Pass>            CreatePass(const char* name, QueueType queueType);
 
-        void              WriteImageContent(Handle<Image>           handle,
-                                            ImageOffset3D           offset,
-                                            ImageSize3D             size,
-                                            ImageSubresourceLayers  subresource,
-                                            TL::Span<const uint8_t> content);
-        void              Compile();
-        void              Cleanup();
+        void                 WriteImageContent(Handle<Image>           handle,
+                                               ImageOffset3D           offset,
+                                               ImageSize3D             size,
+                                               ImageSubresourceLayers  subresource,
+                                               TL::Span<const uint8_t> content);
+        void                 Compile();
+        void                 Cleanup();
 
-        virtual void      PassSubmit(Pass* pass, Fence* fence)                          = 0;
-        virtual void      StageImageWrite(const struct BufferToImageCopyInfo& copyInfo) = 0;
+        virtual void         PassSubmit(Pass* pass, Fence* fence)                          = 0;
+        virtual void         StageImageWrite(const struct BufferToImageCopyInfo& copyInfo) = 0;
 
-    protected:
-        Context*                                                   m_context;
-        Ptr<AttachmentsPool>                                       m_attachmentsPool;
-        Ptr<CommandPool>                                           m_commandPool;
+        // protected:
+        Context*             m_context;
+        Ptr<AttachmentsPool> m_attachmentsPool;
+        Ptr<CommandPool>     m_commandPool;
 
-        TL::Vector<Pass*>                                          m_passList;
-
-        TL::UnorderedMap<ImageViewCreateInfo, Handle<ImageView>>   m_imageViewLUT;
-        TL::UnorderedMap<BufferViewCreateInfo, Handle<BufferView>> m_bufferViewLUT;
+        TL::Vector<Pass*>    m_passList;
     };
 
 } // namespace RHI
