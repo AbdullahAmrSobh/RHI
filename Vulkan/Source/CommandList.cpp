@@ -610,10 +610,9 @@ namespace RHI::Vulkan
         vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, count, descriptorSets, 0, nullptr);
     }
 
-    void ICommandList::RenderingBegin(
-        TL::Span<const VkRenderingAttachmentInfo> attachmentInfos,
-        const VkRenderingAttachmentInfo* depthAttachmentInfo,
-        ImageSize2D extent)
+    void ICommandList::RenderingBegin(TL::Span<const VkRenderingAttachmentInfo> attachmentInfos,
+                                      const VkRenderingAttachmentInfo* depthAttachmentInfo,
+                                      ImageSize2D extent)
     {
         ZoneScoped;
 
@@ -636,10 +635,9 @@ namespace RHI::Vulkan
         vkCmdEndRendering(m_commandBuffer);
     }
 
-    void ICommandList::PipelineBarrier(
-        TL::Span<const VkMemoryBarrier2> memoryBarriers,
-        TL::Span<const VkBufferMemoryBarrier2> bufferBarriers,
-        TL::Span<const VkImageMemoryBarrier2> imageBarriers)
+    void ICommandList::PipelineBarrier(TL::Span<const VkMemoryBarrier2> memoryBarriers,
+                                       TL::Span<const VkBufferMemoryBarrier2> bufferBarriers,
+                                       TL::Span<const VkImageMemoryBarrier2> imageBarriers)
     {
         VkDependencyInfo dependencyInfo{};
         dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;

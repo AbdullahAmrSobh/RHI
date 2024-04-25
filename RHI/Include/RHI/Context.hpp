@@ -267,6 +267,7 @@ namespace RHI
         void         DebugLogInfo(std::string_view message);
 
     protected:
+        // TODO: make this private
         struct
         {
             ResourceLeakDetector<Image>            m_images;
@@ -287,6 +288,11 @@ namespace RHI
     private:
         Ptr<DebugCallbacks> m_debugCallbacks;
     };
+
+} // namespace RHI
+
+namespace RHI
+{
 
     inline Context::Context(Ptr<DebugCallbacks> debugCallbacks)
         : m_limits(CreatePtr<Limits>())

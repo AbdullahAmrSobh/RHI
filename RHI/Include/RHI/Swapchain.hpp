@@ -72,7 +72,7 @@ namespace RHI
         Handle<Image>       m_images[c_MaxSwapchainBackBuffersCount];
 
         // clang-format off
-        TL::UnorderedMap<ImageViewCreateInfo, Handle<ImageView>>   m_imageViewsLRU;
+        TL::UnorderedMap<ImageViewCreateInfo, Handle<ImageView>> m_imageViewsLRU;
         // clang-format on
     };
 } // namespace RHI

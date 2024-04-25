@@ -35,15 +35,13 @@ namespace RHI::Vulkan
         void Copy(const ImageToBufferCopyInfo& copyInfo)                                   override;
         // clang-format on
 
-        void PipelineBarrier(
-            TL::Span<const VkMemoryBarrier2> memoryBarriers,
-            TL::Span<const VkBufferMemoryBarrier2> bufferBarriers,
-            TL::Span<const VkImageMemoryBarrier2> imageBarriers);
+        void PipelineBarrier(TL::Span<const VkMemoryBarrier2> memoryBarriers,
+                             TL::Span<const VkBufferMemoryBarrier2> bufferBarriers,
+                             TL::Span<const VkImageMemoryBarrier2> imageBarriers);
 
-        void RenderingBegin(
-            TL::Span<const VkRenderingAttachmentInfo> attachmentInfos,
-            const VkRenderingAttachmentInfo* depthAttachmentInfo,
-            ImageSize2D extent);
+        void RenderingBegin(TL::Span<const VkRenderingAttachmentInfo> attachmentInfos,
+                            const VkRenderingAttachmentInfo* depthAttachmentInfo,
+                            ImageSize2D extent);
 
         void RenderingEnd();
 

@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include <type_traits>
-#include <memory>
 
 namespace RHI
 {
@@ -57,13 +56,7 @@ namespace RHI
     {
         ColorValue() = default;
 
-        ColorValue(T r = {}, T g = {}, T b = {}, T a = {})
-            : r(r)
-            , g(g)
-            , b(b)
-            , a(a)
-        {
-        }
+        ColorValue(T r = {}, T g = {}, T b = {}, T a = {});
 
         T           r, g, b, a;
 
@@ -80,65 +73,15 @@ namespace RHI
 
     union ClearValue
     {
-        ClearValue()
-        {
-            memset(this, 0, sizeof(ClearValue));
-        }
+        ClearValue();
 
         template<typename T>
-        ClearValue(ColorValue<T> value)
-        {
-            static_assert(std::is_same_v<T, uint8_t> || std::is_same_v<T, uint16_t> || std::is_same_v<T, uint32_t> || std::is_same_v<T, float>, "invalid T argument");
-
-            if constexpr (std::is_same_v<T, uint8_t>)
-                u8 = value;
-            else if constexpr (std::is_same_v<T, uint16_t>)
-                u16 = value;
-            else if constexpr (std::is_same_v<T, uint32_t>)
-                u32 = value;
-            else if constexpr (std::is_same_v<T, float>)
-                f32 = value;
-        }
+        ClearValue(ColorValue<T> value);
 
         template<typename T>
-        ClearValue(T r, T g, T b, T a)
-        {
-            static_assert(std::is_same_v<T, uint8_t> || std::is_same_v<T, uint16_t> || std::is_same_v<T, uint32_t> || std::is_same_v<T, float>, "invalid T argument");
+        ClearValue(T r, T g, T b, T a);
 
-            if constexpr (std::is_same_v<T, uint8_t>)
-            {
-                u8.r = r;
-                u8.g = g;
-                u8.b = b;
-                u8.a = a;
-            }
-            else if constexpr (std::is_same_v<T, uint16_t>)
-            {
-                u16.r = r;
-                u16.g = g;
-                u16.b = b;
-                u16.a = a;
-            }
-            else if constexpr (std::is_same_v<T, uint32_t>)
-            {
-                u32.r = r;
-                u32.g = g;
-                u32.b = b;
-                u32.a = a;
-            }
-            else if constexpr (std::is_same_v<T, float>)
-            {
-                f32.r = r;
-                f32.g = g;
-                f32.b = b;
-                f32.a = a;
-            }
-        }
-
-        ClearValue(DepthStencilValue value)
-            : depthStencil(value)
-        {
-        }
+        ClearValue(DepthStencilValue value);
 
         ColorValue<uint8_t>  u8;
         ColorValue<uint16_t> u16;
@@ -146,4 +89,79 @@ namespace RHI
         ColorValue<float>    f32;
         DepthStencilValue    depthStencil;
     };
+} // namespace RHI
+
+namespace RHI
+{
+    template<typename T>
+    inline ColorValue<T>::ColorValue(T r, T g, T b, T a)
+        : r(r)
+        , g(g)
+        , b(b)
+        , a(a)
+    {
+    }
+
+    inline ClearValue::ClearValue()
+    {
+        f32.r = 0;
+        f32.g = 0;
+        f32.b = 0;
+        f32.a = 1;
+    }
+
+    template<typename T>
+    inline ClearValue::ClearValue(ColorValue<T> value)
+    {
+        static_assert(std::is_same_v<T, uint8_t> || std::is_same_v<T, uint16_t> || std::is_same_v<T, uint32_t> || std::is_same_v<T, float>, "invalid T argument");
+
+        if constexpr (std::is_same_v<T, uint8_t>)
+            u8 = value;
+        else if constexpr (std::is_same_v<T, uint16_t>)
+            u16 = value;
+        else if constexpr (std::is_same_v<T, uint32_t>)
+            u32 = value;
+        else if constexpr (std::is_same_v<T, float>)
+            f32 = value;
+    }
+
+    template<typename T>
+    inline ClearValue::ClearValue(T r, T g, T b, T a)
+    {
+        static_assert(std::is_same_v<T, uint8_t> || std::is_same_v<T, uint16_t> || std::is_same_v<T, uint32_t> || std::is_same_v<T, float>, "invalid T argument");
+
+        if constexpr (std::is_same_v<T, uint8_t>)
+        {
+            u8.r = r;
+            u8.g = g;
+            u8.b = b;
+            u8.a = a;
+        }
+        else if constexpr (std::is_same_v<T, uint16_t>)
+        {
+            u16.r = r;
+            u16.g = g;
+            u16.b = b;
+            u16.a = a;
+        }
+        else if constexpr (std::is_same_v<T, uint32_t>)
+        {
+            u32.r = r;
+            u32.g = g;
+            u32.b = b;
+            u32.a = a;
+        }
+        else if constexpr (std::is_same_v<T, float>)
+        {
+            f32.r = r;
+            f32.g = g;
+            f32.b = b;
+            f32.a = a;
+        }
+    }
+
+    inline ClearValue::ClearValue(DepthStencilValue value)
+        : depthStencil(value)
+    {
+    }
 } // namespace RHI
