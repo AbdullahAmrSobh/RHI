@@ -252,6 +252,9 @@ namespace RHI
         /// @param handle The handle to the buffer object to unmap.
         virtual void                                   UnmapBuffer(Handle<Buffer> handle)                                   = 0;
 
+        /// [EXPERIMENTAL]
+        Ptr<class RenderGraph>                         CreateRenderGraph();
+
     protected:
         Context(Ptr<DebugCallbacks> debugCallbacks);
 

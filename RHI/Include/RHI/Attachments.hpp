@@ -23,6 +23,8 @@ namespace RHI
 
     class RHI_EXPORT Attachment
     {
+        friend class AttachmentsPool;
+
     public:
         virtual ~Attachment() = default;
 
@@ -111,6 +113,7 @@ namespace RHI
 
     class RHI_EXPORT ImageAttachment final : public Attachment
     {
+        friend class AttachmentsPool;
     public:
         inline ImageAttachment(const char* name, Handle<Image> handle)
             : Attachment(name, Lifetime::Persistent, Type::Image)
@@ -287,9 +290,12 @@ namespace RHI
         void                  InitPassAttachment(PassAttachment* passAttachment);
         void                  ShutdownPassAttachment(PassAttachment* passAttachment);
 
-        ImageAttachment*      NewImageAttachment(const char* name, Handle<Image> handle);
-        ImageAttachment*      NewImageAttachment(const char* name, Format format, ImageType type, ImageSize3D size, SampleCount sampleCount, uint32_t mipLevelsCount, uint32_t arrayLayersCount);
-        BufferAttachment*     NewBufferAttachment(const char* name, size_t size);
+        ImageAttachment*      CreateAttachment(const char* name, Swapchain* swapchain);
+        ImageAttachment*      CreateAttachment(const char* name, Handle<Image> handle);
+        ImageAttachment*      CreateAttachment(const ImageCreateInfo& createInfo);
+        BufferAttachment*     CreateAttachment(const char* name, Handle<Buffer> handle);
+        BufferAttachment*     CreateAttachment(const BufferCreateInfo& createInfo);
+
         void                  DestroyAttachment(Attachment* attachment);
 
         Handle<ImageView>     CreateImageView(const ImageViewCreateInfo& createInfo);

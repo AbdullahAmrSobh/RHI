@@ -16,6 +16,7 @@ namespace RHI
     } // namespace Vulkan
 
     class FrameScheduler;
+    class CommandList;
 
     enum class QueueType
     {
@@ -25,37 +26,64 @@ namespace RHI
         Count,
     };
 
+    struct ImageAttachmentCreateInfo
+    {
+        const char*       name;
+        Format            format;
+        Flags<ImageUsage> usage;
+        ImageType         type;
+        ImageSize3D       size;
+        SampleCount       sampleCount;
+        uint32_t          mipLevels;
+        uint32_t          arraySize;
+    };
+
+    struct BufferAttachmentCreateInfo
+    {
+        const char*        name;
+        Flags<BufferUsage> usage;
+        size_t             size;
+    };
+
+    struct ImageAttachmentUseInfo
+    {
+        ImageUsage            usage;               /// The usage of the image attachment.
+        ImageSubresourceRange subresourceRange;    /// The subresource range of the image.
+        ComponentMapping      componentMapping;    /// The component mapping for the image.
+        LoadStoreOperations   loadStoreOperations; /// The load and store operations for the image when used as a render target.
+        ClearValue            clearValue;          /// The clear value for the image when used as a render target.
+    };
+
+    struct BufferAttachmentUseInfo
+    {
+        BufferUsage usage;  /// The usage of the buffer attachment.
+        size_t      size;   /// The size of the buffer attachment.
+        size_t      offset; /// The offset of the buffer attachment.
+        Format      format; /// The format of the buffer attachment.
+    };
+
+    struct PassCreateInfo
+    {
+        const char* name;
+        QueueType   queueType;
+    };
+
     class RHI_EXPORT Pass
     {
     public:
         Pass(FrameScheduler* scheduler, const char* name, QueueType type);
         ~Pass() = default;
 
-        void                  SetRenderTargetSize(ImageSize2D size);
+        inline QueueType                GetQueueType() const { return m_queueType; }
 
-        QueueType             GetQueueType() const { return m_queueType; }
+        void                            SetSize(ImageSize2D size);
 
-        ImagePassAttachment*  CreateRenderTarget(const char* name, Format format, ClearValue clearValue, LoadStoreOperations loadStoreOps = {}, uint32_t mipLevelsCount = 1, uint32_t arrayLayersCount = 1);
+        ImagePassAttachment*            UseImageAttachment(ImageAttachment* attachment, const ImageAttachmentUseInfo& useInfo);
 
-        ImagePassAttachment*  CreateTransientImage(const char* name, Format format, ImageUsage usage, ImageSize2D size, ImageSubresourceRange subresource = {});
+        BufferPassAttachment*           UseBufferAttachment(BufferAttachment* attachment, const BufferAttachmentUseInfo& useInfo);
 
-        ImagePassAttachment*  CreateTransientImage(const char* name, Format format, ImageUsage usage, ImageSize3D size, ImageSubresourceRange subresource = {});
+        void                            Submit(TL::Span<CommandList*> commandList);
 
-        BufferPassAttachment* CreateTransientBuffer(const char* name, BufferUsage usage, size_t size);
-
-        ImagePassAttachment*  UseRenderTarget(const char* name, Handle<Image> handle, ClearValue clearValue, LoadStoreOperations loadStoreOps = {}, ImageSubresourceRange subresource = {});
-
-        ImagePassAttachment*  UseRenderTarget(const char* name, Swapchain* swapchain, ClearValue clearValue, LoadStoreOperations loadStoreOps = {}, ImageSubresourceRange subresource = {});
-
-        ImagePassAttachment*  UseRenderTarget(ImagePassAttachment* attachment, ClearValue clearValue, LoadStoreOperations loadStoreOps = {}, ImageSubresourceRange subresource = {});
-
-        ImagePassAttachment*  UseImageResource(ImagePassAttachment* attachment, ImageUsage usage, Access access, ImageSubresourceRange subresource = {}, ComponentMapping mapping = {});
-
-        BufferPassAttachment* UseBufferResource(BufferPassAttachment* attachment, BufferUsage usage, Access access, BufferSubregion subregion);
-
-        void                  Submit(TL::Span<class CommandList*> commandList);
-
-    public:
         TL::Span<ImagePassAttachment*>  GetColorAttachments() { return m_colorAttachments; }
 
         ImagePassAttachment*            GetDepthStencilAttachment() { return m_depthStencilAttachment; }
@@ -69,28 +97,6 @@ namespace RHI
         TL::Span<BufferPassAttachment*> GetBufferCopyResources() { return m_bufferCopyResources; }
 
         TL::Span<PassAttachment*>       GetPassAttachments() { return m_passAttachments; } // return transient only
-
-    private:
-        ImagePassAttachment* UseRenderTargetInternal(
-            ImageAttachment*      attachment,
-            ClearValue            clearValue,
-            LoadStoreOperations   loadStoreOps,
-            ImageSubresourceRange subresourceRange);
-
-        ImagePassAttachment* UseImageResourceInternal(
-            ImageAttachment*      attachment,
-            ImageUsage            usage,
-            Access                access,
-            ImageSubresourceRange subresource,
-            ComponentMapping      mapping);
-
-        BufferPassAttachment* UseBufferResourceInternal(
-            BufferAttachment* attachment,
-            BufferUsage       usage,
-            Access            access,
-            BufferSubregion   subregion);
-
-        void UseAttachment(PassAttachment* attachment);
 
     protected:
         friend class CommandList;
@@ -114,8 +120,5 @@ namespace RHI
         TL::Vector<ImagePassAttachment*>      m_imageCopyResources;
         TL::Vector<BufferPassAttachment*>     m_bufferShaderResources;
         TL::Vector<BufferPassAttachment*>     m_bufferCopyResources;
-
-        // NodeIndex                              m_node;
-        // RenderGraph*                           m_renderGraph;
     };
 } // namespace RHI

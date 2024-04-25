@@ -186,19 +186,28 @@ public:
         {
             auto& scheduler = m_context->GetScheduler();
 
+            auto colorAttachment = scheduler.ImportSwapchain("color-attachment", *m_swapchain);
+
+            RHI::ImageCreateInfo depthCreateInfo {};
+            depthCreateInfo.debugName = "depth-attachment";
+            depthCreateInfo.format = RHI::Format::D32;
+            depthCreateInfo.usageFlags = RHI::ImageUsage::DepthStencil;
+            depthCreateInfo.type = RHI::ImageType::Image2D;
+            depthCreateInfo.size = { m_windowWidth, m_windowHeight, 1 };
+            auto depthAttachment = scheduler.CreateImage(depthCreateInfo);
+
             m_renderPass = scheduler.CreatePass("Render-Pass", RHI::QueueType::Graphics);
-            m_renderPass->SetRenderTargetSize({ m_windowWidth, m_windowHeight });
-            m_renderPass->CreateRenderTarget("depth-target", RHI::Format::D32, RHI::DepthStencilValue{ 0.0f });
-            // colorAttachment = m_renderPass->UseRenderTarget("color-target", m_swapchain.get(), RHI::ColorValue(0.0f, 0.2f, 0.3f, 1.0f));
-            m_renderPass->UseRenderTarget("color-target", m_swapchain.get(), RHI::ColorValue(0.0f, 0.2f, 0.3f, 1.0f));
+            m_renderPass->SetSize({ m_windowWidth, m_windowHeight });
 
-            // m_computePass = scheduler.CreatePass("Compute-Pass", RHI::QueueType::Compute);
-            // maskAttachment = m_computePass->CreateTransientImage("mask", RHI::Format::R8_UNORM, RHI::ImageUsage::StorageResource, RHI::ImageSize2D{ m_windowWidth, m_windowHeight });
+            RHI::ImageAttachmentUseInfo useInfo {};
+            useInfo.usage = RHI::ImageUsage::Color;
+            useInfo.clearValue = {0.0f, 0.2f, 0.3f, 1.0f };
+            useInfo.loadStoreOperations.loadOperation = RHI::LoadOperation::Discard;
+            useInfo.loadStoreOperations.storeOperation = RHI::StoreOperation::Discard;
+            m_renderPass->UseImageAttachment(colorAttachment, useInfo);
+            useInfo.usage = RHI::ImageUsage::DepthStencil;
+            m_renderPass->UseImageAttachment(depthAttachment, useInfo);
 
-            // m_composePass = scheduler.CreatePass("Compose-Pass", RHI::QueueType::Graphics);
-            // m_composePass->SetRenderTargetSize({ m_windowWidth, m_windowHeight });
-            // m_composePass->UseRenderTarget(colorAttachment, RHI::ColorValue{ 0.0f });
-            // m_composePass->UseImageResource(maskAttachment, RHI::ImageUsage::ShaderResource, RHI::Access::Read);
             scheduler.Compile();
         }
 

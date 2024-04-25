@@ -12,104 +12,32 @@ namespace RHI
     {
     }
 
-    void Pass::SetRenderTargetSize(ImageSize2D size)
+    void Pass::SetSize(ImageSize2D size)
     {
         m_frameSize = size;
     }
 
-    ImagePassAttachment* Pass::CreateRenderTarget(const char* name, Format format, ClearValue clearValue, LoadStoreOperations loadStoreOps, uint32_t mipLevelsCount, uint32_t arrayLayersCount)
+    ImagePassAttachment* Pass::UseImageAttachment(ImageAttachment* attachment, const ImageAttachmentUseInfo& useInfo)
     {
-        auto pool = m_scheduler->m_attachmentsPool.get();
+        auto passAttachment = EmplacePtr<ImagePassAttachment>(m_imagePassAttachments, attachment, this);
+        attachment->Insert(passAttachment);
 
-        ImageSize3D size{};
-        size.width = size.width;
-        size.height = size.height;
-        size.depth = 1;
+        passAttachment->m_clearValue = useInfo.clearValue;
+        passAttachment->m_loadStoreOperations = useInfo.loadStoreOperations;
+        passAttachment->m_usage = useInfo.usage;
+        passAttachment->m_viewInfo.subresource = useInfo.subresourceRange;
+        passAttachment->m_viewInfo.components = useInfo.componentMapping;
 
-        ImageSubresourceRange subresourceRange{};
-        subresourceRange.arrayCount = arrayLayersCount;
-        subresourceRange.mipLevelCount = mipLevelsCount;
-        auto attachment = pool->NewImageAttachment(name, format, ImageType::Image2D, size, SampleCount::Samples1, mipLevelsCount, arrayLayersCount);
-        return UseRenderTargetInternal(attachment, clearValue, loadStoreOps, subresourceRange);
-    }
-
-    ImagePassAttachment* Pass::CreateTransientImage(const char* name, Format format, ImageUsage usage, ImageSize2D _size, ImageSubresourceRange subresource)
-    {
-        auto pool = m_scheduler->m_attachmentsPool.get();
-
-        ImageSize3D size{};
-        size.width = _size.width;
-        size.height = _size.height;
-        size.depth = 1;
-
-        auto attachment = pool->NewImageAttachment(name, format, ImageType::Image2D, size, SampleCount::Samples1, subresource.mipLevelCount, subresource.arrayCount);
-        return UseImageResourceInternal(attachment, usage, Access::ReadWrite, subresource, ComponentMapping{});
-    }
-
-    ImagePassAttachment* Pass::CreateTransientImage(const char* name, Format format, ImageUsage usage, ImageSize3D size, ImageSubresourceRange subresource)
-    {
-        auto pool = m_scheduler->m_attachmentsPool.get();
-
-        auto attachment = pool->NewImageAttachment(name, format, ImageType::Image3D, size, SampleCount::Samples1, subresource.mipLevelCount, subresource.arrayCount);
-        return UseImageResourceInternal(attachment, usage, Access::ReadWrite, subresource, ComponentMapping{});
-    }
-
-    BufferPassAttachment* Pass::CreateTransientBuffer(const char* name, BufferUsage usage, size_t size)
-    {
-        auto pool = m_scheduler->m_attachmentsPool.get();
-
-        BufferSubregion subregion = {};
-        subregion.byteSize = size;
-        auto attachment = pool->NewBufferAttachment(name, size);
-        return UseBufferResourceInternal(attachment, usage, Access::ReadWrite, subregion);
-    }
-
-    ImagePassAttachment* Pass::UseRenderTarget(ImagePassAttachment* attachment, ClearValue clearValue, LoadStoreOperations loadStoreOps, ImageSubresourceRange subresource)
-    {
-        return UseRenderTargetInternal(attachment->GetAttachment(), clearValue, loadStoreOps, subresource);
-    }
-
-    ImagePassAttachment* Pass::UseRenderTarget(const char* name, Handle<Image> handle, ClearValue clearValue, LoadStoreOperations loadStoreOps, ImageSubresourceRange subresource)
-    {
-        auto pool = m_scheduler->m_attachmentsPool.get();
-        auto attachment = pool->NewImageAttachment(name, handle);
-        return UseRenderTargetInternal(attachment, clearValue, loadStoreOps, subresource);
-    }
-
-    ImagePassAttachment* Pass::UseRenderTarget(const char* name, Swapchain* swapchain, ClearValue clearValue, LoadStoreOperations loadStoreOps, ImageSubresourceRange subresource)
-    {
-        auto pool = m_scheduler->m_attachmentsPool.get();
-        auto attachment = pool->NewImageAttachment(name, swapchain->GetImage());
-        attachment->m_swapchain = swapchain;
-        return UseRenderTargetInternal(attachment, clearValue, loadStoreOps, subresource);
-    }
-
-    ImagePassAttachment* Pass::UseImageResource(ImagePassAttachment* attachment, ImageUsage usage, Access access, ImageSubresourceRange subresource, ComponentMapping mapping)
-    {
-        return UseImageResourceInternal(attachment->GetAttachment(), usage, access, subresource, mapping);
-    }
-
-    BufferPassAttachment* Pass::UseBufferResource(BufferPassAttachment* attachment, BufferUsage usage, Access access, BufferSubregion subregion)
-    {
-        return UseBufferResourceInternal(attachment->GetAttachment(), usage, access, subregion);
-    }
-
-    void Pass::Submit(TL::Span<CommandList*> commandList)
-    {
-        m_commandLists.insert(m_commandLists.end(), commandList.begin(), commandList.end());
-    }
-
-    ImagePassAttachment* Pass::UseRenderTargetInternal(
-        ImageAttachment* attachment,
-        ClearValue clearValue,
-        LoadStoreOperations loadStoreOps,
-        ImageSubresourceRange subresourceRange)
-    {
-        auto passAttachment = m_imagePassAttachments.emplace_back(CreatePtr<ImagePassAttachment>(attachment, this)).get();
-        passAttachment->m_clearValue = clearValue;
-        passAttachment->m_loadStoreOperations = loadStoreOps;
-        passAttachment->m_viewInfo.subresource = subresourceRange;
-        passAttachment->m_access = Access::Write;
+        auto& viewType = passAttachment->m_viewInfo.viewType;
+        auto arrayView = passAttachment->m_viewInfo.subresource.arrayCount > 1;
+        // NOTE: for imported resources, we don't know the type of the image, so pass attachments must store the use info instead of the image view create info
+        switch (attachment->As<ImageAttachment>()->GetCreateInfo().type)
+        {
+        case ImageType::Image1D: viewType = arrayView ? ImageViewType::View2DArray : ImageViewType::View1D; break;
+        case ImageType::Image2D: viewType = arrayView ? ImageViewType::View2DArray : ImageViewType::View2D; break;
+        case ImageType::Image3D: viewType = ImageViewType::View3D;
+        default:                 RHI_UNREACHABLE(); break;
+        }
 
         auto formatInfo = GetFormatInfo(attachment->GetCreateInfo().format);
         if (formatInfo.hasDepth)
@@ -124,56 +52,23 @@ namespace RHI
             m_colorAttachments.push_back(passAttachment);
         }
 
-        attachment->Insert(passAttachment);
-
-        UseAttachment(passAttachment);
-
         return passAttachment;
     }
 
-    ImagePassAttachment* Pass::UseImageResourceInternal(
-        ImageAttachment* attachment,
-        ImageUsage usage,
-        Access access,
-        ImageSubresourceRange subresource,
-        ComponentMapping mapping)
+    BufferPassAttachment* Pass::UseBufferAttachment(BufferAttachment* attachment, const BufferAttachmentUseInfo& useInfo)
     {
-        auto passAttachment = m_imagePassAttachments.emplace_back(CreatePtr<ImagePassAttachment>(attachment, this)).get();
-        passAttachment->m_usage = usage;
-        passAttachment->m_access = access;
-        passAttachment->m_viewInfo.subresource = subresource;
-        passAttachment->m_viewInfo.components = mapping;
+        auto passAttachment = EmplacePtr<BufferPassAttachment>(m_bufferPassAttachments, attachment, this);
         attachment->Insert(passAttachment);
-
-        UseAttachment(passAttachment);
-
+        passAttachment->m_usage = useInfo.usage;
+        passAttachment->m_viewInfo.byteOffset = useInfo.offset;
+        passAttachment->m_viewInfo.byteSize = useInfo.size;
+        passAttachment->m_viewInfo.format = useInfo.format;
         return passAttachment;
     }
 
-    BufferPassAttachment* Pass::UseBufferResourceInternal(
-        BufferAttachment* attachment,
-        BufferUsage usage,
-        Access access,
-        BufferSubregion subregion)
+    void Pass::Submit(TL::Span<CommandList*> commandList)
     {
-        auto passAttachment = m_bufferPassAttachments.emplace_back(CreatePtr<BufferPassAttachment>(attachment, this)).get();
-        passAttachment->m_usage = usage;
-        passAttachment->m_access = access;
-        passAttachment->m_viewInfo.byteOffset = subregion.byteOffset;
-        passAttachment->m_viewInfo.byteSize = subregion.byteSize;
-        attachment->Insert(passAttachment);
-
-        UseAttachment(passAttachment);
-
-        return passAttachment;
-    }
-
-    void Pass::UseAttachment(PassAttachment* attachment)
-    {
-        (void)(attachment);
-        // auto producer = attachment->m_pass->m_node;
-        // auto consuemr = m_node;
-        // m_renderGraph->AddEdge(producer, consuemr);
+        m_commandLists.insert(m_commandLists.end(), commandList.begin(), commandList.end());
     }
 
 } // namespace RHI

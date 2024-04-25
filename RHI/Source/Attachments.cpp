@@ -157,7 +157,15 @@ namespace RHI
         }
     }
 
-    ImageAttachment* AttachmentsPool::NewImageAttachment(const char* name, Handle<Image> handle)
+    ImageAttachment* AttachmentsPool::CreateAttachment(const char* name, Swapchain* swapchain)
+    {
+        auto attachment = CreateAttachment(name, swapchain->GetImage());
+        attachment->m_swapchain = swapchain;
+        attachment->m_asImage.info.type = ImageType::Image2D;
+        return attachment;
+    }
+
+    ImageAttachment* AttachmentsPool::CreateAttachment(const char* name, Handle<Image> handle)
     {
         auto attachment = (ImageAttachment*)m_attachmentsLut.insert(std::make_pair(name, CreatePtr<ImageAttachment>(name, handle))).first->second.get();
         m_attachments.push_back(attachment);
@@ -165,26 +173,26 @@ namespace RHI
         return attachment;
     }
 
-    ImageAttachment* AttachmentsPool::NewImageAttachment(const char* name, Format format, ImageType type, ImageSize3D size, SampleCount sampleCount, uint32_t mipLevelsCount, uint32_t arrayLayersCount)
+    ImageAttachment* AttachmentsPool::CreateAttachment(const ImageCreateInfo& createInfo)
     {
-        ImageCreateInfo createInfo{};
-        createInfo.format = format;
-        createInfo.type = type;
-        createInfo.size = size;
-        createInfo.sampleCount = sampleCount;
-        createInfo.mipLevels = mipLevelsCount;
-        createInfo.arrayCount = arrayLayersCount;
-
-        auto attachment = (ImageAttachment*)m_attachmentsLut.insert(std::make_pair(name, CreatePtr<ImageAttachment>(name, createInfo))).first->second.get();
+        auto attachment = (ImageAttachment*)m_attachmentsLut.insert(std::make_pair(createInfo.debugName, CreatePtr<ImageAttachment>(createInfo.debugName, createInfo))).first->second.get();
         m_attachments.push_back(attachment);
-        m_transientAttachments.push_back(attachment);
         m_imageAttachments.push_back(attachment);
+        m_transientAttachments.push_back(attachment);
         return attachment;
     }
 
-    BufferAttachment* AttachmentsPool::NewBufferAttachment(const char* name, size_t size)
+    BufferAttachment* AttachmentsPool::CreateAttachment(const char* name, Handle<Buffer> handle)
     {
-        auto attachment = (BufferAttachment*)m_attachmentsLut.insert(std::make_pair(name, CreatePtr<BufferAttachment>(name, size))).first->second.get();
+        auto attachment = (BufferAttachment*)m_attachmentsLut.insert(std::make_pair(name, CreatePtr<BufferAttachment>(name, handle))).first->second.get();
+        m_attachments.push_back(attachment);
+        m_bufferAttachments.push_back(attachment);
+        return attachment;
+    }
+
+    BufferAttachment* AttachmentsPool::CreateAttachment(const BufferCreateInfo& createInfo)
+    {
+        auto attachment = (BufferAttachment*)m_attachmentsLut.insert(std::make_pair(createInfo.debugName, CreatePtr<BufferAttachment>(createInfo.debugName, createInfo.byteSize))).first->second.get();
         m_attachments.push_back(attachment);
         m_transientAttachments.push_back(attachment);
         m_bufferAttachments.push_back(attachment);

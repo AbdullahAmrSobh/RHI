@@ -12,6 +12,31 @@ namespace RHI
     {
     }
 
+    ImageAttachment* FrameScheduler::CreateImage(const ImageCreateInfo& createInfo)
+    {
+        return m_attachmentsPool->CreateAttachment(createInfo);
+    }
+
+    BufferAttachment* FrameScheduler::CreateBuffer(const BufferCreateInfo& createInfo)
+    {
+        return m_attachmentsPool->CreateAttachment(createInfo);
+    }
+
+    ImageAttachment* FrameScheduler::ImportSwapchain(const char* name, Swapchain& swapchain)
+    {
+        return m_attachmentsPool->CreateAttachment(name, &swapchain);
+    }
+
+    ImageAttachment* FrameScheduler::ImportImage(const char* name, Handle<Image> image)
+    {
+        return m_attachmentsPool->CreateAttachment(name, image);
+    }
+
+    BufferAttachment* FrameScheduler::ImportBuffer(const char* name, Handle<Buffer> buffer)
+    {
+        return m_attachmentsPool->CreateAttachment(name, buffer);
+    }
+
     void FrameScheduler::Begin()
     {
         for (auto attachment : m_attachmentsPool->GetAttachments())

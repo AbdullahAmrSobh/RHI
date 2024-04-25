@@ -29,21 +29,28 @@ namespace RHI
         FrameScheduler(Context* context);
         virtual ~FrameScheduler() = default;
 
-        void         Begin();
-        void         End();
+        /// New interface
+        ImageAttachment*  CreateImage(const ImageCreateInfo& createInfo);
+        BufferAttachment* CreateBuffer(const BufferCreateInfo& useInfo);
+        ImageAttachment*  ImportSwapchain(const char* name, Swapchain& swapchain);
+        ImageAttachment*  ImportImage(const char* name, Handle<Image> image);
+        BufferAttachment* ImportBuffer(const char* name, Handle<Buffer> buffer);
 
-        Ptr<Pass>    CreatePass(const char* name, QueueType queueType);
+        void              Begin();
+        void              End();
 
-        void         WriteImageContent(Handle<Image>           handle,
-                                       ImageOffset3D           offset,
-                                       ImageSize3D             size,
-                                       ImageSubresourceLayers  subresource,
-                                       TL::Span<const uint8_t> content);
-        void         Compile();
-        void         Cleanup();
+        Ptr<Pass>         CreatePass(const char* name, QueueType queueType);
 
-        virtual void PassSubmit(Pass* pass, Fence* fence)                          = 0;
-        virtual void StageImageWrite(const struct BufferToImageCopyInfo& copyInfo) = 0;
+        void              WriteImageContent(Handle<Image>           handle,
+                                            ImageOffset3D           offset,
+                                            ImageSize3D             size,
+                                            ImageSubresourceLayers  subresource,
+                                            TL::Span<const uint8_t> content);
+        void              Compile();
+        void              Cleanup();
+
+        virtual void      PassSubmit(Pass* pass, Fence* fence)                          = 0;
+        virtual void      StageImageWrite(const struct BufferToImageCopyInfo& copyInfo) = 0;
 
     protected:
         Context*                                                   m_context;
