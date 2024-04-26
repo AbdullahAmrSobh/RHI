@@ -36,7 +36,7 @@ namespace RHI::Vulkan
         void Shutdown();
 
         ResultCode InitBindGroup(IBindGroup* bindGroup, IBindGroupLayout* bindGroupLayout);
-        void       ShutdownBindGroup(IBindGroup* bindGroup);
+        void ShutdownBindGroup(IBindGroup* bindGroup);
 
     public:
         VkDevice m_device;

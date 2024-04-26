@@ -4,6 +4,7 @@
 #include "RHI/Attachments.hpp"
 
 #include "RHI/Common/Containers.h"
+#include "RHI/Common/Ptr.h"
 
 #include <string>
 

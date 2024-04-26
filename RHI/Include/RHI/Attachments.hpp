@@ -3,11 +3,7 @@
 #include "RHI/Resources.hpp"
 #include "RHI/Swapchain.hpp"
 
-#include "RHI/Common/Ptr.h"
-#include "RHI/Common/Containers.h"
 #include "RHI/RenderTarget.hpp"
-
-#include <string>
 
 namespace RHI
 {
