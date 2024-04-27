@@ -8,11 +8,10 @@
 #include <Examples-Base/Camera.hpp>
 #include <Examples-Base/ImGuiRenderer.hpp>
 
-#include <glm/matrix.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/vec2.hpp>
-#include <glm/vec3.hpp>
-#include <glm/vec4.hpp>
+#include <glm/glm.hpp>
+
+namespace TL = RHI::TL;
 
 struct ImageData
 {
@@ -21,8 +20,12 @@ struct ImageData
     uint32_t depth;
     uint32_t channels;
     uint32_t bytesPerChannel;
-    std::vector<uint8_t> data;
+    TL::Vector<uint8_t> data;
 };
+
+TL::Vector<uint8_t> ReadBinaryFile(std::string_view path);
+
+ImageData LoadImage(std::string_view path);
 
 class ApplicationBase
 {
@@ -50,11 +53,6 @@ private:
     void Run();
 
     void ProcessInput();
-
-protected:
-    ImageData LoadImage(std::string_view path) const;
-
-    std::vector<uint8_t> ReadBinaryFile(std::string_view path) const;
 
     virtual void OnInit() = 0;
 

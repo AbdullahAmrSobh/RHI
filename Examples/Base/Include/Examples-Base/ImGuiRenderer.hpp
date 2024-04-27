@@ -6,11 +6,13 @@
 
 #include <GLFW/glfw3.h>
 
+#include "RHI/Common/Containers.h"
+
 struct ImGuiRendererCreateInfo
 {
     RHI::Context* context;
     RHI::FrameScheduler* scheduler;
-    std::vector<uint8_t> shaderBlob;
+    RHI::TL::Vector<uint8_t> shaderBlob;
     RHI::CommandPool* commandAllocator;
 };
 

@@ -16,7 +16,6 @@
 #include <cassert>
 #include <fstream>
 #include <iostream>
-#include <vector>
 #include <memory>
 #include <string>
 #include <chrono>
@@ -40,7 +39,7 @@ public:
     }
 };
 
-ImageData ApplicationBase::LoadImage(std::string_view path) const
+ImageData LoadImage(std::string_view path)
 {
     // Load the image using stb_image
     int width, height, channels;
@@ -70,13 +69,13 @@ ImageData ApplicationBase::LoadImage(std::string_view path) const
     return imageData;
 }
 
-std::vector<uint8_t> ApplicationBase::ReadBinaryFile(std::string_view path) const
+TL::Vector<uint8_t> ReadBinaryFile(std::string_view path)
 {
     std::ifstream stream(path.data(), std::ios::ate | std::ios::binary);
     RHI_ASSERT(stream.is_open());
     auto fileSize = (size_t)stream.tellg();
     stream.seekg(0);
-    std::vector<uint8_t> buffer(fileSize);
+    TL::Vector<uint8_t> buffer(fileSize);
     stream.read((char*)buffer.data(), (std::streamsize)fileSize);
     stream.close();
     return buffer;
