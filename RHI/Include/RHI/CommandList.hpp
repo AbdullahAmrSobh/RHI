@@ -123,6 +123,7 @@ namespace RHI
         Handle<GraphicsPipeline>       pipelineState;
         TL::Span<Handle<BindGroup>>    bindGroups;
         TL::Span<const Handle<Buffer>> vertexBuffers;
+        TL::Span<const uint32_t>       dynamicOffset; // TODO: remove
         Handle<Buffer>                 indexBuffers;
         DrawParameters                 parameters;
     };

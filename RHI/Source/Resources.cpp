@@ -13,11 +13,13 @@ namespace RHI
         m_bindings[index] = binding;
     }
 
-    void BindGroupData::BindBuffers(uint32_t index, TL::Span<Handle<Buffer>> handles, uint32_t arrayOffset)
+    void BindGroupData::BindBuffers(uint32_t index, TL::Span<Handle<Buffer>> handles, bool dynamic, size_t element_size, uint32_t arrayOffset)
     {
         BindGroupData::ResourceBufferBinding binding{};
         binding.arrayOffset = arrayOffset;
         binding.views = { handles.begin(), handles.end() };
+        binding.dynamic = dynamic;
+        binding.elementSize = element_size;
         m_bindings[index] = binding;
     }
 

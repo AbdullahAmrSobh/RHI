@@ -378,12 +378,12 @@ namespace RHI::Vulkan
                     VkDescriptorBufferInfo bufferInfo{};
                     bufferInfo.buffer = context->m_bufferOwner.Get(viewHandle)->handle;
                     bufferInfo.offset = 0;
-                    bufferInfo.range = VK_WHOLE_SIZE;
+                    bufferInfo.range = buffer->elementSize == SIZE_MAX ? VK_WHOLE_SIZE : buffer->elementSize;
                     bufferInfos.push_back(bufferInfo);
                 }
 
                 writeInfo.dstArrayElement = buffer->arrayOffset;
-                writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; // todo support storage buffers, and more complex types
+                writeInfo.descriptorType = buffer->dynamic ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; // todo support storage buffers, and more complex types
                 writeInfo.descriptorCount = uint32_t(bufferInfos.size());
                 writeInfo.pBufferInfo = bufferInfos.data();
             }

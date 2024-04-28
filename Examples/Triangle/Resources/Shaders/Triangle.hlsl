@@ -2,13 +2,13 @@ struct VSInput
 {
 	[[vk::location(0)]] float3 position : POSITION0;
 	[[vk::location(1)]] float3 normal   : NORMAL0;
-	[[vk::location(2)]] float2 uv0      : TEXCOORD0;
+	// [[vk::location(2)]] float2 uv0      : TEXCOORD0;
 };
 
 struct VSOutput
 {
 	float4 position : SV_POSITION;
-	float2 uv: TEXCOORD;
+	// float2 uv: TEXCOORD;
 	float4 color : COLOR;
 };
 
@@ -17,13 +17,28 @@ struct PSOutput
 	float4 color : SV_TARGET0;
 };
 
-[[vk::binding(0)]] cbuffer UBO : register(b0)
+[[vk::binding(0)]] cbuffer PerFrame : register(b0)
 {
-	float4x4 viewProjection;
+	float4x4 viewProjectionMatrix;
+	float4x4 projectionMatrix;
+	float4x4 viewMatrix;
+	float4x4 inverseViewMatrix;
 };
 
-[[vk::binding(1)]] Texture2D texture : register(t0);
-[[vk::binding(2)]] SamplerState textureSampler : register(s0);
+[[vk::binding(1)]] cbuffer PerDraw : register(b1)
+{
+	float4x4 modelMatrix;
+
+	// DirLight dirLight;
+	// PointLight pointLights[MAX_LIGHTS];
+	// SpotLight spotLights[MAX_LIGHTS];
+};
+
+float4 TransformToClipSpace(float3 position)
+{
+	float4x4 mvp = mul(mul(projectionMatrix, viewMatrix), modelMatrix);
+	return mul(mvp, float4(position, 1.0));
+}
 
 float4 NormalToColor(float3 normal)
 {
@@ -33,20 +48,16 @@ float4 NormalToColor(float3 normal)
 
 VSOutput VSMain(VSInput input)
 {
-	float4 finalPosition = float4(input.position * float3(1.0, -1.0, 1.0), 1.0);
-
 	VSOutput output;
-	output.position = mul(viewProjection, finalPosition);
+	output.position = TransformToClipSpace(input.position);
 	output.color    = NormalToColor(input.normal);
-	output.uv       = input.uv0;
+	// output.uv       = input.uv0;
 	return output;
 }
 
 PSOutput PSMain(VSOutput input)
 {
-	float4 finalColor = texture.Sample(textureSampler, input.uv);
-
 	PSOutput output;
-	output.color = finalColor;
+	output.color = input.color;
 	return output;
 }

@@ -489,7 +489,7 @@ namespace RHI::Vulkan
 
         if (drawInfo.bindGroups.empty() == false)
         {
-            BindShaderBindGroups(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->layout, drawInfo.bindGroups);
+            BindShaderBindGroups(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->layout, drawInfo.bindGroups, drawInfo.dynamicOffset);
         }
 
         if (drawInfo.vertexBuffers.empty() == false)
@@ -528,7 +528,7 @@ namespace RHI::Vulkan
         vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->handle);
         if (dispatchInfo.bindGroups.size())
         {
-            BindShaderBindGroups(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->layout, dispatchInfo.bindGroups);
+            BindShaderBindGroups(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->layout, dispatchInfo.bindGroups, {});
         }
         auto parameters = dispatchInfo.parameters;
         vkCmdDispatchBase(m_commandBuffer, parameters.offsetX, parameters.offsetY, parameters.offsetZ, parameters.countX, parameters.countY, parameters.countZ);
@@ -598,7 +598,7 @@ namespace RHI::Vulkan
         vkCmdCopyImageToBuffer(m_commandBuffer, srcImage->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstBuffer->handle, 1, &bufferImageCopy);
     }
 
-    void ICommandList::BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<Handle<BindGroup>> bindGroups)
+    void ICommandList::BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<Handle<BindGroup>> bindGroups, TL::Span<const uint32_t> dynamicOffset)
     {
         uint32_t count = 0;
         VkDescriptorSet descriptorSets[c_MaxPipelineBindGroupsCount] = {};
@@ -607,7 +607,9 @@ namespace RHI::Vulkan
             auto bindGroup = m_context->m_bindGroupOwner.Get(bindGroupHandle);
             descriptorSets[count++] = bindGroup->descriptorSet;
         }
-        vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, count, descriptorSets, 0, nullptr);
+        // vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, count, descriptorSets, 0, nullptr);
+        vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, count, descriptorSets, (uint32_t)dynamicOffset.size(), dynamicOffset.size() ? dynamicOffset.data() : nullptr);
+
     }
 
     void ICommandList::RenderingBegin(TL::Span<const VkRenderingAttachmentInfo> attachmentInfos,

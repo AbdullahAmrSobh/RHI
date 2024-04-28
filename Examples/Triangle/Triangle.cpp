@@ -1,4 +1,5 @@
 #include <Examples-Base/ApplicationBase.hpp>
+#include <Examples-Base/SceneGraph.hpp>
 
 #include <RHI/RHI.hpp>
 #include <RHI/Pass.hpp>
@@ -11,12 +12,16 @@ public:
     BasicRenderer()
         : ApplicationBase("Hello, Triangle", 1600, 1200)
     {
-        // m_scene = RHI::CreatePtr<Scene>(m_context.get(), "asdasda");
     }
 
     void OnInit() override
     {
         ZoneScoped;
+
+        {
+            // Load scene
+            m_scene = RHI::CreatePtr<Scene>(m_context.get(), "I:/Main.1_Sponza/NewSponza_Main_glTF_002.gltf");
+        }
 
         auto& scheduler = m_context->GetScheduler();
 
@@ -40,6 +45,7 @@ public:
         useInfo.loadStoreOperations.storeOperation = RHI::StoreOperation::Discard;
         m_renderPass->UseImageAttachment(colorAttachment, useInfo);
         useInfo.usage = RHI::ImageUsage::DepthStencil;
+        useInfo.clearValue.depthStencil.depthValue = 1.0f;
         m_renderPass->UseImageAttachment(depthAttachment, useInfo);
 
         scheduler.Compile();
@@ -57,7 +63,7 @@ public:
         ZoneScoped;
 
         m_camera.Update(timestep);
-        // m_scene->UpdateUniformBuffers(m_camera.GetProjection() * m_camera.GetView());
+        m_scene->UpdateUniformBuffers(*m_context, m_camera.GetView(), m_camera.GetProjection());
 
         ImGui::NewFrame();
         ImGui::ShowDemoWindow();
@@ -85,7 +91,7 @@ public:
         commandList->Begin(*m_renderPass);
         commandList->SetViewport(viewport);
         commandList->SetSicssor(scissor);
-        // m_scene->Draw(*commandList);
+        m_scene->Draw(*commandList);
         m_imguiRenderer->RenderDrawData(ImGui::GetDrawData(), *commandList);
 
         commandList->End();
@@ -96,6 +102,7 @@ public:
     }
 
 private:
+    RHI::Ptr<Scene> m_scene;
     RHI::Ptr<RHI::Pass> m_renderPass;
 };
 

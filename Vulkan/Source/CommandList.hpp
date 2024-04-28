@@ -56,7 +56,8 @@ namespace RHI::Vulkan
         void BindShaderBindGroups(
             VkPipelineBindPoint bindPoint,
             VkPipelineLayout pipelineLayout,
-            TL::Span<Handle<BindGroup>> bindGroups);
+            TL::Span<Handle<BindGroup>> bindGroups,
+            TL::Span<const uint32_t> dynamicOffset);
 
     private:
         IContext* m_context;

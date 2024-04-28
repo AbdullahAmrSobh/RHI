@@ -44,7 +44,7 @@ ImageData LoadImage(std::string_view path)
     // Load the image using stb_image
     int width, height, channels;
     stbi_set_flip_vertically_on_load(0); // Set to 0 to keep image orientation as is
-    unsigned char* data = stbi_load(path.data(), &width, &height, &channels, 0);
+    unsigned char* data = stbi_load(path.data(), &width, &height, &channels, 4);
 
     // Check if the image was loaded successfully
     if (!data)

@@ -176,6 +176,10 @@ namespace RHI
         StorageImage,
         UniformBuffer,
         StorageBuffer,
+
+        DynamicUniformBuffer,
+        DynamicStorageBuffer,
+
         BufferView,
         StorageBufferView,
         Count,
@@ -434,7 +438,7 @@ namespace RHI
 
         void BindImages(uint32_t index, TL::Span<Handle<ImageView>> handles, uint32_t arrayOffset = 0);
 
-        void BindBuffers(uint32_t index, TL::Span<Handle<Buffer>> handles, uint32_t arrayOffset = 0);
+        void BindBuffers(uint32_t index, TL::Span<Handle<Buffer>> handles, bool dynamic = false, size_t elementSize = SIZE_MAX, uint32_t arrayOffset = 0);
 
         void BindBuffers(uint32_t index, TL::Span<Handle<BufferView>> handles, uint32_t arrayOffset = 0);
 
@@ -450,6 +454,8 @@ namespace RHI
         {
             uint32_t                   arrayOffset;
             TL::Vector<Handle<Buffer>> views;
+            bool dynamic;
+            size_t elementSize;
         };
 
         struct ResourceBufferViewBinding

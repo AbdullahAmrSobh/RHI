@@ -78,7 +78,7 @@ namespace RHI
         using ResourceType = Resource;
         // using ResourceInfo = Info;
 
-        inline HandlePool(uint32_t capacity = 512);
+        inline HandlePool(uint32_t capacity = 512 * 4);
         ~HandlePool();
 
         inline void                                   Reset();
@@ -161,6 +161,8 @@ namespace RHI
         return nullptr;
     }
 
+    // use dynamic offsets
+
     template<typename Resource>
     inline Handle<Resource> HandlePool<Resource>::Insert(Resource resource)
     {
@@ -191,6 +193,9 @@ namespace RHI
         {
             Resize(m_count * 1.5);
         }
+
+        // call inplace new
+        new (&m_resources[index]) Resource();
 
         m_count++;
         return { Handle<Resource>(index, ++m_genIds[index]), m_resources[index] };

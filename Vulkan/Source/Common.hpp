@@ -419,6 +419,8 @@ namespace RHI::Vulkan
         case ShaderBindingType::StorageImage:      return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
         case ShaderBindingType::UniformBuffer:     return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         case ShaderBindingType::StorageBuffer:     return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        case ShaderBindingType::DynamicUniformBuffer:     return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+        case ShaderBindingType::DynamicStorageBuffer:     return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
         case ShaderBindingType::BufferView:        return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
         case ShaderBindingType::StorageBufferView: return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
         default:                                   RHI_UNREACHABLE(); return VK_DESCRIPTOR_TYPE_MAX_ENUM;
