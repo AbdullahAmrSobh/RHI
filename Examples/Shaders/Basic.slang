@@ -1,8 +1,8 @@
 struct VSInput
 {
-	[[vk::location(0)]] float3 position : POSITION0;
-	[[vk::location(1)]] float3 normal   : NORMAL0;
-	// [[vk::location(2)]] float2 uv0      : TEXCOORD0;
+	float3 position : POSITION0;
+	float3 normal   : NORMAL0;
+	// float2 uv0      : TEXCOORD0;
 };
 
 struct VSOutput
@@ -17,7 +17,7 @@ struct PSOutput
 	float4 color : SV_TARGET0;
 };
 
-[[vk::binding(0)]] cbuffer PerFrame : register(b0)
+struct PerFrame
 {
 	float4x4 viewProjectionMatrix;
 	float4x4 projectionMatrix;
@@ -25,7 +25,7 @@ struct PSOutput
 	float4x4 inverseViewMatrix;
 };
 
-[[vk::binding(1)]] cbuffer PerDraw : register(b1)
+struct PerDraw
 {
 	float4x4 modelMatrix;
 
@@ -34,9 +34,17 @@ struct PSOutput
 	// SpotLight spotLights[MAX_LIGHTS];
 };
 
+struct Data
+{
+	ConstantBuffer<PerFrame> perFrame;
+	ConstantBuffer<PerDraw>  perDraw;
+};
+
+ParameterBlock<Data> data;
+
 float4 TransformToClipSpace(float3 position)
 {
-	float4x4 mvp = mul(mul(projectionMatrix, viewMatrix), modelMatrix);
+	float4x4 mvp = mul(mul(data.perFrame.projectionMatrix, data.perFrame.viewMatrix), data.perDraw.modelMatrix);
 	return mul(mvp, float4(position, 1.0));
 }
 
@@ -46,6 +54,7 @@ float4 NormalToColor(float3 normal)
     return float4(remappedNormal, 1.0f);
 }
 
+[[shader("vertex")]]
 VSOutput VSMain(VSInput input)
 {
 	VSOutput output;
@@ -55,6 +64,7 @@ VSOutput VSMain(VSInput input)
 	return output;
 }
 
+[[shader("fragment")]]
 PSOutput PSMain(VSOutput input)
 {
 	PSOutput output;

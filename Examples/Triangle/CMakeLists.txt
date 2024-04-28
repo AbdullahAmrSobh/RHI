@@ -23,15 +23,24 @@ aams_add_target(
         RHI::Vulkan
 )
 
-include(${CMAKE_SOURCE_DIR}/CMake/RHICompileShaders.cmake)
-RHICompileShaders(
-    NAME Triangle-Shaders
-    OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/Resources/Shaders"
-    TARGET Triangle
-    SHADER_FILES ${SHADER_FILES_LIST}
-    COMPUTE_SHADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/Resources/Shaders/Compute.hlsl
+set(SHADER_FILES
+    ${CMAKE_SOURCE_DIR}/Examples/Shaders/ImGui.slang
+    ${CMAKE_SOURCE_DIR}/Examples/Shaders/Basic.slang
 )
 
+include(${CMAKE_SOURCE_DIR}/cmake/compile-slang-shaders.cmake)
+compile_slang_shaders(
+    TARGET Base
+    INCLUDE_DIRS
+        ${CMAKE_SOURCE_DIR}/Examples/Shaders/core
+    SHADER_GFX_FILES
+        ${SHADER_FILES}
+    OUTPUT_DIR
+        ${CMAKE_CURRENT_BINARY_DIR}/Shaders
+)
+
+
+#TODO: cleanup this mess up
 function(copy_resources)
     # Get the source and destination directories
     set(source_dir ${CMAKE_CURRENT_SOURCE_DIR}/Resources)

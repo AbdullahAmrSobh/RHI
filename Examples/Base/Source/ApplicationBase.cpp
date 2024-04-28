@@ -136,7 +136,7 @@ void ApplicationBase::Init()
     ImGuiRendererCreateInfo imguiRendererCreateInfo{};
     imguiRendererCreateInfo.context = m_context.get();
     imguiRendererCreateInfo.scheduler = &scheduler;
-    imguiRendererCreateInfo.shaderBlob = ReadBinaryFile("./Resources/Shaders/ImGui.spv");
+    imguiRendererCreateInfo.shaderBlob = ReadBinaryFile("./Shaders/ImGui.spv");
     imguiRendererCreateInfo.commandAllocator = m_commandPool.get();
     m_imguiRenderer->Init(imguiRendererCreateInfo);
 

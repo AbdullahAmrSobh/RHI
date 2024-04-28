@@ -46,7 +46,7 @@ Scene::Scene(RHI::Context* pContext, const char* scenePath)
     auto& context = *pContext;
 
     Assimp::Importer importer;
-    const aiScene* scene = importer.ReadFile(scenePath, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipWindingOrder);
+    const aiScene* scene = importer.ReadFile(scenePath, aiProcess_Triangulate | aiProcess_GenSmoothNormals);
 
     TL::UnorderedMap<uint32_t, RHI::Handle<Material>> materialLookup;
     TL::UnorderedMap<uint32_t, RHI::Handle<StaticMesh>> staticMeshLookup;
@@ -141,7 +141,7 @@ Scene::Scene(RHI::Context* pContext, const char* scenePath)
     ProcessNode(context, ConvertMatrix(scene->mRootNode->mTransformation), scene->mRootNode, processNodeCallback);
 
     SetupGPUResources(context);
-    LoadPipeline(context, "./Resources/Shaders/triangle.spv");
+    LoadPipeline(context, "./Shaders/Basic.spv");
 }
 
 void Scene::UpdateUniformBuffers(RHI::Context& context, glm::mat4 view, glm::mat4 projection)

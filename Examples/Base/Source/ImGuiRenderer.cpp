@@ -332,11 +332,11 @@ void ImGuiRenderer::Init(ImGuiRendererCreateInfo createInfo)
         imageInfo.size.height = uint32_t(height);
         imageInfo.size.depth = 1;
         imageInfo.type = RHI::ImageType::Image2D;
-        imageInfo.format = RHI::Format::R8_UNORM;
+        imageInfo.format = RHI::Format::RGBA8_UNORM;
         imageInfo.usageFlags = RHI::ImageUsage::ShaderResource;
         imageInfo.usageFlags |= RHI::ImageUsage::CopyDst;
         imageInfo.arrayCount = 1;
-        m_image = RHI::CreateImageWithData(*m_context, imageInfo, RHI::TL::Span<const uint8_t>{ pixels, size_t(width * height) }).GetValue();
+        m_image = RHI::CreateImageWithData(*m_context, imageInfo, RHI::TL::Span<const uint8_t>{ pixels, size_t(width * height * 4) }).GetValue();
         RHI::ImageViewCreateInfo viewInfo{};
         viewInfo.image = m_image;
         viewInfo.subresource.imageAspects = RHI::ImageAspect::Color;
@@ -420,7 +420,13 @@ void ImGuiRenderer::RenderDrawData(ImDrawData* drawData, RHI::CommandList& comma
     // (Because we merged all buffers into a single one, we maintain our own offset into them)
     int globalIdxOffset = 0;
     int globalVtxOffset = 0;
-    ImVec2 clip_off = drawData->DisplayPos;
+
+    // Will project scissor/clipping rectangles into framebuffer space
+    ImVec2 clipOff = drawData->DisplayPos;         // (0,0) unless using multi-viewports
+    ImVec2 clipScale = drawData->FramebufferScale; // (1,1) unless using retina display which are often (2,2)
+
+    uint32_t fb_width = 1600, fb_height = 900;
+
     for (int n = 0; n < drawData->CmdListsCount; n++)
     {
         const ImDrawList* cmdList = drawData->CmdLists[n];
@@ -428,37 +434,43 @@ void ImGuiRenderer::RenderDrawData(ImDrawData* drawData, RHI::CommandList& comma
         {
             const ImDrawCmd* pcmd = &cmdList->CmdBuffer[i];
 
-            // Project scissor/clipping rectangles into framebuffer space
-            ImVec2 clip_min(pcmd->ClipRect.x - clip_off.x, pcmd->ClipRect.y - clip_off.y);
-            ImVec2 clip_max(pcmd->ClipRect.z - clip_off.x, pcmd->ClipRect.w - clip_off.y);
-            if (clip_max.x <= clip_min.x || clip_max.y <= clip_min.y)
-                continue;
+            if (pcmd->UserCallback)
+            {
+                pcmd->UserCallback(cmdList, pcmd);
+            }
+            else
+            {
+                // Project scissor/clipping rectangles into framebuffer space
+                ImVec2 clip_min((pcmd->ClipRect.x - clipOff.x) * clipScale.x, (pcmd->ClipRect.y - clipOff.y) * clipScale.y);
+                ImVec2 clip_max((pcmd->ClipRect.z - clipOff.x) * clipScale.x, (pcmd->ClipRect.w - clipOff.y) * clipScale.y);
 
-            RHI::Viewport viewport{};
-            viewport.width = drawData->DisplaySize.x;
-            viewport.height = drawData->DisplaySize.y;
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-            viewport.offsetX = viewport.offsetY = 0;
-            RHI::Scissor scissor{};
-            scissor.offsetX = int32_t(clip_min.x);
-            scissor.offsetY = int32_t(clip_min.y);
-            scissor.width = uint32_t(clip_max.x);
-            scissor.height = uint32_t(clip_max.y);
+                // Clamp to viewport as vkCmdSetScissor() won't accept values that are off bounds
+                if (clip_min.x < 0.0f) { clip_min.x = 0.0f; }
+                if (clip_min.y < 0.0f) { clip_min.y = 0.0f; }
+                if (clip_max.x > fb_width) { clip_max.x = (float)fb_width; }
+                if (clip_max.y > fb_height) { clip_max.y = (float)fb_height; }
+                if (clip_max.x <= clip_min.x || clip_max.y <= clip_min.y)
+                    continue;
 
-            commandList.SetSicssor(scissor);
-            commandList.SetViewport(viewport);
+                // Apply scissor/clipping rectangle
+                RHI::Scissor scissor{};
+                scissor.offsetX = (int32_t)(clip_min.x);
+                scissor.offsetY = (int32_t)(clip_min.y);
+                scissor.width = (uint32_t)(clip_max.x - clip_min.x);
+                scissor.height = (uint32_t)(clip_max.y - clip_min.y);
+                commandList.SetSicssor(scissor);
 
-            // Bind texture, Draw
-            RHI::DrawInfo drawInfo{};
-            drawInfo.bindGroups = m_bindGroup;
-            drawInfo.pipelineState = m_pipeline;
-            drawInfo.indexBuffers = m_indexBuffer;
-            drawInfo.vertexBuffers = m_vertexBuffer;
-            drawInfo.parameters.elementCount = pcmd->ElemCount;
-            drawInfo.parameters.vertexOffset = pcmd->VtxOffset + globalVtxOffset;
-            drawInfo.parameters.firstElement = pcmd->IdxOffset + globalIdxOffset;
-            commandList.Draw(drawInfo);
+                // Bind texture, Draw
+                RHI::DrawInfo drawInfo{};
+                drawInfo.bindGroups = m_bindGroup;
+                drawInfo.pipelineState = m_pipeline;
+                drawInfo.indexBuffers = m_indexBuffer;
+                drawInfo.vertexBuffers = m_vertexBuffer;
+                drawInfo.parameters.elementCount = pcmd->ElemCount;
+                drawInfo.parameters.vertexOffset = pcmd->VtxOffset + globalVtxOffset;
+                drawInfo.parameters.firstElement = pcmd->IdxOffset + globalIdxOffset;
+                commandList.Draw(drawInfo);
+            }
         }
 
         globalIdxOffset += cmdList->IdxBuffer.Size;
@@ -481,42 +493,43 @@ void ImGuiRenderer::InstallGlfwCallbacks(GLFWwindow* window)
     m_installedCallbacks = true;
 }
 
-// Same as IM_MEMALIGN(). 'alignment' must be a power of two.
-static inline size_t AlignBufferSize(size_t size, size_t alignment)
-{
-    return (size + alignment - 1) & ~(alignment - 1);
-}
-
 void ImGuiRenderer::UpdateBuffers(ImDrawData* drawData)
 {
-    auto requiredVertexBufferSize = RHI::AlignUp((drawData->TotalVtxCount + 5000) * sizeof(ImDrawVert), 256ull);
-    if (m_vertexBufferSize < requiredVertexBufferSize)
+    // Avoid rendering when minimized
+    if (drawData->DisplaySize.x <= 0.0f || drawData->DisplaySize.y <= 0.0f)
+        return;
+
+    if ((size_t)drawData->TotalVtxCount > m_vertexBufferSize)
     {
+        m_vertexBufferSize = (size_t)drawData->TotalVtxCount + 5000;
+
         if (m_vertexBuffer)
             m_context->DestroyBuffer(m_vertexBuffer);
 
         RHI::BufferCreateInfo createInfo{};
-        createInfo.byteSize = requiredVertexBufferSize;
+        createInfo.byteSize = m_vertexBufferSize * sizeof(ImDrawVert);
         createInfo.usageFlags = RHI::BufferUsage::Vertex;
         m_vertexBuffer = m_context->CreateBuffer(createInfo).GetValue();
-        m_vertexBufferSize = requiredVertexBufferSize;
     }
 
-    auto requiredIndexBufferSize = AlignBufferSize((drawData->TotalIdxCount + 5000) * sizeof(ImDrawIdx), 256);
-    if (m_indexBufferSize < requiredIndexBufferSize)
+    if ((size_t)drawData->TotalIdxCount > m_indexBufferSize)
     {
+        m_indexBufferSize = (size_t)drawData->TotalIdxCount + 10000;
+
         if (m_indexBuffer)
             m_context->DestroyBuffer(m_indexBuffer);
 
         RHI::BufferCreateInfo createInfo{};
-        createInfo.byteSize = requiredIndexBufferSize;
+        createInfo.byteSize = m_indexBufferSize * sizeof(ImDrawIdx);
         createInfo.usageFlags = RHI::BufferUsage::Index;
         m_indexBuffer = m_context->CreateBuffer(createInfo).GetValue();
-        m_indexBufferSize = requiredIndexBufferSize;
     }
 
-    auto indexBufferPtr = (ImDrawVert*)m_context->MapBuffer(m_indexBuffer);
-    auto vertexBufferPtr = (ImDrawIdx*)m_context->MapBuffer(m_vertexBuffer);
+    if (drawData->TotalIdxCount == 0 || drawData->TotalVtxCount == 0)
+        return;
+
+    auto indexBufferPtr = (ImDrawIdx*)m_context->MapBuffer(m_indexBuffer);
+    auto vertexBufferPtr = (ImDrawVert*)m_context->MapBuffer(m_vertexBuffer);
     for (int n = 0; n < drawData->CmdListsCount; n++)
     {
         const ImDrawList* cmdList = drawData->CmdLists[n];
@@ -533,11 +546,12 @@ void ImGuiRenderer::UpdateBuffers(ImDrawData* drawData)
         float R = drawData->DisplayPos.x + drawData->DisplaySize.x;
         float T = drawData->DisplayPos.y;
         float B = drawData->DisplayPos.y + drawData->DisplaySize.y;
-        float mvp[4][4] = {
-            { 2.0f / (R - L), 0.0f, 0.0f, 0.0f },
-            { 0.0f, 2.0f / (T - B), 0.0f, 0.0f },
-            { 0.0f, 0.0f, 0.5f, 0.0f },
-            { (R + L) / (L - R), (T + B) / (B - T), 0.5f, 1.0f },
+        float mvp[4][4] =
+        {
+            { 2.0f/(R-L),   0.0f,           0.0f,       0.0f },
+            { 0.0f,         2.0f/(T-B),     0.0f,       0.0f },
+            { 0.0f,         0.0f,           0.5f,       0.0f },
+            { (R+L)/(L-R),  (T+B)/(B-T),    0.5f,       1.0f },
         };
         auto uniformBufferPtr = m_context->MapBuffer(m_uniformBuffer);
         memcpy(uniformBufferPtr, mvp, sizeof(mvp));
