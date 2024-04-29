@@ -7,12 +7,12 @@ namespace RHI::Vulkan
     class IContext;
     class ICommandList;
 
-    ICommandListAllocator::ICommandListAllocator(IContext* context)
+    ICommandPool::ICommandPool(IContext* context)
         : m_context(context)
     {
     }
 
-    ICommandListAllocator::~ICommandListAllocator()
+    ICommandPool::~ICommandPool()
     {
         for (auto queueCommandPool : m_commandPools)
         {
@@ -23,7 +23,7 @@ namespace RHI::Vulkan
         }
     }
 
-    VkResult ICommandListAllocator::Init()
+    VkResult ICommandPool::Init()
     {
         for (uint32_t queueType = 0; queueType < uint32_t(QueueType::Count); queueType++)
         {
@@ -47,7 +47,7 @@ namespace RHI::Vulkan
         return VK_SUCCESS;
     }
 
-    void ICommandListAllocator::Reset()
+    void ICommandPool::Reset()
     {
         for (auto queueCommandPool : m_commandPools)
         {
@@ -59,12 +59,12 @@ namespace RHI::Vulkan
         }
     }
 
-    CommandList* ICommandListAllocator::Allocate(QueueType queueType)
+    CommandList* ICommandPool::Allocate(QueueType queueType)
     {
         return Allocate(queueType, 1).front();
     }
 
-    TL::Vector<CommandList*> ICommandListAllocator::Allocate(QueueType queueType, uint32_t count)
+    TL::Vector<CommandList*> ICommandPool::Allocate(QueueType queueType, uint32_t count)
     {
         auto commandPool = m_commandPools[uint32_t(queueType)][0];
         auto commandBuffers = AllocateCommandBuffers(commandPool, count, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
@@ -77,7 +77,7 @@ namespace RHI::Vulkan
         return commandLists;
     }
 
-    void ICommandListAllocator::Release(TL::Span<CommandList*> _commandLists)
+    void ICommandPool::Release(TL::Span<CommandList*> _commandLists)
     {
         (void)_commandLists;
         // auto commandLists = TL::Span((ICommandList*)_commandLists.data(), _commandLists.size());
@@ -94,9 +94,10 @@ namespace RHI::Vulkan
         // m_context->m_deferDeleteQueue.push_back([=](){
         //     vkFreeCommandBuffers(device, commandPool, uint32_t(commandBuffers.size()), commandBuffers.data());
         // });
+
     }
 
-    TL::Vector<VkCommandBuffer> ICommandListAllocator::AllocateCommandBuffers(VkCommandPool pool, uint32_t count, VkCommandBufferLevel level)
+    TL::Vector<VkCommandBuffer> ICommandPool::AllocateCommandBuffers(VkCommandPool pool, uint32_t count, VkCommandBufferLevel level)
     {
         TL::Vector<VkCommandBuffer> commandBuffers;
         commandBuffers.resize(count);
@@ -111,7 +112,7 @@ namespace RHI::Vulkan
         return commandBuffers;
     }
 
-    void ICommandListAllocator::ReleaseCommandBuffers(VkCommandPool pool, TL::Span<VkCommandBuffer> commandBuffers)
+    void ICommandPool::ReleaseCommandBuffers(VkCommandPool pool, TL::Span<VkCommandBuffer> commandBuffers)
     {
         auto device = m_context->m_device;
         m_context->m_deferDeleteQueue.push_back([=]()

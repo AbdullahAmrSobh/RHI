@@ -12,7 +12,7 @@ namespace RHI::Vulkan
     IFrameScheduler::IFrameScheduler(IContext* context)
         : FrameScheduler(context)
     {
-        m_commandPool = CreatePtr<ICommandListAllocator>(context);
+        m_commandPool = CreatePtr<ICommandPool>(context);
     }
 
     IFrameScheduler::~IFrameScheduler()
@@ -26,7 +26,7 @@ namespace RHI::Vulkan
         vkGetDeviceQueue(context->m_device, context->m_computeQueueFamilyIndex, 0, &m_computeQueue);
         vkGetDeviceQueue(context->m_device, context->m_transferQueueFamilyIndex, 0, &m_transferQueue);
 
-        ((ICommandListAllocator*)m_commandPool.get())->Init();
+        ((ICommandPool*)m_commandPool.get())->Init();
 
         return VK_SUCCESS;
     }

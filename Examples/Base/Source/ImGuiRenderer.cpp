@@ -315,6 +315,7 @@ void ImGuiRenderer::Init(ImGuiRendererCreateInfo createInfo)
 
         {
             RHI::BufferCreateInfo bufferCreateInfo{};
+            bufferCreateInfo.debugName = "ImGui-UniformBuffer";
             bufferCreateInfo.byteSize = sizeof(float) * 4 * 4;
             bufferCreateInfo.usageFlags = RHI::BufferUsage::Uniform;
             m_uniformBuffer = m_context->CreateBuffer(bufferCreateInfo).GetValue();
@@ -359,6 +360,7 @@ void ImGuiRenderer::Init(ImGuiRendererCreateInfo createInfo)
         auto shaderModule = m_context->CreateShaderModule(createInfo.shaderBlob);
 
         RHI::GraphicsPipelineCreateInfo pipelineCreateInfo{};
+        pipelineCreateInfo.debugName = "ImGui-Pipeline";
         pipelineCreateInfo.pixelShaderName = "PSMain";
         pipelineCreateInfo.vertexShaderName = "VSMain";
         pipelineCreateInfo.pixelShaderModule = shaderModule.get();
@@ -507,6 +509,7 @@ void ImGuiRenderer::UpdateBuffers(ImDrawData* drawData)
             m_context->DestroyBuffer(m_vertexBuffer);
 
         RHI::BufferCreateInfo createInfo{};
+        createInfo.debugName = "ImGui-VertexBuffer";
         createInfo.byteSize = m_vertexBufferSize * sizeof(ImDrawVert);
         createInfo.usageFlags = RHI::BufferUsage::Vertex;
         m_vertexBuffer = m_context->CreateBuffer(createInfo).GetValue();
@@ -520,6 +523,7 @@ void ImGuiRenderer::UpdateBuffers(ImDrawData* drawData)
             m_context->DestroyBuffer(m_indexBuffer);
 
         RHI::BufferCreateInfo createInfo{};
+        createInfo.debugName = "ImGui-IndexBuffer";
         createInfo.byteSize = m_indexBufferSize * sizeof(ImDrawIdx);
         createInfo.usageFlags = RHI::BufferUsage::Index;
         m_indexBuffer = m_context->CreateBuffer(createInfo).GetValue();

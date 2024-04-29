@@ -65,9 +65,14 @@ public:
         m_camera.Update(timestep);
         m_scene->UpdateUniformBuffers(*m_context, m_camera.GetView(), m_camera.GetProjection());
 
+        static float cameraSpeed = 1.0f;
+
         ImGui::NewFrame();
-        ImGui::ShowDemoWindow();
+        ImGui::Text("Basic scene: ");
+        ImGui::SliderFloat("camera speed", &cameraSpeed, 0.1f, 5.0f);
         ImGui::Render();
+
+        m_camera.SetMovementSpeed(cameraSpeed);
 
         Render(m_context->GetScheduler());
         m_swapchain->Present();

@@ -9,12 +9,12 @@ namespace RHI::Vulkan
 {
     class IContext;
 
-    class ICommandListAllocator final : public CommandPool
+    class ICommandPool final : public CommandPool
     {
     public:
-        ICommandListAllocator(IContext* context);
+        ICommandPool(IContext* context);
 
-        ~ICommandListAllocator();
+        ~ICommandPool();
 
         VkResult Init();
 

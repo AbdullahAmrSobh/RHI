@@ -40,21 +40,6 @@ compile_slang_shaders(
 )
 
 
-#TODO: cleanup this mess up
-function(copy_resources)
-    # Get the source and destination directories
-    set(source_dir ${CMAKE_CURRENT_SOURCE_DIR}/Resources)
-    set(destination_dir ${CMAKE_CURRENT_BINARY_DIR}/Resources)
-
-    # Make sure the destination directory exists
-    file(MAKE_DIRECTORY ${destination_dir})
-
-    # Recursively copy all files
-    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/Resources DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
-endfunction()
-
-copy_resources()
-
 add_custom_command(TARGET Triangle POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
         "${CMAKE_SOURCE_DIR}/Examples/Dependencies/assimp/Bin/assimp-vc143-mtd.dll"

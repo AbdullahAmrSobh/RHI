@@ -203,7 +203,7 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto commandPool = CreatePtr<ICommandListAllocator>(this);
+        auto commandPool = CreatePtr<ICommandPool>(this);
         auto result = commandPool->Init();
         if (result != VK_SUCCESS)
         {
