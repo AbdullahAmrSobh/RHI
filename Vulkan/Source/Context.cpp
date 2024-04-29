@@ -547,7 +547,7 @@ namespace RHI::Vulkan
         }
     }
 
-    VkSemaphore IContext::CreateSemaphore(bool timeline, uint64_t initialValue)
+    VkSemaphore IContext::CreateSemaphore(const char* name, bool timeline, uint64_t initialValue)
     {
         VkSemaphoreTypeCreateInfo timelineInfo{};
         timelineInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
@@ -561,6 +561,9 @@ namespace RHI::Vulkan
         VkSemaphore semaphore = VK_NULL_HANDLE;
         auto result = vkCreateSemaphore(m_device, &createInfo, nullptr, &semaphore);
         VULKAN_ASSERT_SUCCESS(result);
+
+        SetDebugName(VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT, (uint64_t)semaphore, name);
+
         return semaphore;
     }
 

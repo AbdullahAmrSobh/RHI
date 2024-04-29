@@ -71,7 +71,7 @@ namespace RHI::Vulkan
 
         void SetDebugName(VkDebugReportObjectTypeEXT type, uint64_t handle, const char* name);
 
-        VkSemaphore CreateSemaphore(bool timeline = false, uint64_t initialValue = 0);
+        VkSemaphore CreateSemaphore(const char* name = nullptr, bool timeline = false, uint64_t initialValue = 0);
 
         void DestroySemaphore(VkSemaphore semaphore);
 

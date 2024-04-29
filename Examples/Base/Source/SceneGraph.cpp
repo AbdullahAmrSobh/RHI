@@ -273,7 +273,7 @@ RHI::Handle<Material> Scene::LoadMaterial(RHI::Context& context, const aiMateria
     // auto metallicData = LoadImage(PrefixString(prefixPath, metallicPath));
 
     RHI::ImageCreateInfo imageInfo{};
-    imageInfo.debugName = "albedo";
+    imageInfo.name = "albedo";
     imageInfo.usageFlags = RHI::ImageUsage::ShaderResource;
     imageInfo.usageFlags |= RHI::ImageUsage::CopyDst;
     imageInfo.format = RHI::Format::RGBA8_UNORM;

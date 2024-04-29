@@ -49,8 +49,8 @@ namespace RHI::Vulkan
 
         m_createInfo = createInfo;
 
-        m_imageAcquiredSemaphore = context->CreateSemaphore();
-        m_frameReadySemaphore = context->CreateSemaphore();
+        m_imageAcquiredSemaphore = context->CreateSemaphore("Swapchain-ImageAcquired");
+        m_frameReadySemaphore = context->CreateSemaphore("Swapchain-ImageReady");
 
         InitSurface(createInfo);
 
@@ -208,6 +208,13 @@ namespace RHI::Vulkan
         result = vkGetSwapchainImagesKHR(m_context->m_device, m_swapchain, &imagesCount, images.data());
         VULKAN_RETURN_VKERR_CODE(result);
 
+        // todo: swapchain should have a name, and image names should be prefixed by that swapchain name
+        const char* imageNames[] =
+        {
+            "Swapchain-Image-0",
+            "Swapchain-Image-1",
+            "Swapchain-Image-2",
+        };
         for (uint32_t imageIndex = 0; imageIndex < m_swapchainImagesCount; imageIndex++)
         {
             IImage image{};
@@ -216,6 +223,8 @@ namespace RHI::Vulkan
             image.format = m_surfaceFormat.format;
             image.imageType = VK_IMAGE_TYPE_2D;
             m_images[imageIndex] = m_context->m_imageOwner.Insert(image);
+
+            m_context->SetDebugName(VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, uint64_t(images[imageIndex]), imageNames[imageIndex]);
         }
         result = vkAcquireNextImageKHR(m_context->m_device, m_swapchain, UINT64_MAX, m_imageAcquiredSemaphore, VK_NULL_HANDLE, &m_currentImageIndex);
         VULKAN_ASSERT_SUCCESS(result);

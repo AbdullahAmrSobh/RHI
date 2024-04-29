@@ -15,7 +15,7 @@ namespace RHI
 
     ImageAttachment* FrameScheduler::CreateImage(const ImageCreateInfo& createInfo)
     {
-        auto attachment = (ImageAttachment*)m_attachmentsLut.insert(std::make_pair(createInfo.debugName, CreatePtr<ImageAttachment>(createInfo.debugName, createInfo))).first->second.get();
+        auto attachment = (ImageAttachment*)m_attachmentsLut.insert(std::make_pair(createInfo.name, CreatePtr<ImageAttachment>(createInfo.name, createInfo))).first->second.get();
         m_attachments.push_back(attachment);
         m_imageAttachments.push_back(attachment);
         m_transientAttachments.push_back(attachment);
@@ -24,7 +24,7 @@ namespace RHI
 
     BufferAttachment* FrameScheduler::CreateBuffer(const BufferCreateInfo& createInfo)
     {
-        auto attachment = (BufferAttachment*)m_attachmentsLut.insert(std::make_pair(createInfo.debugName, CreatePtr<BufferAttachment>(createInfo.debugName, createInfo.byteSize))).first->second.get();
+        auto attachment = (BufferAttachment*)m_attachmentsLut.insert(std::make_pair(createInfo.name, CreatePtr<BufferAttachment>(createInfo.name, createInfo.byteSize))).first->second.get();
         m_attachments.push_back(attachment);
         m_transientAttachments.push_back(attachment);
         m_bufferAttachments.push_back(attachment);

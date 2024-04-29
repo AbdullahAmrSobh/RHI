@@ -579,7 +579,7 @@ namespace RHI
     /// @brief Represent the creation parameters of an image resource.
     struct ImageCreateInfo
     {
-        const char*       debugName;
+        const char*       name;
         AllocationInfo    allocationInfo;
         Flags<ImageUsage> usageFlags;                          // Usage flags.
         ImageType         type;                                // The type of the image.
@@ -595,7 +595,7 @@ namespace RHI
     /// @brief Represent the creation parameters of an buffer resource.
     struct BufferCreateInfo
     {
-        const char*        debugName;
+        const char*        name;
         AllocationInfo     allocationInfo;
         Flags<BufferUsage> usageFlags; // Usage flags.
         size_t             byteSize;   // The size of the buffer.
@@ -615,7 +615,7 @@ namespace RHI
             subresource.imageAspects = aspect;
         }
 
-        const char*           debugName;
+        const char*           name;
         Handle<Image>         image;
         ImageViewType         viewType;
         ComponentMapping      components;
@@ -627,7 +627,7 @@ namespace RHI
     /// @brief Structure specifying the parameters of an buffer attachment.
     struct BufferViewCreateInfo
     {
-        const char*    debugName;
+        const char*    name;
         Handle<Buffer> buffer;
         Format         format;
         size_t         byteOffset;
@@ -639,7 +639,7 @@ namespace RHI
     /// @brief Description of the graphics pipeline states.
     struct GraphicsPipelineCreateInfo
     {
-        const char*                     debugName;
+        const char*                     name;
 
         const char*                     vertexShaderName;
         ShaderModule*                   vertexShaderModule;
@@ -659,7 +659,7 @@ namespace RHI
     /// @brief Description of a compute pipeline state.
     struct ComputePipelineCreateInfo
     {
-        const char*            debugName;
+        const char*            name;
 
         const char*            shaderName;
         ShaderModule*          shaderModule;
@@ -678,7 +678,7 @@ namespace RHI
                           float                   minLod     = 0.0f,
                           float                   maxLod     = 1.0f);
 
-        const char*             debugName;
+        const char*             name;
 
         SamplerFilter           filterMin  = SamplerFilter::Point;
         SamplerFilter           filterMag  = SamplerFilter::Point;

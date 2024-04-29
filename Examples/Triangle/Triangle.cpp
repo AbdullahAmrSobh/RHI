@@ -28,7 +28,7 @@ public:
         auto colorAttachment = scheduler.ImportSwapchain("color-attachment", *m_swapchain);
 
         RHI::ImageCreateInfo depthCreateInfo{};
-        depthCreateInfo.debugName = "depth-attachment";
+        depthCreateInfo.name = "depth-attachment";
         depthCreateInfo.format = RHI::Format::D32;
         depthCreateInfo.usageFlags = RHI::ImageUsage::DepthStencil;
         depthCreateInfo.type = RHI::ImageType::Image2D;
