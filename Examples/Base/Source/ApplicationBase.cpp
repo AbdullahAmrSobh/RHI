@@ -111,7 +111,7 @@ ApplicationBase::ApplicationBase(std::string name, uint32_t width, uint32_t heig
 
 void ApplicationBase::Init()
 {
-    ZoneScopedN("app-base-ini");
+    ZoneScoped;
 
     // create swapchain
     RHI::SwapchainCreateInfo createInfo{};
@@ -151,7 +151,7 @@ void ApplicationBase::Init()
 
 void ApplicationBase::Shutdown()
 {
-    ZoneScopedN("app-base-shutdown");
+    ZoneScoped;
     m_imguiRenderer->Shutdown();
     OnShutdown();
     glfwTerminate();
