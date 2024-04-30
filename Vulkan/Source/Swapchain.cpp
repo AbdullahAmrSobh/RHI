@@ -48,6 +48,8 @@ namespace RHI::Vulkan
         auto context = static_cast<IContext*>(m_context);
 
         m_createInfo = createInfo;
+        m_name = createInfo.name ? createInfo.name : "";
+        m_createInfo.name = m_name.c_str();
 
         m_imageAcquiredSemaphore = context->CreateSemaphore("Swapchain-ImageAcquired");
         m_frameReadySemaphore = context->CreateSemaphore("Swapchain-ImageReady");
@@ -205,6 +207,7 @@ namespace RHI::Vulkan
 
         auto result = vkCreateSwapchainKHR(m_context->m_device, &createInfo, nullptr, &m_swapchain);
         VULKAN_RETURN_VKERR_CODE(result);
+        m_context->SetDebugName(VK_DEBUG_REPORT_OBJECT_TYPE_SWAPCHAIN_KHR_EXT, (uint64_t)m_swapchain, m_name.c_str());
 
         uint32_t imagesCount;
         result = vkGetSwapchainImagesKHR(m_context->m_device, m_swapchain, &imagesCount, nullptr);

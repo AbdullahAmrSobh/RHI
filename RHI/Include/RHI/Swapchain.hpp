@@ -25,8 +25,7 @@ namespace RHI
     /// @brief Structure specifying the parameters of the swapchain.
     struct SwapchainCreateInfo
     {
-        const char*       debugName;
-
+        const char*       name;
         ImageSize2D       imageSize;   // The size of the images in the swapchian.
         Flags<ImageUsage> imageUsage;  // Image usage flags applied to all created images.
         Format            imageFormat; // The format of created swapchain image.
@@ -74,6 +73,8 @@ namespace RHI
         // clang-format off
         TL::UnorderedMap<ImageViewCreateInfo, Handle<ImageView>> m_imageViewsLRU;
         // clang-format on
+
+        TL::String m_name;
     };
 } // namespace RHI
 
