@@ -49,11 +49,17 @@ public:
         m_renderPass->UseImageAttachment(depthAttachment, useInfo);
 
         scheduler.Compile();
+
+        m_commandList[0] = m_commandPool->Allocate(RHI::QueueType::Graphics);
+        m_commandList[1] = m_commandPool->Allocate(RHI::QueueType::Graphics);
     }
 
     void OnShutdown() override
     {
         ZoneScoped;
+
+        m_commandPool->Release(m_commandList[0]);
+        m_commandPool->Release(m_commandList[1]);
     }
 
     void OnUpdate(Timestep timestep) override
@@ -92,16 +98,17 @@ public:
         scissor.width = m_windowWidth;
         scissor.height = m_windowHeight;
 
-        auto commandList = m_commandPool->Allocate(RHI::QueueType::Graphics);
-        commandList->Begin(*m_renderPass);
-        commandList->SetViewport(viewport);
-        commandList->SetSicssor(scissor);
-        m_scene->Draw(*commandList);
-        m_imguiRenderer->RenderDrawData(ImGui::GetDrawData(), *commandList);
+        static int i = 0;
+        i = i & 1 ? 0 : 1;
 
-        commandList->End();
-        m_renderPass->Submit(commandList);
-        m_commandPool->Release(commandList);
+        m_commandList[i]->Begin(*m_renderPass);
+        m_commandList[i]->SetViewport(viewport);
+        m_commandList[i]->SetSicssor(scissor);
+        m_scene->Draw(*m_commandList[i]);
+        m_imguiRenderer->RenderDrawData(ImGui::GetDrawData(), *m_commandList[i]);
+
+        m_commandList[i]->End();
+        m_renderPass->Submit(m_commandList[i]);
 
         scheduler.End();
     }
@@ -109,6 +116,7 @@ public:
 private:
     RHI::Ptr<Scene> m_scene;
     RHI::Ptr<RHI::Pass> m_renderPass;
+    RHI::CommandList* m_commandList[2];
 };
 
 int main(int argc, const char** argv)
