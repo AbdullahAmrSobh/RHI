@@ -258,13 +258,13 @@ void Scene::LoadPipeline(RHI::Context& context, const char* shaderPath)
     m_pbrPipeline = context.CreateGraphicsPipeline(createInfo);
 }
 
-RHI::Handle<Material> Scene::LoadMaterial(RHI::Context& context, const aiMaterial& material)
+RHI::Handle<Material> Scene::LoadMaterial(RHI::Context& context, const aiMaterial& aiMaterial)
 {
     aiString albedoPath, normalPath, roughnessPath, metallicPath;
-    material.GetTexture(aiTextureType_DIFFUSE, 0, &albedoPath);
-    material.GetTexture(aiTextureType_NORMALS, 0, &normalPath);
-    material.GetTexture(aiTextureType_DIFFUSE_ROUGHNESS, 0, &roughnessPath);
-    material.GetTexture(aiTextureType_METALNESS, 0, &metallicPath);
+    aiMaterial.GetTexture(aiTextureType_DIFFUSE, 0, &albedoPath);
+    aiMaterial.GetTexture(aiTextureType_NORMALS, 0, &normalPath);
+    aiMaterial.GetTexture(aiTextureType_DIFFUSE_ROUGHNESS, 0, &roughnessPath);
+    aiMaterial.GetTexture(aiTextureType_METALNESS, 0, &metallicPath);
 
     const char* prefixPath = "I:/Main.1_Sponza/"; // TODO: add proper fix
     auto albedoData = LoadImage(PrefixString(prefixPath, albedoPath));
@@ -293,17 +293,17 @@ RHI::Handle<Material> Scene::LoadMaterial(RHI::Context& context, const aiMateria
     // imageInfo.debugName = "metallic";
     // auto metallicTexture = RHI::CreateImageWithData<uint8_t>(context, imageInfo, metallicData.data).GetValue();
 
-    Material result;
-    result.albedoMap = albedoTexture;
-    // result.normalMap = normalTexture;
-    // result.roughnessMap = roughnessTexture;
-    // result.metallicMap = metallicTexture;
-    return m_materialOwner.Insert(result);
+    auto [handle, material] = m_materialOwner.New();
+    material.albedoMap = albedoTexture;
+    // material.normalMap = normalTexture;
+    // material.roughnessMap = roughnessTexture;
+    // material.metallicMap = metallicTexture;
+    return handle;
 }
 
 RHI::Handle<StaticMesh> Scene::LoadStaticMesh(RHI::Context& context, RHI::Handle<Material> material, const aiMesh& aiMesh)
 {
-    auto [handle, mesh] = m_staticMeshOwner.InsertZerod();
+    auto [handle, mesh] = m_staticMeshOwner.New();
     mesh.name = std::string(aiMesh.mName.C_Str());
     mesh.material = material;
 

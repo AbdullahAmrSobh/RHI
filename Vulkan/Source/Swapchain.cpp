@@ -217,21 +217,20 @@ namespace RHI::Vulkan
         VULKAN_RETURN_VKERR_CODE(result);
 
         // todo: swapchain should have a name, and image names should be prefixed by that swapchain name
-        const char* imageNames[] =
-        {
+        const char* imageNames[] = {
             "Swapchain-Image-0",
             "Swapchain-Image-1",
             "Swapchain-Image-2",
         };
+
         for (uint32_t imageIndex = 0; imageIndex < m_swapchainImagesCount; imageIndex++)
         {
-            IImage image{};
+            auto [handle, image] = m_context->m_imageOwner.New();
+            m_images[imageIndex] = handle;
             image.pool = nullptr;
             image.handle = images[imageIndex];
             image.format = m_surfaceFormat.format;
             image.imageType = VK_IMAGE_TYPE_2D;
-            m_images[imageIndex] = m_context->m_imageOwner.Insert(image);
-
             m_context->SetDebugName(VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, uint64_t(images[imageIndex]), imageNames[imageIndex]);
         }
         result = vkAcquireNextImageKHR(m_context->m_device, m_swapchain, UINT64_MAX, m_imageAcquiredSemaphore, VK_NULL_HANDLE, &m_currentImageIndex);

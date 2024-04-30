@@ -229,7 +229,7 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto [handle, bindGroupLayout] = m_bindGroupLayoutsOwner.InsertZerod();
+        auto [handle, bindGroupLayout] = m_bindGroupLayoutsOwner.New();
         auto result = bindGroupLayout.Init(this, createInfo);
         if (IsError(result))
         {
@@ -255,7 +255,7 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto [handle, bindGroup] = m_bindGroupOwner.InsertZerod();
+        auto [handle, bindGroup] = m_bindGroupOwner.New();
         auto result = bindGroup.Init(this, layoutHandle);
         if (IsError(result))
         {
@@ -289,7 +289,7 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto [handle, pipelineLayout] = m_pipelineLayoutOwner.InsertZerod();
+        auto [handle, pipelineLayout] = m_pipelineLayoutOwner.New();
         auto result = pipelineLayout.Init(this, createInfo);
         if (IsError(result))
         {
@@ -315,7 +315,7 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto [handle, graphicsPipeline] = m_graphicsPipelineOwner.InsertZerod();
+        auto [handle, graphicsPipeline] = m_graphicsPipelineOwner.New();
         auto result = graphicsPipeline.Init(this, createInfo);
         if (IsError(result))
         {
@@ -341,7 +341,7 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto [handle, computePipeline] = m_computePipelineOwner.InsertZerod();
+        auto [handle, computePipeline] = m_computePipelineOwner.New();
         auto result = computePipeline.Init(this, createInfo);
         if (IsError(result))
         {
@@ -367,7 +367,7 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto [handle, sampler] = m_samplerOwner.InsertZerod();
+        auto [handle, sampler] = m_samplerOwner.New();
         auto result = sampler.Init(this, createInfo);
         if (IsError(result))
         {
@@ -393,7 +393,7 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto [handle, image] = m_imageOwner.InsertZerod();
+        auto [handle, image] = m_imageOwner.New();
         auto result = image.Init(this, createInfo);
         if (IsError(result))
         {
@@ -420,7 +420,7 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto [handle, buffer] = m_bufferOwner.InsertZerod();
+        auto [handle, buffer] = m_bufferOwner.New();
         auto result = buffer.Init(this, createInfo);
         if (IsError(result))
         {
@@ -447,7 +447,7 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto [handle, imageView] = m_imageViewOwner.InsertZerod();
+        auto [handle, imageView] = m_imageViewOwner.New();
         auto result = imageView.Init(this, createInfo);
         if (IsError(result))
         {
@@ -473,7 +473,7 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto [handle, bufferView] = m_bufferViewOwner.InsertZerod();
+        auto [handle, bufferView] = m_bufferViewOwner.New();
         auto result = bufferView.Init(this, createInfo);
         if (IsError(result))
         {
