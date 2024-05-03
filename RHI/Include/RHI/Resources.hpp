@@ -454,8 +454,8 @@ namespace RHI
         {
             uint32_t                   arrayOffset;
             TL::Vector<Handle<Buffer>> views;
-            bool dynamic;
-            size_t elementSize;
+            bool                       dynamic;
+            size_t                     elementSize;
         };
 
         struct ResourceBufferViewBinding

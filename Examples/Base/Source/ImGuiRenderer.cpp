@@ -402,11 +402,11 @@ void ImGuiRenderer::Shutdown()
     m_context->DestroyImageView(m_imageView);
     m_context->DestroySampler(m_sampler);
     m_context->DestroyImage(m_image);
-    if (m_indexBuffer)
+    if (m_indexBuffer != RHI::NullHandle)
         m_context->DestroyBuffer(m_indexBuffer);
-    if (m_vertexBuffer)
+    if (m_vertexBuffer != RHI::NullHandle)
         m_context->DestroyBuffer(m_vertexBuffer);
-    if (m_uniformBuffer)
+    if (m_uniformBuffer != RHI::NullHandle)
         m_context->DestroyBuffer(m_uniformBuffer);
 }
 
@@ -505,7 +505,7 @@ void ImGuiRenderer::UpdateBuffers(ImDrawData* drawData)
     {
         m_vertexBufferSize = (size_t)drawData->TotalVtxCount + 5000;
 
-        if (m_vertexBuffer)
+        if (m_vertexBuffer != RHI::NullHandle)
             m_context->DestroyBuffer(m_vertexBuffer);
 
         RHI::BufferCreateInfo createInfo{};
@@ -519,7 +519,7 @@ void ImGuiRenderer::UpdateBuffers(ImDrawData* drawData)
     {
         m_indexBufferSize = (size_t)drawData->TotalIdxCount + 10000;
 
-        if (m_indexBuffer)
+        if (m_indexBuffer != RHI::NullHandle)
             m_context->DestroyBuffer(m_indexBuffer);
 
         RHI::BufferCreateInfo createInfo{};

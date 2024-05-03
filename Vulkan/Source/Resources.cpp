@@ -427,7 +427,7 @@ namespace RHI::Vulkan
         TL::Vector<VkDescriptorSetLayout> descriptorSetLayouts;
         for (auto bindGroupLayout : createInfo.layouts)
         {
-            if (bindGroupLayout == false)
+            if (bindGroupLayout == RHI::NullHandle)
             {
                 break;
             }

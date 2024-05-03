@@ -7,9 +7,11 @@
 
 namespace RHI
 {
-    struct NullHandle final
+    struct NullHandle_T final
     {
     };
+
+    inline constexpr NullHandle_T NullHandle = {};
 
     template<typename Resource>
     class Handle final
@@ -33,11 +35,6 @@ namespace RHI
             m_rawHandle.genId = baseHandle.m_rawHandle.genId;
         }
 
-        inline operator bool() const
-        {
-            return m_handle != UINT64_MAX;
-        }
-
         inline bool operator==(Handle other) const
         {
             return m_handle == other.m_handle;
@@ -53,9 +50,9 @@ namespace RHI
             return m_handle;
         }
 
-        inline bool operator==(const NullHandle&) const
+        inline bool operator==(const NullHandle_T&) const
         {
-            return m_rawHandle == UINT64_MAX;
+            return m_handle == UINT64_MAX;
         }
 
     private:

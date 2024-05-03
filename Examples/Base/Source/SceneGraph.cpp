@@ -176,7 +176,7 @@ void Scene::Draw(RHI::CommandList& commandList) const
             drawInfo.dynamicOffset = { uint32_t(sizeof(Shader::PerDraw) * nodeIndex) };
             drawInfo.parameters.elementCount = mesh->elementsCount;
             drawInfo.vertexBuffers = { mesh->position, mesh->normals };
-            if (mesh->indcies)
+            if (mesh->indcies != RHI::NullHandle)
             {
                 drawInfo.indexBuffers = mesh->indcies;
             }

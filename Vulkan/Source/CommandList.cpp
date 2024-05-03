@@ -508,7 +508,7 @@ namespace RHI::Vulkan
         }
 
         auto parameters = drawInfo.parameters;
-        if (drawInfo.indexBuffers)
+        if (drawInfo.indexBuffers != RHI::NullHandle)
         {
             auto buffer = m_context->m_bufferOwner.Get(drawInfo.indexBuffers);
             vkCmdBindIndexBuffer(m_commandBuffer, buffer->handle, 0, VK_INDEX_TYPE_UINT32);
