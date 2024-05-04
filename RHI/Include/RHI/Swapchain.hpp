@@ -5,6 +5,8 @@
 
 namespace RHI
 {
+    class Context;
+
     enum class SwapchainPresentMode
     {
         Immediate,
@@ -40,7 +42,7 @@ namespace RHI
     class RHI_EXPORT Swapchain
     {
     public:
-        Swapchain();
+        Swapchain(Context* context);
         virtual ~Swapchain() = default;
 
         /// @brief Get the current image index of the swapchain.
@@ -62,9 +64,10 @@ namespace RHI
         virtual ResultCode Present()                     = 0;
 
         /// @brief Get the swapchain image view.
-        Handle<ImageView>  GetImageView(class Context* context, const ImageViewCreateInfo& createInfo);
+        Handle<ImageView>  GetImageView(const ImageViewCreateInfo& createInfo);
 
     protected:
+        Context*            m_context;
         uint32_t            m_currentImageIndex;
         uint32_t            m_swapchainImagesCount;
         SwapchainCreateInfo m_createInfo;
@@ -80,8 +83,9 @@ namespace RHI
 
 namespace RHI
 {
-    inline Swapchain::Swapchain()
-        : m_currentImageIndex(0)
+    inline Swapchain::Swapchain(Context* context)
+        : m_context(context)
+        , m_currentImageIndex(0)
         , m_swapchainImagesCount(0)
         , m_images()
     {

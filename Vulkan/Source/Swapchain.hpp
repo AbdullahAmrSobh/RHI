@@ -28,8 +28,6 @@ namespace RHI::Vulkan
         VkResult InitSwapchain();
 
     private:
-        IContext* m_context;
-
         VkSemaphore m_imageAcquiredSemaphore;
         VkSemaphore m_frameReadySemaphore;
 

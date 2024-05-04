@@ -33,12 +33,12 @@ namespace RHI
 
     /// TODO: move to a new Swapchain.cpp file
 
-    Handle<ImageView> Swapchain::GetImageView(Context* context, const ImageViewCreateInfo& createInfo)
+    Handle<ImageView> Swapchain::GetImageView(const ImageViewCreateInfo& createInfo)
     {
         if (auto it = m_imageViewsLRU.find(createInfo); it != m_imageViewsLRU.end())
             return it->second;
 
-        auto imageView = context->CreateImageView(createInfo);
+        auto imageView = m_context->CreateImageView(createInfo);
         m_imageViewsLRU[createInfo] = imageView;
         return imageView;
     }

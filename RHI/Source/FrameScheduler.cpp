@@ -194,7 +194,7 @@ namespace RHI
 
         if (auto swapchain = passAttachment->GetAttachment()->m_swapchain)
         {
-            return swapchain->GetImageView(m_context, passAttachment->m_viewInfo);
+            return swapchain->GetImageView(passAttachment->m_viewInfo);
         }
 
         return passAttachment->m_view;

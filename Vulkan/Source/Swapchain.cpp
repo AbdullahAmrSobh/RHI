@@ -20,7 +20,7 @@ namespace RHI::Vulkan
     }
 
     ISwapchain::ISwapchain(IContext* context)
-        : m_context(context)
+        : Swapchain(context)
         , m_imageAcquiredSemaphore(VK_NULL_HANDLE)
         , m_frameReadySemaphore(VK_NULL_HANDLE)
         , m_swapchain(VK_NULL_HANDLE)
@@ -57,7 +57,7 @@ namespace RHI::Vulkan
         InitSurface(createInfo);
 
         VkSurfaceCapabilitiesKHR surfaceCapabilities{};
-        VkResult result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_context->m_physicalDevice, m_surface, &surfaceCapabilities);
+        VkResult result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(context->m_physicalDevice, m_surface, &surfaceCapabilities);
         VULKAN_RETURN_VKERR_CODE(result);
 
         m_swapchainImagesCount = createInfo.imageCount;
@@ -77,11 +77,11 @@ namespace RHI::Vulkan
 
         {
             uint32_t formatsCount;
-            result = vkGetPhysicalDeviceSurfaceFormatsKHR(m_context->m_physicalDevice, m_surface, &formatsCount, nullptr);
+            result = vkGetPhysicalDeviceSurfaceFormatsKHR(context->m_physicalDevice, m_surface, &formatsCount, nullptr);
             VULKAN_ASSERT_SUCCESS(result);
             TL::Vector<VkSurfaceFormatKHR> formats{};
             formats.resize(formatsCount);
-            vkGetPhysicalDeviceSurfaceFormatsKHR(m_context->m_physicalDevice, m_surface, &formatsCount, formats.data());
+            vkGetPhysicalDeviceSurfaceFormatsKHR(context->m_physicalDevice, m_surface, &formatsCount, formats.data());
 
             m_surfaceFormat.format = VK_FORMAT_MAX_ENUM;
             for (auto surfaceFormat : formats)
@@ -155,6 +155,8 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
+        auto context = static_cast<IContext*>(m_context);
+
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         presentInfo.pNext = nullptr;
@@ -164,16 +166,16 @@ namespace RHI::Vulkan
         presentInfo.pSwapchains = &m_swapchain;
         presentInfo.pImageIndices = &m_currentImageIndex;
         presentInfo.pResults = &m_lastPresentResult;
-        auto result = vkQueuePresentKHR(m_context->m_presentQueue, &presentInfo);
+        auto result = vkQueuePresentKHR(context->m_presentQueue, &presentInfo);
         if (result != VK_ERROR_OUT_OF_DATE_KHR && result != VK_SUBOPTIMAL_KHR)
         {
             VULKAN_ASSERT_SUCCESS(result);
         }
 
         /// @todo: fix this by using per image semaphore
-        vkDeviceWaitIdle(m_context->m_device);
+        vkDeviceWaitIdle(context->m_device);
 
-        result = vkAcquireNextImageKHR(m_context->m_device, m_swapchain, UINT64_MAX, m_imageAcquiredSemaphore, VK_NULL_HANDLE, &m_currentImageIndex);
+        result = vkAcquireNextImageKHR(context->m_device, m_swapchain, UINT64_MAX, m_imageAcquiredSemaphore, VK_NULL_HANDLE, &m_currentImageIndex);
         if (result != VK_ERROR_OUT_OF_DATE_KHR && result != VK_SUBOPTIMAL_KHR)
         {
             VULKAN_ASSERT_SUCCESS(result);
@@ -184,6 +186,8 @@ namespace RHI::Vulkan
 
     VkResult ISwapchain::InitSwapchain()
     {
+        auto context = static_cast<IContext*>(m_context);
+
         VkSwapchainCreateInfoKHR createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
         createInfo.pNext = nullptr;
@@ -205,15 +209,15 @@ namespace RHI::Vulkan
         createInfo.clipped = VK_TRUE;
         createInfo.oldSwapchain = m_swapchain;
 
-        auto result = vkCreateSwapchainKHR(m_context->m_device, &createInfo, nullptr, &m_swapchain);
+        auto result = vkCreateSwapchainKHR(context->m_device, &createInfo, nullptr, &m_swapchain);
         VULKAN_RETURN_VKERR_CODE(result);
-        m_context->SetDebugName(VK_DEBUG_REPORT_OBJECT_TYPE_SWAPCHAIN_KHR_EXT, (uint64_t)m_swapchain, m_name.c_str());
+        context->SetDebugName(VK_DEBUG_REPORT_OBJECT_TYPE_SWAPCHAIN_KHR_EXT, (uint64_t)m_swapchain, m_name.c_str());
 
         uint32_t imagesCount;
-        result = vkGetSwapchainImagesKHR(m_context->m_device, m_swapchain, &imagesCount, nullptr);
+        result = vkGetSwapchainImagesKHR(context->m_device, m_swapchain, &imagesCount, nullptr);
         TL::Vector<VkImage> images;
         images.resize(imagesCount);
-        result = vkGetSwapchainImagesKHR(m_context->m_device, m_swapchain, &imagesCount, images.data());
+        result = vkGetSwapchainImagesKHR(context->m_device, m_swapchain, &imagesCount, images.data());
         VULKAN_RETURN_VKERR_CODE(result);
 
         // todo: swapchain should have a name, and image names should be prefixed by that swapchain name
@@ -230,10 +234,10 @@ namespace RHI::Vulkan
             image.handle = images[imageIndex];
             image.format = m_surfaceFormat.format;
             image.imageType = VK_IMAGE_TYPE_2D;
-            m_context->SetDebugName(VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, uint64_t(images[imageIndex]), imageNames[imageIndex]);
-            m_images[imageIndex] = m_context->m_imageOwner.Emplace(std::move(image));
+            context->SetDebugName(VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, uint64_t(images[imageIndex]), imageNames[imageIndex]);
+            m_images[imageIndex] = context->m_imageOwner.Emplace(std::move(image));
         }
-        result = vkAcquireNextImageKHR(m_context->m_device, m_swapchain, UINT64_MAX, m_imageAcquiredSemaphore, VK_NULL_HANDLE, &m_currentImageIndex);
+        result = vkAcquireNextImageKHR(context->m_device, m_swapchain, UINT64_MAX, m_imageAcquiredSemaphore, VK_NULL_HANDLE, &m_currentImageIndex);
         VULKAN_ASSERT_SUCCESS(result);
 
         return result;
