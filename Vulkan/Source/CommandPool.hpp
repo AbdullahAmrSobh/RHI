@@ -2,6 +2,7 @@
 
 #include <RHI/CommandList.hpp>
 #include <RHI/Pass.hpp>
+#include "RHI/QueueType.hpp"
 
 #include <vulkan/vulkan.h>
 

@@ -2,6 +2,7 @@
 #include "RHI/Export.hpp"
 #include "RHI/Resources.hpp"
 #include "RHI/Attachments.hpp"
+#include "RHI/QueueType.hpp"
 
 #include "RHI/Common/Containers.h"
 #include "RHI/Common/Ptr.h"
@@ -18,14 +19,6 @@ namespace RHI
 
     class FrameScheduler;
     class CommandList;
-
-    enum class QueueType
-    {
-        Graphics,
-        Compute,
-        Transfer,
-        Count,
-    };
 
     struct ImageAttachmentCreateInfo
     {

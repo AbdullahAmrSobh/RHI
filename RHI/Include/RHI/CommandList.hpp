@@ -2,12 +2,12 @@
 
 #include "RHI/Resources.hpp"
 #include "RHI/RenderTarget.hpp"
+#include "RHI/QueueType.hpp"
 
 #include "RHI/Common/Containers.h"
 
 namespace RHI
 {
-    enum class QueueType;
     struct GraphicsPipeline;
     struct ComputePipeline;
     class Pass;
