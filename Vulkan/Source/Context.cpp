@@ -229,14 +229,13 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto [handle, bindGroupLayout] = m_bindGroupLayoutsOwner.New();
+        IBindGroupLayout bindGroupLayout {};
         auto result = bindGroupLayout.Init(this, createInfo);
         if (IsError(result))
         {
             DebugLogError("Failed to create bindGroupLayout");
         }
-        m_LeakDetector.m_bindGroupLayouts.OnCreate(handle);
-        return handle;
+        return m_bindGroupLayoutsOwner.Emplace(std::move(bindGroupLayout));
     }
 
     void IContext::DestroyBindGroupLayout(Handle<BindGroupLayout> handle)
@@ -255,12 +254,13 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto [handle, bindGroup] = m_bindGroupOwner.New();
+        IBindGroup bindGroup {};
         auto result = bindGroup.Init(this, layoutHandle);
         if (IsError(result))
         {
             DebugLogError("Failed to create bindGroup");
         }
+        auto handle = m_bindGroupOwner.Emplace(std::move(bindGroup));
         m_LeakDetector.m_bindGroups.OnCreate(handle);
         return handle;
     }
@@ -289,12 +289,13 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto [handle, pipelineLayout] = m_pipelineLayoutOwner.New();
+        IPipelineLayout pipelineLayout {};
         auto result = pipelineLayout.Init(this, createInfo);
         if (IsError(result))
         {
             DebugLogError("Failed to create pipelineLayout");
         }
+        auto handle = m_pipelineLayoutOwner.Emplace(std::move(pipelineLayout));
         m_LeakDetector.m_pipelineLayouts.OnCreate(handle);
         return handle;
     }
@@ -315,12 +316,13 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto [handle, graphicsPipeline] = m_graphicsPipelineOwner.New();
+        IGraphicsPipeline graphicsPipeline {};
         auto result = graphicsPipeline.Init(this, createInfo);
         if (IsError(result))
         {
             DebugLogError("Failed to create graphicsPipeline");
         }
+        auto handle = m_graphicsPipelineOwner.Emplace(std::move(graphicsPipeline));
         m_LeakDetector.m_graphicsPipelines.OnCreate(handle);
         return handle;
     }
@@ -341,12 +343,13 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto [handle, computePipeline] = m_computePipelineOwner.New();
+        IComputePipeline computePipeline {};
         auto result = computePipeline.Init(this, createInfo);
         if (IsError(result))
         {
             DebugLogError("Failed to create computePipeline");
         }
+        auto handle = m_computePipelineOwner.Emplace(std::move(computePipeline));
         m_LeakDetector.m_computePipelines.OnCreate(handle);
         return handle;
     }
@@ -367,12 +370,13 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto [handle, sampler] = m_samplerOwner.New();
+        ISampler sampler {};
         auto result = sampler.Init(this, createInfo);
         if (IsError(result))
         {
             DebugLogError("Failed to create sampler");
         }
+        auto handle = m_samplerOwner.Emplace(std::move(sampler));
         m_LeakDetector.m_samplers.OnCreate(handle);
         return handle;
     }
@@ -393,13 +397,14 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto [handle, image] = m_imageOwner.New();
+        IImage image {};
         auto result = image.Init(this, createInfo);
         if (IsError(result))
         {
             DebugLogError("Failed to create image");
             return result;
         }
+        auto handle = m_imageOwner.Emplace(std::move(image));
         m_LeakDetector.m_images.OnCreate(handle);
         return Result<Handle<Image>>(handle);
     }
@@ -420,13 +425,14 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto [handle, buffer] = m_bufferOwner.New();
+        IBuffer buffer {};
         auto result = buffer.Init(this, createInfo);
         if (IsError(result))
         {
             DebugLogError("Failed to create buffer");
             return result;
         }
+        auto handle = m_bufferOwner.Emplace(std::move(buffer));
         m_LeakDetector.m_buffers.OnCreate(handle);
         return Result<Handle<Buffer>>(handle);
     }
@@ -447,12 +453,13 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto [handle, imageView] = m_imageViewOwner.New();
+        IImageView imageView {};
         auto result = imageView.Init(this, createInfo);
         if (IsError(result))
         {
             DebugLogError("Failed to create image view");
         }
+        auto handle = m_imageViewOwner.Emplace(std::move(imageView));
         m_LeakDetector.m_imageViews.OnCreate(handle);
         return handle;
     }
@@ -473,12 +480,13 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto [handle, bufferView] = m_bufferViewOwner.New();
+        IBufferView bufferView {};
         auto result = bufferView.Init(this, createInfo);
         if (IsError(result))
         {
             DebugLogError("Failed to create buffer view");
         }
+        auto handle = m_bufferViewOwner.Emplace(std::move(bufferView));
         m_LeakDetector.m_bufferViews.OnCreate(handle);
         return handle;
     }

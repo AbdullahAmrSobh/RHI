@@ -31,16 +31,16 @@ namespace RHI
     class ResourcePool;
 
     // clang-format off
-    struct Image {};
-    struct Buffer {};
-    struct ImageView {};
-    struct BufferView {};
-    struct BindGroupLayout {};
-    struct BindGroup {};
-    struct PipelineLayout {};
-    struct GraphicsPipeline {};
-    struct ComputePipeline {};
-    struct Sampler {};
+    RHI_DECALRE_OPAQUE_RESOURCE(Image);
+    RHI_DECALRE_OPAQUE_RESOURCE(Buffer);
+    RHI_DECALRE_OPAQUE_RESOURCE(ImageView);
+    RHI_DECALRE_OPAQUE_RESOURCE(BufferView);
+    RHI_DECALRE_OPAQUE_RESOURCE(BindGroupLayout);
+    RHI_DECALRE_OPAQUE_RESOURCE(BindGroup);
+    RHI_DECALRE_OPAQUE_RESOURCE(PipelineLayout);
+    RHI_DECALRE_OPAQUE_RESOURCE(GraphicsPipeline);
+    RHI_DECALRE_OPAQUE_RESOURCE(ComputePipeline);
+    RHI_DECALRE_OPAQUE_RESOURCE(Sampler);
 
     // clang-format on
 

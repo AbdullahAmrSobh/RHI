@@ -1,9 +1,15 @@
 #pragma once
 
 #include "RHI/Common/Assert.hpp"
+#include "RHI/Common/Containers.h"
 
 #include <cstdint>
-#include <functional>
+#include <type_traits>
+
+#define RHI_DECALRE_OPAQUE_RESOURCE(name) \
+    struct name                           \
+    {                                     \
+    }
 
 namespace RHI
 {
@@ -28,9 +34,9 @@ namespace RHI
         }
 
         Handle(NullHandle_T)
-         {
+        {
             m_handle = UINT64_MAX;
-         }
+        }
 
         template<typename BaseResource>
             requires(std::is_base_of_v<BaseResource, Resource> || std::is_base_of_v<Resource, BaseResource>)
@@ -85,127 +91,126 @@ namespace RHI
     class HandlePool final
     {
     public:
-        using HandleType   = Handle<Resource>;
-        using ResourceType = Resource;
-        // using ResourceInfo = Info;
+        using HandleType               = Handle<Resource>;
+        using ResourceType             = Resource;
 
-        inline HandlePool(uint32_t capacity = 512 * 4);
-        ~HandlePool();
+        HandlePool()                   = default;
+        HandlePool(const HandlePool&&) = delete;
+        HandlePool(HandlePool&&)       = default;
+        ~HandlePool()                  = default;
 
-        inline void      Reset();
+        // Clears all resources in the pool
+        inline void             Clear();
 
-        // Gets the resource associated with handle.
-        inline Resource* Get(Handle<Resource> handle) const;
+        // Gets the resource associated with handle
+        inline const Resource*  Get(Handle<Resource> handle) const;
 
-        // Inserted a zerod resource and returns its handle.
-        template<typename... Args>
-        inline std::pair<Handle<Resource>, Resource&> New(Args... args);
+        inline Resource*        Get(Handle<Resource> handle);
 
-        // Removes a resource from the owner.
-        inline void                                   Remove(Handle<Resource> handle);
+        // Inserted a zerod resource and returns its handle
+        inline Handle<Resource> Emplace(Resource&& resource);
+
+        // Removes a resource from the owner
+        inline void             Release(Handle<Resource> handle);
 
     private:
-        inline void Resize(uint32_t newSize);
-
-    private:
-        size_t    m_capacity;
-
-        size_t    m_count;
-
-        Resource* m_resources;
-
-        uint16_t* m_genIds;
-
-        size_t    m_freeSlotsCount;
-
-        uint32_t* m_freeSlots;
+        TL::Vector<Resource> m_resources;
+        TL::Vector<uint16_t> m_genIds;
+        TL::Vector<size_t>   m_freeSlots;
     };
 
+} // namespace RHI
+
+namespace RHI
+{
+
     template<typename Resource>
-    HandlePool<Resource>::HandlePool(uint32_t capacity)
-        : m_capacity(capacity)
-        , m_count(0)
-        , m_freeSlotsCount(0)
+    void HandlePool<Resource>::Clear()
     {
-        m_capacity  = capacity;
-        m_resources = (Resource*)malloc(capacity * sizeof(Resource));
-        m_genIds    = (uint16_t*)malloc(capacity * sizeof(uint16_t));
-        m_freeSlots = (uint32_t*)malloc(capacity * sizeof(uint32_t));
-        memset(m_resources, 0, sizeof(m_capacity));
-        memset(m_genIds, 0, sizeof(m_capacity));
-        memset(m_freeSlots, 0, sizeof(m_capacity));
+        m_resources.clear();
+        m_genIds.clear();
+        m_freeSlots.clear();
     }
 
     template<typename Resource>
-    inline HandlePool<Resource>::~HandlePool()
+    const Resource* HandlePool<Resource>::Get(Handle<Resource> handle) const
     {
-        free(m_resources);
-        free(m_genIds);
-        free(m_freeSlots);
-    }
+        // Check if handle is valid
+        RHI_ASSERT(handle != NullHandle);
 
-    template<typename Resource>
-    inline void HandlePool<Resource>::Reset()
-    {
-        m_count          = 0;
-        m_freeSlotsCount = 0;
-        memset(m_resources, 0, sizeof(m_capacity));
-        memset(m_genIds, 0, sizeof(m_capacity));
-        memset(m_freeSlots, 0, sizeof(m_capacity));
-    }
+        // Extract index and generation ID from handle
+        size_t   index = handle.m_rawHandle.index;
+        uint16_t genId = handle.m_rawHandle.genId;
 
-    template<typename Resource>
-    inline Resource* HandlePool<Resource>::Get(Handle<Resource> handle) const
-    {
-        RHI_ASSERT(handle != Handle<Resource>());
-
-        auto index = handle.m_rawHandle.index;
-        auto id    = handle.m_rawHandle.genId;
-
-        if (index < m_count && id == m_genIds[index])
+        // Check if index is within bounds and generation ID matches
+        if (index < m_resources.size() && m_genIds[index] == genId)
         {
-            return m_resources + index;
+            return &m_resources[index];
         }
+
+        RHI_UNREACHABLE(); // Invalid handle
 
         return nullptr;
     }
 
-    // use dynamic offsets
-
     template<typename Resource>
-    template<typename... Args>
-    inline std::pair<Handle<Resource>, Resource&> HandlePool<Resource>::New(Args... args)
+    Resource* HandlePool<Resource>::Get(Handle<Resource> handle)
     {
-        auto index = m_count;
-        if (m_freeSlotsCount)
+        // Check if handle is valid
+        RHI_ASSERT(handle != NullHandle);
+
+        // Extract index and generation ID from handle
+        size_t   index = handle.m_rawHandle.index;
+        uint16_t genId = handle.m_rawHandle.genId;
+
+        // Check if index is within bounds and generation ID matches
+        if (index < m_resources.size() && m_genIds[index] == genId)
         {
-            index = m_freeSlots[m_freeSlotsCount--];
-        }
-        else if (m_count == m_capacity)
-        {
-            Resize(m_count * 1.5);
+            return &m_resources[index];
         }
 
-        // call inplace new
-        new (&m_resources[index]) Resource(std::forward(args)...);
+        RHI_UNREACHABLE(); // Invalid handle
 
-        m_count++;
-        return { Handle<Resource>(index, ++m_genIds[index]), m_resources[index] };
+        return nullptr;
     }
 
     template<typename Resource>
-    inline void HandlePool<Resource>::Remove(Handle<Resource> handle)
+    Handle<Resource> HandlePool<Resource>::Emplace(Resource&& resource)
     {
-        m_freeSlots[m_freeSlotsCount++] = handle.m_rawHandle.index;
+        // Check if there's a free slot
+        if (!m_freeSlots.empty())
+        {
+            size_t index = m_freeSlots.back();
+            m_freeSlots.pop_back();
+            m_resources[index] = std::forward<Resource>(resource);
+            // Generate a new generation ID
+            uint16_t& genId    = m_genIds[index];
+            m_genIds[index]    = genId;
+            return Handle<Resource>(index, genId);
+        }
+
+        // If no free slot, expand the pool
+        m_resources.emplace_back(std::forward<Resource>(resource));
+        uint16_t genId = m_genIds.emplace_back((uint16_t)1);
+        return Handle<Resource>(m_resources.size() - 1, genId);
     }
 
     template<typename Resource>
-    inline void HandlePool<Resource>::Resize(uint32_t newSize)
+    void HandlePool<Resource>::Release(Handle<Resource> handle)
     {
-        m_capacity = newSize;
-        realloc(m_resources, newSize * sizeof(Resource));
-        realloc(m_genIds, newSize * sizeof(uint16_t));
-        realloc(m_freeSlots, newSize * sizeof(uint32_t));
+        // Check if handle is valid
+        RHI_ASSERT(handle != NullHandle);
+
+        // Extract index and generation ID from handle
+        size_t   index = handle.m_rawHandle.index;
+        uint16_t genId = handle.m_rawHandle.genId;
+
+        // Check if index is within bounds and generation ID matches
+        if (index < m_resources.size() && m_genIds[index] == genId)
+        {
+            // Mark the slot as free
+            m_freeSlots.push_back(index);
+        }
     }
 
 } // namespace RHI

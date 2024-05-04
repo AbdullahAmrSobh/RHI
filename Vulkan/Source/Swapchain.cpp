@@ -225,13 +225,13 @@ namespace RHI::Vulkan
 
         for (uint32_t imageIndex = 0; imageIndex < m_swapchainImagesCount; imageIndex++)
         {
-            auto [handle, image] = m_context->m_imageOwner.New();
-            m_images[imageIndex] = handle;
+            IImage image {};
             image.pool = nullptr;
             image.handle = images[imageIndex];
             image.format = m_surfaceFormat.format;
             image.imageType = VK_IMAGE_TYPE_2D;
             m_context->SetDebugName(VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, uint64_t(images[imageIndex]), imageNames[imageIndex]);
+            m_images[imageIndex] = m_context->m_imageOwner.Emplace(std::move(image));
         }
         result = vkAcquireNextImageKHR(m_context->m_device, m_swapchain, UINT64_MAX, m_imageAcquiredSemaphore, VK_NULL_HANDLE, &m_currentImageIndex);
         VULKAN_ASSERT_SUCCESS(result);

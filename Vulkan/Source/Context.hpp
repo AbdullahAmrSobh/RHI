@@ -2,24 +2,17 @@
 
 #include <RHI/Context.hpp>
 #include <RHI/FrameScheduler.hpp>
-
 #include <RHI/Common/Containers.h>
+
+#include "Resources.hpp"
 
 #include <vk_mem_alloc.h>
 
+#include <functional>
+
+
 namespace RHI::Vulkan
 {
-    struct IImage;
-    struct IBuffer;
-    struct IImageView;
-    struct IBufferView;
-    struct IBindGroupLayout;
-    struct IBindGroup;
-    struct IPipelineLayout;
-    struct IGraphicsPipeline;
-    struct IComputePipeline;
-    struct ISampler;
-
     class BindGroupAllocator;
 
     using DestroyResource = std::function<void()>;

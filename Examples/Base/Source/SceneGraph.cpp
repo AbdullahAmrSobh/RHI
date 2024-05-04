@@ -1,6 +1,8 @@
 #include "Examples-Base/ApplicationBase.hpp"
 #include "Examples-Base/SceneGraph.hpp"
 
+#include <functional>
+
 inline static glm::mat4 ConvertMatrix(const aiMatrix4x4& matrix)
 {
     // clang-format off
@@ -22,12 +24,12 @@ inline static glm::vec3 ConvertColor(const aiColor3D& color)
     return { color.r, color.g, color.b };
 }
 
-inline static std::string PrefixString(const char* prefix, aiString string)
-{
-    std::string result = prefix;
-    result += string.C_Str();
-    return result;
-}
+// inline static std::string PrefixString(const char* prefix, aiString string)
+// {
+//     std::string result = prefix;
+//     result += string.C_Str();
+//     return result;
+// }
 
 inline static void ProcessNode(RHI::Context& context, glm::mat4 parentTransform, const aiNode* node, std::function<void(glm::mat4, const aiNode&)> fn)
 {
@@ -258,52 +260,52 @@ void Scene::LoadPipeline(RHI::Context& context, const char* shaderPath)
     m_pbrPipeline = context.CreateGraphicsPipeline(createInfo);
 }
 
-RHI::Handle<Material> Scene::LoadMaterial(RHI::Context& context, const aiMaterial& aiMaterial)
-{
-    aiString albedoPath, normalPath, roughnessPath, metallicPath;
-    aiMaterial.GetTexture(aiTextureType_DIFFUSE, 0, &albedoPath);
-    aiMaterial.GetTexture(aiTextureType_NORMALS, 0, &normalPath);
-    aiMaterial.GetTexture(aiTextureType_DIFFUSE_ROUGHNESS, 0, &roughnessPath);
-    aiMaterial.GetTexture(aiTextureType_METALNESS, 0, &metallicPath);
+// RHI::Handle<Material> Scene::LoadMaterial(RHI::Context& context, const aiMaterial& aiMaterial)
+// {
+//     aiString albedoPath, normalPath, roughnessPath, metallicPath;
+//     aiMaterial.GetTexture(aiTextureType_DIFFUSE, 0, &albedoPath);
+//     aiMaterial.GetTexture(aiTextureType_NORMALS, 0, &normalPath);
+//     aiMaterial.GetTexture(aiTextureType_DIFFUSE_ROUGHNESS, 0, &roughnessPath);
+//     aiMaterial.GetTexture(aiTextureType_METALNESS, 0, &metallicPath);
 
-    const char* prefixPath = "I:/Main.1_Sponza/"; // TODO: add proper fix
-    auto albedoData = LoadImage(PrefixString(prefixPath, albedoPath));
-    // auto normalData = LoadImage(PrefixString(prefixPath, normalPath));
-    // auto roughnessData = LoadImage(PrefixString(prefixPath, roughnessPath));
-    // auto metallicData = LoadImage(PrefixString(prefixPath, metallicPath));
+//     const char* prefixPath = "I:/Main.1_Sponza/"; // TODO: add proper fix
+//     auto albedoData = LoadImage(PrefixString(prefixPath, albedoPath));
+//     // auto normalData = LoadImage(PrefixString(prefixPath, normalPath));
+//     // auto roughnessData = LoadImage(PrefixString(prefixPath, roughnessPath));
+//     // auto metallicData = LoadImage(PrefixString(prefixPath, metallicPath));
 
-    RHI::ImageCreateInfo imageInfo{};
-    imageInfo.name = "albedo";
-    imageInfo.usageFlags = RHI::ImageUsage::ShaderResource;
-    imageInfo.usageFlags |= RHI::ImageUsage::CopyDst;
-    imageInfo.format = RHI::Format::RGBA8_UNORM;
-    imageInfo.type = RHI::ImageType::Image2D;
-    imageInfo.size.width = albedoData.width;
-    imageInfo.size.height = albedoData.height;
-    imageInfo.size.depth = 1;
-    imageInfo.mipLevels = 1;
-    imageInfo.arrayCount = 1;
-    imageInfo.sampleCount = RHI::SampleCount::Samples1;
-    auto albedoTexture = RHI::CreateImageWithData<uint8_t>(context, imageInfo, albedoData.data).GetValue();
-    // imageInfo.debugName = "normal";
-    // auto normalTexture = RHI::CreateImageWithData<uint8_t>(context, imageInfo, normalData.data).GetValue();
-    // imageInfo.debugName = "roughness";
-    // imageInfo.format = RHI::Format::RGBA8_UNORM;
-    // auto roughnessTexture = RHI::CreateImageWithData<uint8_t>(context, imageInfo, roughnessData.data).GetValue();
-    // imageInfo.debugName = "metallic";
-    // auto metallicTexture = RHI::CreateImageWithData<uint8_t>(context, imageInfo, metallicData.data).GetValue();
+//     RHI::ImageCreateInfo imageInfo{};
+//     imageInfo.name = "albedo";
+//     imageInfo.usageFlags = RHI::ImageUsage::ShaderResource;
+//     imageInfo.usageFlags |= RHI::ImageUsage::CopyDst;
+//     imageInfo.format = RHI::Format::RGBA8_UNORM;
+//     imageInfo.type = RHI::ImageType::Image2D;
+//     imageInfo.size.width = albedoData.width;
+//     imageInfo.size.height = albedoData.height;
+//     imageInfo.size.depth = 1;
+//     imageInfo.mipLevels = 1;
+//     imageInfo.arrayCount = 1;
+//     imageInfo.sampleCount = RHI::SampleCount::Samples1;
+//     auto albedoTexture = RHI::CreateImageWithData<uint8_t>(context, imageInfo, albedoData.data).GetValue();
+//     // imageInfo.debugName = "normal";
+//     // auto normalTexture = RHI::CreateImageWithData<uint8_t>(context, imageInfo, normalData.data).GetValue();
+//     // imageInfo.debugName = "roughness";
+//     // imageInfo.format = RHI::Format::RGBA8_UNORM;
+//     // auto roughnessTexture = RHI::CreateImageWithData<uint8_t>(context, imageInfo, roughnessData.data).GetValue();
+//     // imageInfo.debugName = "metallic";
+//     // auto metallicTexture = RHI::CreateImageWithData<uint8_t>(context, imageInfo, metallicData.data).GetValue();
 
-    auto [handle, material] = m_materialOwner.New();
-    material.albedoMap = albedoTexture;
-    // material.normalMap = normalTexture;
-    // material.roughnessMap = roughnessTexture;
-    // material.metallicMap = metallicTexture;
-    return handle;
-}
+//     auto [handle, material] = m_materialOwner.New();
+//     material.albedoMap = albedoTexture;
+//     // material.normalMap = normalTexture;
+//     // material.roughnessMap = roughnessTexture;
+//     // material.metallicMap = metallicTexture;
+//     return handle;
+// }
 
 RHI::Handle<StaticMesh> Scene::LoadStaticMesh(RHI::Context& context, RHI::Handle<Material> material, const aiMesh& aiMesh)
 {
-    auto [handle, mesh] = m_staticMeshOwner.New();
+    StaticMesh mesh {};
     mesh.name = std::string(aiMesh.mName.C_Str());
     mesh.material = material;
 
@@ -349,5 +351,5 @@ RHI::Handle<StaticMesh> Scene::LoadStaticMesh(RHI::Context& context, RHI::Handle
         mesh.elementsCount = (uint32_t)indices.size();
     }
 
-    return handle;
+    return m_staticMeshOwner.Emplace(std::move(mesh));
 }
