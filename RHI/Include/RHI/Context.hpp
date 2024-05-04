@@ -6,7 +6,7 @@
 #include "RHI/Swapchain.hpp"
 #include "RHI/Export.hpp"
 
-#include "RHI/Common/Ptr.h"
+#include "RHI/Common/Ptr.hpp"
 #include "RHI/Common/Handle.hpp"
 #include "RHI/Common/Result.hpp"
 #include "RHI/Common/Debug.hpp"

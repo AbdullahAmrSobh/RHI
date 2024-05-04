@@ -5,7 +5,7 @@
 #include "RHI/QueueType.hpp"
 
 #include "RHI/Common/Containers.h"
-#include "RHI/Common/Ptr.h"
+#include "RHI/Common/Ptr.hpp"
 
 #include <string>
 

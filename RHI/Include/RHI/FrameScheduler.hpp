@@ -4,7 +4,7 @@
 #include "RHI/Pass.hpp" // todo remove
 #include "RHI/QueueType.hpp"
 
-#include "RHI/Common/Ptr.h"
+#include "RHI/Common/Ptr.hpp"
 #include "RHI/Common/Containers.h"
 
 namespace RHI
