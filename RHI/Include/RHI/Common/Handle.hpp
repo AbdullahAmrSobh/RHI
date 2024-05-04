@@ -27,6 +27,11 @@ namespace RHI
             m_handle = UINT64_MAX;
         }
 
+        Handle(NullHandle_T)
+         {
+            m_handle = UINT64_MAX;
+         }
+
         template<typename BaseResource>
             requires(std::is_base_of_v<BaseResource, Resource> || std::is_base_of_v<Resource, BaseResource>)
         Handle(Handle<BaseResource> baseHandle)
