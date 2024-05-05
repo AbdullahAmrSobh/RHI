@@ -66,6 +66,11 @@ namespace RHI
             return m_handle == UINT64_MAX;
         }
 
+        inline operator bool() const
+        {
+            return *this != NullHandle;
+        }
+
     private:
         Handle(uint64_t id, uint16_t genId)
         {
