@@ -1,6 +1,7 @@
 #pragma once
 #include "RHI/Export.hpp"
 #include "RHI/Resources.hpp"
+#include "RHI/CommandList.hpp"
 #include "RHI/Pass.hpp" // todo remove
 #include "RHI/QueueType.hpp"
 

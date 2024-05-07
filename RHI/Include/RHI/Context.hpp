@@ -1,19 +1,52 @@
 #pragma once
 
-#include "RHI/Resources.hpp"
-#include "RHI/CommandList.hpp"
-#include "RHI/FrameScheduler.hpp"
-#include "RHI/Swapchain.hpp"
 #include "RHI/Export.hpp"
-
 #include "RHI/Common/Ptr.hpp"
 #include "RHI/Common/Handle.hpp"
 #include "RHI/Common/Result.hpp"
 #include "RHI/Common/Debug.hpp"
+#include "RHI/Common/Span.hpp"
+
 #include "RHI/Common/LeakDetector.hpp"
+
+#include "RHI/FrameScheduler.hpp"
 
 namespace RHI
 {
+    struct BindGroupData;
+    struct SwapchainCreateInfo;
+    struct ResourcePoolCreateInfo;
+    struct ImageCreateInfo;
+    struct BufferCreateInfo;
+    struct ImageViewCreateInfo;
+    struct BufferViewCreateInfo;
+    struct BindGroupLayoutCreateInfo;
+    struct PipelineLayoutCreateInfo;
+    struct GraphicsPipelineCreateInfo;
+    struct ComputePipelineCreateInfo;
+    struct SamplerCreateInfo;
+
+    struct Image;
+    struct Buffer;
+    struct ImageView;
+    struct BufferView;
+    struct BindGroupLayout;
+    struct BindGroup;
+    struct PipelineLayout;
+    struct GraphicsPipeline;
+    struct ComputePipeline;
+    struct Sampler;
+
+    class Swapchain;
+    class ShaderModule;
+    class Fence;
+    class CommandPool;
+    class ResourcePool;
+    class FrameScheduler;
+
+    /// @brief Represents a pointer to GPU device memory
+    using DeviceMemoryPtr = void*;
+
     /// @brief Type of backend Graphics API
     enum class Backend
     {
@@ -252,9 +285,6 @@ namespace RHI
         /// @param handle The handle to the buffer object to unmap.
         virtual void                                   UnmapBuffer(Handle<Buffer> handle)                                   = 0;
 
-        /// [EXPERIMENTAL]
-        Ptr<class RenderGraph>                         CreateRenderGraph();
-
     protected:
         Context(Ptr<DebugCallbacks> debugCallbacks);
 
@@ -289,72 +319,10 @@ namespace RHI
         Ptr<DebugCallbacks> m_debugCallbacks;
     };
 
-} // namespace RHI
-
-namespace RHI
-{
-    // clang-format off
-
     inline Context::Context(Ptr<DebugCallbacks> debugCallbacks)
         : m_limits(CreatePtr<Limits>())
         , m_debugCallbacks(std::move(debugCallbacks))
     {
     }
 
-    template<typename T>
-    RHI_EXPORT Result<Handle<Image>> CreateImageWithData(Context& context, const ImageCreateInfo& createInfo, TL::Span<const T> content)
-    {
-        auto& scheduler = context.GetScheduler();
-
-        auto [handle, result] = context.CreateImage(createInfo);
-
-        if (result != ResultCode::Success)
-            return result;
-
-        RHI::BufferCreateInfo _createInfo {};
-        _createInfo.byteSize = content.size_bytes();
-        _createInfo.usageFlags = BufferUsage::CopySrc;
-        auto tmpBuffer = context.CreateBuffer(_createInfo).GetValue();
-
-        BufferToImageCopyInfo copyInfo{};
-        copyInfo.srcBuffer = tmpBuffer;
-        copyInfo.srcOffset = 0;
-        copyInfo.dstImage  = handle;
-        auto ptr = context.MapBuffer(tmpBuffer);
-        memcpy(ptr, content.data(), content.size_bytes());
-        context.UnmapBuffer(tmpBuffer);
-
-        scheduler.WriteImageContent(handle, {}, createInfo.size, {}, content);
-
-
-        return handle;
-    }
-
-    template<typename T>
-    RHI_EXPORT Result<Handle<Buffer>> CreateBufferWithData(Context& context, Flags<BufferUsage> usageFlags, TL::Span<const T> content)
-    {
-        BufferCreateInfo createInfo{};
-        createInfo.byteSize   = content.size_bytes();
-        createInfo.usageFlags = usageFlags;
-
-        auto [handle, result] = context.CreateBuffer(createInfo);
-
-        if (result != ResultCode::Success)
-            return result;
-
-        if (content.size_bytes() <= context.GetLimits().stagingMemoryLimit)
-        {
-            auto ptr = context.MapBuffer(handle);
-            memcpy(ptr, content.data(), content.size_bytes());
-            context.UnmapBuffer(handle);
-        }
-        else
-        {
-            RHI_UNREACHABLE();
-        }
-
-        return handle;
-    }
-
-    // clang-format on
 } // namespace RHI

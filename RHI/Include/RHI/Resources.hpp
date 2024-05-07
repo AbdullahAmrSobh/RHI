@@ -44,9 +44,6 @@ namespace RHI
 
     // clang-format on
 
-    /// @brief Represents a pointer to GPU device memory
-    using DeviceMemoryPtr = void*;
-
     enum class Access
     {
         None      = 0,
