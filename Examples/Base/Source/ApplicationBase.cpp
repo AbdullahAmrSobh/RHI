@@ -126,16 +126,12 @@ void ApplicationBase::Init()
 
     m_swapchain = m_context->CreateSwapchain(createInfo);
 
-    // create frame scheduler
-    auto& scheduler = m_context->GetScheduler();
-
     m_commandPool = m_context->CreateCommandPool();
 
     OnInit();
 
     ImGuiRendererCreateInfo imguiRendererCreateInfo{};
     imguiRendererCreateInfo.context = m_context.get();
-    imguiRendererCreateInfo.scheduler = &scheduler;
     imguiRendererCreateInfo.shaderBlob = ReadBinaryFile("./Shaders/ImGui.spv");
     imguiRendererCreateInfo.commandAllocator = m_commandPool.get();
     m_imguiRenderer->Init(imguiRendererCreateInfo);

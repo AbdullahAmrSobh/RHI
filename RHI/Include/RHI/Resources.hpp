@@ -24,9 +24,6 @@ namespace RHI
     inline static constexpr uint32_t c_MaxPipelineBindGroupsCount                = 4u;
     inline static constexpr uint32_t c_MaxShaderBindGroupElementsCount           = 32u;
 
-    struct ImagePassAttachment;
-    struct BufferPassAttachment;
-
     class ShaderModule;
     class ResourcePool;
 
@@ -428,10 +425,18 @@ namespace RHI
         ShaderBinding bindings[c_MaxBindGroupElementsCount];
     };
 
+    struct ImageAttachment;
+    struct BufferAttachment;
+    class RenderGraph;
+
     /// @brief An object that groups shader resources that are bound together.
     struct BindGroupData
     {
         BindGroupData() = default;
+
+        void BindImageAttachment(uint32_t index, const RenderGraph& renderGraph, TL::Span<const Handle<ImageAttachment>> handles, bool dynamic = false, size_t elementSize = SIZE_MAX, uint32_t arrayOffset = 0);
+
+        void BindBufferAttachment(uint32_t index, const RenderGraph& renderGraph, TL::Span<const Handle<BufferAttachment>> handles, uint32_t arrayOffset = 0);
 
         void BindImages(uint32_t index, TL::Span<Handle<ImageView>> handles, uint32_t arrayOffset = 0);
 

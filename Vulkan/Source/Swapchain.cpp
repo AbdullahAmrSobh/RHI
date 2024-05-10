@@ -211,7 +211,7 @@ namespace RHI::Vulkan
 
         auto result = vkCreateSwapchainKHR(context->m_device, &createInfo, nullptr, &m_swapchain);
         VULKAN_RETURN_VKERR_CODE(result);
-        context->SetDebugName(VK_DEBUG_REPORT_OBJECT_TYPE_SWAPCHAIN_KHR_EXT, (uint64_t)m_swapchain, m_name.c_str());
+        context->SetDebugName(m_swapchain, m_name.c_str());
 
         uint32_t imagesCount;
         result = vkGetSwapchainImagesKHR(context->m_device, m_swapchain, &imagesCount, nullptr);
@@ -220,21 +220,13 @@ namespace RHI::Vulkan
         result = vkGetSwapchainImagesKHR(context->m_device, m_swapchain, &imagesCount, images.data());
         VULKAN_RETURN_VKERR_CODE(result);
 
-        // todo: swapchain should have a name, and image names should be prefixed by that swapchain name
-        const char* imageNames[] = {
-            "Swapchain-Image-0",
-            "Swapchain-Image-1",
-            "Swapchain-Image-2",
-        };
-
         for (uint32_t imageIndex = 0; imageIndex < m_swapchainImagesCount; imageIndex++)
         {
-            IImage image {};
+            IImage image{};
             image.pool = nullptr;
             image.handle = images[imageIndex];
             image.format = m_surfaceFormat.format;
             image.imageType = VK_IMAGE_TYPE_2D;
-            context->SetDebugName(VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, uint64_t(images[imageIndex]), imageNames[imageIndex]);
             m_images[imageIndex] = context->m_imageOwner.Emplace(std::move(image));
         }
         result = vkAcquireNextImageKHR(context->m_device, m_swapchain, UINT64_MAX, m_imageAcquiredSemaphore, VK_NULL_HANDLE, &m_currentImageIndex);

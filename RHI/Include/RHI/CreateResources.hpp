@@ -1,6 +1,5 @@
 #include "RHI/Context.hpp"
 #include "RHI/Resources.hpp"
-#include "RHI/FrameScheduler.hpp"
 
 #include "RHI/Common/Span.hpp"
 
@@ -9,27 +8,14 @@ namespace RHI
     template<typename T>
     inline static Result<Handle<Image>> CreateImageWithData(Context& context, const ImageCreateInfo& createInfo, TL::Span<const T> content)
     {
-        auto& scheduler       = context.GetScheduler();
-
         auto [handle, result] = context.CreateImage(createInfo);
 
         if (result != ResultCode::Success)
             return result;
 
-        RHI::BufferCreateInfo _createInfo{};
-        _createInfo.byteSize            = content.size_bytes();
-        _createInfo.usageFlags          = BufferUsage::CopySrc;
-        auto                  tmpBuffer = context.CreateBuffer(_createInfo).GetValue();
-
-        BufferToImageCopyInfo copyInfo{};
-        copyInfo.srcBuffer = tmpBuffer;
-        copyInfo.srcOffset = 0;
-        copyInfo.dstImage  = handle;
-        auto ptr           = context.MapBuffer(tmpBuffer);
-        memcpy(ptr, content.data(), content.size_bytes());
-        context.UnmapBuffer(tmpBuffer);
-
-        scheduler.WriteImageContent(handle, {}, createInfo.size, {}, content);
+        auto stagingBuffer = context.AllocateTempBuffer(content.size_bytes());
+        memcpy(stagingBuffer.ptr, content.data(), content.size_bytes());
+        context.StageResourceWrite(handle, {}, stagingBuffer.buffer, stagingBuffer.offset);
 
         return handle;
     }
@@ -46,7 +32,7 @@ namespace RHI
         if (result != ResultCode::Success)
             return result;
 
-        if (content.size_bytes() <= context.GetLimits().stagingMemoryLimit)
+        if (!(content.size_bytes() <= context.GetLimits().stagingMemoryLimit)) // todo: FIX limit
         {
             auto ptr = context.MapBuffer(handle);
             memcpy(ptr, content.data(), content.size_bytes());
@@ -54,7 +40,9 @@ namespace RHI
         }
         else
         {
-            RHI_UNREACHABLE();
+            auto stagingBuffer = context.AllocateTempBuffer(content.size_bytes());
+            memcpy(stagingBuffer.ptr, content.data(), content.size_bytes());
+            context.StageResourceWrite(handle, 0, content.size_bytes(), stagingBuffer.buffer, stagingBuffer.offset);
         }
 
         return handle;

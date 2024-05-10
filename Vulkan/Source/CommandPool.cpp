@@ -77,7 +77,7 @@ namespace RHI::Vulkan
         return commandLists;
     }
 
-    void ICommandPool::Release(TL::Span<CommandList*> _commandLists)
+    void ICommandPool::Release(TL::Span<const CommandList* const> _commandLists)
     {
         (void)_commandLists;
         // auto commandLists = TL::Span((ICommandList*)_commandLists.data(), _commandLists.size());
@@ -94,7 +94,6 @@ namespace RHI::Vulkan
         // m_context->m_deferDeleteQueue.push_back([=](){
         //     vkFreeCommandBuffers(device, commandPool, uint32_t(commandBuffers.size()), commandBuffers.data());
         // });
-
     }
 
     TL::Vector<VkCommandBuffer> ICommandPool::AllocateCommandBuffers(VkCommandPool pool, uint32_t count, VkCommandBufferLevel level)
@@ -115,7 +114,7 @@ namespace RHI::Vulkan
     void ICommandPool::ReleaseCommandBuffers(VkCommandPool pool, TL::Span<VkCommandBuffer> commandBuffers)
     {
         auto device = m_context->m_device;
-        m_context->m_deferDeleteQueue.push_back([=]()
+        m_context->m_resourceDestroyQueue.push_back([=]()
         {
             vkFreeCommandBuffers(device, pool, uint32_t(commandBuffers.size()), commandBuffers.data());
         });

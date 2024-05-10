@@ -1,13 +1,13 @@
 #pragma once
 #include <RHI/Resources.hpp>
-#include <RHI/Attachments.hpp>
-#include <RHI/FrameScheduler.hpp>
+#include <RHI/RenderGraph.hpp>
 
 #include <RHI/Common/Result.hpp>
 
 #include <vk_mem_alloc.h>
 
 #define VULKAN_LOAD_PROC(device, proc) reinterpret_cast<PFN_##proc>(vkGetDeviceProcAddr(device, #proc));
+#define VULKAN_LOAD_PROC_INSTANCE(instance, proc) reinterpret_cast<PFN_##proc>(vkGetInstanceProcAddr(instance, #proc));
 
 #define VULKAN_ASSERT_SUCCESS(result) RHI_ASSERT(result == VK_SUCCESS)
 
@@ -339,6 +339,14 @@ namespace RHI::Vulkan
         }
     }
 
+    inline static VkImageAspectFlags FormatToAspect(VkFormat format)
+    {
+        if (format == VK_FORMAT_D32_SFLOAT)
+            return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+        else
+            return VK_IMAGE_ASPECT_COLOR_BIT;
+    }
+
     inline static VkComponentSwizzle ConvertComponentSwizzle(ComponentSwizzle componentSwizzle)
     {
         switch (componentSwizzle)
@@ -414,16 +422,16 @@ namespace RHI::Vulkan
     {
         switch (bindingType)
         {
-        case ShaderBindingType::Sampler:           return VK_DESCRIPTOR_TYPE_SAMPLER;
-        case ShaderBindingType::SampledImage:      return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        case ShaderBindingType::StorageImage:      return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        case ShaderBindingType::UniformBuffer:     return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        case ShaderBindingType::StorageBuffer:     return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        case ShaderBindingType::DynamicUniformBuffer:     return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-        case ShaderBindingType::DynamicStorageBuffer:     return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
-        case ShaderBindingType::BufferView:        return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
-        case ShaderBindingType::StorageBufferView: return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-        default:                                   RHI_UNREACHABLE(); return VK_DESCRIPTOR_TYPE_MAX_ENUM;
+        case ShaderBindingType::Sampler:              return VK_DESCRIPTOR_TYPE_SAMPLER;
+        case ShaderBindingType::SampledImage:         return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        case ShaderBindingType::StorageImage:         return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        case ShaderBindingType::UniformBuffer:        return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        case ShaderBindingType::StorageBuffer:        return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        case ShaderBindingType::DynamicUniformBuffer: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+        case ShaderBindingType::DynamicStorageBuffer: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+        case ShaderBindingType::BufferView:           return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+        case ShaderBindingType::StorageBufferView:    return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+        default:                                      RHI_UNREACHABLE(); return VK_DESCRIPTOR_TYPE_MAX_ENUM;
         }
     }
 
@@ -656,6 +664,191 @@ namespace RHI::Vulkan
         mapping.b = ConvertComponentSwizzle(componentMapping.b);
         mapping.a = ConvertComponentSwizzle(componentMapping.a);
         return mapping;
+    }
+
+    template<typename VkResourceTypeT>
+    inline static VkDebugReportObjectTypeEXT GetDebugReportObjectTypeEXT()
+    {
+        if constexpr (std::is_same_v<VkResourceTypeT, VkInstance>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_INSTANCE_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkPhysicalDevice>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_PHYSICAL_DEVICE_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkDevice>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkQueue>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_QUEUE_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkSemaphore>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkCommandBuffer>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkFence>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_FENCE_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkDeviceMemory>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkBuffer>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkImage>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkEvent>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_EVENT_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkQueryPool>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_QUERY_POOL_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkBufferView>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_VIEW_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkImageView>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkShaderModule>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkPipelineCache>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_CACHE_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkPipelineLayout>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkRenderPass>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkPipeline>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkDescriptorSetLayout>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkSampler>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkDescriptorPool>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_POOL_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkDescriptorSet>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkFramebuffer>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkCommandPool>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_POOL_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkSurfaceKHR>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_SURFACE_KHR_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkSwapchainKHR>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_SWAPCHAIN_KHR_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkDebugReportCallbackEXT>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkDisplayKHR>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_DISPLAY_KHR_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkDisplayModeKHR>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_DISPLAY_MODE_KHR_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkValidationCacheEXT>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_VALIDATION_CACHE_EXT_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkSamplerYcbcrConversion>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkDescriptorUpdateTemplate>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkCuModuleNVX>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_CU_MODULE_NVX_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkCuFunctionNVX>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_CU_FUNCTION_NVX_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkAccelerationStructureKHR>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkAccelerationStructureNV>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_ACCELERATION_STRUCTURE_NV_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkCudaModuleNV>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_CUDA_MODULE_NV_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkCudaFunctionNV>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_CUDA_FUNCTION_NV_EXT;
+        }
+        // else if constexpr (std::is_same_v<VkResourceTypeT, VkBufferCollectionFuchsia>)
+        // {
+        //     return VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_COLLECTION_FUCHSIA_EXT;
+        // }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkDebugReportCallbackEXT>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_DEBUG_REPORT_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkValidationCacheEXT>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_VALIDATION_CACHE_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkDescriptorUpdateTemplateKHR>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_KHR_EXT;
+        }
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkSamplerYcbcrConversionKHR>)
+        {
+            return VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_KHR_EXT;
+        }
+        else
+        {
+            RHI_UNREACHABLE();
+        }
     }
 
 } // namespace RHI::Vulkan

@@ -1,121 +1,16 @@
 #include "CommandList.hpp"
 #include "Common.hpp"
 #include "Context.hpp"
-#include "FrameScheduler.hpp"
 #include "Resources.hpp"
 #include "Swapchain.hpp"
+#include "RenderGraphCompiler.hpp"
 
-#include <RHI/Attachments.hpp>
 #include <RHI/Format.hpp>
 
 #include <tracy/Tracy.hpp>
 
 namespace RHI::Vulkan
 {
-    enum class BarrierType
-    {
-        PrePass,
-        PostPass,
-    };
-
-    struct BarrierStage
-    {
-        VkPipelineStageFlags2 stage;
-        VkAccessFlags2 access;
-        VkImageLayout layout;
-    };
-
-    inline static bool IsSwapchainAttachment(const ImagePassAttachment& passAttachment)
-    {
-        return passAttachment.GetAttachment()->m_swapchain != nullptr;
-    }
-
-    inline static VkPipelineStageFlags2 GetPipelineStageFromShaderStage(Flags<ShaderStage> shader)
-    {
-        VkPipelineStageFlags2 flags = {};
-
-        if (shader & ShaderStage::Compute)
-            return VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-
-        if (shader & ShaderStage::Pixel)
-            flags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-        if (shader & ShaderStage::Vertex)
-            flags |= VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
-
-        return flags;
-    }
-
-    inline static VkAccessFlags2 GetShaderAccessFlags(Access access, bool isStorage)
-    {
-        if (access == Access::Write)
-            return isStorage ? VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT : VK_ACCESS_2_SHADER_WRITE_BIT;
-        else if (access == Access::Read)
-            return isStorage ? VK_ACCESS_2_SHADER_STORAGE_READ_BIT : VK_ACCESS_2_SHADER_READ_BIT;
-        else if (access == Access::ReadWrite)
-            return isStorage ? VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT : VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
-
-        return {};
-    }
-
-    inline static BarrierStage GetImageTransitionInfo(BarrierType barrierType, const ImagePassAttachment* passAttachment)
-    {
-        if (passAttachment == nullptr)
-        {
-            return { barrierType == BarrierType::PrePass ? VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT : VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, VK_ACCESS_2_NONE, VK_IMAGE_LAYOUT_UNDEFINED };
-        }
-
-        auto usage = passAttachment->m_usage;
-        auto access = passAttachment->m_access;
-        auto stages = passAttachment->m_stage;
-        auto loadStoreOperations = passAttachment->m_loadStoreOperations;
-
-        VkAccessFlags2 renderTargetAccessFlags = {};
-        if (loadStoreOperations.loadOperation == LoadOperation::Load)
-            renderTargetAccessFlags |= usage == ImageUsage::Color ? VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT : VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-        if (loadStoreOperations.storeOperation == StoreOperation::Store)
-            renderTargetAccessFlags |= usage == ImageUsage::Color ? VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT : VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-        // clang-format off
-        switch (usage)
-        {
-        case ImageUsage::Color:           return { VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, renderTargetAccessFlags,             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL         };
-        case ImageUsage::Depth:           return { VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,    renderTargetAccessFlags,             VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL         };
-        case ImageUsage::Stencil:         return { VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,    renderTargetAccessFlags,             VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL       };
-        case ImageUsage::DepthStencil:    return { VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,    renderTargetAccessFlags,             VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
-        case ImageUsage::CopySrc:         return { VK_PIPELINE_STAGE_2_TRANSFER_BIT,                VK_ACCESS_2_TRANSFER_READ_BIT,       VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL             };
-        case ImageUsage::CopyDst:         return { VK_PIPELINE_STAGE_2_TRANSFER_BIT,                VK_ACCESS_2_TRANSFER_WRITE_BIT,      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL             };
-        case ImageUsage::ShaderResource:  return { GetPipelineStageFromShaderStage(stages),         GetShaderAccessFlags(access, false), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL         };
-        case ImageUsage::StorageResource: return { GetPipelineStageFromShaderStage(stages),         GetShaderAccessFlags(access, true),  VK_IMAGE_LAYOUT_GENERAL                          };
-        default:                          RHI_UNREACHABLE(); return {};
-        }
-        // clang-format on
-    }
-
-    inline static BarrierStage GetBufferTransitionInfo(BarrierType barrierType, const BufferPassAttachment* passAttachment)
-    {
-        if (passAttachment == nullptr)
-        {
-            return { barrierType == BarrierType::PrePass ? VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT : VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, VK_ACCESS_2_NONE, VK_IMAGE_LAYOUT_UNDEFINED };
-        }
-
-        auto usage = passAttachment->m_usage;
-        auto access = passAttachment->m_access;
-        auto stages = passAttachment->m_stage;
-
-        // clang-format off
-        switch (usage)
-        {
-        case BufferUsage::Storage: return { GetPipelineStageFromShaderStage(stages),  GetShaderAccessFlags(access, false), {} };
-        case BufferUsage::Uniform: return { GetPipelineStageFromShaderStage(stages),  GetShaderAccessFlags(access, true),  {} };
-        case BufferUsage::Vertex:  return { VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT,     VK_ACCESS_2_SHADER_READ_BIT,         {} };
-        case BufferUsage::Index:   return { VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT,      VK_ACCESS_2_SHADER_READ_BIT,         {} };
-        case BufferUsage::CopySrc: return { VK_PIPELINE_STAGE_2_TRANSFER_BIT,         VK_ACCESS_2_TRANSFER_READ_BIT,       {} };
-        case BufferUsage::CopyDst: return { VK_PIPELINE_STAGE_2_TRANSFER_BIT,         VK_ACCESS_2_TRANSFER_WRITE_BIT,      {} };
-        default:                   RHI_UNREACHABLE(); return {};
-        }
-        // clang-format on
-    }
-
     //////////////////////////////////////////////////////////////////////////////////////////
     /// CommandList
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -124,7 +19,6 @@ namespace RHI::Vulkan
         : m_commandBuffer(commandBuffer)
         , m_commandPool(commandPool)
         , m_context(context)
-        , m_pass(nullptr)
     {
     }
 
@@ -140,142 +34,56 @@ namespace RHI::Vulkan
         vkBeginCommandBuffer(m_commandBuffer, &beginInfo);
     }
 
-    void ICommandList::Begin(Pass& passBase)
+    void ICommandList::Begin(RenderGraph& renderGraph, Handle<Pass> passHandle)
     {
         ZoneScoped;
 
-        auto& pass = static_cast<Pass&>(passBase);
-
-        m_pass = &pass;
+        auto pass = renderGraph.m_passOwner.Get(passHandle);
+        RenderGraphCompiler::CompilePass(m_context, renderGraph, pass);
+        m_passSubmitData = (IPassSubmitData*)pass->submitData;
 
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.pNext = nullptr;
         beginInfo.flags = 0;
         beginInfo.pInheritanceInfo = nullptr;
-        vkBeginCommandBuffer(m_commandBuffer, &beginInfo);
 
-        std::vector<VkImageMemoryBarrier2> imageBarriers;
-        for (auto& passAttachment : m_pass->m_imagePassAttachments)
+        if (m_level == VK_COMMAND_BUFFER_LEVEL_PRIMARY)
         {
-            auto attachemnt = passAttachment->GetAttachment();
-            auto srcPassAttachment = passAttachment->GetPrev();
-            auto dstPassAttachment = passAttachment.get();
-            auto image = m_context->m_imageOwner.Get(attachemnt->GetHandle());
+            vkBeginCommandBuffer(m_commandBuffer, &beginInfo);
 
-            auto srcInfo = GetImageTransitionInfo(BarrierType::PrePass, srcPassAttachment);
-            auto dstInfo = GetImageTransitionInfo(BarrierType::PrePass, dstPassAttachment);
+            PipelineBarrier({}, m_passSubmitData->bufferBarriers[BarrierType::PrePass], m_passSubmitData->imageBarriers[BarrierType::PrePass]);
 
-            // if first use then collect all semaphore we need to wait on
-            if (srcPassAttachment == nullptr)
-            {
-                // swapchain semaphore
-                if (IsSwapchainAttachment(*passAttachment))
-                {
-                    auto swapchain = (ISwapchain*)attachemnt->m_swapchain;
-
-                    auto& semaphoreInfo = m_waitSemaphores.emplace_back();
-                    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-                    semaphoreInfo.semaphore = swapchain->GetImageReadySemaphore();
-                    semaphoreInfo.stageMask = dstInfo.stage;
-                }
-                // transient resource nothing to do
-                else if (image->waitSemaphore != VK_NULL_HANDLE)
-                {
-                    // resource is being streamed wait for it
-                    auto& semaphoreInfo = m_waitSemaphores.emplace_back();
-                    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-                    semaphoreInfo.semaphore = image->waitSemaphore;
-                    semaphoreInfo.stageMask = dstInfo.stage;
-                }
-            }
-
-            VkImageMemoryBarrier2& barrier = imageBarriers.emplace_back();
-            barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-            barrier.pNext = nullptr;
-            barrier.srcStageMask = srcInfo.stage;
-            barrier.srcAccessMask = srcInfo.access;
-            barrier.dstStageMask = dstInfo.stage;
-            barrier.dstAccessMask = dstInfo.access;
-            barrier.oldLayout = srcInfo.layout;
-            barrier.newLayout = dstInfo.layout;
-            barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            barrier.image = image->handle;
-            barrier.subresourceRange = ConvertSubresourceRange(passAttachment->m_viewInfo.subresource);
+            VkRenderingInfo renderingInfo{};
+            renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+            renderingInfo.pNext = nullptr;
+            renderingInfo.flags = 0;
+            renderingInfo.renderArea.extent = ConvertExtent2D(pass->renderTargetSize);
+            renderingInfo.layerCount = 1;
+            renderingInfo.viewMask = 0;
+            renderingInfo.colorAttachmentCount = (uint32_t)m_passSubmitData->colorAttachments.size();
+            renderingInfo.pColorAttachments = m_passSubmitData->colorAttachments.data();
+            renderingInfo.pDepthAttachment = m_passSubmitData->hasDepthAttachemnt ? &m_passSubmitData->depthAttachmentInfo : nullptr;
+            renderingInfo.pStencilAttachment = m_passSubmitData->hasStencilAttachment ? &m_passSubmitData->stencilAttachmentInfo : nullptr;
+            vkCmdBeginRendering(m_commandBuffer, &renderingInfo);
         }
-
-        std::vector<VkBufferMemoryBarrier2> bufferBarriers;
-        for (auto& passAttachment : m_pass->m_bufferPassAttachments)
+        else
         {
-            auto attachemnt = passAttachment->GetAttachment();
-            auto srcPassAttachment = passAttachment->GetPrev();
-            auto dstPassAttachment = passAttachment.get();
-            auto buffer = m_context->m_bufferOwner.Get(attachemnt->GetHandle());
-
-            if (srcPassAttachment == nullptr)
-            {
-                continue;
-            }
-
-            auto srcInfo = GetBufferTransitionInfo(BarrierType::PrePass, srcPassAttachment);
-            auto dstInfo = GetBufferTransitionInfo(BarrierType::PrePass, dstPassAttachment);
-
-            VkBufferMemoryBarrier2& barrier = bufferBarriers.emplace_back();
-            barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-            barrier.pNext = nullptr;
-            barrier.srcStageMask = srcInfo.stage;
-            barrier.srcAccessMask = srcInfo.access;
-            barrier.dstStageMask = dstInfo.stage;
-            barrier.dstAccessMask = dstInfo.access;
-            barrier.buffer = buffer->handle;
-            barrier.offset = passAttachment->m_viewInfo.byteOffset;
-            barrier.size = passAttachment->m_viewInfo.byteSize;
-            barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        }
-
-        PipelineBarrier({}, bufferBarriers, imageBarriers);
-
-        if (m_pass && m_pass->GetQueueType() == QueueType::Graphics)
-        {
-            std::vector<VkRenderingAttachmentInfo> colorAttachmentInfos;
-            VkRenderingAttachmentInfo depthAttachmentInfo = {};
-            bool hasDepthAttachment = false;
-
-            for (auto passAttachment : m_pass->GetColorAttachments())
-            {
-                auto view = m_context->m_imageViewOwner.Get(m_pass->m_scheduler->GetImageView(passAttachment));
-
-                VkRenderingAttachmentInfo& attachmentInfo = colorAttachmentInfos.emplace_back();
-                attachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-                attachmentInfo.pNext = nullptr;
-                attachmentInfo.imageView = view->handle;
-                attachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-                attachmentInfo.loadOp = ConvertLoadOp(passAttachment->m_loadStoreOperations.loadOperation);
-                attachmentInfo.storeOp = ConvertStoreOp(passAttachment->m_loadStoreOperations.storeOperation);
-                attachmentInfo.clearValue.color = ConvertClearValue(passAttachment->m_clearValue);
-            }
-
-            if (auto passAttachment = m_pass->GetDepthStencilAttachment(); passAttachment != nullptr)
-            {
-                auto view = m_context->m_imageViewOwner.Get(m_pass->m_scheduler->GetImageView(passAttachment));
-
-                depthAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-                depthAttachmentInfo.pNext = nullptr;
-                depthAttachmentInfo.imageView = view->handle;
-                depthAttachmentInfo.loadOp = ConvertLoadOp(passAttachment->m_loadStoreOperations.loadOperation);
-                depthAttachmentInfo.storeOp = ConvertStoreOp(passAttachment->m_loadStoreOperations.storeOperation);
-                depthAttachmentInfo.imageLayout =
-                    depthAttachmentInfo.storeOp != VK_ATTACHMENT_STORE_OP_STORE ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
-                depthAttachmentInfo.clearValue.depthStencil = ConvertDepthStencilValue(passAttachment->m_clearValue.depthStencil);
-                hasDepthAttachment = true;
-            }
-
-            RenderingBegin(
-                colorAttachmentInfos,
-                hasDepthAttachment ? &depthAttachmentInfo : nullptr,
-                m_pass->m_frameSize);
+            VkCommandBufferInheritanceRenderingInfoKHR renderinginheritanceInfo{};
+            renderinginheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO_KHR;
+            renderinginheritanceInfo.pNext = nullptr;
+            renderinginheritanceInfo.flags = 0;
+            renderinginheritanceInfo.viewMask = 0;
+            renderinginheritanceInfo.colorAttachmentCount = (uint32_t)m_passSubmitData->colorFormats.size();
+            renderinginheritanceInfo.pColorAttachmentFormats = m_passSubmitData->colorFormats.data();
+            renderinginheritanceInfo.depthAttachmentFormat = m_passSubmitData->depthFormat;
+            renderinginheritanceInfo.stencilAttachmentFormat = m_passSubmitData->stencilformat;
+            renderinginheritanceInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+            VkCommandBufferInheritanceInfo inheritanceInfo{};
+            inheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
+            inheritanceInfo.pNext = &renderinginheritanceInfo;
+            beginInfo.pInheritanceInfo = &inheritanceInfo;
+            vkBeginCommandBuffer(m_commandBuffer, &beginInfo);
         }
     }
 
@@ -283,89 +91,13 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        if (m_pass && m_pass->GetQueueType() == QueueType::Graphics)
+        if (m_passSubmitData)
         {
-            RenderingEnd();
-        }
-
-        if (m_pass)
-        {
-            std::vector<VkImageMemoryBarrier2> imageBarriers;
-            for (auto& passAttachment : m_pass->m_imagePassAttachments)
+            if (m_passSubmitData->colorAttachments.empty() == false || m_passSubmitData->hasDepthAttachemnt || m_passSubmitData->hasStencilAttachment)
             {
-                auto attachemnt = passAttachment->GetAttachment();
-                auto srcPassAttachment = passAttachment.get();
-                auto dstPassAttachment = passAttachment->GetNext();
-                auto image = m_context->m_imageOwner.Get(attachemnt->GetHandle());
-
-                auto srcInfo = GetImageTransitionInfo(BarrierType::PostPass, srcPassAttachment);
-                auto dstInfo = GetImageTransitionInfo(BarrierType::PostPass, dstPassAttachment);
-
-                if (passAttachment->GetNext() == nullptr && IsSwapchainAttachment(*passAttachment.get()))
-                {
-                    auto swapchain = (ISwapchain*)attachemnt->m_swapchain;
-
-                    dstInfo = { VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, VK_ACCESS_2_NONE, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR };
-
-                    auto& signalSemaphore = m_signalSemaphores.emplace_back();
-                    signalSemaphore.semaphore = swapchain->GetFrameReadySemaphore();
-                    signalSemaphore.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-                    signalSemaphore.stageMask = dstInfo.stage;
-                }
-                // a read operation is staged
-                else if (image->signalSemaphore != VK_NULL_HANDLE)
-                {
-                    auto& signalSemaphore = m_signalSemaphores.emplace_back();
-                    signalSemaphore.semaphore = image->signalSemaphore;
-                    signalSemaphore.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-                    signalSemaphore.stageMask = dstInfo.stage;
-                }
-                else
-                {
-                    continue;
-                }
-
-                VkImageMemoryBarrier2& barrier = imageBarriers.emplace_back();
-                barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-                barrier.pNext = nullptr;
-                barrier.srcStageMask = srcInfo.stage;
-                barrier.srcAccessMask = srcInfo.access;
-                barrier.dstStageMask = dstInfo.stage;
-                barrier.dstAccessMask = dstInfo.access;
-                barrier.oldLayout = srcInfo.layout;
-                barrier.newLayout = dstInfo.layout;
-                barrier.image = image->handle;
-                barrier.subresourceRange = ConvertSubresourceRange(passAttachment->m_viewInfo.subresource);
-                barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-                barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                vkCmdEndRendering(m_commandBuffer);
             }
-
-            std::vector<VkBufferMemoryBarrier2> bufferBarriers;
-            for (auto& passAttachment : m_pass->m_bufferPassAttachments)
-            {
-                auto attachemnt = passAttachment->GetAttachment();
-                auto srcPassAttachment = passAttachment.get();
-                auto dstPassAttachment = passAttachment->GetNext();
-                auto buffer = m_context->m_bufferOwner.Get(attachemnt->GetHandle());
-
-                auto srcInfo = GetBufferTransitionInfo(BarrierType::PostPass, srcPassAttachment);
-                auto dstInfo = GetBufferTransitionInfo(BarrierType::PostPass, dstPassAttachment);
-
-                VkBufferMemoryBarrier2& barrier = bufferBarriers.emplace_back();
-                barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-                barrier.pNext = nullptr;
-                barrier.srcStageMask = srcInfo.stage;
-                barrier.srcAccessMask = srcInfo.access;
-                barrier.dstStageMask = dstInfo.stage;
-                barrier.dstAccessMask = dstInfo.access;
-                barrier.buffer = buffer->handle;
-                barrier.offset = passAttachment->m_viewInfo.byteOffset;
-                barrier.size = passAttachment->m_viewInfo.byteSize;
-                barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-                barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            }
-
-            PipelineBarrier({}, bufferBarriers, imageBarriers);
+            PipelineBarrier({}, m_passSubmitData->bufferBarriers[BarrierType::PrePass], m_passSubmitData->imageBarriers[BarrierType::PrePass]);
         }
 
         vkEndCommandBuffer(m_commandBuffer);
@@ -598,7 +330,7 @@ namespace RHI::Vulkan
         vkCmdCopyImageToBuffer(m_commandBuffer, srcImage->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstBuffer->handle, 1, &bufferImageCopy);
     }
 
-    void ICommandList::BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<Handle<BindGroup>> bindGroups, TL::Span<const uint32_t> dynamicOffset)
+    void ICommandList::BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const Handle<BindGroup>> bindGroups, TL::Span<const uint32_t> dynamicOffset)
     {
         uint32_t count = 0;
         VkDescriptorSet descriptorSets[c_MaxPipelineBindGroupsCount] = {};
@@ -607,34 +339,7 @@ namespace RHI::Vulkan
             auto bindGroup = m_context->m_bindGroupOwner.Get(bindGroupHandle);
             descriptorSets[count++] = bindGroup->descriptorSet;
         }
-        // vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, count, descriptorSets, 0, nullptr);
         vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, count, descriptorSets, (uint32_t)dynamicOffset.size(), dynamicOffset.size() ? dynamicOffset.data() : nullptr);
-
-    }
-
-    void ICommandList::RenderingBegin(TL::Span<const VkRenderingAttachmentInfo> attachmentInfos,
-                                      const VkRenderingAttachmentInfo* depthAttachmentInfo,
-                                      ImageSize2D extent)
-    {
-        ZoneScoped;
-
-        VkRenderingInfo renderingInfo = {};
-        renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-        renderingInfo.pNext = nullptr;
-        renderingInfo.flags = 0;
-        renderingInfo.renderArea.extent = ConvertExtent2D(extent);
-        // renderingInfo.renderArea.offset = ConvertOffset2D({ 0u, 0u  });
-        renderingInfo.layerCount = 1;
-        renderingInfo.colorAttachmentCount = uint32_t(attachmentInfos.size());
-        renderingInfo.pColorAttachments = attachmentInfos.data();
-        renderingInfo.pDepthAttachment = depthAttachmentInfo;
-        vkCmdBeginRendering(m_commandBuffer, &renderingInfo);
-    }
-
-    void ICommandList::RenderingEnd()
-    {
-        ZoneScoped;
-        vkCmdEndRendering(m_commandBuffer);
     }
 
     void ICommandList::PipelineBarrier(TL::Span<const VkMemoryBarrier2> memoryBarriers,

@@ -2,7 +2,6 @@
 
 #include "Common.hpp"
 #include "Context.hpp"
-#include "FrameScheduler.hpp"
 #include "Resources.hpp"
 
 #define TIMEOUT_DURATION 9000000
@@ -77,6 +76,8 @@ namespace RHI::Vulkan
         signalSemaphore = VK_NULL_HANDLE;
         waitSemaphore   = VK_NULL_HANDLE;
 
+        size = _createInfo.size;
+
         VkImageCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         createInfo.pNext = nullptr;
@@ -118,7 +119,7 @@ namespace RHI::Vulkan
             result = vmaCreateImage(context->m_allocator, &createInfo, &allocationInfo, &handle, &allocation.handle, &allocation.info);
         }
 
-        context->SetDebugName(VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, uint64_t(handle), _createInfo.name);
+        context->SetDebugName(handle, _createInfo.name);
 
         return ConvertResult(result);
     }

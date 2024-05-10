@@ -1,9 +1,9 @@
 #pragma once
 
 #include "RHI/Resources.hpp"
-#include "RHI/RenderTarget.hpp"
 #include "RHI/QueueType.hpp"
-
+#include "RHI/RenderGraph.hpp"
+#include "RHI/Common/Span.hpp"
 #include "RHI/Common/Containers.h"
 
 namespace RHI
@@ -54,7 +54,7 @@ namespace RHI
     struct BufferToImageCopyInfo
     {
         Handle<Buffer>         srcBuffer;
-        uint32_t               srcOffset;
+        size_t                 srcOffset;
         uint32_t               srcBytesPerRow;
         uint32_t               srcBytesPerImage;
         Handle<Image>          dstImage;
@@ -140,22 +140,22 @@ namespace RHI
     class RHI_EXPORT CommandPool
     {
     public:
-        CommandPool()                                                                  = default;
-        CommandPool(const CommandPool&)                                                = delete;
-        CommandPool(CommandPool&&)                                                     = delete;
-        virtual ~CommandPool()                                                         = default;
+        CommandPool()                                                                             = default;
+        CommandPool(const CommandPool&)                                                           = delete;
+        CommandPool(CommandPool&&)                                                                = delete;
+        virtual ~CommandPool()                                                                    = default;
 
         /// @brief Resets all command lists allocated from this allocator
-        virtual void                     Reset()                                       = 0;
+        virtual void                     Reset()                                                  = 0;
 
         /// @brief Allocates a new command list object
-        virtual CommandList*             Allocate(QueueType queueType)                 = 0;
+        virtual CommandList*             Allocate(QueueType queueType)                            = 0;
 
         /// @brief Allocates a new command list object
-        virtual TL::Vector<CommandList*> Allocate(QueueType queueType, uint32_t count) = 0;
+        virtual TL::Vector<CommandList*> Allocate(QueueType queueType, uint32_t count)            = 0;
 
         /// @brief Releases a command list object (must be allocated through here)
-        virtual void                     Release(TL::Span<CommandList*> commandLists)  = 0;
+        virtual void                     Release(TL::Span<const CommandList* const> commandLists) = 0;
     };
 
     /// @brief Command list record a list of GPU commands that are exectued in the same pass.
@@ -171,7 +171,7 @@ namespace RHI
         virtual void Begin()                                                                       = 0;
 
         /// @brief Marks the begining of this command list recording inside a pass
-        virtual void Begin(Pass& pass)                                                             = 0;
+        virtual void Begin(RenderGraph& renderGraph, Handle<Pass> pass)                            = 0;
 
         /// @brief Marks the ending of this command list recording
         virtual void End()                                                                         = 0;

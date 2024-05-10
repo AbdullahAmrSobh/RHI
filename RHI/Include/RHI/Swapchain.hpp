@@ -42,6 +42,9 @@ namespace RHI
     class RHI_EXPORT Swapchain
     {
     public:
+        static constexpr uint32_t MaxImageCount = 3;
+        static constexpr uint32_t MinImageCount = 3;
+
         Swapchain(Context* context);
         virtual ~Swapchain() = default;
 

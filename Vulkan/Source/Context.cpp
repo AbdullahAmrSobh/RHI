@@ -1,14 +1,11 @@
-#include "RHI/Common/Callstack.hpp"
-
 #include "RHI-Vulkan/Loader.hpp"
 
 #include "Common.hpp"
 #include "Resources.hpp"
 #include "CommandList.hpp"
 #include "CommandPool.hpp"
-#include "FrameScheduler.hpp"
 #include "Swapchain.hpp"
-
+#include "RenderGraphCompiler.hpp"
 #include "Context.hpp"
 
 #include <tracy/Tracy.hpp>
@@ -44,17 +41,17 @@ namespace RHI
 
 namespace RHI::Vulkan
 {
-    TL::Vector<VkLayerProperties> _GetAvailableInstanceLayerExtensions()
-    {
-        uint32_t instanceLayerCount;
-        vkEnumerateInstanceLayerProperties(&instanceLayerCount, nullptr);
-        TL::Vector<VkLayerProperties> layers;
-        layers.resize(instanceLayerCount);
-        vkEnumerateInstanceLayerProperties(&instanceLayerCount, layers.data());
-        return layers;
-    }
+    // inline static TL::Vector<VkLayerProperties> GetAvailableInstanceLayerExtensions()
+    // {
+    //     uint32_t instanceLayerCount;
+    //     vkEnumerateInstanceLayerProperties(&instanceLayerCount, nullptr);
+    //     TL::Vector<VkLayerProperties> layers;
+    //     layers.resize(instanceLayerCount);
+    //     vkEnumerateInstanceLayerProperties(&instanceLayerCount, layers.data());
+    //     return layers;
+    // }
 
-    TL::Vector<VkExtensionProperties> _GetAvailableInstanceExtensions()
+    inline static TL::Vector<VkExtensionProperties> GetAvailableInstanceExtensions()
     {
         uint32_t instanceExtensionsCount;
         vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionsCount, nullptr);
@@ -64,17 +61,17 @@ namespace RHI::Vulkan
         return extensions;
     }
 
-    TL::Vector<VkLayerProperties> _GetAvailableDeviceLayerExtensions(VkPhysicalDevice physicalDevice)
-    {
-        uint32_t instanceLayerCount;
-        vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, nullptr);
-        TL::Vector<VkLayerProperties> layers;
-        layers.resize(instanceLayerCount);
-        vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, layers.data());
-        return layers;
-    }
+    // inline static TL::Vector<VkLayerProperties> GetAvailableDeviceLayerExtensions(VkPhysicalDevice physicalDevice)
+    // {
+    //     uint32_t instanceLayerCount;
+    //     vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, nullptr);
+    //     TL::Vector<VkLayerProperties> layers;
+    //     layers.resize(instanceLayerCount);
+    //     vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, layers.data());
+    //     return layers;
+    // }
 
-    TL::Vector<VkExtensionProperties> _GetAvailableDeviceExtensions(VkPhysicalDevice physicalDevice)
+    inline static TL::Vector<VkExtensionProperties> GetAvailableDeviceExtensions(VkPhysicalDevice physicalDevice)
     {
         uint32_t extensionsCount;
         vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, nullptr);
@@ -84,7 +81,7 @@ namespace RHI::Vulkan
         return extnesions;
     }
 
-    TL::Vector<VkPhysicalDevice> _GetAvailablePhysicalDevices(VkInstance instance)
+    inline static TL::Vector<VkPhysicalDevice> GetAvailablePhysicalDevices(VkInstance instance)
     {
         uint32_t physicalDeviceCount;
         vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
@@ -94,7 +91,7 @@ namespace RHI::Vulkan
         return physicalDevices;
     }
 
-    TL::Vector<VkQueueFamilyProperties> _GetPhysicalDeviceQueueFamilyProperties(VkPhysicalDevice physicalDevice)
+    inline static TL::Vector<VkQueueFamilyProperties> GetPhysicalDeviceQueueFamilyProperties(VkPhysicalDevice physicalDevice)
     {
         uint32_t queueFamilyPropertiesCount;
         vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyPropertiesCount, nullptr);
@@ -107,26 +104,6 @@ namespace RHI::Vulkan
     IContext::IContext(Ptr<DebugCallbacks> debugCallbacks)
         : Context(std::move(debugCallbacks))
     {
-        m_frameScheduler = CreatePtr<IFrameScheduler>(this);
-    }
-
-    IContext::~IContext()
-    {
-        ZoneScoped;
-
-        vkDeviceWaitIdle(m_device);
-
-        // Cleanup base
-        OnDestruct();
-
-        // Destroy resource in the delete queue
-        DestroyResources();
-
-        m_bindGroupAllocator->Shutdown();
-
-        vmaDestroyAllocator(m_allocator);
-        vkDestroyDevice(m_device, nullptr);
-        vkDestroyInstance(m_instance, nullptr);
     }
 
     VkResult IContext::Init(const ApplicationInfo& appInfo)
@@ -146,402 +123,24 @@ namespace RHI::Vulkan
         result = InitMemoryAllocator();
         VULKAN_RETURN_VKERR_CODE(result);
 
-        result = LoadFunctions(debugExtensionEnabled);
-        VULKAN_RETURN_VKERR_CODE(result);
+        vkGetDeviceQueue(m_device, m_graphicsQueueFamilyIndex, 0, &m_graphicsQueue);
+        vkGetDeviceQueue(m_device, m_computeQueueFamilyIndex, 0, &m_computeQueue);
+        vkGetDeviceQueue(m_device, m_transferQueueFamilyIndex, 0, &m_transferQueue);
 
-        result = InitFrameScheduler();
+        result = LoadFunctions(debugExtensionEnabled);
         VULKAN_RETURN_VKERR_CODE(result);
 
         m_bindGroupAllocator = CreatePtr<BindGroupAllocator>(m_device);
 
+        // TracyVkContextHostCalibrated(m_physicalDevice, m_device, vkResetQueryPool, m_vkGetPhysicalDeviceCalibrateableTimeDomainsKHR, m_vkGetCalibratedTimestampsKHR);
+
+        m_commandPool = CreatePtr<ICommandPool>(this);
+        m_commandPool->Init();
+
         return VK_SUCCESS;
     }
 
-    ////////////////////////////////////////////////////////////
-    // Interface implementation
-    ////////////////////////////////////////////////////////////
-    Ptr<Swapchain> IContext::CreateSwapchain(const SwapchainCreateInfo& createInfo)
-    {
-        ZoneScoped;
-
-        auto swapchain = CreatePtr<ISwapchain>(this);
-        auto result = swapchain->Init(createInfo);
-        if (result != VK_SUCCESS)
-        {
-            DebugLogError("Failed to create swapchain object");
-        }
-        return swapchain;
-    }
-
-    Ptr<ShaderModule> IContext::CreateShaderModule(TL::Span<const uint8_t> shaderBlob)
-    {
-        ZoneScoped;
-
-        auto shaderModule = CreatePtr<IShaderModule>(this);
-        auto result = shaderModule->Init(shaderBlob);
-        if (result != VK_SUCCESS)
-        {
-            DebugLogError("Failed to create shader module");
-        }
-        return shaderModule;
-    }
-
-    Ptr<Fence> IContext::CreateFence()
-    {
-        ZoneScoped;
-
-        auto fence = CreatePtr<IFence>(this);
-        auto result = fence->Init();
-        if (result != VK_SUCCESS)
-        {
-            DebugLogError("Failed to create a fence object");
-        }
-        return fence;
-    }
-
-    Ptr<CommandPool> IContext::CreateCommandPool()
-    {
-        ZoneScoped;
-
-        auto commandPool = CreatePtr<ICommandPool>(this);
-        auto result = commandPool->Init();
-        if (result != VK_SUCCESS)
-        {
-            DebugLogError("Failed to create a command_list_allocator object");
-        }
-        return commandPool;
-    }
-
-    Ptr<ResourcePool> IContext::CreateResourcePool(const ResourcePoolCreateInfo& createInfo)
-    {
-        ZoneScoped;
-
-        auto resourcePool = CreatePtr<IResourcePool>(this);
-        auto result = resourcePool->Init(createInfo);
-        if (result != VK_SUCCESS)
-        {
-            DebugLogError("Failed to create a resource_pool object");
-        }
-        return resourcePool;
-    }
-
-    Handle<BindGroupLayout> IContext::CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)
-    {
-        ZoneScoped;
-
-        IBindGroupLayout bindGroupLayout {};
-        auto result = bindGroupLayout.Init(this, createInfo);
-        if (IsError(result))
-        {
-            DebugLogError("Failed to create bindGroupLayout");
-        }
-        return m_bindGroupLayoutsOwner.Emplace(std::move(bindGroupLayout));
-    }
-
-    void IContext::DestroyBindGroupLayout(Handle<BindGroupLayout> handle)
-    {
-        ZoneScoped;
-
-        auto bindGroupLayout = m_bindGroupLayoutsOwner.Get(handle);
-        // clang-format off
-        IContext* self = this;
-        m_deferDeleteQueue.push_back([=](){ bindGroupLayout->Shutdown(self); });
-        // clang-format on
-        m_LeakDetector.m_bindGroupLayouts.OnDestroy(handle);
-    }
-
-    Handle<BindGroup> IContext::CreateBindGroup(Handle<BindGroupLayout> layoutHandle)
-    {
-        ZoneScoped;
-
-        IBindGroup bindGroup {};
-        auto result = bindGroup.Init(this, layoutHandle);
-        if (IsError(result))
-        {
-            DebugLogError("Failed to create bindGroup");
-        }
-        auto handle = m_bindGroupOwner.Emplace(std::move(bindGroup));
-        m_LeakDetector.m_bindGroups.OnCreate(handle);
-        return handle;
-    }
-
-    void IContext::DestroyBindGroup(Handle<BindGroup> handle)
-    {
-        ZoneScoped;
-
-        auto bindGroup = m_bindGroupOwner.Get(handle);
-        // clang-format off
-        IContext* self = this;
-        m_deferDeleteQueue.push_back([=](){ bindGroup->Shutdown(self); });
-        // clang-format on
-        m_LeakDetector.m_bindGroups.OnDestroy(handle);
-    }
-
-    void IContext::UpdateBindGroup(Handle<BindGroup> handle, const BindGroupData& data)
-    {
-        ZoneScoped;
-
-        auto bindGroup = m_bindGroupOwner.Get(handle);
-        bindGroup->Write(this, data);
-    }
-
-    Handle<PipelineLayout> IContext::CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)
-    {
-        ZoneScoped;
-
-        IPipelineLayout pipelineLayout {};
-        auto result = pipelineLayout.Init(this, createInfo);
-        if (IsError(result))
-        {
-            DebugLogError("Failed to create pipelineLayout");
-        }
-        auto handle = m_pipelineLayoutOwner.Emplace(std::move(pipelineLayout));
-        m_LeakDetector.m_pipelineLayouts.OnCreate(handle);
-        return handle;
-    }
-
-    void IContext::DestroyPipelineLayout(Handle<PipelineLayout> handle)
-    {
-        ZoneScoped;
-
-        auto pipelineLayout = m_pipelineLayoutOwner.Get(handle);
-        // clang-format off
-        IContext* self = this;
-        m_deferDeleteQueue.push_back([=](){ pipelineLayout->Shutdown(self); });
-        // clang-format on
-        m_LeakDetector.m_pipelineLayouts.OnDestroy(handle);
-    }
-
-    Handle<GraphicsPipeline> IContext::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)
-    {
-        ZoneScoped;
-
-        IGraphicsPipeline graphicsPipeline {};
-        auto result = graphicsPipeline.Init(this, createInfo);
-        if (IsError(result))
-        {
-            DebugLogError("Failed to create graphicsPipeline");
-        }
-        auto handle = m_graphicsPipelineOwner.Emplace(std::move(graphicsPipeline));
-        m_LeakDetector.m_graphicsPipelines.OnCreate(handle);
-        return handle;
-    }
-
-    void IContext::DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle)
-    {
-        ZoneScoped;
-
-        auto graphicsPipeline = m_graphicsPipelineOwner.Get(handle);
-        // clang-format off
-        IContext* self = this;
-        m_deferDeleteQueue.push_back([=](){ graphicsPipeline->Shutdown(self); });
-        // clang-format on
-        m_LeakDetector.m_graphicsPipelines.OnDestroy(handle);
-    }
-
-    Handle<ComputePipeline> IContext::CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
-    {
-        ZoneScoped;
-
-        IComputePipeline computePipeline {};
-        auto result = computePipeline.Init(this, createInfo);
-        if (IsError(result))
-        {
-            DebugLogError("Failed to create computePipeline");
-        }
-        auto handle = m_computePipelineOwner.Emplace(std::move(computePipeline));
-        m_LeakDetector.m_computePipelines.OnCreate(handle);
-        return handle;
-    }
-
-    void IContext::DestroyComputePipeline(Handle<ComputePipeline> handle)
-    {
-        ZoneScoped;
-
-        auto computePipeline = m_computePipelineOwner.Get(handle);
-        // clang-format off
-        IContext* self = this;
-        m_deferDeleteQueue.push_back([=](){ computePipeline->Shutdown(self); });
-        // clang-format on
-        m_LeakDetector.m_computePipelines.OnDestroy(handle);
-    }
-
-    Handle<Sampler> IContext::CreateSampler(const SamplerCreateInfo& createInfo)
-    {
-        ZoneScoped;
-
-        ISampler sampler {};
-        auto result = sampler.Init(this, createInfo);
-        if (IsError(result))
-        {
-            DebugLogError("Failed to create sampler");
-        }
-        auto handle = m_samplerOwner.Emplace(std::move(sampler));
-        m_LeakDetector.m_samplers.OnCreate(handle);
-        return handle;
-    }
-
-    void IContext::DestroySampler(Handle<Sampler> handle)
-    {
-        ZoneScoped;
-
-        auto sampler = m_samplerOwner.Get(handle);
-        // clang-format off
-        IContext* self = this;
-        m_deferDeleteQueue.push_back([=](){ sampler->Shutdown(self); });
-        // clang-format on
-        m_LeakDetector.m_samplers.OnDestroy(handle);
-    }
-
-    Result<Handle<Image>> IContext::CreateImage(const ImageCreateInfo& createInfo)
-    {
-        ZoneScoped;
-
-        IImage image {};
-        auto result = image.Init(this, createInfo);
-        if (IsError(result))
-        {
-            DebugLogError("Failed to create image");
-            return result;
-        }
-        auto handle = m_imageOwner.Emplace(std::move(image));
-        m_LeakDetector.m_images.OnCreate(handle);
-        return Result<Handle<Image>>(handle);
-    }
-
-    void IContext::DestroyImage(Handle<Image> handle)
-    {
-        ZoneScoped;
-
-        auto image = m_imageOwner.Get(handle);
-        // clang-format off
-        IContext* self = this;
-        m_deferDeleteQueue.push_back([=](){ image->Shutdown(self); });
-        // clang-format on
-        m_LeakDetector.m_images.OnDestroy(handle);
-    }
-
-    Result<Handle<Buffer>> IContext::CreateBuffer(const BufferCreateInfo& createInfo)
-    {
-        ZoneScoped;
-
-        IBuffer buffer {};
-        auto result = buffer.Init(this, createInfo);
-        if (IsError(result))
-        {
-            DebugLogError("Failed to create buffer");
-            return result;
-        }
-        auto handle = m_bufferOwner.Emplace(std::move(buffer));
-        m_LeakDetector.m_buffers.OnCreate(handle);
-        return Result<Handle<Buffer>>(handle);
-    }
-
-    void IContext::DestroyBuffer(Handle<Buffer> handle)
-    {
-        ZoneScoped;
-
-        auto buffer = m_bufferOwner.Get(handle);
-        // clang-format off
-        IContext* self = this;
-        m_deferDeleteQueue.push_back([=](){ buffer->Shutdown(self); });
-        // clang-format on
-        m_LeakDetector.m_buffers.OnDestroy(handle);
-    }
-
-    Handle<ImageView> IContext::CreateImageView(const ImageViewCreateInfo& createInfo)
-    {
-        ZoneScoped;
-
-        IImageView imageView {};
-        auto result = imageView.Init(this, createInfo);
-        if (IsError(result))
-        {
-            DebugLogError("Failed to create image view");
-        }
-        auto handle = m_imageViewOwner.Emplace(std::move(imageView));
-        m_LeakDetector.m_imageViews.OnCreate(handle);
-        return handle;
-    }
-
-    void IContext::DestroyImageView(Handle<ImageView> handle)
-    {
-        ZoneScoped;
-
-        auto imageView = m_imageViewOwner.Get(handle);
-        // clang-format off
-        IContext* self = this;
-        m_deferDeleteQueue.push_back([=](){ imageView->Shutdown(self); });
-        // clang-format on
-        m_LeakDetector.m_imageViews.OnDestroy(handle);
-    }
-
-    Handle<BufferView> IContext::CreateBufferView(const BufferViewCreateInfo& createInfo)
-    {
-        ZoneScoped;
-
-        IBufferView bufferView {};
-        auto result = bufferView.Init(this, createInfo);
-        if (IsError(result))
-        {
-            DebugLogError("Failed to create buffer view");
-        }
-        auto handle = m_bufferViewOwner.Emplace(std::move(bufferView));
-        m_LeakDetector.m_bufferViews.OnCreate(handle);
-        return handle;
-    }
-
-    void IContext::DestroyBufferView(Handle<BufferView> handle)
-    {
-        ZoneScoped;
-
-        auto imageView = m_bufferViewOwner.Get(handle);
-        // clang-format off
-        IContext* self = this;
-        m_deferDeleteQueue.push_back([=](){ imageView->Shutdown(self); });
-        // clang-format on
-        m_LeakDetector.m_bufferViews.OnDestroy(handle);
-    }
-
-    DeviceMemoryPtr IContext::MapBuffer(Handle<Buffer> handle)
-    {
-        ZoneScoped;
-
-        // TODO: Remove from here (wrap as new function Resources.hpp)
-        auto resource = m_bufferOwner.Get(handle);
-        auto allocation = resource->allocation.handle;
-
-        DeviceMemoryPtr memoryPtr = nullptr;
-        VkResult result = vmaMapMemory(m_allocator, allocation, &memoryPtr);
-        VULKAN_ASSERT_SUCCESS(result);
-        return memoryPtr;
-    }
-
-    void IContext::UnmapBuffer(Handle<Buffer> handle)
-    {
-        ZoneScoped;
-
-        // TODO: Remove from here (wrap as new function Resources.hpp)
-        auto resource = m_bufferOwner.Get(handle)->allocation.handle;
-        vmaUnmapMemory(m_allocator, resource);
-    }
-
-    void IContext::DestroyResources()
-    {
-        ZoneScoped;
-
-        for (auto destroyItem : m_deferDeleteQueue)
-        {
-            destroyItem();
-        }
-        m_deferDeleteQueue.clear();
-    }
-
-    ////////////////////////////////////////////////////////////
-    // Interface implementation
-    ////////////////////////////////////////////////////////////
-
-    void IContext::SetDebugName(VkDebugReportObjectTypeEXT type, uint64_t handle, const char* name)
+    void IContext::SetDebugName(VkDebugReportObjectTypeEXT type, uint64_t handle, const char* name) const
     {
         if (m_vkDebugMarkerSetObjectNameEXT && name != nullptr)
         {
@@ -569,16 +168,13 @@ namespace RHI::Vulkan
         VkSemaphore semaphore = VK_NULL_HANDLE;
         auto result = vkCreateSemaphore(m_device, &createInfo, nullptr, &semaphore);
         VULKAN_ASSERT_SUCCESS(result);
-
-        SetDebugName(VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT, (uint64_t)semaphore, name);
+        SetDebugName(semaphore, name);
 
         return semaphore;
     }
 
     void IContext::DestroySemaphore(VkSemaphore semaphore)
     {
-        ZoneScoped;
-
         if (semaphore != VK_NULL_HANDLE)
         {
             vkDestroySemaphore(m_device, semaphore, nullptr);
@@ -617,6 +213,505 @@ namespace RHI::Vulkan
 
         return index;
     }
+
+    uint32_t IContext::GetQueueFamilyIndex(QueueType queueType)
+    {
+        (void)queueType;
+        return m_graphicsQueueFamilyIndex;
+
+        // switch (queueType)
+        // {
+        // case QueueType::Graphics: return m_graphicsQueueFamilyIndex;
+        // case QueueType::Compute:  return m_computeQueueFamilyIndex;
+        // case QueueType::Transfer: return m_transferQueueFamilyIndex;
+        // default:                  RHI_UNREACHABLE(); return UINT32_MAX;
+        // }
+    }
+
+    VkQueue IContext::GetQueue(QueueType queueType)
+    {
+        (void)queueType;
+        return m_graphicsQueue;
+
+        // switch (queueType)
+        // {
+        // case QueueType::Graphics: return m_graphicsQueue;
+        // case QueueType::Compute:  return m_computeQueue;
+        // case QueueType::Transfer: return m_transferQueue;
+        // default:                  RHI_UNREACHABLE(); return VK_NULL_HANDLE;
+        // }
+    }
+
+    void IContext::QueueSubmit(QueueType queueType,
+                               TL::Span<const ICommandList* const> commandLists,
+                               TL::UnorderedMap<VkSemaphore, VkPipelineStageFlags2> waitSemaphores,
+                               TL::UnorderedMap<VkSemaphore, VkPipelineStageFlags2> signalSemaphores,
+                               IFence* signalFence)
+    {
+        ZoneScoped;
+
+        TL::Vector<VkSemaphoreSubmitInfo> waitSemaphoreSubmitInfos;
+        TL::Vector<VkSemaphoreSubmitInfo> signalSemaphoreSubmitInfos;
+        TL::Vector<VkCommandBufferSubmitInfo> commandBufferSubmitInfos;
+
+        for (auto commandList : commandLists)
+        {
+            VkCommandBufferSubmitInfo commandBufferSubmitInfo{};
+            commandBufferSubmitInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+            commandBufferSubmitInfo.commandBuffer = commandList->m_commandBuffer;
+            commandBufferSubmitInfos.push_back(commandBufferSubmitInfo);
+        }
+
+        for (auto waitSemaphore : waitSemaphores)
+        {
+            VkSemaphoreSubmitInfo waitSemaphoreSubmitInfo{};
+            waitSemaphoreSubmitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+            waitSemaphoreSubmitInfo.semaphore = waitSemaphore.first;
+            waitSemaphoreSubmitInfo.stageMask = waitSemaphore.second;
+            waitSemaphoreSubmitInfos.push_back(waitSemaphoreSubmitInfo);
+        }
+
+        for (auto signalSemaphore : signalSemaphores)
+        {
+            VkSemaphoreSubmitInfo signalSemaphoreSubmitInfo{};
+            signalSemaphoreSubmitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+            signalSemaphoreSubmitInfo.semaphore = signalSemaphore.first;
+            signalSemaphoreSubmitInfo.stageMask = signalSemaphore.second;
+            signalSemaphoreSubmitInfos.push_back(signalSemaphoreSubmitInfo);
+        }
+
+        VkSubmitInfo2 submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+        submitInfo.pNext = nullptr;
+        submitInfo.waitSemaphoreInfoCount = (uint32_t)waitSemaphoreSubmitInfos.size();
+        submitInfo.pWaitSemaphoreInfos = waitSemaphoreSubmitInfos.data();
+        submitInfo.commandBufferInfoCount = (uint32_t)commandBufferSubmitInfos.size();
+        submitInfo.pCommandBufferInfos = commandBufferSubmitInfos.data();
+        submitInfo.signalSemaphoreInfoCount = (uint32_t)signalSemaphoreSubmitInfos.size();
+        submitInfo.pSignalSemaphoreInfos = signalSemaphoreSubmitInfos.data();
+        vkQueueSubmit2(GetQueue(queueType), 1, &submitInfo, signalFence ? signalFence->UseFence() : VK_NULL_HANDLE);
+    }
+
+    ////////////////////////////////////////////////////////////
+    // Interface implementation
+    ////////////////////////////////////////////////////////////
+    void IContext::Internal_OnShutdown()
+    {
+        vkDeviceWaitIdle(m_device);
+
+        // TracyVkDestroy(m_tracyContext);
+
+        m_bindGroupAllocator->Shutdown();
+
+        vmaDestroyAllocator(m_allocator);
+        vkDestroyDevice(m_device, nullptr);
+        vkDestroyInstance(m_instance, nullptr);
+    }
+
+    void IContext::Internal_OnCollectResources()
+    {
+        for (auto& destroyResource : m_resourceDestroyQueue)
+        {
+            destroyResource();
+        }
+        m_resourceDestroyQueue.clear();
+    }
+
+    Ptr<Swapchain> IContext::Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo)
+    {
+        auto swapchain = CreatePtr<ISwapchain>(this);
+        auto result = swapchain->Init(createInfo);
+        if (result != VK_SUCCESS)
+        {
+            DebugLogError("Failed to create swapchain object");
+        }
+        return swapchain;
+    }
+
+    Ptr<ShaderModule> IContext::Internal_CreateShaderModule(TL::Span<const uint8_t> shaderBlob)
+    {
+        auto shaderModule = CreatePtr<IShaderModule>(this);
+        auto result = shaderModule->Init(shaderBlob);
+        if (result != VK_SUCCESS)
+        {
+            DebugLogError("Failed to create shader module");
+        }
+        return shaderModule;
+    }
+
+    Ptr<Fence> IContext::Internal_CreateFence()
+    {
+        auto fence = CreatePtr<IFence>(this);
+        auto result = fence->Init();
+        if (result != VK_SUCCESS)
+        {
+            DebugLogError("Failed to create a fence object");
+        }
+        return fence;
+    }
+
+    Ptr<CommandPool> IContext::Internal_CreateCommandPool()
+    {
+        auto commandPool = CreatePtr<ICommandPool>(this);
+        auto result = commandPool->Init();
+        if (result != VK_SUCCESS)
+        {
+            DebugLogError("Failed to create a command_list_allocator object");
+        }
+        return commandPool;
+    }
+
+    Ptr<ResourcePool> IContext::Internal_CreateResourcePool(const ResourcePoolCreateInfo& createInfo)
+    {
+        auto resourcePool = CreatePtr<IResourcePool>(this);
+        auto result = resourcePool->Init(createInfo);
+        if (result != VK_SUCCESS)
+        {
+            DebugLogError("Failed to create a resource_pool object");
+        }
+        return resourcePool;
+    }
+
+    Handle<BindGroupLayout> IContext::Internal_CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)
+    {
+        IBindGroupLayout bindGroupLayout{};
+        auto result = bindGroupLayout.Init(this, createInfo);
+        if (IsError(result))
+        {
+            DebugLogError("Failed to create bindGroupLayout");
+        }
+        return m_bindGroupLayoutsOwner.Emplace(std::move(bindGroupLayout));
+    }
+
+    void IContext::Internal_DestroyBindGroupLayout(Handle<BindGroupLayout> handle)
+    {
+        auto bindGroupLayout = m_bindGroupLayoutsOwner.Get(handle);
+        // clang-format off
+        IContext* self = this;
+        m_resourceDestroyQueue.push_back([=](){ bindGroupLayout->Shutdown(self); });
+        // clang-format on
+    }
+
+    Handle<BindGroup> IContext::Internal_CreateBindGroup(Handle<BindGroupLayout> layoutHandle)
+    {
+        IBindGroup bindGroup{};
+        auto result = bindGroup.Init(this, layoutHandle);
+        if (IsError(result))
+        {
+            DebugLogError("Failed to create bindGroup");
+        }
+        auto handle = m_bindGroupOwner.Emplace(std::move(bindGroup));
+        return handle;
+    }
+
+    void IContext::Internal_DestroyBindGroup(Handle<BindGroup> handle)
+    {
+        auto bindGroup = m_bindGroupOwner.Get(handle);
+        // clang-format off
+        IContext* self = this;
+        m_resourceDestroyQueue.push_back([=](){ bindGroup->Shutdown(self); });
+        // clang-format on
+    }
+
+    void IContext::Internal_UpdateBindGroup(Handle<BindGroup> handle, const BindGroupData& data)
+    {
+        auto bindGroup = m_bindGroupOwner.Get(handle);
+        bindGroup->Write(this, data);
+    }
+
+    Handle<PipelineLayout> IContext::Internal_CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)
+    {
+        IPipelineLayout pipelineLayout{};
+        auto result = pipelineLayout.Init(this, createInfo);
+        if (IsError(result))
+        {
+            DebugLogError("Failed to create pipelineLayout");
+        }
+        auto handle = m_pipelineLayoutOwner.Emplace(std::move(pipelineLayout));
+        return handle;
+    }
+
+    void IContext::Internal_DestroyPipelineLayout(Handle<PipelineLayout> handle)
+    {
+        auto pipelineLayout = m_pipelineLayoutOwner.Get(handle);
+        // clang-format off
+        IContext* self = this;
+        m_resourceDestroyQueue.push_back([=](){ pipelineLayout->Shutdown(self); });
+        // clang-format on
+    }
+
+    Handle<GraphicsPipeline> IContext::Internal_CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)
+    {
+        IGraphicsPipeline graphicsPipeline{};
+        auto result = graphicsPipeline.Init(this, createInfo);
+        if (IsError(result))
+        {
+            DebugLogError("Failed to create graphicsPipeline");
+        }
+        auto handle = m_graphicsPipelineOwner.Emplace(std::move(graphicsPipeline));
+        return handle;
+    }
+
+    void IContext::Internal_DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle)
+    {
+        auto graphicsPipeline = m_graphicsPipelineOwner.Get(handle);
+        // clang-format off
+        IContext* self = this;
+        m_resourceDestroyQueue.push_back([=](){ graphicsPipeline->Shutdown(self); });
+        // clang-format on
+    }
+
+    Handle<ComputePipeline> IContext::Internal_CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
+    {
+        IComputePipeline computePipeline{};
+        auto result = computePipeline.Init(this, createInfo);
+        if (IsError(result))
+        {
+            DebugLogError("Failed to create computePipeline");
+        }
+        auto handle = m_computePipelineOwner.Emplace(std::move(computePipeline));
+        return handle;
+    }
+
+    void IContext::Internal_DestroyComputePipeline(Handle<ComputePipeline> handle)
+    {
+        auto computePipeline = m_computePipelineOwner.Get(handle);
+        // clang-format off
+        IContext* self = this;
+        m_resourceDestroyQueue.push_back([=](){ computePipeline->Shutdown(self); });
+        // clang-format on
+    }
+
+    Handle<Sampler> IContext::Internal_CreateSampler(const SamplerCreateInfo& createInfo)
+    {
+        ISampler sampler{};
+        auto result = sampler.Init(this, createInfo);
+        if (IsError(result))
+        {
+            DebugLogError("Failed to create sampler");
+        }
+        auto handle = m_samplerOwner.Emplace(std::move(sampler));
+        return handle;
+    }
+
+    void IContext::Internal_DestroySampler(Handle<Sampler> handle)
+    {
+        auto sampler = m_samplerOwner.Get(handle);
+        // clang-format off
+        IContext* self = this;
+        m_resourceDestroyQueue.push_back([=](){ sampler->Shutdown(self); });
+        // clang-format on
+    }
+
+    Result<Handle<Image>> IContext::Internal_CreateImage(const ImageCreateInfo& createInfo)
+    {
+        IImage image{};
+        auto result = image.Init(this, createInfo);
+        if (IsError(result))
+        {
+            DebugLogError("Failed to create image");
+            return result;
+        }
+        auto handle = m_imageOwner.Emplace(std::move(image));
+        return Result<Handle<Image>>(handle);
+    }
+
+    void IContext::Internal_DestroyImage(Handle<Image> handle)
+    {
+        auto image = m_imageOwner.Get(handle);
+        // clang-format off
+        IContext* self = this;
+        m_resourceDestroyQueue.push_back([=](){ image->Shutdown(self); });
+        // clang-format on
+    }
+
+    Result<Handle<Buffer>> IContext::Internal_CreateBuffer(const BufferCreateInfo& createInfo)
+    {
+        IBuffer buffer{};
+        auto result = buffer.Init(this, createInfo);
+        if (IsError(result))
+        {
+            DebugLogError("Failed to create buffer");
+            return result;
+        }
+        auto handle = m_bufferOwner.Emplace(std::move(buffer));
+        return Result<Handle<Buffer>>(handle);
+    }
+
+    void IContext::Internal_DestroyBuffer(Handle<Buffer> handle)
+    {
+        auto buffer = m_bufferOwner.Get(handle);
+        // clang-format off
+        IContext* self = this;
+        m_resourceDestroyQueue.push_back([=](){ buffer->Shutdown(self); });
+        // clang-format on
+    }
+
+    Handle<ImageView> IContext::Internal_CreateImageView(const ImageViewCreateInfo& createInfo)
+    {
+        IImageView imageView{};
+        auto result = imageView.Init(this, createInfo);
+        if (IsError(result))
+        {
+            DebugLogError("Failed to create image view");
+        }
+        auto handle = m_imageViewOwner.Emplace(std::move(imageView));
+        return handle;
+    }
+
+    void IContext::Internal_DestroyImageView(Handle<ImageView> handle)
+    {
+        auto imageView = m_imageViewOwner.Get(handle);
+        // clang-format off
+        IContext* self = this;
+        m_resourceDestroyQueue.push_back([=](){ imageView->Shutdown(self); });
+        // clang-format on
+    }
+
+    Handle<BufferView> IContext::Internal_CreateBufferView(const BufferViewCreateInfo& createInfo)
+    {
+        IBufferView bufferView{};
+        auto result = bufferView.Init(this, createInfo);
+        if (IsError(result))
+        {
+            DebugLogError("Failed to create buffer view");
+        }
+        auto handle = m_bufferViewOwner.Emplace(std::move(bufferView));
+        return handle;
+    }
+
+    void IContext::Internal_DestroyBufferView(Handle<BufferView> handle)
+    {
+        auto imageView = m_bufferViewOwner.Get(handle);
+        // clang-format off
+        IContext* self = this;
+        m_resourceDestroyQueue.push_back([=](){ imageView->Shutdown(self); });
+        // clang-format on
+    }
+
+    void IContext::Internal_DispatchGraph(RenderGraph& renderGraph, Fence* signalFence)
+    {
+        for (auto passHandle : renderGraph.m_passes)
+        {
+            auto pass = renderGraph.m_passOwner.Get(passHandle);
+            RenderGraphCompiler::CompilePass(this, renderGraph, pass);
+            auto submitData = (IPassSubmitData*)pass->submitData;
+            TL::Span commandLists { (const ICommandList**)pass->commandList.data(), pass->commandList.size() };
+            QueueSubmit(pass->queueType, commandLists, submitData->waitSemaphores, submitData->signalSemaphores, (IFence*)signalFence);
+            submitData->Clear();
+        }
+
+    }
+
+    DeviceMemoryPtr IContext::Internal_MapBuffer(Handle<Buffer> handle)
+    {
+        auto resource = m_bufferOwner.Get(handle);
+        auto allocation = resource->allocation.handle;
+
+        DeviceMemoryPtr memoryPtr = nullptr;
+        VkResult result = vmaMapMemory(m_allocator, allocation, &memoryPtr);
+        VULKAN_ASSERT_SUCCESS(result);
+        return memoryPtr;
+    }
+
+    void IContext::Internal_UnmapBuffer(Handle<Buffer> handle)
+    {
+        auto resource = m_bufferOwner.Get(handle)->allocation.handle;
+        vmaUnmapMemory(m_allocator, resource);
+    }
+
+    void IContext ::Internal_StageResourceWrite(Handle<Image> imageHandle, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset)
+    {
+        auto image = m_imageOwner.Get(imageHandle);
+        image->waitSemaphore = CreateSemaphore("ImageWriteSemaphore");
+
+        VkImageMemoryBarrier2 barrier{};
+        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+        barrier.pNext = nullptr;
+        barrier.srcStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+        barrier.srcAccessMask = VK_ACCESS_2_NONE;
+        barrier.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+        barrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+        barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.image = image->handle;
+        barrier.subresourceRange.aspectMask = FormatToAspect(image->format);
+        barrier.subresourceRange.baseMipLevel = subresources.mipLevel;
+        barrier.subresourceRange.levelCount = 1;
+        barrier.subresourceRange.baseArrayLayer = subresources.arrayBase;
+        barrier.subresourceRange.layerCount = subresources.arrayCount;
+
+        BufferToImageCopyInfo copyInfo{};
+        copyInfo.dstImage = imageHandle;
+        copyInfo.dstSubresource = subresources;
+        copyInfo.srcBuffer = buffer;
+        copyInfo.srcOffset = bufferOffset;
+        copyInfo.dstSize   = image->size;
+        auto commandList = (ICommandList*)m_commandPool->Allocate(QueueType::Transfer);
+
+        commandList->Begin();
+        commandList->PipelineBarrier({}, {}, barrier);
+        commandList->Copy(copyInfo);
+
+        barrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+        barrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+        barrier.dstStageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_2_NONE;
+        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; // TODO: deduce correct layout from the image usage
+        commandList->PipelineBarrier({}, {}, barrier);
+        commandList->End();
+
+        QueueSubmit(QueueType::Transfer, commandList, {}, { { image->waitSemaphore, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT } });
+        m_commandPool->Release(commandList);
+    }
+
+    void IContext ::Internal_StageResourceWrite(Handle<Buffer> bufferHandle, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset)
+    {
+        auto buffer = m_bufferOwner.Get(bufferHandle);
+        buffer->waitSemaphore = CreateSemaphore("BufferWriteSemaphore");
+
+        BufferCopyInfo copyInfo{};
+        copyInfo.dstBuffer = bufferHandle;
+        copyInfo.dstOffset = offset;
+        copyInfo.srcBuffer = srcBuffer;
+        copyInfo.srcOffset = srcOffset;
+        copyInfo.size = size;
+        auto commandList = (ICommandList*)m_commandPool->Allocate(QueueType::Transfer);
+        commandList->Begin();
+        commandList->Copy(copyInfo);
+        commandList->End();
+
+        QueueSubmit(QueueType::Transfer, commandList, {}, { { buffer->waitSemaphore, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT } });
+        m_commandPool->Release(commandList);
+    }
+
+    void IContext ::Internal_StageResourceRead(Handle<Image> image, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset, Fence* fence)
+    {
+        (void)image;
+        (void)subresources;
+        (void)buffer;
+        (void)bufferOffset;
+        (void)fence;
+        RHI_UNREACHABLE();
+    }
+
+    void IContext ::Internal_StageResourceRead(Handle<Buffer> buffer, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset, Fence* fence)
+    {
+        (void)buffer;
+        (void)offset;
+        (void)size;
+        (void)srcBuffer;
+        (void)srcOffset;
+        (void)fence;
+        RHI_UNREACHABLE();
+    }
+
+    ////////////////////////////////////////////////////////////
+    // Interface implementation
+    ////////////////////////////////////////////////////////////
 
     VkBool32 IContext::DebugMessengerCallbacks(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
                                                VkDebugUtilsMessageTypeFlagsEXT messageTypes,
@@ -676,7 +771,7 @@ namespace RHI::Vulkan
         debugCreateInfo.pUserData = this;
 
 #if RHI_DEBUG
-        for (VkExtensionProperties extension : _GetAvailableInstanceExtensions())
+        for (VkExtensionProperties extension : GetAvailableInstanceExtensions())
         {
             auto extensionName = extension.extensionName;
             if (!strcmp(extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
@@ -711,7 +806,7 @@ namespace RHI::Vulkan
 
     VkResult IContext::InitDevice()
     {
-        for (VkPhysicalDevice physicalDevice : _GetAvailablePhysicalDevices(m_instance))
+        for (VkPhysicalDevice physicalDevice : GetAvailablePhysicalDevices(m_instance))
         {
             bool swapchainExtension = false;
             bool dynamicRenderingExtension = false;
@@ -720,7 +815,7 @@ namespace RHI::Vulkan
             bool createRenderpass2Extension = false;
             bool depthStencilResolveExtension = false;
 
-            for (auto extension : _GetAvailableDeviceExtensions(physicalDevice))
+            for (auto extension : GetAvailableDeviceExtensions(physicalDevice))
             {
                 swapchainExtension |= strcmp(extension.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0;
                 dynamicRenderingExtension |= strcmp(extension.extensionName, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME) == 0;
@@ -746,9 +841,10 @@ namespace RHI::Vulkan
             VK_EXT_DEBUG_MARKER_EXTENSION_NAME,
 #endif
             VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+            VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME
         };
 
-        auto queueFamilyProperties = _GetPhysicalDeviceQueueFamilyProperties(m_physicalDevice);
+        auto queueFamilyProperties = GetPhysicalDeviceQueueFamilyProperties(m_physicalDevice);
         for (uint32_t queueFamilyIndex = 0; queueFamilyIndex < queueFamilyProperties.size(); queueFamilyIndex++)
         {
             auto queueFamilyProperty = queueFamilyProperties[queueFamilyIndex];
@@ -813,6 +909,7 @@ namespace RHI::Vulkan
         VkPhysicalDeviceFeatures enabledFeatures{};
         enabledFeatures.samplerAnisotropy = VK_TRUE;
 
+
         VkPhysicalDeviceSynchronization2Features syncFeature{};
         syncFeature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES;
         syncFeature.synchronization2 = VK_TRUE;
@@ -836,7 +933,7 @@ namespace RHI::Vulkan
         auto result = vkCreateDevice(m_physicalDevice, &createInfo, nullptr, &m_device);
         vkGetDeviceQueue(m_device, m_graphicsQueueFamilyIndex, 0, &m_presentQueue);
 
-        m_limits->stagingMemoryLimit = 256 * 1000 * 1000;
+        // m_limits->stagingMemoryLimit = 256 * 1000 * 1000;
 
         return result;
     }
@@ -873,26 +970,4 @@ namespace RHI::Vulkan
 
         return VK_SUCCESS;
     }
-
-    VkResult IContext::InitFrameScheduler()
-    {
-        auto scheduler = (IFrameScheduler*)m_frameScheduler.get();
-        scheduler->Init();
-        return VK_SUCCESS;
-    }
-
-    uint32_t IContext::GetQueueFamilyIndex(QueueType queueType)
-    {
-        (void)queueType;
-        return m_graphicsQueueFamilyIndex;
-
-        // switch (queueType)
-        // {
-        // case QueueType::Graphics: return m_graphicsQueueFamilyIndex;
-        // case QueueType::Compute:  return m_computeQueueFamilyIndex;
-        // case QueueType::Transfer: return m_transferQueueFamilyIndex;
-        // default:                  RHI_UNREACHABLE(); return UINT32_MAX;
-        // }
-    }
-
 } // namespace RHI::Vulkan

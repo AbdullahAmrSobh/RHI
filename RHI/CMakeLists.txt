@@ -6,32 +6,38 @@ endif()
 
 # Add header files
 set(HEADER_FILES
+    # Common and utils
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Allocator.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Assert.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Callstack.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Containers.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Debug.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Flags.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Handle.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Span.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Hash.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/LeakDetector.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Ptr.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Result.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Span.hpp
+    # main files
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/CommandList.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Context.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Export.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Format.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/FrameScheduler.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/QueueType.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RenderGraph.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Resources.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Swapchain.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RHI.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Attachments.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Swapchain.hpp
 )
 
 # Add source files
 set(SOURCE_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Format.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/FrameScheduler.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Pass.cpp
-    
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Common/Callstack.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Attachments.cpp
-
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Format.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraph.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.cpp
 
     ${CMAKE_SOURCE_DIR}/tracy/public/TracyClient.cpp
 )

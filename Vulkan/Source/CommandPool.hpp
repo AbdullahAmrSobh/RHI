@@ -1,7 +1,6 @@
 #pragma once
 
 #include <RHI/CommandList.hpp>
-#include <RHI/Pass.hpp>
 #include "RHI/QueueType.hpp"
 
 #include <vulkan/vulkan.h>
@@ -20,10 +19,10 @@ namespace RHI::Vulkan
         VkResult Init();
 
         // clang-format off
-        void                     Reset()                                       override;
-        CommandList*             Allocate(QueueType queueType)                 override;
+        void                     Reset() override;
+        CommandList*             Allocate(QueueType queueType) override;
         TL::Vector<CommandList*> Allocate(QueueType queueType, uint32_t count) override;
-        void                     Release(TL::Span<CommandList*> commandLists)  override;
+        void                     Release(TL::Span<const CommandList* const> commandLists) override;
         // clang-format on
 
     private:
