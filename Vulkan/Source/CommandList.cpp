@@ -11,6 +11,110 @@
 
 namespace RHI::Vulkan
 {
+        ICommandPool::ICommandPool(IContext* context)
+        : m_context(context)
+    {
+    }
+
+    ICommandPool::~ICommandPool()
+    {
+        for (auto queueCommandPool : m_commandPools)
+        {
+            for (auto commandPool : queueCommandPool)
+            {
+                vkDestroyCommandPool(m_context->m_device, commandPool, nullptr);
+            }
+        }
+    }
+
+    VkResult ICommandPool::Init()
+    {
+        for (uint32_t queueType = 0; queueType < uint32_t(QueueType::Count); queueType++)
+        {
+            m_commandPools[(queueType)].resize(2);
+            for (auto& commandPool : m_commandPools[(queueType)])
+            {
+                VkCommandPoolCreateInfo createInfo;
+                createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+                createInfo.pNext = nullptr;
+                createInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+                createInfo.queueFamilyIndex = m_context->GetQueueFamilyIndex(QueueType(queueType));
+                auto result = vkCreateCommandPool(m_context->m_device, &createInfo, nullptr, &commandPool);
+                RHI_ASSERT(result == VK_SUCCESS);
+                if (result != VK_SUCCESS)
+                {
+                    return result;
+                }
+            }
+        }
+
+        return VK_SUCCESS;
+    }
+
+    void ICommandPool::Reset()
+    {
+        for (auto queueCommandPool : m_commandPools)
+        {
+            for (auto commandPool : queueCommandPool)
+            {
+                vkTrimCommandPool(m_context->m_device, commandPool, 0);
+                vkResetCommandPool(m_context->m_device, commandPool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
+            }
+        }
+    }
+
+    CommandList* ICommandPool::Allocate(QueueType queueType)
+    {
+        return Allocate(queueType, 1).front();
+    }
+
+    TL::Vector<CommandList*> ICommandPool::Allocate(QueueType queueType, uint32_t count)
+    {
+        auto commandPool = m_commandPools[uint32_t(queueType)][0];
+        auto commandBuffers = AllocateCommandBuffers(commandPool, count, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+        TL::Vector<CommandList*> commandLists;
+        commandLists.reserve(count);
+        for (auto commandBuffer : commandBuffers)
+        {
+            commandLists.push_back(new ICommandList(m_context, commandPool, commandBuffer));
+        }
+        return commandLists;
+    }
+
+    void ICommandPool::Release(TL::Span<const CommandList* const> _commandLists)
+    {
+        TL::Span commandLists((ICommandList*)_commandLists.data(), _commandLists.size());
+
+        TL::Vector<VkCommandBuffer> commandBuffers;
+
+        auto commandPool = commandLists[0].m_commandPool;
+
+        for (auto& commandList : commandLists)
+        {
+            commandBuffers.push_back(commandList.m_commandBuffer);
+        }
+
+        m_context->PushDeferCommand([this, commandPool, commandBuffers]()
+        {
+            vkFreeCommandBuffers(m_context->m_device, commandPool, uint32_t(commandBuffers.size()), commandBuffers.data());
+        });
+    }
+
+    TL::Vector<VkCommandBuffer> ICommandPool::AllocateCommandBuffers(VkCommandPool pool, uint32_t count, VkCommandBufferLevel level)
+    {
+        TL::Vector<VkCommandBuffer> commandBuffers;
+        commandBuffers.resize(count);
+
+        VkCommandBufferAllocateInfo allocateInfo{};
+        allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocateInfo.pNext = nullptr;
+        allocateInfo.commandPool = pool;
+        allocateInfo.level = level;
+        allocateInfo.commandBufferCount = count;
+        vkAllocateCommandBuffers(m_context->m_device, &allocateInfo, commandBuffers.data());
+        return commandBuffers;
+    }
+
     //////////////////////////////////////////////////////////////////////////////////////////
     /// CommandList
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -97,7 +201,7 @@ namespace RHI::Vulkan
             {
                 vkCmdEndRendering(m_commandBuffer);
             }
-            PipelineBarrier({}, m_passSubmitData->bufferBarriers[BarrierType::PrePass], m_passSubmitData->imageBarriers[BarrierType::PrePass]);
+            PipelineBarrier({}, m_passSubmitData->bufferBarriers[BarrierType::PostPass], m_passSubmitData->imageBarriers[BarrierType::PostPass]);
         }
 
         vkEndCommandBuffer(m_commandBuffer);

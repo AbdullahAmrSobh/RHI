@@ -253,6 +253,7 @@ void Scene::LoadPipeline(RHI::Context& context, const char* shaderPath)
     createInfo.pixelShaderModule = shaderModule.get();
     createInfo.layout = m_pipelineLayout;
     createInfo.renderTargetLayout.colorAttachmentsFormats[0] = RHI::Format::BGRA8_UNORM;
+    createInfo.renderTargetLayout.colorAttachmentsFormats[1] = RHI::Format::RGBA32_FLOAT;
     createInfo.renderTargetLayout.depthAttachmentFormat = RHI::Format::D32;
     createInfo.depthStencilState.depthTestEnable = true;
     createInfo.depthStencilState.depthWriteEnable = true;

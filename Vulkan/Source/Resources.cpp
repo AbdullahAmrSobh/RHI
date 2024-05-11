@@ -71,10 +71,11 @@ namespace RHI::Vulkan
     /// Image
     ///////////////////////////////////////////////////////////////////////////
 
-    ResultCode IImage::Init(IContext* context, const ImageCreateInfo& _createInfo, bool isTransient)
+    ResultCode IImage::Init(IContext* context, const ImageCreateInfo& _createInfo, bool _isTransient)
     {
+        isTransient = _isTransient;
         signalSemaphore = VK_NULL_HANDLE;
-        waitSemaphore   = VK_NULL_HANDLE;
+        waitSemaphore = VK_NULL_HANDLE;
 
         size = _createInfo.size;
 
@@ -126,13 +127,13 @@ namespace RHI::Vulkan
 
     void IImage::Shutdown(IContext* context)
     {
-        if (pool)
+        if (isTransient)
         {
-            vmaDestroyImage(context->m_allocator, handle, allocation.handle);
+            vkDestroyImage(context->m_device, handle, nullptr);
         }
         else
         {
-            vkDestroyImage(context->m_device, handle, nullptr);
+            vmaDestroyImage(context->m_allocator, handle, allocation.handle);
         }
     }
 

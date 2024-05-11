@@ -195,10 +195,11 @@ namespace RHI::Vulkan
         if (attachment->useInfo.usage == ImageUsage::Color)
         {
             attachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-            attachmentInfo.clearValue.color.float32[0] = ConvertColorValue(attachment->useInfo.clearValue.f32).float32[0];
-            attachmentInfo.clearValue.color.float32[1] = ConvertColorValue(attachment->useInfo.clearValue.f32).float32[1];
-            attachmentInfo.clearValue.color.float32[2] = ConvertColorValue(attachment->useInfo.clearValue.f32).float32[2];
-            attachmentInfo.clearValue.color.float32[3] = ConvertColorValue(attachment->useInfo.clearValue.f32).float32[3];
+            auto [r, g, b, a] = ConvertColorValue(attachment->useInfo.clearValue.f32).float32;
+            attachmentInfo.clearValue.color.float32[0] = r;
+            attachmentInfo.clearValue.color.float32[1] = g;
+            attachmentInfo.clearValue.color.float32[2] = b;
+            attachmentInfo.clearValue.color.float32[3] = a;
         }
         else
         {
@@ -313,7 +314,7 @@ namespace RHI::Vulkan
             auto image = context->m_imageOwner.Get(renderGraph.GetImage(attachmentHandle));
 
             auto srcAttachment = renderGraph.m_imageAttachmentOwner.Get(attachmentHandle);
-            auto dstAttachment = srcAttachment->prev != NullHandle ? renderGraph.m_imageAttachmentOwner.Get(srcAttachment->prev) : nullptr;
+            auto dstAttachment = srcAttachment->next != NullHandle ? renderGraph.m_imageAttachmentOwner.Get(srcAttachment->next) : nullptr;
 
             auto srcInfo = GetImageTransitionInfo(VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, srcAttachment, VK_IMAGE_LAYOUT_UNDEFINED);
             auto dstInfo = GetImageTransitionInfo(VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, dstAttachment, VK_IMAGE_LAYOUT_UNDEFINED);

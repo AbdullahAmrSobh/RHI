@@ -7,6 +7,8 @@
 #include "RHI/Common/Debug.hpp"
 #include "RHI/Common/Span.hpp"
 
+#include <functional>
+
 namespace RHI
 {
     struct ImageSubresourceLayers;
@@ -199,51 +201,66 @@ namespace RHI
     protected:
         Context(Ptr<DebugCallbacks> debugCallbacks);
 
-        void                             DebugLogError(std::string_view message);
-        void                             DebugLogWarn(std::string_view message);
-        void                             DebugLogInfo(std::string_view message);
+        void Shutdown();
 
-        virtual void                     Internal_OnShutdown()                                                                                                                          = 0;
-        virtual void                     Internal_OnCollectResources()                                                                                                                  = 0;
-        virtual Ptr<Swapchain>           Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo)                                                                                = 0;
-        virtual Ptr<ShaderModule>        Internal_CreateShaderModule(TL::Span<const uint8_t> shaderBlob)                                                                                = 0;
-        virtual Ptr<Fence>               Internal_CreateFence()                                                                                                                         = 0;
-        virtual Ptr<CommandPool>         Internal_CreateCommandPool()                                                                                                                   = 0;
-        virtual Ptr<ResourcePool>        Internal_CreateResourcePool(const ResourcePoolCreateInfo& createInfo)                                                                          = 0;
-        virtual Handle<BindGroupLayout>  Internal_CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)                                                                    = 0;
-        virtual void                     Internal_DestroyBindGroupLayout(Handle<BindGroupLayout> handle)                                                                                = 0;
-        virtual Handle<BindGroup>        Internal_CreateBindGroup(Handle<BindGroupLayout> handle)                                                                                       = 0;
-        virtual void                     Internal_DestroyBindGroup(Handle<BindGroup> handle)                                                                                            = 0;
-        virtual void                     Internal_UpdateBindGroup(Handle<BindGroup> handle, const BindGroupData& data)                                                                  = 0;
-        virtual Handle<PipelineLayout>   Internal_CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)                                                                      = 0;
-        virtual void                     Internal_DestroyPipelineLayout(Handle<PipelineLayout> handle)                                                                                  = 0;
-        virtual Handle<GraphicsPipeline> Internal_CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)                                                                  = 0;
-        virtual void                     Internal_DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle)                                                                              = 0;
-        virtual Handle<ComputePipeline>  Internal_CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)                                                                    = 0;
-        virtual void                     Internal_DestroyComputePipeline(Handle<ComputePipeline> handle)                                                                                = 0;
-        virtual Handle<Sampler>          Internal_CreateSampler(const SamplerCreateInfo& createInfo)                                                                                    = 0;
-        virtual void                     Internal_DestroySampler(Handle<Sampler> handle)                                                                                                = 0;
-        virtual Result<Handle<Image>>    Internal_CreateImage(const ImageCreateInfo& createInfo)                                                                                        = 0;
-        virtual void                     Internal_DestroyImage(Handle<Image> handle)                                                                                                    = 0;
-        virtual Result<Handle<Buffer>>   Internal_CreateBuffer(const BufferCreateInfo& createInfo)                                                                                      = 0;
-        virtual void                     Internal_DestroyBuffer(Handle<Buffer> handle)                                                                                                  = 0;
-        virtual Handle<ImageView>        Internal_CreateImageView(const ImageViewCreateInfo& createInfo)                                                                                = 0;
-        virtual void                     Internal_DestroyImageView(Handle<ImageView> handle)                                                                                            = 0;
-        virtual Handle<BufferView>       Internal_CreateBufferView(const BufferViewCreateInfo& createInfo)                                                                              = 0;
-        virtual void                     Internal_DestroyBufferView(Handle<BufferView> handle)                                                                                          = 0;
-        virtual DeviceMemoryPtr          Internal_MapBuffer(Handle<Buffer> handle)                                                                                                      = 0;
-        virtual void                     Internal_DispatchGraph(RenderGraph& renderGraph, Fence* signalFence)                                                                           = 0;
-        virtual void                     Internal_UnmapBuffer(Handle<Buffer> handle)                                                                                                    = 0;
-        virtual void                     Internal_StageResourceWrite(Handle<Image> image, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset)              = 0;
-        virtual void                     Internal_StageResourceWrite(Handle<Buffer> buffer, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset)                     = 0;
+        void DebugLogError(std::string_view message);
+        void DebugLogWarn(std::string_view message);
+        void DebugLogInfo(std::string_view message);
+
+        void PushDeferCommand(std::function<void()> command);
+
+        // clang-format off
+        virtual Ptr<Swapchain>           Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo) = 0;
+        virtual Ptr<ShaderModule>        Internal_CreateShaderModule(TL::Span<const uint8_t> shaderBlob) = 0;
+        virtual Ptr<Fence>               Internal_CreateFence() = 0;
+        virtual Ptr<CommandPool>         Internal_CreateCommandPool() = 0;
+        virtual Ptr<ResourcePool>        Internal_CreateResourcePool(const ResourcePoolCreateInfo& createInfo) = 0;
+        virtual Handle<BindGroupLayout>  Internal_CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) = 0;
+        virtual void                     Internal_DestroyBindGroupLayout(Handle<BindGroupLayout> handle) = 0;
+        virtual Handle<BindGroup>        Internal_CreateBindGroup(Handle<BindGroupLayout> handle) = 0;
+        virtual void                     Internal_DestroyBindGroup(Handle<BindGroup> handle) = 0;
+        virtual void                     Internal_UpdateBindGroup(Handle<BindGroup> handle, const BindGroupData& data) = 0;
+        virtual Handle<PipelineLayout>   Internal_CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo) = 0;
+        virtual void                     Internal_DestroyPipelineLayout(Handle<PipelineLayout> handle) = 0;
+        virtual Handle<GraphicsPipeline> Internal_CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) = 0;
+        virtual void                     Internal_DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle) = 0;
+        virtual Handle<ComputePipeline>  Internal_CreateComputePipeline(const ComputePipelineCreateInfo& createInfo) = 0;
+        virtual void                     Internal_DestroyComputePipeline(Handle<ComputePipeline> handle) = 0;
+        virtual Handle<Sampler>          Internal_CreateSampler(const SamplerCreateInfo& createInfo) = 0;
+        virtual void                     Internal_DestroySampler(Handle<Sampler> handle) = 0;
+        virtual Result<Handle<Image>>    Internal_CreateImage(const ImageCreateInfo& createInfo) = 0;
+        virtual void                     Internal_DestroyImage(Handle<Image> handle) = 0;
+        virtual Result<Handle<Buffer>>   Internal_CreateBuffer(const BufferCreateInfo& createInfo) = 0;
+        virtual void                     Internal_DestroyBuffer(Handle<Buffer> handle) = 0;
+        virtual Handle<ImageView>        Internal_CreateImageView(const ImageViewCreateInfo& createInfo) = 0;
+        virtual void                     Internal_DestroyImageView(Handle<ImageView> handle) = 0;
+        virtual Handle<BufferView>       Internal_CreateBufferView(const BufferViewCreateInfo& createInfo) = 0;
+        virtual void                     Internal_DestroyBufferView(Handle<BufferView> handle) = 0;
+        virtual DeviceMemoryPtr          Internal_MapBuffer(Handle<Buffer> handle) = 0;
+        virtual void                     Internal_DispatchGraph(RenderGraph& renderGraph, Fence* signalFence) = 0;
+        virtual void                     Internal_UnmapBuffer(Handle<Buffer> handle) = 0;
+        virtual void                     Internal_StageResourceWrite(Handle<Image> image, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset) = 0;
+        virtual void                     Internal_StageResourceWrite(Handle<Buffer> buffer, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset) = 0;
         virtual void                     Internal_StageResourceRead(Handle<Image> image, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset, Fence* fence) = 0;
-        virtual void                     Internal_StageResourceRead(Handle<Buffer> buffer, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset, Fence* fence)        = 0;
+        virtual void                     Internal_StageResourceRead(Handle<Buffer> buffer, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset, Fence* fence) = 0;
+        // clang-format on
+
+    protected:
+        Ptr<Limits> m_limits;
 
     private:
-        Ptr<Limits>         m_limits;
-        Ptr<DebugCallbacks> m_debugCallbacks;
-        ResourceTracker*    m_resourceTracker;
-        CommandPool*        m_commandPool;
-        uint64_t            m_frameIndex;
+        Ptr<DebugCallbacks>        m_debugCallbacks;
+        ResourceTracker*           m_resourceTracker;
+        uint64_t                   m_frameIndex;
+
+        TL::Vector<Handle<Buffer>> m_stagingBuffers;
+
+        struct DeferCommand
+        {
+            uint64_t              frameIndex;
+            std::function<void()> callback;
+        };
+
+        TL::Vector<DeferCommand> m_deferCommandQueue;
     };
 } // namespace RHI

@@ -57,6 +57,8 @@ namespace RHI::Vulkan
         uint32_t queueFamilyIndex;
         VkImageLayout initalLayout;
 
+        bool isTransient; // if this resource is
+
         ResultCode Init(IContext* context, const ImageCreateInfo& createInfo, bool isTransient = false);
         void Shutdown(IContext* context);
 

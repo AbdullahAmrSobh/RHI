@@ -15,6 +15,7 @@ struct VSOutput
 struct PSOutput
 {
 	float4 color : SV_TARGET0;
+	float4 worldPosition  : SV_TARGET1;
 };
 
 struct PerFrame
@@ -69,5 +70,6 @@ PSOutput PSMain(VSOutput input)
 {
 	PSOutput output;
 	output.color = input.color;
+	output.worldPosition = input.position;
 	return output;
 }

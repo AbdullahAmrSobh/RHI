@@ -4,7 +4,6 @@
 #include "RHI/Common/Callstack.hpp"
 #include "RHI/Common/Containers.h"
 
-#include <algorithm>
 #include <format>
 
 namespace RHI
@@ -15,12 +14,6 @@ namespace RHI
     class ResourceLeakDetector
     {
     public:
-        struct Resource
-        {
-            Handle<HandleType> handle;
-            Callstack          callstack;
-        };
-
         void        OnCreate(Handle<HandleType> handle);
         void        OnDestroy(Handle<HandleType> handle);
 
@@ -29,32 +22,21 @@ namespace RHI
         uint32_t    LeakedResourcesCount();
 
     private:
-        TL::Vector<Resource>::iterator FindResource(Handle<HandleType> handle);
-
-    private:
-        TL::Vector<Resource> m_liveResources;
+        TL::UnorderedMap<Handle<HandleType>, Callstack> m_liveResources;
     };
 
     template<typename T>
     inline void ResourceLeakDetector<T>::OnCreate(Handle<T> handle)
     {
-        auto it = FindResource(handle);
-        RHI_ASSERT(it == m_liveResources.end()); // Resource already exists in live pool
-
-        Resource resource{};
-        resource.callstack = CaptureCallstack(2);
-        resource.handle    = handle;
-
-        m_liveResources.push_back(resource);
+        RHI_ASSERT(m_liveResources.find(handle) == m_liveResources.end()); // Resource already exists in live pool
+        m_liveResources[handle] = CaptureCallstack(2);
     }
 
     template<typename T>
     inline void ResourceLeakDetector<T>::OnDestroy(Handle<T> handle)
     {
-        auto it = FindResource(handle);
-        RHI_ASSERT(it != m_liveResources.end()); // Resource not found or perhaps was deleted before
-
-        m_liveResources.erase(it);
+        RHI_ASSERT(m_liveResources.find(handle) != m_liveResources.end()); // Resource not found or perhaps was deleted before
+        m_liveResources.erase(handle);
     }
 
     template<typename T>
@@ -63,23 +45,14 @@ namespace RHI
         auto breakline = "\n=============================================================================\n";
         auto message   = std::format("{}{} leak count {} \n", breakline, typeid(T).name(), m_liveResources.size());
 
-        for (auto resource : m_liveResources)
+        for (auto [handle, stacktrace] : m_liveResources)
         {
-            auto stacktraceReport = ReportCallstack(resource.callstack);
+            auto stacktraceReport = ReportCallstack(stacktrace);
             message.append(std::format("{}\n", stacktraceReport));
         }
 
         message.append(std::format("{}", breakline));
         return message;
-    }
-
-    template<typename T>
-    TL::Vector<typename ResourceLeakDetector<T>::Resource>::iterator ResourceLeakDetector<T>::FindResource(Handle<T> handle)
-    {
-        return std::find_if(m_liveResources.begin(), m_liveResources.end(), [handle](auto resource)
-                            {
-                                return resource.handle == handle;
-                            });
     }
 
     template<typename T>

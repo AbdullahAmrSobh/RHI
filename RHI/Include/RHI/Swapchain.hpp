@@ -43,7 +43,7 @@ namespace RHI
     {
     public:
         static constexpr uint32_t MaxImageCount = 3;
-        static constexpr uint32_t MinImageCount = 3;
+        static constexpr uint32_t MinImageCount = 1;
 
         Swapchain(Context* context);
         virtual ~Swapchain() = default;
@@ -74,7 +74,7 @@ namespace RHI
         uint32_t            m_currentImageIndex;
         uint32_t            m_swapchainImagesCount;
         SwapchainCreateInfo m_createInfo;
-        Handle<Image>       m_images[c_MaxSwapchainBackBuffersCount];
+        Handle<Image>       m_images[MaxImageCount];
 
         // clang-format off
         TL::UnorderedMap<ImageViewCreateInfo, Handle<ImageView>> m_imageViewsLRU;
@@ -108,5 +108,4 @@ namespace RHI
     {
         return m_images[m_currentImageIndex];
     }
-
 } // namespace RHI

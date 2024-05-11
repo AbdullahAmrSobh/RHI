@@ -1,8 +1,9 @@
 #pragma once
 
 #include "RHI/Resources.hpp"
-#include "RHI/QueueType.hpp"
 #include "RHI/RenderGraph.hpp"
+#include "RHI/QueueType.hpp"
+
 #include "RHI/Common/Span.hpp"
 #include "RHI/Common/Containers.h"
 
@@ -10,6 +11,7 @@ namespace RHI
 {
     struct GraphicsPipeline;
     struct ComputePipeline;
+
     class Pass;
     class CommandList;
 

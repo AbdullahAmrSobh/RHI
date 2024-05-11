@@ -32,7 +32,7 @@ namespace RHI
         if (result != ResultCode::Success)
             return result;
 
-        if (!(content.size_bytes() <= context.GetLimits().stagingMemoryLimit)) // todo: FIX limit
+        if (content.size_bytes() <= context.GetLimits().stagingMemoryLimit)
         {
             auto ptr = context.MapBuffer(handle);
             memcpy(ptr, content.data(), content.size_bytes());

@@ -3,7 +3,6 @@
 #include "Common.hpp"
 #include "Resources.hpp"
 #include "CommandList.hpp"
-#include "CommandPool.hpp"
 #include "Swapchain.hpp"
 #include "RenderGraphCompiler.hpp"
 #include "Context.hpp"
@@ -104,6 +103,22 @@ namespace RHI::Vulkan
     IContext::IContext(Ptr<DebugCallbacks> debugCallbacks)
         : Context(std::move(debugCallbacks))
     {
+    }
+
+    IContext::~IContext()
+    {
+        ZoneScoped;
+
+        vkDeviceWaitIdle(m_device);
+
+        Shutdown(); // Destroy base context
+
+        m_bindGroupAllocator->Shutdown();
+        delete m_commandPool.release();
+
+        // vmaDestroyAllocator(m_allocator);
+        vkDestroyDevice(m_device, nullptr);
+        vkDestroyInstance(m_instance, nullptr);
     }
 
     VkResult IContext::Init(const ApplicationInfo& appInfo)
@@ -295,28 +310,6 @@ namespace RHI::Vulkan
     ////////////////////////////////////////////////////////////
     // Interface implementation
     ////////////////////////////////////////////////////////////
-    void IContext::Internal_OnShutdown()
-    {
-        vkDeviceWaitIdle(m_device);
-
-        // TracyVkDestroy(m_tracyContext);
-
-        m_bindGroupAllocator->Shutdown();
-
-        vmaDestroyAllocator(m_allocator);
-        vkDestroyDevice(m_device, nullptr);
-        vkDestroyInstance(m_instance, nullptr);
-    }
-
-    void IContext::Internal_OnCollectResources()
-    {
-        for (auto& destroyResource : m_resourceDestroyQueue)
-        {
-            destroyResource();
-        }
-        m_resourceDestroyQueue.clear();
-    }
-
     Ptr<Swapchain> IContext::Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo)
     {
         auto swapchain = CreatePtr<ISwapchain>(this);
@@ -386,10 +379,7 @@ namespace RHI::Vulkan
     void IContext::Internal_DestroyBindGroupLayout(Handle<BindGroupLayout> handle)
     {
         auto bindGroupLayout = m_bindGroupLayoutsOwner.Get(handle);
-        // clang-format off
-        IContext* self = this;
-        m_resourceDestroyQueue.push_back([=](){ bindGroupLayout->Shutdown(self); });
-        // clang-format on
+        bindGroupLayout->Shutdown(this);
     }
 
     Handle<BindGroup> IContext::Internal_CreateBindGroup(Handle<BindGroupLayout> layoutHandle)
@@ -407,10 +397,7 @@ namespace RHI::Vulkan
     void IContext::Internal_DestroyBindGroup(Handle<BindGroup> handle)
     {
         auto bindGroup = m_bindGroupOwner.Get(handle);
-        // clang-format off
-        IContext* self = this;
-        m_resourceDestroyQueue.push_back([=](){ bindGroup->Shutdown(self); });
-        // clang-format on
+        bindGroup->Shutdown(this);
     }
 
     void IContext::Internal_UpdateBindGroup(Handle<BindGroup> handle, const BindGroupData& data)
@@ -434,10 +421,7 @@ namespace RHI::Vulkan
     void IContext::Internal_DestroyPipelineLayout(Handle<PipelineLayout> handle)
     {
         auto pipelineLayout = m_pipelineLayoutOwner.Get(handle);
-        // clang-format off
-        IContext* self = this;
-        m_resourceDestroyQueue.push_back([=](){ pipelineLayout->Shutdown(self); });
-        // clang-format on
+        pipelineLayout->Shutdown(this);
     }
 
     Handle<GraphicsPipeline> IContext::Internal_CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)
@@ -455,10 +439,7 @@ namespace RHI::Vulkan
     void IContext::Internal_DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle)
     {
         auto graphicsPipeline = m_graphicsPipelineOwner.Get(handle);
-        // clang-format off
-        IContext* self = this;
-        m_resourceDestroyQueue.push_back([=](){ graphicsPipeline->Shutdown(self); });
-        // clang-format on
+        graphicsPipeline->Shutdown(this);
     }
 
     Handle<ComputePipeline> IContext::Internal_CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
@@ -476,10 +457,7 @@ namespace RHI::Vulkan
     void IContext::Internal_DestroyComputePipeline(Handle<ComputePipeline> handle)
     {
         auto computePipeline = m_computePipelineOwner.Get(handle);
-        // clang-format off
-        IContext* self = this;
-        m_resourceDestroyQueue.push_back([=](){ computePipeline->Shutdown(self); });
-        // clang-format on
+        computePipeline->Shutdown(this);
     }
 
     Handle<Sampler> IContext::Internal_CreateSampler(const SamplerCreateInfo& createInfo)
@@ -497,10 +475,7 @@ namespace RHI::Vulkan
     void IContext::Internal_DestroySampler(Handle<Sampler> handle)
     {
         auto sampler = m_samplerOwner.Get(handle);
-        // clang-format off
-        IContext* self = this;
-        m_resourceDestroyQueue.push_back([=](){ sampler->Shutdown(self); });
-        // clang-format on
+        sampler->Shutdown(this);
     }
 
     Result<Handle<Image>> IContext::Internal_CreateImage(const ImageCreateInfo& createInfo)
@@ -519,10 +494,7 @@ namespace RHI::Vulkan
     void IContext::Internal_DestroyImage(Handle<Image> handle)
     {
         auto image = m_imageOwner.Get(handle);
-        // clang-format off
-        IContext* self = this;
-        m_resourceDestroyQueue.push_back([=](){ image->Shutdown(self); });
-        // clang-format on
+        image->Shutdown(this);
     }
 
     Result<Handle<Buffer>> IContext::Internal_CreateBuffer(const BufferCreateInfo& createInfo)
@@ -541,10 +513,7 @@ namespace RHI::Vulkan
     void IContext::Internal_DestroyBuffer(Handle<Buffer> handle)
     {
         auto buffer = m_bufferOwner.Get(handle);
-        // clang-format off
-        IContext* self = this;
-        m_resourceDestroyQueue.push_back([=](){ buffer->Shutdown(self); });
-        // clang-format on
+        buffer->Shutdown(this);
     }
 
     Handle<ImageView> IContext::Internal_CreateImageView(const ImageViewCreateInfo& createInfo)
@@ -562,10 +531,7 @@ namespace RHI::Vulkan
     void IContext::Internal_DestroyImageView(Handle<ImageView> handle)
     {
         auto imageView = m_imageViewOwner.Get(handle);
-        // clang-format off
-        IContext* self = this;
-        m_resourceDestroyQueue.push_back([=](){ imageView->Shutdown(self); });
-        // clang-format on
+        imageView->Shutdown(this);
     }
 
     Handle<BufferView> IContext::Internal_CreateBufferView(const BufferViewCreateInfo& createInfo)
@@ -583,10 +549,7 @@ namespace RHI::Vulkan
     void IContext::Internal_DestroyBufferView(Handle<BufferView> handle)
     {
         auto imageView = m_bufferViewOwner.Get(handle);
-        // clang-format off
-        IContext* self = this;
-        m_resourceDestroyQueue.push_back([=](){ imageView->Shutdown(self); });
-        // clang-format on
+        imageView->Shutdown(this);
     }
 
     void IContext::Internal_DispatchGraph(RenderGraph& renderGraph, Fence* signalFence)
@@ -596,11 +559,10 @@ namespace RHI::Vulkan
             auto pass = renderGraph.m_passOwner.Get(passHandle);
             RenderGraphCompiler::CompilePass(this, renderGraph, pass);
             auto submitData = (IPassSubmitData*)pass->submitData;
-            TL::Span commandLists { (const ICommandList**)pass->commandList.data(), pass->commandList.size() };
+            TL::Span commandLists{ (const ICommandList**)pass->commandList.data(), pass->commandList.size() };
             QueueSubmit(pass->queueType, commandLists, submitData->waitSemaphores, submitData->signalSemaphores, (IFence*)signalFence);
             submitData->Clear();
         }
-
     }
 
     DeviceMemoryPtr IContext::Internal_MapBuffer(Handle<Buffer> handle)
@@ -623,7 +585,11 @@ namespace RHI::Vulkan
     void IContext ::Internal_StageResourceWrite(Handle<Image> imageHandle, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset)
     {
         auto image = m_imageOwner.Get(imageHandle);
-        image->waitSemaphore = CreateSemaphore("ImageWriteSemaphore");
+        auto semaphore = image->waitSemaphore = CreateSemaphore("ImageWriteSemaphore");
+        PushDeferCommand([this, semaphore]()
+        {
+            DestroySemaphore(semaphore);
+        });
 
         VkImageMemoryBarrier2 barrier{};
         barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
@@ -648,7 +614,7 @@ namespace RHI::Vulkan
         copyInfo.dstSubresource = subresources;
         copyInfo.srcBuffer = buffer;
         copyInfo.srcOffset = bufferOffset;
-        copyInfo.dstSize   = image->size;
+        copyInfo.dstSize = image->size;
         auto commandList = (ICommandList*)m_commandPool->Allocate(QueueType::Transfer);
 
         commandList->Begin();
@@ -671,7 +637,11 @@ namespace RHI::Vulkan
     void IContext ::Internal_StageResourceWrite(Handle<Buffer> bufferHandle, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset)
     {
         auto buffer = m_bufferOwner.Get(bufferHandle);
-        buffer->waitSemaphore = CreateSemaphore("BufferWriteSemaphore");
+        auto semaphore = buffer->waitSemaphore = CreateSemaphore("BufferWriteSemaphore");
+        PushDeferCommand([this, semaphore]()
+        {
+            DestroySemaphore(semaphore);
+        });
 
         BufferCopyInfo copyInfo{};
         copyInfo.dstBuffer = bufferHandle;
@@ -909,7 +879,6 @@ namespace RHI::Vulkan
         VkPhysicalDeviceFeatures enabledFeatures{};
         enabledFeatures.samplerAnisotropy = VK_TRUE;
 
-
         VkPhysicalDeviceSynchronization2Features syncFeature{};
         syncFeature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES;
         syncFeature.synchronization2 = VK_TRUE;
@@ -933,7 +902,7 @@ namespace RHI::Vulkan
         auto result = vkCreateDevice(m_physicalDevice, &createInfo, nullptr, &m_device);
         vkGetDeviceQueue(m_device, m_graphicsQueueFamilyIndex, 0, &m_presentQueue);
 
-        // m_limits->stagingMemoryLimit = 256 * 1000 * 1000;
+        m_limits->stagingMemoryLimit = 256 * 1000 * 1000;
 
         return result;
     }

@@ -13,7 +13,6 @@
 namespace RHI
 {
     inline static constexpr uint32_t c_MaxRenderTargetAttachmentsCount           = 16u;
-    inline static constexpr uint32_t c_MaxSwapchainBackBuffersCount              = 3u;
     inline static constexpr uint32_t c_MaxImageBindingArrayElementsCount         = 32u;
     inline static constexpr uint32_t c_MaxBufferBindingArrayElementsCount        = 32u;
     inline static constexpr uint32_t c_MaxBufferViewBindingArrayElementsCount    = 32u;

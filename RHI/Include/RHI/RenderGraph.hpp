@@ -248,7 +248,7 @@ namespace RHI
 
         // private:
 
-        Context* m_context;
+        Context*                                 m_context;
 
         TL::Vector<Handle<Pass>>                 m_passes;
         TL::Vector<Handle<ImageAttachmentList>>  m_graphImageAttachments;

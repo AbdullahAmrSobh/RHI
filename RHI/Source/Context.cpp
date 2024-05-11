@@ -102,6 +102,23 @@ namespace RHI
     {
     }
 
+    void Context::Shutdown()
+    {
+        for (auto stagingBuffer : m_stagingBuffers)
+        {
+            DestroyBuffer(stagingBuffer);
+        }
+        m_stagingBuffers.clear();
+
+        for (auto deferCmd : m_deferCommandQueue)
+        {
+            deferCmd.callback();
+        }
+        m_deferCommandQueue.clear();
+
+        delete m_resourceTracker;
+    }
+
     Ptr<RenderGraph> Context::CreateRenderGraph()
     {
         ZoneScoped;
@@ -139,6 +156,11 @@ namespace RHI
         ZoneScoped;
 
         Internal_DispatchGraph(renderGraph, signalFence);
+
+        // for (auto stagingBuffer : m_stagingBuffers)
+        // {
+        //     DestroyBuffer(stagingBuffer);
+        // }
     }
 
     Ptr<Swapchain> Context::CreateSwapchain(const SwapchainCreateInfo& createInfo)
@@ -146,7 +168,8 @@ namespace RHI
         ZoneScoped;
 
         RHI_ASSERT(createInfo.imageSize.width > 0 && createInfo.imageSize.height > 0);
-        RHI_ASSERT(createInfo.imageCount >= Swapchain::MinImageCount && createInfo.imageCount <= Swapchain::MaxImageCount);
+        RHI_ASSERT(createInfo.imageCount >= Swapchain::MinImageCount);
+        RHI_ASSERT(createInfo.imageCount <= Swapchain::MaxImageCount);
         RHI_ASSERT(createInfo.imageFormat != Format::Unknown);
         RHI_ASSERT(createInfo.imageUsage != ImageUsage::None);
 
@@ -194,7 +217,10 @@ namespace RHI
     {
         ZoneScoped;
 
-        Internal_DestroyBindGroupLayout(handle);
+        PushDeferCommand([this, handle]()
+        {
+            Internal_DestroyBindGroupLayout(handle);
+        });
         m_resourceTracker->Unregister(handle);
     }
 
@@ -211,7 +237,10 @@ namespace RHI
     {
         ZoneScoped;
 
-        Internal_DestroyBindGroup(handle);
+        PushDeferCommand([this, handle]()
+        {
+            Internal_DestroyBindGroup(handle);
+        });
         m_resourceTracker->Unregister(handle);
     }
 
@@ -227,14 +256,19 @@ namespace RHI
     {
         ZoneScoped;
 
-        return Internal_CreatePipelineLayout(createInfo);
+        auto handle = Internal_CreatePipelineLayout(createInfo);
+        m_resourceTracker->Register(handle);
+        return handle;
     }
 
     void Context::DestroyPipelineLayout(Handle<PipelineLayout> handle)
     {
         ZoneScoped;
 
-        Internal_DestroyPipelineLayout(handle);
+        PushDeferCommand([this, handle]()
+        {
+            Internal_DestroyPipelineLayout(handle);
+        });
         m_resourceTracker->Unregister(handle);
     }
 
@@ -242,14 +276,19 @@ namespace RHI
     {
         ZoneScoped;
 
-        return Internal_CreateGraphicsPipeline(createInfo);
+        auto handle = Internal_CreateGraphicsPipeline(createInfo);
+        m_resourceTracker->Register(handle);
+        return handle;
     }
 
     void Context::DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle)
     {
         ZoneScoped;
 
-        Internal_DestroyGraphicsPipeline(handle);
+        PushDeferCommand([this, handle]()
+        {
+            Internal_DestroyGraphicsPipeline(handle);
+        });
         m_resourceTracker->Unregister(handle);
     }
 
@@ -257,14 +296,19 @@ namespace RHI
     {
         ZoneScoped;
 
-        return Internal_CreateComputePipeline(createInfo);
+        auto handle = Internal_CreateComputePipeline(createInfo);
+        m_resourceTracker->Register(handle);
+        return handle;
     }
 
     void Context::DestroyComputePipeline(Handle<ComputePipeline> handle)
     {
         ZoneScoped;
 
-        Internal_DestroyComputePipeline(handle);
+        PushDeferCommand([this, handle]()
+        {
+            Internal_DestroyComputePipeline(handle);
+        });
         m_resourceTracker->Unregister(handle);
     }
 
@@ -272,14 +316,19 @@ namespace RHI
     {
         ZoneScoped;
 
-        return Internal_CreateSampler(createInfo);
+        auto handle = Internal_CreateSampler(createInfo);
+        m_resourceTracker->Register(handle);
+        return handle;
     }
 
     void Context::DestroySampler(Handle<Sampler> handle)
     {
         ZoneScoped;
 
-        Internal_DestroySampler(handle);
+        PushDeferCommand([this, handle]()
+        {
+            Internal_DestroySampler(handle);
+        });
         m_resourceTracker->Unregister(handle);
     }
 
@@ -315,14 +364,23 @@ namespace RHI
 
         RHI_ASSERT(createInfo.format != Format::Unknown);
 
-        return Internal_CreateImage(createInfo);
+        auto handle = Internal_CreateImage(createInfo);
+        if (handle.IsSucess())
+        {
+            m_resourceTracker->Register(handle.GetValue());
+        }
+
+        return handle;
     }
 
     void Context::DestroyImage(Handle<Image> handle)
     {
         ZoneScoped;
 
-        Internal_DestroyImage(handle);
+        PushDeferCommand([this, handle]()
+        {
+            Internal_DestroyImage(handle);
+        });
         m_resourceTracker->Unregister(handle);
     }
 
@@ -333,14 +391,23 @@ namespace RHI
         RHI_ASSERT(createInfo.usageFlags != BufferUsage::None);
         RHI_ASSERT(createInfo.byteSize != 0);
 
-        return Internal_CreateBuffer(createInfo);
+        auto handle = Internal_CreateBuffer(createInfo);
+        if (handle.IsSucess())
+        {
+            m_resourceTracker->Register(handle.GetValue());
+        }
+
+        return handle;
     }
 
     void Context::DestroyBuffer(Handle<Buffer> handle)
     {
         ZoneScoped;
 
-        Internal_DestroyBuffer(handle);
+        PushDeferCommand([this, handle]()
+        {
+            Internal_DestroyBuffer(handle);
+        });
         m_resourceTracker->Unregister(handle);
     }
 
@@ -348,14 +415,19 @@ namespace RHI
     {
         ZoneScoped;
 
-        return Internal_CreateImageView(createInfo);
+        auto handle = Internal_CreateImageView(createInfo);
+        m_resourceTracker->Register(handle);
+        return handle;
     }
 
     void Context::DestroyImageView(Handle<ImageView> handle)
     {
         ZoneScoped;
 
-        Internal_DestroyImageView(handle);
+        PushDeferCommand([this, handle]()
+        {
+            Internal_DestroyImageView(handle);
+        });
         m_resourceTracker->Unregister(handle);
     }
 
@@ -363,14 +435,19 @@ namespace RHI
     {
         ZoneScoped;
 
-        return Internal_CreateBufferView(createInfo);
+        auto handle = Internal_CreateBufferView(createInfo);
+        m_resourceTracker->Register(handle);
+        return handle;
     }
 
     void Context::DestroyBufferView(Handle<BufferView> handle)
     {
         ZoneScoped;
 
-        Internal_DestroyBufferView(handle);
+        PushDeferCommand([this, handle]()
+        {
+            Internal_DestroyBufferView(handle);
+        });
         m_resourceTracker->Unregister(handle);
     }
 
@@ -397,6 +474,7 @@ namespace RHI
         createInfo.usageFlags = BufferUsage::CopySrc | BufferUsage::CopyDst;
         auto buffer = CreateBuffer(createInfo).GetValue();
         auto ptr = MapBuffer(buffer);
+        m_stagingBuffers.push_back(buffer);
         return StagingBuffer{ ptr, buffer, 0 };
     }
 
@@ -463,4 +541,10 @@ namespace RHI
         (void)message;
 #endif
     }
+
+    void Context::PushDeferCommand(std::function<void()> command)
+    {
+        m_deferCommandQueue.push_back({ m_frameIndex, command });
+    }
+
 } // namespace RHI

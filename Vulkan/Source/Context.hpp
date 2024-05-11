@@ -18,13 +18,12 @@ namespace RHI::Vulkan
     class ICommandPool;
     class ICommandList;
 
-    using DestroyResource = std::function<void()>;
 
     class IContext final : public Context
     {
     public:
         IContext(Ptr<DebugCallbacks> debugCallbacks);
-        ~IContext() = default;
+        ~IContext();
 
         // Initialize the backend
         VkResult Init(const ApplicationInfo& appInfo);
@@ -64,9 +63,8 @@ namespace RHI::Vulkan
         using                    Context::DebugLogError;
         using                    Context::DebugLogInfo;
         using                    Context::DebugLogWarn;
+        using                    Context::PushDeferCommand;
 
-        void                     Internal_OnShutdown() override;
-        void                     Internal_OnCollectResources() override;
         Ptr<Swapchain>           Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
         Ptr<ShaderModule>        Internal_CreateShaderModule(TL::Span<const uint8_t> shaderBlob) override;
         Ptr<Fence>               Internal_CreateFence() override;
@@ -129,18 +127,17 @@ namespace RHI::Vulkan
         uint32_t m_computeQueueFamilyIndex  = UINT32_MAX;
         uint32_t m_transferQueueFamilyIndex = UINT32_MAX;
 
-        PFN_vkCmdDebugMarkerBeginEXT                       m_vkCmdDebugMarkerBeginEXT                       = nullptr;
-        PFN_vkCmdDebugMarkerInsertEXT                      m_vkCmdDebugMarkerInsertEXT                      = nullptr;
-        PFN_vkCmdDebugMarkerEndEXT                         m_vkCmdDebugMarkerEndEXT                         = nullptr;
-        PFN_vkCmdBeginConditionalRenderingEXT              m_vkCmdBeginConditionalRenderingEXT              = nullptr;
-        PFN_vkCmdEndConditionalRenderingEXT                m_vkCmdEndConditionalRenderingEXT                = nullptr;
-        PFN_vkDebugMarkerSetObjectNameEXT                  m_vkDebugMarkerSetObjectNameEXT                  = nullptr;
+        PFN_vkCmdDebugMarkerBeginEXT          m_vkCmdDebugMarkerBeginEXT          = nullptr;
+        PFN_vkCmdDebugMarkerInsertEXT         m_vkCmdDebugMarkerInsertEXT         = nullptr;
+        PFN_vkCmdDebugMarkerEndEXT            m_vkCmdDebugMarkerEndEXT            = nullptr;
+        PFN_vkCmdBeginConditionalRenderingEXT m_vkCmdBeginConditionalRenderingEXT = nullptr;
+        PFN_vkCmdEndConditionalRenderingEXT   m_vkCmdEndConditionalRenderingEXT   = nullptr;
+        PFN_vkDebugMarkerSetObjectNameEXT     m_vkDebugMarkerSetObjectNameEXT     = nullptr;
+
         Ptr<BindGroupAllocator> m_bindGroupAllocator;
         Ptr<ICommandPool>       m_commandPool;
 
         TracyVkCtx m_tracyContext;
-
-        TL::Vector<DestroyResource> m_resourceDestroyQueue;
 
         HandlePool<IImage>            m_imageOwner             = HandlePool<IImage>();
         HandlePool<IBuffer>           m_bufferOwner            = HandlePool<IBuffer>();

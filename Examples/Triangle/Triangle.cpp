@@ -2,8 +2,79 @@
 #include <Examples-Base/SceneGraph.hpp>
 
 #include <RHI/RHI.hpp>
+#include <RHI-Vulkan/Loader.hpp>
 
 #include <tracy/Tracy.hpp>
+
+// class PBRRenderer
+// {
+// public:
+//     void SetupGBuffer(RHI::Handle<RHI::ImageAttachment> outputAttachment)
+//     {
+//         {
+//             RHI::ImageCreateInfo createInfo{};
+
+//             m_worldPositionAttachment = m_renderGraph->CreateImage(createInfo);
+//             m_normalAttachment = m_renderGraph->CreateImage(createInfo);
+//             m_albedoAttachment = m_renderGraph->CreateImage(createInfo);
+//             m_metallicAttachment = m_renderGraph->CreateImage(createInfo);
+//             m_roughnessAttachment = m_renderGraph->CreateImage(createInfo);
+//             m_aoAttachment = m_renderGraph->CreateImage(createInfo);
+
+//             auto gBufferPass = m_renderGraph->CreatePass(RHI::PassCreateInfo{});
+
+//             RHI::ImageAttachmentUseInfo useInfo{};
+
+//             m_renderGraph->UseImage(gBufferPass, m_worldPositionAttachment, useInfo);
+//             m_renderGraph->UseImage(gBufferPass, m_normalAttachment, useInfo);
+//             m_renderGraph->UseImage(gBufferPass, m_albedoAttachment, useInfo);
+//             m_renderGraph->UseImage(gBufferPass, m_metallicAttachment, useInfo);
+//             m_renderGraph->UseImage(gBufferPass, m_roughnessAttachment, useInfo);
+//             m_renderGraph->UseImage(gBufferPass, m_aoAttachment, useInfo);
+//         }
+
+//         {
+//             RHI::ImageCreateInfo createInfo{};
+//             m_aoAttachment = m_renderGraph->CreateImage(createInfo);
+//         }
+
+//         {
+//             RHI::ImageAttachmentUseInfo useInfo{};
+//             m_renderGraph->UseImage(m_lightPass, m_worldPositionAttachment, useInfo);
+//             m_renderGraph->UseImage(m_lightPass, m_normalAttachment, useInfo);
+//             m_renderGraph->UseImage(m_lightPass, m_albedoAttachment, useInfo);
+//             m_renderGraph->UseImage(m_lightPass, m_metallicAttachment, useInfo);
+//             m_renderGraph->UseImage(m_lightPass, m_roughnessAttachment, useInfo);
+//             m_renderGraph->UseImage(m_lightPass, m_aoAttachment, useInfo);
+
+//             // use render target
+//         }
+
+//         RHI::BindGroupData data{};
+//         data.BindImageAttachment(0, *m_renderGraph, m_worldPositionAttachment);
+//         data.BindImageAttachment(0, *m_renderGraph, m_normalAttachment);
+//         data.BindImageAttachment(0, *m_renderGraph, m_albedoAttachment);
+//         data.BindImageAttachment(0, *m_renderGraph, m_metallicAttachment);
+//         data.BindImageAttachment(0, *m_renderGraph, m_roughnessAttachment);
+//         data.BindImageAttachment(0, *m_renderGraph, m_aoAttachment);
+//         m_context->UpdateBindGroup(m_bindGroup, data);
+//     }
+
+//     RHI::Context* m_context;
+
+//     RHI::Ptr<RHI::RenderGraph> m_renderGraph;
+//     RHI::Handle<RHI::Pass> m_gBuffer;
+
+//     RHI::Handle<RHI::BindGroup> m_bindGroup;
+//     RHI::Handle<RHI::Pass> m_lightPass;
+
+//     RHI::Handle<RHI::ImageAttachment> m_worldPositionAttachment;
+//     RHI::Handle<RHI::ImageAttachment> m_normalAttachment;
+//     RHI::Handle<RHI::ImageAttachment> m_albedoAttachment;
+//     RHI::Handle<RHI::ImageAttachment> m_metallicAttachment;
+//     RHI::Handle<RHI::ImageAttachment> m_roughnessAttachment;
+//     RHI::Handle<RHI::ImageAttachment> m_aoAttachment;
+// };
 
 class BasicRenderer final : public ApplicationBase
 {
@@ -30,15 +101,19 @@ public:
 
         auto outputAttachment = m_renderGraph->ImportSwapchain("color-attachment", *m_swapchain);
 
-        RHI::ImageCreateInfo depthCreateInfo{};
-        depthCreateInfo.name = "depth-attachment";
-        depthCreateInfo.format = RHI::Format::D32;
-        depthCreateInfo.usageFlags = RHI::ImageUsage::DepthStencil;
-        depthCreateInfo.type = RHI::ImageType::Image2D;
-        depthCreateInfo.size.width = m_windowWidth;
-        depthCreateInfo.size.height = m_windowHeight;
-        depthCreateInfo.size.depth = 1;
-        auto depthAttachment = m_renderGraph->CreateImage(depthCreateInfo);
+        RHI::ImageCreateInfo imageCreateInfo{};
+        imageCreateInfo.name = "depth-attachment";
+        imageCreateInfo.format = RHI::Format::D32;
+        imageCreateInfo.usageFlags = RHI::ImageUsage::DepthStencil;
+        imageCreateInfo.type = RHI::ImageType::Image2D;
+        imageCreateInfo.size.width = m_windowWidth;
+        imageCreateInfo.size.height = m_windowHeight;
+        imageCreateInfo.size.depth = 1;
+        auto depthAttachment = m_renderGraph->CreateImage(imageCreateInfo);
+        imageCreateInfo.name = "test-attachment";
+        imageCreateInfo.format = RHI::Format::RGBA32_FLOAT;
+        imageCreateInfo.usageFlags = RHI::ImageUsage::Color;
+        auto imageAttachment = m_renderGraph->CreateImage(imageCreateInfo);
 
         RHI::ImageAttachmentUseInfo attachmentUseInfo{};
         attachmentUseInfo.usage = RHI::ImageUsage::Color;
@@ -50,6 +125,10 @@ public:
         attachmentUseInfo.usage = RHI::ImageUsage::Depth;
         attachmentUseInfo.clearValue.depthStencil.depthValue = 1.0f;
         m_renderGraph->UseImage(m_renderPass, depthAttachment, attachmentUseInfo);
+        attachmentUseInfo.subresourceRange.imageAspects = RHI::ImageAspect::Color;
+        attachmentUseInfo.usage = RHI::ImageUsage::Color;
+        attachmentUseInfo.clearValue = {};
+        m_renderGraph->UseImage(m_renderPass, imageAttachment, attachmentUseInfo);
 
         m_context->CompileRenderGraph(*m_renderGraph);
 
@@ -96,6 +175,8 @@ public:
 
         static int i = 0;
         i = i & 1 ? 0 : 1;
+
+        m_commandPool->Reset();
 
         m_commandList[i]->Begin(*m_renderGraph, m_renderPass);
         m_commandList[i]->SetViewport(viewport);

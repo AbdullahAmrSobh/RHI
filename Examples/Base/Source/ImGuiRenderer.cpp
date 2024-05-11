@@ -374,6 +374,7 @@ void ImGuiRenderer::Init(ImGuiRendererCreateInfo createInfo)
                          { .location = 2, .binding = 0, .format = RHI::Format::RGBA8_UNORM, .offset = offsetof(ImDrawVert, col), }} };
         // clang-format on
         pipelineCreateInfo.renderTargetLayout.colorAttachmentsFormats[0] = RHI::Format::BGRA8_UNORM;
+        pipelineCreateInfo.renderTargetLayout.colorAttachmentsFormats[1] = RHI::Format::RGBA32_FLOAT;
         pipelineCreateInfo.renderTargetLayout.depthAttachmentFormat = RHI::Format::D32;
         pipelineCreateInfo.topologyMode = RHI::PipelineTopologyMode::Triangles;
         pipelineCreateInfo.depthStencilState.depthTestEnable = false;
@@ -389,6 +390,7 @@ void ImGuiRenderer::Init(ImGuiRendererCreateInfo createInfo)
             RHI::BlendFactor::OneMinusSrcAlpha,
             RHI::ColorWriteMask::All,
         };
+        pipelineCreateInfo.colorBlendState.blendStates[1] = pipelineCreateInfo.colorBlendState.blendStates[0];
         m_pipeline = m_context->CreateGraphicsPipeline(pipelineCreateInfo);
     }
 }
@@ -398,7 +400,7 @@ void ImGuiRenderer::Shutdown()
     m_context->DestroyPipelineLayout(m_pipelineLayout);
     m_context->DestroyGraphicsPipeline(m_pipeline);
     m_context->DestroyBindGroupLayout(m_bindGroupLayout);
-    m_context->DestroyBindGroup(m_bindGroup);
+    // m_context->DestroyBindGroup(m_bindGroup);
     m_context->DestroyImageView(m_imageView);
     m_context->DestroySampler(m_sampler);
     m_context->DestroyImage(m_image);
@@ -447,10 +449,22 @@ void ImGuiRenderer::RenderDrawData(ImDrawData* drawData, RHI::CommandList& comma
                 ImVec2 clip_max((pcmd->ClipRect.z - clipOff.x) * clipScale.x, (pcmd->ClipRect.w - clipOff.y) * clipScale.y);
 
                 // Clamp to viewport as vkCmdSetScissor() won't accept values that are off bounds
-                if (clip_min.x < 0.0f) { clip_min.x = 0.0f; }
-                if (clip_min.y < 0.0f) { clip_min.y = 0.0f; }
-                if (clip_max.x > fb_width) { clip_max.x = (float)fb_width; }
-                if (clip_max.y > fb_height) { clip_max.y = (float)fb_height; }
+                if (clip_min.x < 0.0f)
+                {
+                    clip_min.x = 0.0f;
+                }
+                if (clip_min.y < 0.0f)
+                {
+                    clip_min.y = 0.0f;
+                }
+                if (clip_max.x > fb_width)
+                {
+                    clip_max.x = (float)fb_width;
+                }
+                if (clip_max.y > fb_height)
+                {
+                    clip_max.y = (float)fb_height;
+                }
                 if (clip_max.x <= clip_min.x || clip_max.y <= clip_min.y)
                     continue;
 
@@ -550,12 +564,11 @@ void ImGuiRenderer::UpdateBuffers(ImDrawData* drawData)
         float R = drawData->DisplayPos.x + drawData->DisplaySize.x;
         float T = drawData->DisplayPos.y;
         float B = drawData->DisplayPos.y + drawData->DisplaySize.y;
-        float mvp[4][4] =
-        {
-            { 2.0f/(R-L),   0.0f,           0.0f,       0.0f },
-            { 0.0f,         2.0f/(T-B),     0.0f,       0.0f },
-            { 0.0f,         0.0f,           0.5f,       0.0f },
-            { (R+L)/(L-R),  (T+B)/(B-T),    0.5f,       1.0f },
+        float mvp[4][4] = {
+            { 2.0f / (R - L), 0.0f, 0.0f, 0.0f },
+            { 0.0f, 2.0f / (T - B), 0.0f, 0.0f },
+            { 0.0f, 0.0f, 0.5f, 0.0f },
+            { (R + L) / (L - R), (T + B) / (B - T), 0.5f, 1.0f },
         };
         auto uniformBufferPtr = m_context->MapBuffer(m_uniformBuffer);
         memcpy(uniformBufferPtr, mvp, sizeof(mvp));
