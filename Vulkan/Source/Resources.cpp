@@ -120,7 +120,10 @@ namespace RHI::Vulkan
             result = vmaCreateImage(context->m_allocator, &createInfo, &allocationInfo, &handle, &allocation.handle, &allocation.info);
         }
 
-        context->SetDebugName(handle, _createInfo.name);
+        if (result == VK_SUCCESS)
+        {
+            context->SetDebugName(handle, _createInfo.name);
+        }
 
         return ConvertResult(result);
     }
@@ -181,6 +184,11 @@ namespace RHI::Vulkan
             }
 
             result = vmaCreateBuffer(context->m_allocator, &createInfo, &allocationInfo, &handle, &allocation.handle, &allocation.info);
+        }
+
+        if (result == VK_SUCCESS)
+        {
+            context->SetDebugName(handle, _createInfo.name);
         }
 
         return ConvertResult(result);
@@ -691,8 +699,11 @@ namespace RHI::Vulkan
         vkCreateInfo.subpass = 0;
         vkCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
         vkCreateInfo.basePipelineIndex = 0;
-
         auto result = vkCreateGraphicsPipelines(context->m_device, VK_NULL_HANDLE, 1, &vkCreateInfo, nullptr, &handle);
+        if (result == VK_SUCCESS)
+        {
+            context->SetDebugName(handle, createInfo.name);
+        }
         return ConvertResult(result);
     }
 
@@ -750,7 +761,7 @@ namespace RHI::Vulkan
         vkCreateInfo.flags = 0;
         vkCreateInfo.magFilter = ConvertFilter(createInfo.filterMag);
         vkCreateInfo.minFilter = ConvertFilter(createInfo.filterMin);
-        vkCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR; // ConvertFilter(createInfo.filterMip);
+        vkCreateInfo.mipmapMode = createInfo.filterMip == SamplerFilter::Linear ? VK_SAMPLER_MIPMAP_MODE_LINEAR : VK_SAMPLER_MIPMAP_MODE_NEAREST;
         vkCreateInfo.addressModeU = ConvertSamplerAddressMode(createInfo.addressU);
         vkCreateInfo.addressModeV = ConvertSamplerAddressMode(createInfo.addressV);
         vkCreateInfo.addressModeW = ConvertSamplerAddressMode(createInfo.addressW);
@@ -763,8 +774,11 @@ namespace RHI::Vulkan
         vkCreateInfo.maxLod = createInfo.maxLod;
         vkCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
         vkCreateInfo.unnormalizedCoordinates = VK_FALSE;
-
         auto result = vkCreateSampler(context->m_device, &vkCreateInfo, nullptr, &handle);
+        if (result == VK_SUCCESS)
+        {
+            context->SetDebugName(handle, createInfo.name);
+        }
         return ConvertResult(result);
     }
 

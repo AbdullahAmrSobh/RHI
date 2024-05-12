@@ -73,7 +73,6 @@ namespace RHI::Vulkan
         auto commandPool = m_commandPools[uint32_t(queueType)][0];
         auto commandBuffers = AllocateCommandBuffers(commandPool, count, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
         TL::Vector<CommandList*> commandLists;
-        commandLists.reserve(count);
         for (auto commandBuffer : commandBuffers)
         {
             commandLists.push_back(new ICommandList(m_context, commandPool, commandBuffer));
@@ -85,19 +84,12 @@ namespace RHI::Vulkan
     {
         TL::Span commandLists((ICommandList*)_commandLists.data(), _commandLists.size());
 
-        TL::Vector<VkCommandBuffer> commandBuffers;
 
-        auto commandPool = commandLists[0].m_commandPool;
-
-        for (auto& commandList : commandLists)
-        {
-            commandBuffers.push_back(commandList.m_commandBuffer);
-        }
-
-        m_context->PushDeferCommand([this, commandPool, commandBuffers]()
-        {
-            vkFreeCommandBuffers(m_context->m_device, commandPool, uint32_t(commandBuffers.size()), commandBuffers.data());
-        });
+        // for (auto& commandList : commandLists)
+        // {
+        //     auto commandPool = commandLists[0].m_commandPool;
+        //     vkFreeCommandBuffers(m_context->m_device, commandPool, 1, &commandList.m_commandBuffer);
+        // }
     }
 
     TL::Vector<VkCommandBuffer> ICommandPool::AllocateCommandBuffers(VkCommandPool pool, uint32_t count, VkCommandBufferLevel level)

@@ -580,7 +580,7 @@ namespace RHI
     /// @brief Represent the creation parameters of an image resource.
     struct ImageCreateInfo
     {
-        const char*       name;
+        const char*       name = nullptr;
         AllocationInfo    allocationInfo;
         Flags<ImageUsage> usageFlags;                          // Usage flags.
         ImageType         type;                                // The type of the image.
@@ -596,7 +596,7 @@ namespace RHI
     /// @brief Represent the creation parameters of an buffer resource.
     struct BufferCreateInfo
     {
-        const char*        name;
+        const char*        name = nullptr;
         AllocationInfo     allocationInfo;
         Flags<BufferUsage> usageFlags; // Usage flags.
         size_t             byteSize;   // The size of the buffer.
@@ -616,7 +616,7 @@ namespace RHI
             subresource.imageAspects = aspect;
         }
 
-        const char*           name;
+        const char*           name = nullptr;
         Handle<Image>         image;
         ImageViewType         viewType;
         ComponentMapping      components;
@@ -640,7 +640,7 @@ namespace RHI
     /// @brief Description of the graphics pipeline states.
     struct GraphicsPipelineCreateInfo
     {
-        const char*                     name;
+        const char*                     name = nullptr;
 
         const char*                     vertexShaderName;
         ShaderModule*                   vertexShaderModule;
@@ -660,7 +660,7 @@ namespace RHI
     /// @brief Description of a compute pipeline state.
     struct ComputePipelineCreateInfo
     {
-        const char*            name;
+        const char*            name = nullptr;
 
         const char*            shaderName;
         ShaderModule*          shaderModule;
@@ -679,7 +679,7 @@ namespace RHI
                           float                   minLod     = 0.0f,
                           float                   maxLod     = 1.0f);
 
-        const char*             name;
+        const char*             name       = nullptr;
 
         SamplerFilter           filterMin  = SamplerFilter::Point;
         SamplerFilter           filterMag  = SamplerFilter::Point;
