@@ -150,7 +150,7 @@ namespace RHI::Vulkan
         // TracyVkContextHostCalibrated(m_physicalDevice, m_device, vkResetQueryPool, m_vkGetPhysicalDeviceCalibrateableTimeDomainsKHR, m_vkGetCalibratedTimestampsKHR);
 
         m_commandPool = CreatePtr<ICommandPool>(this);
-        m_commandPool->Init();
+        m_commandPool->Init(CommandPoolFlags::Transient);
 
         return VK_SUCCESS;
     }
@@ -343,10 +343,10 @@ namespace RHI::Vulkan
         return fence;
     }
 
-    Ptr<CommandPool> IContext::Internal_CreateCommandPool()
+    Ptr<CommandPool> IContext::Internal_CreateCommandPool(CommandPoolFlags flags)
     {
         auto commandPool = CreatePtr<ICommandPool>(this);
-        auto result = commandPool->Init();
+        auto result = commandPool->Init(flags);
         if (result != VK_SUCCESS)
         {
             DebugLogError("Failed to create a command_list_allocator object");
@@ -615,7 +615,7 @@ namespace RHI::Vulkan
         copyInfo.srcBuffer = buffer;
         copyInfo.srcOffset = bufferOffset;
         copyInfo.dstSize = image->size;
-        auto commandList = (ICommandList*)m_commandPool->Allocate(QueueType::Transfer);
+        auto commandList = (ICommandList*)m_commandPool->Allocate(QueueType::Transfer, CommandListLevel::Primary, 1).front();
 
         commandList->Begin();
         commandList->PipelineBarrier({}, {}, barrier);
@@ -649,7 +649,7 @@ namespace RHI::Vulkan
         copyInfo.srcBuffer = srcBuffer;
         copyInfo.srcOffset = srcOffset;
         copyInfo.size = size;
-        auto commandList = (ICommandList*)m_commandPool->Allocate(QueueType::Transfer);
+        auto commandList = (ICommandList*)m_commandPool->Allocate(QueueType::Transfer, CommandListLevel::Primary, 1).front();
         commandList->Begin();
         commandList->Copy(copyInfo);
         commandList->End();

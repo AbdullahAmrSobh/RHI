@@ -16,12 +16,11 @@ namespace RHI::Vulkan
 
         ~ICommandPool();
 
-        VkResult Init();
+        VkResult Init(CommandPoolFlags flags);
 
         // clang-format off
         void                     Reset() override;
-        CommandList*             Allocate(QueueType queueType) override;
-        TL::Vector<CommandList*> Allocate(QueueType queueType, uint32_t count) override;
+        TL::Vector<CommandList*> Allocate(QueueType queueType, CommandListLevel level, uint32_t count) override;
         void                     Release(TL::Span<const CommandList* const> commandLists) override;
         // clang-format on
 

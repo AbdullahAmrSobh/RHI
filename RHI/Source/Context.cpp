@@ -5,9 +5,11 @@
 #include "RHI/Swapchain.hpp"
 
 #include "RHI/Common/Assert.hpp"
-#include "RHI/Common/LeakDetector.hpp"
+#include "RHI/Common/Callstack.hpp"
 
 #include <tracy/Tracy.hpp>
+
+#include <format>
 
 namespace RHI
 {
@@ -16,73 +18,108 @@ namespace RHI
     public:
         ResourceTracker() = default;
 
-        inline uint32_t LiveResourcesCount()
+        inline size_t LiveResourcesCount()
         {
-            uint32_t totalCount = 0;
-            totalCount += m_images.LeakedResourcesCount();
-            totalCount += m_buffers.LeakedResourcesCount();
-            totalCount += m_imageViews.LeakedResourcesCount();
-            totalCount += m_bufferViews.LeakedResourcesCount();
-            totalCount += m_bindGroupLayouts.LeakedResourcesCount();
-            totalCount += m_bindGroups.LeakedResourcesCount();
-            totalCount += m_pipelineLayouts.LeakedResourcesCount();
-            totalCount += m_graphicsPipelines.LeakedResourcesCount();
-            totalCount += m_computePipelines.LeakedResourcesCount();
-            totalCount += m_samplers.LeakedResourcesCount();
+            size_t totalCount = 0;
+            totalCount += m_images.size();
+            totalCount += m_buffers.size();
+            totalCount += m_imageViews.size();
+            totalCount += m_bufferViews.size();
+            totalCount += m_bindGroupLayouts.size();
+            totalCount += m_bindGroups.size();
+            totalCount += m_pipelineLayouts.size();
+            totalCount += m_graphicsPipelines.size();
+            totalCount += m_computePipelines.size();
+            totalCount += m_samplers.size();
             return totalCount;
         }
 
-        inline TL::String ReportLiveResources()
+        inline TL::String ReportLiveResources(bool countOnly)
         {
-            std::string report = m_images.ReportLiveResources();
-            report += m_buffers.ReportLiveResources();
-            report += m_imageViews.ReportLiveResources();
-            report += m_bufferViews.ReportLiveResources();
-            report += m_bindGroupLayouts.ReportLiveResources();
-            report += m_bindGroups.ReportLiveResources();
-            report += m_pipelineLayouts.ReportLiveResources();
-            report += m_graphicsPipelines.ReportLiveResources();
-            report += m_computePipelines.ReportLiveResources();
-            report += m_samplers.ReportLiveResources();
-            return TL::String{ report };
+            TL::String report = "";
+            report += countOnly ? TL::String(std::format("Leaked ({}) Images \n", m_images.size())) : ReportResourceStacktrace(m_images);
+            report += countOnly ? TL::String(std::format("Leaked ({}) Buffers \n", m_buffers.size())) : ReportResourceStacktrace(m_buffers);
+            report += countOnly ? TL::String(std::format("Leaked ({}) ImageViews \n", m_imageViews.size())) : ReportResourceStacktrace(m_imageViews);
+            report += countOnly ? TL::String(std::format("Leaked ({}) BufferViews \n", m_bufferViews.size())) : ReportResourceStacktrace(m_bufferViews);
+            report += countOnly ? TL::String(std::format("Leaked ({}) BindGroupLayouts \n", m_bindGroupLayouts.size())) : ReportResourceStacktrace(m_bindGroupLayouts);
+            report += countOnly ? TL::String(std::format("Leaked ({}) BindGroups \n", m_bindGroups.size())) : ReportResourceStacktrace(m_bindGroups);
+            report += countOnly ? TL::String(std::format("Leaked ({}) PipelineLayouts \n", m_pipelineLayouts.size())) : ReportResourceStacktrace(m_pipelineLayouts);
+            report += countOnly ? TL::String(std::format("Leaked ({}) GraphicsPipelines \n", m_graphicsPipelines.size())) : ReportResourceStacktrace(m_graphicsPipelines);
+            report += countOnly ? TL::String(std::format("Leaked ({}) ComputePipelines \n", m_computePipelines.size())) : ReportResourceStacktrace(m_computePipelines);
+            report += countOnly ? TL::String(std::format("Leaked ({}) Samplers \n", m_samplers.size())) : ReportResourceStacktrace(m_samplers);
+            return report;
         }
 
         // clang-format off
-
-        inline Handle<Image>            Register(Handle<Image> handle) { m_images.OnCreate(handle); return handle; }
-        inline void                     Unregister(Handle<Image> handle) { m_images.OnDestroy(handle); }
-        inline Handle<Buffer>           Register(Handle<Buffer> handle) { m_buffers.OnCreate(handle); return handle; }
-        inline void                     Unregister(Handle<Buffer> handle) { m_buffers.OnDestroy(handle); }
-        inline Handle<ImageView>        Register(Handle<ImageView> handle) { m_imageViews.OnCreate(handle); return handle; }
-        inline void                     Unregister(Handle<ImageView> handle) { m_imageViews.OnDestroy(handle); }
-        inline Handle<BufferView>       Register(Handle<BufferView> handle) { m_bufferViews.OnCreate(handle); return handle; }
-        inline void                     Unregister(Handle<BufferView> handle) { m_bufferViews.OnDestroy(handle); }
-        inline Handle<BindGroupLayout>  Register(Handle<BindGroupLayout> handle) { m_bindGroupLayouts.OnCreate(handle); return handle; }
-        inline void                     Unregister(Handle<BindGroupLayout> handle) { m_bindGroupLayouts.OnDestroy(handle); }
-        inline Handle<BindGroup>        Register(Handle<BindGroup> handle) { m_bindGroups.OnCreate(handle); return handle; }
-        inline void                     Unregister(Handle<BindGroup> handle) { m_bindGroups.OnDestroy(handle); }
-        inline Handle<PipelineLayout>   Register(Handle<PipelineLayout> handle) { m_pipelineLayouts.OnCreate(handle); return handle; }
-        inline void                     Unregister(Handle<PipelineLayout> handle) { m_pipelineLayouts.OnDestroy(handle); }
-        inline Handle<GraphicsPipeline> Register(Handle<GraphicsPipeline> handle) { m_graphicsPipelines.OnCreate(handle); return handle; }
-        inline void                     Unregister(Handle<GraphicsPipeline> handle) { m_graphicsPipelines.OnDestroy(handle); }
-        inline Handle<ComputePipeline>  Register(Handle<ComputePipeline> handle) { m_computePipelines.OnCreate(handle); return handle; }
-        inline void                     Unregister(Handle<ComputePipeline> handle) { m_computePipelines.OnDestroy(handle); }
-        inline Handle<Sampler>          Register(Handle<Sampler> handle) { m_samplers.OnCreate(handle); return handle; }
-        inline void                     Unregister(Handle<Sampler> handle) { m_samplers.OnDestroy(handle); }
+        inline Handle<Image>            Register(Handle<Image> handle)              { Register(m_images, handle); return handle; }
+        inline void                     Unregister(Handle<Image> handle)            { Unregister(m_images, handle); }
+        inline Handle<Buffer>           Register(Handle<Buffer> handle)             { Register(m_buffers, handle); return handle; }
+        inline void                     Unregister(Handle<Buffer> handle)           { Unregister(m_buffers, handle); }
+        inline Handle<ImageView>        Register(Handle<ImageView> handle)          { Register(m_imageViews, handle); return handle; }
+        inline void                     Unregister(Handle<ImageView> handle)        { Unregister(m_imageViews, handle); }
+        inline Handle<BufferView>       Register(Handle<BufferView> handle)         { Register(m_bufferViews, handle); return handle; }
+        inline void                     Unregister(Handle<BufferView> handle)       { Unregister(m_bufferViews, handle); }
+        inline Handle<BindGroupLayout>  Register(Handle<BindGroupLayout> handle)    { Register(m_bindGroupLayouts, handle); return handle; }
+        inline void                     Unregister(Handle<BindGroupLayout> handle)  { Unregister(m_bindGroupLayouts, handle); }
+        inline Handle<BindGroup>        Register(Handle<BindGroup> handle)          { Register(m_bindGroups, handle); return handle; }
+        inline void                     Unregister(Handle<BindGroup> handle)        { Unregister(m_bindGroups, handle); }
+        inline Handle<PipelineLayout>   Register(Handle<PipelineLayout> handle)     { Register(m_pipelineLayouts, handle); return handle; }
+        inline void                     Unregister(Handle<PipelineLayout> handle)   { Unregister(m_pipelineLayouts, handle); }
+        inline Handle<GraphicsPipeline> Register(Handle<GraphicsPipeline> handle)   { Register(m_graphicsPipelines, handle); return handle; }
+        inline void                     Unregister(Handle<GraphicsPipeline> handle) { Unregister(m_graphicsPipelines, handle); }
+        inline Handle<ComputePipeline>  Register(Handle<ComputePipeline> handle)    { Register(m_computePipelines, handle); return handle; }
+        inline void                     Unregister(Handle<ComputePipeline> handle)  { Unregister(m_computePipelines, handle); }
+        inline Handle<Sampler>          Register(Handle<Sampler> handle)            { Register(m_samplers, handle); return handle; }
+        inline void                     Unregister(Handle<Sampler> handle)          { Unregister(m_samplers, handle); }
 
         // clang-format on
 
     private:
-        ResourceLeakDetector<Image> m_images;
-        ResourceLeakDetector<Buffer> m_buffers;
-        ResourceLeakDetector<ImageView> m_imageViews;
-        ResourceLeakDetector<BufferView> m_bufferViews;
-        ResourceLeakDetector<BindGroupLayout> m_bindGroupLayouts;
-        ResourceLeakDetector<BindGroup> m_bindGroups;
-        ResourceLeakDetector<PipelineLayout> m_pipelineLayouts;
-        ResourceLeakDetector<GraphicsPipeline> m_graphicsPipelines;
-        ResourceLeakDetector<ComputePipeline> m_computePipelines;
-        ResourceLeakDetector<Sampler> m_samplers;
+        template<typename T>
+        using LiveResourceLookup = TL::UnorderedMap<T, Callstack>;
+
+        template<typename T>
+        inline T Register(LiveResourceLookup<T>& lookup, T resource)
+        {
+            RHI_ASSERT(lookup.find(resource) == lookup.end());
+            lookup[resource] = CaptureCallstack(3);
+            return resource;
+        }
+
+        template<typename T>
+        inline void Unregister(LiveResourceLookup<T> lookup, T resource)
+        {
+            RHI_ASSERT(lookup.find(resource) != lookup.end());
+            lookup.erase(resource);
+        }
+
+        template<typename T>
+        inline TL::String ReportResourceStacktrace(LiveResourceLookup<T> lookup)
+        {
+            auto breakline = "\n=============================================================================\n";
+            auto message = std::format("{}{} leak count {} \n", breakline, typeid(T).name(), lookup.size());
+
+            for (auto [handle, stacktrace] : lookup)
+            {
+                auto stacktraceReport = ReportCallstack(stacktrace);
+                message.append(std::format("{}\n", stacktraceReport));
+            }
+
+            message.append(std::format("{}", breakline));
+            return TL::String{ message };
+        }
+
+    private:
+        LiveResourceLookup<Handle<Image>> m_images;
+        LiveResourceLookup<Handle<Buffer>> m_buffers;
+        LiveResourceLookup<Handle<ImageView>> m_imageViews;
+        LiveResourceLookup<Handle<BufferView>> m_bufferViews;
+        LiveResourceLookup<Handle<BindGroupLayout>> m_bindGroupLayouts;
+        LiveResourceLookup<Handle<BindGroup>> m_bindGroups;
+        LiveResourceLookup<Handle<PipelineLayout>> m_pipelineLayouts;
+        LiveResourceLookup<Handle<GraphicsPipeline>> m_graphicsPipelines;
+        LiveResourceLookup<Handle<ComputePipeline>> m_computePipelines;
+        LiveResourceLookup<Handle<Sampler>> m_samplers;
     };
 
     inline static ImageViewCreateInfo GetViewCreateInfo(Handle<Image> image, const ImageAttachmentUseInfo& useInfo)
@@ -115,6 +152,11 @@ namespace RHI
             deferCmd.callback();
         }
         m_deferCommandQueue.clear();
+
+        if (m_resourceTracker->LiveResourcesCount())
+        {
+            DebugLogWarn(m_resourceTracker->ReportLiveResources(true));
+        }
 
         delete m_resourceTracker;
     }
@@ -190,11 +232,11 @@ namespace RHI
         return Internal_CreateFence();
     }
 
-    Ptr<CommandPool> Context::CreateCommandPool()
+    Ptr<CommandPool> Context::CreateCommandPool(CommandPoolFlags flags)
     {
         ZoneScoped;
 
-        return Internal_CreateCommandPool();
+        return Internal_CreateCommandPool(flags);
     }
 
     Ptr<ResourcePool> Context::CreateResourcePool(const ResourcePoolCreateInfo& createInfo)
@@ -249,7 +291,6 @@ namespace RHI
         ZoneScoped;
 
         Internal_UpdateBindGroup(handle, data);
-        m_resourceTracker->Unregister(handle);
     }
 
     Handle<PipelineLayout> Context::CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)

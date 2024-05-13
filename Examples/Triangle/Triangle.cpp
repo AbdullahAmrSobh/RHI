@@ -132,13 +132,15 @@ public:
 
         m_context->CompileRenderGraph(*m_renderGraph);
 
-        m_commandList[0] = m_commandPool->Allocate(RHI::QueueType::Graphics);
-        m_commandList[1] = m_commandPool->Allocate(RHI::QueueType::Graphics);
+        m_commandList[0] = m_commandPool->Allocate(RHI::QueueType::Graphics, RHI::CommandListLevel::Primary);
+        m_commandList[1] = m_commandPool->Allocate(RHI::QueueType::Graphics, RHI::CommandListLevel::Primary);
     }
 
     void OnShutdown() override
     {
         ZoneScoped;
+
+        m_scene->Shutdown(*m_context);
 
         m_commandPool->Release(m_commandList[0]);
         m_commandPool->Release(m_commandList[1]);

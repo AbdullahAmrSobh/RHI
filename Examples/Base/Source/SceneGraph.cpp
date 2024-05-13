@@ -146,6 +146,46 @@ Scene::Scene(RHI::Context* pContext, const char* scenePath)
     LoadPipeline(context, "./Shaders/Basic.spv");
 }
 
+void Scene::Shutdown(RHI::Context& context)
+{
+    for (auto meshHandle : m_meshes)
+    {
+        auto mesh = m_staticMeshOwner.Get(meshHandle);
+        if (auto buffer = mesh->indcies)
+        {
+            context.DestroyBuffer(buffer);
+        }
+
+        if (auto buffer = mesh->position)
+        {
+            context.DestroyBuffer(buffer);
+        }
+
+        if (auto buffer = mesh->normals)
+        {
+            context.DestroyBuffer(buffer);
+        }
+
+        if (auto buffer = mesh->uvs)
+        {
+            context.DestroyBuffer(buffer);
+        }
+
+        if (auto buffer = mesh->colors)
+        {
+            context.DestroyBuffer(buffer);
+        }
+    }
+
+    context.DestroyBuffer(m_perFrameUniformBuffer);
+    context.DestroyBuffer(m_perObjectUniformBuffer);
+    context.DestroySampler(m_sampler);
+    context.DestroyBindGroupLayout(m_bindGroupLayout);
+    context.DestroyBindGroup(m_bindGroup);
+    context.DestroyPipelineLayout(m_pipelineLayout);
+    context.DestroyGraphicsPipeline(m_pbrPipeline);
+}
+
 void Scene::UpdateUniformBuffers(RHI::Context& context, glm::mat4 view, glm::mat4 projection)
 {
     m_perFrameData.viewMatrix = view;
@@ -306,7 +346,7 @@ void Scene::LoadPipeline(RHI::Context& context, const char* shaderPath)
 
 RHI::Handle<StaticMesh> Scene::LoadStaticMesh(RHI::Context& context, RHI::Handle<Material> material, const aiMesh& aiMesh)
 {
-    StaticMesh mesh {};
+    StaticMesh mesh{};
     mesh.name = std::string(aiMesh.mName.C_Str());
     mesh.material = material;
 
@@ -352,5 +392,7 @@ RHI::Handle<StaticMesh> Scene::LoadStaticMesh(RHI::Context& context, RHI::Handle
         mesh.elementsCount = (uint32_t)indices.size();
     }
 
-    return m_staticMeshOwner.Emplace(std::move(mesh));
+    auto handle = m_staticMeshOwner.Emplace(std::move(mesh));
+    m_meshes.push_back(handle);
+    return handle;
 }

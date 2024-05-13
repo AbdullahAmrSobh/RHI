@@ -126,7 +126,7 @@ void ApplicationBase::Init()
 
     m_swapchain = m_context->CreateSwapchain(createInfo);
 
-    m_commandPool = m_context->CreateCommandPool();
+    m_commandPool = m_context->CreateCommandPool(RHI::CommandPoolFlags::Reset);
 
     OnInit();
 

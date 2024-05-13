@@ -15,7 +15,6 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Flags.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Handle.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Hash.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/LeakDetector.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Ptr.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Result.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Span.hpp

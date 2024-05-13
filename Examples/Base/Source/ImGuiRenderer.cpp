@@ -400,7 +400,7 @@ void ImGuiRenderer::Shutdown()
     m_context->DestroyPipelineLayout(m_pipelineLayout);
     m_context->DestroyGraphicsPipeline(m_pipeline);
     m_context->DestroyBindGroupLayout(m_bindGroupLayout);
-    // m_context->DestroyBindGroup(m_bindGroup);
+    m_context->DestroyBindGroup(m_bindGroup);
     m_context->DestroyImageView(m_imageView);
     m_context->DestroySampler(m_sampler);
     m_context->DestroyImage(m_image);

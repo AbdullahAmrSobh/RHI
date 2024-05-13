@@ -134,7 +134,7 @@ namespace RHI
 
         RHI_NODISCARD Ptr<Fence>              CreateFence();
 
-        RHI_NODISCARD Ptr<CommandPool>        CreateCommandPool();
+        RHI_NODISCARD Ptr<CommandPool>        CreateCommandPool(enum class CommandPoolFlags flags);
 
         RHI_NODISCARD Ptr<ResourcePool>       CreateResourcePool(const ResourcePoolCreateInfo& createInfo);
 
@@ -213,7 +213,7 @@ namespace RHI
         virtual Ptr<Swapchain>           Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo) = 0;
         virtual Ptr<ShaderModule>        Internal_CreateShaderModule(TL::Span<const uint8_t> shaderBlob) = 0;
         virtual Ptr<Fence>               Internal_CreateFence() = 0;
-        virtual Ptr<CommandPool>         Internal_CreateCommandPool() = 0;
+        virtual Ptr<CommandPool>         Internal_CreateCommandPool(CommandPoolFlags flags) = 0;
         virtual Ptr<ResourcePool>        Internal_CreateResourcePool(const ResourcePoolCreateInfo& createInfo) = 0;
         virtual Handle<BindGroupLayout>  Internal_CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) = 0;
         virtual void                     Internal_DestroyBindGroupLayout(Handle<BindGroupLayout> handle) = 0;

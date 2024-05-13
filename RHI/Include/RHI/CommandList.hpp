@@ -15,6 +15,19 @@ namespace RHI
     class Pass;
     class CommandList;
 
+    enum class CommandPoolFlags
+    {
+        None      = 0,
+        Transient = 0x01,
+        Reset     = 0x02,
+    };
+
+    enum class CommandListLevel
+    {
+        Primary,
+        Secondary,
+    };
+
     struct Viewport
     {
         float offsetX;
@@ -142,22 +155,25 @@ namespace RHI
     class RHI_EXPORT CommandPool
     {
     public:
-        CommandPool()                                                                             = default;
-        CommandPool(const CommandPool&)                                                           = delete;
-        CommandPool(CommandPool&&)                                                                = delete;
-        virtual ~CommandPool()                                                                    = default;
+        CommandPool()                             = default;
+        CommandPool(const CommandPool&)           = delete;
+        CommandPool(CommandPool&&)                = delete;
+        virtual ~CommandPool()                    = default;
 
         /// @brief Resets all command lists allocated from this allocator
-        virtual void                     Reset()                                                  = 0;
+        virtual void                      Reset() = 0;
 
         /// @brief Allocates a new command list object
-        virtual CommandList*             Allocate(QueueType queueType)                            = 0;
+        RHI_NODISCARD inline CommandList* Allocate(QueueType queueType, CommandListLevel level)
+        {
+            return Allocate(queueType, level, 1).front();
+        }
 
         /// @brief Allocates a new command list object
-        virtual TL::Vector<CommandList*> Allocate(QueueType queueType, uint32_t count)            = 0;
+        RHI_NODISCARD virtual TL::Vector<CommandList*> Allocate(QueueType queueType, CommandListLevel level, uint32_t count) = 0;
 
         /// @brief Releases a command list object (must be allocated through here)
-        virtual void                     Release(TL::Span<const CommandList* const> commandLists) = 0;
+        virtual void                                   Release(TL::Span<const CommandList* const> commandLists)              = 0;
     };
 
     /// @brief Command list record a list of GPU commands that are exectued in the same pass.

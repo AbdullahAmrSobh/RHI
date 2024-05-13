@@ -131,6 +131,8 @@ class Scene
 public:
     Scene(RHI::Context* context, const char* scenePath);
 
+    void Shutdown(RHI::Context& context);
+
     void UpdateUniformBuffers(RHI::Context& context, glm::mat4 view, glm::mat4 projection);
 
     void Draw(RHI::CommandList& commandList) const;
@@ -152,6 +154,8 @@ private:
 
     RHI::HandlePool<Material> m_materialOwner = RHI::HandlePool<Material>();
     RHI::HandlePool<StaticMesh> m_staticMeshOwner = RHI::HandlePool<StaticMesh>();
+
+    TL::Vector<RHI::Handle<StaticMesh>> m_meshes;
 
     // Rendering related
 
