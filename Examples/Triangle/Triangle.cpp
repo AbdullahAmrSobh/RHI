@@ -134,6 +134,9 @@ public:
 
         m_commandList[0] = m_commandPool->Allocate(RHI::QueueType::Graphics, RHI::CommandListLevel::Primary);
         m_commandList[1] = m_commandPool->Allocate(RHI::QueueType::Graphics, RHI::CommandListLevel::Primary);
+
+        SetupGPUResources(m_scene->m_perDrawData);
+        LoadPipeline("./Shaders/Basic.spv");
     }
 
     void OnShutdown() override
@@ -162,7 +165,7 @@ public:
         m_camera.SetMovementSpeed(cameraSpeed);
         m_camera.Update(timestep);
 
-        m_scene->UpdateUniformBuffers(*m_context, m_camera.GetView(), m_camera.GetProjection());
+        UpdateUniformBuffers(m_camera.GetView(), m_camera.GetProjection());
 
         // render code
         RHI::Viewport viewport = {};
@@ -183,7 +186,7 @@ public:
         m_commandList[i]->Begin(*m_renderGraph, m_renderPass);
         m_commandList[i]->SetViewport(viewport);
         m_commandList[i]->SetSicssor(scissor);
-        m_scene->Draw(*m_commandList[i]);
+        Draw(*m_commandList[i]);
         m_imguiRenderer->RenderDrawData(ImGui::GetDrawData(), *m_commandList[i]);
 
         m_commandList[i]->End();
@@ -195,6 +198,134 @@ public:
     }
 
 private:
+    void Draw(RHI::CommandList& commandList) const
+    {
+        ZoneScoped;
+        RHI::Handle<RHI::BindGroup> bindGroups = { m_bindGroup };
+
+        RHI::DrawInfo drawInfo{};
+        drawInfo.pipelineState = m_graphicsPipeline;
+        drawInfo.bindGroups = { bindGroups };
+
+        uint32_t nodeIndex = 0;
+        for (const auto& node : m_scene->m_staticSceneNodes)
+        {
+            for (const auto& handle : node.m_meshes)
+            {
+                auto mesh = m_scene->m_staticMeshOwner.Get(handle);
+                RHI::Handle<RHI::BindGroup> bindGroupss[] = { m_bindGroup };
+                drawInfo.bindGroups = bindGroupss;
+                drawInfo.dynamicOffset = { uint32_t(sizeof(Shader::PerDraw) * nodeIndex) };
+                drawInfo.parameters.elementCount = mesh->elementsCount;
+                drawInfo.vertexBuffers = { mesh->position, mesh->normals };
+                if (mesh->indcies != RHI::NullHandle)
+                {
+                    drawInfo.indexBuffers = mesh->indcies;
+                }
+
+                commandList.Draw(drawInfo);
+            }
+            nodeIndex++;
+        }
+    }
+
+    void UpdateUniformBuffers(glm::mat4 view, glm::mat4 projection)
+    {
+        m_perFrameData.viewMatrix = view;
+        m_perFrameData.projectionMatrix = projection;
+        m_perFrameData.viewProjectionMatrix = view * projection;
+        m_perFrameData.inverseViewMatrix = glm::inverse(view);
+
+        auto ptr = m_context->MapBuffer(m_perFrameUniformBuffer);
+        memcpy(ptr, &m_perFrameData, sizeof(Shader::PerFrame));
+        m_context->UnmapBuffer(m_perFrameUniformBuffer);
+    }
+
+    void SetupGPUResources(TL::Span<Shader::PerDraw> perDraw)
+    {
+        m_sampler = m_context->CreateSampler(RHI::SamplerCreateInfo{});
+
+        RHI::BindGroupLayoutCreateInfo bindGroupLayoutInfo{};
+        // Per frame uniform buffer
+        bindGroupLayoutInfo.bindings[0].access = RHI::Access::Read;
+        bindGroupLayoutInfo.bindings[0].stages |= RHI::ShaderStage::Vertex;
+        bindGroupLayoutInfo.bindings[0].stages |= RHI::ShaderStage::Pixel;
+        bindGroupLayoutInfo.bindings[0].type = RHI::ShaderBindingType::UniformBuffer;
+        bindGroupLayoutInfo.bindings[0].arrayCount = 1;
+
+        // per object uniform buffer
+        bindGroupLayoutInfo.bindings[1].access = RHI::Access::Read;
+        bindGroupLayoutInfo.bindings[1].stages |= RHI::ShaderStage::Vertex;
+        bindGroupLayoutInfo.bindings[1].stages |= RHI::ShaderStage::Pixel;
+        bindGroupLayoutInfo.bindings[1].type = RHI::ShaderBindingType::DynamicUniformBuffer;
+        bindGroupLayoutInfo.bindings[1].arrayCount = 1;
+
+        // TODO: add textures
+
+        m_bindGroupLayout = m_context->CreateBindGroupLayout(bindGroupLayoutInfo);
+        m_pipelineLayout = m_context->CreatePipelineLayout({ m_bindGroupLayout });
+        m_bindGroup = m_context->CreateBindGroup(m_bindGroupLayout);
+
+        // create buffers
+
+        RHI::BufferCreateInfo bufferCreateInfo{};
+        bufferCreateInfo.usageFlags = RHI::BufferUsage::Uniform;
+        bufferCreateInfo.byteSize = sizeof(Shader::PerFrame);
+        m_perFrameUniformBuffer = m_context->CreateBuffer(bufferCreateInfo).GetValue();
+        bufferCreateInfo.byteSize = perDraw.size_bytes();
+        m_perObjectUniformBuffer = m_context->CreateBuffer(bufferCreateInfo).GetValue();
+
+        auto ptr = m_context->MapBuffer(m_perObjectUniformBuffer);
+        memcpy(ptr, perDraw.data(), perDraw.size() * sizeof(Shader::PerDraw));
+        m_context->UnmapBuffer(m_perObjectUniformBuffer);
+
+        // update bind groups
+        RHI::BindGroupData data{};
+        data.BindBuffers(0, m_perFrameUniformBuffer);
+        data.BindBuffers(1, m_perObjectUniformBuffer, true, sizeof(Shader::PerDraw));
+        m_context->UpdateBindGroup(m_bindGroup, data);
+    }
+
+    void LoadPipeline(const char* shaderPath)
+    {
+        auto shaderCode = ReadBinaryFile(shaderPath);
+        auto shaderModule = m_context->CreateShaderModule(shaderCode);
+        RHI::GraphicsPipelineCreateInfo createInfo{};
+        createInfo.inputAssemblerState.attributes[0] = { .location = 0, .binding = 0, .format = RHI::Format::RGB32_FLOAT, .offset = 0 };
+        createInfo.inputAssemblerState.attributes[1] = { .location = 1, .binding = 1, .format = RHI::Format::RGB32_FLOAT, .offset = 0 };
+        // createInfo.inputAssemblerState.attributes[2] = { .location = 2, .binding = 2, .format = RHI::Format::RG32_FLOAT,  .offset = 0 };
+        createInfo.inputAssemblerState.bindings[0] = { .binding = 0, .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT), .stepRate = RHI::PipelineVertexInputRate::PerVertex };
+        createInfo.inputAssemblerState.bindings[1] = { .binding = 1, .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT), .stepRate = RHI::PipelineVertexInputRate::PerVertex };
+        // createInfo.inputAssemblerState.bindings[2] = { .binding = 2, .stride = RHI::GetFormatByteSize(RHI::Format::RG32_FLOAT),  .stepRate = RHI::PipelineVertexInputRate::PerVertex };
+        createInfo.vertexShaderName = "VSMain";
+        createInfo.pixelShaderName = "PSMain";
+        createInfo.vertexShaderModule = shaderModule.get();
+        createInfo.pixelShaderModule = shaderModule.get();
+        createInfo.layout = m_pipelineLayout;
+        createInfo.renderTargetLayout.colorAttachmentsFormats[0] = RHI::Format::BGRA8_UNORM;
+        createInfo.renderTargetLayout.colorAttachmentsFormats[1] = RHI::Format::RGBA32_FLOAT;
+        createInfo.renderTargetLayout.depthAttachmentFormat = RHI::Format::D32;
+        createInfo.depthStencilState.depthTestEnable = true;
+        createInfo.depthStencilState.depthWriteEnable = true;
+        createInfo.depthStencilState.compareOperator = RHI::CompareOperator::Less;
+        m_graphicsPipeline = m_context->CreateGraphicsPipeline(createInfo);
+    }
+
+private:
+    Shader::PerFrame m_perFrameData = {};;
+    TL::Vector<Shader::PerDraw> m_perDrawData; // todo: make as array
+
+    RHI::Handle<RHI::Sampler> m_sampler;
+
+    RHI::Handle<RHI::Buffer> m_perFrameUniformBuffer;
+    RHI::Handle<RHI::Buffer> m_perObjectUniformBuffer;
+
+    RHI::Handle<RHI::BindGroupLayout> m_bindGroupLayout;
+    RHI::Handle<RHI::BindGroup> m_bindGroup;
+
+    RHI::Handle<RHI::PipelineLayout> m_pipelineLayout;
+    RHI::Handle<RHI::GraphicsPipeline> m_graphicsPipeline;
+
     RHI::Ptr<Scene> m_scene;
     RHI::Ptr<RHI::RenderGraph> m_renderGraph;
     RHI::Handle<RHI::Pass> m_renderPass;

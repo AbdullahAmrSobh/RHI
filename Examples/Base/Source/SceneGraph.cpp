@@ -141,9 +141,6 @@ Scene::Scene(RHI::Context* pContext, const char* scenePath)
     };
 
     ProcessNode(context, ConvertMatrix(scene->mRootNode->mTransformation), scene->mRootNode, processNodeCallback);
-
-    SetupGPUResources(context);
-    LoadPipeline(context, "./Shaders/Basic.spv");
 }
 
 void Scene::Shutdown(RHI::Context& context)
@@ -184,121 +181,6 @@ void Scene::Shutdown(RHI::Context& context)
     context.DestroyBindGroup(m_bindGroup);
     context.DestroyPipelineLayout(m_pipelineLayout);
     context.DestroyGraphicsPipeline(m_pbrPipeline);
-}
-
-void Scene::UpdateUniformBuffers(RHI::Context& context, glm::mat4 view, glm::mat4 projection)
-{
-    m_perFrameData.viewMatrix = view;
-    m_perFrameData.projectionMatrix = projection;
-    m_perFrameData.viewProjectionMatrix = view * projection;
-    m_perFrameData.inverseViewMatrix = glm::inverse(view);
-
-    auto ptr = context.MapBuffer(m_perFrameUniformBuffer);
-    memcpy(ptr, &m_perFrameData, sizeof(Shader::PerFrame));
-    context.UnmapBuffer(m_perFrameUniformBuffer);
-}
-
-void Scene::Draw(RHI::CommandList& commandList) const
-{
-    ZoneScoped;
-    RHI::Handle<RHI::BindGroup> bindGroups = { m_bindGroup };
-
-    RHI::DrawInfo drawInfo{};
-    drawInfo.pipelineState = m_pbrPipeline;
-    drawInfo.bindGroups = { bindGroups };
-
-    uint32_t nodeIndex = 0;
-    for (const auto& node : m_staticSceneNodes)
-    {
-        for (const auto& handle : node.m_meshes)
-        {
-            auto mesh = m_staticMeshOwner.Get(handle);
-            RHI::Handle<RHI::BindGroup> bindGroupss[] = { m_bindGroup };
-            drawInfo.bindGroups = bindGroupss;
-            drawInfo.dynamicOffset = { uint32_t(sizeof(Shader::PerDraw) * nodeIndex) };
-            drawInfo.parameters.elementCount = mesh->elementsCount;
-            drawInfo.vertexBuffers = { mesh->position, mesh->normals };
-            if (mesh->indcies != RHI::NullHandle)
-            {
-                drawInfo.indexBuffers = mesh->indcies;
-            }
-
-            commandList.Draw(drawInfo);
-        }
-        nodeIndex++;
-    }
-}
-
-void Scene::SetupGPUResources(RHI::Context& context)
-{
-    m_sampler = context.CreateSampler(RHI::SamplerCreateInfo{});
-
-    RHI::BindGroupLayoutCreateInfo bindGroupLayoutInfo{};
-    // Per frame uniform buffer
-    bindGroupLayoutInfo.bindings[0].access = RHI::Access::Read;
-    bindGroupLayoutInfo.bindings[0].stages |= RHI::ShaderStage::Vertex;
-    bindGroupLayoutInfo.bindings[0].stages |= RHI::ShaderStage::Pixel;
-    bindGroupLayoutInfo.bindings[0].type = RHI::ShaderBindingType::UniformBuffer;
-    bindGroupLayoutInfo.bindings[0].arrayCount = 1;
-
-    // per object uniform buffer
-    bindGroupLayoutInfo.bindings[1].access = RHI::Access::Read;
-    bindGroupLayoutInfo.bindings[1].stages |= RHI::ShaderStage::Vertex;
-    bindGroupLayoutInfo.bindings[1].stages |= RHI::ShaderStage::Pixel;
-    bindGroupLayoutInfo.bindings[1].type = RHI::ShaderBindingType::DynamicUniformBuffer;
-    bindGroupLayoutInfo.bindings[1].arrayCount = 1;
-
-    // TODO: add textures
-
-    m_bindGroupLayout = context.CreateBindGroupLayout(bindGroupLayoutInfo);
-    m_pipelineLayout = context.CreatePipelineLayout({ m_bindGroupLayout });
-    m_bindGroup = context.CreateBindGroup(m_bindGroupLayout);
-
-    // create buffers
-
-    RHI::BufferCreateInfo bufferCreateInfo{};
-    bufferCreateInfo.usageFlags = RHI::BufferUsage::Uniform;
-    bufferCreateInfo.byteSize = sizeof(Shader::PerFrame);
-    m_perFrameUniformBuffer = context.CreateBuffer(bufferCreateInfo).GetValue();
-    bufferCreateInfo.byteSize = sizeof(Shader::PerDraw) * m_perDrawData.size();
-    m_perObjectUniformBuffer = context.CreateBuffer(bufferCreateInfo).GetValue();
-
-    auto ptr = context.MapBuffer(m_perObjectUniformBuffer);
-    memcpy(ptr, m_perDrawData.data(), m_perDrawData.size() * sizeof(Shader::PerDraw));
-    context.UnmapBuffer(m_perObjectUniformBuffer);
-
-    // update bind groups
-    RHI::BindGroupData data{};
-    data.BindBuffers(0, m_perFrameUniformBuffer);
-    data.BindBuffers(1, m_perObjectUniformBuffer, true, sizeof(Shader::PerDraw));
-    context.UpdateBindGroup(m_bindGroup, data);
-}
-
-void Scene::LoadPipeline(RHI::Context& context, const char* shaderPath)
-{
-    auto shaderCode = ReadBinaryFile(shaderPath);
-    auto shaderModule = context.CreateShaderModule(shaderCode);
-    RHI::GraphicsPipelineCreateInfo createInfo{};
-    // clang-format off
-    createInfo.inputAssemblerState.attributes[0] = { .location = 0, .binding = 0, .format = RHI::Format::RGB32_FLOAT, .offset = 0 };
-    createInfo.inputAssemblerState.attributes[1] = { .location = 1, .binding = 1, .format = RHI::Format::RGB32_FLOAT, .offset = 0 };
-    // createInfo.inputAssemblerState.attributes[2] = { .location = 2, .binding = 2, .format = RHI::Format::RG32_FLOAT,  .offset = 0 };
-    createInfo.inputAssemblerState.bindings[0] = { .binding = 0, .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT), .stepRate = RHI::PipelineVertexInputRate::PerVertex };
-    createInfo.inputAssemblerState.bindings[1] = { .binding = 1, .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT), .stepRate = RHI::PipelineVertexInputRate::PerVertex };
-    // createInfo.inputAssemblerState.bindings[2] = { .binding = 2, .stride = RHI::GetFormatByteSize(RHI::Format::RG32_FLOAT),  .stepRate = RHI::PipelineVertexInputRate::PerVertex };
-    // clang-format on
-    createInfo.vertexShaderName = "VSMain";
-    createInfo.pixelShaderName = "PSMain";
-    createInfo.vertexShaderModule = shaderModule.get();
-    createInfo.pixelShaderModule = shaderModule.get();
-    createInfo.layout = m_pipelineLayout;
-    createInfo.renderTargetLayout.colorAttachmentsFormats[0] = RHI::Format::BGRA8_UNORM;
-    createInfo.renderTargetLayout.colorAttachmentsFormats[1] = RHI::Format::RGBA32_FLOAT;
-    createInfo.renderTargetLayout.depthAttachmentFormat = RHI::Format::D32;
-    createInfo.depthStencilState.depthTestEnable = true;
-    createInfo.depthStencilState.depthWriteEnable = true;
-    createInfo.depthStencilState.compareOperator = RHI::CompareOperator::Less;
-    m_pbrPipeline = context.CreateGraphicsPipeline(createInfo);
 }
 
 // RHI::Handle<Material> Scene::LoadMaterial(RHI::Context& context, const aiMaterial& aiMaterial)

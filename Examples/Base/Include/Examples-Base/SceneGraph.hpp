@@ -13,7 +13,7 @@ namespace Shader
 {
     inline static constexpr uint32_t MAX_LIGHTS = 16;
 
-    struct DirLight
+    struct alignas(16) DirLight
     {
         glm::vec3 direction;
         float _padding0;
@@ -27,7 +27,7 @@ namespace Shader
 
     static_assert(sizeof(DirLight) % 16 == 0, "DirLight must be aligned to 16 bytes");
 
-    struct PointLight
+    struct alignas(16) PointLight
     {
         glm::vec3 position;
         float radius;
@@ -44,7 +44,7 @@ namespace Shader
 
     static_assert(sizeof(PointLight) % 16 == 0, "PointLight must be aligned to 16 bytes");
 
-    struct SpotLight
+    struct alignas(16) SpotLight
     {
         glm::vec3 position;
         float radius;
@@ -64,7 +64,7 @@ namespace Shader
 
     static_assert(sizeof(SpotLight) % 16 == 0, "SpotLight must be aligned to 16 bytes");
 
-    struct PerFrame
+    struct alignas(16) PerFrame
     {
         glm::mat4 viewProjectionMatrix;
         glm::mat4 projectionMatrix;
@@ -78,7 +78,7 @@ namespace Shader
 
     static_assert(sizeof(PerFrame) % 16 == 0, "PerFrame must be aligned to 16 bytes");
 
-    struct PerDraw
+    struct alignas(16) PerDraw
     {
         glm::mat4 modelMatrix;
     };
@@ -133,19 +133,10 @@ public:
 
     void Shutdown(RHI::Context& context);
 
-    void UpdateUniformBuffers(RHI::Context& context, glm::mat4 view, glm::mat4 projection);
-
-    void Draw(RHI::CommandList& commandList) const;
-
-private:
-    void SetupGPUResources(RHI::Context& context);
-    void LoadPipeline(RHI::Context& context, const char* shaderPath);
-
     RHI::Handle<Material> LoadMaterial(RHI::Context& context, const aiMaterial& material);
     RHI::Handle<StaticMesh> LoadStaticMesh(RHI::Context& context, RHI::Handle<Material> material, const aiMesh& mesh);
 
-private:
-    Shader::PerFrame m_perFrameData = {};;
+    Shader::PerFrame m_perFrameData = {};
     TL::Vector<Shader::PerDraw> m_perDrawData; // todo: make as array
 
     Shader::DirLight m_dirLight;
