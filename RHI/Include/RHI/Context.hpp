@@ -11,6 +11,8 @@
 
 namespace RHI
 {
+    enum class CommandPoolFlags;
+
     struct ImageSubresourceLayers;
 
     struct BindGroupData;
@@ -118,9 +120,8 @@ namespace RHI
     public:
         virtual ~Context() = default;
 
-        inline Limits& GetLimits() { return *m_limits; }
-
         // clang-format off
+        Limits                                GetLimits() const;
 
         RHI_NODISCARD Ptr<RenderGraph>        CreateRenderGraph();
 
@@ -134,7 +135,7 @@ namespace RHI
 
         RHI_NODISCARD Ptr<Fence>              CreateFence();
 
-        RHI_NODISCARD Ptr<CommandPool>        CreateCommandPool(enum class CommandPoolFlags flags);
+        RHI_NODISCARD Ptr<CommandPool>        CreateCommandPool(CommandPoolFlags flags);
 
         RHI_NODISCARD Ptr<ResourcePool>       CreateResourcePool(const ResourcePoolCreateInfo& createInfo);
 
@@ -197,6 +198,8 @@ namespace RHI
         void                                  StageResourceRead(Handle<Buffer> buffer, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset, Fence* fence);
 
         // clang-format on
+    private:
+        void Flush();
 
     protected:
         Context(Ptr<DebugCallbacks> debugCallbacks);
@@ -261,6 +264,6 @@ namespace RHI
             std::function<void()> callback;
         };
 
-        TL::Vector<DeferCommand> m_deferCommandQueue;
+        TL::Deque<DeferCommand> m_deferCommandQueue[2];
     };
 } // namespace RHI

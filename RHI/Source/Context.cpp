@@ -141,17 +141,14 @@ namespace RHI
 
     void Context::Shutdown()
     {
-        for (auto stagingBuffer : m_stagingBuffers)
+        for (auto& commandQueue : m_deferCommandQueue)
         {
-            DestroyBuffer(stagingBuffer);
+            for (auto it = commandQueue.rbegin(); it != commandQueue.rend(); it++)
+            {
+                it->callback();
+            }
+            commandQueue.clear();
         }
-        m_stagingBuffers.clear();
-
-        for (auto deferCmd : m_deferCommandQueue)
-        {
-            deferCmd.callback();
-        }
-        m_deferCommandQueue.clear();
 
         if (m_resourceTracker->LiveResourcesCount())
         {
@@ -159,6 +156,11 @@ namespace RHI
         }
 
         delete m_resourceTracker;
+    }
+
+    Limits Context::GetLimits() const
+    {
+        return *m_limits;
     }
 
     Ptr<RenderGraph> Context::CreateRenderGraph()
@@ -199,10 +201,7 @@ namespace RHI
 
         Internal_DispatchGraph(renderGraph, signalFence);
 
-        // for (auto stagingBuffer : m_stagingBuffers)
-        // {
-        //     DestroyBuffer(stagingBuffer);
-        // }
+        Flush();
     }
 
     Ptr<Swapchain> Context::CreateSwapchain(const SwapchainCreateInfo& createInfo)
@@ -547,6 +546,18 @@ namespace RHI
         Internal_StageResourceRead(buffer, offset, size, srcBuffer, srcOffset, fence);
     }
 
+    void Context::Flush()
+    {
+        uint32_t currentFrameIndex = m_frameIndex % 2 != 0;
+        auto& commandQueue = m_deferCommandQueue[currentFrameIndex];
+        for (auto it = commandQueue.rbegin(); it != commandQueue.rend(); it++)
+        {
+            it->callback();
+        }
+        commandQueue.clear();
+        m_frameIndex++;
+    }
+
     void Context::DebugLogError(std::string_view message)
     {
         ZoneScoped;
@@ -585,7 +596,8 @@ namespace RHI
 
     void Context::PushDeferCommand(std::function<void()> command)
     {
-        m_deferCommandQueue.push_back({ m_frameIndex, command });
+        uint32_t currentFrameIndex = m_frameIndex % 2 == 0;
+        m_deferCommandQueue[currentFrameIndex].push_back({ m_frameIndex, command });
     }
 
 } // namespace RHI

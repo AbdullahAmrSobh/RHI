@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <set>
 #include <unordered_set>
+#include <deque>
 
 #include "RHI/Common/Allocator.hpp"
 
@@ -27,9 +28,12 @@ namespace RHI::TL
     template<typename T>
     using Set = std::set<T, DefaultAllocator<T>>;
 
-    using String  = std::basic_string<char, std::char_traits<char>, DefaultAllocator<char>>;
-    using WString = std::basic_string<wchar_t, std::char_traits<wchar_t>, DefaultAllocator<wchar_t>>;
-    using U8string = std::basic_string<char8_t, std::char_traits<char8_t>, DefaultAllocator<char8_t>>;
+    template<typename T>
+    using Deque     = std::deque<T, DefaultAllocator<T>>;
+
+    using String    = std::basic_string<char, std::char_traits<char>, DefaultAllocator<char>>;
+    using WString   = std::basic_string<wchar_t, std::char_traits<wchar_t>, DefaultAllocator<wchar_t>>;
+    using U8string  = std::basic_string<char8_t, std::char_traits<char8_t>, DefaultAllocator<char8_t>>;
     using U16string = std::basic_string<char16_t, std::char_traits<char16_t>, DefaultAllocator<char16_t>>;
     using U32string = std::basic_string<char32_t, std::char_traits<char32_t>, DefaultAllocator<char32_t>>;
 } // namespace RHI::TL
