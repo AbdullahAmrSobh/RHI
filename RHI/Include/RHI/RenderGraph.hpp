@@ -206,33 +206,33 @@ namespace RHI
         RenderGraph(RenderGraph&&)      = delete;
         ~RenderGraph()                  = default;
 
-        Handle<Pass>                             CreatePass(const PassCreateInfo& createInfo);
+        RHI_NODISCARD Handle<Pass>               CreatePass(const PassCreateInfo& createInfo);
 
-        Handle<ImageAttachment>                  CreateImage(const ImageCreateInfo& createInfo);
+        RHI_NODISCARD Handle<ImageAttachment>    CreateImage(const ImageCreateInfo& createInfo);
 
-        Handle<BufferAttachment>                 CreateBuffer(const BufferCreateInfo& createInfo);
+        RHI_NODISCARD Handle<BufferAttachment>   CreateBuffer(const BufferCreateInfo& createInfo);
 
-        Handle<ImageAttachment>                  ImportSwapchain(const char* name, Swapchain& swapchain);
+        RHI_NODISCARD Handle<ImageAttachment>    ImportSwapchain(const char* name, Swapchain& swapchain);
 
-        Handle<ImageAttachment>                  ImportImage(const char* name, Handle<Image> image);
+        RHI_NODISCARD Handle<ImageAttachment>    ImportImage(const char* name, Handle<Image> image);
 
-        Handle<BufferAttachment>                 ImportBuffer(const char* name, Handle<Buffer> buffer);
+        RHI_NODISCARD Handle<BufferAttachment>   ImportBuffer(const char* name, Handle<Buffer> buffer);
 
-        void                                     UseImage(Handle<Pass> pass, Handle<ImageAttachment> attachment, const ImageAttachmentUseInfo& useInfo);
+        Handle<ImageAttachment>                  UseImage(Handle<Pass> pass, Handle<ImageAttachment> attachment, const ImageAttachmentUseInfo& useInfo);
 
-        void                                     UseBuffer(Handle<Pass> pass, Handle<BufferAttachment> attachment, const BufferAttachmentUseInfo& useInfo);
+        Handle<BufferAttachment>                 UseBuffer(Handle<Pass> pass, Handle<BufferAttachment> attachment, const BufferAttachmentUseInfo& useInfo);
 
         void                                     SubmitCommands(Handle<Pass> pass, TL::Span<const CommandList* const> commandLists);
 
-        Handle<Image>                            GetImage(Handle<ImageAttachment> attachment);
+        RHI_NODISCARD Handle<Image>              GetImage(Handle<ImageAttachment> attachment);
 
-        Handle<Buffer>                           GetBuffer(Handle<BufferAttachment> attachment);
+        RHI_NODISCARD Handle<Buffer>             GetBuffer(Handle<BufferAttachment> attachment);
 
-        Handle<ImageView>                        GetImageView(Handle<ImageAttachment> attachment);
+        RHI_NODISCARD Handle<ImageView>          GetImageView(Handle<ImageAttachment> attachment);
 
-        Handle<BufferView>                       GetBufferView(Handle<BufferAttachment> attachment);
+        RHI_NODISCARD Handle<BufferView>         GetBufferView(Handle<BufferAttachment> attachment);
 
-        Swapchain*                               GetSwapchain(Handle<ImageAttachment> attachment);
+        RHI_NODISCARD Swapchain*                 GetSwapchain(Handle<ImageAttachment> attachment);
 
         // private:
 

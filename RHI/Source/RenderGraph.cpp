@@ -117,7 +117,7 @@ namespace RHI
         return attachmentHandle;
     }
 
-    void RenderGraph::UseImage(Handle<Pass> pass, Handle<ImageAttachment> attachmentHandle, const ImageAttachmentUseInfo& useInfo)
+    Handle<ImageAttachment> RenderGraph::UseImage(Handle<Pass> pass, Handle<ImageAttachment> attachmentHandle, const ImageAttachmentUseInfo& useInfo)
     {
         auto attachment = m_imageAttachmentOwner.Get(attachmentHandle);
 
@@ -151,15 +151,18 @@ namespace RHI
             _pass->depthStencilAttachment = newAttachmentHandle;
         }
         _pass->imageAttachments.push_back(newAttachmentHandle);
+
+        return newAttachmentHandle;
     }
 
-    void RenderGraph::UseBuffer(Handle<Pass> pass, Handle<BufferAttachment> attachmentHandle, const BufferAttachmentUseInfo& useInfo)
+    Handle<BufferAttachment> RenderGraph::UseBuffer(Handle<Pass> pass, Handle<BufferAttachment> attachmentHandle, const BufferAttachmentUseInfo& useInfo)
     {
         auto attachment = m_bufferAttachmentOwner.Get(attachmentHandle);
         if (attachment->pass == NullHandle)
         {
             attachment->pass = pass;
             attachment->useInfo = useInfo;
+            return attachmentHandle;
         }
         else
         {
@@ -172,6 +175,7 @@ namespace RHI
 
             auto graphAttachment = m_graphBufferAttachmentOwner.Get(attachment->list);
             graphAttachment->end = attachment->next;
+            return attachment->next;
         }
     }
 

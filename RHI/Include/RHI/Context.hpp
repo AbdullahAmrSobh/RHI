@@ -7,46 +7,15 @@
 #include "RHI/Common/Debug.hpp"
 #include "RHI/Common/Span.hpp"
 
+#include "RHI/Resources.hpp"
+#include "RHI/RenderGraph.hpp"
+#include "RHI/Swapchain.hpp"
+#include "RHI/CommandList.hpp"
+
 #include <functional>
 
 namespace RHI
 {
-    enum class CommandPoolFlags;
-
-    struct ImageSubresourceLayers;
-
-    struct BindGroupData;
-    struct SwapchainCreateInfo;
-    struct ResourcePoolCreateInfo;
-    struct ImageCreateInfo;
-    struct BufferCreateInfo;
-    struct ImageViewCreateInfo;
-    struct BufferViewCreateInfo;
-    struct BindGroupLayoutCreateInfo;
-    struct PipelineLayoutCreateInfo;
-    struct GraphicsPipelineCreateInfo;
-    struct ComputePipelineCreateInfo;
-    struct SamplerCreateInfo;
-
-    struct Image;
-    struct Buffer;
-    struct ImageView;
-    struct BufferView;
-    struct BindGroupLayout;
-    struct BindGroup;
-    struct PipelineLayout;
-    struct GraphicsPipeline;
-    struct ComputePipeline;
-    struct Sampler;
-
-    class Swapchain;
-    class ShaderModule;
-    class Fence;
-    class CommandPool;
-    class CommandList;
-    class ResourcePool;
-    class RenderGraph;
-
     class ResourceTracker;
 
     /// @brief Represents a pointer to GPU device memory
@@ -266,4 +235,47 @@ namespace RHI
 
         TL::Deque<DeferCommand> m_deferCommandQueue[2];
     };
+
+    template<typename T>
+    inline static Result<Handle<Image>> CreateImageWithData(Context& context, const ImageCreateInfo& createInfo, TL::Span<const T> content)
+    {
+        auto [handle, result] = context.CreateImage(createInfo);
+
+        if (result != ResultCode::Success)
+            return result;
+
+        auto stagingBuffer = context.AllocateTempBuffer(content.size_bytes());
+        memcpy(stagingBuffer.ptr, content.data(), content.size_bytes());
+        context.StageResourceWrite(handle, {}, stagingBuffer.buffer, stagingBuffer.offset);
+
+        return handle;
+    }
+
+    template<typename T>
+    inline static Result<Handle<Buffer>> CreateBufferWithData(Context& context, Flags<BufferUsage> usageFlags, TL::Span<const T> content)
+    {
+        BufferCreateInfo createInfo{};
+        createInfo.byteSize   = content.size_bytes();
+        createInfo.usageFlags = usageFlags;
+
+        auto [handle, result] = context.CreateBuffer(createInfo);
+
+        if (result != ResultCode::Success)
+            return result;
+
+        if (content.size_bytes() <= context.GetLimits().stagingMemoryLimit)
+        {
+            auto ptr = context.MapBuffer(handle);
+            memcpy(ptr, content.data(), content.size_bytes());
+            context.UnmapBuffer(handle);
+        }
+        else
+        {
+            auto stagingBuffer = context.AllocateTempBuffer(content.size_bytes());
+            memcpy(stagingBuffer.ptr, content.data(), content.size_bytes());
+            context.StageResourceWrite(handle, 0, content.size_bytes(), stagingBuffer.buffer, stagingBuffer.offset);
+        }
+
+        return handle;
+    }
 } // namespace RHI
