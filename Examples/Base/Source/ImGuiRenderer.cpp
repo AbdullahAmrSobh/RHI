@@ -346,11 +346,12 @@ void ImGuiRenderer::Init(ImGuiRendererCreateInfo createInfo)
 
     {
         m_bindGroup = m_context->CreateBindGroup(m_bindGroupLayout);
-        RHI::BindGroupData data{};
-        data.BindBuffers(0, m_uniformBuffer);
-        data.BindSamplers(1, m_sampler);
-        data.BindImages(2, m_imageView);
-        m_context->UpdateBindGroup(m_bindGroup, data);
+        RHI::TL::Span<const RHI::ResourceBinding> bindings{
+            RHI::ResourceBinding(0, 0, m_uniformBuffer),
+            RHI::ResourceBinding(1, 0, m_sampler),
+            RHI::ResourceBinding(2, 0, m_imageView)
+        };
+        m_context->UpdateBindGroup(m_bindGroup, bindings);
     }
 
     {

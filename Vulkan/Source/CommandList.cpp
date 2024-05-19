@@ -452,5 +452,4 @@ namespace RHI::Vulkan
         dependencyInfo.pImageMemoryBarriers = imageBarriers.data();
         vkCmdPipelineBarrier2(m_commandBuffer, &dependencyInfo);
     }
-
 } // namespace RHI::Vulkan

@@ -116,7 +116,7 @@ namespace RHI
 
         void                                  DestroyBindGroup(Handle<BindGroup> handle);
 
-        void                                  UpdateBindGroup(Handle<BindGroup> handle, const BindGroupData& data);
+        void                                  UpdateBindGroup(Handle<BindGroup> handle, TL::Span<const ResourceBinding> bindings);
 
         RHI_NODISCARD Handle<PipelineLayout>  CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo);
 
@@ -191,7 +191,7 @@ namespace RHI
         virtual void                     Internal_DestroyBindGroupLayout(Handle<BindGroupLayout> handle) = 0;
         virtual Handle<BindGroup>        Internal_CreateBindGroup(Handle<BindGroupLayout> handle) = 0;
         virtual void                     Internal_DestroyBindGroup(Handle<BindGroup> handle) = 0;
-        virtual void                     Internal_UpdateBindGroup(Handle<BindGroup> handle, const BindGroupData& data) = 0;
+        virtual void                     Internal_UpdateBindGroup(Handle<BindGroup> handle, TL::Span<const ResourceBinding> bindings) = 0;
         virtual Handle<PipelineLayout>   Internal_CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo) = 0;
         virtual void                     Internal_DestroyPipelineLayout(Handle<PipelineLayout> handle) = 0;
         virtual Handle<GraphicsPipeline> Internal_CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) = 0;

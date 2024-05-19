@@ -10,8 +10,6 @@
 
 #include "tracy/TracyVulkan.hpp"
 
-#include <functional>
-
 namespace RHI::Vulkan
 {
     class BindGroupAllocator;
@@ -74,7 +72,7 @@ namespace RHI::Vulkan
         void                     Internal_DestroyBindGroupLayout(Handle<BindGroupLayout> handle) override;
         Handle<BindGroup>        Internal_CreateBindGroup(Handle<BindGroupLayout> handle) override;
         void                     Internal_DestroyBindGroup(Handle<BindGroup> handle) override;
-        void                     Internal_UpdateBindGroup(Handle<BindGroup> handle, const BindGroupData& data) override;
+        void                     Internal_UpdateBindGroup(Handle<BindGroup> handle, TL::Span<const ResourceBinding> bindings) override;
         Handle<PipelineLayout>   Internal_CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo) override;
         void                     Internal_DestroyPipelineLayout(Handle<PipelineLayout> handle) override;
         Handle<GraphicsPipeline> Internal_CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) override;

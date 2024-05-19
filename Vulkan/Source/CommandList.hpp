@@ -18,11 +18,9 @@ namespace RHI::Vulkan
 
         VkResult Init(CommandPoolFlags flags);
 
-        // clang-format off
-        void                     Reset() override;
+        void Reset() override;
         TL::Vector<CommandList*> Allocate(QueueType queueType, CommandListLevel level, uint32_t count) override;
-        void                     Release(TL::Span<const CommandList* const> commandLists) override;
-        // clang-format on
+        void Release(TL::Span<const CommandList* const> commandLists) override;
 
     private:
         TL::Vector<VkCommandBuffer> AllocateCommandBuffers(VkCommandPool pool, uint32_t count, VkCommandBufferLevel level);

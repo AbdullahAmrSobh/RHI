@@ -4,8 +4,6 @@
 #include "Context.hpp"
 #include "Resources.hpp"
 
-#define TIMEOUT_DURATION 9000000
-
 namespace RHI::Vulkan
 {
     ///////////////////////////////////////////////////////////////////////////
@@ -336,91 +334,89 @@ namespace RHI::Vulkan
         allocator->ShutdownBindGroup(this);
     }
 
-    void IBindGroup::Write(IContext* context, BindGroupData data)
+    void IBindGroup::Write(IContext* context, TL::Span<const ResourceBinding> bindingResources)
     {
-        TL::Vector<TL::Vector<VkDescriptorImageInfo>> descriptorImageInfos;
-        TL::Vector<TL::Vector<VkDescriptorBufferInfo>> descriptorBufferInfos;
-        TL::Vector<TL::Vector<VkBufferView>> descriptorBufferViews;
+        struct DescriptorWriteData
+        {
+            TL::Vector<VkDescriptorImageInfo> imageInfos;
+            TL::Vector<VkDescriptorBufferInfo> bufferInfos;
+            TL::Vector<VkBufferView> bufferViews;
+        };
 
+        TL::Vector<DescriptorWriteData> writeData;
         TL::Vector<VkWriteDescriptorSet> writeInfos;
 
-        auto bindGroupLayout = context->m_bindGroupLayoutsOwner.Get(layout);
+        auto info = context->m_bindGroupLayoutsOwner.Get(layout)->layoutInfo;
 
-        for (uint32_t binding = 0; binding < c_MaxShaderBindGroupElementsCount; binding++)
+        for (size_t i = 0; i < bindingResources.size(); ++i)
         {
-            auto resourceVarient = data.m_bindings[binding];
+            const ResourceBinding& binding = bindingResources[i];
 
-            if (bindGroupLayout->layoutInfo.bindings[binding].type == ShaderBindingType::None)
+            DescriptorWriteData& data = writeData.emplace_back();
+
+            VkWriteDescriptorSet writeInfo = {};
+            writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            writeInfo.dstSet = descriptorSet;
+            writeInfo.dstBinding = binding.binding;
+            writeInfo.dstArrayElement = binding.dstArrayElement;
+            writeInfo.descriptorType = ConvertDescriptorType(info.bindings[binding.binding].type);
+            switch (binding.type)
+            {
+            case ResourceBinding::Type::Image:
+                for (size_t j = 0; j < binding.data.images.size(); ++j)
+                {
+                    auto& imageInfo = data.imageInfos.emplace_back();
+
+                    imageInfo.imageView = context->m_imageViewOwner.Get(binding.data.images[j])->handle;
+                    switch (info.bindings[binding.binding].type)
+                    {
+                    case ShaderBindingType::SampledImage: imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; break;
+                    case ShaderBindingType::StorageImage: imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL; break;
+                    default:                              RHI_UNREACHABLE(); break;
+                    }
+                }
+                writeInfo.pImageInfo = data.imageInfos.data();
+                writeInfo.descriptorCount = uint32_t(binding.data.images.size());
                 break;
 
-            VkWriteDescriptorSet writeInfo{};
-            writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            writeInfo.pNext = nullptr;
-            writeInfo.dstSet = descriptorSet;
-            writeInfo.dstBinding = binding;
-            if (auto resources = std::get_if<0>(&resourceVarient))
-            {
-                auto& imageInfos = descriptorImageInfos.emplace_back();
-
-                for (auto viewHandle : resources->views)
+            case ResourceBinding::Type::Buffer:
+                for (size_t j = 0; j < binding.data.buffers.size(); ++j)
                 {
-                    auto view = context->m_imageViewOwner.Get(viewHandle);
-
-                    auto type = ConvertDescriptorType(bindGroupLayout->layoutInfo.bindings[binding].type);
-
-                    VkDescriptorImageInfo imageInfo{};
-                    imageInfo.imageLayout = type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                    imageInfo.imageView = view->handle;
-                    imageInfos.push_back(imageInfo);
+                    auto& bufferInfo = data.bufferInfos.emplace_back();
+                    bufferInfo.buffer = context->m_bufferOwner.Get(binding.data.buffers[j])->handle;
+                    bufferInfo.offset = 0; // Assuming full buffer range
+                    bufferInfo.range = VK_WHOLE_SIZE;
                 }
+                writeInfo.pBufferInfo = data.bufferInfos.data();
+                writeInfo.descriptorCount = uint32_t(binding.data.buffers.size());
+                break;
 
-                writeInfo.dstArrayElement = resources->arrayOffset;
-                writeInfo.descriptorType = ConvertDescriptorType(bindGroupLayout->layoutInfo.bindings[binding].type);
-                writeInfo.descriptorCount = uint32_t(imageInfos.size());
-                writeInfo.pImageInfo = imageInfos.data();
-            }
-            else if (auto buffer = std::get_if<1>(&resourceVarient))
-            {
-                auto& bufferInfos = descriptorBufferInfos.emplace_back();
-
-                for (auto viewHandle : buffer->views)
+            case ResourceBinding::Type::DynamicBuffer:
+                for (size_t j = 0; j < binding.data.dynamicBuffers.size(); ++j)
                 {
-                    VkDescriptorBufferInfo bufferInfo{};
-                    bufferInfo.buffer = context->m_bufferOwner.Get(viewHandle)->handle;
-                    bufferInfo.offset = 0;
-                    bufferInfo.range = buffer->elementSize == SIZE_MAX ? VK_WHOLE_SIZE : buffer->elementSize;
-                    bufferInfos.push_back(bufferInfo);
+                    auto& bufferInfo = data.bufferInfos.emplace_back();
+                    bufferInfo.buffer = context->m_bufferOwner.Get(binding.data.dynamicBuffers[j].buffer)->handle;
+                    bufferInfo.offset = binding.data.dynamicBuffers[j].offset;
+                    bufferInfo.range = binding.data.dynamicBuffers[j].range;
                 }
+                writeInfo.pBufferInfo = data.bufferInfos.data();
+                writeInfo.descriptorCount = uint32_t(binding.data.buffers.size());
+                break;
 
-                writeInfo.dstArrayElement = buffer->arrayOffset;
-                writeInfo.descriptorType = buffer->dynamic ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; // todo support storage buffers, and more complex types
-                writeInfo.descriptorCount = uint32_t(bufferInfos.size());
-                writeInfo.pBufferInfo = bufferInfos.data();
-            }
-            else if (auto sampler = std::get_if<2>(&resourceVarient))
-            {
-                auto& imageInfos = descriptorImageInfos.emplace_back();
-
-                for (auto samplerHandle : sampler->samplers)
+            case ResourceBinding::Type::Sampler:
+                for (size_t j = 0; j < binding.data.samplers.size(); ++j)
                 {
-                    auto sampler2 = context->m_samplerOwner.Get(samplerHandle);
-
-                    VkDescriptorImageInfo imageInfo{};
-                    imageInfo.sampler = sampler2->handle;
-                    imageInfos.push_back(imageInfo);
+                    auto& imageInfo = data.imageInfos.emplace_back();
+                    imageInfo.sampler = context->m_samplerOwner.Get(binding.data.samplers[j])->handle;
                 }
+                writeInfo.pImageInfo = data.imageInfos.data();
+                writeInfo.descriptorCount = uint32_t(binding.data.samplers.size());
+                break;
 
-                writeInfo.dstArrayElement = sampler->arrayOffset;
-                writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-                writeInfo.descriptorCount = uint32_t(imageInfos.size());
-                writeInfo.pImageInfo = imageInfos.data();
-            }
-            else
-            {
+            default:
                 RHI_UNREACHABLE();
+                break;
             }
-
-            // writeInfo.pTexelBufferView; todo
 
             writeInfos.push_back(writeInfo);
         }

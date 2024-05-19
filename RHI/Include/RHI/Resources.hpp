@@ -6,9 +6,6 @@
 #include "RHI/Common/Flags.hpp"
 #include "RHI/Common/Span.hpp"
 #include "RHI/Common/Hash.hpp"
-#include "RHI/Common/Containers.h"
-
-#include <variant> // todo: remove
 
 namespace RHI
 {
@@ -23,8 +20,12 @@ namespace RHI
     inline static constexpr uint32_t c_MaxPipelineBindGroupsCount                = 4u;
     inline static constexpr uint32_t c_MaxShaderBindGroupElementsCount           = 32u;
 
+    struct ImageAttachment;
+    struct BufferAttachment;
+
     class ShaderModule;
     class ResourcePool;
+    class RenderGraph;
 
     // clang-format off
     RHI_DECALRE_OPAQUE_RESOURCE(Image);
@@ -424,56 +425,77 @@ namespace RHI
         ShaderBinding bindings[c_MaxBindGroupElementsCount];
     };
 
-    struct ImageAttachment;
-    struct BufferAttachment;
-    class RenderGraph;
-
-    /// @brief An object that groups shader resources that are bound together.
-    struct BindGroupData
+    struct ResourceBinding
     {
-        BindGroupData() = default;
-
-        void BindImageAttachment(uint32_t index, const RenderGraph& renderGraph, TL::Span<const Handle<ImageAttachment>> handles, bool dynamic = false, size_t elementSize = SIZE_MAX, uint32_t arrayOffset = 0);
-
-        void BindBufferAttachment(uint32_t index, const RenderGraph& renderGraph, TL::Span<const Handle<BufferAttachment>> handles, uint32_t arrayOffset = 0);
-
-        void BindImages(uint32_t index, TL::Span<Handle<ImageView>> handles, uint32_t arrayOffset = 0);
-
-        void BindBuffers(uint32_t index, TL::Span<Handle<Buffer>> handles, bool dynamic = false, size_t elementSize = SIZE_MAX, uint32_t arrayOffset = 0);
-
-        void BindBuffers(uint32_t index, TL::Span<Handle<BufferView>> handles, uint32_t arrayOffset = 0);
-
-        void BindSamplers(uint32_t index, TL::Span<Handle<Sampler>> samplers, uint32_t arrayOffset = 0);
-
-        struct ResourceImageBinding
+        enum class Type
         {
-            uint32_t                      arrayOffset;
-            TL::Vector<Handle<ImageView>> views;
+            Image,
+            Buffer,
+            DynamicBuffer,
+            Sampler,
         };
 
-        struct ResourceBufferBinding
+        struct DynamicBufferBinding
         {
-            uint32_t                   arrayOffset;
-            TL::Vector<Handle<Buffer>> views;
-            bool                       dynamic;
-            size_t                     elementSize;
+            DynamicBufferBinding(Handle<Buffer> buffer, size_t offset, size_t range)
+                : buffer(buffer)
+                , offset(offset)
+                , range(range)
+            {
+            }
+
+            Handle<Buffer> buffer;
+            size_t         offset, range;
         };
 
-        struct ResourceBufferViewBinding
+        union ResourceData
         {
-            uint32_t                       arrayOffset;
-            TL::Vector<Handle<BufferView>> views;
+            ResourceData() {}
+
+            ~ResourceData() {}
+
+            TL::Span<const Handle<ImageView>>    images;
+            TL::Span<const Handle<Buffer>>       buffers;
+            TL::Span<const DynamicBufferBinding> dynamicBuffers;
+            TL::Span<const Handle<Sampler>>      samplers;
         };
 
-        struct ResourceSamplerBinding
+        uint32_t     binding;
+        uint32_t     dstArrayElement;
+        Type         type;
+        ResourceData data;
+
+        ResourceBinding(uint32_t binding, uint32_t dstArrayElement, TL::Span<const Handle<ImageView>> images)
+            : binding(binding)
+            , dstArrayElement(dstArrayElement)
+            , type(Type::Image)
         {
-            uint32_t                    arrayOffset;
-            TL::Vector<Handle<Sampler>> samplers;
-        };
+            data.images = images;
+        }
 
-        using ResourceBinding                                         = std::variant<ResourceImageBinding, ResourceBufferBinding, ResourceSamplerBinding>;
+        ResourceBinding(uint32_t binding, uint32_t dstArrayElement, TL::Span<const Handle<Buffer>> buffers)
+            : binding(binding)
+            , dstArrayElement(dstArrayElement)
+            , type(Type::Buffer)
+        {
+            data.buffers = buffers;
+        }
 
-        ResourceBinding m_bindings[c_MaxShaderBindGroupElementsCount] = {};
+        ResourceBinding(uint32_t binding, uint32_t dstArrayElement, TL::Span<const DynamicBufferBinding> dynamicBuffers)
+            : binding(binding)
+            , dstArrayElement(dstArrayElement)
+            , type(Type::DynamicBuffer)
+        {
+            data.dynamicBuffers = dynamicBuffers;
+        }
+
+        ResourceBinding(uint32_t binding, uint32_t dstArrayElement, TL::Span<const Handle<Sampler>> samplers)
+            : binding(binding)
+            , dstArrayElement(dstArrayElement)
+            , type(Type::Sampler)
+        {
+            data.samplers = samplers;
+        }
     };
 
     // @brief the layout of pipeline shaders

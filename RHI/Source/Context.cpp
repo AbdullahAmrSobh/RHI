@@ -285,11 +285,11 @@ namespace RHI
         m_resourceTracker->Unregister(handle);
     }
 
-    void Context::UpdateBindGroup(Handle<BindGroup> handle, const BindGroupData& data)
+    void Context::UpdateBindGroup(Handle<BindGroup> handle, TL::Span<const ResourceBinding> bindings)
     {
         ZoneScoped;
 
-        Internal_UpdateBindGroup(handle, data);
+        Internal_UpdateBindGroup(handle, bindings);
     }
 
     Handle<PipelineLayout> Context::CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)

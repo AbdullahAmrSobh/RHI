@@ -400,10 +400,10 @@ namespace RHI::Vulkan
         bindGroup->Shutdown(this);
     }
 
-    void IContext::Internal_UpdateBindGroup(Handle<BindGroup> handle, const BindGroupData& data)
+    void IContext::Internal_UpdateBindGroup(Handle<BindGroup> handle, TL::Span<const ResourceBinding> bindings)
     {
         auto bindGroup = m_bindGroupOwner.Get(handle);
-        bindGroup->Write(this, data);
+        bindGroup->Write(this, bindings);
     }
 
     Handle<PipelineLayout> IContext::Internal_CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)

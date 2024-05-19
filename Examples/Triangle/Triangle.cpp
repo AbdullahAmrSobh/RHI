@@ -280,10 +280,11 @@ private:
         m_context->UnmapBuffer(m_perObjectUniformBuffer);
 
         // update bind groups
-        RHI::BindGroupData data{};
-        data.BindBuffers(0, m_perFrameUniformBuffer);
-        data.BindBuffers(1, m_perObjectUniformBuffer, true, sizeof(Shader::PerDraw));
-        m_context->UpdateBindGroup(m_bindGroup, data);
+        TL::Span<const RHI::ResourceBinding> bindings{
+            RHI::ResourceBinding(0, 0, m_perFrameUniformBuffer),
+            RHI::ResourceBinding(1, 0, RHI::ResourceBinding::DynamicBufferBinding(m_perObjectUniformBuffer, 0, sizeof(Shader::PerDraw))),
+        };
+        m_context->UpdateBindGroup(m_bindGroup, bindings);
     }
 
     void LoadPipeline(const char* shaderPath)
@@ -312,7 +313,7 @@ private:
     }
 
 private:
-    Shader::PerFrame m_perFrameData = {};;
+    Shader::PerFrame m_perFrameData = {};
     TL::Vector<Shader::PerDraw> m_perDrawData; // todo: make as array
 
     RHI::Handle<RHI::Sampler> m_sampler;

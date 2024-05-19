@@ -135,12 +135,12 @@ namespace RHI
     /// @brief Structure describing a draw command.
     struct DrawInfo
     {
-        Handle<GraphicsPipeline>       pipelineState;
-        TL::Span<Handle<BindGroup>>    bindGroups;
-        TL::Span<const Handle<Buffer>> vertexBuffers;
-        TL::Span<const uint32_t>       dynamicOffset; // TODO: remove
-        Handle<Buffer>                 indexBuffers;
-        DrawParameters                 parameters;
+        Handle<GraphicsPipeline>          pipelineState;
+        TL::Span<const Handle<BindGroup>> bindGroups;
+        TL::Span<const Handle<Buffer>>    vertexBuffers;
+        TL::Span<const uint32_t>          dynamicOffset;
+        Handle<Buffer>                    indexBuffers;
+        DrawParameters                    parameters;
     };
 
     /// @brief Structure describing a compute command.
