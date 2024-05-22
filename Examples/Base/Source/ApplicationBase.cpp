@@ -57,11 +57,11 @@ ImageData LoadImage(std::string_view path)
     imageData.width = uint32_t(width);
     imageData.height = uint32_t(height);
     imageData.depth = 1; // Assuming single-layer images
-    imageData.channels = uint32_t(channels);
+    imageData.channels = 4;
     imageData.bytesPerChannel = 1; // Assuming 8-bit per channel data
 
     // Convert image data to std::vector<uint8_t>
-    imageData.data.assign(data, data + width * height * channels);
+    imageData.data.assign(data, data + width * height * imageData.channels);
 
     // Free the memory allocated by stb_image
     stbi_image_free(data);

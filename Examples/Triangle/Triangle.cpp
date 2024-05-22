@@ -6,75 +6,7 @@
 
 #include <tracy/Tracy.hpp>
 
-// class PBRRenderer
-// {
-// public:
-//     void SetupGBuffer(RHI::Handle<RHI::ImageAttachment> outputAttachment)
-//     {
-//         {
-//             RHI::ImageCreateInfo createInfo{};
-
-//             m_worldPositionAttachment = m_renderGraph->CreateImage(createInfo);
-//             m_normalAttachment = m_renderGraph->CreateImage(createInfo);
-//             m_albedoAttachment = m_renderGraph->CreateImage(createInfo);
-//             m_metallicAttachment = m_renderGraph->CreateImage(createInfo);
-//             m_roughnessAttachment = m_renderGraph->CreateImage(createInfo);
-//             m_aoAttachment = m_renderGraph->CreateImage(createInfo);
-
-//             auto gBufferPass = m_renderGraph->CreatePass(RHI::PassCreateInfo{});
-
-//             RHI::ImageAttachmentUseInfo useInfo{};
-
-//             m_renderGraph->UseImage(gBufferPass, m_worldPositionAttachment, useInfo);
-//             m_renderGraph->UseImage(gBufferPass, m_normalAttachment, useInfo);
-//             m_renderGraph->UseImage(gBufferPass, m_albedoAttachment, useInfo);
-//             m_renderGraph->UseImage(gBufferPass, m_metallicAttachment, useInfo);
-//             m_renderGraph->UseImage(gBufferPass, m_roughnessAttachment, useInfo);
-//             m_renderGraph->UseImage(gBufferPass, m_aoAttachment, useInfo);
-//         }
-
-//         {
-//             RHI::ImageCreateInfo createInfo{};
-//             m_aoAttachment = m_renderGraph->CreateImage(createInfo);
-//         }
-
-//         {
-//             RHI::ImageAttachmentUseInfo useInfo{};
-//             m_renderGraph->UseImage(m_lightPass, m_worldPositionAttachment, useInfo);
-//             m_renderGraph->UseImage(m_lightPass, m_normalAttachment, useInfo);
-//             m_renderGraph->UseImage(m_lightPass, m_albedoAttachment, useInfo);
-//             m_renderGraph->UseImage(m_lightPass, m_metallicAttachment, useInfo);
-//             m_renderGraph->UseImage(m_lightPass, m_roughnessAttachment, useInfo);
-//             m_renderGraph->UseImage(m_lightPass, m_aoAttachment, useInfo);
-
-//             // use render target
-//         }
-
-//         RHI::BindGroupData data{};
-//         data.BindImageAttachment(0, *m_renderGraph, m_worldPositionAttachment);
-//         data.BindImageAttachment(0, *m_renderGraph, m_normalAttachment);
-//         data.BindImageAttachment(0, *m_renderGraph, m_albedoAttachment);
-//         data.BindImageAttachment(0, *m_renderGraph, m_metallicAttachment);
-//         data.BindImageAttachment(0, *m_renderGraph, m_roughnessAttachment);
-//         data.BindImageAttachment(0, *m_renderGraph, m_aoAttachment);
-//         m_context->UpdateBindGroup(m_bindGroup, data);
-//     }
-
-//     RHI::Context* m_context;
-
-//     RHI::Ptr<RHI::RenderGraph> m_renderGraph;
-//     RHI::Handle<RHI::Pass> m_gBuffer;
-
-//     RHI::Handle<RHI::BindGroup> m_bindGroup;
-//     RHI::Handle<RHI::Pass> m_lightPass;
-
-//     RHI::Handle<RHI::ImageAttachment> m_worldPositionAttachment;
-//     RHI::Handle<RHI::ImageAttachment> m_normalAttachment;
-//     RHI::Handle<RHI::ImageAttachment> m_albedoAttachment;
-//     RHI::Handle<RHI::ImageAttachment> m_metallicAttachment;
-//     RHI::Handle<RHI::ImageAttachment> m_roughnessAttachment;
-//     RHI::Handle<RHI::ImageAttachment> m_aoAttachment;
-// };
+inline static constexpr const char* DEFAULT_SCENE_PATH = "C:/Users/abdul/Desktop/Main.1_Sponza/NewSponza_Main_glTF_002.gltf";
 
 class BasicRenderer final : public ApplicationBase
 {
@@ -88,8 +20,7 @@ public:
     {
         ZoneScoped;
 
-        // TODO: add command line option to specify the scene to load
-        m_scene = RHI::CreatePtr<Scene>(m_context.get(), "I:/Main.1_Sponza/NewSponza_Main_glTF_002.gltf");
+        m_scene = RHI::CreatePtr<Scene>(m_context.get(), DEFAULT_SCENE_PATH);
 
         m_renderGraph = m_context->CreateRenderGraph();
 

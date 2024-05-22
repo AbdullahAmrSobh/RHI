@@ -147,6 +147,7 @@ public:
     RHI::HandlePool<StaticMesh> m_staticMeshOwner = RHI::HandlePool<StaticMesh>();
 
     TL::Vector<RHI::Handle<StaticMesh>> m_meshes;
+    TL::Vector<RHI::Handle<Material>> m_materials;
 
     // Rendering related
 

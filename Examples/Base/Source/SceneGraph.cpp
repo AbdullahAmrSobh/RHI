@@ -62,7 +62,7 @@ Scene::Scene(RHI::Context* pContext, const char* scenePath)
         lightsLookup[light.mName.C_Str()].push_back(light);
     }
 
-    // load materials from scene
+    // // load materials from scene
     // for (uint32_t i = 0; i < scene->mNumMaterials; i++)
     // {
     //     auto& material = *scene->mMaterials[i];
@@ -183,48 +183,79 @@ void Scene::Shutdown(RHI::Context& context)
     context.DestroyGraphicsPipeline(m_pbrPipeline);
 }
 
-// RHI::Handle<Material> Scene::LoadMaterial(RHI::Context& context, const aiMaterial& aiMaterial)
-// {
-//     aiString albedoPath, normalPath, roughnessPath, metallicPath;
-//     aiMaterial.GetTexture(aiTextureType_DIFFUSE, 0, &albedoPath);
-//     aiMaterial.GetTexture(aiTextureType_NORMALS, 0, &normalPath);
-//     aiMaterial.GetTexture(aiTextureType_DIFFUSE_ROUGHNESS, 0, &roughnessPath);
-//     aiMaterial.GetTexture(aiTextureType_METALNESS, 0, &metallicPath);
+RHI::Handle<Material> Scene::LoadMaterial(RHI::Context& context, const aiMaterial& aiMaterial)
+{
+    aiString albedoPath, normalPath, roughnessPath, metallicPath;
+    aiMaterial.GetTexture(aiTextureType_DIFFUSE, 0, &albedoPath);
+    aiMaterial.GetTexture(aiTextureType_NORMALS, 0, &normalPath);
+    aiMaterial.GetTexture(aiTextureType_DIFFUSE_ROUGHNESS, 0, &roughnessPath);
+    aiMaterial.GetTexture(aiTextureType_METALNESS, 0, &metallicPath);
 
-//     const char* prefixPath = "I:/Main.1_Sponza/"; // TODO: add proper fix
-//     auto albedoData = LoadImage(PrefixString(prefixPath, albedoPath));
-//     // auto normalData = LoadImage(PrefixString(prefixPath, normalPath));
-//     // auto roughnessData = LoadImage(PrefixString(prefixPath, roughnessPath));
-//     // auto metallicData = LoadImage(PrefixString(prefixPath, metallicPath));
+    TL::String prefixPath = "C:/Users/abdul/Desktop/Main.1_Sponza/"; // TODO: add proper fix
 
-//     RHI::ImageCreateInfo imageInfo{};
-//     imageInfo.name = "albedo";
-//     imageInfo.usageFlags = RHI::ImageUsage::ShaderResource;
-//     imageInfo.usageFlags |= RHI::ImageUsage::CopyDst;
-//     imageInfo.format = RHI::Format::RGBA8_UNORM;
-//     imageInfo.type = RHI::ImageType::Image2D;
-//     imageInfo.size.width = albedoData.width;
-//     imageInfo.size.height = albedoData.height;
-//     imageInfo.size.depth = 1;
-//     imageInfo.mipLevels = 1;
-//     imageInfo.arrayCount = 1;
-//     imageInfo.sampleCount = RHI::SampleCount::Samples1;
-//     auto albedoTexture = RHI::CreateImageWithData<uint8_t>(context, imageInfo, albedoData.data).GetValue();
-//     // imageInfo.debugName = "normal";
-//     // auto normalTexture = RHI::CreateImageWithData<uint8_t>(context, imageInfo, normalData.data).GetValue();
-//     // imageInfo.debugName = "roughness";
-//     // imageInfo.format = RHI::Format::RGBA8_UNORM;
-//     // auto roughnessTexture = RHI::CreateImageWithData<uint8_t>(context, imageInfo, roughnessData.data).GetValue();
-//     // imageInfo.debugName = "metallic";
-//     // auto metallicTexture = RHI::CreateImageWithData<uint8_t>(context, imageInfo, metallicData.data).GetValue();
+    RHI::ImageCreateInfo imageInfo{};
+    imageInfo.usageFlags = RHI::ImageUsage::ShaderResource;
+    imageInfo.usageFlags |= RHI::ImageUsage::CopyDst;
+    imageInfo.format = RHI::Format::RGBA8_UNORM;
+    imageInfo.type = RHI::ImageType::Image2D;
+    imageInfo.size.depth = 1;
+    imageInfo.mipLevels = 1;
+    imageInfo.arrayCount = 1;
+    imageInfo.sampleCount = RHI::SampleCount::Samples1;
 
-//     auto [handle, material] = m_materialOwner.New();
-//     material.albedoMap = albedoTexture;
-//     // material.normalMap = normalTexture;
-//     // material.roughnessMap = roughnessTexture;
-//     // material.metallicMap = metallicTexture;
-//     return handle;
-// }
+    RHI::Handle<RHI::Image> albedoImage = RHI::NullHandle;
+    if (albedoPath.length)
+    {
+        auto resourcePath = prefixPath + albedoPath.C_Str();
+        auto imageData = LoadImage(resourcePath);
+        imageInfo.name = resourcePath.c_str();
+        imageInfo.size.width = imageData.width;
+        imageInfo.size.height = imageData.height;
+        albedoImage = RHI::CreateImageWithData<uint8_t>(context, imageInfo, imageData.data).GetValue();
+    }
+
+    RHI::Handle<RHI::Image> normalImage = RHI::NullHandle;
+    if (normalPath.length)
+    {
+        auto resourcePath = prefixPath + normalPath.C_Str();
+        auto imageData = LoadImage(resourcePath);
+        imageInfo.name = resourcePath.c_str();
+        imageInfo.size.width = imageData.width;
+        imageInfo.size.height = imageData.height;
+        albedoImage = RHI::CreateImageWithData<uint8_t>(context, imageInfo, imageData.data).GetValue();
+    }
+
+    RHI::Handle<RHI::Image> roughnessImage = RHI::NullHandle;
+    if (roughnessPath.length)
+    {
+        auto resourcePath = prefixPath + roughnessPath.C_Str();
+        auto imageData = LoadImage(resourcePath);
+        imageInfo.name = resourcePath.c_str();
+        imageInfo.size.width = imageData.width;
+        imageInfo.size.height = imageData.height;
+        albedoImage = RHI::CreateImageWithData<uint8_t>(context, imageInfo, imageData.data).GetValue();
+    }
+
+    RHI::Handle<RHI::Image> metallicImage = RHI::NullHandle;
+    if (metallicPath.length)
+    {
+        auto resourcePath = prefixPath + metallicPath.C_Str();
+        auto imageData = LoadImage(resourcePath);
+        imageInfo.name = resourcePath.c_str();
+        imageInfo.size.width = imageData.width;
+        imageInfo.size.height = imageData.height;
+        albedoImage = RHI::CreateImageWithData<uint8_t>(context, imageInfo, imageData.data).GetValue();
+    }
+
+    Material material{};
+    material.albedoMap = albedoImage;
+    material.normalMap = normalImage;
+    material.roughnessMap = roughnessImage;
+    material.metallicMap = metallicImage;
+    auto materialHandle = m_materialOwner.Emplace(std::move(material));
+    m_materials.push_back(materialHandle);
+    return materialHandle;
+}
 
 RHI::Handle<StaticMesh> Scene::LoadStaticMesh(RHI::Context& context, RHI::Handle<Material> material, const aiMesh& aiMesh)
 {
