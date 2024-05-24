@@ -22,7 +22,7 @@ function(compile_slang_shaders)
         set(SLANG_SHADER_OUTPUT_VERTEX_PATH "${SLANG_SHADER_OUTPUT_DIR}/${SHADER_NAME}.vertex.spv")
         add_custom_command(
             OUTPUT ${SLANG_SHADER_OUTPUT_VERTEX_PATH}
-            COMMAND ${SLANGC} ${SLANG_SHADER_GFX_PATH} ${SLANG_SHADER_ABS_PATH} -I${SLANG_SHADER_INCLUDE_DIRS} -profile sm_6_0 -target spirv -fvk-invert-y -fvk-use-entrypoint-name -o ${SLANG_SHADER_OUTPUT_VERTEX_PATH} -entry VSMain -stage vertex
+            COMMAND ${SLANGC} ${SLANG_SHADER_GFX_PATH} ${SLANG_SHADER_ABS_PATH} -I${SLANG_SHADER_INCLUDE_DIRS} -o ${SLANG_SHADER_OUTPUT_VERTEX_PATH} -entry VSMain -stage vertex -target spirv -emit-spirv-directly -fvk-invert-y -fvk-use-entrypoint-name
             DEPENDS ${SLANGC} ${SLANG_SHADER_ABS_PATH} ${SLANG_SHADER_DEPENDENCIES}
             COMMENT "Compiling vertex ${SLANG_SHADER_ABS_PATH}..."
         )
@@ -31,7 +31,7 @@ function(compile_slang_shaders)
         set(SLANG_SHADER_OUTPUT_PIXEL_PATH "${SLANG_SHADER_OUTPUT_DIR}/${SHADER_NAME}.pixel.spv")
         add_custom_command(
             OUTPUT ${SLANG_SHADER_OUTPUT_PIXEL_PATH}
-            COMMAND ${SLANGC} ${SLANG_SHADER_GFX_PATH} ${SLANG_SHADER_ABS_PATH} -I${SLANG_SHADER_INCLUDE_DIRS} -profile sm_6_0 -target spirv -fvk-invert-y -fvk-use-entrypoint-name -o ${SLANG_SHADER_OUTPUT_PIXEL_PATH} -entry PSMain -stage fragment
+            COMMAND ${SLANGC} ${SLANG_SHADER_GFX_PATH} ${SLANG_SHADER_ABS_PATH} -I${SLANG_SHADER_INCLUDE_DIRS} -o ${SLANG_SHADER_OUTPUT_PIXEL_PATH} -entry PSMain -stage fragment -target spirv -emit-spirv-directly -fvk-invert-y -fvk-use-entrypoint-name
             DEPENDS ${SLANGC} ${SLANG_SHADER_ABS_PATH} ${SLANG_SHADER_DEPENDENCIES}
             COMMENT "Compiling pixel ${SLANG_SHADER_ABS_PATH}..."
         )
@@ -40,7 +40,7 @@ function(compile_slang_shaders)
         set(SLANG_SHADER_OUTPUT_MODULE_PATH "${SLANG_SHADER_OUTPUT_DIR}/${SHADER_NAME}.spv")
         add_custom_command(
             OUTPUT ${SLANG_SHADER_OUTPUT_MODULE_PATH}
-            COMMAND ${SPIRV_LINK} -o ${SLANG_SHADER_OUTPUT_MODULE_PATH} --create-library ${SLANG_SHADER_OUTPUT_VERTEX_PATH} ${SLANG_SHADER_OUTPUT_PIXEL_PATH}
+            COMMAND ${SPIRV_LINK} -o ${SLANG_SHADER_OUTPUT_MODULE_PATH} --create-library ${SLANG_SHADER_OUTPUT_VERTEX_PATH} ${SLANG_SHADER_OUTPUT_PIXEL_PATH} --target-env vulkan1.3
             DEPENDS ${SLANG_SHADER_OUTPUT_VERTEX_PATH} ${SLANG_SHADER_OUTPUT_PIXEL_PATH}
             COMMENT "Generating Library ${SLANG_SHADER_OUTPUT_MODULE_PATH}"
         )

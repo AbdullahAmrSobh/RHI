@@ -24,13 +24,6 @@ inline static glm::vec3 ConvertColor(const aiColor3D& color)
     return { color.r, color.g, color.b };
 }
 
-// inline static std::string PrefixString(const char* prefix, aiString string)
-// {
-//     std::string result = prefix;
-//     result += string.C_Str();
-//     return result;
-// }
-
 inline static void ProcessNode(RHI::Context& context, glm::mat4 parentTransform, const aiNode* node, std::function<void(glm::mat4, const aiNode&)> fn)
 {
     fn(parentTransform, *node);
@@ -62,12 +55,12 @@ Scene::Scene(RHI::Context* pContext, const char* scenePath)
         lightsLookup[light.mName.C_Str()].push_back(light);
     }
 
-    // // load materials from scene
-    // for (uint32_t i = 0; i < scene->mNumMaterials; i++)
-    // {
-    //     auto& material = *scene->mMaterials[i];
-    //     materialLookup[i] = LoadMaterial(context, material);
-    // }
+    // load materials from scene
+    for (uint32_t i = 0; i < scene->mNumMaterials; i++)
+    {
+        auto& material = *scene->mMaterials[i];
+        materialLookup[i] = LoadMaterial(context, material);
+    }
 
     // load meshes from scene
     for (uint32_t i = 0; i < scene->mNumMeshes; i++)
@@ -196,7 +189,7 @@ RHI::Handle<Material> Scene::LoadMaterial(RHI::Context& context, const aiMateria
     RHI::ImageCreateInfo imageInfo{};
     imageInfo.usageFlags = RHI::ImageUsage::ShaderResource;
     imageInfo.usageFlags |= RHI::ImageUsage::CopyDst;
-    imageInfo.format = RHI::Format::RGBA8_UNORM;
+    imageInfo.format = RHI::Format::BC1_UNORM;
     imageInfo.type = RHI::ImageType::Image2D;
     imageInfo.size.depth = 1;
     imageInfo.mipLevels = 1;
@@ -207,44 +200,48 @@ RHI::Handle<Material> Scene::LoadMaterial(RHI::Context& context, const aiMateria
     if (albedoPath.length)
     {
         auto resourcePath = prefixPath + albedoPath.C_Str();
-        auto imageData = LoadImage(resourcePath);
+        resourcePath.replace(resourcePath.length() - 3, resourcePath.length(), "dds");
+        auto imageData = ReadBinaryFile(resourcePath);
         imageInfo.name = resourcePath.c_str();
-        imageInfo.size.width = imageData.width;
-        imageInfo.size.height = imageData.height;
-        albedoImage = RHI::CreateImageWithData<uint8_t>(context, imageInfo, imageData.data).GetValue();
+        imageInfo.size.width = 4096;
+        imageInfo.size.height = 4096;
+        albedoImage = RHI::CreateImageWithData<uint8_t>(context, imageInfo, imageData).GetValue();
     }
 
     RHI::Handle<RHI::Image> normalImage = RHI::NullHandle;
     if (normalPath.length)
     {
         auto resourcePath = prefixPath + normalPath.C_Str();
-        auto imageData = LoadImage(resourcePath);
+        resourcePath.replace(resourcePath.length() - 3, resourcePath.length(), "dds");
+        auto imageData = ReadBinaryFile(resourcePath);
         imageInfo.name = resourcePath.c_str();
-        imageInfo.size.width = imageData.width;
-        imageInfo.size.height = imageData.height;
-        albedoImage = RHI::CreateImageWithData<uint8_t>(context, imageInfo, imageData.data).GetValue();
+        imageInfo.size.width = 4096;
+        imageInfo.size.height = 4096;
+        albedoImage = RHI::CreateImageWithData<uint8_t>(context, imageInfo, imageData).GetValue();
     }
 
     RHI::Handle<RHI::Image> roughnessImage = RHI::NullHandle;
     if (roughnessPath.length)
     {
         auto resourcePath = prefixPath + roughnessPath.C_Str();
-        auto imageData = LoadImage(resourcePath);
+        resourcePath.replace(resourcePath.length() - 3, resourcePath.length(), "dds");
+        auto imageData = ReadBinaryFile(resourcePath);
         imageInfo.name = resourcePath.c_str();
-        imageInfo.size.width = imageData.width;
-        imageInfo.size.height = imageData.height;
-        albedoImage = RHI::CreateImageWithData<uint8_t>(context, imageInfo, imageData.data).GetValue();
+        imageInfo.size.width = 4096;
+        imageInfo.size.height = 4096;
+        albedoImage = RHI::CreateImageWithData<uint8_t>(context, imageInfo, imageData).GetValue();
     }
 
     RHI::Handle<RHI::Image> metallicImage = RHI::NullHandle;
     if (metallicPath.length)
     {
         auto resourcePath = prefixPath + metallicPath.C_Str();
-        auto imageData = LoadImage(resourcePath);
+        resourcePath.replace(resourcePath.length() - 3, resourcePath.length(), "dds");
+        auto imageData = ReadBinaryFile(resourcePath);
         imageInfo.name = resourcePath.c_str();
-        imageInfo.size.width = imageData.width;
-        imageInfo.size.height = imageData.height;
-        albedoImage = RHI::CreateImageWithData<uint8_t>(context, imageInfo, imageData.data).GetValue();
+        imageInfo.size.width = 4096;
+        imageInfo.size.height = 4096;
+        albedoImage = RHI::CreateImageWithData<uint8_t>(context, imageInfo, imageData).GetValue();
     }
 
     Material material{};
@@ -273,11 +270,6 @@ RHI::Handle<StaticMesh> Scene::LoadStaticMesh(RHI::Context& context, RHI::Handle
     if (aiMesh.HasNormals())
     {
         mesh.normals = RHI::CreateBufferWithData<aiVector3D>(context, RHI::BufferUsage::Vertex, TL::Span{ aiMesh.mNormals, aiMesh.mNumVertices }).GetValue();
-    }
-
-    if (aiMesh.HasTextureCoords(0))
-    {
-        // mesh.uvs = RHI::CreateBufferWithData<aiVector2D>(context, RHI::BufferUsage::Vertex, TL::Span{ aiMesh.mTextureCoords[0], aiMesh.mNumVertices }).GetValue();
     }
 
     if (aiMesh.HasTextureCoords(0))
