@@ -105,7 +105,7 @@ namespace RHI
 
         void DestroyBindGroupLayout(Handle<BindGroupLayout> handle);
 
-        RHI_NODISCARD Handle<BindGroup> CreateBindGroup(Handle<BindGroupLayout> handle);
+        RHI_NODISCARD Handle<BindGroup> CreateBindGroup(Handle<BindGroupLayout> handle, uint32_t bindlessElementsCount = UINT32_MAX);
 
         void DestroyBindGroup(Handle<BindGroup> handle);
 
@@ -181,7 +181,7 @@ namespace RHI
         virtual Ptr<ResourcePool>        Internal_CreateResourcePool(const ResourcePoolCreateInfo& createInfo) = 0;
         virtual Handle<BindGroupLayout>  Internal_CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) = 0;
         virtual void                     Internal_DestroyBindGroupLayout(Handle<BindGroupLayout> handle) = 0;
-        virtual Handle<BindGroup>        Internal_CreateBindGroup(Handle<BindGroupLayout> handle) = 0;
+        virtual Handle<BindGroup>        Internal_CreateBindGroup(Handle<BindGroupLayout> handle, uint32_t bindlessElementsCount) = 0;
         virtual void                     Internal_DestroyBindGroup(Handle<BindGroup> handle) = 0;
         virtual void                     Internal_UpdateBindGroup(Handle<BindGroup> handle, TL::Span<const ResourceBinding> bindings) = 0;
         virtual Handle<PipelineLayout>   Internal_CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo) = 0;

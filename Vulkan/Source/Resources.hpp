@@ -33,7 +33,7 @@ namespace RHI::Vulkan
 
         void Shutdown();
 
-        ResultCode InitBindGroup(IBindGroup* bindGroup, IBindGroupLayout* bindGroupLayout);
+        ResultCode InitBindGroup(IBindGroup* bindGroup, IBindGroupLayout* bindGroupLayout, uint32_t bindlessElementsCount);
         void ShutdownBindGroup(IBindGroup* bindGroup);
 
     public:
@@ -103,6 +103,7 @@ namespace RHI::Vulkan
     {
         BindGroupLayoutCreateInfo layoutInfo;
         VkDescriptorSetLayout handle;
+        uint32_t bindlessElementIndex;
 
         ResultCode Init(IContext* context, const BindGroupLayoutCreateInfo& createInfo);
         void Shutdown(IContext* context);
@@ -113,7 +114,7 @@ namespace RHI::Vulkan
         VkDescriptorSet descriptorSet;
         Handle<BindGroupLayout> layout;
 
-        ResultCode Init(IContext* context, Handle<BindGroupLayout> layout);
+        ResultCode Init(IContext* context, Handle<BindGroupLayout> layout, uint32_t bindlessElementsCount);
         void Shutdown(IContext* context);
 
         void Write(IContext* context, TL::Span<const ResourceBinding> bindings);

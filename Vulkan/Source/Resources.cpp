@@ -45,11 +45,16 @@ namespace RHI::Vulkan
         vkDestroyDescriptorPool(m_device, m_descriptorPool, nullptr);
     }
 
-    ResultCode BindGroupAllocator::InitBindGroup(IBindGroup* bindGroup, IBindGroupLayout* bindGroupLayout)
+    ResultCode BindGroupAllocator::InitBindGroup(IBindGroup* bindGroup, IBindGroupLayout* bindGroupLayout, uint32_t bindlessElementsCount)
     {
+        VkDescriptorSetVariableDescriptorCountAllocateInfo variableDescriptorInfo{};
+        variableDescriptorInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO;
+        variableDescriptorInfo.pNext = nullptr;
+        variableDescriptorInfo.descriptorSetCount = 1;
+        variableDescriptorInfo.pDescriptorCounts = &bindlessElementsCount;
         VkDescriptorSetAllocateInfo allocateInfo{};
         allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocateInfo.pNext = nullptr;
+        allocateInfo.pNext = bindGroupLayout->bindlessElementIndex != UINT32_MAX ? &variableDescriptorInfo : nullptr;
         allocateInfo.descriptorSetCount = 1;
         allocateInfo.pSetLayouts = &bindGroupLayout->handle;
         allocateInfo.descriptorPool = m_descriptorPool;
@@ -281,30 +286,47 @@ namespace RHI::Vulkan
     ResultCode IBindGroupLayout::Init(IContext* context, const BindGroupLayoutCreateInfo& createInfo)
     {
         layoutInfo = createInfo;
+        bindlessElementIndex = UINT32_MAX;
 
-        TL::Vector<VkDescriptorSetLayoutBinding> bindings;
-        for (auto shaderBinding : createInfo.bindings)
+        TL::Vector<VkDescriptorBindingFlags> bindingFlags;
+        TL::Vector<VkDescriptorSetLayoutBinding> bindingInfos;
+
+        for (uint32_t index = 0; index < c_MaxBindGroupElementsCount; index++)
         {
-            if (shaderBinding.type == ShaderBindingType::None)
-            {
-                break;
-            }
+            auto binding = createInfo.bindings[index];
 
-            auto& binding = bindings.emplace_back<VkDescriptorSetLayoutBinding>({});
-            binding.binding = uint32_t(bindings.size() - 1);
-            binding.descriptorType = ConvertDescriptorType(shaderBinding.type);
-            binding.descriptorCount = shaderBinding.arrayCount;
-            binding.stageFlags = ConvertShaderStage(shaderBinding.stages);
-            binding.pImmutableSamplers = nullptr;
+            if (binding.type == ShaderBindingType::None)
+                break;
+
+            VkDescriptorBindingFlags flags{};
+            if (binding.arrayCount == ShaderBinding::VariableArraySize)
+            {
+                flags = VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
+                flags |= VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
+                bindlessElementIndex = index;
+            }
+            bindingFlags.push_back(flags);
+
+            VkDescriptorSetLayoutBinding descriptorBinding{};
+            descriptorBinding.binding = index;
+            descriptorBinding.descriptorType = ConvertDescriptorType(binding.type);
+            descriptorBinding.descriptorCount = binding.arrayCount;
+            descriptorBinding.stageFlags = ConvertShaderStage(binding.stages);
+            descriptorBinding.pImmutableSamplers = nullptr;
+            bindingInfos.push_back(descriptorBinding);
         }
 
-        VkDescriptorSetLayoutCreateInfo vkCreateInfo;
+        VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsInfo{};
+        bindingFlagsInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+        bindingFlagsInfo.pNext = nullptr;
+        bindingFlagsInfo.bindingCount = (uint32_t)bindingFlags.size();
+        bindingFlagsInfo.pBindingFlags = bindingFlags.data();
+        VkDescriptorSetLayoutCreateInfo vkCreateInfo{};
         vkCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        vkCreateInfo.pNext = nullptr;
+        vkCreateInfo.pNext = &bindingFlagsInfo;
         vkCreateInfo.flags = 0;
-        vkCreateInfo.bindingCount = uint32_t(bindings.size());
-        vkCreateInfo.pBindings = bindings.data();
-
+        vkCreateInfo.bindingCount = (uint32_t)bindingInfos.size();
+        vkCreateInfo.pBindings = bindingInfos.data();
         auto result = vkCreateDescriptorSetLayout(context->m_device, &vkCreateInfo, nullptr, &handle);
         return ConvertResult(result);
     }
@@ -318,14 +340,14 @@ namespace RHI::Vulkan
     /// BindGroup
     ///////////////////////////////////////////////////////////////////////////
 
-    ResultCode IBindGroup::Init(IContext* context, Handle<BindGroupLayout> layoutHandle)
+    ResultCode IBindGroup::Init(IContext* context, Handle<BindGroupLayout> layoutHandle, uint32_t bindlessElementsCount)
     {
         layout = layoutHandle;
 
         auto allocator = context->m_bindGroupAllocator.get();
         auto layoutObject = context->m_bindGroupLayoutsOwner.Get(layoutHandle);
 
-        return allocator->InitBindGroup(this, layoutObject);
+        return allocator->InitBindGroup(this, layoutObject, bindlessElementsCount);
     }
 
     void IBindGroup::Shutdown(IContext* context)

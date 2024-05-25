@@ -382,10 +382,10 @@ namespace RHI::Vulkan
         bindGroupLayout->Shutdown(this);
     }
 
-    Handle<BindGroup> IContext::Internal_CreateBindGroup(Handle<BindGroupLayout> layoutHandle)
+    Handle<BindGroup> IContext::Internal_CreateBindGroup(Handle<BindGroupLayout> layoutHandle, uint32_t bindlessElementsCount)
     {
         IBindGroup bindGroup{};
-        auto result = bindGroup.Init(this, layoutHandle);
+        auto result = bindGroup.Init(this, layoutHandle, bindlessElementsCount);
         if (IsError(result))
         {
             DebugLogError("Failed to create bindGroup");

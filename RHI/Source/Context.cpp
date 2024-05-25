@@ -265,11 +265,11 @@ namespace RHI
         m_resourceTracker->Unregister(handle);
     }
 
-    Handle<BindGroup> Context::CreateBindGroup(Handle<BindGroupLayout> bindGroupLayoutHandle)
+    Handle<BindGroup> Context::CreateBindGroup(Handle<BindGroupLayout> bindGroupLayoutHandle, uint32_t bindlessElementsCount)
     {
         ZoneScoped;
 
-        auto handle = Internal_CreateBindGroup(bindGroupLayoutHandle);
+        auto handle = Internal_CreateBindGroup(bindGroupLayoutHandle, bindlessElementsCount);
         m_resourceTracker->Register(handle);
         return handle;
     }

@@ -399,20 +399,11 @@ namespace RHI
         inline bool operator==(const ImageSubresourceRange& other) const { return imageAspects == other.imageAspects && mipBase == other.mipBase && mipLevelCount == other.mipLevelCount && arrayBase == other.arrayBase && arrayCount == other.arrayCount; }
     };
 
-    /// @brief Represent a subview into a an buffer resource.
-    struct BufferSubregion
-    {
-        BufferSubregion() = default;
-
-        size_t byteSize;
-        size_t byteOffset;
-
-        inline bool operator==(const BufferSubregion& other) const { return byteSize == other.byteSize && byteOffset == other.byteOffset; }
-    };
-
     /// @brief Specifies a single shader resource binding.
     struct ShaderBinding
     {
+        inline static constexpr uint32_t VariableArraySize = UINT32_MAX;
+
         ShaderBindingType  type;
         Access             access;
         uint32_t           arrayCount;
@@ -662,12 +653,11 @@ namespace RHI
     /// @brief Description of the graphics pipeline states.
     struct GraphicsPipelineCreateInfo
     {
-        const char*   name = nullptr;
-        const char*   vertexShaderName;
-        ShaderModule* vertexShaderModule;
-        const char*   pixelShaderName;
-        ShaderModule* pixelShaderModule;
-
+        const char*                     name = nullptr;
+        const char*                     vertexShaderName;
+        ShaderModule*                   vertexShaderModule;
+        const char*                     pixelShaderName;
+        ShaderModule*                   pixelShaderModule;
         Handle<PipelineLayout>          layout;
         PipelineInputAssemblerStateDesc inputAssemblerState;
         PipelineRenderTargetLayout      renderTargetLayout;
