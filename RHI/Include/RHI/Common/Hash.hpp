@@ -4,7 +4,7 @@
 
 #include <string>
 
-#define RHI_DEFINE_POD_HASH_SPECIALIZATION(Type)        \
+#define RHI_DEFINE_POD_HASH(Type)                       \
     template<>                                          \
     struct hash<Type>                                   \
     {                                                   \

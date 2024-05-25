@@ -778,7 +778,7 @@ namespace RHI
 
 namespace std
 {
-    RHI_DEFINE_POD_HASH_SPECIALIZATION(RHI::ImageViewCreateInfo);
-    RHI_DEFINE_POD_HASH_SPECIALIZATION(RHI::BufferViewCreateInfo);
-    RHI_DEFINE_POD_HASH_SPECIALIZATION(RHI::SamplerCreateInfo);
+    RHI_DEFINE_POD_HASH(RHI::ImageViewCreateInfo);
+    RHI_DEFINE_POD_HASH(RHI::BufferViewCreateInfo);
+    RHI_DEFINE_POD_HASH(RHI::SamplerCreateInfo);
 } // namespace std

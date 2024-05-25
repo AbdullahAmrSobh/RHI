@@ -72,17 +72,11 @@ namespace RHI
         ImageSubresourceLayers subresource;
         ImageSize3D            imageSize;
         ImageOffset3D          imageOffset;
-
-        Handle<Buffer> buffer;
-        size_t         bufferOffset;
-        size_t         bufferSize;
-
-        uint32_t bytesPerRow;
-        uint32_t bytesPerImage;
-
-        // The destinationBuffer format is usually same as sourceImage's format. When source image contains more than one aspect,
-        // the format should be compatiable with the aspect of the source image's subresource
-        Format format = Format::Unknown;
+        Handle<Buffer>         buffer;
+        size_t                 bufferOffset;
+        size_t                 bufferSize;
+        uint32_t               bytesPerRow;
+        uint32_t               bytesPerImage;
     };
 
     struct BufferBindingInfo

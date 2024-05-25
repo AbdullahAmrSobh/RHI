@@ -18,10 +18,8 @@ namespace RHI
 {
     class ResourceTracker;
 
-    /// @brief Represents a pointer to GPU device memory
     using DeviceMemoryPtr = void*;
 
-    /// @brief Type of backend Graphics API
     enum class Backend
     {
         Validate,
@@ -29,7 +27,6 @@ namespace RHI
         DirectX12,
     };
 
-    /// @brief The type of the Physical GPU
     enum class DeviceType
     {
         CPU,
@@ -38,7 +35,6 @@ namespace RHI
         Virtual
     };
 
-    // Identify the manufactuerer for the reported device
     enum class Vendor
     {
         Intel,
@@ -54,7 +50,6 @@ namespace RHI
         uint32_t patch;
     };
 
-    /// @brief Describes information needed to initalize the RHI context
     struct ApplicationInfo
     {
         const char* applicationName;    // The name of the users application.
@@ -63,7 +58,6 @@ namespace RHI
         Version     engineVersion;      // The version of the users application.
     };
 
-    /// @brief Properties about a Physical GPU
     struct DeviceProperties
     {
         uint32_t    id;
