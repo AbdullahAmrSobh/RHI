@@ -96,8 +96,8 @@ namespace RHI
     class HandlePool final
     {
     public:
-        using HandleType               = Handle<Resource>;
-        using ResourceType             = Resource;
+        using HandleType   = Handle<Resource>;
+        using ResourceType = Resource;
 
         HandlePool()                   = default;
         HandlePool(const HandlePool&&) = delete;
@@ -105,18 +105,18 @@ namespace RHI
         ~HandlePool()                  = default;
 
         // Clears all resources in the pool
-        inline void             Clear();
+        inline void Clear();
 
         // Gets the resource associated with handle
-        inline const Resource*  Get(Handle<Resource> handle) const;
+        inline const Resource* Get(Handle<Resource> handle) const;
 
-        inline Resource*        Get(Handle<Resource> handle);
+        inline Resource* Get(Handle<Resource> handle);
 
         // Inserted a zerod resource and returns its handle
         inline Handle<Resource> Emplace(Resource&& resource);
 
         // Removes a resource from the owner
-        inline void             Release(Handle<Resource> handle);
+        inline void Release(Handle<Resource> handle);
 
     private:
         TL::Vector<Resource> m_resources;
@@ -189,8 +189,8 @@ namespace RHI
             m_freeSlots.pop_back();
             m_resources[index] = std::forward<Resource>(resource);
             // Generate a new generation ID
-            uint16_t& genId    = m_genIds[index];
-            m_genIds[index]    = genId;
+            uint16_t& genId = m_genIds[index];
+            m_genIds[index] = genId;
             return Handle<Resource>(index, genId);
         }
 

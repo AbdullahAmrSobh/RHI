@@ -41,7 +41,7 @@ namespace RHI
         LoadOperation  loadOperation  = LoadOperation::Discard;
         StoreOperation storeOperation = StoreOperation::Store;
 
-        inline bool    operator==(const LoadStoreOperations& other) const
+        inline bool operator==(const LoadStoreOperations& other) const
         {
             return loadOperation == other.loadOperation && storeOperation == other.storeOperation;
         }
@@ -49,8 +49,8 @@ namespace RHI
 
     struct DepthStencilValue
     {
-        float       depthValue   = 1.0f;
-        uint8_t     stencilValue = 0xff;
+        float   depthValue   = 1.0f;
+        uint8_t stencilValue = 0xff;
 
         inline bool operator==(const DepthStencilValue& other) const
         {
@@ -65,7 +65,7 @@ namespace RHI
 
         ColorValue(T r = {}, T g = {}, T b = {}, T a = {});
 
-        T           r, g, b, a;
+        T r, g, b, a;
 
         inline bool operator==(const ColorValue& other) const
         {
@@ -111,14 +111,14 @@ namespace RHI
 
     struct ImageAttachmentList
     {
-        RenderGraph*            renderGraph;
-        TL::String              name;
-        AttachmentLifetime      lifetime;
-        uint32_t                referenceCount;
+        RenderGraph*       renderGraph;
+        TL::String         name;
+        AttachmentLifetime lifetime;
+        uint32_t           referenceCount;
 
-        Handle<Image>           handle;
-        ImageCreateInfo         info;
-        Swapchain*              swapchain;
+        Handle<Image>   handle;
+        ImageCreateInfo info;
+        Swapchain*      swapchain;
 
         Handle<ImageAttachment> begin;
         Handle<ImageAttachment> end;
@@ -126,13 +126,13 @@ namespace RHI
 
     struct BufferAttachmentList
     {
-        RenderGraph*             renderGraph;
-        TL::String               name;
-        AttachmentLifetime       lifetime;
-        uint32_t                 referenceCount;
+        RenderGraph*       renderGraph;
+        TL::String         name;
+        AttachmentLifetime lifetime;
+        uint32_t           referenceCount;
 
-        Handle<Buffer>           handle;
-        BufferCreateInfo         info;
+        Handle<Buffer>   handle;
+        BufferCreateInfo info;
 
         Handle<BufferAttachment> begin;
         Handle<BufferAttachment> end;
@@ -147,26 +147,26 @@ namespace RHI
 
     struct ImageAttachment final : public Attachment
     {
-        ImageAttachmentUseInfo      useInfo;
+        ImageAttachmentUseInfo useInfo;
 
         Handle<ImageAttachmentList> list;
 
-        Handle<ImageAttachment>     next;
-        Handle<ImageAttachment>     prev;
+        Handle<ImageAttachment> next;
+        Handle<ImageAttachment> prev;
 
-        Handle<ImageView>           view;
+        Handle<ImageView> view;
     };
 
     struct BufferAttachment final : public Attachment
     {
-        BufferAttachmentUseInfo      useInfo;
+        BufferAttachmentUseInfo useInfo;
 
         Handle<BufferAttachmentList> list;
 
-        Handle<BufferAttachment>     next;
-        Handle<BufferAttachment>     prev;
+        Handle<BufferAttachment> next;
+        Handle<BufferAttachment> prev;
 
-        Handle<BufferView>           view;
+        Handle<BufferView> view;
     };
 
     namespace Vulkan
@@ -182,18 +182,18 @@ namespace RHI
 
     struct Pass
     {
-        TL::String                           name;
-        QueueType                            queueType;
-        ImageSize2D                          renderTargetSize;
-        PassSubmitData*                      submitData;
+        TL::String      name;
+        QueueType       queueType;
+        ImageSize2D     renderTargetSize;
+        PassSubmitData* submitData;
 
-        TL::Vector<Handle<ImageAttachment>>  colorAttachments;
-        Handle<ImageAttachment>              depthStencilAttachment;
+        TL::Vector<Handle<ImageAttachment>> colorAttachments;
+        Handle<ImageAttachment>             depthStencilAttachment;
 
         TL::Vector<Handle<ImageAttachment>>  imageAttachments;
         TL::Vector<Handle<BufferAttachment>> bufferAttachments;
 
-        TL::Vector<const CommandList*>       commandList;
+        TL::Vector<const CommandList*> commandList;
     };
 
     class RHI_EXPORT RenderGraph final
@@ -206,60 +206,60 @@ namespace RHI
         RenderGraph(RenderGraph&&)      = delete;
         ~RenderGraph()                  = default;
 
-        RHI_NODISCARD Handle<Pass>             CreatePass(const PassCreateInfo& createInfo);
+        RHI_NODISCARD Handle<Pass> CreatePass(const PassCreateInfo& createInfo);
 
-        RHI_NODISCARD Handle<ImageAttachment>  CreateImage(const ImageCreateInfo& createInfo);
+        RHI_NODISCARD Handle<ImageAttachment> CreateImage(const ImageCreateInfo& createInfo);
 
         RHI_NODISCARD Handle<BufferAttachment> CreateBuffer(const BufferCreateInfo& createInfo);
 
-        RHI_NODISCARD Handle<ImageAttachment>  ImportSwapchain(const char* name, Swapchain& swapchain);
+        RHI_NODISCARD Handle<ImageAttachment> ImportSwapchain(const char* name, Swapchain& swapchain);
 
-        RHI_NODISCARD Handle<ImageAttachment>  ImportImage(const char* name, Handle<Image> image);
+        RHI_NODISCARD Handle<ImageAttachment> ImportImage(const char* name, Handle<Image> image);
 
         RHI_NODISCARD Handle<BufferAttachment> ImportBuffer(const char* name, Handle<Buffer> buffer);
 
-        Handle<ImageAttachment>                UseImage(Handle<Pass> pass, Handle<ImageAttachment> attachment, const ImageAttachmentUseInfo& useInfo);
+        Handle<ImageAttachment> UseImage(Handle<Pass> pass, Handle<ImageAttachment> attachment, const ImageAttachmentUseInfo& useInfo);
 
-        Handle<BufferAttachment>               UseBuffer(Handle<Pass> pass, Handle<BufferAttachment> attachment, const BufferAttachmentUseInfo& useInfo);
+        Handle<BufferAttachment> UseBuffer(Handle<Pass> pass, Handle<BufferAttachment> attachment, const BufferAttachmentUseInfo& useInfo);
 
-        void                                   SubmitCommands(Handle<Pass> pass, TL::Span<const CommandList* const> commandLists);
+        void SubmitCommands(Handle<Pass> pass, TL::Span<const CommandList* const> commandLists);
 
-        RHI_NODISCARD Handle<Image>            GetImage(Handle<ImageAttachment> attachment);
+        RHI_NODISCARD Handle<Image> GetImage(Handle<ImageAttachment> attachment);
 
-        RHI_NODISCARD Handle<Buffer>           GetBuffer(Handle<BufferAttachment> attachment);
+        RHI_NODISCARD Handle<Buffer> GetBuffer(Handle<BufferAttachment> attachment);
 
-        RHI_NODISCARD Handle<ImageView>        GetImageView(Handle<ImageAttachment> attachment);
+        RHI_NODISCARD Handle<ImageView> GetImageView(Handle<ImageAttachment> attachment);
 
-        RHI_NODISCARD Handle<BufferView>       GetBufferView(Handle<BufferAttachment> attachment);
+        RHI_NODISCARD Handle<BufferView> GetBufferView(Handle<BufferAttachment> attachment);
 
-        RHI_NODISCARD Swapchain*               GetSwapchain(Handle<ImageAttachment> attachment);
-
-        // private:
-
-        ImageAttachmentList*                   GetAttachmentList(Handle<ImageAttachment> attachment);
-        ImageAttachment*                       GetAttachment(Handle<ImageAttachment> attachment);
-        ImageAttachment*                       GetAttachmentNext(Handle<ImageAttachment> attachment);
-        ImageAttachment*                       GetAttachmentPrev(Handle<ImageAttachment> attachment);
-
-        BufferAttachmentList*                  GetAttachmentList(Handle<BufferAttachment> attachment);
-        BufferAttachment*                      GetAttachment(Handle<BufferAttachment> attachment);
-        BufferAttachment*                      GetAttachmentNext(Handle<BufferAttachment> attachment);
-        BufferAttachment*                      GetAttachmentPrev(Handle<BufferAttachment> attachment);
+        RHI_NODISCARD Swapchain* GetSwapchain(Handle<ImageAttachment> attachment);
 
         // private:
 
-        Context*                                 m_context;
+        ImageAttachmentList* GetAttachmentList(Handle<ImageAttachment> attachment);
+        ImageAttachment*     GetAttachment(Handle<ImageAttachment> attachment);
+        ImageAttachment*     GetAttachmentNext(Handle<ImageAttachment> attachment);
+        ImageAttachment*     GetAttachmentPrev(Handle<ImageAttachment> attachment);
+
+        BufferAttachmentList* GetAttachmentList(Handle<BufferAttachment> attachment);
+        BufferAttachment*     GetAttachment(Handle<BufferAttachment> attachment);
+        BufferAttachment*     GetAttachmentNext(Handle<BufferAttachment> attachment);
+        BufferAttachment*     GetAttachmentPrev(Handle<BufferAttachment> attachment);
+
+        // private:
+
+        Context* m_context;
 
         TL::Vector<Handle<Pass>>                 m_passes;
         TL::Vector<Handle<ImageAttachmentList>>  m_graphImageAttachments;
         TL::Vector<Handle<BufferAttachmentList>> m_graphBufferAttachments;
 
-        HandlePool<Pass>                         m_passOwner;
-        HandlePool<ImageAttachment>              m_imageAttachmentOwner;
-        HandlePool<BufferAttachment>             m_bufferAttachmentOwner;
+        HandlePool<Pass>             m_passOwner;
+        HandlePool<ImageAttachment>  m_imageAttachmentOwner;
+        HandlePool<BufferAttachment> m_bufferAttachmentOwner;
 
-        HandlePool<ImageAttachmentList>          m_graphImageAttachmentOwner;
-        HandlePool<BufferAttachmentList>         m_graphBufferAttachmentOwner;
+        HandlePool<ImageAttachmentList>  m_graphImageAttachmentOwner;
+        HandlePool<BufferAttachmentList> m_graphBufferAttachmentOwner;
     };
 
 } // namespace RHI

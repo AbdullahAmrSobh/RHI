@@ -37,7 +37,7 @@ namespace RHI::Vulkan
         ~ICommandList() = default;
 
         void Begin() override;
-        void Begin(RenderGraph& renderGraph, Handle<Pass> pass) override;
+        void Begin(RenderGraph& renderGraph, Handle<Pass> pass, TL::Span<const ClearValue> colorClearValues, const DepthStencilValue& depthStencilClearValue) override;
         void End() override;
         void DebugMarkerPush(const char* name, ColorValue<float> color) override;
         void DebugMarkerPop() override;
@@ -48,19 +48,14 @@ namespace RHI::Vulkan
         void SetSicssor(const Scissor& sicssor) override;
         void Draw(const DrawInfo& drawInfo) override;
         void Dispatch(const DispatchInfo& dispatchInfo) override;
-        void Copy(const BufferCopyInfo& copyInfo) override;
-        void Copy(const ImageCopyInfo& copyInfo) override;
-        void Copy(const BufferToImageCopyInfo& copyInfo) override;
-        void Copy(const ImageToBufferCopyInfo& copyInfo) override;
+        void CopyBuffer(const BufferCopyInfo& copyInfo) override;
+        void CopyImage(const ImageCopyInfo& copyInfo) override;
+        void CopyImageToBuffer(const BufferImageCopyInfo& copyInfo) override;
+        void CopyBufferToImage(const BufferImageCopyInfo& copyInfo) override;
 
-        void PipelineBarrier(TL::Span<const VkMemoryBarrier2> memoryBarriers,
-                             TL::Span<const VkBufferMemoryBarrier2> bufferBarriers,
-                             TL::Span<const VkImageMemoryBarrier2> imageBarriers);
+        void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups);
 
-        void BindShaderBindGroups(VkPipelineBindPoint bindPoint,
-                                  VkPipelineLayout pipelineLayout,
-                                  TL::Span<const Handle<BindGroup>> bindGroups,
-                                  TL::Span<const uint32_t> dynamicOffset);
+        void PipelineBarrier(TL::Span<const VkMemoryBarrier2> memoryBarriers, TL::Span<const VkBufferMemoryBarrier2> bufferBarriers, TL::Span<const VkImageMemoryBarrier2> imageBarriers);
 
         VkCommandBuffer m_commandBuffer;
         VkCommandPool m_commandPool;

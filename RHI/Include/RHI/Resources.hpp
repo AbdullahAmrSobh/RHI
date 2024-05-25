@@ -314,8 +314,8 @@ namespace RHI
     /// @brief Represent the offset into an image resource.
     struct ImageOffset2D
     {
-        int32_t     x; // Offset in the X direction
-        int32_t     y; // Offset in the Y direction
+        int32_t x; // Offset in the X direction
+        int32_t y; // Offset in the Y direction
 
         inline bool operator==(const ImageOffset2D& other) const { return x == other.x && y == other.y; }
     };
@@ -323,9 +323,9 @@ namespace RHI
     /// @brief Represent the offset into an image resource.
     struct ImageOffset3D
     {
-        int32_t     x; // Offset in the X direction
-        int32_t     y; // Offset in the Y direction
-        int32_t     z; // Offset in the Z direction
+        int32_t x; // Offset in the X direction
+        int32_t y; // Offset in the Y direction
+        int32_t z; // Offset in the Z direction
 
         inline bool operator==(const ImageOffset3D& other) const { return x == other.x && y == other.y && z == other.z; }
     };
@@ -333,8 +333,8 @@ namespace RHI
     /// @brief Represent the size of an image resource or subregion.
     struct ImageSize2D
     {
-        uint32_t    width;  // The width of the image.
-        uint32_t    height; // The height of the image.
+        uint32_t width;  // The width of the image.
+        uint32_t height; // The height of the image.
 
         inline bool operator==(const ImageSize2D& other) const { return width == other.width && height == other.height; }
     };
@@ -342,9 +342,9 @@ namespace RHI
     /// @brief Represent the size of an image resource or subregion.
     struct ImageSize3D
     {
-        uint32_t    width;  // The width of the image.
-        uint32_t    height; // The height of the image.
-        uint32_t    depth;  // The depth of the image.
+        uint32_t width;  // The width of the image.
+        uint32_t height; // The height of the image.
+        uint32_t depth;  // The depth of the image.
 
         inline bool operator==(const ImageSize3D& other) const { return width == other.width && height == other.height && depth == other.depth; }
     };
@@ -359,36 +359,36 @@ namespace RHI
         ComponentSwizzle b = ComponentSwizzle::B;
         ComponentSwizzle a = ComponentSwizzle::A;
 
-        inline bool      operator==(const ComponentMapping& other) const { return r == other.r && g == other.g && b == other.b && a == other.a; }
+        inline bool operator==(const ComponentMapping& other) const { return r == other.r && g == other.g && b == other.b && a == other.a; }
     };
 
     /// @brief Represent a subview into a an image resource.
     struct ImageSubresource
     {
-        ImageSubresource()              = default;
+        ImageSubresource() = default;
 
         Flags<ImageAspect> imageAspects = ImageAspect::All;
         uint32_t           mipLevel     = 0;
         uint32_t           arrayLayer   = 0;
 
-        inline bool        operator==(const ImageSubresource& other) const { return imageAspects == other.imageAspects && mipLevel == other.mipLevel && arrayLayer == other.arrayLayer; }
+        inline bool operator==(const ImageSubresource& other) const { return imageAspects == other.imageAspects && mipLevel == other.mipLevel && arrayLayer == other.arrayLayer; }
     };
 
     struct ImageSubresourceLayers
     {
-        ImageSubresourceLayers()        = default;
+        ImageSubresourceLayers() = default;
 
         Flags<ImageAspect> imageAspects = ImageAspect::All;
         uint32_t           mipLevel     = 0;
         uint32_t           arrayBase    = 0;
         uint32_t           arrayCount   = 1;
 
-        inline bool        operator==(const ImageSubresourceLayers& other) const { return imageAspects == other.imageAspects && mipLevel == other.mipLevel && arrayBase == other.arrayBase && arrayCount == other.arrayCount; }
+        inline bool operator==(const ImageSubresourceLayers& other) const { return imageAspects == other.imageAspects && mipLevel == other.mipLevel && arrayBase == other.arrayBase && arrayCount == other.arrayCount; }
     };
 
     struct ImageSubresourceRange
     {
-        ImageSubresourceRange()          = default;
+        ImageSubresourceRange() = default;
 
         Flags<ImageAspect> imageAspects  = ImageAspect::All;
         uint32_t           mipBase       = 0;
@@ -396,7 +396,7 @@ namespace RHI
         uint32_t           arrayBase     = 0;
         uint32_t           arrayCount    = 1;
 
-        inline bool        operator==(const ImageSubresourceRange& other) const { return imageAspects == other.imageAspects && mipBase == other.mipBase && mipLevelCount == other.mipLevelCount && arrayBase == other.arrayBase && arrayCount == other.arrayCount; }
+        inline bool operator==(const ImageSubresourceRange& other) const { return imageAspects == other.imageAspects && mipBase == other.mipBase && mipLevelCount == other.mipLevelCount && arrayBase == other.arrayBase && arrayCount == other.arrayCount; }
     };
 
     /// @brief Represent a subview into a an buffer resource.
@@ -404,8 +404,8 @@ namespace RHI
     {
         BufferSubregion() = default;
 
-        size_t      byteSize;
-        size_t      byteOffset;
+        size_t byteSize;
+        size_t byteOffset;
 
         inline bool operator==(const BufferSubregion& other) const { return byteSize == other.byteSize && byteOffset == other.byteOffset; }
     };
@@ -516,7 +516,7 @@ namespace RHI
         BlendFactor           dstAlpha     = BlendFactor::Zero;
         Flags<ColorWriteMask> writeMask    = ColorWriteMask::All;
 
-        inline bool           operator==(const ColorAttachmentBlendStateDesc& other) const { return blendEnable == other.blendEnable && colorBlendOp == other.colorBlendOp && srcColor == other.srcColor && dstColor == other.dstColor && alphaBlendOp == other.alphaBlendOp && srcAlpha == other.srcAlpha && dstAlpha == other.dstAlpha; }
+        inline bool operator==(const ColorAttachmentBlendStateDesc& other) const { return blendEnable == other.blendEnable && colorBlendOp == other.colorBlendOp && srcColor == other.srcColor && dstColor == other.dstColor && alphaBlendOp == other.alphaBlendOp && srcAlpha == other.srcAlpha && dstAlpha == other.dstAlpha; }
     };
 
     /// @brief Structure specifying the render target layout.
@@ -612,7 +612,7 @@ namespace RHI
         uint32_t          mipLevels   = 1;                     // The number of mip levels in the image.
         uint32_t          arrayCount  = 1;                     // The number of images in the images array.
 
-        inline bool       operator==(const ImageCreateInfo& other) const { return usageFlags == other.usageFlags && type == other.type && size == other.size && format == other.format && mipLevels == other.mipLevels && arrayCount == other.arrayCount; }
+        inline bool operator==(const ImageCreateInfo& other) const { return usageFlags == other.usageFlags && type == other.type && size == other.size && format == other.format && mipLevels == other.mipLevels && arrayCount == other.arrayCount; }
     };
 
     /// @brief Represent the creation parameters of an buffer resource.
@@ -623,7 +623,7 @@ namespace RHI
         Flags<BufferUsage> usageFlags; // Usage flags.
         size_t             byteSize;   // The size of the buffer.
 
-        inline bool        operator==(const BufferCreateInfo& other) const { return usageFlags == other.usageFlags && byteSize == other.byteSize; }
+        inline bool operator==(const BufferCreateInfo& other) const { return usageFlags == other.usageFlags && byteSize == other.byteSize; }
     };
 
     /// @brief Structure specifying the parameters of an image attachment.
@@ -644,7 +644,7 @@ namespace RHI
         ComponentMapping      components;
         ImageSubresourceRange subresource;
 
-        inline bool           operator==(const ImageViewCreateInfo& other) const { return components == other.components && subresource == other.subresource; }
+        inline bool operator==(const ImageViewCreateInfo& other) const { return components == other.components && subresource == other.subresource; }
     };
 
     /// @brief Structure specifying the parameters of an buffer attachment.
@@ -656,18 +656,17 @@ namespace RHI
         size_t         byteOffset;
         size_t         byteSize;
 
-        inline bool    operator==(const BufferViewCreateInfo& other) const { return byteOffset == other.byteOffset && byteSize == other.byteSize && format == other.format; }
+        inline bool operator==(const BufferViewCreateInfo& other) const { return byteOffset == other.byteOffset && byteSize == other.byteSize && format == other.format; }
     };
 
     /// @brief Description of the graphics pipeline states.
     struct GraphicsPipelineCreateInfo
     {
-        const char*                     name = nullptr;
-
-        const char*                     vertexShaderName;
-        ShaderModule*                   vertexShaderModule;
-        const char*                     pixelShaderName;
-        ShaderModule*                   pixelShaderModule;
+        const char*   name = nullptr;
+        const char*   vertexShaderName;
+        ShaderModule* vertexShaderModule;
+        const char*   pixelShaderName;
+        ShaderModule* pixelShaderModule;
 
         Handle<PipelineLayout>          layout;
         PipelineInputAssemblerStateDesc inputAssemblerState;
@@ -683,7 +682,6 @@ namespace RHI
     struct ComputePipelineCreateInfo
     {
         const char*            name = nullptr;
-
         const char*            shaderName;
         ShaderModule*          shaderModule;
         Handle<PipelineLayout> layout;
@@ -702,7 +700,6 @@ namespace RHI
                           float                   maxLod     = 1.0f);
 
         const char*             name       = nullptr;
-
         SamplerFilter           filterMin  = SamplerFilter::Point;
         SamplerFilter           filterMag  = SamplerFilter::Point;
         SamplerFilter           filterMip  = SamplerFilter::Point;
@@ -714,7 +711,7 @@ namespace RHI
         float                   minLod     = 0.0f;
         float                   maxLod     = 1.0f;
 
-        inline bool             operator==(const SamplerCreateInfo& other) const { return filterMin == other.filterMin && filterMag == other.filterMag && filterMip == other.filterMip && compare == other.compare && mipLodBias == other.mipLodBias && addressU == other.addressU && addressV == other.addressV && addressW == other.addressW && minLod == other.minLod && maxLod == other.maxLod; }
+        inline bool operator==(const SamplerCreateInfo& other) const { return filterMin == other.filterMin && filterMag == other.filterMag && filterMip == other.filterMip && compare == other.compare && mipLodBias == other.mipLodBias && addressU == other.addressU && addressV == other.addressV && addressW == other.addressW && minLod == other.minLod && maxLod == other.maxLod; }
     };
 
     class RHI_EXPORT ShaderModule

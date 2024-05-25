@@ -27,15 +27,15 @@ namespace RHI
     /// @brief Structure specifying the parameters of the swapchain.
     struct SwapchainCreateInfo
     {
-        const char*       name;
-        ImageSize2D       imageSize;   // The size of the images in the swapchian.
-        Flags<ImageUsage> imageUsage;  // Image usage flags applied to all created images.
-        Format            imageFormat; // The format of created swapchain image.
-        uint32_t          imageCount;  // The numer of back buffer images in the swapchain.
+        const char*          name;
+        ImageSize2D          imageSize;   // The size of the images in the swapchian.
+        Flags<ImageUsage>    imageUsage;  // Image usage flags applied to all created images.
+        Format               imageFormat; // The format of created swapchain image.
+        uint32_t             imageCount;  // The numer of back buffer images in the swapchain.
+        SwapchainPresentMode presentMode;
 #ifdef RHI_PLATFORM_WINDOWS
         Win32WindowDesc win32Window; // win32 surface handles. (Availabe only on windows)
 #endif
-        SwapchainPresentMode presentMode;
     };
 
     /// @brief Swapchain object which is an interface between the API and a presentation surface.
@@ -49,25 +49,25 @@ namespace RHI
         virtual ~Swapchain() = default;
 
         /// @brief Get the current image index of the swapchain.
-        uint32_t           GetCurrentImageIndex() const;
+        uint32_t GetCurrentImageIndex() const;
 
         /// @brief Get the number of images in the swapchain.
-        uint32_t           GetImagesCount() const;
+        uint32_t GetImagesCount() const;
 
         /// @brief Get the current acquired swapchain image.
-        Handle<Image>      GetImage() const;
+        Handle<Image> GetImage() const;
 
         /// @brief Get the indexed image in the swapchain images.
-        Handle<Image>      GetImage(uint32_t index) const;
+        Handle<Image> GetImage(uint32_t index) const;
 
         /// @brief Called to invalidate the current swapchain state, when the window is resized.
         virtual ResultCode Recreate(ImageSize2D newSize) = 0;
 
         /// @brief Presents the current image.
-        virtual ResultCode Present()                     = 0;
+        virtual ResultCode Present() = 0;
 
         /// @brief Get the swapchain image view.
-        Handle<ImageView>  GetImageView(const ImageViewCreateInfo& createInfo);
+        Handle<ImageView> GetImageView(const ImageViewCreateInfo& createInfo);
 
     protected:
         Context*            m_context;
@@ -76,9 +76,7 @@ namespace RHI
         SwapchainCreateInfo m_createInfo;
         Handle<Image>       m_images[MaxImageCount];
 
-        // clang-format off
         TL::UnorderedMap<ImageViewCreateInfo, Handle<ImageView>> m_imageViewsLRU;
-        // clang-format on
 
         TL::String m_name;
     };

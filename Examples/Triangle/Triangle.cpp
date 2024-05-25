@@ -114,7 +114,7 @@ public:
 
         m_commandPool->Reset();
 
-        m_commandList[i]->Begin(*m_renderGraph, m_renderPass);
+        m_commandList[i]->Begin(*m_renderGraph, m_renderPass, {}, {});
         m_commandList[i]->SetViewport(viewport);
         m_commandList[i]->SetSicssor(scissor);
         Draw(*m_commandList[i]);
@@ -144,14 +144,12 @@ private:
             for (const auto& handle : node.m_meshes)
             {
                 auto mesh = m_scene->m_staticMeshOwner.Get(handle);
-                RHI::Handle<RHI::BindGroup> bindGroupss[] = { m_bindGroup };
-                drawInfo.bindGroups = bindGroupss;
-                drawInfo.dynamicOffset = { uint32_t(sizeof(Shader::PerDraw) * nodeIndex) };
-                drawInfo.parameters.elementCount = mesh->elementsCount;
+                drawInfo.bindGroups = {{m_bindGroup, uint32_t(sizeof(Shader::PerDraw) * nodeIndex)}};
+                drawInfo.parameters.elementsCount = mesh->elementsCount;
                 drawInfo.vertexBuffers = { mesh->position, mesh->normals };
                 if (mesh->indcies != RHI::NullHandle)
                 {
-                    drawInfo.indexBuffers = mesh->indcies;
+                    drawInfo.indexBuffer = mesh->indcies;
                 }
 
                 commandList.Draw(drawInfo);

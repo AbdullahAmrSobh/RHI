@@ -89,84 +89,82 @@ namespace RHI
     public:
         virtual ~Context() = default;
 
-        // clang-format off
-        Limits                                GetLimits() const;
+        Limits GetLimits() const;
 
-        RHI_NODISCARD Ptr<RenderGraph>        CreateRenderGraph();
+        RHI_NODISCARD Ptr<RenderGraph> CreateRenderGraph();
 
-        void                                  CompileRenderGraph(RenderGraph& renderGraph);
+        void CompileRenderGraph(RenderGraph& renderGraph);
 
-        void                                  ExecuteRenderGraph(RenderGraph& renderGraph, Fence* signalFence = nullptr);
+        void ExecuteRenderGraph(RenderGraph& renderGraph, Fence* signalFence = nullptr);
 
-        RHI_NODISCARD Ptr<Swapchain>          CreateSwapchain(const SwapchainCreateInfo& createInfo);
+        RHI_NODISCARD Ptr<Swapchain> CreateSwapchain(const SwapchainCreateInfo& createInfo);
 
-        RHI_NODISCARD Ptr<ShaderModule>       CreateShaderModule(TL::Span<const uint8_t> shaderBlob);
+        RHI_NODISCARD Ptr<ShaderModule> CreateShaderModule(TL::Span<const uint8_t> shaderBlob);
 
-        RHI_NODISCARD Ptr<Fence>              CreateFence();
+        RHI_NODISCARD Ptr<Fence> CreateFence();
 
-        RHI_NODISCARD Ptr<CommandPool>        CreateCommandPool(CommandPoolFlags flags);
+        RHI_NODISCARD Ptr<CommandPool> CreateCommandPool(CommandPoolFlags flags);
 
-        RHI_NODISCARD Ptr<ResourcePool>       CreateResourcePool(const ResourcePoolCreateInfo& createInfo);
+        RHI_NODISCARD Ptr<ResourcePool> CreateResourcePool(const ResourcePoolCreateInfo& createInfo);
 
         RHI_NODISCARD Handle<BindGroupLayout> CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo);
 
-        void                                  DestroyBindGroupLayout(Handle<BindGroupLayout> handle);
+        void DestroyBindGroupLayout(Handle<BindGroupLayout> handle);
 
-        RHI_NODISCARD Handle<BindGroup>       CreateBindGroup(Handle<BindGroupLayout> handle);
+        RHI_NODISCARD Handle<BindGroup> CreateBindGroup(Handle<BindGroupLayout> handle);
 
-        void                                  DestroyBindGroup(Handle<BindGroup> handle);
+        void DestroyBindGroup(Handle<BindGroup> handle);
 
-        void                                  UpdateBindGroup(Handle<BindGroup> handle, TL::Span<const ResourceBinding> bindings);
+        void UpdateBindGroup(Handle<BindGroup> handle, TL::Span<const ResourceBinding> bindings);
 
-        RHI_NODISCARD Handle<PipelineLayout>  CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo);
+        RHI_NODISCARD Handle<PipelineLayout> CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo);
 
-        void                                  DestroyPipelineLayout(Handle<PipelineLayout> handle);
+        void DestroyPipelineLayout(Handle<PipelineLayout> handle);
 
-        RHI_NODISCARD Handle<GraphicsPipeline>CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo);
+        RHI_NODISCARD Handle<GraphicsPipeline> CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo);
 
-        void                                  DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle);
+        void DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle);
 
         RHI_NODISCARD Handle<ComputePipeline> CreateComputePipeline(const ComputePipelineCreateInfo& createInfo);
 
-        void                                  DestroyComputePipeline(Handle<ComputePipeline> handle);
+        void DestroyComputePipeline(Handle<ComputePipeline> handle);
 
-        RHI_NODISCARD Handle<Sampler>         CreateSampler(const SamplerCreateInfo& createInfo);
+        RHI_NODISCARD Handle<Sampler> CreateSampler(const SamplerCreateInfo& createInfo);
 
-        void                                  DestroySampler(Handle<Sampler> handle);
+        void DestroySampler(Handle<Sampler> handle);
 
-        RHI_NODISCARD Result<Handle<Image>>   CreateImage(const ImageCreateInfo& createInfo);
+        RHI_NODISCARD Result<Handle<Image>> CreateImage(const ImageCreateInfo& createInfo);
 
-        void                                  DestroyImage(Handle<Image> handle);
+        void DestroyImage(Handle<Image> handle);
 
-        RHI_NODISCARD Result<Handle<Buffer>>  CreateBuffer(const BufferCreateInfo& createInfo);
+        RHI_NODISCARD Result<Handle<Buffer>> CreateBuffer(const BufferCreateInfo& createInfo);
 
-        void                                  DestroyBuffer(Handle<Buffer> handle);
+        void DestroyBuffer(Handle<Buffer> handle);
 
-        RHI_NODISCARD Handle<ImageView>       CreateImageView(const ImageViewCreateInfo& createInfo);
+        RHI_NODISCARD Handle<ImageView> CreateImageView(const ImageViewCreateInfo& createInfo);
 
-        void                                  DestroyImageView(Handle<ImageView> handle);
+        void DestroyImageView(Handle<ImageView> handle);
 
-        RHI_NODISCARD Handle<BufferView>      CreateBufferView(const BufferViewCreateInfo& createInfo);
+        RHI_NODISCARD Handle<BufferView> CreateBufferView(const BufferViewCreateInfo& createInfo);
 
-        void                                  DestroyBufferView(Handle<BufferView> handle);
+        void DestroyBufferView(Handle<BufferView> handle);
 
-        RHI_NODISCARD DeviceMemoryPtr         MapBuffer(Handle<Buffer> handle);
+        RHI_NODISCARD DeviceMemoryPtr MapBuffer(Handle<Buffer> handle);
 
-        void                                  UnmapBuffer(Handle<Buffer> handle);
+        void UnmapBuffer(Handle<Buffer> handle);
 
-        void                                  DispatchGraph(RenderGraph& renderGraph);
+        void DispatchGraph(RenderGraph& renderGraph);
 
-        RHI_NODISCARD StagingBuffer           AllocateTempBuffer(size_t size);
+        RHI_NODISCARD StagingBuffer AllocateTempBuffer(size_t size);
 
-        void                                  StageResourceWrite(Handle<Image> image, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset);
+        void StageResourceWrite(Handle<Image> image, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset);
 
-        void                                  StageResourceWrite(Handle<Buffer> buffer, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset);
+        void StageResourceWrite(Handle<Buffer> buffer, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset);
 
-        void                                  StageResourceRead(Handle<Image> image, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset, Fence* fence);
+        void StageResourceRead(Handle<Image> image, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset, Fence* fence);
 
-        void                                  StageResourceRead(Handle<Buffer> buffer, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset, Fence* fence);
+        void StageResourceRead(Handle<Buffer> buffer, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset, Fence* fence);
 
-        // clang-format on
     private:
         void Flush();
 
@@ -221,9 +219,9 @@ namespace RHI
         Ptr<Limits> m_limits;
 
     private:
-        Ptr<DebugCallbacks>        m_debugCallbacks;
-        ResourceTracker*           m_resourceTracker;
-        uint64_t                   m_frameIndex;
+        Ptr<DebugCallbacks> m_debugCallbacks;
+        ResourceTracker*    m_resourceTracker;
+        uint64_t            m_frameIndex;
 
         TL::Vector<Handle<Buffer>> m_stagingBuffers;
 

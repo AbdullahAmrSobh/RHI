@@ -30,13 +30,13 @@ namespace RHI::TL
         template<class _Other>
         constexpr DefaultAllocator(const DefaultAllocator<_Other>&) noexcept;
 
-        constexpr ~DefaultAllocator()                                              = default;
+        constexpr ~DefaultAllocator() = default;
 
-        constexpr DefaultAllocator&             operator=(const DefaultAllocator&) = default;
+        constexpr DefaultAllocator& operator=(const DefaultAllocator&) = default;
 
         RHI_NODISCARD constexpr RHI_EXPORT _Ty* allocate(const size_t count);
 
-        constexpr void                          deallocate(_Ty* const ptr, const size_t count);
+        constexpr void deallocate(_Ty* const ptr, const size_t count);
     };
 
     template<typename _Ty>

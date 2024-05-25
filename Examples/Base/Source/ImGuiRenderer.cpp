@@ -478,13 +478,13 @@ void ImGuiRenderer::RenderDrawData(ImDrawData* drawData, RHI::CommandList& comma
                 commandList.SetSicssor(scissor);
 
                 // Bind texture, Draw
-                RHI::DrawInfo drawInfo{};
-                drawInfo.bindGroups = m_bindGroup;
+                RHI::DrawInfo drawInfo {};
+                drawInfo.bindGroups = {m_bindGroup};
                 drawInfo.pipelineState = m_pipeline;
-                drawInfo.indexBuffers = m_indexBuffer;
-                drawInfo.vertexBuffers = m_vertexBuffer;
-                drawInfo.parameters.elementCount = pcmd->ElemCount;
-                drawInfo.parameters.vertexOffset = pcmd->VtxOffset + globalVtxOffset;
+                drawInfo.indexBuffer = m_indexBuffer;
+                drawInfo.vertexBuffers = {m_vertexBuffer};
+                drawInfo.parameters.elementsCount = pcmd->ElemCount;
+                drawInfo.parameters.vertexOffset = (int32_t)pcmd->VtxOffset + globalVtxOffset;
                 drawInfo.parameters.firstElement = pcmd->IdxOffset + globalIdxOffset;
                 commandList.Draw(drawInfo);
             }

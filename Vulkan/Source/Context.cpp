@@ -609,17 +609,17 @@ namespace RHI::Vulkan
         barrier.subresourceRange.baseArrayLayer = subresources.arrayBase;
         barrier.subresourceRange.layerCount = subresources.arrayCount;
 
-        BufferToImageCopyInfo copyInfo{};
-        copyInfo.dstImage = imageHandle;
-        copyInfo.dstSubresource = subresources;
-        copyInfo.srcBuffer = buffer;
-        copyInfo.srcOffset = bufferOffset;
-        copyInfo.dstSize = image->size;
+        BufferImageCopyInfo copyInfo{};
+        copyInfo.image = imageHandle;
+        copyInfo.subresource = subresources;
+        copyInfo.buffer = buffer;
+        copyInfo.bufferOffset = bufferOffset;
+        copyInfo.imageSize = image->size;
         auto commandList = (ICommandList*)m_commandPool->Allocate(QueueType::Transfer, CommandListLevel::Primary, 1).front();
 
         commandList->Begin();
         commandList->PipelineBarrier({}, {}, barrier);
-        commandList->Copy(copyInfo);
+        commandList->CopyBufferToImage(copyInfo);
 
         barrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
         barrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
@@ -651,7 +651,7 @@ namespace RHI::Vulkan
         copyInfo.size = size;
         auto commandList = (ICommandList*)m_commandPool->Allocate(QueueType::Transfer, CommandListLevel::Primary, 1).front();
         commandList->Begin();
-        commandList->Copy(copyInfo);
+        commandList->CopyBuffer(copyInfo);
         commandList->End();
 
         QueueSubmit(QueueType::Transfer, commandList, {}, { { buffer->waitSemaphore, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT } });

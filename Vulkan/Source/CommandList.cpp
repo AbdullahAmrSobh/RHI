@@ -128,9 +128,12 @@ namespace RHI::Vulkan
         vkBeginCommandBuffer(m_commandBuffer, &beginInfo);
     }
 
-    void ICommandList::Begin(RenderGraph& renderGraph, Handle<Pass> passHandle)
+    void ICommandList::Begin(RenderGraph& renderGraph, Handle<Pass> passHandle, TL::Span<const ClearValue> colorClearValues, const DepthStencilValue& depthStencilClearValue)
     {
         ZoneScoped;
+
+        (void)colorClearValues;       // todo: use
+        (void)depthStencilClearValue; // todo: use
 
         auto pass = renderGraph.m_passOwner.Get(passHandle);
         RenderGraphCompiler::CompilePass(m_context, renderGraph, pass);
@@ -313,36 +316,31 @@ namespace RHI::Vulkan
         auto pipeline = m_context->m_graphicsPipelineOwner.Get(drawInfo.pipelineState);
         vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->handle);
 
-        if (drawInfo.bindGroups.empty() == false)
-        {
-            BindShaderBindGroups(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->layout, drawInfo.bindGroups, drawInfo.dynamicOffset);
-        }
+        BindShaderBindGroups(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->layout, drawInfo.bindGroups);
 
         if (drawInfo.vertexBuffers.empty() == false)
         {
-            uint32_t vertexBuffersCount = 0;
-            VkBuffer vertexBuffers[c_MaxPipelineVertexBindings] = {};
-            VkDeviceSize vertexBufferOffsets[c_MaxPipelineVertexBindings] = {};
-            for (auto handle : drawInfo.vertexBuffers)
+            TL::Vector<VkBuffer> vertexBuffers;
+            TL::Vector<VkDeviceSize> vertexBufferOffsets;
+            for (auto bindingInfo : drawInfo.vertexBuffers)
             {
-                auto buffer = m_context->m_bufferOwner.Get(handle);
-                auto index = vertexBuffersCount++;
-                vertexBuffers[index] = buffer->handle;
-                vertexBufferOffsets[index] = 0;
+                auto buffer = m_context->m_bufferOwner.Get(bindingInfo.buffer);
+                vertexBuffers.push_back(buffer->handle);
+                vertexBufferOffsets.push_back(bindingInfo.offset);
             }
-            vkCmdBindVertexBuffers(m_commandBuffer, 0, vertexBuffersCount, vertexBuffers, vertexBufferOffsets);
+            vkCmdBindVertexBuffers(m_commandBuffer, 0, (uint32_t)vertexBuffers.size(), vertexBuffers.data(), vertexBufferOffsets.data());
         }
 
         auto parameters = drawInfo.parameters;
-        if (drawInfo.indexBuffers != RHI::NullHandle)
+        if (drawInfo.indexBuffer.buffer != RHI::NullHandle)
         {
-            auto buffer = m_context->m_bufferOwner.Get(drawInfo.indexBuffers);
+            auto buffer = m_context->m_bufferOwner.Get(drawInfo.indexBuffer.buffer);
             vkCmdBindIndexBuffer(m_commandBuffer, buffer->handle, 0, VK_INDEX_TYPE_UINT32);
-            vkCmdDrawIndexed(m_commandBuffer, parameters.elementCount, parameters.instanceCount, parameters.firstElement, int32_t(parameters.vertexOffset), uint32_t(parameters.firstInstance));
+            vkCmdDrawIndexed(m_commandBuffer, parameters.elementsCount, parameters.instanceCount, parameters.firstElement, parameters.vertexOffset, parameters.firstInstance);
         }
         else
         {
-            vkCmdDraw(m_commandBuffer, parameters.elementCount, parameters.instanceCount, parameters.firstElement, uint32_t(parameters.firstInstance));
+            vkCmdDraw(m_commandBuffer, parameters.elementsCount, parameters.instanceCount, parameters.firstElement, parameters.firstInstance);
         }
     }
 
@@ -354,13 +352,13 @@ namespace RHI::Vulkan
         vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->handle);
         if (dispatchInfo.bindGroups.size())
         {
-            BindShaderBindGroups(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->layout, dispatchInfo.bindGroups, {});
+            BindShaderBindGroups(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->layout, dispatchInfo.bindGroups);
         }
         auto parameters = dispatchInfo.parameters;
         vkCmdDispatchBase(m_commandBuffer, parameters.offsetX, parameters.offsetY, parameters.offsetZ, parameters.countX, parameters.countY, parameters.countZ);
     }
 
-    void ICommandList::Copy(const BufferCopyInfo& copyInfo)
+    void ICommandList::CopyBuffer(const BufferCopyInfo& copyInfo)
     {
         ZoneScoped;
 
@@ -374,7 +372,7 @@ namespace RHI::Vulkan
         vkCmdCopyBuffer(m_commandBuffer, srcBuffer->handle, dstBuffer->handle, 1, &bufferCopy);
     }
 
-    void ICommandList::Copy(const ImageCopyInfo& copyInfo)
+    void ICommandList::CopyImage(const ImageCopyInfo& copyInfo)
     {
         ZoneScoped;
 
@@ -390,55 +388,59 @@ namespace RHI::Vulkan
         vkCmdCopyImage(m_commandBuffer, srcImage->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
     }
 
-    void ICommandList::Copy(const BufferToImageCopyInfo& copyInfo)
+    void ICommandList::CopyImageToBuffer(const BufferImageCopyInfo& copyInfo)
     {
         ZoneScoped;
 
-        auto srcBuffer = m_context->m_bufferOwner.Get(copyInfo.srcBuffer);
-        auto dstImage = m_context->m_imageOwner.Get(copyInfo.dstImage);
+        auto buffer = m_context->m_bufferOwner.Get(copyInfo.buffer);
+        auto image = m_context->m_imageOwner.Get(copyInfo.image);
 
         VkBufferImageCopy bufferImageCopy{};
-        bufferImageCopy.bufferOffset = copyInfo.srcOffset;
-        bufferImageCopy.bufferRowLength = copyInfo.srcBytesPerRow;
-        bufferImageCopy.bufferImageHeight = copyInfo.srcBytesPerImage;
-        bufferImageCopy.imageSubresource = ConvertSubresourceLayer(copyInfo.dstSubresource);
-        bufferImageCopy.imageOffset = ConvertOffset3D(copyInfo.dstOffset);
-        bufferImageCopy.imageExtent = ConvertExtent3D(copyInfo.dstSize);
-        vkCmdCopyBufferToImage(m_commandBuffer, srcBuffer->handle, dstImage->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferImageCopy);
+        bufferImageCopy.bufferOffset = copyInfo.bufferOffset;
+        bufferImageCopy.bufferRowLength = copyInfo.bytesPerRow;
+        bufferImageCopy.bufferImageHeight = copyInfo.bytesPerImage;
+        bufferImageCopy.imageSubresource = ConvertSubresourceLayer(copyInfo.subresource);
+        bufferImageCopy.imageOffset = ConvertOffset3D(copyInfo.imageOffset);
+        bufferImageCopy.imageExtent = ConvertExtent3D(copyInfo.imageSize);
+        vkCmdCopyImageToBuffer(m_commandBuffer, image->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, buffer->handle, 1, &bufferImageCopy);
     }
 
-    void ICommandList::Copy(const ImageToBufferCopyInfo& copyInfo)
+    void ICommandList::CopyBufferToImage(const BufferImageCopyInfo& copyInfo)
     {
         ZoneScoped;
 
-        auto srcImage = m_context->m_imageOwner.Get(copyInfo.srcImage);
-        auto dstBuffer = m_context->m_bufferOwner.Get(copyInfo.dstBuffer);
+        auto buffer = m_context->m_bufferOwner.Get(copyInfo.buffer);
+        auto image = m_context->m_imageOwner.Get(copyInfo.image);
 
         VkBufferImageCopy bufferImageCopy{};
-        bufferImageCopy.bufferOffset = copyInfo.dstOffset;
-        bufferImageCopy.bufferRowLength = copyInfo.dstBytesPerRow;
-        bufferImageCopy.bufferImageHeight = copyInfo.dstBytesPerImage;
-        bufferImageCopy.imageSubresource = ConvertSubresourceLayer(copyInfo.srcSubresource);
-        bufferImageCopy.imageOffset = ConvertOffset3D(copyInfo.srcOffset);
-        bufferImageCopy.imageExtent = ConvertExtent3D(copyInfo.srcSize);
-        vkCmdCopyImageToBuffer(m_commandBuffer, srcImage->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstBuffer->handle, 1, &bufferImageCopy);
+        bufferImageCopy.bufferOffset = copyInfo.bufferOffset;
+        bufferImageCopy.bufferRowLength = copyInfo.bytesPerRow;
+        bufferImageCopy.bufferImageHeight = copyInfo.bytesPerImage;
+        bufferImageCopy.imageSubresource = ConvertSubresourceLayer(copyInfo.subresource);
+        bufferImageCopy.imageOffset = ConvertOffset3D(copyInfo.imageOffset);
+        bufferImageCopy.imageExtent = ConvertExtent3D(copyInfo.imageSize);
+        vkCmdCopyBufferToImage(m_commandBuffer, buffer->handle, image->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferImageCopy);
     }
 
-    void ICommandList::BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const Handle<BindGroup>> bindGroups, TL::Span<const uint32_t> dynamicOffset)
+    void ICommandList::BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups)
     {
-        uint32_t count = 0;
-        VkDescriptorSet descriptorSets[c_MaxPipelineBindGroupsCount] = {};
-        for (auto bindGroupHandle : bindGroups)
+        if (bindGroups.empty())
+            return;
+
+        TL::Vector<VkDescriptorSet> descriptorSets;
+        TL::Vector<uint32_t> dynamicOffset;
+
+        for (auto bindingInfo : bindGroups)
         {
-            auto bindGroup = m_context->m_bindGroupOwner.Get(bindGroupHandle);
-            descriptorSets[count++] = bindGroup->descriptorSet;
+            auto bindGroup = m_context->m_bindGroupOwner.Get(bindingInfo.bindGroup);
+
+            descriptorSets.push_back(bindGroup->descriptorSet);
+            dynamicOffset.insert(dynamicOffset.end(), bindingInfo.dynamicOffsets.begin(), bindingInfo.dynamicOffsets.end());
         }
-        vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, count, descriptorSets, (uint32_t)dynamicOffset.size(), dynamicOffset.size() ? dynamicOffset.data() : nullptr);
+        vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, uint32_t(descriptorSets.size()), descriptorSets.data(), (uint32_t)dynamicOffset.size(), dynamicOffset.data());
     }
 
-    void ICommandList::PipelineBarrier(TL::Span<const VkMemoryBarrier2> memoryBarriers,
-                                       TL::Span<const VkBufferMemoryBarrier2> bufferBarriers,
-                                       TL::Span<const VkImageMemoryBarrier2> imageBarriers)
+    void ICommandList::PipelineBarrier(TL::Span<const VkMemoryBarrier2> memoryBarriers, TL::Span<const VkBufferMemoryBarrier2> bufferBarriers, TL::Span<const VkImageMemoryBarrier2> imageBarriers)
     {
         VkDependencyInfo dependencyInfo{};
         dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;

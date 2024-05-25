@@ -2,14 +2,14 @@ Language: Cpp
 
 AccessModifierOffset: -4
 AlignAfterOpenBracket: Align
-AlignConsecutiveAssignments: 
+AlignConsecutiveAssignments:
   Enabled: true
-  AcrossEmptyLines: true
-  AcrossComments: true
-AlignConsecutiveDeclarations: 
+  AcrossEmptyLines: false
+  AcrossComments: false
+AlignConsecutiveDeclarations:
   Enabled: true
-  AcrossEmptyLines: true
-  AcrossComments: true
+  AcrossEmptyLines: false
+  AcrossComments: false
 AlignEscapedNewlines: Right
 AlignOperands: true
 AlignTrailingComments: true
