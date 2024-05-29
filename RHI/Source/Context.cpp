@@ -238,13 +238,6 @@ namespace RHI
         return Internal_CreateCommandPool(flags);
     }
 
-    Ptr<ResourcePool> Context::CreateResourcePool(const ResourcePoolCreateInfo& createInfo)
-    {
-        ZoneScoped;
-
-        return Internal_CreateResourcePool(createInfo);
-    }
-
     Handle<BindGroupLayout> Context::CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)
     {
         ZoneScoped;

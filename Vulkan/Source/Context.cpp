@@ -354,17 +354,6 @@ namespace RHI::Vulkan
         return commandPool;
     }
 
-    Ptr<ResourcePool> IContext::Internal_CreateResourcePool(const ResourcePoolCreateInfo& createInfo)
-    {
-        auto resourcePool = CreatePtr<IResourcePool>(this);
-        auto result = resourcePool->Init(createInfo);
-        if (result != VK_SUCCESS)
-        {
-            DebugLogError("Failed to create a resource_pool object");
-        }
-        return resourcePool;
-    }
-
     Handle<BindGroupLayout> IContext::Internal_CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)
     {
         IBindGroupLayout bindGroupLayout{};

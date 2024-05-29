@@ -101,8 +101,8 @@ namespace RHI::Vulkan
 
         this->format = createInfo.format;
         this->imageType = createInfo.imageType;
-        VkResult result = VK_ERROR_UNKNOWN;
 
+        VkResult result;
         if (isTransient)
         {
             result = vkCreateImage(context->m_device, &createInfo, nullptr, &handle);
@@ -110,16 +110,6 @@ namespace RHI::Vulkan
         else
         {
             VmaAllocationCreateInfo allocationInfo{};
-
-            if (_createInfo.allocationInfo.pool)
-            {
-                auto resourcePool = (IResourcePool*)_createInfo.allocationInfo.pool;
-                allocationInfo.pool = resourcePool->m_pool;
-            }
-            else
-            {
-            }
-
             result = vmaCreateImage(context->m_allocator, &createInfo, &allocationInfo, &handle, &allocation.handle, &allocation.info);
         }
 
@@ -134,13 +124,9 @@ namespace RHI::Vulkan
     void IImage::Shutdown(IContext* context)
     {
         if (isTransient)
-        {
             vkDestroyImage(context->m_device, handle, nullptr);
-        }
         else
-        {
             vmaDestroyImage(context->m_allocator, handle, allocation.handle);
-        }
     }
 
     VkMemoryRequirements IImage::GetMemoryRequirements(VkDevice device) const
@@ -154,8 +140,10 @@ namespace RHI::Vulkan
     /// Buffer
     ///////////////////////////////////////////////////////////////////////////
 
-    ResultCode IBuffer::Init(IContext* context, const BufferCreateInfo& _createInfo, bool isTransient)
+    ResultCode IBuffer::Init(IContext* context, const BufferCreateInfo& _createInfo, bool _isTransient)
     {
+        isTransient = _isTransient;
+
         VkBufferCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         createInfo.pNext = nullptr;
@@ -166,7 +154,7 @@ namespace RHI::Vulkan
         createInfo.queueFamilyIndexCount = 0;
         createInfo.pQueueFamilyIndices = nullptr;
 
-        VkResult result = VK_ERROR_UNKNOWN;
+        VkResult result;
         if (isTransient)
         {
             result = vkCreateBuffer(context->m_device, &createInfo, nullptr, &handle);
@@ -174,18 +162,8 @@ namespace RHI::Vulkan
         else
         {
             VmaAllocationCreateInfo allocationInfo{};
-
-            if (_createInfo.allocationInfo.pool)
-            {
-                auto resourcePool = (IResourcePool*)_createInfo.allocationInfo.pool;
-                allocationInfo.pool = resourcePool->m_pool;
-            }
-            else
-            {
-                allocationInfo.usage = _createInfo.allocationInfo.heapType == MemoryType::GPUShared ? VMA_MEMORY_USAGE_AUTO_PREFER_HOST : VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-                allocationInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
-            }
-
+            allocationInfo.usage = _createInfo.heapType == MemoryType::GPUShared ? VMA_MEMORY_USAGE_AUTO_PREFER_HOST : VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+            allocationInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
             result = vmaCreateBuffer(context->m_allocator, &createInfo, &allocationInfo, &handle, &allocation.handle, &allocation.info);
         }
 
@@ -199,14 +177,10 @@ namespace RHI::Vulkan
 
     void IBuffer::Shutdown(IContext* context)
     {
-        if (pool)
-        {
-            vmaDestroyBuffer(context->m_allocator, handle, allocation.handle);
-        }
-        else
-        {
+        if (isTransient)
             vkDestroyBuffer(context->m_device, handle, nullptr);
-        }
+        else
+            vmaDestroyBuffer(context->m_allocator, handle, allocation.handle);
     }
 
     VkMemoryRequirements IBuffer::GetMemoryRequirements(VkDevice device) const
@@ -860,31 +834,6 @@ namespace RHI::Vulkan
 
             return vkCreateShaderModule(context->m_device, &moduleCreateInfo, nullptr, &m_shaderModule);
         }
-    }
-
-    ///////////////////////////////////////////////////////////////////////////
-    /// ResourcePool
-    ///////////////////////////////////////////////////////////////////////////
-
-    IResourcePool::~IResourcePool()
-    {
-        vmaDestroyPool(m_context->m_allocator, m_pool);
-    }
-
-    VkResult IResourcePool::Init(const ResourcePoolCreateInfo& createInfo)
-    {
-        m_poolInfo = createInfo;
-
-        VmaPoolCreateInfo poolCreateInfo{};
-        poolCreateInfo.flags = VMA_POOL_CREATE_IGNORE_BUFFER_IMAGE_GRANULARITY_BIT;
-        poolCreateInfo.blockSize = createInfo.blockSize;
-        poolCreateInfo.minBlockCount = createInfo.minBlockCount;
-        poolCreateInfo.maxBlockCount = createInfo.maxBlockCount;
-        poolCreateInfo.priority = 1.0f;
-        poolCreateInfo.minAllocationAlignment = createInfo.minBlockAlignment;
-        poolCreateInfo.pMemoryAllocateNext = nullptr;
-        poolCreateInfo.memoryTypeIndex = m_context->GetMemoryTypeIndex(MemoryType::GPULocal);
-        return vmaCreatePool(m_context->m_allocator, &poolCreateInfo, &m_pool);
     }
 
     ///////////////////////////////////////////////////////////////////////////

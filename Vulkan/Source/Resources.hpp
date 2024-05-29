@@ -11,7 +11,6 @@ namespace RHI::Vulkan
     struct IBindGroupLayout;
 
     class IContext;
-    class IResourcePool;
     class ISwapchain;
 
     struct Allocation
@@ -45,7 +44,6 @@ namespace RHI::Vulkan
     {
         // TODO: break down to several parallel structures
         Allocation allocation; // allocation backing this resource.
-        IResourcePool* pool;   // Pointer to the pool this resource is created from.
         VkImage handle;        // Handle to valid VkImage resource (Might not be backed by an allocation).
         VkFormat format;       // Image pixel Format
         VkImageType imageType; // Image dimensions
@@ -57,7 +55,7 @@ namespace RHI::Vulkan
         uint32_t queueFamilyIndex;
         VkImageLayout initalLayout;
 
-        bool isTransient; // if this resource is
+        bool isTransient;
 
         ResultCode Init(IContext* context, const ImageCreateInfo& createInfo, bool isTransient = false);
         void Shutdown(IContext* context);
@@ -69,13 +67,14 @@ namespace RHI::Vulkan
     {
         // TODO: break down to several parallel structures
         Allocation allocation; // allocation backing this resource.
-        IResourcePool* pool;   // Pointer to the pool this resource is created from.
         VkBuffer handle;       // Handle to valid VkImage resource (Might not be backed by an allocation).
 
         VkSemaphore waitSemaphore;   // wait semaphore: if the content of this resource is being written by the framescheduler (wait on this semaphore)
         VkSemaphore signalSemaphore; // signal semaphore: if the content of this resource is being read by the frameschduler (signal this semaphore)
 
         uint32_t queueFamilyIndex;
+
+        bool isTransient;
 
         ResultCode Init(IContext* context, const BufferCreateInfo& createInfo, bool isTransient = false);
         void Shutdown(IContext* context);
@@ -169,24 +168,6 @@ namespace RHI::Vulkan
     public:
         IContext* m_context;
         VkShaderModule m_shaderModule;
-    };
-
-    class IResourcePool final : public ResourcePool
-    {
-    public:
-        IResourcePool(IContext* context)
-            : m_context(context)
-        {
-        }
-
-        ~IResourcePool();
-
-        VkResult Init(const ResourcePoolCreateInfo& createInfo);
-
-    public:
-        IContext* m_context;
-        VmaPool m_pool;
-        ResourcePoolCreateInfo m_poolInfo;
     };
 
     class IFence final : public Fence

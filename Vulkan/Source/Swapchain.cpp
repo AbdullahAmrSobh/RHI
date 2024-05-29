@@ -223,7 +223,6 @@ namespace RHI::Vulkan
         for (uint32_t imageIndex = 0; imageIndex < m_swapchainImagesCount; imageIndex++)
         {
             IImage image{};
-            image.pool = nullptr;
             image.handle = images[imageIndex];
             image.format = m_surfaceFormat.format;
             image.imageType = VK_IMAGE_TYPE_2D;

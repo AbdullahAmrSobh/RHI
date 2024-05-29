@@ -67,7 +67,6 @@ namespace RHI::Vulkan
         Ptr<ShaderModule>        Internal_CreateShaderModule(TL::Span<const uint8_t> shaderBlob) override;
         Ptr<Fence>               Internal_CreateFence() override;
         Ptr<CommandPool>         Internal_CreateCommandPool(CommandPoolFlags flags) override;
-        Ptr<ResourcePool>        Internal_CreateResourcePool(const ResourcePoolCreateInfo& createInfo) override;
         Handle<BindGroupLayout>  Internal_CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) override;
         void                     Internal_DestroyBindGroupLayout(Handle<BindGroupLayout> handle) override;
         Handle<BindGroup>        Internal_CreateBindGroup(Handle<BindGroupLayout> handle, uint32_t bindlessElementsCount) override;

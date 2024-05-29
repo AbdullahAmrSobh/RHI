@@ -24,7 +24,6 @@ namespace RHI
     struct BufferAttachment;
 
     class ShaderModule;
-    class ResourcePool;
     class RenderGraph;
 
     // clang-format off
@@ -571,30 +570,10 @@ namespace RHI
         float                         blendConstants[4];
     };
 
-    /// @brief Represent the creation parameters of an resource pool.
-    struct ResourcePoolCreateInfo
-    {
-        AllocationAlgorithm allocationAlgorithm = AllocationAlgorithm::Linear;
-        MemoryType          heapType;
-        size_t              blockSize;
-        size_t              minBlockCount;
-        size_t              maxBlockCount;
-        size_t              minBlockAlignment;
-    };
-
-    struct AllocationInfo
-    {
-        // optional pool which the resource will be allocated from
-        /// @note: if a pool specified, the pool's settings will override
-        ResourcePool* pool;
-        MemoryType    heapType;
-    };
-
     /// @brief Represent the creation parameters of an image resource.
     struct ImageCreateInfo
     {
         const char*       name = nullptr;
-        AllocationInfo    allocationInfo;
         Flags<ImageUsage> usageFlags;                          // Usage flags.
         ImageType         type;                                // The type of the image.
         ImageSize3D       size;                                // The size of the image.
@@ -610,7 +589,7 @@ namespace RHI
     struct BufferCreateInfo
     {
         const char*        name = nullptr;
-        AllocationInfo     allocationInfo;
+        MemoryType         heapType;
         Flags<BufferUsage> usageFlags; // Usage flags.
         size_t             byteSize;   // The size of the buffer.
 
@@ -709,13 +688,6 @@ namespace RHI
     public:
         ShaderModule()          = default;
         virtual ~ShaderModule() = default;
-    };
-
-    class RHI_EXPORT ResourcePool
-    {
-    public:
-        ResourcePool()          = default;
-        virtual ~ResourcePool() = default;
     };
 
     /// @brief Fence object used to preform CPU-GPU sync
