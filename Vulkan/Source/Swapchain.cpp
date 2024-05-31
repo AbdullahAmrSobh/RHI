@@ -21,11 +21,13 @@ namespace RHI::Vulkan
 
     ISwapchain::ISwapchain(IContext* context)
         : Swapchain(context)
-        , m_imageAcquiredSemaphore(VK_NULL_HANDLE)
-        , m_frameReadySemaphore(VK_NULL_HANDLE)
         , m_swapchain(VK_NULL_HANDLE)
         , m_surface(VK_NULL_HANDLE)
-        , m_lastPresentResult(VK_ERROR_UNKNOWN)
+        , m_imageAcquiredSemaphore()
+        , m_presentWaitSemaphore()
+        , m_lastPresentResult()
+        , m_compositeAlpha()
+        , m_surfaceFormat()
     {
         ZoneScoped;
     }
@@ -34,25 +36,34 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto context = static_cast<IContext*>(m_context);
+        auto context = (IContext*)m_context;
         vkDestroySwapchainKHR(context->m_device, m_swapchain, nullptr);
         vkDestroySurfaceKHR(context->m_instance, m_surface, nullptr);
-        vkDestroySemaphore(context->m_device, m_imageAcquiredSemaphore, nullptr);
-        vkDestroySemaphore(context->m_device, m_frameReadySemaphore, nullptr);
+        for (uint32_t i = 0; i < MaxImageCount; i++)
+        {
+            if (auto semaphore = m_imageAcquiredSemaphore[i]; semaphore != VK_NULL_HANDLE)
+                vkDestroySemaphore(context->m_device, semaphore, nullptr);
+
+            if (auto semaphore = m_presentWaitSemaphore[i]; semaphore != VK_NULL_HANDLE)
+                vkDestroySemaphore(context->m_device, semaphore, nullptr);
+        }
     }
 
     VkResult ISwapchain::Init(const SwapchainCreateInfo& createInfo)
     {
         ZoneScoped;
 
-        auto context = static_cast<IContext*>(m_context);
+        auto context = (IContext*)m_context;
 
         m_createInfo = createInfo;
         m_name = createInfo.name ? createInfo.name : "";
         m_createInfo.name = m_name.c_str();
 
-        m_imageAcquiredSemaphore = context->CreateSemaphore("Swapchain-ImageAcquired");
-        m_frameReadySemaphore = context->CreateSemaphore("Swapchain-ImageReady");
+        for (uint32_t i = 0; i < MaxImageCount; i++)
+        {
+            m_imageAcquiredSemaphore[i] = context->CreateSemaphore("Swapchain-ImageAcquired");
+            m_presentWaitSemaphore[i] = context->CreateSemaphore("Swapchain-ImageReady");
+        }
 
         InitSurface(createInfo);
 
@@ -155,39 +166,43 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto context = static_cast<IContext*>(m_context);
+        auto context = (IContext*)m_context;
+
+        VkSemaphore waitSemaphore = GetFrameReadySemaphore();
 
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         presentInfo.pNext = nullptr;
         presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = &m_frameReadySemaphore;
+        presentInfo.pWaitSemaphores = &waitSemaphore;
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = &m_swapchain;
         presentInfo.pImageIndices = &m_currentImageIndex;
         presentInfo.pResults = &m_lastPresentResult;
         auto result = vkQueuePresentKHR(context->m_presentQueue, &presentInfo);
-        if (result != VK_ERROR_OUT_OF_DATE_KHR && result != VK_SUBOPTIMAL_KHR)
-        {
-            VULKAN_ASSERT_SUCCESS(result);
-        }
+        VULKAN_ASSERT_SUCCESS(result);
 
-        /// @todo: fix this by using per image semaphore
-        vkDeviceWaitIdle(context->m_device);
-
-        result = vkAcquireNextImageKHR(context->m_device, m_swapchain, UINT64_MAX, m_imageAcquiredSemaphore, VK_NULL_HANDLE, &m_currentImageIndex);
-        if (result != VK_ERROR_OUT_OF_DATE_KHR && result != VK_SUBOPTIMAL_KHR)
-        {
-            VULKAN_ASSERT_SUCCESS(result);
-        }
+        m_currentImageIndex = (m_currentImageIndex + 1) % m_swapchainImagesCount;
+        auto signalSemaphore = GetImageReadySemaphore();
+        result = vkAcquireNextImageKHR(context->m_device, m_swapchain, UINT64_MAX, signalSemaphore, VK_NULL_HANDLE, &m_currentImageIndex);
+        VULKAN_ASSERT_SUCCESS(result);
 
         return ResultCode::Success;
     }
 
+    VkSemaphore ISwapchain::GetImageReadySemaphore() const
+    {
+        return m_imageAcquiredSemaphore[GetCurrentImageIndex()];
+    }
+
+    VkSemaphore ISwapchain::GetFrameReadySemaphore() const
+    {
+        return m_presentWaitSemaphore[GetCurrentImageIndex()];
+    }
+
     VkResult ISwapchain::InitSwapchain()
     {
-        auto context = static_cast<IContext*>(m_context);
-
+        auto context = (IContext*)m_context;
         VkSwapchainCreateInfoKHR createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
         createInfo.pNext = nullptr;
@@ -228,7 +243,7 @@ namespace RHI::Vulkan
             image.imageType = VK_IMAGE_TYPE_2D;
             m_images[imageIndex] = context->m_imageOwner.Emplace(std::move(image));
         }
-        result = vkAcquireNextImageKHR(context->m_device, m_swapchain, UINT64_MAX, m_imageAcquiredSemaphore, VK_NULL_HANDLE, &m_currentImageIndex);
+        result = vkAcquireNextImageKHR(context->m_device, m_swapchain, UINT64_MAX, m_imageAcquiredSemaphore[0], VK_NULL_HANDLE, &m_currentImageIndex);
         VULKAN_ASSERT_SUCCESS(result);
 
         return result;

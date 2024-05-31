@@ -126,14 +126,15 @@ void ApplicationBase::Init()
 
     m_swapchain = m_context->CreateSwapchain(createInfo);
 
-    m_commandPool = m_context->CreateCommandPool(RHI::CommandPoolFlags::Reset);
+    m_commandPool[0] = m_context->CreateCommandPool(RHI::CommandPoolFlags::Reset);
+    m_commandPool[1] = m_context->CreateCommandPool(RHI::CommandPoolFlags::Reset);
 
     OnInit();
 
     ImGuiRendererCreateInfo imguiRendererCreateInfo{};
     imguiRendererCreateInfo.context = m_context.get();
     imguiRendererCreateInfo.shaderBlob = ReadBinaryFile("./Shaders/ImGui.spv");
-    imguiRendererCreateInfo.commandAllocator = m_commandPool.get();
+    imguiRendererCreateInfo.commandAllocator = m_commandPool[0].get();
     m_imguiRenderer->Init(imguiRendererCreateInfo);
 
     ImGuiIO& io = ImGui::GetIO();

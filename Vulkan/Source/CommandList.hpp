@@ -27,7 +27,7 @@ namespace RHI::Vulkan
 
     private:
         IContext* m_context;
-        TL::Vector<VkCommandPool> m_commandPools[uint32_t(QueueType::Count)];
+        VkCommandPool m_commandPools[uint32_t(QueueType::Count)];
     };
 
     class ICommandList final : public CommandList

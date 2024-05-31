@@ -69,7 +69,7 @@ protected:
 
     RHI::Ptr<ImGuiRenderer> m_imguiRenderer;
 
-    RHI::Ptr<RHI::CommandPool> m_commandPool;
+    RHI::Ptr<RHI::CommandPool> m_commandPool[2];
 
     void* m_window;
 

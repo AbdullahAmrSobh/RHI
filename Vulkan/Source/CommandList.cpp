@@ -18,12 +18,9 @@ namespace RHI::Vulkan
 
     ICommandPool::~ICommandPool()
     {
-        for (auto queueCommandPool : m_commandPools)
+        for (auto commandPool : m_commandPools)
         {
-            for (auto commandPool : queueCommandPool)
-            {
-                vkDestroyCommandPool(m_context->m_device, commandPool, nullptr);
-            }
+            vkDestroyCommandPool(m_context->m_device, commandPool, nullptr);
         }
     }
 
@@ -33,20 +30,16 @@ namespace RHI::Vulkan
 
         for (uint32_t queueType = 0; queueType < uint32_t(QueueType::Count); queueType++)
         {
-            m_commandPools[(queueType)].resize(2);
-            for (auto& commandPool : m_commandPools[(queueType)])
+            VkCommandPoolCreateInfo createInfo;
+            createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+            createInfo.pNext = nullptr;
+            createInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+            createInfo.queueFamilyIndex = m_context->GetQueueFamilyIndex(QueueType(queueType));
+            auto result = vkCreateCommandPool(m_context->m_device, &createInfo, nullptr, &m_commandPools[queueType]);
+            RHI_ASSERT(result == VK_SUCCESS);
+            if (result != VK_SUCCESS)
             {
-                VkCommandPoolCreateInfo createInfo;
-                createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-                createInfo.pNext = nullptr;
-                createInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
-                createInfo.queueFamilyIndex = m_context->GetQueueFamilyIndex(QueueType(queueType));
-                auto result = vkCreateCommandPool(m_context->m_device, &createInfo, nullptr, &commandPool);
-                RHI_ASSERT(result == VK_SUCCESS);
-                if (result != VK_SUCCESS)
-                {
-                    return result;
-                }
+                return result;
             }
         }
 
@@ -55,18 +48,15 @@ namespace RHI::Vulkan
 
     void ICommandPool::Reset()
     {
-        for (auto queueCommandPool : m_commandPools)
+        for (auto commandPool : m_commandPools)
         {
-            for (auto commandPool : queueCommandPool)
-            {
-                vkResetCommandPool(m_context->m_device, commandPool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
-            }
+            vkResetCommandPool(m_context->m_device, commandPool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
         }
     }
 
     TL::Vector<CommandList*> ICommandPool::Allocate(QueueType queueType, CommandListLevel level, uint32_t count)
     {
-        auto commandPool = m_commandPools[uint32_t(queueType)][0];
+        auto commandPool = m_commandPools[uint32_t(queueType)];
         auto commandBuffers = AllocateCommandBuffers(commandPool, count, level == CommandListLevel::Primary ? VK_COMMAND_BUFFER_LEVEL_PRIMARY : VK_COMMAND_BUFFER_LEVEL_SECONDARY);
         TL::Vector<CommandList*> commandLists;
         for (auto commandBuffer : commandBuffers)

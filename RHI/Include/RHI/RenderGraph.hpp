@@ -111,29 +111,25 @@ namespace RHI
 
     struct ImageAttachmentList
     {
-        RenderGraph*       renderGraph;
-        TL::String         name;
-        AttachmentLifetime lifetime;
-        uint32_t           referenceCount;
-
-        Handle<Image>   handle;
-        ImageCreateInfo info;
-        Swapchain*      swapchain;
-
+        RenderGraph*            renderGraph;
+        TL::String              name;
+        AttachmentLifetime      lifetime;
+        uint32_t                referenceCount;
+        Handle<Image>           handle;
+        ImageCreateInfo         info;
+        Swapchain*              swapchain;
         Handle<ImageAttachment> begin;
         Handle<ImageAttachment> end;
     };
 
     struct BufferAttachmentList
     {
-        RenderGraph*       renderGraph;
-        TL::String         name;
-        AttachmentLifetime lifetime;
-        uint32_t           referenceCount;
-
-        Handle<Buffer>   handle;
-        BufferCreateInfo info;
-
+        RenderGraph*             renderGraph;
+        TL::String               name;
+        AttachmentLifetime       lifetime;
+        uint32_t                 referenceCount;
+        Handle<Buffer>           handle;
+        BufferCreateInfo         info;
         Handle<BufferAttachment> begin;
         Handle<BufferAttachment> end;
     };
@@ -147,26 +143,20 @@ namespace RHI
 
     struct ImageAttachment final : public Attachment
     {
-        ImageAttachmentUseInfo useInfo;
-
+        ImageAttachmentUseInfo      useInfo;
         Handle<ImageAttachmentList> list;
-
-        Handle<ImageAttachment> next;
-        Handle<ImageAttachment> prev;
-
-        Handle<ImageView> view;
+        Handle<ImageAttachment>     next;
+        Handle<ImageAttachment>     prev;
+        Handle<ImageView>           view;
     };
 
     struct BufferAttachment final : public Attachment
     {
-        BufferAttachmentUseInfo useInfo;
-
+        BufferAttachmentUseInfo      useInfo;
         Handle<BufferAttachmentList> list;
-
-        Handle<BufferAttachment> next;
-        Handle<BufferAttachment> prev;
-
-        Handle<BufferView> view;
+        Handle<BufferAttachment>     next;
+        Handle<BufferAttachment>     prev;
+        Handle<BufferView>           view;
     };
 
     namespace Vulkan

@@ -63,8 +63,8 @@ public:
 
         m_context->CompileRenderGraph(*m_renderGraph);
 
-        m_commandList[0] = m_commandPool->Allocate(RHI::QueueType::Graphics, RHI::CommandListLevel::Primary);
-        m_commandList[1] = m_commandPool->Allocate(RHI::QueueType::Graphics, RHI::CommandListLevel::Primary);
+        m_commandList[0] = m_commandPool[0]->Allocate(RHI::QueueType::Graphics, RHI::CommandListLevel::Primary);
+        m_commandList[1] = m_commandPool[1]->Allocate(RHI::QueueType::Graphics, RHI::CommandListLevel::Primary);
 
         SetupGPUResources(m_scene->m_perDrawData);
         LoadPipeline("./Shaders/Basic.spv");
@@ -76,8 +76,8 @@ public:
 
         m_scene->Shutdown(*m_context);
 
-        m_commandPool->Release(m_commandList[0]);
-        m_commandPool->Release(m_commandList[1]);
+        m_commandPool[0]->Release(m_commandList[0]);
+        m_commandPool[1]->Release(m_commandList[1]);
     }
 
     void OnUpdate(Timestep timestep) override
@@ -112,8 +112,7 @@ public:
         static int i = 0;
         i = i & 1 ? 0 : 1;
 
-        m_commandPool->Reset();
-
+        m_commandPool[i]->Reset();
         m_commandList[i]->Begin(*m_renderGraph, m_renderPass, {}, {});
         m_commandList[i]->SetViewport(viewport);
         m_commandList[i]->SetSicssor(scissor);

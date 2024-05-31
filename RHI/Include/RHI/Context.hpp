@@ -22,9 +22,7 @@ namespace RHI
 
     enum class Backend
     {
-        Validate,
         Vulkan13,
-        DirectX12,
     };
 
     enum class DeviceType
@@ -56,14 +54,6 @@ namespace RHI
         Version     applicationVersion; // The version of the users application.
         const char* engineName;         // The version of the users application.
         Version     engineVersion;      // The version of the users application.
-    };
-
-    struct DeviceProperties
-    {
-        uint32_t    id;
-        const char* name;
-        DeviceType  type;
-        Vendor      vendor;
     };
 
     struct Limits

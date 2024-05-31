@@ -7,6 +7,12 @@
 #include "RHI/Common/Span.hpp"
 #include "RHI/Common/Hash.hpp"
 
+// TODO: Remove default struct POD feilds, nested types constructors
+// and unused types, unused operators. Move constants to where they
+// are releavnt, switch to screaming snake case.
+// collect forward declerations into a single header file, and cleanup includes
+//
+
 namespace RHI
 {
     inline static constexpr uint32_t c_MaxRenderTargetAttachmentsCount           = 16u;
@@ -730,11 +736,6 @@ namespace RHI
         , minLod(minLod)
         , maxLod(maxLod)
     {
-    }
-
-    inline static bool IsAccessWrite(Access access)
-    {
-        return access == Access::ReadWrite || access == Access::Write;
     }
 } // namespace RHI
 
