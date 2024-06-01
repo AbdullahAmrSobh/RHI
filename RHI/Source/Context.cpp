@@ -113,6 +113,7 @@ namespace RHI
     {
         ZoneScoped;
 
+        RHI_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreateBindGroupLayout(createInfo);
     }
 
@@ -148,6 +149,7 @@ namespace RHI
     {
         ZoneScoped;
 
+        RHI_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreatePipelineLayout(createInfo);
     }
 
@@ -162,6 +164,7 @@ namespace RHI
     {
         ZoneScoped;
 
+        RHI_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreateGraphicsPipeline(createInfo);
     }
 
@@ -176,6 +179,7 @@ namespace RHI
     {
         ZoneScoped;
 
+        RHI_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreateComputePipeline(createInfo);
     }
 
@@ -190,6 +194,7 @@ namespace RHI
     {
         ZoneScoped;
 
+        RHI_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreateSampler(createInfo);
     }
 
@@ -204,34 +209,7 @@ namespace RHI
     {
         ZoneScoped;
 
-        RHI_ASSERT(createInfo.usageFlags != ImageUsage::None);
-        RHI_ASSERT(createInfo.type != ImageType::None);
-
-        if (createInfo.type == ImageType::Image1D)
-        {
-            RHI_ASSERT(createInfo.size.width >= 1);
-            RHI_ASSERT(createInfo.size.height == 1);
-            RHI_ASSERT(createInfo.size.depth == 1);
-        }
-        else if (createInfo.type == ImageType::Image2D)
-        {
-            RHI_ASSERT(createInfo.size.width >= 1);
-            RHI_ASSERT(createInfo.size.height >= 1);
-            RHI_ASSERT(createInfo.size.depth == 1);
-        }
-        else if (createInfo.type == ImageType::Image3D)
-        {
-            RHI_ASSERT(createInfo.size.width >= 1);
-            RHI_ASSERT(createInfo.size.height >= 1);
-            RHI_ASSERT(createInfo.size.depth >= 1);
-        }
-        else
-        {
-            RHI_UNREACHABLE();
-        }
-
-        RHI_ASSERT(createInfo.format != Format::Unknown);
-
+        RHI_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreateImage(createInfo);
     }
 
@@ -246,9 +224,7 @@ namespace RHI
     {
         ZoneScoped;
 
-        RHI_ASSERT(createInfo.usageFlags != BufferUsage::None);
-        RHI_ASSERT(createInfo.byteSize != 0);
-
+        RHI_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreateBuffer(createInfo);
     }
 
@@ -263,6 +239,7 @@ namespace RHI
     {
         ZoneScoped;
 
+        RHI_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreateImageView(createInfo);
     }
 
@@ -277,6 +254,7 @@ namespace RHI
     {
         ZoneScoped;
 
+        RHI_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreateBufferView(createInfo);
     }
 
@@ -342,6 +320,65 @@ namespace RHI
         Internal_StageResourceRead(buffer, offset, size, srcBuffer, srcOffset, fence);
     }
 
+    bool Context::ValidateCreateInfo(const SwapchainCreateInfo& createInfo) const
+    {
+        (void)createInfo;
+        return true;
+    }
+
+    bool Context::ValidateCreateInfo(const BindGroupLayoutCreateInfo& createInfo) const
+    {
+        (void)createInfo;
+        return true;
+    }
+
+    bool Context::ValidateCreateInfo(const PipelineLayoutCreateInfo& createInfo) const
+    {
+        (void)createInfo;
+        return true;
+    }
+
+    bool Context::ValidateCreateInfo(const GraphicsPipelineCreateInfo& createInfo) const
+    {
+        (void)createInfo;
+        return true;
+    }
+
+    bool Context::ValidateCreateInfo(const ComputePipelineCreateInfo& createInfo) const
+    {
+        (void)createInfo;
+        return true;
+    }
+
+    bool Context::ValidateCreateInfo(const SamplerCreateInfo& createInfo) const
+    {
+        (void)createInfo;
+        return true;
+    }
+
+    bool Context::ValidateCreateInfo(const ImageCreateInfo& createInfo) const
+    {
+        (void)createInfo;
+        return true;
+    }
+
+    bool Context::ValidateCreateInfo(const BufferCreateInfo& createInfo) const
+    {
+        (void)createInfo;
+        return true;
+    }
+
+    bool Context::ValidateCreateInfo(const ImageViewCreateInfo& createInfo) const
+    {
+        (void)createInfo;
+        return true;
+    }
+
+    bool Context::ValidateCreateInfo(const BufferViewCreateInfo& createInfo) const
+    {
+        (void)createInfo;
+        return true;
+    }
 
     void Context::DebugLogError(std::string_view message)
     {

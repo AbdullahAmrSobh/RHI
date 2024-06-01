@@ -147,6 +147,18 @@ namespace RHI
 
         void StageResourceRead(Handle<Buffer> buffer, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset, Fence* fence);
 
+    private:
+        bool ValidateCreateInfo(const SwapchainCreateInfo& createInfo) const;
+        bool ValidateCreateInfo(const BindGroupLayoutCreateInfo& createInfo) const;
+        bool ValidateCreateInfo(const PipelineLayoutCreateInfo& createInfo) const;
+        bool ValidateCreateInfo(const GraphicsPipelineCreateInfo& createInfo) const;
+        bool ValidateCreateInfo(const ComputePipelineCreateInfo& createInfo) const;
+        bool ValidateCreateInfo(const SamplerCreateInfo& createInfo) const;
+        bool ValidateCreateInfo(const ImageCreateInfo& createInfo) const;
+        bool ValidateCreateInfo(const BufferCreateInfo& createInfo) const;
+        bool ValidateCreateInfo(const ImageViewCreateInfo& createInfo) const;
+        bool ValidateCreateInfo(const BufferViewCreateInfo& createInfo) const;
+
     protected:
         Context(Ptr<DebugCallbacks> debugCallbacks);
 
