@@ -128,7 +128,7 @@ public:
 
         m_context->ExecuteRenderGraph(*m_renderGraph);
 
-        m_swapchain->Present();
+        (void)m_swapchain->Present();
     }
 
 private:

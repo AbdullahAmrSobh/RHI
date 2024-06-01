@@ -4,6 +4,7 @@
 #include "Resources.hpp"
 #include "Swapchain.hpp"
 #include "RenderGraphCompiler.hpp"
+#include "VulkanFunctions.hpp"
 
 #include <RHI/Format.hpp>
 
@@ -24,26 +25,19 @@ namespace RHI::Vulkan
         }
     }
 
-    VkResult ICommandPool::Init(CommandPoolFlags flags)
+    ResultCode ICommandPool::Init(CommandPoolFlags flags)
     {
-        (void)flags;
-
         for (uint32_t queueType = 0; queueType < uint32_t(QueueType::Count); queueType++)
         {
             VkCommandPoolCreateInfo createInfo;
             createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
             createInfo.pNext = nullptr;
-            createInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+            createInfo.flags = ConvertCommandPoolFlags(flags);
             createInfo.queueFamilyIndex = m_context->GetQueueFamilyIndex(QueueType(queueType));
-            auto result = vkCreateCommandPool(m_context->m_device, &createInfo, nullptr, &m_commandPools[queueType]);
-            RHI_ASSERT(result == VK_SUCCESS);
-            if (result != VK_SUCCESS)
-            {
-                return result;
-            }
+            TryValidateVk(vkCreateCommandPool(m_context->m_device, &createInfo, nullptr, &m_commandPools[queueType]));
         }
 
-        return VK_SUCCESS;
+        return ResultCode::Success;
     }
 
     void ICommandPool::Reset()
@@ -193,7 +187,7 @@ namespace RHI::Vulkan
         (void)color;
 
 #if RHI_DEBUG
-        if (m_context->m_vkCmdDebugMarkerBeginEXT)
+        if (m_context->m_fnTable->m_cmdDebugMarkerBeginEXT)
         {
             VkDebugMarkerMarkerInfoEXT info{};
             info.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT;
@@ -203,7 +197,7 @@ namespace RHI::Vulkan
             info.color[1] = color.g;
             info.color[2] = color.b;
             info.color[3] = color.a;
-            m_context->m_vkCmdDebugMarkerBeginEXT(m_commandBuffer, &info);
+            m_context->m_fnTable->m_cmdDebugMarkerBeginEXT(m_commandBuffer, &info);
         }
 #endif
     }
@@ -213,9 +207,9 @@ namespace RHI::Vulkan
         ZoneScoped;
 
 #if RHI_DEBUG
-        if (m_context->m_vkCmdDebugMarkerEndEXT)
+        if (m_context->m_fnTable->m_cmdDebugMarkerEndEXT)
         {
-            m_context->m_vkCmdDebugMarkerEndEXT(m_commandBuffer);
+            m_context->m_fnTable->m_cmdDebugMarkerEndEXT(m_commandBuffer);
         }
 #endif
     }
@@ -232,14 +226,14 @@ namespace RHI::Vulkan
         beginInfo.buffer = buffer->handle;
         beginInfo.offset = offset;
         beginInfo.flags = inverted ? VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT : 0u;
-        m_context->m_vkCmdBeginConditionalRenderingEXT(m_commandBuffer, &beginInfo);
+        m_context->m_fnTable->m_cmdBeginConditionalRenderingEXT(m_commandBuffer, &beginInfo);
     }
 
     void ICommandList::EndConditionalCommands()
     {
         ZoneScoped;
 
-        m_context->m_vkCmdEndConditionalRenderingEXT(m_commandBuffer);
+        m_context->m_fnTable->m_cmdEndConditionalRenderingEXT(m_commandBuffer);
     }
 
     void ICommandList::Execute(TL::Span<const CommandList*> commandLists)

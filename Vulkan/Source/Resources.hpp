@@ -27,16 +27,17 @@ namespace RHI::Vulkan
     class BindGroupAllocator
     {
     public:
-        BindGroupAllocator(VkDevice device);
+        BindGroupAllocator(IContext* context);
         ~BindGroupAllocator() = default;
 
+        ResultCode Init();
         void Shutdown();
 
         ResultCode InitBindGroup(IBindGroup* bindGroup, IBindGroupLayout* bindGroupLayout, uint32_t bindlessElementsCount);
         void ShutdownBindGroup(IBindGroup* bindGroup);
 
     public:
-        VkDevice m_device;
+        IContext* m_context;
         VkDescriptorPool m_descriptorPool;
     };
 
@@ -163,7 +164,7 @@ namespace RHI::Vulkan
 
         ~IShaderModule();
 
-        VkResult Init(TL::Span<const uint8_t> shaderBlob);
+        ResultCode Init(TL::Span<const uint8_t> shaderBlob);
 
     public:
         IContext* m_context;
@@ -180,7 +181,7 @@ namespace RHI::Vulkan
 
         ~IFence();
 
-        VkResult Init();
+        ResultCode Init();
 
         void Reset() override;
         bool WaitInternal(uint64_t timeout) override;

@@ -6,6 +6,7 @@
 #include "Swapchain.hpp"
 #include "RenderGraphCompiler.hpp"
 #include "Context.hpp"
+#include "VulkanFunctions.hpp"
 
 #include <tracy/Tracy.hpp>
 
@@ -33,22 +34,22 @@ namespace RHI
 
         auto context = CreatePtr<Vulkan::IContext>(std::move(debugCallbacks));
         auto result = context->Init(appInfo);
-        RHI_ASSERT(result == VK_SUCCESS);
+        RHI_ASSERT(IsSucess(result));
         return std::move(context);
     }
 } // namespace RHI
 
 namespace RHI::Vulkan
 {
-    // inline static TL::Vector<VkLayerProperties> GetAvailableInstanceLayerExtensions()
-    // {
-    //     uint32_t instanceLayerCount;
-    //     vkEnumerateInstanceLayerProperties(&instanceLayerCount, nullptr);
-    //     TL::Vector<VkLayerProperties> layers;
-    //     layers.resize(instanceLayerCount);
-    //     vkEnumerateInstanceLayerProperties(&instanceLayerCount, layers.data());
-    //     return layers;
-    // }
+    inline static TL::Vector<VkLayerProperties> GetAvailableInstanceLayerExtensions()
+    {
+        uint32_t instanceLayerCount;
+        vkEnumerateInstanceLayerProperties(&instanceLayerCount, nullptr);
+        TL::Vector<VkLayerProperties> layers;
+        layers.resize(instanceLayerCount);
+        vkEnumerateInstanceLayerProperties(&instanceLayerCount, layers.data());
+        return layers;
+    }
 
     inline static TL::Vector<VkExtensionProperties> GetAvailableInstanceExtensions()
     {
@@ -60,33 +61,32 @@ namespace RHI::Vulkan
         return extensions;
     }
 
-    // inline static TL::Vector<VkLayerProperties> GetAvailableDeviceLayerExtensions(VkPhysicalDevice physicalDevice)
-    // {
-    //     uint32_t instanceLayerCount;
-    //     vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, nullptr);
-    //     TL::Vector<VkLayerProperties> layers;
-    //     layers.resize(instanceLayerCount);
-    //     vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, layers.data());
-    //     return layers;
-    // }
+    inline static TL::Vector<VkLayerProperties> GetAvailableDeviceLayerExtensions(VkPhysicalDevice physicalDevice)
+    {
+        uint32_t instanceLayerCount;
+        vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, nullptr);
+        TL::Vector<VkLayerProperties> layers;
+        layers.resize(instanceLayerCount);
+        vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, layers.data());
+        return layers;
+    }
 
     inline static TL::Vector<VkExtensionProperties> GetAvailableDeviceExtensions(VkPhysicalDevice physicalDevice)
     {
         uint32_t extensionsCount;
-        vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, nullptr);
+        Validate(vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, nullptr));
         TL::Vector<VkExtensionProperties> extnesions;
         extnesions.resize(extensionsCount);
-        vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, extnesions.data());
+        Validate(vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, extnesions.data()));
         return extnesions;
     }
 
     inline static TL::Vector<VkPhysicalDevice> GetAvailablePhysicalDevices(VkInstance instance)
     {
         uint32_t physicalDeviceCount;
-        vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
+        Validate(vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr));
         TL::Vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount, VK_NULL_HANDLE);
-        VkResult result = vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, physicalDevices.data());
-        RHI_ASSERT(result == VK_SUCCESS);
+        Validate(vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, physicalDevices.data()));
         return physicalDevices;
     }
 
@@ -102,7 +102,31 @@ namespace RHI::Vulkan
 
     IContext::IContext(Ptr<DebugCallbacks> debugCallbacks)
         : Context(std::move(debugCallbacks))
-        , m_deleteQueue(this)
+        , m_instance(VK_NULL_HANDLE)
+        , m_physicalDevice(VK_NULL_HANDLE)
+        , m_device(VK_NULL_HANDLE)
+        , m_allocator(VK_NULL_HANDLE)
+        , m_presentQueue(VK_NULL_HANDLE)
+        , m_graphicsQueue(VK_NULL_HANDLE)
+        , m_computeQueue(VK_NULL_HANDLE)
+        , m_transferQueue(VK_NULL_HANDLE)
+        , m_graphicsQueueFamilyIndex(UINT32_MAX)
+        , m_computeQueueFamilyIndex(UINT32_MAX)
+        , m_transferQueueFamilyIndex(UINT32_MAX)
+        , m_fnTable(CreatePtr<FunctionsTable>())
+        , m_bindGroupAllocator(CreatePtr<BindGroupAllocator>(this))
+        , m_commandPool(CreatePtr<ICommandPool>(this))
+        , m_deleteQueue(CreatePtr<DeleteQueue>(this))
+        , m_imageOwner()
+        , m_bufferOwner()
+        , m_imageViewOwner()
+        , m_bufferViewOwner()
+        , m_bindGroupLayoutsOwner()
+        , m_bindGroupOwner()
+        , m_pipelineLayoutOwner()
+        , m_graphicsPipelineOwner()
+        , m_computePipelineOwner()
+        , m_samplerOwner()
     {
     }
 
@@ -112,53 +136,40 @@ namespace RHI::Vulkan
 
         vkDeviceWaitIdle(m_device);
 
-        Shutdown(); // Destroy base context
+        Shutdown();
 
         m_bindGroupAllocator->Shutdown();
         delete m_commandPool.release();
 
-        // vmaDestroyAllocator(m_allocator);
+        vmaDestroyAllocator(m_allocator);
         vkDestroyDevice(m_device, nullptr);
         vkDestroyInstance(m_instance, nullptr);
     }
 
-    VkResult IContext::Init(const ApplicationInfo& appInfo)
+    ResultCode IContext::Init(const ApplicationInfo& appInfo)
     {
         ZoneScoped;
 
         bool debugExtensionEnabled = false;
 
-        VkResult result = VK_ERROR_UNKNOWN;
-
-        result = InitInstance(appInfo, &debugExtensionEnabled);
-        VULKAN_RETURN_VKERR_CODE(result);
-
-        result = InitDevice();
-        VULKAN_RETURN_VKERR_CODE(result);
-
-        result = InitMemoryAllocator();
-        VULKAN_RETURN_VKERR_CODE(result);
+        TryValidateVk(InitInstance(appInfo, &debugExtensionEnabled));
+        TryValidateVk(InitDevice());
+        TryValidateVk(InitMemoryAllocator());
 
         vkGetDeviceQueue(m_device, m_graphicsQueueFamilyIndex, 0, &m_graphicsQueue);
         vkGetDeviceQueue(m_device, m_computeQueueFamilyIndex, 0, &m_computeQueue);
         vkGetDeviceQueue(m_device, m_transferQueueFamilyIndex, 0, &m_transferQueue);
 
-        result = LoadFunctions(debugExtensionEnabled);
-        VULKAN_RETURN_VKERR_CODE(result);
+        m_fnTable->Init(this, true);
+        TryValidate(m_bindGroupAllocator->Init());
+        TryValidate(m_commandPool->Init(CommandPoolFlags::Transient));
 
-        m_bindGroupAllocator = CreatePtr<BindGroupAllocator>(m_device);
-
-        // TracyVkContextHostCalibrated(m_physicalDevice, m_device, vkResetQueryPool, m_vkGetPhysicalDeviceCalibrateableTimeDomainsKHR, m_vkGetCalibratedTimestampsKHR);
-
-        m_commandPool = CreatePtr<ICommandPool>(this);
-        m_commandPool->Init(CommandPoolFlags::Transient);
-
-        return VK_SUCCESS;
+        return ResultCode::Success;
     }
 
     void IContext::SetDebugName(VkDebugReportObjectTypeEXT type, uint64_t handle, const char* name) const
     {
-        if (m_vkDebugMarkerSetObjectNameEXT && name != nullptr)
+        if (m_fnTable->m_debugMarkerSetObjectNameEXT && name != nullptr)
         {
             VkDebugMarkerObjectNameInfoEXT nameInfo{};
             nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT;
@@ -166,7 +177,7 @@ namespace RHI::Vulkan
             nameInfo.pObjectName = name;
             nameInfo.object = handle;
             nameInfo.objectType = type;
-            m_vkDebugMarkerSetObjectNameEXT(m_device, &nameInfo);
+            m_fnTable->m_debugMarkerSetObjectNameEXT(m_device, &nameInfo);
         }
     }
 
@@ -182,10 +193,8 @@ namespace RHI::Vulkan
         createInfo.pNext = timeline ? &timelineInfo : nullptr;
         createInfo.flags = 0;
         VkSemaphore semaphore = VK_NULL_HANDLE;
-        auto result = vkCreateSemaphore(m_device, &createInfo, nullptr, &semaphore);
-        VULKAN_ASSERT_SUCCESS(result);
+        Validate(vkCreateSemaphore(m_device, &createInfo, nullptr, &semaphore));
         SetDebugName(semaphore, name);
-
         return semaphore;
     }
 
@@ -326,7 +335,7 @@ namespace RHI::Vulkan
     {
         auto shaderModule = CreatePtr<IShaderModule>(this);
         auto result = shaderModule->Init(shaderBlob);
-        if (result != VK_SUCCESS)
+        if (result != ResultCode::Success)
         {
             DebugLogError("Failed to create shader module");
         }
@@ -337,7 +346,7 @@ namespace RHI::Vulkan
     {
         auto fence = CreatePtr<IFence>(this);
         auto result = fence->Init();
-        if (result != VK_SUCCESS)
+        if (result != ResultCode::Success)
         {
             DebugLogError("Failed to create a fence object");
         }
@@ -348,7 +357,7 @@ namespace RHI::Vulkan
     {
         auto commandPool = CreatePtr<ICommandPool>(this);
         auto result = commandPool->Init(flags);
-        if (result != VK_SUCCESS)
+        if (result != ResultCode::Success)
         {
             DebugLogError("Failed to create a command_list_allocator object");
         }
@@ -368,7 +377,7 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyBindGroupLayout(Handle<BindGroupLayout> handle)
     {
-        m_deleteQueue.Destroy(GetCurrentFrameIndex(), [this, handle]()
+        m_deleteQueue->Destroy(GetCurrentFrameIndex(), [this, handle]()
         {
             auto bindGroupLayout = m_bindGroupLayoutsOwner.Get(handle);
             bindGroupLayout->Shutdown(this);
@@ -389,7 +398,7 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyBindGroup(Handle<BindGroup> handle)
     {
-        m_deleteQueue.Destroy(GetCurrentFrameIndex(), [this, handle]()
+        m_deleteQueue->Destroy(GetCurrentFrameIndex(), [this, handle]()
         {
             auto bindGroup = m_bindGroupOwner.Get(handle);
             bindGroup->Shutdown(this);
@@ -434,7 +443,7 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle)
     {
-        m_deleteQueue.Destroy(GetCurrentFrameIndex(), [this, handle]()
+        m_deleteQueue->Destroy(GetCurrentFrameIndex(), [this, handle]()
         {
             auto graphicsPipeline = m_graphicsPipelineOwner.Get(handle);
             graphicsPipeline->Shutdown(this);
@@ -455,7 +464,7 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyComputePipeline(Handle<ComputePipeline> handle)
     {
-        m_deleteQueue.Destroy(GetCurrentFrameIndex(), [this, handle]()
+        m_deleteQueue->Destroy(GetCurrentFrameIndex(), [this, handle]()
         {
             auto computePipeline = m_computePipelineOwner.Get(handle);
             computePipeline->Shutdown(this);
@@ -476,7 +485,7 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroySampler(Handle<Sampler> handle)
     {
-        m_deleteQueue.Destroy(GetCurrentFrameIndex(), [this, handle]()
+        m_deleteQueue->Destroy(GetCurrentFrameIndex(), [this, handle]()
         {
             auto sampler = m_samplerOwner.Get(handle);
             sampler->Shutdown(this);
@@ -498,7 +507,7 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyImage(Handle<Image> handle)
     {
-        m_deleteQueue.Destroy(GetCurrentFrameIndex(), [this, handle]()
+        m_deleteQueue->Destroy(GetCurrentFrameIndex(), [this, handle]()
         {
             auto image = m_imageOwner.Get(handle);
             image->Shutdown(this);
@@ -520,7 +529,7 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyBuffer(Handle<Buffer> handle)
     {
-        m_deleteQueue.Destroy(GetCurrentFrameIndex(), [this, handle]()
+        m_deleteQueue->Destroy(GetCurrentFrameIndex(), [this, handle]()
         {
             auto buffer = m_bufferOwner.Get(handle);
             buffer->Shutdown(this);
@@ -541,7 +550,7 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyImageView(Handle<ImageView> handle)
     {
-        m_deleteQueue.Destroy(GetCurrentFrameIndex(), [this, handle]()
+        m_deleteQueue->Destroy(GetCurrentFrameIndex(), [this, handle]()
         {
             auto imageView = m_imageViewOwner.Get(handle);
             imageView->Shutdown(this);
@@ -562,7 +571,7 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyBufferView(Handle<BufferView> handle)
     {
-        m_deleteQueue.Destroy(GetCurrentFrameIndex(), [this, handle]()
+        m_deleteQueue->Destroy(GetCurrentFrameIndex(), [this, handle]()
         {
             auto imageView = m_bufferViewOwner.Get(handle);
             imageView->Shutdown(this);
@@ -588,8 +597,7 @@ namespace RHI::Vulkan
         auto allocation = resource->allocation.handle;
 
         DeviceMemoryPtr memoryPtr = nullptr;
-        VkResult result = vmaMapMemory(m_allocator, allocation, &memoryPtr);
-        VULKAN_ASSERT_SUCCESS(result);
+        Validate(vmaMapMemory(m_allocator, allocation, &memoryPtr));
         return memoryPtr;
     }
 
@@ -927,26 +935,4 @@ namespace RHI::Vulkan
         return vmaCreateAllocator(&createInfo, &m_allocator);
     }
 
-    VkResult IContext::LoadFunctions(bool debugExtensionEnabled)
-    {
-#if RHI_DEBUG
-        if (debugExtensionEnabled)
-        {
-            m_vkCmdDebugMarkerBeginEXT = VULKAN_LOAD_PROC(m_device, vkCmdDebugMarkerBeginEXT);
-            m_vkCmdDebugMarkerInsertEXT = VULKAN_LOAD_PROC(m_device, vkCmdDebugMarkerInsertEXT);
-            m_vkCmdDebugMarkerEndEXT = VULKAN_LOAD_PROC(m_device, vkCmdDebugMarkerEndEXT);
-            m_vkDebugMarkerSetObjectNameEXT = VULKAN_LOAD_PROC(m_device, vkDebugMarkerSetObjectNameEXT);
-
-            RHI_ASSERT(m_vkCmdDebugMarkerBeginEXT);
-            RHI_ASSERT(m_vkCmdDebugMarkerInsertEXT);
-            RHI_ASSERT(m_vkCmdDebugMarkerEndEXT);
-            RHI_ASSERT(m_vkDebugMarkerSetObjectNameEXT);
-        }
-#endif
-
-        m_vkCmdBeginConditionalRenderingEXT = VULKAN_LOAD_PROC(m_device, vkCmdBeginConditionalRenderingEXT);
-        m_vkCmdEndConditionalRenderingEXT = VULKAN_LOAD_PROC(m_device, vkCmdEndConditionalRenderingEXT);
-
-        return VK_SUCCESS;
-    }
 } // namespace RHI::Vulkan

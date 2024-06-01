@@ -7,35 +7,27 @@
 namespace RHI
 {
 
-    /// @brief Indicate the result of the operation.
-    enum class ResultCode
+    enum class [[nodiscard]] ResultCode
     {
-        /// @brief The operation succeeded without any issues.
         Success,
-
-        /// @brief The operation failed for an unkowen reason.
         ErrorUnkown,
-
-        /// @brief The resource creation/allocation failed due to lack of memory in allocator.
         ErrorOutOfMemory,
-
-        /// @brief The resource creation/allocation failed due to lack of device (GPU) memory.
         ErrorDeviceOutOfMemory,
-
-        /// @brief The resource allocation failed.
         ErrorAllocationFailed,
-
-        /// @brief The frame graph cycle dependency.
-        ErrorCyclicFrameGraph,
-
-        /// @brief Attempted to access a resource after it was deleted.
-        ErrorResourceUsedAfterFree,
     };
 
-    /// @brief Encapsulate an value and a result code for error handling.
-    /// @tparam T The type of the value created if the result is a success.
+    inline static bool IsSucess(ResultCode result)
+    {
+        return result == ResultCode::Success;
+    }
+
+    inline static bool IsError(ResultCode result)
+    {
+        return result != ResultCode::Success;
+    }
+
     template<typename T>
-    struct Result
+    struct [[nodiscard]] Result
     {
         Result(ResultCode code)
             : value()
@@ -59,9 +51,9 @@ namespace RHI
 
         ResultCode result;
 
-        inline bool IsSucess() { return result == ResultCode::Success; }
+        inline bool IsSucess() const { return ::RHI::IsSucess(result); }
 
-        inline bool IsError() { return result != ResultCode::Success; }
+        inline bool IsError() const { return ::RHI::IsError(result); }
 
         inline T GetValue()
         {
@@ -69,17 +61,5 @@ namespace RHI
             return std::move(value);
         }
     };
-
-    /// @brief Return true if the value is a success value.
-    inline static bool IsSucess(ResultCode result)
-    {
-        return result == ResultCode::Success;
-    }
-
-    /// @brief Return true if the value is a failure value.
-    inline static bool IsError(ResultCode result)
-    {
-        return result != ResultCode::Success;
-    }
 
 } // namespace RHI

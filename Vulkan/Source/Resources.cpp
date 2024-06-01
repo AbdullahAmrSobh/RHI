@@ -10,23 +10,25 @@ namespace RHI::Vulkan
     /// BindGroupAllocator
     ///////////////////////////////////////////////////////////////////////////
 
-    BindGroupAllocator::BindGroupAllocator(VkDevice device)
-        : m_device(device)
+    BindGroupAllocator::BindGroupAllocator(IContext* context)
+        : m_context(context)
     {
-        // clang-format off
-            VkDescriptorPoolSize poolSizes[] = {
-                { VK_DESCRIPTOR_TYPE_SAMPLER,                1024 },
-                { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          1024 },
-                { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          1024 },
-                { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         1024 },
-                { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         1024 },
-                { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   1024 },
-                { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   1024 },
-                { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1024 },
-                { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1024 },
-                { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,       1024 },
-            };
-        // clang-format on
+    }
+
+    ResultCode BindGroupAllocator::Init()
+    {
+        VkDescriptorPoolSize poolSizes[] = {
+            { VK_DESCRIPTOR_TYPE_SAMPLER, 1024 },
+            { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1024 },
+            { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1024 },
+            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1024 },
+            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1024 },
+            { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1024 },
+            { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1024 },
+            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1024 },
+            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1024 },
+            { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1024 },
+        };
 
         VkDescriptorPoolCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -36,13 +38,14 @@ namespace RHI::Vulkan
         createInfo.poolSizeCount = sizeof(poolSizes) / sizeof(VkDescriptorPoolSize);
         createInfo.pPoolSizes = poolSizes;
 
-        auto result = vkCreateDescriptorPool(m_device, &createInfo, nullptr, &m_descriptorPool);
-        VULKAN_ASSERT_SUCCESS(result);
+        Validate(vkCreateDescriptorPool(m_context->m_device, &createInfo, nullptr, &m_descriptorPool));
+
+        return ResultCode::Success;
     }
 
     void BindGroupAllocator::Shutdown()
     {
-        vkDestroyDescriptorPool(m_device, m_descriptorPool, nullptr);
+        vkDestroyDescriptorPool(m_context->m_device, m_descriptorPool, nullptr);
     }
 
     ResultCode BindGroupAllocator::InitBindGroup(IBindGroup* bindGroup, IBindGroupLayout* bindGroupLayout, uint32_t bindlessElementsCount)
@@ -58,7 +61,7 @@ namespace RHI::Vulkan
         allocateInfo.descriptorSetCount = 1;
         allocateInfo.pSetLayouts = &bindGroupLayout->handle;
         allocateInfo.descriptorPool = m_descriptorPool;
-        auto result = vkAllocateDescriptorSets(m_device, &allocateInfo, &bindGroup->descriptorSet);
+        auto result = vkAllocateDescriptorSets(m_context->m_device, &allocateInfo, &bindGroup->descriptorSet);
         if (result != VK_SUCCESS)
             return ResultCode::ErrorOutOfMemory;
 
@@ -67,7 +70,7 @@ namespace RHI::Vulkan
 
     void BindGroupAllocator::ShutdownBindGroup(IBindGroup* bindGroup)
     {
-        vkFreeDescriptorSets(m_device, m_descriptorPool, 1, &bindGroup->descriptorSet);
+        vkFreeDescriptorSets(m_context->m_device, m_descriptorPool, 1, &bindGroup->descriptorSet);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -788,7 +791,7 @@ namespace RHI::Vulkan
         vkDestroyShaderModule(m_context->m_device, m_shaderModule, nullptr);
     }
 
-    VkResult IShaderModule::Init(TL::Span<const uint8_t> shaderBlob)
+    ResultCode IShaderModule::Init(TL::Span<const uint8_t> shaderBlob)
     {
         auto context = static_cast<IContext*>(m_context);
 
@@ -814,16 +817,11 @@ namespace RHI::Vulkan
                 .pCode = reinterpret_cast<const uint32_t*>(alignedBlob.data()),
             };
 
-            VkResult res = vkCreateShaderModule(context->m_device, &moduleCreateInfo, nullptr, &m_shaderModule);
-
-            // Deallocate temporary buffer
+            TryValidateVk(vkCreateShaderModule(context->m_device, &moduleCreateInfo, nullptr, &m_shaderModule));
             delete[] alignedData;
-
-            return res;
         }
         else
         {
-            // No alignment needed, use original blob
             VkShaderModuleCreateInfo moduleCreateInfo{
                 .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
                 .pNext = nullptr,
@@ -831,9 +829,10 @@ namespace RHI::Vulkan
                 .codeSize = shaderBlob.size(),
                 .pCode = (const uint32_t*)shaderBlob.data()
             };
-
-            return vkCreateShaderModule(context->m_device, &moduleCreateInfo, nullptr, &m_shaderModule);
+            return ConvertResult(vkCreateShaderModule(context->m_device, &moduleCreateInfo, nullptr, &m_shaderModule));
         }
+
+        return ResultCode::Success;
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -845,7 +844,7 @@ namespace RHI::Vulkan
         vkDestroyFence(m_context->m_device, m_fence, nullptr);
     }
 
-    VkResult IFence::Init()
+    ResultCode IFence::Init()
     {
         m_state = FenceState::NotSubmitted;
 
@@ -853,16 +852,14 @@ namespace RHI::Vulkan
         createInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         createInfo.pNext = nullptr;
         createInfo.flags = 0;
-        auto result = vkCreateFence(m_context->m_device, &createInfo, nullptr, &m_fence);
-        VULKAN_ASSERT_SUCCESS(result);
-        return result;
+        TryValidateVk(vkCreateFence(m_context->m_device, &createInfo, nullptr, &m_fence));
+        return ResultCode::Success;
     }
 
     void IFence::Reset()
     {
         m_state = FenceState::NotSubmitted;
-        auto result = vkResetFences(m_context->m_device, 1, &m_fence);
-        VULKAN_ASSERT_SUCCESS(result);
+        Validate(vkResetFences(m_context->m_device, 1, &m_fence));
     }
 
     bool IFence::WaitInternal(uint64_t timeout)
@@ -870,8 +867,7 @@ namespace RHI::Vulkan
         if (m_state == FenceState::NotSubmitted)
             return VK_SUCCESS;
 
-        auto result = vkWaitForFences(m_context->m_device, 1, &m_fence, VK_TRUE, timeout);\
-        return result == VK_SUCCESS;
+        return Validate(vkWaitForFences(m_context->m_device, 1, &m_fence, VK_TRUE, timeout));
     }
 
     FenceState IFence::GetState()

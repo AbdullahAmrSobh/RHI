@@ -25,13 +25,11 @@ namespace RHI::Vulkan
         vkCreateInfo.flags = 0;
         vkCreateInfo.hinstance = static_cast<HINSTANCE>(createInfo.win32Window.hinstance);
         vkCreateInfo.hwnd = static_cast<HWND>(createInfo.win32Window.hwnd);
-        auto result = vkCreateWin32SurfaceKHR(context->m_instance, &vkCreateInfo, nullptr, &m_surface);
-        VULKAN_ASSERT_SUCCESS(result);
+        Validate(vkCreateWin32SurfaceKHR(context->m_instance, &vkCreateInfo, nullptr, &m_surface));
 #endif
 
         VkBool32 surfaceSupportPresent;
-        result = vkGetPhysicalDeviceSurfaceSupportKHR(context->m_physicalDevice, context->m_graphicsQueueFamilyIndex, m_surface, &surfaceSupportPresent);
-        RHI_ASSERT(result == VK_SUCCESS && surfaceSupportPresent == VK_TRUE);
-        return result;
+        Validate(vkGetPhysicalDeviceSurfaceSupportKHR(context->m_physicalDevice, context->m_graphicsQueueFamilyIndex, m_surface, &surfaceSupportPresent));
+        return VK_SUCCESS;
     }
 } // namespace RHI::Vulkan

@@ -16,6 +16,7 @@ namespace RHI::Vulkan
     class BindGroupAllocator;
     class ICommandPool;
     class ICommandList;
+    class FunctionsTable;
 
     class IContext final : public Context
     {
@@ -23,7 +24,7 @@ namespace RHI::Vulkan
         IContext(Ptr<DebugCallbacks> debugCallbacks);
         ~IContext();
 
-        VkResult Init(const ApplicationInfo& appInfo);
+        ResultCode Init(const ApplicationInfo& appInfo);
 
         template<typename T>
         inline void SetDebugName(T handle, const char* name) const
@@ -51,7 +52,7 @@ namespace RHI::Vulkan
 
         uint32_t GetCurrentFrameIndex() const
         {
-            return m_getCurrentFrameIndex;
+            return 0;
         }
 
         // clang-format off
@@ -105,45 +106,35 @@ namespace RHI::Vulkan
         VkResult LoadFunctions(bool debugExtensionEnabled);
 
     public:
-        // clang-format off
-        VkInstance       m_instance       = VK_NULL_HANDLE;
-        VkPhysicalDevice m_physicalDevice = VK_NULL_HANDLE;
-        VkDevice         m_device         = VK_NULL_HANDLE;
-        VmaAllocator     m_allocator      = VK_NULL_HANDLE;
+        VkInstance m_instance;
+        VkPhysicalDevice m_physicalDevice;
+        VkDevice m_device;
+        VmaAllocator m_allocator;
 
-        VkQueue m_presentQueue  = VK_NULL_HANDLE;
-        VkQueue m_graphicsQueue = VK_NULL_HANDLE;
-        VkQueue m_computeQueue  = VK_NULL_HANDLE;
-        VkQueue m_transferQueue = VK_NULL_HANDLE;
+        VkQueue m_presentQueue;
+        VkQueue m_graphicsQueue;
+        VkQueue m_computeQueue;
+        VkQueue m_transferQueue;
 
-        uint32_t m_graphicsQueueFamilyIndex = UINT32_MAX;
-        uint32_t m_computeQueueFamilyIndex  = UINT32_MAX;
-        uint32_t m_transferQueueFamilyIndex = UINT32_MAX;
+        uint32_t m_graphicsQueueFamilyIndex;
+        uint32_t m_computeQueueFamilyIndex;
+        uint32_t m_transferQueueFamilyIndex;
 
-        PFN_vkCmdDebugMarkerBeginEXT          m_vkCmdDebugMarkerBeginEXT          = nullptr;
-        PFN_vkCmdDebugMarkerInsertEXT         m_vkCmdDebugMarkerInsertEXT         = nullptr;
-        PFN_vkCmdDebugMarkerEndEXT            m_vkCmdDebugMarkerEndEXT            = nullptr;
-        PFN_vkCmdBeginConditionalRenderingEXT m_vkCmdBeginConditionalRenderingEXT = nullptr;
-        PFN_vkCmdEndConditionalRenderingEXT   m_vkCmdEndConditionalRenderingEXT   = nullptr;
-        PFN_vkDebugMarkerSetObjectNameEXT     m_vkDebugMarkerSetObjectNameEXT     = nullptr;
-
+        Ptr<FunctionsTable> m_fnTable;
         Ptr<BindGroupAllocator> m_bindGroupAllocator;
-        Ptr<ICommandPool>       m_commandPool;
+        Ptr<ICommandPool> m_commandPool;
+        Ptr<DeleteQueue> m_deleteQueue;
 
-        HandlePool<IImage>            m_imageOwner             = HandlePool<IImage>();
-        HandlePool<IBuffer>           m_bufferOwner            = HandlePool<IBuffer>();
-        HandlePool<IImageView>        m_imageViewOwner         = HandlePool<IImageView>();
-        HandlePool<IBufferView>       m_bufferViewOwner        = HandlePool<IBufferView>();
-        HandlePool<IBindGroupLayout>  m_bindGroupLayoutsOwner  = HandlePool<IBindGroupLayout>();
-        HandlePool<IBindGroup>        m_bindGroupOwner         = HandlePool<IBindGroup>();
-        HandlePool<IPipelineLayout>   m_pipelineLayoutOwner    = HandlePool<IPipelineLayout>();
-        HandlePool<IGraphicsPipeline> m_graphicsPipelineOwner  = HandlePool<IGraphicsPipeline>();
-        HandlePool<IComputePipeline>  m_computePipelineOwner   = HandlePool<IComputePipeline>();
-        HandlePool<ISampler>          m_samplerOwner           = HandlePool<ISampler>();
-        // clang-format on
-
-        DeleteQueue m_deleteQueue;
-        uint32_t m_getCurrentFrameIndex;
+        HandlePool<IImage> m_imageOwner;
+        HandlePool<IBuffer> m_bufferOwner;
+        HandlePool<IImageView> m_imageViewOwner;
+        HandlePool<IBufferView> m_bufferViewOwner;
+        HandlePool<IBindGroupLayout> m_bindGroupLayoutsOwner;
+        HandlePool<IBindGroup> m_bindGroupOwner;
+        HandlePool<IPipelineLayout> m_pipelineLayoutOwner;
+        HandlePool<IGraphicsPipeline> m_graphicsPipelineOwner;
+        HandlePool<IComputePipeline> m_computePipelineOwner;
+        HandlePool<ISampler> m_samplerOwner;
     };
 
 } // namespace RHI::Vulkan

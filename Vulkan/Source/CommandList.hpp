@@ -1,6 +1,7 @@
 #pragma once
 
 #include <RHI/CommandList.hpp>
+#include <RHI/Common/Result.hpp>
 
 #include <vulkan/vulkan.h>
 
@@ -13,10 +14,9 @@ namespace RHI::Vulkan
     {
     public:
         ICommandPool(IContext* context);
-
         ~ICommandPool();
 
-        VkResult Init(CommandPoolFlags flags);
+        ResultCode Init(CommandPoolFlags flags);
 
         void Reset() override;
         TL::Vector<CommandList*> Allocate(QueueType queueType, CommandListLevel level, uint32_t count) override;

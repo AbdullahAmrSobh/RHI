@@ -1,4 +1,5 @@
 #pragma once
+#include <RHI/CommandList.hpp>
 #include <RHI/Resources.hpp>
 #include <RHI/RenderGraph.hpp>
 
@@ -6,25 +7,22 @@
 
 #include <vk_mem_alloc.h>
 
-#define VULKAN_LOAD_PROC(device, proc) reinterpret_cast<PFN_##proc>(vkGetDeviceProcAddr(device, #proc));
-#define VULKAN_LOAD_PROC_INSTANCE(instance, proc) reinterpret_cast<PFN_##proc>(vkGetInstanceProcAddr(instance, #proc));
+#define TryValidateVk(result)           \
+    if (Validate(result) != VK_SUCCESS) \
+        return ConvertResult(result);
 
-#define VULKAN_ASSERT_SUCCESS(result) RHI_ASSERT(result == VK_SUCCESS)
-
-#define VULKAN_RETURN_VKERR_CODE(result) \
-    if (result != VK_SUCCESS)            \
-    {                                    \
-        return result;                   \
-    }
-
-#define VULKAN_RETURN_ERR_CODE(result) \
-    if (result != VK_SUCCESS)          \
-    {                                  \
-        return ConvertResult(result);  \
-    }
+#define TryValidate(result)            \
+    if (result != ResultCode::Success) \
+        return result;
 
 namespace RHI::Vulkan
 {
+    [[maybe_unused]] inline static bool Validate(VkResult result)
+    {
+        RHI_ASSERT(result == VK_SUCCESS);
+        return result;
+    }
+
     inline static ResultCode ConvertResult(VkResult result)
     {
         switch (result)
@@ -574,6 +572,18 @@ namespace RHI::Vulkan
         case BlendEquation::Max:             return VK_BLEND_OP_MAX;
         default:                             RHI_UNREACHABLE(); return VK_BLEND_OP_MAX_ENUM;
         }
+    }
+
+    inline static VkCommandPoolCreateFlags ConvertCommandPoolFlags(Flags<CommandPoolFlags> flags)
+    {
+        VkCommandPoolCreateFlags result{};
+        if (flags & CommandPoolFlags::Transient)
+            result |= VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+
+        if (flags & CommandPoolFlags::Reset)
+            result |= VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+        return result;
     }
 
     inline static VkImageSubresource ConvertSubresource(const ImageSubresource& subresource)
