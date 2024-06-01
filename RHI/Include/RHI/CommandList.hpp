@@ -46,6 +46,13 @@ namespace RHI
         uint32_t height;
     };
 
+    struct CommandListBeginInfo
+    {
+        RenderGraph* renderGraph;
+        Handle<Pass> pass;
+        TL::Span<const ClearValue> clearValues;
+    };
+
     struct BufferCopyInfo
     {
         Handle<Buffer> srcBuffer;
@@ -182,7 +189,7 @@ namespace RHI
         virtual void Begin() = 0;
 
         /// @brief Marks the begining of this command list recording inside a pass
-        virtual void Begin(RenderGraph& renderGraph, Handle<Pass> pass, TL::Span<const ClearValue> colorClearValues, const DepthStencilValue& depthStencilClearValue) = 0;
+        virtual void Begin(const CommandListBeginInfo& beginInfo) = 0;
 
         /// @brief Marks the ending of this command list recording
         virtual void End() = 0;

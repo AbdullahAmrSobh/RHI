@@ -37,7 +37,7 @@ namespace RHI::Vulkan
         ~ICommandList() = default;
 
         void Begin() override;
-        void Begin(RenderGraph& renderGraph, Handle<Pass> pass, TL::Span<const ClearValue> colorClearValues, const DepthStencilValue& depthStencilClearValue) override;
+        void Begin(const CommandListBeginInfo& beginInfo) override;
         void End() override;
         void DebugMarkerPush(const char* name, ColorValue<float> color) override;
         void DebugMarkerPop() override;
@@ -54,6 +54,10 @@ namespace RHI::Vulkan
         void CopyBufferToImage(const BufferImageCopyInfo& copyInfo) override;
 
         void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups);
+
+        void BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> bindingInfos);
+
+        void BindIndexBuffer(const BufferBindingInfo& bindingInfo, VkIndexType indexType);
 
         void PipelineBarrier(TL::Span<const VkMemoryBarrier2> memoryBarriers, TL::Span<const VkBufferMemoryBarrier2> bufferBarriers, TL::Span<const VkImageMemoryBarrier2> imageBarriers);
 

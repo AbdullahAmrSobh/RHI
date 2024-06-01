@@ -118,15 +118,13 @@ namespace RHI::Vulkan
         vkBeginCommandBuffer(m_commandBuffer, &beginInfo);
     }
 
-    void ICommandList::Begin(RenderGraph& renderGraph, Handle<Pass> passHandle, TL::Span<const ClearValue> colorClearValues, const DepthStencilValue& depthStencilClearValue)
+    void ICommandList::Begin(const CommandListBeginInfo& _beginInfo)
     {
         ZoneScoped;
 
-        (void)colorClearValues;       // todo: use
-        (void)depthStencilClearValue; // todo: use
-
-        auto pass = renderGraph.m_passOwner.Get(passHandle);
-        RenderGraphCompiler::CompilePass(m_context, renderGraph, pass);
+        auto renderGraph = _beginInfo.renderGraph;
+        auto pass = renderGraph->m_passOwner.Get(_beginInfo.pass);
+        RenderGraphCompiler::CompilePass(m_context, *renderGraph, pass);
         m_passSubmitData = (IPassSubmitData*)pass->submitData;
 
         VkCommandBufferBeginInfo beginInfo{};
@@ -229,12 +227,6 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        if (m_context->m_vkCmdBeginConditionalRenderingEXT)
-        {
-            m_context->DebugLogWarn("This function is not available");
-            return;
-        }
-
         auto buffer = m_context->m_bufferOwner.Get(handle);
 
         VkConditionalRenderingBeginInfoEXT beginInfo{};
@@ -249,12 +241,6 @@ namespace RHI::Vulkan
     void ICommandList::EndConditionalCommands()
     {
         ZoneScoped;
-
-        if (m_context->m_vkCmdEndConditionalRenderingEXT)
-        {
-            m_context->DebugLogWarn("This function is not available");
-            return;
-        }
 
         m_context->m_vkCmdEndConditionalRenderingEXT(m_commandBuffer);
     }
@@ -307,25 +293,12 @@ namespace RHI::Vulkan
         vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->handle);
 
         BindShaderBindGroups(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->layout, drawInfo.bindGroups);
-
-        if (drawInfo.vertexBuffers.empty() == false)
-        {
-            TL::Vector<VkBuffer> vertexBuffers;
-            TL::Vector<VkDeviceSize> vertexBufferOffsets;
-            for (auto bindingInfo : drawInfo.vertexBuffers)
-            {
-                auto buffer = m_context->m_bufferOwner.Get(bindingInfo.buffer);
-                vertexBuffers.push_back(buffer->handle);
-                vertexBufferOffsets.push_back(bindingInfo.offset);
-            }
-            vkCmdBindVertexBuffers(m_commandBuffer, 0, (uint32_t)vertexBuffers.size(), vertexBuffers.data(), vertexBufferOffsets.data());
-        }
+        BindVertexBuffers(0, drawInfo.vertexBuffers);
 
         auto parameters = drawInfo.parameters;
         if (drawInfo.indexBuffer.buffer != RHI::NullHandle)
         {
-            auto buffer = m_context->m_bufferOwner.Get(drawInfo.indexBuffer.buffer);
-            vkCmdBindIndexBuffer(m_commandBuffer, buffer->handle, 0, VK_INDEX_TYPE_UINT32);
+            BindIndexBuffer(drawInfo.indexBuffer, VK_INDEX_TYPE_UINT32);
             vkCmdDrawIndexed(m_commandBuffer, parameters.elementsCount, parameters.instanceCount, parameters.firstElement, parameters.vertexOffset, parameters.firstInstance);
         }
         else
@@ -419,7 +392,6 @@ namespace RHI::Vulkan
 
         TL::Vector<VkDescriptorSet> descriptorSets;
         TL::Vector<uint32_t> dynamicOffset;
-
         for (auto bindingInfo : bindGroups)
         {
             auto bindGroup = m_context->m_bindGroupOwner.Get(bindingInfo.bindGroup);
@@ -428,6 +400,31 @@ namespace RHI::Vulkan
             dynamicOffset.insert(dynamicOffset.end(), bindingInfo.dynamicOffsets.begin(), bindingInfo.dynamicOffsets.end());
         }
         vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, uint32_t(descriptorSets.size()), descriptorSets.data(), (uint32_t)dynamicOffset.size(), dynamicOffset.data());
+    }
+
+    void ICommandList::BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> bindingInfos)
+    {
+        if (bindingInfos.empty())
+            return;
+
+        TL::Vector<VkBuffer> buffers;
+        TL::Vector<VkDeviceSize> offsets;
+        for (auto bindingInfo : bindingInfos)
+        {
+            auto buffer = m_context->m_bufferOwner.Get(bindingInfo.buffer);
+            buffers.push_back(buffer->handle);
+            offsets.push_back(bindingInfo.offset);
+        }
+        vkCmdBindVertexBuffers(m_commandBuffer, firstBinding, (uint32_t)buffers.size(), buffers.data(), offsets.data());
+    }
+
+    void ICommandList::BindIndexBuffer(const BufferBindingInfo& bindingInfo, VkIndexType indexType)
+    {
+        if (bindingInfo.buffer == NullHandle)
+            return;
+
+        auto buffer = m_context->m_bufferOwner.Get(bindingInfo.buffer);
+        vkCmdBindIndexBuffer(m_commandBuffer, buffer->handle, bindingInfo.offset, indexType);
     }
 
     void ICommandList::PipelineBarrier(TL::Span<const VkMemoryBarrier2> memoryBarriers, TL::Span<const VkBufferMemoryBarrier2> bufferBarriers, TL::Span<const VkImageMemoryBarrier2> imageBarriers)

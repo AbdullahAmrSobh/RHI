@@ -113,7 +113,11 @@ public:
         i = i & 1 ? 0 : 1;
 
         m_commandPool[i]->Reset();
-        m_commandList[i]->Begin(*m_renderGraph, m_renderPass, {}, {});
+        RHI::CommandListBeginInfo beginInfo {};
+        beginInfo.renderGraph = m_renderGraph.get();
+        beginInfo.pass = m_renderPass;
+        beginInfo.clearValues = {};
+        m_commandList[i]->Begin(beginInfo);
         m_commandList[i]->SetViewport(viewport);
         m_commandList[i]->SetSicssor(scissor);
         Draw(*m_commandList[i]);
