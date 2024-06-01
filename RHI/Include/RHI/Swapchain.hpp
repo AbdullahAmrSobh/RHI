@@ -81,29 +81,3 @@ namespace RHI
         TL::String m_name;
     };
 } // namespace RHI
-
-namespace RHI
-{
-    inline Swapchain::Swapchain(Context* context)
-        : m_context(context)
-        , m_currentImageIndex(0)
-        , m_swapchainImagesCount(0)
-        , m_images()
-    {
-    }
-
-    inline uint32_t Swapchain::GetCurrentImageIndex() const
-    {
-        return m_currentImageIndex;
-    }
-
-    inline uint32_t Swapchain::GetImagesCount() const
-    {
-        return m_swapchainImagesCount;
-    }
-
-    inline Handle<Image> Swapchain::GetImage() const
-    {
-        return m_images[m_currentImageIndex];
-    }
-} // namespace RHI

@@ -251,10 +251,7 @@ namespace RHI
     {
         ZoneScoped;
 
-        PushDeferCommand([this, handle]()
-        {
-            Internal_DestroyBindGroupLayout(handle);
-        });
+        Internal_DestroyBindGroupLayout(handle);
         m_resourceTracker->Unregister(handle);
     }
 
@@ -271,10 +268,7 @@ namespace RHI
     {
         ZoneScoped;
 
-        PushDeferCommand([this, handle]()
-        {
-            Internal_DestroyBindGroup(handle);
-        });
+        Internal_DestroyBindGroup(handle);
         m_resourceTracker->Unregister(handle);
     }
 
@@ -298,10 +292,7 @@ namespace RHI
     {
         ZoneScoped;
 
-        PushDeferCommand([this, handle]()
-        {
-            Internal_DestroyPipelineLayout(handle);
-        });
+        Internal_DestroyPipelineLayout(handle);
         m_resourceTracker->Unregister(handle);
     }
 
@@ -318,10 +309,7 @@ namespace RHI
     {
         ZoneScoped;
 
-        PushDeferCommand([this, handle]()
-        {
-            Internal_DestroyGraphicsPipeline(handle);
-        });
+        Internal_DestroyGraphicsPipeline(handle);
         m_resourceTracker->Unregister(handle);
     }
 
@@ -338,10 +326,7 @@ namespace RHI
     {
         ZoneScoped;
 
-        PushDeferCommand([this, handle]()
-        {
-            Internal_DestroyComputePipeline(handle);
-        });
+        Internal_DestroyComputePipeline(handle);
         m_resourceTracker->Unregister(handle);
     }
 
@@ -358,10 +343,7 @@ namespace RHI
     {
         ZoneScoped;
 
-        PushDeferCommand([this, handle]()
-        {
-            Internal_DestroySampler(handle);
-        });
+        Internal_DestroySampler(handle);
         m_resourceTracker->Unregister(handle);
     }
 
@@ -410,10 +392,7 @@ namespace RHI
     {
         ZoneScoped;
 
-        PushDeferCommand([this, handle]()
-        {
-            Internal_DestroyImage(handle);
-        });
+        Internal_DestroyImage(handle);
         m_resourceTracker->Unregister(handle);
     }
 
@@ -437,10 +416,7 @@ namespace RHI
     {
         ZoneScoped;
 
-        PushDeferCommand([this, handle]()
-        {
-            Internal_DestroyBuffer(handle);
-        });
+        Internal_DestroyBuffer(handle);
         m_resourceTracker->Unregister(handle);
     }
 
@@ -457,10 +433,7 @@ namespace RHI
     {
         ZoneScoped;
 
-        PushDeferCommand([this, handle]()
-        {
-            Internal_DestroyImageView(handle);
-        });
+        Internal_DestroyImageView(handle);
         m_resourceTracker->Unregister(handle);
     }
 
@@ -477,10 +450,7 @@ namespace RHI
     {
         ZoneScoped;
 
-        PushDeferCommand([this, handle]()
-        {
-            Internal_DestroyBufferView(handle);
-        });
+        Internal_DestroyBufferView(handle);
         m_resourceTracker->Unregister(handle);
     }
 
@@ -586,11 +556,4 @@ namespace RHI
         (void)message;
 #endif
     }
-
-    void Context::PushDeferCommand(std::function<void()> command)
-    {
-        uint32_t currentFrameIndex = m_frameIndex % 2 == 0;
-        m_deferCommandQueue[currentFrameIndex].push_back({ m_frameIndex, command });
-    }
-
 } // namespace RHI

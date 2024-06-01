@@ -72,11 +72,8 @@ namespace RHI::Vulkan
         {
             ICommandList* commandList = (ICommandList*)_commandList;
             VkDevice device = m_context->m_device;
-            m_context->PushDeferCommand([=]()
-            {
-                vkFreeCommandBuffers(device, commandList->m_commandPool, 1, &commandList->m_commandBuffer);
-                delete commandList;
-            });
+            vkFreeCommandBuffers(device, commandList->m_commandPool, 1, &commandList->m_commandBuffer);
+            delete commandList;
         }
     }
 

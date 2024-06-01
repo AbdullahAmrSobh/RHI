@@ -5,6 +5,7 @@
 #include <RHI/Common/Containers.h>
 
 #include "Resources.hpp"
+#include "DeleteQueue.hpp"
 
 #include <vk_mem_alloc.h>
 
@@ -16,39 +17,30 @@ namespace RHI::Vulkan
     class ICommandPool;
     class ICommandList;
 
-
     class IContext final : public Context
     {
     public:
         IContext(Ptr<DebugCallbacks> debugCallbacks);
         ~IContext();
 
-        // Initialize the backend
         VkResult Init(const ApplicationInfo& appInfo);
 
-        // Set vulkan object name
         template<typename T>
         inline void SetDebugName(T handle, const char* name) const
         {
             return SetDebugName(GetDebugReportObjectTypeEXT<T>(), reinterpret_cast<uint64_t>(handle), name);
         }
 
-        // Set vulkan object name
         void SetDebugName(VkDebugReportObjectTypeEXT type, uint64_t handle, const char* name) const;
 
-        // Creates a semaphore
         VkSemaphore CreateSemaphore(const char* name = nullptr, bool timeline = false, uint64_t initialValue = 0);
 
-        // Destroys the semaphore
         void DestroySemaphore(VkSemaphore semaphore);
 
-        // Return the memory type index of the memory type
         uint32_t GetMemoryTypeIndex(MemoryType memoryType);
 
-        // Return the queue family index of the queue type
         uint32_t GetQueueFamilyIndex(QueueType queueType);
 
-        // Return handle to vulkan queue with specified queue type
         VkQueue GetQueue(QueueType queueType);
 
         void QueueSubmit(QueueType queueType,
@@ -57,11 +49,15 @@ namespace RHI::Vulkan
                          TL::UnorderedMap<VkSemaphore, VkPipelineStageFlags2> signalSemaphores,
                          IFence* signalFence = nullptr);
 
+        uint32_t GetCurrentFrameIndex() const
+        {
+            return m_getCurrentFrameIndex;
+        }
+
         // clang-format off
         using                    Context::DebugLogError;
         using                    Context::DebugLogInfo;
         using                    Context::DebugLogWarn;
-        using                    Context::PushDeferCommand;
 
         Ptr<Swapchain>           Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
         Ptr<ShaderModule>        Internal_CreateShaderModule(TL::Span<const uint8_t> shaderBlob) override;
@@ -134,8 +130,6 @@ namespace RHI::Vulkan
         Ptr<BindGroupAllocator> m_bindGroupAllocator;
         Ptr<ICommandPool>       m_commandPool;
 
-        TracyVkCtx m_tracyContext;
-
         HandlePool<IImage>            m_imageOwner             = HandlePool<IImage>();
         HandlePool<IBuffer>           m_bufferOwner            = HandlePool<IBuffer>();
         HandlePool<IImageView>        m_imageViewOwner         = HandlePool<IImageView>();
@@ -147,6 +141,9 @@ namespace RHI::Vulkan
         HandlePool<IComputePipeline>  m_computePipelineOwner   = HandlePool<IComputePipeline>();
         HandlePool<ISampler>          m_samplerOwner           = HandlePool<ISampler>();
         // clang-format on
+
+        DeleteQueue m_deleteQueue;
+        uint32_t m_getCurrentFrameIndex;
     };
 
 } // namespace RHI::Vulkan

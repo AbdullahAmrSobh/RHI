@@ -870,7 +870,7 @@ namespace RHI::Vulkan
         if (m_state == FenceState::NotSubmitted)
             return VK_SUCCESS;
 
-        auto result = vkWaitForFences(m_context->m_device, 1, &m_fence, VK_TRUE, timeout);
+        auto result = vkWaitForFences(m_context->m_device, 1, &m_fence, VK_TRUE, timeout);\
         return result == VK_SUCCESS;
     }
 

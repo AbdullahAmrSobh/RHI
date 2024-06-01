@@ -159,8 +159,6 @@ namespace RHI
         void DebugLogWarn(std::string_view message);
         void DebugLogInfo(std::string_view message);
 
-        void PushDeferCommand(std::function<void()> command);
-
         // clang-format off
         virtual Ptr<Swapchain>           Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo) = 0;
         virtual Ptr<ShaderModule>        Internal_CreateShaderModule(TL::Span<const uint8_t> shaderBlob) = 0;

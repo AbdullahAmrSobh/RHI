@@ -102,6 +102,7 @@ namespace RHI::Vulkan
 
     IContext::IContext(Ptr<DebugCallbacks> debugCallbacks)
         : Context(std::move(debugCallbacks))
+        , m_deleteQueue(this)
     {
     }
 
@@ -367,8 +368,11 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyBindGroupLayout(Handle<BindGroupLayout> handle)
     {
-        auto bindGroupLayout = m_bindGroupLayoutsOwner.Get(handle);
-        bindGroupLayout->Shutdown(this);
+        m_deleteQueue.Destroy(GetCurrentFrameIndex(), [this, handle]()
+        {
+            auto bindGroupLayout = m_bindGroupLayoutsOwner.Get(handle);
+            bindGroupLayout->Shutdown(this);
+        });
     }
 
     Handle<BindGroup> IContext::Internal_CreateBindGroup(Handle<BindGroupLayout> layoutHandle, uint32_t bindlessElementsCount)
@@ -385,8 +389,11 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyBindGroup(Handle<BindGroup> handle)
     {
-        auto bindGroup = m_bindGroupOwner.Get(handle);
-        bindGroup->Shutdown(this);
+        m_deleteQueue.Destroy(GetCurrentFrameIndex(), [this, handle]()
+        {
+            auto bindGroup = m_bindGroupOwner.Get(handle);
+            bindGroup->Shutdown(this);
+        });
     }
 
     void IContext::Internal_UpdateBindGroup(Handle<BindGroup> handle, TL::Span<const ResourceBinding> bindings)
@@ -427,8 +434,11 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle)
     {
-        auto graphicsPipeline = m_graphicsPipelineOwner.Get(handle);
-        graphicsPipeline->Shutdown(this);
+        m_deleteQueue.Destroy(GetCurrentFrameIndex(), [this, handle]()
+        {
+            auto graphicsPipeline = m_graphicsPipelineOwner.Get(handle);
+            graphicsPipeline->Shutdown(this);
+        });
     }
 
     Handle<ComputePipeline> IContext::Internal_CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
@@ -445,8 +455,11 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyComputePipeline(Handle<ComputePipeline> handle)
     {
-        auto computePipeline = m_computePipelineOwner.Get(handle);
-        computePipeline->Shutdown(this);
+        m_deleteQueue.Destroy(GetCurrentFrameIndex(), [this, handle]()
+        {
+            auto computePipeline = m_computePipelineOwner.Get(handle);
+            computePipeline->Shutdown(this);
+        });
     }
 
     Handle<Sampler> IContext::Internal_CreateSampler(const SamplerCreateInfo& createInfo)
@@ -463,8 +476,11 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroySampler(Handle<Sampler> handle)
     {
-        auto sampler = m_samplerOwner.Get(handle);
-        sampler->Shutdown(this);
+        m_deleteQueue.Destroy(GetCurrentFrameIndex(), [this, handle]()
+        {
+            auto sampler = m_samplerOwner.Get(handle);
+            sampler->Shutdown(this);
+        });
     }
 
     Result<Handle<Image>> IContext::Internal_CreateImage(const ImageCreateInfo& createInfo)
@@ -482,8 +498,11 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyImage(Handle<Image> handle)
     {
-        auto image = m_imageOwner.Get(handle);
-        image->Shutdown(this);
+        m_deleteQueue.Destroy(GetCurrentFrameIndex(), [this, handle]()
+        {
+            auto image = m_imageOwner.Get(handle);
+            image->Shutdown(this);
+        });
     }
 
     Result<Handle<Buffer>> IContext::Internal_CreateBuffer(const BufferCreateInfo& createInfo)
@@ -501,8 +520,11 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyBuffer(Handle<Buffer> handle)
     {
-        auto buffer = m_bufferOwner.Get(handle);
-        buffer->Shutdown(this);
+        m_deleteQueue.Destroy(GetCurrentFrameIndex(), [this, handle]()
+        {
+            auto buffer = m_bufferOwner.Get(handle);
+            buffer->Shutdown(this);
+        });
     }
 
     Handle<ImageView> IContext::Internal_CreateImageView(const ImageViewCreateInfo& createInfo)
@@ -519,8 +541,11 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyImageView(Handle<ImageView> handle)
     {
-        auto imageView = m_imageViewOwner.Get(handle);
-        imageView->Shutdown(this);
+        m_deleteQueue.Destroy(GetCurrentFrameIndex(), [this, handle]()
+        {
+            auto imageView = m_imageViewOwner.Get(handle);
+            imageView->Shutdown(this);
+        });
     }
 
     Handle<BufferView> IContext::Internal_CreateBufferView(const BufferViewCreateInfo& createInfo)
@@ -537,8 +562,11 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyBufferView(Handle<BufferView> handle)
     {
-        auto imageView = m_bufferViewOwner.Get(handle);
-        imageView->Shutdown(this);
+        m_deleteQueue.Destroy(GetCurrentFrameIndex(), [this, handle]()
+        {
+            auto imageView = m_bufferViewOwner.Get(handle);
+            imageView->Shutdown(this);
+        });
     }
 
     void IContext::Internal_DispatchGraph(RenderGraph& renderGraph, Fence* signalFence)
@@ -574,11 +602,7 @@ namespace RHI::Vulkan
     void IContext ::Internal_StageResourceWrite(Handle<Image> imageHandle, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset)
     {
         auto image = m_imageOwner.Get(imageHandle);
-        auto semaphore = image->waitSemaphore = CreateSemaphore("ImageWriteSemaphore");
-        PushDeferCommand([this, semaphore]()
-        {
-            DestroySemaphore(semaphore);
-        });
+        image->waitSemaphore = CreateSemaphore("ImageWriteSemaphore");
 
         VkImageMemoryBarrier2 barrier{};
         barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
@@ -627,10 +651,7 @@ namespace RHI::Vulkan
     {
         auto buffer = m_bufferOwner.Get(bufferHandle);
         auto semaphore = buffer->waitSemaphore = CreateSemaphore("BufferWriteSemaphore");
-        PushDeferCommand([this, semaphore]()
-        {
-            DestroySemaphore(semaphore);
-        });
+        DestroySemaphore(semaphore);
 
         BufferCopyInfo copyInfo{};
         copyInfo.dstBuffer = bufferHandle;
@@ -680,19 +701,19 @@ namespace RHI::Vulkan
         (void)messageTypes;
         auto context = (IContext*)pUserData;
 
-        if ((messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+        if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
         {
             context->DebugLogError(pCallbackData->pMessage);
         }
-        else if ((messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+        else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
         {
             context->DebugLogWarn(pCallbackData->pMessage);
         }
-        else if ((messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) == VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+        else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
         {
             context->DebugLogInfo(pCallbackData->pMessage);
         }
-        else if ((messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) == VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
+        else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
         {
             context->DebugLogInfo(pCallbackData->pMessage);
         }

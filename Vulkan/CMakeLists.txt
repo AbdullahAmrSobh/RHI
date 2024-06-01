@@ -18,6 +18,7 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraphCompiler.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/DeleteQueue.hpp
 )
 
 # Add source files
@@ -28,6 +29,7 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraphCompiler.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Surface.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/DeleteQueue.cpp
 )
 
 include(${CMAKE_SOURCE_DIR}/CMake/AddTarget.cmake)
