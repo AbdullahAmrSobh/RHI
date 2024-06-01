@@ -13,6 +13,10 @@ namespace RHI
     class Context;
     class Swapchain;
     class CommandList;
+    class RenderGraph;
+
+    struct ImageAttachment;
+    struct BufferAttachment;
 
     RHI_DECALRE_OPAQUE_RESOURCE(PassSubmitData);
 

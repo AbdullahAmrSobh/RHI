@@ -10,6 +10,8 @@
 
 #include <tracy/Tracy.hpp>
 
+#include <format>
+
 #if RHI_PLATFORM_WINDOWS
     #define VULKAN_SURFACE_OS_EXTENSION_NAME "VK_KHR_win32_surface"
 #elif RHI_PLATFORM_MACOS
@@ -44,30 +46,30 @@ namespace RHI::Vulkan
     inline static TL::Vector<VkLayerProperties> GetAvailableInstanceLayerExtensions()
     {
         uint32_t instanceLayerCount;
-        vkEnumerateInstanceLayerProperties(&instanceLayerCount, nullptr);
+        Validate(vkEnumerateInstanceLayerProperties(&instanceLayerCount, nullptr));
         TL::Vector<VkLayerProperties> layers;
         layers.resize(instanceLayerCount);
-        vkEnumerateInstanceLayerProperties(&instanceLayerCount, layers.data());
+        Validate(vkEnumerateInstanceLayerProperties(&instanceLayerCount, layers.data()));
         return layers;
     }
 
     inline static TL::Vector<VkExtensionProperties> GetAvailableInstanceExtensions()
     {
         uint32_t instanceExtensionsCount;
-        vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionsCount, nullptr);
+        Validate(vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionsCount, nullptr));
         TL::Vector<VkExtensionProperties> extensions;
         extensions.resize(instanceExtensionsCount);
-        vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionsCount, extensions.data());
+        Validate(vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionsCount, extensions.data()));
         return extensions;
     }
 
     inline static TL::Vector<VkLayerProperties> GetAvailableDeviceLayerExtensions(VkPhysicalDevice physicalDevice)
     {
         uint32_t instanceLayerCount;
-        vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, nullptr);
+        Validate(vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, nullptr));
         TL::Vector<VkLayerProperties> layers;
         layers.resize(instanceLayerCount);
-        vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, layers.data());
+        Validate(vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, layers.data()));
         return layers;
     }
 
@@ -130,16 +132,45 @@ namespace RHI::Vulkan
     {
     }
 
+    template<typename T>
+    inline static constexpr void LeakReportBuilder(TL::String& reportBody, const char* message, const HandlePool<T>& pool)
+    {
+        (void)reportBody;
+        (void)message;
+        (void)pool;
+#if RHI_REPORT_RESOURCE_LEAKS
+    #if RHI_REPORT_RESOURCE_LEAKS_COUNT
+            reportBody += TL::String(std::format(message, pool.ReportLiveResourcesCount()));
+    #else
+            reportBody += TL::String(std::format(message, pool.ReportLiveResources()));
+    #endif
+#endif
+    }
+
     IContext::~IContext()
     {
         ZoneScoped;
 
         vkDeviceWaitIdle(m_device);
 
+        {
+            TL::String leakReport = "";
+            LeakReportBuilder(leakReport, "Leaked ({}) Images \n", m_imageOwner);
+            LeakReportBuilder(leakReport, "Leaked ({}) Buffers \n", m_bufferOwner);
+            LeakReportBuilder(leakReport, "Leaked ({}) ImageViews \n", m_imageViewOwner);
+            LeakReportBuilder(leakReport, "Leaked ({}) BufferViews \n", m_bufferViewOwner);
+            LeakReportBuilder(leakReport, "Leaked ({}) BindGroupLayouts \n", m_bindGroupLayoutsOwner);
+            LeakReportBuilder(leakReport, "Leaked ({}) BindGroups \n", m_bindGroupOwner);
+            LeakReportBuilder(leakReport, "Leaked ({}) PipelineLayouts \n", m_pipelineLayoutOwner);
+            LeakReportBuilder(leakReport, "Leaked ({}) GraphicsPipelines \n", m_graphicsPipelineOwner);
+            LeakReportBuilder(leakReport, "Leaked ({}) ComputePipelines \n", m_computePipelineOwner);
+            LeakReportBuilder(leakReport, "Leaked ({}) Samplers \n", m_samplerOwner);
+        }
+
         Shutdown();
 
-        m_bindGroupAllocator->Shutdown();
-        delete m_commandPool.release();
+        // m_commandPool->Shutdown();
+        // m_bindGroupAllocator->Shutdown();
 
         vmaDestroyAllocator(m_allocator);
         vkDestroyDevice(m_device, nullptr);
@@ -160,7 +191,7 @@ namespace RHI::Vulkan
         vkGetDeviceQueue(m_device, m_computeQueueFamilyIndex, 0, &m_computeQueue);
         vkGetDeviceQueue(m_device, m_transferQueueFamilyIndex, 0, &m_transferQueue);
 
-        m_fnTable->Init(this, true);
+        m_fnTable->Init(this, debugExtensionEnabled);
         TryValidate(m_bindGroupAllocator->Init());
         TryValidate(m_commandPool->Init(CommandPoolFlags::Transient));
 

@@ -48,8 +48,8 @@ namespace RHI
 
     struct CommandListBeginInfo
     {
-        RenderGraph* renderGraph;
-        Handle<Pass> pass;
+        RenderGraph*               renderGraph;
+        Handle<Pass>               pass;
         TL::Span<const ClearValue> clearValues;
     };
 

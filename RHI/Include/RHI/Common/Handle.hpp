@@ -2,9 +2,11 @@
 
 #include "RHI/Common/Assert.hpp"
 #include "RHI/Common/Containers.h"
+#include "RHI/Common/Callstack.hpp"
 
 #include <cstdint>
 #include <type_traits>
+#include <format>
 
 #define RHI_DECALRE_OPAQUE_RESOURCE(name) \
     struct name                           \
@@ -104,6 +106,10 @@ namespace RHI
         HandlePool(HandlePool&&)       = default;
         ~HandlePool()                  = default;
 
+        TL::String ReportLiveResources() const;
+
+        uint32_t ReportLiveResourcesCount() const;
+
         // Clears all resources in the pool
         inline void Clear();
 
@@ -122,6 +128,8 @@ namespace RHI
         TL::Vector<Resource> m_resources;
         TL::Vector<uint16_t> m_genIds;
         TL::Vector<size_t>   m_freeSlots;
+
+        TL::UnorderedMap<HandleType, Callstack> m_liveResources;
     };
 
 } // namespace RHI
@@ -191,13 +199,18 @@ namespace RHI
             // Generate a new generation ID
             uint16_t& genId = m_genIds[index];
             m_genIds[index] = genId;
-            return Handle<Resource>(index, genId);
+
+            auto handle             = Handle<Resource>(index, genId);
+            m_liveResources[handle] = CaptureCallstack(3);
+            return handle;
         }
 
         // If no free slot, expand the pool
         m_resources.emplace_back(std::forward<Resource>(resource));
-        uint16_t genId = m_genIds.emplace_back((uint16_t)1);
-        return Handle<Resource>(m_resources.size() - 1, genId);
+        uint16_t genId          = m_genIds.emplace_back((uint16_t)1);
+        auto     handle         = Handle<Resource>(m_resources.size() - 1, genId);
+        m_liveResources[handle] = CaptureCallstack(3);
+        return handle;
     }
 
     template<typename Resource>
@@ -216,6 +229,30 @@ namespace RHI
             // Mark the slot as free
             m_freeSlots.push_back(index);
         }
+
+        m_liveResources.erase(handle);
+    }
+
+    template<typename T>
+    TL::String HandlePool<T>::ReportLiveResources() const
+    {
+        auto breakline = "\n=============================================================================\n";
+        auto message   = std::format("{}{} leak count {} \n", breakline, typeid(T).name(), m_liveResources.size());
+
+        for (auto [handle, stacktrace] : m_liveResources)
+        {
+            auto stacktraceReport = ReportCallstack(stacktrace);
+            message.append(std::format("{}\n", stacktraceReport));
+        }
+
+        message.append(std::format("{}", breakline));
+        return TL::String{ message };
+    }
+
+    template<typename T>
+    uint32_t HandlePool<T>::ReportLiveResourcesCount() const
+    {
+        return m_liveResources.size();
     }
 
 } // namespace RHI

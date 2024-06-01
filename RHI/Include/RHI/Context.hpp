@@ -147,9 +147,6 @@ namespace RHI
 
         void StageResourceRead(Handle<Buffer> buffer, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset, Fence* fence);
 
-    private:
-        void Flush();
-
     protected:
         Context(Ptr<DebugCallbacks> debugCallbacks);
 
@@ -199,18 +196,8 @@ namespace RHI
 
     private:
         Ptr<DebugCallbacks> m_debugCallbacks;
-        ResourceTracker*    m_resourceTracker;
-        uint64_t            m_frameIndex;
 
         TL::Vector<Handle<Buffer>> m_stagingBuffers;
-
-        struct DeferCommand
-        {
-            uint64_t              frameIndex;
-            std::function<void()> callback;
-        };
-
-        TL::Deque<DeferCommand> m_deferCommandQueue[2];
     };
 
     template<typename T>

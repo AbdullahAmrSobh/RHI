@@ -20,11 +20,7 @@ namespace RHI
     inline static constexpr uint32_t c_MaxPipelineBindGroupsCount                = 4u;
     inline static constexpr uint32_t c_MaxShaderBindGroupElementsCount           = 32u;
 
-    struct ImageAttachment;
-    struct BufferAttachment;
-
     class ShaderModule;
-    class RenderGraph;
 
     RHI_DECALRE_OPAQUE_RESOURCE(Image);
     RHI_DECALRE_OPAQUE_RESOURCE(Buffer);
