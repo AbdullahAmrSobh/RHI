@@ -7,12 +7,6 @@
 #include "RHI/Common/Span.hpp"
 #include "RHI/Common/Hash.hpp"
 
-// TODO: Remove default struct POD feilds, nested types constructors
-// and unused types, unused operators. Move constants to where they
-// are releavnt, switch to screaming snake case.
-// collect forward declerations into a single header file, and cleanup includes
-//
-
 namespace RHI
 {
     inline static constexpr uint32_t c_MaxRenderTargetAttachmentsCount           = 16u;
@@ -32,7 +26,6 @@ namespace RHI
     class ShaderModule;
     class RenderGraph;
 
-    // clang-format off
     RHI_DECALRE_OPAQUE_RESOURCE(Image);
     RHI_DECALRE_OPAQUE_RESOURCE(Buffer);
     RHI_DECALRE_OPAQUE_RESOURCE(ImageView);
@@ -44,8 +37,6 @@ namespace RHI
     RHI_DECALRE_OPAQUE_RESOURCE(ComputePipeline);
     RHI_DECALRE_OPAQUE_RESOURCE(Sampler);
 
-    // clang-format on
-
     enum class Access
     {
         None      = 0,
@@ -54,22 +45,19 @@ namespace RHI
         ReadWrite = Read | Write,
     };
 
-    /// @brief Enumeration representing the memory allocation startegy of a resource pool.
     enum class AllocationAlgorithm
     {
-        Linear, /// @brief Memory will be allocated linearly.
+        Linear,
         Optimal,
     };
 
-    /// @brief Enumeration representing different memory types and their locations.
     enum class MemoryType
     {
-        CPU,       // The memory is located in the system main memory.
-        GPULocal,  // The memory is locaed in the GPU, and can't be accessed by the CPU.
-        GPUShared, // The memory is locaed in the GPU, but can be accessed by the CPU.
+        CPU,
+        GPULocal,
+        GPUShared,
     };
 
-    /// @brief Enumerates the multisample count in an image or an graphics pipeline multisample state
     enum class SampleCount
     {
         None      = 0 << 0,
@@ -82,22 +70,20 @@ namespace RHI
         Samples64 = 1 << 6,
     };
 
-    /// @brief Enumeration representing how the image resource is intented to used.
     enum class ImageUsage
     {
-        None            = 0 << 0, // Invalid flag
-        ShaderResource  = 1 << 1, // The image will be used in an shader as bind resource.
+        None            = 0 << 0,
+        ShaderResource  = 1 << 1,
         StorageResource = 1 << 2,
-        Color           = 1 << 3, // The image will be the render target color attachment.
-        Depth           = 1 << 4, // The image will be the render target depth attachment.
-        Stencil         = 1 << 5, // The image will be the render target stencil attachment.
+        Color           = 1 << 3,
+        Depth           = 1 << 4,
+        Stencil         = 1 << 5,
         DepthStencil    = Depth | Stencil,
-        CopySrc         = 1 << 6, // The image content will be copied.
-        CopyDst         = 1 << 7, // The image content will be overwritten by a copy command.
+        CopySrc         = 1 << 6,
+        CopyDst         = 1 << 7,
         Resolve         = CopyDst
     };
 
-    /// @brief Enumeration representing the dimensions of an image resource.
     enum class ImageType
     {
         None,
@@ -106,7 +92,6 @@ namespace RHI
         Image3D,
     };
 
-    /// @brief Enumeration representing the dimensions of an image resource.
     enum class ImageViewType
     {
         None,
@@ -118,7 +103,6 @@ namespace RHI
         CubeMap,
     };
 
-    /// @brief Enumeration representing the aspects of an image resource.
     enum class ImageAspect
     {
         None         = 0,
@@ -129,7 +113,6 @@ namespace RHI
         All          = Color | DepthStencil,
     };
 
-    /// @brief Enumeration representing the component mapping.
     enum class ComponentSwizzle
     {
         Identity = 0,
@@ -141,16 +124,15 @@ namespace RHI
         A,
     };
 
-    /// @brief Enumeration representing how the buffer resource is intented to used.
     enum class BufferUsage
     {
         None    = 0 << 0,
-        Storage = 1 << 1, // The buffer will be used as a storage buffer object.
-        Uniform = 1 << 2, // The buffer will be used as an uniform buffer object.
-        Vertex  = 1 << 3, // The buffer will be used as a vertex buffer object.
-        Index   = 1 << 4, // The buffer will be used as a index buffer object.
-        CopySrc = 1 << 5, // This buffer content will be copied from.
-        CopyDst = 1 << 6, // This buffer content will be overwritten by a copy command.
+        Storage = 1 << 1,
+        Uniform = 1 << 2,
+        Vertex  = 1 << 3,
+        Index   = 1 << 4,
+        CopySrc = 1 << 5,
+        CopyDst = 1 << 6,
     };
 
     enum class ShaderStage
@@ -166,7 +148,6 @@ namespace RHI
     RHI_DEFINE_FLAG_OPERATORS(BufferUsage);
     RHI_DEFINE_FLAG_OPERATORS(ShaderStage);
 
-    /// @brief The type of the shader resource to be bound.
     enum class ShaderBindingType
     {
         None,
@@ -184,7 +165,6 @@ namespace RHI
         Count,
     };
 
-    /// @brief Pipeline vertex
     enum class PipelineVertexInputRate
     {
         None,
@@ -192,7 +172,6 @@ namespace RHI
         PerVertex,
     };
 
-    /// @brief Pipeline rasterizer state cull mode.
     enum class PipelineRasterizerStateCullMode
     {
         None,
@@ -201,7 +180,6 @@ namespace RHI
         Discard,
     };
 
-    /// @brief Pipeline rasterizer state fill mode.
     enum class PipelineRasterizerStateFillMode
     {
         Point,
@@ -209,7 +187,6 @@ namespace RHI
         Line
     };
 
-    /// @brief Pipeline topology mode.
     enum class PipelineTopologyMode
     {
         Points,
@@ -217,14 +194,12 @@ namespace RHI
         Triangles,
     };
 
-    /// @brief The orientation of triangle fornt faces
     enum class PipelineRasterizerStateFrontFace
     {
         Clockwise,
         CounterClockwise,
     };
 
-    /// @brief Operator used to compare two values
     enum class CompareOperator
     {
         Never,
@@ -237,21 +212,18 @@ namespace RHI
         Always,
     };
 
-    /// @brief Enumeration representing the sampler filtering.
     enum class SamplerFilter
     {
         Point,
         Linear,
     };
 
-    /// @brief Enumeration representing the sampler addressing mode.
     enum class SamplerAddressMode
     {
         Repeat,
         Clamp,
     };
 
-    /// @brief Enumeration representing the sampler compare opertion.
     enum class SamplerCompareOperation
     {
         Never,
@@ -264,7 +236,6 @@ namespace RHI
         GreaterEq,
     };
 
-    /// @brief Enumerates ...
     enum class BlendFactor
     {
         Zero,
@@ -283,7 +254,6 @@ namespace RHI
         OneMinusConstantAlpha,
     };
 
-    /// @brief Enumerates ...
     enum class BlendEquation
     {
         Add,
@@ -316,45 +286,40 @@ namespace RHI
         Signaled,
     };
 
-    /// @brief Represent the offset into an image resource.
     struct ImageOffset2D
     {
-        int32_t x; // Offset in the X direction
-        int32_t y; // Offset in the Y direction
+        int32_t x;
+        int32_t y;
 
         inline bool operator==(const ImageOffset2D& other) const { return x == other.x && y == other.y; }
     };
 
-    /// @brief Represent the offset into an image resource.
     struct ImageOffset3D
     {
-        int32_t x; // Offset in the X direction
-        int32_t y; // Offset in the Y direction
-        int32_t z; // Offset in the Z direction
+        int32_t x;
+        int32_t y;
+        int32_t z;
 
         inline bool operator==(const ImageOffset3D& other) const { return x == other.x && y == other.y && z == other.z; }
     };
 
-    /// @brief Represent the size of an image resource or subregion.
     struct ImageSize2D
     {
-        uint32_t width;  // The width of the image.
-        uint32_t height; // The height of the image.
+        uint32_t width;
+        uint32_t height;
 
         inline bool operator==(const ImageSize2D& other) const { return width == other.width && height == other.height; }
     };
 
-    /// @brief Represent the size of an image resource or subregion.
     struct ImageSize3D
     {
-        uint32_t width;  // The width of the image.
-        uint32_t height; // The height of the image.
-        uint32_t depth;  // The depth of the image.
+        uint32_t width;
+        uint32_t height;
+        uint32_t depth;
 
         inline bool operator==(const ImageSize3D& other) const { return width == other.width && height == other.height && depth == other.depth; }
     };
 
-    /// @brief Represent the texel color swizzling operation
     struct ComponentMapping
     {
         ComponentMapping() = default;
@@ -367,7 +332,6 @@ namespace RHI
         inline bool operator==(const ComponentMapping& other) const { return r == other.r && g == other.g && b == other.b && a == other.a; }
     };
 
-    /// @brief Represent a subview into a an image resource.
     struct ImageSubresource
     {
         ImageSubresource() = default;
@@ -404,7 +368,6 @@ namespace RHI
         inline bool operator==(const ImageSubresourceRange& other) const { return imageAspects == other.imageAspects && mipBase == other.mipBase && mipLevelCount == other.mipLevelCount && arrayBase == other.arrayBase && arrayCount == other.arrayCount; }
     };
 
-    /// @brief Specifies a single shader resource binding.
     struct ShaderBinding
     {
         inline static constexpr uint32_t VariableArraySize = UINT32_MAX;
@@ -415,7 +378,6 @@ namespace RHI
         Flags<ShaderStage> stages;
     };
 
-    /// @brief A shader bind group layout is an list of shader bindings.
     struct BindGroupLayoutCreateInfo
     {
         ShaderBinding bindings[c_MaxBindGroupElementsCount];
@@ -494,13 +456,11 @@ namespace RHI
         }
     };
 
-    // @brief the layout of pipeline shaders
     struct PipelineLayoutCreateInfo
     {
-        Handle<BindGroupLayout> layouts[c_MaxPipelineBindGroupsCount]; // remove this
+        Handle<BindGroupLayout> layouts[c_MaxPipelineBindGroupsCount];
     };
 
-    /// @brief Structure specifying the blending parameters for an image render target attachment.
     struct ColorAttachmentBlendStateDesc
     {
         bool                  blendEnable  = false;
@@ -515,12 +475,11 @@ namespace RHI
         inline bool operator==(const ColorAttachmentBlendStateDesc& other) const { return blendEnable == other.blendEnable && colorBlendOp == other.colorBlendOp && srcColor == other.srcColor && dstColor == other.dstColor && alphaBlendOp == other.alphaBlendOp && srcAlpha == other.srcAlpha && dstAlpha == other.dstAlpha; }
     };
 
-    /// @brief Structure specifying the render target layout.
     struct PipelineRenderTargetLayout
     {
-        Format colorAttachmentsFormats[c_MaxRenderTargetAttachmentsCount] = { Format::BGRA8_UNORM }; // default: BGRA8 List of the formats of color attachments.
-        Format depthAttachmentFormat                                      = Format::Unknown;         // default: none Format of an optional depth and/or stencil attachment.
-        Format stencilAttachmentFormat                                    = Format::Unknown;         // default: none Format of an optional depth and/or stencil attachment.
+        Format colorAttachmentsFormats[c_MaxRenderTargetAttachmentsCount] = { Format::BGRA8_UNORM };
+        Format depthAttachmentFormat                                      = Format::Unknown;
+        Format stencilAttachmentFormat                                    = Format::Unknown;
     };
 
     struct PipelineVertexBindingDesc
@@ -544,7 +503,6 @@ namespace RHI
         PipelineVertexAttributeDesc attributes[c_MaxPipelineVertexAttributes];
     };
 
-    /// @brief Structure specifying the rasterizer state.
     struct PipelineRasterizerStateDesc
     {
         PipelineRasterizerStateCullMode  cullMode  = PipelineRasterizerStateCullMode::BackFace;
@@ -553,14 +511,12 @@ namespace RHI
         float                            lineWidth = 1.0f;
     };
 
-    /// @brief Structure specifying the multisample state.
     struct PipelineMultisampleStateDesc
     {
         SampleCount sampleCount   = SampleCount::Samples1;
         bool        sampleShading = false;
     };
 
-    /// @brief Structure specifying the depth and stencil state.
     struct PipelineDepthStencilStateDesc
     {
         bool            depthTestEnable   = false;
@@ -569,40 +525,36 @@ namespace RHI
         bool            stencilTestEnable = false;
     };
 
-    /// @brief Structure specifying the color attachments blend state.
     struct PipelineColorBlendStateDesc
     {
         ColorAttachmentBlendStateDesc blendStates[c_MaxRenderTargetAttachmentsCount];
         float                         blendConstants[4];
     };
 
-    /// @brief Represent the creation parameters of an image resource.
     struct ImageCreateInfo
     {
         const char*       name = nullptr;
-        Flags<ImageUsage> usageFlags;                          // Usage flags.
-        ImageType         type;                                // The type of the image.
-        ImageSize3D       size;                                // The size of the image.
-        Format            format;                              // The format of the image.
-        SampleCount       sampleCount = SampleCount::Samples1; // The number of samples in each texel.
-        uint32_t          mipLevels   = 1;                     // The number of mip levels in the image.
-        uint32_t          arrayCount  = 1;                     // The number of images in the images array.
+        Flags<ImageUsage> usageFlags;
+        ImageType         type;
+        ImageSize3D       size;
+        Format            format;
+        SampleCount       sampleCount = SampleCount::Samples1;
+        uint32_t          mipLevels   = 1;
+        uint32_t          arrayCount  = 1;
 
         inline bool operator==(const ImageCreateInfo& other) const { return usageFlags == other.usageFlags && type == other.type && size == other.size && format == other.format && mipLevels == other.mipLevels && arrayCount == other.arrayCount; }
     };
 
-    /// @brief Represent the creation parameters of an buffer resource.
     struct BufferCreateInfo
     {
         const char*        name = nullptr;
         MemoryType         heapType;
-        Flags<BufferUsage> usageFlags; // Usage flags.
-        size_t             byteSize;   // The size of the buffer.
+        Flags<BufferUsage> usageFlags;
+        size_t             byteSize;
 
         inline bool operator==(const BufferCreateInfo& other) const { return usageFlags == other.usageFlags && byteSize == other.byteSize; }
     };
 
-    /// @brief Structure specifying the parameters of an image attachment.
     struct ImageViewCreateInfo
     {
         ImageViewCreateInfo() = default;
@@ -623,7 +575,6 @@ namespace RHI
         inline bool operator==(const ImageViewCreateInfo& other) const { return components == other.components && subresource == other.subresource; }
     };
 
-    /// @brief Structure specifying the parameters of an buffer attachment.
     struct BufferViewCreateInfo
     {
         const char*    name;
@@ -635,7 +586,6 @@ namespace RHI
         inline bool operator==(const BufferViewCreateInfo& other) const { return byteOffset == other.byteOffset && byteSize == other.byteSize && format == other.format; }
     };
 
-    /// @brief Description of the graphics pipeline states.
     struct GraphicsPipelineCreateInfo
     {
         const char*                     name = nullptr;
@@ -653,7 +603,6 @@ namespace RHI
         PipelineDepthStencilStateDesc   depthStencilState  = PipelineDepthStencilStateDesc{};
     };
 
-    /// @brief Description of a compute pipeline state.
     struct ComputePipelineCreateInfo
     {
         const char*            name = nullptr;
@@ -662,7 +611,6 @@ namespace RHI
         Handle<PipelineLayout> layout;
     };
 
-    /// @brief Structure describing the creation parameters of a sampler state.
     struct SamplerCreateInfo
     {
         SamplerCreateInfo() = default;
@@ -696,7 +644,6 @@ namespace RHI
         virtual ~ShaderModule() = default;
     };
 
-    /// @brief Fence object used to preform CPU-GPU sync
     class RHI_EXPORT Fence
     {
     public:
