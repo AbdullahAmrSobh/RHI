@@ -9,8 +9,6 @@
 
 #include <vk_mem_alloc.h>
 
-#include "tracy/TracyVulkan.hpp"
-
 namespace RHI::Vulkan
 {
     class BindGroupAllocator;

@@ -97,6 +97,63 @@ namespace RHI::Vulkan
     {
     }
 
+    void ICommandList::BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups)
+    {
+        if (bindGroups.empty())
+            return;
+
+        TL::Vector<VkDescriptorSet> descriptorSets;
+        TL::Vector<uint32_t> dynamicOffset;
+        for (auto bindingInfo : bindGroups)
+        {
+            auto bindGroup = m_context->m_bindGroupOwner.Get(bindingInfo.bindGroup);
+
+            descriptorSets.push_back(bindGroup->descriptorSet);
+            dynamicOffset.insert(dynamicOffset.end(), bindingInfo.dynamicOffsets.begin(), bindingInfo.dynamicOffsets.end());
+        }
+        vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, uint32_t(descriptorSets.size()), descriptorSets.data(), (uint32_t)dynamicOffset.size(), dynamicOffset.data());
+    }
+
+    void ICommandList::BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> bindingInfos)
+    {
+        if (bindingInfos.empty())
+            return;
+
+        TL::Vector<VkBuffer> buffers;
+        TL::Vector<VkDeviceSize> offsets;
+        for (auto bindingInfo : bindingInfos)
+        {
+            auto buffer = m_context->m_bufferOwner.Get(bindingInfo.buffer);
+            buffers.push_back(buffer->handle);
+            offsets.push_back(bindingInfo.offset);
+        }
+        vkCmdBindVertexBuffers(m_commandBuffer, firstBinding, (uint32_t)buffers.size(), buffers.data(), offsets.data());
+    }
+
+    void ICommandList::BindIndexBuffer(const BufferBindingInfo& bindingInfo, VkIndexType indexType)
+    {
+        if (bindingInfo.buffer == NullHandle)
+            return;
+
+        auto buffer = m_context->m_bufferOwner.Get(bindingInfo.buffer);
+        vkCmdBindIndexBuffer(m_commandBuffer, buffer->handle, bindingInfo.offset, indexType);
+    }
+
+    void ICommandList::PipelineBarrier(TL::Span<const VkMemoryBarrier2> memoryBarriers, TL::Span<const VkBufferMemoryBarrier2> bufferBarriers, TL::Span<const VkImageMemoryBarrier2> imageBarriers)
+    {
+        VkDependencyInfo dependencyInfo{};
+        dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+        dependencyInfo.pNext = nullptr;
+        dependencyInfo.dependencyFlags = 0;
+        dependencyInfo.memoryBarrierCount = uint32_t(memoryBarriers.size());
+        dependencyInfo.pMemoryBarriers = memoryBarriers.data();
+        dependencyInfo.bufferMemoryBarrierCount = uint32_t(bufferBarriers.size());
+        dependencyInfo.pBufferMemoryBarriers = bufferBarriers.data();
+        dependencyInfo.imageMemoryBarrierCount = uint32_t(imageBarriers.size());
+        dependencyInfo.pImageMemoryBarriers = imageBarriers.data();
+        vkCmdPipelineBarrier2(m_commandBuffer, &dependencyInfo);
+    }
+
     void ICommandList::Begin()
     {
         ZoneScoped;
@@ -374,62 +431,5 @@ namespace RHI::Vulkan
         bufferImageCopy.imageOffset = ConvertOffset3D(copyInfo.imageOffset);
         bufferImageCopy.imageExtent = ConvertExtent3D(copyInfo.imageSize);
         vkCmdCopyBufferToImage(m_commandBuffer, buffer->handle, image->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferImageCopy);
-    }
-
-    void ICommandList::BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups)
-    {
-        if (bindGroups.empty())
-            return;
-
-        TL::Vector<VkDescriptorSet> descriptorSets;
-        TL::Vector<uint32_t> dynamicOffset;
-        for (auto bindingInfo : bindGroups)
-        {
-            auto bindGroup = m_context->m_bindGroupOwner.Get(bindingInfo.bindGroup);
-
-            descriptorSets.push_back(bindGroup->descriptorSet);
-            dynamicOffset.insert(dynamicOffset.end(), bindingInfo.dynamicOffsets.begin(), bindingInfo.dynamicOffsets.end());
-        }
-        vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, uint32_t(descriptorSets.size()), descriptorSets.data(), (uint32_t)dynamicOffset.size(), dynamicOffset.data());
-    }
-
-    void ICommandList::BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> bindingInfos)
-    {
-        if (bindingInfos.empty())
-            return;
-
-        TL::Vector<VkBuffer> buffers;
-        TL::Vector<VkDeviceSize> offsets;
-        for (auto bindingInfo : bindingInfos)
-        {
-            auto buffer = m_context->m_bufferOwner.Get(bindingInfo.buffer);
-            buffers.push_back(buffer->handle);
-            offsets.push_back(bindingInfo.offset);
-        }
-        vkCmdBindVertexBuffers(m_commandBuffer, firstBinding, (uint32_t)buffers.size(), buffers.data(), offsets.data());
-    }
-
-    void ICommandList::BindIndexBuffer(const BufferBindingInfo& bindingInfo, VkIndexType indexType)
-    {
-        if (bindingInfo.buffer == NullHandle)
-            return;
-
-        auto buffer = m_context->m_bufferOwner.Get(bindingInfo.buffer);
-        vkCmdBindIndexBuffer(m_commandBuffer, buffer->handle, bindingInfo.offset, indexType);
-    }
-
-    void ICommandList::PipelineBarrier(TL::Span<const VkMemoryBarrier2> memoryBarriers, TL::Span<const VkBufferMemoryBarrier2> bufferBarriers, TL::Span<const VkImageMemoryBarrier2> imageBarriers)
-    {
-        VkDependencyInfo dependencyInfo{};
-        dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-        dependencyInfo.pNext = nullptr;
-        dependencyInfo.dependencyFlags = 0;
-        dependencyInfo.memoryBarrierCount = uint32_t(memoryBarriers.size());
-        dependencyInfo.pMemoryBarriers = memoryBarriers.data();
-        dependencyInfo.bufferMemoryBarrierCount = uint32_t(bufferBarriers.size());
-        dependencyInfo.pBufferMemoryBarriers = bufferBarriers.data();
-        dependencyInfo.imageMemoryBarrierCount = uint32_t(imageBarriers.size());
-        dependencyInfo.pImageMemoryBarriers = imageBarriers.data();
-        vkCmdPipelineBarrier2(m_commandBuffer, &dependencyInfo);
     }
 } // namespace RHI::Vulkan

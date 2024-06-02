@@ -36,6 +36,14 @@ namespace RHI::Vulkan
         ICommandList(IContext* context, VkCommandPool commandPool, VkCommandBuffer commandBuffer);
         ~ICommandList() = default;
 
+        void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups);
+
+        void BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> bindingInfos);
+
+        void BindIndexBuffer(const BufferBindingInfo& bindingInfo, VkIndexType indexType);
+
+        void PipelineBarrier(TL::Span<const VkMemoryBarrier2> memoryBarriers, TL::Span<const VkBufferMemoryBarrier2> bufferBarriers, TL::Span<const VkImageMemoryBarrier2> imageBarriers);
+
         void Begin() override;
         void Begin(const CommandListBeginInfo& beginInfo) override;
         void End() override;
@@ -52,14 +60,6 @@ namespace RHI::Vulkan
         void CopyImage(const ImageCopyInfo& copyInfo) override;
         void CopyImageToBuffer(const BufferImageCopyInfo& copyInfo) override;
         void CopyBufferToImage(const BufferImageCopyInfo& copyInfo) override;
-
-        void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups);
-
-        void BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> bindingInfos);
-
-        void BindIndexBuffer(const BufferBindingInfo& bindingInfo, VkIndexType indexType);
-
-        void PipelineBarrier(TL::Span<const VkMemoryBarrier2> memoryBarriers, TL::Span<const VkBufferMemoryBarrier2> bufferBarriers, TL::Span<const VkImageMemoryBarrier2> imageBarriers);
 
         VkCommandBuffer m_commandBuffer;
         VkCommandPool m_commandPool;

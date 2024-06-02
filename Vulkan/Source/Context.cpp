@@ -140,9 +140,9 @@ namespace RHI::Vulkan
         (void)pool;
 #if RHI_REPORT_RESOURCE_LEAKS
     #if RHI_REPORT_RESOURCE_LEAKS_COUNT
-            reportBody += TL::String(std::format(message, pool.ReportLiveResourcesCount()));
+        reportBody += TL::String(std::format(message, pool.ReportLiveResourcesCount()));
     #else
-            reportBody += TL::String(std::format(message, pool.ReportLiveResources()));
+        reportBody += TL::String(std::format(message, pool.ReportLiveResources()));
     #endif
 #endif
     }
