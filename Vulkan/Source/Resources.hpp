@@ -17,9 +17,7 @@ namespace RHI::Vulkan
     {
         VmaAllocation handle;
         VmaAllocationInfo info;
-
         size_t offset;
-
         VmaVirtualBlock virtualBlock;
         VmaVirtualAllocation virtualHandle;
     };
@@ -43,44 +41,47 @@ namespace RHI::Vulkan
 
     struct IImage : Image
     {
-        // TODO: break down to several parallel structures
-        Allocation allocation; // allocation backing this resource.
-        VkImage handle;        // Handle to valid VkImage resource (Might not be backed by an allocation).
-        VkFormat format;       // Image pixel Format
-        VkImageType imageType; // Image dimensions
-        ImageSize3D size;      // Image dimensions
+        Allocation allocation;
+        VkImage handle;
 
-        VkSemaphore waitSemaphore;   // wait semaphore: if the content of this resource is being written by the framescheduler (wait on this semaphore)
-        VkSemaphore signalSemaphore; // signal semaphore: if the content of this resource is being read by the frameschduler (signal this semaphore)
+        VkImageCreateFlags flags;
+        VkImageType imageType;
+        VkFormat format;
+        VkExtent3D extent;
+        uint32_t mipLevels;
+        uint32_t arrayLayers;
+        VkSampleCountFlagBits samples;
+        VkImageUsageFlags usage;
 
-        uint32_t queueFamilyIndex;
-        VkImageLayout initalLayout;
+        // TODO: Should remove
+        VkSemaphore waitSemaphore;
+        VkSemaphore signalSemaphore;
 
-        bool isTransient;
+        VkImageLayout initalLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-        ResultCode Init(IContext* context, const ImageCreateInfo& createInfo, bool isTransient = false);
+        ResultCode Init(IContext* context, const ImageCreateInfo& createInfo);
+        ResultCode Init(IContext* context, VkImage image, const VkSwapchainCreateInfoKHR& swapchainCreateInfo);
         void Shutdown(IContext* context);
 
-        VkMemoryRequirements GetMemoryRequirements(VkDevice device) const;
+        VkMemoryRequirements GetMemoryRequirements(IContext* context) const;
     };
 
     struct IBuffer : Buffer
     {
-        // TODO: break down to several parallel structures
-        Allocation allocation; // allocation backing this resource.
-        VkBuffer handle;       // Handle to valid VkImage resource (Might not be backed by an allocation).
+        Allocation allocation;
+        VkBuffer handle;
 
-        VkSemaphore waitSemaphore;   // wait semaphore: if the content of this resource is being written by the framescheduler (wait on this semaphore)
-        VkSemaphore signalSemaphore; // signal semaphore: if the content of this resource is being read by the frameschduler (signal this semaphore)
+        VkImageCreateFlags flags;
+        size_t size;
+        VkBufferUsageFlags usage;
 
-        uint32_t queueFamilyIndex;
+        VkSemaphore waitSemaphore;
+        VkSemaphore signalSemaphore;
 
-        bool isTransient;
-
-        ResultCode Init(IContext* context, const BufferCreateInfo& createInfo, bool isTransient = false);
+        ResultCode Init(IContext* context, const BufferCreateInfo& createInfo);
         void Shutdown(IContext* context);
 
-        VkMemoryRequirements GetMemoryRequirements(VkDevice device) const;
+        VkMemoryRequirements GetMemoryRequirements(IContext* context) const;
     };
 
     struct IImageView : ImageView

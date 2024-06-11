@@ -17,6 +17,12 @@
 
 namespace RHI::Vulkan
 {
+    [[maybe_unused]] inline static bool Validate(ResultCode result)
+    {
+        RHI_ASSERT(IsSucess(result));
+        return IsSucess(result);
+    }
+
     [[maybe_unused]] inline static bool Validate(VkResult result)
     {
         RHI_ASSERT(result == VK_SUCCESS);

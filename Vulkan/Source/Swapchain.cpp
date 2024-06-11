@@ -197,6 +197,7 @@ namespace RHI::Vulkan
     VkResult ISwapchain::InitSwapchain()
     {
         auto context = (IContext*)m_context;
+
         VkSwapchainCreateInfoKHR createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
         createInfo.pNext = nullptr;
@@ -230,9 +231,7 @@ namespace RHI::Vulkan
         for (uint32_t imageIndex = 0; imageIndex < m_swapchainImagesCount; imageIndex++)
         {
             IImage image{};
-            image.handle = images[imageIndex];
-            image.format = m_surfaceFormat.format;
-            image.imageType = VK_IMAGE_TYPE_2D;
+            Validate(image.Init(context, images[imageIndex], createInfo));
             m_images[imageIndex] = context->m_imageOwner.Emplace(std::move(image));
         }
         Validate(vkAcquireNextImageKHR(context->m_device, m_swapchain, UINT64_MAX, m_imageAcquiredSemaphore[0], VK_NULL_HANDLE, &m_currentImageIndex));

@@ -666,7 +666,9 @@ namespace RHI::Vulkan
         copyInfo.subresource = subresources;
         copyInfo.buffer = buffer;
         copyInfo.bufferOffset = bufferOffset;
-        copyInfo.imageSize = image->size;
+        copyInfo.imageSize.width = image->extent.width;
+        copyInfo.imageSize.height = image->extent.height;
+        copyInfo.imageSize.depth = image->extent.depth;
         auto commandList = (ICommandList*)m_commandPool->Allocate(QueueType::Transfer, CommandListLevel::Primary, 1).front();
 
         commandList->Begin();

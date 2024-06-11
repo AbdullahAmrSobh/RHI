@@ -77,46 +77,51 @@ namespace RHI::Vulkan
     /// Image
     ///////////////////////////////////////////////////////////////////////////
 
-    ResultCode IImage::Init(IContext* context, const ImageCreateInfo& _createInfo, bool _isTransient)
+    ResultCode IImage::Init(IContext* context, const ImageCreateInfo& _createInfo)
     {
-        isTransient = _isTransient;
-        signalSemaphore = VK_NULL_HANDLE;
-        waitSemaphore = VK_NULL_HANDLE;
+        this->flags = {};
+        this->imageType = ConvertImageType(_createInfo.type);
+        this->format = ConvertFormat(_createInfo.format);
+        this->extent = ConvertExtent3D(_createInfo.size);
+        this->mipLevels = _createInfo.mipLevels;
+        this->arrayLayers = _createInfo.arrayCount;
+        this->samples = ConvertSampleCount(_createInfo.sampleCount);
+        this->usage = ConvertImageUsageFlags(_createInfo.usageFlags);
 
-        size = _createInfo.size;
+        VmaAllocationCreateInfo allocInfo{};
+        allocInfo.flags = 0u;
+        allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+        allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+        allocInfo.preferredFlags = 0u;
+        allocInfo.memoryTypeBits = 0u;
+        allocInfo.pool = VK_NULL_HANDLE;
+        allocInfo.pUserData = nullptr;
 
         VkImageCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         createInfo.pNext = nullptr;
-        createInfo.flags = {};
-        createInfo.imageType = ConvertImageType(_createInfo.type);
-        createInfo.format = ConvertFormat(_createInfo.format);
-        createInfo.extent = ConvertExtent3D(_createInfo.size);
-        createInfo.mipLevels = _createInfo.mipLevels;
-        createInfo.arrayLayers = _createInfo.arrayCount;
-        createInfo.samples = ConvertSampleCount(_createInfo.sampleCount);
+        createInfo.flags = this->flags;
+        createInfo.imageType = this->imageType;
+        createInfo.format = this->format;
+        createInfo.extent = this->extent;
+        createInfo.mipLevels = this->mipLevels;
+        createInfo.arrayLayers = this->arrayLayers;
+        createInfo.samples = this->samples;
         createInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-        createInfo.usage = ConvertImageUsageFlags(_createInfo.usageFlags);
+        createInfo.usage = this->usage;
         createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         createInfo.queueFamilyIndexCount = 0;
         createInfo.pQueueFamilyIndices = nullptr;
         createInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        auto result = vmaCreateImage(
+            context->m_allocator,
+            &createInfo,
+            &allocInfo,
+            &handle,
+            &allocation.handle,
+            &allocation.info);
 
-        this->format = createInfo.format;
-        this->imageType = createInfo.imageType;
-
-        VkResult result;
-        if (isTransient)
-        {
-            result = vkCreateImage(context->m_device, &createInfo, nullptr, &handle);
-        }
-        else
-        {
-            VmaAllocationCreateInfo allocationInfo{};
-            result = vmaCreateImage(context->m_allocator, &createInfo, &allocationInfo, &handle, &allocation.handle, &allocation.info);
-        }
-
-        if (result == VK_SUCCESS)
+        if (_createInfo.name)
         {
             context->SetDebugName(handle, _createInfo.name);
         }
@@ -124,18 +129,35 @@ namespace RHI::Vulkan
         return ConvertResult(result);
     }
 
-    void IImage::Shutdown(IContext* context)
+    ResultCode IImage::Init(IContext* context, VkImage image, const VkSwapchainCreateInfoKHR& swapchainCreateInfo)
     {
-        if (isTransient)
-            vkDestroyImage(context->m_device, handle, nullptr);
-        else
-            vmaDestroyImage(context->m_allocator, handle, allocation.handle);
+        (void)context;
+
+        this->handle = image;
+
+        this->flags = {};
+        this->imageType = VK_IMAGE_TYPE_2D;
+        this->format = swapchainCreateInfo.imageFormat;
+        this->extent.width = swapchainCreateInfo.imageExtent.width;
+        this->extent.height = swapchainCreateInfo.imageExtent.height;
+        this->extent.depth = 1;
+        this->mipLevels = 1;
+        this->arrayLayers = swapchainCreateInfo.imageArrayLayers;
+        this->samples = VK_SAMPLE_COUNT_1_BIT;
+        this->usage = swapchainCreateInfo.imageUsage;
+
+        return ResultCode::Success;
     }
 
-    VkMemoryRequirements IImage::GetMemoryRequirements(VkDevice device) const
+    void IImage::Shutdown(IContext* context)
     {
-        VkMemoryRequirements requirements{};
-        vkGetImageMemoryRequirements(device, handle, &requirements);
+        vmaDestroyImage(context->m_allocator, handle, allocation.handle);
+    }
+
+    VkMemoryRequirements IImage::GetMemoryRequirements(IContext* context) const
+    {
+        VkMemoryRequirements requirements;
+        vkGetImageMemoryRequirements(context->m_device, handle, &requirements);
         return requirements;
     }
 
@@ -143,32 +165,39 @@ namespace RHI::Vulkan
     /// Buffer
     ///////////////////////////////////////////////////////////////////////////
 
-    ResultCode IBuffer::Init(IContext* context, const BufferCreateInfo& _createInfo, bool _isTransient)
+    ResultCode IBuffer::Init(IContext* context, const BufferCreateInfo& _createInfo)
     {
-        isTransient = _isTransient;
+        this->flags = {};
+        this->size = _createInfo.byteSize;
+        this->usage = ConvertBufferUsageFlags(_createInfo.usageFlags);
+
+        VmaAllocationCreateInfo allocInfo{};
+        // allocInfo.flags = 0u;
+        // allocInfo.usage = _createInfo.heapType == MemoryType::GPUShared ? VMA_MEMORY_USAGE_AUTO_PREFER_HOST : VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+        allocInfo.usage = _createInfo.heapType == MemoryType::GPUShared ? VMA_MEMORY_USAGE_AUTO_PREFER_HOST : VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+        allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+        // allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+        allocInfo.preferredFlags = 0u;
+        allocInfo.memoryTypeBits = 0u;
+        allocInfo.pool = VK_NULL_HANDLE;
+        allocInfo.pUserData = nullptr;
 
         VkBufferCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         createInfo.pNext = nullptr;
-        createInfo.flags = {};
-        createInfo.size = _createInfo.byteSize;
-        createInfo.usage = ConvertBufferUsageFlags(_createInfo.usageFlags);
+        createInfo.flags = this->flags;
+        createInfo.size = this->size;
+        createInfo.usage = this->usage;
         createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         createInfo.queueFamilyIndexCount = 0;
         createInfo.pQueueFamilyIndices = nullptr;
-
-        VkResult result;
-        if (isTransient)
-        {
-            result = vkCreateBuffer(context->m_device, &createInfo, nullptr, &handle);
-        }
-        else
-        {
-            VmaAllocationCreateInfo allocationInfo{};
-            allocationInfo.usage = _createInfo.heapType == MemoryType::GPUShared ? VMA_MEMORY_USAGE_AUTO_PREFER_HOST : VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-            allocationInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
-            result = vmaCreateBuffer(context->m_allocator, &createInfo, &allocationInfo, &handle, &allocation.handle, &allocation.info);
-        }
+        auto result = vmaCreateBuffer(
+            context->m_allocator,
+            &createInfo,
+            &allocInfo,
+            &handle,
+            &allocation.handle,
+            &allocation.info);
 
         if (result == VK_SUCCESS)
         {
@@ -180,16 +209,13 @@ namespace RHI::Vulkan
 
     void IBuffer::Shutdown(IContext* context)
     {
-        if (isTransient)
-            vkDestroyBuffer(context->m_device, handle, nullptr);
-        else
-            vmaDestroyBuffer(context->m_allocator, handle, allocation.handle);
+        vmaDestroyBuffer(context->m_allocator, handle, allocation.handle);
     }
 
-    VkMemoryRequirements IBuffer::GetMemoryRequirements(VkDevice device) const
+    VkMemoryRequirements IBuffer::GetMemoryRequirements(IContext* context) const
     {
-        VkMemoryRequirements requirements{};
-        vkGetBufferMemoryRequirements(device, handle, &requirements);
+        VkMemoryRequirements requirements;
+        vkGetBufferMemoryRequirements(context->m_device, handle, &requirements);
         return requirements;
     }
 
