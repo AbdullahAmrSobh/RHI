@@ -265,10 +265,4 @@ private:
     RHI::CommandList* m_commandList[2];
 };
 
-int main(int argc, const char** argv)
-{
-    (void)argc;
-    (void)argv;
-
-    return ApplicationBase::Entry<BasicRenderer>();
-}
+RHI_APP_MAIN(BasicRenderer);

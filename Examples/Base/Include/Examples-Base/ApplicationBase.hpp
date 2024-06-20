@@ -37,7 +37,7 @@ public:
     virtual ~ApplicationBase() = default;
 
     template<typename ExampleType>
-    static int Entry();
+    static int Entry(TL::Span<const char*> args);
 
 private:
     enum class State
@@ -77,15 +77,17 @@ protected:
 };
 
 template<typename ExampleType>
-inline int ApplicationBase::Entry()
+inline int ApplicationBase::Entry([[maybe_unused]] TL::Span<const char*> args)
 {
     auto example = ExampleType();
-
     example.Init();
-
     example.Run();
-
     example.Shutdown();
-
     return 0;
 }
+
+#define RHI_APP_MAIN(ExampleType)                                                                \
+    int main(int argc, const char* argv[])                                                       \
+    {                                                                                            \
+        return ApplicationBase::Entry<ExampleType>(TL::Span<const char*>{ argv, (size_t)argc }); \
+    }
