@@ -18,19 +18,17 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Enable developer mode
 set(RHI_DEVELOPER_MODE ${PROJECT_IS_TOP_LEVEL})
 
-# Tracy profiler option
 option(TRACY_ENABLE "Enable Tracy profiler" ${PROJECT_IS_TOP_LEVEL})
+option(RHI_DEBUG "Enable RHI debug mode" ${PROJECT_IS_TOP_LEVEL})
+option(RHI_BUILD_EXAMPLES "Build examples tree." ${PROJECT_IS_TOP_LEVEL})
+
 if(TRACY_ENABLE)
     add_compile_definitions(TRACY_ENABLE)
 endif()
 
-# RHI debug option
-option(RHI_DEBUG "Enable RHI debug mode" ${PROJECT_IS_TOP_LEVEL})
 if(RHI_DEBUG)
     add_compile_definitions(RHI_DEBUG)
 endif()
-
-option(RHI_BUILD_EXAMPLES "Build examples tree." ${PROJECT_IS_TOP_LEVEL})
 
 # ---- In-source build guard ----
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
