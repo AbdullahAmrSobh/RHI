@@ -4,13 +4,12 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Triangle.cpp
 )
 
-set(SHADER_FILES_LIST
-    ${CMAKE_CURRENT_SOURCE_DIR}/Resources/Shaders/Triangle.hlsl
-    ${CMAKE_CURRENT_SOURCE_DIR}/Resources/Shaders/ImGui.hlsl
-    ${CMAKE_CURRENT_SOURCE_DIR}/Resources/Shaders/Compose.hlsl
+set(SHADER_FILES
+    ${CMAKE_SOURCE_DIR}/Examples/Shaders/ImGui.slang
+    ${CMAKE_SOURCE_DIR}/Examples/Shaders/Basic.slang
 )
 
-include(${CMAKE_SOURCE_DIR}/CMake/AddTarget.cmake)
+include(${CMAKE_SOURCE_DIR}/CMake/add-target.cmake)
 aams_add_target(
     NAME Triangle
     NAMESPACE Examples
@@ -21,11 +20,6 @@ aams_add_target(
         Examples::Base
     RUNTIME_LIBRARIES
         RHI::Vulkan
-)
-
-set(SHADER_FILES
-    ${CMAKE_SOURCE_DIR}/Examples/Shaders/ImGui.slang
-    ${CMAKE_SOURCE_DIR}/Examples/Shaders/Basic.slang
 )
 
 include(${CMAKE_SOURCE_DIR}/cmake/compile-slang-shaders.cmake)

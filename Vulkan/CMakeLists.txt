@@ -1,12 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
 
-# Add dependencies
-CPMAddPackage(
-    NAME           RHI_vma
-	GIT_REPOSITORY git@github.com:GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
-	GIT_TAG        v3.0.1
-)
-
 # # Find Vulkan
 find_package(Vulkan REQUIRED)
 
@@ -34,7 +27,7 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/VulkanFunctions.cpp
 )
 
-include(${CMAKE_SOURCE_DIR}/CMake/AddTarget.cmake)
+include(${CMAKE_SOURCE_DIR}/CMake/add-target.cmake)
 aams_add_target(
     NAME Vulkan
     NAMESPACE RHI

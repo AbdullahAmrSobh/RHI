@@ -9,8 +9,6 @@ function(compile_slang_shaders)
 
     list(TRANSFORM SLANG_SHADER_INCLUDE_DIRS PREPEND "-I")
 
-    add_dependencies(${SLANG_SHADER_TARGET} slang)
-
     if (WIN32)
         set(SLANGC "${CMAKE_SOURCE_DIR}/slang/windows-x64/release/slangc.exe")
         set(SPIRV_LINK "$ENV{VULKAN_SDK}/bin/spirv-link.exe")
