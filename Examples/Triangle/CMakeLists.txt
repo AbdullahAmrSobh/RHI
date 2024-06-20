@@ -33,6 +33,7 @@ compile_slang_shaders(
     TARGET Base
     INCLUDE_DIRS
         ${CMAKE_SOURCE_DIR}/Examples/Shaders/core
+        ${CMAKE_SOURCE_DIR}/Examples/Base/Include
     SHADER_GFX_FILES
         ${SHADER_FILES}
     OUTPUT_DIR

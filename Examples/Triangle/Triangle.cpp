@@ -147,7 +147,7 @@ private:
             for (const auto& handle : node.m_meshes)
             {
                 auto mesh = m_scene->m_staticMeshOwner.Get(handle);
-                drawInfo.bindGroups = {{m_bindGroup, uint32_t(sizeof(Shader::PerDraw) * nodeIndex)}};
+                drawInfo.bindGroups = {{m_bindGroup, uint32_t(sizeof(Shader::ObjectTransform) * nodeIndex)}};
                 drawInfo.parameters.elementsCount = mesh->elementsCount;
                 drawInfo.vertexBuffers = { mesh->position, mesh->normals };
                 if (mesh->indcies != RHI::NullHandle)
@@ -169,11 +169,11 @@ private:
         m_perFrameData.inverseViewMatrix = glm::inverse(view);
 
         auto ptr = m_context->MapBuffer(m_perFrameUniformBuffer);
-        memcpy(ptr, &m_perFrameData, sizeof(Shader::PerFrame));
+        memcpy(ptr, &m_perFrameData, sizeof(Shader::SceneTransform));
         m_context->UnmapBuffer(m_perFrameUniformBuffer);
     }
 
-    void SetupGPUResources(TL::Span<Shader::PerDraw> perDraw)
+    void SetupGPUResources(TL::Span<Shader::ObjectTransform> perDraw)
     {
         m_sampler = m_context->CreateSampler(RHI::SamplerCreateInfo{});
 
@@ -202,19 +202,19 @@ private:
 
         RHI::BufferCreateInfo bufferCreateInfo{};
         bufferCreateInfo.usageFlags = RHI::BufferUsage::Uniform;
-        bufferCreateInfo.byteSize = sizeof(Shader::PerFrame);
+        bufferCreateInfo.byteSize = sizeof(Shader::SceneTransform);
         m_perFrameUniformBuffer = m_context->CreateBuffer(bufferCreateInfo).GetValue();
         bufferCreateInfo.byteSize = perDraw.size_bytes();
         m_perObjectUniformBuffer = m_context->CreateBuffer(bufferCreateInfo).GetValue();
 
         auto ptr = m_context->MapBuffer(m_perObjectUniformBuffer);
-        memcpy(ptr, perDraw.data(), perDraw.size() * sizeof(Shader::PerDraw));
+        memcpy(ptr, perDraw.data(), perDraw.size() * sizeof(Shader::ObjectTransform));
         m_context->UnmapBuffer(m_perObjectUniformBuffer);
 
         // update bind groups
         TL::Span<const RHI::ResourceBinding> bindings{
             RHI::ResourceBinding(0, 0, m_perFrameUniformBuffer),
-            RHI::ResourceBinding(1, 0, RHI::ResourceBinding::DynamicBufferBinding(m_perObjectUniformBuffer, 0, sizeof(Shader::PerDraw))),
+            RHI::ResourceBinding(1, 0, RHI::ResourceBinding::DynamicBufferBinding(m_perObjectUniformBuffer, 0, sizeof(Shader::ObjectTransform))),
         };
         m_context->UpdateBindGroup(m_bindGroup, bindings);
     }
@@ -245,8 +245,8 @@ private:
     }
 
 private:
-    Shader::PerFrame m_perFrameData = {};
-    TL::Vector<Shader::PerDraw> m_perDrawData; // todo: make as array
+    Shader::SceneTransform m_perFrameData = {};
+    TL::Vector<Shader::ObjectTransform> m_perDrawData; // todo: make as array
 
     RHI::Handle<RHI::Sampler> m_sampler;
 

@@ -84,7 +84,7 @@ Scene::Scene(RHI::Context* pContext, const char* scenePath)
             case aiLightSource_UNDEFINED:
             case aiLightSource_DIRECTIONAL:
                 {
-                    Shader::DirLight dirLight{};
+                    Shader::DirectionalLight dirLight{};
                     dirLight.direction = direction;
                     dirLight.ambientColor = ConvertColor(light.mColorAmbient);
                     dirLight.diffuseColor = ConvertColor(light.mColorDiffuse);
@@ -127,7 +127,7 @@ Scene::Scene(RHI::Context* pContext, const char* scenePath)
         if (aiNode.mNumMeshes)
         {
             m_staticSceneNodes.push_back(node);
-            Shader::PerDraw perDraw{};
+            Shader::ObjectTransform perDraw{};
             perDraw.modelMatrix = nodeTransform;
             m_perDrawData.push_back(perDraw);
         }

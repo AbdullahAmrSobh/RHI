@@ -7,6 +7,10 @@ function(compile_slang_shaders)
 		${ARGN} # the argument that will be parsed
 	)
 
+    list(TRANSFORM SLANG_SHADER_INCLUDE_DIRS PREPEND "-I")
+
+    add_dependencies(${SLANG_SHADER_TARGET} slang)
+
     if (WIN32)
         set(SLANGC "${CMAKE_SOURCE_DIR}/slang/windows-x64/release/slangc.exe")
         set(SPIRV_LINK "$ENV{VULKAN_SDK}/bin/spirv-link.exe")
@@ -22,7 +26,7 @@ function(compile_slang_shaders)
         set(SLANG_SHADER_OUTPUT_VERTEX_PATH "${SLANG_SHADER_OUTPUT_DIR}/${SHADER_NAME}.vertex.spv")
         add_custom_command(
             OUTPUT ${SLANG_SHADER_OUTPUT_VERTEX_PATH}
-            COMMAND ${SLANGC} ${SLANG_SHADER_GFX_PATH} ${SLANG_SHADER_ABS_PATH} -I${SLANG_SHADER_INCLUDE_DIRS} -o ${SLANG_SHADER_OUTPUT_VERTEX_PATH} -entry VSMain -stage vertex -target spirv -emit-spirv-directly -fvk-invert-y -fvk-use-entrypoint-name
+            COMMAND ${SLANGC} ${SLANG_SHADER_GFX_PATH} ${SLANG_SHADER_ABS_PATH} ${SLANG_SHADER_INCLUDE_DIRS} -o ${SLANG_SHADER_OUTPUT_VERTEX_PATH} -entry VSMain -stage vertex -target spirv -emit-spirv-directly -fvk-invert-y -fvk-use-entrypoint-name
             DEPENDS ${SLANGC} ${SLANG_SHADER_ABS_PATH} ${SLANG_SHADER_DEPENDENCIES}
             COMMENT "Compiling vertex ${SLANG_SHADER_ABS_PATH}..."
         )
@@ -31,7 +35,7 @@ function(compile_slang_shaders)
         set(SLANG_SHADER_OUTPUT_PIXEL_PATH "${SLANG_SHADER_OUTPUT_DIR}/${SHADER_NAME}.pixel.spv")
         add_custom_command(
             OUTPUT ${SLANG_SHADER_OUTPUT_PIXEL_PATH}
-            COMMAND ${SLANGC} ${SLANG_SHADER_GFX_PATH} ${SLANG_SHADER_ABS_PATH} -I${SLANG_SHADER_INCLUDE_DIRS} -o ${SLANG_SHADER_OUTPUT_PIXEL_PATH} -entry PSMain -stage fragment -target spirv -emit-spirv-directly -fvk-invert-y -fvk-use-entrypoint-name
+            COMMAND ${SLANGC} ${SLANG_SHADER_GFX_PATH} ${SLANG_SHADER_ABS_PATH} ${SLANG_SHADER_INCLUDE_DIRS} -o ${SLANG_SHADER_OUTPUT_PIXEL_PATH} -entry PSMain -stage fragment -target spirv -emit-spirv-directly -fvk-invert-y -fvk-use-entrypoint-name
             DEPENDS ${SLANGC} ${SLANG_SHADER_ABS_PATH} ${SLANG_SHADER_DEPENDENCIES}
             COMMENT "Compiling pixel ${SLANG_SHADER_ABS_PATH}..."
         )

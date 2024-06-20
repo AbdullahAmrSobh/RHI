@@ -39,6 +39,9 @@ string(
     PROJECT_IS_TOP_LEVEL
 )
 
+# ---- Add dependncies ----
+include(Packages.cmake)
+
 # ---- Declare library ----
 
 add_subdirectory(RHI)

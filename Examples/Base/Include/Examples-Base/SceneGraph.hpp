@@ -7,85 +7,12 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
-namespace TL = RHI::TL;
-
 namespace Shader
 {
-    inline static constexpr uint32_t MAX_LIGHTS = 16;
+    #include "ShaderInterface/Core.slang"
+}
 
-    struct alignas(16) DirLight
-    {
-        glm::vec3 direction;
-        float _padding0;
-        glm::vec3 ambientColor;
-        float _padding1;
-        glm::vec3 specularColor;
-        float _padding2;
-        glm::vec3 diffuseColor;
-        float _padding3;
-    };
-
-    static_assert(sizeof(DirLight) % 16 == 0, "DirLight must be aligned to 16 bytes");
-
-    struct alignas(16) PointLight
-    {
-        glm::vec3 position;
-        float radius;
-        glm::vec3 ambientColor;
-        float _padding1;
-        glm::vec3 specularColor;
-        float _padding2;
-        glm::vec3 diffuseColor;
-        float _padding3;
-
-        float attuation;
-        float _padding4[3];
-    };
-
-    static_assert(sizeof(PointLight) % 16 == 0, "PointLight must be aligned to 16 bytes");
-
-    struct alignas(16) SpotLight
-    {
-        glm::vec3 position;
-        float radius;
-        glm::vec3 direction;
-        float innerAngle;
-
-        glm::vec3 ambientColor;
-        float _padding1;
-        glm::vec3 specularColor;
-        float _padding2;
-        glm::vec3 diffuseColor;
-        float _padding3;
-
-        float attuation;
-        float _padding4[3];
-    };
-
-    static_assert(sizeof(SpotLight) % 16 == 0, "SpotLight must be aligned to 16 bytes");
-
-    struct alignas(16) PerFrame
-    {
-        glm::mat4 viewProjectionMatrix;
-        glm::mat4 projectionMatrix;
-        glm::mat4 viewMatrix;
-        glm::mat4 inverseViewMatrix;
-
-        DirLight dirLight;
-        PointLight pointLights[MAX_LIGHTS];
-        SpotLight spotLights[MAX_LIGHTS];
-    };
-
-    static_assert(sizeof(PerFrame) % 16 == 0, "PerFrame must be aligned to 16 bytes");
-
-    struct alignas(16) PerDraw
-    {
-        glm::mat4 modelMatrix;
-    };
-
-    static_assert(sizeof(PerDraw) % 16 == 0, "ModelData must be aligned to 16 bytes");
-
-}; // namespace Shader
+namespace TL = RHI::TL;
 
 struct Material
 {
@@ -136,10 +63,10 @@ public:
     RHI::Handle<Material> LoadMaterial(RHI::Context& context, const aiMaterial& material);
     RHI::Handle<StaticMesh> LoadStaticMesh(RHI::Context& context, RHI::Handle<Material> material, const aiMesh& mesh);
 
-    Shader::PerFrame m_perFrameData = {};
-    TL::Vector<Shader::PerDraw> m_perDrawData; // todo: make as array
+    Shader::SceneTransform m_perFrameData = {};
+    TL::Vector<Shader::ObjectTransform> m_perDrawData; // todo: make as array
 
-    Shader::DirLight m_dirLight;
+    Shader::DirectionalLight m_dirLight;
     TL::Vector<Shader::PointLight> m_pointLights;
     TL::Vector<Shader::SpotLight> m_spotLights;
 

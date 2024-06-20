@@ -1,3 +1,5 @@
+#include "ShaderInterface/Core.slang"
+
 struct VSInput
 {
 	float3 position : POSITION0;
@@ -18,34 +20,17 @@ struct PSOutput
 	float4 worldPosition  : SV_TARGET1;
 };
 
-struct PerFrame
-{
-	float4x4 viewProjectionMatrix;
-	float4x4 projectionMatrix;
-	float4x4 viewMatrix;
-	float4x4 inverseViewMatrix;
-};
-
-struct PerDraw
-{
-	float4x4 modelMatrix;
-
-	// DirLight dirLight;
-	// PointLight pointLights[MAX_LIGHTS];
-	// SpotLight spotLights[MAX_LIGHTS];
-};
-
 struct Data
 {
-	ConstantBuffer<PerFrame> perFrame;
-	ConstantBuffer<PerDraw>  perDraw;
+	ConstantBuffer<SceneTransform> sceneTransform;
+	ConstantBuffer<ObjectTransform> objectTransform;
 };
 
 ParameterBlock<Data> data;
 
 float4 TransformToClipSpace(float3 position)
 {
-	float4x4 mvp = mul(mul(data.perFrame.projectionMatrix, data.perFrame.viewMatrix), data.perDraw.modelMatrix);
+	float4x4 mvp = mul(mul(data.sceneTransform.projectionMatrix, data.sceneTransform.viewMatrix), data.objectTransform.modelMatrix);
 	return mul(mvp, float4(position, 1.0));
 }
 
