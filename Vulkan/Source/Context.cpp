@@ -362,7 +362,7 @@ namespace RHI::Vulkan
         return swapchain;
     }
 
-    Ptr<ShaderModule> IContext::Internal_CreateShaderModule(TL::Span<const uint8_t> shaderBlob)
+    Ptr<ShaderModule> IContext::Internal_CreateShaderModule(TL::Span<const uint32_t> shaderBlob)
     {
         auto shaderModule = CreatePtr<IShaderModule>(this);
         auto result = shaderModule->Init(shaderBlob);

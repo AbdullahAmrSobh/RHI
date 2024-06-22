@@ -113,7 +113,7 @@ public:
         i = i & 1 ? 0 : 1;
 
         m_commandPool[i]->Reset();
-        RHI::CommandListBeginInfo beginInfo {};
+        RHI::CommandListBeginInfo beginInfo{};
         beginInfo.renderGraph = m_renderGraph.get();
         beginInfo.pass = m_renderPass;
         beginInfo.clearValues = {};
@@ -147,7 +147,7 @@ private:
             for (const auto& handle : node.m_meshes)
             {
                 auto mesh = m_scene->m_staticMeshOwner.Get(handle);
-                drawInfo.bindGroups = {{m_bindGroup, uint32_t(sizeof(Shader::ObjectTransform) * nodeIndex)}};
+                drawInfo.bindGroups = { { m_bindGroup, uint32_t(sizeof(Shader::ObjectTransform) * nodeIndex) } };
                 drawInfo.parameters.elementsCount = mesh->elementsCount;
                 drawInfo.vertexBuffers = { mesh->position, mesh->normals };
                 if (mesh->indcies != RHI::NullHandle)
@@ -223,13 +223,10 @@ private:
     {
         auto shaderCode = ReadBinaryFile(shaderPath);
         auto shaderModule = m_context->CreateShaderModule(shaderCode);
+        auto reflectionData = shaderModule->GetReflectionData({ .vsName = "VSMain", .psName = "PSName", .csName = nullptr });
+
         RHI::GraphicsPipelineCreateInfo createInfo{};
-        createInfo.inputAssemblerState.attributes[0] = { .location = 0, .binding = 0, .format = RHI::Format::RGB32_FLOAT, .offset = 0 };
-        createInfo.inputAssemblerState.attributes[1] = { .location = 1, .binding = 1, .format = RHI::Format::RGB32_FLOAT, .offset = 0 };
-        // createInfo.inputAssemblerState.attributes[2] = { .location = 2, .binding = 2, .format = RHI::Format::RG32_FLOAT,  .offset = 0 };
-        createInfo.inputAssemblerState.bindings[0] = { .binding = 0, .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT), .stepRate = RHI::PipelineVertexInputRate::PerVertex };
-        createInfo.inputAssemblerState.bindings[1] = { .binding = 1, .stride = RHI::GetFormatByteSize(RHI::Format::RGB32_FLOAT), .stepRate = RHI::PipelineVertexInputRate::PerVertex };
-        // createInfo.inputAssemblerState.bindings[2] = { .binding = 2, .stride = RHI::GetFormatByteSize(RHI::Format::RG32_FLOAT),  .stepRate = RHI::PipelineVertexInputRate::PerVertex };
+        createInfo.inputAssemblerState = reflectionData.inputAssemblerStateDesc;
         createInfo.vertexShaderName = "VSMain";
         createInfo.pixelShaderName = "PSMain";
         createInfo.vertexShaderModule = shaderModule.get();

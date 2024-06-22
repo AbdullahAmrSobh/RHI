@@ -88,7 +88,7 @@ namespace RHI
         return Internal_CreateSwapchain(createInfo);
     }
 
-    Ptr<ShaderModule> Context::CreateShaderModule(TL::Span<const uint8_t> shaderBlob)
+    Ptr<ShaderModule> Context::CreateShaderModule(TL::Span<const uint32_t> shaderBlob)
     {
         ZoneScoped;
 

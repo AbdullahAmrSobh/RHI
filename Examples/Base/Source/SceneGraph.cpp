@@ -56,11 +56,11 @@ Scene::Scene(RHI::Context* pContext, const char* scenePath)
     }
 
     // load materials from scene
-    for (uint32_t i = 0; i < scene->mNumMaterials; i++)
-    {
-        auto& material = *scene->mMaterials[i];
-        materialLookup[i] = LoadMaterial(context, material);
-    }
+    // for (uint32_t i = 0; i < scene->mNumMaterials; i++)
+    // {
+    //     auto& material = *scene->mMaterials[i];
+    //     materialLookup[i] = LoadMaterial(context, material);
+    // }
 
     // load meshes from scene
     for (uint32_t i = 0; i < scene->mNumMeshes; i++)
@@ -176,83 +176,83 @@ void Scene::Shutdown(RHI::Context& context)
     context.DestroyGraphicsPipeline(m_pbrPipeline);
 }
 
-RHI::Handle<Material> Scene::LoadMaterial(RHI::Context& context, const aiMaterial& aiMaterial)
-{
-    aiString albedoPath, normalPath, roughnessPath, metallicPath;
-    aiMaterial.GetTexture(aiTextureType_DIFFUSE, 0, &albedoPath);
-    aiMaterial.GetTexture(aiTextureType_NORMALS, 0, &normalPath);
-    aiMaterial.GetTexture(aiTextureType_DIFFUSE_ROUGHNESS, 0, &roughnessPath);
-    aiMaterial.GetTexture(aiTextureType_METALNESS, 0, &metallicPath);
+// RHI::Handle<Material> Scene::LoadMaterial( [[maybe_unused]] RHI::Context& context, const aiMaterial& aiMaterial)
+// {
+//     aiString albedoPath, normalPath, roughnessPath, metallicPath;
+//     aiMaterial.GetTexture(aiTextureType_DIFFUSE, 0, &albedoPath);
+//     aiMaterial.GetTexture(aiTextureType_NORMALS, 0, &normalPath);
+//     aiMaterial.GetTexture(aiTextureType_DIFFUSE_ROUGHNESS, 0, &roughnessPath);
+//     aiMaterial.GetTexture(aiTextureType_METALNESS, 0, &metallicPath);
 
-    TL::String prefixPath = "C:/Users/abdul/Desktop/Main.1_Sponza/"; // TODO: add proper fix
+//     TL::String prefixPath = "C:/Users/abdul/Desktop/Main.1_Sponza/"; // TODO: add proper fix
 
-    RHI::ImageCreateInfo imageInfo{};
-    imageInfo.usageFlags = RHI::ImageUsage::ShaderResource;
-    imageInfo.usageFlags |= RHI::ImageUsage::CopyDst;
-    imageInfo.format = RHI::Format::BC1_UNORM;
-    imageInfo.type = RHI::ImageType::Image2D;
-    imageInfo.size.depth = 1;
-    imageInfo.mipLevels = 1;
-    imageInfo.arrayCount = 1;
-    imageInfo.sampleCount = RHI::SampleCount::Samples1;
+//     RHI::ImageCreateInfo imageInfo{};
+//     imageInfo.usageFlags = RHI::ImageUsage::ShaderResource;
+//     imageInfo.usageFlags |= RHI::ImageUsage::CopyDst;
+//     imageInfo.format = RHI::Format::BC1_UNORM;
+//     imageInfo.type = RHI::ImageType::Image2D;
+//     imageInfo.size.depth = 1;
+//     imageInfo.mipLevels = 1;
+//     imageInfo.arrayCount = 1;
+//     imageInfo.sampleCount = RHI::SampleCount::Samples1;
 
-    RHI::Handle<RHI::Image> albedoImage = RHI::NullHandle;
-    if (albedoPath.length)
-    {
-        auto resourcePath = prefixPath + albedoPath.C_Str();
-        resourcePath.replace(resourcePath.length() - 3, resourcePath.length(), "dds");
-        auto imageData = ReadBinaryFile(resourcePath);
-        imageInfo.name = resourcePath.c_str();
-        imageInfo.size.width = 4096;
-        imageInfo.size.height = 4096;
-        albedoImage = RHI::CreateImageWithData<uint8_t>(context, imageInfo, imageData).GetValue();
-    }
+//     RHI::Handle<RHI::Image> albedoImage = RHI::NullHandle;
+//     if (albedoPath.length)
+//     {
+//         auto resourcePath = prefixPath + albedoPath.C_Str();
+//         resourcePath.replace(resourcePath.length() - 3, resourcePath.length(), "dds");
+//         auto imageData = ReadBinaryFile(resourcePath);
+//         imageInfo.name = resourcePath.c_str();
+//         imageInfo.size.width = 4096;
+//         imageInfo.size.height = 4096;
+//         // albedoImage = RHI::CreateImageWithData<uint8_t>(context, imageInfo, imageData).GetValue();
+//     }
 
-    RHI::Handle<RHI::Image> normalImage = RHI::NullHandle;
-    if (normalPath.length)
-    {
-        auto resourcePath = prefixPath + normalPath.C_Str();
-        resourcePath.replace(resourcePath.length() - 3, resourcePath.length(), "dds");
-        auto imageData = ReadBinaryFile(resourcePath);
-        imageInfo.name = resourcePath.c_str();
-        imageInfo.size.width = 4096;
-        imageInfo.size.height = 4096;
-        albedoImage = RHI::CreateImageWithData<uint8_t>(context, imageInfo, imageData).GetValue();
-    }
+//     RHI::Handle<RHI::Image> normalImage = RHI::NullHandle;
+//     if (normalPath.length)
+//     {
+//         auto resourcePath = prefixPath + normalPath.C_Str();
+//         resourcePath.replace(resourcePath.length() - 3, resourcePath.length(), "dds");
+//         auto imageData = ReadBinaryFile(resourcePath);
+//         imageInfo.name = resourcePath.c_str();
+//         imageInfo.size.width = 4096;
+//         imageInfo.size.height = 4096;
+//         // albedoImage = RHI::CreateImageWithData<uint8_t>(context, imageInfo, imageData).GetValue();
+//     }
 
-    RHI::Handle<RHI::Image> roughnessImage = RHI::NullHandle;
-    if (roughnessPath.length)
-    {
-        auto resourcePath = prefixPath + roughnessPath.C_Str();
-        resourcePath.replace(resourcePath.length() - 3, resourcePath.length(), "dds");
-        auto imageData = ReadBinaryFile(resourcePath);
-        imageInfo.name = resourcePath.c_str();
-        imageInfo.size.width = 4096;
-        imageInfo.size.height = 4096;
-        albedoImage = RHI::CreateImageWithData<uint8_t>(context, imageInfo, imageData).GetValue();
-    }
+//     RHI::Handle<RHI::Image> roughnessImage = RHI::NullHandle;
+//     if (roughnessPath.length)
+//     {
+//         auto resourcePath = prefixPath + roughnessPath.C_Str();
+//         resourcePath.replace(resourcePath.length() - 3, resourcePath.length(), "dds");
+//         auto imageData = ReadBinaryFile(resourcePath);
+//         imageInfo.name = resourcePath.c_str();
+//         imageInfo.size.width = 4096;
+//         imageInfo.size.height = 4096;
+//         // albedoImage = RHI::CreateImageWithData<uint8_t>(context, imageInfo, imageData).GetValue();
+//     }
 
-    RHI::Handle<RHI::Image> metallicImage = RHI::NullHandle;
-    if (metallicPath.length)
-    {
-        auto resourcePath = prefixPath + metallicPath.C_Str();
-        resourcePath.replace(resourcePath.length() - 3, resourcePath.length(), "dds");
-        auto imageData = ReadBinaryFile(resourcePath);
-        imageInfo.name = resourcePath.c_str();
-        imageInfo.size.width = 4096;
-        imageInfo.size.height = 4096;
-        albedoImage = RHI::CreateImageWithData<uint8_t>(context, imageInfo, imageData).GetValue();
-    }
+//     RHI::Handle<RHI::Image> metallicImage = RHI::NullHandle;
+//     if (metallicPath.length)
+//     {
+//         auto resourcePath = prefixPath + metallicPath.C_Str();
+//         resourcePath.replace(resourcePath.length() - 3, resourcePath.length(), "dds");
+//         auto imageData = ReadBinaryFile(resourcePath);
+//         imageInfo.name = resourcePath.c_str();
+//         imageInfo.size.width = 4096;
+//         imageInfo.size.height = 4096;
+//         // albedoImage = RHI::CreateImageWithData<uint8_t>(context, imageInfo, imageData).GetValue();
+//     }
 
-    Material material{};
-    material.albedoMap = albedoImage;
-    material.normalMap = normalImage;
-    material.roughnessMap = roughnessImage;
-    material.metallicMap = metallicImage;
-    auto materialHandle = m_materialOwner.Emplace(std::move(material));
-    m_materials.push_back(materialHandle);
-    return materialHandle;
-}
+//     Material material{};
+//     material.albedoMap = albedoImage;
+//     material.normalMap = normalImage;
+//     material.roughnessMap = roughnessImage;
+//     material.metallicMap = metallicImage;
+//     auto materialHandle = m_materialOwner.Emplace(std::move(material));
+//     m_materials.push_back(materialHandle);
+//     return materialHandle;
+// }
 
 RHI::Handle<StaticMesh> Scene::LoadStaticMesh(RHI::Context& context, RHI::Handle<Material> material, const aiMesh& aiMesh)
 {

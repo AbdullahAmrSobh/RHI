@@ -159,16 +159,15 @@ namespace RHI::Vulkan
     {
     public:
         IShaderModule(IContext* context)
-            : m_context(context)
         {
+            m_context = (Context*)context;
         }
 
         ~IShaderModule();
 
-        ResultCode Init(TL::Span<const uint8_t> shaderBlob);
+        ResultCode Init(TL::Span<const uint32_t> shaderBlob);
 
     public:
-        IContext* m_context;
         VkShaderModule m_shaderModule;
     };
 

@@ -51,3 +51,7 @@ aams_add_target(
 )
 
 target_include_directories(RHI SYSTEM PUBLIC "${CMAKE_SOURCE_DIR}/tracy/public")
+
+target_link_libraries(RHI PUBLIC spirv-reflect-static)
+# target_link_libraries(RHI PUBLIC spirv-cross-reflect)
+# target_link_libraries(RHI PUBLIC spirv-cross-glsl)

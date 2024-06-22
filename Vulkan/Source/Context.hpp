@@ -59,7 +59,7 @@ namespace RHI::Vulkan
         using                    Context::DebugLogWarn;
 
         Ptr<Swapchain>           Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
-        Ptr<ShaderModule>        Internal_CreateShaderModule(TL::Span<const uint8_t> shaderBlob) override;
+        Ptr<ShaderModule>        Internal_CreateShaderModule(TL::Span<const uint32_t> shaderBlob) override;
         Ptr<Fence>               Internal_CreateFence() override;
         Ptr<CommandPool>         Internal_CreateCommandPool(CommandPoolFlags flags) override;
         Handle<BindGroupLayout>  Internal_CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) override;

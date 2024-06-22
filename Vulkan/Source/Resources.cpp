@@ -814,51 +814,25 @@ namespace RHI::Vulkan
 
     IShaderModule::~IShaderModule()
     {
-        vkDestroyShaderModule(m_context->m_device, m_shaderModule, nullptr);
+        vkDestroyShaderModule(((IContext*)m_context)->m_device, m_shaderModule, nullptr);
     }
 
-    ResultCode IShaderModule::Init(TL::Span<const uint8_t> shaderBlob)
+    ResultCode IShaderModule::Init(TL::Span<const uint32_t> shaderBlob)
     {
         auto context = static_cast<IContext*>(m_context);
 
-        // Check alignment and log warning if necessary
-        if (reinterpret_cast<uintptr_t>(shaderBlob.data()) % 4 != 0)
-        {
-            context->DebugLogWarn("Shader blob requires 4-byte alignment. Reallocating and copying for Vulkan compatibility.");
+        m_spirv.resize(shaderBlob.size());
+        std::copy(shaderBlob.begin(), shaderBlob.end(), m_spirv.begin());
 
-            // Calculate aligned size and allocate memory
-            size_t alignedSize = shaderBlob.size() + 4 - reinterpret_cast<uintptr_t>(shaderBlob.data()) % 4;
-            uint8_t* alignedData = new uint8_t[alignedSize];
+        VkShaderModuleCreateInfo createInfo{
+            .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = {},
+            .codeSize = shaderBlob.size_bytes(),
+            .pCode = m_spirv.data()
+        };
 
-            // Copy data and set alignedBlob
-            std::memcpy(alignedData, shaderBlob.data(), shaderBlob.size());
-            TL::Span<uint8_t> alignedBlob = { alignedData, alignedSize };
-
-            // Use alignedBlob for shader module creation
-            VkShaderModuleCreateInfo moduleCreateInfo{
-                .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-                .pNext = nullptr,
-                .flags = {},
-                .codeSize = alignedBlob.size(),
-                .pCode = reinterpret_cast<const uint32_t*>(alignedBlob.data()),
-            };
-
-            TryValidateVk(vkCreateShaderModule(context->m_device, &moduleCreateInfo, nullptr, &m_shaderModule));
-            delete[] alignedData;
-        }
-        else
-        {
-            VkShaderModuleCreateInfo moduleCreateInfo{
-                .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-                .pNext = nullptr,
-                .flags = {},
-                .codeSize = shaderBlob.size(),
-                .pCode = (const uint32_t*)shaderBlob.data()
-            };
-            return ConvertResult(vkCreateShaderModule(context->m_device, &moduleCreateInfo, nullptr, &m_shaderModule));
-        }
-
-        return ResultCode::Success;
+        return ConvertResult(vkCreateShaderModule(context->m_device, &createInfo, nullptr, &m_shaderModule));
     }
 
     ///////////////////////////////////////////////////////////////////////////

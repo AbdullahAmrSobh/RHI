@@ -83,7 +83,7 @@ namespace RHI
 
         RHI_NODISCARD Ptr<Swapchain> CreateSwapchain(const SwapchainCreateInfo& createInfo);
 
-        RHI_NODISCARD Ptr<ShaderModule> CreateShaderModule(TL::Span<const uint8_t> shaderBlob);
+        RHI_NODISCARD Ptr<ShaderModule> CreateShaderModule(TL::Span<const uint32_t> shaderBlob);
 
         RHI_NODISCARD Ptr<Fence> CreateFence();
 
@@ -170,7 +170,7 @@ namespace RHI
 
         // clang-format off
         virtual Ptr<Swapchain>           Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo) = 0;
-        virtual Ptr<ShaderModule>        Internal_CreateShaderModule(TL::Span<const uint8_t> shaderBlob) = 0;
+        virtual Ptr<ShaderModule>        Internal_CreateShaderModule(TL::Span<const uint32_t> shaderBlob) = 0;
         virtual Ptr<Fence>               Internal_CreateFence() = 0;
         virtual Ptr<CommandPool>         Internal_CreateCommandPool(CommandPoolFlags flags) = 0;
         virtual Handle<BindGroupLayout>  Internal_CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) = 0;

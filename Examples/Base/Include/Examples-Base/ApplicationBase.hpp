@@ -1,31 +1,36 @@
 #pragma once
 
-#include <RHI/RHI.hpp>
-#include <string>
-#include <string_view>
-
 #include <Examples-Base/Timestep.hpp>
 #include <Examples-Base/Camera.hpp>
 #include <Examples-Base/ImGuiRenderer.hpp>
 
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/glm.hpp>
+#include <RHI/RHI.hpp>
+
+#include <fstream>
 
 namespace TL = RHI::TL;
 
-struct ImageData
+template<typename T>
+using Handle = RHI::Handle<T>;
+
+template<typename T>
+using Ptr = RHI::Ptr<T>;
+
+inline static TL::Vector<uint32_t> ReadBinaryFile(std::string_view filePath)
 {
-    uint32_t width;
-    uint32_t height;
-    uint32_t depth;
-    uint32_t channels;
-    uint32_t bytesPerChannel;
-    TL::Vector<uint8_t> data;
-};
+    std::ifstream file(filePath.data(), std::ios::binary | std::ios::ate);
+    RHI_ASSERT(file.is_open()); // "Failed to open SPIR-V file: " + filePath
 
-TL::Vector<uint8_t> ReadBinaryFile(std::string_view path);
+    std::streamsize size = file.tellg();
+    file.seekg(0, std::ios::beg);
 
-ImageData LoadImage(std::string_view path);
+    RHI_ASSERT(size % 4 == 0); // "Invalid SPIR-V file size: " + filePath
+
+    TL::Vector<uint32_t> spirv(size / 4);
+    RHI_ASSERT(file.read(reinterpret_cast<char*>(spirv.data()), size)); // "Failed to read SPIR-V file: " + filePath
+
+    return spirv;
+}
 
 class ApplicationBase
 {
@@ -40,12 +45,6 @@ public:
     static int Entry(TL::Span<const char*> args);
 
 private:
-    enum class State
-    {
-        ShouldExit,
-        Running,
-    };
-
     void Init();
 
     void Shutdown();
@@ -72,8 +71,6 @@ protected:
     RHI::Ptr<RHI::CommandPool> m_commandPool[2];
 
     void* m_window;
-
-    State m_state;
 };
 
 template<typename ExampleType>

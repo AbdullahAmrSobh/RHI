@@ -14,7 +14,6 @@
 #include <tracy/Tracy.hpp>
 
 #include <cassert>
-#include <fstream>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -38,48 +37,6 @@ public:
         std::cout << "ERROR: " << message << "\n";
     }
 };
-
-ImageData LoadImage(std::string_view path)
-{
-    // Load the image using stb_image
-    int width, height, channels;
-    stbi_set_flip_vertically_on_load(0); // Set to 0 to keep image orientation as is
-    unsigned char* data = stbi_load(path.data(), &width, &height, &channels, 4);
-
-    // Check if the image was loaded successfully
-    if (!data)
-    {
-        RHI_UNREACHABLE(); // ("Failed to load image: " + std::string(path));
-    }
-
-    // Create ImageData object
-    ImageData imageData;
-    imageData.width = uint32_t(width);
-    imageData.height = uint32_t(height);
-    imageData.depth = 1; // Assuming single-layer images
-    imageData.channels = 4;
-    imageData.bytesPerChannel = 1; // Assuming 8-bit per channel data
-
-    // Convert image data to std::vector<uint8_t>
-    imageData.data.assign(data, data + width * height * imageData.channels);
-
-    // Free the memory allocated by stb_image
-    stbi_image_free(data);
-
-    return imageData;
-}
-
-TL::Vector<uint8_t> ReadBinaryFile(std::string_view path)
-{
-    std::ifstream stream(path.data(), std::ios::ate | std::ios::binary);
-    RHI_ASSERT(stream.is_open());
-    auto fileSize = (size_t)stream.tellg();
-    stream.seekg(0);
-    TL::Vector<uint8_t> buffer(fileSize);
-    stream.read((char*)buffer.data(), (std::streamsize)fileSize);
-    stream.close();
-    return buffer;
-}
 
 ApplicationBase::ApplicationBase(std::string name, uint32_t width, uint32_t height)
     : m_windowWidth(width)

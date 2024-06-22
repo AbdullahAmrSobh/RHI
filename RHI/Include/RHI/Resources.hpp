@@ -20,6 +20,7 @@ namespace RHI
     inline static constexpr uint32_t c_MaxPipelineBindGroupsCount                = 4u;
     inline static constexpr uint32_t c_MaxShaderBindGroupElementsCount           = 32u;
 
+    class Context;
     class ShaderModule;
 
     RHI_DECALRE_OPAQUE_RESOURCE(Image);
@@ -633,11 +634,31 @@ namespace RHI
         inline bool operator==(const SamplerCreateInfo& other) const { return filterMin == other.filterMin && filterMag == other.filterMag && filterMip == other.filterMip && compare == other.compare && mipLodBias == other.mipLodBias && addressU == other.addressU && addressV == other.addressV && addressW == other.addressW && minLod == other.minLod && maxLod == other.maxLod; }
     };
 
+    struct ShaderModuleReflectionData
+    {
+        PipelineInputAssemblerStateDesc     inputAssemblerStateDesc;
+        TL::Vector<Handle<BindGroupLayout>> bindGroupLayout;
+        Handle<PipelineLayout>              pipelineLayout;
+    };
+
+    struct ShaderModuleEntryPointNames
+    {
+        const char* vsName;
+        const char* psName;
+        const char* csName;
+    };
+
     class RHI_EXPORT ShaderModule
     {
     public:
         ShaderModule()          = default;
         virtual ~ShaderModule() = default;
+
+        ShaderModuleReflectionData GetReflectionData(const ShaderModuleEntryPointNames& request) const;
+
+    protected:
+        Context*             m_context;
+        TL::Vector<uint32_t> m_spirv;
     };
 
     class RHI_EXPORT Fence
