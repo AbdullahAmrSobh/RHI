@@ -15,14 +15,14 @@
 
 namespace RHI
 {
-    struct NullHandle_T final
+    struct RHI_NODISCARD NullHandle_T final
     {
     };
 
     inline constexpr NullHandle_T NullHandle = {};
 
     template<typename Resource>
-    class Handle final
+    class RHI_NODISCARD Handle final
     {
         template<typename U>
         friend class HandlePool;
@@ -114,15 +114,19 @@ namespace RHI
         inline void Clear();
 
         // Gets the resource associated with handle
-        inline const Resource* Get(Handle<Resource> handle) const;
+        RHI_NODISCARD inline const Resource* Get(Handle<Resource> handle) const;
 
-        inline Resource* Get(Handle<Resource> handle);
+        RHI_NODISCARD inline Resource* Get(Handle<Resource> handle);
 
         // Inserted a zerod resource and returns its handle
-        inline Handle<Resource> Emplace(Resource&& resource);
+        RHI_NODISCARD inline Handle<Resource> Emplace(Resource&& resource);
 
         // Removes a resource from the owner
         inline void Release(Handle<Resource> handle);
+
+        RHI_NODISCARD inline const Resource* operator[](HandleType handle) const { return Get(handle); }
+
+        RHI_NODISCARD inline Resource* operator[](HandleType handle) { return Get(handle); }
 
     private:
         TL::Vector<Resource> m_resources;

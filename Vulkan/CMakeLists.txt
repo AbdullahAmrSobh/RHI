@@ -8,7 +8,6 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraphCompiler.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/DeleteQueue.hpp
@@ -20,7 +19,6 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraphCompiler.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Surface.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/DeleteQueue.cpp

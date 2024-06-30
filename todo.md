@@ -12,3 +12,8 @@
 - add explict commands to command list (e.g. BindBuffer, BindPipeline ...etc)
 - add temp allocator
 - resources outside render graph are synced using wait groups (bind group will subscribe to a wait group) (binding that bind group means that the command list using that resource is in flight)
+
+- Backend
+    - Validate every VkResult and assert success
+    - for failable operations return converted results
+    - every new frame prepare barriers in adavnce

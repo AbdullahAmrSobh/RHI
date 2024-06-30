@@ -2,13 +2,14 @@
 
 #include <RHI/CommandList.hpp>
 #include <RHI/Common/Result.hpp>
+#include <RHI/Common/Ptr.hpp>
+#include <RHI/Definition.hpp>
 
 #include <vulkan/vulkan.h>
 
 namespace RHI::Vulkan
 {
     class IContext;
-    class IPassSubmitData;
 
     class ICommandPool final : public CommandPool
     {
@@ -44,6 +45,9 @@ namespace RHI::Vulkan
 
         void PipelineBarrier(TL::Span<const VkMemoryBarrier2> memoryBarriers, TL::Span<const VkBufferMemoryBarrier2> bufferBarriers, TL::Span<const VkImageMemoryBarrier2> imageBarriers);
 
+        void BeginPrimary(RenderGraph& renderGraph, Handle<Pass> pass, struct RenderingAttachments attachments);
+        void BeginSecondary(struct RenderingAttachmentFormats formats);
+
         void Begin() override;
         void Begin(const CommandListBeginInfo& beginInfo) override;
         void End() override;
@@ -67,7 +71,6 @@ namespace RHI::Vulkan
 
     private:
         IContext* m_context;
-        IPassSubmitData* m_passSubmitData;
     };
 
 } // namespace RHI::Vulkan

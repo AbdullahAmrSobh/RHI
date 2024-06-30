@@ -270,9 +270,8 @@ namespace RHI::Vulkan
         vkCreateInfo.flags = 0;
         vkCreateInfo.buffer = buffer->handle;
         vkCreateInfo.format = ConvertFormat(createInfo.format);
-        vkCreateInfo.offset = createInfo.byteOffset;
-        vkCreateInfo.range = createInfo.byteSize;
-
+        vkCreateInfo.offset = createInfo.subregion.offset;
+        vkCreateInfo.range = createInfo.subregion.size;
         auto result = vkCreateBufferView(context->m_device, &vkCreateInfo, nullptr, &handle);
         return ConvertResult(result);
     }

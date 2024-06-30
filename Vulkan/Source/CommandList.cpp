@@ -3,8 +3,8 @@
 #include "Context.hpp"
 #include "Resources.hpp"
 #include "Swapchain.hpp"
-#include "RenderGraphCompiler.hpp"
 #include "VulkanFunctions.hpp"
+#include "Barrier.hpp"
 
 #include <RHI/Format.hpp>
 
@@ -139,7 +139,10 @@ namespace RHI::Vulkan
         vkCmdBindIndexBuffer(m_commandBuffer, buffer->handle, bindingInfo.offset, indexType);
     }
 
-    void ICommandList::PipelineBarrier(TL::Span<const VkMemoryBarrier2> memoryBarriers, TL::Span<const VkBufferMemoryBarrier2> bufferBarriers, TL::Span<const VkImageMemoryBarrier2> imageBarriers)
+    void ICommandList::PipelineBarrier(
+        TL::Span<const VkMemoryBarrier2> memoryBarriers,
+        TL::Span<const VkBufferMemoryBarrier2> bufferBarriers,
+        TL::Span<const VkImageMemoryBarrier2> imageBarriers)
     {
         VkDependencyInfo dependencyInfo{};
         dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
@@ -154,6 +157,11 @@ namespace RHI::Vulkan
         vkCmdPipelineBarrier2(m_commandBuffer, &dependencyInfo);
     }
 
+    // void ICommandList::BeginPrimary(RenderGraph& renderGraph, Handle<Pass> pass, struct RenderingAttachments attachments)
+    // {}
+    // void ICommandList::BeginSecondary(struct RenderingAttachmentFormats formats)
+    // {}
+
     void ICommandList::Begin()
     {
         ZoneScoped;
@@ -166,72 +174,16 @@ namespace RHI::Vulkan
         vkBeginCommandBuffer(m_commandBuffer, &beginInfo);
     }
 
-    void ICommandList::Begin(const CommandListBeginInfo& _beginInfo)
+    void ICommandList::Begin(const CommandListBeginInfo& beginInfo)
     {
         ZoneScoped;
 
-        auto renderGraph = _beginInfo.renderGraph;
-        auto pass = renderGraph->m_passOwner.Get(_beginInfo.pass);
-        RenderGraphCompiler::CompilePass(m_context, *renderGraph, pass);
-        m_passSubmitData = (IPassSubmitData*)pass->submitData;
-
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.pNext = nullptr;
-        beginInfo.flags = 0;
-        beginInfo.pInheritanceInfo = nullptr;
-
-        if (m_level == VK_COMMAND_BUFFER_LEVEL_PRIMARY)
-        {
-            vkBeginCommandBuffer(m_commandBuffer, &beginInfo);
-
-            PipelineBarrier({}, m_passSubmitData->bufferBarriers[BarrierType::PrePass], m_passSubmitData->imageBarriers[BarrierType::PrePass]);
-
-            VkRenderingInfo renderingInfo{};
-            renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-            renderingInfo.pNext = nullptr;
-            renderingInfo.flags = 0;
-            renderingInfo.renderArea.extent = ConvertExtent2D(pass->renderTargetSize);
-            renderingInfo.layerCount = 1;
-            renderingInfo.viewMask = 0;
-            renderingInfo.colorAttachmentCount = (uint32_t)m_passSubmitData->colorAttachments.size();
-            renderingInfo.pColorAttachments = m_passSubmitData->colorAttachments.data();
-            renderingInfo.pDepthAttachment = m_passSubmitData->hasDepthAttachemnt ? &m_passSubmitData->depthAttachmentInfo : nullptr;
-            renderingInfo.pStencilAttachment = m_passSubmitData->hasStencilAttachment ? &m_passSubmitData->stencilAttachmentInfo : nullptr;
-            vkCmdBeginRendering(m_commandBuffer, &renderingInfo);
-        }
-        else
-        {
-            VkCommandBufferInheritanceRenderingInfoKHR renderinginheritanceInfo{};
-            renderinginheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO_KHR;
-            renderinginheritanceInfo.pNext = nullptr;
-            renderinginheritanceInfo.flags = 0;
-            renderinginheritanceInfo.viewMask = 0;
-            renderinginheritanceInfo.colorAttachmentCount = (uint32_t)m_passSubmitData->colorFormats.size();
-            renderinginheritanceInfo.pColorAttachmentFormats = m_passSubmitData->colorFormats.data();
-            renderinginheritanceInfo.depthAttachmentFormat = m_passSubmitData->depthFormat;
-            renderinginheritanceInfo.stencilAttachmentFormat = m_passSubmitData->stencilformat;
-            renderinginheritanceInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-            VkCommandBufferInheritanceInfo inheritanceInfo{};
-            inheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
-            inheritanceInfo.pNext = &renderinginheritanceInfo;
-            beginInfo.pInheritanceInfo = &inheritanceInfo;
-            vkBeginCommandBuffer(m_commandBuffer, &beginInfo);
-        }
+        (void)beginInfo;
     }
 
     void ICommandList::End()
     {
         ZoneScoped;
-
-        if (m_passSubmitData)
-        {
-            if (m_passSubmitData->colorAttachments.empty() == false || m_passSubmitData->hasDepthAttachemnt || m_passSubmitData->hasStencilAttachment)
-            {
-                vkCmdEndRendering(m_commandBuffer);
-            }
-            PipelineBarrier({}, m_passSubmitData->bufferBarriers[BarrierType::PostPass], m_passSubmitData->imageBarriers[BarrierType::PostPass]);
-        }
 
         vkEndCommandBuffer(m_commandBuffer);
     }

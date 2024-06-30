@@ -1,15 +1,16 @@
 #pragma once
 
+#include "RHI/Common/Allocator.hpp"
+
+#include <tracy/Tracy.hpp>
+
 #include <vector>
 #include <map>
 #include <unordered_map>
 #include <set>
 #include <unordered_set>
 #include <deque>
-
-#include "RHI/Common/Allocator.hpp"
-
-#include <tracy/Tracy.hpp>
+#include <list>
 
 namespace RHI::TL
 {
@@ -30,6 +31,9 @@ namespace RHI::TL
 
     template<typename T>
     using Deque     = std::deque<T, DefaultAllocator<T>>;
+
+    template<typename T>
+    using List = std::list<T, DefaultAllocator<T>>;
 
     using String    = std::basic_string<char, std::char_traits<char>, DefaultAllocator<char>>;
     using WString   = std::basic_string<wchar_t, std::char_traits<wchar_t>, DefaultAllocator<wchar_t>>;

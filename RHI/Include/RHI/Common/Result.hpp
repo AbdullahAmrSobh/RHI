@@ -7,7 +7,7 @@
 namespace RHI
 {
 
-    enum class [[nodiscard]] ResultCode
+    enum class RHI_NODISCARD ResultCode
     {
         Success,
         ErrorUnkown,
@@ -16,18 +16,18 @@ namespace RHI
         ErrorAllocationFailed,
     };
 
-    inline static bool IsSucess(ResultCode result)
+    RHI_NODISCARD inline static bool IsSucess(ResultCode result)
     {
         return result == ResultCode::Success;
     }
 
-    inline static bool IsError(ResultCode result)
+    RHI_NODISCARD inline static bool IsError(ResultCode result)
     {
         return result != ResultCode::Success;
     }
 
     template<typename T>
-    struct [[nodiscard]] Result
+    struct RHI_NODISCARD Result
     {
         Result(ResultCode code)
             : value()

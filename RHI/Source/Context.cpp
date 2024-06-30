@@ -11,16 +11,6 @@
 
 namespace RHI
 {
-    inline static ImageViewCreateInfo GetViewCreateInfo(Handle<Image> image, const ImageAttachmentUseInfo& useInfo)
-    {
-        ImageViewCreateInfo createInfo{};
-        createInfo.image = image;
-        createInfo.subresource = useInfo.subresourceRange;
-        createInfo.viewType = ImageViewType::View2D; // TODO: this should be refelected based on other paramters
-        createInfo.components = useInfo.componentMapping;
-        return createInfo;
-    }
-
     Context::Context(Ptr<DebugCallbacks> debugCallbacks)
         : m_limits(CreatePtr<Limits>())
         , m_debugCallbacks(std::move(debugCallbacks))
@@ -47,25 +37,9 @@ namespace RHI
     {
         ZoneScoped;
 
-        for (auto graphAttachmentHandle : renderGraph.m_graphImageAttachments)
-        {
-            auto graphAttachment = renderGraph.m_graphImageAttachmentOwner.Get(graphAttachmentHandle);
-            if (graphAttachment->lifetime == AttachmentLifetime::Transient)
-            {
-                graphAttachment->handle = CreateImage(graphAttachment->info).GetValue();
-            }
+        (void)renderGraph;
 
-            if (graphAttachment->swapchain)
-            {
-                continue;
-            }
-
-            for (auto attachment = renderGraph.GetAttachment(graphAttachment->begin); attachment != nullptr; attachment = renderGraph.GetAttachmentNext(attachment->next))
-            {
-                auto createInfo = GetViewCreateInfo(graphAttachment->handle, attachment->useInfo);
-                attachment->view = CreateImageView(createInfo);
-            }
-        }
+        RHI_ASSERT(false); // TODO: Implement this function.
     }
 
     void Context::ExecuteRenderGraph(RenderGraph& renderGraph, Fence* signalFence)

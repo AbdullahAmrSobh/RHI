@@ -23,7 +23,7 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Context.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Export.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Format.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/QueueType.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Definition.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RenderGraph.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Resources.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RHI.hpp
@@ -36,6 +36,7 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Format.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraph.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/RGInternals.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.cpp
 
     ${CMAKE_SOURCE_DIR}/tracy/public/TracyClient.cpp
@@ -51,6 +52,7 @@ aams_add_target(
 )
 
 target_include_directories(RHI SYSTEM PUBLIC "${CMAKE_SOURCE_DIR}/tracy/public")
+target_include_directories(RHI SYSTEM PUBLIC "${Graaf_SOURCE_DIR}/include")
 
 target_link_libraries(RHI PUBLIC spirv-reflect-static)
 # target_link_libraries(RHI PUBLIC spirv-cross-reflect)

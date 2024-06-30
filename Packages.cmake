@@ -11,6 +11,13 @@ include(${CMAKE_SOURCE_DIR}/CMake/CPM.cmake)
 # 		"SLANG_ENABLE_CUDA FALSE"
 # )
 
+
+CPMAddPackage(
+    NAME           graaf
+	GIT_REPOSITORY git@github.com:bobluppes/graaf.git
+	GIT_TAG        v1.1.1
+)
+
 CPMAddPackage(
     NAME           RHI_vma
 	GIT_REPOSITORY git@github.com:GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
@@ -35,4 +42,16 @@ if(RHI_BUILD_EXAMPLES)
 			"GLM_CONFIG_CLIP_CONTROL ON"
 			"GLM_CLIP_CONTROL_ZO_BIT ON"
 	)
+
+	# CPMAddPackage(
+	# 	NAME JoltPhysics
+	# 	GIT_REPOSITORY git@github.com:jrouwe/JoltPhysics.git
+	# 	# GIT_TAG 5.0.0
+	# )
+
+	# CPMAddPackage(
+	# 	NAME entt
+	# 	GIT_REPOSITORY git@github.com:skypjack/entt.git
+	# 	# GIT_TAG 3.13.2
+	# )
 endif()

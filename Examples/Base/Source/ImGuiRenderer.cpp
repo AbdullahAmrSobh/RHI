@@ -304,7 +304,7 @@ void ImGuiRenderer::Init(ImGuiRendererCreateInfo createInfo)
     m_context = createInfo.context;
 
     // create sampler state
-    m_sampler = m_context->CreateSampler(RHI::SamplerCreateInfo{ RHI::SamplerFilter::Linear, RHI::SamplerAddressMode::Repeat });
+    // m_sampler = m_context->CreateSampler(RHI::SamplerCreateInfo{ RHI::SamplerFilter::Linear, RHI::SamplerAddressMode::Repeat });
 
     {
         RHI::BindGroupLayoutCreateInfo bindGroupLayoutCreateInfo{};
@@ -328,16 +328,16 @@ void ImGuiRenderer::Init(ImGuiRendererCreateInfo createInfo)
         int width, height;
         io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
-        RHI::ImageCreateInfo imageInfo{};
-        imageInfo.size.width = uint32_t(width);
-        imageInfo.size.height = uint32_t(height);
-        imageInfo.size.depth = 1;
-        imageInfo.type = RHI::ImageType::Image2D;
-        imageInfo.format = RHI::Format::RGBA8_UNORM;
-        imageInfo.usageFlags = RHI::ImageUsage::ShaderResource;
-        imageInfo.usageFlags |= RHI::ImageUsage::CopyDst;
-        imageInfo.arrayCount = 1;
-        m_image = RHI::CreateImageWithData(*m_context, imageInfo, RHI::TL::Span<const uint8_t>{ pixels, size_t(width * height * 4) }).GetValue();
+        // RHI::ImageCreateInfo imageInfo{};
+        // imageInfo.size.width = uint32_t(width);
+        // imageInfo.size.height = uint32_t(height);
+        // imageInfo.size.depth = 1;
+        // imageInfo.type = RHI::ImageType::Image2D;
+        // imageInfo.format = RHI::Format::RGBA8_UNORM;
+        // imageInfo.usageFlags = RHI::ImageUsage::ShaderResource;
+        // imageInfo.usageFlags |= RHI::ImageUsage::CopyDst;
+        // imageInfo.arrayCount = 1;
+        // m_image = RHI::CreateImageWithData(*m_context, imageInfo, RHI::TL::Span<const uint8_t>{ pixels, size_t(width * height * 4) }).GetValue();
         RHI::ImageViewCreateInfo viewInfo{};
         viewInfo.image = m_image;
         viewInfo.subresource.imageAspects = RHI::ImageAspect::Color;

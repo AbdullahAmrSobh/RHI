@@ -1,5 +1,5 @@
 #pragma once
-#include <RHI/QueueType.hpp>
+#include <RHI/Definition.hpp>
 #include <RHI/CommandList.hpp>
 #include <RHI/Context.hpp>
 #include <RHI/Format.hpp>

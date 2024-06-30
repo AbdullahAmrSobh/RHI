@@ -1,409 +1,261 @@
 #pragma once
 
-#include "RHI/Resources.hpp"
-
 #include "RHI/Common/Handle.hpp"
-#include "RHI/QueueType.hpp"
+#include "RHI/Common/Ptr.hpp"
 
-#include "RHI/Export.hpp"
+#include "RHI/Resources.hpp"
+#include "RHI/RGInternals.hpp"
+#include "RHI/Attachment.hpp"
+#include "RHI/RGPass.hpp"
+
+#pragma warning(disable : 4702) // disable unreachable code warning
+#include <graaflib/graph.h>
 
 namespace RHI
 {
-    struct Pass;
     class Context;
     class Swapchain;
     class CommandList;
     class RenderGraph;
 
-    struct ImageAttachment;
-    struct BufferAttachment;
-
-    RHI_DECALRE_OPAQUE_RESOURCE(PassSubmitData);
-
-    enum class AttachmentLifetime
-    {
-        Persistent,
-        Transient,
-    };
-
-    enum class LoadOperation
-    {
-        DontCare, // The attachment load operation undefined.
-        Load,     // Load attachment content.
-        Discard,  // Discard attachment content.
-    };
-
-    enum class StoreOperation
-    {
-        DontCare, // Attachment Store operation is undefined
-        Store,    // Writes to the attachment are stored
-        Discard,  // Writes to the attachment are discarded
-    };
-
-    struct LoadStoreOperations
-    {
-        LoadOperation  loadOperation  = LoadOperation::Discard;
-        StoreOperation storeOperation = StoreOperation::Store;
-
-        inline bool operator==(const LoadStoreOperations& other) const
-        {
-            return loadOperation == other.loadOperation && storeOperation == other.storeOperation;
-        }
-    };
-
-    struct DepthStencilValue
-    {
-        float   depthValue   = 1.0f;
-        uint8_t stencilValue = 0xff;
-
-        inline bool operator==(const DepthStencilValue& other) const
-        {
-            return depthValue == other.depthValue && stencilValue == other.stencilValue;
-        }
-    };
-
-    template<typename T>
-    struct ColorValue
-    {
-        ColorValue() = default;
-
-        ColorValue(T r = {}, T g = {}, T b = {}, T a = {});
-
-        T r, g, b, a;
-
-        inline bool operator==(const ColorValue& other) const
-        {
-            return r == other.r && g == other.g && b == other.b && a == other.a;
-        }
-    };
-
-    union ClearValue
-    {
-        ClearValue();
-
-        template<typename T>
-        ClearValue(ColorValue<T> value);
-
-        template<typename T>
-        ClearValue(T r, T g, T b, T a);
-
-        ClearValue(DepthStencilValue value);
-
-        ColorValue<uint8_t>  u8;
-        ColorValue<uint16_t> u16;
-        ColorValue<uint32_t> u32;
-        ColorValue<float>    f32;
-        DepthStencilValue    depthStencil;
-    };
-
-    struct ImageAttachmentUseInfo
-    {
-        ImageUsage            usage;
-        ImageViewType         viewType;
-        ImageSubresourceRange subresourceRange;
-        ComponentMapping      componentMapping;
-        LoadStoreOperations   loadStoreOperations;
-        ClearValue            clearValue;
-    };
-
-    struct BufferAttachmentUseInfo
-    {
-        BufferUsage usage;
-        size_t      size;
-        size_t      offset;
-    };
-
-    struct ImageAttachmentList
-    {
-        RenderGraph*            renderGraph;
-        TL::String              name;
-        AttachmentLifetime      lifetime;
-        uint32_t                referenceCount;
-        Handle<Image>           handle;
-        ImageCreateInfo         info;
-        Swapchain*              swapchain;
-        Handle<ImageAttachment> begin;
-        Handle<ImageAttachment> end;
-    };
-
-    struct BufferAttachmentList
-    {
-        RenderGraph*             renderGraph;
-        TL::String               name;
-        AttachmentLifetime       lifetime;
-        uint32_t                 referenceCount;
-        Handle<Buffer>           handle;
-        BufferCreateInfo         info;
-        Handle<BufferAttachment> begin;
-        Handle<BufferAttachment> end;
-    };
-
-    struct Attachment
-    {
-        Handle<Pass>       pass;
-        Access             access;
-        Flags<ShaderStage> stage;
-    };
-
-    struct ImageAttachment final : public Attachment
-    {
-        ImageAttachmentUseInfo      useInfo;
-        Handle<ImageAttachmentList> list;
-        Handle<ImageAttachment>     next;
-        Handle<ImageAttachment>     prev;
-        Handle<ImageView>           view;
-    };
-
-    struct BufferAttachment final : public Attachment
-    {
-        BufferAttachmentUseInfo      useInfo;
-        Handle<BufferAttachmentList> list;
-        Handle<BufferAttachment>     next;
-        Handle<BufferAttachment>     prev;
-        Handle<BufferView>           view;
-    };
-
-    namespace Vulkan
-    {
-        class ICommandList;
-    } // namespace Vulkan
-
-    struct PassCreateInfo
-    {
-        const char* name;
-        QueueType   queueType;
-    };
-
-    struct Pass
-    {
-        TL::String      name;
-        QueueType       queueType;
-        ImageSize2D     renderTargetSize;
-        PassSubmitData* submitData;
-
-        TL::Vector<Handle<ImageAttachment>> colorAttachments;
-        Handle<ImageAttachment>             depthStencilAttachment;
-
-        TL::Vector<Handle<ImageAttachment>>  imageAttachments;
-        TL::Vector<Handle<BufferAttachment>> bufferAttachments;
-
-        TL::Vector<const CommandList*> commandList;
-    };
-
     class RHI_EXPORT RenderGraph final
     {
-        friend class Vulkan::ICommandList;
-
     public:
         RenderGraph(Context* context);
-        RenderGraph(const RenderGraph&) = delete;
-        RenderGraph(RenderGraph&&)      = delete;
-        ~RenderGraph()                  = default;
+        ~RenderGraph();
 
+        /// @brief Creates a new pass with the specified creation info.
+        ///
+        /// @param createInfo Information for creating the pass.
+        /// @return Handle to the created pass.
         RHI_NODISCARD Handle<Pass> CreatePass(const PassCreateInfo& createInfo);
 
-        RHI_NODISCARD Handle<ImageAttachment> CreateImage(const ImageCreateInfo& createInfo);
+        /// @brief Resizes an existing pass to the given image size.
+        ///
+        /// @param pass Handle to the pass.
+        /// @param size New size for the pass.
+        void PassResize(Handle<Pass> pass, ImageSize2D size);
 
-        RHI_NODISCARD Handle<BufferAttachment> CreateBuffer(const BufferCreateInfo& createInfo);
+        /// @brief Retrieves the render target layout of a pass.
+        ///
+        /// @param pass Handle to the pass.
+        /// @return Description of the render target layout.
+        RHI_NODISCARD RenderTargetLayoutDesc PassGetRenderTargetLayout(Handle<Pass> pass) const;
 
+        /// @brief Imports a swapchain image into the render graph.
+        ///
+        /// @param name Name of the swapchain.
+        /// @param swapchain Reference to the swapchain.
+        /// @return Handle to the imported image attachment.
         RHI_NODISCARD Handle<ImageAttachment> ImportSwapchain(const char* name, Swapchain& swapchain);
 
+        /// @brief Imports an existing image into the render graph.
+        ///
+        /// @param name Name of the image.
+        /// @param image Handle to the image.
+        /// @return Handle to the imported image attachment.
         RHI_NODISCARD Handle<ImageAttachment> ImportImage(const char* name, Handle<Image> image);
 
+        /// @brief Imports an existing buffer into the render graph.
+        ///
+        /// @param name Name of the buffer.
+        /// @param buffer Handle to the buffer.
+        /// @return Handle to the imported buffer attachment.
         RHI_NODISCARD Handle<BufferAttachment> ImportBuffer(const char* name, Handle<Buffer> buffer);
 
-        Handle<ImageAttachment> UseImage(Handle<Pass> pass, Handle<ImageAttachment> attachment, const ImageAttachmentUseInfo& useInfo);
+        /// @brief Creates a new image with the specified creation info.
+        ///
+        /// @param createInfo Information for creating the image.
+        /// @return Handle to the created image attachment.
+        RHI_NODISCARD Handle<ImageAttachment> CreateImage(const ImageCreateInfo& createInfo);
 
-        Handle<BufferAttachment> UseBuffer(Handle<Pass> pass, Handle<BufferAttachment> attachment, const BufferAttachmentUseInfo& useInfo);
+        /// @brief Creates a new buffer with the specified creation info.
+        ///
+        /// @param createInfo Information for creating the buffer.
+        /// @return Handle to the created buffer attachment.
+        RHI_NODISCARD Handle<BufferAttachment> CreateBuffer(const BufferCreateInfo& createInfo);
 
-        void SubmitCommands(Handle<Pass> pass, TL::Span<const CommandList* const> commandLists);
+        /// @brief Uses an image in a pass with specified usage and access.
+        ///
+        /// @param pass Handle to the pass.
+        /// @param attachment Handle to the image attachment.
+        /// @param usage Usage flags for the image.
+        /// @param stage Shader stage flags.
+        /// @param access Access flags.
+        void PassUseImage(Handle<Pass> pass, Handle<ImageAttachment> attachment, ImageUsage usage, Flags<ShaderStage> stage, Access access);
 
-        RHI_NODISCARD Handle<Image> GetImage(Handle<ImageAttachment> attachment);
+        /// @brief Uses an image in a pass with view info, usage, and access.
+        ///
+        /// @param pass Handle to the pass.
+        /// @param attachment Handle to the image attachment.
+        /// @param viewInfo View information for the image.
+        /// @param usage Usage flags for the image.
+        /// @param stage Shader stage flags.
+        /// @param access Access flags.
+        void PassUseImage(Handle<Pass> pass, Handle<ImageAttachment> attachment, const ImageViewInfo& viewInfo, ImageUsage usage, Flags<ShaderStage> stage, Access access);
 
-        RHI_NODISCARD Handle<Buffer> GetBuffer(Handle<BufferAttachment> attachment);
+        /// @brief Uses a buffer in a pass with specified usage and access.
+        ///
+        /// @param pass Handle to the pass.
+        /// @param attachment Handle to the buffer attachment.
+        /// @param usage Usage flags for the buffer.
+        /// @param stage Shader stage flags.
+        /// @param access Access flags.
+        void PassUseBuffer(Handle<Pass> pass, Handle<BufferAttachment> attachment, BufferUsage usage, Flags<ShaderStage> stage, Access access);
 
-        RHI_NODISCARD Handle<ImageView> GetImageView(Handle<ImageAttachment> attachment);
+        /// @brief Uses a buffer in a pass with view info, usage, and access.
+        ///
+        /// @param pass Handle to the pass.
+        /// @param attachment Handle to the buffer attachment.
+        /// @param viewInfo View information for the buffer.
+        /// @param usage Usage flags for the buffer.
+        /// @param stage Shader stage flags.
+        /// @param access Access flags.
+        void PassUseBuffer(Handle<Pass> pass, Handle<BufferAttachment> attachment, const BufferViewInfo& viewInfo, BufferUsage usage, Flags<ShaderStage> stage, Access access);
 
-        RHI_NODISCARD Handle<BufferView> GetBufferView(Handle<BufferAttachment> attachment);
+        // TODO: Add more overload to facilitate graph declaration. e.g. PassCreateImage, PassCreateBuffer, PassCreateTarget, etc...
 
-        RHI_NODISCARD Swapchain* GetSwapchain(Handle<ImageAttachment> attachment);
+        /// @brief Retrieves the image from an image attachment.
+        ///
+        /// @param attachment Handle to the image attachment.
+        /// @return Handle to the image.
+        RHI_NODISCARD Handle<Image> PassGetImage(Handle<ImageAttachment> attachment) const;
 
-        // private:
+        /// @brief Retrieves the buffer from a buffer attachment.
+        ///
+        /// @param attachment Handle to the buffer attachment.
+        /// @return Handle to the buffer.
+        RHI_NODISCARD Handle<Buffer> PassGetBuffer(Handle<BufferAttachment> attachment) const;
 
-        ImageAttachmentList* GetAttachmentList(Handle<ImageAttachment> attachment);
-        ImageAttachment*     GetAttachment(Handle<ImageAttachment> attachment);
-        ImageAttachment*     GetAttachmentNext(Handle<ImageAttachment> attachment);
-        ImageAttachment*     GetAttachmentPrev(Handle<ImageAttachment> attachment);
+        /// @brief Retrieves the image view from a pass and image attachment.
+        ///
+        /// @param pass Handle to the pass.
+        /// @param attachment Handle to the image attachment.
+        /// @return Handle to the image view.
+        RHI_NODISCARD Handle<ImageView> PassGetImageView(Handle<Pass> pass, Handle<ImageAttachment> attachment) const;
 
-        BufferAttachmentList* GetAttachmentList(Handle<BufferAttachment> attachment);
-        BufferAttachment*     GetAttachment(Handle<BufferAttachment> attachment);
-        BufferAttachment*     GetAttachmentNext(Handle<BufferAttachment> attachment);
-        BufferAttachment*     GetAttachmentPrev(Handle<BufferAttachment> attachment);
+        /// @brief Retrieves the buffer view from a pass and buffer attachment.
+        ///
+        /// @param pass Handle to the pass.
+        /// @param attachment Handle to the buffer attachment.
+        /// @return Handle to the buffer view.
+        RHI_NODISCARD Handle<BufferView> PassGetBufferView(Handle<Pass> pass, Handle<BufferAttachment> attachment) const;
 
-        // private:
+        /// @brief Submits a pass with command lists and an optional signal fence.
+        ///
+        /// @param pass Handle to the pass.
+        /// @param commandList Span of command lists to execute.
+        /// @param signalFence Optional fence to signal after execution.
+        void Submit(Handle<Pass> pass, TL::Span<const CommandList*> commandList, Fence* signalFence = nullptr);
 
+    private:
+        enum class State
+        {
+            Initial,
+            Building,
+            Compiled,
+            Invalidated,
+        };
+
+        using PassAttachment = Handle<Pass>;
+        using PassGraphID      = graaf::vertex_id_t;
+        using PassDependencyID = graaf::edge_id_t;
+        using Graph            = graaf::directed_graph<Handle<Pass>, unsigned>;
+
+    private:
+        /// @brief Gets the current state of the render graph.
+        /// @return Current state of the graph.
+        State GetGraphState() const;
+
+        /// @brief Adds a dependency for an image attachment in a pass.
+        ///
+        /// @param pass Handle to the pass.
+        /// @param attachment Handle to the image attachment.
+        void AddDependency(Handle<Pass> pass, Handle<ImageAttachment> attachment);
+
+        /// @brief Adds a dependency for a buffer attachment in a pass.
+        ///
+        /// @param pass Handle to the pass.
+        /// @param attachment Handle to the buffer attachment.
+        void AddDependency(Handle<Pass> pass, Handle<BufferAttachment> attachment);
+
+        /// @brief Compiles the render graph.
+        void Compile();
+
+        /// @brief Compiles transient resources in the render graph.
+        void CompileTransientResources();
+
+        /// @brief Compiles attachment views in the render graph.
+        void CompileAttachmentViews();
+
+        /// @brief Cleans up resources used by the render graph.
+        void Cleanup();
+
+        /// @brief Cleans up transient resources in the render graph.
+        void CleanupTransientResources();
+
+        /// @brief Cleans up attachment views in the render graph.
+        void CleanupResourceViews();
+
+        /// @brief Executes the render graph
+        /// @param signalFence Optional fence to signal after execution is complete.
+        void Execute(Fence* signalFence);
+
+    private:
         Context* m_context;
 
-        TL::Vector<Handle<Pass>>                 m_passes;
-        TL::Vector<Handle<ImageAttachmentList>>  m_graphImageAttachments;
-        TL::Vector<Handle<BufferAttachmentList>> m_graphBufferAttachments;
+        // Directed asyclic graph, represents dependencies between passes.
+        Graph m_graph;
 
-        HandlePool<Pass>             m_passOwner;
-        HandlePool<ImageAttachment>  m_imageAttachmentOwner;
-        HandlePool<BufferAttachment> m_bufferAttachmentOwner;
+        // lookup used to find graph VertexID from pass handle.
+        TL::UnorderedMap<Handle<Pass>, PassGraphID> m_passToVertexLut;
 
-        HandlePool<ImageAttachmentList>  m_graphImageAttachmentOwner;
-        HandlePool<BufferAttachmentList> m_graphBufferAttachmentOwner;
+        // lookup used to find pass handle from pass graph vertex id.
+        TL::UnorderedMap<PassGraphID, Handle<Pass>> m_vertexToPassLut;
+
+        // current state of the graph.
+        State m_state;
+
+        // current frame counter, incremented after graph execution
+        uint64_t m_frameCounter;
+
+        // graph resource's pool
+        HandlePool<Pass>             m_passPool;
+        HandlePool<ImageAttachment>  m_imageAttachmentPool;
+        HandlePool<BufferAttachment> m_bufferAttachmentPool;
+
+        // list of all passes in the graph
+        TL::Vector<Handle<Pass>> m_passes;
+
+        // list of all imported swapchain images in the graph
+        TL::Vector<Handle<ImageAttachment>> m_importedSwapchainImageAttachments;
+
+        // list of all imported images in the graph
+        TL::Vector<Handle<ImageAttachment>> m_importedImageAttachments;
+
+        // list of all imported buffers in the graph
+        TL::Vector<Handle<BufferAttachment>> m_importedBufferAttachments;
+
+        // list of all transient image in the graph
+        TL::Vector<Handle<ImageAttachment>> m_transientImageAttachments;
+
+        // list of all transient buffer in the graph
+        TL::Vector<Handle<BufferAttachment>> m_transientBufferAttachments;
+
+        // list of all image attachments in the graph
+        TL::Vector<Handle<ImageAttachment>> m_imageAttachments;
+
+        // list of all buffer attachments in the graph
+        TL::Vector<Handle<BufferAttachment>> m_bufferAttachments;
+
+        // Allocator used to create graph GPU resources (e.g. Images, Buffers...etc).
+        // it can alias resources if their lifetimes don't overlap, and their memory properties are compatible.
+        Ptr<TransientAliasingAllocator> m_transientAliasingAllocator;
+
+        // Frame context, encapsulates the current frame state. and handles resource rotation and swaping.
+        // All images and buffers are actually owned by the Frame Context.
+        Ptr<FrameContext> m_frameContext;
+
+        friend class TransientAliasingAllocator;
     };
-
-} // namespace RHI
-
-namespace RHI
-{
-
-    inline ImageAttachmentList* RenderGraph::GetAttachmentList(Handle<ImageAttachment> attachmentHandle)
-    {
-        if (attachmentHandle == NullHandle)
-            return nullptr;
-
-        auto attachment = m_imageAttachmentOwner.Get(attachmentHandle);
-        return m_graphImageAttachmentOwner.Get(attachment->list);
-    }
-
-    inline ImageAttachment* RenderGraph::GetAttachment(Handle<ImageAttachment> attachmentHandle)
-    {
-        if (attachmentHandle == NullHandle)
-            return nullptr;
-
-        return m_imageAttachmentOwner.Get(attachmentHandle);
-    }
-
-    inline ImageAttachment* RenderGraph::GetAttachmentNext(Handle<ImageAttachment> attachmentHandle)
-    {
-        if (attachmentHandle == NullHandle)
-            return nullptr;
-
-        auto attachment = m_imageAttachmentOwner.Get(attachmentHandle);
-        return m_imageAttachmentOwner.Get(attachment->next);
-    }
-
-    inline ImageAttachment* RenderGraph::GetAttachmentPrev(Handle<ImageAttachment> attachmentHandle)
-    {
-        if (attachmentHandle == NullHandle)
-            return nullptr;
-
-        auto attachment = m_imageAttachmentOwner.Get(attachmentHandle);
-        return m_imageAttachmentOwner.Get(attachment->prev);
-    }
-
-    inline BufferAttachmentList* RenderGraph::GetAttachmentList(Handle<BufferAttachment> attachmentHandle)
-    {
-        if (attachmentHandle == NullHandle)
-            return nullptr;
-
-        auto attachment = m_bufferAttachmentOwner.Get(attachmentHandle);
-        return m_graphBufferAttachmentOwner.Get(attachment->list);
-    }
-
-    inline BufferAttachment* RenderGraph::GetAttachment(Handle<BufferAttachment> attachmentHandle)
-    {
-        if (attachmentHandle == NullHandle)
-            return nullptr;
-
-        return m_bufferAttachmentOwner.Get(attachmentHandle);
-    }
-
-    inline BufferAttachment* RenderGraph::GetAttachmentNext(Handle<BufferAttachment> attachmentHandle)
-    {
-        if (attachmentHandle == NullHandle)
-            return nullptr;
-
-        auto attachment = m_bufferAttachmentOwner.Get(attachmentHandle);
-        return m_bufferAttachmentOwner.Get(attachment->next);
-    }
-
-    inline BufferAttachment* RenderGraph::GetAttachmentPrev(Handle<BufferAttachment> attachmentHandle)
-    {
-        if (attachmentHandle == NullHandle)
-            return nullptr;
-
-        auto attachment = m_bufferAttachmentOwner.Get(attachmentHandle);
-        return m_bufferAttachmentOwner.Get(attachment->prev);
-    }
-
-} // namespace RHI
-
-namespace RHI
-{
-    template<typename T>
-    inline ColorValue<T>::ColorValue(T r, T g, T b, T a)
-        : r(r)
-        , g(g)
-        , b(b)
-        , a(a)
-    {
-    }
-
-    inline ClearValue::ClearValue()
-    {
-        f32.r = 0;
-        f32.g = 0;
-        f32.b = 0;
-        f32.a = 1;
-    }
-
-    template<typename T>
-    inline ClearValue::ClearValue(ColorValue<T> value)
-    {
-        static_assert(std::is_same_v<T, uint8_t> || std::is_same_v<T, uint16_t> || std::is_same_v<T, uint32_t> || std::is_same_v<T, float>, "invalid T argument");
-
-        if constexpr (std::is_same_v<T, uint8_t>)
-            u8 = value;
-        else if constexpr (std::is_same_v<T, uint16_t>)
-            u16 = value;
-        else if constexpr (std::is_same_v<T, uint32_t>)
-            u32 = value;
-        else if constexpr (std::is_same_v<T, float>)
-            f32 = value;
-    }
-
-    template<typename T>
-    inline ClearValue::ClearValue(T r, T g, T b, T a)
-    {
-        static_assert(std::is_same_v<T, uint8_t> || std::is_same_v<T, uint16_t> || std::is_same_v<T, uint32_t> || std::is_same_v<T, float>, "invalid T argument");
-
-        if constexpr (std::is_same_v<T, uint8_t>)
-        {
-            u8.r = r;
-            u8.g = g;
-            u8.b = b;
-            u8.a = a;
-        }
-        else if constexpr (std::is_same_v<T, uint16_t>)
-        {
-            u16.r = r;
-            u16.g = g;
-            u16.b = b;
-            u16.a = a;
-        }
-        else if constexpr (std::is_same_v<T, uint32_t>)
-        {
-            u32.r = r;
-            u32.g = g;
-            u32.b = b;
-            u32.a = a;
-        }
-        else if constexpr (std::is_same_v<T, float>)
-        {
-            f32.r = r;
-            f32.g = g;
-            f32.b = b;
-            f32.a = a;
-        }
-    }
-
-    inline ClearValue::ClearValue(DepthStencilValue value)
-        : depthStencil(value)
-    {
-    }
 } // namespace RHI

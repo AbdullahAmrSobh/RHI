@@ -4,13 +4,10 @@
 #include "Resources.hpp"
 #include "CommandList.hpp"
 #include "Swapchain.hpp"
-#include "RenderGraphCompiler.hpp"
 #include "Context.hpp"
 #include "VulkanFunctions.hpp"
 
 #include <tracy/Tracy.hpp>
-
-#include <format>
 
 #if RHI_PLATFORM_WINDOWS
     #define VULKAN_SURFACE_OS_EXTENSION_NAME "VK_KHR_win32_surface"
@@ -611,15 +608,19 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DispatchGraph(RenderGraph& renderGraph, Fence* signalFence)
     {
-        for (auto passHandle : renderGraph.m_passes)
-        {
-            auto pass = renderGraph.m_passOwner.Get(passHandle);
-            RenderGraphCompiler::CompilePass(this, renderGraph, pass);
-            auto submitData = (IPassSubmitData*)pass->submitData;
-            TL::Span commandLists{ (const ICommandList**)pass->commandList.data(), pass->commandList.size() };
-            QueueSubmit(pass->queueType, commandLists, submitData->waitSemaphores, submitData->signalSemaphores, (IFence*)signalFence);
-            submitData->Clear();
-        }
+        (void)renderGraph;
+        (void)signalFence;
+
+        // RHI_ASSERT(false && "Not implemented");
+        // for (auto passHandle : renderGraph.m_passes)
+        // {
+        //     auto pass = renderGraph.m_passOwner.Get(passHandle);
+        //     RenderGraphCompiler::CompilePass(this, renderGraph, pass);
+        //     auto submitData = (IPassSubmitData*)pass->submitData;
+        //     TL::Span commandLists{ (const ICommandList**)pass->commandList.data(), pass->commandList.size() };
+        //     QueueSubmit(pass->queueType, commandLists, submitData->waitSemaphores, submitData->signalSemaphores, (IFence*)signalFence);
+        //     submitData->Clear();
+        // }
     }
 
     DeviceMemoryPtr IContext::Internal_MapBuffer(Handle<Buffer> handle)
@@ -640,73 +641,21 @@ namespace RHI::Vulkan
 
     void IContext ::Internal_StageResourceWrite(Handle<Image> imageHandle, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset)
     {
-        auto image = m_imageOwner.Get(imageHandle);
-        image->waitSemaphore = CreateSemaphore("ImageWriteSemaphore");
-
-        VkImageMemoryBarrier2 barrier{};
-        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-        barrier.pNext = nullptr;
-        barrier.srcStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
-        barrier.srcAccessMask = VK_ACCESS_2_NONE;
-        barrier.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-        barrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-        barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.image = image->handle;
-        barrier.subresourceRange.aspectMask = FormatToAspect(image->format);
-        barrier.subresourceRange.baseMipLevel = subresources.mipLevel;
-        barrier.subresourceRange.levelCount = 1;
-        barrier.subresourceRange.baseArrayLayer = subresources.arrayBase;
-        barrier.subresourceRange.layerCount = subresources.arrayCount;
-
-        BufferImageCopyInfo copyInfo{};
-        copyInfo.image = imageHandle;
-        copyInfo.subresource = subresources;
-        copyInfo.buffer = buffer;
-        copyInfo.bufferOffset = bufferOffset;
-        copyInfo.imageSize.width = image->extent.width;
-        copyInfo.imageSize.height = image->extent.height;
-        copyInfo.imageSize.depth = image->extent.depth;
-        auto commandList = (ICommandList*)m_commandPool->Allocate(QueueType::Transfer, CommandListLevel::Primary, 1).front();
-
-        commandList->Begin();
-        commandList->PipelineBarrier({}, {}, barrier);
-        commandList->CopyBufferToImage(copyInfo);
-
-        barrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-        barrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-        barrier.dstStageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
-        barrier.dstAccessMask = VK_ACCESS_2_NONE;
-        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; // TODO: deduce correct layout from the image usage
-        commandList->PipelineBarrier({}, {}, barrier);
-        commandList->End();
-
-        QueueSubmit(QueueType::Transfer, commandList, {}, { { image->waitSemaphore, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT } });
-        m_commandPool->Release(commandList);
+        (void)imageHandle;
+        (void)subresources;
+        (void)buffer;
+        (void)bufferOffset;
+        RHI_UNREACHABLE();
     }
 
     void IContext ::Internal_StageResourceWrite(Handle<Buffer> bufferHandle, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset)
     {
-        auto buffer = m_bufferOwner.Get(bufferHandle);
-        auto semaphore = buffer->waitSemaphore = CreateSemaphore("BufferWriteSemaphore");
-        DestroySemaphore(semaphore);
-
-        BufferCopyInfo copyInfo{};
-        copyInfo.dstBuffer = bufferHandle;
-        copyInfo.dstOffset = offset;
-        copyInfo.srcBuffer = srcBuffer;
-        copyInfo.srcOffset = srcOffset;
-        copyInfo.size = size;
-        auto commandList = (ICommandList*)m_commandPool->Allocate(QueueType::Transfer, CommandListLevel::Primary, 1).front();
-        commandList->Begin();
-        commandList->CopyBuffer(copyInfo);
-        commandList->End();
-
-        QueueSubmit(QueueType::Transfer, commandList, {}, { { buffer->waitSemaphore, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT } });
-        m_commandPool->Release(commandList);
+        (void)bufferHandle;
+        (void)offset;
+        (void)size;
+        (void)srcBuffer;
+        (void)srcOffset;
+        RHI_UNREACHABLE();
     }
 
     void IContext ::Internal_StageResourceRead(Handle<Image> image, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset, Fence* fence)

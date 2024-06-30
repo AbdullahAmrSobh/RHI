@@ -1,227 +1,178 @@
 #include "RHI/RenderGraph.hpp"
+#include "RHI/Resources.hpp"
+#include "RHI/Context.hpp"
 #include "RHI/Swapchain.hpp"
+#include "RHI/RGInternals.hpp"
+#include "RHI/CommandList.hpp"
+#include "RHI/Attachment.hpp"
 
-#include <tracy/Tracy.hpp>
+#include <graaflib/algorithm/cycle_detection/dfs_cycle_detection.h>
+#include <graaflib/algorithm/topological_sorting/dfs_topological_sorting.h>
+#include <graaflib/algorithm/shortest_path/bfs_shortest_path.h>
+#include <graaflib/algorithm/graph_traversal/breadth_first_search.h>
+#include <graaflib/algorithm/utils.h>
 
 namespace RHI
 {
     RenderGraph::RenderGraph(Context* context)
         : m_context(context)
+        , m_graph()
+        , m_passToVertexLut()
+        , m_vertexToPassLut()
+        , m_state()
+        , m_frameCounter(0ull)
+        , m_passPool()
+        , m_imageAttachmentPool()
+        , m_bufferAttachmentPool()
+        , m_passes()
+        , m_importedSwapchainImageAttachments()
+        , m_importedImageAttachments()
+        , m_importedBufferAttachments()
+        , m_transientImageAttachments()
+        , m_transientBufferAttachments()
+        , m_imageAttachments()
+        , m_bufferAttachments()
+        , m_transientAliasingAllocator(CreatePtr<TransientAliasingAllocator>(this))
+        , m_frameContext(CreatePtr<FrameContext>())
     {
     }
+
+    RenderGraph::~RenderGraph() = default;
 
     Handle<Pass> RenderGraph::CreatePass(const PassCreateInfo& createInfo)
     {
         Pass pass{};
-        pass.renderTargetSize.width = 1600;
-        pass.renderTargetSize.height = 1200;
         pass.name = createInfo.name;
-        pass.queueType = createInfo.queueType;
-        auto handle = m_passOwner.Emplace(std::move(pass));
+        pass.flags = createInfo.flags;
+        auto handle = m_passPool.Emplace(std::move(pass));
         m_passes.push_back(handle);
+        return handle;
+    }
+
+    void RenderGraph::PassResize(Handle<Pass> pass, ImageSize2D size)
+    {
+        m_passPool[pass]->renderingAttachments.size = size;
+    }
+
+    RenderTargetLayoutDesc RenderGraph::PassGetRenderTargetLayout(Handle<Pass> pass) const
+    {
+        return m_passPool[pass]->renderingAttachments.layout;
+    }
+
+    Handle<ImageAttachment> RenderGraph::ImportSwapchain(const char* name, Swapchain& swapchain)
+    {
+        auto imageID = m_frameContext->AddSwapchain(swapchain);
+        auto handle = m_imageAttachmentPool.Emplace(ImageAttachment(name, imageID, swapchain));
+        m_importedSwapchainImageAttachments.push_back(handle);
+        return handle;
+    }
+
+    Handle<ImageAttachment> RenderGraph::ImportImage(const char* name, Handle<Image> image)
+    {
+        auto imageID = m_frameContext->AddImage(image);
+        auto handle = m_imageAttachmentPool.Emplace(ImageAttachment(name, imageID));
+        m_importedImageAttachments.push_back(handle);
+        return handle;
+    }
+
+    Handle<BufferAttachment> RenderGraph::ImportBuffer(const char* name, Handle<Buffer> buffer)
+    {
+        auto bufferID = m_frameContext->AddBuffer(buffer);
+        auto handle = m_bufferAttachmentPool.Emplace(BufferAttachment(name, bufferID));
+        m_importedBufferAttachments.push_back(handle);
         return handle;
     }
 
     Handle<ImageAttachment> RenderGraph::CreateImage(const ImageCreateInfo& createInfo)
     {
-        ImageAttachment imageAttachment{};
-        Handle<ImageAttachment> attachmentHandle = m_imageAttachmentOwner.Emplace(std::move(imageAttachment));
-
-        ImageAttachmentList graphAttachment{};
-        graphAttachment.renderGraph = this;
-        graphAttachment.name = createInfo.name;
-        graphAttachment.lifetime = AttachmentLifetime::Transient;
-        graphAttachment.referenceCount = 0;
-        graphAttachment.info = createInfo;
-        graphAttachment.begin = attachmentHandle;
-        graphAttachment.end = attachmentHandle;
-        auto newAttachment = m_imageAttachmentOwner.Get(attachmentHandle);
-        newAttachment->list = m_graphImageAttachmentOwner.Emplace(std::move(graphAttachment));
-        m_graphImageAttachments.push_back(newAttachment->list);
-        return attachmentHandle;
+        auto handle = m_imageAttachmentPool.Emplace(ImageAttachment(createInfo.name, createInfo));
+        m_transientImageAttachments.push_back(handle);
+        return handle;
     }
 
     Handle<BufferAttachment> RenderGraph::CreateBuffer(const BufferCreateInfo& createInfo)
     {
-        BufferAttachment bufferAttachment{};
-        Handle<BufferAttachment> attachmentHandle = m_bufferAttachmentOwner.Emplace(std::move(bufferAttachment));
-
-        BufferAttachmentList graphAttachment{};
-        graphAttachment.renderGraph = this;
-        graphAttachment.name = createInfo.name;
-        graphAttachment.lifetime = AttachmentLifetime::Transient;
-        graphAttachment.referenceCount = 0;
-        graphAttachment.info = createInfo;
-        graphAttachment.begin = attachmentHandle;
-        graphAttachment.end = attachmentHandle;
-        auto newAttachment = m_bufferAttachmentOwner.Get(attachmentHandle);
-        newAttachment->list = m_graphBufferAttachmentOwner.Emplace(std::move(graphAttachment));
-        m_graphBufferAttachments.push_back(newAttachment->list);
-        return attachmentHandle;
+        auto handle = m_bufferAttachmentPool.Emplace(BufferAttachment(createInfo.name, createInfo));
+        m_transientBufferAttachments.push_back(handle);
+        return handle;
     }
 
-    Handle<ImageAttachment> RenderGraph::ImportSwapchain(const char* name, Swapchain& swapchain)
+    void RenderGraph::PassUseImage(Handle<Pass> pass, Handle<ImageAttachment> attachment, ImageUsage usage, Flags<ShaderStage> stage, Access access)
     {
-        ImageAttachment imageAttachment{};
-        Handle<ImageAttachment> attachmentHandle = m_imageAttachmentOwner.Emplace(std::move(imageAttachment));
-
-        ImageAttachmentList graphAttachment{};
-        graphAttachment.renderGraph = this;
-        graphAttachment.name = name;
-        graphAttachment.lifetime = AttachmentLifetime::Persistent;
-        graphAttachment.referenceCount = 0;
-        graphAttachment.swapchain = &swapchain;
-        graphAttachment.begin = attachmentHandle;
-        graphAttachment.end = attachmentHandle;
-        auto newAttachment = m_imageAttachmentOwner.Get(attachmentHandle);
-        newAttachment->list = m_graphImageAttachmentOwner.Emplace(std::move(graphAttachment));
-        m_graphImageAttachments.push_back(newAttachment->list);
-        return attachmentHandle;
+        PassUseImage(pass, attachment, ImageViewInfo(), usage, stage, access);
     }
 
-    Handle<ImageAttachment> RenderGraph::ImportImage(const char* name, Handle<Image> image)
+    void RenderGraph::PassUseImage(Handle<Pass> pass, Handle<ImageAttachment> attachmentHandle, const ImageViewInfo& viewInfo, ImageUsage usage, Flags<ShaderStage> stage, Access access)
     {
-        ImageAttachment imageAttachment{};
-        Handle<ImageAttachment> attachmentHandle = m_imageAttachmentOwner.Emplace(std::move(imageAttachment));
-
-        ImageAttachmentList graphAttachment{};
-        graphAttachment.renderGraph = this;
-        graphAttachment.name = name;
-        graphAttachment.lifetime = AttachmentLifetime::Persistent;
-        graphAttachment.referenceCount = 0;
-        graphAttachment.handle = image;
-        graphAttachment.begin = attachmentHandle;
-        graphAttachment.end = attachmentHandle;
-        auto newAttachment = m_imageAttachmentOwner.Get(attachmentHandle);
-        newAttachment->list = m_graphImageAttachmentOwner.Emplace(std::move(graphAttachment));
-        m_graphImageAttachments.push_back(newAttachment->list);
-        return attachmentHandle;
+        AddDependency(pass, attachmentHandle);
+        auto attachment = m_imageAttachmentPool[attachmentHandle];
+        auto passAttachment = attachment->Emplace(pass, attachmentHandle, viewInfo, usage, access, stage);
+        m_passPool[pass]->imagesAttachments.push_back(passAttachment);
     }
 
-    Handle<BufferAttachment> RenderGraph::ImportBuffer(const char* name, Handle<Buffer> buffer)
+    void RenderGraph::PassUseBuffer(Handle<Pass> pass, Handle<BufferAttachment> attachment, BufferUsage usage, Flags<ShaderStage> stage, Access access)
     {
-        BufferAttachment bufferAttachment{};
-        Handle<BufferAttachment> attachmentHandle = m_bufferAttachmentOwner.Emplace(std::move(bufferAttachment));
-
-        BufferAttachmentList graphAttachment{};
-        graphAttachment.renderGraph = this;
-        graphAttachment.name = name;
-        graphAttachment.lifetime = AttachmentLifetime::Persistent;
-        graphAttachment.referenceCount = 0;
-        graphAttachment.handle = buffer;
-        graphAttachment.begin = attachmentHandle;
-        graphAttachment.end = attachmentHandle;
-        auto newAttachment = m_bufferAttachmentOwner.Get(attachmentHandle);
-        newAttachment->list = m_graphBufferAttachmentOwner.Emplace(std::move(graphAttachment));
-        m_graphBufferAttachments.push_back(newAttachment->list);
-        return attachmentHandle;
+        PassUseBuffer(pass, attachment, BufferViewInfo(), usage, stage, access);
     }
 
-    Handle<ImageAttachment> RenderGraph::UseImage(Handle<Pass> pass, Handle<ImageAttachment> attachmentHandle, const ImageAttachmentUseInfo& useInfo)
+    void RenderGraph::PassUseBuffer(Handle<Pass> pass, Handle<BufferAttachment> attachmentHandle, const BufferViewInfo& viewInfo, BufferUsage usage, Flags<ShaderStage> stage, Access access)
     {
-        auto attachment = m_imageAttachmentOwner.Get(attachmentHandle);
-
-        Handle<ImageAttachment> newAttachmentHandle;
-        if (attachment->pass == NullHandle)
-        {
-            attachment->pass = pass;
-            attachment->useInfo = useInfo;
-            newAttachmentHandle = attachmentHandle;
-        }
-        else
-        {
-            ImageAttachment newAttachment{};
-            newAttachment.pass = pass;
-            newAttachment.useInfo = useInfo;
-            newAttachment.prev = attachmentHandle;
-            newAttachment.list = attachment->list;
-            newAttachmentHandle = attachment->next = m_imageAttachmentOwner.Emplace(std::move(newAttachment));
-
-            auto graphAttachment = m_graphImageAttachmentOwner.Get(attachment->list);
-            graphAttachment->end = attachment->next;
-        }
-
-        auto _pass = m_passOwner.Get(pass);
-        if (useInfo.usage == ImageUsage::Color)
-        {
-            _pass->colorAttachments.push_back(newAttachmentHandle);
-        }
-        else if (useInfo.usage == ImageUsage::Depth || useInfo.usage == ImageUsage::DepthStencil)
-        {
-            _pass->depthStencilAttachment = newAttachmentHandle;
-        }
-        _pass->imageAttachments.push_back(newAttachmentHandle);
-
-        return newAttachmentHandle;
+        AddDependency(pass, attachmentHandle);
+        auto attachment = m_bufferAttachmentPool[attachmentHandle];
+        auto passAttachment = attachment->Emplace(pass, attachmentHandle, viewInfo, usage, access, stage);
+        m_passPool[pass]->bufferAttachments.push_back(passAttachment);
     }
 
-    Handle<BufferAttachment> RenderGraph::UseBuffer(Handle<Pass> pass, Handle<BufferAttachment> attachmentHandle, const BufferAttachmentUseInfo& useInfo)
+    Handle<Image> RenderGraph::PassGetImage(Handle<ImageAttachment> attachmentHandle) const
     {
-        auto attachment = m_bufferAttachmentOwner.Get(attachmentHandle);
-        if (attachment->pass == NullHandle)
-        {
-            attachment->pass = pass;
-            attachment->useInfo = useInfo;
-            return attachmentHandle;
-        }
-        else
-        {
-            BufferAttachment newAttachment{};
-            newAttachment.pass = pass;
-            newAttachment.useInfo = useInfo;
-            newAttachment.prev = attachmentHandle;
-            newAttachment.list = attachment->list;
-            attachment->next = m_bufferAttachmentOwner.Emplace(std::move(newAttachment));
-
-            auto graphAttachment = m_graphBufferAttachmentOwner.Get(attachment->list);
-            graphAttachment->end = attachment->next;
-            return attachment->next;
-        }
+        auto attachment = m_imageAttachmentPool[attachmentHandle];
+        return m_frameContext->GetImage(attachment->m_resource);
     }
 
-    void RenderGraph::SubmitCommands(Handle<Pass> passHandle, TL::Span<const CommandList* const> commandLists)
+    Handle<Buffer> RenderGraph::PassGetBuffer(Handle<BufferAttachment> attachmentHandle) const
     {
-        auto pass = m_passOwner.Get(passHandle);
-        pass->commandList = TL::Vector<const CommandList*>(commandLists.begin(), commandLists.end());
+        auto attachment = m_bufferAttachmentPool[attachmentHandle];
+        return m_frameContext->GetBuffer(attachment->m_resource);
     }
 
-    Handle<Image> RenderGraph::GetImage(Handle<ImageAttachment> attachmentHandle)
+    Handle<ImageView> RenderGraph::PassGetImageView(Handle<Pass> pass, Handle<ImageAttachment> attachment) const
     {
-        auto attachment = GetAttachmentList(attachmentHandle);
-        if (attachment->swapchain)
-        {
-            return attachment->swapchain->GetImage();
-        }
-        return attachment->handle;
+        auto id = *m_imageAttachmentPool[attachment]->m_passToViews.at(pass);
+        return m_frameContext->GetImageView(id->view);
     }
 
-    Handle<Buffer> RenderGraph::GetBuffer(Handle<BufferAttachment> attachment)
+    Handle<BufferView> RenderGraph::PassGetBufferView(Handle<Pass> pass, Handle<BufferAttachment> attachment) const
     {
-        return GetAttachmentList(attachment)->handle;
+        auto id = *m_bufferAttachmentPool[attachment]->m_passToViews.at(pass);
+        return m_frameContext->GetBufferView(id->view);
     }
 
-    Handle<ImageView> RenderGraph::GetImageView(Handle<ImageAttachment> attachmentHandle)
+    // void  RenderGraph::Submit(Handle<Pass> pass, TL::Span<const CommandList*> commandList, Fence* signalFence)
+    // {}
+
+    // private:
+
+    RenderGraph::State RenderGraph::GetGraphState() const
     {
-        auto attachment = m_imageAttachmentOwner.Get(attachmentHandle);
-        if (auto swapchain = GetSwapchain(attachmentHandle))
-        {
-            ImageViewCreateInfo info{};
-            info.image = GetImage(attachmentHandle);
-            info.components = attachment->useInfo.componentMapping;
-            info.subresource = attachment->useInfo.subresourceRange;
-            return swapchain->GetImageView(info);
-        }
-        return attachment->view;
+        return m_state;
     }
 
-    Handle<BufferView> RenderGraph::GetBufferView(Handle<BufferAttachment> attachment)
+    void RenderGraph::AddDependency(Handle<Pass> pass, Handle<ImageAttachment> attachment)
     {
-        return m_bufferAttachmentOwner.Get(attachment)->view;
+        // if (m_imageAttachmentPool[attachment]->end() == )
+            // return;
+        auto srcPass = m_passToVertexLut[pass];
+        auto dstPass = m_passToVertexLut[m_imageAttachmentPool[attachment]->end()->pass];
+        m_graph.add_edge(srcPass, dstPass, PassAttachment());
     }
 
-    Swapchain* RenderGraph::GetSwapchain(Handle<ImageAttachment> attachment)
+    void RenderGraph::AddDependency(Handle<Pass> pass, Handle<BufferAttachment> attachment)
     {
-        return GetAttachmentList(attachment)->swapchain;
+        // if (m_bufferAttachmentPool[attachment]->end() == nullptr)
+            // return;
+        auto srcPass = m_passToVertexLut[pass];
+        auto dstPass = m_passToVertexLut[m_bufferAttachmentPool[attachment]->end()->pass];
+        m_graph.add_edge(srcPass, dstPass, PassAttachment());
     }
 
 } // namespace RHI

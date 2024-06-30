@@ -1,4 +1,3 @@
-#include "Examples-Base/ApplicationBase.hpp"
 #include "Examples-Base/SceneGraph.hpp"
 
 #include <functional>
