@@ -15,6 +15,7 @@ namespace RHI::Vulkan
     {
     public:
         inline static constexpr uint32_t MAX_FRAMES_IN_FLIGHT_COUNT = 3;
+
         DeleteQueue(IContext* context)
             : m_context(context)
         {
@@ -22,9 +23,9 @@ namespace RHI::Vulkan
 
         ~DeleteQueue();
 
-        void Destroy(uint32_t frameIndex, std::function<void()> callback);
+        void Destroy(uint64_t frameIndex, std::function<void()> callback);
 
-        void Flush(uint32_t frameIndex);
+        void Flush(uint64_t frameIndex);
 
     private:
         IContext* m_context;

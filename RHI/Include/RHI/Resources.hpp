@@ -1,24 +1,18 @@
 #pragma once
 
-#include "RHI/Format.hpp"
-
 #include "RHI/Common/Handle.hpp"
 #include "RHI/Common/Flags.hpp"
 #include "RHI/Common/Span.hpp"
-#include "RHI/Common/Hash.hpp"
+
+#include "RHI/Format.hpp"
 
 namespace RHI
 {
-    inline static constexpr uint32_t c_MaxRenderTargetAttachmentsCount           = 16u;
-    inline static constexpr uint32_t c_MaxImageBindingArrayElementsCount         = 32u;
-    inline static constexpr uint32_t c_MaxBufferBindingArrayElementsCount        = 32u;
-    inline static constexpr uint32_t c_MaxBufferViewBindingArrayElementsCount    = 32u;
-    inline static constexpr uint32_t c_MaxBufferSamplerBindingArrayElementsCount = 32u;
-    inline static constexpr uint32_t c_MaxBindGroupElementsCount                 = 32u;
-    inline static constexpr uint32_t c_MaxPipelineVertexBindings                 = 32u;
-    inline static constexpr uint32_t c_MaxPipelineVertexAttributes               = 32u;
-    inline static constexpr uint32_t c_MaxPipelineBindGroupsCount                = 4u;
-    inline static constexpr uint32_t c_MaxShaderBindGroupElementsCount           = 32u;
+    inline static constexpr uint32_t c_MaxRenderTargetAttachmentsCount = 16u;
+    inline static constexpr uint32_t c_MaxBindGroupElementsCount       = 32u;
+    inline static constexpr uint32_t c_MaxPipelineVertexBindings       = 32u;
+    inline static constexpr uint32_t c_MaxPipelineVertexAttributes     = 32u;
+    inline static constexpr uint32_t c_MaxPipelineBindGroupsCount      = 4u;
 
     class Context;
     class ShaderModule;
@@ -63,16 +57,17 @@ namespace RHI
 
     enum class ImageUsage
     {
-        None            = 0 << 0,
-        ShaderResource  = 1 << 1,
-        StorageResource = 1 << 2,
-        Color           = 1 << 3,
-        Depth           = 1 << 4,
-        Stencil         = 1 << 5,
-        DepthStencil    = Depth | Stencil,
-        CopySrc         = 1 << 6,
-        CopyDst         = 1 << 7,
-        Resolve         = CopyDst
+        None         = 0 << 0,
+        Sampled      = 1 << 1,
+        Storage      = 1 << 2,
+        Color        = 1 << 3,
+        Depth        = 1 << 4,
+        Stencil      = 1 << 5,
+        DepthStencil = Depth | Stencil,
+        Input        = 1 << 6,
+        CopySrc      = 1 << 7,
+        CopyDst      = 1 << 8,
+        Resolve      = CopyDst
     };
 
     enum class ImageType
@@ -126,25 +121,22 @@ namespace RHI
         CopyDst = 1 << 6,
     };
 
-    enum class ShaderStage : unsigned
+    enum class ShaderStage : uint32_t
     {
         None                   = 0,
         Vertex                 = 1 << 0,
         TessellationControl    = 1 << 1,
         TessellationEvaluation = 1 << 2,
-        Geometry               = 1 << 3,
-        Pixel                  = 1 << 4,
-        Compute                = 1 << 5,
-        Raygen                 = 1 << 6,
-        AnyHit                 = 1 << 7,
-        ClosestHit             = 1 << 8,
-        Miss                   = 1 << 9,
-        Intersection           = 1 << 10,
-        Callable               = 1 << 11,
-        Task                   = 1 << 12,
-        Mesh                   = 1 << 13,
-        AllGraphics            = 1 << 14,
-        All                    = 0xFFFFFFFF,
+        Pixel                  = 1 << 3,
+        Compute                = 1 << 4,
+        Raygen                 = 1 << 5,
+        AnyHit                 = 1 << 6,
+        ClosestHit             = 1 << 7,
+        Miss                   = 1 << 8,
+        Intersection           = 1 << 9,
+        Callable               = 1 << 10,
+        Task                   = 1 << 11,
+        Mesh                   = 1 << 12,
     };
 
     RHI_DEFINE_FLAG_OPERATORS(SampleCount);
@@ -160,6 +152,8 @@ namespace RHI
         StorageImage,
         UniformBuffer,
         StorageBuffer,
+
+        InputAttachment,
 
         DynamicUniformBuffer,
         DynamicStorageBuffer,
@@ -470,6 +464,7 @@ namespace RHI
 
     struct PipelineLayoutCreateInfo
     {
+        const char*             name;
         Handle<BindGroupLayout> layouts[c_MaxPipelineBindGroupsCount];
     };
 
@@ -483,8 +478,6 @@ namespace RHI
         BlendFactor           srcAlpha     = BlendFactor::One;
         BlendFactor           dstAlpha     = BlendFactor::Zero;
         Flags<ColorWriteMask> writeMask    = ColorWriteMask::All;
-
-        inline bool operator==(const ColorAttachmentBlendStateDesc& other) const { return blendEnable == other.blendEnable && colorBlendOp == other.colorBlendOp && srcColor == other.srcColor && dstColor == other.dstColor && alphaBlendOp == other.alphaBlendOp && srcAlpha == other.srcAlpha && dstAlpha == other.dstAlpha; }
     };
 
     struct RenderTargetLayoutDesc
@@ -517,24 +510,24 @@ namespace RHI
 
     struct PipelineRasterizerStateDesc
     {
-        PipelineRasterizerStateCullMode  cullMode  = PipelineRasterizerStateCullMode::BackFace;
-        PipelineRasterizerStateFillMode  fillMode  = PipelineRasterizerStateFillMode::Triangle;
-        PipelineRasterizerStateFrontFace frontFace = PipelineRasterizerStateFrontFace::CounterClockwise;
-        float                            lineWidth = 1.0f;
+        PipelineRasterizerStateCullMode  cullMode;
+        PipelineRasterizerStateFillMode  fillMode;
+        PipelineRasterizerStateFrontFace frontFace;
+        float                            lineWidth;
     };
 
     struct PipelineMultisampleStateDesc
     {
-        SampleCount sampleCount   = SampleCount::Samples1;
-        bool        sampleShading = false;
+        SampleCount sampleCount;
+        bool        sampleShading;
     };
 
     struct PipelineDepthStencilStateDesc
     {
-        bool            depthTestEnable   = false;
-        bool            depthWriteEnable  = false;
-        CompareOperator compareOperator   = CompareOperator::Always;
-        bool            stencilTestEnable = false;
+        bool            depthTestEnable;
+        bool            depthWriteEnable;
+        CompareOperator compareOperator;
+        bool            stencilTestEnable;
     };
 
     struct PipelineColorBlendStateDesc
@@ -553,8 +546,6 @@ namespace RHI
         SampleCount       sampleCount;
         uint32_t          mipLevels;
         uint32_t          arrayCount;
-
-        inline bool operator==(const ImageCreateInfo& other) const { return usageFlags == other.usageFlags && type == other.type && size == other.size && format == other.format && mipLevels == other.mipLevels && arrayCount == other.arrayCount; }
     };
 
     struct BufferCreateInfo
@@ -563,28 +554,15 @@ namespace RHI
         MemoryType         heapType;
         Flags<BufferUsage> usageFlags;
         size_t             byteSize;
-
-        inline bool operator==(const BufferCreateInfo& other) const { return usageFlags == other.usageFlags && byteSize == other.byteSize; }
     };
 
     struct ImageViewCreateInfo
     {
-        ImageViewCreateInfo() = default;
-
-        inline ImageViewCreateInfo(RHI::ImageAspect aspect)
-            : components{}
-            , subresource{}
-        {
-            subresource.imageAspects = aspect;
-        }
-
-        const char*           name = nullptr;
+        const char*           name;
         Handle<Image>         image;
         ImageViewType         viewType;
         ComponentMapping      components;
         ImageSubresourceRange subresource;
-
-        inline bool operator==(const ImageViewCreateInfo& other) const { return components == other.components && subresource == other.subresource; }
     };
 
     struct BufferViewCreateInfo
@@ -593,8 +571,6 @@ namespace RHI
         Handle<Buffer>  buffer;
         Format          format;
         BufferSubregion subregion;
-
-        inline bool operator==(const BufferViewCreateInfo& other) const { return subregion == other.subregion && format == other.format; }
     };
 
     struct GraphicsPipelineCreateInfo
@@ -626,17 +602,17 @@ namespace RHI
     {
         SamplerCreateInfo() = default;
 
-        const char*             name       = nullptr;
-        SamplerFilter           filterMin  = SamplerFilter::Point;
-        SamplerFilter           filterMag  = SamplerFilter::Point;
-        SamplerFilter           filterMip  = SamplerFilter::Point;
-        SamplerCompareOperation compare    = SamplerCompareOperation::Always;
-        float                   mipLodBias = 0.0f;
-        SamplerAddressMode      addressU   = SamplerAddressMode::Clamp;
-        SamplerAddressMode      addressV   = SamplerAddressMode::Clamp;
-        SamplerAddressMode      addressW   = SamplerAddressMode::Clamp;
-        float                   minLod     = 0.0f;
-        float                   maxLod     = 1.0f;
+        const char*             name;
+        SamplerFilter           filterMin;
+        SamplerFilter           filterMag;
+        SamplerFilter           filterMip;
+        SamplerCompareOperation compare;
+        float                   mipLodBias;
+        SamplerAddressMode      addressU;
+        SamplerAddressMode      addressV;
+        SamplerAddressMode      addressW;
+        float                   minLod;
+        float                   maxLod;
     };
 
     struct ShaderModuleReflectionData
@@ -684,9 +660,3 @@ namespace RHI
         virtual bool WaitInternal(uint64_t timeout) = 0;
     };
 } // namespace RHI
-
-namespace std
-{
-    RHI_DEFINE_POD_HASH(RHI::ImageViewCreateInfo);
-    RHI_DEFINE_POD_HASH(RHI::BufferViewCreateInfo);
-} // namespace std

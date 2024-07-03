@@ -40,7 +40,7 @@ namespace RHI::Vulkan
         case VK_ERROR_OUT_OF_DEVICE_MEMORY:
             return ResultCode::ErrorDeviceOutOfMemory;
         default:
-            return ResultCode::ErrorUnkown;
+            return ResultCode::ErrorUnknown;
         }
     }
 
@@ -274,8 +274,8 @@ namespace RHI::Vulkan
         switch (imageUsage)
         {
         case ImageUsage::None:            return VK_IMAGE_USAGE_FLAG_BITS_MAX_ENUM;
-        case ImageUsage::ShaderResource:  return VK_IMAGE_USAGE_SAMPLED_BIT;
-        case ImageUsage::StorageResource: return VK_IMAGE_USAGE_STORAGE_BIT;
+        case ImageUsage::Sampled:  return VK_IMAGE_USAGE_SAMPLED_BIT;
+        case ImageUsage::Storage: return VK_IMAGE_USAGE_STORAGE_BIT;
         case ImageUsage::Color:           return VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
         case ImageUsage::Depth:           return VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
         case ImageUsage::Stencil:         return VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
@@ -288,9 +288,9 @@ namespace RHI::Vulkan
     inline static VkImageUsageFlags ConvertImageUsageFlags(Flags<ImageUsage> imageUsageFlags)
     {
         VkImageUsageFlags result = 0;
-        if (imageUsageFlags & ImageUsage::ShaderResource)
+        if (imageUsageFlags & ImageUsage::Sampled)
             result |= VK_IMAGE_USAGE_SAMPLED_BIT;
-        if (imageUsageFlags & ImageUsage::StorageResource)
+        if (imageUsageFlags & ImageUsage::Storage)
             result |= VK_IMAGE_USAGE_STORAGE_BIT;
         if (imageUsageFlags & ImageUsage::Color)
             result |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -580,17 +580,17 @@ namespace RHI::Vulkan
         }
     }
 
-    inline static VkCommandPoolCreateFlags ConvertCommandPoolFlags(Flags<CommandPoolFlags> flags)
-    {
-        VkCommandPoolCreateFlags result{};
-        if (flags & CommandPoolFlags::Transient)
-            result |= VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+    // inline static VkCommandEncoderCreateFlags ConvertCommandEncoderFlags(Flags<CommandEncoderFlags> flags)
+    // {
+    //     VkCommandEncoderCreateFlags result{};
+    //     if (flags & CommandEncoderFlags::Transient)
+    //         result |= VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
 
-        if (flags & CommandPoolFlags::Reset)
-            result |= VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    //     if (flags & CommandEncoderFlags::Reset)
+    //         result |= VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-        return result;
-    }
+    //     return result;
+    // }
 
     inline static VkImageSubresource ConvertSubresource(const ImageSubresource& subresource)
     {

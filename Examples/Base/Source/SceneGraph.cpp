@@ -186,7 +186,7 @@ void Scene::Shutdown(RHI::Context& context)
 //     TL::String prefixPath = "C:/Users/abdul/Desktop/Main.1_Sponza/"; // TODO: add proper fix
 
 //     RHI::ImageCreateInfo imageInfo{};
-//     imageInfo.usageFlags = RHI::ImageUsage::ShaderResource;
+//     imageInfo.usageFlags = RHI::ImageUsage::Sampled;
 //     imageInfo.usageFlags |= RHI::ImageUsage::CopyDst;
 //     imageInfo.format = RHI::Format::BC1_UNORM;
 //     imageInfo.type = RHI::ImageType::Image2D;

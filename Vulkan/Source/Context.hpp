@@ -1,7 +1,7 @@
 #pragma once
 
 #include <RHI/Context.hpp>
-#include <RHI/Definition.hpp>
+#include <RHI/Definitions.hpp>
 #include <RHI/Common/Containers.h>
 
 #include "Resources.hpp"
@@ -12,7 +12,7 @@
 namespace RHI::Vulkan
 {
     class BindGroupAllocator;
-    class ICommandPool;
+    class ICommandEncoder;
     class ICommandList;
     class FunctionsTable;
 
@@ -38,20 +38,7 @@ namespace RHI::Vulkan
 
         uint32_t GetMemoryTypeIndex(MemoryType memoryType);
 
-        uint32_t GetQueueFamilyIndex(QueueType queueType);
-
-        VkQueue GetQueue(QueueType queueType);
-
-        void QueueSubmit(QueueType queueType,
-                         TL::Span<const ICommandList* const> commandLists,
-                         TL::UnorderedMap<VkSemaphore, VkPipelineStageFlags2> waitSemaphores,
-                         TL::UnorderedMap<VkSemaphore, VkPipelineStageFlags2> signalSemaphores,
-                         IFence* signalFence = nullptr);
-
-        uint32_t GetCurrentFrameIndex() const
-        {
-            return 0;
-        }
+        uint64_t GetCurrentFrameIndex() const;
 
         // clang-format off
         using                    Context::DebugLogError;
@@ -61,7 +48,7 @@ namespace RHI::Vulkan
         Ptr<Swapchain>           Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
         Ptr<ShaderModule>        Internal_CreateShaderModule(TL::Span<const uint32_t> shaderBlob) override;
         Ptr<Fence>               Internal_CreateFence() override;
-        Ptr<CommandPool>         Internal_CreateCommandPool(CommandPoolFlags flags) override;
+        Ptr<CommandEncoder>      Internal_CreateCommandEncoder() override;
         Handle<BindGroupLayout>  Internal_CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) override;
         void                     Internal_DestroyBindGroupLayout(Handle<BindGroupLayout> handle) override;
         Handle<BindGroup>        Internal_CreateBindGroup(Handle<BindGroupLayout> handle, uint32_t bindlessElementsCount) override;
@@ -86,10 +73,12 @@ namespace RHI::Vulkan
         void                     Internal_DispatchGraph(RenderGraph& renderGraph, Fence* signalFence) override;
         DeviceMemoryPtr          Internal_MapBuffer(Handle<Buffer> handle) override;
         void                     Internal_UnmapBuffer(Handle<Buffer> handle) override;
-        void                     Internal_StageResourceWrite(Handle<Image> image, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset) override;
-        void                     Internal_StageResourceWrite(Handle<Buffer> buffer, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset) override;
-        void                     Internal_StageResourceRead(Handle<Image> image, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset, Fence* fence) override;
-        void                     Internal_StageResourceRead(Handle<Buffer> buffer, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset, Fence* fence) override;
+
+        void                     Intenral_StageImageWrite(Handle<Image> image, ImageSubresourceLayers subresources, StagingBuffer stagingBuffererOffset) override;
+        void                     Intenral_StageBufferWrite(Handle<Buffer> buffer, BufferSubregion subregion, StagingBuffer stagingBufferset) override;
+        void                     Intenral_StageImageRead(Handle<Image> image, ImageSubresourceLayers subresources, StagingBuffer stagingBufferrOffset, Fence* fence) override;
+        void                     Intenral_StageBufferRead(Handle<Buffer> buffer, BufferSubregion subregion, StagingBuffer stagingBufferet, Fence* fence) override;
+
         // clang-format on
 
     private:
@@ -120,7 +109,7 @@ namespace RHI::Vulkan
 
         Ptr<FunctionsTable> m_fnTable;
         Ptr<BindGroupAllocator> m_bindGroupAllocator;
-        Ptr<ICommandPool> m_commandPool;
+        Ptr<ICommandEncoder> m_commandEncoder;
         Ptr<DeleteQueue> m_deleteQueue;
 
         HandlePool<IImage> m_imageOwner;

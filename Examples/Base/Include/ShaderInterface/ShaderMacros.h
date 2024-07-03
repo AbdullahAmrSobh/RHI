@@ -9,6 +9,9 @@
 
     #include <glm/glm.hpp>
 
+    #define re_enum enum class
+    #define re_name const char*
+
     #define re_ref(type) type&
 
     #define re_shader_struct struct alignas(16)
@@ -19,7 +22,10 @@
     #define re_int int
     #define re_uint unsigned int
     #define re_mat4 alignas(16) glm::mat4
-#else // HLSL
+#else // Slang
+
+    #define re_enum enum
+    #define re_name int
 
     #define re_ref(type) type
 

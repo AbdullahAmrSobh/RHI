@@ -22,7 +22,7 @@
 #endif
 
 #ifndef RHI_DEPRECATED
-#  define RHI_DEPRECATED 
+#  define RHI_DEPRECATED __declspec(deprecated)
 #endif
 
 #ifndef RHI_DEPRECATED_EXPORT

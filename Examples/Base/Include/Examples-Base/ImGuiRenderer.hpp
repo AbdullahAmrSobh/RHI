@@ -12,7 +12,6 @@ struct ImGuiRendererCreateInfo
 {
     RHI::Context* context;
     RHI::TL::Vector<uint32_t> shaderBlob;
-    RHI::CommandPool* commandAllocator;
 };
 
 class IMGUI_IMPL_API ImGuiRenderer

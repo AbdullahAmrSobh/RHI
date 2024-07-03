@@ -13,6 +13,9 @@ namespace RHI::Vulkan
     class IContext;
     class ISwapchain;
 
+    class SignalGroup;
+    class ImageSignalGroup;
+
     struct Allocation
     {
         VmaAllocation handle;
@@ -53,11 +56,8 @@ namespace RHI::Vulkan
         VkSampleCountFlagBits samples;
         VkImageUsageFlags usage;
 
-        // TODO: Should remove
-        VkSemaphore waitSemaphore;
-        VkSemaphore signalSemaphore;
-
-        VkImageLayout initalLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        ImageSignalGroup* initialState; // resource state at the beginning of the frame execution
+        ImageSignalGroup* finalState;   // resource final state at the end of the frame execution
 
         ResultCode Init(IContext* context, const ImageCreateInfo& createInfo);
         ResultCode Init(IContext* context, VkImage image, const VkSwapchainCreateInfoKHR& swapchainCreateInfo);
@@ -75,8 +75,8 @@ namespace RHI::Vulkan
         size_t size;
         VkBufferUsageFlags usage;
 
-        VkSemaphore waitSemaphore;
-        VkSemaphore signalSemaphore;
+        SignalGroup* initialState;
+        SignalGroup* finalState;
 
         ResultCode Init(IContext* context, const BufferCreateInfo& createInfo);
         void Shutdown(IContext* context);

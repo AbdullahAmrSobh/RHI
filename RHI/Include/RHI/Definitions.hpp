@@ -1,8 +1,62 @@
 #pragma once
+#include <RHI/Common/Handle.hpp>
+
 #include <cstdint>
 
 namespace RHI
 {
+    struct Buffer;
+
+    using DeviceMemoryPtr = void*;
+
+    enum class Backend
+    {
+        Vulkan13,
+    };
+
+    enum class DeviceType
+    {
+        CPU,
+        Integerated,
+        Dedicated,
+        Virtual
+    };
+
+    enum class Vendor
+    {
+        Intel,
+        Nvida,
+        AMD,
+        Other,
+    };
+
+    struct Version
+    {
+        uint16_t major;
+        uint16_t minor;
+        uint32_t patch;
+    };
+
+    struct ApplicationInfo
+    {
+        const char* applicationName;    // The name of the users application.
+        Version     applicationVersion; // The version of the users application.
+        const char* engineName;         // The version of the users application.
+        Version     engineVersion;      // The version of the users application.
+    };
+
+    struct Limits
+    {
+        size_t stagingMemoryLimit;
+    };
+
+    struct StagingBuffer
+    {
+        DeviceMemoryPtr ptr;
+        Handle<Buffer>  buffer;
+        size_t          offset;
+    };
+
     // Collection of common definitions
 
     enum class QueueType
@@ -29,20 +83,6 @@ namespace RHI
 
     union ClearValue
     {
-        // clang-format off
-        ClearValue() { f32 = {}; }
-        ClearValue(ColorValue<uint8_t> value)                      : u8(value)           { }
-        ClearValue(ColorValue<uint16_t> value)                     : u16(value)          { }
-        ClearValue(ColorValue<uint32_t> value)                     : u32(value)          { }
-        ClearValue(ColorValue<float> value)                        : f32(value)          { }
-        ClearValue(uint8_t r, uint8_t g, uint8_t b, uint8_t a)     : u8{ r, g, b, a }    { }
-        ClearValue(uint16_t r, uint16_t g, uint16_t b, uint16_t a) : u16{ r, g, b, a }   { }
-        ClearValue(uint32_t r, uint32_t g, uint32_t b, uint32_t a) : u32{ r, g, b, a }   { }
-        ClearValue(float r, float g, float b, float a)             : f32{ r, g, b, a }   { }
-        ClearValue(DepthStencilValue value)                        : depthStencil(value) { }
-
-        // clang-format on
-
         ColorValue<uint8_t>  u8;
         ColorValue<uint16_t> u16;
         ColorValue<uint32_t> u32;
@@ -68,9 +108,9 @@ namespace RHI
 
     struct LoadStoreOperations
     {
-        ClearValue     clearValue     = ClearValue();
-        LoadOperation  loadOperation  = LoadOperation::Discard;
-        StoreOperation storeOperation = StoreOperation::Store;
+        ClearValue     clearValue;
+        LoadOperation  loadOperation;
+        StoreOperation storeOperation;
     };
 
 } // namespace RHI

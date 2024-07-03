@@ -63,7 +63,7 @@ namespace RHI
         TL::Vector<ImagePassAttachment>  imagesAttachments;
         TL::Vector<BufferPassAttachment> bufferAttachments;
         Ptr<CommandList>                 primaryCommandList;
-        TL::Vector<const CommandList*>   commandLists;
+        TL::Vector<Handle<CommandList>>  commandLists;
     };
 
 } // namespace RHI

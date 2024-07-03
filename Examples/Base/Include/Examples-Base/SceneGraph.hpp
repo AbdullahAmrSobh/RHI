@@ -1,5 +1,8 @@
 #pragma once
 
+#include "Examples-Base/Common.hpp"
+
+
 #include <glm/glm.hpp>
 #include <RHI/RHI.hpp>
 
@@ -9,26 +12,37 @@
 
 namespace Shader
 {
-    #include "ShaderInterface/Core.slang"
+#include "ShaderInterface/Core.slang"
 }
 
-namespace TL = RHI::TL;
+namespace MaterialTextureMapKind
+{
+    enum MaterialTextureMapKind_T
+    {
+        Color,
+        Normal,
+        Roughness,
+        Metallic,
+        Count,
+    };
+}
+
+namespace MeshVertexAttributeType
+{
+    enum MeshVertexAttributeType_T
+    {
+        Index,
+        Position,
+        Normal,
+        Color,
+        TexCoord,
+        Count
+    };
+}
 
 struct Material
 {
-    RHI::Handle<RHI::Image> albedoMap;
-    RHI::Handle<RHI::ImageView> albedoMapView;
-
-    RHI::Handle<RHI::Image> normalMap;
-    RHI::Handle<RHI::ImageView> normalMapView;
-
-    RHI::Handle<RHI::Image> roughnessMap;
-    RHI::Handle<RHI::ImageView> roughnessMapView;
-
-    RHI::Handle<RHI::Image> metallicMap;
-    RHI::Handle<RHI::ImageView> metallicMapView;
-
-    RHI::Handle<RHI::BindGroup> bindGroup;
+    Handle<RHI::Image> image[];
 };
 
 struct StaticMesh
@@ -37,11 +51,7 @@ struct StaticMesh
 
     uint32_t elementsCount;
 
-    RHI::Handle<RHI::Buffer> indcies;
-    RHI::Handle<RHI::Buffer> position;
-    RHI::Handle<RHI::Buffer> normals;
-    RHI::Handle<RHI::Buffer> uvs;
-    RHI::Handle<RHI::Buffer> colors;
+    RHI::BufferBindingInfo attributes[MeshVertexAttributeType::Count];
 
     RHI::Handle<Material> material;
 };
@@ -78,15 +88,11 @@ public:
 
     // Rendering related
 
-    TL::Vector<SceneGraphNode> m_staticSceneNodes;
+    RHI::Scissor m_scissor;
+    RHI::Viewport m_viewport;
 
-    RHI::Handle<RHI::Buffer> m_perFrameUniformBuffer;
-    RHI::Handle<RHI::Buffer> m_perObjectUniformBuffer;
+    TL::Vector<SceneGraphNode> m_graph;
+
+    RHI::Handle<RHI::Buffer> m_objectModelMatercies;
     RHI::Handle<RHI::Sampler> m_sampler;
-
-    RHI::Handle<RHI::BindGroupLayout> m_bindGroupLayout;
-    RHI::Handle<RHI::BindGroup> m_bindGroup;
-
-    RHI::Handle<RHI::PipelineLayout> m_pipelineLayout;
-    RHI::Handle<RHI::GraphicsPipeline> m_pbrPipeline;
 };

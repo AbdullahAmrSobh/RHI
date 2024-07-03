@@ -334,7 +334,7 @@ void ImGuiRenderer::Init(ImGuiRendererCreateInfo createInfo)
         // imageInfo.size.depth = 1;
         // imageInfo.type = RHI::ImageType::Image2D;
         // imageInfo.format = RHI::Format::RGBA8_UNORM;
-        // imageInfo.usageFlags = RHI::ImageUsage::ShaderResource;
+        // imageInfo.usageFlags = RHI::ImageUsage::Sampled;
         // imageInfo.usageFlags |= RHI::ImageUsage::CopyDst;
         // imageInfo.arrayCount = 1;
         // m_image = RHI::CreateImageWithData(*m_context, imageInfo, RHI::TL::Span<const uint8_t>{ pixels, size_t(width * height * 4) }).GetValue();

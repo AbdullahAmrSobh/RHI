@@ -51,3 +51,145 @@ re_shader_struct ObjectTransform
 
     // DirectionalLight directionalLight[re_max_point_lights_count];
 };
+
+re_enum PipelineVertexInputRate
+{
+    None,
+    PerInstance,
+    PerVertex,
+};
+
+re_enum PipelineRasterizerStateCullMode
+{
+    None,
+    FrontFace,
+    BackFace,
+    Discard,
+};
+
+re_enum PipelineRasterizerStateFillMode
+{
+    Point,
+    Triangle,
+    Line
+};
+
+re_enum PipelineTopologyMode
+{
+    Points,
+    Lines,
+    Triangles,
+};
+
+re_enum PipelineRasterizerStateFrontFace
+{
+    Clockwise,
+    CounterClockwise,
+};
+
+re_enum CompareOperator
+{
+    Never,
+    Equal,
+    NotEqual,
+    Greater,
+    GreaterOrEqual,
+    Less,
+    LessOrEqual,
+    Always,
+};
+
+re_enum SamplerFilter
+{
+    Point,
+    Linear,
+};
+
+re_enum SamplerAddressMode
+{
+    Repeat,
+    Clamp,
+};
+
+re_enum SamplerCompareOperation
+{
+    Never,
+    Equal,
+    NotEqual,
+    Always,
+    Less,
+    LessEq,
+    Greater,
+    GreaterEq,
+};
+
+re_enum BlendFactor
+{
+    Zero,
+    One,
+    SrcColor,
+    OneMinusSrcColor,
+    DstColor,
+    OneMinusDstColor,
+    SrcAlpha,
+    OneMinusSrcAlpha,
+    DstAlpha,
+    OneMinusDstAlpha,
+    ConstantColor,
+    OneMinusConstantColor,
+    ConstantAlpha,
+    OneMinusConstantAlpha,
+};
+
+re_enum BlendEquation
+{
+    Add,
+    Subtract,
+    ReverseSubtract,
+    Min,
+    Max,
+};
+
+re_shader_struct ColorAttachmentBlendStateDesc
+{
+    bool                  blendEnable  = false;
+    BlendEquation         colorBlendOp = BlendEquation::Add;
+    BlendFactor           srcColor     = BlendFactor::One;
+    BlendFactor           dstColor     = BlendFactor::Zero;
+    BlendEquation         alphaBlendOp = BlendEquation::Add;
+    BlendFactor           srcAlpha     = BlendFactor::One;
+    BlendFactor           dstAlpha     = BlendFactor::Zero;
+    // Flags<ColorWriteMask> writeMask    = ColorWriteMask::All;
+};
+
+re_shader_struct PipelineRasterizerStateDesc
+{
+    PipelineRasterizerStateCullMode  cullMode;
+    PipelineRasterizerStateFillMode  fillMode;
+    PipelineRasterizerStateFrontFace frontFace;
+    float                            lineWidth;
+};
+
+re_shader_struct PipelineDepthStencilStateDesc
+{
+    bool            depthTestEnable;
+    bool            depthWriteEnable;
+    CompareOperator compareOperator;
+    bool            stencilTestEnable;
+};
+
+re_shader_struct PipelineColorBlendStateDesc
+{
+    // ColorAttachmentBlendStateDesc blendStates[c_MaxRenderTargetAttachmentsCount];
+    float                         blendConstants[4];
+};
+
+
+re_shader_struct GraphicsPipelineCreateInfo
+{
+    re_name                         name;
+    PipelineColorBlendStateDesc     colorBlendState;
+    PipelineTopologyMode            topologyMode;
+    PipelineRasterizerStateDesc     rasterizationState;
+    PipelineDepthStencilStateDesc   depthStencilState;
+};

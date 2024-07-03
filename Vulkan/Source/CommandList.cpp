@@ -12,93 +12,19 @@
 
 namespace RHI::Vulkan
 {
-    ICommandPool::ICommandPool(IContext* context)
+    ICommandEncoder::ICommandEncoder(IContext* context)
         : m_context(context)
     {
     }
 
-    ICommandPool::~ICommandPool()
+    ICommandEncoder::~ICommandEncoder(){};
+
+    void ICommandEncoder::BindShaderBindGroups(Handle<CommandList> _commandList, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups)
     {
-        for (auto commandPool : m_commandPools)
-        {
-            vkDestroyCommandPool(m_context->m_device, commandPool, nullptr);
-        }
-    }
+        ZoneScoped;
 
-    ResultCode ICommandPool::Init(CommandPoolFlags flags)
-    {
-        for (uint32_t queueType = 0; queueType < uint32_t(QueueType::Count); queueType++)
-        {
-            VkCommandPoolCreateInfo createInfo;
-            createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-            createInfo.pNext = nullptr;
-            createInfo.flags = ConvertCommandPoolFlags(flags);
-            createInfo.queueFamilyIndex = m_context->GetQueueFamilyIndex(QueueType(queueType));
-            TryValidateVk(vkCreateCommandPool(m_context->m_device, &createInfo, nullptr, &m_commandPools[queueType]));
-        }
+        auto commandList = m_commandBufferPool[_commandList];
 
-        return ResultCode::Success;
-    }
-
-    void ICommandPool::Reset()
-    {
-        for (auto commandPool : m_commandPools)
-        {
-            vkResetCommandPool(m_context->m_device, commandPool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
-        }
-    }
-
-    TL::Vector<CommandList*> ICommandPool::Allocate(QueueType queueType, CommandListLevel level, uint32_t count)
-    {
-        auto commandPool = m_commandPools[uint32_t(queueType)];
-        auto commandBuffers = AllocateCommandBuffers(commandPool, count, level == CommandListLevel::Primary ? VK_COMMAND_BUFFER_LEVEL_PRIMARY : VK_COMMAND_BUFFER_LEVEL_SECONDARY);
-        TL::Vector<CommandList*> commandLists;
-        for (auto commandBuffer : commandBuffers)
-        {
-            commandLists.push_back(new ICommandList(m_context, commandPool, commandBuffer));
-        }
-        return commandLists;
-    }
-
-    void ICommandPool::Release(TL::Span<const CommandList* const> commandLists)
-    {
-        for (auto& _commandList : commandLists)
-        {
-            ICommandList* commandList = (ICommandList*)_commandList;
-            VkDevice device = m_context->m_device;
-            vkFreeCommandBuffers(device, commandList->m_commandPool, 1, &commandList->m_commandBuffer);
-            delete commandList;
-        }
-    }
-
-    TL::Vector<VkCommandBuffer> ICommandPool::AllocateCommandBuffers(VkCommandPool pool, uint32_t count, VkCommandBufferLevel level)
-    {
-        TL::Vector<VkCommandBuffer> commandBuffers;
-        commandBuffers.resize(count);
-
-        VkCommandBufferAllocateInfo allocateInfo{};
-        allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocateInfo.pNext = nullptr;
-        allocateInfo.commandPool = pool;
-        allocateInfo.level = level;
-        allocateInfo.commandBufferCount = count;
-        vkAllocateCommandBuffers(m_context->m_device, &allocateInfo, commandBuffers.data());
-        return commandBuffers;
-    }
-
-    //////////////////////////////////////////////////////////////////////////////////////////
-    /// CommandList
-    //////////////////////////////////////////////////////////////////////////////////////////
-
-    ICommandList::ICommandList(IContext* context, VkCommandPool commandPool, VkCommandBuffer commandBuffer)
-        : m_commandBuffer(commandBuffer)
-        , m_commandPool(commandPool)
-        , m_context(context)
-    {
-    }
-
-    void ICommandList::BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups)
-    {
         if (bindGroups.empty())
             return;
 
@@ -111,11 +37,15 @@ namespace RHI::Vulkan
             descriptorSets.push_back(bindGroup->descriptorSet);
             dynamicOffset.insert(dynamicOffset.end(), bindingInfo.dynamicOffsets.begin(), bindingInfo.dynamicOffsets.end());
         }
-        vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, uint32_t(descriptorSets.size()), descriptorSets.data(), (uint32_t)dynamicOffset.size(), dynamicOffset.data());
+        vkCmdBindDescriptorSets(commandList->handle, bindPoint, pipelineLayout, 0, uint32_t(descriptorSets.size()), descriptorSets.data(), (uint32_t)dynamicOffset.size(), dynamicOffset.data());
     }
 
-    void ICommandList::BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> bindingInfos)
+    void ICommandEncoder::BindVertexBuffers(Handle<CommandList> _commandList, uint32_t firstBinding, TL::Span<const BufferBindingInfo> bindingInfos)
     {
+        ZoneScoped;
+
+        auto commandList = m_commandBufferPool[_commandList];
+
         if (bindingInfos.empty())
             return;
 
@@ -127,23 +57,42 @@ namespace RHI::Vulkan
             buffers.push_back(buffer->handle);
             offsets.push_back(bindingInfo.offset);
         }
-        vkCmdBindVertexBuffers(m_commandBuffer, firstBinding, (uint32_t)buffers.size(), buffers.data(), offsets.data());
+        vkCmdBindVertexBuffers(commandList->handle, firstBinding, (uint32_t)buffers.size(), buffers.data(), offsets.data());
     }
 
-    void ICommandList::BindIndexBuffer(const BufferBindingInfo& bindingInfo, VkIndexType indexType)
+    void ICommandEncoder::BindIndexBuffer(Handle<CommandList> _commandList, const BufferBindingInfo& bindingInfo, VkIndexType indexType)
     {
+        ZoneScoped;
+
+        auto commandList = m_commandBufferPool[_commandList];
+
         if (bindingInfo.buffer == NullHandle)
             return;
 
         auto buffer = m_context->m_bufferOwner.Get(bindingInfo.buffer);
-        vkCmdBindIndexBuffer(m_commandBuffer, buffer->handle, bindingInfo.offset, indexType);
+        vkCmdBindIndexBuffer(commandList->handle, buffer->handle, bindingInfo.offset, indexType);
     }
 
-    void ICommandList::PipelineBarrier(
-        TL::Span<const VkMemoryBarrier2> memoryBarriers,
-        TL::Span<const VkBufferMemoryBarrier2> bufferBarriers,
-        TL::Span<const VkImageMemoryBarrier2> imageBarriers)
+    void ICommandEncoder::BeginPrimary(Handle<CommandList> _commandList, [[maybe_unused]] RenderGraph& renderGraph, [[maybe_unused]] Handle<Pass> pass)
     {
+        ZoneScoped;
+
+        [[maybe_unused]] auto commandList = m_commandBufferPool[_commandList];
+    }
+
+    void ICommandEncoder::BeginSecondary(Handle<CommandList> _commandList, [[maybe_unused]] const RenderTargetLayoutDesc& renderTargetLayoutDesc)
+    {
+        ZoneScoped;
+
+        [[maybe_unused]] auto commandList = m_commandBufferPool[_commandList];
+    }
+
+    void ICommandEncoder::PipelineBarrier(Handle<CommandList> _commandList, TL::Span<const VkMemoryBarrier2> memoryBarriers, TL::Span<const VkImageMemoryBarrier2> imageBarriers, TL::Span<const VkBufferMemoryBarrier2> bufferBarriers)
+    {
+        ZoneScoped;
+
+        auto commandList = m_commandBufferPool[_commandList];
+
         VkDependencyInfo dependencyInfo{};
         dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
         dependencyInfo.pNext = nullptr;
@@ -154,43 +103,58 @@ namespace RHI::Vulkan
         dependencyInfo.pBufferMemoryBarriers = bufferBarriers.data();
         dependencyInfo.imageMemoryBarrierCount = uint32_t(imageBarriers.size());
         dependencyInfo.pImageMemoryBarriers = imageBarriers.data();
-        vkCmdPipelineBarrier2(m_commandBuffer, &dependencyInfo);
+        vkCmdPipelineBarrier2(commandList->handle, &dependencyInfo);
     }
 
-    // void ICommandList::BeginPrimary(RenderGraph& renderGraph, Handle<Pass> pass, struct RenderingAttachments attachments)
-    // {}
-    // void ICommandList::BeginSecondary(struct RenderingAttachmentFormats formats)
-    // {}
+    void ICommandEncoder::Allocate(Flags<CommandFlags> flags, RHI_OUT_PARM TL::Span<Handle<CommandList>> commandLists)
+    {
+        TL::Vector<VkCommandBuffer> commandBuffer;
 
-    void ICommandList::Begin()
+        for (uint32_t i = 0; i < commandLists.size(); i++)
+        {
+            CommandBuffer cmdBuf{};
+            cmdBuf.handle = commandBuffer[i];
+            cmdBuf.level = flags & CommandFlags::Secondary ? VK_COMMAND_BUFFER_LEVEL_SECONDARY : VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+            commandLists[i] = m_commandBufferPool.Emplace(std::move(cmdBuf));
+        }
+    }
+
+    void ICommandEncoder::Release([[maybe_unused]] TL::Span<Handle<CommandList>> commandList)
+    {
+    }
+
+    void ICommandEncoder::Reset([[maybe_unused]] TL::Span<Handle<CommandList>> commandList)
+    {
+    }
+
+    void ICommandEncoder::Begin(Handle<CommandList> _commandList)
     {
         ZoneScoped;
 
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.pNext = nullptr;
-        beginInfo.flags = 0;
-        beginInfo.pInheritanceInfo = nullptr;
-        vkBeginCommandBuffer(m_commandBuffer, &beginInfo);
+        [[maybe_unused]] auto commandList = m_commandBufferPool[_commandList];
     }
 
-    void ICommandList::Begin(const CommandListBeginInfo& beginInfo)
+    void ICommandEncoder::Begin(Handle<CommandList> _commandList, [[maybe_unused]] const CommandListBeginInfo& beginInfo)
     {
         ZoneScoped;
 
-        (void)beginInfo;
+        auto commandList = m_commandBufferPool[_commandList];
+
+        vkEndCommandBuffer(commandList->handle);
     }
 
-    void ICommandList::End()
+    void ICommandEncoder::End(Handle<CommandList> _commandList)
     {
         ZoneScoped;
 
-        vkEndCommandBuffer(m_commandBuffer);
+        [[maybe_unused]] auto commandList = m_commandBufferPool[_commandList];
     }
 
-    void ICommandList::DebugMarkerPush(const char* name, ColorValue<float> color)
+    void ICommandEncoder::DebugMarkerPush(Handle<CommandList> _commandList, const char* name, ColorValue<float> color)
     {
         ZoneScoped;
+
+        auto commandList = m_commandBufferPool[_commandList];
 
         (void)name;
         (void)color;
@@ -206,62 +170,72 @@ namespace RHI::Vulkan
             info.color[1] = color.g;
             info.color[2] = color.b;
             info.color[3] = color.a;
-            m_context->m_fnTable->m_cmdDebugMarkerBeginEXT(m_commandBuffer, &info);
+            m_context->m_fnTable->m_cmdDebugMarkerBeginEXT(commandList->handle, &info);
         }
 #endif
     }
 
-    void ICommandList::DebugMarkerPop()
+    void ICommandEncoder::DebugMarkerPop(Handle<CommandList> _commandList)
     {
         ZoneScoped;
+
+        auto commandList = m_commandBufferPool[_commandList];
 
 #if RHI_DEBUG
         if (m_context->m_fnTable->m_cmdDebugMarkerEndEXT)
         {
-            m_context->m_fnTable->m_cmdDebugMarkerEndEXT(m_commandBuffer);
+            m_context->m_fnTable->m_cmdDebugMarkerEndEXT(commandList->handle);
         }
 #endif
     }
 
-    void ICommandList::BeginConditionalCommands(Handle<Buffer> handle, size_t offset, bool inverted)
+    void ICommandEncoder::BeginConditionalCommands(Handle<CommandList> _commandList, Handle<Buffer> _buffer, size_t offset, CommandConditionMode inverted)
     {
         ZoneScoped;
 
-        auto buffer = m_context->m_bufferOwner.Get(handle);
+        auto commandList = m_commandBufferPool[_commandList];
+
+        auto buffer = m_context->m_bufferOwner.Get(_buffer);
 
         VkConditionalRenderingBeginInfoEXT beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_CONDITIONAL_RENDERING_BEGIN_INFO_EXT;
         beginInfo.pNext = nullptr;
         beginInfo.buffer = buffer->handle;
         beginInfo.offset = offset;
-        beginInfo.flags = inverted ? VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT : 0u;
-        m_context->m_fnTable->m_cmdBeginConditionalRenderingEXT(m_commandBuffer, &beginInfo);
+        beginInfo.flags = inverted == CommandConditionMode::Inverted ? VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT : 0u;
+        m_context->m_fnTable->m_cmdBeginConditionalRenderingEXT(commandList->handle, &beginInfo);
     }
 
-    void ICommandList::EndConditionalCommands()
+    void ICommandEncoder::EndConditionalCommands(Handle<CommandList> _commandList)
     {
         ZoneScoped;
 
-        m_context->m_fnTable->m_cmdEndConditionalRenderingEXT(m_commandBuffer);
+        auto commandList = m_commandBufferPool[_commandList];
+
+        m_context->m_fnTable->m_cmdEndConditionalRenderingEXT(commandList->handle);
     }
 
-    void ICommandList::Execute(TL::Span<const CommandList*> commandLists)
+    void ICommandEncoder::Execute(Handle<CommandList> _commandList, TL::Span<const Handle<CommandList>> commandLists)
     {
         ZoneScoped;
+
+        auto commandList = m_commandBufferPool[_commandList];
 
         TL::Vector<VkCommandBuffer> commandBuffers;
         commandBuffers.reserve(commandLists.size());
-        for (auto _commandList : commandLists)
-        {
-            auto commandList = (const ICommandList*)_commandList;
-            commandBuffers.push_back(commandList->m_commandBuffer);
-        }
-        vkCmdExecuteCommands(m_commandBuffer, uint32_t(commandBuffers.size()), commandBuffers.data());
+        // for (auto _commandList : commandLists)
+        // {
+        //     auto commandList = m_commandBufferPool[_commandList];
+        //     commandBuffers.push_back(commandList->handle);
+        // }
+        vkCmdExecuteCommands(commandList->handle, uint32_t(commandBuffers.size()), commandBuffers.data());
     }
 
-    void ICommandList::SetViewport(const Viewport& viewport)
+    void ICommandEncoder::SetViewport(Handle<CommandList> _commandList, const Viewport& viewport)
     {
         ZoneScoped;
+
+        auto commandList = m_commandBufferPool[_commandList];
 
         VkViewport vkViewport{};
         vkViewport.x = viewport.offsetX;
@@ -270,60 +244,75 @@ namespace RHI::Vulkan
         vkViewport.height = viewport.height;
         vkViewport.minDepth = viewport.minDepth;
         vkViewport.maxDepth = viewport.maxDepth;
-        vkCmdSetViewport(m_commandBuffer, 0, 1, &vkViewport);
+        vkCmdSetViewport(commandList->handle, 0, 1, &vkViewport);
     }
 
-    void ICommandList::SetSicssor(const Scissor& scissor)
+    void ICommandEncoder::SetScissor(Handle<CommandList> _commandList, const Scissor& scissor)
     {
         ZoneScoped;
+
+        auto commandList = m_commandBufferPool[_commandList];
 
         VkRect2D vkScissor{};
         vkScissor.extent.width = scissor.width;
         vkScissor.extent.height = scissor.height;
         vkScissor.offset.x = scissor.offsetX;
         vkScissor.offset.y = scissor.offsetY;
-        vkCmdSetScissor(m_commandBuffer, 0, 1, &vkScissor);
+        vkCmdSetScissor(commandList->handle, 0, 1, &vkScissor);
     }
 
-    void ICommandList::Draw(const DrawInfo& drawInfo)
+    void ICommandEncoder::Draw(Handle<CommandList> _commandList, const DrawInfo& drawInfo)
     {
         ZoneScoped;
 
-        auto pipeline = m_context->m_graphicsPipelineOwner.Get(drawInfo.pipelineState);
-        vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->handle);
+        auto commandList = m_commandBufferPool[_commandList];
 
-        BindShaderBindGroups(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->layout, drawInfo.bindGroups);
-        BindVertexBuffers(0, drawInfo.vertexBuffers);
+        auto pipeline = m_context->m_graphicsPipelineOwner.Get(drawInfo.pipelineState);
+        vkCmdBindPipeline(commandList->handle, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->handle);
+
+        BindShaderBindGroups(_commandList, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->layout, drawInfo.bindGroups);
+        BindVertexBuffers(_commandList, 0, drawInfo.vertexBuffers);
 
         auto parameters = drawInfo.parameters;
         if (drawInfo.indexBuffer.buffer != RHI::NullHandle)
         {
-            BindIndexBuffer(drawInfo.indexBuffer, VK_INDEX_TYPE_UINT32);
-            vkCmdDrawIndexed(m_commandBuffer, parameters.elementsCount, parameters.instanceCount, parameters.firstElement, parameters.vertexOffset, parameters.firstInstance);
+            BindIndexBuffer(_commandList, drawInfo.indexBuffer, VK_INDEX_TYPE_UINT32);
+            vkCmdDrawIndexed(commandList->handle, parameters.elementsCount, parameters.instanceCount, parameters.firstElement, parameters.vertexOffset, parameters.firstInstance);
         }
         else
         {
-            vkCmdDraw(m_commandBuffer, parameters.elementsCount, parameters.instanceCount, parameters.firstElement, parameters.firstInstance);
+            vkCmdDraw(commandList->handle, parameters.elementsCount, parameters.instanceCount, parameters.firstElement, parameters.firstInstance);
         }
     }
 
-    void ICommandList::Dispatch(const DispatchInfo& dispatchInfo)
+    void ICommandEncoder::Dispatch(Handle<CommandList> _commandList, const DispatchInfo& dispatchInfo)
     {
         ZoneScoped;
+
+        auto commandList = m_commandBufferPool[_commandList];
 
         auto pipeline = m_context->m_computePipelineOwner.Get(dispatchInfo.pipelineState);
-        vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->handle);
+        vkCmdBindPipeline(commandList->handle, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->handle);
         if (dispatchInfo.bindGroups.size())
         {
-            BindShaderBindGroups(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->layout, dispatchInfo.bindGroups);
+            BindShaderBindGroups(_commandList, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->layout, dispatchInfo.bindGroups);
         }
         auto parameters = dispatchInfo.parameters;
-        vkCmdDispatchBase(m_commandBuffer, parameters.offsetX, parameters.offsetY, parameters.offsetZ, parameters.countX, parameters.countY, parameters.countZ);
+        vkCmdDispatchBase(
+            commandList->handle,
+            parameters.offsetX,
+            parameters.offsetY,
+            parameters.offsetZ,
+            parameters.countX,
+            parameters.countY,
+            parameters.countZ);
     }
 
-    void ICommandList::CopyBuffer(const BufferCopyInfo& copyInfo)
+    void ICommandEncoder::CopyBuffer(Handle<CommandList> _commandList, const BufferCopyInfo& copyInfo)
     {
         ZoneScoped;
+
+        auto commandList = m_commandBufferPool[_commandList];
 
         auto srcBuffer = m_context->m_bufferOwner.Get(copyInfo.srcBuffer);
         auto dstBuffer = m_context->m_bufferOwner.Get(copyInfo.dstBuffer);
@@ -332,12 +321,14 @@ namespace RHI::Vulkan
         bufferCopy.srcOffset = copyInfo.srcOffset;
         bufferCopy.dstOffset = copyInfo.dstOffset;
         bufferCopy.size = copyInfo.size;
-        vkCmdCopyBuffer(m_commandBuffer, srcBuffer->handle, dstBuffer->handle, 1, &bufferCopy);
+        vkCmdCopyBuffer(commandList->handle, srcBuffer->handle, dstBuffer->handle, 1, &bufferCopy);
     }
 
-    void ICommandList::CopyImage(const ImageCopyInfo& copyInfo)
+    void ICommandEncoder::CopyImage(Handle<CommandList> _commandList, const ImageCopyInfo& copyInfo)
     {
         ZoneScoped;
+
+        auto commandList = m_commandBufferPool[_commandList];
 
         auto srcImage = m_context->m_imageOwner.Get(copyInfo.srcImage);
         auto dstImage = m_context->m_imageOwner.Get(copyInfo.dstImage);
@@ -348,12 +339,14 @@ namespace RHI::Vulkan
         imageCopy.dstSubresource = ConvertSubresourceLayer(copyInfo.dstSubresource);
         imageCopy.dstOffset = ConvertOffset3D(copyInfo.dstOffset);
         imageCopy.extent = ConvertExtent3D(copyInfo.srcSize);
-        vkCmdCopyImage(m_commandBuffer, srcImage->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
+        vkCmdCopyImage(commandList->handle, srcImage->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
     }
 
-    void ICommandList::CopyImageToBuffer(const BufferImageCopyInfo& copyInfo)
+    void ICommandEncoder::CopyImageToBuffer(Handle<CommandList> _commandList, const BufferImageCopyInfo& copyInfo)
     {
         ZoneScoped;
+
+        auto commandList = m_commandBufferPool[_commandList];
 
         auto buffer = m_context->m_bufferOwner.Get(copyInfo.buffer);
         auto image = m_context->m_imageOwner.Get(copyInfo.image);
@@ -365,12 +358,14 @@ namespace RHI::Vulkan
         bufferImageCopy.imageSubresource = ConvertSubresourceLayer(copyInfo.subresource);
         bufferImageCopy.imageOffset = ConvertOffset3D(copyInfo.imageOffset);
         bufferImageCopy.imageExtent = ConvertExtent3D(copyInfo.imageSize);
-        vkCmdCopyImageToBuffer(m_commandBuffer, image->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, buffer->handle, 1, &bufferImageCopy);
+        vkCmdCopyImageToBuffer(commandList->handle, image->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, buffer->handle, 1, &bufferImageCopy);
     }
 
-    void ICommandList::CopyBufferToImage(const BufferImageCopyInfo& copyInfo)
+    void ICommandEncoder::CopyBufferToImage(Handle<CommandList> _commandList, const BufferImageCopyInfo& copyInfo)
     {
         ZoneScoped;
+
+        auto commandList = m_commandBufferPool[_commandList];
 
         auto buffer = m_context->m_bufferOwner.Get(copyInfo.buffer);
         auto image = m_context->m_imageOwner.Get(copyInfo.image);
@@ -382,6 +377,7 @@ namespace RHI::Vulkan
         bufferImageCopy.imageSubresource = ConvertSubresourceLayer(copyInfo.subresource);
         bufferImageCopy.imageOffset = ConvertOffset3D(copyInfo.imageOffset);
         bufferImageCopy.imageExtent = ConvertExtent3D(copyInfo.imageSize);
-        vkCmdCopyBufferToImage(m_commandBuffer, buffer->handle, image->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferImageCopy);
+        vkCmdCopyBufferToImage(commandList->handle, buffer->handle, image->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferImageCopy);
     }
+
 } // namespace RHI::Vulkan

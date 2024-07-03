@@ -33,7 +33,7 @@ namespace RHI
         , m_imageAttachments()
         , m_bufferAttachments()
         , m_transientAliasingAllocator(CreatePtr<TransientAliasingAllocator>(this))
-        , m_frameContext(CreatePtr<FrameContext>())
+        , m_frameContext(CreatePtr<RGResourcePool>())
     {
     }
 
@@ -123,13 +123,13 @@ namespace RHI
         m_passPool[pass]->bufferAttachments.push_back(passAttachment);
     }
 
-    Handle<Image> RenderGraph::PassGetImage(Handle<ImageAttachment> attachmentHandle) const
+    Handle<Image> RenderGraph::GetImage(Handle<ImageAttachment> attachmentHandle) const
     {
         auto attachment = m_imageAttachmentPool[attachmentHandle];
         return m_frameContext->GetImage(attachment->m_resource);
     }
 
-    Handle<Buffer> RenderGraph::PassGetBuffer(Handle<BufferAttachment> attachmentHandle) const
+    Handle<Buffer> RenderGraph::GetBuffer(Handle<BufferAttachment> attachmentHandle) const
     {
         auto attachment = m_bufferAttachmentPool[attachmentHandle];
         return m_frameContext->GetBuffer(attachment->m_resource);
@@ -137,13 +137,13 @@ namespace RHI
 
     Handle<ImageView> RenderGraph::PassGetImageView(Handle<Pass> pass, Handle<ImageAttachment> attachment) const
     {
-        auto id = *m_imageAttachmentPool[attachment]->m_passToViews.at(pass);
+        auto& id = m_imageAttachmentPool[attachment]->m_passToViews.at(pass);
         return m_frameContext->GetImageView(id->view);
     }
 
     Handle<BufferView> RenderGraph::PassGetBufferView(Handle<Pass> pass, Handle<BufferAttachment> attachment) const
     {
-        auto id = *m_bufferAttachmentPool[attachment]->m_passToViews.at(pass);
+        auto& id = m_bufferAttachmentPool[attachment]->m_passToViews.at(pass);
         return m_frameContext->GetBufferView(id->view);
     }
 
@@ -160,18 +160,18 @@ namespace RHI
     void RenderGraph::AddDependency(Handle<Pass> pass, Handle<ImageAttachment> attachment)
     {
         // if (m_imageAttachmentPool[attachment]->end() == )
-            // return;
+        // return;
         auto srcPass = m_passToVertexLut[pass];
-        auto dstPass = m_passToVertexLut[m_imageAttachmentPool[attachment]->end()->pass];
+        auto dstPass = m_passToVertexLut[m_imageAttachmentPool[attachment]->m_end->pass];
         m_graph.add_edge(srcPass, dstPass, PassAttachment());
     }
 
     void RenderGraph::AddDependency(Handle<Pass> pass, Handle<BufferAttachment> attachment)
     {
         // if (m_bufferAttachmentPool[attachment]->end() == nullptr)
-            // return;
+        // return;
         auto srcPass = m_passToVertexLut[pass];
-        auto dstPass = m_passToVertexLut[m_bufferAttachmentPool[attachment]->end()->pass];
+        auto dstPass = m_passToVertexLut[m_bufferAttachmentPool[attachment]->m_end->pass];
         m_graph.add_edge(srcPass, dstPass, PassAttachment());
     }
 

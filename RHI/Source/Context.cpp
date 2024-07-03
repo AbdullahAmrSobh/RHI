@@ -17,6 +17,8 @@ namespace RHI
     {
     }
 
+    Context::~Context() = default;
+
     void Context::Shutdown()
     {
     }
@@ -76,18 +78,17 @@ namespace RHI
         return Internal_CreateFence();
     }
 
-    Ptr<CommandPool> Context::CreateCommandPool(CommandPoolFlags flags)
+    Ptr<CommandEncoder> Context::CreateCommandEncoder()
     {
         ZoneScoped;
 
-        return Internal_CreateCommandPool(flags);
+        return Internal_CreateCommandEncoder();
     }
 
     Handle<BindGroupLayout> Context::CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)
     {
         ZoneScoped;
 
-        RHI_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreateBindGroupLayout(createInfo);
     }
 
@@ -123,7 +124,6 @@ namespace RHI
     {
         ZoneScoped;
 
-        RHI_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreatePipelineLayout(createInfo);
     }
 
@@ -138,7 +138,6 @@ namespace RHI
     {
         ZoneScoped;
 
-        RHI_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreateGraphicsPipeline(createInfo);
     }
 
@@ -153,7 +152,6 @@ namespace RHI
     {
         ZoneScoped;
 
-        RHI_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreateComputePipeline(createInfo);
     }
 
@@ -168,7 +166,6 @@ namespace RHI
     {
         ZoneScoped;
 
-        RHI_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreateSampler(createInfo);
     }
 
@@ -183,7 +180,6 @@ namespace RHI
     {
         ZoneScoped;
 
-        RHI_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreateImage(createInfo);
     }
 
@@ -198,7 +194,6 @@ namespace RHI
     {
         ZoneScoped;
 
-        RHI_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreateBuffer(createInfo);
     }
 
@@ -213,7 +208,6 @@ namespace RHI
     {
         ZoneScoped;
 
-        RHI_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreateImageView(createInfo);
     }
 
@@ -228,7 +222,6 @@ namespace RHI
     {
         ZoneScoped;
 
-        RHI_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreateBufferView(createInfo);
     }
 
@@ -264,94 +257,6 @@ namespace RHI
         auto ptr = MapBuffer(buffer);
         m_stagingBuffers.push_back(buffer);
         return StagingBuffer{ ptr, buffer, 0 };
-    }
-
-    void Context::StageResourceWrite(Handle<Image> image, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset)
-    {
-        ZoneScoped;
-
-        Internal_StageResourceWrite(image, subresources, buffer, bufferOffset);
-    }
-
-    void Context::StageResourceWrite(Handle<Buffer> buffer, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset)
-    {
-        ZoneScoped;
-
-        Internal_StageResourceWrite(buffer, offset, size, srcBuffer, srcOffset);
-    }
-
-    void Context::StageResourceRead(Handle<Image> image, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset, Fence* fence)
-    {
-        ZoneScoped;
-
-        Internal_StageResourceRead(image, subresources, buffer, bufferOffset, fence);
-    }
-
-    void Context::StageResourceRead(Handle<Buffer> buffer, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset, Fence* fence)
-    {
-        ZoneScoped;
-
-        Internal_StageResourceRead(buffer, offset, size, srcBuffer, srcOffset, fence);
-    }
-
-    bool Context::ValidateCreateInfo(const SwapchainCreateInfo& createInfo) const
-    {
-        (void)createInfo;
-        return true;
-    }
-
-    bool Context::ValidateCreateInfo(const BindGroupLayoutCreateInfo& createInfo) const
-    {
-        (void)createInfo;
-        return true;
-    }
-
-    bool Context::ValidateCreateInfo(const PipelineLayoutCreateInfo& createInfo) const
-    {
-        (void)createInfo;
-        return true;
-    }
-
-    bool Context::ValidateCreateInfo(const GraphicsPipelineCreateInfo& createInfo) const
-    {
-        (void)createInfo;
-        return true;
-    }
-
-    bool Context::ValidateCreateInfo(const ComputePipelineCreateInfo& createInfo) const
-    {
-        (void)createInfo;
-        return true;
-    }
-
-    bool Context::ValidateCreateInfo(const SamplerCreateInfo& createInfo) const
-    {
-        (void)createInfo;
-        return true;
-    }
-
-    bool Context::ValidateCreateInfo(const ImageCreateInfo& createInfo) const
-    {
-        (void)createInfo;
-        return true;
-    }
-
-    bool Context::ValidateCreateInfo(const BufferCreateInfo& createInfo) const
-    {
-        (void)createInfo;
-        return true;
-    }
-
-    bool Context::ValidateCreateInfo(const ImageViewCreateInfo& createInfo) const
-    {
-        (void)createInfo;
-        return true;
-    }
-
-    bool Context::ValidateCreateInfo(const BufferViewCreateInfo& createInfo) const
-    {
-        (void)createInfo;
-        return true;
     }
 
     void Context::DebugLogError(std::string_view message)

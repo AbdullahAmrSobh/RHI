@@ -40,15 +40,15 @@ namespace RHI
 
 namespace RHI::Vulkan
 {
-    inline static TL::Vector<VkLayerProperties> GetAvailableInstanceLayerExtensions()
-    {
-        uint32_t instanceLayerCount;
-        Validate(vkEnumerateInstanceLayerProperties(&instanceLayerCount, nullptr));
-        TL::Vector<VkLayerProperties> layers;
-        layers.resize(instanceLayerCount);
-        Validate(vkEnumerateInstanceLayerProperties(&instanceLayerCount, layers.data()));
-        return layers;
-    }
+    // inline static TL::Vector<VkLayerProperties> GetAvailableInstanceLayerExtensions()
+    // {
+    //     uint32_t instanceLayerCount;
+    //     Validate(vkEnumerateInstanceLayerProperties(&instanceLayerCount, nullptr));
+    //     TL::Vector<VkLayerProperties> layers;
+    //     layers.resize(instanceLayerCount);
+    //     Validate(vkEnumerateInstanceLayerProperties(&instanceLayerCount, layers.data()));
+    //     return layers;
+    // }
 
     inline static TL::Vector<VkExtensionProperties> GetAvailableInstanceExtensions()
     {
@@ -60,15 +60,15 @@ namespace RHI::Vulkan
         return extensions;
     }
 
-    inline static TL::Vector<VkLayerProperties> GetAvailableDeviceLayerExtensions(VkPhysicalDevice physicalDevice)
-    {
-        uint32_t instanceLayerCount;
-        Validate(vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, nullptr));
-        TL::Vector<VkLayerProperties> layers;
-        layers.resize(instanceLayerCount);
-        Validate(vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, layers.data()));
-        return layers;
-    }
+    // inline static TL::Vector<VkLayerProperties> GetAvailableDeviceLayerExtensions(VkPhysicalDevice physicalDevice)
+    // {
+    //     uint32_t instanceLayerCount;
+    //     Validate(vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, nullptr));
+    //     TL::Vector<VkLayerProperties> layers;
+    //     layers.resize(instanceLayerCount);
+    //     Validate(vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, layers.data()));
+    //     return layers;
+    // }
 
     inline static TL::Vector<VkExtensionProperties> GetAvailableDeviceExtensions(VkPhysicalDevice physicalDevice)
     {
@@ -114,7 +114,7 @@ namespace RHI::Vulkan
         , m_transferQueueFamilyIndex(UINT32_MAX)
         , m_fnTable(CreatePtr<FunctionsTable>())
         , m_bindGroupAllocator(CreatePtr<BindGroupAllocator>(this))
-        , m_commandPool(CreatePtr<ICommandPool>(this))
+        , m_commandEncoder(CreatePtr<ICommandEncoder>(this))
         , m_deleteQueue(CreatePtr<DeleteQueue>(this))
         , m_imageOwner()
         , m_bufferOwner()
@@ -166,7 +166,7 @@ namespace RHI::Vulkan
 
         Shutdown();
 
-        // m_commandPool->Shutdown();
+        // m_commandEncoder->Shutdown();
         // m_bindGroupAllocator->Shutdown();
 
         vmaDestroyAllocator(m_allocator);
@@ -190,7 +190,7 @@ namespace RHI::Vulkan
 
         m_fnTable->Init(this, debugExtensionEnabled);
         TryValidate(m_bindGroupAllocator->Init());
-        TryValidate(m_commandPool->Init(CommandPoolFlags::Transient));
+        // TryValidate(m_commandEncoder->Init(CommandEncoderFlags::Transient));
 
         return ResultCode::Success;
     }
@@ -234,117 +234,6 @@ namespace RHI::Vulkan
         }
     }
 
-    uint32_t IContext::GetMemoryTypeIndex(MemoryType memoryType)
-    {
-        VkMemoryPropertyFlags flags = 0;
-        VkMemoryPropertyFlags negateFlags = 0;
-        switch (memoryType)
-        {
-        case MemoryType::CPU: flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; break;
-        case MemoryType::GPULocal:
-            flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-            negateFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-            break;
-        case MemoryType::GPUShared: flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; break;
-        }
-
-        VkPhysicalDeviceMemoryProperties memoryProperties;
-        vkGetPhysicalDeviceMemoryProperties(m_physicalDevice, &memoryProperties);
-
-        // TODO: if multiple memory types with the desired flags are present,
-        // then select the based on size, performance charactersitcs ...
-        uint32_t index = UINT32_MAX;
-        for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++)
-        {
-            VkMemoryType type = memoryProperties.memoryTypes[i];
-
-            if ((type.propertyFlags & flags) == flags && (type.propertyFlags & negateFlags) == 0)
-            {
-                index = type.heapIndex;
-            }
-        }
-
-        return index;
-    }
-
-    uint32_t IContext::GetQueueFamilyIndex(QueueType queueType)
-    {
-        (void)queueType;
-        return m_graphicsQueueFamilyIndex;
-
-        // switch (queueType)
-        // {
-        // case QueueType::Graphics: return m_graphicsQueueFamilyIndex;
-        // case QueueType::Compute:  return m_computeQueueFamilyIndex;
-        // case QueueType::Transfer: return m_transferQueueFamilyIndex;
-        // default:                  RHI_UNREACHABLE(); return UINT32_MAX;
-        // }
-    }
-
-    VkQueue IContext::GetQueue(QueueType queueType)
-    {
-        (void)queueType;
-        return m_graphicsQueue;
-
-        // switch (queueType)
-        // {
-        // case QueueType::Graphics: return m_graphicsQueue;
-        // case QueueType::Compute:  return m_computeQueue;
-        // case QueueType::Transfer: return m_transferQueue;
-        // default:                  RHI_UNREACHABLE(); return VK_NULL_HANDLE;
-        // }
-    }
-
-    void IContext::QueueSubmit(QueueType queueType,
-                               TL::Span<const ICommandList* const> commandLists,
-                               TL::UnorderedMap<VkSemaphore, VkPipelineStageFlags2> waitSemaphores,
-                               TL::UnorderedMap<VkSemaphore, VkPipelineStageFlags2> signalSemaphores,
-                               IFence* signalFence)
-    {
-        ZoneScoped;
-
-        TL::Vector<VkSemaphoreSubmitInfo> waitSemaphoreSubmitInfos;
-        TL::Vector<VkSemaphoreSubmitInfo> signalSemaphoreSubmitInfos;
-        TL::Vector<VkCommandBufferSubmitInfo> commandBufferSubmitInfos;
-
-        for (auto commandList : commandLists)
-        {
-            VkCommandBufferSubmitInfo commandBufferSubmitInfo{};
-            commandBufferSubmitInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
-            commandBufferSubmitInfo.commandBuffer = commandList->m_commandBuffer;
-            commandBufferSubmitInfos.push_back(commandBufferSubmitInfo);
-        }
-
-        for (auto waitSemaphore : waitSemaphores)
-        {
-            VkSemaphoreSubmitInfo waitSemaphoreSubmitInfo{};
-            waitSemaphoreSubmitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-            waitSemaphoreSubmitInfo.semaphore = waitSemaphore.first;
-            waitSemaphoreSubmitInfo.stageMask = waitSemaphore.second;
-            waitSemaphoreSubmitInfos.push_back(waitSemaphoreSubmitInfo);
-        }
-
-        for (auto signalSemaphore : signalSemaphores)
-        {
-            VkSemaphoreSubmitInfo signalSemaphoreSubmitInfo{};
-            signalSemaphoreSubmitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-            signalSemaphoreSubmitInfo.semaphore = signalSemaphore.first;
-            signalSemaphoreSubmitInfo.stageMask = signalSemaphore.second;
-            signalSemaphoreSubmitInfos.push_back(signalSemaphoreSubmitInfo);
-        }
-
-        VkSubmitInfo2 submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
-        submitInfo.pNext = nullptr;
-        submitInfo.waitSemaphoreInfoCount = (uint32_t)waitSemaphoreSubmitInfos.size();
-        submitInfo.pWaitSemaphoreInfos = waitSemaphoreSubmitInfos.data();
-        submitInfo.commandBufferInfoCount = (uint32_t)commandBufferSubmitInfos.size();
-        submitInfo.pCommandBufferInfos = commandBufferSubmitInfos.data();
-        submitInfo.signalSemaphoreInfoCount = (uint32_t)signalSemaphoreSubmitInfos.size();
-        submitInfo.pSignalSemaphoreInfos = signalSemaphoreSubmitInfos.data();
-        vkQueueSubmit2(GetQueue(queueType), 1, &submitInfo, signalFence ? signalFence->UseFence() : VK_NULL_HANDLE);
-    }
-
     ////////////////////////////////////////////////////////////
     // Interface implementation
     ////////////////////////////////////////////////////////////
@@ -381,16 +270,16 @@ namespace RHI::Vulkan
         return fence;
     }
 
-    Ptr<CommandPool> IContext::Internal_CreateCommandPool(CommandPoolFlags flags)
-    {
-        auto commandPool = CreatePtr<ICommandPool>(this);
-        auto result = commandPool->Init(flags);
-        if (result != ResultCode::Success)
-        {
-            DebugLogError("Failed to create a command_list_allocator object");
-        }
-        return commandPool;
-    }
+    // Ptr<CommandEncoder> IContext::Internal_CreateCommandEncoder(CommandEncoderFlags flags)
+    // {
+    //     auto commandEncoder = CreatePtr<ICommandEncoder>(this);
+    //     auto result = commandEncoder->Init(flags);
+    //     if (result != ResultCode::Success)
+    //     {
+    //         DebugLogError("Failed to create a command_list_allocator object");
+    //     }
+    //     return commandEncoder;
+    // }
 
     Handle<BindGroupLayout> IContext::Internal_CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)
     {
@@ -639,44 +528,34 @@ namespace RHI::Vulkan
         vmaUnmapMemory(m_allocator, resource);
     }
 
-    void IContext ::Internal_StageResourceWrite(Handle<Image> imageHandle, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset)
-    {
-        (void)imageHandle;
-        (void)subresources;
-        (void)buffer;
-        (void)bufferOffset;
-        RHI_UNREACHABLE();
-    }
-
-    void IContext ::Internal_StageResourceWrite(Handle<Buffer> bufferHandle, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset)
-    {
-        (void)bufferHandle;
-        (void)offset;
-        (void)size;
-        (void)srcBuffer;
-        (void)srcOffset;
-        RHI_UNREACHABLE();
-    }
-
-    void IContext ::Internal_StageResourceRead(Handle<Image> image, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset, Fence* fence)
+    void IContext::Intenral_StageImageWrite(Handle<Image> image, ImageSubresourceLayers subresources, StagingBuffer stagingBuffererOffset)
     {
         (void)image;
         (void)subresources;
-        (void)buffer;
-        (void)bufferOffset;
-        (void)fence;
-        RHI_UNREACHABLE();
+        (void)stagingBuffererOffset;
     }
 
-    void IContext ::Internal_StageResourceRead(Handle<Buffer> buffer, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset, Fence* fence)
+    void IContext::Intenral_StageBufferWrite(Handle<Buffer> buffer, BufferSubregion subregion, StagingBuffer stagingBufferset)
     {
         (void)buffer;
-        (void)offset;
-        (void)size;
-        (void)srcBuffer;
-        (void)srcOffset;
+        (void)subregion;
+        (void)stagingBufferset;
+    }
+
+    void IContext::Intenral_StageImageRead(Handle<Image> image, ImageSubresourceLayers subresources, StagingBuffer stagingBufferrOffset, Fence* fence)
+    {
+        (void)image;
+        (void)subresources;
+        (void)stagingBufferrOffset;
         (void)fence;
-        RHI_UNREACHABLE();
+    }
+
+    void IContext::Intenral_StageBufferRead(Handle<Buffer> buffer, BufferSubregion subregion, StagingBuffer stagingBufferet, Fence* fence)
+    {
+        (void)buffer;
+        (void)subregion;
+        (void)stagingBufferet;
+        (void)fence;
     }
 
     ////////////////////////////////////////////////////////////

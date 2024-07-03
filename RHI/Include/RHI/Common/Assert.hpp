@@ -23,3 +23,5 @@
 #endif
 
 #define RHI_NODISCARD [[nodiscard]]
+
+#define RHI_OUT_PARM

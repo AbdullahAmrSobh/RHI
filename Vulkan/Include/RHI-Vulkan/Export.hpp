@@ -22,7 +22,7 @@
 #endif
 
 #ifndef VULKAN_DEPRECATED
-#  define VULKAN_DEPRECATED 
+#  define VULKAN_DEPRECATED __declspec(deprecated)
 #endif
 
 #ifndef VULKAN_DEPRECATED_EXPORT

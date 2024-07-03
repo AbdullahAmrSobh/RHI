@@ -1,13 +1,11 @@
 #pragma once
 
 #include <RHI/Common/Containers.h>
-
 #include <RHI/RenderGraph.hpp>
 
-#include <vulkan/vulkan.h>
+#include "Common.hpp"
 
-#include <optional>
-#include <Common.hpp>
+#include <vulkan/vulkan.h>
 
 namespace RHI::Vulkan
 {
@@ -41,13 +39,6 @@ namespace RHI::Vulkan
         TL::Vector<VkMemoryBarrier2> memoryBarriers;
         TL::Vector<VkImageMemoryBarrier2> imageBarriers;
         TL::Vector<VkBufferMemoryBarrier2> bufferBarriers;
-    };
-
-    struct RenderingAttachments
-    {
-        TL::Vector<VkRenderingAttachmentInfo> colorAttachments;
-        std::optional<VkRenderingAttachmentInfo> depthAttachmentInfo;
-        std::optional<VkRenderingAttachmentInfo> stencilAttachmentInfo;
     };
 
     struct RenderingAttachmentFormats
@@ -177,8 +168,8 @@ namespace RHI::Vulkan
         case ImageUsage::DepthStencil:    return { VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,    GetDepthStencilAccess(loadStoreOperations), };
         case ImageUsage::CopySrc:         return { VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,             VK_PIPELINE_STAGE_2_TRANSFER_BIT,                VK_ACCESS_2_TRANSFER_READ_BIT,              };
         case ImageUsage::CopyDst:         return { VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,             VK_PIPELINE_STAGE_2_TRANSFER_BIT,                VK_ACCESS_2_TRANSFER_WRITE_BIT,             };
-        case ImageUsage::ShaderResource:  return { VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,         GetPipelineStage(shaderStage),                   GetAccess(access, false),                   };
-        case ImageUsage::StorageResource: return { VK_IMAGE_LAYOUT_GENERAL,                          GetPipelineStage(shaderStage),                   GetAccess(access, true),                    };
+        case ImageUsage::Sampled:  return { VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,         GetPipelineStage(shaderStage),                   GetAccess(access, false),                   };
+        case ImageUsage::Storage: return { VK_IMAGE_LAYOUT_GENERAL,                          GetPipelineStage(shaderStage),                   GetAccess(access, true),                    };
         default:                          RHI_UNREACHABLE(); return {};
         }
         // clang-format on

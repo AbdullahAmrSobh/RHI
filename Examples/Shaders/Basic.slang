@@ -1,5 +1,16 @@
 #include "ShaderInterface/Core.slang"
 
+GraphicsPipelineCreateInfo PipelinCreateInfo()
+{
+	GraphicsPipelineCreateInfo pipelineCI = {};
+	pipelineCI.name = 0;
+	pipelineCI.colorBlendState = PipelineColorBlendStateDesc();
+	pipelineCI.depthStencilState = PipelineDepthStencilStateDesc();
+	pipelineCI.rasterizationState = PipelineRasterizerStateDesc();
+	pipelineCI.topologyMode = PipelineTopologyMode::Triangles;
+	return pipelineCI;
+}
+
 struct VSInput
 {
 	float3 position : POSITION0;

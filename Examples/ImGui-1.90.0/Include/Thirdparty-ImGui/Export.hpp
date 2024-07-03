@@ -22,7 +22,7 @@
 #endif
 
 #ifndef IMGUI_DEPRECATED
-#  define IMGUI_DEPRECATED 
+#  define IMGUI_DEPRECATED __declspec(deprecated)
 #endif
 
 #ifndef IMGUI_DEPRECATED_EXPORT

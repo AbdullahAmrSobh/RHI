@@ -6,7 +6,6 @@ endif()
 
 # Add header files
 set(HEADER_FILES
-    # Common and utils
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Allocator.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Assert.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Callstack.hpp
@@ -18,14 +17,16 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Ptr.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Result.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Span.hpp
-    # main files
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Attachment.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/CommandList.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Context.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Definitions.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Export.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Format.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Definition.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RenderGraph.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Resources.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RGInternals.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RGPass.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RHI.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Swapchain.hpp
 )
@@ -36,8 +37,8 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Format.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraph.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/RGInternals.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/RGInternals.cpp
 
     ${CMAKE_SOURCE_DIR}/tracy/public/TracyClient.cpp
 )

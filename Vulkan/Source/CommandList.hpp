@@ -1,9 +1,9 @@
 #pragma once
 
-#include <RHI/CommandList.hpp>
 #include <RHI/Common/Result.hpp>
 #include <RHI/Common/Ptr.hpp>
-#include <RHI/Definition.hpp>
+#include <RHI/CommandList.hpp>
+#include <RHI/Definitions.hpp>
 
 #include <vulkan/vulkan.h>
 
@@ -11,66 +11,52 @@ namespace RHI::Vulkan
 {
     class IContext;
 
-    class ICommandPool final : public CommandPool
+    struct CommandBuffer : CommandList
+    {
+        VkCommandBufferLevel level;
+        VkCommandBuffer handle;
+    };
+
+    class ICommandEncoder final : public CommandEncoder
     {
     public:
-        ICommandPool(IContext* context);
-        ~ICommandPool();
+        ICommandEncoder(IContext* context);
+        virtual ~ICommandEncoder();
 
-        ResultCode Init(CommandPoolFlags flags);
+        void BindShaderBindGroups(Handle<CommandList> commandList, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups);
+        void BindVertexBuffers(Handle<CommandList> commandList, uint32_t firstBinding, TL::Span<const BufferBindingInfo> bindingInfos);
+        void BindIndexBuffer(Handle<CommandList> commandList, const BufferBindingInfo& bindingInfo, VkIndexType indexType);
+        void BeginPrimary(Handle<CommandList> commandList, RenderGraph& renderGraph, Handle<Pass> pass);
+        void BeginSecondary(Handle<CommandList> commandList, const RenderTargetLayoutDesc& renderTargetLayoutDesc);
 
-        void Reset() override;
-        TL::Vector<CommandList*> Allocate(QueueType queueType, CommandListLevel level, uint32_t count) override;
-        void Release(TL::Span<const CommandList* const> commandLists) override;
+        void PipelineBarrier(Handle<CommandList> commandList, TL::Span<const VkMemoryBarrier2> memoryBarriers, TL::Span<const VkImageMemoryBarrier2> imageBarriers, TL::Span<const VkBufferMemoryBarrier2> bufferBarriers);
 
-    private:
-        TL::Vector<VkCommandBuffer> AllocateCommandBuffers(VkCommandPool pool, uint32_t count, VkCommandBufferLevel level);
+        void Allocate(Flags<CommandFlags> flags, RHI_OUT_PARM TL::Span<Handle<CommandList>> commandLists) override;
+        void Release(TL::Span<Handle<CommandList>> commandList) override;
+        void Reset(TL::Span<Handle<CommandList>> commandList) override;
+        void Begin(Handle<CommandList> commandList) override;
+        void Begin(Handle<CommandList> commandList, const CommandListBeginInfo& beginInfo) override;
+        void End(Handle<CommandList> commandList) override;
+        void DebugMarkerPush(Handle<CommandList> commandList, const char* name, ColorValue<float> color) override;
+        void DebugMarkerPop(Handle<CommandList> commandList) override;
+        void BeginConditionalCommands(Handle<CommandList> commandList, Handle<Buffer> buffer, size_t offset, CommandConditionMode inverted) override;
+        void EndConditionalCommands(Handle<CommandList> commandList) override;
+        void Execute(Handle<CommandList> commandList, TL::Span<const Handle<CommandList>> commandLists) override;
+        void SetViewport(Handle<CommandList> commandList, const Viewport& viewport) override;
+        void SetScissor(Handle<CommandList> commandList, const Scissor& scissor) override;
+        void Draw(Handle<CommandList> commandList, const DrawInfo& drawInfo) override;
+        void Dispatch(Handle<CommandList> commandList, const DispatchInfo& dispatchInfo) override;
+        void CopyBuffer(Handle<CommandList> commandList, const BufferCopyInfo& copyInfo) override;
+        void CopyImage(Handle<CommandList> commandList, const ImageCopyInfo& copyInfo) override;
+        void CopyImageToBuffer(Handle<CommandList> commandList, const BufferImageCopyInfo& copyInfo) override;
+        void CopyBufferToImage(Handle<CommandList> commandList, const BufferImageCopyInfo& copyInfo) override;
 
     private:
         IContext* m_context;
-        VkCommandPool m_commandPools[uint32_t(QueueType::Count)];
+
+        VkCommandPool commandPool[4][3];
+
+        HandlePool<CommandBuffer> m_commandBufferPool;
+
     };
-
-    class ICommandList final : public CommandList
-    {
-    public:
-        ICommandList(IContext* context, VkCommandPool commandPool, VkCommandBuffer commandBuffer);
-        ~ICommandList() = default;
-
-        void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups);
-
-        void BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> bindingInfos);
-
-        void BindIndexBuffer(const BufferBindingInfo& bindingInfo, VkIndexType indexType);
-
-        void PipelineBarrier(TL::Span<const VkMemoryBarrier2> memoryBarriers, TL::Span<const VkBufferMemoryBarrier2> bufferBarriers, TL::Span<const VkImageMemoryBarrier2> imageBarriers);
-
-        void BeginPrimary(RenderGraph& renderGraph, Handle<Pass> pass, struct RenderingAttachments attachments);
-        void BeginSecondary(struct RenderingAttachmentFormats formats);
-
-        void Begin() override;
-        void Begin(const CommandListBeginInfo& beginInfo) override;
-        void End() override;
-        void DebugMarkerPush(const char* name, ColorValue<float> color) override;
-        void DebugMarkerPop() override;
-        void BeginConditionalCommands(Handle<Buffer> buffer, size_t offset, bool inverted) override;
-        void EndConditionalCommands() override;
-        void Execute(TL::Span<const CommandList*> commandLists) override;
-        void SetViewport(const Viewport& viewport) override;
-        void SetSicssor(const Scissor& sicssor) override;
-        void Draw(const DrawInfo& drawInfo) override;
-        void Dispatch(const DispatchInfo& dispatchInfo) override;
-        void CopyBuffer(const BufferCopyInfo& copyInfo) override;
-        void CopyImage(const ImageCopyInfo& copyInfo) override;
-        void CopyImageToBuffer(const BufferImageCopyInfo& copyInfo) override;
-        void CopyBufferToImage(const BufferImageCopyInfo& copyInfo) override;
-
-        VkCommandBuffer m_commandBuffer;
-        VkCommandPool m_commandPool;
-        VkCommandBufferLevel m_level;
-
-    private:
-        IContext* m_context;
-    };
-
 } // namespace RHI::Vulkan

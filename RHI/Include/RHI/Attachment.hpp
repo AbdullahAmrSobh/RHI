@@ -1,9 +1,10 @@
 #pragma once
 
-#include <RHI/Common/Containers.h>
 #include <RHI/Common/Handle.hpp>
 #include <RHI/Common/Flags.hpp>
-#include <RHI/Definition.hpp>
+#include <RHI/Common/Ptr.hpp>
+#include <RHI/Common/Containers.h>
+#include <RHI/Definitions.hpp>
 #include <RHI/Resources.hpp>
 #include <RHI/RGInternals.hpp>
 
@@ -11,7 +12,7 @@
 
 namespace RHI
 {
-    struct Pass;
+    class Pass;
 
     enum class AttachmentLifetime : uint8_t
     {
@@ -35,29 +36,18 @@ namespace RHI
     };
 
     // clang-format off
-
-    class Swapchain;
-    class EmptyBase { };
-    class RHI_EXPORT SwapchainAttachment
-    {
-    public:
-        Swapchain* m_swapchain = nullptr;
-    };
-
     // clang-format on
 
     template<typename Type>
-    class RHI_EXPORT AttachmentImpl : private std::conditional_t<std::is_same_v<Type, Image>, SwapchainAttachment, EmptyBase>
+    class AttachmentImpl
     {
         friend class RenderGraph;
+
+        inline static constexpr bool _IsImage = std::is_same_v<Type, Image>;
 
     public:
         struct View;
 
-        inline static constexpr bool _IsImage = std::is_same_v<Type, Image>;
-
-        using UseList          = TL::List<View>;
-        using AttachmentIt     = typename UseList::iterator;
         using Resource         = std::conditional_t<_IsImage, RGImageID, RGBufferID>;
         using ResourceView     = std::conditional_t<_IsImage, RGImageViewID, RGBufferViewID>;
         using Desc             = std::conditional_t<_IsImage, ImageCreateInfo, BufferCreateInfo>;
@@ -66,12 +56,12 @@ namespace RHI
         using Usage            = std::conditional_t<_IsImage, ImageUsage, BufferUsage>;
         using AttachmentHandle = std::conditional_t<_IsImage, Handle<class ImageAttachment>, Handle<class BufferAttachment>>;
 
-        struct RHI_EXPORT View
+        struct View
         {
             Handle<Pass>       pass;
             AttachmentHandle   attachment;
-            AttachmentIt       next;
-            AttachmentIt       prev;
+            View*              next;
+            View*              prev;
             Usage              usage;
             Access             access;
             Flags<ShaderStage> shaderStages;
@@ -84,7 +74,8 @@ namespace RHI
             , m_lifetime(AttachmentLifetime::Transient)
             , m_description(description)
             , m_resource()
-            , m_useList()
+            , m_begin(nullptr)
+            , m_end(nullptr)
             , m_passToViews()
         {
         }
@@ -94,88 +85,106 @@ namespace RHI
             , m_lifetime(AttachmentLifetime::Imported)
             , m_description()
             , m_resource(resource)
-            , m_useList()
+            , m_begin(nullptr)
+            , m_end(nullptr)
             , m_passToViews()
         {
         }
 
-        AttachmentImpl(TL::String name, Resource resource, Swapchain& swapchain)
-            requires requires(Type type) { _IsImage; }
-            : m_name(std::move(name))
-            , m_lifetime(AttachmentLifetime::Imported)
-            , m_description()
-            , m_resource(resource)
-
+        View* GetView(Handle<Pass> pass)
         {
-            SwapchainAttachment::m_swapchain = &swapchain;
+            return m_passToViews.find(pass)->second;
         }
 
-        const char* GetName() const { return m_name.c_str(); }
-
-        AttachmentLifetime GetLifetime() const { return m_lifetime; }
-
-        AttachmentIt GetView(Handle<Pass> pass)
+        void Clear()
         {
-            if (auto it = m_passToViews.find(pass); it != m_passToViews.end())
-                return *it->second;
-            return {};
+            m_passToViews.clear();
         }
 
-        Swapchain* GetSwapchain() const
-            requires requires(Type type) { _IsImage; }
+        View* Emplace(Handle<Pass> pass, AttachmentHandle attachmentHandle, ResourceViewInfo viewInfo, Usage usage, Access access, Flags<ShaderStage> stages)
         {
-            return SwapchainAttachment::m_swapchain;
+            m_passToViews[pass] = new View();
+
+            auto it          = m_passToViews[pass];
+            it->pass         = pass;
+            it->attachment   = attachmentHandle;
+            it->next         = nullptr;
+            it->prev         = m_end;
+            it->usage        = usage;
+            it->access       = access;
+            it->shaderStages = stages;
+            it->view         = NullHandle;
+            it->viewInfo     = viewInfo;
+
+            if (m_begin == nullptr)
+                m_begin = it;
+
+            m_end = it;
+
+            return it;
         }
 
-        AttachmentIt begin() { return m_useList.begin(); }
-
-        AttachmentIt end() { return m_useList.end(); }
-
-        void Clear() { m_useList.clear(); }
-
-        AttachmentIt Emplace(
-            Handle<Pass>       pass,
-            AttachmentHandle   attachmentHandle,
-            ResourceViewInfo   viewInfo,
-            Usage              usage,
-            Access             access,
-            Flags<ShaderStage> stages)
-        {
-            (void)pass;
-            (void)attachmentHandle;
-            (void)viewInfo;
-            (void)usage;
-            (void)access;
-            (void)stages;
-            return {};
-        }
-
-        Desc     m_description;
-        Resource m_resource;
-
-    private:
         TL::String         m_name;
         AttachmentLifetime m_lifetime;
-        UseList            m_useList;
+        Desc               m_description;
+        Resource           m_resource;
+        View*              m_begin;
+        View*              m_end;
 
-        TL::UnorderedMap<Handle<Pass>, AttachmentIt*> m_passToViews;
+    private:
+        TL::UnorderedMap<Handle<Pass>, View*> m_passToViews;
     };
 
     inline static constexpr ImageSize2D SizeRelative2D = ImageSize2D{};
 
     class RHI_EXPORT ImageAttachment : public AttachmentImpl<Image>
     {
+        using Base = AttachmentImpl<Image>;
+
+        Swapchain* m_swapchain;
+
     public:
-        using AttachmentImpl<Image>::AttachmentImpl;
+        ImageAttachment(TL::String name, const Desc& description)
+            : Base(name, description)
+            , m_swapchain(nullptr)
+        {
+        }
+
+        ImageAttachment(TL::String name, Resource resource)
+            : Base(name, resource)
+            , m_swapchain(nullptr)
+        {
+        }
+
+        ImageAttachment(TL::String name, Resource resource, Swapchain& swapchain)
+            : Base(name, resource)
+            , m_swapchain(&swapchain)
+        {
+        }
+
+        Swapchain* GetSwapchain() const
+        {
+            return m_swapchain;
+        }
     };
 
     class RHI_EXPORT BufferAttachment : public AttachmentImpl<Buffer>
     {
+        using Base = AttachmentImpl<Buffer>;
+
     public:
-        using AttachmentImpl<Buffer>::AttachmentImpl;
+        BufferAttachment(TL::String name, const Desc& description)
+            : Base(name, description)
+        {
+        }
+
+        BufferAttachment(TL::String name, Resource resource)
+            : Base(name, resource)
+        {
+        }
     };
 
-    using ImagePassAttachment  = ImageAttachment::AttachmentIt;
-    using BufferPassAttachment = BufferAttachment::AttachmentIt;
+    using ImagePassAttachment  = ImageAttachment::View*;
+    using BufferPassAttachment = BufferAttachment::View*;
 
 } // namespace RHI

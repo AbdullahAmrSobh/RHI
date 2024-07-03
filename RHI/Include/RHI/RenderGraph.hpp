@@ -8,7 +8,8 @@
 #include "RHI/Attachment.hpp"
 #include "RHI/RGPass.hpp"
 
-#pragma warning(disable : 4702) // disable unreachable code warning
+/// @todo: remove graaf as dependency, and write custom graph data structure
+#pragma warning(disable : 4702) // disable unreachable code warning (avoid compilation error with -Werror)
 #include <graaflib/graph.h>
 
 namespace RHI
@@ -17,7 +18,11 @@ namespace RHI
     class Swapchain;
     class CommandList;
     class RenderGraph;
+    class CommandEncoder;
 
+    /// @brief Render Graph is Directed Acyclic Graph (DAG) that represents
+    /// a set of passes, their dependencies, and their resources. It used to
+    /// schedule and synchronize rendering operations
     class RHI_EXPORT RenderGraph final
     {
     public:
@@ -113,19 +118,17 @@ namespace RHI
         /// @param access Access flags.
         void PassUseBuffer(Handle<Pass> pass, Handle<BufferAttachment> attachment, const BufferViewInfo& viewInfo, BufferUsage usage, Flags<ShaderStage> stage, Access access);
 
-        // TODO: Add more overload to facilitate graph declaration. e.g. PassCreateImage, PassCreateBuffer, PassCreateTarget, etc...
-
         /// @brief Retrieves the image from an image attachment.
         ///
         /// @param attachment Handle to the image attachment.
         /// @return Handle to the image.
-        RHI_NODISCARD Handle<Image> PassGetImage(Handle<ImageAttachment> attachment) const;
+        RHI_NODISCARD Handle<Image> GetImage(Handle<ImageAttachment> attachment) const;
 
         /// @brief Retrieves the buffer from a buffer attachment.
         ///
         /// @param attachment Handle to the buffer attachment.
         /// @return Handle to the buffer.
-        RHI_NODISCARD Handle<Buffer> PassGetBuffer(Handle<BufferAttachment> attachment) const;
+        RHI_NODISCARD Handle<Buffer> GetBuffer(Handle<BufferAttachment> attachment) const;
 
         /// @brief Retrieves the image view from a pass and image attachment.
         ///
@@ -146,7 +149,7 @@ namespace RHI
         /// @param pass Handle to the pass.
         /// @param commandList Span of command lists to execute.
         /// @param signalFence Optional fence to signal after execution.
-        void Submit(Handle<Pass> pass, TL::Span<const CommandList*> commandList, Fence* signalFence = nullptr);
+        void Submit(Handle<Pass> pass, const CommandEncoder& encoder, TL::Span<const Handle<CommandList>> commandList, Fence* signalFence = nullptr);
 
     private:
         enum class State
@@ -157,7 +160,7 @@ namespace RHI
             Invalidated,
         };
 
-        using PassAttachment = Handle<Pass>;
+        using PassAttachment   = Handle<Pass>;
         using PassGraphID      = graaf::vertex_id_t;
         using PassDependencyID = graaf::edge_id_t;
         using Graph            = graaf::directed_graph<Handle<Pass>, unsigned>;
@@ -198,6 +201,7 @@ namespace RHI
         void CleanupResourceViews();
 
         /// @brief Executes the render graph
+        ///
         /// @param signalFence Optional fence to signal after execution is complete.
         void Execute(Fence* signalFence);
 
@@ -254,7 +258,7 @@ namespace RHI
 
         // Frame context, encapsulates the current frame state. and handles resource rotation and swaping.
         // All images and buffers are actually owned by the Frame Context.
-        Ptr<FrameContext> m_frameContext;
+        Ptr<RGResourcePool> m_frameContext;
 
         friend class TransientAliasingAllocator;
     };

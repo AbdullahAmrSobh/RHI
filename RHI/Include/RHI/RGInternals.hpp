@@ -40,7 +40,7 @@ namespace RHI
     using RGImageViewID  = Handle<Handle<ImageView>>;
     using RGBufferViewID = Handle<Handle<BufferView>>;
 
-    class FrameContext
+    class RGResourcePool
     {
     public:
         Handle<Image> GetImage(RGImageID id) const;

@@ -77,78 +77,78 @@ namespace RHI
         return ring[index = index % ring.size()];
     }
 
-    Handle<Image> FrameContext::GetImage(RGImageID id) const
+    Handle<Image> RGResourcePool::GetImage(RGImageID id) const
     {
         return *m_images[id];
     }
 
-    Handle<Buffer> FrameContext::GetBuffer(RGBufferID id) const
+    Handle<Buffer> RGResourcePool::GetBuffer(RGBufferID id) const
     {
         return *m_buffers[id];
     }
 
-    Handle<ImageView> FrameContext::GetImageView(RGImageViewID id) const
+    Handle<ImageView> RGResourcePool::GetImageView(RGImageViewID id) const
     {
         return *m_imageViews[id];
     }
 
-    Handle<BufferView> FrameContext::GetBufferView(RGBufferViewID id) const
+    Handle<BufferView> RGResourcePool::GetBufferView(RGBufferViewID id) const
     {
         return *m_bufferViews[id];
     }
 
-    RGImageID FrameContext::AddSwapchain([[maybe_unused]] Swapchain& swapchain)
+    RGImageID RGResourcePool::AddSwapchain([[maybe_unused]] Swapchain& swapchain)
     {
         return {};
     }
 
-    RGImageID FrameContext::AddImage([[maybe_unused]] Handle<Image> image)
+    RGImageID RGResourcePool::AddImage([[maybe_unused]] Handle<Image> image)
     {
         return {};
     }
 
-    RGBufferID FrameContext::AddBuffer([[maybe_unused]] Handle<Buffer> buffer)
+    RGBufferID RGResourcePool::AddBuffer([[maybe_unused]] Handle<Buffer> buffer)
     {
         return {};
     }
 
-    RGImageID FrameContext::CreateImage([[maybe_unused]] Context& context, [[maybe_unused]] const ImageCreateInfo& createInfo)
+    RGImageID RGResourcePool::CreateImage([[maybe_unused]] Context& context, [[maybe_unused]] const ImageCreateInfo& createInfo)
     {
         return {};
     }
 
-    void FrameContext::DestroyImage([[maybe_unused]] Context& context, [[maybe_unused]] RGImageID id)
+    void RGResourcePool::DestroyImage([[maybe_unused]] Context& context, [[maybe_unused]] RGImageID id)
     {
     }
 
-    RGBufferID FrameContext::CreateBuffer([[maybe_unused]] Context& context, [[maybe_unused]] const BufferCreateInfo& createInfo)
-    {
-        return {};
-    }
-
-    void FrameContext::DestroyBuffer([[maybe_unused]] Context& context, [[maybe_unused]] RGBufferID id)
-    {
-    }
-
-    RGImageViewID FrameContext::CreateImageView([[maybe_unused]] Context& context, [[maybe_unused]] const ImageViewCreateInfo& createInfo, [[maybe_unused]] Swapchain* swapchain)
+    RGBufferID RGResourcePool::CreateBuffer([[maybe_unused]] Context& context, [[maybe_unused]] const BufferCreateInfo& createInfo)
     {
         return {};
     }
 
-    void FrameContext::DestroyImageView([[maybe_unused]] Context& context, [[maybe_unused]] RGImageViewID id)
+    void RGResourcePool::DestroyBuffer([[maybe_unused]] Context& context, [[maybe_unused]] RGBufferID id)
     {
     }
 
-    RGBufferViewID FrameContext::CreateBufferView([[maybe_unused]] Context& context, [[maybe_unused]] const BufferViewCreateInfo& createInfo)
+    RGImageViewID RGResourcePool::CreateImageView([[maybe_unused]] Context& context, [[maybe_unused]] const ImageViewCreateInfo& createInfo, [[maybe_unused]] Swapchain* swapchain)
     {
         return {};
     }
 
-    void FrameContext::DestroyBufferView([[maybe_unused]] Context& context, [[maybe_unused]] RGBufferViewID id)
+    void RGResourcePool::DestroyImageView([[maybe_unused]] Context& context, [[maybe_unused]] RGImageViewID id)
     {
     }
 
-    void FrameContext::AdvanceFrame(uint64_t frameIndex)
+    RGBufferViewID RGResourcePool::CreateBufferView([[maybe_unused]] Context& context, [[maybe_unused]] const BufferViewCreateInfo& createInfo)
+    {
+        return {};
+    }
+
+    void RGResourcePool::DestroyBufferView([[maybe_unused]] Context& context, [[maybe_unused]] RGBufferViewID id)
+    {
+    }
+
+    void RGResourcePool::AdvanceFrame(uint64_t frameIndex)
     {
         for (auto [id, ring] : m_imageRingBuffer)
         {
@@ -170,4 +170,4 @@ namespace RHI
             *m_bufferViews[id] = AdvanceQueue(ring, frameIndex);
         }
     }
-} // namespace RHI::RG
+} // namespace RHI

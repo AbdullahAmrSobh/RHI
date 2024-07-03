@@ -1,31 +1,29 @@
 #pragma once
 
 #include "RHI/Resources.hpp"
-#include "RHI/Definition.hpp"
+#include "RHI/Definitions.hpp"
 
 #include "RHI/Common/Span.hpp"
-#include "RHI/Common/Containers.h"
 
 namespace RHI
 {
-    struct GraphicsPipeline;
-    struct ComputePipeline;
-
     class RenderGraph;
     class Pass;
-    class CommandList;
 
-    enum class CommandPoolFlags
+    RHI_DECALRE_OPAQUE_RESOURCE(CommandList);
+
+    enum class CommandFlags
     {
         None      = 0,
         Transient = 0x01,
         Reset     = 0x02,
+        Secondary = 0x08,
     };
 
-    enum class CommandListLevel
+    enum class CommandConditionMode
     {
-        Primary,
-        Secondary,
+        None = 0,
+        Inverted,
     };
 
     struct Viewport
@@ -48,9 +46,9 @@ namespace RHI
 
     struct CommandListBeginInfo
     {
-        RenderGraph*               renderGraph;
-        Handle<Pass>               pass;
-        TL::Span<const ClearValue> clearValues;
+        RenderGraph*                        renderGraph;
+        Handle<Pass>                        pass;
+        TL::Span<const LoadStoreOperations> loadStoreOperations;
     };
 
     struct BufferCopyInfo
@@ -88,28 +86,12 @@ namespace RHI
 
     struct BufferBindingInfo
     {
-        BufferBindingInfo() = default;
-
-        BufferBindingInfo(Handle<Buffer> buffer, size_t offset = 0)
-            : buffer(buffer)
-            , offset(offset)
-        {
-        }
-
         Handle<Buffer> buffer;
         size_t         offset;
     };
 
     struct BindGroupBindingInfo
     {
-        BindGroupBindingInfo() = default;
-
-        BindGroupBindingInfo(Handle<BindGroup> bindGroup, TL::Span<const uint32_t> dynamicOffsets = {})
-            : bindGroup(bindGroup)
-            , dynamicOffsets(dynamicOffsets)
-        {
-        }
-
         Handle<BindGroup>        bindGroup;
         TL::Span<const uint32_t> dynamicOffsets;
     };
@@ -117,26 +99,24 @@ namespace RHI
     struct DrawParameters
     {
         uint32_t elementsCount;
-        uint32_t instanceCount = 1;
-        uint32_t firstElement  = 0;
-        int32_t  vertexOffset  = 0;
-        uint32_t firstInstance = 0;
+        uint32_t instanceCount;
+        uint32_t firstElement;
+        int32_t  vertexOffset;
+        uint32_t firstInstance;
     };
 
     struct DispatchParameters
     {
-        uint32_t offsetX = 0u;
-        uint32_t offsetY = 0u;
-        uint32_t offsetZ = 0u;
-        uint32_t countX  = 32u;
-        uint32_t countY  = 32u;
-        uint32_t countZ  = 32u;
+        uint32_t offsetX;
+        uint32_t offsetY;
+        uint32_t offsetZ;
+        uint32_t countX;
+        uint32_t countY;
+        uint32_t countZ;
     };
 
     struct DrawInfo
     {
-        DrawInfo() = default;
-
         Handle<GraphicsPipeline>             pipelineState;
         TL::Span<const BindGroupBindingInfo> bindGroups;
         TL::Span<const BufferBindingInfo>    vertexBuffers;
@@ -152,85 +132,125 @@ namespace RHI
         DispatchParameters                   parameters;
     };
 
-    class RHI_EXPORT CommandPool
+    /// @brief Interface for encoding various graphics commands
+    ///
+    /// This class defines methods for allocating, recording, and managing graphics commands.
+    class RHI_EXPORT CommandEncoder
     {
     public:
-        CommandPool()                   = default;
-        CommandPool(const CommandPool&) = delete;
-        CommandPool(CommandPool&&)      = delete;
-        virtual ~CommandPool()          = default;
+        /// @brief Virtual destructor to ensure proper cleanup of derived classes
+        ///
+        virtual ~CommandEncoder() = default;
 
-        /// @brief Resets all command lists allocated from this allocator
-        virtual void Reset() = 0;
+        /// @brief Allocates command lists with specified flags
+        ///
+        /// @param flags Flags specifying command list properties
+        /// @param commandLists Span of command list handles to allocate
+        virtual void Allocate(Flags<CommandFlags> flags, RHI_OUT_PARM TL::Span<Handle<CommandList>> commandLists) = 0;
 
-        /// @brief Allocates a new command list object
-        RHI_NODISCARD inline CommandList* Allocate(QueueType queueType, CommandListLevel level)
-        {
-            return Allocate(queueType, level, 1).front();
-        }
+        /// @brief Releases previously allocated command lists
+        ///
+        /// @param commandList Span of command list handles to release
+        virtual void Release(TL::Span<Handle<CommandList>> commandList) = 0;
 
-        /// @brief Allocates a new command list object
-        RHI_NODISCARD virtual TL::Vector<CommandList*> Allocate(QueueType queueType, CommandListLevel level, uint32_t count) = 0;
+        /// @brief Resets list of command lists back to their initial state
+        ///
+        /// @param commandList Span of command list handles to reset
+        virtual void Reset(TL::Span<Handle<CommandList>> commandList) = 0;
 
-        /// @brief Releases a command list object (must be allocated through here)
-        virtual void Release(TL::Span<const CommandList* const> commandLists) = 0;
-    };
+        /// @brief Begins recording commands to a command list
+        ///
+        /// @param commandList Handle to the command list to begin recording
+        virtual void Begin(Handle<CommandList> commandList) = 0;
 
-    /// @brief Command list record a list of GPU commands that are exectued in the same pass.
-    class RHI_EXPORT CommandList
-    {
-    public:
-        CommandList()                         = default;
-        CommandList(const CommandList& other) = delete;
-        CommandList(CommandList&& other)      = default;
-        virtual ~CommandList()                = default;
+        /// @brief Begins recording commands with additional begin information
+        ///
+        /// @param commandList Handle to the command list to begin recording
+        /// @param beginInfo Additional information for beginning command recording
+        virtual void Begin(Handle<CommandList> commandList, const CommandListBeginInfo& beginInfo) = 0;
 
-        /// @brief Marks the begining of this command list recording
-        virtual void Begin() = 0;
+        /// @brief Ends recording commands to a command list
+        ///
+        /// @param commandList Handle to the command list to end recording
+        virtual void End(Handle<CommandList> commandList) = 0;
 
-        /// @brief Marks the begining of this command list recording inside a pass
-        virtual void Begin(const CommandListBeginInfo& beginInfo) = 0;
+        /// @brief Pushes a debug marker with a name and color onto the command list
+        ///
+        /// @param commandList Handle to the command list
+        /// @param name Name of the debug marker
+        /// @param color Color of the debug marker
+        virtual void DebugMarkerPush(Handle<CommandList> commandList, const char* name, ColorValue<float> color) = 0;
 
-        /// @brief Marks the ending of this command list recording
-        virtual void End() = 0;
+        /// @brief Pops the most recently pushed debug marker from the command list
+        ///
+        /// @param commandList Handle to the command list
+        virtual void DebugMarkerPop(Handle<CommandList> commandList) = 0;
 
-        /// @brief Begins a new debug marker region
-        virtual void DebugMarkerPush(const char* name, ColorValue<float> color) = 0;
+        /// @brief Begins a block of conditional commands based on buffer contents
+        ///
+        /// @param commandList Handle to the command list
+        /// @param buffer Handle to the buffer containing the condition
+        /// @param offset Offset into the buffer for the condition
+        /// @param inverted Mode for conditional rendering
+        virtual void BeginConditionalCommands(Handle<CommandList> commandList, Handle<Buffer> buffer, size_t offset, CommandConditionMode inverted) = 0;
 
-        /// @brief Ends the last debug marker region
-        virtual void DebugMarkerPop() = 0;
+        /// @brief Ends the most recently begun conditional commands block
+        ///
+        /// @param commandList Handle to the command list
+        virtual void EndConditionalCommands(Handle<CommandList> commandList) = 0;
 
-        /// @brief Define the beginning of a conditional command list block
-        virtual void BeginConditionalCommands(Handle<Buffer> buffer, size_t offset, bool inverted) = 0;
+        /// @brief Executes a set of command lists within the current command list
+        ///
+        /// @param commandList Handle to the current command list
+        /// @param commandLists Span of command lists to execute
+        virtual void Execute(Handle<CommandList> commandList, TL::Span<const Handle<CommandList>> commandLists) = 0;
 
-        /// @brief Define the ending of a conditional command list block
-        virtual void EndConditionalCommands() = 0;
+        /// @brief Sets the viewport for rendering
+        ///
+        /// @param commandList Handle to the command list
+        /// @param viewport Viewport to set
+        virtual void SetViewport(Handle<CommandList> commandList, const Viewport& viewport) = 0;
 
-        /// @brief Execute a secondary command list from a primary command list
-        virtual void Execute(TL::Span<const CommandList*> commandLists) = 0;
+        /// @brief Sets the scissor rectangle for rendering
+        ///
+        /// @param commandList Handle to the command list
+        /// @param scissor Scissor rectangle to set
+        virtual void SetScissor(Handle<CommandList> commandList, const Scissor& scissor) = 0;
 
-        /// @brief Sets the rendering viewport
-        virtual void SetViewport(const Viewport& viewport) = 0;
+        /// @brief Adds a draw command to the command list
+        ///
+        /// @param commandList Handle to the command list
+        /// @param drawInfo Information for the draw command
+        virtual void Draw(Handle<CommandList> commandList, const DrawInfo& drawInfo) = 0;
 
-        /// @brief Sets the rendering scissor
-        virtual void SetSicssor(const Scissor& sicssor) = 0;
+        /// @brief Adds a compute dispatch command to the command list
+        ///
+        /// @param commandList Handle to the command list
+        /// @param dispatchInfo Information for the dispatch command
+        virtual void Dispatch(Handle<CommandList> commandList, const DispatchInfo& dispatchInfo) = 0;
 
-        /// @brief Submit a draw command
-        virtual void Draw(const DrawInfo& drawInfo) = 0;
+        /// @brief Copies data between buffers
+        ///
+        /// @param commandList Handle to the command list
+        /// @param copyInfo Information for the buffer copy operation
+        virtual void CopyBuffer(Handle<CommandList> commandList, const BufferCopyInfo& copyInfo) = 0;
 
-        /// @brief Submit a compute command
-        virtual void Dispatch(const DispatchInfo& dispatchInfo) = 0;
+        /// @brief Copies data between images
+        ///
+        /// @param commandList Handle to the command list
+        /// @param copyInfo Information for the image copy operation
+        virtual void CopyImage(Handle<CommandList> commandList, const ImageCopyInfo& copyInfo) = 0;
 
-        /// @brief Submit a buffer copy command
-        virtual void CopyBuffer(const BufferCopyInfo& copyInfo) = 0;
+        /// @brief Copies data from an image to a buffer
+        ///
+        /// @param commandList Handle to the command list
+        /// @param copyInfo Information for the image-to-buffer copy operation
+        virtual void CopyImageToBuffer(Handle<CommandList> commandList, const BufferImageCopyInfo& copyInfo) = 0;
 
-        /// @brief Submit a image copy command
-        virtual void CopyImage(const ImageCopyInfo& copyInfo) = 0;
-
-        /// @brief Submit a buffer to image copy command
-        virtual void CopyImageToBuffer(const BufferImageCopyInfo& copyInfo) = 0;
-
-        /// @brief Submit a image to buffer copy command
-        virtual void CopyBufferToImage(const BufferImageCopyInfo& copyInfo) = 0;
+        /// @brief Copies data from a buffer to an image
+        ///
+        /// @param commandList Handle to the command list
+        /// @param copyInfo Information for the buffer-to-image copy operation
+        virtual void CopyBufferToImage(Handle<CommandList> commandList, const BufferImageCopyInfo& copyInfo) = 0;
     };
 } // namespace RHI

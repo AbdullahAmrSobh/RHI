@@ -2,10 +2,6 @@
 
 #include <RHI-Vulkan/Loader.hpp>
 
-#define GLFW_EXPOSE_NATIVE_WIN32
-#include <GLFW/glfw3.h>
-#include <GLFW/glfw3native.h>
-
 #undef LoadImage
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -39,81 +35,76 @@ public:
 };
 
 ApplicationBase::ApplicationBase(std::string name, uint32_t width, uint32_t height)
-    : m_windowWidth(width)
-    , m_windowHeight(height)
-    , m_imguiRenderer(RHI::CreatePtr<ImGuiRenderer>())
 {
     auto result = glfwInit();
     assert(result);
 
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-
-    auto window = glfwCreateWindow(int(m_windowWidth), int(m_windowHeight), name.c_str(), nullptr, nullptr);
+    auto window = Window::Create(name.c_str(), width, height);
     assert(window);
 
-    glfwMakeContextCurrent(window);
+    // m_window = window;
 
-    m_window = window;
-
-    m_camera.SetPerspective(60.0f, float(m_windowWidth) / float(m_windowHeight), 0.1f, 10000.0f);
+    m_camera.SetPerspective(60.0f, float(m_window->GetWidth()) / float(m_window->GetHeight()), 0.1f, 10000.0f);
     m_camera.SetMovementSpeed(1.0);
     m_camera.SetRotationSpeed(0.5);
-
-    RHI::ApplicationInfo appInfo{};
-    appInfo.applicationName = "RHI-App";
-    appInfo.applicationVersion = { 0, 1, 0 };
-    auto debugCallbacks = RHI::CreatePtr<DebugCallbacks>();
-    m_context = RHI::CreateVulkanContext(appInfo, std::move(debugCallbacks));
 }
 
 void ApplicationBase::Init()
 {
     ZoneScoped;
 
+    // Create RHI context
+    RHI::ApplicationInfo appInfo{
+        .applicationName = "RHI-App",
+        .applicationVersion = { 0, 1, 0 },
+        .engineName = "RHI-Engine",
+        .engineVersion = { 0, 1, 0 },
+    };
+    m_context = RHI::CreateVulkanContext(appInfo, RHI::CreatePtr<DebugCallbacks>());
+
     // create swapchain
-    RHI::SwapchainCreateInfo createInfo{};
-    createInfo.win32Window.hwnd = glfwGetWin32Window(static_cast<GLFWwindow*>(m_window));
-    createInfo.win32Window.hinstance = NULL;
-    createInfo.imageSize.width = m_windowWidth;
-    createInfo.imageSize.height = m_windowHeight;
-    createInfo.imageUsage = RHI::ImageUsage::Color;
-    createInfo.imageUsage |= RHI::ImageUsage::ShaderResource;
-    createInfo.imageFormat = RHI::Format::BGRA8_UNORM;
-    createInfo.imageCount = 3;
-
+    auto size = m_window->GetSize();
+    RHI::SwapchainCreateInfo createInfo{
+        .name = "Swapchain",
+        .imageSize = { size.width, size.height },
+        .imageUsage = RHI::ImageUsage::Color,
+        .imageFormat = RHI::Format::BGRA8_UNORM,
+        .imageCount = 2,
+        .presentMode = RHI::SwapchainPresentMode::Fifo,
+        .win32Window = {
+            .hwnd = m_window->GetNativeWindow(),
+            .hinstance = NULL,
+        }
+    };
     m_swapchain = m_context->CreateSwapchain(createInfo);
-
-    m_commandPool[0] = m_context->CreateCommandPool(RHI::CommandPoolFlags::Reset);
-    m_commandPool[1] = m_context->CreateCommandPool(RHI::CommandPoolFlags::Reset);
 
     OnInit();
 
-    ImGuiRendererCreateInfo imguiRendererCreateInfo{};
-    imguiRendererCreateInfo.context = m_context.get();
-    imguiRendererCreateInfo.shaderBlob = ReadBinaryFile("./Shaders/ImGui.spv");
-    imguiRendererCreateInfo.commandAllocator = m_commandPool[0].get();
-    m_imguiRenderer->Init(imguiRendererCreateInfo);
+    // ImGuiRendererCreateInfo imguiRendererCreateInfo{};
+    // imguiRendererCreateInfo.context = m_context.get();
+    // imguiRendererCreateInfo.shaderBlob = ReadBinaryFile("./Shaders/ImGui.spv");
+    // m_imguiRenderer->Init(imguiRendererCreateInfo);
 
-    ImGuiIO& io = ImGui::GetIO();
-    io.DisplaySize.x = float(m_windowWidth);
-    io.DisplaySize.y = float(m_windowHeight);
+    // ImGuiIO& io = ImGui::GetIO();
+    // io.DisplaySize.x = float(m_window->GetWidth());
+    // io.DisplaySize.y = float(m_window->GetHeight());
 
-    m_imguiRenderer->m_window = (GLFWwindow*)m_window;
-    glfwSetWindowUserPointer((GLFWwindow*)m_window, m_imguiRenderer.get());
-    m_imguiRenderer->InstallGlfwCallbacks((GLFWwindow*)m_window);
+    // m_imguiRenderer->m_window = (GLFWwindow*)m_window;
+    // glfwSetWindowUserPointer((GLFWwindow*)m_window, m_imguiRenderer.get());
+    // m_imguiRenderer->InstallGlfwCallbacks((GLFWwindow*)m_window);
 }
 
 void ApplicationBase::Shutdown()
 {
     ZoneScoped;
-    m_imguiRenderer->Shutdown();
+    // m_imguiRenderer->Shutdown();
     OnShutdown();
     glfwTerminate();
 }
 
 void ApplicationBase::Run()
 {
-    GLFWwindow* window = reinterpret_cast<GLFWwindow*>(m_window);
+    GLFWwindow* window = (GLFWwindow*)(m_window->GetGLFWHandle());
 
     auto currentTime = std::chrono::high_resolution_clock::now().time_since_epoch();
 
@@ -161,8 +152,7 @@ void ApplicationBase::Run()
 
 void ApplicationBase::ProcessInput()
 {
-    GLFWwindow* window = reinterpret_cast<GLFWwindow*>(m_window);
-
+    GLFWwindow* window = (GLFWwindow*)(m_window->GetGLFWHandle());
     m_camera.keys.up = glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS;
     m_camera.keys.down = glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS;
     m_camera.keys.right = glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS;

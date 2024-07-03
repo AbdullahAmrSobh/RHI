@@ -6,11 +6,12 @@
 
 namespace RHI
 {
-
     enum class RHI_NODISCARD ResultCode
     {
         Success,
-        ErrorUnkown,
+        SwapchainOutOfDate,
+        SwapchainSurfaceLost,
+        ErrorUnknown,
         ErrorOutOfMemory,
         ErrorDeviceOutOfMemory,
         ErrorAllocationFailed,
@@ -61,5 +62,4 @@ namespace RHI
             return std::move(value);
         }
     };
-
 } // namespace RHI

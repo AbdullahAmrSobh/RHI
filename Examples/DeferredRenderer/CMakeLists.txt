@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.14)
 
 set(SOURCE_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/Triangle.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/DeferredRenderer.cpp
 )
 
 set(SHADER_FILES
@@ -11,7 +11,7 @@ set(SHADER_FILES
 
 include(${CMAKE_SOURCE_DIR}/CMake/add-target.cmake)
 aams_add_target(
-    NAME Triangle
+    NAME DeferredRenderer
     NAMESPACE Examples
     EXECUTABLE
     SOURCES ${SOURCE_FILES}
@@ -34,9 +34,8 @@ compile_slang_shaders(
         ${CMAKE_CURRENT_BINARY_DIR}/Shaders
 )
 
-
-add_custom_command(TARGET Triangle POST_BUILD
+add_custom_command(TARGET DeferredRenderer POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
         "${CMAKE_SOURCE_DIR}/Examples/Dependencies/assimp/Bin/assimp-vc143-mtd.dll"
-        $<TARGET_FILE_DIR:Triangle>
+        $<TARGET_FILE_DIR:DeferredRenderer>
 )
