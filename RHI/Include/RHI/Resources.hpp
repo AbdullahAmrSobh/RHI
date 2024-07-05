@@ -319,50 +319,53 @@ namespace RHI
 
     struct ComponentMapping
     {
-        ComponentMapping() = default;
-
-        ComponentSwizzle r = ComponentSwizzle::R;
-        ComponentSwizzle g = ComponentSwizzle::G;
-        ComponentSwizzle b = ComponentSwizzle::B;
-        ComponentSwizzle a = ComponentSwizzle::A;
+        ComponentSwizzle r;
+        ComponentSwizzle g;
+        ComponentSwizzle b;
+        ComponentSwizzle a;
 
         inline bool operator==(const ComponentMapping& other) const { return r == other.r && g == other.g && b == other.b && a == other.a; }
     };
 
     struct ImageSubresource
     {
-        ImageSubresource() = default;
-
-        Flags<ImageAspect> imageAspects = ImageAspect::All;
-        uint32_t           mipLevel     = 0;
-        uint32_t           arrayLayer   = 0;
+        Flags<ImageAspect> imageAspects;
+        uint32_t           mipLevel;
+        uint32_t           arrayLayer;
 
         inline bool operator==(const ImageSubresource& other) const { return imageAspects == other.imageAspects && mipLevel == other.mipLevel && arrayLayer == other.arrayLayer; }
     };
 
     struct ImageSubresourceLayers
     {
-        ImageSubresourceLayers() = default;
-
-        Flags<ImageAspect> imageAspects = ImageAspect::All;
-        uint32_t           mipLevel     = 0;
-        uint32_t           arrayBase    = 0;
-        uint32_t           arrayCount   = 1;
+        Flags<ImageAspect> imageAspects;
+        uint32_t           mipLevel;
+        uint32_t           arrayBase;
+        uint32_t           arrayCount;
 
         inline bool operator==(const ImageSubresourceLayers& other) const { return imageAspects == other.imageAspects && mipLevel == other.mipLevel && arrayBase == other.arrayBase && arrayCount == other.arrayCount; }
     };
 
     struct ImageSubresourceRange
     {
-        ImageSubresourceRange() = default;
-
-        Flags<ImageAspect> imageAspects  = ImageAspect::All;
-        uint32_t           mipBase       = 0;
-        uint32_t           mipLevelCount = 1;
-        uint32_t           arrayBase     = 0;
-        uint32_t           arrayCount    = 1;
+        Flags<ImageAspect> imageAspects;
+        uint32_t           mipBase;
+        uint32_t           mipLevelCount;
+        uint32_t           arrayBase;
+        uint32_t           arrayCount;
 
         inline bool operator==(const ImageSubresourceRange& other) const { return imageAspects == other.imageAspects && mipBase == other.mipBase && mipLevelCount == other.mipLevelCount && arrayBase == other.arrayBase && arrayCount == other.arrayCount; }
+    };
+
+    struct BufferSubregion
+    {
+        size_t offset;
+        size_t size;
+
+        inline bool operator==(const BufferSubregion& other) const
+        {
+            return size == other.size && offset == other.offset;
+        }
     };
 
     struct ShaderBinding
@@ -460,23 +463,23 @@ namespace RHI
 
     struct ColorAttachmentBlendStateDesc
     {
-        bool                  blendEnable  = false;
-        BlendEquation         colorBlendOp = BlendEquation::Add;
-        BlendFactor           srcColor     = BlendFactor::One;
-        BlendFactor           dstColor     = BlendFactor::Zero;
-        BlendEquation         alphaBlendOp = BlendEquation::Add;
-        BlendFactor           srcAlpha     = BlendFactor::One;
-        BlendFactor           dstAlpha     = BlendFactor::Zero;
-        Flags<ColorWriteMask> writeMask    = ColorWriteMask::All;
+        bool                  blendEnable;
+        BlendEquation         colorBlendOp;
+        BlendFactor           srcColor;
+        BlendFactor           dstColor;
+        BlendEquation         alphaBlendOp;
+        BlendFactor           srcAlpha;
+        BlendFactor           dstAlpha;
+        Flags<ColorWriteMask> writeMask;
 
         inline bool operator==(const ColorAttachmentBlendStateDesc& other) const { return blendEnable == other.blendEnable && colorBlendOp == other.colorBlendOp && srcColor == other.srcColor && dstColor == other.dstColor && alphaBlendOp == other.alphaBlendOp && srcAlpha == other.srcAlpha && dstAlpha == other.dstAlpha; }
     };
 
     struct PipelineRenderTargetLayout
     {
-        Format colorAttachmentsFormats[c_MaxRenderTargetAttachmentsCount] = { Format::BGRA8_UNORM };
-        Format depthAttachmentFormat                                      = Format::Unknown;
-        Format stencilAttachmentFormat                                    = Format::Unknown;
+        Format colorAttachmentsFormats[c_MaxRenderTargetAttachmentsCount];
+        Format depthAttachmentFormat;
+        Format stencilAttachmentFormat;
     };
 
     struct PipelineVertexBindingDesc
@@ -502,10 +505,10 @@ namespace RHI
 
     struct PipelineRasterizerStateDesc
     {
-        PipelineRasterizerStateCullMode  cullMode  = PipelineRasterizerStateCullMode::BackFace;
-        PipelineRasterizerStateFillMode  fillMode  = PipelineRasterizerStateFillMode::Triangle;
-        PipelineRasterizerStateFrontFace frontFace = PipelineRasterizerStateFrontFace::CounterClockwise;
-        float                            lineWidth = 1.0f;
+        PipelineRasterizerStateCullMode  cullMode;
+        PipelineRasterizerStateFillMode  fillMode;
+        PipelineRasterizerStateFrontFace frontFace;
+        float                            lineWidth;
     };
 
     struct PipelineMultisampleStateDesc
@@ -516,10 +519,10 @@ namespace RHI
 
     struct PipelineDepthStencilStateDesc
     {
-        bool            depthTestEnable   = false;
-        bool            depthWriteEnable  = false;
-        CompareOperator compareOperator   = CompareOperator::Always;
-        bool            stencilTestEnable = false;
+        bool            depthTestEnable;
+        bool            depthWriteEnable;
+        CompareOperator compareOperator;
+        bool            stencilTestEnable;
     };
 
     struct PipelineColorBlendStateDesc
@@ -530,21 +533,21 @@ namespace RHI
 
     struct ImageCreateInfo
     {
-        const char*       name = nullptr;
+        const char*       name;
         Flags<ImageUsage> usageFlags;
         ImageType         type;
         ImageSize3D       size;
         Format            format;
-        SampleCount       sampleCount = SampleCount::Samples1;
-        uint32_t          mipLevels   = 1;
-        uint32_t          arrayCount  = 1;
+        SampleCount       sampleCount;
+        uint32_t          mipLevels;
+        uint32_t          arrayCount;
 
         inline bool operator==(const ImageCreateInfo& other) const { return usageFlags == other.usageFlags && type == other.type && size == other.size && format == other.format && mipLevels == other.mipLevels && arrayCount == other.arrayCount; }
     };
 
     struct BufferCreateInfo
     {
-        const char*        name = nullptr;
+        const char*        name;
         MemoryType         heapType;
         Flags<BufferUsage> usageFlags;
         size_t             byteSize;
@@ -554,38 +557,28 @@ namespace RHI
 
     struct ImageViewCreateInfo
     {
-        ImageViewCreateInfo() = default;
-
-        inline ImageViewCreateInfo(RHI::ImageAspect aspect)
-            : components{}
-            , subresource{}
-        {
-            subresource.imageAspects = aspect;
-        }
-
-        const char*           name = nullptr;
+        const char*           name;
         Handle<Image>         image;
         ImageViewType         viewType;
         ComponentMapping      components;
         ImageSubresourceRange subresource;
 
-        inline bool operator==(const ImageViewCreateInfo& other) const { return components == other.components && subresource == other.subresource; }
+        inline bool operator==(const ImageViewCreateInfo& other) const { return components == other.components && viewType == other.viewType && subresource == other.subresource; }
     };
 
     struct BufferViewCreateInfo
     {
-        const char*    name;
-        Handle<Buffer> buffer;
-        Format         format;
-        size_t         byteOffset;
-        size_t         byteSize;
+        const char*     name;
+        Handle<Buffer>  buffer;
+        Format          format;
+        BufferSubregion subregion;
 
-        inline bool operator==(const BufferViewCreateInfo& other) const { return byteOffset == other.byteOffset && byteSize == other.byteSize && format == other.format; }
+        inline bool operator==(const BufferViewCreateInfo& other) const { return format == other.format && subregion == other.subregion; }
     };
 
     struct GraphicsPipelineCreateInfo
     {
-        const char*                     name = nullptr;
+        const char*                     name;
         const char*                     vertexShaderName;
         ShaderModule*                   vertexShaderModule;
         const char*                     pixelShaderName;
@@ -593,16 +586,16 @@ namespace RHI
         Handle<PipelineLayout>          layout;
         PipelineInputAssemblerStateDesc inputAssemblerState;
         PipelineRenderTargetLayout      renderTargetLayout;
-        PipelineColorBlendStateDesc     colorBlendState    = PipelineColorBlendStateDesc{};
-        PipelineTopologyMode            topologyMode       = PipelineTopologyMode::Triangles;
-        PipelineRasterizerStateDesc     rasterizationState = PipelineRasterizerStateDesc{};
-        PipelineMultisampleStateDesc    multisampleState   = PipelineMultisampleStateDesc{};
-        PipelineDepthStencilStateDesc   depthStencilState  = PipelineDepthStencilStateDesc{};
+        PipelineColorBlendStateDesc     colorBlendState;
+        PipelineTopologyMode            topologyMode;
+        PipelineRasterizerStateDesc     rasterizationState;
+        PipelineMultisampleStateDesc    multisampleState;
+        PipelineDepthStencilStateDesc   depthStencilState;
     };
 
     struct ComputePipelineCreateInfo
     {
-        const char*            name = nullptr;
+        const char*            name;
         const char*            shaderName;
         ShaderModule*          shaderModule;
         Handle<PipelineLayout> layout;
@@ -610,26 +603,17 @@ namespace RHI
 
     struct SamplerCreateInfo
     {
-        SamplerCreateInfo() = default;
-
-        SamplerCreateInfo(SamplerFilter           filter,
-                          SamplerAddressMode      addressMode,
-                          SamplerCompareOperation compare    = SamplerCompareOperation::Always,
-                          float                   mipLodBias = 0.0f,
-                          float                   minLod     = 0.0f,
-                          float                   maxLod     = 1.0f);
-
-        const char*             name       = nullptr;
-        SamplerFilter           filterMin  = SamplerFilter::Point;
-        SamplerFilter           filterMag  = SamplerFilter::Point;
-        SamplerFilter           filterMip  = SamplerFilter::Point;
-        SamplerCompareOperation compare    = SamplerCompareOperation::Always;
-        float                   mipLodBias = 0.0f;
-        SamplerAddressMode      addressU   = SamplerAddressMode::Clamp;
-        SamplerAddressMode      addressV   = SamplerAddressMode::Clamp;
-        SamplerAddressMode      addressW   = SamplerAddressMode::Clamp;
-        float                   minLod     = 0.0f;
-        float                   maxLod     = 1.0f;
+        const char*             name;
+        SamplerFilter           filterMin;
+        SamplerFilter           filterMag;
+        SamplerFilter           filterMip;
+        SamplerCompareOperation compare;
+        float                   mipLodBias;
+        SamplerAddressMode      addressU;
+        SamplerAddressMode      addressV;
+        SamplerAddressMode      addressW;
+        float                   minLod;
+        float                   maxLod;
 
         inline bool operator==(const SamplerCreateInfo& other) const { return filterMin == other.filterMin && filterMag == other.filterMag && filterMip == other.filterMip && compare == other.compare && mipLodBias == other.mipLodBias && addressU == other.addressU && addressV == other.addressV && addressW == other.addressW && minLod == other.minLod && maxLod == other.maxLod; }
     };
@@ -679,28 +663,6 @@ namespace RHI
         virtual bool WaitInternal(uint64_t timeout) = 0;
     };
 
-} // namespace RHI
-
-namespace RHI
-{
-    inline SamplerCreateInfo::SamplerCreateInfo(SamplerFilter           filter,
-                                                SamplerAddressMode      addressMode,
-                                                SamplerCompareOperation compare,
-                                                float                   mipLodBias,
-                                                float                   minLod,
-                                                float                   maxLod)
-        : filterMin(filter)
-        , filterMag(filter)
-        , filterMip(filter)
-        , compare(compare)
-        , mipLodBias(mipLodBias)
-        , addressU(addressMode)
-        , addressV(addressMode)
-        , addressW(addressMode)
-        , minLod(minLod)
-        , maxLod(maxLod)
-    {
-    }
 } // namespace RHI
 
 namespace std
