@@ -10,8 +10,6 @@
 
 #include <imgui.h>
 
-inline static constexpr const char* DEFAULT_SCENE_PATH = "C:/Users/abdul/Desktop/Main.1_Sponza/NewSponza_Main_glTF_002.gltf";
-
 namespace Examples
 {
     class BasicRenderer final : public ApplicationBase
@@ -55,7 +53,7 @@ namespace Examples
             m_camera->SetPerspective(60.0f, float(m_window->GetWindowSize().width) / float(m_window->GetWindowSize().height), 0.1f, 10000.0f);
             m_camera->SetRotationSpeed(0.0002f);
 
-            m_scene = RHI::CreatePtr<Scene>(m_context.get(), DEFAULT_SCENE_PATH);
+            m_scene = RHI::CreatePtr<Scene>(m_context.get(), m_launchSettings.sceneFileLocation.c_str());
 
             m_commandPool[0] = m_context->CreateCommandPool(RHI::CommandPoolFlags::Reset);
             m_commandPool[1] = m_context->CreateCommandPool(RHI::CommandPoolFlags::Reset);

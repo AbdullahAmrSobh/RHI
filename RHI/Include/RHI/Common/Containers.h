@@ -22,8 +22,8 @@ namespace RHI::TL
     template<typename Key, typename Value>
     using Map = std::map<Key, Value, DefaultAllocator<std::pair<Key, Value>>>;
 
-    template<typename T>
-    using UnorderedSet = std::unordered_set<T, DefaultAllocator<T>>;
+    template<typename Key, typename Hasher = std::hash<Key>, typename KeyEq = std::equal_to<Key>>
+    using UnorderedSet = std::unordered_set<Key, Hasher, KeyEq, DefaultAllocator<Key>>;
 
     template<typename T>
     using Set = std::set<T, DefaultAllocator<T>>;

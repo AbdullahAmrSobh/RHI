@@ -42,6 +42,7 @@ Scene::Scene(RHI::Context* pContext, const char* scenePath)
 
     Assimp::Importer importer;
     const aiScene* scene = importer.ReadFile(scenePath, aiProcess_Triangulate | aiProcess_GenSmoothNormals);
+    RHI_ASSERT(scene);
 
     TL::UnorderedMap<uint32_t, RHI::Handle<Material>> materialLookup;
     TL::UnorderedMap<uint32_t, RHI::Handle<StaticMesh>> staticMeshLookup;

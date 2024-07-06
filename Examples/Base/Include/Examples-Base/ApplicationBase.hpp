@@ -4,6 +4,7 @@
 #include <Examples-Base/Timestep.hpp>
 #include <Examples-Base/Common.hpp>
 #include <Examples-Base/Window.hpp>
+#include <Examples-Base/CommandLine.hpp>
 
 #include <RHI/RHI.hpp>
 
@@ -20,6 +21,8 @@ namespace Examples
 
         template<typename ExampleType>
         friend int Entry(TL::Span<const char*> args);
+
+        CommandLine::LaunchSettings m_launchSettings;
 
     private:
         static ApplicationBase& Get();
@@ -52,23 +55,24 @@ namespace Examples
         bool m_isRunning;
     };
 
-    template<typename ExampleType>
-    inline int Entry([[maybe_unused]] TL::Span<const char*> args)
+    template<typename AppType>
+    inline int Entry(TL::Span<const char*> args)
     {
-        auto example = ExampleType();
+        auto app = AppType();
+        app.m_launchSettings = CommandLine::Parse({args.begin() + 1, args.end()});
 
         {
             ZoneScopedN("Init time");
-            example.Init();
+            app.Init();
         }
 
         {
-            example.Run();
+            app.Run();
         }
 
         {
             ZoneScopedN("Shutdown time");
-            example.Shutdown();
+            app.Shutdown();
         }
 
         return 0;
