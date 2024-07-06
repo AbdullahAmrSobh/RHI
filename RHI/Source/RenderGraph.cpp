@@ -209,6 +209,8 @@ namespace RHI
             info.image = GetImage(attachmentHandle);
             info.components = attachment->useInfo.componentMapping;
             info.subresource = attachment->useInfo.subresourceRange;
+            info.viewType = ImageViewType::View2D;
+            info.subresource.imageAspects = ImageAspect::Color;
             return swapchain->GetImageView(info);
         }
         return attachment->view;

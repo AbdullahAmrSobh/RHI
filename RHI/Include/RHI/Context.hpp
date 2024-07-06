@@ -164,9 +164,9 @@ namespace RHI
 
         void Shutdown();
 
-        void DebugLogError(std::string_view message);
-        void DebugLogWarn(std::string_view message);
-        void DebugLogInfo(std::string_view message);
+        void DebugLogError(std::string_view message) const;
+        void DebugLogWarn(std::string_view message) const;
+        void DebugLogInfo(std::string_view message) const;
 
         // clang-format off
         virtual Ptr<Swapchain>           Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo) = 0;
@@ -207,7 +207,7 @@ namespace RHI
         Ptr<Limits> m_limits;
 
     private:
-        Ptr<DebugCallbacks> m_debugCallbacks;
+        mutable Ptr<DebugCallbacks> m_debugCallbacks;
 
         TL::Vector<Handle<Buffer>> m_stagingBuffers;
     };
@@ -222,7 +222,12 @@ namespace RHI
 
         auto stagingBuffer = context.AllocateTempBuffer(content.size_bytes());
         memcpy(stagingBuffer.ptr, content.data(), content.size_bytes());
-        context.StageResourceWrite(handle, {}, stagingBuffer.buffer, stagingBuffer.offset);
+
+        ImageSubresourceLayers subresources {};
+        subresources.imageAspects = ImageAspect::Color; // todo: this should be deduced from the format
+        subresources.arrayCount = createInfo.arrayCount;
+        subresources.mipLevel = createInfo.mipLevels;
+        context.StageResourceWrite(handle, subresources, stagingBuffer.buffer, stagingBuffer.offset);
 
         return handle;
     }

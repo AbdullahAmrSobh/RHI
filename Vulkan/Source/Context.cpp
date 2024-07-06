@@ -640,6 +640,8 @@ namespace RHI::Vulkan
 
     void IContext ::Internal_StageResourceWrite(Handle<Image> imageHandle, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset)
     {
+        (void)subresources;
+
         auto image = m_imageOwner.Get(imageHandle);
         image->waitSemaphore = CreateSemaphore("ImageWriteSemaphore");
 
@@ -655,15 +657,18 @@ namespace RHI::Vulkan
         barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         barrier.image = image->handle;
-        barrier.subresourceRange.aspectMask = FormatToAspect(image->format);
-        barrier.subresourceRange.baseMipLevel = subresources.mipLevel;
+        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        barrier.subresourceRange.baseMipLevel = 0;
         barrier.subresourceRange.levelCount = 1;
-        barrier.subresourceRange.baseArrayLayer = subresources.arrayBase;
-        barrier.subresourceRange.layerCount = subresources.arrayCount;
+        barrier.subresourceRange.baseArrayLayer = 0;
+        barrier.subresourceRange.layerCount = 1;
 
         BufferImageCopyInfo copyInfo{};
         copyInfo.image = imageHandle;
-        copyInfo.subresource = subresources;
+        copyInfo.subresource.imageAspects = ImageAspect::Color;
+        copyInfo.subresource.arrayBase = 0;
+        copyInfo.subresource.arrayCount = 1;
+        copyInfo.subresource.mipLevel = 0;
         copyInfo.buffer = buffer;
         copyInfo.bufferOffset = bufferOffset;
         copyInfo.imageSize.width = image->extent.width;

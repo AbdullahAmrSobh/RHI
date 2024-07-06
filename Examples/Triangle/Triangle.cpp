@@ -8,6 +8,30 @@
 
 inline static constexpr const char* DEFAULT_SCENE_PATH = "C:/Users/abdul/Desktop/Main.1_Sponza/NewSponza_Main_glTF_002.gltf";
 
+// inline static RHI::Handle<RHI::ImageAttachment> CreateImageAttachment(RHI::RenderGraph& renderGraph, Handle<RHI::Pass> pass, const char* name, RHI::ImageSize2D size, RHI::Format format)
+// {
+//     RHI::ImageCreateInfo imageCI{};
+//     imageCI.name = name;
+//     imageCI.format = format;
+//     imageCI.usageFlags = RHI::ImageUsage::DepthStencil;
+//     imageCI.type = RHI::ImageType::Image2D;
+//     imageCI.size = { size.width, size.height, 1 };
+//     imageCI.sampleCount = RHI::SampleCount::Samples1;
+//     imageCI.mipLevels = 1;
+//     imageCI.arrayCount = 1;
+//     auto attachment = renderGraph.CreateImage(imageCI);
+
+//     RHI::ImageAttachmentUseInfo attachmentUseInfo{};
+//     attachmentUseInfo.usage = RHI::ImageUsage::Color;
+//     attachmentUseInfo.loadStoreOperations.loadOperation = RHI::LoadOperation::Discard;
+//     attachmentUseInfo.loadStoreOperations.storeOperation = RHI::StoreOperation::Store;
+//     attachmentUseInfo.clearValue = { 0.0f, 0.2f, 0.3f, 1.0f };
+//     attachmentUseInfo.subresourceRange.arrayCount = 1;
+//     attachmentUseInfo.subresourceRange.mipLevelCount = 1;
+//     renderGraph.UseImage(pass, attachment, attachmentUseInfo);
+//     return attachment;
+// }
+
 class BasicRenderer final : public ApplicationBase
 {
 public:
@@ -32,30 +56,37 @@ public:
 
         auto outputAttachment = m_renderGraph->ImportSwapchain("color-attachment", *m_swapchain);
 
-        RHI::ImageCreateInfo imageCreateInfo{};
-        imageCreateInfo.name = "depth-attachment";
-        imageCreateInfo.format = RHI::Format::D32;
-        imageCreateInfo.usageFlags = RHI::ImageUsage::DepthStencil;
-        imageCreateInfo.type = RHI::ImageType::Image2D;
-        imageCreateInfo.size.width = m_windowWidth;
-        imageCreateInfo.size.height = m_windowHeight;
-        imageCreateInfo.size.depth = 1;
-        auto depthAttachment = m_renderGraph->CreateImage(imageCreateInfo);
-        imageCreateInfo.name = "test-attachment";
-        imageCreateInfo.format = RHI::Format::RGBA32_FLOAT;
-        imageCreateInfo.usageFlags = RHI::ImageUsage::Color;
-        auto imageAttachment = m_renderGraph->CreateImage(imageCreateInfo);
+        RHI::ImageCreateInfo imageCI{};
+        imageCI.name = "depth-attachment";
+        imageCI.format = RHI::Format::D32;
+        imageCI.usageFlags = RHI::ImageUsage::DepthStencil;
+        imageCI.type = RHI::ImageType::Image2D;
+        imageCI.size = { m_windowWidth, m_windowHeight, 1 };
+        imageCI.sampleCount = RHI::SampleCount::Samples1;
+        imageCI.mipLevels = 1;
+        imageCI.arrayCount = 1;
+
+        auto depthAttachment = m_renderGraph->CreateImage(imageCI);
+        imageCI.name = "test-attachment";
+        imageCI.format = RHI::Format::RGBA32_FLOAT;
+        imageCI.usageFlags = RHI::ImageUsage::Color;
+        auto imageAttachment = m_renderGraph->CreateImage(imageCI);
 
         RHI::ImageAttachmentUseInfo attachmentUseInfo{};
         attachmentUseInfo.usage = RHI::ImageUsage::Color;
         attachmentUseInfo.loadStoreOperations.loadOperation = RHI::LoadOperation::Discard;
         attachmentUseInfo.loadStoreOperations.storeOperation = RHI::StoreOperation::Store;
         attachmentUseInfo.clearValue = { 0.0f, 0.2f, 0.3f, 1.0f };
+        attachmentUseInfo.subresourceRange.arrayCount = 1;
+        attachmentUseInfo.subresourceRange.mipLevelCount = 1;
+        attachmentUseInfo.subresourceRange.imageAspects = RHI::ImageAspect::All;
         m_renderGraph->UseImage(m_renderPass, outputAttachment, attachmentUseInfo);
+
         attachmentUseInfo.subresourceRange.imageAspects = RHI::ImageAspect::Depth;
         attachmentUseInfo.usage = RHI::ImageUsage::Depth;
         attachmentUseInfo.clearValue.depthStencil.depthValue = 1.0f;
         m_renderGraph->UseImage(m_renderPass, depthAttachment, attachmentUseInfo);
+
         attachmentUseInfo.subresourceRange.imageAspects = RHI::ImageAspect::Color;
         attachmentUseInfo.usage = RHI::ImageUsage::Color;
         attachmentUseInfo.clearValue = {};
@@ -225,19 +256,58 @@ private:
         auto shaderModule = m_context->CreateShaderModule(shaderCode);
         auto reflectionData = shaderModule->GetReflectionData({ .vsName = "VSMain", .psName = "PSName", .csName = nullptr });
 
-        RHI::GraphicsPipelineCreateInfo createInfo{};
-        createInfo.inputAssemblerState = reflectionData.inputAssemblerStateDesc;
-        createInfo.vertexShaderName = "VSMain";
-        createInfo.pixelShaderName = "PSMain";
-        createInfo.vertexShaderModule = shaderModule.get();
-        createInfo.pixelShaderModule = shaderModule.get();
-        createInfo.layout = m_pipelineLayout;
-        createInfo.renderTargetLayout.colorAttachmentsFormats[0] = RHI::Format::BGRA8_UNORM;
-        createInfo.renderTargetLayout.colorAttachmentsFormats[1] = RHI::Format::RGBA32_FLOAT;
-        createInfo.renderTargetLayout.depthAttachmentFormat = RHI::Format::D32;
-        createInfo.depthStencilState.depthTestEnable = true;
-        createInfo.depthStencilState.depthWriteEnable = true;
-        createInfo.depthStencilState.compareOperator = RHI::CompareOperator::Less;
+        auto defaultBlendState = RHI::ColorAttachmentBlendStateDesc{
+            .blendEnable = false,
+            .colorBlendOp = RHI::BlendEquation::Add,
+            .srcColor = RHI::BlendFactor::One,
+            .dstColor = RHI::BlendFactor::Zero,
+            .alphaBlendOp = RHI::BlendEquation::Add,
+            .srcAlpha = RHI::BlendFactor::One,
+            .dstAlpha = RHI::BlendFactor::Zero,
+            .writeMask = RHI::ColorWriteMask::All,
+        };
+        RHI::GraphicsPipelineCreateInfo createInfo{
+            // clang-format off
+            .name = "Lighting Pass Pipeline",
+            .vertexShaderName = "VSMain",
+            .vertexShaderModule = shaderModule.get(),
+            .pixelShaderName = "PSMain",
+            .pixelShaderModule = shaderModule.get(),
+            .layout = m_pipelineLayout,
+            .inputAssemblerState = reflectionData.inputAssemblerStateDesc,
+            .renderTargetLayout =
+                {
+                    .colorAttachmentsFormats = { RHI::Format::BGRA8_UNORM, RHI::Format::RGBA32_FLOAT },
+                    .depthAttachmentFormat = RHI::Format::D32,
+                    .stencilAttachmentFormat = RHI::Format::Unknown,
+                },
+            .colorBlendState =
+                {
+                    .blendStates = { defaultBlendState, defaultBlendState },
+                    .blendConstants = {}
+                },
+            .topologyMode = RHI::PipelineTopologyMode::Triangles,
+            .rasterizationState =
+                {
+                    .cullMode = RHI::PipelineRasterizerStateCullMode::BackFace,
+                    .fillMode = RHI::PipelineRasterizerStateFillMode::Triangle,
+                    .frontFace = RHI::PipelineRasterizerStateFrontFace::CounterClockwise,
+                    .lineWidth = 1.0,
+                },
+            .multisampleState =
+                {
+                    .sampleCount = RHI::SampleCount::Samples1,
+                    .sampleShading = false,
+                },
+            .depthStencilState =
+                {
+                    .depthTestEnable = true,
+                    .depthWriteEnable = true,
+                    .compareOperator = RHI::CompareOperator::Less,
+                    .stencilTestEnable = false,
+                },
+            // clang-format on
+        };
         m_graphicsPipeline = m_context->CreateGraphicsPipeline(createInfo);
     }
 

@@ -304,7 +304,21 @@ void ImGuiRenderer::Init(ImGuiRendererCreateInfo createInfo)
     m_context = createInfo.context;
 
     // create sampler state
-    m_sampler = m_context->CreateSampler(RHI::SamplerCreateInfo{ RHI::SamplerFilter::Linear, RHI::SamplerAddressMode::Repeat });
+    {
+        RHI::SamplerCreateInfo samplerCI{};
+        samplerCI.name = "ImGui-Sampler";
+        samplerCI.filterMin = RHI::SamplerFilter::Linear;
+        samplerCI.filterMag = RHI::SamplerFilter::Linear;
+        samplerCI.filterMip = RHI::SamplerFilter::Linear;
+        samplerCI.compare = RHI::SamplerCompareOperation::Always;
+        samplerCI.mipLodBias = 0.0f;
+        samplerCI.addressU = RHI::SamplerAddressMode::Repeat;
+        samplerCI.addressV = RHI::SamplerAddressMode::Repeat;
+        samplerCI.addressW = RHI::SamplerAddressMode::Repeat;
+        samplerCI.minLod = 0.0f;
+        samplerCI.maxLod = 1.0f;
+        m_sampler = m_context->CreateSampler(samplerCI);
+    }
 
     {
         RHI::BindGroupLayoutCreateInfo bindGroupLayoutCreateInfo{};
@@ -336,11 +350,16 @@ void ImGuiRenderer::Init(ImGuiRendererCreateInfo createInfo)
         imageInfo.format = RHI::Format::RGBA8_UNORM;
         imageInfo.usageFlags = RHI::ImageUsage::ShaderResource;
         imageInfo.usageFlags |= RHI::ImageUsage::CopyDst;
+        imageInfo.sampleCount = RHI::SampleCount::Samples1;
         imageInfo.arrayCount = 1;
+        imageInfo.mipLevels = 1;
         m_image = RHI::CreateImageWithData(*m_context, imageInfo, RHI::TL::Span<const uint8_t>{ pixels, size_t(width * height * 4) }).GetValue();
         RHI::ImageViewCreateInfo viewInfo{};
         viewInfo.image = m_image;
+        viewInfo.viewType = RHI::ImageViewType::View2D;
         viewInfo.subresource.imageAspects = RHI::ImageAspect::Color;
+        viewInfo.subresource.arrayCount = 1;
+        viewInfo.subresource.mipLevelCount = 1;
         m_imageView = m_context->CreateImageView(viewInfo);
     }
 
@@ -359,29 +378,7 @@ void ImGuiRenderer::Init(ImGuiRendererCreateInfo createInfo)
         m_pipelineLayout = m_context->CreatePipelineLayout(pipelineLayoutCreateInfo);
 
         auto shaderModule = m_context->CreateShaderModule(createInfo.shaderBlob);
-
-        RHI::GraphicsPipelineCreateInfo pipelineCreateInfo{};
-        pipelineCreateInfo.name = "ImGui-Pipeline";
-        pipelineCreateInfo.pixelShaderName = "PSMain";
-        pipelineCreateInfo.vertexShaderName = "VSMain";
-        pipelineCreateInfo.pixelShaderModule = shaderModule.get();
-        pipelineCreateInfo.vertexShaderModule = shaderModule.get();
-        pipelineCreateInfo.layout = m_pipelineLayout;
-        // clang-format off
-        pipelineCreateInfo.inputAssemblerState = {
-            .bindings{ { .binding = 0, .stride = sizeof(ImDrawVert), .stepRate = RHI::PipelineVertexInputRate::PerVertex, } },
-            .attributes{ { .location = 0, .binding = 0, .format = RHI::Format::RG32_FLOAT, .offset = offsetof(ImDrawVert, pos), },
-                         { .location = 1, .binding = 0, .format = RHI::Format::RG32_FLOAT, .offset = offsetof(ImDrawVert, uv), },
-                         { .location = 2, .binding = 0, .format = RHI::Format::RGBA8_UNORM, .offset = offsetof(ImDrawVert, col), }} };
-        // clang-format on
-        pipelineCreateInfo.renderTargetLayout.colorAttachmentsFormats[0] = RHI::Format::BGRA8_UNORM;
-        pipelineCreateInfo.renderTargetLayout.colorAttachmentsFormats[1] = RHI::Format::RGBA32_FLOAT;
-        pipelineCreateInfo.renderTargetLayout.depthAttachmentFormat = RHI::Format::D32;
-        pipelineCreateInfo.topologyMode = RHI::PipelineTopologyMode::Triangles;
-        pipelineCreateInfo.depthStencilState.depthTestEnable = false;
-        pipelineCreateInfo.depthStencilState.depthWriteEnable = true;
-        pipelineCreateInfo.rasterizationState.cullMode = RHI::PipelineRasterizerStateCullMode::None;
-        pipelineCreateInfo.colorBlendState.blendStates[0] = {
+        auto defaultBlendState = RHI::ColorAttachmentBlendStateDesc{
             true,
             RHI::BlendEquation::Add,
             RHI::BlendFactor::SrcAlpha,
@@ -391,8 +388,61 @@ void ImGuiRenderer::Init(ImGuiRendererCreateInfo createInfo)
             RHI::BlendFactor::OneMinusSrcAlpha,
             RHI::ColorWriteMask::All,
         };
-        pipelineCreateInfo.colorBlendState.blendStates[1] = pipelineCreateInfo.colorBlendState.blendStates[0];
-        m_pipeline = m_context->CreateGraphicsPipeline(pipelineCreateInfo);
+        RHI::GraphicsPipelineCreateInfo pipelineCI{
+            // clang-format off
+            .name = "Lighting Pass Pipeline",
+            .vertexShaderName = "VSMain",
+            .vertexShaderModule = shaderModule.get(),
+            .pixelShaderName = "PSMain",
+            .pixelShaderModule = shaderModule.get(),
+            .layout = m_pipelineLayout,
+            .inputAssemblerState =
+                {
+                    .bindings
+                    {
+                        { .binding = 0, .stride = sizeof(ImDrawVert), .stepRate = RHI::PipelineVertexInputRate::PerVertex, }
+                    },
+                    .attributes
+                    {
+                        { .location = 0, .binding = 0, .format = RHI::Format::RG32_FLOAT, .offset = offsetof(ImDrawVert, pos), },
+                        { .location = 1, .binding = 0, .format = RHI::Format::RG32_FLOAT, .offset = offsetof(ImDrawVert, uv), },
+                        { .location = 2, .binding = 0, .format = RHI::Format::RGBA8_UNORM, .offset = offsetof(ImDrawVert, col), }
+                    }
+                },
+            .renderTargetLayout =
+                {
+                    .colorAttachmentsFormats = { RHI::Format::BGRA8_UNORM, RHI::Format::RGBA32_FLOAT },
+                    .depthAttachmentFormat = RHI::Format::D32,
+                    .stencilAttachmentFormat = RHI::Format::Unknown,
+                },
+            .colorBlendState =
+                {
+                    .blendStates = { defaultBlendState, defaultBlendState },
+                    .blendConstants = {}
+                },
+            .topologyMode = RHI::PipelineTopologyMode::Triangles,
+            .rasterizationState =
+                {
+                    .cullMode = RHI::PipelineRasterizerStateCullMode::None,
+                    .fillMode = RHI::PipelineRasterizerStateFillMode::Triangle,
+                    .frontFace = RHI::PipelineRasterizerStateFrontFace::CounterClockwise,
+                    .lineWidth = 1.0,
+                },
+            .multisampleState =
+                {
+                    .sampleCount = RHI::SampleCount::Samples1,
+                    .sampleShading = false,
+                },
+            .depthStencilState =
+                {
+                    .depthTestEnable = false,
+                    .depthWriteEnable = true,
+                    .compareOperator = RHI::CompareOperator::Always,
+                    .stencilTestEnable = false,
+                },
+            // clang-format on
+        };
+        m_pipeline = m_context->CreateGraphicsPipeline(pipelineCI);
     }
 }
 
@@ -478,11 +528,11 @@ void ImGuiRenderer::RenderDrawData(ImDrawData* drawData, RHI::CommandList& comma
                 commandList.SetSicssor(scissor);
 
                 // Bind texture, Draw
-                RHI::DrawInfo drawInfo {};
-                drawInfo.bindGroups = {m_bindGroup};
+                RHI::DrawInfo drawInfo{};
+                drawInfo.bindGroups = { m_bindGroup };
                 drawInfo.pipelineState = m_pipeline;
                 drawInfo.indexBuffer = m_indexBuffer;
-                drawInfo.vertexBuffers = {m_vertexBuffer};
+                drawInfo.vertexBuffers = { m_vertexBuffer };
                 drawInfo.parameters.elementsCount = pcmd->ElemCount;
                 drawInfo.parameters.vertexOffset = (int32_t)pcmd->VtxOffset + globalVtxOffset;
                 drawInfo.parameters.firstElement = pcmd->IdxOffset + globalIdxOffset;

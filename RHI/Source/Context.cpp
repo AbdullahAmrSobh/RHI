@@ -320,6 +320,13 @@ namespace RHI
         Internal_StageResourceRead(buffer, offset, size, srcBuffer, srcOffset, fence);
     }
 
+#define TRY(condition, message)       \
+    if ((condition) == false)         \
+    {                                 \
+        this->DebugLogError(message); \
+        return false;                 \
+    }
+
     bool Context::ValidateCreateInfo(const SwapchainCreateInfo& createInfo) const
     {
         (void)createInfo;
@@ -358,7 +365,29 @@ namespace RHI
 
     bool Context::ValidateCreateInfo(const ImageCreateInfo& createInfo) const
     {
-        (void)createInfo;
+        TRY(createInfo.usageFlags != RHI::ImageUsage::None, "Invalid usage flags");
+        if (createInfo.type == ImageType::Image1D)
+        {
+            TRY(createInfo.size.height == 1 && createInfo.size.depth == 1, "1D Images should have 1 in width and depth size paramters");
+        }
+        else if (createInfo.type == ImageType::Image2D)
+        {
+            TRY(createInfo.size.depth == 1, "2D Images should have 1 in the depth paramter");
+        }
+        else if (createInfo.type == ImageType::Image3D)
+        {
+        }
+        else
+        {
+            DebugLogError("Invalid value for ImageCreateInfo::type");
+            return false;
+        }
+
+        TRY(createInfo.format != Format::Unknown, "Inavlid format for image");
+        TRY(createInfo.sampleCount != SampleCount::None, "Invalid value for ImageCreateInfo::sampleCount");
+        TRY(createInfo.mipLevels != 0, "Invalid value for ImageCreateInfo::mipLevels");
+        TRY(createInfo.arrayCount != 0, "Invalid value for ImageCreateInfo::arrayCount");
+
         return true;
     }
 
@@ -370,7 +399,11 @@ namespace RHI
 
     bool Context::ValidateCreateInfo(const ImageViewCreateInfo& createInfo) const
     {
-        (void)createInfo;
+        TRY(createInfo.image != NullHandle, "Invalid Image handle");
+        TRY(createInfo.viewType != ImageViewType::None, "Invalid value for ImageViewCreateInfo::type");
+        TRY(createInfo.subresource.imageAspects != ImageAspect::None, "Invalid value for ImageViewCreateInfo::subresource::imageAspects");
+        TRY(createInfo.subresource.arrayCount != 0, "Invalid value for ImageViewCreateInfo::subresource::arrayCount");
+        TRY(createInfo.subresource.mipLevelCount != 0, "Invalid value for ImageViewCreateInfo::subresource::mipLevelCount");
         return true;
     }
 
@@ -380,10 +413,8 @@ namespace RHI
         return true;
     }
 
-    void Context::DebugLogError(std::string_view message)
+    void Context::DebugLogError(std::string_view message) const
     {
-        ZoneScoped;
-
 #if RHI_DEBUG
         if (m_debugCallbacks)
             m_debugCallbacks->LogError(message);
@@ -392,10 +423,8 @@ namespace RHI
 #endif
     }
 
-    void Context::DebugLogWarn(std::string_view message)
+    void Context::DebugLogWarn(std::string_view message) const
     {
-        ZoneScoped;
-
 #if RHI_DEBUG
         if (m_debugCallbacks)
             m_debugCallbacks->LogWarnning(message);
@@ -404,10 +433,8 @@ namespace RHI
 #endif
     }
 
-    void Context::DebugLogInfo(std::string_view message)
+    void Context::DebugLogInfo(std::string_view message) const
     {
-        ZoneScoped;
-
 #if RHI_DEBUG
         if (m_debugCallbacks)
             m_debugCallbacks->LogInfo(message);
