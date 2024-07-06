@@ -6,66 +6,51 @@
 
 #include <GLFW/glfw3.h>
 
-#include "RHI/Common/Containers.h"
+#include "Examples-Base/Common.hpp"
 
-struct ImGuiRendererCreateInfo
+namespace Examples
 {
-    RHI::Context* context;
-    RHI::TL::Vector<uint32_t> shaderBlob;
-    RHI::CommandPool* commandAllocator;
-};
+    class Event;
 
-class IMGUI_IMPL_API ImGuiRenderer
-{
-public:
-    void Init(ImGuiRendererCreateInfo createInfo);
-    void Shutdown();
+    class IMGUI_IMPL_API ImGuiRenderer
+    {
+    public:
+        struct CreateInfo
+        {
+            RHI::Context* context;
+            RHI::TL::Vector<uint32_t> shaderBlob;
+        };
 
-    void NewFrame();
-    void RenderDrawData(ImDrawData* draw_data, RHI::CommandList& commandList);
+        void ProcessEvent(Event& event);
 
-    void InstallGlfwCallbacks(GLFWwindow* window);
+        void Init(const CreateInfo& createInfo);
+        void Shutdown();
 
-private:
-    void InitGraphicsPipeline();
-    void UpdateBuffers(ImDrawData* drawData);
+        void NewFrame();
+        void RenderDrawData(ImDrawData* draw_data, RHI::CommandList& commandList);
 
-public:
-    RHI::Context* m_context;
+    private:
+        void InitGraphicsPipeline();
+        void UpdateBuffers(ImDrawData* drawData);
 
-    ImGuiContext* m_imguiContext;
+    public:
+        RHI::Context* m_context;
 
-    RHI::Handle<RHI::BindGroup> m_bindGroup;
+        ImGuiContext* m_imguiContext;
 
-    RHI::Handle<RHI::BindGroupLayout> m_bindGroupLayout;
-    RHI::Handle<RHI::PipelineLayout> m_pipelineLayout;
-    RHI::Handle<RHI::GraphicsPipeline> m_pipeline;
+        RHI::Handle<RHI::BindGroup> m_bindGroup;
 
-    RHI::Handle<RHI::Image> m_image;
-    RHI::Handle<RHI::ImageView> m_imageView;
-    RHI::Handle<RHI::Sampler> m_sampler;
+        RHI::Handle<RHI::BindGroupLayout> m_bindGroupLayout;
+        RHI::Handle<RHI::PipelineLayout> m_pipelineLayout;
+        RHI::Handle<RHI::GraphicsPipeline> m_pipeline;
 
-    size_t m_vertexBufferSize, m_indexBufferSize;
-    RHI::Handle<RHI::Buffer> m_vertexBuffer;
-    RHI::Handle<RHI::Buffer> m_indexBuffer;
-    RHI::Handle<RHI::Buffer> m_uniformBuffer;
+        RHI::Handle<RHI::Image> m_image;
+        RHI::Handle<RHI::ImageView> m_imageView;
+        RHI::Handle<RHI::Sampler> m_sampler;
 
-    // clang-format off
-    GLFWwindow*             m_window;
-    double                  m_time;
-    GLFWwindow*             m_mouseWindow;
-    GLFWcursor*             m_mouseCursors[ImGuiMouseCursor_COUNT];
-    ImVec2                  m_lastValidMousePos;
-    bool                    m_installedCallbacks;
-    bool                    m_callbacksChainForAllWindows;
-    // Chain GLFW callbacks: our callbacks will call the user's previously installed callbacks, if any.
-    GLFWwindowfocusfun      m_prevUserCallbackWindowFocus;
-    GLFWcursorposfun        m_prevUserCallbackCursorPos;
-    GLFWcursorenterfun      m_prevUserCallbackCursorEnter;
-    GLFWmousebuttonfun      m_prevUserCallbackMousebutton;
-    GLFWscrollfun           m_prevUserCallbackScroll;
-    GLFWkeyfun              m_prevUserCallbackKey;
-    GLFWcharfun             m_prevUserCallbackChar;
-    GLFWmonitorfun          m_prevUserCallbackMonitor;
-    // clang-format on
-};
+        size_t m_vertexBufferSize, m_indexBufferSize;
+        RHI::Handle<RHI::Buffer> m_vertexBuffer;
+        RHI::Handle<RHI::Buffer> m_indexBuffer;
+        RHI::Handle<RHI::Buffer> m_uniformBuffer;
+    };
+} // namespace Examples

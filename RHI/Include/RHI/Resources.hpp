@@ -67,6 +67,8 @@ namespace RHI
         Samples64 = 1 << 6,
     };
 
+    RHI_DEFINE_FLAG_OPERATORS(SampleCount);
+
     enum class ImageUsage
     {
         None            = 0 << 0,
@@ -80,6 +82,8 @@ namespace RHI
         CopyDst         = 1 << 7,
         Resolve         = CopyDst
     };
+
+    RHI_DEFINE_FLAG_OPERATORS(ImageUsage);
 
     enum class ImageType
     {
@@ -110,6 +114,8 @@ namespace RHI
         All          = Color | DepthStencil,
     };
 
+    RHI_DEFINE_FLAG_OPERATORS(ImageAspect);
+
     enum class ComponentSwizzle
     {
         Identity = 0,
@@ -132,6 +138,8 @@ namespace RHI
         CopyDst = 1 << 6,
     };
 
+    RHI_DEFINE_FLAG_OPERATORS(BufferUsage);
+
     enum class ShaderStage
     {
         None    = 0 << 0,
@@ -140,9 +148,6 @@ namespace RHI
         Compute = 1 << 3,
     };
 
-    RHI_DEFINE_FLAG_OPERATORS(SampleCount);
-    RHI_DEFINE_FLAG_OPERATORS(ImageAspect);
-    RHI_DEFINE_FLAG_OPERATORS(BufferUsage);
     RHI_DEFINE_FLAG_OPERATORS(ShaderStage);
 
     enum class ShaderBindingType
@@ -268,6 +273,8 @@ namespace RHI
         Alpha = 0x08,
         All   = Red | Green | Blue | Alpha,
     };
+
+    RHI_DEFINE_FLAG_OPERATORS(ColorWriteMask);
 
     enum class MemoryAllocationFlags
     {
