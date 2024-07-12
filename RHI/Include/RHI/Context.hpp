@@ -223,10 +223,10 @@ namespace RHI
         auto stagingBuffer = context.AllocateTempBuffer(content.size_bytes());
         memcpy(stagingBuffer.ptr, content.data(), content.size_bytes());
 
-        ImageSubresourceLayers subresources {};
+        ImageSubresourceLayers subresources{};
         subresources.imageAspects = ImageAspect::Color; // todo: this should be deduced from the format
-        subresources.arrayCount = createInfo.arrayCount;
-        subresources.mipLevel = createInfo.mipLevels;
+        subresources.arrayCount   = createInfo.arrayCount;
+        subresources.mipLevel     = createInfo.mipLevels;
         context.StageResourceWrite(handle, subresources, stagingBuffer.buffer, stagingBuffer.offset);
 
         return handle;

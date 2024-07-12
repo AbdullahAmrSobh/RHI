@@ -2,7 +2,7 @@
 
 #include "RHI/Resources.hpp"
 #include "RHI/RenderGraph.hpp"
-#include "RHI/QueueType.hpp"
+#include "RHI/Definitions.hpp"
 
 #include "RHI/Common/Span.hpp"
 #include "RHI/Common/Containers.h"

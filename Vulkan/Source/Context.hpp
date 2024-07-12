@@ -1,7 +1,7 @@
 #pragma once
 
 #include <RHI/Context.hpp>
-#include <RHI/QueueType.hpp>
+#include <RHI/Definitions.hpp>
 #include <RHI/Common/Containers.h>
 
 #include "Resources.hpp"
