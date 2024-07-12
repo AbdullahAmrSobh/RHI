@@ -218,7 +218,6 @@ namespace RHI::Vulkan
         createInfo.presentMode = ConvertPresentMode(m_createInfo.presentMode);
         createInfo.clipped = VK_TRUE;
         createInfo.oldSwapchain = m_swapchain;
-
         Validate(vkCreateSwapchainKHR(context->m_device, &createInfo, nullptr, &m_swapchain));
         context->SetDebugName(m_swapchain, m_name.c_str());
 

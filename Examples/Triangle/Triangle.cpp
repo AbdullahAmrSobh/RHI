@@ -121,9 +121,6 @@ namespace Examples
             ZoneScoped;
 
             m_scene->Shutdown(*m_context);
-
-            m_commandPool[0]->Release(m_commandList[0]);
-            m_commandPool[1]->Release(m_commandList[1]);
         }
 
         void OnUpdate(Timestep timestep) override
@@ -165,8 +162,9 @@ namespace Examples
                 .height = windowHeight
             };
 
-            static int i = 0;
-            i = i & 1 ? 0 : 1;
+            static uint64_t frameIndex = 0;
+            frameIndex++;
+            uint32_t i = uint32_t(frameIndex % 2);
 
             m_commandPool[i]->Reset();
             RHI::CommandListBeginInfo beginInfo

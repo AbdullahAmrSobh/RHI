@@ -55,20 +55,9 @@ namespace RHI::Vulkan
         TL::Vector<CommandList*> commandLists;
         for (auto commandBuffer : commandBuffers)
         {
-            commandLists.push_back(new ICommandList(m_context, commandPool, commandBuffer));
+            commandLists.push_back(new ICommandList(m_context, commandBuffer));
         }
         return commandLists;
-    }
-
-    void ICommandPool::Release(TL::Span<const CommandList* const> commandLists)
-    {
-        for (auto& _commandList : commandLists)
-        {
-            ICommandList* commandList = (ICommandList*)_commandList;
-            VkDevice device = m_context->m_device;
-            vkFreeCommandBuffers(device, commandList->m_commandPool, 1, &commandList->m_commandBuffer);
-            delete commandList;
-        }
     }
 
     TL::Vector<VkCommandBuffer> ICommandPool::AllocateCommandBuffers(VkCommandPool pool, uint32_t count, VkCommandBufferLevel level)
@@ -90,12 +79,13 @@ namespace RHI::Vulkan
     /// CommandList
     //////////////////////////////////////////////////////////////////////////////////////////
 
-    ICommandList::ICommandList(IContext* context, VkCommandPool commandPool, VkCommandBuffer commandBuffer)
+    ICommandList::ICommandList(IContext* context, VkCommandBuffer commandBuffer)
         : m_commandBuffer(commandBuffer)
-        , m_commandPool(commandPool)
         , m_context(context)
     {
     }
+
+    ICommandList::~ICommandList() = default;
 
     void ICommandList::BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups)
     {
@@ -180,44 +170,24 @@ namespace RHI::Vulkan
         beginInfo.pNext = nullptr;
         beginInfo.flags = 0;
         beginInfo.pInheritanceInfo = nullptr;
+        vkBeginCommandBuffer(m_commandBuffer, &beginInfo);
 
-        if (m_level == VK_COMMAND_BUFFER_LEVEL_PRIMARY)
-        {
-            vkBeginCommandBuffer(m_commandBuffer, &beginInfo);
+        TL::Span<const VkBufferMemoryBarrier2> bufferBarriers = m_passSubmitData->bufferBarriers[BarrierType::PrePass];
+        TL::Span<const VkImageMemoryBarrier2> imageBarriers = m_passSubmitData->imageBarriers[BarrierType::PrePass];
+        PipelineBarrier({}, bufferBarriers, imageBarriers);
 
-            PipelineBarrier({}, m_passSubmitData->bufferBarriers[BarrierType::PrePass], m_passSubmitData->imageBarriers[BarrierType::PrePass]);
-
-            VkRenderingInfo renderingInfo{};
-            renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-            renderingInfo.pNext = nullptr;
-            renderingInfo.flags = 0;
-            renderingInfo.renderArea.extent = ConvertExtent2D(pass->renderTargetSize);
-            renderingInfo.layerCount = 1;
-            renderingInfo.viewMask = 0;
-            renderingInfo.colorAttachmentCount = (uint32_t)m_passSubmitData->colorAttachments.size();
-            renderingInfo.pColorAttachments = m_passSubmitData->colorAttachments.data();
-            renderingInfo.pDepthAttachment = m_passSubmitData->hasDepthAttachemnt ? &m_passSubmitData->depthAttachmentInfo : nullptr;
-            renderingInfo.pStencilAttachment = m_passSubmitData->hasStencilAttachment ? &m_passSubmitData->stencilAttachmentInfo : nullptr;
-            vkCmdBeginRendering(m_commandBuffer, &renderingInfo);
-        }
-        else
-        {
-            VkCommandBufferInheritanceRenderingInfoKHR renderinginheritanceInfo{};
-            renderinginheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO_KHR;
-            renderinginheritanceInfo.pNext = nullptr;
-            renderinginheritanceInfo.flags = 0;
-            renderinginheritanceInfo.viewMask = 0;
-            renderinginheritanceInfo.colorAttachmentCount = (uint32_t)m_passSubmitData->colorFormats.size();
-            renderinginheritanceInfo.pColorAttachmentFormats = m_passSubmitData->colorFormats.data();
-            renderinginheritanceInfo.depthAttachmentFormat = m_passSubmitData->depthFormat;
-            renderinginheritanceInfo.stencilAttachmentFormat = m_passSubmitData->stencilformat;
-            renderinginheritanceInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-            VkCommandBufferInheritanceInfo inheritanceInfo{};
-            inheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
-            inheritanceInfo.pNext = &renderinginheritanceInfo;
-            beginInfo.pInheritanceInfo = &inheritanceInfo;
-            vkBeginCommandBuffer(m_commandBuffer, &beginInfo);
-        }
+        VkRenderingInfo renderingInfo{};
+        renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+        renderingInfo.pNext = nullptr;
+        renderingInfo.flags = 0;
+        renderingInfo.renderArea.extent = ConvertExtent2D(pass->renderTargetSize);
+        renderingInfo.layerCount = 1;
+        renderingInfo.viewMask = 0;
+        renderingInfo.colorAttachmentCount = (uint32_t)m_passSubmitData->colorAttachments.size();
+        renderingInfo.pColorAttachments = m_passSubmitData->colorAttachments.data();
+        renderingInfo.pDepthAttachment = m_passSubmitData->hasDepthAttachemnt ? &m_passSubmitData->depthAttachmentInfo : nullptr;
+        renderingInfo.pStencilAttachment = m_passSubmitData->hasStencilAttachment ? &m_passSubmitData->stencilAttachmentInfo : nullptr;
+        vkCmdBeginRendering(m_commandBuffer, &renderingInfo);
     }
 
     void ICommandList::End()

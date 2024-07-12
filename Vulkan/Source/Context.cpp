@@ -690,7 +690,6 @@ namespace RHI::Vulkan
         commandList->End();
 
         QueueSubmit(QueueType::Transfer, commandList, {}, { { image->waitSemaphore, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT } });
-        m_commandPool->Release(commandList);
     }
 
     void IContext ::Internal_StageResourceWrite(Handle<Buffer> bufferHandle, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset)
@@ -711,7 +710,6 @@ namespace RHI::Vulkan
         commandList->End();
 
         QueueSubmit(QueueType::Transfer, commandList, {}, { { buffer->waitSemaphore, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT } });
-        m_commandPool->Release(commandList);
     }
 
     void IContext ::Internal_StageResourceRead(Handle<Image> image, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset, Fence* fence)

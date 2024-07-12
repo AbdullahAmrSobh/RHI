@@ -171,9 +171,6 @@ namespace RHI
 
         /// @brief Allocates a new command list object
         RHI_NODISCARD virtual TL::Vector<CommandList*> Allocate(QueueType queueType, CommandListLevel level, uint32_t count) = 0;
-
-        /// @brief Releases a command list object (must be allocated through here)
-        virtual void Release(TL::Span<const CommandList* const> commandLists) = 0;
     };
 
     /// @brief Command list record a list of GPU commands that are exectued in the same pass.

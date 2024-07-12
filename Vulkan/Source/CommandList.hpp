@@ -20,7 +20,6 @@ namespace RHI::Vulkan
 
         void Reset() override;
         TL::Vector<CommandList*> Allocate(QueueType queueType, CommandListLevel level, uint32_t count) override;
-        void Release(TL::Span<const CommandList* const> commandLists) override;
 
     private:
         TL::Vector<VkCommandBuffer> AllocateCommandBuffers(VkCommandPool pool, uint32_t count, VkCommandBufferLevel level);
@@ -33,8 +32,8 @@ namespace RHI::Vulkan
     class ICommandList final : public CommandList
     {
     public:
-        ICommandList(IContext* context, VkCommandPool commandPool, VkCommandBuffer commandBuffer);
-        ~ICommandList() = default;
+        ICommandList(IContext* context, VkCommandBuffer commandBuffer);
+        ~ICommandList();
 
         void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups);
 
@@ -62,8 +61,6 @@ namespace RHI::Vulkan
         void CopyBufferToImage(const BufferImageCopyInfo& copyInfo) override;
 
         VkCommandBuffer m_commandBuffer;
-        VkCommandPool m_commandPool;
-        VkCommandBufferLevel m_level;
 
     private:
         IContext* m_context;
