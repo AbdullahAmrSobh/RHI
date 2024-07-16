@@ -37,6 +37,9 @@ namespace RHI::Vulkan
 
         VkSemaphore signalSemaphore; // semaphore which will be signaled when the pass is finished.
 
+
+        VkRect2D renderArea;
+
         inline void Clear()
         {
             colorAttachments.clear();

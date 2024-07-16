@@ -4,9 +4,11 @@
     #error "Current platfrom is not supported yet"
 #endif
 
-#include "Swapchain.hpp"
 #include "Context.hpp"
+#include "Swapchain.hpp"
 #include "Common.hpp"
+
+// #include "Context.hpp"
 
 // Platform specifc surface creation are contained witihn this file,
 // to avoid polluting the global namespace with OS specific symbols
@@ -29,7 +31,7 @@ namespace RHI::Vulkan
 #endif
 
         VkBool32 surfaceSupportPresent;
-        Validate(vkGetPhysicalDeviceSurfaceSupportKHR(context->m_physicalDevice, context->m_graphicsQueueFamilyIndex, m_surface, &surfaceSupportPresent));
+        Validate(vkGetPhysicalDeviceSurfaceSupportKHR(context->m_physicalDevice, context->m_queue[QueueType::Graphics].GetFamilyIndex(), m_surface, &surfaceSupportPresent));
         return VK_SUCCESS;
     }
 } // namespace RHI::Vulkan

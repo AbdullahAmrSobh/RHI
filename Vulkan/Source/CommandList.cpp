@@ -3,8 +3,8 @@
 #include "Context.hpp"
 #include "Resources.hpp"
 #include "Swapchain.hpp"
-#include "RenderGraphCompiler.hpp"
 #include "VulkanFunctions.hpp"
+#include "RenderGraphCompiler.hpp"
 
 #include <RHI/Format.hpp>
 
@@ -33,7 +33,7 @@ namespace RHI::Vulkan
             createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
             createInfo.pNext = nullptr;
             createInfo.flags = ConvertCommandPoolFlags(flags);
-            createInfo.queueFamilyIndex = m_context->GetQueueFamilyIndex(QueueType(queueType));
+            createInfo.queueFamilyIndex = m_context->m_queue[queueType].GetFamilyIndex();
             TryValidateVk(vkCreateCommandPool(m_context->m_device, &createInfo, nullptr, &m_commandPools[queueType]));
         }
 
@@ -87,6 +87,46 @@ namespace RHI::Vulkan
 
     ICommandList::~ICommandList() = default;
 
+    void ICommandList::BeginRendering(
+        VkRect2D renderingArea,
+        TL::Span<const VkRenderingAttachmentInfo> colorAttachments,
+        VkRenderingAttachmentInfo* depthAttachment,
+        VkRenderingAttachmentInfo* stencilAttachment)
+    {
+        VkRenderingInfo renderingInfo{};
+        renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+        renderingInfo.pNext = nullptr;
+        renderingInfo.flags = {};
+        renderingInfo.renderArea = renderingArea;
+        renderingInfo.layerCount = 1;
+        renderingInfo.viewMask = 0;
+        renderingInfo.colorAttachmentCount = (uint32_t)colorAttachments.size();
+        renderingInfo.pColorAttachments = colorAttachments.data();
+        renderingInfo.pDepthAttachment = depthAttachment;
+        renderingInfo.pStencilAttachment = stencilAttachment;
+        vkCmdBeginRendering(m_commandBuffer, &renderingInfo);
+    }
+
+    void ICommandList::EndRendedring()
+    {
+        vkCmdEndRendering(m_commandBuffer);
+    }
+
+    void ICommandList::PipelineBarrier(TL::Span<const VkMemoryBarrier2> memoryBarriers, TL::Span<const VkBufferMemoryBarrier2> bufferBarriers, TL::Span<const VkImageMemoryBarrier2> imageBarriers)
+    {
+        VkDependencyInfo dependencyInfo{};
+        dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+        dependencyInfo.pNext = nullptr;
+        dependencyInfo.dependencyFlags = 0;
+        dependencyInfo.memoryBarrierCount = uint32_t(memoryBarriers.size());
+        dependencyInfo.pMemoryBarriers = memoryBarriers.data();
+        dependencyInfo.bufferMemoryBarrierCount = uint32_t(bufferBarriers.size());
+        dependencyInfo.pBufferMemoryBarriers = bufferBarriers.data();
+        dependencyInfo.imageMemoryBarrierCount = uint32_t(imageBarriers.size());
+        dependencyInfo.pImageMemoryBarriers = imageBarriers.data();
+        vkCmdPipelineBarrier2(m_commandBuffer, &dependencyInfo);
+    }
+
     void ICommandList::BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups)
     {
         if (bindGroups.empty())
@@ -129,21 +169,6 @@ namespace RHI::Vulkan
         vkCmdBindIndexBuffer(m_commandBuffer, buffer->handle, bindingInfo.offset, indexType);
     }
 
-    void ICommandList::PipelineBarrier(TL::Span<const VkMemoryBarrier2> memoryBarriers, TL::Span<const VkBufferMemoryBarrier2> bufferBarriers, TL::Span<const VkImageMemoryBarrier2> imageBarriers)
-    {
-        VkDependencyInfo dependencyInfo{};
-        dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-        dependencyInfo.pNext = nullptr;
-        dependencyInfo.dependencyFlags = 0;
-        dependencyInfo.memoryBarrierCount = uint32_t(memoryBarriers.size());
-        dependencyInfo.pMemoryBarriers = memoryBarriers.data();
-        dependencyInfo.bufferMemoryBarrierCount = uint32_t(bufferBarriers.size());
-        dependencyInfo.pBufferMemoryBarriers = bufferBarriers.data();
-        dependencyInfo.imageMemoryBarrierCount = uint32_t(imageBarriers.size());
-        dependencyInfo.pImageMemoryBarriers = imageBarriers.data();
-        vkCmdPipelineBarrier2(m_commandBuffer, &dependencyInfo);
-    }
-
     void ICommandList::Begin()
     {
         ZoneScoped;
@@ -156,51 +181,36 @@ namespace RHI::Vulkan
         vkBeginCommandBuffer(m_commandBuffer, &beginInfo);
     }
 
-    void ICommandList::Begin(const CommandListBeginInfo& _beginInfo)
+    void ICommandList::Begin(const CommandListBeginInfo& beginInfo)
     {
         ZoneScoped;
 
-        auto renderGraph = _beginInfo.renderGraph;
-        auto pass = renderGraph->m_passOwner.Get(_beginInfo.pass);
+        auto renderGraph = beginInfo.renderGraph;
+        auto pass = renderGraph->m_passOwner.Get(beginInfo.pass);
         RenderGraphCompiler::CompilePass(m_context, *renderGraph, pass);
-        m_passSubmitData = (IPassSubmitData*)pass->submitData;
+        m_executeContext = (IPassSubmitData*)pass->submitData;
 
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.pNext = nullptr;
-        beginInfo.flags = 0;
-        beginInfo.pInheritanceInfo = nullptr;
-        vkBeginCommandBuffer(m_commandBuffer, &beginInfo);
+        m_executeContext->renderArea.extent = ConvertExtent2D(pass->renderTargetSize);
 
-        TL::Span<const VkBufferMemoryBarrier2> bufferBarriers = m_passSubmitData->bufferBarriers[BarrierType::PrePass];
-        TL::Span<const VkImageMemoryBarrier2> imageBarriers = m_passSubmitData->imageBarriers[BarrierType::PrePass];
-        PipelineBarrier({}, bufferBarriers, imageBarriers);
+        Begin();
 
-        VkRenderingInfo renderingInfo{};
-        renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-        renderingInfo.pNext = nullptr;
-        renderingInfo.flags = 0;
-        renderingInfo.renderArea.extent = ConvertExtent2D(pass->renderTargetSize);
-        renderingInfo.layerCount = 1;
-        renderingInfo.viewMask = 0;
-        renderingInfo.colorAttachmentCount = (uint32_t)m_passSubmitData->colorAttachments.size();
-        renderingInfo.pColorAttachments = m_passSubmitData->colorAttachments.data();
-        renderingInfo.pDepthAttachment = m_passSubmitData->hasDepthAttachemnt ? &m_passSubmitData->depthAttachmentInfo : nullptr;
-        renderingInfo.pStencilAttachment = m_passSubmitData->hasStencilAttachment ? &m_passSubmitData->stencilAttachmentInfo : nullptr;
-        vkCmdBeginRendering(m_commandBuffer, &renderingInfo);
+        if (m_executeContext)
+        {
+            BeginRendering(
+                m_executeContext->renderArea,
+                m_executeContext->colorAttachments,
+                m_executeContext->hasDepthAttachemnt ? &m_executeContext->depthAttachmentInfo : nullptr,
+                m_executeContext->hasStencilAttachment ? &m_executeContext->stencilAttachmentInfo : nullptr);
+        }
     }
 
     void ICommandList::End()
     {
         ZoneScoped;
 
-        if (m_passSubmitData)
+        if (m_executeContext)
         {
-            if (m_passSubmitData->colorAttachments.empty() == false || m_passSubmitData->hasDepthAttachemnt || m_passSubmitData->hasStencilAttachment)
-            {
-                vkCmdEndRendering(m_commandBuffer);
-            }
-            PipelineBarrier({}, m_passSubmitData->bufferBarriers[BarrierType::PostPass], m_passSubmitData->imageBarriers[BarrierType::PostPass]);
+            EndRendedring();
         }
 
         vkEndCommandBuffer(m_commandBuffer);

@@ -3,6 +3,8 @@
 #include <RHI/Common/Result.hpp>
 #include <RHI/Resources.hpp>
 
+#include "Barrier.hpp"
+
 #include <vk_mem_alloc.h>
 
 namespace RHI::Vulkan
@@ -39,6 +41,12 @@ namespace RHI::Vulkan
         VkDescriptorPool m_descriptorPool;
     };
 
+    struct ImageState
+    {
+        ImageStageAccess pipelineStage;
+        TL::Vector<VkSemaphoreSubmitInfo> semaphores;
+    };
+
     struct IImage : Image
     {
         Allocation allocation;
@@ -53,17 +61,22 @@ namespace RHI::Vulkan
         VkSampleCountFlagBits samples;
         VkImageUsageFlags usage;
 
-        // TODO: Should remove
-        VkSemaphore waitSemaphore;
-        VkSemaphore signalSemaphore;
+        Flags<ImageAspect> availableAspects;
 
-        VkImageLayout initalLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        ImageState initialState;
+        ImageState finalState;
 
         ResultCode Init(IContext* context, const ImageCreateInfo& createInfo);
         ResultCode Init(IContext* context, VkImage image, const VkSwapchainCreateInfoKHR& swapchainCreateInfo);
         void Shutdown(IContext* context);
 
         VkMemoryRequirements GetMemoryRequirements(IContext* context) const;
+    };
+
+    struct BufferState
+    {
+        BufferStageAccess pipelineStage;
+        TL::Vector<VkSemaphoreSubmitInfo> semaphores;
     };
 
     struct IBuffer : Buffer
@@ -75,8 +88,8 @@ namespace RHI::Vulkan
         size_t size;
         VkBufferUsageFlags usage;
 
-        VkSemaphore waitSemaphore;
-        VkSemaphore signalSemaphore;
+        BufferState initialState;
+        BufferState finalState;
 
         ResultCode Init(IContext* context, const BufferCreateInfo& createInfo);
         void Shutdown(IContext* context);

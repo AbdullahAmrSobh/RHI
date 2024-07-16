@@ -8,7 +8,6 @@
 namespace RHI::Vulkan
 {
     class IContext;
-    class IPassSubmitData;
 
     class ICommandPool final : public CommandPool
     {
@@ -35,14 +34,29 @@ namespace RHI::Vulkan
         ICommandList(IContext* context, VkCommandBuffer commandBuffer);
         ~ICommandList();
 
-        void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups);
+        void BeginRendering(
+            VkRect2D renderingArea,
+            TL::Span<const VkRenderingAttachmentInfo> colorAttachments,
+            VkRenderingAttachmentInfo* depthAttachment,
+            VkRenderingAttachmentInfo* stencilAttachment);
+
+        void EndRendedring();
+
+        void PipelineBarrier(
+            TL::Span<const VkMemoryBarrier2> memoryBarriers,
+            TL::Span<const VkBufferMemoryBarrier2> bufferBarriers,
+            TL::Span<const VkImageMemoryBarrier2> imageBarriers);
+
+        void BindShaderBindGroups(
+            VkPipelineBindPoint bindPoint,
+            VkPipelineLayout pipelineLayout,
+            TL::Span<const BindGroupBindingInfo> bindGroups);
 
         void BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> bindingInfos);
 
         void BindIndexBuffer(const BufferBindingInfo& bindingInfo, VkIndexType indexType);
 
-        void PipelineBarrier(TL::Span<const VkMemoryBarrier2> memoryBarriers, TL::Span<const VkBufferMemoryBarrier2> bufferBarriers, TL::Span<const VkImageMemoryBarrier2> imageBarriers);
-
+        // Interface implementation
         void Begin() override;
         void Begin(const CommandListBeginInfo& beginInfo) override;
         void End() override;
@@ -62,9 +76,9 @@ namespace RHI::Vulkan
 
         VkCommandBuffer m_commandBuffer;
 
+        class IPassSubmitData* m_executeContext;
+
     private:
         IContext* m_context;
-        IPassSubmitData* m_passSubmitData;
     };
-
 } // namespace RHI::Vulkan

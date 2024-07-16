@@ -5,6 +5,7 @@
 #include <RHI/Common/Containers.h>
 
 #include "Resources.hpp"
+#include "Queue.hpp"
 #include "DeleteQueue.hpp"
 
 #include <vk_mem_alloc.h>
@@ -38,20 +39,9 @@ namespace RHI::Vulkan
 
         uint32_t GetMemoryTypeIndex(MemoryType memoryType);
 
-        uint32_t GetQueueFamilyIndex(QueueType queueType);
+        uint32_t GetCurrentFrameIndex() const { return 0; }
 
-        VkQueue GetQueue(QueueType queueType);
-
-        void QueueSubmit(QueueType queueType,
-                         TL::Span<const ICommandList* const> commandLists,
-                         TL::UnorderedMap<VkSemaphore, VkPipelineStageFlags2> waitSemaphores,
-                         TL::UnorderedMap<VkSemaphore, VkPipelineStageFlags2> signalSemaphores,
-                         IFence* signalFence = nullptr);
-
-        uint32_t GetCurrentFrameIndex() const
-        {
-            return 0;
-        }
+        ICommandList* GetTransferCommand();
 
         // clang-format off
         using                    Context::DebugLogError;
@@ -109,14 +99,7 @@ namespace RHI::Vulkan
         VkDevice m_device;
         VmaAllocator m_allocator;
 
-        VkQueue m_presentQueue;
-        VkQueue m_graphicsQueue;
-        VkQueue m_computeQueue;
-        VkQueue m_transferQueue;
-
-        uint32_t m_graphicsQueueFamilyIndex;
-        uint32_t m_computeQueueFamilyIndex;
-        uint32_t m_transferQueueFamilyIndex;
+        Queue m_queue[QueueType::Count];
 
         Ptr<FunctionsTable> m_fnTable;
         Ptr<BindGroupAllocator> m_bindGroupAllocator;

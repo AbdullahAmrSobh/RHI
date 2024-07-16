@@ -6,6 +6,7 @@
 
 #include "RHI/Common/Span.hpp"
 #include "RHI/Common/Containers.h"
+#include "RHI/Common/Ptr.hpp"
 
 namespace RHI
 {
@@ -48,9 +49,9 @@ namespace RHI
 
     struct CommandListBeginInfo
     {
-        RenderGraph*               renderGraph;
-        Handle<Pass>               pass;
-        TL::Span<const ClearValue> clearValues;
+        RenderGraph*                        renderGraph;
+        Handle<Pass>                        pass;
+        TL::Span<const LoadStoreOperations> loadStoreOperations;
     };
 
     struct BufferCopyInfo
@@ -60,6 +61,14 @@ namespace RHI
         Handle<Buffer> dstBuffer;
         size_t         dstOffset;
         size_t         size;
+    };
+
+    struct ImageSubresourceLayers
+    {
+        Flags<ImageAspect> imageAspects;
+        uint32_t           mipLevel;
+        uint32_t           arrayBase;
+        uint32_t           arrayCount;
     };
 
     struct ImageCopyInfo

@@ -277,7 +277,7 @@ namespace RHI::Vulkan
             auto dstAttachment = renderGraph.m_imageAttachmentOwner.Get(attachmentHandle);
             auto srcAttachment = dstAttachment->prev != NullHandle ? renderGraph.m_imageAttachmentOwner.Get(dstAttachment->prev) : nullptr;
 
-            auto srcInfo = GetImageTransitionInfo(VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, srcAttachment, image->initalLayout);
+            auto srcInfo = GetImageTransitionInfo(VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, srcAttachment, image->initialState.pipelineStage.layout);
             auto dstInfo = GetImageTransitionInfo(VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, dstAttachment, VK_IMAGE_LAYOUT_UNDEFINED);
 
             if (dstInfo.layout == VK_IMAGE_LAYOUT_UNDEFINED)
@@ -293,7 +293,8 @@ namespace RHI::Vulkan
                 auto swapchain = (ISwapchain*)renderGraph.GetSwapchain(attachmentHandle);
                 if (swapchain)
                 {
-                    waitSemaphores[swapchain->GetImageReadySemaphore()] |= srcInfo.stage;
+                    auto semaphore = image->initialState.semaphores.front().semaphore;
+                    waitSemaphores[semaphore] |= srcInfo.stage;
                 }
             }
         }
@@ -324,7 +325,8 @@ namespace RHI::Vulkan
                 auto swapchain = (ISwapchain*)renderGraph.GetSwapchain(attachmentHandle);
                 if (swapchain)
                 {
-                    signalSemaphores[swapchain->GetFrameReadySemaphore()] |= srcInfo.stage;
+                    auto semaphore = image->finalState.semaphores.front().semaphore;
+                    signalSemaphores[semaphore] |= srcInfo.stage;
                     dstInfo.layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
                 }
             }

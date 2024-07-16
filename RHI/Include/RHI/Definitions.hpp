@@ -5,7 +5,7 @@
 
 namespace RHI
 {
-    enum class QueueType
+    enum QueueType : uint32_t
     {
         Graphics,
         Compute,

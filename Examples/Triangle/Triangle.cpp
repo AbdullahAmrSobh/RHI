@@ -35,7 +35,6 @@ namespace Examples
         Ptr<RHI::RenderGraph> m_renderGraph;
         Handle<RHI::Pass> m_renderPass;
 
-        RHI::CommandList* m_commandList[2];
         Ptr<RHI::CommandPool> m_commandPool[2];
 
         BasicRenderer()
@@ -109,9 +108,6 @@ namespace Examples
 
             m_context->CompileRenderGraph(*m_renderGraph);
 
-            m_commandList[0] = m_commandPool[0]->Allocate(RHI::QueueType::Graphics, RHI::CommandListLevel::Primary);
-            m_commandList[1] = m_commandPool[1]->Allocate(RHI::QueueType::Graphics, RHI::CommandListLevel::Primary);
-
             SetupGPUResources(m_scene->m_perDrawData);
             LoadPipeline("./Shaders/Basic.spv");
         }
@@ -167,20 +163,22 @@ namespace Examples
             uint32_t i = uint32_t(frameIndex % 2);
 
             m_commandPool[i]->Reset();
+            auto commandList = std::move(m_commandPool[i]->Allocate(RHI::QueueType::Graphics, RHI::CommandListLevel::Primary, 1).front());
+
             RHI::CommandListBeginInfo beginInfo
             {
                 .renderGraph = m_renderGraph.get(),
                 .pass = m_renderPass,
-                .clearValues = {},
+                .loadStoreOperations = {},
             };
-            m_commandList[i]->Begin(beginInfo);
-            m_commandList[i]->SetViewport(viewport);
-            m_commandList[i]->SetSicssor(scissor);
-            Draw(*m_commandList[i]);
-            m_imguiRenderer->RenderDrawData(ImGui::GetDrawData(), *m_commandList[i]);
+            commandList->Begin(beginInfo);
+            commandList->SetViewport(viewport);
+            commandList->SetSicssor(scissor);
+            Draw(*commandList);
+            m_imguiRenderer->RenderDrawData(ImGui::GetDrawData(), *commandList);
 
-            m_commandList[i]->End();
-            m_renderGraph->SubmitCommands(m_renderPass, m_commandList[i]);
+            commandList->End();
+            m_renderGraph->SubmitCommands(m_renderPass, commandList);
 
             m_context->ExecuteRenderGraph(*m_renderGraph);
 

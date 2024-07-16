@@ -343,16 +343,6 @@ namespace RHI
         inline bool operator==(const ImageSubresource& other) const { return imageAspects == other.imageAspects && mipLevel == other.mipLevel && arrayLayer == other.arrayLayer; }
     };
 
-    struct ImageSubresourceLayers
-    {
-        Flags<ImageAspect> imageAspects;
-        uint32_t           mipLevel;
-        uint32_t           arrayBase;
-        uint32_t           arrayCount;
-
-        inline bool operator==(const ImageSubresourceLayers& other) const { return imageAspects == other.imageAspects && mipLevel == other.mipLevel && arrayBase == other.arrayBase && arrayCount == other.arrayCount; }
-    };
-
     struct ImageSubresourceRange
     {
         Flags<ImageAspect> imageAspects;

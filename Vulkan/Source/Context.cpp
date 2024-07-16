@@ -1,3 +1,4 @@
+#include "Barrier.hpp"
 #include "RHI-Vulkan/Loader.hpp"
 
 #include "Common.hpp"
@@ -7,6 +8,7 @@
 #include "RenderGraphCompiler.hpp"
 #include "Context.hpp"
 #include "VulkanFunctions.hpp"
+#include "Queue.hpp"
 
 #include <tracy/Tracy.hpp>
 
@@ -43,6 +45,12 @@ namespace RHI
 
 namespace RHI::Vulkan
 {
+    // struct ExtensionOrLayerInitRequest
+    // {
+    //     const char* name;
+    //     bool* isFound;
+    // };
+
     inline static TL::Vector<VkLayerProperties> GetAvailableInstanceLayerExtensions()
     {
         uint32_t instanceLayerCount;
@@ -108,13 +116,7 @@ namespace RHI::Vulkan
         , m_physicalDevice(VK_NULL_HANDLE)
         , m_device(VK_NULL_HANDLE)
         , m_allocator(VK_NULL_HANDLE)
-        , m_presentQueue(VK_NULL_HANDLE)
-        , m_graphicsQueue(VK_NULL_HANDLE)
-        , m_computeQueue(VK_NULL_HANDLE)
-        , m_transferQueue(VK_NULL_HANDLE)
-        , m_graphicsQueueFamilyIndex(UINT32_MAX)
-        , m_computeQueueFamilyIndex(UINT32_MAX)
-        , m_transferQueueFamilyIndex(UINT32_MAX)
+        , m_queue()
         , m_fnTable(CreatePtr<FunctionsTable>())
         , m_bindGroupAllocator(CreatePtr<BindGroupAllocator>(this))
         , m_commandPool(CreatePtr<ICommandPool>(this))
@@ -186,10 +188,6 @@ namespace RHI::Vulkan
         TryValidateVk(InitInstance(appInfo, &debugExtensionEnabled));
         TryValidateVk(InitDevice());
         TryValidateVk(InitMemoryAllocator());
-
-        vkGetDeviceQueue(m_device, m_graphicsQueueFamilyIndex, 0, &m_graphicsQueue);
-        vkGetDeviceQueue(m_device, m_computeQueueFamilyIndex, 0, &m_computeQueue);
-        vkGetDeviceQueue(m_device, m_transferQueueFamilyIndex, 0, &m_transferQueue);
 
         m_fnTable->Init(this, debugExtensionEnabled);
         TryValidate(m_bindGroupAllocator->Init());
@@ -268,84 +266,6 @@ namespace RHI::Vulkan
         }
 
         return index;
-    }
-
-    uint32_t IContext::GetQueueFamilyIndex(QueueType queueType)
-    {
-        (void)queueType;
-        return m_graphicsQueueFamilyIndex;
-
-        // switch (queueType)
-        // {
-        // case QueueType::Graphics: return m_graphicsQueueFamilyIndex;
-        // case QueueType::Compute:  return m_computeQueueFamilyIndex;
-        // case QueueType::Transfer: return m_transferQueueFamilyIndex;
-        // default:                  RHI_UNREACHABLE(); return UINT32_MAX;
-        // }
-    }
-
-    VkQueue IContext::GetQueue(QueueType queueType)
-    {
-        (void)queueType;
-        return m_graphicsQueue;
-
-        // switch (queueType)
-        // {
-        // case QueueType::Graphics: return m_graphicsQueue;
-        // case QueueType::Compute:  return m_computeQueue;
-        // case QueueType::Transfer: return m_transferQueue;
-        // default:                  RHI_UNREACHABLE(); return VK_NULL_HANDLE;
-        // }
-    }
-
-    void IContext::QueueSubmit(QueueType queueType,
-                               TL::Span<const ICommandList* const> commandLists,
-                               TL::UnorderedMap<VkSemaphore, VkPipelineStageFlags2> waitSemaphores,
-                               TL::UnorderedMap<VkSemaphore, VkPipelineStageFlags2> signalSemaphores,
-                               IFence* signalFence)
-    {
-        ZoneScoped;
-
-        TL::Vector<VkSemaphoreSubmitInfo> waitSemaphoreSubmitInfos;
-        TL::Vector<VkSemaphoreSubmitInfo> signalSemaphoreSubmitInfos;
-        TL::Vector<VkCommandBufferSubmitInfo> commandBufferSubmitInfos;
-
-        for (auto commandList : commandLists)
-        {
-            VkCommandBufferSubmitInfo commandBufferSubmitInfo{};
-            commandBufferSubmitInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
-            commandBufferSubmitInfo.commandBuffer = commandList->m_commandBuffer;
-            commandBufferSubmitInfos.push_back(commandBufferSubmitInfo);
-        }
-
-        for (auto waitSemaphore : waitSemaphores)
-        {
-            VkSemaphoreSubmitInfo waitSemaphoreSubmitInfo{};
-            waitSemaphoreSubmitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-            waitSemaphoreSubmitInfo.semaphore = waitSemaphore.first;
-            waitSemaphoreSubmitInfo.stageMask = waitSemaphore.second;
-            waitSemaphoreSubmitInfos.push_back(waitSemaphoreSubmitInfo);
-        }
-
-        for (auto signalSemaphore : signalSemaphores)
-        {
-            VkSemaphoreSubmitInfo signalSemaphoreSubmitInfo{};
-            signalSemaphoreSubmitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-            signalSemaphoreSubmitInfo.semaphore = signalSemaphore.first;
-            signalSemaphoreSubmitInfo.stageMask = signalSemaphore.second;
-            signalSemaphoreSubmitInfos.push_back(signalSemaphoreSubmitInfo);
-        }
-
-        VkSubmitInfo2 submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
-        submitInfo.pNext = nullptr;
-        submitInfo.waitSemaphoreInfoCount = (uint32_t)waitSemaphoreSubmitInfos.size();
-        submitInfo.pWaitSemaphoreInfos = waitSemaphoreSubmitInfos.data();
-        submitInfo.commandBufferInfoCount = (uint32_t)commandBufferSubmitInfos.size();
-        submitInfo.pCommandBufferInfos = commandBufferSubmitInfos.data();
-        submitInfo.signalSemaphoreInfoCount = (uint32_t)signalSemaphoreSubmitInfos.size();
-        submitInfo.pSignalSemaphoreInfos = signalSemaphoreSubmitInfos.data();
-        vkQueueSubmit2(GetQueue(queueType), 1, &submitInfo, signalFence ? signalFence->UseFence() : VK_NULL_HANDLE);
     }
 
     ////////////////////////////////////////////////////////////
@@ -609,15 +529,40 @@ namespace RHI::Vulkan
         });
     }
 
+    inline static TL::Vector<VkSemaphoreSubmitInfo> GetSemaphore(TL::UnorderedMap<VkSemaphore, VkPipelineStageFlags2>& unorderedMap)
+    {
+        TL::Vector<VkSemaphoreSubmitInfo> res;
+        for (auto [semaphore, stages] : unorderedMap)
+        {
+            VkSemaphoreSubmitInfo info{};
+            info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+            info.semaphore = semaphore;
+            info.stageMask = stages;
+            res.push_back(info);
+        }
+        return res;
+    }
+
     void IContext::Internal_DispatchGraph(RenderGraph& renderGraph, Fence* signalFence)
     {
         for (auto passHandle : renderGraph.m_passes)
         {
             auto pass = renderGraph.m_passOwner.Get(passHandle);
+            auto queue = m_queue[QueueType::Graphics];
+
             RenderGraphCompiler::CompilePass(this, renderGraph, pass);
             auto submitData = (IPassSubmitData*)pass->submitData;
-            TL::Span commandLists{ (const ICommandList**)pass->commandList.data(), pass->commandList.size() };
-            QueueSubmit(pass->queueType, commandLists, submitData->waitSemaphores, submitData->signalSemaphores, (IFence*)signalFence);
+
+            auto waitSemaphores = GetSemaphore(submitData->waitSemaphores);
+            auto signalSemaphores = GetSemaphore(submitData->signalSemaphores);
+
+            SubmitInfo submitInfo{};
+            submitInfo.waitSemaphores = waitSemaphores;
+            submitInfo.signalSemaphores = signalSemaphores;
+            submitInfo.commandLists = { (ICommandList**)pass->commandList.data(), pass->commandList.size() };
+
+            queue.Submit(submitInfo, (IFence*)signalFence);
+
             submitData->Clear();
         }
     }
@@ -638,65 +583,67 @@ namespace RHI::Vulkan
         vmaUnmapMemory(m_allocator, resource);
     }
 
+    ICommandList* IContext::GetTransferCommand()
+    {
+        auto cmd = m_commandPool->Allocate(QueueType::Transfer, CommandListLevel::Primary, 1).front();
+        return (ICommandList*)cmd;
+    }
+
     void IContext ::Internal_StageResourceWrite(Handle<Image> imageHandle, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset)
     {
-        (void)subresources;
-
         auto image = m_imageOwner.Get(imageHandle);
-        image->waitSemaphore = CreateSemaphore("ImageWriteSemaphore");
 
-        VkImageMemoryBarrier2 barrier{};
-        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-        barrier.pNext = nullptr;
-        barrier.srcStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
-        barrier.srcAccessMask = VK_ACCESS_2_NONE;
-        barrier.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-        barrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-        barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.image = image->handle;
-        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        barrier.subresourceRange.baseMipLevel = 0;
-        barrier.subresourceRange.levelCount = 1;
-        barrier.subresourceRange.baseArrayLayer = 0;
-        barrier.subresourceRange.layerCount = 1;
+        ImageSubresourceRange range{};
+        range.imageAspects = subresources.imageAspects;
+        range.arrayCount = subresources.arrayCount;
+        range.arrayBase = subresources.arrayBase;
+        range.mipLevelCount = subresources.mipLevel;
+
+        /// todo: figure this out
+        auto initialStage = image->initialState.pipelineStage;
+        initialStage.layout = VK_IMAGE_LAYOUT_UNDEFINED;
+        auto barrierTop = CreateImageBarrier(image->handle, ConvertSubresourceRange(range), initialStage, PIPELINE_IMAGE_BARRIER_TRANSFER_DST);
+        auto barrierBottom = CreateImageBarrier(image->handle, ConvertSubresourceRange(range), PIPELINE_IMAGE_BARRIER_TRANSFER_DST, image->finalState.pipelineStage);
+
+        subresources.mipLevel = 0; // TODO: figure out this resoruce views
+
+        ImageSize3D imageSize = {
+            image->extent.width,
+            image->extent.height,
+            image->extent.depth,
+        };
 
         BufferImageCopyInfo copyInfo{};
         copyInfo.image = imageHandle;
-        copyInfo.subresource.imageAspects = ImageAspect::Color;
-        copyInfo.subresource.arrayBase = 0;
-        copyInfo.subresource.arrayCount = 1;
-        copyInfo.subresource.mipLevel = 0;
+        copyInfo.subresource = subresources;
         copyInfo.buffer = buffer;
         copyInfo.bufferOffset = bufferOffset;
-        copyInfo.imageSize.width = image->extent.width;
-        copyInfo.imageSize.height = image->extent.height;
-        copyInfo.imageSize.depth = image->extent.depth;
-        auto commandList = (ICommandList*)m_commandPool->Allocate(QueueType::Transfer, CommandListLevel::Primary, 1).front();
+        copyInfo.imageSize = imageSize;
+
+        auto commandList = GetTransferCommand();
 
         commandList->Begin();
-        commandList->PipelineBarrier({}, {}, barrier);
+        commandList->PipelineBarrier({}, {}, barrierTop);
         commandList->CopyBufferToImage(copyInfo);
-
-        barrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-        barrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-        barrier.dstStageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
-        barrier.dstAccessMask = VK_ACCESS_2_NONE;
-        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; // TODO: deduce correct layout from the image usage
-        commandList->PipelineBarrier({}, {}, barrier);
+        commandList->PipelineBarrier({}, {}, barrierBottom);
         commandList->End();
 
-        QueueSubmit(QueueType::Transfer, commandList, {}, { { image->waitSemaphore, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT } });
+        auto& waitSemaphores = image->initialState.semaphores;
+        auto& signalSemaphores = image->finalState.semaphores;
+
+        SubmitInfo submitGroup{};
+        submitGroup.commandLists = { commandList };
+        submitGroup.waitSemaphores = waitSemaphores;
+        submitGroup.signalSemaphores = signalSemaphores;
+        m_queue[QueueType::Transfer].Submit(submitGroup, nullptr);
     }
 
     void IContext ::Internal_StageResourceWrite(Handle<Buffer> bufferHandle, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset)
     {
         auto buffer = m_bufferOwner.Get(bufferHandle);
-        auto semaphore = buffer->waitSemaphore = CreateSemaphore("BufferWriteSemaphore");
-        DestroySemaphore(semaphore);
+
+        auto barrierTop = CreateBufferBarrier(buffer->handle, BufferSubregion{ offset, size }, buffer->initialState.pipelineStage, PIPELINE_BUFFER_BARRIER_TRANSFER_DST);
+        auto barrierBottom = CreateBufferBarrier(buffer->handle, BufferSubregion{ offset, size }, PIPELINE_BUFFER_BARRIER_TRANSFER_DST, buffer->finalState.pipelineStage);
 
         BufferCopyInfo copyInfo{};
         copyInfo.dstBuffer = bufferHandle;
@@ -704,43 +651,110 @@ namespace RHI::Vulkan
         copyInfo.srcBuffer = srcBuffer;
         copyInfo.srcOffset = srcOffset;
         copyInfo.size = size;
-        auto commandList = (ICommandList*)m_commandPool->Allocate(QueueType::Transfer, CommandListLevel::Primary, 1).front();
+
+        auto commandList = GetTransferCommand();
         commandList->Begin();
+        commandList->PipelineBarrier({}, barrierTop, {});
         commandList->CopyBuffer(copyInfo);
+        commandList->PipelineBarrier({}, barrierBottom, {});
         commandList->End();
 
-        QueueSubmit(QueueType::Transfer, commandList, {}, { { buffer->waitSemaphore, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT } });
+        auto& waitSemaphores = buffer->initialState.semaphores;
+        auto& signalSemaphores = buffer->finalState.semaphores;
+
+        SubmitInfo submitGroup{};
+        submitGroup.commandLists = { commandList };
+        submitGroup.waitSemaphores = waitSemaphores;
+        submitGroup.signalSemaphores = signalSemaphores;
+        m_queue[QueueType::Transfer].Submit(submitGroup, nullptr);
     }
 
-    void IContext ::Internal_StageResourceRead(Handle<Image> image, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset, Fence* fence)
+    void IContext ::Internal_StageResourceRead(Handle<Image> imageHandle, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset, Fence* fence)
     {
-        (void)image;
-        (void)subresources;
-        (void)buffer;
-        (void)bufferOffset;
-        (void)fence;
-        RHI_UNREACHABLE();
+        auto image = m_imageOwner.Get(imageHandle);
+
+        ImageSubresourceRange range{};
+        range.imageAspects = subresources.imageAspects;
+        range.arrayCount = subresources.arrayCount;
+        range.arrayBase = subresources.arrayBase;
+        range.mipLevelCount = subresources.mipLevel;
+
+        auto barrierTop = CreateImageBarrier(image->handle, ConvertSubresourceRange(range), image->finalState.pipelineStage, PIPELINE_IMAGE_BARRIER_TRANSFER_DST);
+        auto barrierBottom = CreateImageBarrier(image->handle, ConvertSubresourceRange(range), PIPELINE_IMAGE_BARRIER_TRANSFER_DST, image->initialState.pipelineStage);
+
+        ImageSize3D imageSize = {
+            image->extent.width,
+            image->extent.height,
+            image->extent.depth,
+        };
+
+        BufferImageCopyInfo copyInfo{};
+        copyInfo.image = imageHandle;
+        copyInfo.subresource = subresources;
+        copyInfo.buffer = buffer;
+        copyInfo.bufferOffset = bufferOffset;
+        copyInfo.imageSize = imageSize;
+
+        auto commandList = GetTransferCommand();
+        commandList->Begin();
+        commandList->PipelineBarrier({}, {}, barrierTop);
+        commandList->CopyBufferToImage(copyInfo);
+
+        if (image->initialState.pipelineStage != PIPELINE_IMAGE_BARRIER_UNDEFINED)
+            commandList->PipelineBarrier({}, {}, barrierBottom);
+
+        commandList->End();
+
+        auto& waitSemaphores = image->initialState.semaphores;
+        auto& signalSemaphores = image->finalState.semaphores;
+
+        SubmitInfo submitGroup{};
+        submitGroup.commandLists = { commandList };
+        submitGroup.waitSemaphores = waitSemaphores;
+        submitGroup.signalSemaphores = signalSemaphores;
+        m_queue[QueueType::Transfer].Submit(submitGroup, (IFence*)fence);
     }
 
-    void IContext ::Internal_StageResourceRead(Handle<Buffer> buffer, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset, Fence* fence)
+    void IContext ::Internal_StageResourceRead(Handle<Buffer> bufferHandle, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset, Fence* fence)
     {
-        (void)buffer;
-        (void)offset;
-        (void)size;
-        (void)srcBuffer;
-        (void)srcOffset;
-        (void)fence;
-        RHI_UNREACHABLE();
+        auto buffer = m_bufferOwner.Get(bufferHandle);
+
+        auto barrierTop = CreateBufferBarrier(buffer->handle, BufferSubregion{ offset, size }, buffer->finalState.pipelineStage, PIPELINE_BUFFER_BARRIER_TRANSFER_SRC);
+        auto barrierBottom = CreateBufferBarrier(buffer->handle, BufferSubregion{ offset, size }, PIPELINE_BUFFER_BARRIER_TRANSFER_SRC, buffer->initialState.pipelineStage);
+
+        BufferCopyInfo copyInfo{};
+        copyInfo.dstBuffer = bufferHandle;
+        copyInfo.dstOffset = offset;
+        copyInfo.srcBuffer = srcBuffer;
+        copyInfo.srcOffset = srcOffset;
+        copyInfo.size = size;
+
+        auto commandList = GetTransferCommand();
+        commandList->Begin();
+        commandList->PipelineBarrier({}, barrierTop, {});
+        commandList->CopyBuffer(copyInfo);
+        commandList->PipelineBarrier({}, barrierBottom, {});
+        commandList->End();
+
+        auto& waitSemaphores = buffer->initialState.semaphores;
+        auto& signalSemaphores = buffer->finalState.semaphores;
+
+        SubmitInfo submitGroup{};
+        submitGroup.commandLists = { commandList };
+        submitGroup.waitSemaphores = waitSemaphores;
+        submitGroup.signalSemaphores = signalSemaphores;
+        m_queue[QueueType::Transfer].Submit(submitGroup, (IFence*)fence);
     }
 
     ////////////////////////////////////////////////////////////
     // Interface implementation
     ////////////////////////////////////////////////////////////
 
-    VkBool32 IContext::DebugMessengerCallbacks(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-                                               VkDebugUtilsMessageTypeFlagsEXT messageTypes,
-                                               const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-                                               void* pUserData)
+    VkBool32 IContext::DebugMessengerCallbacks(
+        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+        VkDebugUtilsMessageTypeFlagsEXT messageTypes,
+        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+        void* pUserData)
     {
         (void)messageTypes;
         auto context = (IContext*)pUserData;
@@ -776,6 +790,18 @@ namespace RHI::Vulkan
             VULKAN_SURFACE_OS_EXTENSION_NAME,
             VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
         };
+
+        // bool debugExtensionFound = false;
+
+        // ExtensionOrLayerInitRequest layers[] = {
+        //     { "VK_LAYER_KHRONOS_validation", nullptr }
+        // };
+
+        // ExtensionOrLayerInitRequest extensions[] = {
+        //     { VK_KHR_SURFACE_EXTENSION_NAME, nullptr },
+        //     { VULKAN_SURFACE_OS_EXTENSION_NAME, nullptr },
+        //     { VK_EXT_DEBUG_UTILS_EXTENSION_NAME, &debugExtensionFound },
+        // };
 
         VkApplicationInfo applicationInfo{};
         applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -868,6 +894,10 @@ namespace RHI::Vulkan
             VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME
         };
 
+        uint32_t graphicsQueueFamilyIndex = UINT32_MAX;
+        uint32_t transferQueueFamilyIndex = UINT32_MAX;
+        uint32_t computeQueueFamilyIndex = UINT32_MAX;
+
         auto queueFamilyProperties = GetPhysicalDeviceQueueFamilyProperties(m_physicalDevice);
         for (uint32_t queueFamilyIndex = 0; queueFamilyIndex < queueFamilyProperties.size(); queueFamilyIndex++)
         {
@@ -876,23 +906,22 @@ namespace RHI::Vulkan
             // Search for main queue that should be able to do all work (graphics, compute and transfer)
             if ((queueFamilyProperty.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT)) == (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT))
             {
-                m_graphicsQueueFamilyIndex = queueFamilyIndex;
-
-                m_transferQueueFamilyIndex = queueFamilyIndex;
-                m_computeQueueFamilyIndex = queueFamilyIndex;
+                graphicsQueueFamilyIndex = queueFamilyIndex;
+                transferQueueFamilyIndex = queueFamilyIndex;
+                computeQueueFamilyIndex = queueFamilyIndex;
                 break;
             }
 
             // Search for transfer queue
             if ((queueFamilyProperty.queueFlags & VK_QUEUE_TRANSFER_BIT) == VK_QUEUE_TRANSFER_BIT && (queueFamilyProperty.queueFlags & VK_QUEUE_COMPUTE_BIT) == 0)
             {
-                m_transferQueueFamilyIndex = queueFamilyIndex;
+                transferQueueFamilyIndex = queueFamilyIndex;
             }
 
             // Search for transfer queue
             if ((queueFamilyProperty.queueFlags & VK_QUEUE_COMPUTE_BIT) == VK_QUEUE_COMPUTE_BIT && (queueFamilyProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0)
             {
-                m_computeQueueFamilyIndex = queueFamilyIndex;
+                computeQueueFamilyIndex = queueFamilyIndex;
             }
         }
 
@@ -904,23 +933,23 @@ namespace RHI::Vulkan
         queueCreateInfo.pNext = nullptr;
         queueCreateInfo.flags = 0;
 
-        if (m_graphicsQueueFamilyIndex != UINT32_MAX)
+        if (graphicsQueueFamilyIndex != UINT32_MAX)
         {
-            queueCreateInfo.queueFamilyIndex = m_graphicsQueueFamilyIndex;
+            queueCreateInfo.queueFamilyIndex = graphicsQueueFamilyIndex;
             queueCreateInfo.queueCount = 1;
             queueCreateInfo.pQueuePriorities = &queuePriority;
             queueCreateInfos.push_back(queueCreateInfo);
         }
-        else if (m_computeQueueFamilyIndex != UINT32_MAX)
+        else if (computeQueueFamilyIndex != UINT32_MAX)
         {
-            queueCreateInfo.queueFamilyIndex = m_computeQueueFamilyIndex;
+            queueCreateInfo.queueFamilyIndex = computeQueueFamilyIndex;
             queueCreateInfo.queueCount = 1;
             queueCreateInfo.pQueuePriorities = &queuePriority;
             queueCreateInfos.push_back(queueCreateInfo);
         }
-        else if (m_transferQueueFamilyIndex != UINT32_MAX)
+        else if (transferQueueFamilyIndex != UINT32_MAX)
         {
-            queueCreateInfo.queueFamilyIndex = m_transferQueueFamilyIndex;
+            queueCreateInfo.queueFamilyIndex = transferQueueFamilyIndex;
             queueCreateInfo.queueCount = 1;
             queueCreateInfo.pQueuePriorities = &queuePriority;
             queueCreateInfos.push_back(queueCreateInfo);
@@ -946,15 +975,21 @@ namespace RHI::Vulkan
         createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
         createInfo.pNext = &dynamicRenderingFeatures;
         createInfo.flags = 0;
-        createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
+        createInfo.queueCreateInfoCount = (uint32_t)queueCreateInfos.size();
         createInfo.pQueueCreateInfos = queueCreateInfos.data();
-        createInfo.enabledLayerCount = static_cast<uint32_t>(deviceLayerNames.size());
+        createInfo.enabledLayerCount = (uint32_t)deviceLayerNames.size();
         createInfo.ppEnabledLayerNames = deviceLayerNames.data();
-        createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensionNames.size());
+        createInfo.enabledExtensionCount = (uint32_t)deviceExtensionNames.size();
         createInfo.ppEnabledExtensionNames = deviceExtensionNames.data();
         createInfo.pEnabledFeatures = &enabledFeatures;
         auto result = vkCreateDevice(m_physicalDevice, &createInfo, nullptr, &m_device);
-        vkGetDeviceQueue(m_device, m_graphicsQueueFamilyIndex, 0, &m_presentQueue);
+
+        m_queue[QueueType::Graphics] = Queue(m_device, graphicsQueueFamilyIndex);
+        m_queue[QueueType::Compute] = Queue(m_device, graphicsQueueFamilyIndex);
+        m_queue[QueueType::Transfer] = Queue(m_device, graphicsQueueFamilyIndex);
+
+        // m_queue[QueueType::Compute] = Queue(m_device, computeQueueFamilyIndex);
+        // m_queue[QueueType::Transfer] = Queue(m_device, transferQueueFamilyIndex);
 
         m_limits->stagingMemoryLimit = 256 * 1000 * 1000;
 

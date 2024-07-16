@@ -19,9 +19,6 @@ namespace RHI::Vulkan
         ResultCode Recreate(ImageSize2D newSize) override;
         ResultCode Present() override;
 
-        VkSemaphore GetImageReadySemaphore() const;
-        VkSemaphore GetFrameReadySemaphore() const;
-
     private:
         VkResult InitSurface(const SwapchainCreateInfo& createInfo);
         VkResult InitSwapchain();
@@ -29,8 +26,6 @@ namespace RHI::Vulkan
     private:
         VkSwapchainKHR m_swapchain;
         VkSurfaceKHR m_surface;
-        VkSemaphore m_imageAcquiredSemaphore[MaxImageCount];
-        VkSemaphore m_presentWaitSemaphore[MaxImageCount];
 
         VkResult m_lastPresentResult;
         VkCompositeAlphaFlagBitsKHR m_compositeAlpha;
