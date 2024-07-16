@@ -152,8 +152,6 @@ namespace RHI::Vulkan
         auto currentImage = context->m_imageOwner.Get(m_images[m_currentImageIndex]);
         auto nextImage = context->m_imageOwner.Get(m_images[nextImageIndex]);
 
-        vkDeviceWaitIdle(context->m_device);
-
         TL::Vector<VkSemaphore> waitSemaphores;
         for (auto semaphore : currentImage->finalState.semaphores)
         {
@@ -171,12 +169,8 @@ namespace RHI::Vulkan
         presentInfo.pResults = &m_lastPresentResult;
         Validate(vkQueuePresentKHR(context->m_queue[QueueType::Graphics].GetHandle(), &presentInfo));
 
-        vkDeviceWaitIdle(context->m_device);
-
         auto signalSemaphore = nextImage->initialState.semaphores.front().semaphore;
         Validate(vkAcquireNextImageKHR(context->m_device, m_swapchain, UINT64_MAX, signalSemaphore, VK_NULL_HANDLE, &m_currentImageIndex));
-
-        vkDeviceWaitIdle(context->m_device);
 
         return ResultCode::Success;
     }
