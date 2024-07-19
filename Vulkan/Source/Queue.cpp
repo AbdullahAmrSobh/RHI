@@ -15,7 +15,7 @@ namespace RHI::Vulkan
 
     void Queue::BeginLabel(IContext* context, const char* name, ColorValue<float> color)
     {
-        if (auto fn = context->m_fnTable->m_queueBeginDebugUtilsLabelEXT)
+        if (auto fn = context->m_fnTable->m_vkQueueBeginDebugUtilsLabelEXT)
         {
             VkDebugUtilsLabelEXT labelInfo{};
             labelInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
@@ -31,7 +31,7 @@ namespace RHI::Vulkan
 
     void Queue::EndLabel(IContext* context)
     {
-        if (auto fn = context->m_fnTable->m_queueEndDebugUtilsLabelEXT)
+        if (auto fn = context->m_fnTable->m_vkQueueEndDebugUtilsLabelEXT)
         {
             fn(m_queue);
         }

@@ -195,17 +195,17 @@ namespace RHI::Vulkan
         return ResultCode::Success;
     }
 
-    void IContext::SetDebugName(VkDebugReportObjectTypeEXT type, uint64_t handle, const char* name) const
+    void IContext::SetDebugName(VkObjectType type, uint64_t handle, const char* name) const
     {
-        if (m_fnTable->m_debugMarkerSetObjectNameEXT && name != nullptr)
+        if (auto fn = m_fnTable->m_vkSetDebugUtilsObjectNameEXT; fn && name)
         {
-            VkDebugMarkerObjectNameInfoEXT nameInfo{};
+            VkDebugUtilsObjectNameInfoEXT nameInfo{};
             nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT;
             nameInfo.pNext = nullptr;
             nameInfo.pObjectName = name;
-            nameInfo.object = handle;
             nameInfo.objectType = type;
-            m_fnTable->m_debugMarkerSetObjectNameEXT(m_device, &nameInfo);
+            nameInfo.objectHandle = handle;
+            fn(m_device, &nameInfo);
         }
     }
 
@@ -796,9 +796,9 @@ namespace RHI::Vulkan
 
         VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
         debugCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-        debugCreateInfo.flags = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT;
-        debugCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-        debugCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT;
+        debugCreateInfo.flags = 0;
+        debugCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+        debugCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT;
         debugCreateInfo.pfnUserCallback = DebugMessengerCallbacks;
         debugCreateInfo.pUserData = this;
 
@@ -826,7 +826,9 @@ namespace RHI::Vulkan
 
         VkInstanceCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+#if RHI_DEBUG
         createInfo.pNext = *debugExtensionEnabled ? &debugCreateInfo : nullptr;
+#endif
         createInfo.flags = {};
         createInfo.pApplicationInfo = &applicationInfo;
         createInfo.enabledLayerCount = static_cast<uint32_t>(enabledLayersNames.size());

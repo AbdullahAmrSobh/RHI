@@ -362,17 +362,17 @@ namespace RHI::Vulkan
         (void)color;
 
 #if RHI_DEBUG
-        if (m_context->m_fnTable->m_cmdDebugMarkerBeginEXT)
+        if (auto fn = m_context->m_fnTable->m_vkCmdBeginDebugUtilsLabelEXT)
         {
-            VkDebugMarkerMarkerInfoEXT info{};
+            VkDebugUtilsLabelEXT info{};
             info.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT;
             info.pNext = nullptr;
-            info.pMarkerName = name;
+            info.pLabelName = name;
             info.color[0] = color.r;
             info.color[1] = color.g;
             info.color[2] = color.b;
             info.color[3] = color.a;
-            m_context->m_fnTable->m_cmdDebugMarkerBeginEXT(m_commandBuffer, &info);
+            fn(m_commandBuffer, &info);
         }
 #endif
     }
@@ -382,9 +382,9 @@ namespace RHI::Vulkan
         ZoneScoped;
 
 #if RHI_DEBUG
-        if (m_context->m_fnTable->m_cmdDebugMarkerEndEXT)
+        if (auto fn = m_context->m_fnTable->m_vkCmdEndDebugUtilsLabelEXT)
         {
-            m_context->m_fnTable->m_cmdDebugMarkerEndEXT(m_commandBuffer);
+            fn(m_commandBuffer);
         }
 #endif
     }

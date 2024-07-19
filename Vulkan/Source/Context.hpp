@@ -28,10 +28,10 @@ namespace RHI::Vulkan
         template<typename T>
         inline void SetDebugName(T handle, const char* name) const
         {
-            return SetDebugName(GetDebugReportObjectTypeEXT<T>(), reinterpret_cast<uint64_t>(handle), name);
+            return SetDebugName(GetObjectType<T>(), reinterpret_cast<uint64_t>(handle), name);
         }
 
-        void SetDebugName(VkDebugReportObjectTypeEXT type, uint64_t handle, const char* name) const;
+        void SetDebugName(VkObjectType type, uint64_t handle, const char* name) const;
 
         VkSemaphore CreateSemaphore(const char* name = nullptr, bool timeline = false, uint64_t initialValue = 0);
 

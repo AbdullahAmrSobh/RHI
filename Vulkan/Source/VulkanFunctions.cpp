@@ -12,19 +12,17 @@ namespace RHI::Vulkan
 #if RHI_DEBUG
         if (debugEnabled)
         {
-            m_queueBeginDebugUtilsLabelEXT = VULKAN_DEVICE_FUNC_LOAD(device, vkQueueBeginDebugUtilsLabelEXT);
-            m_queueEndDebugUtilsLabelEXT = VULKAN_DEVICE_FUNC_LOAD(device, vkQueueEndDebugUtilsLabelEXT);
-            m_cmdDebugMarkerBeginEXT = VULKAN_DEVICE_FUNC_LOAD(device, vkCmdDebugMarkerBeginEXT);
-            m_cmdDebugMarkerInsertEXT = VULKAN_DEVICE_FUNC_LOAD(device, vkCmdDebugMarkerInsertEXT);
-            m_cmdDebugMarkerEndEXT = VULKAN_DEVICE_FUNC_LOAD(device, vkCmdDebugMarkerEndEXT);
-            m_debugMarkerSetObjectNameEXT = VULKAN_DEVICE_FUNC_LOAD(device, vkDebugMarkerSetObjectNameEXT);
-
-            RHI_ASSERT(m_queueBeginDebugUtilsLabelEXT);
-            RHI_ASSERT(m_queueEndDebugUtilsLabelEXT);
-            RHI_ASSERT(m_cmdDebugMarkerBeginEXT);
-            RHI_ASSERT(m_cmdDebugMarkerInsertEXT);
-            RHI_ASSERT(m_cmdDebugMarkerEndEXT);
-            RHI_ASSERT(m_debugMarkerSetObjectNameEXT);
+            m_vkCmdBeginDebugUtilsLabelEXT = VULKAN_DEVICE_FUNC_LOAD(device, vkCmdBeginDebugUtilsLabelEXT);
+            m_vkCmdEndDebugUtilsLabelEXT = VULKAN_DEVICE_FUNC_LOAD(device, vkCmdEndDebugUtilsLabelEXT);
+            m_vkCmdInsertDebugUtilsLabelEXT = VULKAN_DEVICE_FUNC_LOAD(device, vkCmdInsertDebugUtilsLabelEXT);
+            m_vkCreateDebugUtilsMessengerEXT = VULKAN_DEVICE_FUNC_LOAD(device, vkCreateDebugUtilsMessengerEXT);
+            m_vkDestroyDebugUtilsMessengerEXT = VULKAN_DEVICE_FUNC_LOAD(device, vkDestroyDebugUtilsMessengerEXT);
+            m_vkQueueBeginDebugUtilsLabelEXT = VULKAN_DEVICE_FUNC_LOAD(device, vkQueueBeginDebugUtilsLabelEXT);
+            m_vkQueueEndDebugUtilsLabelEXT = VULKAN_DEVICE_FUNC_LOAD(device, vkQueueEndDebugUtilsLabelEXT);
+            m_vkQueueInsertDebugUtilsLabelEXT = VULKAN_DEVICE_FUNC_LOAD(device, vkQueueInsertDebugUtilsLabelEXT);
+            m_vkSetDebugUtilsObjectNameEXT = VULKAN_DEVICE_FUNC_LOAD(device, vkSetDebugUtilsObjectNameEXT);
+            m_vkSetDebugUtilsObjectTagEXT = VULKAN_DEVICE_FUNC_LOAD(device, vkSetDebugUtilsObjectTagEXT);
+            m_vkSubmitDebugUtilsMessageEXT = VULKAN_DEVICE_FUNC_LOAD(device, vkSubmitDebugUtilsMessageEXT);
         }
 #endif
 
