@@ -13,6 +13,8 @@ namespace RHI::Vulkan
 
         void Init(IContext* context, bool debugEnabled);
 
+        PFN_vkQueueBeginDebugUtilsLabelEXT m_queueBeginDebugUtilsLabelEXT;
+        PFN_vkQueueEndDebugUtilsLabelEXT m_queueEndDebugUtilsLabelEXT;
         PFN_vkCmdDebugMarkerBeginEXT m_cmdDebugMarkerBeginEXT;
         PFN_vkCmdDebugMarkerInsertEXT m_cmdDebugMarkerInsertEXT;
         PFN_vkCmdDebugMarkerEndEXT m_cmdDebugMarkerEndEXT;

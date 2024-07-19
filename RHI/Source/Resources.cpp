@@ -190,14 +190,4 @@ namespace RHI
     {
         return m_images[m_currentImageIndex];
     }
-
-    Handle<ImageView> Swapchain::GetImageView(const ImageViewCreateInfo& createInfo)
-    {
-        if (auto it = m_imageViewsLRU.find(createInfo); it != m_imageViewsLRU.end())
-            return it->second;
-
-        auto imageView = m_context->CreateImageView(createInfo);
-        m_imageViewsLRU[createInfo] = imageView;
-        return imageView;
-    }
 } // namespace RHI

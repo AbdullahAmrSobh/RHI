@@ -5,7 +5,6 @@
 #include "Resources.hpp"
 #include "CommandList.hpp"
 #include "Swapchain.hpp"
-#include "RenderGraphCompiler.hpp"
 #include "Context.hpp"
 #include "VulkanFunctions.hpp"
 #include "Queue.hpp"
@@ -529,41 +528,23 @@ namespace RHI::Vulkan
         });
     }
 
-    inline static TL::Vector<VkSemaphoreSubmitInfo> GetSemaphore(TL::UnorderedMap<VkSemaphore, VkPipelineStageFlags2>& unorderedMap)
-    {
-        TL::Vector<VkSemaphoreSubmitInfo> res;
-        for (auto [semaphore, stages] : unorderedMap)
-        {
-            VkSemaphoreSubmitInfo info{};
-            info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-            info.semaphore = semaphore;
-            info.stageMask = stages;
-            res.push_back(info);
-        }
-        return res;
-    }
-
     void IContext::Internal_DispatchGraph(RenderGraph& renderGraph, Fence* signalFence)
     {
         for (auto passHandle : renderGraph.m_passes)
         {
-            auto pass = renderGraph.m_passOwner.Get(passHandle);
-            auto queue = m_queue[QueueType::Graphics];
-
-            RenderGraphCompiler::CompilePass(this, renderGraph, pass);
-            auto submitData = (IPassSubmitData*)pass->submitData;
-
-            auto waitSemaphores = GetSemaphore(submitData->waitSemaphores);
-            auto signalSemaphores = GetSemaphore(submitData->signalSemaphores);
+            auto queue = m_queue[QueueType::Graphics]; // TODO: query pass for this
+            auto pass = renderGraph.m_passPool.Get(passHandle);
+            auto commandList = (ICommandList*)pass->m_commandLists.front();
 
             SubmitInfo submitInfo{};
-            submitInfo.waitSemaphores = waitSemaphores;
-            submitInfo.signalSemaphores = signalSemaphores;
-            submitInfo.commandLists = { (ICommandList**)pass->commandList.data(), pass->commandList.size() };
+            submitInfo.waitSemaphores = commandList->m_waitSemaphores;
+            submitInfo.signalSemaphores = commandList->m_signalSemaphores;
+            submitInfo.commandLists = { (ICommandList**)pass->m_commandLists.data(), pass->m_commandLists.size() };
 
-            queue.Submit(submitInfo, (IFence*)signalFence);
-
-            submitData->Clear();
+            queue.Submit(
+                this,
+                submitInfo,
+                passHandle == renderGraph.m_passes.back() ? (IFence*)signalFence : nullptr);
         }
     }
 
@@ -600,10 +581,8 @@ namespace RHI::Vulkan
         range.mipLevelCount = subresources.mipLevel;
 
         /// todo: figure this out
-        auto initialStage = image->initialState.pipelineStage;
-        initialStage.layout = VK_IMAGE_LAYOUT_UNDEFINED;
-        auto barrierTop = CreateImageBarrier(image->handle, ConvertSubresourceRange(range), initialStage, PIPELINE_IMAGE_BARRIER_TRANSFER_DST);
-        auto barrierBottom = CreateImageBarrier(image->handle, ConvertSubresourceRange(range), PIPELINE_IMAGE_BARRIER_TRANSFER_DST, image->finalState.pipelineStage);
+        auto barrierTop = CreateImageBarrier(image->handle, ConvertSubresourceRange(range), PIPELINE_IMAGE_BARRIER_UNDEFINED, PIPELINE_IMAGE_BARRIER_TRANSFER_DST);
+        auto barrierBottom = CreateImageBarrier(image->handle, ConvertSubresourceRange(range), PIPELINE_IMAGE_BARRIER_TRANSFER_DST, {});
 
         subresources.mipLevel = 0; // TODO: figure out this resoruce views
 
@@ -635,7 +614,7 @@ namespace RHI::Vulkan
         submitGroup.commandLists = { commandList };
         submitGroup.waitSemaphores = waitSemaphores;
         submitGroup.signalSemaphores = signalSemaphores;
-        m_queue[QueueType::Transfer].Submit(submitGroup, nullptr);
+        m_queue[QueueType::Transfer].Submit(this, submitGroup, nullptr);
     }
 
     void IContext ::Internal_StageResourceWrite(Handle<Buffer> bufferHandle, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset)
@@ -666,7 +645,7 @@ namespace RHI::Vulkan
         submitGroup.commandLists = { commandList };
         submitGroup.waitSemaphores = waitSemaphores;
         submitGroup.signalSemaphores = signalSemaphores;
-        m_queue[QueueType::Transfer].Submit(submitGroup, nullptr);
+        m_queue[QueueType::Transfer].Submit(this, submitGroup, nullptr);
     }
 
     void IContext ::Internal_StageResourceRead(Handle<Image> imageHandle, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset, Fence* fence)
@@ -712,7 +691,10 @@ namespace RHI::Vulkan
         submitGroup.commandLists = { commandList };
         submitGroup.waitSemaphores = waitSemaphores;
         submitGroup.signalSemaphores = signalSemaphores;
-        m_queue[QueueType::Transfer].Submit(submitGroup, (IFence*)fence);
+        m_queue[QueueType::Transfer].Submit(this, submitGroup, (IFence*)fence);
+
+        image->initialState.pipelineStage.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        image->finalState.pipelineStage.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     }
 
     void IContext ::Internal_StageResourceRead(Handle<Buffer> bufferHandle, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset, Fence* fence)
@@ -743,7 +725,7 @@ namespace RHI::Vulkan
         submitGroup.commandLists = { commandList };
         submitGroup.waitSemaphores = waitSemaphores;
         submitGroup.signalSemaphores = signalSemaphores;
-        m_queue[QueueType::Transfer].Submit(submitGroup, (IFence*)fence);
+        m_queue[QueueType::Transfer].Submit(this, submitGroup, (IFence*)fence);
     }
 
     ////////////////////////////////////////////////////////////

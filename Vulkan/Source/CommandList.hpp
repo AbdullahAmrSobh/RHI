@@ -9,6 +9,21 @@ namespace RHI::Vulkan
 {
     class IContext;
 
+    enum BarrierSlot
+    {
+        Priloge,
+        Epiloge,
+        Resolve,
+        Count,
+    };
+
+    struct PipelineBarriers
+    {
+        TL::Vector<VkMemoryBarrier2> memoryBarriers;
+        TL::Vector<VkBufferMemoryBarrier2> bufferBarriers;
+        TL::Vector<VkImageMemoryBarrier2> imageBarriers;
+    };
+
     class ICommandPool final : public CommandPool
     {
     public:
@@ -74,11 +89,11 @@ namespace RHI::Vulkan
         void CopyImageToBuffer(const BufferImageCopyInfo& copyInfo) override;
         void CopyBufferToImage(const BufferImageCopyInfo& copyInfo) override;
 
-        VkCommandBuffer m_commandBuffer;
-
-        class IPassSubmitData* m_executeContext;
-
-    private:
         IContext* m_context;
+        VkCommandBuffer m_commandBuffer;
+        PipelineBarriers m_barriers[BarrierSlot::Count];
+        TL::Vector<VkSemaphoreSubmitInfo> m_waitSemaphores;
+        TL::Vector<VkSemaphoreSubmitInfo> m_signalSemaphores;
+        bool m_isRenderPassStarted;
     };
 } // namespace RHI::Vulkan

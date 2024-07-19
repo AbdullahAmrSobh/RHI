@@ -45,6 +45,14 @@ namespace RHI::Vulkan
 
         auto context = (IContext*)m_context;
 
+        for (uint32_t i = 0; i < MaxImageCount; i++)
+        {
+            auto s = std::vformat("Swapchain image acquried {}", std::make_format_args(i));
+
+            m_imageAcquiredSemaphores[i] = context->CreateSemaphore(std::vformat("Swapchain image acquried {}", std::make_format_args(i)).c_str());
+            m_imageReleasedSemaphores[i] = context->CreateSemaphore(std::vformat("Swapchain image released {}", std::make_format_args(i)).c_str());
+        }
+
         m_createInfo = createInfo;
         m_name = createInfo.name ? createInfo.name : "";
         m_createInfo.name = m_name.c_str();
@@ -148,30 +156,22 @@ namespace RHI::Vulkan
 
         auto context = (IContext*)m_context;
 
-        auto nextImageIndex = (m_currentImageIndex + 1) % m_swapchainImagesCount;
-        auto currentImage = context->m_imageOwner.Get(m_images[m_currentImageIndex]);
-        auto nextImage = context->m_imageOwner.Get(m_images[nextImageIndex]);
-
-        TL::Vector<VkSemaphore> waitSemaphores;
-        for (auto semaphore : currentImage->finalState.semaphores)
-        {
-            waitSemaphores.push_back(semaphore.semaphore);
-        }
+        auto waitSemaphore = GetImageSignaledSemaphore();
 
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         presentInfo.pNext = nullptr;
-        presentInfo.waitSemaphoreCount = (uint32_t)waitSemaphores.size();
-        presentInfo.pWaitSemaphores = waitSemaphores.data();
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores = &waitSemaphore;
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = &m_swapchain;
         presentInfo.pImageIndices = &m_currentImageIndex;
         presentInfo.pResults = &m_lastPresentResult;
         Validate(vkQueuePresentKHR(context->m_queue[QueueType::Graphics].GetHandle(), &presentInfo));
 
-        auto signalSemaphore = nextImage->initialState.semaphores.front().semaphore;
-        Validate(vkAcquireNextImageKHR(context->m_device, m_swapchain, UINT64_MAX, signalSemaphore, VK_NULL_HANDLE, &m_currentImageIndex));
-
+        auto nextImageIndex = (m_currentImageIndex + 1) % m_swapchainImagesCount;
+        Validate(vkAcquireNextImageKHR(context->m_device, m_swapchain, UINT64_MAX, m_imageAcquiredSemaphores[nextImageIndex], VK_NULL_HANDLE, &m_currentImageIndex));
+        RHI_ASSERT(nextImageIndex == m_currentImageIndex);
         return ResultCode::Success;
     }
 
@@ -207,6 +207,8 @@ namespace RHI::Vulkan
         TL::Vector<VkImage> images;
         images.resize(imagesCount);
         Validate(vkGetSwapchainImagesKHR(context->m_device, m_swapchain, &imagesCount, images.data()));
+
+        Validate(vkAcquireNextImageKHR(context->m_device, m_swapchain, UINT64_MAX, GetImageAcquiredSemaphore(), VK_NULL_HANDLE, &m_currentImageIndex));
 
         for (uint32_t imageIndex = 0; imageIndex < m_swapchainImagesCount; imageIndex++)
         {

@@ -101,10 +101,10 @@ namespace RHI
         using HandleType   = Handle<Resource>;
         using ResourceType = Resource;
 
-        HandlePool()                   = default;
-        HandlePool(const HandlePool&&) = delete;
-        HandlePool(HandlePool&&)       = default;
-        ~HandlePool()                  = default;
+        HandlePool()                  = default;
+        HandlePool(const HandlePool&) = delete;
+        HandlePool(HandlePool&&)      = default;
+        ~HandlePool()                 = default;
 
         TL::String ReportLiveResources() const;
 
@@ -116,6 +116,7 @@ namespace RHI
         // Gets the resource associated with handle
         inline const Resource* Get(Handle<Resource> handle) const;
 
+        // Gets the resource associated with handle
         inline Resource* Get(Handle<Resource> handle);
 
         // Inserted a zerod resource and returns its handle
@@ -195,20 +196,19 @@ namespace RHI
         {
             size_t index = m_freeSlots.back();
             m_freeSlots.pop_back();
-            m_resources[index] = std::forward<Resource>(resource);
+            m_resources[index] = std::move(resource);
             // Generate a new generation ID
             uint16_t& genId = m_genIds[index];
             m_genIds[index] = genId;
 
-            auto handle             = Handle<Resource>(index, genId);
-            m_liveResources[handle] = CaptureCallstack(3);
-            return handle;
+            return Handle<Resource>(index, genId);
         }
 
         // If no free slot, expand the pool
-        m_resources.emplace_back(std::forward<Resource>(resource));
-        uint16_t genId          = m_genIds.emplace_back((uint16_t)1);
-        auto     handle         = Handle<Resource>(m_resources.size() - 1, genId);
+        m_resources.emplace_back(std::move(resource));
+        m_genIds.emplace_back(uint16_t(1));
+        auto genId = m_genIds.back();
+        auto handle         = Handle<Resource>(m_resources.size() - 1, genId);
         m_liveResources[handle] = CaptureCallstack(3);
         return handle;
     }

@@ -15,6 +15,7 @@ namespace RHI::Vulkan
     {
     public:
         inline static constexpr uint32_t MAX_FRAMES_IN_FLIGHT_COUNT = 3;
+
         DeleteQueue(IContext* context)
             : m_context(context)
         {

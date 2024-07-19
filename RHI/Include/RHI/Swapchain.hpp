@@ -66,17 +66,12 @@ namespace RHI
         /// @brief Presents the current image.
         virtual ResultCode Present() = 0;
 
-        /// @brief Get the swapchain image view.
-        Handle<ImageView> GetImageView(const ImageViewCreateInfo& createInfo);
-
     protected:
         Context*            m_context;
         uint32_t            m_currentImageIndex;
         uint32_t            m_swapchainImagesCount;
         SwapchainCreateInfo m_createInfo;
         Handle<Image>       m_images[MaxImageCount];
-
-        TL::UnorderedMap<ImageViewCreateInfo, Handle<ImageView>> m_imageViewsLRU;
 
         TL::String m_name;
     };

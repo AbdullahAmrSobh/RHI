@@ -6,7 +6,6 @@
 #include <RHI/Common/Containers.h>
 #include <RHI/Definitions.hpp>
 #include <RHI/Resources.hpp>
-#include <RHI/RGInternals.hpp>
 
 #include <cstdint>
 
@@ -15,9 +14,7 @@ namespace RHI
     class Swapchain;
     class Pass;
 
-    inline static constexpr ImageSize2D SizeRelative2D = ImageSize2D{};
-
-    enum class AttachmentLifetime : uint8_t
+    enum class AttachmentType : uint8_t
     {
         None,
         Imported,
@@ -27,9 +24,9 @@ namespace RHI
 
     struct ImageViewInfo
     {
-        ImageViewType         viewType;
-        ImageSubresourceRange subresourceLayers;
-        ComponentMapping      componentMapping;
+        ImageViewType         type;
+        ImageSubresourceRange subresources;
+        ComponentMapping      swizzle;
     };
 
     struct BufferViewInfo
@@ -38,69 +35,72 @@ namespace RHI
         Format          format;
     };
 
-    struct ImageAttachment;
-    struct BufferAttachment;
-
-    struct ImagePassAttachment;
-    struct BufferPassAttachment;
-
-    using ImageAttachmentList  = TL::List<ImagePassAttachment>;
-    using BufferAttachmentList = TL::List<BufferPassAttachment>;
-
-    using ImageAttachmentIterator  = ImageAttachmentList::iterator;
-    using BufferAttachmentIterator = ImageAttachmentList::iterator;
-
-    struct ImageAttachment
-    {
-        RenderGraph*        renderGraph;
-        TL::String          name;
-        AttachmentLifetime  lifetime;
-        RGImageID           resource;
-        ImageCreateInfo     info;
-        ImageAttachmentList list;
-    };
-
-    struct BufferAttachment
-    {
-        RenderGraph*         renderGraph;
-        TL::String           name;
-        AttachmentLifetime   lifetime;
-        RGBufferID           resource;
-        BufferCreateInfo     info;
-        BufferAttachmentList list;
-    };
-
     struct ImagePassAttachment
     {
-        Handle<Pass>            pass;
-        Handle<ImageAttachment> attachment;
-        Flags<ImageUsage>       usage;
-        Flags<Access>           access;
-        Flags<ShaderStage>      stages;
-        ImageViewInfo           viewInfo;
-        RGImageViewID           view;
-        ImageAttachmentIterator it;
+        Handle<Pass>                   pass;
+        Handle<struct ImageAttachment> attachment;
+        ImageUsage                     usage;
+        Access                         access;
+        Flags<ShaderStage>             stages;
+        ImageViewInfo                  viewInfo;
+        ImagePassAttachment*           next;
+        ImagePassAttachment*           prev;
     };
 
     struct BufferPassAttachment
     {
-        Handle<Pass>             pass;
-        Handle<BufferAttachment> attachment;
-        Flags<BufferUsage>       usage;
-        Flags<Access>            access;
-        Flags<ShaderStage>       stages;
-        BufferViewInfo           viewInfo;
-        RGImageViewID            view;
-        BufferAttachmentIterator it;
+        Handle<Pass>                    pass;
+        Handle<struct BufferAttachment> attachment;
+        BufferUsage                     usage;
+        Access                          access;
+        Flags<ShaderStage>              stages;
+        BufferViewInfo                  viewInfo;
+        BufferPassAttachment*           next;
+        BufferPassAttachment*           prev;
     };
 
-    inline static ImagePassAttachment* Emplace(ImageAttachment& attachment)
+    struct ImageAttachment
     {
-        return &(attachment.list.emplace_back(ImagePassAttachment()));
-    }
+        TL::String           name;
+        Handle<Image>        resource;
+        Swapchain*           swapchain;
+        ImageCreateInfo      info;
+        ImagePassAttachment* first;
+        ImagePassAttachment* last;
+        bool                 isTransient;
 
-    inline static BufferPassAttachment* Emplace(BufferAttachment& attachment)
+        TL::UnorderedMap<Handle<Pass>, ImagePassAttachment*> list;
+
+        ImagePassAttachment* Find(Handle<Pass> pass) const
+        {
+            if (auto it = list.find(pass); it != list.end())
+            {
+                return it->second;
+            }
+
+            return nullptr;
+        }
+    };
+
+    struct BufferAttachment
     {
-        return &(attachment.list.emplace_back(BufferPassAttachment()));
-    }
+        TL::String            name;
+        Handle<Buffer>        resource;
+        BufferCreateInfo      info;
+        BufferPassAttachment* first;
+        BufferPassAttachment* last;
+
+        TL::UnorderedMap<Handle<Pass>, BufferPassAttachment*> list;
+
+        BufferPassAttachment* Find(Handle<Pass> pass) const
+        {
+            if (auto it = list.find(pass); it != list.end())
+            {
+                return it->second;
+            }
+
+            return nullptr;
+        }
+    };
+
 } // namespace RHI

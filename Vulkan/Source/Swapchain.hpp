@@ -19,6 +19,10 @@ namespace RHI::Vulkan
         ResultCode Recreate(ImageSize2D newSize) override;
         ResultCode Present() override;
 
+        inline VkSemaphore GetImageAcquiredSemaphore() const { return m_imageAcquiredSemaphores[m_currentImageIndex]; }
+
+        inline VkSemaphore GetImageSignaledSemaphore() const { return m_imageReleasedSemaphores[m_currentImageIndex]; }
+
     private:
         VkResult InitSurface(const SwapchainCreateInfo& createInfo);
         VkResult InitSwapchain();
@@ -30,5 +34,8 @@ namespace RHI::Vulkan
         VkResult m_lastPresentResult;
         VkCompositeAlphaFlagBitsKHR m_compositeAlpha;
         VkSurfaceFormatKHR m_surfaceFormat;
+
+        VkSemaphore m_imageAcquiredSemaphores[MaxImageCount];
+        VkSemaphore m_imageReleasedSemaphores[MaxImageCount];
     };
 } // namespace RHI::Vulkan

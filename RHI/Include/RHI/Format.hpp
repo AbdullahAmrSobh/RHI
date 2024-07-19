@@ -116,4 +116,8 @@ namespace RHI
 
     RHI_EXPORT FormatType GetFormatType(Format format);
 
+    RHI_EXPORT bool IsRenderTarget(Format format);
+
+    RHI_EXPORT bool IsDepthOrStencil(Format format);
+
 } // namespace RHI

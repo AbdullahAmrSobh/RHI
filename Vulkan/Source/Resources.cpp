@@ -92,7 +92,6 @@ namespace RHI::Vulkan
         this->availableAspects = formatInfo.hasRed ? ImageAspect::Color : ImageAspect::Depth; // TODO: do this correctly
 
         this->initialState.pipelineStage  = { VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, ACCESS_FLAGS_SHADER_READ };
-        ;
 
         VmaAllocationCreateInfo allocInfo{};
         allocInfo.flags = 0u;

@@ -32,46 +32,21 @@ namespace RHI::Vulkan
         }
     };
 
-    struct ImageTransitionState
-    {
-        ImageStageAccess srcState;
-        ImageStageAccess dstState;
-        uint32_t srcQueueFamilyIndex;
-        uint32_t dstQueueFamilyIndex;
-
-        inline bool CanSkip() const
-        {
-            return srcState == dstState && srcQueueFamilyIndex == dstQueueFamilyIndex;
-        }
-    };
-
-    struct BufferTransitionState
-    {
-        BufferStageAccess srcState;
-        BufferStageAccess dstState;
-        uint32_t srcQueueFamilyIndex;
-        uint32_t dstQueueFamilyIndex;
-    };
-
     // clang-format off
 
     inline static constexpr VkAccessFlags2   ACCESS_FLAGS_COLOR_ATTACHMENT_READ              = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
     inline static constexpr VkAccessFlags2   ACCESS_FLAGS_COLOR_ATTACHMENT_WRITE             = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
     inline static constexpr VkAccessFlags2   ACCESS_FLAGS_COLOR_ATTACHMENT_READ_WRITE        = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-
     inline static constexpr VkAccessFlags2   ACCESS_FLAGS_DEPTH_TARGET_READ                  = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
     inline static constexpr VkAccessFlags2   ACCESS_FLAGS_DEPTH_TARGET_WRITE                 = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
     inline static constexpr VkAccessFlags2   ACCESS_FLAGS_DEPTH_TARGET_READ_WRITE            = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
     inline static constexpr VkAccessFlags2   ACCESS_FLAGS_SHADER_READ                        = VK_ACCESS_2_SHADER_READ_BIT;
     inline static constexpr VkAccessFlags2   ACCESS_FLAGS_SHADER_WRITE                       = VK_ACCESS_2_SHADER_WRITE_BIT;
     inline static constexpr VkAccessFlags2   ACCESS_FLAGS_SHADER_READ_WRITE                  = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
-
-    inline static constexpr VkAccessFlags2   ACCESS_FLAGS_SAMPLED                            =  VK_ACCESS_2_SHADER_SAMPLED_READ_BIT;
-
+    inline static constexpr VkAccessFlags2   ACCESS_FLAGS_SAMPLED                            = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT;
     inline static constexpr VkAccessFlags2   ACCESS_FLAGS_SHADER_STORAGE_READ                = VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
     inline static constexpr VkAccessFlags2   ACCESS_FLAGS_SHADER_STORAGE_WRITE               = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
-    inline static constexpr VkAccessFlags2   ACCESS_FLAGS_SHADER_STORAGE_READ_WRITE          = ACCESS_FLAGS_SHADER_STORAGE_READ | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+    inline static constexpr VkAccessFlags2   ACCESS_FLAGS_SHADER_STORAGE_READ_WRITE          = VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
 
     inline static constexpr ImageStageAccess PIPELINE_IMAGE_BARRIER_COLOR_READ               = { VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, ACCESS_FLAGS_COLOR_ATTACHMENT_READ       };
     inline static constexpr ImageStageAccess PIPELINE_IMAGE_BARRIER_COLOR_WRITE              = { VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, ACCESS_FLAGS_COLOR_ATTACHMENT_WRITE      };
@@ -87,14 +62,16 @@ namespace RHI::Vulkan
     inline static constexpr ImageStageAccess PIPELINE_IMAGE_BARRIER_DEPTH_STENCIL_READ_WRITE = { VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,    ACCESS_FLAGS_DEPTH_TARGET_READ_WRITE     };
     inline static constexpr ImageStageAccess PIPELINE_IMAGE_BARRIER_UNDEFINED                = { VK_IMAGE_LAYOUT_UNDEFINED,                        VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,             VK_ACCESS_2_NONE                         };
     inline static constexpr ImageStageAccess PIPELINE_IMAGE_BARRIER_PRESENT_SRC              = { VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,                  VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,          VK_ACCESS_2_NONE                         };
+    inline static constexpr ImageStageAccess PIPELINE_IMAGE_BARRIER_TRANSFER_SRC             = { VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,             VK_PIPELINE_STAGE_2_TRANSFER_BIT,                VK_ACCESS_2_TRANSFER_READ_BIT            };
+    inline static constexpr ImageStageAccess PIPELINE_IMAGE_BARRIER_TRANSFER_DST             = { VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,             VK_PIPELINE_STAGE_2_TRANSFER_BIT,                VK_ACCESS_2_TRANSFER_WRITE_BIT           };
 
-    inline static constexpr ImageStageAccess PIPELINE_IMAGE_BARRIER_TRANSFER_SRC             = { VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,            VK_PIPELINE_STAGE_2_TRANSFER_BIT,                 VK_ACCESS_2_TRANSFER_READ_BIT            };
-    inline static constexpr ImageStageAccess PIPELINE_IMAGE_BARRIER_TRANSFER_DST             = { VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,            VK_PIPELINE_STAGE_2_TRANSFER_BIT,                 VK_ACCESS_2_TRANSFER_WRITE_BIT           };
+    inline static constexpr ImageStageAccess PIPELINE_IMAGE_BARRIER_SHADER_READ             = { VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,             VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,                VK_ACCESS_2_TRANSFER_WRITE_BIT           };
+
 
     // buffer stage accesses
 
-    inline static constexpr BufferStageAccess PIPELINE_BUFFER_BARRIER_TRANSFER_SRC             = { VK_PIPELINE_STAGE_2_TRANSFER_BIT,                 VK_ACCESS_2_TRANSFER_READ_BIT            };
-    inline static constexpr BufferStageAccess PIPELINE_BUFFER_BARRIER_TRANSFER_DST             = { VK_PIPELINE_STAGE_2_TRANSFER_BIT,                 VK_ACCESS_2_TRANSFER_WRITE_BIT           };
+    inline static constexpr BufferStageAccess PIPELINE_BUFFER_BARRIER_TRANSFER_SRC           = { VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT  };
+    inline static constexpr BufferStageAccess PIPELINE_BUFFER_BARRIER_TRANSFER_DST           = { VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT };
 
     // clang-format on
 

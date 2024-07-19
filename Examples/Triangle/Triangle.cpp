@@ -12,6 +12,33 @@
 
 namespace Examples
 {
+    [[maybe_unused]] inline static constexpr RHI::ClearValue BlackColorValue = { .f32{ 0.0f, 0.0f, 0.0f, 0.0f } };
+    [[maybe_unused]] inline static constexpr RHI::ClearValue WhiteColorValue = { .f32{ 1.0f, 1.0f, 1.0f, 1.0f } };
+    [[maybe_unused]] inline static constexpr RHI::ClearValue DepthValue = { .depthStencil = { .depthValue = 1.0f, .stencilValue = {} } };
+
+    [[maybe_unused]] inline static Handle<RHI::ImageAttachment> CreateAttachment(RHI::RenderGraph& renderGraph, Handle<RHI::Pass> pass, const char* name, RHI::Format format)
+    {
+        RHI::ImageCreateInfo createInfo{
+            .name = name,
+            .usageFlags = RHI::GetFormatInfo(format).hasRed ? RHI::ImageUsage::Color : RHI::ImageUsage::Depth,
+            .type = RHI::ImageType::Image2D,
+            .size = { 0, 0, 0 },
+            .format = format,
+            .sampleCount = RHI::SampleCount::Samples1,
+            .mipLevels = 1,
+            .arrayCount = 1
+        };
+        auto attachment = renderGraph.CreateImage(createInfo);
+        RHI::ImageViewInfo viewInfo{};
+        viewInfo.type = RHI::ImageViewType::View2D;
+        viewInfo.subresources.imageAspects = RHI::GetFormatInfo(format).hasAlpha ? RHI::ImageAspect::Color : RHI::ImageAspect::Depth;
+        viewInfo.subresources.arrayCount = 1;
+        viewInfo.subresources.mipLevelCount = 1;
+
+        renderGraph.PassUseImage(pass, attachment, viewInfo, (RHI::ImageUsage)((int)createInfo.usageFlags), RHI::ShaderStage::None, RHI::Access::None);
+        return attachment;
+    }
+
     class BasicRenderer final : public ApplicationBase
     {
     public:
@@ -47,9 +74,11 @@ namespace Examples
         {
             ZoneScoped;
 
+            auto [windowWidth, windowHeight] = m_window->GetWindowSize();
+
             m_camera = RHI::CreatePtr<Camera>();
             m_camera->m_window = m_window.get();
-            m_camera->SetPerspective(60.0f, float(m_window->GetWindowSize().width) / float(m_window->GetWindowSize().height), 0.1f, 10000.0f);
+            m_camera->SetPerspective(60.0f, float(windowWidth) / float(windowHeight), 0.1f, 10000.0f);
             m_camera->SetRotationSpeed(0.0002f);
 
             m_scene = RHI::CreatePtr<Scene>(m_context.get(), m_launchSettings.sceneFileLocation.c_str());
@@ -62,49 +91,22 @@ namespace Examples
             // setup the render graph
             RHI::PassCreateInfo passCI{
                 .name = "GBufferPass",
-                .queueType = RHI::QueueType::Graphics,
+                .flags = RHI::PassFlags::Graphics,
             };
             m_renderPass = m_renderGraph->CreatePass(passCI);
 
             auto outputAttachment = m_renderGraph->ImportSwapchain("color-attachment", *m_swapchain);
-            auto windowSize = RHI::ImageSize3D{ m_window->GetWindowSize().width, m_window->GetWindowSize().height, 1 };
 
-            RHI::ImageCreateInfo imageCI{
-                .name = "depth-attachment",
-                .usageFlags = RHI::ImageUsage::DepthStencil,
-                .type = RHI::ImageType::Image2D,
-                .size = windowSize,
-                .format = RHI::Format::D32,
-                .sampleCount = RHI::SampleCount::Samples1,
-                .mipLevels = 1,
-                .arrayCount = 1,
-            };
-            auto depthAttachment = m_renderGraph->CreateImage(imageCI);
+            RHI::ImageViewInfo viewInfo{};
+            viewInfo.type = RHI::ImageViewType::View2D;
+            viewInfo.subresources.imageAspects = RHI::ImageAspect::Color;
+            viewInfo.subresources.arrayCount = 1;
+            viewInfo.subresources.mipLevelCount = 1;
+            m_renderGraph->PassUseImage(m_renderPass, outputAttachment, viewInfo, RHI::ImageUsage::Color, RHI::ShaderStage::None, RHI::Access::None);
+            [[maybe_unused]] auto testAttachment = CreateAttachment(*m_renderGraph, m_renderPass, "test-attachment", RHI::Format::RGBA32_FLOAT);
+            [[maybe_unused]] auto depthAttachment = CreateAttachment(*m_renderGraph, m_renderPass, "depth-attachment", RHI::Format::D32);
 
-            imageCI.name = "test-attachment";
-            imageCI.format = RHI::Format::RGBA32_FLOAT;
-            imageCI.usageFlags = RHI::ImageUsage::Color;
-            auto imageAttachment = m_renderGraph->CreateImage(imageCI);
-
-            RHI::ImageAttachmentUseInfo attachmentUseInfo {};
-            attachmentUseInfo.usage = RHI::ImageUsage::Color;
-            attachmentUseInfo.loadStoreOperations.loadOperation = RHI::LoadOperation::Discard;
-            attachmentUseInfo.loadStoreOperations.storeOperation = RHI::StoreOperation::Store;
-            attachmentUseInfo.clearValue = { 0.0f, 0.2f, 0.3f, 1.0f };
-            attachmentUseInfo.subresourceRange.arrayCount = 1;
-            attachmentUseInfo.subresourceRange.mipLevelCount = 1;
-            attachmentUseInfo.subresourceRange.imageAspects = RHI::ImageAspect::All;
-            m_renderGraph->UseImage(m_renderPass, outputAttachment, attachmentUseInfo);
-
-            attachmentUseInfo.subresourceRange.imageAspects = RHI::ImageAspect::Depth;
-            attachmentUseInfo.usage = RHI::ImageUsage::Depth;
-            attachmentUseInfo.clearValue.depthStencil.depthValue = 1.0f;
-            m_renderGraph->UseImage(m_renderPass, depthAttachment, attachmentUseInfo);
-
-            attachmentUseInfo.subresourceRange.imageAspects = RHI::ImageAspect::Color;
-            attachmentUseInfo.usage = RHI::ImageUsage::Color;
-            attachmentUseInfo.clearValue = {};
-            m_renderGraph->UseImage(m_renderPass, imageAttachment, attachmentUseInfo);
+            m_renderGraph->PassResize(m_renderPass, { m_window->GetWindowSize().width, m_window->GetWindowSize().height });
 
             m_context->CompileRenderGraph(*m_renderGraph);
 
@@ -126,10 +128,16 @@ namespace Examples
             ZoneScoped;
 
             static float cameraSpeed = 1.0f;
+            static RHI::ClearValue clearColor {};
+
+            static float depthValue = 1.0f;
+
+
 
             ImGui::NewFrame();
             ImGui::Text("Basic scene: ");
             ImGui::SliderFloat("camera speed", &cameraSpeed, 0.1f, 5.0f);
+            ImGui::ColorEdit4("Background color", &clearColor.f32.r);
             ImGui::Render();
 
             m_camera->SetMovementSpeed(cameraSpeed);
@@ -140,8 +148,7 @@ namespace Examples
             auto [windowWidth, windowHeight] = m_window->GetWindowSize();
 
             // render code
-            RHI::Viewport viewport =
-            {
+            RHI::Viewport viewport = {
                 .offsetX = 0,
                 .offsetY = 0,
                 .width = float(windowWidth),
@@ -150,8 +157,7 @@ namespace Examples
                 .maxDepth = 1.0f,
             };
 
-            RHI::Scissor scissor =
-            {
+            RHI::Scissor scissor = {
                 .offsetX = 0,
                 .offsetY = 1,
                 .width = windowWidth,
@@ -165,24 +171,42 @@ namespace Examples
             m_commandPool[i]->Reset();
             auto commandList = std::move(m_commandPool[i]->Allocate(RHI::QueueType::Graphics, RHI::CommandListLevel::Primary, 1).front());
 
-            RHI::CommandListBeginInfo beginInfo
-            {
+
+            RHI::ClearValue clearValueDepth {};
+            clearValueDepth.depthStencil = RHI::DepthStencilValue{ .depthValue = depthValue, .stencilValue = 0 };
+
+            RHI::CommandListBeginInfo beginInfo{
                 .renderGraph = m_renderGraph.get(),
                 .pass = m_renderPass,
-                .loadStoreOperations = {},
+                .loadStoreOperations = {
+                    RHI::LoadStoreOperations{
+                        .clearValue = clearColor,
+                        .loadOperation = RHI::LoadOperation::Discard,
+                        .storeOperation = RHI::StoreOperation::Store,
+                    },
+                    RHI::LoadStoreOperations{
+                        .clearValue = {},
+                        .loadOperation = RHI::LoadOperation::Discard,
+                        .storeOperation = RHI::StoreOperation::Store,
+                    },
+
+                    RHI::LoadStoreOperations{
+                        .clearValue = clearValueDepth,
+                        .loadOperation = RHI::LoadOperation::Discard,
+                        .storeOperation = RHI::StoreOperation::Store,
+                    } },
             };
             commandList->Begin(beginInfo);
             commandList->SetViewport(viewport);
             commandList->SetSicssor(scissor);
             Draw(*commandList);
             m_imguiRenderer->RenderDrawData(ImGui::GetDrawData(), *commandList);
-
             commandList->End();
-            m_renderGraph->SubmitCommands(m_renderPass, commandList);
+            m_renderGraph->Submit(m_renderPass, commandList, nullptr);
 
             m_context->ExecuteRenderGraph(*m_renderGraph);
 
-            (void)m_swapchain->Present();
+            [[maybe_unused]] auto presentResult = m_swapchain->Present();
         }
 
         void OnEvent(Event& e) override
@@ -317,7 +341,7 @@ namespace Examples
             .topologyMode = RHI::PipelineTopologyMode::Triangles,
             .rasterizationState =
                 {
-                    .cullMode = RHI::PipelineRasterizerStateCullMode::BackFace,
+                    .cullMode = RHI::PipelineRasterizerStateCullMode::None,
                     .fillMode = RHI::PipelineRasterizerStateFillMode::Triangle,
                     .frontFace = RHI::PipelineRasterizerStateFrontFace::CounterClockwise,
                     .lineWidth = 1.0,

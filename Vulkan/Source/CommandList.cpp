@@ -4,10 +4,10 @@
 #include "Resources.hpp"
 #include "Swapchain.hpp"
 #include "VulkanFunctions.hpp"
-#include "RenderGraphCompiler.hpp"
 
 #include <RHI/Format.hpp>
 
+#include <optional>
 #include <tracy/Tracy.hpp>
 
 namespace RHI::Vulkan
@@ -80,8 +80,12 @@ namespace RHI::Vulkan
     //////////////////////////////////////////////////////////////////////////////////////////
 
     ICommandList::ICommandList(IContext* context, VkCommandBuffer commandBuffer)
-        : m_commandBuffer(commandBuffer)
-        , m_context(context)
+        : m_context(context)
+        , m_commandBuffer(commandBuffer)
+        , m_barriers()
+        , m_waitSemaphores()
+        , m_signalSemaphores()
+        , m_isRenderPassStarted()
     {
     }
 
@@ -93,6 +97,8 @@ namespace RHI::Vulkan
         VkRenderingAttachmentInfo* depthAttachment,
         VkRenderingAttachmentInfo* stencilAttachment)
     {
+        RHI_ASSERT(m_isRenderPassStarted == false); // cannot start a new render pass inside another
+
         VkRenderingInfo renderingInfo{};
         renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
         renderingInfo.pNext = nullptr;
@@ -105,11 +111,16 @@ namespace RHI::Vulkan
         renderingInfo.pDepthAttachment = depthAttachment;
         renderingInfo.pStencilAttachment = stencilAttachment;
         vkCmdBeginRendering(m_commandBuffer, &renderingInfo);
+        m_isRenderPassStarted = true;
     }
 
     void ICommandList::EndRendedring()
     {
-        vkCmdEndRendering(m_commandBuffer);
+        if (m_isRenderPassStarted)
+        {
+            vkCmdEndRendering(m_commandBuffer);
+            m_isRenderPassStarted = false;
+        }
     }
 
     void ICommandList::PipelineBarrier(TL::Span<const VkMemoryBarrier2> memoryBarriers, TL::Span<const VkBufferMemoryBarrier2> bufferBarriers, TL::Span<const VkImageMemoryBarrier2> imageBarriers)
@@ -173,6 +184,17 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
+        m_isRenderPassStarted = false;
+        for (auto& stage : m_barriers)
+        {
+            stage.memoryBarriers.clear();
+            stage.bufferBarriers.clear();
+            stage.imageBarriers.clear();
+        }
+
+        m_waitSemaphores.clear();
+        m_signalSemaphores.clear();
+
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.pNext = nullptr;
@@ -185,22 +207,136 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto renderGraph = beginInfo.renderGraph;
-        auto pass = renderGraph->m_passOwner.Get(beginInfo.pass);
-        RenderGraphCompiler::CompilePass(m_context, *renderGraph, pass);
-        m_executeContext = (IPassSubmitData*)pass->submitData;
-
-        m_executeContext->renderArea.extent = ConvertExtent2D(pass->renderTargetSize);
-
         Begin();
 
-        if (m_executeContext)
+        auto renderGraph = beginInfo.renderGraph;
+        auto pass = renderGraph->m_passPool.Get(beginInfo.pass);
+
+        TL::UnorderedMap<VkSemaphore, VkPipelineStageFlags2> signalSemaphores, waitSemaphore;
+
+        uint32_t renderTargetIndex = 0;
+        for (auto& node : pass->m_imageAttachments)
         {
+            auto attachment = renderGraph->m_imageAttachmentPool.Get(node->attachment);
+            auto subresources = ConvertSubresourceRange(node->viewInfo.subresources);
+            auto imageHandle = renderGraph->GetImage(node->attachment);
+            auto image = m_context->m_imageOwner.Get(imageHandle);
+            auto loadStoreOperation = beginInfo.loadStoreOperations[renderTargetIndex];
+            auto prilogeState = PIPELINE_IMAGE_BARRIER_UNDEFINED;
+            auto epilogeState = attachment->swapchain ? PIPELINE_IMAGE_BARRIER_PRESENT_SRC : PIPELINE_IMAGE_BARRIER_UNDEFINED;
+            auto currentState = GetImageStageAccess(node->usage, node->access, node->stages, loadStoreOperation);
+
+            if (auto prev = node->prev)
+            {
+                prilogeState = GetImageStageAccess(prev->usage, prev->access, prev->stages, loadStoreOperation);
+            }
+
+            if (auto next = node->next)
+            {
+                epilogeState = GetImageStageAccess(next->usage, next->access, next->stages, loadStoreOperation);
+            }
+
+            VkImageMemoryBarrier2 barrier;
+
+            if (prilogeState != currentState)
+            {
+                barrier = CreateImageBarrier(image->handle, subresources, prilogeState, currentState);
+
+                if (auto swapchain = (ISwapchain*)attachment->swapchain)
+                {
+                    waitSemaphore[swapchain->GetImageAcquiredSemaphore()] = barrier.srcStageMask;
+                }
+
+                if (currentState != PIPELINE_IMAGE_BARRIER_UNDEFINED)
+                    m_barriers[BarrierSlot::Priloge].imageBarriers.push_back(barrier);
+            }
+
+            if (currentState != epilogeState && epilogeState != PIPELINE_IMAGE_BARRIER_UNDEFINED)
+            {
+                barrier = CreateImageBarrier(image->handle, subresources, currentState, epilogeState);
+
+                if (auto swapchain = (ISwapchain*)attachment->swapchain)
+                {
+                    signalSemaphores[swapchain->GetImageSignaledSemaphore()] = barrier.dstStageMask;
+                }
+
+                if (epilogeState != PIPELINE_IMAGE_BARRIER_UNDEFINED)
+                    m_barriers[BarrierSlot::Epiloge].imageBarriers.push_back(barrier);
+            }
+
+            if ((node->usage & ImageUsage::Color) || (node->usage & ImageUsage::DepthStencil))
+            {
+                renderTargetIndex++;
+            }
+        }
+
+        PipelineBarrier(
+            m_barriers[BarrierSlot::Priloge].memoryBarriers,
+            m_barriers[BarrierSlot::Priloge].bufferBarriers,
+            m_barriers[BarrierSlot::Priloge].imageBarriers);
+
+        for (auto [semaphore, stage] : signalSemaphores)
+        {
+            VkSemaphoreSubmitInfo submitInfo{};
+            submitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+            submitInfo.semaphore = semaphore;
+            submitInfo.stageMask = stage;
+            m_signalSemaphores.push_back(submitInfo);
+        }
+
+        for (auto [semaphore, stage] : waitSemaphore)
+        {
+            VkSemaphoreSubmitInfo submitInfo{};
+            submitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+            submitInfo.semaphore = semaphore;
+            submitInfo.stageMask = stage;
+            m_waitSemaphores.push_back(submitInfo);
+        }
+
+        VkRect2D renderingArea{};
+        TL::Vector<VkRenderingAttachmentInfo> colorAttachments;
+        VkRenderingAttachmentInfo depthAttachment;
+        bool hasDepthAttachment = false;
+        VkRenderingAttachmentInfo stencilAttachment;
+        bool hasStencilAttachment = false;
+
+        renderingArea.extent = ConvertExtent2D(pass->m_renderTargetSize);
+
+        if (pass->m_colorAttachments.empty() == false)
+        {
+            uint32_t index = 0;
+            for (auto colorAttachment : pass->m_colorAttachments)
+            {
+                auto imageViewHandle = renderGraph->PassGetImageView(colorAttachment->pass, colorAttachment->attachment);
+                auto imageView = m_context->m_imageViewOwner.Get(imageViewHandle);
+                auto attachmentInfo = CreateColorAttachment(imageView->handle, beginInfo.loadStoreOperations[index++]);
+                colorAttachments.push_back(attachmentInfo);
+            }
+
+            if (auto depthStencilAttachment = pass->m_depthStencilAttachment)
+            {
+                auto imageViewHandle = renderGraph->PassGetImageView(depthStencilAttachment->pass, depthStencilAttachment->attachment);
+                auto imageView = m_context->m_imageViewOwner.Get(imageViewHandle);
+                auto loadStoreOperation = beginInfo.loadStoreOperations.back();
+
+                if (depthStencilAttachment->usage & ImageUsage::Depth)
+                {
+                    depthAttachment = CreateDepthAttachment(imageView->handle, loadStoreOperation);
+                    hasDepthAttachment = true;
+                }
+
+                if (depthStencilAttachment->usage & ImageUsage::Stencil)
+                {
+                    stencilAttachment = CreateStencilAttachment(imageView->handle, loadStoreOperation);
+                    hasStencilAttachment = true;
+                }
+            }
+
             BeginRendering(
-                m_executeContext->renderArea,
-                m_executeContext->colorAttachments,
-                m_executeContext->hasDepthAttachemnt ? &m_executeContext->depthAttachmentInfo : nullptr,
-                m_executeContext->hasStencilAttachment ? &m_executeContext->stencilAttachmentInfo : nullptr);
+                renderingArea,
+                colorAttachments,
+                hasDepthAttachment ? &depthAttachment : nullptr,
+                hasStencilAttachment ? &stencilAttachment : nullptr);
         }
     }
 
@@ -208,10 +344,12 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        if (m_executeContext)
-        {
-            EndRendedring();
-        }
+        EndRendedring();
+
+        PipelineBarrier(
+            m_barriers[BarrierSlot::Epiloge].memoryBarriers,
+            m_barriers[BarrierSlot::Epiloge].bufferBarriers,
+            m_barriers[BarrierSlot::Epiloge].imageBarriers);
 
         vkEndCommandBuffer(m_commandBuffer);
     }
