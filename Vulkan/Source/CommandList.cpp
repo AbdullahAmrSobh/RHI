@@ -274,7 +274,7 @@ namespace RHI::Vulkan
 
             if (currentState != epilogeState)
             {
-                if (epilogeState != PIPELINE_IMAGE_BARRIER_UNDEFINED || epilogeState != PIPELINE_IMAGE_BARRIER_PRESENT_SRC)
+                if (epilogeState.layout != VK_IMAGE_LAYOUT_UNDEFINED || epilogeState.layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
                 {
                     auto barrier = CreateImageBarrier(image->handle, subresources, currentState, epilogeState);
                     m_barriers[BarrierSlot::Epiloge].imageBarriers.push_back(barrier);
