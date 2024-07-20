@@ -170,24 +170,24 @@ namespace RHI
 
     Swapchain::Swapchain(Context* context)
         : m_context(context)
-        , m_currentImageIndex(0)
-        , m_swapchainImagesCount(0)
+        , m_imageIndex(0)
+        , m_imageCount(0)
         , m_images()
     {
     }
 
     uint32_t Swapchain::GetCurrentImageIndex() const
     {
-        return m_currentImageIndex;
+        return m_imageIndex;
     }
 
     uint32_t Swapchain::GetImagesCount() const
     {
-        return m_swapchainImagesCount;
+        return m_imageCount;
     }
 
     Handle<Image> Swapchain::GetImage() const
     {
-        return m_images[m_currentImageIndex];
+        return m_images[m_imageIndex];
     }
 } // namespace RHI

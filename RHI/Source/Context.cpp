@@ -51,8 +51,8 @@ namespace RHI
         ZoneScoped;
 
         RHI_ASSERT(createInfo.imageSize.width > 0 && createInfo.imageSize.height > 0);
-        RHI_ASSERT(createInfo.imageCount >= Swapchain::MinImageCount);
-        RHI_ASSERT(createInfo.imageCount <= Swapchain::MaxImageCount);
+        RHI_ASSERT(createInfo.minImageCount >= Swapchain::MinImageCount);
+        RHI_ASSERT(createInfo.minImageCount <= Swapchain::MaxImageCount);
         RHI_ASSERT(createInfo.imageFormat != Format::Unknown);
         RHI_ASSERT(createInfo.imageUsage != ImageUsage::None);
 

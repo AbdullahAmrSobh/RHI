@@ -200,7 +200,7 @@ namespace RHI::Vulkan
         if (auto fn = m_fnTable->m_vkSetDebugUtilsObjectNameEXT; fn && name)
         {
             VkDebugUtilsObjectNameInfoEXT nameInfo{};
-            nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT;
+            nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
             nameInfo.pNext = nullptr;
             nameInfo.pObjectName = name;
             nameInfo.objectType = type;

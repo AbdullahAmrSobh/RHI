@@ -82,7 +82,7 @@ namespace Examples
         createInfo.imageUsage = RHI::ImageUsage::Color;
         createInfo.imageUsage |= RHI::ImageUsage::ShaderResource;
         createInfo.imageFormat = RHI::Format::BGRA8_UNORM;
-        createInfo.imageCount = 3;
+        createInfo.minImageCount = 3;
 
         m_swapchain = m_context->CreateSwapchain(createInfo);
 

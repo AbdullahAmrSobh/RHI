@@ -7,6 +7,9 @@ namespace RHI
 {
     class Context;
 
+    // @todo: add an API to query for supported formats for the user
+    // @todo: add an API to query for supported present mode for the user
+
     enum class SwapchainPresentMode
     {
         Immediate,
@@ -28,10 +31,10 @@ namespace RHI
     struct SwapchainCreateInfo
     {
         const char*          name;
-        ImageSize2D          imageSize;   // The size of the images in the swapchian.
-        Flags<ImageUsage>    imageUsage;  // Image usage flags applied to all created images.
-        Format               imageFormat; // The format of created swapchain image.
-        uint32_t             imageCount;  // The numer of back buffer images in the swapchain.
+        ImageSize2D          imageSize;     // The size of the images in the swapchian.
+        Flags<ImageUsage>    imageUsage;    // Image usage flags applied to all created images.
+        Format               imageFormat;   // The format of created swapchain image.
+        uint32_t             minImageCount; // The numer of back buffer images in the swapchain.
         SwapchainPresentMode presentMode;
 #ifdef RHI_PLATFORM_WINDOWS
         Win32WindowDesc win32Window; // win32 surface handles. (Availabe only on windows)
@@ -68,11 +71,10 @@ namespace RHI
 
     protected:
         Context*            m_context;
-        uint32_t            m_currentImageIndex;
-        uint32_t            m_swapchainImagesCount;
+        TL::String          m_name;
+        uint32_t            m_imageIndex;
+        uint32_t            m_imageCount;
         SwapchainCreateInfo m_createInfo;
         Handle<Image>       m_images[MaxImageCount];
-
-        TL::String m_name;
     };
 } // namespace RHI
