@@ -106,7 +106,8 @@ namespace RHI::Vulkan
         Ptr<FunctionsTable> m_fnTable;
         Ptr<BindGroupAllocator> m_bindGroupAllocator;
         Ptr<ICommandPool> m_commandPool;
-        Ptr<DeleteQueue> m_deleteQueue;
+
+        FrameExecuteContext m_frameContext;
 
         HandlePool<IImage> m_imageOwner;
         HandlePool<IBuffer> m_bufferOwner;

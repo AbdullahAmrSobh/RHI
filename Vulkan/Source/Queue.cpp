@@ -6,6 +6,7 @@
 
 namespace RHI::Vulkan
 {
+
     Queue::Queue(VkDevice device, uint32_t familyIndex)
         : m_queue(VK_NULL_HANDLE)
         , m_familyIndex(familyIndex)

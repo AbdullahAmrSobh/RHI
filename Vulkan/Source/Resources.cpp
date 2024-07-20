@@ -91,8 +91,6 @@ namespace RHI::Vulkan
         this->usage = ConvertImageUsageFlags(_createInfo.usageFlags);
         this->availableAspects = formatInfo.hasRed ? ImageAspect::Color : ImageAspect::Depth; // TODO: do this correctly
 
-        this->initialState.pipelineStage  = { VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, ACCESS_FLAGS_SHADER_READ };
-
         VmaAllocationCreateInfo allocInfo{};
         allocInfo.flags = 0u;
         allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;

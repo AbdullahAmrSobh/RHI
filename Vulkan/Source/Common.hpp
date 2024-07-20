@@ -733,4 +733,14 @@ namespace RHI::Vulkan
         // clang-format on
     }
 
+    inline static VkSemaphoreSubmitInfo CreateSemaphoreSubmitInfo(VkSemaphore semaphore, VkPipelineStageFlags2 stages, uint64_t value = 0)
+    {
+        VkSemaphoreSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+        submitInfo.pNext = nullptr;
+        submitInfo.semaphore = semaphore;
+        submitInfo.value = value;
+        submitInfo.stageMask = stages;
+        return submitInfo;
+    }
 } // namespace RHI::Vulkan

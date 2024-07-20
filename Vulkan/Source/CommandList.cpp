@@ -212,8 +212,6 @@ namespace RHI::Vulkan
         auto renderGraph = beginInfo.renderGraph;
         auto pass = renderGraph->m_passPool.Get(beginInfo.pass);
 
-        TL::UnorderedMap<VkSemaphore, VkPipelineStageFlags2> signalSemaphores, waitSemaphore;
-
         uint32_t renderTargetIndex = 0;
         for (auto& node : pass->m_imageAttachments)
         {
@@ -229,39 +227,58 @@ namespace RHI::Vulkan
             if (auto prev = node->prev)
             {
                 prilogeState = GetImageStageAccess(prev->usage, prev->access, prev->stages, loadStoreOperation);
+                if (auto swapchain = (ISwapchain*)attachment->swapchain)
+                {
+                    VkSemaphoreSubmitInfo submitInfo{};
+                    submitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+                    submitInfo.semaphore =  swapchain->GetImageAcquiredSemaphore();
+                    submitInfo.stageMask = epilogeState.stage;
+                    m_waitSemaphores.push_back(submitInfo);
+                }
+                else if (auto [semaphore, stage] = m_context->m_frameContext.GetImageWaitSemaphore(imageHandle); semaphore != VK_NULL_HANDLE)
+                {
+                    VkSemaphoreSubmitInfo submitInfo{};
+                    submitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+                    submitInfo.semaphore = semaphore;
+                    submitInfo.stageMask = stage;
+                    m_waitSemaphores.push_back(submitInfo);
+                }
             }
 
             if (auto next = node->next)
             {
                 epilogeState = GetImageStageAccess(next->usage, next->access, next->stages, loadStoreOperation);
+                if (auto swapchain = (ISwapchain*)attachment->swapchain)
+                {
+                    VkSemaphoreSubmitInfo submitInfo{};
+                    submitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+                    submitInfo.semaphore =  swapchain->GetImageSignaledSemaphore();
+                    submitInfo.stageMask = epilogeState.stage;
+                    m_signalSemaphores.push_back(submitInfo);
+                }
+                else if (auto [semaphore, stage] = m_context->m_frameContext.GetImageSignalSemaphore(imageHandle); semaphore != VK_NULL_HANDLE)
+                {
+                    VkSemaphoreSubmitInfo submitInfo{};
+                    submitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+                    submitInfo.semaphore = semaphore;
+                    submitInfo.stageMask = stage;
+                    m_signalSemaphores.push_back(submitInfo);
+                }
             }
-
-            VkImageMemoryBarrier2 barrier;
 
             if (prilogeState != currentState)
             {
-                barrier = CreateImageBarrier(image->handle, subresources, prilogeState, currentState);
-
-                if (auto swapchain = (ISwapchain*)attachment->swapchain)
-                {
-                    waitSemaphore[swapchain->GetImageAcquiredSemaphore()] = barrier.srcStageMask;
-                }
-
-                if (currentState != PIPELINE_IMAGE_BARRIER_UNDEFINED)
-                    m_barriers[BarrierSlot::Priloge].imageBarriers.push_back(barrier);
+                auto barrier = CreateImageBarrier(image->handle, subresources, prilogeState, currentState);
+                m_barriers[BarrierSlot::Priloge].imageBarriers.push_back(barrier);
             }
 
-            if (currentState != epilogeState && epilogeState != PIPELINE_IMAGE_BARRIER_UNDEFINED)
+            if (currentState != epilogeState)
             {
-                barrier = CreateImageBarrier(image->handle, subresources, currentState, epilogeState);
-
-                if (auto swapchain = (ISwapchain*)attachment->swapchain)
+                if (epilogeState != PIPELINE_IMAGE_BARRIER_UNDEFINED || epilogeState != PIPELINE_IMAGE_BARRIER_PRESENT_SRC)
                 {
-                    signalSemaphores[swapchain->GetImageSignaledSemaphore()] = barrier.dstStageMask;
-                }
-
-                if (epilogeState != PIPELINE_IMAGE_BARRIER_UNDEFINED)
+                    auto barrier = CreateImageBarrier(image->handle, subresources, currentState, epilogeState);
                     m_barriers[BarrierSlot::Epiloge].imageBarriers.push_back(barrier);
+                }
             }
 
             if ((node->usage & ImageUsage::Color) || (node->usage & ImageUsage::DepthStencil))
@@ -274,24 +291,6 @@ namespace RHI::Vulkan
             m_barriers[BarrierSlot::Priloge].memoryBarriers,
             m_barriers[BarrierSlot::Priloge].bufferBarriers,
             m_barriers[BarrierSlot::Priloge].imageBarriers);
-
-        for (auto [semaphore, stage] : signalSemaphores)
-        {
-            VkSemaphoreSubmitInfo submitInfo{};
-            submitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-            submitInfo.semaphore = semaphore;
-            submitInfo.stageMask = stage;
-            m_signalSemaphores.push_back(submitInfo);
-        }
-
-        for (auto [semaphore, stage] : waitSemaphore)
-        {
-            VkSemaphoreSubmitInfo submitInfo{};
-            submitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-            submitInfo.semaphore = semaphore;
-            submitInfo.stageMask = stage;
-            m_waitSemaphores.push_back(submitInfo);
-        }
 
         VkRect2D renderingArea{};
         TL::Vector<VkRenderingAttachmentInfo> colorAttachments;

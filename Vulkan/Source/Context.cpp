@@ -44,12 +44,6 @@ namespace RHI
 
 namespace RHI::Vulkan
 {
-    // struct ExtensionOrLayerInitRequest
-    // {
-    //     const char* name;
-    //     bool* isFound;
-    // };
-
     inline static TL::Vector<VkLayerProperties> GetAvailableInstanceLayerExtensions()
     {
         uint32_t instanceLayerCount;
@@ -119,7 +113,7 @@ namespace RHI::Vulkan
         , m_fnTable(CreatePtr<FunctionsTable>())
         , m_bindGroupAllocator(CreatePtr<BindGroupAllocator>(this))
         , m_commandPool(CreatePtr<ICommandPool>(this))
-        , m_deleteQueue(CreatePtr<DeleteQueue>(this))
+        , m_frameContext(this)
         , m_imageOwner()
         , m_bufferOwner()
         , m_imageViewOwner()
@@ -327,7 +321,7 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyBindGroupLayout(Handle<BindGroupLayout> handle)
     {
-        m_deleteQueue->Destroy(GetCurrentFrameIndex(), [this, handle]()
+        m_frameContext.DeferCommand([this, handle]()
         {
             auto bindGroupLayout = m_bindGroupLayoutsOwner.Get(handle);
             bindGroupLayout->Shutdown(this);
@@ -348,7 +342,7 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyBindGroup(Handle<BindGroup> handle)
     {
-        m_deleteQueue->Destroy(GetCurrentFrameIndex(), [this, handle]()
+        m_frameContext.DeferCommand([this, handle]()
         {
             auto bindGroup = m_bindGroupOwner.Get(handle);
             bindGroup->Shutdown(this);
@@ -393,7 +387,7 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle)
     {
-        m_deleteQueue->Destroy(GetCurrentFrameIndex(), [this, handle]()
+        m_frameContext.DeferCommand([this, handle]()
         {
             auto graphicsPipeline = m_graphicsPipelineOwner.Get(handle);
             graphicsPipeline->Shutdown(this);
@@ -414,7 +408,7 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyComputePipeline(Handle<ComputePipeline> handle)
     {
-        m_deleteQueue->Destroy(GetCurrentFrameIndex(), [this, handle]()
+        m_frameContext.DeferCommand([this, handle]()
         {
             auto computePipeline = m_computePipelineOwner.Get(handle);
             computePipeline->Shutdown(this);
@@ -435,7 +429,7 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroySampler(Handle<Sampler> handle)
     {
-        m_deleteQueue->Destroy(GetCurrentFrameIndex(), [this, handle]()
+        m_frameContext.DeferCommand([this, handle]()
         {
             auto sampler = m_samplerOwner.Get(handle);
             sampler->Shutdown(this);
@@ -457,7 +451,7 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyImage(Handle<Image> handle)
     {
-        m_deleteQueue->Destroy(GetCurrentFrameIndex(), [this, handle]()
+        m_frameContext.DeferCommand([this, handle]()
         {
             auto image = m_imageOwner.Get(handle);
             image->Shutdown(this);
@@ -479,7 +473,7 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyBuffer(Handle<Buffer> handle)
     {
-        m_deleteQueue->Destroy(GetCurrentFrameIndex(), [this, handle]()
+        m_frameContext.DeferCommand([this, handle]()
         {
             auto buffer = m_bufferOwner.Get(handle);
             buffer->Shutdown(this);
@@ -500,7 +494,7 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyImageView(Handle<ImageView> handle)
     {
-        m_deleteQueue->Destroy(GetCurrentFrameIndex(), [this, handle]()
+        m_frameContext.DeferCommand([this, handle]()
         {
             auto imageView = m_imageViewOwner.Get(handle);
             imageView->Shutdown(this);
@@ -521,7 +515,7 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyBufferView(Handle<BufferView> handle)
     {
-        m_deleteQueue->Destroy(GetCurrentFrameIndex(), [this, handle]()
+        m_frameContext.DeferCommand([this, handle]()
         {
             auto imageView = m_bufferViewOwner.Get(handle);
             imageView->Shutdown(this);
@@ -546,6 +540,8 @@ namespace RHI::Vulkan
                 submitInfo,
                 passHandle == renderGraph.m_passes.back() ? (IFence*)signalFence : nullptr);
         }
+
+        m_frameContext.AdvanceFrame();
     }
 
     DeviceMemoryPtr IContext::Internal_MapBuffer(Handle<Buffer> handle)
@@ -582,7 +578,7 @@ namespace RHI::Vulkan
 
         /// todo: figure this out
         auto barrierTop = CreateImageBarrier(image->handle, ConvertSubresourceRange(range), PIPELINE_IMAGE_BARRIER_UNDEFINED, PIPELINE_IMAGE_BARRIER_TRANSFER_DST);
-        auto barrierBottom = CreateImageBarrier(image->handle, ConvertSubresourceRange(range), PIPELINE_IMAGE_BARRIER_TRANSFER_DST, {});
+        auto barrierBottom = CreateImageBarrier(image->handle, ConvertSubresourceRange(range), PIPELINE_IMAGE_BARRIER_TRANSFER_DST, PIPELINE_IMAGE_BARRIER_SHADER_READ);
 
         subresources.mipLevel = 0; // TODO: figure out this resoruce views
 
@@ -607,13 +603,11 @@ namespace RHI::Vulkan
         commandList->PipelineBarrier({}, {}, barrierBottom);
         commandList->End();
 
-        auto& waitSemaphores = image->initialState.semaphores;
-        auto& signalSemaphores = image->finalState.semaphores;
+        auto signalSemaphore = m_frameContext.AddImageWaitSemaphore(imageHandle, barrierBottom.dstStageMask);
 
         SubmitInfo submitGroup{};
         submitGroup.commandLists = { commandList };
-        submitGroup.waitSemaphores = waitSemaphores;
-        submitGroup.signalSemaphores = signalSemaphores;
+        submitGroup.signalSemaphores = { CreateSemaphoreSubmitInfo(signalSemaphore, barrierBottom.dstStageMask) };
         m_queue[QueueType::Transfer].Submit(this, submitGroup, nullptr);
     }
 
@@ -621,8 +615,8 @@ namespace RHI::Vulkan
     {
         auto buffer = m_bufferOwner.Get(bufferHandle);
 
-        auto barrierTop = CreateBufferBarrier(buffer->handle, BufferSubregion{ offset, size }, buffer->initialState.pipelineStage, PIPELINE_BUFFER_BARRIER_TRANSFER_DST);
-        auto barrierBottom = CreateBufferBarrier(buffer->handle, BufferSubregion{ offset, size }, PIPELINE_BUFFER_BARRIER_TRANSFER_DST, buffer->finalState.pipelineStage);
+        auto barrierTop = CreateBufferBarrier(buffer->handle, BufferSubregion{ offset, size }, PIPELINE_BUFFER_BARRIER_TOP, PIPELINE_BUFFER_BARRIER_TRANSFER_DST);
+        auto barrierBottom = CreateBufferBarrier(buffer->handle, BufferSubregion{ offset, size }, PIPELINE_BUFFER_BARRIER_TRANSFER_DST, PIPELINE_BUFFER_BARRIER_BOTTOM);
 
         BufferCopyInfo copyInfo{};
         copyInfo.dstBuffer = bufferHandle;
@@ -638,13 +632,11 @@ namespace RHI::Vulkan
         commandList->PipelineBarrier({}, barrierBottom, {});
         commandList->End();
 
-        auto& waitSemaphores = buffer->initialState.semaphores;
-        auto& signalSemaphores = buffer->finalState.semaphores;
+        auto signalSemaphore = m_frameContext.AddBufferWaitSemaphore(bufferHandle, barrierBottom.dstStageMask);
 
         SubmitInfo submitGroup{};
         submitGroup.commandLists = { commandList };
-        submitGroup.waitSemaphores = waitSemaphores;
-        submitGroup.signalSemaphores = signalSemaphores;
+        submitGroup.signalSemaphores = { CreateSemaphoreSubmitInfo(signalSemaphore, barrierBottom.dstStageMask) };
         m_queue[QueueType::Transfer].Submit(this, submitGroup, nullptr);
     }
 
@@ -658,8 +650,8 @@ namespace RHI::Vulkan
         range.arrayBase = subresources.arrayBase;
         range.mipLevelCount = subresources.mipLevel;
 
-        auto barrierTop = CreateImageBarrier(image->handle, ConvertSubresourceRange(range), image->finalState.pipelineStage, PIPELINE_IMAGE_BARRIER_TRANSFER_DST);
-        auto barrierBottom = CreateImageBarrier(image->handle, ConvertSubresourceRange(range), PIPELINE_IMAGE_BARRIER_TRANSFER_DST, image->initialState.pipelineStage);
+        auto barrierTop = CreateImageBarrier(image->handle, ConvertSubresourceRange(range), PIPELINE_IMAGE_BARRIER_SHADER_READ, PIPELINE_IMAGE_BARRIER_TRANSFER_DST);
+        auto barrierBottom = CreateImageBarrier(image->handle, ConvertSubresourceRange(range), PIPELINE_IMAGE_BARRIER_TRANSFER_DST, PIPELINE_IMAGE_BARRIER_SHADER_READ);
 
         ImageSize3D imageSize = {
             image->extent.width,
@@ -678,31 +670,23 @@ namespace RHI::Vulkan
         commandList->Begin();
         commandList->PipelineBarrier({}, {}, barrierTop);
         commandList->CopyBufferToImage(copyInfo);
-
-        if (image->initialState.pipelineStage != PIPELINE_IMAGE_BARRIER_UNDEFINED)
-            commandList->PipelineBarrier({}, {}, barrierBottom);
-
+        commandList->PipelineBarrier({}, {}, barrierBottom);
         commandList->End();
 
-        auto& waitSemaphores = image->initialState.semaphores;
-        auto& signalSemaphores = image->finalState.semaphores;
+        auto waitSemaphore = m_frameContext.AddImageSignalSemaphore(imageHandle, barrierBottom.dstStageMask);
 
         SubmitInfo submitGroup{};
         submitGroup.commandLists = { commandList };
-        submitGroup.waitSemaphores = waitSemaphores;
-        submitGroup.signalSemaphores = signalSemaphores;
+        submitGroup.signalSemaphores = { CreateSemaphoreSubmitInfo(waitSemaphore, barrierBottom.dstStageMask) };
         m_queue[QueueType::Transfer].Submit(this, submitGroup, (IFence*)fence);
-
-        image->initialState.pipelineStage.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        image->finalState.pipelineStage.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     }
 
     void IContext ::Internal_StageResourceRead(Handle<Buffer> bufferHandle, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset, Fence* fence)
     {
         auto buffer = m_bufferOwner.Get(bufferHandle);
 
-        auto barrierTop = CreateBufferBarrier(buffer->handle, BufferSubregion{ offset, size }, buffer->finalState.pipelineStage, PIPELINE_BUFFER_BARRIER_TRANSFER_SRC);
-        auto barrierBottom = CreateBufferBarrier(buffer->handle, BufferSubregion{ offset, size }, PIPELINE_BUFFER_BARRIER_TRANSFER_SRC, buffer->initialState.pipelineStage);
+        auto barrierTop = CreateBufferBarrier(buffer->handle, BufferSubregion{ offset, size }, PIPELINE_BUFFER_BARRIER_SHADER_READ, PIPELINE_BUFFER_BARRIER_TRANSFER_SRC);
+        auto barrierBottom = CreateBufferBarrier(buffer->handle, BufferSubregion{ offset, size }, PIPELINE_BUFFER_BARRIER_TRANSFER_SRC, PIPELINE_BUFFER_BARRIER_SHADER_READ);
 
         BufferCopyInfo copyInfo{};
         copyInfo.dstBuffer = bufferHandle;
@@ -718,13 +702,11 @@ namespace RHI::Vulkan
         commandList->PipelineBarrier({}, barrierBottom, {});
         commandList->End();
 
-        auto& waitSemaphores = buffer->initialState.semaphores;
-        auto& signalSemaphores = buffer->finalState.semaphores;
+        auto waitSemaphore = m_frameContext.AddBufferSignalSemaphore(bufferHandle, barrierBottom.dstStageMask);
 
         SubmitInfo submitGroup{};
         submitGroup.commandLists = { commandList };
-        submitGroup.waitSemaphores = waitSemaphores;
-        submitGroup.signalSemaphores = signalSemaphores;
+        submitGroup.signalSemaphores = { CreateSemaphoreSubmitInfo(waitSemaphore, barrierBottom.dstStageMask) };
         m_queue[QueueType::Transfer].Submit(this, submitGroup, (IFence*)fence);
     }
 
@@ -772,7 +754,6 @@ namespace RHI::Vulkan
             VULKAN_SURFACE_OS_EXTENSION_NAME,
             VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
         };
-
 
         VkApplicationInfo applicationInfo{};
         applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;

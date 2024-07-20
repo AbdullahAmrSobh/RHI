@@ -65,13 +65,15 @@ namespace RHI::Vulkan
     inline static constexpr ImageStageAccess PIPELINE_IMAGE_BARRIER_TRANSFER_SRC             = { VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,             VK_PIPELINE_STAGE_2_TRANSFER_BIT,                VK_ACCESS_2_TRANSFER_READ_BIT            };
     inline static constexpr ImageStageAccess PIPELINE_IMAGE_BARRIER_TRANSFER_DST             = { VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,             VK_PIPELINE_STAGE_2_TRANSFER_BIT,                VK_ACCESS_2_TRANSFER_WRITE_BIT           };
 
-    inline static constexpr ImageStageAccess PIPELINE_IMAGE_BARRIER_SHADER_READ             = { VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,             VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,                VK_ACCESS_2_TRANSFER_WRITE_BIT           };
+    inline static constexpr ImageStageAccess PIPELINE_IMAGE_BARRIER_SHADER_READ             = { VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,             VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,                VK_ACCESS_2_TRANSFER_WRITE_BIT           };
 
 
     // buffer stage accesses
-
+    inline static constexpr BufferStageAccess PIPELINE_BUFFER_BARRIER_TOP              = { VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT  };
+    inline static constexpr BufferStageAccess PIPELINE_BUFFER_BARRIER_BOTTOM           = { VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT  };
     inline static constexpr BufferStageAccess PIPELINE_BUFFER_BARRIER_TRANSFER_SRC           = { VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT  };
     inline static constexpr BufferStageAccess PIPELINE_BUFFER_BARRIER_TRANSFER_DST           = { VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT };
+    inline static constexpr BufferStageAccess PIPELINE_BUFFER_BARRIER_SHADER_READ            = { VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT };
 
     // clang-format on
 
