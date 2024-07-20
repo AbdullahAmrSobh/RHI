@@ -763,27 +763,16 @@ namespace RHI::Vulkan
 
     VkResult IContext::InitInstance(const ApplicationInfo& appInfo, bool* debugExtensionEnabled)
     {
-        TL::Vector<const char*> enabledLayersNames = {
+        TL::Vector<const char*> layers = {
             "VK_LAYER_KHRONOS_validation",
         };
 
-        TL::Vector<const char*> enabledExtensionsNames = {
+        TL::Vector<const char*> extensions = {
             VK_KHR_SURFACE_EXTENSION_NAME,
             VULKAN_SURFACE_OS_EXTENSION_NAME,
             VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
         };
 
-        // bool debugExtensionFound = false;
-
-        // ExtensionOrLayerInitRequest layers[] = {
-        //     { "VK_LAYER_KHRONOS_validation", nullptr }
-        // };
-
-        // ExtensionOrLayerInitRequest extensions[] = {
-        //     { VK_KHR_SURFACE_EXTENSION_NAME, nullptr },
-        //     { VULKAN_SURFACE_OS_EXTENSION_NAME, nullptr },
-        //     { VK_EXT_DEBUG_UTILS_EXTENSION_NAME, &debugExtensionFound },
-        // };
 
         VkApplicationInfo applicationInfo{};
         applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -806,21 +795,19 @@ namespace RHI::Vulkan
         for (VkExtensionProperties extension : GetAvailableInstanceExtensions())
         {
             auto extensionName = extension.extensionName;
-            if (!strcmp(extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
+            if (strcmp(extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0)
             {
                 *debugExtensionEnabled = true;
-                continue;
             }
         }
 
         if (*debugExtensionEnabled)
         {
-            enabledExtensionsNames.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-            enabledExtensionsNames.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+            extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
         }
         else
         {
-            DebugLogWarn("RHI Vulkan: Debug extension not present.\n Vulkan layer validation is disabled.");
+            DebugLogWarn("RHI Vulkan: Debug extension not present.");
         }
 #endif
 
@@ -831,10 +818,10 @@ namespace RHI::Vulkan
 #endif
         createInfo.flags = {};
         createInfo.pApplicationInfo = &applicationInfo;
-        createInfo.enabledLayerCount = static_cast<uint32_t>(enabledLayersNames.size());
-        createInfo.ppEnabledLayerNames = enabledLayersNames.data();
-        createInfo.enabledExtensionCount = static_cast<uint32_t>(enabledExtensionsNames.size());
-        createInfo.ppEnabledExtensionNames = enabledExtensionsNames.data();
+        createInfo.enabledLayerCount = static_cast<uint32_t>(layers.size());
+        createInfo.ppEnabledLayerNames = layers.data();
+        createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+        createInfo.ppEnabledExtensionNames = extensions.data();
         return vkCreateInstance(&createInfo, nullptr, &m_instance);
     }
 
@@ -871,9 +858,6 @@ namespace RHI::Vulkan
         };
 
         TL::Vector<const char*> deviceExtensionNames = {
-#if RHI_DEBUG
-            VK_EXT_DEBUG_MARKER_EXTENSION_NAME,
-#endif
             VK_KHR_SWAPCHAIN_EXTENSION_NAME,
             VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME
         };

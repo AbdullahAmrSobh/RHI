@@ -59,7 +59,5 @@ namespace RHI::Vulkan
         info.signalSemaphoreInfoCount = (uint32_t)submitGroups.signalSemaphores.size();
         info.pSignalSemaphoreInfos = submitGroups.signalSemaphores.data();
         vkQueueSubmit2(m_queue, 1, &info, fence ? fence->UseFence() : VK_NULL_HANDLE);
-
-        vkDeviceWaitIdle(context->m_device);
     }
 } // namespace RHI::Vulkan
