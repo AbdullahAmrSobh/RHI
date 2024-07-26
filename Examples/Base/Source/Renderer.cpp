@@ -55,6 +55,9 @@ namespace Examples
         m_commandPool[0] = m_context->CreateCommandPool(RHI::CommandPoolFlags::Reset);
         m_commandPool[1] = m_context->CreateCommandPool(RHI::CommandPoolFlags::Reset);
 
+        m_frameInFlightFence[0] = m_context->CreateFence();
+        m_frameInFlightFence[1] = m_context->CreateFence();
+
         return OnInit();
     }
 

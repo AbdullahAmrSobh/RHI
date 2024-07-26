@@ -25,8 +25,6 @@ namespace Examples
         void OnUpdate(Timestep timestep) override
         {
             (void)timestep;
-
-            // scene->settransfrom from camera
         }
 
         void OnEvent(Event& e) override

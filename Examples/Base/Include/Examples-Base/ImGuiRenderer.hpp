@@ -4,10 +4,6 @@
 
 #include <RHI/RHI.hpp>
 
-#include <GLFW/glfw3.h>
-
-#include "Examples-Base/Common.hpp"
-
 namespace Examples
 {
     class Event;
@@ -19,6 +15,7 @@ namespace Examples
         {
             RHI::Context* context;
             RHI::TL::Vector<uint32_t> shaderBlob;
+            RHI::Format renderTargetFormat;
         };
 
         void ProcessEvent(Event& event);

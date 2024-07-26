@@ -7,6 +7,7 @@
 #include <RHI/Format.hpp>
 #include <RHI/RHI.hpp>
 #include <RHI/Resources.hpp>
+#include <cstdint>
 
 namespace Examples
 {
@@ -406,15 +407,24 @@ namespace Examples
         void OnRender() override
         {
             static uint64_t frameIndex = 0;
-            frameIndex++;
             uint32_t i = uint32_t(frameIndex % 2);
 
             auto commandPool = m_commandPool[i].get();
+
+            auto fence       = m_frameInFlightFence[i].get();
+            if (fence->GetState() != RHI::FenceState::Signaled)
+            {
+                fence->Wait(UINT64_MAX);
+            }
+            fence->Reset();
+
             commandPool->Reset();
 
             m_passGBuffer.Execute(*m_renderGraph, *commandPool);
             m_passLighting.Execute(*m_renderGraph, *commandPool);
-            m_context->ExecuteRenderGraph(*m_renderGraph);
+            m_context->ExecuteRenderGraph(*m_renderGraph, fence);
+
+            frameIndex++;
         }
 
         Ptr<RHI::RenderGraph> m_renderGraph;

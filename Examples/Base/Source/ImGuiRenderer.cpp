@@ -308,7 +308,7 @@ namespace Examples
             };
             RHI::GraphicsPipelineCreateInfo pipelineCI{
                 // clang-format off
-            .name = "Lighting Pass Pipeline",
+            .name = "ImGui Pipeline",
             .vertexShaderName = "VSMain",
             .vertexShaderModule = shaderModule.get(),
             .pixelShaderName = "PSMain",
@@ -329,8 +329,8 @@ namespace Examples
                 },
             .renderTargetLayout =
                 {
-                    .colorAttachmentsFormats = { RHI::Format::BGRA8_UNORM, RHI::Format::RGBA32_FLOAT },
-                    .depthAttachmentFormat = RHI::Format::D32,
+                    .colorAttachmentsFormats = { createInfo.renderTargetFormat },
+                    .depthAttachmentFormat = RHI::Format::Unknown,
                     .stencilAttachmentFormat = RHI::Format::Unknown,
                 },
             .colorBlendState =

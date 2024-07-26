@@ -33,6 +33,7 @@ namespace Examples
         Ptr<RHI::RenderGraph> m_renderGraph;
         Ptr<RHI::Swapchain> m_swapchain;
         Ptr<RHI::CommandPool> m_commandPool[2];
+        Ptr<RHI::Fence> m_frameInFlightFence[2];
 
         Ptr<ImGuiRenderer> m_imguiRenderer;
     };
