@@ -1,51 +1,21 @@
 #include "Examples-Base/ApplicationBase.hpp"
 #include "Examples-Base/Window.hpp"
-#include "Examples-Base/ImGuiRenderer.hpp"
 #include "Examples-Base/Event.hpp"
-#include "Examples-Base/FileSystem.hpp"
 #include "Examples-Base/Camera.hpp"
-
-#include <RHI-Vulkan/Loader.hpp>
-
-#undef LoadImage
-
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+#include "Examples-Base/Renderer.hpp"
 
 #include <tracy/Tracy.hpp>
 
-#include <cassert>
-#include <iostream>
 #include <chrono>
+
+static bool APP_SHOULD_CLOSE = false;
 
 namespace Examples
 {
-    class DebugCallbacks final : public RHI::DebugCallbacks
-    {
-    public:
-        void LogInfo(std::string_view message) override
-        {
-            std::cout << "INFO: " << message << "\n";
-        }
-
-        void LogWarnning(std::string_view message) override
-        {
-            std::cout << "WARNNING: " << message << "\n";
-        }
-
-        void LogError(std::string_view message) override
-        {
-            std::cout << "ERROR: " << message << "\n";
-        }
-    };
+    extern Renderer* CreateDeferredRenderer();
 
     ApplicationBase::ApplicationBase(const char* name, uint32_t windowWidth, uint32_t windowHeight)
-        : m_context(nullptr)
-        , m_swapchain(nullptr)
-        , m_imguiRenderer(nullptr)
-        , m_window(nullptr)
-        , m_isRunning(true)
-
+        : m_window(nullptr)
     {
         Window::Init();
 
@@ -53,9 +23,9 @@ namespace Examples
         {
             this->DispatchEvent(event);
         };
-        m_window = RHI::CreatePtr<Window>(name, Window::Size{ windowWidth, windowHeight }, windowEventDispatcher);
 
-        m_imguiRenderer = RHI::CreatePtr<ImGuiRenderer>();
+        m_window = RHI::CreatePtr<Window>(name, Window::Size{ windowWidth, windowHeight }, windowEventDispatcher);
+        m_renderer = Ptr<Renderer>(CreateDeferredRenderer());
     }
 
     ApplicationBase::~ApplicationBase()
@@ -67,33 +37,10 @@ namespace Examples
     {
         ZoneScoped;
 
-        RHI::ApplicationInfo appInfo{};
-        appInfo.applicationName = "RHI-App";
-        appInfo.applicationVersion = { 0, 1, 0 };
-        auto debugCallbacks = RHI::CreatePtr<DebugCallbacks>();
-        m_context = RHI::CreateVulkanContext(appInfo, std::move(debugCallbacks));
+        ResultCode result;
 
-        // create swapchain
-        RHI::SwapchainCreateInfo createInfo{};
-        createInfo.win32Window.hwnd = m_window->GetNativeHandle();
-        createInfo.win32Window.hinstance = NULL;
-        createInfo.imageSize.width = m_window->GetWindowSize().width;
-        createInfo.imageSize.height = m_window->GetWindowSize().height;
-        createInfo.imageUsage = RHI::ImageUsage::Color;
-        createInfo.imageUsage |= RHI::ImageUsage::ShaderResource;
-        createInfo.imageFormat = RHI::Format::BGRA8_UNORM;
-        createInfo.minImageCount = 3;
-
-        m_swapchain = m_context->CreateSwapchain(createInfo);
-
-        ImGuiRenderer::CreateInfo imguiRendererCreateInfo{};
-        imguiRendererCreateInfo.context = m_context.get();
-        imguiRendererCreateInfo.shaderBlob = ReadBinaryFile("./Shaders/ImGui.spv");
-        m_imguiRenderer->Init(imguiRendererCreateInfo);
-
-        ImGuiIO& io = ImGui::GetIO();
-        io.DisplaySize.x = float(m_window->GetWindowSize().width);
-        io.DisplaySize.y = float(m_window->GetWindowSize().height);
+        result = m_renderer->Init(*m_window);
+        RHI_ASSERT(IsSucess(result));
 
         OnInit();
     }
@@ -101,13 +48,20 @@ namespace Examples
     void ApplicationBase::Shutdown()
     {
         ZoneScoped;
-        m_imguiRenderer->Shutdown();
+
         OnShutdown();
+
+        // m_renderer->Shutdown();
     }
 
     void ApplicationBase::DispatchEvent(Event& event)
     {
-        m_imguiRenderer->ProcessEvent(event);
+        if (event.GetEventType() == EventType::WindowClose)
+        {
+            APP_SHOULD_CLOSE = true;
+        }
+
+        // m_imguiRenderer->ProcessEvent(event);
         if (event.Handled)
             return;
 
@@ -123,7 +77,7 @@ namespace Examples
 
         double accumulator = 0.0;
         double deltaTime = 0.01;
-        while (m_isRunning)
+        while (!APP_SHOULD_CLOSE)
         {
             auto newTime = std::chrono::high_resolution_clock::now().time_since_epoch();
             double frameTime = std::chrono::duration<double>(newTime - currentTime).count();
@@ -134,16 +88,13 @@ namespace Examples
 
             while (accumulator >= deltaTime)
             {
-                m_window->OnUpdate();
-
                 accumulator -= deltaTime;
+                m_window->OnUpdate();
+                OnUpdate(Timestep(deltaTime));
             }
 
             // Render
-            {
-                ZoneScopedN("app-base-update");
-                OnUpdate(Timestep(deltaTime));
-            }
+            m_renderer->Render();
         }
     }
 

@@ -68,6 +68,12 @@ namespace RHI
         /// @param size New size for the pass.
         void PassResize(Handle<Pass> pass, ImageSize2D size);
 
+        /// @brief Returns the pass size.
+        ///
+        /// @param pass Handle to the pass.
+        /// @return Size of the pass.
+        ImageSize2D GetPassSize(Handle<Pass> pass) const;
+
         /// @brief Imports a swapchain image into the render graph.
         ///
         /// @param name Name of the swapchain.
@@ -172,8 +178,9 @@ namespace RHI
         /// @param signalFence Optional fence to signal after execution.
         void Submit(Handle<Pass> pass, TL::Span<CommandList*> commandList, Fence* signalFence = nullptr);
 
-    private:
+        void Invalidate() {}
 
+    private:
         /// @brief Compiles the render graph.
         void Compile();
 

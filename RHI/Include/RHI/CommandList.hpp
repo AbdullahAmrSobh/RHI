@@ -126,10 +126,10 @@ namespace RHI
     struct DrawParameters
     {
         uint32_t elementsCount;
-        uint32_t instanceCount = 1;
-        uint32_t firstElement  = 0;
-        int32_t  vertexOffset  = 0;
-        uint32_t firstInstance = 0;
+        uint32_t instanceCount;
+        uint32_t firstElement;
+        int32_t  vertexOffset;
+        uint32_t firstInstance;
     };
 
     struct DispatchParameters
@@ -144,8 +144,6 @@ namespace RHI
 
     struct DrawInfo
     {
-        DrawInfo() = default;
-
         Handle<GraphicsPipeline>             pipelineState;
         TL::Span<const BindGroupBindingInfo> bindGroups;
         TL::Span<const BufferBindingInfo>    vertexBuffers;

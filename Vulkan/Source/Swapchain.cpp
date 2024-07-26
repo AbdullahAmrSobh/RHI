@@ -33,6 +33,19 @@ namespace RHI::Vulkan
         ZoneScoped;
 
         auto context = (IContext*)m_context;
+
+        vkDeviceWaitIdle(context->m_device);
+
+        for (auto semaphore : m_imageAcquiredSemaphores)
+        {
+            if (semaphore) context->DestroySemaphore(semaphore);
+        }
+
+        for (auto semaphore : m_imageReleasedSemaphores)
+        {
+            if (semaphore) context->DestroySemaphore(semaphore);
+        }
+
         vkDestroySwapchainKHR(context->m_device, m_swapchain, nullptr);
         vkDestroySurfaceKHR(context->m_instance, m_surface, nullptr);
     }
@@ -88,7 +101,6 @@ namespace RHI::Vulkan
 
         auto nextImageIndex = (m_imageIndex + 1) % m_imageCount;
         Validate(vkAcquireNextImageKHR(context->m_device, m_swapchain, UINT64_MAX, m_imageAcquiredSemaphores[nextImageIndex], VK_NULL_HANDLE, &m_imageIndex));
-        RHI_ASSERT(nextImageIndex == m_imageIndex);
         return ResultCode::Success;
     }
 

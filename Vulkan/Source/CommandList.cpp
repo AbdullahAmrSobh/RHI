@@ -227,15 +227,7 @@ namespace RHI::Vulkan
             if (auto prev = node->prev)
             {
                 prilogeState = GetImageStageAccess(prev->usage, prev->access, prev->stages, loadStoreOperation);
-                if (auto swapchain = (ISwapchain*)attachment->swapchain)
-                {
-                    VkSemaphoreSubmitInfo submitInfo{};
-                    submitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-                    submitInfo.semaphore =  swapchain->GetImageAcquiredSemaphore();
-                    submitInfo.stageMask = epilogeState.stage;
-                    m_waitSemaphores.push_back(submitInfo);
-                }
-                else if (auto [semaphore, stage] = m_context->m_frameContext.GetImageWaitSemaphore(imageHandle); semaphore != VK_NULL_HANDLE)
+                if (auto [semaphore, stage] = m_context->m_frameContext.GetImageWaitSemaphore(imageHandle); semaphore != VK_NULL_HANDLE)
                 {
                     VkSemaphoreSubmitInfo submitInfo{};
                     submitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
@@ -244,19 +236,19 @@ namespace RHI::Vulkan
                     m_waitSemaphores.push_back(submitInfo);
                 }
             }
+            else if (auto swapchain = (ISwapchain*)attachment->swapchain)
+            {
+                VkSemaphoreSubmitInfo submitInfo{};
+                submitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+                submitInfo.semaphore = swapchain->GetImageAcquiredSemaphore();
+                submitInfo.stageMask = epilogeState.stage;
+                m_waitSemaphores.push_back(submitInfo);
+            }
 
             if (auto next = node->next)
             {
                 epilogeState = GetImageStageAccess(next->usage, next->access, next->stages, loadStoreOperation);
-                if (auto swapchain = (ISwapchain*)attachment->swapchain)
-                {
-                    VkSemaphoreSubmitInfo submitInfo{};
-                    submitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-                    submitInfo.semaphore =  swapchain->GetImageSignaledSemaphore();
-                    submitInfo.stageMask = epilogeState.stage;
-                    m_signalSemaphores.push_back(submitInfo);
-                }
-                else if (auto [semaphore, stage] = m_context->m_frameContext.GetImageSignalSemaphore(imageHandle); semaphore != VK_NULL_HANDLE)
+                if (auto [semaphore, stage] = m_context->m_frameContext.GetImageSignalSemaphore(imageHandle); semaphore != VK_NULL_HANDLE)
                 {
                     VkSemaphoreSubmitInfo submitInfo{};
                     submitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
@@ -264,6 +256,14 @@ namespace RHI::Vulkan
                     submitInfo.stageMask = stage;
                     m_signalSemaphores.push_back(submitInfo);
                 }
+            }
+            else if (auto swapchain = (ISwapchain*)attachment->swapchain)
+            {
+                VkSemaphoreSubmitInfo submitInfo{};
+                submitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+                submitInfo.semaphore = swapchain->GetImageSignaledSemaphore();
+                submitInfo.stageMask = epilogeState.stage;
+                m_signalSemaphores.push_back(submitInfo);
             }
 
             if (prilogeState != currentState)

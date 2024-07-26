@@ -6,6 +6,7 @@ set(SOURCE_FILES
 
 set(SHADER_FILES
     ${CMAKE_SOURCE_DIR}/Examples/Shaders/ImGui.slang
+    ${CMAKE_SOURCE_DIR}/Examples/Shaders/Compose.slang
     ${CMAKE_SOURCE_DIR}/Examples/Shaders/Basic.slang
 )
 

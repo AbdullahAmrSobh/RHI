@@ -97,6 +97,7 @@ namespace RHI::Vulkan
 
     public:
         VkInstance m_instance;
+        VkDebugUtilsMessengerEXT m_debugUtilsMessenger;
         VkPhysicalDevice m_physicalDevice;
         VkDevice m_device;
         VmaAllocator m_allocator;

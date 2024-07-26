@@ -1,17 +1,15 @@
 #pragma once
 
-#include <Examples-Base/ApplicationBase.hpp>
-#include <Examples-Base/Timestep.hpp>
-#include <Examples-Base/Common.hpp>
-#include <Examples-Base/Window.hpp>
-#include <Examples-Base/CommandLine.hpp>
-
-#include <RHI/RHI.hpp>
+#include "Examples-Base/Timestep.hpp"
+#include "Examples-Base/Common.hpp"
+#include "Examples-Base/CommandLine.hpp"
 
 namespace Examples
 {
-    class Camera;
-    class ImGuiRenderer;
+    struct Window;
+    struct Renderer;
+
+    class Event;
 
     class ApplicationBase
     {
@@ -25,8 +23,6 @@ namespace Examples
         CommandLine::LaunchSettings m_launchSettings;
 
     private:
-        static ApplicationBase& Get();
-
         void Init();
 
         void Shutdown();
@@ -44,37 +40,8 @@ namespace Examples
         virtual void OnEvent(Event& event) = 0;
 
     protected:
-        Ptr<RHI::Context> m_context;
-
-        Ptr<RHI::Swapchain> m_swapchain;
-
-        Ptr<ImGuiRenderer> m_imguiRenderer;
-
         Ptr<Window> m_window;
 
-        bool m_isRunning;
+        Ptr<Renderer> m_renderer;
     };
-
-    template<typename AppType>
-    inline int Entry(TL::Span<const char*> args)
-    {
-        auto app = AppType();
-        app.m_launchSettings = CommandLine::Parse({args.begin() + 1, args.end()});
-
-        {
-            ZoneScopedN("Init time");
-            app.Init();
-        }
-
-        {
-            app.Run();
-        }
-
-        {
-            ZoneScopedN("Shutdown time");
-            app.Shutdown();
-        }
-
-        return 0;
-    }
 } // namespace Examples

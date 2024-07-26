@@ -25,6 +25,12 @@ namespace RHI
         pass->m_renderTargetSize = size;
     }
 
+    ImageSize2D RenderGraph::GetPassSize(Handle<Pass> _pass) const
+    {
+        auto pass = m_passPool.Get(_pass);
+        return pass->m_renderTargetSize;
+    }
+
     Handle<ImageAttachment> RenderGraph::ImportSwapchain(const char* name, Swapchain& swapchain)
     {
         ImageAttachment attachment{};

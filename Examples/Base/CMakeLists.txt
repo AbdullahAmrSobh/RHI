@@ -3,8 +3,9 @@ cmake_minimum_required(VERSION 3.14)
 set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/ApplicationBase.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/ImGuiRenderer.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SceneGraph.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Window.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Renderer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/DeferredRenderer.cpp
 )
 
 include(${CMAKE_SOURCE_DIR}/CMake/add-target.cmake)
