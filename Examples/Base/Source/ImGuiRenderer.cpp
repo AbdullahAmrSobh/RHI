@@ -260,7 +260,7 @@ namespace Examples
             int width, height;
             io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
-            RHI::ImageCreateInfo imageInfo{};
+            [[maybe_unused]] RHI::ImageCreateInfo imageInfo{};
             imageInfo.size.width = uint32_t(width);
             imageInfo.size.height = uint32_t(height);
             imageInfo.size.depth = 1;
@@ -271,7 +271,8 @@ namespace Examples
             imageInfo.sampleCount = RHI::SampleCount::Samples1;
             imageInfo.arrayCount = 1;
             imageInfo.mipLevels = 1;
-            m_image = RHI::CreateImageWithData(*m_context, imageInfo, RHI::TL::Span<const uint8_t>{ pixels, size_t(width * height * 4) }).GetValue();
+
+            // m_image = RHI::CreateImageWithData(*m_context, imageInfo, RHI::TL::Span<const uint8_t>{ pixels, size_t(width * height * 4) }).GetValue();
             RHI::ImageViewCreateInfo viewInfo{};
             viewInfo.image = m_image;
             viewInfo.viewType = RHI::ImageViewType::View2D;

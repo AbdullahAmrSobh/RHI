@@ -7,6 +7,7 @@
 #include "RHI/Common/Assert.hpp"
 #include "RHI/Common/Callstack.hpp"
 
+#include <RHI/Common/Handle.hpp>
 #include <tracy/Tracy.hpp>
 
 namespace RHI
@@ -17,8 +18,9 @@ namespace RHI
     {
     }
 
-    void Context::Shutdown()
+    Context::~Context()
     {
+
     }
 
     Limits Context::GetLimits() const
@@ -91,7 +93,7 @@ namespace RHI
     void Context::DestroyBindGroupLayout(Handle<BindGroupLayout> handle)
     {
         ZoneScoped;
-
+        RHI_ASSERT(handle != NullHandle);
         Internal_DestroyBindGroupLayout(handle);
     }
 
@@ -105,7 +107,7 @@ namespace RHI
     void Context::DestroyBindGroup(Handle<BindGroup> handle)
     {
         ZoneScoped;
-
+        RHI_ASSERT(handle != NullHandle);
         Internal_DestroyBindGroup(handle);
     }
 
@@ -127,7 +129,7 @@ namespace RHI
     void Context::DestroyPipelineLayout(Handle<PipelineLayout> handle)
     {
         ZoneScoped;
-
+        RHI_ASSERT(handle != NullHandle);
         Internal_DestroyPipelineLayout(handle);
     }
 
@@ -142,7 +144,7 @@ namespace RHI
     void Context::DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle)
     {
         ZoneScoped;
-
+        RHI_ASSERT(handle != NullHandle);
         Internal_DestroyGraphicsPipeline(handle);
     }
 
@@ -157,7 +159,7 @@ namespace RHI
     void Context::DestroyComputePipeline(Handle<ComputePipeline> handle)
     {
         ZoneScoped;
-
+        RHI_ASSERT(handle != NullHandle);
         Internal_DestroyComputePipeline(handle);
     }
 
@@ -172,7 +174,7 @@ namespace RHI
     void Context::DestroySampler(Handle<Sampler> handle)
     {
         ZoneScoped;
-
+        RHI_ASSERT(handle != NullHandle);
         Internal_DestroySampler(handle);
     }
 
@@ -187,7 +189,7 @@ namespace RHI
     void Context::DestroyImage(Handle<Image> handle)
     {
         ZoneScoped;
-
+        RHI_ASSERT(handle != NullHandle);
         Internal_DestroyImage(handle);
     }
 
@@ -202,7 +204,7 @@ namespace RHI
     void Context::DestroyBuffer(Handle<Buffer> handle)
     {
         ZoneScoped;
-
+        RHI_ASSERT(handle != NullHandle);
         Internal_DestroyBuffer(handle);
     }
 
@@ -217,7 +219,7 @@ namespace RHI
     void Context::DestroyImageView(Handle<ImageView> handle)
     {
         ZoneScoped;
-
+        RHI_ASSERT(handle != NullHandle);
         Internal_DestroyImageView(handle);
     }
 
@@ -232,7 +234,7 @@ namespace RHI
     void Context::DestroyBufferView(Handle<BufferView> handle)
     {
         ZoneScoped;
-
+        RHI_ASSERT(handle != NullHandle);
         Internal_DestroyBufferView(handle);
     }
 
@@ -413,4 +415,4 @@ namespace RHI
         (void)message;
 #endif
     }
-} // namespace RHI
+} // namespace RH

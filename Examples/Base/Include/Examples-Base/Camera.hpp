@@ -243,8 +243,7 @@ namespace Examples
             }
         case EventType::MouseMoved:
             {
-                auto& event = (MouseMovedEvent&)e;
-                (void)event;
+                [[maybe_unused]] auto& event = (MouseMovedEvent&)e;
 
                 if (m_window->IsMouseButtonPressed(MouseCode::ButtonLeft))
                 {

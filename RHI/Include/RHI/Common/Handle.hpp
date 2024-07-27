@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <type_traits>
+#include <iostream>
 #include <format>
 
 #define RHI_DECALRE_OPAQUE_RESOURCE(name) \
@@ -104,7 +105,7 @@ namespace RHI
         HandlePool()                  = default;
         HandlePool(const HandlePool&) = delete;
         HandlePool(HandlePool&&)      = default;
-        ~HandlePool()                 = default;
+        ~HandlePool();
 
         TL::String ReportLiveResources() const;
 
@@ -137,6 +138,18 @@ namespace RHI
 
 namespace RHI
 {
+    template<typename Resource>
+    HandlePool<Resource>::~HandlePool()
+    {
+        if (m_liveResources.empty() == false)
+        {
+            std::cout << std::vformat("Leak detected. Not all {} resources were freed.",
+                             std::make_format_args(typeid(Resource).name()))
+                      << "Leak count: " << m_liveResources.size() << "\n";
+
+            std::cout << "Leak count: " << m_liveResources.size() << "\n";
+        }
+    }
 
     template<typename Resource>
     void HandlePool<Resource>::Clear()
@@ -144,6 +157,7 @@ namespace RHI
         m_resources.clear();
         m_genIds.clear();
         m_freeSlots.clear();
+        m_liveResources.clear();
     }
 
     template<typename Resource>
@@ -207,8 +221,8 @@ namespace RHI
         // If no free slot, expand the pool
         m_resources.emplace_back(std::move(resource));
         m_genIds.emplace_back(uint16_t(1));
-        auto genId = m_genIds.back();
-        auto handle         = Handle<Resource>(m_resources.size() - 1, genId);
+        auto genId              = m_genIds.back();
+        auto handle             = Handle<Resource>(m_resources.size() - 1, genId);
         m_liveResources[handle] = CaptureCallstack(3);
         return handle;
     }

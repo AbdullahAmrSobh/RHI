@@ -686,7 +686,7 @@ namespace RHI::Vulkan
     inline static VkObjectType GetObjectType()
     {
         // clang-format off
-        if constexpr (std::is_same_v<VkResourceTypeT, VkInstance>)                         return VK_OBJECT_TYPE_INSTANCE;
+        if constexpr      (std::is_same_v<VkResourceTypeT, VkInstance>)                    return VK_OBJECT_TYPE_INSTANCE;
         else if constexpr (std::is_same_v<VkResourceTypeT, VkPhysicalDevice>)              return VK_OBJECT_TYPE_PHYSICAL_DEVICE;
         else if constexpr (std::is_same_v<VkResourceTypeT, VkDevice>)                      return VK_OBJECT_TYPE_DEVICE;
         else if constexpr (std::is_same_v<VkResourceTypeT, VkQueue>)                       return VK_OBJECT_TYPE_QUEUE;

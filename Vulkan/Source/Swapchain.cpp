@@ -46,6 +46,14 @@ namespace RHI::Vulkan
             if (semaphore) context->DestroySemaphore(semaphore);
         }
 
+        for (auto imageHandle : m_images)
+        {
+            if (imageHandle)
+            {
+                context->m_imageOwner.Release(imageHandle);
+            }
+        }
+
         vkDestroySwapchainKHR(context->m_device, m_swapchain, nullptr);
         vkDestroySurfaceKHR(context->m_instance, m_surface, nullptr);
     }

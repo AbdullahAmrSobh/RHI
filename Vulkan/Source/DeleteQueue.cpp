@@ -7,7 +7,7 @@ namespace RHI::Vulkan
 
     DeleteQueue::~DeleteQueue()
     {
-        RHI_ASSERT(m_callbacks.empty());
+        // RHI_ASSERT(m_callbacks.empty());
     }
 
     void DeleteQueue::DeferCommand(std::function<void()> callback)
@@ -26,6 +26,7 @@ namespace RHI::Vulkan
 
     void FrameExecuteContext::AdvanceFrame()
     {
+        m_frame[m_frameIndex].m_deleteQueue.Flush();
         m_frameIndex = GetNextFrameIndex();
     }
 

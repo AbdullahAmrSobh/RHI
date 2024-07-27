@@ -51,7 +51,7 @@ namespace Examples
 
         OnShutdown();
 
-        // m_renderer->Shutdown();
+        m_renderer->Shutdown();
     }
 
     void ApplicationBase::DispatchEvent(Event& event)

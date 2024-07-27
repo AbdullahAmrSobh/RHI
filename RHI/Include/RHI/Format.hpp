@@ -2,10 +2,14 @@
 
 #include "RHI/Export.hpp"
 
+#include "RHI/Common/Flags.hpp"
+
 #include <cstdint>
 
 namespace RHI
 {
+    enum class ImageAspect;
+
     enum class Format : uint8_t
     {
         Unknown,
@@ -115,5 +119,7 @@ namespace RHI
     RHI_EXPORT uint32_t GetFormatComponentByteSize(Format format);
 
     RHI_EXPORT FormatType GetFormatType(Format format);
+
+    RHI_EXPORT Flags<ImageAspect> GetFormatAspects(Format format);
 
 } // namespace RHI

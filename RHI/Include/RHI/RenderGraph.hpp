@@ -1,7 +1,6 @@
 #pragma once
 
 #include "RHI/Common/Handle.hpp"
-#include "RHI/Common/Ptr.hpp"
 
 #include "RHI/Resources.hpp"
 #include "RHI/Attachment.hpp"
@@ -54,7 +53,8 @@ namespace RHI
     {
     public:
         RenderGraph(Context* context);
-        ~RenderGraph() = default;
+        RenderGraph(RenderGraph&&) = default;
+        ~RenderGraph();
 
         /// @brief Creates a new pass with the specified creation info.
         ///
@@ -107,15 +107,6 @@ namespace RHI
         /// @return Handle to the created buffer attachment.
         RHI_NODISCARD Handle<BufferAttachment> CreateBuffer(const BufferCreateInfo& createInfo);
 
-        // /// @brief Uses an image in a pass with specified usage and access.
-        // ///
-        // /// @param pass Handle to the pass.
-        // /// @param attachment Handle to the image attachment.
-        // /// @param usage Usage flags for the image.
-        // /// @param stage Shader stage flags.
-        // /// @param access Access flags.
-        // void PassUseImage(Handle<Pass> pass, Handle<ImageAttachment> attachment, ImageUsage usage, Flags<ShaderStage> stage, Access access);
-
         /// @brief Uses an image in a pass with view info, usage, and access.
         ///
         /// @param pass Handle to the pass.
@@ -125,15 +116,6 @@ namespace RHI
         /// @param stage Shader stage flags.
         /// @param access Access flags.
         void PassUseImage(Handle<Pass> pass, Handle<ImageAttachment> attachment, const ImageViewInfo& viewInfo, ImageUsage usage, Flags<ShaderStage> stage, Access access);
-
-        // /// @brief Uses a buffer in a pass with specified usage and access.
-        // ///
-        // /// @param pass Handle to the pass.
-        // /// @param attachment Handle to the buffer attachment.
-        // /// @param usage Usage flags for the buffer.
-        // /// @param stage Shader stage flags.
-        // /// @param access Access flags.
-        // void PassUseBuffer(Handle<Pass> pass, Handle<BufferAttachment> attachment, BufferUsage usage, Flags<ShaderStage> stage, Access access);
 
         /// @brief Uses a buffer in a pass with view info, usage, and access.
         ///
@@ -180,12 +162,15 @@ namespace RHI
 
         void Invalidate() {}
 
-    private:
+    // private:
         /// @brief Compiles the render graph.
         void Compile();
 
         /// @brief Cleans up resources used by the render graph.
         void Cleanup();
+
+        void CleanupAttachmentViews();
+        void CleanupTransientAttachments();
 
     public:
         Context* m_context;

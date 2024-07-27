@@ -4,7 +4,6 @@
 
 namespace RHI
 {
-    /// @brief An interface implemented by the user, which the API use to log.
     class DebugCallbacks
     {
     public:

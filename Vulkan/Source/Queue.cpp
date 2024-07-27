@@ -1,7 +1,6 @@
 #include "Queue.hpp"
 
 #include "Context.hpp"
-#include "VulkanFunctions.hpp"
 #include "CommandList.hpp"
 
 namespace RHI::Vulkan
@@ -16,7 +15,7 @@ namespace RHI::Vulkan
 
     void Queue::BeginLabel(IContext* context, const char* name, ColorValue<float> color)
     {
-        if (auto fn = context->m_fnTable->m_vkQueueBeginDebugUtilsLabelEXT)
+        if (auto fn = context->m_pfn.m_vkQueueBeginDebugUtilsLabelEXT)
         {
             VkDebugUtilsLabelEXT labelInfo{};
             labelInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
@@ -32,7 +31,7 @@ namespace RHI::Vulkan
 
     void Queue::EndLabel(IContext* context)
     {
-        if (auto fn = context->m_fnTable->m_vkQueueEndDebugUtilsLabelEXT)
+        if (auto fn = context->m_pfn.m_vkQueueEndDebugUtilsLabelEXT)
         {
             fn(m_queue);
         }

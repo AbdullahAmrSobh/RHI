@@ -78,77 +78,76 @@ namespace RHI::Vulkan
     /// Image
     ///////////////////////////////////////////////////////////////////////////
 
-    ResultCode IImage::Init(IContext* context, const ImageCreateInfo& _createInfo)
+    ResultCode IImage::Init(IContext* context, const ImageCreateInfo& createInfo)
     {
-        auto formatInfo = GetFormatInfo(_createInfo.format);
-
         this->flags = {};
-        this->imageType = ConvertImageType(_createInfo.type);
-        this->format = ConvertFormat(_createInfo.format);
-        this->extent = ConvertExtent3D(_createInfo.size);
-        this->mipLevels = _createInfo.mipLevels;
-        this->arrayLayers = _createInfo.arrayCount;
-        this->samples = ConvertSampleCount(_createInfo.sampleCount);
-        this->usage = ConvertImageUsageFlags(_createInfo.usageFlags);
-        this->availableAspects = formatInfo.hasRed ? ImageAspect::Color : ImageAspect::Depth; // TODO: do this correctly
+        this->imageType = ConvertImageType(createInfo.type);
+        this->format = ConvertFormat(createInfo.format);
+        this->extent = ConvertExtent3D(createInfo.size);
+        this->mipLevels = createInfo.mipLevels;
+        this->arrayLayers = createInfo.arrayCount;
+        this->samples = ConvertSampleCount(createInfo.sampleCount);
+        this->usage = ConvertImageUsageFlags(createInfo.usageFlags);
+        this->availableAspects = GetFormatAspects(createInfo.format);
 
-        VmaAllocationCreateInfo allocInfo{};
-        allocInfo.flags = 0u;
-        allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-        allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-        allocInfo.preferredFlags = 0u;
-        allocInfo.memoryTypeBits = 0u;
-        allocInfo.pool = VK_NULL_HANDLE;
-        allocInfo.pUserData = nullptr;
+        VmaAllocationCreateInfo allocationCI{};
+        allocationCI.flags = 0u;
+        allocationCI.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+        allocationCI.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+        allocationCI.preferredFlags = 0u;
+        allocationCI.memoryTypeBits = 0u;
+        allocationCI.pool = VK_NULL_HANDLE;
+        allocationCI.pUserData = nullptr;
 
-        VkImageCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        createInfo.pNext = nullptr;
-        createInfo.flags = this->flags;
-        createInfo.imageType = this->imageType;
-        createInfo.format = this->format;
-        createInfo.extent = this->extent;
-        createInfo.mipLevels = this->mipLevels;
-        createInfo.arrayLayers = this->arrayLayers;
-        createInfo.samples = this->samples;
-        createInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-        createInfo.usage = this->usage;
-        createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        createInfo.queueFamilyIndexCount = 0;
-        createInfo.pQueueFamilyIndices = nullptr;
-        createInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        VkImageCreateInfo imageCI{};
+        imageCI.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        imageCI.pNext = nullptr;
+        imageCI.flags = this->flags;
+        imageCI.imageType = this->imageType;
+        imageCI.format = this->format;
+        imageCI.extent = this->extent;
+        imageCI.mipLevels = this->mipLevels;
+        imageCI.arrayLayers = this->arrayLayers;
+        imageCI.samples = this->samples;
+        imageCI.tiling = VK_IMAGE_TILING_OPTIMAL;
+        imageCI.usage = this->usage;
+        imageCI.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        imageCI.queueFamilyIndexCount = 0;
+        imageCI.pQueueFamilyIndices = nullptr;
+        imageCI.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         auto result = vmaCreateImage(
             context->m_allocator,
-            &createInfo,
-            &allocInfo,
+            &imageCI,
+            &allocationCI,
             &handle,
             &allocation.handle,
             &allocation.info);
 
-        if (_createInfo.name)
+        if (result == VK_SUCCESS)
+            return ConvertResult(result);
+
+        if (createInfo.name)
         {
-            context->SetDebugName(handle, _createInfo.name);
+            context->SetDebugName(handle, createInfo.name);
         }
 
         return ConvertResult(result);
     }
 
-    ResultCode IImage::Init(IContext* context, VkImage image, const VkSwapchainCreateInfoKHR& swapchainCreateInfo)
+    ResultCode IImage::Init([[maybe_unused]] IContext* context, VkImage image, const VkSwapchainCreateInfoKHR& swapchainCI)
     {
-        (void)context;
-
         this->handle = image;
 
         this->flags = {};
         this->imageType = VK_IMAGE_TYPE_2D;
-        this->format = swapchainCreateInfo.imageFormat;
-        this->extent.width = swapchainCreateInfo.imageExtent.width;
-        this->extent.height = swapchainCreateInfo.imageExtent.height;
+        this->format = swapchainCI.imageFormat;
+        this->extent.width = swapchainCI.imageExtent.width;
+        this->extent.height = swapchainCI.imageExtent.height;
         this->extent.depth = 1;
         this->mipLevels = 1;
-        this->arrayLayers = swapchainCreateInfo.imageArrayLayers;
+        this->arrayLayers = swapchainCI.imageArrayLayers;
         this->samples = VK_SAMPLE_COUNT_1_BIT;
-        this->usage = swapchainCreateInfo.imageUsage;
+        this->usage = swapchainCI.imageUsage;
 
         return ResultCode::Success;
     }

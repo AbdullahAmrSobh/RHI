@@ -2,6 +2,7 @@
 #include "RHI/Swapchain.hpp"
 #include "RHI/Context.hpp"
 
+#include <RHI/Common/Containers.h>
 #include <tracy/Tracy.hpp>
 
 namespace RHI
@@ -9,6 +10,14 @@ namespace RHI
     RenderGraph::RenderGraph(Context* context)
     {
         m_context = context;
+    }
+
+    RenderGraph::~RenderGraph()
+    {
+        Cleanup();
+        m_passPool.Clear();
+        m_imageAttachmentPool.Clear();
+        m_bufferAttachmentPool.Clear();
     }
 
     Handle<Pass> RenderGraph::CreatePass(const PassCreateInfo& createInfo)
@@ -66,6 +75,8 @@ namespace RHI
         attachment.info = createInfo;
         attachment.isTransient = true;
         auto handle = m_imageAttachmentPool.Emplace(std::move(attachment));
+        m_imageAttachments.push_back(handle);
+        m_transientImageAttachments.push_back(handle);
         return handle;
     }
 
@@ -75,6 +86,8 @@ namespace RHI
         attachment.name = createInfo.name;
         attachment.info = createInfo;
         auto handle = m_bufferAttachmentPool.Emplace(std::move(attachment));
+        m_bufferAttachments.push_back(handle);
+        m_transientBufferAttachments.push_back(handle);
         return handle;
     }
 
@@ -258,6 +271,35 @@ namespace RHI
 
     void RenderGraph::Cleanup()
     {
-        // todo
+        CleanupAttachmentViews();
+        CleanupTransientAttachments();
+    }
+
+    void RenderGraph::CleanupAttachmentViews()
+    {
+        for (auto [_, viewHandle] : m_imageViewsLRU)
+        {
+            m_context->DestroyImageView(viewHandle);
+        }
+
+        for (auto [_, viewHandle] : m_bufferViewsLRU)
+        {
+            m_context->DestroyBufferView(viewHandle);
+        }
+    }
+
+    void RenderGraph::CleanupTransientAttachments()
+    {
+        for (auto attachmentHandle : m_transientImageAttachments)
+        {
+            auto resource = GetImage(attachmentHandle);
+            m_context->DestroyImage(resource);
+        }
+
+        for (auto attachmentHandle : m_transientBufferAttachments)
+        {
+            auto resource = GetBuffer(attachmentHandle);
+            m_context->DestroyBuffer(resource);
+        }
     }
 } // namespace RHI

@@ -6,7 +6,6 @@
 #include "CommandList.hpp"
 #include "Swapchain.hpp"
 #include "Context.hpp"
-#include "VulkanFunctions.hpp"
 #include "Queue.hpp"
 
 #include <tracy/Tracy.hpp>
@@ -28,6 +27,9 @@
 #elif RHI_PLATFORM_IOS
     #define VULKAN_SURFACE_OS_EXTENSION_NAME VK_MVK_IOS_SURFACE_EXTENSION_NAME
 #endif // VK_USE_PLATFORM_WIN32_KHR
+
+#define VULKAN_DEVICE_FUNC_LOAD(device, proc) reinterpret_cast<PFN_##proc>(vkGetDeviceProcAddr(device, #proc));
+#define VULKAN_INSTANCE_FUNC_LOAD(instance, proc) reinterpret_cast<PFN_##proc>(vkGetInstanceProcAddr(instance, #proc));
 
 namespace RHI
 {
@@ -109,11 +111,11 @@ namespace RHI::Vulkan
         , m_physicalDevice(VK_NULL_HANDLE)
         , m_device(VK_NULL_HANDLE)
         , m_allocator(VK_NULL_HANDLE)
+        , m_pfn()
         , m_queue()
-        , m_fnTable(CreatePtr<FunctionsTable>())
+        , m_frameContext(this)
         , m_bindGroupAllocator(CreatePtr<BindGroupAllocator>(this))
         , m_commandPool(CreatePtr<ICommandPool>(this))
-        , m_frameContext(this)
         , m_imageOwner()
         , m_bufferOwner()
         , m_imageViewOwner()
@@ -127,48 +129,30 @@ namespace RHI::Vulkan
     {
     }
 
-    template<typename T>
-    inline static constexpr void LeakReportBuilder(TL::String& reportBody, const char* message, const HandlePool<T>& pool)
-    {
-        (void)reportBody;
-        (void)message;
-        (void)pool;
-#if RHI_REPORT_RESOURCE_LEAKS
-    #if RHI_REPORT_RESOURCE_LEAKS_COUNT
-        reportBody += TL::String(std::format(message, pool.ReportLiveResourcesCount()));
-    #else
-        reportBody += TL::String(std::format(message, pool.ReportLiveResources()));
-    #endif
-#endif
-    }
-
     IContext::~IContext()
     {
         ZoneScoped;
 
         vkDeviceWaitIdle(m_device);
 
+        for (auto frame : m_frameContext.m_frame)
         {
-            TL::String leakReport = "";
-            LeakReportBuilder(leakReport, "Leaked ({}) Images \n", m_imageOwner);
-            LeakReportBuilder(leakReport, "Leaked ({}) Buffers \n", m_bufferOwner);
-            LeakReportBuilder(leakReport, "Leaked ({}) ImageViews \n", m_imageViewOwner);
-            LeakReportBuilder(leakReport, "Leaked ({}) BufferViews \n", m_bufferViewOwner);
-            LeakReportBuilder(leakReport, "Leaked ({}) BindGroupLayouts \n", m_bindGroupLayoutsOwner);
-            LeakReportBuilder(leakReport, "Leaked ({}) BindGroups \n", m_bindGroupOwner);
-            LeakReportBuilder(leakReport, "Leaked ({}) PipelineLayouts \n", m_pipelineLayoutOwner);
-            LeakReportBuilder(leakReport, "Leaked ({}) GraphicsPipelines \n", m_graphicsPipelineOwner);
-            LeakReportBuilder(leakReport, "Leaked ({}) ComputePipelines \n", m_computePipelineOwner);
-            LeakReportBuilder(leakReport, "Leaked ({}) Samplers \n", m_samplerOwner);
+            frame.m_deleteQueue.Flush();
         }
 
-        Shutdown();
-
-        // m_commandPool->Shutdown();
-        // m_bindGroupAllocator->Shutdown();
+        delete m_commandPool.release();
+        m_bindGroupAllocator->Shutdown();
 
         vmaDestroyAllocator(m_allocator);
         vkDestroyDevice(m_device, nullptr);
+
+#if RHI_DEBUG
+        if (auto fn = m_pfn.m_vkDestroyDebugUtilsMessengerEXT; fn && m_debugUtilsMessenger)
+        {
+            fn(m_instance, m_debugUtilsMessenger, nullptr);
+        }
+#endif
+
         vkDestroyInstance(m_instance, nullptr);
     }
 
@@ -182,16 +166,15 @@ namespace RHI::Vulkan
         TryValidateVk(InitDevice());
         TryValidateVk(InitMemoryAllocator());
 
-        m_fnTable->Init(this, debugExtensionEnabled);
         TryValidate(m_bindGroupAllocator->Init());
-        TryValidate(m_commandPool->Init(CommandPoolFlags::Transient));
+        TryValidate(m_commandPool->Init(CommandPoolFlags::Reset));
 
         return ResultCode::Success;
     }
 
     void IContext::SetDebugName(VkObjectType type, uint64_t handle, const char* name) const
     {
-        if (auto fn = m_fnTable->m_vkSetDebugUtilsObjectNameEXT; fn && name)
+        if (auto fn = m_pfn.m_vkSetDebugUtilsObjectNameEXT; fn && name)
         {
             VkDebugUtilsObjectNameInfoEXT nameInfo{};
             nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
@@ -321,10 +304,13 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyBindGroupLayout(Handle<BindGroupLayout> handle)
     {
+        RHI_ASSERT(handle != NullHandle);
+
         m_frameContext.DeferCommand([this, handle]()
         {
             auto bindGroupLayout = m_bindGroupLayoutsOwner.Get(handle);
             bindGroupLayout->Shutdown(this);
+            m_bindGroupLayoutsOwner.Release(handle);
         });
     }
 
@@ -342,10 +328,13 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyBindGroup(Handle<BindGroup> handle)
     {
+        RHI_ASSERT(handle != NullHandle);
+
         m_frameContext.DeferCommand([this, handle]()
         {
             auto bindGroup = m_bindGroupOwner.Get(handle);
             bindGroup->Shutdown(this);
+            m_bindGroupOwner.Release(handle);
         });
     }
 
@@ -369,8 +358,11 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyPipelineLayout(Handle<PipelineLayout> handle)
     {
+        RHI_ASSERT(handle != NullHandle);
+
         auto pipelineLayout = m_pipelineLayoutOwner.Get(handle);
         pipelineLayout->Shutdown(this);
+        m_pipelineLayoutOwner.Release(handle);
     }
 
     Handle<GraphicsPipeline> IContext::Internal_CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)
@@ -387,10 +379,13 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle)
     {
+        RHI_ASSERT(handle != NullHandle);
+
         m_frameContext.DeferCommand([this, handle]()
         {
             auto graphicsPipeline = m_graphicsPipelineOwner.Get(handle);
             graphicsPipeline->Shutdown(this);
+            m_graphicsPipelineOwner.Release(handle);
         });
     }
 
@@ -408,10 +403,13 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyComputePipeline(Handle<ComputePipeline> handle)
     {
+        RHI_ASSERT(handle != NullHandle);
+
         m_frameContext.DeferCommand([this, handle]()
         {
             auto computePipeline = m_computePipelineOwner.Get(handle);
             computePipeline->Shutdown(this);
+            m_computePipelineOwner.Release(handle);
         });
     }
 
@@ -429,10 +427,13 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroySampler(Handle<Sampler> handle)
     {
+        RHI_ASSERT(handle != NullHandle);
+
         m_frameContext.DeferCommand([this, handle]()
         {
             auto sampler = m_samplerOwner.Get(handle);
             sampler->Shutdown(this);
+            m_samplerOwner.Release(handle);
         });
     }
 
@@ -451,10 +452,13 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyImage(Handle<Image> handle)
     {
+        RHI_ASSERT(handle != NullHandle);
+
         m_frameContext.DeferCommand([this, handle]()
         {
             auto image = m_imageOwner.Get(handle);
             image->Shutdown(this);
+            m_imageOwner.Release(handle);
         });
     }
 
@@ -473,10 +477,13 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyBuffer(Handle<Buffer> handle)
     {
+        RHI_ASSERT(handle != NullHandle);
+
         m_frameContext.DeferCommand([this, handle]()
         {
             auto buffer = m_bufferOwner.Get(handle);
             buffer->Shutdown(this);
+            m_bufferOwner.Release(handle);
         });
     }
 
@@ -494,10 +501,13 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyImageView(Handle<ImageView> handle)
     {
+        RHI_ASSERT(handle != NullHandle);
+
         m_frameContext.DeferCommand([this, handle]()
         {
             auto imageView = m_imageViewOwner.Get(handle);
             imageView->Shutdown(this);
+            m_imageViewOwner.Release(handle);
         });
     }
 
@@ -515,10 +525,13 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyBufferView(Handle<BufferView> handle)
     {
+        RHI_ASSERT(handle != NullHandle);
+
         m_frameContext.DeferCommand([this, handle]()
         {
             auto imageView = m_bufferViewOwner.Get(handle);
             imageView->Shutdown(this);
+            m_bufferViewOwner.Release(handle);
         });
     }
 
@@ -745,6 +758,8 @@ namespace RHI::Vulkan
 
     VkResult IContext::InitInstance(const ApplicationInfo& appInfo, bool* debugExtensionEnabled)
     {
+        VkResult result;
+
         TL::Vector<const char*> layers = {
             "VK_LAYER_KHRONOS_validation",
         };
@@ -764,13 +779,13 @@ namespace RHI::Vulkan
         applicationInfo.engineVersion = VK_MAKE_API_VERSION(0, appInfo.engineVersion.major, appInfo.engineVersion.minor, appInfo.engineVersion.patch);
         applicationInfo.apiVersion = VK_API_VERSION_1_3;
 
-        VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
-        debugCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-        debugCreateInfo.flags = 0;
-        debugCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-        debugCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT;
-        debugCreateInfo.pfnUserCallback = DebugMessengerCallbacks;
-        debugCreateInfo.pUserData = this;
+        VkDebugUtilsMessengerCreateInfoEXT debugUtilsCI{};
+        debugUtilsCI.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+        debugUtilsCI.flags = 0;
+        debugUtilsCI.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+        debugUtilsCI.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT;
+        debugUtilsCI.pfnUserCallback = DebugMessengerCallbacks;
+        debugUtilsCI.pUserData = this;
 
 #if RHI_DEBUG
         for (VkExtensionProperties extension : GetAvailableInstanceExtensions())
@@ -792,18 +807,30 @@ namespace RHI::Vulkan
         }
 #endif
 
-        VkInstanceCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+        VkInstanceCreateInfo instanceCI{};
+        instanceCI.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 #if RHI_DEBUG
-        createInfo.pNext = *debugExtensionEnabled ? &debugCreateInfo : nullptr;
+        instanceCI.pNext = *debugExtensionEnabled ? &debugUtilsCI : nullptr;
 #endif
-        createInfo.flags = {};
-        createInfo.pApplicationInfo = &applicationInfo;
-        createInfo.enabledLayerCount = static_cast<uint32_t>(layers.size());
-        createInfo.ppEnabledLayerNames = layers.data();
-        createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
-        createInfo.ppEnabledExtensionNames = extensions.data();
-        return vkCreateInstance(&createInfo, nullptr, &m_instance);
+        instanceCI.flags = {};
+        instanceCI.pApplicationInfo = &applicationInfo;
+        instanceCI.enabledLayerCount = static_cast<uint32_t>(layers.size());
+        instanceCI.ppEnabledLayerNames = layers.data();
+        instanceCI.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+        instanceCI.ppEnabledExtensionNames = extensions.data();
+        result = vkCreateInstance(&instanceCI, nullptr, &m_instance);
+        if (result != VK_SUCCESS)
+            return result;
+
+#if RHI_DEBUG
+        if (debugExtensionEnabled)
+        {
+            m_pfn.m_vkCreateDebugUtilsMessengerEXT = VULKAN_INSTANCE_FUNC_LOAD(m_instance, vkCreateDebugUtilsMessengerEXT);
+            m_pfn.m_vkDestroyDebugUtilsMessengerEXT = VULKAN_INSTANCE_FUNC_LOAD(m_instance, vkDestroyDebugUtilsMessengerEXT);
+            result = m_pfn.m_vkCreateDebugUtilsMessengerEXT(m_instance, &debugUtilsCI, nullptr, &m_debugUtilsMessenger);
+        }
+#endif
+        return result;
     }
 
     VkResult IContext::InitDevice()
@@ -877,31 +904,31 @@ namespace RHI::Vulkan
         float queuePriority = 1.0f;
         TL::Vector<VkDeviceQueueCreateInfo> queueCreateInfos{};
 
-        VkDeviceQueueCreateInfo queueCreateInfo{};
-        queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queueCreateInfo.pNext = nullptr;
-        queueCreateInfo.flags = 0;
+        VkDeviceQueueCreateInfo queueCI{};
+        queueCI.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queueCI.pNext = nullptr;
+        queueCI.flags = 0;
 
         if (graphicsQueueFamilyIndex != UINT32_MAX)
         {
-            queueCreateInfo.queueFamilyIndex = graphicsQueueFamilyIndex;
-            queueCreateInfo.queueCount = 1;
-            queueCreateInfo.pQueuePriorities = &queuePriority;
-            queueCreateInfos.push_back(queueCreateInfo);
+            queueCI.queueFamilyIndex = graphicsQueueFamilyIndex;
+            queueCI.queueCount = 1;
+            queueCI.pQueuePriorities = &queuePriority;
+            queueCreateInfos.push_back(queueCI);
         }
         else if (computeQueueFamilyIndex != UINT32_MAX)
         {
-            queueCreateInfo.queueFamilyIndex = computeQueueFamilyIndex;
-            queueCreateInfo.queueCount = 1;
-            queueCreateInfo.pQueuePriorities = &queuePriority;
-            queueCreateInfos.push_back(queueCreateInfo);
+            queueCI.queueFamilyIndex = computeQueueFamilyIndex;
+            queueCI.queueCount = 1;
+            queueCI.pQueuePriorities = &queuePriority;
+            queueCreateInfos.push_back(queueCI);
         }
         else if (transferQueueFamilyIndex != UINT32_MAX)
         {
-            queueCreateInfo.queueFamilyIndex = transferQueueFamilyIndex;
-            queueCreateInfo.queueCount = 1;
-            queueCreateInfo.pQueuePriorities = &queuePriority;
-            queueCreateInfos.push_back(queueCreateInfo);
+            queueCI.queueFamilyIndex = transferQueueFamilyIndex;
+            queueCI.queueCount = 1;
+            queueCI.pQueuePriorities = &queuePriority;
+            queueCreateInfos.push_back(queueCI);
         }
         else
         {
@@ -920,18 +947,35 @@ namespace RHI::Vulkan
         dynamicRenderingFeatures.pNext = &syncFeature;
         dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
 
-        VkDeviceCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        createInfo.pNext = &dynamicRenderingFeatures;
-        createInfo.flags = 0;
-        createInfo.queueCreateInfoCount = (uint32_t)queueCreateInfos.size();
-        createInfo.pQueueCreateInfos = queueCreateInfos.data();
-        createInfo.enabledLayerCount = (uint32_t)deviceLayerNames.size();
-        createInfo.ppEnabledLayerNames = deviceLayerNames.data();
-        createInfo.enabledExtensionCount = (uint32_t)deviceExtensionNames.size();
-        createInfo.ppEnabledExtensionNames = deviceExtensionNames.data();
-        createInfo.pEnabledFeatures = &enabledFeatures;
-        auto result = vkCreateDevice(m_physicalDevice, &createInfo, nullptr, &m_device);
+        VkDeviceCreateInfo deviceCI{};
+        deviceCI.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+        deviceCI.pNext = &dynamicRenderingFeatures;
+        deviceCI.flags = 0;
+        deviceCI.queueCreateInfoCount = (uint32_t)queueCreateInfos.size();
+        deviceCI.pQueueCreateInfos = queueCreateInfos.data();
+        deviceCI.enabledLayerCount = (uint32_t)deviceLayerNames.size();
+        deviceCI.ppEnabledLayerNames = deviceLayerNames.data();
+        deviceCI.enabledExtensionCount = (uint32_t)deviceExtensionNames.size();
+        deviceCI.ppEnabledExtensionNames = deviceExtensionNames.data();
+        deviceCI.pEnabledFeatures = &enabledFeatures;
+        auto result = vkCreateDevice(m_physicalDevice, &deviceCI, nullptr, &m_device);
+
+#if RHI_DEBUG
+        if (m_pfn.m_vkCreateDebugUtilsMessengerEXT)
+        {
+            m_pfn.m_vkCmdBeginDebugUtilsLabelEXT = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdBeginDebugUtilsLabelEXT);
+            m_pfn.m_vkCmdEndDebugUtilsLabelEXT = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdEndDebugUtilsLabelEXT);
+            m_pfn.m_vkCmdInsertDebugUtilsLabelEXT = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdInsertDebugUtilsLabelEXT);
+            m_pfn.m_vkQueueBeginDebugUtilsLabelEXT = VULKAN_DEVICE_FUNC_LOAD(m_device, vkQueueBeginDebugUtilsLabelEXT);
+            m_pfn.m_vkQueueEndDebugUtilsLabelEXT = VULKAN_DEVICE_FUNC_LOAD(m_device, vkQueueEndDebugUtilsLabelEXT);
+            m_pfn.m_vkQueueInsertDebugUtilsLabelEXT = VULKAN_DEVICE_FUNC_LOAD(m_device, vkQueueInsertDebugUtilsLabelEXT);
+            m_pfn.m_vkSetDebugUtilsObjectNameEXT = VULKAN_DEVICE_FUNC_LOAD(m_device, vkSetDebugUtilsObjectNameEXT);
+            m_pfn.m_vkSetDebugUtilsObjectTagEXT = VULKAN_DEVICE_FUNC_LOAD(m_device, vkSetDebugUtilsObjectTagEXT);
+            m_pfn.m_vkSubmitDebugUtilsMessageEXT = VULKAN_DEVICE_FUNC_LOAD(m_device, vkSubmitDebugUtilsMessageEXT);
+        }
+#endif
+        m_pfn.m_vkCmdBeginConditionalRenderingEXT = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdBeginConditionalRenderingEXT);
+        m_pfn.m_vkCmdEndConditionalRenderingEXT = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdEndConditionalRenderingEXT);
 
         m_queue[QueueType::Graphics] = Queue(m_device, graphicsQueueFamilyIndex);
         m_queue[QueueType::Compute] = Queue(m_device, graphicsQueueFamilyIndex);
@@ -947,12 +991,12 @@ namespace RHI::Vulkan
 
     VkResult IContext::InitMemoryAllocator()
     {
-        VmaAllocatorCreateInfo createInfo{};
-        createInfo.physicalDevice = m_physicalDevice;
-        createInfo.device = m_device;
-        createInfo.instance = m_instance;
-        createInfo.vulkanApiVersion = VK_API_VERSION_1_3;
-        return vmaCreateAllocator(&createInfo, &m_allocator);
+        VmaAllocatorCreateInfo vmaCI{};
+        vmaCI.physicalDevice = m_physicalDevice;
+        vmaCI.device = m_device;
+        vmaCI.instance = m_instance;
+        vmaCI.vulkanApiVersion = VK_API_VERSION_1_3;
+        return vmaCreateAllocator(&vmaCI, &m_allocator);
     }
 
 } // namespace RHI::Vulkan

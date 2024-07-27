@@ -1,4 +1,5 @@
 #include "RHI/Format.hpp"
+#include "RHI/Resources.hpp"
 
 #include "RHI/Common/Assert.hpp"
 
@@ -110,4 +111,19 @@ namespace RHI
         return info.type;
     }
 
+    Flags<ImageAspect> GetFormatAspects(Format format)
+    {
+        Flags<ImageAspect> flags;
+
+        auto formatInfo = GetFormatInfo(format);
+
+        if (formatInfo.hasDepth)
+            flags |= ImageAspect::Depth;
+        if (formatInfo.hasStencil)
+            flags |= ImageAspect::Stencil;
+        if (formatInfo.hasRed || formatInfo.hasGreen || formatInfo.hasBlue || formatInfo.hasAlpha)
+            flags |= ImageAspect::Color;
+
+        return flags;
+    }
 } // namespace RHI

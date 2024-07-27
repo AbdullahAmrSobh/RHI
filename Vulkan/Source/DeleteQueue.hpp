@@ -64,7 +64,7 @@ namespace RHI::Vulkan
         VkSemaphore AddBufferWaitSemaphore(Handle<Buffer> buffer, VkPipelineStageFlags2 stages);
         VkSemaphore AddBufferSignalSemaphore(Handle<Buffer> buffer, VkPipelineStageFlags2 stages);
 
-    private:
+    // private:
         IContext* m_context;
 
         uint32_t m_frameInFlightsCount;

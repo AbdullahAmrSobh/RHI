@@ -1,8 +1,6 @@
-- Add proper event system [x]
-- Add proper input handling (layering)
-- Add proper window wrapper [x]
-- Add proper timing API
-- Add command line argument parser
-- Add launch script
-- Refactor Render Graph
-- Refactor Command Lists
+1. Fix all leaks                                [So far so good]
+2. Fix exit crashing                            [so far so good]
+3. FIx swapchain resizing                       [not yet]
+4. Fix all validation errors/warnnings          [so far so good]
+5. cleanup backend code                         [wip]
+6. Load scene                                   [not yet]

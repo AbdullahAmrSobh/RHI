@@ -15,7 +15,6 @@ namespace RHI::Vulkan
     class BindGroupAllocator;
     class ICommandPool;
     class ICommandList;
-    class FunctionsTable;
 
     class IContext final : public Context
     {
@@ -102,13 +101,32 @@ namespace RHI::Vulkan
         VkDevice m_device;
         VmaAllocator m_allocator;
 
+        struct
+        {
+#ifdef RHI_DEBUG
+            // VK_EXT_debug_utils
+            PFN_vkCmdBeginDebugUtilsLabelEXT m_vkCmdBeginDebugUtilsLabelEXT;
+            PFN_vkCmdEndDebugUtilsLabelEXT m_vkCmdEndDebugUtilsLabelEXT;
+            PFN_vkCmdInsertDebugUtilsLabelEXT m_vkCmdInsertDebugUtilsLabelEXT;
+            PFN_vkCreateDebugUtilsMessengerEXT m_vkCreateDebugUtilsMessengerEXT;
+            PFN_vkDestroyDebugUtilsMessengerEXT m_vkDestroyDebugUtilsMessengerEXT;
+            PFN_vkQueueBeginDebugUtilsLabelEXT m_vkQueueBeginDebugUtilsLabelEXT;
+            PFN_vkQueueEndDebugUtilsLabelEXT m_vkQueueEndDebugUtilsLabelEXT;
+            PFN_vkQueueInsertDebugUtilsLabelEXT m_vkQueueInsertDebugUtilsLabelEXT;
+            PFN_vkSetDebugUtilsObjectNameEXT m_vkSetDebugUtilsObjectNameEXT;
+            PFN_vkSetDebugUtilsObjectTagEXT m_vkSetDebugUtilsObjectTagEXT;
+            PFN_vkSubmitDebugUtilsMessageEXT m_vkSubmitDebugUtilsMessageEXT;
+#endif
+            PFN_vkCmdBeginConditionalRenderingEXT m_vkCmdBeginConditionalRenderingEXT;
+            PFN_vkCmdEndConditionalRenderingEXT m_vkCmdEndConditionalRenderingEXT;
+        } m_pfn;
+
         Queue m_queue[QueueType::Count];
 
-        Ptr<FunctionsTable> m_fnTable;
+        FrameExecuteContext m_frameContext;
+
         Ptr<BindGroupAllocator> m_bindGroupAllocator;
         Ptr<ICommandPool> m_commandPool;
-
-        FrameExecuteContext m_frameContext;
 
         HandlePool<IImage> m_imageOwner;
         HandlePool<IBuffer> m_bufferOwner;

@@ -3,11 +3,9 @@
 #include "Context.hpp"
 #include "Resources.hpp"
 #include "Swapchain.hpp"
-#include "VulkanFunctions.hpp"
 
 #include <RHI/Format.hpp>
 
-#include <optional>
 #include <tracy/Tracy.hpp>
 
 namespace RHI::Vulkan
@@ -353,15 +351,12 @@ namespace RHI::Vulkan
         vkEndCommandBuffer(m_commandBuffer);
     }
 
-    void ICommandList::DebugMarkerPush(const char* name, ColorValue<float> color)
+    void ICommandList::DebugMarkerPush([[maybe_unused]] const char* name, [[maybe_unused]] ColorValue<float> color)
     {
         ZoneScoped;
 
-        (void)name;
-        (void)color;
-
 #if RHI_DEBUG
-        if (auto fn = m_context->m_fnTable->m_vkCmdBeginDebugUtilsLabelEXT)
+        if (auto fn = m_context->m_pfn.m_vkCmdBeginDebugUtilsLabelEXT)
         {
             VkDebugUtilsLabelEXT info{};
             info.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT;
@@ -381,7 +376,7 @@ namespace RHI::Vulkan
         ZoneScoped;
 
 #if RHI_DEBUG
-        if (auto fn = m_context->m_fnTable->m_vkCmdEndDebugUtilsLabelEXT)
+        if (auto fn = m_context->m_pfn.m_vkCmdEndDebugUtilsLabelEXT)
         {
             fn(m_commandBuffer);
         }
@@ -400,14 +395,14 @@ namespace RHI::Vulkan
         beginInfo.buffer = buffer->handle;
         beginInfo.offset = offset;
         beginInfo.flags = inverted ? VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT : 0u;
-        m_context->m_fnTable->m_cmdBeginConditionalRenderingEXT(m_commandBuffer, &beginInfo);
+        m_context->m_pfn.m_vkCmdBeginConditionalRenderingEXT(m_commandBuffer, &beginInfo);
     }
 
     void ICommandList::EndConditionalCommands()
     {
         ZoneScoped;
 
-        m_context->m_fnTable->m_cmdEndConditionalRenderingEXT(m_commandBuffer);
+        m_context->m_pfn.m_vkCmdEndConditionalRenderingEXT(m_commandBuffer);
     }
 
     void ICommandList::Execute(TL::Span<const CommandList*> commandLists)

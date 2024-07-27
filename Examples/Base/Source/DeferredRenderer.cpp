@@ -2,17 +2,18 @@
 #include "Examples-Base/Renderer.hpp"
 #include <Examples-Base/FileSystem.hpp>
 #include <Examples-Base/Window.hpp>
+#include "Examples-Base/Log.hpp"
 
-#include <RHI/Definitions.hpp>
-#include <RHI/Format.hpp>
 #include <RHI/RHI.hpp>
-#include <RHI/Resources.hpp>
-#include <cstdint>
 
 namespace Examples
 {
-
-    inline static constexpr RHI::ColorValue clearValue = { 1.0f, 0.3f, 0.1f, 1.0f, };
+    inline static constexpr RHI::ColorValue clearValue = {
+        1.0f,
+        0.3f,
+        0.1f,
+        1.0f,
+    };
 
     inline static Handle<RHI::ImageAttachment> CreateTarget(RHI::RenderGraph& renderGraph, Handle<RHI::Pass> pass, const char* name, RHI::Format format, Flags<RHI::ImageUsage> usage)
     {
@@ -41,7 +42,7 @@ namespace Examples
 
     struct PassGBuffer
     {
-        Handle<RHI::BindGroup> m_bindGroup;
+        Handle<RHI::PipelineLayout> m_pipelineLayout;
         Handle<RHI::GraphicsPipeline> m_pipeline;
 
         Handle<RHI::Pass> m_pass;
@@ -56,7 +57,7 @@ namespace Examples
             auto shaderMoudule = context.CreateShaderModule(shaderModuleCode);
 
             RHI::PipelineLayoutCreateInfo pipelineLayoutCI{};
-            auto pipelineLayout = context.CreatePipelineLayout(pipelineLayoutCI);
+            m_pipelineLayout = context.CreatePipelineLayout(pipelineLayoutCI);
 
             auto defaultBlendState = RHI::ColorAttachmentBlendStateDesc{
                 .blendEnable = false,
@@ -77,7 +78,7 @@ namespace Examples
                 .vertexShaderModule = shaderMoudule.get(),
                 .pixelShaderName = "PSMain",
                 .pixelShaderModule = shaderMoudule.get(),
-                .layout = pipelineLayout,
+                .layout = m_pipelineLayout,
                 .inputAssemblerState = {},
                 .renderTargetLayout =
                     {
@@ -123,8 +124,8 @@ namespace Examples
 
         void Shutdown(RHI::Context& context)
         {
-            context.DestroyBindGroup(m_bindGroup);
             context.DestroyGraphicsPipeline(m_pipeline);
+            context.DestroyPipelineLayout(m_pipelineLayout);
         }
 
         ResultCode Setup(RHI::RenderGraph& renderGraph)
@@ -154,22 +155,22 @@ namespace Examples
             scissor.width = size.width;
             scissor.height = size.height;
 
-            RHI::ClearValue clearColorValue {};
+            RHI::ClearValue clearColorValue{};
             clearColorValue.f32 = { 0.4f, 0.3f, 0.1f, 1.0f };
 
-            RHI::ClearValue clearColorValue1 {};
+            RHI::ClearValue clearColorValue1{};
             clearColorValue1.f32 = { 0.3f, 0.4f, 0.2f, 1.0f };
 
-            RHI::ClearValue clearColorValueDepth {};
+            RHI::ClearValue clearColorValueDepth{};
             clearColorValueDepth.depthStencil.depthValue = 1.0f;
 
             RHI::CommandListBeginInfo beginInfo{};
             beginInfo.renderGraph = &renderGraph;
             beginInfo.pass = m_pass;
             beginInfo.loadStoreOperations = {
-                {  .clearValue = clearColorValue, .loadOperation = RHI::LoadOperation::Discard, .storeOperation = RHI::StoreOperation::Store },
-                {  .clearValue = clearColorValue1, .loadOperation = RHI::LoadOperation::Discard, .storeOperation = RHI::StoreOperation::Store },
-                {  .clearValue = clearColorValueDepth, .loadOperation = RHI::LoadOperation::Discard, .storeOperation = RHI::StoreOperation::Store },
+                { .clearValue = clearColorValue, .loadOperation = RHI::LoadOperation::Discard, .storeOperation = RHI::StoreOperation::Store },
+                { .clearValue = clearColorValue1, .loadOperation = RHI::LoadOperation::Discard, .storeOperation = RHI::StoreOperation::Store },
+                { .clearValue = clearColorValueDepth, .loadOperation = RHI::LoadOperation::Discard, .storeOperation = RHI::StoreOperation::Store },
             };
 
             // clang-format off
@@ -196,6 +197,7 @@ namespace Examples
     {
         Handle<RHI::BindGroup> m_bindGroup;
         Handle<RHI::GraphicsPipeline> m_pipeline;
+        Handle<RHI::PipelineLayout> m_pipelineLayout;
 
         Handle<RHI::Pass> m_pass;
         Handle<RHI::ImageAttachment> m_outputAttachment;
@@ -213,7 +215,7 @@ namespace Examples
             m_bindGroup = context.CreateBindGroup(bindGroupLayout);
 
             RHI::PipelineLayoutCreateInfo pipelineLayoutCI{ bindGroupLayout };
-            auto pipelineLayout = context.CreatePipelineLayout(pipelineLayoutCI);
+            m_pipelineLayout = context.CreatePipelineLayout(pipelineLayoutCI);
 
             auto defaultBlendState = RHI::ColorAttachmentBlendStateDesc{
                 .blendEnable = false,
@@ -234,7 +236,7 @@ namespace Examples
                 .vertexShaderModule = shaderMoudule.get(),
                 .pixelShaderName = "PSMain",
                 .pixelShaderModule = shaderMoudule.get(),
-                .layout = pipelineLayout,
+                .layout = m_pipelineLayout,
                 .inputAssemblerState = {},
                 .renderTargetLayout =
                     {
@@ -272,11 +274,15 @@ namespace Examples
             // clang-format on
             m_pipeline = context.CreateGraphicsPipeline(pipelineCI);
 
+            context.DestroyBindGroupLayout(bindGroupLayout);
+
             return ResultCode::Success;
         }
 
         void Shutdown(RHI::Context& context)
         {
+            context.DestroyPipelineLayout(m_pipelineLayout);
+
             context.DestroyBindGroup(m_bindGroup);
             context.DestroyGraphicsPipeline(m_pipeline);
         }
@@ -327,15 +333,14 @@ namespace Examples
             scissor.width = size.width;
             scissor.height = size.height;
 
-
-            RHI::ClearValue clearColorValue {};
+            RHI::ClearValue clearColorValue{};
             clearColorValue.f32 = { 0.9f, 0.9f, 0.9f, 1.0f };
 
             RHI::CommandListBeginInfo beginInfo{};
             beginInfo.renderGraph = &renderGraph;
             beginInfo.pass = m_pass;
             beginInfo.loadStoreOperations = {
-                {  .clearValue = clearColorValue, .loadOperation = RHI::LoadOperation::Discard, .storeOperation = RHI::StoreOperation::Store }
+                { .clearValue = clearColorValue, .loadOperation = RHI::LoadOperation::Discard, .storeOperation = RHI::StoreOperation::Store }
             };
 
             // clang-format off
@@ -361,9 +366,12 @@ namespace Examples
     class DeferredRenderer final : public Renderer
     {
     public:
+        DeferredRenderer() = default;
+        ~DeferredRenderer() = default;
+
         ResultCode OnInit() override
         {
-            ResultCode result;
+            ResultCode result = ResultCode::Success;
 
             result = m_passGBuffer.Init(*m_context);
             RHI_ASSERT(IsSucess(result));
@@ -395,13 +403,15 @@ namespace Examples
                 m_passLighting.SetupBindings(*m_context, *m_renderGraph, m_passGBuffer);
             }
 
-            return ResultCode::Success;
+            return result;
         }
 
         void OnShutdown() override
         {
             m_passGBuffer.Shutdown(*m_context);
             m_passLighting.Shutdown(*m_context);
+
+            delete m_renderGraph.release();
         }
 
         void OnRender() override
@@ -411,7 +421,7 @@ namespace Examples
 
             auto commandPool = m_commandPool[i].get();
 
-            auto fence       = m_frameInFlightFence[i].get();
+            auto fence       = m_frameFence[i].get();
             if (fence->GetState() != RHI::FenceState::Signaled)
             {
                 fence->Wait(UINT64_MAX);

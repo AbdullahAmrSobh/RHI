@@ -1,35 +1,43 @@
 #include "Examples-Base/Window.hpp"
 #include "Examples-Base/Renderer.hpp"
+#include "Examples-Base/Log.hpp"
 
-#include <RHI/Common/Result.hpp>
 #include <RHI/RHI.hpp>
 #include <RHI-Vulkan/Loader.hpp>
-#include <RHI/Resources.hpp>
 
 namespace Examples
 {
-    class DebugCallbacks : public RHI::DebugCallbacks
+    class DebugCallbacksImpl final : public RHI::DebugCallbacks
     {
+    public:
+        ~DebugCallbacksImpl() = default;
+
         void LogInfo(std::string_view message) override
         {
-            (void)message;
+            Core::LogInfo(message);
         }
 
         void LogWarnning(std::string_view message) override
         {
-            (void)message;
+            Core::LogWarnning(message);
         }
 
         void LogError(std::string_view message) override
         {
-            (void)message;
+            Core::LogError(message);
         }
     };
 
+    Renderer::Renderer()
+    {
+    }
+
+    Renderer::~Renderer()
+    {
+    }
+
     ResultCode Renderer::Init(const Window& window)
     {
-        ZoneScoped;
-
         m_window = &window;
 
         RHI::ApplicationInfo appInfo{};
@@ -37,37 +45,43 @@ namespace Examples
         appInfo.applicationVersion.minor = 1;
         appInfo.engineName = "Engine name";
         appInfo.engineVersion.minor = 1;
-        m_context = RHI::CreateVulkanContext(appInfo);
+        m_context = RHI::CreateVulkanContext(appInfo, RHI::CreatePtr<DebugCallbacksImpl>());
 
+        auto windowSize = window.GetWindowSize();
         RHI::SwapchainCreateInfo swapchainCI{};
         swapchainCI.name = "Swapchain";
         swapchainCI.minImageCount = 3;
-        swapchainCI.imageSize.width = window.GetWindowSize().width;
-        swapchainCI.imageSize.height = window.GetWindowSize().height;
+        swapchainCI.imageSize = { windowSize.width, windowSize.height };
         swapchainCI.imageFormat = RHI::Format::RGBA8_UNORM;
         swapchainCI.imageUsage = RHI::ImageUsage::Color;
         swapchainCI.presentMode = RHI::SwapchainPresentMode::Fifo;
         swapchainCI.win32Window.hwnd = window.GetNativeHandle();
         m_swapchain = m_context->CreateSwapchain(swapchainCI);
 
-        m_renderGraph = m_context->CreateRenderGraph();
+        for (auto& cmdPool : m_commandPool)
+            cmdPool = m_context->CreateCommandPool(RHI::CommandPoolFlags::Reset);
 
-        m_commandPool[0] = m_context->CreateCommandPool(RHI::CommandPoolFlags::Reset);
-        m_commandPool[1] = m_context->CreateCommandPool(RHI::CommandPoolFlags::Reset);
-
-        m_frameInFlightFence[0] = m_context->CreateFence();
-        m_frameInFlightFence[1] = m_context->CreateFence();
+        for (auto& fence : m_frameFence)
+            fence = m_context->CreateFence();
 
         return OnInit();
     }
 
     void Renderer::Shutdown()
     {
-        OnShutdown();
+        OnShutdown(); // must be called first thing here
 
-        delete m_commandPool[0].release();
-        delete m_commandPool[1].release();
-        delete m_renderGraph.release();
+        for (auto& fence : m_frameFence)
+        {
+            fence->Wait(UINT64_MAX);
+            delete fence.release();
+        }
+
+        for (auto& cmdPool : m_commandPool)
+        {
+            delete cmdPool.release();
+        }
+
         delete m_swapchain.release();
         delete m_context.release();
     }
