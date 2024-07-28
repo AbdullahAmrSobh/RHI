@@ -107,8 +107,8 @@ namespace RHI::Vulkan
         presentInfo.pResults = &m_lastPresentResult;
         Validate(vkQueuePresentKHR(context->m_queue[QueueType::Graphics].GetHandle(), &presentInfo));
 
-        auto nextImageIndex = (m_imageIndex + 1) % m_imageCount;
-        Validate(vkAcquireNextImageKHR(context->m_device, m_swapchain, UINT64_MAX, m_imageAcquiredSemaphores[nextImageIndex], VK_NULL_HANDLE, &m_imageIndex));
+        m_currentFrameInFlight = (m_currentFrameInFlight + 1) % m_imageCount;
+        Validate(vkAcquireNextImageKHR(context->m_device, m_swapchain, UINT64_MAX, GetImageAcquiredSemaphore(), VK_NULL_HANDLE, &m_imageIndex));
         return ResultCode::Success;
     }
 
@@ -238,6 +238,8 @@ namespace RHI::Vulkan
         images.resize(m_imageCount);
         Validate(vkGetSwapchainImagesKHR(context->m_device, m_swapchain, &m_imageCount, images.data()));
 
+
+        m_currentFrameInFlight = 0;
         Validate(vkAcquireNextImageKHR(context->m_device, m_swapchain, UINT64_MAX, GetImageAcquiredSemaphore(), VK_NULL_HANDLE, &m_imageIndex));
 
         for (uint32_t imageIndex = 0; imageIndex < m_imageCount; imageIndex++)
