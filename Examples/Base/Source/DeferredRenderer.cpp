@@ -1,20 +1,15 @@
-
 #include "Examples-Base/Renderer.hpp"
+#include "Examples-Base/Scene.hpp"
 #include <Examples-Base/FileSystem.hpp>
 #include <Examples-Base/Window.hpp>
 #include "Examples-Base/Log.hpp"
+
+#include "ShaderInterface/Core.slang"
 
 #include <RHI/RHI.hpp>
 
 namespace Examples
 {
-    inline static constexpr RHI::ColorValue clearValue = {
-        1.0f,
-        0.3f,
-        0.1f,
-        1.0f,
-    };
-
     inline static Handle<RHI::ImageAttachment> CreateTarget(RHI::RenderGraph& renderGraph, Handle<RHI::Pass> pass, const char* name, RHI::Format format, Flags<RHI::ImageUsage> usage)
     {
         bool isDepth = format == RHI::Format::D32;
@@ -32,7 +27,7 @@ namespace Examples
 
         RHI::ImageViewInfo viewInfo{};
         viewInfo.type = RHI::ImageViewType::View2D;
-        viewInfo.subresources.imageAspects = isDepth ? RHI::ImageAspect::Depth : RHI::ImageAspect::Color;
+        viewInfo.subresources.imageAspects = RHI::GetFormatAspects(format);
         viewInfo.subresources.arrayCount = 1;
         viewInfo.subresources.mipLevelCount = 1;
         renderGraph.PassUseImage(pass, imageAttachment, viewInfo, isDepth ? RHI::ImageUsage::Depth : RHI::ImageUsage::Color, RHI::ShaderStage::None, RHI::Access::None);
@@ -44,6 +39,10 @@ namespace Examples
     {
         Handle<RHI::PipelineLayout> m_pipelineLayout;
         Handle<RHI::GraphicsPipeline> m_pipeline;
+        Handle<RHI::BindGroup> m_bindGroup;
+
+        Handle<RHI::Buffer> m_sceneTransform;
+        Handle<RHI::Buffer> m_objectsTransform;
 
         Handle<RHI::Pass> m_pass;
         Handle<RHI::ImageAttachment> m_colorAttachment;
@@ -56,8 +55,27 @@ namespace Examples
 
             auto shaderMoudule = context.CreateShaderModule(shaderModuleCode);
 
-            RHI::PipelineLayoutCreateInfo pipelineLayoutCI{};
+            RHI::BindGroupLayoutCreateInfo bindGroupLayoutCI {};
+            // Per frame uniform buffer
+            bindGroupLayoutCI.bindings[0].access = RHI::Access::Read;
+            bindGroupLayoutCI.bindings[0].stages |= RHI::ShaderStage::Vertex;
+            bindGroupLayoutCI.bindings[0].stages |= RHI::ShaderStage::Pixel;
+            bindGroupLayoutCI.bindings[0].type = RHI::ShaderBindingType::UniformBuffer;
+            bindGroupLayoutCI.bindings[0].arrayCount = 1;
+
+            // per object uniform buffer
+            bindGroupLayoutCI.bindings[1].access = RHI::Access::Read;
+            bindGroupLayoutCI.bindings[1].stages |= RHI::ShaderStage::Vertex;
+            bindGroupLayoutCI.bindings[1].stages |= RHI::ShaderStage::Pixel;
+            bindGroupLayoutCI.bindings[1].type = RHI::ShaderBindingType::DynamicUniformBuffer;
+            bindGroupLayoutCI.bindings[1].arrayCount = 1;
+            auto bindGroupLayout = context.CreateBindGroupLayout(bindGroupLayoutCI);
+            m_bindGroup = context.CreateBindGroup(bindGroupLayout);
+
+            RHI::PipelineLayoutCreateInfo pipelineLayoutCI{ bindGroupLayout };
             m_pipelineLayout = context.CreatePipelineLayout(pipelineLayoutCI);
+
+            context.DestroyBindGroupLayout(bindGroupLayout);
 
             auto defaultBlendState = RHI::ColorAttachmentBlendStateDesc{
                 .blendEnable = false,
@@ -79,7 +97,7 @@ namespace Examples
                 .pixelShaderName = "PSMain",
                 .pixelShaderModule = shaderMoudule.get(),
                 .layout = m_pipelineLayout,
-                .inputAssemblerState = {},
+                .inputAssemblerState = shaderMoudule->GetReflectionData({ .vsName = "VSMain", .psName = "PSName", .csName = nullptr }).inputAssemblerStateDesc,
                 .renderTargetLayout =
                     {
                         .colorAttachmentsFormats = { RHI::Format::RGBA8_UNORM, RHI::Format::RGBA16_UNORM },
@@ -142,8 +160,43 @@ namespace Examples
             return ResultCode::Success;
         }
 
-        void Execute(RHI::RenderGraph& renderGraph, RHI::CommandPool& commandPool)
+        void Execute(RHI::RenderGraph& renderGraph, RHI::CommandPool& commandPool, const Scene& scene)
         {
+            static bool init = false;
+            if (!init)
+            {
+                init = true;
+
+                RHI::BufferCreateInfo bufferCreateInfo{};
+                bufferCreateInfo.usageFlags = RHI::BufferUsage::Uniform;
+                bufferCreateInfo.byteSize = sizeof(SceneTransform);
+                m_sceneTransform = renderGraph.m_context->CreateBuffer(bufferCreateInfo).GetValue();
+                bufferCreateInfo.byteSize = scene.m_meshesTransform.size() * sizeof(ObjectTransform);
+                m_objectsTransform = renderGraph.m_context->CreateBuffer(bufferCreateInfo).GetValue();
+
+                // update objects transofmr
+                auto ptr = renderGraph.m_context->MapBuffer(m_objectsTransform);
+                memcpy(ptr, scene.m_meshesTransform.data(), scene.m_meshesTransform.size() * sizeof(ObjectTransform));
+                renderGraph.m_context->UnmapBuffer(m_objectsTransform);
+
+                // update bind groups
+                TL::Span<const RHI::ResourceBinding> bindings{
+                    RHI::ResourceBinding(0, 0, m_sceneTransform),
+                    RHI::ResourceBinding(1, 0, RHI::ResourceBinding::DynamicBufferBinding(m_objectsTransform, 0, sizeof(ObjectTransform))),
+                };
+                renderGraph.m_context->UpdateBindGroup(m_bindGroup, bindings);
+
+            }
+
+            SceneTransform sceneTransform {};
+            sceneTransform.viewMatrix = scene.m_viewMatrix;
+            sceneTransform.projectionMatrix = scene.m_projectionMatrix;
+            sceneTransform.viewProjectionMatrix = scene.m_viewMatrix * scene.m_projectionMatrix;
+            sceneTransform.inverseViewMatrix = glm::inverse(scene.m_viewMatrix);
+            auto ptr = renderGraph.m_context->MapBuffer(m_sceneTransform);
+            memcpy(ptr, &sceneTransform, sizeof(SceneTransform));
+            renderGraph.m_context->UnmapBuffer(m_sceneTransform);
+
             auto commandList = commandPool.Allocate(RHI::QueueType::Graphics, RHI::CommandListLevel::Primary);
 
             auto size = renderGraph.GetPassSize(m_pass);
@@ -173,21 +226,41 @@ namespace Examples
                 { .clearValue = clearColorValueDepth, .loadOperation = RHI::LoadOperation::Discard, .storeOperation = RHI::StoreOperation::Store },
             };
 
-            // clang-format off
-            RHI::DrawInfo drawInfo
-            {
-                .pipelineState = m_pipeline,
-                .bindGroups = { },
-                .vertexBuffers = {},
-                .indexBuffer = {},
-                .parameters ={ 6, 1, 0, 0, 0,}
-            };
-            // clang-format on
-
             commandList->Begin(beginInfo);
             commandList->SetViewport(viewport);
             commandList->SetSicssor(scissor);
-            commandList->Draw(drawInfo);
+
+            for (uint32_t i = 0; i < scene.m_meshesStatic.size(); i++)
+            {
+                auto mesh = scene.m_meshes[i];
+
+                TL::Vector<RHI::BufferBindingInfo> bindingInfo{};
+
+                RHI::DrawInfo drawInfo{};
+                drawInfo.parameters.instanceCount = 1;
+                drawInfo.parameters.elementsCount = mesh->elementsCount;
+                drawInfo.pipelineState = m_pipeline;
+
+                if (mesh->m_index)
+                {
+                    drawInfo.indexBuffer.buffer = mesh->m_index;
+                }
+
+                if (mesh->m_position)
+                {
+                    bindingInfo.push_back({ mesh->m_position, 0});
+                }
+
+                if (mesh->m_normal)
+                {
+                    bindingInfo.push_back({ mesh->m_position, 0});
+                }
+                drawInfo.vertexBuffers = bindingInfo;
+
+                drawInfo.bindGroups = RHI::BindGroupBindingInfo{ m_bindGroup, i * sizeof(ObjectTransform)};
+                commandList->Draw(drawInfo);
+            }
+
             commandList->End();
             renderGraph.Submit(m_pass, commandList);
         }
@@ -414,14 +487,14 @@ namespace Examples
             delete m_renderGraph.release();
         }
 
-        void OnRender() override
+        void OnRender(const Scene& scene) override
         {
             static uint64_t frameIndex = 0;
             uint32_t i = uint32_t(frameIndex % 2);
 
             auto commandPool = m_commandPool[i].get();
 
-            auto fence       = m_frameFence[i].get();
+            auto fence = m_frameFence[i].get();
             if (fence->GetState() != RHI::FenceState::Signaled)
             {
                 fence->Wait(UINT64_MAX);
@@ -430,7 +503,7 @@ namespace Examples
 
             commandPool->Reset();
 
-            m_passGBuffer.Execute(*m_renderGraph, *commandPool);
+            m_passGBuffer.Execute(*m_renderGraph, *commandPool, scene);
             m_passLighting.Execute(*m_renderGraph, *commandPool);
             m_context->ExecuteRenderGraph(*m_renderGraph, fence);
 

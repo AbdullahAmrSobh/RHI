@@ -162,7 +162,7 @@ namespace RHI
 
         void Invalidate() {}
 
-    // private:
+        // private:
         /// @brief Compiles the render graph.
         void Compile();
 

@@ -1,4 +1,5 @@
 #include "Examples-Base/Window.hpp"
+#include "Examples-Base/Scene.hpp"
 #include "Examples-Base/Renderer.hpp"
 #include "Examples-Base/Log.hpp"
 
@@ -86,18 +87,28 @@ namespace Examples
         delete m_context.release();
     }
 
-    void Renderer::Render()
+    void Renderer::Render(const Scene& scene)
     {
+        [[maybe_unused]] RHI::ResultCode result;
+
         {
-            // RHI::ImageSize2D size = { m_window->GetWindowSize().width, m_window->GetWindowSize().height };
-            // if (m_swapchain.get)
-            // auto result = m_swapchain->Recreate(size);
-            // RHI_ASSERT(RHI::IsSucess(result) && "Failed to recreate swapchain on resize");
+            static RHI::ImageSize2D size = { m_window->GetWindowSize().width, m_window->GetWindowSize().height };
+
+            auto windowSize = m_window->GetWindowSize();
+            if (size.width != windowSize.width || size.height != windowSize.height)
+            {
+                result = m_swapchain->Recreate(size);
+                RHI_ASSERT(RHI::IsSucess(result) && "Failed to recreate swapchain on resize");
+            }
         }
 
-        OnRender();
+        OnRender(scene);
 
-        [[maybe_unused]] auto result = m_swapchain->Present();
+        result = m_swapchain->Present();
     }
 
+    Ptr<Scene> Renderer::CreateScene()
+    {
+        return RHI::CreatePtr<Scene>(m_context.get());
+    }
 } // namespace Examples

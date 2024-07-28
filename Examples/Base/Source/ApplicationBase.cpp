@@ -3,6 +3,8 @@
 #include "Examples-Base/Event.hpp"
 #include "Examples-Base/Camera.hpp"
 #include "Examples-Base/Renderer.hpp"
+#include "Examples-Base/Scene.hpp"
+#include "Examples-Base/AssimpSceneLoader.hpp"
 
 #include <tracy/Tracy.hpp>
 
@@ -41,6 +43,9 @@ namespace Examples
 
         result = m_renderer->Init(*m_window);
         RHI_ASSERT(IsSucess(result));
+
+        m_scene = m_renderer->CreateScene();
+        AssimpScenneLoader::LoadScene(*m_renderer, *m_scene, m_launchSettings.sceneFileLocation.c_str(), m_launchSettings.sceneSeperateTexturesDir.c_str());
 
         OnInit();
     }
@@ -94,7 +99,7 @@ namespace Examples
             }
 
             // Render
-            m_renderer->Render();
+            m_renderer->Render(*m_scene);
         }
     }
 

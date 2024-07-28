@@ -144,7 +144,7 @@ namespace RHI
         if (m_liveResources.empty() == false)
         {
             std::cout << std::vformat("Leak detected. Not all {} resources were freed.",
-                             std::make_format_args(typeid(Resource).name()))
+                                      std::make_format_args(typeid(Resource).name()))
                       << "Leak count: " << m_liveResources.size() << "\n";
 
             std::cout << "Leak count: " << m_liveResources.size() << "\n";

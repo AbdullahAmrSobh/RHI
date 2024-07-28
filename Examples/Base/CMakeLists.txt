@@ -6,6 +6,7 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Window.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Renderer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/DeferredRenderer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/AssimpSceneLoader.cpp
 )
 
 include(${CMAKE_SOURCE_DIR}/CMake/add-target.cmake)

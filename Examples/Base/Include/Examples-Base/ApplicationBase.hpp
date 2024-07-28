@@ -6,10 +6,10 @@
 
 namespace Examples
 {
-    struct Window;
-    struct Renderer;
-
+    class Window;
     class Event;
+    class Renderer;
+    class Scene;
 
     class ApplicationBase
     {
@@ -43,5 +43,7 @@ namespace Examples
         Ptr<Window> m_window;
 
         Ptr<Renderer> m_renderer;
+
+        Ptr<Scene> m_scene;
     };
 } // namespace Examples

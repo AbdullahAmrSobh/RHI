@@ -48,6 +48,4 @@ re_shader_struct SpotLight
 re_shader_struct ObjectTransform
 {
     re_mat4 modelMatrix;
-
-    // DirectionalLight directionalLight[re_max_point_lights_count];
 };

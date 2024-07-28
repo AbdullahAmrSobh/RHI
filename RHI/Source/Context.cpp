@@ -20,7 +20,6 @@ namespace RHI
 
     Context::~Context()
     {
-
     }
 
     Limits Context::GetLimits() const
@@ -415,4 +414,4 @@ namespace RHI
         (void)message;
 #endif
     }
-} // namespace RH
+} // namespace RHI

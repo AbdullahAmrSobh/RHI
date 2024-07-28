@@ -10,6 +10,8 @@ namespace Examples
 {
     class Window;
 
+    class Scene;
+
     class Renderer
     {
     public:
@@ -21,13 +23,21 @@ namespace Examples
 
         void Shutdown();
 
-        void Render();
+        void Render(const Scene& scene);
+
+        template<typename T>
+        RHI::Result<Handle<RHI::Image>> CreateImageWithData(const RHI::ImageCreateInfo& createInfo, TL::Span<const T> content);
+
+        template<typename T>
+        RHI::Result<Handle<RHI::Buffer>> CreateBufferWithData(Flags<RHI::BufferUsage> usageFlags, TL::Span<const T> content);
+
+        Ptr<Scene> CreateScene();
 
         virtual ResultCode OnInit() = 0;
 
         virtual void OnShutdown() = 0;
 
-        virtual void OnRender() = 0;
+        virtual void OnRender(const Scene& scene) = 0;
 
     protected:
         const Window* m_window;
@@ -36,55 +46,55 @@ namespace Examples
         Ptr<RHI::Swapchain> m_swapchain;
         Ptr<RHI::CommandPool> m_commandPool[2];
         Ptr<RHI::Fence> m_frameFence[2];
+
+        // Ptr<>
     };
 
-    // // TODO: define in Renderer
-    // template<typename T>
-    // inline static Result<Handle<Image>> CreateImageWithData(Context& context, const ImageCreateInfo& createInfo, TL::Span<const T> content)
-    // {
-    //     auto [handle, result] = context.CreateImage(createInfo);
+    template<typename T>
+    inline RHI::Result<Handle<RHI::Image>> Renderer::CreateImageWithData(const RHI::ImageCreateInfo& createInfo, TL::Span<const T> content)
+    {
+        auto [handle, result] = m_context->CreateImage(createInfo);
 
-    //     if (result != ResultCode::Success)
-    //         return result;
+        if (result != RHI::ResultCode::Success)
+            return result;
 
-    //     auto stagingBuffer = context.AllocateTempBuffer(content.size_bytes());
-    //     memcpy(stagingBuffer.ptr, content.data(), content.size_bytes());
+        auto stagingBuffer = m_context->AllocateTempBuffer(content.size_bytes());
+        memcpy(stagingBuffer.ptr, content.data(), content.size_bytes());
 
-    //     ImageSubresourceLayers subresources{};
-    //     subresources.imageAspects = ImageAspect::Color; // todo: this should be deduced from the format
-    //     subresources.arrayCount   = createInfo.arrayCount;
-    //     subresources.mipLevel     = createInfo.mipLevels;
-    //     context.StageResourceWrite(handle, subresources, stagingBuffer.buffer, stagingBuffer.offset);
+        RHI::ImageSubresourceLayers subresources{};
+        subresources.imageAspects = RHI::GetFormatAspects(createInfo.format);
+        subresources.arrayCount = createInfo.arrayCount;
+        subresources.mipLevel = createInfo.mipLevels;
+        m_context->StageResourceWrite(handle, subresources, stagingBuffer.buffer, stagingBuffer.offset);
 
-    //     return handle;
-    // }
+        return handle;
+    }
 
-    // template<typename T>
-    // inline static Result<Handle<Buffer>> CreateBufferWithData(Context& context, Flags<BufferUsage> usageFlags, TL::Span<const T> content)
-    // {
-    //     BufferCreateInfo createInfo{};
-    //     createInfo.byteSize   = content.size_bytes();
-    //     createInfo.usageFlags = usageFlags;
+    template<typename T>
+    inline RHI::Result<Handle<RHI::Buffer>> Renderer::CreateBufferWithData(Flags<RHI::BufferUsage> usageFlags, TL::Span<const T> content)
+    {
+        RHI::BufferCreateInfo createInfo{};
+        createInfo.byteSize = content.size_bytes();
+        createInfo.usageFlags = usageFlags;
+        auto [handle, result] = m_context->CreateBuffer(createInfo);
 
-    //     auto [handle, result] = context.CreateBuffer(createInfo);
+        if (result != RHI::ResultCode::Success)
+            return result;
 
-    //     if (result != ResultCode::Success)
-    //         return result;
+        if (content.size_bytes() <= m_context->GetLimits().stagingMemoryLimit)
+        {
+            auto ptr = m_context->MapBuffer(handle);
+            memcpy(ptr, content.data(), content.size_bytes());
+            m_context->UnmapBuffer(handle);
+        }
+        else
+        {
+            auto stagingBuffer = m_context->AllocateTempBuffer(content.size_bytes());
+            memcpy(stagingBuffer.ptr, content.data(), content.size_bytes());
+            m_context->StageResourceWrite(handle, 0, content.size_bytes(), stagingBuffer.buffer, stagingBuffer.offset);
+        }
 
-    //     if (content.size_bytes() <= context.GetLimits().stagingMemoryLimit)
-    //     {
-    //         auto ptr = context.MapBuffer(handle);
-    //         memcpy(ptr, content.data(), content.size_bytes());
-    //         context.UnmapBuffer(handle);
-    //     }
-    //     else
-    //     {
-    //         auto stagingBuffer = context.AllocateTempBuffer(content.size_bytes());
-    //         memcpy(stagingBuffer.ptr, content.data(), content.size_bytes());
-    //         context.StageResourceWrite(handle, 0, content.size_bytes(), stagingBuffer.buffer, stagingBuffer.offset);
-    //     }
-
-    //     return handle;
-    // }
+        return handle;
+    }
 
 } // namespace Examples
