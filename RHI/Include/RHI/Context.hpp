@@ -143,7 +143,7 @@ namespace RHI
         ///
         /// @param handle Handle to the BindGroup to update
         /// @param bindings Span of ResourceBinding objects to update with
-        void UpdateBindGroup(Handle<BindGroup> handle, TL::Span<const ResourceBinding> bindings);
+        void UpdateBindGroup(Handle<BindGroup> handle, TL::Span<const BindGroupUpdateInfo> bindings);
 
         /// @brief Creates a new pipeline layout
         ///
@@ -312,7 +312,7 @@ namespace RHI
         virtual void                     Internal_DestroyBindGroupLayout(Handle<BindGroupLayout> handle) = 0;
         virtual Handle<BindGroup>        Internal_CreateBindGroup(Handle<BindGroupLayout> handle, uint32_t bindlessElementsCount) = 0;
         virtual void                     Internal_DestroyBindGroup(Handle<BindGroup> handle) = 0;
-        virtual void                     Internal_UpdateBindGroup(Handle<BindGroup> handle, TL::Span<const ResourceBinding> bindings) = 0;
+        virtual void                     Internal_UpdateBindGroup(Handle<BindGroup> handle, TL::Span<const BindGroupUpdateInfo> bindings) = 0;
         virtual Handle<PipelineLayout>   Internal_CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo) = 0;
         virtual void                     Internal_DestroyPipelineLayout(Handle<PipelineLayout> handle) = 0;
         virtual Handle<GraphicsPipeline> Internal_CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) = 0;

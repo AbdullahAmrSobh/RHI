@@ -61,19 +61,19 @@ namespace RHI
         }
     }
 
-    inline static ShaderBindingType ConvertBindingType(SpvReflectDescriptorType type)
+    inline static BindingType ConvertBindingType(SpvReflectDescriptorType type)
     {
         switch (type)
         {
-        case SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLER:       return ShaderBindingType::Sampler;
-        case SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLED_IMAGE: return ShaderBindingType::SampledImage;
-        case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_IMAGE: return ShaderBindingType::StorageImage;
+        case SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLER:       return BindingType::Sampler;
+        case SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLED_IMAGE: return BindingType::SampledImage;
+        case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_IMAGE: return BindingType::StorageImage;
         // case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: return ;
         // case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: return {};
-        case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER:         return ShaderBindingType::UniformBuffer;
-        case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER:         return ShaderBindingType::StorageBuffer;
-        case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC: return ShaderBindingType::UniformBuffer;
-        case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: return ShaderBindingType::DynamicStorageBuffer;
+        case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER:         return BindingType::UniformBuffer;
+        case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER:         return BindingType::StorageBuffer;
+        case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC: return BindingType::UniformBuffer;
+        case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: return BindingType::DynamicStorageBuffer;
         // case SPV_REFLECT_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: return ShaderBindingType;
         // case SPV_REFLECT_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR: break; return ;
         default: RHI_UNREACHABLE(); return {};

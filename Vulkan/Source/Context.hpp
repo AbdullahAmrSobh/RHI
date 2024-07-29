@@ -55,7 +55,7 @@ namespace RHI::Vulkan
         void                     Internal_DestroyBindGroupLayout(Handle<BindGroupLayout> handle) override;
         Handle<BindGroup>        Internal_CreateBindGroup(Handle<BindGroupLayout> handle, uint32_t bindlessElementsCount) override;
         void                     Internal_DestroyBindGroup(Handle<BindGroup> handle) override;
-        void                     Internal_UpdateBindGroup(Handle<BindGroup> handle, TL::Span<const ResourceBinding> bindings) override;
+        void                     Internal_UpdateBindGroup(Handle<BindGroup> handle, TL::Span<const BindGroupUpdateInfo> bindings) override;
         Handle<PipelineLayout>   Internal_CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo) override;
         void                     Internal_DestroyPipelineLayout(Handle<PipelineLayout> handle) override;
         Handle<GraphicsPipeline> Internal_CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) override;

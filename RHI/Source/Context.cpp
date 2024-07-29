@@ -110,7 +110,7 @@ namespace RHI
         Internal_DestroyBindGroup(handle);
     }
 
-    void Context::UpdateBindGroup(Handle<BindGroup> handle, TL::Span<const ResourceBinding> bindings)
+    void Context::UpdateBindGroup(Handle<BindGroup> handle, TL::Span<const BindGroupUpdateInfo> bindings)
     {
         ZoneScoped;
 

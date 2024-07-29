@@ -114,7 +114,7 @@ namespace RHI::Vulkan
         ResultCode Init(IContext* context, Handle<BindGroupLayout> layout, uint32_t bindlessElementsCount);
         void Shutdown(IContext* context);
 
-        void Write(IContext* context, TL::Span<const ResourceBinding> bindings);
+        void Write(IContext* context, TL::Span<const BindGroupUpdateInfo> bindings);
     };
 
     struct IPipelineLayout : PipelineLayout

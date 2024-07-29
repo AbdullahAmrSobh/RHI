@@ -301,7 +301,7 @@ namespace RHI::Vulkan
         {
             auto binding = createInfo.bindings[index];
 
-            if (binding.type == ShaderBindingType::None)
+            if (binding.type == BindingType::None)
                 break;
 
             VkDescriptorBindingFlags flags{};
@@ -362,7 +362,7 @@ namespace RHI::Vulkan
         allocator->ShutdownBindGroup(this);
     }
 
-    void IBindGroup::Write(IContext* context, TL::Span<const ResourceBinding> bindingResources)
+    void IBindGroup::Write(IContext* context, TL::Span<const BindGroupUpdateInfo> bindingResources)
     {
         struct DescriptorWriteData
         {
@@ -378,7 +378,7 @@ namespace RHI::Vulkan
 
         for (size_t i = 0; i < bindingResources.size(); ++i)
         {
-            const ResourceBinding& binding = bindingResources[i];
+            const BindGroupUpdateInfo& binding = bindingResources[i];
 
             DescriptorWriteData& data = writeData.emplace_back();
 
@@ -390,7 +390,7 @@ namespace RHI::Vulkan
             writeInfo.descriptorType = ConvertDescriptorType(info.bindings[binding.binding].type);
             switch (binding.type)
             {
-            case ResourceBinding::Type::Image:
+            case BindGroupUpdateInfo::Type::Image:
                 for (size_t j = 0; j < binding.data.images.size(); ++j)
                 {
                     auto& imageInfo = data.imageInfos.emplace_back();
@@ -398,8 +398,8 @@ namespace RHI::Vulkan
                     imageInfo.imageView = context->m_imageViewOwner.Get(binding.data.images[j])->handle;
                     switch (info.bindings[binding.binding].type)
                     {
-                    case ShaderBindingType::SampledImage: imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; break;
-                    case ShaderBindingType::StorageImage: imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL; break;
+                    case BindingType::SampledImage: imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; break;
+                    case BindingType::StorageImage: imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL; break;
                     default:                              RHI_UNREACHABLE(); break;
                     }
                 }
@@ -407,7 +407,7 @@ namespace RHI::Vulkan
                 writeInfo.descriptorCount = uint32_t(binding.data.images.size());
                 break;
 
-            case ResourceBinding::Type::Buffer:
+            case BindGroupUpdateInfo::Type::Buffer:
                 for (size_t j = 0; j < binding.data.buffers.size(); ++j)
                 {
                     auto& bufferInfo = data.bufferInfos.emplace_back();
@@ -419,7 +419,7 @@ namespace RHI::Vulkan
                 writeInfo.descriptorCount = uint32_t(binding.data.buffers.size());
                 break;
 
-            case ResourceBinding::Type::DynamicBuffer:
+            case BindGroupUpdateInfo::Type::DynamicBuffer:
                 for (size_t j = 0; j < binding.data.dynamicBuffers.size(); ++j)
                 {
                     auto& bufferInfo = data.bufferInfos.emplace_back();
@@ -431,7 +431,7 @@ namespace RHI::Vulkan
                 writeInfo.descriptorCount = uint32_t(binding.data.buffers.size());
                 break;
 
-            case ResourceBinding::Type::Sampler:
+            case BindGroupUpdateInfo::Type::Sampler:
                 for (size_t j = 0; j < binding.data.samplers.size(); ++j)
                 {
                     auto& imageInfo = data.imageInfos.emplace_back();

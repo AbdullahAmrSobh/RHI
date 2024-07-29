@@ -150,7 +150,7 @@ namespace RHI
 
     RHI_DEFINE_FLAG_OPERATORS(ShaderStage);
 
-    enum class ShaderBindingType
+    enum class BindingType
     {
         None,
         Sampler,
@@ -158,10 +158,8 @@ namespace RHI
         StorageImage,
         UniformBuffer,
         StorageBuffer,
-
         DynamicUniformBuffer,
         DynamicStorageBuffer,
-
         BufferView,
         StorageBufferView,
         Count,
@@ -369,7 +367,7 @@ namespace RHI
     {
         inline static constexpr uint32_t VariableArraySize = UINT32_MAX;
 
-        ShaderBindingType  type;
+        BindingType        type;
         Access             access;
         uint32_t           arrayCount;
         Flags<ShaderStage> stages;
@@ -380,7 +378,7 @@ namespace RHI
         ShaderBinding bindings[c_MaxBindGroupElementsCount];
     };
 
-    struct ResourceBinding
+    struct BindGroupUpdateInfo
     {
         enum class Type
         {
@@ -392,13 +390,6 @@ namespace RHI
 
         struct DynamicBufferBinding
         {
-            DynamicBufferBinding(Handle<Buffer> buffer, size_t offset, size_t range)
-                : buffer(buffer)
-                , offset(offset)
-                , range(range)
-            {
-            }
-
             Handle<Buffer> buffer;
             size_t         offset, range;
         };
@@ -420,7 +411,7 @@ namespace RHI
         Type         type;
         ResourceData data;
 
-        ResourceBinding(uint32_t binding, uint32_t dstArrayElement, TL::Span<const Handle<ImageView>> images)
+        BindGroupUpdateInfo(uint32_t binding, uint32_t dstArrayElement, TL::Span<const Handle<ImageView>> images)
             : binding(binding)
             , dstArrayElement(dstArrayElement)
             , type(Type::Image)
@@ -428,7 +419,7 @@ namespace RHI
             data.images = images;
         }
 
-        ResourceBinding(uint32_t binding, uint32_t dstArrayElement, TL::Span<const Handle<Buffer>> buffers)
+        BindGroupUpdateInfo(uint32_t binding, uint32_t dstArrayElement, TL::Span<const Handle<Buffer>> buffers)
             : binding(binding)
             , dstArrayElement(dstArrayElement)
             , type(Type::Buffer)
@@ -436,7 +427,7 @@ namespace RHI
             data.buffers = buffers;
         }
 
-        ResourceBinding(uint32_t binding, uint32_t dstArrayElement, TL::Span<const DynamicBufferBinding> dynamicBuffers)
+        BindGroupUpdateInfo(uint32_t binding, uint32_t dstArrayElement, TL::Span<const DynamicBufferBinding> dynamicBuffers)
             : binding(binding)
             , dstArrayElement(dstArrayElement)
             , type(Type::DynamicBuffer)
@@ -444,7 +435,7 @@ namespace RHI
             data.dynamicBuffers = dynamicBuffers;
         }
 
-        ResourceBinding(uint32_t binding, uint32_t dstArrayElement, TL::Span<const Handle<Sampler>> samplers)
+        BindGroupUpdateInfo(uint32_t binding, uint32_t dstArrayElement, TL::Span<const Handle<Sampler>> samplers)
             : binding(binding)
             , dstArrayElement(dstArrayElement)
             , type(Type::Sampler)

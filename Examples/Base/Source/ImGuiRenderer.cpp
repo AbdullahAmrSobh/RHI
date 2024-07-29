@@ -240,9 +240,9 @@ namespace Examples
 
         {
             RHI::BindGroupLayoutCreateInfo bindGroupLayoutCreateInfo{};
-            bindGroupLayoutCreateInfo.bindings[0] = RHI::ShaderBinding{ .type = RHI::ShaderBindingType::UniformBuffer, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Vertex };
-            bindGroupLayoutCreateInfo.bindings[1] = RHI::ShaderBinding{ .type = RHI::ShaderBindingType::Sampler, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel };
-            bindGroupLayoutCreateInfo.bindings[2] = RHI::ShaderBinding{ .type = RHI::ShaderBindingType::SampledImage, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel };
+            bindGroupLayoutCreateInfo.bindings[0] = RHI::ShaderBinding{ .type = RHI::BindingType::UniformBuffer, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Vertex };
+            bindGroupLayoutCreateInfo.bindings[1] = RHI::ShaderBinding{ .type = RHI::BindingType::Sampler, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel };
+            bindGroupLayoutCreateInfo.bindings[2] = RHI::ShaderBinding{ .type = RHI::BindingType::SampledImage, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel };
             m_bindGroupLayout = m_context->CreateBindGroupLayout(bindGroupLayoutCreateInfo);
 
             {
@@ -284,10 +284,10 @@ namespace Examples
 
         {
             m_bindGroup = m_context->CreateBindGroup(m_bindGroupLayout);
-            RHI::TL::Span<const RHI::ResourceBinding> bindings{
-                RHI::ResourceBinding(0, 0, m_uniformBuffer),
-                RHI::ResourceBinding(1, 0, m_sampler),
-                RHI::ResourceBinding(2, 0, m_imageView)
+            RHI::TL::Span<const RHI::BindGroupUpdateInfo> bindings{
+                RHI::BindGroupUpdateInfo(0, 0, m_uniformBuffer),
+                RHI::BindGroupUpdateInfo(1, 0, m_sampler),
+                RHI::BindGroupUpdateInfo(2, 0, m_imageView)
             };
             m_context->UpdateBindGroup(m_bindGroup, bindings);
         }

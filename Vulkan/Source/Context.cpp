@@ -338,7 +338,7 @@ namespace RHI::Vulkan
         });
     }
 
-    void IContext::Internal_UpdateBindGroup(Handle<BindGroup> handle, TL::Span<const ResourceBinding> bindings)
+    void IContext::Internal_UpdateBindGroup(Handle<BindGroup> handle, TL::Span<const BindGroupUpdateInfo> bindings)
     {
         auto bindGroup = m_bindGroupOwner.Get(handle);
         bindGroup->Write(this, bindings);

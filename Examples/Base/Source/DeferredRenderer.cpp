@@ -60,14 +60,14 @@ namespace Examples
             bindGroupLayoutCI.bindings[0].access = RHI::Access::Read;
             bindGroupLayoutCI.bindings[0].stages |= RHI::ShaderStage::Vertex;
             bindGroupLayoutCI.bindings[0].stages |= RHI::ShaderStage::Pixel;
-            bindGroupLayoutCI.bindings[0].type = RHI::ShaderBindingType::UniformBuffer;
+            bindGroupLayoutCI.bindings[0].type = RHI::BindingType::UniformBuffer;
             bindGroupLayoutCI.bindings[0].arrayCount = 1;
 
             // per object uniform buffer
             bindGroupLayoutCI.bindings[1].access = RHI::Access::Read;
             bindGroupLayoutCI.bindings[1].stages |= RHI::ShaderStage::Vertex;
             bindGroupLayoutCI.bindings[1].stages |= RHI::ShaderStage::Pixel;
-            bindGroupLayoutCI.bindings[1].type = RHI::ShaderBindingType::DynamicUniformBuffer;
+            bindGroupLayoutCI.bindings[1].type = RHI::BindingType::DynamicUniformBuffer;
             bindGroupLayoutCI.bindings[1].arrayCount = 1;
             auto bindGroupLayout = context.CreateBindGroupLayout(bindGroupLayoutCI);
             m_bindGroup = context.CreateBindGroup(bindGroupLayout);
@@ -180,9 +180,9 @@ namespace Examples
                 renderGraph.m_context->UnmapBuffer(m_objectsTransform);
 
                 // update bind groups
-                TL::Span<const RHI::ResourceBinding> bindings{
-                    RHI::ResourceBinding(0, 0, m_sceneTransform),
-                    RHI::ResourceBinding(1, 0, RHI::ResourceBinding::DynamicBufferBinding(m_objectsTransform, 0, sizeof(ObjectTransform))),
+                TL::Span<const RHI::BindGroupUpdateInfo> bindings{
+                    RHI::BindGroupUpdateInfo(0, 0, m_sceneTransform),
+                    RHI::BindGroupUpdateInfo(1, 0, RHI::BindGroupUpdateInfo::DynamicBufferBinding(m_objectsTransform, 0, sizeof(ObjectTransform))),
                 };
                 renderGraph.m_context->UpdateBindGroup(m_bindGroup, bindings);
 
@@ -281,7 +281,7 @@ namespace Examples
             auto shaderMoudule = context.CreateShaderModule(shaderModuleCode);
 
             RHI::BindGroupLayoutCreateInfo bindGroupLayoutCI{
-                RHI::ShaderBinding{ .type = RHI::ShaderBindingType::SampledImage, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel },
+                RHI::ShaderBinding{ .type = RHI::BindingType::SampledImage, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel },
             };
             auto bindGroupLayout = context.CreateBindGroupLayout(bindGroupLayoutCI);
 
@@ -385,8 +385,8 @@ namespace Examples
 
         void SetupBindings(RHI::Context& context, RHI::RenderGraph& renderGraph, PassGBuffer& gBuffer)
         {
-            RHI::ResourceBinding bindings[] = {
-                RHI::ResourceBinding(0, 0, renderGraph.PassGetImageView(m_pass, gBuffer.m_colorAttachment)),
+            RHI::BindGroupUpdateInfo bindings[] = {
+                RHI::BindGroupUpdateInfo(0, 0, renderGraph.PassGetImageView(m_pass, gBuffer.m_colorAttachment)),
                 // RHI::ResourceBinding(0, 0, renderGraph.PassGetImageView(m_pass, gBuffer.m_normalAttachment)),
                 // RHI::ResourceBinding(0, 0, renderGraph.PassGetImageView(m_pass, gBuffer.m_depthAttachment)),
             };
