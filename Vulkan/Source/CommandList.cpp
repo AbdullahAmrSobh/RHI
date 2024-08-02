@@ -3,6 +3,7 @@
 #include "Context.hpp"
 #include "Resources.hpp"
 #include "Swapchain.hpp"
+#include "Barrier.hpp"
 
 #include <RHI/Format.hpp>
 
@@ -123,6 +124,9 @@ namespace RHI::Vulkan
 
     void ICommandList::PipelineBarrier(TL::Span<const VkMemoryBarrier2> memoryBarriers, TL::Span<const VkBufferMemoryBarrier2> bufferBarriers, TL::Span<const VkImageMemoryBarrier2> imageBarriers)
     {
+        if (memoryBarriers.empty() && bufferBarriers.empty() && imageBarriers.empty())
+            return;
+
         VkDependencyInfo dependencyInfo{};
         dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
         dependencyInfo.pNext = nullptr;
@@ -209,79 +213,43 @@ namespace RHI::Vulkan
 
         auto renderGraph = beginInfo.renderGraph;
         auto pass = renderGraph->m_passPool.Get(beginInfo.pass);
-
-        uint32_t renderTargetIndex = 0;
-        for (auto& node : pass->m_imageAttachments)
+        for (uint32_t i = 0; i < pass->m_imageAttachments.size(); i++)
         {
+            auto& node = pass->m_imageAttachments[i];
+            node->loadStoreOperation = beginInfo.loadStoreOperations[i];
             auto attachment = renderGraph->m_imageAttachmentPool.Get(node->attachment);
             auto subresources = ConvertSubresourceRange(node->viewInfo.subresources);
             auto imageHandle = renderGraph->GetImage(node->attachment);
             auto image = m_context->m_imageOwner.Get(imageHandle);
-            auto loadStoreOperation = beginInfo.loadStoreOperations[renderTargetIndex];
-            auto prilogeState = PIPELINE_IMAGE_BARRIER_UNDEFINED;
-            auto epilogeState = attachment->swapchain ? PIPELINE_IMAGE_BARRIER_PRESENT_SRC : PIPELINE_IMAGE_BARRIER_UNDEFINED;
-            auto currentState = GetImageStageAccess(node->usage, node->access, node->stages, loadStoreOperation);
+            auto swapchain = (ISwapchain*)attachment->swapchain;
 
-            if (auto prev = node->prev)
+            if (node->prev)
             {
-                prilogeState = GetImageStageAccess(prev->usage, prev->access, prev->stages, loadStoreOperation);
-                if (auto [semaphore, stage] = m_context->m_frameContext.GetImageWaitSemaphore(imageHandle); semaphore != VK_NULL_HANDLE)
-                {
-                    VkSemaphoreSubmitInfo submitInfo{};
-                    submitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-                    submitInfo.semaphore = semaphore;
-                    submitInfo.stageMask = stage;
-                    m_waitSemaphores.push_back(submitInfo);
-                }
-            }
-            else if (auto swapchain = (ISwapchain*)attachment->swapchain)
-            {
-                VkSemaphoreSubmitInfo submitInfo{};
-                submitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-                submitInfo.semaphore = swapchain->GetImageAcquiredSemaphore();
-                submitInfo.stageMask = epilogeState.stage;
-                m_waitSemaphores.push_back(submitInfo);
-            }
-
-            if (auto next = node->next)
-            {
-                epilogeState = GetImageStageAccess(next->usage, next->access, next->stages, loadStoreOperation);
-                if (auto [semaphore, stage] = m_context->m_frameContext.GetImageSignalSemaphore(imageHandle); semaphore != VK_NULL_HANDLE)
-                {
-                    VkSemaphoreSubmitInfo submitInfo{};
-                    submitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-                    submitInfo.semaphore = semaphore;
-                    submitInfo.stageMask = stage;
-                    m_signalSemaphores.push_back(submitInfo);
-                }
-            }
-            else if (auto swapchain = (ISwapchain*)attachment->swapchain)
-            {
-                VkSemaphoreSubmitInfo submitInfo{};
-                submitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-                submitInfo.semaphore = swapchain->GetImageSignaledSemaphore();
-                submitInfo.stageMask = epilogeState.stage;
-                m_signalSemaphores.push_back(submitInfo);
-            }
-
-            if (prilogeState != currentState)
-            {
-                auto barrier = CreateImageBarrier(image->handle, subresources, prilogeState, currentState);
+                auto srcState = GetImageStageAccess(*node->prev);
+                auto dstState = GetImageStageAccess(*node);
+                auto barrier = CreateImageBarrier(image->handle, subresources, srcState, dstState);
                 m_barriers[BarrierSlot::Priloge].imageBarriers.push_back(barrier);
             }
-
-            if (currentState != epilogeState)
+            else
             {
-                if (epilogeState.layout != VK_IMAGE_LAYOUT_UNDEFINED || epilogeState.layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+                auto dstState = GetImageStageAccess(*node);
+                auto srcState = ImageStageAccess{ VK_IMAGE_LAYOUT_UNDEFINED, dstState.stage, 0 };
+                auto barrier = CreateImageBarrier(image->handle, subresources, srcState, dstState);
+                m_barriers[BarrierSlot::Priloge].imageBarriers.push_back(barrier);
+
+                if (swapchain != nullptr)
                 {
-                    auto barrier = CreateImageBarrier(image->handle, subresources, currentState, epilogeState);
-                    m_barriers[BarrierSlot::Epiloge].imageBarriers.push_back(barrier);
+                    m_waitSemaphores.push_back(CreateSemaphoreSubmitInfo(swapchain->GetImageAcquiredSemaphore(), srcState.stage));
                 }
             }
 
-            if ((node->usage & ImageUsage::Color) || (node->usage & ImageUsage::DepthStencil))
+            if (node->next == nullptr && swapchain != nullptr)
             {
-                renderTargetIndex++;
+                auto srcState = GetImageStageAccess(*node);
+                auto dstState = PIPELINE_IMAGE_BARRIER_PRESENT_SRC;
+                auto barrier = CreateImageBarrier(image->handle, subresources, srcState, dstState);
+                m_barriers[BarrierSlot::Epiloge].imageBarriers.push_back(barrier);
+                m_signalSemaphores.push_back(CreateSemaphoreSubmitInfo(swapchain->GetImageSignaledSemaphore(), dstState.stage));
             }
         }
 
@@ -290,41 +258,39 @@ namespace RHI::Vulkan
             m_barriers[BarrierSlot::Priloge].bufferBarriers,
             m_barriers[BarrierSlot::Priloge].imageBarriers);
 
-        VkRect2D renderingArea{};
         TL::Vector<VkRenderingAttachmentInfo> colorAttachments;
-        VkRenderingAttachmentInfo depthAttachment;
-        bool hasDepthAttachment = false;
-        VkRenderingAttachmentInfo stencilAttachment;
-        bool hasStencilAttachment = false;
+        VkRenderingAttachmentInfo depthAttachment, stencilAttachment;
+        bool hasDepthAttachment = false, hasStencilAttachment = false;
 
-        renderingArea.extent = ConvertExtent2D(pass->m_renderTargetSize);
+        VkRect2D renderingArea{
+            .offset = {},
+            .extent = ConvertExtent2D(pass->m_renderTargetSize),
+        };
 
         if (pass->m_colorAttachments.empty() == false)
         {
-            uint32_t index = 0;
             for (auto colorAttachment : pass->m_colorAttachments)
             {
                 auto imageViewHandle = renderGraph->PassGetImageView(colorAttachment->pass, colorAttachment->attachment);
                 auto imageView = m_context->m_imageViewOwner.Get(imageViewHandle);
-                auto attachmentInfo = CreateColorAttachment(imageView->handle, beginInfo.loadStoreOperations[index++]);
-                colorAttachments.push_back(attachmentInfo);
+                colorAttachments.push_back(
+                    CreateColorAttachment(imageView->handle, colorAttachment->loadStoreOperation));
             }
 
             if (auto depthStencilAttachment = pass->m_depthStencilAttachment)
             {
                 auto imageViewHandle = renderGraph->PassGetImageView(depthStencilAttachment->pass, depthStencilAttachment->attachment);
                 auto imageView = m_context->m_imageViewOwner.Get(imageViewHandle);
-                auto loadStoreOperation = beginInfo.loadStoreOperations.back();
 
                 if (depthStencilAttachment->usage & ImageUsage::Depth)
                 {
-                    depthAttachment = CreateDepthAttachment(imageView->handle, loadStoreOperation);
+                    depthAttachment = CreateDepthAttachment(imageView->handle, depthStencilAttachment->loadStoreOperation);
                     hasDepthAttachment = true;
                 }
 
                 if (depthStencilAttachment->usage & ImageUsage::Stencil)
                 {
-                    stencilAttachment = CreateStencilAttachment(imageView->handle, loadStoreOperation);
+                    stencilAttachment = CreateStencilAttachment(imageView->handle, depthStencilAttachment->loadStoreOperation);
                     hasStencilAttachment = true;
                 }
             }

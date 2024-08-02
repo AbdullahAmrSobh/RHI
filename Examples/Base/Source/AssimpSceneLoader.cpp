@@ -1,6 +1,7 @@
 #include "Examples-Base/AssimpSceneLoader.hpp"
 #include "Examples-Base/Renderer.hpp"
 #include <Examples-Base/Scene.hpp>
+#include <Examples-Base/Log.hpp>
 
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
@@ -42,6 +43,13 @@ namespace Examples
         }
     }
 
+    inline static TL::String ResolvePath(std::filesystem::path scenePath, TL::String subPath)
+    {
+        auto fullPath = scenePath.parent_path() / subPath;
+        fullPath.replace_extension(".dds");
+        return { fullPath.string().c_str() };
+    }
+
     void AssimpScenneLoader::LoadScene(Renderer& renderer, Scene& scene, const char* sceneFileLocation, const char* sceneTextureLocation)
     {
         (void)sceneTextureLocation;
@@ -56,22 +64,22 @@ namespace Examples
 
             auto mesh = scene.m_meshes.emplace_back(new Mesh());
 
-            if (aiMesh.HasPositions())
+            RHI_ASSERT(aiMesh.HasPositions());
             {
                 mesh->m_position = renderer.CreateBufferWithData<aiVector3D>(RHI::BufferUsage::Vertex, { aiMesh.mVertices, aiMesh.mNumVertices }).GetValue();
                 mesh->elementsCount = (uint32_t)aiMesh.mNumVertices;
             }
 
-            if (aiMesh.HasNormals())
+            RHI_ASSERT(aiMesh.HasNormals());
             {
                 mesh->m_normal = renderer.CreateBufferWithData<aiVector3D>(RHI::BufferUsage::Vertex, { aiMesh.mNormals, aiMesh.mNumVertices }).GetValue();
             }
 
-            // if (aiMesh.HasTextureCoords(0))
-            // {
-            //     auto texCoordData = TruncateToVector2D({ aiMesh.mTextureCoords[0], aiMesh.mNumVertices });
-            //     mesh->m_texCoord = renderer.CreateBufferWithData<aiVector2D>(RHI::BufferUsage::Vertex, texCoordData).GetValue();
-            // }
+            RHI_ASSERT(aiMesh.HasTextureCoords(0));
+            {
+                auto texCoordData = TruncateToVector2D({ aiMesh.mTextureCoords[0], aiMesh.mNumVertices });
+                mesh->m_texCoord = renderer.CreateBufferWithData<aiVector2D>(RHI::BufferUsage::Vertex, texCoordData).GetValue();
+            }
 
             if (aiMesh.HasFaces())
             {
@@ -89,6 +97,48 @@ namespace Examples
             }
         }
 
+        for (uint32_t i = 0; i < aiScene->mNumMaterials; i++)
+        {
+            const auto& aiMaterial = *aiScene->mMaterials[i];
+            Core::LogInfo("Loading Material {}", aiMaterial.GetName().C_Str());
+
+            MaterialIds materialProperty{};
+            aiString diffusePath, normalPath;
+            if (auto result = aiMaterial.GetTexture(aiTextureType_DIFFUSE, 0, &diffusePath); result == AI_SUCCESS)
+            {
+                auto path = ResolvePath(sceneFileLocation, diffusePath.C_Str());
+                Core::LogInfo("\t Loading {}", path);
+                scene.images.push_back(renderer.CreateImage(path.c_str()));
+                materialProperty.diffuseID = (uint32_t)scene.images.size() - 1;
+
+                RHI::ImageViewCreateInfo imageViewCI{};
+                imageViewCI.image = scene.images.back();
+                imageViewCI.viewType = RHI::ImageViewType::View2D;
+                imageViewCI.components = RHI::ComponentMapping{ RHI::ComponentSwizzle::Identity, RHI::ComponentSwizzle::Identity, RHI::ComponentSwizzle::Identity, RHI::ComponentSwizzle::Identity };
+                imageViewCI.subresource.imageAspects = RHI::ImageAspect::Color;
+                imageViewCI.subresource.arrayCount = 1;
+                imageViewCI.subresource.mipLevelCount = 1;
+                scene.imagesViews.push_back(renderer.m_context->CreateImageView(imageViewCI));
+            }
+            if (auto result = aiMaterial.GetTexture(aiTextureType_NORMALS, 0, &normalPath); result == AI_SUCCESS)
+            {
+                auto path = ResolvePath(sceneFileLocation, normalPath.C_Str());
+                Core::LogInfo("\t Loading {}", path);
+                scene.images.push_back(renderer.CreateImage(path.c_str()));
+                materialProperty.normalID = (uint32_t)scene.images.size() - 1;
+
+                RHI::ImageViewCreateInfo imageViewCI{};
+                imageViewCI.image = scene.images.back();
+                imageViewCI.viewType = RHI::ImageViewType::View2D;
+                imageViewCI.components = RHI::ComponentMapping{ RHI::ComponentSwizzle::Identity, RHI::ComponentSwizzle::Identity, RHI::ComponentSwizzle::Identity, RHI::ComponentSwizzle::Identity };
+                imageViewCI.subresource.imageAspects = RHI::ImageAspect::Color;
+                imageViewCI.subresource.arrayCount = 1;
+                imageViewCI.subresource.mipLevelCount = 1;
+                scene.imagesViews.push_back(renderer.m_context->CreateImageView(imageViewCI));
+            }
+            scene.materialIDs.push_back(materialProperty);
+        }
+
         // build scene graph tree
         ProcessNode(
             glm::identity<glm::mat4>(),
@@ -97,7 +147,15 @@ namespace Examples
         {
             for (uint32_t i = 0; i < aiNode.mNumMeshes; i++)
             {
-                scene.m_meshesTransform.push_back(modelMatrix);
+                auto mesh = aiScene->mMeshes[aiNode.mMeshes[i]];
+                auto material = scene.materialIDs[mesh->mMaterialIndex];
+
+                ObjectTransform transform{};
+                transform.modelMatrix = modelMatrix;
+                transform.colorIndex = material.diffuseID;
+                transform.normalIndex = material.normalID;
+
+                scene.m_meshesTransform.push_back(transform);
                 scene.m_meshesStatic.push_back(aiNode.mMeshes[i]);
             }
         });

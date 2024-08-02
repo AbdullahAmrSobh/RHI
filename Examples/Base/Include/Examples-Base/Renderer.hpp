@@ -31,6 +31,8 @@ namespace Examples
         template<typename T>
         RHI::Result<Handle<RHI::Buffer>> CreateBufferWithData(Flags<RHI::BufferUsage> usageFlags, TL::Span<const T> content);
 
+        Handle<RHI::Image> CreateImage(const char* filePath);
+
         Ptr<Scene> CreateScene();
 
         virtual ResultCode OnInit() = 0;
@@ -39,7 +41,7 @@ namespace Examples
 
         virtual void OnRender(const Scene& scene) = 0;
 
-    protected:
+    // protected:
         const Window* m_window;
 
         Ptr<RHI::Context> m_context;

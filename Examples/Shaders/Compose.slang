@@ -26,6 +26,8 @@ struct PSOutput
 struct ShaderInput
 {
     Texture2D colorTexture;
+    Texture2D normalTexture;
+    Texture2D depthTexture;
 };
 
 ParameterBlock<ShaderInput> g_inputs;

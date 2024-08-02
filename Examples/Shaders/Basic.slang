@@ -4,13 +4,13 @@ struct VSInput
 {
 	float3 position : POSITION0;
 	float3 normal   : NORMAL0;
-	// float2 uv0      : TEXCOORD0;
+	float2 uv0      : TEXCOORD0;
 };
 
 struct VSOutput
 {
 	float4 position : SV_POSITION;
-	// float2 uv: TEXCOORD;
+	float2 uv: TEXCOORD;
 	float4 color : COLOR;
 };
 
@@ -24,6 +24,8 @@ struct Data
 {
 	ConstantBuffer<SceneTransform> sceneTransform;
 	ConstantBuffer<ObjectTransform> objectTransform;
+	SamplerState samplerState;
+	Texture2D texture[];
 };
 
 ParameterBlock<Data> data;
@@ -46,15 +48,21 @@ VSOutput VSMain(VSInput input)
 	VSOutput output;
 	output.position = TransformToClipSpace(input.position);
 	output.color    = NormalToColor(input.normal);
-	// output.uv       = input.uv0;
+	output.uv       = input.uv0;
 	return output;
 }
 
 [[shader("fragment")]]
 PSOutput PSMain(VSOutput input)
 {
+	let colorTexture = data.texture[NonUniformResourceIndex(0)];
+	let normalTexture = data.texture[NonUniformResourceIndex(1)];
+
+	let color = colorTexture.Sample(data.samplerState, input.uv);
+	let normal = normalTexture.Sample(data.samplerState, input.uv);
+
 	PSOutput output;
-	output.worldPosition = input.position;
-	output.color = input.color;
+	output.color = color;
+	output.worldPosition = normal;
 	return output;
 }

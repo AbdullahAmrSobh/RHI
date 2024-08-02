@@ -7,8 +7,16 @@
 #include <glm/glm.hpp>
 #include "glm/ext.hpp"
 
+#include "ShaderInterface/Core.slang"
+
 namespace Examples
 {
+    struct MaterialIds
+    {
+        uint32_t diffuseID = UINT32_MAX;
+        uint32_t normalID = UINT32_MAX;
+    };
+
     class Mesh
     {
     public:
@@ -39,7 +47,11 @@ namespace Examples
 
         TL::Vector<Mesh*> m_meshes;
 
-        TL::Vector<glm::mat4> m_meshesTransform;
+        TL::Vector<MaterialIds> materialIDs;
+        TL::Vector<Handle<RHI::Image>> images;
+        TL::Vector<Handle<RHI::ImageView>> imagesViews;
+
+        TL::Vector<ObjectTransform> m_meshesTransform;
         TL::Vector<uint32_t> m_meshesStatic;
     };
 } // namespace Examples

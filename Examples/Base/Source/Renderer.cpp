@@ -6,6 +6,8 @@
 #include <RHI/RHI.hpp>
 #include <RHI-Vulkan/Loader.hpp>
 
+#include "dds_image/dds.hpp"
+
 namespace Examples
 {
     class DebugCallbacksImpl final : public RHI::DebugCallbacks
@@ -105,6 +107,41 @@ namespace Examples
         OnRender(scene);
 
         result = m_swapchain->Present();
+    }
+
+    Handle<RHI::Image> Renderer::CreateImage(const char* filePath)
+    {
+        dds::Image image{};
+        auto result = dds::readFile(filePath, &image);
+        RHI_ASSERT(result == dds::Success);
+
+        RHI::ImageCreateInfo createInfo{};
+        createInfo.size = { image.width, image.height, image.depth };
+        switch (image.format)
+        {
+        case DXGI_FORMAT_UNKNOWN:
+        case DXGI_FORMAT_BC1_UNORM:      createInfo.format = RHI::Format::BC1_UNORM; break;
+        case DXGI_FORMAT_BC1_UNORM_SRGB: createInfo.format = RHI::Format::BC1_UNORM_SRGB; break;
+        case DXGI_FORMAT_BC2_UNORM:      createInfo.format = RHI::Format::BC2_UNORM; break;
+        case DXGI_FORMAT_BC2_UNORM_SRGB: createInfo.format = RHI::Format::BC2_UNORM_SRGB; break;
+        case DXGI_FORMAT_BC3_UNORM:      createInfo.format = RHI::Format::BC3_UNORM; break;
+        case DXGI_FORMAT_BC3_UNORM_SRGB: createInfo.format = RHI::Format::BC3_UNORM_SRGB; break;
+        case DXGI_FORMAT_BC4_UNORM:      createInfo.format = RHI::Format::BC4_UNORM; break;
+        case DXGI_FORMAT_BC4_SNORM:      createInfo.format = RHI::Format::BC4_SNORM; break;
+        case DXGI_FORMAT_BC5_UNORM:      createInfo.format = RHI::Format::BC5_UNORM; break;
+        case DXGI_FORMAT_BC5_SNORM:      createInfo.format = RHI::Format::BC5_SNORM; break;
+        case DXGI_FORMAT_B5G6R5_UNORM:   createInfo.format = RHI::Format::B5G6R5_UNORM; break;
+        case DXGI_FORMAT_B5G5R5A1_UNORM: createInfo.format = RHI::Format::B5G5R5A1_UNORM; break;
+        default:                         createInfo.format = RHI::Format::Unknown; break;
+        };
+
+        createInfo.arrayCount = image.arraySize;
+        createInfo.mipLevels = (uint32_t) image.mipmaps.size();
+        createInfo.usageFlags = RHI::ImageUsage::ShaderResource | RHI::ImageUsage::CopyDst;
+        createInfo.sampleCount = RHI::SampleCount::Samples1;
+        createInfo.type = image.dimension == dds::ResourceDimension::Texture1D ? RHI::ImageType::Image1D : (image.dimension == dds::ResourceDimension::Texture2D ? RHI::ImageType::Image2D : RHI::ImageType::Image3D);
+        createInfo.name = filePath;
+        return CreateImageWithData(createInfo, TL::Span<const uint8_t>{image.data.data(), image.data.size()}).GetValue();
     }
 
     Ptr<Scene> Renderer::CreateScene()

@@ -40,6 +40,7 @@ namespace Examples
         Handle<RHI::PipelineLayout> m_pipelineLayout;
         Handle<RHI::GraphicsPipeline> m_pipeline;
         Handle<RHI::BindGroup> m_bindGroup;
+        Handle<RHI::Sampler> m_sampler;
 
         Handle<RHI::Buffer> m_sceneTransform;
         Handle<RHI::Buffer> m_objectsTransform;
@@ -51,11 +52,27 @@ namespace Examples
 
         ResultCode Init(RHI::Context& context)
         {
+            {
+                RHI::SamplerCreateInfo samplerCI{};
+                samplerCI.name = "ImGui-Sampler";
+                samplerCI.filterMin = RHI::SamplerFilter::Linear;
+                samplerCI.filterMag = RHI::SamplerFilter::Linear;
+                samplerCI.filterMip = RHI::SamplerFilter::Linear;
+                samplerCI.compare = RHI::SamplerCompareOperation::Always;
+                samplerCI.mipLodBias = 0.0f;
+                samplerCI.addressU = RHI::SamplerAddressMode::Repeat;
+                samplerCI.addressV = RHI::SamplerAddressMode::Repeat;
+                samplerCI.addressW = RHI::SamplerAddressMode::Repeat;
+                samplerCI.minLod = 0.0f;
+                samplerCI.maxLod = 1.0f;
+                m_sampler = context.CreateSampler(samplerCI);
+            }
+
             auto shaderModuleCode = ReadBinaryFile("Shaders/Basic.spv");
 
             auto shaderMoudule = context.CreateShaderModule(shaderModuleCode);
 
-            RHI::BindGroupLayoutCreateInfo bindGroupLayoutCI {};
+            RHI::BindGroupLayoutCreateInfo bindGroupLayoutCI{};
             // Per frame uniform buffer
             bindGroupLayoutCI.bindings[0].access = RHI::Access::Read;
             bindGroupLayoutCI.bindings[0].stages |= RHI::ShaderStage::Vertex;
@@ -69,8 +86,21 @@ namespace Examples
             bindGroupLayoutCI.bindings[1].stages |= RHI::ShaderStage::Pixel;
             bindGroupLayoutCI.bindings[1].type = RHI::BindingType::DynamicUniformBuffer;
             bindGroupLayoutCI.bindings[1].arrayCount = 1;
+
+            // create dummy sampler
+            bindGroupLayoutCI.bindings[2].access = RHI::Access::Read;
+            bindGroupLayoutCI.bindings[2].stages |= RHI::ShaderStage::Pixel;
+            bindGroupLayoutCI.bindings[2].type = RHI::BindingType::Sampler;
+            bindGroupLayoutCI.bindings[2].arrayCount = 1;
+
+            // bindless textures
+            bindGroupLayoutCI.bindings[3].access = RHI::Access::Read;
+            bindGroupLayoutCI.bindings[3].stages |= RHI::ShaderStage::Pixel;
+            bindGroupLayoutCI.bindings[3].type = RHI::BindingType::SampledImage;
+            bindGroupLayoutCI.bindings[3].arrayCount = RHI::ShaderBinding::VariableArraySize;
+
             auto bindGroupLayout = context.CreateBindGroupLayout(bindGroupLayoutCI);
-            m_bindGroup = context.CreateBindGroup(bindGroupLayout);
+            m_bindGroup = context.CreateBindGroup(bindGroupLayout, 49);
 
             RHI::PipelineLayoutCreateInfo pipelineLayoutCI{ bindGroupLayout };
             m_pipelineLayout = context.CreatePipelineLayout(pipelineLayoutCI);
@@ -183,12 +213,13 @@ namespace Examples
                 TL::Span<const RHI::BindGroupUpdateInfo> bindings{
                     RHI::BindGroupUpdateInfo(0, 0, m_sceneTransform),
                     RHI::BindGroupUpdateInfo(1, 0, RHI::BindGroupUpdateInfo::DynamicBufferBinding(m_objectsTransform, 0, sizeof(ObjectTransform))),
+                    RHI::BindGroupUpdateInfo(2, 0, m_sampler),
+                    RHI::BindGroupUpdateInfo(3, 0, TL::Span{ scene.imagesViews.data(), scene.imagesViews.size() }),
                 };
                 renderGraph.m_context->UpdateBindGroup(m_bindGroup, bindings);
-
             }
 
-            SceneTransform sceneTransform {};
+            SceneTransform sceneTransform{};
             sceneTransform.viewMatrix = scene.m_viewMatrix;
             sceneTransform.projectionMatrix = scene.m_projectionMatrix;
             sceneTransform.viewProjectionMatrix = scene.m_viewMatrix * scene.m_projectionMatrix;
@@ -208,22 +239,13 @@ namespace Examples
             scissor.width = size.width;
             scissor.height = size.height;
 
-            RHI::ClearValue clearColorValue{};
-            clearColorValue.f32 = { 0.4f, 0.3f, 0.1f, 1.0f };
-
-            RHI::ClearValue clearColorValue1{};
-            clearColorValue1.f32 = { 0.3f, 0.4f, 0.2f, 1.0f };
-
-            RHI::ClearValue clearColorValueDepth{};
-            clearColorValueDepth.depthStencil.depthValue = 1.0f;
-
             RHI::CommandListBeginInfo beginInfo{};
             beginInfo.renderGraph = &renderGraph;
             beginInfo.pass = m_pass;
             beginInfo.loadStoreOperations = {
-                { .clearValue = clearColorValue, .loadOperation = RHI::LoadOperation::Discard, .storeOperation = RHI::StoreOperation::Store },
-                { .clearValue = clearColorValue1, .loadOperation = RHI::LoadOperation::Discard, .storeOperation = RHI::StoreOperation::Store },
-                { .clearValue = clearColorValueDepth, .loadOperation = RHI::LoadOperation::Discard, .storeOperation = RHI::StoreOperation::Store },
+                { .clearValue = { .f32 = { 0.4f, 0.3f, 0.1f, 1.0f } }, .loadOperation = RHI::LoadOperation::Discard, .storeOperation = RHI::StoreOperation::Store },
+                { .clearValue = { .f32 = { 0.3f, 0.4f, 0.2f, 1.0f } }, .loadOperation = RHI::LoadOperation::Discard, .storeOperation = RHI::StoreOperation::Store },
+                { .clearValue = { .depthStencil = { 1.0f, 0 } },       .loadOperation = RHI::LoadOperation::Discard, .storeOperation = RHI::StoreOperation::Store },
             };
 
             commandList->Begin(beginInfo);
@@ -241,23 +263,14 @@ namespace Examples
                 drawInfo.parameters.elementsCount = mesh->elementsCount;
                 drawInfo.pipelineState = m_pipeline;
 
-                if (mesh->m_index)
-                {
-                    drawInfo.indexBuffer.buffer = mesh->m_index;
-                }
+                drawInfo.indexBuffer.buffer = mesh->m_index;
+                bindingInfo.push_back({ mesh->m_position, 0 });
+                bindingInfo.push_back({ mesh->m_normal, 0 });
+                bindingInfo.push_back({ mesh->m_texCoord, 0 });
 
-                if (mesh->m_position)
-                {
-                    bindingInfo.push_back({ mesh->m_position, 0});
-                }
-
-                if (mesh->m_normal)
-                {
-                    bindingInfo.push_back({ mesh->m_position, 0});
-                }
                 drawInfo.vertexBuffers = bindingInfo;
 
-                drawInfo.bindGroups = RHI::BindGroupBindingInfo{ m_bindGroup, i * sizeof(ObjectTransform)};
+                drawInfo.bindGroups = RHI::BindGroupBindingInfo{ m_bindGroup, i * sizeof(ObjectTransform) };
                 commandList->Draw(drawInfo);
             }
 
@@ -281,6 +294,8 @@ namespace Examples
             auto shaderMoudule = context.CreateShaderModule(shaderModuleCode);
 
             RHI::BindGroupLayoutCreateInfo bindGroupLayoutCI{
+                RHI::ShaderBinding{ .type = RHI::BindingType::SampledImage, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel },
+                RHI::ShaderBinding{ .type = RHI::BindingType::SampledImage, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel },
                 RHI::ShaderBinding{ .type = RHI::BindingType::SampledImage, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel },
             };
             auto bindGroupLayout = context.CreateBindGroupLayout(bindGroupLayoutCI);
@@ -375,10 +390,10 @@ namespace Examples
             viewInfo.subresources.arrayCount = 1;
             viewInfo.subresources.mipLevelCount = 1;
             renderGraph.PassUseImage(m_pass, m_outputAttachment, viewInfo, RHI::ImageUsage::Color, RHI::ShaderStage::None, RHI::Access::None);
-            renderGraph.PassUseImage(m_pass, gBuffer.m_colorAttachment, viewInfo, RHI::ImageUsage::ShaderResource, RHI::ShaderStage::Pixel, RHI::Access::None);
-            renderGraph.PassUseImage(m_pass, gBuffer.m_normalAttachment, viewInfo, RHI::ImageUsage::ShaderResource, RHI::ShaderStage::Pixel, RHI::Access::None);
+            renderGraph.PassUseImage(m_pass, gBuffer.m_colorAttachment, viewInfo, RHI::ImageUsage::ShaderResource, RHI::ShaderStage::Pixel, RHI::Access::Read);
+            renderGraph.PassUseImage(m_pass, gBuffer.m_normalAttachment, viewInfo, RHI::ImageUsage::ShaderResource, RHI::ShaderStage::Pixel, RHI::Access::Read);
             viewInfo.subresources.imageAspects = RHI::ImageAspect::Depth;
-            renderGraph.PassUseImage(m_pass, gBuffer.m_depthAttachment, viewInfo, RHI::ImageUsage::ShaderResource, RHI::ShaderStage::Pixel, RHI::Access::None);
+            renderGraph.PassUseImage(m_pass, gBuffer.m_depthAttachment, viewInfo, RHI::ImageUsage::ShaderResource, RHI::ShaderStage::Pixel, RHI::Access::Read);
 
             return ResultCode::Success;
         }
@@ -387,8 +402,8 @@ namespace Examples
         {
             RHI::BindGroupUpdateInfo bindings[] = {
                 RHI::BindGroupUpdateInfo(0, 0, renderGraph.PassGetImageView(m_pass, gBuffer.m_colorAttachment)),
-                // RHI::ResourceBinding(0, 0, renderGraph.PassGetImageView(m_pass, gBuffer.m_normalAttachment)),
-                // RHI::ResourceBinding(0, 0, renderGraph.PassGetImageView(m_pass, gBuffer.m_depthAttachment)),
+                RHI::BindGroupUpdateInfo(1, 0, renderGraph.PassGetImageView(m_pass, gBuffer.m_normalAttachment)),
+                RHI::BindGroupUpdateInfo(2, 0, renderGraph.PassGetImageView(m_pass, gBuffer.m_depthAttachment)),
             };
             context.UpdateBindGroup(m_bindGroup, bindings);
         }
@@ -406,14 +421,11 @@ namespace Examples
             scissor.width = size.width;
             scissor.height = size.height;
 
-            RHI::ClearValue clearColorValue{};
-            clearColorValue.f32 = { 0.9f, 0.9f, 0.9f, 1.0f };
-
             RHI::CommandListBeginInfo beginInfo{};
             beginInfo.renderGraph = &renderGraph;
             beginInfo.pass = m_pass;
             beginInfo.loadStoreOperations = {
-                { .clearValue = clearColorValue, .loadOperation = RHI::LoadOperation::Discard, .storeOperation = RHI::StoreOperation::Store }
+                { .clearValue = { .f32 = { 0.9f, 0.9f, 0.9f, 1.0f } }, .loadOperation = RHI::LoadOperation::Discard, .storeOperation = RHI::StoreOperation::Store }
             };
 
             // clang-format off

@@ -120,6 +120,7 @@ namespace RHI
         }
         else
         {
+            attachment->last->next = passAttachment;
             attachment->last = passAttachment;
         }
 

@@ -13,7 +13,7 @@ namespace RHI::Vulkan
     {
         Priloge,
         Epiloge,
-        Resolve,
+        // Resolve,
         Count,
     };
 

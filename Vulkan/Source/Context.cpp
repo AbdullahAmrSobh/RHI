@@ -441,6 +441,7 @@ namespace RHI::Vulkan
     {
         IImage image{};
         auto result = image.Init(this, createInfo);
+        SetDebugName(image.handle, createInfo.name);
         if (IsError(result))
         {
             DebugLogError("Failed to create image");
@@ -880,24 +881,21 @@ namespace RHI::Vulkan
             auto queueFamilyProperty = queueFamilyProperties[queueFamilyIndex];
 
             // Search for main queue that should be able to do all work (graphics, compute and transfer)
-            if ((queueFamilyProperty.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT)) == (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT))
+            if (queueFamilyProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT)
             {
                 graphicsQueueFamilyIndex = queueFamilyIndex;
                 transferQueueFamilyIndex = queueFamilyIndex;
                 computeQueueFamilyIndex = queueFamilyIndex;
+                // TODO: remove this break to support multiple queues for different tasks
                 break;
             }
-
-            // Search for transfer queue
-            if ((queueFamilyProperty.queueFlags & VK_QUEUE_TRANSFER_BIT) == VK_QUEUE_TRANSFER_BIT && (queueFamilyProperty.queueFlags & VK_QUEUE_COMPUTE_BIT) == 0)
-            {
-                transferQueueFamilyIndex = queueFamilyIndex;
-            }
-
-            // Search for transfer queue
-            if ((queueFamilyProperty.queueFlags & VK_QUEUE_COMPUTE_BIT) == VK_QUEUE_COMPUTE_BIT && (queueFamilyProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0)
+            else if (queueFamilyProperty.queueFlags & VK_QUEUE_COMPUTE_BIT)
             {
                 computeQueueFamilyIndex = queueFamilyIndex;
+            }
+            else if (queueFamilyProperty.queueFlags & VK_QUEUE_TRANSFER_BIT)
+            {
+                transferQueueFamilyIndex = queueFamilyIndex;
             }
         }
 
@@ -935,21 +933,30 @@ namespace RHI::Vulkan
             RHI_UNREACHABLE();
         }
 
-        VkPhysicalDeviceFeatures enabledFeatures{};
-        enabledFeatures.samplerAnisotropy = VK_TRUE;
+        VkPhysicalDeviceFeatures2 features{};
+        VkPhysicalDeviceVulkan11Features features11{};
+        VkPhysicalDeviceVulkan12Features features12{};
+        VkPhysicalDeviceVulkan13Features features13{};
 
-        VkPhysicalDeviceSynchronization2Features syncFeature{};
-        syncFeature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES;
-        syncFeature.synchronization2 = VK_TRUE;
+        features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+        features.pNext = &features11;
+        features11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+        features11.pNext = &features12;
+        features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+        features12.pNext = &features13;
+        features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+        features13.pNext = nullptr;
 
-        VkPhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures{};
-        dynamicRenderingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
-        dynamicRenderingFeatures.pNext = &syncFeature;
-        dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
+        features.features.samplerAnisotropy = VK_TRUE;
+        features12.descriptorBindingPartiallyBound = VK_TRUE;
+        features12.descriptorBindingVariableDescriptorCount = VK_TRUE;
+        features12.runtimeDescriptorArray = VK_TRUE;
+        features13.synchronization2 = VK_TRUE;
+        features13.dynamicRendering = VK_TRUE;
 
         VkDeviceCreateInfo deviceCI{};
         deviceCI.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        deviceCI.pNext = &dynamicRenderingFeatures;
+        deviceCI.pNext = &features;
         deviceCI.flags = 0;
         deviceCI.queueCreateInfoCount = (uint32_t)queueCreateInfos.size();
         deviceCI.pQueueCreateInfos = queueCreateInfos.data();
@@ -957,7 +964,7 @@ namespace RHI::Vulkan
         deviceCI.ppEnabledLayerNames = deviceLayerNames.data();
         deviceCI.enabledExtensionCount = (uint32_t)deviceExtensionNames.size();
         deviceCI.ppEnabledExtensionNames = deviceExtensionNames.data();
-        deviceCI.pEnabledFeatures = &enabledFeatures;
+        deviceCI.pEnabledFeatures = nullptr;
         auto result = vkCreateDevice(m_physicalDevice, &deviceCI, nullptr, &m_device);
 
 #if RHI_DEBUG
@@ -978,11 +985,8 @@ namespace RHI::Vulkan
         m_pfn.m_vkCmdEndConditionalRenderingEXT = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdEndConditionalRenderingEXT);
 
         m_queue[QueueType::Graphics] = Queue(m_device, graphicsQueueFamilyIndex);
-        m_queue[QueueType::Compute] = Queue(m_device, graphicsQueueFamilyIndex);
-        m_queue[QueueType::Transfer] = Queue(m_device, graphicsQueueFamilyIndex);
-
-        // m_queue[QueueType::Compute] = Queue(m_device, computeQueueFamilyIndex);
-        // m_queue[QueueType::Transfer] = Queue(m_device, transferQueueFamilyIndex);
+        m_queue[QueueType::Compute] = Queue(m_device, computeQueueFamilyIndex);
+        m_queue[QueueType::Transfer] = Queue(m_device, transferQueueFamilyIndex);
 
         m_limits->stagingMemoryLimit = 256 * 1000 * 1000;
 

@@ -45,6 +45,7 @@ namespace RHI
         ImageViewInfo                  viewInfo;
         ImagePassAttachment*           next;
         ImagePassAttachment*           prev;
+        LoadStoreOperations            loadStoreOperation;
     };
 
     struct BufferPassAttachment

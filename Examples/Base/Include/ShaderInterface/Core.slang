@@ -1,3 +1,4 @@
+#pragma once
 #include "ShaderInterface/ShaderMacros.h"
 
 #define re_max_point_lights_count 16
@@ -48,4 +49,8 @@ re_shader_struct SpotLight
 re_shader_struct ObjectTransform
 {
     re_mat4 modelMatrix;
+    // re_uint materialIndex;
+    re_uint colorIndex;
+    re_uint normalIndex;
+    re_uint _padding[4 * 4 - 2];
 };

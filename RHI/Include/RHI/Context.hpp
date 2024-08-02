@@ -59,6 +59,7 @@ namespace RHI
     struct Limits
     {
         size_t stagingMemoryLimit;
+        bool   unifiedMemory;
     };
 
     struct StagingBuffer

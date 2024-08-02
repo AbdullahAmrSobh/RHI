@@ -36,7 +36,7 @@ namespace RHI
         case SPV_REFLECT_FORMAT_R32_SFLOAT:  return Format::R32_FLOAT;
         case SPV_REFLECT_FORMAT_R32G32_UINT: return Format::RG32_UINT;
         case SPV_REFLECT_FORMAT_R32G32_SINT: return Format::RG32_SINT;
-        // case SPV_REFLECT_FORMAT_R32G32_SFLOAT:  return Format::R3G2_FLOAT;
+        case SPV_REFLECT_FORMAT_R32G32_SFLOAT:  return Format::RG32_FLOAT;
         case SPV_REFLECT_FORMAT_R32G32B32_UINT:    return Format::RGB32_UINT;
         case SPV_REFLECT_FORMAT_R32G32B32_SINT:    return Format::RGB32_SINT;
         case SPV_REFLECT_FORMAT_R32G32B32_SFLOAT:  return Format::RGB32_FLOAT;

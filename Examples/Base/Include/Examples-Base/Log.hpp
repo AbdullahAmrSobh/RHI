@@ -8,7 +8,7 @@ namespace Core
     template<typename... Args>
     inline static void LogInfo(const char* fmt, Args... args)
     {
-        std::cout << "[INFO] " << std::vformat(fmt, std::make_format_args(args)...) << "\n";
+        std::cout << "[INFO] " << std::vformat(fmt, std::make_format_args(args...)) << "\n";
     }
 
     inline static void LogInfo(const char* message)
@@ -24,7 +24,7 @@ namespace Core
     template<typename... Args>
     inline static void LogWarnning(const char* fmt, Args... args)
     {
-        std::cout << "[WARNNING] " << std::vformat(fmt, std::make_format_args(args)...) << "\n";
+        std::cout << "[WARNNING] " << std::vformat(fmt, std::make_format_args(args...)) << "\n";
     }
 
     inline static void LogWarnning(const char* message)
@@ -40,7 +40,7 @@ namespace Core
     template<typename... Args>
     inline static void LogError(const char* fmt, Args... args)
     {
-        std::cout << "[ERROR] " << std::vformat(fmt, std::make_format_args(args)...) << "\n";
+        std::cout << "[ERROR] " << std::vformat(fmt, std::make_format_args(args...)) << "\n";
     }
 
     inline static void LogError(const char* message)

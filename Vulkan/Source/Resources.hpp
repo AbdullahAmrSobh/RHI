@@ -3,8 +3,6 @@
 #include <RHI/Common/Result.hpp>
 #include <RHI/Resources.hpp>
 
-#include "Barrier.hpp"
-
 #include <vk_mem_alloc.h>
 
 namespace RHI::Vulkan
@@ -100,7 +98,6 @@ namespace RHI::Vulkan
     {
         BindGroupLayoutCreateInfo layoutInfo;
         VkDescriptorSetLayout handle;
-        uint32_t bindlessElementIndex;
 
         ResultCode Init(IContext* context, const BindGroupLayoutCreateInfo& createInfo);
         void Shutdown(IContext* context);

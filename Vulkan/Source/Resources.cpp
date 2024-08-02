@@ -58,7 +58,7 @@ namespace RHI::Vulkan
         variableDescriptorInfo.pDescriptorCounts = &bindlessElementsCount;
         VkDescriptorSetAllocateInfo allocateInfo{};
         allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocateInfo.pNext = bindGroupLayout->bindlessElementIndex != UINT32_MAX ? &variableDescriptorInfo : nullptr;
+        allocateInfo.pNext = bindlessElementsCount != UINT32_MAX ? &variableDescriptorInfo : nullptr;
         allocateInfo.descriptorSetCount = 1;
         allocateInfo.pSetLayouts = &bindGroupLayout->handle;
         allocateInfo.descriptorPool = m_descriptorPool;
@@ -292,7 +292,6 @@ namespace RHI::Vulkan
     ResultCode IBindGroupLayout::Init(IContext* context, const BindGroupLayoutCreateInfo& createInfo)
     {
         layoutInfo = createInfo;
-        bindlessElementIndex = UINT32_MAX;
 
         TL::Vector<VkDescriptorBindingFlags> bindingFlags;
         TL::Vector<VkDescriptorSetLayoutBinding> bindingInfos;
@@ -309,14 +308,13 @@ namespace RHI::Vulkan
             {
                 flags = VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
                 flags |= VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
-                bindlessElementIndex = index;
             }
             bindingFlags.push_back(flags);
 
             VkDescriptorSetLayoutBinding descriptorBinding{};
             descriptorBinding.binding = index;
             descriptorBinding.descriptorType = ConvertDescriptorType(binding.type);
-            descriptorBinding.descriptorCount = binding.arrayCount;
+            descriptorBinding.descriptorCount = binding.arrayCount == ShaderBinding::VariableArraySize ? 49 : binding.arrayCount;
             descriptorBinding.stageFlags = ConvertShaderStage(binding.stages);
             descriptorBinding.pImmutableSamplers = nullptr;
             bindingInfos.push_back(descriptorBinding);
