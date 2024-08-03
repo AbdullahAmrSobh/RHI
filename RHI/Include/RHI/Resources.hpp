@@ -3,10 +3,10 @@
 #include "RHI/Format.hpp"
 
 #include "RHI/Common/Handle.hpp"
-#include "RHI/Common/Span.hpp"
 #include "RHI/Common/Hash.hpp"
 
 #include <TL/Flags.hpp>
+#include <TL/Span.hpp>
 
 namespace RHI
 {

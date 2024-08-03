@@ -7,14 +7,11 @@ endif()
 # Add header files
 set(HEADER_FILES
     # Common and utils
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Allocator.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Callstack.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Containers.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Handle.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Hash.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Ptr.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Result.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Span.hpp
     # main files
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/CommandList.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Context.hpp

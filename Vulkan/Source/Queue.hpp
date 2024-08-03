@@ -1,7 +1,8 @@
 #pragma once
 
-#include <RHI/Common/Span.hpp>
 #include <RHI/Definitions.hpp>
+
+#include <TL/Span.hpp>
 
 #include <vulkan/vulkan.h>
 

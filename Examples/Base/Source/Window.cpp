@@ -5,12 +5,14 @@
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
+#include <TL/Assert.hpp>
+
 namespace Examples
 {
     void Window::Init()
     {
         auto result = glfwInit();
-        assert(result);
+        TL_ASSERT(result);
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     }
 

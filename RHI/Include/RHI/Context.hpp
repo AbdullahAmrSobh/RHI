@@ -4,12 +4,12 @@
 #include "RHI/Common/Ptr.hpp"
 #include "RHI/Common/Handle.hpp"
 #include "RHI/Common/Result.hpp"
-#include "RHI/Common/Span.hpp"
-
 #include "RHI/Resources.hpp"
 #include "RHI/RenderGraph.hpp"
 #include "RHI/Swapchain.hpp"
 #include "RHI/CommandList.hpp"
+
+#include <TL/Span.hpp>
 
 #include <functional>
 
