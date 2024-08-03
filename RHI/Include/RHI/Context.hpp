@@ -4,7 +4,6 @@
 #include "RHI/Common/Ptr.hpp"
 #include "RHI/Common/Handle.hpp"
 #include "RHI/Common/Result.hpp"
-#include "RHI/Common/Debug.hpp"
 #include "RHI/Common/Span.hpp"
 
 #include "RHI/Resources.hpp"
@@ -72,6 +71,7 @@ namespace RHI
     class RHI_EXPORT Context
     {
     public:
+        Context();
         virtual ~Context();
 
         /// @brief Returns the limits of the RHI implementation
@@ -298,12 +298,6 @@ namespace RHI
         bool ValidateCreateInfo(const BufferViewCreateInfo& createInfo) const;
 
     protected:
-        Context(Ptr<DebugCallbacks> debugCallbacks);
-
-        void DebugLogError(std::string_view message) const;
-        void DebugLogWarn(std::string_view message) const;
-        void DebugLogInfo(std::string_view message) const;
-
         // clang-format off
         virtual Ptr<Swapchain>           Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo) = 0;
         virtual Ptr<ShaderModule>        Internal_CreateShaderModule(TL::Span<const uint32_t> shaderBlob) = 0;
@@ -343,8 +337,6 @@ namespace RHI
         Ptr<Limits> m_limits;
 
     private:
-        mutable Ptr<DebugCallbacks> m_debugCallbacks;
-
         TL::Vector<Handle<Buffer>> m_stagingBuffers;
     };
 } // namespace RHI

@@ -3,6 +3,8 @@
 #include "Common.hpp"
 #include "Resources.hpp"
 
+#include <TL/Log.hpp>
+
 #include <tracy/Tracy.hpp>
 
 namespace RHI::Vulkan
@@ -121,12 +123,12 @@ namespace RHI::Vulkan
 
         if (m_createInfo.minImageCount < MinImageCount || m_createInfo.minImageCount > MaxImageCount)
         {
-            context->DebugLogError("Failed to create the swapchain, invalid SwapchainCreateInfo::minImageCount.");
+            TL_LOG_INFO("Failed to create the swapchain, invalid SwapchainCreateInfo::minImageCount.");
             return VK_ERROR_UNKNOWN;
         }
         else if (m_createInfo.minImageCount < surfaceCapabilities.minImageCount || m_createInfo.minImageCount > surfaceCapabilities.maxImageCount)
         {
-            context->DebugLogError("Failed to create the swapchain, invalid SwapchainCreateInfo::minImageCount for the given window");
+            TL_LOG_INFO("Failed to create the swapchain, invalid SwapchainCreateInfo::minImageCount for the given window");
             return VK_ERROR_UNKNOWN;
         }
         else if (m_createInfo.imageSize.width < surfaceCapabilities.minImageExtent.width ||
@@ -134,7 +136,7 @@ namespace RHI::Vulkan
                  m_createInfo.imageSize.width > surfaceCapabilities.maxImageExtent.width ||
                  m_createInfo.imageSize.height > surfaceCapabilities.maxImageExtent.height)
         {
-            context->DebugLogWarn("Swapchain requested size will be clamped to fit into window's supported size range");
+            TL_LOG_WARNNING("Swapchain requested size will be clamped to fit into window's supported size range");
         }
 
         m_createInfo.imageSize.width = std::clamp(m_createInfo.imageSize.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
@@ -160,7 +162,7 @@ namespace RHI::Vulkan
 
         if (formatFound == false)
         {
-            context->DebugLogError("Failed to (re)create the swapchain with the required format");
+            TL_LOG_INFO("Failed to (re)create the swapchain with the required format");
             return VK_ERROR_FORMAT_NOT_SUPPORTED;
         }
 
@@ -200,7 +202,7 @@ namespace RHI::Vulkan
         if (presentMode == VK_PRESENT_MODE_MAX_ENUM_KHR)
         {
             // @todo: revist this message
-            context->DebugLogWarn("Failed to create swapchain with the requested present mode. Will use a fallback present mode");
+            TL_LOG_WARNNING("Failed to create swapchain with the requested present mode. Will use a fallback present mode");
             presentMode = presentModes.front();
         }
 

@@ -10,7 +10,6 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Allocator.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Callstack.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Containers.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Debug.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Handle.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Hash.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Ptr.hpp

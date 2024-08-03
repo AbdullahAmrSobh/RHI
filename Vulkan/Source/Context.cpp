@@ -1,5 +1,3 @@
-#include <TL/Assert.hpp>
-
 #include "RHI-Vulkan/Loader.hpp"
 
 #include "Barrier.hpp"
@@ -9,6 +7,9 @@
 #include "Swapchain.hpp"
 #include "Context.hpp"
 #include "Queue.hpp"
+
+#include <TL/Assert.hpp>
+#include <TL/Log.hpp>
 
 #include <tracy/Tracy.hpp>
 
@@ -35,11 +36,11 @@
 
 namespace RHI
 {
-    Ptr<Context> CreateVulkanContext(const ApplicationInfo& appInfo, Ptr<DebugCallbacks> debugCallbacks)
+    Ptr<Context> CreateVulkanContext(const ApplicationInfo& appInfo)
     {
         ZoneScoped;
 
-        auto context = CreatePtr<Vulkan::IContext>(std::move(debugCallbacks));
+        auto context = CreatePtr<Vulkan::IContext>();
         auto result = context->Init(appInfo);
         TL_ASSERT(IsSucess(result));
         return std::move(context);
@@ -107,8 +108,8 @@ namespace RHI::Vulkan
         return queueFamilyProperties;
     }
 
-    IContext::IContext(Ptr<DebugCallbacks> debugCallbacks)
-        : Context(std::move(debugCallbacks))
+    IContext::IContext()
+        : Context()
         , m_instance(VK_NULL_HANDLE)
         , m_physicalDevice(VK_NULL_HANDLE)
         , m_device(VK_NULL_HANDLE)
@@ -255,7 +256,7 @@ namespace RHI::Vulkan
         auto result = swapchain->Init(createInfo);
         if (result != VK_SUCCESS)
         {
-            DebugLogError("Failed to create swapchain object");
+            TL_LOG_ERROR("Failed to create swapchain object");
         }
         return swapchain;
     }
@@ -266,7 +267,7 @@ namespace RHI::Vulkan
         auto result = shaderModule->Init(shaderBlob);
         if (result != ResultCode::Success)
         {
-            DebugLogError("Failed to create shader module");
+            TL_LOG_ERROR("Failed to create shader module");
         }
         return shaderModule;
     }
@@ -277,7 +278,7 @@ namespace RHI::Vulkan
         auto result = fence->Init();
         if (result != ResultCode::Success)
         {
-            DebugLogError("Failed to create a fence object");
+            TL_LOG_ERROR("Failed to create a fence object");
         }
         return fence;
     }
@@ -288,7 +289,7 @@ namespace RHI::Vulkan
         auto result = commandPool->Init(flags);
         if (result != ResultCode::Success)
         {
-            DebugLogError("Failed to create a command_list_allocator object");
+            TL_LOG_ERROR("Failed to create a command_list_allocator object");
         }
         return commandPool;
     }
@@ -299,7 +300,7 @@ namespace RHI::Vulkan
         auto result = bindGroupLayout.Init(this, createInfo);
         if (IsError(result))
         {
-            DebugLogError("Failed to create bindGroupLayout");
+            TL_LOG_ERROR("Failed to create bindGroupLayout");
         }
         return m_bindGroupLayoutsOwner.Emplace(std::move(bindGroupLayout));
     }
@@ -322,7 +323,7 @@ namespace RHI::Vulkan
         auto result = bindGroup.Init(this, layoutHandle, bindlessElementsCount);
         if (IsError(result))
         {
-            DebugLogError("Failed to create bindGroup");
+            TL_LOG_ERROR("Failed to create bindGroup");
         }
         auto handle = m_bindGroupOwner.Emplace(std::move(bindGroup));
         return handle;
@@ -352,7 +353,7 @@ namespace RHI::Vulkan
         auto result = pipelineLayout.Init(this, createInfo);
         if (IsError(result))
         {
-            DebugLogError("Failed to create pipelineLayout");
+            TL_LOG_ERROR("Failed to create pipelineLayout");
         }
         auto handle = m_pipelineLayoutOwner.Emplace(std::move(pipelineLayout));
         return handle;
@@ -373,7 +374,7 @@ namespace RHI::Vulkan
         auto result = graphicsPipeline.Init(this, createInfo);
         if (IsError(result))
         {
-            DebugLogError("Failed to create graphicsPipeline");
+            TL_LOG_ERROR("Failed to create graphicsPipeline");
         }
         auto handle = m_graphicsPipelineOwner.Emplace(std::move(graphicsPipeline));
         return handle;
@@ -397,7 +398,7 @@ namespace RHI::Vulkan
         auto result = computePipeline.Init(this, createInfo);
         if (IsError(result))
         {
-            DebugLogError("Failed to create computePipeline");
+            TL_LOG_ERROR("Failed to create computePipeline");
         }
         auto handle = m_computePipelineOwner.Emplace(std::move(computePipeline));
         return handle;
@@ -421,7 +422,7 @@ namespace RHI::Vulkan
         auto result = sampler.Init(this, createInfo);
         if (IsError(result))
         {
-            DebugLogError("Failed to create sampler");
+            TL_LOG_ERROR("Failed to create sampler");
         }
         auto handle = m_samplerOwner.Emplace(std::move(sampler));
         return handle;
@@ -446,7 +447,7 @@ namespace RHI::Vulkan
         SetDebugName(image.handle, createInfo.name);
         if (IsError(result))
         {
-            DebugLogError("Failed to create image");
+            TL_LOG_ERROR("Failed to create image");
             return result;
         }
         auto handle = m_imageOwner.Emplace(std::move(image));
@@ -471,7 +472,7 @@ namespace RHI::Vulkan
         auto result = buffer.Init(this, createInfo);
         if (IsError(result))
         {
-            DebugLogError("Failed to create buffer");
+            TL_LOG_ERROR("Failed to create buffer");
             return result;
         }
         auto handle = m_bufferOwner.Emplace(std::move(buffer));
@@ -496,7 +497,7 @@ namespace RHI::Vulkan
         auto result = imageView.Init(this, createInfo);
         if (IsError(result))
         {
-            DebugLogError("Failed to create image view");
+            TL_LOG_ERROR("Failed to create image view");
         }
         auto handle = m_imageViewOwner.Emplace(std::move(imageView));
         return handle;
@@ -520,7 +521,7 @@ namespace RHI::Vulkan
         auto result = bufferView.Init(this, createInfo);
         if (IsError(result))
         {
-            DebugLogError("Failed to create buffer view");
+            TL_LOG_ERROR("Failed to create buffer view");
         }
         auto handle = m_bufferViewOwner.Emplace(std::move(bufferView));
         return handle;
@@ -730,30 +731,20 @@ namespace RHI::Vulkan
     // Interface implementation
     ////////////////////////////////////////////////////////////
 
+    // @todo: add support for a custom sink, so vulkan errors are spereated
     VkBool32 IContext::DebugMessengerCallbacks(
-        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-        VkDebugUtilsMessageTypeFlagsEXT messageTypes,
-        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-        void* pUserData)
+        [[maybe_unused]] VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+        [[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT messageTypes,
+        [[maybe_unused]] const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+        [[maybe_unused]] void* pUserData)
     {
-        (void)messageTypes;
-        auto context = (IContext*)pUserData;
-
-        if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+        switch (messageSeverity)
         {
-            context->DebugLogError(pCallbackData->pMessage);
-        }
-        else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
-        {
-            context->DebugLogWarn(pCallbackData->pMessage);
-        }
-        else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
-        {
-            context->DebugLogInfo(pCallbackData->pMessage);
-        }
-        else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
-        {
-            context->DebugLogInfo(pCallbackData->pMessage);
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: TL_LOG_ERROR(pCallbackData->pMessage);
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:    TL_LOG_WARNNING(pCallbackData->pMessage);
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: TL_LOG_INFO(pCallbackData->pMessage);
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:   TL::Logger::Debug(pCallbackData->pMessage);
+        default:                                              TL_UNREACHABLE();
         }
 
         return VK_FALSE;
@@ -806,7 +797,7 @@ namespace RHI::Vulkan
         }
         else
         {
-            DebugLogWarn("RHI Vulkan: Debug extension not present.");
+            TL_LOG_WARNNING("RHI Vulkan: Debug extension not present.");
         }
 #endif
 

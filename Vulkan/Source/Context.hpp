@@ -19,7 +19,7 @@ namespace RHI::Vulkan
     class IContext final : public Context
     {
     public:
-        IContext(Ptr<DebugCallbacks> debugCallbacks);
+        IContext();
         ~IContext();
 
         ResultCode Init(const ApplicationInfo& appInfo);
@@ -43,10 +43,6 @@ namespace RHI::Vulkan
         ICommandList* GetTransferCommand();
 
         // clang-format off
-        using                    Context::DebugLogError;
-        using                    Context::DebugLogInfo;
-        using                    Context::DebugLogWarn;
-
         Ptr<Swapchain>           Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
         Ptr<ShaderModule>        Internal_CreateShaderModule(TL::Span<const uint32_t> shaderBlob) override;
         Ptr<Fence>               Internal_CreateFence() override;

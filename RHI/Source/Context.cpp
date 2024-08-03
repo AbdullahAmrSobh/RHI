@@ -7,14 +7,14 @@
 #include <RHI/Common/Handle.hpp>
 
 #include <TL/Assert.hpp>
+#include <TL/Log.hpp>
 
 #include <tracy/Tracy.hpp>
 
 namespace RHI
 {
-    Context::Context(Ptr<DebugCallbacks> debugCallbacks)
+    Context::Context()
         : m_limits(CreatePtr<Limits>())
-        , m_debugCallbacks(std::move(debugCallbacks))
     {
     }
 
@@ -292,11 +292,11 @@ namespace RHI
         Internal_StageResourceRead(buffer, offset, size, srcBuffer, srcOffset, fence);
     }
 
-#define TRY(condition, message)       \
-    if ((condition) == false)         \
-    {                                 \
-        this->DebugLogError(message); \
-        return false;                 \
+#define TRY(condition, message)    \
+    if ((condition) == false)      \
+    {                              \
+        TL_LOG_INFO(message); \
+        return false;              \
     }
 
     bool Context::ValidateCreateInfo(const SwapchainCreateInfo& createInfo) const
@@ -351,7 +351,7 @@ namespace RHI
         }
         else
         {
-            DebugLogError("Invalid value for ImageCreateInfo::type");
+            TL_LOG_INFO("Invalid value for ImageCreateInfo::type");
             return false;
         }
 
@@ -385,33 +385,4 @@ namespace RHI
         return true;
     }
 
-    void Context::DebugLogError(std::string_view message) const
-    {
-#if RHI_DEBUG
-        if (m_debugCallbacks)
-            m_debugCallbacks->LogError(message);
-#else
-        (void)message;
-#endif
-    }
-
-    void Context::DebugLogWarn(std::string_view message) const
-    {
-#if RHI_DEBUG
-        if (m_debugCallbacks)
-            m_debugCallbacks->LogWarnning(message);
-#else
-        (void)message;
-#endif
-    }
-
-    void Context::DebugLogInfo(std::string_view message) const
-    {
-#if RHI_DEBUG
-        if (m_debugCallbacks)
-            m_debugCallbacks->LogInfo(message);
-#else
-        (void)message;
-#endif
-    }
 } // namespace RHI

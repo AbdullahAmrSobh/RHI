@@ -10,27 +10,6 @@
 
 namespace Examples
 {
-    class DebugCallbacksImpl final : public RHI::DebugCallbacks
-    {
-    public:
-        ~DebugCallbacksImpl() = default;
-
-        void LogInfo(std::string_view message) override
-        {
-            Core::LogInfo(message);
-        }
-
-        void LogWarnning(std::string_view message) override
-        {
-            Core::LogWarnning(message);
-        }
-
-        void LogError(std::string_view message) override
-        {
-            Core::LogError(message);
-        }
-    };
-
     Renderer::Renderer()
     {
     }
@@ -48,7 +27,7 @@ namespace Examples
         appInfo.applicationVersion.minor = 1;
         appInfo.engineName = "Engine name";
         appInfo.engineVersion.minor = 1;
-        m_context = RHI::CreateVulkanContext(appInfo, RHI::CreatePtr<DebugCallbacksImpl>());
+        m_context = RHI::CreateVulkanContext(appInfo);
 
         auto windowSize = window.GetWindowSize();
         RHI::SwapchainCreateInfo swapchainCI{};
