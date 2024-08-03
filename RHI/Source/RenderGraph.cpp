@@ -189,7 +189,7 @@ namespace RHI
         }
         else
         {
-            RHI_ASSERT(info.size != ImageSize3D{});
+            TL_ASSERT(info.size != ImageSize3D{});
         }
 
         auto key = HashCombine(HashAny(info), std::hash<TL::String>{}(attachment->name));

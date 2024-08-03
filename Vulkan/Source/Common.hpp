@@ -5,6 +5,8 @@
 
 #include <RHI/Common/Result.hpp>
 
+#include <TL/Assert.hpp>
+
 #include <vk_mem_alloc.h>
 
 #define TryValidateVk(result)           \
@@ -19,13 +21,13 @@ namespace RHI::Vulkan
 {
     [[maybe_unused]] inline static bool Validate(ResultCode result)
     {
-        RHI_ASSERT(IsSucess(result));
+        TL_ASSERT(IsSucess(result));
         return IsSucess(result);
     }
 
     [[maybe_unused]] inline static bool Validate(VkResult result)
     {
-        RHI_ASSERT(result == VK_SUCCESS);
+        TL_ASSERT(result == VK_SUCCESS);
         return result;
     }
 
@@ -46,7 +48,7 @@ namespace RHI::Vulkan
 
     inline static VkFormat ConvertFormat(Format format)
     {
-        RHI_ASSERT(format < Format::COUNT);
+        TL_ASSERT(format < Format::COUNT);
         switch (format)
         {
         case Format::Unknown:           return VK_FORMAT_UNDEFINED;
@@ -191,7 +193,7 @@ namespace RHI::Vulkan
         case VK_FORMAT_BC6H_SFLOAT_BLOCK:        return Format::BC6H_SFLOAT;
         case VK_FORMAT_BC7_UNORM_BLOCK:          return Format::BC7_UNORM;
         case VK_FORMAT_BC7_SRGB_BLOCK:           return Format::BC7_UNORM_SRGB;
-        default:                                 RHI_UNREACHABLE(); return Format::Unknown;
+        default:                                 TL_UNREACHABLE(); return Format::Unknown;
         }
     }
 
@@ -202,7 +204,7 @@ namespace RHI::Vulkan
         case LoadOperation::DontCare: return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         case LoadOperation::Load:     return VK_ATTACHMENT_LOAD_OP_LOAD;
         case LoadOperation::Discard:  return VK_ATTACHMENT_LOAD_OP_CLEAR;
-        default:                      RHI_UNREACHABLE(); return VK_ATTACHMENT_LOAD_OP_MAX_ENUM;
+        default:                      TL_UNREACHABLE(); return VK_ATTACHMENT_LOAD_OP_MAX_ENUM;
         }
     }
 
@@ -213,7 +215,7 @@ namespace RHI::Vulkan
         case StoreOperation::DontCare: return VK_ATTACHMENT_STORE_OP_DONT_CARE;
         case StoreOperation::Store:    return VK_ATTACHMENT_STORE_OP_STORE;
         case StoreOperation::Discard:  return VK_ATTACHMENT_STORE_OP_NONE;
-        default:                       RHI_UNREACHABLE(); return VK_ATTACHMENT_STORE_OP_MAX_ENUM;
+        default:                       TL_UNREACHABLE(); return VK_ATTACHMENT_STORE_OP_MAX_ENUM;
         }
     }
 
@@ -226,7 +228,7 @@ namespace RHI::Vulkan
         case ShaderStage::Compute: return VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
         default:
             {
-                RHI_UNREACHABLE();
+                TL_UNREACHABLE();
             }
         }
 
@@ -245,7 +247,7 @@ namespace RHI::Vulkan
         case SampleCount::Samples16: return VK_SAMPLE_COUNT_16_BIT;
         case SampleCount::Samples32: return VK_SAMPLE_COUNT_32_BIT;
         case SampleCount::Samples64: return VK_SAMPLE_COUNT_64_BIT;
-        default:                     RHI_UNREACHABLE(); return VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM;
+        default:                     TL_UNREACHABLE(); return VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM;
         }
     }
 
@@ -281,7 +283,7 @@ namespace RHI::Vulkan
         case ImageUsage::Stencil:         return VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
         case ImageUsage::CopySrc:         return VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
         case ImageUsage::CopyDst:         return VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-        default:                          RHI_UNREACHABLE(); return VK_IMAGE_USAGE_FLAG_BITS_MAX_ENUM;
+        default:                          TL_UNREACHABLE(); return VK_IMAGE_USAGE_FLAG_BITS_MAX_ENUM;
         }
     }
 
@@ -313,7 +315,7 @@ namespace RHI::Vulkan
         case ImageType::Image1D: return VK_IMAGE_TYPE_1D;
         case ImageType::Image2D: return VK_IMAGE_TYPE_2D;
         case ImageType::Image3D: return VK_IMAGE_TYPE_3D;
-        default:                 RHI_UNREACHABLE(); return VK_IMAGE_TYPE_MAX_ENUM;
+        default:                 TL_UNREACHABLE(); return VK_IMAGE_TYPE_MAX_ENUM;
         }
     }
 
@@ -325,7 +327,7 @@ namespace RHI::Vulkan
             return VK_IMAGE_ASPECT_DEPTH_BIT;
         if (imageAspect & ImageAspect::Stencil)
             return VK_IMAGE_ASPECT_STENCIL_BIT;
-        RHI_UNREACHABLE();
+        TL_UNREACHABLE();
         return VK_IMAGE_ASPECT_FLAG_BITS_MAX_ENUM;
     }
 
@@ -339,7 +341,7 @@ namespace RHI::Vulkan
         case ImageAspect::Stencil:      return VK_IMAGE_ASPECT_STENCIL_BIT;
         case ImageAspect::DepthStencil: return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
         case ImageAspect::All:          return VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-        default:                        RHI_UNREACHABLE(); return VK_IMAGE_ASPECT_FLAG_BITS_MAX_ENUM;
+        default:                        TL_UNREACHABLE(); return VK_IMAGE_ASPECT_FLAG_BITS_MAX_ENUM;
         }
     }
 
@@ -362,7 +364,7 @@ namespace RHI::Vulkan
         case ComponentSwizzle::G:        return VK_COMPONENT_SWIZZLE_G;
         case ComponentSwizzle::B:        return VK_COMPONENT_SWIZZLE_B;
         case ComponentSwizzle::A:        return VK_COMPONENT_SWIZZLE_A;
-        default:                         RHI_UNREACHABLE(); return VK_COMPONENT_SWIZZLE_IDENTITY;
+        default:                         TL_UNREACHABLE(); return VK_COMPONENT_SWIZZLE_IDENTITY;
         }
     }
 
@@ -377,7 +379,7 @@ namespace RHI::Vulkan
         case BufferUsage::Index:   return VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
         case BufferUsage::CopySrc: return VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
         case BufferUsage::CopyDst: return VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-        default:                   RHI_UNREACHABLE(); return VK_BUFFER_USAGE_FLAG_BITS_MAX_ENUM;
+        default:                   TL_UNREACHABLE(); return VK_BUFFER_USAGE_FLAG_BITS_MAX_ENUM;
         }
     }
 
@@ -406,7 +408,7 @@ namespace RHI::Vulkan
         case ShaderStage::Vertex:  return VK_SHADER_STAGE_VERTEX_BIT;
         case ShaderStage::Pixel:   return VK_SHADER_STAGE_FRAGMENT_BIT;
         case ShaderStage::Compute: return VK_SHADER_STAGE_COMPUTE_BIT;
-        default:                   RHI_UNREACHABLE(); return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
+        default:                   TL_UNREACHABLE(); return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
         }
     }
 
@@ -435,7 +437,7 @@ namespace RHI::Vulkan
         case BindingType::DynamicStorageBuffer: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
         case BindingType::BufferView:           return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
         case BindingType::StorageBufferView:    return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-        default:                                RHI_UNREACHABLE(); return VK_DESCRIPTOR_TYPE_MAX_ENUM;
+        default:                                TL_UNREACHABLE(); return VK_DESCRIPTOR_TYPE_MAX_ENUM;
         }
     }
 
@@ -445,7 +447,7 @@ namespace RHI::Vulkan
         {
         case PipelineVertexInputRate::PerInstance: return VK_VERTEX_INPUT_RATE_INSTANCE;
         case PipelineVertexInputRate::PerVertex:   return VK_VERTEX_INPUT_RATE_VERTEX;
-        default:                                   RHI_UNREACHABLE(); return VK_VERTEX_INPUT_RATE_MAX_ENUM;
+        default:                                   TL_UNREACHABLE(); return VK_VERTEX_INPUT_RATE_MAX_ENUM;
         }
     }
 
@@ -457,7 +459,7 @@ namespace RHI::Vulkan
         case PipelineRasterizerStateCullMode::FrontFace: return VK_CULL_MODE_FRONT_BIT;
         case PipelineRasterizerStateCullMode::BackFace:  return VK_CULL_MODE_BACK_BIT;
         case PipelineRasterizerStateCullMode::Discard:   return VK_CULL_MODE_FLAG_BITS_MAX_ENUM;
-        default:                                         RHI_UNREACHABLE(); return VK_CULL_MODE_FLAG_BITS_MAX_ENUM;
+        default:                                         TL_UNREACHABLE(); return VK_CULL_MODE_FLAG_BITS_MAX_ENUM;
         }
     }
 
@@ -468,7 +470,7 @@ namespace RHI::Vulkan
         case PipelineRasterizerStateFillMode::Point:    return VK_POLYGON_MODE_POINT;
         case PipelineRasterizerStateFillMode::Triangle: return VK_POLYGON_MODE_FILL;
         case PipelineRasterizerStateFillMode::Line:     return VK_POLYGON_MODE_LINE;
-        default:                                        RHI_UNREACHABLE(); return VK_POLYGON_MODE_MAX_ENUM;
+        default:                                        TL_UNREACHABLE(); return VK_POLYGON_MODE_MAX_ENUM;
         }
     }
 
@@ -479,7 +481,7 @@ namespace RHI::Vulkan
         case PipelineTopologyMode::Points:    return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
         case PipelineTopologyMode::Lines:     return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
         case PipelineTopologyMode::Triangles: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-        default:                              RHI_UNREACHABLE(); return VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
+        default:                              TL_UNREACHABLE(); return VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
         }
     }
 
@@ -489,7 +491,7 @@ namespace RHI::Vulkan
         {
         case PipelineRasterizerStateFrontFace::Clockwise:        return VK_FRONT_FACE_CLOCKWISE;
         case PipelineRasterizerStateFrontFace::CounterClockwise: return VK_FRONT_FACE_COUNTER_CLOCKWISE;
-        default:                                                 RHI_UNREACHABLE(); return VK_FRONT_FACE_MAX_ENUM;
+        default:                                                 TL_UNREACHABLE(); return VK_FRONT_FACE_MAX_ENUM;
         }
     }
 
@@ -505,7 +507,7 @@ namespace RHI::Vulkan
         case CompareOperator::Less:           return VK_COMPARE_OP_LESS;
         case CompareOperator::LessOrEqual:    return VK_COMPARE_OP_LESS_OR_EQUAL;
         case CompareOperator::Always:         return VK_COMPARE_OP_ALWAYS;
-        default:                              RHI_UNREACHABLE(); return VK_COMPARE_OP_MAX_ENUM;
+        default:                              TL_UNREACHABLE(); return VK_COMPARE_OP_MAX_ENUM;
         }
     }
 
@@ -515,7 +517,7 @@ namespace RHI::Vulkan
         {
         case SamplerFilter::Point:  return VK_FILTER_NEAREST;
         case SamplerFilter::Linear: return VK_FILTER_LINEAR;
-        default:                    RHI_UNREACHABLE(); return VK_FILTER_MAX_ENUM;
+        default:                    TL_UNREACHABLE(); return VK_FILTER_MAX_ENUM;
         }
     }
 
@@ -525,7 +527,7 @@ namespace RHI::Vulkan
         {
         case SamplerAddressMode::Repeat: return VK_SAMPLER_ADDRESS_MODE_REPEAT;
         case SamplerAddressMode::Clamp:  return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        default:                         RHI_UNREACHABLE(); return VK_SAMPLER_ADDRESS_MODE_MAX_ENUM;
+        default:                         TL_UNREACHABLE(); return VK_SAMPLER_ADDRESS_MODE_MAX_ENUM;
         }
     }
 
@@ -541,7 +543,7 @@ namespace RHI::Vulkan
         case SamplerCompareOperation::LessEq:    return VK_COMPARE_OP_LESS_OR_EQUAL;
         case SamplerCompareOperation::Greater:   return VK_COMPARE_OP_GREATER;
         case SamplerCompareOperation::GreaterEq: return VK_COMPARE_OP_GREATER_OR_EQUAL;
-        default:                                 RHI_UNREACHABLE(); return VK_COMPARE_OP_MAX_ENUM;
+        default:                                 TL_UNREACHABLE(); return VK_COMPARE_OP_MAX_ENUM;
         }
     }
 
@@ -563,7 +565,7 @@ namespace RHI::Vulkan
         case BlendFactor::OneMinusConstantColor: return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
         case BlendFactor::ConstantAlpha:         return VK_BLEND_FACTOR_CONSTANT_ALPHA;
         case BlendFactor::OneMinusConstantAlpha: return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA;
-        default:                                 RHI_UNREACHABLE(); return VK_BLEND_FACTOR_MAX_ENUM;
+        default:                                 TL_UNREACHABLE(); return VK_BLEND_FACTOR_MAX_ENUM;
         }
     }
 
@@ -576,7 +578,7 @@ namespace RHI::Vulkan
         case BlendEquation::ReverseSubtract: return VK_BLEND_OP_REVERSE_SUBTRACT;
         case BlendEquation::Min:             return VK_BLEND_OP_MIN;
         case BlendEquation::Max:             return VK_BLEND_OP_MAX;
-        default:                             RHI_UNREACHABLE(); return VK_BLEND_OP_MAX_ENUM;
+        default:                             TL_UNREACHABLE(); return VK_BLEND_OP_MAX_ENUM;
         }
     }
 
@@ -634,7 +636,7 @@ namespace RHI::Vulkan
 
     inline static VkExtent2D ConvertExtent2D(ImageSize3D size)
     {
-        RHI_ASSERT(size.depth == 0);
+        TL_ASSERT(size.depth == 0);
         return { size.width, size.height };
     }
 

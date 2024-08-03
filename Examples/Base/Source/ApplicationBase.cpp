@@ -42,7 +42,7 @@ namespace Examples
         ResultCode result;
 
         result = m_renderer->Init(*m_window);
-        RHI_ASSERT(IsSucess(result));
+        TL_ASSERT(IsSucess(result));
 
         m_scene = m_renderer->CreateScene();
         AssimpScenneLoader::LoadScene(*m_renderer, *m_scene, m_launchSettings.sceneFileLocation.c_str(), m_launchSettings.sceneSeperateTexturesDir.c_str());

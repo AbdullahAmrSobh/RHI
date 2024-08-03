@@ -100,7 +100,7 @@ namespace Examples
             if (size.width != windowSize.width || size.height != windowSize.height)
             {
                 result = m_swapchain->Recreate(size);
-                RHI_ASSERT(RHI::IsSucess(result) && "Failed to recreate swapchain on resize");
+                TL_ASSERT(RHI::IsSucess(result) && "Failed to recreate swapchain on resize");
             }
         }
 
@@ -113,7 +113,7 @@ namespace Examples
     {
         dds::Image image{};
         auto result = dds::readFile(filePath, &image);
-        RHI_ASSERT(result == dds::Success);
+        TL_ASSERT(result == dds::Success);
 
         RHI::ImageCreateInfo createInfo{};
         createInfo.size = { image.width, image.height, image.depth };

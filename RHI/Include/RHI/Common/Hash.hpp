@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RHI/Common/Assert.hpp"
+#include <TL/Assert.hpp>
 
 #include <string>
 
@@ -25,7 +25,7 @@ namespace RHI
     template<typename T>
     inline static T AlignUp(T val, T alignment)
     {
-        RHI_ASSERT(IsPow2(alignment));
+        TL_ASSERT(IsPow2(alignment));
         return (val + alignment - 1) & ~(alignment - 1);
     }
 

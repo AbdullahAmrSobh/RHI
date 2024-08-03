@@ -459,10 +459,10 @@ namespace Examples
             ResultCode result = ResultCode::Success;
 
             result = m_passGBuffer.Init(*m_context);
-            RHI_ASSERT(IsSucess(result));
+            TL_ASSERT(IsSucess(result));
 
             result = m_passLighting.Init(*m_context);
-            RHI_ASSERT(IsSucess(result));
+            TL_ASSERT(IsSucess(result));
 
             // Setup render graph
             {
@@ -471,10 +471,10 @@ namespace Examples
                 auto outputAttachment = m_renderGraph->ImportSwapchain("Swapchain-Image", *m_swapchain);
 
                 result = m_passGBuffer.Setup(*m_renderGraph);
-                RHI_ASSERT(IsSucess(result));
+                TL_ASSERT(IsSucess(result));
 
                 result = m_passLighting.Setup(*m_renderGraph, m_passGBuffer, outputAttachment);
-                RHI_ASSERT(IsSucess(result));
+                TL_ASSERT(IsSucess(result));
 
                 m_context->CompileRenderGraph(*m_renderGraph);
             }

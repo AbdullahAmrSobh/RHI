@@ -8,7 +8,6 @@ endif()
 set(HEADER_FILES
     # Common and utils
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Allocator.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Assert.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Callstack.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Containers.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Debug.hpp
@@ -55,3 +54,4 @@ target_link_libraries(RHI PUBLIC spirv-reflect-static)
 target_link_libraries(RHI PUBLIC TL)
 # target_link_libraries(RHI PUBLIC spirv-cross-reflect)
 # target_link_libraries(RHI PUBLIC spirv-cross-glsl)
+

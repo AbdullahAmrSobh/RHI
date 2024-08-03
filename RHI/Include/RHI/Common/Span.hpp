@@ -1,7 +1,8 @@
 #pragma once
 
-#include "RHI/Common/Assert.hpp"
 #include "RHI/Common/Containers.h"
+
+#include <TL/Assert.hpp>
 
 #include <cstddef>
 #include <initializer_list>
@@ -54,7 +55,7 @@ namespace TL
             : m_data(firstElement)
             , m_count(lastElement - firstElement)
         {
-            RHI_ASSERT(lastElement >= firstElement);
+            TL_ASSERT(lastElement >= firstElement);
         }
 
         constexpr Span(const std::initializer_list<ElementType>& elements) noexcept

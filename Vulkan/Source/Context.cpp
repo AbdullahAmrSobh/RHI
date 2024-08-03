@@ -1,6 +1,8 @@
-#include "Barrier.hpp"
+#include <TL/Assert.hpp>
+
 #include "RHI-Vulkan/Loader.hpp"
 
+#include "Barrier.hpp"
 #include "Common.hpp"
 #include "Resources.hpp"
 #include "CommandList.hpp"
@@ -39,7 +41,7 @@ namespace RHI
 
         auto context = CreatePtr<Vulkan::IContext>(std::move(debugCallbacks));
         auto result = context->Init(appInfo);
-        RHI_ASSERT(IsSucess(result));
+        TL_ASSERT(IsSucess(result));
         return std::move(context);
     }
 } // namespace RHI
@@ -304,7 +306,7 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyBindGroupLayout(Handle<BindGroupLayout> handle)
     {
-        RHI_ASSERT(handle != NullHandle);
+        TL_ASSERT(handle != NullHandle);
 
         m_frameContext.DeferCommand([this, handle]()
         {
@@ -328,7 +330,7 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyBindGroup(Handle<BindGroup> handle)
     {
-        RHI_ASSERT(handle != NullHandle);
+        TL_ASSERT(handle != NullHandle);
 
         m_frameContext.DeferCommand([this, handle]()
         {
@@ -358,7 +360,7 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyPipelineLayout(Handle<PipelineLayout> handle)
     {
-        RHI_ASSERT(handle != NullHandle);
+        TL_ASSERT(handle != NullHandle);
 
         auto pipelineLayout = m_pipelineLayoutOwner.Get(handle);
         pipelineLayout->Shutdown(this);
@@ -379,7 +381,7 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle)
     {
-        RHI_ASSERT(handle != NullHandle);
+        TL_ASSERT(handle != NullHandle);
 
         m_frameContext.DeferCommand([this, handle]()
         {
@@ -403,7 +405,7 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyComputePipeline(Handle<ComputePipeline> handle)
     {
-        RHI_ASSERT(handle != NullHandle);
+        TL_ASSERT(handle != NullHandle);
 
         m_frameContext.DeferCommand([this, handle]()
         {
@@ -427,7 +429,7 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroySampler(Handle<Sampler> handle)
     {
-        RHI_ASSERT(handle != NullHandle);
+        TL_ASSERT(handle != NullHandle);
 
         m_frameContext.DeferCommand([this, handle]()
         {
@@ -453,7 +455,7 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyImage(Handle<Image> handle)
     {
-        RHI_ASSERT(handle != NullHandle);
+        TL_ASSERT(handle != NullHandle);
 
         m_frameContext.DeferCommand([this, handle]()
         {
@@ -478,7 +480,7 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyBuffer(Handle<Buffer> handle)
     {
-        RHI_ASSERT(handle != NullHandle);
+        TL_ASSERT(handle != NullHandle);
 
         m_frameContext.DeferCommand([this, handle]()
         {
@@ -502,7 +504,7 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyImageView(Handle<ImageView> handle)
     {
-        RHI_ASSERT(handle != NullHandle);
+        TL_ASSERT(handle != NullHandle);
 
         m_frameContext.DeferCommand([this, handle]()
         {
@@ -526,7 +528,7 @@ namespace RHI::Vulkan
 
     void IContext::Internal_DestroyBufferView(Handle<BufferView> handle)
     {
-        RHI_ASSERT(handle != NullHandle);
+        TL_ASSERT(handle != NullHandle);
 
         m_frameContext.DeferCommand([this, handle]()
         {
@@ -930,7 +932,7 @@ namespace RHI::Vulkan
         }
         else
         {
-            RHI_UNREACHABLE();
+            TL_UNREACHABLE();
         }
 
         VkPhysicalDeviceFeatures2 features{};

@@ -1,13 +1,15 @@
 #include "DeleteQueue.hpp"
 #include "Context.hpp"
 
+#include <TL/Assert.hpp>
+
 namespace RHI::Vulkan
 {
     DeleteQueue::DeleteQueue() = default;
 
     DeleteQueue::~DeleteQueue()
     {
-        // RHI_ASSERT(m_callbacks.empty());
+        // TL_ASSERT(m_callbacks.empty());
     }
 
     void DeleteQueue::DeferCommand(std::function<void()> callback)
@@ -33,7 +35,7 @@ namespace RHI::Vulkan
     void FrameExecuteContext::SetFrameInFlightsCount(uint32_t count)
     {
         m_frameInFlightsCount = count;
-        RHI_UNREACHABLE(); // should not use it
+        TL_UNREACHABLE(); // should not use it
     }
 
     uint32_t FrameExecuteContext::GetFrameIndex() const
@@ -121,7 +123,7 @@ namespace RHI::Vulkan
     VkSemaphore FrameExecuteContext::AddImageWaitSemaphore(Handle<Image> image, VkPipelineStageFlags2 stages)
     {
         auto& frame = CurrentFrame();
-        RHI_ASSERT(frame.m_imageSignalSemaphores.find(image) == frame.m_imageSignalSemaphores.end());
+        TL_ASSERT(frame.m_imageSignalSemaphores.find(image) == frame.m_imageSignalSemaphores.end());
         auto semaphore = m_context->CreateSemaphore();
         frame.m_imageWaitSemaphores[image] = { semaphore, stages };
         return semaphore;
@@ -130,7 +132,7 @@ namespace RHI::Vulkan
     VkSemaphore FrameExecuteContext::AddImageSignalSemaphore(Handle<Image> image, VkPipelineStageFlags2 stages)
     {
         auto& frame = CurrentFrame();
-        RHI_ASSERT(frame.m_imageWaitSemaphores.find(image) == frame.m_imageWaitSemaphores.end());
+        TL_ASSERT(frame.m_imageWaitSemaphores.find(image) == frame.m_imageWaitSemaphores.end());
         auto semaphore = m_context->CreateSemaphore();
         frame.m_imageSignalSemaphores[image] = { semaphore, stages };
         return semaphore;
@@ -139,7 +141,7 @@ namespace RHI::Vulkan
     VkSemaphore FrameExecuteContext::AddBufferWaitSemaphore(Handle<Buffer> buffer, VkPipelineStageFlags2 stages)
     {
         auto& frame = CurrentFrame();
-        RHI_ASSERT(frame.m_bufferSignalSemaphores.find(buffer) == frame.m_bufferWaitSemaphores.end());
+        TL_ASSERT(frame.m_bufferSignalSemaphores.find(buffer) == frame.m_bufferWaitSemaphores.end());
         auto semaphore = m_context->CreateSemaphore();
         frame.m_bufferWaitSemaphores[buffer] = { semaphore, stages };
         return semaphore;
@@ -148,7 +150,7 @@ namespace RHI::Vulkan
     VkSemaphore FrameExecuteContext::AddBufferSignalSemaphore(Handle<Buffer> buffer, VkPipelineStageFlags2 stages)
     {
         auto& frame = CurrentFrame();
-        RHI_ASSERT(frame.m_bufferWaitSemaphores.find(buffer) == frame.m_bufferSignalSemaphores.end());
+        TL_ASSERT(frame.m_bufferWaitSemaphores.find(buffer) == frame.m_bufferSignalSemaphores.end());
         auto semaphore = m_context->CreateSemaphore();
         frame.m_bufferSignalSemaphores[buffer] = { semaphore, stages };
         return semaphore;

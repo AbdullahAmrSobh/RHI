@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RHI/Common/Assert.hpp"
+#include <TL/Assert.hpp>
 
 #include <utility>
 
@@ -57,7 +57,7 @@ namespace RHI
 
         inline T GetValue()
         {
-            RHI_ASSERT(result == ResultCode::Success);
+            TL_ASSERT(result == ResultCode::Success);
             return std::move(value);
         }
     };

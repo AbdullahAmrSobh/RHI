@@ -1,7 +1,7 @@
 #include "RHI/Format.hpp"
 #include "RHI/Resources.hpp"
 
-#include "RHI/Common/Assert.hpp"
+#include <TL/Assert.hpp>
 
 namespace RHI
 {
@@ -89,7 +89,7 @@ namespace RHI
             return k_FormatInfoLUT[0]; // UNKNOWN
 
         const FormatInfo& info = k_FormatInfoLUT[uint32_t(format)];
-        RHI_ASSERT(info.format == format);
+        TL_ASSERT(info.format == format);
         return info;
     }
 

@@ -64,18 +64,18 @@ namespace Examples
 
             auto mesh = scene.m_meshes.emplace_back(new Mesh());
 
-            RHI_ASSERT(aiMesh.HasPositions());
+            TL_ASSERT(aiMesh.HasPositions());
             {
                 mesh->m_position = renderer.CreateBufferWithData<aiVector3D>(RHI::BufferUsage::Vertex, { aiMesh.mVertices, aiMesh.mNumVertices }).GetValue();
                 mesh->elementsCount = (uint32_t)aiMesh.mNumVertices;
             }
 
-            RHI_ASSERT(aiMesh.HasNormals());
+            TL_ASSERT(aiMesh.HasNormals());
             {
                 mesh->m_normal = renderer.CreateBufferWithData<aiVector3D>(RHI::BufferUsage::Vertex, { aiMesh.mNormals, aiMesh.mNumVertices }).GetValue();
             }
 
-            RHI_ASSERT(aiMesh.HasTextureCoords(0));
+            TL_ASSERT(aiMesh.HasTextureCoords(0));
             {
                 auto texCoordData = TruncateToVector2D({ aiMesh.mTextureCoords[0], aiMesh.mNumVertices });
                 mesh->m_texCoord = renderer.CreateBufferWithData<aiVector2D>(RHI::BufferUsage::Vertex, texCoordData).GetValue();

@@ -1,9 +1,11 @@
-#include <RHI/Common/Assert.hpp>
-#include <vulkan/vulkan_core.h>
+
+#include <TL/Assert.hpp>
 
 #include "Common.hpp"
 #include "Context.hpp"
 #include "Resources.hpp"
+
+#include <vulkan/vulkan.h>
 
 namespace RHI::Vulkan
 {
@@ -229,7 +231,7 @@ namespace RHI::Vulkan
     ResultCode IImageView::Init(IContext* context, const ImageViewCreateInfo& _createInfo)
     {
         auto image = context->m_imageOwner.Get(_createInfo.image);
-        RHI_ASSERT(image);
+        TL_ASSERT(image);
 
         VkImageViewCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -242,7 +244,7 @@ namespace RHI::Vulkan
         case VK_IMAGE_TYPE_1D: createInfo.viewType = _createInfo.subresource.arrayCount == 1 ? VK_IMAGE_VIEW_TYPE_1D : VK_IMAGE_VIEW_TYPE_1D_ARRAY; break;
         case VK_IMAGE_TYPE_2D: createInfo.viewType = _createInfo.subresource.arrayCount == 1 ? VK_IMAGE_VIEW_TYPE_2D : VK_IMAGE_VIEW_TYPE_2D_ARRAY; break;
         case VK_IMAGE_TYPE_3D: createInfo.viewType = VK_IMAGE_VIEW_TYPE_3D; break;
-        default:               RHI_UNREACHABLE(); break;
+        default:               TL_UNREACHABLE(); break;
         }
 
         createInfo.format = image->format;
@@ -265,7 +267,7 @@ namespace RHI::Vulkan
     ResultCode IBufferView::Init(IContext* context, const BufferViewCreateInfo& createInfo)
     {
         auto buffer = context->m_bufferOwner.Get(createInfo.buffer);
-        RHI_ASSERT(buffer);
+        TL_ASSERT(buffer);
 
         VkBufferViewCreateInfo vkCreateInfo{};
         vkCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
@@ -398,7 +400,7 @@ namespace RHI::Vulkan
                     {
                     case BindingType::SampledImage: imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; break;
                     case BindingType::StorageImage: imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL; break;
-                    default:                              RHI_UNREACHABLE(); break;
+                    default:                              TL_UNREACHABLE(); break;
                     }
                 }
                 writeInfo.pImageInfo = data.imageInfos.data();
@@ -440,7 +442,7 @@ namespace RHI::Vulkan
                 break;
 
             default:
-                RHI_UNREACHABLE();
+                TL_UNREACHABLE();
                 break;
             }
 

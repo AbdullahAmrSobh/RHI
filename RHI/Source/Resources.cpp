@@ -3,6 +3,8 @@
 #include "RHI/Context.hpp"
 #include "RHI/Swapchain.hpp"
 
+#include <TL/Assert.hpp>
+
 #include <spirv_reflect.h>
 
 namespace RHI
@@ -10,7 +12,7 @@ namespace RHI
     inline static bool SpvCheck(SpvReflectResult result)
     {
         auto isSuccess = result == SPV_REFLECT_RESULT_SUCCESS;
-        RHI_ASSERT(isSuccess);
+        TL_ASSERT(isSuccess);
         return isSuccess;
     }
 
@@ -57,7 +59,7 @@ namespace RHI
             // case SPV_REFLECT_FORMAT_R64G64B64A64_SINT:
             // case SPV_REFLECT_FORMAT_R64G64B64A64_SFLOAT: break;
 
-        default: RHI_UNREACHABLE(); return {};
+        default: TL_UNREACHABLE(); return {};
         }
     }
 
@@ -76,7 +78,7 @@ namespace RHI
         case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: return BindingType::DynamicStorageBuffer;
         // case SPV_REFLECT_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: return ShaderBindingType;
         // case SPV_REFLECT_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR: break; return ;
-        default: RHI_UNREACHABLE(); return {};
+        default: TL_UNREACHABLE(); return {};
         }
     }
 

@@ -3,11 +3,11 @@
 #include "RHI/RenderGraph.hpp"
 #include "RHI/Resources.hpp"
 #include "RHI/Swapchain.hpp"
-
-#include "RHI/Common/Assert.hpp"
 #include "RHI/Common/Callstack.hpp"
-
 #include <RHI/Common/Handle.hpp>
+
+#include <TL/Assert.hpp>
+
 #include <tracy/Tracy.hpp>
 
 namespace RHI
@@ -51,11 +51,11 @@ namespace RHI
     {
         ZoneScoped;
 
-        RHI_ASSERT(createInfo.imageSize.width > 0 && createInfo.imageSize.height > 0);
-        RHI_ASSERT(createInfo.minImageCount >= Swapchain::MinImageCount);
-        RHI_ASSERT(createInfo.minImageCount <= Swapchain::MaxImageCount);
-        RHI_ASSERT(createInfo.imageFormat != Format::Unknown);
-        RHI_ASSERT(createInfo.imageUsage != ImageUsage::None);
+        TL_ASSERT(createInfo.imageSize.width > 0 && createInfo.imageSize.height > 0);
+        TL_ASSERT(createInfo.minImageCount >= Swapchain::MinImageCount);
+        TL_ASSERT(createInfo.minImageCount <= Swapchain::MaxImageCount);
+        TL_ASSERT(createInfo.imageFormat != Format::Unknown);
+        TL_ASSERT(createInfo.imageUsage != ImageUsage::None);
 
         return Internal_CreateSwapchain(createInfo);
     }
@@ -85,14 +85,14 @@ namespace RHI
     {
         ZoneScoped;
 
-        RHI_ASSERT(ValidateCreateInfo(createInfo));
+        TL_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreateBindGroupLayout(createInfo);
     }
 
     void Context::DestroyBindGroupLayout(Handle<BindGroupLayout> handle)
     {
         ZoneScoped;
-        RHI_ASSERT(handle != NullHandle);
+        TL_ASSERT(handle != NullHandle);
         Internal_DestroyBindGroupLayout(handle);
     }
 
@@ -106,7 +106,7 @@ namespace RHI
     void Context::DestroyBindGroup(Handle<BindGroup> handle)
     {
         ZoneScoped;
-        RHI_ASSERT(handle != NullHandle);
+        TL_ASSERT(handle != NullHandle);
         Internal_DestroyBindGroup(handle);
     }
 
@@ -121,14 +121,14 @@ namespace RHI
     {
         ZoneScoped;
 
-        RHI_ASSERT(ValidateCreateInfo(createInfo));
+        TL_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreatePipelineLayout(createInfo);
     }
 
     void Context::DestroyPipelineLayout(Handle<PipelineLayout> handle)
     {
         ZoneScoped;
-        RHI_ASSERT(handle != NullHandle);
+        TL_ASSERT(handle != NullHandle);
         Internal_DestroyPipelineLayout(handle);
     }
 
@@ -136,14 +136,14 @@ namespace RHI
     {
         ZoneScoped;
 
-        RHI_ASSERT(ValidateCreateInfo(createInfo));
+        TL_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreateGraphicsPipeline(createInfo);
     }
 
     void Context::DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle)
     {
         ZoneScoped;
-        RHI_ASSERT(handle != NullHandle);
+        TL_ASSERT(handle != NullHandle);
         Internal_DestroyGraphicsPipeline(handle);
     }
 
@@ -151,14 +151,14 @@ namespace RHI
     {
         ZoneScoped;
 
-        RHI_ASSERT(ValidateCreateInfo(createInfo));
+        TL_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreateComputePipeline(createInfo);
     }
 
     void Context::DestroyComputePipeline(Handle<ComputePipeline> handle)
     {
         ZoneScoped;
-        RHI_ASSERT(handle != NullHandle);
+        TL_ASSERT(handle != NullHandle);
         Internal_DestroyComputePipeline(handle);
     }
 
@@ -166,14 +166,14 @@ namespace RHI
     {
         ZoneScoped;
 
-        RHI_ASSERT(ValidateCreateInfo(createInfo));
+        TL_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreateSampler(createInfo);
     }
 
     void Context::DestroySampler(Handle<Sampler> handle)
     {
         ZoneScoped;
-        RHI_ASSERT(handle != NullHandle);
+        TL_ASSERT(handle != NullHandle);
         Internal_DestroySampler(handle);
     }
 
@@ -181,14 +181,14 @@ namespace RHI
     {
         ZoneScoped;
 
-        RHI_ASSERT(ValidateCreateInfo(createInfo));
+        TL_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreateImage(createInfo);
     }
 
     void Context::DestroyImage(Handle<Image> handle)
     {
         ZoneScoped;
-        RHI_ASSERT(handle != NullHandle);
+        TL_ASSERT(handle != NullHandle);
         Internal_DestroyImage(handle);
     }
 
@@ -196,14 +196,14 @@ namespace RHI
     {
         ZoneScoped;
 
-        RHI_ASSERT(ValidateCreateInfo(createInfo));
+        TL_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreateBuffer(createInfo);
     }
 
     void Context::DestroyBuffer(Handle<Buffer> handle)
     {
         ZoneScoped;
-        RHI_ASSERT(handle != NullHandle);
+        TL_ASSERT(handle != NullHandle);
         Internal_DestroyBuffer(handle);
     }
 
@@ -211,14 +211,14 @@ namespace RHI
     {
         ZoneScoped;
 
-        RHI_ASSERT(ValidateCreateInfo(createInfo));
+        TL_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreateImageView(createInfo);
     }
 
     void Context::DestroyImageView(Handle<ImageView> handle)
     {
         ZoneScoped;
-        RHI_ASSERT(handle != NullHandle);
+        TL_ASSERT(handle != NullHandle);
         Internal_DestroyImageView(handle);
     }
 
@@ -226,14 +226,14 @@ namespace RHI
     {
         ZoneScoped;
 
-        RHI_ASSERT(ValidateCreateInfo(createInfo));
+        TL_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreateBufferView(createInfo);
     }
 
     void Context::DestroyBufferView(Handle<BufferView> handle)
     {
         ZoneScoped;
-        RHI_ASSERT(handle != NullHandle);
+        TL_ASSERT(handle != NullHandle);
         Internal_DestroyBufferView(handle);
     }
 

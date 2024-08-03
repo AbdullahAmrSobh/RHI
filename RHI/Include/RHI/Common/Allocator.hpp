@@ -1,7 +1,8 @@
 #pragma once
 
 #include "RHI/Export.hpp"
-#include "RHI/Common/Assert.hpp"
+
+#include <TL/Assert.hpp>
 
 #define TRACY_HAS_CALLSTACK
 #define TRACY_CALLSTACK 20
@@ -57,7 +58,7 @@ namespace TL
     template<typename _Ty>
     constexpr void DefaultAllocator<_Ty>::deallocate(_Ty* const ptr, const size_t count)
     {
-        RHI_ASSERT(ptr != nullptr || count == 0);
+        TL_ASSERT(ptr != nullptr || count == 0);
         TracyFree(ptr);
         _aligned_free(ptr);
     }

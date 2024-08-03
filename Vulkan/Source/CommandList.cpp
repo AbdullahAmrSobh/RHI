@@ -96,7 +96,7 @@ namespace RHI::Vulkan
         VkRenderingAttachmentInfo* depthAttachment,
         VkRenderingAttachmentInfo* stencilAttachment)
     {
-        RHI_ASSERT(m_isRenderPassStarted == false); // cannot start a new render pass inside another
+        TL_ASSERT(m_isRenderPassStarted == false); // cannot start a new render pass inside another
 
         VkRenderingInfo renderingInfo{};
         renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;

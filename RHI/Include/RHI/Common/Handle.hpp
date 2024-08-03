@@ -1,8 +1,9 @@
 #pragma once
 
-#include "RHI/Common/Assert.hpp"
 #include "RHI/Common/Containers.h"
 #include "RHI/Common/Callstack.hpp"
+
+#include <TL/Assert.hpp>
 
 #include <cstdint>
 #include <type_traits>
@@ -164,7 +165,7 @@ namespace RHI
     const Resource* HandlePool<Resource>::Get(Handle<Resource> handle) const
     {
         // Check if handle is valid
-        RHI_ASSERT(handle != NullHandle);
+        TL_ASSERT(handle != NullHandle);
 
         // Extract index and generation ID from handle
         size_t   index = handle.m_rawHandle.index;
@@ -176,7 +177,7 @@ namespace RHI
             return &m_resources[index];
         }
 
-        RHI_UNREACHABLE(); // Invalid handle
+        TL_UNREACHABLE(); // Invalid handle
 
         return nullptr;
     }
@@ -185,7 +186,7 @@ namespace RHI
     Resource* HandlePool<Resource>::Get(Handle<Resource> handle)
     {
         // Check if handle is valid
-        RHI_ASSERT(handle != NullHandle);
+        TL_ASSERT(handle != NullHandle);
 
         // Extract index and generation ID from handle
         size_t   index = handle.m_rawHandle.index;
@@ -197,7 +198,7 @@ namespace RHI
             return &m_resources[index];
         }
 
-        RHI_UNREACHABLE(); // Invalid handle
+        TL_UNREACHABLE(); // Invalid handle
 
         return nullptr;
     }
@@ -231,7 +232,7 @@ namespace RHI
     void HandlePool<Resource>::Release(Handle<Resource> handle)
     {
         // Check if handle is valid
-        RHI_ASSERT(handle != NullHandle);
+        TL_ASSERT(handle != NullHandle);
 
         // Extract index and generation ID from handle
         size_t   index = handle.m_rawHandle.index;

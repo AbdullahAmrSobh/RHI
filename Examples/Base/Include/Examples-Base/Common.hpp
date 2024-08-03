@@ -55,7 +55,7 @@ struct [[nodiscard]] Result
 
     inline T GetValue()
     {
-        RHI_ASSERT(result == ResultCode::Success);
+        TL_ASSERT(result == ResultCode::Success);
         return std::move(value);
     }
 };

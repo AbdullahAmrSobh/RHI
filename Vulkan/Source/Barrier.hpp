@@ -3,6 +3,8 @@
 #include <RHI/Common/Containers.h>
 #include <RHI/RenderGraph.hpp>
 
+#include <TL/Assert.hpp>
+
 #include "Common.hpp"
 #include "Context.hpp"
 
@@ -104,7 +106,7 @@ namespace RHI::Vulkan
         case Access::Read:      return VK_ACCESS_2_HOST_READ_BIT;
         case Access::Write:     return VK_ACCESS_2_HOST_WRITE_BIT;
         case Access::ReadWrite: return VK_ACCESS_2_HOST_READ_BIT | VK_ACCESS_2_HOST_WRITE_BIT;
-        default:                RHI_UNREACHABLE(); return VK_ACCESS_2_NONE;
+        default:                TL_UNREACHABLE(); return VK_ACCESS_2_NONE;
         }
     };
 
@@ -116,7 +118,7 @@ namespace RHI::Vulkan
         case Access::Read:      return VK_ACCESS_2_TRANSFER_READ_BIT;
         case Access::Write:     return VK_ACCESS_2_TRANSFER_WRITE_BIT;
         case Access::ReadWrite: return VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT;
-        default:                RHI_UNREACHABLE(); return VK_ACCESS_2_NONE;
+        default:                TL_UNREACHABLE(); return VK_ACCESS_2_NONE;
         }
     };
 
@@ -128,7 +130,7 @@ namespace RHI::Vulkan
         case Access::Read:      return VK_ACCESS_2_MEMORY_READ_BIT;
         case Access::Write:     return VK_ACCESS_2_MEMORY_WRITE_BIT;
         case Access::ReadWrite: return VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
-        default:                RHI_UNREACHABLE(); return VK_ACCESS_2_NONE;
+        default:                TL_UNREACHABLE(); return VK_ACCESS_2_NONE;
         }
     };
 
@@ -140,7 +142,7 @@ namespace RHI::Vulkan
         case Access::Read:      return VK_ACCESS_2_SHADER_READ_BIT;
         case Access::Write:     return VK_ACCESS_2_SHADER_WRITE_BIT;
         case Access::ReadWrite: return VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
-        default:                RHI_UNREACHABLE(); return VK_ACCESS_2_NONE;
+        default:                TL_UNREACHABLE(); return VK_ACCESS_2_NONE;
         }
     }
 
@@ -152,7 +154,7 @@ namespace RHI::Vulkan
         case Access::Read:      return VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
         case Access::Write:     return VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
         case Access::ReadWrite: return VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
-        default:                RHI_UNREACHABLE(); return VK_ACCESS_2_NONE;
+        default:                TL_UNREACHABLE(); return VK_ACCESS_2_NONE;
         }
     }
 
@@ -169,7 +171,7 @@ namespace RHI::Vulkan
         case ImageUsage::DepthStencil:    return GetAccessFlagsForDepthAttachment(imageAttachment.loadStoreOperation);
         case ImageUsage::CopySrc:
         case ImageUsage::CopyDst:         return GetAccessFlagsForTransfer(imageAttachment.access);
-        default: RHI_UNREACHABLE(); return {};
+        default: TL_UNREACHABLE(); return {};
         };
     }
 
@@ -186,7 +188,7 @@ namespace RHI::Vulkan
         case ImageUsage::DepthStencil:    return VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
         case ImageUsage::CopySrc:
         case ImageUsage::CopyDst:         return VK_PIPELINE_STAGE_2_COPY_BIT;
-        default: RHI_UNREACHABLE(); return {};
+        default: TL_UNREACHABLE(); return {};
         };
     }
 
@@ -234,7 +236,7 @@ namespace RHI::Vulkan
                 {
                     return isReadOnly ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
                 }
-                RHI_UNREACHABLE();
+                TL_UNREACHABLE();
                 return VK_IMAGE_LAYOUT_GENERAL;
             }
         case ImageUsage::CopySrc: return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
@@ -371,7 +373,7 @@ namespace RHI::Vulkan
         case ImageUsage::Depth:        return CreateDepthAttachment(attachmentView, loadStoreOperations);
         case ImageUsage::Stencil:      return CreateStencilAttachment(attachmentView, loadStoreOperations);
         case ImageUsage::DepthStencil: return CreateDepthStencilAttachment(attachmentView, loadStoreOperations);
-        default:                       RHI_UNREACHABLE(); return {};
+        default:                       TL_UNREACHABLE(); return {};
         };
     }
 } // namespace RHI::Vulkan
