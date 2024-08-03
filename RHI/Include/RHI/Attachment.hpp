@@ -14,6 +14,42 @@ namespace RHI
     class Swapchain;
     class Pass;
 
+    enum class PipelineStage
+    {
+        None                          = 0 << 0,
+        TopOfPipe                     = 1 << 0,
+        DrawIndirect                  = 1 << 1,
+        VertexInput                   = 1 << 2,
+        VertexShader                  = 1 << 3,
+        TessellationControlShader     = 1 << 4,
+        TessellationEvaluationShader  = 1 << 5,
+        FragmentShader                = 1 << 6,
+        EarlyFragmentTests            = 1 << 7,
+        LateFragmentTests             = 1 << 8,
+        ColorAttachmentOutput         = 1 << 9,
+        ComputeShader                 = 1 << 10,
+        Transfer                      = 1 << 12,
+        BottomOfPipe                  = 1 << 13,
+        Host                          = 1 << 14,
+        AllGraphics                   = 1 << 15,
+        AllCommands                   = 1 << 16,
+        Copy                          = 1 << 17,
+        Resolve                       = 1 << 18,
+        Blit                          = 1 << 19,
+        Clear                         = 1 << 20,
+        IndexInput                    = 1 << 21,
+        VertexAttributeInput          = 1 << 22,
+        PreRasterizationShaders       = 1 << 23,
+        TransformFeedback             = 1 << 24,
+        ConditionalRendering          = 1 << 25,
+        FragmentShadingRateAttachment = 1 << 26,
+        AccelerationStructureBuild    = 1 << 27,
+        RayTracingShader              = 1 << 28,
+        TaskShaderExt                 = 1 << 29,
+        MeshShaderExt                 = 1 << 30,
+        AccelerationStructureCopy     = 1 << 31,
+    };
+
     enum class AttachmentType : uint8_t
     {
         None,
@@ -33,6 +69,17 @@ namespace RHI
     {
         BufferSubregion subregion;
         Format          format;
+    };
+
+    struct PassAttachment
+    {
+        Handle<Pass>         pass;
+        Flags<Access>        access;        // how will this resource be accessed
+        Flags<PipelineStage> pipelineStage; // at which stage of the pipeline, it would be accessed
+        Flags<ShaderStage>   shaderStage;   // optional shader stage (if not present will assume shader stage = All graphics or all compute)
+        BindingType          bindingType;   // optional binding element type (if not present will assume generic read/write)
+        PassAttachment*      next;          //
+        PassAttachment*      prev;          //
     };
 
     struct ImagePassAttachment
