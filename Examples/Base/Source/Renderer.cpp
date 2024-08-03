@@ -1,10 +1,11 @@
 #include "Examples-Base/Window.hpp"
 #include "Examples-Base/Scene.hpp"
 #include "Examples-Base/Renderer.hpp"
-#include "Examples-Base/Log.hpp"
 
 #include <RHI/RHI.hpp>
 #include <RHI-Vulkan/Loader.hpp>
+
+#include <TL/Log.hpp>
 
 #include "dds_image/dds.hpp"
 
@@ -115,12 +116,12 @@ namespace Examples
         };
 
         createInfo.arrayCount = image.arraySize;
-        createInfo.mipLevels = (uint32_t) image.mipmaps.size();
+        createInfo.mipLevels = (uint32_t)image.mipmaps.size();
         createInfo.usageFlags = RHI::ImageUsage::ShaderResource | RHI::ImageUsage::CopyDst;
         createInfo.sampleCount = RHI::SampleCount::Samples1;
         createInfo.type = image.dimension == dds::ResourceDimension::Texture1D ? RHI::ImageType::Image1D : (image.dimension == dds::ResourceDimension::Texture2D ? RHI::ImageType::Image2D : RHI::ImageType::Image3D);
         createInfo.name = filePath;
-        return CreateImageWithData(createInfo, TL2::Span<const uint8_t>{image.data.data(), image.data.size()}).GetValue();
+        return CreateImageWithData(createInfo, TL2::Span<const uint8_t>{ image.data.data(), image.data.size() }).GetValue();
     }
 
     Ptr<Scene> Renderer::CreateScene()

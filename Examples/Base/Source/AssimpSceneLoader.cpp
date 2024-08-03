@@ -1,11 +1,12 @@
 #include "Examples-Base/AssimpSceneLoader.hpp"
 #include "Examples-Base/Renderer.hpp"
 #include <Examples-Base/Scene.hpp>
-#include <Examples-Base/Log.hpp>
 
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+
+#include <TL/Log.hpp>
 
 namespace Examples
 {
@@ -100,14 +101,14 @@ namespace Examples
         for (uint32_t i = 0; i < aiScene->mNumMaterials; i++)
         {
             const auto& aiMaterial = *aiScene->mMaterials[i];
-            Core::LogInfo("Loading Material {}", aiMaterial.GetName().C_Str());
+            TL_LOG_INFO("Loading Material {}", aiMaterial.GetName().C_Str());
 
             MaterialIds materialProperty{};
             aiString diffusePath, normalPath;
             if (auto result = aiMaterial.GetTexture(aiTextureType_DIFFUSE, 0, &diffusePath); result == AI_SUCCESS)
             {
                 auto path = ResolvePath(sceneFileLocation, diffusePath.C_Str());
-                Core::LogInfo("\t Loading {}", path);
+                TL_LOG_INFO("\t Loading {}", path);
                 scene.images.push_back(renderer.CreateImage(path.c_str()));
                 materialProperty.diffuseID = (uint32_t)scene.images.size() - 1;
 
@@ -123,7 +124,7 @@ namespace Examples
             if (auto result = aiMaterial.GetTexture(aiTextureType_NORMALS, 0, &normalPath); result == AI_SUCCESS)
             {
                 auto path = ResolvePath(sceneFileLocation, normalPath.C_Str());
-                Core::LogInfo("\t Loading {}", path);
+                TL_LOG_INFO("\t Loading {}", path);
                 scene.images.push_back(renderer.CreateImage(path.c_str()));
                 materialProperty.normalID = (uint32_t)scene.images.size() - 1;
 

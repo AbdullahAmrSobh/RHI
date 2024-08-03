@@ -2,7 +2,8 @@
 #include "Examples-Base/Scene.hpp"
 #include <Examples-Base/FileSystem.hpp>
 #include <Examples-Base/Window.hpp>
-#include "Examples-Base/Log.hpp"
+
+#include <TL/Log.hpp>
 
 #include "ShaderInterface/Core.slang"
 
