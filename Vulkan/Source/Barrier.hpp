@@ -46,7 +46,7 @@ namespace RHI::Vulkan
     inline static constexpr BufferStageAccess PIPELINE_BUFFER_BARRIER_TRANSFER_DST = { VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT };
     inline static constexpr BufferStageAccess PIPELINE_BUFFER_BARRIER_SHADER_READ = { VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT };
 
-    inline static VkPipelineStageFlags2 GetPipelineStageFromShaderStages(Flags<ShaderStage> shadeStages)
+    inline static VkPipelineStageFlags2 GetPipelineStageFromShaderStages(TL::Flags<ShaderStage> shadeStages)
     {
         VkPipelineStageFlags2 stageFlags = {};
 

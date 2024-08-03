@@ -14,7 +14,7 @@ namespace Examples
         struct CreateInfo
         {
             RHI::Context* context;
-            RHI::TL::Vector<uint32_t> shaderBlob;
+            TL::Vector<uint32_t> shaderBlob;
             RHI::Format renderTargetFormat;
         };
 

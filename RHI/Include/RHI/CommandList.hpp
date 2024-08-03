@@ -65,7 +65,7 @@ namespace RHI
 
     struct ImageSubresourceLayers
     {
-        Flags<ImageAspect> imageAspects;
+        TL::Flags<ImageAspect> imageAspects;
         uint32_t           mipLevel;
         uint32_t           arrayBase;
         uint32_t           arrayCount;

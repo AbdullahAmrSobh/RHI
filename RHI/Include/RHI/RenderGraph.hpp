@@ -25,7 +25,7 @@ namespace RHI
     struct PassCreateInfo
     {
         const char*      name;
-        Flags<PassFlags> flags;
+        TL::Flags<PassFlags> flags;
     };
 
     class RHI_EXPORT Pass final
@@ -115,7 +115,7 @@ namespace RHI
         /// @param usage Usage flags for the image.
         /// @param stage Shader stage flags.
         /// @param access Access flags.
-        void PassUseImage(Handle<Pass> pass, Handle<ImageAttachment> attachment, const ImageViewInfo& viewInfo, ImageUsage usage, Flags<ShaderStage> stage, Access access);
+        void PassUseImage(Handle<Pass> pass, Handle<ImageAttachment> attachment, const ImageViewInfo& viewInfo, ImageUsage usage, TL::Flags<ShaderStage> stage, Access access);
 
         /// @brief Uses a buffer in a pass with view info, usage, and access.
         ///
@@ -125,7 +125,7 @@ namespace RHI
         /// @param usage Usage flags for the buffer.
         /// @param stage Shader stage flags.
         /// @param access Access flags.
-        void PassUseBuffer(Handle<Pass> pass, Handle<BufferAttachment> attachment, const BufferViewInfo& viewInfo, BufferUsage usage, Flags<ShaderStage> stage, Access access);
+        void PassUseBuffer(Handle<Pass> pass, Handle<BufferAttachment> attachment, const BufferViewInfo& viewInfo, BufferUsage usage, TL::Flags<ShaderStage> stage, Access access);
 
         /// @brief Retrieves the image from an image attachment.
         ///

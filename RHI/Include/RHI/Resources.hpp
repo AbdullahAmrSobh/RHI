@@ -3,9 +3,10 @@
 #include "RHI/Format.hpp"
 
 #include "RHI/Common/Handle.hpp"
-#include "RHI/Common/Flags.hpp"
 #include "RHI/Common/Span.hpp"
 #include "RHI/Common/Hash.hpp"
+
+#include <TL/Flags.hpp>
 
 namespace RHI
 {
@@ -67,7 +68,7 @@ namespace RHI
         Samples64 = 1 << 6,
     };
 
-    RHI_DEFINE_FLAG_OPERATORS(SampleCount);
+    TL_DEFINE_FLAG_OPERATORS(SampleCount);
 
     enum class ImageUsage
     {
@@ -83,7 +84,7 @@ namespace RHI
         Resolve         = CopyDst
     };
 
-    RHI_DEFINE_FLAG_OPERATORS(ImageUsage);
+    TL_DEFINE_FLAG_OPERATORS(ImageUsage);
 
     enum class ImageType
     {
@@ -114,7 +115,7 @@ namespace RHI
         All          = Color | DepthStencil,
     };
 
-    RHI_DEFINE_FLAG_OPERATORS(ImageAspect);
+    TL_DEFINE_FLAG_OPERATORS(ImageAspect);
 
     enum class ComponentSwizzle
     {
@@ -138,7 +139,7 @@ namespace RHI
         CopyDst = 1 << 6,
     };
 
-    RHI_DEFINE_FLAG_OPERATORS(BufferUsage);
+    TL_DEFINE_FLAG_OPERATORS(BufferUsage);
 
     enum class ShaderStage
     {
@@ -148,7 +149,7 @@ namespace RHI
         Compute = 1 << 3,
     };
 
-    RHI_DEFINE_FLAG_OPERATORS(ShaderStage);
+    TL_DEFINE_FLAG_OPERATORS(ShaderStage);
 
     enum class BindingType
     {
@@ -272,7 +273,7 @@ namespace RHI
         All   = Red | Green | Blue | Alpha,
     };
 
-    RHI_DEFINE_FLAG_OPERATORS(ColorWriteMask);
+    TL_DEFINE_FLAG_OPERATORS(ColorWriteMask);
 
     enum class MemoryAllocationFlags
     {
@@ -334,7 +335,7 @@ namespace RHI
 
     struct ImageSubresource
     {
-        Flags<ImageAspect> imageAspects;
+        TL::Flags<ImageAspect> imageAspects;
         uint32_t           mipLevel;
         uint32_t           arrayLayer;
 
@@ -343,7 +344,7 @@ namespace RHI
 
     struct ImageSubresourceRange
     {
-        Flags<ImageAspect> imageAspects;
+        TL::Flags<ImageAspect> imageAspects;
         uint32_t           mipBase;
         uint32_t           mipLevelCount;
         uint32_t           arrayBase;
@@ -370,7 +371,7 @@ namespace RHI
         BindingType        type;
         Access             access;
         uint32_t           arrayCount;
-        Flags<ShaderStage> stages;
+        TL::Flags<ShaderStage> stages;
     };
 
     struct BindGroupLayoutCreateInfo
@@ -458,7 +459,7 @@ namespace RHI
         BlendEquation         alphaBlendOp;
         BlendFactor           srcAlpha;
         BlendFactor           dstAlpha;
-        Flags<ColorWriteMask> writeMask;
+        TL::Flags<ColorWriteMask> writeMask;
 
         inline bool operator==(const ColorAttachmentBlendStateDesc& other) const { return blendEnable == other.blendEnable && colorBlendOp == other.colorBlendOp && srcColor == other.srcColor && dstColor == other.dstColor && alphaBlendOp == other.alphaBlendOp && srcAlpha == other.srcAlpha && dstAlpha == other.dstAlpha; }
     };
@@ -522,7 +523,7 @@ namespace RHI
     struct ImageCreateInfo
     {
         const char*       name;
-        Flags<ImageUsage> usageFlags;
+        TL::Flags<ImageUsage> usageFlags;
         ImageType         type;
         ImageSize3D       size;
         Format            format;
@@ -537,7 +538,7 @@ namespace RHI
     {
         const char*        name;
         MemoryType         heapType;
-        Flags<BufferUsage> usageFlags;
+        TL::Flags<BufferUsage> usageFlags;
         size_t             byteSize;
 
         inline bool operator==(const BufferCreateInfo& other) const { return usageFlags == other.usageFlags && byteSize == other.byteSize; }

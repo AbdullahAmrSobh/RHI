@@ -272,7 +272,7 @@ namespace Examples
             imageInfo.arrayCount = 1;
             imageInfo.mipLevels = 1;
 
-            // m_image = RHI::CreateImageWithData(*m_context, imageInfo, RHI::TL::Span<const uint8_t>{ pixels, size_t(width * height * 4) }).GetValue();
+            // m_image = RHI::CreateImageWithData(*m_context, imageInfo, TL::Span<const uint8_t>{ pixels, size_t(width * height * 4) }).GetValue();
             RHI::ImageViewCreateInfo viewInfo{};
             viewInfo.image = m_image;
             viewInfo.viewType = RHI::ImageViewType::View2D;
@@ -284,7 +284,7 @@ namespace Examples
 
         {
             m_bindGroup = m_context->CreateBindGroup(m_bindGroupLayout);
-            RHI::TL::Span<const RHI::BindGroupUpdateInfo> bindings{
+            TL::Span<const RHI::BindGroupUpdateInfo> bindings{
                 RHI::BindGroupUpdateInfo(0, 0, m_uniformBuffer),
                 RHI::BindGroupUpdateInfo(1, 0, m_sampler),
                 RHI::BindGroupUpdateInfo(2, 0, m_imageView)

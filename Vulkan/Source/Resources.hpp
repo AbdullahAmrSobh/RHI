@@ -53,7 +53,7 @@ namespace RHI::Vulkan
         VkSampleCountFlagBits samples;
         VkImageUsageFlags usage;
 
-        Flags<ImageAspect> availableAspects;
+        TL::Flags<ImageAspect> availableAspects;
 
         ResultCode Init(IContext* context, const ImageCreateInfo& createInfo);
         ResultCode Init(IContext* context, VkImage image, const VkSwapchainCreateInfoKHR& swapchainCreateInfo);

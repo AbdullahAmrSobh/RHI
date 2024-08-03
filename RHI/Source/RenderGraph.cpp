@@ -91,7 +91,7 @@ namespace RHI
         return handle;
     }
 
-    void RenderGraph::PassUseImage(Handle<Pass> _pass, Handle<ImageAttachment> _attachment, const ImageViewInfo& viewInfo, ImageUsage usage, Flags<ShaderStage> stages, Access access)
+    void RenderGraph::PassUseImage(Handle<Pass> _pass, Handle<ImageAttachment> _attachment, const ImageViewInfo& viewInfo, ImageUsage usage, TL::Flags<ShaderStage> stages, Access access)
     {
         auto pass = m_passPool.Get(_pass);
         auto attachment = m_imageAttachmentPool.Get(_attachment);
@@ -135,7 +135,7 @@ namespace RHI
         }
     }
 
-    void RenderGraph::PassUseBuffer(Handle<Pass> _pass, Handle<BufferAttachment> _attachment, const BufferViewInfo& viewInfo, BufferUsage usage, Flags<ShaderStage> stages, Access access)
+    void RenderGraph::PassUseBuffer(Handle<Pass> _pass, Handle<BufferAttachment> _attachment, const BufferViewInfo& viewInfo, BufferUsage usage, TL::Flags<ShaderStage> stages, Access access)
     {
         auto pass = m_passPool.Get(_pass);
         auto attachment = m_bufferAttachmentPool.Get(_attachment);

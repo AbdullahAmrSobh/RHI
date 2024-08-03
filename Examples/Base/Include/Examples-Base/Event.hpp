@@ -62,7 +62,7 @@ namespace Examples
         MouseButton = 1 << 4
     };
 
-    RHI_DEFINE_FLAG_OPERATORS(EventCategory);
+    TL_DEFINE_FLAG_OPERATORS(EventCategory);
 
     enum class KeyCode // From glfw3.h
     {

@@ -111,9 +111,9 @@ namespace RHI
         return info.type;
     }
 
-    Flags<ImageAspect> GetFormatAspects(Format format)
+    TL::Flags<ImageAspect> GetFormatAspects(Format format)
     {
-        Flags<ImageAspect> flags;
+        TL::Flags<ImageAspect> flags;
 
         auto formatInfo = GetFormatInfo(format);
 

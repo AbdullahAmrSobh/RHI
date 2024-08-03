@@ -2,7 +2,7 @@
 
 #include "RHI/Export.hpp"
 
-#include "RHI/Common/Flags.hpp"
+#include <TL/Flags.hpp>
 
 #include <cstdint>
 
@@ -120,6 +120,6 @@ namespace RHI
 
     RHI_EXPORT FormatType GetFormatType(Format format);
 
-    RHI_EXPORT Flags<ImageAspect> GetFormatAspects(Format format);
+    RHI_EXPORT TL::Flags<ImageAspect> GetFormatAspects(Format format);
 
 } // namespace RHI

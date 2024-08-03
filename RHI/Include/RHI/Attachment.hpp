@@ -1,11 +1,12 @@
 #pragma once
 
 #include <RHI/Common/Handle.hpp>
-#include <RHI/Common/Flags.hpp>
 #include <RHI/Common/Ptr.hpp>
 #include <RHI/Common/Containers.h>
 #include <RHI/Definitions.hpp>
 #include <RHI/Resources.hpp>
+
+#include <TL/Flags.hpp>
 
 #include <cstdint>
 
@@ -74,9 +75,9 @@ namespace RHI
     struct PassAttachment
     {
         Handle<Pass>         pass;
-        Flags<Access>        access;        // how will this resource be accessed
-        Flags<PipelineStage> pipelineStage; // at which stage of the pipeline, it would be accessed
-        Flags<ShaderStage>   shaderStage;   // optional shader stage (if not present will assume shader stage = All graphics or all compute)
+        TL::Flags<Access>        access;        // how will this resource be accessed
+        TL::Flags<PipelineStage> pipelineStage; // at which stage of the pipeline, it would be accessed
+        TL::Flags<ShaderStage>   shaderStage;   // optional shader stage (if not present will assume shader stage = All graphics or all compute)
         BindingType          bindingType;   // optional binding element type (if not present will assume generic read/write)
         PassAttachment*      next;          //
         PassAttachment*      prev;          //
@@ -88,7 +89,7 @@ namespace RHI
         Handle<struct ImageAttachment> attachment;
         ImageUsage                     usage;
         Access                         access;
-        Flags<ShaderStage>             stages;
+        TL::Flags<ShaderStage>             stages;
         ImageViewInfo                  viewInfo;
         ImagePassAttachment*           next;
         ImagePassAttachment*           prev;
@@ -101,7 +102,7 @@ namespace RHI
         Handle<struct BufferAttachment> attachment;
         BufferUsage                     usage;
         Access                          access;
-        Flags<ShaderStage>              stages;
+        TL::Flags<ShaderStage>              stages;
         BufferViewInfo                  viewInfo;
         BufferPassAttachment*           next;
         BufferPassAttachment*           prev;

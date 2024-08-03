@@ -108,7 +108,7 @@ namespace RHI
         return inputAssmblerStateDesc;
     }
 
-    inline static TL::Vector<Handle<BindGroupLayout>> GetBindGroupLayouts(RHI::Context& context, SpvReflectShaderModule module, Flags<ShaderStage> stages)
+    inline static TL::Vector<Handle<BindGroupLayout>> GetBindGroupLayouts(RHI::Context& context, SpvReflectShaderModule module, TL::Flags<ShaderStage> stages)
     {
         TL::Vector<Handle<BindGroupLayout>> layouts;
 
@@ -138,7 +138,7 @@ namespace RHI
         return layouts;
     }
 
-    inline static ShaderModuleReflectionData BuildReflectionData(RHI::Context* context, TL::Span<const uint32_t> spirv, Flags<ShaderStage> stages)
+    inline static ShaderModuleReflectionData BuildReflectionData(RHI::Context* context, TL::Span<const uint32_t> spirv, TL::Flags<ShaderStage> stages)
     {
         SpvReflectShaderModule module;
         SpvCheck(spvReflectCreateShaderModule(spirv.size_bytes(), spirv.data(), &module));
@@ -164,7 +164,7 @@ namespace RHI
 
     ShaderModuleReflectionData ShaderModule::GetReflectionData(const ShaderModuleEntryPointNames& request) const
     {
-        Flags stages = request.csName ? ShaderStage::Compute : ShaderStage::Vertex | ShaderStage::Pixel;
+        TL::Flags stages = request.csName ? ShaderStage::Compute : ShaderStage::Vertex | ShaderStage::Pixel;
         return BuildReflectionData(m_context, TL::Span<const uint32_t>{ m_spirv.data(), m_spirv.size() }, stages);
     }
 

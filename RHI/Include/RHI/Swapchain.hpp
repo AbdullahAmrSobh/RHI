@@ -32,7 +32,7 @@ namespace RHI
     {
         const char*          name;
         ImageSize2D          imageSize;     // The size of the images in the swapchian.
-        Flags<ImageUsage>    imageUsage;    // Image usage flags applied to all created images.
+        TL::Flags<ImageUsage>    imageUsage;    // Image usage flags applied to all created images.
         Format               imageFormat;   // The format of created swapchain image.
         uint32_t             minImageCount; // The numer of back buffer images in the swapchain.
         SwapchainPresentMode presentMode;

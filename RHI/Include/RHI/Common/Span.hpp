@@ -8,7 +8,7 @@
 #include <type_traits>
 #include <vector>
 
-namespace RHI::TL
+namespace TL
 {
     template<typename ElementType>
     class Span
@@ -144,4 +144,4 @@ namespace RHI::TL
     {
         return Span<const uint8_t>((uint8_t*)t.data(), t.size_bytes());
     }
-} // namespace RHI::TL
+} // namespace TL

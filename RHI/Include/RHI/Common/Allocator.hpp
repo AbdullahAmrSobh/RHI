@@ -10,7 +10,7 @@
 #include <cstddef>
 #include <stdlib.h>
 
-namespace RHI::TL
+namespace TL
 {
     template<typename _Ty>
     struct DefaultAllocator
@@ -61,4 +61,4 @@ namespace RHI::TL
         TracyFree(ptr);
         _aligned_free(ptr);
     }
-} // namespace RHI::TL
+} // namespace TL

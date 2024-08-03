@@ -11,7 +11,7 @@
 
 #include <tracy/Tracy.hpp>
 
-namespace RHI::TL
+namespace TL
 {
     template<typename T>
     using Vector = std::vector<T, DefaultAllocator<T>>;
@@ -36,4 +36,4 @@ namespace RHI::TL
     using U8string  = std::basic_string<char8_t, std::char_traits<char8_t>, DefaultAllocator<char8_t>>;
     using U16string = std::basic_string<char16_t, std::char_traits<char16_t>, DefaultAllocator<char16_t>>;
     using U32string = std::basic_string<char32_t, std::char_traits<char32_t>, DefaultAllocator<char32_t>>;
-} // namespace RHI::TL
+} // namespace TL

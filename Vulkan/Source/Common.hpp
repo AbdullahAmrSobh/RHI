@@ -249,7 +249,7 @@ namespace RHI::Vulkan
         }
     }
 
-    inline static VkSampleCountFlags ConvertSampleCountFlags(Flags<SampleCount> sampleCountFlags)
+    inline static VkSampleCountFlags ConvertSampleCountFlags(TL::Flags<SampleCount> sampleCountFlags)
     {
         VkSampleCountFlags result = 0;
         if (sampleCountFlags & SampleCount::Samples1)
@@ -285,7 +285,7 @@ namespace RHI::Vulkan
         }
     }
 
-    inline static VkImageUsageFlags ConvertImageUsageFlags(Flags<ImageUsage> imageUsageFlags)
+    inline static VkImageUsageFlags ConvertImageUsageFlags(TL::Flags<ImageUsage> imageUsageFlags)
     {
         VkImageUsageFlags result = 0;
         if (imageUsageFlags & ImageUsage::ShaderResource)
@@ -317,7 +317,7 @@ namespace RHI::Vulkan
         }
     }
 
-    inline static VkImageAspectFlagBits ConvertImageAspect(Flags<ImageAspect> imageAspect)
+    inline static VkImageAspectFlagBits ConvertImageAspect(TL::Flags<ImageAspect> imageAspect)
     {
         if (imageAspect & ImageAspect::Color)
             return VK_IMAGE_ASPECT_COLOR_BIT;
@@ -381,7 +381,7 @@ namespace RHI::Vulkan
         }
     }
 
-    inline static VkBufferUsageFlags ConvertBufferUsageFlags(Flags<BufferUsage> bufferUsageFlags)
+    inline static VkBufferUsageFlags ConvertBufferUsageFlags(TL::Flags<BufferUsage> bufferUsageFlags)
     {
         VkBufferUsageFlags result = 0;
         if (bufferUsageFlags & BufferUsage::Storage)
@@ -410,7 +410,7 @@ namespace RHI::Vulkan
         }
     }
 
-    inline static VkShaderStageFlags ConvertShaderStage(Flags<ShaderStage> shaderStageFlags)
+    inline static VkShaderStageFlags ConvertShaderStage(TL::Flags<ShaderStage> shaderStageFlags)
     {
         VkShaderStageFlags result = 0;
         if (shaderStageFlags & ShaderStage::Vertex)
@@ -580,7 +580,7 @@ namespace RHI::Vulkan
         }
     }
 
-    inline static VkCommandPoolCreateFlags ConvertCommandPoolFlags(Flags<CommandPoolFlags> flags)
+    inline static VkCommandPoolCreateFlags ConvertCommandPoolFlags(TL::Flags<CommandPoolFlags> flags)
     {
         VkCommandPoolCreateFlags result{};
         if (flags & CommandPoolFlags::Transient)
