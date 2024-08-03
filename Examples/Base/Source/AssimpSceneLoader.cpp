@@ -21,9 +21,9 @@ namespace Examples
         return result;
     }
 
-    inline static TL2::Vector<aiVector2D> TruncateToVector2D(TL2::Span<const aiVector3D> values)
+    inline static TL::Vector<aiVector2D> TruncateToVector2D(TL::Span<const aiVector3D> values)
     {
-        TL2::Vector<aiVector2D> result;
+        TL::Vector<aiVector2D> result;
         result.resize(values.size());
         for (uint32_t i = 0; i < values.size(); i++)
         {
@@ -44,7 +44,7 @@ namespace Examples
         }
     }
 
-    inline static TL2::String ResolvePath(std::filesystem::path scenePath, TL2::String subPath)
+    inline static TL::String ResolvePath(std::filesystem::path scenePath, TL::String subPath)
     {
         auto fullPath = scenePath.parent_path() / subPath;
         fullPath.replace_extension(".dds");
@@ -84,7 +84,7 @@ namespace Examples
 
             if (aiMesh.HasFaces())
             {
-                TL2::Vector<uint32_t> indices;
+                TL::Vector<uint32_t> indices;
                 indices.reserve(aiMesh.mNumFaces * 3);
                 for (uint32_t j = 0; j < aiMesh.mNumFaces; j++)
                 {

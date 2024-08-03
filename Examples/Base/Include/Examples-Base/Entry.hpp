@@ -5,7 +5,7 @@
 namespace Examples
 {
     template<typename AppType>
-    inline int Entry(TL2::Span<const char*> args)
+    inline int Entry(TL::Span<const char*> args)
     {
         AppType app{};
 

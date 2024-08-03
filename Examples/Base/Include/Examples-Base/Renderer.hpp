@@ -26,10 +26,10 @@ namespace Examples
         void Render(const Scene& scene);
 
         template<typename T>
-        RHI::Result<Handle<RHI::Image>> CreateImageWithData(const RHI::ImageCreateInfo& createInfo, TL2::Span<const T> content);
+        RHI::Result<Handle<RHI::Image>> CreateImageWithData(const RHI::ImageCreateInfo& createInfo, TL::Span<const T> content);
 
         template<typename T>
-        RHI::Result<Handle<RHI::Buffer>> CreateBufferWithData(Flags<RHI::BufferUsage> usageFlags, TL2::Span<const T> content);
+        RHI::Result<Handle<RHI::Buffer>> CreateBufferWithData(Flags<RHI::BufferUsage> usageFlags, TL::Span<const T> content);
 
         Handle<RHI::Image> CreateImage(const char* filePath);
 
@@ -53,7 +53,7 @@ namespace Examples
     };
 
     template<typename T>
-    inline RHI::Result<Handle<RHI::Image>> Renderer::CreateImageWithData(const RHI::ImageCreateInfo& createInfo, TL2::Span<const T> content)
+    inline RHI::Result<Handle<RHI::Image>> Renderer::CreateImageWithData(const RHI::ImageCreateInfo& createInfo, TL::Span<const T> content)
     {
         auto [handle, result] = m_context->CreateImage(createInfo);
 
@@ -73,7 +73,7 @@ namespace Examples
     }
 
     template<typename T>
-    inline RHI::Result<Handle<RHI::Buffer>> Renderer::CreateBufferWithData(Flags<RHI::BufferUsage> usageFlags, TL2::Span<const T> content)
+    inline RHI::Result<Handle<RHI::Buffer>> Renderer::CreateBufferWithData(Flags<RHI::BufferUsage> usageFlags, TL::Span<const T> content)
     {
         RHI::BufferCreateInfo createInfo{};
         createInfo.byteSize = content.size_bytes();

@@ -85,7 +85,7 @@ namespace Examples
 
     private:
         /// @brief The name of the window
-        TL2::String m_name;
+        TL::String m_name;
 
         /// @brief The current size of the window
         Size m_currentSize;

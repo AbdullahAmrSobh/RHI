@@ -2,8 +2,6 @@
 
 #include "RHI/RHI.hpp"
 
-namespace TL2 = TL;
-
 template<typename T> using Handle = RHI::Handle<T>;
 template<typename T> using Flags  = TL::Flags<T>;
 

@@ -121,7 +121,7 @@ namespace Examples
         createInfo.sampleCount = RHI::SampleCount::Samples1;
         createInfo.type = image.dimension == dds::ResourceDimension::Texture1D ? RHI::ImageType::Image1D : (image.dimension == dds::ResourceDimension::Texture2D ? RHI::ImageType::Image2D : RHI::ImageType::Image3D);
         createInfo.name = filePath;
-        return CreateImageWithData(createInfo, TL2::Span<const uint8_t>{ image.data.data(), image.data.size() }).GetValue();
+        return CreateImageWithData(createInfo, TL::Span<const uint8_t>{ image.data.data(), image.data.size() }).GetValue();
     }
 
    TL::Ptr<Scene> Renderer::CreateScene()
