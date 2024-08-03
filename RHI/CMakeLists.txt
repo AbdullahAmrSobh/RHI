@@ -12,7 +12,6 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Callstack.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Containers.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Debug.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Flags.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Handle.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Hash.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Ptr.hpp
@@ -53,5 +52,6 @@ aams_add_target(
 target_include_directories(RHI SYSTEM PUBLIC "${CMAKE_SOURCE_DIR}/tracy/public")
 
 target_link_libraries(RHI PUBLIC spirv-reflect-static)
+target_link_libraries(RHI PUBLIC TL)
 # target_link_libraries(RHI PUBLIC spirv-cross-reflect)
 # target_link_libraries(RHI PUBLIC spirv-cross-glsl)
