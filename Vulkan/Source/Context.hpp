@@ -44,10 +44,10 @@ namespace RHI::Vulkan
         ICommandList* GetTransferCommand();
 
         // clang-format off
-        Ptr<Swapchain>           Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
-        Ptr<ShaderModule>        Internal_CreateShaderModule(TL::Span<const uint32_t> shaderBlob) override;
-        Ptr<Fence>               Internal_CreateFence() override;
-        Ptr<CommandPool>         Internal_CreateCommandPool(CommandPoolFlags flags) override;
+       TL::Ptr<Swapchain>           Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
+       TL::Ptr<ShaderModule>        Internal_CreateShaderModule(TL::Span<const uint32_t> shaderBlob) override;
+       TL::Ptr<Fence>               Internal_CreateFence() override;
+       TL::Ptr<CommandPool>         Internal_CreateCommandPool(CommandPoolFlags flags) override;
         Handle<BindGroupLayout>  Internal_CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) override;
         void                     Internal_DestroyBindGroupLayout(Handle<BindGroupLayout> handle) override;
         Handle<BindGroup>        Internal_CreateBindGroup(Handle<BindGroupLayout> handle, uint32_t bindlessElementsCount) override;
@@ -122,8 +122,8 @@ namespace RHI::Vulkan
 
         FrameExecuteContext m_frameContext;
 
-        Ptr<BindGroupAllocator> m_bindGroupAllocator;
-        Ptr<ICommandPool> m_commandPool;
+       TL::Ptr<BindGroupAllocator> m_bindGroupAllocator;
+       TL::Ptr<ICommandPool> m_commandPool;
 
         HandlePool<IImage> m_imageOwner;
         HandlePool<IBuffer> m_bufferOwner;

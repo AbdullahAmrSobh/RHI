@@ -336,8 +336,8 @@ namespace RHI
     struct ImageSubresource
     {
         TL::Flags<ImageAspect> imageAspects;
-        uint32_t           mipLevel;
-        uint32_t           arrayLayer;
+        uint32_t               mipLevel;
+        uint32_t               arrayLayer;
 
         inline bool operator==(const ImageSubresource& other) const { return imageAspects == other.imageAspects && mipLevel == other.mipLevel && arrayLayer == other.arrayLayer; }
     };
@@ -345,10 +345,10 @@ namespace RHI
     struct ImageSubresourceRange
     {
         TL::Flags<ImageAspect> imageAspects;
-        uint32_t           mipBase;
-        uint32_t           mipLevelCount;
-        uint32_t           arrayBase;
-        uint32_t           arrayCount;
+        uint32_t               mipBase;
+        uint32_t               mipLevelCount;
+        uint32_t               arrayBase;
+        uint32_t               arrayCount;
 
         inline bool operator==(const ImageSubresourceRange& other) const { return imageAspects == other.imageAspects && mipBase == other.mipBase && mipLevelCount == other.mipLevelCount && arrayBase == other.arrayBase && arrayCount == other.arrayCount; }
     };
@@ -368,9 +368,9 @@ namespace RHI
     {
         inline static constexpr uint32_t VariableArraySize = UINT32_MAX;
 
-        BindingType        type;
-        Access             access;
-        uint32_t           arrayCount;
+        BindingType            type;
+        Access                 access;
+        uint32_t               arrayCount;
         TL::Flags<ShaderStage> stages;
     };
 
@@ -452,13 +452,13 @@ namespace RHI
 
     struct ColorAttachmentBlendStateDesc
     {
-        bool                  blendEnable;
-        BlendEquation         colorBlendOp;
-        BlendFactor           srcColor;
-        BlendFactor           dstColor;
-        BlendEquation         alphaBlendOp;
-        BlendFactor           srcAlpha;
-        BlendFactor           dstAlpha;
+        bool                      blendEnable;
+        BlendEquation             colorBlendOp;
+        BlendFactor               srcColor;
+        BlendFactor               dstColor;
+        BlendEquation             alphaBlendOp;
+        BlendFactor               srcAlpha;
+        BlendFactor               dstAlpha;
         TL::Flags<ColorWriteMask> writeMask;
 
         inline bool operator==(const ColorAttachmentBlendStateDesc& other) const { return blendEnable == other.blendEnable && colorBlendOp == other.colorBlendOp && srcColor == other.srcColor && dstColor == other.dstColor && alphaBlendOp == other.alphaBlendOp && srcAlpha == other.srcAlpha && dstAlpha == other.dstAlpha; }
@@ -522,24 +522,24 @@ namespace RHI
 
     struct ImageCreateInfo
     {
-        const char*       name;
+        const char*           name;
         TL::Flags<ImageUsage> usageFlags;
-        ImageType         type;
-        ImageSize3D       size;
-        Format            format;
-        SampleCount       sampleCount;
-        uint32_t          mipLevels;
-        uint32_t          arrayCount;
+        ImageType             type;
+        ImageSize3D           size;
+        Format                format;
+        SampleCount           sampleCount;
+        uint32_t              mipLevels;
+        uint32_t              arrayCount;
 
         inline bool operator==(const ImageCreateInfo& other) const { return usageFlags == other.usageFlags && type == other.type && size == other.size && format == other.format && mipLevels == other.mipLevels && arrayCount == other.arrayCount; }
     };
 
     struct BufferCreateInfo
     {
-        const char*        name;
-        MemoryType         heapType;
+        const char*            name;
+        MemoryType             heapType;
         TL::Flags<BufferUsage> usageFlags;
-        size_t             byteSize;
+        size_t                 byteSize;
 
         inline bool operator==(const BufferCreateInfo& other) const { return usageFlags == other.usageFlags && byteSize == other.byteSize; }
     };

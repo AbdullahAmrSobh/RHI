@@ -24,7 +24,7 @@ namespace RHI
 
     struct PassCreateInfo
     {
-        const char*      name;
+        const char*          name;
         TL::Flags<PassFlags> flags;
     };
 

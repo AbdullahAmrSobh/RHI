@@ -1,7 +1,6 @@
 #pragma once
 
 #include "RHI/Export.hpp"
-#include "RHI/Common/Ptr.hpp"
 #include "RHI/Common/Handle.hpp"
 #include "RHI/Common/Result.hpp"
 #include "RHI/Resources.hpp"
@@ -10,6 +9,7 @@
 #include "RHI/CommandList.hpp"
 
 #include <TL/Span.hpp>
+#include <TL/UniquePtr.hpp>
 
 #include <functional>
 
@@ -82,7 +82,7 @@ namespace RHI
         /// @brief Creates a new render graph
         ///
         /// @return Pointer to the newly created RenderGraph
-        TL_NODISCARD Ptr<RenderGraph> CreateRenderGraph();
+        TL_NODISCARD TL::Ptr<RenderGraph> CreateRenderGraph();
 
         /// @brief Compiles the given render graph
         ///
@@ -99,23 +99,23 @@ namespace RHI
         ///
         /// @param createInfo The creation information for the swapchain
         /// @return Pointer to the newly created Swapchain
-        TL_NODISCARD Ptr<Swapchain> CreateSwapchain(const SwapchainCreateInfo& createInfo);
+        TL_NODISCARD TL::Ptr<Swapchain> CreateSwapchain(const SwapchainCreateInfo& createInfo);
 
         /// @brief Creates a new shader module from the provided shader binary
         ///
         /// @param shaderBlob The shader binary data
         /// @return Pointer to the newly created ShaderModule
-        TL_NODISCARD Ptr<ShaderModule> CreateShaderModule(TL::Span<const uint32_t> shaderBlob);
+        TL_NODISCARD TL::Ptr<ShaderModule> CreateShaderModule(TL::Span<const uint32_t> shaderBlob);
 
         /// @brief Creates a new fence
         ///
         /// @return Pointer to the newly created Fence
-        TL_NODISCARD Ptr<Fence> CreateFence();
+        TL_NODISCARD TL::Ptr<Fence> CreateFence();
 
         /// @brief Creates a new command encoder
         ///
         /// @return Pointer to the newly created CommandEncoder
-        TL_NODISCARD Ptr<CommandPool> CreateCommandPool(CommandPoolFlags flags);
+        TL_NODISCARD TL::Ptr<CommandPool> CreateCommandPool(CommandPoolFlags flags);
 
         /// @brief Creates a new bind group layout
         ///
@@ -299,10 +299,10 @@ namespace RHI
 
     protected:
         // clang-format off
-        virtual Ptr<Swapchain>           Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo) = 0;
-        virtual Ptr<ShaderModule>        Internal_CreateShaderModule(TL::Span<const uint32_t> shaderBlob) = 0;
-        virtual Ptr<Fence>               Internal_CreateFence() = 0;
-        virtual Ptr<CommandPool>         Internal_CreateCommandPool(CommandPoolFlags flags) = 0;
+        virtual TL::Ptr<Swapchain>           Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo) = 0;
+        virtual TL::Ptr<ShaderModule>        Internal_CreateShaderModule(TL::Span<const uint32_t> shaderBlob) = 0;
+        virtual TL::Ptr<Fence>               Internal_CreateFence() = 0;
+        virtual TL::Ptr<CommandPool>         Internal_CreateCommandPool(CommandPoolFlags flags) = 0;
         virtual Handle<BindGroupLayout>  Internal_CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) = 0;
         virtual void                     Internal_DestroyBindGroupLayout(Handle<BindGroupLayout> handle) = 0;
         virtual Handle<BindGroup>        Internal_CreateBindGroup(Handle<BindGroupLayout> handle, uint32_t bindlessElementsCount) = 0;
@@ -334,7 +334,7 @@ namespace RHI
         // clang-format on
 
     protected:
-        Ptr<Limits> m_limits;
+        TL::Ptr<Limits> m_limits;
 
     private:
         TL::Vector<Handle<Buffer>> m_stagingBuffers;

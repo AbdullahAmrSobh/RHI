@@ -33,7 +33,7 @@ namespace Examples
 
         Handle<RHI::Image> CreateImage(const char* filePath);
 
-        Ptr<Scene> CreateScene();
+       TL::Ptr<Scene> CreateScene();
 
         virtual ResultCode OnInit() = 0;
 
@@ -44,12 +44,12 @@ namespace Examples
     // protected:
         const Window* m_window;
 
-        Ptr<RHI::Context> m_context;
-        Ptr<RHI::Swapchain> m_swapchain;
-        Ptr<RHI::CommandPool> m_commandPool[2];
-        Ptr<RHI::Fence> m_frameFence[2];
+       TL::Ptr<RHI::Context> m_context;
+       TL::Ptr<RHI::Swapchain> m_swapchain;
+       TL::Ptr<RHI::CommandPool> m_commandPool[2];
+       TL::Ptr<RHI::Fence> m_frameFence[2];
 
-        // Ptr<>
+        //TL::Ptr<>
     };
 
     template<typename T>

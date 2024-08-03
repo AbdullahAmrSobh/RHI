@@ -5,7 +5,6 @@
 namespace TL2 = TL;
 
 template<typename T> using Handle = RHI::Handle<T>;
-template<typename T> using Ptr    = RHI::Ptr<T>;
 template<typename T> using Flags  = TL::Flags<T>;
 
 enum class ResultCode

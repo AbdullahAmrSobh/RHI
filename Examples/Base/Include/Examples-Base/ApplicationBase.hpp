@@ -40,10 +40,10 @@ namespace Examples
         virtual void OnEvent(Event& event) = 0;
 
     protected:
-        Ptr<Window> m_window;
+        TL::Ptr<Window> m_window;
 
-        Ptr<Renderer> m_renderer;
+        TL::Ptr<Renderer> m_renderer;
 
-        Ptr<Scene> m_scene;
+        TL::Ptr<Scene> m_scene;
     };
 } // namespace Examples

@@ -30,12 +30,12 @@ namespace RHI
     /// @brief Structure specifying the parameters of the swapchain.
     struct SwapchainCreateInfo
     {
-        const char*          name;
-        ImageSize2D          imageSize;     // The size of the images in the swapchian.
-        TL::Flags<ImageUsage>    imageUsage;    // Image usage flags applied to all created images.
-        Format               imageFormat;   // The format of created swapchain image.
-        uint32_t             minImageCount; // The numer of back buffer images in the swapchain.
-        SwapchainPresentMode presentMode;
+        const char*           name;
+        ImageSize2D           imageSize;     // The size of the images in the swapchian.
+        TL::Flags<ImageUsage> imageUsage;    // Image usage flags applied to all created images.
+        Format                imageFormat;   // The format of created swapchain image.
+        uint32_t              minImageCount; // The numer of back buffer images in the swapchain.
+        SwapchainPresentMode  presentMode;
 #ifdef RHI_PLATFORM_WINDOWS
         Win32WindowDesc win32Window; // win32 surface handles. (Availabe only on windows)
 #endif

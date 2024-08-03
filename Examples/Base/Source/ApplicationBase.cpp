@@ -26,8 +26,8 @@ namespace Examples
             this->DispatchEvent(event);
         };
 
-        m_window = RHI::CreatePtr<Window>(name, Window::Size{ windowWidth, windowHeight }, windowEventDispatcher);
-        m_renderer = Ptr<Renderer>(CreateDeferredRenderer());
+        m_window = TL::CreatePtr<Window>(name, Window::Size{ windowWidth, windowHeight }, windowEventDispatcher);
+        m_renderer =TL::Ptr<Renderer>(CreateDeferredRenderer());
     }
 
     ApplicationBase::~ApplicationBase()

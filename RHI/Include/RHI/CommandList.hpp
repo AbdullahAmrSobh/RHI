@@ -4,10 +4,9 @@
 #include "RHI/RenderGraph.hpp"
 #include "RHI/Definitions.hpp"
 
-#include "RHI/Common/Ptr.hpp"
-
 #include <TL/Containers.hpp>
 #include <TL/Span.hpp>
+#include <TL/UniquePtr.hpp>
 
 namespace RHI
 {
@@ -67,9 +66,9 @@ namespace RHI
     struct ImageSubresourceLayers
     {
         TL::Flags<ImageAspect> imageAspects;
-        uint32_t           mipLevel;
-        uint32_t           arrayBase;
-        uint32_t           arrayCount;
+        uint32_t               mipLevel;
+        uint32_t               arrayBase;
+        uint32_t               arrayCount;
     };
 
     struct ImageCopyInfo

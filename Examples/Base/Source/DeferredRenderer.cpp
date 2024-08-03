@@ -523,7 +523,7 @@ namespace Examples
             frameIndex++;
         }
 
-        Ptr<RHI::RenderGraph> m_renderGraph;
+       TL::Ptr<RHI::RenderGraph> m_renderGraph;
         PassGBuffer m_passGBuffer;
         PassLighting m_passLighting;
     };

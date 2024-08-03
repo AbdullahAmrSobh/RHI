@@ -14,7 +14,7 @@
 namespace RHI
 {
     Context::Context()
-        : m_limits(CreatePtr<Limits>())
+        : m_limits(TL::CreatePtr<Limits>())
     {
     }
 
@@ -27,11 +27,11 @@ namespace RHI
         return *m_limits;
     }
 
-    Ptr<RenderGraph> Context::CreateRenderGraph()
+    TL::Ptr<RenderGraph> Context::CreateRenderGraph()
     {
         ZoneScoped;
 
-        return CreatePtr<RenderGraph>(this);
+        return TL::CreatePtr<RenderGraph>(this);
     }
 
     void Context::CompileRenderGraph([[maybe_unused]] RenderGraph& renderGraph)
@@ -47,7 +47,7 @@ namespace RHI
         Internal_DispatchGraph(renderGraph, signalFence);
     }
 
-    Ptr<Swapchain> Context::CreateSwapchain(const SwapchainCreateInfo& createInfo)
+    TL::Ptr<Swapchain> Context::CreateSwapchain(const SwapchainCreateInfo& createInfo)
     {
         ZoneScoped;
 
@@ -60,21 +60,21 @@ namespace RHI
         return Internal_CreateSwapchain(createInfo);
     }
 
-    Ptr<ShaderModule> Context::CreateShaderModule(TL::Span<const uint32_t> shaderBlob)
+    TL::Ptr<ShaderModule> Context::CreateShaderModule(TL::Span<const uint32_t> shaderBlob)
     {
         ZoneScoped;
 
         return Internal_CreateShaderModule(shaderBlob);
     }
 
-    Ptr<Fence> Context::CreateFence()
+    TL::Ptr<Fence> Context::CreateFence()
     {
         ZoneScoped;
 
         return Internal_CreateFence();
     }
 
-    Ptr<CommandPool> Context::CreateCommandPool(CommandPoolFlags flags)
+    TL::Ptr<CommandPool> Context::CreateCommandPool(CommandPoolFlags flags)
     {
         ZoneScoped;
 
@@ -292,11 +292,11 @@ namespace RHI
         Internal_StageResourceRead(buffer, offset, size, srcBuffer, srcOffset, fence);
     }
 
-#define TRY(condition, message)    \
-    if ((condition) == false)      \
-    {                              \
-        TL_LOG_INFO(message); \
-        return false;              \
+#define TRY(condition, message) \
+    if ((condition) == false)   \
+    {                           \
+        TL_LOG_INFO(message);   \
+        return false;           \
     }
 
     bool Context::ValidateCreateInfo(const SwapchainCreateInfo& createInfo) const

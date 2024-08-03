@@ -124,8 +124,8 @@ namespace Examples
         return CreateImageWithData(createInfo, TL2::Span<const uint8_t>{ image.data.data(), image.data.size() }).GetValue();
     }
 
-    Ptr<Scene> Renderer::CreateScene()
+   TL::Ptr<Scene> Renderer::CreateScene()
     {
-        return RHI::CreatePtr<Scene>(m_context.get());
+        return TL::CreatePtr<Scene>(m_context.get());
     }
 } // namespace Examples

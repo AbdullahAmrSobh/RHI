@@ -1,4 +1,3 @@
-#include <RHI/Common/Ptr.hpp>
 
 #include "RHI-Vulkan/Loader.hpp"
 
@@ -10,9 +9,9 @@
 #include "Context.hpp"
 #include "Queue.hpp"
 
-
 #include <TL/Assert.hpp>
 #include <TL/Log.hpp>
+#include <TL/UniquePtr.hpp>
 
 #include <tracy/Tracy.hpp>
 
@@ -39,11 +38,11 @@
 
 namespace RHI
 {
-    Ptr<Context> CreateVulkanContext(const ApplicationInfo& appInfo)
+   TL::Ptr<Context> CreateVulkanContext(const ApplicationInfo& appInfo)
     {
         ZoneScoped;
 
-        auto context = CreatePtr<Vulkan::IContext>();
+        auto context =TL::CreatePtr<Vulkan::IContext>();
         auto result = context->Init(appInfo);
         TL_ASSERT(IsSucess(result));
         return std::move(context);
@@ -120,8 +119,8 @@ namespace RHI::Vulkan
         , m_pfn()
         , m_queue()
         , m_frameContext(this)
-        , m_bindGroupAllocator(CreatePtr<BindGroupAllocator>(this))
-        , m_commandPool(CreatePtr<ICommandPool>(this))
+        , m_bindGroupAllocator(TL::CreatePtr<BindGroupAllocator>(this))
+        , m_commandPool(TL::CreatePtr<ICommandPool>(this))
         , m_imageOwner()
         , m_bufferOwner()
         , m_imageViewOwner()
@@ -253,9 +252,9 @@ namespace RHI::Vulkan
     ////////////////////////////////////////////////////////////
     // Interface implementation
     ////////////////////////////////////////////////////////////
-    Ptr<Swapchain> IContext::Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo)
+   TL::Ptr<Swapchain> IContext::Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo)
     {
-        auto swapchain = CreatePtr<ISwapchain>(this);
+        auto swapchain =TL::CreatePtr<ISwapchain>(this);
         auto result = swapchain->Init(createInfo);
         if (result != VK_SUCCESS)
         {
@@ -264,9 +263,9 @@ namespace RHI::Vulkan
         return swapchain;
     }
 
-    Ptr<ShaderModule> IContext::Internal_CreateShaderModule(TL::Span<const uint32_t> shaderBlob)
+   TL::Ptr<ShaderModule> IContext::Internal_CreateShaderModule(TL::Span<const uint32_t> shaderBlob)
     {
-        auto shaderModule = CreatePtr<IShaderModule>(this);
+        auto shaderModule =TL::CreatePtr<IShaderModule>(this);
         auto result = shaderModule->Init(shaderBlob);
         if (result != ResultCode::Success)
         {
@@ -275,9 +274,9 @@ namespace RHI::Vulkan
         return shaderModule;
     }
 
-    Ptr<Fence> IContext::Internal_CreateFence()
+   TL::Ptr<Fence> IContext::Internal_CreateFence()
     {
-        auto fence = CreatePtr<IFence>(this);
+        auto fence =TL::CreatePtr<IFence>(this);
         auto result = fence->Init();
         if (result != ResultCode::Success)
         {
@@ -286,9 +285,9 @@ namespace RHI::Vulkan
         return fence;
     }
 
-    Ptr<CommandPool> IContext::Internal_CreateCommandPool(CommandPoolFlags flags)
+   TL::Ptr<CommandPool> IContext::Internal_CreateCommandPool(CommandPoolFlags flags)
     {
-        auto commandPool = CreatePtr<ICommandPool>(this);
+        auto commandPool =TL::CreatePtr<ICommandPool>(this);
         auto result = commandPool->Init(flags);
         if (result != ResultCode::Success)
         {

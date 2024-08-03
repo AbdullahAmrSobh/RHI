@@ -10,7 +10,6 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Callstack.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Handle.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Hash.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Ptr.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Result.hpp
     # main files
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/CommandList.hpp
