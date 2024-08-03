@@ -77,12 +77,12 @@ namespace RHI
         /// @brief Returns the limits of the RHI implementation
         ///
         /// @return Limits object containing the RHI implementation limits
-        RHI_NODISCARD Limits GetLimits() const;
+        TL_NODISCARD Limits GetLimits() const;
 
         /// @brief Creates a new render graph
         ///
         /// @return Pointer to the newly created RenderGraph
-        RHI_NODISCARD Ptr<RenderGraph> CreateRenderGraph();
+        TL_NODISCARD Ptr<RenderGraph> CreateRenderGraph();
 
         /// @brief Compiles the given render graph
         ///
@@ -99,29 +99,29 @@ namespace RHI
         ///
         /// @param createInfo The creation information for the swapchain
         /// @return Pointer to the newly created Swapchain
-        RHI_NODISCARD Ptr<Swapchain> CreateSwapchain(const SwapchainCreateInfo& createInfo);
+        TL_NODISCARD Ptr<Swapchain> CreateSwapchain(const SwapchainCreateInfo& createInfo);
 
         /// @brief Creates a new shader module from the provided shader binary
         ///
         /// @param shaderBlob The shader binary data
         /// @return Pointer to the newly created ShaderModule
-        RHI_NODISCARD Ptr<ShaderModule> CreateShaderModule(TL::Span<const uint32_t> shaderBlob);
+        TL_NODISCARD Ptr<ShaderModule> CreateShaderModule(TL::Span<const uint32_t> shaderBlob);
 
         /// @brief Creates a new fence
         ///
         /// @return Pointer to the newly created Fence
-        RHI_NODISCARD Ptr<Fence> CreateFence();
+        TL_NODISCARD Ptr<Fence> CreateFence();
 
         /// @brief Creates a new command encoder
         ///
         /// @return Pointer to the newly created CommandEncoder
-        RHI_NODISCARD Ptr<CommandPool> CreateCommandPool(CommandPoolFlags flags);
+        TL_NODISCARD Ptr<CommandPool> CreateCommandPool(CommandPoolFlags flags);
 
         /// @brief Creates a new bind group layout
         ///
         /// @param createInfo The creation information for the bind group layout
         /// @return Handle to the newly created BindGroupLayout
-        RHI_NODISCARD Handle<BindGroupLayout> CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo);
+        TL_NODISCARD Handle<BindGroupLayout> CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo);
 
         /// @brief Destroys a bind group layout
         ///
@@ -133,7 +133,7 @@ namespace RHI
         /// @param handle Handle to the BindGroupLayout to use
         /// @param bindlessElementsCount Number of bindless elements (default: UINT32_MAX)
         /// @return Handle to the newly created BindGroup
-        RHI_NODISCARD Handle<BindGroup> CreateBindGroup(Handle<BindGroupLayout> handle, uint32_t bindlessElementsCount = UINT32_MAX);
+        TL_NODISCARD Handle<BindGroup> CreateBindGroup(Handle<BindGroupLayout> handle, uint32_t bindlessElementsCount = UINT32_MAX);
 
         /// @brief Destroys a bind group
         ///
@@ -150,7 +150,7 @@ namespace RHI
         ///
         /// @param createInfo The creation information for the pipeline layout
         /// @return Handle to the newly created PipelineLayout
-        RHI_NODISCARD Handle<PipelineLayout> CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo);
+        TL_NODISCARD Handle<PipelineLayout> CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo);
 
         /// @brief Destroys a pipeline layout
         ///
@@ -161,7 +161,7 @@ namespace RHI
         ///
         /// @param createInfo The creation information for the graphics pipeline
         /// @return Handle to the newly created GraphicsPipeline
-        RHI_NODISCARD Handle<GraphicsPipeline> CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo);
+        TL_NODISCARD Handle<GraphicsPipeline> CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo);
 
         /// @brief Destroys a graphics pipeline
         ///
@@ -172,7 +172,7 @@ namespace RHI
         ///
         /// @param createInfo The creation information for the compute pipeline
         /// @return Handle to the newly created ComputePipeline
-        RHI_NODISCARD Handle<ComputePipeline> CreateComputePipeline(const ComputePipelineCreateInfo& createInfo);
+        TL_NODISCARD Handle<ComputePipeline> CreateComputePipeline(const ComputePipelineCreateInfo& createInfo);
 
         /// @brief Destroys a compute pipeline
         ///
@@ -183,7 +183,7 @@ namespace RHI
         ///
         /// @param createInfo The creation information for the sampler
         /// @return Handle to the newly created Sampler
-        RHI_NODISCARD Handle<Sampler> CreateSampler(const SamplerCreateInfo& createInfo);
+        TL_NODISCARD Handle<Sampler> CreateSampler(const SamplerCreateInfo& createInfo);
 
         /// @brief Destroys a sampler
         ///
@@ -194,7 +194,7 @@ namespace RHI
         ///
         /// @param createInfo The creation information for the image
         /// @return Result containing a handle to the newly created Image
-        RHI_NODISCARD Result<Handle<Image>> CreateImage(const ImageCreateInfo& createInfo);
+        TL_NODISCARD Result<Handle<Image>> CreateImage(const ImageCreateInfo& createInfo);
 
         /// @brief Destroys an image
         ///
@@ -205,7 +205,7 @@ namespace RHI
         ///
         /// @param createInfo The creation information for the buffer
         /// @return Result containing a handle to the newly created Buffer
-        RHI_NODISCARD Result<Handle<Buffer>> CreateBuffer(const BufferCreateInfo& createInfo);
+        TL_NODISCARD Result<Handle<Buffer>> CreateBuffer(const BufferCreateInfo& createInfo);
 
         /// @brief Destroys a buffer
         ///
@@ -216,7 +216,7 @@ namespace RHI
         ///
         /// @param createInfo The creation information for the image view
         /// @return Handle to the newly created ImageView
-        RHI_NODISCARD Handle<ImageView> CreateImageView(const ImageViewCreateInfo& createInfo);
+        TL_NODISCARD Handle<ImageView> CreateImageView(const ImageViewCreateInfo& createInfo);
 
         /// @brief Destroys an image view
         ///
@@ -227,7 +227,7 @@ namespace RHI
         ///
         /// @param createInfo The creation information for the buffer view
         /// @return Handle to the newly created BufferView
-        RHI_NODISCARD Handle<BufferView> CreateBufferView(const BufferViewCreateInfo& createInfo);
+        TL_NODISCARD Handle<BufferView> CreateBufferView(const BufferViewCreateInfo& createInfo);
 
         /// @brief Destroys a buffer view
         ///
@@ -238,7 +238,7 @@ namespace RHI
         ///
         /// @param handle Handle to the Buffer to map
         /// @return Pointer to the mapped device memory
-        RHI_NODISCARD DeviceMemoryPtr MapBuffer(Handle<Buffer> handle);
+        TL_NODISCARD DeviceMemoryPtr MapBuffer(Handle<Buffer> handle);
 
         /// @brief Unmaps a previously mapped buffer
         ///
@@ -254,7 +254,7 @@ namespace RHI
         ///
         /// @param size The size of the buffer to allocate
         /// @return A StagingBuffer object representing the allocated buffer
-        RHI_NODISCARD StagingBuffer AllocateTempBuffer(size_t size);
+        TL_NODISCARD StagingBuffer AllocateTempBuffer(size_t size);
 
         /// @brief Stages a write operation to an image
         ///

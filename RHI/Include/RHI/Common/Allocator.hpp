@@ -35,7 +35,7 @@ namespace TL
 
         constexpr DefaultAllocator& operator=(const DefaultAllocator&) = default;
 
-        RHI_NODISCARD constexpr RHI_EXPORT _Ty* allocate(const size_t count);
+        TL_NODISCARD constexpr RHI_EXPORT _Ty* allocate(const size_t count);
 
         constexpr void deallocate(_Ty* const ptr, const size_t count);
     };

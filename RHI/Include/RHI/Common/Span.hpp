@@ -84,47 +84,47 @@ namespace TL
         {
         }
 
-        RHI_NODISCARD constexpr size_t size() const noexcept
+        TL_NODISCARD constexpr size_t size() const noexcept
         {
             return m_count;
         }
 
-        RHI_NODISCARD constexpr SizeType size_bytes() const noexcept
+        TL_NODISCARD constexpr SizeType size_bytes() const noexcept
         {
             return m_count * sizeof(ElementType);
         }
 
-        RHI_NODISCARD constexpr bool empty() const noexcept
+        TL_NODISCARD constexpr bool empty() const noexcept
         {
             return m_count == 0;
         }
 
-        RHI_NODISCARD constexpr Reference operator[](const SizeType index) const noexcept
+        TL_NODISCARD constexpr Reference operator[](const SizeType index) const noexcept
         {
             return m_data[index];
         }
 
-        RHI_NODISCARD constexpr Reference front() const noexcept
+        TL_NODISCARD constexpr Reference front() const noexcept
         {
             return m_data[0];
         }
 
-        RHI_NODISCARD constexpr Reference back() const noexcept
+        TL_NODISCARD constexpr Reference back() const noexcept
         {
             return m_data[m_count - 1];
         }
 
-        RHI_NODISCARD constexpr Pointer data() const noexcept
+        TL_NODISCARD constexpr Pointer data() const noexcept
         {
             return m_data;
         }
 
-        RHI_NODISCARD constexpr Iterator begin() const noexcept
+        TL_NODISCARD constexpr Iterator begin() const noexcept
         {
             return m_data;
         }
 
-        RHI_NODISCARD constexpr Iterator end() const noexcept
+        TL_NODISCARD constexpr Iterator end() const noexcept
         {
             return m_data + m_count;
         }

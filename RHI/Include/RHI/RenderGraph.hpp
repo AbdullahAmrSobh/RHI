@@ -60,7 +60,7 @@ namespace RHI
         ///
         /// @param createInfo Information for creating the pass.
         /// @return Handle to the created pass.
-        RHI_NODISCARD Handle<Pass> CreatePass(const PassCreateInfo& createInfo);
+        TL_NODISCARD Handle<Pass> CreatePass(const PassCreateInfo& createInfo);
 
         /// @brief Resizes an existing pass to the given image size.
         ///
@@ -79,33 +79,33 @@ namespace RHI
         /// @param name Name of the swapchain.
         /// @param swapchain Reference to the swapchain.
         /// @return Handle to the imported image attachment.
-        RHI_NODISCARD Handle<ImageAttachment> ImportSwapchain(const char* name, Swapchain& swapchain);
+        TL_NODISCARD Handle<ImageAttachment> ImportSwapchain(const char* name, Swapchain& swapchain);
 
         /// @brief Imports an existing image into the render graph.
         ///
         /// @param name Name of the image.
         /// @param image Handle to the image.
         /// @return Handle to the imported image attachment.
-        RHI_NODISCARD Handle<ImageAttachment> ImportImage(const char* name, Handle<Image> image);
+        TL_NODISCARD Handle<ImageAttachment> ImportImage(const char* name, Handle<Image> image);
 
         /// @brief Imports an existing buffer into the render graph.
         ///
         /// @param name Name of the buffer.
         /// @param buffer Handle to the buffer.
         /// @return Handle to the imported buffer attachment.
-        RHI_NODISCARD Handle<BufferAttachment> ImportBuffer(const char* name, Handle<Buffer> buffer);
+        TL_NODISCARD Handle<BufferAttachment> ImportBuffer(const char* name, Handle<Buffer> buffer);
 
         /// @brief Creates a new image with the specified creation info.
         ///
         /// @param createInfo Information for creating the image.
         /// @return Handle to the created image attachment.
-        RHI_NODISCARD Handle<ImageAttachment> CreateImage(const ImageCreateInfo& createInfo);
+        TL_NODISCARD Handle<ImageAttachment> CreateImage(const ImageCreateInfo& createInfo);
 
         /// @brief Creates a new buffer with the specified creation info.
         ///
         /// @param createInfo Information for creating the buffer.
         /// @return Handle to the created buffer attachment.
-        RHI_NODISCARD Handle<BufferAttachment> CreateBuffer(const BufferCreateInfo& createInfo);
+        TL_NODISCARD Handle<BufferAttachment> CreateBuffer(const BufferCreateInfo& createInfo);
 
         /// @brief Uses an image in a pass with view info, usage, and access.
         ///
@@ -131,27 +131,27 @@ namespace RHI
         ///
         /// @param attachment Handle to the image attachment.
         /// @return Handle to the image.
-        RHI_NODISCARD Handle<Image> GetImage(Handle<ImageAttachment> attachment) const;
+        TL_NODISCARD Handle<Image> GetImage(Handle<ImageAttachment> attachment) const;
 
         /// @brief Retrieves the buffer from a buffer attachment.
         ///
         /// @param attachment Handle to the buffer attachment.
         /// @return Handle to the buffer.
-        RHI_NODISCARD Handle<Buffer> GetBuffer(Handle<BufferAttachment> attachment) const;
+        TL_NODISCARD Handle<Buffer> GetBuffer(Handle<BufferAttachment> attachment) const;
 
         /// @brief Retrieves the image view from a pass and image attachment.
         ///
         /// @param pass Handle to the pass.
         /// @param attachment Handle to the image attachment.
         /// @return Handle to the image view.
-        RHI_NODISCARD Handle<ImageView> PassGetImageView(Handle<Pass> pass, Handle<ImageAttachment> attachment) const;
+        TL_NODISCARD Handle<ImageView> PassGetImageView(Handle<Pass> pass, Handle<ImageAttachment> attachment) const;
 
         /// @brief Retrieves the buffer view from a pass and buffer attachment.
         ///
         /// @param pass Handle to the pass.
         /// @param attachment Handle to the buffer attachment.
         /// @return Handle to the buffer view.
-        RHI_NODISCARD Handle<BufferView> PassGetBufferView(Handle<Pass> pass, Handle<BufferAttachment> attachment) const;
+        TL_NODISCARD Handle<BufferView> PassGetBufferView(Handle<Pass> pass, Handle<BufferAttachment> attachment) const;
 
         /// @brief Submits a pass with command lists and an optional signal fence.
         ///
