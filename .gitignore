@@ -13,4 +13,4 @@ env.bat
 env.ps1
 .cache/
 
-RHI/Include/RHI/Export.hpp
+Export.hpp
