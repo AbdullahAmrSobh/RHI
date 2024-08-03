@@ -228,7 +228,7 @@ namespace Examples
 
         virtual Flags<EventCategory> GetCategoryFlags() const = 0;
 
-        virtual TL::String ToString() const { return GetName(); }
+        virtual TL2::String ToString() const { return GetName(); }
     };
 
     class WindowResizeEvent : public Event
@@ -241,11 +241,11 @@ namespace Examples
 
         Window::Size GetSize() const { return m_size; }
 
-        TL::String ToString() const override
+        TL2::String ToString() const override
         {
             std::stringstream ss;
             ss << "WindowResizeEvent: " << m_size.width << ", " << m_size.height;
-            return TL::String(ss.str());
+            return TL2::String(ss.str());
         }
 
         EVENT_CLASS_TYPE(WindowResize)
@@ -317,11 +317,11 @@ namespace Examples
 
         bool IsRepeat() const { return m_isRepeat; }
 
-        TL::String ToString() const override
+        TL2::String ToString() const override
         {
             std::stringstream ss;
             ss << "KeyPressedEvent: " << (uint32_t)(m_keycode) << " (repeat = " << m_isRepeat << ")";
-            return TL::String(ss.str());
+            return TL2::String(ss.str());
         }
 
         EVENT_CLASS_TYPE(KeyPressed)
@@ -337,11 +337,11 @@ namespace Examples
         {
         }
 
-        TL::String ToString() const override
+        TL2::String ToString() const override
         {
             std::stringstream ss;
             ss << "KeyReleasedEvent: " << (uint32_t)m_keycode;
-            return TL::String(ss.str());
+            return TL2::String(ss.str());
         }
 
         EVENT_CLASS_TYPE(KeyReleased)
@@ -355,11 +355,11 @@ namespace Examples
         {
         }
 
-        TL::String ToString() const override
+        TL2::String ToString() const override
         {
             std::stringstream ss;
             ss << "KeyTypedEvent: " << (uint32_t)m_keycode;
-            return TL::String(ss.str());
+            return TL2::String(ss.str());
         }
 
         EVENT_CLASS_TYPE(KeyTyped)
@@ -378,11 +378,11 @@ namespace Examples
 
         float GetY() const { return m_MouseY; }
 
-        TL::String ToString() const override
+        TL2::String ToString() const override
         {
             std::stringstream ss;
             ss << "MouseMovedEvent: " << m_MouseX << ", " << m_MouseY;
-            return TL::String(ss.str());
+            return TL2::String(ss.str());
         }
 
         EVENT_CLASS_TYPE(MouseMoved)
@@ -404,11 +404,11 @@ namespace Examples
 
         float GetYOffset() const { return m_YOffset; }
 
-        TL::String ToString() const override
+        TL2::String ToString() const override
         {
             std::stringstream ss;
             ss << "MouseScrolledEvent: " << GetXOffset() << ", " << GetYOffset();
-            return TL::String(ss.str());
+            return TL2::String(ss.str());
         }
 
         EVENT_CLASS_TYPE(MouseScrolled)
@@ -440,11 +440,11 @@ namespace Examples
         {
         }
 
-        TL::String ToString() const override
+        TL2::String ToString() const override
         {
             std::stringstream ss;
             ss << "MouseButtonPressedEvent: " << (uint32_t)m_button;
-            return TL::String(ss.str());
+            return TL2::String(ss.str());
         }
 
         EVENT_CLASS_TYPE(MouseButtonPressed)
@@ -458,11 +458,11 @@ namespace Examples
         {
         }
 
-        TL::String ToString() const override
+        TL2::String ToString() const override
         {
             std::stringstream ss;
             ss << "MouseButtonReleasedEvent: " << (uint32_t)m_button;
-            return TL::String(ss.str());
+            return TL2::String(ss.str());
         }
 
         EVENT_CLASS_TYPE(MouseButtonReleased)

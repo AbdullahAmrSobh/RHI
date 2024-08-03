@@ -18,7 +18,7 @@ namespace Examples
         virtual ~ApplicationBase();
 
         template<typename ExampleType>
-        friend int Entry(TL::Span<const char*> args);
+        friend int Entry(TL2::Span<const char*> args);
 
         CommandLine::LaunchSettings m_launchSettings;
 

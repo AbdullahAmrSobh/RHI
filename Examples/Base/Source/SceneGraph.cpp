@@ -44,10 +44,10 @@ Scene::Scene(RHI::Context* pContext, const char* scenePath)
     const aiScene* scene = importer.ReadFile(scenePath, aiProcess_Triangulate | aiProcess_GenSmoothNormals);
     RHI_ASSERT(scene);
 
-    TL::UnorderedMap<uint32_t, RHI::Handle<Material>> materialLookup;
-    TL::UnorderedMap<uint32_t, RHI::Handle<StaticMesh>> staticMeshLookup;
+    TL2::UnorderedMap<uint32_t, RHI::Handle<Material>> materialLookup;
+    TL2::UnorderedMap<uint32_t, RHI::Handle<StaticMesh>> staticMeshLookup;
 
-    TL::UnorderedMap<const char*, TL::Vector<aiLight>> lightsLookup;
+    TL2::UnorderedMap<const char*, TL2::Vector<aiLight>> lightsLookup;
 
     // load scene lights
     for (uint32_t i = 0; i < scene->mNumLights; i++)
@@ -185,7 +185,7 @@ void Scene::Shutdown(RHI::Context& context)
 //     aiMaterial.GetTexture(aiTextureType_DIFFUSE_ROUGHNESS, 0, &roughnessPath);
 //     aiMaterial.GetTexture(aiTextureType_METALNESS, 0, &metallicPath);
 
-//     TL::String prefixPath = "C:/Users/abdul/Desktop/Main.1_Sponza/"; // TODO: add proper fix
+//     TL2::String prefixPath = "C:/Users/abdul/Desktop/Main.1_Sponza/"; // TODO: add proper fix
 
 //     RHI::ImageCreateInfo imageInfo{};
 //     imageInfo.usageFlags = RHI::ImageUsage::ShaderResource;
@@ -264,18 +264,18 @@ RHI::Handle<StaticMesh> Scene::LoadStaticMesh(RHI::Context& context, RHI::Handle
     // load mesh data
     if (aiMesh.HasPositions())
     {
-        mesh.position = RHI::CreateBufferWithData<aiVector3D>(context, RHI::BufferUsage::Vertex, TL::Span{ aiMesh.mVertices, aiMesh.mNumVertices }).GetValue();
+        mesh.position = RHI::CreateBufferWithData<aiVector3D>(context, RHI::BufferUsage::Vertex, TL2::Span{ aiMesh.mVertices, aiMesh.mNumVertices }).GetValue();
         mesh.elementsCount = aiMesh.mNumVertices;
     }
 
     if (aiMesh.HasNormals())
     {
-        mesh.normals = RHI::CreateBufferWithData<aiVector3D>(context, RHI::BufferUsage::Vertex, TL::Span{ aiMesh.mNormals, aiMesh.mNumVertices }).GetValue();
+        mesh.normals = RHI::CreateBufferWithData<aiVector3D>(context, RHI::BufferUsage::Vertex, TL2::Span{ aiMesh.mNormals, aiMesh.mNumVertices }).GetValue();
     }
 
     if (aiMesh.HasTextureCoords(0))
     {
-        TL::Vector<glm::vec2> uvs;
+        TL2::Vector<glm::vec2> uvs;
         uvs.reserve(aiMesh.mNumVertices);
         for (uint32_t i = 0; i < aiMesh.mNumVertices; i++)
         {
@@ -286,7 +286,7 @@ RHI::Handle<StaticMesh> Scene::LoadStaticMesh(RHI::Context& context, RHI::Handle
 
     if (aiMesh.HasFaces())
     {
-        TL::Vector<uint32_t> indices;
+        TL2::Vector<uint32_t> indices;
         indices.reserve(aiMesh.mNumFaces * 3);
         for (uint32_t i = 0; i < aiMesh.mNumFaces; i++)
         {

@@ -9,8 +9,8 @@ namespace Examples::CommandLine
 {
     struct LaunchSettings
     {
-        TL::String sceneFileLocation;
-        TL::String sceneSeperateTexturesDir;
+        TL2::String sceneFileLocation;
+        TL2::String sceneSeperateTexturesDir;
     };
 
     enum OptionType
@@ -27,7 +27,7 @@ namespace Examples::CommandLine
         const char* description;
         OptionType type;
         uint32_t argumentCount;
-        TL::UnorderedSet<TL::String> validInputs; // Empty set means any input is valid
+        TL2::UnorderedSet<TL2::String> validInputs; // Empty set means any input is valid
         bool isFilePath;
     };
 
@@ -70,24 +70,24 @@ namespace Examples::CommandLine
         for (const auto& option : m_optionsLut)
         {
             std::cout << "  --" << option.name
-                      << TL::String(20 - strlen(option.name), ' ')
+                      << TL2::String(20 - strlen(option.name), ' ')
                       << option.description << "\n";
         }
     }
 
-    inline static void Print(TL::String message)
+    inline static void Print(TL2::String message)
     {
         std::cout << message << std::endl;
     }
 
-    inline static void PrintErrorAndExit(TL::String message)
+    inline static void PrintErrorAndExit(TL2::String message)
     {
         std::cerr << "Error: " << message << std::endl;
         PrintHelp();
         exit(1);
     }
 
-    inline static bool ValidateInput(const Option& option, const TL::String& input)
+    inline static bool ValidateInput(const Option& option, const TL2::String& input)
     {
         if (option.validInputs.empty() && !option.isFilePath)
         {
@@ -108,7 +108,7 @@ namespace Examples::CommandLine
         return false;
     }
 
-    inline static LaunchSettings Parse(TL::Span<const char*> args)
+    inline static LaunchSettings Parse(TL2::Span<const char*> args)
     {
         LaunchSettings settings;
 
@@ -118,7 +118,7 @@ namespace Examples::CommandLine
 
             if (optionType == Count)
             {
-                PrintErrorAndExit(TL::String("Unknown option: ") + *it);
+                PrintErrorAndExit(TL2::String("Unknown option: ") + *it);
             }
 
             const auto& optionData = m_optionsLut[optionType];
@@ -128,13 +128,13 @@ namespace Examples::CommandLine
                 ++it;
                 if (it == args.end() || GetOptionType(*it) != Count)
                 {
-                    PrintErrorAndExit(TL::String("Missing argument for option: ") + *(it - 1));
+                    PrintErrorAndExit(TL2::String("Missing argument for option: ") + *(it - 1));
                 }
 
-                TL::String argument(*it);
+                TL2::String argument(*it);
                 if (!ValidateInput(optionData, argument))
                 {
-                    PrintErrorAndExit(TL::String("Invalid argument for option ") + optionData.name + ": " + argument);
+                    PrintErrorAndExit(TL2::String("Invalid argument for option ") + optionData.name + ": " + argument);
                 }
             }
 

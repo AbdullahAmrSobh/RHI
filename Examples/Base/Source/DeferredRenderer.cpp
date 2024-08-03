@@ -210,11 +210,11 @@ namespace Examples
                 renderGraph.m_context->UnmapBuffer(m_objectsTransform);
 
                 // update bind groups
-                TL::Span<const RHI::BindGroupUpdateInfo> bindings{
+                TL2::Span<const RHI::BindGroupUpdateInfo> bindings{
                     RHI::BindGroupUpdateInfo(0, 0, m_sceneTransform),
                     RHI::BindGroupUpdateInfo(1, 0, RHI::BindGroupUpdateInfo::DynamicBufferBinding(m_objectsTransform, 0, sizeof(ObjectTransform))),
                     RHI::BindGroupUpdateInfo(2, 0, m_sampler),
-                    RHI::BindGroupUpdateInfo(3, 0, TL::Span{ scene.imagesViews.data(), scene.imagesViews.size() }),
+                    RHI::BindGroupUpdateInfo(3, 0, TL2::Span{ scene.imagesViews.data(), scene.imagesViews.size() }),
                 };
                 renderGraph.m_context->UpdateBindGroup(m_bindGroup, bindings);
             }
@@ -256,7 +256,7 @@ namespace Examples
             {
                 auto mesh = scene.m_meshes[i];
 
-                TL::Vector<RHI::BufferBindingInfo> bindingInfo{};
+                TL2::Vector<RHI::BufferBindingInfo> bindingInfo{};
 
                 RHI::DrawInfo drawInfo{};
                 drawInfo.parameters.instanceCount = 1;

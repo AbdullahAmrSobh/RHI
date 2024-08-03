@@ -2,7 +2,7 @@
 
 #include "RHI/RHI.hpp"
 
-namespace TL = RHI::TL;
+namespace TL2 = RHI::TL;
 
 template<typename T> using Handle = RHI::Handle<T>;
 template<typename T> using Ptr    = RHI::Ptr<T>;

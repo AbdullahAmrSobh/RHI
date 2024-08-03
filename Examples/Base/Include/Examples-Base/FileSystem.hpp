@@ -6,7 +6,7 @@
 
 namespace Examples
 {
-    inline static TL::Vector<uint32_t> ReadBinaryFile(std::string_view filePath)
+    inline static TL2::Vector<uint32_t> ReadBinaryFile(std::string_view filePath)
     {
         std::ifstream file(filePath.data(), std::ios::binary | std::ios::ate);
         RHI_ASSERT(file.is_open()); // "Failed to open SPIR-V file: " + filePath
@@ -16,7 +16,7 @@ namespace Examples
 
         RHI_ASSERT(size % 4 == 0); // "Invalid SPIR-V file size: " + filePath
 
-        TL::Vector<uint32_t> spirv(size / 4);
+        TL2::Vector<uint32_t> spirv(size / 4);
         RHI_ASSERT(file.read(reinterpret_cast<char*>(spirv.data()), size)); // "Failed to read SPIR-V file: " + filePath
 
         return spirv;

@@ -47,6 +47,6 @@ namespace Examples
 int main(int argc, const char* argv[])
 {
     using namespace Examples;
-    TL::Span args{ argv, (size_t)argc };
+    TL2::Span args{ argv, (size_t)argc };
     return Entry<BasicRenderer>(args);
 }
