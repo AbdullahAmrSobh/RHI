@@ -298,15 +298,17 @@ namespace RHI::Vulkan
         TL::Vector<VkDescriptorBindingFlags> bindingFlags;
         TL::Vector<VkDescriptorSetLayoutBinding> bindingInfos;
 
+
         for (uint32_t index = 0; index < c_MaxBindGroupElementsCount; index++)
         {
             auto binding = createInfo.bindings[index];
+            bool useBindless = binding.arrayCount == ShaderBinding::VariableArraySize;
 
             if (binding.type == BindingType::None)
                 break;
 
             VkDescriptorBindingFlags flags{};
-            if (binding.arrayCount == ShaderBinding::VariableArraySize)
+            if (useBindless)
             {
                 flags = VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
                 flags |= VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
@@ -316,7 +318,8 @@ namespace RHI::Vulkan
             VkDescriptorSetLayoutBinding descriptorBinding{};
             descriptorBinding.binding = index;
             descriptorBinding.descriptorType = ConvertDescriptorType(binding.type);
-            descriptorBinding.descriptorCount = binding.arrayCount == ShaderBinding::VariableArraySize ? 49 : binding.arrayCount;
+            // TODO: revist this count
+            descriptorBinding.descriptorCount = useBindless ? 128 : binding.arrayCount;
             descriptorBinding.stageFlags = ConvertShaderStage(binding.stages);
             descriptorBinding.pImmutableSamplers = nullptr;
             bindingInfos.push_back(descriptorBinding);

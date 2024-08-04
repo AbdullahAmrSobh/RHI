@@ -55,9 +55,8 @@ VSOutput VSMain(VSInput input)
 [[shader("fragment")]]
 PSOutput PSMain(VSOutput input)
 {
-	let colorTexture = data.texture[NonUniformResourceIndex(0)];
-	let normalTexture = data.texture[NonUniformResourceIndex(1)];
-
+	let colorTexture = data.texture[NonUniformResourceIndex(data.objectTransform.colorIndex)];
+	let normalTexture = data.texture[NonUniformResourceIndex(data.objectTransform.normalIndex)];
 	let color = colorTexture.Sample(data.samplerState, input.uv);
 	let normal = normalTexture.Sample(data.samplerState, input.uv);
 

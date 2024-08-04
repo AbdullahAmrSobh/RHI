@@ -5,7 +5,7 @@
 5. cleanup backend code                         [wip]
 6. Load scene                                   [not yet]
 
-- Extract all TL stuff out of RHI repo
+- Extract all TL stuff out of RHI repo [x]
 - Extract Examples (Game engine setup) out of RHI repo
 
 - Load sponza meshes only
@@ -20,3 +20,7 @@
     - Deferred Shading PBR lighting
     - Integerate ECS framework
 
+
+Render Graph
+    - Move Attachment to rendergraph.hpp
+    -

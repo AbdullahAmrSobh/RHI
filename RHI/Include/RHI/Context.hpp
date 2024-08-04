@@ -299,10 +299,10 @@ namespace RHI
 
     protected:
         // clang-format off
-        virtual TL::Ptr<Swapchain>           Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo) = 0;
-        virtual TL::Ptr<ShaderModule>        Internal_CreateShaderModule(TL::Span<const uint32_t> shaderBlob) = 0;
-        virtual TL::Ptr<Fence>               Internal_CreateFence() = 0;
-        virtual TL::Ptr<CommandPool>         Internal_CreateCommandPool(CommandPoolFlags flags) = 0;
+        virtual TL::Ptr<Swapchain>       Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo) = 0;
+        virtual TL::Ptr<ShaderModule>    Internal_CreateShaderModule(TL::Span<const uint32_t> shaderBlob) = 0;
+        virtual TL::Ptr<Fence>           Internal_CreateFence() = 0;
+        virtual TL::Ptr<CommandPool>     Internal_CreateCommandPool(CommandPoolFlags flags) = 0;
         virtual Handle<BindGroupLayout>  Internal_CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) = 0;
         virtual void                     Internal_DestroyBindGroupLayout(Handle<BindGroupLayout> handle) = 0;
         virtual Handle<BindGroup>        Internal_CreateBindGroup(Handle<BindGroupLayout> handle, uint32_t bindlessElementsCount) = 0;

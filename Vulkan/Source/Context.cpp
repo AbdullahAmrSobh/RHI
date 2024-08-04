@@ -742,10 +742,10 @@ namespace RHI::Vulkan
     {
         switch (messageSeverity)
         {
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: TL_LOG_ERROR(pCallbackData->pMessage);
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:    TL_LOG_WARNNING(pCallbackData->pMessage);
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: TL_LOG_INFO(pCallbackData->pMessage);
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:   TL::Logger::Debug(pCallbackData->pMessage);
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: TL_LOG_INFO(pCallbackData->pMessage); break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:    TL_LOG_INFO(pCallbackData->pMessage); break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: TL_LOG_WARNNING(pCallbackData->pMessage); break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:   TL_LOG_ERROR(pCallbackData->pMessage); break;
         default:                                              TL_UNREACHABLE();
         }
 

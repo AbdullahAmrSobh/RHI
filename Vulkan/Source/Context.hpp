@@ -44,10 +44,10 @@ namespace RHI::Vulkan
         ICommandList* GetTransferCommand();
 
         // clang-format off
-       TL::Ptr<Swapchain>           Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
-       TL::Ptr<ShaderModule>        Internal_CreateShaderModule(TL::Span<const uint32_t> shaderBlob) override;
-       TL::Ptr<Fence>               Internal_CreateFence() override;
-       TL::Ptr<CommandPool>         Internal_CreateCommandPool(CommandPoolFlags flags) override;
+        TL::Ptr<Swapchain>       Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
+        TL::Ptr<ShaderModule>    Internal_CreateShaderModule(TL::Span<const uint32_t> shaderBlob) override;
+        TL::Ptr<Fence>           Internal_CreateFence() override;
+        TL::Ptr<CommandPool>     Internal_CreateCommandPool(CommandPoolFlags flags) override;
         Handle<BindGroupLayout>  Internal_CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) override;
         void                     Internal_DestroyBindGroupLayout(Handle<BindGroupLayout> handle) override;
         Handle<BindGroup>        Internal_CreateBindGroup(Handle<BindGroupLayout> handle, uint32_t bindlessElementsCount) override;
@@ -97,6 +97,9 @@ namespace RHI::Vulkan
         VkPhysicalDevice m_physicalDevice;
         VkDevice m_device;
         VmaAllocator m_allocator;
+
+        VkPhysicalDeviceProperties2      m_properties;
+        VkPhysicalDeviceMemoryProperties2 m_memoryProperties;
 
         struct
         {

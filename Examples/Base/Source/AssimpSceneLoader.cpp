@@ -153,8 +153,25 @@ namespace Examples
 
                 ObjectTransform transform{};
                 transform.modelMatrix = modelMatrix;
-                transform.colorIndex = material.diffuseID;
-                transform.normalIndex = material.normalID;
+                if (material.diffuseID > 49)
+                {
+                    TL_LOG_ERROR("Invalid index for color map texture {}", material.diffuseID);
+                    transform.colorIndex = 0;
+                }
+                else
+                {
+                    transform.colorIndex = material.diffuseID;
+                }
+
+                if (material.normalID > 49)
+                {
+                    TL_LOG_ERROR("Invalid index for normal map texture {}", material.normalID);
+                    transform.normalIndex = 0;
+                }
+                else
+                {
+                    transform.normalIndex = material.normalID;
+                }
 
                 scene.m_meshesTransform.push_back(transform);
                 scene.m_meshesStatic.push_back(aiNode.mMeshes[i]);
