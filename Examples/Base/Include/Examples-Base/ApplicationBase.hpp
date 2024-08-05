@@ -1,8 +1,9 @@
 #pragma once
 
 #include "Examples-Base/Timestep.hpp"
-#include "Examples-Base/Common.hpp"
 #include "Examples-Base/CommandLine.hpp"
+
+#include <TL/UniquePtr.hpp>
 
 namespace Examples
 {

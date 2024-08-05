@@ -1,9 +1,10 @@
 #pragma once
 
-#include "Examples-Base/Common.hpp"
-
 #include <iostream>
 #include <filesystem>
+
+#include <TL/Containers.hpp>
+#include <TL/Span.hpp>
 
 namespace Examples::CommandLine
 {

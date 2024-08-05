@@ -10,8 +10,8 @@ set(SHADER_FILES
     ${CMAKE_SOURCE_DIR}/Examples/Shaders/Basic.slang
 )
 
-include(${CMAKE_SOURCE_DIR}/CMake/add-target.cmake)
-aams_add_target(
+include(${CPM_TL_SOURCE}/CMake/add-target.cmake)
+tl_add_target(
     NAME Triangle
     NAMESPACE Examples
     EXECUTABLE

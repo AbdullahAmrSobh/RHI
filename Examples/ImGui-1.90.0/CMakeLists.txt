@@ -15,8 +15,8 @@ set(HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/imstb_truetype.h
                  ${CMAKE_CURRENT_SOURCE_DIR}/imconfig.h
 )
 
-include(${CMAKE_SOURCE_DIR}/CMake/add-target.cmake)
-aams_add_target(
+include(${CPM_TL_SOURCE}/CMake/add-target.cmake)
+tl_add_target(
     NAME ImGui
     NAMESPACE Thirdparty
     STATIC

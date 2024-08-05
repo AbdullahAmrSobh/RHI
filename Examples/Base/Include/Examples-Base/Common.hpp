@@ -3,7 +3,6 @@
 #include "RHI/RHI.hpp"
 
 template<typename T> using Handle = RHI::Handle<T>;
-template<typename T> using Flags  = TL::Flags<T>;
 
 enum class ResultCode
 {

@@ -24,3 +24,12 @@
 Render Graph
     - Move Attachment to rendergraph.hpp
     -
+
+- Make all structs PODs
+- Fix all memory leaks
+- Fix swapchain resizing
+- Fix render graph resizing
+- iterate on render graph interface
+- add more passes/attachments
+- support secondary command buffers
+- support msaa

@@ -21,7 +21,7 @@
     }
 
 #define EVENT_CLASS_CATEGORY(category)                             \
-    virtual Flags<EventCategory> GetCategoryFlags() const override \
+    virtual TL::Flags<EventCategory> GetCategoryFlags() const override \
     {                                                              \
         return category;                                           \
     }
@@ -226,7 +226,7 @@ namespace Examples
 
         virtual const char* GetName() const = 0;
 
-        virtual Flags<EventCategory> GetCategoryFlags() const = 0;
+        virtual TL::Flags<EventCategory> GetCategoryFlags() const = 0;
 
         virtual TL::String ToString() const { return GetName(); }
     };

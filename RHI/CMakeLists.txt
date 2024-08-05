@@ -34,8 +34,8 @@ set(SOURCE_FILES
     ${CMAKE_SOURCE_DIR}/tracy/public/TracyClient.cpp
 )
 
-include(${CMAKE_SOURCE_DIR}/CMake/add-target.cmake)
-aams_add_target(
+include(${CPM_TL_SOURCE}/CMake/add-target.cmake)
+tl_add_target(
     NAME RHI
     NAMESPACE RHI
     STATIC

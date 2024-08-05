@@ -1,8 +1,10 @@
 #pragma once
 
-#include "Examples-Base/Common.hpp"
-
 #include <fstream>
+#include <cstdint>
+
+#include <TL/Assert.hpp>
+#include <TL/Containers.hpp>
 
 namespace Examples
 {

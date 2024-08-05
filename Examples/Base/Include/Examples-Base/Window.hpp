@@ -1,8 +1,9 @@
 #pragma once
 
-#include "Examples-Base/Common.hpp"
-
 #include <cstdint>
+
+#include <functional>
+#include <TL/Containers.hpp>
 
 struct GLFWwindow;
 

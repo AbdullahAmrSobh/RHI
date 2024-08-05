@@ -11,7 +11,7 @@
 
 namespace Examples
 {
-    inline static Handle<RHI::ImageAttachment> CreateTarget(RHI::RenderGraph& renderGraph, Handle<RHI::Pass> pass, const char* name, RHI::Format format, Flags<RHI::ImageUsage> usage)
+    inline static Handle<RHI::ImageAttachment> CreateTarget(RHI::RenderGraph& renderGraph, Handle<RHI::Pass> pass, const char* name, RHI::Format format, TL::Flags<RHI::ImageUsage> usage)
     {
         bool isDepth = format == RHI::Format::D32;
 

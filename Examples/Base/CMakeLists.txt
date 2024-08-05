@@ -9,8 +9,8 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/AssimpSceneLoader.cpp
 )
 
-include(${CMAKE_SOURCE_DIR}/CMake/add-target.cmake)
-aams_add_target(
+include(${CPM_TL_SOURCE}/CMake/add-target.cmake)
+tl_add_target(
     NAME Base
     NAMESPACE Examples
     STATIC
