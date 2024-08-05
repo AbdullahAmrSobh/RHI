@@ -1,4 +1,5 @@
 include(${CMAKE_SOURCE_DIR}/CMake/CPM.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/variables.cmake)
 
 # CPMAddPackage(
 #     NAME           slang
@@ -15,6 +16,9 @@ CPMAddPackage(
     NAME           TL
 	GIT_REPOSITORY git@github.com:AbdullahAmrSobh/TL.git
 	GIT_TAG        main
+	OPTIONS
+		TL_ENABLE_TRACY ${PROJECT_IS_TOP_LEVEL}
+		TL_ENABLE_TRACY_MEMORY_TRACKING ${PROJECT_IS_TOP_LEVEL}
 )
 
 CPMAddPackage(
@@ -34,7 +38,7 @@ CPMAddPackage(
 
 if(RHI_BUILD_EXAMPLES)
 	CPMAddPackage(
-		NAME           RHI_glm
+		NAME           glm
 		GIT_REPOSITORY git@github.com:g-truc/glm.git
 		GIT_TAG        0.9.9.8
 		OPTIONS

@@ -1,9 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
 
-if (MSVC)
-#   set(CMAKE_CXX_FLAGS /WX)
-endif()
-
 # Add header files
 set(HEADER_FILES
     # Common and utils
@@ -30,8 +26,6 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Format.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraph.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.cpp
-
-    ${CMAKE_SOURCE_DIR}/tracy/public/TracyClient.cpp
 )
 
 include(${CPM_TL_SOURCE}/CMake/add-target.cmake)
@@ -43,10 +37,7 @@ tl_add_target(
     SOURCES ${SOURCE_FILES}
 )
 
-target_include_directories(RHI SYSTEM PUBLIC "${CMAKE_SOURCE_DIR}/tracy/public")
+target_compile_options(RHI PRIVATE ${RHI_COMPILE_FLAGS})
 
-target_link_libraries(RHI PUBLIC spirv-reflect-static)
 target_link_libraries(RHI PUBLIC TL)
-# target_link_libraries(RHI PUBLIC spirv-cross-reflect)
-# target_link_libraries(RHI PUBLIC spirv-cross-glsl)
-
+target_link_libraries(RHI PUBLIC spirv-reflect-static)

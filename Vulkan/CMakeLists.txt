@@ -36,3 +36,5 @@ tl_add_target(
         Vulkan::Vulkan
         VulkanMemoryAllocator
 )
+
+target_compile_options(Vulkan PRIVATE ${RHI_COMPILE_FLAGS})
