@@ -101,7 +101,7 @@ namespace Examples
             bindGroupLayoutCI.bindings[3].arrayCount = RHI::ShaderBinding::VariableArraySize;
 
             auto bindGroupLayout = context.CreateBindGroupLayout(bindGroupLayoutCI);
-            m_bindGroup = context.CreateBindGroup(bindGroupLayout, 49);
+            m_bindGroup = context.CreateBindGroup(bindGroupLayout, 1024);
 
             RHI::PipelineLayoutCreateInfo pipelineLayoutCI{ bindGroupLayout };
             m_pipelineLayout = context.CreatePipelineLayout(pipelineLayoutCI);
@@ -307,10 +307,10 @@ namespace Examples
             m_pipelineLayout = context.CreatePipelineLayout(pipelineLayoutCI);
 
             auto defaultBlendState = RHI::ColorAttachmentBlendStateDesc{
-                .blendEnable = false,
+                .blendEnable = true,
                 .colorBlendOp = RHI::BlendEquation::Add,
-                .srcColor = RHI::BlendFactor::One,
-                .dstColor = RHI::BlendFactor::Zero,
+                .srcColor = RHI::BlendFactor::SrcAlpha,
+                .dstColor = RHI::BlendFactor::OneMinusSrcAlpha,
                 .alphaBlendOp = RHI::BlendEquation::Add,
                 .srcAlpha = RHI::BlendFactor::One,
                 .dstAlpha = RHI::BlendFactor::Zero,

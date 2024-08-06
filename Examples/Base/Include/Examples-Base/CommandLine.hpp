@@ -1,6 +1,5 @@
 #pragma once
 
-#include <iostream>
 #include <filesystem>
 
 #include <TL/Containers.hpp>
@@ -67,23 +66,21 @@ namespace Examples::CommandLine
 
     inline static void PrintHelp()
     {
-        std::cout << "Usage: program [options]\n\nOptions:\n";
+        TL_LOG_INFO("Usage: program [options]\n\nOptions:\n");
         for (const auto& option : m_optionsLut)
         {
-            std::cout << "  --" << option.name
-                      << TL::String(20 - strlen(option.name), ' ')
-                      << option.description << "\n";
+            TL_LOG_INFO(" --{}: {}", option.name, option.description);
         }
     }
 
     inline static void Print(TL::String message)
     {
-        std::cout << message << std::endl;
+        TL_LOG_INFO("{}", message);
     }
 
     inline static void PrintErrorAndExit(TL::String message)
     {
-        std::cerr << "Error: " << message << std::endl;
+        TL_LOG_ERROR("{}", message);
         PrintHelp();
         exit(1);
     }

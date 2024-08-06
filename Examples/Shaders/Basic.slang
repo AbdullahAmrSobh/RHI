@@ -49,6 +49,7 @@ VSOutput VSMain(VSInput input)
 	output.position = TransformToClipSpace(input.position);
 	output.color    = NormalToColor(input.normal);
 	output.uv       = input.uv0;
+	output.uv.y     *= -1.0;
 	return output;
 }
 

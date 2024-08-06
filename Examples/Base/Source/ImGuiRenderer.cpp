@@ -3,6 +3,8 @@
 
 #include <RHI/Common/Hash.hpp>
 
+#include <algorithm>
+
 namespace Examples
 {
     inline static ImGuiKey ConvertToImguiKeycode(KeyCode key)
@@ -222,99 +224,88 @@ namespace Examples
         m_context = createInfo.context;
 
         // create sampler state
-        {
-            RHI::SamplerCreateInfo samplerCI{};
-            samplerCI.name = "ImGui-Sampler";
-            samplerCI.filterMin = RHI::SamplerFilter::Linear;
-            samplerCI.filterMag = RHI::SamplerFilter::Linear;
-            samplerCI.filterMip = RHI::SamplerFilter::Linear;
-            samplerCI.compare = RHI::SamplerCompareOperation::Always;
-            samplerCI.mipLodBias = 0.0f;
-            samplerCI.addressU = RHI::SamplerAddressMode::Repeat;
-            samplerCI.addressV = RHI::SamplerAddressMode::Repeat;
-            samplerCI.addressW = RHI::SamplerAddressMode::Repeat;
-            samplerCI.minLod = 0.0f;
-            samplerCI.maxLod = 1.0f;
-            m_sampler = m_context->CreateSampler(samplerCI);
-        }
+        RHI::SamplerCreateInfo samplerCI{};
+        samplerCI.name = "ImGui-Sampler";
+        samplerCI.filterMin = RHI::SamplerFilter::Linear;
+        samplerCI.filterMag = RHI::SamplerFilter::Linear;
+        samplerCI.filterMip = RHI::SamplerFilter::Linear;
+        samplerCI.compare = RHI::SamplerCompareOperation::Always;
+        samplerCI.mipLodBias = 0.0f;
+        samplerCI.addressU = RHI::SamplerAddressMode::Repeat;
+        samplerCI.addressV = RHI::SamplerAddressMode::Repeat;
+        samplerCI.addressW = RHI::SamplerAddressMode::Repeat;
+        samplerCI.minLod = 0.0f;
+        samplerCI.maxLod = 1.0f;
+        m_sampler = m_context->CreateSampler(samplerCI);
 
-        {
-            RHI::BindGroupLayoutCreateInfo bindGroupLayoutCreateInfo{};
-            bindGroupLayoutCreateInfo.bindings[0] = RHI::ShaderBinding{ .type = RHI::BindingType::UniformBuffer, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Vertex };
-            bindGroupLayoutCreateInfo.bindings[1] = RHI::ShaderBinding{ .type = RHI::BindingType::Sampler, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel };
-            bindGroupLayoutCreateInfo.bindings[2] = RHI::ShaderBinding{ .type = RHI::BindingType::SampledImage, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel };
-            m_bindGroupLayout = m_context->CreateBindGroupLayout(bindGroupLayoutCreateInfo);
+        RHI::BindGroupLayoutCreateInfo bindGroupLayoutCI{};
+        bindGroupLayoutCI.bindings[0] = RHI::ShaderBinding{ .type = RHI::BindingType::UniformBuffer, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Vertex };
+        bindGroupLayoutCI.bindings[1] = RHI::ShaderBinding{ .type = RHI::BindingType::Sampler, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel };
+        bindGroupLayoutCI.bindings[2] = RHI::ShaderBinding{ .type = RHI::BindingType::SampledImage, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel };
+        auto bindGroupLayout = m_context->CreateBindGroupLayout(bindGroupLayoutCI);
 
-            {
-                RHI::BufferCreateInfo bufferCreateInfo{};
-                bufferCreateInfo.name = "ImGui-UniformBuffer";
-                bufferCreateInfo.byteSize = sizeof(float) * 4 * 4;
-                bufferCreateInfo.usageFlags = RHI::BufferUsage::Uniform;
-                m_uniformBuffer = m_context->CreateBuffer(bufferCreateInfo).GetValue();
-            }
-        }
+        RHI::BufferCreateInfo uniformBufferCI{};
+        uniformBufferCI.name = "ImGui-UniformBuffer";
+        uniformBufferCI.byteSize = sizeof(float) * 4 * 4;
+        uniformBufferCI.usageFlags = RHI::BufferUsage::Uniform;
+        m_uniformBuffer = m_context->CreateBuffer(uniformBufferCI).GetValue();
 
-        // create font texture atlas
-        {
-            unsigned char* pixels;
-            int width, height;
-            io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+        unsigned char* pixels;
+        int width, height;
+        io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
-            [[maybe_unused]] RHI::ImageCreateInfo imageInfo{};
-            imageInfo.size.width = uint32_t(width);
-            imageInfo.size.height = uint32_t(height);
-            imageInfo.size.depth = 1;
-            imageInfo.type = RHI::ImageType::Image2D;
-            imageInfo.format = RHI::Format::RGBA8_UNORM;
-            imageInfo.usageFlags = RHI::ImageUsage::ShaderResource;
-            imageInfo.usageFlags |= RHI::ImageUsage::CopyDst;
-            imageInfo.sampleCount = RHI::SampleCount::Samples1;
-            imageInfo.arrayCount = 1;
-            imageInfo.mipLevels = 1;
+        [[maybe_unused]] RHI::ImageCreateInfo atlasTextureCI{};
+        atlasTextureCI.size.width = uint32_t(width);
+        atlasTextureCI.size.height = uint32_t(height);
+        atlasTextureCI.size.depth = 1;
+        atlasTextureCI.type = RHI::ImageType::Image2D;
+        atlasTextureCI.format = RHI::Format::RGBA8_UNORM;
+        atlasTextureCI.usageFlags = RHI::ImageUsage::ShaderResource;
+        atlasTextureCI.usageFlags |= RHI::ImageUsage::CopyDst;
+        atlasTextureCI.sampleCount = RHI::SampleCount::Samples1;
+        atlasTextureCI.arrayCount = 1;
+        atlasTextureCI.mipLevels = 1;
 
-            // m_image = RHI::CreateImageWithData(*m_context, imageInfo, TL::Span<const uint8_t>{ pixels, size_t(width * height * 4) }).GetValue();
-            RHI::ImageViewCreateInfo viewInfo{};
-            viewInfo.image = m_image;
-            viewInfo.viewType = RHI::ImageViewType::View2D;
-            viewInfo.subresource.imageAspects = RHI::ImageAspect::Color;
-            viewInfo.subresource.arrayCount = 1;
-            viewInfo.subresource.mipLevelCount = 1;
-            m_imageView = m_context->CreateImageView(viewInfo);
-        }
+        // m_image = RHI::CreateImageWithData(*m_context, imageInfo, TL::Span<const uint8_t>{ pixels, size_t(width * height * 4) }).GetValue();
+        RHI::ImageViewCreateInfo viewInfo{};
+        viewInfo.image = m_image;
+        viewInfo.viewType = RHI::ImageViewType::View2D;
+        viewInfo.subresource.imageAspects = RHI::ImageAspect::Color;
+        viewInfo.subresource.arrayCount = 1;
+        viewInfo.subresource.mipLevelCount = 1;
+        m_imageView = m_context->CreateImageView(viewInfo);
 
-        {
-            m_bindGroup = m_context->CreateBindGroup(m_bindGroupLayout);
-            TL::Span<const RHI::BindGroupUpdateInfo> bindings{
-                RHI::BindGroupUpdateInfo(0, 0, m_uniformBuffer),
-                RHI::BindGroupUpdateInfo(1, 0, m_sampler),
-                RHI::BindGroupUpdateInfo(2, 0, m_imageView)
-            };
-            m_context->UpdateBindGroup(m_bindGroup, bindings);
-        }
+        m_bindGroup = m_context->CreateBindGroup(bindGroupLayout);
+        TL::Span<const RHI::BindGroupUpdateInfo> bindings{
+            RHI::BindGroupUpdateInfo(0, 0, m_uniformBuffer),
+            RHI::BindGroupUpdateInfo(1, 0, m_sampler),
+            RHI::BindGroupUpdateInfo(2, 0, m_imageView)
+        };
+        m_context->UpdateBindGroup(m_bindGroup, bindings);
 
-        {
-            RHI::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{ m_bindGroupLayout };
-            m_pipelineLayout = m_context->CreatePipelineLayout(pipelineLayoutCreateInfo);
+        RHI::PipelineLayoutCreateInfo pipelineLayoutCI{ bindGroupLayout };
+        auto pipelineLayout = m_context->CreatePipelineLayout(pipelineLayoutCI);
 
-            auto shaderModule = m_context->CreateShaderModule({ createInfo.shaderBlob.data(), createInfo.shaderBlob.size() });
-            auto defaultBlendState = RHI::ColorAttachmentBlendStateDesc{
-                true,
-                RHI::BlendEquation::Add,
-                RHI::BlendFactor::SrcAlpha,
-                RHI::BlendFactor::OneMinusSrcAlpha,
-                RHI::BlendEquation::Add,
-                RHI::BlendFactor::One,
-                RHI::BlendFactor::OneMinusSrcAlpha,
-                RHI::ColorWriteMask::All,
-            };
-            RHI::GraphicsPipelineCreateInfo pipelineCI{
-                // clang-format off
+        auto shaderModule = m_context->CreateShaderModule({ createInfo.shaderBlob.data(), createInfo.shaderBlob.size() });
+
+        auto attachmentBlendDesc = RHI::ColorAttachmentBlendStateDesc{
+            true,
+            RHI::BlendEquation::Add,
+            RHI::BlendFactor::SrcAlpha,
+            RHI::BlendFactor::OneMinusSrcAlpha,
+            RHI::BlendEquation::Add,
+            RHI::BlendFactor::One,
+            RHI::BlendFactor::OneMinusSrcAlpha,
+            RHI::ColorWriteMask::All,
+        };
+        RHI::GraphicsPipelineCreateInfo pipelineCI{
+            // clang-format off
             .name = "ImGui Pipeline",
             .vertexShaderName = "VSMain",
             .vertexShaderModule = shaderModule.get(),
             .pixelShaderName = "PSMain",
             .pixelShaderModule = shaderModule.get(),
-            .layout = m_pipelineLayout,
+            .layout = pipelineLayout,
             .inputAssemblerState =
                 {
                     .bindings
@@ -336,7 +327,7 @@ namespace Examples
                 },
             .colorBlendState =
                 {
-                    .blendStates = { defaultBlendState, defaultBlendState },
+                    .blendStates = { attachmentBlendDesc, attachmentBlendDesc },
                     .blendConstants = {}
                 },
             .topologyMode = RHI::PipelineTopologyMode::Triangles,
@@ -359,17 +350,14 @@ namespace Examples
                     .compareOperator = RHI::CompareOperator::Always,
                     .stencilTestEnable = false,
                 },
-                // clang-format on
-            };
-            m_pipeline = m_context->CreateGraphicsPipeline(pipelineCI);
-        }
+            // clang-format on
+        };
+        m_pipeline = m_context->CreateGraphicsPipeline(pipelineCI);
     }
 
     void ImGuiRenderer::Shutdown()
     {
-        m_context->DestroyPipelineLayout(m_pipelineLayout);
         m_context->DestroyGraphicsPipeline(m_pipeline);
-        m_context->DestroyBindGroupLayout(m_bindGroupLayout);
         m_context->DestroyBindGroup(m_bindGroup);
         m_context->DestroyImageView(m_imageView);
         m_context->DestroySampler(m_sampler);
@@ -398,52 +386,38 @@ namespace Examples
         // Will project scissor/clipping rectangles into framebuffer space
         ImVec2 clipOff = drawData->DisplayPos;         // (0,0) unless using multi-viewports
         ImVec2 clipScale = drawData->FramebufferScale; // (1,1) unless using retina display which are often (2,2)
-
-        uint32_t fb_width = 1600, fb_height = 900;
-
         for (int n = 0; n < drawData->CmdListsCount; n++)
         {
-            const ImDrawList* cmdList = drawData->CmdLists[n];
-            for (int i = 0; i < cmdList->CmdBuffer.Size; i++)
+            const ImDrawList* drawList = drawData->CmdLists[n];
+            for (int i = 0; i < drawList->CmdBuffer.Size; i++)
             {
-                const ImDrawCmd* pcmd = &cmdList->CmdBuffer[i];
+                const ImDrawCmd* drawCmd = &drawList->CmdBuffer[i];
 
-                if (pcmd->UserCallback)
+                if (drawCmd->UserCallback)
                 {
-                    pcmd->UserCallback(cmdList, pcmd);
+                    drawCmd->UserCallback(drawList, drawCmd);
                 }
                 else
                 {
                     // Project scissor/clipping rectangles into framebuffer space
-                    ImVec2 clip_min((pcmd->ClipRect.x - clipOff.x) * clipScale.x, (pcmd->ClipRect.y - clipOff.y) * clipScale.y);
-                    ImVec2 clip_max((pcmd->ClipRect.z - clipOff.x) * clipScale.x, (pcmd->ClipRect.w - clipOff.y) * clipScale.y);
+                    ImVec2 clip_min((drawCmd->ClipRect.x - clipOff.x) * clipScale.x, (drawCmd->ClipRect.y - clipOff.y) * clipScale.y);
+                    ImVec2 clip_max((drawCmd->ClipRect.z - clipOff.x) * clipScale.x, (drawCmd->ClipRect.w - clipOff.y) * clipScale.y);
 
-                    // Clamp to viewport as vkCmdSetScissor() won't accept values that are off bounds
-                    if (clip_min.x < 0.0f)
-                    {
-                        clip_min.x = 0.0f;
-                    }
-                    if (clip_min.y < 0.0f)
-                    {
-                        clip_min.y = 0.0f;
-                    }
-                    if (clip_max.x > fb_width)
-                    {
-                        clip_max.x = (float)fb_width;
-                    }
-                    if (clip_max.y > fb_height)
-                    {
-                        clip_max.y = (float)fb_height;
-                    }
+                    // Clamp to viewport as commandList.SetSicssor() won't accept values that are off bounds
+                    clip_min.x = std::clamp(clip_min.x, 0.0f, drawData->DisplaySize.x);
+                    clip_min.y = std::clamp(clip_min.y, 0.0f, drawData->DisplaySize.y);
+                    clip_max.x = std::clamp(clip_max.x, 0.0f, drawData->DisplaySize.x);
+                    clip_max.y = std::clamp(clip_max.y, 0.0f, drawData->DisplaySize.y);
                     if (clip_max.x <= clip_min.x || clip_max.y <= clip_min.y)
                         continue;
 
                     // Apply scissor/clipping rectangle
-                    RHI::Scissor scissor{};
-                    scissor.offsetX = (int32_t)(clip_min.x);
-                    scissor.offsetY = (int32_t)(clip_min.y);
-                    scissor.width = (uint32_t)(clip_max.x - clip_min.x);
-                    scissor.height = (uint32_t)(clip_max.y - clip_min.y);
+                    RHI::Scissor scissor{
+                        .offsetX = (int32_t)(clip_min.x),
+                        .offsetY = (int32_t)(clip_min.y),
+                        .width = (uint32_t)(clip_max.x - clip_min.x),
+                        .height = (uint32_t)(clip_max.y - clip_min.y),
+                    };
                     commandList.SetSicssor(scissor);
 
                     // Bind texture, Draw
@@ -452,15 +426,15 @@ namespace Examples
                     drawInfo.pipelineState = m_pipeline;
                     drawInfo.indexBuffer = m_indexBuffer;
                     drawInfo.vertexBuffers = { m_vertexBuffer };
-                    drawInfo.parameters.elementsCount = pcmd->ElemCount;
-                    drawInfo.parameters.vertexOffset = (int32_t)pcmd->VtxOffset + globalVtxOffset;
-                    drawInfo.parameters.firstElement = pcmd->IdxOffset + globalIdxOffset;
+                    drawInfo.parameters.elementsCount = drawCmd->ElemCount;
+                    drawInfo.parameters.vertexOffset = (int32_t)drawCmd->VtxOffset + globalVtxOffset;
+                    drawInfo.parameters.firstElement = drawCmd->IdxOffset + globalIdxOffset;
                     commandList.Draw(drawInfo);
                 }
             }
 
-            globalIdxOffset += cmdList->IdxBuffer.Size;
-            globalVtxOffset += cmdList->VtxBuffer.Size;
+            globalIdxOffset += drawList->IdxBuffer.Size;
+            globalVtxOffset += drawList->VtxBuffer.Size;
         }
     }
 
@@ -519,12 +493,15 @@ namespace Examples
             float R = drawData->DisplayPos.x + drawData->DisplaySize.x;
             float T = drawData->DisplayPos.y;
             float B = drawData->DisplayPos.y + drawData->DisplaySize.y;
-            float mvp[4][4] = {
-                { 2.0f / (R - L), 0.0f, 0.0f, 0.0f },
-                { 0.0f, 2.0f / (T - B), 0.0f, 0.0f },
-                { 0.0f, 0.0f, 0.5f, 0.0f },
+            // clang-format off
+            float mvp[4][4] =
+            {
+                { 2.0f / (R - L), 0.0f,                 0.0f, 0.0f },
+                { 0.0f,           2.0f / (T - B),       0.0f, 0.0f },
+                { 0.0f,           0.0f,                 0.5f, 0.0f },
                 { (R + L) / (L - R), (T + B) / (B - T), 0.5f, 1.0f },
             };
+            // clang-format on
             auto uniformBufferPtr = m_context->MapBuffer(m_uniformBuffer);
             memcpy(uniformBufferPtr, mvp, sizeof(mvp));
             m_context->UnmapBuffer(m_uniformBuffer);

@@ -104,39 +104,47 @@ namespace Examples
             TL_LOG_INFO("Loading Material {}", aiMaterial.GetName().C_Str());
 
             MaterialIds materialProperty{};
-            aiString diffusePath, normalPath;
-            if (auto result = aiMaterial.GetTexture(aiTextureType_DIFFUSE, 0, &diffusePath); result == AI_SUCCESS)
+            auto loadTexture = [&](aiTextureType textureType, uint32_t* propertyIndex)
             {
-                auto path = ResolvePath(sceneFileLocation, diffusePath.C_Str());
-                TL_LOG_INFO("\t Loading {}", path);
-                scene.images.push_back(renderer.CreateImage(path.c_str()));
-                materialProperty.diffuseID = (uint32_t)scene.images.size() - 1;
+                aiString texturePath {};
+                if (auto result = aiMaterial.GetTexture(textureType, 0, &texturePath); result == AI_SUCCESS)
+                {
+                    auto path = ResolvePath(sceneFileLocation, texturePath.C_Str());
+                    TL_LOG_INFO("\t Loading {}", path);
+                    scene.images.push_back(renderer.CreateImage(path.c_str()));
+                    *propertyIndex = (uint32_t)scene.images.size() - 1;
 
-                RHI::ImageViewCreateInfo imageViewCI{};
-                imageViewCI.image = scene.images.back();
-                imageViewCI.viewType = RHI::ImageViewType::View2D;
-                imageViewCI.components = RHI::ComponentMapping{ RHI::ComponentSwizzle::Identity, RHI::ComponentSwizzle::Identity, RHI::ComponentSwizzle::Identity, RHI::ComponentSwizzle::Identity };
-                imageViewCI.subresource.imageAspects = RHI::ImageAspect::Color;
-                imageViewCI.subresource.arrayCount = 1;
-                imageViewCI.subresource.mipLevelCount = 1;
-                scene.imagesViews.push_back(renderer.m_context->CreateImageView(imageViewCI));
-            }
-            if (auto result = aiMaterial.GetTexture(aiTextureType_NORMALS, 0, &normalPath); result == AI_SUCCESS)
-            {
-                auto path = ResolvePath(sceneFileLocation, normalPath.C_Str());
-                TL_LOG_INFO("\t Loading {}", path);
-                scene.images.push_back(renderer.CreateImage(path.c_str()));
-                materialProperty.normalID = (uint32_t)scene.images.size() - 1;
+                    RHI::ImageViewCreateInfo imageViewCI{};
+                    imageViewCI.image = scene.images.back();
+                    imageViewCI.viewType = RHI::ImageViewType::View2D;
+                    imageViewCI.components = RHI::ComponentMapping{ RHI::ComponentSwizzle::Identity, RHI::ComponentSwizzle::Identity, RHI::ComponentSwizzle::Identity, RHI::ComponentSwizzle::Identity };
+                    imageViewCI.subresource.imageAspects = RHI::ImageAspect::Color;
+                    imageViewCI.subresource.arrayCount = 1;
+                    imageViewCI.subresource.mipLevelCount = 1;
+                    scene.imagesViews.push_back(renderer.m_context->CreateImageView(imageViewCI));
+                }
+            };
 
-                RHI::ImageViewCreateInfo imageViewCI{};
-                imageViewCI.image = scene.images.back();
-                imageViewCI.viewType = RHI::ImageViewType::View2D;
-                imageViewCI.components = RHI::ComponentMapping{ RHI::ComponentSwizzle::Identity, RHI::ComponentSwizzle::Identity, RHI::ComponentSwizzle::Identity, RHI::ComponentSwizzle::Identity };
-                imageViewCI.subresource.imageAspects = RHI::ImageAspect::Color;
-                imageViewCI.subresource.arrayCount = 1;
-                imageViewCI.subresource.mipLevelCount = 1;
-                scene.imagesViews.push_back(renderer.m_context->CreateImageView(imageViewCI));
-            }
+            loadTexture(aiTextureType_DIFFUSE, &materialProperty.diffuseID);
+            loadTexture(aiTextureType_SPECULAR, &materialProperty.specularID);
+            loadTexture(aiTextureType_AMBIENT, &materialProperty.ambientID);
+            loadTexture(aiTextureType_EMISSIVE, &materialProperty.emissiveID);
+            loadTexture(aiTextureType_HEIGHT, &materialProperty.heightID);
+            loadTexture(aiTextureType_NORMALS, &materialProperty.normalsID);
+            loadTexture(aiTextureType_SHININESS, &materialProperty.shininessID);
+            loadTexture(aiTextureType_OPACITY, &materialProperty.opacityID);
+            loadTexture(aiTextureType_DISPLACEMENT, &materialProperty.displacementID);
+            loadTexture(aiTextureType_LIGHTMAP, &materialProperty.lightmapID);
+            loadTexture(aiTextureType_REFLECTION, &materialProperty.reflectionID);
+            loadTexture(aiTextureType_BASE_COLOR, &materialProperty.baseColorID);
+            loadTexture(aiTextureType_NORMAL_CAMERA, &materialProperty.normalCameraID);
+            loadTexture(aiTextureType_EMISSION_COLOR, &materialProperty.emissionColorID);
+            loadTexture(aiTextureType_METALNESS, &materialProperty.metalnessID);
+            loadTexture(aiTextureType_DIFFUSE_ROUGHNESS, &materialProperty.diffuseRoughnessID);
+            loadTexture(aiTextureType_AMBIENT_OCCLUSION, &materialProperty.ambientOcclusionID);
+            loadTexture(aiTextureType_SHEEN, &materialProperty.sheenID);
+            loadTexture(aiTextureType_CLEARCOAT, &materialProperty.clearcoatID);
+            loadTexture(aiTextureType_TRANSMISSION, &materialProperty.transmissionID);
             scene.materialIDs.push_back(materialProperty);
         }
 
@@ -153,7 +161,7 @@ namespace Examples
 
                 ObjectTransform transform{};
                 transform.modelMatrix = modelMatrix;
-                if (material.diffuseID > 49)
+                if (material.diffuseID == UINT32_MAX)
                 {
                     TL_LOG_ERROR("Invalid index for color map texture {}", material.diffuseID);
                     transform.colorIndex = 0;
@@ -163,14 +171,14 @@ namespace Examples
                     transform.colorIndex = material.diffuseID;
                 }
 
-                if (material.normalID > 49)
+                if (material.normalsID == UINT32_MAX)
                 {
-                    TL_LOG_ERROR("Invalid index for normal map texture {}", material.normalID);
+                    TL_LOG_ERROR("Invalid index for normal map texture {}", material.normalsID);
                     transform.normalIndex = 0;
                 }
                 else
                 {
-                    transform.normalIndex = material.normalID;
+                    transform.normalIndex = material.normalsID;
                 }
 
                 scene.m_meshesTransform.push_back(transform);

@@ -319,7 +319,7 @@ namespace RHI::Vulkan
             descriptorBinding.binding = index;
             descriptorBinding.descriptorType = ConvertDescriptorType(binding.type);
             // TODO: revist this count
-            descriptorBinding.descriptorCount = useBindless ? 128 : binding.arrayCount;
+            descriptorBinding.descriptorCount = useBindless ? 1024 : binding.arrayCount;
             descriptorBinding.stageFlags = ConvertShaderStage(binding.stages);
             descriptorBinding.pImmutableSamplers = nullptr;
             bindingInfos.push_back(descriptorBinding);

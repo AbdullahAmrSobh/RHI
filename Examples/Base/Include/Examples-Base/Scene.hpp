@@ -17,7 +17,25 @@ namespace Examples
     struct MaterialIds
     {
         uint32_t diffuseID = UINT32_MAX;
-        uint32_t normalID = UINT32_MAX;
+        uint32_t specularID = UINT32_MAX;
+        uint32_t ambientID = UINT32_MAX;
+        uint32_t emissiveID = UINT32_MAX;
+        uint32_t heightID = UINT32_MAX;
+        uint32_t normalsID = UINT32_MAX;
+        uint32_t shininessID = UINT32_MAX;
+        uint32_t opacityID = UINT32_MAX;
+        uint32_t displacementID = UINT32_MAX;
+        uint32_t lightmapID = UINT32_MAX;
+        uint32_t reflectionID = UINT32_MAX;
+        uint32_t baseColorID = UINT32_MAX;
+        uint32_t normalCameraID = UINT32_MAX;
+        uint32_t emissionColorID = UINT32_MAX;
+        uint32_t metalnessID = UINT32_MAX;
+        uint32_t diffuseRoughnessID = UINT32_MAX;
+        uint32_t ambientOcclusionID = UINT32_MAX;
+        uint32_t sheenID = UINT32_MAX;
+        uint32_t clearcoatID = UINT32_MAX;
+        uint32_t transmissionID = UINT32_MAX;
     };
 
     class Mesh

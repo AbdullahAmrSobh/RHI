@@ -36,18 +36,19 @@ namespace Examples
         ImGuiContext* m_imguiContext;
 
         RHI::Handle<RHI::BindGroup> m_bindGroup;
-
-        RHI::Handle<RHI::BindGroupLayout> m_bindGroupLayout;
-        RHI::Handle<RHI::PipelineLayout> m_pipelineLayout;
         RHI::Handle<RHI::GraphicsPipeline> m_pipeline;
 
-        RHI::Handle<RHI::Image> m_image;
-        RHI::Handle<RHI::ImageView> m_imageView;
+        RHI::Handle<RHI::Buffer> m_uniformBuffer;
         RHI::Handle<RHI::Sampler> m_sampler;
 
+        // TODO replace with RPI texture asset
+        RHI::Handle<RHI::Image> m_image;
+        RHI::Handle<RHI::ImageView> m_imageView;
+
+
+        // TODO: replace with RPI buffer stream
         size_t m_vertexBufferSize, m_indexBufferSize;
         RHI::Handle<RHI::Buffer> m_vertexBuffer;
         RHI::Handle<RHI::Buffer> m_indexBuffer;
-        RHI::Handle<RHI::Buffer> m_uniformBuffer;
     };
 } // namespace Examples
