@@ -45,4 +45,47 @@ if(RHI_BUILD_EXAMPLES)
 			"GLM_CONFIG_CLIP_CONTROL ON"
 			"GLM_CLIP_CONTROL_ZO_BIT ON"
 	)
+
+	CPMAddPackage(
+		NAME           Compressonator
+		GIT_REPOSITORY git@github.com:GPUOpen-Tools/compressonator.git
+		GIT_TAG        V4.5.52
+		GIT_SUBMODULES_RECURSE TRUE
+		GIT_PROGRESS TRUE
+		OPTIONS
+			"OPTION_ENABLE_ALL_APPS OFF"             # Enable all apps
+			"OPTION_BUILD_APPS_CMP_CLI OFF"
+			"OPTION_BUILD_APPS_CMP_GUI OFF"
+			"OPTION_BUILD_CMP_SDK OFF"
+			"OPTION_BUILD_APPS_CMP_VISION OFF"
+			"OPTION_BUILD_APPS_CMP_UNITTESTS OFF"    # Build Compressontor UnitTests
+			"OPTION_BUILD_APPS_CMP_EXAMPLES OFF"     # Build Compressontor Examples
+			"OPTION_BUILD_BROTLIG OFF"
+			"OPTION_BUILD_KTX2 OFF"
+			"LIB_BUILD_CORE ON"
+			"LIB_BUILD_COMPRESSONATOR_SDK ON"
+			"LIB_BUILD_FRAMEWORK_SDK ON"
+			"LIB_BUILD_GPUDECODE ON"
+	)
+
+	CPMAddPackage(
+		NAME           meshoptimizer
+		GIT_REPOSITORY git@github.com:zeux/meshoptimizer.git
+		GIT_TAG        v0.21
+		OPTIONS
+	)
+
+	CPMAddPackage(
+		NAME           assimp
+		GIT_REPOSITORY git@github.com:assimp/assimp.git
+		GIT_TAG        v5.4.2
+		OPTIONS
+	)
+
+	CPMAddPackage(
+		NAME           glfw
+		GIT_REPOSITORY git@github.com:glfw/glfw.git
+		GIT_TAG        3.4
+		OPTIONS
+	)
 endif()

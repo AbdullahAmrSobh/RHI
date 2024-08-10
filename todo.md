@@ -1,35 +1,70 @@
-1. Fix all leaks                                [So far so good]
-2. Fix exit crashing                            [so far so good]
-3. FIx swapchain resizing                       [not yet]
-4. Fix all validation errors/warnnings          [so far so good]
-5. cleanup backend code                         [wip]
-6. Load scene                                   [not yet]
+TL:
+    - Hot Reloading
+    - SmallVector
+    - Arena Allocator
+    - Leak Detector
+    - Stacktrace library
+    - Task Scheduler
+    - Multithreading Interface
+    - Serialization/Deserialization
+    - Reflection
+    - Command line interface builder
 
-- Extract all TL stuff out of RHI repo [x]
-- Extract Examples (Game engine setup) out of RHI repo
+RHI:
+    - Fix command lists leak
+    - Secondary command lists
+    - Fix swapchain resize issues
+    - Fix Leaks on exit
+    - MSAA
+    - Iterate on Render Graph Interface design
+    - Drop RAII completelly (Use Create/Destroy) in similar style to Vulkan.hpp
+    - Mesh Pipeline
+    - Ray Tracing Pipeline
+    - Querys
 
-- Load sponza meshes only
-- Add bindless textures
-- Enable ImGui again
-- Shader/Pipeline Hot reloading
-- Research minimizing boilerplate code e.g. can cache layout objects
+RPI:
+    - ImGui
+    - Scene
+    - Material
+    - Mesh
+    - Model
+    - Texture
+    - Renderer Interfacee
+    - Feature Interface
+    - View
+    - Lights
+    - Pipeline Hot Reloading
+    - Streaming Resources
+    - Shader Reflection Interface (through Slang API)
+    - Text Renderer
+    - Primitives Renderer
 
-- Setup good renderer
-    - Shadow pass
+GPU Data:
+    Dynamic Uniform Buffer: Lights, Materials, ...etc
+        - Lights
+        - Materials
+        - Transforms
+    Instance Buffer: per instasnce transofmrs
+    Geometry Buffer: Actual mesh geometry buffers
+
+Asset:
+    - Texture/Image Asset
+    - Shader Asset
+    - Mseh Asset
+
+Deferred Renderer:
+    - Shadow Pass
     - SSAO
-    - Deferred Shading PBR lighting
-    - Integerate ECS framework
+    - PBR Geometry Renderer
 
+Misc:
+    - Extract Examples/Engine code to seperate repo
+    - Integrate Physics
+    - Integrate ESC
+    - Build on Linux
+    - Build on Android
+    - Setup Github
+    - CVars
 
-Render Graph
-    - Move Attachment to rendergraph.hpp
-    -
-
-- Make all structs PODs
-- Fix all memory leaks
-- Fix swapchain resizing
-- Fix render graph resizing
-- iterate on render graph interface
-- add more passes/attachments
-- support secondary command buffers
-- support msaa
+Editor:
+    Properties Tags (tags in code that automtaically create GUI)

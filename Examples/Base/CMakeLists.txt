@@ -15,15 +15,12 @@ tl_add_target(
     NAMESPACE Examples
     STATIC
     SOURCES ${SOURCE_FILES}
-    PUBLIC_INCLUDE_DIRECTORIES
-        "${CMAKE_SOURCE_DIR}/Examples/Dependencies/assimp/Includes"
-        "${CMAKE_SOURCE_DIR}/Examples/Dependencies/GLFW/include"
     BUILD_DEPENDENCIES
         glm
         RHI::RHI
         ImGui
-        "${CMAKE_SOURCE_DIR}/Examples/Dependencies/assimp/Bin/assimp-vc143-mtd.lib"
-        "${CMAKE_SOURCE_DIR}/Examples/Dependencies/GLFW/lib-vc2022/glfw3.lib"
+        glfw
+        assimp
     RUNTIME_LIBRARIES
         RHI::Vulkan
 )
