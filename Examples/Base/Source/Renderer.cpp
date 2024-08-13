@@ -121,11 +121,57 @@ namespace Examples
         createInfo.sampleCount = RHI::SampleCount::Samples1;
         createInfo.type = image.dimension == dds::ResourceDimension::Texture1D ? RHI::ImageType::Image1D : (image.dimension == dds::ResourceDimension::Texture2D ? RHI::ImageType::Image2D : RHI::ImageType::Image3D);
         createInfo.name = filePath;
-        return CreateImageWithData(createInfo, TL::Span<const uint8_t>{ image.data.data(), image.data.size() }).GetValue();
+        return CreateImageWithData(createInfo, { image.data.data(), image.data.size() }).GetValue();
     }
 
-   TL::Ptr<Scene> Renderer::CreateScene()
+    TL::Ptr<Scene> Renderer::CreateScene()
     {
         return TL::CreatePtr<Scene>(m_context.get());
     }
+
+    RHI::Result<Handle<RHI::Image>> Renderer::CreateImageWithData(const RHI::ImageCreateInfo& createInfo, TL::Block content)
+    {
+        auto [handle, result] = m_context->CreateImage(createInfo);
+
+        if (result != RHI::ResultCode::Success)
+            return result;
+
+        auto stagingBuffer = m_context->AllocateTempBuffer(content.size);
+        memcpy(stagingBuffer.ptr, content.ptr, content.size);
+
+        RHI::ImageSubresourceLayers subresources{};
+        subresources.imageAspects = RHI::GetFormatAspects(createInfo.format);
+        subresources.arrayCount = createInfo.arrayCount;
+        subresources.mipLevel = createInfo.mipLevels;
+        m_context->StageResourceWrite(handle, subresources, stagingBuffer.buffer, stagingBuffer.offset);
+
+        return handle;
+    }
+
+    RHI::Result<Handle<RHI::Buffer>> Renderer::CreateBufferWithData(TL::Flags<RHI::BufferUsage> usageFlags, TL::Block content)
+    {
+        RHI::BufferCreateInfo createInfo{};
+        createInfo.byteSize = content.size;
+        createInfo.usageFlags = usageFlags;
+        auto [handle, result] = m_context->CreateBuffer(createInfo);
+
+        if (result != RHI::ResultCode::Success)
+            return result;
+
+        if (content.size <= m_context->GetLimits().stagingMemoryLimit)
+        {
+            auto ptr = m_context->MapBuffer(handle);
+            memcpy(ptr, content.ptr, content.size);
+            m_context->UnmapBuffer(handle);
+        }
+        else
+        {
+            auto stagingBuffer = m_context->AllocateTempBuffer(content.size);
+            memcpy(stagingBuffer.ptr, content.ptr, content.size);
+            m_context->StageResourceWrite(handle, 0, content.size, stagingBuffer.buffer, stagingBuffer.offset);
+        }
+
+        return handle;
+    }
+
 } // namespace Examples

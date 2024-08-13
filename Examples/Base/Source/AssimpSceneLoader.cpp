@@ -67,19 +67,19 @@ namespace Examples
 
             TL_ASSERT(aiMesh.HasPositions());
             {
-                mesh->m_position = renderer.CreateBufferWithData<aiVector3D>(RHI::BufferUsage::Vertex, { aiMesh.mVertices, aiMesh.mNumVertices }).GetValue();
+                mesh->m_position = renderer.CreateBufferWithData(RHI::BufferUsage::Vertex, TL::Block::Create(aiMesh.mVertices, aiMesh.mNumVertices)).GetValue();
                 mesh->elementsCount = (uint32_t)aiMesh.mNumVertices;
             }
 
             TL_ASSERT(aiMesh.HasNormals());
             {
-                mesh->m_normal = renderer.CreateBufferWithData<aiVector3D>(RHI::BufferUsage::Vertex, { aiMesh.mNormals, aiMesh.mNumVertices }).GetValue();
+                mesh->m_normal = renderer.CreateBufferWithData(RHI::BufferUsage::Vertex, TL::Block::Create(aiMesh.mNormals, aiMesh.mNumVertices)).GetValue();
             }
 
             TL_ASSERT(aiMesh.HasTextureCoords(0));
             {
                 auto texCoordData = TruncateToVector2D({ aiMesh.mTextureCoords[0], aiMesh.mNumVertices });
-                mesh->m_texCoord = renderer.CreateBufferWithData<aiVector2D>(RHI::BufferUsage::Vertex, texCoordData).GetValue();
+                mesh->m_texCoord = renderer.CreateBufferWithData(RHI::BufferUsage::Vertex, TL::Block::Create(texCoordData)).GetValue();
             }
 
             if (aiMesh.HasFaces())
@@ -93,7 +93,7 @@ namespace Examples
                     indices.push_back(aiMesh.mFaces[j].mIndices[2]);
                 }
 
-                mesh->m_index = renderer.CreateBufferWithData<uint32_t>(RHI::BufferUsage::Index, indices).GetValue();
+                mesh->m_index = renderer.CreateBufferWithData(RHI::BufferUsage::Index, TL::Block::Create(indices)).GetValue();
                 mesh->elementsCount = (uint32_t)indices.size();
             }
         }
@@ -106,7 +106,7 @@ namespace Examples
             MaterialIds materialProperty{};
             auto loadTexture = [&](aiTextureType textureType, uint32_t* propertyIndex)
             {
-                aiString texturePath {};
+                aiString texturePath{};
                 if (auto result = aiMaterial.GetTexture(textureType, 0, &texturePath); result == AI_SUCCESS)
                 {
                     auto path = ResolvePath(sceneFileLocation, texturePath.C_Str());
