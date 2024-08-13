@@ -1,13 +1,12 @@
 #pragma once
 
-#include "RHI/Common/Callstack.hpp"
 
 #include <TL/Assert.hpp>
 #include <TL/Containers.hpp>
+#include <TL/Stacktrace.hpp>
 
 #include <cstdint>
 #include <type_traits>
-#include <iostream>
 #include <format>
 
 #define RHI_DECALRE_OPAQUE_RESOURCE(name) \
@@ -132,7 +131,7 @@ namespace RHI
         TL::Vector<uint16_t> m_genIds;
         TL::Vector<size_t>   m_freeSlots;
 
-        TL::UnorderedMap<HandleType, Callstack> m_liveResources;
+        TL::UnorderedMap<HandleType, TL::Stacktrace> m_liveResources;
     };
 
 } // namespace RHI
@@ -144,11 +143,8 @@ namespace RHI
     {
         if (m_liveResources.empty() == false)
         {
-            std::cout << std::vformat("Leak detected. Not all {} resources were freed.",
-                                      std::make_format_args(typeid(Resource).name()))
-                      << "Leak count: " << m_liveResources.size() << "\n";
-
-            std::cout << "Leak count: " << m_liveResources.size() << "\n";
+            TL_LOG_WARNNING("Not all {} resources were freed, {}", typeid(Resource).name());
+            TL_LOG_WARNNING("Leak Count: {}", m_liveResources.size());
         }
     }
 
@@ -224,7 +220,7 @@ namespace RHI
         m_genIds.emplace_back(uint16_t(1));
         auto genId              = m_genIds.back();
         auto handle             = Handle<Resource>(m_resources.size() - 1, genId);
-        m_liveResources[handle] = CaptureCallstack(3);
+        m_liveResources[handle] = TL::CaptureStacktrace(3);
         return handle;
     }
 
@@ -256,7 +252,7 @@ namespace RHI
 
         for (auto [handle, stacktrace] : m_liveResources)
         {
-            auto stacktraceReport = ReportCallstack(stacktrace);
+            auto stacktraceReport = TL::ReportStacktrace(stacktrace);
             message.append(std::format("{}\n", stacktraceReport));
         }
 

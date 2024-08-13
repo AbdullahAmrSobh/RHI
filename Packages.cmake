@@ -81,6 +81,7 @@ if(RHI_BUILD_EXAMPLES)
 		GIT_TAG        v5.4.2
 		OPTIONS
 	)
+	set_target_properties(assimp PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 	CPMAddPackage(
 		NAME           glfw

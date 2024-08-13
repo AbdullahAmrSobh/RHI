@@ -3,7 +3,6 @@ cmake_minimum_required(VERSION 3.16)
 # Add header files
 set(HEADER_FILES
     # Common and utils
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Callstack.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Handle.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Hash.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Result.hpp
@@ -21,7 +20,6 @@ set(HEADER_FILES
 
 # Add source files
 set(SOURCE_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Common/Callstack.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Format.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraph.cpp
