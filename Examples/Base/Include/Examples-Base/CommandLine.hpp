@@ -10,14 +10,12 @@ namespace Examples::CommandLine
     struct LaunchSettings
     {
         TL::String sceneFileLocation;
-        TL::String sceneSeperateTexturesDir;
     };
 
     enum OptionType
     {
         Help,
         SceneFileLocation,
-        SceneSeperateTexturesDir,
         Count,
     };
 
@@ -34,11 +32,9 @@ namespace Examples::CommandLine
     // clang-format off
     inline static Option m_optionsLut[OptionType::Count] =
     {
-        { "help",           "Print this help message and exit.",                                                                   Help,              0, {}, false },
-        { "scene",          "Scene file location.",                                                                                SceneFileLocation, 1, {}, true  },
-        { "scene-textures", "Uses seperate directory for loading textures with the scene. Usefull for using compressed textures.", SceneFileLocation, 1, {}, true  },
+        { "help",  "Print this help message and exit.", Help,              0, {}, false },
+        { "scene", "Scene file location.",              SceneFileLocation, 1, {}, true  },
     };
-
     // clang-format on
 
     inline static bool StrEql(const char* a, const char* b)
@@ -143,9 +139,6 @@ namespace Examples::CommandLine
                 exit(0);
             case SceneFileLocation:
                 settings.sceneFileLocation = *it;
-                break;
-            case SceneSeperateTexturesDir:
-                settings.sceneSeperateTexturesDir = *it;
                 break;
             case Count:
                 break;

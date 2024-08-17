@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
 
-# Add header files
 set(HEADER_FILES
     # Common and utils
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Handle.hpp
@@ -18,7 +17,6 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Swapchain.hpp
 )
 
-# Add source files
 set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Format.cpp

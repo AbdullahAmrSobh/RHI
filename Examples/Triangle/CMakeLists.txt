@@ -16,7 +16,7 @@ tl_add_target(
     EXECUTABLE
     SOURCES ${SOURCE_FILES}
     BUILD_DEPENDENCIES
-        RHI::RHI
+        RPI
         Examples::Base
     RUNTIME_LIBRARIES
         RHI::Vulkan

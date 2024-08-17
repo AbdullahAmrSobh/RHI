@@ -1,19 +1,13 @@
 #pragma once
 
-#include <Examples-Base/ApplicationBase.hpp>
-#include <Examples-Base/Common.hpp>
+#include "ShaderInterface/Core.slang"
 
 #include <RHI/RHI.hpp>
 
-#include <glm/glm.hpp>
-#include "glm/ext.hpp"
-
-#include "ShaderInterface/Core.slang"
-
-#include <TL/Containers.hpp>
-
 namespace Examples
 {
+    class Window;
+
     struct MaterialIds
     {
         uint32_t diffuseID = UINT32_MAX;
@@ -69,10 +63,47 @@ namespace Examples
         TL::Vector<Mesh*> m_meshes;
 
         TL::Vector<MaterialIds> materialIDs;
-        TL::Vector<Handle<RHI::Image>> images;
-        TL::Vector<Handle<RHI::ImageView>> imagesViews;
+        TL::Vector<RHI::Handle<RHI::Image>> images;
+        TL::Vector<RHI::Handle<RHI::ImageView>> imagesViews;
 
         TL::Vector<ObjectTransform> m_meshesTransform;
         TL::Vector<uint32_t> m_meshesStatic;
     };
+
+    class Renderer
+    {
+    public:
+        Renderer();
+
+        virtual ~Renderer();
+
+        RHI::ResultCode Init(const class Window& window);
+
+        void Shutdown();
+
+        void Render(const Scene& scene);
+
+        RHI::Result<RHI::Handle<RHI::Image>> CreateImageWithData(const RHI::ImageCreateInfo& createInfo, TL::Block content);
+        RHI::Result<RHI::Handle<RHI::Buffer>> CreateBufferWithData(TL::Flags<RHI::BufferUsage> usageFlags, TL::Block content);
+        RHI::Handle<RHI::Image> CreateImage(const char* filePath);
+
+        TL::Ptr<Scene> CreateScene();
+
+        virtual RHI::ResultCode OnInit() = 0;
+
+        virtual void OnShutdown() = 0;
+
+        virtual void OnRender(const Scene& scene) = 0;
+
+        // protected:
+        const Window* m_window;
+
+        TL::Ptr<RHI::Context> m_context;
+        TL::Ptr<RHI::Swapchain> m_swapchain;
+        TL::Ptr<RHI::CommandPool> m_commandPool[2];
+        TL::Ptr<RHI::Fence> m_frameFence[2];
+    };
+
+    void LoadScene(Renderer& renderer, Scene& scene, const char* sceneFileLocation);
+    Renderer* CreateDeferredRenderer();
 } // namespace Examples

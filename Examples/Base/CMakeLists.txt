@@ -3,9 +3,6 @@ cmake_minimum_required(VERSION 3.14)
 set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/ApplicationBase.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Window.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Renderer.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/DeferredRenderer.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/AssimpSceneLoader.cpp
 )
 
 include(${CPM_TL_SOURCE}/CMake/add-target.cmake)
@@ -16,9 +13,6 @@ tl_add_target(
     SOURCES ${SOURCE_FILES}
     BUILD_DEPENDENCIES
         glm
-        RHI::RHI
         glfw
-        assimp
-    RUNTIME_LIBRARIES
-        RHI::Vulkan
+        TL
 )

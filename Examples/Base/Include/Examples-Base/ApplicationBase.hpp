@@ -1,16 +1,16 @@
 #pragma once
 
 #include "Examples-Base/Timestep.hpp"
+#include "Examples-Base/Window.hpp"
 #include "Examples-Base/CommandLine.hpp"
 
 #include <TL/UniquePtr.hpp>
+#include <TL/Span.hpp>
 
 namespace Examples
 {
     class Window;
     class Event;
-    class Renderer;
-    class Scene;
 
     class ApplicationBase
     {
@@ -38,13 +38,11 @@ namespace Examples
 
         virtual void OnUpdate(Timestep ts) = 0;
 
+        virtual void Render() = 0;
+
         virtual void OnEvent(Event& event) = 0;
 
     protected:
         TL::Ptr<Window> m_window;
-
-        TL::Ptr<Renderer> m_renderer;
-
-        TL::Ptr<Scene> m_scene;
     };
 } // namespace Examples

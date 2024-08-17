@@ -1,6 +1,6 @@
-#include "Examples-Base/Window.hpp"
-#include "Examples-Base/Scene.hpp"
-#include "Examples-Base/Renderer.hpp"
+#include "RPI/Renderer.hpp"
+
+#include <Examples-Base/Window.hpp>
 
 #include <RHI/RHI.hpp>
 #include <RHI-Vulkan/Loader.hpp>
@@ -19,7 +19,7 @@ namespace Examples
     {
     }
 
-    ResultCode Renderer::Init(const Window& window)
+    RHI::ResultCode Renderer::Init(const Window& window)
     {
         m_window = &window;
 
@@ -89,7 +89,7 @@ namespace Examples
         result = m_swapchain->Present();
     }
 
-    Handle<RHI::Image> Renderer::CreateImage(const char* filePath)
+    RHI::Handle<RHI::Image> Renderer::CreateImage(const char* filePath)
     {
         dds::Image image{};
         auto result = dds::readFile(filePath, &image);
@@ -129,7 +129,7 @@ namespace Examples
         return TL::CreatePtr<Scene>(m_context.get());
     }
 
-    RHI::Result<Handle<RHI::Image>> Renderer::CreateImageWithData(const RHI::ImageCreateInfo& createInfo, TL::Block content)
+    RHI::Result<RHI::Handle<RHI::Image>> Renderer::CreateImageWithData(const RHI::ImageCreateInfo& createInfo, TL::Block content)
     {
         auto [handle, result] = m_context->CreateImage(createInfo);
 
@@ -148,7 +148,7 @@ namespace Examples
         return handle;
     }
 
-    RHI::Result<Handle<RHI::Buffer>> Renderer::CreateBufferWithData(TL::Flags<RHI::BufferUsage> usageFlags, TL::Block content)
+    RHI::Result<RHI::Handle<RHI::Buffer>> Renderer::CreateBufferWithData(TL::Flags<RHI::BufferUsage> usageFlags, TL::Block content)
     {
         RHI::BufferCreateInfo createInfo{};
         createInfo.byteSize = content.size;

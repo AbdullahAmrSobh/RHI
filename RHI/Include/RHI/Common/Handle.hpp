@@ -1,6 +1,5 @@
 #pragma once
 
-
 #include <TL/Assert.hpp>
 #include <TL/Containers.hpp>
 #include <TL/Stacktrace.hpp>

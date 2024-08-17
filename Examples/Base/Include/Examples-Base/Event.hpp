@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Examples-Base/Common.hpp"
 #include "Examples-Base/Window.hpp"
 
-#include <format>
+#include <TL/Flags.hpp>
+
 #include <sstream>
 
 #define EVENT_CLASS_TYPE(type)                      \
@@ -20,10 +20,10 @@
         return #type;                               \
     }
 
-#define EVENT_CLASS_CATEGORY(category)                             \
+#define EVENT_CLASS_CATEGORY(category)                                 \
     virtual TL::Flags<EventCategory> GetCategoryFlags() const override \
-    {                                                              \
-        return category;                                           \
+    {                                                                  \
+        return category;                                               \
     }
 
 #define EVENT_HANDLER_BIND(fn) [this](auto&&... args) -> decltype(auto) { \

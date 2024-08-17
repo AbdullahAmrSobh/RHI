@@ -1,10 +1,6 @@
 #include "Examples-Base/ApplicationBase.hpp"
 #include "Examples-Base/Window.hpp"
 #include "Examples-Base/Event.hpp"
-#include "Examples-Base/Camera.hpp"
-#include "Examples-Base/Renderer.hpp"
-#include "Examples-Base/Scene.hpp"
-#include "Examples-Base/AssimpSceneLoader.hpp"
 
 #include <tracy/Tracy.hpp>
 
@@ -14,8 +10,6 @@ static bool APP_SHOULD_CLOSE = false;
 
 namespace Examples
 {
-    extern Renderer* CreateDeferredRenderer();
-
     ApplicationBase::ApplicationBase(const char* name, uint32_t windowWidth, uint32_t windowHeight)
         : m_window(nullptr)
     {
@@ -27,7 +21,6 @@ namespace Examples
         };
 
         m_window = TL::CreatePtr<Window>(name, Window::Size{ windowWidth, windowHeight }, windowEventDispatcher);
-        m_renderer =TL::Ptr<Renderer>(CreateDeferredRenderer());
     }
 
     ApplicationBase::~ApplicationBase()
@@ -39,14 +32,6 @@ namespace Examples
     {
         ZoneScoped;
 
-        ResultCode result;
-
-        result = m_renderer->Init(*m_window);
-        TL_ASSERT(IsSucess(result));
-
-        m_scene = m_renderer->CreateScene();
-        AssimpScenneLoader::LoadScene(*m_renderer, *m_scene, m_launchSettings.sceneFileLocation.c_str(), m_launchSettings.sceneSeperateTexturesDir.c_str());
-
         OnInit();
     }
 
@@ -55,8 +40,6 @@ namespace Examples
         ZoneScoped;
 
         OnShutdown();
-
-        m_renderer->Shutdown();
     }
 
     void ApplicationBase::DispatchEvent(Event& event)
@@ -97,8 +80,7 @@ namespace Examples
                 OnUpdate(Timestep(deltaTime));
             }
 
-            // Render
-            m_renderer->Render(*m_scene);
+            Render();
         }
     }
 

@@ -1,5 +1,4 @@
 #pragma once
-#include <Examples-Base/Common.hpp>
 #include <Examples-Base/CommandLine.hpp>
 
 namespace Examples

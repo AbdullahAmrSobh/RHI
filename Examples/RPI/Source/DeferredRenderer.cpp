@@ -1,7 +1,6 @@
-#include "Examples-Base/Renderer.hpp"
-#include "Examples-Base/Scene.hpp"
-#include <Examples-Base/FileSystem.hpp>
 #include <Examples-Base/Window.hpp>
+
+#include "RPI/Renderer.hpp"
 
 #include <TL/Log.hpp>
 
@@ -9,9 +8,27 @@
 
 #include <RHI/RHI.hpp>
 
+#include <fstream>
+
 namespace Examples
 {
-    inline static Handle<RHI::ImageAttachment> CreateTarget(RHI::RenderGraph& renderGraph, Handle<RHI::Pass> pass, const char* name, RHI::Format format, TL::Flags<RHI::ImageUsage> usage)
+    inline static TL::Vector<uint32_t> ReadBinaryFile(std::string_view filePath)
+    {
+        std::ifstream file(filePath.data(), std::ios::binary | std::ios::ate);
+        TL_ASSERT(file.is_open()); // "Failed to open SPIR-V file: " + filePath
+
+        std::streamsize size = file.tellg();
+        file.seekg(0, std::ios::beg);
+
+        TL_ASSERT(size % 4 == 0); // "Invalid SPIR-V file size: " + filePath
+
+        TL::Vector<uint32_t> spirv(size / 4);
+        TL_ASSERT(file.read(reinterpret_cast<char*>(spirv.data()), size)); // "Failed to read SPIR-V file: " + filePath
+
+        return spirv;
+    }
+
+    inline static RHI::Handle<RHI::ImageAttachment> CreateTarget(RHI::RenderGraph& renderGraph, RHI::Handle<RHI::Pass> pass, const char* name, RHI::Format format, TL::Flags<RHI::ImageUsage> usage)
     {
         bool isDepth = format == RHI::Format::D32;
 
@@ -38,20 +55,20 @@ namespace Examples
 
     struct PassGBuffer
     {
-        Handle<RHI::PipelineLayout> m_pipelineLayout;
-        Handle<RHI::GraphicsPipeline> m_pipeline;
-        Handle<RHI::BindGroup> m_bindGroup;
-        Handle<RHI::Sampler> m_sampler;
+        RHI::Handle<RHI::PipelineLayout> m_pipelineLayout;
+        RHI::Handle<RHI::GraphicsPipeline> m_pipeline;
+        RHI::Handle<RHI::BindGroup> m_bindGroup;
+        RHI::Handle<RHI::Sampler> m_sampler;
 
-        Handle<RHI::Buffer> m_sceneTransform;
-        Handle<RHI::Buffer> m_objectsTransform;
+        RHI::Handle<RHI::Buffer> m_sceneTransform;
+        RHI::Handle<RHI::Buffer> m_objectsTransform;
 
-        Handle<RHI::Pass> m_pass;
-        Handle<RHI::ImageAttachment> m_colorAttachment;
-        Handle<RHI::ImageAttachment> m_normalAttachment;
-        Handle<RHI::ImageAttachment> m_depthAttachment;
+        RHI::Handle<RHI::Pass> m_pass;
+        RHI::Handle<RHI::ImageAttachment> m_colorAttachment;
+        RHI::Handle<RHI::ImageAttachment> m_normalAttachment;
+        RHI::Handle<RHI::ImageAttachment> m_depthAttachment;
 
-        ResultCode Init(RHI::Context& context)
+        RHI::ResultCode Init(RHI::Context& context)
         {
             {
                 RHI::SamplerCreateInfo samplerCI{};
@@ -168,7 +185,7 @@ namespace Examples
             // clang-format on
             m_pipeline = context.CreateGraphicsPipeline(pipelineCI);
 
-            return ResultCode::Success;
+            return RHI::ResultCode::Success;
         }
 
         void Shutdown(RHI::Context& context)
@@ -177,7 +194,7 @@ namespace Examples
             context.DestroyPipelineLayout(m_pipelineLayout);
         }
 
-        ResultCode Setup(RHI::RenderGraph& renderGraph)
+        RHI::ResultCode Setup(RHI::RenderGraph& renderGraph)
         {
             RHI::PassCreateInfo passCI{};
             passCI.name = "Pass-GBuffer";
@@ -188,7 +205,7 @@ namespace Examples
             m_normalAttachment = CreateTarget(renderGraph, m_pass, "GBuffer-Normal", RHI::Format::RGBA16_UNORM, RHI::ImageUsage::Color | RHI::ImageUsage::ShaderResource);
             m_depthAttachment = CreateTarget(renderGraph, m_pass, "GBuffer-Depth", RHI::Format::D32, RHI::ImageUsage::Depth | RHI::ImageUsage::ShaderResource);
 
-            return ResultCode::Success;
+            return RHI::ResultCode::Success;
         }
 
         void Execute(RHI::RenderGraph& renderGraph, RHI::CommandPool& commandPool, const Scene& scene)
@@ -246,7 +263,7 @@ namespace Examples
             beginInfo.loadStoreOperations = {
                 { .clearValue = { .f32 = { 0.4f, 0.3f, 0.1f, 1.0f } }, .loadOperation = RHI::LoadOperation::Discard, .storeOperation = RHI::StoreOperation::Store },
                 { .clearValue = { .f32 = { 0.3f, 0.4f, 0.2f, 1.0f } }, .loadOperation = RHI::LoadOperation::Discard, .storeOperation = RHI::StoreOperation::Store },
-                { .clearValue = { .depthStencil = { 1.0f, 0 } },       .loadOperation = RHI::LoadOperation::Discard, .storeOperation = RHI::StoreOperation::Store },
+                { .clearValue = { .depthStencil = { 1.0f, 0 } }, .loadOperation = RHI::LoadOperation::Discard, .storeOperation = RHI::StoreOperation::Store },
             };
 
             commandList->Begin(beginInfo);
@@ -282,14 +299,14 @@ namespace Examples
 
     struct PassLighting
     {
-        Handle<RHI::BindGroup> m_bindGroup;
-        Handle<RHI::GraphicsPipeline> m_pipeline;
-        Handle<RHI::PipelineLayout> m_pipelineLayout;
+        RHI::Handle<RHI::BindGroup> m_bindGroup;
+        RHI::Handle<RHI::GraphicsPipeline> m_pipeline;
+        RHI::Handle<RHI::PipelineLayout> m_pipelineLayout;
 
-        Handle<RHI::Pass> m_pass;
-        Handle<RHI::ImageAttachment> m_outputAttachment;
+        RHI::Handle<RHI::Pass> m_pass;
+        RHI::Handle<RHI::ImageAttachment> m_outputAttachment;
 
-        ResultCode Init(RHI::Context& context)
+        RHI::ResultCode Init(RHI::Context& context)
         {
             auto shaderModuleCode = ReadBinaryFile("Shaders/Compose.spv");
             auto shaderMoudule = context.CreateShaderModule(shaderModuleCode);
@@ -365,7 +382,7 @@ namespace Examples
 
             context.DestroyBindGroupLayout(bindGroupLayout);
 
-            return ResultCode::Success;
+            return RHI::ResultCode::Success;
         }
 
         void Shutdown(RHI::Context& context)
@@ -376,7 +393,7 @@ namespace Examples
             context.DestroyGraphicsPipeline(m_pipeline);
         }
 
-        ResultCode Setup(RHI::RenderGraph& renderGraph, PassGBuffer& gBuffer, Handle<RHI::ImageAttachment> outputAttachment)
+        RHI::ResultCode Setup(RHI::RenderGraph& renderGraph, PassGBuffer& gBuffer, RHI::Handle<RHI::ImageAttachment> outputAttachment)
         {
             m_outputAttachment = outputAttachment;
 
@@ -396,7 +413,7 @@ namespace Examples
             viewInfo.subresources.imageAspects = RHI::ImageAspect::Depth;
             renderGraph.PassUseImage(m_pass, gBuffer.m_depthAttachment, viewInfo, RHI::ImageUsage::ShaderResource, RHI::ShaderStage::Pixel, RHI::Access::Read);
 
-            return ResultCode::Success;
+            return RHI::ResultCode::Success;
         }
 
         void SetupBindings(RHI::Context& context, RHI::RenderGraph& renderGraph, PassGBuffer& gBuffer)
@@ -455,9 +472,9 @@ namespace Examples
         DeferredRenderer() = default;
         ~DeferredRenderer() = default;
 
-        ResultCode OnInit() override
+        RHI::ResultCode OnInit() override
         {
-            ResultCode result = ResultCode::Success;
+            RHI::ResultCode result = RHI::ResultCode::Success;
 
             result = m_passGBuffer.Init(*m_context);
             TL_ASSERT(IsSucess(result));
@@ -523,7 +540,7 @@ namespace Examples
             frameIndex++;
         }
 
-       TL::Ptr<RHI::RenderGraph> m_renderGraph;
+        TL::Ptr<RHI::RenderGraph> m_renderGraph;
         PassGBuffer m_passGBuffer;
         PassLighting m_passLighting;
     };

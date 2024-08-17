@@ -186,7 +186,7 @@ namespace Examples
                     camFront.z = cos(glm::radians(rotation.x)) * cos(glm::radians(rotation.y));
                     camFront = glm::normalize(camFront);
 
-                    float moveSpeed = deltaTime.Miliseconds() * movementSpeed;
+                    float moveSpeed = float(deltaTime.Miliseconds() * movementSpeed);
 
                     if (keys.up)
                         position += camFront * moveSpeed;
@@ -204,7 +204,6 @@ namespace Examples
         void ProcessEvent(class Event& event);
     };
 
-    // TODO: move this from here
     inline void Camera::ProcessEvent(Event& e)
     {
         switch (e.GetEventType())

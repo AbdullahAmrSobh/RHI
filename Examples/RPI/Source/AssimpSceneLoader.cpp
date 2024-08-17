@@ -1,12 +1,15 @@
-#include "Examples-Base/AssimpSceneLoader.hpp"
-#include "Examples-Base/Renderer.hpp"
-#include <Examples-Base/Scene.hpp>
+#include "RPI/Renderer.hpp"
 
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
+#include <glm/glm.hpp>
+#include <glm/ext/matrix_transform.hpp>
+
 #include <TL/Log.hpp>
+
+#include <filesystem>
 
 namespace Examples
 {
@@ -51,10 +54,8 @@ namespace Examples
         return { fullPath.string().c_str() };
     }
 
-    void AssimpScenneLoader::LoadScene(Renderer& renderer, Scene& scene, const char* sceneFileLocation, const char* sceneTextureLocation)
+    void LoadScene(Renderer& renderer, Scene& scene, const char* sceneFileLocation)
     {
-        (void)sceneTextureLocation;
-
         Assimp::Importer importer;
         auto aiSceneFlags = aiProcess_Triangulate | aiProcess_GenSmoothNormals;
         const aiScene* aiScene = importer.ReadFile(sceneFileLocation, aiSceneFlags);
