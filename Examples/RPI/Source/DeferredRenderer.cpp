@@ -10,7 +10,7 @@
 
 #include <fstream>
 
-namespace Examples
+namespace RPI
 {
     inline static TL::Vector<uint32_t> ReadBinaryFile(std::string_view filePath)
     {

@@ -1,10 +1,11 @@
 #pragma once
+#include <Examples-Base/Window.hpp>
 
 #include "ShaderInterface/Core.slang"
 
 #include <RHI/RHI.hpp>
 
-namespace Examples
+namespace RPI
 {
     class Window;
 
@@ -77,7 +78,7 @@ namespace Examples
 
         virtual ~Renderer();
 
-        RHI::ResultCode Init(const class Window& window);
+        RHI::ResultCode Init(const Examples::Window& window);
 
         void Shutdown();
 
@@ -96,7 +97,7 @@ namespace Examples
         virtual void OnRender(const Scene& scene) = 0;
 
         // protected:
-        const Window* m_window;
+        const Examples::Window* m_window;
 
         TL::Ptr<RHI::Context> m_context;
         TL::Ptr<RHI::Swapchain> m_swapchain;

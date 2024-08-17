@@ -18,7 +18,7 @@ namespace Examples
 
         void OnInit() override
         {
-            m_renderer = TL::Ptr<Renderer>(CreateDeferredRenderer());
+            m_renderer = TL::Ptr<RPI::Renderer>(RPI::CreateDeferredRenderer());
 
             auto result = m_renderer->Init(*m_window);
             TL_ASSERT(IsSucess(result));
@@ -53,8 +53,8 @@ namespace Examples
             m_camera.ProcessEvent(e);
         }
 
-        TL::Ptr<Renderer> m_renderer;
-        TL::Ptr<Scene> m_scene;
+        TL::Ptr<RPI::Renderer> m_renderer;
+        TL::Ptr<RPI::Scene> m_scene;
         Camera m_camera;
     };
 } // namespace Examples

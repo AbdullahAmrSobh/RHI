@@ -11,7 +11,7 @@
 
 #include <filesystem>
 
-namespace Examples
+namespace RPI
 {
     inline static glm::mat4 ConvertMatrix(const aiMatrix4x4& matrix)
     {

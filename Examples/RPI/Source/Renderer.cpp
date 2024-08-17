@@ -1,7 +1,5 @@
 #include "RPI/Renderer.hpp"
 
-#include <Examples-Base/Window.hpp>
-
 #include <RHI/RHI.hpp>
 #include <RHI-Vulkan/Loader.hpp>
 
@@ -9,7 +7,7 @@
 
 #include "dds_image/dds.hpp"
 
-namespace Examples
+namespace RPI
 {
     Renderer::Renderer()
     {
@@ -19,7 +17,7 @@ namespace Examples
     {
     }
 
-    RHI::ResultCode Renderer::Init(const Window& window)
+    RHI::ResultCode Renderer::Init(const Examples::Window& window)
     {
         m_window = &window;
 
