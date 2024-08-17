@@ -2,8 +2,6 @@
 
 #include "Examples-Base/Common.hpp"
 
-#include <Examples-Base/ImGuiRenderer.hpp>
-
 #include <RHI/RHI.hpp>
 
 namespace Examples

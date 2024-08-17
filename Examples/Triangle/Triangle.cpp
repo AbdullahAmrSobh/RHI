@@ -4,8 +4,6 @@
 
 #include <tracy/Tracy.hpp>
 
-#include <imgui.h>
-
 namespace Examples
 {
     class BasicRenderer final : public ApplicationBase

@@ -66,7 +66,6 @@ namespace Examples
             APP_SHOULD_CLOSE = true;
         }
 
-        // m_imguiRenderer->ProcessEvent(event);
         if (event.Handled)
             return;
 

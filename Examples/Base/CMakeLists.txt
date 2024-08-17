@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.14)
 
 set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/ApplicationBase.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/ImGuiRenderer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Window.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Renderer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/DeferredRenderer.cpp
@@ -18,7 +17,6 @@ tl_add_target(
     BUILD_DEPENDENCIES
         glm
         RHI::RHI
-        ImGui
         glfw
         assimp
     RUNTIME_LIBRARIES

@@ -55,7 +55,7 @@ namespace Examples
         {
             {
                 RHI::SamplerCreateInfo samplerCI{};
-                samplerCI.name = "ImGui-Sampler";
+                samplerCI.name = "sampler";
                 samplerCI.filterMin = RHI::SamplerFilter::Linear;
                 samplerCI.filterMag = RHI::SamplerFilter::Linear;
                 samplerCI.filterMip = RHI::SamplerFilter::Linear;
