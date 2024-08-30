@@ -1,68 +1,54 @@
-#include "ShaderInterface/Core.slang"
+static float4 ScreenQuadVertexPositions[] =
+{
+	{-0.9,  0.9, 0.0, 1.0},
+	{-0.9, -0.9, 0.0, 1.0},
+	{ 0.9, -0.9, 0.0, 1.0},
+	{-0.9,  0.9, 0.0, 1.0},
+	{ 0.9, -0.9, 0.0, 1.0},
+	{ 0.9,  0.9, 0.0, 1.0}
+};
 
 struct VSInput
 {
-	float3 position : POSITION0;
-	float3 normal   : NORMAL0;
-	float2 uv0      : TEXCOORD0;
+    uint32_t vertexID : SV_VertexID;
 };
 
-struct VSOutput
+struct PSInput
 {
-	float4 position : SV_POSITION;
-	float2 uv: TEXCOORD;
-	float4 color : COLOR;
+    float4 csPosition : SV_Position;
 };
 
 struct PSOutput
 {
-	float4 color : SV_TARGET0;
-	float4 worldPosition  : SV_TARGET1;
+    float4 color : SV_Target;
 };
 
-struct Data
+
+struct ViewCB
 {
-	ConstantBuffer<SceneTransform> sceneTransform;
-	ConstantBuffer<ObjectTransform> objectTransform;
-	SamplerState samplerState;
-	Texture2D texture[];
+	float4 color;
 };
 
-ParameterBlock<Data> data;
 
-float4 TransformToClipSpace(float3 position)
+struct ShaderParamters
 {
-	float4x4 mvp = mul(mul(data.sceneTransform.projectionMatrix, data.sceneTransform.viewMatrix), data.objectTransform.modelMatrix);
-	return mul(mvp, float4(position, 1.0));
-}
+	ConstantBuffer<ViewCB> viewCB;
+};
 
-float4 NormalToColor(float3 normal)
-{
-    float3 remappedNormal = 0.5f * (normal + 1.0f);
-    return float4(remappedNormal, 1.0f);
-}
+ParameterBlock<ShaderParamters> bindGroup0;
 
 [[shader("vertex")]]
-VSOutput VSMain(VSInput input)
+PSInput VSMain(VSInput input)
 {
-	VSOutput output;
-	output.position = TransformToClipSpace(input.position);
-	output.color    = NormalToColor(input.normal);
-	output.uv       = input.uv0;
-	output.uv.y     *= -1.0;
-	return output;
+    PSInput result;
+    result.csPosition = ScreenQuadVertexPositions[input.vertexID];
+    return result;
 }
 
 [[shader("fragment")]]
-PSOutput PSMain(VSOutput input)
+PSOutput PSMain(PSInput input)
 {
-	let colorTexture = data.texture[NonUniformResourceIndex(data.objectTransform.colorIndex)];
-	let normalTexture = data.texture[NonUniformResourceIndex(data.objectTransform.normalIndex)];
-	let color = colorTexture.Sample(data.samplerState, input.uv);
-	let normal = normalTexture.Sample(data.samplerState, input.uv);
-
 	PSOutput output;
-	output.color = color;
-	output.worldPosition = normal;
+    output.color = bindGroup0.viewCB.color;
 	return output;
 }

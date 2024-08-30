@@ -5,8 +5,7 @@ set(SOURCE_FILES
 )
 
 set(SHADER_FILES
-    ${CMAKE_SOURCE_DIR}/Examples/Shaders/Compose.slang
-    ${CMAKE_SOURCE_DIR}/Examples/Shaders/Basic.slang
+    ${CMAKE_SOURCE_DIR}/Examples/RPI/Shaders/Basic.slang
 )
 
 include(${CPM_TL_SOURCE}/CMake/add-target.cmake)
@@ -21,4 +20,13 @@ tl_add_target(
         Assets
     RUNTIME_LIBRARIES
         RHI::Vulkan
+)
+
+include(${CMAKE_SOURCE_DIR}/cmake/compile-slang-shaders.cmake)
+compile_slang_shaders(
+    TARGET Triangle
+    SHADER_GFX_FILES
+        ${SHADER_FILES}
+    OUTPUT_DIR
+        ${CMAKE_CURRENT_BINARY_DIR}/Shaders
 )

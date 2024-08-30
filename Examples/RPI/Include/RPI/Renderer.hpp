@@ -1,5 +1,7 @@
 #pragma once
 
+#include "RPI/Result.hpp"
+
 #include <RHI/RHI.hpp>
 
 namespace Examples
@@ -12,10 +14,35 @@ namespace Examples::RPI
     template<typename T>
     using Handle = RHI::Handle<T>;
 
-    enum class ResultCode
+    inline static constexpr uint32_t BufferedFramesCount = 2;
+
+    template<typename T>
+    class RingBuffer
     {
-        Sucess,
-        Error,
+    public:
+        T& Get()
+        {
+            return m_buffer[m_index];
+        }
+
+        void advance()
+        {
+            m_index = (m_index + 1) % BufferedFramesCount;
+        }
+
+        T* begin()
+        {
+            return m_buffer;
+        }
+
+        T* end()
+        {
+            return m_buffer + 2;
+        }
+
+    private:
+        T m_buffer[BufferedFramesCount]; ///< The internal buffer storage.
+        size_t m_index = 0;              ///< The current index in the buffer.
     };
 
     class Renderer
@@ -24,18 +51,22 @@ namespace Examples::RPI
         Renderer() = default;
         ~Renderer() = default;
 
-        static TL::Ptr<Renderer> CreateDeferred();
-
         ResultCode Init(const Window& window);
         void Shutdown();
         void Render();
 
-    protected:
+        virtual ResultCode OnInit() = 0;
+        virtual void OnShutdown() = 0;
+        virtual void OnRender() = 0;
+
+        // protected:
         const Window* m_window;
 
         TL::Ptr<RHI::Context> m_context;
         TL::Ptr<RHI::Swapchain> m_swapchain;
         TL::Ptr<RHI::RenderGraph> m_renderGraph;
+
+        Handle<RHI::ImageAttachment> m_outputAttachment;
 
         struct FrameContext
         {
@@ -43,6 +74,6 @@ namespace Examples::RPI
             TL::Ptr<RHI::CommandPool> m_commandPool;
         };
 
-        FrameContext m_frameRingbuffer[RHI::Swapchain::MaxImageCount];
+        RingBuffer<FrameContext> m_frameRingbuffer;
     };
 } // namespace Examples::RPI

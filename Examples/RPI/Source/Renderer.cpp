@@ -9,12 +9,6 @@
 
 namespace Examples::RPI
 {
-
-    TL::Ptr<Renderer> Renderer::CreateDeferred()
-    {
-        return TL::CreatePtr<Renderer>();
-    }
-
     ResultCode Renderer::Init(const Window& window)
     {
         m_window = &window;
@@ -37,24 +31,48 @@ namespace Examples::RPI
             .presentMode = RHI::SwapchainPresentMode::Fifo,
             .win32Window = { m_window->GetNativeHandle() }
         };
+
         m_swapchain = m_context->CreateSwapchain(swapchainInfo);
 
         m_renderGraph = m_context->CreateRenderGraph();
 
-        return ResultCode::Sucess;
+        m_outputAttachment = m_renderGraph->ImportSwapchain("swapchain-output", *m_swapchain);
+
+        for (auto& frame : m_frameRingbuffer)
+        {
+            frame.m_fence = m_context->CreateFence();
+            frame.m_commandPool = m_context->CreateCommandPool(RHI::CommandPoolFlags::Transient);
+        }
+
+        return OnInit();
     }
 
     void Renderer::Shutdown()
     {
-        // m_context.destroySwapchain(m_swapchain);
-        // RHI::DestroyContext(m_context),
+        OnShutdown();
+
+        for (auto& frame : m_frameRingbuffer)
+        {
+            delete frame.m_fence.release();
+            delete frame.m_commandPool.release();
+        }
+
         delete m_swapchain.release();
         delete m_context.release();
     }
 
     void Renderer::Render()
     {
-        m_context->ExecuteRenderGraph(*m_renderGraph);
+        auto& frame = m_frameRingbuffer.Get();
+        if (frame.m_fence->GetState() != RHI::FenceState::Signaled)
+        {
+            frame.m_fence->Wait(UINT64_MAX);
+        }
+        frame.m_fence->Reset();
+
+        OnRender();
+
+        m_context->ExecuteRenderGraph(*m_renderGraph, m_frameRingbuffer.Get().m_fence.get());
 
         auto resultCode = m_swapchain->Present();
         TL_ASSERT(RHI::IsSucess(resultCode), "Failed to present swapchain");
