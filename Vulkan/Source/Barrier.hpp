@@ -7,7 +7,7 @@
 #include "Common.hpp"
 #include "Context.hpp"
 
-#include <TL/Allocator.hpp>
+#include <TL/Memory.hpp>
 
 #include <vulkan/vulkan.h>
 
@@ -44,7 +44,7 @@ namespace RHI::Vulkan
 
     // buffer stage accesses
     inline static constexpr BufferStageAccess PIPELINE_BUFFER_BARRIER_TOP = { VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, VK_ACCESS_2_NONE };
-    inline static constexpr BufferStageAccess PIPELINE_BUFFER_BARRIER_BOTTOM = {    VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, VK_ACCESS_2_NONE };
+    inline static constexpr BufferStageAccess PIPELINE_BUFFER_BARRIER_BOTTOM = { VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, VK_ACCESS_2_NONE };
     inline static constexpr BufferStageAccess PIPELINE_BUFFER_BARRIER_TRANSFER_SRC = { VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT };
     inline static constexpr BufferStageAccess PIPELINE_BUFFER_BARRIER_TRANSFER_DST = { VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT };
     inline static constexpr BufferStageAccess PIPELINE_BUFFER_BARRIER_SHADER_READ = { VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT };
@@ -172,7 +172,7 @@ namespace RHI::Vulkan
         case ImageUsage::DepthStencil:    return GetAccessFlagsForDepthAttachment(imageAttachment.loadStoreOperation);
         case ImageUsage::CopySrc:
         case ImageUsage::CopyDst:         return GetAccessFlagsForTransfer(imageAttachment.access);
-        default: TL_UNREACHABLE(); return {};
+        default:                          TL_UNREACHABLE(); return {};
         };
     }
 
@@ -189,7 +189,7 @@ namespace RHI::Vulkan
         case ImageUsage::DepthStencil:    return VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
         case ImageUsage::CopySrc:
         case ImageUsage::CopyDst:         return VK_PIPELINE_STAGE_2_COPY_BIT;
-        default: TL_UNREACHABLE(); return {};
+        default:                          TL_UNREACHABLE(); return {};
         };
     }
 

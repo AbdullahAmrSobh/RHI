@@ -1,175 +1,62 @@
 #include "RPI/Renderer.hpp"
 
+#include <Examples-Base/Window.hpp>
+
 #include <RHI/RHI.hpp>
 #include <RHI-Vulkan/Loader.hpp>
 
 #include <TL/Log.hpp>
 
-#include "dds_image/dds.hpp"
-
-namespace RPI
+namespace Examples::RPI
 {
-    Renderer::Renderer()
+
+    TL::Ptr<Renderer> Renderer::CreateDeferred()
     {
+        return TL::CreatePtr<Renderer>();
     }
 
-    Renderer::~Renderer()
-    {
-    }
-
-    RHI::ResultCode Renderer::Init(const Examples::Window& window)
+    ResultCode Renderer::Init(const Window& window)
     {
         m_window = &window;
 
-        RHI::ApplicationInfo appInfo{};
-        appInfo.applicationName = "Example APP";
-        appInfo.applicationVersion.minor = 1;
-        appInfo.engineName = "Engine name";
-        appInfo.engineVersion.minor = 1;
+        RHI::ApplicationInfo appInfo{
+            .applicationName = "Example",
+            .applicationVersion = {0,  1, 0},
+            .engineName = "Forge",
+            .engineVersion = { 0, 1, 0}
+        };
         m_context = RHI::CreateVulkanContext(appInfo);
 
-        auto windowSize = window.GetWindowSize();
-        RHI::SwapchainCreateInfo swapchainCI{};
-        swapchainCI.name = "Swapchain";
-        swapchainCI.minImageCount = 3;
-        swapchainCI.imageSize = { windowSize.width, windowSize.height };
-        swapchainCI.imageFormat = RHI::Format::RGBA8_UNORM;
-        swapchainCI.imageUsage = RHI::ImageUsage::Color;
-        swapchainCI.presentMode = RHI::SwapchainPresentMode::Fifo;
-        swapchainCI.win32Window.hwnd = window.GetNativeHandle();
-        m_swapchain = m_context->CreateSwapchain(swapchainCI);
+        auto windowSize = m_window->GetWindowSize();
+        RHI::SwapchainCreateInfo swapchainInfo{
+            .name = "Swapchain",
+            .imageSize = { windowSize.width, windowSize.height },
+            .imageUsage = RHI::ImageUsage::Color,
+            .imageFormat = RHI::Format::RGBA8_UNORM,
+            .minImageCount = 2,
+            .presentMode = RHI::SwapchainPresentMode::Fifo,
+            .win32Window = { m_window->GetNativeHandle() }
+        };
+        m_swapchain = m_context->CreateSwapchain(swapchainInfo);
 
-        for (auto& cmdPool : m_commandPool)
-            cmdPool = m_context->CreateCommandPool(RHI::CommandPoolFlags::Reset);
+        m_renderGraph = m_context->CreateRenderGraph();
 
-        for (auto& fence : m_frameFence)
-            fence = m_context->CreateFence();
-
-        return OnInit();
+        return ResultCode::Sucess;
     }
 
     void Renderer::Shutdown()
     {
-        OnShutdown(); // must be called first thing here
-
-        for (auto& fence : m_frameFence)
-        {
-            fence->Wait(UINT64_MAX);
-            delete fence.release();
-        }
-
-        for (auto& cmdPool : m_commandPool)
-        {
-            delete cmdPool.release();
-        }
-
+        // m_context.destroySwapchain(m_swapchain);
+        // RHI::DestroyContext(m_context),
         delete m_swapchain.release();
         delete m_context.release();
     }
 
-    void Renderer::Render(const Scene& scene)
+    void Renderer::Render()
     {
-        [[maybe_unused]] RHI::ResultCode result;
+        m_context->ExecuteRenderGraph(*m_renderGraph);
 
-        {
-            static RHI::ImageSize2D size = { m_window->GetWindowSize().width, m_window->GetWindowSize().height };
-
-            auto windowSize = m_window->GetWindowSize();
-            if (size.width != windowSize.width || size.height != windowSize.height)
-            {
-                result = m_swapchain->Recreate(size);
-                TL_ASSERT(RHI::IsSucess(result) && "Failed to recreate swapchain on resize");
-            }
-        }
-
-        OnRender(scene);
-
-        result = m_swapchain->Present();
+        auto resultCode = m_swapchain->Present();
+        TL_ASSERT(RHI::IsSucess(resultCode), "Failed to present swapchain");
     }
-
-    RHI::Handle<RHI::Image> Renderer::CreateImage(const char* filePath)
-    {
-        dds::Image image{};
-        auto result = dds::readFile(filePath, &image);
-        TL_ASSERT(result == dds::Success);
-
-        RHI::ImageCreateInfo createInfo{};
-        createInfo.size = { image.width, image.height, image.depth };
-        switch (image.format)
-        {
-        case DXGI_FORMAT_UNKNOWN:
-        case DXGI_FORMAT_BC1_UNORM:      createInfo.format = RHI::Format::BC1_UNORM; break;
-        case DXGI_FORMAT_BC1_UNORM_SRGB: createInfo.format = RHI::Format::BC1_UNORM_SRGB; break;
-        case DXGI_FORMAT_BC2_UNORM:      createInfo.format = RHI::Format::BC2_UNORM; break;
-        case DXGI_FORMAT_BC2_UNORM_SRGB: createInfo.format = RHI::Format::BC2_UNORM_SRGB; break;
-        case DXGI_FORMAT_BC3_UNORM:      createInfo.format = RHI::Format::BC3_UNORM; break;
-        case DXGI_FORMAT_BC3_UNORM_SRGB: createInfo.format = RHI::Format::BC3_UNORM_SRGB; break;
-        case DXGI_FORMAT_BC4_UNORM:      createInfo.format = RHI::Format::BC4_UNORM; break;
-        case DXGI_FORMAT_BC4_SNORM:      createInfo.format = RHI::Format::BC4_SNORM; break;
-        case DXGI_FORMAT_BC5_UNORM:      createInfo.format = RHI::Format::BC5_UNORM; break;
-        case DXGI_FORMAT_BC5_SNORM:      createInfo.format = RHI::Format::BC5_SNORM; break;
-        case DXGI_FORMAT_B5G6R5_UNORM:   createInfo.format = RHI::Format::B5G6R5_UNORM; break;
-        case DXGI_FORMAT_B5G5R5A1_UNORM: createInfo.format = RHI::Format::B5G5R5A1_UNORM; break;
-        default:                         createInfo.format = RHI::Format::Unknown; break;
-        };
-
-        createInfo.arrayCount = image.arraySize;
-        createInfo.mipLevels = (uint32_t)image.mipmaps.size();
-        createInfo.usageFlags = RHI::ImageUsage::ShaderResource | RHI::ImageUsage::CopyDst;
-        createInfo.sampleCount = RHI::SampleCount::Samples1;
-        createInfo.type = image.dimension == dds::ResourceDimension::Texture1D ? RHI::ImageType::Image1D : (image.dimension == dds::ResourceDimension::Texture2D ? RHI::ImageType::Image2D : RHI::ImageType::Image3D);
-        createInfo.name = filePath;
-        return CreateImageWithData(createInfo, { image.data.data(), image.data.size() }).GetValue();
-    }
-
-    TL::Ptr<Scene> Renderer::CreateScene()
-    {
-        return TL::CreatePtr<Scene>(m_context.get());
-    }
-
-    RHI::Result<RHI::Handle<RHI::Image>> Renderer::CreateImageWithData(const RHI::ImageCreateInfo& createInfo, TL::Block content)
-    {
-        auto [handle, result] = m_context->CreateImage(createInfo);
-
-        if (result != RHI::ResultCode::Success)
-            return result;
-
-        auto stagingBuffer = m_context->AllocateTempBuffer(content.size);
-        memcpy(stagingBuffer.ptr, content.ptr, content.size);
-
-        RHI::ImageSubresourceLayers subresources{};
-        subresources.imageAspects = RHI::GetFormatAspects(createInfo.format);
-        subresources.arrayCount = createInfo.arrayCount;
-        subresources.mipLevel = createInfo.mipLevels;
-        m_context->StageResourceWrite(handle, subresources, stagingBuffer.buffer, stagingBuffer.offset);
-
-        return handle;
-    }
-
-    RHI::Result<RHI::Handle<RHI::Buffer>> Renderer::CreateBufferWithData(TL::Flags<RHI::BufferUsage> usageFlags, TL::Block content)
-    {
-        RHI::BufferCreateInfo createInfo{};
-        createInfo.byteSize = content.size;
-        createInfo.usageFlags = usageFlags;
-        auto [handle, result] = m_context->CreateBuffer(createInfo);
-
-        if (result != RHI::ResultCode::Success)
-            return result;
-
-        if (content.size <= m_context->GetLimits().stagingMemoryLimit)
-        {
-            auto ptr = m_context->MapBuffer(handle);
-            memcpy(ptr, content.ptr, content.size);
-            m_context->UnmapBuffer(handle);
-        }
-        else
-        {
-            auto stagingBuffer = m_context->AllocateTempBuffer(content.size);
-            memcpy(stagingBuffer.ptr, content.ptr, content.size);
-            m_context->StageResourceWrite(handle, 0, content.size, stagingBuffer.buffer, stagingBuffer.offset);
-        }
-
-        return handle;
-    }
-
-} // namespace Examples
+} // namespace Examples::RPI

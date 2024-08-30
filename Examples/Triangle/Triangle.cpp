@@ -1,63 +1,53 @@
 #include <Examples-Base/ApplicationBase.hpp>
 
+#include <Assets/Importer.hpp>
+
 #include <RPI/Renderer.hpp>
 
 #include <tracy/Tracy.hpp>
 
 #include "Camera.hpp"
 
-namespace Examples
+using namespace Examples;
+
+class BasicRenderer final : public ApplicationBase
 {
-    class BasicRenderer final : public ApplicationBase
+public:
+    BasicRenderer()
+        : ApplicationBase("Hello, Triangle", 1600, 1200)
+        , m_renderer(RPI::Renderer::CreateDeferred())
     {
-    public:
-        BasicRenderer()
-            : ApplicationBase("Hello, Triangle", 1600, 1200)
-        {
-        }
+    }
 
-        void OnInit() override
-        {
-            m_renderer = TL::Ptr<RPI::Renderer>(RPI::CreateDeferredRenderer());
+    void OnInit() override
+    {
+        // auto assetFile = Assets::Import(m_launchSettings.sceneFileLocation.c_str());
 
-            auto result = m_renderer->Init(*m_window);
-            TL_ASSERT(IsSucess(result));
+        m_renderer->Init(*m_window);
+    }
 
-            m_scene = m_renderer->CreateScene();
-            LoadScene(*m_renderer, *m_scene, m_launchSettings.sceneFileLocation.c_str());
+    void OnShutdown() override
+    {
+        m_renderer->Shutdown();
+    }
 
-            m_camera.m_window = m_window.get();
-            m_camera.SetPerspective(60.0f, 1600.0f / 1200.0f, 0.1f, 10000.0f);
-            m_camera.SetRotationSpeed(0.0002f);
-        }
+    void OnUpdate(Timestep timestep) override
+    {
+    }
 
-        void OnShutdown() override
-        {
-            m_renderer->Shutdown();
-        }
+    void Render() override
+    {
+        m_renderer->Render();
+    }
 
-        void OnUpdate(Timestep timestep) override
-        {
-            m_camera.Update(timestep);
-            m_scene->m_viewMatrix = m_camera.GetView();
-            m_scene->m_projectionMatrix = m_camera.GetProjection();
-        }
+    void OnEvent(Event& e) override
+    {
+    }
 
-        void Render() override
-        {
-            m_renderer->Render(*m_scene);
-        }
+    TL::Ptr<RPI::Renderer> m_renderer;
 
-        void OnEvent(Event& e) override
-        {
-            m_camera.ProcessEvent(e);
-        }
-
-        TL::Ptr<RPI::Renderer> m_renderer;
-        TL::Ptr<RPI::Scene> m_scene;
-        Camera m_camera;
-    };
-} // namespace Examples
+    RHI::Handle<RHI::Pass> m_pass;
+};
 
 #include <Examples-Base/Entry.hpp>
 

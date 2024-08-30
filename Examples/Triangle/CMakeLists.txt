@@ -18,6 +18,7 @@ tl_add_target(
     BUILD_DEPENDENCIES
         RPI
         Examples::Base
+        Assets
     RUNTIME_LIBRARIES
         RHI::Vulkan
 )

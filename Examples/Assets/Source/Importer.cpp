@@ -272,21 +272,24 @@ namespace Examples::Assets
         auto aiSceneFlags = aiProcess_Triangulate | aiProcess_GenSmoothNormals;
         const auto& aiScene = *aiImporter.ReadFile(file.string().c_str(), aiSceneFlags);
 
+        std::filesystem::create_directory(file.parent_path() / "cache");
+
         Converter converter;
         converter.scenePath = file;
-        converter.outputPath = "C:/Users/abdul/Desktop/Main.1_Sponza/cache";
+        converter.outputPath = file.parent_path() / "cache";
+        /// @todo find the path to compressonatorcli through downloaded cmake package
         converter.compressonatorPath = "C:/Users/abdul/Desktop/compressonatorcli-4.5.52-win64/compressonatorcli.exe";
         auto meshes = converter.ImportMeshes({ aiScene.mMeshes, aiScene.mNumMeshes });
         auto materials = converter.ImportMaterials({ aiScene.mMaterials, aiScene.mNumMaterials });
         auto sceneGraphs = converter.ImportScene(aiScene, meshes, materials);
-        // auto textures = importer.ImportTextures();
+        auto textures = converter.ImportTextures();
 
         /// @todo load embedded textures
 
         Package package(file.filename().string().c_str());
         package.AddMeshs(meshes);
         package.AddMaterials(materials);
-        // package.AddImages(textures);
+        package.AddImages(textures);
         return package;
     }
 } // namespace Examples::Assets

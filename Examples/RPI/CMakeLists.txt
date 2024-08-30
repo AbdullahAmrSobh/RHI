@@ -1,11 +1,8 @@
 set(HEADER_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/AssimpSceneLoader.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/DeferredRenderer.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Renderer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RPI/Renderer.hpp
 )
 
 set(SOURCE_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/AssimpSceneLoader.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/DeferredRenderer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Renderer.cpp
 )
@@ -19,7 +16,6 @@ tl_add_target(
     BUILD_DEPENDENCIES
         RHI::RHI
         TL
-        assimp # should remove
         Examples::Base # needed for window
     RUNTIME_LIBRARIES
         RHI::Vulkan
