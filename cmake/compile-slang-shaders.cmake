@@ -10,7 +10,7 @@ function(compile_slang_shaders)
     list(TRANSFORM SLANG_SHADER_INCLUDE_DIRS PREPEND "-I")
 
     if (WIN32)
-        set(SLANGC "${CMAKE_SOURCE_DIR}/Examples/Dependencies/slang/windows-x64/release/slangc.exe")
+        set(SLANGC "${CMAKE_SOURCE_DIR}/Examples/Dependencies/slang-v2024.10/bin/slangc.exe")
         set(SPIRV_LINK "$ENV{VULKAN_SDK}/bin/spirv-link.exe")
     else()
         message(FATAL_ERROR "not supported platform")
