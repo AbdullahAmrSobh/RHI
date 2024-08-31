@@ -79,13 +79,6 @@ namespace RHI::Vulkan
         // clang-format on
 
     private:
-        static VkBool32 VKAPI_CALL
-        DebugMessengerCallbacks(
-            VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-            VkDebugUtilsMessageTypeFlagsEXT messageTypes,
-            const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-            void* pUserData);
-
         VkResult InitInstance(const ApplicationInfo& appInfo, bool* debugExtensionEnabled);
         VkResult InitDevice();
         VkResult InitMemoryAllocator();

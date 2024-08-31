@@ -208,6 +208,7 @@ namespace RHI
         TL::Vector<Handle<BufferAttachment>> m_bufferAttachments;
 
     private:
+        TL::Arena m_arena;
         mutable TL::UnorderedMap<size_t, Handle<Image>>      m_imagesLRU;
         mutable TL::UnorderedMap<size_t, Handle<Buffer>>     m_buffersLRU;
         mutable TL::UnorderedMap<size_t, Handle<ImageView>>  m_imageViewsLRU;

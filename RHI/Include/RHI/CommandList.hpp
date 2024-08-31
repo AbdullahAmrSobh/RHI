@@ -6,7 +6,6 @@
 
 #include <TL/Containers.hpp>
 #include <TL/Span.hpp>
-#include <TL/UniquePtr.hpp>
 
 namespace RHI
 {
@@ -159,6 +158,14 @@ namespace RHI
         DispatchParameters                   parameters;
     };
 
+    struct ImageBlitInfo
+    {
+        ImageSubresourceLayers srcSubresource;
+        ImageOffset3D          srcOffsets[2];
+        ImageSubresourceLayers dstSubresource;
+        ImageOffset3D          dstOffsets[2];
+    };
+
     class RHI_EXPORT CommandPool
     {
     public:
@@ -234,7 +241,10 @@ namespace RHI
         /// @brief Submit a buffer to image copy command
         virtual void CopyImageToBuffer(const BufferImageCopyInfo& copyInfo) = 0;
 
-        /// @brief Submit a image to buffer copy command
+        /// @brief Submit an image to buffer copy command
         virtual void CopyBufferToImage(const BufferImageCopyInfo& copyInfo) = 0;
+
+        // /// @brief Submits an image blit command
+        // virtual void BlitImage(Handle<ImageView> srcImage, Handle<ImageView> dstImage, TL::Span<ImageBlitInfo> regions, SamplerFilter filter) = 0;
     };
 } // namespace RHI

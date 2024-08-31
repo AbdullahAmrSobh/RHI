@@ -9,6 +9,7 @@
 namespace RHI
 {
     RenderGraph::RenderGraph(Context* context)
+        : m_arena()
     {
         m_context = context;
     }
@@ -103,7 +104,7 @@ namespace RHI
         createInfo.components = viewInfo.swizzle;
         createInfo.subresource = viewInfo.subresources;
 
-        auto it = attachment->list.try_emplace(_pass, new ImagePassAttachment());
+        auto it = attachment->list.emplace(_pass, m_arena.Allocate<ImagePassAttachment>());
         auto passAttachment = it.first->second;
         passAttachment->pass = _pass;
         passAttachment->attachment = _attachment;
@@ -146,7 +147,7 @@ namespace RHI
         createInfo.subregion = viewInfo.subregion;
         createInfo.format = viewInfo.format;
 
-        attachment->list.emplace(_pass, new BufferPassAttachment());
+        attachment->list.emplace(_pass, m_arena.Allocate<BufferPassAttachment>());
         auto passAttachment = attachment->list[_pass];
         passAttachment->pass = _pass;
         passAttachment->attachment = _attachment;

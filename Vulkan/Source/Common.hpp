@@ -1,13 +1,13 @@
 #pragma once
+
 #include <RHI/CommandList.hpp>
-#include <RHI/Resources.hpp>
-#include <RHI/RenderGraph.hpp>
-
 #include <RHI/Common/Result.hpp>
-
-#include <TL/Assert.hpp>
+#include <RHI/RenderGraph.hpp>
+#include <RHI/Resources.hpp>
 
 #include <vk_mem_alloc.h>
+
+#include <TL/Assert.hpp>
 
 #define TryValidateVk(result)           \
     if (Validate(result) != VK_SUCCESS) \
@@ -687,52 +687,49 @@ namespace RHI::Vulkan
     template<typename VkResourceTypeT>
     inline static VkObjectType GetObjectType()
     {
-        // clang-format off
-        if constexpr      (std::is_same_v<VkResourceTypeT, VkInstance>)                    return VK_OBJECT_TYPE_INSTANCE;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkPhysicalDevice>)              return VK_OBJECT_TYPE_PHYSICAL_DEVICE;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkDevice>)                      return VK_OBJECT_TYPE_DEVICE;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkQueue>)                       return VK_OBJECT_TYPE_QUEUE;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkSemaphore>)                   return VK_OBJECT_TYPE_SEMAPHORE;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkCommandBuffer>)               return VK_OBJECT_TYPE_COMMAND_BUFFER;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkFence>)                       return VK_OBJECT_TYPE_FENCE;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkDeviceMemory>)                return VK_OBJECT_TYPE_DEVICE_MEMORY;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkBuffer>)                      return VK_OBJECT_TYPE_BUFFER;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkImage>)                       return VK_OBJECT_TYPE_IMAGE;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkEvent>)                       return VK_OBJECT_TYPE_EVENT;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkQueryPool>)                   return VK_OBJECT_TYPE_QUERY_POOL;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkBufferView>)                  return VK_OBJECT_TYPE_BUFFER_VIEW;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkImageView>)                   return VK_OBJECT_TYPE_IMAGE_VIEW;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkShaderModule>)                return VK_OBJECT_TYPE_SHADER_MODULE;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkPipelineCache>)               return VK_OBJECT_TYPE_PIPELINE_CACHE;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkPipelineLayout>)              return VK_OBJECT_TYPE_PIPELINE_LAYOUT;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkRenderPass>)                  return VK_OBJECT_TYPE_RENDER_PASS;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkPipeline>)                    return VK_OBJECT_TYPE_PIPELINE;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkDescriptorSetLayout>)         return VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkSampler>)                     return VK_OBJECT_TYPE_SAMPLER;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkDescriptorPool>)              return VK_OBJECT_TYPE_DESCRIPTOR_POOL;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkDescriptorSet>)               return VK_OBJECT_TYPE_DESCRIPTOR_SET;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkFramebuffer>)                 return VK_OBJECT_TYPE_FRAMEBUFFER;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkCommandPool>)                 return VK_OBJECT_TYPE_COMMAND_POOL;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkSurfaceKHR>)                  return VK_OBJECT_TYPE_SURFACE_KHR;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkSwapchainKHR>)                return VK_OBJECT_TYPE_SWAPCHAIN_KHR;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkDebugReportCallbackEXT>)      return VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkDisplayKHR>)                  return VK_OBJECT_TYPE_DISPLAY_KHR;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkDisplayModeKHR>)              return VK_OBJECT_TYPE_DISPLAY_MODE_KHR;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkValidationCacheEXT>)          return VK_OBJECT_TYPE_VALIDATION_CACHE_EXT;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkSamplerYcbcrConversion>)      return VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkDescriptorUpdateTemplate>)    return VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkCuModuleNVX>)                 return VK_OBJECT_TYPE_CU_MODULE_NVX;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkCuFunctionNVX>)               return VK_OBJECT_TYPE_CU_FUNCTION_NVX;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkAccelerationStructureKHR>)    return VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkAccelerationStructureNV>)     return VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_NV;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkCudaModuleNV>)                return VK_OBJECT_TYPE_CUDA_MODULE_NV;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkCudaFunctionNV>)              return VK_OBJECT_TYPE_CUDA_FUNCTION_NV;
-        // else if constexpr (std::is_same_v<VkResourceTypeT, VkBufferCollectionFuchsia>)  return VK_OBJECT_TYPE_BUFFER_COLLECTION_FUCHSIA;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkDebugReportCallbackEXT>)      return VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkValidationCacheEXT>)          return VK_OBJECT_TYPE_VALIDATION_CACHE_EXT;
+        if constexpr (std::is_same_v<VkResourceTypeT, VkInstance>) return VK_OBJECT_TYPE_INSTANCE;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkPhysicalDevice>) return VK_OBJECT_TYPE_PHYSICAL_DEVICE;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkDevice>) return VK_OBJECT_TYPE_DEVICE;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkQueue>) return VK_OBJECT_TYPE_QUEUE;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkSemaphore>) return VK_OBJECT_TYPE_SEMAPHORE;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkCommandBuffer>) return VK_OBJECT_TYPE_COMMAND_BUFFER;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkFence>) return VK_OBJECT_TYPE_FENCE;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkDeviceMemory>) return VK_OBJECT_TYPE_DEVICE_MEMORY;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkBuffer>) return VK_OBJECT_TYPE_BUFFER;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkImage>) return VK_OBJECT_TYPE_IMAGE;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkEvent>) return VK_OBJECT_TYPE_EVENT;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkQueryPool>) return VK_OBJECT_TYPE_QUERY_POOL;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkBufferView>) return VK_OBJECT_TYPE_BUFFER_VIEW;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkImageView>) return VK_OBJECT_TYPE_IMAGE_VIEW;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkShaderModule>) return VK_OBJECT_TYPE_SHADER_MODULE;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkPipelineCache>) return VK_OBJECT_TYPE_PIPELINE_CACHE;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkPipelineLayout>) return VK_OBJECT_TYPE_PIPELINE_LAYOUT;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkRenderPass>) return VK_OBJECT_TYPE_RENDER_PASS;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkPipeline>) return VK_OBJECT_TYPE_PIPELINE;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkDescriptorSetLayout>) return VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkSampler>) return VK_OBJECT_TYPE_SAMPLER;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkDescriptorPool>) return VK_OBJECT_TYPE_DESCRIPTOR_POOL;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkDescriptorSet>) return VK_OBJECT_TYPE_DESCRIPTOR_SET;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkFramebuffer>) return VK_OBJECT_TYPE_FRAMEBUFFER;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkCommandPool>) return VK_OBJECT_TYPE_COMMAND_POOL;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkSurfaceKHR>) return VK_OBJECT_TYPE_SURFACE_KHR;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkSwapchainKHR>) return VK_OBJECT_TYPE_SWAPCHAIN_KHR;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkDebugReportCallbackEXT>) return VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkDisplayKHR>) return VK_OBJECT_TYPE_DISPLAY_KHR;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkDisplayModeKHR>) return VK_OBJECT_TYPE_DISPLAY_MODE_KHR;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkValidationCacheEXT>) return VK_OBJECT_TYPE_VALIDATION_CACHE_EXT;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkSamplerYcbcrConversion>) return VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkDescriptorUpdateTemplate>) return VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkCuModuleNVX>) return VK_OBJECT_TYPE_CU_MODULE_NVX;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkCuFunctionNVX>) return VK_OBJECT_TYPE_CU_FUNCTION_NVX;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkAccelerationStructureKHR>) return VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkAccelerationStructureNV>) return VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_NV;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkCudaModuleNV>) return VK_OBJECT_TYPE_CUDA_MODULE_NV;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkCudaFunctionNV>) return VK_OBJECT_TYPE_CUDA_FUNCTION_NV;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkDebugReportCallbackEXT>) return VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT;
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkValidationCacheEXT>) return VK_OBJECT_TYPE_VALIDATION_CACHE_EXT;
         else if constexpr (std::is_same_v<VkResourceTypeT, VkDescriptorUpdateTemplateKHR>) return VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_KHR;
-        else if constexpr (std::is_same_v<VkResourceTypeT, VkSamplerYcbcrConversionKHR>)   return VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_KHR;
-        // clang-format on
+        else if constexpr (std::is_same_v<VkResourceTypeT, VkSamplerYcbcrConversionKHR>) return VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_KHR;
     }
 
     inline static VkSemaphoreSubmitInfo CreateSemaphoreSubmitInfo(VkSemaphore semaphore, VkPipelineStageFlags2 stages, uint64_t value = 0)

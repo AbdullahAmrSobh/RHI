@@ -1,14 +1,11 @@
-#include <Examples-Base/ApplicationBase.hpp>
+#include "Camera.hpp"
 
 #include <Assets/Importer.hpp>
-
-#include <RPI/Renderer.hpp>
+#include <Examples-Base/ApplicationBase.hpp>
 #include <RPI/ConstantBuffer.hpp>
+#include <RPI/Renderer.hpp>
 #include <RPI/View.hpp>
-
 #include <tracy/Tracy.hpp>
-
-#include "Camera.hpp"
 
 #include <TL/FileSystem/FileSystem.hpp>
 #include <TL/Allocator/MemPlumber.hpp>

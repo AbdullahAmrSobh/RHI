@@ -38,11 +38,11 @@
 
 namespace RHI
 {
-   TL::Ptr<Context> CreateVulkanContext(const ApplicationInfo& appInfo)
+    TL::Ptr<Context> CreateVulkanContext(const ApplicationInfo& appInfo)
     {
         ZoneScoped;
 
-        auto context =TL::CreatePtr<Vulkan::IContext>();
+        auto context = TL::CreatePtr<Vulkan::IContext>();
         auto result = context->Init(appInfo);
         TL_ASSERT(IsSucess(result));
         return std::move(context);
@@ -51,6 +51,26 @@ namespace RHI
 
 namespace RHI::Vulkan
 {
+
+    /// @todo: add support for a custom sink, so vulkan errors are spereated
+    VkBool32 DebugMessengerCallbacks(
+        [[maybe_unused]] VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+        [[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT messageTypes,
+        [[maybe_unused]] const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+        [[maybe_unused]] void* pUserData)
+    {
+        switch (messageSeverity)
+        {
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: TL_LOG_INFO(pCallbackData->pMessage); break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:    TL_LOG_INFO(pCallbackData->pMessage); break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: TL_LOG_WARNNING(pCallbackData->pMessage); break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:   TL_LOG_ERROR(pCallbackData->pMessage); break;
+        default:                                              TL_UNREACHABLE();
+        }
+
+        return VK_FALSE;
+    }
+
     inline static TL::Vector<VkLayerProperties> GetAvailableInstanceLayerExtensions()
     {
         uint32_t instanceLayerCount;
@@ -252,9 +272,9 @@ namespace RHI::Vulkan
     ////////////////////////////////////////////////////////////
     // Interface implementation
     ////////////////////////////////////////////////////////////
-   TL::Ptr<Swapchain> IContext::Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo)
+    TL::Ptr<Swapchain> IContext::Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo)
     {
-        auto swapchain =TL::CreatePtr<ISwapchain>(this);
+        auto swapchain = TL::CreatePtr<ISwapchain>(this);
         auto result = swapchain->Init(createInfo);
         if (result != VK_SUCCESS)
         {
@@ -263,9 +283,9 @@ namespace RHI::Vulkan
         return swapchain;
     }
 
-   TL::Ptr<ShaderModule> IContext::Internal_CreateShaderModule(TL::Span<const uint32_t> shaderBlob)
+    TL::Ptr<ShaderModule> IContext::Internal_CreateShaderModule(TL::Span<const uint32_t> shaderBlob)
     {
-        auto shaderModule =TL::CreatePtr<IShaderModule>(this);
+        auto shaderModule = TL::CreatePtr<IShaderModule>(this);
         auto result = shaderModule->Init(shaderBlob);
         if (result != ResultCode::Success)
         {
@@ -274,9 +294,9 @@ namespace RHI::Vulkan
         return shaderModule;
     }
 
-   TL::Ptr<Fence> IContext::Internal_CreateFence()
+    TL::Ptr<Fence> IContext::Internal_CreateFence()
     {
-        auto fence =TL::CreatePtr<IFence>(this);
+        auto fence = TL::CreatePtr<IFence>(this);
         auto result = fence->Init();
         if (result != ResultCode::Success)
         {
@@ -285,9 +305,9 @@ namespace RHI::Vulkan
         return fence;
     }
 
-   TL::Ptr<CommandPool> IContext::Internal_CreateCommandPool(CommandPoolFlags flags)
+    TL::Ptr<CommandPool> IContext::Internal_CreateCommandPool(CommandPoolFlags flags)
     {
-        auto commandPool =TL::CreatePtr<ICommandPool>(this);
+        auto commandPool = TL::CreatePtr<ICommandPool>(this);
         auto result = commandPool->Init(flags);
         if (result != ResultCode::Success)
         {
@@ -732,25 +752,6 @@ namespace RHI::Vulkan
     ////////////////////////////////////////////////////////////
     // Interface implementation
     ////////////////////////////////////////////////////////////
-
-    // @todo: add support for a custom sink, so vulkan errors are spereated
-    VkBool32 IContext::DebugMessengerCallbacks(
-        [[maybe_unused]] VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-        [[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT messageTypes,
-        [[maybe_unused]] const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-        [[maybe_unused]] void* pUserData)
-    {
-        switch (messageSeverity)
-        {
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: TL_LOG_INFO(pCallbackData->pMessage); break;
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:    TL_LOG_INFO(pCallbackData->pMessage); break;
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: TL_LOG_WARNNING(pCallbackData->pMessage); break;
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:   TL_LOG_ERROR(pCallbackData->pMessage); break;
-        default:                                              TL_UNREACHABLE();
-        }
-
-        return VK_FALSE;
-    }
 
     VkResult IContext::InitInstance(const ApplicationInfo& appInfo, bool* debugExtensionEnabled)
     {
