@@ -10,7 +10,8 @@
 
 #include "Camera.hpp"
 
-#include "TL/FileSystem/FileSystem.hpp"
+#include <TL/FileSystem/FileSystem.hpp>
+#include <TL/Allocator/MemPlumber.hpp>
 
 #include <ShaderInterface/Core.slang>
 
@@ -97,17 +98,8 @@ public:
         m_pipelineLayout = context->CreatePipelineLayout(pipelineLayoutCI);
 
         context->DestroyBindGroupLayout(bindGroupLayout);
-        auto defaultBlendState = RHI::ColorAttachmentBlendStateDesc();
-        defaultBlendState.blendEnable = true;
-        defaultBlendState.colorBlendOp = RHI::BlendEquation::Add;
-        defaultBlendState.srcColor = RHI::BlendFactor::SrcAlpha;
-        defaultBlendState.dstColor = RHI::BlendFactor::OneMinusSrcAlpha;
-        defaultBlendState.alphaBlendOp = RHI::BlendEquation::Add;
-        defaultBlendState.srcAlpha = RHI::BlendFactor::One;
-        defaultBlendState.dstAlpha = RHI::BlendFactor::Zero;
-        defaultBlendState.writeMask = RHI::ColorWriteMask::All;
 
-        RHI::GraphicsPipelineCreateInfo pipelineCI {};
+        RHI::GraphicsPipelineCreateInfo pipelineCI{};
         pipelineCI.name = "Basic";
         pipelineCI.vertexShaderName = "VSMain";
         pipelineCI.vertexShaderModule = shaderModule.get();
@@ -116,7 +108,14 @@ public:
         pipelineCI.layout = m_pipelineLayout;
         pipelineCI.inputAssemblerState = {};
         pipelineCI.renderTargetLayout.colorAttachmentsFormats[0] = RHI::Format::RGBA8_UNORM;
-        pipelineCI.colorBlendState.blendStates[0] = defaultBlendState;
+        pipelineCI.colorBlendState.blendStates[0].blendEnable = true;
+        pipelineCI.colorBlendState.blendStates[0].colorBlendOp = RHI::BlendEquation::Add;
+        pipelineCI.colorBlendState.blendStates[0].srcColor = RHI::BlendFactor::SrcAlpha;
+        pipelineCI.colorBlendState.blendStates[0].dstColor = RHI::BlendFactor::OneMinusSrcAlpha;
+        pipelineCI.colorBlendState.blendStates[0].alphaBlendOp = RHI::BlendEquation::Add;
+        pipelineCI.colorBlendState.blendStates[0].srcAlpha = RHI::BlendFactor::One;
+        pipelineCI.colorBlendState.blendStates[0].dstAlpha = RHI::BlendFactor::Zero;
+        pipelineCI.colorBlendState.blendStates[0].writeMask = RHI::ColorWriteMask::All;
         pipelineCI.topologyMode = RHI::PipelineTopologyMode::Triangles;
         pipelineCI.rasterizationState.cullMode = RHI::PipelineRasterizerStateCullMode::None;
         pipelineCI.rasterizationState.fillMode = RHI::PipelineRasterizerStateFillMode::Triangle;
@@ -136,6 +135,9 @@ public:
     void OnShutdown() override
     {
         m_viewCB.Shutdown(*m_context);
+        m_context->DestroyBindGroup(m_bindGroup);
+        m_context->DestroyPipelineLayout(m_pipelineLayout);
+        m_context->DestroyGraphicsPipeline(m_graphicsPipeline);
     }
 
     void OnRender() override
@@ -197,7 +199,7 @@ public:
         m_camera.SetPerspective(60.0f, 1600.0f / 1200.0f, 0.1f, 10000.0f);
         m_camera.SetRotationSpeed(0.0002f);
         m_camera.SetPosition({});
-        glm::vec3 rotation {};
+        glm::vec3 rotation{};
         rotation = {};
         m_camera.SetRotation(rotation);
 
@@ -211,12 +213,30 @@ public:
 
     void OnUpdate(Timestep timestep) override
     {
+        // Accumulate the elapsed time based on the fixed timestep
+        static float accumulatedTime = 0.0f;
+        accumulatedTime += (float)timestep.Seconds(); // Assuming GetSeconds() returns the timestep in seconds
+
+        constexpr float frequency = 2.0f;  // Controls the speed of the transition
+        constexpr float amplitude = 10.5f; // Amplitude for color variation
+        constexpr float offset = 0.5f;     // Offset to ensure values are in the range [0, 1]
+
+        // Calculate the color components with larger phase shifts for more distinct colors
+        m_renderer->m_viewCB->color.r = glm::sin((glm::sin(frequency * accumulatedTime) * amplitude + offset));
+        m_renderer->m_viewCB->color.g = glm::sin((glm::sin(frequency * accumulatedTime + glm::pi<float>()) * amplitude + offset));
+        m_renderer->m_viewCB->color.b = glm::sin((glm::sin(frequency * accumulatedTime + 2.0f * glm::pi<float>()) * amplitude + offset));
+
+        m_camera.Update(timestep);
+        TL_LOG_INFO("({}, {}, {}, {})", m_renderer->m_viewCB->color.r, m_renderer->m_viewCB->color.g, m_renderer->m_viewCB->color.b, m_renderer->m_viewCB->color.a);
+
         m_camera.Update(timestep);
     }
 
     void Render() override
     {
         m_renderer->m_viewCB->worldToClipMatrix = m_camera.GetProjection() * m_camera.GetView();
+        m_renderer->m_viewCB->worldToViewMatrix = m_camera.GetView();
+        m_renderer->m_viewCB->viewToClipMatrix = m_camera.GetProjection();
         m_renderer->m_viewCB.Update();
 
         m_renderer->Render();
@@ -235,7 +255,11 @@ public:
 
 int main(int argc, const char* argv[])
 {
+    TL::MemPlumber::start();
     using namespace Examples;
     TL::Span args{ argv, (size_t)argc };
-    return Entry<Playground>(args);
+    auto result = Entry<Playground>(args);
+    size_t memLeakCount, memLeakSize;
+    TL::MemPlumber::memLeakCheck(memLeakCount, memLeakSize);
+    return result;
 }
