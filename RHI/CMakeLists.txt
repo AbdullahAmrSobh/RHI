@@ -36,4 +36,3 @@ tl_add_target(
 target_compile_options(RHI PRIVATE ${RHI_COMPILE_FLAGS})
 
 target_link_libraries(RHI PUBLIC TL)
-target_link_libraries(RHI PUBLIC spirv-reflect-static)

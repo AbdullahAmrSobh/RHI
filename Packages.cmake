@@ -27,15 +27,6 @@ CPMAddPackage(
 	GIT_TAG        v3.0.1
 )
 
-CPMAddPackage(
-    NAME           SPIRV-Reflect
-	GIT_REPOSITORY git@github.com:KhronosGroup/SPIRV-Reflect.git
-	GIT_TAG        756e7b13243b5c4b110bb63dba72d10716dd1dfe
-	OPTIONS
-		"SPIRV_REFLECT_EXECUTABLE OFF"
-		"SPIRV_REFLECT_STATIC_LIB ON"
-)
-
 if(RHI_BUILD_EXAMPLES)
 	CPMAddPackage(
 		NAME           glm
