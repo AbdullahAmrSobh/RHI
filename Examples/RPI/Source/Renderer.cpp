@@ -49,6 +49,13 @@ namespace Examples::RPI
 
     void Renderer::Shutdown()
     {
+        auto& frame = m_frameRingbuffer.Get();
+        if (frame.m_fence->GetState() != RHI::FenceState::Signaled)
+        {
+            frame.m_fence->Wait(UINT64_MAX);
+        }
+        frame.m_fence->Reset();
+
         OnShutdown();
 
         for (auto& frame : m_frameRingbuffer)
@@ -57,6 +64,7 @@ namespace Examples::RPI
             delete frame.m_commandPool.release();
         }
 
+        delete m_renderGraph.release();
         delete m_swapchain.release();
         delete m_context.release();
     }

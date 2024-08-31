@@ -4,6 +4,7 @@
 
 #include <RPI/Renderer.hpp>
 #include <RPI/ConstantBuffer.hpp>
+#include <RPI/View.hpp>
 
 #include <tracy/Tracy.hpp>
 
@@ -11,17 +12,30 @@
 
 #include "TL/FileSystem/FileSystem.hpp"
 
+#include <ShaderInterface/Core.slang>
+
 using namespace Examples;
 
 class RenderImpl final : public RPI::Renderer
 {
 public:
-    RHI::Handle<RHI::Buffer> m_uniformBuffer;
+    RPI::ConstantBuffer<SI::ViewCB> m_viewCB;
+
     RHI::Handle<RHI::BindGroup> m_bindGroup;
 
     RHI::Handle<RHI::PipelineLayout> m_pipelineLayout;
     RHI::Handle<RHI::GraphicsPipeline> m_graphicsPipeline;
     RHI::Handle<RHI::Pass> m_pass;
+
+    // RHI::Handle<RHI::Buffer> m_indexBuffer, m_vertexBuffer;
+
+    // void InitIndexAndVertex()
+    // {
+    //     std::fstream file {"C:/Users/abdul/Desktop/Main.1_Sponza/cache/meshes/arch_stones_01-1.fgmesh", std::ios::binary };
+    //     Assets::Mesh mesh {};
+    //     TL::BinaryArchive archive {file};
+    //     archive.Decode(mesh);
+    // }
 
     RPI::ResultCode OnInit() override
     {
@@ -62,96 +76,66 @@ public:
         auto spvBlock = TL::ReadBinaryFile("./Shaders/Basic.spv");
         spv.resize(spvBlock.size / 4);
         memcpy(spv.data(), spvBlock.ptr, spvBlock.size);
-        auto shaderMoudule = context->CreateShaderModule(spv);
+        auto shaderModule = context->CreateShaderModule(spv);
 
-        RHI::BufferCreateInfo uniformBufferCI{};
-        uniformBufferCI.name = "UniformBuffer";
-        uniformBufferCI.heapType = RHI::MemoryType::GPULocal;
-        uniformBufferCI.usageFlags = RHI::BufferUsage::Uniform;
-        uniformBufferCI.byteSize = sizeof(glm::vec4);
-        m_uniformBuffer = context->CreateBuffer(uniformBufferCI).GetValue();
-
-        auto ptr = context->MapBuffer(m_uniformBuffer);
-        glm::vec4 color{ 1.0, 0.5, 0.6, 1.0 };
-        memcpy(ptr, &color, sizeof(glm::vec4));
+        m_viewCB.Init(*m_context);
+        m_viewCB->color = { 0.4, 1.0, 0.4, 1.0 };
+        m_viewCB.Update();
 
         RHI::BindGroupLayoutCreateInfo bindGroupLayoutCI{};
         bindGroupLayoutCI.bindings[0].type = RHI::BindingType::UniformBuffer;
         bindGroupLayoutCI.bindings[0].access = RHI::Access::Read;
         bindGroupLayoutCI.bindings[0].arrayCount = 1;
         bindGroupLayoutCI.bindings[0].stages = RHI::ShaderStage::Pixel;
+        bindGroupLayoutCI.bindings[0].stages |= RHI::ShaderStage::Vertex;
         auto bindGroupLayout = context->CreateBindGroupLayout(bindGroupLayoutCI);
 
         m_bindGroup = context->CreateBindGroup(bindGroupLayout);
-        context->UpdateBindGroup(m_bindGroup, { RHI::BindGroupUpdateInfo(0, 0, m_uniformBuffer) });
+        context->UpdateBindGroup(m_bindGroup, { RHI::BindGroupUpdateInfo(0, 0, m_viewCB.GetBuffer()) });
 
         RHI::PipelineLayoutCreateInfo pipelineLayoutCI{ bindGroupLayout };
         m_pipelineLayout = context->CreatePipelineLayout(pipelineLayoutCI);
 
         context->DestroyBindGroupLayout(bindGroupLayout);
+        auto defaultBlendState = RHI::ColorAttachmentBlendStateDesc();
+        defaultBlendState.blendEnable = true;
+        defaultBlendState.colorBlendOp = RHI::BlendEquation::Add;
+        defaultBlendState.srcColor = RHI::BlendFactor::SrcAlpha;
+        defaultBlendState.dstColor = RHI::BlendFactor::OneMinusSrcAlpha;
+        defaultBlendState.alphaBlendOp = RHI::BlendEquation::Add;
+        defaultBlendState.srcAlpha = RHI::BlendFactor::One;
+        defaultBlendState.dstAlpha = RHI::BlendFactor::Zero;
+        defaultBlendState.writeMask = RHI::ColorWriteMask::All;
 
-        // clang-format off
-        auto defaultBlendState = RHI::ColorAttachmentBlendStateDesc{
-            .blendEnable = true,
-            .colorBlendOp = RHI::BlendEquation::Add,
-            .srcColor = RHI::BlendFactor::SrcAlpha,
-            .dstColor = RHI::BlendFactor::OneMinusSrcAlpha,
-            .alphaBlendOp = RHI::BlendEquation::Add,
-            .srcAlpha = RHI::BlendFactor::One,
-            .dstAlpha = RHI::BlendFactor::Zero,
-            .writeMask = RHI::ColorWriteMask::All,
-        };
-
-        RHI::GraphicsPipelineCreateInfo pipelineCI
-        {
-            .name = "Basic",
-            .vertexShaderName = "VSMain",
-            .vertexShaderModule = shaderMoudule.get(),
-            .pixelShaderName = "PSMain",
-            .pixelShaderModule = shaderMoudule.get(),
-            .layout = m_pipelineLayout,
-            .inputAssemblerState = {},
-            .renderTargetLayout =
-                {
-                    .colorAttachmentsFormats = { RHI::Format::RGBA8_UNORM },
-                },
-            .colorBlendState =
-                {
-                    .blendStates =
-                    {
-                        defaultBlendState,
-                    },
-                    .blendConstants = {}
-                },
-            .topologyMode = RHI::PipelineTopologyMode::Triangles,
-            .rasterizationState =
-                {
-                    .cullMode = RHI::PipelineRasterizerStateCullMode::None,
-                    .fillMode = RHI::PipelineRasterizerStateFillMode::Triangle,
-                    .frontFace = RHI::PipelineRasterizerStateFrontFace::CounterClockwise,
-                    .lineWidth = 1.0,
-                },
-            .multisampleState =
-                {
-                    .sampleCount = RHI::SampleCount::Samples1,
-                    .sampleShading = false,
-                },
-            .depthStencilState =
-                {
-                    .depthTestEnable = true,
-                    .depthWriteEnable = true,
-                    .compareOperator = RHI::CompareOperator::Less,
-                    .stencilTestEnable = false,
-                },
-        };
+        RHI::GraphicsPipelineCreateInfo pipelineCI {};
+        pipelineCI.name = "Basic";
+        pipelineCI.vertexShaderName = "VSMain";
+        pipelineCI.vertexShaderModule = shaderModule.get();
+        pipelineCI.pixelShaderName = "PSMain";
+        pipelineCI.pixelShaderModule = shaderModule.get();
+        pipelineCI.layout = m_pipelineLayout;
+        pipelineCI.inputAssemblerState = {};
+        pipelineCI.renderTargetLayout.colorAttachmentsFormats[0] = RHI::Format::RGBA8_UNORM;
+        pipelineCI.colorBlendState.blendStates[0] = defaultBlendState;
+        pipelineCI.topologyMode = RHI::PipelineTopologyMode::Triangles;
+        pipelineCI.rasterizationState.cullMode = RHI::PipelineRasterizerStateCullMode::None;
+        pipelineCI.rasterizationState.fillMode = RHI::PipelineRasterizerStateFillMode::Triangle;
+        pipelineCI.rasterizationState.frontFace = RHI::PipelineRasterizerStateFrontFace::CounterClockwise;
+        pipelineCI.rasterizationState.lineWidth = 1.0;
+        pipelineCI.multisampleState.sampleCount = RHI::SampleCount::Samples1;
+        pipelineCI.multisampleState.sampleShading = false;
+        pipelineCI.depthStencilState.depthTestEnable = true;
+        pipelineCI.depthStencilState.depthWriteEnable = true;
+        pipelineCI.depthStencilState.compareOperator = RHI::CompareOperator::Less;
+        pipelineCI.depthStencilState.stencilTestEnable = false;
         m_graphicsPipeline = context->CreateGraphicsPipeline(pipelineCI);
-        // clang-format on
 
         return RPI::ResultCode::Sucess;
     }
 
     void OnShutdown() override
     {
+        m_viewCB.Shutdown(*m_context);
     }
 
     void OnRender() override
@@ -179,7 +163,9 @@ public:
         commandList->SetSicssor(scissor);
         RHI::DrawInfo drawInfo{
             .pipelineState = m_graphicsPipeline,
-            .bindGroups = { m_bindGroup, },
+            .bindGroups = {
+                           m_bindGroup,
+                           },
             .vertexBuffers = {},
             .indexBuffer = {},
             .parameters = { 3, 1, 0, 0 },
@@ -207,6 +193,14 @@ public:
 
     void OnInit() override
     {
+        m_camera.m_window = m_window.get();
+        m_camera.SetPerspective(60.0f, 1600.0f / 1200.0f, 0.1f, 10000.0f);
+        m_camera.SetRotationSpeed(0.0002f);
+        m_camera.SetPosition({});
+        glm::vec3 rotation {};
+        rotation = {};
+        m_camera.SetRotation(rotation);
+
         m_renderer->Init(*m_window);
     }
 
@@ -217,10 +211,14 @@ public:
 
     void OnUpdate(Timestep timestep) override
     {
+        m_camera.Update(timestep);
     }
 
     void Render() override
     {
+        m_renderer->m_viewCB->worldToClipMatrix = m_camera.GetProjection() * m_camera.GetView();
+        m_renderer->m_viewCB.Update();
+
         m_renderer->Render();
     }
 
@@ -228,7 +226,9 @@ public:
     {
     }
 
-    TL::Ptr<RPI::Renderer> m_renderer;
+    Camera m_camera;
+
+    TL::Ptr<RenderImpl> m_renderer;
 };
 
 #include <Examples-Base/Entry.hpp>

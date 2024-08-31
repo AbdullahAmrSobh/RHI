@@ -82,12 +82,6 @@ namespace Examples::Assets
             m_attributes[name] = std::move(Buffer(name, data));
         }
 
-        /// @brief Serializes the mesh to an archive.
-        ///
-        /// This function serializes the mesh's name and attributes to the provided archive.
-        ///
-        /// @tparam Archive The type of the archive.
-        /// @param archive The archive to serialize to.
         template<typename Archive>
         void Serialize(Archive& archive) const
         {
@@ -95,12 +89,6 @@ namespace Examples::Assets
             TL::Encode(archive, m_attributes);
         }
 
-        /// @brief Deserializes the mesh from an archive.
-        ///
-        /// This function deserializes the mesh's name and attributes from the provided archive.
-        ///
-        /// @tparam Archive The type of the archive.
-        /// @param archive The archive to deserialize from.
         template<typename Archive>
         void Deserialize(Archive& archive)
         {

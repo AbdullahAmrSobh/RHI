@@ -95,7 +95,7 @@ namespace Examples::Assets
                 node->relativeTransform = ConvertMatrix(aiNode->mTransformation);
 
                 // Assume each aiNode has either a mesh, material, light, or camera attached (simplified).
-                for (auto meshIndex = 0; meshIndex < aiNode->mNumMeshes; meshIndex++)
+                for (uint32_t meshIndex = 0; meshIndex < aiNode->mNumMeshes; meshIndex++)
                 {
                     auto aiMesh = aiScene.mMeshes[meshIndex];
                     Model model{

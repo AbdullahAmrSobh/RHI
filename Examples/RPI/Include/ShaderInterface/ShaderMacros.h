@@ -6,31 +6,35 @@
  */
 
 #ifdef __cplusplus
-
     #include <glm/glm.hpp>
 
-    #define re_ref(type) type&
+    #define re_alignas(x) alignas(sizeof(x))
 
-    #define re_shader_struct struct alignas(16)
-    #define re_float float
-    #define re_vec2 alignas(8) glm::vec2
-    #define re_vec3 alignas(16) glm::vec3
-    #define re_vec4 alignas(16) glm::vec4
-    #define re_int int
-    #define re_uint unsigned int
-    #define re_mat4 alignas(16) glm::mat4
-#else // HLSL
+// struct re_alignas(glm::vec2) re_vec2 : glm::vec2 {  using base = glm::vec2; using base::base; };
+// struct re_alignas(glm::vec4) re_vec3 : glm::vec3 {  using base = glm::vec3; using base::base; };
+// struct re_alignas(glm::vec4) re_vec4 : glm::vec4 {  using base = glm::vec4; using base::base; };
 
-    #define re_ref(type) type
+// struct re_alignas(glm::mat2) re_mat2 : glm::mat2 {  using base = glm::mat2; using base::base; };
+// struct re_alignas(glm::mat4) re_mat3 : glm::mat3 {  using base = glm::mat3; using base::base; };
+// struct re_alignas(glm::mat4) re_mat4 : glm::mat4 {  using base = glm::mat4; using base::base; };
 
-    #define re_shader_struct struct
-    #define re_float float
-    #define re_vec2 float2
-    #define re_vec3 float3
-    #define re_vec4 float4
-    #define re_int int
-    #define re_uint uint
-    #define re_mat4 float4x4
+    #define re_vec2 re_alignas(glm::vec2) glm::vec2
+    #define re_vec3 re_alignas(glm::vec4) glm::vec3
+    #define re_vec4 re_alignas(glm::vec4) glm::vec4
+    #define re_mat2 re_alignas(glm::mat2) glm::mat2
+    #define re_mat3 re_alignas(glm::mat4) glm::mat3
+    #define re_mat4 re_alignas(glm::mat4) glm::mat4
+
+#else // slang
+
+typedef vector<float, 2> re_vec2;
+typedef vector<float, 3> re_vec3;
+typedef vector<float, 4> re_vec4;
+
+typedef matrix<float, 2, 2> re_mat2;
+typedef matrix<float, 3, 3> re_mat3;
+typedef matrix<float, 4, 4> re_mat4;
+
 #endif
 
 #ifndef re_namespace_name

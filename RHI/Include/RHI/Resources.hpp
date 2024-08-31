@@ -10,6 +10,9 @@
 
 namespace RHI
 {
+    class Context;
+    class ShaderModule;
+
     inline static constexpr uint32_t c_MaxRenderTargetAttachmentsCount           = 16u;
     inline static constexpr uint32_t c_MaxImageBindingArrayElementsCount         = 32u;
     inline static constexpr uint32_t c_MaxBufferBindingArrayElementsCount        = 32u;
@@ -20,9 +23,6 @@ namespace RHI
     inline static constexpr uint32_t c_MaxPipelineVertexAttributes               = 32u;
     inline static constexpr uint32_t c_MaxPipelineBindGroupsCount                = 4u;
     inline static constexpr uint32_t c_MaxShaderBindGroupElementsCount           = 32u;
-
-    class Context;
-    class ShaderModule;
 
     RHI_DECALRE_OPAQUE_RESOURCE(Image);
     RHI_DECALRE_OPAQUE_RESOURCE(Buffer);

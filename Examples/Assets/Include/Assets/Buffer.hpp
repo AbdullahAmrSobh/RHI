@@ -102,7 +102,7 @@ namespace Examples::Assets
         void Serialize(Archive& archive) const
         {
             TL::Encode(archive, m_name);
-            TL::Encode(archive, std::underlying_type_t<VertexFormat>(m_format));
+            TL::Encode(archive, m_format);
             TL::Encode(archive, m_elementsCount);
             TL::Encode(archive, m_strideSize);
             TL::Encode(archive, m_data);
@@ -112,7 +112,7 @@ namespace Examples::Assets
         void Deserialize(Archive& archive)
         {
             TL::Decode(archive, m_name);
-            TL::Decode(archive, std::underlying_type_t<VertexFormat>(m_format));
+            TL::Decode(archive, m_format);
             TL::Decode(archive, m_elementsCount);
             TL::Decode(archive, m_strideSize);
             TL::Decode(archive, m_data);

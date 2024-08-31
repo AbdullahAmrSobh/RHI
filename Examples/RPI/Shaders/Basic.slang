@@ -1,11 +1,13 @@
+#include <ShaderInterface/Core.slang>
+
 static float4 ScreenQuadVertexPositions[] =
 {
-	{-0.9,  0.9, 0.0, 1.0},
-	{-0.9, -0.9, 0.0, 1.0},
-	{ 0.9, -0.9, 0.0, 1.0},
-	{-0.9,  0.9, 0.0, 1.0},
-	{ 0.9, -0.9, 0.0, 1.0},
-	{ 0.9,  0.9, 0.0, 1.0}
+	{-0.9,  0.9, 1.0, 1.0},
+	{-0.9, -0.9, 1.0, 1.0},
+	{ 0.9, -0.9, 1.0, 1.0},
+	{-0.9,  0.9, 1.0, 1.0},
+	{ 0.9, -0.9, 1.0, 1.0},
+	{ 0.9,  0.9, 1.0, 1.0}
 };
 
 struct VSInput
@@ -23,16 +25,9 @@ struct PSOutput
     float4 color : SV_Target;
 };
 
-
-struct ViewCB
-{
-	float4 color;
-};
-
-
 struct ShaderParamters
 {
-	ConstantBuffer<ViewCB> viewCB;
+	ConstantBuffer<SI::ViewCB> viewCB;
 };
 
 ParameterBlock<ShaderParamters> bindGroup0;

@@ -11,8 +11,6 @@
 #include <TL/Span.hpp>
 #include <TL/UniquePtr.hpp>
 
-#include <functional>
-
 namespace RHI
 {
     class ResourceTracker;

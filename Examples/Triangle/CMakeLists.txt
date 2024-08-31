@@ -21,10 +21,12 @@ tl_add_target(
     RUNTIME_LIBRARIES
         RHI::Vulkan
 )
-
 include(${CMAKE_SOURCE_DIR}/cmake/compile-slang-shaders.cmake)
 compile_slang_shaders(
     TARGET Triangle
+    INCLUDE_DIRS
+        # TODO: fix this and use RPI path
+        ${CMAKE_SOURCE_DIR}/Examples/RPI/Include
     SHADER_GFX_FILES
         ${SHADER_FILES}
     OUTPUT_DIR
