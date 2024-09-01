@@ -21,16 +21,16 @@ namespace RHI::Vulkan
     ResultCode BindGroupAllocator::Init()
     {
         VkDescriptorPoolSize poolSizes[] = {
-            { VK_DESCRIPTOR_TYPE_SAMPLER, 1024 },
-            { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1024 },
-            { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1024 },
-            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1024 },
-            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1024 },
-            { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1024 },
-            { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1024 },
-            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1024 },
-            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1024 },
-            { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1024 },
+            {VK_DESCRIPTOR_TYPE_SAMPLER,                 1024},
+            { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          1024},
+            { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          1024},
+            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         1024},
+            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         1024},
+            { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   1024},
+            { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   1024},
+            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1024},
+            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1024},
+            { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,       1024},
         };
 
         VkDescriptorPoolCreateInfo createInfo{};
@@ -298,7 +298,6 @@ namespace RHI::Vulkan
         TL::Vector<VkDescriptorBindingFlags> bindingFlags;
         TL::Vector<VkDescriptorSetLayoutBinding> bindingInfos;
 
-
         for (uint32_t index = 0; index < c_MaxBindGroupElementsCount; index++)
         {
             auto binding = createInfo.bindings[index];
@@ -403,7 +402,7 @@ namespace RHI::Vulkan
                     {
                     case BindingType::SampledImage: imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; break;
                     case BindingType::StorageImage: imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL; break;
-                    default:                              TL_UNREACHABLE(); break;
+                    default:                        TL_UNREACHABLE(); break;
                     }
                 }
                 writeInfo.pImageInfo = data.imageInfos.data();
@@ -880,8 +879,8 @@ namespace RHI::Vulkan
     {
         // if (m_state == FenceState::Pending)
         // {
-            auto result = vkGetFenceStatus(m_context->m_device, m_fence);
-            return result == VK_SUCCESS ? FenceState::Signaled : FenceState::Pending;
+        auto result = vkGetFenceStatus(m_context->m_device, m_fence);
+        return result == VK_SUCCESS ? FenceState::Signaled : FenceState::Pending;
         // }
 
         // return FenceState::NotSubmitted;
