@@ -64,13 +64,13 @@ namespace Examples::Assets
             }
         }
 
-        inline TL::Span<const TL::String> GetSceneGraphs(std::filesystem::path path) const { return m_sceneGraphs; }
+        inline TL::Span<const TL::String> GetSceneGraphs() const { return m_sceneGraphs; }
 
-        inline TL::Span<const TL::String> GetMeshs(std::filesystem::path path) const { return m_meshes; }
+        inline TL::Span<const TL::String> GetMeshs() const { return m_meshes; }
 
-        inline TL::Span<const TL::String> GetImages(std::filesystem::path path) const { return m_images; }
+        inline TL::Span<const TL::String> GetImages() const { return m_images; }
 
-        inline TL::Span<const TL::String> GetMaterials(std::filesystem::path path) const { return m_materials; }
+        inline TL::Span<const TL::String> GetMaterials() const { return m_materials; }
 
         template<typename Archive>
         void Serialize(Archive& archive) const

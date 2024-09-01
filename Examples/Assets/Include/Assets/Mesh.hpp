@@ -42,13 +42,25 @@ namespace Examples::Assets
         ///
         /// @param name The name of the buffer to retrieve.
         /// @return A constant pointer to the Buffer if found, or nullptr if not found.
-        const Buffer* GetBuffer(const char* name) const;
+        const Buffer* GetBuffer(const char* name) const
+        {
+            if (m_attributes.find(name) == m_attributes.end())
+                return nullptr;
+
+            return &m_attributes.find(name)->second;
+        }
 
         /// @brief Retrieves a pointer to a Buffer by name.
         ///
         /// @param name The name of the buffer to retrieve.
         /// @return A pointer to the Buffer if found, or nullptr if not found.
-        Buffer* GetBuffer(const char* name);
+        Buffer* GetBuffer(const char* name)
+        {
+            if (m_attributes.find(name) == m_attributes.end())
+                return nullptr;
+
+            return &m_attributes[name];
+        }
 
         /// @brief Retrieves an attribute as a span of the specified type.
         ///
@@ -63,7 +75,8 @@ namespace Examples::Assets
         template<typename T>
         TL::Span<const T> GetAttribute(const char* name) const
         {
-            return GetBuffer(name)->GetData<T>();
+            auto buffer = GetBuffer(name)->GetData();
+            return { (const T*)buffer.ptr, buffer.size / sizeof(T) };
         }
 
         /// @brief Adds an attribute to the mesh.
