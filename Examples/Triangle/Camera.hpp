@@ -87,7 +87,14 @@ public:
 
     inline glm::mat4 GetProjection() const
     {
-        return matrices.perspective;
+        glm::mat4 correction_matrix = {
+            {1.0f,  0.0f,  0.0f,  0.0f},
+            { 0.0f, -1.0f, 0.0f,  0.0f},
+            { 0.0f, 0.0f,  -1.0f, 0.0f},
+            { 0.0f, 0.0f,  0.0f,  1.0f},
+        };
+
+        return matrices.perspective * correction_matrix;
     }
 
     inline glm::mat4 GetView() const
@@ -115,15 +122,6 @@ public:
         this->fov = fov;
         this->znear = znear;
         this->zfar = zfar;
-        matrices.perspective = glm::perspectiveLH(glm::radians(fov), aspect, znear, zfar);
-        if (flipY)
-        {
-            matrices.perspective[1][1] *= -1.0f;
-        }
-    }
-
-    inline void UpdateAspectRatio(float aspect)
-    {
         matrices.perspective = glm::perspectiveLH(glm::radians(fov), aspect, znear, zfar);
         if (flipY)
         {

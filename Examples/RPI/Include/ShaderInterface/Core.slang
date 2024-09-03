@@ -3,7 +3,7 @@
 
 namespace SI
 {
-    struct ViewCB
+    re_struct ViewCB
     {
         re_vec4 color;
         re_mat4 worldToViewMatrix;

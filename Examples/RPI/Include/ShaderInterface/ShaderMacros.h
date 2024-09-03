@@ -21,9 +21,11 @@
     #define re_vec2 re_alignas(glm::vec2) glm::vec2
     #define re_vec3 re_alignas(glm::vec4) glm::vec3
     #define re_vec4 re_alignas(glm::vec4) glm::vec4
-    #define re_mat2 re_alignas(glm::mat2) glm::mat2
-    #define re_mat3 re_alignas(glm::mat4) glm::mat3
-    #define re_mat4 re_alignas(glm::mat4) glm::mat4
+    #define re_mat2 re_alignas(glm::vec4) glm::mat2
+    #define re_mat3 re_alignas(glm::vec4) glm::mat3
+    #define re_mat4 re_alignas(glm::vec4) glm::mat4
+
+    #define re_struct struct re_alignas(16)
 
 #else // slang
 
@@ -34,6 +36,8 @@ typedef vector<float, 4> re_vec4;
 typedef matrix<float, 2, 2> re_mat2;
 typedef matrix<float, 3, 3> re_mat3;
 typedef matrix<float, 4, 4> re_mat4;
+
+#define re_struct struct
 
 #endif
 

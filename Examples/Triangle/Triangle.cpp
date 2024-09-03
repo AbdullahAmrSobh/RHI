@@ -13,6 +13,9 @@
 
 #include <ShaderInterface/Core.slang>
 
+// FIXME: need to figure out my cooridnate system
+// Left Hand. Y-Up
+
 using namespace Examples;
 
 class RenderImpl final : public RPI::Renderer
@@ -26,29 +29,10 @@ public:
     RHI::Handle<RHI::GraphicsPipeline> m_graphicsPipeline;
     RHI::Handle<RHI::Pass> m_pass;
 
-    // RHI::Handle<RHI::Buffer> m_indexBuffer, m_vertexBuffer;
-
-    // void InitIndexAndVertex()
-    // {
-    //     std::fstream file {"C:/Users/abdul/Desktop/Main.1_Sponza/cache/meshes/arch_stones_01-1.fgmesh", std::ios::binary };
-    //     TL::BinaryArchive archive {file};
-
-    //     Assets::Mesh mesh;
-    //     archive.Decode(mesh);
-
-    //     auto vertcies = mesh.GetAttribute<glm::vec3>(Assets::AttributeNames::Positions);
-    //     if (vertcies.empty())
-    //     {
-    //         TL_LOG_INFO("mesh {} has {} vertcies", "hello", vertcies.size());
-    //     }
-    // }
-
     RPI::ResultCode OnInit() override
     {
         auto renderGraph = m_renderGraph.get();
         auto context = m_context.get();
-
-        // InitIndexAndVertex();
 
         RHI::PassCreateInfo createInfo{
             .name = "Main",
@@ -76,6 +60,7 @@ public:
         spv.resize(spvBlock.size / 4);
         memcpy(spv.data(), spvBlock.ptr, spvBlock.size);
         auto shaderModule = context->CreateShaderModule(spv);
+        TL::Allocator::Release(spvBlock, alignof(char));
 
         m_viewCB.Init(*m_context);
         m_viewCB->color = { 0.4, 1.0, 0.4, 1.0 };
@@ -191,31 +176,46 @@ public:
     {
     }
 
-
     RHI::Handle<RHI::Buffer> m_vertexBuffer;
 
     void OnInit() override
     {
-        auto newPackage = Assets::Import("C:/Users/abdul/Downloads/deccer-cubes-main (1)/deccer-cubes-main/SM_Deccer_Cubes.gltf");
+        // std::filesystem::path path = "C:/Users/abdul/Downloads/deccer-cubes-main (1)/deccer-cubes-main/SM_Deccer_Cubes.gltf";
+        // auto newPackage = Assets::Import(path);
 
-        for (auto mesh : newPackage.GetMeshs())
-        {
-            std::fstream meshFile { mesh.c_str(), std::ios::binary };
+        // constexpr size_t MeshDataSize = 16 * 1024;
+        // RHI::BufferCreateInfo bufferCI
+        // {
+        //     .name = "Geoemetry-Data",
+        //     .heapType = RHI::MemoryType::GPULocal,
+        //     .usageFlags = RHI::BufferUsage::Vertex | RHI::BufferUsage::Index,
+        //     .byteSize = MeshDataSize,
+        // };
+        // auto buffersPage = m_renderer->m_context->CreateBuffer(bufferCI);
 
-            TL::BinaryArchive archive(meshFile);
-            Assets::Mesh meshAsset {};
-            archive.Decode(meshAsset);
+        // for (auto mesh : newPackage.GetMeshs())
+        // {
+        //     // resolve path
+        //     // load mesh
 
-            // auto positions = meshAsset.GetAttribute<glm::vec3>(Assets::AttributeNames::Positions);
-            // TL_LOG_INFO("mesh has {}", positions.size());
-        }
+        //     // auto meshFullPath = std::filesystem::path("C:/Users/abdul/Downloads/deccer-cubes-main (1)/deccer-cubes-main/cache") / mesh.c_str();
+        //     // meshFullPath = meshFullPath.lexically_normal();
+        //     // std::fstream meshFile{ meshFullPath, std::ios::binary | std::ios::in | std::ios::out };
+        //     // TL_ASSERT(meshFile.is_open());
+
+        //     // TL::BinaryArchive archive(meshFile);
+        //     // Assets::Mesh meshAsset{};
+        //     // archive.Decode(meshAsset);
+
+        //     // auto positions = meshAsset.GetAttribute<glm::vec3>(Assets::AttributeNames::Positions);
+        //     // TL_LOG_INFO("mesh {} has {}", mesh.c_str(), positions.size());
+        // }
 
         m_camera.m_window = m_window.get();
         m_camera.SetPerspective(60.0f, 1600.0f / 1200.0f, 0.1f, 10000.0f);
         m_camera.SetRotationSpeed(0.0002f);
         m_camera.SetPosition({ 0, 10, 0 });
-        glm::vec3 rotation{};
-        m_camera.SetRotation(rotation);
+        m_camera.SetRotation({ 0, 180, 0 });
 
         m_renderer->Init(*m_window);
     }
@@ -232,10 +232,8 @@ public:
 
     void Render() override
     {
-        // auto worldToClip = m_camera.GetProjection() * m_camera.GetView();
-
-        // m_renderer->m_viewCB->worldToClipMatrix = worldToClip;
-        // m_renderer->m_viewCB->worldToViewMatrix = m_camera.GetView();
+        m_renderer->m_viewCB->worldToClipMatrix = m_camera.GetProjection() * m_camera.GetView();
+        m_renderer->m_viewCB->worldToViewMatrix = m_camera.GetView();
         m_renderer->m_viewCB->viewToClipMatrix = m_camera.GetProjection();
         m_renderer->m_viewCB.Update();
 
@@ -244,6 +242,7 @@ public:
 
     void OnEvent(Event& e) override
     {
+        m_camera.ProcessEvent(e);
     }
 
     Camera m_camera;
@@ -255,9 +254,9 @@ public:
 
 int main(int argc, const char* argv[])
 {
-    TL::MemPlumber::start();
     using namespace Examples;
     TL::Span args{ argv, (size_t)argc };
+    TL::MemPlumber::start();
     auto result = Entry<Playground>(args);
     size_t memLeakCount, memLeakSize;
     TL::MemPlumber::memLeakCheck(memLeakCount, memLeakSize);

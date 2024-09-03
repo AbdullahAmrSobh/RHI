@@ -36,7 +36,7 @@ ParameterBlock<ShaderParamters> bindGroup0;
 PSInput VSMain(VSInput input)
 {
     PSInput result;
-    result.csPosition = ScreenQuadVertexPositions[input.vertexID];
+    result.csPosition = mul(bindGroup0.viewCB.worldToClipMatrix, ScreenQuadVertexPositions[input.vertexID]);
     return result;
 }
 
