@@ -248,12 +248,6 @@ namespace RHI
         /// @param renderGraph The render graph to dispatch
         void DispatchGraph(RenderGraph& renderGraph);
 
-        /// @brief Allocates a temporary buffer
-        ///
-        /// @param size The size of the buffer to allocate
-        /// @return A StagingBuffer object representing the allocated buffer
-        TL_NODISCARD StagingBuffer AllocateTempBuffer(size_t size);
-
         /// @brief Stages a write operation to an image
         ///
         /// @param image Handle to the Image to write to
@@ -333,8 +327,5 @@ namespace RHI
 
     protected:
         TL::Ptr<Limits> m_limits;
-
-    private:
-        TL::Vector<Handle<Buffer>> m_stagingBuffers;
     };
 } // namespace RHI

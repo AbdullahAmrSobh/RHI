@@ -8,12 +8,12 @@ TL:
     - Command line interface builder
 
 RHI:
-    - Fix command lists leak
+    - Iterate on Render Graph Interface design
+    - Commands are recorded into passes, so passes should handle sync data
+    - Expose synchornization
     - Secondary command lists
     - Fix swapchain resize issues
-    - Fix Leaks on exit
     - MSAA
-    - Iterate on Render Graph Interface design
     - Drop RAII completelly (Use Create/Destroy) in similar style to Vulkan.hpp
     - Mesh Pipeline
     - Ray Tracing Pipeline

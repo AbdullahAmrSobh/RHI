@@ -1,6 +1,7 @@
 #include "Camera.hpp"
 
 #include <Assets/Importer.hpp>
+
 #include <Examples-Base/ApplicationBase.hpp>
 #include <RPI/ConstantBuffer.hpp>
 #include <RPI/Renderer.hpp>
@@ -17,7 +18,7 @@ using namespace Examples;
 class RenderImpl final : public RPI::Renderer
 {
 public:
-    RPI::ConstantBuffer<SI::ViewCB> m_viewCB;
+    RPI::ConstantBufferView<SI::ViewCB> m_viewCB;
 
     RHI::Handle<RHI::BindGroup> m_bindGroup;
 
@@ -30,9 +31,16 @@ public:
     // void InitIndexAndVertex()
     // {
     //     std::fstream file {"C:/Users/abdul/Desktop/Main.1_Sponza/cache/meshes/arch_stones_01-1.fgmesh", std::ios::binary };
-    //     Assets::Mesh mesh {};
     //     TL::BinaryArchive archive {file};
+
+    //     Assets::Mesh mesh;
     //     archive.Decode(mesh);
+
+    //     auto vertcies = mesh.GetAttribute<glm::vec3>(Assets::AttributeNames::Positions);
+    //     if (vertcies.empty())
+    //     {
+    //         TL_LOG_INFO("mesh {} has {} vertcies", "hello", vertcies.size());
+    //     }
     // }
 
     RPI::ResultCode OnInit() override
@@ -40,32 +48,25 @@ public:
         auto renderGraph = m_renderGraph.get();
         auto context = m_context.get();
 
+        // InitIndexAndVertex();
+
         RHI::PassCreateInfo createInfo{
             .name = "Main",
             .flags = RHI::PassFlags::Graphics,
         };
         m_pass = renderGraph->CreatePass(createInfo);
-        // clang-format off
-        RHI::ImageViewInfo viewInfo
-        {
-            .type = RHI::ImageViewType::View2D,
-            .subresources =
-            {
-                .imageAspects = RHI::ImageAspect::Color,
-                .mipBase = 0,
-                .mipLevelCount = 1,
-                .arrayBase = 0,
-                .arrayCount = 1,
-            },
-            .swizzle =
-            {
-                .r = RHI::ComponentSwizzle::Identity,
-                .g = RHI::ComponentSwizzle::Identity,
-                .b = RHI::ComponentSwizzle::Identity,
-                .a = RHI::ComponentSwizzle::Identity
-            }
-        };
-        // clang-format on
+
+        RHI::ImageViewInfo viewInfo;
+        viewInfo.type = RHI::ImageViewType::View2D;
+        viewInfo.subresources.imageAspects = RHI::ImageAspect::Color;
+        viewInfo.subresources.mipBase = 0;
+        viewInfo.subresources.mipLevelCount = 1;
+        viewInfo.subresources.arrayBase = 0;
+        viewInfo.subresources.arrayCount = 1;
+        viewInfo.swizzle.r = RHI::ComponentSwizzle::Identity;
+        viewInfo.swizzle.g = RHI::ComponentSwizzle::Identity;
+        viewInfo.swizzle.b = RHI::ComponentSwizzle::Identity;
+        viewInfo.swizzle.a = RHI::ComponentSwizzle::Identity;
         renderGraph->PassUseImage(m_pass, m_outputAttachment, viewInfo, RHI::ImageUsage::Color, RHI::ShaderStage::None, RHI::Access::None);
         renderGraph->PassResize(m_pass, { 1600, 1200 });
         context->CompileRenderGraph(*renderGraph);
@@ -190,14 +191,30 @@ public:
     {
     }
 
+
+    RHI::Handle<RHI::Buffer> m_vertexBuffer;
+
     void OnInit() override
     {
+        auto newPackage = Assets::Import("C:/Users/abdul/Downloads/deccer-cubes-main (1)/deccer-cubes-main/SM_Deccer_Cubes.gltf");
+
+        for (auto mesh : newPackage.GetMeshs())
+        {
+            std::fstream meshFile { mesh.c_str(), std::ios::binary };
+
+            TL::BinaryArchive archive(meshFile);
+            Assets::Mesh meshAsset {};
+            archive.Decode(meshAsset);
+
+            // auto positions = meshAsset.GetAttribute<glm::vec3>(Assets::AttributeNames::Positions);
+            // TL_LOG_INFO("mesh has {}", positions.size());
+        }
+
         m_camera.m_window = m_window.get();
         m_camera.SetPerspective(60.0f, 1600.0f / 1200.0f, 0.1f, 10000.0f);
         m_camera.SetRotationSpeed(0.0002f);
-        m_camera.SetPosition({});
+        m_camera.SetPosition({ 0, 10, 0 });
         glm::vec3 rotation{};
-        rotation = {};
         m_camera.SetRotation(rotation);
 
         m_renderer->Init(*m_window);
@@ -210,29 +227,15 @@ public:
 
     void OnUpdate(Timestep timestep) override
     {
-        // Accumulate the elapsed time based on the fixed timestep
-        static float accumulatedTime = 0.0f;
-        accumulatedTime += (float)timestep.Seconds(); // Assuming GetSeconds() returns the timestep in seconds
-
-        constexpr float frequency = 2.0f;  // Controls the speed of the transition
-        constexpr float amplitude = 10.5f; // Amplitude for color variation
-        constexpr float offset = 0.5f;     // Offset to ensure values are in the range [0, 1]
-
-        // Calculate the color components with larger phase shifts for more distinct colors
-        m_renderer->m_viewCB->color.r = glm::sin((glm::sin(frequency * accumulatedTime) * amplitude + offset));
-        m_renderer->m_viewCB->color.g = glm::sin((glm::sin(frequency * accumulatedTime + glm::pi<float>()) * amplitude + offset));
-        m_renderer->m_viewCB->color.b = glm::sin((glm::sin(frequency * accumulatedTime + 2.0f * glm::pi<float>()) * amplitude + offset));
-
-        m_camera.Update(timestep);
-        TL_LOG_INFO("({}, {}, {}, {})", m_renderer->m_viewCB->color.r, m_renderer->m_viewCB->color.g, m_renderer->m_viewCB->color.b, m_renderer->m_viewCB->color.a);
-
         m_camera.Update(timestep);
     }
 
     void Render() override
     {
-        m_renderer->m_viewCB->worldToClipMatrix = m_camera.GetProjection() * m_camera.GetView();
-        m_renderer->m_viewCB->worldToViewMatrix = m_camera.GetView();
+        // auto worldToClip = m_camera.GetProjection() * m_camera.GetView();
+
+        // m_renderer->m_viewCB->worldToClipMatrix = worldToClip;
+        // m_renderer->m_viewCB->worldToViewMatrix = m_camera.GetView();
         m_renderer->m_viewCB->viewToClipMatrix = m_camera.GetProjection();
         m_renderer->m_viewCB.Update();
 

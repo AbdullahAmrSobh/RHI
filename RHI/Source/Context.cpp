@@ -36,7 +36,6 @@ namespace RHI
     void Context::CompileRenderGraph([[maybe_unused]] RenderGraph& renderGraph)
     {
         ZoneScoped;
-        // nothing to do here (just ensure correct attachment sizes)
     }
 
     void Context::ExecuteRenderGraph(RenderGraph& renderGraph, Fence* signalFence)
@@ -248,19 +247,6 @@ namespace RHI
         ZoneScoped;
 
         Internal_UnmapBuffer(handle);
-    }
-
-    StagingBuffer Context::AllocateTempBuffer(size_t size)
-    {
-        ZoneScoped;
-
-        BufferCreateInfo createInfo{};
-        createInfo.byteSize = size;
-        createInfo.usageFlags = BufferUsage::CopySrc | BufferUsage::CopyDst;
-        auto buffer = CreateBuffer(createInfo).GetValue();
-        auto ptr = MapBuffer(buffer);
-        m_stagingBuffers.push_back(buffer);
-        return StagingBuffer{ ptr, buffer, 0 };
     }
 
     void Context::StageResourceWrite(Handle<Image> image, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset)

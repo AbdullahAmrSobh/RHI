@@ -6,8 +6,23 @@
 
 namespace Examples::RPI
 {
+    // class BufferSuballocator
+    // {
+
+    // }
+
+    // 1 needs buffer suballocate class (could be used to suballocate vertex/index/uniform/storage...etc all sorts of buffers) // take alignmentOffsets into account
+    // suballocate from a big unifrom buffer using minUniformBufferOffsetAlignment
+
     template<typename StructureType>
     class ConstantBuffer
+    {
+    public:
+
+    };
+
+    template<typename StructureType>
+    class ConstantBufferView
     {
     public:
         ResultCode Init(RHI::Context& context);
@@ -36,7 +51,7 @@ namespace Examples::RPI
     };
 
     template<typename StructureType>
-    ResultCode ConstantBuffer<StructureType>::Init(RHI::Context& context)
+    ResultCode ConstantBufferView<StructureType>::Init(RHI::Context& context)
     {
         m_context = &context;
 
@@ -53,43 +68,43 @@ namespace Examples::RPI
     }
 
     template<typename StructureType>
-    void ConstantBuffer<StructureType>::Shutdown(RHI::Context& context)
+    void ConstantBufferView<StructureType>::Shutdown(RHI::Context& context)
     {
         m_context->DestroyBuffer(m_buffer);
     }
 
     template<typename StructureType>
-    StructureType* ConstantBuffer<StructureType>::Get()
+    StructureType* ConstantBufferView<StructureType>::Get()
     {
         return &m_structure;
     }
 
     template<typename StructureType>
-    StructureType* ConstantBuffer<StructureType>::Get(uint32_t index)
+    StructureType* ConstantBufferView<StructureType>::Get(uint32_t index)
     {
         return &m_structure + index;
     }
 
     template<typename StructureType>
-    StructureType* ConstantBuffer<StructureType>::operator->()
+    StructureType* ConstantBufferView<StructureType>::operator->()
     {
         return &m_structure;
     }
 
     template<typename StructureType>
-    StructureType* ConstantBuffer<StructureType>::operator[](uint32_t index)
+    StructureType* ConstantBufferView<StructureType>::operator[](uint32_t index)
     {
         return &m_structure + index;
     }
 
     template<typename StructureType>
-    uint32_t ConstantBuffer<StructureType>::GetElementsCount() const
+    uint32_t ConstantBufferView<StructureType>::GetElementsCount() const
     {
         return m_elementsSize;
     }
 
     template<typename StructureType>
-    void ConstantBuffer<StructureType>::Update()
+    void ConstantBufferView<StructureType>::Update()
     {
         auto ptr = m_context->MapBuffer(m_buffer);
         memcpy(ptr, &m_structure, sizeof(StructureType));
