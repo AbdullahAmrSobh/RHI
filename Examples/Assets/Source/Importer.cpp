@@ -132,6 +132,7 @@ namespace Examples::Assets
                 TL_ASSERT(std::filesystem::create_directory(currentSaveDirectory));
             }
             TL::Vector<std::filesystem::path> output;
+            uint32_t count = 0;
             for (auto aiMesh : aiMeshes)
             {
                 Mesh mesh(aiMesh->mName.C_Str());
@@ -156,8 +157,8 @@ namespace Examples::Assets
 
                 // TODO add other attributes if/when needed
 
-                auto fileName = currentSaveDirectory / aiMesh->mName.C_Str();
-                fileName.replace_extension(".fgmesh");
+                auto fileName = currentSaveDirectory / aiMesh->mName.C_Str() ;
+                fileName.replace_extension(std::format("{}.fgmesh", count++));
 
                 std::fstream file{ fileName, std::ios::binary | std::ios::out };
                 TL::BinaryArchive encoder{ file };

@@ -37,6 +37,7 @@ namespace Examples::Assets
             , m_elementsCount(static_cast<uint32_t>(data.size()))
             , m_strideSize(static_cast<uint32_t>(sizeof(T)))
             , m_alignment(alignof(T))
+            , m_sizeBytes(data.size_bytes())
             , m_data()
         {
             m_data = TL::Allocator::Allocate(data.size_bytes(), alignof(T));
@@ -105,6 +106,8 @@ namespace Examples::Assets
             TL::Encode(archive, m_format);
             TL::Encode(archive, m_elementsCount);
             TL::Encode(archive, m_strideSize);
+            TL::Encode(archive, m_alignment);
+            TL::Encode(archive, m_sizeBytes);
             TL::Encode(archive, m_data);
         }
 
@@ -115,6 +118,9 @@ namespace Examples::Assets
             TL::Decode(archive, m_format);
             TL::Decode(archive, m_elementsCount);
             TL::Decode(archive, m_strideSize);
+            TL::Decode(archive, m_alignment);
+            TL::Decode(archive, m_sizeBytes);
+            m_data = TL::Allocator::Allocate(m_sizeBytes, m_alignment);
             TL::Decode(archive, m_data);
         }
 
@@ -133,6 +139,9 @@ namespace Examples::Assets
 
         /// @brief The alignment requirement for the buffer.
         size_t m_alignment;
+
+        /// @brief The actual data size in bytes.
+        size_t m_sizeBytes;
 
         /// @brief The block of data representing the buffer's contents.
         TL::Block m_data;

@@ -4,12 +4,13 @@ namespace Examples::Assets
 {
     Buffer::Buffer(Buffer&& other)
     {
-        this->m_name = std::move(other.m_name);
-        this->m_format = std::move(other.m_format);
-        this->m_elementsCount = std::move(other.m_elementsCount);
-        this->m_strideSize = std::move(other.m_strideSize);
-        this->m_data = std::move(other.m_data);
-        other.m_data = {};
+        m_name = std::move(other.m_name);
+        std::swap(m_format, other.m_format);
+        std::swap(m_elementsCount, other.m_elementsCount);
+        std::swap(m_strideSize, other.m_strideSize);
+        std::swap(m_alignment, other.m_alignment);
+        std::swap(m_sizeBytes, other.m_sizeBytes);
+        std::swap(m_data, other.m_data);
     }
 
     Buffer::~Buffer()
@@ -22,12 +23,13 @@ namespace Examples::Assets
 
     Buffer& Buffer::operator=(Buffer&& other)
     {
-        this->m_name = std::move(other.m_name);
-        this->m_format = std::move(other.m_format);
-        this->m_elementsCount = std::move(other.m_elementsCount);
-        this->m_strideSize = std::move(other.m_strideSize);
-        this->m_data = std::move(other.m_data);
-        other.m_data = {};
+        m_name = std::move(other.m_name);
+        std::swap(m_format, other.m_format);
+        std::swap(m_elementsCount, other.m_elementsCount);
+        std::swap(m_strideSize, other.m_strideSize);
+        std::swap(m_alignment, other.m_alignment);
+        std::swap(m_sizeBytes, other.m_sizeBytes);
+        std::swap(m_data, other.m_data);
         return *this;
     }
 
