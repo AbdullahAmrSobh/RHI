@@ -1,9 +1,12 @@
 #include "CommandList.hpp"
 #include "Common.hpp"
 #include "Context.hpp"
-#include "Resources.hpp"
 #include "Swapchain.hpp"
 #include "Barrier.hpp"
+#include "Image.hpp"
+#include "Buffer.hpp"
+#include "Pipeline.hpp"
+#include "Sampler.hpp"
 
 #include <RHI/Format.hpp>
 
@@ -11,6 +14,16 @@
 
 namespace RHI::Vulkan
 {
+    VkImageSubresourceLayers ConvertSubresourceLayer(const ImageSubresourceLayers& subresource)
+    {
+        auto vkSubresource = VkImageSubresourceLayers{};
+        vkSubresource.aspectMask = ConvertImageAspect(subresource.imageAspects);
+        vkSubresource.mipLevel = subresource.mipLevel;
+        vkSubresource.baseArrayLayer = subresource.arrayBase;
+        vkSubresource.layerCount = subresource.arrayCount;
+        return vkSubresource;
+    }
+
     ICommandPool::ICommandPool(IContext* context)
         : m_context(context)
     {

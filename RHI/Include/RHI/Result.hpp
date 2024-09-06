@@ -7,11 +7,11 @@ namespace RHI
     /// @brief Represents the result codes for RHI operations.
     enum class TL_NODISCARD ResultCode
     {
-        Success,               ///< Operation was successful.
-        ErrorUnknown,          ///< An unknown error occurred.
-        ErrorOutOfMemory,      ///< A general out-of-memory error.
-        ErrorDeviceOutOfMemory,///< The device ran out of memory.
-        ErrorAllocationFailed, ///< Memory allocation failed.
+        Success,                ///< Operation was successful.
+        ErrorUnknown,           ///< An unknown error occurred.
+        ErrorOutOfMemory,       ///< A general out-of-memory error.
+        ErrorDeviceOutOfMemory, ///< The device ran out of memory.
+        ErrorAllocationFailed,  ///< Memory allocation failed.
     };
 
     /// @brief Checks if the result code indicates success.
@@ -73,7 +73,7 @@ namespace RHI
 
         /// @brief Retrieves the result value, asserting that the result was successful.
         /// @return The result value.
-        inline T GetValue()
+        inline T    GetValue()
         {
             TL_ASSERT(result == ResultCode::Success);
             return std::move(value);

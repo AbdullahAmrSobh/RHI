@@ -1,7 +1,7 @@
 #include "Swapchain.hpp"
 #include "Context.hpp"
 #include "Common.hpp"
-#include "Resources.hpp"
+#include "Image.hpp"
 
 #include <TL/Log.hpp>
 

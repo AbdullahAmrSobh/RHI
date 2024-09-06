@@ -18,9 +18,5 @@ namespace RHI
 
         /// @brief Virtual destructor.
         virtual ~ShaderModule() = default;
-
-    protected:
-        Context*             m_context; ///< Pointer to the context associated with this shader module.
-        TL::Vector<uint32_t> m_spirv;   ///< SPIR-V bytecode for the shader module. TODO: Should be `TL::Block` instead.
     };
 } // namespace RHI

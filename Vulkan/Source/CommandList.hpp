@@ -24,6 +24,10 @@ namespace RHI::Vulkan
         TL::Vector<VkImageMemoryBarrier2> imageBarriers;
     };
 
+
+    VkImageSubresourceLayers ConvertSubresourceLayer(const ImageSubresourceLayers& subresource);
+
+
     class ICommandPool final : public CommandPool
     {
     public:

@@ -5,23 +5,39 @@ find_package(Vulkan REQUIRED)
 
 # Add header files
 set(HEADER_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Barrier.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/BindGroup.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Buffer.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Common.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/DeleteQueue.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Fence.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Image.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Pipeline.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Queue.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/MemoryAllocator.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Sampler.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Shader.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.hpp
 )
 
 # Add source files
 set(SOURCE_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/BindGroup.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Buffer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/DeleteQueue.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Fence.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Image.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Pipeline.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Queue.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/MemoryAllocator.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Sampler.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Shader.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Surface.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/DeleteQueue.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Queue.cpp
 )
 
 include(${CPM_TL_SOURCE}/CMake/add-target.cmake)

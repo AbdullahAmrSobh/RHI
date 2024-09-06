@@ -3,9 +3,16 @@
 #include <RHI/Context.hpp>
 #include <RHI/Definitions.hpp>
 
-#include "Resources.hpp"
 #include "Queue.hpp"
 #include "DeleteQueue.hpp"
+
+#include "BindGroup.hpp"
+#include "Buffer.hpp"
+#include "Image.hpp"
+#include "Fence.hpp"
+#include "Shader.hpp"
+#include "Pipeline.hpp"
+#include "Sampler.hpp"
 
 #include <TL/Containers.hpp>
 
@@ -28,6 +35,7 @@ namespace RHI::Vulkan
         template<typename T>
         inline void SetDebugName(T handle, const char* name) const
         {
+            if (handle == VK_NULL_HANDLE) return;
             return SetDebugName(GetObjectType<T>(), reinterpret_cast<uint64_t>(handle), name);
         }
 
@@ -72,10 +80,6 @@ namespace RHI::Vulkan
         void                     Internal_DispatchGraph(RenderGraph& renderGraph, Fence* signalFence) override;
         DeviceMemoryPtr          Internal_MapBuffer(Handle<Buffer> handle) override;
         void                     Internal_UnmapBuffer(Handle<Buffer> handle) override;
-        void                     Internal_StageResourceWrite(Handle<Image> image, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset) override;
-        void                     Internal_StageResourceWrite(Handle<Buffer> buffer, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset) override;
-        void                     Internal_StageResourceRead(Handle<Image> image, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset, Fence* fence) override;
-        void                     Internal_StageResourceRead(Handle<Buffer> buffer, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset, Fence* fence) override;
         // clang-format on
 
     private:
@@ -91,7 +95,7 @@ namespace RHI::Vulkan
         VkDevice m_device;
         VmaAllocator m_allocator;
 
-        VkPhysicalDeviceProperties2      m_properties;
+        VkPhysicalDeviceProperties2 m_properties;
         VkPhysicalDeviceMemoryProperties2 m_memoryProperties;
 
         struct
@@ -118,8 +122,8 @@ namespace RHI::Vulkan
 
         FrameExecuteContext m_frameContext;
 
-       TL::Ptr<BindGroupAllocator> m_bindGroupAllocator;
-       TL::Ptr<ICommandPool> m_commandPool;
+        TL::Ptr<BindGroupAllocator> m_bindGroupAllocator;
+        TL::Ptr<ICommandPool> m_commandPool;
 
         HandlePool<IImage> m_imageOwner;
         HandlePool<IBuffer> m_bufferOwner;
