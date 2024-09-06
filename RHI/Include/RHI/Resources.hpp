@@ -3,7 +3,7 @@
 #include "RHI/Format.hpp"
 
 #include "RHI/Common/Handle.hpp"
-#include "RHI/Common/Hash.hpp"
+#include <TL/Utils.hpp>
 
 #include <TL/Flags.hpp>
 #include <TL/Span.hpp>
@@ -656,7 +656,7 @@ namespace RHI
 
 namespace std
 {
-    RHI_DEFINE_POD_HASH(RHI::ImageViewCreateInfo);
-    RHI_DEFINE_POD_HASH(RHI::BufferViewCreateInfo);
-    RHI_DEFINE_POD_HASH(RHI::SamplerCreateInfo);
+    TL_DEFINE_POD_HASH(RHI::ImageViewCreateInfo);
+    TL_DEFINE_POD_HASH(RHI::BufferViewCreateInfo);
+    TL_DEFINE_POD_HASH(RHI::SamplerCreateInfo);
 } // namespace std

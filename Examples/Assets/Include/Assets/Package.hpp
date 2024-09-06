@@ -94,6 +94,7 @@ namespace Examples::Assets
 
     private:
         TL::String m_name;
+        TL::String m_path;
 
         TL::Vector<TL::String> m_sceneGraphs;
         TL::Vector<TL::String> m_meshes;

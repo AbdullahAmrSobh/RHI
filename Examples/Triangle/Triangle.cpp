@@ -176,39 +176,18 @@ public:
     {
     }
 
-    RHI::Handle<RHI::Buffer> m_vertexBuffer;
+    // RHI::BufferPool m_bufferPool;
+
+    TL::Vector<RHI::Handle<RHI::Buffer>> m_buffers;
 
     void OnInit() override
     {
-        // std::filesystem::path path = "C:/Users/abdul/Downloads/deccer-cubes-main (1)/deccer-cubes-main/SM_Deccer_Cubes.gltf";
+        // auto path = ApplicationBase::m_launchSettings.sceneFileLocation;
         // auto newPackage = Assets::Import(path);
-
-        // constexpr size_t MeshDataSize = 16 * 1024;
-        // RHI::BufferCreateInfo bufferCI
-        // {
-        //     .name = "Geoemetry-Data",
-        //     .heapType = RHI::MemoryType::GPULocal,
-        //     .usageFlags = RHI::BufferUsage::Vertex | RHI::BufferUsage::Index,
-        //     .byteSize = MeshDataSize,
-        // };
-        // auto buffersPage = m_renderer->m_context->CreateBuffer(bufferCI);
-
         // for (auto mesh : newPackage.GetMeshs())
         // {
-        //     // resolve path
-        //     // load mesh
+        //     // Assets::Mesh meshAsset =  TL::BinaryArchive::Decode(meshAsset, path / mesh);
 
-        //     // auto meshFullPath = std::filesystem::path("C:/Users/abdul/Downloads/deccer-cubes-main (1)/deccer-cubes-main/cache") / mesh.c_str();
-        //     // meshFullPath = meshFullPath.lexically_normal();
-        //     // std::fstream meshFile{ meshFullPath, std::ios::binary | std::ios::in | std::ios::out };
-        //     // TL_ASSERT(meshFile.is_open());
-
-        //     // TL::BinaryArchive archive(meshFile);
-        //     // Assets::Mesh meshAsset{};
-        //     // archive.Decode(meshAsset);
-
-        //     // auto positions = meshAsset.GetAttribute<glm::vec3>(Assets::AttributeNames::Positions);
-        //     // TL_LOG_INFO("mesh {} has {}", mesh.c_str(), positions.size());
         // }
 
         m_camera.m_window = m_window.get();

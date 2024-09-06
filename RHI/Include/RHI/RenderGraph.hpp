@@ -32,17 +32,11 @@ namespace RHI
     {
     public:
         TL::String                        m_name;
-
         ImageSize2D                       m_renderTargetSize;
-
         TL::Vector<ImagePassAttachment*>  m_colorAttachments;
-
         ImagePassAttachment*              m_depthStencilAttachment;
-
         TL::Vector<ImagePassAttachment*>  m_imageAttachments;
-
         TL::Vector<BufferPassAttachment*> m_bufferAttachments;
-
         TL::Vector<CommandList*>          m_commandLists;
     };
 

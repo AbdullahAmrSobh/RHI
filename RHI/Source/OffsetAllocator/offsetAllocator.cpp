@@ -3,9 +3,10 @@
 
 #include "offsetAllocator.hpp"
 
-#ifdef DEBUG
-    #include <assert.h>
-    #define ASSERT(x) assert(x)
+
+#ifdef RHI_DEBUG
+    #include <Tl/Assert.hpp>
+    #define ASSERT(x) TL_ASSERT(x)
 // #define DEBUG_VERBOSE
 #else
     #define ASSERT(x)

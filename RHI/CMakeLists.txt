@@ -3,7 +3,6 @@ cmake_minimum_required(VERSION 3.16)
 set(HEADER_FILES
     # Common and utils
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Handle.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Hash.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common/Result.hpp
     # main files
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/CommandList.hpp
@@ -15,6 +14,7 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Resources.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RHI.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Swapchain.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/BufferPool.hpp
 )
 
 set(SOURCE_FILES
@@ -22,6 +22,10 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Format.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraph.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/BufferPool.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/OffsetAllocator/offsetAllocator.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/OffsetAllocator/offsetAllocator.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/BufferPool.cpp
 )
 
 include(${CPM_TL_SOURCE}/CMake/add-target.cmake)

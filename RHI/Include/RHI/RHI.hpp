@@ -6,3 +6,4 @@
 #include <RHI/Resources.hpp>
 #include <RHI/Swapchain.hpp>
 #include <RHI/RenderGraph.hpp>
+#include <RHI/BufferPool.hpp>

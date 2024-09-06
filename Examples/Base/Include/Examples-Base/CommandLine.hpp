@@ -9,7 +9,7 @@ namespace Examples::CommandLine
 {
     struct LaunchSettings
     {
-        TL::String sceneFileLocation;
+        std::filesystem::path sceneFileLocation;
     };
 
     enum OptionType

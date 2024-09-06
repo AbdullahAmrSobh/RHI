@@ -194,7 +194,7 @@ namespace RHI
             TL_ASSERT(info.size != ImageSize3D{});
         }
 
-        auto key = HashCombine(HashAny(info), std::hash<TL::String>{}(attachment->name));
+        auto key = TL::HashCombine(TL::HashAny(info), std::hash<TL::String>{}(attachment->name));
         if (auto image = m_imagesLRU.find(key); image != m_imagesLRU.end())
         {
             return image->second;
@@ -211,7 +211,7 @@ namespace RHI
         }
 
         auto info = attachment->info;
-        auto key = HashCombine(HashAny(info), std::hash<TL::String>{}(attachment->name));
+        auto key = TL::HashCombine(TL::HashAny(info), std::hash<TL::String>{}(attachment->name));
 
         if (auto buffer = m_buffersLRU.find(key); buffer != m_buffersLRU.end())
         {
@@ -231,7 +231,7 @@ namespace RHI
         createInfo.viewType = viewInfo.type;
         createInfo.subresource = viewInfo.subresources;
         createInfo.components = viewInfo.swizzle;
-        auto key = HashCombine(HashAny(createInfo), std::hash<TL::String>{}(attachment->name));
+        auto key = TL::HashCombine(TL::HashAny(createInfo), std::hash<TL::String>{}(attachment->name));
 
         if (auto imageView = m_imageViewsLRU.find(key); imageView != m_imageViewsLRU.end())
         {
@@ -251,7 +251,7 @@ namespace RHI
         createInfo.buffer = buffer;
         createInfo.subregion = viewInfo.subregion;
         createInfo.format = viewInfo.format;
-        auto key = HashCombine(HashAny(createInfo), std::hash<TL::String>{}(attachment->name));
+        auto key = TL::HashCombine(TL::HashAny(createInfo), std::hash<TL::String>{}(attachment->name));
 
         if (auto bufferView = m_bufferViewsLRU.find(key); bufferView != m_bufferViewsLRU.end())
         {
