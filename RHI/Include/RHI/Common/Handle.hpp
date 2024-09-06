@@ -106,29 +106,29 @@ namespace RHI
         HandlePool(HandlePool&&)      = default;
         ~HandlePool();
 
-        TL::String ReportLiveResources() const;
+        TL::String              ReportLiveResources() const;
 
-        uint32_t ReportLiveResourcesCount() const;
+        uint32_t                ReportLiveResourcesCount() const;
 
         // Clears all resources in the pool
-        inline void Clear();
+        inline void             Clear();
 
         // Gets the resource associated with handle
-        inline const Resource* Get(Handle<Resource> handle) const;
+        inline const Resource*  Get(Handle<Resource> handle) const;
 
         // Gets the resource associated with handle
-        inline Resource* Get(Handle<Resource> handle);
+        inline Resource*        Get(Handle<Resource> handle);
 
         // Inserted a zerod resource and returns its handle
         inline Handle<Resource> Emplace(Resource&& resource);
 
         // Removes a resource from the owner
-        inline void Release(Handle<Resource> handle);
+        inline void             Release(Handle<Resource> handle);
 
     private:
-        TL::Vector<Resource> m_resources;
-        TL::Vector<uint16_t> m_genIds;
-        TL::Vector<size_t>   m_freeSlots;
+        TL::Vector<Resource>                         m_resources;
+        TL::Vector<uint16_t>                         m_genIds;
+        TL::Vector<size_t>                           m_freeSlots;
 
         TL::UnorderedMap<HandleType, TL::Stacktrace> m_liveResources;
     };
@@ -208,8 +208,8 @@ namespace RHI
             m_freeSlots.pop_back();
             m_resources[index] = std::move(resource);
             // Generate a new generation ID
-            uint16_t& genId = m_genIds[index];
-            m_genIds[index] = genId;
+            uint16_t& genId    = m_genIds[index];
+            m_genIds[index]    = genId;
 
             return Handle<Resource>(index, genId);
         }
@@ -256,7 +256,7 @@ namespace RHI
         }
 
         message.append(std::format("{}", breakline));
-        return TL::String{ message };
+        return TL::String{message};
     }
 
     template<typename T>

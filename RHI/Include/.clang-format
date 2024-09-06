@@ -5,11 +5,15 @@ AlignAfterOpenBracket: Align
 AlignConsecutiveAssignments:
   Enabled: true
   AcrossEmptyLines: false
-  AcrossComments: false
+  AcrossComments: true
 AlignConsecutiveDeclarations:
   Enabled: true
-  AcrossEmptyLines: false
-  AcrossComments: false
+  AcrossEmptyLines: true
+  AcrossComments: true
+AlignConsecutiveMacros:
+  Enabled: true
+  AcrossEmptyLines: true
+  AcrossComments: true
 AlignEscapedNewlines: Right
 AlignOperands: true
 AlignTrailingComments: true
@@ -21,7 +25,7 @@ AlwaysBreakAfterReturnType: None
 AlwaysBreakTemplateDeclarations: true
 BinPackArguments: false
 BinPackParameters: false
-BreakBeforeBraces: Custom
+BreakBeforeBraces: Allman
 BraceWrapping:
     AfterStruct: true
     AfterClass: true
@@ -42,7 +46,7 @@ BreakInheritanceList: BeforeComma
 ColumnLimit: 0
 ConstructorInitializerIndentWidth: 4
 ContinuationIndentWidth: 4
-Cpp11BracedListStyle: false
+Cpp11BracedListStyle: true
 FixNamespaceComments: true
 IncludeBlocks: Preserve
 IndentCaseBlocks: true
@@ -71,3 +75,5 @@ Standard: c++20
 UseTab: Never
 
 SeparateDefinitionBlocks: Always
+
+StatementAttributeLikeMacros: [TL_NODISCARD, RHI_EXPORT]

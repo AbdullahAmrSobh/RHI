@@ -110,17 +110,17 @@ namespace RHI
 
     struct ImageAttachment
     {
-        TL::String           name;
-        Handle<Image>        resource;
-        Swapchain*           swapchain;
-        ImageCreateInfo      info;
-        ImagePassAttachment* first;
-        ImagePassAttachment* last;
-        bool                 isTransient;
+        TL::String                                           name;
+        Handle<Image>                                        resource;
+        Swapchain*                                           swapchain;
+        ImageCreateInfo                                      info;
+        ImagePassAttachment*                                 first;
+        ImagePassAttachment*                                 last;
+        bool                                                 isTransient;
 
         TL::UnorderedMap<Handle<Pass>, ImagePassAttachment*> list;
 
-        ImagePassAttachment* Find(Handle<Pass> pass) const
+        ImagePassAttachment*                                 Find(Handle<Pass> pass) const
         {
             if (auto it = list.find(pass); it != list.end())
             {
@@ -133,15 +133,15 @@ namespace RHI
 
     struct BufferAttachment
     {
-        TL::String            name;
-        Handle<Buffer>        resource;
-        BufferCreateInfo      info;
-        BufferPassAttachment* first;
-        BufferPassAttachment* last;
+        TL::String                                            name;
+        Handle<Buffer>                                        resource;
+        BufferCreateInfo                                      info;
+        BufferPassAttachment*                                 first;
+        BufferPassAttachment*                                 last;
 
         TL::UnorderedMap<Handle<Pass>, BufferPassAttachment*> list;
 
-        BufferPassAttachment* Find(Handle<Pass> pass) const
+        BufferPassAttachment*                                 Find(Handle<Pass> pass) const
         {
             if (auto it = list.find(pass); it != list.end())
             {

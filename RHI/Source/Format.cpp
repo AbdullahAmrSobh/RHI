@@ -4,7 +4,6 @@
 
 #include <TL/Assert.hpp>
 
-
 namespace RHI
 {
     // Format mapping table. The rows must be in the exactly same order as Format enum members are defined.

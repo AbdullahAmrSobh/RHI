@@ -31,19 +31,19 @@ namespace RHI
     class RHI_EXPORT Pass final
     {
     public:
-        TL::String m_name;
+        TL::String                        m_name;
 
-        ImageSize2D m_renderTargetSize;
+        ImageSize2D                       m_renderTargetSize;
 
-        TL::Vector<ImagePassAttachment*> m_colorAttachments;
+        TL::Vector<ImagePassAttachment*>  m_colorAttachments;
 
-        ImagePassAttachment* m_depthStencilAttachment;
+        ImagePassAttachment*              m_depthStencilAttachment;
 
-        TL::Vector<ImagePassAttachment*> m_imageAttachments;
+        TL::Vector<ImagePassAttachment*>  m_imageAttachments;
 
         TL::Vector<BufferPassAttachment*> m_bufferAttachments;
 
-        TL::Vector<CommandList*> m_commandLists;
+        TL::Vector<CommandList*>          m_commandLists;
     };
 
     /// @brief Render Graph is Directed Acyclic Graph (DAG) that represents
@@ -60,33 +60,33 @@ namespace RHI
         ///
         /// @param createInfo Information for creating the pass.
         /// @return Handle to the created pass.
-        TL_NODISCARD Handle<Pass> CreatePass(const PassCreateInfo& createInfo);
+        TL_NODISCARD Handle<Pass>             CreatePass(const PassCreateInfo& createInfo);
 
         /// @brief Resizes an existing pass to the given image size.
         ///
         /// @param pass Handle to the pass.
         /// @param size New size for the pass.
-        void PassResize(Handle<Pass> pass, ImageSize2D size);
+        void                                  PassResize(Handle<Pass> pass, ImageSize2D size);
 
         /// @brief Returns the pass size.
         ///
         /// @param pass Handle to the pass.
         /// @return Size of the pass.
-        ImageSize2D GetPassSize(Handle<Pass> pass) const;
+        ImageSize2D                           GetPassSize(Handle<Pass> pass) const;
 
         /// @brief Imports a swapchain image into the render graph.
         ///
         /// @param name Name of the swapchain.
         /// @param swapchain Reference to the swapchain.
         /// @return Handle to the imported image attachment.
-        TL_NODISCARD Handle<ImageAttachment> ImportSwapchain(const char* name, Swapchain& swapchain);
+        TL_NODISCARD Handle<ImageAttachment>  ImportSwapchain(const char* name, Swapchain& swapchain);
 
         /// @brief Imports an existing image into the render graph.
         ///
         /// @param name Name of the image.
         /// @param image Handle to the image.
         /// @return Handle to the imported image attachment.
-        TL_NODISCARD Handle<ImageAttachment> ImportImage(const char* name, Handle<Image> image);
+        TL_NODISCARD Handle<ImageAttachment>  ImportImage(const char* name, Handle<Image> image);
 
         /// @brief Imports an existing buffer into the render graph.
         ///
@@ -99,7 +99,7 @@ namespace RHI
         ///
         /// @param createInfo Information for creating the image.
         /// @return Handle to the created image attachment.
-        TL_NODISCARD Handle<ImageAttachment> CreateImage(const ImageCreateInfo& createInfo);
+        TL_NODISCARD Handle<ImageAttachment>  CreateImage(const ImageCreateInfo& createInfo);
 
         /// @brief Creates a new buffer with the specified creation info.
         ///
@@ -115,7 +115,7 @@ namespace RHI
         /// @param usage Usage flags for the image.
         /// @param stage Shader stage flags.
         /// @param access Access flags.
-        void PassUseImage(Handle<Pass> pass, Handle<ImageAttachment> attachment, const ImageViewInfo& viewInfo, ImageUsage usage, TL::Flags<ShaderStage> stage, Access access);
+        void                                  PassUseImage(Handle<Pass> pass, Handle<ImageAttachment> attachment, const ImageViewInfo& viewInfo, ImageUsage usage, TL::Flags<ShaderStage> stage, Access access);
 
         /// @brief Uses a buffer in a pass with view info, usage, and access.
         ///
@@ -125,90 +125,90 @@ namespace RHI
         /// @param usage Usage flags for the buffer.
         /// @param stage Shader stage flags.
         /// @param access Access flags.
-        void PassUseBuffer(Handle<Pass> pass, Handle<BufferAttachment> attachment, const BufferViewInfo& viewInfo, BufferUsage usage, TL::Flags<ShaderStage> stage, Access access);
+        void                                  PassUseBuffer(Handle<Pass> pass, Handle<BufferAttachment> attachment, const BufferViewInfo& viewInfo, BufferUsage usage, TL::Flags<ShaderStage> stage, Access access);
 
         /// @brief Retrieves the image from an image attachment.
         ///
         /// @param attachment Handle to the image attachment.
         /// @return Handle to the image.
-        TL_NODISCARD Handle<Image> GetImage(Handle<ImageAttachment> attachment) const;
+        TL_NODISCARD Handle<Image>            GetImage(Handle<ImageAttachment> attachment) const;
 
         /// @brief Retrieves the buffer from a buffer attachment.
         ///
         /// @param attachment Handle to the buffer attachment.
         /// @return Handle to the buffer.
-        TL_NODISCARD Handle<Buffer> GetBuffer(Handle<BufferAttachment> attachment) const;
+        TL_NODISCARD Handle<Buffer>           GetBuffer(Handle<BufferAttachment> attachment) const;
 
         /// @brief Retrieves the image view from a pass and image attachment.
         ///
         /// @param pass Handle to the pass.
         /// @param attachment Handle to the image attachment.
         /// @return Handle to the image view.
-        TL_NODISCARD Handle<ImageView> PassGetImageView(Handle<Pass> pass, Handle<ImageAttachment> attachment) const;
+        TL_NODISCARD Handle<ImageView>        PassGetImageView(Handle<Pass> pass, Handle<ImageAttachment> attachment) const;
 
         /// @brief Retrieves the buffer view from a pass and buffer attachment.
         ///
         /// @param pass Handle to the pass.
         /// @param attachment Handle to the buffer attachment.
         /// @return Handle to the buffer view.
-        TL_NODISCARD Handle<BufferView> PassGetBufferView(Handle<Pass> pass, Handle<BufferAttachment> attachment) const;
+        TL_NODISCARD Handle<BufferView>       PassGetBufferView(Handle<Pass> pass, Handle<BufferAttachment> attachment) const;
 
         /// @brief Submits a pass with command lists and an optional signal fence.
         ///
         /// @param pass Handle to the pass.
         /// @param commandList Span of command lists to execute.
         /// @param signalFence Optional fence to signal after execution.
-        void Submit(Handle<Pass> pass, TL::Span<CommandList*> commandList, Fence* signalFence = nullptr);
+        void                                  Submit(Handle<Pass> pass, TL::Span<CommandList*> commandList, Fence* signalFence = nullptr);
 
-        void Invalidate() {}
+        void                                  Invalidate() {}
 
         // private:
         /// @brief Compiles the render graph.
-        void Compile();
+        void                                  Compile();
 
         /// @brief Cleans up resources used by the render graph.
-        void Cleanup();
+        void                                  Cleanup();
 
-        void CleanupAttachmentViews();
-        void CleanupTransientAttachments();
+        void                                  CleanupAttachmentViews();
+        void                                  CleanupTransientAttachments();
 
     public:
-        Context* m_context;
+        Context*                             m_context;
 
         // current frame counter, incremented after graph execution
-        uint64_t m_frameCounter;
+        uint64_t                             m_frameCounter;
 
         // graph resource's pool
-        HandlePool<Pass>             m_passPool;
-        HandlePool<ImageAttachment>  m_imageAttachmentPool;
-        HandlePool<BufferAttachment> m_bufferAttachmentPool;
+        HandlePool<Pass>                     m_passPool;
+        HandlePool<ImageAttachment>          m_imageAttachmentPool;
+        HandlePool<BufferAttachment>         m_bufferAttachmentPool;
 
         // list of all passes in the graph
-        TL::Vector<Handle<Pass>> m_passes;
+        TL::Vector<Handle<Pass>>             m_passes;
 
         // list of all imported swapchain images in the graph
-        TL::Vector<Handle<ImageAttachment>> m_importedSwapchainImageAttachments;
+        TL::Vector<Handle<ImageAttachment>>  m_importedSwapchainImageAttachments;
 
         // list of all imported images in the graph
-        TL::Vector<Handle<ImageAttachment>> m_importedImageAttachments;
+        TL::Vector<Handle<ImageAttachment>>  m_importedImageAttachments;
 
         // list of all imported buffers in the graph
         TL::Vector<Handle<BufferAttachment>> m_importedBufferAttachments;
 
         // list of all transient image in the graph
-        TL::Vector<Handle<ImageAttachment>> m_transientImageAttachments;
+        TL::Vector<Handle<ImageAttachment>>  m_transientImageAttachments;
 
         // list of all transient buffer in the graph
         TL::Vector<Handle<BufferAttachment>> m_transientBufferAttachments;
 
         // list of all image attachments in the graph
-        TL::Vector<Handle<ImageAttachment>> m_imageAttachments;
+        TL::Vector<Handle<ImageAttachment>>  m_imageAttachments;
 
         // list of all buffer attachments in the graph
         TL::Vector<Handle<BufferAttachment>> m_bufferAttachments;
 
     private:
-        TL::Arena m_arena;
+        TL::Arena                                            m_arena;
         mutable TL::UnorderedMap<size_t, Handle<Image>>      m_imagesLRU;
         mutable TL::UnorderedMap<size_t, Handle<Buffer>>     m_buffersLRU;
         mutable TL::UnorderedMap<size_t, Handle<ImageView>>  m_imageViewsLRU;

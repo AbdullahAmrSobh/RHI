@@ -75,85 +75,85 @@ namespace RHI
         /// @brief Returns the limits of the RHI implementation
         ///
         /// @return Limits object containing the RHI implementation limits
-        TL_NODISCARD Limits GetLimits() const;
+        TL_NODISCARD Limits                   GetLimits() const;
 
         /// @brief Creates a new render graph
         ///
         /// @return Pointer to the newly created RenderGraph
-        TL_NODISCARD TL::Ptr<RenderGraph> CreateRenderGraph();
+        TL_NODISCARD TL::Ptr<RenderGraph>     CreateRenderGraph();
 
         /// @brief Compiles the given render graph
         ///
         /// @param renderGraph The render graph to compile
-        void CompileRenderGraph(RenderGraph& renderGraph);
+        void                                  CompileRenderGraph(RenderGraph& renderGraph);
 
         /// @brief Executes the given render graph
         ///
         /// @param renderGraph The render graph to execute
         /// @param signalFence Optional fence to signal upon completion
-        void ExecuteRenderGraph(RenderGraph& renderGraph, Fence* signalFence = nullptr);
+        void                                  ExecuteRenderGraph(RenderGraph& renderGraph, Fence* signalFence = nullptr);
 
         /// @brief Creates a new swapchain
         ///
         /// @param createInfo The creation information for the swapchain
         /// @return Pointer to the newly created Swapchain
-        TL_NODISCARD TL::Ptr<Swapchain> CreateSwapchain(const SwapchainCreateInfo& createInfo);
+        TL_NODISCARD TL::Ptr<Swapchain>       CreateSwapchain(const SwapchainCreateInfo& createInfo);
 
         /// @brief Creates a new shader module from the provided shader binary
         ///
         /// @param shaderBlob The shader binary data
         /// @return Pointer to the newly created ShaderModule
-        TL_NODISCARD TL::Ptr<ShaderModule> CreateShaderModule(TL::Span<const uint32_t> shaderBlob);
+        TL_NODISCARD TL::Ptr<ShaderModule>    CreateShaderModule(TL::Span<const uint32_t> shaderBlob);
 
         /// @brief Creates a new fence
         ///
         /// @return Pointer to the newly created Fence
-        TL_NODISCARD TL::Ptr<Fence> CreateFence();
+        TL_NODISCARD TL::Ptr<Fence>           CreateFence();
 
         /// @brief Creates a new command encoder
         ///
         /// @return Pointer to the newly created CommandEncoder
-        TL_NODISCARD TL::Ptr<CommandPool> CreateCommandPool(CommandPoolFlags flags);
+        TL_NODISCARD TL::Ptr<CommandPool>     CreateCommandPool(CommandPoolFlags flags);
 
         /// @brief Creates a new bind group layout
         ///
         /// @param createInfo The creation information for the bind group layout
         /// @return Handle to the newly created BindGroupLayout
-        TL_NODISCARD Handle<BindGroupLayout> CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo);
+        TL_NODISCARD Handle<BindGroupLayout>  CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo);
 
         /// @brief Destroys a bind group layout
         ///
         /// @param handle Handle to the BindGroupLayout to destroy
-        void DestroyBindGroupLayout(Handle<BindGroupLayout> handle);
+        void                                  DestroyBindGroupLayout(Handle<BindGroupLayout> handle);
 
         /// @brief Creates a new bind group
         ///
         /// @param handle Handle to the BindGroupLayout to use
         /// @param bindlessElementsCount Number of bindless elements (default: UINT32_MAX)
         /// @return Handle to the newly created BindGroup
-        TL_NODISCARD Handle<BindGroup> CreateBindGroup(Handle<BindGroupLayout> handle, uint32_t bindlessElementsCount = UINT32_MAX);
+        TL_NODISCARD Handle<BindGroup>        CreateBindGroup(Handle<BindGroupLayout> handle, uint32_t bindlessElementsCount = UINT32_MAX);
 
         /// @brief Destroys a bind group
         ///
         /// @param handle Handle to the BindGroup to destroy
-        void DestroyBindGroup(Handle<BindGroup> handle);
+        void                                  DestroyBindGroup(Handle<BindGroup> handle);
 
         /// @brief Updates the bindings of a bind group
         ///
         /// @param handle Handle to the BindGroup to update
         /// @param bindings Span of ResourceBinding objects to update with
-        void UpdateBindGroup(Handle<BindGroup> handle, TL::Span<const BindGroupUpdateInfo> bindings);
+        void                                  UpdateBindGroup(Handle<BindGroup> handle, TL::Span<const BindGroupUpdateInfo> bindings);
 
         /// @brief Creates a new pipeline layout
         ///
         /// @param createInfo The creation information for the pipeline layout
         /// @return Handle to the newly created PipelineLayout
-        TL_NODISCARD Handle<PipelineLayout> CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo);
+        TL_NODISCARD Handle<PipelineLayout>   CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo);
 
         /// @brief Destroys a pipeline layout
         ///
         /// @param handle Handle to the PipelineLayout to destroy
-        void DestroyPipelineLayout(Handle<PipelineLayout> handle);
+        void                                  DestroyPipelineLayout(Handle<PipelineLayout> handle);
 
         /// @brief Creates a new graphics pipeline
         ///
@@ -164,102 +164,102 @@ namespace RHI
         /// @brief Destroys a graphics pipeline
         ///
         /// @param handle Handle to the GraphicsPipeline to destroy
-        void DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle);
+        void                                  DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle);
 
         /// @brief Creates a new compute pipeline
         ///
         /// @param createInfo The creation information for the compute pipeline
         /// @return Handle to the newly created ComputePipeline
-        TL_NODISCARD Handle<ComputePipeline> CreateComputePipeline(const ComputePipelineCreateInfo& createInfo);
+        TL_NODISCARD Handle<ComputePipeline>  CreateComputePipeline(const ComputePipelineCreateInfo& createInfo);
 
         /// @brief Destroys a compute pipeline
         ///
         /// @param handle Handle to the ComputePipeline to destroy
-        void DestroyComputePipeline(Handle<ComputePipeline> handle);
+        void                                  DestroyComputePipeline(Handle<ComputePipeline> handle);
 
         /// @brief Creates a new sampler
         ///
         /// @param createInfo The creation information for the sampler
         /// @return Handle to the newly created Sampler
-        TL_NODISCARD Handle<Sampler> CreateSampler(const SamplerCreateInfo& createInfo);
+        TL_NODISCARD Handle<Sampler>          CreateSampler(const SamplerCreateInfo& createInfo);
 
         /// @brief Destroys a sampler
         ///
         /// @param handle Handle to the Sampler to destroy
-        void DestroySampler(Handle<Sampler> handle);
+        void                                  DestroySampler(Handle<Sampler> handle);
 
         /// @brief Creates a new image
         ///
         /// @param createInfo The creation information for the image
         /// @return Result containing a handle to the newly created Image
-        TL_NODISCARD Result<Handle<Image>> CreateImage(const ImageCreateInfo& createInfo);
+        TL_NODISCARD Result<Handle<Image>>    CreateImage(const ImageCreateInfo& createInfo);
 
         /// @brief Destroys an image
         ///
         /// @param handle Handle to the Image to destroy
-        void DestroyImage(Handle<Image> handle);
+        void                                  DestroyImage(Handle<Image> handle);
 
         /// @brief Creates a new buffer
         ///
         /// @param createInfo The creation information for the buffer
         /// @return Result containing a handle to the newly created Buffer
-        TL_NODISCARD Result<Handle<Buffer>> CreateBuffer(const BufferCreateInfo& createInfo);
+        TL_NODISCARD Result<Handle<Buffer>>   CreateBuffer(const BufferCreateInfo& createInfo);
 
         /// @brief Destroys a buffer
         ///
         /// @param handle Handle to the Buffer to destroy
-        void DestroyBuffer(Handle<Buffer> handle);
+        void                                  DestroyBuffer(Handle<Buffer> handle);
 
         /// @brief Creates a new image view
         ///
         /// @param createInfo The creation information for the image view
         /// @return Handle to the newly created ImageView
-        TL_NODISCARD Handle<ImageView> CreateImageView(const ImageViewCreateInfo& createInfo);
+        TL_NODISCARD Handle<ImageView>        CreateImageView(const ImageViewCreateInfo& createInfo);
 
         /// @brief Destroys an image view
         ///
         /// @param handle Handle to the ImageView to destroy
-        void DestroyImageView(Handle<ImageView> handle);
+        void                                  DestroyImageView(Handle<ImageView> handle);
 
         /// @brief Creates a new buffer view
         ///
         /// @param createInfo The creation information for the buffer view
         /// @return Handle to the newly created BufferView
-        TL_NODISCARD Handle<BufferView> CreateBufferView(const BufferViewCreateInfo& createInfo);
+        TL_NODISCARD Handle<BufferView>       CreateBufferView(const BufferViewCreateInfo& createInfo);
 
         /// @brief Destroys a buffer view
         ///
         /// @param handle Handle to the BufferView to destroy
-        void DestroyBufferView(Handle<BufferView> handle);
+        void                                  DestroyBufferView(Handle<BufferView> handle);
 
         /// @brief Maps a buffer and returns a pointer to the mapped memory
         ///
         /// @param handle Handle to the Buffer to map
         /// @return Pointer to the mapped device memory
-        TL_NODISCARD DeviceMemoryPtr MapBuffer(Handle<Buffer> handle);
+        TL_NODISCARD DeviceMemoryPtr          MapBuffer(Handle<Buffer> handle);
 
         /// @brief Unmaps a previously mapped buffer
         ///
         /// @param handle Handle to the Buffer to unmap
-        void UnmapBuffer(Handle<Buffer> handle);
+        void                                  UnmapBuffer(Handle<Buffer> handle);
 
         /// @brief Dispatches a render graph
         ///
         /// @param renderGraph The render graph to dispatch
-        void DispatchGraph(RenderGraph& renderGraph);
+        void                                  DispatchGraph(RenderGraph& renderGraph);
 
         /// @brief Stages a write operation to an image
         ///
         /// @param image Handle to the Image to write to
         /// @param subresources The subresources of the image to write to
         /// @param stagingBuffer The staging buffer containing the data to write
-        void StageResourceWrite(Handle<Image> image, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset);
+        void                                  StageResourceWrite(Handle<Image> image, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset);
 
         /// @brief Stages a write operation to a buffer
         ///
         /// @param buffer Handle to the Buffer to write to
         /// @param subregion The subregion of the buffer to write to
-        void StageResourceWrite(Handle<Buffer> buffer, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset);
+        void                                  StageResourceWrite(Handle<Buffer> buffer, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset);
 
         /// @brief Stages a read operation from an image
         ///
@@ -267,7 +267,7 @@ namespace RHI
         /// @param subresources The subresources of the image to read from
         /// @param stagingBuffer The staging buffer to store the read data
         /// @param fence fence to signal when the read operation is complete
-        void StageResourceRead(Handle<Image> image, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset, Fence* fence);
+        void                                  StageResourceRead(Handle<Image> image, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset, Fence* fence);
 
         /// @brief Stages a read operation from a buffer
         ///
@@ -275,7 +275,7 @@ namespace RHI
         /// @param subregion The subregion of the buffer to read from
         /// @param stagingBuffer The staging buffer to store the read data
         /// @param fence fence to signal when the read operation is complete
-        void StageResourceRead(Handle<Buffer> buffer, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset, Fence* fence);
+        void                                  StageResourceRead(Handle<Buffer> buffer, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset, Fence* fence);
 
     private:
         bool ValidateCreateInfo(const SwapchainCreateInfo& createInfo) const;

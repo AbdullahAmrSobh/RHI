@@ -291,34 +291,34 @@ namespace RHI
 
     struct ImageOffset2D
     {
-        int32_t x;
-        int32_t y;
+        int32_t     x;
+        int32_t     y;
 
         inline bool operator==(const ImageOffset2D& other) const { return x == other.x && y == other.y; }
     };
 
     struct ImageOffset3D
     {
-        int32_t x;
-        int32_t y;
-        int32_t z;
+        int32_t     x;
+        int32_t     y;
+        int32_t     z;
 
         inline bool operator==(const ImageOffset3D& other) const { return x == other.x && y == other.y && z == other.z; }
     };
 
     struct ImageSize2D
     {
-        uint32_t width;
-        uint32_t height;
+        uint32_t    width;
+        uint32_t    height;
 
         inline bool operator==(const ImageSize2D& other) const { return width == other.width && height == other.height; }
     };
 
     struct ImageSize3D
     {
-        uint32_t width;
-        uint32_t height;
-        uint32_t depth;
+        uint32_t    width;
+        uint32_t    height;
+        uint32_t    depth;
 
         inline bool operator==(const ImageSize3D& other) const { return width == other.width && height == other.height && depth == other.depth; }
     };
@@ -330,7 +330,7 @@ namespace RHI
         ComponentSwizzle b;
         ComponentSwizzle a;
 
-        inline bool operator==(const ComponentMapping& other) const { return r == other.r && g == other.g && b == other.b && a == other.a; }
+        inline bool      operator==(const ComponentMapping& other) const { return r == other.r && g == other.g && b == other.b && a == other.a; }
     };
 
     struct ImageSubresource
@@ -339,7 +339,7 @@ namespace RHI
         uint32_t               mipLevel;
         uint32_t               arrayLayer;
 
-        inline bool operator==(const ImageSubresource& other) const { return imageAspects == other.imageAspects && mipLevel == other.mipLevel && arrayLayer == other.arrayLayer; }
+        inline bool            operator==(const ImageSubresource& other) const { return imageAspects == other.imageAspects && mipLevel == other.mipLevel && arrayLayer == other.arrayLayer; }
     };
 
     struct ImageSubresourceRange
@@ -350,13 +350,13 @@ namespace RHI
         uint32_t               arrayBase;
         uint32_t               arrayCount;
 
-        inline bool operator==(const ImageSubresourceRange& other) const { return imageAspects == other.imageAspects && mipBase == other.mipBase && mipLevelCount == other.mipLevelCount && arrayBase == other.arrayBase && arrayCount == other.arrayCount; }
+        inline bool            operator==(const ImageSubresourceRange& other) const { return imageAspects == other.imageAspects && mipBase == other.mipBase && mipLevelCount == other.mipLevelCount && arrayBase == other.arrayBase && arrayCount == other.arrayCount; }
     };
 
     struct BufferSubregion
     {
-        size_t offset;
-        size_t size;
+        size_t      offset;
+        size_t      size;
 
         inline bool operator==(const BufferSubregion& other) const
         {
@@ -368,10 +368,10 @@ namespace RHI
     {
         inline static constexpr uint32_t VariableArraySize = UINT32_MAX;
 
-        BindingType            type;
-        Access                 access;
-        uint32_t               arrayCount;
-        TL::Flags<ShaderStage> stages;
+        BindingType                      type;
+        Access                           access;
+        uint32_t                         arrayCount;
+        TL::Flags<ShaderStage>           stages;
     };
 
     struct BindGroupLayoutCreateInfo
@@ -461,7 +461,7 @@ namespace RHI
         BlendFactor               dstAlpha;
         TL::Flags<ColorWriteMask> writeMask;
 
-        inline bool operator==(const ColorAttachmentBlendStateDesc& other) const { return blendEnable == other.blendEnable && colorBlendOp == other.colorBlendOp && srcColor == other.srcColor && dstColor == other.dstColor && alphaBlendOp == other.alphaBlendOp && srcAlpha == other.srcAlpha && dstAlpha == other.dstAlpha; }
+        inline bool               operator==(const ColorAttachmentBlendStateDesc& other) const { return blendEnable == other.blendEnable && colorBlendOp == other.colorBlendOp && srcColor == other.srcColor && dstColor == other.dstColor && alphaBlendOp == other.alphaBlendOp && srcAlpha == other.srcAlpha && dstAlpha == other.dstAlpha; }
     };
 
     struct PipelineRenderTargetLayout
@@ -531,7 +531,7 @@ namespace RHI
         uint32_t              mipLevels;
         uint32_t              arrayCount;
 
-        inline bool operator==(const ImageCreateInfo& other) const { return usageFlags == other.usageFlags && type == other.type && size == other.size && format == other.format && mipLevels == other.mipLevels && arrayCount == other.arrayCount; }
+        inline bool           operator==(const ImageCreateInfo& other) const { return usageFlags == other.usageFlags && type == other.type && size == other.size && format == other.format && mipLevels == other.mipLevels && arrayCount == other.arrayCount; }
     };
 
     struct BufferCreateInfo
@@ -541,7 +541,7 @@ namespace RHI
         TL::Flags<BufferUsage> usageFlags;
         size_t                 byteSize;
 
-        inline bool operator==(const BufferCreateInfo& other) const { return usageFlags == other.usageFlags && byteSize == other.byteSize; }
+        inline bool            operator==(const BufferCreateInfo& other) const { return usageFlags == other.usageFlags && byteSize == other.byteSize; }
     };
 
     struct ImageViewCreateInfo
@@ -552,7 +552,7 @@ namespace RHI
         ComponentMapping      components;
         ImageSubresourceRange subresource;
 
-        inline bool operator==(const ImageViewCreateInfo& other) const { return components == other.components && viewType == other.viewType && subresource == other.subresource; }
+        inline bool           operator==(const ImageViewCreateInfo& other) const { return components == other.components && viewType == other.viewType && subresource == other.subresource; }
     };
 
     struct BufferViewCreateInfo
@@ -562,7 +562,7 @@ namespace RHI
         Format          format;
         BufferSubregion subregion;
 
-        inline bool operator==(const BufferViewCreateInfo& other) const { return format == other.format && subregion == other.subregion; }
+        inline bool     operator==(const BufferViewCreateInfo& other) const { return format == other.format && subregion == other.subregion; }
     };
 
     struct GraphicsPipelineCreateInfo
@@ -604,7 +604,7 @@ namespace RHI
         float                   minLod;
         float                   maxLod;
 
-        inline bool operator==(const SamplerCreateInfo& other) const { return filterMin == other.filterMin && filterMag == other.filterMag && filterMip == other.filterMip && compare == other.compare && mipLodBias == other.mipLodBias && addressU == other.addressU && addressV == other.addressV && addressW == other.addressW && minLod == other.minLod && maxLod == other.maxLod; }
+        inline bool             operator==(const SamplerCreateInfo& other) const { return filterMin == other.filterMin && filterMag == other.filterMag && filterMip == other.filterMip && compare == other.compare && mipLodBias == other.mipLodBias && addressU == other.addressU && addressV == other.addressV && addressW == other.addressW && minLod == other.minLod && maxLod == other.maxLod; }
     };
 
     struct ShaderModuleReflectionData

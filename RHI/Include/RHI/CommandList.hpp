@@ -175,7 +175,7 @@ namespace RHI
         virtual ~CommandPool()          = default;
 
         /// @brief Resets all command lists allocated from this allocator
-        virtual void Reset() = 0;
+        virtual void                     Reset() = 0;
 
         /// @brief Allocates a new command list object
         TL_NODISCARD inline CommandList* Allocate(QueueType queueType, CommandListLevel level)

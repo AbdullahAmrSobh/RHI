@@ -52,16 +52,16 @@ namespace RHI
         virtual ~Swapchain() = default;
 
         /// @brief Get the current image index of the swapchain.
-        uint32_t GetCurrentImageIndex() const;
+        uint32_t           GetCurrentImageIndex() const;
 
         /// @brief Get the number of images in the swapchain.
-        uint32_t GetImagesCount() const;
+        uint32_t           GetImagesCount() const;
 
         /// @brief Get the current acquired swapchain image.
-        Handle<Image> GetImage() const;
+        Handle<Image>      GetImage() const;
 
         /// @brief Get the indexed image in the swapchain images.
-        Handle<Image> GetImage(uint32_t index) const;
+        Handle<Image>      GetImage(uint32_t index) const;
 
         /// @brief Called to invalidate the current swapchain state, when the window is resized.
         virtual ResultCode Recreate(ImageSize2D newSize) = 0;

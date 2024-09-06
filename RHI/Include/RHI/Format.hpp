@@ -112,13 +112,13 @@ namespace RHI
         bool        isSRGB : 1;
     };
 
-    RHI_EXPORT const FormatInfo& GetFormatInfo(Format format);
+    RHI_EXPORT const FormatInfo&      GetFormatInfo(Format format);
 
-    RHI_EXPORT uint32_t GetFormatByteSize(Format format);
+    RHI_EXPORT uint32_t               GetFormatByteSize(Format format);
 
-    RHI_EXPORT uint32_t GetFormatComponentByteSize(Format format);
+    RHI_EXPORT uint32_t               GetFormatComponentByteSize(Format format);
 
-    RHI_EXPORT FormatType GetFormatType(Format format);
+    RHI_EXPORT FormatType             GetFormatType(Format format);
 
     RHI_EXPORT TL::Flags<ImageAspect> GetFormatAspects(Format format);
 
