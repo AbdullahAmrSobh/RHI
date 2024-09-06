@@ -13,6 +13,5 @@
 #include <RHI/Sampler.hpp>
 #include <RHI/Shader.hpp>
 #include <RHI/Queue.hpp>
-#include <RHI/PoolAllocator.hpp>
 #include <RHI/Result.hpp>
 #include <RHI/Handle.hpp>

@@ -7,6 +7,7 @@
 #include <TL/Flags.hpp>
 #include <TL/Span.hpp>
 #include <TL/UniquePtr.hpp>
+#include <TL/Utils.hpp>
 
 namespace RHI
 {
@@ -67,15 +68,6 @@ namespace RHI
         Format          format;    ///< Format of the buffer view.
         BufferSubregion subregion; ///< Subregion of the buffer being viewed.
     };
-
-    /// @brief Describes a range of a buffer, including metadata.
-    struct BufferRange
-    {
-        Handle<Buffer>  buffer;    ///< Handle to the buffer.
-        BufferSubregion subregion; ///< Subregion of the buffer.
-        uint32_t        _metaData; ///< Metadata associated with the buffer range.
-    };
-
 } // namespace RHI
 
 namespace std

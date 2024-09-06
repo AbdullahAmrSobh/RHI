@@ -1,4 +1,4 @@
-#include "RHI/BufferPool.hpp"
+#include "RHI/Buffer.hpp"
 
 #include <TL/Utils.hpp>
 #include "RHI/Context.hpp"

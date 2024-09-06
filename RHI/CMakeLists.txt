@@ -1,32 +1,27 @@
 cmake_minimum_required(VERSION 3.16)
 
 set(HEADER_FILES
-    # Common and utils
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Handle.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Result.hpp
-
-    # Resource files
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Image.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/BindGroup.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Buffer.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Sampler.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Shader.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Pipeline.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Fence.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Queue.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RGResources.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RGPass.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/PoolAllocator.hpp
-
-
-    # Main files
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/CommandList.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Context.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Export.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Format.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Definitions.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Export.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Fence.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Format.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Handle.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Image.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Pipeline.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Queue.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RenderGraph.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Resources.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Result.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RGPass.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RGResources.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RHI.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/SampleCount.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Sampler.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Shader.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Swapchain.hpp
 )
 

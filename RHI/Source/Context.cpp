@@ -1,9 +1,4 @@
-#include "RHI/Context.hpp"
-#include "RHI/CommandList.hpp"
-#include "RHI/RenderGraph.hpp"
-#include "RHI/Resources.hpp"
-#include "RHI/Swapchain.hpp"
-#include <RHI/Handle.hpp>
+#include <RHI/RHI.hpp>
 
 #include <TL/Assert.hpp>
 #include <TL/Log.hpp>
@@ -247,34 +242,6 @@ namespace RHI
         ZoneScoped;
 
         Internal_UnmapBuffer(handle);
-    }
-
-    void Context::StageResourceWrite(Handle<Image> image, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset)
-    {
-        ZoneScoped;
-
-        Internal_StageResourceWrite(image, subresources, buffer, bufferOffset);
-    }
-
-    void Context::StageResourceWrite(Handle<Buffer> buffer, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset)
-    {
-        ZoneScoped;
-
-        Internal_StageResourceWrite(buffer, offset, size, srcBuffer, srcOffset);
-    }
-
-    void Context::StageResourceRead(Handle<Image> image, ImageSubresourceLayers subresources, Handle<Buffer> buffer, size_t bufferOffset, Fence* fence)
-    {
-        ZoneScoped;
-
-        Internal_StageResourceRead(image, subresources, buffer, bufferOffset, fence);
-    }
-
-    void Context::StageResourceRead(Handle<Buffer> buffer, size_t offset, size_t size, Handle<Buffer> srcBuffer, size_t srcOffset, Fence* fence)
-    {
-        ZoneScoped;
-
-        Internal_StageResourceRead(buffer, offset, size, srcBuffer, srcOffset, fence);
     }
 
 #define TRY(condition, message) \
