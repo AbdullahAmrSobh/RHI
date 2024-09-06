@@ -1,6 +1,5 @@
 #pragma once
 
-#include "RHI/Shader.hpp"
 #include "RHI/Handle.hpp"
 #include "RHI/Resources.hpp"
 #include "RHI/Pipeline.hpp"

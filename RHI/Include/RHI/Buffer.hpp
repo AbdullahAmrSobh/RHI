@@ -1,8 +1,8 @@
 #pragma once
 
 #include "RHI/Result.hpp"
+#include "RHI/Format.hpp"
 #include "RHI/Handle.hpp"
-#include "RHI/Resources.hpp"
 
 #include <TL/Flags.hpp>
 #include <TL/Span.hpp>

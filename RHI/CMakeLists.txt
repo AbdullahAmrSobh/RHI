@@ -26,13 +26,24 @@ set(HEADER_FILES
 )
 
 set(SOURCE_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Format.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraph.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/OffsetAllocator/offsetAllocator.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/OffsetAllocator/offsetAllocator.cpp
-    # ${CMAKE_CURRENT_SOURCE_DIR}/Source/Buffer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/BindGroup.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Buffer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Fence.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Format.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Handle.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Image.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Pipeline.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Queue.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraph.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/RGPass.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/RGResources.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Sampler.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Shader.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.cpp
 )
 
 include(${CPM_TL_SOURCE}/CMake/add-target.cmake)

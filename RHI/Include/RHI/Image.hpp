@@ -1,8 +1,8 @@
 #pragma once
 
-#include "RHI/Format.hpp"
 #include "RHI/Handle.hpp"
 #include "RHI/SampleCount.hpp"
+#include "RHI/Format.hpp"
 
 #include <TL/Flags.hpp>
 #include <TL/Span.hpp>
