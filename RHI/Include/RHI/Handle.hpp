@@ -8,7 +8,7 @@
 #include <type_traits>
 #include <format>
 
-#define RHI_DECALRE_OPAQUE_RESOURCE(name) \
+#define RHI_DECLARE_OPAQUE_RESOURCE(name) \
     struct name                           \
     {                                     \
     }

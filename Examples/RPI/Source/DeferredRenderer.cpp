@@ -459,10 +459,10 @@
 //             RHI::ResultCode result = RHI::ResultCode::Success;
 
 //             result = m_passGBuffer.Init(*m_context);
-//             TL_ASSERT(IsSucess(result));
+//             TL_ASSERT(IsSuccess(result));
 
 //             result = m_passLighting.Init(*m_context);
-//             TL_ASSERT(IsSucess(result));
+//             TL_ASSERT(IsSuccess(result));
 
 //             // Setup render graph
 //             {
@@ -471,10 +471,10 @@
 //                 auto outputAttachment = m_renderGraph->ImportSwapchain("Swapchain-Image", *m_swapchain);
 
 //                 result = m_passGBuffer.Setup(*m_renderGraph);
-//                 TL_ASSERT(IsSucess(result));
+//                 TL_ASSERT(IsSuccess(result));
 
 //                 result = m_passLighting.Setup(*m_renderGraph, m_passGBuffer, outputAttachment);
-//                 TL_ASSERT(IsSucess(result));
+//                 TL_ASSERT(IsSuccess(result));
 
 //                 m_context->CompileRenderGraph(*m_renderGraph);
 //             }

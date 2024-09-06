@@ -3,7 +3,6 @@
 
 #include "offsetAllocator.hpp"
 
-
 #ifdef RHI_DEBUG
     #include <Tl/Assert.hpp>
     #define ASSERT(x) TL_ASSERT(x)

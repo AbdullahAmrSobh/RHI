@@ -6,4 +6,13 @@
 #include <RHI/Resources.hpp>
 #include <RHI/Swapchain.hpp>
 #include <RHI/RenderGraph.hpp>
-#include <RHI/BufferPool.hpp>
+#include <RHI/Buffer.hpp>
+#include <RHI/Image.hpp>
+#include <RHI/Fence.hpp>
+#include <RHI/Pipeline.hpp>
+#include <RHI/Sampler.hpp>
+#include <RHI/Shader.hpp>
+#include <RHI/Queue.hpp>
+#include <RHI/PoolAllocator.hpp>
+#include <RHI/Result.hpp>
+#include <RHI/Handle.hpp>

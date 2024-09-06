@@ -44,7 +44,7 @@ namespace RHI
 
         auto context = TL::CreatePtr<Vulkan::IContext>();
         auto result = context->Init(appInfo);
-        TL_ASSERT(IsSucess(result));
+        TL_ASSERT(IsSuccess(result));
         return std::move(context);
     }
 } // namespace RHI

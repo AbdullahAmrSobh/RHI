@@ -1,6 +1,6 @@
 #pragma once
 
-#include <RHI/Resources.hpp>
+#include <RHI/RHI.hpp>
 
 #include <TL/Containers.hpp>
 

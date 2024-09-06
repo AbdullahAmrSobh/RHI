@@ -1,7 +1,7 @@
 #pragma once
 
-#include "RHI/Resources.hpp"
 #include "RHI/RenderGraph.hpp"
+#include "RHI/RGPass.hpp"
 #include "RHI/Definitions.hpp"
 
 #include <TL/Containers.hpp>
@@ -15,85 +15,95 @@ namespace RHI
     class Pass;
     class CommandList;
 
+    /// @brief Flags for command pool configuration.
     enum class CommandPoolFlags
     {
-        None      = 0,
-        Transient = 0x01,
-        Reset     = 0x02,
+        None      = 0,    ///< No flags set.
+        Transient = 0x01, ///< The command pool is transient.
+        Reset     = 0x02, ///< The command pool supports resetting.
     };
 
+    /// @brief Specifies the level of a command list.
     enum class CommandListLevel
     {
-        Primary,
-        Secondary,
+        Primary,   ///< Primary command list, which can be executed directly.
+        Secondary, ///< Secondary command list, which can be executed within a primary command list.
     };
 
+    /// @brief Defines a viewport for rendering.
     struct Viewport
     {
-        float offsetX;
-        float offsetY;
-        float width;
-        float height;
-        float minDepth;
-        float maxDepth;
+        float offsetX;  ///< X offset of the viewport.
+        float offsetY;  ///< Y offset of the viewport.
+        float width;    ///< Width of the viewport.
+        float height;   ///< Height of the viewport.
+        float minDepth; ///< Minimum depth value of the viewport.
+        float maxDepth; ///< Maximum depth value of the viewport.
     };
 
+    /// @brief Defines a scissor rectangle for rendering.
     struct Scissor
     {
-        int32_t  offsetX;
-        int32_t  offsetY;
-        uint32_t width;
-        uint32_t height;
+        int32_t  offsetX; ///< X offset of the scissor rectangle.
+        int32_t  offsetY; ///< Y offset of the scissor rectangle.
+        uint32_t width;   ///< Width of the scissor rectangle.
+        uint32_t height;  ///< Height of the scissor rectangle.
     };
 
+    /// @brief Contains information needed to begin recording commands in a command list.
     struct CommandListBeginInfo
     {
-        RenderGraph*                        renderGraph;
-        Handle<Pass>                        pass;
-        TL::Span<const LoadStoreOperations> loadStoreOperations;
+        RenderGraph*                        renderGraph;         ///< Pointer to the render graph.
+        Handle<Pass>                        pass;                ///< Handle to the pass.
+        TL::Span<const LoadStoreOperations> loadStoreOperations; ///< Span of load/store operations.
     };
 
+    /// @brief Contains information needed to copy a buffer.
     struct BufferCopyInfo
     {
-        Handle<Buffer> srcBuffer;
-        size_t         srcOffset;
-        Handle<Buffer> dstBuffer;
-        size_t         dstOffset;
-        size_t         size;
+        Handle<Buffer> srcBuffer; ///< Handle to the source buffer.
+        size_t         srcOffset; ///< Offset in the source buffer.
+        Handle<Buffer> dstBuffer; ///< Handle to the destination buffer.
+        size_t         dstOffset; ///< Offset in the destination buffer.
+        size_t         size;      ///< Size of the data to copy.
     };
 
+    /// @brief Defines subresource layers of an image.
     struct ImageSubresourceLayers
     {
-        TL::Flags<ImageAspect> imageAspects;
-        uint32_t               mipLevel;
-        uint32_t               arrayBase;
-        uint32_t               arrayCount;
+        TL::Flags<ImageAspect> imageAspects; ///< Image aspects to access.
+        uint32_t               mipLevel;     ///< Mipmap level.
+        uint32_t               arrayBase;    ///< Base array layer.
+        uint32_t               arrayCount;   ///< Number of array layers.
     };
 
+    /// @brief Contains information needed to copy an image.
     struct ImageCopyInfo
     {
-        Handle<Image>          srcImage;
-        ImageSubresourceLayers srcSubresource;
-        ImageOffset3D          srcOffset;
-        ImageSize3D            srcSize;
-        Handle<Image>          dstImage;
-        ImageSubresourceLayers dstSubresource;
-        ImageOffset3D          dstOffset;
+        Handle<Image>          srcImage;       ///< Handle to the source image.
+        ImageSubresourceLayers srcSubresource; ///< Subresource layers of the source image.
+        ImageOffset3D          srcOffset;      ///< Offset in the source image.
+        ImageSize3D            srcSize;        ///< Size of the source image region.
+        Handle<Image>          dstImage;       ///< Handle to the destination image.
+        ImageSubresourceLayers dstSubresource; ///< Subresource layers of the destination image.
+        ImageOffset3D          dstOffset;      ///< Offset in the destination image.
     };
 
+    /// @brief Contains information needed to copy between a buffer and an image.
     struct BufferImageCopyInfo
     {
-        Handle<Image>          image;
-        ImageSubresourceLayers subresource;
-        ImageSize3D            imageSize;
-        ImageOffset3D          imageOffset;
-        Handle<Buffer>         buffer;
-        size_t                 bufferOffset;
-        size_t                 bufferSize;
-        uint32_t               bytesPerRow;
-        uint32_t               bytesPerImage;
+        Handle<Image>          image;         ///< Handle to the image.
+        ImageSubresourceLayers subresource;   ///< Subresource layers of the image.
+        ImageSize3D            imageSize;     ///< Size of the image.
+        ImageOffset3D          imageOffset;   ///< Offset in the image.
+        Handle<Buffer>         buffer;        ///< Handle to the buffer.
+        size_t                 bufferOffset;  ///< Offset in the buffer.
+        size_t                 bufferSize;    ///< Size of the buffer region.
+        uint32_t               bytesPerRow;   ///< Number of bytes per row in the buffer.
+        uint32_t               bytesPerImage; ///< Number of bytes per image in the buffer.
     };
 
+    /// @brief Contains information about binding a buffer.
     struct BufferBindingInfo
     {
         BufferBindingInfo() = default;
@@ -104,10 +114,11 @@ namespace RHI
         {
         }
 
-        Handle<Buffer> buffer;
-        size_t         offset;
+        Handle<Buffer> buffer; ///< Handle to the buffer.
+        size_t         offset; ///< Offset into the buffer.
     };
 
+    /// @brief Contains information about binding a bind group.
     struct BindGroupBindingInfo
     {
         BindGroupBindingInfo() = default;
@@ -118,54 +129,59 @@ namespace RHI
         {
         }
 
-        Handle<BindGroup>        bindGroup;
-        TL::Span<const uint32_t> dynamicOffsets;
+        Handle<BindGroup>        bindGroup;      ///< Handle to the bind group.
+        TL::Span<const uint32_t> dynamicOffsets; ///< Span of dynamic offsets for the bind group.
     };
 
+    /// @brief Parameters for drawing primitives.
     struct DrawParameters
     {
-        uint32_t elementsCount;
-        uint32_t instanceCount;
-        uint32_t firstElement;
-        int32_t  vertexOffset;
-        uint32_t firstInstance;
+        uint32_t elementsCount; ///< Number of elements to draw.
+        uint32_t instanceCount; ///< Number of instances to draw.
+        uint32_t firstElement;  ///< Index of the first element to draw.
+        int32_t  vertexOffset;  ///< Offset in the vertex buffer.
+        uint32_t firstInstance; ///< Index of the first instance to draw.
     };
 
+    /// @brief Parameters for dispatching compute work.
     struct DispatchParameters
     {
-        uint32_t offsetX = 0u;
-        uint32_t offsetY = 0u;
-        uint32_t offsetZ = 0u;
-        uint32_t countX  = 32u;
-        uint32_t countY  = 32u;
-        uint32_t countZ  = 32u;
+        uint32_t offsetX; ///< X offset for the dispatch.
+        uint32_t offsetY; ///< Y offset for the dispatch.
+        uint32_t offsetZ; ///< Z offset for the dispatch.
+        uint32_t countX;  ///< Number of work groups in X dimension.
+        uint32_t countY;  ///< Number of work groups in Y dimension.
+        uint32_t countZ;  ///< Number of work groups in Z dimension.
     };
 
+    /// @brief Contains information about a draw command.
     struct DrawInfo
     {
-        Handle<GraphicsPipeline>             pipelineState;
-        TL::Span<const BindGroupBindingInfo> bindGroups;
-        TL::Span<const BufferBindingInfo>    vertexBuffers;
-        BufferBindingInfo                    indexBuffer;
-        DrawParameters                       parameters;
+        Handle<GraphicsPipeline>             pipelineState; ///< Handle to the graphics pipeline.
+        TL::Span<const BindGroupBindingInfo> bindGroups;    ///< Span of bind group bindings.
+        TL::Span<const BufferBindingInfo>    vertexBuffers; ///< Span of vertex buffer bindings.
+        BufferBindingInfo                    indexBuffer;   ///< Index buffer binding.
+        DrawParameters                       parameters;    ///< Draw parameters.
     };
 
-    /// @brief Structure describing a compute command.
+    /// @brief Contains information about a dispatch command.
     struct DispatchInfo
     {
-        Handle<ComputePipeline>              pipelineState;
-        TL::Span<const BindGroupBindingInfo> bindGroups;
-        DispatchParameters                   parameters;
+        Handle<ComputePipeline>              pipelineState; ///< Handle to the compute pipeline.
+        TL::Span<const BindGroupBindingInfo> bindGroups;    ///< Span of bind group bindings.
+        DispatchParameters                   parameters;    ///< Dispatch parameters.
     };
 
+    /// @brief Contains information needed to blit (copy and scale) an image.
     struct ImageBlitInfo
     {
-        ImageSubresourceLayers srcSubresource;
-        ImageOffset3D          srcOffsets[2];
-        ImageSubresourceLayers dstSubresource;
-        ImageOffset3D          dstOffsets[2];
+        ImageSubresourceLayers srcSubresource; ///< Source subresource layers.
+        ImageOffset3D          srcOffsets[2];  ///< Source offsets (top-left and bottom-right).
+        ImageSubresourceLayers dstSubresource; ///< Destination subresource layers.
+        ImageOffset3D          dstOffsets[2];  ///< Destination offsets (top-left and bottom-right).
     };
 
+    /// @brief Represents a pool of command lists.
     class RHI_EXPORT CommandPool
     {
     public:
@@ -174,20 +190,27 @@ namespace RHI
         CommandPool(CommandPool&&)      = delete;
         virtual ~CommandPool()          = default;
 
-        /// @brief Resets all command lists allocated from this allocator
+        /// @brief Resets the command pool, clearing any allocated command lists.
         virtual void                     Reset() = 0;
 
-        /// @brief Allocates a new command list object
+        /// @brief Allocates a command list from the pool.
+        /// @param queueType Type of queue to allocate for.
+        /// @param level Level of the command list to allocate.
+        /// @return A pointer to the allocated command list.
         TL_NODISCARD inline CommandList* Allocate(QueueType queueType, CommandListLevel level)
         {
             return Allocate(queueType, level, 1).front();
         }
 
-        /// @brief Allocates a new command list object
+        /// @brief Allocates multiple command lists from the pool.
+        /// @param queueType Type of queue to allocate for.
+        /// @param level Level of the command lists to allocate.
+        /// @param count Number of command lists to allocate.
+        /// @return A vector of pointers to the allocated command lists.
         TL_NODISCARD virtual TL::Vector<CommandList*> Allocate(QueueType queueType, CommandListLevel level, uint32_t count) = 0;
     };
 
-    /// @brief Command list record a list of GPU commands that are exectued in the same pass.
+    /// @brief Represents a list of commands to be executed.
     class RHI_EXPORT CommandList
     {
     public:
@@ -196,55 +219,70 @@ namespace RHI
         CommandList(CommandList&& other)      = default;
         virtual ~CommandList()                = default;
 
-        /// @brief Marks the begining of this command list recording
+        /// @brief Begins recording commands into the command list.
         virtual void Begin() = 0;
 
-        /// @brief Marks the begining of this command list recording inside a pass
+        /// @brief Begins recording commands into the command list with additional information.
+        /// @param beginInfo Information for beginning command recording.
         virtual void Begin(const CommandListBeginInfo& beginInfo) = 0;
 
-        /// @brief Marks the ending of this command list recording
+        /// @brief Ends recording commands into the command list.
         virtual void End() = 0;
 
-        /// @brief Begins a new debug marker region
+        /// @brief Pushes a debug marker with a name and color onto the command list.
+        /// @param name Name of the debug marker.
+        /// @param color Color value of the debug marker.
         virtual void DebugMarkerPush(const char* name, ColorValue<float> color) = 0;
 
-        /// @brief Ends the last debug marker region
+        /// @brief Pops the last debug marker off the command list.
         virtual void DebugMarkerPop() = 0;
 
-        /// @brief Define the beginning of a conditional command list block
+        /// @brief Begins a conditional command block based on a buffer.
+        /// @param buffer Handle to the buffer used for condition.
+        /// @param offset Offset in the buffer.
+        /// @param inverted If true, the condition is inverted.
         virtual void BeginConditionalCommands(Handle<Buffer> buffer, size_t offset, bool inverted) = 0;
 
-        /// @brief Define the ending of a conditional command list block
+        /// @brief Ends a conditional command block.
         virtual void EndConditionalCommands() = 0;
 
-        /// @brief Execute a secondary command list from a primary command list
+        /// @brief Executes a set of command lists.
+        /// @param commandLists Span of command lists to execute.
         virtual void Execute(TL::Span<const CommandList*> commandLists) = 0;
 
-        /// @brief Sets the rendering viewport
+        /// @brief Sets the viewport for rendering.
+        /// @param viewport The viewport to set.
         virtual void SetViewport(const Viewport& viewport) = 0;
 
-        /// @brief Sets the rendering scissor
+        /// @brief Sets the scissor rectangle for rendering.
+        /// @param scissor The scissor rectangle to set.
         virtual void SetSicssor(const Scissor& sicssor) = 0;
 
-        /// @brief Submit a draw command
+        /// @brief Issues a draw command.
+        /// @param drawInfo Information for the draw command.
         virtual void Draw(const DrawInfo& drawInfo) = 0;
 
-        /// @brief Submit a compute command
+        /// @brief Issues a dispatch command.
+        /// @param dispatchInfo Information for the dispatch command.
         virtual void Dispatch(const DispatchInfo& dispatchInfo) = 0;
 
-        /// @brief Submit a buffer copy command
+        /// @brief Issues a buffer-to-buffer copy command.
+        /// @param copyInfo Information for the buffer copy command.
         virtual void CopyBuffer(const BufferCopyInfo& copyInfo) = 0;
 
-        /// @brief Submit a image copy command
+        /// @brief Issues an image-to-image copy command.
+        /// @param copyInfo Information for the image copy command.
         virtual void CopyImage(const ImageCopyInfo& copyInfo) = 0;
 
-        /// @brief Submit a buffer to image copy command
+        /// @brief Issues a buffer-to-image copy command.
+        /// @param copyInfo Information for the buffer-to-image copy command.
         virtual void CopyImageToBuffer(const BufferImageCopyInfo& copyInfo) = 0;
 
-        /// @brief Submit an image to buffer copy command
+        /// @brief Issues a image-to-buffer copy command.
+        /// @param copyInfo Information for the image-to-buffer copy command.
         virtual void CopyBufferToImage(const BufferImageCopyInfo& copyInfo) = 0;
 
-        // /// @brief Submits an image blit command
+        // @brief Issues an image blit command (commented out as it's not implemented yet).
         // virtual void BlitImage(Handle<ImageView> srcImage, Handle<ImageView> dstImage, TL::Span<ImageBlitInfo> regions, SamplerFilter filter) = 0;
     };
 } // namespace RHI

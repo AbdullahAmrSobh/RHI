@@ -1,8 +1,10 @@
 #pragma once
 
-#include <RHI/Common/Handle.hpp>
+#include <RHI/Handle.hpp>
 #include <RHI/Definitions.hpp>
-#include <RHI/Resources.hpp>
+#include <RHI/Image.hpp>
+#include <RHI/Buffer.hpp>
+#include <RHI/BindGroup.hpp>
 
 #include <TL/Flags.hpp>
 #include <TL/Containers.hpp>

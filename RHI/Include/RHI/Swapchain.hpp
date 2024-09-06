@@ -1,7 +1,9 @@
 #pragma once
 #include "RHI/Export.hpp"
-#include "RHI/Resources.hpp"
-#include "RHI/Common/Result.hpp"
+#include "RHI/Image.hpp"
+#include "RHI/Result.hpp"
+
+#include <TL/Flags.hpp>
 
 namespace RHI
 {

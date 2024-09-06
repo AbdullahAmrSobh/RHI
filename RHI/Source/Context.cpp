@@ -3,7 +3,7 @@
 #include "RHI/RenderGraph.hpp"
 #include "RHI/Resources.hpp"
 #include "RHI/Swapchain.hpp"
-#include <RHI/Common/Handle.hpp>
+#include <RHI/Handle.hpp>
 
 #include <TL/Assert.hpp>
 #include <TL/Log.hpp>

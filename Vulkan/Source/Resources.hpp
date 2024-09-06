@@ -1,7 +1,6 @@
 #pragma once
 
-#include <RHI/Common/Result.hpp>
-#include <RHI/Resources.hpp>
+#include <RHI/RHI.hpp>
 
 #include <vk_mem_alloc.h>
 

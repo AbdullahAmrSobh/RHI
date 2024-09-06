@@ -1,9 +1,6 @@
 #pragma once
 
-#include <RHI/CommandList.hpp>
-#include <RHI/Common/Result.hpp>
-#include <RHI/RenderGraph.hpp>
-#include <RHI/Resources.hpp>
+#include <RHI/RHI.hpp>
 
 #include <vk_mem_alloc.h>
 
@@ -21,8 +18,8 @@ namespace RHI::Vulkan
 {
     [[maybe_unused]] inline static bool Validate(ResultCode result)
     {
-        TL_ASSERT(IsSucess(result));
-        return IsSucess(result);
+        TL_ASSERT(IsSuccess(result));
+        return IsSuccess(result);
     }
 
     [[maybe_unused]] inline static bool Validate(VkResult result)
@@ -42,7 +39,7 @@ namespace RHI::Vulkan
         case VK_ERROR_OUT_OF_DEVICE_MEMORY:
             return ResultCode::ErrorDeviceOutOfMemory;
         default:
-            return ResultCode::ErrorUnkown;
+            return ResultCode::ErrorUnknown;
         }
     }
 

@@ -7,7 +7,6 @@
 namespace RHI
 {
     struct ApplicationInfo;
-    class Context;
 
     /// @brief Creates a new instance of RHI context, with vulkan backend implementation.
     /// @param appInfo Information regarding the application using this API.

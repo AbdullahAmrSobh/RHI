@@ -83,6 +83,6 @@ namespace Examples::RPI
         m_context->ExecuteRenderGraph(*m_renderGraph, m_frameRingbuffer.Get().m_fence.get());
 
         auto resultCode = m_swapchain->Present();
-        TL_ASSERT(RHI::IsSucess(resultCode), "Failed to present swapchain");
+        TL_ASSERT(RHI::IsSuccess(resultCode), "Failed to present swapchain");
     }
 } // namespace Examples::RPI

@@ -43,7 +43,7 @@ namespace Examples::RPI
         bufferCI.byteSize = sizeof(StructureType);
         auto [buffer, result] = context.CreateBuffer(bufferCI);
         m_buffer = buffer;
-        TL_ASSERT(RHI::IsSucess(result));
+        TL_ASSERT(RHI::IsSuccess(result));
 
         return ResultCode::Sucess;
     }

@@ -8,8 +8,6 @@
 #include "Swapchain.hpp"
 #include "Common.hpp"
 
-// #include "Context.hpp"
-
 // Platform specifc surface creation are contained witihn this file,
 // to avoid polluting the global namespace with OS specific symbols
 

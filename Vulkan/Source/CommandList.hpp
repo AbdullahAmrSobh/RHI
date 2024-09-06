@@ -1,7 +1,7 @@
 #pragma once
 
 #include <RHI/CommandList.hpp>
-#include <RHI/Common/Result.hpp>
+#include <RHI/Result.hpp>
 
 #include <vulkan/vulkan.h>
 
