@@ -68,6 +68,23 @@ namespace RHI
         Format          format;    ///< Format of the buffer view.
         BufferSubregion subregion; ///< Subregion of the buffer being viewed.
     };
+
+    // class RHI_EXPORT BufferPool
+    // {
+    // public:
+    //     ResultCode      Init(class Context& context, const BufferCreateInfo& createInfo);
+    //     void            Shutdown(class Context& context);
+
+    //     BufferView      Allocate(size_t size, size_t alignment);
+    //     TexelBufferView Allocate(size_t size, Format format);
+
+    //     void            Release(TexelBufferView texelBufferView);
+    //     void            Release(BufferView bufferView);
+
+    // private:
+    //     class Impl;
+    //     TL::Ptr<Impl> m_impl;
+    // };
 } // namespace RHI
 
 namespace std

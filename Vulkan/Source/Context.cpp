@@ -338,10 +338,10 @@ namespace RHI::Vulkan
         });
     }
 
-    Handle<BindGroup> IContext::Internal_CreateBindGroup(Handle<BindGroupLayout> layoutHandle, uint32_t bindlessElementsCount)
+    Handle<BindGroup> IContext::Internal_CreateBindGroup(Handle<BindGroupLayout> layoutHandle)
     {
         IBindGroup bindGroup{};
-        auto result = bindGroup.Init(this, layoutHandle, bindlessElementsCount);
+        auto result = bindGroup.Init(this, layoutHandle);
         if (IsError(result))
         {
             TL_LOG_ERROR("Failed to create bindGroup");
@@ -362,10 +362,10 @@ namespace RHI::Vulkan
         });
     }
 
-    void IContext::Internal_UpdateBindGroup(Handle<BindGroup> handle, TL::Span<const BindGroupUpdateInfo> bindings)
+    void IContext::Internal_UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo)
     {
         auto bindGroup = m_bindGroupOwner.Get(handle);
-        bindGroup->Write(this, bindings);
+        bindGroup->Write(this, updateInfo);
     }
 
     Handle<PipelineLayout> IContext::Internal_CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)

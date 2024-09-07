@@ -135,6 +135,7 @@ namespace RHI
     /// @brief Information required to create a pipeline layout.
     struct PipelineLayoutCreateInfo
     {
+        const char*             name;
         Handle<BindGroupLayout> layouts[c_MaxPipelineBindGroupsCount]; ///< Array of bind group layouts.
     };
 

@@ -11,6 +11,7 @@ namespace RHI::Vulkan
     class IContext;
 
     VkBufferUsageFlagBits ConvertBufferUsage(BufferUsage bufferUsage);
+
     VkBufferUsageFlags ConvertBufferUsageFlags(TL::Flags<BufferUsage> bufferUsageFlags);
 
     struct IBuffer : Buffer

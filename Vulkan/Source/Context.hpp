@@ -58,9 +58,9 @@ namespace RHI::Vulkan
         TL::Ptr<CommandPool>     Internal_CreateCommandPool(CommandPoolFlags flags) override;
         Handle<BindGroupLayout>  Internal_CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) override;
         void                     Internal_DestroyBindGroupLayout(Handle<BindGroupLayout> handle) override;
-        Handle<BindGroup>        Internal_CreateBindGroup(Handle<BindGroupLayout> handle, uint32_t bindlessElementsCount) override;
+        Handle<BindGroup>        Internal_CreateBindGroup(Handle<BindGroupLayout> handle) override;
         void                     Internal_DestroyBindGroup(Handle<BindGroup> handle) override;
-        void                     Internal_UpdateBindGroup(Handle<BindGroup> handle, TL::Span<const BindGroupUpdateInfo> bindings) override;
+        void                     Internal_UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo) override;
         Handle<PipelineLayout>   Internal_CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo) override;
         void                     Internal_DestroyPipelineLayout(Handle<PipelineLayout> handle) override;
         Handle<GraphicsPipeline> Internal_CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) override;
@@ -94,9 +94,6 @@ namespace RHI::Vulkan
         VkPhysicalDevice m_physicalDevice;
         VkDevice m_device;
         VmaAllocator m_allocator;
-
-        VkPhysicalDeviceProperties2 m_properties;
-        VkPhysicalDeviceMemoryProperties2 m_memoryProperties;
 
         struct
         {
@@ -135,6 +132,14 @@ namespace RHI::Vulkan
         HandlePool<IGraphicsPipeline> m_graphicsPipelineOwner;
         HandlePool<IComputePipeline> m_computePipelineOwner;
         HandlePool<ISampler> m_samplerOwner;
+
+        VkPhysicalDeviceDescriptorIndexingProperties m_descriptorIndexingProperties;
+        VkPhysicalDeviceVulkan13Properties m_properties13;
+        VkPhysicalDeviceVulkan12Properties m_properties12;
+        VkPhysicalDeviceVulkan11Properties m_properties11;
+        VkPhysicalDeviceProperties2 m_properties;
+
+        VkPhysicalDeviceMemoryProperties2 m_memoryProperties;
     };
 
 } // namespace RHI::Vulkan

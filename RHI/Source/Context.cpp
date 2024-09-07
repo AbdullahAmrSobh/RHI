@@ -89,11 +89,11 @@ namespace RHI
         Internal_DestroyBindGroupLayout(handle);
     }
 
-    Handle<BindGroup> Context::CreateBindGroup(Handle<BindGroupLayout> bindGroupLayoutHandle, uint32_t bindlessElementsCount)
+    Handle<BindGroup> Context::CreateBindGroup(Handle<BindGroupLayout> bindGroupLayoutHandle)
     {
         ZoneScoped;
 
-        return Internal_CreateBindGroup(bindGroupLayoutHandle, bindlessElementsCount);
+        return Internal_CreateBindGroup(bindGroupLayoutHandle);
     }
 
     void Context::DestroyBindGroup(Handle<BindGroup> handle)
@@ -103,11 +103,11 @@ namespace RHI
         Internal_DestroyBindGroup(handle);
     }
 
-    void Context::UpdateBindGroup(Handle<BindGroup> handle, TL::Span<const BindGroupUpdateInfo> bindings)
+    void Context::UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo)
     {
         ZoneScoped;
 
-        Internal_UpdateBindGroup(handle, bindings);
+        Internal_UpdateBindGroup(handle, updateInfo);
     }
 
     Handle<PipelineLayout> Context::CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)

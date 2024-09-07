@@ -11,6 +11,8 @@ namespace RHI::Vulkan
     struct IBindGroup;
     struct IBindGroupLayout;
 
+    static constexpr uint32_t MaxShaderBindingsCount = 32;
+
     VkDescriptorType ConvertDescriptorType(BindingType bindingType);
 
     class BindGroupAllocator
@@ -22,7 +24,7 @@ namespace RHI::Vulkan
         ResultCode Init();
         void Shutdown();
 
-        ResultCode InitBindGroup(IBindGroup* bindGroup, IBindGroupLayout* bindGroupLayout, uint32_t bindlessElementsCount);
+        ResultCode InitBindGroup(IBindGroup* bindGroup, IBindGroupLayout* bindGroupLayout);
         void ShutdownBindGroup(IBindGroup* bindGroup);
 
     public:
@@ -32,8 +34,9 @@ namespace RHI::Vulkan
 
     struct IBindGroupLayout : BindGroupLayout
     {
-        BindGroupLayoutCreateInfo layoutInfo;
         VkDescriptorSetLayout handle;
+        ShaderBinding shaderBindings[MaxShaderBindingsCount];
+        uint32_t bindlessCount;
 
         ResultCode Init(IContext* context, const BindGroupLayoutCreateInfo& createInfo);
         void Shutdown(IContext* context);
@@ -42,11 +45,12 @@ namespace RHI::Vulkan
     struct IBindGroup : BindGroup
     {
         VkDescriptorSet descriptorSet;
-        Handle<BindGroupLayout> layout;
+        ShaderBinding shaderBindings[MaxShaderBindingsCount];
+        uint32_t bindlessCount;
 
-        ResultCode Init(IContext* context, Handle<BindGroupLayout> layout, uint32_t bindlessElementsCount);
+        ResultCode Init(IContext* context, Handle<BindGroupLayout> layout);
         void Shutdown(IContext* context);
 
-        void Write(IContext* context, TL::Span<const BindGroupUpdateInfo> bindings);
+        void Write(IContext* context, const BindGroupUpdateInfo& updateInfo);
     };
 } // namespace RHI::Vulkan
