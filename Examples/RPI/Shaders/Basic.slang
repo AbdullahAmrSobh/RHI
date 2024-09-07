@@ -18,6 +18,7 @@ struct PSOutput
 struct ShaderParamters
 {
 	ConstantBuffer<SI::ViewCB> viewCB;
+	ConstantBuffer<SI::TransformUB> transformUB;
 };
 
 ParameterBlock<ShaderParamters> bindGroup0;
@@ -25,8 +26,9 @@ ParameterBlock<ShaderParamters> bindGroup0;
 [[shader("vertex")]]
 PSInput VSMain(VSInput input)
 {
+    var modelToClipMat4 = bindGroup0.viewCB.worldToClipMatrix * bindGroup0.transformUB.modelToWorldMatrix;
     PSInput result;
-    result.csPosition = mul(bindGroup0.viewCB.worldToClipMatrix, float4(input.position, 1.0f));
+    result.csPosition = mul(modelToClipMat4, float4(input.position, 1.0f));
     return result;
 }
 
@@ -34,6 +36,6 @@ PSInput VSMain(VSInput input)
 PSOutput PSMain(PSInput input)
 {
 	PSOutput output;
-    output.color = bindGroup0.viewCB.color;
+    output.color = float4(0.6, 0.4, 0.5, 1.0);
 	return output;
 }

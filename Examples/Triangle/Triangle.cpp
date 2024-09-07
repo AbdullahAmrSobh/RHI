@@ -18,6 +18,25 @@
 // FIXME: need to figure out my cooridnate system
 // Left Hand. Y-Up
 
+
+// auto sphereRadius = 10;
+// auto distance = 10;
+
+// for (int xi = 0; xi < 10; xi++)
+// {
+//     for (int xj = 0; xj < 10; xj++)
+//     {
+//         auto position = glm::vec3{ distance * i, 0, distance * j,  };
+//         auto color    = glm::vec4{ (float)xi/10.0f, (float)xj/10.0f, (float)(xi + xj)/10.0f, 1.0f };
+//     }
+// }
+
+// cameraPosition = glm::vec3{ 0.0f, -10.0, distance * 10.0 / 2.0 };
+// cameraDirection = glm::vec3{ 0, 1, 0 };
+
+
+
+
 using namespace Examples;
 
 // Will only import if the package was modified
@@ -235,9 +254,9 @@ public:
         {
             RHI::DrawInfo drawInfo{
                 .pipelineState = m_graphicsPipeline,
-                .bindGroups = RHI::BindGroupBindingInfo{
-                                                        m_bindGroup,
-                                                        { 256 * i++ } },
+                .bindGroups = {
+                               { m_bindGroup,
+                      { 256 * i++ } } },
                 .vertexBuffers = { mesh.m_positionVB },
                 .indexBuffer = { mesh.m_indexIB },
                 .parameters = { mesh.m_elementsCount, 1, 0, 0 },
@@ -269,7 +288,9 @@ public:
 
     struct MeshTransform
     {
-        glm::mat4 modelToWorldMatrix;
+        re_mat4 modelToWorldMatrix;
+        re_vec4 color;
+        char _padding[256 - sizeof(glm::mat4) - sizeof(glm::vec4)];
     };
 
     TL::Vector<MeshTransform> m_transforms;
@@ -341,17 +362,48 @@ public:
             });
             // clang-format on
         }
-        for (auto scenePath : package.GetSceneGraphs())
+
+        // for (auto scenePath : package.GetSceneGraphs())
+        // {
+        //     auto sceneAsset = TL::BinaryArchive::Load<Assets::SceneGraph>(scenePath.c_str());
+        //     sceneAsset.Traverse([&](Assets::SceneNode* node)
+        //     {
+        //         m_transforms.push_back({ node->GetTransform() });
+        //     });
+
+        // }
+        for (auto t : GenerateCubeTransformations())
         {
-            auto sceneAsset = TL::BinaryArchive::Load<Assets::SceneGraph>(scenePath.c_str());
-            for (auto node : sceneAsset.GetAllNodes())
+            m_transforms.push_back({
+                .modelToWorldMatrix = t, .color = { 1.0, 0.4, 0.5, 1.0 },
+                     ._padding = {}
+            });
+        }
+    }
+
+    std::vector<glm::mat4> GenerateCubeTransformations(int rows = 2, int columns = 3, float spacing = 1.0f)
+    {
+        std::vector<glm::mat4> transformations;
+
+        // Loop through each position in the grid
+        for (int row = 0; row < rows; ++row)
+        {
+            for (int col = 0; col < columns; ++col)
             {
-                if (node.models.empty() == false)
-                {
-                    // m_transforms.push_back(node.GetGlobalTransform(const SceneGraph &sceneGraph))
-                }
+                // Calculate the position for the current cube
+                float x = col * (spacing + 1.0f); // 1 unit spacing between cubes
+                float y = row * (spacing + 1.0f);
+
+                // Create the transformation matrix for the current cube
+                glm::mat4 transform = glm::mat4(1.0f); // Identity matrix
+                transform = glm::translate(transform, glm::vec3(x, y, 0.0f));
+
+                // Add the transformation matrix to the vector
+                transformations.push_back(transform);
             }
         }
+
+        return transformations;
     }
 
     void OnShutdown() override
@@ -381,6 +433,10 @@ public:
         auto ptr = m_renderer->m_context->MapBuffer(m_renderer->m_uniformBuffer);
         memcpy(ptr, &view, sizeof(SI::ViewCB));
         m_renderer->m_context->UnmapBuffer(m_renderer->m_uniformBuffer);
+
+        auto ptr2 = m_renderer->m_context->MapBuffer(m_renderer->m_uniformBuffer2);
+        memcpy(ptr2, m_transforms.data(), m_transforms.size() * sizeof(MeshTransform));
+        m_renderer->m_context->UnmapBuffer(m_renderer->m_uniformBuffer2);
 
         m_renderer->Render(m_meshes);
     }

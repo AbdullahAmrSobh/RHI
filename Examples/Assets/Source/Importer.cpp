@@ -91,38 +91,68 @@ namespace Examples::Assets
             return TL::String(outputPath) + "/" + filename;
         }
 
-        TL::String ImportScene(const aiScene& aiScene, TL::Span<TL::String> meshes, TL::Span<TL::String> materials)
-        {
-            SceneGraph sceneGraph;
+        /// @brief Imports an Assimp scene into a SceneGraph.
+        /// @param aiScene The Assimp scene to import.
+        /// @param meshes A span of mesh names to reference in the scene.
+        /// @param materials A span of material names to reference in the scene.
+        /// @return The path where the scene graph was saved.
+        // TL::String ImportScene(const aiScene& aiScene, TL::Span<TL::String> meshes, TL::Span<TL::String> materials)
+        // {
+        //     SceneGraph sceneGraph;
 
-            std::function<void(const aiNode*, SceneGraph::Node*)> convertNode = [&](const aiNode* aiNode, SceneGraph::Node* parentNode)
-            {
-                SceneGraph::Node* node = sceneGraph.AddNode(parentNode);
-                node->relativeTransform = ConvertMatrix(aiNode->mTransformation);
+        //     std::function<void(const aiNode*, SceneNode*)> convertNode = [&](const aiNode* aiNode, SceneNode* parentNode)
+        //     {
+        //         // Create a new scene node and attach it to the parent.
+        //         SceneNode* node = new SceneNode(aiNode->mName.C_Str());
+        //         if (parentNode)
+        //         {
+        //             parentNode->AddChild(node);
+        //         }
+        //         else
+        //         {
+        //             sceneGraph.AddNode(node);
+        //         }
 
-                for (uint32_t meshIndex = 0; meshIndex < aiNode->mNumMeshes; meshIndex++)
-                {
-                    auto aiMesh = aiScene.mMeshes[meshIndex];
-                    Model model{
-                        .mesh = TL::String(meshes[meshIndex]),
-                        .material = TL::String(materials[aiMesh->mMaterialIndex]),
-                        .transform = ConvertMatrix(aiNode->mTransformation)
-                    };
-                    node->models.push_back(model);
-                }
+        //         // Set the node's transformation.
+        //         node->SetTransform(ConvertMatrix(aiNode->mTransformation));
 
-                // TODO: process lights ...etc
+        //         // Process mesh references.
+        //         for (uint32_t meshIndex = 0; meshIndex < aiNode->mNumMeshes; ++meshIndex)
+        //         {
+        //             uint32_t aiMeshIndex = aiNode->mMeshes[meshIndex];
+        //             if (aiMeshIndex < meshes.size())
+        //             {
+        //                 node->AddMesh(meshes[aiMeshIndex].c_str());
+        //             }
+        //         }
 
-                for (uint32_t i = 0; i < aiNode->mNumChildren; ++i)
-                {
-                    convertNode(aiNode->mChildren[i], node);
-                }
-            };
+        //         // Process material references.
+        //         for (uint32_t meshIndex = 0; meshIndex < aiNode->mNumMeshes; ++meshIndex)
+        //         {
+        //             auto aiMesh = aiScene.mMeshes[aiNode->mMeshes[meshIndex]];
+        //             uint32_t materialIndex = aiMesh->mMaterialIndex;
+        //             if (materialIndex < materials.size())
+        //             {
+        //                 node->AddMaterial(materials[materialIndex].c_str());
+        //             }
+        //         }
 
-            auto path = SaveLocation( "scene.fgscene");
-            TL::BinaryArchive::Save(sceneGraph, path.c_str());
-            return path;
-        }
+        //         // Recursively process children nodes.
+        //         for (uint32_t i = 0; i < aiNode->mNumChildren; ++i)
+        //         {
+        //             convertNode(aiNode->mChildren[i], node);
+        //         }
+        //     };
+
+        //     // Start the conversion from the root node.
+        //     convertNode(aiScene.mRootNode, nullptr);
+
+        //     // Save the scene graph to a file.
+        //     auto path = SaveLocation("scene.fgscene");
+        //     TL::BinaryArchive::Save(sceneGraph, path.c_str());
+
+        //     return path;
+        // }
 
         TL::Vector<TL::String> ImportMeshes(TL::Span<aiMesh* const> aiMeshes)
         {
@@ -275,13 +305,13 @@ namespace Examples::Assets
         auto meshes = converter.ImportMeshes({ aiScene.mMeshes, aiScene.mNumMeshes });
         auto materials = converter.ImportMaterials({ aiScene.mMaterials, aiScene.mNumMaterials });
         auto textures = converter.ImportTextures();
-        auto sceneGraphs = converter.ImportScene(aiScene, meshes, materials);
+        // auto sceneGraphs = converter.ImportScene(aiScene, meshes, materials);
 
         Package package(importInfo.packageName, modifiyTime);
         package.AddMeshes(meshes);
         package.AddMaterials(materials);
         package.AddImages(textures);
-        package.AddSceneGraphs(sceneGraphs);
+        // package.AddSceneGraphs(sceneGraphs);
         return package;
     }
 } // namespace Examples::Assets
