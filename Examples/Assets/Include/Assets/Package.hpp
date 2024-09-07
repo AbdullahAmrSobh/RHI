@@ -1,81 +1,39 @@
 #pragma once
 
-#include "Assets/Name.hpp"
-#include "Assets/Mesh.hpp"
-#include "Assets/Material.hpp"
-#include "Assets/SceneGraph.hpp"
-#include "Assets/Image.hpp"
-
 #include <TL/Memory.hpp>
 #include <TL/Containers.hpp>
-
-#include <filesystem>
+#include <TL/Serialization/Binary.hpp>
 
 namespace Examples::Assets
 {
-
     class Package
     {
     public:
-        Package() = default;
+        Package();
+        Package(const char* name, uint64_t uniqueID);
 
-        Package(const char* name)
-            : m_name(name)
-        {
-        }
+        inline const TL::String& GetName() const { return m_exportName; }
 
-        inline void AddSceneGraph(std::filesystem::path path) { m_sceneGraphs.push_back(TL::String(path.string())); }
+        inline uint64_t GetID() const { return m_uniqueID; }
 
-        inline void AddSceneGraphs(TL::Span<const std::filesystem::path> paths)
-        {
-            for (auto path : paths)
-            {
-                AddSceneGraph(path);
-            }
-        }
+        void AddSceneGraphs(TL::Span<const TL::String> locations);
 
-        inline void AddMesh(std::filesystem::path path) { m_meshes.push_back(TL::String(path.string())); }
+        void AddMeshes(TL::Span<const TL::String> locations);
 
-        inline void AddMeshs(TL::Span<const std::filesystem::path> paths)
-        {
-            for (auto path : paths)
-            {
-                AddMesh(path);
-            }
-        }
+        void AddImages(TL::Span<const TL::String> locations);
 
-        inline void AddImage(std::filesystem::path path) { m_images.push_back(TL::String(path.string())); }
+        void AddMaterials(TL::Span<const TL::String> locations);
 
-        inline void AddImages(TL::Span<const std::filesystem::path> paths)
-        {
-            for (auto path : paths)
-            {
-                AddImage(path);
-            }
-        }
-
-        inline void AddMaterial(std::filesystem::path path) { m_materials.push_back(TL::String(path.string())); }
-
-        inline void AddMaterials(TL::Span<const std::filesystem::path> paths)
-        {
-            for (auto path : paths)
-            {
-                AddMaterial(path);
-            }
-        }
-
-        inline TL::Span<const TL::String> GetSceneGraphs() const { return m_sceneGraphs; }
-
-        inline TL::Span<const TL::String> GetMeshs() const { return m_meshes; }
-
-        inline TL::Span<const TL::String> GetImages() const { return m_images; }
-
-        inline TL::Span<const TL::String> GetMaterials() const { return m_materials; }
+        TL::Span<const TL::String> GetSceneGraphs() const;
+        TL::Span<const TL::String> GetMeshes() const;
+        TL::Span<const TL::String> GetImages() const;
+        TL::Span<const TL::String> GetMaterials() const;
 
         template<typename Archive>
         void Serialize(Archive& archive) const
         {
-            TL::Encode(archive, m_name);
+            TL::Encode(archive, m_exportName);
+            TL::Encode(archive, m_uniqueID);
             TL::Encode(archive, m_sceneGraphs);
             TL::Encode(archive, m_meshes);
             TL::Encode(archive, m_images);
@@ -85,7 +43,8 @@ namespace Examples::Assets
         template<typename Archive>
         void Deserialize(Archive& archive)
         {
-            TL::Decode(archive, m_name);
+            TL::Decode(archive, m_exportName);
+            TL::Decode(archive, m_uniqueID);
             TL::Decode(archive, m_sceneGraphs);
             TL::Decode(archive, m_meshes);
             TL::Decode(archive, m_images);
@@ -93,17 +52,11 @@ namespace Examples::Assets
         }
 
     private:
-        TL::String m_name;
-        TL::String m_path;
-
+        TL::String m_exportName;
+        uint64_t m_uniqueID;
         TL::Vector<TL::String> m_sceneGraphs;
         TL::Vector<TL::String> m_meshes;
         TL::Vector<TL::String> m_images;
         TL::Vector<TL::String> m_materials;
-
-        TL::UnorderedMap<Name, TL::WeakRef<SceneGraph>> m_sceneGraphsRefs;
-        TL::UnorderedMap<Name, TL::WeakRef<Mesh>> m_meshesRefs;
-        TL::UnorderedMap<Name, TL::WeakRef<Image>> m_imagesRefs;
-        TL::UnorderedMap<Name, TL::WeakRef<Material>> m_materialRefs;
     };
 } // namespace Examples::Assets

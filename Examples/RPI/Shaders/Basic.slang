@@ -1,18 +1,8 @@
 #include <ShaderInterface/Core.slang>
 
-static float4 ScreenQuadVertexPositions[] =
-{
-	{-0.9,  0.9, 1.0, 1.0},
-	{-0.9, -0.9, 1.0, 1.0},
-	{ 0.9, -0.9, 1.0, 1.0},
-	{-0.9,  0.9, 1.0, 1.0},
-	{ 0.9, -0.9, 1.0, 1.0},
-	{ 0.9,  0.9, 1.0, 1.0}
-};
-
 struct VSInput
 {
-    uint32_t vertexID : SV_VertexID;
+	float3 position;
 };
 
 struct PSInput
@@ -36,7 +26,7 @@ ParameterBlock<ShaderParamters> bindGroup0;
 PSInput VSMain(VSInput input)
 {
     PSInput result;
-    result.csPosition = mul(bindGroup0.viewCB.worldToClipMatrix, ScreenQuadVertexPositions[input.vertexID]);
+    result.csPosition = mul(bindGroup0.viewCB.worldToClipMatrix, float4(input.position, 1.0f));
     return result;
 }
 

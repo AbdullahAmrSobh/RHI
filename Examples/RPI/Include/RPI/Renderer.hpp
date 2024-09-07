@@ -45,6 +45,15 @@ namespace Examples::RPI
         size_t m_index = 0;              ///< The current index in the buffer.
     };
 
+    class Mesh
+    {
+    public:
+        uint32_t m_elementsCount;
+        Handle<RHI::Buffer> m_indexIB;
+        Handle<RHI::Buffer> m_positionVB;
+        Handle<RHI::Buffer> m_normalVB;
+    };
+
     class Renderer
     {
     public:
@@ -53,11 +62,11 @@ namespace Examples::RPI
 
         ResultCode Init(const Window& window);
         void Shutdown();
-        void Render();
+        void Render(TL::Span<RPI::Mesh> meshes);
 
         virtual ResultCode OnInit() = 0;
         virtual void OnShutdown() = 0;
-        virtual void OnRender() = 0;
+        virtual void OnRender(TL::Span<RPI::Mesh> meshes) = 0;
 
         // protected:
         const Window* m_window;

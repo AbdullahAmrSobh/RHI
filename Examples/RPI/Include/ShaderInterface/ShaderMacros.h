@@ -25,7 +25,7 @@
     #define re_mat3 re_alignas(glm::vec4) glm::mat3
     #define re_mat4 re_alignas(glm::vec4) glm::mat4
 
-    #define re_struct struct re_alignas(16)
+    #define re_struct struct
 
 #else // slang
 

@@ -1,11 +1,13 @@
 #include "Camera.hpp"
 
 #include <Assets/Importer.hpp>
+#include <Assets/Mesh.hpp>
 
 #include <Examples-Base/ApplicationBase.hpp>
-#include <RPI/ConstantBuffer.hpp>
+
 #include <RPI/Renderer.hpp>
 #include <RPI/View.hpp>
+
 #include <tracy/Tracy.hpp>
 
 #include <TL/FileSystem/FileSystem.hpp>
@@ -18,10 +20,37 @@
 
 using namespace Examples;
 
+// Will only import if the package was modified
+inline static Assets::Package LoadPackage(const char* importFile, const char* exportDir, const char* packageName)
+{
+    Assets::ImportInfo importInfo{
+        .filePath = importFile,
+        .outputPath = exportDir,
+        .packageName = packageName,
+    };
+
+    if (std::filesystem::exists(exportDir) && std::filesystem::is_directory(exportDir))
+    {
+        auto outputPath = TL::String(exportDir) + "/" + packageName;
+        auto package = TL::BinaryArchive::Load<Assets::Package>(outputPath.c_str());
+        auto lastModifyTime = std::filesystem::last_write_time(importInfo.filePath).time_since_epoch().count();
+        if (package.GetID() == lastModifyTime)
+        {
+            return package;
+        }
+    }
+    std::filesystem::create_directory(exportDir);
+    std::filesystem::current_path(exportDir);
+    auto package = Assets::Import(importInfo);
+    TL::BinaryArchive::Save(package, packageName);
+    return package;
+}
+
 class RenderImpl final : public RPI::Renderer
 {
 public:
-    RPI::ConstantBufferView<SI::ViewCB> m_viewCB;
+    RHI::Handle<RHI::Buffer> m_uniformBuffer;
+    RHI::Handle<RHI::Buffer> m_uniformBuffer2;
 
     RHI::Handle<RHI::BindGroup> m_bindGroup;
 
@@ -62,23 +91,62 @@ public:
         auto shaderModule = context->CreateShaderModule(spv);
         TL::Allocator::Release(spvBlock, alignof(char));
 
-        m_viewCB.Init(*m_context);
-        m_viewCB->color = { 0.4, 1.0, 0.4, 1.0 };
-        m_viewCB.Update();
+        RHI::BufferCreateInfo uniformBufferCI{
+            .name = "Uniform-Buffer",
+            .heapType = RHI::MemoryType::GPUShared,
+            .usageFlags = RHI::BufferUsage::Uniform,
+            .byteSize = TL::AlignUp(sizeof(SI::ViewCB), 256ull),
+        };
+        m_uniformBuffer = context->CreateBuffer(uniformBufferCI).GetValue();
 
-        RHI::BindGroupLayoutCreateInfo bindGroupLayoutCI{};
-        bindGroupLayoutCI.bindings[0].type = RHI::BindingType::UniformBuffer;
-        bindGroupLayoutCI.bindings[0].access = RHI::Access::Read;
-        bindGroupLayoutCI.bindings[0].arrayCount = 1;
-        bindGroupLayoutCI.bindings[0].stages = RHI::ShaderStage::Pixel;
-        bindGroupLayoutCI.bindings[0].stages |= RHI::ShaderStage::Vertex;
+        uniformBufferCI.name = "PerModelTransform";
+        uniformBufferCI.byteSize = TL::AlignUp(256, 256) * 12;
+        m_uniformBuffer2 = context->CreateBuffer(uniformBufferCI).GetValue();
+
+        // clang-format off
+        RHI::BindGroupLayoutCreateInfo bindGroupLayoutCI{
+            .name = "BGL-ViewUB",
+            .bindings =
+            {
+                {
+                    .type = RHI::BindingType::UniformBuffer,
+                    .access = RHI::Access::Read,
+                    .arrayCount = 1,
+                    .stages = RHI::ShaderStage::Pixel | RHI::ShaderStage::Vertex
+                },
+                {
+                    .type = RHI::BindingType::DynamicUniformBuffer,
+                    .access = RHI::Access::Read,
+                    .arrayCount = 1,
+                    .stages = RHI::ShaderStage::Pixel | RHI::ShaderStage::Vertex
+                },
+            }
+        };
         auto bindGroupLayout = context->CreateBindGroupLayout(bindGroupLayoutCI);
 
         m_bindGroup = context->CreateBindGroup(bindGroupLayout);
-        context->UpdateBindGroup(m_bindGroup, { RHI::BindGroupUpdateInfo(0, 0, m_viewCB.GetBuffer()) });
 
-        RHI::PipelineLayoutCreateInfo pipelineLayoutCI{ bindGroupLayout };
-        m_pipelineLayout = context->CreatePipelineLayout(pipelineLayoutCI);
+        RHI::BindGroupUpdateInfo bindGroupUpdateInfo{
+            .buffers =
+            {
+                {
+                    .dstBinding = 0,
+                    .dstArrayElement = 0,
+                    .buffer = m_uniformBuffer,
+                    .subregions = {}
+                },
+                {
+                    .dstBinding = 1,
+                    .dstArrayElement = 0,
+                    .buffer = m_uniformBuffer2,
+                    .subregions = { RHI::BufferSubregion{0, 256} }
+                },
+            }
+        };
+        context->UpdateBindGroup(m_bindGroup, bindGroupUpdateInfo);
+        // clang-format on
+
+        m_pipelineLayout = context->CreatePipelineLayout({ .name = nullptr, .layouts = { bindGroupLayout } });
 
         context->DestroyBindGroupLayout(bindGroupLayout);
 
@@ -89,7 +157,22 @@ public:
         pipelineCI.pixelShaderName = "PSMain";
         pipelineCI.pixelShaderModule = shaderModule.get();
         pipelineCI.layout = m_pipelineLayout;
-        pipelineCI.inputAssemblerState = {};
+        pipelineCI.inputAssemblerState = {
+            .bindings{
+                      {
+                    .binding = 0,
+                    .stride = sizeof(glm::vec3),
+                    .stepRate = RHI::PipelineVertexInputRate::PerVertex,
+                } },
+            .attributes{
+                      {
+                    .location = 0,
+                    .binding = 0,
+                    .format = RHI::Format::RGBA32_FLOAT,
+                    .offset = 0,
+                },
+                      },
+        };
         pipelineCI.renderTargetLayout.colorAttachmentsFormats[0] = RHI::Format::RGBA8_UNORM;
         pipelineCI.colorBlendState.blendStates[0].blendEnable = true;
         pipelineCI.colorBlendState.blendStates[0].colorBlendOp = RHI::BlendEquation::Add;
@@ -117,13 +200,13 @@ public:
 
     void OnShutdown() override
     {
-        m_viewCB.Shutdown(*m_context);
+        m_context->DestroyBuffer(m_uniformBuffer);
         m_context->DestroyBindGroup(m_bindGroup);
         m_context->DestroyPipelineLayout(m_pipelineLayout);
         m_context->DestroyGraphicsPipeline(m_graphicsPipeline);
     }
 
-    void OnRender() override
+    void OnRender(TL::Span<RPI::Mesh> meshes) override
     {
         auto& frame = m_frameRingbuffer.Get();
 
@@ -146,16 +229,22 @@ public:
         scissor.height = size.height;
         commandList->SetViewport(viewport);
         commandList->SetSicssor(scissor);
-        RHI::DrawInfo drawInfo{
-            .pipelineState = m_graphicsPipeline,
-            .bindGroups = {
-                           m_bindGroup,
-                           },
-            .vertexBuffers = {},
-            .indexBuffer = {},
-            .parameters = { 3, 1, 0, 0 },
-        };
-        commandList->Draw(drawInfo);
+
+        uint32_t i = 0;
+        for (auto mesh : meshes)
+        {
+            RHI::DrawInfo drawInfo{
+                .pipelineState = m_graphicsPipeline,
+                .bindGroups = RHI::BindGroupBindingInfo{
+                                                        m_bindGroup,
+                                                        { 256 * i++ } },
+                .vertexBuffers = { mesh.m_positionVB },
+                .indexBuffer = { mesh.m_indexIB },
+                .parameters = { mesh.m_elementsCount, 1, 0, 0 },
+            };
+            commandList->Draw(drawInfo);
+        }
+
         commandList->End();
 
         m_renderGraph->Submit(m_pass, commandList);
@@ -178,18 +267,16 @@ public:
 
     // RHI::BufferPool m_bufferPool;
 
-    TL::Vector<RHI::Handle<RHI::Buffer>> m_buffers;
+    struct MeshTransform
+    {
+        glm::mat4 modelToWorldMatrix;
+    };
+
+    TL::Vector<MeshTransform> m_transforms;
+    TL::Vector<RPI::Mesh> m_meshes;
 
     void OnInit() override
     {
-        // auto path = ApplicationBase::m_launchSettings.sceneFileLocation;
-        // auto newPackage = Assets::Import(path);
-        // for (auto mesh : newPackage.GetMeshs())
-        // {
-        //     // Assets::Mesh meshAsset =  TL::BinaryArchive::Decode(meshAsset, path / mesh);
-
-        // }
-
         m_camera.m_window = m_window.get();
         m_camera.SetPerspective(60.0f, 1600.0f / 1200.0f, 0.1f, 10000.0f);
         m_camera.SetRotationSpeed(0.0002f);
@@ -197,10 +284,85 @@ public:
         m_camera.SetRotation({ 0, 180, 0 });
 
         m_renderer->Init(*m_window);
+
+        auto context = m_renderer->m_context.get();
+
+        auto package = LoadPackage(m_launchSettings.sceneFileLocation.string().c_str(), "I:/Deccer-Cubes/", "pack.fgpack");
+        std::error_code err;
+        std::filesystem::current_path("I:/Deccer/Cubes", err);
+        TL_ASSERT(err, "Failed to change WD {}", err.message().c_str());
+        for (auto meshPath : package.GetMeshes())
+        {
+            auto meshAsset = TL::BinaryArchive::Load<Assets::Mesh>(meshPath.c_str());
+
+            auto indexData = meshAsset.GetBuffer(Assets::AttributeNames::Indcies);
+            auto positionsData = meshAsset.GetBuffer(Assets::AttributeNames::Positions);
+            auto normalsData = meshAsset.GetBuffer(Assets::AttributeNames::Normals);
+
+            // clang-format off
+            auto indexIB = context->CreateBuffer({
+                    .name = "Index-Buffer",
+                    .heapType = RHI::MemoryType::GPUShared,
+                    .usageFlags = RHI::BufferUsage::Index,
+                    .byteSize = indexData->GetData().size,
+                }).GetValue();
+            auto positionVB = context->CreateBuffer({
+                    .name = "Positions-VB",
+                    .heapType = RHI::MemoryType::GPUShared,
+                    .usageFlags = RHI::BufferUsage::Vertex,
+                    .byteSize = positionsData->GetData().size,
+                }).GetValue();
+            auto normalVB = context->CreateBuffer({
+                    .name = "Normals-VB",
+                    .heapType = RHI::MemoryType::GPUShared,
+                    .usageFlags = RHI::BufferUsage::Vertex,
+                    .byteSize = normalsData->GetData().size,
+                }).GetValue();
+            {
+                auto ptr = context->MapBuffer(indexIB);
+                memcpy(ptr, indexData->GetData().ptr, indexData->GetData().size);
+                context->UnmapBuffer(indexIB);
+            }
+            {
+                auto ptr = context->MapBuffer(positionVB);
+                memcpy(ptr, positionsData->GetData().ptr, positionsData->GetData().size);
+                context->UnmapBuffer(positionVB);
+            }
+            {
+                auto ptr = context->MapBuffer(normalVB);
+                memcpy(ptr, normalsData->GetData().ptr, normalsData->GetData().size);
+                context->UnmapBuffer(normalVB);
+            }
+            m_meshes.push_back({
+                indexData->GetElementsCount(),
+                indexIB,
+                positionVB,
+                normalVB,
+            });
+            // clang-format on
+        }
+        for (auto scenePath : package.GetSceneGraphs())
+        {
+            auto sceneAsset = TL::BinaryArchive::Load<Assets::SceneGraph>(scenePath.c_str());
+            for (auto node : sceneAsset.GetAllNodes())
+            {
+                if (node.models.empty() == false)
+                {
+                    // m_transforms.push_back(node.GetGlobalTransform(const SceneGraph &sceneGraph))
+                }
+            }
+        }
     }
 
     void OnShutdown() override
     {
+        auto context = m_renderer->m_context.get();
+        for (auto mesh : m_meshes)
+        {
+            context->DestroyBuffer(mesh.m_indexIB);
+            context->DestroyBuffer(mesh.m_normalVB);
+            context->DestroyBuffer(mesh.m_positionVB);
+        }
         m_renderer->Shutdown();
     }
 
@@ -211,12 +373,16 @@ public:
 
     void Render() override
     {
-        m_renderer->m_viewCB->worldToClipMatrix = m_camera.GetProjection() * m_camera.GetView();
-        m_renderer->m_viewCB->worldToViewMatrix = m_camera.GetView();
-        m_renderer->m_viewCB->viewToClipMatrix = m_camera.GetProjection();
-        m_renderer->m_viewCB.Update();
+        SI::ViewCB view{};
+        view.worldToClipMatrix = m_camera.GetProjection() * m_camera.GetView();
+        view.worldToViewMatrix = m_camera.GetView();
+        view.viewToClipMatrix = m_camera.GetProjection();
 
-        m_renderer->Render();
+        auto ptr = m_renderer->m_context->MapBuffer(m_renderer->m_uniformBuffer);
+        memcpy(ptr, &view, sizeof(SI::ViewCB));
+        m_renderer->m_context->UnmapBuffer(m_renderer->m_uniformBuffer);
+
+        m_renderer->Render(m_meshes);
     }
 
     void OnEvent(Event& e) override

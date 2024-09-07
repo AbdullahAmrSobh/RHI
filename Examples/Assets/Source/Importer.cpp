@@ -1,7 +1,10 @@
 #include "Assets/Importer.hpp"
-#include "Assets/Mesh.hpp"
+
+#include "Assets/Package.hpp"
 #include "Assets/Image.hpp"
+#include "Assets/Mesh.hpp"
 #include "Assets/SceneGraph.hpp"
+#include "Assets/Material.hpp"
 
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
@@ -15,11 +18,13 @@
 #include <glm/glm.hpp>
 #include <glm/ext/matrix_transform.hpp>
 
-#include <filesystem>
 #include <functional>
 
 namespace Examples::Assets
 {
+    // TODO: should be computed at runtime
+    static constexpr const char* CompressonatorPath = "C:/Users/abdul/Desktop/compressonatorcli-4.5.52-win64/compressonatorcli.exe";
+
     template<typename V>
     void GetAssimpMaterialProperty(const aiMaterial& aiMaterial, const char* propertyKey, uint32_t slot, uint32_t index, V& materialParameterProperty)
     {
@@ -35,9 +40,9 @@ namespace Examples::Assets
     {
         // clang-format off
         glm::mat4 result(matrix.a1, matrix.b1, matrix.c1, matrix.d1,
-                        matrix.a2, matrix.b2, matrix.c2, matrix.d2,
-                        matrix.a3, matrix.b3, matrix.c3, matrix.d3,
-                        matrix.a4, matrix.b4, matrix.c4, matrix.d4);
+                         matrix.a2, matrix.b2, matrix.c2, matrix.d2,
+                         matrix.a3, matrix.b3, matrix.c3, matrix.d3,
+                         matrix.a4, matrix.b4, matrix.c4, matrix.d4);
         // clang-format on
         return result;
     }
@@ -70,68 +75,64 @@ namespace Examples::Assets
 
     struct Converter
     {
-        std::filesystem::path scenePath;
-        std::filesystem::path outputPath;
-        std::filesystem::path compressonatorPath;
+        const char* inputPath;
+        const char* outputPath;
 
-        TL::UnorderedMap<std::filesystem::path, std::filesystem::path> pathLookup; // maps an assimp old path to new exported path
+        TL::UnorderedMap<TL::String, TL::String> pathLookup;
 
-        std::filesystem::path ResolvePath(std::filesystem::path oldPath, std::filesystem::path newPath)
+        const char* ResolvePath(const char* oldPath, const char* newPath)
         {
             pathLookup[oldPath] = newPath;
             return newPath;
         }
 
-        std::filesystem::path ImportScene(const aiScene& aiScene, TL::Span<std::filesystem::path> meshes, TL::Span<std::filesystem::path> materials)
+        TL::String SaveLocation(TL::String filename)
+        {
+            return TL::String(outputPath) + "/" + filename;
+        }
+
+        TL::String ImportScene(const aiScene& aiScene, TL::Span<TL::String> meshes, TL::Span<TL::String> materials)
         {
             SceneGraph sceneGraph;
 
             std::function<void(const aiNode*, SceneGraph::Node*)> convertNode = [&](const aiNode* aiNode, SceneGraph::Node* parentNode)
             {
-                // Create a new node in the scene graph
                 SceneGraph::Node* node = sceneGraph.AddNode(parentNode);
-
-                // Convert Assimp's transformation matrix to glm::mat4
                 node->relativeTransform = ConvertMatrix(aiNode->mTransformation);
 
-                // Assume each aiNode has either a mesh, material, light, or camera attached (simplified).
                 for (uint32_t meshIndex = 0; meshIndex < aiNode->mNumMeshes; meshIndex++)
                 {
                     auto aiMesh = aiScene.mMeshes[meshIndex];
                     Model model{
-                        .mesh = TL::String(meshes[meshIndex].string()),
-                        .material = TL::String(materials[aiMesh->mMaterialIndex].string()),
+                        .mesh = TL::String(meshes[meshIndex]),
+                        .material = TL::String(materials[aiMesh->mMaterialIndex]),
                         .transform = ConvertMatrix(aiNode->mTransformation)
                     };
                     node->models.push_back(model);
                 }
 
-                // Light and Camera would be processed similarly if present
+                // TODO: process lights ...etc
 
-                // Recursively convert child nodes
                 for (uint32_t i = 0; i < aiNode->mNumChildren; ++i)
                 {
                     convertNode(aiNode->mChildren[i], node);
                 }
             };
 
-            // Start conversion from the root node
-            convertNode(aiScene.mRootNode, nullptr); // Root node has no parent, so pass -1 or a sentinel value
-            auto fileName = outputPath / "scene.fgscene";
-            std::fstream file{ fileName, std::ios::binary | std::ios::out };
-            TL::BinaryArchive encoder{ file };
-            encoder.Encode(sceneGraph);
-            return fileName;
+            auto path = SaveLocation( "scene.fgscene");
+            TL::BinaryArchive::Save(sceneGraph, path.c_str());
+            return path;
         }
 
-        TL::Vector<std::filesystem::path> ImportMeshes(TL::Span<aiMesh* const> aiMeshes)
+        TL::Vector<TL::String> ImportMeshes(TL::Span<aiMesh* const> aiMeshes)
         {
-            auto currentSaveDirectory = outputPath / "./meshes";
+            TL::String currentSaveDirectory = TL::String(outputPath) + "/meshes";
             if (std::filesystem::exists(currentSaveDirectory) == false)
             {
                 TL_ASSERT(std::filesystem::create_directory(currentSaveDirectory));
             }
-            TL::Vector<std::filesystem::path> output;
+
+            TL::Vector<TL::String> output;
             uint32_t count = 0;
             for (auto aiMesh : aiMeshes)
             {
@@ -139,7 +140,7 @@ namespace Examples::Assets
                 if (aiMesh->HasFaces())
                 {
                     auto indexData = ConvertAssimpFaces(TL::Span<aiFace>{ aiMesh->mFaces, aiMesh->mNumFaces });
-                    mesh.AddAttribute<uint32_t>(AttributeNames::Faces, indexData);
+                    mesh.AddAttribute<uint32_t>(AttributeNames::Indcies, indexData);
                 }
                 if (aiMesh->HasPositions())
                 {
@@ -157,27 +158,23 @@ namespace Examples::Assets
 
                 // TODO add other attributes if/when needed
 
-                auto fileName = currentSaveDirectory / aiMesh->mName.C_Str() ;
-                fileName.replace_extension(std::format("{}.fgmesh", count++));
-
-                std::fstream file{ fileName, std::ios::binary | std::ios::out };
-                TL::BinaryArchive encoder{ file };
-                encoder.Encode(mesh);
-                output.push_back(fileName.lexically_relative(outputPath));
+                auto fileName = SaveLocation(std::format("meshes/{}-{}.fgmesh", aiMesh->mName.C_Str(), count++).c_str());
+                TL::BinaryArchive::Save(mesh, fileName.c_str());
+                output.push_back(fileName);
             }
             return output;
         }
 
-        TL::Vector<std::filesystem::path> ImportMaterials(TL::Span<aiMaterial* const> aiMaterials)
+        TL::Vector<TL::String> ImportMaterials(TL::Span<aiMaterial* const> aiMaterials)
         {
-            auto currentSaveDirectory = outputPath / "./materials";
+            TL::String currentSaveDirectory = TL::String(outputPath) + "/materials";
             if (std::filesystem::exists(currentSaveDirectory) == false)
             {
                 TL_ASSERT(std::filesystem::create_directory(currentSaveDirectory));
             }
 
             uint32_t nameIndex = 0;
-            TL::Vector<std::filesystem::path> output;
+            TL::Vector<TL::String> output;
             for (auto aiMaterial : aiMaterials)
             {
                 Material material{ aiMaterial->GetName().C_Str() };
@@ -206,7 +203,7 @@ namespace Examples::Assets
 
                     std::filesystem::path oldPath = temp.C_Str();
                     std::filesystem::path newPath = texturesSaveDir / oldPath.filename().replace_extension(".dds");
-                    pathLookup[oldPath] = newPath;
+                    pathLookup[oldPath.string().c_str()] = newPath.string().c_str();
                     return newPath;
                 };
 
@@ -232,34 +229,26 @@ namespace Examples::Assets
                 material.transmissionMap = getTexture(aiTextureType_TRANSMISSION, 0);
                 material.unknownMap = getTexture(aiTextureType_UNKNOWN, 0);
 
-                auto fileName = currentSaveDirectory / aiMaterial->GetName().C_Str();
-                fileName.replace_extension(".fgmesh");
-                if (aiMaterial->GetName().length == 0)
-                {
-                    fileName = currentSaveDirectory / std::format("unnamed-{}.fgmesh", nameIndex++);
-                }
-
-                std::fstream file{ fileName, std::ios::binary | std::ios::out };
-                TL::BinaryArchive encoder{ file };
-                encoder.Encode(material);
-                output.push_back(fileName.lexically_relative(outputPath));
+                auto fileName = SaveLocation(std::format("materials/{}-{}.fgmaterial", aiMaterial->GetName().C_Str(), nameIndex++).c_str());
+                TL::BinaryArchive::Save(material, fileName.c_str());
+                output.push_back(fileName);
             }
             return output;
         }
 
-        TL::Vector<std::filesystem::path> ImportTextures()
+        TL::Vector<TL::String> ImportTextures()
         {
-            auto currentSaveDirectory = outputPath / "./textures";
+            TL::String currentSaveDirectory = TL::String(outputPath) + "/textures";
             if (std::filesystem::exists(currentSaveDirectory) == false)
             {
                 TL_ASSERT(std::filesystem::create_directory(currentSaveDirectory));
             }
-            TL::Vector<std::filesystem::path> output;
+
+            TL::Vector<TL::String> output;
             for (auto [oldPath, newPath] : pathLookup)
             {
-                auto fullOldPath = scenePath.parent_path() / oldPath;
-                auto fullNewPath = outputPath / newPath;
-                auto command = std::format("{} -EncodeWith GPU -fd {} {} {}", compressonatorPath.string(), "BC7", fullOldPath.string(), fullNewPath.string());
+                auto fullOldPath = std::filesystem::path(inputPath) / oldPath;
+                auto command = std::format("{} -EncodeWith GPU -fd {} {} {}", CompressonatorPath, "BC7", fullOldPath.string(), currentSaveDirectory.c_str());
                 std::system(command.c_str());
                 output.push_back(newPath);
             }
@@ -267,30 +256,32 @@ namespace Examples::Assets
         }
     };
 
-    Package Import(std::filesystem::path file)
+    Package Import(const ImportInfo& importInfo)
     {
-        Assimp::Importer aiImporter;
-        auto aiSceneFlags = aiProcess_Triangulate | aiProcess_GenSmoothNormals;
-        const auto& aiScene = *aiImporter.ReadFile(file.string().c_str(), aiSceneFlags);
+        std::filesystem::path filePath = importInfo.filePath;
+        uint64_t modifiyTime = 0;
+        {
+            modifiyTime = std::filesystem::last_write_time(filePath.parent_path()).time_since_epoch().count();
+        }
 
-        std::filesystem::create_directory(file.parent_path() / "cache");
+        Assimp::Importer importer;
+        const auto& aiScene = *importer.ReadFile(importInfo.filePath, aiProcess_Triangulate | aiProcess_GenSmoothNormals);
+
+        std::filesystem::create_directory(importInfo.outputPath);
 
         Converter converter;
-        converter.scenePath = file;
-        converter.outputPath = file.parent_path() / "cache";
-        /// @todo find the path to compressonatorcli through downloaded cmake package
-        converter.compressonatorPath = "C:/Users/abdul/Desktop/compressonatorcli-4.5.52-win64/compressonatorcli.exe";
+        converter.inputPath = filePath.parent_path().string().c_str();
+        converter.outputPath = importInfo.outputPath;
         auto meshes = converter.ImportMeshes({ aiScene.mMeshes, aiScene.mNumMeshes });
         auto materials = converter.ImportMaterials({ aiScene.mMaterials, aiScene.mNumMaterials });
-        auto sceneGraphs = converter.ImportScene(aiScene, meshes, materials);
         auto textures = converter.ImportTextures();
+        auto sceneGraphs = converter.ImportScene(aiScene, meshes, materials);
 
-        /// @todo load embedded textures
-
-        Package package(file.filename().string().c_str());
-        package.AddMeshs(meshes);
+        Package package(importInfo.packageName, modifiyTime);
+        package.AddMeshes(meshes);
         package.AddMaterials(materials);
         package.AddImages(textures);
+        package.AddSceneGraphs(sceneGraphs);
         return package;
     }
 } // namespace Examples::Assets

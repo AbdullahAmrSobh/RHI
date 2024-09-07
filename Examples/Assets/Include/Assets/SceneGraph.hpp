@@ -2,6 +2,7 @@
 
 #include "Assets/Export.hpp"
 #include "Assets/Name.hpp"
+#include "Assets/SerializeGLM.hpp"
 
 #include <TL/Containers.hpp>
 #include <TL/UniquePtr.hpp>
@@ -119,6 +120,8 @@ namespace Examples::Assets
 
         Node* GetRootNode();
 
+        TL::Span<Node> GetAllNodes();
+
         template<typename Archive>
         void Serialize(Archive& archive) const
         {
@@ -174,4 +177,10 @@ namespace Examples::Assets
     {
         m_nodes.reserve(10000);
     }
+
+    inline TL::Span<SceneGraph::Node> SceneGraph::GetAllNodes()
+    {
+        return m_nodes;
+    }
+
 } // namespace Examples::Assets

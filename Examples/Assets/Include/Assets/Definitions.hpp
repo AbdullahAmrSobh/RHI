@@ -63,9 +63,18 @@ namespace Examples::Assets
     {
         Unknown,
 
-        R8 , RG8,  RGB8,  RGBA8,
-        R16, RG16, RGB16, RGBA16,
-        R32, RG32, RGB32, RGBA32,
+        R8,
+        RG8,
+        RGB8,
+        RGBA8,
+        R16,
+        RG16,
+        RGB16,
+        RGBA16,
+        R32,
+        RG32,
+        RGB32,
+        RGBA32,
 
         BC1,
         BC2,
@@ -82,104 +91,64 @@ namespace Examples::Assets
 
     namespace AttributeNames
     {
-        // clang-format off
         static constexpr const char* Indcies               = "Indcies";
         static constexpr const char* Normals               = "Normals";
         static constexpr const char* TangentsAndBitangents = "TangentsAndBitangents";
         static constexpr const char* VertexColors          = "VertexColors";
         static constexpr const char* TextureCoords         = "TextureCoords";
         static constexpr const char* Positions             = "Positions";
-        static constexpr const char* Faces                 = "Faces";
         static constexpr const char* Bones                 = "Bones";
         static constexpr const char* TextureCoordsName     = "TextureCoordsName";
-        // clang-format on
     }; // namespace AttributeNames
 
     template<typename VertexType>
     constexpr VertexFormat GetVertexFormat()
     {
-        if constexpr (std::is_same_v<VertexType, float>)
-            return VertexFormat::F32;
-        else if constexpr (std::is_same_v<VertexType, glm::vec2>)
-            return VertexFormat::F32Vec2;
-        else if constexpr (std::is_same_v<VertexType, glm::vec3>)
-            return VertexFormat::F32Vec3;
-        else if constexpr (std::is_same_v<VertexType, glm::vec4>)
-            return VertexFormat::F32Vec4;
+        if constexpr (std::is_same_v<VertexType, float>) return VertexFormat::F32;
+        else if constexpr (std::is_same_v<VertexType, glm::vec2>) return VertexFormat::F32Vec2;
+        else if constexpr (std::is_same_v<VertexType, glm::vec3>) return VertexFormat::F32Vec3;
+        else if constexpr (std::is_same_v<VertexType, glm::vec4>) return VertexFormat::F32Vec4;
 
-        else if constexpr (std::is_same_v<VertexType, uint8_t>)
-            return VertexFormat::U8;
-        else if constexpr (std::is_same_v<VertexType, glm::u8vec2>)
-            return VertexFormat::U8Vec2;
-        else if constexpr (std::is_same_v<VertexType, glm::u8vec3>)
-            return VertexFormat::U8Vec3;
-        else if constexpr (std::is_same_v<VertexType, glm::u8vec4>)
-            return VertexFormat::U8Vec4;
+        else if constexpr (std::is_same_v<VertexType, uint8_t>) return VertexFormat::U8;
+        else if constexpr (std::is_same_v<VertexType, glm::u8vec2>) return VertexFormat::U8Vec2;
+        else if constexpr (std::is_same_v<VertexType, glm::u8vec3>) return VertexFormat::U8Vec3;
+        else if constexpr (std::is_same_v<VertexType, glm::u8vec4>) return VertexFormat::U8Vec4;
 
-        else if constexpr (std::is_same_v<VertexType, uint16_t>)
-            return VertexFormat::U16;
-        else if constexpr (std::is_same_v<VertexType, glm::u16vec2>)
-            return VertexFormat::U16Vec2;
-        else if constexpr (std::is_same_v<VertexType, glm::u16vec3>)
-            return VertexFormat::U16Vec3;
-        else if constexpr (std::is_same_v<VertexType, glm::u16vec4>)
-            return VertexFormat::U16Vec4;
+        else if constexpr (std::is_same_v<VertexType, uint16_t>) return VertexFormat::U16;
+        else if constexpr (std::is_same_v<VertexType, glm::u16vec2>) return VertexFormat::U16Vec2;
+        else if constexpr (std::is_same_v<VertexType, glm::u16vec3>) return VertexFormat::U16Vec3;
+        else if constexpr (std::is_same_v<VertexType, glm::u16vec4>) return VertexFormat::U16Vec4;
 
-        else if constexpr (std::is_same_v<VertexType, uint32_t>)
-            return VertexFormat::U32;
-        else if constexpr (std::is_same_v<VertexType, glm::u32vec2>)
-            return VertexFormat::U32Vec2;
-        else if constexpr (std::is_same_v<VertexType, glm::u32vec3>)
-            return VertexFormat::U32Vec3;
-        else if constexpr (std::is_same_v<VertexType, glm::u32vec4>)
-            return VertexFormat::U32Vec4;
+        else if constexpr (std::is_same_v<VertexType, uint32_t>) return VertexFormat::U32;
+        else if constexpr (std::is_same_v<VertexType, glm::u32vec2>) return VertexFormat::U32Vec2;
+        else if constexpr (std::is_same_v<VertexType, glm::u32vec3>) return VertexFormat::U32Vec3;
+        else if constexpr (std::is_same_v<VertexType, glm::u32vec4>) return VertexFormat::U32Vec4;
 
-        else if constexpr (std::is_same_v<VertexType, uint64_t>)
-            return VertexFormat::U64;
-        else if constexpr (std::is_same_v<VertexType, glm::u64vec2>)
-            return VertexFormat::U64Vec2;
-        else if constexpr (std::is_same_v<VertexType, glm::u64vec3>)
-            return VertexFormat::U64Vec3;
-        else if constexpr (std::is_same_v<VertexType, glm::u64vec4>)
-            return VertexFormat::U64Vec4;
+        else if constexpr (std::is_same_v<VertexType, uint64_t>) return VertexFormat::U64;
+        else if constexpr (std::is_same_v<VertexType, glm::u64vec2>) return VertexFormat::U64Vec2;
+        else if constexpr (std::is_same_v<VertexType, glm::u64vec3>) return VertexFormat::U64Vec3;
+        else if constexpr (std::is_same_v<VertexType, glm::u64vec4>) return VertexFormat::U64Vec4;
 
-        else if constexpr (std::is_same_v<VertexType, int8_t>)
-            return VertexFormat::I8;
-        else if constexpr (std::is_same_v<VertexType, glm::i8vec2>)
-            return VertexFormat::I8Vec2;
-        else if constexpr (std::is_same_v<VertexType, glm::i8vec3>)
-            return VertexFormat::I8Vec3;
-        else if constexpr (std::is_same_v<VertexType, glm::i8vec4>)
-            return VertexFormat::I8Vec4;
+        else if constexpr (std::is_same_v<VertexType, int8_t>) return VertexFormat::I8;
+        else if constexpr (std::is_same_v<VertexType, glm::i8vec2>) return VertexFormat::I8Vec2;
+        else if constexpr (std::is_same_v<VertexType, glm::i8vec3>) return VertexFormat::I8Vec3;
+        else if constexpr (std::is_same_v<VertexType, glm::i8vec4>) return VertexFormat::I8Vec4;
 
-        else if constexpr (std::is_same_v<VertexType, int16_t>)
-            return VertexFormat::I16;
-        else if constexpr (std::is_same_v<VertexType, glm::i16vec2>)
-            return VertexFormat::I16Vec2;
-        else if constexpr (std::is_same_v<VertexType, glm::i16vec3>)
-            return VertexFormat::I16Vec3;
-        else if constexpr (std::is_same_v<VertexType, glm::i16vec4>)
-            return VertexFormat::I16Vec4;
+        else if constexpr (std::is_same_v<VertexType, int16_t>) return VertexFormat::I16;
+        else if constexpr (std::is_same_v<VertexType, glm::i16vec2>) return VertexFormat::I16Vec2;
+        else if constexpr (std::is_same_v<VertexType, glm::i16vec3>) return VertexFormat::I16Vec3;
+        else if constexpr (std::is_same_v<VertexType, glm::i16vec4>) return VertexFormat::I16Vec4;
 
-        else if constexpr (std::is_same_v<VertexType, int32_t>)
-            return VertexFormat::I32;
-        else if constexpr (std::is_same_v<VertexType, glm::i32vec2>)
-            return VertexFormat::I32Vec2;
-        else if constexpr (std::is_same_v<VertexType, glm::i32vec3>)
-            return VertexFormat::I32Vec3;
-        else if constexpr (std::is_same_v<VertexType, glm::i32vec4>)
-            return VertexFormat::I32Vec4;
+        else if constexpr (std::is_same_v<VertexType, int32_t>) return VertexFormat::I32;
+        else if constexpr (std::is_same_v<VertexType, glm::i32vec2>) return VertexFormat::I32Vec2;
+        else if constexpr (std::is_same_v<VertexType, glm::i32vec3>) return VertexFormat::I32Vec3;
+        else if constexpr (std::is_same_v<VertexType, glm::i32vec4>) return VertexFormat::I32Vec4;
 
-        else if constexpr (std::is_same_v<VertexType, int64_t>)
-            return VertexFormat::I64;
-        else if constexpr (std::is_same_v<VertexType, glm::i64vec2>)
-            return VertexFormat::I64Vec2;
-        else if constexpr (std::is_same_v<VertexType, glm::i64vec3>)
-            return VertexFormat::I64Vec3;
-        else if constexpr (std::is_same_v<VertexType, glm::i64vec4>)
-            return VertexFormat::I64Vec4;
+        else if constexpr (std::is_same_v<VertexType, int64_t>) return VertexFormat::I64;
+        else if constexpr (std::is_same_v<VertexType, glm::i64vec2>) return VertexFormat::I64Vec2;
+        else if constexpr (std::is_same_v<VertexType, glm::i64vec3>) return VertexFormat::I64Vec3;
+        else if constexpr (std::is_same_v<VertexType, glm::i64vec4>) return VertexFormat::I64Vec4;
 
-        else
-            return VertexFormat::Custom;
+        else return VertexFormat::Custom;
     }
 } // namespace Examples::Assets

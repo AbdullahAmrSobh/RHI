@@ -69,7 +69,7 @@ namespace Examples::RPI
         delete m_context.release();
     }
 
-    void Renderer::Render()
+    void Renderer::Render(TL::Span<RPI::Mesh> meshes)
     {
         auto& frame = m_frameRingbuffer.Get();
         if (frame.m_fence->GetState() != RHI::FenceState::Signaled)
@@ -78,7 +78,7 @@ namespace Examples::RPI
         }
         frame.m_fence->Reset();
 
-        OnRender();
+        OnRender(meshes);
 
         m_context->ExecuteRenderGraph(*m_renderGraph, m_frameRingbuffer.Get().m_fence.get());
 
