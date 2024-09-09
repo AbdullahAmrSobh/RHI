@@ -20,59 +20,36 @@ using namespace Examples;
 class Camera
 {
 private:
-    float fov;
-    float znear, zfar;
-
-    inline void UpdateViewMatrix()
-    {
-        glm::mat4 rotM = glm::mat4(1.0f);
-        glm::mat4 transM;
-
-        rotM = glm::rotate(rotM, glm::radians(rotation.x * (flipY ? -1.0f : 1.0f)), glm::vec3(1.0f, 0.0f, 0.0f));
-        rotM = glm::rotate(rotM, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-        rotM = glm::rotate(rotM, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
-
-        glm::vec3 translation = position;
-        if (flipY)
-        {
-            translation.y *= -1.0f;
-        }
-        transM = glm::translate(glm::mat4(1.0f), translation);
-
-        if (type == CameraType::FirstPerson)
-        {
-            matrices.view = rotM * transM;
-        }
-        else
-        {
-            matrices.view = transM * rotM;
-        }
-
-        viewPos = glm::vec4(position, 0.0f) * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f);
-    }
-
     enum CameraType
     {
         LookAt,
         FirstPerson
     };
 
-    CameraType type = CameraType::FirstPerson;
+    enum class ProjectionMode
+    {
+        Perspective,
+        Orthographic,
+    };
 
-    glm::vec3 rotation = glm::vec3();
-    glm::vec3 position = glm::vec3();
-    glm::vec4 viewPos = glm::vec4();
+    CameraType cameraType = CameraType::FirstPerson;
+    ProjectionMode projectionMode = ProjectionMode::Perspective;
 
-    float rotationSpeed = 1.0f;
-    float movementSpeed = 1.0f;
+    glm::vec3 m_rotation = glm::vec3();
+    glm::vec3 m_position = glm::vec3();
+    glm::vec4 m_viewPos = glm::vec4();
 
-    bool flipY = false;
+    float m_rotationSpeed = 1.0f;
+    float m_movementSpeed = 1.0f;
+
+    float m_fov;
+    float m_znear, m_zfar;
 
     struct
     {
-        glm::mat4 perspective;
-        glm::mat4 view;
-    } matrices;
+        glm::mat4 viewToClipMat;
+        glm::mat4 worldToViewMat;
+    } m_matrices;
 
     struct
     {
@@ -80,7 +57,28 @@ private:
         bool right = false;
         bool up = false;
         bool down = false;
-    } keys;
+    } m_keys;
+
+    inline void UpdateViewMatrix()
+    {
+        glm::mat4 rotM = glm::mat4(1.0f);
+        rotM = glm::rotate(rotM, glm::radians(m_rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+        rotM = glm::rotate(rotM, glm::radians(m_rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+        rotM = glm::rotate(rotM, glm::radians(m_rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+
+        glm::mat4 transM = glm::translate(glm::mat4(1.0f), m_position);
+
+        if (cameraType == CameraType::FirstPerson)
+        {
+            m_matrices.worldToViewMat = rotM * transM;
+        }
+        else
+        {
+            m_matrices.worldToViewMat = transM * rotM;
+        }
+
+        m_viewPos = glm::vec4(m_position, 0.0f) * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f);
+    }
 
 public:
     class Window* m_window;
@@ -94,103 +92,108 @@ public:
             { 0.0f, 0.0f,  0.0f,  1.0f},
         };
 
-        return matrices.perspective * correction_matrix;
+        return m_matrices.viewToClipMat * correction_matrix;
     }
 
     inline glm::mat4 GetView() const
     {
-        return matrices.view;
+        return m_matrices.worldToViewMat;
     }
 
     inline bool Moving()
     {
-        return keys.left || keys.right || keys.up || keys.down;
+        return m_keys.left || m_keys.right || m_keys.up || m_keys.down;
     }
 
     inline float GetNearClip()
     {
-        return znear;
+        return m_znear;
     }
 
     inline float GetFarClip()
     {
-        return zfar;
+        return m_zfar;
     }
 
     inline void SetPerspective(float fov, float aspect, float znear, float zfar)
     {
-        this->fov = fov;
-        this->znear = znear;
-        this->zfar = zfar;
-        matrices.perspective = glm::perspectiveLH(glm::radians(fov), aspect, znear, zfar);
-        if (flipY)
-        {
-            matrices.perspective[1][1] *= -1.0f;
-        }
+        this->m_fov = fov;
+        this->m_znear = znear;
+        this->m_zfar = zfar;
+        m_matrices.viewToClipMat = glm::perspectiveLH(glm::radians(fov), aspect, znear, zfar);
+    }
+
+    inline void SetOrthographic(float left, float right, float bottom, float top, float znear, float zfar)
+    {
+        this->m_fov = 0;
+        this->m_znear = znear;
+        this->m_zfar = zfar;
+        m_matrices.viewToClipMat = glm::orthoLH(left, right, bottom, top, znear, zfar);
     }
 
     inline void SetPosition(glm::vec3 position)
     {
-        this->position = position;
+        this->m_position = position;
         UpdateViewMatrix();
     }
 
     inline void SetRotation(glm::vec3 rotation)
     {
-        this->rotation = rotation;
+        this->m_rotation = rotation;
         UpdateViewMatrix();
     }
 
     inline void Rotate(glm::vec3 delta)
     {
-        this->rotation += delta;
+        this->m_rotation += delta;
         UpdateViewMatrix();
     }
 
     inline void SetTranslation(glm::vec3 translation)
     {
-        this->position = translation;
+        this->m_position = translation;
         UpdateViewMatrix();
     }
 
     inline void Translate(glm::vec3 delta)
     {
-        this->position += delta;
+        this->m_position += delta;
         UpdateViewMatrix();
     }
 
     inline void SetRotationSpeed(float rotationSpeed)
     {
-        this->rotationSpeed = rotationSpeed;
+        this->m_rotationSpeed = rotationSpeed;
     }
 
     inline void SetMovementSpeed(float movementSpeed)
     {
-        this->movementSpeed = movementSpeed;
+        this->m_movementSpeed = movementSpeed;
     }
 
     inline void Update(Timestep deltaTime)
     {
-        if (type == CameraType::FirstPerson)
+        if (cameraType == CameraType::FirstPerson)
         {
             if (Moving())
             {
+                // NOTE: I might need to flip x and y calcaultions here
                 glm::vec3 camFront;
-                camFront.x = -cos(glm::radians(rotation.x)) * sin(glm::radians(rotation.y));
-                camFront.y = sin(glm::radians(rotation.x));
-                camFront.z = cos(glm::radians(rotation.x)) * cos(glm::radians(rotation.y));
+                camFront.x = -cos(glm::radians(m_rotation.x)) * sin(glm::radians(m_rotation.y));
+                camFront.y = sin(glm::radians(m_rotation.x));
+                camFront.z = cos(glm::radians(m_rotation.x)) * cos(glm::radians(m_rotation.y));
                 camFront = glm::normalize(camFront);
 
-                float moveSpeed = float(deltaTime.Miliseconds() * movementSpeed);
+                float moveSpeed = float(deltaTime.Miliseconds() * m_movementSpeed);
 
-                if (keys.up)
-                    position += camFront * moveSpeed;
-                if (keys.down)
-                    position -= camFront * moveSpeed;
-                if (keys.left)
-                    position -= glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f))) * moveSpeed;
-                if (keys.right)
-                    position += glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f))) * moveSpeed;
+                if (m_keys.up)
+                    m_position += camFront * moveSpeed;
+                if (m_keys.down)
+                    m_position -= camFront * moveSpeed;
+                if (m_keys.left)
+                    m_position -= glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f))) * moveSpeed;
+                if (m_keys.right)
+                    m_position += glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f))) * moveSpeed;
             }
         }
         UpdateViewMatrix();
@@ -206,7 +209,23 @@ inline void Camera::ProcessEvent(Event& e)
     case EventType::WindowResize:
         {
             auto& event = (WindowResizeEvent&)e;
-            SetPerspective(60.0f, float(event.GetSize().width) / float(event.GetSize().height), 0.1f, 10000.0f);
+            if (projectionMode == ProjectionMode::Perspective)
+            {
+                SetPerspective(60.0f, float(event.GetSize().width) / float(event.GetSize().height), m_znear, m_zfar);
+            }
+            else if (projectionMode == ProjectionMode::Orthographic)
+            {
+                auto [width, height] = event.GetSize();
+                auto left = -float(width) / 2.0f;
+                auto right = float(width) / 2.0f;
+                auto top = float(height) / 2.0f;
+                auto bottom = -float(height) / 2.0f;
+                SetOrthographic(left, right, bottom, top, m_znear, m_zfar);
+            }
+            else
+            {
+                // unreachable
+            }
             break;
         }
     case EventType::KeyPressed:
@@ -214,10 +233,10 @@ inline void Camera::ProcessEvent(Event& e)
             auto& event = (KeyPressedEvent&)e;
             switch (event.GetKeyCode())
             {
-            case KeyCode::W: keys.up = true; break;
-            case KeyCode::A: keys.left = true; break;
-            case KeyCode::S: keys.down = true; break;
-            case KeyCode::D: keys.right = true; break;
+            case KeyCode::W: m_keys.up = true; break;
+            case KeyCode::A: m_keys.left = true; break;
+            case KeyCode::S: m_keys.down = true; break;
+            case KeyCode::D: m_keys.right = true; break;
             default:         break;
             };
             break;
@@ -227,10 +246,10 @@ inline void Camera::ProcessEvent(Event& e)
             auto& event = (KeyReleasedEvent&)e;
             switch (event.GetKeyCode())
             {
-            case KeyCode::W: keys.up = false; break;
-            case KeyCode::A: keys.left = false; break;
-            case KeyCode::S: keys.down = false; break;
-            case KeyCode::D: keys.right = false; break;
+            case KeyCode::W: m_keys.up = false; break;
+            case KeyCode::A: m_keys.left = false; break;
+            case KeyCode::S: m_keys.down = false; break;
+            case KeyCode::D: m_keys.right = false; break;
             default:         break;
             };
             break;
@@ -242,8 +261,7 @@ inline void Camera::ProcessEvent(Event& e)
             if (m_window->IsMouseButtonPressed(MouseCode::ButtonLeft))
             {
                 auto [x, y] = m_window->GetCursrorDeltaPosition();
-                // TODO: figure out why do I need to flip x and y here
-                Rotate({ y, x, 0 });
+                Rotate({ x, y, 0 });
             }
 
             break;
@@ -251,7 +269,7 @@ inline void Camera::ProcessEvent(Event& e)
     case EventType::MouseScrolled:
         {
             auto& event = (MouseScrolledEvent&)e;
-            SetMovementSpeed(movementSpeed + event.GetXOffset());
+            SetMovementSpeed(m_movementSpeed + event.GetXOffset());
             break;
         }
     default: break;
