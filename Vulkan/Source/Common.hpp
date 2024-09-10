@@ -252,19 +252,6 @@ namespace RHI::Vulkan
         return result;
     }
 
-
-    inline static VkCommandPoolCreateFlags ConvertCommandPoolFlags(TL::Flags<CommandPoolFlags> flags)
-    {
-        VkCommandPoolCreateFlags result{};
-        if (flags & CommandPoolFlags::Transient)
-            result |= VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
-
-        if (flags & CommandPoolFlags::Reset)
-            result |= VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-
-        return result;
-    }
-
     template<typename T>
     inline static VkClearColorValue ConvertColorValue(ColorValue<T> value)
     {

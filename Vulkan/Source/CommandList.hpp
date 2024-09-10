@@ -26,25 +26,6 @@ namespace RHI::Vulkan
 
     VkImageSubresourceLayers ConvertSubresourceLayer(const ImageSubresourceLayers& subresource);
 
-    class ICommandPool final : public CommandPool
-    {
-    public:
-        ICommandPool(IContext* context);
-        ~ICommandPool();
-
-        ResultCode Init(CommandPoolFlags flags);
-
-        void Reset() override;
-        TL::Vector<CommandList*> Allocate(QueueType queueType, CommandListLevel level, uint32_t count) override;
-
-    private:
-        TL::Vector<VkCommandBuffer> AllocateCommandBuffers(VkCommandPool pool, uint32_t count, VkCommandBufferLevel level);
-
-    private:
-        IContext* m_context;
-        VkCommandPool m_commandPools[uint32_t(QueueType::Count)];
-    };
-
     class ICommandList final : public CommandList
     {
     public:

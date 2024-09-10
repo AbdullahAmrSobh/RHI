@@ -5,6 +5,7 @@
 #include "RHI/Result.hpp"
 #include "RHI/RenderGraph.hpp"
 #include "RHI/Swapchain.hpp"
+#include "RHI/CommandPool.hpp"
 #include "RHI/CommandList.hpp"
 #include <RHI/Image.hpp>
 #include <RHI/Fence.hpp>

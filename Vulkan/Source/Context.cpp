@@ -3,6 +3,7 @@
 
 #include "Barrier.hpp"
 #include "Common.hpp"
+#include "CommandPool.hpp"
 #include "CommandList.hpp"
 #include "Swapchain.hpp"
 #include "Context.hpp"

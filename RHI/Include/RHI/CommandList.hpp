@@ -2,7 +2,6 @@
 
 #include "RHI/RenderGraph.hpp"
 #include "RHI/RGPass.hpp"
-#include "RHI/Queue.hpp"
 
 #include <TL/Containers.hpp>
 #include <TL/Span.hpp>
@@ -22,21 +21,6 @@ namespace RHI
     {
         uint16,
         uint32,
-    };
-
-    /// @brief Flags for command pool configuration.
-    enum class CommandPoolFlags
-    {
-        None      = 0,    ///< No flags set.
-        Transient = 0x01, ///< The command pool is transient.
-        Reset     = 0x02, ///< The command pool supports resetting.
-    };
-
-    /// @brief Specifies the level of a command list.
-    enum class CommandListLevel
-    {
-        Primary,   ///< Primary command list, which can be executed directly.
-        Secondary, ///< Secondary command list, which can be executed within a primary command list.
     };
 
     /// @brief Defines a viewport for rendering.
@@ -172,35 +156,6 @@ namespace RHI
         ImageOffset3D          srcOffsets[2];  ///< Source offsets (top-left and bottom-right).
         ImageSubresourceLayers dstSubresource; ///< Destination subresource layers.
         ImageOffset3D          dstOffsets[2];  ///< Destination offsets (top-left and bottom-right).
-    };
-
-    /// @brief Represents a pool of command lists.
-    class RHI_EXPORT CommandPool
-    {
-    public:
-        CommandPool()                   = default;
-        CommandPool(const CommandPool&) = delete;
-        CommandPool(CommandPool&&)      = delete;
-        virtual ~CommandPool()          = default;
-
-        /// @brief Resets the command pool, clearing any allocated command lists.
-        virtual void                     Reset() = 0;
-
-        /// @brief Allocates a command list from the pool.
-        /// @param queueType Type of queue to allocate for.
-        /// @param level Level of the command list to allocate.
-        /// @return A pointer to the allocated command list.
-        TL_NODISCARD inline CommandList* Allocate(QueueType queueType, CommandListLevel level)
-        {
-            return Allocate(queueType, level, 1).front();
-        }
-
-        /// @brief Allocates multiple command lists from the pool.
-        /// @param queueType Type of queue to allocate for.
-        /// @param level Level of the command lists to allocate.
-        /// @param count Number of command lists to allocate.
-        /// @return A vector of pointers to the allocated command lists.
-        TL_NODISCARD virtual TL::Vector<CommandList*> Allocate(QueueType queueType, CommandListLevel level, uint32_t count) = 0;
     };
 
     /// @brief Represents a list of commands to be executed.

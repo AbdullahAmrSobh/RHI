@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.16)
 set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/BindGroup.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Buffer.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/CommandPool.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/CommandList.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Context.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Definitions.hpp
@@ -30,6 +31,7 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/OffsetAllocator/offsetAllocator.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/BindGroup.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Buffer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandPool.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Fence.cpp
