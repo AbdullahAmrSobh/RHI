@@ -14,6 +14,15 @@ namespace RHI
 
     class Pass;
     class CommandList;
+    class Pass;
+    template<typename T>
+    struct ColorValue;
+
+    enum class IndexType
+    {
+        uint16,
+        uint32,
+    };
 
     /// @brief Flags for command pool configuration.
     enum class CommandPoolFlags
@@ -106,14 +115,6 @@ namespace RHI
     /// @brief Contains information about binding a buffer.
     struct BufferBindingInfo
     {
-        BufferBindingInfo() = default;
-
-        BufferBindingInfo(Handle<Buffer> buffer, size_t offset = 0)
-            : buffer(buffer)
-            , offset(offset)
-        {
-        }
-
         Handle<Buffer> buffer; ///< Handle to the buffer.
         size_t         offset; ///< Offset into the buffer.
     };
@@ -121,14 +122,6 @@ namespace RHI
     /// @brief Contains information about binding a bind group.
     struct BindGroupBindingInfo
     {
-        BindGroupBindingInfo() = default;
-
-        BindGroupBindingInfo(Handle<BindGroup> bindGroup, TL::Span<const uint32_t> dynamicOffsets = {})
-            : bindGroup(bindGroup)
-            , dynamicOffsets(dynamicOffsets)
-        {
-        }
-
         Handle<BindGroup>        bindGroup;      ///< Handle to the bind group.
         TL::Span<const uint32_t> dynamicOffsets; ///< Span of dynamic offsets for the bind group.
     };
@@ -250,6 +243,14 @@ namespace RHI
         /// @param commandLists Span of command lists to execute.
         virtual void Execute(TL::Span<const CommandList*> commandLists) = 0;
 
+        /// @brief Binds a graphics pipeline.
+        /// @param pipelineState Handle to the graphics pipeline.
+        virtual void BindGraphicsPipeline(Handle<GraphicsPipeline> pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups) = 0;
+
+        /// @brief Binds a compute pipeline.
+        /// @param pipelineState Handle to the compute pipeline.
+        virtual void BindComputePipeline(Handle<ComputePipeline> pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups) = 0;
+
         /// @brief Sets the viewport for rendering.
         /// @param viewport The viewport to set.
         virtual void SetViewport(const Viewport& viewport) = 0;
@@ -257,6 +258,14 @@ namespace RHI
         /// @brief Sets the scissor rectangle for rendering.
         /// @param scissor The scissor rectangle to set.
         virtual void SetSicssor(const Scissor& sicssor) = 0;
+
+        /// @brief Binds the vertex buffers for drawing.
+        /// @param vertexBuffers Span of vertex buffer binding information.
+        virtual void BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> vertexBuffers) = 0;
+
+        /// @brief Binds the index buffer for drawing.
+        /// @param indexBuffer Information about the index buffer binding.
+        virtual void BindIndexBuffer(const BufferBindingInfo& indexBuffer, IndexType indexType) = 0;
 
         /// @brief Issues a draw command.
         /// @param drawInfo Information for the draw command.
@@ -282,7 +291,11 @@ namespace RHI
         /// @param copyInfo Information for the image-to-buffer copy command.
         virtual void CopyBufferToImage(const BufferImageCopyInfo& copyInfo) = 0;
 
-        // @brief Issues an image blit command (commented out as it's not implemented yet).
-        // virtual void BlitImage(Handle<ImageView> srcImage, Handle<ImageView> dstImage, TL::Span<ImageBlitInfo> regions, SamplerFilter filter) = 0;
+        /// @brief Issues an image blit command.
+        /// @param srcImage The source image resource.
+        /// @param srcImage The destination resource.
+        /// @param regions The blit regions.
+        /// @param filter filter mode.
+        virtual void BlitImage(Handle<ImageView> srcImage, Handle<ImageView> dstImage, TL::Span<ImageBlitInfo> regions, SamplerFilter filter) = 0;
     };
 } // namespace RHI

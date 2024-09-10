@@ -85,5 +85,4 @@ namespace RHI
         TL::Span<const BindGroupBuffersUpdateInfo>  buffers;  ///< Buffer updates for the bind group.
         TL::Span<const BindGroupSamplersUpdateInfo> samplers; ///< Sampler updates for the bind group.
     };
-
 } // namespace RHI

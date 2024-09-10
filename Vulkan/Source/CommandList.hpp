@@ -24,9 +24,7 @@ namespace RHI::Vulkan
         TL::Vector<VkImageMemoryBarrier2> imageBarriers;
     };
 
-
     VkImageSubresourceLayers ConvertSubresourceLayer(const ImageSubresourceLayers& subresource);
-
 
     class ICommandPool final : public CommandPool
     {
@@ -71,10 +69,6 @@ namespace RHI::Vulkan
             VkPipelineLayout pipelineLayout,
             TL::Span<const BindGroupBindingInfo> bindGroups);
 
-        void BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> bindingInfos);
-
-        void BindIndexBuffer(const BufferBindingInfo& bindingInfo, VkIndexType indexType);
-
         // Interface implementation
         void Begin() override;
         void Begin(const CommandListBeginInfo& beginInfo) override;
@@ -84,14 +78,19 @@ namespace RHI::Vulkan
         void BeginConditionalCommands(Handle<Buffer> buffer, size_t offset, bool inverted) override;
         void EndConditionalCommands() override;
         void Execute(TL::Span<const CommandList*> commandLists) override;
+        void BindGraphicsPipeline(Handle<GraphicsPipeline> pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups) override;
+        void BindComputePipeline(Handle<ComputePipeline> pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups) override;
         void SetViewport(const Viewport& viewport) override;
         void SetSicssor(const Scissor& sicssor) override;
+        void BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> vertexBuffers) override;
+        void BindIndexBuffer(const BufferBindingInfo& indexBuffer, IndexType indexType) override;
         void Draw(const DrawInfo& drawInfo) override;
         void Dispatch(const DispatchInfo& dispatchInfo) override;
         void CopyBuffer(const BufferCopyInfo& copyInfo) override;
         void CopyImage(const ImageCopyInfo& copyInfo) override;
         void CopyImageToBuffer(const BufferImageCopyInfo& copyInfo) override;
         void CopyBufferToImage(const BufferImageCopyInfo& copyInfo) override;
+        void BlitImage(Handle<ImageView> srcImage, Handle<ImageView> dstImage, TL::Span<ImageBlitInfo> regions, SamplerFilter filter) override;
 
         IContext* m_context;
         VkCommandBuffer m_commandBuffer;

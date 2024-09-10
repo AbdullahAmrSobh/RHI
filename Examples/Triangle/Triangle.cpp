@@ -257,7 +257,7 @@ public:
                 .bindGroups = {
                                { m_bindGroup,
                       { 256 * i++ } } },
-                .vertexBuffers = { mesh.m_positionVB },
+                .vertexBuffers = { {mesh.m_positionVB, {}} },
                 .indexBuffer = { mesh.m_indexIB },
                 .parameters = { mesh.m_elementsCount, 1, 0, 0 },
             };

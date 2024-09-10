@@ -170,31 +170,6 @@ namespace RHI::Vulkan
         vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, uint32_t(descriptorSets.size()), descriptorSets.data(), (uint32_t)dynamicOffset.size(), dynamicOffset.data());
     }
 
-    void ICommandList::BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> bindingInfos)
-    {
-        if (bindingInfos.empty())
-            return;
-
-        TL::Vector<VkBuffer> buffers;
-        TL::Vector<VkDeviceSize> offsets;
-        for (auto bindingInfo : bindingInfos)
-        {
-            auto buffer = m_context->m_bufferOwner.Get(bindingInfo.buffer);
-            buffers.push_back(buffer->handle);
-            offsets.push_back(bindingInfo.offset);
-        }
-        vkCmdBindVertexBuffers(m_commandBuffer, firstBinding, (uint32_t)buffers.size(), buffers.data(), offsets.data());
-    }
-
-    void ICommandList::BindIndexBuffer(const BufferBindingInfo& bindingInfo, VkIndexType indexType)
-    {
-        if (bindingInfo.buffer == NullHandle)
-            return;
-
-        auto buffer = m_context->m_bufferOwner.Get(bindingInfo.buffer);
-        vkCmdBindIndexBuffer(m_commandBuffer, buffer->handle, bindingInfo.offset, indexType);
-    }
-
     void ICommandList::Begin()
     {
         ZoneScoped;
@@ -398,6 +373,24 @@ namespace RHI::Vulkan
         vkCmdExecuteCommands(m_commandBuffer, uint32_t(commandBuffers.size()), commandBuffers.data());
     }
 
+    void ICommandList::BindGraphicsPipeline(Handle<GraphicsPipeline> pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups)
+    {
+        ZoneScoped;
+
+        auto pipeline = m_context->m_graphicsPipelineOwner.Get(pipelineState);
+        vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->handle);
+        BindShaderBindGroups(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->layout, bindGroups);
+    }
+
+    void ICommandList::BindComputePipeline(Handle<ComputePipeline> pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups)
+    {
+        ZoneScoped;
+
+        auto pipeline = m_context->m_computePipelineOwner.Get(pipelineState);
+        vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->handle);
+        BindShaderBindGroups(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->layout, bindGroups);
+    }
+
     void ICommandList::SetViewport(const Viewport& viewport)
     {
         ZoneScoped;
@@ -424,6 +417,25 @@ namespace RHI::Vulkan
         vkCmdSetScissor(m_commandBuffer, 0, 1, &vkScissor);
     }
 
+    void ICommandList::BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> vertexBuffers)
+    {
+        TL::Vector<VkBuffer> buffers;
+        TL::Vector<VkDeviceSize> offsets;
+        for (auto bindingInfo : vertexBuffers)
+        {
+            auto buffer = m_context->m_bufferOwner.Get(bindingInfo.buffer);
+            buffers.push_back(buffer->handle);
+            offsets.push_back(bindingInfo.offset);
+        }
+        vkCmdBindVertexBuffers(m_commandBuffer, firstBinding, (uint32_t)buffers.size(), buffers.data(), offsets.data());
+    }
+
+    void ICommandList::BindIndexBuffer(const BufferBindingInfo& indexBuffer, IndexType indexType)
+    {
+        auto buffer = m_context->m_bufferOwner.Get(indexBuffer.buffer);
+        vkCmdBindIndexBuffer(m_commandBuffer, buffer->handle, indexBuffer.offset, indexType == IndexType::uint32 ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16);
+    }
+
     void ICommandList::Draw(const DrawInfo& drawInfo)
     {
         ZoneScoped;
@@ -437,7 +449,8 @@ namespace RHI::Vulkan
         auto parameters = drawInfo.parameters;
         if (drawInfo.indexBuffer.buffer != RHI::NullHandle)
         {
-            BindIndexBuffer(drawInfo.indexBuffer, VK_INDEX_TYPE_UINT32);
+            /// @todo: fix this should be part of draw info?
+            BindIndexBuffer(drawInfo.indexBuffer, IndexType::uint32);
             vkCmdDrawIndexed(m_commandBuffer, parameters.elementsCount, parameters.instanceCount, parameters.firstElement, parameters.vertexOffset, parameters.firstInstance);
         }
         else
@@ -523,4 +536,12 @@ namespace RHI::Vulkan
         bufferImageCopy.imageExtent = ConvertExtent3D(copyInfo.imageSize);
         vkCmdCopyBufferToImage(m_commandBuffer, buffer->handle, image->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferImageCopy);
     }
+
+    void ICommandList::BlitImage([[maybe_unused]] Handle<ImageView> srcImage, [[maybe_unused]] Handle<ImageView> dstImage, [[maybe_unused]] TL::Span<ImageBlitInfo> regions, [[maybe_unused]] SamplerFilter filter)
+    {
+        ZoneScoped;
+
+        TL_UNREACHABLE();
+    }
+
 } // namespace RHI::Vulkan
