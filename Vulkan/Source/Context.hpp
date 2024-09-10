@@ -2,6 +2,7 @@
 
 #include <RHI/Context.hpp>
 #include <RHI/Definitions.hpp>
+#include <RHI/Queue.hpp>
 
 #include "Queue.hpp"
 #include "DeleteQueue.hpp"
@@ -115,7 +116,7 @@ namespace RHI::Vulkan
             PFN_vkCmdEndConditionalRenderingEXT m_vkCmdEndConditionalRenderingEXT;
         } m_pfn;
 
-        Queue m_queue[QueueType::Count];
+        Queue m_queue[(uint32_t)QueueType::Count];
 
         FrameExecuteContext m_frameContext;
 

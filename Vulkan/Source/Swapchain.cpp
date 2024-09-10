@@ -107,7 +107,7 @@ namespace RHI::Vulkan
         presentInfo.pSwapchains = &m_swapchain;
         presentInfo.pImageIndices = &m_imageIndex;
         presentInfo.pResults = &m_lastPresentResult;
-        Validate(vkQueuePresentKHR(context->m_queue[QueueType::Graphics].GetHandle(), &presentInfo));
+        Validate(vkQueuePresentKHR(context->m_queue[(uint32_t)QueueType::Graphics].GetHandle(), &presentInfo));
 
         m_currentFrameInFlight = (m_currentFrameInFlight + 1) % m_imageCount;
         Validate(vkAcquireNextImageKHR(context->m_device, m_swapchain, UINT64_MAX, GetImageAcquiredSemaphore(), VK_NULL_HANDLE, &m_imageIndex));

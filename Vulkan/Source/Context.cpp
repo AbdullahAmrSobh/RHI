@@ -564,7 +564,7 @@ namespace RHI::Vulkan
     {
         for (auto passHandle : renderGraph.m_passes)
         {
-            auto queue = m_queue[QueueType::Graphics]; // TODO: query pass for this
+            auto queue = m_queue[(uint32_t)QueueType::Graphics]; // TODO: query pass for this
             auto pass = renderGraph.m_passPool.Get(passHandle);
             auto commandList = (ICommandList*)pass->m_commandLists.front();
 
@@ -829,9 +829,9 @@ namespace RHI::Vulkan
         m_pfn.m_vkCmdBeginConditionalRenderingEXT = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdBeginConditionalRenderingEXT);
         m_pfn.m_vkCmdEndConditionalRenderingEXT = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdEndConditionalRenderingEXT);
 
-        m_queue[QueueType::Graphics] = Queue(m_device, graphicsQueueFamilyIndex);
-        m_queue[QueueType::Compute] = Queue(m_device, computeQueueFamilyIndex);
-        m_queue[QueueType::Transfer] = Queue(m_device, transferQueueFamilyIndex);
+        m_queue[(uint32_t)QueueType::Graphics] = Queue(m_device, graphicsQueueFamilyIndex);
+        m_queue[(uint32_t)QueueType::Compute] = Queue(m_device, computeQueueFamilyIndex);
+        m_queue[(uint32_t)QueueType::Transfer] = Queue(m_device, transferQueueFamilyIndex);
 
         m_limits->stagingMemoryLimit = 256 * 1000 * 1000;
 

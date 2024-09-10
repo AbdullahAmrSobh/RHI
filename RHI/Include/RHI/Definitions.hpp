@@ -4,14 +4,6 @@
 
 namespace RHI
 {
-    enum QueueType : uint32_t
-    {
-        Graphics,
-        Compute,
-        Transfer,
-        Count,
-    };
-
     // clear values
 
     struct DepthStencilValue

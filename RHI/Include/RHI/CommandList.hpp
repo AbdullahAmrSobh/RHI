@@ -2,7 +2,7 @@
 
 #include "RHI/RenderGraph.hpp"
 #include "RHI/RGPass.hpp"
-#include "RHI/Definitions.hpp"
+#include "RHI/Queue.hpp"
 
 #include <TL/Containers.hpp>
 #include <TL/Span.hpp>
