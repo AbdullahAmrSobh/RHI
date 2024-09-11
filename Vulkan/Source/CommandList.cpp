@@ -474,7 +474,7 @@ namespace RHI::Vulkan
         vkCmdCopyBufferToImage(m_commandBuffer, buffer->handle, image->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferImageCopy);
     }
 
-    void ICommandList::BlitImage([[maybe_unused]] Handle<ImageView> srcImage, [[maybe_unused]] Handle<ImageView> dstImage, [[maybe_unused]] TL::Span<ImageBlitInfo> regions, [[maybe_unused]] SamplerFilter filter)
+    void ICommandList::BlitImage([[maybe_unused]] const ImageBlitInfo& blitInfo)
     {
         ZoneScoped;
 

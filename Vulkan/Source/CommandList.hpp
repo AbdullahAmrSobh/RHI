@@ -71,7 +71,7 @@ namespace RHI::Vulkan
         void CopyImage(const ImageCopyInfo& copyInfo) override;
         void CopyImageToBuffer(const BufferImageCopyInfo& copyInfo) override;
         void CopyBufferToImage(const BufferImageCopyInfo& copyInfo) override;
-        void BlitImage(Handle<ImageView> srcImage, Handle<ImageView> dstImage, TL::Span<ImageBlitInfo> regions, SamplerFilter filter) override;
+        void BlitImage(const ImageBlitInfo& blitInfo) override;
 
         IContext* m_context;
         VkCommandBuffer m_commandBuffer;

@@ -150,12 +150,20 @@ namespace RHI
     };
 
     /// @brief Contains information needed to blit (copy and scale) an image.
-    struct ImageBlitInfo
+    struct ImageBlitRegion
     {
         ImageSubresourceLayers srcSubresource; ///< Source subresource layers.
         ImageOffset3D          srcOffsets[2];  ///< Source offsets (top-left and bottom-right).
         ImageSubresourceLayers dstSubresource; ///< Destination subresource layers.
         ImageOffset3D          dstOffsets[2];  ///< Destination offsets (top-left and bottom-right).
+    };
+
+    struct ImageBlitInfo
+    {
+        Handle<Image>             srcImage;
+        Handle<Image>             dstImage;
+        SamplerFilter             filter;
+        TL::Span<ImageBlitRegion> regions;
     };
 
     /// @brief Represents a list of commands to be executed.
@@ -251,6 +259,6 @@ namespace RHI
         /// @param srcImage The destination resource.
         /// @param regions The blit regions.
         /// @param filter filter mode.
-        virtual void BlitImage(Handle<ImageView> srcImage, Handle<ImageView> dstImage, TL::Span<ImageBlitInfo> regions, SamplerFilter filter) = 0;
+        virtual void BlitImage(const ImageBlitInfo& blitInfo) = 0;
     };
 } // namespace RHI
