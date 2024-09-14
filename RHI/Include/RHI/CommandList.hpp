@@ -255,10 +255,7 @@ namespace RHI
         virtual void CopyBufferToImage(const BufferImageCopyInfo& copyInfo) = 0;
 
         /// @brief Issues an image blit command.
-        /// @param srcImage The source image resource.
-        /// @param srcImage The destination resource.
-        /// @param regions The blit regions.
-        /// @param filter filter mode.
+        /// @param blitInfo Information for the image blit command.
         virtual void BlitImage(const ImageBlitInfo& blitInfo) = 0;
     };
 } // namespace RHI
