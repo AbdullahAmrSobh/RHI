@@ -1,3 +1,7 @@
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_FORCE_LEFT_HANDED
+
 #include <Examples-Base/ApplicationBase.hpp>
 
 #include <RHI/RHI.hpp>
@@ -45,20 +49,22 @@ public:
     RHI::Handle<RHI::Buffer> m_indexBuffer;
     RHI::Handle<RHI::Buffer> m_uniformBuffer;
 
-    constexpr glm::mat4 GetVulkanCorrectionMatrix()
-    {
-        // Flip Y and adjust Z range for Vulkan's depth (0 to 1)
-        glm::mat4 correction = glm::mat4(1.0f);
+    Camera m_camera;
 
-        // Flip Y (row 1)
-        correction[1][1] = -1.0f;
+    // constexpr glm::mat4 GetVulkanCorrectionMatrix()
+    // {
+    //     // Flip Y and adjust Z range for Vulkan's depth (0 to 1)
+    //     glm::mat4 correction = glm::mat4(1.0f);
 
-        // Adjust Z from [-1, 1] to [0, 1]
-        correction[2][2] = 0.5f;
-        correction[3][2] = 0.5f;
+    //     // Flip Y (row 1)
+    //     correction[1][1] = -1.0f;
 
-        return correction;
-    }
+    //     // Adjust Z from [-1, 1] to [0, 1]
+    //     correction[2][2] = 0.5f;
+    //     correction[3][2] = 0.5f;
+
+    //     return correction;
+    // }
 
     PerFrame& AdvanceFrame()
     {
@@ -278,10 +284,10 @@ public:
     {
         // clang-format off
         glm::vec3 positionData[] = {
-            {-1.0f,  1.0f, 0.0f},
-            { 1.0f,  1.0f, 0.0f},
-            { 1.0f, -1.0f, 0.0f},
-            {-1.0f, -1.0f, 0.0f},
+            {-1.0f,  1.0f, 1.0f},
+            { 1.0f,  1.0f, 1.0f},
+            { 1.0f, -1.0f, 1.0f},
+            {-1.0f, -1.0f, 1.0f},
         };
 
         glm::vec4 colorData[] = {
@@ -356,6 +362,10 @@ public:
         InitBuffers();
         InitPipelineAndLayout();
         InitRenderGraph();
+
+        auto [width, height] = m_window->GetWindowSize();
+        m_camera.SetPerspective(30.0f, (float)width/(float)height, 0.00001f, 100000.0f);
+        m_camera.m_window = m_window.get();
     }
 
     virtual void OnShutdown()
@@ -368,24 +378,15 @@ public:
 
     virtual void OnUpdate(Timestep ts)
     {
-        static glm::vec3 actualPosition = {}; // Origin
-        static std::chrono::time_point<std::chrono::high_resolution_clock> startTime = {};
-
         struct UniformData
         {
             glm::mat4 translate = glm::mat4(1.f);
         } uniformData;
 
-        // Get the elapsed time
-        auto currentTime = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<float> elapsedTime = currentTime - startTime;
-        float time = elapsedTime.count();
+        m_camera.Update(ts);
 
-        // Calculate the actual position based on the elapsed time
-        actualPosition.x = std::sin(time) * 2.5f;
-
-        // Apply translation to position the quad at the new actualPosition
-        uniformData.translate = glm::translate(glm::mat4(1.0f), actualPosition);
+        uniformData.translate = m_camera.GetProjection() * m_camera.GetView();
+        // uniformData.translate = glm::perspective(glm::radians(30.0f), 1600.0f/900.0f, 0.00001f, 100000000.f);
 
         auto uniformBufferPtr = m_context->MapBuffer(m_uniformBuffer);
         memcpy(uniformBufferPtr, &uniformData, sizeof(UniformData));
@@ -451,6 +452,7 @@ public:
 
     virtual void OnEvent(Event& event)
     {
+        m_camera.ProcessEvent(event);
     }
 };
 

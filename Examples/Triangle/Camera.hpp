@@ -6,8 +6,10 @@
  * This code is licensed under the MIT license (MIT) (http://opensource.org/licenses/MIT)
  */
 
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+// #define GLM_FORCE_RADIANS
+// #define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_FORCE_LEFT_HANDED
+
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -92,6 +94,8 @@ public:
             { 0.0f, 0.0f,  0.0f,  1.0f},
         };
 
+        // auto correction_matrix = glm::identity<glm::mat4>();
+
         return m_matrices.viewToClipMat * correction_matrix;
     }
 
@@ -120,7 +124,7 @@ public:
         this->m_fov = fov;
         this->m_znear = znear;
         this->m_zfar = zfar;
-        m_matrices.viewToClipMat = glm::perspectiveLH(glm::radians(fov), aspect, znear, zfar);
+        m_matrices.viewToClipMat = glm::perspective(glm::radians(fov), aspect, znear, zfar);
     }
 
     inline void SetOrthographic(float left, float right, float bottom, float top, float znear, float zfar)
@@ -128,7 +132,7 @@ public:
         this->m_fov = 0;
         this->m_znear = znear;
         this->m_zfar = zfar;
-        m_matrices.viewToClipMat = glm::orthoLH(left, right, bottom, top, znear, zfar);
+        m_matrices.viewToClipMat = glm::ortho(left, right, bottom, top, znear, zfar);
     }
 
     inline void SetPosition(glm::vec3 position)
