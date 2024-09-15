@@ -78,6 +78,16 @@ namespace RHI::Vulkan
         PipelineBarriers m_barriers[BarrierSlot::Count];
         TL::Vector<VkSemaphoreSubmitInfo> m_waitSemaphores;
         TL::Vector<VkSemaphoreSubmitInfo> m_signalSemaphores;
-        bool m_isRenderPassStarted;
+
+        struct State
+        {
+            bool hasVertexBuffer : 1;
+            bool hasIndexBuffer : 1;
+            bool isRenderPassStarted : 1;
+            bool isGraphicsPipelineBound : 1;
+            bool isComputePipelineBound : 1;
+            bool hasViewportSet : 1;
+            bool hasScissorSet : 1;
+        } m_state;
     };
 } // namespace RHI::Vulkan

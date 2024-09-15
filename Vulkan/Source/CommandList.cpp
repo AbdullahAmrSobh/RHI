@@ -34,7 +34,7 @@ namespace RHI::Vulkan
         , m_barriers()
         , m_waitSemaphores()
         , m_signalSemaphores()
-        , m_isRenderPassStarted()
+        , m_state()
     {
     }
 
@@ -46,7 +46,7 @@ namespace RHI::Vulkan
         VkRenderingAttachmentInfo* depthAttachment,
         VkRenderingAttachmentInfo* stencilAttachment)
     {
-        TL_ASSERT(m_isRenderPassStarted == false); // cannot start a new render pass inside another
+        TL_ASSERT(m_state.isRenderPassStarted == false); // cannot start a new render pass inside another
 
         VkRenderingInfo renderingInfo{};
         renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
@@ -60,15 +60,15 @@ namespace RHI::Vulkan
         renderingInfo.pDepthAttachment = depthAttachment;
         renderingInfo.pStencilAttachment = stencilAttachment;
         vkCmdBeginRendering(m_commandBuffer, &renderingInfo);
-        m_isRenderPassStarted = true;
+        m_state.isRenderPassStarted = true;
     }
 
     void ICommandList::EndRendedring()
     {
-        if (m_isRenderPassStarted)
+        if (m_state.isRenderPassStarted)
         {
             vkCmdEndRendering(m_commandBuffer);
-            m_isRenderPassStarted = false;
+            m_state.isRenderPassStarted = false;
         }
     }
 
@@ -111,7 +111,7 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        m_isRenderPassStarted = false;
+        m_state.isRenderPassStarted = false;
         for (auto& stage : m_barriers)
         {
             stage.memoryBarriers.clear();
@@ -122,11 +122,12 @@ namespace RHI::Vulkan
         m_waitSemaphores.clear();
         m_signalSemaphores.clear();
 
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.pNext = nullptr;
-        beginInfo.flags = 0;
-        beginInfo.pInheritanceInfo = nullptr;
+        VkCommandBufferBeginInfo beginInfo{
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .pNext = nullptr,
+            .flags = 0,
+            .pInheritanceInfo = nullptr,
+        };
         vkBeginCommandBuffer(m_commandBuffer, &beginInfo);
     }
 
@@ -249,14 +250,12 @@ namespace RHI::Vulkan
 #if RHI_DEBUG
         if (auto fn = m_context->m_pfn.m_vkCmdBeginDebugUtilsLabelEXT)
         {
-            VkDebugUtilsLabelEXT info{};
-            info.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT;
-            info.pNext = nullptr;
-            info.pLabelName = name;
-            info.color[0] = color.r;
-            info.color[1] = color.g;
-            info.color[2] = color.b;
-            info.color[3] = color.a;
+            VkDebugUtilsLabelEXT info{
+                .sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT,
+                .pNext = nullptr,
+                .pLabelName = name,
+                .color = {color.r, color.g, color.b, color.a},
+            };
             fn(m_commandBuffer, &info);
         }
 #endif
@@ -314,18 +313,32 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
+        if (pipelineState == NullHandle)
+        {
+            m_state.isGraphicsPipelineBound = false;
+            return;
+        }
+
         auto pipeline = m_context->m_graphicsPipelineOwner.Get(pipelineState);
         vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->handle);
         BindShaderBindGroups(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->layout, bindGroups);
+        m_state.isGraphicsPipelineBound = true;
     }
 
     void ICommandList::BindComputePipeline(Handle<ComputePipeline> pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups)
     {
         ZoneScoped;
 
+        if (pipelineState == NullHandle)
+        {
+            m_state.isComputePipelineBound = false;
+            return;
+        }
+
         auto pipeline = m_context->m_computePipelineOwner.Get(pipelineState);
         vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->handle);
         BindShaderBindGroups(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->layout, bindGroups);
+        m_state.isComputePipelineBound = true;
     }
 
     void ICommandList::SetViewport(const Viewport& viewport)
@@ -340,6 +353,7 @@ namespace RHI::Vulkan
         vkViewport.minDepth = viewport.minDepth;
         vkViewport.maxDepth = viewport.maxDepth;
         vkCmdSetViewport(m_commandBuffer, 0, 1, &vkViewport);
+        m_state.hasViewportSet = true;
     }
 
     void ICommandList::SetSicssor(const Scissor& scissor)
@@ -352,6 +366,7 @@ namespace RHI::Vulkan
         vkScissor.offset.x = scissor.offsetX;
         vkScissor.offset.y = scissor.offsetY;
         vkCmdSetScissor(m_commandBuffer, 0, 1, &vkScissor);
+        m_state.hasScissorSet = true;
     }
 
     void ICommandList::BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> vertexBuffers)
@@ -365,29 +380,38 @@ namespace RHI::Vulkan
             offsets.push_back(bindingInfo.offset);
         }
         vkCmdBindVertexBuffers(m_commandBuffer, firstBinding, (uint32_t)buffers.size(), buffers.data(), offsets.data());
+        m_state.hasVertexBuffer = true;
     }
 
     void ICommandList::BindIndexBuffer(const BufferBindingInfo& indexBuffer, IndexType indexType)
     {
         auto buffer = m_context->m_bufferOwner.Get(indexBuffer.buffer);
         vkCmdBindIndexBuffer(m_commandBuffer, buffer->handle, indexBuffer.offset, indexType == IndexType::uint32 ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16);
+        m_state.hasIndexBuffer = true;
     }
 
     void ICommandList::Draw(const DrawInfo& drawInfo)
     {
         ZoneScoped;
 
-        auto pipeline = m_context->m_graphicsPipelineOwner.Get(drawInfo.pipelineState);
-        vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->handle);
+        if (drawInfo.pipelineState)
+        {
+            BindGraphicsPipeline(drawInfo.pipelineState, drawInfo.bindGroups);
+        }
 
-        BindShaderBindGroups(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->layout, drawInfo.bindGroups);
-        BindVertexBuffers(0, drawInfo.vertexBuffers);
+        if (drawInfo.vertexBuffers.empty() == false)
+        {
+            BindVertexBuffers(0, drawInfo.vertexBuffers);
+        }
 
-        auto parameters = drawInfo.parameters;
         if (drawInfo.indexBuffer.buffer != RHI::NullHandle)
         {
-            /// @todo: fix this should be part of draw info?
             BindIndexBuffer(drawInfo.indexBuffer, IndexType::uint32);
+        }
+
+        auto parameters = drawInfo.parameters;
+        if (m_state.hasIndexBuffer)
+        {
             vkCmdDrawIndexed(m_commandBuffer, parameters.elementsCount, parameters.instanceCount, parameters.firstElement, parameters.vertexOffset, parameters.firstInstance);
         }
         else
