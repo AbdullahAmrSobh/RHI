@@ -1,3 +1,4 @@
+
 #include "CommandPool.hpp"
 #include "Context.hpp"
 #include "Common.hpp"
@@ -39,11 +40,12 @@ namespace RHI::Vulkan
     {
         for (uint32_t queueType = 0; queueType < uint32_t(QueueType::Count); queueType++)
         {
-            VkCommandPoolCreateInfo createInfo;
-            createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-            createInfo.pNext = nullptr;
-            createInfo.flags = ConvertCommandPoolFlags(flags);
-            createInfo.queueFamilyIndex = m_context->m_queue[queueType].GetFamilyIndex();
+            VkCommandPoolCreateInfo createInfo{
+                .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = ConvertCommandPoolFlags(flags),
+                .queueFamilyIndex = m_context->m_queue[queueType].GetFamilyIndex(),
+            };
             TryValidateVk(vkCreateCommandPool(m_context->m_device, &createInfo, nullptr, &m_commandPools[queueType]));
         }
 
@@ -58,14 +60,14 @@ namespace RHI::Vulkan
         }
     }
 
-    TL::Vector<CommandList*> ICommandPool::Allocate(QueueType queueType, CommandListLevel level, uint32_t count)
+    TL::Vector<TL::Ptr<CommandList>> ICommandPool::Allocate(QueueType queueType, CommandListLevel level, uint32_t count)
     {
         auto commandPool = m_commandPools[uint32_t(queueType)];
         auto commandBuffers = AllocateCommandBuffers(commandPool, count, level == CommandListLevel::Primary ? VK_COMMAND_BUFFER_LEVEL_PRIMARY : VK_COMMAND_BUFFER_LEVEL_SECONDARY);
-        TL::Vector<CommandList*> commandLists;
+        TL::Vector<TL::Ptr<CommandList>> commandLists;
         for (auto commandBuffer : commandBuffers)
         {
-            commandLists.push_back(new ICommandList(m_context, commandBuffer));
+            commandLists.push_back(TL::CreatePtr<ICommandList>(m_context, commandBuffer));
         }
         return commandLists;
     }
@@ -75,12 +77,13 @@ namespace RHI::Vulkan
         TL::Vector<VkCommandBuffer> commandBuffers;
         commandBuffers.resize(count);
 
-        VkCommandBufferAllocateInfo allocateInfo{};
-        allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocateInfo.pNext = nullptr;
-        allocateInfo.commandPool = pool;
-        allocateInfo.level = level;
-        allocateInfo.commandBufferCount = count;
+        VkCommandBufferAllocateInfo allocateInfo{
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .pNext = nullptr,
+            .commandPool = pool,
+            .level = level,
+            .commandBufferCount = count,
+        };
         vkAllocateCommandBuffers(m_context->m_device, &allocateInfo, commandBuffers.data());
         return commandBuffers;
     }

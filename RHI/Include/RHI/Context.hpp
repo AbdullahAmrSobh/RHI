@@ -40,8 +40,6 @@ namespace RHI
 
     struct Limits
     {
-        size_t stagingMemoryLimit;
-        bool   unifiedMemory;
     };
 
     class RHI_EXPORT Context
@@ -55,8 +53,6 @@ namespace RHI
         TL_NODISCARD TL::Ptr<RenderGraph>     CreateRenderGraph();
 
         void                                  CompileRenderGraph(RenderGraph& renderGraph);
-
-        void                                  ExecuteRenderGraph(RenderGraph& renderGraph, Fence* signalFence = nullptr);
 
         TL_NODISCARD TL::Ptr<Swapchain>       CreateSwapchain(const SwapchainCreateInfo& createInfo);
 
@@ -112,6 +108,10 @@ namespace RHI
 
         void                                  UnmapBuffer(Handle<Buffer> handle);
 
+        virtual Queue*                        GetQueue() const = 0;
+
+        virtual void                          AdvanceFrame() = 0;
+
     private:
         bool ValidateCreateInfo(const SwapchainCreateInfo& createInfo) const;
         bool ValidateCreateInfo(const BindGroupLayoutCreateInfo& createInfo) const;
@@ -151,7 +151,6 @@ namespace RHI
         virtual Handle<BufferView>       Internal_CreateBufferView(const BufferViewCreateInfo& createInfo)                         = 0;
         virtual void                     Internal_DestroyBufferView(Handle<BufferView> handle)                                     = 0;
         virtual DeviceMemoryPtr          Internal_MapBuffer(Handle<Buffer> handle)                                                 = 0;
-        virtual void                     Internal_DispatchGraph(RenderGraph& renderGraph, Fence* signalFence)                      = 0;
         virtual void                     Internal_UnmapBuffer(Handle<Buffer> handle)                                               = 0;
 
     protected:

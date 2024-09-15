@@ -122,24 +122,15 @@ namespace RHI
         /// @return Handle to the buffer view.
         TL_NODISCARD Handle<BufferView>       PassGetBufferView(Handle<Pass> pass, Handle<BufferAttachment> attachment) const;
 
-        /// @brief Submits a pass with command lists and an optional signal fence.
-        ///
-        /// @param pass Handle to the pass.
-        /// @param commandList Span of command lists to execute.
-        /// @param signalFence Optional fence to signal after execution.
-        void                                  Submit(Handle<Pass> pass, TL::Span<CommandList*> commandList, Fence* signalFence = nullptr);
-
-        void                                  Invalidate() {}
-
-        // private:
         /// @brief Compiles the render graph.
         void                                  Compile();
 
+    private:
         /// @brief Cleans up resources used by the render graph.
-        void                                  Cleanup();
+        void Cleanup();
 
-        void                                  CleanupAttachmentViews();
-        void                                  CleanupTransientAttachments();
+        void CleanupAttachmentViews();
+        void CleanupTransientAttachments();
 
     public:
         Context*                             m_context;

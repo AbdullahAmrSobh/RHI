@@ -33,13 +33,6 @@ namespace RHI
         ZoneScoped;
     }
 
-    void Context::ExecuteRenderGraph(RenderGraph& renderGraph, Fence* signalFence)
-    {
-        ZoneScoped;
-
-        Internal_DispatchGraph(renderGraph, signalFence);
-    }
-
     TL::Ptr<Swapchain> Context::CreateSwapchain(const SwapchainCreateInfo& createInfo)
     {
         ZoneScoped;

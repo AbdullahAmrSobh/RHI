@@ -5,18 +5,13 @@
 #include <TL/Containers.hpp>
 
 #include <vulkan/vulkan.h>
+#include <vk_mem_alloc.h>
 
 #include <functional>
 
 namespace RHI::Vulkan
 {
     class IContext;
-
-    struct SemaphoreStage
-    {
-        VkSemaphore semaphore;
-        VkPipelineStageFlags2 stages;
-    };
 
     class DeleteQueue
     {
@@ -30,6 +25,27 @@ namespace RHI::Vulkan
 
     private:
         TL::Vector<std::function<void()>> m_callbacks;
+
+        // TL::Vector<VkSemaphore> m_semaphores;
+        // TL::Vector<VkCommandBuffer> m_commandBuffers;
+        // TL::Vector<VkFence> m_fences;
+        // TL::Vector<VmaAllocation> m_allocations;
+        // TL::Vector<VkBuffer> m_buffers;
+        // TL::Vector<VkImage> m_images;
+        // TL::Vector<VkEvent> m_events;
+        // TL::Vector<VkQueryPool> m_queryPools;
+        // TL::Vector<VkBufferView> m_bufferViews;
+        // TL::Vector<VkImageView> m_imageViews;
+        // TL::Vector<VkPipelineLayout> m_pipelineLayouts;
+        // TL::Vector<VkPipeline> m_pipelines;
+        // TL::Vector<VkDescriptorSetLayout> m_descriptorSetLayouts;
+        // TL::Vector<VkSampler> m_samplers;
+        // TL::Vector<VkDescriptorPool> m_descriptorPools;
+        // TL::Vector<VkDescriptorSet> m_descriptorSets;
+        // TL::Vector<VkCommandPool> m_commandPools;
+        // TL::Vector<VkSurfaceKHR> m_surfaces;
+        // TL::Vector<VkSwapchainKHR> m_swapchains;
+        // TL::Vector<VkAccelerationStructureKHR> m_accelerationStructures;
     };
 
     class FrameExecuteContext
@@ -37,13 +53,10 @@ namespace RHI::Vulkan
     public:
         FrameExecuteContext(IContext* context)
             : m_context(context)
-            , m_frameInFlightsCount(3)
         {
         }
 
         void AdvanceFrame();
-
-        void SetFrameInFlightsCount(uint32_t count);
 
         uint32_t GetFrameIndex() const;
 
@@ -52,33 +65,15 @@ namespace RHI::Vulkan
         void DeferCommand(std::function<void()> callback);
         void DeferNextFrame(std::function<void()> callback);
 
-        SemaphoreStage GetImageWaitSemaphore(Handle<Image> image);
-
-        SemaphoreStage GetImageSignalSemaphore(Handle<Image> image);
-
-        SemaphoreStage GetBufferWaitSemaphore(Handle<Buffer> buffer);
-
-        SemaphoreStage GetBufferSignalSemaphore(Handle<Buffer> buffer);
-
-        VkSemaphore AddImageWaitSemaphore(Handle<Image> image, VkPipelineStageFlags2 stages);
-        VkSemaphore AddImageSignalSemaphore(Handle<Image> image, VkPipelineStageFlags2 stages);
-        VkSemaphore AddBufferWaitSemaphore(Handle<Buffer> buffer, VkPipelineStageFlags2 stages);
-        VkSemaphore AddBufferSignalSemaphore(Handle<Buffer> buffer, VkPipelineStageFlags2 stages);
-
     // private:
         IContext* m_context;
 
-        uint32_t m_frameInFlightsCount;
         uint32_t m_frameIndex;
 
         struct Data
         {
-            TL::UnorderedMap<Handle<Image>, SemaphoreStage> m_imageWaitSemaphores;
-            TL::UnorderedMap<Handle<Image>, SemaphoreStage> m_imageSignalSemaphores;
-            TL::UnorderedMap<Handle<Buffer>, SemaphoreStage> m_bufferWaitSemaphores;
-            TL::UnorderedMap<Handle<Buffer>, SemaphoreStage> m_bufferSignalSemaphores;
             DeleteQueue m_deleteQueue;
-        } m_frame[4];
+        } m_frame[2];
 
         const auto& CurrentFrame() const { return m_frame[m_frameIndex]; }
 

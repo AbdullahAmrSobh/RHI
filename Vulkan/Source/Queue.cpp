@@ -1,21 +1,22 @@
 #include "Queue.hpp"
 
+#include "Common.hpp"
 #include "Context.hpp"
 #include "CommandList.hpp"
 
 namespace RHI::Vulkan
 {
-
-    Queue::Queue(VkDevice device, uint32_t familyIndex)
-        : m_queue(VK_NULL_HANDLE)
+    IQueue::IQueue(IContext* context, uint32_t familyIndex)
+        : m_context(context)
+        , m_queue(VK_NULL_HANDLE)
         , m_familyIndex(familyIndex)
     {
-        vkGetDeviceQueue(device, familyIndex, 0, &m_queue);
+        vkGetDeviceQueue(m_context->m_device, familyIndex, 0, &m_queue);
     }
 
-    void Queue::BeginLabel(IContext* context, const char* name, ColorValue<float> color)
+    void IQueue::BeginLabel(const char* name, ColorValue<float> color)
     {
-        if (auto fn = context->m_pfn.m_vkQueueBeginDebugUtilsLabelEXT)
+        if (auto fn = m_context->m_pfn.m_vkQueueBeginDebugUtilsLabelEXT)
         {
             VkDebugUtilsLabelEXT labelInfo{};
             labelInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
@@ -29,35 +30,50 @@ namespace RHI::Vulkan
         }
     }
 
-    void Queue::EndLabel(IContext* context)
+    void IQueue::EndLabel()
     {
-        if (auto fn = context->m_pfn.m_vkQueueEndDebugUtilsLabelEXT)
+        if (auto fn = m_context->m_pfn.m_vkQueueEndDebugUtilsLabelEXT)
         {
             fn(m_queue);
         }
     }
 
-    void Queue::Submit([[maybe_unused]] IContext* context, SubmitInfo submitGroups, IFence* fence)
+    void IQueue::Submit(TL::Span<ICommandList* const> commandLists, IFence* fence)
     {
-        TL::Vector<VkCommandBufferSubmitInfo> commandBufferSubmitInfos;
-        for (const auto& commandList : submitGroups.commandLists)
+        TL::Vector<VkSemaphoreSubmitInfo> waitSemaphoreSIList;
+        TL::Vector<VkSemaphoreSubmitInfo> signalSemaphoresSIList;
+        TL::Vector<VkCommandBufferSubmitInfo> commandBuffersSIList;
+
+        for (const auto& commandList : commandLists)
         {
-            VkCommandBufferSubmitInfo commandBufferSubmitInfo{};
-            commandBufferSubmitInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
-            commandBufferSubmitInfo.commandBuffer = commandList->m_commandBuffer;
-            commandBufferSubmitInfos.push_back(commandBufferSubmitInfo);
+            for (auto waitSemaphore : commandList->m_waitSemaphores)
+            {
+                waitSemaphoreSIList.push_back(waitSemaphore);
+            }
+            for (auto signalSemaphore : commandList->m_signalSemaphores)
+            {
+                signalSemaphoresSIList.push_back(signalSemaphore);
+            }
+            VkCommandBufferSubmitInfo commandBufferSubmitInfo{
+                .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+                .pNext = nullptr,
+                .commandBuffer = commandList->m_commandBuffer,
+                .deviceMask = 0,
+            };
+            commandBuffersSIList.push_back(commandBufferSubmitInfo);
         }
 
-        VkSubmitInfo2 info = {};
-        info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
-        info.pNext = nullptr;
-        info.flags = 0;
-        info.waitSemaphoreInfoCount = (uint32_t)submitGroups.waitSemaphores.size();
-        info.pWaitSemaphoreInfos = submitGroups.waitSemaphores.data();
-        info.commandBufferInfoCount = (uint32_t)commandBufferSubmitInfos.size();
-        info.pCommandBufferInfos = commandBufferSubmitInfos.data();
-        info.signalSemaphoreInfoCount = (uint32_t)submitGroups.signalSemaphores.size();
-        info.pSignalSemaphoreInfos = submitGroups.signalSemaphores.data();
+        VkSubmitInfo2 info{
+            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+            .pNext = nullptr,
+            .flags = 0,
+            .waitSemaphoreInfoCount = (uint32_t)waitSemaphoreSIList.size(),
+            .pWaitSemaphoreInfos = waitSemaphoreSIList.data(),
+            .commandBufferInfoCount = (uint32_t)commandBuffersSIList.size(),
+            .pCommandBufferInfos = commandBuffersSIList.data(),
+            .signalSemaphoreInfoCount = (uint32_t)signalSemaphoresSIList.size(),
+            .pSignalSemaphoreInfos = signalSemaphoresSIList.data(),
+        };
         vkQueueSubmit2(m_queue, 1, &info, fence ? fence->UseFence() : VK_NULL_HANDLE);
     }
 } // namespace RHI::Vulkan

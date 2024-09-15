@@ -266,7 +266,9 @@ public:
 
         commandList->End();
 
-        m_renderGraph->Submit(m_pass, commandList);
+        m_context->GetQueue()->Submit(commandList.get(), m_frameRingbuffer.Get().m_fence.get());
+
+        m_context->AdvanceFrame();
     }
 };
 

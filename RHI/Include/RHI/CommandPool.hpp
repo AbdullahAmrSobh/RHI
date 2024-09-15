@@ -5,6 +5,7 @@
 
 #include <TL/Assert.hpp>
 #include <TL/Containers.hpp>
+#include <TL/UniquePtr.hpp>
 
 namespace RHI
 {
@@ -33,18 +34,18 @@ namespace RHI
         CommandPool()                   = default;
         CommandPool(const CommandPool&) = delete;
         CommandPool(CommandPool&&)      = delete;
-        virtual ~CommandPool()          = default;
+        virtual ~CommandPool();
 
         /// @brief Resets the command pool, clearing any allocated command lists.
-        virtual void                     Reset() = 0;
+        virtual void                             Reset() = 0;
 
         /// @brief Allocates a command list from the pool.
         /// @param queueType Type of queue to allocate for.
         /// @param level Level of the command list to allocate.
         /// @return A pointer to the allocated command list.
-        TL_NODISCARD inline CommandList* Allocate(QueueType queueType, CommandListLevel level)
+        TL_NODISCARD inline TL::Ptr<CommandList> Allocate(QueueType queueType, CommandListLevel level)
         {
-            return Allocate(queueType, level, 1).front();
+            return std::move(Allocate(queueType, level, 1).front());
         }
 
         /// @brief Allocates multiple command lists from the pool.
@@ -52,7 +53,7 @@ namespace RHI
         /// @param level Level of the command lists to allocate.
         /// @param count Number of command lists to allocate.
         /// @return A vector of pointers to the allocated command lists.
-        TL_NODISCARD virtual TL::Vector<CommandList*> Allocate(QueueType queueType, CommandListLevel level, uint32_t count) = 0;
+        TL_NODISCARD virtual TL::Vector<TL::Ptr<CommandList>> Allocate(QueueType queueType, CommandListLevel level, uint32_t count) = 0;
     };
 
 }; // namespace RHI

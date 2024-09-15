@@ -80,7 +80,7 @@ namespace Examples::RPI
 
         OnRender(meshes);
 
-        m_context->ExecuteRenderGraph(*m_renderGraph, m_frameRingbuffer.Get().m_fence.get());
+        // m_context->ExecuteRenderGraph(*m_renderGraph, m_frameRingbuffer.Get().m_fence.get());
 
         auto resultCode = m_swapchain->Present();
         TL_ASSERT(RHI::IsSuccess(resultCode), "Failed to present swapchain");

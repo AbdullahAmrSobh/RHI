@@ -78,10 +78,20 @@ namespace RHI::Vulkan
         void                     Internal_DestroyImageView(Handle<ImageView> handle) override;
         Handle<BufferView>       Internal_CreateBufferView(const BufferViewCreateInfo& createInfo) override;
         void                     Internal_DestroyBufferView(Handle<BufferView> handle) override;
-        void                     Internal_DispatchGraph(RenderGraph& renderGraph, Fence* signalFence) override;
         DeviceMemoryPtr          Internal_MapBuffer(Handle<Buffer> handle) override;
         void                     Internal_UnmapBuffer(Handle<Buffer> handle) override;
+
         // clang-format on
+
+        virtual Queue* GetQueue() const override
+        {
+            return (Queue*)&m_queue[(uint32_t)QueueType::Graphics];
+        }
+
+        virtual void AdvanceFrame() override
+        {
+            m_frameContext.AdvanceFrame();
+        }
 
     private:
         VkResult InitInstance(const ApplicationInfo& appInfo, bool* debugExtensionEnabled);
@@ -116,7 +126,7 @@ namespace RHI::Vulkan
             PFN_vkCmdEndConditionalRenderingEXT m_vkCmdEndConditionalRenderingEXT;
         } m_pfn;
 
-        Queue m_queue[(uint32_t)QueueType::Count];
+        IQueue m_queue[(uint32_t)QueueType::Count];
 
         FrameExecuteContext m_frameContext;
 

@@ -30,16 +30,14 @@ namespace RHI
         return m_passes.emplace_back(handle);
     }
 
-    void RenderGraph::PassResize(Handle<Pass> _pass, ImageSize2D size)
+    void RenderGraph::PassResize(Handle<Pass> pass, ImageSize2D size)
     {
-        auto pass = m_passPool.Get(_pass);
-        pass->m_renderTargetSize = size;
+        m_passPool.Get(pass)->Resize(size);
     }
 
-    ImageSize2D RenderGraph::GetPassSize(Handle<Pass> _pass) const
+    ImageSize2D RenderGraph::GetPassSize(Handle<Pass> pass) const
     {
-        auto pass = m_passPool.Get(_pass);
-        return pass->m_renderTargetSize;
+        return m_passPool.Get(pass)->GetSize();
     }
 
     Handle<ImageAttachment> RenderGraph::ImportSwapchain(const char* name, Swapchain& swapchain)
@@ -258,13 +256,6 @@ namespace RHI
             return bufferView->second;
         }
         return m_bufferViewsLRU[key] = m_context->CreateBufferView(createInfo);
-    }
-
-    void RenderGraph::Submit(Handle<Pass> _pass, TL::Span<CommandList*> commandList, [[maybe_unused]] Fence* signalFence)
-    {
-        auto pass = m_passPool.Get(_pass);
-        pass->m_commandLists.clear();
-        pass->m_commandLists.insert(pass->m_commandLists.end(), commandList.begin(), commandList.end());
     }
 
     void RenderGraph::Compile()

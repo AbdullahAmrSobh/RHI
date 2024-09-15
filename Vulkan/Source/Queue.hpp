@@ -1,6 +1,6 @@
 #pragma once
 
-#include <RHI/Definitions.hpp>
+#include <RHI/Queue.hpp>
 
 #include <TL/Span.hpp>
 
@@ -12,33 +12,31 @@ namespace RHI::Vulkan
     class IFence;
     class ICommandList;
 
-    struct SubmitInfo
-    {
-        TL::Span<const VkSemaphoreSubmitInfoKHR> waitSemaphores;
-        TL::Span<const VkSemaphoreSubmitInfoKHR> signalSemaphores;
-        TL::Span<ICommandList* const> commandLists;
-    };
-
-    class Queue
+    class IQueue final : public Queue
     {
     public:
-        Queue() = default;
+        IQueue() = default;
+        IQueue(IContext* context, uint32_t familyIndex);
 
-        Queue(VkDevice device, uint32_t familyIndex);
+        inline VkQueue GetHandle() const { return m_queue; }
 
-        VkQueue GetHandle() const { return m_queue; }
+        inline uint32_t GetFamilyIndex() const { return m_familyIndex; }
 
-        uint32_t GetFamilyIndex() const { return m_familyIndex; }
+        void BeginLabel(const char* name, ColorValue<float> color) override;
+        void EndLabel() override;
 
-        void BeginLabel(IContext* context, const char* name, ColorValue<float> color);
+        void Submit(TL::Span<CommandList* const> commandLists, Fence* fence) override
+        {
+            TL::Span<ICommandList*> list{ (ICommandList**)commandLists.data(), commandLists.size() };
+            Submit(list, (IFence*)fence);
+        }
 
-        void EndLabel(IContext* context);
-
-        void Submit(IContext* context, SubmitInfo submitGroups, IFence* fence);
-
-        void Present(IContext* context, VkSemaphore semaphore, class ISwapchain& swapchain);
+        void Submit(TL::Span<ICommandList* const> commandLists, IFence* fence);
+        void Present(VkSemaphore semaphore, class ISwapchain& swapchain);
 
     private:
+        IContext* m_context;
+
         VkQueue m_queue;
         uint32_t m_familyIndex;
     };

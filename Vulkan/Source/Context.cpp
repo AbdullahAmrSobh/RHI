@@ -561,27 +561,27 @@ namespace RHI::Vulkan
         });
     }
 
-    void IContext::Internal_DispatchGraph(RenderGraph& renderGraph, Fence* signalFence)
-    {
-        for (auto passHandle : renderGraph.m_passes)
-        {
-            auto queue = m_queue[(uint32_t)QueueType::Graphics]; // TODO: query pass for this
-            auto pass = renderGraph.m_passPool.Get(passHandle);
-            auto commandList = (ICommandList*)pass->m_commandLists.front();
+    // void IContext::Internal_DispatchGraph(RenderGraph& renderGraph, Fence* signalFence)
+    // {
+    //     for (auto passHandle : renderGraph.m_passes)
+    //     {
+    //         auto queue = m_queue[(uint32_t)QueueType::Graphics]; // TODO: query pass for this
+    //         auto pass = renderGraph.m_passPool.Get(passHandle);
+    //         auto commandList = (ICommandList*)pass->m_commandLists.front();
 
-            SubmitInfo submitInfo{};
-            submitInfo.waitSemaphores = commandList->m_waitSemaphores;
-            submitInfo.signalSemaphores = commandList->m_signalSemaphores;
-            submitInfo.commandLists = { (ICommandList**)pass->m_commandLists.data(), pass->m_commandLists.size() };
+    //         SubmitInfo submitInfo{};
+    //         submitInfo.waitSemaphores = commandList->m_waitSemaphores;
+    //         submitInfo.signalSemaphores = commandList->m_signalSemaphores;
+    //         submitInfo.commandLists = { (ICommandList**)pass->m_commandLists.data(), pass->m_commandLists.size() };
 
-            queue.Submit(
-                this,
-                submitInfo,
-                passHandle == renderGraph.m_passes.back() ? (IFence*)signalFence : nullptr);
-        }
+    //         queue.Submit(
+    //             this,
+    //             submitInfo,
+    //             passHandle == renderGraph.m_passes.back() ? (IFence*)signalFence : nullptr);
+    //     }
 
-        m_frameContext.AdvanceFrame();
-    }
+    //     m_frameContext.AdvanceFrame();
+    // }
 
     DeviceMemoryPtr IContext::Internal_MapBuffer(Handle<Buffer> handle)
     {
@@ -617,22 +617,24 @@ namespace RHI::Vulkan
             VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
         };
 
-        VkApplicationInfo applicationInfo{};
-        applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-        applicationInfo.pNext = nullptr;
-        applicationInfo.pApplicationName = appInfo.applicationName;
-        applicationInfo.applicationVersion = VK_MAKE_API_VERSION(0, appInfo.applicationVersion.major, appInfo.applicationVersion.minor, appInfo.applicationVersion.patch);
-        applicationInfo.pEngineName = appInfo.engineName;
-        applicationInfo.engineVersion = VK_MAKE_API_VERSION(0, appInfo.engineVersion.major, appInfo.engineVersion.minor, appInfo.engineVersion.patch);
-        applicationInfo.apiVersion = VK_API_VERSION_1_3;
+        VkApplicationInfo applicationInfo{
+            .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+            .pNext = nullptr,
+            .pApplicationName = appInfo.applicationName,
+            .applicationVersion = VK_MAKE_API_VERSION(0, appInfo.applicationVersion.major, appInfo.applicationVersion.minor, appInfo.applicationVersion.patch),
+            .pEngineName = appInfo.engineName,
+            .engineVersion = VK_MAKE_API_VERSION(0, appInfo.engineVersion.major, appInfo.engineVersion.minor, appInfo.engineVersion.patch),
+            .apiVersion = VK_API_VERSION_1_3,
+        };
 
-        VkDebugUtilsMessengerCreateInfoEXT debugUtilsCI{};
-        debugUtilsCI.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-        debugUtilsCI.flags = 0;
-        debugUtilsCI.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-        debugUtilsCI.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT;
-        debugUtilsCI.pfnUserCallback = DebugMessengerCallbacks;
-        debugUtilsCI.pUserData = this;
+        VkDebugUtilsMessengerCreateInfoEXT debugUtilsCI{
+            .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+            .flags = 0,
+            .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+            .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT,
+            .pfnUserCallback = DebugMessengerCallbacks,
+            .pUserData = this,
+        };
 
 #if RHI_DEBUG
         for (VkExtensionProperties extension : GetAvailableInstanceExtensions())
@@ -654,17 +656,21 @@ namespace RHI::Vulkan
         }
 #endif
 
-        VkInstanceCreateInfo instanceCI{};
-        instanceCI.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+        VkInstanceCreateInfo instanceCI
+        {
+            .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
 #if RHI_DEBUG
-        instanceCI.pNext = *debugExtensionEnabled ? &debugUtilsCI : nullptr;
+            .pNext = *debugExtensionEnabled ? &debugUtilsCI : nullptr,
+#else
+            .pNext = nullptr,
 #endif
-        instanceCI.flags = {};
-        instanceCI.pApplicationInfo = &applicationInfo;
-        instanceCI.enabledLayerCount = static_cast<uint32_t>(layers.size());
-        instanceCI.ppEnabledLayerNames = layers.data();
-        instanceCI.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
-        instanceCI.ppEnabledExtensionNames = extensions.data();
+            .flags = {},
+            .pApplicationInfo = &applicationInfo,
+            .enabledLayerCount = static_cast<uint32_t>(layers.size()),
+            .ppEnabledLayerNames = layers.data(),
+            .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
+            .ppEnabledExtensionNames = extensions.data(),
+        };
         result = vkCreateInstance(&instanceCI, nullptr, &m_instance);
         if (result != VK_SUCCESS)
             return result;
@@ -800,17 +806,18 @@ namespace RHI::Vulkan
         features13.synchronization2 = VK_TRUE;
         features13.dynamicRendering = VK_TRUE;
 
-        VkDeviceCreateInfo deviceCI{};
-        deviceCI.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        deviceCI.pNext = &features;
-        deviceCI.flags = 0;
-        deviceCI.queueCreateInfoCount = (uint32_t)queueCreateInfos.size();
-        deviceCI.pQueueCreateInfos = queueCreateInfos.data();
-        deviceCI.enabledLayerCount = (uint32_t)deviceLayerNames.size();
-        deviceCI.ppEnabledLayerNames = deviceLayerNames.data();
-        deviceCI.enabledExtensionCount = (uint32_t)deviceExtensionNames.size();
-        deviceCI.ppEnabledExtensionNames = deviceExtensionNames.data();
-        deviceCI.pEnabledFeatures = nullptr;
+        VkDeviceCreateInfo deviceCI{
+            .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+            .pNext = &features,
+            .flags = 0,
+            .queueCreateInfoCount = (uint32_t)queueCreateInfos.size(),
+            .pQueueCreateInfos = queueCreateInfos.data(),
+            .enabledLayerCount = (uint32_t)deviceLayerNames.size(),
+            .ppEnabledLayerNames = deviceLayerNames.data(),
+            .enabledExtensionCount = (uint32_t)deviceExtensionNames.size(),
+            .ppEnabledExtensionNames = deviceExtensionNames.data(),
+            .pEnabledFeatures = nullptr,
+        };
         auto result = vkCreateDevice(m_physicalDevice, &deviceCI, nullptr, &m_device);
 
 #if RHI_DEBUG
@@ -830,11 +837,9 @@ namespace RHI::Vulkan
         m_pfn.m_vkCmdBeginConditionalRenderingEXT = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdBeginConditionalRenderingEXT);
         m_pfn.m_vkCmdEndConditionalRenderingEXT = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdEndConditionalRenderingEXT);
 
-        m_queue[(uint32_t)QueueType::Graphics] = Queue(m_device, graphicsQueueFamilyIndex);
-        m_queue[(uint32_t)QueueType::Compute] = Queue(m_device, computeQueueFamilyIndex);
-        m_queue[(uint32_t)QueueType::Transfer] = Queue(m_device, transferQueueFamilyIndex);
-
-        m_limits->stagingMemoryLimit = 256 * 1000 * 1000;
+        m_queue[(uint32_t)QueueType::Graphics] = IQueue(this, graphicsQueueFamilyIndex);
+        m_queue[(uint32_t)QueueType::Compute] = IQueue(this, computeQueueFamilyIndex);
+        m_queue[(uint32_t)QueueType::Transfer] = IQueue(this, transferQueueFamilyIndex);
 
         return result;
     }
