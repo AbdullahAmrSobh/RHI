@@ -1,3 +1,7 @@
+// Fix swapchain resizing and moving into other monitor
+// Fix validation errors and change API if needed!
+// Fix all memory and resource leaks!
+
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #define GLM_FORCE_LEFT_HANDED
@@ -50,21 +54,6 @@ public:
     RHI::Handle<RHI::Buffer> m_uniformBuffer;
 
     Camera m_camera;
-
-    // constexpr glm::mat4 GetVulkanCorrectionMatrix()
-    // {
-    //     // Flip Y and adjust Z range for Vulkan's depth (0 to 1)
-    //     glm::mat4 correction = glm::mat4(1.0f);
-
-    //     // Flip Y (row 1)
-    //     correction[1][1] = -1.0f;
-
-    //     // Adjust Z from [-1, 1] to [0, 1]
-    //     correction[2][2] = 0.5f;
-    //     correction[3][2] = 0.5f;
-
-    //     return correction;
-    // }
 
     PerFrame& AdvanceFrame()
     {
@@ -352,6 +341,7 @@ public:
 
     void ShutdownBuffers()
     {
+        m_context->DestroyBuffer(m_uniformBuffer);
         m_context->DestroyBuffer(m_vertexBuffer);
         m_context->DestroyBuffer(m_indexBuffer);
     }
@@ -364,7 +354,7 @@ public:
         InitRenderGraph();
 
         auto [width, height] = m_window->GetWindowSize();
-        m_camera.SetPerspective(30.0f, (float)width/(float)height, 0.00001f, 100000.0f);
+        m_camera.SetPerspective(30.0f, (float)width / (float)height, 0.00001f, 100000.0f);
         m_camera.m_window = m_window.get();
     }
 
@@ -408,6 +398,8 @@ public:
 
         auto commandList = frame.m_commandPool->Allocate(RHI::QueueType::Graphics, RHI::CommandListLevel::Primary);
 
+        auto [width, height] = m_renderGraph->GetPassSize(m_mainPass);
+
         RHI::CommandListBeginInfo renderPassBeginInfo{
             .renderGraph = m_renderGraph,
             .pass = m_mainPass,
@@ -419,18 +411,23 @@ public:
         };
 
         commandList->Begin(renderPassBeginInfo);
+        // commandList->Begin();
 
-        auto size = m_renderGraph->GetPassSize(m_mainPass);
-        RHI::Viewport viewport{};
-        viewport.width = (float)size.width;
-        viewport.height = (float)size.height;
-        viewport.maxDepth = 1.0f;
-        RHI::Scissor scissor{};
-        scissor.width = size.width;
-        scissor.height = size.height;
-        commandList->SetViewport(viewport);
-        commandList->SetSicssor(scissor);
+        commandList->SetViewport(RHI::Viewport{
+            .offsetX = 0.0f,
+            .offsetY = 0.0f,
+            .width = (float)width,
+            .height = (float)height,
+            .minDepth = 0.0f,
+            .maxDepth = 1.0f,
+        });
 
+        commandList->SetSicssor(RHI::Scissor{
+            .offsetX = 0,
+            .offsetY = 0,
+            .width = width,
+            .height = height,
+        });
         commandList->BindGraphicsPipeline(m_graphicsPipeline, RHI::BindGroupBindingInfo{ frame.m_bindGroup, {} });
         commandList->BindVertexBuffers(0, RHI::BufferBindingInfo{ .buffer = m_vertexBuffer, .offset = 0 });
         commandList->BindVertexBuffers(1, RHI::BufferBindingInfo{ .buffer = m_vertexBuffer, .offset = sizeof(glm::vec3) * 4 });

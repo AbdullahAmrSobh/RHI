@@ -1,6 +1,5 @@
 #pragma once
 
-#include "RHI/RenderGraph.hpp"
 #include "RHI/RGPass.hpp"
 
 #include <TL/Containers.hpp>
@@ -8,14 +7,14 @@
 
 namespace RHI
 {
+    template<typename T>
+    struct ColorValue;
+
     struct GraphicsPipeline;
     struct ComputePipeline;
 
+    class RenderGraph;
     class Pass;
-    class CommandList;
-    class Pass;
-    template<typename T>
-    struct ColorValue;
 
     enum class IndexType
     {

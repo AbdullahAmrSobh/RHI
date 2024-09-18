@@ -13,5 +13,4 @@ namespace RHI
     };
 
     TL_DEFINE_FLAG_OPERATORS(Access);
-
 } // namespace RHI
