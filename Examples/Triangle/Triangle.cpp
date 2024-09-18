@@ -151,37 +151,48 @@ public:
         pipelineCI.pixelShaderName = "PSMain";
         pipelineCI.pixelShaderModule = shaderModule.get();
         pipelineCI.layout = m_pipelineLayout;
-        pipelineCI.inputAssemblerState.bindings[0] = {
-            .binding = 0,
-            .stride = sizeof(glm::vec3),
-            .stepRate = RHI::PipelineVertexInputRate::PerVertex,
+        pipelineCI.inputAssemblerState.bindings = {
+            {
+             .binding = 0,
+             .stride = sizeof(glm::vec3),
+             .stepRate = RHI::PipelineVertexInputRate::PerVertex,
+             },
+            {
+             .binding = 1,
+             .stride = sizeof(glm::vec4),
+             .stepRate = RHI::PipelineVertexInputRate::PerVertex,
+             }
         };
-        pipelineCI.inputAssemblerState.bindings[1] = {
-            .binding = 1,
-            .stride = sizeof(glm::vec4),
-            .stepRate = RHI::PipelineVertexInputRate::PerVertex,
+        pipelineCI.inputAssemblerState.attributes = {
+            {
+             .location = 0,
+             .binding = 0,
+             .format = RHI::Format::RGB32_FLOAT,
+             .offset = 0,
+             },
+            {
+             .location = 1,
+             .binding = 1,
+             .format = RHI::Format::RGBA32_FLOAT,
+             .offset = 0,
+             }
         };
-        pipelineCI.inputAssemblerState.attributes[0] = {
-            .location = 0,
-            .binding = 0,
-            .format = RHI::Format::RGB32_FLOAT,
-            .offset = 0,
+
+        pipelineCI.renderTargetLayout.colorAttachmentsFormats = RHI::Format::RGBA8_UNORM;
+
+        pipelineCI.colorBlendState.blendStates = {
+            {
+             .blendEnable = true,
+             .colorBlendOp = RHI::BlendEquation::Add,
+             .srcColor = RHI::BlendFactor::SrcAlpha,
+             .dstColor = RHI::BlendFactor::OneMinusSrcAlpha,
+             .alphaBlendOp = RHI::BlendEquation::Add,
+             .srcAlpha = RHI::BlendFactor::One,
+             .dstAlpha = RHI::BlendFactor::Zero,
+             .writeMask = RHI::ColorWriteMask::All,
+             }
         };
-        pipelineCI.inputAssemblerState.attributes[1] = {
-            .location = 1,
-            .binding = 1,
-            .format = RHI::Format::RGBA32_FLOAT,
-            .offset = 0,
-        };
-        pipelineCI.renderTargetLayout.colorAttachmentsFormats[0] = RHI::Format::RGBA8_UNORM;
-        pipelineCI.colorBlendState.blendStates[0].blendEnable = true;
-        pipelineCI.colorBlendState.blendStates[0].colorBlendOp = RHI::BlendEquation::Add;
-        pipelineCI.colorBlendState.blendStates[0].srcColor = RHI::BlendFactor::SrcAlpha;
-        pipelineCI.colorBlendState.blendStates[0].dstColor = RHI::BlendFactor::OneMinusSrcAlpha;
-        pipelineCI.colorBlendState.blendStates[0].alphaBlendOp = RHI::BlendEquation::Add;
-        pipelineCI.colorBlendState.blendStates[0].srcAlpha = RHI::BlendFactor::One;
-        pipelineCI.colorBlendState.blendStates[0].dstAlpha = RHI::BlendFactor::Zero;
-        pipelineCI.colorBlendState.blendStates[0].writeMask = RHI::ColorWriteMask::All;
+
         pipelineCI.topologyMode = RHI::PipelineTopologyMode::Triangles;
         pipelineCI.rasterizationState.cullMode = RHI::PipelineRasterizerStateCullMode::None;
         pipelineCI.rasterizationState.fillMode = RHI::PipelineRasterizerStateFillMode::Triangle;

@@ -4,6 +4,12 @@
 
 namespace RHI::Vulkan
 {
+    // TODO: remove or assert
+    inline static constexpr uint32_t c_MaxRenderTargetAttachmentsCount = 16u;
+    inline static constexpr uint32_t c_MaxPipelineVertexBindings = 32u;
+    inline static constexpr uint32_t c_MaxPipelineVertexAttributes = 32u;
+    inline static constexpr uint32_t c_MaxPipelineBindGroupsCount = 4u;
+
     inline static VkBool32 ConvertBool(bool value)
     {
         return value ? VK_TRUE : VK_FALSE;
@@ -333,7 +339,7 @@ namespace RHI::Vulkan
         uint32_t colorAttachmentFormatCount = 0;
         VkFormat colorAttachmentFormats[c_MaxRenderTargetAttachmentsCount] = {};
 
-        for (uint32_t formatIndex = 0; formatIndex < c_MaxRenderTargetAttachmentsCount; formatIndex++)
+        for (uint32_t formatIndex = 0; formatIndex < createInfo.renderTargetLayout.colorAttachmentsFormats.size(); formatIndex++)
         {
             auto format = createInfo.renderTargetLayout.colorAttachmentsFormats[formatIndex];
             if (format == Format::Unknown)

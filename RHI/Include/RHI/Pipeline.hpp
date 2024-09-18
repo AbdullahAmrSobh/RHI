@@ -6,18 +6,6 @@
 
 namespace RHI
 {
-    /// @brief Maximum number of render target attachments.
-    inline static constexpr uint32_t c_MaxRenderTargetAttachmentsCount = 16u;
-
-    /// @brief Maximum number of vertex bindings in a pipeline.
-    inline static constexpr uint32_t c_MaxPipelineVertexBindings = 32u;
-
-    /// @brief Maximum number of vertex attributes in a pipeline.
-    inline static constexpr uint32_t c_MaxPipelineVertexAttributes = 32u;
-
-    /// @brief Maximum number of bind groups in a pipeline.
-    inline static constexpr uint32_t c_MaxPipelineBindGroupsCount = 4u;
-
     RHI_DECLARE_OPAQUE_RESOURCE(PipelineLayout);
     RHI_DECLARE_OPAQUE_RESOURCE(GraphicsPipeline);
     RHI_DECLARE_OPAQUE_RESOURCE(ComputePipeline);
@@ -135,8 +123,8 @@ namespace RHI
     /// @brief Information required to create a pipeline layout.
     struct PipelineLayoutCreateInfo
     {
-        const char*             name;
-        Handle<BindGroupLayout> layouts[c_MaxPipelineBindGroupsCount]; ///< Array of bind group layouts.
+        const char*                             name;    ///< Debug name of the pipeline layout object.
+        TL::Span<const Handle<BindGroupLayout>> layouts; ///< List of bind group layouts.
     };
 
     /// @brief Description of color attachment blend state.
@@ -166,9 +154,9 @@ namespace RHI
     /// @brief Layout of render targets in a pipeline.
     struct PipelineRenderTargetLayout
     {
-        Format colorAttachmentsFormats[c_MaxRenderTargetAttachmentsCount]; ///< Formats of color attachments.
-        Format depthAttachmentFormat;                                      ///< Format of depth attachment.
-        Format stencilAttachmentFormat;                                    ///< Format of stencil attachment.
+        TL::Span<const Format> colorAttachmentsFormats; ///< Formats of color attachments.
+        Format                 depthAttachmentFormat;   ///< Format of depth attachment.
+        Format                 stencilAttachmentFormat; ///< Format of stencil attachment.
     };
 
     /// @brief Description of vertex binding in a pipeline.
@@ -191,8 +179,8 @@ namespace RHI
     /// @brief Input assembler state description for pipelines.
     struct PipelineInputAssemblerStateDesc
     {
-        PipelineVertexBindingDesc   bindings[c_MaxPipelineVertexBindings];     ///< Vertex bindings.
-        PipelineVertexAttributeDesc attributes[c_MaxPipelineVertexAttributes]; ///< Vertex attributes.
+        TL::Span<const PipelineVertexBindingDesc>   bindings;   ///< Vertex bindings.
+        TL::Span<const PipelineVertexAttributeDesc> attributes; ///< Vertex attributes.
     };
 
     /// @brief Rasterizer state description for pipelines.
@@ -223,8 +211,8 @@ namespace RHI
     /// @brief Color blend state description for pipelines.
     struct PipelineColorBlendStateDesc
     {
-        ColorAttachmentBlendStateDesc blendStates[c_MaxRenderTargetAttachmentsCount]; ///< Color blend states for each attachment.
-        float                         blendConstants[4];                              ///< Blend constants.
+        TL::Span<const ColorAttachmentBlendStateDesc> blendStates;       ///< Color blend states for each attachment.
+        float                                         blendConstants[4]; ///< Blend constants.
     };
 
     /// @brief Information required to create a graphics pipeline.
