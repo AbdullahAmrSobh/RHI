@@ -7,6 +7,13 @@
 
 namespace RHI
 {
+#define TRY(condition, message, return_type) \
+    if ((condition) == false)                \
+    {                                        \
+        TL_LOG_INFO(message);                \
+        return return_type;                  \
+    }
+
     Context::Context()
         : m_limits(TL::CreatePtr<Limits>())
     {
@@ -71,7 +78,6 @@ namespace RHI
     {
         ZoneScoped;
 
-        TL_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreateBindGroupLayout(createInfo);
     }
 
@@ -107,7 +113,6 @@ namespace RHI
     {
         ZoneScoped;
 
-        TL_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreatePipelineLayout(createInfo);
     }
 
@@ -122,7 +127,6 @@ namespace RHI
     {
         ZoneScoped;
 
-        TL_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreateGraphicsPipeline(createInfo);
     }
 
@@ -137,7 +141,6 @@ namespace RHI
     {
         ZoneScoped;
 
-        TL_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreateComputePipeline(createInfo);
     }
 
@@ -152,7 +155,6 @@ namespace RHI
     {
         ZoneScoped;
 
-        TL_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreateSampler(createInfo);
     }
 
@@ -167,7 +169,32 @@ namespace RHI
     {
         ZoneScoped;
 
-        TL_ASSERT(ValidateCreateInfo(createInfo));
+        if (true) // validation
+        {
+            TRY(createInfo.usageFlags != RHI::ImageUsage::None, "Invalid usage flags", ResultCode::ErrorUnknown);
+            if (createInfo.type == ImageType::Image1D)
+            {
+                TRY(createInfo.size.height == 1 && createInfo.size.depth == 1, "1D Images should have 1 in width and depth size paramters", ResultCode::ErrorUnknown);
+            }
+            else if (createInfo.type == ImageType::Image2D)
+            {
+                TRY(createInfo.size.depth == 1, "2D Images should have 1 in the depth paramter", ResultCode::ErrorUnknown);
+            }
+            else if (createInfo.type == ImageType::Image3D)
+            {
+            }
+            else
+            {
+                TL_LOG_INFO("Invalid value for ImageCreateInfo::type");
+                return ResultCode::ErrorUnknown;
+            }
+
+            TRY(createInfo.format != Format::Unknown, "Inavlid format for image", ResultCode::ErrorUnknown);
+            TRY(createInfo.sampleCount != SampleCount::None, "Invalid value for ImageCreateInfo::sampleCount", ResultCode::ErrorUnknown);
+            TRY(createInfo.mipLevels != 0, "Invalid value for ImageCreateInfo::mipLevels", ResultCode::ErrorUnknown);
+            TRY(createInfo.arrayCount != 0, "Invalid value for ImageCreateInfo::arrayCount", ResultCode::ErrorUnknown);
+        }
+
         return Internal_CreateImage(createInfo);
     }
 
@@ -182,7 +209,6 @@ namespace RHI
     {
         ZoneScoped;
 
-        TL_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreateBuffer(createInfo);
     }
 
@@ -197,7 +223,15 @@ namespace RHI
     {
         ZoneScoped;
 
-        TL_ASSERT(ValidateCreateInfo(createInfo));
+        if (true)
+        {
+            TRY(createInfo.image != NullHandle, "Invalid Image handle", NullHandle);
+            TRY(createInfo.viewType != ImageViewType::None, "Invalid value for ImageViewCreateInfo::type", NullHandle);
+            TRY(createInfo.subresource.imageAspects != ImageAspect::None, "Invalid value for ImageViewCreateInfo::subresource::imageAspects", NullHandle);
+            TRY(createInfo.subresource.arrayCount != 0, "Invalid value for ImageViewCreateInfo::subresource::arrayCount", NullHandle);
+            TRY(createInfo.subresource.mipLevelCount != 0, "Invalid value for ImageViewCreateInfo::subresource::mipLevelCount", NullHandle);
+        }
+
         return Internal_CreateImageView(createInfo);
     }
 
@@ -212,7 +246,6 @@ namespace RHI
     {
         ZoneScoped;
 
-        TL_ASSERT(ValidateCreateInfo(createInfo));
         return Internal_CreateBufferView(createInfo);
     }
 
@@ -235,99 +268,6 @@ namespace RHI
         ZoneScoped;
 
         Internal_UnmapBuffer(handle);
-    }
-
-#define TRY(condition, message) \
-    if ((condition) == false)   \
-    {                           \
-        TL_LOG_INFO(message);   \
-        return false;           \
-    }
-
-    bool Context::ValidateCreateInfo(const SwapchainCreateInfo& createInfo) const
-    {
-        (void)createInfo;
-        return true;
-    }
-
-    bool Context::ValidateCreateInfo(const BindGroupLayoutCreateInfo& createInfo) const
-    {
-        (void)createInfo;
-        return true;
-    }
-
-    bool Context::ValidateCreateInfo(const PipelineLayoutCreateInfo& createInfo) const
-    {
-        (void)createInfo;
-        return true;
-    }
-
-    bool Context::ValidateCreateInfo(const GraphicsPipelineCreateInfo& createInfo) const
-    {
-        (void)createInfo;
-        return true;
-    }
-
-    bool Context::ValidateCreateInfo(const ComputePipelineCreateInfo& createInfo) const
-    {
-        (void)createInfo;
-        return true;
-    }
-
-    bool Context::ValidateCreateInfo(const SamplerCreateInfo& createInfo) const
-    {
-        (void)createInfo;
-        return true;
-    }
-
-    bool Context::ValidateCreateInfo(const ImageCreateInfo& createInfo) const
-    {
-        TRY(createInfo.usageFlags != RHI::ImageUsage::None, "Invalid usage flags");
-        if (createInfo.type == ImageType::Image1D)
-        {
-            TRY(createInfo.size.height == 1 && createInfo.size.depth == 1, "1D Images should have 1 in width and depth size paramters");
-        }
-        else if (createInfo.type == ImageType::Image2D)
-        {
-            TRY(createInfo.size.depth == 1, "2D Images should have 1 in the depth paramter");
-        }
-        else if (createInfo.type == ImageType::Image3D)
-        {
-        }
-        else
-        {
-            TL_LOG_INFO("Invalid value for ImageCreateInfo::type");
-            return false;
-        }
-
-        TRY(createInfo.format != Format::Unknown, "Inavlid format for image");
-        TRY(createInfo.sampleCount != SampleCount::None, "Invalid value for ImageCreateInfo::sampleCount");
-        TRY(createInfo.mipLevels != 0, "Invalid value for ImageCreateInfo::mipLevels");
-        TRY(createInfo.arrayCount != 0, "Invalid value for ImageCreateInfo::arrayCount");
-
-        return true;
-    }
-
-    bool Context::ValidateCreateInfo(const BufferCreateInfo& createInfo) const
-    {
-        (void)createInfo;
-        return true;
-    }
-
-    bool Context::ValidateCreateInfo(const ImageViewCreateInfo& createInfo) const
-    {
-        TRY(createInfo.image != NullHandle, "Invalid Image handle");
-        TRY(createInfo.viewType != ImageViewType::None, "Invalid value for ImageViewCreateInfo::type");
-        TRY(createInfo.subresource.imageAspects != ImageAspect::None, "Invalid value for ImageViewCreateInfo::subresource::imageAspects");
-        TRY(createInfo.subresource.arrayCount != 0, "Invalid value for ImageViewCreateInfo::subresource::arrayCount");
-        TRY(createInfo.subresource.mipLevelCount != 0, "Invalid value for ImageViewCreateInfo::subresource::mipLevelCount");
-        return true;
-    }
-
-    bool Context::ValidateCreateInfo(const BufferViewCreateInfo& createInfo) const
-    {
-        (void)createInfo;
-        return true;
     }
 
 } // namespace RHI

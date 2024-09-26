@@ -112,18 +112,6 @@ namespace RHI
 
         virtual void                          AdvanceFrame() = 0;
 
-    private:
-        bool ValidateCreateInfo(const SwapchainCreateInfo& createInfo) const;
-        bool ValidateCreateInfo(const BindGroupLayoutCreateInfo& createInfo) const;
-        bool ValidateCreateInfo(const PipelineLayoutCreateInfo& createInfo) const;
-        bool ValidateCreateInfo(const GraphicsPipelineCreateInfo& createInfo) const;
-        bool ValidateCreateInfo(const ComputePipelineCreateInfo& createInfo) const;
-        bool ValidateCreateInfo(const SamplerCreateInfo& createInfo) const;
-        bool ValidateCreateInfo(const ImageCreateInfo& createInfo) const;
-        bool ValidateCreateInfo(const BufferCreateInfo& createInfo) const;
-        bool ValidateCreateInfo(const ImageViewCreateInfo& createInfo) const;
-        bool ValidateCreateInfo(const BufferViewCreateInfo& createInfo) const;
-
     protected:
         virtual TL::Ptr<Swapchain>       Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo)                           = 0;
         virtual TL::Ptr<ShaderModule>    Internal_CreateShaderModule(TL::Span<const uint32_t> shaderBlob)                          = 0;
