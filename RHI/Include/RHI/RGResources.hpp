@@ -26,7 +26,7 @@ namespace RHI
         VertexShader                  = 1 << 3,
         TessellationControlShader     = 1 << 4,
         TessellationEvaluationShader  = 1 << 5,
-        FragmentShader                = 1 << 6,
+        PixelShader                   = 1 << 6,
         EarlyFragmentTests            = 1 << 7,
         LateFragmentTests             = 1 << 8,
         ColorAttachmentOutput         = 1 << 9,
