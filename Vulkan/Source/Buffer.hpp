@@ -1,5 +1,6 @@
 #pragma once
 
+#include <RHI/Result.hpp>
 #include <RHI/Buffer.hpp>
 
 #include "MemoryAllocator.hpp"

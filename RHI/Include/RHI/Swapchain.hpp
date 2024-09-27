@@ -51,7 +51,8 @@ namespace RHI
         static constexpr uint32_t MinImageCount = 1;
 
         Swapchain(Context* context);
-        virtual ~Swapchain() = default;
+
+        virtual ~Swapchain();
 
         /// @brief Get the current image index of the swapchain.
         uint32_t           GetCurrentImageIndex() const;

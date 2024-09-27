@@ -10,6 +10,8 @@ namespace RHI
     {
     }
 
+    Swapchain::~Swapchain() = default;
+
     uint32_t Swapchain::GetCurrentImageIndex() const
     {
         return m_imageIndex;

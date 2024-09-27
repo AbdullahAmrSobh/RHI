@@ -31,22 +31,22 @@ namespace RHI
     class RHI_EXPORT CommandPool
     {
     public:
-        CommandPool()                   = default;
+        CommandPool() = default;
+
         CommandPool(const CommandPool&) = delete;
-        CommandPool(CommandPool&&)      = delete;
+
+        CommandPool(CommandPool&&) = delete;
+
         virtual ~CommandPool();
 
         /// @brief Resets the command pool, clearing any allocated command lists.
-        virtual void                             Reset() = 0;
+        virtual void                                          Reset() = 0;
 
         /// @brief Allocates a command list from the pool.
         /// @param queueType Type of queue to allocate for.
         /// @param level Level of the command list to allocate.
         /// @return A pointer to the allocated command list.
-        TL_NODISCARD inline TL::Ptr<CommandList> Allocate(QueueType queueType, CommandListLevel level)
-        {
-            return std::move(Allocate(queueType, level, 1).front());
-        }
+        TL_NODISCARD TL::Ptr<CommandList>                     Allocate(QueueType queueType, CommandListLevel level);
 
         /// @brief Allocates multiple command lists from the pool.
         /// @param queueType Type of queue to allocate for.
