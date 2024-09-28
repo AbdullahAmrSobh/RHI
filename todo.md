@@ -19,6 +19,11 @@ RHI:
     - Ray Tracing Pipeline
     - Querys
 
+    - Add Semaphore as a type
+    - Add Barrier and Split Barriers as CommandList Commands
+    - Add BeginRenderPass and EndRenderPass commands
+    - Add SubmitInfo struct
+
 RPI:
     - ImGui
     - Scene
