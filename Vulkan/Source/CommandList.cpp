@@ -40,38 +40,6 @@ namespace RHI::Vulkan
 
     ICommandList::~ICommandList() = default;
 
-    void ICommandList::BeginRendering(
-        VkRect2D renderingArea,
-        TL::Span<const VkRenderingAttachmentInfo> colorAttachments,
-        VkRenderingAttachmentInfo* depthAttachment,
-        VkRenderingAttachmentInfo* stencilAttachment)
-    {
-        TL_ASSERT(m_state.isRenderPassStarted == false); // cannot start a new render pass inside another
-
-        VkRenderingInfo renderingInfo{};
-        renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-        renderingInfo.pNext = nullptr;
-        renderingInfo.flags = {};
-        renderingInfo.renderArea = renderingArea;
-        renderingInfo.layerCount = 1;
-        renderingInfo.viewMask = 0;
-        renderingInfo.colorAttachmentCount = (uint32_t)colorAttachments.size();
-        renderingInfo.pColorAttachments = colorAttachments.data();
-        renderingInfo.pDepthAttachment = depthAttachment;
-        renderingInfo.pStencilAttachment = stencilAttachment;
-        vkCmdBeginRendering(m_commandBuffer, &renderingInfo);
-        m_state.isRenderPassStarted = true;
-    }
-
-    void ICommandList::EndRendedring()
-    {
-        if (m_state.isRenderPassStarted)
-        {
-            vkCmdEndRendering(m_commandBuffer);
-            m_state.isRenderPassStarted = false;
-        }
-    }
-
     void ICommandList::PipelineBarrier(TL::Span<const VkMemoryBarrier2> memoryBarriers, TL::Span<const VkBufferMemoryBarrier2> bufferBarriers, TL::Span<const VkImageMemoryBarrier2> imageBarriers)
     {
         if (memoryBarriers.empty() && bufferBarriers.empty() && imageBarriers.empty())
@@ -111,7 +79,6 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        m_state.isRenderPassStarted = false;
         for (auto& stage : m_barriers)
         {
             stage.memoryBarriers.clear();
@@ -131,11 +98,16 @@ namespace RHI::Vulkan
         vkBeginCommandBuffer(m_commandBuffer, &beginInfo);
     }
 
-    void ICommandList::Begin(const CommandListBeginInfo& beginInfo)
+    void ICommandList::End()
     {
         ZoneScoped;
 
-        Begin();
+        vkEndCommandBuffer(m_commandBuffer);
+    }
+
+    void ICommandList::BeginRenderPass(const RenderPassBeginInfo& beginInfo)
+    {
+        ZoneScoped;
 
         auto renderGraph = beginInfo.renderGraph;
         auto pass = renderGraph->m_passPool.Get(beginInfo.pass);
@@ -162,7 +134,6 @@ namespace RHI::Vulkan
                 auto srcState = ImageStageAccess{ VK_IMAGE_LAYOUT_UNDEFINED, dstState.stage, 0 };
                 auto barrier = CreateImageBarrier(image->handle, subresources, srcState, dstState);
                 m_barriers[BarrierSlot::Priloge].imageBarriers.push_back(barrier);
-
             }
 
             if (node->next == nullptr && swapchain != nullptr)
@@ -184,8 +155,8 @@ namespace RHI::Vulkan
         bool hasDepthAttachment = false, hasStencilAttachment = false;
 
         VkRect2D renderingArea{
-            .offset = {},
-            .extent = ConvertExtent2D(pass->m_renderTargetSize),
+            .offset = {beginInfo.renderArea.offsetX, beginInfo.renderArea.offsetY},
+            .extent = { beginInfo.renderArea.width,  beginInfo.renderArea.height },
         };
 
         if (pass->m_colorAttachments.empty() == false)
@@ -216,26 +187,30 @@ namespace RHI::Vulkan
                 }
             }
 
-            BeginRendering(
-                renderingArea,
-                colorAttachments,
-                hasDepthAttachment ? &depthAttachment : nullptr,
-                hasStencilAttachment ? &stencilAttachment : nullptr);
+            VkRenderingInfo renderingInfo{
+                .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+                .pNext = nullptr,
+                .flags = {},
+                .renderArea = renderingArea,
+                .layerCount = 1,
+                .viewMask = 0,
+                .colorAttachmentCount = (uint32_t)colorAttachments.size(),
+                .pColorAttachments = colorAttachments.data(),
+                .pDepthAttachment = hasDepthAttachment ? &depthAttachment : nullptr,
+                .pStencilAttachment = hasStencilAttachment ? &stencilAttachment : nullptr,
+            };
+            vkCmdBeginRendering(m_commandBuffer, &renderingInfo);
         }
     }
 
-    void ICommandList::End()
+    void ICommandList::EndRenderPass()
     {
-        ZoneScoped;
-
-        EndRendedring();
+        vkCmdEndRendering(m_commandBuffer);
 
         PipelineBarrier(
             m_barriers[BarrierSlot::Epiloge].memoryBarriers,
             m_barriers[BarrierSlot::Epiloge].bufferBarriers,
             m_barriers[BarrierSlot::Epiloge].imageBarriers);
-
-        vkEndCommandBuffer(m_commandBuffer);
     }
 
     void ICommandList::DebugMarkerPush([[maybe_unused]] const char* name, [[maybe_unused]] ColorValue<float> color)

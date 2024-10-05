@@ -43,9 +43,10 @@ namespace RHI
     };
 
     /// @brief Contains information needed to begin recording commands in a command list.
-    struct CommandListBeginInfo
+    struct RenderPassBeginInfo
     {
         RenderGraph*                        renderGraph;         ///< Pointer to the render graph.
+        Scissor                             renderArea;
         Handle<Pass>                        pass;                ///< Handle to the pass.
         TL::Span<const LoadStoreOperations> loadStoreOperations; ///< Span of load/store operations.
     };
@@ -177,12 +178,15 @@ namespace RHI
         /// @brief Begins recording commands into the command list.
         virtual void Begin() = 0;
 
-        /// @brief Begins recording commands into the command list with additional information.
-        /// @param beginInfo Information for beginning command recording.
-        virtual void Begin(const CommandListBeginInfo& beginInfo) = 0;
-
         /// @brief Ends recording commands into the command list.
         virtual void End() = 0;
+
+        /// @brief Begins recording rendering commands.
+        /// @param beginInfo Information for beginning command recording.
+        virtual void BeginRenderPass(const RenderPassBeginInfo& beginInfo) = 0;
+
+        /// @brief Ends recording rendering commands.
+        virtual void EndRenderPass() = 0;
 
         /// @brief Pushes a debug marker with a name and color onto the command list.
         /// @param name Name of the debug marker.

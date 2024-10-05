@@ -414,8 +414,9 @@ public:
         auto [width, height] = m_window->GetWindowSize();
         m_renderGraph->PassResize(m_mainPass, { width, height });
 
-        RHI::CommandListBeginInfo renderPassBeginInfo{
+        RHI::RenderPassBeginInfo renderPassBeginInfo{
             .renderGraph = m_renderGraph,
+            .renderArea = { 0, 0, width, height },
             .pass = m_mainPass,
             .loadStoreOperations = { {
                 .clearValue = { .f32 = RHI::ColorValue<float>{ 0.3f, 0.5f, 0.7f, 1.0f } },
@@ -424,8 +425,8 @@ public:
             } }
         };
 
-        commandList->Begin(renderPassBeginInfo);
-        // commandList->Begin();
+        commandList->Begin();
+        commandList->BeginRenderPass(renderPassBeginInfo);
 
         commandList->SetViewport(RHI::Viewport{
             .offsetX = 0.0f,
@@ -442,6 +443,7 @@ public:
             .width = width,
             .height = height,
         });
+
         commandList->BindGraphicsPipeline(m_graphicsPipeline, RHI::BindGroupBindingInfo{ frame.m_bindGroup, {} });
         commandList->BindVertexBuffers(0, RHI::BufferBindingInfo{ .buffer = m_vertexBuffer, .offset = 0 });
         commandList->BindVertexBuffers(1, RHI::BufferBindingInfo{ .buffer = m_vertexBuffer, .offset = sizeof(glm::vec3) * 4 });
@@ -450,7 +452,7 @@ public:
         RHI::DrawInfo drawInfo{};
         drawInfo.parameters = { 6, 1, 0, 0, 0 };
         commandList->Draw(drawInfo);
-
+        commandList->EndRenderPass();
         commandList->End();
 
         RHI::SubmitInfo submitInfo{

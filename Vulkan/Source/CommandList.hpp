@@ -32,14 +32,6 @@ namespace RHI::Vulkan
         ICommandList(IContext* context, VkCommandBuffer commandBuffer);
         ~ICommandList();
 
-        void BeginRendering(
-            VkRect2D renderingArea,
-            TL::Span<const VkRenderingAttachmentInfo> colorAttachments,
-            VkRenderingAttachmentInfo* depthAttachment,
-            VkRenderingAttachmentInfo* stencilAttachment);
-
-        void EndRendedring();
-
         void PipelineBarrier(
             TL::Span<const VkMemoryBarrier2> memoryBarriers,
             TL::Span<const VkBufferMemoryBarrier2> bufferBarriers,
@@ -52,8 +44,11 @@ namespace RHI::Vulkan
 
         // Interface implementation
         void Begin() override;
-        void Begin(const CommandListBeginInfo& beginInfo) override;
         void End() override;
+
+        void BeginRenderPass(const RenderPassBeginInfo& beginInfo) override;
+        void EndRenderPass() override;
+
         void DebugMarkerPush(const char* name, ColorValue<float> color) override;
         void DebugMarkerPop() override;
         void BeginConditionalCommands(Handle<Buffer> buffer, size_t offset, bool inverted) override;
@@ -83,7 +78,6 @@ namespace RHI::Vulkan
         {
             bool hasVertexBuffer : 1;
             bool hasIndexBuffer : 1;
-            bool isRenderPassStarted : 1;
             bool isGraphicsPipelineBound : 1;
             bool isComputePipelineBound : 1;
             bool hasViewportSet : 1;
