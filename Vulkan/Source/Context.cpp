@@ -273,7 +273,7 @@ namespace RHI::Vulkan
     ////////////////////////////////////////////////////////////
     // Interface implementation
     ////////////////////////////////////////////////////////////
-    TL::Ptr<Swapchain> IContext::Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo)
+    TL::Ptr<Swapchain> IContext::Impl_CreateSwapchain(const SwapchainCreateInfo& createInfo)
     {
         auto swapchain = TL::CreatePtr<ISwapchain>(this);
         auto result = swapchain->Init(createInfo);
@@ -284,7 +284,7 @@ namespace RHI::Vulkan
         return swapchain;
     }
 
-    TL::Ptr<ShaderModule> IContext::Internal_CreateShaderModule(TL::Span<const uint32_t> shaderBlob)
+    TL::Ptr<ShaderModule> IContext::Impl_CreateShaderModule(TL::Span<const uint32_t> shaderBlob)
     {
         auto shaderModule = TL::CreatePtr<IShaderModule>(this);
         auto result = shaderModule->Init(shaderBlob);
@@ -295,7 +295,7 @@ namespace RHI::Vulkan
         return shaderModule;
     }
 
-    TL::Ptr<Fence> IContext::Internal_CreateFence()
+    TL::Ptr<Fence> IContext::Impl_CreateFence()
     {
         auto fence = TL::CreatePtr<IFence>(this);
         auto result = fence->Init();
@@ -306,7 +306,7 @@ namespace RHI::Vulkan
         return fence;
     }
 
-    TL::Ptr<CommandPool> IContext::Internal_CreateCommandPool(CommandPoolFlags flags)
+    TL::Ptr<CommandPool> IContext::Impl_CreateCommandPool(CommandPoolFlags flags)
     {
         auto commandPool = TL::CreatePtr<ICommandPool>(this);
         auto result = commandPool->Init(flags);
@@ -317,7 +317,7 @@ namespace RHI::Vulkan
         return commandPool;
     }
 
-    Handle<BindGroupLayout> IContext::Internal_CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)
+    Handle<BindGroupLayout> IContext::Impl_CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)
     {
         IBindGroupLayout bindGroupLayout{};
         auto result = bindGroupLayout.Init(this, createInfo);
@@ -328,7 +328,7 @@ namespace RHI::Vulkan
         return m_bindGroupLayoutsOwner.Emplace(std::move(bindGroupLayout));
     }
 
-    void IContext::Internal_DestroyBindGroupLayout(Handle<BindGroupLayout> handle)
+    void IContext::Impl_DestroyBindGroupLayout(Handle<BindGroupLayout> handle)
     {
         TL_ASSERT(handle != NullHandle);
 
@@ -340,7 +340,7 @@ namespace RHI::Vulkan
         });
     }
 
-    Handle<BindGroup> IContext::Internal_CreateBindGroup(Handle<BindGroupLayout> layoutHandle)
+    Handle<BindGroup> IContext::Impl_CreateBindGroup(Handle<BindGroupLayout> layoutHandle)
     {
         IBindGroup bindGroup{};
         auto result = bindGroup.Init(this, layoutHandle);
@@ -352,7 +352,7 @@ namespace RHI::Vulkan
         return handle;
     }
 
-    void IContext::Internal_DestroyBindGroup(Handle<BindGroup> handle)
+    void IContext::Impl_DestroyBindGroup(Handle<BindGroup> handle)
     {
         TL_ASSERT(handle != NullHandle);
 
@@ -364,13 +364,13 @@ namespace RHI::Vulkan
         });
     }
 
-    void IContext::Internal_UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo)
+    void IContext::Impl_UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo)
     {
         auto bindGroup = m_bindGroupOwner.Get(handle);
         bindGroup->Write(this, updateInfo);
     }
 
-    Handle<PipelineLayout> IContext::Internal_CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)
+    Handle<PipelineLayout> IContext::Impl_CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)
     {
         IPipelineLayout pipelineLayout{};
         auto result = pipelineLayout.Init(this, createInfo);
@@ -382,7 +382,7 @@ namespace RHI::Vulkan
         return handle;
     }
 
-    void IContext::Internal_DestroyPipelineLayout(Handle<PipelineLayout> handle)
+    void IContext::Impl_DestroyPipelineLayout(Handle<PipelineLayout> handle)
     {
         TL_ASSERT(handle != NullHandle);
 
@@ -391,7 +391,7 @@ namespace RHI::Vulkan
         m_pipelineLayoutOwner.Release(handle);
     }
 
-    Handle<GraphicsPipeline> IContext::Internal_CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)
+    Handle<GraphicsPipeline> IContext::Impl_CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)
     {
         IGraphicsPipeline graphicsPipeline{};
         auto result = graphicsPipeline.Init(this, createInfo);
@@ -403,7 +403,7 @@ namespace RHI::Vulkan
         return handle;
     }
 
-    void IContext::Internal_DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle)
+    void IContext::Impl_DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle)
     {
         TL_ASSERT(handle != NullHandle);
 
@@ -415,7 +415,7 @@ namespace RHI::Vulkan
         });
     }
 
-    Handle<ComputePipeline> IContext::Internal_CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
+    Handle<ComputePipeline> IContext::Impl_CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
     {
         IComputePipeline computePipeline{};
         auto result = computePipeline.Init(this, createInfo);
@@ -427,7 +427,7 @@ namespace RHI::Vulkan
         return handle;
     }
 
-    void IContext::Internal_DestroyComputePipeline(Handle<ComputePipeline> handle)
+    void IContext::Impl_DestroyComputePipeline(Handle<ComputePipeline> handle)
     {
         TL_ASSERT(handle != NullHandle);
 
@@ -439,7 +439,7 @@ namespace RHI::Vulkan
         });
     }
 
-    Handle<Sampler> IContext::Internal_CreateSampler(const SamplerCreateInfo& createInfo)
+    Handle<Sampler> IContext::Impl_CreateSampler(const SamplerCreateInfo& createInfo)
     {
         ISampler sampler{};
         auto result = sampler.Init(this, createInfo);
@@ -451,7 +451,7 @@ namespace RHI::Vulkan
         return handle;
     }
 
-    void IContext::Internal_DestroySampler(Handle<Sampler> handle)
+    void IContext::Impl_DestroySampler(Handle<Sampler> handle)
     {
         TL_ASSERT(handle != NullHandle);
 
@@ -463,7 +463,7 @@ namespace RHI::Vulkan
         });
     }
 
-    Result<Handle<Image>> IContext::Internal_CreateImage(const ImageCreateInfo& createInfo)
+    Result<Handle<Image>> IContext::Impl_CreateImage(const ImageCreateInfo& createInfo)
     {
         IImage image{};
         auto result = image.Init(this, createInfo);
@@ -477,7 +477,7 @@ namespace RHI::Vulkan
         return Result<Handle<Image>>(handle);
     }
 
-    void IContext::Internal_DestroyImage(Handle<Image> handle)
+    void IContext::Impl_DestroyImage(Handle<Image> handle)
     {
         TL_ASSERT(handle != NullHandle);
 
@@ -489,7 +489,7 @@ namespace RHI::Vulkan
         });
     }
 
-    Result<Handle<Buffer>> IContext::Internal_CreateBuffer(const BufferCreateInfo& createInfo)
+    Result<Handle<Buffer>> IContext::Impl_CreateBuffer(const BufferCreateInfo& createInfo)
     {
         IBuffer buffer{};
         auto result = buffer.Init(this, createInfo);
@@ -502,7 +502,7 @@ namespace RHI::Vulkan
         return Result<Handle<Buffer>>(handle);
     }
 
-    void IContext::Internal_DestroyBuffer(Handle<Buffer> handle)
+    void IContext::Impl_DestroyBuffer(Handle<Buffer> handle)
     {
         TL_ASSERT(handle != NullHandle);
 
@@ -514,7 +514,7 @@ namespace RHI::Vulkan
         });
     }
 
-    Handle<ImageView> IContext::Internal_CreateImageView(const ImageViewCreateInfo& createInfo)
+    Handle<ImageView> IContext::Impl_CreateImageView(const ImageViewCreateInfo& createInfo)
     {
         IImageView imageView{};
         auto result = imageView.Init(this, createInfo);
@@ -526,7 +526,7 @@ namespace RHI::Vulkan
         return handle;
     }
 
-    void IContext::Internal_DestroyImageView(Handle<ImageView> handle)
+    void IContext::Impl_DestroyImageView(Handle<ImageView> handle)
     {
         TL_ASSERT(handle != NullHandle);
 
@@ -538,7 +538,7 @@ namespace RHI::Vulkan
         });
     }
 
-    Handle<BufferView> IContext::Internal_CreateBufferView(const BufferViewCreateInfo& createInfo)
+    Handle<BufferView> IContext::Impl_CreateBufferView(const BufferViewCreateInfo& createInfo)
     {
         IBufferView bufferView{};
         auto result = bufferView.Init(this, createInfo);
@@ -550,7 +550,7 @@ namespace RHI::Vulkan
         return handle;
     }
 
-    void IContext::Internal_DestroyBufferView(Handle<BufferView> handle)
+    void IContext::Impl_DestroyBufferView(Handle<BufferView> handle)
     {
         TL_ASSERT(handle != NullHandle);
 
@@ -562,7 +562,7 @@ namespace RHI::Vulkan
         });
     }
 
-    DeviceMemoryPtr IContext::Internal_MapBuffer(Handle<Buffer> handle)
+    DeviceMemoryPtr IContext::Impl_MapBuffer(Handle<Buffer> handle)
     {
         auto resource = m_bufferOwner.Get(handle);
         auto allocation = resource->allocation.handle;
@@ -572,13 +572,13 @@ namespace RHI::Vulkan
         return memoryPtr;
     }
 
-    void IContext::Internal_UnmapBuffer(Handle<Buffer> handle)
+    void IContext::Impl_UnmapBuffer(Handle<Buffer> handle)
     {
         auto resource = m_bufferOwner.Get(handle)->allocation.handle;
         vmaUnmapMemory(m_allocator, resource);
     }
 
-    Handle<Semaphore> IContext::Internal_CreateSemaphore(const SemaphoreCreateInfo& createInfo)
+    Handle<Semaphore> IContext::Impl_CreateSemaphore(const SemaphoreCreateInfo& createInfo)
     {
         ISemaphore semaphore{};
         auto result = semaphore.Init(this, createInfo);
@@ -590,7 +590,7 @@ namespace RHI::Vulkan
         return handle;
     }
 
-    void IContext::Internal_DestroySemaphore(Handle<Semaphore> handle)
+    void IContext::Impl_DestroySemaphore(Handle<Semaphore> handle)
     {
         TL_ASSERT(handle != NullHandle);
 
@@ -602,12 +602,12 @@ namespace RHI::Vulkan
         });
     }
 
-    Queue* IContext::Internal_GetQueue(QueueType queueType)
+    Queue* IContext::Impl_GetQueue(QueueType queueType)
     {
         return &m_queue[(uint32_t)queueType];
     }
 
-    void IContext::Internal_CollectResources()
+    void IContext::Impl_CollectResources()
     {
         m_frameContext.AdvanceFrame();
     }

@@ -10,4 +10,4 @@ namespace RHI
     {
         return WaitInternal(timeout);
     }
-}
+} // namespace RHI

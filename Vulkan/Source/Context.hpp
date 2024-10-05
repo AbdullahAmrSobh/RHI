@@ -45,37 +45,37 @@ namespace RHI::Vulkan
         uint32_t GetMemoryTypeIndex(MemoryType memoryType);
 
         // clang-format off
-        TL::Ptr<Swapchain>       Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
-        TL::Ptr<ShaderModule>    Internal_CreateShaderModule(TL::Span<const uint32_t> shaderBlob) override;
-        TL::Ptr<Fence>           Internal_CreateFence() override;
-        TL::Ptr<CommandPool>     Internal_CreateCommandPool(CommandPoolFlags flags) override;
-        Handle<BindGroupLayout>  Internal_CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) override;
-        void                     Internal_DestroyBindGroupLayout(Handle<BindGroupLayout> handle) override;
-        Handle<BindGroup>        Internal_CreateBindGroup(Handle<BindGroupLayout> handle) override;
-        void                     Internal_DestroyBindGroup(Handle<BindGroup> handle) override;
-        void                     Internal_UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo) override;
-        Handle<PipelineLayout>   Internal_CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo) override;
-        void                     Internal_DestroyPipelineLayout(Handle<PipelineLayout> handle) override;
-        Handle<GraphicsPipeline> Internal_CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) override;
-        void                     Internal_DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle) override;
-        Handle<ComputePipeline>  Internal_CreateComputePipeline(const ComputePipelineCreateInfo& createInfo) override;
-        void                     Internal_DestroyComputePipeline(Handle<ComputePipeline> handle) override;
-        Handle<Sampler>          Internal_CreateSampler(const SamplerCreateInfo& createInfo) override;
-        void                     Internal_DestroySampler(Handle<Sampler> handle) override;
-        Result<Handle<Image>>    Internal_CreateImage(const ImageCreateInfo& createInfo) override;
-        void                     Internal_DestroyImage(Handle<Image> handle) override;
-        Result<Handle<Buffer>>   Internal_CreateBuffer(const BufferCreateInfo& createInfo) override;
-        void                     Internal_DestroyBuffer(Handle<Buffer> handle) override;
-        Handle<ImageView>        Internal_CreateImageView(const ImageViewCreateInfo& createInfo) override;
-        void                     Internal_DestroyImageView(Handle<ImageView> handle) override;
-        Handle<BufferView>       Internal_CreateBufferView(const BufferViewCreateInfo& createInfo) override;
-        void                     Internal_DestroyBufferView(Handle<BufferView> handle) override;
-        DeviceMemoryPtr          Internal_MapBuffer(Handle<Buffer> handle) override;
-        void                     Internal_UnmapBuffer(Handle<Buffer> handle) override;
-        Handle<Semaphore>        Internal_CreateSemaphore(const SemaphoreCreateInfo& createInfo) override;
-        void                     Internal_DestroySemaphore(Handle<Semaphore> handle) override;
-        Queue*                   Internal_GetQueue(QueueType queueType)  override;
-        void                     Internal_CollectResources() override;
+        TL::Ptr<Swapchain>       Impl_CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
+        TL::Ptr<ShaderModule>    Impl_CreateShaderModule(TL::Span<const uint32_t> shaderBlob) override;
+        TL::Ptr<Fence>           Impl_CreateFence() override;
+        TL::Ptr<CommandPool>     Impl_CreateCommandPool(CommandPoolFlags flags) override;
+        Handle<BindGroupLayout>  Impl_CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) override;
+        void                     Impl_DestroyBindGroupLayout(Handle<BindGroupLayout> handle) override;
+        Handle<BindGroup>        Impl_CreateBindGroup(Handle<BindGroupLayout> handle) override;
+        void                     Impl_DestroyBindGroup(Handle<BindGroup> handle) override;
+        void                     Impl_UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo) override;
+        Handle<PipelineLayout>   Impl_CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo) override;
+        void                     Impl_DestroyPipelineLayout(Handle<PipelineLayout> handle) override;
+        Handle<GraphicsPipeline> Impl_CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) override;
+        void                     Impl_DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle) override;
+        Handle<ComputePipeline>  Impl_CreateComputePipeline(const ComputePipelineCreateInfo& createInfo) override;
+        void                     Impl_DestroyComputePipeline(Handle<ComputePipeline> handle) override;
+        Handle<Sampler>          Impl_CreateSampler(const SamplerCreateInfo& createInfo) override;
+        void                     Impl_DestroySampler(Handle<Sampler> handle) override;
+        Result<Handle<Image>>    Impl_CreateImage(const ImageCreateInfo& createInfo) override;
+        void                     Impl_DestroyImage(Handle<Image> handle) override;
+        Result<Handle<Buffer>>   Impl_CreateBuffer(const BufferCreateInfo& createInfo) override;
+        void                     Impl_DestroyBuffer(Handle<Buffer> handle) override;
+        Handle<ImageView>        Impl_CreateImageView(const ImageViewCreateInfo& createInfo) override;
+        void                     Impl_DestroyImageView(Handle<ImageView> handle) override;
+        Handle<BufferView>       Impl_CreateBufferView(const BufferViewCreateInfo& createInfo) override;
+        void                     Impl_DestroyBufferView(Handle<BufferView> handle) override;
+        DeviceMemoryPtr          Impl_MapBuffer(Handle<Buffer> handle) override;
+        void                     Impl_UnmapBuffer(Handle<Buffer> handle) override;
+        Handle<Semaphore>        Impl_CreateSemaphore(const SemaphoreCreateInfo& createInfo) override;
+        void                     Impl_DestroySemaphore(Handle<Semaphore> handle) override;
+        Queue*                   Impl_GetQueue(QueueType queueType)  override;
+        void                     Impl_CollectResources() override;
         // clang-format on
 
     private:

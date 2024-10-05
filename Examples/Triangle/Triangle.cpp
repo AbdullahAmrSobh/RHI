@@ -407,6 +407,8 @@ public:
             // TL_ASSERT(result);
         }
 
+        m_context->CollectResources(); // collect resources destroyed on the previous frame
+
         frame.m_fence->Reset();
         frame.m_commandPool->Reset();
 
