@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RHI/Export.hpp"
+
 #include <cstdint>
 
 namespace RHI
@@ -41,13 +42,4 @@ namespace RHI
         /// @return true if the fence was signaled, false if the wait timed out.
         virtual bool WaitInternal(uint64_t timeout) = 0;
     };
-
-    inline Fence::Fence() = default;
-
-    inline Fence::~Fence() = default;
-
-    inline bool Fence::Wait(uint64_t timeout)
-    {
-        return WaitInternal(timeout);
-    }
 } // namespace RHI

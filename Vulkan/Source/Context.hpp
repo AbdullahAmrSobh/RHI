@@ -1,7 +1,6 @@
 #pragma once
 
 #include <RHI/Context.hpp>
-#include <RHI/Definitions.hpp>
 #include <RHI/Queue.hpp>
 
 #include "Queue.hpp"
@@ -14,6 +13,7 @@
 #include "Shader.hpp"
 #include "Pipeline.hpp"
 #include "Sampler.hpp"
+#include "Semaphore.hpp"
 
 #include <TL/Containers.hpp>
 
@@ -34,23 +34,15 @@ namespace RHI::Vulkan
         ResultCode Init(const ApplicationInfo& appInfo);
 
         template<typename T>
-        inline void SetDebugName(T handle, const char* name) const
-        {
-            if (handle == VK_NULL_HANDLE) return;
-            return SetDebugName(GetObjectType<T>(), reinterpret_cast<uint64_t>(handle), name);
-        }
+        inline void SetDebugName(T handle, const char* name) const;
 
         void SetDebugName(VkObjectType type, uint64_t handle, const char* name) const;
 
-        VkSemaphore CreateSemaphore(const char* name = nullptr, bool timeline = false, uint64_t initialValue = 0);
+        // VkSemaphore CreateSemaphore(const char* name = nullptr, bool timeline = false, uint64_t initialValue = 0);
 
-        void DestroySemaphore(VkSemaphore semaphore);
+        // void DestroySemaphore(VkSemaphore semaphore);
 
         uint32_t GetMemoryTypeIndex(MemoryType memoryType);
-
-        uint32_t GetCurrentFrameIndex() const { return 0; }
-
-        ICommandList* GetTransferCommand();
 
         // clang-format off
         TL::Ptr<Swapchain>       Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
@@ -80,18 +72,11 @@ namespace RHI::Vulkan
         void                     Internal_DestroyBufferView(Handle<BufferView> handle) override;
         DeviceMemoryPtr          Internal_MapBuffer(Handle<Buffer> handle) override;
         void                     Internal_UnmapBuffer(Handle<Buffer> handle) override;
-
+        Handle<Semaphore>        Internal_CreateSemaphore(const SemaphoreCreateInfo& createInfo) override;
+        void                     Internal_DestroySemaphore(Handle<Semaphore> handle) override;
+        Queue*                   Internal_GetQueue(QueueType queueType)  override;
+        void                     Internal_CollectResources() override;
         // clang-format on
-
-        virtual Queue* GetQueue() const override
-        {
-            return (Queue*)&m_queue[(uint32_t)QueueType::Graphics];
-        }
-
-        virtual void AdvanceFrame() override
-        {
-            m_frameContext.AdvanceFrame();
-        }
 
     private:
         VkResult InitInstance(const ApplicationInfo& appInfo, bool* debugExtensionEnabled);
@@ -143,6 +128,7 @@ namespace RHI::Vulkan
         HandlePool<IGraphicsPipeline> m_graphicsPipelineOwner;
         HandlePool<IComputePipeline> m_computePipelineOwner;
         HandlePool<ISampler> m_samplerOwner;
+        HandlePool<ISemaphore> m_semaphoreOwner;
 
         VkPhysicalDeviceDescriptorIndexingProperties m_descriptorIndexingProperties;
         VkPhysicalDeviceVulkan13Properties m_properties13;
@@ -152,5 +138,11 @@ namespace RHI::Vulkan
 
         VkPhysicalDeviceMemoryProperties2 m_memoryProperties;
     };
+
+    template<typename T>
+    inline void IContext::SetDebugName(T handle, const char* name) const
+    {
+        return SetDebugName(GetObjectType<T>(), reinterpret_cast<uint64_t>(handle), name);
+    }
 
 } // namespace RHI::Vulkan

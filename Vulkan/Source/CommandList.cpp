@@ -163,10 +163,6 @@ namespace RHI::Vulkan
                 auto barrier = CreateImageBarrier(image->handle, subresources, srcState, dstState);
                 m_barriers[BarrierSlot::Priloge].imageBarriers.push_back(barrier);
 
-                if (swapchain != nullptr)
-                {
-                    m_waitSemaphores.push_back(CreateSemaphoreSubmitInfo(swapchain->GetImageAcquiredSemaphore(), srcState.stage));
-                }
             }
 
             if (node->next == nullptr && swapchain != nullptr)
@@ -175,7 +171,6 @@ namespace RHI::Vulkan
                 auto dstState = PIPELINE_IMAGE_BARRIER_PRESENT_SRC;
                 auto barrier = CreateImageBarrier(image->handle, subresources, srcState, dstState);
                 m_barriers[BarrierSlot::Epiloge].imageBarriers.push_back(barrier);
-                m_signalSemaphores.push_back(CreateSemaphoreSubmitInfo(swapchain->GetImageSignaledSemaphore(), dstState.stage));
             }
         }
 

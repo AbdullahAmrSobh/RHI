@@ -1,7 +1,6 @@
 
 #include "RHI-Vulkan/Loader.hpp"
 
-#include "Barrier.hpp"
 #include "Common.hpp"
 #include "CommandPool.hpp"
 #include "CommandList.hpp"
@@ -199,6 +198,8 @@ namespace RHI::Vulkan
 
     void IContext::SetDebugName(VkObjectType type, uint64_t handle, const char* name) const
     {
+        if (handle == 0 /* VK_NULL_HANDLE */) return;
+
         if (auto fn = m_pfn.m_vkSetDebugUtilsObjectNameEXT; fn && name)
         {
             VkDebugUtilsObjectNameInfoEXT nameInfo{};
@@ -211,30 +212,30 @@ namespace RHI::Vulkan
         }
     }
 
-    VkSemaphore IContext::CreateSemaphore(const char* name, bool timeline, uint64_t initialValue)
-    {
-        VkSemaphoreTypeCreateInfo timelineInfo{};
-        timelineInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
-        timelineInfo.initialValue = initialValue;
-        timelineInfo.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
+    // VkSemaphore IContext::CreateSemaphore(const char* name, bool timeline, uint64_t initialValue)
+    // {
+    //     VkSemaphoreTypeCreateInfo timelineInfo{};
+    //     timelineInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
+    //     timelineInfo.initialValue = initialValue;
+    //     timelineInfo.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
 
-        VkSemaphoreCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-        createInfo.pNext = timeline ? &timelineInfo : nullptr;
-        createInfo.flags = 0;
-        VkSemaphore semaphore = VK_NULL_HANDLE;
-        Validate(vkCreateSemaphore(m_device, &createInfo, nullptr, &semaphore));
-        SetDebugName(semaphore, name);
-        return semaphore;
-    }
+    //     VkSemaphoreCreateInfo createInfo{};
+    //     createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    //     createInfo.pNext = timeline ? &timelineInfo : nullptr;
+    //     createInfo.flags = 0;
+    //     VkSemaphore semaphore = VK_NULL_HANDLE;
+    //     Validate(vkCreateSemaphore(m_device, &createInfo, nullptr, &semaphore));
+    //     SetDebugName(semaphore, name);
+    //     return semaphore;
+    // }
 
-    void IContext::DestroySemaphore(VkSemaphore semaphore)
-    {
-        if (semaphore != VK_NULL_HANDLE)
-        {
-            vkDestroySemaphore(m_device, semaphore, nullptr);
-        }
-    }
+    // void IContext::DestroySemaphore(VkSemaphore semaphore)
+    // {
+    //     if (semaphore != VK_NULL_HANDLE)
+    //     {
+    //         vkDestroySemaphore(m_device, semaphore, nullptr);
+    //     }
+    // }
 
     uint32_t IContext::GetMemoryTypeIndex(MemoryType memoryType)
     {
@@ -555,33 +556,11 @@ namespace RHI::Vulkan
 
         m_frameContext.DeferCommand([this, handle]()
         {
-            auto imageView = m_bufferViewOwner.Get(handle);
-            imageView->Shutdown(this);
+            auto bufferView = m_bufferViewOwner.Get(handle);
+            bufferView->Shutdown(this);
             m_bufferViewOwner.Release(handle);
         });
     }
-
-    // void IContext::Internal_DispatchGraph(RenderGraph& renderGraph, Fence* signalFence)
-    // {
-    //     for (auto passHandle : renderGraph.m_passes)
-    //     {
-    //         auto queue = m_queue[(uint32_t)QueueType::Graphics]; // TODO: query pass for this
-    //         auto pass = renderGraph.m_passPool.Get(passHandle);
-    //         auto commandList = (ICommandList*)pass->m_commandLists.front();
-
-    //         SubmitInfo submitInfo{};
-    //         submitInfo.waitSemaphores = commandList->m_waitSemaphores;
-    //         submitInfo.signalSemaphores = commandList->m_signalSemaphores;
-    //         submitInfo.commandLists = { (ICommandList**)pass->m_commandLists.data(), pass->m_commandLists.size() };
-
-    //         queue.Submit(
-    //             this,
-    //             submitInfo,
-    //             passHandle == renderGraph.m_passes.back() ? (IFence*)signalFence : nullptr);
-    //     }
-
-    //     m_frameContext.AdvanceFrame();
-    // }
 
     DeviceMemoryPtr IContext::Internal_MapBuffer(Handle<Buffer> handle)
     {
@@ -597,6 +576,40 @@ namespace RHI::Vulkan
     {
         auto resource = m_bufferOwner.Get(handle)->allocation.handle;
         vmaUnmapMemory(m_allocator, resource);
+    }
+
+    Handle<Semaphore> IContext::Internal_CreateSemaphore(const SemaphoreCreateInfo& createInfo)
+    {
+        ISemaphore semaphore{};
+        auto result = semaphore.Init(this, createInfo);
+        if (IsError(result))
+        {
+            TL_LOG_ERROR("Failed to create semaphore");
+        }
+        auto handle = m_semaphoreOwner.Emplace(std::move(semaphore));
+        return handle;
+    }
+
+    void IContext::Internal_DestroySemaphore(Handle<Semaphore> handle)
+    {
+        TL_ASSERT(handle != NullHandle);
+
+        m_frameContext.DeferCommand([this, handle]()
+        {
+            auto semaphore = m_semaphoreOwner.Get(handle);
+            semaphore->Shutdown(this);
+            m_semaphoreOwner.Release(handle);
+        });
+    }
+
+    Queue* IContext::Internal_GetQueue(QueueType queueType)
+    {
+        return &m_queue[(uint32_t)queueType];
+    }
+
+    void IContext::Internal_CollectResources()
+    {
+        m_frameContext.AdvanceFrame();
     }
 
     ////////////////////////////////////////////////////////////

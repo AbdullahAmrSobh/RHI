@@ -4,9 +4,6 @@ namespace RHI
 {
     Swapchain::Swapchain(Context* context)
         : m_context(context)
-        , m_imageIndex(0)
-        , m_imageCount(0)
-        , m_images()
     {
     }
 
@@ -24,6 +21,32 @@ namespace RHI
 
     Handle<Image> Swapchain::GetImage() const
     {
-        return m_images[m_imageIndex];
+        return m_ringBuffer[m_imageIndex].m_image;
     }
+
+    Handle<Image> Swapchain::GetImage(uint32_t index) const
+    {
+        return m_ringBuffer[index].m_image;
+    }
+
+    Handle<Semaphore> Swapchain::GetSignalSemaphore() const
+    {
+        return m_ringBuffer[m_imageIndex].m_signalSemaphore;
+    }
+
+    Handle<Semaphore> Swapchain::GetSignalSemaphore(uint32_t index) const
+    {
+        return m_ringBuffer[index].m_signalSemaphore;
+    }
+
+    Handle<Semaphore> Swapchain::GetWaitSemaphore() const
+    {
+        return m_ringBuffer[m_imageIndex].m_waitSemaphore;
+    }
+
+    Handle<Semaphore> Swapchain::GetWaitSemaphore(uint32_t index) const
+    {
+        return m_ringBuffer[index].m_waitSemaphore;
+    }
+
 } // namespace RHI

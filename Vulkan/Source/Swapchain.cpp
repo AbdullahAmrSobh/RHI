@@ -38,21 +38,13 @@ namespace RHI::Vulkan
 
         vkDeviceWaitIdle(context->m_device);
 
-        for (auto semaphore : m_imageAcquiredSemaphores)
+        for (auto buffredImage : m_ringBuffer)
         {
-            if (semaphore) context->DestroySemaphore(semaphore);
-        }
-
-        for (auto semaphore : m_imageReleasedSemaphores)
-        {
-            if (semaphore) context->DestroySemaphore(semaphore);
-        }
-
-        for (auto imageHandle : m_images)
-        {
-            if (imageHandle)
+            if (buffredImage.m_image != NullHandle)
             {
-                context->m_imageOwner.Release(imageHandle);
+                context->m_imageOwner.Release(buffredImage.m_image);
+                context->DestroySemaphore(buffredImage.m_waitSemaphore);
+                context->DestroySemaphore(buffredImage.m_signalSemaphore);
             }
         }
 
@@ -68,11 +60,10 @@ namespace RHI::Vulkan
         m_name = createInfo.name ? createInfo.name : "";
         m_createInfo.name = m_name.c_str();
 
-        auto context = (IContext*)m_context;
         for (uint32_t i = 0; i < MaxImageCount; i++)
         {
-            m_imageAcquiredSemaphores[i] = context->CreateSemaphore();
-            m_imageReleasedSemaphores[i] = context->CreateSemaphore();
+            m_ringBuffer[i].m_signalSemaphore = m_context->CreateSemaphore({ "swapchain-signal-semaphore", false });
+            m_ringBuffer[i].m_waitSemaphore = m_context->CreateSemaphore({ "swapchain-wait-semaphore", false });
         }
 
         InitSurface(createInfo);
@@ -91,12 +82,21 @@ namespace RHI::Vulkan
         return ConvertResult(result);
     }
 
+    ResultCode ISwapchain::AcquireNextImage()
+    {
+        ZoneScoped;
+        auto context = (IContext*)m_context;
+        auto signalSemaphore = context->m_semaphoreOwner.Get(GetWaitSemaphore())->handle;
+        Validate(vkAcquireNextImageKHR(context->m_device, m_swapchain, UINT64_MAX, signalSemaphore, VK_NULL_HANDLE, &m_imageIndex));
+        return ResultCode::Success;
+    }
+
     ResultCode ISwapchain::Present()
     {
         ZoneScoped;
 
         auto context = (IContext*)m_context;
-        auto waitSemaphore = GetImageSignaledSemaphore();
+        auto waitSemaphore = context->m_semaphoreOwner.Get(GetSignalSemaphore())->handle;
 
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -109,8 +109,6 @@ namespace RHI::Vulkan
         presentInfo.pResults = &m_lastPresentResult;
         Validate(vkQueuePresentKHR(context->m_queue[(uint32_t)QueueType::Graphics].GetHandle(), &presentInfo));
 
-        m_currentFrameInFlight = (m_currentFrameInFlight + 1) % m_imageCount;
-        Validate(vkAcquireNextImageKHR(context->m_device, m_swapchain, UINT64_MAX, GetImageAcquiredSemaphore(), VK_NULL_HANDLE, &m_imageIndex));
         return ResultCode::Success;
     }
 
@@ -131,10 +129,7 @@ namespace RHI::Vulkan
             TL_LOG_INFO("Failed to create the swapchain, invalid SwapchainCreateInfo::minImageCount for the given window");
             return VK_ERROR_UNKNOWN;
         }
-        else if (m_createInfo.imageSize.width < surfaceCapabilities.minImageExtent.width ||
-                 m_createInfo.imageSize.height < surfaceCapabilities.minImageExtent.height ||
-                 m_createInfo.imageSize.width > surfaceCapabilities.maxImageExtent.width ||
-                 m_createInfo.imageSize.height > surfaceCapabilities.maxImageExtent.height)
+        else if (m_createInfo.imageSize.width < surfaceCapabilities.minImageExtent.width || m_createInfo.imageSize.height < surfaceCapabilities.minImageExtent.height || m_createInfo.imageSize.width > surfaceCapabilities.maxImageExtent.width || m_createInfo.imageSize.height > surfaceCapabilities.maxImageExtent.height)
         {
             TL_LOG_WARNNING("Swapchain requested size will be clamped to fit into window's supported size range");
         }
@@ -240,15 +235,11 @@ namespace RHI::Vulkan
         images.resize(m_imageCount);
         Validate(vkGetSwapchainImagesKHR(context->m_device, m_swapchain, &m_imageCount, images.data()));
 
-
-        m_currentFrameInFlight = 0;
-        Validate(vkAcquireNextImageKHR(context->m_device, m_swapchain, UINT64_MAX, GetImageAcquiredSemaphore(), VK_NULL_HANDLE, &m_imageIndex));
-
         for (uint32_t imageIndex = 0; imageIndex < m_imageCount; imageIndex++)
         {
             IImage image{};
             Validate(image.Init(context, images[imageIndex], createInfo));
-            m_images[imageIndex] = context->m_imageOwner.Emplace(std::move(image));
+            m_ringBuffer[imageIndex].m_image = context->m_imageOwner.Emplace(std::move(image));
         }
         return VK_SUCCESS;
     }

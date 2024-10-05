@@ -24,6 +24,7 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Sampler.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Shader.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Swapchain.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Semaphore.hpp
 )
 
 set(SOURCE_FILES
@@ -46,6 +47,7 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Sampler.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Shader.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Semaphore.cpp
 )
 
 include(${CPM_TL_SOURCE}/CMake/add-target.cmake)

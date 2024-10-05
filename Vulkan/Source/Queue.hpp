@@ -22,16 +22,10 @@ namespace RHI::Vulkan
 
         inline uint32_t GetFamilyIndex() const { return m_familyIndex; }
 
-        void BeginLabel(const char* name, ColorValue<float> color) override;
+        void BeginLabel(const char* name, float color[4]) override;
         void EndLabel() override;
+        void Submit(TL::Span<const SubmitInfo> submitInfos, Fence* fence) override;
 
-        void Submit(TL::Span<CommandList* const> commandLists, Fence* fence) override
-        {
-            TL::Span<ICommandList*> list{ (ICommandList**)commandLists.data(), commandLists.size() };
-            Submit(list, (IFence*)fence);
-        }
-
-        void Submit(TL::Span<ICommandList* const> commandLists, IFence* fence);
         void Present(VkSemaphore semaphore, class ISwapchain& swapchain);
 
     private:

@@ -270,4 +270,26 @@ namespace RHI
         Internal_UnmapBuffer(handle);
     }
 
+    Handle<Semaphore> Context::CreateSemaphore(const SemaphoreCreateInfo& createInfo)
+    {
+        ZoneScoped;
+
+        return Internal_CreateSemaphore(createInfo);
+    }
+
+    void Context::DestroySemaphore(Handle<Semaphore> handle)
+    {
+        return Internal_DestroySemaphore(handle);
+    }
+
+    Queue* Context::GetQueue(QueueType queueType)
+    {
+        return Internal_GetQueue(queueType);
+    }
+
+    void Context::CollectResources()
+    {
+        Internal_CollectResources();
+    }
+
 } // namespace RHI

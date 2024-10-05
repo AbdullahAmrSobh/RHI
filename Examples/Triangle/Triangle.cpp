@@ -90,7 +90,7 @@ public:
 
         m_swapchain = m_context->CreateSwapchain(swapchainInfo).release();
 
-        m_queue = m_context->GetQueue();
+        m_queue = m_context->GetQueue(RHI::QueueType::Graphics);
 
         for (auto& frame : m_perFrameData)
         {
@@ -398,6 +398,9 @@ public:
     {
         auto frame = GetCurrentFrame();
 
+        auto res = m_swapchain->AcquireNextImage();
+        TL_ASSERT(res == RHI::ResultCode::Success);
+
         if (frame.m_fence->GetState() != RHI::FenceState::Signaled)
         {
             [[maybe_unused]] auto result = frame.m_fence->Wait(UINT64_MAX);
@@ -450,7 +453,12 @@ public:
 
         commandList->End();
 
-        m_queue->Submit(commandList.get(), frame.m_fence);
+        RHI::SubmitInfo submitInfo{
+            .waitSemaphores = RHI::SemaphoreSubmitInfo{0,  RHI::PipelineStage::None, m_swapchain->GetWaitSemaphore()  },
+            .commandLists = commandList.get(),
+            .signalSemaphores = RHI::SemaphoreSubmitInfo{ 0, RHI::PipelineStage::None, m_swapchain->GetSignalSemaphore()},
+        };
+        m_queue->Submit(submitInfo, frame.m_fence);
 
         AdvanceFrame();
 

@@ -40,6 +40,7 @@ namespace RHI
 
     struct Limits
     {
+        // TODO: Fill in limits
     };
 
     class RHI_EXPORT Context
@@ -108,9 +109,13 @@ namespace RHI
 
         void                                  UnmapBuffer(Handle<Buffer> handle);
 
-        virtual Queue*                        GetQueue() const = 0;
+        TL_NODISCARD Handle<Semaphore>        CreateSemaphore(const SemaphoreCreateInfo& createInfo);
 
-        virtual void                          AdvanceFrame() = 0;
+        void                                  DestroySemaphore(Handle<Semaphore> handle);
+
+        TL_NODISCARD Queue*                   GetQueue(QueueType queueType);
+
+        void                                  CollectResources();
 
     protected:
         virtual TL::Ptr<Swapchain>       Internal_CreateSwapchain(const SwapchainCreateInfo& createInfo)                           = 0;
@@ -140,6 +145,10 @@ namespace RHI
         virtual void                     Internal_DestroyBufferView(Handle<BufferView> handle)                                     = 0;
         virtual DeviceMemoryPtr          Internal_MapBuffer(Handle<Buffer> handle)                                                 = 0;
         virtual void                     Internal_UnmapBuffer(Handle<Buffer> handle)                                               = 0;
+        virtual Handle<Semaphore>        Internal_CreateSemaphore(const SemaphoreCreateInfo& createInfo)                           = 0;
+        virtual void                     Internal_DestroySemaphore(Handle<Semaphore> handle)                                       = 0;
+        virtual Queue*                   Internal_GetQueue(QueueType queueType)                                                    = 0;
+        virtual void                     Internal_CollectResources()                                                               = 0;
 
     protected:
         TL::Ptr<Limits> m_limits;
