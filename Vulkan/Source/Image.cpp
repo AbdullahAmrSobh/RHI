@@ -238,7 +238,8 @@ namespace RHI::Vulkan
 
     void IImage::Shutdown(IContext* context)
     {
-        vmaDestroyImage(context->m_allocator, handle, allocation.handle);
+        // vmaDestroyImage(context->m_allocator, handle, allocation.handle);
+        context->m_deleteQueue.DestroyObject(handle);
     }
 
     VkMemoryRequirements IImage::GetMemoryRequirements(IContext* context) const
@@ -289,5 +290,6 @@ namespace RHI::Vulkan
     void IImageView::Shutdown(IContext* context)
     {
         vkDestroyImageView(context->m_device, handle, nullptr);
+        context->m_deleteQueue.DestroyObject(handle);
     }
 } // namespace RHI::Vulkan

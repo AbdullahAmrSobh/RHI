@@ -40,7 +40,32 @@ namespace RHI
 
     struct Limits
     {
-        // TODO: Fill in limits
+        // General resource limits
+        uint32_t                  maxImage2DSize;        ///< Maximum size of 2D images
+        uint32_t                  maxImageCubeSize;      ///< Maximum size of cube images
+        uint32_t                  maxImage3DSize;        ///< Maximum size of 3D images
+        uint32_t                  maxImageArrayLayers;   ///< Maximum number of layers in an image array
+        uint32_t                  maxUniformBufferSize;  ///< Maximum size of uniform buffers
+        uint32_t                  maxStorageBufferSize;  ///< Maximum size of storage buffers
+        uint32_t                  maxConstantBufferSize; ///< Maximum size of constant buffers
+        // Bind group limits (shader resource binding limits)
+        uint32_t                  maxBindGroups;            ///< Maximum number of bind groups in a pipeline
+        uint32_t                  maxResourcesPerBindGroup; ///< Maximum number of resources per bind group (images, buffers, etc.)
+        uint32_t                  maxSamplersPerBindGroup;  ///< Maximum number of samplers in a bind group
+        uint32_t                  maxImagesPerBindGroup;    ///< Maximum number of images in a bind group
+        uint32_t                  maxBuffersPerBindGroup;   ///< Maximum number of buffers in a bind group
+        // Descriptor indexing limits
+        uint32_t                  maxDynamicBuffers;    ///< Maximum number of dynamic buffers that can be bound
+        uint32_t                  maxDescriptorsPerSet; ///< Maximum number of descriptors per bind group
+        // Buffer alignment requirements
+        uint32_t                  uniformBufferAlignment; ///< Required alignment for uniform buffers
+        uint32_t                  storageBufferAlignment; ///< Required alignment for storage buffers
+        uint32_t                  dynamicBufferAlignment; ///< Required alignment for dynamic uniform/storage buffers
+        // Memory allocation limits
+        static constexpr uint32_t maxMemoryHeaps = 16;            ///< Maximum number of memory heaps (set to a constant)
+        uint64_t                  maxMemoryAllocationSize;        ///< Maximum size of a single memory allocation
+        uint32_t                  memoryTypeCount;                ///< Number of different memory types available
+        uint64_t                  memoryHeapSize[maxMemoryHeaps]; ///< Total size of each memory heap (for each memory type)
     };
 
     class RHI_EXPORT Context

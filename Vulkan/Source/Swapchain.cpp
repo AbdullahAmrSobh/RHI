@@ -38,14 +38,11 @@ namespace RHI::Vulkan
 
         vkDeviceWaitIdle(context->m_device);
 
-        for (auto buffredImage : m_ringBuffer)
+        for (uint32_t i = 0; i < m_imageCount; i++)
         {
-            if (buffredImage.m_image != NullHandle)
-            {
-                context->m_imageOwner.Release(buffredImage.m_image);
-                context->DestroySemaphore(buffredImage.m_waitSemaphore);
-                context->DestroySemaphore(buffredImage.m_signalSemaphore);
-            }
+            if (m_image[i] != NullHandle) context->m_imageOwner.Release(m_image[i]);
+            if (m_waitSemaphore[i] != NullHandle) context->DestroySemaphore(m_waitSemaphore[i]);
+            if (m_signalSemaphore[i] != NullHandle) context->DestroySemaphore(m_signalSemaphore[i]);
         }
 
         vkDestroySwapchainKHR(context->m_device, m_swapchain, nullptr);
@@ -56,14 +53,17 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        m_createInfo = createInfo;
         m_name = createInfo.name ? createInfo.name : "";
-        m_createInfo.name = m_name.c_str();
+        m_imageSize = createInfo.imageSize;
+        m_imageUsage = createInfo.imageUsage;
+        m_imageFormat = createInfo.imageFormat;
+        m_presentMode = createInfo.presentMode;
+        m_imageCount = createInfo.minImageCount;
 
         for (uint32_t i = 0; i < MaxImageCount; i++)
         {
-            m_ringBuffer[i].m_signalSemaphore = m_context->CreateSemaphore({ "swapchain-signal-semaphore", false });
-            m_ringBuffer[i].m_waitSemaphore = m_context->CreateSemaphore({ "swapchain-wait-semaphore", false });
+            m_signalSemaphore[i] = m_context->CreateSemaphore({ std::format("swapchain-signal-semaphore {}", i).c_str(), false });
+            m_waitSemaphore[i] = m_context->CreateSemaphore({ std::format("swapchain-wait-semaphore {}", i).c_str(), false });
         }
 
         InitSurface(createInfo);
@@ -72,23 +72,24 @@ namespace RHI::Vulkan
         return VK_SUCCESS;
     }
 
-    ResultCode ISwapchain::Recreate(ImageSize2D newSize)
-    {
-        ZoneScoped;
-
-        m_createInfo.imageSize = newSize;
-
-        auto result = InitSwapchain();
-        return ConvertResult(result);
-    }
-
     ResultCode ISwapchain::AcquireNextImage()
     {
         ZoneScoped;
+
         auto context = (IContext*)m_context;
         auto signalSemaphore = context->m_semaphoreOwner.Get(GetWaitSemaphore())->handle;
         Validate(vkAcquireNextImageKHR(context->m_device, m_swapchain, UINT64_MAX, signalSemaphore, VK_NULL_HANDLE, &m_imageIndex));
         return ResultCode::Success;
+    }
+
+    ResultCode ISwapchain::Recreate(ImageSize2D newSize)
+    {
+        ZoneScoped;
+
+        m_imageSize = newSize;
+
+        auto result = InitSwapchain();
+        return ConvertResult(result);
     }
 
     ResultCode ISwapchain::Present()
@@ -96,18 +97,23 @@ namespace RHI::Vulkan
         ZoneScoped;
 
         auto context = (IContext*)m_context;
-        auto waitSemaphore = context->m_semaphoreOwner.Get(GetSignalSemaphore())->handle;
+        auto waitSemaphore = context->m_semaphoreOwner.Get(GetSignalSemaphore());
 
-        VkPresentInfoKHR presentInfo{};
-        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        presentInfo.pNext = nullptr;
-        presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = &waitSemaphore;
-        presentInfo.swapchainCount = 1;
-        presentInfo.pSwapchains = &m_swapchain;
-        presentInfo.pImageIndices = &m_imageIndex;
-        presentInfo.pResults = &m_lastPresentResult;
+        VkPresentInfoKHR presentInfo{
+            .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+            .pNext = nullptr,
+            .waitSemaphoreCount = 1,
+            .pWaitSemaphores = &waitSemaphore->handle,
+            .swapchainCount = 1,
+            .pSwapchains = &m_swapchain,
+            .pImageIndices = &m_imageIndex,
+            .pResults = &m_lastPresentResult,
+        };
         Validate(vkQueuePresentKHR(context->m_queue[(uint32_t)QueueType::Graphics].GetHandle(), &presentInfo));
+
+        RotateSemaphores();
+
+        Validate(AcquireNextImage());
 
         return ResultCode::Success;
     }
@@ -119,23 +125,27 @@ namespace RHI::Vulkan
         VkSurfaceCapabilitiesKHR surfaceCapabilities{};
         Validate(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(context->m_physicalDevice, m_surface, &surfaceCapabilities));
 
-        if (m_createInfo.minImageCount < MinImageCount || m_createInfo.minImageCount > MaxImageCount)
+        if (m_imageCount < MinImageCount || m_imageCount > MaxImageCount)
         {
             TL_LOG_INFO("Failed to create the swapchain, invalid SwapchainCreateInfo::minImageCount.");
             return VK_ERROR_UNKNOWN;
         }
-        else if (m_createInfo.minImageCount < surfaceCapabilities.minImageCount || m_createInfo.minImageCount > surfaceCapabilities.maxImageCount)
+        else if (m_imageCount < surfaceCapabilities.minImageCount || m_imageCount > surfaceCapabilities.maxImageCount)
         {
             TL_LOG_INFO("Failed to create the swapchain, invalid SwapchainCreateInfo::minImageCount for the given window");
             return VK_ERROR_UNKNOWN;
         }
-        else if (m_createInfo.imageSize.width < surfaceCapabilities.minImageExtent.width || m_createInfo.imageSize.height < surfaceCapabilities.minImageExtent.height || m_createInfo.imageSize.width > surfaceCapabilities.maxImageExtent.width || m_createInfo.imageSize.height > surfaceCapabilities.maxImageExtent.height)
+        else if (
+            m_imageSize.width < surfaceCapabilities.minImageExtent.width ||
+            m_imageSize.height < surfaceCapabilities.minImageExtent.height ||
+            m_imageSize.width > surfaceCapabilities.maxImageExtent.width ||
+            m_imageSize.height > surfaceCapabilities.maxImageExtent.height)
         {
             TL_LOG_WARNNING("Swapchain requested size will be clamped to fit into window's supported size range");
         }
 
-        m_createInfo.imageSize.width = std::clamp(m_createInfo.imageSize.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
-        m_createInfo.imageSize.height = std::clamp(m_createInfo.imageSize.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
+        m_imageSize.width = std::clamp(m_imageSize.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
+        m_imageSize.height = std::clamp(m_imageSize.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
 
         uint32_t formatsCount;
         Validate(vkGetPhysicalDeviceSurfaceFormatsKHR(context->m_physicalDevice, m_surface, &formatsCount, nullptr));
@@ -147,7 +157,7 @@ namespace RHI::Vulkan
         VkSurfaceFormatKHR selectedFormat = {};
         for (auto surfaceFormat : formats)
         {
-            if (surfaceFormat.format == ConvertFormat(m_createInfo.imageFormat))
+            if (surfaceFormat.format == ConvertFormat(m_imageFormat))
             {
                 selectedFormat = surfaceFormat;
                 formatFound = true;
@@ -188,7 +198,7 @@ namespace RHI::Vulkan
         VkPresentModeKHR presentMode = VK_PRESENT_MODE_MAX_ENUM_KHR;
         for (VkPresentModeKHR supportedMode : presentModes)
         {
-            if (supportedMode == ConvertPresentMode(m_createInfo.presentMode))
+            if (supportedMode == ConvertPresentMode(m_presentMode))
             {
                 presentMode = supportedMode;
             }
@@ -201,27 +211,29 @@ namespace RHI::Vulkan
             presentMode = presentModes.front();
         }
 
+        auto [width, height] = m_imageSize;
+
         auto oldSwapchain = m_swapchain;
-        VkSwapchainCreateInfoKHR createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-        createInfo.pNext = nullptr;
-        createInfo.flags = 0;
-        createInfo.surface = m_surface;
-        createInfo.minImageCount = m_createInfo.minImageCount;
-        createInfo.imageFormat = selectedFormat.format;
-        createInfo.imageColorSpace = selectedFormat.colorSpace;
-        createInfo.imageExtent.width = m_createInfo.imageSize.width;
-        createInfo.imageExtent.height = m_createInfo.imageSize.height;
-        createInfo.imageArrayLayers = 1;
-        createInfo.imageUsage = ConvertImageUsageFlags(m_createInfo.imageUsage);
-        createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        createInfo.queueFamilyIndexCount = 0;
-        createInfo.pQueueFamilyIndices = nullptr;
-        createInfo.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
-        createInfo.compositeAlpha = selectedCompositeAlpha;
-        createInfo.presentMode = ConvertPresentMode(m_createInfo.presentMode);
-        createInfo.clipped = VK_TRUE;
-        createInfo.oldSwapchain = m_swapchain;
+        VkSwapchainCreateInfoKHR createInfo{
+            .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+            .pNext = nullptr,
+            .flags = 0,
+            .surface = m_surface,
+            .minImageCount = m_imageCount,
+            .imageFormat = selectedFormat.format,
+            .imageColorSpace = selectedFormat.colorSpace,
+            .imageExtent = {width, height},
+            .imageArrayLayers = 1,
+            .imageUsage = ConvertImageUsageFlags(m_imageUsage),
+            .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
+            .queueFamilyIndexCount = 0,
+            .pQueueFamilyIndices = nullptr,
+            .preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR,
+            .compositeAlpha = selectedCompositeAlpha,
+            .presentMode = ConvertPresentMode(m_presentMode),
+            .clipped = VK_TRUE,
+            .oldSwapchain = m_swapchain,
+        };
         Validate(vkCreateSwapchainKHR(context->m_device, &createInfo, nullptr, &m_swapchain));
         context->SetDebugName(m_swapchain, m_name.c_str());
 
@@ -231,16 +243,19 @@ namespace RHI::Vulkan
         }
 
         Validate(vkGetSwapchainImagesKHR(context->m_device, m_swapchain, &m_imageCount, nullptr));
-        TL::Vector<VkImage> images;
-        images.resize(m_imageCount);
-        Validate(vkGetSwapchainImagesKHR(context->m_device, m_swapchain, &m_imageCount, images.data()));
+        TL_ASSERT(m_imageCount <= MaxImageCount, "Swapchain returned larger count than supported.");
+        VkImage images[MaxImageCount];
+        Validate(vkGetSwapchainImagesKHR(context->m_device, m_swapchain, &m_imageCount, images));
 
         for (uint32_t imageIndex = 0; imageIndex < m_imageCount; imageIndex++)
         {
             IImage image{};
             Validate(image.Init(context, images[imageIndex], createInfo));
-            m_ringBuffer[imageIndex].m_image = context->m_imageOwner.Emplace(std::move(image));
+            m_image[imageIndex] = context->m_imageOwner.Emplace(std::move(image));
         }
+
+        Validate(AcquireNextImage());
+
         return VK_SUCCESS;
     }
 } // namespace RHI::Vulkan

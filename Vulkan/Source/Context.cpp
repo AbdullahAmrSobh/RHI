@@ -58,13 +58,67 @@ namespace RHI::Vulkan
         [[maybe_unused]] const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
         [[maybe_unused]] void* pUserData)
     {
+        // Collect additional information for logging
+        TL::String additionalInfo;
+
+        // Log the object names, debug markers, and queue information if available
+        if (pCallbackData->objectCount > 0)
+        {
+            for (uint32_t i = 0; i < pCallbackData->objectCount; ++i)
+            {
+                // clang-format off
+                additionalInfo += std::format("Object[{}]: Type: {}, Name: {}\n",
+                                          i,
+                                          ObjectTypeToName(pCallbackData->pObjects[i].objectType),
+                                          pCallbackData->pObjects[i].pObjectName ? pCallbackData->pObjects[i].pObjectName : "Unnamed");
+                // clang-format on
+            }
+        }
+
+        // Log any labels from the active debug marker stack
+        if (pCallbackData->cmdBufLabelCount > 0)
+        {
+            additionalInfo += "Active Debug Markers:\n";
+            for (uint32_t i = 0; i < pCallbackData->cmdBufLabelCount; ++i)
+            {
+                // clang-format off
+                additionalInfo += std::format("Label[{}]: {} (color: [{:.2f}, {:.2f}, {:.2f}, {:.2f}])\n",
+                                          i,
+                                          pCallbackData->pCmdBufLabels[i].pLabelName ? pCallbackData->pCmdBufLabels[i].pLabelName : "Unnamed",
+                                          pCallbackData->pCmdBufLabels[i].color[0],
+                                          pCallbackData->pCmdBufLabels[i].color[1],
+                                          pCallbackData->pCmdBufLabels[i].color[2],
+                                          pCallbackData->pCmdBufLabels[i].color[3]);
+                // clang-format on
+            }
+        }
+
+        // Log queue information if available
+        if (pCallbackData->queueLabelCount > 0)
+        {
+            additionalInfo += "Queue Labels:\n";
+            for (uint32_t i = 0; i < pCallbackData->queueLabelCount; ++i)
+            {
+                // clang-format off
+                additionalInfo += std::format("Queue[{}]: {} (color: [{:.2f}, {:.2f}, {:.2f}, {:.2f}])\n",
+                                          i,
+                                          pCallbackData->pQueueLabels[i].pLabelName ? pCallbackData->pQueueLabels[i].pLabelName : "Unnamed",
+                                          pCallbackData->pQueueLabels[i].color[0],
+                                          pCallbackData->pQueueLabels[i].color[1],
+                                          pCallbackData->pQueueLabels[i].color[2],
+                                          pCallbackData->pQueueLabels[i].color[3]);
+                // clang-format on
+            }
+        }
+
         switch (messageSeverity)
         {
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: TL_LOG_INFO(pCallbackData->pMessage); break;
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:    TL_LOG_INFO(pCallbackData->pMessage); break;
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: TL_LOG_WARNNING(pCallbackData->pMessage); break;
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:   TL_LOG_ERROR(pCallbackData->pMessage); break;
-        default:                                              TL_UNREACHABLE();
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: TL_LOG_INFO("{}\nMessage: {}", additionalInfo, pCallbackData->pMessage); break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:    TL_LOG_INFO("{}\nMessage: {}", additionalInfo, pCallbackData->pMessage); break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: TL_LOG_WARNNING("{}\nMessage: {}", additionalInfo, pCallbackData->pMessage); break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:   TL_LOG_ERROR("{}\nMessage: {}", additionalInfo, pCallbackData->pMessage); break;
+        default:
+            TL_UNREACHABLE();
         }
 
         return VK_FALSE;
@@ -137,7 +191,7 @@ namespace RHI::Vulkan
         , m_allocator(VK_NULL_HANDLE)
         , m_pfn()
         , m_queue()
-        , m_frameContext(this)
+        , m_deleteQueue(this)
         , m_bindGroupAllocator(TL::CreatePtr<BindGroupAllocator>(this))
         , m_commandPool(TL::CreatePtr<ICommandPool>(this))
         , m_imageOwner()
@@ -159,13 +213,10 @@ namespace RHI::Vulkan
 
         vkDeviceWaitIdle(m_device);
 
-        for (auto frame : m_frameContext.m_frame)
-        {
-            frame.m_deleteQueue.Flush();
-        }
-
         delete m_commandPool.release();
         m_bindGroupAllocator->Shutdown();
+
+        m_deleteQueue.Shutdown();
 
         vmaDestroyAllocator(m_allocator);
         vkDestroyDevice(m_device, nullptr);
@@ -186,12 +237,12 @@ namespace RHI::Vulkan
 
         bool debugExtensionEnabled = false;
 
-        TryValidateVk(InitInstance(appInfo, &debugExtensionEnabled));
-        TryValidateVk(InitDevice());
-        TryValidateVk(InitMemoryAllocator());
+        TRY_OR_RETURN(InitInstance(appInfo, &debugExtensionEnabled));
+        TRY_OR_RETURN(InitDevice());
+        TRY_OR_RETURN(InitMemoryAllocator());
 
-        TryValidate(m_bindGroupAllocator->Init());
-        TryValidate(m_commandPool->Init(CommandPoolFlags::Reset));
+        TRY_OR_RETURN_VK(m_bindGroupAllocator->Init());
+        TRY_OR_RETURN_VK(m_commandPool->Init(CommandPoolFlags::Reset));
 
         return ResultCode::Success;
     }
@@ -212,62 +263,121 @@ namespace RHI::Vulkan
         }
     }
 
-    // VkSemaphore IContext::CreateSemaphore(const char* name, bool timeline, uint64_t initialValue)
-    // {
-    //     VkSemaphoreTypeCreateInfo timelineInfo{};
-    //     timelineInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
-    //     timelineInfo.initialValue = initialValue;
-    //     timelineInfo.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
-
-    //     VkSemaphoreCreateInfo createInfo{};
-    //     createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    //     createInfo.pNext = timeline ? &timelineInfo : nullptr;
-    //     createInfo.flags = 0;
-    //     VkSemaphore semaphore = VK_NULL_HANDLE;
-    //     Validate(vkCreateSemaphore(m_device, &createInfo, nullptr, &semaphore));
-    //     SetDebugName(semaphore, name);
-    //     return semaphore;
-    // }
-
-    // void IContext::DestroySemaphore(VkSemaphore semaphore)
-    // {
-    //     if (semaphore != VK_NULL_HANDLE)
-    //     {
-    //         vkDestroySemaphore(m_device, semaphore, nullptr);
-    //     }
-    // }
-
     uint32_t IContext::GetMemoryTypeIndex(MemoryType memoryType)
     {
-        VkMemoryPropertyFlags flags = 0;
-        VkMemoryPropertyFlags negateFlags = 0;
-        switch (memoryType)
+        VkPhysicalDeviceMemoryProperties2 memoryProperties;
+        vkGetPhysicalDeviceMemoryProperties2(m_physicalDevice, &memoryProperties);
+
+        // Loop through all available memory types to find the appropriate one
+        for (uint32_t i = 0; i < memoryProperties.memoryProperties.memoryTypeCount; ++i)
         {
-        case MemoryType::CPU: flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; break;
-        case MemoryType::GPULocal:
-            flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-            negateFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-            break;
-        case MemoryType::GPUShared: flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; break;
-        }
+            const VkMemoryType& vkMemoryType = memoryProperties.memoryProperties.memoryTypes[i];
 
-        VkPhysicalDeviceMemoryProperties memoryProperties;
-        vkGetPhysicalDeviceMemoryProperties(m_physicalDevice, &memoryProperties);
-
-        // TODO: if multiple memory types with the desired flags are present,
-        // then select the based on size, performance charactersitcs ...
-        uint32_t index = UINT32_MAX;
-        for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++)
-        {
-            VkMemoryType type = memoryProperties.memoryTypes[i];
-
-            if ((type.propertyFlags & flags) == flags && (type.propertyFlags & negateFlags) == 0)
+            switch (memoryType)
             {
-                index = type.heapIndex;
+            case MemoryType::CPU:
+                // Host visible and coherent memory for CPU access
+                if (vkMemoryType.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT &&
+                    vkMemoryType.propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+                {
+                    return i;
+                }
+                break;
+
+            case MemoryType::GPULocal:
+                // Device local memory for GPU-only access
+                if (vkMemoryType.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+                {
+                    return i;
+                }
+                break;
+
+            case MemoryType::GPUShared:
+                // Device local but also host visible and coherent, used for streaming resources
+                if (vkMemoryType.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT &&
+                    vkMemoryType.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT &&
+                    vkMemoryType.propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+                {
+                    return i;
+                }
+                break;
+
+            default:
+                TL_UNREACHABLE(); // Invalid MemoryType
             }
         }
 
-        return index;
+        // If no suitable memory type was found, return an invalid index
+        TL_LOG_ERROR("Failed to find suitable memory type for {}", static_cast<int>(memoryType));
+        return UINT32_MAX; // Return an invalid index to indicate failure
+    }
+
+    void IContext::FillLimits()
+    {
+        Limits& limits = *m_limits;
+
+        // Get physical device properties
+        VkPhysicalDeviceProperties physicalDeviceProperties;
+        vkGetPhysicalDeviceProperties(m_physicalDevice, &physicalDeviceProperties);
+
+        // General image limits
+        limits.maxImage2DSize = physicalDeviceProperties.limits.maxImageDimension2D;
+        limits.maxImageCubeSize = physicalDeviceProperties.limits.maxImageDimensionCube;
+        limits.maxImage3DSize = physicalDeviceProperties.limits.maxImageDimension3D;
+        limits.maxImageArrayLayers = physicalDeviceProperties.limits.maxImageArrayLayers;
+
+        // Buffer size limits
+        limits.maxUniformBufferSize = physicalDeviceProperties.limits.maxUniformBufferRange;
+        limits.maxStorageBufferSize = physicalDeviceProperties.limits.maxStorageBufferRange;
+        limits.maxConstantBufferSize = physicalDeviceProperties.limits.maxUniformBufferRange;
+
+        // Bind group (resource binding) limits
+        limits.maxBindGroups = 4; // Adjust based on your context
+        // limits.maxResourcesPerBindGroup = maxDescriptorSetBindings; // Adjust based on your context
+        // limits.maxSamplersPerBindGroup = maxPerStageDescriptorSamplers;
+        // limits.maxImagesPerBindGroup = maxPerStageDescriptorImages;
+        // limits.maxBuffersPerBindGroup = maxPerStageDescriptorStorageBuffers;
+
+        // Descriptor indexing limits (for Vulkan 1.2 and above)
+        if (physicalDeviceProperties.apiVersion >= VK_API_VERSION_1_2)
+        {
+            VkPhysicalDeviceDescriptorIndexingProperties descriptorIndexingProperties;
+            descriptorIndexingProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES;
+            descriptorIndexingProperties.pNext = nullptr;
+
+            VkPhysicalDeviceProperties2 properties2 = {};
+            properties2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+            properties2.pNext = &descriptorIndexingProperties;
+
+            vkGetPhysicalDeviceProperties2(m_physicalDevice, &properties2);
+
+            limits.maxDynamicBuffers = descriptorIndexingProperties.maxUpdateAfterBindDescriptorsInAllPools;
+            limits.maxDescriptorsPerSet = descriptorIndexingProperties.maxDescriptorSetUpdateAfterBindSamplers; // Adjust as needed
+        }
+
+        // Buffer alignment requirements
+        limits.uniformBufferAlignment = (uint32_t)physicalDeviceProperties.limits.minUniformBufferOffsetAlignment;
+        limits.storageBufferAlignment = (uint32_t)physicalDeviceProperties.limits.minStorageBufferOffsetAlignment;
+        limits.dynamicBufferAlignment = (uint32_t)physicalDeviceProperties.limits.minUniformBufferOffsetAlignment; // Adjust if needed
+
+        // Memory heap sizes
+        VkPhysicalDeviceMemoryProperties memoryProperties;
+        vkGetPhysicalDeviceMemoryProperties(m_physicalDevice, &memoryProperties);
+
+        // Memory allocation limits
+        limits.maxMemoryAllocationSize = physicalDeviceProperties.limits.maxMemoryAllocationCount; // Adjust as needed
+        limits.memoryTypeCount = memoryProperties.memoryTypeCount;                                 // Define this function to return the number of memory types
+        for (uint32_t i = 0; i < VK_MAX_MEMORY_HEAPS; ++i)
+        {
+            if (i < memoryProperties.memoryHeapCount)
+            {
+                limits.memoryHeapSize[i] = memoryProperties.memoryHeaps[i].size;
+            }
+            else
+            {
+                limits.memoryHeapSize[i] = 0; // No more heaps available
+            }
+        }
     }
 
     ////////////////////////////////////////////////////////////
@@ -332,12 +442,9 @@ namespace RHI::Vulkan
     {
         TL_ASSERT(handle != NullHandle);
 
-        m_frameContext.DeferCommand([this, handle]()
-        {
-            auto bindGroupLayout = m_bindGroupLayoutsOwner.Get(handle);
-            bindGroupLayout->Shutdown(this);
-            m_bindGroupLayoutsOwner.Release(handle);
-        });
+        auto bindGroupLayout = m_bindGroupLayoutsOwner.Get(handle);
+        bindGroupLayout->Shutdown(this);
+        m_bindGroupLayoutsOwner.Release(handle);
     }
 
     Handle<BindGroup> IContext::Impl_CreateBindGroup(Handle<BindGroupLayout> layoutHandle)
@@ -356,12 +463,9 @@ namespace RHI::Vulkan
     {
         TL_ASSERT(handle != NullHandle);
 
-        m_frameContext.DeferCommand([this, handle]()
-        {
-            auto bindGroup = m_bindGroupOwner.Get(handle);
-            bindGroup->Shutdown(this);
-            m_bindGroupOwner.Release(handle);
-        });
+        auto bindGroup = m_bindGroupOwner.Get(handle);
+        bindGroup->Shutdown(this);
+        m_bindGroupOwner.Release(handle);
     }
 
     void IContext::Impl_UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo)
@@ -407,12 +511,9 @@ namespace RHI::Vulkan
     {
         TL_ASSERT(handle != NullHandle);
 
-        m_frameContext.DeferCommand([this, handle]()
-        {
-            auto graphicsPipeline = m_graphicsPipelineOwner.Get(handle);
-            graphicsPipeline->Shutdown(this);
-            m_graphicsPipelineOwner.Release(handle);
-        });
+        auto pipeline = m_graphicsPipelineOwner.Get(handle);
+        pipeline->Shutdown(this);
+        m_graphicsPipelineOwner.Release(handle);
     }
 
     Handle<ComputePipeline> IContext::Impl_CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
@@ -431,12 +532,9 @@ namespace RHI::Vulkan
     {
         TL_ASSERT(handle != NullHandle);
 
-        m_frameContext.DeferCommand([this, handle]()
-        {
-            auto computePipeline = m_computePipelineOwner.Get(handle);
-            computePipeline->Shutdown(this);
-            m_computePipelineOwner.Release(handle);
-        });
+        auto pipeline = m_computePipelineOwner.Get(handle);
+        pipeline->Shutdown(this);
+        m_computePipelineOwner.Release(handle);
     }
 
     Handle<Sampler> IContext::Impl_CreateSampler(const SamplerCreateInfo& createInfo)
@@ -455,12 +553,9 @@ namespace RHI::Vulkan
     {
         TL_ASSERT(handle != NullHandle);
 
-        m_frameContext.DeferCommand([this, handle]()
-        {
-            auto sampler = m_samplerOwner.Get(handle);
-            sampler->Shutdown(this);
-            m_samplerOwner.Release(handle);
-        });
+        auto sampler = m_samplerOwner.Get(handle);
+        sampler->Shutdown(this);
+        m_samplerOwner.Release(handle);
     }
 
     Result<Handle<Image>> IContext::Impl_CreateImage(const ImageCreateInfo& createInfo)
@@ -481,12 +576,9 @@ namespace RHI::Vulkan
     {
         TL_ASSERT(handle != NullHandle);
 
-        m_frameContext.DeferCommand([this, handle]()
-        {
-            auto image = m_imageOwner.Get(handle);
-            image->Shutdown(this);
-            m_imageOwner.Release(handle);
-        });
+        auto image = m_imageOwner.Get(handle);
+        image->Shutdown(this);
+        m_imageOwner.Release(handle);
     }
 
     Result<Handle<Buffer>> IContext::Impl_CreateBuffer(const BufferCreateInfo& createInfo)
@@ -506,12 +598,9 @@ namespace RHI::Vulkan
     {
         TL_ASSERT(handle != NullHandle);
 
-        m_frameContext.DeferCommand([this, handle]()
-        {
-            auto buffer = m_bufferOwner.Get(handle);
-            buffer->Shutdown(this);
-            m_bufferOwner.Release(handle);
-        });
+        auto buffer = m_bufferOwner.Get(handle);
+        buffer->Shutdown(this);
+        m_bufferOwner.Release(handle);
     }
 
     Handle<ImageView> IContext::Impl_CreateImageView(const ImageViewCreateInfo& createInfo)
@@ -530,12 +619,9 @@ namespace RHI::Vulkan
     {
         TL_ASSERT(handle != NullHandle);
 
-        m_frameContext.DeferCommand([this, handle]()
-        {
-            auto imageView = m_imageViewOwner.Get(handle);
-            imageView->Shutdown(this);
-            m_imageViewOwner.Release(handle);
-        });
+        auto imageView = m_imageViewOwner.Get(handle);
+        imageView->Shutdown(this);
+        m_imageViewOwner.Release(handle);
     }
 
     Handle<BufferView> IContext::Impl_CreateBufferView(const BufferViewCreateInfo& createInfo)
@@ -554,12 +640,9 @@ namespace RHI::Vulkan
     {
         TL_ASSERT(handle != NullHandle);
 
-        m_frameContext.DeferCommand([this, handle]()
-        {
-            auto bufferView = m_bufferViewOwner.Get(handle);
-            bufferView->Shutdown(this);
-            m_bufferViewOwner.Release(handle);
-        });
+        auto bufferView = m_bufferViewOwner.Get(handle);
+        bufferView->Shutdown(this);
+        m_bufferViewOwner.Release(handle);
     }
 
     DeviceMemoryPtr IContext::Impl_MapBuffer(Handle<Buffer> handle)
@@ -594,12 +677,9 @@ namespace RHI::Vulkan
     {
         TL_ASSERT(handle != NullHandle);
 
-        m_frameContext.DeferCommand([this, handle]()
-        {
-            auto semaphore = m_semaphoreOwner.Get(handle);
-            semaphore->Shutdown(this);
-            m_semaphoreOwner.Release(handle);
-        });
+        auto semaphore = m_semaphoreOwner.Get(handle);
+        semaphore->Shutdown(this);
+        m_semaphoreOwner.Release(handle);
     }
 
     Queue* IContext::Impl_GetQueue(QueueType queueType)
@@ -609,7 +689,7 @@ namespace RHI::Vulkan
 
     void IContext::Impl_CollectResources()
     {
-        m_frameContext.AdvanceFrame();
+        m_deleteQueue.ExecuteDeletions();
     }
 
     ////////////////////////////////////////////////////////////

@@ -48,7 +48,7 @@ namespace RHI
     class RHI_EXPORT Swapchain
     {
     public:
-        static constexpr uint32_t MaxImageCount = 3;
+        static constexpr uint32_t MaxImageCount = 4;
         static constexpr uint32_t MinImageCount = 1;
 
         Swapchain(Context* context);
@@ -70,38 +70,33 @@ namespace RHI
         /// @brief Get the current acquired swapchain semaphore.
         Handle<Semaphore>  GetSignalSemaphore() const;
 
-        /// @brief Get the indexed Semaphore in the swapchain semaphores.
-        Handle<Semaphore>  GetSignalSemaphore(uint32_t index) const;
-
         /// @brief Get the current acquired swapchain semaphore.
         Handle<Semaphore>  GetWaitSemaphore() const;
 
-        /// @brief Get the indexed Semaphore in the swapchain semaphores.
-        Handle<Semaphore>  GetWaitSemaphore(uint32_t index) const;
-
         /// @brief Called to invalidate the current swapchain state, when the window is resized.
         virtual ResultCode Recreate(ImageSize2D newSize) = 0;
-
-        /// @brief Acquires the next image to be presented in the swapchain.
-        virtual ResultCode AcquireNextImage() = 0;
 
         /// @brief Presents the current image.
         virtual ResultCode Present() = 0;
 
     protected:
-        Context*            m_context;
-        TL::String          m_name;
-        uint32_t            m_imageCount;
-        uint32_t            m_imageIndex;
-        SwapchainCreateInfo m_createInfo;
+        uint32_t GetCurrentSemaphoreIndex() const;
+        uint32_t GetNextSemaphoreIndex() const;
+        void     RotateSemaphores();
 
-        struct BufferedImageData
-        {
-            Handle<Semaphore> m_signalSemaphore; // semaphore that is signaleed after acquire
-            Handle<Image>     m_image;
-            Handle<Semaphore> m_waitSemaphore; // semaphore that is waited before present
-        };
+    protected:
+        Context*              m_context;
+        TL::String            m_name;
+        ImageSize2D           m_imageSize;
+        TL::Flags<ImageUsage> m_imageUsage;
+        Format                m_imageFormat;
+        SwapchainPresentMode  m_presentMode;
 
-        BufferedImageData m_ringBuffer[MaxImageCount];
+        uint32_t              m_imageCount;
+        uint32_t              m_imageIndex;
+        uint32_t              m_semaphoreIndex;
+        Handle<Semaphore>     m_waitSemaphore[MaxImageCount]; // App must wait on this semaphore before using the image
+        Handle<Image>         m_image[MaxImageCount];
+        Handle<Semaphore>     m_signalSemaphore[MaxImageCount]; // App must signal this semaphore after using the iamge
     };
 } // namespace RHI

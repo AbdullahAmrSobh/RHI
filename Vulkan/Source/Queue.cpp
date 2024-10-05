@@ -59,7 +59,7 @@ namespace RHI::Vulkan
                     .pNext = nullptr,
                     .semaphore = m_context->m_semaphoreOwner.Get(waitSemaphore.semaphore)->handle, // Get the VkSemaphore handle
                     .value = waitSemaphore.value,
-                    .stageMask = VkPipelineStageFlags(0), // TODO:
+                    .stageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, // TODO:
                     .deviceIndex = 0,
                 };
                 waitSemaphoreSIList.push_back(waitSemaphoreInfo);
@@ -73,7 +73,7 @@ namespace RHI::Vulkan
                     .pNext = nullptr,
                     .semaphore = m_context->m_semaphoreOwner.Get(signalSemaphore.semaphore)->handle, // Get the VkSemaphore handle
                     .value = signalSemaphore.value,
-                    .stageMask = VkPipelineStageFlags(0), // TODO:
+                    .stageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, // TODO:
                     .deviceIndex = 0,
                 };
                 signalSemaphoreSIList.push_back(signalSemaphoreInfo);

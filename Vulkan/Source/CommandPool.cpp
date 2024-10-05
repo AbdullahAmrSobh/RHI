@@ -32,7 +32,8 @@ namespace RHI::Vulkan
     {
         for (auto commandPool : m_commandPools)
         {
-            vkDestroyCommandPool(m_context->m_device, commandPool, nullptr);
+            // vkDestroyCommandPool(m_context->m_device, commandPool, nullptr);
+            m_context->m_deleteQueue.DestroyObject(commandPool);
         }
     }
 
@@ -46,7 +47,7 @@ namespace RHI::Vulkan
                 .flags = ConvertCommandPoolFlags(flags),
                 .queueFamilyIndex = m_context->m_queue[queueType].GetFamilyIndex(),
             };
-            TryValidateVk(vkCreateCommandPool(m_context->m_device, &createInfo, nullptr, &m_commandPools[queueType]));
+            TRY_OR_RETURN(vkCreateCommandPool(m_context->m_device, &createInfo, nullptr, &m_commandPools[queueType]));
         }
 
         return ResultCode::Success;

@@ -83,7 +83,7 @@ public:
             .imageSize = { width, height },
             .imageUsage = RHI::ImageUsage::Color,
             .imageFormat = RHI::Format::RGBA8_UNORM,
-            .minImageCount = 2,
+            .minImageCount = 3,
             .presentMode = RHI::SwapchainPresentMode::Fifo,
             .win32Window = { m_window->GetNativeHandle() }
         };
@@ -398,13 +398,10 @@ public:
     {
         auto frame = GetCurrentFrame();
 
-        auto res = m_swapchain->AcquireNextImage();
-        TL_ASSERT(res == RHI::ResultCode::Success);
-
         if (frame.m_fence->GetState() != RHI::FenceState::Signaled)
         {
             [[maybe_unused]] auto result = frame.m_fence->Wait(UINT64_MAX);
-            // TL_ASSERT(result);
+            TL_ASSERT(result == true);
         }
 
         m_context->CollectResources(); // collect resources destroyed on the previous frame
@@ -456,16 +453,16 @@ public:
         commandList->End();
 
         RHI::SubmitInfo submitInfo{
-            .waitSemaphores = RHI::SemaphoreSubmitInfo{0,  RHI::PipelineStage::None, m_swapchain->GetWaitSemaphore()  },
+            .waitSemaphores = RHI::SemaphoreSubmitInfo{0,  RHI::PipelineStage::None, m_swapchain->GetWaitSemaphore() },
             .commandLists = commandList.get(),
             .signalSemaphores = RHI::SemaphoreSubmitInfo{ 0, RHI::PipelineStage::None, m_swapchain->GetSignalSemaphore()},
         };
         m_queue->Submit(submitInfo, frame.m_fence);
 
-        AdvanceFrame();
-
         auto presentResult = m_swapchain->Present();
         TL_ASSERT(presentResult == RHI::ResultCode::Success);
+
+        AdvanceFrame();
     }
 
     virtual void OnEvent(Event& event)

@@ -57,7 +57,8 @@ namespace RHI::Vulkan
 
     void BindGroupAllocator::Shutdown()
     {
-        vkDestroyDescriptorPool(m_context->m_device, m_descriptorPool, nullptr);
+        // vkDestroyDescriptorPool(m_context->m_device, m_descriptorPool, nullptr);
+        m_context->m_deleteQueue.DestroyObject(m_descriptorPool);
     }
 
     ResultCode BindGroupAllocator::InitBindGroup(IBindGroup* bindGroup, IBindGroupLayout* bindGroupLayout)
@@ -88,6 +89,7 @@ namespace RHI::Vulkan
     void BindGroupAllocator::ShutdownBindGroup(IBindGroup* bindGroup)
     {
         vkFreeDescriptorSets(m_context->m_device, m_descriptorPool, 1, &bindGroup->descriptorSet);
+        // m_context->m_deleteQueue.DestroyObject(bindGroup);
     }
 
     ResultCode IBindGroupLayout::Init(IContext* context, const BindGroupLayoutCreateInfo& createInfo)
@@ -160,7 +162,7 @@ namespace RHI::Vulkan
 
     void IBindGroupLayout::Shutdown(IContext* context)
     {
-        vkDestroyDescriptorSetLayout(context->m_device, handle, nullptr);
+        context->m_deleteQueue.DestroyObject(handle);
     }
 
     ResultCode IBindGroup::Init(IContext* context, Handle<BindGroupLayout> layoutHandle)

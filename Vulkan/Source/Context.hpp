@@ -83,6 +83,7 @@ namespace RHI::Vulkan
         VkResult InitDevice();
         VkResult InitMemoryAllocator();
         VkResult LoadFunctions(bool debugExtensionEnabled);
+        void FillLimits();
 
     public:
         VkInstance m_instance;
@@ -113,7 +114,7 @@ namespace RHI::Vulkan
 
         IQueue m_queue[(uint32_t)QueueType::Count];
 
-        FrameExecuteContext m_frameContext;
+        DeleteQueue m_deleteQueue;
 
         TL::Ptr<BindGroupAllocator> m_bindGroupAllocator;
         TL::Ptr<ICommandPool> m_commandPool;
@@ -129,14 +130,6 @@ namespace RHI::Vulkan
         HandlePool<IComputePipeline> m_computePipelineOwner;
         HandlePool<ISampler> m_samplerOwner;
         HandlePool<ISemaphore> m_semaphoreOwner;
-
-        VkPhysicalDeviceDescriptorIndexingProperties m_descriptorIndexingProperties;
-        VkPhysicalDeviceVulkan13Properties m_properties13;
-        VkPhysicalDeviceVulkan12Properties m_properties12;
-        VkPhysicalDeviceVulkan11Properties m_properties11;
-        VkPhysicalDeviceProperties2 m_properties;
-
-        VkPhysicalDeviceMemoryProperties2 m_memoryProperties;
     };
 
     template<typename T>

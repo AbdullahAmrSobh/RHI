@@ -83,7 +83,8 @@ namespace RHI::Vulkan
 
     void IBuffer::Shutdown(IContext* context)
     {
-        vmaDestroyBuffer(context->m_allocator, handle, allocation.handle);
+        // vmaDestroyBuffer(context->m_allocator, handle, allocation.handle);
+        context->m_deleteQueue.DestroyObject(handle);
     }
 
     VkMemoryRequirements IBuffer::GetMemoryRequirements(IContext* context) const
@@ -123,7 +124,8 @@ namespace RHI::Vulkan
 
     void IBufferView::Shutdown(IContext* context)
     {
-        vkDestroyBufferView(context->m_device, handle, nullptr);
+        // vkDestroyBufferView(context->m_device, handle, nullptr);
+        context->m_deleteQueue.DestroyObject(handle);
     }
 
 } // namespace RHI::Vulkan

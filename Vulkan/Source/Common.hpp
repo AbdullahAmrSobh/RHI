@@ -6,11 +6,11 @@
 
 #include <TL/Assert.hpp>
 
-#define TryValidateVk(result)           \
-    if (Validate(result) != VK_SUCCESS) \
+#define TRY_OR_RETURN(result) \
+    if (result != VK_SUCCESS) \
         return ConvertResult(result);
 
-#define TryValidate(result)            \
+#define TRY_OR_RETURN_VK(result)       \
     if (result != ResultCode::Success) \
         return result;
 
@@ -25,7 +25,7 @@ namespace RHI::Vulkan
     [[maybe_unused]] inline static bool Validate(VkResult result)
     {
         TL_ASSERT(result == VK_SUCCESS);
-        return result;
+        return result == VK_SUCCESS;
     }
 
     inline static ResultCode ConvertResult(VkResult result)
@@ -334,4 +334,53 @@ namespace RHI::Vulkan
         submitInfo.stageMask = stages;
         return submitInfo;
     }
+
+    inline static const char* ObjectTypeToName(VkObjectType type)
+    {
+        if (type == VK_OBJECT_TYPE_INSTANCE) return "VkInstance";
+        else if (type == VK_OBJECT_TYPE_PHYSICAL_DEVICE) return "VkPhysicalDevice";
+        else if (type == VK_OBJECT_TYPE_DEVICE) return "VkDevice";
+        else if (type == VK_OBJECT_TYPE_QUEUE) return "VkQueue";
+        else if (type == VK_OBJECT_TYPE_SEMAPHORE) return "VkSemaphore";
+        else if (type == VK_OBJECT_TYPE_COMMAND_BUFFER) return "VkCommandBuffer";
+        else if (type == VK_OBJECT_TYPE_FENCE) return "VkFence";
+        else if (type == VK_OBJECT_TYPE_DEVICE_MEMORY) return "VkDeviceMemory";
+        else if (type == VK_OBJECT_TYPE_BUFFER) return "VkBuffer";
+        else if (type == VK_OBJECT_TYPE_IMAGE) return "VkImage";
+        else if (type == VK_OBJECT_TYPE_EVENT) return "VkEvent";
+        else if (type == VK_OBJECT_TYPE_QUERY_POOL) return "VkQueryPool";
+        else if (type == VK_OBJECT_TYPE_BUFFER_VIEW) return "VkBufferView";
+        else if (type == VK_OBJECT_TYPE_IMAGE_VIEW) return "VkImageView";
+        else if (type == VK_OBJECT_TYPE_SHADER_MODULE) return "VkShaderModule";
+        else if (type == VK_OBJECT_TYPE_PIPELINE_CACHE) return "VkPipelineCache";
+        else if (type == VK_OBJECT_TYPE_PIPELINE_LAYOUT) return "VkPipelineLayout";
+        else if (type == VK_OBJECT_TYPE_RENDER_PASS) return "VkRenderPass";
+        else if (type == VK_OBJECT_TYPE_PIPELINE) return "VkPipeline";
+        else if (type == VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT) return "VkDescriptorSetLayout";
+        else if (type == VK_OBJECT_TYPE_SAMPLER) return "VkSampler";
+        else if (type == VK_OBJECT_TYPE_DESCRIPTOR_POOL) return "VkDescriptorPool";
+        else if (type == VK_OBJECT_TYPE_DESCRIPTOR_SET) return "VkDescriptorSet";
+        else if (type == VK_OBJECT_TYPE_FRAMEBUFFER) return "VkFramebuffer";
+        else if (type == VK_OBJECT_TYPE_COMMAND_POOL) return "VkCommandPool";
+        else if (type == VK_OBJECT_TYPE_SURFACE_KHR) return "VkSurfaceKHR";
+        else if (type == VK_OBJECT_TYPE_SWAPCHAIN_KHR) return "VkSwapchainKHR";
+        else if (type == VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT) return "VkDebugReportCallbackEXT";
+        else if (type == VK_OBJECT_TYPE_DISPLAY_KHR) return "VkDisplayKHR";
+        else if (type == VK_OBJECT_TYPE_DISPLAY_MODE_KHR) return "VkDisplayModeKHR";
+        else if (type == VK_OBJECT_TYPE_VALIDATION_CACHE_EXT) return "VkValidationCacheEXT";
+        else if (type == VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION) return "VkSamplerYcbcrConversion";
+        else if (type == VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE) return "VkDescriptorUpdateTemplate";
+        else if (type == VK_OBJECT_TYPE_CU_MODULE_NVX) return "VkCuModuleNVX";
+        else if (type == VK_OBJECT_TYPE_CU_FUNCTION_NVX) return "VkCuFunctionNVX";
+        else if (type == VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR) return "VkAccelerationStructureKHR";
+        else if (type == VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_NV) return "VkAccelerationStructureNV";
+        else if (type == VK_OBJECT_TYPE_CUDA_MODULE_NV) return "VkCudaModuleNV";
+        else if (type == VK_OBJECT_TYPE_CUDA_FUNCTION_NV) return "VkCudaFunctionNV";
+        else if (type == VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT) return "VkDebugReportCallbackEXT";
+        else if (type == VK_OBJECT_TYPE_VALIDATION_CACHE_EXT) return "VkValidationCacheEXT";
+        else if (type == VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_KHR) return "VkDescriptorUpdateTemplateKHR";
+        else if (type == VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_KHR) return "VkSamplerYcbcrConversionKHR";
+        else return "Unknowen";
+    }
+
 } // namespace RHI::Vulkan

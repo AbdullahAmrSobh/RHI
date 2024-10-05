@@ -21,11 +21,16 @@ namespace RHI::Vulkan
         this->info = _createInfo;
 
         auto result = vkCreateSemaphore(context->m_device, &createInfo, nullptr, &this->handle);
+        if (_createInfo.name != nullptr)
+        {
+            context->SetDebugName(this->handle, _createInfo.name);
+        }
         return ConvertResult(result);
     }
 
     void ISemaphore::Shutdown(IContext* context)
     {
-        vkDestroySemaphore(context->m_device, this->handle, nullptr);
+        // vkDestroySemaphore(context->m_device, this->handle, nullptr);
+        context->m_deleteQueue.DestroyObject(handle);
     }
 } // namespace RHI::Vulkan
