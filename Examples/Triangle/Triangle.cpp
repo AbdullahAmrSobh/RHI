@@ -411,7 +411,8 @@ public:
 
         auto commandList = frame.m_commandPool->Allocate(RHI::QueueType::Graphics, RHI::CommandListLevel::Primary);
 
-        auto [width, height] = m_renderGraph->GetPassSize(m_mainPass);
+        auto [width, height] = m_window->GetWindowSize();
+        m_renderGraph->PassResize(m_mainPass, { width, height });
 
         RHI::CommandListBeginInfo renderPassBeginInfo{
             .renderGraph = m_renderGraph,
@@ -453,7 +454,7 @@ public:
         commandList->End();
 
         RHI::SubmitInfo submitInfo{
-            .waitSemaphores = RHI::SemaphoreSubmitInfo{0,  RHI::PipelineStage::None, m_swapchain->GetWaitSemaphore() },
+            .waitSemaphores = RHI::SemaphoreSubmitInfo{0,  RHI::PipelineStage::None, m_swapchain->GetWaitSemaphore()  },
             .commandLists = commandList.get(),
             .signalSemaphores = RHI::SemaphoreSubmitInfo{ 0, RHI::PipelineStage::None, m_swapchain->GetSignalSemaphore()},
         };
@@ -467,7 +468,21 @@ public:
 
     virtual void OnEvent(Event& event)
     {
-        m_camera.ProcessEvent(event);
+        switch (event.GetEventType())
+        {
+        case EventType::WindowResize:
+            {
+                auto& e = (WindowResizeEvent&)event;
+                auto res = m_swapchain->Recreate({ e.GetSize().width, e.GetSize().height });
+                TL_ASSERT(res == RHI::ResultCode::Success);
+            }
+            break;
+        default:
+            {
+                m_camera.ProcessEvent(event);
+            }
+            break;
+        }
     }
 };
 

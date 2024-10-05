@@ -88,6 +88,9 @@ namespace RHI::Vulkan
 
         m_imageSize = newSize;
 
+        auto context = (IContext*)m_context;
+        vkDeviceWaitIdle(context->m_device);
+
         auto result = InitSwapchain();
         return ConvertResult(result);
     }
