@@ -38,7 +38,7 @@ namespace RHI
         Version     engineVersion;      // The version of the users application.
     };
 
-    struct Limits
+    struct DeviceLimits
     {
         // General resource limits
         uint32_t                  maxImage2DSize;        ///< Maximum size of 2D images
@@ -68,13 +68,13 @@ namespace RHI
         uint64_t                  memoryHeapSize[maxMemoryHeaps]; ///< Total size of each memory heap (for each memory type)
     };
 
-    class RHI_EXPORT Context
+    class RHI_EXPORT Device
     {
     public:
-        Context();
-        virtual ~Context();
+        Device();
+        virtual ~Device();
 
-        TL_NODISCARD Limits                   GetLimits() const;
+        TL_NODISCARD DeviceLimits             GetLimits() const;
 
         TL_NODISCARD TL::Ptr<RenderGraph>     CreateRenderGraph();
 
@@ -176,6 +176,6 @@ namespace RHI
         virtual void                     Impl_CollectResources()                                                               = 0;
 
     protected:
-        TL::Ptr<Limits> m_limits;
+        TL::Ptr<DeviceLimits> m_limits;
     };
 } // namespace RHI

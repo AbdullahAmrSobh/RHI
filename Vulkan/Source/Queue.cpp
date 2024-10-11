@@ -1,24 +1,24 @@
 #include "Queue.hpp"
 
 #include "Common.hpp"
-#include "Context.hpp"
+#include "Device.hpp"
 #include "CommandList.hpp"
 
 #include <tracy/Tracy.hpp>
 
 namespace RHI::Vulkan
 {
-    IQueue::IQueue(IContext* context, uint32_t familyIndex)
-        : m_context(context)
+    IQueue::IQueue(IDevice* device, uint32_t familyIndex)
+        : m_device(device)
         , m_queue(VK_NULL_HANDLE)
         , m_familyIndex(familyIndex)
     {
-        vkGetDeviceQueue(m_context->m_device, familyIndex, 0, &m_queue);
+        vkGetDeviceQueue(m_device->m_device, familyIndex, 0, &m_queue);
     }
 
     void IQueue::BeginLabel(const char* name, float color[4])
     {
-        if (auto fn = m_context->m_pfn.m_vkQueueBeginDebugUtilsLabelEXT)
+        if (auto fn = m_device->m_pfn.m_vkQueueBeginDebugUtilsLabelEXT)
         {
             VkDebugUtilsLabelEXT labelInfo{};
             labelInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
@@ -34,7 +34,7 @@ namespace RHI::Vulkan
 
     void IQueue::EndLabel()
     {
-        if (auto fn = m_context->m_pfn.m_vkQueueEndDebugUtilsLabelEXT)
+        if (auto fn = m_device->m_pfn.m_vkQueueEndDebugUtilsLabelEXT)
         {
             fn(m_queue);
         }
@@ -57,7 +57,7 @@ namespace RHI::Vulkan
                 VkSemaphoreSubmitInfo waitSemaphoreInfo{
                     .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
                     .pNext = nullptr,
-                    .semaphore = m_context->m_semaphoreOwner.Get(waitSemaphore.semaphore)->handle, // Get the VkSemaphore handle
+                    .semaphore = m_device->m_semaphoreOwner.Get(waitSemaphore.semaphore)->handle, // Get the VkSemaphore handle
                     .value = waitSemaphore.value,
                     .stageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, // TODO:
                     .deviceIndex = 0,
@@ -71,7 +71,7 @@ namespace RHI::Vulkan
                 VkSemaphoreSubmitInfo signalSemaphoreInfo{
                     .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
                     .pNext = nullptr,
-                    .semaphore = m_context->m_semaphoreOwner.Get(signalSemaphore.semaphore)->handle, // Get the VkSemaphore handle
+                    .semaphore = m_device->m_semaphoreOwner.Get(signalSemaphore.semaphore)->handle, // Get the VkSemaphore handle
                     .value = signalSemaphore.value,
                     .stageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, // TODO:
                     .deviceIndex = 0,

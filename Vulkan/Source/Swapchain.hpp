@@ -6,12 +6,12 @@
 
 namespace RHI::Vulkan
 {
-    class IContext;
+    class IDevice;
 
     class ISwapchain final : public Swapchain
     {
     public:
-        ISwapchain(IContext* context);
+        ISwapchain(IDevice* device);
         ~ISwapchain();
 
         VkResult Init(const SwapchainCreateInfo& createInfo);

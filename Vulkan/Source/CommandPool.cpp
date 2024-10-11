@@ -1,6 +1,6 @@
 
 #include "CommandPool.hpp"
-#include "Context.hpp"
+#include "Device.hpp"
 #include "Common.hpp"
 #include "CommandList.hpp"
 
@@ -23,8 +23,8 @@ namespace RHI::Vulkan
         return result;
     }
 
-    ICommandPool::ICommandPool(IContext* context)
-        : m_context(context)
+    ICommandPool::ICommandPool(IDevice* device)
+        : m_device(device)
     {
     }
 
@@ -32,8 +32,8 @@ namespace RHI::Vulkan
     {
         for (auto commandPool : m_commandPools)
         {
-            // vkDestroyCommandPool(m_context->m_device, commandPool, nullptr);
-            m_context->m_deleteQueue.DestroyObject(commandPool);
+            // vkDestroyCommandPool(m_device->m_device, commandPool, nullptr);
+            m_device->m_deleteQueue.DestroyObject(commandPool);
         }
     }
 
@@ -45,9 +45,9 @@ namespace RHI::Vulkan
                 .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
                 .pNext = nullptr,
                 .flags = ConvertCommandPoolFlags(flags),
-                .queueFamilyIndex = m_context->m_queue[queueType].GetFamilyIndex(),
+                .queueFamilyIndex = m_device->m_queue[queueType].GetFamilyIndex(),
             };
-            TRY_OR_RETURN(vkCreateCommandPool(m_context->m_device, &createInfo, nullptr, &m_commandPools[queueType]));
+            TRY_OR_RETURN(vkCreateCommandPool(m_device->m_device, &createInfo, nullptr, &m_commandPools[queueType]));
         }
 
         return ResultCode::Success;
@@ -57,7 +57,7 @@ namespace RHI::Vulkan
     {
         for (auto commandPool : m_commandPools)
         {
-            vkResetCommandPool(m_context->m_device, commandPool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
+            vkResetCommandPool(m_device->m_device, commandPool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
         }
     }
 
@@ -68,7 +68,7 @@ namespace RHI::Vulkan
         TL::Vector<TL::Ptr<CommandList>> commandLists;
         for (auto commandBuffer : commandBuffers)
         {
-            commandLists.push_back(TL::CreatePtr<ICommandList>(m_context, commandBuffer));
+            commandLists.push_back(TL::CreatePtr<ICommandList>(m_device, commandBuffer));
         }
         return commandLists;
     }
@@ -85,7 +85,7 @@ namespace RHI::Vulkan
             .level = level,
             .commandBufferCount = count,
         };
-        vkAllocateCommandBuffers(m_context->m_device, &allocateInfo, commandBuffers.data());
+        vkAllocateCommandBuffers(m_device->m_device, &allocateInfo, commandBuffers.data());
         return commandBuffers;
     }
 } // namespace RHI::Vulkan

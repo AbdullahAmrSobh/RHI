@@ -9,7 +9,7 @@
 
 namespace RHI::Vulkan
 {
-    class IContext;
+    class IDevice;
 
     VkBufferUsageFlagBits ConvertBufferUsage(BufferUsage bufferUsage);
 
@@ -23,17 +23,17 @@ namespace RHI::Vulkan
         size_t size;
         VkBufferUsageFlags usage;
 
-        ResultCode Init(IContext* context, const BufferCreateInfo& createInfo);
-        void Shutdown(IContext* context);
+        ResultCode Init(IDevice* device, const BufferCreateInfo& createInfo);
+        void Shutdown(IDevice* device);
 
-        VkMemoryRequirements GetMemoryRequirements(IContext* context) const;
+        VkMemoryRequirements GetMemoryRequirements(IDevice* device) const;
     };
 
     struct IBufferView : BufferView
     {
         VkBufferView handle;
 
-        ResultCode Init(IContext* context, const BufferViewCreateInfo& useInfo);
-        void Shutdown(IContext* context);
+        ResultCode Init(IDevice* device, const BufferViewCreateInfo& useInfo);
+        void Shutdown(IDevice* device);
     };
 } // namespace RHI::Vulkan

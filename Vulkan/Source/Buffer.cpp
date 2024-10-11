@@ -1,6 +1,6 @@
 #include "Buffer.hpp"
 #include "Common.hpp"
-#include "Context.hpp"
+#include "Device.hpp"
 
 namespace RHI::Vulkan
 {
@@ -38,7 +38,7 @@ namespace RHI::Vulkan
         return result;
     }
 
-    ResultCode IBuffer::Init(IContext* context, const BufferCreateInfo& createInfo)
+    ResultCode IBuffer::Init(IDevice* device, const BufferCreateInfo& createInfo)
     {
         this->flags = {};
         this->size = createInfo.byteSize;
@@ -66,7 +66,7 @@ namespace RHI::Vulkan
             .pQueueFamilyIndices = nullptr,
         };
         auto result = vmaCreateBuffer(
-            context->m_allocator,
+            device->m_allocator,
             &bufferCI,
             &allocationInfo,
             &handle,
@@ -75,22 +75,22 @@ namespace RHI::Vulkan
 
         if (result == VK_SUCCESS && createInfo.name)
         {
-            context->SetDebugName(handle, createInfo.name);
+            device->SetDebugName(handle, createInfo.name);
         }
 
         return ConvertResult(result);
     }
 
-    void IBuffer::Shutdown(IContext* context)
+    void IBuffer::Shutdown(IDevice* device)
     {
-        // vmaDestroyBuffer(context->m_allocator, handle, allocation.handle);
-        context->m_deleteQueue.DestroyObject(handle);
+        // vmaDestroyBuffer(device->m_allocator, handle, allocation.handle);
+        device->m_deleteQueue.DestroyObject(handle);
     }
 
-    VkMemoryRequirements IBuffer::GetMemoryRequirements(IContext* context) const
+    VkMemoryRequirements IBuffer::GetMemoryRequirements(IDevice* device) const
     {
         VkMemoryRequirements requirements;
-        vkGetBufferMemoryRequirements(context->m_device, handle, &requirements);
+        vkGetBufferMemoryRequirements(device->m_device, handle, &requirements);
         return requirements;
     }
 
@@ -98,9 +98,9 @@ namespace RHI::Vulkan
     /// BufferView
     ///////////////////////////////////////////////////////////////////////////
 
-    ResultCode IBufferView::Init(IContext* context, const BufferViewCreateInfo& createInfo)
+    ResultCode IBufferView::Init(IDevice* device, const BufferViewCreateInfo& createInfo)
     {
-        auto buffer = context->m_bufferOwner.Get(createInfo.buffer);
+        auto buffer = device->m_bufferOwner.Get(createInfo.buffer);
         TL_ASSERT(buffer);
 
         VkBufferViewCreateInfo bufferCI{
@@ -112,20 +112,20 @@ namespace RHI::Vulkan
             .offset = createInfo.subregion.offset,
             .range = createInfo.subregion.size,
         };
-        auto result = vkCreateBufferView(context->m_device, &bufferCI, nullptr, &handle);
+        auto result = vkCreateBufferView(device->m_device, &bufferCI, nullptr, &handle);
 
         if (result == VK_SUCCESS && createInfo.name)
         {
-            context->SetDebugName(this->handle, createInfo.name);
+            device->SetDebugName(this->handle, createInfo.name);
         }
 
         return ConvertResult(result);
     }
 
-    void IBufferView::Shutdown(IContext* context)
+    void IBufferView::Shutdown(IDevice* device)
     {
-        // vkDestroyBufferView(context->m_device, handle, nullptr);
-        context->m_deleteQueue.DestroyObject(handle);
+        // vkDestroyBufferView(device->m_device, handle, nullptr);
+        device->m_deleteQueue.DestroyObject(handle);
     }
 
 } // namespace RHI::Vulkan

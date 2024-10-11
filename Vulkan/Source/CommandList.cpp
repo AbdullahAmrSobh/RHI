@@ -1,6 +1,6 @@
 #include "CommandList.hpp"
 #include "Common.hpp"
-#include "Context.hpp"
+#include "Device.hpp"
 #include "Swapchain.hpp"
 #include "Barrier.hpp"
 #include "Image.hpp"
@@ -28,8 +28,8 @@ namespace RHI::Vulkan
     /// CommandList
     //////////////////////////////////////////////////////////////////////////////////////////
 
-    ICommandList::ICommandList(IContext* context, VkCommandBuffer commandBuffer)
-        : m_context(context)
+    ICommandList::ICommandList(IDevice* device, VkCommandBuffer commandBuffer)
+        : m_device(device)
         , m_commandBuffer(commandBuffer)
         , m_barriers()
         , m_waitSemaphores()
@@ -67,7 +67,7 @@ namespace RHI::Vulkan
         TL::Vector<uint32_t> dynamicOffset;
         for (auto bindingInfo : bindGroups)
         {
-            auto bindGroup = m_context->m_bindGroupOwner.Get(bindingInfo.bindGroup);
+            auto bindGroup = m_device->m_bindGroupOwner.Get(bindingInfo.bindGroup);
 
             descriptorSets.push_back(bindGroup->descriptorSet);
             dynamicOffset.insert(dynamicOffset.end(), bindingInfo.dynamicOffsets.begin(), bindingInfo.dynamicOffsets.end());
@@ -118,7 +118,7 @@ namespace RHI::Vulkan
             auto attachment = renderGraph->m_imageAttachmentPool.Get(node->attachment);
             auto subresources = ConvertSubresourceRange(node->viewInfo.subresources);
             auto imageHandle = renderGraph->GetImage(node->attachment);
-            auto image = m_context->m_imageOwner.Get(imageHandle);
+            auto image = m_device->m_imageOwner.Get(imageHandle);
             auto swapchain = (ISwapchain*)attachment->swapchain;
 
             if (node->prev)
@@ -164,7 +164,7 @@ namespace RHI::Vulkan
             for (auto colorAttachment : pass->m_colorAttachments)
             {
                 auto imageViewHandle = renderGraph->PassGetImageView(colorAttachment->pass, colorAttachment->attachment);
-                auto imageView = m_context->m_imageViewOwner.Get(imageViewHandle);
+                auto imageView = m_device->m_imageViewOwner.Get(imageViewHandle);
                 colorAttachments.push_back(
                     CreateColorAttachment(imageView->handle, colorAttachment->loadStoreOperation));
             }
@@ -172,7 +172,7 @@ namespace RHI::Vulkan
             if (auto depthStencilAttachment = pass->m_depthStencilAttachment)
             {
                 auto imageViewHandle = renderGraph->PassGetImageView(depthStencilAttachment->pass, depthStencilAttachment->attachment);
-                auto imageView = m_context->m_imageViewOwner.Get(imageViewHandle);
+                auto imageView = m_device->m_imageViewOwner.Get(imageViewHandle);
 
                 if (depthStencilAttachment->usage & ImageUsage::Depth)
                 {
@@ -218,7 +218,7 @@ namespace RHI::Vulkan
         ZoneScoped;
 
 #if RHI_DEBUG
-        if (auto fn = m_context->m_pfn.m_vkCmdBeginDebugUtilsLabelEXT)
+        if (auto fn = m_device->m_pfn.m_vkCmdBeginDebugUtilsLabelEXT)
         {
             VkDebugUtilsLabelEXT info{
                 .sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT,
@@ -236,7 +236,7 @@ namespace RHI::Vulkan
         ZoneScoped;
 
 #if RHI_DEBUG
-        if (auto fn = m_context->m_pfn.m_vkCmdEndDebugUtilsLabelEXT)
+        if (auto fn = m_device->m_pfn.m_vkCmdEndDebugUtilsLabelEXT)
         {
             fn(m_commandBuffer);
         }
@@ -247,7 +247,7 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto buffer = m_context->m_bufferOwner.Get(handle);
+        auto buffer = m_device->m_bufferOwner.Get(handle);
 
         VkConditionalRenderingBeginInfoEXT beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_CONDITIONAL_RENDERING_BEGIN_INFO_EXT;
@@ -255,14 +255,14 @@ namespace RHI::Vulkan
         beginInfo.buffer = buffer->handle;
         beginInfo.offset = offset;
         beginInfo.flags = inverted ? VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT : 0u;
-        m_context->m_pfn.m_vkCmdBeginConditionalRenderingEXT(m_commandBuffer, &beginInfo);
+        m_device->m_pfn.m_vkCmdBeginConditionalRenderingEXT(m_commandBuffer, &beginInfo);
     }
 
     void ICommandList::EndConditionalCommands()
     {
         ZoneScoped;
 
-        m_context->m_pfn.m_vkCmdEndConditionalRenderingEXT(m_commandBuffer);
+        m_device->m_pfn.m_vkCmdEndConditionalRenderingEXT(m_commandBuffer);
     }
 
     void ICommandList::Execute(TL::Span<const CommandList*> commandLists)
@@ -289,7 +289,7 @@ namespace RHI::Vulkan
             return;
         }
 
-        auto pipeline = m_context->m_graphicsPipelineOwner.Get(pipelineState);
+        auto pipeline = m_device->m_graphicsPipelineOwner.Get(pipelineState);
         vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->handle);
         BindShaderBindGroups(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->layout, bindGroups);
         m_state.isGraphicsPipelineBound = true;
@@ -305,7 +305,7 @@ namespace RHI::Vulkan
             return;
         }
 
-        auto pipeline = m_context->m_computePipelineOwner.Get(pipelineState);
+        auto pipeline = m_device->m_computePipelineOwner.Get(pipelineState);
         vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->handle);
         BindShaderBindGroups(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->layout, bindGroups);
         m_state.isComputePipelineBound = true;
@@ -345,7 +345,7 @@ namespace RHI::Vulkan
         TL::Vector<VkDeviceSize> offsets;
         for (auto bindingInfo : vertexBuffers)
         {
-            auto buffer = m_context->m_bufferOwner.Get(bindingInfo.buffer);
+            auto buffer = m_device->m_bufferOwner.Get(bindingInfo.buffer);
             buffers.push_back(buffer->handle);
             offsets.push_back(bindingInfo.offset);
         }
@@ -355,7 +355,7 @@ namespace RHI::Vulkan
 
     void ICommandList::BindIndexBuffer(const BufferBindingInfo& indexBuffer, IndexType indexType)
     {
-        auto buffer = m_context->m_bufferOwner.Get(indexBuffer.buffer);
+        auto buffer = m_device->m_bufferOwner.Get(indexBuffer.buffer);
         vkCmdBindIndexBuffer(m_commandBuffer, buffer->handle, indexBuffer.offset, indexType == IndexType::uint32 ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16);
         m_state.hasIndexBuffer = true;
     }
@@ -394,7 +394,7 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto pipeline = m_context->m_computePipelineOwner.Get(dispatchInfo.pipelineState);
+        auto pipeline = m_device->m_computePipelineOwner.Get(dispatchInfo.pipelineState);
         vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->handle);
         if (dispatchInfo.bindGroups.size())
         {
@@ -408,8 +408,8 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto srcBuffer = m_context->m_bufferOwner.Get(copyInfo.srcBuffer);
-        auto dstBuffer = m_context->m_bufferOwner.Get(copyInfo.dstBuffer);
+        auto srcBuffer = m_device->m_bufferOwner.Get(copyInfo.srcBuffer);
+        auto dstBuffer = m_device->m_bufferOwner.Get(copyInfo.dstBuffer);
 
         VkBufferCopy bufferCopy{};
         bufferCopy.srcOffset = copyInfo.srcOffset;
@@ -422,8 +422,8 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto srcImage = m_context->m_imageOwner.Get(copyInfo.srcImage);
-        auto dstImage = m_context->m_imageOwner.Get(copyInfo.dstImage);
+        auto srcImage = m_device->m_imageOwner.Get(copyInfo.srcImage);
+        auto dstImage = m_device->m_imageOwner.Get(copyInfo.dstImage);
 
         VkImageCopy imageCopy{};
         imageCopy.srcSubresource = ConvertSubresourceLayer(copyInfo.srcSubresource);
@@ -438,8 +438,8 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto buffer = m_context->m_bufferOwner.Get(copyInfo.buffer);
-        auto image = m_context->m_imageOwner.Get(copyInfo.image);
+        auto buffer = m_device->m_bufferOwner.Get(copyInfo.buffer);
+        auto image = m_device->m_imageOwner.Get(copyInfo.image);
 
         VkBufferImageCopy bufferImageCopy{};
         bufferImageCopy.bufferOffset = copyInfo.bufferOffset;
@@ -455,8 +455,8 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto buffer = m_context->m_bufferOwner.Get(copyInfo.buffer);
-        auto image = m_context->m_imageOwner.Get(copyInfo.image);
+        auto buffer = m_device->m_bufferOwner.Get(copyInfo.buffer);
+        auto image = m_device->m_imageOwner.Get(copyInfo.image);
 
         VkBufferImageCopy bufferImageCopy{};
         bufferImageCopy.bufferOffset = copyInfo.bufferOffset;

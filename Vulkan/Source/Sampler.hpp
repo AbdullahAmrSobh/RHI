@@ -7,7 +7,7 @@
 
 namespace RHI::Vulkan
 {
-    class IContext;
+    class IDevice;
 
     VkFilter ConvertFilter(SamplerFilter samplerFilter);
     VkSamplerAddressMode ConvertSamplerAddressMode(SamplerAddressMode addressMode);
@@ -18,7 +18,7 @@ namespace RHI::Vulkan
     {
         VkSampler handle;
 
-        ResultCode Init(IContext* context, const SamplerCreateInfo& createInfo);
-        void Shutdown(IContext* context);
+        ResultCode Init(IDevice* device, const SamplerCreateInfo& createInfo);
+        void Shutdown(IDevice* device);
     };
 } // namespace RHI::Vulkan

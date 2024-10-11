@@ -9,12 +9,12 @@
 
 namespace RHI::Vulkan
 {
-    class IContext;
+    class IDevice;
 
     class DeleteQueue
     {
     public:
-        DeleteQueue(IContext* context);
+        DeleteQueue(IDevice* device);
         void Shutdown();
 
         void DestroyObject(VkSemaphore semaphore);
@@ -44,7 +44,7 @@ namespace RHI::Vulkan
         struct PerFrameInflightQueue
         {
             PerFrameInflightQueue() = default;
-            void ExecuteDeletions(IContext* context);
+            void ExecuteDeletions(IDevice* device);
 
             TL::Vector<VkSemaphore> m_semaphores;
             TL::Vector<VkCommandPool> m_commandPool;
@@ -69,7 +69,7 @@ namespace RHI::Vulkan
             TL::Vector<VkAccelerationStructureKHR> m_accelerationStructures;
         };
 
-        IContext* m_context;
+        IDevice* m_device;
         uint32_t m_currentFrameIndex;
         uint32_t m_maxFramesCount;
         PerFrameInflightQueue m_deleteQueues[Swapchain::MaxImageCount];

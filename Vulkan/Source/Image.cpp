@@ -1,5 +1,5 @@
 #include "Image.hpp"
-#include "Context.hpp"
+#include "Device.hpp"
 #include "Common.hpp"
 #include "CommandList.hpp"
 
@@ -165,7 +165,7 @@ namespace RHI::Vulkan
     /// Image
     ///////////////////////////////////////////////////////////////////////////
 
-    ResultCode IImage::Init(IContext* context, const ImageCreateInfo& createInfo)
+    ResultCode IImage::Init(IDevice* device, const ImageCreateInfo& createInfo)
     {
         this->flags = {};
         this->imageType = ConvertImageType(createInfo.type);
@@ -205,7 +205,7 @@ namespace RHI::Vulkan
             .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
         };
         auto result = vmaCreateImage(
-            context->m_allocator,
+            device->m_allocator,
             &imageCI,
             &allocationInfo,
             &handle,
@@ -214,13 +214,13 @@ namespace RHI::Vulkan
 
         if (result == VK_SUCCESS && createInfo.name)
         {
-            context->SetDebugName(handle, createInfo.name);
+            device->SetDebugName(handle, createInfo.name);
         }
 
         return ConvertResult(result);
     }
 
-    ResultCode IImage::Init([[maybe_unused]] IContext* context, VkImage image, const VkSwapchainCreateInfoKHR& swapchainCI)
+    ResultCode IImage::Init([[maybe_unused]] IDevice* device, VkImage image, const VkSwapchainCreateInfoKHR& swapchainCI)
     {
         this->handle = image;
         this->flags = {};
@@ -236,16 +236,16 @@ namespace RHI::Vulkan
         return ResultCode::Success;
     }
 
-    void IImage::Shutdown(IContext* context)
+    void IImage::Shutdown(IDevice* device)
     {
-        // vmaDestroyImage(context->m_allocator, handle, allocation.handle);
-        context->m_deleteQueue.DestroyObject(handle);
+        // vmaDestroyImage(device->m_allocator, handle, allocation.handle);
+        device->m_deleteQueue.DestroyObject(handle);
     }
 
-    VkMemoryRequirements IImage::GetMemoryRequirements(IContext* context) const
+    VkMemoryRequirements IImage::GetMemoryRequirements(IDevice* device) const
     {
         VkMemoryRequirements requirements;
-        vkGetImageMemoryRequirements(context->m_device, handle, &requirements);
+        vkGetImageMemoryRequirements(device->m_device, handle, &requirements);
         return requirements;
     }
 
@@ -253,9 +253,9 @@ namespace RHI::Vulkan
     /// ImageView
     ///////////////////////////////////////////////////////////////////////////
 
-    ResultCode IImageView::Init(IContext* context, const ImageViewCreateInfo& createInfo)
+    ResultCode IImageView::Init(IDevice* device, const ImageViewCreateInfo& createInfo)
     {
-        auto image = context->m_imageOwner.Get(createInfo.image);
+        auto image = device->m_imageOwner.Get(createInfo.image);
         TL_ASSERT(image);
 
         VkImageViewCreateInfo imageViewCI{
@@ -277,19 +277,19 @@ namespace RHI::Vulkan
         default:               TL_UNREACHABLE(); break;
         }
 
-        auto result = vkCreateImageView(context->m_device, &imageViewCI, nullptr, &handle);
+        auto result = vkCreateImageView(device->m_device, &imageViewCI, nullptr, &handle);
 
         if (result == VK_SUCCESS && createInfo.name)
         {
-            context->SetDebugName(handle, createInfo.name);
+            device->SetDebugName(handle, createInfo.name);
         }
 
         return ConvertResult(result);
     }
 
-    void IImageView::Shutdown(IContext* context)
+    void IImageView::Shutdown(IDevice* device)
     {
-        vkDestroyImageView(context->m_device, handle, nullptr);
-        context->m_deleteQueue.DestroyObject(handle);
+        vkDestroyImageView(device->m_device, handle, nullptr);
+        device->m_deleteQueue.DestroyObject(handle);
     }
 } // namespace RHI::Vulkan

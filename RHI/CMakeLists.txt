@@ -5,7 +5,7 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Buffer.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/CommandPool.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/CommandList.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Context.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Device.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Definitions.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Export.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Fence.hpp
@@ -34,7 +34,7 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Buffer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandPool.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Context.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Device.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Fence.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Format.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Handle.cpp

@@ -7,7 +7,7 @@
 
 namespace RHI::Vulkan
 {
-    class IContext;
+    class IDevice;
     struct IBindGroup;
     struct IBindGroupLayout;
 
@@ -18,7 +18,7 @@ namespace RHI::Vulkan
     class BindGroupAllocator
     {
     public:
-        BindGroupAllocator(IContext* context);
+        BindGroupAllocator(IDevice* device);
         ~BindGroupAllocator() = default;
 
         ResultCode Init();
@@ -28,7 +28,7 @@ namespace RHI::Vulkan
         void ShutdownBindGroup(IBindGroup* bindGroup);
 
     public:
-        IContext* m_context;
+        IDevice* m_device;
         VkDescriptorPool m_descriptorPool;
     };
 
@@ -38,8 +38,8 @@ namespace RHI::Vulkan
         ShaderBinding shaderBindings[MaxShaderBindingsCount];
         uint32_t bindlessCount;
 
-        ResultCode Init(IContext* context, const BindGroupLayoutCreateInfo& createInfo);
-        void Shutdown(IContext* context);
+        ResultCode Init(IDevice* device, const BindGroupLayoutCreateInfo& createInfo);
+        void Shutdown(IDevice* device);
     };
 
     struct IBindGroup : BindGroup
@@ -48,9 +48,9 @@ namespace RHI::Vulkan
         ShaderBinding shaderBindings[MaxShaderBindingsCount];
         uint32_t bindlessCount;
 
-        ResultCode Init(IContext* context, Handle<BindGroupLayout> layout);
-        void Shutdown(IContext* context);
+        ResultCode Init(IDevice* device, Handle<BindGroupLayout> layout);
+        void Shutdown(IDevice* device);
 
-        void Write(IContext* context, const BindGroupUpdateInfo& updateInfo);
+        void Write(IDevice* device, const BindGroupUpdateInfo& updateInfo);
     };
 } // namespace RHI::Vulkan

@@ -9,14 +9,14 @@
 
 namespace RHI::Vulkan
 {
-    class IContext;
+    class IDevice;
 
     VkCommandPoolCreateFlags ConvertCommandPoolFlags(TL::Flags<CommandPoolFlags> flags);
 
     class ICommandPool final : public CommandPool
     {
     public:
-        ICommandPool(IContext* context);
+        ICommandPool(IDevice* device);
         ~ICommandPool();
 
         ResultCode Init(CommandPoolFlags flags);
@@ -28,7 +28,7 @@ namespace RHI::Vulkan
         TL::Vector<VkCommandBuffer> AllocateCommandBuffers(VkCommandPool pool, uint32_t count, VkCommandBufferLevel level);
 
     private:
-        IContext* m_context;
+        IDevice* m_device;
         VkCommandPool m_commandPools[uint32_t(QueueType::Count)];
     };
 

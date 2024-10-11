@@ -8,7 +8,7 @@
 
 namespace RHI::Vulkan
 {
-    class IContext;
+    class IDevice;
     class IFence;
     class ICommandList;
 
@@ -16,7 +16,7 @@ namespace RHI::Vulkan
     {
     public:
         IQueue() = default;
-        IQueue(IContext* context, uint32_t familyIndex);
+        IQueue(IDevice* device, uint32_t familyIndex);
 
         inline VkQueue GetHandle() const { return m_queue; }
 
@@ -29,7 +29,7 @@ namespace RHI::Vulkan
         void Present(VkSemaphore semaphore, class ISwapchain& swapchain);
 
     private:
-        IContext* m_context;
+        IDevice* m_device;
 
         VkQueue m_queue;
         uint32_t m_familyIndex;

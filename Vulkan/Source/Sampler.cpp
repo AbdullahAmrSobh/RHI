@@ -1,5 +1,5 @@
 #include "Sampler.hpp"
-#include "Context.hpp"
+#include "Device.hpp"
 #include "Common.hpp"
 
 namespace RHI::Vulkan
@@ -44,7 +44,7 @@ namespace RHI::Vulkan
     /// Sampler
     ///////////////////////////////////////////////////////////////////////////
 
-    ResultCode ISampler::Init(IContext* context, const SamplerCreateInfo& createInfo)
+    ResultCode ISampler::Init(IDevice* device, const SamplerCreateInfo& createInfo)
     {
         VkSamplerCreateInfo samplerCI{
             .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
@@ -66,17 +66,17 @@ namespace RHI::Vulkan
             .borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
             .unnormalizedCoordinates = VK_FALSE,
         };
-        auto result = vkCreateSampler(context->m_device, &samplerCI, nullptr, &handle);
+        auto result = vkCreateSampler(device->m_device, &samplerCI, nullptr, &handle);
         if (result == VK_SUCCESS && createInfo.name)
         {
-            context->SetDebugName(handle, createInfo.name);
+            device->SetDebugName(handle, createInfo.name);
         }
         return ConvertResult(result);
     }
 
-    void ISampler::Shutdown(IContext* context)
+    void ISampler::Shutdown(IDevice* device)
     {
-        vkDestroySampler(context->m_device, handle, nullptr);
+        vkDestroySampler(device->m_device, handle, nullptr);
     }
 
 } // namespace RHI::Vulkan

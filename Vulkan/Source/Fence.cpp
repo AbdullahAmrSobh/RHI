@@ -1,6 +1,6 @@
 #include "Fence.hpp"
 
-#include "Context.hpp"
+#include "Device.hpp"
 #include "Common.hpp"
 
 namespace RHI::Vulkan
@@ -11,8 +11,8 @@ namespace RHI::Vulkan
 
     IFence::~IFence()
     {
-        // vkDestroyFence(m_context->m_device, m_fence, nullptr);
-        m_context->m_deleteQueue.DestroyObject(m_fence);
+        // vkDestroyFence(m_device->m_device, m_fence, nullptr);
+        m_device->m_deleteQueue.DestroyObject(m_fence);
     }
 
     ResultCode IFence::Init()
@@ -23,14 +23,14 @@ namespace RHI::Vulkan
         createInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         createInfo.pNext = nullptr;
         createInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-        TRY_OR_RETURN(vkCreateFence(m_context->m_device, &createInfo, nullptr, &m_fence));
+        TRY_OR_RETURN(vkCreateFence(m_device->m_device, &createInfo, nullptr, &m_fence));
         return ResultCode::Success;
     }
 
     void IFence::Reset()
     {
         m_state = FenceState::NotSubmitted;
-        Validate(vkResetFences(m_context->m_device, 1, &m_fence));
+        Validate(vkResetFences(m_device->m_device, 1, &m_fence));
     }
 
     bool IFence::WaitInternal(uint64_t timeout)
@@ -38,7 +38,7 @@ namespace RHI::Vulkan
         // if (m_state == FenceState::NotSubmitted)
         //     return VK_SUCCESS;
 
-        auto result = vkWaitForFences(m_context->m_device, 1, &m_fence, VK_TRUE, timeout);
+        auto result = vkWaitForFences(m_device->m_device, 1, &m_fence, VK_TRUE, timeout);
         return result == VK_SUCCESS;
     }
 
@@ -46,7 +46,7 @@ namespace RHI::Vulkan
     {
         // if (m_state == FenceState::Pending)
         // {
-        auto result = vkGetFenceStatus(m_context->m_device, m_fence);
+        auto result = vkGetFenceStatus(m_device->m_device, m_fence);
         return result == VK_SUCCESS ? FenceState::Signaled : FenceState::Pending;
         // }
 

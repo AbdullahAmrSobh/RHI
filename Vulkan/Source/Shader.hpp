@@ -9,13 +9,13 @@
 
 namespace RHI::Vulkan
 {
-    class IContext;
+    class IDevice;
 
     class IShaderModule final : public ShaderModule
     {
     public:
-        IShaderModule(IContext* context)
-            : m_context(context)
+        IShaderModule(IDevice* device)
+            : m_device(device)
         {
         }
 
@@ -24,7 +24,7 @@ namespace RHI::Vulkan
         ResultCode Init(TL::Span<const uint32_t> shaderBlob);
 
     public:
-        IContext* m_context;
+        IDevice* m_device;
         VkShaderModule m_shaderModule;
     };
 

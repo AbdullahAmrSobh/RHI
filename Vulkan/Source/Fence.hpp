@@ -7,13 +7,13 @@
 
 namespace RHI::Vulkan
 {
-    class IContext;
+    class IDevice;
 
     class IFence final : public Fence
     {
     public:
-        IFence(IContext* context)
-            : m_context(context)
+        IFence(IDevice* device)
+            : m_device(device)
         {
         }
 
@@ -29,7 +29,7 @@ namespace RHI::Vulkan
         VkFence UseFence();
 
     private:
-        IContext* m_context;
+        IDevice* m_device;
         VkFence m_fence;
         FenceState m_state;
     };

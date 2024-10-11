@@ -7,7 +7,7 @@
 
 namespace RHI::Vulkan
 {
-    class IContext;
+    class IDevice;
 
     enum BarrierSlot
     {
@@ -29,7 +29,7 @@ namespace RHI::Vulkan
     class ICommandList final : public CommandList
     {
     public:
-        ICommandList(IContext* context, VkCommandBuffer commandBuffer);
+        ICommandList(IDevice* device, VkCommandBuffer commandBuffer);
         ~ICommandList();
 
         void PipelineBarrier(
@@ -68,7 +68,7 @@ namespace RHI::Vulkan
         void CopyBufferToImage(const BufferImageCopyInfo& copyInfo) override;
         void BlitImage(const ImageBlitInfo& blitInfo) override;
 
-        IContext* m_context;
+        IDevice* m_device;
         VkCommandBuffer m_commandBuffer;
         PipelineBarriers m_barriers[BarrierSlot::Count];
         TL::Vector<VkSemaphoreSubmitInfo> m_waitSemaphores;

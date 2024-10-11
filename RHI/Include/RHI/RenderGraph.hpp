@@ -9,7 +9,7 @@
 
 namespace RHI
 {
-    class Context;
+    class Device;
     class Swapchain;
     class CommandList;
     class RenderGraph;
@@ -21,7 +21,7 @@ namespace RHI
     class RHI_EXPORT RenderGraph final
     {
     public:
-        RenderGraph(Context* context);
+        RenderGraph(Device* device);
         RenderGraph(RenderGraph&&) = default;
         ~RenderGraph();
 
@@ -133,7 +133,7 @@ namespace RHI
         void CleanupTransientAttachments();
 
     public:
-        Context*                             m_context;
+        Device*                              m_device;
 
         // current frame counter, incremented after graph execution
         uint64_t                             m_frameCounter;

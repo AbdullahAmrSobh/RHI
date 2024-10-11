@@ -1,6 +1,6 @@
 #include "Common.hpp"
 
-#include "Context.hpp"
+#include "Device.hpp"
 
 #include "BindGroup.hpp"
 
@@ -23,8 +23,8 @@ namespace RHI::Vulkan
         }
     }
 
-    BindGroupAllocator::BindGroupAllocator(IContext* context)
-        : m_context(context)
+    BindGroupAllocator::BindGroupAllocator(IDevice* device)
+        : m_device(device)
     {
     }
 
@@ -51,14 +51,14 @@ namespace RHI::Vulkan
             .poolSizeCount = sizeof(poolSizes) / sizeof(VkDescriptorPoolSize),
             .pPoolSizes = poolSizes,
         };
-        Validate(vkCreateDescriptorPool(m_context->m_device, &createInfo, nullptr, &m_descriptorPool));
+        Validate(vkCreateDescriptorPool(m_device->m_device, &createInfo, nullptr, &m_descriptorPool));
         return ResultCode::Success;
     }
 
     void BindGroupAllocator::Shutdown()
     {
-        // vkDestroyDescriptorPool(m_context->m_device, m_descriptorPool, nullptr);
-        m_context->m_deleteQueue.DestroyObject(m_descriptorPool);
+        // vkDestroyDescriptorPool(m_device->m_device, m_descriptorPool, nullptr);
+        m_device->m_deleteQueue.DestroyObject(m_descriptorPool);
     }
 
     ResultCode BindGroupAllocator::InitBindGroup(IBindGroup* bindGroup, IBindGroupLayout* bindGroupLayout)
@@ -79,7 +79,7 @@ namespace RHI::Vulkan
             .pSetLayouts = &bindGroupLayout->handle,
         };
 
-        auto result = vkAllocateDescriptorSets(m_context->m_device, &allocateInfo, &bindGroup->descriptorSet);
+        auto result = vkAllocateDescriptorSets(m_device->m_device, &allocateInfo, &bindGroup->descriptorSet);
         if (result != VK_SUCCESS)
             return ResultCode::ErrorOutOfMemory;
 
@@ -88,11 +88,11 @@ namespace RHI::Vulkan
 
     void BindGroupAllocator::ShutdownBindGroup(IBindGroup* bindGroup)
     {
-        vkFreeDescriptorSets(m_context->m_device, m_descriptorPool, 1, &bindGroup->descriptorSet);
-        // m_context->m_deleteQueue.DestroyObject(bindGroup);
+        vkFreeDescriptorSets(m_device->m_device, m_descriptorPool, 1, &bindGroup->descriptorSet);
+        // m_device->m_deleteQueue.DestroyObject(bindGroup);
     }
 
-    ResultCode IBindGroupLayout::Init(IContext* context, const BindGroupLayoutCreateInfo& createInfo)
+    ResultCode IBindGroupLayout::Init(IDevice* device, const BindGroupLayoutCreateInfo& createInfo)
     {
         uint32_t bindingFlagsCount = 0;
         VkDescriptorBindingFlags bindingFlags[32] = {};
@@ -151,37 +151,37 @@ namespace RHI::Vulkan
         };
 
         // Create the descriptor set layout
-        auto result = vkCreateDescriptorSetLayout(context->m_device, &setLayoutCI, nullptr, &handle);
+        auto result = vkCreateDescriptorSetLayout(device->m_device, &setLayoutCI, nullptr, &handle);
         if (result == VK_SUCCESS && createInfo.name)
         {
-            context->SetDebugName(handle, createInfo.name);
+            device->SetDebugName(handle, createInfo.name);
         }
 
         return ConvertResult(result);
     }
 
-    void IBindGroupLayout::Shutdown(IContext* context)
+    void IBindGroupLayout::Shutdown(IDevice* device)
     {
-        context->m_deleteQueue.DestroyObject(handle);
+        device->m_deleteQueue.DestroyObject(handle);
     }
 
-    ResultCode IBindGroup::Init(IContext* context, Handle<BindGroupLayout> layoutHandle)
+    ResultCode IBindGroup::Init(IDevice* device, Handle<BindGroupLayout> layoutHandle)
     {
-        auto allocator = context->m_bindGroupAllocator.get();
-        auto layoutObject = context->m_bindGroupLayoutsOwner.Get(layoutHandle);
+        auto allocator = device->m_bindGroupAllocator.get();
+        auto layoutObject = device->m_bindGroupLayoutsOwner.Get(layoutHandle);
 
         std::copy(std::begin(layoutObject->shaderBindings), std::end(layoutObject->shaderBindings), std::begin(shaderBindings));
 
         return allocator->InitBindGroup(this, layoutObject);
     }
 
-    void IBindGroup::Shutdown(IContext* context)
+    void IBindGroup::Shutdown(IDevice* device)
     {
-        auto allocator = context->m_bindGroupAllocator.get();
+        auto allocator = device->m_bindGroupAllocator.get();
         allocator->ShutdownBindGroup(this);
     }
 
-    void IBindGroup::Write(IContext* context, const BindGroupUpdateInfo& updateInfo)
+    void IBindGroup::Write(IDevice* device, const BindGroupUpdateInfo& updateInfo)
     {
         uint32_t writeInfosCount = 0;
 
@@ -205,7 +205,7 @@ namespace RHI::Vulkan
             {
                 imageInfos[imageInfosCount] = {
                     .sampler = VK_NULL_HANDLE,
-                    .imageView = context->m_imageViewOwner.Get(imageUpdate.images[i])->handle,
+                    .imageView = device->m_imageViewOwner.Get(imageUpdate.images[i])->handle,
                     .imageLayout = (descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                                        ? VK_IMAGE_LAYOUT_GENERAL
                                        : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -238,7 +238,7 @@ namespace RHI::Vulkan
                     // For dynamic bindings, subregions are expected
                     auto subregion = bufferUpdate.subregions[i];
                     bufferInfos[bufferInfosCount] = {
-                        .buffer = context->m_bufferOwner.Get(bufferUpdate.buffer[i])->handle,
+                        .buffer = device->m_bufferOwner.Get(bufferUpdate.buffer[i])->handle,
                         .offset = subregion.offset,
                         .range = subregion.size,
                     };
@@ -247,7 +247,7 @@ namespace RHI::Vulkan
                 {
                     // Non-dynamic bindings don't use subregions
                     bufferInfos[bufferInfosCount] = {
-                        .buffer = context->m_bufferOwner.Get(bufferUpdate.buffer[i])->handle,
+                        .buffer = device->m_bufferOwner.Get(bufferUpdate.buffer[i])->handle,
                         .offset = 0,            // Use 0 if no specific subregion offset is required
                         .range = VK_WHOLE_SIZE, // Use VK_WHOLE_SIZE if no subregions are specified
                     };
@@ -276,7 +276,7 @@ namespace RHI::Vulkan
             for (size_t i = 0; i < samplerUpdate.samplers.size(); ++i)
             {
                 samplerInfos[samplerInfosCount] = {
-                    .sampler = context->m_samplerOwner.Get(samplerUpdate.samplers[i])->handle,
+                    .sampler = device->m_samplerOwner.Get(samplerUpdate.samplers[i])->handle,
                     .imageView = VK_NULL_HANDLE,
                     .imageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
                 };
@@ -296,7 +296,7 @@ namespace RHI::Vulkan
             }
         }
 
-        vkUpdateDescriptorSets(context->m_device, writeInfosCount, writeInfos, 0, nullptr);
+        vkUpdateDescriptorSets(device->m_device, writeInfosCount, writeInfos, 0, nullptr);
     }
 
 } // namespace RHI::Vulkan

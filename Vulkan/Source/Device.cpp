@@ -5,7 +5,7 @@
 #include "CommandPool.hpp"
 #include "CommandList.hpp"
 #include "Swapchain.hpp"
-#include "Context.hpp"
+#include "Device.hpp"
 #include "Queue.hpp"
 
 #include <TL/Assert.hpp>
@@ -37,14 +37,14 @@
 
 namespace RHI
 {
-    TL::Ptr<Context> CreateVulkanContext(const ApplicationInfo& appInfo)
+    TL::Ptr<Device> CreateVulkanDevice(const ApplicationInfo& appInfo)
     {
         ZoneScoped;
 
-        auto context = TL::CreatePtr<Vulkan::IContext>();
-        auto result = context->Init(appInfo);
+        auto device = TL::CreatePtr<Vulkan::IDevice>();
+        auto result = device->Init(appInfo);
         TL_ASSERT(IsSuccess(result));
-        return std::move(context);
+        return std::move(device);
     }
 } // namespace RHI
 
@@ -183,8 +183,8 @@ namespace RHI::Vulkan
         return queueFamilyProperties;
     }
 
-    IContext::IContext()
-        : Context()
+    IDevice::IDevice()
+        : Device()
         , m_instance(VK_NULL_HANDLE)
         , m_physicalDevice(VK_NULL_HANDLE)
         , m_device(VK_NULL_HANDLE)
@@ -207,7 +207,7 @@ namespace RHI::Vulkan
     {
     }
 
-    IContext::~IContext()
+    IDevice::~IDevice()
     {
         ZoneScoped;
 
@@ -231,7 +231,7 @@ namespace RHI::Vulkan
         vkDestroyInstance(m_instance, nullptr);
     }
 
-    ResultCode IContext::Init(const ApplicationInfo& appInfo)
+    ResultCode IDevice::Init(const ApplicationInfo& appInfo)
     {
         ZoneScoped;
 
@@ -247,7 +247,7 @@ namespace RHI::Vulkan
         return ResultCode::Success;
     }
 
-    void IContext::SetDebugName(VkObjectType type, uint64_t handle, const char* name) const
+    void IDevice::SetDebugName(VkObjectType type, uint64_t handle, const char* name) const
     {
         if (handle == 0 /* VK_NULL_HANDLE */) return;
 
@@ -263,7 +263,7 @@ namespace RHI::Vulkan
         }
     }
 
-    uint32_t IContext::GetMemoryTypeIndex(MemoryType memoryType)
+    uint32_t IDevice::GetMemoryTypeIndex(MemoryType memoryType)
     {
         VkPhysicalDeviceMemoryProperties2 memoryProperties;
         vkGetPhysicalDeviceMemoryProperties2(m_physicalDevice, &memoryProperties);
@@ -312,9 +312,9 @@ namespace RHI::Vulkan
         return UINT32_MAX; // Return an invalid index to indicate failure
     }
 
-    void IContext::FillLimits()
+    void IDevice::FillLimits()
     {
-        Limits& limits = *m_limits;
+        DeviceLimits& limits = *m_limits;
 
         // Get physical device properties
         VkPhysicalDeviceProperties physicalDeviceProperties;
@@ -332,8 +332,8 @@ namespace RHI::Vulkan
         limits.maxConstantBufferSize = physicalDeviceProperties.limits.maxUniformBufferRange;
 
         // Bind group (resource binding) limits
-        limits.maxBindGroups = 4; // Adjust based on your context
-        // limits.maxResourcesPerBindGroup = maxDescriptorSetBindings; // Adjust based on your context
+        limits.maxBindGroups = 4; // Adjust based on your device
+        // limits.maxResourcesPerBindGroup = maxDescriptorSetBindings; // Adjust based on your device
         // limits.maxSamplersPerBindGroup = maxPerStageDescriptorSamplers;
         // limits.maxImagesPerBindGroup = maxPerStageDescriptorImages;
         // limits.maxBuffersPerBindGroup = maxPerStageDescriptorStorageBuffers;
@@ -383,7 +383,7 @@ namespace RHI::Vulkan
     ////////////////////////////////////////////////////////////
     // Interface implementation
     ////////////////////////////////////////////////////////////
-    TL::Ptr<Swapchain> IContext::Impl_CreateSwapchain(const SwapchainCreateInfo& createInfo)
+    TL::Ptr<Swapchain> IDevice::Impl_CreateSwapchain(const SwapchainCreateInfo& createInfo)
     {
         auto swapchain = TL::CreatePtr<ISwapchain>(this);
         auto result = swapchain->Init(createInfo);
@@ -394,7 +394,7 @@ namespace RHI::Vulkan
         return swapchain;
     }
 
-    TL::Ptr<ShaderModule> IContext::Impl_CreateShaderModule(TL::Span<const uint32_t> shaderBlob)
+    TL::Ptr<ShaderModule> IDevice::Impl_CreateShaderModule(TL::Span<const uint32_t> shaderBlob)
     {
         auto shaderModule = TL::CreatePtr<IShaderModule>(this);
         auto result = shaderModule->Init(shaderBlob);
@@ -405,7 +405,7 @@ namespace RHI::Vulkan
         return shaderModule;
     }
 
-    TL::Ptr<Fence> IContext::Impl_CreateFence()
+    TL::Ptr<Fence> IDevice::Impl_CreateFence()
     {
         auto fence = TL::CreatePtr<IFence>(this);
         auto result = fence->Init();
@@ -416,7 +416,7 @@ namespace RHI::Vulkan
         return fence;
     }
 
-    TL::Ptr<CommandPool> IContext::Impl_CreateCommandPool(CommandPoolFlags flags)
+    TL::Ptr<CommandPool> IDevice::Impl_CreateCommandPool(CommandPoolFlags flags)
     {
         auto commandPool = TL::CreatePtr<ICommandPool>(this);
         auto result = commandPool->Init(flags);
@@ -427,7 +427,7 @@ namespace RHI::Vulkan
         return commandPool;
     }
 
-    Handle<BindGroupLayout> IContext::Impl_CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)
+    Handle<BindGroupLayout> IDevice::Impl_CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)
     {
         IBindGroupLayout bindGroupLayout{};
         auto result = bindGroupLayout.Init(this, createInfo);
@@ -438,7 +438,7 @@ namespace RHI::Vulkan
         return m_bindGroupLayoutsOwner.Emplace(std::move(bindGroupLayout));
     }
 
-    void IContext::Impl_DestroyBindGroupLayout(Handle<BindGroupLayout> handle)
+    void IDevice::Impl_DestroyBindGroupLayout(Handle<BindGroupLayout> handle)
     {
         TL_ASSERT(handle != NullHandle);
 
@@ -447,7 +447,7 @@ namespace RHI::Vulkan
         m_bindGroupLayoutsOwner.Release(handle);
     }
 
-    Handle<BindGroup> IContext::Impl_CreateBindGroup(Handle<BindGroupLayout> layoutHandle)
+    Handle<BindGroup> IDevice::Impl_CreateBindGroup(Handle<BindGroupLayout> layoutHandle)
     {
         IBindGroup bindGroup{};
         auto result = bindGroup.Init(this, layoutHandle);
@@ -459,7 +459,7 @@ namespace RHI::Vulkan
         return handle;
     }
 
-    void IContext::Impl_DestroyBindGroup(Handle<BindGroup> handle)
+    void IDevice::Impl_DestroyBindGroup(Handle<BindGroup> handle)
     {
         TL_ASSERT(handle != NullHandle);
 
@@ -468,13 +468,13 @@ namespace RHI::Vulkan
         m_bindGroupOwner.Release(handle);
     }
 
-    void IContext::Impl_UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo)
+    void IDevice::Impl_UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo)
     {
         auto bindGroup = m_bindGroupOwner.Get(handle);
         bindGroup->Write(this, updateInfo);
     }
 
-    Handle<PipelineLayout> IContext::Impl_CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)
+    Handle<PipelineLayout> IDevice::Impl_CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)
     {
         IPipelineLayout pipelineLayout{};
         auto result = pipelineLayout.Init(this, createInfo);
@@ -486,7 +486,7 @@ namespace RHI::Vulkan
         return handle;
     }
 
-    void IContext::Impl_DestroyPipelineLayout(Handle<PipelineLayout> handle)
+    void IDevice::Impl_DestroyPipelineLayout(Handle<PipelineLayout> handle)
     {
         TL_ASSERT(handle != NullHandle);
 
@@ -495,7 +495,7 @@ namespace RHI::Vulkan
         m_pipelineLayoutOwner.Release(handle);
     }
 
-    Handle<GraphicsPipeline> IContext::Impl_CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)
+    Handle<GraphicsPipeline> IDevice::Impl_CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)
     {
         IGraphicsPipeline graphicsPipeline{};
         auto result = graphicsPipeline.Init(this, createInfo);
@@ -507,7 +507,7 @@ namespace RHI::Vulkan
         return handle;
     }
 
-    void IContext::Impl_DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle)
+    void IDevice::Impl_DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle)
     {
         TL_ASSERT(handle != NullHandle);
 
@@ -516,7 +516,7 @@ namespace RHI::Vulkan
         m_graphicsPipelineOwner.Release(handle);
     }
 
-    Handle<ComputePipeline> IContext::Impl_CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
+    Handle<ComputePipeline> IDevice::Impl_CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
     {
         IComputePipeline computePipeline{};
         auto result = computePipeline.Init(this, createInfo);
@@ -528,7 +528,7 @@ namespace RHI::Vulkan
         return handle;
     }
 
-    void IContext::Impl_DestroyComputePipeline(Handle<ComputePipeline> handle)
+    void IDevice::Impl_DestroyComputePipeline(Handle<ComputePipeline> handle)
     {
         TL_ASSERT(handle != NullHandle);
 
@@ -537,7 +537,7 @@ namespace RHI::Vulkan
         m_computePipelineOwner.Release(handle);
     }
 
-    Handle<Sampler> IContext::Impl_CreateSampler(const SamplerCreateInfo& createInfo)
+    Handle<Sampler> IDevice::Impl_CreateSampler(const SamplerCreateInfo& createInfo)
     {
         ISampler sampler{};
         auto result = sampler.Init(this, createInfo);
@@ -549,7 +549,7 @@ namespace RHI::Vulkan
         return handle;
     }
 
-    void IContext::Impl_DestroySampler(Handle<Sampler> handle)
+    void IDevice::Impl_DestroySampler(Handle<Sampler> handle)
     {
         TL_ASSERT(handle != NullHandle);
 
@@ -558,7 +558,7 @@ namespace RHI::Vulkan
         m_samplerOwner.Release(handle);
     }
 
-    Result<Handle<Image>> IContext::Impl_CreateImage(const ImageCreateInfo& createInfo)
+    Result<Handle<Image>> IDevice::Impl_CreateImage(const ImageCreateInfo& createInfo)
     {
         IImage image{};
         auto result = image.Init(this, createInfo);
@@ -572,7 +572,7 @@ namespace RHI::Vulkan
         return Result<Handle<Image>>(handle);
     }
 
-    void IContext::Impl_DestroyImage(Handle<Image> handle)
+    void IDevice::Impl_DestroyImage(Handle<Image> handle)
     {
         TL_ASSERT(handle != NullHandle);
 
@@ -581,7 +581,7 @@ namespace RHI::Vulkan
         m_imageOwner.Release(handle);
     }
 
-    Result<Handle<Buffer>> IContext::Impl_CreateBuffer(const BufferCreateInfo& createInfo)
+    Result<Handle<Buffer>> IDevice::Impl_CreateBuffer(const BufferCreateInfo& createInfo)
     {
         IBuffer buffer{};
         auto result = buffer.Init(this, createInfo);
@@ -594,7 +594,7 @@ namespace RHI::Vulkan
         return Result<Handle<Buffer>>(handle);
     }
 
-    void IContext::Impl_DestroyBuffer(Handle<Buffer> handle)
+    void IDevice::Impl_DestroyBuffer(Handle<Buffer> handle)
     {
         TL_ASSERT(handle != NullHandle);
 
@@ -603,7 +603,7 @@ namespace RHI::Vulkan
         m_bufferOwner.Release(handle);
     }
 
-    Handle<ImageView> IContext::Impl_CreateImageView(const ImageViewCreateInfo& createInfo)
+    Handle<ImageView> IDevice::Impl_CreateImageView(const ImageViewCreateInfo& createInfo)
     {
         IImageView imageView{};
         auto result = imageView.Init(this, createInfo);
@@ -615,7 +615,7 @@ namespace RHI::Vulkan
         return handle;
     }
 
-    void IContext::Impl_DestroyImageView(Handle<ImageView> handle)
+    void IDevice::Impl_DestroyImageView(Handle<ImageView> handle)
     {
         TL_ASSERT(handle != NullHandle);
 
@@ -624,7 +624,7 @@ namespace RHI::Vulkan
         m_imageViewOwner.Release(handle);
     }
 
-    Handle<BufferView> IContext::Impl_CreateBufferView(const BufferViewCreateInfo& createInfo)
+    Handle<BufferView> IDevice::Impl_CreateBufferView(const BufferViewCreateInfo& createInfo)
     {
         IBufferView bufferView{};
         auto result = bufferView.Init(this, createInfo);
@@ -636,7 +636,7 @@ namespace RHI::Vulkan
         return handle;
     }
 
-    void IContext::Impl_DestroyBufferView(Handle<BufferView> handle)
+    void IDevice::Impl_DestroyBufferView(Handle<BufferView> handle)
     {
         TL_ASSERT(handle != NullHandle);
 
@@ -645,7 +645,7 @@ namespace RHI::Vulkan
         m_bufferViewOwner.Release(handle);
     }
 
-    DeviceMemoryPtr IContext::Impl_MapBuffer(Handle<Buffer> handle)
+    DeviceMemoryPtr IDevice::Impl_MapBuffer(Handle<Buffer> handle)
     {
         auto resource = m_bufferOwner.Get(handle);
         auto allocation = resource->allocation.handle;
@@ -655,13 +655,13 @@ namespace RHI::Vulkan
         return memoryPtr;
     }
 
-    void IContext::Impl_UnmapBuffer(Handle<Buffer> handle)
+    void IDevice::Impl_UnmapBuffer(Handle<Buffer> handle)
     {
         auto resource = m_bufferOwner.Get(handle)->allocation.handle;
         vmaUnmapMemory(m_allocator, resource);
     }
 
-    Handle<Semaphore> IContext::Impl_CreateSemaphore(const SemaphoreCreateInfo& createInfo)
+    Handle<Semaphore> IDevice::Impl_CreateSemaphore(const SemaphoreCreateInfo& createInfo)
     {
         ISemaphore semaphore{};
         auto result = semaphore.Init(this, createInfo);
@@ -673,7 +673,7 @@ namespace RHI::Vulkan
         return handle;
     }
 
-    void IContext::Impl_DestroySemaphore(Handle<Semaphore> handle)
+    void IDevice::Impl_DestroySemaphore(Handle<Semaphore> handle)
     {
         TL_ASSERT(handle != NullHandle);
 
@@ -682,12 +682,12 @@ namespace RHI::Vulkan
         m_semaphoreOwner.Release(handle);
     }
 
-    Queue* IContext::Impl_GetQueue(QueueType queueType)
+    Queue* IDevice::Impl_GetQueue(QueueType queueType)
     {
         return &m_queue[(uint32_t)queueType];
     }
 
-    void IContext::Impl_CollectResources()
+    void IDevice::Impl_CollectResources()
     {
         m_deleteQueue.ExecuteDeletions();
     }
@@ -696,7 +696,7 @@ namespace RHI::Vulkan
     // Interface implementation
     ////////////////////////////////////////////////////////////
 
-    VkResult IContext::InitInstance(const ApplicationInfo& appInfo, bool* debugExtensionEnabled)
+    VkResult IDevice::InitInstance(const ApplicationInfo& appInfo, bool* debugExtensionEnabled)
     {
         VkResult result;
 
@@ -779,7 +779,7 @@ namespace RHI::Vulkan
         return result;
     }
 
-    VkResult IContext::InitDevice()
+    VkResult IDevice::InitDevice()
     {
         for (VkPhysicalDevice physicalDevice : GetAvailablePhysicalDevices(m_instance))
         {
@@ -937,7 +937,7 @@ namespace RHI::Vulkan
         return result;
     }
 
-    VkResult IContext::InitMemoryAllocator()
+    VkResult IDevice::InitMemoryAllocator()
     {
         VmaAllocatorCreateInfo vmaCI{};
         vmaCI.physicalDevice = m_physicalDevice;

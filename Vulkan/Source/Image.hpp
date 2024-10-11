@@ -9,7 +9,7 @@
 
 namespace RHI::Vulkan
 {
-    class IContext;
+    class IDevice;
 
 
     VkImageSubresource ConvertSubresource(const ImageSubresource& subresource);
@@ -58,19 +58,19 @@ namespace RHI::Vulkan
 
         TL::Flags<ImageAspect> availableAspects;
 
-        ResultCode Init(IContext* context, const ImageCreateInfo& createInfo);
-        ResultCode Init(IContext* context, VkImage image, const VkSwapchainCreateInfoKHR& swapchainCreateInfo);
-        void Shutdown(IContext* context);
+        ResultCode Init(IDevice* device, const ImageCreateInfo& createInfo);
+        ResultCode Init(IDevice* device, VkImage image, const VkSwapchainCreateInfoKHR& swapchainCreateInfo);
+        void Shutdown(IDevice* device);
 
-        VkMemoryRequirements GetMemoryRequirements(IContext* context) const;
+        VkMemoryRequirements GetMemoryRequirements(IDevice* device) const;
     };
 
     struct IImageView : ImageView
     {
         VkImageView handle;
 
-        ResultCode Init(IContext* context, const ImageViewCreateInfo& useInfo);
-        void Shutdown(IContext* context);
+        ResultCode Init(IDevice* device, const ImageViewCreateInfo& useInfo);
+        void Shutdown(IDevice* device);
     };
 
 } // namespace RHI::Vulkan

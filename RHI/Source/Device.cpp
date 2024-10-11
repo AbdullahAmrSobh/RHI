@@ -14,33 +14,33 @@ namespace RHI
         return return_type;                  \
     }
 
-    Context::Context()
-        : m_limits(TL::CreatePtr<Limits>())
+    Device::Device()
+        : m_limits(TL::CreatePtr<DeviceLimits>())
     {
     }
 
-    Context::~Context()
+    Device::~Device()
     {
     }
 
-    Limits Context::GetLimits() const
+    DeviceLimits Device::GetLimits() const
     {
         return *m_limits;
     }
 
-    TL::Ptr<RenderGraph> Context::CreateRenderGraph()
+    TL::Ptr<RenderGraph> Device::CreateRenderGraph()
     {
         ZoneScoped;
 
         return TL::CreatePtr<RenderGraph>(this);
     }
 
-    void Context::CompileRenderGraph([[maybe_unused]] RenderGraph& renderGraph)
+    void Device::CompileRenderGraph([[maybe_unused]] RenderGraph& renderGraph)
     {
         ZoneScoped;
     }
 
-    TL::Ptr<Swapchain> Context::CreateSwapchain(const SwapchainCreateInfo& createInfo)
+    TL::Ptr<Swapchain> Device::CreateSwapchain(const SwapchainCreateInfo& createInfo)
     {
         ZoneScoped;
 
@@ -53,119 +53,119 @@ namespace RHI
         return Impl_CreateSwapchain(createInfo);
     }
 
-    TL::Ptr<ShaderModule> Context::CreateShaderModule(TL::Span<const uint32_t> shaderBlob)
+    TL::Ptr<ShaderModule> Device::CreateShaderModule(TL::Span<const uint32_t> shaderBlob)
     {
         ZoneScoped;
 
         return Impl_CreateShaderModule(shaderBlob);
     }
 
-    TL::Ptr<Fence> Context::CreateFence()
+    TL::Ptr<Fence> Device::CreateFence()
     {
         ZoneScoped;
 
         return Impl_CreateFence();
     }
 
-    TL::Ptr<CommandPool> Context::CreateCommandPool(CommandPoolFlags flags)
+    TL::Ptr<CommandPool> Device::CreateCommandPool(CommandPoolFlags flags)
     {
         ZoneScoped;
 
         return Impl_CreateCommandPool(flags);
     }
 
-    Handle<BindGroupLayout> Context::CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)
+    Handle<BindGroupLayout> Device::CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)
     {
         ZoneScoped;
 
         return Impl_CreateBindGroupLayout(createInfo);
     }
 
-    void Context::DestroyBindGroupLayout(Handle<BindGroupLayout> handle)
+    void Device::DestroyBindGroupLayout(Handle<BindGroupLayout> handle)
     {
         ZoneScoped;
         TL_ASSERT(handle != NullHandle);
         Impl_DestroyBindGroupLayout(handle);
     }
 
-    Handle<BindGroup> Context::CreateBindGroup(Handle<BindGroupLayout> bindGroupLayoutHandle)
+    Handle<BindGroup> Device::CreateBindGroup(Handle<BindGroupLayout> bindGroupLayoutHandle)
     {
         ZoneScoped;
 
         return Impl_CreateBindGroup(bindGroupLayoutHandle);
     }
 
-    void Context::DestroyBindGroup(Handle<BindGroup> handle)
+    void Device::DestroyBindGroup(Handle<BindGroup> handle)
     {
         ZoneScoped;
         TL_ASSERT(handle != NullHandle);
         Impl_DestroyBindGroup(handle);
     }
 
-    void Context::UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo)
+    void Device::UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo)
     {
         ZoneScoped;
 
         Impl_UpdateBindGroup(handle, updateInfo);
     }
 
-    Handle<PipelineLayout> Context::CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)
+    Handle<PipelineLayout> Device::CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)
     {
         ZoneScoped;
 
         return Impl_CreatePipelineLayout(createInfo);
     }
 
-    void Context::DestroyPipelineLayout(Handle<PipelineLayout> handle)
+    void Device::DestroyPipelineLayout(Handle<PipelineLayout> handle)
     {
         ZoneScoped;
         TL_ASSERT(handle != NullHandle);
         Impl_DestroyPipelineLayout(handle);
     }
 
-    Handle<GraphicsPipeline> Context::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)
+    Handle<GraphicsPipeline> Device::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)
     {
         ZoneScoped;
 
         return Impl_CreateGraphicsPipeline(createInfo);
     }
 
-    void Context::DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle)
+    void Device::DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle)
     {
         ZoneScoped;
         TL_ASSERT(handle != NullHandle);
         Impl_DestroyGraphicsPipeline(handle);
     }
 
-    Handle<ComputePipeline> Context::CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
+    Handle<ComputePipeline> Device::CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
     {
         ZoneScoped;
 
         return Impl_CreateComputePipeline(createInfo);
     }
 
-    void Context::DestroyComputePipeline(Handle<ComputePipeline> handle)
+    void Device::DestroyComputePipeline(Handle<ComputePipeline> handle)
     {
         ZoneScoped;
         TL_ASSERT(handle != NullHandle);
         Impl_DestroyComputePipeline(handle);
     }
 
-    Handle<Sampler> Context::CreateSampler(const SamplerCreateInfo& createInfo)
+    Handle<Sampler> Device::CreateSampler(const SamplerCreateInfo& createInfo)
     {
         ZoneScoped;
 
         return Impl_CreateSampler(createInfo);
     }
 
-    void Context::DestroySampler(Handle<Sampler> handle)
+    void Device::DestroySampler(Handle<Sampler> handle)
     {
         ZoneScoped;
         TL_ASSERT(handle != NullHandle);
         Impl_DestroySampler(handle);
     }
 
-    Result<Handle<Image>> Context::CreateImage(const ImageCreateInfo& createInfo)
+    Result<Handle<Image>> Device::CreateImage(const ImageCreateInfo& createInfo)
     {
         ZoneScoped;
 
@@ -198,28 +198,28 @@ namespace RHI
         return Impl_CreateImage(createInfo);
     }
 
-    void Context::DestroyImage(Handle<Image> handle)
+    void Device::DestroyImage(Handle<Image> handle)
     {
         ZoneScoped;
         TL_ASSERT(handle != NullHandle);
         Impl_DestroyImage(handle);
     }
 
-    Result<Handle<Buffer>> Context::CreateBuffer(const BufferCreateInfo& createInfo)
+    Result<Handle<Buffer>> Device::CreateBuffer(const BufferCreateInfo& createInfo)
     {
         ZoneScoped;
 
         return Impl_CreateBuffer(createInfo);
     }
 
-    void Context::DestroyBuffer(Handle<Buffer> handle)
+    void Device::DestroyBuffer(Handle<Buffer> handle)
     {
         ZoneScoped;
         TL_ASSERT(handle != NullHandle);
         Impl_DestroyBuffer(handle);
     }
 
-    Handle<ImageView> Context::CreateImageView(const ImageViewCreateInfo& createInfo)
+    Handle<ImageView> Device::CreateImageView(const ImageViewCreateInfo& createInfo)
     {
         ZoneScoped;
 
@@ -235,59 +235,59 @@ namespace RHI
         return Impl_CreateImageView(createInfo);
     }
 
-    void Context::DestroyImageView(Handle<ImageView> handle)
+    void Device::DestroyImageView(Handle<ImageView> handle)
     {
         ZoneScoped;
         TL_ASSERT(handle != NullHandle);
         Impl_DestroyImageView(handle);
     }
 
-    Handle<BufferView> Context::CreateBufferView(const BufferViewCreateInfo& createInfo)
+    Handle<BufferView> Device::CreateBufferView(const BufferViewCreateInfo& createInfo)
     {
         ZoneScoped;
 
         return Impl_CreateBufferView(createInfo);
     }
 
-    void Context::DestroyBufferView(Handle<BufferView> handle)
+    void Device::DestroyBufferView(Handle<BufferView> handle)
     {
         ZoneScoped;
         TL_ASSERT(handle != NullHandle);
         Impl_DestroyBufferView(handle);
     }
 
-    DeviceMemoryPtr Context::MapBuffer(Handle<Buffer> handle)
+    DeviceMemoryPtr Device::MapBuffer(Handle<Buffer> handle)
     {
         ZoneScoped;
 
         return Impl_MapBuffer(handle);
     }
 
-    void Context::UnmapBuffer(Handle<Buffer> handle)
+    void Device::UnmapBuffer(Handle<Buffer> handle)
     {
         ZoneScoped;
 
         Impl_UnmapBuffer(handle);
     }
 
-    Handle<Semaphore> Context::CreateSemaphore(const SemaphoreCreateInfo& createInfo)
+    Handle<Semaphore> Device::CreateSemaphore(const SemaphoreCreateInfo& createInfo)
     {
         ZoneScoped;
 
         return Impl_CreateSemaphore(createInfo);
     }
 
-    void Context::DestroySemaphore(Handle<Semaphore> handle)
+    void Device::DestroySemaphore(Handle<Semaphore> handle)
     {
         return Impl_DestroySemaphore(handle);
     }
 
-    Queue* Context::GetQueue(QueueType queueType)
+    Queue* Device::GetQueue(QueueType queueType)
     {
         return Impl_GetQueue(queueType);
     }
 
-    void Context::CollectResources()
+    void Device::CollectResources()
     {
         Impl_CollectResources();
     }

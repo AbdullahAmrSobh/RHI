@@ -5,7 +5,7 @@
 #include <TL/Assert.hpp>
 
 #include "Common.hpp"
-#include "Context.hpp"
+#include "Device.hpp"
 
 #include <TL/Memory.hpp>
 

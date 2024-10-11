@@ -1,5 +1,5 @@
 #include "Pipeline.hpp"
-#include "context.hpp"
+#include "device.hpp"
 #include "Common.hpp"
 
 namespace RHI::Vulkan
@@ -147,7 +147,7 @@ namespace RHI::Vulkan
     /// PipelineLayout
     ///////////////////////////////////////////////////////////////////////////
 
-    ResultCode IPipelineLayout::Init(IContext* context, const PipelineLayoutCreateInfo& createInfo)
+    ResultCode IPipelineLayout::Init(IDevice* device, const PipelineLayoutCreateInfo& createInfo)
     {
         TL::Vector<VkDescriptorSetLayout> descriptorSetLayouts;
         for (auto bindGroupLayout : createInfo.layouts)
@@ -157,7 +157,7 @@ namespace RHI::Vulkan
                 break;
             }
 
-            auto layout = context->m_bindGroupLayoutsOwner.Get(bindGroupLayout);
+            auto layout = device->m_bindGroupLayoutsOwner.Get(bindGroupLayout);
             descriptorSetLayouts.push_back(layout->handle);
         }
 
@@ -171,24 +171,24 @@ namespace RHI::Vulkan
             .pushConstantRangeCount = 0,
             .pPushConstantRanges = nullptr,
         };
-        auto result = vkCreatePipelineLayout(context->m_device, &vkCreateInfo, nullptr, &handle);
+        auto result = vkCreatePipelineLayout(device->m_device, &vkCreateInfo, nullptr, &handle);
         if (result == VK_SUCCESS && createInfo.name)
         {
-            context->SetDebugName(handle, createInfo.name);
+            device->SetDebugName(handle, createInfo.name);
         }
         return ConvertResult(result);
     }
 
-    void IPipelineLayout::Shutdown(IContext* context)
+    void IPipelineLayout::Shutdown(IDevice* device)
     {
-        vkDestroyPipelineLayout(context->m_device, handle, nullptr);
+        vkDestroyPipelineLayout(device->m_device, handle, nullptr);
     }
 
     ///////////////////////////////////////////////////////////////////////////
     /// GraphicsPipeline
     ///////////////////////////////////////////////////////////////////////////
 
-    ResultCode IGraphicsPipeline::Init(IContext* context, const GraphicsPipelineCreateInfo& createInfo)
+    ResultCode IGraphicsPipeline::Init(IDevice* device, const GraphicsPipelineCreateInfo& createInfo)
     {
         uint32_t stagesCreateInfoCount = 2;
         VkPipelineShaderStageCreateInfo stagesCreateInfos[4];
@@ -412,7 +412,7 @@ namespace RHI::Vulkan
         renderTargetLayout.depthAttachmentFormat = ConvertFormat(createInfo.renderTargetLayout.depthAttachmentFormat);
         renderTargetLayout.stencilAttachmentFormat = ConvertFormat(createInfo.renderTargetLayout.stencilAttachmentFormat);
 
-        layout = context->m_pipelineLayoutOwner.Get(createInfo.layout)->handle;
+        layout = device->m_pipelineLayoutOwner.Get(createInfo.layout)->handle;
 
         VkGraphicsPipelineCreateInfo graphicsPipelineCI{
             .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
@@ -435,28 +435,28 @@ namespace RHI::Vulkan
             .basePipelineHandle = VK_NULL_HANDLE,
             .basePipelineIndex = 0,
         };
-        auto result = vkCreateGraphicsPipelines(context->m_device, VK_NULL_HANDLE, 1, &graphicsPipelineCI, nullptr, &handle);
+        auto result = vkCreateGraphicsPipelines(device->m_device, VK_NULL_HANDLE, 1, &graphicsPipelineCI, nullptr, &handle);
         if (result == VK_SUCCESS && createInfo.name)
         {
-            context->SetDebugName(handle, createInfo.name);
+            device->SetDebugName(handle, createInfo.name);
         }
         return ConvertResult(result);
     }
 
-    void IGraphicsPipeline::Shutdown(IContext* context)
+    void IGraphicsPipeline::Shutdown(IDevice* device)
     {
-        vkDestroyPipeline(context->m_device, handle, nullptr);
+        vkDestroyPipeline(device->m_device, handle, nullptr);
     }
 
     ///////////////////////////////////////////////////////////////////////////
     /// ComputePipeline
     ///////////////////////////////////////////////////////////////////////////
 
-    ResultCode IComputePipeline::Init(IContext* context, const ComputePipelineCreateInfo& createInfo)
+    ResultCode IComputePipeline::Init(IDevice* device, const ComputePipelineCreateInfo& createInfo)
     {
         auto shaderModule = static_cast<IShaderModule*>(createInfo.shaderModule);
 
-        layout = context->m_pipelineLayoutOwner.Get(createInfo.layout)->handle;
+        layout = device->m_pipelineLayoutOwner.Get(createInfo.layout)->handle;
 
         VkPipelineShaderStageCreateInfo shaderStageCI{
             .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -478,13 +478,13 @@ namespace RHI::Vulkan
             .basePipelineIndex = 0,
         };
 
-        auto result = vkCreateComputePipelines(context->m_device, VK_NULL_HANDLE, 1, &computePipelineCI, nullptr, &handle);
+        auto result = vkCreateComputePipelines(device->m_device, VK_NULL_HANDLE, 1, &computePipelineCI, nullptr, &handle);
         return ConvertResult(result);
     }
 
-    void IComputePipeline::Shutdown(IContext* context)
+    void IComputePipeline::Shutdown(IDevice* device)
     {
-        vkDestroyPipeline(context->m_device, handle, nullptr);
+        vkDestroyPipeline(device->m_device, handle, nullptr);
     }
 
 } // namespace RHI::Vulkan

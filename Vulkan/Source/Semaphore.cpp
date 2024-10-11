@@ -1,10 +1,10 @@
 #include "Common.hpp"
-#include "Context.hpp"
+#include "Device.hpp"
 #include "Semaphore.hpp"
 
 namespace RHI::Vulkan
 {
-    ResultCode ISemaphore::Init(IContext* context, const SemaphoreCreateInfo& _createInfo)
+    ResultCode ISemaphore::Init(IDevice* device, const SemaphoreCreateInfo& _createInfo)
     {
         VkSemaphoreTypeCreateInfo semaphoreType{
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
@@ -20,17 +20,17 @@ namespace RHI::Vulkan
 
         this->info = _createInfo;
 
-        auto result = vkCreateSemaphore(context->m_device, &createInfo, nullptr, &this->handle);
+        auto result = vkCreateSemaphore(device->m_device, &createInfo, nullptr, &this->handle);
         if (_createInfo.name != nullptr)
         {
-            context->SetDebugName(this->handle, _createInfo.name);
+            device->SetDebugName(this->handle, _createInfo.name);
         }
         return ConvertResult(result);
     }
 
-    void ISemaphore::Shutdown(IContext* context)
+    void ISemaphore::Shutdown(IDevice* device)
     {
-        // vkDestroySemaphore(context->m_device, this->handle, nullptr);
-        context->m_deleteQueue.DestroyObject(handle);
+        // vkDestroySemaphore(device->m_device, this->handle, nullptr);
+        device->m_deleteQueue.DestroyObject(handle);
     }
 } // namespace RHI::Vulkan

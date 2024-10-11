@@ -45,7 +45,7 @@ namespace RHI
     /// @brief Contains information needed to begin recording commands in a command list.
     struct RenderPassBeginInfo
     {
-        RenderGraph*                        renderGraph;         ///< Pointer to the render graph.
+        RenderGraph*                        renderGraph; ///< Pointer to the render graph.
         Scissor                             renderArea;
         Handle<Pass>                        pass;                ///< Handle to the pass.
         TL::Span<const LoadStoreOperations> loadStoreOperations; ///< Span of load/store operations.

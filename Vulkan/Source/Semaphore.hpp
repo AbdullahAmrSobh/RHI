@@ -7,7 +7,7 @@
 
 namespace RHI::Vulkan
 {
-    class IContext;
+    class IDevice;
 
     struct ISemaphore : Semaphore
     {
@@ -15,7 +15,7 @@ namespace RHI::Vulkan
         SemaphoreCreateInfo info;
         uint64_t timelineValue; // TODO: Might want to make this be atomic
 
-        ResultCode Init(IContext* context, const SemaphoreCreateInfo& createInfo);
-        void Shutdown(IContext* context);
+        ResultCode Init(IDevice* device, const SemaphoreCreateInfo& createInfo);
+        void Shutdown(IDevice* device);
     };
 } // namespace RHI::Vulkan

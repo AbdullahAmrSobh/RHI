@@ -28,7 +28,7 @@ public:
     {
     }
 
-    RHI::Context* m_context;
+    RHI::Device* m_device;
     RHI::Swapchain* m_swapchain;
     RHI::Queue* m_queue;
 
@@ -75,7 +75,7 @@ public:
             .engineName = "Forge",
             .engineVersion = { 0, 1, 0}
         };
-        m_context = RHI::CreateVulkanContext(appInfo).release();
+        m_device = RHI::CreateVulkanDevice(appInfo).release();
 
         auto [width, height] = m_window->GetWindowSize();
         RHI::SwapchainCreateInfo swapchainInfo{
@@ -88,14 +88,14 @@ public:
             .win32Window = { m_window->GetNativeHandle() }
         };
 
-        m_swapchain = m_context->CreateSwapchain(swapchainInfo).release();
+        m_swapchain = m_device->CreateSwapchain(swapchainInfo).release();
 
-        m_queue = m_context->GetQueue(RHI::QueueType::Graphics);
+        m_queue = m_device->GetQueue(RHI::QueueType::Graphics);
 
         for (auto& frame : m_perFrameData)
         {
-            frame.m_commandPool = m_context->CreateCommandPool(RHI::CommandPoolFlags::Transient).release();
-            frame.m_fence = m_context->CreateFence().release();
+            frame.m_commandPool = m_device->CreateCommandPool(RHI::CommandPoolFlags::Transient).release();
+            frame.m_fence = m_device->CreateFence().release();
         }
     }
 
@@ -107,7 +107,7 @@ public:
             delete frame.m_fence;
         }
         delete m_swapchain;
-        delete m_context;
+        delete m_device;
     }
 
     void InitPipelineAndLayout()
@@ -116,7 +116,7 @@ public:
         auto spvBlock = TL::ReadBinaryFile("./Shaders/Basic.spv");
         spv.resize(spvBlock.size / 4);
         memcpy(spv.data(), spvBlock.ptr, spvBlock.size);
-        auto shaderModule = m_context->CreateShaderModule(spv);
+        auto shaderModule = m_device->CreateShaderModule(spv);
         TL::Allocator::Release(spvBlock, alignof(char));
 
         // clang-format off
@@ -138,11 +138,11 @@ public:
                 // },
             }
         };
-        auto bindGroupLayout = m_context->CreateBindGroupLayout(bindGroupLayoutCI);
+        auto bindGroupLayout = m_device->CreateBindGroupLayout(bindGroupLayoutCI);
         // clang-format on
 
         RHI::PipelineLayoutCreateInfo layoutCI{ .name = "graphics-pipeline-layout", .layouts = { bindGroupLayout } };
-        m_pipelineLayout = m_context->CreatePipelineLayout(layoutCI);
+        m_pipelineLayout = m_device->CreatePipelineLayout(layoutCI);
 
         RHI::GraphicsPipelineCreateInfo pipelineCI{};
         pipelineCI.name = "Basic";
@@ -204,14 +204,14 @@ public:
         pipelineCI.depthStencilState.depthWriteEnable = true;
         pipelineCI.depthStencilState.compareOperator = RHI::CompareOperator::Less;
         pipelineCI.depthStencilState.stencilTestEnable = false;
-        m_graphicsPipeline = m_context->CreateGraphicsPipeline(pipelineCI);
+        m_graphicsPipeline = m_device->CreateGraphicsPipeline(pipelineCI);
 
         // init and update bind groups
 
         // clang-format off
         for (auto& frame : m_perFrameData)
         {
-            frame.m_bindGroup = m_context->CreateBindGroup(bindGroupLayout);
+            frame.m_bindGroup = m_device->CreateBindGroup(bindGroupLayout);
             RHI::BindGroupUpdateInfo bindGroupUpdateInfo{
                 .buffers =
                 {
@@ -229,27 +229,27 @@ public:
                     // },
                 }
             };
-            m_context->UpdateBindGroup(frame.m_bindGroup, bindGroupUpdateInfo);
+            m_device->UpdateBindGroup(frame.m_bindGroup, bindGroupUpdateInfo);
             // clang-format on
         }
 
-        m_context->DestroyBindGroupLayout(bindGroupLayout);
+        m_device->DestroyBindGroupLayout(bindGroupLayout);
     }
 
     void ShutdownPipelineAndLayout()
     {
         for (auto& frame : m_perFrameData)
         {
-            m_context->DestroyBindGroup(frame.m_bindGroup);
+            m_device->DestroyBindGroup(frame.m_bindGroup);
         }
-        m_context->DestroyGraphicsPipeline(m_graphicsPipeline);
-        m_context->DestroyPipelineLayout(m_pipelineLayout);
+        m_device->DestroyGraphicsPipeline(m_graphicsPipeline);
+        m_device->DestroyPipelineLayout(m_pipelineLayout);
     }
 
     void InitRenderGraph()
     {
         auto [width, height] = m_window->GetWindowSize();
-        m_renderGraph = m_context->CreateRenderGraph().release();
+        m_renderGraph = m_device->CreateRenderGraph().release();
 
         RHI::PassCreateInfo passCI{
             .name = "main-pass",
@@ -272,7 +272,7 @@ public:
         viewInfo.swizzle.a = RHI::ComponentSwizzle::Identity;
         m_renderGraph->PassUseImage(m_mainPass, m_colorAttachment, viewInfo, RHI::ImageUsage::Color, RHI::ShaderStage::None, RHI::Access::None);
         m_renderGraph->PassResize(m_mainPass, { width, height });
-        m_context->CompileRenderGraph(*m_renderGraph);
+        m_device->CompileRenderGraph(*m_renderGraph);
     }
 
     void ShutdownRenderGraph()
@@ -312,12 +312,12 @@ public:
             .usageFlags = RHI::BufferUsage::Vertex,
             .byteSize = vertexBufferSize,
         };
-        m_vertexBuffer = m_context->CreateBuffer(vertexBufferCI).GetValue();
+        m_vertexBuffer = m_device->CreateBuffer(vertexBufferCI).GetValue();
 
-        auto vertexBufferPtr = m_context->MapBuffer(m_vertexBuffer);
+        auto vertexBufferPtr = m_device->MapBuffer(m_vertexBuffer);
         memcpy(vertexBufferPtr, positionData, sizeof(glm::vec3) * 4);
         memcpy((char*)vertexBufferPtr + sizeof(glm::vec3) * 4, colorData, sizeof(glm::vec4) * 4);
-        m_context->UnmapBuffer(m_vertexBuffer);
+        m_device->UnmapBuffer(m_vertexBuffer);
 
         RHI::BufferCreateInfo indexBufferCI{
             .name = "index-buffer",
@@ -325,11 +325,11 @@ public:
             .usageFlags = RHI::BufferUsage::Index,
             .byteSize = indexBufferSize,
         };
-        m_indexBuffer = m_context->CreateBuffer(indexBufferCI).GetValue();
+        m_indexBuffer = m_device->CreateBuffer(indexBufferCI).GetValue();
 
-        auto indexBufferPtr = m_context->MapBuffer(m_indexBuffer);
+        auto indexBufferPtr = m_device->MapBuffer(m_indexBuffer);
         memcpy(indexBufferPtr, indexData, sizeof(uint16_t) * 6);
-        m_context->UnmapBuffer(m_indexBuffer);
+        m_device->UnmapBuffer(m_indexBuffer);
 
         // uniform buffer data
         struct UniformData
@@ -344,17 +344,17 @@ public:
             .usageFlags = RHI::BufferUsage::Uniform,
             .byteSize = sizeof(UniformData),
         };
-        m_uniformBuffer = m_context->CreateBuffer(uniformBufferCI).GetValue();
-        auto uniformBufferPtr = m_context->MapBuffer(m_uniformBuffer);
+        m_uniformBuffer = m_device->CreateBuffer(uniformBufferCI).GetValue();
+        auto uniformBufferPtr = m_device->MapBuffer(m_uniformBuffer);
         memcpy(uniformBufferPtr, &uniformData, sizeof(UniformData));
-        m_context->UnmapBuffer(m_uniformBuffer);
+        m_device->UnmapBuffer(m_uniformBuffer);
     }
 
     void ShutdownBuffers()
     {
-        m_context->DestroyBuffer(m_uniformBuffer);
-        m_context->DestroyBuffer(m_vertexBuffer);
-        m_context->DestroyBuffer(m_indexBuffer);
+        m_device->DestroyBuffer(m_uniformBuffer);
+        m_device->DestroyBuffer(m_vertexBuffer);
+        m_device->DestroyBuffer(m_indexBuffer);
     }
 
     virtual void OnInit()
@@ -389,9 +389,9 @@ public:
         uniformData.translate = m_camera.GetProjection() * m_camera.GetView();
         // uniformData.translate = glm::perspective(glm::radians(30.0f), 1600.0f/900.0f, 0.00001f, 100000000.f);
 
-        auto uniformBufferPtr = m_context->MapBuffer(m_uniformBuffer);
+        auto uniformBufferPtr = m_device->MapBuffer(m_uniformBuffer);
         memcpy(uniformBufferPtr, &uniformData, sizeof(UniformData));
-        m_context->UnmapBuffer(m_uniformBuffer);
+        m_device->UnmapBuffer(m_uniformBuffer);
     }
 
     virtual void Render()
@@ -404,7 +404,7 @@ public:
             TL_ASSERT(result == true);
         }
 
-        m_context->CollectResources(); // collect resources destroyed on the previous frame
+        m_device->CollectResources(); // collect resources destroyed on the previous frame
 
         frame.m_fence->Reset();
         frame.m_commandPool->Reset();

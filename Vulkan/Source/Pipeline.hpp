@@ -7,7 +7,7 @@
 
 namespace RHI::Vulkan
 {
-    class IContext;
+    class IDevice;
 
     VkShaderStageFlagBits ConvertShaderStage(ShaderStage shaderStage);
 
@@ -34,8 +34,8 @@ namespace RHI::Vulkan
     {
         VkPipelineLayout handle;
 
-        ResultCode Init(IContext* context, const PipelineLayoutCreateInfo& createInfo);
-        void Shutdown(IContext* context);
+        ResultCode Init(IDevice* device, const PipelineLayoutCreateInfo& createInfo);
+        void Shutdown(IDevice* device);
     };
 
     struct IGraphicsPipeline : GraphicsPipeline
@@ -43,8 +43,8 @@ namespace RHI::Vulkan
         VkPipeline handle;
         VkPipelineLayout layout;
 
-        ResultCode Init(IContext* context, const GraphicsPipelineCreateInfo& createInfo);
-        void Shutdown(IContext* context);
+        ResultCode Init(IDevice* device, const GraphicsPipelineCreateInfo& createInfo);
+        void Shutdown(IDevice* device);
     };
 
     struct IComputePipeline : ComputePipeline
@@ -52,8 +52,8 @@ namespace RHI::Vulkan
         VkPipeline handle;
         VkPipelineLayout layout;
 
-        ResultCode Init(IContext* context, const ComputePipelineCreateInfo& createInfo);
-        void Shutdown(IContext* context);
+        ResultCode Init(IDevice* device, const ComputePipelineCreateInfo& createInfo);
+        void Shutdown(IDevice* device);
     };
 
 } // namespace RHI::Vulkan

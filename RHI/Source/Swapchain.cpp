@@ -2,8 +2,8 @@
 
 namespace RHI
 {
-    Swapchain::Swapchain(Context* context)
-        : m_context(context)
+    Swapchain::Swapchain(Device* device)
+        : m_device(device)
         , m_name()
         , m_imageSize()
         , m_imageUsage()

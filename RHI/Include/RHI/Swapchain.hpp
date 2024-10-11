@@ -7,7 +7,7 @@
 
 namespace RHI
 {
-    class Context;
+    class Device;
     struct Semaphore;
 
     // @todo: add an API to query for supported formats for the user
@@ -51,7 +51,7 @@ namespace RHI
         static constexpr uint32_t MaxImageCount = 4;
         static constexpr uint32_t MinImageCount = 1;
 
-        Swapchain(Context* context);
+        Swapchain(Device* device);
 
         virtual ~Swapchain();
 
@@ -85,7 +85,7 @@ namespace RHI
         void     RotateSemaphores();
 
     protected:
-        Context*              m_context;
+        Device*               m_device;
         TL::String            m_name;
         ImageSize2D           m_imageSize;
         TL::Flags<ImageUsage> m_imageUsage;

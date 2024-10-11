@@ -1,6 +1,6 @@
 #pragma once
 
-#include <RHI/Context.hpp>
+#include <RHI/Device.hpp>
 #include <RHI/Queue.hpp>
 
 #include "Queue.hpp"
@@ -25,11 +25,11 @@ namespace RHI::Vulkan
     class ICommandPool;
     class ICommandList;
 
-    class IContext final : public Context
+    class IDevice final : public Device
     {
     public:
-        IContext();
-        ~IContext();
+        IDevice();
+        ~IDevice();
 
         ResultCode Init(const ApplicationInfo& appInfo);
 
@@ -133,7 +133,7 @@ namespace RHI::Vulkan
     };
 
     template<typename T>
-    inline void IContext::SetDebugName(T handle, const char* name) const
+    inline void IDevice::SetDebugName(T handle, const char* name) const
     {
         return SetDebugName(GetObjectType<T>(), reinterpret_cast<uint64_t>(handle), name);
     }

@@ -1,6 +1,6 @@
 #include "RHI/RenderGraph.hpp"
 #include "RHI/Swapchain.hpp"
-#include "RHI/Context.hpp"
+#include "RHI/Device.hpp"
 
 #include <TL/Containers.hpp>
 
@@ -8,10 +8,10 @@
 
 namespace RHI
 {
-    RenderGraph::RenderGraph(Context* context)
+    RenderGraph::RenderGraph(Device* device)
         : m_arena()
     {
-        m_context = context;
+        m_device = device;
     }
 
     RenderGraph::~RenderGraph()
@@ -197,7 +197,7 @@ namespace RHI
         {
             return image->second;
         }
-        return m_imagesLRU[key] = m_context->CreateImage(info).GetValue();
+        return m_imagesLRU[key] = m_device->CreateImage(info).GetValue();
     }
 
     Handle<Buffer> RenderGraph::GetBuffer(Handle<BufferAttachment> _attachment) const
@@ -215,7 +215,7 @@ namespace RHI
         {
             return buffer->second;
         }
-        return m_buffersLRU[key] = m_context->CreateBuffer(info).GetValue();
+        return m_buffersLRU[key] = m_device->CreateBuffer(info).GetValue();
     }
 
     Handle<ImageView> RenderGraph::PassGetImageView(Handle<Pass> _pass, Handle<ImageAttachment> _attachment) const
@@ -236,7 +236,7 @@ namespace RHI
             return imageView->second;
         }
 
-        return m_imageViewsLRU[key] = m_context->CreateImageView(createInfo);
+        return m_imageViewsLRU[key] = m_device->CreateImageView(createInfo);
     }
 
     Handle<BufferView> RenderGraph::PassGetBufferView(Handle<Pass> _pass, Handle<BufferAttachment> _attachment) const
@@ -255,7 +255,7 @@ namespace RHI
         {
             return bufferView->second;
         }
-        return m_bufferViewsLRU[key] = m_context->CreateBufferView(createInfo);
+        return m_bufferViewsLRU[key] = m_device->CreateBufferView(createInfo);
     }
 
     void RenderGraph::Compile()
@@ -273,12 +273,12 @@ namespace RHI
     {
         for (auto [_, viewHandle] : m_imageViewsLRU)
         {
-            m_context->DestroyImageView(viewHandle);
+            m_device->DestroyImageView(viewHandle);
         }
 
         for (auto [_, viewHandle] : m_bufferViewsLRU)
         {
-            m_context->DestroyBufferView(viewHandle);
+            m_device->DestroyBufferView(viewHandle);
         }
     }
 
@@ -287,13 +287,13 @@ namespace RHI
         for (auto attachmentHandle : m_transientImageAttachments)
         {
             auto resource = GetImage(attachmentHandle);
-            m_context->DestroyImage(resource);
+            m_device->DestroyImage(resource);
         }
 
         for (auto attachmentHandle : m_transientBufferAttachments)
         {
             auto resource = GetBuffer(attachmentHandle);
-            m_context->DestroyBuffer(resource);
+            m_device->DestroyBuffer(resource);
         }
     }
 } // namespace RHI
