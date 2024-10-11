@@ -35,8 +35,8 @@ namespace RHI
         FragmentShadingRateAttachment = 1 << 26,
         AccelerationStructureBuild    = 1 << 27,
         RayTracingShader              = 1 << 28,
-        TaskShaderExt                 = 1 << 29,
-        MeshShaderExt                 = 1 << 30,
+        TaskShader                    = 1 << 29,
+        MeshShader                    = 1 << 30,
         AccelerationStructureCopy     = 1 << 31,
     };
 

@@ -17,12 +17,29 @@ namespace RHI
     class Swapchain;
     class Pass;
 
-    enum class AttachmentType : uint8_t
+    enum class RGResourceType : uint8_t
     {
         None,
         Imported,
         Transient,
         Swapchain,
+    };
+
+    struct RGImageCreateInfo
+    {
+        const char* name;        ///< Name of the image.
+        ImageType   type;        ///< Type of the image.
+        ImageSize3D size;        ///< Size of the image.
+        Format      format;      ///< Format of the image.
+        SampleCount sampleCount; ///< Number of samples per pixel.
+        uint32_t    mipLevels;   ///< Number of mipmap levels.
+        uint32_t    arrayCount;  ///< Number of array layers.
+    };
+
+    struct RGBufferCreateInfo
+    {
+        const char* name;     ///< Name of the buffer.
+        size_t      byteSize; ///< Size of the buffer in bytes.
     };
 
     struct ImageViewInfo
@@ -38,24 +55,13 @@ namespace RHI
         Format          format;
     };
 
-    struct PassAttachment
-    {
-        Handle<Pass>             pass;
-        TL::Flags<Access>        access;        // how will this resource be accessed
-        TL::Flags<PipelineStage> pipelineStage; // at which stage of the pipeline, it would be accessed
-        TL::Flags<ShaderStage>   shaderStage;   // optional shader stage (if not present will assume shader stage = All graphics or all compute)
-        BindingType              bindingType;   // optional binding element type (if not present will assume generic read/write)
-        PassAttachment*          next;          //
-        PassAttachment*          prev;          //
-    };
-
     struct ImagePassAttachment
     {
         Handle<Pass>                   pass;
         Handle<struct ImageAttachment> attachment;
         ImageUsage                     usage;
-        Access                         access;
-        TL::Flags<ShaderStage>         stages;
+        TL::Flags<Access>              pipelineAccess;
+        TL::Flags<PipelineStage>       pipelineStages;
         ImageViewInfo                  viewInfo;
         ImagePassAttachment*           next;
         ImagePassAttachment*           prev;
@@ -67,8 +73,8 @@ namespace RHI
         Handle<Pass>                    pass;
         Handle<struct BufferAttachment> attachment;
         BufferUsage                     usage;
-        Access                          access;
-        TL::Flags<ShaderStage>          stages;
+        TL::Flags<Access>               pipelineAccess;
+        TL::Flags<PipelineStage>        pipelineStages;
         BufferViewInfo                  viewInfo;
         BufferPassAttachment*           next;
         BufferPassAttachment*           prev;

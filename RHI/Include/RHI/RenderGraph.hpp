@@ -7,6 +7,8 @@
 #include "RHI/RGResources.hpp"
 #include "RHI/RGPass.hpp"
 
+#include <TL/Containers.hpp>
+
 namespace RHI
 {
     class Device;
@@ -14,6 +16,8 @@ namespace RHI
     class CommandList;
     class RenderGraph;
     class CommandEncoder;
+
+    using PassExecuteCallback = TL::Function<void(CommandList& commandList)>;
 
     /// @brief Render Graph is Directed Acyclic Graph (DAG) that represents
     /// a set of passes, their dependencies, and their resources. It used to
@@ -84,7 +88,7 @@ namespace RHI
         /// @param usage Usage flags for the image.
         /// @param stage Shader stage flags.
         /// @param access Access flags.
-        void                                  PassUseImage(Handle<Pass> pass, Handle<ImageAttachment> attachment, const ImageViewInfo& viewInfo, ImageUsage usage, TL::Flags<ShaderStage> stage, Access access);
+        void                                  PassUseImage(Handle<Pass> pass, Handle<ImageAttachment> attachment, const ImageViewInfo& viewInfo, ImageUsage usage, TL::Flags<PipelineStage> stage, Access access);
 
         /// @brief Uses a buffer in a pass with view info, usage, and access.
         ///
@@ -94,7 +98,7 @@ namespace RHI
         /// @param usage Usage flags for the buffer.
         /// @param stage Shader stage flags.
         /// @param access Access flags.
-        void                                  PassUseBuffer(Handle<Pass> pass, Handle<BufferAttachment> attachment, const BufferViewInfo& viewInfo, BufferUsage usage, TL::Flags<ShaderStage> stage, Access access);
+        void                                  PassUseBuffer(Handle<Pass> pass, Handle<BufferAttachment> attachment, const BufferViewInfo& viewInfo, BufferUsage usage, TL::Flags<PipelineStage> stage, Access access);
 
         /// @brief Retrieves the image from an image attachment.
         ///

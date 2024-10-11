@@ -91,7 +91,7 @@ namespace RHI
         return handle;
     }
 
-    void RenderGraph::PassUseImage(Handle<Pass> _pass, Handle<ImageAttachment> _attachment, const ImageViewInfo& viewInfo, ImageUsage usage, TL::Flags<ShaderStage> stages, Access access)
+    void RenderGraph::PassUseImage(Handle<Pass> _pass, Handle<ImageAttachment> _attachment, const ImageViewInfo& viewInfo, ImageUsage usage, TL::Flags<PipelineStage> stages, Access access)
     {
         auto pass = m_passPool.Get(_pass);
         auto attachment = m_imageAttachmentPool.Get(_attachment);
@@ -107,8 +107,8 @@ namespace RHI
         passAttachment->pass = _pass;
         passAttachment->attachment = _attachment;
         passAttachment->usage = usage;
-        passAttachment->access = access;
-        passAttachment->stages = stages;
+        passAttachment->pipelineAccess = access;
+        passAttachment->pipelineStages = stages;
         passAttachment->viewInfo = viewInfo;
         passAttachment->next = nullptr;
         passAttachment->prev = attachment->last;
@@ -135,7 +135,7 @@ namespace RHI
         }
     }
 
-    void RenderGraph::PassUseBuffer(Handle<Pass> _pass, Handle<BufferAttachment> _attachment, const BufferViewInfo& viewInfo, BufferUsage usage, TL::Flags<ShaderStage> stages, Access access)
+    void RenderGraph::PassUseBuffer(Handle<Pass> _pass, Handle<BufferAttachment> _attachment, const BufferViewInfo& viewInfo, BufferUsage usage, TL::Flags<PipelineStage> stages, Access access)
     {
         auto pass = m_passPool.Get(_pass);
         auto attachment = m_bufferAttachmentPool.Get(_attachment);
@@ -150,8 +150,8 @@ namespace RHI
         passAttachment->pass = _pass;
         passAttachment->attachment = _attachment;
         passAttachment->usage = usage;
-        passAttachment->access = access;
-        passAttachment->stages = stages;
+        passAttachment->pipelineAccess = access;
+        passAttachment->pipelineStages = stages;
         passAttachment->viewInfo = viewInfo;
         passAttachment->next = nullptr;
         passAttachment->prev = attachment->last;

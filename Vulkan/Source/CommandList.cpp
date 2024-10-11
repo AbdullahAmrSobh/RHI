@@ -139,7 +139,7 @@ namespace RHI::Vulkan
             if (node->next == nullptr && swapchain != nullptr)
             {
                 auto srcState = GetImageStageAccess(*node);
-                auto dstState = PIPELINE_IMAGE_BARRIER_PRESENT_SRC;
+                auto dstState = ImageStageAccess{ VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, VK_ACCESS_2_NONE, 0 };
                 auto barrier = CreateImageBarrier(image->handle, subresources, srcState, dstState);
                 m_barriers[BarrierSlot::Epiloge].imageBarriers.push_back(barrier);
             }

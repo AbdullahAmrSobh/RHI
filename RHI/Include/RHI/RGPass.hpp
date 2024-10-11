@@ -27,17 +27,19 @@ namespace RHI
 
     class RHI_EXPORT Pass final
     {
+        friend class RenderGraph;
+
     public:
         // Pass();
         // Pass(Pass&&)      = default;
         // Pass(const Pass&) = delete;
         // ~Pass()           = default;
 
-        const char*                       GetName() const;
+        const char*                                  GetName() const;
 
-        void                              Resize(ImageSize2D size);
+        void                                         Resize(ImageSize2D size);
 
-        ImageSize2D                       GetSize() const;
+        ImageSize2D                                  GetSize() const;
 
         // void                              UseImage(Handle<ImageAttachment> attachment, const ImageViewInfo& viewInfo, ImageUsage usage, TL::Flags<ShaderStage> stage, Access access);
 
@@ -47,13 +49,14 @@ namespace RHI
 
         // TL_NODISCARD Handle<BufferView>   GetBufferView(Handle<BufferAttachment> attachment) const;
 
-        TL::String                        m_name;
-        ImageSize2D                       m_renderTargetSize;
-        TL::Vector<ImagePassAttachment*>  m_colorAttachments;
-        ImagePassAttachment*              m_depthStencilAttachment;
-        TL::Vector<ImagePassAttachment*>  m_imageAttachments;
-        TL::Vector<BufferPassAttachment*> m_bufferAttachments;
-        TL::Vector<CommandList*>          m_commandLists;
+        TL::String                                   m_name;
+        ImageSize2D                                  m_renderTargetSize;
+        TL::Vector<ImagePassAttachment*>             m_colorAttachments;
+        ImagePassAttachment*                         m_depthStencilAttachment;
+        TL::Vector<ImagePassAttachment*>             m_imageAttachments;
+        TL::Vector<BufferPassAttachment*>            m_bufferAttachments;
+
+        TL::Function<void(CommandList& commandList)> m_callback;
     };
 
     inline const char* Pass::GetName() const

@@ -270,7 +270,7 @@ public:
         viewInfo.swizzle.g = RHI::ComponentSwizzle::Identity;
         viewInfo.swizzle.b = RHI::ComponentSwizzle::Identity;
         viewInfo.swizzle.a = RHI::ComponentSwizzle::Identity;
-        m_renderGraph->PassUseImage(m_mainPass, m_colorAttachment, viewInfo, RHI::ImageUsage::Color, RHI::ShaderStage::None, RHI::Access::None);
+        m_renderGraph->PassUseImage(m_mainPass, m_colorAttachment, viewInfo, RHI::ImageUsage::Color, RHI::PipelineStage::ColorAttachmentOutput, RHI::Access::None);
         m_renderGraph->PassResize(m_mainPass, { width, height });
         m_device->CompileRenderGraph(*m_renderGraph);
     }

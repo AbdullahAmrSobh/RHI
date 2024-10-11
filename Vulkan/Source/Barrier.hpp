@@ -18,10 +18,11 @@ namespace RHI::Vulkan
         VkImageLayout layout;
         VkPipelineStageFlags2 stage;
         VkAccessFlags2 access;
+        uint32_t queueFamilyIndex;
 
         inline bool operator==(const ImageStageAccess& other) const
         {
-            return stage == other.stage && access == other.access && layout == other.layout;
+            return stage == other.stage && access == other.access && layout == other.layout && queueFamilyIndex == other.queueFamilyIndex;
         }
     };
 
@@ -29,167 +30,170 @@ namespace RHI::Vulkan
     {
         VkPipelineStageFlags2 stage;
         VkAccessFlags2 access;
+        uint32_t queueFamilyIndex;
 
         inline bool operator==(const BufferStageAccess& other) const
         {
-            return stage == other.stage && access == other.access;
+            return stage == other.stage && access == other.access && queueFamilyIndex == other.queueFamilyIndex;
         }
     };
 
-    inline static constexpr ImageStageAccess PIPELINE_IMAGE_BARRIER_UNDEFINED = { VK_IMAGE_LAYOUT_UNDEFINED, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, VK_ACCESS_2_NONE };
-    inline static constexpr ImageStageAccess PIPELINE_IMAGE_BARRIER_PRESENT_SRC = { VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, VK_ACCESS_2_NONE };
-    inline static constexpr ImageStageAccess PIPELINE_IMAGE_BARRIER_TRANSFER_SRC = { VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT };
-    inline static constexpr ImageStageAccess PIPELINE_IMAGE_BARRIER_TRANSFER_DST = { VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT };
-    inline static constexpr ImageStageAccess PIPELINE_IMAGE_BARRIER_SHADER_READ = { VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT };
+    inline static TL::Flags<Access> ConvertLoadStoreOperationsToAccess(LoadStoreOperations operations)
+    {
+        TL::Flags<Access> flags = Access::None;
+        if (operations.loadOperation == LoadOperation::Load) flags |= Access::Read;
+        if (operations.storeOperation == StoreOperation::Store) flags |= Access::Write;
+        return flags;
+    }
 
-    // buffer stage accesses
-    inline static constexpr BufferStageAccess PIPELINE_BUFFER_BARRIER_TOP = { VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, VK_ACCESS_2_NONE };
-    inline static constexpr BufferStageAccess PIPELINE_BUFFER_BARRIER_BOTTOM = { VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, VK_ACCESS_2_NONE };
-    inline static constexpr BufferStageAccess PIPELINE_BUFFER_BARRIER_TRANSFER_SRC = { VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT };
-    inline static constexpr BufferStageAccess PIPELINE_BUFFER_BARRIER_TRANSFER_DST = { VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT };
-    inline static constexpr BufferStageAccess PIPELINE_BUFFER_BARRIER_SHADER_READ = { VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT };
-
-    inline static VkPipelineStageFlags2 GetPipelineStageFromShaderStages(TL::Flags<ShaderStage> shadeStages)
+    inline static VkPipelineStageFlags2 ConvertPipelineStageFlags(TL::Flags<PipelineStage> pipelineStages)
     {
         VkPipelineStageFlags2 stageFlags = {};
-
-        if (shadeStages & ShaderStage::Compute)
-            return VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-
-        if (shadeStages & ShaderStage::Pixel)
-            stageFlags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-
-        if (shadeStages & ShaderStage::Vertex)
-            stageFlags |= VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
-
+        if (pipelineStages & PipelineStage::TopOfPipe) stageFlags |= VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+        if (pipelineStages & PipelineStage::DrawIndirect) stageFlags |= VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
+        if (pipelineStages & PipelineStage::VertexInput) stageFlags |= VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT;
+        if (pipelineStages & PipelineStage::VertexShader) stageFlags |= VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
+        if (pipelineStages & PipelineStage::TessellationControlShader) stageFlags |= VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT;
+        if (pipelineStages & PipelineStage::TessellationEvaluationShader) stageFlags |= VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT;
+        if (pipelineStages & PipelineStage::PixelShader) stageFlags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+        if (pipelineStages & PipelineStage::EarlyFragmentTests) stageFlags |= VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT;
+        if (pipelineStages & PipelineStage::LateFragmentTests) stageFlags |= VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+        if (pipelineStages & PipelineStage::ColorAttachmentOutput) stageFlags |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+        if (pipelineStages & PipelineStage::ComputeShader) stageFlags |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+        if (pipelineStages & PipelineStage::Transfer) stageFlags |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+        if (pipelineStages & PipelineStage::BottomOfPipe) stageFlags |= VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
+        if (pipelineStages & PipelineStage::Host) stageFlags |= VK_PIPELINE_STAGE_2_HOST_BIT;
+        if (pipelineStages & PipelineStage::AllGraphics) stageFlags |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
+        if (pipelineStages & PipelineStage::AllCommands) stageFlags |= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+        if (pipelineStages & PipelineStage::Copy) stageFlags |= VK_PIPELINE_STAGE_2_COPY_BIT;
+        if (pipelineStages & PipelineStage::Resolve) stageFlags |= VK_PIPELINE_STAGE_2_RESOLVE_BIT;
+        if (pipelineStages & PipelineStage::Blit) stageFlags |= VK_PIPELINE_STAGE_2_BLIT_BIT;
+        if (pipelineStages & PipelineStage::Clear) stageFlags |= VK_PIPELINE_STAGE_2_CLEAR_BIT;
+        if (pipelineStages & PipelineStage::IndexInput) stageFlags |= VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT;
+        if (pipelineStages & PipelineStage::VertexAttributeInput) stageFlags |= VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT;
+        if (pipelineStages & PipelineStage::PreRasterizationShaders) stageFlags |= VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT;
+        if (pipelineStages & PipelineStage::TransformFeedback) stageFlags |= VK_PIPELINE_STAGE_2_TRANSFORM_FEEDBACK_BIT_EXT;
+        if (pipelineStages & PipelineStage::ConditionalRendering) stageFlags |= VK_PIPELINE_STAGE_2_CONDITIONAL_RENDERING_BIT_EXT;
+        if (pipelineStages & PipelineStage::FragmentShadingRateAttachment) stageFlags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
+        if (pipelineStages & PipelineStage::AccelerationStructureBuild) stageFlags |= VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+        if (pipelineStages & PipelineStage::RayTracingShader) stageFlags |= VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
+        if (pipelineStages & PipelineStage::TaskShader) stageFlags |= VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT;
+        if (pipelineStages & PipelineStage::MeshShader) stageFlags |= VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT;
+        if (pipelineStages & PipelineStage::AccelerationStructureCopy) stageFlags |= VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR;
         return stageFlags;
-    }
-
-    inline static Access ConvertLoadStoreOperationsToAcces(LoadStoreOperations operations)
-    {
-        uint64_t flags{};
-        if (operations.loadOperation == LoadOperation::Load)
-            flags |= uint64_t(Access::Read);
-        if (operations.storeOperation == StoreOperation::Store)
-            flags |= uint64_t(Access::Write);
-        return Access(flags);
-    }
-
-    inline static VkAccessFlags2 GetAccessFlagsForColorAttachments(LoadStoreOperations operations)
-    {
-        if (operations.loadOperation == LoadOperation::Load && operations.storeOperation == StoreOperation::Store)
-            return VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-        else if (operations.loadOperation == LoadOperation::Load && operations.storeOperation != StoreOperation::Store)
-            return VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
-        else if (operations.loadOperation != LoadOperation::Load && operations.storeOperation == StoreOperation::Store)
-            return VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-        else
-            return VK_ACCESS_2_NONE;
-    };
-
-    inline static VkAccessFlags2 GetAccessFlagsForDepthAttachment(LoadStoreOperations operations)
-    {
-        if (operations.loadOperation == LoadOperation::Load && operations.storeOperation == StoreOperation::Store)
-            return VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        else if (operations.loadOperation == LoadOperation::Load && operations.storeOperation != StoreOperation::Store)
-            return VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-        else if (operations.loadOperation != LoadOperation::Load && operations.storeOperation == StoreOperation::Store)
-            return VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        else
-            return VK_ACCESS_2_NONE;
-    };
-
-    inline static VkAccessFlags2 GetAccessFlagsForHost(Access access)
-    {
-        switch (access)
-        {
-        case Access::None:      return VK_ACCESS_2_NONE;
-        case Access::Read:      return VK_ACCESS_2_HOST_READ_BIT;
-        case Access::Write:     return VK_ACCESS_2_HOST_WRITE_BIT;
-        case Access::ReadWrite: return VK_ACCESS_2_HOST_READ_BIT | VK_ACCESS_2_HOST_WRITE_BIT;
-        default:                TL_UNREACHABLE(); return VK_ACCESS_2_NONE;
-        }
-    };
-
-    inline static VkAccessFlags2 GetAccessFlagsForTransfer(Access access)
-    {
-        switch (access)
-        {
-        case Access::None:      return VK_ACCESS_2_NONE;
-        case Access::Read:      return VK_ACCESS_2_TRANSFER_READ_BIT;
-        case Access::Write:     return VK_ACCESS_2_TRANSFER_WRITE_BIT;
-        case Access::ReadWrite: return VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT;
-        default:                TL_UNREACHABLE(); return VK_ACCESS_2_NONE;
-        }
-    };
-
-    inline static VkAccessFlags2 GetAccessFlagsForMemory(Access access)
-    {
-        switch (access)
-        {
-        case Access::None:      return VK_ACCESS_2_NONE;
-        case Access::Read:      return VK_ACCESS_2_MEMORY_READ_BIT;
-        case Access::Write:     return VK_ACCESS_2_MEMORY_WRITE_BIT;
-        case Access::ReadWrite: return VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
-        default:                TL_UNREACHABLE(); return VK_ACCESS_2_NONE;
-        }
-    };
-
-    inline static VkAccessFlags2 GetAccessFlagsForShaderResource(Access access)
-    {
-        switch (access)
-        {
-        case Access::None:      return VK_ACCESS_2_NONE;
-        case Access::Read:      return VK_ACCESS_2_SHADER_READ_BIT;
-        case Access::Write:     return VK_ACCESS_2_SHADER_WRITE_BIT;
-        case Access::ReadWrite: return VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
-        default:                TL_UNREACHABLE(); return VK_ACCESS_2_NONE;
-        }
-    }
-
-    inline static VkAccessFlags2 GetAccessFlagsForShaderStorageResource(Access access)
-    {
-        switch (access)
-        {
-        case Access::None:      return VK_ACCESS_2_NONE;
-        case Access::Read:      return VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
-        case Access::Write:     return VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
-        case Access::ReadWrite: return VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
-        default:                TL_UNREACHABLE(); return VK_ACCESS_2_NONE;
-        }
     }
 
     inline static VkAccessFlags2 GetAccessFlagsForPassAttachment(const ImagePassAttachment& imageAttachment)
     {
         switch (imageAttachment.usage)
         {
-        case ImageUsage::None:            return {};
-        case ImageUsage::ShaderResource:  return GetAccessFlagsForShaderResource(imageAttachment.access);
-        case ImageUsage::StorageResource: return GetAccessFlagsForShaderStorageResource(imageAttachment.access);
-        case ImageUsage::Color:           return GetAccessFlagsForColorAttachments(imageAttachment.loadStoreOperation);
+        case ImageUsage::None: return {};
+        case ImageUsage::ShaderResource:
+            {
+                if (imageAttachment.pipelineAccess == Access::ReadWrite)
+                {
+                    return VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
+                }
+                else if (imageAttachment.pipelineAccess == Access::Read)
+                {
+                    return VK_ACCESS_2_SHADER_READ_BIT;
+                }
+                else if (imageAttachment.pipelineAccess == Access::Write)
+                {
+                    return VK_ACCESS_2_SHADER_WRITE_BIT;
+                }
+                else
+                {
+                    TL_UNREACHABLE();
+                }
+            }
+            break;
+        case ImageUsage::StorageResource:
+            {
+                if (imageAttachment.pipelineAccess == Access::ReadWrite)
+                {
+                    return VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+                }
+                else if (imageAttachment.pipelineAccess == Access::Read)
+                {
+                    return VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+                }
+                else if (imageAttachment.pipelineAccess == Access::Write)
+                {
+                    return VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+                }
+                else
+                {
+                    TL_UNREACHABLE();
+                }
+            }
+            break;
+        case ImageUsage::Color:
+            {
+                auto access = ConvertLoadStoreOperationsToAccess(imageAttachment.loadStoreOperation);
+                if (access == Access::ReadWrite)
+                {
+                    return VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+                }
+                else if (access == Access::Read)
+                {
+                    return VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
+                }
+                else if (access == Access::Write)
+                {
+                    return VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+                }
+                else
+                {
+                    TL_UNREACHABLE();
+                }
+            }
+            break;
         case ImageUsage::Depth:
         case ImageUsage::Stencil:
-        case ImageUsage::DepthStencil:    return GetAccessFlagsForDepthAttachment(imageAttachment.loadStoreOperation);
+        case ImageUsage::DepthStencil:
+            {
+                auto access = ConvertLoadStoreOperationsToAccess(imageAttachment.loadStoreOperation);
+                if (access == Access::ReadWrite)
+                {
+                    return VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                }
+                else if (access == Access::Read)
+                {
+                    return VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+                }
+                else if (access == Access::Write)
+                {
+                    return VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                }
+                else
+                {
+                    TL_UNREACHABLE();
+                }
+            }
+            break;
         case ImageUsage::CopySrc:
-        case ImageUsage::CopyDst:         return GetAccessFlagsForTransfer(imageAttachment.access);
-        default:                          TL_UNREACHABLE(); return {};
-        };
-    }
-
-    inline static VkPipelineStageFlags2 GetPipelineStageFlagsForPassAttachment(const ImagePassAttachment& imageAttachment)
-    {
-        switch (imageAttachment.usage)
-        {
-        case ImageUsage::None:            return {};
-        case ImageUsage::ShaderResource:  return GetPipelineStageFromShaderStages(imageAttachment.stages);
-        case ImageUsage::StorageResource: return GetPipelineStageFromShaderStages(imageAttachment.stages);
-        case ImageUsage::Color:           return VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-        case ImageUsage::Depth:
-        case ImageUsage::Stencil:
-        case ImageUsage::DepthStencil:    return VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
-        case ImageUsage::CopySrc:
-        case ImageUsage::CopyDst:         return VK_PIPELINE_STAGE_2_COPY_BIT;
-        default:                          TL_UNREACHABLE(); return {};
+        case ImageUsage::CopyDst:
+            {
+                if (imageAttachment.pipelineAccess == Access::ReadWrite)
+                {
+                    return VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT;
+                }
+                else if (imageAttachment.pipelineAccess == Access::Read)
+                {
+                    return VK_ACCESS_2_TRANSFER_READ_BIT;
+                }
+                else if (imageAttachment.pipelineAccess == Access::Write)
+                {
+                    return VK_ACCESS_2_TRANSFER_WRITE_BIT;
+                }
+                else
+                {
+                    TL_UNREACHABLE();
+                }
+            }
+            break;
+        default: TL_UNREACHABLE(); return {};
         };
     }
 
@@ -201,7 +205,7 @@ namespace RHI::Vulkan
         case ImageUsage::Color: return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         case ImageUsage::DepthStencil:
             {
-                auto access = ConvertLoadStoreOperationsToAcces(imageAttachment.loadStoreOperation);
+                auto access = ConvertLoadStoreOperationsToAccess(imageAttachment.loadStoreOperation);
                 if (imageAspect & ImageAspect::DepthStencil)
                 {
                     return access == Access::Read ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -215,11 +219,12 @@ namespace RHI::Vulkan
                     return access == Access::Read ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
                 }
 
+                TL_UNREACHABLE();
                 return VK_IMAGE_LAYOUT_GENERAL;
             }
         case ImageUsage::ShaderResource:
             {
-                bool isReadOnly = imageAttachment.access == Access::Read;
+                bool isReadOnly = imageAttachment.pipelineAccess == Access::Read;
 
                 if (imageAspect & ImageAspect::Color)
                 {
@@ -237,6 +242,7 @@ namespace RHI::Vulkan
                 {
                     return isReadOnly ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
                 }
+
                 TL_UNREACHABLE();
                 return VK_IMAGE_LAYOUT_GENERAL;
             }
@@ -250,20 +256,13 @@ namespace RHI::Vulkan
     {
         return {
             .layout = GetImageAttachmentLayout(imageAttachment),
-            .stage = GetPipelineStageFlagsForPassAttachment(imageAttachment),
+            .stage = ConvertPipelineStageFlags(imageAttachment.pipelineStages),
             .access = GetAccessFlagsForPassAttachment(imageAttachment),
+            .queueFamilyIndex = 0,
         };
     }
 
-    // inline static BufferStageAccess GetBufferStageAccess(const BufferPassAttachment& imageAttachment)
-    // {
-    //     return {
-    //         .stage = GetPipelineStageFlagsFor_(imageAttachment),
-    //         .access = GetAccessFlagsForPassAttachment(imageAttachment),
-    //     };
-    // }
-
-    inline static VkImageMemoryBarrier2 CreateImageBarrier(VkImage image, VkImageSubresourceRange subresourceRange, ImageStageAccess src, ImageStageAccess dst, uint32_t srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, uint32_t dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED)
+    inline static VkImageMemoryBarrier2 CreateImageBarrier(VkImage image, VkImageSubresourceRange subresourceRange, ImageStageAccess src, ImageStageAccess dst)
     {
         VkImageMemoryBarrier2 barrier{};
         barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
@@ -274,14 +273,14 @@ namespace RHI::Vulkan
         barrier.dstAccessMask = dst.access;
         barrier.oldLayout = src.layout;
         barrier.newLayout = dst.layout;
-        barrier.srcQueueFamilyIndex = srcQueueFamilyIndex;
-        barrier.dstQueueFamilyIndex = dstQueueFamilyIndex;
+        barrier.srcQueueFamilyIndex = src.queueFamilyIndex;
+        barrier.dstQueueFamilyIndex = dst.queueFamilyIndex;
         barrier.image = image;
         barrier.subresourceRange = subresourceRange;
         return barrier;
     }
 
-    inline static VkBufferMemoryBarrier2 CreateBufferBarrier(VkBuffer buffer, BufferSubregion subregion, BufferStageAccess src, BufferStageAccess dst, uint32_t srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, uint32_t dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED)
+    inline static VkBufferMemoryBarrier2 CreateBufferBarrier(VkBuffer buffer, BufferSubregion subregion, BufferStageAccess src, BufferStageAccess dst)
     {
         VkBufferMemoryBarrier2 barrier{};
         barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
@@ -290,8 +289,8 @@ namespace RHI::Vulkan
         barrier.srcAccessMask = src.access;
         barrier.dstStageMask = dst.stage;
         barrier.dstAccessMask = dst.access;
-        barrier.srcQueueFamilyIndex = srcQueueFamilyIndex;
-        barrier.dstQueueFamilyIndex = dstQueueFamilyIndex;
+        barrier.srcQueueFamilyIndex = src.queueFamilyIndex;
+        barrier.dstQueueFamilyIndex = dst.queueFamilyIndex;
         barrier.buffer = buffer;
         barrier.offset = subregion.offset;
         barrier.size = subregion.size;
@@ -353,19 +352,6 @@ namespace RHI::Vulkan
         return attachmentInfo;
     }
 
-    inline static VkRenderingAttachmentInfo CreateDepthStencilAttachment(VkImageView depthView, LoadStoreOperations loadStoreOperations)
-    {
-        VkRenderingAttachmentInfo attachmentInfo{};
-        attachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-        attachmentInfo.pNext = nullptr;
-        attachmentInfo.imageView = depthView;
-        attachmentInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        attachmentInfo.loadOp = ConvertLoadOp(loadStoreOperations.loadOperation);
-        attachmentInfo.storeOp = ConvertStoreOp(loadStoreOperations.storeOperation);
-        attachmentInfo.clearValue.depthStencil = ConvertDepthStencilValue(loadStoreOperations.clearValue.depthStencil);
-        return attachmentInfo;
-    }
-
     inline static VkRenderingAttachmentInfo CreateRenderingAttachment(VkImageView attachmentView, ImageUsage usage, LoadStoreOperations loadStoreOperations)
     {
         switch (usage)
@@ -373,7 +359,7 @@ namespace RHI::Vulkan
         case ImageUsage::Color:        return CreateColorAttachment(attachmentView, loadStoreOperations);
         case ImageUsage::Depth:        return CreateDepthAttachment(attachmentView, loadStoreOperations);
         case ImageUsage::Stencil:      return CreateStencilAttachment(attachmentView, loadStoreOperations);
-        case ImageUsage::DepthStencil: return CreateDepthStencilAttachment(attachmentView, loadStoreOperations);
+        case ImageUsage::DepthStencil: TL_UNREACHABLE(); return {};
         default:                       TL_UNREACHABLE(); return {};
         };
     }
