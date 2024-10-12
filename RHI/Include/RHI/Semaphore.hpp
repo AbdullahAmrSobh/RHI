@@ -1,7 +1,7 @@
 #pragma once
 
 #include "RHI/Handle.hpp"
-#include "RHI/Resources.hpp"
+#include "RHI/PipelineAccess.hpp"
 
 namespace RHI
 {

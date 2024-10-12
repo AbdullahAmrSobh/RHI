@@ -2,7 +2,7 @@
 
 #include "RHI/Handle.hpp"
 
-#include "RHI/Resources.hpp"
+#include "RHI/PipelineAccess.hpp"
 #include "RHI/Fence.hpp"
 #include "RHI/RGResources.hpp"
 #include "RHI/RGPass.hpp"

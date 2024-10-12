@@ -15,7 +15,7 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Pipeline.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Queue.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RenderGraph.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Resources.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/PipelineAccess.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Result.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RGPass.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RGResources.hpp

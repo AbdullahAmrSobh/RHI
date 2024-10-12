@@ -3,7 +3,7 @@
 #include <RHI/CommandList.hpp>
 #include <RHI/Device.hpp>
 #include <RHI/Format.hpp>
-#include <RHI/Resources.hpp>
+#include <RHI/PipelineAccess.hpp>
 #include <RHI/Swapchain.hpp>
 #include <RHI/RenderGraph.hpp>
 #include <RHI/Buffer.hpp>

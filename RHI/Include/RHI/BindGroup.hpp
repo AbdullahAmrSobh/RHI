@@ -2,7 +2,7 @@
 
 #include "RHI/Handle.hpp"
 #include "RHI/Pipeline.hpp"
-#include "RHI/Resources.hpp"
+#include "RHI/PipelineAccess.hpp"
 #include "RHI/Image.hpp"
 #include "RHI/Sampler.hpp"
 #include "RHI/Buffer.hpp"
