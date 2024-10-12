@@ -19,6 +19,18 @@
 
 using namespace Examples;
 
+namespace Constants
+{
+    constexpr glm::vec3 Forward = { 0.0f, 0.0f, 1.0f };
+    constexpr glm::vec3 PositiveZ = { 0.0f, 0.0f, 1.0f };
+
+    constexpr glm::vec3 Right = { 1.0f, 0.0f, 0.0f };
+    constexpr glm::vec3 PositiveX = { 1.0f, 0.0f, 0.0f };
+
+    constexpr glm::vec3 Up = { 0.0f, 1.0f, 0.0f };
+    constexpr glm::vec3 PositiveY = { 0.0f, 1.0f, 0.0f };
+} // namespace Constants
+
 class Camera
 {
 private:
@@ -64,9 +76,9 @@ private:
     inline void UpdateViewMatrix()
     {
         glm::mat4 rotM = glm::mat4(1.0f);
-        rotM = glm::rotate(rotM, glm::radians(m_rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-        rotM = glm::rotate(rotM, glm::radians(m_rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-        rotM = glm::rotate(rotM, glm::radians(m_rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+        rotM = glm::rotate(rotM, glm::radians(m_rotation.x), Constants::PositiveX);
+        rotM = glm::rotate(rotM, glm::radians(m_rotation.y), Constants::PositiveY);
+        rotM = glm::rotate(rotM, glm::radians(m_rotation.z), Constants::PositiveZ);
 
         glm::mat4 transM = glm::translate(glm::mat4(1.0f), m_position);
 
@@ -93,8 +105,6 @@ public:
             { 0.0f, 0.0f,  -1.0f, 0.0f},
             { 0.0f, 0.0f,  0.0f,  1.0f},
         };
-
-        // auto correction_matrix = glm::identity<glm::mat4>();
 
         return m_matrices.viewToClipMat * correction_matrix;
     }
@@ -147,9 +157,10 @@ public:
         UpdateViewMatrix();
     }
 
-    inline void Rotate(glm::vec3 delta)
+    inline void Rotate(glm::vec2 delta)
     {
-        this->m_rotation += delta;
+        this->m_rotation.y += delta.x * m_rotationSpeed;
+        this->m_rotation.x += delta.y * m_rotationSpeed;
         UpdateViewMatrix();
     }
 
@@ -181,11 +192,14 @@ public:
         {
             if (Moving())
             {
-                // NOTE: I might need to flip x and y calcaultions here
                 glm::vec3 camFront;
+
+                // Left-handed, Y-up coordinate system with proper angle assignments
                 camFront.x = -cos(glm::radians(m_rotation.x)) * sin(glm::radians(m_rotation.y));
                 camFront.y = sin(glm::radians(m_rotation.x));
                 camFront.z = cos(glm::radians(m_rotation.x)) * cos(glm::radians(m_rotation.y));
+                camFront = glm::normalize(camFront);
+
                 camFront = glm::normalize(camFront);
 
                 float moveSpeed = float(deltaTime.Miliseconds() * m_movementSpeed);
@@ -195,9 +209,9 @@ public:
                 if (m_keys.down)
                     m_position -= camFront * moveSpeed;
                 if (m_keys.left)
-                    m_position -= glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f))) * moveSpeed;
+                    m_position -= glm::normalize(glm::cross(camFront, Constants::Up)) * moveSpeed;
                 if (m_keys.right)
-                    m_position += glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f))) * moveSpeed;
+                    m_position += glm::normalize(glm::cross(camFront, Constants::Up)) * moveSpeed;
             }
         }
         UpdateViewMatrix();
@@ -228,7 +242,7 @@ inline void Camera::ProcessEvent(Event& e)
             }
             else
             {
-                // unreachable
+                TL_UNREACHABLE();
             }
             break;
         }
@@ -262,10 +276,12 @@ inline void Camera::ProcessEvent(Event& e)
         {
             [[maybe_unused]] auto& event = (MouseMovedEvent&)e;
 
+            // Window returns cursor relative to top-left
             if (m_window->IsMouseButtonPressed(MouseCode::ButtonLeft))
             {
                 auto [x, y] = m_window->GetCursrorDeltaPosition();
-                Rotate({ x, y, 0 });
+                y *= -1;
+                Rotate({ x, y });
             }
 
             break;
