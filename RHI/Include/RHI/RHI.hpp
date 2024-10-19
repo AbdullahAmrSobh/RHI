@@ -14,4 +14,5 @@
 #include <RHI/Shader.hpp>
 #include <RHI/Queue.hpp>
 #include <RHI/Result.hpp>
+#include <RHI/BindGroup.hpp>
 #include <RHI/Handle.hpp>
