@@ -35,11 +35,6 @@ namespace RHI
         return TL::CreatePtr<RenderGraph>(this);
     }
 
-    void Device::CompileRenderGraph([[maybe_unused]] RenderGraph& renderGraph)
-    {
-        ZoneScoped;
-    }
-
     TL::Ptr<Swapchain> Device::CreateSwapchain(const SwapchainCreateInfo& createInfo)
     {
         ZoneScoped;

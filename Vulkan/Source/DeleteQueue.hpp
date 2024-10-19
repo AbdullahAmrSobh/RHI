@@ -4,8 +4,7 @@
 
 #include <TL/Containers.hpp>
 
-#include <vulkan/vulkan.h>
-#include <vk_mem_alloc.h>
+#include "Common.hpp"
 
 namespace RHI::Vulkan
 {

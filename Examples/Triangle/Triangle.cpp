@@ -57,8 +57,7 @@ public:
 
     PerFrame& AdvanceFrame()
     {
-        m_frameIndex += 1;
-        m_frameIndex %= 2;
+        m_frameIndex = (m_frameIndex + 1) % 2;
         return m_perFrameData[m_frameIndex];
     }
 
@@ -272,7 +271,6 @@ public:
         viewInfo.swizzle.a = RHI::ComponentSwizzle::Identity;
         m_renderGraph->PassUseImage(m_mainPass, m_colorAttachment, viewInfo, RHI::ImageUsage::Color, RHI::PipelineStage::ColorAttachmentOutput, RHI::Access::None);
         m_renderGraph->PassResize(m_mainPass, { width, height });
-        m_device->CompileRenderGraph(*m_renderGraph);
     }
 
     void ShutdownRenderGraph()

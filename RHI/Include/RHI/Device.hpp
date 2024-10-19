@@ -78,8 +78,6 @@ namespace RHI
 
         TL_NODISCARD TL::Ptr<RenderGraph>     CreateRenderGraph();
 
-        void                                  CompileRenderGraph(RenderGraph& renderGraph);
-
         TL_NODISCARD TL::Ptr<Swapchain>       CreateSwapchain(const SwapchainCreateInfo& createInfo);
 
         TL_NODISCARD TL::Ptr<ShaderModule>    CreateShaderModule(TL::Span<const uint32_t> shaderBlob);
