@@ -83,7 +83,7 @@ namespace RHI::Vulkan
         return stageFlags;
     }
 
-    inline static VkAccessFlags2 GetAccessFlagsForPassAttachment(const ImagePassAttachment& imageAttachment)
+    inline static VkAccessFlags2 GetAccessFlagsForPassAttachment(const RGImagePassAccess& imageAttachment)
     {
         switch (imageAttachment.usage)
         {
@@ -197,7 +197,7 @@ namespace RHI::Vulkan
         };
     }
 
-    inline static VkImageLayout GetImageAttachmentLayout(const ImagePassAttachment& imageAttachment)
+    inline static VkImageLayout GetImageAttachmentLayout(const RGImagePassAccess& imageAttachment)
     {
         auto imageAspect = imageAttachment.viewInfo.subresources.imageAspects;
         switch (imageAttachment.usage)
@@ -252,7 +252,7 @@ namespace RHI::Vulkan
         }
     }
 
-    inline static ImageStageAccess GetImageStageAccess(const ImagePassAttachment& imageAttachment)
+    inline static ImageStageAccess GetImageStageAccess(const RGImagePassAccess& imageAttachment)
     {
         return {
             .layout = GetImageAttachmentLayout(imageAttachment),

@@ -115,7 +115,7 @@ namespace RHI::Vulkan
         {
             auto& node = pass->m_imageAttachments[i];
             node->loadStoreOperation = beginInfo.loadStoreOperations[i];
-            auto attachment = renderGraph->m_imageAttachmentPool.Get(node->attachment);
+            auto attachment = renderGraph->m_rgImagesPool.Get(node->attachment);
             auto subresources = ConvertSubresourceRange(node->viewInfo.subresources);
             auto imageHandle = renderGraph->GetImage(node->attachment);
             auto image = m_device->m_imageOwner.Get(imageHandle);

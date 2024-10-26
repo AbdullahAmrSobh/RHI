@@ -47,7 +47,7 @@ public:
 
     RHI::RenderGraph* m_renderGraph;
     RHI::Handle<RHI::Pass> m_mainPass;
-    RHI::Handle<RHI::ImageAttachment> m_colorAttachment;
+    RHI::Handle<RHI::RGImage> m_colorAttachment;
 
     RHI::Handle<RHI::Buffer> m_vertexBuffer;
     RHI::Handle<RHI::Buffer> m_indexBuffer;

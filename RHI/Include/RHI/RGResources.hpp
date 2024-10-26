@@ -14,6 +14,9 @@
 
 namespace RHI
 {
+    struct RGImage;
+    struct RGBuffer;
+
     class Swapchain;
     class Pass;
 
@@ -55,44 +58,44 @@ namespace RHI
         Format          format;
     };
 
-    struct ImagePassAttachment
+    struct RGImagePassAccess
     {
-        Handle<Pass>                   pass;
-        Handle<struct ImageAttachment> attachment;
-        ImageUsage                     usage;
-        TL::Flags<Access>              pipelineAccess;
-        TL::Flags<PipelineStage>       pipelineStages;
-        ImageViewInfo                  viewInfo;
-        ImagePassAttachment*           next;
-        ImagePassAttachment*           prev;
-        LoadStoreOperations            loadStoreOperation;
+        Handle<Pass>             pass;
+        Handle<RGImage>          image;
+        ImageUsage               usage;
+        TL::Flags<Access>        pipelineAccess;
+        TL::Flags<PipelineStage> pipelineStages;
+        ImageViewInfo            viewInfo;
+        RGImagePassAccess*       next;
+        RGImagePassAccess*       prev;
+        LoadStoreOperations      loadStoreOperation;
     };
 
-    struct BufferPassAttachment
+    struct RGBufferPassAccess
     {
-        Handle<Pass>                    pass;
-        Handle<struct BufferAttachment> attachment;
-        BufferUsage                     usage;
-        TL::Flags<Access>               pipelineAccess;
-        TL::Flags<PipelineStage>        pipelineStages;
-        BufferViewInfo                  viewInfo;
-        BufferPassAttachment*           next;
-        BufferPassAttachment*           prev;
+        Handle<Pass>             pass;
+        Handle<RGBuffer>         buffer;
+        BufferUsage              usage;
+        TL::Flags<Access>        pipelineAccess;
+        TL::Flags<PipelineStage> pipelineStages;
+        BufferViewInfo           viewInfo;
+        RGBufferPassAccess*      next;
+        RGBufferPassAccess*      prev;
     };
 
-    struct ImageAttachment
+    struct RGImage
     {
-        TL::String                                           name;
-        Handle<Image>                                        resource;
-        Swapchain*                                           swapchain;
-        ImageCreateInfo                                      info;
-        ImagePassAttachment*                                 first;
-        ImagePassAttachment*                                 last;
-        bool                                                 isTransient;
+        TL::String                                         name;
+        Handle<Image>                                      resource;
+        Swapchain*                                         swapchain;
+        ImageCreateInfo                                    info;
+        RGImagePassAccess*                                 first;
+        RGImagePassAccess*                                 last;
+        bool                                               isTransient;
 
-        TL::UnorderedMap<Handle<Pass>, ImagePassAttachment*> list;
+        TL::UnorderedMap<Handle<Pass>, RGImagePassAccess*> list;
 
-        ImagePassAttachment*                                 Find(Handle<Pass> pass) const
+        RGImagePassAccess*                                 Find(Handle<Pass> pass) const
         {
             if (auto it = list.find(pass); it != list.end())
             {
@@ -103,17 +106,17 @@ namespace RHI
         }
     };
 
-    struct BufferAttachment
+    struct RGBuffer
     {
-        TL::String                                            name;
-        Handle<Buffer>                                        resource;
-        BufferCreateInfo                                      info;
-        BufferPassAttachment*                                 first;
-        BufferPassAttachment*                                 last;
+        TL::String                                          name;
+        Handle<Buffer>                                      resource;
+        BufferCreateInfo                                    info;
+        RGBufferPassAccess*                                 first;
+        RGBufferPassAccess*                                 last;
 
-        TL::UnorderedMap<Handle<Pass>, BufferPassAttachment*> list;
+        TL::UnorderedMap<Handle<Pass>, RGBufferPassAccess*> list;
 
-        BufferPassAttachment*                                 Find(Handle<Pass> pass) const
+        RGBufferPassAccess*                                 Find(Handle<Pass> pass) const
         {
             if (auto it = list.find(pass); it != list.end())
             {

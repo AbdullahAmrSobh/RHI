@@ -18,8 +18,8 @@ namespace RHI
     {
         Cleanup();
         m_passPool.Clear();
-        m_imageAttachmentPool.Clear();
-        m_bufferAttachmentPool.Clear();
+        m_rgImagesPool.Clear();
+        m_rgBufferPool.Clear();
     }
 
     Handle<Pass> RenderGraph::CreatePass(const PassCreateInfo& createInfo)
@@ -27,7 +27,7 @@ namespace RHI
         Pass pass{};
         pass.m_name = createInfo.name;
         auto handle = m_passPool.Emplace(std::move(pass));
-        return m_passes.emplace_back(handle);
+        return m_passList.emplace_back(handle);
     }
 
     void RenderGraph::PassResize(Handle<Pass> pass, ImageSize2D size)
@@ -35,66 +35,66 @@ namespace RHI
         m_passPool.Get(pass)->Resize(size);
     }
 
-    ImageSize2D RenderGraph::GetPassSize(Handle<Pass> pass) const
+    ImageSize2D RenderGraph::PassGetSize(Handle<Pass> pass) const
     {
         return m_passPool.Get(pass)->GetSize();
     }
 
-    Handle<ImageAttachment> RenderGraph::ImportSwapchain(const char* name, Swapchain& swapchain)
+    Handle<RGImage> RenderGraph::ImportSwapchain(const char* name, Swapchain& swapchain)
     {
-        ImageAttachment attachment{};
+        RGImage attachment{};
         attachment.name = name;
         attachment.swapchain = &swapchain;
-        auto handle = m_imageAttachmentPool.Emplace(std::move(attachment));
+        auto handle = m_rgImagesPool.Emplace(std::move(attachment));
         return handle;
     }
 
-    Handle<ImageAttachment> RenderGraph::ImportImage(const char* name, Handle<Image> image)
+    Handle<RGImage> RenderGraph::ImportImage(const char* name, Handle<Image> image)
     {
-        ImageAttachment attachment{};
+        RGImage attachment{};
         attachment.name = name;
         attachment.resource = image;
         attachment.isTransient = false;
-        auto handle = m_imageAttachmentPool.Emplace(std::move(attachment));
+        auto handle = m_rgImagesPool.Emplace(std::move(attachment));
         return handle;
     }
 
-    Handle<BufferAttachment> RenderGraph::ImportBuffer(const char* name, Handle<Buffer> buffer)
+    Handle<RGBuffer> RenderGraph::ImportBuffer(const char* name, Handle<Buffer> buffer)
     {
-        BufferAttachment attachment{};
+        RGBuffer attachment{};
         attachment.name = name;
         attachment.resource = buffer;
-        auto handle = m_bufferAttachmentPool.Emplace(std::move(attachment));
+        auto handle = m_rgBufferPool.Emplace(std::move(attachment));
         return handle;
     }
 
-    Handle<ImageAttachment> RenderGraph::CreateImage(const ImageCreateInfo& createInfo)
+    Handle<RGImage> RenderGraph::CreateImage(const ImageCreateInfo& createInfo)
     {
-        ImageAttachment attachment{};
+        RGImage attachment{};
         attachment.name = createInfo.name;
         attachment.info = createInfo;
         attachment.isTransient = true;
-        auto handle = m_imageAttachmentPool.Emplace(std::move(attachment));
-        m_imageAttachments.push_back(handle);
-        m_transientImageAttachments.push_back(handle);
+        auto handle = m_rgImagesPool.Emplace(std::move(attachment));
+        m_images.push_back(handle);
+        m_transientImages.push_back(handle);
         return handle;
     }
 
-    Handle<BufferAttachment> RenderGraph::CreateBuffer(const BufferCreateInfo& createInfo)
+    Handle<RGBuffer> RenderGraph::CreateBuffer(const BufferCreateInfo& createInfo)
     {
-        BufferAttachment attachment{};
+        RGBuffer attachment{};
         attachment.name = createInfo.name;
         attachment.info = createInfo;
-        auto handle = m_bufferAttachmentPool.Emplace(std::move(attachment));
-        m_bufferAttachments.push_back(handle);
-        m_transientBufferAttachments.push_back(handle);
+        auto handle = m_rgBufferPool.Emplace(std::move(attachment));
+        m_buffers.push_back(handle);
+        m_transientBuffers.push_back(handle);
         return handle;
     }
 
-    void RenderGraph::PassUseImage(Handle<Pass> _pass, Handle<ImageAttachment> _attachment, const ImageViewInfo& viewInfo, ImageUsage usage, TL::Flags<PipelineStage> stages, Access access)
+    void RenderGraph::PassUseImage(Handle<Pass> _pass, Handle<RGImage> _attachment, const ImageViewInfo& viewInfo, ImageUsage usage, TL::Flags<PipelineStage> stages, Access access)
     {
         auto pass = m_passPool.Get(_pass);
-        auto attachment = m_imageAttachmentPool.Get(_attachment);
+        auto attachment = m_rgImagesPool.Get(_attachment);
 
         ImageViewCreateInfo createInfo{};
         createInfo.image = NullHandle;
@@ -102,10 +102,10 @@ namespace RHI
         createInfo.components = viewInfo.swizzle;
         createInfo.subresource = viewInfo.subresources;
 
-        auto it = attachment->list.emplace(_pass, m_arena.Allocate<ImagePassAttachment>());
+        auto it = attachment->list.emplace(_pass, m_arena.Allocate<RGImagePassAccess>());
         auto passAttachment = it.first->second;
         passAttachment->pass = _pass;
-        passAttachment->attachment = _attachment;
+        passAttachment->image = _attachment;
         passAttachment->usage = usage;
         passAttachment->pipelineAccess = access;
         passAttachment->pipelineStages = stages;
@@ -135,20 +135,20 @@ namespace RHI
         }
     }
 
-    void RenderGraph::PassUseBuffer(Handle<Pass> _pass, Handle<BufferAttachment> _attachment, const BufferViewInfo& viewInfo, BufferUsage usage, TL::Flags<PipelineStage> stages, Access access)
+    void RenderGraph::PassUseBuffer(Handle<Pass> _pass, Handle<RGBuffer> _attachment, const BufferViewInfo& viewInfo, BufferUsage usage, TL::Flags<PipelineStage> stages, Access access)
     {
         auto pass = m_passPool.Get(_pass);
-        auto attachment = m_bufferAttachmentPool.Get(_attachment);
+        auto attachment = m_rgBufferPool.Get(_attachment);
 
         BufferViewCreateInfo createInfo{};
         createInfo.buffer = NullHandle;
         createInfo.subregion = viewInfo.subregion;
         createInfo.format = viewInfo.format;
 
-        attachment->list.emplace(_pass, m_arena.Allocate<BufferPassAttachment>());
+        attachment->list.emplace(_pass, m_arena.Allocate<RGBufferPassAccess>());
         auto passAttachment = attachment->list[_pass];
         passAttachment->pass = _pass;
-        passAttachment->attachment = _attachment;
+        passAttachment->buffer = _attachment;
         passAttachment->usage = usage;
         passAttachment->pipelineAccess = access;
         passAttachment->pipelineStages = stages;
@@ -169,9 +169,9 @@ namespace RHI
         pass->m_bufferAttachments.push_back(passAttachment);
     }
 
-    Handle<Image> RenderGraph::GetImage(Handle<ImageAttachment> _attachment) const
+    Handle<Image> RenderGraph::GetImage(Handle<RGImage> _attachment) const
     {
-        auto attachment = m_imageAttachmentPool.Get(_attachment);
+        auto attachment = m_rgImagesPool.Get(_attachment);
         if (attachment->swapchain)
             return attachment->swapchain->GetImage();
         else if (attachment->resource)
@@ -200,9 +200,9 @@ namespace RHI
         return m_imagesLRU[key] = m_device->CreateImage(info).GetValue();
     }
 
-    Handle<Buffer> RenderGraph::GetBuffer(Handle<BufferAttachment> _attachment) const
+    Handle<Buffer> RenderGraph::GetBuffer(Handle<RGBuffer> _attachment) const
     {
-        auto attachment = m_bufferAttachmentPool.Get(_attachment);
+        auto attachment = m_rgBufferPool.Get(_attachment);
         if (attachment->resource)
         {
             return attachment->resource;
@@ -218,10 +218,10 @@ namespace RHI
         return m_buffersLRU[key] = m_device->CreateBuffer(info).GetValue();
     }
 
-    Handle<ImageView> RenderGraph::PassGetImageView(Handle<Pass> _pass, Handle<ImageAttachment> _attachment) const
+    Handle<ImageView> RenderGraph::PassGetImageView(Handle<Pass> _pass, Handle<RGImage> _attachment) const
     {
         auto image = GetImage(_attachment);
-        auto attachment = m_imageAttachmentPool.Get(_attachment);
+        auto attachment = m_rgImagesPool.Get(_attachment);
         auto viewInfo = attachment->Find(_pass)->viewInfo;
 
         ImageViewCreateInfo createInfo{};
@@ -239,10 +239,10 @@ namespace RHI
         return m_imageViewsLRU[key] = m_device->CreateImageView(createInfo);
     }
 
-    Handle<BufferView> RenderGraph::PassGetBufferView(Handle<Pass> _pass, Handle<BufferAttachment> _attachment) const
+    Handle<BufferView> RenderGraph::PassGetBufferView(Handle<Pass> _pass, Handle<RGBuffer> _attachment) const
     {
         auto buffer = GetBuffer(_attachment);
-        auto attachment = m_bufferAttachmentPool.Get(_attachment);
+        auto attachment = m_rgBufferPool.Get(_attachment);
         auto viewInfo = attachment->Find(_pass)->viewInfo;
 
         BufferViewCreateInfo createInfo{};
@@ -284,13 +284,13 @@ namespace RHI
 
     void RenderGraph::CleanupTransientAttachments()
     {
-        for (auto attachmentHandle : m_transientImageAttachments)
+        for (auto attachmentHandle : m_transientImages)
         {
             auto resource = GetImage(attachmentHandle);
             m_device->DestroyImage(resource);
         }
 
-        for (auto attachmentHandle : m_transientBufferAttachments)
+        for (auto attachmentHandle : m_transientBuffers)
         {
             auto resource = GetBuffer(attachmentHandle);
             m_device->DestroyBuffer(resource);

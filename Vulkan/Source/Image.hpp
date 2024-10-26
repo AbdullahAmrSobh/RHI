@@ -11,7 +11,6 @@ namespace RHI::Vulkan
 {
     class IDevice;
 
-
     VkImageSubresource ConvertSubresource(const ImageSubresource& subresource);
 
     VkImageUsageFlagBits ConvertImageUsage(ImageUsage imageUsage);

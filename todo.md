@@ -18,11 +18,11 @@ RHI:
     - Mesh Pipeline
     - Ray Tracing Pipeline
     - Querys
-
     - Add Semaphore as a type
     - Add Barrier and Split Barriers as CommandList Commands
     - Add BeginRenderPass and EndRenderPass commands
     - Add SubmitInfo struct
+
 
 RPI:
     - ImGui
@@ -70,3 +70,8 @@ Misc:
 
 Editor:
     Properties Tags (tags in code that automtaically create GUI)
+
+
+TODO:
+    - Add staging buffer
+    - Refactor render graph

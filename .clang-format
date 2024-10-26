@@ -10,6 +10,8 @@ AlignConsecutiveDeclarations:
   Enabled: false
   AcrossEmptyLines: false
   AcrossComments: false
+# AlignFunctionDeclarations:
+#   Enabled: true
 AlignEscapedNewlines: Right
 AlignOperands: true
 AlignTrailingComments: true
