@@ -115,9 +115,9 @@ namespace RHI::Vulkan
         {
             auto& node = pass->m_imageAttachments[i];
             node->loadStoreOperation = beginInfo.loadStoreOperations[i];
-            auto attachment = renderGraph->m_rgImagesPool.Get(node->attachment);
+            auto attachment = renderGraph->m_rgImagesPool.Get(node->image);
             auto subresources = ConvertSubresourceRange(node->viewInfo.subresources);
-            auto imageHandle = renderGraph->GetImage(node->attachment);
+            auto imageHandle = renderGraph->GetImage(node->image);
             auto image = m_device->m_imageOwner.Get(imageHandle);
             auto swapchain = (ISwapchain*)attachment->swapchain;
 
@@ -163,7 +163,7 @@ namespace RHI::Vulkan
         {
             for (auto colorAttachment : pass->m_colorAttachments)
             {
-                auto imageViewHandle = renderGraph->PassGetImageView(colorAttachment->pass, colorAttachment->attachment);
+                auto imageViewHandle = renderGraph->PassGetImageView(colorAttachment->pass, colorAttachment->image);
                 auto imageView = m_device->m_imageViewOwner.Get(imageViewHandle);
                 colorAttachments.push_back(
                     CreateColorAttachment(imageView->handle, colorAttachment->loadStoreOperation));
@@ -171,7 +171,7 @@ namespace RHI::Vulkan
 
             if (auto depthStencilAttachment = pass->m_depthStencilAttachment)
             {
-                auto imageViewHandle = renderGraph->PassGetImageView(depthStencilAttachment->pass, depthStencilAttachment->attachment);
+                auto imageViewHandle = renderGraph->PassGetImageView(depthStencilAttachment->pass, depthStencilAttachment->image);
                 auto imageView = m_device->m_imageViewOwner.Get(imageViewHandle);
 
                 if (depthStencilAttachment->usage & ImageUsage::Depth)
