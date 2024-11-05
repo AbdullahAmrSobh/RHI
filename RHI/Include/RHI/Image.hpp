@@ -79,8 +79,8 @@ namespace RHI
     /// @brief 2D offset for images.
     struct ImageOffset2D
     {
-        int32_t     x; ///< X coordinate offset.
-        int32_t     y; ///< Y coordinate offset.
+        int32_t     x = 0; ///< X coordinate offset.
+        int32_t     y = 0; ///< Y coordinate offset.
 
         inline bool operator==(const ImageOffset2D& other) const { return x == other.x && y == other.y; }
     };
@@ -88,9 +88,9 @@ namespace RHI
     /// @brief 3D offset for images.
     struct ImageOffset3D
     {
-        int32_t     x; ///< X coordinate offset.
-        int32_t     y; ///< Y coordinate offset.
-        int32_t     z; ///< Z coordinate offset.
+        int32_t     x = 0; ///< X coordinate offset.
+        int32_t     y = 0; ///< Y coordinate offset.
+        int32_t     z = 0; ///< Z coordinate offset.
 
         inline bool operator==(const ImageOffset3D& other) const { return x == other.x && y == other.y && z == other.z; }
     };
@@ -98,8 +98,8 @@ namespace RHI
     /// @brief 2D size for images.
     struct ImageSize2D
     {
-        uint32_t    width;  ///< Width of the image.
-        uint32_t    height; ///< Height of the image.
+        uint32_t    width  = 1; ///< Width of the image.
+        uint32_t    height = 1; ///< Height of the image.
 
         inline bool operator==(const ImageSize2D& other) const { return width == other.width && height == other.height; }
     };
@@ -107,9 +107,9 @@ namespace RHI
     /// @brief 3D size for images.
     struct ImageSize3D
     {
-        uint32_t    width;  ///< Width of the image.
-        uint32_t    height; ///< Height of the image.
-        uint32_t    depth;  ///< Depth of the image.
+        uint32_t    width  = 1; ///< Width of the image.
+        uint32_t    height = 1; ///< Height of the image.
+        uint32_t    depth  = 1; ///< Depth of the image.
 
         inline bool operator==(const ImageSize3D& other) const { return width == other.width && height == other.height && depth == other.depth; }
     };
@@ -117,10 +117,10 @@ namespace RHI
     /// @brief Mapping of color components.
     struct ComponentMapping
     {
-        ComponentSwizzle r; ///< Red component swizzle.
-        ComponentSwizzle g; ///< Green component swizzle.
-        ComponentSwizzle b; ///< Blue component swizzle.
-        ComponentSwizzle a; ///< Alpha component swizzle.
+        ComponentSwizzle r = ComponentSwizzle::Identity; ///< Red component swizzle.
+        ComponentSwizzle g = ComponentSwizzle::Identity; ///< Green component swizzle.
+        ComponentSwizzle b = ComponentSwizzle::Identity; ///< Blue component swizzle.
+        ComponentSwizzle a = ComponentSwizzle::Identity; ///< Alpha component swizzle.
 
         inline bool      operator==(const ComponentMapping& other) const { return r == other.r && g == other.g && b == other.b && a == other.a; }
     };
@@ -128,9 +128,9 @@ namespace RHI
     /// @brief Describes subresources of an image.
     struct ImageSubresource
     {
-        TL::Flags<ImageAspect> imageAspects; ///< Image aspects to access.
-        uint32_t               mipLevel;     ///< Mipmap level.
-        uint32_t               arrayLayer;   ///< Array layer.
+        TL::Flags<ImageAspect> imageAspects = ImageAspect::Color; ///< Image aspects to access.
+        uint32_t               mipLevel     = 0;                  ///< Mipmap level.
+        uint32_t               arrayLayer   = 0;                  ///< Array layer.
 
         inline bool            operator==(const ImageSubresource& other) const { return imageAspects == other.imageAspects && mipLevel == other.mipLevel && arrayLayer == other.arrayLayer; }
     };
@@ -138,11 +138,11 @@ namespace RHI
     /// @brief Describes a range of subresources in an image.
     struct ImageSubresourceRange
     {
-        TL::Flags<ImageAspect> imageAspects;  ///< Image aspects to access.
-        uint32_t               mipBase;       ///< Base mip level.
-        uint32_t               mipLevelCount; ///< Number of mip levels.
-        uint32_t               arrayBase;     ///< Base array layer.
-        uint32_t               arrayCount;    ///< Number of array layers.
+        TL::Flags<ImageAspect> imageAspects  = ImageAspect::Color; ///< Image aspects to access.
+        uint32_t               mipBase       = 0;                  ///< Base mip level.
+        uint32_t               mipLevelCount = 1;                  ///< Number of mip levels.
+        uint32_t               arrayBase     = 0;                  ///< Base array layer.
+        uint32_t               arrayCount    = 1;                  ///< Number of array layers.
 
         inline bool            operator==(const ImageSubresourceRange& other) const { return imageAspects == other.imageAspects && mipBase == other.mipBase && mipLevelCount == other.mipLevelCount && arrayBase == other.arrayBase && arrayCount == other.arrayCount; }
     };
@@ -150,24 +150,25 @@ namespace RHI
     /// @brief Information needed to create an image.
     struct ImageCreateInfo
     {
-        const char*           name;        ///< Name of the image.
-        TL::Flags<ImageUsage> usageFlags;  ///< Usage flags for the image.
-        ImageType             type;        ///< Type of the image.
-        ImageSize3D           size;        ///< Size of the image.
-        Format                format;      ///< Format of the image.
-        SampleCount           sampleCount; ///< Number of samples per pixel.
-        uint32_t              mipLevels;   ///< Number of mipmap levels.
-        uint32_t              arrayCount;  ///< Number of array layers.
+        const char*           name        = nullptr;               ///< Name of the image.
+        TL::Flags<ImageUsage> usageFlags  = ImageUsage::None;      ///< Usage flags for the image.
+        ImageType             type        = ImageType::None;       ///< Type of the image.
+        ImageSize3D           size        = {};                    ///< Size of the image.
+        Format                format      = Format::Unknown;       ///< Format of the image.
+        SampleCount           sampleCount = SampleCount::Samples1; ///< Number of samples per pixel.
+        uint32_t              mipLevels   = 1;                     ///< Number of mipmap levels.
+        uint32_t              arrayCount  = 1;                     ///< Number of array layers.
     };
 
     /// @brief Information needed to create an image view.
     struct ImageViewCreateInfo
     {
-        const char*           name;        ///< Name of the image view.
-        Handle<Image>         image;       ///< Handle to the image.
-        ImageViewType         viewType;    ///< Type of the image view.
-        ComponentMapping      components;  ///< Component mapping.
-        ImageSubresourceRange subresource; ///< Subresource range.
+        const char*           name        = nullptr;             ///< Name of the image view.
+        Handle<Image>         image       = NullHandle;          ///< Handle to the image.
+        Format                format      = Format::Unknown;     ///< Format used to override original image format
+        ImageViewType         viewType    = ImageViewType::None; ///< Type of the image view.
+        ComponentMapping      components  = {};                  ///< Component mapping.
+        ImageSubresourceRange subresource = {};                  ///< Subresource range.
 
         inline bool           operator==(const ImageViewCreateInfo& other) const { return components == other.components && viewType == other.viewType && subresource == other.subresource; }
     };

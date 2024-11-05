@@ -29,12 +29,9 @@ namespace RHI::Vulkan
     VkShaderStageFlags ConvertShaderStage(TL::Flags<ShaderStage> shaderStageFlags)
     {
         VkShaderStageFlags result = 0;
-        if (shaderStageFlags & ShaderStage::Vertex)
-            result |= VK_SHADER_STAGE_VERTEX_BIT;
-        if (shaderStageFlags & ShaderStage::Pixel)
-            result |= VK_SHADER_STAGE_FRAGMENT_BIT;
-        if (shaderStageFlags & ShaderStage::Compute)
-            result |= VK_SHADER_STAGE_COMPUTE_BIT;
+        if (shaderStageFlags & ShaderStage::Vertex) result |= VK_SHADER_STAGE_VERTEX_BIT;
+        if (shaderStageFlags & ShaderStage::Pixel) result |= VK_SHADER_STAGE_FRAGMENT_BIT;
+        if (shaderStageFlags & ShaderStage::Compute) result |= VK_SHADER_STAGE_COMPUTE_BIT;
         return result;
     }
 
@@ -216,43 +213,45 @@ namespace RHI::Vulkan
             stagesCreateInfos[1] = pixelStageCI;
         }
 
-        uint32_t vertexInputBindingDescriptionsCount = 0;
-        VkVertexInputBindingDescription vertexInputBindingDescriptions[c_MaxPipelineVertexBindings] = {};
-        for (auto bindingDesc : createInfo.inputAssemblerState.bindings)
+        uint32_t vertexBindingsCount = 0;
+        uint32_t vertexAttributesCount = 0;
+
+        VkVertexInputBindingDescription vertexBindings[c_MaxPipelineVertexBindings] = {};
+        VkVertexInputAttributeDescription vertexAttributes[c_MaxPipelineVertexAttributes] = {}; // Adjusted size for vertexAttributes
+
+        for (const auto& bindingDesc : createInfo.vertexBufferBindings)
         {
-            if (bindingDesc.stepRate == PipelineVertexInputRate::None)
-            {
-                break;
-            }
-            auto& binding = vertexInputBindingDescriptions[vertexInputBindingDescriptionsCount++];
+            // Set up vertex binding
+            auto& binding = vertexBindings[vertexBindingsCount];
             binding.binding = bindingDesc.binding;
             binding.stride = bindingDesc.stride;
-            binding.inputRate = bindingDesc.stepRate == PipelineVertexInputRate::PerVertex ? VK_VERTEX_INPUT_RATE_VERTEX : VK_VERTEX_INPUT_RATE_INSTANCE;
-        }
+            binding.inputRate =
+                bindingDesc.stepRate == PipelineVertexInputRate::PerVertex ? VK_VERTEX_INPUT_RATE_VERTEX : VK_VERTEX_INPUT_RATE_INSTANCE;
 
-        uint32_t inputAttributeDescriptionsCount = 0;
-        VkVertexInputAttributeDescription inputAttributeDescriptions[c_MaxPipelineVertexBindings] = {};
-        for (auto attributeDesc : createInfo.inputAssemblerState.attributes)
-        {
-            if (attributeDesc.format == Format::Unknown)
+            // Iterate through vertex attributes for this binding
+            for (const auto& attributeDesc : bindingDesc.attributes)
             {
-                break;
+                // Set up vertex attribute
+                auto& attribute = vertexAttributes[vertexAttributesCount];
+                attribute.location = vertexAttributesCount;
+                attribute.binding = bindingDesc.binding;
+                attribute.format = ConvertFormat(attributeDesc.format);
+                attribute.offset = attributeDesc.offset;
+
+                vertexAttributesCount++;
             }
-            auto& attribute = inputAttributeDescriptions[inputAttributeDescriptionsCount++];
-            attribute.location = attributeDesc.location;
-            attribute.binding = attributeDesc.binding;
-            attribute.format = ConvertFormat(attributeDesc.format);
-            attribute.offset = attributeDesc.offset;
+
+            vertexBindingsCount++;
         }
 
         VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{
             .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
             .pNext = nullptr,
             .flags = 0,
-            .vertexBindingDescriptionCount = vertexInputBindingDescriptionsCount,
-            .pVertexBindingDescriptions = vertexInputBindingDescriptions,
-            .vertexAttributeDescriptionCount = inputAttributeDescriptionsCount,
-            .pVertexAttributeDescriptions = inputAttributeDescriptions,
+            .vertexBindingDescriptionCount = vertexBindingsCount,
+            .pVertexBindingDescriptions = vertexBindings,
+            .vertexAttributeDescriptionCount = vertexAttributesCount,
+            .pVertexAttributeDescriptions = vertexAttributes,
         };
 
         VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo{

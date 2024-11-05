@@ -14,3 +14,6 @@ env.ps1
 .cache/
 
 Export.hpp
+
+D3D12/
+WebGPU/

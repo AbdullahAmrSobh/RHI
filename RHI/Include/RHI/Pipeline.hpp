@@ -123,21 +123,21 @@ namespace RHI
     /// @brief Information required to create a pipeline layout.
     struct PipelineLayoutCreateInfo
     {
-        const char*                             name;    ///< Debug name of the pipeline layout object.
-        TL::Span<const Handle<BindGroupLayout>> layouts; ///< List of bind group layouts.
+        const char*                             name    = nullptr; ///< Debug name of the pipeline layout object.
+        TL::Span<const Handle<BindGroupLayout>> layouts = {};      ///< List of bind group layouts.
     };
 
     /// @brief Description of color attachment blend state.
     struct ColorAttachmentBlendStateDesc
     {
-        bool                      blendEnable;  ///< Enable blending.
-        BlendEquation             colorBlendOp; ///< Color blend equation.
-        BlendFactor               srcColor;     ///< Source color blend factor.
-        BlendFactor               dstColor;     ///< Destination color blend factor.
-        BlendEquation             alphaBlendOp; ///< Alpha blend equation.
-        BlendFactor               srcAlpha;     ///< Source alpha blend factor.
-        BlendFactor               dstAlpha;     ///< Destination alpha blend factor.
-        TL::Flags<ColorWriteMask> writeMask;    ///< Color write mask.
+        bool                      blendEnable  = false;               ///< Enable blending.
+        BlendEquation             colorBlendOp = BlendEquation::Add;  ///< Color blend equation.
+        BlendFactor               srcColor     = BlendFactor::One;    ///< Source color blend factor.
+        BlendFactor               dstColor     = BlendFactor::Zero;   ///< Destination color blend factor.
+        BlendEquation             alphaBlendOp = BlendEquation::Add;  ///< Alpha blend equation.
+        BlendFactor               srcAlpha     = BlendFactor::One;    ///< Source alpha blend factor.
+        BlendFactor               dstAlpha     = BlendFactor::Zero;   ///< Destination alpha blend factor.
+        TL::Flags<ColorWriteMask> writeMask    = ColorWriteMask::All; ///< Color write mask.
 
         inline bool               operator==(const ColorAttachmentBlendStateDesc& other) const
         {
@@ -154,42 +154,34 @@ namespace RHI
     /// @brief Layout of render targets in a pipeline.
     struct PipelineRenderTargetLayout
     {
-        TL::Span<const Format> colorAttachmentsFormats; ///< Formats of color attachments.
-        Format                 depthAttachmentFormat;   ///< Format of depth attachment.
-        Format                 stencilAttachmentFormat; ///< Format of stencil attachment.
-    };
-
-    /// @brief Description of vertex binding in a pipeline.
-    struct PipelineVertexBindingDesc
-    {
-        uint32_t                binding;  ///< Binding index.
-        uint32_t                stride;   ///< Stride between vertex data.
-        PipelineVertexInputRate stepRate; ///< Input rate.
+        TL::Span<const Format> colorAttachmentsFormats = {};              ///< Formats of color attachments.
+        Format                 depthAttachmentFormat   = Format::Unknown; ///< Format of depth attachment.
+        Format                 stencilAttachmentFormat = Format::Unknown; ///< Format of stencil attachment.
     };
 
     /// @brief Description of vertex attributes in a pipeline.
     struct PipelineVertexAttributeDesc
     {
-        uint32_t location; ///< Attribute location.
-        uint32_t binding;  ///< Binding index.
-        Format   format;   ///< Format of the attribute.
-        uint32_t offset;   ///< Offset of the attribute.
+        uint32_t offset = 0;               ///< Offset of the attribute.
+        Format   format = Format::Unknown; ///< Format of the attribute.
     };
 
-    /// @brief Input assembler state description for pipelines.
-    struct PipelineInputAssemblerStateDesc
+    /// @brief Description of vertex binding in a pipeline.
+    struct PipelineVertexBindingDesc
     {
-        TL::Span<const PipelineVertexBindingDesc>   bindings;   ///< Vertex bindings.
-        TL::Span<const PipelineVertexAttributeDesc> attributes; ///< Vertex attributes.
+        uint32_t                                    binding    = 0;                                  ///< Binding index.
+        uint32_t                                    stride     = 0;                                  ///< Stride between vertex data.
+        PipelineVertexInputRate                     stepRate   = PipelineVertexInputRate::PerVertex; ///< Input rate.
+        TL::Span<const PipelineVertexAttributeDesc> attributes = {};
     };
 
     /// @brief Rasterizer state description for pipelines.
     struct PipelineRasterizerStateDesc
     {
-        PipelineRasterizerStateCullMode  cullMode;  ///< Cull mode.
-        PipelineRasterizerStateFillMode  fillMode;  ///< Fill mode.
-        PipelineRasterizerStateFrontFace frontFace; ///< Front face orientation.
-        float                            lineWidth; ///< Line width.
+        PipelineRasterizerStateCullMode  cullMode  = PipelineRasterizerStateCullMode::BackFace;          ///< Cull mode.
+        PipelineRasterizerStateFillMode  fillMode  = PipelineRasterizerStateFillMode::Triangle;          ///< Fill mode.
+        PipelineRasterizerStateFrontFace frontFace = PipelineRasterizerStateFrontFace::CounterClockwise; ///< Front face orientation.
+        float                            lineWidth = 1.0f;                                               ///< Line width.
     };
 
     /// @brief Multisample state description for pipelines.
@@ -202,43 +194,43 @@ namespace RHI
     /// @brief Depth/stencil state description for pipelines.
     struct PipelineDepthStencilStateDesc
     {
-        bool            depthTestEnable;   ///< Enable depth testing.
-        bool            depthWriteEnable;  ///< Enable depth writing.
-        CompareOperator compareOperator;   ///< Comparison operator for depth testing.
-        bool            stencilTestEnable; ///< Enable stencil testing.
+        bool            depthTestEnable   = false;                 ///< Enable depth testing.
+        bool            depthWriteEnable  = false;                 ///< Enable depth writing.
+        CompareOperator compareOperator   = CompareOperator::Less; ///< Comparison operator for depth testing.
+        bool            stencilTestEnable = false;                 ///< Enable stencil testing.
     };
 
     /// @brief Color blend state description for pipelines.
     struct PipelineColorBlendStateDesc
     {
-        TL::Span<const ColorAttachmentBlendStateDesc> blendStates;       ///< Color blend states for each attachment.
-        float                                         blendConstants[4]; ///< Blend constants.
+        TL::Span<const ColorAttachmentBlendStateDesc> blendStates       = {};                       ///< Color blend states for each attachment.
+        float                                         blendConstants[4] = {0.0f, 0.0f, 0.0f, 0.0f}; ///< Blend constants.
     };
 
     /// @brief Information required to create a graphics pipeline.
     struct GraphicsPipelineCreateInfo
     {
-        const char*                     name;                ///< Name of the pipeline.
-        const char*                     vertexShaderName;    ///< Name of the vertex shader.
-        ShaderModule*                   vertexShaderModule;  ///< Vertex shader module.
-        const char*                     pixelShaderName;     ///< Name of the pixel shader.
-        ShaderModule*                   pixelShaderModule;   ///< Pixel shader module.
-        Handle<PipelineLayout>          layout;              ///< Pipeline layout.
-        PipelineInputAssemblerStateDesc inputAssemblerState; ///< Input assembler state.
-        PipelineRenderTargetLayout      renderTargetLayout;  ///< Render target layout.
-        PipelineColorBlendStateDesc     colorBlendState;     ///< Color blend state.
-        PipelineTopologyMode            topologyMode;        ///< Topology mode.
-        PipelineRasterizerStateDesc     rasterizationState;  ///< Rasterizer state.
-        PipelineMultisampleStateDesc    multisampleState;    ///< Multisample state.
-        PipelineDepthStencilStateDesc   depthStencilState;   ///< Depth/stencil state.
+        const char*                               name                 = nullptr;                         ///< Name of the pipeline.
+        const char*                               vertexShaderName     = nullptr;                         ///< Name of the vertex shader.
+        ShaderModule*                             vertexShaderModule   = nullptr;                         ///< Vertex shader module.
+        const char*                               pixelShaderName      = nullptr;                         ///< Name of the pixel shader.
+        ShaderModule*                             pixelShaderModule    = nullptr;                         ///< Pixel shader module.
+        Handle<PipelineLayout>                    layout               = NullHandle;                      ///< Pipeline layout.
+        TL::Span<const PipelineVertexBindingDesc> vertexBufferBindings = {};                              ///< Input assembler state.
+        PipelineRenderTargetLayout                renderTargetLayout   = {};                              ///< Render target layout.
+        PipelineColorBlendStateDesc               colorBlendState      = {};                              ///< Color blend state.
+        PipelineTopologyMode                      topologyMode         = PipelineTopologyMode::Triangles; ///< Topology mode.
+        PipelineRasterizerStateDesc               rasterizationState   = {};                              ///< Rasterizer state.
+        PipelineMultisampleStateDesc              multisampleState     = {};                              ///< Multisample state.
+        PipelineDepthStencilStateDesc             depthStencilState    = {};                              ///< Depth/stencil state.
     };
 
     /// @brief Information required to create a compute pipeline.
     struct ComputePipelineCreateInfo
     {
-        const char*            name;         ///< Name of the pipeline.
-        const char*            shaderName;   ///< Name of the compute shader.
-        ShaderModule*          shaderModule; ///< Compute shader module.
-        Handle<PipelineLayout> layout;       ///< Pipeline layout.
+        const char*            name         = nullptr;    ///< Name of the pipeline.
+        const char*            shaderName   = nullptr;    ///< Name of the compute shader.
+        ShaderModule*          shaderModule = nullptr;    ///< Compute shader module.
+        Handle<PipelineLayout> layout       = NullHandle; ///< Pipeline layout.
     };
 } // namespace RHI

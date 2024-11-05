@@ -61,31 +61,26 @@ public:
         return m_perFrameData[m_frameIndex];
     }
 
-    PerFrame& GetCurrentFrame()
-    {
-        return m_perFrameData[m_frameIndex];
-    }
+    PerFrame& GetCurrentFrame() { return m_perFrameData[m_frameIndex]; }
 
     void InitContextAndSwapchain()
     {
         RHI::ApplicationInfo appInfo{
             .applicationName = "Example",
-            .applicationVersion = {0,  1, 0},
+            .applicationVersion = {0, 1, 0},
             .engineName = "Forge",
-            .engineVersion = { 0, 1, 0}
-        };
+            .engineVersion = {0, 1, 0}};
         m_device = RHI::CreateVulkanDevice(appInfo).release();
 
         auto [width, height] = m_window->GetWindowSize();
         RHI::SwapchainCreateInfo swapchainInfo{
             .name = "Swapchain",
-            .imageSize = { width, height },
+            .imageSize = {width, height},
             .imageUsage = RHI::ImageUsage::Color,
             .imageFormat = RHI::Format::RGBA8_UNORM,
             .minImageCount = 3,
             .presentMode = RHI::SwapchainPresentMode::Fifo,
-            .win32Window = { m_window->GetNativeHandle() }
-        };
+            .win32Window = {m_window->GetNativeHandle()}};
 
         m_swapchain = m_device->CreateSwapchain(swapchainInfo).release();
 
@@ -140,85 +135,52 @@ public:
         auto bindGroupLayout = m_device->CreateBindGroupLayout(bindGroupLayoutCI);
         // clang-format on
 
-        RHI::PipelineLayoutCreateInfo layoutCI{ .name = "graphics-pipeline-layout", .layouts = { bindGroupLayout } };
+        RHI::PipelineLayoutCreateInfo layoutCI{.name = "graphics-pipeline-layout", .layouts = {bindGroupLayout}};
         m_pipelineLayout = m_device->CreatePipelineLayout(layoutCI);
 
-        RHI::GraphicsPipelineCreateInfo pipelineCI{};
-        pipelineCI.name = "Basic";
-        pipelineCI.vertexShaderName = "VSMain";
-        pipelineCI.vertexShaderModule = shaderModule.get();
-        pipelineCI.pixelShaderName = "PSMain";
-        pipelineCI.pixelShaderModule = shaderModule.get();
-        pipelineCI.layout = m_pipelineLayout;
-        pipelineCI.inputAssemblerState.bindings = {
-            {
-             .binding = 0,
-             .stride = sizeof(glm::vec3),
-             .stepRate = RHI::PipelineVertexInputRate::PerVertex,
-             },
-            {
-             .binding = 1,
-             .stride = sizeof(glm::vec4),
-             .stepRate = RHI::PipelineVertexInputRate::PerVertex,
-             }
+        RHI::GraphicsPipelineCreateInfo pipelineCI{
+            .name = "Hello-Triangle",
+            .vertexShaderName = "VSMain",
+            .vertexShaderModule = shaderModule.get(),
+            .pixelShaderName = "PSMain",
+            .pixelShaderModule = shaderModule.get(),
+            .layout = m_pipelineLayout,
+            .vertexBufferBindings{
+                {
+                    .binding = 0,
+                    .stride = sizeof(glm::vec3),
+                    .attributes = {{.format = RHI::Format::RGB32_FLOAT}},
+                },
+                {
+                    .binding = 1,
+                    .stride = sizeof(glm::vec3),
+                    .attributes = {{.format = RHI::Format::RGBA32_FLOAT}},
+                },
+            },
+            .renderTargetLayout{
+                .colorAttachmentsFormats = RHI::Format::RGBA8_UNORM,
+            },
+            .colorBlendState{.blendStates = {{.blendEnable = true}}},
+            .rasterizationState{.cullMode = RHI::PipelineRasterizerStateCullMode::None},
+            .depthStencilState{
+                .depthTestEnable = false,
+                .depthWriteEnable = false,
+            },
         };
-        pipelineCI.inputAssemblerState.attributes = {
-            {
-             .location = 0,
-             .binding = 0,
-             .format = RHI::Format::RGB32_FLOAT,
-             .offset = 0,
-             },
-            {
-             .location = 1,
-             .binding = 1,
-             .format = RHI::Format::RGBA32_FLOAT,
-             .offset = 0,
-             }
-        };
-
-        pipelineCI.renderTargetLayout.colorAttachmentsFormats = RHI::Format::RGBA8_UNORM;
-
-        pipelineCI.colorBlendState.blendStates = {
-            {
-             .blendEnable = true,
-             .colorBlendOp = RHI::BlendEquation::Add,
-             .srcColor = RHI::BlendFactor::SrcAlpha,
-             .dstColor = RHI::BlendFactor::OneMinusSrcAlpha,
-             .alphaBlendOp = RHI::BlendEquation::Add,
-             .srcAlpha = RHI::BlendFactor::One,
-             .dstAlpha = RHI::BlendFactor::Zero,
-             .writeMask = RHI::ColorWriteMask::All,
-             }
-        };
-
-        pipelineCI.topologyMode = RHI::PipelineTopologyMode::Triangles;
-        pipelineCI.rasterizationState.cullMode = RHI::PipelineRasterizerStateCullMode::None;
-        pipelineCI.rasterizationState.fillMode = RHI::PipelineRasterizerStateFillMode::Triangle;
-        pipelineCI.rasterizationState.frontFace = RHI::PipelineRasterizerStateFrontFace::CounterClockwise;
-        pipelineCI.rasterizationState.lineWidth = 1.0;
-        pipelineCI.multisampleState.sampleCount = RHI::SampleCount::Samples1;
-        pipelineCI.multisampleState.sampleShading = false;
-        pipelineCI.depthStencilState.depthTestEnable = true;
-        pipelineCI.depthStencilState.depthWriteEnable = true;
-        pipelineCI.depthStencilState.compareOperator = RHI::CompareOperator::Less;
-        pipelineCI.depthStencilState.stencilTestEnable = false;
         m_graphicsPipeline = m_device->CreateGraphicsPipeline(pipelineCI);
 
         // init and update bind groups
 
-        // clang-format off
         for (auto& frame : m_perFrameData)
         {
             frame.m_bindGroup = m_device->CreateBindGroup(bindGroupLayout);
             RHI::BindGroupUpdateInfo bindGroupUpdateInfo{
-                .buffers =
-                {
+                .buffers{
                     {
                         .dstBinding = 0,
                         .dstArrayElement = 0,
-                        .buffer = m_uniformBuffer,
-                        .subregions = {}
+                        .buffers = m_uniformBuffer,
+                        .subregions = {},
                     },
                     // {
                     //     .dstBinding = 1,
@@ -226,10 +188,9 @@ public:
                     //     .buffer = m_uniformBuffer2,
                     //     .subregions = { RHI::BufferSubregion{ 0, 256 } }
                     // },
-                }
+                },
             };
             m_device->UpdateBindGroup(frame.m_bindGroup, bindGroupUpdateInfo);
-            // clang-format on
         }
 
         m_device->DestroyBindGroupLayout(bindGroupLayout);
@@ -269,14 +230,17 @@ public:
         viewInfo.swizzle.g = RHI::ComponentSwizzle::Identity;
         viewInfo.swizzle.b = RHI::ComponentSwizzle::Identity;
         viewInfo.swizzle.a = RHI::ComponentSwizzle::Identity;
-        m_renderGraph->PassUseImage(m_mainPass, m_colorAttachment, viewInfo, RHI::ImageUsage::Color, RHI::PipelineStage::ColorAttachmentOutput, RHI::Access::None);
-        m_renderGraph->PassResize(m_mainPass, { width, height });
+        m_renderGraph->PassUseImage(
+            m_mainPass,
+            m_colorAttachment,
+            viewInfo,
+            RHI::ImageUsage::Color,
+            RHI::PipelineStage::ColorAttachmentOutput,
+            RHI::Access::None);
+        m_renderGraph->PassResize(m_mainPass, {width, height});
     }
 
-    void ShutdownRenderGraph()
-    {
-        delete m_renderGraph;
-    }
+    void ShutdownRenderGraph() { delete m_renderGraph; }
 
     void InitBuffers()
     {
@@ -335,7 +299,7 @@ public:
             glm::mat4 translate;
         };
 
-        UniformData uniformData{ glm::mat4(1.f) };
+        UniformData uniformData{glm::mat4(1.f)};
         RHI::BufferCreateInfo uniformBufferCI{
             .name = "uniform-buffer",
             .heapType = RHI::MemoryType::GPUShared,
@@ -410,18 +374,17 @@ public:
         auto commandList = frame.m_commandPool->Allocate(RHI::QueueType::Graphics, RHI::CommandListLevel::Primary);
 
         auto [width, height] = m_window->GetWindowSize();
-        m_renderGraph->PassResize(m_mainPass, { width, height });
+        m_renderGraph->PassResize(m_mainPass, {width, height});
 
         RHI::RenderPassBeginInfo renderPassBeginInfo{
             .renderGraph = m_renderGraph,
-            .renderArea = { 0, 0, width, height },
+            .renderArea = {0, 0, width, height},
             .pass = m_mainPass,
-            .loadStoreOperations = { {
-                .clearValue = { .f32 = RHI::ColorValue<float>{ 0.3f, 0.5f, 0.7f, 1.0f } },
+            .loadStoreOperations = {{
+                .clearValue = {.f32 = RHI::ColorValue<float>{0.3f, 0.5f, 0.7f, 1.0f}},
                 .loadOperation = RHI::LoadOperation::Discard,
                 .storeOperation = RHI::StoreOperation::Store,
-            } }
-        };
+            }}};
 
         commandList->Begin();
         commandList->BeginRenderPass(renderPassBeginInfo);
@@ -442,21 +405,24 @@ public:
             .height = height,
         });
 
-        commandList->BindGraphicsPipeline(m_graphicsPipeline, RHI::BindGroupBindingInfo{ frame.m_bindGroup, {} });
-        commandList->BindVertexBuffers(0, RHI::BufferBindingInfo{ .buffer = m_vertexBuffer, .offset = 0 });
-        commandList->BindVertexBuffers(1, RHI::BufferBindingInfo{ .buffer = m_vertexBuffer, .offset = sizeof(glm::vec3) * 4 });
-        commandList->BindIndexBuffer(RHI::BufferBindingInfo{ .buffer = m_indexBuffer, .offset = 0 }, RHI::IndexType::uint16);
+        commandList->BindGraphicsPipeline(m_graphicsPipeline, RHI::BindGroupBindingInfo{frame.m_bindGroup, {}});
+        commandList->BindVertexBuffers(0, RHI::BufferBindingInfo{.buffer = m_vertexBuffer, .offset = 0});
+        commandList->BindVertexBuffers(
+            1, RHI::BufferBindingInfo{.buffer = m_vertexBuffer, .offset = sizeof(glm::vec3) * 4});
+        commandList->BindIndexBuffer(
+            RHI::BufferBindingInfo{.buffer = m_indexBuffer, .offset = 0}, RHI::IndexType::uint16);
 
         RHI::DrawInfo drawInfo{};
-        drawInfo.parameters = { 6, 1, 0, 0, 0 };
+        drawInfo.parameters = {6, 1, 0, 0, 0};
         commandList->Draw(drawInfo);
         commandList->EndRenderPass();
         commandList->End();
 
         RHI::SubmitInfo submitInfo{
-            .waitSemaphores = RHI::SemaphoreSubmitInfo{0,  RHI::PipelineStage::None, m_swapchain->GetWaitSemaphore()  },
+            .waitSemaphores = RHI::SemaphoreSubmitInfo{0, RHI::PipelineStage::None, m_swapchain->GetWaitSemaphore()},
             .commandLists = commandList.get(),
-            .signalSemaphores = RHI::SemaphoreSubmitInfo{ 0, RHI::PipelineStage::None, m_swapchain->GetSignalSemaphore()},
+            .signalSemaphores =
+                RHI::SemaphoreSubmitInfo{0, RHI::PipelineStage::None, m_swapchain->GetSignalSemaphore()},
         };
         m_queue->Submit(submitInfo, frame.m_fence);
 
@@ -473,7 +439,7 @@ public:
         case EventType::WindowResize:
             {
                 auto& e = (WindowResizeEvent&)event;
-                auto res = m_swapchain->Recreate({ e.GetSize().width, e.GetSize().height });
+                auto res = m_swapchain->Recreate({e.GetSize().width, e.GetSize().height});
                 TL_ASSERT(res == RHI::ResultCode::Success);
             }
             break;
@@ -491,7 +457,7 @@ public:
 int main(int argc, const char* argv[])
 {
     using namespace Examples;
-    TL::Span args{ argv, (size_t)argc };
+    TL::Span args{argv, (size_t)argc};
     TL::MemPlumber::start();
     auto result = Entry<Playground>(args);
     size_t memLeakCount, memLeakSize;

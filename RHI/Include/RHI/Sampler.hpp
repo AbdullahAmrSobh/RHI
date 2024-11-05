@@ -37,16 +37,16 @@ namespace RHI
     /// @brief Describes the parameters required to create a Sampler.
     struct SamplerCreateInfo
     {
-        const char*             name;       ///< Name of the sampler.
-        SamplerFilter           filterMin;  ///< Filter for minification.
-        SamplerFilter           filterMag;  ///< Filter for magnification.
-        SamplerFilter           filterMip;  ///< Filter for mipmap selection.
-        SamplerCompareOperation compare;    ///< Compare operation for texture comparison.
-        float                   mipLodBias; ///< Bias applied to the mip level of detail.
-        SamplerAddressMode      addressU;   ///< Addressing mode for the U (horizontal) coordinate.
-        SamplerAddressMode      addressV;   ///< Addressing mode for the V (vertical) coordinate.
-        SamplerAddressMode      addressW;   ///< Addressing mode for the W (depth) coordinate.
-        float                   minLod;     ///< Minimum level of detail (LOD) that can be used.
-        float                   maxLod;     ///< Maximum level of detail (LOD) that can be used.
+        const char*             name       = nullptr;                         ///< Name of the sampler.
+        SamplerFilter           filterMin  = SamplerFilter::Linear;           ///< Filter for minification.
+        SamplerFilter           filterMag  = SamplerFilter::Linear;           ///< Filter for magnification.
+        SamplerFilter           filterMip  = SamplerFilter::Linear;           ///< Filter for mipmap selection.
+        SamplerCompareOperation compare    = SamplerCompareOperation::Always; ///< Compare operation for texture comparison.
+        float                   mipLodBias = 0.0f;                            ///< Bias applied to the mip level of detail.
+        SamplerAddressMode      addressU   = SamplerAddressMode::Repeat;      ///< Addressing mode for the U (horizontal) coordinate.
+        SamplerAddressMode      addressV   = SamplerAddressMode::Repeat;      ///< Addressing mode for the V (vertical) coordinate.
+        SamplerAddressMode      addressW   = SamplerAddressMode::Repeat;      ///< Addressing mode for the W (depth) coordinate.
+        float                   minLod     = 0.0f;                            ///< Minimum level of detail (LOD) that can be used.
+        float                   maxLod     = 1000.0f;                         ///< Maximum level of detail (LOD) that can be used.
     };
 } // namespace RHI

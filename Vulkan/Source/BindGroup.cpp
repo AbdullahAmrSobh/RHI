@@ -231,14 +231,14 @@ namespace RHI::Vulkan
             const auto& binding = shaderBindings[bufferUpdate.dstBinding];
             VkDescriptorType descriptorType = ConvertDescriptorType(binding.type);
 
-            for (size_t i = 0; i < bufferUpdate.buffer.size(); ++i)
+            for (size_t i = 0; i < bufferUpdate.buffers.size(); ++i)
             {
                 if (binding.type == BindingType::DynamicUniformBuffer || binding.type == BindingType::DynamicStorageBuffer)
                 {
                     // For dynamic bindings, subregions are expected
                     auto subregion = bufferUpdate.subregions[i];
                     bufferInfos[bufferInfosCount] = {
-                        .buffer = device->m_bufferOwner.Get(bufferUpdate.buffer[i])->handle,
+                        .buffer = device->m_bufferOwner.Get(bufferUpdate.buffers[i])->handle,
                         .offset = subregion.offset,
                         .range = subregion.size,
                     };
@@ -247,7 +247,7 @@ namespace RHI::Vulkan
                 {
                     // Non-dynamic bindings don't use subregions
                     bufferInfos[bufferInfosCount] = {
-                        .buffer = device->m_bufferOwner.Get(bufferUpdate.buffer[i])->handle,
+                        .buffer = device->m_bufferOwner.Get(bufferUpdate.buffers[i])->handle,
                         .offset = 0,            // Use 0 if no specific subregion offset is required
                         .range = VK_WHOLE_SIZE, // Use VK_WHOLE_SIZE if no subregions are specified
                     };

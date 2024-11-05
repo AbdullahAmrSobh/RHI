@@ -36,8 +36,8 @@ namespace RHI
     /// @brief Describes a subregion of a buffer.
     struct BufferSubregion
     {
-        size_t      offset; ///< Offset into the buffer.
-        size_t      size;   ///< Size of the subregion.
+        size_t      offset = 0; ///< Offset into the buffer.
+        size_t      size   = 0; ///< Size of the subregion.
 
         /// @brief Compares this subregion with another for equality.
         /// @param other The other subregion to compare with.
@@ -51,19 +51,19 @@ namespace RHI
     /// @brief Describes the parameters required to create a buffer.
     struct BufferCreateInfo
     {
-        const char*            name;       ///< Name of the buffer.
-        MemoryType             heapType;   ///< Memory type for the buffer allocation.
-        TL::Flags<BufferUsage> usageFlags; ///< Usage flags for the buffer.
-        size_t                 byteSize;   ///< Size of the buffer in bytes.
+        const char*            name       = nullptr;               ///< Name of the buffer.
+        MemoryType             heapType   = MemoryType::GPUShared; ///< Memory type for the buffer allocation.
+        TL::Flags<BufferUsage> usageFlags = BufferUsage::None;     ///< Usage flags for the buffer.
+        size_t                 byteSize   = 0;                     ///< Size of the buffer in bytes.
     };
 
     /// @brief Describes the parameters required to create a buffer view.
     struct BufferViewCreateInfo
     {
-        const char*     name;      ///< Name of the buffer view.
-        Handle<Buffer>  buffer;    ///< Handle to the buffer being viewed.
-        Format          format;    ///< Format of the buffer view.
-        BufferSubregion subregion; ///< Subregion of the buffer being viewed.
+        const char*     name      = nullptr;         ///< Name of the buffer view.
+        Handle<Buffer>  buffer    = NullHandle;      ///< Handle to the buffer being viewed.
+        Format          format    = Format::Unknown; ///< Format of the buffer view.
+        BufferSubregion subregion = {};              ///< Subregion of the buffer being viewed.
     };
 } // namespace RHI
 
