@@ -51,10 +51,10 @@ namespace RHI
 
         TL::String                                   m_name;
         ImageSize2D                                  m_renderTargetSize;
-        TL::Vector<RGImagePassAccess*>             m_colorAttachments;
-        RGImagePassAccess*                         m_depthStencilAttachment;
-        TL::Vector<RGImagePassAccess*>             m_imageAttachments;
-        TL::Vector<RGBufferPassAccess*>            m_bufferAttachments;
+        TL::Vector<RGImagePassAccess*>               m_colorAttachments;
+        RGImagePassAccess*                           m_depthStencilAttachment;
+        TL::Vector<RGImagePassAccess*>               m_imageAttachments;
+        TL::Vector<RGBufferPassAccess*>              m_bufferAttachments;
 
         TL::Function<void(CommandList& commandList)> m_callback;
     };

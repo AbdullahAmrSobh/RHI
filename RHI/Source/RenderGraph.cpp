@@ -91,7 +91,13 @@ namespace RHI
         return handle;
     }
 
-    void RenderGraph::PassUseImage(Handle<Pass> _pass, Handle<RGImage> _attachment, const ImageViewInfo& viewInfo, ImageUsage usage, TL::Flags<PipelineStage> stages, Access access)
+    void RenderGraph::PassUseImage(
+        Handle<Pass> _pass,
+        Handle<RGImage> _attachment,
+        const ImageViewInfo& viewInfo,
+        ImageUsage usage,
+        TL::Flags<PipelineStage> stages,
+        Access access)
     {
         auto pass = m_passPool.Get(_pass);
         auto attachment = m_rgImagesPool.Get(_attachment);
@@ -135,7 +141,13 @@ namespace RHI
         }
     }
 
-    void RenderGraph::PassUseBuffer(Handle<Pass> _pass, Handle<RGBuffer> _attachment, const BufferViewInfo& viewInfo, BufferUsage usage, TL::Flags<PipelineStage> stages, Access access)
+    void RenderGraph::PassUseBuffer(
+        Handle<Pass> _pass,
+        Handle<RGBuffer> _attachment,
+        const BufferViewInfo& viewInfo,
+        BufferUsage usage,
+        TL::Flags<PipelineStage> stages,
+        Access access)
     {
         auto pass = m_passPool.Get(_pass);
         auto attachment = m_rgBufferPool.Get(_attachment);
@@ -172,10 +184,8 @@ namespace RHI
     Handle<Image> RenderGraph::GetImage(Handle<RGImage> _attachment) const
     {
         auto attachment = m_rgImagesPool.Get(_attachment);
-        if (attachment->swapchain)
-            return attachment->swapchain->GetImage();
-        else if (attachment->resource)
-            return attachment->resource;
+        if (attachment->swapchain) return attachment->swapchain->GetImage();
+        else if (attachment->resource) return attachment->resource;
 
         auto pass = m_passPool.Get(attachment->list.begin()->second->pass);
         auto size = pass->m_renderTargetSize;

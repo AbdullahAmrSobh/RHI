@@ -80,14 +80,16 @@ namespace RHI
         { Format::BC7_UNORM,         "BC7_UNORM",         16, 4, FormatType::Normalized,   true,  true,  true,  true,  false, false, false, false },
         { Format::BC7_UNORM_SRGB,    "BC7_UNORM_SRGB",    16, 4, FormatType::Normalized,   true,  true,  true,  true,  false, false, false, true  },
     };
+
     // clang-format on
 
     const FormatInfo& GetFormatInfo(Format format)
     {
-        static_assert(sizeof(k_FormatInfoLUT) / sizeof(FormatInfo) == size_t(Format::COUNT), "The format info table doesn't have the right number of elements");
+        static_assert(
+            sizeof(k_FormatInfoLUT) / sizeof(FormatInfo) == size_t(Format::COUNT),
+            "The format info table doesn't have the right number of elements");
 
-        if (uint32_t(format) >= uint32_t(Format::COUNT))
-            return k_FormatInfoLUT[0]; // UNKNOWN
+        if (uint32_t(format) >= uint32_t(Format::COUNT)) return k_FormatInfoLUT[0]; // UNKNOWN
 
         const FormatInfo& info = k_FormatInfoLUT[uint32_t(format)];
         TL_ASSERT(info.format == format);
@@ -118,12 +120,9 @@ namespace RHI
 
         auto formatInfo = GetFormatInfo(format);
 
-        if (formatInfo.hasDepth)
-            flags |= ImageAspect::Depth;
-        if (formatInfo.hasStencil)
-            flags |= ImageAspect::Stencil;
-        if (formatInfo.hasRed || formatInfo.hasGreen || formatInfo.hasBlue || formatInfo.hasAlpha)
-            flags |= ImageAspect::Color;
+        if (formatInfo.hasDepth) flags |= ImageAspect::Depth;
+        if (formatInfo.hasStencil) flags |= ImageAspect::Stencil;
+        if (formatInfo.hasRed || formatInfo.hasGreen || formatInfo.hasBlue || formatInfo.hasAlpha) flags |= ImageAspect::Color;
 
         return flags;
     }

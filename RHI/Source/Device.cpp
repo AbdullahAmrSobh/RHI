@@ -7,11 +7,11 @@
 
 namespace RHI
 {
-#define TRY(condition, message, return_type) \
-    if ((condition) == false)                \
-    {                                        \
-        TL_LOG_INFO(message);                \
-        return return_type;                  \
+#define TRY(condition, message, return_type)                                                                                               \
+    if ((condition) == false)                                                                                                              \
+    {                                                                                                                                      \
+        TL_LOG_INFO(message);                                                                                                              \
+        return return_type;                                                                                                                \
     }
 
     Device::Device()
@@ -19,9 +19,7 @@ namespace RHI
     {
     }
 
-    Device::~Device()
-    {
-    }
+    Device::~Device() {}
 
     DeviceLimits Device::GetLimits() const
     {
@@ -169,7 +167,9 @@ namespace RHI
             TRY(createInfo.usageFlags != RHI::ImageUsage::None, "Invalid usage flags", ResultCode::ErrorUnknown);
             if (createInfo.type == ImageType::Image1D)
             {
-                TRY(createInfo.size.height == 1 && createInfo.size.depth == 1, "1D Images should have 1 in width and depth size paramters", ResultCode::ErrorUnknown);
+                TRY(createInfo.size.height == 1 && createInfo.size.depth == 1,
+                    "1D Images should have 1 in width and depth size paramters",
+                    ResultCode::ErrorUnknown);
             }
             else if (createInfo.type == ImageType::Image2D)
             {
@@ -222,7 +222,9 @@ namespace RHI
         {
             TRY(createInfo.image != NullHandle, "Invalid Image handle", NullHandle);
             TRY(createInfo.viewType != ImageViewType::None, "Invalid value for ImageViewCreateInfo::type", NullHandle);
-            TRY(createInfo.subresource.imageAspects != ImageAspect::None, "Invalid value for ImageViewCreateInfo::subresource::imageAspects", NullHandle);
+            TRY(createInfo.subresource.imageAspects != ImageAspect::None,
+                "Invalid value for ImageViewCreateInfo::subresource::imageAspects",
+                NullHandle);
             TRY(createInfo.subresource.arrayCount != 0, "Invalid value for ImageViewCreateInfo::subresource::arrayCount", NullHandle);
             TRY(createInfo.subresource.mipLevelCount != 0, "Invalid value for ImageViewCreateInfo::subresource::mipLevelCount", NullHandle);
         }
