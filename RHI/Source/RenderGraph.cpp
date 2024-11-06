@@ -54,7 +54,6 @@ namespace RHI
         RGImage attachment{};
         attachment.name = name;
         attachment.resource = image;
-        attachment.isTransient = false;
         auto handle = m_rgImagesPool.Emplace(std::move(attachment));
         return handle;
     }
@@ -73,7 +72,7 @@ namespace RHI
         RGImage attachment{};
         attachment.name = createInfo.name;
         attachment.info = createInfo;
-        attachment.isTransient = true;
+        attachment.resource = m_device->CreateImage(createInfo).GetValue();
         auto handle = m_rgImagesPool.Emplace(std::move(attachment));
         m_images.push_back(handle);
         m_transientImages.push_back(handle);
@@ -85,6 +84,7 @@ namespace RHI
         RGBuffer attachment{};
         attachment.name = createInfo.name;
         attachment.info = createInfo;
+        attachment.resource = m_device->CreateBuffer(createInfo).GetValue();
         auto handle = m_rgBufferPool.Emplace(std::move(attachment));
         m_buffers.push_back(handle);
         m_transientBuffers.push_back(handle);
@@ -94,7 +94,6 @@ namespace RHI
     void RenderGraph::PassUseImage(
         Handle<Pass> _pass,
         Handle<RGImage> _attachment,
-        const ImageViewInfo& viewInfo,
         ImageUsage usage,
         TL::Flags<PipelineStage> stages,
         Access access)
@@ -102,20 +101,12 @@ namespace RHI
         auto pass = m_passPool.Get(_pass);
         auto attachment = m_rgImagesPool.Get(_attachment);
 
-        ImageViewCreateInfo createInfo{};
-        createInfo.image = NullHandle;
-        createInfo.viewType = viewInfo.type;
-        createInfo.components = viewInfo.swizzle;
-        createInfo.subresource = viewInfo.subresources;
-
-        auto it = attachment->list.emplace(_pass, m_arena.Allocate<RGImagePassAccess>());
-        auto passAttachment = it.first->second;
+        auto passAttachment = m_arena.Allocate<RGImagePassAccess>();
         passAttachment->pass = _pass;
         passAttachment->image = _attachment;
         passAttachment->usage = usage;
         passAttachment->pipelineAccess = access;
         passAttachment->pipelineStages = stages;
-        passAttachment->viewInfo = viewInfo;
         passAttachment->next = nullptr;
         passAttachment->prev = attachment->last;
 
@@ -133,10 +124,12 @@ namespace RHI
         pass->m_imageAttachments.push_back(passAttachment);
         if (usage & ImageUsage::DepthStencil)
         {
+            passAttachment->aspect = ImageAspect::DepthStencil;
             pass->m_depthStencilAttachment = passAttachment;
         }
         else if (usage & ImageUsage::Color)
         {
+            passAttachment->aspect = ImageAspect::Color;
             pass->m_colorAttachments.push_back(passAttachment);
         }
     }
@@ -144,7 +137,6 @@ namespace RHI
     void RenderGraph::PassUseBuffer(
         Handle<Pass> _pass,
         Handle<RGBuffer> _attachment,
-        const BufferViewInfo& viewInfo,
         BufferUsage usage,
         TL::Flags<PipelineStage> stages,
         Access access)
@@ -152,19 +144,12 @@ namespace RHI
         auto pass = m_passPool.Get(_pass);
         auto attachment = m_rgBufferPool.Get(_attachment);
 
-        BufferViewCreateInfo createInfo{};
-        createInfo.buffer = NullHandle;
-        createInfo.subregion = viewInfo.subregion;
-        createInfo.format = viewInfo.format;
-
-        attachment->list.emplace(_pass, m_arena.Allocate<RGBufferPassAccess>());
-        auto passAttachment = attachment->list[_pass];
+        auto passAttachment = m_arena.Allocate<RGBufferPassAccess>();
         passAttachment->pass = _pass;
         passAttachment->buffer = _attachment;
         passAttachment->usage = usage;
         passAttachment->pipelineAccess = access;
         passAttachment->pipelineStages = stages;
-        passAttachment->viewInfo = viewInfo;
         passAttachment->next = nullptr;
         passAttachment->prev = attachment->last;
 
@@ -184,88 +169,16 @@ namespace RHI
     Handle<Image> RenderGraph::GetImage(Handle<RGImage> _attachment) const
     {
         auto attachment = m_rgImagesPool.Get(_attachment);
-        if (attachment->swapchain) return attachment->swapchain->GetImage();
-        else if (attachment->resource) return attachment->resource;
-
-        auto pass = m_passPool.Get(attachment->list.begin()->second->pass);
-        auto size = pass->m_renderTargetSize;
-
-        ImageCreateInfo info = attachment->info;
-        if (attachment->info.usageFlags & (ImageUsage::Color | ImageUsage::DepthStencil))
-        {
-            info.size.width = size.width;
-            info.size.height = size.height;
-            info.size.depth = 1;
-        }
+        if (attachment->swapchain)
+            return attachment->swapchain->GetImage();
         else
-        {
-            TL_ASSERT(info.size != ImageSize3D{});
-        }
-
-        auto key = TL::HashCombine(TL::HashAny(info), std::hash<TL::String>{}(attachment->name));
-        if (auto image = m_imagesLRU.find(key); image != m_imagesLRU.end())
-        {
-            return image->second;
-        }
-        return m_imagesLRU[key] = m_device->CreateImage(info).GetValue();
+            return attachment->resource;
     }
 
     Handle<Buffer> RenderGraph::GetBuffer(Handle<RGBuffer> _attachment) const
     {
         auto attachment = m_rgBufferPool.Get(_attachment);
-        if (attachment->resource)
-        {
-            return attachment->resource;
-        }
-
-        auto info = attachment->info;
-        auto key = TL::HashCombine(TL::HashAny(info), std::hash<TL::String>{}(attachment->name));
-
-        if (auto buffer = m_buffersLRU.find(key); buffer != m_buffersLRU.end())
-        {
-            return buffer->second;
-        }
-        return m_buffersLRU[key] = m_device->CreateBuffer(info).GetValue();
-    }
-
-    Handle<ImageView> RenderGraph::PassGetImageView(Handle<Pass> _pass, Handle<RGImage> _attachment) const
-    {
-        auto image = GetImage(_attachment);
-        auto attachment = m_rgImagesPool.Get(_attachment);
-        auto viewInfo = attachment->Find(_pass)->viewInfo;
-
-        ImageViewCreateInfo createInfo{};
-        createInfo.image = image;
-        createInfo.viewType = viewInfo.type;
-        createInfo.subresource = viewInfo.subresources;
-        createInfo.components = viewInfo.swizzle;
-        auto key = TL::HashCombine(TL::HashAny(createInfo), std::hash<TL::String>{}(attachment->name));
-
-        if (auto imageView = m_imageViewsLRU.find(key); imageView != m_imageViewsLRU.end())
-        {
-            return imageView->second;
-        }
-
-        return m_imageViewsLRU[key] = m_device->CreateImageView(createInfo);
-    }
-
-    Handle<BufferView> RenderGraph::PassGetBufferView(Handle<Pass> _pass, Handle<RGBuffer> _attachment) const
-    {
-        auto buffer = GetBuffer(_attachment);
-        auto attachment = m_rgBufferPool.Get(_attachment);
-        auto viewInfo = attachment->Find(_pass)->viewInfo;
-
-        BufferViewCreateInfo createInfo{};
-        createInfo.buffer = buffer;
-        createInfo.subregion = viewInfo.subregion;
-        createInfo.format = viewInfo.format;
-        auto key = TL::HashCombine(TL::HashAny(createInfo), std::hash<TL::String>{}(attachment->name));
-
-        if (auto bufferView = m_bufferViewsLRU.find(key); bufferView != m_bufferViewsLRU.end())
-        {
-            return bufferView->second;
-        }
-        return m_bufferViewsLRU[key] = m_device->CreateBufferView(createInfo);
+        return attachment->resource;
     }
 
     void RenderGraph::Compile()
@@ -274,25 +187,6 @@ namespace RHI
     }
 
     void RenderGraph::Cleanup()
-    {
-        CleanupAttachmentViews();
-        CleanupTransientAttachments();
-    }
-
-    void RenderGraph::CleanupAttachmentViews()
-    {
-        for (auto [_, viewHandle] : m_imageViewsLRU)
-        {
-            m_device->DestroyImageView(viewHandle);
-        }
-
-        for (auto [_, viewHandle] : m_bufferViewsLRU)
-        {
-            m_device->DestroyBufferView(viewHandle);
-        }
-    }
-
-    void RenderGraph::CleanupTransientAttachments()
     {
         for (auto attachmentHandle : m_transientImages)
         {
@@ -306,4 +200,5 @@ namespace RHI
             m_device->DestroyBuffer(resource);
         }
     }
+
 } // namespace RHI

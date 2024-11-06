@@ -58,9 +58,9 @@ namespace RHI
     /// @brief Information used to update images in a bind group.
     struct BindGroupImagesUpdateInfo
     {
-        uint32_t                          dstBinding      = 0;  ///< Target binding index.
-        uint32_t                          dstArrayElement = 0;  ///< Target array element for binding.
-        TL::Span<const Handle<ImageView>> images          = {}; ///< Span of image views to bind.
+        uint32_t                      dstBinding      = 0;  ///< Target binding index.
+        uint32_t                      dstArrayElement = 0;  ///< Target array element for binding.
+        TL::Span<const Handle<Image>> images          = {}; ///< Span of image views to bind.
     };
 
     /// @brief Information used to update buffers in a bind group.

@@ -66,10 +66,6 @@ namespace RHI::Vulkan
         void                     Impl_DestroyImage(Handle<Image> handle) override;
         Result<Handle<Buffer>>   Impl_CreateBuffer(const BufferCreateInfo& createInfo) override;
         void                     Impl_DestroyBuffer(Handle<Buffer> handle) override;
-        Handle<ImageView>        Impl_CreateImageView(const ImageViewCreateInfo& createInfo) override;
-        void                     Impl_DestroyImageView(Handle<ImageView> handle) override;
-        Handle<BufferView>       Impl_CreateBufferView(const BufferViewCreateInfo& createInfo) override;
-        void                     Impl_DestroyBufferView(Handle<BufferView> handle) override;
         DeviceMemoryPtr          Impl_MapBuffer(Handle<Buffer> handle) override;
         void                     Impl_UnmapBuffer(Handle<Buffer> handle) override;
         Handle<Semaphore>        Impl_CreateSemaphore(const SemaphoreCreateInfo& createInfo) override;
@@ -117,12 +113,9 @@ namespace RHI::Vulkan
         DeleteQueue m_deleteQueue;
 
         TL::Ptr<BindGroupAllocator> m_bindGroupAllocator;
-        TL::Ptr<ICommandPool> m_commandPool;
 
         HandlePool<IImage> m_imageOwner;
         HandlePool<IBuffer> m_bufferOwner;
-        HandlePool<IImageView> m_imageViewOwner;
-        HandlePool<IBufferView> m_bufferViewOwner;
         HandlePool<IBindGroupLayout> m_bindGroupLayoutsOwner;
         HandlePool<IBindGroup> m_bindGroupOwner;
         HandlePool<IPipelineLayout> m_pipelineLayoutOwner;

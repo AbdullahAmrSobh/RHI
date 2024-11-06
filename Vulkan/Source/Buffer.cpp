@@ -98,34 +98,34 @@ namespace RHI::Vulkan
     /// BufferView
     ///////////////////////////////////////////////////////////////////////////
 
-    ResultCode IBufferView::Init(IDevice* device, const BufferViewCreateInfo& createInfo)
-    {
-        auto buffer = device->m_bufferOwner.Get(createInfo.buffer);
-        TL_ASSERT(buffer);
+    // ResultCode IBufferView::Init(IDevice* device, const BufferViewCreateInfo& createInfo)
+    // {
+    //     auto buffer = device->m_bufferOwner.Get(createInfo.buffer);
+    //     TL_ASSERT(buffer);
 
-        VkBufferViewCreateInfo bufferCI{
-            .sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO,
-            .pNext = nullptr,
-            .flags = 0,
-            .buffer = buffer->handle,
-            .format = ConvertFormat(createInfo.format),
-            .offset = createInfo.subregion.offset,
-            .range = createInfo.subregion.size,
-        };
-        auto result = vkCreateBufferView(device->m_device, &bufferCI, nullptr, &handle);
+    //     VkBufferViewCreateInfo bufferCI{
+    //         .sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO,
+    //         .pNext = nullptr,
+    //         .flags = 0,
+    //         .buffer = buffer->handle,
+    //         .format = ConvertFormat(createInfo.format),
+    //         .offset = createInfo.subregion.offset,
+    //         .range = createInfo.subregion.size,
+    //     };
+    //     auto result = vkCreateBufferView(device->m_device, &bufferCI, nullptr, &handle);
 
-        if (result == VK_SUCCESS && createInfo.name)
-        {
-            device->SetDebugName(this->handle, createInfo.name);
-        }
+    //     if (result == VK_SUCCESS && createInfo.name)
+    //     {
+    //         device->SetDebugName(this->handle, createInfo.name);
+    //     }
 
-        return ConvertResult(result);
-    }
+    //     return ConvertResult(result);
+    // }
 
-    void IBufferView::Shutdown(IDevice* device)
-    {
-        // vkDestroyBufferView(device->m_device, handle, nullptr);
-        device->m_deleteQueue.DestroyObject(handle);
-    }
+    // void IBufferView::Shutdown(IDevice* device)
+    // {
+    //     // vkDestroyBufferView(device->m_device, handle, nullptr);
+    //     device->m_deleteQueue.DestroyObject(handle);
+    // }
 
 } // namespace RHI::Vulkan

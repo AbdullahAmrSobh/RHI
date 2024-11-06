@@ -28,25 +28,25 @@ public:
     {
     }
 
-    RHI::Device* m_device;
+    RHI::Device*    m_device;
     RHI::Swapchain* m_swapchain;
-    RHI::Queue* m_queue;
+    RHI::Queue*     m_queue;
 
     struct PerFrame
     {
-        RHI::Fence* m_fence;
-        RHI::CommandPool* m_commandPool;
+        RHI::Fence*                 m_fence;
+        RHI::CommandPool*           m_commandPool;
         RHI::Handle<RHI::BindGroup> m_bindGroup;
     };
 
-    uint32_t m_frameIndex = 0;
+    uint32_t m_frameIndex      = 0;
     PerFrame m_perFrameData[2] = {};
 
-    RHI::Handle<RHI::PipelineLayout> m_pipelineLayout;
+    RHI::Handle<RHI::PipelineLayout>   m_pipelineLayout;
     RHI::Handle<RHI::GraphicsPipeline> m_graphicsPipeline;
 
-    RHI::RenderGraph* m_renderGraph;
-    RHI::Handle<RHI::Pass> m_mainPass;
+    RHI::RenderGraph*         m_renderGraph;
+    RHI::Handle<RHI::Pass>    m_mainPass;
     RHI::Handle<RHI::RGImage> m_colorAttachment;
 
     RHI::Handle<RHI::Buffer> m_vertexBuffer;
@@ -66,21 +66,23 @@ public:
     void InitContextAndSwapchain()
     {
         RHI::ApplicationInfo appInfo{
-            .applicationName = "Example",
+            .applicationName    = "Example",
             .applicationVersion = {0, 1, 0},
-            .engineName = "Forge",
-            .engineVersion = {0, 1, 0}};
+            .engineName         = "Forge",
+            .engineVersion      = {0, 1, 0},
+        };
         m_device = RHI::CreateVulkanDevice(appInfo).release();
 
         auto [width, height] = m_window->GetWindowSize();
         RHI::SwapchainCreateInfo swapchainInfo{
-            .name = "Swapchain",
-            .imageSize = {width, height},
-            .imageUsage = RHI::ImageUsage::Color,
-            .imageFormat = RHI::Format::RGBA8_UNORM,
+            .name          = "Swapchain",
+            .imageSize     = {width, height},
+            .imageUsage    = RHI::ImageUsage::Color,
+            .imageFormat   = RHI::Format::RGBA8_UNORM,
             .minImageCount = 3,
-            .presentMode = RHI::SwapchainPresentMode::Fifo,
-            .win32Window = {m_window->GetNativeHandle()}};
+            .presentMode   = RHI::SwapchainPresentMode::Fifo,
+            .win32Window   = {m_window->GetNativeHandle()},
+        };
 
         m_swapchain = m_device->CreateSwapchain(swapchainInfo).release();
 
@@ -89,7 +91,7 @@ public:
         for (auto& frame : m_perFrameData)
         {
             frame.m_commandPool = m_device->CreateCommandPool(RHI::CommandPoolFlags::Transient).release();
-            frame.m_fence = m_device->CreateFence().release();
+            frame.m_fence       = m_device->CreateFence().release();
         }
     }
 
@@ -107,22 +109,20 @@ public:
     void InitPipelineAndLayout()
     {
         TL::Vector<uint32_t> spv;
-        auto spvBlock = TL::ReadBinaryFile("./Shaders/Basic.spv");
+        auto                 spvBlock = TL::ReadBinaryFile("./Shaders/Basic.spv");
         spv.resize(spvBlock.size / 4);
         memcpy(spv.data(), spvBlock.ptr, spvBlock.size);
         auto shaderModule = m_device->CreateShaderModule(spv);
         TL::Allocator::Release(spvBlock, alignof(char));
 
-        // clang-format off
         RHI::BindGroupLayoutCreateInfo bindGroupLayoutCI{
             .name = "BGL-ViewUB",
-            .bindings =
-            {
+            .bindings{
                 {
-                    .type = RHI::BindingType::UniformBuffer,
-                    .access = RHI::Access::Read,
+                    .type       = RHI::BindingType::UniformBuffer,
+                    .access     = RHI::Access::Read,
                     .arrayCount = 1,
-                    .stages = RHI::ShaderStage::Pixel | RHI::ShaderStage::Vertex
+                    .stages     = RHI::ShaderStage::Pixel | RHI::ShaderStage::Vertex,
                 },
                 // {
                 //     .type = RHI::BindingType::DynamicUniformBuffer,
@@ -130,30 +130,28 @@ public:
                 //     .arrayCount = 1,
                 //     .stages = RHI::ShaderStage::Pixel | RHI::ShaderStage::Vertex
                 // },
-            }
-        };
+            }};
         auto bindGroupLayout = m_device->CreateBindGroupLayout(bindGroupLayoutCI);
-        // clang-format on
 
         RHI::PipelineLayoutCreateInfo layoutCI{.name = "graphics-pipeline-layout", .layouts = {bindGroupLayout}};
         m_pipelineLayout = m_device->CreatePipelineLayout(layoutCI);
 
         RHI::GraphicsPipelineCreateInfo pipelineCI{
-            .name = "Hello-Triangle",
-            .vertexShaderName = "VSMain",
+            .name               = "Hello-Triangle",
+            .vertexShaderName   = "VSMain",
             .vertexShaderModule = shaderModule.get(),
-            .pixelShaderName = "PSMain",
-            .pixelShaderModule = shaderModule.get(),
-            .layout = m_pipelineLayout,
+            .pixelShaderName    = "PSMain",
+            .pixelShaderModule  = shaderModule.get(),
+            .layout             = m_pipelineLayout,
             .vertexBufferBindings{
                 {
-                    .binding = 0,
-                    .stride = sizeof(glm::vec3),
+                    .binding    = 0,
+                    .stride     = sizeof(glm::vec3),
                     .attributes = {{.format = RHI::Format::RGB32_FLOAT}},
                 },
                 {
-                    .binding = 1,
-                    .stride = sizeof(glm::vec3),
+                    .binding    = 1,
+                    .stride     = sizeof(glm::vec3),
                     .attributes = {{.format = RHI::Format::RGBA32_FLOAT}},
                 },
             },
@@ -163,7 +161,7 @@ public:
             .colorBlendState{.blendStates = {{.blendEnable = true}}},
             .rasterizationState{.cullMode = RHI::PipelineRasterizerStateCullMode::None},
             .depthStencilState{
-                .depthTestEnable = false,
+                .depthTestEnable  = false,
                 .depthWriteEnable = false,
             },
         };
@@ -177,10 +175,10 @@ public:
             RHI::BindGroupUpdateInfo bindGroupUpdateInfo{
                 .buffers{
                     {
-                        .dstBinding = 0,
+                        .dstBinding      = 0,
                         .dstArrayElement = 0,
-                        .buffers = m_uniformBuffer,
-                        .subregions = {},
+                        .buffers         = m_uniformBuffer,
+                        .subregions      = {},
                     },
                     // {
                     //     .dstBinding = 1,
@@ -209,34 +207,19 @@ public:
     void InitRenderGraph()
     {
         auto [width, height] = m_window->GetWindowSize();
-        m_renderGraph = m_device->CreateRenderGraph().release();
+        m_renderGraph        = m_device->CreateRenderGraph().release();
 
         RHI::PassCreateInfo passCI{
-            .name = "main-pass",
+            .name  = "main-pass",
             .flags = RHI::PassFlags::Graphics,
         };
         m_mainPass = m_renderGraph->CreatePass(passCI);
 
         m_colorAttachment = m_renderGraph->ImportSwapchain("main-output", *m_swapchain);
 
-        RHI::ImageViewInfo viewInfo;
-        viewInfo.type = RHI::ImageViewType::View2D;
-        viewInfo.subresources.imageAspects = RHI::ImageAspect::Color;
-        viewInfo.subresources.mipBase = 0;
-        viewInfo.subresources.mipLevelCount = 1;
-        viewInfo.subresources.arrayBase = 0;
-        viewInfo.subresources.arrayCount = 1;
-        viewInfo.swizzle.r = RHI::ComponentSwizzle::Identity;
-        viewInfo.swizzle.g = RHI::ComponentSwizzle::Identity;
-        viewInfo.swizzle.b = RHI::ComponentSwizzle::Identity;
-        viewInfo.swizzle.a = RHI::ComponentSwizzle::Identity;
         m_renderGraph->PassUseImage(
-            m_mainPass,
-            m_colorAttachment,
-            viewInfo,
-            RHI::ImageUsage::Color,
-            RHI::PipelineStage::ColorAttachmentOutput,
-            RHI::Access::None);
+            m_mainPass, m_colorAttachment, RHI::ImageUsage::Color, RHI::PipelineStage::ColorAttachmentOutput, RHI::Access::None);
+
         m_renderGraph->PassResize(m_mainPass, {width, height});
     }
 
@@ -266,13 +249,13 @@ public:
         // clang-format on
 
         size_t vertexBufferSize = sizeof(glm::vec3) * 4 + sizeof(glm::vec4) * 4;
-        size_t indexBufferSize = sizeof(uint16_t) * 6;
+        size_t indexBufferSize  = sizeof(uint16_t) * 6;
 
         RHI::BufferCreateInfo vertexBufferCI{
-            .name = "vertex-buffer",
-            .heapType = RHI::MemoryType::GPUShared,
+            .name       = "vertex-buffer",
+            .heapType   = RHI::MemoryType::GPUShared,
             .usageFlags = RHI::BufferUsage::Vertex,
-            .byteSize = vertexBufferSize,
+            .byteSize   = vertexBufferSize,
         };
         m_vertexBuffer = m_device->CreateBuffer(vertexBufferCI).GetValue();
 
@@ -282,10 +265,10 @@ public:
         m_device->UnmapBuffer(m_vertexBuffer);
 
         RHI::BufferCreateInfo indexBufferCI{
-            .name = "index-buffer",
-            .heapType = RHI::MemoryType::GPUShared,
+            .name       = "index-buffer",
+            .heapType   = RHI::MemoryType::GPUShared,
             .usageFlags = RHI::BufferUsage::Index,
-            .byteSize = indexBufferSize,
+            .byteSize   = indexBufferSize,
         };
         m_indexBuffer = m_device->CreateBuffer(indexBufferCI).GetValue();
 
@@ -299,14 +282,14 @@ public:
             glm::mat4 translate;
         };
 
-        UniformData uniformData{glm::mat4(1.f)};
+        UniformData           uniformData{glm::mat4(1.f)};
         RHI::BufferCreateInfo uniformBufferCI{
-            .name = "uniform-buffer",
-            .heapType = RHI::MemoryType::GPUShared,
+            .name       = "uniform-buffer",
+            .heapType   = RHI::MemoryType::GPUShared,
             .usageFlags = RHI::BufferUsage::Uniform,
-            .byteSize = sizeof(UniformData),
+            .byteSize   = sizeof(UniformData),
         };
-        m_uniformBuffer = m_device->CreateBuffer(uniformBufferCI).GetValue();
+        m_uniformBuffer       = m_device->CreateBuffer(uniformBufferCI).GetValue();
         auto uniformBufferPtr = m_device->MapBuffer(m_uniformBuffer);
         memcpy(uniformBufferPtr, &uniformData, sizeof(UniformData));
         m_device->UnmapBuffer(m_uniformBuffer);
@@ -377,12 +360,12 @@ public:
         m_renderGraph->PassResize(m_mainPass, {width, height});
 
         RHI::RenderPassBeginInfo renderPassBeginInfo{
-            .renderGraph = m_renderGraph,
-            .renderArea = {0, 0, width, height},
-            .pass = m_mainPass,
+            .renderGraph         = m_renderGraph,
+            .renderArea          = {0, 0, width, height},
+            .pass                = m_mainPass,
             .loadStoreOperations = {{
-                .clearValue = {.f32 = RHI::ColorValue<float>{0.3f, 0.5f, 0.7f, 1.0f}},
-                .loadOperation = RHI::LoadOperation::Discard,
+                .clearValue     = {.f32 = RHI::ColorValue<float>{0.3f, 0.5f, 0.7f, 1.0f}},
+                .loadOperation  = RHI::LoadOperation::Discard,
                 .storeOperation = RHI::StoreOperation::Store,
             }}};
 
@@ -390,10 +373,10 @@ public:
         commandList->BeginRenderPass(renderPassBeginInfo);
 
         commandList->SetViewport(RHI::Viewport{
-            .offsetX = 0.0f,
-            .offsetY = 0.0f,
-            .width = (float)width,
-            .height = (float)height,
+            .offsetX  = 0.0f,
+            .offsetY  = 0.0f,
+            .width    = (float)width,
+            .height   = (float)height,
             .minDepth = 0.0f,
             .maxDepth = 1.0f,
         });
@@ -401,16 +384,14 @@ public:
         commandList->SetSicssor(RHI::Scissor{
             .offsetX = 0,
             .offsetY = 0,
-            .width = width,
-            .height = height,
+            .width   = width,
+            .height  = height,
         });
 
         commandList->BindGraphicsPipeline(m_graphicsPipeline, RHI::BindGroupBindingInfo{frame.m_bindGroup, {}});
         commandList->BindVertexBuffers(0, RHI::BufferBindingInfo{.buffer = m_vertexBuffer, .offset = 0});
-        commandList->BindVertexBuffers(
-            1, RHI::BufferBindingInfo{.buffer = m_vertexBuffer, .offset = sizeof(glm::vec3) * 4});
-        commandList->BindIndexBuffer(
-            RHI::BufferBindingInfo{.buffer = m_indexBuffer, .offset = 0}, RHI::IndexType::uint16);
+        commandList->BindVertexBuffers(1, RHI::BufferBindingInfo{.buffer = m_vertexBuffer, .offset = sizeof(glm::vec3) * 4});
+        commandList->BindIndexBuffer(RHI::BufferBindingInfo{.buffer = m_indexBuffer, .offset = 0}, RHI::IndexType::uint16);
 
         RHI::DrawInfo drawInfo{};
         drawInfo.parameters = {6, 1, 0, 0, 0};
@@ -419,10 +400,9 @@ public:
         commandList->End();
 
         RHI::SubmitInfo submitInfo{
-            .waitSemaphores = RHI::SemaphoreSubmitInfo{0, RHI::PipelineStage::None, m_swapchain->GetWaitSemaphore()},
-            .commandLists = commandList.get(),
-            .signalSemaphores =
-                RHI::SemaphoreSubmitInfo{0, RHI::PipelineStage::None, m_swapchain->GetSignalSemaphore()},
+            .waitSemaphores   = RHI::SemaphoreSubmitInfo{0, RHI::PipelineStage::None, m_swapchain->GetWaitSemaphore()},
+            .commandLists     = commandList.get(),
+            .signalSemaphores = RHI::SemaphoreSubmitInfo{0, RHI::PipelineStage::None, m_swapchain->GetSignalSemaphore()},
         };
         m_queue->Submit(submitInfo, frame.m_fence);
 
@@ -438,8 +418,8 @@ public:
         {
         case EventType::WindowResize:
             {
-                auto& e = (WindowResizeEvent&)event;
-                auto res = m_swapchain->Recreate({e.GetSize().width, e.GetSize().height});
+                auto& e   = (WindowResizeEvent&)event;
+                auto  res = m_swapchain->Recreate({e.GetSize().width, e.GetSize().height});
                 TL_ASSERT(res == RHI::ResultCode::Success);
             }
             break;
@@ -459,7 +439,7 @@ int main(int argc, const char* argv[])
     using namespace Examples;
     TL::Span args{argv, (size_t)argc};
     TL::MemPlumber::start();
-    auto result = Entry<Playground>(args);
+    auto   result = Entry<Playground>(args);
     size_t memLeakCount, memLeakSize;
     TL::MemPlumber::memLeakCheck(memLeakCount, memLeakSize);
     return result;

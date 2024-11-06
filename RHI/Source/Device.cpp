@@ -214,45 +214,6 @@ namespace RHI
         Impl_DestroyBuffer(handle);
     }
 
-    Handle<ImageView> Device::CreateImageView(const ImageViewCreateInfo& createInfo)
-    {
-        ZoneScoped;
-
-        if (true)
-        {
-            TRY(createInfo.image != NullHandle, "Invalid Image handle", NullHandle);
-            TRY(createInfo.viewType != ImageViewType::None, "Invalid value for ImageViewCreateInfo::type", NullHandle);
-            TRY(createInfo.subresource.imageAspects != ImageAspect::None,
-                "Invalid value for ImageViewCreateInfo::subresource::imageAspects",
-                NullHandle);
-            TRY(createInfo.subresource.arrayCount != 0, "Invalid value for ImageViewCreateInfo::subresource::arrayCount", NullHandle);
-            TRY(createInfo.subresource.mipLevelCount != 0, "Invalid value for ImageViewCreateInfo::subresource::mipLevelCount", NullHandle);
-        }
-
-        return Impl_CreateImageView(createInfo);
-    }
-
-    void Device::DestroyImageView(Handle<ImageView> handle)
-    {
-        ZoneScoped;
-        TL_ASSERT(handle != NullHandle);
-        Impl_DestroyImageView(handle);
-    }
-
-    Handle<BufferView> Device::CreateBufferView(const BufferViewCreateInfo& createInfo)
-    {
-        ZoneScoped;
-
-        return Impl_CreateBufferView(createInfo);
-    }
-
-    void Device::DestroyBufferView(Handle<BufferView> handle)
-    {
-        ZoneScoped;
-        TL_ASSERT(handle != NullHandle);
-        Impl_DestroyBufferView(handle);
-    }
-
     DeviceMemoryPtr Device::MapBuffer(Handle<Buffer> handle)
     {
         ZoneScoped;

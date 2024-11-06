@@ -199,7 +199,7 @@ namespace RHI::Vulkan
 
     inline static VkImageLayout GetImageAttachmentLayout(const RGImagePassAccess& imageAttachment)
     {
-        auto imageAspect = imageAttachment.viewInfo.subresources.imageAspects;
+        auto imageAspect = imageAttachment.aspect;
         switch (imageAttachment.usage)
         {
         case ImageUsage::Color: return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;

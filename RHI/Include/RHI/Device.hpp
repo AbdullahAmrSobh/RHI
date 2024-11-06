@@ -74,6 +74,7 @@ namespace RHI
         Device();
         virtual ~Device();
 
+        // clang-format off
         TL_NODISCARD DeviceLimits             GetLimits() const;
 
         TL_NODISCARD TL::Ptr<RenderGraph>     CreateRenderGraph();
@@ -114,19 +115,13 @@ namespace RHI
 
         TL_NODISCARD Result<Handle<Image>>    CreateImage(const ImageCreateInfo& createInfo);
 
+        TL_NODISCARD Handle<Image>            CreateImageView(const ImageViewCreateInfo& createInfo);
+
         void                                  DestroyImage(Handle<Image> handle);
 
         TL_NODISCARD Result<Handle<Buffer>>   CreateBuffer(const BufferCreateInfo& createInfo);
 
         void                                  DestroyBuffer(Handle<Buffer> handle);
-
-        TL_NODISCARD Handle<ImageView>        CreateImageView(const ImageViewCreateInfo& createInfo);
-
-        void                                  DestroyImageView(Handle<ImageView> handle);
-
-        TL_NODISCARD Handle<BufferView>       CreateBufferView(const BufferViewCreateInfo& createInfo);
-
-        void                                  DestroyBufferView(Handle<BufferView> handle);
 
         TL_NODISCARD DeviceMemoryPtr          MapBuffer(Handle<Buffer> handle);
 
@@ -139,6 +134,7 @@ namespace RHI
         TL_NODISCARD Queue*                   GetQueue(QueueType queueType);
 
         void                                  CollectResources();
+        // clang-format on
 
     protected:
         virtual TL::Ptr<Swapchain>       Impl_CreateSwapchain(const SwapchainCreateInfo& createInfo)                           = 0;
@@ -162,10 +158,6 @@ namespace RHI
         virtual void                     Impl_DestroyImage(Handle<Image> handle)                                               = 0;
         virtual Result<Handle<Buffer>>   Impl_CreateBuffer(const BufferCreateInfo& createInfo)                                 = 0;
         virtual void                     Impl_DestroyBuffer(Handle<Buffer> handle)                                             = 0;
-        virtual Handle<ImageView>        Impl_CreateImageView(const ImageViewCreateInfo& createInfo)                           = 0;
-        virtual void                     Impl_DestroyImageView(Handle<ImageView> handle)                                       = 0;
-        virtual Handle<BufferView>       Impl_CreateBufferView(const BufferViewCreateInfo& createInfo)                         = 0;
-        virtual void                     Impl_DestroyBufferView(Handle<BufferView> handle)                                     = 0;
         virtual DeviceMemoryPtr          Impl_MapBuffer(Handle<Buffer> handle)                                                 = 0;
         virtual void                     Impl_UnmapBuffer(Handle<Buffer> handle)                                               = 0;
         virtual Handle<Semaphore>        Impl_CreateSemaphore(const SemaphoreCreateInfo& createInfo)                           = 0;

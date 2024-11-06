@@ -4,12 +4,10 @@
 #include "RHI/Handle.hpp"
 
 #include <TL/Flags.hpp>
-#include <TL/Utils.hpp>
 
 namespace RHI
 {
     RHI_DECLARE_OPAQUE_RESOURCE(Buffer);
-    RHI_DECLARE_OPAQUE_RESOURCE(BufferView);
 
     /// @brief Specifies the types of memory where a buffer can be allocated.
     enum class MemoryType
@@ -60,14 +58,9 @@ namespace RHI
     /// @brief Describes the parameters required to create a buffer view.
     struct BufferViewCreateInfo
     {
-        const char*     name      = nullptr;         ///< Name of the buffer view.
         Handle<Buffer>  buffer    = NullHandle;      ///< Handle to the buffer being viewed.
         Format          format    = Format::Unknown; ///< Format of the buffer view.
         BufferSubregion subregion = {};              ///< Subregion of the buffer being viewed.
     };
 } // namespace RHI
 
-namespace std
-{
-    TL_DEFINE_POD_HASH(RHI::BufferViewCreateInfo);
-}

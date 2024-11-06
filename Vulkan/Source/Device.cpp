@@ -193,11 +193,8 @@ namespace RHI::Vulkan
         , m_queue()
         , m_deleteQueue(this)
         , m_bindGroupAllocator(TL::CreatePtr<BindGroupAllocator>(this))
-        , m_commandPool(TL::CreatePtr<ICommandPool>(this))
         , m_imageOwner()
         , m_bufferOwner()
-        , m_imageViewOwner()
-        , m_bufferViewOwner()
         , m_bindGroupLayoutsOwner()
         , m_bindGroupOwner()
         , m_pipelineLayoutOwner()
@@ -213,7 +210,6 @@ namespace RHI::Vulkan
 
         vkDeviceWaitIdle(m_device);
 
-        delete m_commandPool.release();
         m_bindGroupAllocator->Shutdown();
 
         m_deleteQueue.Shutdown();
@@ -242,7 +238,6 @@ namespace RHI::Vulkan
         TRY_OR_RETURN(InitMemoryAllocator());
 
         TRY_OR_RETURN_VK(m_bindGroupAllocator->Init());
-        TRY_OR_RETURN_VK(m_commandPool->Init(CommandPoolFlags::Reset));
 
         return ResultCode::Success;
     }
@@ -601,48 +596,6 @@ namespace RHI::Vulkan
         auto buffer = m_bufferOwner.Get(handle);
         buffer->Shutdown(this);
         m_bufferOwner.Release(handle);
-    }
-
-    Handle<ImageView> IDevice::Impl_CreateImageView(const ImageViewCreateInfo& createInfo)
-    {
-        IImageView imageView{};
-        auto result = imageView.Init(this, createInfo);
-        if (IsError(result))
-        {
-            TL_LOG_ERROR("Failed to create image view");
-        }
-        auto handle = m_imageViewOwner.Emplace(std::move(imageView));
-        return handle;
-    }
-
-    void IDevice::Impl_DestroyImageView(Handle<ImageView> handle)
-    {
-        TL_ASSERT(handle != NullHandle);
-
-        auto imageView = m_imageViewOwner.Get(handle);
-        imageView->Shutdown(this);
-        m_imageViewOwner.Release(handle);
-    }
-
-    Handle<BufferView> IDevice::Impl_CreateBufferView(const BufferViewCreateInfo& createInfo)
-    {
-        IBufferView bufferView{};
-        auto result = bufferView.Init(this, createInfo);
-        if (IsError(result))
-        {
-            TL_LOG_ERROR("Failed to create buffer view");
-        }
-        auto handle = m_bufferViewOwner.Emplace(std::move(bufferView));
-        return handle;
-    }
-
-    void IDevice::Impl_DestroyBufferView(Handle<BufferView> handle)
-    {
-        TL_ASSERT(handle != NullHandle);
-
-        auto bufferView = m_bufferViewOwner.Get(handle);
-        bufferView->Shutdown(this);
-        m_bufferViewOwner.Release(handle);
     }
 
     DeviceMemoryPtr IDevice::Impl_MapBuffer(Handle<Buffer> handle)

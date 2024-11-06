@@ -205,7 +205,7 @@ namespace RHI::Vulkan
             {
                 imageInfos[imageInfosCount] = {
                     .sampler = VK_NULL_HANDLE,
-                    .imageView = device->m_imageViewOwner.Get(imageUpdate.images[i])->handle,
+                    .imageView = device->m_imageOwner.Get(imageUpdate.images[i])->viewHandle,
                     .imageLayout = (descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                                        ? VK_IMAGE_LAYOUT_GENERAL
                                        : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,

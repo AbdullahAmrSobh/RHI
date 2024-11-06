@@ -45,17 +45,8 @@ namespace RHI::Vulkan
     {
         Allocation allocation;
         VkImage handle;
-
-        VkImageCreateFlags flags;
-        VkImageType imageType;
-        VkFormat format;
-        VkExtent3D extent;
-        uint32_t mipLevels;
-        uint32_t arrayLayers;
-        VkSampleCountFlagBits samples;
-        VkImageUsageFlags usage;
-
-        TL::Flags<ImageAspect> availableAspects;
+        VkImageView viewHandle;
+        ImageSubresourceRange subresources;
 
         ResultCode Init(IDevice* device, const ImageCreateInfo& createInfo);
         ResultCode Init(IDevice* device, VkImage image, const VkSwapchainCreateInfoKHR& swapchainCreateInfo);
@@ -63,13 +54,4 @@ namespace RHI::Vulkan
 
         VkMemoryRequirements GetMemoryRequirements(IDevice* device) const;
     };
-
-    struct IImageView : ImageView
-    {
-        VkImageView handle;
-
-        ResultCode Init(IDevice* device, const ImageViewCreateInfo& useInfo);
-        void Shutdown(IDevice* device);
-    };
-
 } // namespace RHI::Vulkan

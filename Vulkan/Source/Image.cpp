@@ -5,7 +5,7 @@
 
 namespace RHI::Vulkan
 {
-     VkImageSubresource ConvertSubresource(const ImageSubresource& subresource)
+    VkImageSubresource ConvertSubresource(const ImageSubresource& subresource)
     {
         auto vkSubresource = VkImageSubresource{};
         vkSubresource.aspectMask = ConvertImageAspect(subresource.imageAspects);
@@ -14,9 +14,7 @@ namespace RHI::Vulkan
         return vkSubresource;
     }
 
-
-
-     VkImageUsageFlagBits ConvertImageUsage(ImageUsage imageUsage)
+    VkImageUsageFlagBits ConvertImageUsage(ImageUsage imageUsage)
     {
         switch (imageUsage)
         {
@@ -32,27 +30,20 @@ namespace RHI::Vulkan
         }
     }
 
-     VkImageUsageFlags ConvertImageUsageFlags(TL::Flags<ImageUsage> imageUsageFlags)
+    VkImageUsageFlags ConvertImageUsageFlags(TL::Flags<ImageUsage> imageUsageFlags)
     {
         VkImageUsageFlags result = 0;
-        if (imageUsageFlags & ImageUsage::ShaderResource)
-            result |= VK_IMAGE_USAGE_SAMPLED_BIT;
-        if (imageUsageFlags & ImageUsage::StorageResource)
-            result |= VK_IMAGE_USAGE_STORAGE_BIT;
-        if (imageUsageFlags & ImageUsage::Color)
-            result |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-        if (imageUsageFlags & ImageUsage::Depth)
-            result |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-        if (imageUsageFlags & ImageUsage::Stencil)
-            result |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-        if (imageUsageFlags & ImageUsage::CopySrc)
-            result |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-        if (imageUsageFlags & ImageUsage::CopyDst)
-            result |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        if (imageUsageFlags & ImageUsage::ShaderResource) result |= VK_IMAGE_USAGE_SAMPLED_BIT;
+        if (imageUsageFlags & ImageUsage::StorageResource) result |= VK_IMAGE_USAGE_STORAGE_BIT;
+        if (imageUsageFlags & ImageUsage::Color) result |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        if (imageUsageFlags & ImageUsage::Depth) result |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        if (imageUsageFlags & ImageUsage::Stencil) result |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        if (imageUsageFlags & ImageUsage::CopySrc) result |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+        if (imageUsageFlags & ImageUsage::CopyDst) result |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
         return result;
     }
 
-     VkImageType ConvertImageType(ImageType imageType)
+    VkImageType ConvertImageType(ImageType imageType)
     {
         switch (imageType)
         {
@@ -64,19 +55,16 @@ namespace RHI::Vulkan
         }
     }
 
-     VkImageAspectFlagBits ConvertImageAspect(TL::Flags<ImageAspect> imageAspect)
+    VkImageAspectFlagBits ConvertImageAspect(TL::Flags<ImageAspect> imageAspect)
     {
-        if (imageAspect & ImageAspect::Color)
-            return VK_IMAGE_ASPECT_COLOR_BIT;
-        if (imageAspect & ImageAspect::Depth)
-            return VK_IMAGE_ASPECT_DEPTH_BIT;
-        if (imageAspect & ImageAspect::Stencil)
-            return VK_IMAGE_ASPECT_STENCIL_BIT;
+        if (imageAspect & ImageAspect::Color) return VK_IMAGE_ASPECT_COLOR_BIT;
+        if (imageAspect & ImageAspect::Depth) return VK_IMAGE_ASPECT_DEPTH_BIT;
+        if (imageAspect & ImageAspect::Stencil) return VK_IMAGE_ASPECT_STENCIL_BIT;
         TL_UNREACHABLE();
         return VK_IMAGE_ASPECT_FLAG_BITS_MAX_ENUM;
     }
 
-     VkImageAspectFlags ConvertImageAspect(ImageAspect imageAspect)
+    VkImageAspectFlags ConvertImageAspect(ImageAspect imageAspect)
     {
         switch (imageAspect)
         {
@@ -90,15 +78,13 @@ namespace RHI::Vulkan
         }
     }
 
-     VkImageAspectFlags FormatToAspect(VkFormat format)
+    VkImageAspectFlags FormatToAspect(VkFormat format)
     {
-        if (format == VK_FORMAT_D32_SFLOAT)
-            return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-        else
-            return VK_IMAGE_ASPECT_COLOR_BIT;
+        if (format == VK_FORMAT_D32_SFLOAT) return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+        else return VK_IMAGE_ASPECT_COLOR_BIT;
     }
 
-     VkComponentSwizzle ConvertComponentSwizzle(ComponentSwizzle componentSwizzle)
+    VkComponentSwizzle ConvertComponentSwizzle(ComponentSwizzle componentSwizzle)
     {
         switch (componentSwizzle)
         {
@@ -113,7 +99,6 @@ namespace RHI::Vulkan
         }
     }
 
-
     VkImageSubresourceRange ConvertSubresourceRange(const ImageSubresourceRange& subresource)
     {
         auto vkSubresource = VkImageSubresourceRange{};
@@ -127,28 +112,28 @@ namespace RHI::Vulkan
 
     VkExtent2D ConvertExtent2D(ImageSize2D size)
     {
-        return { size.width, size.height };
+        return {size.width, size.height};
     }
 
     VkExtent3D ConvertExtent3D(ImageSize3D size)
     {
-        return { size.width, size.height, size.depth };
+        return {size.width, size.height, size.depth};
     }
 
     VkExtent2D ConvertExtent2D(ImageSize3D size)
     {
         TL_ASSERT(size.depth == 0);
-        return { size.width, size.height };
+        return {size.width, size.height};
     }
 
     VkOffset2D ConvertOffset2D(ImageOffset2D offset)
     {
-        return { offset.x, offset.y };
+        return {offset.x, offset.y};
     }
 
     VkOffset3D ConvertOffset3D(ImageOffset3D offset)
     {
-        return { offset.x, offset.y, offset.z };
+        return {offset.x, offset.y, offset.z};
     }
 
     VkComponentMapping ConvertComponentMapping(ComponentMapping componentMapping)
@@ -167,15 +152,7 @@ namespace RHI::Vulkan
 
     ResultCode IImage::Init(IDevice* device, const ImageCreateInfo& createInfo)
     {
-        this->flags = {};
-        this->imageType = ConvertImageType(createInfo.type);
-        this->format = ConvertFormat(createInfo.format);
-        this->extent = ConvertExtent3D(createInfo.size);
-        this->mipLevels = createInfo.mipLevels;
-        this->arrayLayers = createInfo.arrayCount;
-        this->samples = ConvertSampleCount(createInfo.sampleCount);
-        this->usage = ConvertImageUsageFlags(createInfo.usageFlags);
-        this->availableAspects = GetFormatAspects(createInfo.format);
+        VkResult result;
 
         VmaAllocationCreateInfo allocationInfo{
             .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT,
@@ -185,37 +162,64 @@ namespace RHI::Vulkan
             .memoryTypeBits = 0,
             .pool = VK_NULL_HANDLE,
             .pUserData = nullptr,
-            .priority = 0.0f
-        };
+            .priority = 0.0f};
         VkImageCreateInfo imageCI{
             .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
             .pNext = nullptr,
-            .flags = this->flags,
-            .imageType = this->imageType,
-            .format = this->format,
-            .extent = this->extent,
-            .mipLevels = this->mipLevels,
-            .arrayLayers = this->arrayLayers,
-            .samples = this->samples,
+            .flags = 0,
+            .imageType = ConvertImageType(createInfo.type),
+            .format = ConvertFormat(createInfo.format),
+            .extent = ConvertExtent3D(createInfo.size),
+            .mipLevels = createInfo.mipLevels,
+            .arrayLayers = createInfo.arrayCount,
+            .samples = ConvertSampleCount(createInfo.sampleCount),
             .tiling = VK_IMAGE_TILING_OPTIMAL,
-            .usage = this->usage,
+            .usage = ConvertImageUsageFlags(createInfo.usageFlags),
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
             .queueFamilyIndexCount = 0,
             .pQueueFamilyIndices = nullptr,
             .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
         };
-        auto result = vmaCreateImage(
-            device->m_allocator,
-            &imageCI,
-            &allocationInfo,
-            &handle,
-            &allocation.handle,
-            &allocation.info);
+
+        result = vmaCreateImage(device->m_allocator, &imageCI, &allocationInfo, &handle, &allocation.handle, &allocation.info);
 
         if (result == VK_SUCCESS && createInfo.name)
         {
             device->SetDebugName(handle, createInfo.name);
         }
+
+        VkImageViewCreateInfo imageViewCI{
+            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = 0,
+            .image = handle,
+            .viewType = VK_IMAGE_VIEW_TYPE_1D,
+            .format = imageCI.format,
+            .components{
+                VK_COMPONENT_SWIZZLE_IDENTITY,
+                VK_COMPONENT_SWIZZLE_IDENTITY,
+                VK_COMPONENT_SWIZZLE_IDENTITY,
+                VK_COMPONENT_SWIZZLE_IDENTITY,
+            },
+            .subresourceRange =
+                {
+                    .aspectMask = 0,
+                    .baseMipLevel = 0,
+                    .levelCount = VK_REMAINING_MIP_LEVELS,
+                    .baseArrayLayer = 0,
+                    .layerCount = VK_REMAINING_ARRAY_LAYERS,
+                },
+        };
+
+        switch (imageCI.imageType)
+        {
+        case VK_IMAGE_TYPE_1D: imageViewCI.viewType = imageCI.arrayLayers == 1 ? VK_IMAGE_VIEW_TYPE_1D : VK_IMAGE_VIEW_TYPE_1D_ARRAY; break;
+        case VK_IMAGE_TYPE_2D: imageViewCI.viewType = imageCI.arrayLayers == 1 ? VK_IMAGE_VIEW_TYPE_2D : VK_IMAGE_VIEW_TYPE_2D_ARRAY; break;
+        case VK_IMAGE_TYPE_3D: imageViewCI.viewType = VK_IMAGE_VIEW_TYPE_3D; break;
+        default:               TL_UNREACHABLE(); break;
+        }
+
+        result = vkCreateImageView(device->m_device, &imageViewCI, nullptr, &viewHandle);
 
         return ConvertResult(result);
     }
@@ -223,17 +227,33 @@ namespace RHI::Vulkan
     ResultCode IImage::Init([[maybe_unused]] IDevice* device, VkImage image, const VkSwapchainCreateInfoKHR& swapchainCI)
     {
         this->handle = image;
-        this->flags = {};
-        this->imageType = VK_IMAGE_TYPE_2D;
-        this->format = swapchainCI.imageFormat;
-        this->extent.width = swapchainCI.imageExtent.width;
-        this->extent.height = swapchainCI.imageExtent.height;
-        this->extent.depth = 1;
-        this->mipLevels = 1;
-        this->arrayLayers = swapchainCI.imageArrayLayers;
-        this->samples = VK_SAMPLE_COUNT_1_BIT;
-        this->usage = swapchainCI.imageUsage;
-        return ResultCode::Success;
+
+        VkImageViewCreateInfo imageViewCI{
+            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = 0,
+            .image = handle,
+            .viewType = VK_IMAGE_VIEW_TYPE_2D,
+            .format = swapchainCI.imageFormat,
+            .components{
+                VK_COMPONENT_SWIZZLE_IDENTITY,
+                VK_COMPONENT_SWIZZLE_IDENTITY,
+                VK_COMPONENT_SWIZZLE_IDENTITY,
+                VK_COMPONENT_SWIZZLE_IDENTITY,
+            },
+            .subresourceRange =
+                {
+                    .aspectMask = 0,
+                    .baseMipLevel = 0,
+                    .levelCount = VK_REMAINING_MIP_LEVELS,
+                    .baseArrayLayer = 0,
+                    .layerCount = VK_REMAINING_ARRAY_LAYERS,
+                },
+        };
+
+        auto result = vkCreateImageView(device->m_device, &imageViewCI, nullptr, &viewHandle);
+
+        return ConvertResult(result);
     }
 
     void IImage::Shutdown(IDevice* device)
@@ -247,49 +267,5 @@ namespace RHI::Vulkan
         VkMemoryRequirements requirements;
         vkGetImageMemoryRequirements(device->m_device, handle, &requirements);
         return requirements;
-    }
-
-    ///////////////////////////////////////////////////////////////////////////
-    /// ImageView
-    ///////////////////////////////////////////////////////////////////////////
-
-    ResultCode IImageView::Init(IDevice* device, const ImageViewCreateInfo& createInfo)
-    {
-        auto image = device->m_imageOwner.Get(createInfo.image);
-        TL_ASSERT(image);
-
-        VkImageViewCreateInfo imageViewCI{
-            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .pNext = nullptr,
-            .flags = 0,
-            .image = image->handle,
-            .viewType = VK_IMAGE_VIEW_TYPE_1D,
-            .format = ConvertFormat(ConvertFormat(image->format)),
-            .components = ConvertComponentMapping(createInfo.components),
-            .subresourceRange = ConvertSubresourceRange(createInfo.subresource),
-        };
-
-        switch (image->imageType)
-        {
-        case VK_IMAGE_TYPE_1D: imageViewCI.viewType = createInfo.subresource.arrayCount == 1 ? VK_IMAGE_VIEW_TYPE_1D : VK_IMAGE_VIEW_TYPE_1D_ARRAY; break;
-        case VK_IMAGE_TYPE_2D: imageViewCI.viewType = createInfo.subresource.arrayCount == 1 ? VK_IMAGE_VIEW_TYPE_2D : VK_IMAGE_VIEW_TYPE_2D_ARRAY; break;
-        case VK_IMAGE_TYPE_3D: imageViewCI.viewType = VK_IMAGE_VIEW_TYPE_3D; break;
-        default:               TL_UNREACHABLE(); break;
-        }
-
-        auto result = vkCreateImageView(device->m_device, &imageViewCI, nullptr, &handle);
-
-        if (result == VK_SUCCESS && createInfo.name)
-        {
-            device->SetDebugName(handle, createInfo.name);
-        }
-
-        return ConvertResult(result);
-    }
-
-    void IImageView::Shutdown(IDevice* device)
-    {
-        vkDestroyImageView(device->m_device, handle, nullptr);
-        device->m_deleteQueue.DestroyObject(handle);
     }
 } // namespace RHI::Vulkan
