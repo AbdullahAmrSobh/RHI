@@ -21,13 +21,13 @@ namespace RHI::Vulkan
         if (auto fn = m_device->m_pfn.m_vkQueueBeginDebugUtilsLabelEXT)
         {
             VkDebugUtilsLabelEXT labelInfo{};
-            labelInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
-            labelInfo.pNext = nullptr;
+            labelInfo.sType      = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+            labelInfo.pNext      = nullptr;
             labelInfo.pLabelName = name;
-            labelInfo.color[0] = color[0];
-            labelInfo.color[1] = color[1];
-            labelInfo.color[2] = color[2];
-            labelInfo.color[3] = color[3];
+            labelInfo.color[0]   = color[0];
+            labelInfo.color[1]   = color[1];
+            labelInfo.color[2]   = color[2];
+            labelInfo.color[3]   = color[3];
             fn(m_queue, &labelInfo);
         }
     }
@@ -47,19 +47,19 @@ namespace RHI::Vulkan
         for (const auto& submitInfo : submitInfos)
         {
             // Vectors to hold Vulkan semaphore and command buffer submit info structures
-            TL::Vector<VkSemaphoreSubmitInfo> waitSemaphoreSIList;
-            TL::Vector<VkSemaphoreSubmitInfo> signalSemaphoreSIList;
+            TL::Vector<VkSemaphoreSubmitInfo>     waitSemaphoreSIList;
+            TL::Vector<VkSemaphoreSubmitInfo>     signalSemaphoreSIList;
             TL::Vector<VkCommandBufferSubmitInfo> commandBufferSIList;
 
             // Process wait semaphores
             for (const auto& waitSemaphore : submitInfo.waitSemaphores)
             {
                 VkSemaphoreSubmitInfo waitSemaphoreInfo{
-                    .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-                    .pNext = nullptr,
-                    .semaphore = m_device->m_semaphoreOwner.Get(waitSemaphore.semaphore)->handle, // Get the VkSemaphore handle
-                    .value = waitSemaphore.value,
-                    .stageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, // TODO:
+                    .sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+                    .pNext       = nullptr,
+                    .semaphore   = m_device->m_semaphoreOwner.Get(waitSemaphore.semaphore)->handle, // Get the VkSemaphore handle
+                    .value       = waitSemaphore.value,
+                    .stageMask   = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, // TODO:
                     .deviceIndex = 0,
                 };
                 waitSemaphoreSIList.push_back(waitSemaphoreInfo);
@@ -69,11 +69,11 @@ namespace RHI::Vulkan
             for (const auto& signalSemaphore : submitInfo.signalSemaphores)
             {
                 VkSemaphoreSubmitInfo signalSemaphoreInfo{
-                    .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-                    .pNext = nullptr,
-                    .semaphore = m_device->m_semaphoreOwner.Get(signalSemaphore.semaphore)->handle, // Get the VkSemaphore handle
-                    .value = signalSemaphore.value,
-                    .stageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, // TODO:
+                    .sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+                    .pNext       = nullptr,
+                    .semaphore   = m_device->m_semaphoreOwner.Get(signalSemaphore.semaphore)->handle, // Get the VkSemaphore handle
+                    .value       = signalSemaphore.value,
+                    .stageMask   = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, // TODO:
                     .deviceIndex = 0,
                 };
                 signalSemaphoreSIList.push_back(signalSemaphoreInfo);
@@ -83,25 +83,25 @@ namespace RHI::Vulkan
             for (CommandList* const commandList : submitInfo.commandLists)
             {
                 VkCommandBufferSubmitInfo commandBufferSubmitInfo{
-                    .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
-                    .pNext = nullptr,
+                    .sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+                    .pNext         = nullptr,
                     .commandBuffer = ((ICommandList*)commandList)->m_commandBuffer, // Get the VkCommandBuffer handle
-                    .deviceMask = 0,
+                    .deviceMask    = 0,
                 };
                 commandBufferSIList.push_back(commandBufferSubmitInfo);
             }
 
             // Create the VkSubmitInfo2 structure for queue submission
             VkSubmitInfo2 submitInfo2{
-                .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
-                .pNext = nullptr,
-                .flags = 0,
-                .waitSemaphoreInfoCount = static_cast<uint32_t>(waitSemaphoreSIList.size()),
-                .pWaitSemaphoreInfos = waitSemaphoreSIList.data(),
-                .commandBufferInfoCount = static_cast<uint32_t>(commandBufferSIList.size()),
-                .pCommandBufferInfos = commandBufferSIList.data(),
+                .sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+                .pNext                    = nullptr,
+                .flags                    = 0,
+                .waitSemaphoreInfoCount   = static_cast<uint32_t>(waitSemaphoreSIList.size()),
+                .pWaitSemaphoreInfos      = waitSemaphoreSIList.data(),
+                .commandBufferInfoCount   = static_cast<uint32_t>(commandBufferSIList.size()),
+                .pCommandBufferInfos      = commandBufferSIList.data(),
                 .signalSemaphoreInfoCount = static_cast<uint32_t>(signalSemaphoreSIList.size()),
-                .pSignalSemaphoreInfos = signalSemaphoreSIList.data(),
+                .pSignalSemaphoreInfos    = signalSemaphoreSIList.data(),
             };
 
             // Submit the batch to the Vulkan queue

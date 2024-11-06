@@ -7,10 +7,10 @@ namespace RHI::Vulkan
     ResultCode ISemaphore::Init(IDevice* device, const SemaphoreCreateInfo& _createInfo)
     {
         VkSemaphoreTypeCreateInfo semaphoreType{
-            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
-            .pNext = nullptr,
+            .sType         = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
+            .pNext         = nullptr,
             .semaphoreType = _createInfo.timeline ? VK_SEMAPHORE_TYPE_TIMELINE : VK_SEMAPHORE_TYPE_BINARY,
-            .initialValue = 0,
+            .initialValue  = 0,
         };
         VkSemaphoreCreateInfo createInfo{
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,

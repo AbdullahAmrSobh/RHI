@@ -77,8 +77,8 @@ namespace RHI
     /// @brief 2D offset for images.
     struct ImageOffset2D
     {
-        int32_t x = 0; ///< X coordinate offset.
-        int32_t y = 0; ///< Y coordinate offset.
+        int32_t     x = 0; ///< X coordinate offset.
+        int32_t     y = 0; ///< Y coordinate offset.
 
         inline bool operator==(const ImageOffset2D& other) const { return x == other.x && y == other.y; }
     };
@@ -86,9 +86,9 @@ namespace RHI
     /// @brief 3D offset for images.
     struct ImageOffset3D
     {
-        int32_t x = 0; ///< X coordinate offset.
-        int32_t y = 0; ///< Y coordinate offset.
-        int32_t z = 0; ///< Z coordinate offset.
+        int32_t     x = 0; ///< X coordinate offset.
+        int32_t     y = 0; ///< Y coordinate offset.
+        int32_t     z = 0; ///< Z coordinate offset.
 
         inline bool operator==(const ImageOffset3D& other) const { return x == other.x && y == other.y && z == other.z; }
     };
@@ -96,8 +96,8 @@ namespace RHI
     /// @brief 2D size for images.
     struct ImageSize2D
     {
-        uint32_t width  = 1; ///< Width of the image.
-        uint32_t height = 1; ///< Height of the image.
+        uint32_t    width  = 1; ///< Width of the image.
+        uint32_t    height = 1; ///< Height of the image.
 
         inline bool operator==(const ImageSize2D& other) const { return width == other.width && height == other.height; }
     };
@@ -105,9 +105,9 @@ namespace RHI
     /// @brief 3D size for images.
     struct ImageSize3D
     {
-        uint32_t width  = 1; ///< Width of the image.
-        uint32_t height = 1; ///< Height of the image.
-        uint32_t depth  = 1; ///< Depth of the image.
+        uint32_t    width  = 1; ///< Width of the image.
+        uint32_t    height = 1; ///< Height of the image.
+        uint32_t    depth  = 1; ///< Depth of the image.
 
         inline bool operator==(const ImageSize3D& other) const
         {
@@ -133,7 +133,7 @@ namespace RHI
         uint32_t               mipLevel     = 0;                  ///< Mipmap level.
         uint32_t               arrayLayer   = 0;                  ///< Array layer.
 
-        inline bool operator==(const ImageSubresource& other) const
+        inline bool            operator==(const ImageSubresource& other) const
         {
             return imageAspects == other.imageAspects && mipLevel == other.mipLevel && arrayLayer == other.arrayLayer;
         }
@@ -148,7 +148,7 @@ namespace RHI
         uint32_t               arrayBase     = 0;                  ///< Base array layer.
         uint32_t               arrayCount    = 1;                  ///< Number of array layers.
 
-        inline bool operator==(const ImageSubresourceRange& other) const
+        inline bool            operator==(const ImageSubresourceRange& other) const
         {
             return imageAspects == other.imageAspects && mipBase == other.mipBase && mipLevelCount == other.mipLevelCount &&
                    arrayBase == other.arrayBase && arrayCount == other.arrayCount;
@@ -178,7 +178,7 @@ namespace RHI
         ComponentMapping      components  = {};                  ///< Component mapping.
         ImageSubresourceRange subresource = {};                  ///< Subresource range.
 
-        inline bool operator==(const ImageViewCreateInfo& other) const
+        inline bool           operator==(const ImageViewCreateInfo& other) const
         {
             return components == other.components && viewType == other.viewType && subresource == other.subresource;
         }

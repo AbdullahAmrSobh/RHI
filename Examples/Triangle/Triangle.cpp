@@ -392,10 +392,7 @@ public:
         commandList->BindVertexBuffers(0, RHI::BufferBindingInfo{.buffer = m_vertexBuffer, .offset = 0});
         commandList->BindVertexBuffers(1, RHI::BufferBindingInfo{.buffer = m_vertexBuffer, .offset = sizeof(glm::vec3) * 4});
         commandList->BindIndexBuffer(RHI::BufferBindingInfo{.buffer = m_indexBuffer, .offset = 0}, RHI::IndexType::uint16);
-
-        RHI::DrawInfo drawInfo{};
-        drawInfo.parameters = {6, 1, 0, 0, 0};
-        commandList->Draw(drawInfo);
+        commandList->Draw({6, 1, 0, 0, 0});
         commandList->EndRenderPass();
         commandList->End();
 

@@ -37,6 +37,15 @@ if(RHI_BUILD_EXAMPLES)
 			"GLM_CLIP_CONTROL_ZO_BIT ON"
 	)
 
+	CPMAddPackage(
+		NAME            fastgltf
+		GIT_REPOSITORY 	git@github.com:spnda/fastgltf.git
+		GIT_TAG         v0.8.0
+		OPTIONS
+			# "GLM_CONFIG_CLIP_CONTROL ON"
+			# "GLM_CLIP_CONTROL_ZO_BIT ON"
+	)
+
 	# CPMAddPackage(
 	# 	NAME           Compressonator
 	# 	GIT_REPOSITORY git@github.com:GPUOpen-Tools/compressonator.git

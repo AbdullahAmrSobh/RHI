@@ -102,14 +102,14 @@ namespace RHI
         uint8_t     bytesPerBlock;
         uint8_t     blockSize;
         FormatType  type;
-        bool        hasRed : 1;
-        bool        hasGreen : 1;
-        bool        hasBlue : 1;
-        bool        hasAlpha : 1;
-        bool        hasDepth : 1;
+        bool        hasRed     : 1;
+        bool        hasGreen   : 1;
+        bool        hasBlue    : 1;
+        bool        hasAlpha   : 1;
+        bool        hasDepth   : 1;
         bool        hasStencil : 1;
-        bool        isSigned : 1;
-        bool        isSRGB : 1;
+        bool        isSigned   : 1;
+        bool        isSRGB     : 1;
     };
 
     RHI_EXPORT const FormatInfo&      GetFormatInfo(Format format);

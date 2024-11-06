@@ -60,8 +60,8 @@ namespace RHI::Vulkan
         void SetSicssor(const Scissor& sicssor) override;
         void BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> vertexBuffers) override;
         void BindIndexBuffer(const BufferBindingInfo& indexBuffer, IndexType indexType) override;
-        void Draw(const DrawInfo& drawInfo) override;
-        void Dispatch(const DispatchInfo& dispatchInfo) override;
+        void Draw(const DrawParameters& parameters) override;
+        void Dispatch(const DispatchParameters& parameters) override;
         void CopyBuffer(const BufferCopyInfo& copyInfo) override;
         void CopyImage(const ImageCopyInfo& copyInfo) override;
         void CopyImageToBuffer(const BufferImageCopyInfo& copyInfo) override;

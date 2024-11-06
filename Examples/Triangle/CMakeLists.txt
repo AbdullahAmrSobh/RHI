@@ -21,6 +21,9 @@ tl_add_target(
     RUNTIME_LIBRARIES
         RHI::Vulkan
 )
+
+target_link_libraries(Triangle fastgltf)
+
 include(${CMAKE_SOURCE_DIR}/cmake/compile-slang-shaders.cmake)
 compile_slang_shaders(
     TARGET Triangle

@@ -7,11 +7,11 @@
 
 namespace RHI
 {
-#define TRY(condition, message, return_type)                                                                                               \
-    if ((condition) == false)                                                                                                              \
-    {                                                                                                                                      \
-        TL_LOG_INFO(message);                                                                                                              \
-        return return_type;                                                                                                                \
+#define TRY(condition, message, return_type) \
+    if ((condition) == false)                \
+    {                                        \
+        TL_LOG_INFO(message);                \
+        return return_type;                  \
     }
 
     Device::Device()

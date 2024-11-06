@@ -28,11 +28,11 @@ namespace RHI
     class Queue
     {
     public:
-        virtual ~Queue() = default;
+        virtual ~Queue()                                                          = default;
 
-        virtual void BeginLabel(const char* name, float color[4]) = 0;
+        virtual void BeginLabel(const char* name, float color[4])                 = 0;
 
-        virtual void EndLabel() = 0;
+        virtual void EndLabel()                                                   = 0;
 
         virtual void Submit(TL::Span<const SubmitInfo> submitInfos, Fence* fence) = 0;
     };

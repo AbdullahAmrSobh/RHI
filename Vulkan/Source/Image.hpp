@@ -43,14 +43,14 @@ namespace RHI::Vulkan
 
     struct IImage : Image
     {
-        Allocation allocation;
-        VkImage handle;
-        VkImageView viewHandle;
+        Allocation            allocation;
+        VkImage               handle;
+        VkImageView           viewHandle;
         ImageSubresourceRange subresources;
 
         ResultCode Init(IDevice* device, const ImageCreateInfo& createInfo);
         ResultCode Init(IDevice* device, VkImage image, const VkSwapchainCreateInfoKHR& swapchainCreateInfo);
-        void Shutdown(IDevice* device);
+        void       Shutdown(IDevice* device);
 
         VkMemoryRequirements GetMemoryRequirements(IDevice* device) const;
     };

@@ -40,10 +40,7 @@ namespace RHI
         /// @brief Compares this subregion with another for equality.
         /// @param other The other subregion to compare with.
         /// @return true if both subregions have the same offset and size, false otherwise.
-        inline bool operator==(const BufferSubregion& other) const
-        {
-            return size == other.size && offset == other.offset;
-        }
+        inline bool operator==(const BufferSubregion& other) const { return size == other.size && offset == other.offset; }
     };
 
     /// @brief Describes the parameters required to create a buffer.
@@ -63,4 +60,3 @@ namespace RHI
         BufferSubregion subregion = {};              ///< Subregion of the buffer being viewed.
     };
 } // namespace RHI
-

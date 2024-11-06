@@ -8,21 +8,16 @@ TL:
     - Command line interface builder
 
 RHI:
-    - Iterate on Render Graph Interface design
-    - Commands are recorded into passes, so passes should handle sync data
-    - Expose synchornization
-    - Secondary command lists
-    - Fix swapchain resize issues
-    - MSAA
-    - Drop RAII completelly (Use Create/Destroy) in similar style to Vulkan.hpp
-    - Mesh Pipeline
-    - Ray Tracing Pipeline
-    - Querys
-    - Add Semaphore as a type
-    - Add Barrier and Split Barriers as CommandList Commands
-    - Add BeginRenderPass and EndRenderPass commands
-    - Add SubmitInfo struct
-
+    - Remove view objects, by either
+        - [] adopt similar design to metal with MakeImageView which would create a new image handle
+        - [] ResourceViewInfoDesc struct is passed to bind group update function (uses a hash map to generete actual views)
+    - unify API semaphore and fence objects into single object (choose name) (timeline semaphores)
+        - and rework queue submits accordingly
+    - adopt similar API design to WebGPU command encoder
+    - DROP RAII
+    - Query
+    - Explicit Memory Management support
+    -
 
 RPI:
     - ImGui

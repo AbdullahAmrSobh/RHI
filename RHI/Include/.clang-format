@@ -1,21 +1,17 @@
+---
 Language: Cpp
-
 AccessModifierOffset: -4
-AlignAfterOpenBracket: Align
+AlignAfterOpenBracket: AlwaysBreak
 AlignConsecutiveAssignments:
   Enabled: true
-  AcrossEmptyLines: false
+  AcrossEmptyLines: true
   AcrossComments: true
 AlignConsecutiveDeclarations:
   Enabled: true
   AcrossEmptyLines: true
   AcrossComments: true
-AlignConsecutiveMacros:
-  Enabled: true
-  AcrossEmptyLines: true
-  AcrossComments: true
-AlignEscapedNewlines: Right
-AlignOperands: true
+AlignEscapedNewlines: Left
+AlignOperands: Align
 AlignTrailingComments: true
 AllowAllArgumentsOnNextLine: true
 AllowAllParametersOfDeclarationOnNextLine: true
@@ -26,24 +22,37 @@ AlwaysBreakTemplateDeclarations: true
 BinPackArguments: false
 BinPackParameters: false
 BreakBeforeBraces: Allman
+LambdaBodyIndentation: OuterScope
 BraceWrapping:
-    AfterStruct: true
-    AfterClass: true
-    AfterUnion: true
-    AfterControlStatement: true
-    AfterEnum: true
-    AfterFunction: true
-    AfterNamespace: true
-    BeforeLambdaBody: true
-    BeforeElse: true
-    SplitEmptyFunction: true
+  AfterStruct: true
+  AfterClass: true
+  AfterUnion: true
+  AfterControlStatement: Always
+  AfterEnum: true
+  AfterFunction: true
+  AfterNamespace: true
+  BeforeLambdaBody: true
+  BeforeElse: true
+  SplitEmptyFunction: true
+  AfterCaseLabel: true
+  AfterObjCDeclaration: true
+  AfterExternBlock: true
+  BeforeCatch: true
+  BeforeWhile: true
+  IndentBraces: true
+  SplitEmptyRecord: true
+  SplitEmptyNamespace: true
 AllowShortCaseLabelsOnASingleLine: true
 AlignConsecutiveShortCaseStatements:
-    Enabled: true
+  Enabled: true
+  AcrossEmptyLines: true
+  AcrossComments: true
+#   AlignCaseArrows: true
+#   AlignCaseColons: true
 BreakBeforeTernaryOperators: true
 BreakConstructorInitializers: BeforeComma
 BreakInheritanceList: BeforeComma
-ColumnLimit: 0
+ColumnLimit: 140
 ConstructorInitializerIndentWidth: 4
 ContinuationIndentWidth: 4
 Cpp11BracedListStyle: true
@@ -73,7 +82,17 @@ SpacesInCStyleCastParentheses: false
 SpacesInParentheses: false
 Standard: c++20
 UseTab: Never
-
 SeparateDefinitionBlocks: Always
+AlignArrayOfStructures: None
+AllowShortIfStatementsOnASingleLine: AllIfsAndElse
+AlignConsecutiveBitFields:
+  Enabled: true
+  AcrossComments: true
+  AlignCompound: true
+#   AlignFunctionPointers: true
+  PadOperators: true
+  AcrossEmptyLines: false
+ReferenceAlignment: Left
+# BreakFunctionDefinitionParameters: true
 
 StatementAttributeLikeMacros: [TL_NODISCARD, RHI_EXPORT]

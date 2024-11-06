@@ -2,6 +2,7 @@
 
 #include <RHI/Device.hpp>
 #include <RHI/Queue.hpp>
+#include <RHI-Vulkan/Loader.hpp>
 
 #include "Queue.hpp"
 #include "DeleteQueue.hpp"
@@ -31,20 +32,19 @@ namespace RHI::Vulkan
         IDevice();
         ~IDevice();
 
-        ResultCode Init(const ApplicationInfo& appInfo);
-
-        template<typename T>
-        inline void SetDebugName(T handle, const char* name) const;
-
         void SetDebugName(VkObjectType type, uint64_t handle, const char* name) const;
 
-        // VkSemaphore CreateSemaphore(const char* name = nullptr, bool timeline = false, uint64_t initialValue = 0);
-
-        // void DestroySemaphore(VkSemaphore semaphore);
+        template<typename T>
+        void SetDebugName(T handle, const char* name) const;
 
         uint32_t GetMemoryTypeIndex(MemoryType memoryType);
 
-        // clang-format off
+    private:
+        friend TL::Ptr<Device> RHI::CreateVulkanDevice(const ApplicationInfo& appInfo);
+
+        VkResult Init(const ApplicationInfo& appInfo);
+        VkResult InitInstanceAndDevice(const ApplicationInfo& appInfo);
+
         TL::Ptr<Swapchain>       Impl_CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
         TL::Ptr<ShaderModule>    Impl_CreateShaderModule(TL::Span<const uint32_t> shaderBlob) override;
         TL::Ptr<Fence>           Impl_CreateFence() override;
@@ -70,42 +70,34 @@ namespace RHI::Vulkan
         void                     Impl_UnmapBuffer(Handle<Buffer> handle) override;
         Handle<Semaphore>        Impl_CreateSemaphore(const SemaphoreCreateInfo& createInfo) override;
         void                     Impl_DestroySemaphore(Handle<Semaphore> handle) override;
-        Queue*                   Impl_GetQueue(QueueType queueType)  override;
+        Queue*                   Impl_GetQueue(QueueType queueType) override;
         void                     Impl_CollectResources() override;
-        // clang-format on
-
-    private:
-        VkResult InitInstance(const ApplicationInfo& appInfo, bool* debugExtensionEnabled);
-        VkResult InitDevice();
-        VkResult InitMemoryAllocator();
-        VkResult LoadFunctions(bool debugExtensionEnabled);
-        void FillLimits();
 
     public:
-        VkInstance m_instance;
+        VkInstance               m_instance;
         VkDebugUtilsMessengerEXT m_debugUtilsMessenger;
-        VkPhysicalDevice m_physicalDevice;
-        VkDevice m_device;
-        VmaAllocator m_allocator;
+        VkPhysicalDevice         m_physicalDevice;
+        VkDevice                 m_device;
+        VmaAllocator             m_allocator;
 
         struct
         {
 #ifdef RHI_DEBUG
             // VK_EXT_debug_utils
-            PFN_vkCmdBeginDebugUtilsLabelEXT m_vkCmdBeginDebugUtilsLabelEXT;
-            PFN_vkCmdEndDebugUtilsLabelEXT m_vkCmdEndDebugUtilsLabelEXT;
-            PFN_vkCmdInsertDebugUtilsLabelEXT m_vkCmdInsertDebugUtilsLabelEXT;
-            PFN_vkCreateDebugUtilsMessengerEXT m_vkCreateDebugUtilsMessengerEXT;
+            PFN_vkCmdBeginDebugUtilsLabelEXT    m_vkCmdBeginDebugUtilsLabelEXT;
+            PFN_vkCmdEndDebugUtilsLabelEXT      m_vkCmdEndDebugUtilsLabelEXT;
+            PFN_vkCmdInsertDebugUtilsLabelEXT   m_vkCmdInsertDebugUtilsLabelEXT;
+            PFN_vkCreateDebugUtilsMessengerEXT  m_vkCreateDebugUtilsMessengerEXT;
             PFN_vkDestroyDebugUtilsMessengerEXT m_vkDestroyDebugUtilsMessengerEXT;
-            PFN_vkQueueBeginDebugUtilsLabelEXT m_vkQueueBeginDebugUtilsLabelEXT;
-            PFN_vkQueueEndDebugUtilsLabelEXT m_vkQueueEndDebugUtilsLabelEXT;
+            PFN_vkQueueBeginDebugUtilsLabelEXT  m_vkQueueBeginDebugUtilsLabelEXT;
+            PFN_vkQueueEndDebugUtilsLabelEXT    m_vkQueueEndDebugUtilsLabelEXT;
             PFN_vkQueueInsertDebugUtilsLabelEXT m_vkQueueInsertDebugUtilsLabelEXT;
-            PFN_vkSetDebugUtilsObjectNameEXT m_vkSetDebugUtilsObjectNameEXT;
-            PFN_vkSetDebugUtilsObjectTagEXT m_vkSetDebugUtilsObjectTagEXT;
-            PFN_vkSubmitDebugUtilsMessageEXT m_vkSubmitDebugUtilsMessageEXT;
+            PFN_vkSetDebugUtilsObjectNameEXT    m_vkSetDebugUtilsObjectNameEXT;
+            PFN_vkSetDebugUtilsObjectTagEXT     m_vkSetDebugUtilsObjectTagEXT;
+            PFN_vkSubmitDebugUtilsMessageEXT    m_vkSubmitDebugUtilsMessageEXT;
 #endif
             PFN_vkCmdBeginConditionalRenderingEXT m_vkCmdBeginConditionalRenderingEXT;
-            PFN_vkCmdEndConditionalRenderingEXT m_vkCmdEndConditionalRenderingEXT;
+            PFN_vkCmdEndConditionalRenderingEXT   m_vkCmdEndConditionalRenderingEXT;
         } m_pfn;
 
         IQueue m_queue[(uint32_t)QueueType::Count];
@@ -114,15 +106,15 @@ namespace RHI::Vulkan
 
         TL::Ptr<BindGroupAllocator> m_bindGroupAllocator;
 
-        HandlePool<IImage> m_imageOwner;
-        HandlePool<IBuffer> m_bufferOwner;
-        HandlePool<IBindGroupLayout> m_bindGroupLayoutsOwner;
-        HandlePool<IBindGroup> m_bindGroupOwner;
-        HandlePool<IPipelineLayout> m_pipelineLayoutOwner;
+        HandlePool<IImage>            m_imageOwner;
+        HandlePool<IBuffer>           m_bufferOwner;
+        HandlePool<IBindGroupLayout>  m_bindGroupLayoutsOwner;
+        HandlePool<IBindGroup>        m_bindGroupOwner;
+        HandlePool<IPipelineLayout>   m_pipelineLayoutOwner;
         HandlePool<IGraphicsPipeline> m_graphicsPipelineOwner;
-        HandlePool<IComputePipeline> m_computePipelineOwner;
-        HandlePool<ISampler> m_samplerOwner;
-        HandlePool<ISemaphore> m_semaphoreOwner;
+        HandlePool<IComputePipeline>  m_computePipelineOwner;
+        HandlePool<ISampler>          m_samplerOwner;
+        HandlePool<ISemaphore>        m_semaphoreOwner;
     };
 
     template<typename T>

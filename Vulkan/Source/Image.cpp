@@ -7,9 +7,9 @@ namespace RHI::Vulkan
 {
     VkImageSubresource ConvertSubresource(const ImageSubresource& subresource)
     {
-        auto vkSubresource = VkImageSubresource{};
+        auto vkSubresource       = VkImageSubresource{};
         vkSubresource.aspectMask = ConvertImageAspect(subresource.imageAspects);
-        vkSubresource.mipLevel = subresource.mipLevel;
+        vkSubresource.mipLevel   = subresource.mipLevel;
         vkSubresource.arrayLayer = subresource.arrayLayer;
         return vkSubresource;
     }
@@ -101,12 +101,12 @@ namespace RHI::Vulkan
 
     VkImageSubresourceRange ConvertSubresourceRange(const ImageSubresourceRange& subresource)
     {
-        auto vkSubresource = VkImageSubresourceRange{};
-        vkSubresource.aspectMask = ConvertImageAspect(subresource.imageAspects);
-        vkSubresource.baseMipLevel = subresource.mipBase;
-        vkSubresource.levelCount = subresource.mipLevelCount;
+        auto vkSubresource           = VkImageSubresourceRange{};
+        vkSubresource.aspectMask     = ConvertImageAspect(subresource.imageAspects);
+        vkSubresource.baseMipLevel   = subresource.mipBase;
+        vkSubresource.levelCount     = subresource.mipLevelCount;
         vkSubresource.baseArrayLayer = subresource.arrayBase;
-        vkSubresource.layerCount = subresource.arrayCount;
+        vkSubresource.layerCount     = subresource.arrayCount;
         return vkSubresource;
     }
 
@@ -155,30 +155,31 @@ namespace RHI::Vulkan
         VkResult result;
 
         VmaAllocationCreateInfo allocationInfo{
-            .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT,
-            .usage = VMA_MEMORY_USAGE_GPU_ONLY,
-            .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            .flags          = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT,
+            .usage          = VMA_MEMORY_USAGE_GPU_ONLY,
+            .requiredFlags  = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
             .preferredFlags = 0,
             .memoryTypeBits = 0,
-            .pool = VK_NULL_HANDLE,
-            .pUserData = nullptr,
-            .priority = 0.0f};
+            .pool           = VK_NULL_HANDLE,
+            .pUserData      = nullptr,
+            .priority       = 0.0f,
+        };
         VkImageCreateInfo imageCI{
-            .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-            .pNext = nullptr,
-            .flags = 0,
-            .imageType = ConvertImageType(createInfo.type),
-            .format = ConvertFormat(createInfo.format),
-            .extent = ConvertExtent3D(createInfo.size),
-            .mipLevels = createInfo.mipLevels,
-            .arrayLayers = createInfo.arrayCount,
-            .samples = ConvertSampleCount(createInfo.sampleCount),
-            .tiling = VK_IMAGE_TILING_OPTIMAL,
-            .usage = ConvertImageUsageFlags(createInfo.usageFlags),
-            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+            .sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .pNext                 = nullptr,
+            .flags                 = 0,
+            .imageType             = ConvertImageType(createInfo.type),
+            .format                = ConvertFormat(createInfo.format),
+            .extent                = ConvertExtent3D(createInfo.size),
+            .mipLevels             = createInfo.mipLevels,
+            .arrayLayers           = createInfo.arrayCount,
+            .samples               = ConvertSampleCount(createInfo.sampleCount),
+            .tiling                = VK_IMAGE_TILING_OPTIMAL,
+            .usage                 = ConvertImageUsageFlags(createInfo.usageFlags),
+            .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
             .queueFamilyIndexCount = 0,
-            .pQueueFamilyIndices = nullptr,
-            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .pQueueFamilyIndices   = nullptr,
+            .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED,
         };
 
         result = vmaCreateImage(device->m_allocator, &imageCI, &allocationInfo, &handle, &allocation.handle, &allocation.info);
@@ -189,12 +190,12 @@ namespace RHI::Vulkan
         }
 
         VkImageViewCreateInfo imageViewCI{
-            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .pNext = nullptr,
-            .flags = 0,
-            .image = handle,
+            .sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .pNext    = nullptr,
+            .flags    = 0,
+            .image    = handle,
             .viewType = VK_IMAGE_VIEW_TYPE_1D,
-            .format = imageCI.format,
+            .format   = imageCI.format,
             .components{
                 VK_COMPONENT_SWIZZLE_IDENTITY,
                 VK_COMPONENT_SWIZZLE_IDENTITY,
@@ -203,11 +204,11 @@ namespace RHI::Vulkan
             },
             .subresourceRange =
                 {
-                    .aspectMask = 0,
-                    .baseMipLevel = 0,
-                    .levelCount = VK_REMAINING_MIP_LEVELS,
+                    .aspectMask     = 0,
+                    .baseMipLevel   = 0,
+                    .levelCount     = VK_REMAINING_MIP_LEVELS,
                     .baseArrayLayer = 0,
-                    .layerCount = VK_REMAINING_ARRAY_LAYERS,
+                    .layerCount     = VK_REMAINING_ARRAY_LAYERS,
                 },
         };
 
@@ -224,17 +225,17 @@ namespace RHI::Vulkan
         return ConvertResult(result);
     }
 
-    ResultCode IImage::Init([[maybe_unused]] IDevice* device, VkImage image, const VkSwapchainCreateInfoKHR& swapchainCI)
+    ResultCode IImage::Init(IDevice* device, VkImage image, const VkSwapchainCreateInfoKHR& swapchainCI)
     {
         this->handle = image;
 
         VkImageViewCreateInfo imageViewCI{
-            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .pNext = nullptr,
-            .flags = 0,
-            .image = handle,
+            .sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .pNext    = nullptr,
+            .flags    = 0,
+            .image    = handle,
             .viewType = VK_IMAGE_VIEW_TYPE_2D,
-            .format = swapchainCI.imageFormat,
+            .format   = swapchainCI.imageFormat,
             .components{
                 VK_COMPONENT_SWIZZLE_IDENTITY,
                 VK_COMPONENT_SWIZZLE_IDENTITY,
@@ -243,15 +244,15 @@ namespace RHI::Vulkan
             },
             .subresourceRange =
                 {
-                    .aspectMask = 0,
-                    .baseMipLevel = 0,
-                    .levelCount = VK_REMAINING_MIP_LEVELS,
+                    .aspectMask     = 0,
+                    .baseMipLevel   = 0,
+                    .levelCount     = VK_REMAINING_MIP_LEVELS,
                     .baseArrayLayer = 0,
-                    .layerCount = VK_REMAINING_ARRAY_LAYERS,
+                    .layerCount     = VK_REMAINING_ARRAY_LAYERS,
                 },
         };
 
-        auto result = vkCreateImageView(device->m_device, &imageViewCI, nullptr, &viewHandle);
+        VkResult result = vkCreateImageView(device->m_device, &imageViewCI, nullptr, &viewHandle);
 
         return ConvertResult(result);
     }
@@ -260,6 +261,7 @@ namespace RHI::Vulkan
     {
         // vmaDestroyImage(device->m_allocator, handle, allocation.handle);
         device->m_deleteQueue.DestroyObject(handle);
+        device->m_deleteQueue.DestroyObject(viewHandle);
     }
 
     VkMemoryRequirements IImage::GetMemoryRequirements(IDevice* device) const

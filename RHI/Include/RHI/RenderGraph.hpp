@@ -88,7 +88,7 @@ namespace RHI
         /// @param usage Usage flags for the image.
         /// @param stage Shader stage flags.
         /// @param access Access flags.
-        void                          PassUseImage(Handle<Pass> pass, Handle<RGImage> attachment, ImageUsage usage, TL::Flags<PipelineStage> stage, Access access);
+        void PassUseImage(Handle<Pass> pass, Handle<RGImage> attachment, ImageUsage usage, TL::Flags<PipelineStage> stage, Access access);
 
         /// @brief Uses a buffer in a pass with view info, usage, and access.
         ///
@@ -98,22 +98,23 @@ namespace RHI
         /// @param usage Usage flags for the buffer.
         /// @param stage Shader stage flags.
         /// @param access Access flags.
-        void                          PassUseBuffer(Handle<Pass> pass, Handle<RGBuffer> attachment, BufferUsage usage, TL::Flags<PipelineStage> stage, Access access);
+        void PassUseBuffer(
+            Handle<Pass> pass, Handle<RGBuffer> attachment, BufferUsage usage, TL::Flags<PipelineStage> stage, Access access);
 
         /// @brief Retrieves the image from an image attachment.
         ///
         /// @param attachment Handle to the image attachment.
         /// @return Handle to the image.
-        TL_NODISCARD Handle<Image>    GetImage(Handle<RGImage> attachment) const;
+        TL_NODISCARD Handle<Image>  GetImage(Handle<RGImage> attachment) const;
 
         /// @brief Retrieves the buffer from a buffer attachment.
         ///
         /// @param attachment Handle to the buffer attachment.
         /// @return Handle to the buffer.
-        TL_NODISCARD Handle<Buffer>   GetBuffer(Handle<RGBuffer> attachment) const;
+        TL_NODISCARD Handle<Buffer> GetBuffer(Handle<RGBuffer> attachment) const;
 
         /// @brief Compiles the render graph.
-        void                          Compile();
+        void                        Compile();
 
     private:
         /// @brief Cleans up resources used by the render graph.

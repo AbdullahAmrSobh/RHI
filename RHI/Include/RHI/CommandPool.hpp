@@ -31,11 +31,11 @@ namespace RHI
     class RHI_EXPORT CommandPool
     {
     public:
-        CommandPool() = default;
+        CommandPool()                   = default;
 
         CommandPool(const CommandPool&) = delete;
 
-        CommandPool(CommandPool&&) = delete;
+        CommandPool(CommandPool&&)      = delete;
 
         virtual ~CommandPool();
 

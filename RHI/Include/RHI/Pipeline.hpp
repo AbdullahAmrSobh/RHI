@@ -141,12 +141,8 @@ namespace RHI
 
         inline bool               operator==(const ColorAttachmentBlendStateDesc& other) const
         {
-            return blendEnable == other.blendEnable &&
-                   colorBlendOp == other.colorBlendOp &&
-                   srcColor == other.srcColor &&
-                   dstColor == other.dstColor &&
-                   alphaBlendOp == other.alphaBlendOp &&
-                   srcAlpha == other.srcAlpha &&
+            return blendEnable == other.blendEnable && colorBlendOp == other.colorBlendOp && srcColor == other.srcColor &&
+                   dstColor == other.dstColor && alphaBlendOp == other.alphaBlendOp && srcAlpha == other.srcAlpha &&
                    dstAlpha == other.dstAlpha;
         }
     };
@@ -203,7 +199,7 @@ namespace RHI
     /// @brief Color blend state description for pipelines.
     struct PipelineColorBlendStateDesc
     {
-        TL::Span<const ColorAttachmentBlendStateDesc> blendStates       = {};                       ///< Color blend states for each attachment.
+        TL::Span<const ColorAttachmentBlendStateDesc> blendStates       = {}; ///< Color blend states for each attachment.
         float                                         blendConstants[4] = {0.0f, 0.0f, 0.0f, 0.0f}; ///< Blend constants.
     };
 

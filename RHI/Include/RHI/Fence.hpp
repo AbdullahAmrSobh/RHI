@@ -30,7 +30,7 @@ namespace RHI
         bool               Wait(uint64_t timeout = UINT64_MAX);
 
         /// @brief Resets the fence to its initial state.
-        virtual void       Reset() = 0;
+        virtual void       Reset()    = 0;
 
         /// @brief Gets the current state of the fence.
         /// @return The current state of the fence as a `FenceState`.

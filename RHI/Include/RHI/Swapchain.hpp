@@ -77,7 +77,7 @@ namespace RHI
         virtual ResultCode Recreate(ImageSize2D newSize) = 0;
 
         /// @brief Presents the current image.
-        virtual ResultCode Present() = 0;
+        virtual ResultCode Present()                     = 0;
 
     protected:
         uint32_t GetCurrentSemaphoreIndex() const;

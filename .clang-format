@@ -3,14 +3,14 @@ Language: Cpp
 AccessModifierOffset: -4
 AlignAfterOpenBracket: AlwaysBreak
 AlignConsecutiveAssignments:
-  Enabled: false
+  Enabled: true
   AcrossEmptyLines: false
-  AcrossComments: false
+  AcrossComments: true
 AlignConsecutiveDeclarations:
-  Enabled: false
+  Enabled: true
   AcrossEmptyLines: false
-  AcrossComments: false
-AlignEscapedNewlines: Right
+  AcrossComments: true
+AlignEscapedNewlines: Left
 AlignOperands: Align
 AlignTrailingComments: true
 AllowAllArgumentsOnNextLine: true
@@ -94,3 +94,5 @@ AlignConsecutiveBitFields:
   AcrossEmptyLines: false
 ReferenceAlignment: Left
 # BreakFunctionDefinitionParameters: true
+
+StatementAttributeLikeMacros: [TL_NODISCARD, RHI_EXPORT]

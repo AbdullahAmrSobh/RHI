@@ -29,15 +29,9 @@ namespace RHI
         friend class Handle;
 
     public:
-        Handle()
-        {
-            m_handle = UINT64_MAX;
-        }
+        Handle() { m_handle = UINT64_MAX; }
 
-        Handle(NullHandle_T)
-        {
-            m_handle = UINT64_MAX;
-        }
+        Handle(NullHandle_T) { m_handle = UINT64_MAX; }
 
         template<typename BaseResource>
             requires(std::is_base_of_v<BaseResource, Resource> || std::is_base_of_v<Resource, BaseResource>)
@@ -47,30 +41,15 @@ namespace RHI
             m_rawHandle.genId = baseHandle.m_rawHandle.genId;
         }
 
-        inline bool operator==(Handle other) const
-        {
-            return m_handle == other.m_handle;
-        }
+        inline bool operator==(Handle other) const { return m_handle == other.m_handle; }
 
-        inline bool operator!=(Handle other) const
-        {
-            return m_handle != other.m_handle;
-        }
+        inline bool operator!=(Handle other) const { return m_handle != other.m_handle; }
 
-        explicit operator uint64_t() const
-        {
-            return m_handle;
-        }
+        explicit    operator uint64_t() const { return m_handle; }
 
-        inline bool operator==(const NullHandle_T&) const
-        {
-            return m_handle == UINT64_MAX;
-        }
+        inline bool operator==(const NullHandle_T&) const { return m_handle == UINT64_MAX; }
 
-        inline operator bool() const
-        {
-            return *this != NullHandle;
-        }
+        inline      operator bool() const { return *this != NullHandle; }
 
     private:
         Handle(uint64_t id, uint16_t genId)
@@ -97,8 +76,8 @@ namespace RHI
     class HandlePool final
     {
     public:
-        using HandleType   = Handle<Resource>;
-        using ResourceType = Resource;
+        using HandleType              = Handle<Resource>;
+        using ResourceType            = Resource;
 
         HandlePool()                  = default;
         HandlePool(const HandlePool&) = delete;
