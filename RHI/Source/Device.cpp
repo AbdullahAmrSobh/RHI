@@ -7,13 +7,6 @@
 
 namespace RHI
 {
-#define TRY(condition, message, return_type) \
-    if ((condition) == false)                \
-    {                                        \
-        TL_LOG_INFO(message);                \
-        return return_type;                  \
-    }
-
     Device::Device()
         : m_limits(TL::CreatePtr<DeviceLimits>())
     {
@@ -53,11 +46,11 @@ namespace RHI
         return Impl_CreateShaderModule(shaderBlob);
     }
 
-    TL::Ptr<CommandPool> Device::CreateCommandPool(CommandPoolFlags flags)
+    TL::Ptr<CommandList> Device::CreateCommandList(QueueType queueType)
     {
         ZoneScoped;
 
-        return Impl_CreateCommandPool(flags);
+        return Impl_CreateCommandList(queueType);
     }
 
     Handle<BindGroupLayout> Device::CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)
@@ -155,32 +148,63 @@ namespace RHI
     {
         ZoneScoped;
 
+        /// @todo: Validate using Device::GetLimits();
+
         if (true) // validation
         {
-            TRY(createInfo.usageFlags != RHI::ImageUsage::None, "Invalid usage flags", ResultCode::ErrorUnknown);
+            auto limits = GetLimits();
+
+            if (createInfo.usageFlags == RHI::ImageUsage::None)
+            {
+                TL_LOG_INFO("Invalid usage flags");
+                return ResultCode::ErrorUnknown;
+            }
+
             if (createInfo.type == ImageType::Image1D)
             {
-                TRY(createInfo.size.height == 1 && createInfo.size.depth == 1,
-                    "1D Images should have 1 in width and depth size paramters",
-                    ResultCode::ErrorUnknown);
+                if (createInfo.size.height != 1 || createInfo.size.depth != 1)
+                {
+                    TL_LOG_INFO("1D Images should have 1 in width and depth size parameters");
+                    return ResultCode::ErrorUnknown;
+                }
             }
             else if (createInfo.type == ImageType::Image2D)
             {
-                TRY(createInfo.size.depth == 1, "2D Images should have 1 in the depth paramter", ResultCode::ErrorUnknown);
+                if (createInfo.size.depth != 1)
+                {
+                    TL_LOG_INFO("2D Images should have 1 in the depth parameter");
+                    return ResultCode::ErrorUnknown;
+                }
             }
-            else if (createInfo.type == ImageType::Image3D)
-            {
-            }
-            else
+            else if (createInfo.type != ImageType::Image3D)
             {
                 TL_LOG_INFO("Invalid value for ImageCreateInfo::type");
                 return ResultCode::ErrorUnknown;
             }
 
-            TRY(createInfo.format != Format::Unknown, "Inavlid format for image", ResultCode::ErrorUnknown);
-            TRY(createInfo.sampleCount != SampleCount::None, "Invalid value for ImageCreateInfo::sampleCount", ResultCode::ErrorUnknown);
-            TRY(createInfo.mipLevels != 0, "Invalid value for ImageCreateInfo::mipLevels", ResultCode::ErrorUnknown);
-            TRY(createInfo.arrayCount != 0, "Invalid value for ImageCreateInfo::arrayCount", ResultCode::ErrorUnknown);
+            if (createInfo.format == Format::Unknown)
+            {
+                TL_LOG_INFO("Invalid format for image");
+                return ResultCode::ErrorUnknown;
+            }
+
+            if (createInfo.sampleCount == SampleCount::None)
+            {
+                TL_LOG_INFO("Invalid value for ImageCreateInfo::sampleCount");
+                return ResultCode::ErrorUnknown;
+            }
+
+            if (createInfo.mipLevels == 0)
+            {
+                TL_LOG_INFO("Invalid value for ImageCreateInfo::mipLevels");
+                return ResultCode::ErrorUnknown;
+            }
+
+            if (createInfo.arrayCount == 0)
+            {
+                TL_LOG_INFO("Invalid value for ImageCreateInfo::arrayCount");
+                return ResultCode::ErrorUnknown;
+            }
         }
 
         return Impl_CreateImage(createInfo);
@@ -196,6 +220,32 @@ namespace RHI
     Result<Handle<Buffer>> Device::CreateBuffer(const BufferCreateInfo& createInfo)
     {
         ZoneScoped;
+
+        /// @todo: Validate using Device::GetLimits();
+
+        // Validation
+        auto limits = GetLimits();
+
+        if (true)
+        {
+            if (createInfo.usageFlags == RHI::BufferUsage::None)
+            {
+                TL_LOG_INFO("Invalid usage flags for buffer");
+                return ResultCode::ErrorUnknown;
+            }
+
+            if (createInfo.byteSize == 0)
+            {
+                TL_LOG_INFO("Buffer size must be greater than zero");
+                return ResultCode::ErrorUnknown;
+            }
+
+            if (createInfo.heapType == MemoryType::None)
+            {
+                TL_LOG_INFO("Invalid memory type for buffer");
+                return ResultCode::ErrorUnknown;
+            }
+        }
 
         return Impl_CreateBuffer(createInfo);
     }

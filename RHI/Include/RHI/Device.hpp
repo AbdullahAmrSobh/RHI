@@ -5,7 +5,6 @@
 #include "RHI/Result.hpp"
 #include "RHI/RenderGraph.hpp"
 #include "RHI/Swapchain.hpp"
-#include "RHI/CommandPool.hpp"
 #include "RHI/CommandList.hpp"
 #include <RHI/Image.hpp>
 #include <RHI/Pipeline.hpp>
@@ -39,32 +38,7 @@ namespace RHI
 
     struct DeviceLimits
     {
-        // General resource limits
-        uint32_t                  maxImage2DSize;        ///< Maximum size of 2D images
-        uint32_t                  maxImageCubeSize;      ///< Maximum size of cube images
-        uint32_t                  maxImage3DSize;        ///< Maximum size of 3D images
-        uint32_t                  maxImageArrayLayers;   ///< Maximum number of layers in an image array
-        uint32_t                  maxUniformBufferSize;  ///< Maximum size of uniform buffers
-        uint32_t                  maxStorageBufferSize;  ///< Maximum size of storage buffers
-        uint32_t                  maxConstantBufferSize; ///< Maximum size of constant buffers
-        // Bind group limits (shader resource binding limits)
-        uint32_t                  maxBindGroups;            ///< Maximum number of bind groups in a pipeline
-        uint32_t                  maxResourcesPerBindGroup; ///< Maximum number of resources per bind group (images, buffers, etc.)
-        uint32_t                  maxSamplersPerBindGroup;  ///< Maximum number of samplers in a bind group
-        uint32_t                  maxImagesPerBindGroup;    ///< Maximum number of images in a bind group
-        uint32_t                  maxBuffersPerBindGroup;   ///< Maximum number of buffers in a bind group
-        // Descriptor indexing limits
-        uint32_t                  maxDynamicBuffers;    ///< Maximum number of dynamic buffers that can be bound
-        uint32_t                  maxDescriptorsPerSet; ///< Maximum number of descriptors per bind group
-        // Buffer alignment requirements
-        uint32_t                  uniformBufferAlignment; ///< Required alignment for uniform buffers
-        uint32_t                  storageBufferAlignment; ///< Required alignment for storage buffers
-        uint32_t                  dynamicBufferAlignment; ///< Required alignment for dynamic uniform/storage buffers
-        // Memory allocation limits
-        static constexpr uint32_t maxMemoryHeaps = 16;            ///< Maximum number of memory heaps (set to a constant)
-        uint64_t                  maxMemoryAllocationSize;        ///< Maximum size of a single memory allocation
-        uint32_t                  memoryTypeCount;                ///< Number of different memory types available
-        uint64_t                  memoryHeapSize[maxMemoryHeaps]; ///< Total size of each memory heap (for each memory type)
+
     };
 
     class RHI_EXPORT Device
@@ -82,7 +56,7 @@ namespace RHI
 
         TL_NODISCARD TL::Ptr<ShaderModule>    CreateShaderModule(TL::Span<const uint32_t> shaderBlob);
 
-        TL_NODISCARD TL::Ptr<CommandPool>     CreateCommandPool(CommandPoolFlags flags);
+        TL_NODISCARD TL::Ptr<CommandList>     CreateCommandList(QueueType queueType);
 
         TL_NODISCARD Handle<BindGroupLayout>  CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo);
 
@@ -132,7 +106,7 @@ namespace RHI
     protected:
         virtual TL::Ptr<Swapchain>       Impl_CreateSwapchain(const SwapchainCreateInfo& createInfo)                           = 0;
         virtual TL::Ptr<ShaderModule>    Impl_CreateShaderModule(TL::Span<const uint32_t> shaderBlob)                          = 0;
-        virtual TL::Ptr<CommandPool>     Impl_CreateCommandPool(CommandPoolFlags flags)                                        = 0;
+        virtual TL::Ptr<CommandList>     Impl_CreateCommandList(QueueType queueType)                                           = 0;
         virtual Handle<BindGroupLayout>  Impl_CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)               = 0;
         virtual void                     Impl_DestroyBindGroupLayout(Handle<BindGroupLayout> handle)                           = 0;
         virtual Handle<BindGroup>        Impl_CreateBindGroup(Handle<BindGroupLayout> handle)                                  = 0;

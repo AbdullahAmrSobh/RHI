@@ -193,6 +193,7 @@ namespace RHI::Vulkan
         , m_queue()
         , m_deleteQueue(this)
         , m_bindGroupAllocator(TL::CreatePtr<BindGroupAllocator>(this))
+        , m_commandsAllocator(TL::CreatePtr<CommandAllocator>())
         , m_imageOwner()
         , m_bufferOwner()
         , m_bindGroupLayoutsOwner()
@@ -464,7 +465,7 @@ namespace RHI::Vulkan
             m_pfn.m_vkQueueInsertDebugUtilsLabelEXT = VULKAN_DEVICE_FUNC_LOAD(m_device, vkQueueInsertDebugUtilsLabelEXT);
             m_pfn.m_vkSetDebugUtilsObjectNameEXT    = VULKAN_DEVICE_FUNC_LOAD(m_device, vkSetDebugUtilsObjectNameEXT);
             m_pfn.m_vkSetDebugUtilsObjectTagEXT     = VULKAN_DEVICE_FUNC_LOAD(m_device, vkSetDebugUtilsObjectTagEXT);
-            m_pfn.m_vkSubmitDebugUtilsMessageEXT    = VULKAN_DEVICE_FUNC_LOAD(m_device, vkSubmitDebugUtilsMessageEXT);
+            m_pfn.m_vkSubmitDebugUtilsMessageEXT    = VULKAN_INSTANCE_FUNC_LOAD(m_instance, vkSubmitDebugUtilsMessageEXT);
         }
 #endif
         m_pfn.m_vkCmdBeginConditionalRenderingEXT = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdBeginConditionalRenderingEXT);
@@ -490,6 +491,8 @@ namespace RHI::Vulkan
 
         auto r_result = m_bindGroupAllocator->Init();
         if (r_result != ResultCode::Success) return VK_ERROR_INITIALIZATION_FAILED;
+
+        m_commandsAllocator->Init(this);
 
         VkSemaphoreTypeCreateInfo typeCreateInfo{
             .sType         = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
@@ -614,15 +617,9 @@ namespace RHI::Vulkan
         return shaderModule;
     }
 
-    TL::Ptr<CommandPool> IDevice::Impl_CreateCommandPool(CommandPoolFlags flags)
+    TL::Ptr<CommandList> IDevice::Impl_CreateCommandList(QueueType queueType)
     {
-        auto commandPool = TL::CreatePtr<ICommandPool>(this);
-        auto result      = commandPool->Init(flags);
-        if (result != ResultCode::Success)
-        {
-            TL_LOG_ERROR("Failed to create a command_list_allocator object");
-        }
-        return commandPool;
+        return m_commandsAllocator->AllocateCommandList(queueType);
     }
 
     Handle<BindGroupLayout> IDevice::Impl_CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)

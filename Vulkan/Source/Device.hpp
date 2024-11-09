@@ -4,7 +4,6 @@
 #include <RHI/Queue.hpp>
 #include <RHI-Vulkan/Loader.hpp>
 
-#include "Timeline.hpp"
 #include "Queue.hpp"
 #include "DeleteQueue.hpp"
 
@@ -22,6 +21,7 @@
 namespace RHI::Vulkan
 {
     class BindGroupAllocator;
+    class CommandAllocator;
     class ICommandPool;
     class ICommandList;
 
@@ -50,7 +50,7 @@ namespace RHI::Vulkan
 
         TL::Ptr<Swapchain>       Impl_CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
         TL::Ptr<ShaderModule>    Impl_CreateShaderModule(TL::Span<const uint32_t> shaderBlob) override;
-        TL::Ptr<CommandPool>     Impl_CreateCommandPool(CommandPoolFlags flags) override;
+        TL::Ptr<CommandList>     Impl_CreateCommandList(QueueType queueType) override;
         Handle<BindGroupLayout>  Impl_CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) override;
         void                     Impl_DestroyBindGroupLayout(Handle<BindGroupLayout> handle) override;
         Handle<BindGroup>        Impl_CreateBindGroup(Handle<BindGroupLayout> handle) override;
@@ -110,6 +110,7 @@ namespace RHI::Vulkan
         DeleteQueue m_deleteQueue;
 
         TL::Ptr<BindGroupAllocator> m_bindGroupAllocator;
+        TL::Ptr<CommandAllocator>   m_commandsAllocator;
 
         HandlePool<IImage>            m_imageOwner;
         HandlePool<IBuffer>           m_bufferOwner;

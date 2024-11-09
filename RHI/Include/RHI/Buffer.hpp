@@ -12,6 +12,7 @@ namespace RHI
     /// @brief Specifies the types of memory where a buffer can be allocated.
     enum class MemoryType
     {
+        None,
         CPU,       ///< Buffer allocated on host local memory (GPU access will be slow).
         GPULocal,  ///< Buffer allocated on device local memory (CPU access is not guaranteed).
         GPUShared, ///< Buffer allocated on device local memory (with guaranteed GPU access, used for streaming resources).

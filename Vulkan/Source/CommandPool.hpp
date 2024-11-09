@@ -1,35 +1,51 @@
 #pragma once
 
-#include <RHI/CommandPool.hpp>
-#include <RHI/Result.hpp>
+#include <RHI/Queue.hpp>
 
 #include <TL/Flags.hpp>
+#include <TL/UniquePtr.hpp>
 
 #include <vulkan/vulkan.h>
+
+#include <mutex>
+#include <thread>
+#include <unordered_map>
+#include <array>
 
 namespace RHI::Vulkan
 {
     class IDevice;
+    class ICommandList;
 
-    VkCommandPoolCreateFlags ConvertCommandPoolFlags(TL::Flags<CommandPoolFlags> flags);
-
-    class ICommandPool final : public CommandPool
+    class CommandAllocator
     {
     public:
-        ICommandPool(IDevice* device);
-        ~ICommandPool();
+        CommandAllocator()  = default;
+        ~CommandAllocator();
 
-        ResultCode Init(CommandPoolFlags flags);
+        void Init(IDevice* device);
+        void Shutdown();
 
-        void                             Reset() override;
-        TL::Vector<TL::Ptr<CommandList>> Allocate(QueueType queueType, CommandListLevel level, uint32_t count) override;
+        /// @brief Allocates a command list for the specified queue type.
+        /// @param queueType The type of queue (Graphics, Compute, Transfer) for the command list.
+        /// @return A pointer to the allocated CommandList.
+        TL::Ptr<ICommandList> AllocateCommandList(QueueType queueType);
+
+        /// @brief Resets all command lists used within the current frame.
+        void Reset();
 
     private:
-        TL::Vector<VkCommandBuffer> AllocateCommandBuffers(VkCommandPool pool, uint32_t count, VkCommandBufferLevel level);
+        using CommandPoolPerQueue = std::array<VkCommandPool, (int)QueueType::Count>;
 
-    private:
-        IDevice*      m_device;
-        VkCommandPool m_commandPools[uint32_t(QueueType::Count)];
+        IDevice*                                                 m_device = nullptr;
+
+        std::mutex                                               m_poolMutex;
+
+        std::unordered_map<std::thread::id, CommandPoolPerQueue> m_pools;
+
+        // Helper functions to create and destroy command pools
+        VkCommandPool CreateCommandPool(QueueType queueType);
+        void DestroyCommandPools();
     };
 
 } // namespace RHI::Vulkan

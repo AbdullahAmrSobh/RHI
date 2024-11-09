@@ -35,7 +35,6 @@ public:
     struct PerFrame
     {
         uint64_t                    m_timelineValue;
-        RHI::CommandPool*           m_commandPool;
         RHI::Handle<RHI::BindGroup> m_bindGroup;
     };
 
@@ -87,18 +86,12 @@ public:
         m_swapchain = m_device->CreateSwapchain(swapchainInfo).release();
 
         m_queue = m_device->GetQueue(RHI::QueueType::Graphics);
-
-        for (auto& frame : m_perFrameData)
-        {
-            frame.m_commandPool = m_device->CreateCommandPool(RHI::CommandPoolFlags::Transient).release();
-        }
     }
 
     void ShutdownContextAndSwapchain()
     {
         for (auto& frame : m_perFrameData)
         {
-            delete frame.m_commandPool;
         }
         delete m_swapchain;
         delete m_device;
@@ -345,12 +338,11 @@ public:
 
         m_device->WaitTimelineValue(frame.m_timelineValue);
 
-        frame.m_commandPool->Reset();
-
         auto [width, height] = m_window->GetWindowSize();
         m_renderGraph->PassResize(m_mainPass, {width, height});
 
-        auto commandList = frame.m_commandPool->Allocate(RHI::QueueType::Graphics, RHI::CommandListLevel::Primary);
+        auto commandList = m_device->CreateCommandList(RHI::QueueType::Graphics);
+
         commandList->Begin();
         commandList->BeginRenderPass({
             .renderGraph = m_renderGraph,

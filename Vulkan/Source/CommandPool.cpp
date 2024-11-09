@@ -1,90 +1,111 @@
-
 #include "CommandPool.hpp"
-#include "Device.hpp"
-#include "Common.hpp"
 #include "CommandList.hpp"
+#include "Device.hpp"
 
-#include <RHI/Format.hpp>
-
-#include <tracy/Tracy.hpp>
+#include <vulkan/vulkan.h>
 
 namespace RHI::Vulkan
 {
-
-    VkCommandPoolCreateFlags ConvertCommandPoolFlags(TL::Flags<CommandPoolFlags> flags)
+    CommandAllocator::~CommandAllocator()
     {
-        VkCommandPoolCreateFlags result{};
-        if (flags & CommandPoolFlags::Transient) result |= VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
-
-        if (flags & CommandPoolFlags::Reset) result |= VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-
-        return result;
+        Shutdown();
     }
 
-    ICommandPool::ICommandPool(IDevice* device)
-        : m_device(device)
+    void CommandAllocator::Init(IDevice* device)
     {
-    }
+        m_device = device;
 
-    ICommandPool::~ICommandPool()
-    {
-        for (auto commandPool : m_commandPools)
+        // Lock mutex while initializing pools
+        std::lock_guard<std::mutex> lock(m_poolMutex);
+
+        // Initialize command pools for each queue type per thread
+        auto& poolMap = m_pools[std::this_thread::get_id()];
+
+        for (size_t i = 0; i < (int)QueueType::Count; ++i)
         {
-            // vkDestroyCommandPool(m_device->m_device, commandPool, nullptr);
-            m_device->m_deleteQueue.DestroyObject(commandPool);
+            poolMap[i] = CreateCommandPool(static_cast<QueueType>(i));
         }
     }
 
-    ResultCode ICommandPool::Init(CommandPoolFlags flags)
+    void CommandAllocator::Shutdown()
     {
-        for (uint32_t queueType = 0; queueType < uint32_t(QueueType::Count); queueType++)
-        {
-            VkCommandPoolCreateInfo createInfo{
-                .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-                .pNext            = nullptr,
-                .flags            = ConvertCommandPoolFlags(flags),
-                .queueFamilyIndex = m_device->m_queue[queueType].GetFamilyIndex(),
-            };
-            TRY_OR_RETURN(vkCreateCommandPool(m_device->m_device, &createInfo, nullptr, &m_commandPools[queueType]));
-        }
-
-        return ResultCode::Success;
+        std::lock_guard<std::mutex> lock(m_poolMutex);
+        DestroyCommandPools();
     }
 
-    void ICommandPool::Reset()
+    TL::Ptr<ICommandList> CommandAllocator::AllocateCommandList(QueueType queueType)
     {
-        for (auto commandPool : m_commandPools)
-        {
-            vkResetCommandPool(m_device->m_device, commandPool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
-        }
-    }
+        // Lock mutex for thread-safe pool access
+        std::lock_guard<std::mutex> lock(m_poolMutex);
 
-    TL::Vector<TL::Ptr<CommandList>> ICommandPool::Allocate(QueueType queueType, CommandListLevel level, uint32_t count)
-    {
-        auto commandPool    = m_commandPools[uint32_t(queueType)];
-        auto commandBuffers = AllocateCommandBuffers(
-            commandPool, count, level == CommandListLevel::Primary ? VK_COMMAND_BUFFER_LEVEL_PRIMARY : VK_COMMAND_BUFFER_LEVEL_SECONDARY);
-        TL::Vector<TL::Ptr<CommandList>> commandLists;
-        for (auto commandBuffer : commandBuffers)
-        {
-            commandLists.push_back(TL::CreatePtr<ICommandList>(m_device, commandBuffer));
-        }
-        return commandLists;
-    }
+        // Get command pool for this queue type and create a command buffer
+        VkCommandPool pool = m_pools[std::this_thread::get_id()][(int)queueType];
 
-    TL::Vector<VkCommandBuffer> ICommandPool::AllocateCommandBuffers(VkCommandPool pool, uint32_t count, VkCommandBufferLevel level)
-    {
-        TL::Vector<VkCommandBuffer> commandBuffers;
-        commandBuffers.resize(count);
-
-        VkCommandBufferAllocateInfo allocateInfo{
+        VkCommandBufferAllocateInfo allocateInfo = {
             .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-            .pNext              = nullptr,
             .commandPool        = pool,
-            .level              = level,
-            .commandBufferCount = count,
+            .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = 1,
         };
-        vkAllocateCommandBuffers(m_device->m_device, &allocateInfo, commandBuffers.data());
-        return commandBuffers;
+
+        VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
+        VkResult        result        = vkAllocateCommandBuffers(m_device->m_device, &allocateInfo, &commandBuffer);
+
+        if (result != VK_SUCCESS)
+        {
+            TL_UNREACHABLE_MSG("Failed to allocate Vulkan command buffer");
+            return nullptr;
+        }
+
+        return TL::CreatePtr<ICommandList>(m_device, commandBuffer);
+    }
+
+    void CommandAllocator::Reset()
+    {
+        // Lock mutex for thread-safe reset
+        std::lock_guard<std::mutex> lock(m_poolMutex);
+
+        // Reset command pools for the current thread
+        auto& poolMap = m_pools[std::this_thread::get_id()];
+
+        for (size_t i = 0; i < (int)QueueType::Count; ++i)
+        {
+            VkCommandPool pool = poolMap[i];
+            vkResetCommandPool(m_device->m_device, pool, 0);
+        }
+    }
+
+    VkCommandPool CommandAllocator::CreateCommandPool(QueueType queueType)
+    {
+        VkCommandPoolCreateInfo poolCreateInfo = {
+            .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+            .flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+            .queueFamilyIndex = m_device->m_queue[(uint32_t)queueType].GetFamilyIndex(),
+        };
+
+        VkCommandPool pool;
+        VkResult      result = vkCreateCommandPool(m_device->m_device, &poolCreateInfo, nullptr, &pool);
+
+        if (result != VK_SUCCESS)
+        {
+            // Handle error
+            TL_UNREACHABLE_MSG("Failed to create Vulkan command pool");
+        }
+
+        return pool;
+    }
+
+    void CommandAllocator::DestroyCommandPools()
+    {
+        // Destroy command pools for the current thread
+        auto& poolMap = m_pools[std::this_thread::get_id()];
+
+        for (size_t i = 0; i < (int)QueueType::Count; ++i)
+        {
+            VkCommandPool pool = poolMap[i];
+            vkDestroyCommandPool(m_device->m_device, pool, nullptr);
+        }
+
+        m_pools.erase(std::this_thread::get_id()); // Clean up the pools for this thread
     }
 } // namespace RHI::Vulkan
