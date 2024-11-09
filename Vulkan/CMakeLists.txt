@@ -13,7 +13,6 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Common.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Device.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/DeleteQueue.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Fence.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Image.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Pipeline.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Queue.hpp
@@ -21,7 +20,6 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Sampler.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Shader.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Semaphore.hpp
 )
 
 # Add source files
@@ -32,7 +30,6 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Device.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/DeleteQueue.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Fence.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Image.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Pipeline.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Queue.cpp
@@ -41,7 +38,6 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Shader.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Surface.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Semaphore.cpp
 )
 
 include(${CPM_TL_SOURCE}/CMake/add-target.cmake)

@@ -32,8 +32,6 @@ namespace RHI::Vulkan
         : m_device(device)
         , m_commandBuffer(commandBuffer)
         , m_barriers()
-        , m_waitSemaphores()
-        , m_signalSemaphores()
         , m_state()
     {
     }
@@ -96,9 +94,6 @@ namespace RHI::Vulkan
             stage.bufferBarriers.clear();
             stage.imageBarriers.clear();
         }
-
-        m_waitSemaphores.clear();
-        m_signalSemaphores.clear();
 
         VkCommandBufferBeginInfo beginInfo{
             .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,

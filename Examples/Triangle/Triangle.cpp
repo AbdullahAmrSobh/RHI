@@ -34,7 +34,6 @@ public:
 
     struct PerFrame
     {
-        RHI::Fence*                 m_fence;
         RHI::CommandPool*           m_commandPool;
         RHI::Handle<RHI::BindGroup> m_bindGroup;
     };
@@ -91,7 +90,6 @@ public:
         for (auto& frame : m_perFrameData)
         {
             frame.m_commandPool = m_device->CreateCommandPool(RHI::CommandPoolFlags::Transient).release();
-            frame.m_fence       = m_device->CreateFence().release();
         }
     }
 
@@ -100,7 +98,6 @@ public:
         for (auto& frame : m_perFrameData)
         {
             delete frame.m_commandPool;
-            delete frame.m_fence;
         }
         delete m_swapchain;
         delete m_device;
@@ -341,38 +338,30 @@ public:
 
     virtual void Render()
     {
+        static RHI::ClearValue clearValue = {.f32 = {0.3f, 0.5f, 0.7f, 1.0f}};
+
         auto frame = GetCurrentFrame();
 
-        if (frame.m_fence->GetState() != RHI::FenceState::Signaled)
-        {
-            [[maybe_unused]] auto result = frame.m_fence->Wait(UINT64_MAX);
-            TL_ASSERT(result == true);
-        }
-
-        m_device->CollectResources(); // collect resources destroyed on the previous frame
-
-        frame.m_fence->Reset();
         frame.m_commandPool->Reset();
-
-        auto commandList = frame.m_commandPool->Allocate(RHI::QueueType::Graphics, RHI::CommandListLevel::Primary);
 
         auto [width, height] = m_window->GetWindowSize();
         m_renderGraph->PassResize(m_mainPass, {width, height});
 
-        RHI::RenderPassBeginInfo renderPassBeginInfo{
-            .renderGraph         = m_renderGraph,
-            .renderArea          = {0, 0, width, height},
-            .pass                = m_mainPass,
-            .loadStoreOperations = {{
-                .clearValue     = {.f32 = RHI::ColorValue<float>{0.3f, 0.5f, 0.7f, 1.0f}},
-                .loadOperation  = RHI::LoadOperation::Discard,
-                .storeOperation = RHI::StoreOperation::Store,
-            }}};
-
+        auto commandList = frame.m_commandPool->Allocate(RHI::QueueType::Graphics, RHI::CommandListLevel::Primary);
         commandList->Begin();
-        commandList->BeginRenderPass(renderPassBeginInfo);
-
-        commandList->SetViewport(RHI::Viewport{
+        commandList->BeginRenderPass({
+            .renderGraph = m_renderGraph,
+            .renderArea  = {0, 0, width, height},
+            .pass        = m_mainPass,
+            .loadStoreOperations{
+                {
+                    .clearValue     = {clearValue},
+                    .loadOperation  = RHI::LoadOperation::Discard,
+                    .storeOperation = RHI::StoreOperation::Store,
+                },
+            },
+        });
+        commandList->SetViewport({
             .offsetX  = 0.0f,
             .offsetY  = 0.0f,
             .width    = (float)width,
@@ -380,31 +369,34 @@ public:
             .minDepth = 0.0f,
             .maxDepth = 1.0f,
         });
-
-        commandList->SetSicssor(RHI::Scissor{
+        commandList->SetSicssor({
             .offsetX = 0,
             .offsetY = 0,
             .width   = width,
             .height  = height,
         });
-
-        commandList->BindGraphicsPipeline(m_graphicsPipeline, RHI::BindGroupBindingInfo{frame.m_bindGroup, {}});
-        commandList->BindVertexBuffers(0, RHI::BufferBindingInfo{.buffer = m_vertexBuffer, .offset = 0});
-        commandList->BindVertexBuffers(1, RHI::BufferBindingInfo{.buffer = m_vertexBuffer, .offset = sizeof(glm::vec3) * 4});
-        commandList->BindIndexBuffer(RHI::BufferBindingInfo{.buffer = m_indexBuffer, .offset = 0}, RHI::IndexType::uint16);
-        commandList->Draw({6, 1, 0, 0, 0});
+        commandList->BindGraphicsPipeline(m_graphicsPipeline, {{frame.m_bindGroup}});
+        commandList->BindVertexBuffers(0, {{.buffer = m_vertexBuffer, .offset = 0}});
+        commandList->BindVertexBuffers(1, {{.buffer = m_vertexBuffer, .offset = sizeof(glm::vec3) * 4}});
+        commandList->BindIndexBuffer({.buffer = m_indexBuffer, .offset = 0}, RHI::IndexType::uint16);
+        commandList->Draw({.elementsCount = 6});
         commandList->EndRenderPass();
         commandList->End();
 
-        RHI::SubmitInfo submitInfo{
-            .waitSemaphores   = RHI::SemaphoreSubmitInfo{0, RHI::PipelineStage::None, m_swapchain->GetWaitSemaphore()},
-            .commandLists     = commandList.get(),
-            .signalSemaphores = RHI::SemaphoreSubmitInfo{0, RHI::PipelineStage::None, m_swapchain->GetSignalSemaphore()},
-        };
-        m_queue->Submit(submitInfo, frame.m_fence);
+        static uint64_t previousSubmitValue = 0;
+
+        previousSubmitValue = m_queue->Submit({
+            .waitTimelineValue = previousSubmitValue,
+            .waitPipelineStage = RHI::PipelineStage::TopOfPipe,
+            .commandLists      = commandList.get(),
+            .swapchainToWait   = m_swapchain,
+            .swapchainToSignal = m_swapchain,
+        });
 
         auto presentResult = m_swapchain->Present();
         TL_ASSERT(presentResult == RHI::ResultCode::Success);
+
+        m_device->CollectResources();
 
         AdvanceFrame();
     }

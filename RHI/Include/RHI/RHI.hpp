@@ -8,7 +8,6 @@
 #include <RHI/RenderGraph.hpp>
 #include <RHI/Buffer.hpp>
 #include <RHI/Image.hpp>
-#include <RHI/Fence.hpp>
 #include <RHI/Pipeline.hpp>
 #include <RHI/Sampler.hpp>
 #include <RHI/Shader.hpp>

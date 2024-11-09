@@ -8,7 +8,6 @@
 #include "RHI/CommandPool.hpp"
 #include "RHI/CommandList.hpp"
 #include <RHI/Image.hpp>
-#include <RHI/Fence.hpp>
 #include <RHI/Pipeline.hpp>
 #include <RHI/Sampler.hpp>
 #include <RHI/Shader.hpp>
@@ -83,8 +82,6 @@ namespace RHI
 
         TL_NODISCARD TL::Ptr<ShaderModule>    CreateShaderModule(TL::Span<const uint32_t> shaderBlob);
 
-        TL_NODISCARD TL::Ptr<Fence>           CreateFence();
-
         TL_NODISCARD TL::Ptr<CommandPool>     CreateCommandPool(CommandPoolFlags flags);
 
         TL_NODISCARD Handle<BindGroupLayout>  CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo);
@@ -127,10 +124,6 @@ namespace RHI
 
         void                                  UnmapBuffer(Handle<Buffer> handle);
 
-        TL_NODISCARD Handle<Semaphore>        CreateSemaphore(const SemaphoreCreateInfo& createInfo);
-
-        void                                  DestroySemaphore(Handle<Semaphore> handle);
-
         TL_NODISCARD Queue*                   GetQueue(QueueType queueType);
 
         void                                  CollectResources();
@@ -139,7 +132,6 @@ namespace RHI
     protected:
         virtual TL::Ptr<Swapchain>       Impl_CreateSwapchain(const SwapchainCreateInfo& createInfo)                           = 0;
         virtual TL::Ptr<ShaderModule>    Impl_CreateShaderModule(TL::Span<const uint32_t> shaderBlob)                          = 0;
-        virtual TL::Ptr<Fence>           Impl_CreateFence()                                                                    = 0;
         virtual TL::Ptr<CommandPool>     Impl_CreateCommandPool(CommandPoolFlags flags)                                        = 0;
         virtual Handle<BindGroupLayout>  Impl_CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)               = 0;
         virtual void                     Impl_DestroyBindGroupLayout(Handle<BindGroupLayout> handle)                           = 0;
@@ -160,8 +152,6 @@ namespace RHI
         virtual void                     Impl_DestroyBuffer(Handle<Buffer> handle)                                             = 0;
         virtual DeviceMemoryPtr          Impl_MapBuffer(Handle<Buffer> handle)                                                 = 0;
         virtual void                     Impl_UnmapBuffer(Handle<Buffer> handle)                                               = 0;
-        virtual Handle<Semaphore>        Impl_CreateSemaphore(const SemaphoreCreateInfo& createInfo)                           = 0;
-        virtual void                     Impl_DestroySemaphore(Handle<Semaphore> handle)                                       = 0;
         virtual Queue*                   Impl_GetQueue(QueueType queueType)                                                    = 0;
         virtual void                     Impl_CollectResources()                                                               = 0;
 

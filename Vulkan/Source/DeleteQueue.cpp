@@ -10,206 +10,324 @@ namespace RHI::Vulkan
 
     DeleteQueue::DeleteQueue(IDevice* device)
         : m_device(device)
-        , m_currentFrameIndex(0)
-        , m_maxFramesCount(Swapchain::MaxImageCount)
-        , m_deleteQueues()
+        , m_semaphores()
+        , m_commandPool()
+        , m_commandBuffers()
+        , m_fences()
+        , m_allocations()
+        , m_buffers()
+        , m_images()
+        , m_events()
+        , m_queryPools()
+        , m_bufferViews()
+        , m_imageViews()
+        , m_pipelineLayouts()
+        , m_pipelines()
+        , m_descriptorSetLayouts()
+        , m_samplers()
+        , m_descriptorPools()
+        , m_descriptorSets()
+        , m_commandPools()
+        , m_surfaces()
+        , m_swapchains()
+        , m_accelerationStructures()
     {
     }
 
-    void DeleteQueue::Shutdown()
-    {
-        for (auto& deleteQueue : m_deleteQueues)
-            deleteQueue.ExecuteDeletions(m_device);
-    }
+    DeleteQueue::~DeleteQueue() {}
 
     void DeleteQueue::DestroyObject(VkSemaphore semaphore)
     {
-        GetCurrentQueue().m_semaphores.push_back(semaphore);
+        m_semaphores.push_back({.timelineValue = m_device->GetTimelineValue(), .resource = semaphore});
     }
 
     void DeleteQueue::DestroyObject(VkCommandPool commandPool)
     {
-        GetCurrentQueue().m_commandPools.push_back(commandPool);
+        m_commandPools.push_back({.timelineValue = m_device->GetTimelineValue(), .resource = commandPool});
     }
 
-    void DeleteQueue::DestroyObject(VkCommandPool commandPool, VkCommandBuffer commandBuffer)
+    void DeleteQueue::DestroyObject(VkCommandPool commandPool, TL::Span<const VkCommandBuffer> commandBuffer)
     {
-        GetCurrentQueue().m_commandBuffers[commandPool].push_back(commandBuffer);
+        m_commandBuffers.push_back(
+            {.timelineValue = m_device->GetTimelineValue(), .pool = commandPool, .resource = {commandBuffer.begin(), commandBuffer.end()}});
     }
 
     void DeleteQueue::DestroyObject(VkFence fence)
     {
-        GetCurrentQueue().m_fences.push_back(fence);
+        m_fences.push_back({.timelineValue = m_device->GetTimelineValue(), .resource = fence});
     }
 
     void DeleteQueue::DestroyObject(VmaAllocation allocation)
     {
-        GetCurrentQueue().m_allocations.push_back(allocation);
+        m_allocations.push_back({.timelineValue = m_device->GetTimelineValue(), .resource = allocation});
     }
 
     void DeleteQueue::DestroyObject(VkBuffer buffer)
     {
-        GetCurrentQueue().m_buffers.push_back(buffer);
+        m_buffers.push_back({.timelineValue = m_device->GetTimelineValue(), .resource = buffer});
     }
 
     void DeleteQueue::DestroyObject(VkImage image)
     {
-        GetCurrentQueue().m_images.push_back(image);
+        m_images.push_back({.timelineValue = m_device->GetTimelineValue(), .resource = image});
     }
 
     void DeleteQueue::DestroyObject(VkEvent event)
     {
-        GetCurrentQueue().m_events.push_back(event);
+        m_events.push_back({.timelineValue = m_device->GetTimelineValue(), .resource = event});
     }
 
     void DeleteQueue::DestroyObject(VkQueryPool queryPool)
     {
-        GetCurrentQueue().m_queryPools.push_back(queryPool);
+        m_queryPools.push_back({.timelineValue = m_device->GetTimelineValue(), .resource = queryPool});
     }
 
     void DeleteQueue::DestroyObject(VkBufferView bufferView)
     {
-        GetCurrentQueue().m_bufferViews.push_back(bufferView);
+        m_bufferViews.push_back({.timelineValue = m_device->GetTimelineValue(), .resource = bufferView});
     }
 
     void DeleteQueue::DestroyObject(VkImageView imageView)
     {
-        GetCurrentQueue().m_imageViews.push_back(imageView);
+        m_imageViews.push_back({.timelineValue = m_device->GetTimelineValue(), .resource = imageView});
     }
 
     void DeleteQueue::DestroyObject(VkPipelineLayout pipelineLayout)
     {
-        GetCurrentQueue().m_pipelineLayouts.push_back(pipelineLayout);
+        m_pipelineLayouts.push_back({.timelineValue = m_device->GetTimelineValue(), .resource = pipelineLayout});
     }
 
     void DeleteQueue::DestroyObject(VkPipeline pipeline)
     {
-        GetCurrentQueue().m_pipelines.push_back(pipeline);
+        m_pipelines.push_back({.timelineValue = m_device->GetTimelineValue(), .resource = pipeline});
     }
 
     void DeleteQueue::DestroyObject(VkDescriptorSetLayout descriptorSetLayout)
     {
-        GetCurrentQueue().m_descriptorSetLayouts.push_back(descriptorSetLayout);
+        m_descriptorSetLayouts.push_back({.timelineValue = m_device->GetTimelineValue(), .resource = descriptorSetLayout});
     }
 
     void DeleteQueue::DestroyObject(VkSampler sampler)
     {
-        GetCurrentQueue().m_samplers.push_back(sampler);
+        m_samplers.push_back({.timelineValue = m_device->GetTimelineValue(), .resource = sampler});
     }
 
     void DeleteQueue::DestroyObject(VkDescriptorPool descriptorPool)
     {
-        GetCurrentQueue().m_descriptorPools.push_back(descriptorPool);
+        m_descriptorPools.push_back({.timelineValue = m_device->GetTimelineValue(), .resource = descriptorPool});
     }
 
-    void DeleteQueue::DestroyObject(VkDescriptorPool descriptorPool, VkDescriptorSet descriptorSet)
+    void DeleteQueue::DestroyObject(VkDescriptorPool descriptorPool, TL::Span<const VkDescriptorSet> descriptorSet)
     {
-        GetCurrentQueue().m_descriptorSets[descriptorPool].push_back(descriptorSet);
+        m_descriptorSets.push_back(
+            {.timelineValue = m_device->GetTimelineValue(),
+             .pool          = descriptorPool,
+             .resource      = {descriptorSet.begin(), descriptorSet.end()}});
     }
 
     void DeleteQueue::DestroyObject(VkSurfaceKHR surface)
     {
-        GetCurrentQueue().m_surfaces.push_back(surface);
+        m_surfaces.push_back({.timelineValue = m_device->GetTimelineValue(), .resource = surface});
     }
 
     void DeleteQueue::DestroyObject(VkSwapchainKHR swapchain)
     {
-        GetCurrentQueue().m_swapchains.push_back(swapchain);
+        m_swapchains.push_back({.timelineValue = m_device->GetTimelineValue(), .resource = swapchain});
     }
 
     void DeleteQueue::DestroyObject(VkAccelerationStructureKHR accelerationStructure)
     {
-        GetCurrentQueue().m_accelerationStructures.push_back(accelerationStructure);
+        m_accelerationStructures.push_back({.timelineValue = m_device->GetTimelineValue(), .resource = accelerationStructure});
     }
 
-    void DeleteQueue::ExecuteDeletions()
+    void DeleteQueue::DestroyQueued()
     {
         ZoneScoped;
-        GetCurrentQueue().ExecuteDeletions(m_device);
-        m_currentFrameIndex = (m_currentFrameIndex + 1) % m_maxFramesCount;
-    }
 
-    void DeleteQueue::PerFrameInflightQueue::ExecuteDeletions(IDevice* device)
-    {
+        uint64_t timelineGpuValue = 0;
+        vkGetSemaphoreCounterValue(m_device->m_device, m_device->GetTimelineSemaphore(), &timelineGpuValue);
+
         // Destroy semaphores
         for (auto semaphore : m_semaphores)
-            vkDestroySemaphore(device->m_device, semaphore, nullptr);
+        {
+            if (semaphore.timelineValue < timelineGpuValue)
+            {
+                vkDestroySemaphore(m_device->m_device, semaphore.resource, nullptr);
+            }
+        }
 
         // Destroy command pools
         for (auto commandPool : m_commandPools)
-            vkDestroyCommandPool(device->m_device, commandPool, nullptr);
+        {
+            if (commandPool.timelineValue < timelineGpuValue)
+            {
+                vkDestroyCommandPool(m_device->m_device, commandPool.resource, nullptr);
+            }
+        }
 
         // Destroy command buffers
-        for (auto [commandPool, commandBuffers] : m_commandBuffers)
-            vkFreeCommandBuffers(device->m_device, commandPool, (uint32_t)commandBuffers.size(), commandBuffers.data());
+        for (auto commandBuffers : m_commandBuffers)
+        {
+            if (commandBuffers.timelineValue < timelineGpuValue)
+            {
+                vkFreeCommandBuffers(
+                    m_device->m_device, commandBuffers.pool, (uint32_t)commandBuffers.resource.size(), commandBuffers.resource.data());
+            }
+        }
 
         // Destroy fences
         for (auto fence : m_fences)
-            vkDestroyFence(device->m_device, fence, nullptr);
+        {
+            if (fence.timelineValue < timelineGpuValue)
+            {
+                vkDestroyFence(m_device->m_device, fence.resource, nullptr);
+            }
+        }
 
         // Free VMA allocations
         for (auto allocation : m_allocations)
-            vmaFreeMemory(device->m_allocator, allocation);
+        {
+            if (allocation.timelineValue < timelineGpuValue)
+            {
+                vmaFreeMemory(m_device->m_allocator, allocation.resource);
+            }
+        }
 
         // Destroy buffers
         for (auto buffer : m_buffers)
-            vkDestroyBuffer(device->m_device, buffer, nullptr);
+        {
+            if (buffer.timelineValue < timelineGpuValue)
+            {
+                vkDestroyBuffer(m_device->m_device, buffer.resource, nullptr);
+            }
+        }
 
         // Destroy images
         for (auto image : m_images)
-            vkDestroyImage(device->m_device, image, nullptr);
+        {
+            if (image.timelineValue < timelineGpuValue)
+            {
+                vkDestroyImage(m_device->m_device, image.resource, nullptr);
+            }
+        }
 
         // Destroy events
         for (auto event : m_events)
-            vkDestroyEvent(device->m_device, event, nullptr);
+        {
+            if (event.timelineValue < timelineGpuValue)
+            {
+                vkDestroyEvent(m_device->m_device, event.resource, nullptr);
+            }
+        }
 
         // Destroy query pools
         for (auto queryPool : m_queryPools)
-            vkDestroyQueryPool(device->m_device, queryPool, nullptr);
+        {
+            if (queryPool.timelineValue < timelineGpuValue)
+            {
+                vkDestroyQueryPool(m_device->m_device, queryPool.resource, nullptr);
+            }
+        }
 
         // Destroy buffer views
         for (auto bufferView : m_bufferViews)
-            vkDestroyBufferView(device->m_device, bufferView, nullptr);
+        {
+            if (bufferView.timelineValue < timelineGpuValue)
+            {
+                vkDestroyBufferView(m_device->m_device, bufferView.resource, nullptr);
+            }
+        }
 
         // Destroy image views
         for (auto imageView : m_imageViews)
-            vkDestroyImageView(device->m_device, imageView, nullptr);
+        {
+            if (imageView.timelineValue < timelineGpuValue)
+            {
+                vkDestroyImageView(m_device->m_device, imageView.resource, nullptr);
+            }
+        }
 
         // Destroy pipeline layouts
         for (auto pipelineLayout : m_pipelineLayouts)
-            vkDestroyPipelineLayout(device->m_device, pipelineLayout, nullptr);
+        {
+            if (pipelineLayout.timelineValue < timelineGpuValue)
+            {
+                vkDestroyPipelineLayout(m_device->m_device, pipelineLayout.resource, nullptr);
+            }
+        }
 
         // Destroy pipelines
         for (auto pipeline : m_pipelines)
-            vkDestroyPipeline(device->m_device, pipeline, nullptr);
+        {
+            if (pipeline.timelineValue < timelineGpuValue)
+            {
+                vkDestroyPipeline(m_device->m_device, pipeline.resource, nullptr);
+            }
+        }
 
         // Destroy descriptor set layouts
         for (auto descriptorSetLayout : m_descriptorSetLayouts)
-            vkDestroyDescriptorSetLayout(device->m_device, descriptorSetLayout, nullptr);
+        {
+            if (descriptorSetLayout.timelineValue < timelineGpuValue)
+            {
+                vkDestroyDescriptorSetLayout(m_device->m_device, descriptorSetLayout.resource, nullptr);
+            }
+        }
 
         // Destroy samplers
         for (auto sampler : m_samplers)
-            vkDestroySampler(device->m_device, sampler, nullptr);
+        {
+            if (sampler.timelineValue < timelineGpuValue)
+            {
+                vkDestroySampler(m_device->m_device, sampler.resource, nullptr);
+            }
+        }
 
         // Destroy descriptor pools
         for (auto descriptorPool : m_descriptorPools)
-            vkDestroyDescriptorPool(device->m_device, descriptorPool, nullptr);
+        {
+            if (descriptorPool.timelineValue < timelineGpuValue)
+            {
+                vkDestroyDescriptorPool(m_device->m_device, descriptorPool.resource, nullptr);
+            }
+        }
 
         // Destroy descriptor sets
-        for (auto [descriptorPool, descriptorSets] : m_descriptorSets)
-            vkFreeDescriptorSets(device->m_device, descriptorPool, (uint32_t)descriptorSets.size(), descriptorSets.data());
+        for (auto descriptorSets : m_descriptorSets)
+        {
+            if (descriptorSets.timelineValue < timelineGpuValue)
+            {
+                vkFreeDescriptorSets(
+                    m_device->m_device, descriptorSets.pool, (uint32_t)descriptorSets.resource.size(), descriptorSets.resource.data());
+            }
+        }
 
         // Destroy surfaces
         for (auto surface : m_surfaces)
-            vkDestroySurfaceKHR(device->m_instance, surface, nullptr);
+        {
+            if (surface.timelineValue < timelineGpuValue)
+            {
+                vkDestroySurfaceKHR(m_device->m_instance, surface.resource, nullptr);
+            }
+        }
 
         // Destroy swapchains
         for (auto swapchain : m_swapchains)
-            vkDestroySwapchainKHR(device->m_device, swapchain, nullptr);
+        {
+            if (swapchain.timelineValue < timelineGpuValue)
+            {
+                vkDestroySwapchainKHR(m_device->m_device, swapchain.resource, nullptr);
+            }
+        }
 
         // Destroy acceleration structures (if using Vulkan ray tracing extensions)
         // for (auto accelerationStructure : m_accelerationStructures)
-        //     vkDestroyAccelerationStructureKHR(device->m_device, accelerationStructure, nullptr);
+        // {
+        //     if (accelerationStructure.timelineValue < m_device->TimelineGetCurrentGPUValue())
+        //     {
+        //         vkDestroyAccelerationStructureKHR(m_device->m_device, accelerationStructure.resource, nullptr);
+        //     }
+        // }
         TL_ASSERT(m_accelerationStructures.empty());
 
         m_semaphores.clear();

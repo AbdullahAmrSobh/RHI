@@ -8,7 +8,6 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Device.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Definitions.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Export.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Fence.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Format.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Handle.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Image.hpp
@@ -24,7 +23,6 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Sampler.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Shader.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Swapchain.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Semaphore.hpp
 )
 
 set(SOURCE_FILES
@@ -35,7 +33,6 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandPool.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Device.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Fence.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Format.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Handle.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Image.cpp
@@ -47,7 +44,6 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Sampler.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Shader.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Semaphore.cpp
 )
 
 include(${CPM_TL_SOURCE}/CMake/add-target.cmake)

@@ -64,25 +64,11 @@ namespace RHI
         /// @brief Get the current acquired swapchain image.
         Handle<Image>      GetImage() const;
 
-        /// @brief Get the indexed image in the swapchain images.
-        Handle<Image>      GetImage(uint32_t index) const;
-
-        /// @brief Get the current acquired swapchain semaphore.
-        Handle<Semaphore>  GetSignalSemaphore() const;
-
-        /// @brief Get the current acquired swapchain semaphore.
-        Handle<Semaphore>  GetWaitSemaphore() const;
-
         /// @brief Called to invalidate the current swapchain state, when the window is resized.
         virtual ResultCode Recreate(ImageSize2D newSize) = 0;
 
         /// @brief Presents the current image.
         virtual ResultCode Present()                     = 0;
-
-    protected:
-        uint32_t GetCurrentSemaphoreIndex() const;
-        uint32_t GetNextSemaphoreIndex() const;
-        void     RotateSemaphores();
 
     protected:
         Device*               m_device;
@@ -94,9 +80,6 @@ namespace RHI
 
         uint32_t              m_imageCount;
         uint32_t              m_imageIndex;
-        uint32_t              m_semaphoreIndex;
-        Handle<Semaphore>     m_waitSemaphore[MaxImageCount]; // App must wait on this semaphore before using the image
         Handle<Image>         m_image[MaxImageCount];
-        Handle<Semaphore>     m_signalSemaphore[MaxImageCount]; // App must signal this semaphore after using the iamge
     };
 } // namespace RHI

@@ -212,7 +212,7 @@ namespace RHI::Vulkan
 
         m_bindGroupAllocator->Shutdown();
 
-        m_deleteQueue.Shutdown();
+        m_deleteQueue.DestroyQueued();
 
         vmaDestroyAllocator(m_allocator);
         vkDestroyDevice(m_device, nullptr);
@@ -493,6 +493,21 @@ namespace RHI::Vulkan
         auto r_result = m_bindGroupAllocator->Init();
         if (r_result != ResultCode::Success) return VK_ERROR_INITIALIZATION_FAILED;
 
+        VkSemaphoreTypeCreateInfo typeCreateInfo{
+            .sType         = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
+            .pNext         = nullptr,
+            .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
+            .initialValue  = m_timelineValue,
+        };
+
+        VkSemaphoreCreateInfo createInfo{
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+            .pNext = &typeCreateInfo,
+            .flags = 0,
+        };
+
+        result = vkCreateSemaphore(m_device, &createInfo, nullptr, &m_timelineSemaphore);
+
         return result;
     }
 
@@ -561,6 +576,21 @@ namespace RHI::Vulkan
         return UINT32_MAX; // Return an invalid index to indicate failure
     }
 
+    uint64_t IDevice::GetTimelineValue() const
+    {
+        return m_timelineValue;
+    }
+
+    VkSemaphore IDevice::GetTimelineSemaphore()
+    {
+        return m_timelineSemaphore;
+    }
+
+    uint64_t IDevice::AdvanceTimelineValue()
+    {
+        return ++m_timelineValue;
+    }
+
     ////////////////////////////////////////////////////////////
     // Interface implementation
     ////////////////////////////////////////////////////////////
@@ -584,17 +614,6 @@ namespace RHI::Vulkan
             TL_LOG_ERROR("Failed to create shader module");
         }
         return shaderModule;
-    }
-
-    TL::Ptr<Fence> IDevice::Impl_CreateFence()
-    {
-        auto fence  = TL::CreatePtr<IFence>(this);
-        auto result = fence->Init();
-        if (result != ResultCode::Success)
-        {
-            TL_LOG_ERROR("Failed to create a fence object");
-        }
-        return fence;
     }
 
     TL::Ptr<CommandPool> IDevice::Impl_CreateCommandPool(CommandPoolFlags flags)
@@ -800,27 +819,6 @@ namespace RHI::Vulkan
         vmaUnmapMemory(m_allocator, resource);
     }
 
-    Handle<Semaphore> IDevice::Impl_CreateSemaphore(const SemaphoreCreateInfo& createInfo)
-    {
-        ISemaphore semaphore{};
-        auto       result = semaphore.Init(this, createInfo);
-        if (IsError(result))
-        {
-            TL_LOG_ERROR("Failed to create semaphore");
-        }
-        auto handle = m_semaphoreOwner.Emplace(std::move(semaphore));
-        return handle;
-    }
-
-    void IDevice::Impl_DestroySemaphore(Handle<Semaphore> handle)
-    {
-        TL_ASSERT(handle != NullHandle);
-
-        auto semaphore = m_semaphoreOwner.Get(handle);
-        semaphore->Shutdown(this);
-        m_semaphoreOwner.Release(handle);
-    }
-
     Queue* IDevice::Impl_GetQueue(QueueType queueType)
     {
         return &m_queue[(uint32_t)queueType];
@@ -828,7 +826,7 @@ namespace RHI::Vulkan
 
     void IDevice::Impl_CollectResources()
     {
-        m_deleteQueue.ExecuteDeletions();
+        m_deleteQueue.DestroyQueued();
     }
 
     ////////////////////////////////////////////////////////////

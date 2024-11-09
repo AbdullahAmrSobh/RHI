@@ -4,17 +4,16 @@
 #include <RHI/Queue.hpp>
 #include <RHI-Vulkan/Loader.hpp>
 
+#include "Timeline.hpp"
 #include "Queue.hpp"
 #include "DeleteQueue.hpp"
 
 #include "BindGroup.hpp"
 #include "Buffer.hpp"
 #include "Image.hpp"
-#include "Fence.hpp"
 #include "Shader.hpp"
 #include "Pipeline.hpp"
 #include "Sampler.hpp"
-#include "Semaphore.hpp"
 
 #include <TL/Containers.hpp>
 
@@ -39,6 +38,10 @@ namespace RHI::Vulkan
 
         uint32_t GetMemoryTypeIndex(MemoryType memoryType);
 
+        uint64_t    GetTimelineValue() const;
+        VkSemaphore GetTimelineSemaphore();
+        uint64_t    AdvanceTimelineValue();
+
     private:
         friend TL::Ptr<Device> RHI::CreateVulkanDevice(const ApplicationInfo& appInfo);
 
@@ -47,7 +50,6 @@ namespace RHI::Vulkan
 
         TL::Ptr<Swapchain>       Impl_CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
         TL::Ptr<ShaderModule>    Impl_CreateShaderModule(TL::Span<const uint32_t> shaderBlob) override;
-        TL::Ptr<Fence>           Impl_CreateFence() override;
         TL::Ptr<CommandPool>     Impl_CreateCommandPool(CommandPoolFlags flags) override;
         Handle<BindGroupLayout>  Impl_CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) override;
         void                     Impl_DestroyBindGroupLayout(Handle<BindGroupLayout> handle) override;
@@ -68,8 +70,6 @@ namespace RHI::Vulkan
         void                     Impl_DestroyBuffer(Handle<Buffer> handle) override;
         DeviceMemoryPtr          Impl_MapBuffer(Handle<Buffer> handle) override;
         void                     Impl_UnmapBuffer(Handle<Buffer> handle) override;
-        Handle<Semaphore>        Impl_CreateSemaphore(const SemaphoreCreateInfo& createInfo) override;
-        void                     Impl_DestroySemaphore(Handle<Semaphore> handle) override;
         Queue*                   Impl_GetQueue(QueueType queueType) override;
         void                     Impl_CollectResources() override;
 
@@ -100,7 +100,11 @@ namespace RHI::Vulkan
             PFN_vkCmdEndConditionalRenderingEXT   m_vkCmdEndConditionalRenderingEXT;
         } m_pfn;
 
-        IQueue m_queue[(uint32_t)QueueType::Count];
+        // Timeline
+        VkSemaphore          m_timelineSemaphore;
+        std::atomic_uint64_t m_timelineValue;
+
+        IQueue m_queue[4];
 
         DeleteQueue m_deleteQueue;
 
@@ -114,7 +118,6 @@ namespace RHI::Vulkan
         HandlePool<IGraphicsPipeline> m_graphicsPipelineOwner;
         HandlePool<IComputePipeline>  m_computePipelineOwner;
         HandlePool<ISampler>          m_samplerOwner;
-        HandlePool<ISemaphore>        m_semaphoreOwner;
     };
 
     template<typename T>

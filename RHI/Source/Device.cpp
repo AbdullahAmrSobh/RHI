@@ -53,13 +53,6 @@ namespace RHI
         return Impl_CreateShaderModule(shaderBlob);
     }
 
-    TL::Ptr<Fence> Device::CreateFence()
-    {
-        ZoneScoped;
-
-        return Impl_CreateFence();
-    }
-
     TL::Ptr<CommandPool> Device::CreateCommandPool(CommandPoolFlags flags)
     {
         ZoneScoped;
@@ -226,18 +219,6 @@ namespace RHI
         ZoneScoped;
 
         Impl_UnmapBuffer(handle);
-    }
-
-    Handle<Semaphore> Device::CreateSemaphore(const SemaphoreCreateInfo& createInfo)
-    {
-        ZoneScoped;
-
-        return Impl_CreateSemaphore(createInfo);
-    }
-
-    void Device::DestroySemaphore(Handle<Semaphore> handle)
-    {
-        return Impl_DestroySemaphore(handle);
     }
 
     Queue* Device::GetQueue(QueueType queueType)

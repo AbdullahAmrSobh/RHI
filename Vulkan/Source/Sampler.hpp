@@ -10,15 +10,16 @@ namespace RHI::Vulkan
     class IDevice;
 
     VkFilter ConvertFilter(SamplerFilter samplerFilter);
-    VkSamplerAddressMode ConvertSamplerAddressMode(SamplerAddressMode addressMode);
-    VkCompareOp ConvertCompareOp(SamplerCompareOperation compareOperation);
 
+    VkSamplerAddressMode ConvertSamplerAddressMode(SamplerAddressMode addressMode);
+
+    VkCompareOp ConvertCompareOp(SamplerCompareOperation compareOperation);
 
     struct ISampler : Sampler
     {
         VkSampler handle;
 
         ResultCode Init(IDevice* device, const SamplerCreateInfo& createInfo);
-        void Shutdown(IDevice* device);
+        void       Shutdown(IDevice* device);
     };
 } // namespace RHI::Vulkan

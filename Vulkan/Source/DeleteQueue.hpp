@@ -14,11 +14,11 @@ namespace RHI::Vulkan
     {
     public:
         DeleteQueue(IDevice* device);
-        void Shutdown();
+        ~DeleteQueue();
 
         void DestroyObject(VkSemaphore semaphore);
         void DestroyObject(VkCommandPool commandPool);
-        void DestroyObject(VkCommandPool commandPool, VkCommandBuffer commandBuffer);
+        void DestroyObject(VkCommandPool commandPool, TL::Span<const VkCommandBuffer> commandBuffer);
         void DestroyObject(VkFence fence);
         void DestroyObject(VmaAllocation allocation);
         void DestroyObject(VkBuffer buffer);
@@ -32,51 +32,52 @@ namespace RHI::Vulkan
         void DestroyObject(VkDescriptorSetLayout descriptorSetLayout);
         void DestroyObject(VkSampler sampler);
         void DestroyObject(VkDescriptorPool descriptorPool);
-        void DestroyObject(VkDescriptorPool descriptorPool, VkDescriptorSet descriptorSet);
+        void DestroyObject(VkDescriptorPool descriptorPool, TL::Span<const VkDescriptorSet> descriptorSet);
         void DestroyObject(VkSurfaceKHR surface);
         void DestroyObject(VkSwapchainKHR swapchain);
         void DestroyObject(VkAccelerationStructureKHR accelerationStructure);
 
-        void ExecuteDeletions();
+        void DestroyQueued();
 
     private:
-        struct PerFrameInflightQueue
+        template<typename HandleType>
+        struct DestroyResource
         {
-            PerFrameInflightQueue() = default;
-            void ExecuteDeletions(IDevice* device);
+            uint64_t   timelineValue;
+            HandleType resource;
+        };
 
-            TL::Vector<VkSemaphore> m_semaphores;
-            TL::Vector<VkCommandPool> m_commandPool;
-            TL::UnorderedMap<VkCommandPool, TL::Vector<VkCommandBuffer>> m_commandBuffers;
-            TL::Vector<VkFence> m_fences;
-            TL::Vector<VmaAllocation> m_allocations;
-            TL::Vector<VkBuffer> m_buffers;
-            TL::Vector<VkImage> m_images;
-            TL::Vector<VkEvent> m_events;
-            TL::Vector<VkQueryPool> m_queryPools;
-            TL::Vector<VkBufferView> m_bufferViews;
-            TL::Vector<VkImageView> m_imageViews;
-            TL::Vector<VkPipelineLayout> m_pipelineLayouts;
-            TL::Vector<VkPipeline> m_pipelines;
-            TL::Vector<VkDescriptorSetLayout> m_descriptorSetLayouts;
-            TL::Vector<VkSampler> m_samplers;
-            TL::Vector<VkDescriptorPool> m_descriptorPools;
-            TL::UnorderedMap<VkDescriptorPool, TL::Vector<VkDescriptorSet>> m_descriptorSets;
-            TL::Vector<VkCommandPool> m_commandPools;
-            TL::Vector<VkSurfaceKHR> m_surfaces;
-            TL::Vector<VkSwapchainKHR> m_swapchains;
-            TL::Vector<VkAccelerationStructureKHR> m_accelerationStructures;
+        template<typename T, typename U>
+        struct DestroyPooledResource
+        {
+            uint64_t      timelineValue;
+            T             pool;
+            TL::Vector<U> resource;
         };
 
         IDevice* m_device;
-        uint32_t m_currentFrameIndex;
-        uint32_t m_maxFramesCount;
-        PerFrameInflightQueue m_deleteQueues[Swapchain::MaxImageCount];
 
-        PerFrameInflightQueue& GetCurrentQueue()
-        {
-            return m_deleteQueues[m_currentFrameIndex];
-        }
+        TL::Vector<DestroyResource<VkSemaphore>>                             m_semaphores;
+        TL::Vector<DestroyResource<VkCommandPool>>                           m_commandPool;
+        TL::Vector<DestroyPooledResource<VkCommandPool, VkCommandBuffer>>    m_commandBuffers;
+        TL::Vector<DestroyResource<VkFence>>                                 m_fences;
+        TL::Vector<DestroyResource<VmaAllocation>>                           m_allocations;
+        TL::Vector<DestroyResource<VkBuffer>>                                m_buffers;
+        TL::Vector<DestroyResource<VkImage>>                                 m_images;
+        TL::Vector<DestroyResource<VkEvent>>                                 m_events;
+        TL::Vector<DestroyResource<VkQueryPool>>                             m_queryPools;
+        TL::Vector<DestroyResource<VkBufferView>>                            m_bufferViews;
+        TL::Vector<DestroyResource<VkImageView>>                             m_imageViews;
+        TL::Vector<DestroyResource<VkPipelineLayout>>                        m_pipelineLayouts;
+        TL::Vector<DestroyResource<VkPipeline>>                              m_pipelines;
+        TL::Vector<DestroyResource<VkDescriptorSetLayout>>                   m_descriptorSetLayouts;
+        TL::Vector<DestroyResource<VkSampler>>                               m_samplers;
+        TL::Vector<DestroyResource<VkDescriptorPool>>                        m_descriptorPools;
+        TL::Vector<DestroyPooledResource<VkDescriptorPool, VkDescriptorSet>> m_descriptorSets;
+        TL::Vector<DestroyResource<VkCommandPool>>                           m_commandPools;
+        TL::Vector<DestroyResource<VkSurfaceKHR>>                            m_surfaces;
+        TL::Vector<DestroyResource<VkSwapchainKHR>>                          m_swapchains;
+        TL::Vector<DestroyResource<VkAccelerationStructureKHR>>              m_accelerationStructures;
     };
 
 } // namespace RHI::Vulkan
