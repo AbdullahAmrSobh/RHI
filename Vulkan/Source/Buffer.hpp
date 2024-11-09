@@ -17,14 +17,14 @@ namespace RHI::Vulkan
 
     struct IBuffer : Buffer
     {
-        Allocation allocation;
-        VkBuffer handle;
+        Allocation          allocation;
+        VkBuffer            handle;
         VkBufferCreateFlags flags;
-        size_t size;
-        VkBufferUsageFlags usage;
+        size_t              size;
+        VkBufferUsageFlags  usage;
 
         ResultCode Init(IDevice* device, const BufferCreateInfo& createInfo);
-        void Shutdown(IDevice* device);
+        void       Shutdown(IDevice* device);
 
         VkMemoryRequirements GetMemoryRequirements(IDevice* device) const;
     };

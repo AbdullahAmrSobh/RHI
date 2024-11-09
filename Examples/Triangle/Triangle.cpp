@@ -34,6 +34,7 @@ public:
 
     struct PerFrame
     {
+        uint64_t                    m_timelineValue;
         RHI::CommandPool*           m_commandPool;
         RHI::Handle<RHI::BindGroup> m_bindGroup;
     };
@@ -279,7 +280,7 @@ public:
             glm::mat4 translate;
         };
 
-        UniformData           uniformData{glm::mat4(1.f)};
+        UniformData           uniformData{.translate = glm::mat4(1.f)};
         RHI::BufferCreateInfo uniformBufferCI{
             .name       = "uniform-buffer",
             .heapType   = RHI::MemoryType::GPUShared,
@@ -340,7 +341,9 @@ public:
     {
         static RHI::ClearValue clearValue = {.f32 = {0.3f, 0.5f, 0.7f, 1.0f}};
 
-        auto frame = GetCurrentFrame();
+        auto& frame = GetCurrentFrame();
+
+        m_device->WaitTimelineValue(frame.m_timelineValue);
 
         frame.m_commandPool->Reset();
 
@@ -384,8 +387,7 @@ public:
         commandList->End();
 
         static uint64_t previousSubmitValue = 0;
-
-        previousSubmitValue = m_queue->Submit({
+        previousSubmitValue = frame.m_timelineValue = m_queue->Submit({
             .waitTimelineValue = previousSubmitValue,
             .waitPipelineStage = RHI::PipelineStage::TopOfPipe,
             .commandLists      = commandList.get(),

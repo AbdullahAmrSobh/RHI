@@ -21,14 +21,14 @@ namespace RHI::Vulkan
 
         ResultCode Init(CommandPoolFlags flags);
 
-        void Reset() override;
+        void                             Reset() override;
         TL::Vector<TL::Ptr<CommandList>> Allocate(QueueType queueType, CommandListLevel level, uint32_t count) override;
 
     private:
         TL::Vector<VkCommandBuffer> AllocateCommandBuffers(VkCommandPool pool, uint32_t count, VkCommandBufferLevel level);
 
     private:
-        IDevice* m_device;
+        IDevice*      m_device;
         VkCommandPool m_commandPools[uint32_t(QueueType::Count)];
     };
 

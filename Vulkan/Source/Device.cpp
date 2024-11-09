@@ -829,6 +829,19 @@ namespace RHI::Vulkan
         m_deleteQueue.DestroyQueued();
     }
 
+    void IDevice::Impl_WaitTimelineValue(uint64_t value)
+    {
+        VkSemaphoreWaitInfo waitInfo{
+            .sType          = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
+            .pNext          = nullptr,
+            .flags          = 0,
+            .semaphoreCount = 1,
+            .pSemaphores    = &m_timelineSemaphore,
+            .pValues        = &value,
+        };
+        vkWaitSemaphores(m_device, &waitInfo, UINT64_MAX);
+    }
+
     ////////////////////////////////////////////////////////////
     // Interface implementation
     ////////////////////////////////////////////////////////////

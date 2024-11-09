@@ -5,16 +5,15 @@ namespace RHI::Vulkan
 {
     struct Allocation
     {
-        VmaAllocation handle;
-        VmaAllocationInfo info;
-        size_t offset;
-        VmaVirtualBlock virtualBlock;
+        VmaAllocation        handle;
+        VmaAllocationInfo    info;
+        size_t               offset;
+        VmaVirtualBlock      virtualBlock;
         VmaVirtualAllocation virtualHandle;
     };
 
     class MemoryAllocator
     {
     public:
-
     };
-}
+} // namespace RHI::Vulkan

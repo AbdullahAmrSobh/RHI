@@ -22,34 +22,34 @@ namespace RHI::Vulkan
         ~BindGroupAllocator() = default;
 
         ResultCode Init();
-        void Shutdown();
+        void       Shutdown();
 
         ResultCode InitBindGroup(IBindGroup* bindGroup, IBindGroupLayout* bindGroupLayout);
-        void ShutdownBindGroup(IBindGroup* bindGroup);
+        void       ShutdownBindGroup(IBindGroup* bindGroup);
 
     public:
-        IDevice* m_device;
+        IDevice*         m_device;
         VkDescriptorPool m_descriptorPool;
     };
 
     struct IBindGroupLayout : BindGroupLayout
     {
         VkDescriptorSetLayout handle;
-        ShaderBinding shaderBindings[MaxShaderBindingsCount];
-        uint32_t bindlessCount;
+        ShaderBinding         shaderBindings[MaxShaderBindingsCount];
+        uint32_t              bindlessCount;
 
         ResultCode Init(IDevice* device, const BindGroupLayoutCreateInfo& createInfo);
-        void Shutdown(IDevice* device);
+        void       Shutdown(IDevice* device);
     };
 
     struct IBindGroup : BindGroup
     {
         VkDescriptorSet descriptorSet;
-        ShaderBinding shaderBindings[MaxShaderBindingsCount];
-        uint32_t bindlessCount;
+        ShaderBinding   shaderBindings[MaxShaderBindingsCount];
+        uint32_t        bindlessCount;
 
         ResultCode Init(IDevice* device, Handle<BindGroupLayout> layout);
-        void Shutdown(IDevice* device);
+        void       Shutdown(IDevice* device);
 
         void Write(IDevice* device, const BindGroupUpdateInfo& updateInfo);
     };

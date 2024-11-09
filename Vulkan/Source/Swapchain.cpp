@@ -91,7 +91,6 @@ namespace RHI::Vulkan
         ZoneScoped;
 
         auto device = (IDevice*)m_device;
-
         auto result = vkAcquireNextImageKHR(
             device->m_device, m_swapchain, UINT64_MAX, m_imageAcquiredSemaphore[m_semaphoreIndex], VK_NULL_HANDLE, &m_imageIndex);
         TL_ASSERT(result == VK_SUCCESS);
@@ -114,7 +113,8 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto device = (IDevice*)m_device;
+        auto device       = (IDevice*)m_device;
+        auto presentQueue = device->m_queue[(uint32_t)QueueType::Graphics].GetHandle();
 
         VkPresentInfoKHR presentInfo{
             .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -126,7 +126,9 @@ namespace RHI::Vulkan
             .pImageIndices      = &m_imageIndex,
             .pResults           = &m_lastPresentResult,
         };
-        Validate(vkQueuePresentKHR(device->m_queue[(uint32_t)QueueType::Graphics].GetHandle(), &presentInfo));
+        Validate(vkQueuePresentKHR(presentQueue, &presentInfo));
+
+        m_semaphoreIndex = (m_semaphoreIndex + 1) % MaxImageCount;
 
         AcquireNextImage();
 

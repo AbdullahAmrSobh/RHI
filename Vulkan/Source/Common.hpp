@@ -12,12 +12,10 @@
 #include <vk_mem_alloc.h>
 
 #define TRY_OR_RETURN(result) \
-    if (result != VK_SUCCESS) \
-        return ConvertResult(result);
+    if (result != VK_SUCCESS) return ConvertResult(result);
 
-#define TRY_OR_RETURN_VK(result)       \
-    if (result != ResultCode::Success) \
-        return result;
+#define TRY_OR_RETURN_VK(result) \
+    if (result != ResultCode::Success) return result;
 
 namespace RHI::Vulkan
 {
@@ -37,14 +35,10 @@ namespace RHI::Vulkan
     {
         switch (result)
         {
-        case VK_SUCCESS:
-            return ResultCode::Success;
-        case VK_ERROR_OUT_OF_HOST_MEMORY:
-            return ResultCode::ErrorOutOfMemory;
-        case VK_ERROR_OUT_OF_DEVICE_MEMORY:
-            return ResultCode::ErrorDeviceOutOfMemory;
-        default:
-            return ResultCode::ErrorUnknown;
+        case VK_SUCCESS:                    return ResultCode::Success;
+        case VK_ERROR_OUT_OF_HOST_MEMORY:   return ResultCode::ErrorOutOfMemory;
+        case VK_ERROR_OUT_OF_DEVICE_MEMORY: return ResultCode::ErrorDeviceOutOfMemory;
+        default:                            return ResultCode::ErrorUnknown;
         }
     }
 
@@ -240,20 +234,13 @@ namespace RHI::Vulkan
     inline static VkSampleCountFlags ConvertSampleCountFlags(TL::Flags<SampleCount> sampleCountFlags)
     {
         VkSampleCountFlags result = 0;
-        if (sampleCountFlags & SampleCount::Samples1)
-            result |= VK_SAMPLE_COUNT_1_BIT;
-        if (sampleCountFlags & SampleCount::Samples2)
-            result |= VK_SAMPLE_COUNT_2_BIT;
-        if (sampleCountFlags & SampleCount::Samples4)
-            result |= VK_SAMPLE_COUNT_4_BIT;
-        if (sampleCountFlags & SampleCount::Samples8)
-            result |= VK_SAMPLE_COUNT_8_BIT;
-        if (sampleCountFlags & SampleCount::Samples16)
-            result |= VK_SAMPLE_COUNT_16_BIT;
-        if (sampleCountFlags & SampleCount::Samples32)
-            result |= VK_SAMPLE_COUNT_32_BIT;
-        if (sampleCountFlags & SampleCount::Samples64)
-            result |= VK_SAMPLE_COUNT_64_BIT;
+        if (sampleCountFlags & SampleCount::Samples1) result |= VK_SAMPLE_COUNT_1_BIT;
+        if (sampleCountFlags & SampleCount::Samples2) result |= VK_SAMPLE_COUNT_2_BIT;
+        if (sampleCountFlags & SampleCount::Samples4) result |= VK_SAMPLE_COUNT_4_BIT;
+        if (sampleCountFlags & SampleCount::Samples8) result |= VK_SAMPLE_COUNT_8_BIT;
+        if (sampleCountFlags & SampleCount::Samples16) result |= VK_SAMPLE_COUNT_16_BIT;
+        if (sampleCountFlags & SampleCount::Samples32) result |= VK_SAMPLE_COUNT_32_BIT;
+        if (sampleCountFlags & SampleCount::Samples64) result |= VK_SAMPLE_COUNT_64_BIT;
         return result;
     }
 
@@ -261,18 +248,18 @@ namespace RHI::Vulkan
     inline static VkClearColorValue ConvertColorValue(ColorValue<T> value)
     {
         VkClearColorValue clearValue = {};
-        clearValue.float32[0] = value.r;
-        clearValue.float32[1] = value.g;
-        clearValue.float32[2] = value.b;
-        clearValue.float32[3] = value.a;
+        clearValue.float32[0]        = value.r;
+        clearValue.float32[1]        = value.g;
+        clearValue.float32[2]        = value.b;
+        clearValue.float32[3]        = value.a;
         return clearValue;
     }
 
     inline static VkClearDepthStencilValue ConvertDepthStencilValue(DepthStencilValue value)
     {
         VkClearDepthStencilValue clearValue = {};
-        clearValue.depth = value.depthValue;
-        clearValue.stencil = value.stencilValue;
+        clearValue.depth                    = value.depthValue;
+        clearValue.stencil                  = value.stencilValue;
         return clearValue;
     }
 
@@ -332,10 +319,10 @@ namespace RHI::Vulkan
     inline static VkSemaphoreSubmitInfo CreateSemaphoreSubmitInfo(VkSemaphore semaphore, VkPipelineStageFlags2 stages, uint64_t value = 0)
     {
         VkSemaphoreSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-        submitInfo.pNext = nullptr;
+        submitInfo.sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+        submitInfo.pNext     = nullptr;
         submitInfo.semaphore = semaphore;
-        submitInfo.value = value;
+        submitInfo.value     = value;
         submitInfo.stageMask = stages;
         return submitInfo;
     }

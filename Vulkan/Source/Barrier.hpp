@@ -15,10 +15,10 @@ namespace RHI::Vulkan
 {
     struct ImageStageAccess
     {
-        VkImageLayout layout;
+        VkImageLayout         layout;
         VkPipelineStageFlags2 stage;
-        VkAccessFlags2 access;
-        uint32_t queueFamilyIndex;
+        VkAccessFlags2        access;
+        uint32_t              queueFamilyIndex;
 
         inline bool operator==(const ImageStageAccess& other) const
         {
@@ -29,8 +29,8 @@ namespace RHI::Vulkan
     struct BufferStageAccess
     {
         VkPipelineStageFlags2 stage;
-        VkAccessFlags2 access;
-        uint32_t queueFamilyIndex;
+        VkAccessFlags2        access;
+        uint32_t              queueFamilyIndex;
 
         inline bool operator==(const BufferStageAccess& other) const
         {
@@ -54,7 +54,8 @@ namespace RHI::Vulkan
         if (pipelineStages & PipelineStage::VertexInput) stageFlags |= VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT;
         if (pipelineStages & PipelineStage::VertexShader) stageFlags |= VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
         if (pipelineStages & PipelineStage::TessellationControlShader) stageFlags |= VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT;
-        if (pipelineStages & PipelineStage::TessellationEvaluationShader) stageFlags |= VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT;
+        if (pipelineStages & PipelineStage::TessellationEvaluationShader)
+            stageFlags |= VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT;
         if (pipelineStages & PipelineStage::PixelShader) stageFlags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
         if (pipelineStages & PipelineStage::EarlyFragmentTests) stageFlags |= VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT;
         if (pipelineStages & PipelineStage::LateFragmentTests) stageFlags |= VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
@@ -74,12 +75,15 @@ namespace RHI::Vulkan
         if (pipelineStages & PipelineStage::PreRasterizationShaders) stageFlags |= VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT;
         if (pipelineStages & PipelineStage::TransformFeedback) stageFlags |= VK_PIPELINE_STAGE_2_TRANSFORM_FEEDBACK_BIT_EXT;
         if (pipelineStages & PipelineStage::ConditionalRendering) stageFlags |= VK_PIPELINE_STAGE_2_CONDITIONAL_RENDERING_BIT_EXT;
-        if (pipelineStages & PipelineStage::FragmentShadingRateAttachment) stageFlags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
-        if (pipelineStages & PipelineStage::AccelerationStructureBuild) stageFlags |= VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+        if (pipelineStages & PipelineStage::FragmentShadingRateAttachment)
+            stageFlags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
+        if (pipelineStages & PipelineStage::AccelerationStructureBuild)
+            stageFlags |= VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
         if (pipelineStages & PipelineStage::RayTracingShader) stageFlags |= VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
         if (pipelineStages & PipelineStage::TaskShader) stageFlags |= VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT;
         if (pipelineStages & PipelineStage::MeshShader) stageFlags |= VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT;
-        if (pipelineStages & PipelineStage::AccelerationStructureCopy) stageFlags |= VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR;
+        if (pipelineStages & PipelineStage::AccelerationStructureCopy)
+            stageFlags |= VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR;
         return stageFlags;
     }
 
@@ -208,15 +212,18 @@ namespace RHI::Vulkan
                 auto access = ConvertLoadStoreOperationsToAccess(imageAttachment.loadStoreOperation);
                 if (imageAspect & ImageAspect::DepthStencil)
                 {
-                    return access == Access::Read ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+                    return access == Access::Read ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+                                                  : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
                 }
                 else if (imageAspect & ImageAspect::Depth)
                 {
-                    return access == Access::Read ? VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+                    return access == Access::Read ? VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL
+                                                  : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
                 }
                 else if (imageAspect & ImageAspect::Stencil)
                 {
-                    return access == Access::Read ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
+                    return access == Access::Read ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
+                                                  : VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
                 }
 
                 TL_UNREACHABLE();
@@ -236,11 +243,13 @@ namespace RHI::Vulkan
                 }
                 else if (imageAspect & ImageAspect::Depth)
                 {
-                    return isReadOnly ? VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+                    return isReadOnly ? VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL
+                                      : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
                 }
                 else if (imageAspect & ImageAspect::Stencil)
                 {
-                    return isReadOnly ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
+                    return isReadOnly ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
+                                      : VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
                 }
 
                 TL_UNREACHABLE();
@@ -255,86 +264,89 @@ namespace RHI::Vulkan
     inline static ImageStageAccess GetImageStageAccess(const RGImagePassAccess& imageAttachment)
     {
         return {
-            .layout = GetImageAttachmentLayout(imageAttachment),
-            .stage = ConvertPipelineStageFlags(imageAttachment.pipelineStages),
-            .access = GetAccessFlagsForPassAttachment(imageAttachment),
+            .layout           = GetImageAttachmentLayout(imageAttachment),
+            .stage            = ConvertPipelineStageFlags(imageAttachment.pipelineStages),
+            .access           = GetAccessFlagsForPassAttachment(imageAttachment),
             .queueFamilyIndex = 0,
         };
     }
 
-    inline static VkImageMemoryBarrier2 CreateImageBarrier(VkImage image, VkImageSubresourceRange subresourceRange, ImageStageAccess src, ImageStageAccess dst)
+    inline static VkImageMemoryBarrier2 CreateImageBarrier(
+        VkImage image, VkImageSubresourceRange subresourceRange, ImageStageAccess src, ImageStageAccess dst)
     {
         VkImageMemoryBarrier2 barrier{};
-        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-        barrier.pNext = nullptr;
-        barrier.srcStageMask = src.stage;
-        barrier.srcAccessMask = src.access;
-        barrier.dstStageMask = dst.stage;
-        barrier.dstAccessMask = dst.access;
-        barrier.oldLayout = src.layout;
-        barrier.newLayout = dst.layout;
+        barrier.sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+        barrier.pNext               = nullptr;
+        barrier.srcStageMask        = src.stage;
+        barrier.srcAccessMask       = src.access;
+        barrier.dstStageMask        = dst.stage;
+        barrier.dstAccessMask       = dst.access;
+        barrier.oldLayout           = src.layout;
+        barrier.newLayout           = dst.layout;
         barrier.srcQueueFamilyIndex = src.queueFamilyIndex;
         barrier.dstQueueFamilyIndex = dst.queueFamilyIndex;
-        barrier.image = image;
-        barrier.subresourceRange = subresourceRange;
+        barrier.image               = image;
+        barrier.subresourceRange    = subresourceRange;
         return barrier;
     }
 
-    inline static VkBufferMemoryBarrier2 CreateBufferBarrier(VkBuffer buffer, BufferSubregion subregion, BufferStageAccess src, BufferStageAccess dst)
+    inline static VkBufferMemoryBarrier2 CreateBufferBarrier(
+        VkBuffer buffer, BufferSubregion subregion, BufferStageAccess src, BufferStageAccess dst)
     {
         VkBufferMemoryBarrier2 barrier{};
-        barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
-        barrier.pNext = nullptr;
-        barrier.srcStageMask = src.stage;
-        barrier.srcAccessMask = src.access;
-        barrier.dstStageMask = dst.stage;
-        barrier.dstAccessMask = dst.access;
+        barrier.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
+        barrier.pNext               = nullptr;
+        barrier.srcStageMask        = src.stage;
+        barrier.srcAccessMask       = src.access;
+        barrier.dstStageMask        = dst.stage;
+        barrier.dstAccessMask       = dst.access;
         barrier.srcQueueFamilyIndex = src.queueFamilyIndex;
         barrier.dstQueueFamilyIndex = dst.queueFamilyIndex;
-        barrier.buffer = buffer;
-        barrier.offset = subregion.offset;
-        barrier.size = subregion.size;
+        barrier.buffer              = buffer;
+        barrier.offset              = subregion.offset;
+        barrier.size                = subregion.size;
         return barrier;
     }
 
     inline static VkRenderingAttachmentInfo CreateColorAttachment(VkImageView attachmentView, LoadStoreOperations loadStoreOperations)
     {
         VkRenderingAttachmentInfo attachmentInfo{};
-        attachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-        attachmentInfo.pNext = nullptr;
-        attachmentInfo.imageView = attachmentView;
-        attachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        attachmentInfo.loadOp = ConvertLoadOp(loadStoreOperations.loadOperation);
-        attachmentInfo.storeOp = ConvertStoreOp(loadStoreOperations.storeOperation);
+        attachmentInfo.sType            = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+        attachmentInfo.pNext            = nullptr;
+        attachmentInfo.imageView        = attachmentView;
+        attachmentInfo.imageLayout      = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        attachmentInfo.loadOp           = ConvertLoadOp(loadStoreOperations.loadOperation);
+        attachmentInfo.storeOp          = ConvertStoreOp(loadStoreOperations.storeOperation);
         attachmentInfo.clearValue.color = ConvertClearValue(loadStoreOperations.clearValue);
         return attachmentInfo;
     }
 
-    inline static VkRenderingAttachmentInfo CreateColorResolveAttachment(VkImageView colorView, VkImageView resolveView, LoadStoreOperations loadStoreOperations, VkResolveModeFlagBits resolveMode)
+    inline static VkRenderingAttachmentInfo CreateColorResolveAttachment(
+        VkImageView colorView, VkImageView resolveView, LoadStoreOperations loadStoreOperations, VkResolveModeFlagBits resolveMode)
     {
         VkRenderingAttachmentInfo attachmentInfo{};
-        attachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-        attachmentInfo.pNext = nullptr;
-        attachmentInfo.imageView = colorView;
-        attachmentInfo.imageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        attachmentInfo.resolveMode = resolveMode;
-        attachmentInfo.resolveImageView = resolveView;
+        attachmentInfo.sType              = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+        attachmentInfo.pNext              = nullptr;
+        attachmentInfo.imageView          = colorView;
+        attachmentInfo.imageLayout        = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        attachmentInfo.resolveMode        = resolveMode;
+        attachmentInfo.resolveImageView   = resolveView;
         attachmentInfo.resolveImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        attachmentInfo.loadOp = ConvertLoadOp(loadStoreOperations.loadOperation);
-        attachmentInfo.storeOp = ConvertStoreOp(loadStoreOperations.storeOperation);
-        attachmentInfo.clearValue.color = ConvertClearValue(loadStoreOperations.clearValue);
+        attachmentInfo.loadOp             = ConvertLoadOp(loadStoreOperations.loadOperation);
+        attachmentInfo.storeOp            = ConvertStoreOp(loadStoreOperations.storeOperation);
+        attachmentInfo.clearValue.color   = ConvertClearValue(loadStoreOperations.clearValue);
         return attachmentInfo;
     }
 
     inline static VkRenderingAttachmentInfo CreateDepthAttachment(VkImageView depthView, LoadStoreOperations loadStoreOperations)
     {
         VkRenderingAttachmentInfo attachmentInfo{};
-        attachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-        attachmentInfo.pNext = nullptr;
-        attachmentInfo.imageView = depthView;
-        attachmentInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-        attachmentInfo.loadOp = ConvertLoadOp(loadStoreOperations.loadOperation);
-        attachmentInfo.storeOp = ConvertStoreOp(loadStoreOperations.storeOperation);
+        attachmentInfo.sType                   = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+        attachmentInfo.pNext                   = nullptr;
+        attachmentInfo.imageView               = depthView;
+        attachmentInfo.imageLayout             = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+        attachmentInfo.loadOp                  = ConvertLoadOp(loadStoreOperations.loadOperation);
+        attachmentInfo.storeOp                 = ConvertStoreOp(loadStoreOperations.storeOperation);
         attachmentInfo.clearValue.depthStencil = ConvertDepthStencilValue(loadStoreOperations.clearValue.depthStencil);
         return attachmentInfo;
     }
@@ -342,17 +354,18 @@ namespace RHI::Vulkan
     inline static VkRenderingAttachmentInfo CreateStencilAttachment(VkImageView depthView, LoadStoreOperations loadStoreOperations)
     {
         VkRenderingAttachmentInfo attachmentInfo{};
-        attachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-        attachmentInfo.pNext = nullptr;
-        attachmentInfo.imageView = depthView;
-        attachmentInfo.imageLayout = VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
-        attachmentInfo.loadOp = ConvertLoadOp(loadStoreOperations.loadOperation);
-        attachmentInfo.storeOp = ConvertStoreOp(loadStoreOperations.storeOperation);
+        attachmentInfo.sType                   = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+        attachmentInfo.pNext                   = nullptr;
+        attachmentInfo.imageView               = depthView;
+        attachmentInfo.imageLayout             = VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
+        attachmentInfo.loadOp                  = ConvertLoadOp(loadStoreOperations.loadOperation);
+        attachmentInfo.storeOp                 = ConvertStoreOp(loadStoreOperations.storeOperation);
         attachmentInfo.clearValue.depthStencil = ConvertDepthStencilValue(loadStoreOperations.clearValue.depthStencil);
         return attachmentInfo;
     }
 
-    inline static VkRenderingAttachmentInfo CreateRenderingAttachment(VkImageView attachmentView, ImageUsage usage, LoadStoreOperations loadStoreOperations)
+    inline static VkRenderingAttachmentInfo CreateRenderingAttachment(
+        VkImageView attachmentView, ImageUsage usage, LoadStoreOperations loadStoreOperations)
     {
         switch (usage)
         {
