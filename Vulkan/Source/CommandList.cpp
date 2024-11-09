@@ -147,7 +147,7 @@ namespace RHI::Vulkan
             else
             {
                 auto dstState = GetImageStageAccess(*node);
-                auto srcState = ImageStageAccess{VK_IMAGE_LAYOUT_UNDEFINED, dstState.stage, 0};
+                auto srcState = ImageStageAccess{VK_IMAGE_LAYOUT_UNDEFINED, dstState.stage, 0, 0};
                 auto barrier  = CreateImageBarrier(image->handle, subresources, srcState, dstState);
                 m_barriers[BarrierSlot::Priloge].imageBarriers.push_back(barrier);
             }
@@ -265,12 +265,13 @@ namespace RHI::Vulkan
 
         auto buffer = m_device->m_bufferOwner.Get(handle);
 
-        VkConditionalRenderingBeginInfoEXT beginInfo{};
-        beginInfo.sType  = VK_STRUCTURE_TYPE_CONDITIONAL_RENDERING_BEGIN_INFO_EXT;
-        beginInfo.pNext  = nullptr;
-        beginInfo.buffer = buffer->handle;
-        beginInfo.offset = offset;
-        beginInfo.flags  = inverted ? VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT : 0u;
+        VkConditionalRenderingBeginInfoEXT beginInfo{
+            .sType  = VK_STRUCTURE_TYPE_CONDITIONAL_RENDERING_BEGIN_INFO_EXT,
+            .pNext  = nullptr,
+            .buffer = buffer->handle,
+            .offset = offset,
+            .flags  = inverted ? VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT : 0u,
+        };
         m_device->m_pfn.m_vkCmdBeginConditionalRenderingEXT(m_commandBuffer, &beginInfo);
     }
 
@@ -331,13 +332,14 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        VkViewport vkViewport{};
-        vkViewport.x        = viewport.offsetX;
-        vkViewport.y        = viewport.offsetY;
-        vkViewport.width    = viewport.width;
-        vkViewport.height   = viewport.height;
-        vkViewport.minDepth = viewport.minDepth;
-        vkViewport.maxDepth = viewport.maxDepth;
+        VkViewport vkViewport{
+            .x        = viewport.offsetX,
+            .y        = viewport.offsetY,
+            .width    = viewport.width,
+            .height   = viewport.height,
+            .minDepth = viewport.minDepth,
+            .maxDepth = viewport.maxDepth,
+        };
         vkCmdSetViewport(m_commandBuffer, 0, 1, &vkViewport);
         m_state.hasViewportSet = true;
     }
@@ -346,11 +348,10 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        VkRect2D vkScissor{};
-        vkScissor.extent.width  = scissor.width;
-        vkScissor.extent.height = scissor.height;
-        vkScissor.offset.x      = scissor.offsetX;
-        vkScissor.offset.y      = scissor.offsetY;
+        VkRect2D vkScissor{
+            .offset = {scissor.offsetX, scissor.offsetY},
+            .extent = {scissor.width, scissor.height},
+        };
         vkCmdSetScissor(m_commandBuffer, 0, 1, &vkScissor);
         m_state.hasScissorSet = true;
     }
@@ -422,10 +423,11 @@ namespace RHI::Vulkan
         auto srcBuffer = m_device->m_bufferOwner.Get(copyInfo.srcBuffer);
         auto dstBuffer = m_device->m_bufferOwner.Get(copyInfo.dstBuffer);
 
-        VkBufferCopy bufferCopy{};
-        bufferCopy.srcOffset = copyInfo.srcOffset;
-        bufferCopy.dstOffset = copyInfo.dstOffset;
-        bufferCopy.size      = copyInfo.size;
+        VkBufferCopy bufferCopy{
+            .srcOffset = copyInfo.srcOffset,
+            .dstOffset = copyInfo.dstOffset,
+            .size      = copyInfo.size,
+        };
         vkCmdCopyBuffer(m_commandBuffer, srcBuffer->handle, dstBuffer->handle, 1, &bufferCopy);
     }
 
@@ -436,12 +438,13 @@ namespace RHI::Vulkan
         auto srcImage = m_device->m_imageOwner.Get(copyInfo.srcImage);
         auto dstImage = m_device->m_imageOwner.Get(copyInfo.dstImage);
 
-        VkImageCopy imageCopy{};
-        imageCopy.srcSubresource = ConvertSubresourceLayer(copyInfo.srcSubresource);
-        imageCopy.srcOffset      = ConvertOffset3D(copyInfo.srcOffset);
-        imageCopy.dstSubresource = ConvertSubresourceLayer(copyInfo.dstSubresource);
-        imageCopy.dstOffset      = ConvertOffset3D(copyInfo.dstOffset);
-        imageCopy.extent         = ConvertExtent3D(copyInfo.srcSize);
+        VkImageCopy imageCopy{
+            .srcSubresource = ConvertSubresourceLayer(copyInfo.srcSubresource),
+            .srcOffset      = ConvertOffset3D(copyInfo.srcOffset),
+            .dstSubresource = ConvertSubresourceLayer(copyInfo.dstSubresource),
+            .dstOffset      = ConvertOffset3D(copyInfo.dstOffset),
+            .extent         = ConvertExtent3D(copyInfo.srcSize),
+        };
         vkCmdCopyImage(
             m_commandBuffer,
             srcImage->handle,
@@ -459,13 +462,14 @@ namespace RHI::Vulkan
         auto buffer = m_device->m_bufferOwner.Get(copyInfo.buffer);
         auto image  = m_device->m_imageOwner.Get(copyInfo.image);
 
-        VkBufferImageCopy bufferImageCopy{};
-        bufferImageCopy.bufferOffset      = copyInfo.bufferOffset;
-        bufferImageCopy.bufferRowLength   = copyInfo.bytesPerRow;
-        bufferImageCopy.bufferImageHeight = copyInfo.bytesPerImage;
-        bufferImageCopy.imageSubresource  = ConvertSubresourceLayer(copyInfo.subresource);
-        bufferImageCopy.imageOffset       = ConvertOffset3D(copyInfo.imageOffset);
-        bufferImageCopy.imageExtent       = ConvertExtent3D(copyInfo.imageSize);
+        VkBufferImageCopy bufferImageCopy{
+            .bufferOffset      = copyInfo.bufferOffset,
+            .bufferRowLength   = copyInfo.bytesPerRow,
+            .bufferImageHeight = copyInfo.bytesPerImage,
+            .imageSubresource  = ConvertSubresourceLayer(copyInfo.subresource),
+            .imageOffset       = ConvertOffset3D(copyInfo.imageOffset),
+            .imageExtent       = ConvertExtent3D(copyInfo.imageSize),
+        };
         vkCmdCopyImageToBuffer(m_commandBuffer, image->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, buffer->handle, 1, &bufferImageCopy);
     }
 
@@ -476,13 +480,14 @@ namespace RHI::Vulkan
         auto buffer = m_device->m_bufferOwner.Get(copyInfo.buffer);
         auto image  = m_device->m_imageOwner.Get(copyInfo.image);
 
-        VkBufferImageCopy bufferImageCopy{};
-        bufferImageCopy.bufferOffset      = copyInfo.bufferOffset;
-        bufferImageCopy.bufferRowLength   = copyInfo.bytesPerRow;
-        bufferImageCopy.bufferImageHeight = copyInfo.bytesPerImage;
-        bufferImageCopy.imageSubresource  = ConvertSubresourceLayer(copyInfo.subresource);
-        bufferImageCopy.imageOffset       = ConvertOffset3D(copyInfo.imageOffset);
-        bufferImageCopy.imageExtent       = ConvertExtent3D(copyInfo.imageSize);
+        VkBufferImageCopy bufferImageCopy{
+            .bufferOffset      = copyInfo.bufferOffset,
+            .bufferRowLength   = copyInfo.bytesPerRow,
+            .bufferImageHeight = copyInfo.bytesPerImage,
+            .imageSubresource  = ConvertSubresourceLayer(copyInfo.subresource),
+            .imageOffset       = ConvertOffset3D(copyInfo.imageOffset),
+            .imageExtent       = ConvertExtent3D(copyInfo.imageSize),
+        };
         vkCmdCopyBufferToImage(m_commandBuffer, buffer->handle, image->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferImageCopy);
     }
 
