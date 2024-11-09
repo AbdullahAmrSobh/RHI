@@ -112,8 +112,6 @@ namespace RHI
 
         TL_NODISCARD Result<Handle<Image>>    CreateImage(const ImageCreateInfo& createInfo);
 
-        TL_NODISCARD Handle<Image>            CreateImageView(const ImageViewCreateInfo& createInfo);
-
         void                                  DestroyImage(Handle<Image> handle);
 
         TL_NODISCARD Result<Handle<Buffer>>   CreateBuffer(const BufferCreateInfo& createInfo);
@@ -127,6 +125,8 @@ namespace RHI
         TL_NODISCARD Queue*                   GetQueue(QueueType queueType);
 
         void                                  CollectResources();
+
+        void                                  WaitTimelineValue(uint64_t value);
         // clang-format on
 
     protected:
@@ -154,6 +154,7 @@ namespace RHI
         virtual void                     Impl_UnmapBuffer(Handle<Buffer> handle)                                               = 0;
         virtual Queue*                   Impl_GetQueue(QueueType queueType)                                                    = 0;
         virtual void                     Impl_CollectResources()                                                               = 0;
+        virtual void                     Impl_WaitTimelineValue(uint64_t value)                                                = 0;
 
     protected:
         TL::Ptr<DeviceLimits> m_limits;

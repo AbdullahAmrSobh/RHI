@@ -226,6 +226,11 @@ namespace RHI
         return Impl_GetQueue(queueType);
     }
 
+    void Device::WaitTimelineValue(uint64_t value)
+    {
+        Impl_WaitTimelineValue(value);
+    }
+
     void Device::CollectResources()
     {
         Impl_CollectResources();

@@ -24,8 +24,8 @@ namespace RHI::Vulkan
         ResultCode Init(TL::Span<const uint32_t> shaderBlob);
 
     public:
-        IDevice* m_device;
+        IDevice*       m_device;
         VkShaderModule m_shaderModule;
     };
 
-} // namespace RHI
+} // namespace RHI::Vulkan

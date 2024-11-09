@@ -418,6 +418,7 @@ namespace RHI::Vulkan
             .descriptorBindingPartiallyBound          = VK_TRUE,
             .descriptorBindingVariableDescriptorCount = VK_TRUE,
             .runtimeDescriptorArray                   = VK_TRUE,
+            .timelineSemaphore                        = VK_TRUE,
         };
         VkPhysicalDeviceVulkan11Features features11{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES,
@@ -827,6 +828,19 @@ namespace RHI::Vulkan
     void IDevice::Impl_CollectResources()
     {
         m_deleteQueue.DestroyQueued();
+    }
+
+    void IDevice::Impl_WaitTimelineValue(uint64_t value)
+    {
+        VkSemaphoreWaitInfo waitInfo{
+            .sType          = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
+            .pNext          = nullptr,
+            .flags          = 0,
+            .semaphoreCount = 1,
+            .pSemaphores    = &m_timelineSemaphore,
+            .pValues        = &value,
+        };
+        vkWaitSemaphores(m_device, &waitInfo, UINT64_MAX);
     }
 
     ////////////////////////////////////////////////////////////

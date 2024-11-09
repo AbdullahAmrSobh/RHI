@@ -14,11 +14,9 @@ namespace RHI::Vulkan
     VkCommandPoolCreateFlags ConvertCommandPoolFlags(TL::Flags<CommandPoolFlags> flags)
     {
         VkCommandPoolCreateFlags result{};
-        if (flags & CommandPoolFlags::Transient)
-            result |= VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+        if (flags & CommandPoolFlags::Transient) result |= VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
 
-        if (flags & CommandPoolFlags::Reset)
-            result |= VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        if (flags & CommandPoolFlags::Reset) result |= VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
         return result;
     }
@@ -42,9 +40,9 @@ namespace RHI::Vulkan
         for (uint32_t queueType = 0; queueType < uint32_t(QueueType::Count); queueType++)
         {
             VkCommandPoolCreateInfo createInfo{
-                .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-                .pNext = nullptr,
-                .flags = ConvertCommandPoolFlags(flags),
+                .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+                .pNext            = nullptr,
+                .flags            = ConvertCommandPoolFlags(flags),
                 .queueFamilyIndex = m_device->m_queue[queueType].GetFamilyIndex(),
             };
             TRY_OR_RETURN(vkCreateCommandPool(m_device->m_device, &createInfo, nullptr, &m_commandPools[queueType]));
@@ -63,8 +61,9 @@ namespace RHI::Vulkan
 
     TL::Vector<TL::Ptr<CommandList>> ICommandPool::Allocate(QueueType queueType, CommandListLevel level, uint32_t count)
     {
-        auto commandPool = m_commandPools[uint32_t(queueType)];
-        auto commandBuffers = AllocateCommandBuffers(commandPool, count, level == CommandListLevel::Primary ? VK_COMMAND_BUFFER_LEVEL_PRIMARY : VK_COMMAND_BUFFER_LEVEL_SECONDARY);
+        auto commandPool    = m_commandPools[uint32_t(queueType)];
+        auto commandBuffers = AllocateCommandBuffers(
+            commandPool, count, level == CommandListLevel::Primary ? VK_COMMAND_BUFFER_LEVEL_PRIMARY : VK_COMMAND_BUFFER_LEVEL_SECONDARY);
         TL::Vector<TL::Ptr<CommandList>> commandLists;
         for (auto commandBuffer : commandBuffers)
         {
@@ -79,10 +78,10 @@ namespace RHI::Vulkan
         commandBuffers.resize(count);
 
         VkCommandBufferAllocateInfo allocateInfo{
-            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-            .pNext = nullptr,
-            .commandPool = pool,
-            .level = level,
+            .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .pNext              = nullptr,
+            .commandPool        = pool,
+            .level              = level,
             .commandBufferCount = count,
         };
         vkAllocateCommandBuffers(m_device->m_device, &allocateInfo, commandBuffers.data());

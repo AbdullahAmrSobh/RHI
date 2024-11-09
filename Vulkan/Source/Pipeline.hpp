@@ -29,31 +29,30 @@ namespace RHI::Vulkan
 
     VkBlendOp ConvertBlendOp(BlendEquation blendEquation);
 
-
     struct IPipelineLayout : PipelineLayout
     {
         VkPipelineLayout handle;
 
         ResultCode Init(IDevice* device, const PipelineLayoutCreateInfo& createInfo);
-        void Shutdown(IDevice* device);
+        void       Shutdown(IDevice* device);
     };
 
     struct IGraphicsPipeline : GraphicsPipeline
     {
-        VkPipeline handle;
+        VkPipeline       handle;
         VkPipelineLayout layout;
 
         ResultCode Init(IDevice* device, const GraphicsPipelineCreateInfo& createInfo);
-        void Shutdown(IDevice* device);
+        void       Shutdown(IDevice* device);
     };
 
     struct IComputePipeline : ComputePipeline
     {
-        VkPipeline handle;
+        VkPipeline       handle;
         VkPipelineLayout layout;
 
         ResultCode Init(IDevice* device, const ComputePipelineCreateInfo& createInfo);
-        void Shutdown(IDevice* device);
+        void       Shutdown(IDevice* device);
     };
 
 } // namespace RHI::Vulkan

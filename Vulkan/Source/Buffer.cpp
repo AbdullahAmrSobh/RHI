@@ -23,55 +23,43 @@ namespace RHI::Vulkan
     VkBufferUsageFlags ConvertBufferUsageFlags(TL::Flags<BufferUsage> bufferUsageFlags)
     {
         VkBufferUsageFlags result = 0;
-        if (bufferUsageFlags & BufferUsage::Storage)
-            result |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-        if (bufferUsageFlags & BufferUsage::Uniform)
-            result |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-        if (bufferUsageFlags & BufferUsage::Vertex)
-            result |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-        if (bufferUsageFlags & BufferUsage::Index)
-            result |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-        if (bufferUsageFlags & BufferUsage::CopySrc)
-            result |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-        if (bufferUsageFlags & BufferUsage::CopyDst)
-            result |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        if (bufferUsageFlags & BufferUsage::Storage) result |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+        if (bufferUsageFlags & BufferUsage::Uniform) result |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+        if (bufferUsageFlags & BufferUsage::Vertex) result |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        if (bufferUsageFlags & BufferUsage::Index) result |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+        if (bufferUsageFlags & BufferUsage::CopySrc) result |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        if (bufferUsageFlags & BufferUsage::CopyDst) result |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
         return result;
     }
 
     ResultCode IBuffer::Init(IDevice* device, const BufferCreateInfo& createInfo)
     {
         this->flags = {};
-        this->size = createInfo.byteSize;
+        this->size  = createInfo.byteSize;
         this->usage = ConvertBufferUsageFlags(createInfo.usageFlags);
 
-        auto vmaUsage = createInfo.heapType == MemoryType::GPUShared ? VMA_MEMORY_USAGE_AUTO_PREFER_HOST : VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+        auto vmaUsage =
+            createInfo.heapType == MemoryType::GPUShared ? VMA_MEMORY_USAGE_AUTO_PREFER_HOST : VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
         VmaAllocationCreateInfo allocationInfo{
-            .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT,
-            .usage = vmaUsage,
-            .requiredFlags = 0,
+            .flags          = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT,
+            .usage          = vmaUsage,
+            .requiredFlags  = 0,
             .preferredFlags = 0,
             .memoryTypeBits = 0,
-            .pool = VK_NULL_HANDLE,
-            .pUserData = nullptr,
-            .priority = 0.0f
-        };
+            .pool           = VK_NULL_HANDLE,
+            .pUserData      = nullptr,
+            .priority       = 0.0f};
         VkBufferCreateInfo bufferCI{
-            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-            .pNext = nullptr,
-            .flags = this->flags,
-            .size = this->size,
-            .usage = this->usage,
-            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+            .sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            .pNext                 = nullptr,
+            .flags                 = this->flags,
+            .size                  = this->size,
+            .usage                 = this->usage,
+            .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
             .queueFamilyIndexCount = 0,
-            .pQueueFamilyIndices = nullptr,
+            .pQueueFamilyIndices   = nullptr,
         };
-        auto result = vmaCreateBuffer(
-            device->m_allocator,
-            &bufferCI,
-            &allocationInfo,
-            &handle,
-            &allocation.handle,
-            &allocation.info);
+        auto result = vmaCreateBuffer(device->m_allocator, &bufferCI, &allocationInfo, &handle, &allocation.handle, &allocation.info);
 
         if (result == VK_SUCCESS && createInfo.name)
         {

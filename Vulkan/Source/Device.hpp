@@ -72,6 +72,7 @@ namespace RHI::Vulkan
         void                     Impl_UnmapBuffer(Handle<Buffer> handle) override;
         Queue*                   Impl_GetQueue(QueueType queueType) override;
         void                     Impl_CollectResources() override;
+        void                     Impl_WaitTimelineValue(uint64_t value) override;
 
     public:
         VkInstance               m_instance;

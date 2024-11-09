@@ -212,6 +212,11 @@ namespace RHI::Vulkan
                 },
         };
 
+        auto formatInfo = GetFormatInfo(createInfo.format);
+        if (formatInfo.hasDepth) imageViewCI.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
+        if (formatInfo.hasStencil) imageViewCI.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+        if (formatInfo.hasRed) imageViewCI.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_COLOR_BIT;
+
         switch (imageCI.imageType)
         {
         case VK_IMAGE_TYPE_1D: imageViewCI.viewType = imageCI.arrayLayers == 1 ? VK_IMAGE_VIEW_TYPE_1D : VK_IMAGE_VIEW_TYPE_1D_ARRAY; break;
@@ -244,7 +249,7 @@ namespace RHI::Vulkan
             },
             .subresourceRange =
                 {
-                    .aspectMask     = 0,
+                    .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
                     .baseMipLevel   = 0,
                     .levelCount     = VK_REMAINING_MIP_LEVELS,
                     .baseArrayLayer = 0,
