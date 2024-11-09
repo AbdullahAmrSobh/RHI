@@ -375,30 +375,27 @@ namespace RHI::Vulkan
         float                               queuePriority = 1.0f;
         TL::Vector<VkDeviceQueueCreateInfo> queueCreateInfos{};
 
-        VkDeviceQueueCreateInfo queueCI{};
-        queueCI.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queueCI.pNext = nullptr;
-        queueCI.flags = 0;
+        VkDeviceQueueCreateInfo queueCI{
+            .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+            .pNext            = nullptr,
+            .flags            = 0,
+            .queueCount       = 1,
+            .pQueuePriorities = &queuePriority,
+        };
 
         if (graphicsQueueFamilyIndex != UINT32_MAX)
         {
             queueCI.queueFamilyIndex = graphicsQueueFamilyIndex;
-            queueCI.queueCount       = 1;
-            queueCI.pQueuePriorities = &queuePriority;
             queueCreateInfos.push_back(queueCI);
         }
         else if (computeQueueFamilyIndex != UINT32_MAX)
         {
             queueCI.queueFamilyIndex = computeQueueFamilyIndex;
-            queueCI.queueCount       = 1;
-            queueCI.pQueuePriorities = &queuePriority;
             queueCreateInfos.push_back(queueCI);
         }
         else if (transferQueueFamilyIndex != UINT32_MAX)
         {
             queueCI.queueFamilyIndex = transferQueueFamilyIndex;
-            queueCI.queueCount       = 1;
-            queueCI.pQueuePriorities = &queuePriority;
             queueCreateInfos.push_back(queueCI);
         }
         else
