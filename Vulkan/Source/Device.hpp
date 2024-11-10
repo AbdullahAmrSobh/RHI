@@ -22,8 +22,7 @@ namespace RHI::Vulkan
 {
     class BindGroupAllocator;
     class CommandAllocator;
-    class ICommandPool;
-    class ICommandList;
+    class StagingBufferAllocator;
 
     class IDevice final : public Device
     {
@@ -71,6 +70,8 @@ namespace RHI::Vulkan
         DeviceMemoryPtr          Impl_MapBuffer(Handle<Buffer> handle) override;
         void                     Impl_UnmapBuffer(Handle<Buffer> handle) override;
         Queue*                   Impl_GetQueue(QueueType queueType) override;
+        StagingBuffer            Impl_StagingAllocate(size_t size) override;
+        uint64_t                 Impl_UploadImage(const ImageUploadInfo& uploadInfo) override;
         void                     Impl_CollectResources() override;
         void                     Impl_WaitTimelineValue(uint64_t value) override;
 
@@ -109,8 +110,9 @@ namespace RHI::Vulkan
 
         DeleteQueue m_deleteQueue;
 
-        TL::Ptr<BindGroupAllocator> m_bindGroupAllocator;
-        TL::Ptr<CommandAllocator>   m_commandsAllocator;
+        TL::Ptr<BindGroupAllocator>     m_bindGroupAllocator;
+        TL::Ptr<CommandAllocator>       m_commandsAllocator;
+        TL::Ptr<StagingBufferAllocator> m_stagingAllocator;
 
         HandlePool<IImage>            m_imageOwner;
         HandlePool<IBuffer>           m_bufferOwner;

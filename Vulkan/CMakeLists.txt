@@ -20,6 +20,7 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Sampler.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Shader.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/StagingBuffer.hpp
 )
 
 # Add source files
@@ -38,6 +39,7 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Shader.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Surface.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/StagingBuffer.cpp
 )
 
 include(${CPM_TL_SOURCE}/CMake/add-target.cmake)

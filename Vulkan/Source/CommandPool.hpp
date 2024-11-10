@@ -20,7 +20,7 @@ namespace RHI::Vulkan
     class CommandAllocator
     {
     public:
-        CommandAllocator()  = default;
+        CommandAllocator() = default;
         ~CommandAllocator();
 
         void Init(IDevice* device);
@@ -37,15 +37,15 @@ namespace RHI::Vulkan
     private:
         using CommandPoolPerQueue = std::array<VkCommandPool, (int)QueueType::Count>;
 
-        IDevice*                                                 m_device = nullptr;
+        IDevice* m_device = nullptr;
 
-        std::mutex                                               m_poolMutex;
+        std::mutex m_poolMutex;
 
         std::unordered_map<std::thread::id, CommandPoolPerQueue> m_pools;
 
         // Helper functions to create and destroy command pools
         VkCommandPool CreateCommandPool(QueueType queueType);
-        void DestroyCommandPools();
+        void          DestroyCommandPools();
     };
 
 } // namespace RHI::Vulkan

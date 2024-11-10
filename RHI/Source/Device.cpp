@@ -281,6 +281,16 @@ namespace RHI
         Impl_WaitTimelineValue(value);
     }
 
+    StagingBuffer Device::StagingAllocate(size_t size)
+    {
+        return Impl_StagingAllocate(size);
+    }
+
+    uint64_t Device::UploadImage(const ImageUploadInfo& uploadInfo)
+    {
+        return Impl_UploadImage(uploadInfo);
+    }
+
     void Device::CollectResources()
     {
         Impl_CollectResources();

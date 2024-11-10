@@ -46,6 +46,7 @@ namespace RHI::Vulkan
         Allocation            allocation;
         VkImage               handle;
         VkImageView           viewHandle;
+        ImageSize3D           size;
         ImageSubresourceRange subresources;
 
         ResultCode Init(IDevice* device, const ImageCreateInfo& createInfo);

@@ -19,9 +19,17 @@ namespace RHI::Vulkan
 
     struct PipelineBarriers
     {
-        TL::Vector<VkMemoryBarrier2>       memoryBarriers;
-        TL::Vector<VkBufferMemoryBarrier2> bufferBarriers;
-        TL::Vector<VkImageMemoryBarrier2>  imageBarriers;
+        TL::Vector<VkMemoryBarrier2>       memoryBarriers = {};
+        TL::Vector<VkBufferMemoryBarrier2> bufferBarriers = {};
+        TL::Vector<VkImageMemoryBarrier2>  imageBarriers  = {};
+    };
+
+    // TODO: remove
+    struct PipelineBarriers2
+    {
+        TL::Span<const VkMemoryBarrier2>       memoryBarriers = {};
+        TL::Span<const VkBufferMemoryBarrier2> bufferBarriers = {};
+        TL::Span<const VkImageMemoryBarrier2>  imageBarriers  = {};
     };
 
     VkImageSubresourceLayers ConvertSubresourceLayer(const ImageSubresourceLayers& subresource);
@@ -36,6 +44,11 @@ namespace RHI::Vulkan
             TL::Span<const VkMemoryBarrier2>       memoryBarriers,
             TL::Span<const VkBufferMemoryBarrier2> bufferBarriers,
             TL::Span<const VkImageMemoryBarrier2>  imageBarriers);
+
+        void PipelineBarrier(const PipelineBarriers& barriers)
+        {
+            PipelineBarrier(barriers.memoryBarriers, barriers.bufferBarriers, barriers.imageBarriers);
+        }
 
         void BindShaderBindGroups(
             VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups);

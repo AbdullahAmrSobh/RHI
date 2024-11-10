@@ -7,6 +7,7 @@
 #include "Swapchain.hpp"
 #include "Device.hpp"
 #include "Queue.hpp"
+#include "StagingBuffer.hpp"
 
 #include <TL/Assert.hpp>
 #include <TL/Log.hpp>
@@ -50,7 +51,6 @@ namespace RHI
 
 namespace RHI::Vulkan
 {
-
     /// @todo: add support for a custom sink, so vulkan errors are spereated
     VkBool32 DebugMessengerCallbacks(
         [[maybe_unused]] VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
@@ -194,6 +194,7 @@ namespace RHI::Vulkan
         , m_deleteQueue(this)
         , m_bindGroupAllocator(TL::CreatePtr<BindGroupAllocator>(this))
         , m_commandsAllocator(TL::CreatePtr<CommandAllocator>())
+        , m_stagingAllocator(TL::CreatePtr<StagingBufferAllocator>())
         , m_imageOwner()
         , m_bufferOwner()
         , m_bindGroupLayoutsOwner()
@@ -413,6 +414,7 @@ namespace RHI::Vulkan
         VkPhysicalDeviceVulkan12Features features12{
             .sType                                    = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
             .pNext                                    = &features13,
+            .descriptorIndexing                       = VK_TRUE,
             .descriptorBindingPartiallyBound          = VK_TRUE,
             .descriptorBindingVariableDescriptorCount = VK_TRUE,
             .runtimeDescriptorArray                   = VK_TRUE,
@@ -493,6 +495,7 @@ namespace RHI::Vulkan
         if (r_result != ResultCode::Success) return VK_ERROR_INITIALIZATION_FAILED;
 
         m_commandsAllocator->Init(this);
+        m_stagingAllocator->Init(this);
 
         VkSemaphoreTypeCreateInfo typeCreateInfo{
             .sType         = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
@@ -817,6 +820,82 @@ namespace RHI::Vulkan
     Queue* IDevice::Impl_GetQueue(QueueType queueType)
     {
         return &m_queue[(uint32_t)queueType];
+    }
+
+    StagingBuffer IDevice::Impl_StagingAllocate(size_t size)
+    {
+        return m_stagingAllocator->Allocate(size);
+    }
+
+    uint64_t IDevice::Impl_UploadImage(const ImageUploadInfo& uploadInfo)
+    {
+        auto image         = m_imageOwner.Get(uploadInfo.image);
+        auto transferQueue = GetQueue(QueueType::Transfer);
+
+        VkImageSubresourceRange subresourceRange{
+            .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+            .baseMipLevel   = uploadInfo.baseMipLevel,
+            .levelCount     = uploadInfo.levelCount,
+            .baseArrayLayer = uploadInfo.baseArrayLayer,
+            .layerCount     = uploadInfo.layerCount,
+        };
+
+        auto _commandList = CreateCommandList(QueueType::Transfer);
+        auto commandList  = (ICommandList*)_commandList.get();
+
+        commandList->Begin();
+        commandList->PipelineBarrier({
+            .imageBarriers = {{
+                .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                .pNext               = nullptr,
+                .srcStageMask        = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
+                .srcAccessMask       = VK_ACCESS_2_NONE,
+                .dstStageMask        = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                .dstAccessMask       = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                .oldLayout           = VK_IMAGE_LAYOUT_UNDEFINED,
+                .newLayout           = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image               = image->handle,
+                .subresourceRange    = subresourceRange,
+            }},
+        });
+
+        commandList->CopyBufferToImage({
+            .image = uploadInfo.image,
+            .subresource =
+                {
+                    .imageAspects = ImageAspect::Color,
+                    .mipLevel     = uploadInfo.baseMipLevel,
+                    .arrayBase    = uploadInfo.baseArrayLayer,
+                    .arrayCount   = uploadInfo.layerCount,
+                },
+            .imageSize    = image->size,
+            .imageOffset  = {0, 0, 0},
+            .buffer       = uploadInfo.srcBuffer,
+            .bufferOffset = uploadInfo.srcBufferOffset,
+            .bufferSize   = uploadInfo.sizeBytes,
+
+        });
+        commandList->PipelineBarrier({
+            .imageBarriers = {{
+                .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                .pNext               = nullptr,
+                .srcStageMask        = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                .srcAccessMask       = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                .dstStageMask        = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
+                .dstAccessMask       = VK_ACCESS_2_NONE,
+                .oldLayout           = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                .newLayout           = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image               = image->handle,
+                .subresourceRange    = subresourceRange,
+            }},
+        });
+        commandList->End();
+
+        return transferQueue->Submit({.commandLists = commandList});
     }
 
     void IDevice::Impl_CollectResources()

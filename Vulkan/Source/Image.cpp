@@ -227,6 +227,8 @@ namespace RHI::Vulkan
 
         result = vkCreateImageView(device->m_device, &imageViewCI, nullptr, &viewHandle);
 
+        size = createInfo.size;
+
         return ConvertResult(result);
     }
 

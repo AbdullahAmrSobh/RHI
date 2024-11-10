@@ -18,7 +18,70 @@
 
 #include "Camera.hpp"
 
+// #include <fastgltf/core.hpp>
+// #include <fastgltf/types.hpp>
+// #include <fastgltf/glm_element_traits.hpp>
+// #include <fastgltf/util.hpp>
+
 using namespace Examples;
+
+// static void Load(RHI::Device& device, const char* path)
+// {
+//     static constexpr auto supportedExtensions = fastgltf::Extensions::KHR_mesh_quantization | fastgltf::Extensions::KHR_texture_transform
+//     |
+//                                                 fastgltf::Extensions::KHR_materials_variants;
+
+//     fastgltf::Parser parser(supportedExtensions);
+
+//     constexpr auto gltfOptions = fastgltf::Options::DontRequireValidAssetMember | fastgltf::Options::AllowDouble |
+//                                  fastgltf::Options::LoadExternalBuffers | fastgltf::Options::LoadExternalImages |
+//                                  fastgltf::Options::GenerateMeshIndices;
+
+//     auto gltfFile = fastgltf::MappedGltfFile::FromPath(path);
+//     if (!bool(gltfFile))
+//     {
+//         // TL_LOG_INFO("Failed to open glTF file: " , ) << fastgltf::getErrorMessage(gltfFile.error()) << '\n';
+//         // return false;
+//     }
+
+//     auto asset = parser.loadGltf(gltfFile.get(), path, gltfOptions);
+//     if (asset.error() != fastgltf::Error::None)
+//     {
+//         // TL_LOG_INFO("Failed to load glTF: " , ) << fastgltf::getErrorMessage(asset.error()) << '\n';
+//         // return false;
+//     }
+
+//     for (auto image : asset->images)
+//     {
+
+//     }
+
+//     for (auto mesh : asset->meshes)
+//     {
+//         for (auto primitive : mesh.primitives)
+//         {
+//             // for (auto i : primitiv)
+//             auto accessor = asset->accessors[primitive.findAttribute("Position")->accessorIndex];
+//             auto buffer = asset->buffers[accessor.bufferViewIndex];
+
+//         }
+//     }
+
+// }
+
+TL::Vector<uint8_t> CreateCheckerboardImage(RHI::ImageSize2D size, uint32_t squareSize)
+{
+    TL::Vector<uint8_t> image(size.width * size.height, 0);
+    for (int y = 0; y < size.height; ++y)
+    {
+        for (int x = 0; x < size.width; ++x)
+        {
+            bool isWhiteSquare        = ((x / squareSize) % 2 == (y / squareSize) % 2);
+            image[y * size.width + x] = isWhiteSquare ? 255 : 0;
+        }
+    }
+    return image;
+}
 
 class Playground final : public ApplicationBase
 {
@@ -48,6 +111,7 @@ public:
     RHI::Handle<RHI::Pass>    m_mainPass;
     RHI::Handle<RHI::RGImage> m_colorAttachment;
 
+    RHI::Handle<RHI::Image>  m_texture;
     RHI::Handle<RHI::Buffer> m_vertexBuffer;
     RHI::Handle<RHI::Buffer> m_indexBuffer;
     RHI::Handle<RHI::Buffer> m_uniformBuffer;
@@ -110,18 +174,15 @@ public:
             .name = "BGL-ViewUB",
             .bindings{
                 {
-                    .type       = RHI::BindingType::UniformBuffer,
-                    .access     = RHI::Access::Read,
-                    .arrayCount = 1,
-                    .stages     = RHI::ShaderStage::Pixel | RHI::ShaderStage::Vertex,
+                    .type   = RHI::BindingType::UniformBuffer,
+                    .stages = RHI::ShaderStage::Pixel | RHI::ShaderStage::Vertex,
                 },
-                // {
-                //     .type = RHI::BindingType::DynamicUniformBuffer,
-                //     .access = RHI::Access::Read,
-                //     .arrayCount = 1,
-                //     .stages = RHI::ShaderStage::Pixel | RHI::ShaderStage::Vertex
-                // },
-            }};
+                {
+                    .type   = RHI::BindingType::SampledImage,
+                    .stages = RHI::ShaderStage::Pixel,
+                },
+            },
+        };
         auto bindGroupLayout = m_device->CreateBindGroupLayout(bindGroupLayoutCI);
 
         RHI::PipelineLayoutCreateInfo layoutCI{.name = "graphics-pipeline-layout", .layouts = {bindGroupLayout}};
@@ -164,6 +225,13 @@ public:
         {
             frame.m_bindGroup = m_device->CreateBindGroup(bindGroupLayout);
             RHI::BindGroupUpdateInfo bindGroupUpdateInfo{
+                .images{
+                    {
+                        .dstBinding      = 1,
+                        .dstArrayElement = 0,
+                        .images          = m_texture,
+                    },
+                },
                 .buffers{
                     {
                         .dstBinding      = 0,
@@ -171,12 +239,6 @@ public:
                         .buffers         = m_uniformBuffer,
                         .subregions      = {},
                     },
-                    // {
-                    //     .dstBinding = 1,
-                    //     .dstArrayElement = 0,
-                    //     .buffer = m_uniformBuffer2,
-                    //     .subregions = { RHI::BufferSubregion{ 0, 256 } }
-                    // },
                 },
             };
             m_device->UpdateBindGroup(frame.m_bindGroup, bindGroupUpdateInfo);
@@ -218,6 +280,18 @@ public:
 
     void InitBuffers()
     {
+        auto checkerboard = CreateCheckerboardImage({512, 512}, 32);
+        m_texture         = RHI::Utils::CreateImageWithContent(
+                        *m_device,
+                        {
+                                    .usageFlags = RHI::ImageUsage::CopyDst | RHI::ImageUsage::ShaderResource,
+                                    .type       = RHI::ImageType::Image2D,
+                                    .size       = {512, 512},
+                                    .format     = RHI::Format::R8_UNORM,
+                        },
+                        TL::Block::Create(checkerboard))
+                        .GetValue();
+
         // clang-format off
         glm::vec3 positionData[] = {
             {-1.0f,  1.0f, 1.0f},
