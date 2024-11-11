@@ -18,10 +18,10 @@ namespace RHI::Vulkan
     class BindGroupAllocator
     {
     public:
-        BindGroupAllocator(IDevice* device);
-        ~BindGroupAllocator() = default;
+        BindGroupAllocator();
+        ~BindGroupAllocator();
 
-        ResultCode Init();
+        ResultCode Init(IDevice* device);
         void       Shutdown();
 
         ResultCode InitBindGroup(IBindGroup* bindGroup, IBindGroupLayout* bindGroupLayout);

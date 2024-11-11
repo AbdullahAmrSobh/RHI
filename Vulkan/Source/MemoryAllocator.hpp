@@ -11,9 +11,4 @@ namespace RHI::Vulkan
         VmaVirtualBlock      virtualBlock;
         VmaVirtualAllocation virtualHandle;
     };
-
-    class MemoryAllocator
-    {
-    public:
-    };
 } // namespace RHI::Vulkan

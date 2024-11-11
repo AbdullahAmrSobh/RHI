@@ -9,6 +9,8 @@
 
 namespace RHI::Vulkan
 {
+    //// @fixme: in case of reszing old image views must be removed too!
+
     VkPresentModeKHR ConvertPresentMode(SwapchainPresentMode presentMode)
     {
         switch (presentMode)
@@ -21,40 +23,18 @@ namespace RHI::Vulkan
         }
     }
 
-    ISwapchain::ISwapchain(IDevice* device)
-        : Swapchain(device)
-        , m_swapchain(VK_NULL_HANDLE)
-        , m_surface(VK_NULL_HANDLE)
-        , m_lastPresentResult()
-    {
-        ZoneScoped;
-    }
+    ISwapchain::ISwapchain() = default;
 
     ISwapchain::~ISwapchain()
     {
-        ZoneScoped;
-
-        auto device = (IDevice*)m_device;
-
-        vkDeviceWaitIdle(device->m_device);
-
-        for (uint32_t i = 0; i < m_imageCount; i++)
-        {
-            if (m_image[i] != NullHandle) device->m_imageOwner.Release(m_image[i]);
-            if (m_imageAcquiredSemaphore[i] != VK_NULL_HANDLE) vkDestroySemaphore(device->m_device, m_imageAcquiredSemaphore[i], nullptr);
-            if (m_imagePresentSemaphore[i] != VK_NULL_HANDLE) vkDestroySemaphore(device->m_device, m_imagePresentSemaphore[i], nullptr);
-        }
-
-        vkDestroySwapchainKHR(device->m_device, m_swapchain, nullptr);
-        vkDestroySurfaceKHR(device->m_instance, m_surface, nullptr);
+        Shutdown();
     }
 
-    VkResult ISwapchain::Init(const SwapchainCreateInfo& createInfo)
+    ResultCode ISwapchain::Init(IDevice* device, const SwapchainCreateInfo& createInfo)
     {
         ZoneScoped;
 
-        VkResult result;
-        auto     device = (IDevice*)m_device;
+        m_device = device;
 
         m_name        = createInfo.name ? createInfo.name : "";
         m_imageSize   = createInfo.imageSize;
@@ -63,36 +43,59 @@ namespace RHI::Vulkan
         m_presentMode = createInfo.presentMode;
         m_imageCount  = createInfo.minImageCount;
 
+        VkResult result;
         for (uint32_t i = 0; i < MaxImageCount; i++)
         {
             VkSemaphoreCreateInfo semaphoreCI{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, .pNext = nullptr, .flags = 0};
 
-            result = vkCreateSemaphore(device->m_device, &semaphoreCI, nullptr, &m_imageAcquiredSemaphore[i]);
+            result = vkCreateSemaphore(m_device->m_device, &semaphoreCI, nullptr, &m_imageAcquiredSemaphore[i]);
             TL_ASSERT(result == VK_SUCCESS);
 
-            result = vkCreateSemaphore(device->m_device, &semaphoreCI, nullptr, &m_imagePresentSemaphore[i]);
+            result = vkCreateSemaphore(m_device->m_device, &semaphoreCI, nullptr, &m_imagePresentSemaphore[i]);
             TL_ASSERT(result == VK_SUCCESS);
 
             if (!m_name.empty())
             {
-                device->SetDebugName(m_imageAcquiredSemaphore[i], std::format("Swapchain-imageAcquiredSemaphore[{}]", i).data());
-                device->SetDebugName(m_imagePresentSemaphore[i], std::format("Swapchain-imagePresentSemaphore[{}]", i).data());
+                m_device->SetDebugName(m_imageAcquiredSemaphore[i], std::format("Swapchain-imageAcquiredSemaphore[{}]", i).data());
+                m_device->SetDebugName(m_imagePresentSemaphore[i], std::format("Swapchain-imagePresentSemaphore[{}]", i).data());
             }
         }
 
         InitSurface(createInfo);
         InitSwapchain();
 
-        return VK_SUCCESS;
+        return ResultCode::Success;
+    }
+
+    void ISwapchain::Shutdown()
+    {
+        ZoneScoped;
+
+        vkDeviceWaitIdle(m_device->m_device);
+
+        for (uint32_t i = 0; i < MaxImageCount; i++)
+        {
+            if (m_image[i] != NullHandle)
+            {
+                auto image = m_device->m_imageOwner.Get(m_image[i]);
+                if (image->viewHandle != VK_NULL_HANDLE) vkDestroyImageView(m_device->m_device, image->viewHandle, nullptr);
+
+                m_device->m_imageOwner.Release(m_image[i]);
+            }
+            if (m_imageAcquiredSemaphore[i] != VK_NULL_HANDLE) vkDestroySemaphore(m_device->m_device, m_imageAcquiredSemaphore[i], nullptr);
+            if (m_imagePresentSemaphore[i] != VK_NULL_HANDLE) vkDestroySemaphore(m_device->m_device, m_imagePresentSemaphore[i], nullptr);
+        }
+
+        vkDestroySwapchainKHR(m_device->m_device, m_swapchain, nullptr);
+        vkDestroySurfaceKHR(m_device->m_instance, m_surface, nullptr);
     }
 
     void ISwapchain::AcquireNextImage()
     {
         ZoneScoped;
 
-        auto device = (IDevice*)m_device;
         auto result = vkAcquireNextImageKHR(
-            device->m_device, m_swapchain, UINT64_MAX, m_imageAcquiredSemaphore[m_semaphoreIndex], VK_NULL_HANDLE, &m_imageIndex);
+            m_device->m_device, m_swapchain, UINT64_MAX, m_imageAcquiredSemaphore[m_semaphoreIndex], VK_NULL_HANDLE, &m_imageIndex);
         TL_ASSERT(result == VK_SUCCESS);
     }
 
@@ -102,8 +105,7 @@ namespace RHI::Vulkan
 
         m_imageSize = newSize;
 
-        auto device = (IDevice*)m_device;
-        vkDeviceWaitIdle(device->m_device);
+        vkDeviceWaitIdle(m_device->m_device);
 
         auto result = InitSwapchain();
         return ConvertResult(result);
@@ -113,8 +115,7 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto device       = (IDevice*)m_device;
-        auto presentQueue = device->m_queue[(uint32_t)QueueType::Graphics].GetHandle();
+        auto presentQueue = m_device->m_queue[(uint32_t)QueueType::Graphics]->GetHandle();
 
         VkPresentInfoKHR presentInfo{
             .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -137,10 +138,8 @@ namespace RHI::Vulkan
 
     VkResult ISwapchain::InitSwapchain()
     {
-        auto device = (IDevice*)m_device;
-
         VkSurfaceCapabilitiesKHR surfaceCapabilities{};
-        Validate(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device->m_physicalDevice, m_surface, &surfaceCapabilities));
+        Validate(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_device->m_physicalDevice, m_surface, &surfaceCapabilities));
 
         if (m_imageCount < MinImageCount || m_imageCount > MaxImageCount)
         {
@@ -166,10 +165,10 @@ namespace RHI::Vulkan
             std::clamp(m_imageSize.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
 
         uint32_t formatsCount;
-        Validate(vkGetPhysicalDeviceSurfaceFormatsKHR(device->m_physicalDevice, m_surface, &formatsCount, nullptr));
+        Validate(vkGetPhysicalDeviceSurfaceFormatsKHR(m_device->m_physicalDevice, m_surface, &formatsCount, nullptr));
         TL::Vector<VkSurfaceFormatKHR> formats{};
         formats.resize(formatsCount);
-        vkGetPhysicalDeviceSurfaceFormatsKHR(device->m_physicalDevice, m_surface, &formatsCount, formats.data());
+        vkGetPhysicalDeviceSurfaceFormatsKHR(m_device->m_physicalDevice, m_surface, &formatsCount, formats.data());
 
         bool               formatFound    = false;
         VkSurfaceFormatKHR selectedFormat = {};
@@ -207,10 +206,10 @@ namespace RHI::Vulkan
         }
 
         uint32_t presentModesCount;
-        Validate(vkGetPhysicalDeviceSurfacePresentModesKHR(device->m_physicalDevice, m_surface, &presentModesCount, nullptr));
+        Validate(vkGetPhysicalDeviceSurfacePresentModesKHR(m_device->m_physicalDevice, m_surface, &presentModesCount, nullptr));
         TL::Vector<VkPresentModeKHR> presentModes{};
         presentModes.resize(presentModesCount);
-        vkGetPhysicalDeviceSurfacePresentModesKHR(device->m_physicalDevice, m_surface, &presentModesCount, presentModes.data());
+        vkGetPhysicalDeviceSurfacePresentModesKHR(m_device->m_physicalDevice, m_surface, &presentModesCount, presentModes.data());
 
         VkPresentModeKHR presentMode = VK_PRESENT_MODE_MAX_ENUM_KHR;
         for (VkPresentModeKHR supportedMode : presentModes)
@@ -251,24 +250,24 @@ namespace RHI::Vulkan
             .clipped               = VK_TRUE,
             .oldSwapchain          = m_swapchain,
         };
-        Validate(vkCreateSwapchainKHR(device->m_device, &createInfo, nullptr, &m_swapchain));
-        device->SetDebugName(m_swapchain, m_name.c_str());
+        Validate(vkCreateSwapchainKHR(m_device->m_device, &createInfo, nullptr, &m_swapchain));
+        m_device->SetDebugName(m_swapchain, m_name.c_str());
 
         if (oldSwapchain != VK_NULL_HANDLE)
         {
-            vkDestroySwapchainKHR(device->m_device, oldSwapchain, nullptr);
+            vkDestroySwapchainKHR(m_device->m_device, oldSwapchain, nullptr);
         }
 
-        Validate(vkGetSwapchainImagesKHR(device->m_device, m_swapchain, &m_imageCount, nullptr));
+        Validate(vkGetSwapchainImagesKHR(m_device->m_device, m_swapchain, &m_imageCount, nullptr));
         TL_ASSERT(m_imageCount <= MaxImageCount, "Swapchain returned larger count than supported.");
         VkImage images[MaxImageCount];
-        Validate(vkGetSwapchainImagesKHR(device->m_device, m_swapchain, &m_imageCount, images));
+        Validate(vkGetSwapchainImagesKHR(m_device->m_device, m_swapchain, &m_imageCount, images));
 
         for (uint32_t imageIndex = 0; imageIndex < m_imageCount; imageIndex++)
         {
             IImage image{};
-            Validate(image.Init(device, images[imageIndex], createInfo));
-            m_image[imageIndex] = device->m_imageOwner.Emplace(std::move(image));
+            Validate(image.Init(m_device, images[imageIndex], createInfo));
+            m_image[imageIndex] = m_device->m_imageOwner.Emplace(std::move(image));
         }
 
         AcquireNextImage();

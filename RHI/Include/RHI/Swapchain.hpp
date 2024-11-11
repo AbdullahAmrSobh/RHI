@@ -51,8 +51,7 @@ namespace RHI
         static constexpr uint32_t MaxImageCount = 4;
         static constexpr uint32_t MinImageCount = 1;
 
-        Swapchain(Device* device);
-
+        Swapchain();
         virtual ~Swapchain();
 
         /// @brief Get the current image index of the swapchain.
@@ -71,7 +70,6 @@ namespace RHI
         virtual ResultCode Present()                     = 0;
 
     protected:
-        Device*               m_device;
         TL::String            m_name;
         ImageSize2D           m_imageSize;
         TL::Flags<ImageUsage> m_imageUsage;

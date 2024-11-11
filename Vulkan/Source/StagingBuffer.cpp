@@ -5,6 +5,14 @@
 
 namespace RHI::Vulkan
 {
+    StagingBufferAllocator::StagingBufferAllocator()  = default;
+    StagingBufferAllocator::~StagingBufferAllocator() = default;
+
+    ResultCode StagingBufferAllocator::Init(IDevice* device)
+    {
+        m_device = device;
+        return ResultCode::Success;
+    }
 
     void StagingBufferAllocator::Shutdown()
     {

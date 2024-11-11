@@ -1,7 +1,6 @@
 #include "Queue.hpp"
 
 #include "Barrier.hpp"
-#include "Common.hpp"
 #include "Device.hpp"
 #include "CommandList.hpp"
 #include "Swapchain.hpp"
@@ -10,12 +9,22 @@
 
 namespace RHI::Vulkan
 {
-    IQueue::IQueue(IDevice* device, uint32_t familyIndex)
-        : m_device(device)
-        , m_queue(VK_NULL_HANDLE)
-        , m_familyIndex(familyIndex)
+
+    IQueue::IQueue()  = default;
+    IQueue::~IQueue() = default;
+
+    ResultCode IQueue::Init(IDevice* device, uint32_t familyIndex, uint32_t queueIndex)
     {
-        vkGetDeviceQueue(m_device->m_device, familyIndex, 0, &m_queue);
+        m_device      = device;
+        m_queue       = VK_NULL_HANDLE;
+        m_familyIndex = familyIndex;
+        vkGetDeviceQueue(m_device->m_device, familyIndex, queueIndex, &m_queue);
+        return ResultCode::Success;
+    }
+
+    void IQueue::Shutdown()
+    {
+        // Nothing to do here
     }
 
     void IQueue::BeginLabel(const char* name, float color[4])

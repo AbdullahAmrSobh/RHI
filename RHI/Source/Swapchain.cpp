@@ -2,17 +2,8 @@
 
 namespace RHI
 {
-    Swapchain::Swapchain(Device* device)
-        : m_device(device)
-        , m_name()
-        , m_imageUsage()
-        , m_imageFormat()
-        , m_presentMode()
-        , m_imageCount()
-        , m_imageIndex()
-        , m_image()
-    {
-    }
+
+    Swapchain::Swapchain()  = default;
 
     Swapchain::~Swapchain() = default;
 

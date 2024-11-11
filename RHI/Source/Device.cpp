@@ -12,7 +12,7 @@ namespace RHI
     {
     }
 
-    Device::~Device() {}
+    Device::~Device() = default;
 
     DeviceLimits Device::GetLimits() const
     {

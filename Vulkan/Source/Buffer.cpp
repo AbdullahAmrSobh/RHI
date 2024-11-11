@@ -71,8 +71,7 @@ namespace RHI::Vulkan
 
     void IBuffer::Shutdown(IDevice* device)
     {
-        // vmaDestroyBuffer(device->m_allocator, handle, allocation.handle);
-        device->m_deleteQueue.DestroyObject(handle);
+        vmaDestroyBuffer(device->m_allocator, handle, allocation.handle);
     }
 
     VkMemoryRequirements IBuffer::GetMemoryRequirements(IDevice* device) const

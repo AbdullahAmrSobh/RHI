@@ -266,9 +266,8 @@ namespace RHI::Vulkan
 
     void IImage::Shutdown(IDevice* device)
     {
-        // vmaDestroyImage(device->m_allocator, handle, allocation.handle);
-        device->m_deleteQueue.DestroyObject(handle);
-        device->m_deleteQueue.DestroyObject(viewHandle);
+        vkDestroyImageView(device->m_device, viewHandle, nullptr);
+        vmaDestroyImage(device->m_allocator, handle, allocation.handle);
     }
 
     VkMemoryRequirements IImage::GetMemoryRequirements(IDevice* device) const

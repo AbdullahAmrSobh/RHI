@@ -4,22 +4,29 @@
 
 namespace RHI::Vulkan
 {
-    IShaderModule::~IShaderModule()
-    {
-        vkDestroyShaderModule(((IDevice*)m_device)->m_device, m_shaderModule, nullptr);
-    }
+    IShaderModule::IShaderModule() = default;
 
-    ResultCode IShaderModule::Init(TL::Span<const uint32_t> shaderBlob)
+    IShaderModule::~IShaderModule() = default;
+
+    ResultCode IShaderModule::Init(IDevice* device, TL::Span<const uint32_t> shaderBlob)
     {
-        auto device = static_cast<IDevice*>(m_device);
+        m_device = device;
 
         VkShaderModuleCreateInfo createInfo{
             .sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
             .pNext    = nullptr,
             .flags    = {},
             .codeSize = shaderBlob.size_bytes(),
-            .pCode    = shaderBlob.data()};
+            .pCode    = shaderBlob.data(),
+        };
 
-        return ConvertResult(vkCreateShaderModule(device->m_device, &createInfo, nullptr, &m_shaderModule));
+        auto result = vkCreateShaderModule(device->m_device, &createInfo, nullptr, &m_shaderModule);
+        return ConvertResult(result);
     }
+
+    void IShaderModule::Shutdown()
+    {
+        vkDestroyShaderModule(m_device->m_device, m_shaderModule, nullptr);
+    }
+
 } // namespace RHI::Vulkan

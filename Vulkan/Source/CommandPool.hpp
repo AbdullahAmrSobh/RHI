@@ -1,6 +1,7 @@
 #pragma once
 
 #include <RHI/Queue.hpp>
+#include <RHI/Result.hpp>
 
 #include <TL/Flags.hpp>
 #include <TL/UniquePtr.hpp>
@@ -20,11 +21,11 @@ namespace RHI::Vulkan
     class CommandAllocator
     {
     public:
-        CommandAllocator() = default;
+        CommandAllocator();
         ~CommandAllocator();
 
-        void Init(IDevice* device);
-        void Shutdown();
+        ResultCode Init(IDevice* device);
+        void       Shutdown();
 
         /// @brief Allocates a command list for the specified queue type.
         /// @param queueType The type of queue (Graphics, Compute, Transfer) for the command list.

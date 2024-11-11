@@ -15,22 +15,23 @@ namespace RHI::Vulkan
 {
     VkResult ISwapchain::InitSurface(const SwapchainCreateInfo& createInfo)
     {
-        auto device = static_cast<IDevice*>(m_device);
-
 #ifdef VK_USE_PLATFORM_WIN32_KHR
-        // create win32 surface
-        VkWin32SurfaceCreateInfoKHR vkCreateInfo;
-        vkCreateInfo.sType     = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-        vkCreateInfo.pNext     = nullptr;
-        vkCreateInfo.flags     = 0;
-        vkCreateInfo.hinstance = static_cast<HINSTANCE>(createInfo.win32Window.hinstance);
-        vkCreateInfo.hwnd      = static_cast<HWND>(createInfo.win32Window.hwnd);
-        Validate(vkCreateWin32SurfaceKHR(device->m_instance, &vkCreateInfo, nullptr, &m_surface));
+        VkWin32SurfaceCreateInfoKHR win32SurfaceCI{
+            .sType     = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
+            .pNext     = nullptr,
+            .flags     = 0,
+            .hinstance = static_cast<HINSTANCE>(createInfo.win32Window.hinstance),
+            .hwnd      = static_cast<HWND>(createInfo.win32Window.hwnd),
+        };
+        Validate(vkCreateWin32SurfaceKHR(m_device->m_instance, &win32SurfaceCI, nullptr, &m_surface));
 #endif
 
         VkBool32 surfaceSupportPresent;
         Validate(vkGetPhysicalDeviceSurfaceSupportKHR(
-            device->m_physicalDevice, device->m_queue[(uint32_t)QueueType::Graphics].GetFamilyIndex(), m_surface, &surfaceSupportPresent));
+            m_device->m_physicalDevice,
+            m_device->m_queue[(uint32_t)QueueType::Graphics]->GetFamilyIndex(),
+            m_surface,
+            &surfaceSupportPresent));
         return VK_SUCCESS;
     }
 } // namespace RHI::Vulkan

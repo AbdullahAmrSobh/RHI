@@ -30,6 +30,9 @@ namespace RHI::Vulkan
         IDevice();
         ~IDevice();
 
+        ResultCode Init(const ApplicationInfo& appInfo);
+        void       Shutdown();
+
         void SetDebugName(VkObjectType type, uint64_t handle, const char* name) const;
 
         template<typename T>
@@ -42,10 +45,8 @@ namespace RHI::Vulkan
         uint64_t    AdvanceTimelineValue();
 
     private:
-        friend TL::Ptr<Device> RHI::CreateVulkanDevice(const ApplicationInfo& appInfo);
-
-        VkResult Init(const ApplicationInfo& appInfo);
-        VkResult InitInstanceAndDevice(const ApplicationInfo& appInfo);
+        friend Device* RHI::CreateVulkanDevice(const ApplicationInfo& appInfo);
+        friend void    RHI::DestroyVulkanDevice(Device* device);
 
         TL::Ptr<Swapchain>       Impl_CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
         TL::Ptr<ShaderModule>    Impl_CreateShaderModule(TL::Span<const uint32_t> shaderBlob) override;
@@ -76,6 +77,8 @@ namespace RHI::Vulkan
         void                     Impl_WaitTimelineValue(uint64_t value) override;
 
     public:
+        /// @todo: everything here should be made private
+
         VkInstance               m_instance;
         VkDebugUtilsMessengerEXT m_debugUtilsMessenger;
         VkPhysicalDevice         m_physicalDevice;
@@ -106,14 +109,6 @@ namespace RHI::Vulkan
         VkSemaphore          m_timelineSemaphore;
         std::atomic_uint64_t m_timelineValue;
 
-        IQueue m_queue[4];
-
-        DeleteQueue m_deleteQueue;
-
-        TL::Ptr<BindGroupAllocator>     m_bindGroupAllocator;
-        TL::Ptr<CommandAllocator>       m_commandsAllocator;
-        TL::Ptr<StagingBufferAllocator> m_stagingAllocator;
-
         HandlePool<IImage>            m_imageOwner;
         HandlePool<IBuffer>           m_bufferOwner;
         HandlePool<IBindGroupLayout>  m_bindGroupLayoutsOwner;
@@ -122,6 +117,12 @@ namespace RHI::Vulkan
         HandlePool<IGraphicsPipeline> m_graphicsPipelineOwner;
         HandlePool<IComputePipeline>  m_computePipelineOwner;
         HandlePool<ISampler>          m_samplerOwner;
+
+        std::array<TL::Ptr<IQueue>, 4u> m_queue;
+        TL::Ptr<DeleteQueue>            m_deleteQueue;
+        TL::Ptr<BindGroupAllocator>     m_bindGroupAllocator;
+        TL::Ptr<CommandAllocator>       m_commandsAllocator;
+        TL::Ptr<StagingBufferAllocator> m_stagingAllocator;
     };
 
     template<typename T>

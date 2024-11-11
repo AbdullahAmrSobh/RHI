@@ -1,6 +1,7 @@
 #pragma once
 
 #include <RHI/Queue.hpp>
+#include <RHI/Result.hpp>
 
 #include <TL/Span.hpp>
 
@@ -14,8 +15,11 @@ namespace RHI::Vulkan
     class IQueue final : public Queue
     {
     public:
-        IQueue() = default;
-        IQueue(IDevice* device, uint32_t familyIndex);
+        IQueue();
+        ~IQueue();
+
+        ResultCode Init(IDevice* device, uint32_t familyIndex, uint32_t queueIndex);
+        void       Shutdown();
 
         inline VkQueue GetHandle() const { return m_queue; }
 

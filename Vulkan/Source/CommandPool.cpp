@@ -6,12 +6,10 @@
 
 namespace RHI::Vulkan
 {
-    CommandAllocator::~CommandAllocator()
-    {
-        Shutdown();
-    }
+    CommandAllocator::CommandAllocator()  = default;
+    CommandAllocator::~CommandAllocator() = default;
 
-    void CommandAllocator::Init(IDevice* device)
+    ResultCode CommandAllocator::Init(IDevice* device)
     {
         m_device = device;
 
@@ -25,6 +23,8 @@ namespace RHI::Vulkan
         {
             poolMap[i] = CreateCommandPool(static_cast<QueueType>(i));
         }
+
+        return ResultCode::Success;
     }
 
     void CommandAllocator::Shutdown()
@@ -80,7 +80,7 @@ namespace RHI::Vulkan
         VkCommandPoolCreateInfo poolCreateInfo = {
             .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
             .flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-            .queueFamilyIndex = m_device->m_queue[(uint32_t)queueType].GetFamilyIndex(),
+            .queueFamilyIndex = m_device->m_queue[(uint32_t)queueType]->GetFamilyIndex(),
         };
 
         VkCommandPool pool;

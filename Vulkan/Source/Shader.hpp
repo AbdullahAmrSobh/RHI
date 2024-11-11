@@ -14,14 +14,11 @@ namespace RHI::Vulkan
     class IShaderModule final : public ShaderModule
     {
     public:
-        IShaderModule(IDevice* device)
-            : m_device(device)
-        {
-        }
-
+        IShaderModule();
         ~IShaderModule();
 
-        ResultCode Init(TL::Span<const uint32_t> shaderBlob);
+        ResultCode Init(IDevice* device, TL::Span<const uint32_t> shaderBlob);
+        void       Shutdown();
 
     public:
         IDevice*       m_device;

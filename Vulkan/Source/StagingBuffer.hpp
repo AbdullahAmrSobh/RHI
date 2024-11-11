@@ -8,12 +8,11 @@ namespace RHI::Vulkan
     class StagingBufferAllocator
     {
     public:
-        StagingBufferAllocator()  = default;
-        ~StagingBufferAllocator() = default;
+        StagingBufferAllocator();
+        ~StagingBufferAllocator();
 
-        void Init(IDevice* device) { m_device = device; }
-
-        void Shutdown();
+        ResultCode Init(IDevice* device);
+        void       Shutdown();
 
         StagingBuffer Allocate(size_t size);
 

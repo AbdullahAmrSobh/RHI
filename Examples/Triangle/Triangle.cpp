@@ -15,59 +15,11 @@
 
 #include <TL/FileSystem/FileSystem.hpp>
 #include <TL/Allocator/MemPlumber.hpp>
+#include <TL/Defer.hpp>
 
 #include "Camera.hpp"
 
-// #include <fastgltf/core.hpp>
-// #include <fastgltf/types.hpp>
-// #include <fastgltf/glm_element_traits.hpp>
-// #include <fastgltf/util.hpp>
-
 using namespace Examples;
-
-// static void Load(RHI::Device& device, const char* path)
-// {
-//     static constexpr auto supportedExtensions = fastgltf::Extensions::KHR_mesh_quantization | fastgltf::Extensions::KHR_texture_transform
-//     |
-//                                                 fastgltf::Extensions::KHR_materials_variants;
-
-//     fastgltf::Parser parser(supportedExtensions);
-
-//     constexpr auto gltfOptions = fastgltf::Options::DontRequireValidAssetMember | fastgltf::Options::AllowDouble |
-//                                  fastgltf::Options::LoadExternalBuffers | fastgltf::Options::LoadExternalImages |
-//                                  fastgltf::Options::GenerateMeshIndices;
-
-//     auto gltfFile = fastgltf::MappedGltfFile::FromPath(path);
-//     if (!bool(gltfFile))
-//     {
-//         // TL_LOG_INFO("Failed to open glTF file: " , ) << fastgltf::getErrorMessage(gltfFile.error()) << '\n';
-//         // return false;
-//     }
-
-//     auto asset = parser.loadGltf(gltfFile.get(), path, gltfOptions);
-//     if (asset.error() != fastgltf::Error::None)
-//     {
-//         // TL_LOG_INFO("Failed to load glTF: " , ) << fastgltf::getErrorMessage(asset.error()) << '\n';
-//         // return false;
-//     }
-
-//     for (auto image : asset->images)
-//     {
-
-//     }
-
-//     for (auto mesh : asset->meshes)
-//     {
-//         for (auto primitive : mesh.primitives)
-//         {
-//             // for (auto i : primitiv)
-//             auto accessor = asset->accessors[primitive.findAttribute("Position")->accessorIndex];
-//             auto buffer = asset->buffers[accessor.bufferViewIndex];
-
-//         }
-//     }
-
-// }
 
 TL::Vector<uint8_t> CreateCheckerboardImage(RHI::ImageSize2D size, uint32_t squareSize)
 {
@@ -134,7 +86,7 @@ public:
             .engineName         = "Forge",
             .engineVersion      = {0, 1, 0},
         };
-        m_device = RHI::CreateVulkanDevice(appInfo).release();
+        m_device = RHI::CreateVulkanDevice(appInfo);
 
         auto [width, height] = m_window->GetWindowSize();
         RHI::SwapchainCreateInfo swapchainInfo{
@@ -157,12 +109,19 @@ public:
         for (auto& frame : m_perFrameData)
         {
         }
+
         delete m_swapchain;
-        delete m_device;
+
+        RHI::DestroyVulkanDevice(m_device);
     }
 
     void InitPipelineAndLayout()
     {
+        TL_defer
+        {
+            TL_LOG_INFO("Hello, world!");
+        };
+
         TL::Vector<uint32_t> spv;
         auto                 spvBlock = TL::ReadBinaryFile("./Shaders/Basic.spv");
         spv.resize(spvBlock.size / 4);
@@ -276,7 +235,10 @@ public:
         m_renderGraph->PassResize(m_mainPass, {width, height});
     }
 
-    void ShutdownRenderGraph() { delete m_renderGraph; }
+    void ShutdownRenderGraph()
+    {
+        if (m_renderGraph) delete m_renderGraph;
+    }
 
     void InitBuffers()
     {
@@ -362,12 +324,13 @@ public:
 
     void ShutdownBuffers()
     {
-        m_device->DestroyBuffer(m_uniformBuffer);
-        m_device->DestroyBuffer(m_vertexBuffer);
-        m_device->DestroyBuffer(m_indexBuffer);
+        if (m_vertexBuffer) m_device->DestroyBuffer(m_vertexBuffer);
+        if (m_indexBuffer) m_device->DestroyBuffer(m_indexBuffer);
+        if (m_uniformBuffer) m_device->DestroyBuffer(m_uniformBuffer);
+        if (m_texture) m_device->DestroyImage(m_texture);
     }
 
-    virtual void OnInit()
+    void OnInit() override
     {
         InitContextAndSwapchain();
         InitBuffers();
@@ -379,15 +342,15 @@ public:
         m_camera.m_window = m_window.get();
     }
 
-    virtual void OnShutdown()
+    void OnShutdown() override
     {
-        ShutdownContextAndSwapchain();
-        ShutdownBuffers();
-        ShutdownPipelineAndLayout();
         ShutdownRenderGraph();
+        ShutdownPipelineAndLayout();
+        ShutdownBuffers();
+        ShutdownContextAndSwapchain();
     }
 
-    virtual void OnUpdate(Timestep ts)
+    void OnUpdate(Timestep ts) override
     {
         struct UniformData
         {
@@ -404,7 +367,7 @@ public:
         m_device->UnmapBuffer(m_uniformBuffer);
     }
 
-    virtual void Render()
+    void Render() override
     {
         static RHI::ClearValue clearValue = {.f32 = {0.3f, 0.5f, 0.7f, 1.0f}};
 
@@ -469,7 +432,7 @@ public:
         AdvanceFrame();
     }
 
-    virtual void OnEvent(Event& event)
+    void OnEvent(Event& event) override
     {
         switch (event.GetEventType())
         {

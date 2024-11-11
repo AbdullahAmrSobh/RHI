@@ -11,10 +11,11 @@ namespace RHI::Vulkan
     class ISwapchain final : public Swapchain
     {
     public:
-        ISwapchain(IDevice* device);
+        ISwapchain();
         ~ISwapchain();
 
-        VkResult Init(const SwapchainCreateInfo& createInfo);
+        ResultCode Init(IDevice* device, const SwapchainCreateInfo& createInfo);
+        void       Shutdown();
 
         VkSemaphore GetImageAcquiredSemaphore() const { return m_imageAcquiredSemaphore[m_semaphoreIndex]; }
 
@@ -33,6 +34,7 @@ namespace RHI::Vulkan
         VkResult InitSwapchain();
 
     private:
+        IDevice*               m_device;
         VkSwapchainKHR m_swapchain;
         VkSurfaceKHR   m_surface;
         VkResult       m_lastPresentResult;
