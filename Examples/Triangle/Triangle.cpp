@@ -19,21 +19,306 @@
 
 #include "Camera.hpp"
 
+#include <glm/glm.hpp>
+#include <glm/ext.hpp>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
+#include <fastgltf/core.hpp>
+#include <fastgltf/types.hpp>
+#include <fastgltf/tools.hpp>
+
+glm::mat4 convertMatrix(fastgltf::math::fmat4x4 matrix)
+{
+    // clang-format off
+    return glm::mat4
+    {
+        { matrix.col(0).x(), matrix.col(0).y(), matrix.col(0).z(), matrix.col(0).w(), },
+        { matrix.col(1).x(), matrix.col(1).y(), matrix.col(1).z(), matrix.col(1).w(), },
+        { matrix.col(2).x(), matrix.col(2).y(), matrix.col(2).z(), matrix.col(2).w(), },
+        { matrix.col(3).x(), matrix.col(3).y(), matrix.col(3).z(), matrix.col(3).w(), },
+    };
+    // clang-format on
+}
+
+namespace Shader
+{
+    struct SceneGlobalBuffer
+    {
+        glm::mat4 worldToViewMatrix;
+        glm::mat4 viewToClipMatrix;
+    };
+
+    struct PerDrawBuffer
+    {
+        glm::mat4 modelToWorldMatrix;
+    };
+}; // namespace Shader
+
+class BufferView
+{
+public:
+    RHI::Handle<RHI::Buffer> buffer;
+    RHI::BufferSubregion     subregion;
+};
+
+class Mesh
+{
+public:
+    uint32_t       m_elementsCount;
+    uint32_t       m_materialIndex;
+    BufferView     m_indexBuffer;
+    BufferView     m_positionVB;
+    BufferView     m_normalsVB;
+    BufferView     m_uv0VB;
+    RHI::IndexType m_indexType;
+
+    void Draw(RHI::CommandList& commandList)
+    {
+        commandList.BindIndexBuffer({.buffer = m_indexBuffer.buffer, .offset = m_indexBuffer.subregion.offset}, m_indexType);
+        commandList.BindVertexBuffers(
+            0,
+            {
+                RHI::BufferBindingInfo{.buffer = m_positionVB.buffer, .offset = m_positionVB.subregion.offset},
+                RHI::BufferBindingInfo{.buffer = m_normalsVB.buffer, .offset = m_normalsVB.subregion.offset},
+                RHI::BufferBindingInfo{.buffer = m_uv0VB.buffer, .offset = m_uv0VB.subregion.offset},
+            });
+        commandList.Draw({m_elementsCount, 1, 0, 0, 0});
+    }
+};
+
+inline static BufferView CreateBufferView(RHI::Device& device, size_t size, TL::Flags<RHI::BufferUsage> usage)
+{
+    return BufferView{
+        .buffer = device
+                      .CreateBuffer({
+                          .name       = nullptr,
+                          .heapType   = RHI::MemoryType::GPUShared,
+                          .usageFlags = usage,
+                          .byteSize   = size,
+                      })
+                      .GetValue(),
+        .subregion = {0, size}};
+}
+
+// Helper function for loading vertex attributes
+template<typename T>
+BufferView LoadAttribute(RHI::Device& device, const fastgltf::Asset& asset, const fastgltf::Attribute* attribute)
+{
+    auto& accessor         = asset.accessors[attribute->accessorIndex];
+    auto  deviceBufferView = CreateBufferView(device, accessor.count * sizeof(T), RHI::BufferUsage::Vertex);
+    auto  deviceBufferPtr  = device.MapBuffer(deviceBufferView.buffer);
+    fastgltf::copyFromAccessor<T>(asset, accessor, deviceBufferPtr);
+    device.UnmapBuffer(deviceBufferView.buffer);
+    return deviceBufferView;
+}
+
+// Helper function for loading index buffer
+BufferView LoadIndexAccessor(RHI::Device& device, Mesh& out_mesh, const fastgltf::Asset& asset, const fastgltf::Accessor& accessor)
+{
+    auto dataSizeBytes             = accessor.count * fastgltf::getComponentByteSize(accessor.componentType);
+    auto attributeVertexBufferView = CreateBufferView(device, dataSizeBytes, RHI::BufferUsage::Index);
+    auto deviceBufferPtr           = device.MapBuffer(attributeVertexBufferView.buffer);
+    TL_defer
+    {
+        device.UnmapBuffer(attributeVertexBufferView.buffer);
+    };
+    if (accessor.componentType == fastgltf::ComponentType::UnsignedInt)
+    {
+        fastgltf::copyFromAccessor<uint32_t>(asset, accessor, deviceBufferPtr);
+        out_mesh.m_indexType = RHI::IndexType::uint32;
+    }
+    else
+    {
+        fastgltf::copyFromAccessor<uint16_t>(asset, accessor, deviceBufferPtr);
+        out_mesh.m_indexType = RHI::IndexType::uint16;
+    }
+    return attributeVertexBufferView;
+}
+
+inline static fastgltf::Asset LoadAsset(std::filesystem::path path)
+{
+    if (!std::filesystem::exists(path))
+    {
+        // TL_LOG_ERROR("Failed to find {}", path);
+    }
+
+    // Parse the glTF file and get the constructed asset
+    static constexpr auto supportedExtensions = fastgltf::Extensions::KHR_mesh_quantization | fastgltf::Extensions::KHR_texture_transform |
+                                                fastgltf::Extensions::KHR_materials_variants;
+
+    fastgltf::Parser parser(supportedExtensions);
+
+    constexpr auto gltfOptions = fastgltf::Options::DontRequireValidAssetMember | fastgltf::Options::AllowDouble |
+                                 fastgltf::Options::LoadExternalBuffers | fastgltf::Options::LoadExternalImages |
+                                 fastgltf::Options::GenerateMeshIndices;
+
+    auto gltfFile = fastgltf::MappedGltfFile::FromPath(path);
+    if (!bool(gltfFile))
+    {
+        TL::String errorMsg = fastgltf::getErrorMessage(gltfFile.error()).data();
+        TL_LOG_ERROR("Failed to load glTF: {}", errorMsg);
+    }
+
+    auto asset = parser.loadGltf(gltfFile.get(), path.parent_path(), gltfOptions);
+    if (asset.error() != fastgltf::Error::None)
+    {
+        TL::String errorMsg = fastgltf::getErrorMessage(asset.error()).data();
+        TL_LOG_ERROR("Failed to load glTF: {}", errorMsg);
+    }
+
+    return std::move(asset.get());
+}
+
+// Main Load function
+inline static Mesh Load(RHI::Device& device, const fastgltf::Asset& asset, const fastgltf::Mesh& mesh)
+{
+    Mesh out_mesh{};
+    for (auto it = mesh.primitives.begin(); it != mesh.primitives.end(); ++it)
+    {
+        auto* positionIt = it->findAttribute("POSITION");
+
+        TL_ASSERT(positionIt != it->attributes.end());
+        TL_ASSERT(it->indicesAccessor.has_value());
+        TL_ASSERT(it->type == fastgltf::PrimitiveType::Triangles);
+
+        auto indexAccessor       = asset.accessors[it->indicesAccessor.value()];
+        out_mesh.m_elementsCount = (uint32_t)indexAccessor.count;
+        out_mesh.m_indexBuffer   = LoadIndexAccessor(device, out_mesh, asset, indexAccessor);
+
+        if (auto attribute = it->findAttribute("POSITION"); attribute != it->attributes.end())
+            out_mesh.m_positionVB = LoadAttribute<fastgltf::math::f32vec3>(device, asset, attribute);
+
+        if (auto attribute = it->findAttribute("NORMAL"); attribute != it->attributes.end())
+            out_mesh.m_normalsVB = LoadAttribute<fastgltf::math::f32vec3>(device, asset, attribute);
+
+        if (auto attribute = it->findAttribute("TEXCOORD_0"); attribute != it->attributes.end())
+            out_mesh.m_uv0VB = LoadAttribute<fastgltf::math::f32vec2>(device, asset, attribute);
+        else TL_LOG_WARNNING("Missing tex coord attribute");
+    }
+    return out_mesh;
+}
+
+inline static RHI::Handle<RHI::Image> LoadTexture(RHI::Device& device, fastgltf::Asset& asset, fastgltf::Image& image)
+{
+    auto format = [](int nrChannels) -> RHI::Format
+    {
+        if (nrChannels == 1) return RHI::Format::R8_UNORM;
+        if (nrChannels == 2) return RHI::Format::RG8_UNORM;
+        if (nrChannels == 4) return RHI::Format::RGBA8_UNORM;
+        return RHI::Format::Unknown;
+    };
+
+    // clang-format off
+    RHI::Handle<RHI::Image> out_image;
+    std::visit(
+        fastgltf::visitor{
+            [](auto& arg) {
+                TL_UNREACHABLE_MSG("No-op");
+            },
+            [&](fastgltf::sources::URI& filePath) {
+                TL_ASSERT(filePath.fileByteOffset == 0); // We don't support offsets with stbi.
+                TL_ASSERT(filePath.uri.isLocalPath());   // We're only capable of loading local files.
+                int width, height, nrChannels;
+                const std::string path(filePath.uri.path().begin(), filePath.uri.path().end()); // Thanks C++.
+                unsigned char* data = stbi_load(path.c_str(), &width, &height, &nrChannels, 4);
+                out_image = RHI::Utils::CreateImageWithContent(device, {
+                    .name = nullptr, // TODO: Add name later
+                    .usageFlags = RHI::ImageUsage::ShaderResource,
+                    .type = RHI::ImageType::Image2D,
+                    .size = {(uint32_t)width, (uint32_t)height, 1 },
+                    .format = format(nrChannels),
+                }, { data, (size_t)(width * height * nrChannels) }).GetValue();
+                stbi_image_free(data);
+            },
+            [&](fastgltf::sources::Array& vector) {
+                int width, height, nrChannels;
+                unsigned char* data = stbi_load_from_memory(
+                    reinterpret_cast<const stbi_uc*>(vector.bytes.data()),
+                    static_cast<int>(vector.bytes.size()),
+                    &width, &height, &nrChannels, 4
+                );
+                out_image = RHI::Utils::CreateImageWithContent(device, {
+                    .name = nullptr, // TODO: Add name later
+                    .usageFlags = RHI::ImageUsage::ShaderResource,
+                    .type = RHI::ImageType::Image2D,
+                    .size = {(uint32_t)width, (uint32_t)height, 1 },
+                    .format = format(nrChannels),
+                }, { data, (size_t)(width * height * nrChannels) }).GetValue();
+                stbi_image_free(data);
+            },
+            [&](fastgltf::sources::BufferView& view) {
+                auto& bufferView = asset.bufferViews[view.bufferViewIndex];
+                auto& buffer = asset.buffers[bufferView.bufferIndex];
+
+                // We've already loaded every buffer into some GL buffer. However, with GL it's simpler
+                // to just copy the buffer data again for the texture. This is just an example.
+                std::visit(
+                    fastgltf::visitor{
+                        [](auto& arg) {
+                            TL_UNREACHABLE_MSG("No-op");
+                        },
+                        [&](fastgltf::sources::Array& vector) {
+                            int width, height, nrChannels;
+                            unsigned char* data = stbi_load_from_memory(
+                                reinterpret_cast<const stbi_uc*>(vector.bytes.data() + bufferView.byteOffset),
+                                static_cast<int>(bufferView.byteLength),
+                                &width, &height, &nrChannels, 4
+                            );
+                            out_image = RHI::Utils::CreateImageWithContent(device, {
+                                .name = nullptr, // TODO: Add name later
+                                .usageFlags = RHI::ImageUsage::ShaderResource,
+                                .type = RHI::ImageType::Image2D,
+                                .size = {(uint32_t)width, (uint32_t)height, 1 },
+                                .format = format(nrChannels),
+                            }, { data, (size_t)(width * height * nrChannels) }).GetValue();
+                            stbi_image_free(data);
+                        }
+                    },
+                    buffer.data
+                );
+            }
+        },
+        image.data
+    );
+    // clang-format on
+    return out_image;
+}
+
 using namespace Examples;
 
-TL::Vector<uint8_t> CreateCheckerboardImage(RHI::ImageSize2D size, uint32_t squareSize)
+template<typename T>
+struct UniformBuffer
 {
-    TL::Vector<uint8_t> image(size.width * size.height, 0);
-    for (int y = 0; y < size.height; ++y)
+    BufferView           view;
+    RHI::DeviceMemoryPtr persistantMappedPtr;
+    size_t               stride;
+
+    void Init(RHI::Device& device, uint32_t elementsCount = 1)
     {
-        for (int x = 0; x < size.width; ++x)
+        stride           = device.GetLimits().minDynamicUniformBufferAlignment;
+        size_t sizeBytes = ((sizeof(T) + stride - 1) & -stride) * elementsCount;
+        if (elementsCount == 1)
         {
-            bool isWhiteSquare        = ((x / squareSize) % 2 == (y / squareSize) % 2);
-            image[y * size.width + x] = isWhiteSquare ? 255 : 0;
+            stride    = ~0ull;
+            sizeBytes = sizeof(T);
         }
+        view                = CreateBufferView(device, sizeBytes, RHI::BufferUsage::Uniform);
+        persistantMappedPtr = device.MapBuffer(view.buffer);
     }
-    return image;
-}
+
+    void Shutdown(RHI::Device& device) { TL_UNREACHABLE(); }
+
+    T* Get(int index = 0) { return (T*)((char*)persistantMappedPtr + (index * stride)); }
+
+    RHI::BindGroupBuffersUpdateInfo Bind(uint32_t binding)
+    {
+        TL_ASSERT(view.buffer != RHI::NullHandle);
+        return RHI::BindGroupBuffersUpdateInfo{
+            .dstBinding = binding, .buffers = {view.buffer}, .subregions = RHI::BufferSubregion{view.subregion.offset, stride}};
+    }
+};
 
 class Playground final : public ApplicationBase
 {
@@ -47,36 +332,21 @@ public:
     RHI::Swapchain* m_swapchain;
     RHI::Queue*     m_queue;
 
-    struct PerFrame
-    {
-        uint64_t                    m_timelineValue;
-        RHI::Handle<RHI::BindGroup> m_bindGroup;
-    };
-
-    uint32_t m_frameIndex      = 0;
-    PerFrame m_perFrameData[2] = {};
-
-    RHI::Handle<RHI::PipelineLayout>   m_pipelineLayout;
-    RHI::Handle<RHI::GraphicsPipeline> m_graphicsPipeline;
-
     RHI::RenderGraph*         m_renderGraph;
     RHI::Handle<RHI::Pass>    m_mainPass;
     RHI::Handle<RHI::RGImage> m_colorAttachment;
+    RHI::Handle<RHI::RGImage> m_depthAttachment;
 
-    RHI::Handle<RHI::Image>  m_texture;
-    RHI::Handle<RHI::Buffer> m_vertexBuffer;
-    RHI::Handle<RHI::Buffer> m_indexBuffer;
-    RHI::Handle<RHI::Buffer> m_uniformBuffer;
+    TL::Vector<uint32_t> m_meshIndexList;
+
+    RHI::Handle<RHI::BindGroup>              m_bindGroup;
+    RHI::Handle<RHI::PipelineLayout>         m_pipelineLayout;
+    RHI::Handle<RHI::GraphicsPipeline>       m_graphicsPipeline;
+    UniformBuffer<Shader::SceneGlobalBuffer> m_sceneGlobalUB;
+    UniformBuffer<Shader::PerDrawBuffer>     m_perDrawUB;
+    TL::Vector<Mesh>                         m_meshes;
 
     Camera m_camera;
-
-    PerFrame& AdvanceFrame()
-    {
-        m_frameIndex = (m_frameIndex + 1) % 2;
-        return m_perFrameData[m_frameIndex];
-    }
-
-    PerFrame& GetCurrentFrame() { return m_perFrameData[m_frameIndex]; }
 
     void InitContextAndSwapchain()
     {
@@ -106,22 +376,12 @@ public:
 
     void ShutdownContextAndSwapchain()
     {
-        for (auto& frame : m_perFrameData)
-        {
-        }
-
         delete m_swapchain;
-
         RHI::DestroyVulkanDevice(m_device);
     }
 
     void InitPipelineAndLayout()
     {
-        TL_defer
-        {
-            TL_LOG_INFO("Hello, world!");
-        };
-
         TL::Vector<uint32_t> spv;
         auto                 spvBlock = TL::ReadBinaryFile("./Shaders/Basic.spv");
         spv.resize(spvBlock.size / 4);
@@ -137,8 +397,8 @@ public:
                     .stages = RHI::ShaderStage::Pixel | RHI::ShaderStage::Vertex,
                 },
                 {
-                    .type   = RHI::BindingType::SampledImage,
-                    .stages = RHI::ShaderStage::Pixel,
+                    .type   = RHI::BindingType::DynamicUniformBuffer,
+                    .stages = RHI::ShaderStage::Pixel | RHI::ShaderStage::Vertex,
                 },
             },
         };
@@ -165,53 +425,47 @@ public:
                     .stride     = sizeof(glm::vec3),
                     .attributes = {{.format = RHI::Format::RGBA32_FLOAT}},
                 },
+                {
+                    .binding    = 2,
+                    .stride     = sizeof(glm::vec2),
+                    .attributes = {{.format = RHI::Format::RG32_FLOAT}},
+                },
             },
             .renderTargetLayout{
                 .colorAttachmentsFormats = RHI::Format::RGBA8_UNORM,
+                .depthAttachmentFormat   = RHI::Format::D32,
             },
             .colorBlendState{.blendStates = {{.blendEnable = true}}},
             .rasterizationState{.cullMode = RHI::PipelineRasterizerStateCullMode::None},
             .depthStencilState{
-                .depthTestEnable  = false,
-                .depthWriteEnable = false,
+                .depthTestEnable  = true,
+                .depthWriteEnable = true,
             },
         };
         m_graphicsPipeline = m_device->CreateGraphicsPipeline(pipelineCI);
 
         // init and update bind groups
 
-        for (auto& frame : m_perFrameData)
-        {
-            frame.m_bindGroup = m_device->CreateBindGroup(bindGroupLayout);
-            RHI::BindGroupUpdateInfo bindGroupUpdateInfo{
-                .images{
-                    {
-                        .dstBinding      = 1,
-                        .dstArrayElement = 0,
-                        .images          = m_texture,
-                    },
-                },
-                .buffers{
-                    {
-                        .dstBinding      = 0,
-                        .dstArrayElement = 0,
-                        .buffers         = m_uniformBuffer,
-                        .subregions      = {},
-                    },
-                },
-            };
-            m_device->UpdateBindGroup(frame.m_bindGroup, bindGroupUpdateInfo);
-        }
+        RHI::BindGroupBuffersUpdateInfo sceneGlobalBinding{.dstBinding = 0, .buffers = m_sceneGlobalUB.view.buffer};
+        RHI::BindGroupBuffersUpdateInfo perDrawBinding{
+            .dstBinding = 1, .buffers = m_perDrawUB.view.buffer, .subregions = {{0, m_perDrawUB.stride}}};
 
+        const RHI::BindGroupBuffersUpdateInfo buffersUpdateInfo[2] = {
+            sceneGlobalBinding,
+            perDrawBinding,
+        };
+
+        m_bindGroup = m_device->CreateBindGroup(bindGroupLayout);
+        RHI::BindGroupUpdateInfo bindGroupUpdateInfo{
+            .buffers = buffersUpdateInfo,
+        };
+        m_device->UpdateBindGroup(m_bindGroup, bindGroupUpdateInfo);
         m_device->DestroyBindGroupLayout(bindGroupLayout);
     }
 
     void ShutdownPipelineAndLayout()
     {
-        for (auto& frame : m_perFrameData)
-        {
-            m_device->DestroyBindGroup(frame.m_bindGroup);
-        }
+        m_device->DestroyBindGroup(m_bindGroup);
         m_device->DestroyGraphicsPipeline(m_graphicsPipeline);
         m_device->DestroyPipelineLayout(m_pipelineLayout);
     }
@@ -228,9 +482,23 @@ public:
         m_mainPass = m_renderGraph->CreatePass(passCI);
 
         m_colorAttachment = m_renderGraph->ImportSwapchain("main-output", *m_swapchain);
+        m_depthAttachment = m_renderGraph->CreateImage({
+            .name       = "DepthImage",
+            .usageFlags = RHI::ImageUsage::Depth,
+            .type       = RHI::ImageType::Image2D,
+            .size       = {width, height, 1},
+            .format     = RHI::Format::D32,
+        });
 
         m_renderGraph->PassUseImage(
             m_mainPass, m_colorAttachment, RHI::ImageUsage::Color, RHI::PipelineStage::ColorAttachmentOutput, RHI::Access::None);
+
+        m_renderGraph->PassUseImage(
+            m_mainPass,
+            m_colorAttachment,
+            RHI::ImageUsage::Depth,
+            RHI::PipelineStage::LateFragmentTests | RHI::PipelineStage::EarlyFragmentTests,
+            RHI::Access::ReadWrite);
 
         m_renderGraph->PassResize(m_mainPass, {width, height});
     }
@@ -240,102 +508,57 @@ public:
         if (m_renderGraph) delete m_renderGraph;
     }
 
-    void InitBuffers()
-    {
-        auto checkerboard = CreateCheckerboardImage({512, 512}, 32);
-        m_texture         = RHI::Utils::CreateImageWithContent(
-                        *m_device,
-                        {
-                                    .usageFlags = RHI::ImageUsage::CopyDst | RHI::ImageUsage::ShaderResource,
-                                    .type       = RHI::ImageType::Image2D,
-                                    .size       = {512, 512},
-                                    .format     = RHI::Format::R8_UNORM,
-                        },
-                        TL::Block::Create(checkerboard))
-                        .GetValue();
-
-        // clang-format off
-        glm::vec3 positionData[] = {
-            {-1.0f,  1.0f, 1.0f},
-            { 1.0f,  1.0f, 1.0f},
-            { 1.0f, -1.0f, 1.0f},
-            {-1.0f, -1.0f, 1.0f},
-        };
-
-        glm::vec4 colorData[] = {
-            {1.0f, 0.0f, 0.5f, 1.0f},
-            {0.0f, 1.0f, 0.5f, 1.0f},
-            {0.0f, 0.0f, 1.0f, 1.0f},
-            {1.0f, 0.0f, 1.0f, 1.0f},
-        };
-
-        uint16_t indexData[] = {
-            0, 1, 2,
-            0, 2, 3,
-         };
-        // clang-format on
-
-        size_t vertexBufferSize = sizeof(glm::vec3) * 4 + sizeof(glm::vec4) * 4;
-        size_t indexBufferSize  = sizeof(uint16_t) * 6;
-
-        RHI::BufferCreateInfo vertexBufferCI{
-            .name       = "vertex-buffer",
-            .heapType   = RHI::MemoryType::GPUShared,
-            .usageFlags = RHI::BufferUsage::Vertex,
-            .byteSize   = vertexBufferSize,
-        };
-        m_vertexBuffer = m_device->CreateBuffer(vertexBufferCI).GetValue();
-
-        auto vertexBufferPtr = m_device->MapBuffer(m_vertexBuffer);
-        memcpy(vertexBufferPtr, positionData, sizeof(glm::vec3) * 4);
-        memcpy((char*)vertexBufferPtr + sizeof(glm::vec3) * 4, colorData, sizeof(glm::vec4) * 4);
-        m_device->UnmapBuffer(m_vertexBuffer);
-
-        RHI::BufferCreateInfo indexBufferCI{
-            .name       = "index-buffer",
-            .heapType   = RHI::MemoryType::GPUShared,
-            .usageFlags = RHI::BufferUsage::Index,
-            .byteSize   = indexBufferSize,
-        };
-        m_indexBuffer = m_device->CreateBuffer(indexBufferCI).GetValue();
-
-        auto indexBufferPtr = m_device->MapBuffer(m_indexBuffer);
-        memcpy(indexBufferPtr, indexData, sizeof(uint16_t) * 6);
-        m_device->UnmapBuffer(m_indexBuffer);
-
-        // uniform buffer data
-        struct UniformData
-        {
-            glm::mat4 translate;
-        };
-
-        UniformData           uniformData{.translate = glm::mat4(1.f)};
-        RHI::BufferCreateInfo uniformBufferCI{
-            .name       = "uniform-buffer",
-            .heapType   = RHI::MemoryType::GPUShared,
-            .usageFlags = RHI::BufferUsage::Uniform,
-            .byteSize   = sizeof(UniformData),
-        };
-        m_uniformBuffer       = m_device->CreateBuffer(uniformBufferCI).GetValue();
-        auto uniformBufferPtr = m_device->MapBuffer(m_uniformBuffer);
-        memcpy(uniformBufferPtr, &uniformData, sizeof(UniformData));
-        m_device->UnmapBuffer(m_uniformBuffer);
-    }
-
-    void ShutdownBuffers()
-    {
-        if (m_vertexBuffer) m_device->DestroyBuffer(m_vertexBuffer);
-        if (m_indexBuffer) m_device->DestroyBuffer(m_indexBuffer);
-        if (m_uniformBuffer) m_device->DestroyBuffer(m_uniformBuffer);
-        if (m_texture) m_device->DestroyImage(m_texture);
-    }
+    TL::Vector<glm::mat4> matrixList{};
 
     void OnInit() override
     {
         InitContextAndSwapchain();
-        InitBuffers();
-        InitPipelineAndLayout();
         InitRenderGraph();
+
+        m_sceneGlobalUB.Init(*m_device);
+        m_perDrawUB.Init(*m_device, 512);
+
+        auto asset = LoadAsset(m_launchSettings.sceneFileLocation);
+        for (auto meshAsset : asset.meshes)
+        {
+            m_meshes.push_back(Load(*m_device, asset, meshAsset));
+        }
+
+        uint32_t i = 0;
+        for (int i = 0; i < 512; i++)
+        {
+            m_perDrawUB.Get(i++)->modelToWorldMatrix = glm::identity<glm::mat4>();
+        }
+
+        fastgltf::iterateSceneNodes(
+            asset,
+            0,
+            fastgltf::math::fmat4x4(),
+            [&](fastgltf::Node& node, fastgltf::math::fmat4x4 _matrix)
+        {
+            auto matrix = convertMatrix(_matrix);
+            if (node.cameraIndex.has_value())
+            {
+            }
+            else if (node.meshIndex.has_value())
+            {
+                matrixList.push_back(matrix);
+                m_meshIndexList.push_back(node.meshIndex.value());
+            }
+        });
+
+        for (int i = 0; i < matrixList.size(); i++)
+        {
+            // m_meshIndexList[i];
+            m_perDrawUB.Get(i)->modelToWorldMatrix = matrixList[i];
+        }
+
+        for (int i = 0; i < matrixList.size(); i++)
+        {
+            TL_ASSERT(m_perDrawUB.Get(i)->modelToWorldMatrix == matrixList[i]);
+        }
+
+        InitPipelineAndLayout();
 
         auto [width, height] = m_window->GetWindowSize();
         m_camera.SetPerspective(30.0f, (float)width / (float)height, 0.00001f, 100000.0f);
@@ -346,34 +569,35 @@ public:
     {
         ShutdownRenderGraph();
         ShutdownPipelineAndLayout();
-        ShutdownBuffers();
         ShutdownContextAndSwapchain();
     }
 
     void OnUpdate(Timestep ts) override
     {
-        struct UniformData
-        {
-            glm::mat4 translate = glm::mat4(1.f);
-        } uniformData;
-
         m_camera.Update(ts);
 
-        uniformData.translate = m_camera.GetProjection() * m_camera.GetView();
-        // uniformData.translate = glm::perspective(glm::radians(30.0f), 1600.0f/900.0f, 0.00001f, 100000000.f);
+        m_sceneGlobalUB.Get()->worldToViewMatrix = m_camera.GetView();
+        m_sceneGlobalUB.Get()->viewToClipMatrix  = m_camera.GetProjection();
 
-        auto uniformBufferPtr = m_device->MapBuffer(m_uniformBuffer);
-        memcpy(uniformBufferPtr, &uniformData, sizeof(UniformData));
-        m_device->UnmapBuffer(m_uniformBuffer);
+        for (int i = 0; i < matrixList.size(); i++)
+        {
+            // m_meshIndexList[i];
+            // m_perDrawUB.Get(i)->modelToWorldMatrix = matrixList[i] * m_camera.GetView() * m_camera.GetProjection();
+            m_perDrawUB.Get(i)->modelToWorldMatrix = m_camera.GetProjection() * m_camera.GetView() * matrixList[i];
+        }
+
+        // for (int i = 0; i < matrixList.size(); i++)
+        // {
+        //     TL_ASSERT(m_perDrawUB.Get(i)->modelToWorldMatrix == matrixList[i]);
+        // }
     }
 
     void Render() override
     {
-        static RHI::ClearValue clearValue = {.f32 = {0.3f, 0.5f, 0.7f, 1.0f}};
+        static RHI::ClearValue clearValue          = {.f32 = {0.3f, 0.5f, 0.7f, 1.0f}};
+        static uint64_t        previousSubmitValue = 0;
 
-        auto& frame = GetCurrentFrame();
-
-        m_device->WaitTimelineValue(frame.m_timelineValue);
+        m_device->WaitTimelineValue(previousSubmitValue);
 
         auto [width, height] = m_window->GetWindowSize();
         m_renderGraph->PassResize(m_mainPass, {width, height});
@@ -407,16 +631,18 @@ public:
             .width   = width,
             .height  = height,
         });
-        commandList->BindGraphicsPipeline(m_graphicsPipeline, {{frame.m_bindGroup}});
-        commandList->BindVertexBuffers(0, {{.buffer = m_vertexBuffer, .offset = 0}});
-        commandList->BindVertexBuffers(1, {{.buffer = m_vertexBuffer, .offset = sizeof(glm::vec3) * 4}});
-        commandList->BindIndexBuffer({.buffer = m_indexBuffer, .offset = 0}, RHI::IndexType::uint16);
-        commandList->Draw({.elementsCount = 6});
+
+        for (auto index : m_meshIndexList)
+        {
+            commandList->BindGraphicsPipeline(
+                m_graphicsPipeline, RHI::BindGroupBindingInfo{.bindGroup = m_bindGroup, .dynamicOffsets = {index * 256}});
+            m_meshes[index].Draw(*commandList);
+        }
+
         commandList->EndRenderPass();
         commandList->End();
 
-        static uint64_t previousSubmitValue = 0;
-        previousSubmitValue = frame.m_timelineValue = m_queue->Submit({
+        previousSubmitValue = m_queue->Submit({
             .waitTimelineValue = previousSubmitValue,
             .waitPipelineStage = RHI::PipelineStage::TopOfPipe,
             .commandLists      = commandList.get(),
@@ -428,8 +654,6 @@ public:
         TL_ASSERT(presentResult == RHI::ResultCode::Success);
 
         m_device->CollectResources();
-
-        AdvanceFrame();
     }
 
     void OnEvent(Event& event) override

@@ -226,6 +226,7 @@ namespace RHI::Vulkan
             }
         }
 
+        uint32_t subregionIndex = 0;
         for (const auto& bufferUpdate : updateInfo.buffers)
         {
             const auto&      binding        = shaderBindings[bufferUpdate.dstBinding];
@@ -236,7 +237,7 @@ namespace RHI::Vulkan
                 if (binding.type == BindingType::DynamicUniformBuffer || binding.type == BindingType::DynamicStorageBuffer)
                 {
                     // For dynamic bindings, subregions are expected
-                    auto subregion                = bufferUpdate.subregions[i];
+                    auto subregion                = bufferUpdate.subregions[subregionIndex++];
                     bufferInfos[bufferInfosCount] = {
                         .buffer = device->m_bufferOwner.Get(bufferUpdate.buffers[i])->handle,
                         .offset = subregion.offset,

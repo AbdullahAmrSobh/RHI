@@ -38,6 +38,7 @@ namespace RHI
 
     struct DeviceLimits
     {
+        uint32_t minDynamicUniformBufferAlignment = 256;
     };
 
     struct StagingBuffer

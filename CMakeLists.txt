@@ -72,3 +72,6 @@ elseif(NOT PROJECT_IS_TOP_LEVEL)
 endif()
 
 include(cmake/dev-mode.cmake)
+
+
+add_compile_options(/fsanitize=address)

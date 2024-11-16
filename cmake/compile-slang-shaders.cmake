@@ -24,7 +24,7 @@ function(compile_slang_shaders)
         set(SLANG_SHADER_OUTPUT_VERTEX_PATH "${SLANG_SHADER_OUTPUT_DIR}/${SHADER_NAME}.vertex.spv")
         add_custom_command(
             OUTPUT ${SLANG_SHADER_OUTPUT_VERTEX_PATH}
-            COMMAND ${SLANGC} ${SLANG_SHADER_GFX_PATH} ${SLANG_SHADER_ABS_PATH} ${SLANG_SHADER_INCLUDE_DIRS} -o ${SLANG_SHADER_OUTPUT_VERTEX_PATH} -matrix-layout-column-major -entry  VSMain -stage vertex -target spirv -emit-spirv-directly -fvk-invert-y -fvk-use-entrypoint-name
+            COMMAND ${SLANGC} ${SLANG_SHADER_GFX_PATH} ${SLANG_SHADER_ABS_PATH} ${SLANG_SHADER_INCLUDE_DIRS} -o ${SLANG_SHADER_OUTPUT_VERTEX_PATH} -matrix-layout-column-major -entry  VSMain -stage vertex -target spirv -emit-spirv-directly -fvk-use-entrypoint-name
             DEPENDS ${SLANGC} ${SLANG_SHADER_ABS_PATH} ${SLANG_SHADER_DEPENDENCIES}
             COMMENT "Compiling vertex ${SLANG_SHADER_ABS_PATH}..."
         )
@@ -33,7 +33,7 @@ function(compile_slang_shaders)
         set(SLANG_SHADER_OUTPUT_PIXEL_PATH "${SLANG_SHADER_OUTPUT_DIR}/${SHADER_NAME}.pixel.spv")
         add_custom_command(
             OUTPUT ${SLANG_SHADER_OUTPUT_PIXEL_PATH}
-            COMMAND ${SLANGC} ${SLANG_SHADER_GFX_PATH} ${SLANG_SHADER_ABS_PATH} ${SLANG_SHADER_INCLUDE_DIRS} -o ${SLANG_SHADER_OUTPUT_PIXEL_PATH} -matrix-layout-column-major -entry  PSMain -stage fragment -target spirv -emit-spirv-directly -fvk-invert-y -fvk-use-entrypoint-name
+            COMMAND ${SLANGC} ${SLANG_SHADER_GFX_PATH} ${SLANG_SHADER_ABS_PATH} ${SLANG_SHADER_INCLUDE_DIRS} -o ${SLANG_SHADER_OUTPUT_PIXEL_PATH} -matrix-layout-column-major -entry  PSMain -stage fragment -target spirv -emit-spirv-directly -fvk-use-entrypoint-name
             DEPENDS ${SLANGC} ${SLANG_SHADER_ABS_PATH} ${SLANG_SHADER_DEPENDENCIES}
             COMMENT "Compiling pixel ${SLANG_SHADER_ABS_PATH}..."
         )
