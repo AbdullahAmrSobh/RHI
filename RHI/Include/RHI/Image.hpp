@@ -183,4 +183,19 @@ namespace RHI
             return components == other.components && viewType == other.viewType && subresource == other.subresource;
         }
     };
+
+    inline static size_t CalcaulteImageSize(Format format, ImageSize3D size, uint32_t mipLevelsCount, uint32_t arrayCount)
+    {
+        size_t imageSizeBytes = 0;
+        size_t formatByteSize = GetFormatByteSize(format);
+        for (uint32_t mip = 0; mip < mipLevelsCount; ++mip)
+        {
+            uint32_t mipWidth  = std::max(1u, size.width >> mip);
+            uint32_t mipHeight = std::max(1u, size.height >> mip);
+            uint32_t mipDepth  = std::max(1u, size.depth >> mip);
+            imageSizeBytes += mipWidth * mipHeight * mipDepth * formatByteSize;
+        }
+        imageSizeBytes *= arrayCount;
+        return imageSizeBytes;
+    }
 } // namespace RHI

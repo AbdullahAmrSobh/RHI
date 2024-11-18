@@ -9,15 +9,6 @@ namespace RHI
 {
     RHI_DECLARE_OPAQUE_RESOURCE(Buffer);
 
-    /// @brief Specifies the types of memory where a buffer can be allocated.
-    enum class MemoryType
-    {
-        None,
-        CPU,       ///< Buffer allocated on host local memory (GPU access will be slow).
-        GPULocal,  ///< Buffer allocated on device local memory (CPU access is not guaranteed).
-        GPUShared, ///< Buffer allocated on device local memory (with guaranteed GPU access, used for streaming resources).
-    };
-
     /// @brief Specifies the usage flags for a buffer.
     enum class BufferUsage
     {
@@ -47,10 +38,10 @@ namespace RHI
     /// @brief Describes the parameters required to create a buffer.
     struct BufferCreateInfo
     {
-        const char*            name       = nullptr;               ///< Name of the buffer.
-        MemoryType             heapType   = MemoryType::GPUShared; ///< Memory type for the buffer allocation.
-        TL::Flags<BufferUsage> usageFlags = BufferUsage::None;     ///< Usage flags for the buffer.
-        size_t                 byteSize   = 0;                     ///< Size of the buffer in bytes.
+        const char*            name       = nullptr;           ///< Name of the buffer.
+        bool                   hostMapped = true;              ///< Buffer will be mappable by host.
+        TL::Flags<BufferUsage> usageFlags = BufferUsage::None; ///< Usage flags for the buffer.
+        size_t                 byteSize   = 0;                 ///< Size of the buffer in bytes.
     };
 
     /// @brief Describes the parameters required to create a buffer view.

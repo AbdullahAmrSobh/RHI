@@ -24,6 +24,17 @@ namespace RHI::Vulkan
         return vkSubresource;
     }
 
+    VkResolveModeFlagBits ConvertResolveMode(ResolveMode resolveMode)
+    {
+        switch (resolveMode)
+        {
+        case ResolveMode::None: return VK_RESOLVE_MODE_NONE;
+        case ResolveMode::Min:  return VK_RESOLVE_MODE_MIN_BIT;
+        case ResolveMode::Max:  return VK_RESOLVE_MODE_MAX_BIT;
+        case ResolveMode::Avg:  return VK_RESOLVE_MODE_AVERAGE_BIT;
+        }
+    }
+
     //////////////////////////////////////////////////////////////////////////////////////////
     /// CommandList
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -119,42 +130,47 @@ namespace RHI::Vulkan
         auto pass        = renderGraph->m_passPool.Get(beginInfo.pass);
         for (uint32_t i = 0; i < pass->m_imageAttachments.size(); i++)
         {
-            auto& node               = pass->m_imageAttachments[i];
-            node->loadStoreOperation = beginInfo.loadStoreOperations[i];
-            auto attachment          = renderGraph->m_rgImagesPool.Get(node->image);
-            auto subresources        = VkImageSubresourceRange{
+            auto& node         = pass->m_imageAttachments[i];
+            auto  attachment   = renderGraph->m_rgImagesPool.Get(node->image);
+            auto  subresources = VkImageSubresourceRange{
                 /// @fixme: deduce from actual attachment
-                       .aspectMask = static_cast<VkImageAspectFlags>(
+                 .aspectMask = static_cast<VkImageAspectFlags>(
                     ((attachment->info.usageFlags & ImageUsage::DepthStencil) ? VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT
-                                                                                     : VK_IMAGE_ASPECT_COLOR_BIT)),
-                       .baseMipLevel   = 0,
-                       .levelCount     = VK_REMAINING_MIP_LEVELS,
-                       .baseArrayLayer = 0,
-                       .layerCount     = VK_REMAINING_ARRAY_LAYERS,
+                                                                               : VK_IMAGE_ASPECT_COLOR_BIT)),
+                 .baseMipLevel   = 0,
+                 .levelCount     = VK_REMAINING_MIP_LEVELS,
+                 .baseArrayLayer = 0,
+                 .layerCount     = VK_REMAINING_ARRAY_LAYERS,
             };
 
             auto imageHandle = renderGraph->GetImage(node->image);
             auto image       = m_device->m_imageOwner.Get(imageHandle);
             auto swapchain   = (ISwapchain*)attachment->swapchain;
 
-            if (node->prev)
+            // if (node->prev)
+            // {
+            //     auto srcState = GetImageStageAccess(*node->prev);
+            //     auto dstState = GetImageStageAccess(*node);
+            //     auto barrier  = CreateImageBarrier(image->handle, subresources, srcState, dstState);
+            //     m_barriers[BarrierSlot::Priloge].imageBarriers.push_back(barrier);
+            // }
+            // else
             {
-                auto srcState = GetImageStageAccess(*node->prev);
-                auto dstState = GetImageStageAccess(*node);
-                auto barrier  = CreateImageBarrier(image->handle, subresources, srcState, dstState);
-                m_barriers[BarrierSlot::Priloge].imageBarriers.push_back(barrier);
-            }
-            else
-            {
-                auto dstState = GetImageStageAccess(*node);
-                auto srcState = ImageStageAccess{VK_IMAGE_LAYOUT_UNDEFINED, dstState.stage, 0, 0};
+                // auto dstState = GetImageStageAccess(*node);
+                auto dstState =
+                    ImageStageAccess{VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0};
+                if (image->subresources.imageAspects & ImageAspect::Depth) dstState.layout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+                auto srcState = ImageStageAccess{VK_IMAGE_LAYOUT_UNDEFINED, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0};
                 auto barrier  = CreateImageBarrier(image->handle, subresources, srcState, dstState);
                 m_barriers[BarrierSlot::Priloge].imageBarriers.push_back(barrier);
             }
 
             if (node->next == nullptr && swapchain != nullptr)
             {
-                auto srcState = GetImageStageAccess(*node);
+                // auto srcState = GetImageStageAccess(*node);
+                auto srcState =
+                    ImageStageAccess{VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0};
+                if (image->subresources.imageAspects & ImageAspect::Depth) srcState.layout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
                 auto dstState =
                     ImageStageAccess{VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, VK_ACCESS_2_NONE, 0};
                 auto barrier = CreateImageBarrier(image->handle, subresources, srcState, dstState);
@@ -167,56 +183,103 @@ namespace RHI::Vulkan
             m_barriers[BarrierSlot::Priloge].bufferBarriers,
             m_barriers[BarrierSlot::Priloge].imageBarriers);
 
-        TL::Vector<VkRenderingAttachmentInfo> colorAttachments;
-        VkRenderingAttachmentInfo             depthAttachment, stencilAttachment;
-        bool                                  hasDepthAttachment = false, hasStencilAttachment = false;
+        TL::Vector<VkRenderingAttachmentInfo>   colorAttachmentInfos;
+        TL::Optional<VkRenderingAttachmentInfo> depthAttachmentInfo;
+        TL::Optional<VkRenderingAttachmentInfo> stencilAttachmentInfo;
 
-        VkRect2D renderingArea{
-            .offset = {beginInfo.renderArea.offsetX, beginInfo.renderArea.offsetY},
-            .extent = {beginInfo.renderArea.width, beginInfo.renderArea.height},
-        };
-
-        if (pass->m_colorAttachments.empty() == false)
+        for (auto passAttachment : beginInfo.colorAttachments)
         {
-            for (auto colorAttachment : pass->m_colorAttachments)
-            {
-                auto imageHandle = renderGraph->GetImage(colorAttachment->image);
-                auto image       = m_device->m_imageOwner.Get(imageHandle);
-                colorAttachments.push_back(CreateColorAttachment(image->viewHandle, colorAttachment->loadStoreOperation));
-            }
+            IImage* colorAttachment = m_device->m_imageOwner.Get(passAttachment.attachment);
+            IImage* resolveAttachment =
+                passAttachment.resolveAttachment ? m_device->m_imageOwner.Get(passAttachment.resolveAttachment) : nullptr;
 
-            if (auto depthStencilAttachment = pass->m_depthStencilAttachment)
-            {
-                auto imageHandle = renderGraph->GetImage(depthStencilAttachment->image);
-                auto image       = m_device->m_imageOwner.Get(imageHandle);
-
-                if (depthStencilAttachment->usage & ImageUsage::Depth)
-                {
-                    depthAttachment    = CreateDepthAttachment(image->viewHandle, depthStencilAttachment->loadStoreOperation);
-                    hasDepthAttachment = true;
-                }
-
-                if (depthStencilAttachment->usage & ImageUsage::Stencil)
-                {
-                    stencilAttachment    = CreateStencilAttachment(image->viewHandle, depthStencilAttachment->loadStoreOperation);
-                    hasStencilAttachment = true;
-                }
-            }
-
-            VkRenderingInfo renderingInfo{
-                .sType                = VK_STRUCTURE_TYPE_RENDERING_INFO,
-                .pNext                = nullptr,
-                .flags                = {},
-                .renderArea           = renderingArea,
-                .layerCount           = 1,
-                .viewMask             = 0,
-                .colorAttachmentCount = (uint32_t)colorAttachments.size(),
-                .pColorAttachments    = colorAttachments.data(),
-                .pDepthAttachment     = hasDepthAttachment ? &depthAttachment : nullptr,
-                .pStencilAttachment   = hasStencilAttachment ? &stencilAttachment : nullptr,
+            VkClearColorValue colorValue = {
+                .float32 =
+                    {passAttachment.clearValue.f32.r,
+                     passAttachment.clearValue.f32.g,
+                     passAttachment.clearValue.f32.b,
+                     passAttachment.clearValue.f32.a},
             };
-            vkCmdBeginRendering(m_commandBuffer, &renderingInfo);
+
+            VkRenderingAttachmentInfo colorAttachmentInfo{
+                .sType              = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+                .pNext              = nullptr,
+                .imageView          = colorAttachment->viewHandle,
+                .imageLayout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                .resolveMode        = ConvertResolveMode(passAttachment.resolveMode),
+                .resolveImageView   = resolveAttachment ? resolveAttachment->viewHandle : VK_NULL_HANDLE,
+                .resolveImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                .loadOp             = ConvertLoadOp(passAttachment.loadOperation),
+                .storeOp            = ConvertStoreOp(passAttachment.storeOperation),
+                .clearValue         = {.color = colorValue},
+            };
+
+            colorAttachmentInfos.push_back(colorAttachmentInfo);
         }
+
+        if (beginInfo.depthStenciAttachments)
+        {
+            auto passAttachment = beginInfo.depthStenciAttachments.value();
+
+            IImage* depthStencilAttachment = m_device->m_imageOwner.Get(passAttachment.attachment);
+            IImage* resolveAttachment =
+                passAttachment.resolveAttachment ? m_device->m_imageOwner.Get(passAttachment.resolveAttachment) : nullptr;
+
+            auto clearValue = VkClearDepthStencilValue{
+                .depth   = beginInfo.depthStenciAttachments->clearValue.depthValue,
+                .stencil = beginInfo.depthStenciAttachments->clearValue.stencilValue,
+            };
+
+            if (depthStencilAttachment->subresources.imageAspects & ImageAspect::Depth)
+            {
+                depthAttachmentInfo = VkRenderingAttachmentInfo{
+                    .sType              = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+                    .pNext              = nullptr,
+                    .imageView          = depthStencilAttachment->viewHandle,
+                    .imageLayout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                    .resolveMode        = ConvertResolveMode(passAttachment.resolveMode),
+                    .resolveImageView   = resolveAttachment ? resolveAttachment->viewHandle : VK_NULL_HANDLE,
+                    .resolveImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    .loadOp             = ConvertLoadOp(passAttachment.depthLoadOperation),
+                    .storeOp            = ConvertStoreOp(passAttachment.depthStoreOperation),
+                    .clearValue         = {.depthStencil = clearValue},
+                };
+            }
+
+            if (depthStencilAttachment->subresources.imageAspects & ImageAspect::Stencil)
+            {
+                depthAttachmentInfo = VkRenderingAttachmentInfo{
+                    .sType              = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+                    .pNext              = nullptr,
+                    .imageView          = depthStencilAttachment->viewHandle,
+                    .imageLayout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                    .resolveMode        = ConvertResolveMode(passAttachment.resolveMode),
+                    .resolveImageView   = resolveAttachment->viewHandle ? resolveAttachment->viewHandle : VK_NULL_HANDLE,
+                    .resolveImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    .loadOp             = ConvertLoadOp(passAttachment.stencilLoadOperation),
+                    .storeOp            = ConvertStoreOp(passAttachment.stencilStoreOperation),
+                    .clearValue         = {.depthStencil = clearValue},
+                };
+            }
+        }
+
+        VkRenderingInfo renderingInfo{
+            .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+            .pNext = nullptr,
+            .flags = {},
+            .renderArea =
+                {
+                    .offset = {beginInfo.renderArea.offsetX, beginInfo.renderArea.offsetY},
+                    .extent = {beginInfo.renderArea.width, beginInfo.renderArea.height},
+                },
+            .layerCount           = 1,
+            .viewMask             = 0,
+            .colorAttachmentCount = (uint32_t)colorAttachmentInfos.size(),
+            .pColorAttachments    = colorAttachmentInfos.data(),
+            .pDepthAttachment     = depthAttachmentInfo.has_value() ? &depthAttachmentInfo.value() : nullptr,
+            .pStencilAttachment   = stencilAttachmentInfo.has_value() ? &stencilAttachmentInfo.value() : nullptr,
+        };
+        vkCmdBeginRendering(m_commandBuffer, &renderingInfo);
     }
 
     void ICommandList::EndRenderPass()

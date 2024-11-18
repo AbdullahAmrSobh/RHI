@@ -54,7 +54,7 @@ private:
     glm::vec4 m_viewPos = glm::vec4();
 
     float m_rotationSpeed = 1.0f;
-    float m_movementSpeed = 1.0f;
+    float m_movementSpeed = 3.0f;
 
     float m_fov;
     float m_znear, m_zfar;
@@ -99,14 +99,14 @@ public:
 
     inline glm::mat4 GetProjection() const
     {
-        glm::mat4 correction_matrix = {
+        glm::mat4 flipY = {
             {1.0f,  0.0f,  0.0f,  0.0f},
             { 0.0f, -1.0f, 0.0f,  0.0f},
-            { 0.0f, 0.0f,  -1.0f, 0.0f},
+            { 0.0f, 0.0f,  1.0f, 0.0f},
             { 0.0f, 0.0f,  0.0f,  1.0f},
         };
 
-        return m_matrices.viewToClipMat * correction_matrix;
+        return m_matrices.viewToClipMat * flipY;
     }
 
     inline glm::mat4 GetView() const
@@ -205,9 +205,9 @@ public:
                 float moveSpeed = float(deltaTime.Miliseconds() * m_movementSpeed);
 
                 if (m_keys.up)
-                    m_position += camFront * moveSpeed;
-                if (m_keys.down)
                     m_position -= camFront * moveSpeed;
+                if (m_keys.down)
+                    m_position += camFront * moveSpeed;
                 if (m_keys.left)
                     m_position -= glm::normalize(glm::cross(camFront, Constants::Up)) * moveSpeed;
                 if (m_keys.right)

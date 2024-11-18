@@ -34,6 +34,8 @@ namespace RHI::Vulkan
 
     VkImageSubresourceLayers ConvertSubresourceLayer(const ImageSubresourceLayers& subresource);
 
+    VkResolveModeFlagBits ConvertResolveMode(ResolveMode resolveMode);
+
     class ICommandList final : public CommandList
     {
     public:

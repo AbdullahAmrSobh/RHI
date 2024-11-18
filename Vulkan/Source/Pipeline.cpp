@@ -219,11 +219,12 @@ namespace RHI::Vulkan
         VkVertexInputBindingDescription   vertexBindings[c_MaxPipelineVertexBindings]     = {};
         VkVertexInputAttributeDescription vertexAttributes[c_MaxPipelineVertexAttributes] = {};
 
+        uint32_t bindingIndex = 0;
         for (const auto& bindingDesc : createInfo.vertexBufferBindings)
         {
             // Set up vertex binding
             auto& binding   = vertexBindings[vertexBindingsCount];
-            binding.binding = bindingDesc.binding;
+            binding.binding = bindingIndex;
             binding.stride  = bindingDesc.stride;
             binding.inputRate =
                 bindingDesc.stepRate == PipelineVertexInputRate::PerVertex ? VK_VERTEX_INPUT_RATE_VERTEX : VK_VERTEX_INPUT_RATE_INSTANCE;
@@ -234,7 +235,7 @@ namespace RHI::Vulkan
                 // Set up vertex attribute
                 auto& attribute    = vertexAttributes[vertexAttributesCount];
                 attribute.location = vertexAttributesCount;
-                attribute.binding  = bindingDesc.binding;
+                attribute.binding  = bindingIndex;
                 attribute.format   = ConvertFormat(attributeDesc.format);
                 attribute.offset   = attributeDesc.offset;
 
@@ -242,6 +243,7 @@ namespace RHI::Vulkan
             }
 
             vertexBindingsCount++;
+            bindingIndex++;
         }
 
         VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{

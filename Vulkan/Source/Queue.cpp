@@ -99,7 +99,7 @@ namespace RHI::Vulkan
                 .sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
                 .pNext       = nullptr,
                 .semaphore   = m_device->GetTimelineSemaphore(),
-                .value       = m_device->AdvanceTimelineValue(),
+                .value       = m_device->GetPendingTimelineValue(),
                 .stageMask   = commandBuffersSignalStages,
                 .deviceIndex = 0,
             },

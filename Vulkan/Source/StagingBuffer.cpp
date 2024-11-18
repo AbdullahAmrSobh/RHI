@@ -46,7 +46,7 @@ namespace RHI::Vulkan
         std::string      name = std::format("StagingBuffer-{}", m_pages.size());
         BufferCreateInfo stagingBufferCI{
             .name       = name.c_str(),
-            .heapType   = MemoryType::GPUShared,
+            .hostMapped = true,
             .usageFlags = BufferUsage::CopyDst | BufferUsage::CopySrc,
             .byteSize   = std::max(size, (size_t)6.4e+7),
         };

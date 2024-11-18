@@ -1,4 +1,21 @@
 
+#if RHI_PLATFORM_WINDOWS
+    #define VK_USE_PLATFORM_WIN32_KHR
+    #define VULKAN_SURFACE_OS_EXTENSION_NAME VK_KHR_WIN32_SURFACE_EXTENSION_NAME
+#elif RHI_PLATFORM_MACOS
+    #define VULKAN_SURFACE_OS_EXTENSION_NAME VK_MVK_MACOS_SURFACE_EXTENSION_NAME
+#elif RHI_PLATFORM_ANDROID
+    #define VULKAN_SURFACE_OS_EXTENSION_NAME VK_KHR_ANDROID_SURFACE_EXTENSION_NAME
+#elif RHI_PLATFORM_XLIB
+    #define VULKAN_SURFACE_OS_EXTENSION_NAME VK_KHR_XLIB_SURFACE_EXTENSION_NAME
+#elif RHI_PLATFORM_WAYLAND
+    #define VULKAN_SURFACE_OS_EXTENSION_NAME VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME
+#elif RHI_PLATFORM_ANDROID
+    #define VULKAN_SURFACE_OS_EXTENSION_NAME VK_KHR_ANDROID_SURFACE_EXTENSION_NAME
+#elif RHI_PLATFORM_IOS
+    #define VULKAN_SURFACE_OS_EXTENSION_NAME VK_MVK_IOS_SURFACE_EXTENSION_NAME
+#endif // VK_USE_PLATFORM_WIN32_KHR
+
 #include "RHI-Vulkan/Loader.hpp"
 
 #include "Common.hpp"
@@ -16,22 +33,6 @@
 #include <tracy/Tracy.hpp>
 
 #include <format>
-
-#if RHI_PLATFORM_WINDOWS
-    #define VULKAN_SURFACE_OS_EXTENSION_NAME "VK_KHR_win32_surface"
-#elif RHI_PLATFORM_MACOS
-    #define VULKAN_SURFACE_OS_EXTENSION_NAME VK_MVK_MACOS_SURFACE_EXTENSION_NAME
-#elif RHI_PLATFORM_ANDROID
-    #define VULKAN_SURFACE_OS_EXTENSION_NAME VK_KHR_ANDROID_SURFACE_EXTENSION_NAME
-#elif RHI_PLATFORM_XLIB
-    #define VULKAN_SURFACE_OS_EXTENSION_NAME VK_KHR_XLIB_SURFACE_EXTENSION_NAME
-#elif RHI_PLATFORM_WAYLAND
-    #define VULKAN_SURFACE_OS_EXTENSION_NAME VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME
-#elif RHI_PLATFORM_ANDROID
-    #define VULKAN_SURFACE_OS_EXTENSION_NAME VK_KHR_ANDROID_SURFACE_EXTENSION_NAME
-#elif RHI_PLATFORM_IOS
-    #define VULKAN_SURFACE_OS_EXTENSION_NAME VK_MVK_IOS_SURFACE_EXTENSION_NAME
-#endif // VK_USE_PLATFORM_WIN32_KHR
 
 #define VULKAN_DEVICE_FUNC_LOAD(device, proc) reinterpret_cast<PFN_##proc>(vkGetDeviceProcAddr(device, #proc));
 #define VULKAN_INSTANCE_FUNC_LOAD(instance, proc) reinterpret_cast<PFN_##proc>(vkGetInstanceProcAddr(instance, #proc));
@@ -194,7 +195,7 @@ namespace RHI::Vulkan
         m_queue[(int)QueueType::Graphics] = TL::CreatePtr<IQueue>();
         m_queue[(int)QueueType::Compute]  = TL::CreatePtr<IQueue>();
         m_queue[(int)QueueType::Transfer] = TL::CreatePtr<IQueue>();
-        m_deleteQueue                     = TL::CreatePtr<DeleteQueue>();
+        m_destroyQueue                    = TL::CreatePtr<DeleteQueue>();
         m_bindGroupAllocator              = TL::CreatePtr<BindGroupAllocator>();
         m_commandsAllocator               = TL::CreatePtr<CommandAllocator>();
         m_stagingAllocator                = TL::CreatePtr<StagingBufferAllocator>();
@@ -472,7 +473,7 @@ namespace RHI::Vulkan
         resultCode = m_bindGroupAllocator->Init(this);
         if (IsError(resultCode)) return resultCode;
 
-        resultCode = m_deleteQueue->Init(this);
+        resultCode = m_destroyQueue->Init(this);
         if (IsError(resultCode)) return resultCode;
 
         VkSemaphoreTypeCreateInfo typeCreateInfo{
@@ -536,7 +537,7 @@ namespace RHI::Vulkan
         m_stagingAllocator->Shutdown();
         m_commandsAllocator->Shutdown();
         m_bindGroupAllocator->Shutdown();
-        m_deleteQueue->Shutdown();
+        m_destroyQueue->Shutdown();
 
         vkDestroySemaphore(m_device, m_timelineSemaphore, 0);
         vmaDestroyAllocator(m_allocator);
@@ -567,341 +568,245 @@ namespace RHI::Vulkan
         }
     }
 
-    uint32_t IDevice::GetMemoryTypeIndex(MemoryType memoryType)
-    {
-        VkPhysicalDeviceMemoryProperties2 memoryProperties;
-        vkGetPhysicalDeviceMemoryProperties2(m_physicalDevice, &memoryProperties);
-
-        // Loop through all available memory types to find the appropriate one
-        for (uint32_t i = 0; i < memoryProperties.memoryProperties.memoryTypeCount; ++i)
-        {
-            const VkMemoryType& vkMemoryType = memoryProperties.memoryProperties.memoryTypes[i];
-
-            switch (memoryType)
-            {
-            case MemoryType::CPU:
-                // Host visible and coherent memory for CPU access
-                if (vkMemoryType.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT &&
-                    vkMemoryType.propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
-                {
-                    return i;
-                }
-                break;
-
-            case MemoryType::GPULocal:
-                // Device local memory for GPU-only access
-                if (vkMemoryType.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-                {
-                    return i;
-                }
-                break;
-
-            case MemoryType::GPUShared:
-                // Device local but also host visible and coherent, used for streaming resources
-                if (vkMemoryType.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT &&
-                    vkMemoryType.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT &&
-                    vkMemoryType.propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
-                {
-                    return i;
-                }
-                break;
-
-            default: TL_UNREACHABLE(); // Invalid MemoryType
-            }
-        }
-
-        // If no suitable memory type was found, return an invalid index
-        TL_LOG_ERROR("Failed to find suitable memory type for {}", static_cast<int>(memoryType));
-        return UINT32_MAX; // Return an invalid index to indicate failure
-    }
-
     uint64_t IDevice::GetTimelineValue() const
     {
-        return m_timelineValue;
+        uint64_t value  = 0;
+        VkResult result = vkGetSemaphoreCounterValue(m_device, m_timelineSemaphore, &value);
+        TL_ASSERT(result == VK_SUCCESS);
+        return value;
     }
 
-    VkSemaphore IDevice::GetTimelineSemaphore()
+    uint64_t IDevice::GetPendingTimelineValue() const
+    {
+        return m_timelineValue.load(std::memory_order_relaxed);
+    }
+
+    VkSemaphore IDevice::GetTimelineSemaphore() const
     {
         return m_timelineSemaphore;
     }
 
-    uint64_t IDevice::AdvanceTimelineValue()
+    uint64_t IDevice::AdvanceTimeline()
     {
-        return ++m_timelineValue;
+        return {};
     }
 
-    ////////////////////////////////////////////////////////////
-    // Interface implementation
-    ////////////////////////////////////////////////////////////
-
-    TL::Ptr<Swapchain> IDevice::Impl_CreateSwapchain(const SwapchainCreateInfo& createInfo)
+    Swapchain* IDevice::CreateSwapchain(const SwapchainCreateInfo& createInfo)
     {
-        auto swapchain = TL::CreatePtr<ISwapchain>();
+        auto swapchain = new ISwapchain();
         auto result    = swapchain->Init(this, createInfo);
-        if (IsError(result))
-        {
-            TL_LOG_ERROR("Failed to create swapchain object");
-        }
+        TL_ASSERT(IsSuccess(result));
         return swapchain;
     }
 
-    TL::Ptr<ShaderModule> IDevice::Impl_CreateShaderModule(TL::Span<const uint32_t> shaderBlob)
+    void IDevice::DestroySwapchain(Swapchain* _swapchain)
+    {
+        auto swapchain = (ISwapchain*)_swapchain;
+        swapchain->Shutdown();
+        delete swapchain;
+    }
+
+    TL::Ptr<ShaderModule> IDevice::CreateShaderModule(const ShaderModuleCreateInfo& createInfo)
     {
         auto shaderModule = TL::CreatePtr<IShaderModule>();
-        auto result       = shaderModule->Init(this, shaderBlob);
-        if (IsError(result))
-        {
-            TL_LOG_ERROR("Failed to create shader module");
-        }
+        auto result       = shaderModule->Init(this, createInfo.code);
+        TL_ASSERT(IsSuccess(result));
         return shaderModule;
     }
 
-    TL::Ptr<CommandList> IDevice::Impl_CreateCommandList(QueueType queueType)
+    CommandList* IDevice::CreateCommandList(const CommandListCreateInfo& createInfo)
     {
-        return m_commandsAllocator->AllocateCommandList(queueType);
+        // TODO: change this
+        return m_commandsAllocator->AllocateCommandList(createInfo.queueType).release();
     }
 
-    Handle<BindGroupLayout> IDevice::Impl_CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)
+    Handle<BindGroupLayout> IDevice::CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)
     {
-        IBindGroupLayout bindGroupLayout{};
-        auto             result = bindGroupLayout.Init(this, createInfo);
-        if (IsError(result))
-        {
-            TL_LOG_ERROR("Failed to create bindGroupLayout");
-        }
-        return m_bindGroupLayoutsOwner.Emplace(std::move(bindGroupLayout));
-    }
-
-    void IDevice::Impl_DestroyBindGroupLayout(Handle<BindGroupLayout> handle)
-    {
-        TL_ASSERT(handle != NullHandle);
-
-        auto bindGroupLayout = m_bindGroupLayoutsOwner.Get(handle);
-        bindGroupLayout->Shutdown(this);
-        m_bindGroupLayoutsOwner.Release(handle);
-    }
-
-    Handle<BindGroup> IDevice::Impl_CreateBindGroup(Handle<BindGroupLayout> layoutHandle)
-    {
-        IBindGroup bindGroup{};
-        auto       result = bindGroup.Init(this, layoutHandle);
-        if (IsError(result))
-        {
-            TL_LOG_ERROR("Failed to create bindGroup");
-        }
-        auto handle = m_bindGroupOwner.Emplace(std::move(bindGroup));
+        auto [handle, result] = m_bindGroupLayoutsOwner.Create(this, createInfo);
+        TL_ASSERT(IsSuccess(result));
         return handle;
     }
 
-    void IDevice::Impl_DestroyBindGroup(Handle<BindGroup> handle)
+    void IDevice::DestroyBindGroupLayout(Handle<BindGroupLayout> handle)
     {
-        TL_ASSERT(handle != NullHandle);
-
-        auto bindGroup = m_bindGroupOwner.Get(handle);
-
-        m_deleteQueue->DestroyObject(
-            [=](IDevice* device)
+        m_destroyQueue->Push(
+            GetPendingTimelineValue(),
+            [handle](IDevice* device)
         {
-            bindGroup->Shutdown(device);
-            device->m_bindGroupOwner.Release(handle);
-        },
-            m_timelineValue);
+            device->m_bindGroupLayoutsOwner.Destroy(handle, device);
+        });
     }
 
-    void IDevice::Impl_UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo)
+    Handle<BindGroup> IDevice::CreateBindGroup(Handle<BindGroupLayout> handle)
+    {
+        auto [bindGroupHandle, result] = m_bindGroupOwner.Create(this, handle);
+        TL_ASSERT(IsSuccess(result));
+        return bindGroupHandle;
+    }
+
+    void IDevice::DestroyBindGroup(Handle<BindGroup> handle)
+    {
+        m_destroyQueue->Push(
+            GetPendingTimelineValue(),
+            [handle](IDevice* device)
+        {
+            device->m_bindGroupOwner.Destroy(handle, device);
+        });
+    }
+
+    void IDevice::UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo)
     {
         auto bindGroup = m_bindGroupOwner.Get(handle);
         bindGroup->Write(this, updateInfo);
     }
 
-    Handle<PipelineLayout> IDevice::Impl_CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)
+    Handle<PipelineLayout> IDevice::CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)
     {
-        IPipelineLayout pipelineLayout{};
-        auto            result = pipelineLayout.Init(this, createInfo);
-        if (IsError(result))
-        {
-            TL_LOG_ERROR("Failed to create pipelineLayout");
-        }
-        auto handle = m_pipelineLayoutOwner.Emplace(std::move(pipelineLayout));
+        auto [handle, result] = m_pipelineLayoutOwner.Create(this, createInfo);
+        TL_ASSERT(IsSuccess(result));
         return handle;
     }
 
-    void IDevice::Impl_DestroyPipelineLayout(Handle<PipelineLayout> handle)
+    void IDevice::DestroyPipelineLayout(Handle<PipelineLayout> handle)
     {
-        TL_ASSERT(handle != NullHandle);
-
-        auto pipelineLayout = m_pipelineLayoutOwner.Get(handle);
-        pipelineLayout->Shutdown(this);
-        m_pipelineLayoutOwner.Release(handle);
+        m_destroyQueue->Push(
+            GetPendingTimelineValue(),
+            [handle](IDevice* device)
+        {
+            device->m_pipelineLayoutOwner.Destroy(handle, device);
+        });
     }
 
-    Handle<GraphicsPipeline> IDevice::Impl_CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)
+    Handle<GraphicsPipeline> IDevice::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)
     {
-        IGraphicsPipeline graphicsPipeline{};
-        auto              result = graphicsPipeline.Init(this, createInfo);
-        if (IsError(result))
-        {
-            TL_LOG_ERROR("Failed to create graphicsPipeline");
-        }
-        auto handle = m_graphicsPipelineOwner.Emplace(std::move(graphicsPipeline));
+        auto [handle, result] = m_graphicsPipelineOwner.Create(this, createInfo);
+        TL_ASSERT(IsSuccess(result));
         return handle;
     }
 
-    void IDevice::Impl_DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle)
+    void IDevice::DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle)
     {
-        TL_ASSERT(handle != NullHandle);
-
-        auto pipeline = m_graphicsPipelineOwner.Get(handle);
-        m_deleteQueue->DestroyObject(
-            [=](IDevice* device)
+        m_destroyQueue->Push(
+            GetPendingTimelineValue(),
+            [handle](IDevice* device)
         {
-            pipeline->Shutdown(device);
-            device->m_graphicsPipelineOwner.Release(handle);
-        },
-            m_timelineValue);
+            device->m_graphicsPipelineOwner.Destroy(handle, device);
+        });
     }
 
-    Handle<ComputePipeline> IDevice::Impl_CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
+    Handle<ComputePipeline> IDevice::CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
     {
-        IComputePipeline computePipeline{};
-        auto             result = computePipeline.Init(this, createInfo);
-        if (IsError(result))
-        {
-            TL_LOG_ERROR("Failed to create computePipeline");
-        }
-        auto handle = m_computePipelineOwner.Emplace(std::move(computePipeline));
+        auto [handle, result] = m_computePipelineOwner.Create(this, createInfo);
+        TL_ASSERT(IsSuccess(result));
         return handle;
     }
 
-    void IDevice::Impl_DestroyComputePipeline(Handle<ComputePipeline> handle)
+    void IDevice::DestroyComputePipeline(Handle<ComputePipeline> handle)
     {
-        TL_ASSERT(handle != NullHandle);
-
-        auto pipeline = m_computePipelineOwner.Get(handle);
-        m_deleteQueue->DestroyObject(
-            [=](IDevice* device)
+        m_destroyQueue->Push(
+            GetPendingTimelineValue(),
+            [handle](IDevice* device)
         {
-            pipeline->Shutdown(device);
-            device->m_computePipelineOwner.Release(handle);
-        },
-            m_timelineValue);
+            device->m_computePipelineOwner.Destroy(handle, device);
+        });
     }
 
-    Handle<Sampler> IDevice::Impl_CreateSampler(const SamplerCreateInfo& createInfo)
+    Handle<Sampler> IDevice::CreateSampler(const SamplerCreateInfo& createInfo)
     {
-        ISampler sampler{};
-        auto     result = sampler.Init(this, createInfo);
-        if (IsError(result))
-        {
-            TL_LOG_ERROR("Failed to create sampler");
-        }
-        auto handle = m_samplerOwner.Emplace(std::move(sampler));
+        auto [handle, result] = m_samplerOwner.Create(this, createInfo);
+        TL_ASSERT(IsSuccess(result));
         return handle;
     }
 
-    void IDevice::Impl_DestroySampler(Handle<Sampler> handle)
+    void IDevice::DestroySampler(Handle<Sampler> handle)
     {
-        TL_ASSERT(handle != NullHandle);
-
-        auto sampler = m_samplerOwner.Get(handle);
-
-        m_deleteQueue->DestroyObject(
-            [=](IDevice* device)
+        m_destroyQueue->Push(
+            GetPendingTimelineValue(),
+            [handle](IDevice* device)
         {
-            sampler->Shutdown(device);
-            device->m_samplerOwner.Release(handle);
-        },
-            m_timelineValue);
+            device->m_samplerOwner.Destroy(handle, device);
+        });
     }
 
-    Result<Handle<Image>> IDevice::Impl_CreateImage(const ImageCreateInfo& createInfo)
+    Result<Handle<Image>> IDevice::CreateImage(const ImageCreateInfo& createInfo)
     {
-        IImage image{};
-        auto   result = image.Init(this, createInfo);
-        SetDebugName(image.handle, createInfo.name);
-        if (IsError(result))
-        {
-            TL_LOG_ERROR("Failed to create image");
-            return result;
-        }
-        auto handle = m_imageOwner.Emplace(std::move(image));
-        return Result<Handle<Image>>(handle);
+        auto [handle, result] = m_imageOwner.Create(this, createInfo);
+        if (IsSuccess(result)) return (Handle<Image>)handle;
+        return result;
     }
 
-    void IDevice::Impl_DestroyImage(Handle<Image> handle)
+    void IDevice::DestroyImage(Handle<Image> handle)
     {
-        TL_ASSERT(handle != NullHandle);
-
-        auto image = m_imageOwner.Get(handle);
-        image->Shutdown(this);
-        m_imageOwner.Release(handle);
-
-        m_deleteQueue->DestroyObject(
-            [=](IDevice* device)
+        m_destroyQueue->Push(
+            GetPendingTimelineValue(),
+            [handle](IDevice* device)
         {
-            image->Shutdown(device);
-            device->m_imageOwner.Release(handle);
-        },
-            m_timelineValue);
+            device->m_imageOwner.Destroy(handle, device);
+        });
     }
 
-    Result<Handle<Buffer>> IDevice::Impl_CreateBuffer(const BufferCreateInfo& createInfo)
+    Result<Handle<Buffer>> IDevice::CreateBuffer(const BufferCreateInfo& createInfo)
     {
-        IBuffer buffer{};
-        auto    result = buffer.Init(this, createInfo);
-        if (IsError(result))
-        {
-            TL_LOG_ERROR("Failed to create buffer");
-            return result;
-        }
-        auto handle = m_bufferOwner.Emplace(std::move(buffer));
-        return Result<Handle<Buffer>>(handle);
+        auto [handle, result] = m_bufferOwner.Create(this, createInfo);
+        if (IsSuccess(result)) return (Handle<Buffer>)handle;
+        return result;
     }
 
-    void IDevice::Impl_DestroyBuffer(Handle<Buffer> handle)
+    void IDevice::DestroyBuffer(Handle<Buffer> handle)
     {
-        TL_ASSERT(handle != NullHandle);
-
-        auto buffer = m_bufferOwner.Get(handle);
-        m_deleteQueue->DestroyObject(
-            [=](IDevice* device)
+        m_destroyQueue->Push(
+            GetPendingTimelineValue(),
+            [handle](IDevice* device)
         {
-            buffer->Shutdown(device);
-            device->m_bufferOwner.Release(handle);
-        },
-            m_timelineValue);
+            device->m_bufferOwner.Destroy(handle, device);
+        });
     }
 
-    DeviceMemoryPtr IDevice::Impl_MapBuffer(Handle<Buffer> handle)
+    DeviceMemoryPtr IDevice::MapBuffer(Handle<Buffer> handle)
     {
-        auto resource   = m_bufferOwner.Get(handle);
-        auto allocation = resource->allocation.handle;
-
-        DeviceMemoryPtr memoryPtr = nullptr;
+        auto            resource   = m_bufferOwner.Get(handle);
+        auto            allocation = resource->allocation.handle;
+        DeviceMemoryPtr memoryPtr;
         Validate(vmaMapMemory(m_allocator, allocation, &memoryPtr));
         return memoryPtr;
     }
 
-    void IDevice::Impl_UnmapBuffer(Handle<Buffer> handle)
+    void IDevice::UnmapBuffer(Handle<Buffer> handle)
     {
         auto resource = m_bufferOwner.Get(handle)->allocation.handle;
         vmaUnmapMemory(m_allocator, resource);
     }
 
-    Queue* IDevice::Impl_GetQueue(QueueType queueType)
+    void IDevice::QueueBeginLabel(QueueType type, const char* name, float color[4])
     {
-        return m_queue[(uint32_t)queueType].get();
+        m_queue[(int)type]->BeginLabel(name, color);
     }
 
-    StagingBuffer IDevice::Impl_StagingAllocate(size_t size)
+    void IDevice::QueueEndLabel(QueueType type)
+    {
+        m_queue[(int)type]->EndLabel();
+    }
+
+    uint64_t IDevice::QueueSubmit(const SubmitInfo& submitInfo)
+    {
+        m_queue[(int)QueueType::Graphics]->Submit(submitInfo);
+
+        for (auto commandList : submitInfo.commandLists)
+        {
+            delete commandList;
+        }
+
+        return GetPendingTimelineValue();
+    }
+
+    StagingBuffer IDevice::StagingAllocate(size_t size)
     {
         return m_stagingAllocator->Allocate(size);
     }
 
-    uint64_t IDevice::Impl_UploadImage(const ImageUploadInfo& uploadInfo)
+    uint64_t IDevice::UploadImage(const ImageUploadInfo& uploadInfo)
     {
-        auto image         = m_imageOwner.Get(uploadInfo.image);
-        auto transferQueue = GetQueue(QueueType::Transfer);
+        auto image = m_imageOwner.Get(uploadInfo.image);
 
         VkImageSubresourceRange subresourceRange{
             .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -911,8 +816,8 @@ namespace RHI::Vulkan
             .layerCount     = uploadInfo.layerCount,
         };
 
-        auto _commandList = CreateCommandList(QueueType::Transfer);
-        auto commandList  = (ICommandList*)_commandList.get();
+        auto _commandList = CreateCommandList({.queueType = QueueType::Transfer});
+        auto commandList  = (ICommandList*)_commandList;
 
         commandList->Begin();
         commandList->PipelineBarrier({
@@ -966,16 +871,16 @@ namespace RHI::Vulkan
         });
         commandList->End();
 
-        return transferQueue->Submit({.commandLists = commandList});
+        return m_queue[(int)QueueType::Transfer]->Submit({.commandLists = commandList});
     }
 
-    void IDevice::Impl_CollectResources()
+    void IDevice::CollectResources()
     {
-        m_deleteQueue->DestroyQueued(false);
+        m_destroyQueue->DestroyObjects(false);
         m_stagingAllocator->ReleaseAll();
     }
 
-    void IDevice::Impl_WaitTimelineValue(uint64_t value)
+    void IDevice::WaitTimelineValue(uint64_t value)
     {
         VkSemaphoreWaitInfo waitInfo{
             .sType          = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
@@ -987,9 +892,5 @@ namespace RHI::Vulkan
         };
         vkWaitSemaphores(m_device, &waitInfo, UINT64_MAX);
     }
-
-    ////////////////////////////////////////////////////////////
-    // Interface implementation
-    ////////////////////////////////////////////////////////////
 
 } // namespace RHI::Vulkan

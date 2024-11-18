@@ -165,7 +165,6 @@ namespace RHI
     /// @brief Description of vertex binding in a pipeline.
     struct PipelineVertexBindingDesc
     {
-        uint32_t                                    binding    = 0;                                  ///< Binding index.
         uint32_t                                    stride     = 0;                                  ///< Stride between vertex data.
         PipelineVertexInputRate                     stepRate   = PipelineVertexInputRate::PerVertex; ///< Input rate.
         TL::Span<const PipelineVertexAttributeDesc> attributes = {};

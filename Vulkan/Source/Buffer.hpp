@@ -17,7 +17,7 @@ namespace RHI::Vulkan
 
     struct IBuffer : Buffer
     {
-        Allocation          allocation;
+        DeviceAllocation    allocation;
         VkBuffer            handle;
         VkBufferCreateFlags flags;
         size_t              size;
@@ -28,12 +28,4 @@ namespace RHI::Vulkan
 
         VkMemoryRequirements GetMemoryRequirements(IDevice* device) const;
     };
-
-    // struct IBufferView : BufferView
-    // {
-    //     VkBufferView handle;
-
-    //     ResultCode Init(IDevice* device, const BufferViewCreateInfo& useInfo);
-    //     void Shutdown(IDevice* device);
-    // };
 } // namespace RHI::Vulkan

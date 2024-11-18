@@ -38,13 +38,13 @@ namespace RHI::Vulkan
         }
     };
 
-    inline static TL::Flags<Access> ConvertLoadStoreOperationsToAccess(LoadStoreOperations operations)
-    {
-        TL::Flags<Access> flags = Access::None;
-        if (operations.loadOperation == LoadOperation::Load) flags |= Access::Read;
-        if (operations.storeOperation == StoreOperation::Store) flags |= Access::Write;
-        return flags;
-    }
+    // inline static TL::Flags<Access> ConvertLoadStoreOperationsToAccess(LoadStoreOperations operations)
+    // {
+    //     TL::Flags<Access> flags = Access::None;
+    //     if (operations.loadOperation == LoadOperation::Load) flags |= Access::Read;
+    //     if (operations.storeOperation == StoreOperation::Store) flags |= Access::Write;
+    //     return flags;
+    // }
 
     inline static VkPipelineStageFlags2 ConvertPipelineStageFlags(TL::Flags<PipelineStage> pipelineStages)
     {
@@ -83,189 +83,189 @@ namespace RHI::Vulkan
         return stageFlags;
     }
 
-    inline static VkAccessFlags2 GetAccessFlagsForPassAttachment(const RGImagePassAccess& imageAttachment)
-    {
-        switch (imageAttachment.usage)
-        {
-        case ImageUsage::None: return {};
-        case ImageUsage::ShaderResource:
-            {
-                if (imageAttachment.pipelineAccess == Access::ReadWrite)
-                {
-                    return VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
-                }
-                else if (imageAttachment.pipelineAccess == Access::Read)
-                {
-                    return VK_ACCESS_2_SHADER_READ_BIT;
-                }
-                else if (imageAttachment.pipelineAccess == Access::Write)
-                {
-                    return VK_ACCESS_2_SHADER_WRITE_BIT;
-                }
-                else
-                {
-                    TL_UNREACHABLE();
-                }
-            }
-            break;
-        case ImageUsage::StorageResource:
-            {
-                if (imageAttachment.pipelineAccess == Access::ReadWrite)
-                {
-                    return VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
-                }
-                else if (imageAttachment.pipelineAccess == Access::Read)
-                {
-                    return VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
-                }
-                else if (imageAttachment.pipelineAccess == Access::Write)
-                {
-                    return VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
-                }
-                else
-                {
-                    TL_UNREACHABLE();
-                }
-            }
-            break;
-        case ImageUsage::Color:
-            {
-                auto access = ConvertLoadStoreOperationsToAccess(imageAttachment.loadStoreOperation);
-                if (access == Access::ReadWrite)
-                {
-                    return VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                }
-                else if (access == Access::Read)
-                {
-                    return VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
-                }
-                else if (access == Access::Write)
-                {
-                    return VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                }
-                else
-                {
-                    TL_UNREACHABLE();
-                }
-            }
-            break;
-        case ImageUsage::Depth:
-        case ImageUsage::Stencil:
-        case ImageUsage::DepthStencil:
-            {
-                auto access = ConvertLoadStoreOperationsToAccess(imageAttachment.loadStoreOperation);
-                if (access == Access::ReadWrite)
-                {
-                    return VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-                }
-                else if (access == Access::Read)
-                {
-                    return VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-                }
-                else if (access == Access::Write)
-                {
-                    return VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-                }
-                else
-                {
-                    TL_UNREACHABLE();
-                }
-            }
-            break;
-        case ImageUsage::CopySrc:
-        case ImageUsage::CopyDst:
-            {
-                if (imageAttachment.pipelineAccess == Access::ReadWrite)
-                {
-                    return VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT;
-                }
-                else if (imageAttachment.pipelineAccess == Access::Read)
-                {
-                    return VK_ACCESS_2_TRANSFER_READ_BIT;
-                }
-                else if (imageAttachment.pipelineAccess == Access::Write)
-                {
-                    return VK_ACCESS_2_TRANSFER_WRITE_BIT;
-                }
-                else
-                {
-                    TL_UNREACHABLE();
-                }
-            }
-            break;
-        default: TL_UNREACHABLE(); return {};
-        };
-    }
+    // inline static VkAccessFlags2 GetAccessFlagsForPassAttachment(const RGImagePassAccess& imageAttachment)
+    // {
+    //     switch (imageAttachment.usage)
+    //     {
+    //     case ImageUsage::None: return {};
+    //     case ImageUsage::ShaderResource:
+    //         {
+    //             if (imageAttachment.pipelineAccess == Access::ReadWrite)
+    //             {
+    //                 return VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
+    //             }
+    //             else if (imageAttachment.pipelineAccess == Access::Read)
+    //             {
+    //                 return VK_ACCESS_2_SHADER_READ_BIT;
+    //             }
+    //             else if (imageAttachment.pipelineAccess == Access::Write)
+    //             {
+    //                 return VK_ACCESS_2_SHADER_WRITE_BIT;
+    //             }
+    //             else
+    //             {
+    //                 TL_UNREACHABLE();
+    //             }
+    //         }
+    //         break;
+    //     case ImageUsage::StorageResource:
+    //         {
+    //             if (imageAttachment.pipelineAccess == Access::ReadWrite)
+    //             {
+    //                 return VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+    //             }
+    //             else if (imageAttachment.pipelineAccess == Access::Read)
+    //             {
+    //                 return VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+    //             }
+    //             else if (imageAttachment.pipelineAccess == Access::Write)
+    //             {
+    //                 return VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+    //             }
+    //             else
+    //             {
+    //                 TL_UNREACHABLE();
+    //             }
+    //         }
+    //         break;
+    //     case ImageUsage::Color:
+    //         {
+    //             auto access = ConvertLoadStoreOperationsToAccess(imageAttachment.loadStoreOperation);
+    //             if (access == Access::ReadWrite)
+    //             {
+    //                 return VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+    //             }
+    //             else if (access == Access::Read)
+    //             {
+    //                 return VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
+    //             }
+    //             else if (access == Access::Write)
+    //             {
+    //                 return VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+    //             }
+    //             else
+    //             {
+    //                 TL_UNREACHABLE();
+    //             }
+    //         }
+    //         break;
+    //     case ImageUsage::Depth:
+    //     case ImageUsage::Stencil:
+    //     case ImageUsage::DepthStencil:
+    //         {
+    //             auto access = ConvertLoadStoreOperationsToAccess(imageAttachment.loadStoreOperation);
+    //             if (access == Access::ReadWrite)
+    //             {
+    //                 return VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    //             }
+    //             else if (access == Access::Read)
+    //             {
+    //                 return VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+    //             }
+    //             else if (access == Access::Write)
+    //             {
+    //                 return VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    //             }
+    //             else
+    //             {
+    //                 TL_UNREACHABLE();
+    //             }
+    //         }
+    //         break;
+    //     case ImageUsage::CopySrc:
+    //     case ImageUsage::CopyDst:
+    //         {
+    //             if (imageAttachment.pipelineAccess == Access::ReadWrite)
+    //             {
+    //                 return VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT;
+    //             }
+    //             else if (imageAttachment.pipelineAccess == Access::Read)
+    //             {
+    //                 return VK_ACCESS_2_TRANSFER_READ_BIT;
+    //             }
+    //             else if (imageAttachment.pipelineAccess == Access::Write)
+    //             {
+    //                 return VK_ACCESS_2_TRANSFER_WRITE_BIT;
+    //             }
+    //             else
+    //             {
+    //                 TL_UNREACHABLE();
+    //             }
+    //         }
+    //         break;
+    //     default: TL_UNREACHABLE(); return {};
+    //     };
+    // }
 
-    inline static VkImageLayout GetImageAttachmentLayout(const RGImagePassAccess& imageAttachment)
-    {
-        auto imageAspect = imageAttachment.aspect;
-        switch (imageAttachment.usage)
-        {
-        case ImageUsage::Color: return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        case ImageUsage::DepthStencil:
-            {
-                auto access = ConvertLoadStoreOperationsToAccess(imageAttachment.loadStoreOperation);
-                if (imageAspect & ImageAspect::DepthStencil)
-                {
-                    return access == Access::Read ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-                                                  : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-                }
-                else if (imageAspect & ImageAspect::Depth)
-                {
-                    return access == Access::Read ? VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL
-                                                  : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-                }
-                else if (imageAspect & ImageAspect::Stencil)
-                {
-                    return access == Access::Read ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
-                                                  : VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
-                }
+    // inline static VkImageLayout GetImageAttachmentLayout(const RGImagePassAccess& imageAttachment)
+    // {
+    //     auto imageAspect = imageAttachment.aspect;
+    //     switch (imageAttachment.usage)
+    //     {
+    //     case ImageUsage::Color: return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    //     case ImageUsage::DepthStencil:
+    //         {
+    //             auto access = ConvertLoadStoreOperationsToAccess(imageAttachment.loadStoreOperation);
+    //             if (imageAspect & ImageAspect::DepthStencil)
+    //             {
+    //                 return access == Access::Read ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+    //                                               : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    //             }
+    //             else if (imageAspect & ImageAspect::Depth)
+    //             {
+    //                 return access == Access::Read ? VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL
+    //                                               : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+    //             }
+    //             else if (imageAspect & ImageAspect::Stencil)
+    //             {
+    //                 return access == Access::Read ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
+    //                                               : VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
+    //             }
 
-                TL_UNREACHABLE();
-                return VK_IMAGE_LAYOUT_GENERAL;
-            }
-        case ImageUsage::ShaderResource:
-            {
-                bool isReadOnly = imageAttachment.pipelineAccess == Access::Read;
+    //             TL_UNREACHABLE();
+    //             return VK_IMAGE_LAYOUT_GENERAL;
+    //         }
+    //     case ImageUsage::ShaderResource:
+    //         {
+    //             bool isReadOnly = imageAttachment.pipelineAccess == Access::Read;
 
-                if (imageAspect & ImageAspect::Color)
-                {
-                    return isReadOnly ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
-                }
-                else if (imageAspect & ImageAspect::DepthStencil)
-                {
-                    return isReadOnly ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-                }
-                else if (imageAspect & ImageAspect::Depth)
-                {
-                    return isReadOnly ? VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL
-                                      : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-                }
-                else if (imageAspect & ImageAspect::Stencil)
-                {
-                    return isReadOnly ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
-                                      : VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
-                }
+    //             if (imageAspect & ImageAspect::Color)
+    //             {
+    //                 return isReadOnly ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+    //             }
+    //             else if (imageAspect & ImageAspect::DepthStencil)
+    //             {
+    //                 return isReadOnly ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    //             }
+    //             else if (imageAspect & ImageAspect::Depth)
+    //             {
+    //                 return isReadOnly ? VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL
+    //                                   : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+    //             }
+    //             else if (imageAspect & ImageAspect::Stencil)
+    //             {
+    //                 return isReadOnly ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
+    //                                   : VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
+    //             }
 
-                TL_UNREACHABLE();
-                return VK_IMAGE_LAYOUT_GENERAL;
-            }
-        case ImageUsage::CopySrc: return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        case ImageUsage::CopyDst: return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        default:                  return VK_IMAGE_LAYOUT_GENERAL;
-        }
-    }
+    //             TL_UNREACHABLE();
+    //             return VK_IMAGE_LAYOUT_GENERAL;
+    //         }
+    //     case ImageUsage::CopySrc: return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    //     case ImageUsage::CopyDst: return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    //     default:                  return VK_IMAGE_LAYOUT_GENERAL;
+    //     }
+    // }
 
-    inline static ImageStageAccess GetImageStageAccess(const RGImagePassAccess& imageAttachment)
-    {
-        return {
-            .layout           = GetImageAttachmentLayout(imageAttachment),
-            .stage            = ConvertPipelineStageFlags(imageAttachment.pipelineStages),
-            .access           = GetAccessFlagsForPassAttachment(imageAttachment),
-            .queueFamilyIndex = 0,
-        };
-    }
+    // inline static ImageStageAccess GetImageStageAccess(const RGImagePassAccess& imageAttachment)
+    // {
+    //     return {
+    //         .layout           = GetImageAttachmentLayout(imageAttachment),
+    //         .stage            = ConvertPipelineStageFlags(imageAttachment.pipelineStages),
+    //         .access           = GetAccessFlagsForPassAttachment(imageAttachment),
+    //         .queueFamilyIndex = 0,
+    //     };
+    // }
 
     inline static VkImageMemoryBarrier2 CreateImageBarrier(
         VkImage image, VkImageSubresourceRange subresourceRange, ImageStageAccess src, ImageStageAccess dst)
@@ -304,72 +304,72 @@ namespace RHI::Vulkan
         return barrier;
     }
 
-    inline static VkRenderingAttachmentInfo CreateColorAttachment(VkImageView attachmentView, LoadStoreOperations loadStoreOperations)
-    {
-        VkRenderingAttachmentInfo attachmentInfo{};
-        attachmentInfo.sType            = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-        attachmentInfo.pNext            = nullptr;
-        attachmentInfo.imageView        = attachmentView;
-        attachmentInfo.imageLayout      = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        attachmentInfo.loadOp           = ConvertLoadOp(loadStoreOperations.loadOperation);
-        attachmentInfo.storeOp          = ConvertStoreOp(loadStoreOperations.storeOperation);
-        attachmentInfo.clearValue.color = ConvertClearValue(loadStoreOperations.clearValue);
-        return attachmentInfo;
-    }
+    // inline static VkRenderingAttachmentInfo CreateColorAttachment(VkImageView attachmentView, LoadStoreOperations loadStoreOperations)
+    // {
+    //     VkRenderingAttachmentInfo attachmentInfo{};
+    //     attachmentInfo.sType            = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    //     attachmentInfo.pNext            = nullptr;
+    //     attachmentInfo.imageView        = attachmentView;
+    //     attachmentInfo.imageLayout      = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    //     attachmentInfo.loadOp           = ConvertLoadOp(loadStoreOperations.loadOperation);
+    //     attachmentInfo.storeOp          = ConvertStoreOp(loadStoreOperations.storeOperation);
+    //     attachmentInfo.clearValue.color = ConvertClearValue(loadStoreOperations.clearValue);
+    //     return attachmentInfo;
+    // }
 
-    inline static VkRenderingAttachmentInfo CreateColorResolveAttachment(
-        VkImageView colorView, VkImageView resolveView, LoadStoreOperations loadStoreOperations, VkResolveModeFlagBits resolveMode)
-    {
-        VkRenderingAttachmentInfo attachmentInfo{};
-        attachmentInfo.sType              = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-        attachmentInfo.pNext              = nullptr;
-        attachmentInfo.imageView          = colorView;
-        attachmentInfo.imageLayout        = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        attachmentInfo.resolveMode        = resolveMode;
-        attachmentInfo.resolveImageView   = resolveView;
-        attachmentInfo.resolveImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        attachmentInfo.loadOp             = ConvertLoadOp(loadStoreOperations.loadOperation);
-        attachmentInfo.storeOp            = ConvertStoreOp(loadStoreOperations.storeOperation);
-        attachmentInfo.clearValue.color   = ConvertClearValue(loadStoreOperations.clearValue);
-        return attachmentInfo;
-    }
+    // inline static VkRenderingAttachmentInfo CreateColorResolveAttachment(
+    //     VkImageView colorView, VkImageView resolveView, LoadStoreOperations loadStoreOperations, VkResolveModeFlagBits resolveMode)
+    // {
+    //     VkRenderingAttachmentInfo attachmentInfo{};
+    //     attachmentInfo.sType              = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    //     attachmentInfo.pNext              = nullptr;
+    //     attachmentInfo.imageView          = colorView;
+    //     attachmentInfo.imageLayout        = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    //     attachmentInfo.resolveMode        = resolveMode;
+    //     attachmentInfo.resolveImageView   = resolveView;
+    //     attachmentInfo.resolveImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    //     attachmentInfo.loadOp             = ConvertLoadOp(loadStoreOperations.loadOperation);
+    //     attachmentInfo.storeOp            = ConvertStoreOp(loadStoreOperations.storeOperation);
+    //     attachmentInfo.clearValue.color   = ConvertClearValue(loadStoreOperations.clearValue);
+    //     return attachmentInfo;
+    // }
 
-    inline static VkRenderingAttachmentInfo CreateDepthAttachment(VkImageView depthView, LoadStoreOperations loadStoreOperations)
-    {
-        VkRenderingAttachmentInfo attachmentInfo{};
-        attachmentInfo.sType                   = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-        attachmentInfo.pNext                   = nullptr;
-        attachmentInfo.imageView               = depthView;
-        attachmentInfo.imageLayout             = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-        attachmentInfo.loadOp                  = ConvertLoadOp(loadStoreOperations.loadOperation);
-        attachmentInfo.storeOp                 = ConvertStoreOp(loadStoreOperations.storeOperation);
-        attachmentInfo.clearValue.depthStencil = ConvertDepthStencilValue(loadStoreOperations.clearValue.depthStencil);
-        return attachmentInfo;
-    }
+    // inline static VkRenderingAttachmentInfo CreateDepthAttachment(VkImageView depthView, LoadStoreOperations loadStoreOperations)
+    // {
+    //     VkRenderingAttachmentInfo attachmentInfo{};
+    //     attachmentInfo.sType                   = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    //     attachmentInfo.pNext                   = nullptr;
+    //     attachmentInfo.imageView               = depthView;
+    //     attachmentInfo.imageLayout             = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+    //     attachmentInfo.loadOp                  = ConvertLoadOp(loadStoreOperations.loadOperation);
+    //     attachmentInfo.storeOp                 = ConvertStoreOp(loadStoreOperations.storeOperation);
+    //     attachmentInfo.clearValue.depthStencil = ConvertDepthStencilValue(loadStoreOperations.clearValue.depthStencil);
+    //     return attachmentInfo;
+    // }
 
-    inline static VkRenderingAttachmentInfo CreateStencilAttachment(VkImageView depthView, LoadStoreOperations loadStoreOperations)
-    {
-        VkRenderingAttachmentInfo attachmentInfo{};
-        attachmentInfo.sType                   = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-        attachmentInfo.pNext                   = nullptr;
-        attachmentInfo.imageView               = depthView;
-        attachmentInfo.imageLayout             = VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
-        attachmentInfo.loadOp                  = ConvertLoadOp(loadStoreOperations.loadOperation);
-        attachmentInfo.storeOp                 = ConvertStoreOp(loadStoreOperations.storeOperation);
-        attachmentInfo.clearValue.depthStencil = ConvertDepthStencilValue(loadStoreOperations.clearValue.depthStencil);
-        return attachmentInfo;
-    }
+    // inline static VkRenderingAttachmentInfo CreateStencilAttachment(VkImageView depthView, LoadStoreOperations loadStoreOperations)
+    // {
+    //     VkRenderingAttachmentInfo attachmentInfo{};
+    //     attachmentInfo.sType                   = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    //     attachmentInfo.pNext                   = nullptr;
+    //     attachmentInfo.imageView               = depthView;
+    //     attachmentInfo.imageLayout             = VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
+    //     attachmentInfo.loadOp                  = ConvertLoadOp(loadStoreOperations.loadOperation);
+    //     attachmentInfo.storeOp                 = ConvertStoreOp(loadStoreOperations.storeOperation);
+    //     attachmentInfo.clearValue.depthStencil = ConvertDepthStencilValue(loadStoreOperations.clearValue.depthStencil);
+    //     return attachmentInfo;
+    // }
 
-    inline static VkRenderingAttachmentInfo CreateRenderingAttachment(
-        VkImageView attachmentView, ImageUsage usage, LoadStoreOperations loadStoreOperations)
-    {
-        switch (usage)
-        {
-        case ImageUsage::Color:        return CreateColorAttachment(attachmentView, loadStoreOperations);
-        case ImageUsage::Depth:        return CreateDepthAttachment(attachmentView, loadStoreOperations);
-        case ImageUsage::Stencil:      return CreateStencilAttachment(attachmentView, loadStoreOperations);
-        case ImageUsage::DepthStencil: TL_UNREACHABLE(); return {};
-        default:                       TL_UNREACHABLE(); return {};
-        };
-    }
+    // inline static VkRenderingAttachmentInfo CreateRenderingAttachment(
+    //     VkImageView attachmentView, ImageUsage usage, LoadStoreOperations loadStoreOperations)
+    // {
+    //     switch (usage)
+    //     {
+    //     case ImageUsage::Color:        return CreateColorAttachment(attachmentView, loadStoreOperations);
+    //     case ImageUsage::Depth:        return CreateDepthAttachment(attachmentView, loadStoreOperations);
+    //     case ImageUsage::Stencil:      return CreateStencilAttachment(attachmentView, loadStoreOperations);
+    //     case ImageUsage::DepthStencil: TL_UNREACHABLE(); return {};
+    //     default:                       TL_UNREACHABLE(); return {};
+    //     };
+    // }
 } // namespace RHI::Vulkan

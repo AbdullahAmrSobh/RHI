@@ -6,7 +6,6 @@
 
 namespace RHI
 {
-    class Pass;
     class CommandList;
 
     enum class QueueType
@@ -24,17 +23,5 @@ namespace RHI
         TL::Span<CommandList* const> commandLists      = {};
         class Swapchain*             swapchainToWait   = nullptr;
         class Swapchain*             swapchainToSignal = nullptr;
-    };
-
-    class Queue
-    {
-    public:
-        virtual ~Queue()                                              = default;
-
-        virtual void     BeginLabel(const char* name, float color[4]) = 0;
-
-        virtual void     EndLabel()                                   = 0;
-
-        virtual uint64_t Submit(const SubmitInfo& submitInfo)         = 0;
     };
 } // namespace RHI

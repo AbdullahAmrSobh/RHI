@@ -38,7 +38,6 @@ namespace RHI
         TL::Flags<PipelineStage> pipelineStages;
         RGImagePassAccess*       next;
         RGImagePassAccess*       prev;
-        LoadStoreOperations      loadStoreOperation;
         TL::Flags<ImageAspect>   aspect;
     };
 

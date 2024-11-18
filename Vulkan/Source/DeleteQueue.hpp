@@ -22,10 +22,10 @@ namespace RHI::Vulkan
         void       Shutdown();
 
         // Enqueue a resource destruction lambda with a frame index
-        void DestroyObject(DeleteFunc deleteFunc, uint64_t frameIndex);
+        void Push(uint64_t frameIndex, DeleteFunc&& deleteFunc);
 
         // Executes and clears destruction functions when frameIndex conditions are met
-        void DestroyQueued(bool force);
+        void DestroyObjects(bool force);
 
     private:
         struct PendingDeletion
@@ -36,6 +36,5 @@ namespace RHI::Vulkan
 
         IDevice*                     m_device;
         std::vector<PendingDeletion> m_destructionQueue;
-        uint64_t                     GetTimelineGpuValue() const;
     };
 } // namespace RHI::Vulkan

@@ -3,12 +3,9 @@
 
 namespace RHI::Vulkan
 {
-    struct Allocation
+    struct DeviceAllocation
     {
-        VmaAllocation        handle;
-        VmaAllocationInfo    info;
-        size_t               offset;
-        VmaVirtualBlock      virtualBlock;
-        VmaVirtualAllocation virtualHandle;
+        VmaAllocation     handle;
+        VmaAllocationInfo info;
     };
 } // namespace RHI::Vulkan

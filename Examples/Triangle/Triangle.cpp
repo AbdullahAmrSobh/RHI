@@ -93,8 +93,6 @@ inline static BufferView CreateBufferView(RHI::Device& device, size_t size, TL::
     return BufferView{
         .buffer = device
                       .CreateBuffer({
-                          .name       = nullptr,
-                          .heapType   = RHI::MemoryType::GPUShared,
                           .usageFlags = usage,
                           .byteSize   = size,
                       })
@@ -200,7 +198,7 @@ inline static Mesh Load(RHI::Device& device, const fastgltf::Asset& asset, const
     return out_mesh;
 }
 
-inline static RHI::Handle<RHI::Image> LoadTexture(RHI::Device& device, fastgltf::Asset& asset, fastgltf::Image& image)
+inline static RHI::Handle<RHI::Image> LoadTexture(RHI::Device& device, const fastgltf::Asset& asset, const fastgltf::Image& image)
 {
     auto format = [](int nrChannels) -> RHI::Format
     {
@@ -223,7 +221,7 @@ inline static RHI::Handle<RHI::Image> LoadTexture(RHI::Device& device, fastgltf:
                 int width, height, nrChannels;
                 const std::string path(filePath.uri.path().begin(), filePath.uri.path().end()); // Thanks C++.
                 unsigned char* data = stbi_load(path.c_str(), &width, &height, &nrChannels, 4);
-                out_image = RHI::Utils::CreateImageWithContent(device, {
+                out_image = RHI::CreateImageWithContent(device, {
                     .name = nullptr, // TODO: Add name later
                     .usageFlags = RHI::ImageUsage::ShaderResource,
                     .type = RHI::ImageType::Image2D,
@@ -239,7 +237,7 @@ inline static RHI::Handle<RHI::Image> LoadTexture(RHI::Device& device, fastgltf:
                     static_cast<int>(vector.bytes.size()),
                     &width, &height, &nrChannels, 4
                 );
-                out_image = RHI::Utils::CreateImageWithContent(device, {
+                out_image = RHI::CreateImageWithContent(device, {
                     .name = nullptr, // TODO: Add name later
                     .usageFlags = RHI::ImageUsage::ShaderResource,
                     .type = RHI::ImageType::Image2D,
@@ -266,7 +264,7 @@ inline static RHI::Handle<RHI::Image> LoadTexture(RHI::Device& device, fastgltf:
                                 static_cast<int>(bufferView.byteLength),
                                 &width, &height, &nrChannels, 4
                             );
-                            out_image = RHI::Utils::CreateImageWithContent(device, {
+                            out_image = RHI::CreateImageWithContent(device, {
                                 .name = nullptr, // TODO: Add name later
                                 .usageFlags = RHI::ImageUsage::ShaderResource,
                                 .type = RHI::ImageType::Image2D,
@@ -330,7 +328,6 @@ public:
 
     RHI::Device*    m_device;
     RHI::Swapchain* m_swapchain;
-    RHI::Queue*     m_queue;
 
     RHI::RenderGraph*         m_renderGraph;
     RHI::Handle<RHI::Pass>    m_mainPass;
@@ -369,9 +366,7 @@ public:
             .win32Window   = {m_window->GetNativeHandle()},
         };
 
-        m_swapchain = m_device->CreateSwapchain(swapchainInfo).release();
-
-        m_queue = m_device->GetQueue(RHI::QueueType::Graphics);
+        m_swapchain = m_device->CreateSwapchain(swapchainInfo);
     }
 
     void ShutdownContextAndSwapchain()
@@ -386,7 +381,7 @@ public:
         auto                 spvBlock = TL::ReadBinaryFile("./Shaders/Basic.spv");
         spv.resize(spvBlock.size / 4);
         memcpy(spv.data(), spvBlock.ptr, spvBlock.size);
-        auto shaderModule = m_device->CreateShaderModule(spv);
+        auto shaderModule = m_device->CreateShaderModule({.code = spv});
         TL::Allocator::Release(spvBlock, alignof(char));
 
         RHI::BindGroupLayoutCreateInfo bindGroupLayoutCI{
@@ -416,17 +411,14 @@ public:
             .layout             = m_pipelineLayout,
             .vertexBufferBindings{
                 {
-                    .binding    = 0,
                     .stride     = sizeof(glm::vec3),
                     .attributes = {{.format = RHI::Format::RGB32_FLOAT}},
                 },
                 {
-                    .binding    = 1,
                     .stride     = sizeof(glm::vec3),
                     .attributes = {{.format = RHI::Format::RGBA32_FLOAT}},
                 },
                 {
-                    .binding    = 2,
                     .stride     = sizeof(glm::vec2),
                     .attributes = {{.format = RHI::Format::RG32_FLOAT}},
                 },
@@ -495,7 +487,7 @@ public:
 
         m_renderGraph->PassUseImage(
             m_mainPass,
-            m_colorAttachment,
+            m_depthAttachment,
             RHI::ImageUsage::Depth,
             RHI::PipelineStage::LateFragmentTests | RHI::PipelineStage::EarlyFragmentTests,
             RHI::Access::ReadWrite);
@@ -509,6 +501,8 @@ public:
     }
 
     TL::Vector<glm::mat4> matrixList{};
+
+    TL::Vector<RHI::Handle<RHI::Image>> m_sceneTextures{};
 
     void OnInit() override
     {
@@ -551,6 +545,11 @@ public:
         {
             // m_meshIndexList[i];
             m_perDrawUB.Get(i)->modelToWorldMatrix = matrixList[i];
+        }
+
+        for (const auto& image : asset.images)
+        {
+            m_sceneTextures.push_back(LoadTexture(*m_device, asset, image));
         }
 
         for (int i = 0; i < matrixList.size(); i++)
@@ -602,20 +601,24 @@ public:
         auto [width, height] = m_window->GetWindowSize();
         m_renderGraph->PassResize(m_mainPass, {width, height});
 
-        auto commandList = m_device->CreateCommandList(RHI::QueueType::Graphics);
+        auto commandList = m_device->CreateCommandList({.queueType = RHI::QueueType::Graphics});
 
         commandList->Begin();
         commandList->BeginRenderPass({
             .renderGraph = m_renderGraph,
-            .renderArea  = {0, 0, width, height},
             .pass        = m_mainPass,
-            .loadStoreOperations{
+            .renderArea  = {0, 0, width, height},
+            .colorAttachments =
                 {
-                    .clearValue     = {clearValue},
-                    .loadOperation  = RHI::LoadOperation::Discard,
-                    .storeOperation = RHI::StoreOperation::Store,
+                    RHI::ColorAttachmentInfo{
+                        .attachment = m_renderGraph->GetImage(m_colorAttachment),
+                        .clearValue = {clearValue},
+                    },
                 },
-            },
+            .depthStenciAttachments =
+                RHI::DepthAttachmentInfo{
+                    .attachment = m_renderGraph->GetImage(m_depthAttachment),
+                },
         });
         commandList->SetViewport({
             .offsetX  = 0.0f,
@@ -642,10 +645,10 @@ public:
         commandList->EndRenderPass();
         commandList->End();
 
-        previousSubmitValue = m_queue->Submit({
+        previousSubmitValue = m_device->QueueSubmit({
             .waitTimelineValue = previousSubmitValue,
             .waitPipelineStage = RHI::PipelineStage::TopOfPipe,
-            .commandLists      = commandList.get(),
+            .commandLists      = commandList,
             .swapchainToWait   = m_swapchain,
             .swapchainToSignal = m_swapchain,
         });

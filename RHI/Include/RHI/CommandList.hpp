@@ -1,6 +1,11 @@
 #pragma once
 
 #include "RHI/RGPass.hpp"
+#include "RHI/Definitions.hpp"
+#include "RHI/Queue.hpp"
+#include "RHI/Buffer.hpp"
+#include "RHI/Image.hpp"
+#include "RHI/BindGroup.hpp"
 
 #include <TL/Containers.hpp>
 #include <TL/Span.hpp>
@@ -45,10 +50,11 @@ namespace RHI
     /// @brief Contains information needed to begin recording commands in a command list.
     struct RenderPassBeginInfo
     {
-        RenderGraph*                        renderGraph; ///< Pointer to the render graph.
-        Scissor                             renderArea;
-        Handle<Pass>                        pass;                ///< Handle to the pass.
-        TL::Span<const LoadStoreOperations> loadStoreOperations; ///< Span of load/store operations.
+        RenderGraph*                        renderGraph            = nullptr;    ///< Pointer to the render graph.
+        Handle<Pass>                        pass                   = NullHandle; ///< Handle to the pass.
+        Scissor                             renderArea             = {};
+        TL::Span<const ColorAttachmentInfo> colorAttachments       = {};
+        TL::Optional<DepthAttachmentInfo>   depthStenciAttachments = {};
     };
 
     /// @brief Contains information needed to copy a buffer.
@@ -146,6 +152,12 @@ namespace RHI
         Handle<Image>             dstImage = NullHandle;
         SamplerFilter             filter   = SamplerFilter::Linear;
         TL::Span<ImageBlitRegion> regions  = {};
+    };
+
+    struct CommandListCreateInfo
+    {
+        const char* name      = nullptr;
+        QueueType   queueType = QueueType::Graphics;
     };
 
     /// @brief Represents a list of commands to be executed.

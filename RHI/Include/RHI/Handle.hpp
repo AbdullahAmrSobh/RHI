@@ -1,11 +1,13 @@
 #pragma once
 
+#include "RHI/Result.hpp"
 #include <TL/Assert.hpp>
 #include <TL/Containers.hpp>
 #include <TL/Stacktrace.hpp>
 
 #include <type_traits>
 #include <format>
+#include <utility>
 
 #define RHI_DECLARE_OPAQUE_RESOURCE(name) \
     struct name                           \
@@ -102,6 +104,21 @@ namespace RHI
 
         // Removes a resource from the owner
         inline void             Release(Handle<Resource> handle);
+
+        template<typename... Args>
+        inline Result<HandleType> Create(Args&&... args)
+        {
+            Resource resource{};
+            auto     result = resource.Init(std::forward<Args>(args)...);
+            if (IsSuccess(result)) return Emplace(std::move(resource));
+            return result;
+        }
+
+        template<typename... Args>
+        void Destroy(HandleType handle, Args&&... args)
+        {
+            Get(handle)->Shutdown(std::forward<Args>(args)...);
+        }
 
     private:
         TL::Vector<Resource>                         m_resources;

@@ -43,7 +43,7 @@ namespace RHI::Vulkan
 
     struct IImage : Image
     {
-        Allocation            allocation;
+        DeviceAllocation      allocation;
         VkImage               handle;
         VkImageView           viewHandle;
         ImageSize3D           size;

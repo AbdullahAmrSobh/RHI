@@ -20,39 +20,29 @@ namespace RHI::Vulkan
     void DeleteQueue::Shutdown()
     {
         vkDeviceWaitIdle(m_device->m_device);
-        DestroyQueued(true);
+        DestroyObjects(true);
         TL_ASSERT(m_destructionQueue.empty());
     }
 
-    void DeleteQueue::DestroyObject(DeleteFunc deleteFunc, uint64_t frameIndex)
+    void DeleteQueue::Push(uint64_t frameIndex, DeleteFunc&& deleteFunc)
     {
         m_destructionQueue.push_back({frameIndex, std::move(deleteFunc)});
     }
 
-    void DeleteQueue::DestroyQueued(bool force)
+    void DeleteQueue::DestroyObjects(bool force)
     {
-        uint64_t currentTimelineValue = GetTimelineGpuValue();
-
-        // Iterate over the queue and execute deletions where frameIndex condition is met
-        auto it = m_destructionQueue.begin();
-        while (it != m_destructionQueue.end())
+        uint64_t currentTimelineValue = m_device->GetTimelineValue();
+        for (auto object = m_destructionQueue.begin(); object != m_destructionQueue.end(); object++)
         {
-            if (force || it->frameIndex <= currentTimelineValue)
+            if (object->frameIndex < currentTimelineValue || force)
             {
-                it->deleteFunc(m_device);          // Invoke the deletion lambda
-                it = m_destructionQueue.erase(it); // Remove after execution
+                object->deleteFunc(m_device);
             }
             else
             {
-                ++it; // Move to the next item if the condition is not met
+                m_destructionQueue.erase(m_destructionQueue.begin(), object);
+                break;
             }
         }
-    }
-
-    uint64_t DeleteQueue::GetTimelineGpuValue() const
-    {
-        uint64_t timelineValue = 0;
-        vkGetSemaphoreCounterValue(m_device->m_device, m_device->GetTimelineSemaphore(), &timelineValue);
-        return timelineValue;
     }
 } // namespace RHI::Vulkan

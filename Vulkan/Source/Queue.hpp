@@ -12,7 +12,7 @@ namespace RHI::Vulkan
     class IDevice;
     class ICommandList;
 
-    class IQueue final : public Queue
+    class IQueue
     {
     public:
         IQueue();
@@ -25,11 +25,11 @@ namespace RHI::Vulkan
 
         inline uint32_t GetFamilyIndex() const { return m_familyIndex; }
 
-        void BeginLabel(const char* name, float color[4]) override;
+        void BeginLabel(const char* name, float color[4]);
 
-        void EndLabel() override;
+        void EndLabel();
 
-        uint64_t Submit(const SubmitInfo& submitInfo) override;
+        uint64_t Submit(const SubmitInfo& submitInfo);
 
     private:
         IDevice* m_device;

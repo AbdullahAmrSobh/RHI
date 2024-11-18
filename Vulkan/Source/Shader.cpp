@@ -6,7 +6,10 @@ namespace RHI::Vulkan
 {
     IShaderModule::IShaderModule() = default;
 
-    IShaderModule::~IShaderModule() = default;
+    IShaderModule::~IShaderModule()
+    {
+        Shutdown();
+    }
 
     ResultCode IShaderModule::Init(IDevice* device, TL::Span<const uint32_t> shaderBlob)
     {
