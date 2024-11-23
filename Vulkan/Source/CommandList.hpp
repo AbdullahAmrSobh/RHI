@@ -24,14 +24,6 @@ namespace RHI::Vulkan
         TL::Vector<VkImageMemoryBarrier2>  imageBarriers  = {};
     };
 
-    // TODO: remove
-    struct PipelineBarriers2
-    {
-        TL::Span<const VkMemoryBarrier2>       memoryBarriers = {};
-        TL::Span<const VkBufferMemoryBarrier2> bufferBarriers = {};
-        TL::Span<const VkImageMemoryBarrier2>  imageBarriers  = {};
-    };
-
     VkImageSubresourceLayers ConvertSubresourceLayer(const ImageSubresourceLayers& subresource);
 
     VkResolveModeFlagBits ConvertResolveMode(ResolveMode resolveMode);

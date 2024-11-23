@@ -512,7 +512,7 @@ public:
         m_sceneGlobalUB.Init(*m_device);
         m_perDrawUB.Init(*m_device, 512);
 
-        auto asset = LoadAsset(m_launchSettings.sceneFileLocation);
+        auto asset = LoadAsset(GetLaunchSettings().sceneFileLocation);
         for (auto meshAsset : asset.meshes)
         {
             m_meshes.push_back(Load(*m_device, asset, meshAsset));
@@ -537,7 +537,7 @@ public:
             else if (node.meshIndex.has_value())
             {
                 matrixList.push_back(matrix);
-                m_meshIndexList.push_back(node.meshIndex.value());
+                m_meshIndexList.push_back((uint32_t)node.meshIndex.value());
             }
         });
 

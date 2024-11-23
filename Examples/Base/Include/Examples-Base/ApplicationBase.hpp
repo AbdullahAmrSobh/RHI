@@ -14,14 +14,17 @@ namespace Examples
 
     class ApplicationBase
     {
+        template<typename ExampleType>
+        friend int Entry(TL::Span<const char*> args);
+
     public:
         ApplicationBase(const char* name, uint32_t windowWidth, uint32_t windowHeight);
         virtual ~ApplicationBase();
 
-        template<typename ExampleType>
-        friend int Entry(TL::Span<const char*> args);
-
-        CommandLine::LaunchSettings m_launchSettings;
+        const CommandLine::LaunchSettings GetLaunchSettings() const
+        {
+            return m_launchSettings;
+        }
 
     private:
         void Init();
@@ -44,5 +47,8 @@ namespace Examples
 
     protected:
         TL::Ptr<Window> m_window;
+
+    private:
+        CommandLine::LaunchSettings m_launchSettings;
     };
 } // namespace Examples

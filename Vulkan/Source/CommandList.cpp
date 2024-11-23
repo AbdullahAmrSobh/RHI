@@ -33,6 +33,7 @@ namespace RHI::Vulkan
         case ResolveMode::Max:  return VK_RESOLVE_MODE_MAX_BIT;
         case ResolveMode::Avg:  return VK_RESOLVE_MODE_AVERAGE_BIT;
         }
+        return {};
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -54,6 +55,8 @@ namespace RHI::Vulkan
         TL::Span<const VkBufferMemoryBarrier2> bufferBarriers,
         TL::Span<const VkImageMemoryBarrier2>  imageBarriers)
     {
+        ZoneScoped;
+
         if (memoryBarriers.empty() && bufferBarriers.empty() && imageBarriers.empty()) return;
 
         VkDependencyInfo dependencyInfo{
@@ -73,6 +76,8 @@ namespace RHI::Vulkan
     void ICommandList::BindShaderBindGroups(
         VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups)
     {
+        ZoneScoped;
+
         if (bindGroups.empty()) return;
 
         TL::Vector<VkDescriptorSet> descriptorSets;
@@ -126,57 +131,57 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto renderGraph = beginInfo.renderGraph;
-        auto pass        = renderGraph->m_passPool.Get(beginInfo.pass);
-        for (uint32_t i = 0; i < pass->m_imageAttachments.size(); i++)
-        {
-            auto& node         = pass->m_imageAttachments[i];
-            auto  attachment   = renderGraph->m_rgImagesPool.Get(node->image);
-            auto  subresources = VkImageSubresourceRange{
-                /// @fixme: deduce from actual attachment
-                 .aspectMask = static_cast<VkImageAspectFlags>(
-                    ((attachment->info.usageFlags & ImageUsage::DepthStencil) ? VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT
-                                                                               : VK_IMAGE_ASPECT_COLOR_BIT)),
-                 .baseMipLevel   = 0,
-                 .levelCount     = VK_REMAINING_MIP_LEVELS,
-                 .baseArrayLayer = 0,
-                 .layerCount     = VK_REMAINING_ARRAY_LAYERS,
-            };
+        // auto renderGraph = beginInfo.renderGraph;
+        // auto pass        = renderGraph->m_passPool.Get(beginInfo.pass);
+        // for (uint32_t i = 0; i < pass->m_imageAttachments.size(); i++)
+        // {
+        //     auto& node         = pass->m_imageAttachments[i];
+        //     auto  attachment   = renderGraph->m_imagePools.Get(node->image);
+        //     auto  subresources = VkImageSubresourceRange{
+        //         /// @fixme: deduce from actual attachment
+        //          .aspectMask = static_cast<VkImageAspectFlags>(
+        //             ((attachment->info.usageFlags & ImageUsage::DepthStencil) ? VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT
+        //                                                                        : VK_IMAGE_ASPECT_COLOR_BIT)),
+        //          .baseMipLevel   = 0,
+        //          .levelCount     = VK_REMAINING_MIP_LEVELS,
+        //          .baseArrayLayer = 0,
+        //          .layerCount     = VK_REMAINING_ARRAY_LAYERS,
+        //     };
 
-            auto imageHandle = renderGraph->GetImage(node->image);
-            auto image       = m_device->m_imageOwner.Get(imageHandle);
-            auto swapchain   = (ISwapchain*)attachment->swapchain;
+        //     auto imageHandle = renderGraph->GetImage(node->image);
+        //     auto image       = m_device->m_imageOwner.Get(imageHandle);
+        //     auto swapchain   = (ISwapchain*)attachment->swapchain;
 
-            // if (node->prev)
-            // {
-            //     auto srcState = GetImageStageAccess(*node->prev);
-            //     auto dstState = GetImageStageAccess(*node);
-            //     auto barrier  = CreateImageBarrier(image->handle, subresources, srcState, dstState);
-            //     m_barriers[BarrierSlot::Priloge].imageBarriers.push_back(barrier);
-            // }
-            // else
-            {
-                // auto dstState = GetImageStageAccess(*node);
-                auto dstState =
-                    ImageStageAccess{VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0};
-                if (image->subresources.imageAspects & ImageAspect::Depth) dstState.layout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-                auto srcState = ImageStageAccess{VK_IMAGE_LAYOUT_UNDEFINED, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0};
-                auto barrier  = CreateImageBarrier(image->handle, subresources, srcState, dstState);
-                m_barriers[BarrierSlot::Priloge].imageBarriers.push_back(barrier);
-            }
+        //     // if (node->prev)
+        //     // {
+        //     //     auto srcState = GetImageStageAccess(*node->prev);
+        //     //     auto dstState = GetImageStageAccess(*node);
+        //     //     auto barrier  = CreateImageBarrier(image->handle, subresources, srcState, dstState);
+        //     //     m_barriers[BarrierSlot::Priloge].imageBarriers.push_back(barrier);
+        //     // }
+        //     // else
+        //     {
+        //         // auto dstState = GetImageStageAccess(*node);
+        //         auto dstState =
+        //             ImageStageAccess{VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0};
+        //         if (image->subresources.imageAspects & ImageAspect::Depth) dstState.layout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+        //         auto srcState = ImageStageAccess{VK_IMAGE_LAYOUT_UNDEFINED, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0};
+        //         auto barrier  = CreateImageBarrier(image->handle, subresources, srcState, dstState);
+        //         m_barriers[BarrierSlot::Priloge].imageBarriers.push_back(barrier);
+        //     }
 
-            if (node->next == nullptr && swapchain != nullptr)
-            {
-                // auto srcState = GetImageStageAccess(*node);
-                auto srcState =
-                    ImageStageAccess{VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0};
-                if (image->subresources.imageAspects & ImageAspect::Depth) srcState.layout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-                auto dstState =
-                    ImageStageAccess{VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, VK_ACCESS_2_NONE, 0};
-                auto barrier = CreateImageBarrier(image->handle, subresources, srcState, dstState);
-                m_barriers[BarrierSlot::Epiloge].imageBarriers.push_back(barrier);
-            }
-        }
+        //     if (node->next == nullptr && swapchain != nullptr)
+        //     {
+        //         // auto srcState = GetImageStageAccess(*node);
+        //         auto srcState =
+        //             ImageStageAccess{VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0};
+        //         if (image->subresources.imageAspects & ImageAspect::Depth) srcState.layout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+        //         auto dstState =
+        //             ImageStageAccess{VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, VK_ACCESS_2_NONE, 0};
+        //         auto barrier = CreateImageBarrier(image->handle, subresources, srcState, dstState);
+        //         m_barriers[BarrierSlot::Epiloge].imageBarriers.push_back(barrier);
+        //     }
+        // }
 
         PipelineBarrier(
             m_barriers[BarrierSlot::Priloge].memoryBarriers,
@@ -284,6 +289,8 @@ namespace RHI::Vulkan
 
     void ICommandList::EndRenderPass()
     {
+        ZoneScoped;
+
         vkCmdEndRendering(m_commandBuffer);
 
         PipelineBarrier(
@@ -421,6 +428,8 @@ namespace RHI::Vulkan
 
     void ICommandList::BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> vertexBuffers)
     {
+        ZoneScoped;
+
         TL::Vector<VkBuffer>     buffers;
         TL::Vector<VkDeviceSize> offsets;
         for (auto bindingInfo : vertexBuffers)
@@ -435,6 +444,8 @@ namespace RHI::Vulkan
 
     void ICommandList::BindIndexBuffer(const BufferBindingInfo& indexBuffer, IndexType indexType)
     {
+        ZoneScoped;
+
         auto buffer = m_device->m_bufferOwner.Get(indexBuffer.buffer);
         vkCmdBindIndexBuffer(
             m_commandBuffer,

@@ -38,7 +38,6 @@ namespace RHI
         TL::Flags<PipelineStage> pipelineStages;
         RGImagePassAccess*       next;
         RGImagePassAccess*       prev;
-        TL::Flags<ImageAspect>   aspect;
     };
 
     struct RGBufferPassAccess
@@ -58,7 +57,6 @@ namespace RHI
         TL::String         name;
         Handle<Image>      resource;
         Swapchain*         swapchain;
-        ImageCreateInfo    info;
         RGImagePassAccess* first;
         RGImagePassAccess* last;
     };
@@ -67,7 +65,6 @@ namespace RHI
     {
         TL::String          name;
         Handle<Buffer>      resource;
-        BufferCreateInfo    info;
         RGBufferPassAccess* first;
         RGBufferPassAccess* last;
     };

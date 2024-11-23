@@ -257,7 +257,7 @@ namespace RHI
     template<typename T>
     uint32_t HandlePool<T>::ReportLiveResourcesCount() const
     {
-        return m_liveResources.size();
+        return (uint32_t)m_liveResources.size();
     }
 
 } // namespace RHI

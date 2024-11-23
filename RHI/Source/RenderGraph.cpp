@@ -71,7 +71,6 @@ namespace RHI
     {
         RGImage attachment{};
         attachment.name     = createInfo.name;
-        attachment.info     = createInfo;
         attachment.resource = m_device->CreateImage(createInfo).GetValue();
         auto handle         = m_rgImagesPool.Emplace(std::move(attachment));
         m_images.push_back(handle);
@@ -83,7 +82,6 @@ namespace RHI
     {
         RGBuffer attachment{};
         attachment.name     = createInfo.name;
-        attachment.info     = createInfo;
         attachment.resource = m_device->CreateBuffer(createInfo).GetValue();
         auto handle         = m_rgBufferPool.Emplace(std::move(attachment));
         m_buffers.push_back(handle);
@@ -120,12 +118,10 @@ namespace RHI
         pass->m_imageAttachments.push_back(passAttachment);
         if (usage & ImageUsage::DepthStencil)
         {
-            passAttachment->aspect         = ImageAspect::DepthStencil;
             pass->m_depthStencilAttachment = passAttachment;
         }
         else if (usage & ImageUsage::Color)
         {
-            passAttachment->aspect = ImageAspect::Color;
             pass->m_colorAttachments.push_back(passAttachment);
         }
     }

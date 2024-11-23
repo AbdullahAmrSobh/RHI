@@ -26,7 +26,7 @@
   SOFTWARE.
 ]]
 
-cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.19 FATAL_ERROR) # NOTE(Abdullah): changed vergion to 3.19 from 3.14
 
 # Initialize logging prefix
 if(NOT CPM_INDENT)
