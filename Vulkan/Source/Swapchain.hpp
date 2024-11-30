@@ -34,7 +34,7 @@ namespace RHI::Vulkan
         VkResult InitSwapchain();
 
     private:
-        IDevice*               m_device;
+        IDevice*       m_device;
         VkSwapchainKHR m_swapchain;
         VkSurfaceKHR   m_surface;
         VkResult       m_lastPresentResult;

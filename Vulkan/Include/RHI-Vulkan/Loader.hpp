@@ -13,5 +13,5 @@ namespace RHI
     /// @return return a vulkan implementation of RHI device.
     RHI_Vulkan_EXPORT Device* CreateVulkanDevice(const ApplicationInfo& appInfo);
 
-    RHI_Vulkan_EXPORT void    DestroyVulkanDevice(Device* device);
+    RHI_Vulkan_EXPORT void DestroyVulkanDevice(Device* device);
 } // namespace RHI

@@ -289,7 +289,7 @@ namespace RHI::Vulkan
             {
                 m_pfn.m_vkCreateDebugUtilsMessengerEXT  = VULKAN_INSTANCE_FUNC_LOAD(m_instance, vkCreateDebugUtilsMessengerEXT);
                 m_pfn.m_vkDestroyDebugUtilsMessengerEXT = VULKAN_INSTANCE_FUNC_LOAD(m_instance, vkDestroyDebugUtilsMessengerEXT);
-                result = m_pfn.m_vkCreateDebugUtilsMessengerEXT(m_instance, &debugUtilsCI, nullptr, &m_debugUtilsMessenger);
+                result                                  = m_pfn.m_vkCreateDebugUtilsMessengerEXT(m_instance, &debugUtilsCI, nullptr, &m_debugUtilsMessenger);
                 if (result != VK_SUCCESS) return ConvertResult(result);
             }
 #endif
@@ -451,6 +451,10 @@ namespace RHI::Vulkan
             m_pfn.m_vkCmdEndConditionalRenderingEXT   = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdEndConditionalRenderingEXT);
 
             // return result;
+        }
+
+        {
+            m_limits = TL::CreatePtr<DeviceLimits>();
         }
 
         ResultCode resultCode;
@@ -791,10 +795,10 @@ namespace RHI::Vulkan
     {
         m_queue[(int)QueueType::Graphics]->Submit(submitInfo);
 
-        for (auto commandList : submitInfo.commandLists)
-        {
-            delete commandList;
-        }
+        // for (auto commandList : submitInfo.commandLists)
+        // {
+        //     delete commandList;
+        // }
 
         return GetPendingTimelineValue();
     }

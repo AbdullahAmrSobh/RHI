@@ -1,7 +1,7 @@
 #pragma once
 
 #include "RHI/Handle.hpp"
-
+#include "RHI/Common.hpp"
 #include "RHI/PipelineAccess.hpp"
 #include "RHI/RGResources.hpp"
 #include "RHI/RGPass.hpp"
@@ -24,9 +24,7 @@ namespace RHI
     class RHI_EXPORT RenderGraph final
     {
     public:
-        RenderGraph(Device* device);
-        RenderGraph(RenderGraph&&) = default;
-        ~RenderGraph();
+        RHI_INTERFACE_BOILERPLATE(RenderGraph);
 
         /// @brief Creates a new pass with the specified creation info.
         ///

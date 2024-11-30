@@ -1,7 +1,7 @@
 #pragma once
 
-#include "RHI/RGPass.hpp"
-#include "RHI/Definitions.hpp"
+#include "RHI/Common.hpp"
+#include "RHI/RenderTarget.hpp"
 #include "RHI/Queue.hpp"
 #include "RHI/Buffer.hpp"
 #include "RHI/Image.hpp"
@@ -50,11 +50,11 @@ namespace RHI
     /// @brief Contains information needed to begin recording commands in a command list.
     struct RenderPassBeginInfo
     {
-        RenderGraph*                        renderGraph            = nullptr;    ///< Pointer to the render graph.
-        Handle<Pass>                        pass                   = NullHandle; ///< Handle to the pass.
-        Scissor                             renderArea             = {};
-        TL::Span<const ColorAttachmentInfo> colorAttachments       = {};
-        TL::Optional<DepthAttachmentInfo>   depthStenciAttachments = {};
+        RenderGraph*                   renderGraph            = nullptr;    ///< Pointer to the render graph.
+        Handle<Pass>                   pass                   = NullHandle; ///< Handle to the pass.
+        Scissor                        renderArea             = {};
+        TL::Span<const AttachmentInfo> colorAttachments       = {};
+        TL::Optional<AttachmentInfo>   depthStenciAttachments = {};
     };
 
     /// @brief Contains information needed to copy a buffer.
@@ -163,45 +163,43 @@ namespace RHI
     /// @brief Represents a list of commands to be executed.
     class RHI_EXPORT CommandList
     {
-    public:
-        CommandList()                                                                              = default;
-        CommandList(const CommandList& other)                                                      = delete;
-        CommandList(CommandList&& other)                                                           = default;
-        virtual ~CommandList()                                                                     = default;
+    protected:
+        RHI_INTERFACE_BOILERPLATE(CommandList);
 
+    public:
         /// @brief Begins recording commands into the command list.
-        virtual void Begin()                                                                       = 0;
+        virtual void Begin()                                                                                                       = 0;
 
         /// @brief Ends recording commands into the command list.
-        virtual void End()                                                                         = 0;
+        virtual void End()                                                                                                         = 0;
 
         /// @brief Begins recording rendering commands.
         /// @param beginInfo Information for beginning command recording.
-        virtual void BeginRenderPass(const RenderPassBeginInfo& beginInfo)                         = 0;
+        virtual void BeginRenderPass(const RenderPassBeginInfo& beginInfo)                                                         = 0;
 
         /// @brief Ends recording rendering commands.
-        virtual void EndRenderPass()                                                               = 0;
+        virtual void EndRenderPass()                                                                                               = 0;
 
         /// @brief Pushes a debug marker with a name and color onto the command list.
         /// @param name Name of the debug marker.
         /// @param color Color value of the debug marker.
-        virtual void DebugMarkerPush(const char* name, ColorValue<float> color)                    = 0;
+        virtual void DebugMarkerPush(const char* name, ColorValue<float> color)                                                    = 0;
 
         /// @brief Pops the last debug marker off the command list.
-        virtual void DebugMarkerPop()                                                              = 0;
+        virtual void DebugMarkerPop()                                                                                              = 0;
 
         /// @brief Begins a conditional command block based on a buffer.
         /// @param buffer Handle to the buffer used for condition.
         /// @param offset Offset in the buffer.
         /// @param inverted If true, the condition is inverted.
-        virtual void BeginConditionalCommands(Handle<Buffer> buffer, size_t offset, bool inverted) = 0;
+        virtual void BeginConditionalCommands(Handle<Buffer> buffer, size_t offset, bool inverted)                                 = 0;
 
         /// @brief Ends a conditional command block.
-        virtual void EndConditionalCommands()                                                      = 0;
+        virtual void EndConditionalCommands()                                                                                      = 0;
 
         /// @brief Executes a set of command lists.
         /// @param commandLists Span of command lists to execute.
-        virtual void Execute(TL::Span<const CommandList*> commandLists)                            = 0;
+        virtual void Execute(TL::Span<const CommandList*> commandLists)                                                            = 0;
 
         /// @brief Binds a graphics pipeline.
         /// @param pipelineState Handle to the graphics pipeline.

@@ -465,7 +465,7 @@ public:
     void InitRenderGraph()
     {
         auto [width, height] = m_window->GetWindowSize();
-        m_renderGraph        = m_device->CreateRenderGraph().release();
+        m_renderGraph        = m_device->CreateRenderGraph();
 
         RHI::PassCreateInfo passCI{
             .name  = "main-pass",
@@ -610,13 +610,13 @@ public:
             .renderArea  = {0, 0, width, height},
             .colorAttachments =
                 {
-                    RHI::ColorAttachmentInfo{
+                    RHI::AttachmentInfo{
                         .attachment = m_renderGraph->GetImage(m_colorAttachment),
-                        .clearValue = {clearValue},
+                        .loadStoreOperations = {.clearValue = clearValue},
                     },
                 },
             .depthStenciAttachments =
-                RHI::DepthAttachmentInfo{
+                RHI::AttachmentInfo{
                     .attachment = m_renderGraph->GetImage(m_depthAttachment),
                 },
         });

@@ -200,10 +200,12 @@ namespace RHI::Vulkan
 
             VkClearColorValue colorValue = {
                 .float32 =
-                    {passAttachment.clearValue.f32.r,
-                     passAttachment.clearValue.f32.g,
-                     passAttachment.clearValue.f32.b,
-                     passAttachment.clearValue.f32.a},
+                    {
+                        passAttachment.loadStoreOperations.clearValue.f32.r,
+                        passAttachment.loadStoreOperations.clearValue.f32.g,
+                        passAttachment.loadStoreOperations.clearValue.f32.b,
+                        passAttachment.loadStoreOperations.clearValue.f32.a,
+                    },
             };
 
             VkRenderingAttachmentInfo colorAttachmentInfo{
@@ -214,8 +216,8 @@ namespace RHI::Vulkan
                 .resolveMode        = ConvertResolveMode(passAttachment.resolveMode),
                 .resolveImageView   = resolveAttachment ? resolveAttachment->viewHandle : VK_NULL_HANDLE,
                 .resolveImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                .loadOp             = ConvertLoadOp(passAttachment.loadOperation),
-                .storeOp            = ConvertStoreOp(passAttachment.storeOperation),
+                .loadOp             = ConvertLoadOp(passAttachment.loadStoreOperations.loadOperation),
+                .storeOp            = ConvertStoreOp(passAttachment.loadStoreOperations.storeOperation),
                 .clearValue         = {.color = colorValue},
             };
 
@@ -231,8 +233,8 @@ namespace RHI::Vulkan
                 passAttachment.resolveAttachment ? m_device->m_imageOwner.Get(passAttachment.resolveAttachment) : nullptr;
 
             auto clearValue = VkClearDepthStencilValue{
-                .depth   = beginInfo.depthStenciAttachments->clearValue.depthValue,
-                .stencil = beginInfo.depthStenciAttachments->clearValue.stencilValue,
+                .depth   = beginInfo.depthStenciAttachments->loadStoreOperations.clearValue.depthStencil.depthValue,
+                .stencil = beginInfo.depthStenciAttachments->loadStoreOperations.clearValue.depthStencil.stencilValue,
             };
 
             if (depthStencilAttachment->subresources.imageAspects & ImageAspect::Depth)
@@ -245,8 +247,8 @@ namespace RHI::Vulkan
                     .resolveMode        = ConvertResolveMode(passAttachment.resolveMode),
                     .resolveImageView   = resolveAttachment ? resolveAttachment->viewHandle : VK_NULL_HANDLE,
                     .resolveImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    .loadOp             = ConvertLoadOp(passAttachment.depthLoadOperation),
-                    .storeOp            = ConvertStoreOp(passAttachment.depthStoreOperation),
+                    .loadOp             = ConvertLoadOp(passAttachment.loadStoreOperations.loadOperation),
+                    .storeOp            = ConvertStoreOp(passAttachment.loadStoreOperations.storeOperation),
                     .clearValue         = {.depthStencil = clearValue},
                 };
             }
@@ -261,8 +263,8 @@ namespace RHI::Vulkan
                     .resolveMode        = ConvertResolveMode(passAttachment.resolveMode),
                     .resolveImageView   = resolveAttachment->viewHandle ? resolveAttachment->viewHandle : VK_NULL_HANDLE,
                     .resolveImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    .loadOp             = ConvertLoadOp(passAttachment.stencilLoadOperation),
-                    .storeOp            = ConvertStoreOp(passAttachment.stencilStoreOperation),
+                    .loadOp             = ConvertLoadOp(passAttachment.loadStoreOperations.stencilLoadOperation),
+                    .storeOp            = ConvertStoreOp(passAttachment.loadStoreOperations.storeOperation),
                     .clearValue         = {.depthStencil = clearValue},
                 };
             }

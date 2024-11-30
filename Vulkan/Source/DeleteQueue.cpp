@@ -32,7 +32,7 @@ namespace RHI::Vulkan
     void DeleteQueue::DestroyObjects(bool force)
     {
         uint64_t currentTimelineValue = m_device->GetTimelineValue();
-        auto     objectIt               = m_destructionQueue.begin();
+        auto     objectIt             = m_destructionQueue.begin();
         for (; objectIt != m_destructionQueue.end(); objectIt++)
         {
             if (objectIt->frameIndex < currentTimelineValue || force)

@@ -2,16 +2,16 @@
 #include "RHI/Export.hpp"
 #include "RHI/Image.hpp"
 #include "RHI/Result.hpp"
+#include "RHI/Common.hpp"
 
 #include <TL/Flags.hpp>
 
 namespace RHI
 {
     class Device;
-    struct Semaphore;
 
-    // @todo: add an API to query for supported formats for the user
-    // @todo: add an API to query for supported present mode for the user
+    /// @todo: add an API to query for supported formats for the user
+    /// @todo: add an API to query for supported present mode for the user
 
     enum class SwapchainPresentMode
     {
@@ -48,26 +48,25 @@ namespace RHI
     class RHI_EXPORT Swapchain
     {
     public:
+        RHI_INTERFACE_BOILERPLATE(Swapchain);
+
         static constexpr uint32_t MaxImageCount = 4;
         static constexpr uint32_t MinImageCount = 1;
 
-        Swapchain();
-        virtual ~Swapchain();
-
         /// @brief Get the current image index of the swapchain.
-        uint32_t           GetCurrentImageIndex() const;
+        uint32_t                  GetCurrentImageIndex() const;
 
         /// @brief Get the number of images in the swapchain.
-        uint32_t           GetImagesCount() const;
+        uint32_t                  GetImagesCount() const;
 
         /// @brief Get the current acquired swapchain image.
-        Handle<Image>      GetImage() const;
+        Handle<Image>             GetImage() const;
 
         /// @brief Called to invalidate the current swapchain state, when the window is resized.
-        virtual ResultCode Recreate(ImageSize2D newSize) = 0;
+        virtual ResultCode        Recreate(ImageSize2D newSize) = 0;
 
         /// @brief Presents the current image.
-        virtual ResultCode Present()                     = 0;
+        virtual ResultCode        Present()                     = 0;
 
     protected:
         TL::String            m_name;

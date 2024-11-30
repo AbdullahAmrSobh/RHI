@@ -8,19 +8,6 @@
 
 namespace RHI
 {
-    RenderGraph::RenderGraph(Device* device)
-        : m_arena()
-    {
-        m_device = device;
-    }
-
-    RenderGraph::~RenderGraph()
-    {
-        Cleanup();
-        m_passPool.Clear();
-        m_rgImagesPool.Clear();
-        m_rgBufferPool.Clear();
-    }
 
     Handle<Pass> RenderGraph::CreatePass(const PassCreateInfo& createInfo)
     {

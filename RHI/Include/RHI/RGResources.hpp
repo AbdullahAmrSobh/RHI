@@ -1,7 +1,6 @@
 #pragma once
 
 #include <RHI/Handle.hpp>
-#include <RHI/Definitions.hpp>
 #include <RHI/Image.hpp>
 #include <RHI/Buffer.hpp>
 #include <RHI/BindGroup.hpp>

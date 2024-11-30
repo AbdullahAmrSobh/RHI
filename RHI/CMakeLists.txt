@@ -5,10 +5,12 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Buffer.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/CommandList.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Device.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Definitions.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RenderTarget.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Export.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Format.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Handle.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Handle.inl
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Image.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Pipeline.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Queue.hpp
