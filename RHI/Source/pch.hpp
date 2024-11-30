@@ -4,10 +4,7 @@
 
 #include <TL/Assert.hpp>
 #include <TL/Containers.hpp>
+#include <TL/Flags.hpp>
+#include <TL/Span.hpp>
 #include <TL/Stacktrace.hpp>
-#include <TL/Containers.hpp>
-#include <TL/Flags.hpp>
-#include <TL/Span.hpp>
-#include <TL/Flags.hpp>
-#include <TL/Span.hpp>
 #include <TL/Utils.hpp>

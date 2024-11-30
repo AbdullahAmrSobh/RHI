@@ -1,7 +1,8 @@
 #include "StagingBuffer.hpp"
-#include "Device.hpp"
 
 #include <tracy/Tracy.hpp>
+
+#include "Device.hpp"
 
 namespace RHI::Vulkan
 {

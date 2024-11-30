@@ -57,7 +57,6 @@ ConstructorInitializerIndentWidth: 4
 ContinuationIndentWidth: 4
 Cpp11BracedListStyle: true
 FixNamespaceComments: true
-IncludeBlocks: Preserve
 IndentCaseBlocks: true
 IndentCaseLabels: false
 IndentPPDirectives: BeforeHash
@@ -68,6 +67,16 @@ NamespaceIndentation: All
 PenaltyReturnTypeOnItsOwnLine: 1000
 PointerAlignment: Left
 SortIncludes: false
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^("RHI/.*"|<RHI/.*>)'
+    Priority: 1
+  - Regex: '^<Vulkan/.*>'
+    Priority: 2
+  - Regex: '^<TL/.*>'
+    Priority: 3
+  - Regex: '^<.*>'
+    Priority: 4
 SpaceAfterLogicalNot: false
 SpaceAfterTemplateKeyword: false
 SpaceBeforeAssignmentOperators: true

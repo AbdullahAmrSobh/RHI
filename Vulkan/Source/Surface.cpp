@@ -4,9 +4,9 @@
     #error "Current platfrom is not supported yet"
 #endif
 
+#include "Common.hpp"
 #include "Device.hpp"
 #include "Swapchain.hpp"
-#include "Common.hpp"
 
 // Platform specifc surface creation are contained witihn this file,
 // to avoid polluting the global namespace with OS specific symbols

@@ -331,8 +331,8 @@ public:
 
     RHI::RenderGraph*         m_renderGraph;
     RHI::Handle<RHI::Pass>    m_mainPass;
-    RHI::Handle<RHI::RGImage> m_colorAttachment;
-    RHI::Handle<RHI::RGImage> m_depthAttachment;
+    RHI::Handle<RHI::RenderGraphImage> m_colorAttachment;
+    RHI::Handle<RHI::RenderGraphImage> m_depthAttachment;
 
     TL::Vector<uint32_t> m_meshIndexList;
 

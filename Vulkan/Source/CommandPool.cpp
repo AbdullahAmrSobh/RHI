@@ -1,8 +1,9 @@
 #include "CommandPool.hpp"
-#include "CommandList.hpp"
-#include "Device.hpp"
 
 #include <vulkan/vulkan.h>
+
+#include "CommandList.hpp"
+#include "Device.hpp"
 
 namespace RHI::Vulkan
 {
@@ -39,7 +40,7 @@ namespace RHI::Vulkan
         std::lock_guard<std::mutex> lock(m_poolMutex);
 
         // Get command pool for this queue type and create a command buffer
-        VkCommandPool pool = m_pools[std::this_thread::get_id()][(int)queueType];
+        VkCommandPool pool = m_pools[std::this_thread::get_id()][(uint32_t)queueType];
 
         VkCommandBufferAllocateInfo allocateInfo = {
             .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,

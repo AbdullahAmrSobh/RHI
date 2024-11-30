@@ -3,9 +3,9 @@
 #include <RHI/Queue.hpp>
 #include <RHI/Result.hpp>
 
-#include <TL/Span.hpp>
-
 #include <vulkan/vulkan.h>
+
+#include <TL/Span.hpp>
 
 namespace RHI::Vulkan
 {

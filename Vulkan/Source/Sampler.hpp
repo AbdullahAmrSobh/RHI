@@ -1,7 +1,7 @@
 #pragma once
 
-#include <RHI/Sampler.hpp>
 #include <RHI/Result.hpp>
+#include <RHI/Sampler.hpp>
 
 #include <vulkan/vulkan.h>
 

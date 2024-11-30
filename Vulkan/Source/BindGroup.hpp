@@ -1,7 +1,7 @@
 #pragma once
 
-#include <RHI/Result.hpp>
 #include <RHI/BindGroup.hpp>
+#include <RHI/Result.hpp>
 
 #include <vulkan/vulkan.h>
 

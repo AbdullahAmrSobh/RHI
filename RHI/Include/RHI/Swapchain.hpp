@@ -74,7 +74,6 @@ namespace RHI
         TL::Flags<ImageUsage> m_imageUsage;
         Format                m_imageFormat;
         SwapchainPresentMode  m_presentMode;
-
         uint32_t              m_imageCount;
         uint32_t              m_imageIndex;
         Handle<Image>         m_image[MaxImageCount];

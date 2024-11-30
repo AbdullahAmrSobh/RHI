@@ -17,8 +17,8 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RenderGraph.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/PipelineAccess.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Result.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RGPass.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RGResources.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RenderGraphPass.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RenderGraphResources.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RHI.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/SampleCount.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Sampler.hpp
@@ -39,8 +39,8 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Pipeline.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Queue.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraph.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/RGPass.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/RGResources.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraphPass.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraphResources.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Sampler.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Shader.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.cpp

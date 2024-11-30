@@ -1,8 +1,9 @@
 #pragma once
-#include <RHI-Vulkan/Export.hpp>
 #include <RHI/Device.hpp>
 
 #include <TL/UniquePtr.hpp>
+
+#include <RHI-Vulkan/Export.hpp>
 
 namespace RHI
 {

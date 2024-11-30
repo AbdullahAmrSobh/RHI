@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RHI/Export.hpp"
+#include "RHI/Common.hpp"
 
 #include <TL/Span.hpp>
 
@@ -16,10 +17,6 @@ namespace RHI
     class RHI_EXPORT ShaderModule
     {
     public:
-        /// @brief Default constructor.
-        ShaderModule();
-
-        /// @brief Virtual destructor.
-        virtual ~ShaderModule();
+        RHI_INTERFACE_BOILERPLATE(ShaderModule);
     };
 } // namespace RHI

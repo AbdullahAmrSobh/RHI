@@ -1,8 +1,7 @@
-#include "Common.hpp"
-
-#include "Device.hpp"
-
 #include "BindGroup.hpp"
+
+#include "Common.hpp"
+#include "Device.hpp"
 
 namespace RHI::Vulkan
 {

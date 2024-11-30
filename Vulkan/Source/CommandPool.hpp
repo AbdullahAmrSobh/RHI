@@ -3,15 +3,15 @@
 #include <RHI/Queue.hpp>
 #include <RHI/Result.hpp>
 
+#include <vulkan/vulkan.h>
+
 #include <TL/Flags.hpp>
 #include <TL/UniquePtr.hpp>
 
-#include <vulkan/vulkan.h>
-
+#include <array>
 #include <mutex>
 #include <thread>
 #include <unordered_map>
-#include <array>
 
 namespace RHI::Vulkan
 {

@@ -1,6 +1,7 @@
 #include "Sampler.hpp"
-#include "Device.hpp"
+
 #include "Common.hpp"
+#include "Device.hpp"
 
 namespace RHI::Vulkan
 {

@@ -2,14 +2,13 @@
 
 #include <RHI/RenderGraph.hpp>
 
+#include <vulkan/vulkan.h>
+
 #include <TL/Assert.hpp>
+#include <TL/Memory.hpp>
 
 #include "Common.hpp"
 #include "Device.hpp"
-
-#include <TL/Memory.hpp>
-
-#include <vulkan/vulkan.h>
 
 namespace RHI::Vulkan
 {
@@ -83,7 +82,7 @@ namespace RHI::Vulkan
         return stageFlags;
     }
 
-    // inline static VkAccessFlags2 GetAccessFlagsForPassAttachment(const RGImagePassAccess& imageAttachment)
+    // inline static VkAccessFlags2 GetAccessFlagsForPassAttachment(const RenderGraphImagePassAccess& imageAttachment)
     // {
     //     switch (imageAttachment.usage)
     //     {
@@ -197,7 +196,7 @@ namespace RHI::Vulkan
     //     };
     // }
 
-    // inline static VkImageLayout GetImageAttachmentLayout(const RGImagePassAccess& imageAttachment)
+    // inline static VkImageLayout GetImageAttachmentLayout(const RenderGraphImagePassAccess& imageAttachment)
     // {
     //     auto imageAspect = imageAttachment.aspect;
     //     switch (imageAttachment.usage)
@@ -257,7 +256,7 @@ namespace RHI::Vulkan
     //     }
     // }
 
-    // inline static ImageStageAccess GetImageStageAccess(const RGImagePassAccess& imageAttachment)
+    // inline static ImageStageAccess GetImageStageAccess(const RenderGraphImagePassAccess& imageAttachment)
     // {
     //     return {
     //         .layout           = GetImageAttachmentLayout(imageAttachment),

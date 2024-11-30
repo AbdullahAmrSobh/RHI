@@ -1,6 +1,7 @@
 #pragma once
 
 #include <RHI/RHI.hpp>
+
 #include <TL/Assert.hpp>
 
 #define VMA_DEBUG_LOG(format, ...)        \

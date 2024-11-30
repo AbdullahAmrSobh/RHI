@@ -1,11 +1,11 @@
 #include "Queue.hpp"
 
-#include "Barrier.hpp"
-#include "Device.hpp"
-#include "CommandList.hpp"
-#include "Swapchain.hpp"
-
 #include <tracy/Tracy.hpp>
+
+#include "Barrier.hpp"
+#include "CommandList.hpp"
+#include "Device.hpp"
+#include "Swapchain.hpp"
 
 namespace RHI::Vulkan
 {

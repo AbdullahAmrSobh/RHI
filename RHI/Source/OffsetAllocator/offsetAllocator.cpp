@@ -73,7 +73,7 @@ namespace OffsetAllocator
                 exp                     = mantissaStartBit + 1;
                 mantissa                = (size >> mantissaStartBit) & MANTISSA_MASK;
 
-                uint32 lowBitsMask = (1 << mantissaStartBit) - 1;
+                uint32 lowBitsMask = (1u << mantissaStartBit) - 1u;
 
                 // Round up!
                 if ((size & lowBitsMask) != 0) mantissa++;
@@ -125,7 +125,7 @@ namespace OffsetAllocator
     // Utility functions
     uint32 findLowestSetBitAfter(uint32 bitMask, uint32 startBitIndex)
     {
-        uint32 maskBeforeStartIndex = (1 << startBitIndex) - 1;
+        uint32 maskBeforeStartIndex = (1u << startBitIndex) - 1u;
         uint32 maskAfterStartIndex  = ~maskBeforeStartIndex;
         uint32 bitsAfter            = bitMask & maskAfterStartIndex;
         if (bitsAfter == 0) return Allocation::NO_SPACE;
@@ -139,7 +139,7 @@ namespace OffsetAllocator
         , m_nodes(nullptr)
         , m_freeNodes(nullptr)
     {
-        if (sizeof(NodeIndex) == 2)
+        if constexpr (sizeof(NodeIndex) == 2u)
         {
             ASSERT(maxAllocs <= 65536);
         }

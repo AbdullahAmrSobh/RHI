@@ -1,6 +1,7 @@
 #include "RHI/RenderGraph.hpp"
-#include "RHI/Swapchain.hpp"
+
 #include "RHI/Device.hpp"
+#include "RHI/Swapchain.hpp"
 
 #include <TL/Containers.hpp>
 
@@ -27,36 +28,36 @@ namespace RHI
         return m_passPool.Get(pass)->GetSize();
     }
 
-    Handle<RGImage> RenderGraph::ImportSwapchain(const char* name, Swapchain& swapchain)
+    Handle<RenderGraphImage> RenderGraph::ImportSwapchain(const char* name, Swapchain& swapchain)
     {
-        RGImage attachment{};
+        RenderGraphImage attachment{};
         attachment.name      = name;
         attachment.swapchain = &swapchain;
         auto handle          = m_rgImagesPool.Emplace(std::move(attachment));
         return handle;
     }
 
-    Handle<RGImage> RenderGraph::ImportImage(const char* name, Handle<Image> image)
+    Handle<RenderGraphImage> RenderGraph::ImportImage(const char* name, Handle<Image> image)
     {
-        RGImage attachment{};
+        RenderGraphImage attachment{};
         attachment.name     = name;
         attachment.resource = image;
         auto handle         = m_rgImagesPool.Emplace(std::move(attachment));
         return handle;
     }
 
-    Handle<RGBuffer> RenderGraph::ImportBuffer(const char* name, Handle<Buffer> buffer)
+    Handle<RenderGraphBuffer> RenderGraph::ImportBuffer(const char* name, Handle<Buffer> buffer)
     {
-        RGBuffer attachment{};
+        RenderGraphBuffer attachment{};
         attachment.name     = name;
         attachment.resource = buffer;
         auto handle         = m_rgBufferPool.Emplace(std::move(attachment));
         return handle;
     }
 
-    Handle<RGImage> RenderGraph::CreateImage(const ImageCreateInfo& createInfo)
+    Handle<RenderGraphImage> RenderGraph::CreateImage(const ImageCreateInfo& createInfo)
     {
-        RGImage attachment{};
+        RenderGraphImage attachment{};
         attachment.name     = createInfo.name;
         attachment.resource = m_device->CreateImage(createInfo).GetValue();
         auto handle         = m_rgImagesPool.Emplace(std::move(attachment));
@@ -65,9 +66,9 @@ namespace RHI
         return handle;
     }
 
-    Handle<RGBuffer> RenderGraph::CreateBuffer(const BufferCreateInfo& createInfo)
+    Handle<RenderGraphBuffer> RenderGraph::CreateBuffer(const BufferCreateInfo& createInfo)
     {
-        RGBuffer attachment{};
+        RenderGraphBuffer attachment{};
         attachment.name     = createInfo.name;
         attachment.resource = m_device->CreateBuffer(createInfo).GetValue();
         auto handle         = m_rgBufferPool.Emplace(std::move(attachment));
@@ -77,12 +78,12 @@ namespace RHI
     }
 
     void RenderGraph::PassUseImage(
-        Handle<Pass> _pass, Handle<RGImage> _attachment, ImageUsage usage, TL::Flags<PipelineStage> stages, Access access)
+        Handle<Pass> _pass, Handle<RenderGraphImage> _attachment, ImageUsage usage, TL::Flags<PipelineStage> stages, Access access)
     {
         auto pass       = m_passPool.Get(_pass);
         auto attachment = m_rgImagesPool.Get(_attachment);
 
-        auto passAttachment            = m_arena.Allocate<RGImagePassAccess>();
+        auto passAttachment            = m_arena.Allocate<RenderGraphImagePassAccess>();
         passAttachment->pass           = _pass;
         passAttachment->image          = _attachment;
         passAttachment->usage          = usage;
@@ -114,12 +115,12 @@ namespace RHI
     }
 
     void RenderGraph::PassUseBuffer(
-        Handle<Pass> _pass, Handle<RGBuffer> _attachment, BufferUsage usage, TL::Flags<PipelineStage> stages, Access access)
+        Handle<Pass> _pass, Handle<RenderGraphBuffer> _attachment, BufferUsage usage, TL::Flags<PipelineStage> stages, Access access)
     {
         auto pass       = m_passPool.Get(_pass);
         auto attachment = m_rgBufferPool.Get(_attachment);
 
-        auto passAttachment            = m_arena.Allocate<RGBufferPassAccess>();
+        auto passAttachment            = m_arena.Allocate<RenderGraphBufferPassAccess>();
         passAttachment->pass           = _pass;
         passAttachment->buffer         = _attachment;
         passAttachment->usage          = usage;
@@ -141,14 +142,14 @@ namespace RHI
         pass->m_bufferAttachments.push_back(passAttachment);
     }
 
-    Handle<Image> RenderGraph::GetImage(Handle<RGImage> _attachment) const
+    Handle<Image> RenderGraph::GetImage(Handle<RenderGraphImage> _attachment) const
     {
         auto attachment = m_rgImagesPool.Get(_attachment);
         if (attachment->swapchain) return attachment->swapchain->GetImage();
         else return attachment->resource;
     }
 
-    Handle<Buffer> RenderGraph::GetBuffer(Handle<RGBuffer> _attachment) const
+    Handle<Buffer> RenderGraph::GetBuffer(Handle<RenderGraphBuffer> _attachment) const
     {
         auto attachment = m_rgBufferPool.Get(_attachment);
         return attachment->resource;

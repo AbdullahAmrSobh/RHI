@@ -163,10 +163,9 @@ namespace RHI
     /// @brief Represents a list of commands to be executed.
     class RHI_EXPORT CommandList
     {
-    protected:
+    public:
         RHI_INTERFACE_BOILERPLATE(CommandList);
 
-    public:
         /// @brief Begins recording commands into the command list.
         virtual void Begin()                                                                                                       = 0;
 

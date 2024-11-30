@@ -16,23 +16,22 @@
     #define VULKAN_SURFACE_OS_EXTENSION_NAME VK_MVK_IOS_SURFACE_EXTENSION_NAME
 #endif // VK_USE_PLATFORM_WIN32_KHR
 
-#include "RHI-Vulkan/Loader.hpp"
-
-#include "Common.hpp"
-#include "CommandPool.hpp"
-#include "CommandList.hpp"
-#include "Swapchain.hpp"
 #include "Device.hpp"
-#include "Queue.hpp"
-#include "StagingBuffer.hpp"
 
+#include <TL/Allocator/Allocator.hpp>
 #include <TL/Assert.hpp>
 #include <TL/Log.hpp>
-#include <TL/Allocator/Allocator.hpp>
-
-#include <tracy/Tracy.hpp>
 
 #include <format>
+#include <tracy/Tracy.hpp>
+
+#include "CommandList.hpp"
+#include "CommandPool.hpp"
+#include "Common.hpp"
+#include "Queue.hpp"
+#include "RHI-Vulkan/Loader.hpp"
+#include "StagingBuffer.hpp"
+#include "Swapchain.hpp"
 
 #define VULKAN_DEVICE_FUNC_LOAD(device, proc) reinterpret_cast<PFN_##proc>(vkGetDeviceProcAddr(device, #proc));
 #define VULKAN_INSTANCE_FUNC_LOAD(instance, proc) reinterpret_cast<PFN_##proc>(vkGetInstanceProcAddr(instance, #proc));
@@ -783,22 +782,22 @@ namespace RHI::Vulkan
 
     void IDevice::QueueBeginLabel(QueueType type, const char* name, float color[4])
     {
-        m_queue[(int)type]->BeginLabel(name, color);
+        m_queue[(uint32_t)type]->BeginLabel(name, color);
     }
 
     void IDevice::QueueEndLabel(QueueType type)
     {
-        m_queue[(int)type]->EndLabel();
+        m_queue[(uint32_t)type]->EndLabel();
     }
 
     uint64_t IDevice::QueueSubmit(const SubmitInfo& submitInfo)
     {
-        m_queue[(int)QueueType::Graphics]->Submit(submitInfo);
+        m_queue[(uint32_t)QueueType::Graphics]->Submit(submitInfo);
 
-        // for (auto commandList : submitInfo.commandLists)
-        // {
-        //     delete commandList;
-        // }
+        for (auto commandList : submitInfo.commandLists)
+        {
+            delete commandList;
+        }
 
         return GetPendingTimelineValue();
     }
