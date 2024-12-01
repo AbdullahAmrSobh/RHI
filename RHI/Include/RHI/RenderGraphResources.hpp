@@ -10,14 +10,10 @@
 #include <TL/Flags.hpp>
 #include <TL/Containers.hpp>
 #include <TL/UniquePtr.hpp>
-
 #include <cstdint>
 
 namespace RHI
 {
-    struct RenderGraphImage;
-    struct RenderGraphBuffer;
-
     class Swapchain;
     class Pass;
 
@@ -29,57 +25,114 @@ namespace RHI
         Swapchain,
     };
 
-    enum class RendergraphResourceType
+    enum class RenderGraphResourceAccessType : uint8_t
     {
         None,
         Image,
         Buffer,
         RenderTarget,
+        Resolve,
+        SwapchainPresent,
     };
 
-    struct RenderGraphImagePassAccess
+    class RenderGraphResource
     {
-        Handle<Pass>                pass;
-        Handle<RenderGraphImage>    image;
-        Handle<Image>               imageView;
-        ImageUsage                  usage;
-        TL::Flags<Access>           pipelineAccess;
-        TL::Flags<PipelineStage>    pipelineStages;
-        RenderGraphImagePassAccess* next;
-        RenderGraphImagePassAccess* prev;
+        friend class RenderGraph;
+
+    public:
+        struct AccessedResource
+        {
+            AccessedResource*             next = nullptr;
+            AccessedResource*             prev = nullptr;
+            RenderGraphResourceAccessType type = RenderGraphResourceAccessType::None;
+
+            union
+            {
+                bool             asNone = false;
+
+                RenderTargetInfo asRenderTarget;
+
+                struct
+                {
+                    class RenderGraphImage*  image;
+                    ImageUsage               usage;
+                    TL::Flags<PipelineStage> stage;
+                    TL::Flags<Access>        access;
+                } asImage;
+
+                struct
+                {
+                    class RenderGraphBuffer* buffer;
+                    BufferUsage              usage;
+                    TL::Flags<PipelineStage> stage;
+                    TL::Flags<Access>        access;
+                } asBuffer;
+
+                Swapchain* asSwapchain;
+            };
+        };
+
+    public:
+        const char*             GetName() const { return m_name.c_str(); }
+
+        const AccessedResource* GetFirstAccess() const { return m_first; }
+
+        AccessedResource*       GetFirstAccess() { return m_first; }
+
+        const AccessedResource* GetLastAccess() const { return m_last; }
+
+        AccessedResource*       GetLastAccess() { return m_last; }
+
+        /// @brief Adds an access to the resource and updates usage flags.
+        void                    PushAccess(AccessedResource* access);
+
+    protected:
+        RenderGraphResource(const char* name, RenderGraphResourceAccessType type, TL::Flags<RenderGraphResourceFlags> flags);
+
+        TL::String                          m_name;
+        AccessedResource*                   m_first;
+        AccessedResource*                   m_last;
+        TL::Flags<RenderGraphResourceFlags> m_flags;
+        RenderGraphResourceAccessType       m_type;
+        Format                              m_format = Format::Unknown;
+
+        union
+        {
+            Handle<Image>  asImage;
+            Handle<Buffer> asBuffer;
+        } m_handle;
+
+        union
+        {
+            TL::Flags<ImageUsage>  asImage;
+            TL::Flags<BufferUsage> asBuffer;
+        } m_usage;
     };
 
-    struct RenderGraphBufferPassAccess
+    using PassAccessedResource = RenderGraphResource::AccessedResource;
+
+    class RenderGraphImage final : public RenderGraphResource
     {
-        Handle<Pass>                 pass;
-        Handle<RenderGraphBuffer>    buffer;
-        Handle<Buffer>               bufferView;
-        BufferUsage                  usage;
-        TL::Flags<Access>            pipelineAccess;
-        TL::Flags<PipelineStage>     pipelineStages;
-        RenderGraphBufferPassAccess* next;
-        RenderGraphBufferPassAccess* prev;
+    public:
+        RenderGraphImage(const char* name, Handle<Image> image, Format format);
+        RenderGraphImage(const char* name, Format format);
+
+        Handle<Image>         GetImage() const { return m_handle.asImage; }
+
+        Format                GetFormat() const { return m_format; }
+
+        TL::Flags<ImageUsage> GetImageUsage() const { return m_usage.asImage; }
     };
 
-    struct RenderGraphResource
+    class RenderGraphBuffer final : public RenderGraphResource
     {
-    };
+    public:
+        RenderGraphBuffer(const char* name, Handle<Buffer> buffer);
+        RenderGraphBuffer(const char* name);
 
-    struct RenderGraphImage : RenderGraphResource
-    {
-        TL::String                  name;
-        Handle<Image>               resource;
-        Swapchain*                  swapchain;
-        RenderGraphImagePassAccess* first;
-        RenderGraphImagePassAccess* last;
-    };
+        Handle<Buffer>         GetBuffer() const { return m_handle.asBuffer; }
 
-    struct RenderGraphBuffer : RenderGraphResource
-    {
-        TL::String                   name;
-        Handle<Buffer>               resource;
-        RenderGraphBufferPassAccess* first;
-        RenderGraphBufferPassAccess* last;
+        TL::Flags<BufferUsage> GetBufferUsage() const { return m_usage.asBuffer; }
     };
 
 } // namespace RHI

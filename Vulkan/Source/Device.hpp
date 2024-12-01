@@ -49,10 +49,7 @@ namespace RHI::Vulkan
         friend Device* RHI::CreateVulkanDevice(const ApplicationInfo& appInfo);
         friend void    RHI::DestroyVulkanDevice(Device* device);
 
-        /// @brief Private constructor.
         IDevice();
-
-        /// @brief Private destructor.
         ~IDevice();
 
     public:
@@ -82,6 +79,8 @@ namespace RHI::Vulkan
         uint64_t AdvanceTimeline();
 
         // Interface Implementation
+        RenderGraph*             CreateRenderGraph() override;
+        void                     DestroyRenderGraph(RenderGraph* renderGraph) override;
         Swapchain*               CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
         void                     DestroySwapchain(Swapchain* swapchain) override;
         TL::Ptr<ShaderModule>    CreateShaderModule(const ShaderModuleCreateInfo& createInfo) override;

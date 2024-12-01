@@ -9,19 +9,11 @@ namespace RHI::Vulkan
 {
     class IDevice;
 
-    enum BarrierSlot
-    {
-        Priloge,
-        Epiloge,
-        // Resolve,
-        Count,
-    };
-
     struct PipelineBarriers
     {
-        TL::Vector<VkMemoryBarrier2>       memoryBarriers = {};
-        TL::Vector<VkBufferMemoryBarrier2> bufferBarriers = {};
-        TL::Vector<VkImageMemoryBarrier2>  imageBarriers  = {};
+        TL::Span<const VkMemoryBarrier2>       memoryBarriers = {};
+        TL::Span<const VkImageMemoryBarrier2>  imageBarriers  = {};
+        TL::Span<const VkBufferMemoryBarrier2> bufferBarriers = {};
     };
 
     VkImageSubresourceLayers ConvertSubresourceLayer(const ImageSubresourceLayers& subresource);
@@ -34,24 +26,17 @@ namespace RHI::Vulkan
         ICommandList(IDevice* device, VkCommandBuffer commandBuffer);
         ~ICommandList();
 
-        void PipelineBarrier(
-            TL::Span<const VkMemoryBarrier2>       memoryBarriers,
-            TL::Span<const VkBufferMemoryBarrier2> bufferBarriers,
-            TL::Span<const VkImageMemoryBarrier2>  imageBarriers);
+        void Begin();
+        void End();
 
-        void PipelineBarrier(const PipelineBarriers& barriers)
-        {
-            PipelineBarrier(barriers.memoryBarriers, barriers.bufferBarriers, barriers.imageBarriers);
-        }
+        void AddPipelineBarriers(const PipelineBarriers& barriers);
 
-        void BindShaderBindGroups(
-            VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups);
+        void BeginPass(const Pass& pass);
+        void EndPass();
+
+        void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups);
 
         // Interface implementation
-        void Begin() override;
-        void End() override;
-        void BeginRenderPass(const RenderPassBeginInfo& beginInfo) override;
-        void EndRenderPass() override;
         void DebugMarkerPush(const char* name, ColorValue<float> color) override;
         void DebugMarkerPop() override;
         void BeginConditionalCommands(Handle<Buffer> buffer, size_t offset, bool inverted) override;
@@ -73,23 +58,15 @@ namespace RHI::Vulkan
 
         VkCommandBuffer GetHandle() { return m_commandBuffer; }
 
-        /// @todo: optimize pipeline stages
-        VkPipelineStageFlags2 GetPipelineStages() const { return VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT; }
-
     private:
-        IDevice*              m_device;
-        VkCommandBuffer       m_commandBuffer;
-        PipelineBarriers      m_barriers[BarrierSlot::Count];
-        VkPipelineStageFlags2 m_signalPipelineStages;
-
-        struct State
-        {
-            bool hasVertexBuffer         : 1;
-            bool hasIndexBuffer          : 1;
-            bool isGraphicsPipelineBound : 1;
-            bool isComputePipelineBound  : 1;
-            bool hasViewportSet          : 1;
-            bool hasScissorSet           : 1;
-        } m_state;
+        IDevice*        m_device                      = nullptr;
+        VkCommandBuffer m_commandBuffer               = VK_NULL_HANDLE;
+        bool            m_isInsideRenderPass      : 1 = false;
+        bool            m_hasVertexBuffer         : 1 = false;
+        bool            m_hasIndexBuffer          : 1 = false;
+        bool            m_isGraphicsPipelineBound : 1 = false;
+        bool            m_isComputePipelineBound  : 1 = false;
+        bool            m_hasViewportSet          : 1 = false;
+        bool            m_hasScissorSet           : 1 = false;
     };
 } // namespace RHI::Vulkan

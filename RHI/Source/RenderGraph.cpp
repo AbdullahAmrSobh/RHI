@@ -1,177 +1,194 @@
 #include "RHI/RenderGraph.hpp"
 
 #include "RHI/Device.hpp"
-#include "RHI/Swapchain.hpp"
+#include "RHI/RenderGraphPass.hpp"
+#include "RHI/RenderGraphResources.hpp"
 
+#include <TL/Allocator/Allocator.hpp>
+#include <TL/Allocator/Mimalloc.hpp>
 #include <TL/Containers.hpp>
 
 #include <tracy/Tracy.hpp>
 
 namespace RHI
 {
-
-    Handle<Pass> RenderGraph::CreatePass(const PassCreateInfo& createInfo)
+    RenderGraphImage* RenderGraph::ImportSwapchain(const char* name, Swapchain& swapchain, Format format)
     {
-        Pass pass{};
-        pass.m_name = createInfo.name;
-        auto handle = m_passPool.Emplace(std::move(pass));
-        return m_passList.emplace_back(handle);
+        auto* image = m_allocator->Construct<RenderGraphImage>(name, swapchain.GetImage(), format);
+        m_graphImages.push_back(image);
+        m_graphResourcesLookup[name]                = image;
+        m_graphImportedSwapchainsLookup[&swapchain] = image;
+        return image;
     }
 
-    void RenderGraph::PassResize(Handle<Pass> pass, ImageSize2D size)
+    RenderGraphImage* RenderGraph::ImportImage(const char* name, Handle<Image> image, Format format)
     {
-        m_passPool.Get(pass)->Resize(size);
+        auto* importedImage = m_allocator->Construct<RenderGraphImage>(name, image, format);
+        m_graphImages.push_back(importedImage);
+        m_graphImportedImagesLookup[image] = importedImage;
+        m_graphResourcesLookup[name]       = importedImage;
+        return importedImage;
     }
 
-    ImageSize2D RenderGraph::PassGetSize(Handle<Pass> pass) const
+    RenderGraphBuffer* RenderGraph::ImportBuffer(const char* name, Handle<Buffer> buffer)
     {
-        return m_passPool.Get(pass)->GetSize();
+        auto* importedBuffer = m_allocator->Construct<RenderGraphBuffer>(name, buffer);
+        m_graphBuffers.push_back(importedBuffer);
+        m_graphImportedBuffersLookup[buffer] = importedBuffer;
+        m_graphResourcesLookup[name]         = importedBuffer;
+        return importedBuffer;
     }
 
-    Handle<RenderGraphImage> RenderGraph::ImportSwapchain(const char* name, Swapchain& swapchain)
+    RenderGraphImage* RenderGraph::CreateImage(const ImageCreateInfo& createInfo)
     {
-        RenderGraphImage attachment{};
-        attachment.name      = name;
-        attachment.swapchain = &swapchain;
-        auto handle          = m_rgImagesPool.Emplace(std::move(attachment));
-        return handle;
+        auto* image = m_allocator->Construct<RenderGraphImage>(createInfo.name, createInfo.format);
+        m_graphImages.push_back(image);
+        m_graphResourcesLookup[createInfo.name] = image;
+        m_graphTransientImagesLookup[image]     = createInfo;
+        return image;
     }
 
-    Handle<RenderGraphImage> RenderGraph::ImportImage(const char* name, Handle<Image> image)
+    RenderGraphBuffer* RenderGraph::CreateBuffer(const BufferCreateInfo& createInfo)
     {
-        RenderGraphImage attachment{};
-        attachment.name     = name;
-        attachment.resource = image;
-        auto handle         = m_rgImagesPool.Emplace(std::move(attachment));
-        return handle;
+        auto* buffer = m_allocator->Construct<RenderGraphBuffer>(createInfo.name);
+        m_graphBuffers.push_back(buffer);
+        m_graphResourcesLookup[createInfo.name] = buffer;
+        m_graphTransientBuffersLookup[buffer]   = createInfo;
+        return buffer;
     }
 
-    Handle<RenderGraphBuffer> RenderGraph::ImportBuffer(const char* name, Handle<Buffer> buffer)
+    Pass* RenderGraph::AddPass(const PassCreateInfo& createInfo)
     {
-        RenderGraphBuffer attachment{};
-        attachment.name     = name;
-        attachment.resource = buffer;
-        auto handle         = m_rgBufferPool.Emplace(std::move(attachment));
-        return handle;
+        auto* pass = m_allocator->Construct<Pass>(createInfo);
+        m_graphPasses.push_back(pass);
+        pass->m_onSetupCallback(*this, *pass);
+        return pass;
     }
 
-    Handle<RenderGraphImage> RenderGraph::CreateImage(const ImageCreateInfo& createInfo)
+    void RenderGraph::UseImage(Pass& pass, RenderGraphImage* image, ImageUsage usage, TL::Flags<PipelineStage> stage, TL::Flags<Access> access)
     {
-        RenderGraphImage attachment{};
-        attachment.name     = createInfo.name;
-        attachment.resource = m_device->CreateImage(createInfo).GetValue();
-        auto handle         = m_rgImagesPool.Emplace(std::move(attachment));
-        m_images.push_back(handle);
-        m_transientImages.push_back(handle);
-        return handle;
+        auto* resourceAccess           = pass.AddResourceAccess(m_tempAllocator);
+        resourceAccess->type           = RenderGraphResourceAccessType::Image;
+        resourceAccess->asImage.image  = image;
+        resourceAccess->asImage.usage  = usage;
+        resourceAccess->asImage.stage  = stage;
+        resourceAccess->asImage.access = access;
+        image->m_usage.asImage |= usage;
+        image->PushAccess(resourceAccess);
     }
 
-    Handle<RenderGraphBuffer> RenderGraph::CreateBuffer(const BufferCreateInfo& createInfo)
+    void RenderGraph::UseBuffer(Pass& pass, RenderGraphBuffer* buffer, BufferUsage usage, TL::Flags<PipelineStage> stage, TL::Flags<Access> access)
     {
-        RenderGraphBuffer attachment{};
-        attachment.name     = createInfo.name;
-        attachment.resource = m_device->CreateBuffer(createInfo).GetValue();
-        auto handle         = m_rgBufferPool.Emplace(std::move(attachment));
-        m_buffers.push_back(handle);
-        m_transientBuffers.push_back(handle);
-        return handle;
+        auto* resourceAccess            = pass.AddResourceAccess(m_tempAllocator);
+        resourceAccess->type            = RenderGraphResourceAccessType::Buffer;
+        resourceAccess->asBuffer.buffer = buffer;
+        resourceAccess->asBuffer.usage  = usage;
+        resourceAccess->asBuffer.stage  = stage;
+        resourceAccess->asBuffer.access = access;
+        buffer->m_usage.asBuffer |= usage;
+        buffer->PushAccess(resourceAccess);
     }
 
-    void RenderGraph::PassUseImage(
-        Handle<Pass> _pass, Handle<RenderGraphImage> _attachment, ImageUsage usage, TL::Flags<PipelineStage> stages, Access access)
+    void RenderGraph::UseRenderTarget(Pass& pass, const RenderTargetInfo& renderTargetInfo)
     {
-        auto pass       = m_passPool.Get(_pass);
-        auto attachment = m_rgImagesPool.Get(_attachment);
-
-        auto passAttachment            = m_arena.Allocate<RenderGraphImagePassAccess>();
-        passAttachment->pass           = _pass;
-        passAttachment->image          = _attachment;
-        passAttachment->usage          = usage;
-        passAttachment->pipelineAccess = access;
-        passAttachment->pipelineStages = stages;
-        passAttachment->next           = nullptr;
-        passAttachment->prev           = attachment->last;
-
-        if (attachment->first == nullptr)
+        auto formatInfo = GetFormatInfo(renderTargetInfo.attachment->GetFormat());
+        if (formatInfo.hasDepth || formatInfo.hasStencil)
         {
-            attachment->first = passAttachment;
-            attachment->last  = passAttachment;
+            renderTargetInfo.attachment->m_usage.asImage |= ImageUsage::Depth;
+            pass.m_depthStencilAttachment = renderTargetInfo;
         }
         else
         {
-            attachment->last->next = passAttachment;
-            attachment->last       = passAttachment;
+            renderTargetInfo.attachment->m_usage.asImage |= ImageUsage::Color;
+            pass.m_colorAttachments.push_back(renderTargetInfo);
         }
 
-        pass->m_imageAttachments.push_back(passAttachment);
-        if (usage & ImageUsage::DepthStencil)
+        auto* resourceAccess           = pass.AddResourceAccess(m_tempAllocator);
+        resourceAccess->type           = RenderGraphResourceAccessType::RenderTarget;
+        resourceAccess->asRenderTarget = renderTargetInfo;
+        renderTargetInfo.attachment->PushAccess(resourceAccess);
+        if (renderTargetInfo.resolveAttachment)
         {
-            pass->m_depthStencilAttachment = passAttachment;
-        }
-        else if (usage & ImageUsage::Color)
-        {
-            pass->m_colorAttachments.push_back(passAttachment);
+            auto* resolveResourceAccess    = pass.AddResourceAccess(m_tempAllocator);
+            resolveResourceAccess->type    = RenderGraphResourceAccessType::Resolve;
+            resourceAccess->asRenderTarget = renderTargetInfo;
+            renderTargetInfo.resolveAttachment->PushAccess(resolveResourceAccess);
+            TL_UNREACHABLE();
         }
     }
 
-    void RenderGraph::PassUseBuffer(
-        Handle<Pass> _pass, Handle<RenderGraphBuffer> _attachment, BufferUsage usage, TL::Flags<PipelineStage> stages, Access access)
+    Handle<Image> RenderGraph::GetImage(RenderGraphImage image) const
     {
-        auto pass       = m_passPool.Get(_pass);
-        auto attachment = m_rgBufferPool.Get(_attachment);
+        return image.GetImage();
+    }
 
-        auto passAttachment            = m_arena.Allocate<RenderGraphBufferPassAccess>();
-        passAttachment->pass           = _pass;
-        passAttachment->buffer         = _attachment;
-        passAttachment->usage          = usage;
-        passAttachment->pipelineAccess = access;
-        passAttachment->pipelineStages = stages;
-        passAttachment->next           = nullptr;
-        passAttachment->prev           = attachment->last;
+    Handle<Buffer> RenderGraph::GetBuffer(RenderGraphBuffer buffer) const
+    {
+        return buffer.GetBuffer();
+    }
 
-        if (attachment->first == nullptr)
+    void RenderGraph::BeginFrame()
+    {
+        m_frameIndex++;
+        m_graphPasses.clear();
+        // m_tempAllocator.Collect();
+    }
+
+    void RenderGraph::EndFrame()
+    {
+        static bool isInit = false;
+        if (isInit == false)
         {
-            attachment->first = passAttachment;
-            attachment->last  = passAttachment;
-        }
-        else
-        {
-            attachment->last = passAttachment;
-        }
+            for (auto graphImage : m_graphImages)
+            {
+                if (m_graphTransientImagesLookup.find(graphImage) == m_graphTransientImagesLookup.end())
+                    continue;
 
-        pass->m_bufferAttachments.push_back(passAttachment);
-    }
+                ImageCreateInfo imageCI      = m_graphTransientImagesLookup[graphImage];
+                imageCI.usageFlags           = graphImage->GetImageUsage();
+                graphImage->m_handle.asImage = m_device->CreateImage(imageCI).GetValue();
+            }
+            for (auto graphBuffer : m_graphBuffers)
+            {
+                if (m_graphTransientBuffersLookup.find(graphBuffer) == m_graphTransientBuffersLookup.end())
+                    continue;
 
-    Handle<Image> RenderGraph::GetImage(Handle<RenderGraphImage> _attachment) const
-    {
-        auto attachment = m_rgImagesPool.Get(_attachment);
-        if (attachment->swapchain) return attachment->swapchain->GetImage();
-        else return attachment->resource;
-    }
-
-    Handle<Buffer> RenderGraph::GetBuffer(Handle<RenderGraphBuffer> _attachment) const
-    {
-        auto attachment = m_rgBufferPool.Get(_attachment);
-        return attachment->resource;
-    }
-
-    void RenderGraph::Compile()
-    {
-        // should be no op for now
-    }
-
-    void RenderGraph::Cleanup()
-    {
-        for (auto attachmentHandle : m_transientImages)
-        {
-            auto resource = GetImage(attachmentHandle);
-            m_device->DestroyImage(resource);
+                BufferCreateInfo bufferCI      = m_graphTransientBuffersLookup[graphBuffer];
+                bufferCI.usageFlags            = graphBuffer->GetBufferUsage();
+                graphBuffer->m_handle.asBuffer = m_device->CreateBuffer(bufferCI).GetValue();
+            }
+            for (const auto& pass : m_graphPasses)
+            {
+                pass->m_onCompileCallback(*this, *pass);
+            }
+            isInit = true;
         }
 
-        for (auto attachmentHandle : m_transientBuffers)
+        // Execute each pass in the graph
+        for (const auto& pass : m_graphPasses)
         {
-            auto resource = GetBuffer(attachmentHandle);
-            m_device->DestroyBuffer(resource);
+            static uint64_t previousSubmitValue = 0; // TODO: remove
+
+            auto commandList = m_device->CreateCommandList({
+                .name      = pass->GetName(),
+                .queueType = QueueType::Graphics,
+            });
+
+            OnBeginPassExecute(*pass, *commandList);
+            pass->m_onExecuteCallback(*commandList);
+            OnEndPassExecute(*pass, *commandList);
+
+            auto swapchain = m_graphImportedSwapchainsLookup.begin()->first;
+
+            previousSubmitValue = m_device->QueueSubmit({
+                .waitTimelineValue = previousSubmitValue++,
+                .waitPipelineStage = RHI::PipelineStage::TopOfPipe,
+                .commandLists      = commandList,
+                .swapchainToWait   = swapchain,
+                .swapchainToSignal = swapchain,
+            });
+
+            [[maybe_unused]] auto res = swapchain->Present();
         }
     }
 

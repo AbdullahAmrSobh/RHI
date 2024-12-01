@@ -22,7 +22,7 @@ namespace RHI
         Graphics  = 1 << 0,
         Compute   = 1 << 1,
         Transfer  = 1 << 2,
-        Immeidate = 1 << 3
+        Immediate = 1 << 3
     };
 
     struct PassCreateInfo
@@ -41,22 +41,37 @@ namespace RHI
     public:
         RHI_INTERFACE_BOILERPLATE(Pass);
 
-        const char* GetName() const;
+        explicit Pass(const PassCreateInfo& createInfo) noexcept;
 
-        void        Resize(ImageSize2D size);
+        /// @brief Gets the name of the pass.
+        const char*                           GetName() const;
 
-        ImageSize2D GetSize() const;
+        /// @brief Resizes the pass for a new image size.
+        void                                  Resize(ImageSize2D size);
+
+        /// @brief Gets the current size of the pass.
+        ImageSize2D                           GetSize() const;
+
+        /// @brief Gets the color attachments associated with this pass.
+        TL::Span<const RenderTargetInfo>      GetColorAttachment() const;
+
+        /// @brief Gets the depth/stencil attachment if present.
+        const RenderTargetInfo*               GetDepthStencilAttachment() const;
+
+        /// @brief Gets the accessed resources for this pass.
+        TL::Span<PassAccessedResource* const> GetAccessedResources() const;
+
+        /// @brief Adds a new resource access to the pass.
+        PassAccessedResource*                 AddResourceAccess(TL::IAllocator& allocator);
 
     private:
-        TL::String                               m_name;
-        ImageSize2D                              m_size;
-        TL::Vector<RenderGraphImagePassAccess*>  m_colorAttachments;
-        RenderGraphImagePassAccess*              m_depthStencilAttachment;
-        TL::Vector<RenderGraphImagePassAccess*>  m_imageAttachments;
-        TL::Vector<RenderGraphBufferPassAccess*> m_bufferAttachments;
-        PassSetupCallback                        m_onSetupCallback;
-        PassCompileCallback                      m_onCompileCallback;
-        PassExecuteCallback                      m_onExecuteCallback;
+        TL::String                        m_name;
+        PassSetupCallback                 m_onSetupCallback;
+        PassCompileCallback               m_onCompileCallback;
+        PassExecuteCallback               m_onExecuteCallback;
+        ImageSize2D                       m_size;
+        TL::Vector<RenderTargetInfo>      m_colorAttachments;
+        TL::Optional<RenderTargetInfo>    m_depthStencilAttachment;
+        TL::Vector<PassAccessedResource*> m_accessedResources;
     };
-
 } // namespace RHI

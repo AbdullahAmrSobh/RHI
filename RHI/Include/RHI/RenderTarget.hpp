@@ -7,6 +7,7 @@
 namespace RHI
 {
     struct Image;
+    class RenderGraphImage;
 
     enum class LoadOperation : uint8_t
     {
@@ -54,20 +55,15 @@ namespace RHI
         DepthStencilValue    depthStencil;
     };
 
-    struct LoadStoreOperations
+    struct RenderTargetInfo
     {
-        LoadOperation  loadOperation         = LoadOperation::Discard;
-        StoreOperation storeOperation        = StoreOperation::Store;
-        LoadOperation  stencilLoadOperation  = LoadOperation::Discard;
-        StoreOperation stencilStoreOperation = StoreOperation::Store;
-        ClearValue     clearValue            = {};
-    };
-
-    struct AttachmentInfo
-    {
-        Handle<Image>       attachment          = NullHandle;
-        LoadStoreOperations loadStoreOperations = {};
-        Handle<Image>       resolveAttachment   = NullHandle;
-        ResolveMode         resolveMode         = ResolveMode::None;
+        RenderGraphImage* attachment            = nullptr;
+        ClearValue        clearValue            = {};
+        LoadOperation     loadOperation         = LoadOperation::Discard;
+        StoreOperation    storeOperation        = StoreOperation::Store;
+        LoadOperation     stencilLoadOperation  = LoadOperation::Discard;
+        StoreOperation    stencilStoreOperation = StoreOperation::Store;
+        RenderGraphImage* resolveAttachment     = nullptr;
+        ResolveMode       resolveMode           = ResolveMode::None;
     };
 } // namespace RHI

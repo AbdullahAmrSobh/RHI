@@ -47,16 +47,6 @@ namespace RHI
         uint32_t height  = UINT32_MAX; ///< Height of the scissor rectangle.
     };
 
-    /// @brief Contains information needed to begin recording commands in a command list.
-    struct RenderPassBeginInfo
-    {
-        RenderGraph*                   renderGraph            = nullptr;    ///< Pointer to the render graph.
-        Handle<Pass>                   pass                   = NullHandle; ///< Handle to the pass.
-        Scissor                        renderArea             = {};
-        TL::Span<const AttachmentInfo> colorAttachments       = {};
-        TL::Optional<AttachmentInfo>   depthStenciAttachments = {};
-    };
-
     /// @brief Contains information needed to copy a buffer.
     struct BufferCopyInfo
     {
@@ -165,19 +155,6 @@ namespace RHI
     {
     public:
         RHI_INTERFACE_BOILERPLATE(CommandList);
-
-        /// @brief Begins recording commands into the command list.
-        virtual void Begin()                                                                                                       = 0;
-
-        /// @brief Ends recording commands into the command list.
-        virtual void End()                                                                                                         = 0;
-
-        /// @brief Begins recording rendering commands.
-        /// @param beginInfo Information for beginning command recording.
-        virtual void BeginRenderPass(const RenderPassBeginInfo& beginInfo)                                                         = 0;
-
-        /// @brief Ends recording rendering commands.
-        virtual void EndRenderPass()                                                                                               = 0;
 
         /// @brief Pushes a debug marker with a name and color onto the command list.
         /// @param name Name of the debug marker.

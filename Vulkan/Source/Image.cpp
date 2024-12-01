@@ -56,33 +56,40 @@ namespace RHI::Vulkan
         }
     }
 
-    VkImageAspectFlagBits ConvertImageAspect(TL::Flags<ImageAspect> imageAspect)
+    VkImageAspectFlags ConvertImageAspect(TL::Flags<ImageAspect> imageAspect)
     {
-        if (imageAspect & ImageAspect::Color) return VK_IMAGE_ASPECT_COLOR_BIT;
-        if (imageAspect & ImageAspect::Depth) return VK_IMAGE_ASPECT_DEPTH_BIT;
-        if (imageAspect & ImageAspect::Stencil) return VK_IMAGE_ASPECT_STENCIL_BIT;
-        TL_UNREACHABLE();
-        return VK_IMAGE_ASPECT_FLAG_BITS_MAX_ENUM;
+        VkImageAspectFlags vkAspectFlags = 0;
+
+        if (imageAspect & ImageAspect::Color) vkAspectFlags |= VK_IMAGE_ASPECT_COLOR_BIT;
+        if (imageAspect & ImageAspect::Depth) vkAspectFlags |= VK_IMAGE_ASPECT_DEPTH_BIT;
+        if (imageAspect & ImageAspect::Stencil) vkAspectFlags |= VK_IMAGE_ASPECT_STENCIL_BIT;
+
+        // Validate for combined flags or specific cases
+        if (vkAspectFlags == 0)
+        {
+            if (imageAspect == ImageAspect::All)
+                return VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+            if (imageAspect == ImageAspect::DepthStencil)
+                return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+
+            TL_UNREACHABLE(); // This handles invalid input
+        }
+
+        return vkAspectFlags;
     }
 
-    VkImageAspectFlags ConvertImageAspect(ImageAspect imageAspect)
+    VkImageAspectFlagBits ConvertImageAspect(ImageAspect imageAspect)
     {
         switch (imageAspect)
         {
-        case ImageAspect::None:         return VK_IMAGE_ASPECT_FLAG_BITS_MAX_ENUM;
+        case ImageAspect::None:         return VK_IMAGE_ASPECT_NONE;
         case ImageAspect::Color:        return VK_IMAGE_ASPECT_COLOR_BIT;
         case ImageAspect::Depth:        return VK_IMAGE_ASPECT_DEPTH_BIT;
         case ImageAspect::Stencil:      return VK_IMAGE_ASPECT_STENCIL_BIT;
-        case ImageAspect::DepthStencil: return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-        case ImageAspect::All:          return VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+        case ImageAspect::DepthStencil: return VK_IMAGE_ASPECT_DEPTH_BIT;
+        case ImageAspect::All:          return VK_IMAGE_ASPECT_COLOR_BIT;
         default:                        TL_UNREACHABLE(); return VK_IMAGE_ASPECT_FLAG_BITS_MAX_ENUM;
         }
-    }
-
-    VkImageAspectFlags FormatToAspect(VkFormat format)
-    {
-        if (format == VK_FORMAT_D32_SFLOAT) return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-        else return VK_IMAGE_ASPECT_COLOR_BIT;
     }
 
     VkComponentSwizzle ConvertComponentSwizzle(ComponentSwizzle componentSwizzle)
@@ -205,18 +212,13 @@ namespace RHI::Vulkan
             },
             .subresourceRange =
                 {
-                    .aspectMask     = 0,
+                    .aspectMask     = ConvertImageAspect(GetFormatAspects(createInfo.format)),
                     .baseMipLevel   = 0,
                     .levelCount     = VK_REMAINING_MIP_LEVELS,
                     .baseArrayLayer = 0,
                     .layerCount     = VK_REMAINING_ARRAY_LAYERS,
                 },
         };
-
-        auto formatInfo = GetFormatInfo(createInfo.format);
-        if (formatInfo.hasDepth) imageViewCI.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
-        if (formatInfo.hasStencil) imageViewCI.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
-        if (formatInfo.hasRed) imageViewCI.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_COLOR_BIT;
 
         switch (imageCI.imageType)
         {
@@ -225,6 +227,10 @@ namespace RHI::Vulkan
         case VK_IMAGE_TYPE_3D: imageViewCI.viewType = VK_IMAGE_VIEW_TYPE_3D; break;
         default:               TL_UNREACHABLE(); break;
         }
+
+        this->subresources = {
+            .imageAspects = ImageAspect::Color,
+        };
 
         result = vkCreateImageView(device->m_device, &imageViewCI, nullptr, &viewHandle);
 
@@ -235,6 +241,9 @@ namespace RHI::Vulkan
 
     ResultCode IImage::Init(IDevice* device, VkImage image, const VkSwapchainCreateInfoKHR& swapchainCI)
     {
+        this->subresources = {
+            .imageAspects = ImageAspect::Color,
+        };
         this->handle = image;
 
         VkImageViewCreateInfo imageViewCI{

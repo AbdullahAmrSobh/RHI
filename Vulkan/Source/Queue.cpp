@@ -2,7 +2,6 @@
 
 #include <tracy/Tracy.hpp>
 
-#include "Barrier.hpp"
 #include "CommandList.hpp"
 #include "Device.hpp"
 #include "Swapchain.hpp"
@@ -66,7 +65,8 @@ namespace RHI::Vulkan
                 .pNext       = nullptr,
                 .semaphore   = m_device->GetTimelineSemaphore(),
                 .value       = submitInfo.waitTimelineValue,
-                .stageMask   = ConvertPipelineStageFlags(submitInfo.waitPipelineStage),
+                // TODO: !!!!!!!
+                .stageMask   = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
                 .deviceIndex = 0,
             },
             {
@@ -91,7 +91,7 @@ namespace RHI::Vulkan
                 .deviceMask    = 0,
             });
 
-            commandBuffersSignalStages |= commandList->GetPipelineStages();
+            // commandBuffersSignalStages |= commandList->GetPipelineStages();
         }
 
         VkSemaphoreSubmitInfo signalSemaphoreInfo[2] = {
@@ -99,7 +99,7 @@ namespace RHI::Vulkan
                 .sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
                 .pNext       = nullptr,
                 .semaphore   = m_device->GetTimelineSemaphore(),
-                .value       = m_device->GetPendingTimelineValue(),
+                .value       = m_device->GetPendingTimelineValue() + 1,
                 .stageMask   = commandBuffersSignalStages,
                 .deviceIndex = 0,
             },

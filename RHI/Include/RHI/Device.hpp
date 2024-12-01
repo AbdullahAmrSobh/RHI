@@ -67,13 +67,13 @@ namespace RHI
     public:
         RHI_INTERFACE_BOILERPLATE(Device);
 
-        TL_NODISCARD RenderGraph*        CreateRenderGraph();
-
-        void                             DestroyRenderGraph(RenderGraph* renderGraph);
-
         /// @brief Get the device limits.
         /// @return Device Limits struct.
         DeviceLimits                     GetLimits() const;
+
+        virtual RenderGraph*             CreateRenderGraph()                                                              = 0;
+
+        virtual void                     DestroyRenderGraph(RenderGraph* renderGraph)                                     = 0;
 
         /// @brief Creates a swapchain.
         /// @param createInfo Swapchain creation parameters.

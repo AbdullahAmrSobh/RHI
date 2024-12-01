@@ -6,28 +6,26 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #define GLM_FORCE_LEFT_HANDED
 
-#include <Examples-Base/ApplicationBase.hpp>
-
 #include <RHI/RHI.hpp>
-#include <RHI-Vulkan/Loader.hpp>
 
-#include <tracy/Tracy.hpp>
-
-#include <TL/FileSystem/FileSystem.hpp>
 #include <TL/Allocator/MemPlumber.hpp>
 #include <TL/Defer.hpp>
+#include <TL/FileSystem/FileSystem.hpp>
+
+#include <Examples-Base/ApplicationBase.hpp>
+#include <RHI-Vulkan/Loader.hpp>
+#include <glm/ext.hpp>
+#include <glm/glm.hpp>
+#include <tracy/Tracy.hpp>
 
 #include "Camera.hpp"
 
-#include <glm/glm.hpp>
-#include <glm/ext.hpp>
-
 #define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-
 #include <fastgltf/core.hpp>
-#include <fastgltf/types.hpp>
 #include <fastgltf/tools.hpp>
+#include <fastgltf/types.hpp>
+
+#include "stb_image.h"
 
 glm::mat4 convertMatrix(fastgltf::math::fmat4x4 matrix)
 {
@@ -329,10 +327,7 @@ public:
     RHI::Device*    m_device;
     RHI::Swapchain* m_swapchain;
 
-    RHI::RenderGraph*         m_renderGraph;
-    RHI::Handle<RHI::Pass>    m_mainPass;
-    RHI::Handle<RHI::RenderGraphImage> m_colorAttachment;
-    RHI::Handle<RHI::RenderGraphImage> m_depthAttachment;
+    RHI::RenderGraph* m_renderGraph;
 
     TL::Vector<uint32_t> m_meshIndexList;
 
@@ -345,8 +340,14 @@ public:
 
     Camera m_camera;
 
-    void InitContextAndSwapchain()
+    TL::Vector<glm::mat4> matrixList{};
+
+    TL::Vector<RHI::Handle<RHI::Image>> m_sceneTextures{};
+
+    void OnInit() override
     {
+        auto [width, height] = m_window->GetWindowSize();
+
         RHI::ApplicationInfo appInfo{
             .applicationName    = "Example",
             .applicationVersion = {0, 1, 0},
@@ -355,7 +356,6 @@ public:
         };
         m_device = RHI::CreateVulkanDevice(appInfo);
 
-        auto [width, height] = m_window->GetWindowSize();
         RHI::SwapchainCreateInfo swapchainInfo{
             .name          = "Swapchain",
             .imageSize     = {width, height},
@@ -365,152 +365,95 @@ public:
             .presentMode   = RHI::SwapchainPresentMode::Fifo,
             .win32Window   = {m_window->GetNativeHandle()},
         };
-
         m_swapchain = m_device->CreateSwapchain(swapchainInfo);
-    }
 
-    void ShutdownContextAndSwapchain()
-    {
-        delete m_swapchain;
-        RHI::DestroyVulkanDevice(m_device);
-    }
+        m_renderGraph = m_device->CreateRenderGraph();
 
-    void InitPipelineAndLayout()
-    {
-        TL::Vector<uint32_t> spv;
-        auto                 spvBlock = TL::ReadBinaryFile("./Shaders/Basic.spv");
-        spv.resize(spvBlock.size / 4);
-        memcpy(spv.data(), spvBlock.ptr, spvBlock.size);
-        auto shaderModule = m_device->CreateShaderModule({.code = spv});
-        TL::Allocator::Release(spvBlock, alignof(char));
+        {
+            TL::Vector<uint32_t> spv;
+            auto                 spvBlock = TL::ReadBinaryFile("./Shaders/Basic.spv");
+            spv.resize(spvBlock.size / 4);
+            memcpy(spv.data(), spvBlock.ptr, spvBlock.size);
+            auto shaderModule = m_device->CreateShaderModule({.code = spv});
+            TL::Allocator::Release(spvBlock, alignof(char));
 
-        RHI::BindGroupLayoutCreateInfo bindGroupLayoutCI{
-            .name = "BGL-ViewUB",
-            .bindings{
-                {
-                    .type   = RHI::BindingType::UniformBuffer,
-                    .stages = RHI::ShaderStage::Pixel | RHI::ShaderStage::Vertex,
+            auto bindGroupLayout = m_device->CreateBindGroupLayout({
+                .name = "BGL-ViewUB",
+                .bindings{
+                    {
+                        .type   = RHI::BindingType::UniformBuffer,
+                        .stages = RHI::ShaderStage::Pixel | RHI::ShaderStage::Vertex,
+                    },
+                    {
+                        .type   = RHI::BindingType::DynamicUniformBuffer,
+                        .stages = RHI::ShaderStage::Pixel | RHI::ShaderStage::Vertex,
+                    },
                 },
-                {
-                    .type   = RHI::BindingType::DynamicUniformBuffer,
-                    .stages = RHI::ShaderStage::Pixel | RHI::ShaderStage::Vertex,
+            });
+
+            m_pipelineLayout = m_device->CreatePipelineLayout({
+                .name    = "graphics-pipeline-layout",
+                .layouts = {bindGroupLayout},
+            });
+
+            m_graphicsPipeline = m_device->CreateGraphicsPipeline({
+                .name               = "Hello-Triangle",
+                .vertexShaderName   = "VSMain",
+                .vertexShaderModule = shaderModule.get(),
+                .pixelShaderName    = "PSMain",
+                .pixelShaderModule  = shaderModule.get(),
+                .layout             = m_pipelineLayout,
+                .vertexBufferBindings{
+                    {
+                        .stride     = sizeof(glm::vec3),
+                        .attributes = {{.format = RHI::Format::RGB32_FLOAT}},
+                    },
+                    {
+                        .stride     = sizeof(glm::vec3),
+                        .attributes = {{.format = RHI::Format::RGBA32_FLOAT}},
+                    },
+                    {
+                        .stride     = sizeof(glm::vec2),
+                        .attributes = {{.format = RHI::Format::RG32_FLOAT}},
+                    },
                 },
-            },
-        };
-        auto bindGroupLayout = m_device->CreateBindGroupLayout(bindGroupLayoutCI);
-
-        RHI::PipelineLayoutCreateInfo layoutCI{.name = "graphics-pipeline-layout", .layouts = {bindGroupLayout}};
-        m_pipelineLayout = m_device->CreatePipelineLayout(layoutCI);
-
-        RHI::GraphicsPipelineCreateInfo pipelineCI{
-            .name               = "Hello-Triangle",
-            .vertexShaderName   = "VSMain",
-            .vertexShaderModule = shaderModule.get(),
-            .pixelShaderName    = "PSMain",
-            .pixelShaderModule  = shaderModule.get(),
-            .layout             = m_pipelineLayout,
-            .vertexBufferBindings{
-                {
-                    .stride     = sizeof(glm::vec3),
-                    .attributes = {{.format = RHI::Format::RGB32_FLOAT}},
+                .renderTargetLayout{
+                    .colorAttachmentsFormats = RHI::Format::RGBA8_UNORM,
+                    .depthAttachmentFormat   = RHI::Format::D32,
                 },
-                {
-                    .stride     = sizeof(glm::vec3),
-                    .attributes = {{.format = RHI::Format::RGBA32_FLOAT}},
+                .colorBlendState{.blendStates = {{.blendEnable = true}}},
+                .rasterizationState{.cullMode = RHI::PipelineRasterizerStateCullMode::None},
+                .depthStencilState{
+                    .depthTestEnable  = true,
+                    .depthWriteEnable = true,
                 },
+            });
+
+            // init and update bind groups
+
+            m_sceneGlobalUB.Init(*m_device);
+            m_perDrawUB.Init(*m_device, 512);
+
+            m_bindGroup = m_device->CreateBindGroup(bindGroupLayout);
+            m_device->UpdateBindGroup(
+                m_bindGroup,
                 {
-                    .stride     = sizeof(glm::vec2),
-                    .attributes = {{.format = RHI::Format::RG32_FLOAT}},
-                },
-            },
-            .renderTargetLayout{
-                .colorAttachmentsFormats = RHI::Format::RGBA8_UNORM,
-                .depthAttachmentFormat   = RHI::Format::D32,
-            },
-            .colorBlendState{.blendStates = {{.blendEnable = true}}},
-            .rasterizationState{.cullMode = RHI::PipelineRasterizerStateCullMode::None},
-            .depthStencilState{
-                .depthTestEnable  = true,
-                .depthWriteEnable = true,
-            },
-        };
-        m_graphicsPipeline = m_device->CreateGraphicsPipeline(pipelineCI);
-
-        // init and update bind groups
-
-        RHI::BindGroupBuffersUpdateInfo sceneGlobalBinding{.dstBinding = 0, .buffers = m_sceneGlobalUB.view.buffer};
-        RHI::BindGroupBuffersUpdateInfo perDrawBinding{
-            .dstBinding = 1, .buffers = m_perDrawUB.view.buffer, .subregions = {{0, m_perDrawUB.stride}}};
-
-        const RHI::BindGroupBuffersUpdateInfo buffersUpdateInfo[2] = {
-            sceneGlobalBinding,
-            perDrawBinding,
-        };
-
-        m_bindGroup = m_device->CreateBindGroup(bindGroupLayout);
-        RHI::BindGroupUpdateInfo bindGroupUpdateInfo{
-            .buffers = buffersUpdateInfo,
-        };
-        m_device->UpdateBindGroup(m_bindGroup, bindGroupUpdateInfo);
-        m_device->DestroyBindGroupLayout(bindGroupLayout);
-    }
-
-    void ShutdownPipelineAndLayout()
-    {
-        m_device->DestroyBindGroup(m_bindGroup);
-        m_device->DestroyGraphicsPipeline(m_graphicsPipeline);
-        m_device->DestroyPipelineLayout(m_pipelineLayout);
-    }
-
-    void InitRenderGraph()
-    {
-        auto [width, height] = m_window->GetWindowSize();
-        m_renderGraph        = m_device->CreateRenderGraph();
-
-        RHI::PassCreateInfo passCI{
-            .name  = "main-pass",
-            .flags = RHI::PassFlags::Graphics,
-        };
-        m_mainPass = m_renderGraph->CreatePass(passCI);
-
-        m_colorAttachment = m_renderGraph->ImportSwapchain("main-output", *m_swapchain);
-        m_depthAttachment = m_renderGraph->CreateImage({
-            .name       = "DepthImage",
-            .usageFlags = RHI::ImageUsage::Depth,
-            .type       = RHI::ImageType::Image2D,
-            .size       = {width, height, 1},
-            .format     = RHI::Format::D32,
-        });
-
-        m_renderGraph->PassUseImage(
-            m_mainPass, m_colorAttachment, RHI::ImageUsage::Color, RHI::PipelineStage::ColorAttachmentOutput, RHI::Access::None);
-
-        m_renderGraph->PassUseImage(
-            m_mainPass,
-            m_depthAttachment,
-            RHI::ImageUsage::Depth,
-            RHI::PipelineStage::LateFragmentTests | RHI::PipelineStage::EarlyFragmentTests,
-            RHI::Access::ReadWrite);
-
-        m_renderGraph->PassResize(m_mainPass, {width, height});
-    }
-
-    void ShutdownRenderGraph()
-    {
-        if (m_renderGraph) delete m_renderGraph;
-    }
-
-    TL::Vector<glm::mat4> matrixList{};
-
-    TL::Vector<RHI::Handle<RHI::Image>> m_sceneTextures{};
-
-    void OnInit() override
-    {
-        InitContextAndSwapchain();
-        InitRenderGraph();
-
-        m_sceneGlobalUB.Init(*m_device);
-        m_perDrawUB.Init(*m_device, 512);
+                    .buffers = {
+                        {
+                            .dstBinding = 0,
+                            .buffers    = m_sceneGlobalUB.view.buffer,
+                        },
+                        {
+                            .dstBinding = 1,
+                            .buffers    = m_perDrawUB.view.buffer,
+                            .subregions = {
+                                {0, m_perDrawUB.stride},
+                            },
+                        },
+                    },
+                });
+            m_device->DestroyBindGroupLayout(bindGroupLayout);
+        }
 
         auto asset = LoadAsset(GetLaunchSettings().sceneFileLocation);
         for (auto meshAsset : asset.meshes)
@@ -529,17 +472,17 @@ public:
             0,
             fastgltf::math::fmat4x4(),
             [&](fastgltf::Node& node, fastgltf::math::fmat4x4 _matrix)
-        {
-            auto matrix = convertMatrix(_matrix);
-            if (node.cameraIndex.has_value())
             {
-            }
-            else if (node.meshIndex.has_value())
-            {
-                matrixList.push_back(matrix);
-                m_meshIndexList.push_back((uint32_t)node.meshIndex.value());
-            }
-        });
+                auto matrix = convertMatrix(_matrix);
+                if (node.cameraIndex.has_value())
+                {
+                }
+                else if (node.meshIndex.has_value())
+                {
+                    matrixList.push_back(matrix);
+                    m_meshIndexList.push_back((uint32_t)node.meshIndex.value());
+                }
+            });
 
         for (int i = 0; i < matrixList.size(); i++)
         {
@@ -557,18 +500,18 @@ public:
             TL_ASSERT(m_perDrawUB.Get(i)->modelToWorldMatrix == matrixList[i]);
         }
 
-        InitPipelineAndLayout();
-
-        auto [width, height] = m_window->GetWindowSize();
         m_camera.SetPerspective(30.0f, (float)width / (float)height, 0.00001f, 100000.0f);
         m_camera.m_window = m_window.get();
     }
 
     void OnShutdown() override
     {
-        ShutdownRenderGraph();
-        ShutdownPipelineAndLayout();
-        ShutdownContextAndSwapchain();
+        m_device->DestroyRenderGraph(m_renderGraph);
+        m_device->DestroyBindGroup(m_bindGroup);
+        m_device->DestroyGraphicsPipeline(m_graphicsPipeline);
+        m_device->DestroyPipelineLayout(m_pipelineLayout);
+        m_device->DestroySwapchain(m_swapchain);
+        RHI::DestroyVulkanDevice(m_device);
     }
 
     void OnUpdate(Timestep ts) override
@@ -593,70 +536,62 @@ public:
 
     void Render() override
     {
-        static RHI::ClearValue clearValue          = {.f32 = {0.3f, 0.5f, 0.7f, 1.0f}};
-        static uint64_t        previousSubmitValue = 0;
-
-        m_device->WaitTimelineValue(previousSubmitValue);
-
         auto [width, height] = m_window->GetWindowSize();
-        m_renderGraph->PassResize(m_mainPass, {width, height});
 
-        auto commandList = m_device->CreateCommandList({.queueType = RHI::QueueType::Graphics});
+        m_renderGraph->BeginFrame();
 
-        commandList->Begin();
-        commandList->BeginRenderPass({
-            .renderGraph = m_renderGraph,
-            .pass        = m_mainPass,
-            .renderArea  = {0, 0, width, height},
-            .colorAttachments =
+        static auto colorAttachment = m_renderGraph->ImportSwapchain("main-output", *m_swapchain, RHI::Format::RGBA8_UNORM);
+        static auto depthAttachment = m_renderGraph->CreateImage({
+            .name       = "DepthImage",
+            .usageFlags = RHI::ImageUsage::Depth,
+            .type       = RHI::ImageType::Image2D,
+            .size       = {width, height, 1},
+            .format     = RHI::Format::D32,
+        });
+
+        [[maybe_unused]] auto pass = m_renderGraph->AddPass({
+            .name          = "main-buffer",
+            .flags         = RHI::PassFlags::Graphics,
+            .setupCallback = [&](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
+            {
+                m_renderGraph->UseRenderTarget(pass, {.attachment = colorAttachment, .clearValue = {.f32{0.1f, 1.0f, 0.4f, 1.0f}}});
+                // m_renderGraph->UseRenderTarget(pass, {.attachment = depthAttachment});
+            },
+            .compileCallback = [&](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
+            {
+            },
+            .executeCallback = [&](RHI::CommandList& commandList)
+            {
+                commandList.SetViewport({
+                    .offsetX  = 0.0f,
+                    .offsetY  = 0.0f,
+                    .width    = (float)width,
+                    .height   = (float)height,
+                    .minDepth = 0.0f,
+                    .maxDepth = 1.0f,
+                });
+                commandList.SetSicssor({
+                    .offsetX = 0,
+                    .offsetY = 0,
+                    .width   = width,
+                    .height  = height,
+                });
+
+                for (auto index : m_meshIndexList)
                 {
-                    RHI::AttachmentInfo{
-                        .attachment = m_renderGraph->GetImage(m_colorAttachment),
-                        .loadStoreOperations = {.clearValue = clearValue},
-                    },
-                },
-            .depthStenciAttachments =
-                RHI::AttachmentInfo{
-                    .attachment = m_renderGraph->GetImage(m_depthAttachment),
-                },
-        });
-        commandList->SetViewport({
-            .offsetX  = 0.0f,
-            .offsetY  = 0.0f,
-            .width    = (float)width,
-            .height   = (float)height,
-            .minDepth = 0.0f,
-            .maxDepth = 1.0f,
-        });
-        commandList->SetSicssor({
-            .offsetX = 0,
-            .offsetY = 0,
-            .width   = width,
-            .height  = height,
+                    commandList.BindGraphicsPipeline(
+                        m_graphicsPipeline, RHI::BindGroupBindingInfo{.bindGroup = m_bindGroup, .dynamicOffsets = {index * 256}});
+                    m_meshes[index].Draw(commandList);
+                }
+            },
         });
 
-        for (auto index : m_meshIndexList)
-        {
-            commandList->BindGraphicsPipeline(
-                m_graphicsPipeline, RHI::BindGroupBindingInfo{.bindGroup = m_bindGroup, .dynamicOffsets = {index * 256}});
-            m_meshes[index].Draw(*commandList);
-        }
+        pass->Resize({width, height});
 
-        commandList->EndRenderPass();
-        commandList->End();
+        m_renderGraph->EndFrame();
 
-        previousSubmitValue = m_device->QueueSubmit({
-            .waitTimelineValue = previousSubmitValue,
-            .waitPipelineStage = RHI::PipelineStage::TopOfPipe,
-            .commandLists      = commandList,
-            .swapchainToWait   = m_swapchain,
-            .swapchainToSignal = m_swapchain,
-        });
-
-        auto presentResult = m_swapchain->Present();
-        TL_ASSERT(presentResult == RHI::ResultCode::Success);
-
-        m_device->CollectResources();
+        // auto presentResult = m_swapchain->Present();
+        // TL_ASSERT(presentResult == RHI::ResultCode::Success);
     }
 
     void OnEvent(Event& event) override

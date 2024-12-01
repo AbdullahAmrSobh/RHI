@@ -1,4 +1,3 @@
-
 #if RHI_PLATFORM_WINDOWS
     #define VK_USE_PLATFORM_WIN32_KHR
     #define VULKAN_SURFACE_OS_EXTENSION_NAME VK_KHR_WIN32_SURFACE_EXTENSION_NAME
@@ -30,6 +29,7 @@
 #include "Common.hpp"
 #include "Queue.hpp"
 #include "RHI-Vulkan/Loader.hpp"
+#include "RenderGraph.hpp"
 #include "StagingBuffer.hpp"
 #include "Swapchain.hpp"
 
@@ -591,7 +591,21 @@ namespace RHI::Vulkan
 
     uint64_t IDevice::AdvanceTimeline()
     {
-        return {};
+        auto val = m_timelineValue++;
+        return val;
+    }
+
+    RenderGraph* IDevice::CreateRenderGraph()
+    {
+        auto renderGraph = new IRenderGraph();
+        auto result      = renderGraph->Init(this);
+        TL_ASSERT(IsSuccess(result));
+        return renderGraph;
+    }
+
+    void IDevice::DestroyRenderGraph(RenderGraph* renderGraph)
+    {
+        delete renderGraph;
     }
 
     Swapchain* IDevice::CreateSwapchain(const SwapchainCreateInfo& createInfo)
@@ -635,9 +649,9 @@ namespace RHI::Vulkan
         m_destroyQueue->Push(
             GetPendingTimelineValue(),
             [handle](IDevice* device)
-        {
-            device->m_bindGroupLayoutsOwner.Destroy(handle, device);
-        });
+            {
+                device->m_bindGroupLayoutsOwner.Destroy(handle, device);
+            });
     }
 
     Handle<BindGroup> IDevice::CreateBindGroup(Handle<BindGroupLayout> handle)
@@ -652,9 +666,9 @@ namespace RHI::Vulkan
         m_destroyQueue->Push(
             GetPendingTimelineValue(),
             [handle](IDevice* device)
-        {
-            device->m_bindGroupOwner.Destroy(handle, device);
-        });
+            {
+                device->m_bindGroupOwner.Destroy(handle, device);
+            });
     }
 
     void IDevice::UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo)
@@ -675,9 +689,9 @@ namespace RHI::Vulkan
         m_destroyQueue->Push(
             GetPendingTimelineValue(),
             [handle](IDevice* device)
-        {
-            device->m_pipelineLayoutOwner.Destroy(handle, device);
-        });
+            {
+                device->m_pipelineLayoutOwner.Destroy(handle, device);
+            });
     }
 
     Handle<GraphicsPipeline> IDevice::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)
@@ -692,9 +706,9 @@ namespace RHI::Vulkan
         m_destroyQueue->Push(
             GetPendingTimelineValue(),
             [handle](IDevice* device)
-        {
-            device->m_graphicsPipelineOwner.Destroy(handle, device);
-        });
+            {
+                device->m_graphicsPipelineOwner.Destroy(handle, device);
+            });
     }
 
     Handle<ComputePipeline> IDevice::CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
@@ -709,9 +723,9 @@ namespace RHI::Vulkan
         m_destroyQueue->Push(
             GetPendingTimelineValue(),
             [handle](IDevice* device)
-        {
-            device->m_computePipelineOwner.Destroy(handle, device);
-        });
+            {
+                device->m_computePipelineOwner.Destroy(handle, device);
+            });
     }
 
     Handle<Sampler> IDevice::CreateSampler(const SamplerCreateInfo& createInfo)
@@ -726,9 +740,9 @@ namespace RHI::Vulkan
         m_destroyQueue->Push(
             GetPendingTimelineValue(),
             [handle](IDevice* device)
-        {
-            device->m_samplerOwner.Destroy(handle, device);
-        });
+            {
+                device->m_samplerOwner.Destroy(handle, device);
+            });
     }
 
     Result<Handle<Image>> IDevice::CreateImage(const ImageCreateInfo& createInfo)
@@ -743,9 +757,9 @@ namespace RHI::Vulkan
         m_destroyQueue->Push(
             GetPendingTimelineValue(),
             [handle](IDevice* device)
-        {
-            device->m_imageOwner.Destroy(handle, device);
-        });
+            {
+                device->m_imageOwner.Destroy(handle, device);
+            });
     }
 
     Result<Handle<Buffer>> IDevice::CreateBuffer(const BufferCreateInfo& createInfo)
@@ -760,9 +774,9 @@ namespace RHI::Vulkan
         m_destroyQueue->Push(
             GetPendingTimelineValue(),
             [handle](IDevice* device)
-        {
-            device->m_bufferOwner.Destroy(handle, device);
-        });
+            {
+                device->m_bufferOwner.Destroy(handle, device);
+            });
     }
 
     DeviceMemoryPtr IDevice::MapBuffer(Handle<Buffer> handle)
@@ -823,7 +837,7 @@ namespace RHI::Vulkan
         auto commandList  = (ICommandList*)_commandList;
 
         commandList->Begin();
-        commandList->PipelineBarrier({
+        commandList->AddPipelineBarriers({
             .imageBarriers = {{
                 .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
                 .pNext               = nullptr,
@@ -856,7 +870,7 @@ namespace RHI::Vulkan
             .bufferSize   = uploadInfo.sizeBytes,
 
         });
-        commandList->PipelineBarrier({
+        commandList->AddPipelineBarriers({
             .imageBarriers = {{
                 .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
                 .pNext               = nullptr,

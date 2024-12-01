@@ -19,11 +19,9 @@ namespace RHI::Vulkan
 
     VkImageType ConvertImageType(ImageType imageType);
 
-    VkImageAspectFlagBits ConvertImageAspect(TL::Flags<ImageAspect> imageAspect);
+    VkImageAspectFlags ConvertImageAspect(TL::Flags<ImageAspect> imageAspect);
 
-    VkImageAspectFlags ConvertImageAspect(ImageAspect imageAspect);
-
-    VkImageAspectFlags FormatToAspect(VkFormat format);
+    VkImageAspectFlagBits ConvertImageAspect(ImageAspect imageAspect);
 
     VkComponentSwizzle ConvertComponentSwizzle(ComponentSwizzle componentSwizzle);
 

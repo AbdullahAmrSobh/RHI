@@ -33,18 +33,6 @@ namespace RHI
         }
     }
 
-    RenderGraph* Device::CreateRenderGraph()
-    {
-        auto renderGraph      = new RenderGraph();
-        renderGraph->m_device = this;
-        return renderGraph;
-    }
-
-    void Device::DestroyRenderGraph(RenderGraph* renderGraph)
-    {
-        delete renderGraph;
-    }
-
     DeviceLimits Device::GetLimits() const
     {
         return *m_limits;

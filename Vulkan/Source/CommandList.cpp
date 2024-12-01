@@ -4,7 +4,6 @@
 
 #include <tracy/Tracy.hpp>
 
-#include "Barrier.hpp"
 #include "Buffer.hpp"
 #include "Common.hpp"
 #include "Device.hpp"
@@ -44,32 +43,27 @@ namespace RHI::Vulkan
     ICommandList::ICommandList(IDevice* device, VkCommandBuffer commandBuffer)
         : m_device(device)
         , m_commandBuffer(commandBuffer)
-        , m_barriers()
-        , m_state()
     {
     }
 
     ICommandList::~ICommandList() = default;
 
-    void ICommandList::PipelineBarrier(
-        TL::Span<const VkMemoryBarrier2>       memoryBarriers,
-        TL::Span<const VkBufferMemoryBarrier2> bufferBarriers,
-        TL::Span<const VkImageMemoryBarrier2>  imageBarriers)
+    void ICommandList::AddPipelineBarriers(const PipelineBarriers& barriers)
     {
         ZoneScoped;
 
-        if (memoryBarriers.empty() && bufferBarriers.empty() && imageBarriers.empty()) return;
+        TL_ASSERT(!(barriers.memoryBarriers.empty() && barriers.bufferBarriers.empty() && barriers.imageBarriers.empty()));
 
         VkDependencyInfo dependencyInfo{
             .sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
             .pNext                    = nullptr,
             .dependencyFlags          = 0,
-            .memoryBarrierCount       = uint32_t(memoryBarriers.size()),
-            .pMemoryBarriers          = memoryBarriers.data(),
-            .bufferMemoryBarrierCount = uint32_t(bufferBarriers.size()),
-            .pBufferMemoryBarriers    = bufferBarriers.data(),
-            .imageMemoryBarrierCount  = uint32_t(imageBarriers.size()),
-            .pImageMemoryBarriers     = imageBarriers.data(),
+            .memoryBarrierCount       = uint32_t(barriers.memoryBarriers.size()),
+            .pMemoryBarriers          = barriers.memoryBarriers.data(),
+            .bufferMemoryBarrierCount = uint32_t(barriers.bufferBarriers.size()),
+            .pBufferMemoryBarriers    = barriers.bufferBarriers.data(),
+            .imageMemoryBarrierCount  = uint32_t(barriers.imageBarriers.size()),
+            .pImageMemoryBarriers     = barriers.imageBarriers.data(),
         };
         vkCmdPipelineBarrier2(m_commandBuffer, &dependencyInfo);
     }
@@ -105,13 +99,6 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        for (auto& stage : m_barriers)
-        {
-            stage.memoryBarriers.clear();
-            stage.bufferBarriers.clear();
-            stage.imageBarriers.clear();
-        }
-
         VkCommandBufferBeginInfo beginInfo{
             .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
             .pNext            = nullptr,
@@ -128,88 +115,33 @@ namespace RHI::Vulkan
         vkEndCommandBuffer(m_commandBuffer);
     }
 
-    void ICommandList::BeginRenderPass(const RenderPassBeginInfo& beginInfo)
+    void ICommandList::BeginPass(const Pass& pass)
     {
-        ZoneScoped;
-
-        // auto renderGraph = beginInfo.renderGraph;
-        // auto pass        = renderGraph->m_passPool.Get(beginInfo.pass);
-        // for (uint32_t i = 0; i < pass->m_imageAttachments.size(); i++)
-        // {
-        //     auto& node         = pass->m_imageAttachments[i];
-        //     auto  attachment   = renderGraph->m_imagePools.Get(node->image);
-        //     auto  subresources = VkImageSubresourceRange{
-        //         /// @fixme: deduce from actual attachment
-        //          .aspectMask = static_cast<VkImageAspectFlags>(
-        //             ((attachment->info.usageFlags & ImageUsage::DepthStencil) ? VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT
-        //                                                                        : VK_IMAGE_ASPECT_COLOR_BIT)),
-        //          .baseMipLevel   = 0,
-        //          .levelCount     = VK_REMAINING_MIP_LEVELS,
-        //          .baseArrayLayer = 0,
-        //          .layerCount     = VK_REMAINING_ARRAY_LAYERS,
-        //     };
-
-        //     auto imageHandle = renderGraph->GetImage(node->image);
-        //     auto image       = m_device->m_imageOwner.Get(imageHandle);
-        //     auto swapchain   = (ISwapchain*)attachment->swapchain;
-
-        //     // if (node->prev)
-        //     // {
-        //     //     auto srcState = GetImageStageAccess(*node->prev);
-        //     //     auto dstState = GetImageStageAccess(*node);
-        //     //     auto barrier  = CreateImageBarrier(image->handle, subresources, srcState, dstState);
-        //     //     m_barriers[BarrierSlot::Priloge].imageBarriers.push_back(barrier);
-        //     // }
-        //     // else
-        //     {
-        //         // auto dstState = GetImageStageAccess(*node);
-        //         auto dstState =
-        //             ImageStageAccess{VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0};
-        //         if (image->subresources.imageAspects & ImageAspect::Depth) dstState.layout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-        //         auto srcState = ImageStageAccess{VK_IMAGE_LAYOUT_UNDEFINED, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0};
-        //         auto barrier  = CreateImageBarrier(image->handle, subresources, srcState, dstState);
-        //         m_barriers[BarrierSlot::Priloge].imageBarriers.push_back(barrier);
-        //     }
-
-        //     if (node->next == nullptr && swapchain != nullptr)
-        //     {
-        //         // auto srcState = GetImageStageAccess(*node);
-        //         auto srcState =
-        //             ImageStageAccess{VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0};
-        //         if (image->subresources.imageAspects & ImageAspect::Depth) srcState.layout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-        //         auto dstState =
-        //             ImageStageAccess{VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, VK_ACCESS_2_NONE, 0};
-        //         auto barrier = CreateImageBarrier(image->handle, subresources, srcState, dstState);
-        //         m_barriers[BarrierSlot::Epiloge].imageBarriers.push_back(barrier);
-        //     }
-        // }
-
-        PipelineBarrier(
-            m_barriers[BarrierSlot::Priloge].memoryBarriers,
-            m_barriers[BarrierSlot::Priloge].bufferBarriers,
-            m_barriers[BarrierSlot::Priloge].imageBarriers);
+        m_isInsideRenderPass = true;
 
         TL::Vector<VkRenderingAttachmentInfo>   colorAttachmentInfos;
         TL::Optional<VkRenderingAttachmentInfo> depthAttachmentInfo;
         TL::Optional<VkRenderingAttachmentInfo> stencilAttachmentInfo;
 
-        for (auto passAttachment : beginInfo.colorAttachments)
+        for (const auto& passAttachment : pass.GetColorAttachment())
         {
-            IImage* colorAttachment = m_device->m_imageOwner.Get(passAttachment.attachment);
-            IImage* resolveAttachment =
-                passAttachment.resolveAttachment ? m_device->m_imageOwner.Get(passAttachment.resolveAttachment) : nullptr;
+            auto colorAttachmentHandle   = passAttachment.attachment->GetImage();
+            auto resolveAttachmentHandle = passAttachment.resolveAttachment ? passAttachment.resolveAttachment->GetImage() : NullHandle;
+
+            IImage* colorAttachment   = m_device->m_imageOwner.Get(colorAttachmentHandle);
+            IImage* resolveAttachment = passAttachment.resolveAttachment ? m_device->m_imageOwner.Get(resolveAttachmentHandle) : nullptr;
 
             VkClearColorValue colorValue = {
                 .float32 =
                     {
-                        passAttachment.loadStoreOperations.clearValue.f32.r,
-                        passAttachment.loadStoreOperations.clearValue.f32.g,
-                        passAttachment.loadStoreOperations.clearValue.f32.b,
-                        passAttachment.loadStoreOperations.clearValue.f32.a,
+                        passAttachment.clearValue.f32.r,
+                        passAttachment.clearValue.f32.g,
+                        passAttachment.clearValue.f32.b,
+                        passAttachment.clearValue.f32.a,
                     },
             };
 
-            VkRenderingAttachmentInfo colorAttachmentInfo{
+            colorAttachmentInfos.push_back({
                 .sType              = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
                 .pNext              = nullptr,
                 .imageView          = colorAttachment->viewHandle,
@@ -217,55 +149,52 @@ namespace RHI::Vulkan
                 .resolveMode        = ConvertResolveMode(passAttachment.resolveMode),
                 .resolveImageView   = resolveAttachment ? resolveAttachment->viewHandle : VK_NULL_HANDLE,
                 .resolveImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                .loadOp             = ConvertLoadOp(passAttachment.loadStoreOperations.loadOperation),
-                .storeOp            = ConvertStoreOp(passAttachment.loadStoreOperations.storeOperation),
+                .loadOp             = ConvertLoadOp(passAttachment.loadOperation),
+                .storeOp            = ConvertStoreOp(passAttachment.storeOperation),
                 .clearValue         = {.color = colorValue},
-            };
-
-            colorAttachmentInfos.push_back(colorAttachmentInfo);
+            });
         }
 
-        if (beginInfo.depthStenciAttachments)
+        if (auto passAttachment = pass.GetDepthStencilAttachment())
         {
-            auto passAttachment = beginInfo.depthStenciAttachments.value();
+            auto depthStencilHandle      = passAttachment->attachment->GetImage();
+            auto resolveAttachmentHandle = passAttachment->resolveAttachment ? passAttachment->resolveAttachment->GetImage() : NullHandle;
 
-            IImage* depthStencilAttachment = m_device->m_imageOwner.Get(passAttachment.attachment);
-            IImage* resolveAttachment =
-                passAttachment.resolveAttachment ? m_device->m_imageOwner.Get(passAttachment.resolveAttachment) : nullptr;
+            IImage* depthStencilAttachment = m_device->m_imageOwner.Get(depthStencilHandle);
+            IImage* resolveAttachment      = passAttachment->resolveAttachment ? m_device->m_imageOwner.Get(resolveAttachmentHandle) : nullptr;
 
-            auto clearValue = VkClearDepthStencilValue{
-                .depth   = beginInfo.depthStenciAttachments->loadStoreOperations.clearValue.depthStencil.depthValue,
-                .stencil = beginInfo.depthStenciAttachments->loadStoreOperations.clearValue.depthStencil.stencilValue,
-            };
+            VkClearDepthStencilValue clearValue{passAttachment->clearValue.depthStencil.depthValue, passAttachment->clearValue.depthStencil.stencilValue};
 
-            if (depthStencilAttachment->subresources.imageAspects & ImageAspect::Depth)
+            auto formatInfo = GetFormatInfo(passAttachment->attachment->GetFormat());
+
+            if (formatInfo.hasDepth)
             {
                 depthAttachmentInfo = VkRenderingAttachmentInfo{
                     .sType              = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
                     .pNext              = nullptr,
                     .imageView          = depthStencilAttachment->viewHandle,
                     .imageLayout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                    .resolveMode        = ConvertResolveMode(passAttachment.resolveMode),
+                    .resolveMode        = ConvertResolveMode(passAttachment->resolveMode),
                     .resolveImageView   = resolveAttachment ? resolveAttachment->viewHandle : VK_NULL_HANDLE,
                     .resolveImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    .loadOp             = ConvertLoadOp(passAttachment.loadStoreOperations.loadOperation),
-                    .storeOp            = ConvertStoreOp(passAttachment.loadStoreOperations.storeOperation),
+                    .loadOp             = ConvertLoadOp(passAttachment->loadOperation),
+                    .storeOp            = ConvertStoreOp(passAttachment->storeOperation),
                     .clearValue         = {.depthStencil = clearValue},
                 };
             }
 
-            if (depthStencilAttachment->subresources.imageAspects & ImageAspect::Stencil)
+            if (formatInfo.hasStencil)
             {
-                depthAttachmentInfo = VkRenderingAttachmentInfo{
+                stencilAttachmentInfo = VkRenderingAttachmentInfo{
                     .sType              = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
                     .pNext              = nullptr,
                     .imageView          = depthStencilAttachment->viewHandle,
                     .imageLayout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                    .resolveMode        = ConvertResolveMode(passAttachment.resolveMode),
+                    .resolveMode        = ConvertResolveMode(passAttachment->resolveMode),
                     .resolveImageView   = resolveAttachment->viewHandle ? resolveAttachment->viewHandle : VK_NULL_HANDLE,
                     .resolveImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    .loadOp             = ConvertLoadOp(passAttachment.loadStoreOperations.stencilLoadOperation),
-                    .storeOp            = ConvertStoreOp(passAttachment.loadStoreOperations.storeOperation),
+                    .loadOp             = ConvertLoadOp(passAttachment->stencilLoadOperation),
+                    .storeOp            = ConvertStoreOp(passAttachment->stencilStoreOperation),
                     .clearValue         = {.depthStencil = clearValue},
                 };
             }
@@ -277,8 +206,8 @@ namespace RHI::Vulkan
             .flags = {},
             .renderArea =
                 {
-                    .offset = {beginInfo.renderArea.offsetX, beginInfo.renderArea.offsetY},
-                    .extent = {beginInfo.renderArea.width, beginInfo.renderArea.height},
+                    .offset = {0, 0},
+                    .extent = {ConvertExtent2D(pass.GetSize())},
                 },
             .layerCount           = 1,
             .viewMask             = 0,
@@ -290,16 +219,14 @@ namespace RHI::Vulkan
         vkCmdBeginRendering(m_commandBuffer, &renderingInfo);
     }
 
-    void ICommandList::EndRenderPass()
+    void ICommandList::EndPass()
     {
         ZoneScoped;
 
-        vkCmdEndRendering(m_commandBuffer);
-
-        PipelineBarrier(
-            m_barriers[BarrierSlot::Epiloge].memoryBarriers,
-            m_barriers[BarrierSlot::Epiloge].bufferBarriers,
-            m_barriers[BarrierSlot::Epiloge].imageBarriers);
+        if (m_isInsideRenderPass)
+        {
+            vkCmdEndRendering(m_commandBuffer);
+        }
     }
 
     void ICommandList::DebugMarkerPush([[maybe_unused]] const char* name, [[maybe_unused]] ColorValue<float> color)
@@ -375,14 +302,14 @@ namespace RHI::Vulkan
 
         if (pipelineState == NullHandle)
         {
-            m_state.isGraphicsPipelineBound = false;
+            m_isGraphicsPipelineBound = false;
             return;
         }
 
         auto pipeline = m_device->m_graphicsPipelineOwner.Get(pipelineState);
         vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->handle);
         BindShaderBindGroups(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->layout, bindGroups);
-        m_state.isGraphicsPipelineBound = true;
+        m_isGraphicsPipelineBound = true;
     }
 
     void ICommandList::BindComputePipeline(Handle<ComputePipeline> pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups)
@@ -391,14 +318,14 @@ namespace RHI::Vulkan
 
         if (pipelineState == NullHandle)
         {
-            m_state.isComputePipelineBound = false;
+            m_isComputePipelineBound = false;
             return;
         }
 
         auto pipeline = m_device->m_computePipelineOwner.Get(pipelineState);
         vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->handle);
         BindShaderBindGroups(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->layout, bindGroups);
-        m_state.isComputePipelineBound = true;
+        m_isComputePipelineBound = true;
     }
 
     void ICommandList::SetViewport(const Viewport& viewport)
@@ -414,7 +341,7 @@ namespace RHI::Vulkan
             .maxDepth = viewport.maxDepth,
         };
         vkCmdSetViewport(m_commandBuffer, 0, 1, &vkViewport);
-        m_state.hasViewportSet = true;
+        m_hasViewportSet = true;
     }
 
     void ICommandList::SetSicssor(const Scissor& scissor)
@@ -426,7 +353,7 @@ namespace RHI::Vulkan
             .extent = {scissor.width, scissor.height},
         };
         vkCmdSetScissor(m_commandBuffer, 0, 1, &vkScissor);
-        m_state.hasScissorSet = true;
+        m_hasScissorSet = true;
     }
 
     void ICommandList::BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> vertexBuffers)
@@ -442,7 +369,7 @@ namespace RHI::Vulkan
             offsets.push_back(bindingInfo.offset);
         }
         vkCmdBindVertexBuffers(m_commandBuffer, firstBinding, (uint32_t)buffers.size(), buffers.data(), offsets.data());
-        m_state.hasVertexBuffer = true;
+        m_hasVertexBuffer = true;
     }
 
     void ICommandList::BindIndexBuffer(const BufferBindingInfo& indexBuffer, IndexType indexType)
@@ -455,14 +382,14 @@ namespace RHI::Vulkan
             buffer->handle,
             indexBuffer.offset,
             indexType == IndexType::uint32 ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16);
-        m_state.hasIndexBuffer = true;
+        m_hasIndexBuffer = true;
     }
 
     void ICommandList::Draw(const DrawParameters& parameters)
     {
         ZoneScoped;
 
-        if (m_state.hasIndexBuffer)
+        if (m_hasIndexBuffer)
         {
             vkCmdDrawIndexed(
                 m_commandBuffer,
