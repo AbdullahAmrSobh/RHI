@@ -56,6 +56,8 @@ namespace RHI
                 }
                 break;
             }
+        case RenderGraphResourceAccessType::Resolve:
+        case RenderGraphResourceAccessType::SwapchainPresent: break;
         }
     }
 

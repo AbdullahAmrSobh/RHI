@@ -5,12 +5,14 @@
 #include "RHI/RenderGraphResources.hpp"
 
 #include <TL/Containers.hpp>
+#include <TL/Memory.hpp>
 
 namespace RHI
 {
     class Pass;
     class RenderGraph;
     class CommandList;
+    class Swapchain;
 
     using PassSetupCallback   = TL::Function<void(RenderGraph& renderGraph, Pass& pass)>;
     using PassCompileCallback = TL::Function<void(RenderGraph& renderGraph, Pass& pass)>;
@@ -41,7 +43,7 @@ namespace RHI
     public:
         RHI_INTERFACE_BOILERPLATE(Pass);
 
-        explicit Pass(const PassCreateInfo& createInfo) noexcept;
+        explicit Pass(const PassCreateInfo& createInfo, TL::IAllocator* allocator) noexcept;
 
         /// @brief Gets the name of the pass.
         const char*                           GetName() const;
@@ -64,14 +66,17 @@ namespace RHI
         /// @brief Adds a new resource access to the pass.
         PassAccessedResource*                 AddResourceAccess(TL::IAllocator& allocator);
 
+        QueueType GetQueueType() const  { return m_queueType;}
+
     private:
-        TL::String                        m_name;
-        PassSetupCallback                 m_onSetupCallback;
-        PassCompileCallback               m_onCompileCallback;
-        PassExecuteCallback               m_onExecuteCallback;
-        ImageSize2D                       m_size;
-        TL::Vector<RenderTargetInfo>      m_colorAttachments;
-        TL::Optional<RenderTargetInfo>    m_depthStencilAttachment;
-        TL::Vector<PassAccessedResource*> m_accessedResources;
+        const char*                                       m_name; // TODO: should use std::string?
+        QueueType                                         m_queueType;
+        PassSetupCallback                                 m_onSetupCallback;
+        PassCompileCallback                               m_onCompileCallback;
+        PassExecuteCallback                               m_onExecuteCallback;
+        ImageSize2D                                       m_size;
+        TL::Vector<RenderTargetInfo, TL::IAllocator>      m_colorAttachments;
+        TL::Optional<RenderTargetInfo>                    m_depthStencilAttachment;
+        TL::Vector<PassAccessedResource*, TL::IAllocator> m_accessedResources;
     };
 } // namespace RHI

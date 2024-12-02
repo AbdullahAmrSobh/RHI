@@ -10,8 +10,6 @@
 
 namespace RHI::Vulkan
 {
-    //// @fixme: in case of reszing old image views must be removed too!
-
     VkPresentModeKHR ConvertPresentMode(SwapchainPresentMode presentMode)
     {
         switch (presentMode)
@@ -29,6 +27,16 @@ namespace RHI::Vulkan
     ISwapchain::~ISwapchain()
     {
         Shutdown();
+    }
+
+    VkSemaphore ISwapchain::GetImageAcquiredSemaphore() const
+    {
+        return m_imageAcquiredSemaphore[m_semaphoreIndex];
+    }
+
+    VkSemaphore ISwapchain::GetImagePresentSemaphore() const
+    {
+        return m_imagePresentSemaphore[m_semaphoreIndex];
     }
 
     ResultCode ISwapchain::Init(IDevice* device, const SwapchainCreateInfo& createInfo)
@@ -72,43 +80,48 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        vkDeviceWaitIdle(m_device->m_device);
+        Validate(vkDeviceWaitIdle(m_device->m_device));
 
         for (uint32_t i = 0; i < MaxImageCount; i++)
         {
             if (m_image[i] != NullHandle)
             {
                 auto image = m_device->m_imageOwner.Get(m_image[i]);
-                if (image->viewHandle != VK_NULL_HANDLE) vkDestroyImageView(m_device->m_device, image->viewHandle, nullptr);
-
+                if (image->viewHandle != VK_NULL_HANDLE)
+                    vkDestroyImageView(m_device->m_device, image->viewHandle, nullptr);
                 m_device->m_imageOwner.Release(m_image[i]);
             }
-            if (m_imageAcquiredSemaphore[i] != VK_NULL_HANDLE) vkDestroySemaphore(m_device->m_device, m_imageAcquiredSemaphore[i], nullptr);
-            if (m_imagePresentSemaphore[i] != VK_NULL_HANDLE) vkDestroySemaphore(m_device->m_device, m_imagePresentSemaphore[i], nullptr);
+            if (m_imageAcquiredSemaphore[i] != VK_NULL_HANDLE)
+                vkDestroySemaphore(m_device->m_device, m_imageAcquiredSemaphore[i], nullptr);
+            if (m_imagePresentSemaphore[i] != VK_NULL_HANDLE)
+                vkDestroySemaphore(m_device->m_device, m_imagePresentSemaphore[i], nullptr);
         }
 
         vkDestroySwapchainKHR(m_device->m_device, m_swapchain, nullptr);
         vkDestroySurfaceKHR(m_device->m_instance, m_surface, nullptr);
     }
 
-    void ISwapchain::AcquireNextImage()
+    ImageSemaphorePair ISwapchain::AcquireNextImage()
     {
         ZoneScoped;
 
-        auto result = vkAcquireNextImageKHR(
-            m_device->m_device, m_swapchain, UINT64_MAX, m_imageAcquiredSemaphore[m_semaphoreIndex], VK_NULL_HANDLE, &m_imageIndex);
+        auto semaphore = m_imageAcquiredSemaphore[m_semaphoreIndex];
+
+        auto result = vkAcquireNextImageKHR(m_device->m_device, m_swapchain, UINT64_MAX, semaphore, VK_NULL_HANDLE, &m_imageIndex);
         TL_ASSERT(result == VK_SUCCESS);
+
+        return {
+            .semaphore = semaphore,
+            .image     = m_image[m_imageIndex],
+        };
     }
 
     ResultCode ISwapchain::Recreate(ImageSize2D newSize)
     {
         ZoneScoped;
-
         m_imageSize = newSize;
-
-        vkDeviceWaitIdle(m_device->m_device);
-
-        auto result = InitSwapchain();
+        Validate(vkDeviceWaitIdle(m_device->m_device));
+        VkResult result = InitSwapchain();
         return ConvertResult(result);
     }
 
@@ -130,7 +143,7 @@ namespace RHI::Vulkan
         };
         Validate(vkQueuePresentKHR(presentQueue, &presentInfo));
 
-        m_semaphoreIndex = (m_semaphoreIndex + 1) % MaxImageCount;
+        m_semaphoreIndex = (m_semaphoreIndex + 1) % m_imageCount;
 
         AcquireNextImage();
 
@@ -139,99 +152,32 @@ namespace RHI::Vulkan
 
     VkResult ISwapchain::InitSwapchain()
     {
+        ZoneScoped;
+
         VkSurfaceCapabilitiesKHR surfaceCapabilities{};
         Validate(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_device->m_physicalDevice, m_surface, &surfaceCapabilities));
 
-        if (m_imageCount < MinImageCount || m_imageCount > MaxImageCount)
+        if (!ValidateImageCount(surfaceCapabilities) || !ClampImageSize(surfaceCapabilities))
         {
-            TL_LOG_INFO("Failed to create the swapchain, invalid SwapchainCreateInfo::minImageCount.");
-            return VK_ERROR_UNKNOWN;
-        }
-        else if (m_imageCount < surfaceCapabilities.minImageCount || m_imageCount > surfaceCapabilities.maxImageCount)
-        {
-            TL_LOG_INFO("Failed to create the swapchain, invalid SwapchainCreateInfo::minImageCount for the given window");
-            return VK_ERROR_UNKNOWN;
-        }
-        else if (
-            m_imageSize.width < surfaceCapabilities.minImageExtent.width ||
-            m_imageSize.height < surfaceCapabilities.minImageExtent.height ||
-            m_imageSize.width > surfaceCapabilities.maxImageExtent.width || m_imageSize.height > surfaceCapabilities.maxImageExtent.height)
-        {
-            TL_LOG_WARNNING("Swapchain requested size will be clamped to fit into window's supported size range");
+            return VK_ERROR_INITIALIZATION_FAILED;
         }
 
-        m_imageSize.width =
-            std::clamp(m_imageSize.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
-        m_imageSize.height =
-            std::clamp(m_imageSize.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
-
-        uint32_t formatsCount;
-        Validate(vkGetPhysicalDeviceSurfaceFormatsKHR(m_device->m_physicalDevice, m_surface, &formatsCount, nullptr));
-        TL::Vector<VkSurfaceFormatKHR> formats{};
-        formats.resize(formatsCount);
-        vkGetPhysicalDeviceSurfaceFormatsKHR(m_device->m_physicalDevice, m_surface, &formatsCount, formats.data());
-
-        bool               formatFound    = false;
-        VkSurfaceFormatKHR selectedFormat = {};
-        for (auto surfaceFormat : formats)
+        VkSurfaceFormatKHR selectedFormat{};
+        if (!SelectSurfaceFormat(selectedFormat))
         {
-            if (surfaceFormat.format == ConvertFormat(m_imageFormat))
-            {
-                selectedFormat = surfaceFormat;
-                formatFound    = true;
-                break;
-            }
-        }
-
-        if (formatFound == false)
-        {
-            TL_LOG_INFO("Failed to (re)create the swapchain with the required format");
+            TL_LOG_INFO("Failed to (re)create the swapchain with the required format.");
             return VK_ERROR_FORMAT_NOT_SUPPORTED;
         }
 
-        // @todo: Revist this
-        VkCompositeAlphaFlagBitsKHR preferredCompositeAlpha[] = {
-            VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-            VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR,
-            VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
-            VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR};
+        VkCompositeAlphaFlagBitsKHR selectedCompositeAlpha = SelectCompositeAlpha(surfaceCapabilities);
 
-        VkCompositeAlphaFlagBitsKHR selectedCompositeAlpha = VK_COMPOSITE_ALPHA_FLAG_BITS_MAX_ENUM_KHR;
-        for (VkCompositeAlphaFlagBitsKHR compositeAlpha : preferredCompositeAlpha)
+        VkPresentModeKHR selectedPresentMode = SelectPresentMode();
+        if (selectedPresentMode == VK_PRESENT_MODE_MAX_ENUM_KHR)
         {
-            if (surfaceCapabilities.supportedCompositeAlpha & compositeAlpha)
-            {
-                selectedCompositeAlpha = compositeAlpha;
-                break;
-            }
+            TL_LOG_WARNNING("Fallback to default present mode due to unsupported requested present mode.");
+            selectedPresentMode = VK_PRESENT_MODE_FIFO_KHR; // Fallback to FIFO
         }
-
-        uint32_t presentModesCount;
-        Validate(vkGetPhysicalDeviceSurfacePresentModesKHR(m_device->m_physicalDevice, m_surface, &presentModesCount, nullptr));
-        TL::Vector<VkPresentModeKHR> presentModes{};
-        presentModes.resize(presentModesCount);
-        vkGetPhysicalDeviceSurfacePresentModesKHR(m_device->m_physicalDevice, m_surface, &presentModesCount, presentModes.data());
-
-        VkPresentModeKHR presentMode = VK_PRESENT_MODE_MAX_ENUM_KHR;
-        for (VkPresentModeKHR supportedMode : presentModes)
-        {
-            if (supportedMode == ConvertPresentMode(m_presentMode))
-            {
-                presentMode = supportedMode;
-            }
-        }
-
-        if (presentMode == VK_PRESENT_MODE_MAX_ENUM_KHR)
-        {
-            // @todo: revist this message
-            TL_LOG_WARNNING("Failed to create swapchain with the requested present mode. Will use a fallback present mode");
-            presentMode = presentModes.front();
-        }
-
-        auto [width, height] = m_imageSize;
-
-        auto                     oldSwapchain = m_swapchain;
-        VkSwapchainCreateInfoKHR createInfo{
+        VkSwapchainCreateInfoKHR createInfo = {
             .sType                 = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
             .pNext                 = nullptr,
             .flags                 = 0,
@@ -239,7 +185,7 @@ namespace RHI::Vulkan
             .minImageCount         = m_imageCount,
             .imageFormat           = selectedFormat.format,
             .imageColorSpace       = selectedFormat.colorSpace,
-            .imageExtent           = {width, height},
+            .imageExtent           = {m_imageSize.width, m_imageSize.height},
             .imageArrayLayers      = 1,
             .imageUsage            = ConvertImageUsageFlags(m_imageUsage),
             .imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE,
@@ -247,32 +193,116 @@ namespace RHI::Vulkan
             .pQueueFamilyIndices   = nullptr,
             .preTransform          = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR,
             .compositeAlpha        = selectedCompositeAlpha,
-            .presentMode           = ConvertPresentMode(m_presentMode),
+            .presentMode           = selectedPresentMode,
             .clipped               = VK_TRUE,
             .oldSwapchain          = m_swapchain,
         };
         Validate(vkCreateSwapchainKHR(m_device->m_device, &createInfo, nullptr, &m_swapchain));
         m_device->SetDebugName(m_swapchain, m_name.c_str());
 
-        if (oldSwapchain != VK_NULL_HANDLE)
+        if (createInfo.oldSwapchain != VK_NULL_HANDLE)
         {
-            vkDestroySwapchainKHR(m_device->m_device, oldSwapchain, nullptr);
+            vkDestroySwapchainKHR(m_device->m_device, createInfo.oldSwapchain, nullptr);
         }
 
-        Validate(vkGetSwapchainImagesKHR(m_device->m_device, m_swapchain, &m_imageCount, nullptr));
-        TL_ASSERT(m_imageCount <= MaxImageCount, "Swapchain returned larger count than supported.");
-        VkImage images[MaxImageCount];
-        Validate(vkGetSwapchainImagesKHR(m_device->m_device, m_swapchain, &m_imageCount, images));
-
-        for (uint32_t imageIndex = 0; imageIndex < m_imageCount; imageIndex++)
         {
-            IImage image{};
-            Validate(image.Init(m_device, images[imageIndex], createInfo));
-            m_image[imageIndex] = m_device->m_imageOwner.Emplace(std::move(image));
+            VkImage images[MaxImageCount];
+            Validate(vkGetSwapchainImagesKHR(m_device->m_device, m_swapchain, &m_imageCount, nullptr));
+            TL_ASSERT(m_imageCount <= MaxImageCount, "Swapchain returned more images than supported.");
+            Validate(vkGetSwapchainImagesKHR(m_device->m_device, m_swapchain, &m_imageCount, images));
+            for (uint32_t i = 0; i < m_imageCount; ++i)
+            {
+                IImage image{};
+                Validate(image.Init(m_device, images[i], createInfo));
+                m_image[i] = m_device->m_imageOwner.Emplace(std::move(image));
+            }
         }
-
         AcquireNextImage();
 
         return VK_SUCCESS;
+    }
+
+    bool ISwapchain::ValidateImageCount(const VkSurfaceCapabilitiesKHR& surfaceCapabilities)
+    {
+        if (m_imageCount < MinImageCount || m_imageCount > MaxImageCount ||
+            m_imageCount < surfaceCapabilities.minImageCount || m_imageCount > surfaceCapabilities.maxImageCount)
+        {
+            TL_LOG_INFO("Invalid SwapchainCreateInfo::minImageCount for the given window.");
+            return false;
+        }
+        return true;
+    }
+
+    bool ISwapchain::ClampImageSize(const VkSurfaceCapabilitiesKHR& surfaceCapabilities)
+    {
+        if (m_imageSize.width < surfaceCapabilities.minImageExtent.width ||
+            m_imageSize.height < surfaceCapabilities.minImageExtent.height ||
+            m_imageSize.width > surfaceCapabilities.maxImageExtent.width ||
+            m_imageSize.height > surfaceCapabilities.maxImageExtent.height)
+        {
+            TL_LOG_WARNNING("Swapchain size will be clamped to fit supported range.");
+        }
+
+        m_imageSize.width  = std::clamp(m_imageSize.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
+        m_imageSize.height = std::clamp(m_imageSize.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
+
+        return true;
+    }
+
+    bool ISwapchain::SelectSurfaceFormat(VkSurfaceFormatKHR& selectedFormat)
+    {
+        uint32_t formatCount = 0;
+        Validate(vkGetPhysicalDeviceSurfaceFormatsKHR(m_device->m_physicalDevice, m_surface, &formatCount, nullptr));
+        TL::Vector<VkSurfaceFormatKHR> formats(formatCount);
+        vkGetPhysicalDeviceSurfaceFormatsKHR(m_device->m_physicalDevice, m_surface, &formatCount, formats.data());
+
+        for (const auto& format : formats)
+        {
+            if (format.format == ConvertFormat(m_imageFormat))
+            {
+                selectedFormat = format;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    VkCompositeAlphaFlagBitsKHR ISwapchain::SelectCompositeAlpha(const VkSurfaceCapabilitiesKHR& surfaceCapabilities)
+    {
+        static const VkCompositeAlphaFlagBitsKHR preferredCompositeAlpha[] = {
+            VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+            VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR,
+            VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
+            VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
+        };
+
+        for (VkCompositeAlphaFlagBitsKHR compositeAlpha : preferredCompositeAlpha)
+        {
+            if (surfaceCapabilities.supportedCompositeAlpha & compositeAlpha)
+            {
+                return compositeAlpha;
+            }
+        }
+
+        return VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR; // Default fallback
+    }
+
+    VkPresentModeKHR ISwapchain::SelectPresentMode()
+    {
+        uint32_t presentModeCount = 0;
+        Validate(vkGetPhysicalDeviceSurfacePresentModesKHR(m_device->m_physicalDevice, m_surface, &presentModeCount, nullptr));
+        TL::Vector<VkPresentModeKHR> presentModes(presentModeCount);
+        vkGetPhysicalDeviceSurfacePresentModesKHR(m_device->m_physicalDevice, m_surface, &presentModeCount, presentModes.data());
+
+        for (VkPresentModeKHR mode : presentModes)
+        {
+            if (mode == ConvertPresentMode(m_presentMode))
+            {
+                return mode;
+            }
+        }
+
+        return VK_PRESENT_MODE_MAX_ENUM_KHR;
     }
 } // namespace RHI::Vulkan

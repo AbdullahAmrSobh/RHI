@@ -34,7 +34,7 @@ namespace RHI::Vulkan
         DestroyCommandPools();
     }
 
-    TL::Ptr<ICommandList> CommandAllocator::AllocateCommandList(QueueType queueType)
+    ICommandList* CommandAllocator::AllocateCommandList(QueueType queueType, TL::Arena& arena)
     {
         // Lock mutex for thread-safe pool access
         std::lock_guard<std::mutex> lock(m_poolMutex);
@@ -58,7 +58,7 @@ namespace RHI::Vulkan
             return nullptr;
         }
 
-        return TL::CreatePtr<ICommandList>(m_device, commandBuffer);
+        return arena.Construct<ICommandList>(m_device, commandBuffer);
     }
 
     void CommandAllocator::Reset()

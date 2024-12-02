@@ -1,14 +1,18 @@
-RHI:
-- [ ] Imgui
+- Fix validation errors
+- Fix memory leaks
+- Swapchain and Render Graph Resizing (recompile graph)
+- Multipass rendering
+- Query Pool
+- Tracy Zones
+- Tracy Vulkan backend integeration
+- Render Graph Roredering and proper sync
+- Async Compute
+- Async Transfer
+- Staging resource
+- Mesh Shaders
+- Ray Tracing Pipelines
+- Buffer Suballocator (Uniforms, Geoemtry, ...etc)
+- ImGui
+- Fix Camera
 
-- [ ] WebGPU Backend
-
-- [ ] Render Graph
-
-- [ ] Mesh-Shading
-    - Implement mesh shading graphics pipeline
-- [ ] Ray-Tracing
-    - Implement basic ray tracing pipeline
-- [ ] Indirect commands
-- [ ] API polishing
-    - Shorten RHI::Handle<RHI::Buffer> and RHI::Handle<RHI::Image> to just RHI::Image, and RHI::Buffer
+- Render Graph Builder Macros

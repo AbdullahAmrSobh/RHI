@@ -30,7 +30,7 @@ namespace RHI::Vulkan
         /// @brief Allocates a command list for the specified queue type.
         /// @param queueType The type of queue (Graphics, Compute, Transfer) for the command list.
         /// @return A pointer to the allocated CommandList.
-        TL::Ptr<ICommandList> AllocateCommandList(QueueType queueType);
+        ICommandList* AllocateCommandList(QueueType queueType, TL::Arena& arena);
 
         /// @brief Resets all command lists used within the current frame.
         void Reset();

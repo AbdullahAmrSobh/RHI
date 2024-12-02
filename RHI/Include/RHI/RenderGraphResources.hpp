@@ -5,11 +5,14 @@
 #include "RHI/Buffer.hpp"
 #include "RHI/BindGroup.hpp"
 #include "RHI/PipelineAccess.hpp"
+#include "RHI/Queue.hpp"
 #include "RHI/RenderTarget.hpp"
 
 #include <TL/Flags.hpp>
 #include <TL/Containers.hpp>
 #include <TL/UniquePtr.hpp>
+#include <TL/Memory.hpp>
+
 #include <cstdint>
 
 namespace RHI
@@ -40,8 +43,10 @@ namespace RHI
         friend class RenderGraph;
 
     public:
+        bool isSwapchainImage = false;
         struct AccessedResource
         {
+            Pass*                         pass = nullptr;
             AccessedResource*             next = nullptr;
             AccessedResource*             prev = nullptr;
             RenderGraphResourceAccessType type = RenderGraphResourceAccessType::None;
@@ -58,6 +63,7 @@ namespace RHI
                     ImageUsage               usage;
                     TL::Flags<PipelineStage> stage;
                     TL::Flags<Access>        access;
+                    ImageSubresourceRange    subresourceRange;
                 } asImage;
 
                 struct
@@ -66,9 +72,14 @@ namespace RHI
                     BufferUsage              usage;
                     TL::Flags<PipelineStage> stage;
                     TL::Flags<Access>        access;
+                    BufferSubregion          subregion;
                 } asBuffer;
 
-                Swapchain* asSwapchain;
+                struct
+                {
+                    Swapchain*               swapchain;
+                    TL::Flags<PipelineStage> stage;
+                } asSwapchain;
             };
         };
 
@@ -82,6 +93,14 @@ namespace RHI
         const AccessedResource* GetLastAccess() const { return m_last; }
 
         AccessedResource*       GetLastAccess() { return m_last; }
+
+        const Pass*             GetFirstPass() const { return m_first->pass; }
+
+        Pass*                   GetFirstPass() { return m_first->pass; }
+
+        const Pass*             GetLastPass() const { return m_last->pass; }
+
+        Pass*                   GetLastPass() { return m_last->pass; }
 
         /// @brief Adds an access to the resource and updates usage flags.
         void                    PushAccess(AccessedResource* access);
@@ -113,6 +132,8 @@ namespace RHI
 
     class RenderGraphImage final : public RenderGraphResource
     {
+        friend RenderGraph;
+
     public:
         RenderGraphImage(const char* name, Handle<Image> image, Format format);
         RenderGraphImage(const char* name, Format format);

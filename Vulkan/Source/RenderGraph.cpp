@@ -2,18 +2,29 @@
 
 #include <vulkan/vulkan.h>
 
+#include <tracy/Tracy.hpp>
+
 #include "CommandList.hpp"
 #include "Device.hpp"
+#include "Swapchain.hpp"
 
 namespace RHI::Vulkan
 {
-    struct BarrierStage
+    inline static ColorValue<float> QueueTypeToColor(QueueType queueType)
     {
-        VkPipelineStageFlags2 stageMask        = VK_PIPELINE_STAGE_2_NONE;
-        VkAccessFlags2        accessMask       = VK_ACCESS_2_NONE;
-        VkImageLayout         layout           = VK_IMAGE_LAYOUT_UNDEFINED;
-        uint32_t              queueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    };
+        switch (queueType)
+        {
+        case QueueType::Graphics: return {0.8f, 0.2f, 0.2f, 1.0f};
+        case QueueType::Compute:  return {0.2f, 0.2f, 0.8f, 1.0f};
+        case QueueType::Transfer: return {0.2f, 0.8f, 0.2f, 1.0f};
+        case QueueType::Count:    TL_UNREACHABLE(); return {};
+        }
+    }
+
+    inline static uint32_t QueueTypeToQueueFamilyIndex(IDevice& device, QueueType queueType)
+    {
+        return device.m_queue[(uint32_t)queueType]->GetFamilyIndex();
+    }
 
     inline static VkPipelineStageFlags2 ConvertPipelineStageFlags(TL::Flags<PipelineStage> pipelineStages)
     {
@@ -228,7 +239,170 @@ namespace RHI::Vulkan
         }
     }
 
-    inline static BarrierStage GetBarrierStage(const PassAccessedResource* accessedResource)
+    IRenderGraph::IRenderGraph()  = default;
+    IRenderGraph::~IRenderGraph() = default;
+
+    ResultCode IRenderGraph::Init([[maybe_unused]] IDevice* device)
+    {
+        this->m_device = device;
+        return ResultCode::Success;
+    }
+
+    void IRenderGraph::Shutdown()
+    {
+    }
+
+    void IRenderGraph::OnGraphExecutionBegin()
+    {
+        ZoneScoped;
+
+        auto device = (IDevice*)m_device;
+
+        m_asyncQueuesTimelineValues[(uint32_t)QueueType::Graphics] = device->m_queue[(uint32_t)QueueType::Graphics]->GetTimelineSemaphorePendingValue();
+        m_asyncQueuesTimelineValues[(uint32_t)QueueType::Compute]  = device->m_queue[(uint32_t)QueueType::Compute]->GetTimelineSemaphorePendingValue();
+        m_asyncQueuesTimelineValues[(uint32_t)QueueType::Transfer] = device->m_queue[(uint32_t)QueueType::Transfer]->GetTimelineSemaphorePendingValue();
+    }
+
+    void IRenderGraph::OnGraphExecutionEnd()
+    {
+        auto device                = (IDevice*)m_device;
+        auto [swapchain, resource] = *m_graphImportedSwapchainsLookup.begin();
+
+        auto [srcStageMask, srcAccessMask, srcLayout, srcQfi] = GetBarrierStage(resource->GetLastAccess());
+
+        auto commandList = (ICommandList*)m_device->CreateCommandList({.queueType = QueueType::Graphics});
+        commandList->Begin();
+        commandList->AddPipelineBarriers({
+            .imageBarriers = {
+                {
+                    .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                    .pNext               = nullptr,
+                    .srcStageMask        = srcStageMask,
+                    .srcAccessMask       = srcAccessMask,
+                    .dstStageMask        = 0,
+                    .dstAccessMask       = 0,
+                    .oldLayout           = srcLayout,
+                    .newLayout           = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .image               = device->m_imageOwner.Get(swapchain->GetImage())->handle,
+                    .subresourceRange    = {
+                           .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+                           .baseMipLevel   = 0,
+                           .levelCount     = VK_REMAINING_MIP_LEVELS,
+                           .baseArrayLayer = 0,
+                           .layerCount     = VK_REMAINING_ARRAY_LAYERS,
+                    },
+
+                },
+            },
+        });
+        commandList->End();
+
+        device->m_queue[0]->Submit({.commandLists = commandList});
+
+        auto res = swapchain->Present();
+    }
+
+    void IRenderGraph::ExecutePassGroup(const PassGroup& passGroup, QueueType queueType)
+    {
+        auto device      = (IDevice*)m_device;
+        /// @todo: dispatch worker thread to execute each pass within the given passGroup.
+        /// when the threading model is clear
+        auto commandList = (ICommandList*)m_device->CreateCommandList({.queueType = queueType});
+        commandList->Begin();
+        for (auto pass : passGroup.passList)
+        {
+            commandList->DebugMarkerPush(pass->GetName(), QueueTypeToColor(queueType));
+            EmitBarriers(*commandList, *pass, BarrierSlot_Prilogue);
+            commandList->BeginPass(*pass);
+            ExecutePassCallback(*pass, *commandList);
+            /// @todo: handle resolve here
+            commandList->EndPass();
+            // EmitBarriers(*commandList, *pass, BarrierSlot_Epilogue);
+            commandList->DebugMarkerPop();
+        }
+        commandList->End();
+
+        auto graphicsQueueIndex = (uint32_t)QueueType::Graphics;
+        // auto computeQueueIndex  = (uint32_t)QueueType::Compute;
+        // auto transferQueueIndex = (uint32_t)QueueType::Transfer;
+
+        auto& graphicsQueue = device->m_queue[graphicsQueueIndex];
+        // auto& computeQueue  = device->m_queue[computeQueueIndex];
+        // auto& transferQueue = device->m_queue[transferQueueIndex];
+
+        uint64_t pendingQueuesTimelineValues[AsyncQueuesCount] = {};
+        // pendingQueuesTimelineValues[graphicsQueueIndex]        = m_asyncQueuesTimelineValues[graphicsQueueIndex] + passGroup.ssis[graphicsQueueIndex];
+        // pendingQueuesTimelineValues[computeQueueIndex]         = m_asyncQueuesTimelineValues[computeQueueIndex] + passGroup.ssis[computeQueueIndex];
+        // pendingQueuesTimelineValues[transferQueueIndex]        = m_asyncQueuesTimelineValues[transferQueueIndex] + passGroup.ssis[transferQueueIndex];
+
+        VkSemaphoreSubmitInfo binaryWaitSemaphore{};
+        if (auto swapchainAccess = passGroup.swapchainAcquire)
+        {
+            // auto [swapchain, stage] = swapchainAccess;
+            binaryWaitSemaphore = {
+                .sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+                .semaphore = ((ISwapchain*)passGroup.swapchainAcquire)->GetImageAcquiredSemaphore(),
+                // .stageMask = ConvertPipelineStageFlags(stage),
+                .stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            };
+        }
+
+        VkSemaphoreSubmitInfo binarySignalSemaphore{};
+        if (auto swapchainAccess = passGroup.swapchainRelease)
+        {
+            // auto [swapchain, stage] = swapchainAccess->asSwapchain;
+            binaryWaitSemaphore = {
+                .sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+                .semaphore = ((ISwapchain*)passGroup.swapchainRelease)->GetImagePresentSemaphore(),
+                // .stageMask = ConvertPipelineStageFlags(stage),
+                .stageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
+            };
+        }
+
+        QueueSubmitInfo queueSubmitInfo{
+            /// @fixme: Should check if async queues are present to avoid passing dublicate semaphore handles (with different sync values)
+            .timelineWaitSemaphores =
+                {
+                    // Waits for graphics queue
+                    {
+                        .sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+                        .semaphore = graphicsQueue->GetTimelineSemaphoreHandle(),
+                        .value     = device->m_queue[0]->GetTimelineSemaphorePendingValue(),
+                    },
+                    // // Waits for async compute queue
+                    // {
+                    //     .sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+                    //     .semaphore = computeQueue->GetTimelineSemaphoreHandle(),
+                    //     .value     = pendingQueuesTimelineValues[computeQueueIndex],
+                    // },
+                    // // Waits for async transfer queue
+                    // {
+                    //     .sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+                    //     .semaphore = transferQueue->GetTimelineSemaphoreHandle(),
+                    //     .value     = pendingQueuesTimelineValues[transferQueueIndex],
+                    // },
+                },
+            .binaryWaitSemaphore   = binaryWaitSemaphore,
+            .binarySignalSemaphore = binarySignalSemaphore,
+            .commandLists          = commandList,
+        };
+        pendingQueuesTimelineValues[(uint32_t)queueType] = device->m_queue[(uint32_t)queueType]->Submit(queueSubmitInfo);
+    }
+
+    VkImageSubresourceRange IRenderGraph::GetAccessedSubresourceRange(const PassAccessedResource& accessedResource)
+    {
+        return {
+            .aspectMask     = ConvertImageAspect(GetFormatAspects(accessedResource.asImage.image->GetFormat())),
+            .baseMipLevel   = 0,
+            .levelCount     = VK_REMAINING_MIP_LEVELS,
+            .baseArrayLayer = 0,
+            .layerCount     = VK_REMAINING_ARRAY_LAYERS,
+        };
+    }
+
+    BarrierStage IRenderGraph::GetBarrierStage(const PassAccessedResource* accessedResource)
     {
         if (accessedResource == nullptr) return {};
 
@@ -269,41 +443,54 @@ namespace RHI::Vulkan
             break;
         case RenderGraphResourceAccessType::RenderTarget:
             {
-                auto           format = GetFormatInfo(accessedResource->asImage.image->GetFormat());
-                // TODO: optimize layout based on load/store operations
-                VkImageLayout  layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-                VkAccessFlags2 access = VK_ACCESS_2_NONE;
-                if (accessedResource->asRenderTarget.loadOperation == LoadOperation::Load)
-                    access |= VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
-                if (accessedResource->asRenderTarget.storeOperation == StoreOperation::Store)
-                    access |= VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                if (format.hasDepth && format.hasStencil)
-                {
-                    layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+                auto format = GetFormatInfo(accessedResource->asImage.image->GetFormat());
 
-                    if (accessedResource->asRenderTarget.loadOperation == LoadOperation::Load)
-                        access |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-                    if (accessedResource->asRenderTarget.storeOperation == StoreOperation::Store)
-                        access |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-                }
-                else if (format.hasDepth)
+                VkPipelineStageFlags2 stage  = VK_PIPELINE_STAGE_2_NONE;
+                VkAccessFlags2        access = VK_ACCESS_2_NONE;
+                VkImageLayout         layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+                if ((format.hasDepth || format.hasStencil) == false)
                 {
-                    layout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
                     if (accessedResource->asRenderTarget.loadOperation == LoadOperation::Load)
-                        access |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+                        access |= VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
                     if (accessedResource->asRenderTarget.storeOperation == StoreOperation::Store)
-                        access |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                        access |= VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+
+                    stage = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
                 }
-                else if (format.hasStencil)
+                else
                 {
-                    layout = VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
-                    if (accessedResource->asRenderTarget.stencilLoadOperation == LoadOperation::Load)
-                        access |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-                    if (accessedResource->asRenderTarget.stencilStoreOperation == StoreOperation::Store)
-                        access |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                    if (format.hasDepth && format.hasStencil)
+                    {
+                        layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+                        if (accessedResource->asRenderTarget.loadOperation == LoadOperation::Load)
+                            access |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+                        if (accessedResource->asRenderTarget.storeOperation == StoreOperation::Store)
+                            access |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                    }
+                    else if (format.hasDepth)
+                    {
+                        layout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+                        if (accessedResource->asRenderTarget.loadOperation == LoadOperation::Load)
+                            access |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+                        if (accessedResource->asRenderTarget.storeOperation == StoreOperation::Store)
+                            access |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                    }
+                    else if (format.hasStencil)
+                    {
+                        layout = VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
+                        if (accessedResource->asRenderTarget.stencilLoadOperation == LoadOperation::Load)
+                            access |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+                        if (accessedResource->asRenderTarget.stencilStoreOperation == StoreOperation::Store)
+                            access |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                    }
+
+                    stage = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
                 }
+
                 return {
-                    .stageMask        = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+                    .stageMask        = stage,
                     .accessMask       = access,
                     .layout           = layout,
                     .queueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
@@ -317,10 +504,9 @@ namespace RHI::Vulkan
             break;
         case RenderGraphResourceAccessType::SwapchainPresent:
             {
-                // TODO: Assumes swapchain is created with color usage only!
                 return {
-                    .stageMask        = ConvertPipelineStageFlags(PipelineStage::BottomOfPipe),
-                    .accessMask       = GetAccessFlags2(ImageUsage::Color, Access::ReadWrite),
+                    .stageMask        = VK_PIPELINE_STAGE_NONE,
+                    .accessMask       = VK_ACCESS_NONE,
                     .layout           = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                     .queueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 };
@@ -332,46 +518,48 @@ namespace RHI::Vulkan
         }
     }
 
-    IRenderGraph::IRenderGraph()  = default;
-    IRenderGraph::~IRenderGraph() = default;
-
-    ResultCode IRenderGraph::Init([[maybe_unused]] IDevice* device)
+    void IRenderGraph::EmitBarriers(ICommandList& commandList, Pass& pass, BarrierSlot slot)
     {
-        this->m_device = device;
-        return ResultCode::Success;
-    }
+        ZoneScoped;
 
-    void IRenderGraph::Shutdown()
-    {
-    }
+        auto device = (IDevice*)m_device;
 
-    void IRenderGraph::OnBeginPassExecute(Pass& pass, CommandList& _commandList)
-    {
-        auto  device      = (IDevice*)m_device;
-        auto& commandList = (ICommandList&)_commandList;
+        constexpr size_t MaxImageBarriers  = 32;
+        constexpr size_t MaxBufferBarriers = 32;
 
-        commandList.Begin();
-
-        TL::Vector<VkImageMemoryBarrier2>  imageBarriers;
-        TL::Vector<VkBufferMemoryBarrier2> bufferBarriers;
+        size_t                 imageBarrierCount = 0;
+        VkImageMemoryBarrier2  imageBarriers[MaxImageBarriers];
+        size_t                 bufferBarrierCount = 0;
+        VkBufferMemoryBarrier2 bufferBarriers[MaxBufferBarriers];
 
         for (const auto& accessedResource : pass.GetAccessedResources())
         {
-            auto previousAccess = accessedResource->prev;
+            auto srcResourceAccess = slot == BarrierSlot_Prilogue ? accessedResource->prev : accessedResource;
+            auto dstResourceAccess = slot == BarrierSlot_Prilogue ? accessedResource : accessedResource->next;
 
-            auto [srcStageMask, srcAccessMask, srcLayout, srcQfi] = GetBarrierStage(previousAccess);
-            auto [dstStageMask, dstAccessMask, dstLayout, dstQfi] = GetBarrierStage(accessedResource);
+            auto [srcStageMask, srcAccessMask, srcLayout, srcQfi] = GetBarrierStage(srcResourceAccess);
+            auto [dstStageMask, dstAccessMask, dstLayout, dstQfi] = GetBarrierStage(dstResourceAccess);
 
-            // TODO: Optimize this to only use overlapped resources
+            bool shouldTransferResourceQueueOwnership = srcQfi == dstQfi; /// @todo: && resource sharing is execlusive!
 
-            bool isImage = accessedResource->type != RenderGraphResourceAccessType::Buffer;
-
-            if (isImage)
+            if (slot != BarrierSlot_Prilogue && accessedResource->pass != nullptr)
             {
-                auto graphImage = accessedResource->asImage.image;
-                auto image      = device->m_imageOwner.Get(graphImage->GetImage());
-                auto aspects = ConvertImageAspect(GetFormatAspects(graphImage->GetFormat()));
-                imageBarriers.push_back({
+                continue;
+            }
+
+            if (accessedResource->type != RenderGraphResourceAccessType::Buffer)
+            {
+                if (dstLayout == VK_IMAGE_LAYOUT_UNDEFINED)
+                {
+                    continue;
+                }
+
+                TL_ASSERT(imageBarrierCount < MaxImageBarriers, "Exceeded MaxImageBarriers");
+
+                auto imageAccess = accessedResource->asImage;
+                auto image       = device->m_imageOwner.Get(imageAccess.image->GetImage());
+
+                imageBarriers[imageBarrierCount++] = {
                     .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
                     .pNext               = nullptr,
                     .srcStageMask        = srcStageMask,
@@ -380,107 +568,44 @@ namespace RHI::Vulkan
                     .dstAccessMask       = dstAccessMask,
                     .oldLayout           = srcLayout,
                     .newLayout           = dstLayout,
-                    .srcQueueFamilyIndex = srcQfi,
-                    .dstQueueFamilyIndex = dstQfi,
+                    .srcQueueFamilyIndex = shouldTransferResourceQueueOwnership ? VK_QUEUE_FAMILY_IGNORED : srcQfi,
+                    .dstQueueFamilyIndex = shouldTransferResourceQueueOwnership ? VK_QUEUE_FAMILY_IGNORED : dstQfi,
                     .image               = image->handle,
-                    .subresourceRange    = {
-                           .aspectMask     = aspects,
-                           .baseMipLevel   = 0,
-                           .levelCount     = VK_REMAINING_MIP_LEVELS,
-                           .baseArrayLayer = 0,
-                           .layerCount     = VK_REMAINING_ARRAY_LAYERS,
-                    },
-                });
+                    .subresourceRange    = GetAccessedSubresourceRange(*accessedResource),
+                };
             }
             else
             {
-                auto graphBuffer = accessedResource->asBuffer.buffer;
-                auto buffer      = device->m_bufferOwner.Get(graphBuffer->GetBuffer());
-                bufferBarriers.push_back({
+                if (slot != BarrierSlot_Prilogue)
+                {
+                    continue;
+                }
+
+                TL_ASSERT(bufferBarrierCount < MaxBufferBarriers, "Exceeded MaxBufferBarriers");
+
+                auto bufferAccess = accessedResource->asBuffer;
+                auto buffer       = device->m_bufferOwner.Get(bufferAccess.buffer->GetBuffer());
+
+                bufferBarriers[bufferBarrierCount++] = {
                     .sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
                     .pNext               = nullptr,
                     .srcStageMask        = srcStageMask,
                     .srcAccessMask       = srcAccessMask,
                     .dstStageMask        = dstStageMask,
                     .dstAccessMask       = dstAccessMask,
-                    .srcQueueFamilyIndex = srcQfi,
-                    .dstQueueFamilyIndex = dstQfi,
+                    .srcQueueFamilyIndex = shouldTransferResourceQueueOwnership ? VK_QUEUE_FAMILY_IGNORED : srcQfi,
+                    .dstQueueFamilyIndex = shouldTransferResourceQueueOwnership ? VK_QUEUE_FAMILY_IGNORED : dstQfi,
                     .buffer              = buffer->handle,
-                    .offset              = 0,
-                    .size                = VK_WHOLE_SIZE,
-                });
+                    .offset              = accessedResource->asBuffer.subregion.offset,
+                    .size                = accessedResource->asBuffer.subregion.size,
+                };
             }
         }
 
         commandList.AddPipelineBarriers({
-            .imageBarriers  = imageBarriers,
-            .bufferBarriers = bufferBarriers,
+            .imageBarriers  = {imageBarriers, imageBarrierCount},
+            .bufferBarriers = {bufferBarriers, bufferBarrierCount},
         });
-        commandList.BeginPass(pass);
-    }
-
-    void IRenderGraph::OnEndPassExecute([[maybe_unused]] Pass& pass, CommandList& _commandList)
-    {
-        auto  device      = (IDevice*)m_device;
-        auto& commandList = (ICommandList&)_commandList;
-
-        TL::Vector<VkImageMemoryBarrier2>  imageBarriers;
-        TL::Vector<VkBufferMemoryBarrier2> bufferBarriers;
-
-        auto                  swapchain            = m_graphImportedSwapchainsLookup.begin();
-        RenderGraphImage*     swapchainImage       = nullptr;
-        PassAccessedResource* swapchainImageAccess = nullptr;
-        for (const auto& accessedResource : pass.GetAccessedResources())
-        {
-            if (accessedResource->type == RenderGraphResourceAccessType::Image)
-            {
-                if (swapchain->second == accessedResource->asImage.image)
-                {
-                    swapchainImage       = accessedResource->asImage.image;
-                    swapchainImageAccess = accessedResource;
-                }
-            }
-            else if (accessedResource->type == RenderGraphResourceAccessType::RenderTarget)
-            {
-                if (swapchain->second == accessedResource->asImage.image)
-                {
-                    swapchainImage       = accessedResource->asRenderTarget.attachment;
-                    swapchainImageAccess = accessedResource;
-                }
-            }
-        }
-        if (swapchainImage)
-        {
-            auto [srcStageMask, srcAccessMask, srcLayout, srcQfi] = GetBarrierStage(swapchainImageAccess);
-            auto image                                            = device->m_imageOwner.Get(swapchain->second->GetImage());
-            imageBarriers.push_back({
-                .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-                .pNext               = nullptr,
-                .srcStageMask        = srcStageMask,
-                .srcAccessMask       = srcAccessMask,
-                .dstStageMask        = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
-                .dstAccessMask       = VK_ACCESS_2_NONE,
-                .oldLayout           = srcLayout,
-                .newLayout           = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-                .srcQueueFamilyIndex = srcQfi,
-                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .image               = image->handle,
-                .subresourceRange    = {
-                       .aspectMask     = ConvertImageAspect(GetFormatAspects(swapchainImage->GetFormat())),
-                       .baseMipLevel   = 0,
-                       .levelCount     = VK_REMAINING_MIP_LEVELS,
-                       .baseArrayLayer = 0,
-                       .layerCount     = VK_REMAINING_ARRAY_LAYERS,
-                },
-            });
-        }
-
-        commandList.EndPass();
-        commandList.AddPipelineBarriers({
-            .imageBarriers  = imageBarriers,
-            .bufferBarriers = bufferBarriers,
-        });
-        commandList.End();
     }
 
 } // namespace RHI::Vulkan

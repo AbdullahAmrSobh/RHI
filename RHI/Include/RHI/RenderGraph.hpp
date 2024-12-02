@@ -15,6 +15,9 @@
 
 namespace RHI
 {
+    // There could only be 3 hardware queues, graphics, compute, and transfer.
+    inline static constexpr uint32_t AsyncQueuesCount = 3;
+
     class Device;
     class Swapchain;
     class CommandList;
@@ -88,36 +91,39 @@ namespace RHI
         /// @param renderTargetInfo Information about the render target configuration.
         void UseRenderTarget(Pass& pass, const RenderTargetInfo& renderTargetInfo);
 
-        // Retrieve handles to underlying resources.
-
-        /// @brief Retrieves the handle to the underlying image for a render graph image.
-        /// @param image The render graph image.
-        /// @return The handle to the underlying image.
-        TL_NODISCARD Handle<Image>  GetImage(RenderGraphImage image) const;
-
-        /// @brief Retrieves the handle to the underlying buffer for a render graph buffer.
-        /// @param buffer The render graph buffer.
-        /// @return The handle to the underlying buffer.
-        TL_NODISCARD Handle<Buffer> GetBuffer(RenderGraphBuffer buffer) const;
-
         // Frame management.
 
         /// @brief Begins a new frame in the render graph.
-        void                        BeginFrame();
+        void BeginFrame();
 
         /// @brief Ends the current frame in the render graph.
-        void                        EndFrame();
+        void EndFrame();
+
+    private:
+        /// @brief Returns passes sorted based on their graph topological order.
+        TL::Span<Pass* const> GetSortedGraphPasses() const { return m_graphPasses; }
+
+        /// @brief Compiles the render graph for the current frame.
+        void                  Compile();
+
+        /// @brief Initializes transient resources.
+        void                  InitializeTransientResources();
 
     protected:
-        /// @brief Called before a pass is executed.
-        /// @param pass The pass about to be executed.
-        /// @param commandList The command list associated with the pass execution.
-        virtual void OnBeginPassExecute(Pass& pass, CommandList& commandList) = 0;
+        void ExecutePassCallback(Pass& pass, CommandList& commandList) { pass.m_onExecuteCallback(commandList); }
 
-        /// @brief Called after a pass is executed.
-        /// @param pass The pass that was executed.
-        /// @param commandList The command list associated with the pass execution.
-        virtual void OnEndPassExecute(Pass& pass, CommandList& commandList)   = 0;
+        // Scheduling related
+        struct PassGroup
+        {
+            TL::Vector<Pass*> passList;
+            Swapchain*        swapchainAcquire;
+            Swapchain*        swapchainRelease;
+        };
+
+        virtual void OnGraphExecutionBegin()                                           = 0;
+        virtual void OnGraphExecutionEnd()                                             = 0;
+
+        virtual void ExecutePassGroup(const PassGroup& passGroup, QueueType queueType) = 0;
 
     protected:
         /// Main allocator for graph resources.

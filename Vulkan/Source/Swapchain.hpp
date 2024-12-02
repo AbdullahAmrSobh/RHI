@@ -8,6 +8,12 @@ namespace RHI::Vulkan
 {
     class IDevice;
 
+    struct ImageSemaphorePair
+    {
+        VkSemaphore   semaphore;
+        Handle<Image> image;
+    };
+
     class ISwapchain final : public Swapchain
     {
     public:
@@ -17,11 +23,11 @@ namespace RHI::Vulkan
         ResultCode Init(IDevice* device, const SwapchainCreateInfo& createInfo);
         void       Shutdown();
 
-        VkSemaphore GetImageAcquiredSemaphore() const { return m_imageAcquiredSemaphore[m_semaphoreIndex]; }
+        VkSemaphore GetImageAcquiredSemaphore() const;
 
-        VkSemaphore GetImagePresentSemaphore() const { return m_imagePresentSemaphore[m_semaphoreIndex]; }
+        VkSemaphore GetImagePresentSemaphore() const;
 
-        void AcquireNextImage();
+        ImageSemaphorePair AcquireNextImage();
 
         VkSwapchainKHR GetHandle() const;
 
@@ -30,6 +36,16 @@ namespace RHI::Vulkan
         ResultCode Present() override;
 
     private:
+        bool ValidateImageCount(const VkSurfaceCapabilitiesKHR& surfaceCapabilities);
+
+        bool ClampImageSize(const VkSurfaceCapabilitiesKHR& surfaceCapabilities);
+
+        bool SelectSurfaceFormat(VkSurfaceFormatKHR& selectedFormat);
+
+        VkCompositeAlphaFlagBitsKHR SelectCompositeAlpha(const VkSurfaceCapabilitiesKHR& surfaceCapabilities);
+
+        VkPresentModeKHR SelectPresentMode();
+
         VkResult InitSurface(const SwapchainCreateInfo& createInfo);
         VkResult InitSwapchain();
 
@@ -42,5 +58,6 @@ namespace RHI::Vulkan
         uint32_t    m_semaphoreIndex;
         VkSemaphore m_imageAcquiredSemaphore[MaxImageCount];
         VkSemaphore m_imagePresentSemaphore[MaxImageCount];
+        uint64_t    m_imageReleaseValue[MaxImageCount];
     };
 } // namespace RHI::Vulkan

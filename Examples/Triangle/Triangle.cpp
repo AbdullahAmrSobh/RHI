@@ -346,6 +346,7 @@ public:
 
     void OnInit() override
     {
+        ZoneScoped;
         auto [width, height] = m_window->GetWindowSize();
 
         RHI::ApplicationInfo appInfo{
@@ -506,6 +507,7 @@ public:
 
     void OnShutdown() override
     {
+        ZoneScoped;
         m_device->DestroyRenderGraph(m_renderGraph);
         m_device->DestroyBindGroup(m_bindGroup);
         m_device->DestroyGraphicsPipeline(m_graphicsPipeline);
@@ -516,6 +518,7 @@ public:
 
     void OnUpdate(Timestep ts) override
     {
+        ZoneScoped;
         m_camera.Update(ts);
 
         m_sceneGlobalUB.Get()->worldToViewMatrix = m_camera.GetView();
@@ -536,6 +539,7 @@ public:
 
     void Render() override
     {
+        ZoneScoped;
         auto [width, height] = m_window->GetWindowSize();
 
         m_renderGraph->BeginFrame();
@@ -555,7 +559,44 @@ public:
             .setupCallback = [&](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
             {
                 m_renderGraph->UseRenderTarget(pass, {.attachment = colorAttachment, .clearValue = {.f32{0.1f, 1.0f, 0.4f, 1.0f}}});
-                // m_renderGraph->UseRenderTarget(pass, {.attachment = depthAttachment});
+                m_renderGraph->UseRenderTarget(pass, {.attachment = depthAttachment, .clearValue = {.depthStencil = {1.0f, 0}}});
+            },
+            .compileCallback = [&](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
+            {
+            },
+            .executeCallback = [&](RHI::CommandList& commandList)
+            {
+                commandList.SetViewport({
+                    .offsetX  = 0.0f,
+                    .offsetY  = 0.0f,
+                    .width    = (float)width,
+                    .height   = (float)height,
+                    .minDepth = 0.0f,
+                    .maxDepth = 1.0f,
+                });
+                commandList.SetSicssor({
+                    .offsetX = 0,
+                    .offsetY = 0,
+                    .width   = width,
+                    .height  = height,
+                });
+
+                for (auto index : m_meshIndexList)
+                {
+                    commandList.BindGraphicsPipeline(
+                        m_graphicsPipeline, RHI::BindGroupBindingInfo{.bindGroup = m_bindGroup, .dynamicOffsets = {index * 256}});
+                    m_meshes[index].Draw(commandList);
+                }
+            },
+        });
+
+        [[maybe_unused]] auto pass2 = m_renderGraph->AddPass({
+            .name          = "main-buffer2",
+            .flags         = RHI::PassFlags::Graphics,
+            .setupCallback = [&](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
+            {
+                m_renderGraph->UseRenderTarget(pass, {.attachment = colorAttachment, .clearValue = {.f32{0.1f, 1.0f, 0.4f, 1.0f}}});
+                m_renderGraph->UseRenderTarget(pass, {.attachment = depthAttachment, .clearValue = {.depthStencil = {1.0f, 0}}});
             },
             .compileCallback = [&](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
             {
@@ -587,15 +628,21 @@ public:
         });
 
         pass->Resize({width, height});
+        pass2->Resize({width, height});
 
         m_renderGraph->EndFrame();
 
         // auto presentResult = m_swapchain->Present();
         // TL_ASSERT(presentResult == RHI::ResultCode::Success);
+
+        m_device->CollectResources();
+
+        FrameMark;
     }
 
     void OnEvent(Event& event) override
     {
+        ZoneScoped;
         switch (event.GetEventType())
         {
         case EventType::WindowResize:

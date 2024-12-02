@@ -5,6 +5,7 @@
 #include "RHI/Common.hpp"
 
 #include <TL/Flags.hpp>
+#include <TL/Containers.hpp>
 
 namespace RHI
 {

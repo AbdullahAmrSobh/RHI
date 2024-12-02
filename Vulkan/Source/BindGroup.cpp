@@ -89,7 +89,10 @@ namespace RHI::Vulkan
 
     void BindGroupAllocator::ShutdownBindGroup(IBindGroup* bindGroup)
     {
-        vkFreeDescriptorSets(m_device->m_device, m_descriptorPool, 1, &bindGroup->descriptorSet);
+        m_device->m_destroyQueue->Push(m_device->m_frameIndex, [=](IDevice* device)
+                                       {
+                                           vkFreeDescriptorSets(device->m_device, m_descriptorPool, 1, &bindGroup->descriptorSet);
+                                       });
     }
 
     ResultCode IBindGroupLayout::Init(IDevice* device, const BindGroupLayoutCreateInfo& createInfo)

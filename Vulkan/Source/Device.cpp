@@ -57,6 +57,56 @@ namespace RHI
 
 namespace RHI::Vulkan
 {
+    // Validation settings: to fine tune what is checked
+    struct ValidationSettings
+    {
+        VkBool32                fine_grained_locking  = VK_TRUE;
+        VkBool32                validate_core         = VK_TRUE;
+        VkBool32                check_image_layout    = VK_TRUE;
+        VkBool32                check_command_buffer  = VK_TRUE;
+        VkBool32                check_object_in_use   = VK_TRUE;
+        VkBool32                check_query           = VK_TRUE;
+        VkBool32                check_shaders         = VK_TRUE;
+        VkBool32                check_shaders_caching = VK_TRUE;
+        VkBool32                unique_handles        = VK_TRUE;
+        VkBool32                object_lifetime       = VK_TRUE;
+        VkBool32                stateless_param       = VK_TRUE;
+        TL::Vector<const char*> debug_action          = {"VK_DBG_LAYER_ACTION_LOG_MSG"}; // "VK_DBG_LAYER_ACTION_DEBUG_OUTPUT", "VK_DBG_LAYER_ACTION_BREAK"
+        TL::Vector<const char*> report_flags          = {"error"};
+
+        VkBaseInStructure* BuildPNextChain(void* pNext)
+        {
+            layerSettings = {
+                {layerName, "fine_grained_locking", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &fine_grained_locking},
+                {layerName, "validate_core", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &validate_core},
+                {layerName, "check_image_layout", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &check_image_layout},
+                {layerName, "check_command_buffer", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &check_command_buffer},
+                {layerName, "check_object_in_use", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &check_object_in_use},
+                {layerName, "check_query", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &check_query},
+                {layerName, "check_shaders", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &check_shaders},
+                {layerName, "check_shaders_caching", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &check_shaders_caching},
+                {layerName, "unique_handles", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &unique_handles},
+                {layerName, "object_lifetime", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &object_lifetime},
+                {layerName, "stateless_param", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &stateless_param},
+                {layerName, "debug_action", VK_LAYER_SETTING_TYPE_STRING_EXT, uint32_t(debug_action.size()), debug_action.data()},
+                {layerName, "report_flags", VK_LAYER_SETTING_TYPE_STRING_EXT, uint32_t(report_flags.size()), report_flags.data()},
+            };
+
+            layerSettingsCreateInfo = {
+                .sType        = VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT,
+                .pNext        = pNext,
+                .settingCount = uint32_t(layerSettings.size()),
+                .pSettings    = layerSettings.data(),
+            };
+
+            return reinterpret_cast<VkBaseInStructure*>(&layerSettingsCreateInfo);
+        }
+
+        static constexpr const char*  layerName{"VK_LAYER_KHRONOS_validation"};
+        TL::Vector<VkLayerSettingEXT> layerSettings{};
+        VkLayerSettingsCreateInfoEXT  layerSettingsCreateInfo{};
+    };
+
     /// @todo: add support for a custom sink, so vulkan errors are spereated
     VkBool32 DebugMessengerCallbacks(
         [[maybe_unused]] VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
@@ -64,10 +114,8 @@ namespace RHI::Vulkan
         [[maybe_unused]] const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
         [[maybe_unused]] void*                                       pUserData)
     {
-        // Collect additional information for logging
         TL::String additionalInfo;
 
-        // Log the object names, debug markers, and queue information if available
         if (pCallbackData->objectCount > 0)
         {
             for (uint32_t i = 0; i < pCallbackData->objectCount; ++i)
@@ -80,7 +128,6 @@ namespace RHI::Vulkan
             }
         }
 
-        // Log any labels from the active debug marker stack
         if (pCallbackData->cmdBufLabelCount > 0)
         {
             additionalInfo += "Active Debug Markers:\n";
@@ -97,7 +144,6 @@ namespace RHI::Vulkan
             }
         }
 
-        // Log queue information if available
         if (pCallbackData->queueLabelCount > 0)
         {
             additionalInfo += "Queue Labels:\n";
@@ -268,16 +314,20 @@ namespace RHI::Vulkan
             }
 #endif
 
+            ValidationSettings   validationSettings{};
             VkInstanceCreateInfo instanceCI
             {
                 .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
 #if RHI_DEBUG
-                .pNext = debugExtensionEnabled ? &debugUtilsCI : nullptr,
+                .pNext = validationSettings.BuildPNextChain(debugExtensionEnabled ? &debugUtilsCI : nullptr),
 #else
                 .pNext = nullptr,
 #endif
-                .flags = {}, .pApplicationInfo = &applicationInfo, .enabledLayerCount = static_cast<uint32_t>(layers.size()),
-                .ppEnabledLayerNames = layers.data(), .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
+                .flags                   = {},
+                .pApplicationInfo        = &applicationInfo,
+                .enabledLayerCount       = static_cast<uint32_t>(layers.size()),
+                .ppEnabledLayerNames     = layers.data(),
+                .enabledExtensionCount   = static_cast<uint32_t>(extensions.size()),
                 .ppEnabledExtensionNames = extensions.data(),
             };
             result = vkCreateInstance(&instanceCI, nullptr, &m_instance);
@@ -324,7 +374,7 @@ namespace RHI::Vulkan
 
             };
 
-            TL::Vector<const char*> deviceExtensionNames = {VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME};
+            TL::Vector<const char*> deviceExtensionNames = {VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_CALIBRATED_TIMESTAMPS_EXTENSION_NAME};
 
             auto queueFamilyProperties = GetPhysicalDeviceQueueFamilyProperties(m_physicalDevice);
             for (uint32_t queueFamilyIndex = 0; queueFamilyIndex < queueFamilyProperties.size(); queueFamilyIndex++)
@@ -405,7 +455,6 @@ namespace RHI::Vulkan
                 .pNext    = &features11,
                 .features = {.samplerAnisotropy = VK_TRUE},
             };
-
             VkDeviceCreateInfo deviceCI{
                 .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
                 .pNext                   = &features,
@@ -429,7 +478,7 @@ namespace RHI::Vulkan
                 .vulkanApiVersion = VK_API_VERSION_1_3,
             };
 
-            result = vmaCreateAllocator(&vmaCI, &m_allocator);
+            result = vmaCreateAllocator(&vmaCI, &m_deviceAllocator);
             if (result != VK_SUCCESS) return ConvertResult(result);
 
 #if RHI_DEBUG
@@ -479,29 +528,19 @@ namespace RHI::Vulkan
         resultCode = m_destroyQueue->Init(this);
         if (IsError(resultCode)) return resultCode;
 
-        VkSemaphoreTypeCreateInfo typeCreateInfo{
-            .sType         = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
-            .pNext         = nullptr,
-            .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
-            .initialValue  = m_timelineValue,
-        };
-        VkSemaphoreCreateInfo createInfo{
-            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-            .pNext = &typeCreateInfo,
-            .flags = 0,
-        };
-
-        auto result = vkCreateSemaphore(m_device, &createInfo, nullptr, &m_timelineSemaphore);
-        return ConvertResult(result);
+        return resultCode;
     }
 
     void IDevice::Shutdown()
     {
+        ZoneScoped;
+
         vkDeviceWaitIdle(m_device);
 
         for (auto& queue : m_queue)
         {
-            queue->Shutdown();
+            if (queue)
+                queue->Shutdown();
         }
 
         if (auto count = m_imageOwner.ReportLiveResourcesCount(); count != 0)
@@ -542,8 +581,7 @@ namespace RHI::Vulkan
         m_bindGroupAllocator->Shutdown();
         m_destroyQueue->Shutdown();
 
-        vkDestroySemaphore(m_device, m_timelineSemaphore, 0);
-        vmaDestroyAllocator(m_allocator);
+        vmaDestroyAllocator(m_deviceAllocator);
         vkDestroyDevice(m_device, nullptr);
 #if RHI_DEBUG
         if (auto fn = m_pfn.m_vkDestroyDebugUtilsMessengerEXT; fn && m_debugUtilsMessenger)
@@ -571,32 +609,10 @@ namespace RHI::Vulkan
         }
     }
 
-    uint64_t IDevice::GetTimelineValue() const
-    {
-        uint64_t value  = 0;
-        VkResult result = vkGetSemaphoreCounterValue(m_device, m_timelineSemaphore, &value);
-        TL_ASSERT(result == VK_SUCCESS);
-        return value;
-    }
-
-    uint64_t IDevice::GetPendingTimelineValue() const
-    {
-        return m_timelineValue.load(std::memory_order_relaxed);
-    }
-
-    VkSemaphore IDevice::GetTimelineSemaphore() const
-    {
-        return m_timelineSemaphore;
-    }
-
-    uint64_t IDevice::AdvanceTimeline()
-    {
-        auto val = m_timelineValue++;
-        return val;
-    }
-
     RenderGraph* IDevice::CreateRenderGraph()
     {
+        ZoneScoped;
+
         auto renderGraph = new IRenderGraph();
         auto result      = renderGraph->Init(this);
         TL_ASSERT(IsSuccess(result));
@@ -605,11 +621,13 @@ namespace RHI::Vulkan
 
     void IDevice::DestroyRenderGraph(RenderGraph* renderGraph)
     {
+        ZoneScoped;
         delete renderGraph;
     }
 
     Swapchain* IDevice::CreateSwapchain(const SwapchainCreateInfo& createInfo)
     {
+        ZoneScoped;
         auto swapchain = new ISwapchain();
         auto result    = swapchain->Init(this, createInfo);
         TL_ASSERT(IsSuccess(result));
@@ -618,6 +636,7 @@ namespace RHI::Vulkan
 
     void IDevice::DestroySwapchain(Swapchain* _swapchain)
     {
+        ZoneScoped;
         auto swapchain = (ISwapchain*)_swapchain;
         swapchain->Shutdown();
         delete swapchain;
@@ -625,6 +644,7 @@ namespace RHI::Vulkan
 
     TL::Ptr<ShaderModule> IDevice::CreateShaderModule(const ShaderModuleCreateInfo& createInfo)
     {
+        ZoneScoped;
         auto shaderModule = TL::CreatePtr<IShaderModule>();
         auto result       = shaderModule->Init(this, createInfo.code);
         TL_ASSERT(IsSuccess(result));
@@ -633,12 +653,13 @@ namespace RHI::Vulkan
 
     CommandList* IDevice::CreateCommandList(const CommandListCreateInfo& createInfo)
     {
-        // TODO: change this
-        return m_commandsAllocator->AllocateCommandList(createInfo.queueType).release();
+        ZoneScoped;
+        return m_commandsAllocator->AllocateCommandList(createInfo.queueType, m_tempAllocator);
     }
 
     Handle<BindGroupLayout> IDevice::CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)
     {
+        ZoneScoped;
         auto [handle, result] = m_bindGroupLayoutsOwner.Create(this, createInfo);
         TL_ASSERT(IsSuccess(result));
         return handle;
@@ -646,8 +667,9 @@ namespace RHI::Vulkan
 
     void IDevice::DestroyBindGroupLayout(Handle<BindGroupLayout> handle)
     {
+        ZoneScoped;
         m_destroyQueue->Push(
-            GetPendingTimelineValue(),
+            m_frameIndex,
             [handle](IDevice* device)
             {
                 device->m_bindGroupLayoutsOwner.Destroy(handle, device);
@@ -656,6 +678,7 @@ namespace RHI::Vulkan
 
     Handle<BindGroup> IDevice::CreateBindGroup(Handle<BindGroupLayout> handle)
     {
+        ZoneScoped;
         auto [bindGroupHandle, result] = m_bindGroupOwner.Create(this, handle);
         TL_ASSERT(IsSuccess(result));
         return bindGroupHandle;
@@ -663,8 +686,9 @@ namespace RHI::Vulkan
 
     void IDevice::DestroyBindGroup(Handle<BindGroup> handle)
     {
+        ZoneScoped;
         m_destroyQueue->Push(
-            GetPendingTimelineValue(),
+            m_frameIndex,
             [handle](IDevice* device)
             {
                 device->m_bindGroupOwner.Destroy(handle, device);
@@ -673,12 +697,14 @@ namespace RHI::Vulkan
 
     void IDevice::UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo)
     {
+        ZoneScoped;
         auto bindGroup = m_bindGroupOwner.Get(handle);
         bindGroup->Write(this, updateInfo);
     }
 
     Handle<PipelineLayout> IDevice::CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)
     {
+        ZoneScoped;
         auto [handle, result] = m_pipelineLayoutOwner.Create(this, createInfo);
         TL_ASSERT(IsSuccess(result));
         return handle;
@@ -686,8 +712,9 @@ namespace RHI::Vulkan
 
     void IDevice::DestroyPipelineLayout(Handle<PipelineLayout> handle)
     {
+        ZoneScoped;
         m_destroyQueue->Push(
-            GetPendingTimelineValue(),
+            m_frameIndex,
             [handle](IDevice* device)
             {
                 device->m_pipelineLayoutOwner.Destroy(handle, device);
@@ -696,6 +723,7 @@ namespace RHI::Vulkan
 
     Handle<GraphicsPipeline> IDevice::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)
     {
+        ZoneScoped;
         auto [handle, result] = m_graphicsPipelineOwner.Create(this, createInfo);
         TL_ASSERT(IsSuccess(result));
         return handle;
@@ -703,8 +731,9 @@ namespace RHI::Vulkan
 
     void IDevice::DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle)
     {
+        ZoneScoped;
         m_destroyQueue->Push(
-            GetPendingTimelineValue(),
+            m_frameIndex,
             [handle](IDevice* device)
             {
                 device->m_graphicsPipelineOwner.Destroy(handle, device);
@@ -713,6 +742,7 @@ namespace RHI::Vulkan
 
     Handle<ComputePipeline> IDevice::CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
     {
+        ZoneScoped;
         auto [handle, result] = m_computePipelineOwner.Create(this, createInfo);
         TL_ASSERT(IsSuccess(result));
         return handle;
@@ -720,8 +750,9 @@ namespace RHI::Vulkan
 
     void IDevice::DestroyComputePipeline(Handle<ComputePipeline> handle)
     {
+        ZoneScoped;
         m_destroyQueue->Push(
-            GetPendingTimelineValue(),
+            m_frameIndex,
             [handle](IDevice* device)
             {
                 device->m_computePipelineOwner.Destroy(handle, device);
@@ -730,6 +761,7 @@ namespace RHI::Vulkan
 
     Handle<Sampler> IDevice::CreateSampler(const SamplerCreateInfo& createInfo)
     {
+        ZoneScoped;
         auto [handle, result] = m_samplerOwner.Create(this, createInfo);
         TL_ASSERT(IsSuccess(result));
         return handle;
@@ -737,8 +769,9 @@ namespace RHI::Vulkan
 
     void IDevice::DestroySampler(Handle<Sampler> handle)
     {
+        ZoneScoped;
         m_destroyQueue->Push(
-            GetPendingTimelineValue(),
+            m_frameIndex,
             [handle](IDevice* device)
             {
                 device->m_samplerOwner.Destroy(handle, device);
@@ -747,6 +780,7 @@ namespace RHI::Vulkan
 
     Result<Handle<Image>> IDevice::CreateImage(const ImageCreateInfo& createInfo)
     {
+        ZoneScoped;
         auto [handle, result] = m_imageOwner.Create(this, createInfo);
         if (IsSuccess(result)) return (Handle<Image>)handle;
         return result;
@@ -754,8 +788,9 @@ namespace RHI::Vulkan
 
     void IDevice::DestroyImage(Handle<Image> handle)
     {
+        ZoneScoped;
         m_destroyQueue->Push(
-            GetPendingTimelineValue(),
+            m_frameIndex,
             [handle](IDevice* device)
             {
                 device->m_imageOwner.Destroy(handle, device);
@@ -764,6 +799,7 @@ namespace RHI::Vulkan
 
     Result<Handle<Buffer>> IDevice::CreateBuffer(const BufferCreateInfo& createInfo)
     {
+        ZoneScoped;
         auto [handle, result] = m_bufferOwner.Create(this, createInfo);
         if (IsSuccess(result)) return (Handle<Buffer>)handle;
         return result;
@@ -771,8 +807,9 @@ namespace RHI::Vulkan
 
     void IDevice::DestroyBuffer(Handle<Buffer> handle)
     {
+        ZoneScoped;
         m_destroyQueue->Push(
-            GetPendingTimelineValue(),
+            m_frameIndex,
             [handle](IDevice* device)
             {
                 device->m_bufferOwner.Destroy(handle, device);
@@ -781,48 +818,30 @@ namespace RHI::Vulkan
 
     DeviceMemoryPtr IDevice::MapBuffer(Handle<Buffer> handle)
     {
+        ZoneScoped;
         auto            resource   = m_bufferOwner.Get(handle);
         auto            allocation = resource->allocation.handle;
         DeviceMemoryPtr memoryPtr;
-        Validate(vmaMapMemory(m_allocator, allocation, &memoryPtr));
+        Validate(vmaMapMemory(m_deviceAllocator, allocation, &memoryPtr));
         return memoryPtr;
     }
 
     void IDevice::UnmapBuffer(Handle<Buffer> handle)
     {
+        ZoneScoped;
         auto resource = m_bufferOwner.Get(handle)->allocation.handle;
-        vmaUnmapMemory(m_allocator, resource);
-    }
-
-    void IDevice::QueueBeginLabel(QueueType type, const char* name, float color[4])
-    {
-        m_queue[(uint32_t)type]->BeginLabel(name, color);
-    }
-
-    void IDevice::QueueEndLabel(QueueType type)
-    {
-        m_queue[(uint32_t)type]->EndLabel();
-    }
-
-    uint64_t IDevice::QueueSubmit(const SubmitInfo& submitInfo)
-    {
-        m_queue[(uint32_t)QueueType::Graphics]->Submit(submitInfo);
-
-        for (auto commandList : submitInfo.commandLists)
-        {
-            delete commandList;
-        }
-
-        return GetPendingTimelineValue();
+        vmaUnmapMemory(m_deviceAllocator, resource);
     }
 
     StagingBuffer IDevice::StagingAllocate(size_t size)
     {
+        ZoneScoped;
         return m_stagingAllocator->Allocate(size);
     }
 
     uint64_t IDevice::UploadImage(const ImageUploadInfo& uploadInfo)
     {
+        ZoneScoped;
         auto image = m_imageOwner.Get(uploadInfo.image);
 
         VkImageSubresourceRange subresourceRange{
@@ -858,6 +877,8 @@ namespace RHI::Vulkan
             .image = uploadInfo.image,
             .subresource =
                 {
+                    // TODO:
+                    // .imageAspects = ConvertImageAspect(GetFormatAspects(image.format)),
                     .imageAspects = ImageAspect::Color,
                     .mipLevel     = uploadInfo.baseMipLevel,
                     .arrayBase    = uploadInfo.baseArrayLayer,
@@ -888,26 +909,18 @@ namespace RHI::Vulkan
         });
         commandList->End();
 
-        return m_queue[(int)QueueType::Transfer]->Submit({.commandLists = commandList});
+        return m_queue[(int)QueueType::Transfer]->Submit({
+            .commandLists         = commandList,
+            .timelineSignalStages = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+        });
     }
 
     void IDevice::CollectResources()
     {
+        ZoneScoped;
+        m_tempAllocator.Collect();
         m_destroyQueue->DestroyObjects(false);
         m_stagingAllocator->ReleaseAll();
+        m_frameIndex++;
     }
-
-    void IDevice::WaitTimelineValue(uint64_t value)
-    {
-        VkSemaphoreWaitInfo waitInfo{
-            .sType          = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
-            .pNext          = nullptr,
-            .flags          = 0,
-            .semaphoreCount = 1,
-            .pSemaphores    = &m_timelineSemaphore,
-            .pValues        = &value,
-        };
-        vkWaitSemaphores(m_device, &waitInfo, UINT64_MAX);
-    }
-
 } // namespace RHI::Vulkan

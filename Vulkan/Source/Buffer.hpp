@@ -11,8 +11,6 @@ namespace RHI::Vulkan
 {
     class IDevice;
 
-    VkBufferUsageFlagBits ConvertBufferUsage(BufferUsage bufferUsage);
-
     VkBufferUsageFlags ConvertBufferUsageFlags(TL::Flags<BufferUsage> bufferUsageFlags);
 
     struct IBuffer : Buffer

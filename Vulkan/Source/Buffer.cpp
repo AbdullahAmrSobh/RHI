@@ -5,22 +5,6 @@
 
 namespace RHI::Vulkan
 {
-
-    VkBufferUsageFlagBits ConvertBufferUsage(BufferUsage bufferUsage)
-    {
-        switch (bufferUsage)
-        {
-        case BufferUsage::None:    return VK_BUFFER_USAGE_FLAG_BITS_MAX_ENUM;
-        case BufferUsage::Storage: return VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-        case BufferUsage::Uniform: return VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-        case BufferUsage::Vertex:  return VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-        case BufferUsage::Index:   return VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-        case BufferUsage::CopySrc: return VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-        case BufferUsage::CopyDst: return VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-        default:                   TL_UNREACHABLE(); return VK_BUFFER_USAGE_FLAG_BITS_MAX_ENUM;
-        }
-    }
-
     VkBufferUsageFlags ConvertBufferUsageFlags(TL::Flags<BufferUsage> bufferUsageFlags)
     {
         VkBufferUsageFlags result = 0;
@@ -39,16 +23,16 @@ namespace RHI::Vulkan
         this->size  = createInfo.byteSize;
         this->usage = ConvertBufferUsageFlags(createInfo.usageFlags);
 
-        auto                    vmaUsage = createInfo.hostMapped ? VMA_MEMORY_USAGE_AUTO_PREFER_HOST : VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-        VmaAllocationCreateInfo allocationInfo{
+        VmaAllocationCreateInfo allocationCI{
             .flags          = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT,
-            .usage          = vmaUsage,
+            .usage          = createInfo.hostMapped ? VMA_MEMORY_USAGE_AUTO_PREFER_HOST : VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
             .requiredFlags  = 0,
             .preferredFlags = 0,
             .memoryTypeBits = 0,
             .pool           = VK_NULL_HANDLE,
             .pUserData      = nullptr,
-            .priority       = 0.0f};
+            .priority       = 0.0f,
+        };
         VkBufferCreateInfo bufferCI{
             .sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
             .pNext                 = nullptr,
@@ -59,19 +43,17 @@ namespace RHI::Vulkan
             .queueFamilyIndexCount = 0,
             .pQueueFamilyIndices   = nullptr,
         };
-        auto result = vmaCreateBuffer(device->m_allocator, &bufferCI, &allocationInfo, &handle, &allocation.handle, &allocation.info);
-
+        auto result = vmaCreateBuffer(device->m_deviceAllocator, &bufferCI, &allocationCI, &handle, &allocation.handle, &allocation.info);
         if (result == VK_SUCCESS && createInfo.name)
         {
             device->SetDebugName(handle, createInfo.name);
         }
-
         return ConvertResult(result);
     }
 
     void IBuffer::Shutdown(IDevice* device)
     {
-        vmaDestroyBuffer(device->m_allocator, handle, allocation.handle);
+        vmaDestroyBuffer(device->m_deviceAllocator, handle, allocation.handle);
     }
 
     VkMemoryRequirements IBuffer::GetMemoryRequirements(IDevice* device) const

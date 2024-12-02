@@ -180,21 +180,6 @@ namespace RHI
         /// @param handle Handle to the buffer to unmap.
         virtual void                     UnmapBuffer(Handle<Buffer> handle)                                               = 0;
 
-        /// @brief Adds a debug label to a queue.
-        /// @param type Queue type.
-        /// @param name Label name.
-        /// @param color Optional label color (RGBA).
-        virtual void                     QueueBeginLabel(QueueType type, const char* name, float color[4])                = 0;
-
-        /// @brief Ends a debug label on a queue.
-        /// @param type Queue type.
-        virtual void                     QueueEndLabel(QueueType type)                                                    = 0;
-
-        /// @brief Submits work to a queue.
-        /// @param submitInfo Submission parameters.
-        /// @return Timeline semaphore value after submission.
-        virtual uint64_t                 QueueSubmit(const SubmitInfo& submitInfo)                                        = 0;
-
         /// @brief Allocates a staging buffer.
         /// @param size Buffer size in bytes.
         /// @return Staging buffer descriptor.
@@ -207,10 +192,6 @@ namespace RHI
 
         /// @brief Collects unused resources for reuse.
         virtual void                     CollectResources()                                                               = 0;
-
-        /// @brief Waits until the timeline semaphore reaches a value.
-        /// @param value Target timeline value.
-        virtual void                     WaitTimelineValue(uint64_t value)                                                = 0;
 
     protected:
         TL::Ptr<DeviceLimits> m_limits; ///< Device-specific limits.

@@ -15,22 +15,6 @@ namespace RHI::Vulkan
         return vkSubresource;
     }
 
-    VkImageUsageFlagBits ConvertImageUsage(ImageUsage imageUsage)
-    {
-        switch (imageUsage)
-        {
-        case ImageUsage::None:            return VK_IMAGE_USAGE_FLAG_BITS_MAX_ENUM;
-        case ImageUsage::ShaderResource:  return VK_IMAGE_USAGE_SAMPLED_BIT;
-        case ImageUsage::StorageResource: return VK_IMAGE_USAGE_STORAGE_BIT;
-        case ImageUsage::Color:           return VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-        case ImageUsage::Depth:           return VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-        case ImageUsage::Stencil:         return VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-        case ImageUsage::CopySrc:         return VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-        case ImageUsage::CopyDst:         return VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-        default:                          TL_UNREACHABLE(); return VK_IMAGE_USAGE_FLAG_BITS_MAX_ENUM;
-        }
-    }
-
     VkImageUsageFlags ConvertImageUsageFlags(TL::Flags<ImageUsage> imageUsageFlags)
     {
         VkImageUsageFlags result = 0;
@@ -76,20 +60,6 @@ namespace RHI::Vulkan
         }
 
         return vkAspectFlags;
-    }
-
-    VkImageAspectFlagBits ConvertImageAspect(ImageAspect imageAspect)
-    {
-        switch (imageAspect)
-        {
-        case ImageAspect::None:         return VK_IMAGE_ASPECT_NONE;
-        case ImageAspect::Color:        return VK_IMAGE_ASPECT_COLOR_BIT;
-        case ImageAspect::Depth:        return VK_IMAGE_ASPECT_DEPTH_BIT;
-        case ImageAspect::Stencil:      return VK_IMAGE_ASPECT_STENCIL_BIT;
-        case ImageAspect::DepthStencil: return VK_IMAGE_ASPECT_DEPTH_BIT;
-        case ImageAspect::All:          return VK_IMAGE_ASPECT_COLOR_BIT;
-        default:                        TL_UNREACHABLE(); return VK_IMAGE_ASPECT_FLAG_BITS_MAX_ENUM;
-        }
     }
 
     VkComponentSwizzle ConvertComponentSwizzle(ComponentSwizzle componentSwizzle)
@@ -190,7 +160,7 @@ namespace RHI::Vulkan
             .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED,
         };
 
-        result = vmaCreateImage(device->m_allocator, &imageCI, &allocationInfo, &handle, &allocation.handle, &allocation.info);
+        result = vmaCreateImage(device->m_deviceAllocator, &imageCI, &allocationInfo, &handle, &allocation.handle, &allocation.info);
 
         if (result == VK_SUCCESS && createInfo.name)
         {
@@ -247,37 +217,34 @@ namespace RHI::Vulkan
         this->handle = image;
 
         VkImageViewCreateInfo imageViewCI{
-            .sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .pNext    = nullptr,
-            .flags    = 0,
-            .image    = handle,
-            .viewType = VK_IMAGE_VIEW_TYPE_2D,
-            .format   = swapchainCI.imageFormat,
-            .components{
+            .sType      = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .pNext      = nullptr,
+            .flags      = 0,
+            .image      = handle,
+            .viewType   = VK_IMAGE_VIEW_TYPE_2D,
+            .format     = swapchainCI.imageFormat,
+            .components = {
                 VK_COMPONENT_SWIZZLE_IDENTITY,
                 VK_COMPONENT_SWIZZLE_IDENTITY,
                 VK_COMPONENT_SWIZZLE_IDENTITY,
                 VK_COMPONENT_SWIZZLE_IDENTITY,
             },
-            .subresourceRange =
-                {
-                    .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
-                    .baseMipLevel   = 0,
-                    .levelCount     = VK_REMAINING_MIP_LEVELS,
-                    .baseArrayLayer = 0,
-                    .layerCount     = VK_REMAINING_ARRAY_LAYERS,
-                },
+            .subresourceRange = {
+                .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel   = 0,
+                .levelCount     = VK_REMAINING_MIP_LEVELS,
+                .baseArrayLayer = 0,
+                .layerCount     = VK_REMAINING_ARRAY_LAYERS,
+            },
         };
-
         VkResult result = vkCreateImageView(device->m_device, &imageViewCI, nullptr, &viewHandle);
-
         return ConvertResult(result);
     }
 
     void IImage::Shutdown(IDevice* device)
     {
         vkDestroyImageView(device->m_device, viewHandle, nullptr);
-        vmaDestroyImage(device->m_allocator, handle, allocation.handle);
+        vmaDestroyImage(device->m_deviceAllocator, handle, allocation.handle);
     }
 
     VkMemoryRequirements IImage::GetMemoryRequirements(IDevice* device) const

@@ -4,21 +4,23 @@
 
 namespace RHI
 {
-    Pass::Pass(const PassCreateInfo& createInfo) noexcept
+    Pass::Pass(const PassCreateInfo& createInfo, TL::IAllocator* allocator) noexcept
         : m_name(createInfo.name)
+        , m_queueType(QueueType::Graphics)
         , m_onSetupCallback(createInfo.setupCallback)
         , m_onCompileCallback(createInfo.compileCallback)
         , m_onExecuteCallback(createInfo.executeCallback)
         , m_size({0, 0}) // Default size is empty.
-        , m_colorAttachments()
+        , m_colorAttachments(*allocator)
         , m_depthStencilAttachment()
-        , m_accessedResources()
+        , m_accessedResources(*allocator)
     {
     }
 
     const char* Pass::GetName() const
     {
-        return m_name.c_str();
+        // return m_name.c_str();
+        return m_name;
     }
 
     void Pass::Resize(ImageSize2D size)

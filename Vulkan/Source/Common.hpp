@@ -12,12 +12,6 @@
 
 #include <vk_mem_alloc.h>
 
-#define TRY_OR_RETURN(result) \
-    if (result != VK_SUCCESS) return ConvertResult(result);
-
-#define TRY_OR_RETURN_VK(result) \
-    if (result != ResultCode::Success) return result;
-
 namespace RHI::Vulkan
 {
     [[maybe_unused]] inline static bool Validate(ResultCode result)

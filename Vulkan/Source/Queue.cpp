@@ -8,36 +8,55 @@
 
 namespace RHI::Vulkan
 {
-
     IQueue::IQueue()  = default;
     IQueue::~IQueue() = default;
 
     ResultCode IQueue::Init(IDevice* device, uint32_t familyIndex, uint32_t queueIndex)
     {
-        m_device      = device;
-        m_queue       = VK_NULL_HANDLE;
+        m_device = device;
+
+        // Retrieve the queue handle.
+        vkGetDeviceQueue(device->m_device, familyIndex, queueIndex, &m_queue);
         m_familyIndex = familyIndex;
-        vkGetDeviceQueue(m_device->m_device, familyIndex, queueIndex, &m_queue);
+
+        // Create the timeline semaphore.
+        VkSemaphoreTypeCreateInfo timelineCreateInfo = {
+            .sType         = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
+            .pNext         = nullptr,
+            .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
+            .initialValue  = 0,
+        };
+
+        VkSemaphoreCreateInfo semaphoreInfo = {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+            .pNext = &timelineCreateInfo,
+        };
+
+        if (vkCreateSemaphore(device->m_device, &semaphoreInfo, nullptr, &m_timeline) != VK_SUCCESS)
+        {
+            return ResultCode::ErrorUnknown;
+        }
+
+        m_timelineValue.store(0);
         return ResultCode::Success;
     }
 
     void IQueue::Shutdown()
     {
-        // Nothing to do here
+        vkDestroySemaphore(m_device->m_device, m_timeline, nullptr);
     }
 
-    void IQueue::BeginLabel(const char* name, float color[4])
+    void IQueue::BeginLabel(const char* name, const float color[4])
     {
         if (auto fn = m_device->m_pfn.m_vkQueueBeginDebugUtilsLabelEXT)
         {
-            VkDebugUtilsLabelEXT queueLabel{
-
+            VkDebugUtilsLabelEXT label = {
                 .sType      = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
                 .pNext      = nullptr,
                 .pLabelName = name,
                 .color      = {color[0], color[1], color[2], color[3]},
             };
-            fn(m_queue, &queueLabel);
+            fn(m_queue, &label);
         }
     }
 
@@ -49,85 +68,80 @@ namespace RHI::Vulkan
         }
     }
 
-    uint64_t IQueue::Submit(const SubmitInfo& submitInfo)
+    uint64_t IQueue::GetTimelineSemaphoreValue() const
     {
-        ZoneScoped;
+        uint64_t value;
+        vkGetSemaphoreCounterValue(m_device->m_device, m_timeline, &value);
+        return value;
+    }
 
-        auto swapchainToWait   = (ISwapchain*)submitInfo.swapchainToWait;
-        auto swapchainToSignal = (ISwapchain*)submitInfo.swapchainToSignal;
+    uint64_t IQueue::GetTimelineSemaphorePendingValue() const
+    {
+        return m_timelineValue;
+    }
 
-        TL::Vector<VkCommandBufferSubmitInfo> commandBuffers;
-        commandBuffers.reserve(submitInfo.commandLists.size());
+    uint64_t IQueue::Submit(const QueueSubmitInfo& submitInfo)
+    {
+        uint64_t nextValue = m_timelineValue.fetch_add(1) + 1;
 
-        VkSemaphoreSubmitInfo waitSemaphoreInfo[2] = {
-            {
+        VkSemaphoreSubmitInfo waitSemaphoreInfos[AsyncQueuesCount + 1];
+        uint32_t              waitCount = 0;
+
+        if (auto semaphore = submitInfo.binaryWaitSemaphore.semaphore; semaphore != VK_NULL_HANDLE)
+        {
+            waitSemaphoreInfos[waitCount++] = {
                 .sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
                 .pNext       = nullptr,
-                .semaphore   = m_device->GetTimelineSemaphore(),
-                .value       = submitInfo.waitTimelineValue,
-                // TODO: !!!!!!!
-                .stageMask   = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
-                .deviceIndex = 0,
-            },
-            {
-                .sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-                .pNext       = nullptr,
-                .semaphore   = swapchainToWait ? swapchainToWait->GetImageAcquiredSemaphore() : nullptr,
+                .semaphore   = semaphore,
                 .value       = 0,
                 .stageMask   = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
                 .deviceIndex = 0,
-            },
-        };
-
-        VkPipelineStageFlags2 commandBuffersSignalStages = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
-
-        for (CommandList* const _commandList : submitInfo.commandLists)
+            };
+        }
+        for (uint32_t i = 0; i < AsyncQueuesCount; ++i)
         {
-            auto commandList = (ICommandList*)_commandList;
-            commandBuffers.push_back({
-                .sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
-                .pNext         = nullptr,
-                .commandBuffer = commandList->GetHandle(),
-                .deviceMask    = 0,
-            });
-
-            // commandBuffersSignalStages |= commandList->GetPipelineStages();
+            if (submitInfo.timelineWaitSemaphores[i].semaphore)
+                waitSemaphoreInfos[waitCount++] = submitInfo.timelineWaitSemaphores[i];
         }
 
-        VkSemaphoreSubmitInfo signalSemaphoreInfo[2] = {
-            {
-                .sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-                .pNext       = nullptr,
-                .semaphore   = m_device->GetTimelineSemaphore(),
-                .value       = m_device->GetPendingTimelineValue() + 1,
-                .stageMask   = commandBuffersSignalStages,
-                .deviceIndex = 0,
-            },
-            {
-                .sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-                .pNext       = nullptr,
-                .semaphore   = swapchainToSignal ? swapchainToSignal->GetImagePresentSemaphore() : nullptr,
-                .value       = 0,
-                .stageMask   = commandBuffersSignalStages,
-                .deviceIndex = 0,
-            },
+        VkSemaphoreSubmitInfo signalSemaphoreInfos[2];
+        uint32_t              signalCount = 1;
+        signalSemaphoreInfos[0]           = {
+                      .sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+                      .semaphore = m_timeline,
+                      .value     = m_timelineValue,
+                      .stageMask = submitInfo.timelineSignalStages,
         };
+        if (auto semaphore = submitInfo.binarySignalSemaphore.semaphore; semaphore != VK_NULL_HANDLE)
+        {
+            signalSemaphoreInfos[waitCount++] = submitInfo.binarySignalSemaphore;
+        }
 
-        VkSubmitInfo2 submitInfo2{
+        VkCommandBufferSubmitInfo commandBuffersSubmitInfos[32]  = {};
+        uint32_t                  commandBuffersSubmitInfosCount = 0;
+        for (auto commandList : submitInfo.commandLists)
+        {
+            commandBuffersSubmitInfos[commandBuffersSubmitInfosCount++] = {
+                .sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+                .commandBuffer = commandList->GetHandle(),
+            };
+        }
+
+        // Prepare the submission info.
+        VkSubmitInfo2 submitInfo2 = {
             .sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
             .pNext                    = nullptr,
-            .flags                    = 0,
-            .waitSemaphoreInfoCount   = swapchainToWait ? 2u : 1u,
-            .pWaitSemaphoreInfos      = waitSemaphoreInfo,
-            .commandBufferInfoCount   = static_cast<uint32_t>(commandBuffers.size()),
-            .pCommandBufferInfos      = commandBuffers.data(),
-            .signalSemaphoreInfoCount = swapchainToSignal ? 2u : 1u,
-            .pSignalSemaphoreInfos    = signalSemaphoreInfo,
+            .waitSemaphoreInfoCount   = waitCount,
+            .pWaitSemaphoreInfos      = waitSemaphoreInfos,
+            .commandBufferInfoCount   = commandBuffersSubmitInfosCount,
+            .pCommandBufferInfos      = commandBuffersSubmitInfos,
+            .signalSemaphoreInfoCount = signalCount,
+            .pSignalSemaphoreInfos    = signalSemaphoreInfos,
         };
 
         auto result = vkQueueSubmit2(m_queue, 1, &submitInfo2, VK_NULL_HANDLE);
-        TL_ASSERT(result == VK_SUCCESS);
-
-        return m_device->GetTimelineValue();
+        Validate(result);
+        return nextValue;
     }
+
 } // namespace RHI::Vulkan

@@ -52,7 +52,8 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        TL_ASSERT(!(barriers.memoryBarriers.empty() && barriers.bufferBarriers.empty() && barriers.imageBarriers.empty()));
+        if (!(barriers.memoryBarriers.empty() && barriers.bufferBarriers.empty() && barriers.imageBarriers.empty()))
+            return;
 
         VkDependencyInfo dependencyInfo{
             .sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
@@ -68,31 +69,45 @@ namespace RHI::Vulkan
         vkCmdPipelineBarrier2(m_commandBuffer, &dependencyInfo);
     }
 
-    void ICommandList::BindShaderBindGroups(
-        VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups)
+    void ICommandList::BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups)
     {
         ZoneScoped;
 
         if (bindGroups.empty()) return;
 
-        TL::Vector<VkDescriptorSet> descriptorSets;
-        TL::Vector<uint32_t>        dynamicOffset;
-        for (auto bindingInfo : bindGroups)
+        constexpr size_t MaxDescriptorSets = 4;
+        constexpr size_t MaxDynamicOffsets = MaxDescriptorSets;
+
+        VkDescriptorSet descriptorSets[MaxDescriptorSets];
+        uint32_t        dynamicOffsets[MaxDynamicOffsets];
+
+        uint32_t descriptorSetCount = 0;
+        uint32_t dynamicOffsetCount = 0;
+
+        for (const auto& bindingInfo : bindGroups)
         {
             auto bindGroup = m_device->m_bindGroupOwner.Get(bindingInfo.bindGroup);
 
-            descriptorSets.push_back(bindGroup->descriptorSet);
-            dynamicOffset.insert(dynamicOffset.end(), bindingInfo.dynamicOffsets.begin(), bindingInfo.dynamicOffsets.end());
+            // Ensure we don't exceed the array limits
+            TL_ASSERT(descriptorSetCount < MaxDescriptorSets);
+            descriptorSets[descriptorSetCount++] = bindGroup->descriptorSet;
+
+            for (uint32_t offset : bindingInfo.dynamicOffsets)
+            {
+                TL_ASSERT(dynamicOffsetCount < MaxDynamicOffsets);
+                dynamicOffsets[dynamicOffsetCount++] = offset;
+            }
         }
+
         vkCmdBindDescriptorSets(
             m_commandBuffer,
             bindPoint,
             pipelineLayout,
             0,
-            uint32_t(descriptorSets.size()),
-            descriptorSets.data(),
-            (uint32_t)dynamicOffset.size(),
-            dynamicOffset.data());
+            descriptorSetCount,
+            descriptorSets,
+            dynamicOffsetCount,
+            dynamicOffsets);
     }
 
     void ICommandList::Begin()
@@ -117,31 +132,32 @@ namespace RHI::Vulkan
 
     void ICommandList::BeginPass(const Pass& pass)
     {
+        ZoneScoped;
+
         m_isInsideRenderPass = true;
 
-        TL::Vector<VkRenderingAttachmentInfo>   colorAttachmentInfos;
-        TL::Optional<VkRenderingAttachmentInfo> depthAttachmentInfo;
-        TL::Optional<VkRenderingAttachmentInfo> stencilAttachmentInfo;
+        constexpr size_t          MaxColorAttachments = 8;
+        VkRenderingAttachmentInfo colorAttachmentInfos[MaxColorAttachments];
+        size_t                    colorAttachmentCount = 0;
+
+        VkRenderingAttachmentInfo depthAttachmentInfo{};
+        VkRenderingAttachmentInfo stencilAttachmentInfo{};
+        bool                      hasDepthAttachment   = false;
+        bool                      hasStencilAttachment = false;
 
         for (const auto& passAttachment : pass.GetColorAttachment())
         {
+            TL_ASSERT(colorAttachmentCount < MaxColorAttachments);
+
             auto colorAttachmentHandle   = passAttachment.attachment->GetImage();
             auto resolveAttachmentHandle = passAttachment.resolveAttachment ? passAttachment.resolveAttachment->GetImage() : NullHandle;
 
             IImage* colorAttachment   = m_device->m_imageOwner.Get(colorAttachmentHandle);
             IImage* resolveAttachment = passAttachment.resolveAttachment ? m_device->m_imageOwner.Get(resolveAttachmentHandle) : nullptr;
 
-            VkClearColorValue colorValue = {
-                .float32 =
-                    {
-                        passAttachment.clearValue.f32.r,
-                        passAttachment.clearValue.f32.g,
-                        passAttachment.clearValue.f32.b,
-                        passAttachment.clearValue.f32.a,
-                    },
-            };
+            auto clearValue = ConvertColorValue(passAttachment.clearValue.f32);
 
-            colorAttachmentInfos.push_back({
+            colorAttachmentInfos[colorAttachmentCount++] = {
                 .sType              = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
                 .pNext              = nullptr,
                 .imageView          = colorAttachment->viewHandle,
@@ -151,8 +167,8 @@ namespace RHI::Vulkan
                 .resolveImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                 .loadOp             = ConvertLoadOp(passAttachment.loadOperation),
                 .storeOp            = ConvertStoreOp(passAttachment.storeOperation),
-                .clearValue         = {.color = colorValue},
-            });
+                .clearValue         = {clearValue},
+            };
         }
 
         if (auto passAttachment = pass.GetDepthStencilAttachment())
@@ -163,58 +179,60 @@ namespace RHI::Vulkan
             IImage* depthStencilAttachment = m_device->m_imageOwner.Get(depthStencilHandle);
             IImage* resolveAttachment      = passAttachment->resolveAttachment ? m_device->m_imageOwner.Get(resolveAttachmentHandle) : nullptr;
 
-            VkClearDepthStencilValue clearValue{passAttachment->clearValue.depthStencil.depthValue, passAttachment->clearValue.depthStencil.stencilValue};
+            auto clearValue = ConvertClearValue(passAttachment->clearValue);
 
             auto formatInfo = GetFormatInfo(passAttachment->attachment->GetFormat());
 
             if (formatInfo.hasDepth)
             {
-                depthAttachmentInfo = VkRenderingAttachmentInfo{
+                depthAttachmentInfo = {
                     .sType              = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
                     .pNext              = nullptr,
                     .imageView          = depthStencilAttachment->viewHandle,
-                    .imageLayout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                    .imageLayout        = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
                     .resolveMode        = ConvertResolveMode(passAttachment->resolveMode),
                     .resolveImageView   = resolveAttachment ? resolveAttachment->viewHandle : VK_NULL_HANDLE,
                     .resolveImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                     .loadOp             = ConvertLoadOp(passAttachment->loadOperation),
                     .storeOp            = ConvertStoreOp(passAttachment->storeOperation),
-                    .clearValue         = {.depthStencil = clearValue},
+                    .clearValue         = {clearValue},
                 };
+                hasDepthAttachment = true;
             }
 
             if (formatInfo.hasStencil)
             {
-                stencilAttachmentInfo = VkRenderingAttachmentInfo{
+                stencilAttachmentInfo = {
                     .sType              = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
                     .pNext              = nullptr,
                     .imageView          = depthStencilAttachment->viewHandle,
-                    .imageLayout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                    .imageLayout        = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                     .resolveMode        = ConvertResolveMode(passAttachment->resolveMode),
-                    .resolveImageView   = resolveAttachment->viewHandle ? resolveAttachment->viewHandle : VK_NULL_HANDLE,
+                    .resolveImageView   = resolveAttachment ? resolveAttachment->viewHandle : VK_NULL_HANDLE,
                     .resolveImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                     .loadOp             = ConvertLoadOp(passAttachment->stencilLoadOperation),
                     .storeOp            = ConvertStoreOp(passAttachment->stencilStoreOperation),
-                    .clearValue         = {.depthStencil = clearValue},
+                    .clearValue         = {clearValue},
                 };
+                hasStencilAttachment = true;
             }
         }
 
-        VkRenderingInfo renderingInfo{
+        VkRenderingInfo renderingInfo = {
             .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
             .pNext = nullptr,
             .flags = {},
             .renderArea =
                 {
                     .offset = {0, 0},
-                    .extent = {ConvertExtent2D(pass.GetSize())},
+                    .extent = ConvertExtent2D(pass.GetSize()),
                 },
             .layerCount           = 1,
             .viewMask             = 0,
-            .colorAttachmentCount = (uint32_t)colorAttachmentInfos.size(),
-            .pColorAttachments    = colorAttachmentInfos.data(),
-            .pDepthAttachment     = depthAttachmentInfo.has_value() ? &depthAttachmentInfo.value() : nullptr,
-            .pStencilAttachment   = stencilAttachmentInfo.has_value() ? &stencilAttachmentInfo.value() : nullptr,
+            .colorAttachmentCount = static_cast<uint32_t>(colorAttachmentCount),
+            .pColorAttachments    = colorAttachmentInfos,
+            .pDepthAttachment     = hasDepthAttachment ? &depthAttachmentInfo : nullptr,
+            .pStencilAttachment   = hasStencilAttachment ? &stencilAttachmentInfo : nullptr,
         };
         vkCmdBeginRendering(m_commandBuffer, &renderingInfo);
     }
@@ -237,7 +255,7 @@ namespace RHI::Vulkan
         if (auto fn = m_device->m_pfn.m_vkCmdBeginDebugUtilsLabelEXT)
         {
             VkDebugUtilsLabelEXT info{
-                .sType      = VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT,
+                .sType      = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
                 .pNext      = nullptr,
                 .pLabelName = name,
                 .color      = {color.r, color.g, color.b, color.a},
@@ -286,14 +304,16 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        TL::Vector<VkCommandBuffer> commandBuffers;
-        commandBuffers.reserve(commandLists.size());
-        for (auto _commandList : commandLists)
+        constexpr size_t MaxCommandLists = 16;
+        VkCommandBuffer  commandBuffers[MaxCommandLists];
+        size_t           commandListCount = commandLists.size();
+        TL_ASSERT(commandListCount <= MaxCommandLists, "Exceeded MaxCommandLists limit!");
+        for (size_t i = 0; i < commandListCount; ++i)
         {
-            auto commandList = (const ICommandList*)_commandList;
-            commandBuffers.push_back(commandList->m_commandBuffer);
+            auto commandList  = (const ICommandList*)commandLists[i];
+            commandBuffers[i] = commandList->m_commandBuffer;
         }
-        vkCmdExecuteCommands(m_commandBuffer, uint32_t(commandBuffers.size()), commandBuffers.data());
+        vkCmdExecuteCommands(m_commandBuffer, static_cast<uint32_t>(commandListCount), commandBuffers);
     }
 
     void ICommandList::BindGraphicsPipeline(Handle<GraphicsPipeline> pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups)
@@ -360,15 +380,29 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        TL::Vector<VkBuffer>     buffers;
-        TL::Vector<VkDeviceSize> offsets;
-        for (auto bindingInfo : vertexBuffers)
+        constexpr size_t MaxVertexBuffers = 16;
+
+        VkBuffer     buffers[MaxVertexBuffers];
+        VkDeviceSize offsets[MaxVertexBuffers];
+
+        size_t vertexBufferCount = vertexBuffers.size();
+        TL_ASSERT(vertexBufferCount <= MaxVertexBuffers, "Vertex buffer count exceeds MaxVertexBuffers!");
+
+        for (size_t i = 0; i < vertexBufferCount; ++i)
         {
-            auto buffer = m_device->m_bufferOwner.Get(bindingInfo.buffer);
-            buffers.push_back(buffer->handle);
-            offsets.push_back(bindingInfo.offset);
+            const auto& bindingInfo = vertexBuffers[i];
+            auto        buffer      = m_device->m_bufferOwner.Get(bindingInfo.buffer);
+
+            buffers[i] = buffer->handle;
+            offsets[i] = bindingInfo.offset;
         }
-        vkCmdBindVertexBuffers(m_commandBuffer, firstBinding, (uint32_t)buffers.size(), buffers.data(), offsets.data());
+
+        vkCmdBindVertexBuffers(
+            m_commandBuffer,
+            firstBinding,
+            static_cast<uint32_t>(vertexBufferCount),
+            buffers,
+            offsets);
         m_hasVertexBuffer = true;
     }
 
