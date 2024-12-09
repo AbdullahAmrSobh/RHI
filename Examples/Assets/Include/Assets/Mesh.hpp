@@ -111,7 +111,7 @@ namespace Examples::Assets
 
     private:
         TL::String m_name;                                 ///< The name of the mesh.
-        TL::UnorderedMap<TL::String, Buffer> m_attributes; ///< A map of attribute names to buffers.
+        TL::Map<TL::String, Buffer> m_attributes; ///< A map of attribute names to buffers.
     };
 
 } // namespace Examples::Assets

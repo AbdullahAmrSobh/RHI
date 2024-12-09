@@ -126,4 +126,25 @@ namespace RHI
 
         return flags;
     }
+
+    ImageUsage GetImageUsage(TL::Flags<ImageAspect> aspect)
+    {
+        if (aspect & ImageAspect::Color) return ImageUsage::Color;
+        else if (aspect & ImageAspect::DepthStencil) return ImageUsage::DepthStencil;
+        else if (aspect & ImageAspect::Depth) return ImageUsage::Depth;
+        else if (aspect & ImageAspect::Stencil) return ImageUsage::Stencil;
+        TL_UNREACHABLE();
+        return ImageUsage::None;
+    }
+
+    ImageUsage GetImageUsage(FormatInfo info)
+    {
+        if (info.hasDepth && info.hasStencil)
+            return ImageUsage::DepthStencil;
+        else if (info.hasDepth)
+            return ImageUsage::Depth;
+        else if (info.hasStencil)
+            return ImageUsage::Stencil;
+        return ImageUsage::Color;
+    }
 } // namespace RHI

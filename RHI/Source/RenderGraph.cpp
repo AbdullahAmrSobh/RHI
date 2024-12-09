@@ -16,8 +16,7 @@ namespace RHI
     {
         ZoneScoped;
 
-        auto* image             = m_allocator->Construct<RenderGraphImage>(name, swapchain.GetImage(), format);
-        image->isSwapchainImage = true; // tmp
+        auto* image = m_allocator->Construct<RenderGraphImage>(name, swapchain.GetImage(), format);
         m_graphImages.push_back(image);
         m_graphResourcesLookup[name]                = image;
         m_graphImportedSwapchainsLookup[&swapchain] = image;
@@ -81,61 +80,33 @@ namespace RHI
     void RenderGraph::UseImage(Pass& pass, RenderGraphImage* image, ImageUsage usage, TL::Flags<PipelineStage> stage, TL::Flags<Access> access)
     {
         ZoneScoped;
-
-        auto* resourceAccess           = pass.AddResourceAccess(m_tempAllocator);
-        resourceAccess->type           = RenderGraphResourceAccessType::Image;
-        resourceAccess->pass           = &pass;
-        resourceAccess->asImage.image  = image;
-        resourceAccess->asImage.usage  = usage;
-        resourceAccess->asImage.stage  = stage;
-        resourceAccess->asImage.access = access;
-        image->m_usage.asImage |= usage;
-        image->PushAccess(resourceAccess);
+        pass.AddTransition(m_tempAllocator, *image, usage, stage, access, {});
     }
 
     void RenderGraph::UseBuffer(Pass& pass, RenderGraphBuffer* buffer, BufferUsage usage, TL::Flags<PipelineStage> stage, TL::Flags<Access> access)
     {
         ZoneScoped;
-
-        auto* resourceAccess            = pass.AddResourceAccess(m_tempAllocator);
-        resourceAccess->type            = RenderGraphResourceAccessType::Buffer;
-        resourceAccess->pass            = &pass;
-        resourceAccess->asBuffer.buffer = buffer;
-        resourceAccess->asBuffer.usage  = usage;
-        resourceAccess->asBuffer.stage  = stage;
-        resourceAccess->asBuffer.access = access;
-        buffer->m_usage.asBuffer |= usage;
-        buffer->PushAccess(resourceAccess);
+        pass.AddTransition(m_tempAllocator, *buffer, usage, stage, access, {});
     }
 
     void RenderGraph::UseRenderTarget(Pass& pass, const RenderTargetInfo& renderTargetInfo)
     {
         ZoneScoped;
 
-        auto formatInfo = GetFormatInfo(renderTargetInfo.attachment->GetFormat());
-        if (formatInfo.hasDepth || formatInfo.hasStencil)
-        {
-            renderTargetInfo.attachment->m_usage.asImage |= ImageUsage::Depth;
-            pass.m_depthStencilAttachment = renderTargetInfo;
-        }
-        else
-        {
-            renderTargetInfo.attachment->m_usage.asImage |= ImageUsage::Color;
-            pass.m_colorAttachments.push_back(renderTargetInfo);
-        }
+        FormatInfo formatInfo = GetFormatInfo(renderTargetInfo.attachment->GetFormat());
+        ExpandRenderGraphResourceUsage(*renderTargetInfo.attachment, GetImageUsage(formatInfo));
 
-        auto* resourceAccess           = pass.AddResourceAccess(m_tempAllocator);
-        resourceAccess->type           = RenderGraphResourceAccessType::RenderTarget;
-        resourceAccess->pass           = &pass;
-        resourceAccess->asRenderTarget = renderTargetInfo;
-        renderTargetInfo.attachment->PushAccess(resourceAccess);
-        if (renderTargetInfo.resolveAttachment)
+        if (formatInfo.hasDepth || formatInfo.hasStencil)
+            pass.m_depthStencilAttachment = renderTargetInfo;
+        else
+            pass.m_colorAttachments.push_back(renderTargetInfo);
+
+        /// @todo: convert load ops to access
+        UseImage(pass, renderTargetInfo.attachment, ImageUsage::Color, PipelineStage::ColorAttachmentOutput, Access::ReadWrite);
+        if (renderTargetInfo.resolveAttachment && renderTargetInfo.resolveMode != ResolveMode::None)
         {
-            auto* resolveResourceAccess    = pass.AddResourceAccess(m_tempAllocator);
-            resolveResourceAccess->type    = RenderGraphResourceAccessType::Resolve;
-            resourceAccess->asRenderTarget = renderTargetInfo;
-            renderTargetInfo.resolveAttachment->PushAccess(resolveResourceAccess);
-            TL_UNREACHABLE();
+            ExpandRenderGraphResourceUsage(*renderTargetInfo.attachment, ImageUsage::Resolve);
+            UseImage(pass, renderTargetInfo.resolveAttachment, ImageUsage::Color, PipelineStage::Transfer, Access::Write);
         }
     }
 
@@ -171,19 +142,44 @@ namespace RHI
 
         for (auto [swapchain, graphImage] : m_graphImportedSwapchainsLookup)
         {
-            graphImage->m_handle.asImage                                 = swapchain->GetImage();
+            graphImage->m_handle.asImage  = swapchain->GetImage();
+            auto presentAccess            = m_tempAllocator.Allocate<RenderGraphResourceTransition>();
+            presentAccess->pass           = nullptr;
+            presentAccess->next           = nullptr;
+            presentAccess->prev           = graphImage->GetLastAccess();
+            presentAccess->resource       = graphImage;
+            presentAccess->asImage.usage  = ImageUsage::_SwapchainPresent;
+            presentAccess->asImage.stage  = PipelineStage::BottomOfPipe;
+            presentAccess->asImage.access = Access::None;
+            graphImage->PushAccess(presentAccess);
         }
 
         auto [swapchain, resource] = *m_graphImportedSwapchainsLookup.begin();
 
-        PassGroup group{
-            .passList         = {m_graphPasses},
-            .swapchainAcquire = swapchain,
-            .swapchainRelease = swapchain,
-        };
+        {
+            // For debug and testing only
+            auto& group = m_orderedPassGroups[(int)QueueType::Graphics];
+            group.push_back({
+                .passList                = m_graphPasses,
+                .asyncQueuesDependencies = {},
+                .swapchainToAcquire      = swapchain,
+                .swapchainToRelease      = swapchain,
+            });
+        }
 
         OnGraphExecutionBegin();
-        ExecutePassGroup(group, QueueType::Graphics);
+        for (auto& group : m_orderedPassGroups[(uint32_t)QueueType::Graphics])
+        {
+            ExecutePassGroup(group, QueueType::Graphics);
+        }
+        for (auto& group : m_orderedPassGroups[(uint32_t)QueueType::Compute])
+        {
+            ExecutePassGroup(group, QueueType::Compute);
+        }
+        for (auto& group : m_orderedPassGroups[(uint32_t)QueueType::Transfer])
+        {
+            ExecutePassGroup(group, QueueType::Transfer);
+        }
         OnGraphExecutionEnd();
     }
 

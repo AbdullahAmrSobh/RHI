@@ -15,14 +15,31 @@
 
 namespace RHI
 {
-    // There could only be 3 hardware queues, graphics, compute, and transfer.
-    inline static constexpr uint32_t AsyncQueuesCount = 3;
-
     class Device;
     class Swapchain;
     class CommandList;
     class RenderGraph;
     struct RenderTargetInfo;
+
+    struct AsyncQueueDependency
+    {
+        QueueType queueType           = QueueType::Count;
+        uint16_t  localQueuePassIndex = UINT16_MAX;
+    };
+
+    struct SwapchainExecuteInfo
+    {
+        Swapchain*               swapchain;
+        TL::Flags<PipelineStage> stages;
+    };
+
+    struct RenderGraphExecuteGroup
+    {
+        TL::Vector<Pass*>                                  passList;
+        std::array<AsyncQueueDependency, AsyncQueuesCount> asyncQueuesDependencies;
+        SwapchainExecuteInfo                               swapchainToAcquire;
+        SwapchainExecuteInfo                               swapchainToRelease;
+    };
 
     class RHI_EXPORT RenderGraph
     {
@@ -109,48 +126,53 @@ namespace RHI
         /// @brief Initializes transient resources.
         void                  InitializeTransientResources();
 
+        void                  TopologicalSort();
+        void                  BuildDependencyLevels();
+        void                  CullRedunduntSynchornization();
+        void                  BuildExecutionGroups();
+
+        static void ExpandRenderGraphResourceUsage(RenderGraphImage& resource, ImageUsage usage) { resource.m_usage.asImage |= usage; }
+
+        static void ExpandRenderGraphResourceUsage(RenderGraphBuffer& resource, BufferUsage usage) { resource.m_usage.asBuffer |= usage; }
+
     protected:
-        void ExecutePassCallback(Pass& pass, CommandList& commandList) { pass.m_onExecuteCallback(commandList); }
+        void         ExecutePassCallback(Pass& pass, CommandList& commandList) { pass.m_onExecuteCallback(commandList); }
 
-        // Scheduling related
-        struct PassGroup
-        {
-            TL::Vector<Pass*> passList;
-            Swapchain*        swapchainAcquire;
-            Swapchain*        swapchainRelease;
-        };
+        auto         GetExecuteGroup(QueueType queueType) { return m_orderedPassGroups[(int)queueType]; }
 
-        virtual void OnGraphExecutionBegin()                                           = 0;
-        virtual void OnGraphExecutionEnd()                                             = 0;
+        virtual void OnGraphExecutionBegin()                                                         = 0;
+        virtual void OnGraphExecutionEnd()                                                           = 0;
 
-        virtual void ExecutePassGroup(const PassGroup& passGroup, QueueType queueType) = 0;
+        virtual void ExecutePassGroup(const RenderGraphExecuteGroup& passGroup, QueueType queueType) = 0;
 
     protected:
         /// Main allocator for graph resources.
-        TL::IAllocator*                                        m_allocator = new TL::Mimalloc();
+        TL::IAllocator*                               m_allocator = new TL::Mimalloc();
         /// Temporary allocator for transient data.
-        TL::Arena                                              m_tempAllocator;
+        TL::Arena                                     m_tempAllocator;
         /// The associated device for the render graph.
-        Device*                                                m_device;
+        Device*                                       m_device;
         /// The current frame index.
-        uint64_t                                               m_frameIndex;
-        /// List of passes in the graph.
-        TL::Vector<Pass*>                                      m_graphPasses;
+        uint64_t                                      m_frameIndex;
         /// List of images in the graph.
-        TL::Vector<RenderGraphImage*>                          m_graphImages;
+        TL::Vector<RenderGraphImage*>                 m_graphImages;
         /// List of buffers in the graph.
-        TL::Vector<RenderGraphBuffer*>                         m_graphBuffers;
+        TL::Vector<RenderGraphBuffer*>                m_graphBuffers;
         /// Lookup table for named resources.
-        TL::UnorderedMap<const char*, RenderGraphResource*>    m_graphResourcesLookup;
+        TL::Map<const char*, RenderGraphResource*>    m_graphResourcesLookup;
         /// Lookup table for imported images.
-        TL::UnorderedMap<Handle<Image>, RenderGraphImage*>     m_graphImportedImagesLookup;
+        TL::Map<Handle<Image>, RenderGraphImage*>     m_graphImportedImagesLookup;
         /// Lookup table for transient images.
-        TL::UnorderedMap<RenderGraphImage*, ImageCreateInfo>   m_graphTransientImagesLookup;
+        TL::Map<RenderGraphImage*, ImageCreateInfo>   m_graphTransientImagesLookup;
         /// Lookup table for imported buffers.
-        TL::UnorderedMap<Handle<Buffer>, RenderGraphBuffer*>   m_graphImportedBuffersLookup;
+        TL::Map<Handle<Buffer>, RenderGraphBuffer*>   m_graphImportedBuffersLookup;
         /// Lookup table for transient buffers.
-        TL::UnorderedMap<RenderGraphBuffer*, BufferCreateInfo> m_graphTransientBuffersLookup;
+        TL::Map<RenderGraphBuffer*, BufferCreateInfo> m_graphTransientBuffersLookup;
         /// Lookup table for imported swapchains.
-        TL::UnorderedMap<Swapchain*, RenderGraphImage*>        m_graphImportedSwapchainsLookup;
+        TL::Map<Swapchain*, RenderGraphImage*>        m_graphImportedSwapchainsLookup;
+        /// List of passes in the graph.
+        TL::Vector<Pass*>                             m_graphPasses;
+        /// List of passes ordered based on their execution.
+        TL::Vector<RenderGraphExecuteGroup>           m_orderedPassGroups[AsyncQueuesCount];
     };
 } // namespace RHI

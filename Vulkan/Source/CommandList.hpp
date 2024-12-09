@@ -56,7 +56,7 @@ namespace RHI::Vulkan
         void CopyBufferToImage(const BufferImageCopyInfo& copyInfo) override;
         void BlitImage(const ImageBlitInfo& blitInfo) override;
 
-        VkCommandBuffer GetHandle() { return m_commandBuffer; }
+        VkCommandBuffer GetHandle() const { return m_commandBuffer; }
 
     private:
         IDevice*        m_device                      = nullptr;

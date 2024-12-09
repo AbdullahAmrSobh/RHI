@@ -66,6 +66,8 @@ namespace RHI::Vulkan
         template<typename T>
         void SetDebugName(T handle, const char* name) const;
 
+        IQueue& GetDeviceQueue(QueueType type);
+
         // Interface Implementation
         RenderGraph*             CreateRenderGraph() override;
         void                     DestroyRenderGraph(RenderGraph* renderGraph) override;
@@ -129,6 +131,11 @@ namespace RHI::Vulkan
     inline void IDevice::SetDebugName(T handle, const char* name) const
     {
         return SetDebugName(GetObjectType<T>(), reinterpret_cast<uint64_t>(handle), name);
+    }
+
+    inline IQueue& IDevice::GetDeviceQueue(QueueType type)
+    {
+        return *m_queue[(uint32_t)type].get();
     }
 
 } // namespace RHI::Vulkan

@@ -138,13 +138,6 @@ namespace RHI
         BlendFactor               srcAlpha     = BlendFactor::One;    ///< Source alpha blend factor.
         BlendFactor               dstAlpha     = BlendFactor::Zero;   ///< Destination alpha blend factor.
         TL::Flags<ColorWriteMask> writeMask    = ColorWriteMask::All; ///< Color write mask.
-
-        inline bool               operator==(const ColorAttachmentBlendStateDesc& other) const
-        {
-            return blendEnable == other.blendEnable && colorBlendOp == other.colorBlendOp && srcColor == other.srcColor &&
-                   dstColor == other.dstColor && alphaBlendOp == other.alphaBlendOp && srcAlpha == other.srcAlpha &&
-                   dstAlpha == other.dstAlpha;
-        }
     };
 
     /// @brief Layout of render targets in a pipeline.

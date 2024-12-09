@@ -1,9 +1,10 @@
 #pragma once
 
-#include <filesystem>
-
 #include <TL/Containers.hpp>
 #include <TL/Span.hpp>
+
+#include <filesystem>
+
 
 namespace Examples::CommandLine
 {
@@ -21,12 +22,12 @@ namespace Examples::CommandLine
 
     struct Option
     {
-        const char* name;
-        const char* description;
-        OptionType type;
-        uint32_t argumentCount;
-        TL::UnorderedSet<TL::String> validInputs; // Empty set means any input is valid
-        bool isFilePath;
+        const char*         name;
+        const char*         description;
+        OptionType          type;
+        uint32_t            argumentCount;
+        TL::Set<TL::String> validInputs; // Empty set means any input is valid
+        bool                isFilePath;
     };
 
     // clang-format off
@@ -35,6 +36,7 @@ namespace Examples::CommandLine
         { "help",  "Print this help message and exit.", Help,              0, {}, false },
         { "scene", "Scene file location.",              SceneFileLocation, 1, {}, true  },
     };
+
     // clang-format on
 
     inline static bool StrEql(const char* a, const char* b)

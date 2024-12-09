@@ -13,7 +13,7 @@ namespace RHI
         , m_size({0, 0}) // Default size is empty.
         , m_colorAttachments(*allocator)
         , m_depthStencilAttachment()
-        , m_accessedResources(*allocator)
+        , m_resourceTransitions(*allocator)
     {
     }
 
@@ -43,15 +43,52 @@ namespace RHI
         return m_depthStencilAttachment ? &(*m_depthStencilAttachment) : nullptr;
     }
 
-    TL::Span<PassAccessedResource* const> Pass::GetAccessedResources() const
+    TL::Span<RenderGraphResourceTransition* const> Pass::GetRenderGraphResourceTransitions() const
     {
-        return m_accessedResources;
+        return m_resourceTransitions;
     }
 
-    PassAccessedResource* Pass::AddResourceAccess(TL::IAllocator& allocator)
+    /// @brief Adds a new resource access to the pass.
+    RenderGraphResourceTransition* Pass::AddTransition(
+        TL::IAllocator&          allocator,
+        RenderGraphResource&     resource,
+        ImageUsage               usage,
+        TL::Flags<PipelineStage> stage,
+        TL::Flags<Access>        access,
+        ImageSubresourceRange    subresourceRange)
     {
-        auto* newResource = allocator.Construct<PassAccessedResource>();
-        m_accessedResources.push_back(newResource);
-        return newResource;
+        auto transition                      = m_resourceTransitions.emplace_back(allocator.Construct<RenderGraphResourceTransition>());
+        transition->pass                     = this;
+        transition->next                     = nullptr;
+        transition->prev                     = resource.GetLastAccess();
+        transition->resource                 = &resource;
+        transition->asImage.usage            = usage;
+        transition->asImage.stage            = stage;
+        transition->asImage.access           = access;
+        transition->asImage.subresourceRange = subresourceRange;
+        resource.PushAccess(transition);
+        return transition;
     }
+
+    RenderGraphResourceTransition* Pass::AddTransition(
+        TL::IAllocator&          allocator,
+        RenderGraphResource&     resource,
+        BufferUsage              usage,
+        TL::Flags<PipelineStage> stage,
+        TL::Flags<Access>        access,
+        BufferSubregion          subregion)
+    {
+        auto transition                = m_resourceTransitions.emplace_back(allocator.Construct<RenderGraphResourceTransition>());
+        transition->pass               = this;
+        transition->next               = nullptr;
+        transition->prev               = resource.GetLastAccess();
+        transition->resource           = &resource;
+        transition->asBuffer.usage     = usage;
+        transition->asBuffer.stage     = stage;
+        transition->asBuffer.access    = access;
+        transition->asBuffer.subregion = subregion;
+        resource.PushAccess(transition);
+        return transition;
+    }
+
 } // namespace RHI

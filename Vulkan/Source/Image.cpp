@@ -160,7 +160,7 @@ namespace RHI::Vulkan
             .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED,
         };
 
-        result = vmaCreateImage(device->m_deviceAllocator, &imageCI, &allocationInfo, &handle, &allocation.handle, &allocation.info);
+        result = vmaCreateImage(device->m_deviceAllocator, &imageCI, &allocationInfo, &handle, &allocation, nullptr);
 
         if (result == VK_SUCCESS && createInfo.name)
         {
@@ -244,7 +244,7 @@ namespace RHI::Vulkan
     void IImage::Shutdown(IDevice* device)
     {
         vkDestroyImageView(device->m_device, viewHandle, nullptr);
-        vmaDestroyImage(device->m_deviceAllocator, handle, allocation.handle);
+        vmaDestroyImage(device->m_deviceAllocator, handle, allocation);
     }
 
     VkMemoryRequirements IImage::GetMemoryRequirements(IDevice* device) const

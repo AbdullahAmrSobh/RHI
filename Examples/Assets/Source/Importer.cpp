@@ -78,7 +78,7 @@ namespace Examples::Assets
         const char* inputPath;
         const char* outputPath;
 
-        TL::UnorderedMap<TL::String, TL::String> pathLookup;
+        TL::Map<TL::String, TL::String> pathLookup;
 
         const char* ResolvePath(const char* oldPath, const char* newPath)
         {

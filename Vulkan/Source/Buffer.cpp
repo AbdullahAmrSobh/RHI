@@ -19,9 +19,10 @@ namespace RHI::Vulkan
 
     ResultCode IBuffer::Init(IDevice* device, const BufferCreateInfo& createInfo)
     {
-        this->flags = {};
-        this->size  = createInfo.byteSize;
-        this->usage = ConvertBufferUsageFlags(createInfo.usageFlags);
+        this->subregion = {
+            .offset = 0,
+            .size   = createInfo.byteSize,
+        };
 
         VmaAllocationCreateInfo allocationCI{
             .flags          = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT,
@@ -36,14 +37,14 @@ namespace RHI::Vulkan
         VkBufferCreateInfo bufferCI{
             .sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
             .pNext                 = nullptr,
-            .flags                 = this->flags,
-            .size                  = this->size,
-            .usage                 = this->usage,
+            .flags                 = 0,
+            .size                  = createInfo.byteSize,
+            .usage                 = ConvertBufferUsageFlags(createInfo.usageFlags),
             .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
             .queueFamilyIndexCount = 0,
             .pQueueFamilyIndices   = nullptr,
         };
-        auto result = vmaCreateBuffer(device->m_deviceAllocator, &bufferCI, &allocationCI, &handle, &allocation.handle, &allocation.info);
+        auto result = vmaCreateBuffer(device->m_deviceAllocator, &bufferCI, &allocationCI, &handle, &allocation, nullptr);
         if (result == VK_SUCCESS && createInfo.name)
         {
             device->SetDebugName(handle, createInfo.name);
@@ -53,7 +54,7 @@ namespace RHI::Vulkan
 
     void IBuffer::Shutdown(IDevice* device)
     {
-        vmaDestroyBuffer(device->m_deviceAllocator, handle, allocation.handle);
+        vmaDestroyBuffer(device->m_deviceAllocator, handle, allocation);
     }
 
     VkMemoryRequirements IBuffer::GetMemoryRequirements(IDevice* device) const

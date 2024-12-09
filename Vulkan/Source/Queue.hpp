@@ -15,11 +15,10 @@ namespace RHI::Vulkan
 
     struct QueueSubmitInfo
     {
-        VkSemaphoreSubmitInfo         timelineWaitSemaphores[AsyncQueuesCount] = {};
-        VkSemaphoreSubmitInfo         binaryWaitSemaphore                      = {};
-        VkSemaphoreSubmitInfo         binarySignalSemaphore                    = {};
-        TL::Span<ICommandList* const> commandLists                             = {};
-        VkPipelineStageFlags2         timelineSignalStages;
+        TL::Span<const VkSemaphoreSubmitInfo> waitSemaphores   = {};
+        TL::Span<ICommandList* const>         commandLists     = {};
+        TL::Span<const VkSemaphoreSubmitInfo> signalSemaphores = {};
+        TL::Flags<PipelineStage>              signalStage      = PipelineStage::None;
     };
 
     class IQueue
@@ -29,7 +28,7 @@ namespace RHI::Vulkan
         ~IQueue();
 
         /// Initializes the queue with a given Vulkan device and queue creation info.
-        ResultCode Init(IDevice* device, uint32_t familyIndex, uint32_t queueIndex);
+        ResultCode Init(IDevice* device, const char* debugName, uint32_t familyIndex, uint32_t queueIndex);
         void       Shutdown();
 
         /// Returns the Vulkan queue handle.
@@ -57,6 +56,12 @@ namespace RHI::Vulkan
         /// @param submitInfo - Describes the semaphores, pipeline stages, and other synchronization details.
         /// @returns The next timeline semaphore value after the submission.
         uint64_t Submit(const QueueSubmitInfo& submitInfo);
+
+        uint64_t AdvanceTimelinePendingValue(uint32_t localQueueValue)
+        {
+            m_timelineValue += localQueueValue;
+            return m_timelineValue;
+        }
 
     private:
         IDevice*              m_device               = nullptr;

@@ -191,7 +191,8 @@ inline static Mesh Load(RHI::Device& device, const fastgltf::Asset& asset, const
 
         if (auto attribute = it->findAttribute("TEXCOORD_0"); attribute != it->attributes.end())
             out_mesh.m_uv0VB = LoadAttribute<fastgltf::math::f32vec2>(device, asset, attribute);
-        else TL_LOG_WARNNING("Missing tex coord attribute");
+        else
+            TL_LOG_WARNNING("Missing tex coord attribute");
     }
     return out_mesh;
 }

@@ -324,50 +324,87 @@ namespace RHI::Vulkan
 
     inline static const char* ObjectTypeToName(VkObjectType type)
     {
-        if (type == VK_OBJECT_TYPE_INSTANCE) return "VkInstance";
-        else if (type == VK_OBJECT_TYPE_PHYSICAL_DEVICE) return "VkPhysicalDevice";
-        else if (type == VK_OBJECT_TYPE_DEVICE) return "VkDevice";
-        else if (type == VK_OBJECT_TYPE_QUEUE) return "VkQueue";
-        else if (type == VK_OBJECT_TYPE_SEMAPHORE) return "VkSemaphore";
-        else if (type == VK_OBJECT_TYPE_COMMAND_BUFFER) return "VkCommandBuffer";
-        else if (type == VK_OBJECT_TYPE_FENCE) return "VkFence";
-        else if (type == VK_OBJECT_TYPE_DEVICE_MEMORY) return "VkDeviceMemory";
-        else if (type == VK_OBJECT_TYPE_BUFFER) return "VkBuffer";
-        else if (type == VK_OBJECT_TYPE_IMAGE) return "VkImage";
-        else if (type == VK_OBJECT_TYPE_EVENT) return "VkEvent";
-        else if (type == VK_OBJECT_TYPE_QUERY_POOL) return "VkQueryPool";
-        else if (type == VK_OBJECT_TYPE_BUFFER_VIEW) return "VkBufferView";
-        else if (type == VK_OBJECT_TYPE_IMAGE_VIEW) return "VkImageView";
-        else if (type == VK_OBJECT_TYPE_SHADER_MODULE) return "VkShaderModule";
-        else if (type == VK_OBJECT_TYPE_PIPELINE_CACHE) return "VkPipelineCache";
-        else if (type == VK_OBJECT_TYPE_PIPELINE_LAYOUT) return "VkPipelineLayout";
-        else if (type == VK_OBJECT_TYPE_RENDER_PASS) return "VkRenderPass";
-        else if (type == VK_OBJECT_TYPE_PIPELINE) return "VkPipeline";
-        else if (type == VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT) return "VkDescriptorSetLayout";
-        else if (type == VK_OBJECT_TYPE_SAMPLER) return "VkSampler";
-        else if (type == VK_OBJECT_TYPE_DESCRIPTOR_POOL) return "VkDescriptorPool";
-        else if (type == VK_OBJECT_TYPE_DESCRIPTOR_SET) return "VkDescriptorSet";
-        else if (type == VK_OBJECT_TYPE_FRAMEBUFFER) return "VkFramebuffer";
-        else if (type == VK_OBJECT_TYPE_COMMAND_POOL) return "VkCommandPool";
-        else if (type == VK_OBJECT_TYPE_SURFACE_KHR) return "VkSurfaceKHR";
-        else if (type == VK_OBJECT_TYPE_SWAPCHAIN_KHR) return "VkSwapchainKHR";
-        else if (type == VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT) return "VkDebugReportCallbackEXT";
-        else if (type == VK_OBJECT_TYPE_DISPLAY_KHR) return "VkDisplayKHR";
-        else if (type == VK_OBJECT_TYPE_DISPLAY_MODE_KHR) return "VkDisplayModeKHR";
-        else if (type == VK_OBJECT_TYPE_VALIDATION_CACHE_EXT) return "VkValidationCacheEXT";
-        else if (type == VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION) return "VkSamplerYcbcrConversion";
-        else if (type == VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE) return "VkDescriptorUpdateTemplate";
-        else if (type == VK_OBJECT_TYPE_CU_MODULE_NVX) return "VkCuModuleNVX";
-        else if (type == VK_OBJECT_TYPE_CU_FUNCTION_NVX) return "VkCuFunctionNVX";
-        else if (type == VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR) return "VkAccelerationStructureKHR";
-        else if (type == VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_NV) return "VkAccelerationStructureNV";
-        else if (type == VK_OBJECT_TYPE_CUDA_MODULE_NV) return "VkCudaModuleNV";
-        else if (type == VK_OBJECT_TYPE_CUDA_FUNCTION_NV) return "VkCudaFunctionNV";
-        else if (type == VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT) return "VkDebugReportCallbackEXT";
-        else if (type == VK_OBJECT_TYPE_VALIDATION_CACHE_EXT) return "VkValidationCacheEXT";
-        else if (type == VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_KHR) return "VkDescriptorUpdateTemplateKHR";
-        else if (type == VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_KHR) return "VkSamplerYcbcrConversionKHR";
-        else return "Unknowen";
+        switch (type)
+        {
+        case VK_OBJECT_TYPE_INSTANCE:                   return "VkInstance";
+        case VK_OBJECT_TYPE_PHYSICAL_DEVICE:            return "VkPhysicalDevice";
+        case VK_OBJECT_TYPE_DEVICE:                     return "VkDevice";
+        case VK_OBJECT_TYPE_QUEUE:                      return "VkQueue";
+        case VK_OBJECT_TYPE_SEMAPHORE:                  return "VkSemaphore";
+        case VK_OBJECT_TYPE_COMMAND_BUFFER:             return "VkCommandBuffer";
+        case VK_OBJECT_TYPE_FENCE:                      return "VkFence";
+        case VK_OBJECT_TYPE_DEVICE_MEMORY:              return "VkDeviceMemory";
+        case VK_OBJECT_TYPE_BUFFER:                     return "VkBuffer";
+        case VK_OBJECT_TYPE_IMAGE:                      return "VkImage";
+        case VK_OBJECT_TYPE_EVENT:                      return "VkEvent";
+        case VK_OBJECT_TYPE_QUERY_POOL:                 return "VkQueryPool";
+        case VK_OBJECT_TYPE_BUFFER_VIEW:                return "VkBufferView";
+        case VK_OBJECT_TYPE_IMAGE_VIEW:                 return "VkImageView";
+        case VK_OBJECT_TYPE_SHADER_MODULE:              return "VkShaderModule";
+        case VK_OBJECT_TYPE_PIPELINE_CACHE:             return "VkPipelineCache";
+        case VK_OBJECT_TYPE_PIPELINE_LAYOUT:            return "VkPipelineLayout";
+        case VK_OBJECT_TYPE_RENDER_PASS:                return "VkRenderPass";
+        case VK_OBJECT_TYPE_PIPELINE:                   return "VkPipeline";
+        case VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT:      return "VkDescriptorSetLayout";
+        case VK_OBJECT_TYPE_SAMPLER:                    return "VkSampler";
+        case VK_OBJECT_TYPE_DESCRIPTOR_POOL:            return "VkDescriptorPool";
+        case VK_OBJECT_TYPE_DESCRIPTOR_SET:             return "VkDescriptorSet";
+        case VK_OBJECT_TYPE_FRAMEBUFFER:                return "VkFramebuffer";
+        case VK_OBJECT_TYPE_COMMAND_POOL:               return "VkCommandPool";
+        case VK_OBJECT_TYPE_SURFACE_KHR:                return "VkSurfaceKHR";
+        case VK_OBJECT_TYPE_SWAPCHAIN_KHR:              return "VkSwapchainKHR";
+        case VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT:  return "VkDebugReportCallbackEXT";
+        case VK_OBJECT_TYPE_DISPLAY_KHR:                return "VkDisplayKHR";
+        case VK_OBJECT_TYPE_DISPLAY_MODE_KHR:           return "VkDisplayModeKHR";
+        case VK_OBJECT_TYPE_VALIDATION_CACHE_EXT:       return "VkValidationCacheEXT";
+        case VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION:   return "VkSamplerYcbcrConversion";
+        case VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE: return "VkDescriptorUpdateTemplate";
+        case VK_OBJECT_TYPE_CU_MODULE_NVX:              return "VkCuModuleNVX";
+        case VK_OBJECT_TYPE_CU_FUNCTION_NVX:            return "VkCuFunctionNVX";
+        case VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR: return "VkAccelerationStructureKHR";
+        case VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_NV:  return "VkAccelerationStructureNV";
+        case VK_OBJECT_TYPE_CUDA_MODULE_NV:             return "VkCudaModuleNV";
+        case VK_OBJECT_TYPE_CUDA_FUNCTION_NV:           return "VkCudaFunctionNV";
+        default:                                        return "Unknowen";
+        };
     }
 
+    //
+
+    inline static VkPipelineStageFlags2 ConvertPipelineStageFlags(TL::Flags<PipelineStage> pipelineStages)
+    {
+        VkPipelineStageFlags2 stageFlags = {};
+        if (pipelineStages & PipelineStage::TopOfPipe) stageFlags |= VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+        if (pipelineStages & PipelineStage::DrawIndirect) stageFlags |= VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
+        if (pipelineStages & PipelineStage::VertexInput) stageFlags |= VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT;
+        if (pipelineStages & PipelineStage::VertexShader) stageFlags |= VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
+        if (pipelineStages & PipelineStage::TessellationControlShader) stageFlags |= VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT;
+        if (pipelineStages & PipelineStage::TessellationEvaluationShader) stageFlags |= VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT;
+        if (pipelineStages & PipelineStage::PixelShader) stageFlags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+        if (pipelineStages & PipelineStage::EarlyFragmentTests) stageFlags |= VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT;
+        if (pipelineStages & PipelineStage::LateFragmentTests) stageFlags |= VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+        if (pipelineStages & PipelineStage::ColorAttachmentOutput) stageFlags |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+        if (pipelineStages & PipelineStage::ComputeShader) stageFlags |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+        if (pipelineStages & PipelineStage::Transfer) stageFlags |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+        if (pipelineStages & PipelineStage::BottomOfPipe) stageFlags |= VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
+        if (pipelineStages & PipelineStage::Host) stageFlags |= VK_PIPELINE_STAGE_2_HOST_BIT;
+        if (pipelineStages & PipelineStage::AllGraphics) stageFlags |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
+        if (pipelineStages & PipelineStage::AllCommands) stageFlags |= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+        if (pipelineStages & PipelineStage::Copy) stageFlags |= VK_PIPELINE_STAGE_2_COPY_BIT;
+        if (pipelineStages & PipelineStage::Resolve) stageFlags |= VK_PIPELINE_STAGE_2_RESOLVE_BIT;
+        if (pipelineStages & PipelineStage::Blit) stageFlags |= VK_PIPELINE_STAGE_2_BLIT_BIT;
+        if (pipelineStages & PipelineStage::Clear) stageFlags |= VK_PIPELINE_STAGE_2_CLEAR_BIT;
+        if (pipelineStages & PipelineStage::IndexInput) stageFlags |= VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT;
+        if (pipelineStages & PipelineStage::VertexAttributeInput) stageFlags |= VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT;
+        if (pipelineStages & PipelineStage::PreRasterizationShaders) stageFlags |= VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT;
+        if (pipelineStages & PipelineStage::TransformFeedback) stageFlags |= VK_PIPELINE_STAGE_2_TRANSFORM_FEEDBACK_BIT_EXT;
+        if (pipelineStages & PipelineStage::ConditionalRendering) stageFlags |= VK_PIPELINE_STAGE_2_CONDITIONAL_RENDERING_BIT_EXT;
+        if (pipelineStages & PipelineStage::FragmentShadingRateAttachment) stageFlags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
+        if (pipelineStages & PipelineStage::AccelerationStructureBuild) stageFlags |= VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+        if (pipelineStages & PipelineStage::RayTracingShader) stageFlags |= VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
+        if (pipelineStages & PipelineStage::TaskShader) stageFlags |= VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT;
+        if (pipelineStages & PipelineStage::MeshShader) stageFlags |= VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT;
+        if (pipelineStages & PipelineStage::AccelerationStructureCopy) stageFlags |= VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR;
+        return stageFlags;
+    }
 } // namespace RHI::Vulkan

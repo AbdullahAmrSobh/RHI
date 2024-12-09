@@ -14,16 +14,17 @@ namespace RHI
     /// @brief Flags representing image usage.
     enum class ImageUsage
     {
-        None            = 0 << 0,          ///< No usage.
-        ShaderResource  = 1 << 1,          ///< Image is used as a shader resource.
-        StorageResource = 1 << 2,          ///< Image is used as a storage resource.
-        Color           = 1 << 3,          ///< Image is used for color attachments.
-        Depth           = 1 << 4,          ///< Image is used for depth attachments.
-        Stencil         = 1 << 5,          ///< Image is used for stencil attachments.
-        DepthStencil    = Depth | Stencil, ///< Image is used for depth-stencil attachments.
-        CopySrc         = 1 << 6,          ///< Image is used as a source in copy operations.
-        CopyDst         = 1 << 7,          ///< Image is used as a destination in copy operations.
-        Resolve         = CopyDst          ///< Image is used for resolve operations.
+        None              = 0 << 0,          ///< No usage.
+        ShaderResource    = 1 << 1,          ///< Image is used as a shader resource.
+        StorageResource   = 1 << 2,          ///< Image is used as a storage resource.
+        Color             = 1 << 3,          ///< Image is used for color attachments.
+        Depth             = 1 << 4,          ///< Image is used for depth attachments.
+        Stencil           = 1 << 5,          ///< Image is used for stencil attachments.
+        DepthStencil      = Depth | Stencil, ///< Image is used for depth-stencil attachments.
+        CopySrc           = 1 << 6,          ///< Image is used as a source in copy operations.
+        CopyDst           = 1 << 7,          ///< Image is used as a destination in copy operations.
+        Resolve           = CopyDst,         ///< Image is used for resolve operations.
+        _SwapchainPresent = 1 << 8,          ///< @todo: remove. Internal flag, should not be used
     };
 
     TL_DEFINE_FLAG_OPERATORS(ImageUsage);
@@ -50,7 +51,7 @@ namespace RHI
     };
 
     /// @brief Aspects of an image.
-    enum class ImageAspect
+    enum class ImageAspect : uint8_t
     {
         None         = 0,                    ///< No aspect.
         Color        = 1 << 1,               ///< Color aspect.
@@ -143,10 +144,10 @@ namespace RHI
     struct ImageSubresourceRange
     {
         TL::Flags<ImageAspect> imageAspects  = ImageAspect::Color; ///< Image aspects to access.
-        uint32_t               mipBase       = 0;                  ///< Base mip level.
-        uint32_t               mipLevelCount = 1;                  ///< Number of mip levels.
-        uint32_t               arrayBase     = 0;                  ///< Base array layer.
-        uint32_t               arrayCount    = 1;                  ///< Number of array layers.
+        uint8_t                mipBase       = 0;                  ///< Base mip level.
+        uint8_t                mipLevelCount = 1;                  ///< Number of mip levels.
+        uint8_t                arrayBase     = 0;                  ///< Base array layer.
+        uint8_t                arrayCount    = 1;                  ///< Number of array layers.
 
         inline bool            operator==(const ImageSubresourceRange& other) const
         {

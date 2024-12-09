@@ -17,103 +17,79 @@
 
 namespace RHI
 {
+    class RenderGraph;
     class Swapchain;
     class Pass;
+    class RenderGraphResource;
 
-    enum class RenderGraphResourceFlags : uint8_t
+    struct RenderGraphResourceTransition
     {
-        None,
-        Imported,
-        Transient,
-        Swapchain,
-    };
+        Pass*                          pass     = nullptr;
+        RenderGraphResourceTransition* next     = nullptr;
+        RenderGraphResourceTransition* prev     = nullptr;
+        RenderGraphResource*           resource = nullptr;
 
-    enum class RenderGraphResourceAccessType : uint8_t
-    {
-        None,
-        Image,
-        Buffer,
-        RenderTarget,
-        Resolve,
-        SwapchainPresent,
+        union
+        {
+            struct
+            {
+                ImageUsage               usage;
+                TL::Flags<PipelineStage> stage;
+                TL::Flags<Access>        access;
+                ImageSubresourceRange    subresourceRange;
+            } asImage = {};
+
+            struct
+            {
+                BufferUsage              usage;
+                TL::Flags<PipelineStage> stage;
+                TL::Flags<Access>        access;
+                BufferSubregion          subregion;
+            } asBuffer;
+        };
     };
 
     class RenderGraphResource
     {
-        friend class RenderGraph;
-
     public:
-        bool isSwapchainImage = false;
-        struct AccessedResource
+        enum class Type : uint8_t
         {
-            Pass*                         pass = nullptr;
-            AccessedResource*             next = nullptr;
-            AccessedResource*             prev = nullptr;
-            RenderGraphResourceAccessType type = RenderGraphResourceAccessType::None;
-
-            union
-            {
-                bool             asNone = false;
-
-                RenderTargetInfo asRenderTarget;
-
-                struct
-                {
-                    class RenderGraphImage*  image;
-                    ImageUsage               usage;
-                    TL::Flags<PipelineStage> stage;
-                    TL::Flags<Access>        access;
-                    ImageSubresourceRange    subresourceRange;
-                } asImage;
-
-                struct
-                {
-                    class RenderGraphBuffer* buffer;
-                    BufferUsage              usage;
-                    TL::Flags<PipelineStage> stage;
-                    TL::Flags<Access>        access;
-                    BufferSubregion          subregion;
-                } asBuffer;
-
-                struct
-                {
-                    Swapchain*               swapchain;
-                    TL::Flags<PipelineStage> stage;
-                } asSwapchain;
-            };
+            Image,
+            Buffer
         };
 
-    public:
-        const char*             GetName() const { return m_name.c_str(); }
+        Type                                 GetType() const { return m_type; }
 
-        const AccessedResource* GetFirstAccess() const { return m_first; }
+        const char*                          GetName() const { return m_name.c_str(); }
 
-        AccessedResource*       GetFirstAccess() { return m_first; }
+        const RenderGraphResourceTransition* GetFirstAccess() const { return m_first; }
 
-        const AccessedResource* GetLastAccess() const { return m_last; }
+        RenderGraphResourceTransition*       GetFirstAccess() { return m_first; }
 
-        AccessedResource*       GetLastAccess() { return m_last; }
+        const RenderGraphResourceTransition* GetLastAccess() const { return m_last; }
 
-        const Pass*             GetFirstPass() const { return m_first->pass; }
+        RenderGraphResourceTransition*       GetLastAccess() { return m_last; }
 
-        Pass*                   GetFirstPass() { return m_first->pass; }
+        const Pass*                          GetFirstPass() const { return m_first->pass; }
 
-        const Pass*             GetLastPass() const { return m_last->pass; }
+        Pass*                                GetFirstPass() { return m_first->pass; }
 
-        Pass*                   GetLastPass() { return m_last->pass; }
+        const Pass*                          GetLastPass() const { return m_last->pass; }
 
-        /// @brief Adds an access to the resource and updates usage flags.
-        void                    PushAccess(AccessedResource* access);
+        Pass*                                GetLastPass() { return m_last->pass; }
+
+        void                                 PushAccess(RenderGraphResourceTransition* access);
 
     protected:
-        RenderGraphResource(const char* name, RenderGraphResourceAccessType type, TL::Flags<RenderGraphResourceFlags> flags);
+        friend class RenderGraph;
 
-        TL::String                          m_name;
-        AccessedResource*                   m_first;
-        AccessedResource*                   m_last;
-        TL::Flags<RenderGraphResourceFlags> m_flags;
-        RenderGraphResourceAccessType       m_type;
-        Format                              m_format = Format::Unknown;
+        RenderGraphResource(const char* name, Type type);
+
+        TL::String                     m_name;
+        RenderGraphResourceTransition* m_first;
+        RenderGraphResourceTransition* m_last;
+        Type                           m_type;
+        Format                         m_format = Format::Unknown;
 
         union
         {
@@ -127,8 +103,6 @@ namespace RHI
             TL::Flags<BufferUsage> asBuffer;
         } m_usage;
     };
-
-    using PassAccessedResource = RenderGraphResource::AccessedResource;
 
     class RenderGraphImage final : public RenderGraphResource
     {

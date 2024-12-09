@@ -3,9 +3,7 @@
 #include <RHI/Buffer.hpp>
 #include <RHI/Result.hpp>
 
-#include <vulkan/vulkan.h>
-
-#include "MemoryAllocator.hpp"
+#include <vk_mem_alloc.h>
 
 namespace RHI::Vulkan
 {
@@ -15,11 +13,11 @@ namespace RHI::Vulkan
 
     struct IBuffer : Buffer
     {
-        DeviceAllocation    allocation;
-        VkBuffer            handle;
-        VkBufferCreateFlags flags;
-        size_t              size;
-        VkBufferUsageFlags  usage;
+        VmaAllocation   allocation;
+        VkBuffer        handle;
+        VkBufferView    view; // optional
+        Format          format;
+        BufferSubregion subregion;
 
         ResultCode Init(IDevice* device, const BufferCreateInfo& createInfo);
         void       Shutdown(IDevice* device);

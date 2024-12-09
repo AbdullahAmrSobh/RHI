@@ -119,11 +119,11 @@ namespace RHI
         }
 
     private:
-        TL::Vector<Resource>                         m_resources;
-        TL::Vector<uint16_t>                         m_genIds;
-        TL::Vector<size_t>                           m_freeSlots;
+        TL::Vector<Resource>                m_resources;
+        TL::Vector<uint16_t>                m_genIds;
+        TL::Vector<size_t>                  m_freeSlots;
 
-        TL::UnorderedMap<HandleType, TL::Stacktrace> m_liveResources;
+        TL::Map<HandleType, TL::Stacktrace> m_liveResources;
     };
 
 } // namespace RHI

@@ -15,7 +15,6 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Image.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Pipeline.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Queue.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/MemoryAllocator.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraph.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Sampler.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Shader.hpp
@@ -34,7 +33,6 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Image.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Pipeline.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Queue.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/MemoryAllocator.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraph.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Sampler.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Shader.cpp

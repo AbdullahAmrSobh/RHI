@@ -36,7 +36,9 @@ namespace RHI
         PassExecuteCallback  executeCallback;
     };
 
-    class RHI_EXPORT Pass final
+    class RenderGraphResource;
+
+    class RHI_EXPORT Pass
     {
         friend class RenderGraph;
 
@@ -46,37 +48,52 @@ namespace RHI
         explicit Pass(const PassCreateInfo& createInfo, TL::IAllocator* allocator) noexcept;
 
         /// @brief Gets the name of the pass.
-        const char*                           GetName() const;
+        const char*                                    GetName() const;
 
         /// @brief Resizes the pass for a new image size.
-        void                                  Resize(ImageSize2D size);
+        void                                           Resize(ImageSize2D size);
+
+        /// @brief Gets the queue type which execute this pass.
+        QueueType                                      GetQueueType() const { return m_queueType; }
 
         /// @brief Gets the current size of the pass.
-        ImageSize2D                           GetSize() const;
+        ImageSize2D                                    GetSize() const;
 
         /// @brief Gets the color attachments associated with this pass.
-        TL::Span<const RenderTargetInfo>      GetColorAttachment() const;
+        TL::Span<const RenderTargetInfo>               GetColorAttachment() const;
 
         /// @brief Gets the depth/stencil attachment if present.
-        const RenderTargetInfo*               GetDepthStencilAttachment() const;
+        const RenderTargetInfo*                        GetDepthStencilAttachment() const;
 
         /// @brief Gets the accessed resources for this pass.
-        TL::Span<PassAccessedResource* const> GetAccessedResources() const;
+        TL::Span<RenderGraphResourceTransition* const> GetRenderGraphResourceTransitions() const;
 
         /// @brief Adds a new resource access to the pass.
-        PassAccessedResource*                 AddResourceAccess(TL::IAllocator& allocator);
+        RenderGraphResourceTransition*                 AddTransition(
+                            TL::IAllocator&          allocator,
+                            RenderGraphResource&     resource,
+                            ImageUsage               usage,
+                            TL::Flags<PipelineStage> stage,
+                            TL::Flags<Access>        access,
+                            ImageSubresourceRange    subresourceRange);
 
-        QueueType GetQueueType() const  { return m_queueType;}
+        RenderGraphResourceTransition* AddTransition(
+            TL::IAllocator&          allocator,
+            RenderGraphResource&     resource,
+            BufferUsage              usage,
+            TL::Flags<PipelineStage> stage,
+            TL::Flags<Access>        access,
+            BufferSubregion          subregion);
 
     private:
-        const char*                                       m_name; // TODO: should use std::string?
-        QueueType                                         m_queueType;
-        PassSetupCallback                                 m_onSetupCallback;
-        PassCompileCallback                               m_onCompileCallback;
-        PassExecuteCallback                               m_onExecuteCallback;
-        ImageSize2D                                       m_size;
-        TL::Vector<RenderTargetInfo, TL::IAllocator>      m_colorAttachments;
-        TL::Optional<RenderTargetInfo>                    m_depthStencilAttachment;
-        TL::Vector<PassAccessedResource*, TL::IAllocator> m_accessedResources;
+        const char*                                                m_name;
+        QueueType                                                  m_queueType;
+        PassSetupCallback                                          m_onSetupCallback;
+        PassCompileCallback                                        m_onCompileCallback;
+        PassExecuteCallback                                        m_onExecuteCallback;
+        ImageSize2D                                                m_size;
+        TL::Vector<RenderTargetInfo, TL::IAllocator>               m_colorAttachments;
+        TL::Optional<RenderTargetInfo>                             m_depthStencilAttachment;
+        TL::Vector<RenderGraphResourceTransition*, TL::IAllocator> m_resourceTransitions;
     };
 } // namespace RHI

@@ -5,13 +5,13 @@
 
 #include <vulkan/vulkan.h>
 
+#include <TL/Containers.hpp>
 #include <TL/Flags.hpp>
 #include <TL/UniquePtr.hpp>
 
 #include <array>
 #include <mutex>
 #include <thread>
-#include <unordered_map>
 
 namespace RHI::Vulkan
 {
@@ -36,13 +36,13 @@ namespace RHI::Vulkan
         void Reset();
 
     private:
-        using CommandPoolPerQueue = std::array<VkCommandPool, (int)QueueType::Count>;
+        using CommandPoolPerQueue = std::array<VkCommandPool, AsyncQueuesCount>;
 
         IDevice* m_device = nullptr;
 
         std::mutex m_poolMutex;
 
-        std::unordered_map<std::thread::id, CommandPoolPerQueue> m_pools;
+        TL::Map<std::thread::id, CommandPoolPerQueue> m_pools;
 
         // Helper functions to create and destroy command pools
         VkCommandPool CreateCommandPool(QueueType queueType);

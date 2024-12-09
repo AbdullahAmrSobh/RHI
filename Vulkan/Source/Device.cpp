@@ -76,21 +76,23 @@ namespace RHI::Vulkan
 
         VkBaseInStructure* BuildPNextChain(void* pNext)
         {
+            // clang-format off
             layerSettings = {
-                {layerName, "fine_grained_locking", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &fine_grained_locking},
-                {layerName, "validate_core", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &validate_core},
-                {layerName, "check_image_layout", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &check_image_layout},
-                {layerName, "check_command_buffer", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &check_command_buffer},
-                {layerName, "check_object_in_use", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &check_object_in_use},
-                {layerName, "check_query", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &check_query},
-                {layerName, "check_shaders", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &check_shaders},
-                {layerName, "check_shaders_caching", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &check_shaders_caching},
-                {layerName, "unique_handles", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &unique_handles},
-                {layerName, "object_lifetime", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &object_lifetime},
-                {layerName, "stateless_param", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &stateless_param},
-                {layerName, "debug_action", VK_LAYER_SETTING_TYPE_STRING_EXT, uint32_t(debug_action.size()), debug_action.data()},
-                {layerName, "report_flags", VK_LAYER_SETTING_TYPE_STRING_EXT, uint32_t(report_flags.size()), report_flags.data()},
+                {layerName, "fine_grained_locking",  VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1,                             &fine_grained_locking },
+                {layerName, "validate_core",         VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1,                             &validate_core        },
+                {layerName, "check_image_layout",    VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1,                             &check_image_layout   },
+                {layerName, "check_command_buffer",  VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1,                             &check_command_buffer },
+                {layerName, "check_object_in_use",   VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1,                             &check_object_in_use  },
+                {layerName, "check_query",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1,                             &check_query          },
+                {layerName, "check_shaders",         VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1,                             &check_shaders        },
+                {layerName, "check_shaders_caching", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1,                             &check_shaders_caching},
+                {layerName, "unique_handles",        VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1,                             &unique_handles       },
+                {layerName, "object_lifetime",       VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1,                             &object_lifetime      },
+                {layerName, "stateless_param",       VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1,                             &stateless_param      },
+                {layerName, "debug_action",          VK_LAYER_SETTING_TYPE_STRING_EXT, uint32_t(debug_action.size()), debug_action.data()   },
+                {layerName, "report_flags",          VK_LAYER_SETTING_TYPE_STRING_EXT, uint32_t(report_flags.size()), report_flags.data()   },
             };
+            // clang-format on
 
             layerSettingsCreateInfo = {
                 .sType        = VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT,
@@ -165,12 +167,17 @@ namespace RHI::Vulkan
         case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
             TL_LOG_INFO("{}\nMessage: {}", additionalInfo, pCallbackData->pMessage);
             break;
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT: TL_LOG_INFO("{}\nMessage: {}", additionalInfo, pCallbackData->pMessage); break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
+            TL_LOG_INFO("{}\nMessage: {}", additionalInfo, pCallbackData->pMessage);
+            break;
         case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
             TL_LOG_WARNNING("{}\nMessage: {}", additionalInfo, pCallbackData->pMessage);
             break;
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: TL_LOG_ERROR("{}\nMessage: {}", additionalInfo, pCallbackData->pMessage); break;
-        default:                                            TL_UNREACHABLE();
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
+            TL_LOG_ERROR("{}\nMessage: {}", additionalInfo, pCallbackData->pMessage);
+            break;
+        default:
+            TL_UNREACHABLE();
         }
 
         return VK_FALSE;
@@ -287,8 +294,7 @@ namespace RHI::Vulkan
                 .sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
                 .flags           = 0,
                 .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
-                .messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT |
-                               VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT,
+                .messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT,
                 .pfnUserCallback = DebugMessengerCallbacks,
                 .pUserData       = this,
             };
@@ -381,23 +387,19 @@ namespace RHI::Vulkan
             {
                 auto queueFamilyProperty = queueFamilyProperties[queueFamilyIndex];
 
-                // Search for main queue that should be able to do all work (graphics, compute and transfer)
-                if (queueFamilyProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+                // Search for main queue that should be able to do all work (Graphics, Compute and Transfer)
+                if (graphicsQueueFamilyIndex == UINT32_MAX && (queueFamilyProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT))
                 {
                     graphicsQueueFamilyIndex = queueFamilyIndex;
-                    transferQueueFamilyIndex = queueFamilyIndex;
-                    computeQueueFamilyIndex  = queueFamilyIndex;
-                    // TODO: remove this break to support multiple queues for different tasks
-                    break;
                 }
-                else if (queueFamilyProperty.queueFlags & VK_QUEUE_COMPUTE_BIT)
-                {
-                    computeQueueFamilyIndex = queueFamilyIndex;
-                }
-                else if (queueFamilyProperty.queueFlags & VK_QUEUE_TRANSFER_BIT)
-                {
-                    transferQueueFamilyIndex = queueFamilyIndex;
-                }
+                // else if (computeQueueFamilyIndex == UINT32_MAX && (queueFamilyProperty.queueFlags & VK_QUEUE_COMPUTE_BIT))
+                // {
+                //     computeQueueFamilyIndex = queueFamilyIndex;
+                // }
+                // else if (transferQueueFamilyIndex == UINT32_MAX && (queueFamilyProperty.queueFlags & VK_QUEUE_TRANSFER_BIT))
+                // {
+                //     transferQueueFamilyIndex = queueFamilyIndex;
+                // }
             }
 
             float                               queuePriority = 1.0f;
@@ -416,20 +418,20 @@ namespace RHI::Vulkan
                 queueCI.queueFamilyIndex = graphicsQueueFamilyIndex;
                 queueCreateInfos.push_back(queueCI);
             }
-            else if (computeQueueFamilyIndex != UINT32_MAX)
-            {
-                queueCI.queueFamilyIndex = computeQueueFamilyIndex;
-                queueCreateInfos.push_back(queueCI);
-            }
-            else if (transferQueueFamilyIndex != UINT32_MAX)
-            {
-                queueCI.queueFamilyIndex = transferQueueFamilyIndex;
-                queueCreateInfos.push_back(queueCI);
-            }
-            else
-            {
-                TL_UNREACHABLE();
-            }
+            // else if (computeQueueFamilyIndex != UINT32_MAX)
+            // {
+            //     queueCI.queueFamilyIndex = computeQueueFamilyIndex;
+            //     queueCreateInfos.push_back(queueCI);
+            // }
+            // else if (transferQueueFamilyIndex != UINT32_MAX)
+            // {
+            //     queueCI.queueFamilyIndex = transferQueueFamilyIndex;
+            //     queueCreateInfos.push_back(queueCI);
+            // }
+            // else
+            // {
+            //     TL_UNREACHABLE();
+            // }
 
             VkPhysicalDeviceVulkan13Features features13{
                 .sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
@@ -507,14 +509,14 @@ namespace RHI::Vulkan
 
         ResultCode resultCode;
 
-        resultCode = m_queue[(uint32_t)QueueType::Graphics]->Init(this, graphicsQueueFamilyIndex, 0);
+        resultCode = m_queue[(uint32_t)QueueType::Graphics]->Init(this, "Graphics", graphicsQueueFamilyIndex, 0);
         if (IsError(resultCode)) return resultCode;
 
-        resultCode = m_queue[(uint32_t)QueueType::Compute]->Init(this, computeQueueFamilyIndex, 0);
-        if (IsError(resultCode)) return resultCode;
+        // resultCode = m_queue[(uint32_t)QueueType::Compute]->Init(this, "Compute", computeQueueFamilyIndex, 0);
+        // if (IsError(resultCode)) return resultCode;
 
-        resultCode = m_queue[(uint32_t)QueueType::Transfer]->Init(this, transferQueueFamilyIndex, 0);
-        if (IsError(resultCode)) return resultCode;
+        // resultCode = m_queue[(uint32_t)QueueType::Transfer]->Init(this, "Transfer", transferQueueFamilyIndex, 0);
+        // if (IsError(resultCode)) return resultCode;
 
         resultCode = m_stagingAllocator->Init(this);
         if (IsError(resultCode)) return resultCode;
@@ -819,17 +821,16 @@ namespace RHI::Vulkan
     DeviceMemoryPtr IDevice::MapBuffer(Handle<Buffer> handle)
     {
         ZoneScoped;
-        auto            resource   = m_bufferOwner.Get(handle);
-        auto            allocation = resource->allocation.handle;
+        auto            resource = m_bufferOwner.Get(handle);
         DeviceMemoryPtr memoryPtr;
-        Validate(vmaMapMemory(m_deviceAllocator, allocation, &memoryPtr));
+        Validate(vmaMapMemory(m_deviceAllocator, resource->allocation, &memoryPtr));
         return memoryPtr;
     }
 
     void IDevice::UnmapBuffer(Handle<Buffer> handle)
     {
         ZoneScoped;
-        auto resource = m_bufferOwner.Get(handle)->allocation.handle;
+        auto resource = m_bufferOwner.Get(handle)->allocation;
         vmaUnmapMemory(m_deviceAllocator, resource);
     }
 
@@ -889,7 +890,6 @@ namespace RHI::Vulkan
             .buffer       = uploadInfo.srcBuffer,
             .bufferOffset = uploadInfo.srcBufferOffset,
             .bufferSize   = uploadInfo.sizeBytes,
-
         });
         commandList->AddPipelineBarriers({
             .imageBarriers = {{
@@ -910,8 +910,8 @@ namespace RHI::Vulkan
         commandList->End();
 
         return m_queue[(int)QueueType::Transfer]->Submit({
-            .commandLists         = commandList,
-            .timelineSignalStages = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+            .commandLists = commandList,
+            .signalStage  = PipelineStage::Copy,
         });
     }
 

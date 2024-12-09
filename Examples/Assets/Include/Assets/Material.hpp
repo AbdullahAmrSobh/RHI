@@ -184,9 +184,9 @@ namespace Examples::Assets
 
         inline const TL::String& GetName() const { return m_name; }
 
-        inline const TL::UnorderedMap<TL::String, Name>& GetTextures() const { return m_textures; }
+        inline const TL::Map<TL::String, Name>& GetTextures() const { return m_textures; }
 
-        // inline const TL::UnorderedMap<TL::String, MaterialProperty>& GetProperties() const { return m_properties; }
+        // inline const TL::Map<TL::String, MaterialProperty>& GetProperties() const { return m_properties; }
 
         template<typename Archive>
         void Serialize(Archive& archive) const
@@ -280,7 +280,7 @@ namespace Examples::Assets
 
     private:
         TL::String m_name;
-        TL::UnorderedMap<TL::String, Name> m_textures;
-        // TL::UnorderedMap<TL::String, MaterialProperty> m_properties;
+        TL::Map<TL::String, Name> m_textures;
+        // TL::Map<TL::String, MaterialProperty> m_properties;
     };
 } // namespace Examples::Assets

@@ -29,16 +29,6 @@ namespace RHI::Vulkan
         Shutdown();
     }
 
-    VkSemaphore ISwapchain::GetImageAcquiredSemaphore() const
-    {
-        return m_imageAcquiredSemaphore[m_semaphoreIndex];
-    }
-
-    VkSemaphore ISwapchain::GetImagePresentSemaphore() const
-    {
-        return m_imagePresentSemaphore[m_semaphoreIndex];
-    }
-
     ResultCode ISwapchain::Init(IDevice* device, const SwapchainCreateInfo& createInfo)
     {
         ZoneScoped;
@@ -101,11 +91,35 @@ namespace RHI::Vulkan
         vkDestroySurfaceKHR(m_device->m_instance, m_surface, nullptr);
     }
 
+    VkSemaphore ISwapchain::GetImageAcquiredSemaphore() const
+    {
+        return m_imageAcquiredSemaphore[m_semaphoreIndex];
+    }
+
+    VkSemaphore ISwapchain::GetImagePresentSemaphore() const
+    {
+        return m_imagePresentSemaphore[m_semaphoreIndex];
+    }
+
     ImageSemaphorePair ISwapchain::AcquireNextImage()
     {
         ZoneScoped;
 
         auto semaphore = m_imageAcquiredSemaphore[m_semaphoreIndex];
+
+        auto presentSignalValue   = m_imageReleaseValue[(m_imageIndex + 1) % m_imageCount];
+        auto currentTimelineValue = m_device->GetDeviceQueue(QueueType::Graphics).GetTimelineSemaphoreValue();
+        if (presentSignalValue >= currentTimelineValue)
+        {
+            auto                timelineSemaphoreHandle = m_device->GetDeviceQueue(QueueType::Graphics).GetTimelineSemaphoreHandle();
+            VkSemaphoreWaitInfo waitInfo{
+                .sType          = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
+                .semaphoreCount = 1,
+                .pSemaphores    = &timelineSemaphoreHandle,
+                .pValues        = &presentSignalValue,
+            };
+            vkWaitSemaphores(m_device->m_device, &waitInfo, UINT64_MAX);
+        }
 
         auto result = vkAcquireNextImageKHR(m_device->m_device, m_swapchain, UINT64_MAX, semaphore, VK_NULL_HANDLE, &m_imageIndex);
         TL_ASSERT(result == VK_SUCCESS);
@@ -157,10 +171,22 @@ namespace RHI::Vulkan
         VkSurfaceCapabilitiesKHR surfaceCapabilities{};
         Validate(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_device->m_physicalDevice, m_surface, &surfaceCapabilities));
 
-        if (!ValidateImageCount(surfaceCapabilities) || !ClampImageSize(surfaceCapabilities))
+        if (m_imageCount < MinImageCount || m_imageCount > MaxImageCount ||
+            m_imageCount < surfaceCapabilities.minImageCount || m_imageCount > surfaceCapabilities.maxImageCount)
         {
+            TL_LOG_INFO("Invalid SwapchainCreateInfo::minImageCount for the given window.");
             return VK_ERROR_INITIALIZATION_FAILED;
         }
+
+        if (m_imageSize.width < surfaceCapabilities.minImageExtent.width ||
+            m_imageSize.height < surfaceCapabilities.minImageExtent.height ||
+            m_imageSize.width > surfaceCapabilities.maxImageExtent.width ||
+            m_imageSize.height > surfaceCapabilities.maxImageExtent.height)
+        {
+            TL_LOG_WARNNING("Swapchain size will be clamped to fit supported range.");
+        }
+        m_imageSize.width  = std::clamp(m_imageSize.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
+        m_imageSize.height = std::clamp(m_imageSize.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
 
         VkSurfaceFormatKHR selectedFormat{};
         if (!SelectSurfaceFormat(selectedFormat))
@@ -220,33 +246,6 @@ namespace RHI::Vulkan
         AcquireNextImage();
 
         return VK_SUCCESS;
-    }
-
-    bool ISwapchain::ValidateImageCount(const VkSurfaceCapabilitiesKHR& surfaceCapabilities)
-    {
-        if (m_imageCount < MinImageCount || m_imageCount > MaxImageCount ||
-            m_imageCount < surfaceCapabilities.minImageCount || m_imageCount > surfaceCapabilities.maxImageCount)
-        {
-            TL_LOG_INFO("Invalid SwapchainCreateInfo::minImageCount for the given window.");
-            return false;
-        }
-        return true;
-    }
-
-    bool ISwapchain::ClampImageSize(const VkSurfaceCapabilitiesKHR& surfaceCapabilities)
-    {
-        if (m_imageSize.width < surfaceCapabilities.minImageExtent.width ||
-            m_imageSize.height < surfaceCapabilities.minImageExtent.height ||
-            m_imageSize.width > surfaceCapabilities.maxImageExtent.width ||
-            m_imageSize.height > surfaceCapabilities.maxImageExtent.height)
-        {
-            TL_LOG_WARNNING("Swapchain size will be clamped to fit supported range.");
-        }
-
-        m_imageSize.width  = std::clamp(m_imageSize.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
-        m_imageSize.height = std::clamp(m_imageSize.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
-
-        return true;
     }
 
     bool ISwapchain::SelectSurfaceFormat(VkSurfaceFormatKHR& selectedFormat)

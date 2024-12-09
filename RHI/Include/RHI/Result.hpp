@@ -17,7 +17,7 @@ namespace RHI
     /// @brief Checks if the result code indicates success.
     /// @param result The result code to check.
     /// @return true if the result is `ResultCode::Success`, false otherwise.
-    inline static bool IsSuccess(ResultCode result)
+    TL_NODISCARD inline static bool IsSuccess(ResultCode result)
     {
         return result == ResultCode::Success;
     }
@@ -25,7 +25,7 @@ namespace RHI
     /// @brief Checks if the result code indicates an error.
     /// @param result The result code to check.
     /// @return true if the result is not `ResultCode::Success`, false otherwise.
-    inline static bool IsError(ResultCode result)
+    TL_NODISCARD inline static bool IsError(ResultCode result)
     {
         return result != ResultCode::Success;
     }

@@ -3,9 +3,7 @@
 #include <RHI/Image.hpp>
 #include <RHI/Result.hpp>
 
-#include <vulkan/vulkan.h>
-
-#include "MemoryAllocator.hpp"
+#include <vk_mem_alloc.h>
 
 namespace RHI::Vulkan
 {
@@ -37,10 +35,11 @@ namespace RHI::Vulkan
 
     struct IImage : Image
     {
-        DeviceAllocation      allocation;
+        VmaAllocation         allocation;
         VkImage               handle;
         VkImageView           viewHandle;
         ImageSize3D           size;
+        Format                format;
         ImageSubresourceRange subresources;
 
         ResultCode Init(IDevice* device, const ImageCreateInfo& createInfo);
