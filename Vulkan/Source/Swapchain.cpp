@@ -22,6 +22,58 @@ namespace RHI::Vulkan
         }
     }
 
+    inline static bool SelectSurfaceFormat(IDevice& device, VkSurfaceKHR surface, Format format, VkSurfaceFormatKHR& selectedFormat)
+    {
+        uint32_t formatCount = 0;
+        Validate(vkGetPhysicalDeviceSurfaceFormatsKHR(device.m_physicalDevice, surface, &formatCount, nullptr));
+        TL::Vector<VkSurfaceFormatKHR> formats(formatCount);
+        vkGetPhysicalDeviceSurfaceFormatsKHR(device.m_physicalDevice, surface, &formatCount, formats.data());
+        for (const auto& surfaceFormat : formats)
+        {
+            if (surfaceFormat.format == ConvertFormat(format))
+            {
+                selectedFormat = surfaceFormat;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    inline static bool SelectPresentMode(IDevice& device, SwapchainPresentMode presentMode, VkSurfaceKHR surface, VkPresentModeKHR& selectedPresentMode)
+    {
+        uint32_t presentModeCount = 0;
+        Validate(vkGetPhysicalDeviceSurfacePresentModesKHR(device.m_physicalDevice, surface, &presentModeCount, nullptr));
+        TL::Vector<VkPresentModeKHR> presentModes(presentModeCount);
+        vkGetPhysicalDeviceSurfacePresentModesKHR(device.m_physicalDevice, surface, &presentModeCount, presentModes.data());
+        for (VkPresentModeKHR mode : presentModes)
+        {
+            if (mode == ConvertPresentMode(presentMode))
+            {
+                selectedPresentMode = mode;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    inline static VkCompositeAlphaFlagBitsKHR SelectCompositeAlpha(const VkSurfaceCapabilitiesKHR& surfaceCapabilities)
+    {
+        static const VkCompositeAlphaFlagBitsKHR preferredCompositeAlpha[] = {
+            VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+            VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR,
+            VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
+            VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
+        };
+        for (VkCompositeAlphaFlagBitsKHR compositeAlpha : preferredCompositeAlpha)
+        {
+            if (surfaceCapabilities.supportedCompositeAlpha & compositeAlpha)
+            {
+                return compositeAlpha;
+            }
+        }
+        return VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR; // Default fallback
+    }
+
     ISwapchain::ISwapchain() = default;
 
     ISwapchain::~ISwapchain()
@@ -35,12 +87,8 @@ namespace RHI::Vulkan
 
         m_device = device;
 
-        m_name        = createInfo.name ? createInfo.name : "";
-        m_imageSize   = createInfo.imageSize;
-        m_imageUsage  = createInfo.imageUsage;
-        m_imageFormat = createInfo.imageFormat;
-        m_presentMode = createInfo.presentMode;
-        m_imageCount  = createInfo.minImageCount;
+        m_name       = createInfo.name;
+        m_createInfo = createInfo;
 
         VkResult result;
         for (uint32_t i = 0; i < MaxImageCount; i++)
@@ -60,8 +108,10 @@ namespace RHI::Vulkan
             }
         }
 
-        InitSurface(createInfo);
-        InitSwapchain();
+        result = InitSurface(createInfo);
+        Validate(result);
+        result = InitSwapchain(m_createInfo.imageSize, m_createInfo.minImageCount);
+        Validate(result);
 
         return ResultCode::Success;
     }
@@ -105,27 +155,12 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto semaphore = m_imageAcquiredSemaphore[m_semaphoreIndex];
-
-        auto presentSignalValue   = m_imageReleaseValue[(m_imageIndex + 1) % m_imageCount];
-        auto currentTimelineValue = m_device->GetDeviceQueue(QueueType::Graphics).GetTimelineSemaphoreValue();
-        if (presentSignalValue >= currentTimelineValue)
-        {
-            auto                timelineSemaphoreHandle = m_device->GetDeviceQueue(QueueType::Graphics).GetTimelineSemaphoreHandle();
-            VkSemaphoreWaitInfo waitInfo{
-                .sType          = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
-                .semaphoreCount = 1,
-                .pSemaphores    = &timelineSemaphoreHandle,
-                .pValues        = &presentSignalValue,
-            };
-            vkWaitSemaphores(m_device->m_device, &waitInfo, UINT64_MAX);
-        }
-
-        auto result = vkAcquireNextImageKHR(m_device->m_device, m_swapchain, UINT64_MAX, semaphore, VK_NULL_HANDLE, &m_imageIndex);
+        auto imageAcquiredSemaphore = m_imageAcquiredSemaphore[m_semaphoreIndex];
+        auto result                 = vkAcquireNextImageKHR(m_device->m_device, m_swapchain, UINT64_MAX, imageAcquiredSemaphore, VK_NULL_HANDLE, &m_imageIndex);
         TL_ASSERT(result == VK_SUCCESS);
 
         return {
-            .semaphore = semaphore,
+            .semaphore = imageAcquiredSemaphore,
             .image     = m_image[m_imageIndex],
         };
     }
@@ -133,9 +168,8 @@ namespace RHI::Vulkan
     ResultCode ISwapchain::Recreate(ImageSize2D newSize)
     {
         ZoneScoped;
-        m_imageSize = newSize;
         Validate(vkDeviceWaitIdle(m_device->m_device));
-        VkResult result = InitSwapchain();
+        VkResult result = InitSwapchain(newSize, m_createInfo.minImageCount);
         return ConvertResult(result);
     }
 
@@ -143,7 +177,7 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto presentQueue = m_device->m_queue[(uint32_t)QueueType::Graphics]->GetHandle();
+        auto& presentQueue = m_device->GetDeviceQueue(QueueType::Graphics);
 
         VkPresentInfoKHR presentInfo{
             .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -155,7 +189,7 @@ namespace RHI::Vulkan
             .pImageIndices      = &m_imageIndex,
             .pResults           = &m_lastPresentResult,
         };
-        Validate(vkQueuePresentKHR(presentQueue, &presentInfo));
+        Validate(vkQueuePresentKHR(presentQueue.GetHandle(), &presentInfo));
 
         m_semaphoreIndex = (m_semaphoreIndex + 1) % m_imageCount;
 
@@ -164,13 +198,18 @@ namespace RHI::Vulkan
         return ResultCode::Success;
     }
 
-    VkResult ISwapchain::InitSwapchain()
+    VkResult ISwapchain::InitSwapchain(ImageSize2D size, uint32_t minImageCount)
     {
         ZoneScoped;
+
+        m_createInfo.imageSize     = size;
+        m_createInfo.minImageCount = minImageCount;
 
         VkSurfaceCapabilitiesKHR surfaceCapabilities{};
         Validate(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_device->m_physicalDevice, m_surface, &surfaceCapabilities));
 
+        // Clamp the image count to fit the surface supported range.
+        m_imageCount = minImageCount;
         if (m_imageCount < MinImageCount || m_imageCount > MaxImageCount ||
             m_imageCount < surfaceCapabilities.minImageCount || m_imageCount > surfaceCapabilities.maxImageCount)
         {
@@ -178,27 +217,34 @@ namespace RHI::Vulkan
             return VK_ERROR_INITIALIZATION_FAILED;
         }
 
-        if (m_imageSize.width < surfaceCapabilities.minImageExtent.width ||
-            m_imageSize.height < surfaceCapabilities.minImageExtent.height ||
-            m_imageSize.width > surfaceCapabilities.maxImageExtent.width ||
-            m_imageSize.height > surfaceCapabilities.maxImageExtent.height)
+        // Clamp the swapchain size to fit the surface supported range.
+        if (size.width < surfaceCapabilities.minImageExtent.width ||
+            size.height < surfaceCapabilities.minImageExtent.height ||
+            size.width > surfaceCapabilities.maxImageExtent.width ||
+            size.height > surfaceCapabilities.maxImageExtent.height)
         {
-            TL_LOG_WARNNING("Swapchain size will be clamped to fit supported range.");
+            auto clampedWidth  = std::clamp(size.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
+            auto clampedHeight = std::clamp(size.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
+
+            TL_LOG_WARNNING("Can't (re)create swapchain with size ({}x{}) for the given window. Clamping to ({}, {}).",
+                            size.width,
+                            size.height,
+                            clampedWidth,
+                            clampedHeight);
+
+            size.width  = clampedWidth;
+            size.height = clampedHeight;
         }
-        m_imageSize.width  = std::clamp(m_imageSize.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
-        m_imageSize.height = std::clamp(m_imageSize.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
 
         VkSurfaceFormatKHR selectedFormat{};
-        if (!SelectSurfaceFormat(selectedFormat))
+        if (SelectSurfaceFormat(*m_device, m_surface, m_createInfo.imageFormat, selectedFormat) == false)
         {
             TL_LOG_INFO("Failed to (re)create the swapchain with the required format.");
             return VK_ERROR_FORMAT_NOT_SUPPORTED;
         }
 
-        VkCompositeAlphaFlagBitsKHR selectedCompositeAlpha = SelectCompositeAlpha(surfaceCapabilities);
-
-        VkPresentModeKHR selectedPresentMode = SelectPresentMode();
-        if (selectedPresentMode == VK_PRESENT_MODE_MAX_ENUM_KHR)
+        VkPresentModeKHR selectedPresentMode{};
+        if (SelectPresentMode(*m_device, m_createInfo.presentMode, m_surface, selectedPresentMode) == false)
         {
             TL_LOG_WARNNING("Fallback to default present mode due to unsupported requested present mode.");
             selectedPresentMode = VK_PRESENT_MODE_FIFO_KHR; // Fallback to FIFO
@@ -211,14 +257,14 @@ namespace RHI::Vulkan
             .minImageCount         = m_imageCount,
             .imageFormat           = selectedFormat.format,
             .imageColorSpace       = selectedFormat.colorSpace,
-            .imageExtent           = {m_imageSize.width, m_imageSize.height},
+            .imageExtent           = {size.width, size.height},
             .imageArrayLayers      = 1,
-            .imageUsage            = ConvertImageUsageFlags(m_imageUsage),
+            .imageUsage            = ConvertImageUsageFlags(m_createInfo.imageUsage),
             .imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE,
             .queueFamilyIndexCount = 0,
             .pQueueFamilyIndices   = nullptr,
             .preTransform          = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR,
-            .compositeAlpha        = selectedCompositeAlpha,
+            .compositeAlpha        = SelectCompositeAlpha(surfaceCapabilities),
             .presentMode           = selectedPresentMode,
             .clipped               = VK_TRUE,
             .oldSwapchain          = m_swapchain,
@@ -242,66 +288,10 @@ namespace RHI::Vulkan
                 Validate(image.Init(m_device, images[i], createInfo));
                 m_image[i] = m_device->m_imageOwner.Emplace(std::move(image));
             }
+            createInfo.minImageCount = m_imageCount;
         }
         AcquireNextImage();
 
         return VK_SUCCESS;
-    }
-
-    bool ISwapchain::SelectSurfaceFormat(VkSurfaceFormatKHR& selectedFormat)
-    {
-        uint32_t formatCount = 0;
-        Validate(vkGetPhysicalDeviceSurfaceFormatsKHR(m_device->m_physicalDevice, m_surface, &formatCount, nullptr));
-        TL::Vector<VkSurfaceFormatKHR> formats(formatCount);
-        vkGetPhysicalDeviceSurfaceFormatsKHR(m_device->m_physicalDevice, m_surface, &formatCount, formats.data());
-
-        for (const auto& format : formats)
-        {
-            if (format.format == ConvertFormat(m_imageFormat))
-            {
-                selectedFormat = format;
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    VkCompositeAlphaFlagBitsKHR ISwapchain::SelectCompositeAlpha(const VkSurfaceCapabilitiesKHR& surfaceCapabilities)
-    {
-        static const VkCompositeAlphaFlagBitsKHR preferredCompositeAlpha[] = {
-            VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-            VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR,
-            VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
-            VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
-        };
-
-        for (VkCompositeAlphaFlagBitsKHR compositeAlpha : preferredCompositeAlpha)
-        {
-            if (surfaceCapabilities.supportedCompositeAlpha & compositeAlpha)
-            {
-                return compositeAlpha;
-            }
-        }
-
-        return VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR; // Default fallback
-    }
-
-    VkPresentModeKHR ISwapchain::SelectPresentMode()
-    {
-        uint32_t presentModeCount = 0;
-        Validate(vkGetPhysicalDeviceSurfacePresentModesKHR(m_device->m_physicalDevice, m_surface, &presentModeCount, nullptr));
-        TL::Vector<VkPresentModeKHR> presentModes(presentModeCount);
-        vkGetPhysicalDeviceSurfacePresentModesKHR(m_device->m_physicalDevice, m_surface, &presentModeCount, presentModes.data());
-
-        for (VkPresentModeKHR mode : presentModes)
-        {
-            if (mode == ConvertPresentMode(m_presentMode))
-            {
-                return mode;
-            }
-        }
-
-        return VK_PRESENT_MODE_MAX_ENUM_KHR;
     }
 } // namespace RHI::Vulkan

@@ -407,4 +407,121 @@ namespace RHI::Vulkan
         if (pipelineStages & PipelineStage::AccelerationStructureCopy) stageFlags |= VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR;
         return stageFlags;
     }
+
+    inline static ColorValue<float> QueueTypeToColor(QueueType queueType)
+    {
+        switch (queueType)
+        {
+        case QueueType::Graphics: return {0.8f, 0.2f, 0.2f, 1.0f};
+        case QueueType::Compute:  return {0.2f, 0.2f, 0.8f, 1.0f};
+        case QueueType::Transfer: return {0.2f, 0.8f, 0.2f, 1.0f};
+        case QueueType::Count:    TL_UNREACHABLE(); return {};
+        }
+        TL_UNREACHABLE();
+        return {};
+    }
+
+    inline static VkAccessFlags2 GetAccessFlags2(ImageUsage usage, TL::Flags<Access> access)
+    {
+        VkAccessFlags2 result = VK_ACCESS_2_NONE;
+        switch (usage)
+        {
+        case ImageUsage::ShaderResource:
+            if (access & Access::Read) result |= VK_ACCESS_2_SHADER_READ_BIT;
+            TL_ASSERT((access & Access::Write) == Access::None, "ImageUsage::ShaderResource can't have write access");
+            break;
+        case ImageUsage::StorageResource:
+            if (access & Access::Read) result |= VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+            if (access & Access::Write) result |= VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+            break;
+        case ImageUsage::CopySrc:
+        case ImageUsage::CopyDst:
+            if (access & Access::Read) result |= VK_ACCESS_2_TRANSFER_READ_BIT;
+            if (access & Access::Write) result |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
+            break;
+        case ImageUsage::Color:
+            if (access & Access::Read) result |= VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
+            if (access & Access::Write) result |= VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+            break;
+        case ImageUsage::Depth:
+        case ImageUsage::Stencil:
+        case ImageUsage::DepthStencil:
+            if (access & Access::Read) result |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+            if (access & Access::Write) result |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+            break;
+        default: break;
+        };
+        TL_ASSERT(result != VK_ACCESS_2_NONE);
+        return result;
+    }
+
+    inline static VkAccessFlags2 GetAccessFlags2(BufferUsage usage, TL::Flags<Access> access)
+    {
+        VkAccessFlags2 result = VK_ACCESS_2_NONE;
+        switch (usage)
+        {
+        case BufferUsage::Vertex:
+            result |= VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
+            TL_ASSERT((access & Access::Write) == Access::None, "BufferUsage::Vertex can't have write access");
+            break;
+        case BufferUsage::Index:
+            result |= VK_ACCESS_2_INDEX_READ_BIT;
+            TL_ASSERT((access & Access::Write) == Access::None, "BufferUsage::Index can't have write access");
+            break;
+        case BufferUsage::Uniform:
+            if (access & Access::Read) result |= VK_ACCESS_2_UNIFORM_READ_BIT;
+            TL_ASSERT((access & Access::Write) == Access::None, "BufferUsage::Uniform can't have write access");
+            break;
+        case BufferUsage::Storage:
+            if (access & Access::Read) result |= VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+            if (access & Access::Write) result |= VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+            break;
+        case BufferUsage::CopySrc:
+        case BufferUsage::CopyDst:
+            if (access & Access::Read) result |= VK_ACCESS_2_TRANSFER_READ_BIT;
+            if (access & Access::Write) result |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
+            break;
+        default: break;
+        };
+        TL_ASSERT(result != VK_ACCESS_2_NONE);
+        return result;
+    }
+
+    inline static VkImageLayout GetImageLayout(ImageUsage usage, TL::Flags<Access> access, TL::Flags<ImageAspect> aspect)
+    {
+        bool isReadOnly = access == Access::Read;
+        switch (usage)
+        {
+        case ImageUsage::ShaderResource:
+            {
+                if (aspect & ImageAspect::Color)
+                {
+                    return isReadOnly ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+                }
+                else if (aspect & ImageAspect::DepthStencil)
+                {
+                    return isReadOnly ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+                }
+                else if (aspect & ImageAspect::Depth)
+                {
+                    return isReadOnly ? VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+                }
+                else if (aspect & ImageAspect::Stencil)
+                {
+                    return isReadOnly ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
+                }
+
+                TL_UNREACHABLE();
+                return VK_IMAGE_LAYOUT_GENERAL;
+            }
+        case ImageUsage::Color:        return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        // TODO: use <DEPTH/STENCIL>_READ_ONLY_OPTIMAL
+        case ImageUsage::Depth:        return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+        case ImageUsage::Stencil:      return VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
+        case ImageUsage::DepthStencil: return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        case ImageUsage::CopySrc:      return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        case ImageUsage::CopyDst:      return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        default:                       return isReadOnly ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+        }
+    }
 } // namespace RHI::Vulkan

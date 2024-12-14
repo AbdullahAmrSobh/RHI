@@ -4,7 +4,7 @@
 
 namespace RHI
 {
-    enum QueueType : uint8_t
+    enum class QueueType : uint8_t
     {
         Graphics,
         Compute,
@@ -12,5 +12,5 @@ namespace RHI
         Count,
     };
 
-    inline static constexpr uint32_t AsyncQueuesCount = QueueType::Count;
+    inline static constexpr uint32_t AsyncQueuesCount = (uint32_t)QueueType::Count;
 } // namespace RHI

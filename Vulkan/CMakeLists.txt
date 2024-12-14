@@ -16,6 +16,7 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Pipeline.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Queue.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraph.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraphPass.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Sampler.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Shader.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.hpp
@@ -34,6 +35,7 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Pipeline.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Queue.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraph.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraphPass.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Sampler.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Shader.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Surface.cpp

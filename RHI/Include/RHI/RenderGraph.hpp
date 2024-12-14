@@ -8,6 +8,7 @@
 #include "RHI/PipelineAccess.hpp"
 #include "RHI/RenderGraphPass.hpp"
 #include "RHI/RenderGraphResources.hpp"
+#include "RHI/RenderGraphExecuteGroup.hpp"
 
 #include <TL/Allocator/Mimalloc.hpp>
 #include <TL/Containers.hpp>
@@ -19,27 +20,8 @@ namespace RHI
     class Swapchain;
     class CommandList;
     class RenderGraph;
+    class RenderGraphExecuteGroup;
     struct RenderTargetInfo;
-
-    struct AsyncQueueDependency
-    {
-        QueueType queueType           = QueueType::Count;
-        uint16_t  localQueuePassIndex = UINT16_MAX;
-    };
-
-    struct SwapchainExecuteInfo
-    {
-        Swapchain*               swapchain;
-        TL::Flags<PipelineStage> stages;
-    };
-
-    struct RenderGraphExecuteGroup
-    {
-        TL::Vector<Pass*>                                  passList;
-        std::array<AsyncQueueDependency, AsyncQueuesCount> asyncQueuesDependencies;
-        SwapchainExecuteInfo                               swapchainToAcquire;
-        SwapchainExecuteInfo                               swapchainToRelease;
-    };
 
     class RHI_EXPORT RenderGraph
     {
@@ -111,7 +93,7 @@ namespace RHI
         // Frame management.
 
         /// @brief Begins a new frame in the render graph.
-        void BeginFrame();
+        void BeginFrame(ImageSize2D frameSize);
 
         /// @brief Ends the current frame in the render graph.
         void EndFrame();
@@ -123,27 +105,25 @@ namespace RHI
         /// @brief Compiles the render graph for the current frame.
         void                  Compile();
 
+        void                  CleanupResources();
+
         /// @brief Initializes transient resources.
         void                  InitializeTransientResources();
 
-        void                  TopologicalSort();
-        void                  BuildDependencyLevels();
-        void                  CullRedunduntSynchornization();
-        void                  BuildExecutionGroups();
+        static void           ExtendResourceUsage(RenderGraphImage& resource, ImageUsage usage) { resource.m_usage.asImage |= usage; }
 
-        static void ExpandRenderGraphResourceUsage(RenderGraphImage& resource, ImageUsage usage) { resource.m_usage.asImage |= usage; }
-
-        static void ExpandRenderGraphResourceUsage(RenderGraphBuffer& resource, BufferUsage usage) { resource.m_usage.asBuffer |= usage; }
+        static void           ExtendResourceUsage(RenderGraphBuffer& resource, BufferUsage usage) { resource.m_usage.asBuffer |= usage; }
 
     protected:
-        void         ExecutePassCallback(Pass& pass, CommandList& commandList) { pass.m_onExecuteCallback(commandList); }
+        void             ExecutePassCallback(Pass& pass, CommandList& commandList) { pass.m_onExecuteCallback(commandList); }
 
-        auto         GetExecuteGroup(QueueType queueType) { return m_orderedPassGroups[(int)queueType]; }
+        virtual Pass*    CreatePass(const PassCreateInfo& createInfo)                                = 0;
 
-        virtual void OnGraphExecutionBegin()                                                         = 0;
-        virtual void OnGraphExecutionEnd()                                                           = 0;
+        virtual void     OnGraphExecutionBegin()                                                     = 0;
 
-        virtual void ExecutePassGroup(const RenderGraphExecuteGroup& passGroup, QueueType queueType) = 0;
+        virtual void     OnGraphExecutionEnd()                                                       = 0;
+
+        virtual uint64_t ExecutePassGroup(const RenderGraphExecuteGroup& group, QueueType queueType) = 0;
 
     protected:
         /// Main allocator for graph resources.
@@ -174,5 +154,16 @@ namespace RHI
         TL::Vector<Pass*>                             m_graphPasses;
         /// List of passes ordered based on their execution.
         TL::Vector<RenderGraphExecuteGroup>           m_orderedPassGroups[AsyncQueuesCount];
+        /// Input size of the graph (matches swapchain sizes).
+        ImageSize2D                                   m_frameSize;
+
+        enum class GraphState
+        {
+            Invalid,
+            Compiled,
+            Executing
+        };
+
+        GraphState m_state = GraphState::Invalid;
     };
 } // namespace RHI

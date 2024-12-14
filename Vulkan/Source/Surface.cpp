@@ -29,7 +29,7 @@ namespace RHI::Vulkan
         VkBool32 surfaceSupportPresent;
         Validate(vkGetPhysicalDeviceSurfaceSupportKHR(
             m_device->m_physicalDevice,
-            m_device->m_queue[(uint32_t)QueueType::Graphics]->GetFamilyIndex(),
+            m_device->m_queue[(uint32_t)QueueType::Graphics].GetFamilyIndex(),
             m_surface,
             &surfaceSupportPresent));
         return VK_SUCCESS;

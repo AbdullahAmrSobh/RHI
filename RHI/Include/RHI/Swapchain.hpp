@@ -70,13 +70,8 @@ namespace RHI
         virtual ResultCode        Present()                     = 0;
 
     protected:
-        TL::String            m_name;
-        ImageSize2D           m_imageSize;
-        TL::Flags<ImageUsage> m_imageUsage;
-        Format                m_imageFormat;
-        SwapchainPresentMode  m_presentMode;
-        uint32_t              m_imageCount;
-        uint32_t              m_imageIndex;
-        Handle<Image>         m_image[MaxImageCount];
+        uint32_t      m_imageIndex;
+        uint32_t      m_imageCount;
+        Handle<Image> m_image[MaxImageCount];
     };
 } // namespace RHI

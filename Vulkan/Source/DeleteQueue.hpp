@@ -34,7 +34,7 @@ namespace RHI::Vulkan
             DeleteFunc deleteFunc;
         };
 
-        IDevice*                     m_device;
-        std::vector<PendingDeletion> m_destructionQueue;
+        IDevice*                    m_device;
+        TL::Vector<PendingDeletion> m_destructionQueue;
     };
 } // namespace RHI::Vulkan

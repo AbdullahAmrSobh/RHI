@@ -193,6 +193,10 @@ namespace RHI
         /// @brief Collects unused resources for reuse.
         virtual void                     CollectResources()                                                               = 0;
 
+        // clang-format off
+        virtual bool                     WaitForQueueTimelineValue(QueueType queueType, uint64_t value, uint64_t waitDuration) = 0;
+        // clang-format on
+
     protected:
         TL::Ptr<DeviceLimits> m_limits; ///< Device-specific limits.
     };

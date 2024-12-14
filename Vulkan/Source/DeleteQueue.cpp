@@ -32,19 +32,16 @@ namespace RHI::Vulkan
 
     void DeleteQueue::DestroyObjects(bool force)
     {
-        uint64_t currentTimelineValue = m_device->m_frameIndex;
-        auto     objectIt             = m_destructionQueue.begin();
-        for (; objectIt != m_destructionQueue.end(); objectIt++)
-        {
-            if (objectIt->frameIndex < currentTimelineValue || force)
+        std::erase_if(
+            m_destructionQueue,
+            [&](const PendingDeletion& deletion)
             {
-                objectIt->deleteFunc(m_device);
-            }
-            else
-            {
-                break;
-            }
-        }
-        m_destructionQueue.erase(m_destructionQueue.begin(), objectIt);
+                if (force || m_device->m_frameIndex >= deletion.frameIndex)
+                {
+                    deletion.deleteFunc(m_device);
+                    return true;
+                }
+                return false;
+            });
     }
 } // namespace RHI::Vulkan

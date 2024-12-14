@@ -1,6 +1,7 @@
 #include "RHI/RenderGraph.hpp"
 
 #include "RHI/Device.hpp"
+#include "RHI/RenderGraphExecuteGroup.hpp"
 #include "RHI/RenderGraphPass.hpp"
 #include "RHI/RenderGraphResources.hpp"
 
@@ -12,6 +13,49 @@
 
 namespace RHI
 {
+    struct GraphNode
+    {
+        Pass*                                  m_pass;
+        QueueType                              m_queueType;
+        TL::Vector<GraphNode*, TL::IAllocator> m_consumers;
+        uint32_t                               m_ssis[AsyncQueuesCount];
+        uint32_t                               m_depth;
+    };
+
+    using Graph = TL::Vector<GraphNode*, TL::IAllocator>;
+
+    // inline static void TopologicalSort(Graph& graph, GraphNode* node, TL::Vector<GraphNode*, TL::IAllocator>& sorted)
+    // {
+    //     for (auto consumer : node->m_consumers)
+    //     {
+    //         TopologicalSort(graph, consumer, sorted);
+    //     }6
+    //     sorted.push_back(node);
+    // }
+
+    // inline static void BuildDepdenencyLevelsPerQueue(Graph& graph, TL::Span<TL::Vector<RenderGraphExecuteGroup>> groups)
+    // {
+    //     for (auto node : graph)
+    //     {
+    //         for (auto consumer : node->m_consumers)
+    //         {
+    //             for (uint32_t i = 0; i < AsyncQueuesCount; i++)
+    //             {
+    //                 // node->m_ssis[i] = std::max(node->m_ssis[i], consumer->m_ssis[i] + 1);
+    //                 // update depth
+    //                 if (node->m_queueType == consumer->m_queueType)
+    //                 {
+    //                     node->m_depth = std::max(node->m_depth, consumer->m_depth + 1);
+    //                 }
+    //                 else
+    //                 {
+    //                     node->m_depth = std::max(node->m_depth, consumer->m_depth);
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+
     RenderGraphImage* RenderGraph::ImportSwapchain(const char* name, Swapchain& swapchain, Format format)
     {
         ZoneScoped;
@@ -70,10 +114,8 @@ namespace RHI
     Pass* RenderGraph::AddPass(const PassCreateInfo& createInfo)
     {
         ZoneScoped;
-
-        auto* pass = m_tempAllocator.Construct<Pass>(createInfo, &m_tempAllocator);
+        auto* pass = CreatePass(createInfo);
         m_graphPasses.push_back(pass);
-        pass->m_onSetupCallback(*this, *pass);
         return pass;
     }
 
@@ -94,29 +136,39 @@ namespace RHI
         ZoneScoped;
 
         FormatInfo formatInfo = GetFormatInfo(renderTargetInfo.attachment->GetFormat());
-        ExpandRenderGraphResourceUsage(*renderTargetInfo.attachment, GetImageUsage(formatInfo));
+        auto       usage      = GetImageUsage(formatInfo);
+        ExtendResourceUsage(*renderTargetInfo.attachment, usage);
 
+        auto stage = PipelineStage::ColorAttachmentOutput;
         if (formatInfo.hasDepth || formatInfo.hasStencil)
+        {
+            stage                         = PipelineStage::EarlyFragmentTests;
             pass.m_depthStencilAttachment = renderTargetInfo;
+        }
         else
             pass.m_colorAttachments.push_back(renderTargetInfo);
 
         /// @todo: convert load ops to access
-        UseImage(pass, renderTargetInfo.attachment, ImageUsage::Color, PipelineStage::ColorAttachmentOutput, Access::ReadWrite);
+        UseImage(pass, renderTargetInfo.attachment, usage, stage, Access::ReadWrite);
         if (renderTargetInfo.resolveAttachment && renderTargetInfo.resolveMode != ResolveMode::None)
         {
-            ExpandRenderGraphResourceUsage(*renderTargetInfo.attachment, ImageUsage::Resolve);
-            UseImage(pass, renderTargetInfo.resolveAttachment, ImageUsage::Color, PipelineStage::Transfer, Access::Write);
+            ExtendResourceUsage(*renderTargetInfo.attachment, ImageUsage::Resolve);
+            UseImage(pass, renderTargetInfo.resolveAttachment, ImageUsage::Resolve, PipelineStage::Transfer, Access::Write);
         }
     }
 
-    void RenderGraph::BeginFrame()
+    void RenderGraph::BeginFrame(ImageSize2D frameSize)
     {
         ZoneScoped;
 
         m_frameIndex++;
         m_graphPasses.clear();
         m_tempAllocator.Collect();
+
+        m_graphPasses.clear();
+        for (auto& group : m_orderedPassGroups)
+            group.clear();
+
         for (auto graphImage : m_graphImages)
         {
             graphImage->m_first = nullptr;
@@ -127,64 +179,87 @@ namespace RHI
             graphBuffer->m_first = nullptr;
             graphBuffer->m_last  = nullptr;
         }
+        for (auto [swapchain, graphResource] : m_graphImportedSwapchainsLookup)
+        {
+            graphResource->m_first = nullptr;
+            graphResource->m_last  = nullptr;
+        }
+
+        if (m_frameSize != frameSize)
+        {
+            m_frameSize = frameSize;
+            m_state     = GraphState::Invalid;
+        }
     }
 
     void RenderGraph::EndFrame()
     {
         ZoneScoped;
 
-        static bool isInit = false;
-        if (isInit == false)
+        static constexpr uint32_t MaxFramesInFlight = 2;
+        static uint32_t           currentFrameIndex = 0;
+
+        for (const auto& pass : m_graphPasses)
         {
+            pass->m_onSetupCallback(*this, *pass);
+        }
+
+        if (m_state == GraphState::Invalid)
+        {
+            CleanupResources();
             Compile();
-            isInit = true;
         }
 
-        for (auto [swapchain, graphImage] : m_graphImportedSwapchainsLookup)
+        auto& group = m_orderedPassGroups[(uint32_t)QueueType::Graphics].emplace_back(m_tempAllocator);
+        for (auto pass : m_graphPasses)
         {
-            graphImage->m_handle.asImage  = swapchain->GetImage();
-            auto presentAccess            = m_tempAllocator.Allocate<RenderGraphResourceTransition>();
-            presentAccess->pass           = nullptr;
-            presentAccess->next           = nullptr;
-            presentAccess->prev           = graphImage->GetLastAccess();
-            presentAccess->resource       = graphImage;
-            presentAccess->asImage.usage  = ImageUsage::_SwapchainPresent;
-            presentAccess->asImage.stage  = PipelineStage::BottomOfPipe;
-            presentAccess->asImage.access = Access::None;
-            graphImage->PushAccess(presentAccess);
+            group.AddPass(*pass);
+            pass->m_group = &group;
         }
 
-        auto [swapchain, resource] = *m_graphImportedSwapchainsLookup.begin();
-
+        for (auto [swapchain, graphResource] : m_graphImportedSwapchainsLookup)
         {
-            // For debug and testing only
-            auto& group = m_orderedPassGroups[(int)QueueType::Graphics];
-            group.push_back({
-                .passList                = m_graphPasses,
-                .asyncQueuesDependencies = {},
-                .swapchainToAcquire      = swapchain,
-                .swapchainToRelease      = swapchain,
-            });
+            auto firstPass  = graphResource->GetFirstPass();
+            auto lastPass   = graphResource->GetLastPass();
+            auto firstGroup = firstPass->GetExecuteGroup();
+            auto lastGroup  = lastPass->GetExecuteGroup();
+
+            graphResource->m_handle.asImage = swapchain->GetImage();
+
+            firstGroup->WaitForSwapchain(*swapchain, PipelineStage::TopOfPipe);
+            lastPass->AddSwapchainPresentBarrier(*m_device, *swapchain, *graphResource->GetLastAccess());
+            lastGroup->SignalSwapchainPresent(*swapchain, PipelineStage::BottomOfPipe);
         }
 
         OnGraphExecutionBegin();
-        for (auto& group : m_orderedPassGroups[(uint32_t)QueueType::Graphics])
+        for (auto& currentGroup : m_orderedPassGroups[(uint32_t)QueueType::Graphics])
         {
-            ExecutePassGroup(group, QueueType::Graphics);
+            [[maybe_unused]] auto newTimelineValue = ExecutePassGroup(currentGroup, QueueType::Graphics);
         }
-        for (auto& group : m_orderedPassGroups[(uint32_t)QueueType::Compute])
+        for (auto& currentGroup : m_orderedPassGroups[(uint32_t)QueueType::Compute])
         {
-            ExecutePassGroup(group, QueueType::Compute);
+            [[maybe_unused]] auto newTimelineValue = ExecutePassGroup(currentGroup, QueueType::Compute);
         }
-        for (auto& group : m_orderedPassGroups[(uint32_t)QueueType::Transfer])
+        for (auto& currentGroup : m_orderedPassGroups[(uint32_t)QueueType::Transfer])
         {
-            ExecutePassGroup(group, QueueType::Transfer);
+            [[maybe_unused]] auto newTimelineValue = ExecutePassGroup(currentGroup, QueueType::Transfer);
         }
         OnGraphExecutionEnd();
+
+        for (auto [swapchain, _] : m_graphImportedSwapchainsLookup)
+        {
+            [[maybe_unused]] auto res = swapchain->Present();
+        }
+        currentFrameIndex = (currentFrameIndex + 1) % MaxFramesInFlight;
     }
 
     void RenderGraph::Compile()
     {
+        // for (const auto& pass : m_graphPasses)
+        // {
+        //     pass->m_onSetupCallback(*this, *pass);
+        // }
+
         InitializeTransientResources();
 
         for (const auto& pass : m_graphPasses)
@@ -193,6 +268,22 @@ namespace RHI
             {
                 pass->m_onCompileCallback(*this, *pass);
             }
+        }
+
+        m_state = GraphState::Compiled;
+    }
+
+    void RenderGraph::CleanupResources()
+    {
+        for (auto transientImage : m_graphTransientImagesLookup)
+        {
+            if (auto image = transientImage.first->m_handle.asImage)
+                m_device->DestroyImage(image);
+        }
+        for (auto transientBuffer : m_graphTransientBuffersLookup)
+        {
+            if (auto buffer = transientBuffer.first->m_handle.asBuffer)
+                m_device->DestroyBuffer(buffer);
         }
     }
 

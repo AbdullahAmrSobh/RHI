@@ -9,34 +9,26 @@
 
 namespace RHI
 {
+    class Device;
     class Pass;
     class RenderGraph;
     class CommandList;
     class Swapchain;
+    class RenderGraphResource;
+    class RenderGraphExecuteGroup;
 
     using PassSetupCallback   = TL::Function<void(RenderGraph& renderGraph, Pass& pass)>;
     using PassCompileCallback = TL::Function<void(RenderGraph& renderGraph, Pass& pass)>;
     using PassExecuteCallback = TL::Function<void(CommandList& commandList)>;
 
-    enum class PassFlags
-    {
-        None      = 0,
-        Graphics  = 1 << 0,
-        Compute   = 1 << 1,
-        Transfer  = 1 << 2,
-        Immediate = 1 << 3
-    };
-
     struct PassCreateInfo
     {
-        const char*          name;
-        TL::Flags<PassFlags> flags;
-        PassSetupCallback    setupCallback;
-        PassCompileCallback  compileCallback;
-        PassExecuteCallback  executeCallback;
+        const char*         name;
+        QueueType           queue;
+        PassSetupCallback   setupCallback;
+        PassCompileCallback compileCallback;
+        PassExecuteCallback executeCallback;
     };
-
-    class RenderGraphResource;
 
     class RHI_EXPORT Pass
     {
@@ -68,22 +60,16 @@ namespace RHI
         /// @brief Gets the accessed resources for this pass.
         TL::Span<RenderGraphResourceTransition* const> GetRenderGraphResourceTransitions() const;
 
-        /// @brief Adds a new resource access to the pass.
-        RenderGraphResourceTransition*                 AddTransition(
-                            TL::IAllocator&          allocator,
-                            RenderGraphResource&     resource,
-                            ImageUsage               usage,
-                            TL::Flags<PipelineStage> stage,
-                            TL::Flags<Access>        access,
-                            ImageSubresourceRange    subresourceRange);
-
+        // clang-format off
         RenderGraphResourceTransition* AddTransition(
-            TL::IAllocator&          allocator,
-            RenderGraphResource&     resource,
-            BufferUsage              usage,
-            TL::Flags<PipelineStage> stage,
-            TL::Flags<Access>        access,
-            BufferSubregion          subregion);
+            TL::IAllocator& allocator, RenderGraphResource& resource, ImageUsage usage, TL::Flags<PipelineStage> stage, TL::Flags<Access> access, ImageSubresourceRange subresourceRange);
+        RenderGraphResourceTransition* AddTransition(
+            TL::IAllocator& allocator, RenderGraphResource& resource, BufferUsage usage, TL::Flags<PipelineStage> stage, TL::Flags<Access> access, BufferSubregion subregion);
+        // clang-format on
+
+        virtual void AddSwapchainPresentBarrier(Device& device, Swapchain& swapchain, RenderGraphResourceTransition& transition) = 0;
+
+        RenderGraphExecuteGroup* GetExecuteGroup() const { return m_group; }
 
     private:
         const char*                                                m_name;
@@ -95,5 +81,7 @@ namespace RHI
         TL::Vector<RenderTargetInfo, TL::IAllocator>               m_colorAttachments;
         TL::Optional<RenderTargetInfo>                             m_depthStencilAttachment;
         TL::Vector<RenderGraphResourceTransition*, TL::IAllocator> m_resourceTransitions;
+    public:
+        RenderGraphExecuteGroup*                                   m_group;
     };
 } // namespace RHI

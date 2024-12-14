@@ -1,3 +1,4 @@
+
 #include "Queue.hpp"
 
 #include <tracy/Tracy.hpp>
@@ -9,6 +10,13 @@
 
 namespace RHI::Vulkan
 {
+    QueueSubmitInfo::QueueSubmitInfo(IDevice& device)
+        : waitSemaphores(device.m_tempAllocator)
+        , commandLists(device.m_tempAllocator)
+        , signalSemaphores(device.m_tempAllocator)
+    {
+    }
+
     IQueue::IQueue()  = default;
     IQueue::~IQueue() = default;
 
@@ -35,17 +43,22 @@ namespace RHI::Vulkan
 
         if (vkCreateSemaphore(device->m_device, &semaphoreInfo, nullptr, &m_timeline) != VK_SUCCESS)
         {
-            m_device->SetDebugName(m_queue, std::format("{}-timeline-semaphore", debugName).c_str());
             return ResultCode::ErrorUnknown;
         }
 
+        m_device->SetDebugName(m_timeline, std::format("{}-timeline-semaphore", debugName).c_str());
         m_timelineValue.store(0);
+
         return ResultCode::Success;
     }
 
     void IQueue::Shutdown()
     {
-        vkDestroySemaphore(m_device->m_device, m_timeline, nullptr);
+        if (m_timeline != VK_NULL_HANDLE)
+        {
+            vkDestroySemaphore(m_device->m_device, m_timeline, nullptr);
+            m_timeline = VK_NULL_HANDLE;
+        }
     }
 
     void IQueue::BeginLabel(const char* name, const float color[4])
@@ -70,77 +83,60 @@ namespace RHI::Vulkan
         }
     }
 
-    uint64_t IQueue::GetTimelineSemaphoreValue() const
+    uint64_t IQueue::GetTimelineValue() const
     {
-        uint64_t value;
+        uint64_t value = 0;
         vkGetSemaphoreCounterValue(m_device->m_device, m_timeline, &value);
         return value;
     }
 
-    uint64_t IQueue::GetTimelineSemaphorePendingValue() const
+    uint64_t IQueue::GetTimelinePendingValue() const
     {
-        return m_timelineValue;
+        return m_timelineValue.load();
     }
 
-    uint64_t IQueue::Submit(const QueueSubmitInfo& submitInfo)
+    uint64_t IQueue::Submit(QueueSubmitInfo& submitInfo)
     {
-        uint64_t nextValue = m_timelineValue.fetch_add(1) + 1;
-
-        VkSemaphoreSubmitInfo waitSemaphoreInfos[64]; // Assuming a reasonable limit
-        uint32_t              waitCount = 0;
-        for (const auto& semaphoreInfo : submitInfo.waitSemaphores)
-        {
-            waitSemaphoreInfos[waitCount++] = semaphoreInfo;
-        }
-
-        VkSemaphoreSubmitInfo signalSemaphoreInfos[64]; // Assuming a reasonable limit
-        uint32_t              signalCount = 0;
-        for (const auto& semaphoreInfo : submitInfo.signalSemaphores)
-        {
-            signalSemaphoreInfos[signalCount++] = semaphoreInfo;
-        }
-
-        signalSemaphoreInfos[signalCount++] = {
-            .sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-            .pNext       = nullptr,
-            .semaphore   = m_timeline,
-            .value       = m_timelineValue,
-            .stageMask   = ConvertPipelineStageFlags(submitInfo.signalStage),
-            .deviceIndex = 0,
-        };
-
-        // Prepare the command buffer infos
-        VkCommandBufferSubmitInfo commandBufferSubmitInfos[64]; // Assuming a reasonable limit
-        uint32_t                  commandBufferCount = 0;
-
-        for (const auto* commandList : submitInfo.commandLists)
-        {
-            if (commandList != nullptr)
-            {
-                commandBufferSubmitInfos[commandBufferCount++] = {
-                    .sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
-                    .pNext         = nullptr,
-                    .commandBuffer = commandList->GetHandle(),
-                    .deviceMask    = 0,
-                };
-            }
-        }
+        submitInfo.AddSignalSemaphore(m_timeline, m_timelineValue + 1, submitInfo.signalStage);
 
         VkSubmitInfo2 submitInfo2 = {
             .sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
             .pNext                    = nullptr,
-            .waitSemaphoreInfoCount   = waitCount,
-            .pWaitSemaphoreInfos      = waitSemaphoreInfos,
-            .commandBufferInfoCount   = commandBufferCount,
-            .pCommandBufferInfos      = commandBufferSubmitInfos,
-            .signalSemaphoreInfoCount = signalCount,
-            .pSignalSemaphoreInfos    = signalSemaphoreInfos,
+            .waitSemaphoreInfoCount   = static_cast<uint32_t>(submitInfo.waitSemaphores.size()),
+            .pWaitSemaphoreInfos      = submitInfo.waitSemaphores.data(),
+            .commandBufferInfoCount   = static_cast<uint32_t>(submitInfo.commandLists.size()),
+            .pCommandBufferInfos      = submitInfo.commandLists.data(),
+            .signalSemaphoreInfoCount = static_cast<uint32_t>(submitInfo.signalSemaphores.size()),
+            .pSignalSemaphoreInfos    = submitInfo.signalSemaphores.data(),
         };
-
         auto result = vkQueueSubmit2(m_queue, 1, &submitInfo2, VK_NULL_HANDLE);
         Validate(result);
-
-        return nextValue;
+        return m_timelineValue.fetch_add(1);
     }
 
+    bool IQueue::WaitTimeline(uint64_t timelineValue, uint64_t duration)
+    {
+        VkSemaphoreWaitInfo waitInfo = {
+            .sType          = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
+            .pNext          = nullptr,
+            .flags          = 0,
+            .semaphoreCount = 1,
+            .pSemaphores    = &m_timeline,
+            .pValues        = &timelineValue,
+        };
+        return vkWaitSemaphores(m_device->m_device, &waitInfo, duration) == VK_SUCCESS;
+    }
+
+    uint64_t IQueue::SignalTimeline(uint64_t timelineValue)
+    {
+        VkSemaphoreSignalInfo signalInfo = {
+            .sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO,
+            .pNext     = nullptr,
+            .semaphore = m_timeline,
+            .value     = timelineValue,
+        };
+        auto result = vkSignalSemaphore(m_device->m_device, &signalInfo);
+        Validate(result);
+        return timelineValue;
+    }
 } // namespace RHI::Vulkan

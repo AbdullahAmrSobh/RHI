@@ -97,34 +97,35 @@ namespace RHI::Vulkan
         StagingBuffer            StagingAllocate(size_t size) override;
         uint64_t                 UploadImage(const ImageUploadInfo& uploadInfo) override;
         void                     CollectResources() override;
+        bool                     WaitForQueueTimelineValue(QueueType queueType, uint64_t value, uint64_t waitDuration) override;
 
     public:
         /// @todo: everything here should be made private
-        TL::Arena                                     m_tempAllocator = TL::Arena();
+        TL::Arena                       m_tempAllocator = TL::Arena();
         // Vulkan instance and core objects
-        VkInstance                                    m_instance;            ///< Vulkan instance handle.
-        VkDebugUtilsMessengerEXT                      m_debugUtilsMessenger; ///< Debug messenger for Vulkan validation layers.
-        VkPhysicalDevice                              m_physicalDevice;      ///< Physical device selected for use.
-        VkDevice                                      m_device;              ///< Logical device handle.
-        VmaAllocator                                  m_deviceAllocator;     ///< Vulkan memory allocator.
-        VulkanFunctions                               m_pfn;                 ///< Function pointers for Vulkan extensions and commands.
+        VkInstance                      m_instance;            ///< Vulkan instance handle.
+        VkDebugUtilsMessengerEXT        m_debugUtilsMessenger; ///< Debug messenger for Vulkan validation layers.
+        VkPhysicalDevice                m_physicalDevice;      ///< Physical device selected for use.
+        VkDevice                        m_device;              ///< Logical device handle.
+        VmaAllocator                    m_deviceAllocator;     ///< Vulkan memory allocator.
+        VulkanFunctions                 m_pfn;                 ///< Function pointers for Vulkan extensions and commands.
         // Resource pools
-        HandlePool<IImage>                            m_imageOwner;            ///< Pool for managing image resource handles.
-        HandlePool<IBuffer>                           m_bufferOwner;           ///< Pool for managing buffer resource handles.
-        HandlePool<IBindGroupLayout>                  m_bindGroupLayoutsOwner; ///< Pool for managing bind group layout handles.
-        HandlePool<IBindGroup>                        m_bindGroupOwner;        ///< Pool for managing bind group handles.
-        HandlePool<IPipelineLayout>                   m_pipelineLayoutOwner;   ///< Pool for managing pipeline layout handles.
-        HandlePool<IGraphicsPipeline>                 m_graphicsPipelineOwner; ///< Pool for managing graphics pipeline handles.
-        HandlePool<IComputePipeline>                  m_computePipelineOwner;  ///< Pool for managing compute pipeline handles.
-        HandlePool<ISampler>                          m_samplerOwner;          ///< Pool for managing sampler handles.
+        HandlePool<IImage>              m_imageOwner;            ///< Pool for managing image resource handles.
+        HandlePool<IBuffer>             m_bufferOwner;           ///< Pool for managing buffer resource handles.
+        HandlePool<IBindGroupLayout>    m_bindGroupLayoutsOwner; ///< Pool for managing bind group layout handles.
+        HandlePool<IBindGroup>          m_bindGroupOwner;        ///< Pool for managing bind group handles.
+        HandlePool<IPipelineLayout>     m_pipelineLayoutOwner;   ///< Pool for managing pipeline layout handles.
+        HandlePool<IGraphicsPipeline>   m_graphicsPipelineOwner; ///< Pool for managing graphics pipeline handles.
+        HandlePool<IComputePipeline>    m_computePipelineOwner;  ///< Pool for managing compute pipeline handles.
+        HandlePool<ISampler>            m_samplerOwner;          ///< Pool for managing sampler handles.
         // Queue and allocator management
-        std::array<TL::Ptr<IQueue>, AsyncQueuesCount> m_queue;              ///< Array of queues for different operations (e.g., graphics, compute).
-        TL::Ptr<DeleteQueue>                          m_destroyQueue;       ///< Queue for handling deferred resource destruction.
-        TL::Ptr<BindGroupAllocator>                   m_bindGroupAllocator; ///< Allocator for bind group resources.
-        TL::Ptr<CommandAllocator>                     m_commandsAllocator;  ///< Allocator for Vulkan command buffers.
-        TL::Ptr<StagingBufferAllocator>               m_stagingAllocator;   ///< Allocator for staging buffers.
+        IQueue                          m_queue[AsyncQueuesCount]; ///< Array of queues for different operations (e.g., graphics, compute).
+        TL::Ptr<DeleteQueue>            m_destroyQueue;            ///< Queue for handling deferred resource destruction.
+        TL::Ptr<BindGroupAllocator>     m_bindGroupAllocator;      ///< Allocator for bind group resources.
+        TL::Ptr<CommandAllocator>       m_commandsAllocator;       ///< Allocator for Vulkan command buffers.
+        TL::Ptr<StagingBufferAllocator> m_stagingAllocator;        ///< Allocator for staging buffers.
         // Frame
-        std::atomic_uint64_t                          m_frameIndex;
+        std::atomic_uint64_t            m_frameIndex;
     };
 
     template<typename T>
@@ -135,7 +136,12 @@ namespace RHI::Vulkan
 
     inline IQueue& IDevice::GetDeviceQueue(QueueType type)
     {
-        return *m_queue[(uint32_t)type].get();
+        auto& queue = m_queue[(uint32_t)type];
+        if (!queue)
+        {
+            return m_queue[(int)QueueType::Graphics];
+        }
+        return queue;
     }
 
 } // namespace RHI::Vulkan

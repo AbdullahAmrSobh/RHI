@@ -52,7 +52,7 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        if (!(barriers.memoryBarriers.empty() && barriers.bufferBarriers.empty() && barriers.imageBarriers.empty()))
+        if ((barriers.memoryBarriers.empty() && barriers.bufferBarriers.empty() && barriers.imageBarriers.empty()) == true)
             return;
 
         VkDependencyInfo dependencyInfo{
@@ -164,7 +164,7 @@ namespace RHI::Vulkan
                 .imageLayout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 .resolveMode        = ConvertResolveMode(passAttachment.resolveMode),
                 .resolveImageView   = resolveAttachment ? resolveAttachment->viewHandle : VK_NULL_HANDLE,
-                .resolveImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                .resolveImageLayout = resolveAttachment ? VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED,
                 .loadOp             = ConvertLoadOp(passAttachment.loadOperation),
                 .storeOp            = ConvertStoreOp(passAttachment.storeOperation),
                 .clearValue         = {clearValue},
@@ -192,7 +192,7 @@ namespace RHI::Vulkan
                     .imageLayout        = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
                     .resolveMode        = ConvertResolveMode(passAttachment->resolveMode),
                     .resolveImageView   = resolveAttachment ? resolveAttachment->viewHandle : VK_NULL_HANDLE,
-                    .resolveImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    .resolveImageLayout = resolveAttachment ? VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED,
                     .loadOp             = ConvertLoadOp(passAttachment->loadOperation),
                     .storeOp            = ConvertStoreOp(passAttachment->storeOperation),
                     .clearValue         = {clearValue},
@@ -209,7 +209,7 @@ namespace RHI::Vulkan
                     .imageLayout        = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                     .resolveMode        = ConvertResolveMode(passAttachment->resolveMode),
                     .resolveImageView   = resolveAttachment ? resolveAttachment->viewHandle : VK_NULL_HANDLE,
-                    .resolveImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    .resolveImageLayout = resolveAttachment ? VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED,
                     .loadOp             = ConvertLoadOp(passAttachment->stencilLoadOperation),
                     .storeOp            = ConvertStoreOp(passAttachment->stencilStoreOperation),
                     .clearValue         = {clearValue},
@@ -351,12 +351,12 @@ namespace RHI::Vulkan
     void ICommandList::SetViewport(const Viewport& viewport)
     {
         ZoneScoped;
-
+        // Flip the viewport so Vulkan NDC is consitant with other APIs
         VkViewport vkViewport{
             .x        = viewport.offsetX,
-            .y        = viewport.offsetY,
+            .y        = viewport.offsetY + viewport.height,
             .width    = viewport.width,
-            .height   = viewport.height,
+            .height   = -viewport.height,
             .minDepth = viewport.minDepth,
             .maxDepth = viewport.maxDepth,
         };
