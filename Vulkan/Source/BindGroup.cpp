@@ -189,20 +189,20 @@ namespace RHI::Vulkan
         uint32_t writeInfosCount = 0;
 
         uint32_t              imageInfosCount = 0;
-        VkDescriptorImageInfo imageInfos[32]  = {};
+        VkDescriptorImageInfo imageInfos[128]  = {};
 
         uint32_t               bufferInfosCount = 0;
-        VkDescriptorBufferInfo bufferInfos[32]  = {};
+        VkDescriptorBufferInfo bufferInfos[128]  = {};
 
         uint32_t              samplerInfosCount = 0;
-        VkDescriptorImageInfo samplerInfos[32]  = {};
+        VkDescriptorImageInfo samplerInfos[128]  = {};
 
-        VkWriteDescriptorSet writeInfos[32 * 3]{};
+        VkWriteDescriptorSet writeInfos[128 * 3]{};
 
         for (const auto& imageUpdate : updateInfo.images)
         {
             const auto&      binding        = shaderBindings[imageUpdate.dstBinding];
-            VkDescriptorType descriptorType = ConvertDescriptorType(binding.type);
+            VkDescriptorType descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 
             for (size_t i = 0; i < imageUpdate.images.size(); ++i)
             {
@@ -228,33 +228,23 @@ namespace RHI::Vulkan
             }
         }
 
-        uint32_t subregionIndex = 0;
         for (const auto& bufferUpdate : updateInfo.buffers)
         {
+            TL_ASSERT(bufferUpdate.buffers.size() == bufferUpdate.subregions.size());
+
             const auto&      binding        = shaderBindings[bufferUpdate.dstBinding];
             VkDescriptorType descriptorType = ConvertDescriptorType(binding.type);
 
             for (size_t i = 0; i < bufferUpdate.buffers.size(); ++i)
             {
-                if (binding.type == BindingType::DynamicUniformBuffer || binding.type == BindingType::DynamicStorageBuffer)
-                {
-                    // For dynamic bindings, subregions are expected
-                    auto subregion                = bufferUpdate.subregions[subregionIndex++];
-                    bufferInfos[bufferInfosCount] = {
-                        .buffer = device->m_bufferOwner.Get(bufferUpdate.buffers[i])->handle,
-                        .offset = subregion.offset,
-                        .range  = subregion.size,
-                    };
-                }
-                else
-                {
-                    // Non-dynamic bindings don't use subregions
-                    bufferInfos[bufferInfosCount] = {
-                        .buffer = device->m_bufferOwner.Get(bufferUpdate.buffers[i])->handle,
-                        .offset = 0,             // Use 0 if no specific subregion offset is required
-                        .range  = VK_WHOLE_SIZE, // Use VK_WHOLE_SIZE if no subregions are specified
-                    };
-                }
+                auto buffer = device->m_bufferOwner.Get(bufferUpdate.buffers[i]);
+                auto subregion = bufferUpdate.subregions[i];
+
+                bufferInfos[bufferInfosCount] = {
+                    .buffer = buffer->handle,
+                    .offset = subregion.offset,
+                    .range  = subregion.size,
+                };
 
                 writeInfos[writeInfosCount++] = {
                     .sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,

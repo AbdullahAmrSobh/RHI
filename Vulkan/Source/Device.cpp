@@ -526,7 +526,10 @@ namespace RHI::Vulkan
         m_pfn.m_vkCmdBeginConditionalRenderingEXT = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdBeginConditionalRenderingEXT);
         m_pfn.m_vkCmdEndConditionalRenderingEXT   = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdEndConditionalRenderingEXT);
 
+        VkPhysicalDeviceProperties properties {};
+        vkGetPhysicalDeviceProperties(m_physicalDevice, &properties);
         m_limits = TL::CreatePtr<DeviceLimits>();
+        m_limits->minUniformBufferOffsetAlignment = properties.limits.minUniformBufferOffsetAlignment;
 
         ResultCode resultCode;
 
@@ -905,7 +908,7 @@ namespace RHI::Vulkan
                 .pNext               = nullptr,
                 .srcStageMask        = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
                 .srcAccessMask       = VK_ACCESS_2_TRANSFER_WRITE_BIT,
-                .dstStageMask        = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
+                .dstStageMask        = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
                 .dstAccessMask       = VK_ACCESS_2_NONE,
                 .oldLayout           = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                 .newLayout           = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -920,7 +923,9 @@ namespace RHI::Vulkan
         QueueSubmitInfo submitInfo(*this);
         submitInfo.AddCommandList(commandList->GetHandle());
         submitInfo.signalStage = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-        return m_queue[(int)QueueType::Transfer].Submit(submitInfo);
+        auto res = m_queue[(int)QueueType::Transfer].Submit(submitInfo);
+        vkDeviceWaitIdle(m_device);
+        return res;
     }
 
     void IDevice::CollectResources()

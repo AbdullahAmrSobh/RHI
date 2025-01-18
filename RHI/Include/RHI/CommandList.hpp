@@ -107,7 +107,7 @@ namespace RHI
     };
 
     /// @brief Parameters for drawing primitives.
-    struct DrawParameters
+    struct DrawParameters // TODO: remove this
     {
         uint32_t elementsCount = 0; ///< Number of elements to draw.
         uint32_t instanceCount = 1; ///< Number of instances to draw.
@@ -148,6 +148,23 @@ namespace RHI
     {
         const char* name      = nullptr;
         QueueType   queueType = QueueType::Graphics;
+    };
+
+    struct DrawIndirectCommandArgs
+    {
+        uint32_t vertexCount   = 0;
+        uint32_t instanceCount = 1;
+        uint32_t firstVertex   = 0;
+        uint32_t firstInstance = 0;
+    };
+
+    struct DrawIndexedIndirectCommandArgs
+    {
+        uint32_t indexCount    = 0;
+        uint32_t instanceCount = 1;
+        uint32_t firstIndex    = 0;
+        int32_t  vertexOffset  = 0;
+        uint32_t firstInstance = 0;
     };
 
     /// @brief Represents a list of commands to be executed.

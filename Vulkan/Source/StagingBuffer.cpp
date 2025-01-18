@@ -44,16 +44,23 @@ namespace RHI::Vulkan
             }
         }
 
-        std::string      name = std::format("StagingBuffer-{}", m_pages.size());
+        std::string name = std::format("StagingBuffer-{}", m_pages.size());
         BufferCreateInfo stagingBufferCI{
             .name       = name.c_str(),
             .hostMapped = true,
             .usageFlags = BufferUsage::CopyDst | BufferUsage::CopySrc,
-            .byteSize   = std::max(size, (size_t)6.4e+7),
+            // .byteSize   = std::max(size, static_cast<size_t>(64 * 1024 * 1024)), // 64 MB
+            .byteSize   = size,
         };
 
         auto buffer = m_device->CreateBuffer(stagingBufferCI).GetValue();
-        m_pages.push_back({.ptr = m_device->MapBuffer(buffer), .buffer = buffer, .offset = size, .size = stagingBufferCI.byteSize});
+        m_pages.push_back({
+            .ptr    = m_device->MapBuffer(buffer),
+            .buffer = buffer,
+            .offset = size,
+            .size   = stagingBufferCI.byteSize
+        });
+
         return StagingBuffer{
             .ptr    = m_pages.back().ptr,
             .buffer = m_pages.back().buffer,

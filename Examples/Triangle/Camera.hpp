@@ -6,10 +6,6 @@
  * This code is licensed under the MIT license (MIT) (http://opensource.org/licenses/MIT)
  */
 
-// #define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#define GLM_FORCE_LEFT_HANDED
-
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -95,8 +91,6 @@ private:
     }
 
 public:
-    class Window* m_window;
-
     inline glm::mat4 GetProjection() const
     {
         return m_matrices.viewToClipMat;
@@ -124,20 +118,23 @@ public:
 
     inline glm::vec3 GetPosition() const { return m_position; }
 
-    inline void SetPerspective(float fov, float aspect, float znear, float zfar)
+    inline void SetPerspective(float width, float height, float fov, float znear, float zfar)
     {
         this->m_fov              = fov;
         this->m_znear            = znear;
         this->m_zfar             = zfar;
+        auto aspect              = width / height;
         m_matrices.viewToClipMat = glm::perspectiveLH_ZO(glm::radians(fov), aspect, znear, zfar);
     }
 
-    inline void SetOrthographic(float left, float right, float bottom, float top, float znear, float zfar)
+    inline void SetOrthographic(float width, float height, float znear, float zfar)
     {
         this->m_fov              = 0;
         this->m_znear            = znear;
         this->m_zfar             = zfar;
-        m_matrices.viewToClipMat = glm::orthoLH_ZO(left, right, bottom, top, znear, zfar);
+        float halfWidth          = width / 2.0f;
+        float halfHeight         = height / 2.0f;
+        m_matrices.viewToClipMat = glm::orthoLH_ZO(-halfWidth, halfWidth, -halfHeight, halfHeight, znear, zfar);
     }
 
     inline void SetPosition(glm::vec3 position)
@@ -201,32 +198,24 @@ public:
         UpdateViewMatrix();
     }
 
-    void ProcessEvent(class Event& event);
+    void ProcessEvent(class Event& event, Window& window);
 };
 
-inline void Camera::ProcessEvent(Event& e)
+inline void Camera::ProcessEvent(Event& e, Window& window)
 {
     switch (e.GetEventType())
     {
     case EventType::WindowResize:
         {
-            auto& event = (WindowResizeEvent&)e;
+            auto& event          = (WindowResizeEvent&)e;
+            auto [width, height] = event.GetSize();
             if (projectionMode == ProjectionMode::Perspective)
             {
-                SetPerspective(60.0f, float(event.GetSize().width) / float(event.GetSize().height), m_znear, m_zfar);
+                SetPerspective(width, height, 60.0f, m_znear, m_zfar);
             }
             else if (projectionMode == ProjectionMode::Orthographic)
             {
-                auto [width, height] = event.GetSize();
-                auto left            = -float(width) / 2.0f;
-                auto right           = float(width) / 2.0f;
-                auto top             = float(height) / 2.0f;
-                auto bottom          = -float(height) / 2.0f;
-                SetOrthographic(left, right, bottom, top, m_znear, m_zfar);
-            }
-            else
-            {
-                TL_UNREACHABLE();
+                SetOrthographic(width, height, m_znear, m_zfar);
             }
             break;
         }
@@ -261,9 +250,9 @@ inline void Camera::ProcessEvent(Event& e)
             [[maybe_unused]] auto& event = (MouseMovedEvent&)e;
 
             // Window returns cursor relative to top-left
-            if (m_window->IsMouseButtonPressed(MouseCode::ButtonLeft))
+            if (window.IsMouseButtonPressed(MouseCode::ButtonLeft))
             {
-                auto [x, y] = m_window->GetCursrorDeltaPosition();
+                auto [x, y] = window.GetCursrorDeltaPosition();
                 y *= -1;
                 Rotate({x, y});
             }
