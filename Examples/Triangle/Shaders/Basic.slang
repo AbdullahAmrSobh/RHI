@@ -51,8 +51,24 @@ GBufferOutput PSMain(FragmentShaderInput input)
     let material = GetMaterialData(input.normal, input.uv);
     let surface = Surface(input.wsPosition, material.normal, input.normal, material.albedo.rgb, material.metallic, material.roughness);
 
+    let light = scene.sceneView.directionalLights[0];
+
+    let l = normalize(-light.direction);
+    let v = surface.viewDir;
+    let n = material.normal;
+    let h = normalize(l + v);
+
+    let NdotL = saturate(dot(n, l));
+    let NdotV = saturate(dot(n, v));
+    let NdotH = saturate(dot(n, h));
+    let VdotH = saturate(dot(v, h));
+
+    let Fd = DiffuseLambert(surface.diffuseColor);
+    let Fr = SpecularGGX(surface.specularColor, surface.roughnessA, NdotV, NdotL, NdotH, VdotH);
+    let F  = (Fd + Fr) * NdotL * light.color * light.intensity;
+
     GBufferOutput output;
-    output.albedo = material.albedo;
+    output.albedo = float4(F, 1.0);
     output.normal = float4(material.normal, 1.0);
     output.position = float4(input.wsPosition, 1.0);
     output.material.x = material.metallic;

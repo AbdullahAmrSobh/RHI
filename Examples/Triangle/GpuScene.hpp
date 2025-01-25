@@ -1,4 +1,39 @@
 
+
+#include <RHI/RHI.hpp>
+
+#include <TL/Allocator/MemPlumber.hpp>
+#include <TL/Defer.hpp>
+#include <TL/FileSystem/FileSystem.hpp>
+#include <TL/Log.hpp>
+#include <TL/Utils.hpp>
+
+#include <RHI-Vulkan/Loader.hpp>
+#include <glm/ext.hpp>
+#include <glm/glm.hpp>
+#include <glm/gtc/constants.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
+#include <glm/gtx/quaternion.hpp>
+#include <tracy/Tracy.hpp>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include <fastgltf/core.hpp>
+#include <fastgltf/tools.hpp>
+#include <fastgltf/types.hpp>
+
+#include "Camera.hpp"
+#include "Examples-Base/ApplicationBase.hpp"
+#include "ImGuiRenderer.hpp"
+#include "dds_image/dds.hpp"
+#include "stb_image.h"
+
+
+using namespace Examples;
+
+template<typename T>
+using Handle = RHI::Handle<T>;
+
+
 // GpuSceneManager class to manage GPU resources for the scene
 class GpuSceneManager
 {

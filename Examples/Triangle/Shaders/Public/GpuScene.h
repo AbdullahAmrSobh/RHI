@@ -17,6 +17,9 @@ struct Scene
     U32     pointLightsCount;       /// Number of point lights.
     U32     spotLightsCount;        /// Number of spot lights.
     U32     areaLightsCount;        /// Number of area lights.
+
+    // TODO: Remove later. Lights should be in SSBO.
+    DirectionalLight directionalLights[4];
 };
 
 struct PbrMaterial

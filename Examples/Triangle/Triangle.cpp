@@ -626,7 +626,7 @@ void Playground::OnInit()
 
     m_imguiRenderer.Init({m_device, RHI::Format::RGBA8_UNORM});
 
-    ImGuiIO& io = ImGui::GetIO();
+    ImGuiIO& io      = ImGui::GetIO();
     io.DisplaySize.x = float(width);
     io.DisplaySize.y = float(height);
 }
@@ -675,6 +675,7 @@ void Playground::OnUpdate(Timestep ts)
             .pointLightsCount       = (uint32_t)m_pointLights.size(),
             .spotLightsCount        = (uint32_t)m_spotLights.size(),
             .areaLightsCount        = (uint32_t)m_areaLights.size(),
+            .directionalLights = {m_scene.directionalLights[0]},
         };
 
     auto ptr = (char*)m_device->MapBuffer(m_uniformBufferPool);
@@ -761,9 +762,25 @@ void Playground::Render()
                 });
             }
 
+            static glm::vec3 color     = {1, 1, 1};
+            static glm::vec3 direction = glm::normalize(-Constants::Up + (0.1f * Constants::Forward));
+            static float     intensity = 1.0;
+
             ImGui::NewFrame();
-            ImGui::Text("Basic scene: ");
+            ImGui::Text("Scene Lights: Dir Light 0");
+            ImGui::ColorEdit3("Dir Light Color", &color.x);
+            ImGui::SliderFloat("Dir Light Intensity", &intensity, 0.0, 100.0f);
+            ImGui::SliderFloat3("Dir Light Direction", &direction.x, -1.0f, 1.0f);
+
             ImGui::Render();
+
+            // Update scene lights
+            m_scene.directionalLightsCount = 1;
+            m_scene.directionalLights[0]         = {
+                        .color     = color,
+                        .intensity = intensity,
+                        .direction = direction,
+            };
 
             m_imguiRenderer.RenderDrawData(ImGui::GetDrawData(), commandList);
         },

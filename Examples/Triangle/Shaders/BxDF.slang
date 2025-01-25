@@ -77,10 +77,11 @@ struct Surface
         this.vertexNormal = vertexNormal;
         this.metallic = metallic;
         this.roughnessA = roughnessToPerceptualRoughness(roughness);
-        this.roughnessA2 = this.roughnessA * this.roughnessA2;
-        this.albedo = albedo,
+        this.roughnessA2 = this.roughnessA * this.roughnessA;
+        this.albedo = albedo;
         this.diffuseColor = computeDiffuseColor(this.albedo, this.metallic);
         this.specularColor = computeF0(this.albedo, this.metallic, MIN_F0);
+        // this.specularColor = albedo.rgb * metallic;
     }
 };
 
@@ -122,7 +123,7 @@ half DielectricSpecularToF0(half Specular)
 /// @returns The computed F0 reflectance value.
 float3 computeF0(float3 baseColor, float metallic, float reflectance)
 {
-    return lerp(DielectricSpecularToF0(half(reflectance)).xxx, baseColor, metallic);
+    return lerp(DielectricSpecularToF0(half(reflectance)).xxx, baseColor, 1.0 - metallic);
 }
 
 /// Computes the default Fresnel reflectance at normal incidence (F0)
