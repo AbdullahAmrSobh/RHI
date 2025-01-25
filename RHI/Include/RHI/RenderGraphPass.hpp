@@ -81,7 +81,8 @@ namespace RHI
         TL::Vector<RenderTargetInfo, TL::IAllocator>               m_colorAttachments;
         TL::Optional<RenderTargetInfo>                             m_depthStencilAttachment;
         TL::Vector<RenderGraphResourceTransition*, TL::IAllocator> m_resourceTransitions;
+
     public:
-        RenderGraphExecuteGroup*                                   m_group;
+        RenderGraphExecuteGroup* m_group;
     };
 } // namespace RHI

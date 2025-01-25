@@ -88,7 +88,7 @@ namespace RHI::Vulkan
 
         auto& queue = device->GetDeviceQueue(QueueType::Graphics);
 
-        m_currentFrameIndex = m_currentFrameIndex % FramesInFlightCount;
+        m_currentFrameIndex             = m_currentFrameIndex % FramesInFlightCount;
         auto& currentFrameTimelineValue = m_framesInFlightTimelineValue[m_currentFrameIndex];
 
         // Wait for the graphics queue to catch up to the current frame
@@ -109,8 +109,8 @@ namespace RHI::Vulkan
     void IRenderGraph::OnGraphExecutionEnd()
     {
         auto& currentFrameTimelineValue = m_framesInFlightTimelineValue[m_currentFrameIndex];
-        currentFrameTimelineValue = m_queueTimelineFrameOffsets[(int)QueueType::Graphics];
-        auto  device      = (IDevice*)m_device;
+        currentFrameTimelineValue       = m_queueTimelineFrameOffsets[(int)QueueType::Graphics];
+        auto device                     = (IDevice*)m_device;
         device->m_frameIndex++;
     }
 

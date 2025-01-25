@@ -25,6 +25,7 @@
 
 #include "Camera.hpp"
 #include "Examples-Base/ApplicationBase.hpp"
+#include "ImGuiRenderer.hpp"
 #include "dds_image/dds.hpp"
 #include "stb_image.h"
 
@@ -35,70 +36,11 @@ using Handle = RHI::Handle<T>;
 
 namespace Shader // TODO: this should be reflected from slang-shaders using some tool
 {
-    static constexpr uint32_t kMaxDirLights   = 32; // Maximum number of directional lights.
-    static constexpr uint32_t kMaxPointLights = 32; // Maximum number of point lights.
-    static constexpr uint32_t kMaxSpotLights  = 32; // Maximum number of spot lights.
-
-    struct alignas(16) DirectionalLight
-    {
-        alignas(16) glm::vec3 direction; // 12 bytes
-        float intensity;                 // 4 bytes
-        alignas(16) glm::vec3 color;     // 12 bytes, align to 16 bytes
-    };
-
-    struct alignas(16) PointLight
-    {
-        alignas(16) glm::vec3 position; // 12 bytes
-        float radius;                   // 4 bytes
-        alignas(16) glm::vec3 color;    // 12 bytes, align to 16 bytes
-        float intensity;                // 4 bytes
-    };
-
-    struct alignas(16) SpotLight
-    {
-        alignas(16) glm::vec3 position;  // 12 bytes
-        float radius;                    // 4 bytes
-        alignas(16) glm::vec3 direction; // 12 bytes, align to 16 bytes
-        float angle;                     // 4 bytes
-        alignas(16) glm::vec3 color;     // 12 bytes, align to 16 bytes
-        float intensity;                 // 4 bytes
-    };
-
-    struct alignas(16) Scene
-    {
-        alignas(16) glm::mat4x4 worldToViewMatrix; // 64 bytes
-        alignas(16) glm::mat4x4 viewToClipMatrix;  // 64 bytes
-        // alignas(16) glm::mat4x4 viewToWorldMatrix;        // 64 bytes
-        alignas(16) glm::vec3 cameraPosition;             // 12 bytes (align to 16 bytes)
-        alignas(16) glm::vec3 ambientIntensity;           // 12 bytes (align to 16 bytes)
-        uint32_t         numDirectionalLights;            // 4 bytes
-        uint32_t         numPointLights;                  // 4 bytes
-        uint32_t         numSpotLights;                   // 4 bytes
-        DirectionalLight directionalLight[kMaxDirLights]; // Aligned array of DirectionalLight
-        PointLight       pointLights[kMaxPointLights];    // Aligned array of PointLight
-        SpotLight        spotLights[kMaxSpotLights];      // Aligned array of SpotLight
-    };
-
-    struct alignas(16) Material
-    {
-        alignas(16) glm::vec3 albedo;       // 12 bytes
-        uint32_t albedoMapIndex;            // 4 bytes (align to 16 bytes)
-        uint32_t normalMapIndex;            // 4 bytes
-        float    metallic;                  // 4 bytes
-        float    roughness;                 // 4 bytes
-        uint32_t metallicRoughnessMapIndex; // 4 bytes (align to 16 bytes)
-    };
-
-    struct alignas(16) PerDraw
-    {
-        alignas(16) glm::mat4x4 modelToWorldMatrix; // 64 bytes
-        Material material;                          // Material struct, aligned to 16 bytes
-    };
+#include "Shaders/Public/GpuScene.h"
 
     inline constexpr auto kUniformMinOffsetAlignment = 64;
     inline constexpr auto kAlignedSceneSize          = (sizeof(Scene) + kUniformMinOffsetAlignment - 1) & ~(kUniformMinOffsetAlignment - 1);
-    inline constexpr auto kAlignedPerDrawSize        = (sizeof(PerDraw) + kUniformMinOffsetAlignment - 1) & ~(kUniformMinOffsetAlignment - 1);
-
+    inline constexpr auto kAlignedPerDrawSize        = (sizeof(Drawable) + kUniformMinOffsetAlignment - 1) & ~(kUniformMinOffsetAlignment - 1);
 } // namespace Shader
 
 struct SceneDrawable
@@ -144,14 +86,14 @@ inline static glm::quat convertQuat(const fastgltf::math::fquat& quat)
 
 inline static TL::Ptr<RHI::ShaderModule> LoadShaderModule(RHI::Device* device, const char* path)
 {
-    auto                 code = TL::ReadBinaryFile(path);
-    TL::Vector<uint32_t> spirv(code.size / sizeof(uint32_t), 0);
-    memcpy(spirv.data(), code.ptr, code.size);
-    TL::Allocator::Release(code, 1);
-    return device->CreateShaderModule({
+    auto code   = TL::ReadBinaryFile(path);
+    // NOTE: Code might not be correctly aligned here?
+    auto module = device->CreateShaderModule({
         .name = path,
-        .code = spirv,
+        .code = {(uint32_t*)code.ptr, code.size / 4},
     });
+    TL::Allocator::Release(code, 1);
+    return module;
 }
 
 class Playground final : public ApplicationBase
@@ -167,11 +109,23 @@ public:
     RHI::Swapchain*        m_swapchain;
     RHI::RenderGraph*      m_renderGraph;
     RHI::RenderGraphImage* m_colorAttachment;
+    RHI::RenderGraphImage* m_positionAttachment;
+    RHI::RenderGraphImage* m_normalsAttachment;
+    RHI::RenderGraphImage* m_materialAttachment;
     RHI::RenderGraphImage* m_depthAttachment;
 
+    ImGuiRenderer m_imguiRenderer;
+
     // Camera and scene data
-    Shader::Scene                                   m_scene;
-    TL::Vector<Shader::PerDraw>                     m_perDraws;
+    Shader::Scene                m_scene;
+    TL::Vector<Shader::Drawable> m_perDraws;
+
+    // Scene Lights
+    TL::Vector<Shader::DirectionalLight> m_directionalLights;
+    TL::Vector<Shader::PointLight>       m_pointLights;
+    TL::Vector<Shader::SpotLight>        m_spotLights;
+    TL::Vector<Shader::AreaLight>        m_areaLights;
+
     TL::Vector<RHI::DrawIndexedIndirectCommandArgs> m_drawIndirectArgs;
     uint32_t                                        m_activeCameraIndex = 0;
     TL::Vector<Camera>                              m_cameras           = {Camera()};
@@ -386,45 +340,48 @@ void Playground::LoadScene()
                 auto light = asset.lights[node.lightIndex.value()];
             }
 
-            // if (node.cameraIndex)
-            // {
-            //     auto [camera, name] = asset.cameras[node.cameraIndex.value()];
-            //     Camera newCam;
+            if (node.cameraIndex)
+            {
+                m_activeCameraIndex = m_cameras.size();
 
-            //     glm::vec3 position;
-            //     glm::quat rotation;
-            //     glm::vec3 scale, skew;
-            //     glm::vec4 perspective;
+                auto [camera, name] = asset.cameras[node.cameraIndex.value()];
+                Camera newCam;
 
-            //     // Decompose the transformation matrix
-            //     if (glm::decompose(matrix, scale, rotation, position, skew, perspective))
-            //     {
-            //         newCam.SetPosition(position);
-            //         newCam.SetRotation(glm::eulerAngles(rotation)); // Convert quaternion to Euler angles
-            //     }
-            //     else
-            //     {
-            //         TL_UNREACHABLE_MSG("Failed to decompose transformation matrix for camera.");
-            //     }
+                glm::vec3 position;
+                glm::quat rotation;
+                glm::vec3 scale, skew;
+                glm::vec4 perspective;
 
-            //     if (auto ortho = std::get_if<fastgltf::Camera::Orthographic>(&camera))
-            //     {
-            //         newCam.SetOrthographic(-ortho->xmag, ortho->xmag, ortho->ymag, -ortho->ymag, ortho->znear, ortho->zfar);
-            //     }
-            //     else if (auto perspective = std::get_if<fastgltf::Camera::Perspective>(&camera))
-            //     {
-            //         newCam.SetPerspective(
-            //             perspective->yfov,
-            //             perspective->aspectRatio.value_or(float(width) / float(height)),
-            //             perspective->znear,
-            //             perspective->zfar.value_or(10000.0f));
-            //     }
-            //     else
-            //     {
-            //         TL_UNREACHABLE_MSG("Unknown camera type.");
-            //     }
-            //     m_cameras.push_back(newCam);
-            // }
+                // Decompose the transformation matrix
+                if (glm::decompose(matrix, scale, rotation, position, skew, perspective))
+                {
+                    position.y *= -1.0f;
+                    newCam.SetPosition(position);
+                    newCam.SetRotation(glm::eulerAngles(rotation)); // Convert quaternion to Euler angles
+                }
+                else
+                {
+                    TL_UNREACHABLE_MSG("Failed to decompose transformation matrix for camera.");
+                }
+
+                if (auto ortho = std::get_if<fastgltf::Camera::Orthographic>(&camera))
+                {
+                    newCam.SetOrthographic(ortho->xmag * 2.0f, ortho->ymag * 2.0f, ortho->znear, ortho->zfar);
+                }
+                else if (auto perspective = std::get_if<fastgltf::Camera::Perspective>(&camera))
+                {
+                    // newCam.SetPerspective(
+                    //     perspective->yfov,
+                    //     perspective->aspectRatio.value_or(float(width) / float(height)),
+                    //     perspective->znear,
+                    //     perspective->zfar.value_or(10000.0f));
+                }
+                else
+                {
+                    TL_UNREACHABLE_MSG("Unknown camera type.");
+                }
+                m_cameras.push_back(newCam);
+            }
         });
 
     // Create and upload buffers
@@ -437,21 +394,15 @@ void Playground::LoadScene()
     {
         m_totalIndexCount  = indexBufferData.size();
         m_totalVertexCount = vertexBufferPositionsData.size();
-
-        auto ptr = (char*)m_device->MapBuffer(m_geometryBufferPool);
-
+        auto ptr           = (char*)m_device->MapBuffer(m_geometryBufferPool);
         memcpy(ptr, indexBufferData.data(), indexBufferData.size() * sizeof(uint32_t));
         ptr += indexBufferData.size() * sizeof(uint32_t);
-
         memcpy(ptr, vertexBufferPositionsData.data(), vertexBufferPositionsData.size() * sizeof(glm::vec3));
         ptr += vertexBufferPositionsData.size() * sizeof(glm::vec3);
-
         memcpy(ptr, vertexBufferNormalsData.data(), vertexBufferNormalsData.size() * sizeof(glm::vec3));
         ptr += vertexBufferNormalsData.size() * sizeof(glm::vec3);
-
         memcpy(ptr, vertexBufferTexcoordsData.data(), vertexBufferTexcoordsData.size() * sizeof(glm::vec2));
         ptr += vertexBufferTexcoordsData.size() * sizeof(glm::vec2);
-
         m_device->UnmapBuffer(m_geometryBufferPool);
     }
 
@@ -459,18 +410,23 @@ void Playground::LoadScene()
     {
         const auto& assetMaterial = asset.materials[drawable.materialIndex];
 
-        Shader::PerDraw perDraw{};
-        perDraw.modelToWorldMatrix = drawable.modelToWorldMatrix;
-        perDraw.material.albedo    = convertVec4(assetMaterial.pbrData.baseColorFactor);
-        perDraw.material.metallic  = assetMaterial.pbrData.metallicFactor;
-        perDraw.material.roughness = assetMaterial.pbrData.roughnessFactor;
-        auto assignTextureIndex = [](const auto& texture) -> uint32_t {
+        auto assignTextureIndex = [](const auto& texture) -> uint32_t
+        {
             return texture ? texture->textureIndex : UINT32_MAX;
         };
-        perDraw.material.albedoMapIndex = assignTextureIndex(assetMaterial.pbrData.baseColorTexture);
-        perDraw.material.normalMapIndex = assignTextureIndex(assetMaterial.normalTexture);
-        perDraw.material.metallicRoughnessMapIndex = assignTextureIndex(assetMaterial.pbrData.metallicRoughnessTexture);
-        m_perDraws.push_back(perDraw);
+
+        Shader::Drawable drawData{
+            .modelToWorldMatrix = drawable.modelToWorldMatrix,
+            .material           = {
+                          .albedo                    = convertVec4(assetMaterial.pbrData.baseColorFactor),
+                          .albedoMapIndex            = assignTextureIndex(assetMaterial.pbrData.baseColorTexture),
+                          .normalMapIndex            = assignTextureIndex(assetMaterial.normalTexture),
+                          .roughness                 = assetMaterial.pbrData.metallicFactor,
+                          .metallic                  = assetMaterial.pbrData.roughnessFactor,
+                          .metallicRoughnessMapIndex = assignTextureIndex(assetMaterial.pbrData.metallicRoughnessTexture),
+            },
+        };
+        m_perDraws.push_back(drawData);
         m_drawIndirectArgs.push_back(drawable.drawIndirectArgs);
     }
 
@@ -484,7 +440,7 @@ void Playground::LoadScene()
         auto ptr = (char*)m_device->MapBuffer(m_uniformBufferPool) + Shader::kAlignedSceneSize;
         for (size_t i = 0; i < m_perDraws.size(); i++)
         {
-            memcpy(ptr, m_perDraws.data() + i, sizeof(Shader::PerDraw));
+            memcpy(ptr, m_perDraws.data() + i, sizeof(Shader::Drawable));
             ptr += Shader::kAlignedPerDrawSize;
         }
         m_device->UnmapBuffer(m_uniformBufferPool);
@@ -518,6 +474,31 @@ void Playground::OnInit()
 
     m_renderGraph     = m_device->CreateRenderGraph();
     m_colorAttachment = m_renderGraph->ImportSwapchain("Color", *m_swapchain, RHI::Format::RGBA8_UNORM);
+
+    m_normalsAttachment = m_renderGraph->CreateImage({
+        .name       = "Normal",
+        .usageFlags = RHI::ImageUsage::Depth,
+        .type       = RHI::ImageType::Image2D,
+        .size       = {width, height, 1},
+        .format     = RHI::Format::RGBA32_FLOAT,
+    });
+
+    m_positionAttachment = m_renderGraph->CreateImage({
+        .name       = "Position",
+        .usageFlags = RHI::ImageUsage::Depth,
+        .type       = RHI::ImageType::Image2D,
+        .size       = {width, height, 1},
+        .format     = RHI::Format::RGBA32_FLOAT,
+    });
+
+    m_materialAttachment = m_renderGraph->CreateImage({
+        .name       = "Material",
+        .usageFlags = RHI::ImageUsage::Depth,
+        .type       = RHI::ImageType::Image2D,
+        .size       = {width, height, 1},
+        .format     = RHI::Format::RG8_UNORM,
+    });
+
     m_depthAttachment = m_renderGraph->CreateImage({
         .name       = "Depth",
         .usageFlags = RHI::ImageUsage::Depth,
@@ -589,7 +570,7 @@ void Playground::OnInit()
             },
         },
         .renderTargetLayout = {
-            .colorAttachmentsFormats = RHI::Format::RGBA8_UNORM,
+            .colorAttachmentsFormats = {RHI::Format::RGBA8_UNORM, RHI::Format::RGBA32_FLOAT, RHI::Format::RGBA32_FLOAT, RHI::Format::RG8_UNORM},
             .depthAttachmentFormat   = RHI::Format::D32,
         },
         .colorBlendState    = {.blendStates = {{.blendEnable = true}}},
@@ -642,6 +623,12 @@ void Playground::OnInit()
                 },
             },
         });
+
+    m_imguiRenderer.Init({m_device, RHI::Format::RGBA8_UNORM});
+
+    ImGuiIO& io = ImGui::GetIO();
+    io.DisplaySize.x = float(width);
+    io.DisplaySize.y = float(height);
 }
 
 void Playground::OnShutdown()
@@ -668,21 +655,27 @@ void Playground::OnUpdate(Timestep ts)
     auto [width, height] = m_window->GetWindowSize();
 
     auto& camera = GetActiveCamera();
-    camera.Update(ts);
     camera.SetPerspective(width, height, 30.0f, 0.0001f, 1000.0f);
+    camera.Update(ts);
+
+    auto worldToViewMatrix = camera.GetView();
+    auto viewToClipMatrix  = camera.GetProjection();
+    auto worldToClipMatrix = viewToClipMatrix * worldToViewMatrix;
 
     m_scene =
         {
-            .worldToViewMatrix = camera.GetView(),
-            .viewToClipMatrix  = camera.GetProjection(),
-            // .viewToClipMatrix  = camera.GetProjection() * camera.GetView(),
-            // .viewToClipMatrix  =  camera.GetView(),
-            .cameraPosition    = camera.GetPosition(),
+            .worldToViewMatrix      = worldToViewMatrix,
+            .viewToClipMatrix       = viewToClipMatrix,
+            .worldToClipMatrix      = worldToClipMatrix,
+            .clipToViewMatrix       = glm::inverse(viewToClipMatrix),
+            .viewToWorldMatrix      = glm::inverse(worldToViewMatrix),
+            .clipToWorldMatrix      = glm::inverse(worldToClipMatrix),
+            .cameraPosition         = camera.GetPosition(),
+            .directionalLightsCount = (uint32_t)m_directionalLights.size(),
+            .pointLightsCount       = (uint32_t)m_pointLights.size(),
+            .spotLightsCount        = (uint32_t)m_spotLights.size(),
+            .areaLightsCount        = (uint32_t)m_areaLights.size(),
         };
-    m_scene.numDirectionalLights          = 1;
-    m_scene.directionalLight[0].color     = {1.0f, 1.0f, 1.0f};
-    m_scene.directionalLight[0].direction = {0.4f, -1.0f, -0.4f};
-    m_scene.directionalLight[0].intensity = 1.0f;
 
     auto ptr = (char*)m_device->MapBuffer(m_uniformBufferPool);
     memcpy(ptr, &m_scene, sizeof(Shader::Scene));
@@ -701,6 +694,9 @@ void Playground::Render()
         .setupCallback = [&](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
         {
             m_renderGraph->UseRenderTarget(pass, {.attachment = m_colorAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
+            m_renderGraph->UseRenderTarget(pass, {.attachment = m_positionAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
+            m_renderGraph->UseRenderTarget(pass, {.attachment = m_normalsAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
+            m_renderGraph->UseRenderTarget(pass, {.attachment = m_materialAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
             m_renderGraph->UseRenderTarget(pass, {.attachment = m_depthAttachment, .clearValue = {.depthStencil = {1.0f, 0}}});
         },
         .compileCallback = [&](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
@@ -764,6 +760,12 @@ void Playground::Render()
                     .vertexOffset  = drawArgs.vertexOffset,
                 });
             }
+
+            ImGui::NewFrame();
+            ImGui::Text("Basic scene: ");
+            ImGui::Render();
+
+            m_imguiRenderer.RenderDrawData(ImGui::GetDrawData(), commandList);
         },
     });
 
@@ -807,6 +809,8 @@ void Playground::OnEvent(Event& event)
         GetActiveCamera().ProcessEvent(event, *m_window);
         break;
     }
+
+    m_imguiRenderer.ProcessEvent(event);
 }
 
 #include <Examples-Base/Entry.hpp>

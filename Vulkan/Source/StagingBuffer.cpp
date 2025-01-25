@@ -44,7 +44,7 @@ namespace RHI::Vulkan
             }
         }
 
-        std::string name = std::format("StagingBuffer-{}", m_pages.size());
+        std::string      name = std::format("StagingBuffer-{}", m_pages.size());
         BufferCreateInfo stagingBufferCI{
             .name       = name.c_str(),
             .hostMapped = true,
@@ -54,12 +54,10 @@ namespace RHI::Vulkan
         };
 
         auto buffer = m_device->CreateBuffer(stagingBufferCI).GetValue();
-        m_pages.push_back({
-            .ptr    = m_device->MapBuffer(buffer),
-            .buffer = buffer,
-            .offset = size,
-            .size   = stagingBufferCI.byteSize
-        });
+        m_pages.push_back({.ptr    = m_device->MapBuffer(buffer),
+                           .buffer = buffer,
+                           .offset = size,
+                           .size   = stagingBufferCI.byteSize});
 
         return StagingBuffer{
             .ptr    = m_pages.back().ptr,

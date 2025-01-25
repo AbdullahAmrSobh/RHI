@@ -19,18 +19,18 @@ namespace RHI::Vulkan
         ResultCode Init(IDevice* device);
         void       Shutdown();
 
-        Pass*                    CreatePass(const PassCreateInfo& createInfo) override;
-        void                     OnGraphExecutionBegin() override;
-        void                     OnGraphExecutionEnd() override;
-        uint64_t                 ExecutePassGroup(const RenderGraphExecuteGroup& group, QueueType queueType) override;
+        Pass*    CreatePass(const PassCreateInfo& createInfo) override;
+        void     OnGraphExecutionBegin() override;
+        void     OnGraphExecutionEnd() override;
+        uint64_t ExecutePassGroup(const RenderGraphExecuteGroup& group, QueueType queueType) override;
 
     private:
         uint64_t m_queueTimelineFrameOffsets[AsyncQueuesCount];
 
         // Frames in flight management
         static constexpr uint32_t FramesInFlightCount = 3;
-        uint64_t m_framesInFlightTimelineValue[FramesInFlightCount];
-        uint32_t m_currentFrameIndex;
+        uint64_t                  m_framesInFlightTimelineValue[FramesInFlightCount];
+        uint32_t                  m_currentFrameIndex;
     };
 
 } // namespace RHI::Vulkan

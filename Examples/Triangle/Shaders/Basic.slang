@@ -1,6 +1,7 @@
-import RendererInterface;
+
 import BxDF;
-import Lights;
+import Public.GpuScene;
+import DirectLighting;
 
 struct FragmentShaderInput
 {
@@ -10,12 +11,19 @@ struct FragmentShaderInput
     float2 uv: TEXCOORD2;
 };
 
+struct VertexInput
+{
+    float3 position;
+    float3 normal;
+    float2 uv;
+};
+
 [[shader("vertex")]]
 FragmentShaderInput VSMain(VertexInput input, uint vertexID : SV_VertexID)
 {
     let worldToView  = scene.sceneView.worldToViewMatrix;
     let viewToClip  = scene.sceneView.viewToClipMatrix;
-    let modelToWorld = scene.model.modelToWorldMatrix;
+    let modelToWorld = scene.drawData.modelToWorldMatrix;
     let modelToView = mul(modelToWorld, worldToView);
     let modelToClip = mul(modelToView, viewToClip);
 
@@ -31,34 +39,23 @@ FragmentShaderInput VSMain(VertexInput input, uint vertexID : SV_VertexID)
 
 struct GBufferOutput
 {
-    float4 albedo : SV_Target0;       // Albedo color
-    // float3 normal : SV_Target1;       // Normal vector
-    // float3 position : SV_Target2;     // World position
-    // float2 material : SV_Target3;     // Material properties (e.g., metallic, roughness, ...)
+    float4 albedo   : SV_Target0; // Albedo color
+    float4 position : SV_Target2; // World position
+    float4 normal   : SV_Target1; // Normal vector
+    float2 material : SV_Target3; // Material properties (e.g., metallic, roughness, ...)
 };
+
 [[shader("fragment")]]
 GBufferOutput PSMain(FragmentShaderInput input)
 {
-    let materialData = GetMaterialData(input.normal, input.uv);
-    let surface = Surface(
-        input.wsPosition,
-        GetViewDirection(input.wsPosition),
-        materialData.normal,
-        input.normal,
-        materialData.albedo.rgb,
-        materialData.metallic,
-        materialData.roughness
-    );
-
-    float3 accumulatedLight = float3(0.0, 0.0, 0.0);
-
-    LightData lightData = LightData(scene.sceneView.directionalLight[0]);
-    let bsdf = EvaluateBSDF(surface, lightData);
-
-    float dotProduct = dot(surface.normal, lightData.direction);
-    let F = (bsdf.diffuse + bsdf.specular) * lightData.intensity * lightData.color.rgb * dotProduct;
+    let material = GetMaterialData(input.normal, input.uv);
+    let surface = Surface(input.wsPosition, material.normal, input.normal, material.albedo.rgb, material.metallic, material.roughness);
 
     GBufferOutput output;
-    output.albedo = float4(accumulatedLight, 1.0);
+    output.albedo = material.albedo;
+    output.normal = float4(material.normal, 1.0);
+    output.position = float4(input.wsPosition, 1.0);
+    output.material.x = material.metallic;
+    output.material.y = material.roughness;
     return output;
 }

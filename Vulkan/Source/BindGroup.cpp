@@ -189,13 +189,13 @@ namespace RHI::Vulkan
         uint32_t writeInfosCount = 0;
 
         uint32_t              imageInfosCount = 0;
-        VkDescriptorImageInfo imageInfos[128]  = {};
+        VkDescriptorImageInfo imageInfos[128] = {};
 
         uint32_t               bufferInfosCount = 0;
-        VkDescriptorBufferInfo bufferInfos[128]  = {};
+        VkDescriptorBufferInfo bufferInfos[128] = {};
 
         uint32_t              samplerInfosCount = 0;
-        VkDescriptorImageInfo samplerInfos[128]  = {};
+        VkDescriptorImageInfo samplerInfos[128] = {};
 
         VkWriteDescriptorSet writeInfos[128 * 3]{};
 
@@ -237,7 +237,7 @@ namespace RHI::Vulkan
 
             for (size_t i = 0; i < bufferUpdate.buffers.size(); ++i)
             {
-                auto buffer = device->m_bufferOwner.Get(bufferUpdate.buffers[i]);
+                auto buffer    = device->m_bufferOwner.Get(bufferUpdate.buffers[i]);
                 auto subregion = bufferUpdate.subregions[i];
 
                 bufferInfos[bufferInfosCount] = {

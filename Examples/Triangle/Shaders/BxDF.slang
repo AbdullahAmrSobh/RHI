@@ -1,4 +1,4 @@
-import Lights;
+import Public.GpuScene;
 
 // ============================================================================
 // Constants
@@ -69,9 +69,9 @@ struct Surface
     float3 diffuseColor;  ///<
     float3 specularColor; ///<
 
-    __init(float3 position, float3 viewDir, float3 normal, float3 vertexNormal, float3 albedo, float metallic, float roughness)
+    __init(float3 position, float3 normal, float3 vertexNormal, float3 albedo, float metallic, float roughness)
     {
-        this.viewDir = viewDir;
+        this.viewDir = GetViewDirection();
         this.position = position;
         this.normal = normal;
         this.vertexNormal = vertexNormal;
@@ -217,9 +217,9 @@ float VisKelemen(float vDotH)
 /// @returns The visibility term based on Smith's model.
 float VisSmith(float a2, float nDotV, float nDotL)
 {
-	float V = nDotV + sqrt( nDotV * (nDotV - nDotV * a2) + a2);
-	float L = nDotL + sqrt( nDotL * (nDotL - nDotL * a2) + a2);
-	return 0.5 * rcp(V + L);
+    float V = nDotV * sqrt(a2 + (1.0 - a2) * nDotV * nDotV);
+    float L = nDotL * sqrt(a2 + (1.0 - a2) * nDotL * nDotL);
+    return 0.5 / (V + L);
 }
 
 /// Computes the Fresnel term using Schlick's approximation.
@@ -228,9 +228,9 @@ float VisSmith(float a2, float nDotV, float nDotL)
 /// @returns The Fresnel reflection coefficient.
 float3 FresnelSchlick(float3 SpecularColor, float VoH)
 {
-    float Fc = pow5(1 - VoH);
-    // Ensure a minimum reflectance of 2% for physical accuracy.
-    return saturate(50.0 * SpecularColor.g) * Fc + (1 - Fc) * SpecularColor;
+    // Compute Fresnel falloff
+    // Apply Schlick's approximation: F = F0 + (1 - F0) * (1 - cos(theta))^5
+    return SpecularColor + (1.0 - SpecularColor) * pow5(1.0 - VoH);
 }
 
 /// Computes the Lambertian diffuse reflection.
@@ -266,15 +266,10 @@ float3 DiffuseBurley(float3 diffuseColor, float roughness, float nDotV, float nD
 /// @returns The specular reflection component.
 float3 SpecularGGX(float3 specularColor, float roughnessA2, float nDotV, float nDotL, float nDotH, float vDotH)
 {
-    float D = DistGGX(roughnessA2, nDotH);
-    float G = VisSmith(roughnessA2, nDotV, nDotL);
-
-    // float3 F = FresnelSchlick(specularColor, vDotH);
-    // return  FresnelSchlick(specularColor, vDotH);
-
-    // return D * G * F;
-    // return float3(D, D, D);
-    return float3(G, G, G);
+    let D = DistGGX(roughnessA2, nDotH);
+    let V = VisSmith(roughnessA2, nDotV, nDotL);
+    let F = FresnelSchlick(specularColor, vDotH);
+    return (D * V) * F;
 }
 
 // ============================================================================
@@ -285,28 +280,7 @@ float3 SpecularGGX(float3 specularColor, float roughnessA2, float nDotV, float n
 /// @param surface The surface properties at the shading point.
 /// @param lightData The incoming light data.
 /// @returns The computed BSDF components.
-BSDF EvaluateBSDF(const Surface surface, const LightData lightData)
-{
-    BSDF bsdf = {};
-
-    float3 n = surface.normal;
-    float3 v = surface.viewDir;
-    float3 l = lightData.direction;
-    float3 h = normalize(v + l);
-
-    float nDotL = dot(n, l);
-    float nDotV = saturate(dot(n, v));
-    float nDotH = saturate(dot(n, h));
-    float vDotH = saturate(dot(v, h));
-
-    // Compute diffuse component using Lambertian model
-    bsdf.diffuse = DiffuseLambert(surface.diffuseColor) * nDotL;
-
-    // Compute specular component using GGX model
-    bsdf.specular = SpecularGGX(surface.specularColor, surface.roughnessA2, nDotV, nDotL, nDotH, vDotH) * nDotL;
-
-    // Transmission component can be added here if needed
-    // bsdf.transmission = ...;
-
-    return bsdf;
-}
+// BSDF EvaluateBSDF(const Surface surface, const LightData lightData)
+// {
+//      TODO
+// }
