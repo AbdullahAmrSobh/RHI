@@ -16,3 +16,7 @@
 - Fix Camera
 
 - Render Graph Builder Macros
+
+- Cleanup code, Fix runtime and exit leaks.
+- Fix swapchain
+- Better code quality

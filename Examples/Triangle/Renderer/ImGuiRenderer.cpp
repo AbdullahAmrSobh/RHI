@@ -1,4 +1,3 @@
-
 #include "ImGuiRenderer.hpp"
 
 #include <TL/Allocator/MemPlumber.hpp>
@@ -9,12 +8,13 @@
 
 #include <algorithm>
 
-#include "Examples-Base/ApplicationBase.hpp"
 #include "Examples-Base/Event.hpp"
+#include "Examples-Base/Window.hpp"
 
-namespace Examples
+using namespace Examples;
+
+namespace Engine
 {
-
     inline static TL::Ptr<RHI::ShaderModule> LoadShaderModule(RHI::Device* device, const char* path)
     {
         auto code   = TL::ReadBinaryFile(path);
@@ -233,30 +233,23 @@ namespace Examples
         }
     }
 
-    void ImGuiRenderer::Init(const ImGuiRenderer::CreateInfo& createInfo)
+    ResultCode ImGuiRenderer::Init(RHI::Device* device, RHI::Format colorAttachmentFormat)
     {
         m_imguiContext = ImGui::CreateContext();
         ImGui::SetCurrentContext(m_imguiContext);
 
         ImGuiIO& io = ImGui::GetIO();
-        IM_ASSERT(io.BackendRendererUserData == nullptr && "Already initialized a renderer backend!");
+        TL_ASSERT(io.BackendRendererUserData == nullptr && "Already initialized a renderer backend!");
 
-        m_context = createInfo.device;
+        m_context = device;
 
         // create sampler state
-        RHI::SamplerCreateInfo samplerCI{};
-        samplerCI.name       = "ImGui-Sampler";
-        samplerCI.filterMin  = RHI::SamplerFilter::Linear;
-        samplerCI.filterMag  = RHI::SamplerFilter::Linear;
-        samplerCI.filterMip  = RHI::SamplerFilter::Linear;
-        samplerCI.compare    = RHI::SamplerCompareOperation::Always;
-        samplerCI.mipLodBias = 0.0f;
-        samplerCI.addressU   = RHI::SamplerAddressMode::Repeat;
-        samplerCI.addressV   = RHI::SamplerAddressMode::Repeat;
-        samplerCI.addressW   = RHI::SamplerAddressMode::Repeat;
-        samplerCI.minLod     = 0.0f;
-        samplerCI.maxLod     = 1.0f;
-        m_sampler            = m_context->CreateSampler(samplerCI);
+        RHI::SamplerCreateInfo samplerCI{
+            .name   = "ImGui-Sampler",
+            .minLod = 0.0f,
+            .maxLod = 1.0f,
+        };
+        m_sampler = m_context->CreateSampler(samplerCI);
 
         RHI::BindGroupLayoutCreateInfo bindGroupLayoutCI{
             .name     = "ImGui-BindGroupLayout",
@@ -276,17 +269,13 @@ namespace Examples
         int            width, height;
         io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
-        [[maybe_unused]] RHI::ImageCreateInfo atlasTextureCI{};
-        atlasTextureCI.size.width  = uint32_t(width);
-        atlasTextureCI.size.height = uint32_t(height);
-        atlasTextureCI.type        = RHI::ImageType::Image2D;
-        atlasTextureCI.format      = RHI::Format::RGBA8_UNORM;
-        atlasTextureCI.usageFlags  = RHI::ImageUsage::ShaderResource;
-        atlasTextureCI.usageFlags |= RHI::ImageUsage::CopyDst;
-        atlasTextureCI.sampleCount = RHI::SampleCount::Samples1;
-        atlasTextureCI.arrayCount  = 1;
-        atlasTextureCI.mipLevels   = 1;
-
+        RHI::ImageCreateInfo atlasTextureCI{
+            .name       = "ImGui-Atlas",
+            .usageFlags = RHI::ImageUsage::CopyDst | RHI::ImageUsage::ShaderResource,
+            .type       = RHI::ImageType::Image2D,
+            .size       = {uint32_t(width), uint32_t(height)},
+            .format     = RHI::Format::RGBA8_UNORM,
+        };
         m_image = RHI::CreateImageWithContent(*m_context, atlasTextureCI, TL::Block{pixels, size_t(width * height * 4)}).GetValue();
 
         m_bindGroup = m_context->CreateBindGroup(bindGroupLayout);
@@ -372,6 +361,7 @@ namespace Examples
             },
         };
         m_pipeline = m_context->CreateGraphicsPipeline(pipelineCI);
+        return ResultCode::Success;
     }
 
     void ImGuiRenderer::Shutdown()
@@ -442,8 +432,13 @@ namespace Examples
 
                     // Bind
                     commandList.BindGraphicsPipeline(m_pipeline, {{.bindGroup = m_bindGroup}});
-                    commandList.BindIndexBuffer({.buffer = m_indexBuffer, }, RHI::IndexType::uint16);
-                    commandList.BindVertexBuffers(0, {{.buffer = m_vertexBuffer, }});
+                    commandList.BindIndexBuffer({
+                                                    .buffer = m_indexBuffer,
+                                                },
+                                                RHI::IndexType::uint16);
+                    commandList.BindVertexBuffers(0, {{
+                                                         .buffer = m_vertexBuffer,
+                                                     }});
                     commandList.Draw({
                         .elementsCount = drawCmd->ElemCount,
                         .instanceCount = 1,
@@ -529,4 +524,4 @@ namespace Examples
             m_context->UnmapBuffer(m_uniformBuffer);
         }
     }
-} // namespace Examples
+} // namespace Engine

@@ -55,6 +55,14 @@ struct TransmissionSettings
     float3 scatterDistance;    ///< Distance over which light scatters inside the material.
 };
 
+/// Represents the Bidirectional Scattering Distribution Function components.
+struct BSDF
+{
+    float3 diffuse;      ///< Diffuse reflection component.
+    float3 specular;     ///< Specular reflection component.
+    float3 transmission; ///< Transmission component (for transparent materials).
+};
+
 /// Describes the surface properties at a shading point.
 struct Surface
 {
@@ -83,14 +91,6 @@ struct Surface
         this.specularColor = computeF0(this.albedo, this.metallic, MIN_F0);
         // this.specularColor = albedo.rgb * metallic;
     }
-};
-
-/// Represents the Bidirectional Scattering Distribution Function components.
-struct BSDF
-{
-    float3 diffuse;      ///< Diffuse reflection component.
-    float3 specular;     ///< Specular reflection component.
-    float3 transmission; ///< Transmission component (for transparent materials).
 };
 
 // ============================================================================

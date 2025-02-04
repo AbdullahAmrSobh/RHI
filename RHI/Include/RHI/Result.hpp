@@ -12,6 +12,7 @@ namespace RHI
         ErrorOutOfMemory,       ///< A general out-of-memory error.
         ErrorDeviceOutOfMemory, ///< The device ran out of memory.
         ErrorAllocationFailed,  ///< Memory allocation failed.
+        ErrorPoolOutOfMemory,   ///< The pool ran out of memory.
     };
 
     /// @brief Checks if the result code indicates success.

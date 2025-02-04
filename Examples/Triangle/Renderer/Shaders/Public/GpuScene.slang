@@ -2,22 +2,14 @@
 
 struct ShaderParamters
 {
-    ConstantBuffer<Scene>               sceneView;
-    ConstantBuffer<Drawable>            drawData;
-    // StructuredBuffer<DirectionalLight>  directionalLights;
-    // StructuredBuffer<PointLight>        pointLights;
-    // StructuredBuffer<SpotLight>         spotLights;
-    // StructuredBuffer<AreaLight>         areaLights;
+    ConstantBuffer<Scene>         scene;
+    StructuredBuffer<Drawable>    objects;
+    StructuredBuffer<PbrMaterial> materials;
+    SamplerState                  sampler;
+    Texture2D                     textures[];
 };
 
-struct BindlessTextures
-{
-    SamplerState sampler;
-    Texture2D bindlessTextures[];
-};
-
-ParameterBlock<ShaderParamters> scene;
-ParameterBlock<BindlessTextures> bindless;
+ParameterBlock<ShaderParamters> bg;
 
 struct MaterialPbrData
 {
@@ -29,17 +21,17 @@ struct MaterialPbrData
 
 float3 GetViewDirection()
 {
-    return normalize(scene.drawData.modelToWorldMatrix[3].xyz);
+    return normalize(bg.scene.worldToViewMatrix[3].xyz);
 }
 
 float4 GetMaterialValue(uint32_t index, float4 defaultValue, float2 uv)
 {
-    return index == 0xFFFFFFFF ? defaultValue : bindless.bindlessTextures[index].Sample(bindless.sampler, uv);
+    return index == 0xFFFFFFFF ? defaultValue : bg.textures[index].Sample(bg.sampler, uv);
 }
 
 MaterialPbrData GetMaterialData(float3 vertexNormal, float2 vertexUV)
 {
-    let material = scene.drawData.material;
+    let material = bg.materials[0];
     let albedo = GetMaterialValue(material.albedoMapIndex, float4(material.albedo.rgb, 1.0), vertexUV);
     let normal = GetMaterialValue(material.normalMapIndex, float4(vertexNormal, 1.0), vertexUV).xyz;
     let metallicRoughness = GetMaterialValue(material.metallicRoughnessMapIndex, float4(material.metallic, material.roughness, 0.0, 0.0), vertexUV);

@@ -243,5 +243,8 @@ namespace RHI
         /// @brief Issues an image blit command.
         /// @param blitInfo Information for the image blit command.
         virtual void BlitImage(const ImageBlitInfo& blitInfo)                                                                      = 0;
+
+        /// @brief Issues a indirect draw command.
+        // virtual void DrawIndirect(BufferBindingInfo argumentBuffer, BufferBindingInfo countBuffer, uint32_t maxDrawCount, uint32_t stride) = 0;
     };
 } // namespace RHI

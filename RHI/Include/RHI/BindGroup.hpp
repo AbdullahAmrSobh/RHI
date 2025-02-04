@@ -17,7 +17,6 @@ namespace RHI
     struct Buffer;
     struct BufferView;
     struct Image;
-    struct ImageView;
     struct Sampler;
 
     RHI_DECLARE_OPAQUE_RESOURCE(BindGroupLayout);

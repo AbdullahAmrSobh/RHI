@@ -2,19 +2,23 @@ cmake_minimum_required(VERSION 3.19)
 
 set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Triangle.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/ImGuiRenderer.cpp
-    # ${CMAKE_CURRENT_SOURCE_DIR}/OffsetAllocator/OffsetAllocator.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/ImGuiRenderer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/SceneRenderer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/PipelineLibrary.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/BufferSuballocator.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Mesh.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/OffsetAllocator/OffsetAllocator.cpp
 )
 
 set(SHADER_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/Basic.slang
-    ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/ImGui.slang
+    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/Basic.slang
+    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/ImGui.slang
 )
 
 set(SHADER_LIB_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/BxDF.slang
-    ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/DirectLighting.slang
-    ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/Public/GpuScene.slang
+    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/BxDF.slang
+    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/DirectLighting.slang
+    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/Public/GpuScene.slang
 )
 
 include(${CPM_TL_SOURCE}/CMake/add-target.cmake)
