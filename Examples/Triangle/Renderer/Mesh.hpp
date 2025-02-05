@@ -71,7 +71,7 @@ namespace Engine
         RHI::BufferBindingInfo uvs;
         Suballocation          uvsSuballocation;
 
-        RHI::DrawParameters parameters;
+        RHI::DrawIndexedParameters parameters;
     };
 
     class MeshUnifiedGeometryBuffer

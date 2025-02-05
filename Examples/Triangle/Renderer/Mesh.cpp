@@ -97,8 +97,8 @@ namespace Engine
         memcpy((char*)ptr + staticMesh.uvs.offset,       uvs.data(),       uvs.size_bytes());
         m_device->UnmapBuffer(m_buffer);
 
-        staticMesh.parameters.elementsCount = indcies.size();
-        staticMesh.parameters.firstElement = 0;
+        staticMesh.parameters.indexCount = indcies.size();
+        staticMesh.parameters.firstIndex = 0;
         staticMesh.parameters.vertexOffset  = 0;
 
         return staticMesh;

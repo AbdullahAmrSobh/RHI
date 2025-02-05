@@ -39,17 +39,21 @@ namespace RHI::Vulkan
         // Interface implementation
         void DebugMarkerPush(const char* name, ColorValue<float> color) override;
         void DebugMarkerPop() override;
-        void BeginConditionalCommands(Handle<Buffer> buffer, size_t offset, bool inverted) override;
+        void BeginConditionalCommands(const BufferBindingInfo& conditionBuffer, bool inverted) override;
         void EndConditionalCommands() override;
         void Execute(TL::Span<const CommandList*> commandLists) override;
         void BindGraphicsPipeline(Handle<GraphicsPipeline> pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups) override;
         void BindComputePipeline(Handle<ComputePipeline> pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups) override;
         void SetViewport(const Viewport& viewport) override;
-        void SetSicssor(const Scissor& sicssor) override;
+        void SetScissor(const Scissor& sicssor) override;
         void BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> vertexBuffers) override;
         void BindIndexBuffer(const BufferBindingInfo& indexBuffer, IndexType indexType) override;
         void Draw(const DrawParameters& parameters) override;
+        void DrawIndexed(const DrawIndexedParameters& parameters) override;
+        void DrawIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride) override;
+        void DrawIndexedIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride) override;
         void Dispatch(const DispatchParameters& parameters) override;
+        void DispatchIndirect(const BufferBindingInfo& argumentBuffer) override;
         void CopyBuffer(const BufferCopyInfo& copyInfo) override;
         void CopyImage(const ImageCopyInfo& copyInfo) override;
         void CopyImageToBuffer(const BufferImageCopyInfo& copyInfo) override;

@@ -107,24 +107,30 @@ namespace RHI
     };
 
     /// @brief Parameters for drawing primitives.
-    struct DrawParameters // TODO: remove this
+    struct DrawParameters
     {
-        uint32_t elementsCount = 0; ///< Number of elements to draw.
+        uint32_t vertexCount   = 0; ///< Number of vertices to draw.
         uint32_t instanceCount = 1; ///< Number of instances to draw.
-        uint32_t firstElement  = 0; ///< Index of the first element to draw.
-        int32_t  vertexOffset  = 0; ///< Offset in the vertex buffer.
+        uint32_t firstVertex   = 0; ///< Index of the first vertex to draw.
+        uint32_t firstInstance = 0; ///< Index of the first instance to draw.
+    };
+
+    /// @brief Parameters for drawing indexed primitives.
+    struct DrawIndexedParameters
+    {
+        uint32_t indexCount    = 0; ///< Number of indices to draw.
+        uint32_t instanceCount = 1; ///< Number of instances to draw.
+        uint32_t firstIndex    = 0; ///< Index of the first index to draw.
+        int32_t  vertexOffset  = 0; ///< Offset added to each index.
         uint32_t firstInstance = 0; ///< Index of the first instance to draw.
     };
 
     /// @brief Parameters for dispatching compute work.
     struct DispatchParameters
     {
-        uint32_t offsetX = 0;  ///< X offset for the dispatch.
-        uint32_t offsetY = 0;  ///< Y offset for the dispatch.
-        uint32_t offsetZ = 0;  ///< Z offset for the dispatch.
-        uint32_t countX  = 16; ///< Number of work groups in X dimension.
-        uint32_t countY  = 16; ///< Number of work groups in Y dimension.
-        uint32_t countZ  = 16; ///< Number of work groups in Z dimension.
+        uint32_t countX = 16; ///< Number of work groups in X dimension.
+        uint32_t countY = 16; ///< Number of work groups in Y dimension.
+        uint32_t countZ = 16; ///< Number of work groups in Z dimension.
     };
 
     /// @brief Contains information needed to blit (copy and scale) an image.
@@ -136,43 +142,29 @@ namespace RHI
         ImageOffset3D          dstOffsets[2]  = {}; ///< Destination offsets (top-left and bottom-right).
     };
 
+    /// @brief Contains information needed to blit (copy and scale) an image.
     struct ImageBlitInfo
     {
-        Handle<Image>             srcImage = NullHandle;
-        Handle<Image>             dstImage = NullHandle;
-        SamplerFilter             filter   = SamplerFilter::Linear;
-        TL::Span<ImageBlitRegion> regions  = {};
+        Handle<Image>             srcImage = NullHandle;            ///< Handle to the source image.
+        Handle<Image>             dstImage = NullHandle;            ///< Handle to the destination image.
+        SamplerFilter             filter   = SamplerFilter::Linear; ///< Filter to use for blitting.
+        TL::Span<ImageBlitRegion> regions  = {};                    ///< Span of regions to blit.
     };
 
+    /// @brief Contains information for creating a command list.
     struct CommandListCreateInfo
     {
-        const char* name      = nullptr;
-        QueueType   queueType = QueueType::Graphics;
-    };
-
-    struct DrawIndirectCommandArgs
-    {
-        uint32_t vertexCount   = 0;
-        uint32_t instanceCount = 1;
-        uint32_t firstVertex   = 0;
-        uint32_t firstInstance = 0;
-    };
-
-    struct DrawIndexedIndirectCommandArgs
-    {
-        uint32_t indexCount    = 0;
-        uint32_t instanceCount = 1;
-        uint32_t firstIndex    = 0;
-        int32_t  vertexOffset  = 0;
-        uint32_t firstInstance = 0;
+        const char* name      = nullptr;             ///< Name of the command list.
+        QueueType   queueType = QueueType::Graphics; ///< Type of queue for the command list.
     };
 
     /// @brief Represents a list of commands to be executed.
     class RHI_EXPORT CommandList
     {
-    public:
-        RHI_INTERFACE_BOILERPLATE(CommandList);
+    protected:
+        virtual ~CommandList() = default;
 
+    public:
         /// @brief Pushes a debug marker with a name and color onto the command list.
         /// @param name Name of the debug marker.
         /// @param color Color value of the debug marker.
@@ -182,10 +174,9 @@ namespace RHI
         virtual void DebugMarkerPop()                                                                                              = 0;
 
         /// @brief Begins a conditional command block based on a buffer.
-        /// @param buffer Handle to the buffer used for condition.
-        /// @param offset Offset in the buffer.
+        /// @param conditionBuffer Binding information for the condition buffer.
         /// @param inverted If true, the condition is inverted.
-        virtual void BeginConditionalCommands(Handle<Buffer> buffer, size_t offset, bool inverted)                                 = 0;
+        virtual void BeginConditionalCommands(const BufferBindingInfo& conditionBuffer, bool inverted)                                 = 0;
 
         /// @brief Ends a conditional command block.
         virtual void EndConditionalCommands()                                                                                      = 0;
@@ -196,10 +187,12 @@ namespace RHI
 
         /// @brief Binds a graphics pipeline.
         /// @param pipelineState Handle to the graphics pipeline.
+        /// @param bindGroups Span of bind group binding information.
         virtual void BindGraphicsPipeline(Handle<GraphicsPipeline> pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups) = 0;
 
         /// @brief Binds a compute pipeline.
         /// @param pipelineState Handle to the compute pipeline.
+        /// @param bindGroups Span of bind group binding information.
         virtual void BindComputePipeline(Handle<ComputePipeline> pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups)   = 0;
 
         /// @brief Sets the viewport for rendering.
@@ -208,24 +201,52 @@ namespace RHI
 
         /// @brief Sets the scissor rectangle for rendering.
         /// @param scissor The scissor rectangle to set.
-        virtual void SetSicssor(const Scissor& sicssor)                                                                            = 0;
+        virtual void SetScissor(const Scissor& sicssor)                                                                            = 0;
 
         /// @brief Binds the vertex buffers for drawing.
+        /// @param firstBinding Index of the first binding.
         /// @param vertexBuffers Span of vertex buffer binding information.
         virtual void BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> vertexBuffers)                     = 0;
 
         /// @brief Binds the index buffer for drawing.
         /// @param indexBuffer Information about the index buffer binding.
+        /// @param indexType Type of indices in the index buffer.
         virtual void BindIndexBuffer(const BufferBindingInfo& indexBuffer, IndexType indexType)                                    = 0;
 
         /// @brief Issues a draw command.
-        /// @param drawInfo Information for the draw command.
+        /// @param parameters Parameters for the draw command.
         virtual void Draw(const DrawParameters& parameters)                                                                        = 0;
 
+        /// @brief Issues an indexed draw command.
+        /// @param parameters Parameters for the indexed draw command.
+        virtual void DrawIndexed(const DrawIndexedParameters& parameters)                                                          = 0;
+
+        /// @brief Issues an indirect draw command.
+        /// @param argumentBuffer Binding information about the buffer containing draw arguments.
+        /// @param countBuffer Binding information about the buffer containing draw counts.
+        /// @param maxDrawCount Maximum number of draws to issue in this indirect draw call.
+        /// @param stride Stride between draw commands in bytes.
+        virtual void DrawIndirect(
+            const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride) = 0;
+
+        /// @brief Issues an indexed indirect draw command.
+        /// @param argumentBuffer Binding information about the buffer containing draw arguments.
+        /// @param countBuffer Binding information about the buffer containing draw counts.
+        /// @param maxDrawCount Maximum number of draws to issue in this indirect draw call.
+        /// @param stride Stride between draw commands in bytes.
+        virtual void DrawIndexedIndirect(
+            const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride) = 0;
+
         /// @brief Issues a dispatch command.
+        /// @param parameters Information for the dispatch command.
         virtual void Dispatch(const DispatchParameters& parameters)                                                                = 0;
 
+        /// @brief Issues an indexed dispatch command.
+        /// @param parameters Information for the dispatch command.
+        virtual void DispatchIndirect(const BufferBindingInfo& argumentBuffer)                                                     = 0;
+
         /// @brief Issues a buffer-to-buffer copy command.
+        /// @param copyInfo Information for the buffer copy command.
         virtual void CopyBuffer(const BufferCopyInfo& copyInfo)                                                                    = 0;
 
         /// @brief Issues an image-to-image copy command.
@@ -236,15 +257,12 @@ namespace RHI
         /// @param copyInfo Information for the buffer-to-image copy command.
         virtual void CopyImageToBuffer(const BufferImageCopyInfo& copyInfo)                                                        = 0;
 
-        /// @brief Issues a image-to-buffer copy command.
+        /// @brief Issues an image-to-buffer copy command.
         /// @param copyInfo Information for the image-to-buffer copy command.
         virtual void CopyBufferToImage(const BufferImageCopyInfo& copyInfo)                                                        = 0;
 
         /// @brief Issues an image blit command.
         /// @param blitInfo Information for the image blit command.
         virtual void BlitImage(const ImageBlitInfo& blitInfo)                                                                      = 0;
-
-        /// @brief Issues a indirect draw command.
-        // virtual void DrawIndirect(BufferBindingInfo argumentBuffer, BufferBindingInfo countBuffer, uint32_t maxDrawCount, uint32_t stride) = 0;
     };
 } // namespace RHI

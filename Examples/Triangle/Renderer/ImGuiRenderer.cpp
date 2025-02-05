@@ -426,7 +426,7 @@ namespace Engine
                         .width   = (uint32_t)(clip_max.x - clip_min.x),
                         .height  = (uint32_t)(clip_max.y - clip_min.y),
                     };
-                    commandList.SetSicssor(scissor);
+                    commandList.SetScissor(scissor);
 
                     // Bind texture, Draw
 
@@ -439,10 +439,10 @@ namespace Engine
                     commandList.BindVertexBuffers(0, {{
                                                          .buffer = m_vertexBuffer,
                                                      }});
-                    commandList.Draw({
-                        .elementsCount = drawCmd->ElemCount,
+                    commandList.DrawIndexed({
+                        .indexCount = drawCmd->ElemCount,
                         .instanceCount = 1,
-                        .firstElement  = drawCmd->IdxOffset + globalIdxOffset,
+                        .firstIndex  = drawCmd->IdxOffset + globalIdxOffset,
                         .vertexOffset  = int32_t(drawCmd->VtxOffset + globalVtxOffset),
                         .firstInstance = 0,
 

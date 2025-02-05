@@ -98,8 +98,8 @@ namespace RHI
 
     struct FormatInfo
     {
-        Format      format;
         const char* name;
+        Format      format;
         uint8_t     bytesPerBlock;
         uint8_t     blockSize;
         FormatType  type;

@@ -277,17 +277,17 @@ namespace RHI::Vulkan
 #endif
     }
 
-    void ICommandList::BeginConditionalCommands(Handle<Buffer> handle, size_t offset, bool inverted)
+    void ICommandList::BeginConditionalCommands(const BufferBindingInfo& conditionBuffer, bool inverted)
     {
         ZoneScoped;
 
-        auto buffer = m_device->m_bufferOwner.Get(handle);
+        auto buffer = m_device->m_bufferOwner.Get(conditionBuffer.buffer);
 
         VkConditionalRenderingBeginInfoEXT beginInfo{
             .sType  = VK_STRUCTURE_TYPE_CONDITIONAL_RENDERING_BEGIN_INFO_EXT,
             .pNext  = nullptr,
             .buffer = buffer->handle,
-            .offset = offset,
+            .offset = conditionBuffer.offset,
             .flags  = inverted ? VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT : 0u,
         };
         m_device->m_pfn.m_vkCmdBeginConditionalRenderingEXT(m_commandBuffer, &beginInfo);
@@ -364,7 +364,7 @@ namespace RHI::Vulkan
         m_hasViewportSet = true;
     }
 
-    void ICommandList::SetSicssor(const Scissor& scissor)
+    void ICommandList::SetScissor(const Scissor& scissor)
     {
         ZoneScoped;
 
@@ -423,20 +423,86 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        if (m_hasIndexBuffer)
+        TL_ASSERT(m_isGraphicsPipelineBound && m_hasViewportSet && m_hasScissorSet && m_hasVertexBuffer);
+        vkCmdDraw(
+            m_commandBuffer,
+            parameters.vertexCount,
+            parameters.instanceCount,
+            parameters.firstVertex,
+            parameters.firstInstance);
+    }
+
+    void ICommandList::DrawIndexed(const DrawIndexedParameters& parameters)
+    {
+        ZoneScoped;
+
+        TL_ASSERT(m_isGraphicsPipelineBound && m_hasViewportSet && m_hasScissorSet && m_hasVertexBuffer && m_hasIndexBuffer);
+        vkCmdDrawIndexed(
+            m_commandBuffer,
+            parameters.indexCount,
+            parameters.instanceCount,
+            parameters.firstIndex,
+            parameters.vertexOffset,
+            parameters.firstInstance);
+    }
+
+    void ICommandList::DrawIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride)
+    {
+        ZoneScoped;
+
+        TL_ASSERT(m_isGraphicsPipelineBound && m_hasViewportSet && m_hasScissorSet && m_hasVertexBuffer);
+        auto cmdBuffer = m_device->m_bufferOwner.Get(argumentBuffer.buffer);
+
+        if (countBuffer.buffer != NullHandle)
         {
-            vkCmdDrawIndexed(
+            auto countBuf = m_device->m_bufferOwner.Get(countBuffer.buffer);
+            vkCmdDrawIndirectCount(
                 m_commandBuffer,
-                parameters.elementsCount,
-                parameters.instanceCount,
-                parameters.firstElement,
-                parameters.vertexOffset,
-                parameters.firstInstance);
+                cmdBuffer->handle,
+                argumentBuffer.offset,
+                countBuf->handle,
+                countBuffer.offset,
+                maxDrawCount,
+                stride);
         }
         else
         {
-            vkCmdDraw(
-                m_commandBuffer, parameters.elementsCount, parameters.instanceCount, parameters.firstElement, parameters.firstInstance);
+            vkCmdDrawIndirect(
+                m_commandBuffer,
+                cmdBuffer->handle,
+                argumentBuffer.offset,
+                maxDrawCount,
+                stride);
+        }
+    }
+
+    void ICommandList::DrawIndexedIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride)
+    {
+        ZoneScoped;
+
+        TL_ASSERT(m_isGraphicsPipelineBound && m_hasViewportSet && m_hasScissorSet && m_hasVertexBuffer && m_hasIndexBuffer);
+        auto cmdBuffer = m_device->m_bufferOwner.Get(argumentBuffer.buffer);
+
+        if (countBuffer.buffer != NullHandle)
+        {
+            auto countBuf = m_device->m_bufferOwner.Get(countBuffer.buffer);
+            vkCmdDrawIndexedIndirectCount(
+                m_commandBuffer,
+                cmdBuffer->handle,
+                argumentBuffer.offset,
+                countBuf->handle,
+                countBuffer.offset,
+                maxDrawCount,
+                stride);
+        }
+        else
+        {
+            vkCmdDrawIndexedIndirect(
+                m_commandBuffer,
+                cmdBuffer->handle,
+                argumentBuffer.offset,
+                maxDrawCount,
+                stride);
         }
     }
 
@@ -444,14 +510,24 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        vkCmdDispatchBase(
+        TL_ASSERT(m_isComputePipelineBound);
+        vkCmdDispatch(
             m_commandBuffer,
-            parameters.offsetX,
-            parameters.offsetY,
-            parameters.offsetZ,
             parameters.countX,
             parameters.countY,
             parameters.countZ);
+    }
+
+    void ICommandList::DispatchIndirect(const BufferBindingInfo& argumentBuffer)
+    {
+        ZoneScoped;
+
+        TL_ASSERT(m_isComputePipelineBound);
+        auto cmdBuffer = m_device->m_bufferOwner.Get(argumentBuffer.buffer);
+        vkCmdDispatchIndirect(
+            m_commandBuffer,
+            cmdBuffer->handle,
+            argumentBuffer.offset);
     }
 
     void ICommandList::CopyBuffer(const BufferCopyInfo& copyInfo)
@@ -529,9 +605,24 @@ namespace RHI::Vulkan
         vkCmdCopyBufferToImage(m_commandBuffer, buffer->handle, image->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferImageCopy);
     }
 
-    void ICommandList::BlitImage([[maybe_unused]] const ImageBlitInfo& blitInfo)
+    void ICommandList::BlitImage(const ImageBlitInfo& blitInfo)
     {
         ZoneScoped;
+
+        auto srcImage = m_device->m_imageOwner.Get(blitInfo.srcImage);
+        auto dstImage = m_device->m_imageOwner.Get(blitInfo.dstImage);
+
+        VkImageBlit imageBlit{};
+
+        vkCmdBlitImage(
+            m_commandBuffer,
+            srcImage->handle,
+            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            dstImage->handle,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            1,
+            &imageBlit,
+            ConvertFilter(blitInfo.filter));
 
         TL_UNREACHABLE();
     }

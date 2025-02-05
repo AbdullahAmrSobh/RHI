@@ -143,7 +143,7 @@ namespace Engine
                     .minDepth = 0.0f,
                     .maxDepth = 1.0f,
                 });
-                commandList.SetSicssor({
+                commandList.SetScissor({
                     .offsetX = 0,
                     .offsetY = 0,
                     .width   = width,
@@ -191,6 +191,6 @@ namespace Engine
                 m_unifiedGeometryBuffer.GetVertexBuffer(MeshAttributeType::Uv),
             });
         commandList.BindGraphicsPipeline(m_pipelineLibrary.GetGraphicsPipeline(kGBufferFill), {});
-        commandList.Draw(m_testTriangleMesh.parameters);
+        commandList.DrawIndexed(m_testTriangleMesh.parameters);
     }
 } // namespace Engine
