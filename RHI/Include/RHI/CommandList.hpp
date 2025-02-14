@@ -176,7 +176,7 @@ namespace RHI
         /// @brief Begins a conditional command block based on a buffer.
         /// @param conditionBuffer Binding information for the condition buffer.
         /// @param inverted If true, the condition is inverted.
-        virtual void BeginConditionalCommands(const BufferBindingInfo& conditionBuffer, bool inverted)                                 = 0;
+        virtual void BeginConditionalCommands(const BufferBindingInfo& conditionBuffer, bool inverted)                             = 0;
 
         /// @brief Ends a conditional command block.
         virtual void EndConditionalCommands()                                                                                      = 0;

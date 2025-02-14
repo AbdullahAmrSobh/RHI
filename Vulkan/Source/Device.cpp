@@ -58,6 +58,82 @@ namespace RHI
     }
 } // namespace RHI
 
+#define IMPLEMENT_DEVICE_CREATE_METHOD_UNIQUE(HandleType) \
+    HandleType* IDevice::Create##HandleType()             \
+    {                                                     \
+        ZoneScoped;                                       \
+        auto handle = new I##HandleType();                \
+        auto result = handle->Init(this);                 \
+        TL_ASSERT(IsSuccess(result));                     \
+        return handle;                                    \
+    }
+
+#define IMPLEMENT_DEVICE_CREATE_METHOD_UNIQUE_WITH_INFO(ResourceType)                       \
+    ResourceType* IDevice::Create##ResourceType(const ResourceType##CreateInfo& createInfo) \
+    {                                                                                       \
+        ZoneScoped;                                                                         \
+        auto handle = new I##ResourceType();                                                \
+        auto result = handle->Init(this, createInfo);                                       \
+        TL_ASSERT(IsSuccess(result));                                                       \
+        return handle;                                                                      \
+    }
+
+#define IMPLEMENT_DEVICE_DESTROY_METHOD_UNIQUE(ResourceType)   \
+    void IDevice::Destroy##ResourceType(ResourceType* _handle) \
+    {                                                          \
+        ZoneScoped;                                            \
+        auto handle = (I##ResourceType*)_handle;               \
+        handle->Shutdown();                                    \
+        delete handle;                                         \
+    }
+
+#define IMPLEMENT_DEVICE_CREATE_METHOD_WITH_RESULT(HandleType, OwnerField)                           \
+    Result<Handle<HandleType>> IDevice::Create##HandleType(const HandleType##CreateInfo& createInfo) \
+    {                                                                                                \
+        ZoneScoped;                                                                                  \
+        auto [handle, result] = OwnerField.Create(this, createInfo);                                 \
+        if (IsSuccess(result)) return (Handle<HandleType>)handle;                                    \
+        return result;                                                                               \
+    }
+
+#define IMPLEMENT_DEVICE_CREATE_METHOD(HandleType, OwnerField)                               \
+    Handle<HandleType> IDevice::Create##HandleType(const HandleType##CreateInfo& createInfo) \
+    {                                                                                        \
+        ZoneScoped;                                                                          \
+        auto [handle, result] = OwnerField.Create(this, createInfo);                         \
+        TL_ASSERT(IsSuccess(result));                                                        \
+        return handle;                                                                       \
+    }
+
+#define IMPLEMENT_DEVICE_DESTROY_METHOD(HandleType, OwnerField)                \
+    void IDevice::Destroy##HandleType(Handle<HandleType> handle)               \
+    {                                                                          \
+        ZoneScoped;                                                            \
+        TL_ASSERT(handle != NullHandle, "Cannot call destroy on null handle"); \
+        m_destroyQueue->Push(                                                  \
+            m_frameIndex,                                                      \
+            [handle](IDevice* device)                                          \
+            {                                                                  \
+                device->OwnerField.Destroy(handle, device);                    \
+            });                                                                \
+    }
+
+#define IMPLEMENT_DEVICE_RESOURCE_METHODS(ResourceType) \
+    IMPLEMENT_DEVICE_CREATE_METHOD_UNIQUE(ResourceType) \
+    IMPLEMENT_DEVICE_DESTROY_METHOD_UNIQUE(ResourceType)
+
+#define IMPLEMENT_DEVICE_RESOURCE_METHODS_WITH_INFO(ResourceType) \
+    IMPLEMENT_DEVICE_CREATE_METHOD_UNIQUE_WITH_INFO(ResourceType) \
+    IMPLEMENT_DEVICE_DESTROY_METHOD_UNIQUE(ResourceType)
+
+#define IMPLEMENT_DEVICE_HANDLE_METHODS(HandleType, OwnerField) \
+    IMPLEMENT_DEVICE_CREATE_METHOD(HandleType, OwnerField)      \
+    IMPLEMENT_DEVICE_DESTROY_METHOD(HandleType, OwnerField)
+
+#define IMPLEMENT_DEVICE_HANDLE_METHODS_WITH_RESULTS(HandleType, OwnerField) \
+    IMPLEMENT_DEVICE_CREATE_METHOD_WITH_RESULT(HandleType, OwnerField)       \
+    IMPLEMENT_DEVICE_DESTROY_METHOD(HandleType, OwnerField)
+
 namespace RHI::Vulkan
 {
     // Validation settings: to fine tune what is checked
@@ -569,6 +645,16 @@ namespace RHI::Vulkan
 
         vkDeviceWaitIdle(m_device);
 
+        m_stagingAllocator->Shutdown();
+        m_commandsAllocator->Shutdown();
+        m_bindGroupAllocator->Shutdown();
+        m_destroyQueue->Shutdown();
+        for (auto& queue : m_queue)
+        {
+            if (queue)
+                queue.Shutdown();
+        }
+
         if (auto count = m_imageOwner.ReportLiveResourcesCount())
             TL_LOG_WARNNING("Detected {} Image leaked", count);
         if (auto count = m_bufferOwner.ReportLiveResourcesCount())
@@ -585,16 +671,6 @@ namespace RHI::Vulkan
             TL_LOG_WARNNING("Detected {} ComputePipeline leaked", count);
         if (auto count = m_samplerOwner.ReportLiveResourcesCount())
             TL_LOG_WARNNING("Detected {} Sampler leaked", count);
-
-        m_stagingAllocator->Shutdown();
-        m_commandsAllocator->Shutdown();
-        m_bindGroupAllocator->Shutdown();
-        m_destroyQueue->Shutdown();
-        for (auto& queue : m_queue)
-        {
-            if (queue)
-                queue.Shutdown();
-        }
 
         vmaDestroyAllocator(m_deviceAllocator);
         vkDestroyDevice(m_device, nullptr);
@@ -622,38 +698,8 @@ namespace RHI::Vulkan
         }
     }
 
-    RenderGraph* IDevice::CreateRenderGraph()
-    {
-        ZoneScoped;
-
-        auto renderGraph = new IRenderGraph();
-        auto result      = renderGraph->Init(this);
-        TL_ASSERT(IsSuccess(result));
-        return renderGraph;
-    }
-
-    void IDevice::DestroyRenderGraph(RenderGraph* renderGraph)
-    {
-        ZoneScoped;
-        delete renderGraph;
-    }
-
-    Swapchain* IDevice::CreateSwapchain(const SwapchainCreateInfo& createInfo)
-    {
-        ZoneScoped;
-        auto swapchain = new ISwapchain();
-        auto result    = swapchain->Init(this, createInfo);
-        TL_ASSERT(IsSuccess(result));
-        return swapchain;
-    }
-
-    void IDevice::DestroySwapchain(Swapchain* _swapchain)
-    {
-        ZoneScoped;
-        auto swapchain = (ISwapchain*)_swapchain;
-        swapchain->Shutdown();
-        delete swapchain;
-    }
+    IMPLEMENT_DEVICE_RESOURCE_METHODS(RenderGraph);
+    IMPLEMENT_DEVICE_RESOURCE_METHODS_WITH_INFO(Swapchain);
 
     TL::Ptr<ShaderModule> IDevice::CreateShaderModule(const ShaderModuleCreateInfo& createInfo)
     {
@@ -670,45 +716,6 @@ namespace RHI::Vulkan
         return m_commandsAllocator->AllocateCommandList(createInfo.queueType, m_tempAllocator);
     }
 
-#define IMPLEMENT_DEVICE_CREATE_METHOD_WITH_RESULT(HandleType, OwnerField)                           \
-    Result<Handle<HandleType>> IDevice::Create##HandleType(const HandleType##CreateInfo& createInfo) \
-    {                                                                                                \
-        ZoneScoped;                                                                                  \
-        auto [handle, result] = OwnerField.Create(this, createInfo);                                 \
-        if (IsSuccess(result)) return (Handle<HandleType>)handle;                                    \
-        return result;                                                                               \
-    }
-
-#define IMPLEMENT_DEVICE_CREATE_METHOD(HandleType, OwnerField)                               \
-    Handle<HandleType> IDevice::Create##HandleType(const HandleType##CreateInfo& createInfo) \
-    {                                                                                        \
-        ZoneScoped;                                                                          \
-        auto [handle, result] = OwnerField.Create(this, createInfo);                         \
-        TL_ASSERT(IsSuccess(result));                                                        \
-        return handle;                                                                       \
-    }
-
-#define IMPLEMENT_DEVICE_DESTROY_METHOD(HandleType, OwnerField)                \
-    void IDevice::Destroy##HandleType(Handle<HandleType> handle)               \
-    {                                                                          \
-        ZoneScoped;                                                            \
-        TL_ASSERT(handle != NullHandle, "Cannot call destroy on null handle"); \
-        m_destroyQueue->Push(                                                  \
-            m_frameIndex,                                                      \
-            [handle](IDevice* device)                                          \
-            {                                                                  \
-                device->OwnerField.Destroy(handle, device);                    \
-            });                                                                \
-    }
-
-#define IMPLEMENT_DEVICE_HANDLE_METHODS(HandleType, OwnerField) \
-    IMPLEMENT_DEVICE_CREATE_METHOD(HandleType, OwnerField)      \
-    IMPLEMENT_DEVICE_DESTROY_METHOD(HandleType, OwnerField)
-
-#define IMPLEMENT_DEVICE_HANDLE_METHODS_WITH_RESULTS(HandleType, OwnerField) \
-    IMPLEMENT_DEVICE_CREATE_METHOD_WITH_RESULT(HandleType, OwnerField)       \
-    IMPLEMENT_DEVICE_DESTROY_METHOD(HandleType, OwnerField)
-
     IMPLEMENT_DEVICE_HANDLE_METHODS(BindGroupLayout, m_bindGroupLayoutsOwner);
     IMPLEMENT_DEVICE_HANDLE_METHODS(BindGroup, m_bindGroupOwner);
     IMPLEMENT_DEVICE_HANDLE_METHODS(PipelineLayout, m_pipelineLayoutOwner);
@@ -717,12 +724,6 @@ namespace RHI::Vulkan
     IMPLEMENT_DEVICE_HANDLE_METHODS(Sampler, m_samplerOwner);
     IMPLEMENT_DEVICE_HANDLE_METHODS_WITH_RESULTS(Image, m_imageOwner);
     IMPLEMENT_DEVICE_HANDLE_METHODS_WITH_RESULTS(Buffer, m_bufferOwner);
-
-#undef IMPLEMENT_DEVICE_HANDLE_METHODS
-#undef IMPLEMENT_DEVICE_CREATE_METHOD
-#undef IMPLEMENT_DEVICE_DESTROY_METHOD
-#undef IMPLEMENT_DEVICE_HANDLE_METHODS_WITH_RESULTS
-#undef IMPLEMENT_DEVICE_CREATE_METHOD_WITH_RESULT
 
     void IDevice::UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo)
     {
@@ -845,3 +846,14 @@ namespace RHI::Vulkan
     }
 
 } // namespace RHI::Vulkan
+
+#undef IMPLEMENT_DEVICE_CREATE_METHOD_UNIQUE
+#undef IMPLEMENT_DEVICE_CREATE_METHOD_UNIQUE_WITH_INFO
+#undef IMPLEMENT_DEVICE_DESTROY_METHOD_UNIQUE
+#undef IMPLEMENT_DEVICE_HANDLE_METHODS
+#undef IMPLEMENT_DEVICE_CREATE_METHOD
+#undef IMPLEMENT_DEVICE_DESTROY_METHOD
+#undef IMPLEMENT_DEVICE_HANDLE_METHODS_WITH_RESULTS
+#undef IMPLEMENT_DEVICE_CREATE_METHOD_WITH_RESULT
+#undef VULKAN_DEVICE_FUNC_LOAD
+#undef VULKAN_INSTANCE_FUNC_LOAD

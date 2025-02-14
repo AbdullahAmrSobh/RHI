@@ -74,12 +74,8 @@ namespace RHI::Vulkan
         return VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR; // Default fallback
     }
 
-    ISwapchain::ISwapchain() = default;
-
-    ISwapchain::~ISwapchain()
-    {
-        Shutdown();
-    }
+    ISwapchain::ISwapchain()  = default;
+    ISwapchain::~ISwapchain() = default;
 
     ResultCode ISwapchain::Init(IDevice* device, const SwapchainCreateInfo& createInfo)
     {

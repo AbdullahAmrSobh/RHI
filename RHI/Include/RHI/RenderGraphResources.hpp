@@ -102,6 +102,8 @@ namespace RHI
             TL::Flags<ImageUsage>  asImage;
             TL::Flags<BufferUsage> asBuffer;
         } m_usage;
+
+        bool isImported = false;
     };
 
     class RenderGraphImage final : public RenderGraphResource

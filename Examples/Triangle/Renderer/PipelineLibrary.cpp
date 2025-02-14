@@ -123,14 +123,16 @@ namespace Engine
 
     void PipelineLibrary::Shutdown()
     {
+        m_device->DestroyBindGroupLayout(m_gBufferBGL);
+
         for (auto [_, pipeline] : m_graphicsPipelines)
             m_device->DestroyGraphicsPipeline(pipeline);
 
         for (auto [_, pipeline] : m_computePipelines)
             m_device->DestroyComputePipeline(pipeline);
 
-        m_device->DestroyPipelineLayout(m_graphicsPipelineLayout);
-        m_device->DestroyPipelineLayout(m_computePipelineLayout);
+        if (m_graphicsPipelineLayout) m_device->DestroyPipelineLayout(m_graphicsPipelineLayout);
+        if (m_computePipelineLayout) m_device->DestroyPipelineLayout(m_computePipelineLayout);
     }
 
     RHI::Handle<RHI::GraphicsPipeline> PipelineLibrary::GetGraphicsPipeline(const char* name)

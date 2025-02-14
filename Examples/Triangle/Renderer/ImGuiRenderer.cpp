@@ -303,7 +303,7 @@ namespace Engine
         m_context->UpdateBindGroup(m_bindGroup, bindings);
 
         RHI::PipelineLayoutCreateInfo pipelineLayoutCI{.layouts = {bindGroupLayout}};
-        auto                          pipelineLayout = m_context->CreatePipelineLayout(pipelineLayoutCI);
+        m_pipelineLayout = m_context->CreatePipelineLayout(pipelineLayoutCI);
 
         auto vertexShaderModule = LoadShaderModule(m_context, "Shaders/ImGui.vertex.spv");
         auto fragmentShader     = LoadShaderModule(m_context, "Shaders/ImGui.fragment.spv");
@@ -324,7 +324,7 @@ namespace Engine
             .vertexShaderModule = vertexShaderModule.get(),
             .pixelShaderName    = "PSMain",
             .pixelShaderModule  = fragmentShader.get(),
-            .layout             = pipelineLayout,
+            .layout             = m_pipelineLayout,
             .vertexBufferBindings =
                 {
                     {
@@ -361,12 +361,14 @@ namespace Engine
             },
         };
         m_pipeline = m_context->CreateGraphicsPipeline(pipelineCI);
+        m_context->DestroyBindGroupLayout(bindGroupLayout);
         return ResultCode::Success;
     }
 
     void ImGuiRenderer::Shutdown()
     {
         m_context->DestroyGraphicsPipeline(m_pipeline);
+        m_context->DestroyPipelineLayout(m_pipelineLayout);
         m_context->DestroyBindGroup(m_bindGroup);
         m_context->DestroySampler(m_sampler);
         m_context->DestroyImage(m_image);
@@ -440,9 +442,9 @@ namespace Engine
                                                          .buffer = m_vertexBuffer,
                                                      }});
                     commandList.DrawIndexed({
-                        .indexCount = drawCmd->ElemCount,
+                        .indexCount    = drawCmd->ElemCount,
                         .instanceCount = 1,
-                        .firstIndex  = drawCmd->IdxOffset + globalIdxOffset,
+                        .firstIndex    = drawCmd->IdxOffset + globalIdxOffset,
                         .vertexOffset  = int32_t(drawCmd->VtxOffset + globalVtxOffset),
                         .firstInstance = 0,
 

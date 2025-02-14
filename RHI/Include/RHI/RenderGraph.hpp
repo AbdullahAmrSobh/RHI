@@ -64,11 +64,11 @@ namespace RHI
 
         /// @brief Destroys an existing image in the render graph.
         /// @param image The pointer to the RenderGraphImage to destroy.
-        void DestroyImage(RenderGraphImage* image);
+        void                            DestroyImage(RenderGraphImage* image);
 
         /// @brief Destroys an existing buffer in the render graph.
         /// @param buffer The pointer to the RenderGraphBuffer to destroy.
-        void DestroyBuffer(RenderGraphBuffer* buffer);
+        void                            DestroyBuffer(RenderGraphBuffer* buffer);
 
         // Add and configure passes in the render graph.
 

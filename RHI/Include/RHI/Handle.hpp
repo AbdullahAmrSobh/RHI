@@ -116,6 +116,7 @@ namespace RHI
         void Destroy(HandleType handle, Args&&... args)
         {
             Get(handle)->Shutdown(std::forward<Args>(args)...);
+            Release(handle);
         }
 
     private:

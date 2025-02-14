@@ -60,7 +60,9 @@ namespace RHI
     {
         ZoneScoped;
 
-        auto* image = m_allocator->Construct<RenderGraphImage>(name, swapchain.GetImage(), format);
+        auto* image       = m_allocator->Construct<RenderGraphImage>(name, swapchain.GetImage(), format);
+        image->isImported = true;
+
         m_graphImages.push_back(image);
         m_graphResourcesLookup[name]                = image;
         m_graphImportedSwapchainsLookup[&swapchain] = image;
@@ -71,7 +73,9 @@ namespace RHI
     {
         ZoneScoped;
 
-        auto* importedImage = m_allocator->Construct<RenderGraphImage>(name, image, format);
+        auto* importedImage       = m_allocator->Construct<RenderGraphImage>(name, image, format);
+        importedImage->isImported = true;
+
         m_graphImages.push_back(importedImage);
         m_graphImportedImagesLookup[image] = importedImage;
         m_graphResourcesLookup[name]       = importedImage;
@@ -82,7 +86,9 @@ namespace RHI
     {
         ZoneScoped;
 
-        auto* importedBuffer = m_allocator->Construct<RenderGraphBuffer>(name, buffer);
+        auto* importedBuffer       = m_allocator->Construct<RenderGraphBuffer>(name, buffer);
+        importedBuffer->isImported = true;
+
         m_graphBuffers.push_back(importedBuffer);
         m_graphImportedBuffersLookup[buffer] = importedBuffer;
         m_graphResourcesLookup[name]         = importedBuffer;
@@ -114,10 +120,12 @@ namespace RHI
     void RenderGraph::DestroyImage(RenderGraphImage* image)
     {
         ZoneScoped;
-
-        if (auto handle = image->GetImage())
+        if (image->isImported == false)
         {
-            m_device->DestroyImage(handle);
+            if (auto handle = image->GetImage())
+            {
+                m_device->DestroyImage(handle);
+            }
         }
         m_allocator->Destruct(image);
     }
@@ -125,10 +133,12 @@ namespace RHI
     void RenderGraph::DestroyBuffer(RenderGraphBuffer* buffer)
     {
         ZoneScoped;
-
-        if (auto handle = buffer->GetBuffer())
+        if (buffer->isImported == false)
         {
-            m_device->DestroyBuffer(handle);
+            if (auto handle = buffer->GetBuffer())
+            {
+                m_device->DestroyBuffer(handle);
+            }
         }
         m_allocator->Destruct(buffer);
     }

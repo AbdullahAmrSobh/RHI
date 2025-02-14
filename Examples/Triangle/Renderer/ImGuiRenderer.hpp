@@ -37,6 +37,7 @@ namespace Engine
         ImGuiContext* m_imguiContext;
 
         RHI::Handle<RHI::BindGroup>        m_bindGroup;
+        RHI::Handle<RHI::PipelineLayout>   m_pipelineLayout;
         RHI::Handle<RHI::GraphicsPipeline> m_pipeline;
 
         RHI::Handle<RHI::Buffer>  m_uniformBuffer;
