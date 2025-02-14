@@ -106,6 +106,17 @@ namespace Engine
 
     void Renderer::Shutdown()
     {
+        m_renderGraph->DestroyImage(m_gBuffer.depthAttachment);
+        m_renderGraph->DestroyImage(m_gBuffer.materialAttachment);
+        m_renderGraph->DestroyImage(m_gBuffer.positionAttachment);
+        m_renderGraph->DestroyImage(m_gBuffer.normalsAttachment);
+        m_renderGraph->DestroyImage(m_gBuffer.colorAttachment);
+        m_device->DestroyRenderGraph(m_renderGraph);
+
+        m_unifiedGeometryBuffer.Shutdown();
+        m_imguiRenderer.Shutdown();
+        m_pipelineLibrary.Shutdown();
+
         m_device->DestroySwapchain(m_swapchain);
         RHI::DestroyVulkanDevice(m_device);
     }
@@ -171,7 +182,7 @@ namespace Engine
         //         m_unifiedGeometryBuffer.GetVertexBuffer(MeshAttributeType::Normal),
         //         m_unifiedGeometryBuffer.GetVertexBuffer(MeshAttributeType::Uv),
         //     });
-
+        //
         // // TODO: Gpu driven
         // for (auto drawCall : drawCalls)
         // {

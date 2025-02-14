@@ -54,6 +54,13 @@ namespace RHI
         TL::Span<const ShaderBinding> bindings = {};      ///< Span of shader bindings for this layout.
     };
 
+    /// @brief Information required to create a bind group.
+    struct BindGroupCreateInfo
+    {
+        const char*             name   = nullptr;    ///!< Name of the bind group.
+        Handle<BindGroupLayout> layout = NullHandle; // !< The layout of the bind group.
+    };
+
     /// @brief Information used to update images in a bind group.
     struct BindGroupImagesUpdateInfo
     {

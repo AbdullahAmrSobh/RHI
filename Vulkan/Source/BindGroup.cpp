@@ -168,10 +168,10 @@ namespace RHI::Vulkan
         vkDestroyDescriptorSetLayout(device->m_device, handle, nullptr);
     }
 
-    ResultCode IBindGroup::Init(IDevice* device, Handle<BindGroupLayout> layoutHandle)
+    ResultCode IBindGroup::Init(IDevice* device, const BindGroupCreateInfo& createInfo)
     {
         auto allocator    = device->m_bindGroupAllocator.get();
-        auto layoutObject = device->m_bindGroupLayoutsOwner.Get(layoutHandle);
+        auto layoutObject = device->m_bindGroupLayoutsOwner.Get(createInfo.layout);
 
         std::copy(std::begin(layoutObject->shaderBindings), std::end(layoutObject->shaderBindings), std::begin(shaderBindings));
 

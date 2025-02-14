@@ -4,8 +4,6 @@
 
 #include <TL/Containers.hpp>
 
-#include "Common.hpp"
-
 namespace RHI::Vulkan
 {
     class IDevice;

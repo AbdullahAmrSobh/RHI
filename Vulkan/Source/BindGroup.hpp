@@ -48,7 +48,7 @@ namespace RHI::Vulkan
         ShaderBinding   shaderBindings[MaxShaderBindingsCount];
         uint32_t        bindlessCount;
 
-        ResultCode Init(IDevice* device, Handle<BindGroupLayout> layout);
+        ResultCode Init(IDevice* device, const BindGroupCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
 
         void Write(IDevice* device, const BindGroupUpdateInfo& updateInfo);

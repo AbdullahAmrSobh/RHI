@@ -77,7 +77,7 @@ namespace RHI::Vulkan
         CommandList*             CreateCommandList(const CommandListCreateInfo& createInfo) override;
         Handle<BindGroupLayout>  CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) override;
         void                     DestroyBindGroupLayout(Handle<BindGroupLayout> handle) override;
-        Handle<BindGroup>        CreateBindGroup(Handle<BindGroupLayout> handle) override;
+        Handle<BindGroup>        CreateBindGroup(const BindGroupCreateInfo& createInfo) override;
         void                     DestroyBindGroup(Handle<BindGroup> handle) override;
         void                     UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo) override;
         Handle<PipelineLayout>   CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo) override;

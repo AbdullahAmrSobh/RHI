@@ -278,7 +278,7 @@ namespace Engine
         };
         m_image = RHI::CreateImageWithContent(*m_context, atlasTextureCI, TL::Block{pixels, size_t(width * height * 4)}).GetValue();
 
-        m_bindGroup = m_context->CreateBindGroup(bindGroupLayout);
+        m_bindGroup = m_context->CreateBindGroup({.layout = bindGroupLayout});
         RHI::BindGroupUpdateInfo bindings{
             .images = {
                 {

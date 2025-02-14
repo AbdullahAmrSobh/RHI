@@ -111,6 +111,28 @@ namespace RHI
         return buffer;
     }
 
+    void RenderGraph::DestroyImage(RenderGraphImage* image)
+    {
+        ZoneScoped;
+
+        if (auto handle = image->GetImage())
+        {
+            m_device->DestroyImage(handle);
+        }
+        m_allocator->Destruct(image);
+    }
+
+    void RenderGraph::DestroyBuffer(RenderGraphBuffer* buffer)
+    {
+        ZoneScoped;
+
+        if (auto handle = buffer->GetBuffer())
+        {
+            m_device->DestroyBuffer(handle);
+        }
+        m_allocator->Destruct(buffer);
+    }
+
     Pass* RenderGraph::AddPass(const PassCreateInfo& createInfo)
     {
         ZoneScoped;

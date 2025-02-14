@@ -670,163 +670,65 @@ namespace RHI::Vulkan
         return m_commandsAllocator->AllocateCommandList(createInfo.queueType, m_tempAllocator);
     }
 
-    Handle<BindGroupLayout> IDevice::CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)
-    {
-        ZoneScoped;
-        auto [handle, result] = m_bindGroupLayoutsOwner.Create(this, createInfo);
-        TL_ASSERT(IsSuccess(result));
-        return handle;
+#define IMPLEMENT_DEVICE_CREATE_METHOD_WITH_RESULT(HandleType, OwnerField)                           \
+    Result<Handle<HandleType>> IDevice::Create##HandleType(const HandleType##CreateInfo& createInfo) \
+    {                                                                                                \
+        ZoneScoped;                                                                                  \
+        auto [handle, result] = OwnerField.Create(this, createInfo);                                 \
+        if (IsSuccess(result)) return (Handle<HandleType>)handle;                                    \
+        return result;                                                                               \
     }
 
-    void IDevice::DestroyBindGroupLayout(Handle<BindGroupLayout> handle)
-    {
-        ZoneScoped;
-        m_destroyQueue->Push(
-            m_frameIndex,
-            [handle](IDevice* device)
-            {
-                device->m_bindGroupLayoutsOwner.Destroy(handle, device);
-            });
+#define IMPLEMENT_DEVICE_CREATE_METHOD(HandleType, OwnerField)                               \
+    Handle<HandleType> IDevice::Create##HandleType(const HandleType##CreateInfo& createInfo) \
+    {                                                                                        \
+        ZoneScoped;                                                                          \
+        auto [handle, result] = OwnerField.Create(this, createInfo);                         \
+        TL_ASSERT(IsSuccess(result));                                                        \
+        return handle;                                                                       \
     }
 
-    Handle<BindGroup> IDevice::CreateBindGroup(Handle<BindGroupLayout> handle)
-    {
-        ZoneScoped;
-        auto [bindGroupHandle, result] = m_bindGroupOwner.Create(this, handle);
-        TL_ASSERT(IsSuccess(result));
-        return bindGroupHandle;
+#define IMPLEMENT_DEVICE_DESTROY_METHOD(HandleType, OwnerField)                \
+    void IDevice::Destroy##HandleType(Handle<HandleType> handle)               \
+    {                                                                          \
+        ZoneScoped;                                                            \
+        TL_ASSERT(handle != NullHandle, "Cannot call destroy on null handle"); \
+        m_destroyQueue->Push(                                                  \
+            m_frameIndex,                                                      \
+            [handle](IDevice* device)                                          \
+            {                                                                  \
+                device->OwnerField.Destroy(handle, device);                    \
+            });                                                                \
     }
 
-    void IDevice::DestroyBindGroup(Handle<BindGroup> handle)
-    {
-        ZoneScoped;
-        m_destroyQueue->Push(
-            m_frameIndex,
-            [handle](IDevice* device)
-            {
-                device->m_bindGroupOwner.Destroy(handle, device);
-            });
-    }
+#define IMPLEMENT_DEVICE_HANDLE_METHODS(HandleType, OwnerField) \
+    IMPLEMENT_DEVICE_CREATE_METHOD(HandleType, OwnerField)      \
+    IMPLEMENT_DEVICE_DESTROY_METHOD(HandleType, OwnerField)
+
+#define IMPLEMENT_DEVICE_HANDLE_METHODS_WITH_RESULTS(HandleType, OwnerField) \
+    IMPLEMENT_DEVICE_CREATE_METHOD_WITH_RESULT(HandleType, OwnerField)       \
+    IMPLEMENT_DEVICE_DESTROY_METHOD(HandleType, OwnerField)
+
+    IMPLEMENT_DEVICE_HANDLE_METHODS(BindGroupLayout, m_bindGroupLayoutsOwner);
+    IMPLEMENT_DEVICE_HANDLE_METHODS(BindGroup, m_bindGroupOwner);
+    IMPLEMENT_DEVICE_HANDLE_METHODS(PipelineLayout, m_pipelineLayoutOwner);
+    IMPLEMENT_DEVICE_HANDLE_METHODS(GraphicsPipeline, m_graphicsPipelineOwner);
+    IMPLEMENT_DEVICE_HANDLE_METHODS(ComputePipeline, m_computePipelineOwner);
+    IMPLEMENT_DEVICE_HANDLE_METHODS(Sampler, m_samplerOwner);
+    IMPLEMENT_DEVICE_HANDLE_METHODS_WITH_RESULTS(Image, m_imageOwner);
+    IMPLEMENT_DEVICE_HANDLE_METHODS_WITH_RESULTS(Buffer, m_bufferOwner);
+
+#undef IMPLEMENT_DEVICE_HANDLE_METHODS
+#undef IMPLEMENT_DEVICE_CREATE_METHOD
+#undef IMPLEMENT_DEVICE_DESTROY_METHOD
+#undef IMPLEMENT_DEVICE_HANDLE_METHODS_WITH_RESULTS
+#undef IMPLEMENT_DEVICE_CREATE_METHOD_WITH_RESULT
 
     void IDevice::UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo)
     {
         ZoneScoped;
         auto bindGroup = m_bindGroupOwner.Get(handle);
         bindGroup->Write(this, updateInfo);
-    }
-
-    Handle<PipelineLayout> IDevice::CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)
-    {
-        ZoneScoped;
-        auto [handle, result] = m_pipelineLayoutOwner.Create(this, createInfo);
-        TL_ASSERT(IsSuccess(result));
-        return handle;
-    }
-
-    void IDevice::DestroyPipelineLayout(Handle<PipelineLayout> handle)
-    {
-        ZoneScoped;
-        m_destroyQueue->Push(
-            m_frameIndex,
-            [handle](IDevice* device)
-            {
-                device->m_pipelineLayoutOwner.Destroy(handle, device);
-            });
-    }
-
-    Handle<GraphicsPipeline> IDevice::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)
-    {
-        ZoneScoped;
-        auto [handle, result] = m_graphicsPipelineOwner.Create(this, createInfo);
-        TL_ASSERT(IsSuccess(result));
-        return handle;
-    }
-
-    void IDevice::DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle)
-    {
-        ZoneScoped;
-        m_destroyQueue->Push(
-            m_frameIndex,
-            [handle](IDevice* device)
-            {
-                device->m_graphicsPipelineOwner.Destroy(handle, device);
-            });
-    }
-
-    Handle<ComputePipeline> IDevice::CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
-    {
-        ZoneScoped;
-        auto [handle, result] = m_computePipelineOwner.Create(this, createInfo);
-        TL_ASSERT(IsSuccess(result));
-        return handle;
-    }
-
-    void IDevice::DestroyComputePipeline(Handle<ComputePipeline> handle)
-    {
-        ZoneScoped;
-        m_destroyQueue->Push(
-            m_frameIndex,
-            [handle](IDevice* device)
-            {
-                device->m_computePipelineOwner.Destroy(handle, device);
-            });
-    }
-
-    Handle<Sampler> IDevice::CreateSampler(const SamplerCreateInfo& createInfo)
-    {
-        ZoneScoped;
-        auto [handle, result] = m_samplerOwner.Create(this, createInfo);
-        TL_ASSERT(IsSuccess(result));
-        return handle;
-    }
-
-    void IDevice::DestroySampler(Handle<Sampler> handle)
-    {
-        ZoneScoped;
-        m_destroyQueue->Push(
-            m_frameIndex,
-            [handle](IDevice* device)
-            {
-                device->m_samplerOwner.Destroy(handle, device);
-            });
-    }
-
-    Result<Handle<Image>> IDevice::CreateImage(const ImageCreateInfo& createInfo)
-    {
-        ZoneScoped;
-        auto [handle, result] = m_imageOwner.Create(this, createInfo);
-        if (IsSuccess(result)) return (Handle<Image>)handle;
-        return result;
-    }
-
-    void IDevice::DestroyImage(Handle<Image> handle)
-    {
-        ZoneScoped;
-        m_destroyQueue->Push(
-            m_frameIndex,
-            [handle](IDevice* device)
-            {
-                device->m_imageOwner.Destroy(handle, device);
-            });
-    }
-
-    Result<Handle<Buffer>> IDevice::CreateBuffer(const BufferCreateInfo& createInfo)
-    {
-        ZoneScoped;
-        auto [handle, result] = m_bufferOwner.Create(this, createInfo);
-        if (IsSuccess(result)) return (Handle<Buffer>)handle;
-        return result;
-    }
-
-    void IDevice::DestroyBuffer(Handle<Buffer> handle)
-    {
-        ZoneScoped;
-        m_destroyQueue->Push(
-            m_frameIndex,
-            [handle](IDevice* device)
-            {
-                device->m_bufferOwner.Destroy(handle, device);
-            });
     }
 
     DeviceMemoryPtr IDevice::MapBuffer(Handle<Buffer> handle)

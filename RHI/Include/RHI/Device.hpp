@@ -106,7 +106,7 @@ namespace RHI
         /// @brief Creates a bind group.
         /// @param handle Handle to the associated bind group layout.
         /// @return Handle to the created bind group.
-        virtual Handle<BindGroup>        CreateBindGroup(Handle<BindGroupLayout> handle)                                  = 0;
+        virtual Handle<BindGroup>        CreateBindGroup(const BindGroupCreateInfo& createInfo)                           = 0;
 
         /// @brief Destroys a bind group.
         /// @param handle Handle to the bind group to destroy.
