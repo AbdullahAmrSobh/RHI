@@ -74,32 +74,30 @@ namespace Engine
             return StaticMesh{};
         }
 
-        StaticMesh staticMesh{};
-
+        StaticMesh staticMesh             = {};
+        staticMesh.indcies.buffer         = m_buffer;
+        staticMesh.positions.buffer       = m_buffer;
+        staticMesh.normals.buffer         = m_buffer;
+        staticMesh.uvs.buffer             = m_buffer;
         staticMesh.indciesSuballocation   = m_allocator[U32(MeshAttributeType::Index)].allocate(indcies.size_bytes());
         staticMesh.positionsSuballocation = m_allocator[U32(MeshAttributeType::Position)].allocate(positions.size_bytes());
         staticMesh.normalsSuballocation   = m_allocator[U32(MeshAttributeType::Normal)].allocate(normals.size_bytes());
         staticMesh.uvsSuballocation       = m_allocator[U32(MeshAttributeType::Uv)].allocate(uvs.size_bytes());
-
-        staticMesh.indcies.buffer   = m_buffer;
-        staticMesh.positions.buffer = m_buffer;
-        staticMesh.normals.buffer   = m_buffer;
-        staticMesh.uvs.buffer       = m_buffer;
-        staticMesh.indcies.offset   = m_vertexAttributeOffsets[U32(MeshAttributeType::Index)]    + staticMesh.indciesSuballocation.offset;
-        staticMesh.positions.offset = m_vertexAttributeOffsets[U32(MeshAttributeType::Position)] + staticMesh.positionsSuballocation.offset;
-        staticMesh.normals.offset   = m_vertexAttributeOffsets[U32(MeshAttributeType::Normal)]   + staticMesh.normalsSuballocation.offset;
-        staticMesh.uvs.offset       = m_vertexAttributeOffsets[U32(MeshAttributeType::Uv)]       + staticMesh.uvsSuballocation.offset;
+        staticMesh.indcies.offset         = m_vertexAttributeOffsets[U32(MeshAttributeType::Index)] + staticMesh.indciesSuballocation.offset;
+        staticMesh.positions.offset       = m_vertexAttributeOffsets[U32(MeshAttributeType::Position)] + staticMesh.positionsSuballocation.offset;
+        staticMesh.normals.offset         = m_vertexAttributeOffsets[U32(MeshAttributeType::Normal)] + staticMesh.normalsSuballocation.offset;
+        staticMesh.uvs.offset             = m_vertexAttributeOffsets[U32(MeshAttributeType::Uv)] + staticMesh.uvsSuballocation.offset;
 
         auto ptr = m_device->MapBuffer(m_buffer);
-        memcpy((char*)ptr + staticMesh.indcies.offset,    indcies.data(),   indcies.size_bytes());
+        memcpy((char*)ptr + staticMesh.indcies.offset, indcies.data(), indcies.size_bytes());
         memcpy((char*)ptr + staticMesh.positions.offset, positions.data(), positions.size_bytes());
-        memcpy((char*)ptr + staticMesh.normals.offset,   normals.data(),   normals.size_bytes());
-        memcpy((char*)ptr + staticMesh.uvs.offset,       uvs.data(),       uvs.size_bytes());
+        memcpy((char*)ptr + staticMesh.normals.offset, normals.data(), normals.size_bytes());
+        memcpy((char*)ptr + staticMesh.uvs.offset, uvs.data(), uvs.size_bytes());
         m_device->UnmapBuffer(m_buffer);
 
-        staticMesh.parameters.indexCount = indcies.size();
-        staticMesh.parameters.firstIndex = 0;
-        staticMesh.parameters.vertexOffset  = 0;
+        staticMesh.parameters.indexCount   = indcies.size();
+        staticMesh.parameters.firstIndex   = 0;
+        staticMesh.parameters.vertexOffset = 0;
 
         return staticMesh;
     }

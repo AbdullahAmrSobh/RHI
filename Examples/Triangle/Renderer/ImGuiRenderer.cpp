@@ -241,7 +241,7 @@ namespace Engine
         ImGuiIO& io = ImGui::GetIO();
         TL_ASSERT(io.BackendRendererUserData == nullptr && "Already initialized a renderer backend!");
 
-        m_context = device;
+        m_device = device;
 
         // create sampler state
         RHI::SamplerCreateInfo samplerCI{
@@ -249,7 +249,7 @@ namespace Engine
             .minLod = 0.0f,
             .maxLod = 1.0f,
         };
-        m_sampler = m_context->CreateSampler(samplerCI);
+        m_sampler = m_device->CreateSampler(samplerCI);
 
         RHI::BindGroupLayoutCreateInfo bindGroupLayoutCI{
             .name     = "ImGui-BindGroupLayout",
@@ -257,13 +257,13 @@ namespace Engine
                 RHI::ShaderBinding{.type = RHI::BindingType::UniformBuffer, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Vertex},
                 RHI::ShaderBinding{.type = RHI::BindingType::Sampler, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel},
                 RHI::ShaderBinding{.type = RHI::BindingType::SampledImage, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel}}};
-        auto bindGroupLayout = m_context->CreateBindGroupLayout(bindGroupLayoutCI);
+        auto bindGroupLayout = m_device->CreateBindGroupLayout(bindGroupLayoutCI);
 
         RHI::BufferCreateInfo uniformBufferCI{};
         uniformBufferCI.name       = "ImGui-UniformBuffer";
         uniformBufferCI.byteSize   = sizeof(float) * 4 * 4;
         uniformBufferCI.usageFlags = RHI::BufferUsage::Uniform;
-        m_uniformBuffer            = m_context->CreateBuffer(uniformBufferCI).GetValue();
+        m_uniformBuffer            = m_device->CreateBuffer(uniformBufferCI).GetValue();
 
         unsigned char* pixels;
         int            width, height;
@@ -276,9 +276,9 @@ namespace Engine
             .size       = {uint32_t(width), uint32_t(height)},
             .format     = RHI::Format::RGBA8_UNORM,
         };
-        m_image = RHI::CreateImageWithContent(*m_context, atlasTextureCI, TL::Block{pixels, size_t(width * height * 4)}).GetValue();
+        m_image = RHI::CreateImageWithContent(*m_device, atlasTextureCI, TL::Block{pixels, size_t(width * height * 4)}).GetValue();
 
-        m_bindGroup = m_context->CreateBindGroup({.layout = bindGroupLayout});
+        m_bindGroup = m_device->CreateBindGroup({.layout = bindGroupLayout});
         RHI::BindGroupUpdateInfo bindings{
             .images = {
                 {
@@ -300,13 +300,13 @@ namespace Engine
                 },
             },
         };
-        m_context->UpdateBindGroup(m_bindGroup, bindings);
+        m_device->UpdateBindGroup(m_bindGroup, bindings);
 
         RHI::PipelineLayoutCreateInfo pipelineLayoutCI{.layouts = {bindGroupLayout}};
-        m_pipelineLayout = m_context->CreatePipelineLayout(pipelineLayoutCI);
+        m_pipelineLayout = m_device->CreatePipelineLayout(pipelineLayoutCI);
 
-        auto vertexShaderModule = LoadShaderModule(m_context, "Shaders/ImGui.vertex.spv");
-        auto fragmentShader     = LoadShaderModule(m_context, "Shaders/ImGui.fragment.spv");
+        auto vertexShaderModule = LoadShaderModule(m_device, "Shaders/ImGui.vertex.spv");
+        auto fragmentShader     = LoadShaderModule(m_device, "Shaders/ImGui.fragment.spv");
 
         auto attachmentBlendDesc = RHI::ColorAttachmentBlendStateDesc{
             true,
@@ -360,24 +360,24 @@ namespace Engine
                 .stencilTestEnable = false,
             },
         };
-        m_pipeline = m_context->CreateGraphicsPipeline(pipelineCI);
-        m_context->DestroyBindGroupLayout(bindGroupLayout);
+        m_pipeline = m_device->CreateGraphicsPipeline(pipelineCI);
+        m_device->DestroyBindGroupLayout(bindGroupLayout);
         return ResultCode::Success;
     }
 
     void ImGuiRenderer::Shutdown()
     {
-        m_context->DestroyGraphicsPipeline(m_pipeline);
-        m_context->DestroyPipelineLayout(m_pipelineLayout);
-        m_context->DestroyBindGroup(m_bindGroup);
-        m_context->DestroySampler(m_sampler);
-        m_context->DestroyImage(m_image);
+        m_device->DestroyGraphicsPipeline(m_pipeline);
+        m_device->DestroyPipelineLayout(m_pipelineLayout);
+        m_device->DestroyBindGroup(m_bindGroup);
+        m_device->DestroySampler(m_sampler);
+        m_device->DestroyImage(m_image);
         if (m_indexBuffer != RHI::NullHandle)
-            m_context->DestroyBuffer(m_indexBuffer);
+            m_device->DestroyBuffer(m_indexBuffer);
         if (m_vertexBuffer != RHI::NullHandle)
-            m_context->DestroyBuffer(m_vertexBuffer);
+            m_device->DestroyBuffer(m_vertexBuffer);
         if (m_uniformBuffer != RHI::NullHandle)
-            m_context->DestroyBuffer(m_uniformBuffer);
+            m_device->DestroyBuffer(m_uniformBuffer);
     }
 
     void ImGuiRenderer::NewFrame()
@@ -468,13 +468,13 @@ namespace Engine
             m_vertexBufferSize = (size_t)drawData->TotalVtxCount + 5000;
 
             if (m_vertexBuffer != RHI::NullHandle)
-                m_context->DestroyBuffer(m_vertexBuffer);
+                m_device->DestroyBuffer(m_vertexBuffer);
 
             RHI::BufferCreateInfo createInfo{};
             createInfo.name       = "ImGui-VertexBuffer";
             createInfo.byteSize   = m_vertexBufferSize * sizeof(ImDrawVert);
             createInfo.usageFlags = RHI::BufferUsage::Vertex;
-            m_vertexBuffer        = m_context->CreateBuffer(createInfo).GetValue();
+            m_vertexBuffer        = m_device->CreateBuffer(createInfo).GetValue();
         }
 
         if ((size_t)drawData->TotalIdxCount > m_indexBufferSize)
@@ -482,20 +482,20 @@ namespace Engine
             m_indexBufferSize = (size_t)drawData->TotalIdxCount + 10000;
 
             if (m_indexBuffer != RHI::NullHandle)
-                m_context->DestroyBuffer(m_indexBuffer);
+                m_device->DestroyBuffer(m_indexBuffer);
 
             RHI::BufferCreateInfo createInfo{};
             createInfo.name       = "ImGui-IndexBuffer";
             createInfo.byteSize   = m_indexBufferSize * sizeof(ImDrawIdx);
             createInfo.usageFlags = RHI::BufferUsage::Index;
-            m_indexBuffer         = m_context->CreateBuffer(createInfo).GetValue();
+            m_indexBuffer         = m_device->CreateBuffer(createInfo).GetValue();
         }
 
         if (drawData->TotalIdxCount == 0 || drawData->TotalVtxCount == 0)
             return;
 
-        auto indexBufferPtr  = (ImDrawIdx*)m_context->MapBuffer(m_indexBuffer);
-        auto vertexBufferPtr = (ImDrawVert*)m_context->MapBuffer(m_vertexBuffer);
+        auto indexBufferPtr  = (ImDrawIdx*)m_device->MapBuffer(m_indexBuffer);
+        auto vertexBufferPtr = (ImDrawVert*)m_device->MapBuffer(m_vertexBuffer);
         for (int n = 0; n < drawData->CmdListsCount; n++)
         {
             const ImDrawList* cmdList = drawData->CmdLists[n];
@@ -504,8 +504,8 @@ namespace Engine
             indexBufferPtr += cmdList->IdxBuffer.Size;
             vertexBufferPtr += cmdList->VtxBuffer.Size;
         }
-        m_context->UnmapBuffer(m_vertexBuffer);
-        m_context->UnmapBuffer(m_indexBuffer);
+        m_device->UnmapBuffer(m_vertexBuffer);
+        m_device->UnmapBuffer(m_indexBuffer);
 
         {
             float L                = drawData->DisplayPos.x;
@@ -521,9 +521,9 @@ namespace Engine
                 { (R + L) / (L - R), (T + B) / (B - T), 0.5f, 1.0f },
             };
             // clang-format on
-            auto  uniformBufferPtr = m_context->MapBuffer(m_uniformBuffer);
+            auto  uniformBufferPtr = m_device->MapBuffer(m_uniformBuffer);
             memcpy(uniformBufferPtr, mvp, sizeof(mvp));
-            m_context->UnmapBuffer(m_uniformBuffer);
+            m_device->UnmapBuffer(m_uniformBuffer);
         }
     }
 } // namespace Engine

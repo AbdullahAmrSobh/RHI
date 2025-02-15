@@ -20,3 +20,21 @@
 - Cleanup code, Fix runtime and exit leaks.
 - Fix swapchain
 - Better code quality
+
+Fix deletion queue
+Fix swapchain
+Imporve RenderGraph API
+Ensure there are no memory or resource leaks in the codebase
+Cleanup API
+    - Remove unused functions, variables, unnecessary includes, Includes, etc.
+    - Improve UsageFlags, make unified model
+
+NOTES:
+    ShaderModule is a pointer, maybe Pipeline<T>CreateInfo should take raw pointer to shader byte code instead?
+    Too much API noise, Function that create/destroy doesn't match in signatures.
+
+
+Scene:
+    - Mesh
+    - Material
+    - Texture

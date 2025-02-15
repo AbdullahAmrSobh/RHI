@@ -1,9 +1,9 @@
 #pragma once
 
 #include <cstdint>
-
-#include <glm/glm.hpp>
 #include <glm/ext.hpp>
+#include <glm/glm.hpp>
+
 
 namespace Engine
 {
@@ -25,7 +25,8 @@ namespace Engine
 
     struct DrawItem
     {
-        DrawIndexedArguments drawArgs;
+        void*     mesh     = nullptr;
+        void*     material = nullptr;
         Transform transform;
     };
 

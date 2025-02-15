@@ -6,7 +6,6 @@
 
 namespace Engine
 {
-
     /// @brief A buffer suballocator that manages sub-allocations from a single large buffer
     /// @details Allows efficient allocation and deallocation of smaller buffer regions from a pre-allocated buffer
     class BufferSuballocator

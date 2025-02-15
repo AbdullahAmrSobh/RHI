@@ -19,7 +19,7 @@ struct VertexInput
 };
 
 [[shader("vertex")]]
-FragmentShaderInput VSMain(VertexInput input, uint vertexID : SV_VertexID)
+FragmentShaderInput VSMain(VertexInput input)
 {
     // let worldToView  = scene.sceneView.worldToViewMatrix;
     // let viewToClip  = scene.sceneView.viewToClipMatrix;
@@ -49,25 +49,6 @@ struct GBufferOutput
 [[shader("fragment")]]
 GBufferOutput PSMain(FragmentShaderInput input)
 {
-    // let material = GetMaterialData(input.normal, input.uv);
-    // let surface = Surface(input.wsPosition, material.normal, input.normal, material.albedo.rgb, material.metallic, material.roughness);
-
-    // let light = scene.sceneView.directionalLights[0];
-
-    // let l = normalize(-light.direction);
-    // let v = surface.viewDir;
-    // let n = material.normal;
-    // let h = normalize(l + v);
-
-    // let NdotL = saturate(dot(n, l));
-    // let NdotV = saturate(dot(n, v));
-    // let NdotH = saturate(dot(n, h));
-    // let VdotH = saturate(dot(v, h));
-
-    // let Fd = DiffuseLambert(surface.diffuseColor);
-    // let Fr = SpecularGGX(surface.specularColor, surface.roughnessA, NdotV, NdotL, NdotH, VdotH);
-    // let F  = (Fd + Fr) * NdotL * light.color * light.intensity;
-
     GBufferOutput output;
     output.albedo = float4(input.normal * 0.5 + 0.5, 1.0);
     output.normal = float4(input.normal, 1.0);

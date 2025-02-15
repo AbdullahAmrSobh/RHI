@@ -172,6 +172,13 @@ namespace Engine
         m_device->CollectResources();
     }
 
+    void Renderer::OnWindowResize()
+    {
+        auto [width, height] = m_window->GetWindowSize();
+        auto  res = m_swapchain->Recreate({width, height});
+        TL_ASSERT(RHI::IsSuccess(res));
+    }
+
     void Renderer::BindGraphicsPassResources(RHI::CommandList& commandList, TL::Span<const DrawRequest> drawCalls)
     {
         // commandList.BindIndexBuffer(m_unifiedGeometryBuffer.GetIndexBuffer(), RHI::IndexType::uint32);

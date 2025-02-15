@@ -185,7 +185,9 @@ namespace RHI::Vulkan
             .pImageIndices      = &m_imageIndex,
             .pResults           = &m_lastPresentResult,
         };
-        Validate(vkQueuePresentKHR(presentQueue.GetHandle(), &presentInfo));
+        VkResult result = vkQueuePresentKHR(presentQueue.GetHandle(), &presentInfo);
+        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+            return ResultCode::Success;
 
         m_semaphoreIndex = (m_semaphoreIndex + 1) % m_imageCount;
 
@@ -267,7 +269,6 @@ namespace RHI::Vulkan
         };
         Validate(vkCreateSwapchainKHR(m_device->m_device, &createInfo, nullptr, &m_swapchain));
         m_device->SetDebugName(m_swapchain, m_name.c_str());
-
         if (createInfo.oldSwapchain != VK_NULL_HANDLE)
         {
             vkDestroySwapchainKHR(m_device->m_device, createInfo.oldSwapchain, nullptr);
@@ -286,6 +287,7 @@ namespace RHI::Vulkan
             }
             createInfo.minImageCount = m_imageCount;
         }
+
         AcquireNextImage();
 
         return VK_SUCCESS;

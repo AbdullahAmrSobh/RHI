@@ -46,6 +46,13 @@ namespace Engine
         /// @brief Renders the scene.
         void RenderScene();
 
+        void ProcessEvent(Examples::Event& event)
+        {
+            m_imguiRenderer.ProcessEvent(event);
+        }
+
+        void OnWindowResize();
+
     private:
         void BindGraphicsPassResources(RHI::CommandList& commandList, TL::Span<const DrawRequest> drawCalls);
 

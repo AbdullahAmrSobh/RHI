@@ -13,7 +13,6 @@ namespace Examples
 
 namespace Engine
 {
-
     class IMGUI_IMPL_API ImGuiRenderer
     {
     public:
@@ -32,7 +31,7 @@ namespace Engine
         void UpdateBuffers(ImDrawData* drawData);
 
     private:
-        RHI::Device* m_context;
+        RHI::Device* m_device;
 
         ImGuiContext* m_imguiContext;
 
