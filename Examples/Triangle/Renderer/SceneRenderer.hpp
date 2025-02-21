@@ -8,9 +8,11 @@
 #include <glm/glm.hpp>
 
 #include "Bindless.hpp"
+#include "BufferSuballocator.hpp"
 #include "ImGuiRenderer.hpp"
 #include "Mesh.hpp"
 #include "PipelineLibrary.hpp"
+#include "Scene.hpp"
 
 #ifndef ENGINE_EXPORT
     #define ENGINE_EXPORT
@@ -23,13 +25,7 @@ namespace Examples
 
 namespace Engine
 {
-    struct DrawRequest
-    {
-        RHI::Handle<RHI::PipelineLayout>   layout;
-        RHI::Handle<RHI::GraphicsPipeline> pipeline;
-        RHI::Handle<RHI::BindGroup>        bindGroup;
-        RHI::DrawParameters                parameters;
-    };
+    class Scene;
 
     /// @class Renderer
     /// @brief Manages the rendering process, including initialization, rendering, and shutdown.
@@ -54,7 +50,6 @@ namespace Engine
         void OnWindowResize();
 
     private:
-        void BindGraphicsPassResources(RHI::CommandList& commandList, TL::Span<const DrawRequest> drawCalls);
 
         void FillGBuffer(RHI::CommandList& commandList);
 
@@ -81,12 +76,14 @@ namespace Engine
 
         /// @todo: maybe uniformBuffersAllocator, and storageBuffersAllocator should be part of the render graph?
 
-        // ///< Allocator for uniform buffers.
-        // BufferSuballocator        m_uniformBuffersAllocator;
-        // ///< Allocator for storage buffers.
-        // BufferSuballocator        m_storageBuffersAllocator;
-        // ///< Bindless textures resource manager.
-        // Bindless                  m_bindless;
+        ///< Allocator for uniform buffers.
+        BufferSuballocator m_uniformBuffersAllocator;
+
+        ///< Allocator for storage buffers.
+        BufferSuballocator m_storageBuffersAllocator;
+
+        ///< Bindless textures resource manager.
+        Bindless m_bindless;
 
         ///< Library of rendering pipelines.
         PipelineLibrary           m_pipelineLibrary;

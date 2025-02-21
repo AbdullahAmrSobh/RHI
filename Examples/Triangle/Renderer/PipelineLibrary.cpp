@@ -52,6 +52,12 @@ namespace Engine
                     .stride     = sizeof(glm::vec2),
                     .attributes = {{.format = RHI::Format::RG32_FLOAT}},
                 },
+                // Draw Instance Info
+                // {
+                //     .stride     = sizeof(glm::uvec4),
+                //     .stepRate   = RHI::PipelineVertexInputRate::PerInstance,
+                //     .attributes = {{.format = RHI::Format::RGBA32_UINT}},
+                // },
             },
             .renderTargetLayout = {
                 .colorAttachmentsFormats = {RHI::Format::RGBA8_UNORM, RHI::Format::RGBA32_FLOAT, RHI::Format::RGBA32_FLOAT, RHI::Format::RG8_UNORM},

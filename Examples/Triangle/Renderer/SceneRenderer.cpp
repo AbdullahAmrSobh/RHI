@@ -4,6 +4,8 @@
 #include <Examples-Base/ApplicationBase.hpp>
 #include <RHI-Vulkan/Loader.hpp>
 
+#include "Scene.hpp"
+
 namespace Engine
 {
     ResultCode Renderer::Init(Examples::Window* window)
@@ -179,27 +181,9 @@ namespace Engine
         TL_ASSERT(RHI::IsSuccess(res));
     }
 
-    void Renderer::BindGraphicsPassResources(RHI::CommandList& commandList, TL::Span<const DrawRequest> drawCalls)
-    {
-        // commandList.BindIndexBuffer(m_unifiedGeometryBuffer.GetIndexBuffer(), RHI::IndexType::uint32);
-        // commandList.BindVertexBuffers(
-        //     0,
-        //     {
-        //         m_unifiedGeometryBuffer.GetVertexBuffer(MeshAttributeType::Position),
-        //         m_unifiedGeometryBuffer.GetVertexBuffer(MeshAttributeType::Normal),
-        //         m_unifiedGeometryBuffer.GetVertexBuffer(MeshAttributeType::Uv),
-        //     });
-        //
-        // // TODO: Gpu driven
-        // for (auto drawCall : drawCalls)
-        // {
-        //     commandList.BindGraphicsPipeline(drawCall.pipeline, {{.bindGroup = drawCall.bindGroup}});
-        //     commandList.Draw(drawCall.parameters);
-        // }
-    }
-
     void Renderer::FillGBuffer(RHI::CommandList& commandList)
     {
+        auto pipeline = m_pipelineLibrary.GetGraphicsPipeline(kGBufferFill);
         commandList.BindIndexBuffer(m_unifiedGeometryBuffer.GetIndexBuffer(), RHI::IndexType::uint32);
         commandList.BindVertexBuffers(
             0,

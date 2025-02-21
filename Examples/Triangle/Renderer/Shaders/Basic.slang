@@ -3,19 +3,20 @@
 import Public.GpuScene;
 // import DirectLighting;
 
+struct VertexInput
+{
+    float3 position;
+    float3 normal;
+    float2 uv;
+    uint32_t4 drawId;
+};
+
 struct FragmentShaderInput
 {
     float4 csPosition: SV_Position;
     float3 wsPosition: TEXCOORD1;
     float3 normal: TEXCOORD1;
     float2 uv: TEXCOORD2;
-};
-
-struct VertexInput
-{
-    float3 position;
-    float3 normal;
-    float2 uv;
 };
 
 [[shader("vertex")]]

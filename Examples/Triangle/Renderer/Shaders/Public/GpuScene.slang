@@ -3,7 +3,7 @@
 struct ShaderParamters
 {
     ConstantBuffer<Scene>         scene;
-    StructuredBuffer<Drawable>    objects;
+    StructuredBuffer<F32_3x4>     objects;
     StructuredBuffer<PbrMaterial> materials;
     SamplerState                  sampler;
     Texture2D                     textures[];
