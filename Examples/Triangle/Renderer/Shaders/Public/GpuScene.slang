@@ -2,7 +2,7 @@
 
 struct ShaderParamters
 {
-    ConstantBuffer<Scene>         scene;
+    ConstantBuffer<SceneView>         scene;
     StructuredBuffer<F32_3x4>     objects;
     StructuredBuffer<PbrMaterial> materials;
     SamplerState                  sampler;

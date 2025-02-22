@@ -90,9 +90,9 @@ namespace Engine
         ///< ImGui renderer.
         ImGuiRenderer             m_imguiRenderer;
         ///< Geometry buffer for meshes.
-        MeshUnifiedGeometryBuffer m_unifiedGeometryBuffer;
+        UnifiedGeometryBufferPool m_unifiedGeometryBufferPool;
 
     private:
-        StaticMesh m_testTriangleMesh;
+        StaticMeshLOD* m_testTriangleMesh;
     };
 } // namespace Engine

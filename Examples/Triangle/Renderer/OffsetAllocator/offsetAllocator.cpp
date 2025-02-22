@@ -133,17 +133,20 @@ namespace OffsetAllocator
     }
 
     // Allocator...
-    Allocator::Allocator(uint32 size, uint32 maxAllocs)
-        : m_size(size)
-        , m_maxAllocs(maxAllocs)
+    Allocator::Allocator()
+        : m_size(0)
+        , m_maxAllocs(0)
         , m_nodes(nullptr)
         , m_freeNodes(nullptr)
     {
-        if constexpr (sizeof(NodeIndex) == 2u)
-        {
-            ASSERT(maxAllocs <= 65536);
-        }
         reset();
+    }
+
+    Allocator::Allocator(uint32 size, uint32 maxAllocs)
+        : m_nodes(nullptr)
+        , m_freeNodes(nullptr)
+    {
+        init(size, maxAllocs);
     }
 
     Allocator::Allocator(Allocator&& other)
@@ -165,6 +168,28 @@ namespace OffsetAllocator
         other.m_usedBinsTop = 0;
     }
 
+    void Allocator::init(uint32 size, uint32 maxAllocs)
+    {
+        if (sizeof(NodeIndex) == 2)
+        {
+            ASSERT(maxAllocs <= 65536);
+        }
+
+        m_size      = size;
+        m_maxAllocs = maxAllocs;
+        reset();
+        initInternal();
+    }
+
+    void Allocator::shutdown()
+    {
+        delete[] m_nodes;
+        m_nodes = nullptr;
+
+        delete[] m_freeNodes;
+        m_freeNodes = nullptr;
+    }
+
     void Allocator::reset()
     {
         m_freeStorage = 0;
@@ -179,7 +204,29 @@ namespace OffsetAllocator
 
         if (m_nodes) delete[] m_nodes;
         if (m_freeNodes) delete[] m_freeNodes;
+    }
 
+    void Allocator::resize(size_t newSize)
+    {
+        /// @note(AbdullahAmrSobh): resizing is not well-tested might cause problems as I don't quite understand the algorithm here
+
+        // Can't resize if no storage is initialized
+        if (!m_nodes) return;
+        if (newSize > m_size)
+        {
+            uint32 additionalSize = newSize - m_size;
+            insertNodeIntoBin(additionalSize, m_size);
+        }
+        else
+        {
+            TL_UNREACHABLE(); // shrinking is not supported
+        }
+
+        m_size = newSize;
+    }
+
+    void Allocator::initInternal()
+    {
         m_nodes     = new Node[m_maxAllocs];
         m_freeNodes = new NodeIndex[m_maxAllocs];
 
@@ -196,8 +243,8 @@ namespace OffsetAllocator
 
     Allocator::~Allocator()
     {
-        delete[] m_nodes;
-        delete[] m_freeNodes;
+        if (m_nodes) delete[] m_nodes;
+        if (m_freeNodes) delete[] m_freeNodes;
     }
 
     Allocation Allocator::allocate(uint32 size)

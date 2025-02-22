@@ -2,104 +2,168 @@
 
 namespace Engine
 {
-    MeshUnifiedGeometryBuffer::MeshUnifiedGeometryBuffer()
-        : m_allocator{Suballocator(0), Suballocator(0), Suballocator(0), Suballocator(0)}
-    {
-    }
+    static constexpr RHI::Format kMeshAttributeFormat[U32(MeshAttributeType::Count)] = {
+        RHI::Format::R32_UINT,    // Index
+        RHI::Format::RGB32_FLOAT, // Position
+        RHI::Format::RGB32_FLOAT, // Normal
+        RHI::Format::RG32_FLOAT,  // TexCoord
+    };
+    constexpr static U32 kVertexCount = 6; // 64k vertices
 
-    ResultCode MeshUnifiedGeometryBuffer::Init(RHI::Device& device, size_t vertexCount)
-    {
-        m_device      = &device;
-        m_vertexCount = vertexCount;
+    UnifiedGeometryBufferPool::UnifiedGeometryBufferPool() = default;
 
-        RHI::BufferCreateInfo unifiedGeometryBufferCI{
-            .name       = "Unified Geometry Buffer",
-            .usageFlags = RHI::BufferUsage::Index | RHI::BufferUsage::Vertex,
-            .byteSize   = (m_vertexCount) * (sizeof(uint32_t) + (2 * sizeof(glm::vec3)) + sizeof(glm::vec2)),
+    ResultCode UnifiedGeometryBufferPool::Init(RHI::Device& device)
+    {
+        auto sizeIndex    = kVertexCount * sizeof(uint32_t);
+        auto sizePosition = kVertexCount * sizeof(glm::vec3);
+        auto sizeNormal   = kVertexCount * sizeof(glm::vec3);
+        auto sizeTexCoord = kVertexCount * sizeof(glm::vec2);
+
+        m_allocators[U32(MeshAttributeType::Index)].init(sizeIndex);
+        m_allocators[U32(MeshAttributeType::Position)].init(sizePosition);
+        m_allocators[U32(MeshAttributeType::Normal)].init(sizeNormal);
+        m_allocators[U32(MeshAttributeType::TexCoord)].init(sizeTexCoord);
+
+        // initialize segement offsets
+        m_segmentStartingOffsets[U32(MeshAttributeType::Index)]    = 0;
+        m_segmentStartingOffsets[U32(MeshAttributeType::Position)] = sizeIndex;
+        m_segmentStartingOffsets[U32(MeshAttributeType::Normal)]   = sizeIndex + sizePosition;
+        m_segmentStartingOffsets[U32(MeshAttributeType::TexCoord)] = sizeIndex + sizePosition + sizeNormal;
+
+        m_device                         = &device;
+        size_t                vertexSize = (sizeof(uint32_t) + sizeof(glm::vec3) + sizeof(glm::vec3) + sizeof(glm::vec2));
+        RHI::BufferCreateInfo createInfo{
+            .name       = "UnifiedGeometryBuffer",
+            .hostMapped = true,
+            .usageFlags = RHI::BufferUsage::Vertex | RHI::BufferUsage::Index,
+            .byteSize   = kVertexCount * vertexSize,
         };
-        auto [buffer, result] = m_device->CreateBuffer(unifiedGeometryBufferCI);
+        auto [buffer, result] = device.CreateBuffer(createInfo);
         m_buffer              = buffer;
-
-        /// @note offsets initialization must happen in this order!
-
-        // Initialize offsets
-        m_vertexAttributeOffsets[U32(MeshAttributeType::Index)]    = 0;
-        m_vertexAttributeOffsets[U32(MeshAttributeType::Position)] = m_vertexAttributeOffsets[U32(MeshAttributeType::Index)] + vertexCount * sizeof(uint32_t);
-        m_vertexAttributeOffsets[U32(MeshAttributeType::Normal)]   = m_vertexAttributeOffsets[U32(MeshAttributeType::Position)] + vertexCount * sizeof(glm::vec3);
-        m_vertexAttributeOffsets[U32(MeshAttributeType::Uv)]       = m_vertexAttributeOffsets[U32(MeshAttributeType::Normal)] + vertexCount * sizeof(glm::vec3);
-
-        // Initialize suballocators with correct sizes
-        new (&m_allocator[U32(MeshAttributeType::Index)]) Suballocator(vertexCount * sizeof(uint32_t));
-        new (&m_allocator[U32(MeshAttributeType::Position)]) Suballocator(vertexCount * sizeof(glm::vec3));
-        new (&m_allocator[U32(MeshAttributeType::Normal)]) Suballocator(vertexCount * sizeof(glm::vec3));
-        new (&m_allocator[U32(MeshAttributeType::Uv)]) Suballocator(vertexCount * sizeof(glm::vec2));
         return result;
     }
 
-    void MeshUnifiedGeometryBuffer::Shutdown()
+    void UnifiedGeometryBufferPool::Shutdown()
     {
         m_device->DestroyBuffer(m_buffer);
     }
 
-    RHI::BufferBindingInfo MeshUnifiedGeometryBuffer::GetIndexBuffer() const
+    RHI::BufferBindingInfo UnifiedGeometryBufferPool::GetAttributeBindingInfo(MeshAttributeType attribute) const
     {
-        return GetVertexBuffer(MeshAttributeType::Index);
+        auto offset = m_segmentStartingOffsets[U32(attribute)];
+        return {m_buffer, offset};
     }
 
-    RHI::BufferBindingInfo MeshUnifiedGeometryBuffer::GetVertexBuffer(MeshAttributeType attribute) const
+    void UnifiedGeometryBufferPool::BeginUpdate()
     {
-        return RHI::BufferBindingInfo{
-            .buffer = m_buffer,
-            .offset = m_vertexAttributeOffsets[U32(attribute)],
-        };
+        m_mappedPtr = m_device->MapBuffer(m_buffer);
     }
 
-    StaticMesh MeshUnifiedGeometryBuffer::CreateMesh(
-        const char*               name,
-        TL::Span<const uint32_t>  indcies,
+    void UnifiedGeometryBufferPool::EndUpdate()
+    {
+        m_device->UnmapBuffer(m_buffer);
+        m_mappedPtr = nullptr;
+    }
+
+    StaticMeshLOD* UnifiedGeometryBufferPool::CreateStaticMeshLOD(U32 vertexCount, U32 indexCount)
+    {
+        auto staticMesh           = TL::Allocator::Construct<StaticMeshLOD>();
+        staticMesh->m_indexCount  = indexCount;
+        staticMesh->m_vertexCount = vertexCount;
+        staticMesh->m_indexOffset = m_segmentStartingOffsets[U32(MeshAttributeType::Index)] / sizeof(uint32_t);
+        staticMesh->m_vertexCount = m_segmentStartingOffsets[U32(MeshAttributeType::Position)] / sizeof(glm::vec3);
+
+        staticMesh->m_indexAttribute    = CreateMeshAttribute(indexCount, MeshAttributeType::Index, {nullptr, indexCount * sizeof(uint32_t)});
+        staticMesh->m_positionAttribute = CreateMeshAttribute(vertexCount, MeshAttributeType::Position, {nullptr, vertexCount * sizeof(glm::vec3)});
+        staticMesh->m_normalAttribute   = CreateMeshAttribute(vertexCount, MeshAttributeType::Normal, {nullptr, vertexCount * sizeof(glm::vec3)});
+        staticMesh->m_uvAttribute       = CreateMeshAttribute(vertexCount, MeshAttributeType::TexCoord, {nullptr, vertexCount * sizeof(glm::vec2)});
+        return staticMesh;
+    }
+
+    StaticMeshLOD* UnifiedGeometryBufferPool::CreateStaticMeshLOD(
+        TL::Span<const uint32_t>  indicies,
         TL::Span<const glm::vec3> positions,
         TL::Span<const glm::vec3> normals,
         TL::Span<const glm::vec2> uvs)
     {
-        // Validate inputs
-        if (indcies.empty() || positions.empty() || normals.empty() || uvs.empty())
+        auto staticMesh = CreateStaticMeshLOD(positions.size(), indicies.size());
+
+        // staticMesh->m_aabb.min;
+        for (size_t i = 0; i < positions.size(); i++)
         {
-            TL_ASSERT(false, "Invalid input spans");
-            return StaticMesh{};
+            staticMesh->m_aabb.min.x = std::min(staticMesh->m_aabb.min.x, positions[i].x);
+            staticMesh->m_aabb.min.y = std::min(staticMesh->m_aabb.min.y, positions[i].y);
+            staticMesh->m_aabb.min.z = std::min(staticMesh->m_aabb.min.z, positions[i].z);
+            staticMesh->m_aabb.max.x = std::max(staticMesh->m_aabb.max.x, positions[i].x);
+            staticMesh->m_aabb.max.y = std::max(staticMesh->m_aabb.max.y, positions[i].y);
+            staticMesh->m_aabb.max.z = std::max(staticMesh->m_aabb.max.z, positions[i].z);
         }
 
-        if (indcies.size() > m_vertexCount || positions.size() > m_vertexCount)
-        {
-            TL_ASSERT(false, "Input size exceeds buffer capacity");
-            return StaticMesh{};
-        }
-
-        StaticMesh staticMesh             = {};
-        staticMesh.indcies.buffer         = m_buffer;
-        staticMesh.positions.buffer       = m_buffer;
-        staticMesh.normals.buffer         = m_buffer;
-        staticMesh.uvs.buffer             = m_buffer;
-        staticMesh.indciesSuballocation   = m_allocator[U32(MeshAttributeType::Index)].allocate(indcies.size_bytes());
-        staticMesh.positionsSuballocation = m_allocator[U32(MeshAttributeType::Position)].allocate(positions.size_bytes());
-        staticMesh.normalsSuballocation   = m_allocator[U32(MeshAttributeType::Normal)].allocate(normals.size_bytes());
-        staticMesh.uvsSuballocation       = m_allocator[U32(MeshAttributeType::Uv)].allocate(uvs.size_bytes());
-        staticMesh.indcies.offset         = m_vertexAttributeOffsets[U32(MeshAttributeType::Index)] + staticMesh.indciesSuballocation.offset;
-        staticMesh.positions.offset       = m_vertexAttributeOffsets[U32(MeshAttributeType::Position)] + staticMesh.positionsSuballocation.offset;
-        staticMesh.normals.offset         = m_vertexAttributeOffsets[U32(MeshAttributeType::Normal)] + staticMesh.normalsSuballocation.offset;
-        staticMesh.uvs.offset             = m_vertexAttributeOffsets[U32(MeshAttributeType::Uv)] + staticMesh.uvsSuballocation.offset;
-
-        auto ptr = m_device->MapBuffer(m_buffer);
-        memcpy((char*)ptr + staticMesh.indcies.offset, indcies.data(), indcies.size_bytes());
-        memcpy((char*)ptr + staticMesh.positions.offset, positions.data(), positions.size_bytes());
-        memcpy((char*)ptr + staticMesh.normals.offset, normals.data(), normals.size_bytes());
-        memcpy((char*)ptr + staticMesh.uvs.offset, uvs.data(), uvs.size_bytes());
-        m_device->UnmapBuffer(m_buffer);
-
-        staticMesh.parameters.indexCount   = indcies.size();
-        staticMesh.parameters.firstIndex   = 0;
-        staticMesh.parameters.vertexOffset = 0;
+        WriteMeshAttribute(staticMesh->m_indexAttribute, 0, {(void*)indicies.data(), indicies.size_bytes()});
+        WriteMeshAttribute(staticMesh->m_positionAttribute, 0, {(void*)positions.data(), positions.size_bytes()});
+        WriteMeshAttribute(staticMesh->m_normalAttribute, 0, {(void*)normals.data(), normals.size_bytes()});
+        WriteMeshAttribute(staticMesh->m_uvAttribute, 0, {(void*)uvs.data(), uvs.size_bytes()});
 
         return staticMesh;
     }
 
+    void UnifiedGeometryBufferPool::ReleaseStaticMeshLOD(StaticMeshLOD* lod)
+    {
+        ReleaseMeshAttribute(lod->m_indexAttribute);
+        ReleaseMeshAttribute(lod->m_positionAttribute);
+        ReleaseMeshAttribute(lod->m_normalAttribute);
+        ReleaseMeshAttribute(lod->m_uvAttribute);
+        TL::Allocator::Destruct(lod);
+    }
+
+    MeshAttribute* UnifiedGeometryBufferPool::CreateMeshAttribute(U32 elementCount, MeshAttributeType type, TL::Block content)
+    {
+        auto  format     = kMeshAttributeFormat[U32(type)];
+        auto& allocator  = m_allocators[U32(type)];
+        auto  allocation = allocator.allocate(elementCount * RHI::GetFormatByteSize(format));
+        if (allocation.offset == OffsetAllocator::Allocation::NO_SPACE)
+        {
+            TL_UNREACHABLE();
+            return nullptr;
+        }
+        auto attribute = TL::Allocator::Construct<MeshAttribute>();
+        attribute->m_type =    type;
+        attribute->m_allocation = allocation;
+        attribute->m_elementCount = elementCount;
+
+        if (content.ptr)
+        {
+            WriteMeshAttribute(attribute, 0, content);
+        }
+        return attribute;
+    }
+
+    void UnifiedGeometryBufferPool::ReleaseMeshAttribute(MeshAttribute* attribute)
+    {
+        auto& allocator = m_allocators[U32(attribute->m_type)];
+        allocator.free(attribute->m_allocation);
+        TL::Allocator::Destruct(attribute);
+    }
+
+    void UnifiedGeometryBufferPool::WriteMeshAttribute(MeshAttribute* attribute, size_t offset, TL::Block content)
+    {
+        const auto& allocator = m_allocators[U32(attribute->m_type)];
+        auto        meshSize  = allocator.allocationSize(attribute->m_allocation);
+        TL_ASSERT(meshSize >= offset + content.size, "Overflow!");
+
+        bool shouldUnamp = m_mappedPtr == nullptr;
+        if (shouldUnamp)
+        {
+            m_mappedPtr = m_device->MapBuffer(m_buffer);
+        }
+
+        auto ptr = (char*)m_mappedPtr + m_segmentStartingOffsets[U32(attribute->m_type)] + attribute->m_allocation.offset + offset;
+        ::memcpy(ptr, content.ptr, content.size);
+
+        if (shouldUnamp)
+        {
+            m_device->UnmapBuffer(m_buffer);
+            m_mappedPtr = nullptr;
+        }
+    }
 } // namespace Engine

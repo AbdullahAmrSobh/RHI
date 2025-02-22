@@ -79,13 +79,12 @@ namespace Engine
         resultCode = m_imguiRenderer.Init(m_device, RHI::Format::RGBA8_UNORM);
         RESULT_CHECK(resultCode);
 
-        resultCode = m_unifiedGeometryBuffer.Init(*m_device, 64);
+        resultCode = m_unifiedGeometryBufferPool.Init(*m_device);
         RESULT_CHECK(resultCode);
 
 #undef RESULT_CHECK
 
-        m_testTriangleMesh = m_unifiedGeometryBuffer.CreateMesh(
-            "Triangle",
+        m_testTriangleMesh = m_unifiedGeometryBufferPool.CreateStaticMeshLOD(
             {0, 1, 2},
             {
                 {0.5f, 0.5f, 0.0f},
@@ -115,7 +114,7 @@ namespace Engine
         m_renderGraph->DestroyImage(m_gBuffer.colorAttachment);
         m_device->DestroyRenderGraph(m_renderGraph);
 
-        m_unifiedGeometryBuffer.Shutdown();
+        m_unifiedGeometryBufferPool.Shutdown();
         m_imguiRenderer.Shutdown();
         m_pipelineLibrary.Shutdown();
 
@@ -177,22 +176,28 @@ namespace Engine
     void Renderer::OnWindowResize()
     {
         auto [width, height] = m_window->GetWindowSize();
-        auto  res = m_swapchain->Recreate({width, height});
+        auto res             = m_swapchain->Recreate({width, height});
         TL_ASSERT(RHI::IsSuccess(res));
     }
 
     void Renderer::FillGBuffer(RHI::CommandList& commandList)
     {
         auto pipeline = m_pipelineLibrary.GetGraphicsPipeline(kGBufferFill);
-        commandList.BindIndexBuffer(m_unifiedGeometryBuffer.GetIndexBuffer(), RHI::IndexType::uint32);
+        commandList.BindIndexBuffer(m_unifiedGeometryBufferPool.GetAttributeBindingInfo(MeshAttributeType::Index), RHI::IndexType::uint32);
         commandList.BindVertexBuffers(
             0,
             {
-                m_unifiedGeometryBuffer.GetVertexBuffer(MeshAttributeType::Position),
-                m_unifiedGeometryBuffer.GetVertexBuffer(MeshAttributeType::Normal),
-                m_unifiedGeometryBuffer.GetVertexBuffer(MeshAttributeType::Uv),
+                m_unifiedGeometryBufferPool.GetAttributeBindingInfo(MeshAttributeType::Position),
+                m_unifiedGeometryBufferPool.GetAttributeBindingInfo(MeshAttributeType::Normal),
+                m_unifiedGeometryBufferPool.GetAttributeBindingInfo(MeshAttributeType::TexCoord),
             });
         commandList.BindGraphicsPipeline(m_pipelineLibrary.GetGraphicsPipeline(kGBufferFill), {});
-        commandList.DrawIndexed(m_testTriangleMesh.parameters);
+        commandList.DrawIndexed({
+            .indexCount    = m_testTriangleMesh->GetIndexCount(),
+            .instanceCount = 1,
+            .firstIndex    = m_testTriangleMesh->GetIndexOffset(),
+            .vertexOffset  = (I32)m_testTriangleMesh->GetVertexOffset(),
+            .firstInstance = 0,
+        });
     }
 } // namespace Engine
