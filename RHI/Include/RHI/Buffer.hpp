@@ -12,13 +12,14 @@ namespace RHI
     /// @brief Specifies the usage flags for a buffer.
     enum class BufferUsage
     {
-        None    = 0 << 0, ///< No usage flags set.
-        Storage = 1 << 1, ///< Buffer used for storage operations.
-        Uniform = 1 << 2, ///< Buffer used for uniform data.
-        Vertex  = 1 << 3, ///< Buffer used for vertex data.
-        Index   = 1 << 4, ///< Buffer used for index data.
-        CopySrc = 1 << 5, ///< Buffer used as a source in copy operations.
-        CopyDst = 1 << 6, ///< Buffer used as a destination in copy operations.
+        None     = 0 << 0, ///< No usage flags set.
+        Storage  = 1 << 1, ///< Buffer used for storage operations.
+        Uniform  = 1 << 2, ///< Buffer used for uniform data.
+        Vertex   = 1 << 3, ///< Buffer used for vertex data.
+        Index    = 1 << 4, ///< Buffer used for index data.
+        CopySrc  = 1 << 5, ///< Buffer used as a source in copy operations.
+        CopyDst  = 1 << 6, ///< Buffer used as a destination in copy operations.
+        Indirect = 1 << 7, ///< Buffer used for indirect draw calls.
     };
 
     TL_DEFINE_FLAG_OPERATORS(BufferUsage);

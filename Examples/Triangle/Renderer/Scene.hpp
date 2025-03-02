@@ -8,60 +8,36 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
+#include "BufferPool.hpp"
 #include "Shaders/Public/GpuScene.h"
 
-// namespace Engine
-// {
-//     class MeshResource;
-//     class Material;
+namespace Engine
+{
+    class MeshResource;
+    class ModelComponent;
+    class SceneView;
 
-//     static constexpr uint32_t DrawArgumentBufferStrideSize = sizeof(RHI::DrawIndexedParameters);
+    class Scene
+    {
+    public:
+        ModelComponent* AddModel(MeshResource* mesh, const glm::mat4& transform);
+        void            RemoveModel(ModelComponent* model);
 
-//     struct Transform
-//     {
-//         glm::vec3 position = {0.0f, 0.0f, 0.0f};
-//         glm::quat rotation = {0.0f, 0.0f, 0.0f, 1.0f};
-//         glm::vec3 scale    = {1.0f, 1.0f, 1.0f};
+        SceneView* CreateSceneView();
+        void       DestroySceneView(SceneView* view);
 
-//         inline glm::mat3x4 GetWorldMatrix() const
-//         {
-//             glm::mat4 modelToWorld = glm::translate(glm::identity<glm::mat4>(), position);
-//             modelToWorld *= rotation;
-//             modelToWorld *= glm::scale(modelToWorld, scale);
-//             return modelToWorld;
-//         }
-//     };
+    private:
+        friend class Renderer;
 
-//     class ModelComponent final
-//     {
-//     public:
-//     private:
-//         MeshResource* m_mesh      = nullptr;
-//         Material*     m_material  = nullptr;
-//         Transform     m_transform = {};
-//     };
+        TL::Vector<TL::Ptr<ModelComponent>> m_models;
+        TL::Vector<TL::Ptr<SceneView>>      m_views;
 
-//     class Scene
-//     {
-//         friend class Renderer;
+        SceneView* m_primarySceneView;
 
-//     public:
-//         uint32_t GetDrawCount() const;
-
-//         ModelComponent* AddModel(MeshResource* mesh, Transform transform);
-
-//         void RemoveModel(ModelComponent* model);
-
-//     private:
-//     private:
-//         // Scene Components
-//         TL::Vector<glm::mat3x4>                m_modelToWorldMatsData;
-//         TL::Vector<Shader::ObjectID>           m_modelDrawIdsData;
-//         TL::Vector<Shader::Light>              m_lightsData;
-//         TL::Vector<Shader::Scene>              m_viewsData;
-//         TL::Vector<RHI::DrawIndexedParameters> m_drawParameters;
-
-//     private:
-//         RHI::Device* m_device;
-//     };
-// } // namespace Engine
+        // Gpu draw data
+        // TODO: Remove this
+        RHI::BufferBindingInfo               m_drawCountIndirectBuffer; // The number of draws to do
+        GpuArray<RHI::DrawIndexedParameters> m_drawList;                // The draw list for all the models in the scene
+        GpuArray<glm::mat3x4>                m_transforms;              // The transforms of all the models in the scene
+    };
+} // namespace Engine

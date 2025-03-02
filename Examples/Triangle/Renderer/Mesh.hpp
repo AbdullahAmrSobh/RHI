@@ -10,6 +10,7 @@
 #include <glm/ext.hpp>
 #include <glm/glm.hpp>
 
+#include "BufferPool.hpp"
 #include "Common.hpp"
 
 namespace Engine

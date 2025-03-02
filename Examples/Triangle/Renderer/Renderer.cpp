@@ -162,7 +162,7 @@ namespace Engine
                     .height  = height,
                 });
 
-                FillGBuffer(commandList);
+                FillGBuffer(nullptr, commandList);
 
                 m_imguiRenderer.RenderDrawData(ImGui::GetDrawData(), commandList);
             },
@@ -180,9 +180,10 @@ namespace Engine
         TL_ASSERT(RHI::IsSuccess(res));
     }
 
-    void Renderer::FillGBuffer(RHI::CommandList& commandList)
+    void Renderer::FillGBuffer(const Scene* scene, RHI::CommandList& commandList)
     {
         auto pipeline = m_pipelineLibrary.GetGraphicsPipeline(kGBufferFill);
+        commandList.BindGraphicsPipeline(m_pipelineLibrary.GetGraphicsPipeline(kGBufferFill), {});
         commandList.BindIndexBuffer(m_unifiedGeometryBufferPool.GetAttributeBindingInfo(MeshAttributeType::Index), RHI::IndexType::uint32);
         commandList.BindVertexBuffers(
             0,
@@ -191,7 +192,6 @@ namespace Engine
                 m_unifiedGeometryBufferPool.GetAttributeBindingInfo(MeshAttributeType::Normal),
                 m_unifiedGeometryBufferPool.GetAttributeBindingInfo(MeshAttributeType::TexCoord),
             });
-        commandList.BindGraphicsPipeline(m_pipelineLibrary.GetGraphicsPipeline(kGBufferFill), {});
         commandList.DrawIndexed({
             .indexCount    = m_testTriangleMesh->GetIndexCount(),
             .instanceCount = 1,

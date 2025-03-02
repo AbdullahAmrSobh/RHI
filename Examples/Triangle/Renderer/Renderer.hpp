@@ -7,7 +7,6 @@
 
 #include <glm/glm.hpp>
 
-#include "Bindless.hpp"
 #include "BufferPool.hpp"
 #include "ImGuiRenderer.hpp"
 #include "Mesh.hpp"
@@ -51,7 +50,7 @@ namespace Engine
 
     private:
 
-        void FillGBuffer(RHI::CommandList& commandList);
+        void FillGBuffer(const Scene* scene, RHI::CommandList& commandList);
 
     private:
         ///< Pointer to the rendering device.
@@ -81,9 +80,6 @@ namespace Engine
 
         ///< Allocator for storage buffers.
         BufferPool m_storageBuffersAllocator;
-
-        ///< Bindless textures resource manager.
-        Bindless m_bindless;
 
         ///< Library of rendering pipelines.
         PipelineLibrary           m_pipelineLibrary;
