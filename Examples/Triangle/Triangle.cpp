@@ -16,7 +16,8 @@
 
 #include "Camera.hpp"
 #include "Examples-Base/ApplicationBase.hpp"
-#include "Renderer/SceneRenderer.hpp"
+
+#include "Renderer/Renderer.hpp"
 
 class Playground final : public ApplicationBase
 {

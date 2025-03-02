@@ -3,9 +3,9 @@ cmake_minimum_required(VERSION 3.19)
 set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Triangle.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/ImGuiRenderer.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/SceneRenderer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Renderer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/PipelineLibrary.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/BufferSuballocator.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/BufferPool.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Mesh.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/OffsetAllocator/OffsetAllocator.cpp
 )

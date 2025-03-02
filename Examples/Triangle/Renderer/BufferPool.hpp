@@ -6,12 +6,12 @@
 
 namespace Engine
 {
-    /// @brief A buffer suballocator that manages sub-allocations from a single large buffer
+    /// @brief A buffer pool that manages sub-allocations from a single large buffer
     /// @details Allows efficient allocation and deallocation of smaller buffer regions from a pre-allocated buffer
-    class BufferSuballocator
+    class BufferPool
     {
     public:
-        BufferSuballocator();
+        BufferPool();
 
         /// @brief Initializes the buffer suballocator.
         /// @param device The device to create the buffer on.

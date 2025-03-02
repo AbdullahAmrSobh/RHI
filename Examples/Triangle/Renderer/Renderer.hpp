@@ -8,7 +8,7 @@
 #include <glm/glm.hpp>
 
 #include "Bindless.hpp"
-#include "BufferSuballocator.hpp"
+#include "BufferPool.hpp"
 #include "ImGuiRenderer.hpp"
 #include "Mesh.hpp"
 #include "PipelineLibrary.hpp"
@@ -77,10 +77,10 @@ namespace Engine
         /// @todo: maybe uniformBuffersAllocator, and storageBuffersAllocator should be part of the render graph?
 
         ///< Allocator for uniform buffers.
-        BufferSuballocator m_uniformBuffersAllocator;
+        BufferPool m_uniformBuffersAllocator;
 
         ///< Allocator for storage buffers.
-        BufferSuballocator m_storageBuffersAllocator;
+        BufferPool m_storageBuffersAllocator;
 
         ///< Bindless textures resource manager.
         Bindless m_bindless;

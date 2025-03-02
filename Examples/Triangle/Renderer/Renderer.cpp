@@ -1,5 +1,5 @@
 
-#include "SceneRenderer.hpp"
+#include "Renderer.hpp"
 
 #include <Examples-Base/ApplicationBase.hpp>
 #include <RHI-Vulkan/Loader.hpp>

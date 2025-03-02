@@ -1,14 +1,14 @@
-#include "BufferSuballocator.hpp"
+#include "BufferPool.hpp"
 
 namespace Engine
 {
-    BufferSuballocator::BufferSuballocator()
+    BufferPool::BufferPool()
         : m_buffer(RHI::NullHandle)
         , m_allocator(0)
     {
     }
 
-    ResultCode BufferSuballocator::Init(RHI::Device& device, RHI::BufferCreateInfo& createInfo)
+    ResultCode BufferPool::Init(RHI::Device& device, RHI::BufferCreateInfo& createInfo)
     {
         m_device = &device;
 
@@ -20,17 +20,17 @@ namespace Engine
         return result;
     }
 
-    void BufferSuballocator::Shutdown()
+    void BufferPool::Shutdown()
     {
         m_device->DestroyBuffer(m_buffer);
     }
 
-    void BufferSuballocator::Reset()
+    void BufferPool::Reset()
     {
         m_allocator.reset();
     }
 
-    Result<Suballocation> BufferSuballocator::Allocate(size_t size, size_t alignment)
+    Result<Suballocation> BufferPool::Allocate(size_t size, size_t alignment)
     {
         auto allocation = m_allocator.allocate(TL::AlignUp(size, alignment));
         if (allocation.offset == OffsetAllocator::Allocation::NO_SPACE)
@@ -40,28 +40,28 @@ namespace Engine
         return allocation;
     }
 
-    void BufferSuballocator::Release(const Suballocation& allocation)
+    void BufferPool::Release(const Suballocation& allocation)
     {
         m_allocator.free(allocation);
     }
 
-    RHI::Handle<RHI::Buffer> BufferSuballocator::GetBuffer() const
+    RHI::Handle<RHI::Buffer> BufferPool::GetBuffer() const
     {
         return m_buffer;
     }
 
-    void BufferSuballocator::BeginUpdate()
+    void BufferPool::BeginUpdate()
     {
         m_mappedPtr = m_device->MapBuffer(m_buffer);
     }
 
-    void BufferSuballocator::EndUpdate()
+    void BufferPool::EndUpdate()
     {
         m_device->UnmapBuffer(m_buffer);
         m_mappedPtr = nullptr;
     }
 
-    void BufferSuballocator::Write(Suballocation suballocation, TL::Block block)
+    void BufferPool::Write(Suballocation suballocation, TL::Block block)
     {
         bool shouldUnmap = false;
         if (!m_mappedPtr)
