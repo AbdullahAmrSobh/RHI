@@ -557,9 +557,13 @@ namespace RHI::Vulkan
             .pNext = &features12,
         };
         VkPhysicalDeviceFeatures2 features{
-            .sType    = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-            .pNext    = &features11,
-            .features = {.samplerAnisotropy = VK_TRUE},
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+            .pNext = &features11,
+            .features =
+                {
+                    .independentBlend  = VK_TRUE,
+                    .samplerAnisotropy = VK_TRUE,
+                },
         };
         VkDeviceCreateInfo deviceCI{
             .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
