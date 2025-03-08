@@ -17,7 +17,7 @@ namespace Engine
         /// @param device The device to create the buffer on.
         /// @param createInfo The buffer creation parameters.
         /// @return The result of the operation.
-        ResultCode Init(RHI::Device& device, RHI::BufferCreateInfo& createInfo);
+        ResultCode Init(RHI::Device& device, const RHI::BufferCreateInfo& createInfo);
 
         /// @brief Cleans up and releases the buffer resources
         /// @param device The RHI device used to create the buffer
@@ -69,6 +69,7 @@ namespace Engine
         using reference         = T&;
 
         // Constructor
+        GpuArrayHandle() = default;
         GpuArrayHandle(GpuArray<T>* array, uint32_t index);
 
         // Dereference operators
@@ -85,8 +86,8 @@ namespace Engine
         bool operator!=(const GpuArrayHandle& other) const;
 
     private:
-        GpuArray<T>* m_array;
-        uint32_t     m_index;
+        GpuArray<T>* m_array = nullptr;
+        uint32_t     m_index = UINT32_MAX;
     };
 
     template<typename T>
@@ -101,7 +102,7 @@ namespace Engine
         ResultCode Init(RHI::Device& device, const char* name, TL::Flags<RHI::BufferUsage> usageFlags, uint32_t capacity);
 
         /// @brief Shuts down the GPU array and releases associated resources.
-        void Shutdown(RHI::Device& device);
+        void Shutdown();
 
         /// @brief Inserts an element into the GPU array.
         /// @param element The element to insert.
@@ -112,8 +113,8 @@ namespace Engine
         /// @param index The index of the element to remove.
         void Remove(uint32_t index);
 
-        void BeginUpdate(RHI::Device& device);
-        void EndUpdate(RHI::Device& device);
+        void BeginUpdate();
+        void EndUpdate();
 
         /// @brief Updates the element at the specified index.
         /// @param index The index of the element to update.
@@ -134,17 +135,39 @@ namespace Engine
         uint32_t GetCapacity() const;
 
     private:
+        RHI::DeviceMemoryPtr Map()
+        {
+            m_mappedPtrCount++;
+            m_mappedPtr = m_device->MapBuffer(m_buffer);
+            return m_mappedPtr;
+        }
+
+        void Unmap()
+        {
+            TL_ASSERT(m_mappedPtrCount > 0);
+            m_mappedPtrCount--;
+            if (m_mappedPtrCount == 0)
+            {
+                m_device->UnmapBuffer(m_buffer);
+                m_mappedPtr = nullptr;
+            }
+        }
+
+    private:
+        RHI::Device* m_device;
+
         // List of free indices available for new elements (for reuse when elements are removed)
-        TL::Vector<uint32_t> m_freeList;
+        TL::Vector<uint32_t> m_freeList = {};
 
         // Offset into the buffer (in case if buffer is shared with other systems)
-        size_t m_bufferOffset;
+        size_t m_bufferOffset = 0;
 
         // Handle to the GPU buffer that stores the array elements
-        RHI::Handle<RHI::Buffer> m_buffer;
+        RHI::Handle<RHI::Buffer> m_buffer = RHI::NullHandle;
 
         // Mapped pointer to the device memory for CPU access (if applicable)
-        RHI::DeviceMemoryPtr m_mappedPtr;
+        uint32_t             m_mappedPtrCount = 0;
+        RHI::DeviceMemoryPtr m_mappedPtr      = nullptr;
 
         // Current number of active elements
         uint32_t m_count = 0;
@@ -211,6 +234,8 @@ namespace Engine
     template<typename T>
     ResultCode GpuArray<T>::Init(RHI::Device& device, const char* name, TL::Flags<RHI::BufferUsage> usageFlags, uint32_t capacity)
     {
+        m_device = &device;
+
         m_capacity  = capacity;
         m_count     = 0;
         m_allocated = 0; // Internal counter for the next new slot
@@ -223,7 +248,9 @@ namespace Engine
             .byteSize   = bufferSize,
 
         };
-        auto [buffer, result] = device.CreateBuffer(bufferCI);
+        auto [buffer, result] = m_device->CreateBuffer(bufferCI);
+        m_buffer = buffer;
+
         if (result != ResultCode::Success)
             return result;
 
@@ -235,7 +262,7 @@ namespace Engine
 
     // Shuts down the GPU array and releases resources.
     template<typename T>
-    void GpuArray<T>::Shutdown(RHI::Device& device)
+    void GpuArray<T>::Shutdown()
     {
         // If necessary, unmap the memory. (Depends on your RHI API.)
         if (m_mappedPtr)
@@ -244,7 +271,7 @@ namespace Engine
             m_mappedPtr = nullptr;
         }
 
-        device.DestroyBuffer(m_buffer);
+        m_device->DestroyBuffer(m_buffer);
 
         m_freeList.clear();
         m_count     = 0;
@@ -265,18 +292,20 @@ namespace Engine
         else
         {
             if (m_allocated >= m_capacity)
-                return Result<GpuArrayHandle<T>>::Error("GpuArray is full");
+                return ResultCode::ErrorPoolOutOfMemory;
             index = m_allocated;
             m_allocated++;
         }
+
+        auto mappedPtr = Map();
         // Write the element into the mapped memory.
-        T* data     = reinterpret_cast<T*>(static_cast<char*>(m_mappedPtr) + m_bufferOffset);
-        data[index] = element;
+        T*   data      = reinterpret_cast<T*>((char*)mappedPtr + m_bufferOffset);
+        data[index]    = element;
         m_count++;
-        return Result<GpuArrayHandle<T>>::Success(GpuArrayHandle<T>(this, index));
+        Unmap();
+        return RHI::ResultCode::Success;
     }
 
-    // Removes an element from the GPU array at the specified index.
     template<typename T>
     void GpuArray<T>::Remove(uint32_t index)
     {
@@ -285,19 +314,16 @@ namespace Engine
         m_count--;
     }
 
-    // Prepares the GPU array for updates. This might re-map memory or flush caches.
     template<typename T>
-    void GpuArray<T>::BeginUpdate(RHI::Device& device)
+    void GpuArray<T>::BeginUpdate()
     {
-        m_mappedPtr = device.MapBuffer(m_buffer);
+        m_mappedPtr = Map();
     }
 
-    // Ends the update phase and flushes changes if required.
     template<typename T>
-    void GpuArray<T>::EndUpdate(RHI::Device& device)
+    void GpuArray<T>::EndUpdate()
     {
-        device.UnmapBuffer(m_buffer);
-        m_mappedPtr = nullptr;
+        Unmap();
     }
 
     // Updates the element at the position specified by the handle.

@@ -388,11 +388,11 @@ namespace RHI::Vulkan
             .pAttachments    = pipelineColorBlendAttachmentStates,
             .blendConstants =
                 {
-                    createInfo.colorBlendState.blendConstants[0],
-                    createInfo.colorBlendState.blendConstants[1],
-                    createInfo.colorBlendState.blendConstants[2],
-                    createInfo.colorBlendState.blendConstants[3],
-                },
+                                 createInfo.colorBlendState.blendConstants[0],
+                                 createInfo.colorBlendState.blendConstants[1],
+                                 createInfo.colorBlendState.blendConstants[2],
+                                 createInfo.colorBlendState.blendConstants[3],
+                                 },
         };
 
         VkPipelineRenderingCreateInfo renderTargetLayout{

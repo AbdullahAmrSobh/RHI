@@ -15,7 +15,7 @@ using namespace Examples;
 
 namespace Engine
 {
-    inline static TL::Ptr<RHI::ShaderModule> LoadShaderModule(RHI::Device* device, const char* path)
+    inline static RHI::ShaderModule* LoadShaderModule(RHI::Device* device, const char* path)
     {
         auto code   = TL::ReadBinaryFile(path);
         // NOTE: Code might not be correctly aligned here?
@@ -308,58 +308,69 @@ namespace Engine
         auto vertexShaderModule = LoadShaderModule(m_device, "Shaders/ImGui.vertex.spv");
         auto fragmentShader     = LoadShaderModule(m_device, "Shaders/ImGui.fragment.spv");
 
-        auto attachmentBlendDesc = RHI::ColorAttachmentBlendStateDesc{
-            true,
-            RHI::BlendEquation::Add,
-            RHI::BlendFactor::SrcAlpha,
-            RHI::BlendFactor::OneMinusSrcAlpha,
-            RHI::BlendEquation::Add,
-            RHI::BlendFactor::One,
-            RHI::BlendFactor::OneMinusSrcAlpha,
-            RHI::ColorWriteMask::All,
-        };
-        RHI::GraphicsPipelineCreateInfo pipelineCI{
-            .name               = "ImGui Pipeline",
-            .vertexShaderName   = "VSMain",
-            .vertexShaderModule = vertexShaderModule.get(),
-            .pixelShaderName    = "PSMain",
-            .pixelShaderModule  = fragmentShader.get(),
-            .layout             = m_pipelineLayout,
-            .vertexBufferBindings =
-                {
+        RHI::ColorAttachmentBlendStateDesc attachmentBlendDesc =
+            {
+                true,
+                RHI::BlendEquation::Add,
+                RHI::BlendFactor::SrcAlpha,
+                RHI::BlendFactor::OneMinusSrcAlpha,
+                RHI::BlendEquation::Add,
+                RHI::BlendFactor::One,
+                RHI::BlendFactor::OneMinusSrcAlpha,
+                RHI::ColorWriteMask::All,
+            };
+        RHI::GraphicsPipelineCreateInfo pipelineCI =
+            {
+                .name               = "ImGui Pipeline",
+                .vertexShaderName   = "VSMain",
+                .vertexShaderModule = vertexShaderModule,
+                .pixelShaderName    = "PSMain",
+                .pixelShaderModule  = fragmentShader,
+                .layout             = m_pipelineLayout,
+                .vertexBufferBindings =
                     {
-                        .stride     = sizeof(ImDrawVert),
-                        .stepRate   = RHI::PipelineVertexInputRate::PerVertex,
-                        .attributes = {
-                            {.offset = offsetof(ImDrawVert, pos), .format = RHI::Format::RG32_FLOAT},
-                            {.offset = offsetof(ImDrawVert, uv), .format = RHI::Format::RG32_FLOAT},
-                            {.offset = offsetof(ImDrawVert, col), .format = RHI::Format::RGBA8_UNORM},
+                        {
+                            .stride   = sizeof(ImDrawVert),
+                            .stepRate = RHI::PipelineVertexInputRate::PerVertex,
+                            .attributes =
+                                {
+                                    {.offset = offsetof(ImDrawVert, pos), .format = RHI::Format::RG32_FLOAT},
+                                    {.offset = offsetof(ImDrawVert, uv), .format = RHI::Format::RG32_FLOAT},
+                                    {.offset = offsetof(ImDrawVert, col), .format = RHI::Format::RGBA8_UNORM},
+                                },
                         },
                     },
-                },
-            .renderTargetLayout = {
-                .colorAttachmentsFormats = {RHI::Format::RGBA8_UNORM, RHI::Format::RGBA32_FLOAT, RHI::Format::RGBA32_FLOAT, RHI::Format::RG8_UNORM},
-                .depthAttachmentFormat   = RHI::Format::D32,
-            },
-            .colorBlendState    = {.blendStates = {attachmentBlendDesc}, .blendConstants = {}},
-            .topologyMode       = RHI::PipelineTopologyMode::Triangles,
-            .rasterizationState = {
-                .cullMode  = RHI::PipelineRasterizerStateCullMode::None,
-                .fillMode  = RHI::PipelineRasterizerStateFillMode::Triangle,
-                .frontFace = RHI::PipelineRasterizerStateFrontFace::CounterClockwise,
-                .lineWidth = 1.0f,
-            },
-            .multisampleState = {
-                .sampleCount   = RHI::SampleCount::Samples1,
-                .sampleShading = false,
-            },
-            .depthStencilState = {
-                .depthTestEnable   = false,
-                .depthWriteEnable  = true,
-                .compareOperator   = RHI::CompareOperator::Always,
-                .stencilTestEnable = false,
-            },
-        };
+                .renderTargetLayout =
+                    {
+                        .colorAttachmentsFormats = {RHI::Format::RGBA8_UNORM, RHI::Format::RGBA32_FLOAT, RHI::Format::RGBA32_FLOAT, RHI::Format::RG8_UNORM},
+                        .depthAttachmentFormat   = RHI::Format::D32,
+                    },
+                .colorBlendState =
+                    {
+                        .blendStates    = {attachmentBlendDesc},
+                        .blendConstants = {},
+                    },
+                .topologyMode = RHI::PipelineTopologyMode::Triangles,
+                .rasterizationState =
+                    {
+                        .cullMode  = RHI::PipelineRasterizerStateCullMode::None,
+                        .fillMode  = RHI::PipelineRasterizerStateFillMode::Triangle,
+                        .frontFace = RHI::PipelineRasterizerStateFrontFace::CounterClockwise,
+                        .lineWidth = 1.0f,
+                    },
+                .multisampleState =
+                    {
+                        .sampleCount   = RHI::SampleCount::Samples1,
+                        .sampleShading = false,
+                    },
+                .depthStencilState =
+                    {
+                        .depthTestEnable   = false,
+                        .depthWriteEnable  = true,
+                        .compareOperator   = RHI::CompareOperator::Always,
+                        .stencilTestEnable = false,
+                    },
+            };
         m_pipeline = m_device->CreateGraphicsPipeline(pipelineCI);
         m_device->DestroyBindGroupLayout(bindGroupLayout);
         return ResultCode::Success;

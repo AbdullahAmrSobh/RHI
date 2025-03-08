@@ -7,7 +7,6 @@ find_package(Vulkan REQUIRED)
 set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/BindGroup.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Buffer.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandPool.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Common.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Device.hpp
@@ -27,7 +26,6 @@ set(HEADER_FILES
 set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/BindGroup.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Buffer.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandPool.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Device.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/DeleteQueue.cpp

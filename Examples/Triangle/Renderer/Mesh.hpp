@@ -88,10 +88,11 @@ namespace Engine
         U32 m_indexOffset;
         U32 m_vertexOffset;
 
-        MeshAttribute* m_indexAttribute;
-        MeshAttribute* m_positionAttribute;
-        MeshAttribute* m_normalAttribute;
-        MeshAttribute* m_uvAttribute;
+        GpuArrayHandle<RHI::DrawIndexedParameters> m_indirectDrawArgs;
+        MeshAttribute*                             m_indexAttribute;
+        MeshAttribute*                             m_positionAttribute;
+        MeshAttribute*                             m_normalAttribute;
+        MeshAttribute*                             m_uvAttribute;
 
         AABB m_aabb;
     };
@@ -102,7 +103,7 @@ namespace Engine
         UnifiedGeometryBufferPool();
         UnifiedGeometryBufferPool(const UnifiedGeometryBufferPool&)            = delete;
         UnifiedGeometryBufferPool& operator=(const UnifiedGeometryBufferPool&) = delete;
-        ~UnifiedGeometryBufferPool() = default;
+        ~UnifiedGeometryBufferPool()                                           = default;
 
         ResultCode Init(RHI::Device& device);
         void       Shutdown();
@@ -126,15 +127,10 @@ namespace Engine
         void           WriteMeshAttribute(MeshAttribute* attribute, size_t offset, TL::Block content);
 
     private:
-        RHI::Device*             m_device    = nullptr;
-        /// The buffer containing all mesh data.
-        RHI::Handle<RHI::Buffer> m_buffer    = RHI::NullHandle;
-        /// The mapped pointer to the buffer.
-        RHI::DeviceMemoryPtr     m_mappedPtr = nullptr;
-        /// The starting offset for each attribute section.
-        size_t                   m_segmentStartingOffsets[U32(MeshAttributeType::Count)];
-        /// Use seperate allocator for each attribute section.
-        /// @todo: Use a single allocator that allocate Vertex offset, and calcaulte byte offset based on that.
-        Suballocator             m_allocators[U32(MeshAttributeType::Count)];
+        RHI::Device* m_device = nullptr;
+        BufferPool   m_bufferPools[U32(MeshAttributeType::Count)];
+
+    public:
+        GpuArray<RHI::DrawIndexedParameters> m_drawParams;
     };
 } // namespace Engine

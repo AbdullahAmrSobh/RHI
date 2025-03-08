@@ -17,6 +17,7 @@
 namespace RHI
 {
     using DeviceMemoryPtr = void*;
+    struct RenderGraphCreateInfo;
 
     struct Version
     {
@@ -71,7 +72,7 @@ namespace RHI
         /// @return Device Limits struct.
         DeviceLimits                     GetLimits() const;
 
-        virtual RenderGraph*             CreateRenderGraph()                                                              = 0;
+        virtual RenderGraph*             CreateRenderGraph(const RenderGraphCreateInfo& createInfo)                       = 0;
 
         virtual void                     DestroyRenderGraph(RenderGraph* renderGraph)                                     = 0;
 
@@ -87,7 +88,12 @@ namespace RHI
         /// @brief Creates a shader module.
         /// @param createInfo Shader module creation parameters.
         /// @return Pointer to the created shader module.
-        virtual TL::Ptr<ShaderModule>    CreateShaderModule(const ShaderModuleCreateInfo& createInfo)                     = 0;
+        virtual ShaderModule*            CreateShaderModule(const ShaderModuleCreateInfo& createInfo)                     = 0;
+
+        /// @brief Destroys a shader module object and frees associated resources
+        /// @param shaderModule Pointer to the shader module to destroy. Must not be null and must be a valid shader module created by this
+        /// device
+        virtual void                     DestroyShaderModule(ShaderModule* shaderModule)                                  = 0;
 
         /// @brief Creates a command list.
         /// @param createInfo Command list creation parameters.

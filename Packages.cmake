@@ -89,4 +89,15 @@ if(RHI_BUILD_EXAMPLES)
 		GIT_TAG        3.4
 		OPTIONS
 	)
+
+	# CPMAddPackage(
+	# 	NAME           dawn
+	# 	GIT_REPOSITORY git@github.com:google/dawn.git
+	# 	GIT_TAG        faf0be2f2bc74d3d52831dc834095cfa6a114c96
+	# 	OPTIONS
+	# 		DAWN_ENABLE_D3D11 OFF
+	# 		DAWN_ENABLE_NULL OFF
+	# 		DAWN_BUILD_SAMPLES OFF
+	# 		TINT_BUILD_TESTS OFF
+	# )
 endif()

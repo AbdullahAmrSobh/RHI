@@ -16,7 +16,7 @@ namespace RHI::Vulkan
         IRenderGraph();
         ~IRenderGraph();
 
-        ResultCode Init(IDevice* device);
+        ResultCode Init(IDevice* device, const RenderGraphCreateInfo& createInfo);
         void       Shutdown();
 
         Pass*    CreatePass(const PassCreateInfo& createInfo) override;

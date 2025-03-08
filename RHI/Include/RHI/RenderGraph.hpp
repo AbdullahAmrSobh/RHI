@@ -23,6 +23,10 @@ namespace RHI
     class RenderGraphExecuteGroup;
     struct RenderTargetInfo;
 
+    struct RenderGraphCreateInfo
+    {
+    };
+
     class RHI_EXPORT RenderGraph
     {
     public:

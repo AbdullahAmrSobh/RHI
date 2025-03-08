@@ -32,7 +32,7 @@ namespace Engine
         };
         m_swapchain = m_device->CreateSwapchain(swapchainInfo);
 
-        m_renderGraph = m_device->CreateRenderGraph();
+        m_renderGraph = m_device->CreateRenderGraph({});
 
         m_gBuffer.colorAttachment    = m_renderGraph->ImportSwapchain("Color", *m_swapchain, RHI::Format::RGBA8_UNORM);
         m_gBuffer.normalsAttachment  = m_renderGraph->CreateImage({
@@ -192,12 +192,13 @@ namespace Engine
                 m_unifiedGeometryBufferPool.GetAttributeBindingInfo(MeshAttributeType::Normal),
                 m_unifiedGeometryBufferPool.GetAttributeBindingInfo(MeshAttributeType::TexCoord),
             });
-        commandList.DrawIndexed({
-            .indexCount    = m_testTriangleMesh->GetIndexCount(),
-            .instanceCount = 1,
-            .firstIndex    = m_testTriangleMesh->GetIndexOffset(),
-            .vertexOffset  = (I32)m_testTriangleMesh->GetVertexOffset(),
-            .firstInstance = 0,
-        });
+        // commandList.DrawIndexed({
+        //     .indexCount    = m_testTriangleMesh->GetIndexCount(),
+        //     .instanceCount = 1,
+        //     .firstIndex    = m_testTriangleMesh->GetIndexOffset(),
+        //     .vertexOffset  = (I32)m_testTriangleMesh->GetVertexOffset(),
+        //     .firstInstance = 0,
+        // });
+        commandList.DrawIndexedIndirect(m_unifiedGeometryBufferPool.m_drawParams.GetBindingInfo(), {}, 1, sizeof(RHI::DrawIndexedParameters));
     }
 } // namespace Engine

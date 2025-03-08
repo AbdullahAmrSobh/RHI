@@ -67,7 +67,7 @@ namespace RHI::Vulkan
     IRenderGraph::IRenderGraph()  = default;
     IRenderGraph::~IRenderGraph() = default;
 
-    ResultCode IRenderGraph::Init([[maybe_unused]] IDevice* device)
+    ResultCode IRenderGraph::Init([[maybe_unused]] IDevice* device, const RenderGraphCreateInfo& createInfo)
     {
         this->m_device = device;
         return ResultCode::Success;

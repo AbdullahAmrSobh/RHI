@@ -10,7 +10,7 @@
 namespace Engine
 {
 
-    inline static TL::Ptr<RHI::ShaderModule> LoadShaderModule(RHI::Device* device, const char* path)
+    inline static RHI::ShaderModule* LoadShaderModule(RHI::Device* device, const char* path)
     {
         auto code   = TL::ReadBinaryFile(path);
         // NOTE: Code might not be correctly aligned here?
@@ -32,9 +32,9 @@ namespace Engine
         RHI::GraphicsPipelineCreateInfo pipelineCI{
             .name                 = name,
             .vertexShaderName     = "VSMain",
-            .vertexShaderModule   = vertexModule.get(),
+            .vertexShaderModule   = vertexModule,
             .pixelShaderName      = "PSMain",
-            .pixelShaderModule    = pixelModule.get(),
+            .pixelShaderModule    = pixelModule,
             .layout               = layout,
             .vertexBufferBindings = {
                 // Position
@@ -88,7 +88,7 @@ namespace Engine
         RHI::ComputePipelineCreateInfo pipelineCI{
             .name         = name,
             .shaderName   = computeShaderPath.c_str(),
-            .shaderModule = computeModule.get(),
+            .shaderModule = computeModule,
             .layout       = layout,
         };
         return device->CreateComputePipeline(pipelineCI);

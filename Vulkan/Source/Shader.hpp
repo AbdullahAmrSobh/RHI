@@ -17,12 +17,11 @@ namespace RHI::Vulkan
         IShaderModule();
         ~IShaderModule();
 
-        ResultCode Init(IDevice* device, TL::Span<const uint32_t> shaderBlob);
+        ResultCode Init(IDevice* device, const ShaderModuleCreateInfo& createInfo);
         void       Shutdown();
 
     public:
         IDevice*       m_device;
         VkShaderModule m_shaderModule;
     };
-
 } // namespace RHI::Vulkan

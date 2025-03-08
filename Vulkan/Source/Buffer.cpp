@@ -20,31 +20,33 @@ namespace RHI::Vulkan
 
     ResultCode IBuffer::Init(IDevice* device, const BufferCreateInfo& createInfo)
     {
-        this->subregion = {
-            .offset = 0,
-            .size   = createInfo.byteSize,
-        };
-
-        VmaAllocationCreateInfo allocationCI{
-            .flags          = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT,
-            .usage          = createInfo.hostMapped ? VMA_MEMORY_USAGE_AUTO_PREFER_HOST : VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-            .requiredFlags  = 0,
-            .preferredFlags = 0,
-            .memoryTypeBits = 0,
-            .pool           = VK_NULL_HANDLE,
-            .pUserData      = nullptr,
-            .priority       = 0.0f,
-        };
-        VkBufferCreateInfo bufferCI{
-            .sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-            .pNext                 = nullptr,
-            .flags                 = 0,
-            .size                  = createInfo.byteSize,
-            .usage                 = ConvertBufferUsageFlags(createInfo.usageFlags),
-            .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
-            .queueFamilyIndexCount = 0,
-            .pQueueFamilyIndices   = nullptr,
-        };
+        this->subregion =
+            {
+                .offset = 0,
+                .size   = createInfo.byteSize,
+            };
+        VmaAllocationCreateInfo allocationCI =
+            {
+                .flags          = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT,
+                .usage          = createInfo.hostMapped ? VMA_MEMORY_USAGE_AUTO_PREFER_HOST : VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+                .requiredFlags  = 0,
+                .preferredFlags = 0,
+                .memoryTypeBits = 0,
+                .pool           = VK_NULL_HANDLE,
+                .pUserData      = nullptr,
+                .priority       = 0.0f,
+            };
+        VkBufferCreateInfo bufferCI =
+            {
+                .sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+                .pNext                 = nullptr,
+                .flags                 = 0,
+                .size                  = createInfo.byteSize,
+                .usage                 = ConvertBufferUsageFlags(createInfo.usageFlags),
+                .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
+                .queueFamilyIndexCount = 0,
+                .pQueueFamilyIndices   = nullptr,
+            };
         auto result = vmaCreateBuffer(device->m_deviceAllocator, &bufferCI, &allocationCI, &handle, &allocation, nullptr);
         if (result == VK_SUCCESS && createInfo.name)
         {

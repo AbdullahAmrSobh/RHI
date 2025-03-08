@@ -25,7 +25,6 @@
 #include <tracy/Tracy.hpp>
 
 #include "CommandList.hpp"
-#include "CommandPool.hpp"
 #include "Common.hpp"
 #include "Queue.hpp"
 #include "RHI-Vulkan/Loader.hpp"
@@ -58,16 +57,6 @@ namespace RHI
     }
 } // namespace RHI
 
-#define IMPLEMENT_DEVICE_CREATE_METHOD_UNIQUE(HandleType) \
-    HandleType* IDevice::Create##HandleType()             \
-    {                                                     \
-        ZoneScoped;                                       \
-        auto handle = new I##HandleType();                \
-        auto result = handle->Init(this);                 \
-        TL_ASSERT(IsSuccess(result));                     \
-        return handle;                                    \
-    }
-
 #define IMPLEMENT_DEVICE_CREATE_METHOD_UNIQUE_WITH_INFO(ResourceType)                       \
     ResourceType* IDevice::Create##ResourceType(const ResourceType##CreateInfo& createInfo) \
     {                                                                                       \
@@ -87,15 +76,6 @@ namespace RHI
         delete handle;                                         \
     }
 
-#define IMPLEMENT_DEVICE_CREATE_METHOD_WITH_RESULT(HandleType, OwnerField)                           \
-    Result<Handle<HandleType>> IDevice::Create##HandleType(const HandleType##CreateInfo& createInfo) \
-    {                                                                                                \
-        ZoneScoped;                                                                                  \
-        auto [handle, result] = OwnerField.Create(this, createInfo);                                 \
-        if (IsSuccess(result)) return (Handle<HandleType>)handle;                                    \
-        return result;                                                                               \
-    }
-
 #define IMPLEMENT_DEVICE_CREATE_METHOD(HandleType, OwnerField)                               \
     Handle<HandleType> IDevice::Create##HandleType(const HandleType##CreateInfo& createInfo) \
     {                                                                                        \
@@ -103,6 +83,15 @@ namespace RHI
         auto [handle, result] = OwnerField.Create(this, createInfo);                         \
         TL_ASSERT(IsSuccess(result));                                                        \
         return handle;                                                                       \
+    }
+
+#define IMPLEMENT_DEVICE_CREATE_METHOD_WITH_RESULT(HandleType, OwnerField)                           \
+    Result<Handle<HandleType>> IDevice::Create##HandleType(const HandleType##CreateInfo& createInfo) \
+    {                                                                                                \
+        ZoneScoped;                                                                                  \
+        auto [handle, result] = OwnerField.Create(this, createInfo);                                 \
+        if (IsSuccess(result)) return (Handle<HandleType>)handle;                                    \
+        return result;                                                                               \
     }
 
 #define IMPLEMENT_DEVICE_DESTROY_METHOD(HandleType, OwnerField)                \
@@ -122,16 +111,16 @@ namespace RHI
     IMPLEMENT_DEVICE_CREATE_METHOD_UNIQUE(ResourceType) \
     IMPLEMENT_DEVICE_DESTROY_METHOD_UNIQUE(ResourceType)
 
-#define IMPLEMENT_DEVICE_RESOURCE_METHODS_WITH_INFO(ResourceType) \
+#define IMPLEMENT_DISPATCHABLE_TYPES_FUNCTIONS(ResourceType)      \
     IMPLEMENT_DEVICE_CREATE_METHOD_UNIQUE_WITH_INFO(ResourceType) \
     IMPLEMENT_DEVICE_DESTROY_METHOD_UNIQUE(ResourceType)
 
-#define IMPLEMENT_DEVICE_HANDLE_METHODS(HandleType, OwnerField) \
-    IMPLEMENT_DEVICE_CREATE_METHOD(HandleType, OwnerField)      \
+#define IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(HandleType, OwnerField) \
+    IMPLEMENT_DEVICE_CREATE_METHOD(HandleType, OwnerField)                \
     IMPLEMENT_DEVICE_DESTROY_METHOD(HandleType, OwnerField)
 
-#define IMPLEMENT_DEVICE_HANDLE_METHODS_WITH_RESULTS(HandleType, OwnerField) \
-    IMPLEMENT_DEVICE_CREATE_METHOD_WITH_RESULT(HandleType, OwnerField)       \
+#define IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS_WITH_RESULTS(HandleType, OwnerField) \
+    IMPLEMENT_DEVICE_CREATE_METHOD_WITH_RESULT(HandleType, OwnerField)                 \
     IMPLEMENT_DEVICE_DESTROY_METHOD(HandleType, OwnerField)
 
 namespace RHI::Vulkan
@@ -325,7 +314,7 @@ namespace RHI::Vulkan
     {
         m_destroyQueue       = TL::CreatePtr<DeleteQueue>();
         m_bindGroupAllocator = TL::CreatePtr<BindGroupAllocator>();
-        m_commandsAllocator  = TL::CreatePtr<CommandAllocator>();
+        m_commandsAllocator  = TL::CreatePtr<CommandPool>();
         m_stagingAllocator   = TL::CreatePtr<StagingBufferAllocator>();
     }
 
@@ -561,9 +550,9 @@ namespace RHI::Vulkan
             .pNext = &features11,
             .features =
                 {
-                    .independentBlend  = VK_TRUE,
-                    .samplerAnisotropy = VK_TRUE,
-                },
+                           .independentBlend  = VK_TRUE,
+                           .samplerAnisotropy = VK_TRUE,
+                           },
         };
         VkDeviceCreateInfo deviceCI{
             .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
@@ -609,7 +598,7 @@ namespace RHI::Vulkan
         VkPhysicalDeviceProperties properties{};
         vkGetPhysicalDeviceProperties(m_physicalDevice, &properties);
         m_limits                                  = TL::CreatePtr<DeviceLimits>();
-        m_limits->minUniformBufferOffsetAlignment = properties.limits.minUniformBufferOffsetAlignment;
+        m_limits->minUniformBufferOffsetAlignment = uint32_t(properties.limits.minUniformBufferOffsetAlignment);
 
         ResultCode resultCode;
 
@@ -702,33 +691,6 @@ namespace RHI::Vulkan
         }
     }
 
-    IMPLEMENT_DEVICE_RESOURCE_METHODS(RenderGraph);
-    IMPLEMENT_DEVICE_RESOURCE_METHODS_WITH_INFO(Swapchain);
-
-    TL::Ptr<ShaderModule> IDevice::CreateShaderModule(const ShaderModuleCreateInfo& createInfo)
-    {
-        ZoneScoped;
-        auto shaderModule = TL::CreatePtr<IShaderModule>();
-        auto result       = shaderModule->Init(this, createInfo.code);
-        TL_ASSERT(IsSuccess(result));
-        return shaderModule;
-    }
-
-    CommandList* IDevice::CreateCommandList(const CommandListCreateInfo& createInfo)
-    {
-        ZoneScoped;
-        return m_commandsAllocator->AllocateCommandList(createInfo.queueType, m_tempAllocator);
-    }
-
-    IMPLEMENT_DEVICE_HANDLE_METHODS(BindGroupLayout, m_bindGroupLayoutsOwner);
-    IMPLEMENT_DEVICE_HANDLE_METHODS(BindGroup, m_bindGroupOwner);
-    IMPLEMENT_DEVICE_HANDLE_METHODS(PipelineLayout, m_pipelineLayoutOwner);
-    IMPLEMENT_DEVICE_HANDLE_METHODS(GraphicsPipeline, m_graphicsPipelineOwner);
-    IMPLEMENT_DEVICE_HANDLE_METHODS(ComputePipeline, m_computePipelineOwner);
-    IMPLEMENT_DEVICE_HANDLE_METHODS(Sampler, m_samplerOwner);
-    IMPLEMENT_DEVICE_HANDLE_METHODS_WITH_RESULTS(Image, m_imageOwner);
-    IMPLEMENT_DEVICE_HANDLE_METHODS_WITH_RESULTS(Buffer, m_bufferOwner);
-
     void IDevice::UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo)
     {
         ZoneScoped;
@@ -796,15 +758,15 @@ namespace RHI::Vulkan
             .image = uploadInfo.image,
             .subresource =
                 {
-                    // TODO:
+                              // TODO:
                     // .imageAspects = ConvertImageAspect(GetFormatAspects(image.format)),
                     .imageAspects = ImageAspect::Color,
-                    .mipLevel     = uploadInfo.baseMipLevel,
-                    .arrayBase    = uploadInfo.baseArrayLayer,
-                    .arrayCount   = uploadInfo.layerCount,
-                },
+                              .mipLevel     = uploadInfo.baseMipLevel,
+                              .arrayBase    = uploadInfo.baseArrayLayer,
+                              .arrayCount   = uploadInfo.layerCount,
+                              },
             .imageSize    = image->size,
-            .imageOffset  = {0, 0, 0},
+            .imageOffset  = {0,                        0,                                                                      0                                                                     },
             .buffer       = uploadInfo.srcBuffer,
             .bufferOffset = uploadInfo.srcBufferOffset,
             .bufferSize   = uploadInfo.sizeBytes,
@@ -849,15 +811,16 @@ namespace RHI::Vulkan
         return GetDeviceQueue(queueType).WaitTimeline(value, waitDuration);
     }
 
+    IMPLEMENT_DISPATCHABLE_TYPES_FUNCTIONS(RenderGraph);
+    IMPLEMENT_DISPATCHABLE_TYPES_FUNCTIONS(Swapchain);
+    IMPLEMENT_DISPATCHABLE_TYPES_FUNCTIONS(ShaderModule);
+    IMPLEMENT_DISPATCHABLE_TYPES_FUNCTIONS(CommandList);
+    IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(BindGroupLayout, m_bindGroupLayoutsOwner);
+    IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(BindGroup, m_bindGroupOwner);
+    IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(PipelineLayout, m_pipelineLayoutOwner);
+    IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(GraphicsPipeline, m_graphicsPipelineOwner);
+    IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(ComputePipeline, m_computePipelineOwner);
+    IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(Sampler, m_samplerOwner);
+    IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS_WITH_RESULTS(Image, m_imageOwner);
+    IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS_WITH_RESULTS(Buffer, m_bufferOwner);
 } // namespace RHI::Vulkan
-
-#undef IMPLEMENT_DEVICE_CREATE_METHOD_UNIQUE
-#undef IMPLEMENT_DEVICE_CREATE_METHOD_UNIQUE_WITH_INFO
-#undef IMPLEMENT_DEVICE_DESTROY_METHOD_UNIQUE
-#undef IMPLEMENT_DEVICE_HANDLE_METHODS
-#undef IMPLEMENT_DEVICE_CREATE_METHOD
-#undef IMPLEMENT_DEVICE_DESTROY_METHOD
-#undef IMPLEMENT_DEVICE_HANDLE_METHODS_WITH_RESULTS
-#undef IMPLEMENT_DEVICE_CREATE_METHOD_WITH_RESULT
-#undef VULKAN_DEVICE_FUNC_LOAD
-#undef VULKAN_INSTANCE_FUNC_LOAD

@@ -20,7 +20,7 @@
 namespace RHI::Vulkan
 {
     class BindGroupAllocator;
-    class CommandAllocator;
+    class CommandPool;
     class StagingBufferAllocator;
 
     struct VulkanFunctions
@@ -69,12 +69,14 @@ namespace RHI::Vulkan
         IQueue& GetDeviceQueue(QueueType type);
 
         // Interface Implementation
-        RenderGraph*             CreateRenderGraph() override;
+        RenderGraph*             CreateRenderGraph(const RenderGraphCreateInfo& createInfo) override;
         void                     DestroyRenderGraph(RenderGraph* renderGraph) override;
         Swapchain*               CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
         void                     DestroySwapchain(Swapchain* swapchain) override;
-        TL::Ptr<ShaderModule>    CreateShaderModule(const ShaderModuleCreateInfo& createInfo) override;
+        ShaderModule*            CreateShaderModule(const ShaderModuleCreateInfo& createInfo) override;
+        void                     DestroyShaderModule(ShaderModule* shaderModule) override;
         CommandList*             CreateCommandList(const CommandListCreateInfo& createInfo) override;
+        void                     DestroyCommandList(CommandList*);
         Handle<BindGroupLayout>  CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) override;
         void                     DestroyBindGroupLayout(Handle<BindGroupLayout> handle) override;
         Handle<BindGroup>        CreateBindGroup(const BindGroupCreateInfo& createInfo) override;
@@ -122,7 +124,7 @@ namespace RHI::Vulkan
         IQueue                          m_queue[AsyncQueuesCount]; ///< Array of queues for different operations (e.g., graphics, compute).
         TL::Ptr<DeleteQueue>            m_destroyQueue;            ///< Queue for handling deferred resource destruction.
         TL::Ptr<BindGroupAllocator>     m_bindGroupAllocator;      ///< Allocator for bind group resources.
-        TL::Ptr<CommandAllocator>       m_commandsAllocator;       ///< Allocator for Vulkan command buffers.
+        TL::Ptr<CommandPool>            m_commandsAllocator;       ///< Allocator for Vulkan command buffers.
         TL::Ptr<StagingBufferAllocator> m_stagingAllocator;        ///< Allocator for staging buffers.
         // Frame
         std::atomic_uint64_t            m_frameIndex;

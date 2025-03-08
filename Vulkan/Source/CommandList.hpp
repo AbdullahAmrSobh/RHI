@@ -5,9 +5,17 @@
 
 #include <vulkan/vulkan.h>
 
+#include <array>
+#include <mutex>
+#include <thread>
+
 namespace RHI::Vulkan
 {
     class IDevice;
+
+    VkImageSubresourceLayers ConvertSubresourceLayer(const ImageSubresourceLayers& subresource);
+
+    VkResolveModeFlagBits ConvertResolveMode(ResolveMode resolveMode);
 
     struct PipelineBarriers
     {
@@ -16,15 +24,46 @@ namespace RHI::Vulkan
         TL::Span<const VkBufferMemoryBarrier2> bufferBarriers = {};
     };
 
-    VkImageSubresourceLayers ConvertSubresourceLayer(const ImageSubresourceLayers& subresource);
+    class CommandPool
+    {
+    public:
+        CommandPool();
+        ~CommandPool();
 
-    VkResolveModeFlagBits ConvertResolveMode(ResolveMode resolveMode);
+        ResultCode Init(IDevice* device);
+        void       Shutdown();
+
+        /// @brief Allocates a command list for the specified queue type.
+        /// @param queueType The type of queue (Graphics, Compute, Transfer) for the command list.
+        /// @return A pointer to the allocated CommandList.
+        VkCommandBuffer AllocateCommandBuffer(QueueType queueType);
+
+        void ReleaseCommandBuffers([[maybe_unused]] TL::Span<const VkCommandBuffer> commandBuffers);
+
+        /// @brief Resets all command lists used within the current frame.
+        void Reset();
+
+    private:
+        using CommandPoolPerQueue = std::array<VkCommandPool, AsyncQueuesCount>;
+
+        IDevice* m_device = nullptr;
+
+        std::mutex                                    m_poolMutex;
+        TL::Map<std::thread::id, CommandPoolPerQueue> m_pools;
+
+        // Helper functions to create and destroy command pools
+        VkCommandPool CreateCommandPool(QueueType queueType);
+        void          DestroyCommandPools();
+    };
 
     class ICommandList final : public CommandList
     {
     public:
-        ICommandList(IDevice* device, VkCommandBuffer commandBuffer);
+        ICommandList();
         ~ICommandList();
+
+        ResultCode Init(IDevice* device, const CommandListCreateInfo& createInfo);
+        void       Shutdown();
 
         void Begin();
         void End();

@@ -36,36 +36,156 @@ namespace RHI::Vulkan
         return {};
     }
 
+    ////////////////////////////////////////////////////////////////////////////////////
+    /// CommandPool
+    ////////////////////////////////////////////////////////////////////////////////////
+
+    CommandPool::CommandPool()  = default;
+    CommandPool::~CommandPool() = default;
+
+    ResultCode CommandPool::Init(IDevice* device)
+    {
+        m_device = device;
+
+        // Lock mutex while initializing pools
+        std::lock_guard<std::mutex> lock(m_poolMutex);
+
+        // Initialize command pools for each queue type per thread
+        auto& poolMap = m_pools[std::this_thread::get_id()];
+
+        for (size_t i = 0; i < (int)QueueType::Count; ++i)
+        {
+            poolMap[i] = CreateCommandPool(static_cast<QueueType>(i));
+        }
+
+        return ResultCode::Success;
+    }
+
+    void CommandPool::Shutdown()
+    {
+        std::lock_guard<std::mutex> lock(m_poolMutex);
+        DestroyCommandPools();
+    }
+
+    VkCommandBuffer CommandPool::AllocateCommandBuffer(QueueType queueType)
+    {
+        // Lock mutex for thread-safe pool access
+        std::lock_guard<std::mutex> lock(m_poolMutex);
+
+        // Get command pool for this queue type and create a command buffer
+        VkCommandPool pool = m_pools[std::this_thread::get_id()][(uint32_t)queueType];
+
+        VkCommandBufferAllocateInfo allocateInfo = {
+            .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .commandPool        = pool,
+            .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = 1,
+        };
+
+        VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
+        VkResult        result        = vkAllocateCommandBuffers(m_device->m_device, &allocateInfo, &commandBuffer);
+
+        if (result != VK_SUCCESS)
+        {
+            TL_UNREACHABLE_MSG("Failed to allocate Vulkan command buffer");
+            return nullptr;
+        }
+
+        return commandBuffer;
+    }
+
+    void CommandPool::ReleaseCommandBuffers([[maybe_unused]] TL::Span<const VkCommandBuffer> commandBuffers)
+    {
+        // Commands are all transient nothing to do here.
+    }
+
+    void CommandPool::Reset()
+    {
+        // Lock mutex for thread-safe reset
+        std::lock_guard<std::mutex> lock(m_poolMutex);
+
+        // Reset command pools for the current thread
+        auto& poolMap = m_pools[std::this_thread::get_id()];
+
+        for (size_t i = 0; i < (int)QueueType::Count; ++i)
+        {
+            VkCommandPool pool = poolMap[i];
+            vkResetCommandPool(m_device->m_device, pool, 0);
+        }
+    }
+
+    VkCommandPool CommandPool::CreateCommandPool(QueueType queueType)
+    {
+        VkCommandPoolCreateInfo poolCreateInfo = {
+            .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+            .flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+            .queueFamilyIndex = m_device->m_queue[(uint32_t)queueType].GetFamilyIndex(),
+        };
+
+        VkCommandPool pool;
+        VkResult      result = vkCreateCommandPool(m_device->m_device, &poolCreateInfo, nullptr, &pool);
+
+        if (result != VK_SUCCESS)
+        {
+            // Handle error
+            TL_UNREACHABLE_MSG("Failed to create Vulkan command pool");
+        }
+
+        return pool;
+    }
+
+    void CommandPool::DestroyCommandPools()
+    {
+        // Destroy command pools for the current thread
+        auto& poolMap = m_pools[std::this_thread::get_id()];
+
+        for (size_t i = 0; i < (int)QueueType::Count; ++i)
+        {
+            VkCommandPool pool = poolMap[i];
+            vkDestroyCommandPool(m_device->m_device, pool, nullptr);
+        }
+
+        m_pools.erase(std::this_thread::get_id()); // Clean up the pools for this thread
+    }
+
     //////////////////////////////////////////////////////////////////////////////////////////
     /// CommandList
     //////////////////////////////////////////////////////////////////////////////////////////
 
-    ICommandList::ICommandList(IDevice* device, VkCommandBuffer commandBuffer)
-        : m_device(device)
-        , m_commandBuffer(commandBuffer)
+    ICommandList::ICommandList()  = default;
+    ICommandList::~ICommandList() = default;
+
+    ResultCode ICommandList::Init(IDevice* device, const CommandListCreateInfo& createInfo)
     {
+        m_device        = device;
+        m_commandBuffer = m_device->m_commandsAllocator->AllocateCommandBuffer(createInfo.queueType);
+        return ResultCode::Success;
     }
 
-    ICommandList::~ICommandList() = default;
+    void ICommandList::Shutdown()
+    {
+        m_device->m_commandsAllocator->ReleaseCommandBuffers(m_commandBuffer);
+    }
 
     void ICommandList::AddPipelineBarriers(const PipelineBarriers& barriers)
     {
         ZoneScoped;
 
-        if ((barriers.memoryBarriers.empty() && barriers.bufferBarriers.empty() && barriers.imageBarriers.empty()) == true)
+        if (barriers.memoryBarriers.empty() && barriers.bufferBarriers.empty() && barriers.imageBarriers.empty())
             return;
 
-        VkDependencyInfo dependencyInfo{
-            .sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-            .pNext                    = nullptr,
-            .dependencyFlags          = 0,
-            .memoryBarrierCount       = uint32_t(barriers.memoryBarriers.size()),
-            .pMemoryBarriers          = barriers.memoryBarriers.data(),
-            .bufferMemoryBarrierCount = uint32_t(barriers.bufferBarriers.size()),
-            .pBufferMemoryBarriers    = barriers.bufferBarriers.data(),
-            .imageMemoryBarrierCount  = uint32_t(barriers.imageBarriers.size()),
-            .pImageMemoryBarriers     = barriers.imageBarriers.data(),
-        };
+        VkDependencyInfo dependencyInfo =
+            {
+                .sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+                .pNext                    = nullptr,
+                .dependencyFlags          = 0,
+                .memoryBarrierCount       = uint32_t(barriers.memoryBarriers.size()),
+                .pMemoryBarriers          = barriers.memoryBarriers.data(),
+                .bufferMemoryBarrierCount = uint32_t(barriers.bufferBarriers.size()),
+                .pBufferMemoryBarriers    = barriers.bufferBarriers.data(),
+                .imageMemoryBarrierCount  = uint32_t(barriers.imageBarriers.size()),
+                .pImageMemoryBarriers     = barriers.imageBarriers.data(),
+            };
         vkCmdPipelineBarrier2(m_commandBuffer, &dependencyInfo);
     }
 
@@ -221,12 +341,12 @@ namespace RHI::Vulkan
         VkRenderingInfo renderingInfo = {
             .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
             .pNext = nullptr,
-            .flags = {},
+            .flags = {               },
             .renderArea =
                 {
-                    .offset = {0, 0},
-                    .extent = ConvertExtent2D(pass.GetSize()),
-                },
+                      .offset = {0, 0},
+                      .extent = ConvertExtent2D(pass.GetSize()),
+                      },
             .layerCount           = 1,
             .viewMask             = 0,
             .colorAttachmentCount = static_cast<uint32_t>(colorAttachmentCount),
@@ -370,7 +490,7 @@ namespace RHI::Vulkan
 
         VkRect2D vkScissor{
             .offset = {scissor.offsetX, scissor.offsetY},
-            .extent = {scissor.width, scissor.height},
+            .extent = {scissor.width,   scissor.height },
         };
         vkCmdSetScissor(m_commandBuffer, 0, 1, &vkScissor);
         m_hasScissorSet = true;

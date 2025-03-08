@@ -92,7 +92,7 @@ SpacesInParentheses: false
 Standard: c++20
 UseTab: Never
 SeparateDefinitionBlocks: Always
-AlignArrayOfStructures: None
+AlignArrayOfStructures: Left
 AllowShortIfStatementsOnASingleLine: AllIfsAndElse
 AlignConsecutiveBitFields:
   Enabled: true

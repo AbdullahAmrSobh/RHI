@@ -5,26 +5,21 @@
 
 namespace RHI::Vulkan
 {
-    IShaderModule::IShaderModule() = default;
+    IShaderModule::IShaderModule()  = default;
+    IShaderModule::~IShaderModule() = default;
 
-    IShaderModule::~IShaderModule()
-    {
-        Shutdown();
-    }
-
-    ResultCode IShaderModule::Init(IDevice* device, TL::Span<const uint32_t> shaderBlob)
+    ResultCode IShaderModule::Init(IDevice* device, const ShaderModuleCreateInfo& createInfo)
     {
         m_device = device;
-
-        VkShaderModuleCreateInfo createInfo{
-            .sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-            .pNext    = nullptr,
-            .flags    = {},
-            .codeSize = shaderBlob.size_bytes(),
-            .pCode    = shaderBlob.data(),
-        };
-
-        auto result = vkCreateShaderModule(device->m_device, &createInfo, nullptr, &m_shaderModule);
+        VkShaderModuleCreateInfo shaderModuleCI =
+            {
+                .sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+                .pNext    = nullptr,
+                .flags    = {},
+                .codeSize = createInfo.code.size_bytes(),
+                .pCode    = createInfo.code.data(),
+            };
+        auto result = vkCreateShaderModule(device->m_device, &shaderModuleCI, nullptr, &m_shaderModule);
         return ConvertResult(result);
     }
 
@@ -32,5 +27,4 @@ namespace RHI::Vulkan
     {
         vkDestroyShaderModule(m_device->m_device, m_shaderModule, nullptr);
     }
-
 } // namespace RHI::Vulkan

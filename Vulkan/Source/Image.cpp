@@ -175,19 +175,19 @@ namespace RHI::Vulkan
             .viewType = VK_IMAGE_VIEW_TYPE_1D,
             .format   = imageCI.format,
             .components{
-                VK_COMPONENT_SWIZZLE_IDENTITY,
-                VK_COMPONENT_SWIZZLE_IDENTITY,
-                VK_COMPONENT_SWIZZLE_IDENTITY,
-                VK_COMPONENT_SWIZZLE_IDENTITY,
-            },
+                        VK_COMPONENT_SWIZZLE_IDENTITY,
+                        VK_COMPONENT_SWIZZLE_IDENTITY,
+                        VK_COMPONENT_SWIZZLE_IDENTITY,
+                        VK_COMPONENT_SWIZZLE_IDENTITY,
+                        },
             .subresourceRange =
                 {
-                    .aspectMask     = ConvertImageAspect(GetFormatAspects(createInfo.format)),
-                    .baseMipLevel   = 0,
-                    .levelCount     = VK_REMAINING_MIP_LEVELS,
-                    .baseArrayLayer = 0,
-                    .layerCount     = VK_REMAINING_ARRAY_LAYERS,
-                },
+                        .aspectMask     = ConvertImageAspect(GetFormatAspects(createInfo.format)),
+                        .baseMipLevel   = 0,
+                        .levelCount     = VK_REMAINING_MIP_LEVELS,
+                        .baseArrayLayer = 0,
+                        .layerCount     = VK_REMAINING_ARRAY_LAYERS,
+                        },
         };
 
         switch (imageCI.imageType)
@@ -224,18 +224,18 @@ namespace RHI::Vulkan
             .viewType   = VK_IMAGE_VIEW_TYPE_2D,
             .format     = swapchainCI.imageFormat,
             .components = {
-                VK_COMPONENT_SWIZZLE_IDENTITY,
-                VK_COMPONENT_SWIZZLE_IDENTITY,
-                VK_COMPONENT_SWIZZLE_IDENTITY,
-                VK_COMPONENT_SWIZZLE_IDENTITY,
-            },
+                           VK_COMPONENT_SWIZZLE_IDENTITY,
+                           VK_COMPONENT_SWIZZLE_IDENTITY,
+                           VK_COMPONENT_SWIZZLE_IDENTITY,
+                           VK_COMPONENT_SWIZZLE_IDENTITY,
+                           },
             .subresourceRange = {
-                .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
-                .baseMipLevel   = 0,
-                .levelCount     = VK_REMAINING_MIP_LEVELS,
-                .baseArrayLayer = 0,
-                .layerCount     = VK_REMAINING_ARRAY_LAYERS,
-            },
+                           .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+                           .baseMipLevel   = 0,
+                           .levelCount     = VK_REMAINING_MIP_LEVELS,
+                           .baseArrayLayer = 0,
+                           .layerCount     = VK_REMAINING_ARRAY_LAYERS,
+                           },
         };
         VkResult result = vkCreateImageView(device->m_device, &imageViewCI, nullptr, &viewHandle);
         return ConvertResult(result);

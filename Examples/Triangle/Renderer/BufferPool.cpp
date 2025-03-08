@@ -8,7 +8,7 @@ namespace Engine
     {
     }
 
-    ResultCode BufferPool::Init(RHI::Device& device, RHI::BufferCreateInfo& createInfo)
+    ResultCode BufferPool::Init(RHI::Device& device, const RHI::BufferCreateInfo& createInfo)
     {
         m_device = &device;
 

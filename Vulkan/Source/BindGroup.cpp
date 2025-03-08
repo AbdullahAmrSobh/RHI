@@ -31,16 +31,16 @@ namespace RHI::Vulkan
 
         /// @todo: (don't do this)
         VkDescriptorPoolSize poolSizes[] = {
-            {VK_DESCRIPTOR_TYPE_SAMPLER, 1024},
-            {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1024},
-            {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1024},
-            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1024},
-            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1024},
-            {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1024},
-            {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1024},
+            {VK_DESCRIPTOR_TYPE_SAMPLER,                1024},
+            {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          1024},
+            {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          1024},
+            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         1024},
+            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         1024},
+            {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   1024},
+            {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   1024},
             {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1024},
             {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1024},
-            {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1024},
+            {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,       1024},
         };
 
         VkDescriptorPoolCreateFlags poolFlags =
@@ -66,33 +66,35 @@ namespace RHI::Vulkan
     ResultCode BindGroupAllocator::InitBindGroup(IBindGroup* bindGroup, IBindGroupLayout* bindGroupLayout)
     {
         bindGroup->bindlessCount = bindGroupLayout->bindlessCount;
-
-        VkDescriptorSetVariableDescriptorCountAllocateInfo variableDescriptorInfo{
-            .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO,
-            .pNext              = nullptr,
-            .descriptorSetCount = 1,
-            .pDescriptorCounts  = &bindGroup->bindlessCount,
-        };
-        VkDescriptorSetAllocateInfo allocateInfo{
-            .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-            .pNext              = bindGroupLayout->bindlessCount ? &variableDescriptorInfo : nullptr,
-            .descriptorPool     = m_descriptorPool,
-            .descriptorSetCount = 1,
-            .pSetLayouts        = &bindGroupLayout->handle,
-        };
-
+        VkDescriptorSetVariableDescriptorCountAllocateInfo variableDescriptorInfo =
+            {
+                .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO,
+                .pNext              = nullptr,
+                .descriptorSetCount = 1,
+                .pDescriptorCounts  = &bindGroup->bindlessCount,
+            };
+        VkDescriptorSetAllocateInfo allocateInfo =
+            {
+                .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+                .pNext              = bindGroupLayout->bindlessCount ? &variableDescriptorInfo : nullptr,
+                .descriptorPool     = m_descriptorPool,
+                .descriptorSetCount = 1,
+                .pSetLayouts        = &bindGroupLayout->handle,
+            };
         auto result = vkAllocateDescriptorSets(m_device->m_device, &allocateInfo, &bindGroup->descriptorSet);
-        if (result != VK_SUCCESS) return ResultCode::ErrorOutOfMemory;
-
+        if (result != VK_SUCCESS)
+            return ResultCode::ErrorOutOfMemory;
         return ResultCode::Success;
     }
 
     void BindGroupAllocator::ShutdownBindGroup(IBindGroup* bindGroup)
     {
-        m_device->m_destroyQueue->Push(m_device->m_frameIndex, [=](IDevice* device)
-                                       {
-                                           vkFreeDescriptorSets(device->m_device, m_descriptorPool, 1, &bindGroup->descriptorSet);
-                                       });
+        m_device->m_destroyQueue->Push(
+            m_device->m_frameIndex,
+            [=](IDevice* device)
+            {
+                vkFreeDescriptorSets(device->m_device, m_descriptorPool, 1, &bindGroup->descriptorSet);
+            });
     }
 
     ResultCode IBindGroupLayout::Init(IDevice* device, const BindGroupLayoutCreateInfo& createInfo)
