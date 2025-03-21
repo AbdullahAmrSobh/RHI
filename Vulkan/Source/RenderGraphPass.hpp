@@ -8,7 +8,7 @@
 
 // Remove
 #include "Common.hpp"
-#include "Image.hpp"
+#include "Resources.hpp"
 
 namespace RHI::Vulkan
 {

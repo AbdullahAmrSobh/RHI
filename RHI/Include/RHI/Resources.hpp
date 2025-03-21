@@ -1,15 +1,31 @@
 #pragma once
 
-#include "RHI/Handle.hpp"
-#include "RHI/SampleCount.hpp"
 #include "RHI/Format.hpp"
+#include "RHI/Handle.hpp"
 
 #include <TL/Flags.hpp>
 #include <TL/Span.hpp>
 
 namespace RHI
 {
+    RHI_DECLARE_OPAQUE_RESOURCE(Buffer);
     RHI_DECLARE_OPAQUE_RESOURCE(Image);
+    RHI_DECLARE_OPAQUE_RESOURCE(Sampler);
+
+    /// @brief Specifies the usage flags for a buffer.
+    enum class BufferUsage
+    {
+        None     = 0 << 0, ///< No usage flags set.
+        Storage  = 1 << 1, ///< Buffer used for storage operations.
+        Uniform  = 1 << 2, ///< Buffer used for uniform data.
+        Vertex   = 1 << 3, ///< Buffer used for vertex data.
+        Index    = 1 << 4, ///< Buffer used for index data.
+        CopySrc  = 1 << 5, ///< Buffer used as a source in copy operations.
+        CopyDst  = 1 << 6, ///< Buffer used as a destination in copy operations.
+        Indirect = 1 << 7, ///< Buffer used for indirect draw calls.
+    };
+
+    TL_DEFINE_FLAG_OPERATORS(BufferUsage);
 
     /// @brief Flags representing image usage.
     enum class ImageUsage
@@ -27,6 +43,22 @@ namespace RHI
     };
 
     TL_DEFINE_FLAG_OPERATORS(ImageUsage);
+
+    /// @brief Specifies the number of samples for multisampling in rendering.
+    enum class SampleCount
+    {
+        None      = 0 << 0, ///< No multisampling.
+        Samples1  = 1 << 0, ///< Single sample per pixel.
+        Samples2  = 1 << 1, ///< Two samples per pixel.
+        Samples4  = 1 << 2, ///< Four samples per pixel.
+        Samples8  = 1 << 3, ///< Eight samples per pixel.
+        Samples16 = 1 << 4, ///< Sixteen samples per pixel.
+        Samples32 = 1 << 5, ///< Thirty-two samples per pixel.
+        Samples64 = 1 << 6, ///< Sixty-four samples per pixel.
+    };
+
+    /// @brief Enables bitwise flag operations for the SampleCount enum.
+    TL_DEFINE_FLAG_OPERATORS(SampleCount);
 
     /// @brief Types of images.
     enum class ImageType
@@ -72,6 +104,54 @@ namespace RHI
         G,            ///< Green component.
         B,            ///< Blue component.
         A,            ///< Alpha component.
+    };
+
+    /// @brief Specifies filtering options for a Sampler.
+    enum class SamplerFilter
+    {
+        Point,  ///< Uses nearest neighbor filtering.
+        Linear, ///< Uses linear filtering.
+    };
+
+    /// @brief Specifies the addressing modes for a Sampler.
+    enum class SamplerAddressMode
+    {
+        Repeat, ///< Repeats the texture when UV coordinates are outside the range [0,1].
+        Clamp,  ///< Clamps UV coordinates to the edge of the texture.
+    };
+
+    /// @brief Specifies the compare operation used for texture sampling.
+    enum class SamplerCompareOperation
+    {
+        Never,     ///< Comparison always fails.
+        Equal,     ///< Comparison passes if the values are equal.
+        NotEqual,  ///< Comparison passes if the values are not equal.
+        Always,    ///< Comparison always passes.
+        Less,      ///< Comparison passes if the sampled value is less than the reference value.
+        LessEq,    ///< Comparison passes if the sampled value is less than or equal to the reference value.
+        Greater,   ///< Comparison passes if the sampled value is greater than the reference value.
+        GreaterEq, ///< Comparison passes if the sampled value is greater than or equal to the reference value.
+    };
+
+    /// @brief Describes a subregion of a buffer.
+    struct BufferSubregion
+    {
+        size_t      offset = 0; ///< Offset into the buffer.
+        size_t      size   = 0; ///< Size of the subregion.
+
+        /// @brief Compares this subregion with another for equality.
+        /// @param other The other subregion to compare with.
+        /// @return true if both subregions have the same offset and size, false otherwise.
+        inline bool operator==(const BufferSubregion& other) const { return size == other.size && offset == other.offset; }
+    };
+
+    /// @brief Describes the parameters required to create a buffer.
+    struct BufferCreateInfo
+    {
+        const char*            name       = nullptr;           ///< Name of the buffer.
+        bool                   hostMapped = true;              ///< Buffer will be mappable by host.
+        TL::Flags<BufferUsage> usageFlags = BufferUsage::None; ///< Usage flags for the buffer.
+        size_t                 byteSize   = 0;                 ///< Size of the buffer in bytes.
     };
 
     /// @brief 2D offset for images.
@@ -168,6 +248,22 @@ namespace RHI
         uint32_t              arrayCount  = 1;                     ///< Number of array layers.
     };
 
+    /// @brief Describes the parameters required to create a Sampler.
+    struct SamplerCreateInfo
+    {
+        const char*             name       = nullptr;                         ///< Name of the sampler.
+        SamplerFilter           filterMin  = SamplerFilter::Linear;           ///< Filter for minification.
+        SamplerFilter           filterMag  = SamplerFilter::Linear;           ///< Filter for magnification.
+        SamplerFilter           filterMip  = SamplerFilter::Linear;           ///< Filter for mipmap selection.
+        SamplerCompareOperation compare    = SamplerCompareOperation::Always; ///< Compare operation for texture comparison.
+        float                   mipLodBias = 0.0f;                            ///< Bias applied to the mip level of detail.
+        SamplerAddressMode      addressU   = SamplerAddressMode::Repeat;      ///< Addressing mode for the U (horizontal) coordinate.
+        SamplerAddressMode      addressV   = SamplerAddressMode::Repeat;      ///< Addressing mode for the V (vertical) coordinate.
+        SamplerAddressMode      addressW   = SamplerAddressMode::Repeat;      ///< Addressing mode for the W (depth) coordinate.
+        float                   minLod     = 0.0f;                            ///< Minimum level of detail (LOD) that can be used.
+        float                   maxLod     = 1000.0f;                         ///< Maximum level of detail (LOD) that can be used.
+    };
+
     /// @brief Information needed to create an image view.
     struct ImageViewCreateInfo
     {
@@ -198,4 +294,5 @@ namespace RHI
         imageSizeBytes *= arrayCount;
         return imageSizeBytes;
     }
+
 } // namespace RHI

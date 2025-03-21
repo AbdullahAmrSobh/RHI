@@ -16,7 +16,7 @@ namespace RHI::Vulkan
         return value ? VK_TRUE : VK_FALSE;
     }
 
-    VkShaderStageFlagBits ConvertShaderStage(ShaderStage shaderStage)
+    inline static VkShaderStageFlagBits ConvertShaderStage(ShaderStage shaderStage)
     {
         switch (shaderStage)
         {
@@ -36,7 +36,7 @@ namespace RHI::Vulkan
         return result;
     }
 
-    VkVertexInputRate ConvertVertexInputRate(PipelineVertexInputRate inputRate)
+    inline static VkVertexInputRate ConvertVertexInputRate(PipelineVertexInputRate inputRate)
     {
         switch (inputRate)
         {
@@ -46,7 +46,7 @@ namespace RHI::Vulkan
         }
     }
 
-    VkCullModeFlags ConvertCullModeFlags(PipelineRasterizerStateCullMode cullMode)
+    inline static VkCullModeFlags ConvertCullModeFlags(PipelineRasterizerStateCullMode cullMode)
     {
         switch (cullMode)
         {
@@ -58,7 +58,7 @@ namespace RHI::Vulkan
         }
     }
 
-    VkPolygonMode ConvertPolygonMode(PipelineRasterizerStateFillMode fillMode)
+    inline static VkPolygonMode ConvertPolygonMode(PipelineRasterizerStateFillMode fillMode)
     {
         switch (fillMode)
         {
@@ -69,7 +69,7 @@ namespace RHI::Vulkan
         }
     }
 
-    VkPrimitiveTopology ConvertPrimitiveTopology(PipelineTopologyMode topologyMode)
+    inline static VkPrimitiveTopology ConvertPrimitiveTopology(PipelineTopologyMode topologyMode)
     {
         switch (topologyMode)
         {
@@ -80,7 +80,7 @@ namespace RHI::Vulkan
         }
     }
 
-    VkFrontFace ConvertFrontFace(PipelineRasterizerStateFrontFace frontFace)
+    inline static VkFrontFace ConvertFrontFace(PipelineRasterizerStateFrontFace frontFace)
     {
         switch (frontFace)
         {
@@ -90,7 +90,7 @@ namespace RHI::Vulkan
         }
     }
 
-    VkCompareOp ConvertCompareOp(CompareOperator compareOperator)
+    inline static VkCompareOp ConvertCompareOp(CompareOperator compareOperator)
     {
         switch (compareOperator)
         {
@@ -106,7 +106,7 @@ namespace RHI::Vulkan
         }
     }
 
-    VkBlendFactor ConvertBlendFactor(BlendFactor blendFactor)
+    inline static VkBlendFactor ConvertBlendFactor(BlendFactor blendFactor)
     {
         switch (blendFactor)
         {
@@ -128,7 +128,7 @@ namespace RHI::Vulkan
         }
     }
 
-    VkBlendOp ConvertBlendOp(BlendEquation blendEquation)
+    inline static VkBlendOp ConvertBlendOp(BlendEquation blendEquation)
     {
         switch (blendEquation)
         {
@@ -480,4 +480,26 @@ namespace RHI::Vulkan
         vkDestroyPipeline(device->m_device, handle, nullptr);
     }
 
+    IShaderModule::IShaderModule()  = default;
+    IShaderModule::~IShaderModule() = default;
+
+    ResultCode IShaderModule::Init(IDevice* device, const ShaderModuleCreateInfo& createInfo)
+    {
+        m_device = device;
+        VkShaderModuleCreateInfo shaderModuleCI =
+            {
+                .sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+                .pNext    = nullptr,
+                .flags    = {},
+                .codeSize = createInfo.code.size_bytes(),
+                .pCode    = createInfo.code.data(),
+            };
+        auto result = vkCreateShaderModule(device->m_device, &shaderModuleCI, nullptr, &m_shaderModule);
+        return ConvertResult(result);
+    }
+
+    void IShaderModule::Shutdown()
+    {
+        vkDestroyShaderModule(m_device->m_device, m_shaderModule, nullptr);
+    }
 } // namespace RHI::Vulkan

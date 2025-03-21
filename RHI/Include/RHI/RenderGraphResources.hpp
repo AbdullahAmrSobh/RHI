@@ -1,8 +1,7 @@
 #pragma once
 
 #include "RHI/Handle.hpp"
-#include "RHI/Image.hpp"
-#include "RHI/Buffer.hpp"
+#include "RHI/Resources.hpp"
 #include "RHI/BindGroup.hpp"
 #include "RHI/PipelineAccess.hpp"
 #include "RHI/Queue.hpp"

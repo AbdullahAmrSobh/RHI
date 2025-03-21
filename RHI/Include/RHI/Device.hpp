@@ -5,10 +5,8 @@
 #include "RHI/Result.hpp"
 #include "RHI/Swapchain.hpp"
 #include "RHI/CommandList.hpp"
-#include "RHI/Image.hpp"
 #include "RHI/Pipeline.hpp"
-#include "RHI/Sampler.hpp"
-#include "RHI/Shader.hpp"
+#include "RHI/Resources.hpp"
 #include "RHI/Queue.hpp"
 
 #include <TL/Span.hpp>

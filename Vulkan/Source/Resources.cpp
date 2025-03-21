@@ -1,11 +1,77 @@
-#include "Image.hpp"
+#include "Resources.hpp"
 
-#include "CommandList.hpp"
-#include "Common.hpp"
 #include "Device.hpp"
+#include "Common.hpp"
+
+
+#include <vk_mem_alloc.h>
 
 namespace RHI::Vulkan
 {
+    // TODO: Sort functions in this file
+
+    VkBufferUsageFlags ConvertBufferUsageFlags(TL::Flags<BufferUsage> bufferUsageFlags)
+    {
+        VkBufferUsageFlags result = 0;
+        if (bufferUsageFlags & BufferUsage::Storage) result |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+        if (bufferUsageFlags & BufferUsage::Uniform) result |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+        if (bufferUsageFlags & BufferUsage::Vertex) result |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        if (bufferUsageFlags & BufferUsage::Index) result |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+        if (bufferUsageFlags & BufferUsage::CopySrc) result |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        if (bufferUsageFlags & BufferUsage::CopyDst) result |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        if (bufferUsageFlags & BufferUsage::Indirect) result |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+        return result;
+    }
+
+    ResultCode IBuffer::Init(IDevice* device, const BufferCreateInfo& createInfo)
+    {
+        this->subregion =
+            {
+                .offset = 0,
+                .size   = createInfo.byteSize,
+            };
+        VmaAllocationCreateInfo allocationCI =
+            {
+                .flags          = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT,
+                .usage          = createInfo.hostMapped ? VMA_MEMORY_USAGE_AUTO_PREFER_HOST : VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+                .requiredFlags  = 0,
+                .preferredFlags = 0,
+                .memoryTypeBits = 0,
+                .pool           = VK_NULL_HANDLE,
+                .pUserData      = nullptr,
+                .priority       = 0.0f,
+            };
+        VkBufferCreateInfo bufferCI =
+            {
+                .sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+                .pNext                 = nullptr,
+                .flags                 = 0,
+                .size                  = createInfo.byteSize,
+                .usage                 = ConvertBufferUsageFlags(createInfo.usageFlags),
+                .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
+                .queueFamilyIndexCount = 0,
+                .pQueueFamilyIndices   = nullptr,
+            };
+        auto result = vmaCreateBuffer(device->m_deviceAllocator, &bufferCI, &allocationCI, &handle, &allocation, nullptr);
+        if (result == VK_SUCCESS && createInfo.name)
+        {
+            device->SetDebugName(handle, createInfo.name);
+        }
+        return ConvertResult(result);
+    }
+
+    void IBuffer::Shutdown(IDevice* device)
+    {
+        vmaDestroyBuffer(device->m_deviceAllocator, handle, allocation);
+    }
+
+    VkMemoryRequirements IBuffer::GetMemoryRequirements(IDevice* device) const
+    {
+        VkMemoryRequirements requirements;
+        vkGetBufferMemoryRequirements(device->m_device, handle, &requirements);
+        return requirements;
+    }
+
     VkImageSubresource ConvertSubresource(const ImageSubresource& subresource)
     {
         auto vkSubresource       = VkImageSubresource{};
@@ -253,4 +319,80 @@ namespace RHI::Vulkan
         vkGetImageMemoryRequirements(device->m_device, handle, &requirements);
         return requirements;
     }
+
+    VkFilter ConvertFilter(SamplerFilter samplerFilter)
+    {
+        switch (samplerFilter)
+        {
+        case SamplerFilter::Point:  return VK_FILTER_NEAREST;
+        case SamplerFilter::Linear: return VK_FILTER_LINEAR;
+        default:                    TL_UNREACHABLE(); return VK_FILTER_MAX_ENUM;
+        }
+    }
+
+    VkSamplerAddressMode ConvertSamplerAddressMode(SamplerAddressMode addressMode)
+    {
+        switch (addressMode)
+        {
+        case SamplerAddressMode::Repeat: return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        case SamplerAddressMode::Clamp:  return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        default:                         TL_UNREACHABLE(); return VK_SAMPLER_ADDRESS_MODE_MAX_ENUM;
+        }
+    }
+
+    VkCompareOp ConvertCompareOp(SamplerCompareOperation compareOperation)
+    {
+        switch (compareOperation)
+        {
+        case SamplerCompareOperation::Never:     return VK_COMPARE_OP_NEVER;
+        case SamplerCompareOperation::Equal:     return VK_COMPARE_OP_EQUAL;
+        case SamplerCompareOperation::NotEqual:  return VK_COMPARE_OP_NOT_EQUAL;
+        case SamplerCompareOperation::Always:    return VK_COMPARE_OP_ALWAYS;
+        case SamplerCompareOperation::Less:      return VK_COMPARE_OP_LESS;
+        case SamplerCompareOperation::LessEq:    return VK_COMPARE_OP_LESS_OR_EQUAL;
+        case SamplerCompareOperation::Greater:   return VK_COMPARE_OP_GREATER;
+        case SamplerCompareOperation::GreaterEq: return VK_COMPARE_OP_GREATER_OR_EQUAL;
+        default:                                 TL_UNREACHABLE(); return VK_COMPARE_OP_MAX_ENUM;
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// Sampler
+    ///////////////////////////////////////////////////////////////////////////
+
+    ResultCode ISampler::Init(IDevice* device, const SamplerCreateInfo& createInfo)
+    {
+        VkSamplerCreateInfo samplerCI{
+            .sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+            .pNext                   = nullptr,
+            .flags                   = 0,
+            .magFilter               = ConvertFilter(createInfo.filterMag),
+            .minFilter               = ConvertFilter(createInfo.filterMin),
+            .mipmapMode              = createInfo.filterMip == SamplerFilter::Linear ? VK_SAMPLER_MIPMAP_MODE_LINEAR : VK_SAMPLER_MIPMAP_MODE_NEAREST,
+            .addressModeU            = ConvertSamplerAddressMode(createInfo.addressU),
+            .addressModeV            = ConvertSamplerAddressMode(createInfo.addressV),
+            .addressModeW            = ConvertSamplerAddressMode(createInfo.addressW),
+            .mipLodBias              = createInfo.mipLodBias,
+            .anisotropyEnable        = VK_TRUE,
+            .maxAnisotropy           = 1.0f,
+            .compareEnable           = VK_TRUE,
+            .compareOp               = ConvertCompareOp(createInfo.compare),
+            .minLod                  = createInfo.minLod,
+            .maxLod                  = createInfo.maxLod,
+            .borderColor             = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
+            .unnormalizedCoordinates = VK_FALSE,
+        };
+        auto result = vkCreateSampler(device->m_device, &samplerCI, nullptr, &handle);
+        if (result == VK_SUCCESS && createInfo.name)
+        {
+            device->SetDebugName(handle, createInfo.name);
+        }
+        return ConvertResult(result);
+    }
+
+    void ISampler::Shutdown(IDevice* device)
+    {
+        vkDestroySampler(device->m_device, handle, nullptr);
+    }
+
 } // namespace RHI::Vulkan

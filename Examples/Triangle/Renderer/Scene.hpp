@@ -9,35 +9,73 @@
 #include <glm/gtc/quaternion.hpp>
 
 #include "BufferPool.hpp"
+#include "Common.hpp"
 #include "Shaders/Public/GpuScene.h"
 
 namespace Engine
 {
+    struct Transform;
+    struct SceneViewDesc;
+
+    class MaterialResource;
     class MeshResource;
     class ModelComponent;
+
+    class LightResource;
+    class LightComponent;
+
     class SceneView;
+
+    class DrawList
+    {
+    };
+
+    class DrawListMask
+    {
+    };
+
+    class SceneManager
+    {
+    public:
+        TL::Ptr<class Scene> CreateScene();
+
+    private:
+        TL::Ptr<class UnifiedGeometryBufferPool> m_meshBufferPool;
+    };
+
+    class SceneView
+    {
+    public:
+    };
 
     class Scene
     {
     public:
-        ModelComponent* AddModel(MeshResource* mesh, const glm::mat4& transform);
+        Scene();
+        ~Scene();
+
+        ResultCode Init();
+        void       Shutdown();
+
+        ModelComponent* DrawModel(const MeshResource& mesh, const MaterialResource& material, TL::Span<const Transform> transforms);
         void            RemoveModel(ModelComponent* model);
 
-        SceneView* CreateSceneView();
+        LightComponent* CreateLight(const LightResource& lightResource);
+        void            RemoveLight(LightComponent* light);
+
+        SceneView* CreateSceneView(const SceneViewDesc& desc);
         void       DestroySceneView(SceneView* view);
 
+        void ActivateSceneView(SceneView* view);
+        void DeactivateSceneView(SceneView* view);
+
     private:
-        friend class Renderer;
+        GpuArray<glm::mat4> m_transforms;
 
-        TL::Vector<TL::Ptr<ModelComponent>> m_models;
-        TL::Vector<TL::Ptr<SceneView>>      m_views;
+        GpuArray<Shader::SpotLight> m_spotLights;
 
-        SceneView* m_primarySceneView;
+        GpuArray<Shader::PointLight> m_pointLights;
 
-        // Gpu draw data
-        // TODO: Remove this
-        RHI::BufferBindingInfo               m_drawCountIndirectBuffer; // The number of draws to do
-        GpuArray<RHI::DrawIndexedParameters> m_drawList;                // The draw list for all the models in the scene
-        GpuArray<glm::mat3x4>                m_transforms;              // The transforms of all the models in the scene
+        GpuArray<Shader::DirectionalLight> m_directionalLights;
     };
 } // namespace Engine

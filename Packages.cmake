@@ -27,6 +27,12 @@ CPMAddPackage(
 	GIT_TAG        v3.0.1
 )
 
+CPMAddPackage(
+    NAME           RHI_dma
+	GIT_REPOSITORY git@github.com:GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator.git
+	GIT_TAG        v2.0.1
+)
+
 if(RHI_BUILD_EXAMPLES)
 	CPMAddPackage(
 		NAME           glm
@@ -90,14 +96,14 @@ if(RHI_BUILD_EXAMPLES)
 		OPTIONS
 	)
 
-	# CPMAddPackage(
-	# 	NAME           dawn
-	# 	GIT_REPOSITORY git@github.com:google/dawn.git
-	# 	GIT_TAG        faf0be2f2bc74d3d52831dc834095cfa6a114c96
-	# 	OPTIONS
-	# 		DAWN_ENABLE_D3D11 OFF
-	# 		DAWN_ENABLE_NULL OFF
-	# 		DAWN_BUILD_SAMPLES OFF
-	# 		TINT_BUILD_TESTS OFF
-	# )
+	CPMAddPackage(
+		NAME           dawn
+		GIT_REPOSITORY git@github.com:google/dawn.git
+		GIT_TAG        faf0be2f2bc74d3d52831dc834095cfa6a114c96
+		OPTIONS
+			"DAWN_ENABLE_D3D11 OFF"
+			"DAWN_ENABLE_NULL OFF"
+			"DAWN_BUILD_SAMPLES OFF"
+			"TINT_BUILD_TESTS OFF"
+	)
 endif()

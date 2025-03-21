@@ -4,12 +4,10 @@
 
 #include <tracy/Tracy.hpp>
 
-#include "Buffer.hpp"
 #include "Common.hpp"
 #include "Device.hpp"
-#include "Image.hpp"
 #include "Pipeline.hpp"
-#include "Sampler.hpp"
+#include "Resources.hpp"
 #include "Swapchain.hpp"
 
 namespace RHI::Vulkan

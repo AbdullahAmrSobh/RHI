@@ -6,7 +6,7 @@
 
 #include "Common.hpp"
 #include "Device.hpp"
-#include "Image.hpp"
+#include "Resources.hpp"
 
 namespace RHI::Vulkan
 {

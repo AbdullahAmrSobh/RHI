@@ -1,6 +1,6 @@
 #pragma once
 #include "RHI/Export.hpp"
-#include "RHI/Image.hpp"
+#include "RHI/Resources.hpp"
 #include "RHI/Result.hpp"
 #include "RHI/Common.hpp"
 

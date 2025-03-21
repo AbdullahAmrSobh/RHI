@@ -2,7 +2,7 @@
 
 #include "RHI/Handle.hpp"
 #include "RHI/Format.hpp"
-#include "RHI/SampleCount.hpp"
+#include "RHI/Resources.hpp"
 
 namespace RHI
 {
@@ -220,5 +220,18 @@ namespace RHI
         const char*            shaderName   = nullptr;    ///< Name of the compute shader.
         ShaderModule*          shaderModule = nullptr;    ///< Compute shader module.
         Handle<PipelineLayout> layout       = NullHandle; ///< Pipeline layout.
+    };
+
+    struct ShaderModuleCreateInfo
+    {
+        const char*              name = nullptr;
+        TL::Span<const uint32_t> code = {};
+    };
+
+    /// @brief Represents a shader module used in pipeline creation.
+    class RHI_EXPORT ShaderModule
+    {
+    public:
+        RHI_INTERFACE_BOILERPLATE(ShaderModule);
     };
 } // namespace RHI

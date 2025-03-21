@@ -9,25 +9,7 @@ namespace RHI::Vulkan
 {
     class IDevice;
 
-    VkShaderStageFlagBits ConvertShaderStage(ShaderStage shaderStage);
-
     VkShaderStageFlags ConvertShaderStage(TL::Flags<ShaderStage> shaderStageFlags);
-
-    VkVertexInputRate ConvertVertexInputRate(PipelineVertexInputRate inputRate);
-
-    VkCullModeFlags ConvertCullModeFlags(PipelineRasterizerStateCullMode cullMode);
-
-    VkPolygonMode ConvertPolygonMode(PipelineRasterizerStateFillMode fillMode);
-
-    VkPrimitiveTopology ConvertPrimitiveTopology(PipelineTopologyMode topologyMode);
-
-    VkFrontFace ConvertFrontFace(PipelineRasterizerStateFrontFace frontFace);
-
-    VkCompareOp ConvertCompareOp(CompareOperator compareOperator);
-
-    VkBlendFactor ConvertBlendFactor(BlendFactor blendFactor);
-
-    VkBlendOp ConvertBlendOp(BlendEquation blendEquation);
 
     struct IPipelineLayout : PipelineLayout
     {
@@ -55,4 +37,17 @@ namespace RHI::Vulkan
         void       Shutdown(IDevice* device);
     };
 
+    class IShaderModule final : public ShaderModule
+    {
+    public:
+        IShaderModule();
+        ~IShaderModule();
+
+        ResultCode Init(IDevice* device, const ShaderModuleCreateInfo& createInfo);
+        void       Shutdown();
+
+    public:
+        IDevice*       m_device;
+        VkShaderModule m_shaderModule;
+    };
 } // namespace RHI::Vulkan

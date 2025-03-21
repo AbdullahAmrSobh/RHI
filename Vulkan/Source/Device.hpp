@@ -8,14 +8,11 @@
 #include <RHI-Vulkan/Loader.hpp>
 
 #include "BindGroup.hpp"
-#include "Buffer.hpp"
 #include "Common.hpp"
 #include "DeleteQueue.hpp"
-#include "Image.hpp"
 #include "Pipeline.hpp"
 #include "Queue.hpp"
-#include "Sampler.hpp"
-#include "Shader.hpp"
+#include "Resources.hpp"
 
 namespace RHI::Vulkan
 {

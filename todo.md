@@ -30,10 +30,11 @@ Cleanup API
     - Improve UsageFlags, make unified model
 
 NOTES:
-    ShaderModule is a pointer, maybe Pipeline<T>CreateInfo should take raw pointer to shader byte code instead?
+    - ShaderModule is a pointer, maybe Pipeline<T>CreateInfo should take raw pointer to shader byte code instead?
     Too much API noise, Function that create/destroy doesn't match in signatures.
-
-
+    - The texture to buffer and buffer to texture copy interface should be simplified a bit.
+    - BlitImage is not portable for WebGPU and D3D12 APIs
+    - ImageSubresourcesX are too many and redundnt probably don't need all of these?
 Scene:
     - Mesh
     - Material

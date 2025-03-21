@@ -3,8 +3,7 @@
 #include "RHI/Common.hpp"
 #include "RHI/RenderTarget.hpp"
 #include "RHI/Queue.hpp"
-#include "RHI/Buffer.hpp"
-#include "RHI/Image.hpp"
+#include "RHI/Resources.hpp"
 #include "RHI/BindGroup.hpp"
 
 #include <TL/Containers.hpp>
@@ -263,6 +262,7 @@ namespace RHI
 
         /// @brief Issues an image blit command.
         /// @param blitInfo Information for the image blit command.
-        virtual void BlitImage(const ImageBlitInfo& blitInfo)                                                                      = 0;
+        RHI_DEPRECATED
+        virtual void BlitImage(const ImageBlitInfo& blitInfo) = 0;
     };
 } // namespace RHI
