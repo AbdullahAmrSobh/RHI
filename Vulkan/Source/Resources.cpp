@@ -1,10 +1,9 @@
 #include "Resources.hpp"
 
-#include "Device.hpp"
-#include "Common.hpp"
-
-
 #include <vk_mem_alloc.h>
+
+#include "Common.hpp"
+#include "Device.hpp"
 
 namespace RHI::Vulkan
 {
@@ -21,64 +20,6 @@ namespace RHI::Vulkan
         if (bufferUsageFlags & BufferUsage::CopyDst) result |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
         if (bufferUsageFlags & BufferUsage::Indirect) result |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
         return result;
-    }
-
-    ResultCode IBuffer::Init(IDevice* device, const BufferCreateInfo& createInfo)
-    {
-        this->subregion =
-            {
-                .offset = 0,
-                .size   = createInfo.byteSize,
-            };
-        VmaAllocationCreateInfo allocationCI =
-            {
-                .flags          = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT,
-                .usage          = createInfo.hostMapped ? VMA_MEMORY_USAGE_AUTO_PREFER_HOST : VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-                .requiredFlags  = 0,
-                .preferredFlags = 0,
-                .memoryTypeBits = 0,
-                .pool           = VK_NULL_HANDLE,
-                .pUserData      = nullptr,
-                .priority       = 0.0f,
-            };
-        VkBufferCreateInfo bufferCI =
-            {
-                .sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-                .pNext                 = nullptr,
-                .flags                 = 0,
-                .size                  = createInfo.byteSize,
-                .usage                 = ConvertBufferUsageFlags(createInfo.usageFlags),
-                .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
-                .queueFamilyIndexCount = 0,
-                .pQueueFamilyIndices   = nullptr,
-            };
-        auto result = vmaCreateBuffer(device->m_deviceAllocator, &bufferCI, &allocationCI, &handle, &allocation, nullptr);
-        if (result == VK_SUCCESS && createInfo.name)
-        {
-            device->SetDebugName(handle, createInfo.name);
-        }
-        return ConvertResult(result);
-    }
-
-    void IBuffer::Shutdown(IDevice* device)
-    {
-        vmaDestroyBuffer(device->m_deviceAllocator, handle, allocation);
-    }
-
-    VkMemoryRequirements IBuffer::GetMemoryRequirements(IDevice* device) const
-    {
-        VkMemoryRequirements requirements;
-        vkGetBufferMemoryRequirements(device->m_device, handle, &requirements);
-        return requirements;
-    }
-
-    VkImageSubresource ConvertSubresource(const ImageSubresource& subresource)
-    {
-        auto vkSubresource       = VkImageSubresource{};
-        vkSubresource.aspectMask = ConvertImageAspect(subresource.imageAspects);
-        vkSubresource.mipLevel   = subresource.mipLevel;
-        vkSubresource.arrayLayer = subresource.arrayLayer;
-        return vkSubresource;
     }
 
     VkImageUsageFlags ConvertImageUsageFlags(TL::Flags<ImageUsage> imageUsageFlags)
@@ -103,6 +44,22 @@ namespace RHI::Vulkan
         case ImageType::Image2D: return VK_IMAGE_TYPE_2D;
         case ImageType::Image3D: return VK_IMAGE_TYPE_3D;
         default:                 TL_UNREACHABLE(); return VK_IMAGE_TYPE_MAX_ENUM;
+        }
+    }
+
+    VkImageViewType ConvertImageViewType(ImageViewType imageType)
+    {
+        switch (imageType)
+        {
+        case ImageViewType::View1D:      return VK_IMAGE_VIEW_TYPE_1D;
+        case ImageViewType::View1DArray: return VK_IMAGE_VIEW_TYPE_1D_ARRAY;
+        case ImageViewType::View2D:      return VK_IMAGE_VIEW_TYPE_2D;
+        case ImageViewType::View2DArray: return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+        case ImageViewType::View3D:      return VK_IMAGE_VIEW_TYPE_3D;
+        case ImageViewType::CubeMap:     return VK_IMAGE_VIEW_TYPE_CUBE;
+        case ImageViewType::None:
+        default:
+            return VK_IMAGE_VIEW_TYPE_MAX_ENUM;
         }
     }
 
@@ -164,12 +121,6 @@ namespace RHI::Vulkan
         return {size.width, size.height, size.depth};
     }
 
-    VkExtent2D ConvertExtent2D(ImageSize3D size)
-    {
-        TL_ASSERT(size.depth == 0);
-        return {size.width, size.height};
-    }
-
     VkOffset2D ConvertOffset2D(ImageOffset2D offset)
     {
         return {offset.x, offset.y};
@@ -188,6 +139,103 @@ namespace RHI::Vulkan
         mapping.b = ConvertComponentSwizzle(componentMapping.b);
         mapping.a = ConvertComponentSwizzle(componentMapping.a);
         return mapping;
+    }
+
+    VkFilter ConvertFilter(SamplerFilter samplerFilter)
+    {
+        switch (samplerFilter)
+        {
+        case SamplerFilter::Point:  return VK_FILTER_NEAREST;
+        case SamplerFilter::Linear: return VK_FILTER_LINEAR;
+        default:                    TL_UNREACHABLE(); return VK_FILTER_MAX_ENUM;
+        }
+    }
+
+    VkSamplerAddressMode ConvertSamplerAddressMode(SamplerAddressMode addressMode)
+    {
+        switch (addressMode)
+        {
+        case SamplerAddressMode::Repeat: return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        case SamplerAddressMode::Clamp:  return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        default:                         TL_UNREACHABLE(); return VK_SAMPLER_ADDRESS_MODE_MAX_ENUM;
+        }
+    }
+
+    VkCompareOp ConvertCompareOp(CompareOperator compareOperator)
+    {
+        switch (compareOperator)
+        {
+        case CompareOperator::Never:          return VK_COMPARE_OP_NEVER;
+        case CompareOperator::Equal:          return VK_COMPARE_OP_EQUAL;
+        case CompareOperator::NotEqual:       return VK_COMPARE_OP_NOT_EQUAL;
+        case CompareOperator::Greater:        return VK_COMPARE_OP_GREATER;
+        case CompareOperator::GreaterOrEqual: return VK_COMPARE_OP_GREATER_OR_EQUAL;
+        case CompareOperator::Less:           return VK_COMPARE_OP_LESS;
+        case CompareOperator::LessOrEqual:    return VK_COMPARE_OP_LESS_OR_EQUAL;
+        case CompareOperator::Always:         return VK_COMPARE_OP_ALWAYS;
+        default:                              TL_UNREACHABLE(); return VK_COMPARE_OP_MAX_ENUM;
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// Sampler
+    ///////////////////////////////////////////////////////////////////////////
+
+    ResultCode IBuffer::Init(IDevice* device, const BufferCreateInfo& createInfo)
+    {
+        VmaAllocationCreateInfo allocationCI =
+            {
+                .flags          = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT,
+                .usage          = createInfo.hostMapped ? VMA_MEMORY_USAGE_AUTO_PREFER_HOST : VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+                .requiredFlags  = 0,
+                .preferredFlags = 0,
+                .memoryTypeBits = 0,
+                .pool           = VK_NULL_HANDLE,
+                .pUserData      = nullptr,
+                .priority       = 0.0f,
+            };
+        VkBufferCreateInfo bufferCI =
+            {
+                .sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+                .pNext                 = nullptr,
+                .flags                 = 0,
+                .size                  = createInfo.byteSize,
+                .usage                 = ConvertBufferUsageFlags(createInfo.usageFlags),
+                .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
+                .queueFamilyIndexCount = 0,
+                .pQueueFamilyIndices   = nullptr,
+            };
+        auto result = vmaCreateBuffer(device->m_deviceAllocator, &bufferCI, &allocationCI, &handle, &allocation, nullptr);
+        if (result == VK_SUCCESS && createInfo.name)
+        {
+            device->SetDebugName(handle, createInfo.name);
+        }
+        return ConvertResult(result);
+    }
+
+    void IBuffer::Shutdown(IDevice* device)
+    {
+        vmaDestroyBuffer(device->m_deviceAllocator, handle, allocation);
+    }
+
+    VkMemoryRequirements IBuffer::GetMemoryRequirements(IDevice* device) const
+    {
+        VkMemoryRequirements requirements;
+        vkGetBufferMemoryRequirements(device->m_device, handle, &requirements);
+        return requirements;
+    }
+
+    DeviceMemoryPtr IBuffer::Map(IDevice* device)
+    {
+        DeviceMemoryPtr ptr = nullptr;
+        auto            res = vmaMapMemory(device->m_deviceAllocator, allocation, &ptr);
+        Validate(res);
+        return ptr;
+    }
+
+    void IBuffer::Unmap(IDevice* device)
+    {
+        vmaUnmapMemory(device->m_deviceAllocator, allocation);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -318,42 +366,6 @@ namespace RHI::Vulkan
         VkMemoryRequirements requirements;
         vkGetImageMemoryRequirements(device->m_device, handle, &requirements);
         return requirements;
-    }
-
-    VkFilter ConvertFilter(SamplerFilter samplerFilter)
-    {
-        switch (samplerFilter)
-        {
-        case SamplerFilter::Point:  return VK_FILTER_NEAREST;
-        case SamplerFilter::Linear: return VK_FILTER_LINEAR;
-        default:                    TL_UNREACHABLE(); return VK_FILTER_MAX_ENUM;
-        }
-    }
-
-    VkSamplerAddressMode ConvertSamplerAddressMode(SamplerAddressMode addressMode)
-    {
-        switch (addressMode)
-        {
-        case SamplerAddressMode::Repeat: return VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        case SamplerAddressMode::Clamp:  return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        default:                         TL_UNREACHABLE(); return VK_SAMPLER_ADDRESS_MODE_MAX_ENUM;
-        }
-    }
-
-    VkCompareOp ConvertCompareOp(SamplerCompareOperation compareOperation)
-    {
-        switch (compareOperation)
-        {
-        case SamplerCompareOperation::Never:     return VK_COMPARE_OP_NEVER;
-        case SamplerCompareOperation::Equal:     return VK_COMPARE_OP_EQUAL;
-        case SamplerCompareOperation::NotEqual:  return VK_COMPARE_OP_NOT_EQUAL;
-        case SamplerCompareOperation::Always:    return VK_COMPARE_OP_ALWAYS;
-        case SamplerCompareOperation::Less:      return VK_COMPARE_OP_LESS;
-        case SamplerCompareOperation::LessEq:    return VK_COMPARE_OP_LESS_OR_EQUAL;
-        case SamplerCompareOperation::Greater:   return VK_COMPARE_OP_GREATER;
-        case SamplerCompareOperation::GreaterEq: return VK_COMPARE_OP_GREATER_OR_EQUAL;
-        default:                                 TL_UNREACHABLE(); return VK_COMPARE_OP_MAX_ENUM;
-        }
     }
 
     ///////////////////////////////////////////////////////////////////////////

@@ -8,7 +8,6 @@
 
 namespace RHI::Vulkan
 {
-
     DeleteQueue::DeleteQueue()  = default;
     DeleteQueue::~DeleteQueue() = default;
 
@@ -20,47 +19,66 @@ namespace RHI::Vulkan
 
     void DeleteQueue::Shutdown()
     {
-        vkDeviceWaitIdle(m_device->m_device);
-        DestroyObjects(true);
+        m_device->WaitIdle();
+        DestroyObjects();
         TL_ASSERT(m_destructionQueue.empty());
     }
 
     void DeleteQueue::Push(uint64_t frameIndex, DeleteFunc&& deleteFunc)
     {
-        m_destructionQueue.push_back({frameIndex, std::move(deleteFunc)});
+        // std::lock_guard<std::mutex> lock(m_mutex);
+
+        if (m_writeIndex < m_destructionQueue.size())
+        {
+            // Overwrite existing slot
+            m_destructionQueue[m_writeIndex] = {frameIndex, std::move(deleteFunc)};
+            m_writeIndex++;
+        }
+        else
+        {
+            // Grow the buffer
+            m_destructionQueue.push_back({frameIndex, std::move(deleteFunc)});
+            m_writeIndex++;
+        }
+
+        // Wrap around if needed
+        if (m_writeIndex >= m_destructionQueue.capacity())
+        {
+            m_writeIndex = 0;
+        }
     }
 
-    void DeleteQueue::DestroyObjects(bool force)
+    void DeleteQueue::DestroyObjects()
     {
-        vkDeviceWaitIdle(m_device->m_device);
-        for (auto& [frameIndex, deleteFunc] : m_destructionQueue)
+        m_completedFrameIndex = m_device->GetFrameIndex();
+        // std::lock_guard<std::mutex> lock(m_mutex);
+
+        uint32_t originalReadIndex = m_readIndex; // Store original read index for clearing check
+
+        while (m_readIndex != m_writeIndex)
         {
-            deleteFunc(m_device);
+            if (m_destructionQueue[m_readIndex].frameIndex <= m_completedFrameIndex)
+            {
+                m_destructionQueue[m_readIndex].deleteFunc(m_device);
+                m_readIndex++;
+
+                if (m_readIndex >= m_destructionQueue.capacity())
+                {
+                    m_readIndex = 0; // Wrap around
+                }
+            }
+            else
+            {
+                break; // Stop if we've reached a frame that isn't complete yet
+            }
         }
-        m_destructionQueue.clear();
 
-        // auto frameIndex = m_device->m_frameIndex.load();
-        // // To destroy an object swap with last element in the queue
-        // // increase delete count
-        // static uint32_t startIndex = 0;
-        // uint64_t deleteCount = 0;
-
-        // auto it = m_destructionQueue.begin() + startIndex;
-        // for ( ;it != m_destructionQueue.end(); it++)
-        // {
-        //     if (it->frameIndex < frameIndex)
-        //     {
-        //         it->deleteFunc(m_device);
-        //         std::swap(*it, m_destructionQueue.back());
-        //         deleteCount++;
-        //     }
-        //     else
-        //     {
-        //         break;
-        //     }
-        // }
-
-        // // Remove remaining elements
-        // m_destructionQueue.erase(it, it + deleteCount);
+        // If we have deleted everything, just clear the vector.
+        if (m_readIndex == originalReadIndex)
+        {
+            m_destructionQueue.clear();
+            m_readIndex  = 0;
+            m_writeIndex = 0;
+        }
     }
 } // namespace RHI::Vulkan

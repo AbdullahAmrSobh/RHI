@@ -66,19 +66,6 @@ namespace RHI
         CounterClockwise, ///< Counter-clockwise front face.
     };
 
-    /// @brief Comparison operators for depth/stencil testing.
-    enum class CompareOperator
-    {
-        Never,          ///< Never passes.
-        Equal,          ///< Passes if equal.
-        NotEqual,       ///< Passes if not equal.
-        Greater,        ///< Passes if greater.
-        GreaterOrEqual, ///< Passes if greater or equal.
-        Less,           ///< Passes if less.
-        LessOrEqual,    ///< Passes if less or equal.
-        Always,         ///< Always passes.
-    };
-
     /// @brief Blend factors for blending operations.
     enum class BlendFactor
     {

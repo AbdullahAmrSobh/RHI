@@ -90,22 +90,6 @@ namespace RHI::Vulkan
         }
     }
 
-    inline static VkCompareOp ConvertCompareOp(CompareOperator compareOperator)
-    {
-        switch (compareOperator)
-        {
-        case CompareOperator::Never:          return VK_COMPARE_OP_NEVER;
-        case CompareOperator::Equal:          return VK_COMPARE_OP_EQUAL;
-        case CompareOperator::NotEqual:       return VK_COMPARE_OP_NOT_EQUAL;
-        case CompareOperator::Greater:        return VK_COMPARE_OP_GREATER;
-        case CompareOperator::GreaterOrEqual: return VK_COMPARE_OP_GREATER_OR_EQUAL;
-        case CompareOperator::Less:           return VK_COMPARE_OP_LESS;
-        case CompareOperator::LessOrEqual:    return VK_COMPARE_OP_LESS_OR_EQUAL;
-        case CompareOperator::Always:         return VK_COMPARE_OP_ALWAYS;
-        default:                              TL_UNREACHABLE(); return VK_COMPARE_OP_MAX_ENUM;
-        }
-    }
-
     inline static VkBlendFactor ConvertBlendFactor(BlendFactor blendFactor)
     {
         switch (blendFactor)
@@ -188,6 +172,8 @@ namespace RHI::Vulkan
 
     ResultCode IGraphicsPipeline::Init(IDevice* device, const GraphicsPipelineCreateInfo& createInfo)
     {
+        // auto scopeAllocator = TL::ScopeAllocator(TL::TempAllocator);
+
         uint32_t                        stagesCreateInfoCount = 2;
         VkPipelineShaderStageCreateInfo stagesCreateInfos[4];
         {
@@ -224,11 +210,10 @@ namespace RHI::Vulkan
         for (const auto& bindingDesc : createInfo.vertexBufferBindings)
         {
             // Set up vertex binding
-            auto& binding   = vertexBindings[vertexBindingsCount];
-            binding.binding = bindingIndex;
-            binding.stride  = bindingDesc.stride;
-            binding.inputRate =
-                bindingDesc.stepRate == PipelineVertexInputRate::PerVertex ? VK_VERTEX_INPUT_RATE_VERTEX : VK_VERTEX_INPUT_RATE_INSTANCE;
+            auto& binding     = vertexBindings[vertexBindingsCount];
+            binding.binding   = bindingIndex;
+            binding.stride    = bindingDesc.stride;
+            binding.inputRate = ConvertVertexInputRate(bindingDesc.stepRate);
 
             // Iterate through vertex attributes for this binding
             for (const auto& attributeDesc : bindingDesc.attributes)
@@ -247,7 +232,7 @@ namespace RHI::Vulkan
             bindingIndex++;
         }
 
-        VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{
+        VkPipelineVertexInputStateCreateInfo vertexInputStateCI{
             .sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
             .pNext                           = nullptr,
             .flags                           = 0,
@@ -257,7 +242,7 @@ namespace RHI::Vulkan
             .pVertexAttributeDescriptions    = vertexAttributes,
         };
 
-        VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo{
+        VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCI{
             .sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
             .pNext                  = nullptr,
             .flags                  = 0,
@@ -265,14 +250,14 @@ namespace RHI::Vulkan
             .primitiveRestartEnable = VK_FALSE,
         };
 
-        VkPipelineTessellationStateCreateInfo tessellationStateCreateInfo{
+        VkPipelineTessellationStateCreateInfo tessellationStateCI{
             .sType              = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO,
             .pNext              = nullptr,
             .flags              = 0,
             .patchControlPoints = 0,
         };
 
-        VkPipelineViewportStateCreateInfo viewportStateCreateInfo{
+        VkPipelineViewportStateCreateInfo viewportStateCI{
             .sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
             .pNext         = nullptr,
             .flags         = 0,
@@ -282,7 +267,7 @@ namespace RHI::Vulkan
             .pScissors     = nullptr,
         };
 
-        VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo{
+        VkPipelineRasterizationStateCreateInfo rasterizationStateCI{
             .sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
             .pNext                   = nullptr,
             .flags                   = 0,
@@ -298,27 +283,27 @@ namespace RHI::Vulkan
             .lineWidth               = createInfo.rasterizationState.lineWidth,
         };
 
-        VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo{
+        VkPipelineMultisampleStateCreateInfo multisampleStateCI{
             .sType                 = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
             .pNext                 = nullptr,
             .flags                 = 0,
             .rasterizationSamples  = ConvertSampleCount(createInfo.multisampleState.sampleCount),
-            .sampleShadingEnable   = createInfo.multisampleState.sampleShading ? VK_TRUE : VK_FALSE,
-            .minSampleShading      = float(uint32_t(multisampleStateCreateInfo.rasterizationSamples)) / 2.0f,
+            .sampleShadingEnable   = ConvertBool(createInfo.multisampleState.sampleShading),
+            .minSampleShading      = float(uint32_t(multisampleStateCI.rasterizationSamples)) / 2.0f,
             .pSampleMask           = nullptr,
             .alphaToCoverageEnable = VK_FALSE,
             .alphaToOneEnable      = VK_FALSE,
         };
 
-        VkPipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo{
+        VkPipelineDepthStencilStateCreateInfo depthStencilStateCI{
             .sType                 = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
             .pNext                 = nullptr,
             .flags                 = 0,
-            .depthTestEnable       = createInfo.depthStencilState.depthTestEnable ? VK_TRUE : VK_FALSE,
-            .depthWriteEnable      = createInfo.depthStencilState.depthWriteEnable ? VK_TRUE : VK_FALSE,
+            .depthTestEnable       = ConvertBool(createInfo.depthStencilState.depthTestEnable),
+            .depthWriteEnable      = ConvertBool(createInfo.depthStencilState.depthWriteEnable),
             .depthCompareOp        = ConvertCompareOp(createInfo.depthStencilState.compareOperator),
             .depthBoundsTestEnable = VK_FALSE,
-            .stencilTestEnable     = createInfo.depthStencilState.stencilTestEnable ? VK_TRUE : VK_FALSE,
+            .stencilTestEnable     = ConvertBool(createInfo.depthStencilState.stencilTestEnable),
             .front                 = {},
             .back                  = {},
             .minDepthBounds        = 0.0,
@@ -330,7 +315,7 @@ namespace RHI::Vulkan
             VK_DYNAMIC_STATE_SCISSOR,
         };
 
-        VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo{
+        VkPipelineDynamicStateCreateInfo dynamicStateCI{
             .sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
             .pNext             = nullptr,
             .flags             = 0,
@@ -378,7 +363,7 @@ namespace RHI::Vulkan
             if (blendState.writeMask & ColorWriteMask::Alpha) state.colorWriteMask |= VK_COLOR_COMPONENT_A_BIT;
         }
 
-        VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo{
+        VkPipelineColorBlendStateCreateInfo colorBlendStateCI{
             .sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
             .pNext           = nullptr,
             .flags           = 0,
@@ -386,13 +371,12 @@ namespace RHI::Vulkan
             .logicOp         = VK_LOGIC_OP_SET,
             .attachmentCount = colorAttachmentFormatCount,
             .pAttachments    = pipelineColorBlendAttachmentStates,
-            .blendConstants =
-                {
-                                 createInfo.colorBlendState.blendConstants[0],
-                                 createInfo.colorBlendState.blendConstants[1],
-                                 createInfo.colorBlendState.blendConstants[2],
-                                 createInfo.colorBlendState.blendConstants[3],
-                                 },
+            .blendConstants  = {
+                                createInfo.colorBlendState.blendConstants[0],
+                                createInfo.colorBlendState.blendConstants[1],
+                                createInfo.colorBlendState.blendConstants[2],
+                                createInfo.colorBlendState.blendConstants[3],
+                                },
         };
 
         VkPipelineRenderingCreateInfo renderTargetLayout{
@@ -413,15 +397,15 @@ namespace RHI::Vulkan
             .flags               = 0,
             .stageCount          = stagesCreateInfoCount,
             .pStages             = stagesCreateInfos,
-            .pVertexInputState   = &vertexInputStateCreateInfo,
-            .pInputAssemblyState = &inputAssemblyStateCreateInfo,
-            .pTessellationState  = &tessellationStateCreateInfo,
-            .pViewportState      = &viewportStateCreateInfo,
-            .pRasterizationState = &rasterizationStateCreateInfo,
-            .pMultisampleState   = &multisampleStateCreateInfo,
-            .pDepthStencilState  = &depthStencilStateCreateInfo,
-            .pColorBlendState    = &colorBlendStateCreateInfo,
-            .pDynamicState       = &dynamicStateCreateInfo,
+            .pVertexInputState   = &vertexInputStateCI,
+            .pInputAssemblyState = &inputAssemblyStateCI,
+            .pTessellationState  = &tessellationStateCI,
+            .pViewportState      = &viewportStateCI,
+            .pRasterizationState = &rasterizationStateCI,
+            .pMultisampleState   = &multisampleStateCI,
+            .pDepthStencilState  = &depthStencilStateCI,
+            .pColorBlendState    = &colorBlendStateCI,
+            .pDynamicState       = &dynamicStateCI,
             .layout              = layout,
             .renderPass          = VK_NULL_HANDLE,
             .subpass             = 0,

@@ -242,22 +242,6 @@ namespace RHI::WebGPU
         return WGPUMipmapFilterMode_Undefined;
     }
 
-    WGPUCompareFunction ConvertToCompareFunction(SamplerCompareOperation compare)
-    {
-        switch (compare)
-        {
-        case SamplerCompareOperation::Never:     return WGPUCompareFunction_Never;
-        case SamplerCompareOperation::Equal:     return WGPUCompareFunction_Equal;
-        case SamplerCompareOperation::NotEqual:  return WGPUCompareFunction_NotEqual;
-        case SamplerCompareOperation::Always:    return WGPUCompareFunction_Greater;
-        case SamplerCompareOperation::Less:      return WGPUCompareFunction_GreaterEqual;
-        case SamplerCompareOperation::LessEq:    return WGPUCompareFunction_Less;
-        case SamplerCompareOperation::Greater:   return WGPUCompareFunction_LessEqual;
-        case SamplerCompareOperation::GreaterEq: return WGPUCompareFunction_Always;
-        }
-        return WGPUCompareFunction_Undefined;
-    }
-
     WGPUTextureAspect ConvertToTextureAspect(TL::Flags<ImageAspect> type)
     {
         if (type == ImageAspect::Color) return WGPUTextureAspect_All;

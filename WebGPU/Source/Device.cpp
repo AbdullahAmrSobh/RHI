@@ -152,12 +152,6 @@ namespace RHI::WebGPU
         // Should be no op
     }
 
-    bool IDevice::WaitForQueueTimelineValue(QueueType queueType, uint64_t value, uint64_t waitDuration)
-    {
-        // Should be no op too?
-        return true;
-    }
-
     void IDevice::ExecuteCommandList(ICommandList* commandList)
     {
         auto queue = m_queue[(int)QueueType::Graphics];

@@ -65,6 +65,10 @@ namespace RHI::Vulkan
 
         IQueue& GetDeviceQueue(QueueType type);
 
+        void WaitIdle() { vkDeviceWaitIdle(m_device); }
+
+        uint64_t GetFrameIndex() const { return m_frameIndex; }
+
         // Interface Implementation
         RenderGraph*             CreateRenderGraph(const RenderGraphCreateInfo& createInfo) override;
         void                     DestroyRenderGraph(RenderGraph* renderGraph) override;
@@ -96,7 +100,6 @@ namespace RHI::Vulkan
         StagingBuffer            StagingAllocate(size_t size) override;
         uint64_t                 UploadImage(const ImageUploadInfo& uploadInfo) override;
         void                     CollectResources() override;
-        bool                     WaitForQueueTimelineValue(QueueType queueType, uint64_t value, uint64_t waitDuration) override;
 
     public:
         /// @todo: everything here should be made private

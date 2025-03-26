@@ -701,17 +701,15 @@ namespace RHI::Vulkan
     DeviceMemoryPtr IDevice::MapBuffer(Handle<Buffer> handle)
     {
         ZoneScoped;
-        auto            resource = m_bufferOwner.Get(handle);
-        DeviceMemoryPtr memoryPtr;
-        Validate(vmaMapMemory(m_deviceAllocator, resource->allocation, &memoryPtr));
-        return memoryPtr;
+        auto resource = m_bufferOwner.Get(handle);
+        return resource->Map(this);
     }
 
     void IDevice::UnmapBuffer(Handle<Buffer> handle)
     {
         ZoneScoped;
-        auto resource = m_bufferOwner.Get(handle)->allocation;
-        vmaUnmapMemory(m_deviceAllocator, resource);
+        auto resource = m_bufferOwner.Get(handle);
+        resource->Unmap(this);
     }
 
     StagingBuffer IDevice::StagingAllocate(size_t size)
@@ -801,14 +799,9 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
         m_tempAllocator.Collect();
-        m_destroyQueue->DestroyObjects(false);
+        m_destroyQueue->DestroyObjects();
         m_stagingAllocator->ReleaseAll();
         m_frameIndex++;
-    }
-
-    bool IDevice::WaitForQueueTimelineValue(QueueType queueType, uint64_t value, uint64_t waitDuration)
-    {
-        return GetDeviceQueue(queueType).WaitTimeline(value, waitDuration);
     }
 
     IMPLEMENT_DISPATCHABLE_TYPES_FUNCTIONS(RenderGraph);

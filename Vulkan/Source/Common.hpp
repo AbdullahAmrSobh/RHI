@@ -313,13 +313,13 @@ namespace RHI::Vulkan
 
     inline static VkSemaphoreSubmitInfo CreateSemaphoreSubmitInfo(VkSemaphore semaphore, VkPipelineStageFlags2 stages, uint64_t value = 0)
     {
-        VkSemaphoreSubmitInfo submitInfo{};
-        submitInfo.sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-        submitInfo.pNext     = nullptr;
-        submitInfo.semaphore = semaphore;
-        submitInfo.value     = value;
-        submitInfo.stageMask = stages;
-        return submitInfo;
+        return VkSemaphoreSubmitInfo{
+            .sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+            .pNext     = nullptr,
+            .semaphore = semaphore,
+            .value     = value,
+            .stageMask = stages,
+        };
     }
 
     inline static const char* ObjectTypeToName(VkObjectType type)

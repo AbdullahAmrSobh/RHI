@@ -97,7 +97,6 @@ namespace RHI::Vulkan
         void CopyImage(const ImageCopyInfo& copyInfo) override;
         void CopyImageToBuffer(const BufferImageCopyInfo& copyInfo) override;
         void CopyBufferToImage(const BufferImageCopyInfo& copyInfo) override;
-        void BlitImage(const ImageBlitInfo& blitInfo) override;
 
         VkCommandBuffer GetHandle() const { return m_commandBuffer; }
 

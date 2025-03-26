@@ -33,10 +33,10 @@ NOTES:
     - ShaderModule is a pointer, maybe Pipeline<T>CreateInfo should take raw pointer to shader byte code instead?
     Too much API noise, Function that create/destroy doesn't match in signatures.
     - The texture to buffer and buffer to texture copy interface should be simplified a bit.
-    - BlitImage is not portable for WebGPU and D3D12 APIs
+    <!-- - BlitImage is not portable for WebGPU and D3D12 APIs -->
     - ImageSubresourcesX are too many and redundnt probably don't need all of these?
     - Buffer Usage and Image Usage do not map well to D3D12 API (too explicit?)
-    - CompareOperator and SamplerCompare function are same
+    <!-- - CompareOperator and SamplerCompare function are same -->
 Scene:
     - Mesh
     - Material
@@ -53,3 +53,10 @@ WGPU backend
 D3D
 
 Sort declerations
+
+
+Idea:
+    - create buffer pool as an API first class object (allow suballocations from buffer)
+    - Handle type rename to ID or remove the need to wrap structs in Handle ... make typing too long
+    - Texel buffers support
+    - Don't use singletons (plan to run multiple renderers side-by-side)

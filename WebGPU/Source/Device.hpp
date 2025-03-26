@@ -57,7 +57,6 @@ namespace RHI::WebGPU
         StagingBuffer            StagingAllocate(size_t size) override;
         uint64_t                 UploadImage(const ImageUploadInfo& uploadInfo) override;
         void                     CollectResources() override;
-        bool                     WaitForQueueTimelineValue(QueueType queueType, uint64_t value, uint64_t waitDuration) override;
 
     private:
         void ExecuteCommandList(class ICommandList* commandList);

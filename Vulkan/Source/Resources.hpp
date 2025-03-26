@@ -2,6 +2,7 @@
 
 #include <RHI/Resources.hpp>
 #include <RHI/Result.hpp>
+#include <RHI/Device.hpp>
 
 #include <vk_mem_alloc.h>
 
@@ -10,9 +11,9 @@ namespace RHI::Vulkan
     class IDevice;
 
     VkBufferUsageFlags      ConvertBufferUsageFlags(TL::Flags<BufferUsage> bufferUsageFlags);
-    VkImageSubresource      ConvertSubresource(const ImageSubresource& subresource);
     VkImageUsageFlags       ConvertImageUsageFlags(TL::Flags<ImageUsage> imageUsageFlags);
     VkImageType             ConvertImageType(ImageType imageType);
+    VkImageViewType         ConvertImageViewType(ImageViewType imageType);
     VkImageAspectFlags      ConvertImageAspect(TL::Flags<ImageAspect> imageAspect);
     VkComponentSwizzle      ConvertComponentSwizzle(ComponentSwizzle componentSwizzle);
     VkImageSubresourceRange ConvertSubresourceRange(const ImageSubresourceRange& subresource);
@@ -24,20 +25,20 @@ namespace RHI::Vulkan
     VkOffset3D              ConvertOffset3D(ImageOffset3D offset);
     VkFilter                ConvertFilter(SamplerFilter samplerFilter);
     VkSamplerAddressMode    ConvertSamplerAddressMode(SamplerAddressMode addressMode);
-    VkCompareOp             ConvertCompareOp(SamplerCompareOperation compareOperation);
+    VkCompareOp             ConvertCompareOp(CompareOperator compareOperator);
 
     struct IBuffer : Buffer
     {
-        VmaAllocation   allocation;
-        VkBuffer        handle;
-        VkBufferView    view; // optional
-        Format          format;
-        BufferSubregion subregion;
+        VmaAllocation allocation;
+        VkBuffer      handle;
 
         ResultCode Init(IDevice* device, const BufferCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
 
         VkMemoryRequirements GetMemoryRequirements(IDevice* device) const;
+
+        DeviceMemoryPtr Map(IDevice* device);
+        void            Unmap(IDevice* device);
     };
 
     struct IImage : Image

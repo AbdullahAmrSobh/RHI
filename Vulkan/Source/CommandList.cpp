@@ -722,27 +722,4 @@ namespace RHI::Vulkan
         };
         vkCmdCopyBufferToImage(m_commandBuffer, buffer->handle, image->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferImageCopy);
     }
-
-    void ICommandList::BlitImage(const ImageBlitInfo& blitInfo)
-    {
-        ZoneScoped;
-
-        auto srcImage = m_device->m_imageOwner.Get(blitInfo.srcImage);
-        auto dstImage = m_device->m_imageOwner.Get(blitInfo.dstImage);
-
-        VkImageBlit imageBlit{};
-
-        vkCmdBlitImage(
-            m_commandBuffer,
-            srcImage->handle,
-            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            dstImage->handle,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            1,
-            &imageBlit,
-            ConvertFilter(blitInfo.filter));
-
-        TL_UNREACHABLE();
-    }
-
 } // namespace RHI::Vulkan

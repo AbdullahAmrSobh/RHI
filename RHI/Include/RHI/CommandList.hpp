@@ -126,24 +126,6 @@ namespace RHI
         uint32_t countZ = 16; ///< Number of work groups in Z dimension.
     };
 
-    /// @brief Contains information needed to blit (copy and scale) an image.
-    struct ImageBlitRegion
-    {
-        ImageSubresourceLayers srcSubresource = {}; ///< Source subresource layers.
-        ImageOffset3D          srcOffsets[2]  = {}; ///< Source offsets (top-left and bottom-right).
-        ImageSubresourceLayers dstSubresource = {}; ///< Destination subresource layers.
-        ImageOffset3D          dstOffsets[2]  = {}; ///< Destination offsets (top-left and bottom-right).
-    };
-
-    /// @brief Contains information needed to blit (copy and scale) an image.
-    struct ImageBlitInfo
-    {
-        Handle<Image>             srcImage = NullHandle;            ///< Handle to the source image.
-        Handle<Image>             dstImage = NullHandle;            ///< Handle to the destination image.
-        SamplerFilter             filter   = SamplerFilter::Linear; ///< Filter to use for blitting.
-        TL::Span<ImageBlitRegion> regions  = {};                    ///< Span of regions to blit.
-    };
-
     /// @brief Contains information for creating a command list.
     struct CommandListCreateInfo
     {
@@ -253,10 +235,5 @@ namespace RHI
         /// @brief Issues an image-to-buffer copy command.
         /// @param copyInfo Information for the image-to-buffer copy command.
         virtual void CopyBufferToImage(const BufferImageCopyInfo& copyInfo)                                                        = 0;
-
-        /// @brief Issues an image blit command.
-        /// @param blitInfo Information for the image blit command.
-        RHI_DEPRECATED
-        virtual void BlitImage(const ImageBlitInfo& blitInfo) = 0;
     };
 } // namespace RHI

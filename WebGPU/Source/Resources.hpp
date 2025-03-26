@@ -25,7 +25,6 @@ namespace RHI::WebGPU
     WGPUOrigin3D             ConvertToOffset3D(ImageOffset3D extent);
     WGPUAddressMode          ConvertToAddressMode(SamplerAddressMode mode);
     WGPUMipmapFilterMode     ConvertToMipmapFilter(SamplerFilter filter);
-    WGPUCompareFunction      ConvertToCompareFunction(SamplerCompareOperation compare);
     WGPUBufferUsage          ConvertToBufferUsage(TL::Flags<BufferUsage> usage);
     WGPUTextureAspect        ConvertToTextureAspect(TL::Flags<ImageAspect> type);
     uint32_t                 ConvertToSampleCount(SampleCount count);

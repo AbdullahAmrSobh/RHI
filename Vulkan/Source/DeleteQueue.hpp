@@ -23,7 +23,7 @@ namespace RHI::Vulkan
         void Push(uint64_t frameIndex, DeleteFunc&& deleteFunc);
 
         // Executes and clears destruction functions when frameIndex conditions are met
-        void DestroyObjects(bool force);
+        void DestroyObjects();
 
     private:
         struct PendingDeletion
@@ -34,5 +34,8 @@ namespace RHI::Vulkan
 
         IDevice*                    m_device;
         TL::Vector<PendingDeletion> m_destructionQueue;
+        uint64_t                    m_completedFrameIndex = 0;
+        uint32_t                    m_readIndex           = 0; // Head (read) index
+        uint32_t                    m_writeIndex          = 0; // Tail (write) index
     };
 } // namespace RHI::Vulkan

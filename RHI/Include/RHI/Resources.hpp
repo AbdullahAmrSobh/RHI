@@ -126,17 +126,17 @@ namespace RHI
         Clamp,  ///< Clamps UV coordinates to the edge of the texture.
     };
 
-    /// @brief Specifies the compare operation used for texture sampling.
-    enum class SamplerCompareOperation
+    /// @brief Comparison operators for depth/stencil testing.
+    enum class CompareOperator
     {
-        Never,     ///< Comparison always fails.
-        Equal,     ///< Comparison passes if the values are equal.
-        NotEqual,  ///< Comparison passes if the values are not equal.
-        Always,    ///< Comparison always passes.
-        Less,      ///< Comparison passes if the sampled value is less than the reference value.
-        LessEq,    ///< Comparison passes if the sampled value is less than or equal to the reference value.
-        Greater,   ///< Comparison passes if the sampled value is greater than the reference value.
-        GreaterEq, ///< Comparison passes if the sampled value is greater than or equal to the reference value.
+        Never,          ///< Never passes.
+        Equal,          ///< Passes if equal.
+        NotEqual,       ///< Passes if not equal.
+        Greater,        ///< Passes if greater.
+        GreaterOrEqual, ///< Passes if greater or equal.
+        Less,           ///< Passes if less.
+        LessOrEqual,    ///< Passes if less or equal.
+        Always,         ///< Always passes.
     };
 
     /// @brief Describes a subregion of a buffer.
@@ -212,19 +212,6 @@ namespace RHI
         inline bool operator==(const ComponentMapping& other) const { return r == other.r && g == other.g && b == other.b && a == other.a; }
     };
 
-    /// @brief Describes subresources of an image.
-    struct ImageSubresource
-    {
-        TL::Flags<ImageAspect> imageAspects = ImageAspect::Color; ///< Image aspects to access.
-        uint32_t               mipLevel     = 0;                  ///< Mipmap level.
-        uint32_t               arrayLayer   = 0;                  ///< Array layer.
-
-        inline bool            operator==(const ImageSubresource& other) const
-        {
-            return imageAspects == other.imageAspects && mipLevel == other.mipLevel && arrayLayer == other.arrayLayer;
-        }
-    };
-
     /// @brief Describes a range of subresources in an image.
     struct ImageSubresourceRange
     {
@@ -257,17 +244,17 @@ namespace RHI
     /// @brief Describes the parameters required to create a Sampler.
     struct SamplerCreateInfo
     {
-        const char*             name       = nullptr;                         ///< Name of the sampler.
-        SamplerFilter           filterMin  = SamplerFilter::Linear;           ///< Filter for minification.
-        SamplerFilter           filterMag  = SamplerFilter::Linear;           ///< Filter for magnification.
-        SamplerFilter           filterMip  = SamplerFilter::Linear;           ///< Filter for mipmap selection.
-        SamplerCompareOperation compare    = SamplerCompareOperation::Always; ///< Compare operation for texture comparison.
-        float                   mipLodBias = 0.0f;                            ///< Bias applied to the mip level of detail.
-        SamplerAddressMode      addressU   = SamplerAddressMode::Repeat;      ///< Addressing mode for the U (horizontal) coordinate.
-        SamplerAddressMode      addressV   = SamplerAddressMode::Repeat;      ///< Addressing mode for the V (vertical) coordinate.
-        SamplerAddressMode      addressW   = SamplerAddressMode::Repeat;      ///< Addressing mode for the W (depth) coordinate.
-        float                   minLod     = 0.0f;                            ///< Minimum level of detail (LOD) that can be used.
-        float                   maxLod     = 1000.0f;                         ///< Maximum level of detail (LOD) that can be used.
+        const char*        name       = nullptr;                    ///< Name of the sampler.
+        SamplerFilter      filterMin  = SamplerFilter::Linear;      ///< Filter for minification.
+        SamplerFilter      filterMag  = SamplerFilter::Linear;      ///< Filter for magnification.
+        SamplerFilter      filterMip  = SamplerFilter::Linear;      ///< Filter for mipmap selection.
+        CompareOperator    compare    = CompareOperator::Always;    ///< Compare operation for texture comparison.
+        float              mipLodBias = 0.0f;                       ///< Bias applied to the mip level of detail.
+        SamplerAddressMode addressU   = SamplerAddressMode::Repeat; ///< Addressing mode for the U (horizontal) coordinate.
+        SamplerAddressMode addressV   = SamplerAddressMode::Repeat; ///< Addressing mode for the V (vertical) coordinate.
+        SamplerAddressMode addressW   = SamplerAddressMode::Repeat; ///< Addressing mode for the W (depth) coordinate.
+        float              minLod     = 0.0f;                       ///< Minimum level of detail (LOD) that can be used.
+        float              maxLod     = 1000.0f;                    ///< Maximum level of detail (LOD) that can be used.
     };
 
     /// @brief Information needed to create an image view.
@@ -285,20 +272,4 @@ namespace RHI
             return components == other.components && viewType == other.viewType && subresource == other.subresource;
         }
     };
-
-    inline static size_t CalcaulteImageSize(Format format, ImageSize3D size, uint32_t mipLevelsCount, uint32_t arrayCount)
-    {
-        size_t imageSizeBytes = 0;
-        size_t formatByteSize = GetFormatByteSize(format);
-        for (uint32_t mip = 0; mip < mipLevelsCount; ++mip)
-        {
-            uint32_t mipWidth  = std::max(1u, size.width >> mip);
-            uint32_t mipHeight = std::max(1u, size.height >> mip);
-            uint32_t mipDepth  = std::max(1u, size.depth >> mip);
-            imageSizeBytes += mipWidth * mipHeight * mipDepth * formatByteSize;
-        }
-        imageSizeBytes *= arrayCount;
-        return imageSizeBytes;
-    }
-
 } // namespace RHI

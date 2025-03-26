@@ -293,8 +293,4 @@ namespace RHI::WebGPU
         WGPUExtent3D copySize = ConvertToExtent3D(copyInfo.imageSize);
         wgpuCommandEncoderCopyBufferToTexture(m_cmdEncoder, &destination, &source, &copySize);
     }
-
-    void ICommandList::BlitImage(const ImageBlitInfo& blitInfo)
-    {
-    }
 } // namespace RHI::WebGPU
