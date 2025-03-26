@@ -35,7 +35,21 @@ NOTES:
     - The texture to buffer and buffer to texture copy interface should be simplified a bit.
     - BlitImage is not portable for WebGPU and D3D12 APIs
     - ImageSubresourcesX are too many and redundnt probably don't need all of these?
+    - Buffer Usage and Image Usage do not map well to D3D12 API (too explicit?)
+    - CompareOperator and SamplerCompare function are same
 Scene:
     - Mesh
     - Material
     - Texture
+
+
+WGPU backend
+1. Create resources
+2. Create Swapchain
+3. Render triangle
+4. Run the base example
+5. No leaks no issues should
+
+D3D
+
+Sort declerations

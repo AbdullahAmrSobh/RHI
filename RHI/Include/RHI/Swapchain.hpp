@@ -14,6 +14,13 @@ namespace RHI
     /// @todo: add an API to query for supported formats for the user
     /// @todo: add an API to query for supported present mode for the user
 
+    enum class SwapchainAlphaMode
+    {
+        None,
+        PreMultiplied,
+        PostMultiplied,
+    };
+
     enum class SwapchainPresentMode
     {
         Immediate,
@@ -39,6 +46,7 @@ namespace RHI
         TL::Flags<ImageUsage> imageUsage;    // Image usage flags applied to all created images.
         Format                imageFormat;   // The format of created swapchain image.
         uint32_t              minImageCount; // The numer of back buffer images in the swapchain.
+        SwapchainAlphaMode    alphaMode;     // The alpha mode applied to created images.
         SwapchainPresentMode  presentMode;
 #ifdef RHI_PLATFORM_WINDOWS
         Win32WindowDesc win32Window; // win32 surface handles. (Availabe only on windows)

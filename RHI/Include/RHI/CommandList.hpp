@@ -20,12 +20,6 @@ namespace RHI
     class RenderGraph;
     class Pass;
 
-    enum class IndexType
-    {
-        uint16,
-        uint32,
-    };
-
     /// @brief Defines a viewport for rendering.
     struct Viewport
     {

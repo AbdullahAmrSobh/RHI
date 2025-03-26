@@ -27,6 +27,12 @@ namespace RHI
 
     TL_DEFINE_FLAG_OPERATORS(BufferUsage);
 
+    enum class IndexType
+    {
+        uint16,
+        uint32,
+    };
+
     /// @brief Flags representing image usage.
     enum class ImageUsage
     {
