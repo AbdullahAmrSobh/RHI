@@ -52,10 +52,10 @@ namespace RHI
         ImageSize2D                                    GetSize() const;
 
         /// @brief Gets the color attachments associated with this pass.
-        TL::Span<const RenderTargetInfo>               GetColorAttachment() const;
+        TL::Span<const ColorRGAttachment>                GetColorAttachment() const;
 
         /// @brief Gets the depth/stencil attachment if present.
-        const RenderTargetInfo*                        GetDepthStencilAttachment() const;
+        const DepthStencilRGAttachment*                  GetDepthStencilAttachment() const;
 
         /// @brief Gets the accessed resources for this pass.
         TL::Span<RenderGraphResourceTransition* const> GetRenderGraphResourceTransitions() const;
@@ -78,8 +78,8 @@ namespace RHI
         PassCompileCallback                                        m_onCompileCallback;
         PassExecuteCallback                                        m_onExecuteCallback;
         ImageSize2D                                                m_size;
-        TL::Vector<RenderTargetInfo, TL::IAllocator>               m_colorAttachments;
-        TL::Optional<RenderTargetInfo>                             m_depthStencilAttachment;
+        TL::Vector<struct ColorRGAttachment, TL::IAllocator>       m_colorAttachments;
+        TL::Optional<struct DepthStencilRGAttachment>              m_depthStencilAttachment;
         TL::Vector<RenderGraphResourceTransition*, TL::IAllocator> m_resourceTransitions;
 
     public:

@@ -131,4 +131,24 @@ namespace RHI
         TL::Flags<BufferUsage> GetBufferUsage() const { return m_usage.asBuffer; }
     };
 
+    struct ColorRGAttachment
+    {
+        RenderGraphImage* view        = nullptr;
+        LoadOperation     loadOp      = LoadOperation::Discard;
+        StoreOperation    storeOp     = StoreOperation::Store;
+        ClearValue        clearValue  = {.f32 = {0.0f, 0.0f, 0.0f, 1.0f}};
+        ResolveMode       resolveMode = ResolveMode::None;
+        RenderGraphImage* resolveView = nullptr;
+    };
+
+    struct DepthStencilRGAttachment
+    {
+        RenderGraphImage* view           = nullptr;
+        LoadOperation     depthLoadOp    = LoadOperation::Discard;
+        StoreOperation    depthStoreOp   = StoreOperation::Store;
+        LoadOperation     stencilLoadOp  = LoadOperation::Discard;
+        StoreOperation    stencilStoreOp = StoreOperation::Store;
+        DepthStencilValue clearValue     = {0.0f, 0};
+    };
+
 } // namespace RHI

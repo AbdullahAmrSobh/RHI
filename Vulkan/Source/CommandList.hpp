@@ -38,7 +38,7 @@ namespace RHI::Vulkan
         /// @return A pointer to the allocated CommandList.
         VkCommandBuffer AllocateCommandBuffer(QueueType queueType);
 
-        void ReleaseCommandBuffers([[maybe_unused]] TL::Span<const VkCommandBuffer> commandBuffers);
+        void ReleaseCommandBuffers(TL::Span<const VkCommandBuffer> commandBuffers);
 
         /// @brief Resets all command lists used within the current frame.
         void Reset();

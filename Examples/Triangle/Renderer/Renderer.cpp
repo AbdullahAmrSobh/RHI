@@ -85,7 +85,9 @@ namespace Engine
 #undef RESULT_CHECK
 
         m_testTriangleMesh = m_unifiedGeometryBufferPool.CreateStaticMeshLOD(
-            {0, 1, 2},
+            {
+                0, 1, 2
+        },
             {
                 {0.5f, 0.5f, 0.0f},
                 {0.0f, -0.5f, 0.0f},
@@ -136,11 +138,14 @@ namespace Engine
             .queue         = RHI::QueueType::Graphics,
             .setupCallback = [&](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
             {
-                m_renderGraph->UseRenderTarget(pass, {.attachment = m_gBuffer.colorAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
-                m_renderGraph->UseRenderTarget(pass, {.attachment = m_gBuffer.positionAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
-                m_renderGraph->UseRenderTarget(pass, {.attachment = m_gBuffer.normalsAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
-                m_renderGraph->UseRenderTarget(pass, {.attachment = m_gBuffer.materialAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
-                m_renderGraph->UseRenderTarget(pass, {.attachment = m_gBuffer.depthAttachment, .clearValue = {.depthStencil = {1.0f, 0}}});
+                m_renderGraph->UseColorAttachment(pass, {.view = m_gBuffer.colorAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
+                m_renderGraph->UseColorAttachment(pass, {.view = m_gBuffer.positionAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
+                m_renderGraph->UseColorAttachment(pass, {.view = m_gBuffer.normalsAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
+                m_renderGraph->UseColorAttachment(pass, {.view = m_gBuffer.materialAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
+                // Depth attachment
+                m_renderGraph->UseDepthStencilAttachment(pass, {
+                                                                   .view = m_gBuffer.depthAttachment, .clearValue = {1.0f, 0}
+                });
             },
             .compileCallback = [&](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
             {

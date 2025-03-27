@@ -254,103 +254,81 @@ namespace RHI::Vulkan
 
         m_isInsideRenderPass = true;
 
-        constexpr size_t          MaxColorAttachments = 8;
-        VkRenderingAttachmentInfo colorAttachmentInfos[MaxColorAttachments];
-        size_t                    colorAttachmentCount = 0;
+        TL::Vector<VkRenderingAttachmentInfo>   colorAttachments  = {};
+        TL::Optional<VkRenderingAttachmentInfo> depthAttachment   = {};
+        TL::Optional<VkRenderingAttachmentInfo> stencilAttachment = {};
 
-        VkRenderingAttachmentInfo depthAttachmentInfo{};
-        VkRenderingAttachmentInfo stencilAttachmentInfo{};
-        bool                      hasDepthAttachment   = false;
-        bool                      hasStencilAttachment = false;
-
-        for (const auto& passAttachment : pass.GetColorAttachment())
+        for (const auto& colorAttachment : pass.GetColorAttachment())
         {
-            TL_ASSERT(colorAttachmentCount < MaxColorAttachments);
-
-            auto colorAttachmentHandle   = passAttachment.attachment->GetImage();
-            auto resolveAttachmentHandle = passAttachment.resolveAttachment ? passAttachment.resolveAttachment->GetImage() : NullHandle;
-
-            IImage* colorAttachment   = m_device->m_imageOwner.Get(colorAttachmentHandle);
-            IImage* resolveAttachment = passAttachment.resolveAttachment ? m_device->m_imageOwner.Get(resolveAttachmentHandle) : nullptr;
-
-            auto clearValue = ConvertColorValue(passAttachment.clearValue.f32);
-
-            colorAttachmentInfos[colorAttachmentCount++] = {
+            auto colorImage  = m_device->m_imageOwner.Get(colorAttachment.view->GetImage());
+            auto resolveView = colorAttachment.resolveView ? m_device->m_imageOwner.Get(colorAttachment.resolveView->GetImage()) : nullptr;
+            auto clearValue  = ConvertColorValue(colorAttachment.clearValue.f32);
+            colorAttachments.push_back({
                 .sType              = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
                 .pNext              = nullptr,
-                .imageView          = colorAttachment->viewHandle,
+                .imageView          = colorImage->viewHandle,
                 .imageLayout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                .resolveMode        = ConvertResolveMode(passAttachment.resolveMode),
-                .resolveImageView   = resolveAttachment ? resolveAttachment->viewHandle : VK_NULL_HANDLE,
-                .resolveImageLayout = resolveAttachment ? VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED,
-                .loadOp             = ConvertLoadOp(passAttachment.loadOperation),
-                .storeOp            = ConvertStoreOp(passAttachment.storeOperation),
+                .resolveMode        = ConvertResolveMode(colorAttachment.resolveMode),
+                .resolveImageView   = resolveView ? resolveView->viewHandle : VK_NULL_HANDLE,
+                .resolveImageLayout = resolveView ? VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED,
+                .loadOp             = ConvertLoadOp(colorAttachment.loadOp),
+                .storeOp            = ConvertStoreOp(colorAttachment.storeOp),
                 .clearValue         = {clearValue},
-            };
+            });
         }
 
-        if (auto passAttachment = pass.GetDepthStencilAttachment())
+        if (auto depthStencilAttachment = pass.GetDepthStencilAttachment())
         {
-            auto depthStencilHandle      = passAttachment->attachment->GetImage();
-            auto resolveAttachmentHandle = passAttachment->resolveAttachment ? passAttachment->resolveAttachment->GetImage() : NullHandle;
-
-            IImage* depthStencilAttachment = m_device->m_imageOwner.Get(depthStencilHandle);
-            IImage* resolveAttachment      = passAttachment->resolveAttachment ? m_device->m_imageOwner.Get(resolveAttachmentHandle) : nullptr;
-
-            auto clearValue = ConvertClearValue(passAttachment->clearValue);
-
-            auto formatInfo = GetFormatInfo(passAttachment->attachment->GetFormat());
-
-            if (formatInfo.hasDepth)
+            auto depthStencilImage = m_device->m_imageOwner.Get(depthStencilAttachment->view->GetImage());
+            auto clearValue        = ConvertDepthStencilValue(depthStencilAttachment->clearValue);
+            if (depthStencilImage->subresources.imageAspects & ImageAspect::Depth)
             {
-                depthAttachmentInfo = {
+                depthAttachment = VkRenderingAttachmentInfo{
                     .sType              = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
                     .pNext              = nullptr,
-                    .imageView          = depthStencilAttachment->viewHandle,
+                    .imageView          = depthStencilImage->viewHandle,
                     .imageLayout        = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
-                    .resolveMode        = ConvertResolveMode(passAttachment->resolveMode),
-                    .resolveImageView   = resolveAttachment ? resolveAttachment->viewHandle : VK_NULL_HANDLE,
-                    .resolveImageLayout = resolveAttachment ? VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED,
-                    .loadOp             = ConvertLoadOp(passAttachment->loadOperation),
-                    .storeOp            = ConvertStoreOp(passAttachment->storeOperation),
-                    .clearValue         = {clearValue},
+                    .resolveMode        = VK_RESOLVE_MODE_NONE,
+                    .resolveImageView   = VK_NULL_HANDLE,
+                    .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                    .loadOp             = ConvertLoadOp(depthStencilAttachment->depthLoadOp),
+                    .storeOp            = ConvertStoreOp(depthStencilAttachment->depthStoreOp),
+                    .clearValue         = {.depthStencil = clearValue},
                 };
-                hasDepthAttachment = true;
             }
-
-            if (formatInfo.hasStencil)
+            if (depthStencilImage->subresources.imageAspects & ImageAspect::Stencil)
             {
-                stencilAttachmentInfo = {
+                stencilAttachment = VkRenderingAttachmentInfo{
                     .sType              = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
                     .pNext              = nullptr,
-                    .imageView          = depthStencilAttachment->viewHandle,
-                    .imageLayout        = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                    .resolveMode        = ConvertResolveMode(passAttachment->resolveMode),
-                    .resolveImageView   = resolveAttachment ? resolveAttachment->viewHandle : VK_NULL_HANDLE,
-                    .resolveImageLayout = resolveAttachment ? VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED,
-                    .loadOp             = ConvertLoadOp(passAttachment->stencilLoadOperation),
-                    .storeOp            = ConvertStoreOp(passAttachment->stencilStoreOperation),
-                    .clearValue         = {clearValue},
+                    .imageView          = depthStencilImage->viewHandle,
+                    .imageLayout        = VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL,
+                    .resolveMode        = VK_RESOLVE_MODE_NONE,
+                    .resolveImageView   = VK_NULL_HANDLE,
+                    .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                    .loadOp             = ConvertLoadOp(depthStencilAttachment->stencilLoadOp),
+                    .storeOp            = ConvertStoreOp(depthStencilAttachment->stencilStoreOp),
+                    .clearValue         = {.depthStencil = clearValue},
                 };
-                hasStencilAttachment = true;
+            }
+            if (depthStencilImage->subresources.imageAspects & ImageAspect::DepthStencil)
+            {
+                depthAttachment->imageLayout   = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+                stencilAttachment->imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
             }
         }
 
-        VkRenderingInfo renderingInfo = {
-            .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
-            .pNext = nullptr,
-            .flags = {               },
-            .renderArea =
-                {
-                      .offset = {0, 0},
-                      .extent = ConvertExtent2D(pass.GetSize()),
-                      },
+        VkRenderingInfo renderingInfo{
+            .sType                = VK_STRUCTURE_TYPE_RENDERING_INFO,
+            .pNext                = nullptr,
+            .flags                = 0,
+            .renderArea           = {.offset = {0, 0}, .extent = ConvertExtent2D(pass.GetSize())},
             .layerCount           = 1,
             .viewMask             = 0,
-            .colorAttachmentCount = static_cast<uint32_t>(colorAttachmentCount),
-            .pColorAttachments    = colorAttachmentInfos,
-            .pDepthAttachment     = hasDepthAttachment ? &depthAttachmentInfo : nullptr,
-            .pStencilAttachment   = hasStencilAttachment ? &stencilAttachmentInfo : nullptr,
+            .colorAttachmentCount = static_cast<uint32_t>(colorAttachments.size()),
+            .pColorAttachments    = colorAttachments.data(),
+            .pDepthAttachment     = depthAttachment.has_value() ? &depthAttachment.value() : nullptr,
+            .pStencilAttachment   = stencilAttachment.has_value() ? &stencilAttachment.value() : nullptr,
         };
         vkCmdBeginRendering(m_commandBuffer, &renderingInfo);
     }

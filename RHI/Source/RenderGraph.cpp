@@ -163,30 +163,34 @@ namespace RHI
         pass.AddTransition(m_tempAllocator, *buffer, usage, stage, access, {});
     }
 
-    void RenderGraph::UseRenderTarget(Pass& pass, const RenderTargetInfo& renderTargetInfo)
+    void RenderGraph::UseColorAttachment(Pass& pass, const ColorRGAttachment& attachment)
     {
         ZoneScoped;
 
-        FormatInfo formatInfo = GetFormatInfo(renderTargetInfo.attachment->GetFormat());
-        auto       usage      = GetImageUsage(formatInfo);
-        ExtendResourceUsage(*renderTargetInfo.attachment, usage);
+        ExtendResourceUsage(*attachment.view, ImageUsage::Color);
+        pass.m_colorAttachments.push_back(attachment);
+        UseImage(pass, attachment.view, ImageUsage::Color, PipelineStage::ColorAttachmentOutput, Access::ReadWrite);
 
-        auto stage = PipelineStage::ColorAttachmentOutput;
-        if (formatInfo.hasDepth || formatInfo.hasStencil)
+        if (attachment.resolveView && attachment.resolveMode != ResolveMode::None)
         {
-            stage                         = PipelineStage::EarlyFragmentTests;
-            pass.m_depthStencilAttachment = renderTargetInfo;
+            ExtendResourceUsage(*attachment.resolveView, ImageUsage::Resolve);
+            UseImage(pass, attachment.resolveView, ImageUsage::Resolve, PipelineStage::Transfer, LoadStoreToAccess(attachment.loadOp, attachment.storeOp));
         }
-        else
-            pass.m_colorAttachments.push_back(renderTargetInfo);
+    }
 
-        /// @todo: convert load ops to access
-        UseImage(pass, renderTargetInfo.attachment, usage, stage, Access::ReadWrite);
-        if (renderTargetInfo.resolveAttachment && renderTargetInfo.resolveMode != ResolveMode::None)
-        {
-            ExtendResourceUsage(*renderTargetInfo.attachment, ImageUsage::Resolve);
-            UseImage(pass, renderTargetInfo.resolveAttachment, ImageUsage::Resolve, PipelineStage::Transfer, Access::Write);
-        }
+    void RenderGraph::UseDepthStencilAttachment(Pass& pass, const DepthStencilRGAttachment& attachment)
+    {
+        // TL_ASSERT(pass.m_depthStencilAttachment.has_value() == false);
+
+        FormatInfo formatInfo = GetFormatInfo(attachment.view->GetFormat());
+
+        // TODO: handle stencil
+        // auto       usage      = GetImageUsage(formatInfo);
+        // auto usage = attachment.view->GetImageUsage();
+
+        ExtendResourceUsage(*attachment.view, ImageUsage::Depth);
+        pass.m_depthStencilAttachment = attachment;
+        UseImage(pass, attachment.view, ImageUsage::Depth, PipelineStage::EarlyFragmentTests, LoadStoreToAccess(attachment.depthLoadOp, attachment.depthStoreOp) | LoadStoreToAccess(attachment.stencilLoadOp, attachment.stencilStoreOp));
     }
 
     void RenderGraph::BeginFrame(ImageSize2D frameSize)
@@ -283,6 +287,30 @@ namespace RHI
             [[maybe_unused]] auto res = swapchain->Present();
         }
         currentFrameIndex = (currentFrameIndex + 1) % MaxFramesInFlight;
+    }
+
+    ColorAttachment RenderGraph::GetColorAttachment(const ColorRGAttachment& attachment) const
+    {
+        return ColorAttachment{
+            .view        = attachment.view->GetImage(),
+            .loadOp      = attachment.loadOp,
+            .storeOp     = attachment.storeOp,
+            .clearValue  = attachment.clearValue,
+            .resolveMode = attachment.resolveMode,
+            .resolveView = attachment.resolveView->GetImage(),
+        };
+    }
+
+    DepthStencilAttachment RenderGraph::GetDepthStencilAttachment(const DepthStencilRGAttachment& attachment) const
+    {
+        return DepthStencilAttachment{
+            .view           = attachment.view->GetImage(),
+            .depthLoadOp    = attachment.depthLoadOp,
+            .depthStoreOp   = attachment.depthStoreOp,
+            .stencilLoadOp  = attachment.stencilLoadOp,
+            .stencilStoreOp = attachment.stencilStoreOp,
+            .clearValue     = attachment.clearValue,
+        };
     }
 
     void RenderGraph::Compile()

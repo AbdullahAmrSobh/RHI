@@ -33,12 +33,12 @@ namespace RHI
         return m_size;
     }
 
-    TL::Span<const RenderTargetInfo> Pass::GetColorAttachment() const
+    TL::Span<const ColorRGAttachment> Pass::GetColorAttachment() const
     {
         return m_colorAttachments;
     }
 
-    const RenderTargetInfo* Pass::GetDepthStencilAttachment() const
+    const DepthStencilRGAttachment* Pass::GetDepthStencilAttachment() const
     {
         return m_depthStencilAttachment ? &(*m_depthStencilAttachment) : nullptr;
     }

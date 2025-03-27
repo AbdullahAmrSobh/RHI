@@ -9,6 +9,8 @@
 #include "RHI/RenderGraphResources.hpp"
 #include "RHI/RenderGraphExecuteGroup.hpp"
 
+#include "RHI/RenderTarget.hpp"
+
 #include <TL/Allocator/Mimalloc.hpp>
 #include <TL/Containers.hpp>
 #include <TL/UniquePtr.hpp>
@@ -99,7 +101,8 @@ namespace RHI
         /// @brief Declares a render target to be used by a pass.
         /// @param pass The pass that will use the render target.
         /// @param renderTargetInfo Information about the render target configuration.
-        void UseRenderTarget(Pass& pass, const RenderTargetInfo& renderTargetInfo);
+        void UseColorAttachment(Pass& pass, const ColorRGAttachment& colorAttachment);
+        void UseDepthStencilAttachment(Pass& pass, const DepthStencilRGAttachment& depthStencilAttachment);
 
         // Frame management.
 
@@ -108,6 +111,9 @@ namespace RHI
 
         /// @brief Ends the current frame in the render graph.
         void EndFrame();
+
+        ColorAttachment        GetColorAttachment(const ColorRGAttachment& attachment) const;
+        DepthStencilAttachment GetDepthStencilAttachment(const DepthStencilRGAttachment& attachment) const;
 
     private:
         /// @brief Returns passes sorted based on their graph topological order.
