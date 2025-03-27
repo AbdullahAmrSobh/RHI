@@ -98,10 +98,14 @@ namespace RHI
         /// @param access The types of access to the buffer.
         void UseBuffer(Pass& pass, RenderGraphBuffer* buffer, BufferUsage usage, TL::Flags<PipelineStage> stage, TL::Flags<Access> access);
 
-        /// @brief Declares a render target to be used by a pass.
+        /// @brief Declares a color attachment to be used by a pass.
         /// @param pass The pass that will use the render target.
         /// @param renderTargetInfo Information about the render target configuration.
         void UseColorAttachment(Pass& pass, const ColorRGAttachment& colorAttachment);
+
+        /// @brief Declares a color attachment to be used by a pass.
+        /// @param pass The pass that will use the render target.
+        /// @param renderTargetInfo Information about the render target configuration.
         void UseDepthStencilAttachment(Pass& pass, const DepthStencilRGAttachment& depthStencilAttachment);
 
         // Frame management.

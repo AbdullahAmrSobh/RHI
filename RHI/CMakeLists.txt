@@ -23,8 +23,6 @@ set(HEADER_FILES
 )
 
 set(SOURCE_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/OffsetAllocator/offsetAllocator.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/OffsetAllocator/offsetAllocator.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/BindGroup.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Device.cpp

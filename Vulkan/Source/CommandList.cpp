@@ -248,7 +248,7 @@ namespace RHI::Vulkan
         vkEndCommandBuffer(m_commandBuffer);
     }
 
-    void ICommandList::BeginPass(const Pass& pass)
+    void ICommandList::BeginRenderPass(const Pass& pass)
     {
         ZoneScoped;
 
@@ -333,7 +333,7 @@ namespace RHI::Vulkan
         vkCmdBeginRendering(m_commandBuffer, &renderingInfo);
     }
 
-    void ICommandList::EndPass()
+    void ICommandList::EndRenderPass()
     {
         ZoneScoped;
 

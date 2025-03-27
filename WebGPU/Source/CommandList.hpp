@@ -18,10 +18,11 @@ namespace RHI::WebGPU
         ResultCode Init(IDevice* device, const CommandListCreateInfo& createInfo);
         void       Shutdown();
 
-        void Begin();
-        void End();
-
         // Interface implementation
+        void Begin() override;
+        void End() override;
+        void BeginRenderPass(const Pass& pass) override;
+        void EndRenderPass() override;
         void DebugMarkerPush(const char* name, ColorValue<float> color) override;
         void DebugMarkerPop() override;
         void BeginConditionalCommands(const BufferBindingInfo& conditionBuffer, bool inverted) override;
@@ -51,6 +52,7 @@ namespace RHI::WebGPU
         WGPUCommandBuffer  m_cmdBuffer  = nullptr;
         WGPUCommandEncoder m_cmdEncoder = nullptr;
         WGPURenderBundle   m_bundle     = nullptr;
+
         union
         {
             WGPURenderPassEncoder  m_renderPassEncoder = {};

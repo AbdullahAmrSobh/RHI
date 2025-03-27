@@ -60,9 +60,6 @@ namespace RHI
 
     class RHI_EXPORT Device
     {
-        friend Device* CreateVulkanDevice(const ApplicationInfo& appInfo);
-        friend void    DestroyVulkanDevice(Device* device);
-
     public:
         RHI_INTERFACE_BOILERPLATE(Device);
 

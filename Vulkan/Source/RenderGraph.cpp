@@ -128,9 +128,9 @@ namespace RHI::Vulkan
 
             commandList->DebugMarkerPush(pass->GetName(), QueueTypeToColor(queueType));
             pass->EmitBarriers(*commandList, BarrierSlot::Prilogue);
-            commandList->BeginPass(*pass);
+            commandList->BeginRenderPass(*pass);
             ExecutePassCallback(*pass, *commandList);
-            commandList->EndPass();
+            commandList->EndRenderPass();
             pass->EmitBarriers(*commandList, BarrierSlot::Epilogue);
             commandList->DebugMarkerPop();
         }

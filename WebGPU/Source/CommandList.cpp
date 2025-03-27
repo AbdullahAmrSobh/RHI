@@ -11,6 +11,30 @@
 
 namespace RHI::WebGPU
 {
+    inline static WGPULoadOp ConvertLoadOp(LoadOperation op)
+    {
+        switch (op)
+        {
+        case LoadOperation::DontCare: return WGPULoadOp_Undefined;
+        case LoadOperation::Load:     return WGPULoadOp_Load;
+        case LoadOperation::Discard:  return WGPULoadOp_Clear;
+        default:                      TL_UNREACHABLE(); return WGPULoadOp_Force32;
+        }
+    }
+
+    inline static WGPUStoreOp ConvertStoreOp(StoreOperation op)
+    {
+        switch (op)
+        {
+        case StoreOperation::DontCare: return WGPUStoreOp_Undefined;
+        case StoreOperation::Store:    return WGPUStoreOp_Store;
+        case StoreOperation::Discard:  return WGPUStoreOp_Discard;
+        default:                       TL_UNREACHABLE(); return WGPUStoreOp_Force32;
+        }
+    }
+
+    /////
+
     ICommandList::ICommandList()  = default;
     ICommandList::~ICommandList() = default;
 
@@ -76,10 +100,72 @@ namespace RHI::WebGPU
         m_cmdBuffer = wgpuCommandEncoderFinish(m_cmdEncoder, &descriptor);
     }
 
+    void ICommandList::BeginRenderPass(const Pass& pass)
+    {
+        ZoneScoped;
+
+        TL::Vector<WGPURenderPassColorAttachment>          colorAttachments;
+        TL::Optional<WGPURenderPassDepthStencilAttachment> depthStencilAttachment;
+
+        for (const auto& colorAttachmentRG : pass.GetColorAttachment())
+        {
+            auto colorImage  = m_device->m_imageOwner.Get(colorAttachmentRG.view->GetImage());
+            auto resolveView = colorAttachmentRG.resolveView ? m_device->m_imageOwner.Get(colorAttachmentRG.resolveView->GetImage()) : nullptr;
+            auto clearValue  = WGPUColor{};
+            colorAttachments.push_back({
+                .nextInChain   = nullptr,
+                .view          = colorImage->view,
+                .depthSlice    = {},
+                .resolveTarget = resolveView->view,
+                .loadOp        = ConvertLoadOp(colorAttachmentRG.loadOp),
+                .storeOp       = ConvertStoreOp(colorAttachmentRG.storeOp),
+                .clearValue    = clearValue,
+            });
+        }
+
+        if (auto depthStencilAttachmentRG = pass.GetDepthStencilAttachment())
+        {
+            auto depthStencilImage = m_device->m_imageOwner.Get(depthStencilAttachmentRG->view->GetImage());
+            depthStencilAttachment = WGPURenderPassDepthStencilAttachment{
+                .nextInChain       = nullptr,
+                .view              = depthStencilImage->view,
+                .depthLoadOp       = ConvertLoadOp(depthStencilAttachmentRG->depthLoadOp),
+                .depthStoreOp      = ConvertStoreOp(depthStencilAttachmentRG->depthStoreOp),
+                .depthClearValue   = depthStencilAttachmentRG->clearValue.depthValue,
+                .depthReadOnly     = true,
+                .stencilLoadOp     = ConvertLoadOp(depthStencilAttachmentRG->stencilLoadOp),
+                .stencilStoreOp    = ConvertStoreOp(depthStencilAttachmentRG->stencilStoreOp),
+                .stencilClearValue = depthStencilAttachmentRG->clearValue.stencilValue,
+                .stencilReadOnly   = false,
+            };
+        }
+
+        WGPURenderPassDescriptor descriptor{
+            .nextInChain            = nullptr,
+            .label                  = ConvertToStringView(pass.GetName()),
+            .colorAttachmentCount   = {},
+            .colorAttachments       = {},
+            .depthStencilAttachment = {},
+            .occlusionQuerySet      = {},
+            .timestampWrites        = {},
+        };
+        m_renderPassEncoder = wgpuCommandEncoderBeginRenderPass(m_cmdEncoder, &descriptor);
+    }
+
+    void ICommandList::EndRenderPass()
+    {
+        ZoneScoped;
+
+        wgpuRenderPassEncoderEnd(m_renderPassEncoder);
+    }
+
     void ICommandList::DebugMarkerPush(const char* name, ColorValue<float> color)
     {
         // TODO: in case we are render/compuet pass we should use different function??
         wgpuCommandEncoderPushDebugGroup(m_cmdEncoder, ConvertToStringView(name));
+        wgpuRenderPassEncoderPushDebugGroup(m_renderPassEncoder, ConvertToStringView(name));
+        wgpuComputePassEncoderPushDebugGroup(m_computePassEncoder, ConvertToStringView(name));
+        // wgpuRenderBundleEncoderPushDebugGroup(m_bundle, ConvertToStringView(name));
     }
 
     void ICommandList::DebugMarkerPop()

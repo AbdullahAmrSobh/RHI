@@ -65,17 +65,15 @@ namespace RHI::Vulkan
         ResultCode Init(IDevice* device, const CommandListCreateInfo& createInfo);
         void       Shutdown();
 
-        void Begin();
-        void End();
-
         void AddPipelineBarriers(const PipelineBarriers& barriers);
-
-        void BeginPass(const Pass& pass);
-        void EndPass();
 
         void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups);
 
         // Interface implementation
+        void Begin() override;
+        void End() override;
+        void BeginRenderPass(const Pass& pass) override;
+        void EndRenderPass() override;
         void DebugMarkerPush(const char* name, ColorValue<float> color) override;
         void DebugMarkerPop() override;
         void BeginConditionalCommands(const BufferBindingInfo& conditionBuffer, bool inverted) override;

@@ -140,6 +140,18 @@ namespace RHI
         virtual ~CommandList() = default;
 
     public:
+        /// @brief TODO!
+        virtual void Begin()                                                                                                       = 0;
+
+        /// @brief TODO!
+        virtual void End()                                                                                                         = 0;
+
+        /// @brief TODO!
+        virtual void BeginRenderPass(const Pass& pass)                                                                             = 0;
+
+        /// @brief TODO!
+        virtual void EndRenderPass()                                                                                               = 0;
+
         /// @brief Pushes a debug marker with a name and color onto the command list.
         /// @param name Name of the debug marker.
         /// @param color Color value of the debug marker.

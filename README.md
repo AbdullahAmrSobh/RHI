@@ -8,6 +8,8 @@ RHI requires the following to build:
 - CMake
 - C++20 compatible compiler
 
+_TODO_
+
 ## Example Usage
 
 _TODO_
@@ -26,6 +28,5 @@ _TODO_
 | WebAssembly| ❌     | ✅     | ❌    |
 
 Features
-    Async-Compute: ❌
     Ray-Tracing: ❌
     Mesh-Shaders: ❌
