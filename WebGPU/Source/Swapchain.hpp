@@ -21,13 +21,16 @@ namespace RHI::WebGPU
         ResultCode Present() override;
 
     private:
-        void InitIntenral(const SwapchainCreateInfo& createInfo);
+        ResultCode Configure(ImageSize2D textureSize, WGPUTextureFormat format, WGPUTextureUsage usage, WGPUPresentMode presentMode, WGPUCompositeAlphaMode alphaMode);
+
+        ResultCode SwapBackTextures();
 
     private:
-        IDevice*            m_device;
-        WGPUSurface         m_surface;
-        SwapchainCreateInfo m_currentCreateInfo;
-
-        Handle<Image> m_currentBackbufferTexture;
+        IDevice*               m_device;
+        WGPUSurface            m_surface;
+        WGPUTextureFormat      m_surfaceTextureFormat;
+        WGPUTextureUsage       m_surfaceTextureUsages;
+        WGPUPresentMode        m_presentMode;
+        WGPUCompositeAlphaMode m_alphaMode;
     };
 } // namespace RHI::WebGPU

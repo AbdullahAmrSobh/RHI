@@ -52,10 +52,10 @@ namespace RHI
         ImageSize2D                                    GetSize() const;
 
         /// @brief Gets the color attachments associated with this pass.
-        TL::Span<const ColorRGAttachment>                GetColorAttachment() const;
+        TL::Span<const ColorRGAttachment>              GetColorAttachment() const;
 
         /// @brief Gets the depth/stencil attachment if present.
-        const DepthStencilRGAttachment*                  GetDepthStencilAttachment() const;
+        const DepthStencilRGAttachment*                GetDepthStencilAttachment() const;
 
         /// @brief Gets the accessed resources for this pass.
         TL::Span<RenderGraphResourceTransition* const> GetRenderGraphResourceTransitions() const;
@@ -67,7 +67,12 @@ namespace RHI
             TL::IAllocator& allocator, RenderGraphResource& resource, BufferUsage usage, TL::Flags<PipelineStage> stage, TL::Flags<Access> access, BufferSubregion subregion);
         // clang-format on
 
-        virtual void AddSwapchainPresentBarrier(Device& device, Swapchain& swapchain, RenderGraphResourceTransition& transition) = 0;
+        virtual void AddSwapchainPresentBarrier(
+                                              [[maybe_unused]] Device&                        device,
+                                              [[maybe_unused]] Swapchain&                     swapchain,
+                                              [[maybe_unused]] RenderGraphResourceTransition& transition)
+        {
+        }
 
         RenderGraphExecuteGroup* GetExecuteGroup() const { return m_group; }
 

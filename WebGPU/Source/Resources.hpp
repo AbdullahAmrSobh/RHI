@@ -46,10 +46,13 @@ namespace RHI::WebGPU
 
     struct IBindGroup : BindGroup
     {
+        WGPUBindGroupLayout layout;
         WGPUBindGroup bindGroup;
 
         ResultCode Init(IDevice* device, const BindGroupCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
+
+        void Update(IDevice* device, const BindGroupUpdateInfo& updateInfo);
     };
 
     class IShaderModule final : public ShaderModule
@@ -97,7 +100,6 @@ namespace RHI::WebGPU
     {
         WGPUTexture     texture;
         WGPUTextureView view;
-
 
         ResultCode Init(IDevice* device, const ImageCreateInfo& createInfo);
         ResultCode Init(IDevice& device, WGPUTexture texture, WGPUSurfaceConfiguration desc);

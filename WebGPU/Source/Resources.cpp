@@ -9,79 +9,120 @@ namespace RHI::WebGPU
     {
         switch (format)
         {
-        case Format::Unknown:      return WGPUTextureFormat_Undefined;
-        case Format::R8_UINT:      return WGPUTextureFormat_R8Uint;
-        case Format::R8_SINT:      return WGPUTextureFormat_R8Sint;
-        case Format::R8_UNORM:     return WGPUTextureFormat_R8Unorm;
-        case Format::R8_SNORM:     return WGPUTextureFormat_R8Snorm;
-        // case Format::RG8_UINT:          return WGPUTextureFormat_R8G8_UINT;
-        // case Format::RG8_SINT:          return WGPUTextureFormat_R8G8_SINT;
-        // case Format::RG8_UNORM:         return WGPUTextureFormat_R8G8_UNORM;
-        // case Format::RG8_SNORM:         return WGPUTextureFormat_R8G8_SNORM;
-        case Format::R16_UINT:     return WGPUTextureFormat_R16Uint;
-        case Format::R16_SINT:     return WGPUTextureFormat_R16Sint;
-        case Format::R16_UNORM:    return WGPUTextureFormat_R16Unorm;
-        case Format::R16_SNORM:    return WGPUTextureFormat_R16Snorm;
-        case Format::R16_FLOAT:    return WGPUTextureFormat_R16Float;
-        // case Format::BGRA4_UNORM:       return WGPUTextureFormat_B4G4R4A4_UNORM;
-        // case Format::B5G6R5_UNORM:      return WGPUTextureFormat_B5G6R5_UNORM;
-        // case Format::B5G5R5A1_UNORM:    return WGPUTextureFormat_B5G5R5A1_UNORM;
-        // case Format::RGBA8_UINT:        return WGPUTextureFormat_R8G8B8A8_UINT;
-        // case Format::RGBA8_SINT:        return WGPUTextureFormat_R8G8B8A8_SINT;
-        // case Format::RGBA8_UNORM:       return WGPUTextureFormat_R8G8B8A8_UNORM;
-        // case Format::RGBA8_SNORM:       return WGPUTextureFormat_R8G8B8A8_SNORM;
-        // case Format::BGRA8_UNORM:       return WGPUTextureFormat_B8G8R8A8_UNORM;
-        // case Format::SRGBA8_UNORM:      return WGPUTextureFormat_R8G8B8A8_UNORM_SRGB;
-        // case Format::SBGRA8_UNORM:      return WGPUTextureFormat_B8G8R8A8_UNORM_SRGB;
-        // case Format::R10G10B10A2_UNORM: return WGPUTextureFormat_R10G10B10A2_UNORM;
-        // case Format::R11G11B10_FLOAT:   return WGPUTextureFormat_R11G11B10_FLOAT;
-        // case Format::RG16_UINT:         return WGPUTextureFormat_R16G16_UINT;
-        // case Format::RG16_SINT:         return WGPUTextureFormat_R16G16_SINT;
-        // case Format::RG16_UNORM:        return WGPUTextureFormat_R16G16_UNORM;
-        // case Format::RG16_SNORM:        return WGPUTextureFormat_R16G16_SNORM;
-        // case Format::RG16_FLOAT:        return WGPUTextureFormat_R16G16_FLOAT;
-        case Format::R32_UINT:     return WGPUTextureFormat_R32Uint;
-        case Format::R32_SINT:     return WGPUTextureFormat_R32Sint;
-        case Format::R32_FLOAT:    return WGPUTextureFormat_R32Float;
-        // case Format::RGBA16_UINT:       return WGPUTextureFormat_R16G16B16A16_UINT;
-        // case Format::RGBA16_SINT:       return WGPUTextureFormat_R16G16B16A16_SINT;
-        // case Format::RGBA16_FLOAT:      return WGPUTextureFormat_R16G16B16A16_FLOAT;
-        // case Format::RGBA16_UNORM:      return WGPUTextureFormat_R16G16B16A16_UNORM;
-        // case Format::RGBA16_SNORM:      return WGPUTextureFormat_R16G16B16A16_SNORM;
-        // case Format::RG32_UINT:         return WGPUTextureFormat_R32G32_UINT;
-        // case Format::RG32_SINT:         return WGPUTextureFormat_R32G32_SINT;
-        // case Format::RG32_FLOAT:        return WGPUTextureFormat_R32G32_FLOAT;
-        // case Format::RGB32_UINT:        return WGPUTextureFormat_R32G32B32_UINT;
-        // case Format::RGB32_SINT:        return WGPUTextureFormat_R32G32B32_SINT;
-        // case Format::RGB32_FLOAT:       return WGPUTextureFormat_R32G32B32_FLOAT;
-        case Format::RGBA32_UINT:  return WGPUTextureFormat_RGBA32Uint;
-        case Format::RGBA32_SINT:  return WGPUTextureFormat_RGBA32Sint;
-        case Format::RGBA32_FLOAT: return WGPUTextureFormat_RGBA32Float;
-        case Format::D16:          return WGPUTextureFormat_Depth16Unorm;
-        case Format::D24S8:        return WGPUTextureFormat_Depth24PlusStencil8;
-        // case Format::X24G8_UINT:        return WGPUTextureFormat_X24_TYPELESS_G8_UINT;
-        case Format::D32:          return WGPUTextureFormat_Depth32Float;
-        case Format::D32S8:        return WGPUTextureFormat_Depth32FloatStencil8;
-        // case Format::X32G8_UINT:        return WGPUTextureFormat_X32_TYPELESS_G8X24_UINT;
-        // case Format::BC1_UNORM:         return WGPUTextureFormat_BC1_UNORM;
-        // case Format::BC1_UNORM_SRGB:    return WGPUTextureFormat_BC1_UNORM_SRGB;
-        // case Format::BC2_UNORM:         return WGPUTextureFormat_BC2_UNORM;
-        // case Format::BC2_UNORM_SRGB:    return WGPUTextureFormat_BC2_UNORM_SRGB;
-        // case Format::BC3_UNORM:         return WGPUTextureFormat_BC3_UNORM;
-        // case Format::BC3_UNORM_SRGB:    return WGPUTextureFormat_BC3_UNORM_SRGB;
-        // case Format::BC4_UNORM:         return WGPUTextureFormat_BC4_UNORM;
-        // case Format::BC4_SNORM:         return WGPUTextureFormat_BC4_SNORM;
-        // case Format::BC5_UNORM:         return WGPUTextureFormat_BC5_UNORM;
-        // case Format::BC5_SNORM:         return WGPUTextureFormat_BC5_SNORM;
-        // case Format::BC6H_UFLOAT:       return WGPUTextureFormat_BC6H_UF16;
-        // case Format::BC6H_SFLOAT:       return WGPUTextureFormat_BC6H_SF16;
-        // case Format::BC7_UNORM:         return WGPUTextureFormat_BC7_UNORM;
-        // case Format::BC7_UNORM_SRGB:    return WGPUTextureFormat_BC7_UNORM_SRGB;
-        case Format::COUNT:
-            TL_UNREACHABLE();
-            return WGPUTextureFormat_Undefined;
-            break;
+        case Format::Unknown:           return WGPUTextureFormat_Undefined;
+        case Format::R8_UNORM:          return WGPUTextureFormat_R8Unorm;
+        case Format::R8_SNORM:          return WGPUTextureFormat_R8Snorm;
+        case Format::R8_UINT:           return WGPUTextureFormat_R8Uint;
+        case Format::R8_SINT:           return WGPUTextureFormat_R8Sint;
+        case Format::R16_UINT:          return WGPUTextureFormat_R16Uint;
+        case Format::R16_SINT:          return WGPUTextureFormat_R16Sint;
+        case Format::R16_FLOAT:         return WGPUTextureFormat_R16Float;
+        case Format::RG8_UNORM:         return WGPUTextureFormat_RG8Unorm;
+        case Format::RG8_SNORM:         return WGPUTextureFormat_RG8Snorm;
+        case Format::RG8_UINT:          return WGPUTextureFormat_RG8Uint;
+        case Format::RG8_SINT:          return WGPUTextureFormat_RG8Sint;
+        case Format::R32_FLOAT:         return WGPUTextureFormat_R32Float;
+        case Format::R32_UINT:          return WGPUTextureFormat_R32Uint;
+        case Format::R32_SINT:          return WGPUTextureFormat_R32Sint;
+        case Format::RG16_UINT:         return WGPUTextureFormat_RG16Uint;
+        case Format::RG16_SINT:         return WGPUTextureFormat_RG16Sint;
+        case Format::RG16_FLOAT:        return WGPUTextureFormat_RG16Float;
+        case Format::RGBA8_UNORM:       return WGPUTextureFormat_RGBA8Unorm;
+        // case Format::RGBA8UnormSrgb:              return WGPUTextureFormat_RGBA8UnormSrgb;
+        case Format::RGBA8_SNORM:       return WGPUTextureFormat_RGBA8Snorm;
+        case Format::RGBA8_UINT:        return WGPUTextureFormat_RGBA8Uint;
+        case Format::RGBA8_SINT:        return WGPUTextureFormat_RGBA8Sint;
+        case Format::BGRA8_UNORM:       return WGPUTextureFormat_BGRA8Unorm;
+        // case Format::BGRA8UnormSrgb:              return WGPUTextureFormat_BGRA8UnormSrgb;
+        // case Format::RGB10A2Uint:                 return WGPUTextureFormat_RGB10A2Uint;
+        case Format::R10G10B10A2_UNORM: return WGPUTextureFormat_RGB10A2Unorm;
+        // case Format::RG11B10Ufloat:               return WGPUTextureFormat_RG11B10Ufloat;
+        // case Format::RGB9E5Ufloat:                return WGPUTextureFormat_RGB9E5Ufloat;
+        case Format::RG32_FLOAT:        return WGPUTextureFormat_RG32Float;
+        case Format::RG32_UINT:         return WGPUTextureFormat_RG32Uint;
+        case Format::RG32_SINT:         return WGPUTextureFormat_RG32Sint;
+        case Format::RGBA16_UINT:       return WGPUTextureFormat_RGBA16Uint;
+        case Format::RGBA16_SINT:       return WGPUTextureFormat_RGBA16Sint;
+        case Format::RGBA16_FLOAT:      return WGPUTextureFormat_RGBA16Float;
+        case Format::RGBA32_FLOAT:      return WGPUTextureFormat_RGBA32Float;
+        case Format::RGBA32_UINT:       return WGPUTextureFormat_RGBA32Uint;
+        case Format::RGBA32_SINT:       return WGPUTextureFormat_RGBA32Sint;
+        // case Format::Stencil8:                    return WGPUTextureFormat_Stencil8;
+        case Format::D16:               return WGPUTextureFormat_Depth16Unorm;
+        case Format::D24S8:             return WGPUTextureFormat_Depth24Plus;
+        // case Format::D24S8:             return WGPUTextureFormat_Depth24PlusStencil8;
+        case Format::D32:               return WGPUTextureFormat_Depth32Float;
+        // case Format::D24S8:             return WGPUTextureFormat_Depth32FloatStencil8;
+        case Format::BC1_UNORM:         return WGPUTextureFormat_BC1RGBAUnorm;
+        case Format::BC1_UNORM_SRGB:    return WGPUTextureFormat_BC1RGBAUnormSrgb;
+        case Format::BC2_UNORM:         return WGPUTextureFormat_BC2RGBAUnorm;
+        case Format::BC2_UNORM_SRGB:    return WGPUTextureFormat_BC2RGBAUnormSrgb;
+        case Format::BC3_UNORM:         return WGPUTextureFormat_BC3RGBAUnorm;
+        case Format::BC3_UNORM_SRGB:    return WGPUTextureFormat_BC3RGBAUnormSrgb;
+        case Format::BC4_UNORM:         return WGPUTextureFormat_BC4RUnorm;
+        case Format::BC4_SNORM:         return WGPUTextureFormat_BC4RSnorm;
+        case Format::BC5_UNORM:         return WGPUTextureFormat_BC5RGUnorm;
+        case Format::BC5_SNORM:         return WGPUTextureFormat_BC5RGSnorm;
+        case Format::BC6H_SFLOAT:       return WGPUTextureFormat_BC6HRGBUfloat;
+        case Format::BC6H_UFLOAT:       return WGPUTextureFormat_BC6HRGBFloat;
+        case Format::BC7_UNORM:         return WGPUTextureFormat_BC7RGBAUnorm;
+        case Format::BC7_UNORM_SRGB:    return WGPUTextureFormat_BC7RGBAUnormSrgb;
+        // case Format::ETC2RGB8Unorm:               return WGPUTextureFormat_ETC2RGB8Unorm;
+        // case Format::ETC2RGB8UnormSrgb:           return WGPUTextureFormat_ETC2RGB8UnormSrgb;
+        // case Format::ETC2RGB8A1Unorm:             return WGPUTextureFormat_ETC2RGB8A1Unorm;
+        // case Format::ETC2RGB8A1UnormSrgb:         return WGPUTextureFormat_ETC2RGB8A1UnormSrgb;
+        // case Format::ETC2RGBA8Unorm:              return WGPUTextureFormat_ETC2RGBA8Unorm;
+        // case Format::ETC2RGBA8UnormSrgb:          return WGPUTextureFormat_ETC2RGBA8UnormSrgb;
+        // case Format::EACR11Unorm:                 return WGPUTextureFormat_EACR11Unorm;
+        // case Format::EACR11Snorm:                 return WGPUTextureFormat_EACR11Snorm;
+        // case Format::EACRG11Unorm:                return WGPUTextureFormat_EACRG11Unorm;
+        // case Format::EACRG11Snorm:                return WGPUTextureFormat_EACRG11Snorm;
+        // case Format::ASTC4x4Unorm:                return WGPUTextureFormat_ASTC4x4Unorm;
+        // case Format::ASTC4x4UnormSrgb:            return WGPUTextureFormat_ASTC4x4UnormSrgb;
+        // case Format::ASTC5x4Unorm:                return WGPUTextureFormat_ASTC5x4Unorm;
+        // case Format::ASTC5x4UnormSrgb:            return WGPUTextureFormat_ASTC5x4UnormSrgb;
+        // case Format::ASTC5x5Unorm:                return WGPUTextureFormat_ASTC5x5Unorm;
+        // case Format::ASTC5x5UnormSrgb:            return WGPUTextureFormat_ASTC5x5UnormSrgb;
+        // case Format::ASTC6x5Unorm:                return WGPUTextureFormat_ASTC6x5Unorm;
+        // case Format::ASTC6x5UnormSrgb:            return WGPUTextureFormat_ASTC6x5UnormSrgb;
+        // case Format::ASTC6x6Unorm:                return WGPUTextureFormat_ASTC6x6Unorm;
+        // case Format::ASTC6x6UnormSrgb:            return WGPUTextureFormat_ASTC6x6UnormSrgb;
+        // case Format::ASTC8x5Unorm:                return WGPUTextureFormat_ASTC8x5Unorm;
+        // case Format::ASTC8x5UnormSrgb:            return WGPUTextureFormat_ASTC8x5UnormSrgb;
+        // case Format::ASTC8x6Unorm:                return WGPUTextureFormat_ASTC8x6Unorm;
+        // case Format::ASTC8x6UnormSrgb:            return WGPUTextureFormat_ASTC8x6UnormSrgb;
+        // case Format::ASTC8x8Unorm:                return WGPUTextureFormat_ASTC8x8Unorm;
+        // case Format::ASTC8x8UnormSrgb:            return WGPUTextureFormat_ASTC8x8UnormSrgb;
+        // case Format::ASTC10x5Unorm:               return WGPUTextureFormat_ASTC10x5Unorm;
+        // case Format::ASTC10x5UnormSrgb:           return WGPUTextureFormat_ASTC10x5UnormSrgb;
+        // case Format::ASTC10x6Unorm:               return WGPUTextureFormat_ASTC10x6Unorm;
+        // case Format::ASTC10x6UnormSrgb:           return WGPUTextureFormat_ASTC10x6UnormSrgb;
+        // case Format::ASTC10x8Unorm:               return WGPUTextureFormat_ASTC10x8Unorm;
+        // case Format::ASTC10x8UnormSrgb:           return WGPUTextureFormat_ASTC10x8UnormSrgb;
+        // case Format::ASTC10x10Unorm:              return WGPUTextureFormat_ASTC10x10Unorm;
+        // case Format::ASTC10x10UnormSrgb:          return WGPUTextureFormat_ASTC10x10UnormSrgb;
+        // case Format::ASTC12x10Unorm:              return WGPUTextureFormat_ASTC12x10Unorm;
+        // case Format::ASTC12x10UnormSrgb:          return WGPUTextureFormat_ASTC12x10UnormSrgb;
+        // case Format::ASTC12x12Unorm:              return WGPUTextureFormat_ASTC12x12Unorm;
+        // case Format::ASTC12x12UnormSrgb:          return WGPUTextureFormat_ASTC12x12UnormSrgb;
+        case Format::R16_UNORM:         return WGPUTextureFormat_R16Unorm;
+        case Format::RG16_UNORM:        return WGPUTextureFormat_RG16Unorm;
+        case Format::RGBA16_UNORM:      return WGPUTextureFormat_RGBA16Unorm;
+        case Format::R16_SNORM:         return WGPUTextureFormat_R16Snorm;
+        case Format::RG16_SNORM:        return WGPUTextureFormat_RG16Snorm;
+        case Format::RGBA16_SNORM:
+            return WGPUTextureFormat_RGBA16Snorm;
+            // case Format::R8BG8Biplanar420Unorm:       return WGPUTextureFormat_R8BG8Biplanar420Unorm;
+            // case Format::R10X6BG10X6Biplanar420Unorm: return WGPUTextureFormat_R10X6BG10X6Biplanar420Unorm;
+            // case Format::R8BG8A8Triplanar420Unorm:    return WGPUTextureFormat_R8BG8A8Triplanar420Unorm;
+            // case Format::R8BG8Biplanar422Unorm:       return WGPUTextureFormat_R8BG8Biplanar422Unorm;
+            // case Format::R8BG8Biplanar444Unorm:       return WGPUTextureFormat_R8BG8Biplanar444Unorm;
+            // case Format::R10X6BG10X6Biplanar422Unorm: return WGPUTextureFormat_R10X6BG10X6Biplanar422Unorm;
+            // case Format::R10X6BG10X6Biplanar444Unorm: return WGPUTextureFormat_R10X6BG10X6Biplanar444Unorm;
+            // case Format::External:                    return WGPUTextureFormat_External;
+            // case Format::Force32:                     return WGPUTextureFormat_Force32;
         }
+        TL_UNREACHABLE();
         return WGPUTextureFormat_Undefined;
     }
 
@@ -130,9 +171,8 @@ namespace RHI::WebGPU
         case Format::RGBA32_SINT:       return WGPUVertexFormat_Sint32x4;
         case Format::R10G10B10A2_UNORM: return WGPUVertexFormat_Unorm10_10_10_2;
         // case Format::: return WGPUVertexFormat_Unorm8x4BGRA;
-        case Format::COUNT:             TL_UNREACHABLE(); return WGPUVertexFormat_Force32;
+        default:                        TL_UNREACHABLE(); return WGPUVertexFormat_Force32;
         }
-        return WGPUVertexFormat_Force32;
     }
 
     WGPUFilterMode ConvertToSamplerFilter(SamplerFilter filter)
@@ -334,13 +374,18 @@ namespace RHI::WebGPU
 
     ResultCode IBindGroupLayout::Init(IDevice* device, const BindGroupLayoutCreateInfo& createInfo)
     {
+        // type
+        // access
+        // arrayCount
+        // stages
+
         TL::Vector<WGPUBindGroupLayoutEntry> entries;
         uint32_t                             bindingIndex = 0;
         for (const auto& binding : createInfo.bindings)
         {
             WGPUBindGroupLayoutEntry entry{
                 .nextInChain    = nullptr,
-                .binding        = bindingIndex,
+                .binding        = bindingIndex++,
                 .visibility     = ConvertToShaderStage(binding.stages),
                 .buffer         = {},
                 .sampler        = {},
@@ -348,7 +393,55 @@ namespace RHI::WebGPU
                 .storageTexture = {},
             };
 
-            // TODO:
+            switch (binding.type)
+            {
+            case BindingType::None:
+            case BindingType::SampledImage:
+                entry.texture.sampleType    = WGPUTextureSampleType_Float;
+                entry.texture.multisampled  = false;
+                entry.texture.viewDimension = WGPUTextureViewDimension_2D;
+                break;
+            case BindingType::Sampler:
+                entry.sampler.type = WGPUSamplerBindingType_Filtering;
+                break;
+            case BindingType::StorageImage:
+                entry.storageTexture.access        = ConvertStorageTextureAccess(binding.access);
+                entry.storageTexture.format        = WGPUTextureFormat_RGBA8Unorm;
+                entry.storageTexture.viewDimension = WGPUTextureViewDimension_2D;
+                break;
+            case BindingType::UniformBuffer:
+                entry.buffer.type             = WGPUBufferBindingType_Uniform;
+                entry.buffer.hasDynamicOffset = false;
+                entry.buffer.minBindingSize   = 0;
+                break;
+            case BindingType::StorageBuffer:
+                entry.buffer.type             = WGPUBufferBindingType_Storage;
+                entry.buffer.hasDynamicOffset = false;
+                entry.buffer.minBindingSize   = 0;
+                break;
+            case BindingType::DynamicUniformBuffer:
+                entry.buffer.type             = WGPUBufferBindingType_Uniform;
+                entry.buffer.hasDynamicOffset = true;
+                entry.buffer.minBindingSize   = 0;
+                break;
+            case BindingType::DynamicStorageBuffer:
+                entry.buffer.type             = WGPUBufferBindingType_Storage;
+                entry.buffer.hasDynamicOffset = true;
+                entry.buffer.minBindingSize   = 0;
+                break;
+            case BindingType::BufferView:
+                entry.buffer.type             = WGPUBufferBindingType_ReadOnlyStorage;
+                entry.buffer.hasDynamicOffset = false;
+                entry.buffer.minBindingSize   = 0;
+                break;
+            case BindingType::StorageBufferView:
+                entry.buffer.type             = WGPUBufferBindingType_Storage;
+                entry.buffer.hasDynamicOffset = false;
+                entry.buffer.minBindingSize   = 0;
+                break;
+            default:
+                break;
+            }
             entries.push_back(entry);
         }
         WGPUBindGroupLayoutDescriptor desc{
@@ -387,21 +480,43 @@ namespace RHI::WebGPU
     void IBindGroup::Shutdown([[maybe_unused]] IDevice* device)
     {
         wgpuBindGroupRelease(this->bindGroup);
+        wgpuBindGroupLayoutRelease(this->layout);
+    }
+
+    void IBindGroup::Update(IDevice* device, const BindGroupUpdateInfo& updateInfo)
+    {
+        wgpuBindGroupRelease(bindGroup);
+
+        TL::Vector<WGPUBindGroupEntry> entry{};
+        for (auto element : updateInfo.buffers)
+        {
+        }
+        for (auto element : updateInfo.images)
+        {
+        }
+        for (auto element : updateInfo.samplers)
+        {
+        }
+
+        WGPUBindGroupDescriptor desc{
+            .nextInChain = {},
+            .label       = {},
+            .layout      = layout,
+            .entryCount  = entry.size(),
+            .entries     = entry.data(),
+        };
+        wgpuDeviceCreateBindGroup(device->m_device, &desc);
     }
 
     ResultCode IShaderModule::Init(IDevice* device, const ShaderModuleCreateInfo& createInfo)
     {
         WGPUShaderSourceSPIRV spirvSourceDesc{
-            .chain    = {},
+            .chain    = {.sType = WGPUSType_ShaderSourceSPIRV},
             .codeSize = (uint32_t)createInfo.code.size(),
             .code     = createInfo.code.data(),
         };
-        WGPUChainedStruct nextInChain{
-            .next  = (WGPUChainedStruct*)&spirvSourceDesc,
-            .sType = WGPUSType_ShaderSourceSPIRV,
-        };
         WGPUShaderModuleDescriptor desc{
-            .nextInChain = &nextInChain,
+            .nextInChain = &spirvSourceDesc.chain,
             .label       = ConvertToStringView(createInfo.name),
         };
         this->module = wgpuDeviceCreateShaderModule(device->m_device, &desc);
@@ -440,13 +555,12 @@ namespace RHI::WebGPU
 
     ResultCode IGraphicsPipeline::Init(IDevice* device, const GraphicsPipelineCreateInfo& createInfo)
     {
-#if 0
         auto pipelineLayout = device->m_pipelineLayoutOwner.Get(createInfo.layout);
         auto vs             = (IShaderModule*)createInfo.vertexShaderModule;
         auto ps             = (IShaderModule*)createInfo.pixelShaderModule;
 
-        TL::Vector<WGPUVertexAttribute>    attributes;
-        TL::Vector<WGPUVertexBufferLayout> vertexBufferLayouts;
+        TL::Vector<WGPUVertexAttribute>    attributes{};
+        TL::Vector<WGPUVertexBufferLayout> vertexBufferLayouts{};
 
         uint32_t bindingIndex = 0;
         for (const auto& bindingDesc : createInfo.vertexBufferBindings)
@@ -458,7 +572,7 @@ namespace RHI::WebGPU
                     .nextInChain    = nullptr,
                     .format         = ConvertToVertexFormat(attributeDesc.format),
                     .offset         = attributeDesc.offset,
-                    .shaderLocation = bindingIndex,
+                    .shaderLocation = bindingIndex++,
                 });
             }
 
@@ -494,7 +608,7 @@ namespace RHI::WebGPU
                 .nextInChain = nullptr,
                 .format      = format,
                 .blend       = &blend,
-                .writeMask   = {},
+                .writeMask   = WGPUColorWriteMask_All,
             });
         }
 
@@ -540,8 +654,6 @@ namespace RHI::WebGPU
             .fragment = &fragment,
         };
         this->pipeline = wgpuDeviceCreateRenderPipeline(device->m_device, &desc);
-        return ResultCode::Success;
-#endif
         return ResultCode::Success;
     }
 
@@ -627,6 +739,8 @@ namespace RHI::WebGPU
 
     ResultCode IImage::Init([[maybe_unused]] IDevice& device, WGPUTexture texture, WGPUSurfaceConfiguration desc)
     {
+        TL_LOG_WARNNING("FIXME! {}::{}", __FILE__, __FUNCTION__);
+
         this->texture = texture;
         WGPUTextureViewDescriptor viewDesc{
             .nextInChain     = nullptr,

@@ -46,16 +46,34 @@ namespace RHI::WebGPU
         void CopyBufferToImage(const BufferImageCopyInfo& copyInfo) override;
 
     public:
-        IDevice* m_device = nullptr;
-        bool     m_isRenderPass;
+        enum class State
+        {
+            CommandBuffer,
+            CommandEncoder,
+            RenderBundle,
+            RenderPassEncoder,
+            ComputePassEncoder,
+        };
 
-        WGPUCommandBuffer  m_cmdBuffer  = nullptr;
-        WGPUCommandEncoder m_cmdEncoder = nullptr;
-        WGPURenderBundle   m_bundle     = nullptr;
+        IDevice* m_device = nullptr;
+
+        State m_state = State::CommandEncoder;
 
         union
         {
-            WGPURenderPassEncoder  m_renderPassEncoder = {};
+            WGPUCommandEncoder      m_cmdEncoder = nullptr;
+            WGPURenderBundleEncoder m_bundleEncoder;
+        };
+
+        union
+        {
+            WGPUCommandBuffer m_cmdBuffer = nullptr;
+            WGPURenderBundle  m_bundle;
+        };
+
+        union
+        {
+            WGPURenderPassEncoder  m_renderPassEncoder = nullptr;
             WGPUComputePassEncoder m_computePassEncoder;
         };
     };

@@ -83,8 +83,17 @@ namespace RHI
 
     inline static RHI::Access LoadStoreToAccess(LoadOperation loadOp, StoreOperation storeOp)
     {
-        if (loadOp == LoadOperation::Load && storeOp == StoreOperation::Store) return RHI::Access::ReadWrite;
-        else if (loadOp == LoadOperation::Load && storeOp != StoreOperation::Store) return RHI::Access::Read;
-        else return RHI::Access::Write;
+        if (loadOp == LoadOperation::Load && storeOp == StoreOperation::Store)
+        {
+            return RHI::Access::ReadWrite;
+        }
+        else if (loadOp == LoadOperation::Load && storeOp != StoreOperation::Store)
+        {
+            return RHI::Access::Read;
+        }
+        else
+        {
+            return RHI::Access::Write;
+        }
     }
 } // namespace RHI

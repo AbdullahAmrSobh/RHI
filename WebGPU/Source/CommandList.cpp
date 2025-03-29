@@ -40,6 +40,9 @@ namespace RHI::WebGPU
 
     ResultCode ICommandList::Init(IDevice* device, const CommandListCreateInfo& createInfo)
     {
+        m_device = device;
+
+        m_state = State::CommandEncoder;
         WGPUCommandEncoderDescriptor desc{
             .nextInChain = {},
             .label       = ConvertToStringView(createInfo.name),
@@ -51,75 +54,47 @@ namespace RHI::WebGPU
     void ICommandList::Shutdown()
     {
         wgpuCommandEncoderRelease(m_cmdEncoder);
+        wgpuCommandBufferRelease(m_cmdBuffer);
+
+        TL_ASSERT(m_state == State::CommandBuffer && m_state == State::RenderBundle);
     }
 
     void ICommandList::Begin()
     {
-        if (m_isRenderPass)
-        {
-            TL::Vector<WGPURenderPassColorAttachment>          colorAttachments;
-            TL::Optional<WGPURenderPassDepthStencilAttachment> depthStencilAttachment;
-
-            WGPURenderPassDescriptor passDesc{
-                .nextInChain            = nullptr,
-                .label                  = {},
-                .colorAttachmentCount   = colorAttachments.size(),
-                .colorAttachments       = colorAttachments.data(),
-                .depthStencilAttachment = depthStencilAttachment ? &*depthStencilAttachment : nullptr,
-                .occlusionQuerySet      = {},
-                .timestampWrites        = {},
-            };
-            m_renderPassEncoder = wgpuCommandEncoderBeginRenderPass(m_cmdEncoder, &passDesc);
-        }
-        else
-        {
-            WGPUComputePassDescriptor passDesc{
-                .nextInChain     = nullptr,
-                .label           = {},
-                .timestampWrites = {},
-            };
-            m_computePassEncoder = wgpuCommandEncoderBeginComputePass(m_cmdEncoder, &passDesc);
-        }
     }
 
     void ICommandList::End()
     {
-        if (m_isRenderPass)
-        {
-            wgpuRenderPassEncoderEnd(m_renderPassEncoder);
-        }
-        else
-        {
-            wgpuComputePassEncoderEnd(m_computePassEncoder);
-        }
-
         WGPUCommandBufferDescriptor descriptor{
             .nextInChain = nullptr,
             .label       = {},
         };
         m_cmdBuffer = wgpuCommandEncoderFinish(m_cmdEncoder, &descriptor);
+        wgpuCommandEncoderRelease(m_cmdEncoder);
+        m_state     = State::CommandBuffer;
     }
 
     void ICommandList::BeginRenderPass(const Pass& pass)
     {
         ZoneScoped;
 
-        TL::Vector<WGPURenderPassColorAttachment>          colorAttachments;
-        TL::Optional<WGPURenderPassDepthStencilAttachment> depthStencilAttachment;
+        m_state = State::RenderPassEncoder;
+
+        TL::Vector<WGPURenderPassColorAttachment>          colorAttachments{};
+        TL::Optional<WGPURenderPassDepthStencilAttachment> depthStencilAttachment{};
 
         for (const auto& colorAttachmentRG : pass.GetColorAttachment())
         {
             auto colorImage  = m_device->m_imageOwner.Get(colorAttachmentRG.view->GetImage());
             auto resolveView = colorAttachmentRG.resolveView ? m_device->m_imageOwner.Get(colorAttachmentRG.resolveView->GetImage()) : nullptr;
-            auto clearValue  = WGPUColor{};
             colorAttachments.push_back({
                 .nextInChain   = nullptr,
                 .view          = colorImage->view,
-                .depthSlice    = {},
-                .resolveTarget = resolveView->view,
+                .depthSlice    = WGPU_DEPTH_SLICE_UNDEFINED,
+                .resolveTarget = resolveView ? resolveView->view : nullptr,
                 .loadOp        = ConvertLoadOp(colorAttachmentRG.loadOp),
                 .storeOp       = ConvertStoreOp(colorAttachmentRG.storeOp),
-                .clearValue    = clearValue,
+                .clearValue    = ConvertToColor(colorAttachmentRG.clearValue),
             });
         }
 
@@ -143,11 +118,11 @@ namespace RHI::WebGPU
         WGPURenderPassDescriptor descriptor{
             .nextInChain            = nullptr,
             .label                  = ConvertToStringView(pass.GetName()),
-            .colorAttachmentCount   = {},
-            .colorAttachments       = {},
-            .depthStencilAttachment = {},
-            .occlusionQuerySet      = {},
-            .timestampWrites        = {},
+            .colorAttachmentCount   = colorAttachments.size(),
+            .colorAttachments       = colorAttachments.data(),
+            .depthStencilAttachment = depthStencilAttachment ? &depthStencilAttachment.value() : nullptr,
+            .occlusionQuerySet      = nullptr,
+            .timestampWrites        = nullptr,
         };
         m_renderPassEncoder = wgpuCommandEncoderBeginRenderPass(m_cmdEncoder, &descriptor);
     }
@@ -155,26 +130,35 @@ namespace RHI::WebGPU
     void ICommandList::EndRenderPass()
     {
         ZoneScoped;
-
         wgpuRenderPassEncoderEnd(m_renderPassEncoder);
+        m_state = State::CommandEncoder;
     }
 
-    void ICommandList::DebugMarkerPush(const char* name, ColorValue<float> color)
+    void ICommandList::DebugMarkerPush(const char* name, [[maybe_unused]] ColorValue<float> color)
     {
-        // TODO: in case we are render/compuet pass we should use different function??
-        wgpuCommandEncoderPushDebugGroup(m_cmdEncoder, ConvertToStringView(name));
-        wgpuRenderPassEncoderPushDebugGroup(m_renderPassEncoder, ConvertToStringView(name));
-        wgpuComputePassEncoderPushDebugGroup(m_computePassEncoder, ConvertToStringView(name));
-        // wgpuRenderBundleEncoderPushDebugGroup(m_bundle, ConvertToStringView(name));
+        switch (m_state)
+        {
+        case State::CommandBuffer:      TL_UNREACHABLE(); break;
+        case State::CommandEncoder:     wgpuCommandEncoderPushDebugGroup(m_cmdEncoder, ConvertToStringView(name)); break;
+        case State::RenderBundle:       wgpuRenderBundleEncoderPushDebugGroup(m_bundleEncoder, ConvertToStringView(name)); break;
+        case State::RenderPassEncoder:  wgpuRenderPassEncoderPushDebugGroup(m_renderPassEncoder, ConvertToStringView(name)); break;
+        case State::ComputePassEncoder: wgpuComputePassEncoderPushDebugGroup(m_computePassEncoder, ConvertToStringView(name)); break;
+        }
     }
 
     void ICommandList::DebugMarkerPop()
     {
-        // TODO: in case we are render/compuet pass we should use different function??
-        wgpuCommandEncoderPopDebugGroup(m_cmdEncoder);
+        switch (m_state)
+        {
+        case State::CommandBuffer:      TL_UNREACHABLE(); break;
+        case State::CommandEncoder:     wgpuCommandEncoderPopDebugGroup(m_cmdEncoder); break;
+        case State::RenderBundle:       wgpuRenderBundleEncoderPopDebugGroup(m_bundleEncoder); break;
+        case State::RenderPassEncoder:  wgpuRenderPassEncoderPopDebugGroup(m_renderPassEncoder); break;
+        case State::ComputePassEncoder: wgpuComputePassEncoderPopDebugGroup(m_computePassEncoder); break;
+        }
     }
 
-    void ICommandList::BeginConditionalCommands(const BufferBindingInfo& conditionBuffer, bool inverted)
+    void ICommandList::BeginConditionalCommands([[maybe_unused]] const BufferBindingInfo& conditionBuffer, [[maybe_unused]] bool inverted)
     {
         TL_UNREACHABLE();
     }

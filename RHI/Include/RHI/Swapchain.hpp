@@ -53,29 +53,39 @@ namespace RHI
 #endif
     };
 
+    struct SurfaceCapabilities
+    {
+        TL::Flags<ImageUsage>            usages;
+        TL::Vector<Format>               formats;
+        TL::Vector<SwapchainPresentMode> presentModes;
+        TL::Vector<SwapchainAlphaMode>   alphaModes;
+    };
+
     /// @brief Swapchain object which is an interface between the API and a presentation surface.
     class RHI_EXPORT Swapchain
     {
     public:
         RHI_INTERFACE_BOILERPLATE(Swapchain);
 
-        static constexpr uint32_t MaxImageCount = 4;
-        static constexpr uint32_t MinImageCount = 1;
+        static constexpr uint32_t   MaxImageCount = 4;
+        static constexpr uint32_t   MinImageCount = 1;
 
         /// @brief Get the current image index of the swapchain.
-        uint32_t                  GetCurrentImageIndex() const;
+        uint32_t                    GetCurrentImageIndex() const;
 
         /// @brief Get the number of images in the swapchain.
-        uint32_t                  GetImagesCount() const;
+        uint32_t                    GetImagesCount() const;
 
         /// @brief Get the current acquired swapchain image.
-        Handle<Image>             GetImage() const;
+        virtual Handle<Image>       GetImage() const;
 
         /// @brief Called to invalidate the current swapchain state, when the window is resized.
-        virtual ResultCode        Recreate(ImageSize2D newSize) = 0;
+        virtual ResultCode          Recreate(ImageSize2D newSize) = 0;
 
         /// @brief Presents the current image.
-        virtual ResultCode        Present()                     = 0;
+        virtual ResultCode          Present()                     = 0;
+
+        // virtual SurfaceCapabilities GetSurfaceCapabilities() = 0;
 
     protected:
         uint32_t      m_imageIndex;
