@@ -35,9 +35,6 @@ PS_INPUT VSMain(VS_INPUT input)
 struct GBufferOutput
 {
     float4 albedo   : SV_Target0; // Albedo color
-    float4 position : SV_Target2; // World position
-    float4 normal   : SV_Target1; // Normal vector
-    float2 material : SV_Target3; // Material properties (e.g., metallic, roughness, ...)
 };
 
 
@@ -47,8 +44,5 @@ GBufferOutput PSMain(PS_INPUT input) : SV_Target
     let color = input.col * drawData.texture0.Sample(drawData.sampler0, input.uv);
     GBufferOutput output;
     output.albedo = color;
-    output.normal = float4(0.0, 0.0, 1.0, 1.0);
-    output.position = float4(input.pos.xy, 0.0, 1.0);
-    output.material = float2(0.0, 0.0);
     return output;
 }

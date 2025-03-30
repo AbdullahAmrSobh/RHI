@@ -98,7 +98,7 @@ namespace RHI::WebGPU
         ResultCode Init(IDevice* device, const BufferCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
         void*      Map(IDevice* device);
-        void       Unamp(IDevice* device);
+        void       Unmap(IDevice* device);
     };
 
     struct IImage : Image

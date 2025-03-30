@@ -2,11 +2,11 @@
 #include "Renderer.hpp"
 
 #include <Examples-Base/ApplicationBase.hpp>
-
 #include <RHI-Vulkan/Loader.hpp>
 #include <RHI-WebGPU/Loader.hpp>
 
 #include "Scene.hpp"
+
 
 namespace Engine
 {
@@ -136,7 +136,7 @@ namespace Engine
         auto [width, height] = m_window->GetWindowSize();
 
         m_renderGraph->BeginFrame({width, height});
-        [[maybe_unused]] auto pass = m_renderGraph->AddPass({
+        m_renderGraph->AddPass({
             .name          = "main-buffer",
             .queue         = RHI::QueueType::Graphics,
             .setupCallback = [&](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
@@ -171,11 +171,9 @@ namespace Engine
                 });
 
                 FillGBuffer(nullptr, commandList);
-
-                m_imguiRenderer.RenderDrawData(ImGui::GetDrawData(), commandList);
             },
-        });
-        pass->Resize({width, height});
+        })->Resize({width, height});
+        m_imguiRenderer.RenderDrawData(ImGui::GetDrawData(), *m_renderGraph, m_gBuffer.colorAttachment)->Resize({width, height});
 
         m_renderGraph->EndFrame();
         m_device->CollectResources();

@@ -860,7 +860,7 @@ namespace RHI::WebGPU
         return wgpuBufferGetMappedRange(buffer, 0, WGPU_WHOLE_MAP_SIZE);
     }
 
-    void IBuffer::Unamp(IDevice* device)
+    void IBuffer::Unmap(IDevice* device)
     {
         wgpuBufferUnmap(buffer);
         mappedPtr = nullptr;

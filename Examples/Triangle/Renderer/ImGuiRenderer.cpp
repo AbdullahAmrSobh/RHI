@@ -254,9 +254,10 @@ namespace Engine
         RHI::BindGroupLayoutCreateInfo bindGroupLayoutCI{
             .name     = "ImGui-BindGroupLayout",
             .bindings = {
-                RHI::ShaderBinding{.type = RHI::BindingType::UniformBuffer, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Vertex},
-                RHI::ShaderBinding{.type = RHI::BindingType::Sampler, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel},
-                RHI::ShaderBinding{.type = RHI::BindingType::SampledImage, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel}}};
+                         RHI::ShaderBinding{.type = RHI::BindingType::UniformBuffer, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Vertex},
+                         RHI::ShaderBinding{.type = RHI::BindingType::Sampler, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel},
+                         RHI::ShaderBinding{.type = RHI::BindingType::SampledImage, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel}}
+        };
         auto bindGroupLayout = m_device->CreateBindGroupLayout(bindGroupLayoutCI);
 
         RHI::BufferCreateInfo uniformBufferCI{};
@@ -281,24 +282,24 @@ namespace Engine
         m_bindGroup = m_device->CreateBindGroup({.layout = bindGroupLayout});
         RHI::BindGroupUpdateInfo bindings{
             .images = {
-                {
+                       {
                     .dstBinding = 2,
                     .images     = m_image,
                 },
-            },
+                       },
             .buffers = {
-                {
+                       {
                     .dstBinding = 0,
                     .buffers    = {m_uniformBuffer},
                     .subregions = RHI::BufferSubregion{.offset = 0, .size = sizeof(float) * 4 * 4},
                 },
-            },
+                       },
             .samplers = {
-                {
+                       {
                     .dstBinding = 1,
                     .samplers   = m_sampler,
                 },
-            },
+                       },
         };
         m_device->UpdateBindGroup(m_bindGroup, bindings);
 
@@ -329,7 +330,7 @@ namespace Engine
                 .layout             = m_pipelineLayout,
                 .vertexBufferBindings =
                     {
-                        {
+                                           {
                             .stride   = sizeof(ImDrawVert),
                             .stepRate = RHI::PipelineVertexInputRate::PerVertex,
                             .attributes =
@@ -339,38 +340,38 @@ namespace Engine
                                     {.offset = offsetof(ImDrawVert, col), .format = RHI::Format::RGBA8_UNORM},
                                 },
                         },
-                    },
+                                           },
                 .renderTargetLayout =
                     {
-                        .colorAttachmentsFormats = {RHI::Format::RGBA8_UNORM, RHI::Format::RGBA32_FLOAT, RHI::Format::RGBA32_FLOAT, RHI::Format::RG8_UNORM},
-                        .depthAttachmentFormat   = RHI::Format::D32,
-                    },
+                                           .colorAttachmentsFormats = RHI::Format::RGBA8_UNORM,
+                                           .depthAttachmentFormat   = RHI::Format::D32,
+                                           },
                 .colorBlendState =
                     {
-                        .blendStates    = {attachmentBlendDesc, {false}, {false}, {false}},
-                        .blendConstants = {},
-                    },
+                                           .blendStates    = {attachmentBlendDesc},
+                                           .blendConstants = {},
+                                           },
                 .topologyMode = RHI::PipelineTopologyMode::Triangles,
                 .rasterizationState =
                     {
-                        .cullMode  = RHI::PipelineRasterizerStateCullMode::None,
-                        .fillMode  = RHI::PipelineRasterizerStateFillMode::Triangle,
-                        .frontFace = RHI::PipelineRasterizerStateFrontFace::CounterClockwise,
-                        .lineWidth = 1.0f,
-                    },
+                                           .cullMode  = RHI::PipelineRasterizerStateCullMode::None,
+                                           .fillMode  = RHI::PipelineRasterizerStateFillMode::Triangle,
+                                           .frontFace = RHI::PipelineRasterizerStateFrontFace::CounterClockwise,
+                                           .lineWidth = 1.0f,
+                                           },
                 .multisampleState =
                     {
-                        .sampleCount   = RHI::SampleCount::Samples1,
-                        .sampleShading = false,
-                    },
+                                           .sampleCount   = RHI::SampleCount::Samples1,
+                                           .sampleShading = false,
+                                           },
                 .depthStencilState =
                     {
-                        .depthTestEnable   = false,
-                        .depthWriteEnable  = true,
-                        .compareOperator   = RHI::CompareOperator::Always,
-                        .stencilTestEnable = false,
-                    },
-            };
+                                           .depthTestEnable   = false,
+                                           .depthWriteEnable  = true,
+                                           .compareOperator   = RHI::CompareOperator::Always,
+                                           .stencilTestEnable = false,
+                                           },
+        };
         m_pipeline = m_device->CreateGraphicsPipeline(pipelineCI);
         m_device->DestroyBindGroupLayout(bindGroupLayout);
         return ResultCode::Success;
@@ -395,77 +396,97 @@ namespace Engine
     {
     }
 
-    void ImGuiRenderer::RenderDrawData(ImDrawData* drawData, RHI::CommandList& commandList)
+    RHI::Pass* ImGuiRenderer::RenderDrawData(ImDrawData* drawData, RHI::RenderGraph& renderGraph, RHI::RenderGraphImage* outputImage)
     {
         UpdateBuffers(drawData);
-
-        // Render command lists
-        // (Because we merged all buffers into a single one, we maintain our own offset into them)
-        int globalIdxOffset = 0;
-        int globalVtxOffset = 0;
-
-        // Will project scissor/clipping rectangles into framebuffer space
-        ImVec2 clipOff   = drawData->DisplayPos;       // (0,0) unless using multi-viewports
-        ImVec2 clipScale = drawData->FramebufferScale; // (1,1) unless using retina display which are often (2,2)
-        for (int n = 0; n < drawData->CmdListsCount; n++)
-        {
-            const ImDrawList* drawList = drawData->CmdLists[n];
-            for (int i = 0; i < drawList->CmdBuffer.Size; i++)
+        return renderGraph.AddPass({
+            .name          = "ImGui",
+            .queue         = RHI::QueueType::Graphics,
+            .setupCallback = [outputImage](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
             {
-                const ImDrawCmd* drawCmd = &drawList->CmdBuffer[i];
-
-                if (drawCmd->UserCallback)
-                {
-                    drawCmd->UserCallback(drawList, drawCmd);
-                }
-                else
-                {
-                    // Project scissor/clipping rectangles into framebuffer space
-                    ImVec2 clip_min((drawCmd->ClipRect.x - clipOff.x) * clipScale.x, (drawCmd->ClipRect.y - clipOff.y) * clipScale.y);
-                    ImVec2 clip_max((drawCmd->ClipRect.z - clipOff.x) * clipScale.x, (drawCmd->ClipRect.w - clipOff.y) * clipScale.y);
-
-                    // Clamp to viewport as commandList.SetSicssor() won't accept values that are off bounds
-                    clip_min.x = std::clamp(clip_min.x, 0.0f, drawData->DisplaySize.x);
-                    clip_min.y = std::clamp(clip_min.y, 0.0f, drawData->DisplaySize.y);
-                    clip_max.x = std::clamp(clip_max.x, 0.0f, drawData->DisplaySize.x);
-                    clip_max.y = std::clamp(clip_max.y, 0.0f, drawData->DisplaySize.y);
-                    if (clip_max.x <= clip_min.x || clip_max.y <= clip_min.y)
-                        continue;
-
-                    // Apply scissor/clipping rectangle
-                    RHI::Scissor scissor{
-                        .offsetX = (int32_t)(clip_min.x),
-                        .offsetY = (int32_t)(clip_min.y),
-                        .width   = (uint32_t)(clip_max.x - clip_min.x),
-                        .height  = (uint32_t)(clip_max.y - clip_min.y),
-                    };
-                    commandList.SetScissor(scissor);
-
-                    // Bind texture, Draw
-
-                    // Bind
-                    commandList.BindGraphicsPipeline(m_pipeline, {{.bindGroup = m_bindGroup}});
-                    commandList.BindIndexBuffer({
-                                                    .buffer = m_indexBuffer,
-                                                },
-                                                RHI::IndexType::uint16);
-                    commandList.BindVertexBuffers(0, {{
-                                                         .buffer = m_vertexBuffer,
-                                                     }});
-                    commandList.DrawIndexed({
-                        .indexCount    = drawCmd->ElemCount,
-                        .instanceCount = 1,
-                        .firstIndex    = drawCmd->IdxOffset + globalIdxOffset,
-                        .vertexOffset  = int32_t(drawCmd->VtxOffset + globalVtxOffset),
-                        .firstInstance = 0,
-
+                renderGraph.UseColorAttachment(
+                    pass,
+                    {
+                        .view = outputImage,
+                        .loadOp = RHI::LoadOperation::Load,
                     });
-                }
-            }
+            },
+            .compileCallback = [](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
+            {
+            },
+            .executeCallback = [this, drawData](RHI::CommandList& commandList)
+            {
+                // Render command lists
+                // (Because we merged all buffers into a single one, we maintain our own offset into them)
+                int globalIdxOffset = 0;
+                int globalVtxOffset = 0;
 
-            globalIdxOffset += drawList->IdxBuffer.Size;
-            globalVtxOffset += drawList->VtxBuffer.Size;
-        }
+                // Will project scissor/clipping rectangles into framebuffer space
+                ImVec2 clipOff   = drawData->DisplayPos;       // (0,0) unless using multi-viewports
+                ImVec2 clipScale = drawData->FramebufferScale; // (1,1) unless using retina display which are often (2,2)
+                for (int n = 0; n < drawData->CmdListsCount; n++)
+                {
+                    const ImDrawList* drawList = drawData->CmdLists[n];
+                    for (int i = 0; i < drawList->CmdBuffer.Size; i++)
+                    {
+                        const ImDrawCmd* drawCmd = &drawList->CmdBuffer[i];
+
+                        if (drawCmd->UserCallback)
+                        {
+                            drawCmd->UserCallback(drawList, drawCmd);
+                        }
+                        else
+                        {
+                            // Project scissor/clipping rectangles into framebuffer space
+                            ImVec2 clip_min((drawCmd->ClipRect.x - clipOff.x) * clipScale.x, (drawCmd->ClipRect.y - clipOff.y) * clipScale.y);
+                            ImVec2 clip_max((drawCmd->ClipRect.z - clipOff.x) * clipScale.x, (drawCmd->ClipRect.w - clipOff.y) * clipScale.y);
+
+                            // Clamp to viewport as commandList.SetSicssor() won't accept values that are off bounds
+                            clip_min.x = std::clamp(clip_min.x, 0.0f, drawData->DisplaySize.x);
+                            clip_min.y = std::clamp(clip_min.y, 0.0f, drawData->DisplaySize.y);
+                            clip_max.x = std::clamp(clip_max.x, 0.0f, drawData->DisplaySize.x);
+                            clip_max.y = std::clamp(clip_max.y, 0.0f, drawData->DisplaySize.y);
+                            if (clip_max.x <= clip_min.x || clip_max.y <= clip_min.y)
+                                continue;
+
+                            // Apply scissor/clipping rectangle
+                            RHI::Scissor scissor{
+                                .offsetX = (int32_t)(clip_min.x),
+                                .offsetY = (int32_t)(clip_min.y),
+                                .width   = (uint32_t)(clip_max.x - clip_min.x),
+                                .height  = (uint32_t)(clip_max.y - clip_min.y),
+                            };
+                            commandList.SetScissor(scissor);
+
+                            // Bind texture, Draw
+
+                            // Bind
+                            commandList.BindGraphicsPipeline(m_pipeline, {{.bindGroup = m_bindGroup}});
+                            commandList.BindIndexBuffer({
+                                                            .buffer = m_indexBuffer,
+                                                        },
+                                RHI::IndexType::uint16);
+                            commandList.BindVertexBuffers(0, {
+                                                                 {
+                                                                  .buffer = m_vertexBuffer,
+                                                                  }
+                            });
+                            commandList.DrawIndexed({
+                                .indexCount    = drawCmd->ElemCount,
+                                .instanceCount = 1,
+                                .firstIndex    = drawCmd->IdxOffset + globalIdxOffset,
+                                .vertexOffset  = int32_t(drawCmd->VtxOffset + globalVtxOffset),
+                                .firstInstance = 0,
+
+                            });
+                        }
+                    }
+
+                    globalIdxOffset += drawList->IdxBuffer.Size;
+                    globalVtxOffset += drawList->VtxBuffer.Size;
+                }
+            },
+        });
     }
 
     void ImGuiRenderer::UpdateBuffers(ImDrawData* drawData)

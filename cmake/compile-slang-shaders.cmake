@@ -38,7 +38,7 @@ function(compile_slang_shaders)
         add_custom_command(
             OUTPUT ${OUTPUT_PATH}
             COMMAND ${SLANGC_EXECUTABLE}
-                    -g3
+                    # -g3 # disabled because webgpu fails run with this for some reason!
                     ${SLANG_SHADER_INCLUDE_FLAGS}
                     -o ${OUTPUT_PATH}
                     -matrix-layout-row-major

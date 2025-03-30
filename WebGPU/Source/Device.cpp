@@ -203,7 +203,7 @@ namespace RHI::WebGPU
     void IDevice::UnmapBuffer(Handle<Buffer> handle)
     {
         auto buffer = m_bufferOwner.Get(handle);
-        buffer->Unamp(this);
+        buffer->Unmap(this);
     }
 
     StagingBuffer IDevice::StagingAllocate(size_t)
