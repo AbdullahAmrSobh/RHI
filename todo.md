@@ -60,3 +60,6 @@ Idea:
     - Handle type rename to ID or remove the need to wrap structs in Handle ... make typing too long
     - Texel buffers support
     - Don't use singletons (plan to run multiple renderers side-by-side)
+
+
+# @note: for some reason I need to copy dawn dlls next to every executable (the build script should handle this!)

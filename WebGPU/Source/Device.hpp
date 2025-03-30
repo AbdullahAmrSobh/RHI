@@ -58,6 +58,8 @@ namespace RHI::WebGPU
         uint64_t                 UploadImage(const ImageUploadInfo& uploadInfo) override;
         void                     CollectResources() override;
 
+        void                     WriteImage(Handle<Image> image, uint32_t mipLevel, TL::Block block) override;
+
     public:
         void ExecuteCommandList(class ICommandList* commandList);
 
@@ -69,7 +71,7 @@ namespace RHI::WebGPU
         WGPUAdapter                   m_adapter;  ///< Physical device selected for use.
         WGPUDevice                    m_device;   ///< Logical device handle.
         // Queue and allocator management
-        WGPUQueue                     m_queue[AsyncQueuesCount]; ///< Array of queues for different operations (e.g., graphics, compute).
+        WGPUQueue                     m_queue;
         // Resource pools
         HandlePool<IImage>            m_imageOwner;            ///< Pool for managing image resource handles.
         HandlePool<IBuffer>           m_bufferOwner;           ///< Pool for managing buffer resource handles.

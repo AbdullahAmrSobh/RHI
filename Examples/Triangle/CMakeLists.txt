@@ -21,6 +21,8 @@ set(SHADER_LIB_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/Public/GpuScene.slang
 )
 
+# @note: for some reason I need to copy dawn dlls next to every executable (the build script should handle this!)
+
 include(${CPM_TL_SOURCE}/CMake/add-target.cmake)
 tl_add_target(
     NAME Triangle
@@ -31,6 +33,7 @@ tl_add_target(
         Examples::Base
     RUNTIME_LIBRARIES
         RHI::Vulkan
+        RHI::WebGPU
 )
 
 target_link_libraries(Triangle fastgltf)

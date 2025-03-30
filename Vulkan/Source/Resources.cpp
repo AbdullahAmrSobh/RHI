@@ -165,6 +165,7 @@ namespace RHI::Vulkan
     {
         switch (compareOperator)
         {
+        case CompareOperator::Undefined:      return VK_COMPARE_OP_NEVER;
         case CompareOperator::Never:          return VK_COMPARE_OP_NEVER;
         case CompareOperator::Equal:          return VK_COMPARE_OP_EQUAL;
         case CompareOperator::NotEqual:       return VK_COMPARE_OP_NOT_EQUAL;

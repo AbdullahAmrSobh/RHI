@@ -34,7 +34,6 @@ namespace RHI::WebGPU
     uint64_t IRenderGraph::ExecutePassGroup(const RenderGraphExecuteGroup& group, QueueType queueType)
     {
         auto device = (IDevice*)m_device;
-        auto queue  = device->m_queue[(uint32_t)queueType];
 
         auto commandList = (ICommandList*)device->CreateCommandList({.queueType = queueType});
         commandList->Begin();

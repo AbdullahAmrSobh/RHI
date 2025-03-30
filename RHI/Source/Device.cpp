@@ -18,6 +18,12 @@ namespace RHI
 
         if (auto [image, result] = device.CreateImage(createInfo); IsSuccess(result))
         {
+            if (device.m_backend == BackendType::WebGPU)
+            {
+                device.WriteImage(image, 0, content);
+                return image;
+            }
+
             auto stagingBuffer = device.StagingAllocate(imageSizeBytes);
             memcpy(stagingBuffer.ptr, content.ptr, content.size);
             device.UploadImage({

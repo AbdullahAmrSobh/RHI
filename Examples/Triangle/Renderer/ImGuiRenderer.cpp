@@ -347,7 +347,7 @@ namespace Engine
                     },
                 .colorBlendState =
                     {
-                        .blendStates    = {attachmentBlendDesc},
+                        .blendStates    = {attachmentBlendDesc, {false}, {false}, {false}},
                         .blendConstants = {},
                     },
                 .topologyMode = RHI::PipelineTopologyMode::Triangles,

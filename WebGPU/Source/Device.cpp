@@ -35,6 +35,8 @@ namespace RHI::WebGPU
 
     ResultCode IDevice::Init()
     {
+        m_backend = BackendType::WebGPU;
+
         WGPUInstanceDescriptor instanceDesc = {
             .nextInChain  = nullptr,
             .capabilities = {
@@ -125,12 +127,15 @@ namespace RHI::WebGPU
 
         TL::Vector<WGPUFeatureName> enabledFeatures{};
 
+        WGPULimits requiredLimits{WGPU_LIMITS_INIT};
+        requiredLimits.maxColorAttachmentBytesPerSample = 128ul;
+
         WGPUDeviceDescriptor deviceDesc{
             .nextInChain          = nullptr,
             .label                = ConvertToStringView("RHI::WebGPU::Device"),
             .requiredFeatureCount = enabledFeatures.size(),
             .requiredFeatures     = enabledFeatures.data(),
-            .requiredLimits       = {},
+            .requiredLimits       = &requiredLimits,
             .defaultQueue         = {
                                      .nextInChain = nullptr,
                                      .label       = {},
@@ -170,7 +175,7 @@ namespace RHI::WebGPU
         };
         wgpuDeviceSetLoggingCallback(m_device, loggingCallbackInfo);
 
-        m_queue[0] = wgpuDeviceGetQueue(m_device);
+        m_queue = wgpuDeviceGetQueue(m_device);
 
         return ResultCode::Success;
     }
@@ -192,34 +197,25 @@ namespace RHI::WebGPU
     {
         auto buffer = m_bufferOwner.Get(handle);
 
-        DeviceMemoryPtr ptr;
-        ptr = wgpuBufferGetMappedRange(buffer->buffer, 0, 0xffffffff);
-        return ptr;
+        return buffer->Map(this);
     }
 
     void IDevice::UnmapBuffer(Handle<Buffer> handle)
     {
         auto buffer = m_bufferOwner.Get(handle);
-        wgpuBufferUnmap(buffer->buffer);
+        buffer->Unamp(this);
     }
 
-    StagingBuffer IDevice::StagingAllocate(size_t size)
+    StagingBuffer IDevice::StagingAllocate(size_t)
     {
+        TL_UNREACHABLE_MSG("This code path is not available on RHI::WebGPU backend!");
         return {};
     }
 
-    uint64_t IDevice::UploadImage(const ImageUploadInfo& uploadInfo)
+    uint64_t IDevice::UploadImage(const ImageUploadInfo&)
     {
-        return {};
-
-        TL::Span<uint8_t> data;
-
-        auto queue = m_queue[(uint32_t)QueueType::Transfer];
-
-        WGPUTexelCopyTextureInfo  copyInfo{};
-        WGPUTexelCopyBufferLayout bufferLayout{};
-        WGPUExtent3D              writeSize{};
-        wgpuQueueWriteTexture(queue, &copyInfo, data.data(), data.size(), &bufferLayout, &writeSize);
+        TL_UNREACHABLE_MSG("This code path is not available on RHI::WebGPU backend!");
+        return 0;
     }
 
     void IDevice::CollectResources()
@@ -227,10 +223,15 @@ namespace RHI::WebGPU
         wgpuDeviceTick(m_device);
     }
 
+    void IDevice::WriteImage(Handle<Image> imageHandle, uint32_t mipLevel, TL::Block block)
+    {
+        auto image = m_imageOwner.Get(imageHandle);
+        image->Write(this, mipLevel, block);
+    }
+
     void IDevice::ExecuteCommandList(ICommandList* commandList)
     {
-        auto queue = m_queue[(int)QueueType::Graphics];
-        wgpuQueueSubmit(queue, 1, &commandList->m_cmdBuffer);
+        wgpuQueueSubmit(m_queue, 1, &commandList->m_cmdBuffer);
         wgpuCommandBufferRelease(commandList->m_cmdBuffer);
         delete commandList;
     }

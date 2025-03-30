@@ -129,6 +129,7 @@ namespace RHI
     /// @brief Comparison operators for depth/stencil testing.
     enum class CompareOperator
     {
+        Undefined,      ///< Undefined.
         Never,          ///< Never passes.
         Equal,          ///< Passes if equal.
         NotEqual,       ///< Passes if not equal.
@@ -248,7 +249,7 @@ namespace RHI
         SamplerFilter      filterMin  = SamplerFilter::Linear;      ///< Filter for minification.
         SamplerFilter      filterMag  = SamplerFilter::Linear;      ///< Filter for magnification.
         SamplerFilter      filterMip  = SamplerFilter::Linear;      ///< Filter for mipmap selection.
-        CompareOperator    compare    = CompareOperator::Always;    ///< Compare operation for texture comparison.
+        CompareOperator    compare    = CompareOperator::Undefined; ///< Compare operation for texture comparison.
         float              mipLodBias = 0.0f;                       ///< Bias applied to the mip level of detail.
         SamplerAddressMode addressU   = SamplerAddressMode::Repeat; ///< Addressing mode for the U (horizontal) coordinate.
         SamplerAddressMode addressV   = SamplerAddressMode::Repeat; ///< Addressing mode for the V (vertical) coordinate.

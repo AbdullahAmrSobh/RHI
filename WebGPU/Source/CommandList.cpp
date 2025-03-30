@@ -102,17 +102,26 @@ namespace RHI::WebGPU
         if (auto depthStencilAttachmentRG = pass.GetDepthStencilAttachment())
         {
             auto depthStencilImage = m_device->m_imageOwner.Get(depthStencilAttachmentRG->view->GetImage());
+            auto formatInfo        = GetFormatInfo(depthStencilImage->format);
+
+            auto depthReadOnly =
+                (depthStencilAttachmentRG->depthLoadOp == LoadOperation::Load) && (depthStencilAttachmentRG->depthStoreOp != StoreOperation::Store);
+            auto stencilReadOnly =
+                (depthStencilAttachmentRG->stencilLoadOp == LoadOperation::Load) && (depthStencilAttachmentRG->stencilStoreOp != StoreOperation::Store);
+
+            TL_ASSERT(formatInfo.hasDepth || formatInfo.hasStencil);
+
             depthStencilAttachment = WGPURenderPassDepthStencilAttachment{
                 .nextInChain       = nullptr,
                 .view              = depthStencilImage->view,
-                .depthLoadOp       = ConvertLoadOp(depthStencilAttachmentRG->depthLoadOp),
-                .depthStoreOp      = ConvertStoreOp(depthStencilAttachmentRG->depthStoreOp),
-                .depthClearValue   = depthStencilAttachmentRG->clearValue.depthValue,
-                .depthReadOnly     = true,
-                .stencilLoadOp     = ConvertLoadOp(depthStencilAttachmentRG->stencilLoadOp),
-                .stencilStoreOp    = ConvertStoreOp(depthStencilAttachmentRG->stencilStoreOp),
-                .stencilClearValue = depthStencilAttachmentRG->clearValue.stencilValue,
-                .stencilReadOnly   = false,
+                .depthLoadOp       = formatInfo.hasDepth ? ConvertLoadOp(depthStencilAttachmentRG->depthLoadOp) : WGPULoadOp_Undefined,
+                .depthStoreOp      = formatInfo.hasDepth ? ConvertStoreOp(depthStencilAttachmentRG->depthStoreOp) : WGPUStoreOp_Undefined,
+                .depthClearValue   = formatInfo.hasDepth ? depthStencilAttachmentRG->clearValue.depthValue : 0.0f,
+                .depthReadOnly     = formatInfo.hasDepth ? depthReadOnly : false,
+                .stencilLoadOp     = formatInfo.hasStencil ? ConvertLoadOp(depthStencilAttachmentRG->stencilLoadOp) : WGPULoadOp_Undefined,
+                .stencilStoreOp    = formatInfo.hasStencil ? ConvertStoreOp(depthStencilAttachmentRG->stencilStoreOp) : WGPUStoreOp_Undefined,
+                .stencilClearValue = formatInfo.hasStencil ? depthStencilAttachmentRG->clearValue.stencilValue : uint8_t(0),
+                .stencilReadOnly   = formatInfo.hasStencil ? stencilReadOnly : false,
             };
         }
 
@@ -258,15 +267,23 @@ namespace RHI::WebGPU
     void ICommandList::DrawIndexedIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride)
     {
         auto argumentBufferResource = m_device->m_bufferOwner.Get(argumentBuffer.buffer);
-        auto countBufferResource    = m_device->m_bufferOwner.Get(countBuffer.buffer);
 
-        wgpuRenderPassEncoderMultiDrawIndexedIndirect(
-            m_renderPassEncoder,
-            argumentBufferResource->buffer,
-            argumentBuffer.offset,
-            maxDrawCount,
-            countBufferResource->buffer,
-            countBuffer.offset);
+        if (countBuffer.buffer)
+        {
+            auto countBufferResource = m_device->m_bufferOwner.Get(countBuffer.buffer);
+            wgpuRenderPassEncoderMultiDrawIndexedIndirect(
+                m_renderPassEncoder,
+                argumentBufferResource->buffer,
+                argumentBuffer.offset,
+                maxDrawCount,
+                countBufferResource->buffer,
+                countBuffer.offset);
+        }
+        else
+        {
+            for (uint32_t drawOffset = argumentBuffer.offset; drawOffset < (stride * maxDrawCount); drawOffset += stride)
+                wgpuRenderPassEncoderDrawIndirect(m_renderPassEncoder, argumentBufferResource->buffer, drawOffset);
+        }
     }
 
     void ICommandList::Dispatch(const DispatchParameters& parameters)

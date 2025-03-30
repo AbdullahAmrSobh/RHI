@@ -14,6 +14,13 @@
 
 namespace RHI
 {
+    enum class BackendType
+    {
+        Vulkan1_3,
+        DirectX12_2,
+        WebGPU,
+    };
+
     using DeviceMemoryPtr = void*;
     struct RenderGraphCreateInfo;
 
@@ -194,7 +201,23 @@ namespace RHI
         /// @brief Collects unused resources for reuse.
         virtual void                     CollectResources()                                                               = 0;
 
+        // New API could be
+        // virtual void BufferBeginWrites()  = 0; // maps staging buffers for read/write op (on vulkan, d3d12 this maps directly to buffer map
+        //                                        // when it can be (presistant mapping)) on webgpu it no op as the writes are done via queue
+        // virtual void BufferStagingWrite() = 0; // preform the write to  the mapped staging buffer (and queues a copy command before resource
+        //                                        // use)
+        // virtual void BufferEndWrites()    = 0; //
+
     protected:
+        friend Result<Handle<Image>> CreateImageWithContent(Device& device, const ImageCreateInfo& createInfo, TL::Block content);
+
+        virtual void WriteImage([[maybe_unused]] Handle<Image> image, [[maybe_unused]] uint32_t mipLevel, [[maybe_unused]] TL::Block block)
+        {
+            /// @fixme: Should avoid divergance in code-paths for image writes.
+            TL_UNREACHABLE_MSG("This code path is only for RHI::WebGPU backend implementation!");
+        }
+
+        BackendType           m_backend;
         TL::Ptr<DeviceLimits> m_limits; ///< Device-specific limits.
     };
 

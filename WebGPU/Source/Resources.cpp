@@ -372,6 +372,49 @@ namespace RHI::WebGPU
         return res;
     }
 
+    inline static ImageSize3D CalcaulteMiplevelSize(ImageSize3D size, uint32_t mipLevel)
+    {
+        return {
+            std::max(1u, size.width >> mipLevel),
+            std::max(1u, size.height >> mipLevel),
+            std::max(1u, size.depth >> mipLevel)};
+    }
+
+    inline static WGPUBlendOperation ConvertToBlendOperation(RHI::BlendEquation eq)
+    {
+        switch (eq)
+        {
+        case BlendEquation::Add:             return WGPUBlendOperation_Add;
+        case BlendEquation::Subtract:        return WGPUBlendOperation_Subtract;
+        case BlendEquation::ReverseSubtract: return WGPUBlendOperation_ReverseSubtract;
+        case BlendEquation::Min:             return WGPUBlendOperation_Min;
+        case BlendEquation::Max:             return WGPUBlendOperation_Max;
+        }
+    }
+
+    inline static WGPUBlendFactor ConverToBlendFactor(RHI::BlendFactor factor)
+    {
+        switch (factor)
+        {
+        case BlendFactor::Zero:                  return WGPUBlendFactor_Zero;
+        case BlendFactor::One:                   return WGPUBlendFactor_One;
+        case BlendFactor::SrcColor:              return WGPUBlendFactor_Src;
+        case BlendFactor::OneMinusSrcColor:      return WGPUBlendFactor_OneMinusSrc;
+        case BlendFactor::DstColor:              return WGPUBlendFactor_Dst;
+        case BlendFactor::OneMinusDstColor:      return WGPUBlendFactor_OneMinusDst;
+        case BlendFactor::SrcAlpha:              return WGPUBlendFactor_SrcAlpha;
+        case BlendFactor::OneMinusSrcAlpha:      return WGPUBlendFactor_OneMinusSrcAlpha;
+        case BlendFactor::DstAlpha:              return WGPUBlendFactor_DstAlpha;
+        case BlendFactor::OneMinusDstAlpha:      return WGPUBlendFactor_OneMinusDstAlpha;
+        case BlendFactor::ConstantColor:         return WGPUBlendFactor_Constant;
+        case BlendFactor::OneMinusConstantColor: return WGPUBlendFactor_OneMinusConstant;
+        case BlendFactor::ConstantAlpha:         return WGPUBlendFactor_Constant;
+        case BlendFactor::OneMinusConstantAlpha: return WGPUBlendFactor_OneMinusConstant;
+        }
+        TL_UNREACHABLE();
+        return WGPUBlendFactor_Zero;
+    }
+
     ResultCode IBindGroupLayout::Init(IDevice* device, const BindGroupLayoutCreateInfo& createInfo)
     {
         TL::Vector<WGPUBindGroupLayoutEntry> entries;
@@ -484,7 +527,7 @@ namespace RHI::WebGPU
 
     void IBindGroup::Update(IDevice* device, const BindGroupUpdateInfo& updateInfo)
     {
-        wgpuBindGroupRelease(bindGroup);
+        if (bindGroup) wgpuBindGroupRelease(bindGroup);
 
         TL::Vector<WGPUBindGroupEntry> entry{};
 
@@ -524,7 +567,7 @@ namespace RHI::WebGPU
             {
                 auto sampler = device->m_samplerOwner.Get(samplerHandle);
                 entry.push_back({
-                    .binding = samplerBindings.dstArrayElement + (bindingCounter++),
+                    .binding = samplerBindings.dstBinding + samplerBindings.dstArrayElement + (bindingCounter++),
                     .sampler = sampler->sampler,
                 });
             }
@@ -601,9 +644,9 @@ namespace RHI::WebGPU
         TL::Vector<WGPUVertexBufferLayout> vertexBufferLayouts{};
 
         uint32_t bindingIndex = 0;
+        // First collect all attributes
         for (const auto& bindingDesc : createInfo.vertexBufferBindings)
         {
-            // Iterate through vertex attributes for this binding
             for (const auto& attributeDesc : bindingDesc.attributes)
             {
                 attributes.push_back({
@@ -613,14 +656,20 @@ namespace RHI::WebGPU
                     .shaderLocation = bindingIndex++,
                 });
             }
+        }
 
+        // Then create vertex buffer layouts
+        size_t attributeOffset = 0;
+        for (const auto& bindingDesc : createInfo.vertexBufferBindings)
+        {
             vertexBufferLayouts.push_back({
                 .nextInChain    = nullptr,
                 .arrayStride    = bindingDesc.stride,
                 .stepMode       = ConvertToVertexStepMode(bindingDesc.stepRate),
-                .attributeCount = attributes.size(),
-                .attributes     = attributes.data(),
+                .attributeCount = bindingDesc.attributes.size(),
+                .attributes     = &attributes[attributeOffset],
             });
+            attributeOffset += bindingDesc.attributes.size();
         }
 
         WGPUDepthStencilState depthStencil{
@@ -640,12 +689,31 @@ namespace RHI::WebGPU
         TL::Vector<WGPUColorTargetState> colorTargets;
         for (uint32_t i = 0; i < createInfo.renderTargetLayout.colorAttachmentsFormats.size(); ++i)
         {
+            auto blendStates = createInfo.colorBlendState.blendStates;
+            auto blendState  = blendStates[blendStates.size() == 1 ? 0 : i];
+
             WGPUBlendState blend{};
-            auto           format = ConvertToTextureFormat(createInfo.renderTargetLayout.colorAttachmentsFormats[i]);
+            if (blendState.blendEnable)
+            {
+                blend = {
+                    .color = {
+                              .operation = ConvertToBlendOperation(blendState.colorBlendOp),
+                              .srcFactor = ConverToBlendFactor(blendState.srcColor),
+                              .dstFactor = ConverToBlendFactor(blendState.dstColor),
+                              },
+                    .alpha = {
+                              .operation = ConvertToBlendOperation(blendState.alphaBlendOp),
+                              .srcFactor = ConverToBlendFactor(blendState.srcAlpha),
+                              .dstFactor = ConverToBlendFactor(blendState.dstAlpha),
+                              },
+                };
+            }
+
+            auto format = ConvertToTextureFormat(createInfo.renderTargetLayout.colorAttachmentsFormats[i]);
             colorTargets.push_back({
                 .nextInChain = nullptr,
                 .format      = format,
-                .blend       = &blend,
+                .blend       = blendState.blendEnable ? &blend : nullptr,
                 .writeMask   = WGPUColorWriteMask_All,
             });
         }
@@ -740,13 +808,62 @@ namespace RHI::WebGPU
             .size             = createInfo.byteSize,
             .mappedAtCreation = createInfo.hostMapped ? true : false,
         };
+
+        if (createInfo.hostMapped && !(createInfo.usageFlags & BufferUsage::Uniform))
+        {
+            desc.usage |= WGPUBufferUsage_MapWrite;
+        }
+
         this->buffer = wgpuDeviceCreateBuffer(device->m_device, &desc);
+        if (desc.mappedAtCreation) mappedPtr = wgpuBufferGetMappedRange(buffer, 0, WGPU_WHOLE_MAP_SIZE);
         return ResultCode::Success;
     }
 
     void IBuffer::Shutdown([[maybe_unused]] IDevice* device)
     {
         wgpuBufferRelease(this->buffer);
+    }
+
+    void* IBuffer::Map(IDevice* device)
+    {
+        if (mappedPtr) return mappedPtr;
+
+        // FIXME: This is a blocking implementation. Should be made async in the future.
+        auto callback = [](WGPUMapAsyncStatus status, struct WGPUStringView message, void* userdata1, void* userdata2)
+        {
+            switch (status)
+            {
+            case WGPUMapAsyncStatus_Success:
+                return;
+            case WGPUMapAsyncStatus_InstanceDropped:
+            case WGPUMapAsyncStatus_Error:
+            case WGPUMapAsyncStatus_Aborted:
+            case WGPUMapAsyncStatus_Force32:
+                if (message.data)
+                    TL_LOG_ERROR("RHI::WebGPU: Failed to mapped buffer - {}", message.data);
+            }
+        };
+        WGPUBufferMapCallbackInfo mapCallbackInfo{
+            .nextInChain = {},
+            .mode        = WGPUCallbackMode_AllowProcessEvents,
+            .callback    = callback,
+            .userdata1   = {},
+            .userdata2   = {},
+        };
+        auto               future = wgpuBufferMapAsync(buffer, WGPUMapMode_Write, 0, WGPU_WHOLE_MAP_SIZE, mapCallbackInfo);
+        WGPUFutureWaitInfo waitInfo{
+            .future    = future,
+            .completed = true,
+        };
+
+        wgpuInstanceWaitAny(device->m_instance, 1, &waitInfo, UINT64_MAX);
+        return wgpuBufferGetMappedRange(buffer, 0, WGPU_WHOLE_MAP_SIZE);
+    }
+
+    void IBuffer::Unamp(IDevice* device)
+    {
+        wgpuBufferUnmap(buffer);
+        mappedPtr = nullptr;
     }
 
     ResultCode IImage::Init(IDevice* device, const ImageCreateInfo& createInfo)
@@ -768,7 +885,7 @@ namespace RHI::WebGPU
             .nextInChain     = nullptr,
             .label           = ConvertToStringView(createInfo.name),
             .format          = format,
-            .dimension       = ConvertToTextureViewDimension(createInfo.type, createInfo.arrayCount),
+            .dimension       = ConvertToTextureViewDimension(createInfo.type, createInfo.arrayCount > 1),
             .baseMipLevel    = 0,
             .mipLevelCount   = createInfo.mipLevels,
             .baseArrayLayer  = 0,
@@ -778,6 +895,8 @@ namespace RHI::WebGPU
         };
         this->texture = wgpuDeviceCreateTexture(device->m_device, &desc);
         this->view    = wgpuTextureCreateView(this->texture, &viewDesc);
+        this->size    = createInfo.size;
+        this->format  = createInfo.format;
         return ResultCode::Success;
     }
 
@@ -806,6 +925,26 @@ namespace RHI::WebGPU
         if (texture) wgpuTextureRelease(texture);
     }
 
+    void IImage::Write(IDevice* device, uint32_t mipLevel, TL::Block data)
+    {
+        WGPUTexelCopyTextureInfo copyInfo{
+            .texture  = texture,
+            .mipLevel = mipLevel,
+            .origin   = ConvertToOffset3D(ImageOffset3D{0, 0, 0}),
+            .aspect   = WGPUTextureAspect_All,
+        };
+
+        auto writeSize  = ConvertToExtent3D(CalcaulteMiplevelSize(this->size, mipLevel));
+        auto formatInfo = GetFormatInfo(this->format);
+
+        WGPUTexelCopyBufferLayout bufferLayout{
+            .offset       = 0,
+            .bytesPerRow  = writeSize.width * formatInfo.bytesPerBlock,
+            .rowsPerImage = writeSize.width * writeSize.width * formatInfo.bytesPerBlock,
+        };
+        wgpuQueueWriteTexture(device->m_queue, &copyInfo, data.ptr, data.size, &bufferLayout, &writeSize);
+    }
+
     ResultCode ISampler::Init(IDevice* device, const SamplerCreateInfo& createInfo)
     {
         WGPUSamplerDescriptor desc{
@@ -820,7 +959,7 @@ namespace RHI::WebGPU
             .lodMinClamp   = createInfo.minLod,
             .lodMaxClamp   = createInfo.maxLod,
             .compare       = ConvertToCompareFunction(createInfo.compare),
-            .maxAnisotropy = 0, // TODO: implement anisotropy
+            .maxAnisotropy = 1, // TODO: implement anisotropy
         };
         this->sampler = wgpuDeviceCreateSampler(device->m_device, &desc);
         return ResultCode::Success;

@@ -2,7 +2,9 @@
 #include "Renderer.hpp"
 
 #include <Examples-Base/ApplicationBase.hpp>
+
 #include <RHI-Vulkan/Loader.hpp>
+#include <RHI-WebGPU/Loader.hpp>
 
 #include "Scene.hpp"
 
@@ -15,10 +17,11 @@ namespace Engine
         RHI::ApplicationInfo applicationInfo{
             .applicationName    = "Example",
             .applicationVersion = {0, 1, 0},
-            .engineName         = "Forge",
+            .engineName         = "neonlights",
             .engineVersion      = {0, 1, 0},
         };
-        m_device = RHI::CreateVulkanDevice(applicationInfo);
+        // m_device = RHI::CreateVulkanDevice(applicationInfo);
+        m_device = RHI::CreateWebGPUDevice();
 
         auto [width, height] = window->GetWindowSize();
         RHI::SwapchainCreateInfo swapchainInfo{

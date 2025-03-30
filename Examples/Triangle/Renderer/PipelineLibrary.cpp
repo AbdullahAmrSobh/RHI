@@ -65,7 +65,7 @@ namespace Engine
             },
             .colorBlendState = {
                 .blendStates = {
-                    {.blendEnable = true},
+                    {.blendEnable = false},
                 },
             },
             .rasterizationState = {
@@ -115,7 +115,8 @@ namespace Engine
             },
         };
         m_gBufferBGL             = m_device->CreateBindGroupLayout(bindGroupLayoutCI);
-        m_graphicsPipelineLayout = m_device->CreatePipelineLayout({.name = "GraphicsPipelineLayout", .layouts = m_gBufferBGL});
+        // m_graphicsPipelineLayout = m_device->CreatePipelineLayout({.name = "GraphicsPipelineLayout", .layouts = m_gBufferBGL});
+        m_graphicsPipelineLayout = m_device->CreatePipelineLayout({.name = "GraphicsPipelineLayout", .layouts = {}});
 
 #define LOAD_SHADER(map, name, layout) \
     map[name] = CreateGraphicsPipeline(device, m_graphicsPipelineLayout, name);

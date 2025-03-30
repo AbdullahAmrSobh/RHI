@@ -324,6 +324,8 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
+        m_backend = BackendType::Vulkan1_3;
+
 #if RHI_DEBUG
         constexpr bool DebugLayerEnabled = true;
 #else
@@ -764,7 +766,7 @@ namespace RHI::Vulkan
                               .arrayCount   = uploadInfo.layerCount,
                               },
             .imageSize    = image->size,
-            .imageOffset  = {0,                        0,                                                                      0                                                                     },
+            .imageOffset  = {0, 0, 0 },
             .buffer       = uploadInfo.srcBuffer,
             .bufferOffset = uploadInfo.srcBufferOffset,
             .bufferSize   = uploadInfo.sizeBytes,

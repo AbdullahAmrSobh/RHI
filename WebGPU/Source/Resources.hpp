@@ -93,19 +93,25 @@ namespace RHI::WebGPU
     struct IBuffer : Buffer
     {
         WGPUBuffer buffer;
+        void* mappedPtr;
 
         ResultCode Init(IDevice* device, const BufferCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
+        void*      Map(IDevice* device);
+        void       Unamp(IDevice* device);
     };
 
     struct IImage : Image
     {
         WGPUTexture     texture;
         WGPUTextureView view;
+        ImageSize3D     size;
+        Format          format;
 
         ResultCode Init(IDevice* device, const ImageCreateInfo& createInfo);
         ResultCode Init(IDevice* device, WGPUTexture texture, WGPUSurfaceConfiguration desc);
         void       Shutdown(IDevice* device);
+        void       Write(IDevice* device, uint32_t mipLevel, TL::Block data);
     };
 
     struct ISampler : Sampler
