@@ -61,6 +61,7 @@ namespace RHI::WebGPU
 
     void ICommandList::Begin()
     {
+        // Nothing to do here!
     }
 
     void ICommandList::End()
@@ -71,7 +72,7 @@ namespace RHI::WebGPU
         };
         m_cmdBuffer = wgpuCommandEncoderFinish(m_cmdEncoder, &descriptor);
         wgpuCommandEncoderRelease(m_cmdEncoder);
-        m_state     = State::CommandBuffer;
+        m_state = State::CommandBuffer;
     }
 
     void ICommandList::BeginRenderPass(const Pass& pass)

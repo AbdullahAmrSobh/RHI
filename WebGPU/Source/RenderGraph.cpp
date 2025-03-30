@@ -1,5 +1,8 @@
 #include "RenderGraph.hpp"
 
+#include "CommandList.hpp"
+#include "Device.hpp"
+
 namespace RHI::WebGPU
 {
     IRenderGraph::IRenderGraph()  = default;
@@ -7,6 +10,7 @@ namespace RHI::WebGPU
 
     ResultCode IRenderGraph::Init(IDevice* device, const RenderGraphCreateInfo& createInfo)
     {
+        m_device = device;
         return ResultCode::Success;
     }
 
@@ -16,7 +20,7 @@ namespace RHI::WebGPU
 
     Pass* IRenderGraph::CreatePass(const PassCreateInfo& createInfo)
     {
-        return nullptr;
+        return m_tempAllocator.Construct<Pass>(createInfo, &m_tempAllocator);
     }
 
     void IRenderGraph::OnGraphExecutionBegin()
@@ -29,6 +33,23 @@ namespace RHI::WebGPU
 
     uint64_t IRenderGraph::ExecutePassGroup(const RenderGraphExecuteGroup& group, QueueType queueType)
     {
+        auto device = (IDevice*)m_device;
+        auto queue  = device->m_queue[(uint32_t)queueType];
+
+        auto commandList = (ICommandList*)device->CreateCommandList({.queueType = queueType});
+        commandList->Begin();
+        for (auto pass : group.GetPassList())
+        {
+            commandList->DebugMarkerPush(pass->GetName(), {});
+            commandList->BeginRenderPass(*pass);
+            ExecutePassCallback(*pass, *commandList);
+            commandList->EndRenderPass();
+            commandList->DebugMarkerPop();
+        }
+        commandList->End();
+
+        device->ExecuteCommandList(commandList);
+
         return 0;
     }
 

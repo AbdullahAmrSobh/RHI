@@ -58,7 +58,7 @@ namespace RHI::WebGPU
         uint64_t                 UploadImage(const ImageUploadInfo& uploadInfo) override;
         void                     CollectResources() override;
 
-    private:
+    public:
         void ExecuteCommandList(class ICommandList* commandList);
 
     public:

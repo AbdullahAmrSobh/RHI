@@ -374,11 +374,6 @@ namespace RHI::WebGPU
 
     ResultCode IBindGroupLayout::Init(IDevice* device, const BindGroupLayoutCreateInfo& createInfo)
     {
-        // type
-        // access
-        // arrayCount
-        // stages
-
         TL::Vector<WGPUBindGroupLayoutEntry> entries;
         uint32_t                             bindingIndex = 0;
         for (const auto& binding : createInfo.bindings)
@@ -397,49 +392,63 @@ namespace RHI::WebGPU
             {
             case BindingType::None:
             case BindingType::SampledImage:
-                entry.texture.sampleType    = WGPUTextureSampleType_Float;
-                entry.texture.multisampled  = false;
-                entry.texture.viewDimension = WGPUTextureViewDimension_2D;
+                entry.texture = {
+                    .nextInChain   = nullptr,
+                    .sampleType    = WGPUTextureSampleType_Float, // TODO! expose from outside!
+                    .viewDimension = WGPUTextureViewDimension_2D, // TODO! expose from outside!
+                    .multisampled  = false,
+                };
                 break;
             case BindingType::Sampler:
-                entry.sampler.type = WGPUSamplerBindingType_Filtering;
+                entry.sampler = {
+                    .nextInChain = nullptr,
+                    .type        = WGPUSamplerBindingType_Filtering,
+                };
                 break;
             case BindingType::StorageImage:
-                entry.storageTexture.access        = ConvertStorageTextureAccess(binding.access);
-                entry.storageTexture.format        = WGPUTextureFormat_RGBA8Unorm;
-                entry.storageTexture.viewDimension = WGPUTextureViewDimension_2D;
+                entry.storageTexture = {
+                    .nextInChain   = nullptr,
+                    .access        = ConvertStorageTextureAccess(binding.access),
+                    .format        = {},
+                    .viewDimension = ConvertToTextureViewDimension(ImageType::Image2D, binding.arrayCount > 1),
+                };
                 break;
             case BindingType::UniformBuffer:
-                entry.buffer.type             = WGPUBufferBindingType_Uniform;
-                entry.buffer.hasDynamicOffset = false;
-                entry.buffer.minBindingSize   = 0;
+                entry.buffer = {
+                    .nextInChain      = nullptr,
+                    .type             = WGPUBufferBindingType_Uniform,
+                    .hasDynamicOffset = false,
+                    .minBindingSize   = {},
+                };
                 break;
             case BindingType::StorageBuffer:
-                entry.buffer.type             = WGPUBufferBindingType_Storage;
-                entry.buffer.hasDynamicOffset = false;
-                entry.buffer.minBindingSize   = 0;
+                entry.buffer = {
+                    .nextInChain      = nullptr,
+                    .type             = WGPUBufferBindingType_Storage,
+                    .hasDynamicOffset = {},
+                    .minBindingSize   = {},
+                };
                 break;
             case BindingType::DynamicUniformBuffer:
-                entry.buffer.type             = WGPUBufferBindingType_Uniform;
-                entry.buffer.hasDynamicOffset = true;
-                entry.buffer.minBindingSize   = 0;
+                entry.buffer = {
+                    .nextInChain      = nullptr,
+                    .type             = WGPUBufferBindingType_Uniform,
+                    .hasDynamicOffset = true,
+                    .minBindingSize   = {},
+                };
                 break;
             case BindingType::DynamicStorageBuffer:
-                entry.buffer.type             = WGPUBufferBindingType_Storage;
-                entry.buffer.hasDynamicOffset = true;
-                entry.buffer.minBindingSize   = 0;
+                entry.buffer = {
+                    .nextInChain      = nullptr,
+                    .type             = WGPUBufferBindingType_Storage,
+                    .hasDynamicOffset = true,
+                    .minBindingSize   = {},
+                };
                 break;
             case BindingType::BufferView:
-                entry.buffer.type             = WGPUBufferBindingType_ReadOnlyStorage;
-                entry.buffer.hasDynamicOffset = false;
-                entry.buffer.minBindingSize   = 0;
-                break;
             case BindingType::StorageBufferView:
-                entry.buffer.type             = WGPUBufferBindingType_Storage;
-                entry.buffer.hasDynamicOffset = false;
-                entry.buffer.minBindingSize   = 0;
-                break;
             default:
+                TL_UNREACHABLE();
                 break;
             }
             entries.push_back(entry);
@@ -461,19 +470,9 @@ namespace RHI::WebGPU
 
     ResultCode IBindGroup::Init(IDevice* device, const BindGroupCreateInfo& createInfo)
     {
-        auto                           layout = device->m_bindGroupLayoutsOwner.Get(createInfo.layout);
-        TL::Vector<WGPUBindGroupEntry> entries;
-        // for (const auto& binding : createInfo)
-        // {
-        // }
-        WGPUBindGroupDescriptor        desc{
-                   .nextInChain = nullptr,
-                   .label       = ConvertToStringView(createInfo.name),
-                   .layout      = layout->bindGroupLayout,
-                   .entryCount  = entries.size(),
-                   .entries     = entries.data(),
-        };
-        this->bindGroup = wgpuDeviceCreateBindGroup(device->m_device, &desc);
+        bindGroup = {};
+        layout    = device->m_bindGroupLayoutsOwner.Get(createInfo.layout)->bindGroupLayout;
+        wgpuBindGroupLayoutAddRef(layout);
         return ResultCode::Success;
     }
 
@@ -488,30 +487,66 @@ namespace RHI::WebGPU
         wgpuBindGroupRelease(bindGroup);
 
         TL::Vector<WGPUBindGroupEntry> entry{};
-        for (auto element : updateInfo.buffers)
+
+        for (auto bufferBindings : updateInfo.buffers)
         {
+            uint32_t bindingCounter = 0;
+            for (uint32_t i = 0; i < bufferBindings.buffers.size(); i++)
+            {
+                auto bufferHandle    = bufferBindings.buffers[i];
+                auto bufferSubregion = bufferBindings.subregions[i];
+
+                auto buffer = device->m_bufferOwner.Get(bufferHandle);
+                entry.push_back({
+                    .binding = bufferBindings.dstBinding + (bindingCounter++),
+                    .buffer  = buffer->buffer,
+                    .offset  = bufferSubregion.offset,
+                    .size    = bufferSubregion.size,
+                });
+            }
         }
-        for (auto element : updateInfo.images)
+        for (auto imageBindings : updateInfo.images)
         {
+            uint32_t bindingCounter = 0;
+            for (auto imageHandle : imageBindings.images)
+            {
+                auto image = device->m_imageOwner.Get(imageHandle);
+                entry.push_back({
+                    .binding     = imageBindings.dstBinding + (bindingCounter++),
+                    .textureView = image->view,
+                });
+            }
         }
-        for (auto element : updateInfo.samplers)
+        for (auto samplerBindings : updateInfo.samplers)
         {
+            uint32_t bindingCounter = 0;
+            for (auto samplerHandle : samplerBindings.samplers)
+            {
+                auto sampler = device->m_samplerOwner.Get(samplerHandle);
+                entry.push_back({
+                    .binding = samplerBindings.dstArrayElement + (bindingCounter++),
+                    .sampler = sampler->sampler,
+                });
+            }
         }
 
+        if (bindGroup)
+            wgpuBindGroupRelease(bindGroup);
+
         WGPUBindGroupDescriptor desc{
-            .nextInChain = {},
-            .label       = {},
+            .nextInChain = nullptr,
+            .label       = ConvertToStringView("BindGroup"),
             .layout      = layout,
             .entryCount  = entry.size(),
             .entries     = entry.data(),
         };
-        wgpuDeviceCreateBindGroup(device->m_device, &desc);
+        bindGroup = wgpuDeviceCreateBindGroup(device->m_device, &desc);
     }
 
     ResultCode IShaderModule::Init(IDevice* device, const ShaderModuleCreateInfo& createInfo)
     {
         WGPUShaderSourceSPIRV spirvSourceDesc{
-            .chain    = {.sType = WGPUSType_ShaderSourceSPIRV},
+            .chain    = {.next = {}, .sType = WGPUSType_ShaderSourceSPIRV},
             .codeSize = (uint32_t)createInfo.code.size(),
             .code     = createInfo.code.data(),
         };
@@ -558,6 +593,9 @@ namespace RHI::WebGPU
         auto pipelineLayout = device->m_pipelineLayoutOwner.Get(createInfo.layout);
         auto vs             = (IShaderModule*)createInfo.vertexShaderModule;
         auto ps             = (IShaderModule*)createInfo.pixelShaderModule;
+
+        layout = pipelineLayout->layout;
+        wgpuPipelineLayoutAddRef(layout);
 
         TL::Vector<WGPUVertexAttribute>    attributes{};
         TL::Vector<WGPUVertexBufferLayout> vertexBufferLayouts{};
@@ -624,7 +662,7 @@ namespace RHI::WebGPU
 
         // TODO: reivew the hardcoded values later
         WGPURenderPipelineDescriptor desc{
-            .nextInChain = {},
+            .nextInChain = nullptr,
             .label       = ConvertToStringView(createInfo.name),
             .layout      = pipelineLayout->layout,
             .vertex      = {
@@ -639,7 +677,7 @@ namespace RHI::WebGPU
             .primitive = {
                             .nextInChain      = nullptr,
                             .topology         = ConvertToPrimitiveTopology(createInfo.topologyMode),
-                            .stripIndexFormat = ConvertToIndexFormat(IndexType::uint32),
+                            .stripIndexFormat = WGPUIndexFormat_Undefined,
                             .frontFace        = ConvertToFrontFace(createInfo.rasterizationState.frontFace),
                             .cullMode         = ConvertToCullMode(createInfo.rasterizationState.cullMode),
                             .unclippedDepth   = false,
@@ -660,12 +698,16 @@ namespace RHI::WebGPU
     void IGraphicsPipeline::Shutdown([[maybe_unused]] IDevice* device)
     {
         wgpuRenderPipelineRelease(this->pipeline);
+        wgpuPipelineLayoutRelease(this->layout);
     }
 
     ResultCode IComputePipeline::Init(IDevice* device, const ComputePipelineCreateInfo& createInfo)
     {
         auto pipelineLayout = device->m_pipelineLayoutOwner.Get(createInfo.layout);
         auto cs             = (IShaderModule*)createInfo.shaderModule;
+
+        layout = pipelineLayout->layout;
+        wgpuPipelineLayoutAddRef(layout);
 
         WGPUComputePipelineDescriptor desc{
             .nextInChain = nullptr,
@@ -686,6 +728,7 @@ namespace RHI::WebGPU
     void IComputePipeline::Shutdown([[maybe_unused]] IDevice* device)
     {
         wgpuComputePipelineRelease(this->pipeline);
+        wgpuPipelineLayoutRelease(this->layout);
     }
 
     ResultCode IBuffer::Init(IDevice* device, const BufferCreateInfo& createInfo)
@@ -708,22 +751,23 @@ namespace RHI::WebGPU
 
     ResultCode IImage::Init(IDevice* device, const ImageCreateInfo& createInfo)
     {
+        auto                  format = ConvertToTextureFormat(createInfo.format);
         WGPUTextureDescriptor desc{
             .nextInChain     = nullptr,
             .label           = ConvertToStringView(createInfo.name),
             .usage           = ConvertToTextureUsage(createInfo.usageFlags),
             .dimension       = ConvertToTextureDimension(createInfo.type),
             .size            = ConvertToExtent3D(createInfo.size),
-            .format          = ConvertToTextureFormat(createInfo.format),
+            .format          = format,
             .mipLevelCount   = createInfo.mipLevels,
             .sampleCount     = ConvertToSampleCount(createInfo.sampleCount),
-            .viewFormatCount = 0,
-            .viewFormats     = {},
+            .viewFormatCount = 1,
+            .viewFormats     = &format,
         };
         WGPUTextureViewDescriptor viewDesc{
             .nextInChain     = nullptr,
             .label           = ConvertToStringView(createInfo.name),
-            .format          = ConvertToTextureFormat(createInfo.format),
+            .format          = format,
             .dimension       = ConvertToTextureViewDimension(createInfo.type, createInfo.arrayCount),
             .baseMipLevel    = 0,
             .mipLevelCount   = createInfo.mipLevels,
@@ -737,11 +781,9 @@ namespace RHI::WebGPU
         return ResultCode::Success;
     }
 
-    ResultCode IImage::Init([[maybe_unused]] IDevice& device, WGPUTexture texture, WGPUSurfaceConfiguration desc)
+    ResultCode IImage::Init([[maybe_unused]] IDevice* device, WGPUTexture surfaceTexture, WGPUSurfaceConfiguration desc)
     {
-        TL_LOG_WARNNING("FIXME! {}::{}", __FILE__, __FUNCTION__);
-
-        this->texture = texture;
+        this->texture = surfaceTexture;
         WGPUTextureViewDescriptor viewDesc{
             .nextInChain     = nullptr,
             .label           = {},
@@ -752,7 +794,7 @@ namespace RHI::WebGPU
             .baseArrayLayer  = 0,
             .arrayLayerCount = 1,
             .aspect          = WGPUTextureAspect_All,
-            .usage           = WGPUTextureUsage_RenderAttachment,
+            .usage           = desc.usage,
         };
         this->view = wgpuTextureCreateView(this->texture, &viewDesc);
         return ResultCode::Success;
@@ -760,13 +802,14 @@ namespace RHI::WebGPU
 
     void IImage::Shutdown([[maybe_unused]] IDevice* device)
     {
-        wgpuTextureRelease(texture);
+        if (view) wgpuTextureViewRelease(view);
+        if (texture) wgpuTextureRelease(texture);
     }
 
     ResultCode ISampler::Init(IDevice* device, const SamplerCreateInfo& createInfo)
     {
         WGPUSamplerDescriptor desc{
-            .nextInChain   = {},
+            .nextInChain   = nullptr,
             .label         = ConvertToStringView(createInfo.name),
             .addressModeU  = ConvertToAddressMode(createInfo.addressU),
             .addressModeV  = ConvertToAddressMode(createInfo.addressV),

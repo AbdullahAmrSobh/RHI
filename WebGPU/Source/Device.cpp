@@ -1,15 +1,14 @@
 #include "Device.hpp"
 
 #include <RHI-WebGPU/Loader.hpp>
+#include <tracy/Tracy.hpp>
 #include <webgpu/webgpu.h>
 
 #include "CommandList.hpp"
 #include "Common.hpp"
-#include "Resources.hpp"
 #include "RenderGraph.hpp"
+#include "Resources.hpp"
 #include "Swapchain.hpp"
-
-#include <tracy/Tracy.hpp>
 
 RHI::Device* RHI::CreateWebGPUDevice()
 {
@@ -46,6 +45,21 @@ namespace RHI::WebGPU
         };
         m_instance = wgpuCreateInstance(&instanceDesc);
 
+        auto requestAdapterCallback = [](WGPURequestAdapterStatus status, WGPUAdapter adapter, struct WGPUStringView message, void* userdata1, void* userdata2)
+        {
+            switch (status)
+            {
+            case WGPURequestAdapterStatus_Success:
+                *(WGPUAdapter*)userdata1 = adapter;
+                break;
+            case WGPURequestAdapterStatus_InstanceDropped:
+            case WGPURequestAdapterStatus_Unavailable:
+            case WGPURequestAdapterStatus_Error:
+                TL_LOG_INFO("RHI::WebGPU: {}", message.data);
+            case WGPURequestAdapterStatus_Force32:
+                break;
+            }
+        };
         WGPURequestAdapterOptions options{
             .nextInChain          = nullptr,
             .compatibleSurface    = {},
@@ -57,12 +71,9 @@ namespace RHI::WebGPU
         WGPURequestAdapterCallbackInfo cb{
             .nextInChain = nullptr,
             .mode        = WGPUCallbackMode_WaitAnyOnly,
-            .callback    = [](WGPURequestAdapterStatus status, WGPUAdapter adapter, struct WGPUStringView message, void* userdata1, void* userdata2)
-            {
-                *(WGPUAdapter*)userdata1 = adapter;
-            },
-            .userdata1 = &m_adapter,
-            .userdata2 = nullptr,
+            .callback    = requestAdapterCallback,
+            .userdata1   = &m_adapter,
+            .userdata2   = nullptr,
         };
         auto               future = wgpuInstanceRequestAdapter(m_instance, &options, cb);
         WGPUFutureWaitInfo waitInfo{
@@ -72,26 +83,100 @@ namespace RHI::WebGPU
         auto result = wgpuInstanceWaitAny(m_instance, 1, &waitInfo, 0);
         TL_ASSERT(result == WGPUWaitStatus_Success);
 
+        // auto buffermapcallback = [](WGPUMapAsyncStatus status, struct WGPUStringView message, void* userdata1, void* userdata2)
+        // {
+        // };
+
+        // auto compilationInfoCallback = [](WGPUCompilationInfoRequestStatus status, struct WGPUCompilationInfo const* compilationInfo, void* userdata1, void* userdata2)
+        // {
+        // };
+
+        // auto createComputePipelineAsyncCallback = [](WGPUCreatePipelineAsyncStatus status, WGPUComputePipeline pipeline, struct WGPUStringView message, void* userdata1, void* userdata2)
+        // {
+        // };
+
+        // auto createRenderPipelineAsyncCallback = [](WGPUCreatePipelineAsyncStatus status, WGPURenderPipeline pipeline, struct WGPUStringView message, void* userdata1, void* userdata2)
+        // {
+        // };
+
+        auto deviceLostCallback = [](WGPUDevice const* device, WGPUDeviceLostReason reason, struct WGPUStringView message, void* userdata1, void* userdata2)
+        {
+            TL_LOG_ERROR("RHI::WebGPU Device lost. Reported message:  {}", message.data);
+            TL_DEBUG_BREAK();
+        };
+
+        // auto popErrorScopeCallback = [](WGPUPopErrorScopeStatus status, WGPUErrorType type, struct WGPUStringView message, void* userdata1, void* userdata2)
+        // {
+        // };
+
+        // auto queueWorkDoneCallback = [](WGPUQueueWorkDoneStatus status, void* userdata1, void* userdata2)
+        // {
+        // };
+
+        // auto requestDeviceCallback = [](WGPURequestDeviceStatus status, WGPUDevice device, struct WGPUStringView message, void* userdata1, void* userdata2)
+        // {
+        // };
+
+        auto uncapturedErrorCallback = [](WGPUDevice const* device, WGPUErrorType type, struct WGPUStringView message, void* userdata1, void* userdata2)
+        {
+            TL_LOG_ERROR("RHI::WebGPU Uncaptured error. Reported message: {}", message.data);
+            TL_DEBUG_BREAK();
+        };
+
+        TL::Vector<WGPUFeatureName> enabledFeatures{};
+
         WGPUDeviceDescriptor deviceDesc{
-            .nextInChain                 = nullptr,
-            .label                       = ConvertToStringView("RHI::WebGPU::Device"),
-            .requiredFeatureCount        = 0,
-            .requiredFeatures            = {},
-            .requiredLimits              = {},
-            .defaultQueue                = {},
-            .deviceLostCallbackInfo      = {},
-            .uncapturedErrorCallbackInfo = {},
+            .nextInChain          = nullptr,
+            .label                = ConvertToStringView("RHI::WebGPU::Device"),
+            .requiredFeatureCount = enabledFeatures.size(),
+            .requiredFeatures     = enabledFeatures.data(),
+            .requiredLimits       = {},
+            .defaultQueue         = {
+                                     .nextInChain = nullptr,
+                                     .label       = {},
+                                     },
+            .deviceLostCallbackInfo = {
+                                     .nextInChain = nullptr,
+                                     .mode        = WGPUCallbackMode_AllowProcessEvents,
+                                     .callback    = deviceLostCallback,
+                                     .userdata1   = this,
+                                     .userdata2   = nullptr,
+                                     },
+            .uncapturedErrorCallbackInfo = {
+                                     .nextInChain = nullptr,
+                                     .callback    = uncapturedErrorCallback,
+                                     .userdata1   = this,
+                                     .userdata2   = nullptr,
+                                     },
         };
         m_device = wgpuAdapterCreateDevice(m_adapter, &deviceDesc);
+
+        auto loggingCallback = [](WGPULoggingType type, struct WGPUStringView message, void* userdata1, void* userdata2)
+        {
+            switch (type)
+            {
+            case WGPULoggingType_Verbose: TL_LOG_INFO("RHI::WebGPU (Verbose): {}", message.data); break;
+            case WGPULoggingType_Info:    TL_LOG_INFO("RHI::WebGPU (Info): {}", message.data); break;
+            case WGPULoggingType_Warning: TL_LOG_WARNNING("RHI::WebGPU (Warning): {}", message.data); break;
+            case WGPULoggingType_Error:   TL_LOG_ERROR("RHI::WebGPU (Error): {}", message.data); break;
+            case WGPULoggingType_Force32: TL_UNREACHABLE();
+            }
+        };
+        WGPULoggingCallbackInfo loggingCallbackInfo{
+            .nextInChain = nullptr,
+            .callback    = loggingCallback,
+            .userdata1   = this,
+            .userdata2   = nullptr,
+        };
+        wgpuDeviceSetLoggingCallback(m_device, loggingCallbackInfo);
+
+        m_queue[0] = wgpuDeviceGetQueue(m_device);
 
         return ResultCode::Success;
     }
 
     void IDevice::Shutdown()
     {
-        // m_queue
-        // m_device
-        // m_adapter
         wgpuDeviceRelease(m_device);
         wgpuAdapterRelease(m_adapter);
         wgpuInstanceRelease(m_instance);
@@ -99,6 +184,8 @@ namespace RHI::WebGPU
 
     void IDevice::UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo)
     {
+        auto bindGroup = m_bindGroupOwner.Get(handle);
+        bindGroup->Update(this, updateInfo);
     }
 
     DeviceMemoryPtr IDevice::MapBuffer(Handle<Buffer> handle)
@@ -107,18 +194,6 @@ namespace RHI::WebGPU
 
         DeviceMemoryPtr ptr;
         ptr = wgpuBufferGetMappedRange(buffer->buffer, 0, 0xffffffff);
-
-        // vs
-        // WGPUBufferMapCallbackInfo cb{
-        //     .nextInChain = nullptr,
-        //     .mode        = WGPUCallbackMode_WaitAnyOnly,
-        //     .callback    = [](WGPUMapAsyncStatus status, struct WGPUStringView message, void* userdata1, void* userdata2) {
-
-        //     },
-        //     .userdata1   = &ptr,
-        //     .userdata2   = {},
-        // };
-        // auto future = wgpuBufferMapAsync(m_bufferOwner, WGPUMapMode_Read | WGPUMapMode_Write, 0, 0xffffffff, cb);
         return ptr;
     }
 
@@ -149,16 +224,18 @@ namespace RHI::WebGPU
 
     void IDevice::CollectResources()
     {
-        // Should be no op
+        wgpuDeviceTick(m_device);
     }
 
     void IDevice::ExecuteCommandList(ICommandList* commandList)
     {
         auto queue = m_queue[(int)QueueType::Graphics];
         wgpuQueueSubmit(queue, 1, &commandList->m_cmdBuffer);
+        wgpuCommandBufferRelease(commandList->m_cmdBuffer);
+        delete commandList;
     }
 
-    #define IMPLEMENT_DEVICE_CREATE_METHOD_UNIQUE_WITH_INFO(ResourceType)                       \
+#define IMPLEMENT_DEVICE_CREATE_METHOD_UNIQUE_WITH_INFO(ResourceType)                       \
     ResourceType* IDevice::Create##ResourceType(const ResourceType##CreateInfo& createInfo) \
     {                                                                                       \
         ZoneScoped;                                                                         \
@@ -200,7 +277,7 @@ namespace RHI::WebGPU
     {                                                                          \
         ZoneScoped;                                                            \
         TL_ASSERT(handle != NullHandle, "Cannot call destroy on null handle"); \
-        OwnerField.Destroy(handle, this);                            \
+        OwnerField.Destroy(handle, this);                                      \
     }
 
 #define IMPLEMENT_DEVICE_RESOURCE_METHODS(ResourceType) \

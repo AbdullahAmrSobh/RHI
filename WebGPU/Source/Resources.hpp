@@ -47,7 +47,7 @@ namespace RHI::WebGPU
     struct IBindGroup : BindGroup
     {
         WGPUBindGroupLayout layout;
-        WGPUBindGroup bindGroup;
+        WGPUBindGroup       bindGroup;
 
         ResultCode Init(IDevice* device, const BindGroupCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
@@ -74,6 +74,7 @@ namespace RHI::WebGPU
 
     struct IGraphicsPipeline : GraphicsPipeline
     {
+        WGPUPipelineLayout layout;
         WGPURenderPipeline pipeline;
 
         ResultCode Init(IDevice* device, const GraphicsPipelineCreateInfo& createInfo);
@@ -82,6 +83,7 @@ namespace RHI::WebGPU
 
     struct IComputePipeline : ComputePipeline
     {
+        WGPUPipelineLayout  layout;
         WGPUComputePipeline pipeline;
 
         ResultCode Init(IDevice* device, const ComputePipelineCreateInfo& createInfo);
@@ -102,7 +104,7 @@ namespace RHI::WebGPU
         WGPUTextureView view;
 
         ResultCode Init(IDevice* device, const ImageCreateInfo& createInfo);
-        ResultCode Init(IDevice& device, WGPUTexture texture, WGPUSurfaceConfiguration desc);
+        ResultCode Init(IDevice* device, WGPUTexture texture, WGPUSurfaceConfiguration desc);
         void       Shutdown(IDevice* device);
     };
 
