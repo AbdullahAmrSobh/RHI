@@ -21,7 +21,6 @@ namespace RHI
         WebGPU,
     };
 
-    using DeviceMemoryPtr = void*;
     struct RenderGraphCreateInfo;
 
     struct Version
@@ -43,26 +42,6 @@ namespace RHI
     {
         // TODO: remove defaults
         uint32_t minUniformBufferOffsetAlignment = 256;
-    };
-
-    struct StagingBuffer
-    {
-        DeviceMemoryPtr ptr    = nullptr;
-        Handle<Buffer>  buffer = NullHandle;
-        size_t          offset = 0;
-        size_t          size   = 0;
-    };
-
-    struct ImageUploadInfo
-    {
-        Handle<Image>  image           = NullHandle;
-        Handle<Buffer> srcBuffer       = NullHandle;
-        size_t         srcBufferOffset = 0;
-        size_t         sizeBytes       = 0;
-        uint32_t       baseMipLevel    = 0;
-        uint32_t       levelCount      = 1;
-        uint32_t       baseArrayLayer  = 0;
-        uint32_t       layerCount      = 1;
     };
 
     class RHI_EXPORT Device
@@ -166,6 +145,8 @@ namespace RHI
         /// @return Result containing the handle to the created image.
         virtual Result<Handle<Image>>    CreateImage(const ImageCreateInfo& createInfo)                                   = 0;
 
+        virtual Handle<Image>            CreateImageView(const ImageViewCreateInfo& createInfo)                           = 0;
+
         /// @brief Destroys an image.
         /// @param handle Handle to the image to destroy.
         virtual void                     DestroyImage(Handle<Image> handle)                                               = 0;
@@ -179,44 +160,19 @@ namespace RHI
         /// @param handle Handle to the buffer to destroy.
         virtual void                     DestroyBuffer(Handle<Buffer> handle)                                             = 0;
 
-        /// @brief Maps a buffer to CPU memory.
-        /// @param handle Handle to the buffer to map.
-        /// @return Pointer to the mapped memory.
-        virtual DeviceMemoryPtr          MapBuffer(Handle<Buffer> handle)                                                 = 0;
+        // clang-format off
 
-        /// @brief Unmaps a buffer from CPU memory.
-        /// @param handle Handle to the buffer to unmap.
-        virtual void                     UnmapBuffer(Handle<Buffer> handle)                                               = 0;
-
-        /// @brief Allocates a staging buffer.
-        /// @param size Buffer size in bytes.
-        /// @return Staging buffer descriptor.
-        virtual StagingBuffer            StagingAllocate(size_t size)                                                     = 0;
-
-        /// @brief Uploads data to an image.
-        /// @param uploadInfo Image upload parameters.
-        /// @return Timeline semaphore value after upload.
-        virtual uint64_t                 UploadImage(const ImageUploadInfo& uploadInfo)                                   = 0;
+        /// @brief A resource update scope, resources will
+        virtual void                     BeginResourceUpdate(RenderGraph* renderGraph)                                    = 0;
+        virtual void                     EndResourceUpdate()                                                              = 0;
+        virtual void                     BufferWrite(Handle<Buffer> buffer, size_t offset, TL::Block block)  = 0;
+        virtual void                     ImageWrite(Handle<Image> image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block) = 0;
+        // clang-format on
 
         /// @brief Collects unused resources for reuse.
         virtual void                     CollectResources()                                                               = 0;
 
-        // New API could be
-        // virtual void BufferBeginWrites()  = 0; // maps staging buffers for read/write op (on vulkan, d3d12 this maps directly to buffer map
-        //                                        // when it can be (presistant mapping)) on webgpu it no op as the writes are done via queue
-        // virtual void BufferStagingWrite() = 0; // preform the write to  the mapped staging buffer (and queues a copy command before resource
-        //                                        // use)
-        // virtual void BufferEndWrites()    = 0; //
-
     protected:
-        friend Result<Handle<Image>> CreateImageWithContent(Device& device, const ImageCreateInfo& createInfo, TL::Block content);
-
-        virtual void WriteImage([[maybe_unused]] Handle<Image> image, [[maybe_unused]] uint32_t mipLevel, [[maybe_unused]] TL::Block block)
-        {
-            /// @fixme: Should avoid divergance in code-paths for image writes.
-            TL_UNREACHABLE_MSG("This code path is only for RHI::WebGPU backend implementation!");
-        }
-
         BackendType           m_backend;
         TL::Ptr<DeviceLimits> m_limits; ///< Device-specific limits.
     };

@@ -672,6 +672,7 @@ namespace RHI::WebGPU
             attributeOffset += bindingDesc.attributes.size();
         }
 
+        bool                  hasDepthStencil = createInfo.renderTargetLayout.depthAttachmentFormat != Format::Unknown || createInfo.renderTargetLayout.stencilAttachmentFormat != Format::Unknown;
         WGPUDepthStencilState depthStencil{
             .nextInChain         = nullptr,
             .format              = ConvertToTextureFormat(createInfo.renderTargetLayout.depthAttachmentFormat),
@@ -750,7 +751,7 @@ namespace RHI::WebGPU
                             .cullMode         = ConvertToCullMode(createInfo.rasterizationState.cullMode),
                             .unclippedDepth   = false,
                             },
-            .depthStencil = &depthStencil,
+            .depthStencil = hasDepthStencil ? &depthStencil : nullptr,
             .multisample  = {
                             .nextInChain            = nullptr,
                             .count                  = ConvertToSampleCount(createInfo.multisampleState.sampleCount),
@@ -806,12 +807,12 @@ namespace RHI::WebGPU
             .label            = ConvertToStringView(createInfo.name),
             .usage            = ConvertToBufferUsage(createInfo.usageFlags),
             .size             = createInfo.byteSize,
-            .mappedAtCreation = createInfo.hostMapped ? true : false,
+            .mappedAtCreation = false, // .mappedAtCreation = createInfo.hostMapped ? true : false,
         };
 
-        if (createInfo.hostMapped && !(createInfo.usageFlags & BufferUsage::Uniform))
+        if (createInfo.hostMapped)
         {
-            desc.usage |= WGPUBufferUsage_MapWrite;
+            desc.usage |= WGPUBufferUsage_CopyDst;
         }
 
         this->buffer = wgpuDeviceCreateBuffer(device->m_device, &desc);

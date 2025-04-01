@@ -1,5 +1,7 @@
 #include "Device.hpp"
 
+#include "RHI/Resources.hpp"
+
 #include <RHI-WebGPU/Loader.hpp>
 #include <tracy/Tracy.hpp>
 #include <webgpu/webgpu.h>
@@ -122,7 +124,6 @@ namespace RHI::WebGPU
         auto uncapturedErrorCallback = [](WGPUDevice const* device, WGPUErrorType type, struct WGPUStringView message, void* userdata1, void* userdata2)
         {
             TL_LOG_ERROR("RHI::WebGPU Uncaptured error. Reported message: {}", message.data);
-            TL_DEBUG_BREAK();
         };
 
         TL::Vector<WGPUFeatureName> enabledFeatures{};
@@ -193,40 +194,74 @@ namespace RHI::WebGPU
         bindGroup->Update(this, updateInfo);
     }
 
-    DeviceMemoryPtr IDevice::MapBuffer(Handle<Buffer> handle)
+    void IDevice::BeginResourceUpdate([[maybe_unused]] RenderGraph* renderGraph)
     {
-        auto buffer = m_bufferOwner.Get(handle);
-
-        return buffer->Map(this);
+        // No op
     }
 
-    void IDevice::UnmapBuffer(Handle<Buffer> handle)
+    void IDevice::EndResourceUpdate()
     {
-        auto buffer = m_bufferOwner.Get(handle);
-        buffer->Unmap(this);
+        for (auto buffer : m_buffersToUnmap)
+        {
+            wgpuBufferUnmap(buffer);
+        }
     }
 
-    StagingBuffer IDevice::StagingAllocate(size_t)
+    void IDevice::BufferWrite(Handle<Buffer> bufferHandle, size_t offset, TL::Block block)
     {
-        TL_UNREACHABLE_MSG("This code path is not available on RHI::WebGPU backend!");
-        return {};
+        auto buffer = m_bufferOwner.Get(bufferHandle);
+        // if (wgpuBufferGetMapState(buffer->buffer) == WGPUBufferMapState_Mapped)
+        // {
+        //     auto result = wgpuBufferWriteMappedRange(buffer->buffer, offset, block.ptr, block.size);
+        //     TL_ASSERT(result == WGPUStatus_Success);
+        //     return;
+        // }
+        wgpuQueueWriteBuffer(m_queue, buffer->buffer, offset, block.ptr, block.size);
     }
 
-    uint64_t IDevice::UploadImage(const ImageUploadInfo&)
+    void IDevice::ImageWrite(Handle<Image> imageHandle, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block)
     {
-        TL_UNREACHABLE_MSG("This code path is not available on RHI::WebGPU backend!");
-        return 0;
+        TL_ASSERT(arrayLayer == 0, "Can't write to array layers");
+
+        auto image = m_imageOwner.Get(imageHandle);
+
+        auto formatInfo = GetFormatInfo(image->format);
+
+        WGPUTexelCopyTextureInfo destination{
+            .texture  = image->texture,
+            .mipLevel = mipLevel,
+            .origin   = ConvertToOffset3D(offset),
+            .aspect   = WGPUTextureAspect_All,
+        };
+        WGPUTexelCopyBufferLayout dataLayout{
+            .offset       = 0,
+            .bytesPerRow  = size.width * formatInfo.bytesPerBlock,
+            .rowsPerImage = size.height,
+        };
+        auto writeSize = ConvertToExtent3D(size);
+
+        // auto mipSize     = CalcaulteImageMipSize(image->size, mipLevel);
+        // auto widthValid  = (offset.x + size.width) >= mipSize.width;
+        // auto heightValid = (offset.y + size.height) >= mipSize.height;
+        // auto depthValid  = (offset.z + size.depth) >= mipSize.depth;
+        // TL_ASSERT(
+        //     widthValid && heightValid && depthValid,
+        //     "Invalid Offset ({}, {}, {}) + Size ({}, {}, {}), Exceed image mip level size ({}, {}, {})",
+        //     (int32_t)offset.x,
+        //     (int32_t)offset.y,
+        //     (int32_t)offset.z,
+        //     (int32_t)size.width,
+        //     (int32_t)size.height,
+        //     (int32_t)size.depth,
+        //     (int32_t)mipSize.width,
+        //     (int32_t)mipSize.height,
+        //     (int32_t)mipSize.depth);
+        wgpuQueueWriteTexture(m_queue, &destination, block.ptr, block.size, &dataLayout, &writeSize);
     }
 
     void IDevice::CollectResources()
     {
         wgpuDeviceTick(m_device);
-    }
-
-    void IDevice::WriteImage(Handle<Image> imageHandle, uint32_t mipLevel, TL::Block block)
-    {
-        auto image = m_imageOwner.Get(imageHandle);
-        image->Write(this, mipLevel, block);
     }
 
     void IDevice::ExecuteCommandList(ICommandList* commandList)
@@ -308,5 +343,12 @@ namespace RHI::WebGPU
     IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(ComputePipeline, m_computePipelineOwner);
     IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(Sampler, m_samplerOwner);
     IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS_WITH_RESULTS(Image, m_imageOwner);
+
+    Handle<Image> IDevice::CreateImageView(const ImageViewCreateInfo& createInfo)
+    {
+        TL_UNREACHABLE_MSG("TODO! Implement image views for WebGPU backend!");
+        return {};
+    }
+
     IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS_WITH_RESULTS(Buffer, m_bufferOwner);
 } // namespace RHI::WebGPU

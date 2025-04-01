@@ -40,9 +40,9 @@ namespace Engine
         /// @return Handle to the RHI buffer being suballocated from
         RHI::Handle<RHI::Buffer> GetBuffer() const;
 
-        void BeginUpdate();
+        // void BeginUpdate();
 
-        void EndUpdate();
+        // void EndUpdate();
 
         void Write(Suballocation suballocation, TL::Block block);
 
@@ -133,25 +133,6 @@ namespace Engine
         /// @brief Gets the total capacity of the GPU array.
         /// @return The capacity of the array.
         uint32_t GetCapacity() const;
-
-    private:
-        RHI::DeviceMemoryPtr Map()
-        {
-            m_mappedPtrCount++;
-            m_mappedPtr = m_device->MapBuffer(m_buffer);
-            return m_mappedPtr;
-        }
-
-        void Unmap()
-        {
-            TL_ASSERT(m_mappedPtrCount > 0);
-            m_mappedPtrCount--;
-            if (m_mappedPtrCount == 0)
-            {
-                m_device->UnmapBuffer(m_buffer);
-                m_mappedPtr = nullptr;
-            }
-        }
 
     private:
         RHI::Device* m_device;
@@ -249,7 +230,7 @@ namespace Engine
 
         };
         auto [buffer, result] = m_device->CreateBuffer(bufferCI);
-        m_buffer = buffer;
+        m_buffer              = buffer;
 
         if (result != ResultCode::Success)
             return result;
@@ -297,12 +278,9 @@ namespace Engine
             m_allocated++;
         }
 
-        auto mappedPtr = Map();
-        // Write the element into the mapped memory.
-        T*   data      = reinterpret_cast<T*>((char*)mappedPtr + m_bufferOffset);
-        data[index]    = element;
+        m_device->BufferWrite(m_buffer, m_bufferOffset, TL::Block{.ptr = (void*)&element, .size = sizeof(T)});
         m_count++;
-        Unmap();
+
         return RHI::ResultCode::Success;
     }
 
@@ -314,17 +292,17 @@ namespace Engine
         m_count--;
     }
 
-    template<typename T>
-    void GpuArray<T>::BeginUpdate()
-    {
-        m_mappedPtr = Map();
-    }
+    // template<typename T>
+    // void GpuArray<T>::BeginUpdate()
+    // {
+    //     m_mappedPtr = Map();
+    // }
 
-    template<typename T>
-    void GpuArray<T>::EndUpdate()
-    {
-        Unmap();
-    }
+    // template<typename T>
+    // void GpuArray<T>::EndUpdate()
+    // {
+    //     Unmap();
+    // }
 
     // Updates the element at the position specified by the handle.
     template<typename T>

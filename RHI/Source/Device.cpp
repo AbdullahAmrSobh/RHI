@@ -18,20 +18,7 @@ namespace RHI
 
         if (auto [image, result] = device.CreateImage(createInfo); IsSuccess(result))
         {
-            if (device.m_backend == BackendType::WebGPU)
-            {
-                device.WriteImage(image, 0, content);
-                return image;
-            }
-
-            auto stagingBuffer = device.StagingAllocate(imageSizeBytes);
-            memcpy(stagingBuffer.ptr, content.ptr, content.size);
-            device.UploadImage({
-                .image           = image,
-                .srcBuffer       = stagingBuffer.buffer,
-                .srcBufferOffset = stagingBuffer.offset,
-                .sizeBytes       = content.size,
-            });
+            device.ImageWrite(image, ImageOffset3D{}, createInfo.size, 0, 0, content);
             return image;
         }
         else

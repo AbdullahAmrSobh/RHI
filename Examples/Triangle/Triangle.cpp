@@ -25,7 +25,7 @@ public:
     TL::Ptr<Engine::Renderer> m_renderer;
 
     Playground()
-        : ApplicationBase("Playground", 1600, 900)
+        : ApplicationBase("Playground - RHI::WebGPU", 1600, 900)
         , m_renderer(TL::CreatePtr<Engine::Renderer>())
     {
     }

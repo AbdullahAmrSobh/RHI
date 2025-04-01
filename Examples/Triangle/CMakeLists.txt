@@ -32,7 +32,7 @@ tl_add_target(
     BUILD_DEPENDENCIES
         Examples::Base
     RUNTIME_LIBRARIES
-        RHI::Vulkan
+        # RHI::Vulkan
         RHI::WebGPU
 )
 

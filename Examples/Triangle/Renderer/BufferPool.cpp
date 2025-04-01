@@ -50,30 +50,10 @@ namespace Engine
         return m_buffer;
     }
 
-    void BufferPool::BeginUpdate()
-    {
-        m_mappedPtr = m_device->MapBuffer(m_buffer);
-    }
-
-    void BufferPool::EndUpdate()
-    {
-        m_device->UnmapBuffer(m_buffer);
-        m_mappedPtr = nullptr;
-    }
 
     void BufferPool::Write(Suballocation suballocation, TL::Block block)
     {
-        bool shouldUnmap = false;
-        if (!m_mappedPtr)
-        {
-            shouldUnmap = true;
-            BeginUpdate();
-        }
-        memcpy((char*)m_mappedPtr + suballocation.offset, block.ptr, block.size);
-        if (shouldUnmap)
-        {
-            EndUpdate();
-        }
+        m_device->BufferWrite(m_buffer, suballocation.offset, block);
     }
 
 } // namespace Engine

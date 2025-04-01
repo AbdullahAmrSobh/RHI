@@ -49,16 +49,15 @@ namespace RHI::WebGPU
         Handle<Sampler>          CreateSampler(const SamplerCreateInfo& createInfo) override;
         void                     DestroySampler(Handle<Sampler> handle) override;
         Result<Handle<Image>>    CreateImage(const ImageCreateInfo& createInfo) override;
+        Handle<Image>            CreateImageView(const ImageViewCreateInfo& createInfo) override;
         void                     DestroyImage(Handle<Image> handle) override;
         Result<Handle<Buffer>>   CreateBuffer(const BufferCreateInfo& createInfo) override;
         void                     DestroyBuffer(Handle<Buffer> handle) override;
-        DeviceMemoryPtr          MapBuffer(Handle<Buffer> handle) override;
-        void                     UnmapBuffer(Handle<Buffer> handle) override;
-        StagingBuffer            StagingAllocate(size_t size) override;
-        uint64_t                 UploadImage(const ImageUploadInfo& uploadInfo) override;
+        void                     BeginResourceUpdate(RenderGraph* renderGraph) override;
+        void                     EndResourceUpdate() override;
+        void                     BufferWrite(Handle<Buffer> buffer, size_t offset, TL::Block block) override;
+        void                     ImageWrite(Handle<Image> image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block) override;
         void                     CollectResources() override;
-
-        void                     WriteImage(Handle<Image> image, uint32_t mipLevel, TL::Block block) override;
 
     public:
         void ExecuteCommandList(class ICommandList* commandList);
@@ -83,5 +82,7 @@ namespace RHI::WebGPU
         HandlePool<ISampler>          m_samplerOwner;          ///< Pool for managing sampler handles.
         // // Frame
         std::atomic_uint64_t          m_frameIndex;
+
+        TL::Set<WGPUBuffer> m_buffersToUnmap;
     };
 } // namespace RHI::WebGPU

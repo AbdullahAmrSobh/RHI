@@ -22,10 +22,6 @@ tl_add_target(
     STATIC
     HEADERS ${HEADER_FILES}
     SOURCES ${SOURCE_FILES}
-    BUILD_DEPENDENCIES
-        RHI::RHI
-    RUNTIME_LIBRARIES
-        RHI::Vulkan
 )
 
 target_include_directories(ImGui ${warning_guard} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

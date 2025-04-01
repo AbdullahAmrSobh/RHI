@@ -273,4 +273,15 @@ namespace RHI
             return components == other.components && viewType == other.viewType && subresource == other.subresource;
         }
     };
+
+    using DeviceMemoryPtr = void*;
+
+    inline static ImageSize3D CalcaulteImageMipSize(ImageSize3D size, uint32_t mipLevel)
+    {
+        return {
+            std::max(1u, size.width >> mipLevel),
+            std::max(1u, size.height >> mipLevel),
+            std::max(1u, size.depth >> mipLevel)
+        };
+    }
 } // namespace RHI

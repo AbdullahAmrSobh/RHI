@@ -344,7 +344,6 @@ namespace Engine
                 .renderTargetLayout =
                     {
                                            .colorAttachmentsFormats = RHI::Format::RGBA8_UNORM,
-                                           .depthAttachmentFormat   = RHI::Format::D32,
                                            },
                 .colorBlendState =
                     {
@@ -407,7 +406,7 @@ namespace Engine
                 renderGraph.UseColorAttachment(
                     pass,
                     {
-                        .view = outputImage,
+                        .view   = outputImage,
                         .loadOp = RHI::LoadOperation::Load,
                     });
             },
@@ -526,24 +525,24 @@ namespace Engine
         if (drawData->TotalIdxCount == 0 || drawData->TotalVtxCount == 0)
             return;
 
-        auto indexBufferPtr  = (ImDrawIdx*)m_device->MapBuffer(m_indexBuffer);
-        auto vertexBufferPtr = (ImDrawVert*)m_device->MapBuffer(m_vertexBuffer);
+        size_t indexBufferOffset  = 0;
+        size_t vertexBufferOffset = 0;
         for (int n = 0; n < drawData->CmdListsCount; n++)
         {
             const ImDrawList* cmdList = drawData->CmdLists[n];
-            memcpy(indexBufferPtr, cmdList->IdxBuffer.Data, cmdList->IdxBuffer.Size * sizeof(ImDrawIdx));
-            memcpy(vertexBufferPtr, cmdList->VtxBuffer.Data, cmdList->VtxBuffer.Size * sizeof(ImDrawVert));
-            indexBufferPtr += cmdList->IdxBuffer.Size;
-            vertexBufferPtr += cmdList->VtxBuffer.Size;
+            m_device->BufferWrite(m_indexBuffer, indexBufferOffset, TL::Block{.ptr = cmdList->IdxBuffer.Data, .size = cmdList->IdxBuffer.Size * sizeof(ImDrawIdx)});
+            m_device->BufferWrite(m_vertexBuffer, vertexBufferOffset, TL::Block{.ptr = cmdList->VtxBuffer.Data, .size = cmdList->VtxBuffer.Size * sizeof(ImDrawVert)});
+            indexBufferOffset += cmdList->IdxBuffer.Size;
+            vertexBufferOffset += cmdList->VtxBuffer.Size;
         }
-        m_device->UnmapBuffer(m_vertexBuffer);
-        m_device->UnmapBuffer(m_indexBuffer);
+        // m_device->UnmapBuffer(m_vertexBuffer);
+        // m_device->UnmapBuffer(m_indexBuffer);
 
         {
-            float L                = drawData->DisplayPos.x;
-            float R                = drawData->DisplayPos.x + drawData->DisplaySize.x;
-            float T                = drawData->DisplayPos.y;
-            float B                = drawData->DisplayPos.y + drawData->DisplaySize.y;
+            float L = drawData->DisplayPos.x;
+            float R = drawData->DisplayPos.x + drawData->DisplaySize.x;
+            float T = drawData->DisplayPos.y;
+            float B = drawData->DisplayPos.y + drawData->DisplaySize.y;
             // clang-format off
             float mvp[4][4] =
             {
@@ -553,9 +552,9 @@ namespace Engine
                 { (R + L) / (L - R), (T + B) / (B - T), 0.5f, 1.0f },
             };
             // clang-format on
-            auto  uniformBufferPtr = m_device->MapBuffer(m_uniformBuffer);
-            memcpy(uniformBufferPtr, mvp, sizeof(mvp));
-            m_device->UnmapBuffer(m_uniformBuffer);
+            // auto  uniformBufferPtr = m_device->MapBuffer(m_uniformBuffer);
+            m_device->BufferWrite(m_uniformBuffer, 0, {mvp, sizeof(mvp)});
+            // m_device->UnmapBuffer(m_uniformBuffer);
         }
     }
 } // namespace Engine

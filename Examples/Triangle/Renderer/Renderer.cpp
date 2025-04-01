@@ -2,7 +2,7 @@
 #include "Renderer.hpp"
 
 #include <Examples-Base/ApplicationBase.hpp>
-#include <RHI-Vulkan/Loader.hpp>
+// #include <RHI-Vulkan/Loader.hpp>
 #include <RHI-WebGPU/Loader.hpp>
 
 #include "Scene.hpp"
@@ -124,7 +124,8 @@ namespace Engine
         m_pipelineLibrary.Shutdown();
 
         m_device->DestroySwapchain(m_swapchain);
-        RHI::DestroyVulkanDevice(m_device);
+        // RHI::DestroyVulkanDevice(m_device);
+        RHI::DestroyWebGPUDevice(m_device);
     }
 
     void Renderer::RenderScene()
