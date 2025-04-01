@@ -19,6 +19,9 @@ namespace Engine
         RHI::Handle<RHI::GraphicsPipeline> GetGraphicsPipeline(const char* name);
         RHI::Handle<RHI::ComputePipeline>  GetComputePipeline(const char* name);
 
+        RHI::Handle<RHI::BindGroupLayout> GetBindGroupLayout(const char* name, uint32_t binding);
+        RHI::Handle<RHI::BindGroupLayout> GetBindGroupLayout(RHI::ShaderModule& shaderModule, uint32_t binding);
+
         void ReloadInvalidatedShaders();
 
     private:

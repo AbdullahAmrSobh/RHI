@@ -395,12 +395,13 @@ namespace Engine
     {
     }
 
-    RHI::Pass* ImGuiRenderer::RenderDrawData(ImDrawData* drawData, RHI::RenderGraph& renderGraph, RHI::RenderGraphImage* outputImage)
+    RHI::Pass* ImGuiRenderer::RenderDrawData(ImDrawData* drawData, RHI::RenderGraph& renderGraph, RHI::ImageSize2D size, RHI::RenderGraphImage* outputImage)
     {
         UpdateBuffers(drawData);
         return renderGraph.AddPass({
             .name          = "ImGui",
             .queue         = RHI::QueueType::Graphics,
+            .size          = size,
             .setupCallback = [outputImage](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
             {
                 renderGraph.UseColorAttachment(
@@ -409,10 +410,10 @@ namespace Engine
                         .view   = outputImage,
                         .loadOp = RHI::LoadOperation::Load,
                     });
-            },
+                              },
             .compileCallback = [](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
             {
-            },
+                              },
             .executeCallback = [this, drawData](RHI::CommandList& commandList)
             {
                 // Render command lists
@@ -467,9 +468,8 @@ namespace Engine
                                 RHI::IndexType::uint16);
                             commandList.BindVertexBuffers(0, {
                                                                  {
-                                                                  .buffer = m_vertexBuffer,
-                                                                  }
-                            });
+                              .buffer = m_vertexBuffer,
+                              }});
                             commandList.DrawIndexed({
                                 .indexCount    = drawCmd->ElemCount,
                                 .instanceCount = 1,
@@ -484,7 +484,7 @@ namespace Engine
                     globalIdxOffset += drawList->IdxBuffer.Size;
                     globalVtxOffset += drawList->VtxBuffer.Size;
                 }
-            },
+                              },
         });
     }
 

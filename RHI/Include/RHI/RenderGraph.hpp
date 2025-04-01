@@ -80,7 +80,7 @@ namespace RHI
         /// @brief Adds a new pass to the render graph.
         /// @param createInfo The creation parameters for the pass.
         /// @return A pointer to the added Pass.
-        TL_NODISCARD Pass*              AddPass(const PassCreateInfo& createInfo);
+        [[maybe_unused]] Pass*          AddPass(const PassCreateInfo& createInfo);
 
         /// @brief Declares an image to be used by a pass.
         /// @param pass The pass that will use the image.

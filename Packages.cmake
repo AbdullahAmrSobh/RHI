@@ -21,19 +21,58 @@ CPMAddPackage(
 		TL_ENABLE_TRACY_MEMORY_TRACKING ${PROJECT_IS_TOP_LEVEL}
 )
 
-CPMAddPackage(
-    NAME           RHI_vma
-	GIT_REPOSITORY git@github.com:GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
-	GIT_TAG        v3.0.1
-)
+if(RHI_BACKEND_VULKAN)
+	CPMAddPackage(
+		NAME           RHI_vma
+		GIT_REPOSITORY git@github.com:GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+		GIT_TAG        v3.0.1
+	)
+endif()
 
-CPMAddPackage(
-    NAME           RHI_dma
-	GIT_REPOSITORY git@github.com:GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator.git
-	GIT_TAG        v2.0.1
-)
+if(RHI_BACKEND_D3D12)
+	CPMAddPackage(
+		NAME           RHI_dma
+		GIT_REPOSITORY git@github.com:GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator.git
+		GIT_TAG        v2.0.1
+	)
+endif()
+
+if(RHI_BACKEND_WEBGPU)
+	if (EMSCRIPTEN)
+		CPMAddPackage(
+			NAME           webgpu_headers
+			GIT_REPOSITORY git@github.com:webgpu-native/webgpu-headers.git
+			GIT_TAG        2e292f8763742311b6e3e8abd680dc0dd0cafc37
+			OPTIONS
+		)
+	else()
+		CPMAddPackage(
+			NAME           dawn
+			GIT_REPOSITORY git@github.com:google/dawn.git
+			GIT_TAG        faf0be2f2bc74d3d52831dc834095cfa6a114c96
+			OPTIONS
+				"DAWN_ENABLE_D3D11 OFF"
+				"DAWN_ENABLE_NULL OFF"
+				"DAWN_BUILD_SAMPLES OFF"
+				"DAWN_USE_GLFW OFF"
+				"DAWN_USE_WAYLAND OFF"
+				"DAWN_USE_WINDOWS_UI OFF"
+				"DAWN_USE_X11 OFF"
+				"TINT_BUILD_TESTS OFF"
+		)
+	endif()
+endif()
 
 if(RHI_BUILD_EXAMPLES)
+	if (NOT EMSCRIPTEN)
+		CPMAddPackage(
+			NAME           glfw
+			GIT_REPOSITORY git@github.com:glfw/glfw.git
+			GIT_TAG        3.4
+			OPTIONS
+		)
+	endif()
+
 	CPMAddPackage(
 		NAME           glm
 		GIT_REPOSITORY git@github.com:g-truc/glm.git
@@ -89,21 +128,4 @@ if(RHI_BUILD_EXAMPLES)
 	# )
 	# set_target_properties(assimp PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
-	CPMAddPackage(
-		NAME           glfw
-		GIT_REPOSITORY git@github.com:glfw/glfw.git
-		GIT_TAG        3.4
-		OPTIONS
-	)
-
-	CPMAddPackage(
-		NAME           dawn
-		GIT_REPOSITORY git@github.com:google/dawn.git
-		GIT_TAG        faf0be2f2bc74d3d52831dc834095cfa6a114c96
-		OPTIONS
-			"DAWN_ENABLE_D3D11 OFF"
-			"DAWN_ENABLE_NULL OFF"
-			"DAWN_BUILD_SAMPLES OFF"
-			"TINT_BUILD_TESTS OFF"
-	)
 endif()

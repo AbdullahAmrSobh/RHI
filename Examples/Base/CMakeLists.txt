@@ -5,7 +5,12 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Window.cpp
 )
 
-include(${CPM_TL_SOURCE}/CMake/add-target.cmake)
+if(NOT TARGET TL)
+    include(${CMAKE_SOURCE_DIR}/CMake/add-target.cmake)
+else()
+    include(${CPM_TL_SOURCE}/CMake/add-target.cmake)
+endif()
+
 tl_add_target(
     NAME Base
     NAMESPACE Examples
@@ -13,6 +18,9 @@ tl_add_target(
     SOURCES ${SOURCE_FILES}
     BUILD_DEPENDENCIES
         glm
-        glfw
         TL
 )
+
+if (NOT EMSCRIPTEN)
+        target_link_libraries(Base glfw)
+endif()

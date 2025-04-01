@@ -23,7 +23,8 @@ namespace Engine
     {
         m_window = window;
 
-        switch (backend)
+        m_backend = backend;
+        switch (m_backend)
         {
 #if RHI_BACKEND_D3D12
         case RHI::BackendType::DirectX12_2:
@@ -52,6 +53,10 @@ namespace Engine
             m_device = RHI::CreateWebGPUDevice();
             break;
 #endif
+        default:
+            TL_UNREACHABLE_MSG("Must select a backend");
+            break;
+            ;
         }
 
         auto [width, height] = window->GetWindowSize();
@@ -155,8 +160,46 @@ namespace Engine
         m_pipelineLibrary.Shutdown();
 
         m_device->DestroySwapchain(m_swapchain);
-        // RHI::DestroyVulkanDevice(m_device);
-        RHI::DestroyWebGPUDevice(m_device);
+
+        switch (m_backend)
+        {
+        case RHI::BackendType::DirectX12_2:
+#if RHI_BACKEND_D3D12
+#endif
+        case RHI::BackendType::Vulkan1_3:
+#if RHI_BACKEND_VULKAN
+            RHI::DestroyVulkanDevice(m_device);
+#endif
+            break;
+        case RHI::BackendType::WebGPU:
+#if RHI_BACKEND_WEBGPU
+            RHI::DestroyWebGPUDevice(m_device);
+#endif
+            break;
+        default:
+            TL_UNREACHABLE_MSG("Must select a backend");
+            break;
+            ;
+        };
+    }
+
+    Scene* Renderer::CreateScene()
+    {
+        auto scene = m_activeScenes.emplace_back(new Scene());
+        auto res   = scene->Init(m_device);
+        return scene;
+    }
+
+    void Renderer::DestroyScene(Scene* scene)
+    {
+        scene->Shutdown();
+
+        auto it = std::find(m_activeScenes.begin(), m_activeScenes.end(), scene);
+        if (it != m_activeScenes.end())
+        {
+            delete *it;
+            m_activeScenes.erase(it);
+        }
     }
 
     void Renderer::RenderScene()
@@ -168,9 +211,27 @@ namespace Engine
         auto [width, height] = m_window->GetWindowSize();
 
         m_renderGraph->BeginFrame({width, height});
+
+        // m_renderGraph->AddPass({
+        //     .name          = "prepare-draw",
+        //     .queue         = RHI::QueueType::Compute,
+        //     .setupCallback = [&](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
+        //     {
+        //     },
+        //     .compileCallback = [&](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
+        //     {
+        //     },
+        //     .executeCallback = [&](RHI::CommandList& commandList)
+        //     {
+        //         commandList.BindComputePipeline(Handle<ComputePipeline> pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups)
+        //             commandList.Dispatch({});
+        //     },
+        // });
+
         m_renderGraph->AddPass({
             .name          = "main-buffer",
             .queue         = RHI::QueueType::Graphics,
+            .size          = {width, height},
             .setupCallback = [&](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
             {
                 m_renderGraph->UseColorAttachment(pass, {.view = m_gBuffer.colorAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
@@ -178,11 +239,12 @@ namespace Engine
                 m_renderGraph->UseColorAttachment(pass, {.view = m_gBuffer.normalsAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
                 m_renderGraph->UseColorAttachment(pass, {.view = m_gBuffer.materialAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
                 // Depth attachment
-                m_renderGraph->UseDepthStencilAttachment(pass, { .view = m_gBuffer.depthAttachment, .clearValue = {1.0f, 0}});
-            },
+                m_renderGraph->UseDepthStencilAttachment(pass, {
+                                                                   .view = m_gBuffer.depthAttachment, .clearValue = {1.0f, 0}});
+                              },
             .compileCallback = [&](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
             {
-            },
+                              },
             .executeCallback = [&](RHI::CommandList& commandList)
             {
                 commandList.SetViewport({
@@ -200,10 +262,15 @@ namespace Engine
                     .height  = height,
                 });
 
-                FillGBuffer(nullptr, commandList);
-            },
-        })->Resize({width, height});
-        m_imguiRenderer.RenderDrawData(ImGui::GetDrawData(), *m_renderGraph, m_gBuffer.colorAttachment)->Resize({width, height});
+                for (auto scene : m_activeScenes)
+                {
+                    FillGBuffer(scene, commandList);
+                }
+                              },
+        });
+
+        // ImGui
+        m_imguiRenderer.RenderDrawData(ImGui::GetDrawData(), *m_renderGraph, {width, height}, m_gBuffer.colorAttachment);
 
         m_renderGraph->EndFrame();
         m_device->CollectResources();
@@ -227,6 +294,7 @@ namespace Engine
                 m_unifiedGeometryBufferPool.GetAttributeBindingInfo(MeshAttributeType::Position),
                 m_unifiedGeometryBufferPool.GetAttributeBindingInfo(MeshAttributeType::Normal),
                 m_unifiedGeometryBufferPool.GetAttributeBindingInfo(MeshAttributeType::TexCoord),
+                scene->GetTransformsInstanceBuffer(),
             });
         // commandList.DrawIndexed({
         //     .indexCount    = m_testTriangleMesh->GetIndexCount(),

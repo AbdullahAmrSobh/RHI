@@ -25,6 +25,7 @@ namespace RHI
     {
         const char*         name;
         QueueType           queue;
+        ImageSize2D         size;
         PassSetupCallback   setupCallback;
         PassCompileCallback compileCallback;
         PassExecuteCallback executeCallback;
@@ -41,9 +42,6 @@ namespace RHI
 
         /// @brief Gets the name of the pass.
         const char*                                    GetName() const;
-
-        /// @brief Resizes the pass for a new image size.
-        void                                           Resize(ImageSize2D size);
 
         /// @brief Gets the queue type which execute this pass.
         QueueType                                      GetQueueType() const { return m_queueType; }

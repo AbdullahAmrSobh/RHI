@@ -38,6 +38,9 @@ namespace Engine
         /// @brief Shuts down the renderer and releases resources.
         void Shutdown();
 
+        Scene* CreateScene();
+        void   DestroyScene(Scene* scene);
+
         /// @brief Renders the scene.
         void RenderScene();
 
@@ -88,7 +91,10 @@ namespace Engine
         ///< Geometry buffer for meshes.
         UnifiedGeometryBufferPool m_unifiedGeometryBufferPool;
 
+        TL::Vector<Scene*> m_activeScenes;
+
     private:
         StaticMeshLOD* m_testTriangleMesh;
+        RHI::BackendType m_backend;
     };
 } // namespace Engine

@@ -10,7 +10,7 @@ namespace RHI
         , m_onSetupCallback(createInfo.setupCallback)
         , m_onCompileCallback(createInfo.compileCallback)
         , m_onExecuteCallback(createInfo.executeCallback)
-        , m_size({0, 0}) // Default size is empty.
+        , m_size(createInfo.size)
         , m_colorAttachments(*allocator)
         , m_depthStencilAttachment()
         , m_resourceTransitions(*allocator)
@@ -21,11 +21,6 @@ namespace RHI
     {
         // return m_name.c_str();
         return m_name;
-    }
-
-    void Pass::Resize(ImageSize2D size)
-    {
-        m_size = size;
     }
 
     ImageSize2D Pass::GetSize() const

@@ -8,6 +8,7 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/BufferPool.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Mesh.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/OffsetAllocator/OffsetAllocator.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Scene.cpp
 )
 
 set(SHADER_FILES
@@ -31,11 +32,20 @@ tl_add_target(
     SOURCES ${SOURCE_FILES}
     BUILD_DEPENDENCIES
         Examples::Base
-    RUNTIME_LIBRARIES
-        $<$<BOOL:${RHI_BACKEND_VULKAN}>:RHI::Vulkan>
-        $<$<BOOL:${RHI_BACKEND_WEBGPU}>:RHI::WebGPU>
-        $<$<BOOL:${RHI_BACKEND_WEBGPU}>:RHI::D3D12>
 )
+
+if (RHI_BACKEND_VULKAN)
+    target_link_libraries(Triangle RHI::Vulkan)
+endif()
+
+if (RHI_BACKEND_WEBGPU)
+    target_link_libraries(Triangle RHI::WebGPU)
+endif()
+
+if (RHI_BACKEND_D3D12)
+    target_link_libraries(Triangle RHI::D3D12)
+endif()
+
 
 target_link_libraries(Triangle fastgltf)
 

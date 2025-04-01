@@ -8,6 +8,8 @@
 
 namespace RHI
 {
+    constexpr auto WholeSize = UINT32_MAX;
+
     RHI_DECLARE_OPAQUE_RESOURCE(Buffer);
     RHI_DECLARE_OPAQUE_RESOURCE(Image);
     RHI_DECLARE_OPAQUE_RESOURCE(Sampler);
@@ -281,7 +283,7 @@ namespace RHI
         return {
             std::max(1u, size.width >> mipLevel),
             std::max(1u, size.height >> mipLevel),
-            std::max(1u, size.depth >> mipLevel)
+            std::max(1u, size.depth >> mipLevel),
         };
     }
 } // namespace RHI
