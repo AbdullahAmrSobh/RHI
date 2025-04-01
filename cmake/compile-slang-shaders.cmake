@@ -38,15 +38,17 @@ function(compile_slang_shaders)
         add_custom_command(
             OUTPUT ${OUTPUT_PATH}
             COMMAND ${SLANGC_EXECUTABLE}
-                    # -g3 # disabled because webgpu fails run with this for some reason!
+                    # -g3 # fixme: WebGPU fails to compile shader module with this flag!
                     ${SLANG_SHADER_INCLUDE_FLAGS}
                     -o ${OUTPUT_PATH}
                     -matrix-layout-row-major
                     -entry ${ENTRY_POINT}
                     -stage ${STAGE_SUFFIX}
                     -target spirv
-                    -emit-spirv-directly
+                    # -emit-spirv-directly
+                    -profile sm_5_1
                     -fvk-use-entrypoint-name
+                    -capability spirv_1_3
                     ${SHADER_PATH}
             DEPENDS ${SLANGC_EXECUTABLE} ${SHADER_PATH} ${SLANG_SHADER_DEPENDENCIES}
             COMMENT "Compiling ${STAGE_SUFFIX} shader: ${SHADER_PATH}..."

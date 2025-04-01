@@ -6,41 +6,36 @@
 
 namespace RHI::Vulkan
 {
-    StagingBufferAllocator::StagingBufferAllocator()  = default;
-    StagingBufferAllocator::~StagingBufferAllocator() = default;
+    constexpr static size_t MinStagingBufferAllocationSize = 64 * 1024 * 1024; // 64 mb
 
-    ResultCode StagingBufferAllocator::Init(IDevice* device)
+    StagingBuffer::StagingBuffer()  = default;
+    StagingBuffer::~StagingBuffer() = default;
+
+    ResultCode StagingBuffer::Init(IDevice* device)
     {
         m_device = device;
         return ResultCode::Success;
     }
 
-    void StagingBufferAllocator::Shutdown()
+    void StagingBuffer::Shutdown()
     {
         for (auto& page : m_pages)
         {
-            m_device->UnmapBuffer(page.buffer);
+            // m_device->UnmapBuffer(page.buffer);
             m_device->DestroyBuffer(page.buffer);
         }
     }
 
-    StagingBuffer StagingBufferAllocator::Allocate(size_t size)
+    StagingBlock StagingBuffer::Allocate(size_t size)
     {
-        ZoneScoped;
-
         for (auto& page : m_pages)
         {
             if (page.GetRemainingSize() >= size)
             {
-                StagingBuffer allocation{
-                    .ptr    = page.ptr,
-                    .buffer = page.buffer,
-                    .offset = page.offset,
-                };
-
+                auto         offset       = page.offset;
+                StagingBlock stagingBlock = {page.buffer, offset};
                 page.offset += size;
-
-                return allocation;
+                return stagingBlock;
             }
         }
 
@@ -53,20 +48,33 @@ namespace RHI::Vulkan
             .byteSize   = size,
         };
 
-        auto buffer = m_device->CreateBuffer(stagingBufferCI).GetValue();
-        m_pages.push_back({.ptr    = m_device->MapBuffer(buffer),
-                           .buffer = buffer,
-                           .offset = size,
-                           .size   = stagingBufferCI.byteSize});
+        auto bufferHandle = m_device->CreateBuffer(stagingBufferCI).GetValue();
+        auto buffer       = m_device->m_bufferOwner.Get(bufferHandle);
 
-        return StagingBuffer{
-            .ptr    = m_pages.back().ptr,
+        m_pages.push_back(
+            Page{
+                .ptr    = buffer->Map(m_device),
+                .buffer = bufferHandle,
+                .offset = size,
+                .size   = stagingBufferCI.byteSize,
+            });
+
+        return StagingBlock{
             .buffer = m_pages.back().buffer,
             .offset = 0,
         };
     }
 
-    void StagingBufferAllocator::ReleaseAll()
+    StagingBlock StagingBuffer::Allocate(TL::Block block)
+    {
+        auto stagingBlock = Allocate(block.size);
+        auto buffer       = m_device->m_bufferOwner.Get(stagingBlock.buffer);
+        auto ptr          = (char*)buffer->Map(m_device) + stagingBlock.offset;
+        memcpy(ptr, block.ptr, block.size);
+        return stagingBlock;
+    }
+
+    void StagingBuffer::ReleaseAll()
     {
         for (auto& page : m_pages)
         {

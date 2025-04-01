@@ -81,6 +81,9 @@ namespace Examples
         /// @param eventHandler The new event handler function
         void SetEventCallback(const EventHandler& eventHandler);
 
+        /// @brief Sets the window's title
+        void SetTitle(const char* name);
+
         /// @brief Updates the window state
         void OnUpdate();
 

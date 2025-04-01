@@ -1,8 +1,8 @@
 #pragma once
 
+#include <RHI/Device.hpp>
 #include <RHI/Resources.hpp>
 #include <RHI/Result.hpp>
-#include <RHI/Device.hpp>
 
 #include <vk_mem_alloc.h>
 
@@ -55,6 +55,9 @@ namespace RHI::Vulkan
         void       Shutdown(IDevice* device);
 
         VkMemoryRequirements GetMemoryRequirements(IDevice* device) const;
+
+        // Selects specifc aspect from the available image aspects
+        VkImageAspectFlags SelectImageAspect(ImageAspect aspect);
     };
 
     struct ISampler : Sampler

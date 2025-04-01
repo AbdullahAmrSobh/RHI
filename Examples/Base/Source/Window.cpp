@@ -183,6 +183,11 @@ namespace Examples
         m_handler = eventHandler;
     }
 
+    void Window::SetTitle(const char* name)
+    {
+        glfwSetWindowTitle(m_window, name);
+    }
+
     void Window::OnUpdate()
     {
         glfwPollEvents();

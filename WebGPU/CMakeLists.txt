@@ -36,7 +36,4 @@ tl_add_target(
         dawn_headers
 )
 
-target_include_directories(WebGPU PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/source)
-
 target_compile_options(WebGPU PRIVATE ${RHI_COMPILE_FLAGS})
-# target_link_libraries(WebGPU PRIVATE ${dawn_headers})

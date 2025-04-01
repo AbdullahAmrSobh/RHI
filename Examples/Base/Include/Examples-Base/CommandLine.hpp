@@ -5,18 +5,25 @@
 
 #include <filesystem>
 
-
 namespace Examples::CommandLine
 {
     struct LaunchSettings
     {
         std::filesystem::path sceneFileLocation;
+        enum class Backend
+        {
+            Vulkan,
+            WebGPU,
+            D3D12,
+        };
+        Backend backend;
     };
 
     enum OptionType
     {
         Help,
         SceneFileLocation,
+        Backend,
         Count,
     };
 
@@ -35,6 +42,7 @@ namespace Examples::CommandLine
     {
         { "help",  "Print this help message and exit.", Help,              0, {}, false },
         { "scene", "Scene file location.",              SceneFileLocation, 1, {}, true  },
+        { "backend", "RHI backend to run",              Backend,           1, { "vulkan", "webgpu", "d3d12" }, false },
     };
 
     // clang-format on
@@ -142,7 +150,18 @@ namespace Examples::CommandLine
             case SceneFileLocation:
                 settings.sceneFileLocation = *it;
                 break;
+            case Backend:
+                if (StrEql(*it, "vulkan"))
+                    settings.backend = LaunchSettings::Backend::Vulkan;
+                else if (StrEql(*it, "webgpu"))
+                    settings.backend = LaunchSettings::Backend::WebGPU;
+                else if (StrEql(*it, "d3d12"))
+                    settings.backend = LaunchSettings::Backend::D3D12;
+                else
+                    settings.backend = LaunchSettings::Backend::Vulkan;
+                break;
             case Count:
+
                 break;
             }
         }

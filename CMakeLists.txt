@@ -60,18 +60,22 @@ endif()
 add_subdirectory(RHI)
 
 if(RHI_BACKEND_D3D12)
+    add_compile_definitions(RHI_BACKEND_D3D12)
     add_subdirectory(D3D12)
 endif()
 
 if(RHI_BACKEND_VULKAN)
+    add_compile_definitions(RHI_BACKEND_VULKAN)
     add_subdirectory(Vulkan)
 endif()
 
 if(RHI_BACKEND_WEBGPU)
+    add_compile_definitions(RHI_BACKEND_WEBGPU)
     add_subdirectory(WebGPU)
 endif()
 
 if(RHI_BUILD_EXAMPLES)
+    add_compile_definitions(RHI_BUILD_EXAMPLES)
     add_subdirectory(Examples)
 endif()
 

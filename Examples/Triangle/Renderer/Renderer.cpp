@@ -2,26 +2,57 @@
 #include "Renderer.hpp"
 
 #include <Examples-Base/ApplicationBase.hpp>
-// #include <RHI-Vulkan/Loader.hpp>
-#include <RHI-WebGPU/Loader.hpp>
 
 #include "Scene.hpp"
 
+#if RHI_BACKEND_D3D12
+    #include <RHI-D3D12/Loader.hpp>
+#endif
+
+#if RHI_BACKEND_VULKAN
+    #include <RHI-Vulkan/Loader.hpp>
+#endif
+
+#if RHI_BACKEND_WEBGPU
+    #include <RHI-WebGPU/Loader.hpp>
+#endif
 
 namespace Engine
 {
-    ResultCode Renderer::Init(Examples::Window* window)
+    ResultCode Renderer::Init(Examples::Window* window, RHI::BackendType backend)
     {
         m_window = window;
 
-        RHI::ApplicationInfo applicationInfo{
-            .applicationName    = "Example",
-            .applicationVersion = {0, 1, 0},
-            .engineName         = "neonlights",
-            .engineVersion      = {0, 1, 0},
-        };
-        // m_device = RHI::CreateVulkanDevice(applicationInfo);
-        m_device = RHI::CreateWebGPUDevice();
+        switch (backend)
+        {
+#if RHI_BACKEND_D3D12
+        case RHI::BackendType::DirectX12_2:
+            {
+            }
+            break;
+
+#endif
+
+#if RHI_BACKEND_VULKAN
+        case RHI::BackendType::Vulkan1_3:
+            {
+                RHI::ApplicationInfo applicationInfo{
+                    .applicationName    = "Example",
+                    .applicationVersion = {0, 1, 0},
+                    .engineName         = "Neons",
+                    .engineVersion      = {0, 1, 0},
+                };
+                m_device = RHI::CreateVulkanDevice(applicationInfo);
+            }
+            break;
+#endif
+
+#if RHI_BACKEND_WEBGPU
+        case RHI::BackendType::WebGPU:
+            m_device = RHI::CreateWebGPUDevice();
+            break;
+#endif
+        }
 
         auto [width, height] = window->GetWindowSize();
         RHI::SwapchainCreateInfo swapchainInfo{
@@ -147,9 +178,7 @@ namespace Engine
                 m_renderGraph->UseColorAttachment(pass, {.view = m_gBuffer.normalsAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
                 m_renderGraph->UseColorAttachment(pass, {.view = m_gBuffer.materialAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
                 // Depth attachment
-                m_renderGraph->UseDepthStencilAttachment(pass, {
-                                                                   .view = m_gBuffer.depthAttachment, .clearValue = {1.0f, 0}
-                });
+                m_renderGraph->UseDepthStencilAttachment(pass, { .view = m_gBuffer.depthAttachment, .clearValue = {1.0f, 0}});
             },
             .compileCallback = [&](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
             {

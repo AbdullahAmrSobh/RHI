@@ -33,7 +33,7 @@ namespace Engine
     public:
         /// @brief Initializes the renderer.
         /// @return ResultCode indicating success or failure.
-        ResultCode Init(Examples::Window* window);
+        ResultCode Init(Examples::Window* window, RHI::BackendType backend);
 
         /// @brief Shuts down the renderer and releases resources.
         void Shutdown();

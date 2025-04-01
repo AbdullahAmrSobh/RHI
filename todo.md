@@ -62,4 +62,10 @@ Idea:
     - Don't use singletons (plan to run multiple renderers side-by-side)
 
 
-# @note: for some reason I need to copy dawn dlls next to every executable (the build script should handle this!)
+
+- Fix webgpu dawn dll need to copy # @note: for some reason I need to copy dawn dlls next to every executable (the build script should handle this!)
+- Hello Triangle with D3D12
+- Fix all validation issues in all backends ..
+- Proper staging and profiling
+- Draw Sponza scene with PBR pipeline (move out of this repo)
+- Build for emscripten

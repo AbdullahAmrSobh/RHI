@@ -32,8 +32,9 @@ tl_add_target(
     BUILD_DEPENDENCIES
         Examples::Base
     RUNTIME_LIBRARIES
-        # RHI::Vulkan
-        RHI::WebGPU
+        $<$<BOOL:${RHI_BACKEND_VULKAN}>:RHI::Vulkan>
+        $<$<BOOL:${RHI_BACKEND_WEBGPU}>:RHI::WebGPU>
+        $<$<BOOL:${RHI_BACKEND_WEBGPU}>:RHI::D3D12>
 )
 
 target_link_libraries(Triangle fastgltf)

@@ -369,6 +369,23 @@ namespace RHI::Vulkan
         return requirements;
     }
 
+    VkImageAspectFlags IImage::SelectImageAspect(ImageAspect aspect)
+    {
+        auto formatInfo = GetFormatInfo(format);
+        if (aspect == ImageAspect::All)
+        {
+            VkImageAspectFlags flags = 0;
+            if (formatInfo.hasDepth)
+                flags |= VK_IMAGE_ASPECT_DEPTH_BIT;
+            if (formatInfo.hasStencil)
+                flags |= VK_IMAGE_ASPECT_STENCIL_BIT;
+            if (!formatInfo.hasDepth && !formatInfo.hasStencil)
+                flags = VK_IMAGE_ASPECT_COLOR_BIT;
+            return flags;
+        }
+        return ConvertImageAspect(aspect);
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     /// Sampler
     ///////////////////////////////////////////////////////////////////////////

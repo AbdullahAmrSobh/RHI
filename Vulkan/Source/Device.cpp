@@ -315,7 +315,7 @@ namespace RHI::Vulkan
         m_destroyQueue       = TL::CreatePtr<DeleteQueue>();
         m_bindGroupAllocator = TL::CreatePtr<BindGroupAllocator>();
         m_commandsAllocator  = TL::CreatePtr<CommandPool>();
-        m_stagingAllocator   = TL::CreatePtr<StagingBufferAllocator>();
+        m_stagingBuffer      = TL::CreatePtr<StagingBuffer>();
     }
 
     IDevice::~IDevice() = default;
@@ -619,7 +619,7 @@ namespace RHI::Vulkan
             if (IsError(resultCode)) return resultCode;
         }
 
-        resultCode = m_stagingAllocator->Init(this);
+        resultCode = m_stagingBuffer->Init(this);
         if (IsError(resultCode)) return resultCode;
 
         resultCode = m_commandsAllocator->Init(this);
@@ -640,7 +640,7 @@ namespace RHI::Vulkan
 
         vkDeviceWaitIdle(m_device);
 
-        m_stagingAllocator->Shutdown();
+        m_stagingBuffer->Shutdown();
         m_commandsAllocator->Shutdown();
         m_bindGroupAllocator->Shutdown();
         m_destroyQueue->Shutdown();
@@ -700,44 +700,70 @@ namespace RHI::Vulkan
         bindGroup->Write(this, updateInfo);
     }
 
-    DeviceMemoryPtr IDevice::MapBuffer(Handle<Buffer> handle)
+    void IDevice::BeginResourceUpdate(RenderGraph* renderGraph)
     {
-        ZoneScoped;
-        auto resource = m_bufferOwner.Get(handle);
-        return resource->Map(this);
     }
 
-    void IDevice::UnmapBuffer(Handle<Buffer> handle)
+    void IDevice::EndResourceUpdate()
     {
-        ZoneScoped;
-        auto resource = m_bufferOwner.Get(handle);
-        resource->Unmap(this);
+        for (auto bufferHandle : m_buffersToUnmap)
+        {
+            auto buffer = m_bufferOwner.Get(bufferHandle);
+            buffer->Unmap(this);
+        }
     }
 
-    StagingBuffer IDevice::StagingAllocate(size_t size)
+    void IDevice::BufferWrite(Handle<Buffer> bufferHandle, size_t offset, TL::Block block)
     {
         ZoneScoped;
-        return m_stagingAllocator->Allocate(size);
+
+        auto buffer = m_bufferOwner.Get(bufferHandle);
+        if (auto ptr = buffer->Map(this))
+        {
+            memcpy((char*)ptr + offset, block.ptr, block.size);
+            buffer->Unmap(this);
+        }
+        else
+        {
+            // auto [srcBuffer, srcOffset] = m_stagingBuffer->Allocate(block);
+            // RHI::BufferCopyInfo copyInfo{
+            //     .srcBuffer = srcBuffer,
+            //     .srcOffset = srcOffset,
+            //     .dstBuffer = bufferHandle,
+            //     .dstOffset = offset,
+            //     .size      = block.size,
+            // };
+            // // auto copyCommand = GetActiveTransferCommandList();
+            // // copyCommand->CopyBuffer(copyInfo);
+            // // TL_UNREACHABLE_MSG("This method is missing some barriers :D ");
+
+            // QueueSubmitInfo submitInfo(*this);
+            // // submitInfo.AddCommandList(copyCommand->GetHandle());
+            // submitInfo.signalStage = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+            // auto res               = m_queue[(int)QueueType::Transfer].Submit(submitInfo);
+            // vkDeviceWaitIdle(m_device);
+        }
     }
 
-    uint64_t IDevice::UploadImage(const ImageUploadInfo& uploadInfo)
+    void IDevice::ImageWrite(Handle<Image> imageHandle, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block)
     {
         ZoneScoped;
-        auto image = m_imageOwner.Get(uploadInfo.image);
 
+        auto [srcBuffer, srcOffset]   = m_stagingBuffer->Allocate(block);
+        auto                    image = m_imageOwner.Get(imageHandle);
         VkImageSubresourceRange subresourceRange{
-            .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
-            .baseMipLevel   = uploadInfo.baseMipLevel,
-            .levelCount     = uploadInfo.levelCount,
-            .baseArrayLayer = uploadInfo.baseArrayLayer,
-            .layerCount     = uploadInfo.layerCount,
+            .aspectMask     = image->SelectImageAspect(ImageAspect::All),
+            .baseMipLevel   = mipLevel,
+            .levelCount     = 1,
+            .baseArrayLayer = arrayLayer,
+            .layerCount     = 1,
         };
 
         auto _commandList = CreateCommandList({.queueType = QueueType::Transfer});
-        auto commandList  = (ICommandList*)_commandList;
+        auto copyCommand  = (ICommandList*)_commandList;
 
-        commandList->Begin();
-        commandList->AddPipelineBarriers({
+        copyCommand->Begin();
+        copyCommand->AddPipelineBarriers({
             .imageBarriers = {{
                 .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
                 .pNext               = nullptr,
@@ -753,25 +779,23 @@ namespace RHI::Vulkan
                 .subresourceRange    = subresourceRange,
             }},
         });
-
-        commandList->CopyBufferToImage({
-            .image = uploadInfo.image,
-            .subresource =
-                {
-                              // TODO:
-                    // .imageAspects = ConvertImageAspect(GetFormatAspects(image.format)),
-                    .imageAspects = ImageAspect::Color,
-                              .mipLevel     = uploadInfo.baseMipLevel,
-                              .arrayBase    = uploadInfo.baseArrayLayer,
-                              .arrayCount   = uploadInfo.layerCount,
-                              },
-            .imageSize    = image->size,
-            .imageOffset  = {0, 0, 0 },
-            .buffer       = uploadInfo.srcBuffer,
-            .bufferOffset = uploadInfo.srcBufferOffset,
-            .bufferSize   = uploadInfo.sizeBytes,
+        copyCommand->CopyBufferToImage({
+            .image       = imageHandle,
+            .subresource = {
+                            .imageAspects = ImageAspect::All,
+                            .mipLevel     = mipLevel,
+                            .arrayBase    = arrayLayer,
+                            .arrayCount   = 1,
+                            },
+            .imageSize     = size,
+            .imageOffset   = offset,
+            .buffer        = srcBuffer,
+            .bufferOffset  = srcOffset,
+            .bufferSize    = {},
+            .bytesPerRow   = {},
+            .bytesPerImage = {},
         });
-        commandList->AddPipelineBarriers({
+        copyCommand->AddPipelineBarriers({
             .imageBarriers = {{
                 .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
                 .pNext               = nullptr,
@@ -787,14 +811,13 @@ namespace RHI::Vulkan
                 .subresourceRange    = subresourceRange,
             }},
         });
-        commandList->End();
+        copyCommand->End();
 
         QueueSubmitInfo submitInfo(*this);
-        submitInfo.AddCommandList(commandList->GetHandle());
+        submitInfo.AddCommandList(copyCommand->GetHandle());
         submitInfo.signalStage = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
         auto res               = m_queue[(int)QueueType::Transfer].Submit(submitInfo);
         vkDeviceWaitIdle(m_device);
-        return res;
     }
 
     void IDevice::CollectResources()
@@ -802,7 +825,7 @@ namespace RHI::Vulkan
         ZoneScoped;
         m_tempAllocator.Collect();
         m_destroyQueue->DestroyObjects();
-        m_stagingAllocator->ReleaseAll();
+        m_stagingBuffer->ReleaseAll();
         m_frameIndex++;
     }
 
@@ -817,5 +840,12 @@ namespace RHI::Vulkan
     IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(ComputePipeline, m_computePipelineOwner);
     IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(Sampler, m_samplerOwner);
     IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS_WITH_RESULTS(Image, m_imageOwner);
+
+    Handle<Image> IDevice::CreateImageView(const ImageViewCreateInfo& createInfo)
+    {
+        TL_UNREACHABLE_MSG("TODO! Implement image views for Vulkan Backend!");
+        return {};
+    }
+
     IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS_WITH_RESULTS(Buffer, m_bufferOwner);
 } // namespace RHI::Vulkan

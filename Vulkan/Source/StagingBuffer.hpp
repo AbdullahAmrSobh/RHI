@@ -5,16 +5,23 @@
 namespace RHI::Vulkan
 {
     // Simple bump allocator
-    class StagingBufferAllocator
+    struct StagingBlock
+    {
+        Handle<Buffer> buffer;
+        size_t         offset;
+    };
+
+    class StagingBuffer
     {
     public:
-        StagingBufferAllocator();
-        ~StagingBufferAllocator();
+        StagingBuffer();
+        ~StagingBuffer();
 
         ResultCode Init(IDevice* device);
         void       Shutdown();
 
-        StagingBuffer Allocate(size_t size);
+        StagingBlock Allocate(size_t size);
+        StagingBlock Allocate(TL::Block block);
 
         void ReleaseAll();
 
@@ -24,8 +31,7 @@ namespace RHI::Vulkan
             DeviceMemoryPtr ptr;
             Handle<Buffer>  buffer;
             size_t          offset;
-            size_t          size;
-
+            const size_t    size;
             size_t GetRemainingSize() const { return size - offset; }
         };
 

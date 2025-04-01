@@ -16,7 +16,6 @@
 
 #include "Camera.hpp"
 #include "Examples-Base/ApplicationBase.hpp"
-
 #include "Renderer/Renderer.hpp"
 
 class Playground final : public ApplicationBase
@@ -25,7 +24,7 @@ public:
     TL::Ptr<Engine::Renderer> m_renderer;
 
     Playground()
-        : ApplicationBase("Playground - RHI::WebGPU", 1600, 900)
+        : ApplicationBase("", 1600, 900) // Empty title, will be set in OnInit
         , m_renderer(TL::CreatePtr<Engine::Renderer>())
     {
     }
@@ -34,7 +33,23 @@ public:
     {
         ZoneScoped;
 
-        auto result = m_renderer->Init(m_window.get());
+        RHI::BackendType backend = RHI::BackendType::Vulkan1_3;
+        switch (ApplicationBase::GetLaunchSettings().backend)
+        {
+        case Examples::CommandLine::LaunchSettings::Backend::Vulkan:
+            backend = RHI::BackendType::Vulkan1_3;
+            m_window->SetTitle("Playground - RHI::Vulkan");
+            break;
+        case Examples::CommandLine::LaunchSettings::Backend::WebGPU:
+            backend = RHI::BackendType::WebGPU;
+            m_window->SetTitle("Playground - RHI::WebGPU");
+            break;
+        case Examples::CommandLine::LaunchSettings::Backend::D3D12:
+            backend = RHI::BackendType::DirectX12_2;
+            m_window->SetTitle("Playground - RHI::D3D12");
+            break;
+        }
+        auto result = m_renderer->Init(m_window.get(), backend);
     }
 
     void OnShutdown() override
