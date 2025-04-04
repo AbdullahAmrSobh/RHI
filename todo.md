@@ -69,3 +69,17 @@ Idea:
 - Proper staging and profiling
 - Draw Sponza scene with PBR pipeline (move out of this repo)
 - Build for emscripten
+
+- Get D3D12 up and running
+- Refactor Swapchain interface ...
+- Cleanup Command List interfaces (may expose barriers)
+- Refactor Render Graph interfaces
+- Survay and fix all validation errors for all existing backends
+- Cross platform builds
+  - Get WASM build up and running
+  - Linux build
+  - Android build
+  - Windows build
+- Add unit test & setup CI workflow
+
+

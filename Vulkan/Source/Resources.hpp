@@ -9,6 +9,8 @@
 namespace RHI::Vulkan
 {
     class IDevice;
+    struct IBindGroup;
+    struct IBindGroupLayout;
 
     VkBufferUsageFlags      ConvertBufferUsageFlags(TL::Flags<BufferUsage> bufferUsageFlags);
     VkImageUsageFlags       ConvertImageUsageFlags(TL::Flags<ImageUsage> imageUsageFlags);
@@ -26,6 +28,89 @@ namespace RHI::Vulkan
     VkFilter                ConvertFilter(SamplerFilter samplerFilter);
     VkSamplerAddressMode    ConvertSamplerAddressMode(SamplerAddressMode addressMode);
     VkCompareOp             ConvertCompareOp(CompareOperator compareOperator);
+    VkShaderStageFlags      ConvertShaderStage(TL::Flags<ShaderStage> shaderStageFlags);
+    VkDescriptorType        ConvertDescriptorType(BindingType bindingType);
+
+    static constexpr uint32_t MaxShaderBindingsCount = 32;
+
+    class BindGroupAllocator
+    {
+    public:
+        BindGroupAllocator();
+        ~BindGroupAllocator();
+
+        ResultCode Init(IDevice* device);
+        void       Shutdown();
+
+        ResultCode InitBindGroup(IBindGroup* bindGroup, IBindGroupLayout* bindGroupLayout);
+        void       ShutdownBindGroup(IBindGroup* bindGroup);
+
+    public:
+        IDevice*         m_device;
+        VkDescriptorPool m_descriptorPool;
+    };
+
+    struct IBindGroupLayout : BindGroupLayout
+    {
+        VkDescriptorSetLayout handle;
+        ShaderBinding         shaderBindings[MaxShaderBindingsCount];
+        uint32_t              bindlessCount;
+
+        ResultCode Init(IDevice* device, const BindGroupLayoutCreateInfo& createInfo);
+        void       Shutdown(IDevice* device);
+    };
+
+    struct IBindGroup : BindGroup
+    {
+        VkDescriptorSet descriptorSet;
+        ShaderBinding   shaderBindings[MaxShaderBindingsCount];
+        uint32_t        bindlessCount;
+
+        ResultCode Init(IDevice* device, const BindGroupCreateInfo& createInfo);
+        void       Shutdown(IDevice* device);
+
+        void Write(IDevice* device, const BindGroupUpdateInfo& updateInfo);
+    };
+
+    class IShaderModule final : public ShaderModule
+    {
+    public:
+        IShaderModule();
+        ~IShaderModule();
+
+        ResultCode Init(IDevice* device, const ShaderModuleCreateInfo& createInfo);
+        void       Shutdown();
+
+    public:
+        IDevice*       m_device;
+        VkShaderModule m_shaderModule;
+    };
+
+    struct IPipelineLayout : PipelineLayout
+    {
+        VkPipelineLayout handle;
+
+        ResultCode Init(IDevice* device, const PipelineLayoutCreateInfo& createInfo);
+        void       Shutdown(IDevice* device);
+    };
+
+    struct IGraphicsPipeline : GraphicsPipeline
+    {
+        VkPipeline       handle;
+        VkPipelineLayout layout;
+
+        ResultCode Init(IDevice* device, const GraphicsPipelineCreateInfo& createInfo);
+        void       Shutdown(IDevice* device);
+    };
+
+    struct IComputePipeline : ComputePipeline
+    {
+        VkPipeline       handle;
+        VkPipelineLayout layout;
+
+        ResultCode Init(IDevice* device, const ComputePipelineCreateInfo& createInfo);
+        void       Shutdown(IDevice* device);
+    };
 
     struct IBuffer : Buffer
     {

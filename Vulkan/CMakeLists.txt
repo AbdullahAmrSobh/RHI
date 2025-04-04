@@ -5,12 +5,10 @@ find_package(Vulkan REQUIRED)
 
 # Add header files
 set(HEADER_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/BindGroup.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Common.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Device.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/DeleteQueue.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Pipeline.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Queue.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraph.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraphPass.hpp
@@ -21,11 +19,9 @@ set(HEADER_FILES
 
 # Add source files
 set(SOURCE_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/BindGroup.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Device.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/DeleteQueue.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Pipeline.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Queue.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraph.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraphPass.cpp

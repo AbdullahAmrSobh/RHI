@@ -7,10 +7,8 @@
 
 #include <RHI-Vulkan/Loader.hpp>
 
-#include "BindGroup.hpp"
 #include "Common.hpp"
 #include "DeleteQueue.hpp"
-#include "Pipeline.hpp"
 #include "Queue.hpp"
 #include "Resources.hpp"
 

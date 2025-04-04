@@ -6,7 +6,6 @@
 
 #include "Common.hpp"
 #include "Device.hpp"
-#include "Pipeline.hpp"
 #include "Resources.hpp"
 #include "Swapchain.hpp"
 

@@ -29,11 +29,10 @@ namespace Engine
 #if RHI_BACKEND_D3D12
         case RHI::BackendType::DirectX12_2:
             {
+                m_device = RHI::CreateD3D12Device();
             }
             break;
-
 #endif
-
 #if RHI_BACKEND_VULKAN
         case RHI::BackendType::Vulkan1_3:
             {
@@ -47,7 +46,6 @@ namespace Engine
             }
             break;
 #endif
-
 #if RHI_BACKEND_WEBGPU
         case RHI::BackendType::WebGPU:
             m_device = RHI::CreateWebGPUDevice();
