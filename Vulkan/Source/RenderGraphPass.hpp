@@ -34,7 +34,7 @@ namespace RHI::Vulkan
         auto resource = (RenderGraphImage*)accessedResource.resource;
 
         return {
-            .aspectMask     = ConvertImageAspect(GetFormatAspects(resource->GetFormat())),
+            .aspectMask     = ConvertImageAspect(GetFormatAspects(resource->GetFormat()), resource->GetFormat()),
             .baseMipLevel   = 0,
             .levelCount     = VK_REMAINING_MIP_LEVELS,
             .baseArrayLayer = 0,

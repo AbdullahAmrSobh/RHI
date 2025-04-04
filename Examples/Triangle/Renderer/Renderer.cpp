@@ -143,6 +143,11 @@ namespace Engine
                 {-0.5f, 0.5f},
             });
 
+        m_bindGroup = m_device->CreateBindGroup({
+            .name   = "compute-bgl",
+            .layout = m_pipelineLibrary.GetBindGroupLayout(ShaderNames::Cull, 0),
+        });
+
         return ResultCode::Success;
     }
 
@@ -212,21 +217,37 @@ namespace Engine
 
         m_renderGraph->BeginFrame({width, height});
 
-        // m_renderGraph->AddPass({
-        //     .name          = "prepare-draw",
-        //     .queue         = RHI::QueueType::Compute,
-        //     .setupCallback = [&](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
-        //     {
-        //     },
-        //     .compileCallback = [&](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
-        //     {
-        //     },
-        //     .executeCallback = [&](RHI::CommandList& commandList)
-        //     {
-        //         commandList.BindComputePipeline(Handle<ComputePipeline> pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups)
-        //             commandList.Dispatch({});
-        //     },
-        // });
+        static auto indirectBuffer = m_renderGraph->CreateBuffer({.name = "Indirect-Test", .usageFlags = RHI::BufferUsage::Indirect | RHI::BufferUsage::Storage, .byteSize = sizeof(RHI::DrawIndexedParameters)});
+
+        m_renderGraph->AddPass({
+            .name          = "Name",
+            .queue         = RHI::QueueType::Compute,
+            .size          = {},
+            .setupCallback = [&](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
+            {
+                m_renderGraph->UseBuffer(pass, indirectBuffer, RHI::BufferUsage::Storage, RHI::PipelineStage::ComputeShader, RHI::Access::Write);
+            },
+            .compileCallback = [&](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
+            {
+                m_device->UpdateBindGroup(
+                    m_bindGroup,
+                    {
+                        .buffers = {
+                                    RHI::BindGroupBuffersUpdateInfo{
+                                .dstBinding = 0,
+                                .buffers    = indirectBuffer->GetBuffer(),
+                                .subregions = {{0, ~0ULL}},
+                            },
+                                    },
+                });
+            },
+            .executeCallback = [&](RHI::CommandList& commandList)
+            {
+                auto pipeline = m_pipelineLibrary.GetComputePipeline(ShaderNames::Cull);
+                commandList.BindComputePipeline(pipeline, {{m_bindGroup}});
+                commandList.Dispatch({4, 1, 1});
+            },
+        });
 
         m_renderGraph->AddPass({
             .name          = "main-buffer",
@@ -241,6 +262,8 @@ namespace Engine
                 // Depth attachment
                 m_renderGraph->UseDepthStencilAttachment(pass, {
                                                                    .view = m_gBuffer.depthAttachment, .clearValue = {1.0f, 0}});
+
+                m_renderGraph->UseBuffer(pass, indirectBuffer, RHI::BufferUsage::Indirect, RHI::PipelineStage::DrawIndirect, RHI::Access::Read);
                               },
             .compileCallback = [&](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
             {
@@ -265,6 +288,7 @@ namespace Engine
                 for (auto scene : m_activeScenes)
                 {
                     FillGBuffer(scene, commandList);
+                    commandList.DrawIndexedIndirect({indirectBuffer->GetBuffer(), 0}, {}, 1, sizeof(RHI::DrawIndexedParameters));
                 }
                               },
         });
@@ -285,8 +309,8 @@ namespace Engine
 
     void Renderer::FillGBuffer(const Scene* scene, RHI::CommandList& commandList)
     {
-        auto pipeline = m_pipelineLibrary.GetGraphicsPipeline(kGBufferFill);
-        commandList.BindGraphicsPipeline(m_pipelineLibrary.GetGraphicsPipeline(kGBufferFill), {});
+        auto pipeline = m_pipelineLibrary.GetGraphicsPipeline(ShaderNames::GBufferFill);
+        commandList.BindGraphicsPipeline(m_pipelineLibrary.GetGraphicsPipeline(ShaderNames::GBufferFill), {});
         commandList.BindIndexBuffer(m_unifiedGeometryBufferPool.GetAttributeBindingInfo(MeshAttributeType::Index), RHI::IndexType::uint32);
         commandList.BindVertexBuffers(
             0,
@@ -296,13 +320,5 @@ namespace Engine
                 m_unifiedGeometryBufferPool.GetAttributeBindingInfo(MeshAttributeType::TexCoord),
                 scene->GetTransformsInstanceBuffer(),
             });
-        // commandList.DrawIndexed({
-        //     .indexCount    = m_testTriangleMesh->GetIndexCount(),
-        //     .instanceCount = 1,
-        //     .firstIndex    = m_testTriangleMesh->GetIndexOffset(),
-        //     .vertexOffset  = (I32)m_testTriangleMesh->GetVertexOffset(),
-        //     .firstInstance = 0,
-        // });
-        commandList.DrawIndexedIndirect(m_unifiedGeometryBufferPool.m_drawParams.GetBindingInfo(), {}, 1, sizeof(RHI::DrawIndexedParameters));
     }
 } // namespace Engine

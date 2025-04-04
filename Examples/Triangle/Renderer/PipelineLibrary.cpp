@@ -37,45 +37,45 @@ namespace Engine
             .pixelShaderModule    = pixelModule,
             .layout               = layout,
             .vertexBufferBindings = {
-                // Position
+                                     // Position
                 {
                     .stride     = sizeof(glm::vec3),
                     .attributes = {{.format = RHI::Format::RGB32_FLOAT}},
                 },
-                // Normal
+                                     // Normal
                 {
                     .stride     = sizeof(glm::vec3),
                     .attributes = {{.format = RHI::Format::RGB32_FLOAT}},
                 },
-                // Texcoord
+                                     // Texcoord
                 {
                     .stride     = sizeof(glm::vec2),
                     .attributes = {{.format = RHI::Format::RG32_FLOAT}},
                 },
-                // Draw Instance Info
+                                     // Draw Instance Info
                 {
                     .stride     = sizeof(glm::mat4),
                     .stepRate   = RHI::PipelineVertexInputRate::PerInstance,
-                    .attributes = {{.format = RHI::Format::RGBA32_UINT}, {.format = RHI::Format::RGBA32_UINT}, {.format = RHI::Format::RGBA32_UINT}, {.format = RHI::Format::RGBA32_UINT}},
+                    .attributes = {{.format = RHI::Format::RGBA32_FLOAT}, {.format = RHI::Format::RGBA32_FLOAT}, {.format = RHI::Format::RGBA32_FLOAT}, {.format = RHI::Format::RGBA32_FLOAT}},
                 },
-            },
+                                     },
             .renderTargetLayout = {
-                .colorAttachmentsFormats = {RHI::Format::RGBA8_UNORM, RHI::Format::RGBA32_FLOAT, RHI::Format::RGBA32_FLOAT, RHI::Format::RG8_UNORM},
-                .depthAttachmentFormat   = RHI::Format::D32,
-            },
+                                     .colorAttachmentsFormats = {RHI::Format::RGBA8_UNORM, RHI::Format::RGBA32_FLOAT, RHI::Format::RGBA32_FLOAT, RHI::Format::RG8_UNORM},
+                                     .depthAttachmentFormat   = RHI::Format::D32,
+                                     },
             .colorBlendState = {
-                .blendStates = {
+                                     .blendStates = {
                     {.blendEnable = false},
                 },
-            },
+                                     },
             .rasterizationState = {
-                .cullMode  = RHI::PipelineRasterizerStateCullMode::BackFace,
-                .frontFace = RHI::PipelineRasterizerStateFrontFace::Clockwise,
-            },
+                                     .cullMode  = RHI::PipelineRasterizerStateCullMode::BackFace,
+                                     .frontFace = RHI::PipelineRasterizerStateFrontFace::Clockwise,
+                                     },
             .depthStencilState = {
-                .depthTestEnable  = true,
-                .depthWriteEnable = true,
-            },
+                                     .depthTestEnable  = true,
+                                     .depthWriteEnable = true,
+                                     },
         };
         return device->CreateGraphicsPipeline(pipelineCI);
     }
@@ -87,7 +87,7 @@ namespace Engine
 
         RHI::ComputePipelineCreateInfo pipelineCI{
             .name         = name,
-            .shaderName   = computeShaderPath.c_str(),
+            .shaderName   = "CSMain",
             .shaderModule = computeModule,
             .layout       = layout,
         };
@@ -98,32 +98,45 @@ namespace Engine
     {
         m_device = device;
 
-        RHI::BindGroupLayoutCreateInfo bindGroupLayoutCI = {
-            .name     = "BGL-Bindless",
-            .bindings = {
-                // Global scene uniform data
-                {.type = RHI::BindingType::UniformBuffer, .stages = RHI::ShaderStage::Vertex | RHI::ShaderStage::Pixel},
-                // Per Draw Uniform data e.g. (Transforms, Material ID, ...etc)
-                {.type = RHI::BindingType::StorageBuffer, .stages = RHI::ShaderStage::Pixel},
-                // Material Properties
-                {.type = RHI::BindingType::StorageBuffer, .stages = RHI::ShaderStage::Pixel},
-                // Global sampler
-                {.type = RHI::BindingType::Sampler, .stages = RHI::ShaderStage::Pixel},
-                // Bindless Textures
-                // TODO: bindless currently broken, change back to RHI::BindlessArraySize when fixed
-                {.type = RHI::BindingType::SampledImage, .arrayCount = 1048576, .stages = RHI::ShaderStage::Pixel},
-            },
-        };
-        m_gBufferBGL             = m_device->CreateBindGroupLayout(bindGroupLayoutCI);
-        // m_graphicsPipelineLayout = m_device->CreatePipelineLayout({.name = "GraphicsPipelineLayout", .layouts = m_gBufferBGL});
-        m_graphicsPipelineLayout = m_device->CreatePipelineLayout({.name = "GraphicsPipelineLayout", .layouts = {}});
+        {
+            RHI::BindGroupLayoutCreateInfo bindGroupLayoutCI = {
+                .name     = "BGL-Bindless",
+                .bindings = {
+                             // Global scene uniform data
+                    {.type = RHI::BindingType::UniformBuffer, .stages = RHI::ShaderStage::Vertex | RHI::ShaderStage::Pixel},
+                             // Per Draw Uniform data e.g. (Transforms, Material ID, ...etc)
+                    {.type = RHI::BindingType::StorageBuffer, .stages = RHI::ShaderStage::Pixel},
+                             // Material Properties
+                    {.type = RHI::BindingType::StorageBuffer, .stages = RHI::ShaderStage::Pixel},
+                             // Global sampler
+                    {.type = RHI::BindingType::Sampler, .stages = RHI::ShaderStage::Pixel},
+                             // Bindless Textures
+                    // TODO: bindless currently broken, change back to RHI::BindlessArraySize when fixed
+                    {.type = RHI::BindingType::SampledImage, .arrayCount = 1048576, .stages = RHI::ShaderStage::Pixel},
+                             },
+            };
+            m_gBufferBGL             = m_device->CreateBindGroupLayout(bindGroupLayoutCI);
+            // m_graphicsPipelineLayout = m_device->CreatePipelineLayout({.name = "GraphicsPipelineLayout", .layouts = m_gBufferBGL});
+            m_graphicsPipelineLayout = m_device->CreatePipelineLayout({.name = "GraphicsPipelineLayout", .layouts = {}});
+        }
 
 #define LOAD_SHADER(map, name, layout) \
     map[name] = CreateGraphicsPipeline(device, m_graphicsPipelineLayout, name);
 
-        LOAD_SHADER(m_graphicsPipelines, kGBufferFill, m_graphicsPipelineLayout);
+        LOAD_SHADER(m_graphicsPipelines, ShaderNames::GBufferFill, m_graphicsPipelineLayout);
 
 #undef LOAD_SHADER
+
+        {
+            RHI::BindGroupLayoutCreateInfo bindGroupLayoutCI{
+                .name     = "Cull-BGL",
+                .bindings = {
+                    {.type = RHI::BindingType::StorageBuffer, .stages = RHI::ShaderStage::Compute}},
+            };
+            m_computeBGL            = m_device->CreateBindGroupLayout(bindGroupLayoutCI);
+            m_computePipelineLayout = m_device->CreatePipelineLayout({.name = "ComputePipelineLayout", .layouts = {m_computeBGL}});
+        }
+        m_computePipelines[ShaderNames::Cull] = CreateComputePipeline(device, m_computePipelineLayout, ShaderNames::Cull);
 
         return ResultCode::Success;
     }

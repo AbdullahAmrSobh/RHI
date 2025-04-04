@@ -160,7 +160,7 @@ namespace RHI
     void RenderGraph::UseBuffer(Pass& pass, RenderGraphBuffer* buffer, BufferUsage usage, TL::Flags<PipelineStage> stage, TL::Flags<Access> access)
     {
         ZoneScoped;
-        pass.AddTransition(m_tempAllocator, *buffer, usage, stage, access, {});
+        pass.AddTransition(m_tempAllocator, *buffer, usage, stage, access, {0, WholeSize});
     }
 
     void RenderGraph::UseColorAttachment(Pass& pass, const ColorRGAttachment& attachment)

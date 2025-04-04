@@ -14,7 +14,7 @@ namespace RHI::Vulkan
     VkImageUsageFlags       ConvertImageUsageFlags(TL::Flags<ImageUsage> imageUsageFlags);
     VkImageType             ConvertImageType(ImageType imageType);
     VkImageViewType         ConvertImageViewType(ImageViewType imageType);
-    VkImageAspectFlags      ConvertImageAspect(TL::Flags<ImageAspect> imageAspect);
+    VkImageAspectFlags      ConvertImageAspect(TL::Flags<ImageAspect> imageAspect, Format format);
     VkComponentSwizzle      ConvertComponentSwizzle(ComponentSwizzle componentSwizzle);
     VkImageSubresourceRange ConvertSubresourceRange(const ImageSubresourceRange& subresource);
     VkComponentMapping      ConvertComponentMapping(ComponentMapping componentMapping);

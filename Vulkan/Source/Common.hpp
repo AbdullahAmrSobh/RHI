@@ -529,6 +529,8 @@ namespace RHI::Vulkan
             if (access & Access::Read) result |= VK_ACCESS_2_TRANSFER_READ_BIT;
             if (access & Access::Write) result |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
             break;
+        case BufferUsage::Indirect:
+            result |= VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
         default: break;
         };
         TL_ASSERT(result != VK_ACCESS_2_NONE);

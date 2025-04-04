@@ -12,10 +12,10 @@
 
 namespace RHI::Vulkan
 {
-    VkImageSubresourceLayers ConvertSubresourceLayer(const ImageSubresourceLayers& subresource)
+    VkImageSubresourceLayers ConvertSubresourceLayer(const ImageSubresourceLayers& subresource, Format format)
     {
         auto vkSubresource           = VkImageSubresourceLayers{};
-        vkSubresource.aspectMask     = ConvertImageAspect(subresource.imageAspects);
+        vkSubresource.aspectMask     = ConvertImageAspect(subresource.imageAspects, format);
         vkSubresource.mipLevel       = subresource.mipLevel;
         vkSubresource.baseArrayLayer = subresource.arrayBase;
         vkSubresource.layerCount     = subresource.arrayCount;
@@ -311,7 +311,7 @@ namespace RHI::Vulkan
                     .clearValue         = {.depthStencil = clearValue},
                 };
             }
-            if (depthStencilImage->subresources.imageAspects & ImageAspect::DepthStencil)
+            if ((depthStencilImage->subresources.imageAspects & ImageAspect::DepthStencil) == ImageAspect::DepthStencil)
             {
                 depthAttachment->imageLayout   = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
                 stencilAttachment->imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -649,9 +649,9 @@ namespace RHI::Vulkan
         auto dstImage = m_device->m_imageOwner.Get(copyInfo.dstImage);
 
         VkImageCopy imageCopy{
-            .srcSubresource = ConvertSubresourceLayer(copyInfo.srcSubresource),
+            .srcSubresource = ConvertSubresourceLayer(copyInfo.srcSubresource, srcImage->format),
             .srcOffset      = ConvertOffset3D(copyInfo.srcOffset),
-            .dstSubresource = ConvertSubresourceLayer(copyInfo.dstSubresource),
+            .dstSubresource = ConvertSubresourceLayer(copyInfo.dstSubresource, dstImage->format),
             .dstOffset      = ConvertOffset3D(copyInfo.dstOffset),
             .extent         = ConvertExtent3D(copyInfo.srcSize),
         };
@@ -676,7 +676,7 @@ namespace RHI::Vulkan
             .bufferOffset      = copyInfo.bufferOffset,
             .bufferRowLength   = copyInfo.bytesPerRow,
             .bufferImageHeight = copyInfo.bytesPerImage,
-            .imageSubresource  = ConvertSubresourceLayer(copyInfo.subresource),
+            .imageSubresource  = ConvertSubresourceLayer(copyInfo.subresource, image->format),
             .imageOffset       = ConvertOffset3D(copyInfo.imageOffset),
             .imageExtent       = ConvertExtent3D(copyInfo.imageSize),
         };
@@ -694,7 +694,7 @@ namespace RHI::Vulkan
             .bufferOffset      = copyInfo.bufferOffset,
             .bufferRowLength   = copyInfo.bytesPerRow,
             .bufferImageHeight = copyInfo.bytesPerImage,
-            .imageSubresource  = ConvertSubresourceLayer(copyInfo.subresource),
+            .imageSubresource  = ConvertSubresourceLayer(copyInfo.subresource, image->format),
             .imageOffset       = ConvertOffset3D(copyInfo.imageOffset),
             .imageExtent       = ConvertExtent3D(copyInfo.imageSize),
         };

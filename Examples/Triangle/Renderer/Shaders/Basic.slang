@@ -8,7 +8,7 @@ struct VertexInput
     float3 position;
     float3 normal;
     float2 uv;
-    // uint32_t4 drawId;
+    float4x4 transform;
 };
 
 struct FragmentShaderInput

@@ -9,8 +9,8 @@ function(compile_slang_shaders)
     )
 
     # Ensure required arguments are provided
-    if(NOT SLANG_SHADER_TARGET OR NOT SLANG_SHADER_OUTPUT_DIR OR NOT SLANG_SHADER_SHADER_GFX_FILES)
-        message(FATAL_ERROR "TARGET, OUTPUT_DIR, and SHADER_GFX_FILES are required arguments.")
+    if(NOT SLANG_SHADER_TARGET OR NOT SLANG_SHADER_OUTPUT_DIR)
+        message(FATAL_ERROR "TARGET and OUTPUT_DIR are required arguments.")
     endif()
 
     # Prepare include directories
@@ -38,8 +38,8 @@ function(compile_slang_shaders)
         add_custom_command(
             OUTPUT ${OUTPUT_PATH}
             COMMAND ${SLANGC_EXECUTABLE}
-                    # -g3 # fixme: WebGPU fails to compile shader module with this flag!
-                    ${SLANG_SHADER_INCLUDE_FLAGS}
+            # -g3 # fixme: WebGPU fails to compile shader module with this flag!
+            ${SLANG_SHADER_INCLUDE_FLAGS}
                     -o ${OUTPUT_PATH}
                     -matrix-layout-row-major
                     -entry ${ENTRY_POINT}
@@ -58,11 +58,20 @@ function(compile_slang_shaders)
         set(COMPILE_SLANG_SHADERS_OUTPUT_FILES ${COMPILE_SLANG_SHADERS_OUTPUT_FILES} PARENT_SCOPE)
     endfunction()
 
-    # Iterate over each shader file and create compile commands
-    foreach(SHADER_FILE IN LISTS SLANG_SHADER_SHADER_GFX_FILES)
-        add_slang_shader_compile_command(${SHADER_FILE} "VSMain" "vertex")
-        add_slang_shader_compile_command(${SHADER_FILE} "PSMain" "fragment")
-    endforeach()
+    # Iterate over graphics shader files
+    if(SLANG_SHADER_SHADER_GFX_FILES)
+        foreach(SHADER_FILE IN LISTS SLANG_SHADER_SHADER_GFX_FILES)
+            add_slang_shader_compile_command(${SHADER_FILE} "VSMain" "vertex")
+            add_slang_shader_compile_command(${SHADER_FILE} "PSMain" "fragment")
+        endforeach()
+    endif()
+
+    # Iterate over compute shader files
+    if(SLANG_SHADER_SHADER_COMPUTE_FILES)
+        foreach(SHADER_FILE IN LISTS SLANG_SHADER_SHADER_COMPUTE_FILES)
+            add_slang_shader_compile_command(${SHADER_FILE} "CSMain" "compute")
+        endforeach()
+    endif()
 
     # Add a custom target to compile all shaders
     add_custom_target(${SLANG_SHADER_TARGET}-compile-shaders

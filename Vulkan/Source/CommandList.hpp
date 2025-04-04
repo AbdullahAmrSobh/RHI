@@ -13,7 +13,7 @@ namespace RHI::Vulkan
 {
     class IDevice;
 
-    VkImageSubresourceLayers ConvertSubresourceLayer(const ImageSubresourceLayers& subresource);
+    VkImageSubresourceLayers ConvertSubresourceLayer(const ImageSubresourceLayers& subresource, Format format);
 
     VkResolveModeFlagBits ConvertResolveMode(ResolveMode resolveMode);
 

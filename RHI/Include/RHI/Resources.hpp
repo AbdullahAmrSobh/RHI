@@ -8,7 +8,7 @@
 
 namespace RHI
 {
-    constexpr auto WholeSize = UINT32_MAX;
+    constexpr auto WholeSize = UINT64_MAX;
 
     RHI_DECLARE_OPAQUE_RESOURCE(Buffer);
     RHI_DECLARE_OPAQUE_RESOURCE(Image);

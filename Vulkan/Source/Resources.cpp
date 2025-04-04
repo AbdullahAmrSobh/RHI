@@ -63,8 +63,10 @@ namespace RHI::Vulkan
         }
     }
 
-    VkImageAspectFlags ConvertImageAspect(TL::Flags<ImageAspect> imageAspect)
+    VkImageAspectFlags ConvertImageAspect(TL::Flags<ImageAspect> imageAspect, Format format)
     {
+        imageAspect &= GetFormatAspects(format);
+
         VkImageAspectFlags vkAspectFlags = 0;
 
         if (imageAspect & ImageAspect::Color) vkAspectFlags |= VK_IMAGE_ASPECT_COLOR_BIT;
@@ -100,10 +102,10 @@ namespace RHI::Vulkan
         }
     }
 
-    VkImageSubresourceRange ConvertSubresourceRange(const ImageSubresourceRange& subresource)
+    VkImageSubresourceRange ConvertSubresourceRange(const ImageSubresourceRange& subresource, Format format)
     {
         auto vkSubresource           = VkImageSubresourceRange{};
-        vkSubresource.aspectMask     = ConvertImageAspect(subresource.imageAspects);
+        vkSubresource.aspectMask     = ConvertImageAspect(subresource.imageAspects, format);
         vkSubresource.baseMipLevel   = subresource.mipBase;
         vkSubresource.levelCount     = subresource.mipLevelCount;
         vkSubresource.baseArrayLayer = subresource.arrayBase;
@@ -274,7 +276,6 @@ namespace RHI::Vulkan
             .pQueueFamilyIndices   = nullptr,
             .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED,
         };
-
         result = vmaCreateImage(device->m_deviceAllocator, &imageCI, &allocationInfo, &handle, &allocation, nullptr);
 
         if (result == VK_SUCCESS && createInfo.name)
@@ -297,7 +298,7 @@ namespace RHI::Vulkan
                         },
             .subresourceRange =
                 {
-                        .aspectMask     = ConvertImageAspect(GetFormatAspects(createInfo.format)),
+                        .aspectMask     = ConvertImageAspect(GetFormatAspects(createInfo.format), createInfo.format),
                         .baseMipLevel   = 0,
                         .levelCount     = VK_REMAINING_MIP_LEVELS,
                         .baseArrayLayer = 0,
@@ -313,23 +314,35 @@ namespace RHI::Vulkan
         default:               TL_UNREACHABLE(); break;
         }
 
-        this->subresources = {
-            .imageAspects = ImageAspect::Color,
-        };
-
         result = vkCreateImageView(device->m_device, &imageViewCI, nullptr, &viewHandle);
 
-        size = createInfo.size;
+        this->size   = createInfo.size;
+        this->format = createInfo.format;
+        this->subresources =
+            {
+                .imageAspects  = GetFormatAspects(format),
+                .mipBase       = 0,
+                .mipLevelCount = (uint8_t)createInfo.mipLevels,
+                .arrayBase     = 0,
+                .arrayCount    = (uint8_t)createInfo.arrayCount,
+            };
 
         return ConvertResult(result);
     }
 
     ResultCode IImage::Init(IDevice* device, VkImage image, const VkSwapchainCreateInfoKHR& swapchainCI)
     {
-        this->subresources = {
-            .imageAspects = ImageAspect::Color,
-        };
         this->handle = image;
+        this->size   = {swapchainCI.imageExtent.width, swapchainCI.imageExtent.height, 1};
+        this->format = ConvertFormat(swapchainCI.imageFormat);
+        this->subresources =
+            {
+                .imageAspects  = GetFormatAspects(format),
+                .mipBase       = 0,
+                .mipLevelCount = 1,
+                .arrayBase     = 0,
+                .arrayCount    = 1,
+            };
 
         VkImageViewCreateInfo imageViewCI{
             .sType      = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -358,8 +371,10 @@ namespace RHI::Vulkan
 
     void IImage::Shutdown(IDevice* device)
     {
-        vkDestroyImageView(device->m_device, viewHandle, nullptr);
-        vmaDestroyImage(device->m_deviceAllocator, handle, allocation);
+        if (viewHandle)
+            vkDestroyImageView(device->m_device, viewHandle, nullptr);
+        if (allocation)
+            vmaDestroyImage(device->m_deviceAllocator, handle, allocation);
     }
 
     VkMemoryRequirements IImage::GetMemoryRequirements(IDevice* device) const
@@ -371,19 +386,7 @@ namespace RHI::Vulkan
 
     VkImageAspectFlags IImage::SelectImageAspect(ImageAspect aspect)
     {
-        auto formatInfo = GetFormatInfo(format);
-        if (aspect == ImageAspect::All)
-        {
-            VkImageAspectFlags flags = 0;
-            if (formatInfo.hasDepth)
-                flags |= VK_IMAGE_ASPECT_DEPTH_BIT;
-            if (formatInfo.hasStencil)
-                flags |= VK_IMAGE_ASPECT_STENCIL_BIT;
-            if (!formatInfo.hasDepth && !formatInfo.hasStencil)
-                flags = VK_IMAGE_ASPECT_COLOR_BIT;
-            return flags;
-        }
-        return ConvertImageAspect(aspect);
+        return ConvertImageAspect(aspect, format);
     }
 
     ///////////////////////////////////////////////////////////////////////////

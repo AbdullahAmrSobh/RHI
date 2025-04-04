@@ -6,7 +6,7 @@ namespace RHI
 {
     Pass::Pass(const PassCreateInfo& createInfo, TL::IAllocator* allocator) noexcept
         : m_name(createInfo.name)
-        , m_queueType(QueueType::Graphics)
+        , m_queueType(createInfo.queue)
         , m_onSetupCallback(createInfo.setupCallback)
         , m_onCompileCallback(createInfo.compileCallback)
         , m_onExecuteCallback(createInfo.executeCallback)
