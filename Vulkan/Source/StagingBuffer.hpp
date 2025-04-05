@@ -32,6 +32,7 @@ namespace RHI::Vulkan
             Handle<Buffer>  buffer;
             size_t          offset;
             const size_t    size;
+
             size_t GetRemainingSize() const { return size - offset; }
         };
 

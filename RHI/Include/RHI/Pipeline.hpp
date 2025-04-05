@@ -178,7 +178,7 @@ namespace RHI
     /// @brief Color blend state description for pipelines.
     struct PipelineColorBlendStateDesc
     {
-        TL::Span<const ColorAttachmentBlendStateDesc> blendStates       = {}; ///< Color blend states for each attachment.
+        TL::Span<const ColorAttachmentBlendStateDesc> blendStates       = {};                       ///< Color blend states for each attachment.
         float                                         blendConstants[4] = {0.0f, 0.0f, 0.0f, 0.0f}; ///< Blend constants.
     };
 

@@ -183,7 +183,7 @@ namespace RHI::Vulkan
         result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_device->m_physicalDevice, m_surface, &surfaceCapabilities);
         TL_ASSERT(result == VK_SUCCESS);
 
-        VkSurfaceFormatKHR surfaceFormat {};
+        VkSurfaceFormatKHR surfaceFormat{};
 
         uint32_t formatCount = 0;
         result               = vkGetPhysicalDeviceSurfaceFormatsKHR(m_device->m_physicalDevice, m_surface, &formatCount, nullptr);

@@ -53,124 +53,121 @@ namespace RHI
         /// @return Device Limits struct.
         DeviceLimits                     GetLimits() const;
 
-        virtual RenderGraph*             CreateRenderGraph(const RenderGraphCreateInfo& createInfo)                       = 0;
+        virtual RenderGraph*             CreateRenderGraph(const RenderGraphCreateInfo& createInfo)                                                                       = 0;
 
-        virtual void                     DestroyRenderGraph(RenderGraph* renderGraph)                                     = 0;
+        virtual void                     DestroyRenderGraph(RenderGraph* renderGraph)                                                                                     = 0;
 
         /// @brief Creates a swapchain.
         /// @param createInfo Swapchain creation parameters.
         /// @return Pointer to the created swapchain.
-        virtual Swapchain*               CreateSwapchain(const SwapchainCreateInfo& createInfo)                           = 0;
+        virtual Swapchain*               CreateSwapchain(const SwapchainCreateInfo& createInfo)                                                                           = 0;
 
         /// @brief Destroys a swapchain.
         /// @param swapchain Pointer to the swapchain to destroy.
-        virtual void                     DestroySwapchain(Swapchain* swapchain)                                           = 0;
+        virtual void                     DestroySwapchain(Swapchain* swapchain)                                                                                           = 0;
 
         /// @brief Creates a shader module.
         /// @param createInfo Shader module creation parameters.
         /// @return Pointer to the created shader module.
-        virtual ShaderModule*            CreateShaderModule(const ShaderModuleCreateInfo& createInfo)                     = 0;
+        virtual ShaderModule*            CreateShaderModule(const ShaderModuleCreateInfo& createInfo)                                                                     = 0;
 
         /// @brief Destroys a shader module object and frees associated resources
         /// @param shaderModule Pointer to the shader module to destroy. Must not be null and must be a valid shader module created by this
         /// device
-        virtual void                     DestroyShaderModule(ShaderModule* shaderModule)                                  = 0;
+        virtual void                     DestroyShaderModule(ShaderModule* shaderModule)                                                                                  = 0;
 
         /// @brief Creates a command list.
         /// @param createInfo Command list creation parameters.
         /// @return Pointer to the created command list.
-        virtual CommandList*             CreateCommandList(const CommandListCreateInfo& createInfo)                       = 0;
+        virtual CommandList*             CreateCommandList(const CommandListCreateInfo& createInfo)                                                                       = 0;
 
         /// @brief Creates a bind group layout.
         /// @param createInfo Bind group layout creation parameters.
         /// @return Handle to the created bind group layout.
-        virtual Handle<BindGroupLayout>  CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)               = 0;
+        virtual Handle<BindGroupLayout>  CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)                                                               = 0;
 
         /// @brief Destroys a bind group layout.
         /// @param handle Handle to the bind group layout to destroy.
-        virtual void                     DestroyBindGroupLayout(Handle<BindGroupLayout> handle)                           = 0;
+        virtual void                     DestroyBindGroupLayout(Handle<BindGroupLayout> handle)                                                                           = 0;
 
         /// @brief Creates a bind group.
         /// @param handle Handle to the associated bind group layout.
         /// @return Handle to the created bind group.
-        virtual Handle<BindGroup>        CreateBindGroup(const BindGroupCreateInfo& createInfo)                           = 0;
+        virtual Handle<BindGroup>        CreateBindGroup(const BindGroupCreateInfo& createInfo)                                                                           = 0;
 
         /// @brief Destroys a bind group.
         /// @param handle Handle to the bind group to destroy.
-        virtual void                     DestroyBindGroup(Handle<BindGroup> handle)                                       = 0;
+        virtual void                     DestroyBindGroup(Handle<BindGroup> handle)                                                                                       = 0;
 
         /// @brief Updates a bind group.
         /// @param handle Handle to the bind group to update.
         /// @param updateInfo Update parameters for the bind group.
-        virtual void                     UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo) = 0;
+        virtual void                     UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo)                                                 = 0;
 
         /// @brief Creates a pipeline layout.
         /// @param createInfo Pipeline layout creation parameters.
         /// @return Handle to the created pipeline layout.
-        virtual Handle<PipelineLayout>   CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)                 = 0;
+        virtual Handle<PipelineLayout>   CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)                                                                 = 0;
 
         /// @brief Destroys a pipeline layout.
         /// @param handle Handle to the pipeline layout to destroy.
-        virtual void                     DestroyPipelineLayout(Handle<PipelineLayout> handle)                             = 0;
+        virtual void                     DestroyPipelineLayout(Handle<PipelineLayout> handle)                                                                             = 0;
 
         /// @brief Creates a graphics pipeline.
         /// @param createInfo Graphics pipeline creation parameters.
         /// @return Handle to the created graphics pipeline.
-        virtual Handle<GraphicsPipeline> CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)             = 0;
+        virtual Handle<GraphicsPipeline> CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)                                                             = 0;
 
         /// @brief Destroys a graphics pipeline.
         /// @param handle Handle to the graphics pipeline to destroy.
-        virtual void                     DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle)                         = 0;
+        virtual void                     DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle)                                                                         = 0;
 
         /// @brief Creates a compute pipeline.
         /// @param createInfo Compute pipeline creation parameters.
         /// @return Handle to the created compute pipeline.
-        virtual Handle<ComputePipeline>  CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)               = 0;
+        virtual Handle<ComputePipeline>  CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)                                                               = 0;
 
         /// @brief Destroys a compute pipeline.
         /// @param handle Handle to the compute pipeline to destroy.
-        virtual void                     DestroyComputePipeline(Handle<ComputePipeline> handle)                           = 0;
+        virtual void                     DestroyComputePipeline(Handle<ComputePipeline> handle)                                                                           = 0;
 
         /// @brief Creates a sampler.
         /// @param createInfo Sampler creation parameters.
         /// @return Handle to the created sampler.
-        virtual Handle<Sampler>          CreateSampler(const SamplerCreateInfo& createInfo)                               = 0;
+        virtual Handle<Sampler>          CreateSampler(const SamplerCreateInfo& createInfo)                                                                               = 0;
 
         /// @brief Destroys a sampler.
         /// @param handle Handle to the sampler to destroy.
-        virtual void                     DestroySampler(Handle<Sampler> handle)                                           = 0;
+        virtual void                     DestroySampler(Handle<Sampler> handle)                                                                                           = 0;
 
         /// @brief Creates an image.
         /// @param createInfo Image creation parameters.
         /// @return Result containing the handle to the created image.
-        virtual Result<Handle<Image>>    CreateImage(const ImageCreateInfo& createInfo)                                   = 0;
+        virtual Result<Handle<Image>>    CreateImage(const ImageCreateInfo& createInfo)                                                                                   = 0;
 
-        virtual Handle<Image>            CreateImageView(const ImageViewCreateInfo& createInfo)                           = 0;
+        virtual Handle<Image>            CreateImageView(const ImageViewCreateInfo& createInfo)                                                                           = 0;
 
         /// @brief Destroys an image.
         /// @param handle Handle to the image to destroy.
-        virtual void                     DestroyImage(Handle<Image> handle)                                               = 0;
+        virtual void                     DestroyImage(Handle<Image> handle)                                                                                               = 0;
 
         /// @brief Creates a buffer.
         /// @param createInfo Buffer creation parameters.
         /// @return Result containing the handle to the created buffer.
-        virtual Result<Handle<Buffer>>   CreateBuffer(const BufferCreateInfo& createInfo)                                 = 0;
+        virtual Result<Handle<Buffer>>   CreateBuffer(const BufferCreateInfo& createInfo)                                                                                 = 0;
 
         /// @brief Destroys a buffer.
         /// @param handle Handle to the buffer to destroy.
-        virtual void                     DestroyBuffer(Handle<Buffer> handle)                                             = 0;
-
-        // clang-format off
+        virtual void                     DestroyBuffer(Handle<Buffer> handle)                                                                                             = 0;
 
         /// @brief A resource update scope, resources will
-        virtual void                     BeginResourceUpdate(RenderGraph* renderGraph)                                    = 0;
-        virtual void                     EndResourceUpdate()                                                              = 0;
-        virtual void                     BufferWrite(Handle<Buffer> buffer, size_t offset, TL::Block block)  = 0;
+        virtual void                     BeginResourceUpdate(RenderGraph* renderGraph)                                                                                    = 0;
+        virtual void                     EndResourceUpdate()                                                                                                              = 0;
+        virtual void                     BufferWrite(Handle<Buffer> buffer, size_t offset, TL::Block block)                                                               = 0;
         virtual void                     ImageWrite(Handle<Image> image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block) = 0;
-        // clang-format on
 
         /// @brief Collects unused resources for reuse.
-        virtual void                     CollectResources()                                                               = 0;
+        virtual void                     CollectResources()                                                                                                               = 0;
 
     protected:
         BackendType           m_backend;

@@ -212,7 +212,7 @@ namespace RHI
         ComponentSwizzle b = ComponentSwizzle::Identity; ///< Blue component swizzle.
         ComponentSwizzle a = ComponentSwizzle::Identity; ///< Alpha component swizzle.
 
-        inline bool operator==(const ComponentMapping& other) const { return r == other.r && g == other.g && b == other.b && a == other.a; }
+        inline bool      operator==(const ComponentMapping& other) const { return r == other.r && g == other.g && b == other.b && a == other.a; }
     };
 
     /// @brief Describes a range of subresources in an image.
@@ -224,11 +224,7 @@ namespace RHI
         uint8_t                arrayBase     = 0;                  ///< Base array layer.
         uint8_t                arrayCount    = 1;                  ///< Number of array layers.
 
-        inline bool            operator==(const ImageSubresourceRange& other) const
-        {
-            return imageAspects == other.imageAspects && mipBase == other.mipBase && mipLevelCount == other.mipLevelCount &&
-                   arrayBase == other.arrayBase && arrayCount == other.arrayCount;
-        }
+        inline bool            operator==(const ImageSubresourceRange& other) const { return imageAspects == other.imageAspects && mipBase == other.mipBase && mipLevelCount == other.mipLevelCount && arrayBase == other.arrayBase && arrayCount == other.arrayCount; }
     };
 
     /// @brief Information needed to create an image.
