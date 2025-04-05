@@ -9,24 +9,20 @@
 
 namespace RHI
 {
-    class Device;
-
-    /// @todo: add an API to query for supported formats for the user
-    /// @todo: add an API to query for supported present mode for the user
-
-    enum class SwapchainAlphaMode
+    enum class SwapchainAlphaMode : uint32_t
     {
-        None,
-        PreMultiplied,
-        PostMultiplied,
+        None           = 0 << 0,
+        PreMultiplied  = 1 << 0,
+        PostMultiplied = 1 << 1,
     };
 
-    enum class SwapchainPresentMode
+    enum class SwapchainPresentMode : uint32_t
     {
-        Immediate,
-        Fifo,
-        FifoRelaxed,
-        Mailbox,
+        None        = 0 << 0,
+        Immediate   = 1 << 0,
+        Fifo        = 1 << 1,
+        FifoRelaxed = 1 << 2,
+        Mailbox     = 1 << 3,
     };
 
 #ifdef RHI_PLATFORM_WINDOWS
@@ -41,24 +37,29 @@ namespace RHI
     /// @brief Structure specifying the parameters of the swapchain.
     struct SwapchainCreateInfo
     {
-        const char*           name;
-        ImageSize2D           imageSize;     // The size of the images in the swapchian.
-        TL::Flags<ImageUsage> imageUsage;    // Image usage flags applied to all created images.
-        Format                imageFormat;   // The format of created swapchain image.
-        uint32_t              minImageCount; // The numer of back buffer images in the swapchain.
-        SwapchainAlphaMode    alphaMode;     // The alpha mode applied to created images.
-        SwapchainPresentMode  presentMode;
+        const char* name;
 #ifdef RHI_PLATFORM_WINDOWS
         Win32WindowDesc win32Window; // win32 surface handles. (Availabe only on windows)
 #endif
     };
 
+    struct SwapchainConfigureInfo
+    {
+        ImageSize2D          size;
+        uint32_t             imageCount;
+        ImageUsage           imageUsage;
+        Format               format;
+        SwapchainPresentMode presentMode;
+        SwapchainAlphaMode   alphaMode;
+    };
+
+    /// @brief Structure containing the capabilities of a presentation surface
     struct SurfaceCapabilities
     {
-        TL::Flags<ImageUsage>            usages;
-        TL::Vector<Format>               formats;
-        TL::Vector<SwapchainPresentMode> presentModes;
-        TL::Vector<SwapchainAlphaMode>   alphaModes;
+        TL::Flags<ImageUsage>           usages;       ///< Supported image usage flags for the surface
+        TL::Flags<SwapchainPresentMode> presentModes; ///< List of supported presentation modes
+        TL::Flags<SwapchainAlphaMode>   alphaModes;   ///< List of supported alpha compositing modes
+        TL::Vector<Format>              formats;      ///< List of supported image formats
     };
 
     /// @brief Swapchain object which is an interface between the API and a presentation surface.
@@ -67,29 +68,35 @@ namespace RHI
     public:
         RHI_INTERFACE_BOILERPLATE(Swapchain);
 
-        static constexpr uint32_t   MaxImageCount = 4;
-        static constexpr uint32_t   MinImageCount = 1;
+        /// @brief Returns the total number of images in the swapchain's back buffer
+        /// @return Number of swapchain images
+        uint32_t                    GetImagesCount() const { return m_imageCount; }
 
-        /// @brief Get the current image index of the swapchain.
-        uint32_t                    GetCurrentImageIndex() const;
+        /// @brief Returns the handle to the currently acquired swapchain image
+        /// @return Handle to the current swapchain image
+        Handle<Image>               GetImage() const { return m_image; }
 
-        /// @brief Get the number of images in the swapchain.
-        uint32_t                    GetImagesCount() const;
+        /// @brief Queries the capabilities of the presentation surface
+        /// @return Structure containing supported formats, modes, and capabilities
+        virtual SurfaceCapabilities GetSurfaceCapabilities()                            = 0;
 
-        /// @brief Get the current acquired swapchain image.
-        virtual Handle<Image>       GetImage() const;
+        /// @brief Resizes the swapchain to match new window dimensions
+        /// @param size New dimensions for the swapchain images
+        /// @return Result code indicating success or failure
+        virtual ResultCode          Resize(ImageSize2D size)                            = 0;
 
-        /// @brief Called to invalidate the current swapchain state, when the window is resized.
-        virtual ResultCode          Recreate(ImageSize2D newSize) = 0;
+        /// @brief Reconfigures the swapchain with new parameters
+        /// @note  Must be called before using the swapchain
+        /// @param configInfo ...
+        /// @return Result code indicating success or failure
+        virtual ResultCode          Configure(const SwapchainConfigureInfo& configInfo) = 0;
 
-        /// @brief Presents the current image.
-        virtual ResultCode          Present()                     = 0;
-
-        // virtual SurfaceCapabilities GetSurfaceCapabilities() = 0;
+        /// @brief Presents the current swapchain image to the display
+        /// @return Result code indicating success or failure of the presentation
+        virtual ResultCode          Present()                                           = 0;
 
     protected:
-        uint32_t      m_imageIndex;
         uint32_t      m_imageCount;
-        Handle<Image> m_image[MaxImageCount];
+        Handle<Image> m_image;
     };
 } // namespace RHI

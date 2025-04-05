@@ -58,21 +58,13 @@ namespace RHI
         /// @brief Gets the accessed resources for this pass.
         TL::Span<RenderGraphResourceTransition* const> GetRenderGraphResourceTransitions() const;
 
-        // clang-format off
-        RenderGraphResourceTransition* AddTransition(
-            TL::IAllocator& allocator, RenderGraphResource& resource, ImageUsage usage, TL::Flags<PipelineStage> stage, TL::Flags<Access> access, ImageSubresourceRange subresourceRange);
-        RenderGraphResourceTransition* AddTransition(
-            TL::IAllocator& allocator, RenderGraphResource& resource, BufferUsage usage, TL::Flags<PipelineStage> stage, TL::Flags<Access> access, BufferSubregion subregion);
-        // clang-format on
+        RenderGraphResourceTransition*                 AddTransition(TL::IAllocator& allocator, RenderGraphResource& resource, ImageUsage usage, TL::Flags<PipelineStage> stage, TL::Flags<Access> access, ImageSubresourceRange subresourceRange);
 
-        virtual void AddSwapchainPresentBarrier(
-                                              [[maybe_unused]] Device&                        device,
-                                              [[maybe_unused]] Swapchain&                     swapchain,
-                                              [[maybe_unused]] RenderGraphResourceTransition& transition)
-        {
-        }
+        RenderGraphResourceTransition*                 AddTransition(TL::IAllocator& allocator, RenderGraphResource& resource, BufferUsage usage, TL::Flags<PipelineStage> stage, TL::Flags<Access> access, BufferSubregion subregion);
 
-        RenderGraphExecuteGroup* GetExecuteGroup() const { return m_group; }
+        virtual void                                   AddSwapchainPresentBarrier([[maybe_unused]] Device& device, [[maybe_unused]] Swapchain& swapchain, [[maybe_unused]] RenderGraphResourceTransition& transition) {}
+
+        RenderGraphExecuteGroup*                       GetExecuteGroup() const { return m_group; }
 
     private:
         const char*                                                m_name;

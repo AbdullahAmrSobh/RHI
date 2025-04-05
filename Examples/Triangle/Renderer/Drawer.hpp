@@ -20,6 +20,12 @@ namespace Engine
         uint32_t                  materialID; // id into the materials storage buffer
     };
 
+    class DrawList
+    {
+    public:
+        virtual void Draw() = 0;
+    };
+
     PipelineLibrary* GetPipelineLibrary();
 
     struct DrawArguments
@@ -39,6 +45,10 @@ namespace Engine
         RHI::BufferBindingInfo drawListBuffer; // array of DrawRequests
     };
 
+    class DrawerDirect
+    {
+    };
+
     class DrawerIndirect
     {
     private:
@@ -55,7 +65,7 @@ namespace Engine
                     .queue         = RHI::QueueType::Compute,
                     .setupCallback = [&](RHI::RenderGraph& rg, RHI::Pass& pass)
                     {
-                        rg.UseBuffer(pass, indirectBuffer, RHI::BufferUsage::Storage, RHI::PipelineStage::ComputeShader, RHI::Access::Write)
+                        rg.UseBuffer(pass, indirectBuffer, RHI::BufferUsage::Storage, RHI::PipelineStage::ComputeShader, RHI::Access::Write);
                     },
                     .compileCallback = [&](RHI::RenderGraph& rg, RHI::Pass& pass)
                     {
@@ -103,7 +113,6 @@ namespace Engine
                 cmd.DebugMarkerPop();
         }
 
-
         // Problem allow recording a another pass from within another pass?
         void Draw(RHI::CommandList& cmd, const DrawArguments& args, RHI::BufferBindingInfo indirectBufferBindingInfo)
         {
@@ -135,5 +144,14 @@ namespace Engine
             if (args.name)
                 cmd.DebugMarkerPop();
         }
+    };
+
+    template<typename DrawerType>
+    class Drawer
+    {
+    public:
+        virtual void Setup(RHI::RenderGraph& renderGraph) = 0;
+
+        virtual void Execute(RHI::RenderGraph& renderGraph, RHI::CommandList& commandList, const DrawList& drawList) = 0;
     };
 } // namespace Engine

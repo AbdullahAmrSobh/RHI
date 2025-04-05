@@ -88,7 +88,7 @@ namespace RHI
         /// @param usage The intended usage of the image.
         /// @param stage The pipeline stages where the image will be accessed.
         /// @param access The types of access to the image.
-        void UseImage(Pass& pass, RenderGraphImage* image, ImageUsage usage, TL::Flags<PipelineStage> stage, TL::Flags<Access> access);
+        void                            UseImage(Pass& pass, RenderGraphImage* image, ImageUsage usage, TL::Flags<PipelineStage> stage, TL::Flags<Access> access);
 
         /// @brief Declares a buffer to be used by a pass.
         /// @param pass The pass that will use the buffer.
@@ -96,28 +96,28 @@ namespace RHI
         /// @param usage The intended usage of the buffer.
         /// @param stage The pipeline stages where the buffer will be accessed.
         /// @param access The types of access to the buffer.
-        void UseBuffer(Pass& pass, RenderGraphBuffer* buffer, BufferUsage usage, TL::Flags<PipelineStage> stage, TL::Flags<Access> access);
+        void                            UseBuffer(Pass& pass, RenderGraphBuffer* buffer, BufferUsage usage, TL::Flags<PipelineStage> stage, TL::Flags<Access> access);
 
         /// @brief Declares a color attachment to be used by a pass.
         /// @param pass The pass that will use the render target.
         /// @param renderTargetInfo Information about the render target configuration.
-        void UseColorAttachment(Pass& pass, const ColorRGAttachment& colorAttachment);
+        void                            UseColorAttachment(Pass& pass, const ColorRGAttachment& colorAttachment);
 
         /// @brief Declares a color attachment to be used by a pass.
         /// @param pass The pass that will use the render target.
         /// @param renderTargetInfo Information about the render target configuration.
-        void UseDepthStencilAttachment(Pass& pass, const DepthStencilRGAttachment& depthStencilAttachment);
+        void                            UseDepthStencilAttachment(Pass& pass, const DepthStencilRGAttachment& depthStencilAttachment);
 
         // Frame management.
 
         /// @brief Begins a new frame in the render graph.
-        void BeginFrame(ImageSize2D frameSize);
+        void                            BeginFrame(ImageSize2D frameSize);
 
         /// @brief Ends the current frame in the render graph.
-        void EndFrame();
+        void                            EndFrame();
 
-        ColorAttachment        GetColorAttachment(const ColorRGAttachment& attachment) const;
-        DepthStencilAttachment GetDepthStencilAttachment(const DepthStencilRGAttachment& attachment) const;
+        ColorAttachment                 GetColorAttachment(const ColorRGAttachment& attachment) const;
+        DepthStencilAttachment          GetDepthStencilAttachment(const DepthStencilRGAttachment& attachment) const;
 
     private:
         /// @brief Returns passes sorted based on their graph topological order.

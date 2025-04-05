@@ -17,20 +17,17 @@ namespace RHI::WebGPU
 
         ResultCode Init(IDevice* device, const SwapchainCreateInfo& createInfo);
         void       Shutdown();
-        ResultCode Recreate(ImageSize2D newSize) override;
-        ResultCode Present() override;
+
+        SurfaceCapabilities GetSurfaceCapabilities() override;
+        ResultCode          Resize(ImageSize2D size) override;
+        ResultCode          Configure(const SwapchainConfigureInfo& configInfo) override;
+        ResultCode          Present() override;
 
     private:
-        ResultCode Configure(ImageSize2D textureSize, WGPUTextureFormat format, WGPUTextureUsage usage, WGPUPresentMode presentMode, WGPUCompositeAlphaMode alphaMode);
-
         ResultCode SwapBackTextures();
 
-    private:
-        IDevice*               m_device;
-        WGPUSurface            m_surface;
-        WGPUTextureFormat      m_surfaceTextureFormat;
-        WGPUTextureUsage       m_surfaceTextureUsages;
-        WGPUPresentMode        m_presentMode;
-        WGPUCompositeAlphaMode m_alphaMode;
+        IDevice*               m_device = nullptr;
+        WGPUSurface           m_surface = nullptr;
+        SwapchainConfigureInfo m_configuration;
     };
 } // namespace RHI::WebGPU

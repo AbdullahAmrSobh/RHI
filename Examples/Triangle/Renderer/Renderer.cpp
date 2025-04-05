@@ -59,15 +59,21 @@ namespace Engine
 
         auto [width, height] = window->GetWindowSize();
         RHI::SwapchainCreateInfo swapchainInfo{
-            .name          = "Swapchain",
-            .imageSize     = {width, height},
-            .imageUsage    = RHI::ImageUsage::Color,
-            .imageFormat   = RHI::Format::RGBA8_UNORM,
-            .minImageCount = 3,
-            .presentMode   = RHI::SwapchainPresentMode::Fifo,
-            .win32Window   = {window->GetNativeHandle()},
+            .name        = "Swapchain",
+            .win32Window = {window->GetNativeHandle()},
         };
         m_swapchain = m_device->CreateSwapchain(swapchainInfo);
+        {
+            RHI::SwapchainConfigureInfo configuration{
+                .size        = {width, height},
+                .imageCount  = 3,
+                .imageUsage  = RHI::ImageUsage::Color,
+                .format      = RHI::Format::RGBA8_UNORM,
+                .presentMode = RHI::SwapchainPresentMode::Fifo,
+                .alphaMode   = RHI::SwapchainAlphaMode::None
+            };
+            [[maybe_unused]] auto result = m_swapchain->Configure(configuration);
+        }
 
         m_renderGraph = m_device->CreateRenderGraph({});
 
@@ -301,7 +307,7 @@ namespace Engine
     void Renderer::OnWindowResize()
     {
         auto [width, height] = m_window->GetWindowSize();
-        auto res             = m_swapchain->Recreate({width, height});
+        auto res             = m_swapchain->Resize({width, height});
         TL_ASSERT(RHI::IsSuccess(res));
     }
 

@@ -61,6 +61,9 @@ namespace RHI::Vulkan
         template<typename T>
         void SetDebugName(T handle, const char* name) const;
 
+        template<typename T, typename... FMT_ARGS>
+        void SetDebugName(T handle, const char* fmt, FMT_ARGS... args) const;
+
         IQueue& GetDeviceQueue(QueueType type);
 
         void WaitIdle() { vkDeviceWaitIdle(m_device); }
@@ -101,7 +104,6 @@ namespace RHI::Vulkan
         void                     CollectResources() override;
 
     private:
-
     public:
         /// @todo: everything here should be made private
         TL::Arena                     m_tempAllocator = TL::Arena();
@@ -138,6 +140,13 @@ namespace RHI::Vulkan
     inline void IDevice::SetDebugName(T handle, const char* name) const
     {
         return SetDebugName(GetObjectType<T>(), reinterpret_cast<uint64_t>(handle), name);
+    }
+
+    template<typename T, typename... FMT_ARGS>
+    void IDevice::SetDebugName(T handle, const char* fmt, FMT_ARGS... args) const
+    {
+        auto formattedName = std::vformat(fmt, std::make_format_args(args...));
+        SetDebugName(handle, formattedName.c_str());
     }
 
     inline IQueue& IDevice::GetDeviceQueue(QueueType type)

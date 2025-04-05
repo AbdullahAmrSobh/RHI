@@ -79,6 +79,16 @@ namespace RHI::WebGPU
     {
         ZoneScoped;
 
+        if (pass.GetQueueType() == QueueType::Compute)
+        {
+            const WGPUComputePassDescriptor descriptor{
+                .label = WGPUStringView(pass.GetName()),
+            };
+            m_computePassEncoder = wgpuCommandEncoderBeginComputePass(m_cmdEncoder, &descriptor);
+            m_state              = State::ComputePassEncoder;
+            return;
+        }
+
         m_state = State::RenderPassEncoder;
 
         TL::Vector<WGPURenderPassColorAttachment>          colorAttachments{};
@@ -140,6 +150,11 @@ namespace RHI::WebGPU
     void ICommandList::EndRenderPass()
     {
         ZoneScoped;
+        if (m_state == State::ComputePassEncoder)
+        {
+            wgpuComputePassEncoderEnd(m_computePassEncoder);
+            return;
+        }
         wgpuRenderPassEncoderEnd(m_renderPassEncoder);
         m_state = State::CommandEncoder;
     }

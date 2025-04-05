@@ -82,7 +82,6 @@ namespace RHI::Vulkan
         case VK_RESULT_MAX_ENUM:                                    return ResultCode::ErrorUnknown;
         default:                                                    return ResultCode::ErrorUnknown;
         }
-        return ResultCode::ErrorUnknown;
     }
 
     inline static VkFormat ConvertFormat(Format format)

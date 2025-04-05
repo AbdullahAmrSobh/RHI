@@ -40,15 +40,15 @@ namespace RHI::WebGPU
         for (auto pass : group.GetPassList())
         {
             commandList->DebugMarkerPush(pass->GetName(), {});
-            if (pass->GetQueueType() == QueueType::Graphics)
-            {
+            // if (pass->GetQueueType() == QueueType::Graphics)
+            // {
                 commandList->BeginRenderPass(*pass);
-            }
+            // }
             ExecutePassCallback(*pass, *commandList);
-            if (pass->GetQueueType() == QueueType::Graphics)
-            {
+            // if (pass->GetQueueType() == QueueType::Graphics)
+            // {
                 commandList->EndRenderPass();
-            }
+            // }
             commandList->DebugMarkerPop();
         }
         commandList->End();

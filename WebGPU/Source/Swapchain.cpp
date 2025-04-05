@@ -12,15 +12,13 @@ namespace RHI::WebGPU
 {
     WGPUCompositeAlphaMode ConvertToAlphaMode(SwapchainAlphaMode alpha)
     {
+        switch (alpha)
+        {
+        case SwapchainAlphaMode::None:           return WGPUCompositeAlphaMode_Auto;
+        case SwapchainAlphaMode::PreMultiplied:  return WGPUCompositeAlphaMode_Premultiplied;
+        case SwapchainAlphaMode::PostMultiplied: return WGPUCompositeAlphaMode_Unpremultiplied;
+        }
         return WGPUCompositeAlphaMode_Auto;
-
-        // switch (alpha)
-        // {
-        // case SwapchainAlphaMode::None:
-        // case SwapchainAlphaMode::PreMultiplied:  return WGPUCompositeAlphaMode_Premultiplied;
-        // case SwapchainAlphaMode::PostMultiplied: return WGPUCompositeAlphaMode_Unpremultiplied;
-        // }
-        // return WGPUCompositeAlphaMode_Force32;
     }
 
     WGPUPresentMode ConvertToPresentMode(SwapchainPresentMode present)
@@ -31,8 +29,9 @@ namespace RHI::WebGPU
         case SwapchainPresentMode::Fifo:        return WGPUPresentMode_Fifo;
         case SwapchainPresentMode::FifoRelaxed: return WGPUPresentMode_FifoRelaxed;
         case SwapchainPresentMode::Mailbox:     return WGPUPresentMode_Mailbox;
+        default:                                TL_UNREACHABLE(); break;
         }
-        return WGPUPresentMode_Force32;
+        return WGPUPresentMode_Fifo;
     }
 
     inline static ResultCode ConvertToResultCode(WGPUSurfaceGetCurrentTextureStatus status)
@@ -47,7 +46,6 @@ namespace RHI::WebGPU
         case WGPUSurfaceGetCurrentTextureStatus_Force32:
         case WGPUSurfaceGetCurrentTextureStatus_Error:             return ResultCode::ErrorUnknown;
         }
-        TL_UNREACHABLE();
         return ResultCode::ErrorUnknown;
     }
 
@@ -72,29 +70,134 @@ namespace RHI::WebGPU
             .nextInChain = &windowDesc.chain,
             .label       = ConvertToStringView(createInfo.name),
         };
-        m_surface = wgpuInstanceCreateSurface(device->m_instance, &desc);
 
+        m_surface = wgpuInstanceCreateSurface(device->m_instance, &desc);
+        if (!m_surface)
+        {
+            return ResultCode::ErrorSurfaceLost;
+        }
+
+        // Initialize empty image handle
         IImage image{};
-        m_image[0]   = m_device->m_imageOwner.Emplace(std::move(image));
-        m_imageIndex = 0;
+        m_image      = m_device->m_imageOwner.Emplace(std::move(image));
         m_imageCount = 1;
 
-        m_surfaceTextureFormat = ConvertToTextureFormat(createInfo.imageFormat);
-        m_surfaceTextureUsages = ConvertToTextureUsage(createInfo.imageUsage);
-        m_presentMode          = ConvertToPresentMode(createInfo.presentMode);
-        m_alphaMode            = ConvertToAlphaMode(createInfo.alphaMode);
-
-        return Configure(createInfo.imageSize, m_surfaceTextureFormat, m_surfaceTextureUsages, m_presentMode, m_alphaMode);
+        return ResultCode::Success;
     }
 
     void ISwapchain::Shutdown()
     {
-        wgpuSurfaceRelease(m_surface);
+        if (m_surface)
+        {
+            wgpuSurfaceRelease(m_surface);
+            m_surface = nullptr;
+        }
+
+        if (auto image = m_device->m_imageOwner.Get(m_image))
+        {
+            if (image->view)
+            {
+                wgpuTextureViewRelease(image->view);
+                image->view = nullptr;
+            }
+            if (image->texture)
+            {
+                wgpuTextureRelease(image->texture);
+                image->texture = nullptr;
+            }
+        }
+
+        m_device = nullptr;
     }
 
-    ResultCode ISwapchain::Recreate(ImageSize2D newSize)
+    SurfaceCapabilities ISwapchain::GetSurfaceCapabilities()
     {
-        return Configure(newSize, m_surfaceTextureFormat, m_surfaceTextureUsages, m_presentMode, m_alphaMode);
+        WGPUSurfaceCapabilities capabilities;
+        wgpuSurfaceGetCapabilities(m_surface, m_device->m_adapter, &capabilities);
+
+        SurfaceCapabilities outCaps{};
+
+        /// @fixme: Dont hardcode values here!
+        outCaps.usages |= ImageUsage::Color;
+        outCaps.usages |= ImageUsage::CopyDst;
+        outCaps.formats.push_back(Format::RGBA8_UNORM);
+
+        for (size_t i = 0; i < capabilities.presentModeCount; i++)
+        {
+            switch (capabilities.presentModes[i])
+            {
+            case WGPUPresentMode_Immediate:   outCaps.presentModes |= SwapchainPresentMode::Immediate; break;
+            case WGPUPresentMode_Mailbox:     outCaps.presentModes |= SwapchainPresentMode::Mailbox; break;
+            case WGPUPresentMode_Fifo:        outCaps.presentModes |= SwapchainPresentMode::Fifo; break;
+            case WGPUPresentMode_FifoRelaxed: outCaps.presentModes |= SwapchainPresentMode::FifoRelaxed; break;
+            default:                          TL_UNREACHABLE(); break;
+            }
+        }
+
+        for (size_t i = 0; i < capabilities.alphaModeCount; i++)
+        {
+            switch (capabilities.alphaModes[i])
+            {
+            case WGPUCompositeAlphaMode_Auto:            outCaps.alphaModes |= SwapchainAlphaMode::None; break;
+            case WGPUCompositeAlphaMode_Premultiplied:   outCaps.alphaModes |= SwapchainAlphaMode::PreMultiplied; break;
+            case WGPUCompositeAlphaMode_Unpremultiplied: outCaps.alphaModes |= SwapchainAlphaMode::PostMultiplied; break;
+            default:                                     TL_UNREACHABLE(); break;
+            }
+        }
+
+        wgpuSurfaceCapabilitiesFreeMembers(capabilities);
+        return outCaps;
+    }
+
+    ResultCode ISwapchain::Configure(const SwapchainConfigureInfo& configInfo)
+    {
+        m_configuration = configInfo;
+
+        WGPUSurfaceCapabilities capabilities;
+        auto                    status = wgpuSurfaceGetCapabilities(m_surface, m_device->m_adapter, &capabilities);
+        if (status != WGPUStatus_Success)
+        {
+            wgpuSurfaceCapabilitiesFreeMembers(capabilities);
+            return ResultCode::ErrorInvalidArguments;
+        }
+
+        auto usage       = ConvertToTextureUsage(configInfo.imageUsage);
+        auto format      = ConvertToTextureFormat(configInfo.format);
+        auto presentMode = ConvertToPresentMode(configInfo.presentMode);
+        auto alphaMode   = ConvertToAlphaMode(configInfo.alphaMode);
+
+        if (!(capabilities.usages & usage) ||
+            !std::find(capabilities.formats, capabilities.formats + capabilities.formatCount, format) ||
+            !std::find(capabilities.presentModes, capabilities.presentModes + capabilities.presentModeCount, presentMode) ||
+            !std::find(capabilities.alphaModes, capabilities.alphaModes + capabilities.alphaModeCount, alphaMode))
+        {
+            wgpuSurfaceCapabilitiesFreeMembers(capabilities);
+            return ResultCode::ErrorInvalidArguments;
+        }
+
+        wgpuSurfaceCapabilitiesFreeMembers(capabilities);
+
+        WGPUSurfaceConfiguration config{
+            .nextInChain     = nullptr,
+            .device          = m_device->m_device,
+            .format          = format,
+            .usage           = usage,
+            .viewFormatCount = 1,
+            .viewFormats     = &format,
+            .alphaMode       = alphaMode,
+            .width           = configInfo.size.width,
+            .height          = configInfo.size.height,
+            .presentMode     = presentMode,
+        };
+
+        wgpuSurfaceConfigure(m_surface, &config);
+        return SwapBackTextures();
+    }
+
+    ResultCode ISwapchain::Resize(ImageSize2D size)
+    {
+        m_configuration.size = size;
+        return Configure(m_configuration);
     }
 
     ResultCode ISwapchain::Present()
@@ -103,87 +206,40 @@ namespace RHI::WebGPU
         return SwapBackTextures();
     }
 
-    ResultCode ISwapchain::Configure(ImageSize2D textureSize, WGPUTextureFormat format, WGPUTextureUsage usage, WGPUPresentMode presentMode, WGPUCompositeAlphaMode alphaMode)
-    {
-        WGPUStatus status = WGPUStatus_Force32;
-
-        WGPUSurfaceCapabilities capabilities;
-        status = wgpuSurfaceGetCapabilities(m_surface, m_device->m_adapter, &capabilities);
-        if (status != WGPUStatus_Success)
-        {
-            wgpuSurfaceCapabilitiesFreeMembers(capabilities);
-            return ResultCode::ErrorInvalidArguments;
-        }
-        if (!(capabilities.usages & usage))
-        {
-            wgpuSurfaceCapabilitiesFreeMembers(capabilities);
-            return ResultCode::ErrorInvalidArguments;
-        }
-        if (!std::find(capabilities.formats, capabilities.formats + capabilities.formatCount, format))
-        {
-            wgpuSurfaceCapabilitiesFreeMembers(capabilities);
-            return ResultCode::ErrorInvalidArguments;
-        }
-        if (!std::find(capabilities.presentModes, capabilities.presentModes + capabilities.presentModeCount, presentMode))
-        {
-            wgpuSurfaceCapabilitiesFreeMembers(capabilities);
-            return ResultCode::ErrorInvalidArguments;
-        }
-        if (!std::find(capabilities.alphaModes, capabilities.alphaModes + capabilities.alphaModeCount, alphaMode))
-        {
-            wgpuSurfaceCapabilitiesFreeMembers(capabilities);
-            return ResultCode::ErrorInvalidArguments;
-        }
-        wgpuSurfaceCapabilitiesFreeMembers(capabilities);
-
-        m_surfaceTextureFormat = format;
-        m_surfaceTextureUsages = usage;
-        m_presentMode          = presentMode;
-        m_alphaMode            = alphaMode;
-
-        WGPUSurfaceConfiguration config{
-            .nextInChain     = nullptr,
-            .device          = m_device->m_device,
-            .format          = m_surfaceTextureFormat,
-            .usage           = m_surfaceTextureUsages,
-            .viewFormatCount = 1,
-            .viewFormats     = &m_surfaceTextureFormat,
-            .alphaMode       = m_alphaMode,
-            .width           = textureSize.width,
-            .height          = textureSize.height,
-            .presentMode     = m_presentMode,
-        };
-        wgpuSurfaceConfigure(m_surface, &config);
-
-        return SwapBackTextures();
-    }
-
     ResultCode ISwapchain::SwapBackTextures()
     {
         WGPUSurfaceTexture surfaceTexture;
         wgpuSurfaceGetCurrentTexture(m_surface, &surfaceTexture);
 
-        WGPUTextureViewDescriptor descriptor{
-            .nextInChain     = {},
-            .label           = {},
-            .format          = m_surfaceTextureFormat,
+        auto status = surfaceTexture.status;
+        if (status != WGPUSurfaceGetCurrentTextureStatus_SuccessOptimal)
+        {
+            return ConvertToResultCode(status);
+        }
+
+        auto image = m_device->m_imageOwner.Get(m_image);
+        if (image->view)
+        {
+            wgpuTextureViewRelease(image->view);
+        }
+        if (image->texture)
+        {
+            wgpuTextureRelease(image->texture);
+        }
+
+        image->texture = surfaceTexture.texture;
+
+        WGPUTextureViewDescriptor viewDesc{
+            .format          = ConvertToTextureFormat(m_configuration.format),
             .dimension       = WGPUTextureViewDimension_2D,
             .baseMipLevel    = 0,
             .mipLevelCount   = 1,
             .baseArrayLayer  = 0,
             .arrayLayerCount = 1,
-            .aspect          = WGPUTextureAspect_All,
-            .usage           = m_surfaceTextureUsages,
-        };
+            .aspect          = WGPUTextureAspect_All};
 
-        auto image = m_device->m_imageOwner.Get(GetImage());
-        if (auto oldView = image->view)
-        {
-            wgpuTextureViewRelease(oldView);
-        }
-        image->texture = surfaceTexture.texture;
-        image->view    = wgpuTextureCreateView(image->texture, &descriptor);
-        return ConvertToResultCode(surfaceTexture.status);
+        image->view = wgpuTextureCreateView(image->texture, &viewDesc);
+        return ResultCode::Success;
     }
 
 } // namespace RHI::WebGPU
