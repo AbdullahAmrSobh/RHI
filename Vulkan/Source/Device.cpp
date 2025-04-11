@@ -646,7 +646,7 @@ namespace RHI::Vulkan
         m_destroyQueue->Shutdown();
         for (auto& queue : m_queue)
         {
-            if (queue)
+            if (queue.GetHandle() != VK_NULL_HANDLE)
                 queue.Shutdown();
         }
 
@@ -813,10 +813,8 @@ namespace RHI::Vulkan
         });
         copyCommand->End();
 
-        QueueSubmitInfo submitInfo(*this);
-        submitInfo.AddCommandList(copyCommand->GetHandle());
-        submitInfo.signalStage = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-        auto res               = m_queue[(int)QueueType::Transfer].Submit(submitInfo);
+        auto& queue = m_queue[(int)QueueType::Transfer];
+        [[maybe_unused]] auto newTimeline = queue.Submit({copyCommand}, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
         vkDeviceWaitIdle(m_device);
     }
 

@@ -152,7 +152,7 @@ namespace RHI::Vulkan
     inline IQueue& IDevice::GetDeviceQueue(QueueType type)
     {
         auto& queue = m_queue[(uint32_t)type];
-        if (!queue)
+        if (queue.GetHandle() != VK_NULL_HANDLE)
         {
             return m_queue[(int)QueueType::Graphics];
         }

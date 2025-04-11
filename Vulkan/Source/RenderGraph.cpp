@@ -142,42 +142,19 @@ namespace RHI::Vulkan
         }
         commandList->End();
 
-        QueueSubmitInfo queueSubmitInfo(*device);
-        for (auto queueWaitType = QueueType::Graphics; queueWaitType < QueueType::Count; queueWaitType = (QueueType)((uint8_t)queueWaitType + 1))
-        {
-            auto waitInfo = passGroup.GetQueueWaitInfo(queueWaitType);
-            if (waitInfo.timelineValue != 0 && queueWaitType != queueType)
-            {
-                auto& queueToWait = device->GetDeviceQueue(queueWaitType);
-                queueSubmitInfo.AddWaitSemaphore(
-                    queueToWait.GetTimelineHandle(),
-                    m_queueTimelineFrameOffsets[(int)queueWaitType] + waitInfo.timelineValue,
-                    ConvertPipelineStageFlags(waitInfo.waitStage));
-            }
-            break;
-        }
-
         if (auto swapchainToWait = passGroup.GetSwapchainToWait(); swapchainToWait.swapchain != nullptr)
         {
             auto swapchain = (ISwapchain*)swapchainToWait.swapchain;
-            queueSubmitInfo.AddWaitSemaphore(
-                swapchain->GetImageAcquiredSemaphore(),
-                0,
-                ConvertPipelineStageFlags(swapchainToWait.stage));
+            queue.AddWaitSemaphore(swapchain->GetImageAcquiredSemaphore(), 0, ConvertPipelineStageFlags(swapchainToWait.stage));
         }
 
         if (auto swapchainToSignal = passGroup.GetSwapchainToSignal(); swapchainToSignal.swapchain != nullptr)
         {
             auto swapchain = (ISwapchain*)swapchainToSignal.swapchain;
-            queueSubmitInfo.AddSignalSemaphore(
-                swapchain->GetImagePresentSemaphore(),
-                0,
-                ConvertPipelineStageFlags(swapchainToSignal.stage));
+            queue.AddSignalSemaphore(swapchain->GetImagePresentSemaphore(), 0, ConvertPipelineStageFlags(swapchainToSignal.stage));
         }
 
-        queueSubmitInfo.AddCommandList(commandList->GetHandle());
-        queueSubmitInfo.signalStage = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
-
-        return m_queueTimelineFrameOffsets[(int)queueType] = queue.Submit(queueSubmitInfo);
+        // TODO: deduce the pipeline stage from the command lists ...
+        return m_queueTimelineFrameOffsets[(int)queueType] = queue.Submit({commandList}, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
     }
 } // namespace RHI::Vulkan

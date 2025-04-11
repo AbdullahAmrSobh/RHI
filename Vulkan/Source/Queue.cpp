@@ -10,13 +10,6 @@
 
 namespace RHI::Vulkan
 {
-    QueueSubmitInfo::QueueSubmitInfo(IDevice& device)
-        : waitSemaphores(device.m_tempAllocator)
-        , commandLists(device.m_tempAllocator)
-        , signalSemaphores(device.m_tempAllocator)
-    {
-    }
-
     IQueue::IQueue()  = default;
     IQueue::~IQueue() = default;
 
@@ -35,18 +28,17 @@ namespace RHI::Vulkan
             .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
             .initialValue  = 0,
         };
-
         VkSemaphoreCreateInfo semaphoreInfo = {
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
             .pNext = &timelineCreateInfo,
+            .flags = 0,
         };
-
-        if (vkCreateSemaphore(device->m_device, &semaphoreInfo, nullptr, &m_timeline) != VK_SUCCESS)
+        if (vkCreateSemaphore(device->m_device, &semaphoreInfo, nullptr, &m_timelineSemaphore) != VK_SUCCESS)
         {
             return ResultCode::ErrorUnknown;
         }
 
-        m_device->SetDebugName(m_timeline, std::format("{}-timeline-semaphore", debugName).c_str());
+        m_device->SetDebugName(m_timelineSemaphore, std::format("{}-timeline-semaphore", debugName).c_str());
         m_timelineValue.store(0);
 
         return ResultCode::Success;
@@ -54,14 +46,58 @@ namespace RHI::Vulkan
 
     void IQueue::Shutdown()
     {
-        if (m_timeline != VK_NULL_HANDLE)
-        {
-            vkDestroySemaphore(m_device->m_device, m_timeline, nullptr);
-            m_timeline = VK_NULL_HANDLE;
-        }
+        vkDestroySemaphore(m_device->m_device, m_timelineSemaphore, nullptr);
     }
 
-    void IQueue::BeginLabel(const char* name, const float color[4])
+    bool IQueue::WaitTimeline(uint64_t timelineValue, uint64_t duration)
+    {
+        ZoneScoped;
+        VkSemaphoreWaitInfo waitInfo = {
+            .sType          = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
+            .pNext          = nullptr,
+            .flags          = 0,
+            .semaphoreCount = 1,
+            .pSemaphores    = &m_timelineSemaphore,
+            .pValues        = &timelineValue,
+        };
+
+        auto result = vkWaitSemaphores(m_device->m_device, &waitInfo, duration);
+        return result == VK_SUCCESS;
+    }
+
+    void IQueue::WaitIdle() const
+    {
+        ZoneScoped;
+        vkQueueWaitIdle(m_queue);
+    }
+
+    void IQueue::AddWaitSemaphore(VkSemaphore semaphore, uint64_t value, VkPipelineStageFlags2 stageMask)
+    {
+        ZoneScoped;
+        m_waitSemaphores.push_back({
+            .sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+            .pNext       = nullptr,
+            .semaphore   = semaphore,
+            .value       = value,
+            .stageMask   = stageMask,
+            .deviceIndex = 0,
+        });
+    }
+
+    void IQueue::AddSignalSemaphore(VkSemaphore semaphore, uint64_t value, VkPipelineStageFlags2 stageMask)
+    {
+        ZoneScoped;
+        m_signalSemaphores.push_back({
+            .sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+            .pNext       = nullptr,
+            .semaphore   = semaphore,
+            .value       = value,
+            .stageMask   = stageMask,
+            .deviceIndex = 0,
+        });
+    }
+
+    void IQueue::BeginLabel(const char* name)
     {
         if (auto fn = m_device->m_pfn.m_vkQueueBeginDebugUtilsLabelEXT)
         {
@@ -69,7 +105,7 @@ namespace RHI::Vulkan
                 .sType      = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
                 .pNext      = nullptr,
                 .pLabelName = name,
-                .color      = {color[0], color[1], color[2], color[3]},
+                .color      = {},
             };
             fn(m_queue, &label);
         }
@@ -83,60 +119,41 @@ namespace RHI::Vulkan
         }
     }
 
-    uint64_t IQueue::GetTimelineValue() const
+    uint64_t IQueue::Submit(TL::Span<ICommandList* const> commandLists, VkPipelineStageFlags2 signalStage)
     {
-        uint64_t value = 0;
-        vkGetSemaphoreCounterValue(m_device->m_device, m_timeline, &value);
-        return value;
-    }
+        ZoneScoped;
 
-    uint64_t IQueue::GetTimelinePendingValue() const
-    {
-        return m_timelineValue.load();
-    }
+        VkResult result;
 
-    uint64_t IQueue::Submit(QueueSubmitInfo& submitInfo)
-    {
-        submitInfo.AddSignalSemaphore(m_timeline, m_timelineValue + 1, submitInfo.signalStage);
+        TL::Vector<VkCommandBufferSubmitInfo> commandBufferSubmitInfos;
+        for (auto commandList : commandLists)
+        {
+            commandBufferSubmitInfos.push_back({
+                .sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+                .pNext         = nullptr,
+                .commandBuffer = commandList->GetHandle(),
+                .deviceMask    = 0,
+            });
+        }
 
         VkSubmitInfo2 submitInfo2 = {
             .sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
             .pNext                    = nullptr,
-            .waitSemaphoreInfoCount   = static_cast<uint32_t>(submitInfo.waitSemaphores.size()),
-            .pWaitSemaphoreInfos      = submitInfo.waitSemaphores.data(),
-            .commandBufferInfoCount   = static_cast<uint32_t>(submitInfo.commandLists.size()),
-            .pCommandBufferInfos      = submitInfo.commandLists.data(),
-            .signalSemaphoreInfoCount = static_cast<uint32_t>(submitInfo.signalSemaphores.size()),
-            .pSignalSemaphoreInfos    = submitInfo.signalSemaphores.data(),
+            .flags                    = {},
+            .waitSemaphoreInfoCount   = static_cast<uint32_t>(m_waitSemaphores.size()),
+            .pWaitSemaphoreInfos      = m_waitSemaphores.data(),
+            .commandBufferInfoCount   = static_cast<uint32_t>(commandBufferSubmitInfos.size()),
+            .pCommandBufferInfos      = commandBufferSubmitInfos.data(),
+            .signalSemaphoreInfoCount = static_cast<uint32_t>(m_signalSemaphores.size()),
+            .pSignalSemaphoreInfos    = m_signalSemaphores.data(),
         };
-        auto result = vkQueueSubmit2(m_queue, 1, &submitInfo2, VK_NULL_HANDLE);
-        Validate(result);
-        return m_timelineValue.fetch_add(1);
+        result = vkQueueSubmit2(m_queue, 1, &submitInfo2, VK_NULL_HANDLE);
+        TL_ASSERT(result == VK_SUCCESS);
+
+        m_waitSemaphores.clear();
+        m_signalSemaphores.clear();
+
+        return m_timelineValue;
     }
 
-    bool IQueue::WaitTimeline(uint64_t timelineValue, uint64_t duration)
-    {
-        VkSemaphoreWaitInfo waitInfo = {
-            .sType          = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
-            .pNext          = nullptr,
-            .flags          = 0,
-            .semaphoreCount = 1,
-            .pSemaphores    = &m_timeline,
-            .pValues        = &timelineValue,
-        };
-        return vkWaitSemaphores(m_device->m_device, &waitInfo, duration) == VK_SUCCESS;
-    }
-
-    uint64_t IQueue::SignalTimeline(uint64_t timelineValue)
-    {
-        VkSemaphoreSignalInfo signalInfo = {
-            .sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO,
-            .pNext     = nullptr,
-            .semaphore = m_timeline,
-            .value     = timelineValue,
-        };
-        auto result = vkSignalSemaphore(m_device->m_device, &signalInfo);
-        Validate(result);
-        return timelineValue;
-    }
 } // namespace RHI::Vulkan
