@@ -23,12 +23,10 @@ set(HEADER_FILES
 )
 
 set(SOURCE_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/BindGroup.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Device.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Format.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Handle.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Pipeline.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Queue.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraph.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraphPass.cpp

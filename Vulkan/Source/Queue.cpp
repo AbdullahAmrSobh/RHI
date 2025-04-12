@@ -125,6 +125,8 @@ namespace RHI::Vulkan
 
         VkResult result;
 
+        AddSignalSemaphore(m_timelineSemaphore, m_timelineValue++, signalStage);
+
         TL::Vector<VkCommandBufferSubmitInfo> commandBufferSubmitInfos;
         for (auto commandList : commandLists)
         {

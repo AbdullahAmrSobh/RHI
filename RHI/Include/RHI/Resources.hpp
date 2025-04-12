@@ -2,19 +2,62 @@
 
 #include "RHI/Format.hpp"
 #include "RHI/Handle.hpp"
+#include "RHI/PipelineAccess.hpp"
 
 #include <TL/Flags.hpp>
 #include <TL/Span.hpp>
 
 namespace RHI
 {
-    constexpr auto WholeSize = UINT64_MAX;
+    // Constants
+    inline static constexpr uint64_t WholeSize         = UINT64_MAX;
+    inline static constexpr uint32_t BindlessArraySize = UINT32_MAX;
+    inline static constexpr uint32_t AllLayers         = UINT32_MAX;
+    inline static constexpr uint32_t AllMipLevels      = UINT32_MAX;
 
+    // Forward Declarations
+    struct Buffer;
+    struct Image;
+    struct Sampler;
+
+    class ShaderModule;
+
+    // Opaque Resource Declarations
+    RHI_DECLARE_OPAQUE_RESOURCE(BindGroupLayout);
+    RHI_DECLARE_OPAQUE_RESOURCE(BindGroup);
     RHI_DECLARE_OPAQUE_RESOURCE(Buffer);
     RHI_DECLARE_OPAQUE_RESOURCE(Image);
     RHI_DECLARE_OPAQUE_RESOURCE(Sampler);
+    RHI_DECLARE_OPAQUE_RESOURCE(PipelineLayout);
+    RHI_DECLARE_OPAQUE_RESOURCE(GraphicsPipeline);
+    RHI_DECLARE_OPAQUE_RESOURCE(ComputePipeline);
 
-    /// @brief Specifies the usage flags for a buffer.
+    // Enums (General Purpose)
+    enum class BindingType
+    {
+        None,                 ///< No binding.
+        Sampler,              ///< Sampler resource.
+        SampledImage,         ///< Sampled image (read-only texture).
+        StorageImage,         ///< Storage image (read/write texture).
+        UniformBuffer,        ///< Uniform buffer (constant data).
+        StorageBuffer,        ///< Storage buffer (read/write data).
+        DynamicUniformBuffer, ///< Dynamic uniform buffer.
+        DynamicStorageBuffer, ///< Dynamic storage buffer.
+        BufferView,           ///< Buffer view.
+        StorageBufferView,    ///< Storage buffer view.
+        Count,                ///< Number of binding types.
+    };
+
+    enum class ShaderStage
+    {
+        None    = 0 << 0, ///< No shader stage.
+        Vertex  = 1 << 1, ///< Vertex shader stage.
+        Pixel   = 1 << 2, ///< Pixel (fragment) shader stage.
+        Compute = 1 << 3, ///< Compute shader stage.
+    };
+
+    TL_DEFINE_FLAG_OPERATORS(ShaderStage);
+
     enum class BufferUsage
     {
         None     = 0 << 0, ///< No usage flags set.
@@ -35,7 +78,7 @@ namespace RHI
         uint32,
     };
 
-    /// @brief Flags representing image usage.
+    // Enums (Image Related)
     enum class ImageUsage
     {
         None            = 0 << 0,          ///< No usage.
@@ -53,23 +96,6 @@ namespace RHI
 
     TL_DEFINE_FLAG_OPERATORS(ImageUsage);
 
-    /// @brief Specifies the number of samples for multisampling in rendering.
-    enum class SampleCount
-    {
-        None      = 0 << 0, ///< No multisampling.
-        Samples1  = 1 << 0, ///< Single sample per pixel.
-        Samples2  = 1 << 1, ///< Two samples per pixel.
-        Samples4  = 1 << 2, ///< Four samples per pixel.
-        Samples8  = 1 << 3, ///< Eight samples per pixel.
-        Samples16 = 1 << 4, ///< Sixteen samples per pixel.
-        Samples32 = 1 << 5, ///< Thirty-two samples per pixel.
-        Samples64 = 1 << 6, ///< Sixty-four samples per pixel.
-    };
-
-    /// @brief Enables bitwise flag operations for the SampleCount enum.
-    TL_DEFINE_FLAG_OPERATORS(SampleCount);
-
-    /// @brief Types of images.
     enum class ImageType
     {
         None,    ///< No image type.
@@ -78,7 +104,6 @@ namespace RHI
         Image3D, ///< 3D image.
     };
 
-    /// @brief Types of image views.
     enum class ImageViewType
     {
         None,        ///< No image view type.
@@ -90,7 +115,6 @@ namespace RHI
         CubeMap,     ///< Cube map image view.
     };
 
-    /// @brief Aspects of an image.
     enum class ImageAspect : uint8_t
     {
         None         = 0,                    ///< No aspect.
@@ -103,7 +127,6 @@ namespace RHI
 
     TL_DEFINE_FLAG_OPERATORS(ImageAspect);
 
-    /// @brief Component swizzle options for image formats.
     enum class ComponentSwizzle
     {
         Identity = 0, ///< No swizzling, retains original component.
@@ -115,21 +138,107 @@ namespace RHI
         A,            ///< Alpha component.
     };
 
-    /// @brief Specifies filtering options for a Sampler.
+    // Enums (Pipeline Related)
+    enum class PipelineVertexInputRate
+    {
+        None,        ///< No input rate.
+        PerInstance, ///< Input rate per instance.
+        PerVertex,   ///< Input rate per vertex.
+    };
+
+    enum class PipelineRasterizerStateCullMode
+    {
+        None,      ///< No culling.
+        FrontFace, ///< Cull front-facing polygons.
+        BackFace,  ///< Cull back-facing polygons.
+        Discard,   ///< Discard primitives without culling.
+    };
+
+    enum class PipelineRasterizerStateFillMode
+    {
+        Point,    ///< Points.
+        Triangle, ///< Triangles.
+        Line,     ///< Lines.
+    };
+
+    enum class PipelineTopologyMode
+    {
+        Points,    ///< Points.
+        Lines,     ///< Lines.
+        Triangles, ///< Triangles.
+    };
+
+    enum class PipelineRasterizerStateFrontFace
+    {
+        Clockwise,        ///< Clockwise front face.
+        CounterClockwise, ///< Counter-clockwise front face.
+    };
+
+    enum class BlendFactor
+    {
+        Zero,                  ///< Zero.
+        One,                   ///< One.
+        SrcColor,              ///< Source color.
+        OneMinusSrcColor,      ///< One minus source color.
+        DstColor,              ///< Destination color.
+        OneMinusDstColor,      ///< One minus destination color.
+        SrcAlpha,              ///< Source alpha.
+        OneMinusSrcAlpha,      ///< One minus source alpha.
+        DstAlpha,              ///< Destination alpha.
+        OneMinusDstAlpha,      ///< One minus destination alpha.
+        ConstantColor,         ///< Constant color.
+        OneMinusConstantColor, ///< One minus constant color.
+        ConstantAlpha,         ///< Constant alpha.
+        OneMinusConstantAlpha, ///< One minus constant alpha.
+    };
+
+    enum class BlendEquation
+    {
+        Add,             ///< Addition.
+        Subtract,        ///< Subtraction.
+        ReverseSubtract, ///< Reverse subtraction.
+        Min,             ///< Minimum.
+        Max,             ///< Maximum.
+    };
+
+    enum class ColorWriteMask
+    {
+        Red   = 0x01,                       ///< Red channel.
+        Green = 0x02,                       ///< Green channel.
+        Blue  = 0x04,                       ///< Blue channel.
+        Alpha = 0x08,                       ///< Alpha channel.
+        All   = Red | Green | Blue | Alpha, ///< All channels.
+    };
+
+    TL_DEFINE_FLAG_OPERATORS(ColorWriteMask);
+
+    enum class SampleCount
+    {
+        None      = 0 << 0, ///< No multisampling.
+        Samples1  = 1 << 0, ///< Single sample per pixel.
+        Samples2  = 1 << 1, ///< Two samples per pixel.
+        Samples4  = 1 << 2, ///< Four samples per pixel.
+        Samples8  = 1 << 3, ///< Eight samples per pixel.
+        Samples16 = 1 << 4, ///< Sixteen samples per pixel.
+        Samples32 = 1 << 5, ///< Thirty-two samples per pixel.
+        Samples64 = 1 << 6, ///< Sixty-four samples per pixel.
+    };
+
+    TL_DEFINE_FLAG_OPERATORS(SampleCount);
+
+    // Enums (Sampler Related)
     enum class SamplerFilter
     {
         Point,  ///< Uses nearest neighbor filtering.
         Linear, ///< Uses linear filtering.
     };
 
-    /// @brief Specifies the addressing modes for a Sampler.
     enum class SamplerAddressMode
     {
         Repeat, ///< Repeats the texture when UV coordinates are outside the range [0,1].
         Clamp,  ///< Clamps UV coordinates to the edge of the texture.
     };
 
-    /// @brief Comparison operators for depth/stencil testing.
     enum class CompareOperator
     {
         Undefined,      ///< Undefined.
@@ -143,19 +252,66 @@ namespace RHI
         Always,         ///< Always passes.
     };
 
-    /// @brief Describes a subregion of a buffer.
+    // Structs (General Purpose)
     struct BufferSubregion
     {
         size_t      offset = 0; ///< Offset into the buffer.
         size_t      size   = 0; ///< Size of the subregion.
 
-        /// @brief Compares this subregion with another for equality.
-        /// @param other The other subregion to compare with.
-        /// @return true if both subregions have the same offset and size, false otherwise.
         inline bool operator==(const BufferSubregion& other) const { return size == other.size && offset == other.offset; }
     };
 
-    /// @brief Describes the parameters required to create a buffer.
+    struct ShaderBinding
+    {
+        BindingType            type       = BindingType::None; ///< Type of the binding.
+        Access                 access     = Access::Read;      ///< Access type (read/write) for the resource.
+        uint32_t               arrayCount = 1;                 ///< Number of elements in the array for this binding.
+        TL::Flags<ShaderStage> stages     = ShaderStage::None; ///< Shader stages where this binding is accessible.
+    };
+
+    // Structs (Bind Group Related)
+    struct BindGroupLayoutCreateInfo
+    {
+        const char*                   name     = nullptr; ///< Name of the bind group layout.
+        TL::Span<const ShaderBinding> bindings = {};      ///< Span of shader bindings for this layout.
+    };
+
+    struct BindGroupCreateInfo
+    {
+        const char*             name   = nullptr;    ///!< Name of the bind group.
+        Handle<BindGroupLayout> layout = NullHandle; // !< The layout of the bind group.
+    };
+
+    struct BindGroupImagesUpdateInfo
+    {
+        uint32_t                      dstBinding      = 0;  ///< Target binding index.
+        uint32_t                      dstArrayElement = 0;  ///< Target array element for binding.
+        TL::Span<const Handle<Image>> images          = {}; ///< Span of image views to bind.
+    };
+
+    struct BindGroupBuffersUpdateInfo
+    {
+        uint32_t                        dstBinding      = 0;  ///< Target binding index.
+        uint32_t                        dstArrayElement = 0;  ///< Target array element for binding.
+        TL::Span<const Handle<Buffer>>  buffers         = {}; ///< Span of buffer handles to bind.
+        TL::Span<const BufferSubregion> subregions      = {}; ///< Span of buffer subregions to bind.
+    };
+
+    struct BindGroupSamplersUpdateInfo
+    {
+        uint32_t                        dstBinding      = 0;  ///< Target binding index.
+        uint32_t                        dstArrayElement = 0;  ///< Target array element for binding.
+        TL::Span<const Handle<Sampler>> samplers        = {}; ///< Span of sampler handles to bind.
+    };
+
+    struct BindGroupUpdateInfo
+    {
+        TL::Span<const BindGroupBuffersUpdateInfo>  buffers  = {}; ///< Buffer updates for the bind group.
+        TL::Span<const BindGroupImagesUpdateInfo>   images   = {}; ///< Image updates for the bind group.
+        TL::Span<const BindGroupSamplersUpdateInfo> samplers = {}; ///< Sampler updates for the bind group.
+    };
+
+    // Structs (Buffer Related)
     struct BufferCreateInfo
     {
         const char*            name       = nullptr;           ///< Name of the buffer.
@@ -164,7 +320,7 @@ namespace RHI
         size_t                 byteSize   = 0;                 ///< Size of the buffer in bytes.
     };
 
-    /// @brief 2D offset for images.
+    // Structs (Image Related)
     struct ImageOffset2D
     {
         int32_t     x = 0; ///< X coordinate offset.
@@ -173,7 +329,6 @@ namespace RHI
         inline bool operator==(const ImageOffset2D& other) const { return x == other.x && y == other.y; }
     };
 
-    /// @brief 3D offset for images.
     struct ImageOffset3D
     {
         int32_t     x = 0; ///< X coordinate offset.
@@ -183,7 +338,6 @@ namespace RHI
         inline bool operator==(const ImageOffset3D& other) const { return x == other.x && y == other.y && z == other.z; }
     };
 
-    /// @brief 2D size for images.
     struct ImageSize2D
     {
         uint32_t    width  = 1; ///< Width of the image.
@@ -192,7 +346,6 @@ namespace RHI
         inline bool operator==(const ImageSize2D& other) const { return width == other.width && height == other.height; }
     };
 
-    /// @brief 3D size for images.
     struct ImageSize3D
     {
         uint32_t    width  = 1; ///< Width of the image.
@@ -205,7 +358,6 @@ namespace RHI
         }
     };
 
-    /// @brief Mapping of color components.
     struct ComponentMapping
     {
         ComponentSwizzle r = ComponentSwizzle::Identity; ///< Red component swizzle.
@@ -216,7 +368,6 @@ namespace RHI
         inline bool      operator==(const ComponentMapping& other) const { return r == other.r && g == other.g && b == other.b && a == other.a; }
     };
 
-    /// @brief Describes a range of subresources in an image.
     struct ImageSubresourceRange
     {
         TL::Flags<ImageAspect> imageAspects  = ImageAspect::All; ///< Image aspects to access.
@@ -228,7 +379,6 @@ namespace RHI
         inline bool            operator==(const ImageSubresourceRange& other) const { return imageAspects == other.imageAspects && mipBase == other.mipBase && mipLevelCount == other.mipLevelCount && arrayBase == other.arrayBase && arrayCount == other.arrayCount; }
     };
 
-    /// @brief Information needed to create an image.
     struct ImageCreateInfo
     {
         const char*           name        = nullptr;               ///< Name of the image.
@@ -241,7 +391,22 @@ namespace RHI
         uint32_t              arrayCount  = 1;                     ///< Number of array layers.
     };
 
-    /// @brief Describes the parameters required to create a Sampler.
+    struct ImageViewCreateInfo
+    {
+        const char*           name        = nullptr;             ///< Name of the image view.
+        Handle<Image>         image       = NullHandle;          ///< Handle to the image.
+        Format                format      = Format::Unknown;     ///< Format used to override original image format
+        ImageViewType         viewType    = ImageViewType::None; ///< Type of the image view.
+        ComponentMapping      components  = {};                  ///< Component mapping.
+        ImageSubresourceRange subresource = {};                  ///< Subresource range.
+
+        inline bool           operator==(const ImageViewCreateInfo& other) const
+        {
+            return components == other.components && viewType == other.viewType && subresource == other.subresource;
+        }
+    };
+
+    // Structs (Sampler Related)
     struct SamplerCreateInfo
     {
         const char*        name       = nullptr;                    ///< Name of the sampler.
@@ -257,20 +422,110 @@ namespace RHI
         float              maxLod     = 1000.0f;                    ///< Maximum level of detail (LOD) that can be used.
     };
 
-    /// @brief Information needed to create an image view.
-    struct ImageViewCreateInfo
+    // Structs (Pipeline Related)
+    struct PipelineLayoutCreateInfo
     {
-        const char*           name        = nullptr;             ///< Name of the image view.
-        Handle<Image>         image       = NullHandle;          ///< Handle to the image.
-        Format                format      = Format::Unknown;     ///< Format used to override original image format
-        ImageViewType         viewType    = ImageViewType::None; ///< Type of the image view.
-        ComponentMapping      components  = {};                  ///< Component mapping.
-        ImageSubresourceRange subresource = {};                  ///< Subresource range.
+        const char*                             name    = nullptr; ///< Debug name of the pipeline layout object.
+        TL::Span<const Handle<BindGroupLayout>> layouts = {};      ///< List of bind group layouts.
+    };
 
-        inline bool           operator==(const ImageViewCreateInfo& other) const
-        {
-            return components == other.components && viewType == other.viewType && subresource == other.subresource;
-        }
+    struct ColorAttachmentBlendStateDesc
+    {
+        bool                      blendEnable  = false;               ///< Enable blending.
+        BlendEquation             colorBlendOp = BlendEquation::Add;  ///< Color blend equation.
+        BlendFactor               srcColor     = BlendFactor::One;    ///< Source color blend factor.
+        BlendFactor               dstColor     = BlendFactor::Zero;   ///< Destination color blend factor.
+        BlendEquation             alphaBlendOp = BlendEquation::Add;  ///< Alpha blend equation.
+        BlendFactor               srcAlpha     = BlendFactor::One;    ///< Source alpha blend factor.
+        BlendFactor               dstAlpha     = BlendFactor::Zero;   ///< Destination alpha blend factor.
+        TL::Flags<ColorWriteMask> writeMask    = ColorWriteMask::All; ///< Color write mask.
+    };
+
+    struct PipelineRenderTargetLayout
+    {
+        TL::Span<const Format> colorAttachmentsFormats = {};              ///< Formats of color attachments.
+        Format                 depthAttachmentFormat   = Format::Unknown; ///< Format of depth attachment.
+        Format                 stencilAttachmentFormat = Format::Unknown; ///< Format of stencil attachment.
+    };
+
+    struct PipelineVertexAttributeDesc
+    {
+        uint32_t offset = 0;               ///< Offset of the attribute.
+        Format   format = Format::Unknown; ///< Format of the attribute.
+    };
+
+    struct PipelineVertexBindingDesc
+    {
+        uint32_t                                    stride     = 0;                                  ///< Stride between vertex data.
+        PipelineVertexInputRate                     stepRate   = PipelineVertexInputRate::PerVertex; ///< Input rate.
+        TL::Span<const PipelineVertexAttributeDesc> attributes = {};
+    };
+
+    struct PipelineRasterizerStateDesc
+    {
+        PipelineRasterizerStateCullMode  cullMode  = PipelineRasterizerStateCullMode::BackFace;          ///< Cull mode.
+        PipelineRasterizerStateFillMode  fillMode  = PipelineRasterizerStateFillMode::Triangle;          ///< Fill mode.
+        PipelineRasterizerStateFrontFace frontFace = PipelineRasterizerStateFrontFace::CounterClockwise; ///< Front face orientation.
+        float                            lineWidth = 1.0f;                                               ///< Line width.
+    };
+
+    struct PipelineMultisampleStateDesc
+    {
+        SampleCount sampleCount   = SampleCount::Samples1; ///< Number of samples per pixel.
+        bool        sampleShading = false;                 ///< Enable sample shading.
+    };
+
+    struct PipelineDepthStencilStateDesc
+    {
+        bool            depthTestEnable   = false;                 ///< Enable depth testing.
+        bool            depthWriteEnable  = false;                 ///< Enable depth writing.
+        CompareOperator compareOperator   = CompareOperator::Less; ///< Comparison operator for depth testing.
+        bool            stencilTestEnable = false;                 ///< Enable stencil testing.
+    };
+
+    struct PipelineColorBlendStateDesc
+    {
+        TL::Span<const ColorAttachmentBlendStateDesc> blendStates       = {};                       ///< Color blend states for each attachment.
+        float                                         blendConstants[4] = {0.0f, 0.0f, 0.0f, 0.0f}; ///< Blend constants.
+    };
+
+    struct GraphicsPipelineCreateInfo
+    {
+        const char*                               name                 = nullptr;                         ///< Name of the pipeline.
+        const char*                               vertexShaderName     = nullptr;                         ///< Name of the vertex shader.
+        ShaderModule*                             vertexShaderModule   = nullptr;                         ///< Vertex shader module.
+        const char*                               pixelShaderName      = nullptr;                         ///< Name of the pixel shader.
+        ShaderModule*                             pixelShaderModule    = nullptr;                         ///< Pixel shader module.
+        Handle<PipelineLayout>                    layout               = NullHandle;                      ///< Pipeline layout.
+        TL::Span<const PipelineVertexBindingDesc> vertexBufferBindings = {};                              ///< Input assembler state.
+        PipelineRenderTargetLayout                renderTargetLayout   = {};                              ///< Render target layout.
+        PipelineColorBlendStateDesc               colorBlendState      = {};                              ///< Color blend state.
+        PipelineTopologyMode                      topologyMode         = PipelineTopologyMode::Triangles; ///< Topology mode.
+        PipelineRasterizerStateDesc               rasterizationState   = {};                              ///< Rasterizer state.
+        PipelineMultisampleStateDesc              multisampleState     = {};                              ///< Multisample state.
+        PipelineDepthStencilStateDesc             depthStencilState    = {};                              ///< Depth/stencil state.
+    };
+
+    struct ComputePipelineCreateInfo
+    {
+        const char*            name         = nullptr;    ///< Name of the pipeline.
+        const char*            shaderName   = nullptr;    ///< Name of the compute shader.
+        ShaderModule*          shaderModule = nullptr;    ///< Compute shader module.
+        Handle<PipelineLayout> layout       = NullHandle; ///< Pipeline layout.
+    };
+
+    // Structs (Shader Related)
+    struct ShaderModuleCreateInfo
+    {
+        const char*              name = nullptr;
+        TL::Span<const uint32_t> code = {};
+    };
+
+    // Classes
+    class RHI_EXPORT ShaderModule
+    {
+    public:
+        RHI_INTERFACE_BOILERPLATE(ShaderModule);
     };
 
     using DeviceMemoryPtr = void*;

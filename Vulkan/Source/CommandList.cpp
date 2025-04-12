@@ -291,7 +291,7 @@ namespace RHI::Vulkan
                 .image               = image->handle,
                 .subresourceRange    = {
                                         // .aspectMask     = ConvertImageAspect(imageBarrier.subresources.imageAspects, image->format),
-                                        .aspectMask     = ConvertImageAspect(ImageAspect::All, image->format),
+                       .aspectMask     = ConvertImageAspect(ImageAspect::All, image->format),
                                         .baseMipLevel   = imageBarrier.subresources.mipBase,
                                         .levelCount     = imageBarrier.subresources.mipLevelCount,
                                         .baseArrayLayer = imageBarrier.subresources.arrayBase,

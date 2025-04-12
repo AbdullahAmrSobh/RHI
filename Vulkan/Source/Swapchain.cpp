@@ -282,7 +282,7 @@ namespace RHI::Vulkan
 
         IImage image{}; // default image (initialized on acquire)
         image.format = configInfo.format;
-        m_image = m_device->m_imageOwner.Emplace(std::move(image));
+        m_image      = m_device->m_imageOwner.Emplace(std::move(image));
 
         {
             auto semaphore = m_imageAcquiredSemaphore[m_currentSemaphoreIndex];

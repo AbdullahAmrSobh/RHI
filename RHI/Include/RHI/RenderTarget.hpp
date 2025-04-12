@@ -78,8 +78,8 @@ namespace RHI
 
     struct RenderPassBeginInfo
     {
-        ImageSize2D size;
-        ImageOffset2D offset;
+        ImageSize2D                          size;
+        ImageOffset2D                        offset;
         TL::Span<const ColorAttachment>      colorAttachments;
         TL::Optional<DepthStencilAttachment> depthStencilAttachment;
     };

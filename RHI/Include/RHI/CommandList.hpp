@@ -2,7 +2,6 @@
 
 #include "RHI/Common.hpp"
 #include "RHI/Resources.hpp"
-#include "RHI/BindGroup.hpp"
 #include "RHI/Queue.hpp"
 #include "RHI/RenderTarget.hpp"
 

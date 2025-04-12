@@ -281,25 +281,25 @@ namespace Engine
 
         m_bindGroup = m_device->CreateBindGroup({.layout = bindGroupLayout});
         RHI::BindGroupUpdateInfo bindings{
-            .images = {
-                       {
-                    .dstBinding = 2,
-                    .images     = m_image,
-                },
-                       },
             .buffers = {
-                       {
+                        {
                     .dstBinding = 0,
                     .buffers    = {m_uniformBuffer},
                     .subregions = RHI::BufferSubregion{.offset = 0, .size = sizeof(float) * 4 * 4},
                 },
-                       },
+                        },
+            .images = {
+                        {
+                    .dstBinding = 2,
+                    .images     = m_image,
+                },
+                        },
             .samplers = {
-                       {
+                        {
                     .dstBinding = 1,
                     .samplers   = m_sampler,
                 },
-                       },
+                        },
         };
         m_device->UpdateBindGroup(m_bindGroup, bindings);
 
@@ -410,10 +410,10 @@ namespace Engine
                         .view   = outputImage,
                         .loadOp = RHI::LoadOperation::Load,
                     });
-                              },
+            },
             .compileCallback = [](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
             {
-                              },
+            },
             .executeCallback = [this, drawData](RHI::CommandList& commandList)
             {
                 // Render command lists
@@ -468,8 +468,9 @@ namespace Engine
                                 RHI::IndexType::uint16);
                             commandList.BindVertexBuffers(0, {
                                                                  {
-                              .buffer = m_vertexBuffer,
-                              }});
+                                                                  .buffer = m_vertexBuffer,
+                                                                  }
+                            });
                             commandList.DrawIndexed({
                                 .indexCount    = drawCmd->ElemCount,
                                 .instanceCount = 1,
@@ -484,7 +485,7 @@ namespace Engine
                     globalIdxOffset += drawList->IdxBuffer.Size;
                     globalVtxOffset += drawList->VtxBuffer.Size;
                 }
-                              },
+            },
         });
     }
 

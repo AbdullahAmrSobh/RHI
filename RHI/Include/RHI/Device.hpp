@@ -5,7 +5,6 @@
 #include "RHI/Result.hpp"
 #include "RHI/Swapchain.hpp"
 #include "RHI/CommandList.hpp"
-#include "RHI/Pipeline.hpp"
 #include "RHI/Resources.hpp"
 #include "RHI/Queue.hpp"
 
@@ -104,6 +103,31 @@ namespace RHI
         /// @param updateInfo Update parameters for the bind group.
         virtual void                     UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo)                                                 = 0;
 
+        /// @brief Creates a buffer.
+        /// @param createInfo Buffer creation parameters.
+        /// @return Result containing the handle to the created buffer.
+        virtual Result<Handle<Buffer>>   CreateBuffer(const BufferCreateInfo& createInfo)                                                                                 = 0;
+
+        /// @brief Destroys a buffer.
+        /// @param handle Handle to the buffer to destroy.
+        virtual void                     DestroyBuffer(Handle<Buffer> handle)                                                                                             = 0;
+
+        /// @brief Creates an image.
+        /// @param createInfo Image creation parameters.
+        /// @return Result containing the handle to the created image.
+        virtual Result<Handle<Image>>    CreateImage(const ImageCreateInfo& createInfo)                                                                                   = 0;
+
+        virtual Handle<Image>            CreateImageView(const ImageViewCreateInfo& createInfo)                                                                           = 0;
+
+        /// @brief Creates a sampler.
+        /// @param createInfo Sampler creation parameters.
+        /// @return Handle to the created sampler.
+        virtual Handle<Sampler>          CreateSampler(const SamplerCreateInfo& createInfo)                                                                               = 0;
+
+        /// @brief Destroys a sampler.
+        /// @param handle Handle to the sampler to destroy.
+        virtual void                     DestroySampler(Handle<Sampler> handle)                                                                                           = 0;
+
         /// @brief Creates a pipeline layout.
         /// @param createInfo Pipeline layout creation parameters.
         /// @return Handle to the created pipeline layout.
@@ -131,34 +155,9 @@ namespace RHI
         /// @param handle Handle to the compute pipeline to destroy.
         virtual void                     DestroyComputePipeline(Handle<ComputePipeline> handle)                                                                           = 0;
 
-        /// @brief Creates a sampler.
-        /// @param createInfo Sampler creation parameters.
-        /// @return Handle to the created sampler.
-        virtual Handle<Sampler>          CreateSampler(const SamplerCreateInfo& createInfo)                                                                               = 0;
-
-        /// @brief Destroys a sampler.
-        /// @param handle Handle to the sampler to destroy.
-        virtual void                     DestroySampler(Handle<Sampler> handle)                                                                                           = 0;
-
-        /// @brief Creates an image.
-        /// @param createInfo Image creation parameters.
-        /// @return Result containing the handle to the created image.
-        virtual Result<Handle<Image>>    CreateImage(const ImageCreateInfo& createInfo)                                                                                   = 0;
-
-        virtual Handle<Image>            CreateImageView(const ImageViewCreateInfo& createInfo)                                                                           = 0;
-
         /// @brief Destroys an image.
         /// @param handle Handle to the image to destroy.
         virtual void                     DestroyImage(Handle<Image> handle)                                                                                               = 0;
-
-        /// @brief Creates a buffer.
-        /// @param createInfo Buffer creation parameters.
-        /// @return Result containing the handle to the created buffer.
-        virtual Result<Handle<Buffer>>   CreateBuffer(const BufferCreateInfo& createInfo)                                                                                 = 0;
-
-        /// @brief Destroys a buffer.
-        /// @param handle Handle to the buffer to destroy.
-        virtual void                     DestroyBuffer(Handle<Buffer> handle)                                                                                             = 0;
 
         /// @brief A resource update scope, resources will
         virtual void                     BeginResourceUpdate(RenderGraph* renderGraph)                                                                                    = 0;

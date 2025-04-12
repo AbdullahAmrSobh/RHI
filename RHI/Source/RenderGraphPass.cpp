@@ -139,14 +139,14 @@ namespace RHI
 
     void Pass::PresentSwapchain(RenderGraphImage& resource)
     {
-        auto transition = m_allocator->Allocate<ImageGraphTransition>();
-        transition->pass = this;
-        transition->prev = resource.GetLastAccess();
-        transition->next = nullptr;
-        transition->resource = &resource;
-        transition->usage    = ImageUsage::Present;
-        transition->stage    = PipelineStage::ColorAttachmentOutput;
-        transition->access   = Access::ReadWrite;
+        auto transition              = m_allocator->Allocate<ImageGraphTransition>();
+        transition->pass             = this;
+        transition->prev             = resource.GetLastAccess();
+        transition->next             = nullptr;
+        transition->resource         = &resource;
+        transition->usage            = ImageUsage::Present;
+        transition->stage            = PipelineStage::ColorAttachmentOutput;
+        transition->access           = Access::ReadWrite;
         transition->subresourceRange = {};
         resource.PushAccess(transition);
         m_imageTransitions.push_back(transition);

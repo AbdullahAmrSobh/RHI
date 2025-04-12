@@ -62,7 +62,6 @@ namespace RHI
 
         void                                   PresentSwapchain(RenderGraphImage& resource);
 
-
         void                                   AddRenderTarget(const ColorRGAttachment& attachment);
 
         void                                   AddRenderTarget(const DepthStencilRGAttachment& attachment);

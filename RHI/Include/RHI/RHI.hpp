@@ -11,7 +11,5 @@
 
 #include <RHI/Resources.hpp>
 
-#include <RHI/Pipeline.hpp>
 #include <RHI/Queue.hpp>
 #include <RHI/Result.hpp>
-#include <RHI/BindGroup.hpp>

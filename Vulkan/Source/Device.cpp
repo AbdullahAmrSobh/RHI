@@ -813,7 +813,7 @@ namespace RHI::Vulkan
         });
         copyCommand->End();
 
-        auto& queue = m_queue[(int)QueueType::Transfer];
+        auto&                 queue       = m_queue[(int)QueueType::Transfer];
         [[maybe_unused]] auto newTimeline = queue.Submit({copyCommand}, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
         vkDeviceWaitIdle(m_device);
     }
