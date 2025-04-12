@@ -17,7 +17,7 @@ namespace RHI
         m_usage.asImage  = {};
     }
 
-    void RenderGraphResource::PushAccess(RenderGraphResourceTransition* access)
+    void RenderGraphResource::PushAccess(GraphTransition* access)
     {
         if (!m_last)
         {
@@ -33,9 +33,10 @@ namespace RHI
         switch (access->resource->m_type)
         {
         case Type::Image:
-            m_usage.asImage |= access->asImage.usage;
+            m_usage.asImage |= static_cast<ImageGraphTransition*>(access)->usage;
+            break;
         case Type::Buffer:
-            m_usage.asBuffer |= access->asBuffer.usage;
+            m_usage.asBuffer |= static_cast<BufferGraphTransition*>(access)->usage;
             break;
         }
     }

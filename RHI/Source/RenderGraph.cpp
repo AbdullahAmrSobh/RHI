@@ -56,6 +56,56 @@ namespace RHI
     //     }
     // }
 
+    // inline static void RecordPassBarriers(IDevice& device, CompiledPass& pass)
+    // {
+    //     for (const auto& resourceTransition : pass.GetRenderGraphResourceTransitions())
+    //     {
+    //         auto [srcStageMask, srcAccessMask, srcLayout, srcQfi] = GetBarrierStage(resourceTransition->prev);
+    //         auto [dstStageMask, dstAccessMask, dstLayout, dstQfi] = GetBarrierStage(resourceTransition);
+    //         if (resourceTransition->resource->GetType() == RenderGraphResource::Type::Image)
+    //         {
+    //             auto imageTransition = (RenderGraphImage*)resourceTransition->resource;
+    //             auto image           = device.m_imageOwner.Get(imageTransition->GetImage());
+    //             pass.PushPassBarrier(
+    //                 BarrierSlot::Prilogue,
+    //                 {
+    //                     .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+    //                     .pNext               = nullptr,
+    //                     .srcStageMask        = srcStageMask,
+    //                     .srcAccessMask       = srcAccessMask,
+    //                     .dstStageMask        = dstStageMask,
+    //                     .dstAccessMask       = dstAccessMask,
+    //                     .oldLayout           = srcLayout,
+    //                     .newLayout           = dstLayout,
+    //                     .srcQueueFamilyIndex = srcQfi == dstQfi ? VK_QUEUE_FAMILY_IGNORED : srcQfi,
+    //                     .dstQueueFamilyIndex = srcQfi == dstQfi ? VK_QUEUE_FAMILY_IGNORED : dstQfi,
+    //                     .image               = image->handle,
+    //                     .subresourceRange    = GetAccessedSubresourceRange(*resourceTransition),
+    //                 });
+    //         }
+    //         else
+    //         {
+    //             auto bufferTransition = (RenderGraphBuffer*)resourceTransition->resource;
+    //             auto buffer           = device.m_bufferOwner.Get(bufferTransition->GetBuffer());
+    //             pass.PushPassBarrier(
+    //                 BarrierSlot::Prilogue,
+    //                 {
+    //                     .sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+    //                     .pNext               = nullptr,
+    //                     .srcStageMask        = srcStageMask,
+    //                     .srcAccessMask       = srcAccessMask,
+    //                     .dstStageMask        = dstStageMask,
+    //                     .dstAccessMask       = dstAccessMask,
+    //                     .srcQueueFamilyIndex = srcQfi == dstQfi ? VK_QUEUE_FAMILY_IGNORED : srcQfi,
+    //                     .dstQueueFamilyIndex = srcQfi == dstQfi ? VK_QUEUE_FAMILY_IGNORED : dstQfi,
+    //                     .buffer              = buffer->handle,
+    //                     .offset              = resourceTransition->asBuffer.subregion.offset,
+    //                     .size                = resourceTransition->asBuffer.subregion.size,
+    //                 });
+    //         }
+    //     }
+    // }
+
     RenderGraphImage* RenderGraph::ImportSwapchain(const char* name, Swapchain& swapchain, Format format)
     {
         ZoneScoped;
@@ -146,7 +196,7 @@ namespace RHI
     Pass* RenderGraph::AddPass(const PassCreateInfo& createInfo)
     {
         ZoneScoped;
-        auto* pass = CreatePass(createInfo);
+        auto* pass = new Pass(createInfo, &m_tempAllocator);
         m_graphPasses.push_back(pass);
         return pass;
     }
@@ -154,13 +204,13 @@ namespace RHI
     void RenderGraph::UseImage(Pass& pass, RenderGraphImage* image, ImageUsage usage, TL::Flags<PipelineStage> stage, TL::Flags<Access> access)
     {
         ZoneScoped;
-        pass.AddTransition(m_tempAllocator, *image, usage, stage, access, {});
+        pass.UseResource(*image, {}, usage, stage, access);
     }
 
     void RenderGraph::UseBuffer(Pass& pass, RenderGraphBuffer* buffer, BufferUsage usage, TL::Flags<PipelineStage> stage, TL::Flags<Access> access)
     {
         ZoneScoped;
-        pass.AddTransition(m_tempAllocator, *buffer, usage, stage, access, {0, WholeSize});
+        pass.UseResource(*buffer, {}, usage, stage, access);
     }
 
     void RenderGraph::UseColorAttachment(Pass& pass, const ColorRGAttachment& attachment)
@@ -168,7 +218,7 @@ namespace RHI
         ZoneScoped;
 
         ExtendResourceUsage(*attachment.view, ImageUsage::Color);
-        pass.m_colorAttachments.push_back(attachment);
+        pass.AddRenderTarget(attachment);
         UseImage(pass, attachment.view, ImageUsage::Color, PipelineStage::ColorAttachmentOutput, Access::ReadWrite);
 
         if (attachment.resolveView && attachment.resolveMode != ResolveMode::None)
@@ -180,8 +230,6 @@ namespace RHI
 
     void RenderGraph::UseDepthStencilAttachment(Pass& pass, const DepthStencilRGAttachment& attachment)
     {
-        // TL_ASSERT(pass.m_depthStencilAttachment.has_value() == false);
-
         FormatInfo formatInfo = GetFormatInfo(attachment.view->GetFormat());
 
         // TODO: handle stencil
@@ -189,7 +237,7 @@ namespace RHI
         // auto usage = attachment.view->GetImageUsage();
 
         ExtendResourceUsage(*attachment.view, ImageUsage::Depth);
-        pass.m_depthStencilAttachment = attachment;
+        // pass. = attachment;
         UseImage(pass, attachment.view, ImageUsage::Depth, PipelineStage::EarlyFragmentTests, LoadStoreToAccess(attachment.depthLoadOp, attachment.depthStoreOp) | LoadStoreToAccess(attachment.stencilLoadOp, attachment.stencilStoreOp));
     }
 
@@ -263,7 +311,7 @@ namespace RHI
             graphResource->m_handle.asImage = swapchain->GetImage();
 
             firstGroup->WaitForSwapchain(*swapchain, PipelineStage::TopOfPipe);
-            lastPass->AddSwapchainPresentBarrier(*m_device, *swapchain, *graphResource->GetLastAccess());
+            lastPass->PresentSwapchain(*graphResource);
             lastGroup->SignalSwapchainPresent(*swapchain, PipelineStage::BottomOfPipe);
         }
 
@@ -287,30 +335,6 @@ namespace RHI
             [[maybe_unused]] auto res = swapchain->Present();
         }
         currentFrameIndex = (currentFrameIndex + 1) % MaxFramesInFlight;
-    }
-
-    ColorAttachment RenderGraph::GetColorAttachment(const ColorRGAttachment& attachment) const
-    {
-        return ColorAttachment{
-            .view        = attachment.view->GetImage(),
-            .loadOp      = attachment.loadOp,
-            .storeOp     = attachment.storeOp,
-            .clearValue  = attachment.clearValue,
-            .resolveMode = attachment.resolveMode,
-            .resolveView = attachment.resolveView->GetImage(),
-        };
-    }
-
-    DepthStencilAttachment RenderGraph::GetDepthStencilAttachment(const DepthStencilRGAttachment& attachment) const
-    {
-        return DepthStencilAttachment{
-            .view           = attachment.view->GetImage(),
-            .depthLoadOp    = attachment.depthLoadOp,
-            .depthStoreOp   = attachment.depthStoreOp,
-            .stencilLoadOp  = attachment.stencilLoadOp,
-            .stencilStoreOp = attachment.stencilStoreOp,
-            .clearValue     = attachment.clearValue,
-        };
     }
 
     void RenderGraph::Compile()

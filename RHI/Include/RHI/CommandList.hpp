@@ -1,19 +1,16 @@
 #pragma once
 
 #include "RHI/Common.hpp"
-#include "RHI/RenderTarget.hpp"
-#include "RHI/Queue.hpp"
 #include "RHI/Resources.hpp"
 #include "RHI/BindGroup.hpp"
+#include "RHI/Queue.hpp"
+#include "RHI/RenderTarget.hpp"
 
 #include <TL/Containers.hpp>
 #include <TL/Span.hpp>
 
 namespace RHI
 {
-    template<typename T>
-    struct ColorValue;
-
     struct GraphicsPipeline;
     struct ComputePipeline;
 
@@ -133,119 +130,131 @@ namespace RHI
         QueueType   queueType = QueueType::Graphics; ///< Type of queue for the command list.
     };
 
-    /// @brief Represents a list of commands to be executed.
     class RHI_EXPORT CommandList
     {
     protected:
         virtual ~CommandList() = default;
 
     public:
-        /// @brief TODO!
-        virtual void Begin()                                                                                                       = 0;
+        /// @brief Begins recording commands to the command list.
+        virtual void Begin()                                                                                                                                                    = 0;
 
-        /// @brief TODO!
-        virtual void End()                                                                                                         = 0;
+        /// @brief Ends recording commands to the command list.
+        virtual void End()                                                                                                                                                      = 0;
 
-        /// @brief TODO!
-        virtual void BeginRenderPass(const Pass& pass)                                                                             = 0;
+        /// @brief Represents a list of commands to be executed.
+        /// @brief Adds pipeline barriers to synchronize resource state transitions.
+        /// @param barriers Array of memory barrier states to synchronize memory access.
+        /// @param imageBarriers Array of image barrier information for image state transitions.
+        /// @param bufferBarriers Array of buffer barrier information for buffer state transitions.
+        virtual void AddPipelineBarrier(TL::Span<const BarrierInfo> barriers, TL::Span<const ImageBarrierInfo> imageBarriers, TL::Span<const BufferBarrierInfo> bufferBarriers) = 0;
 
-        /// @brief TODO!
-        virtual void EndRenderPass()                                                                                               = 0;
+        /// @brief Begins a render pass for drawing commands.
+        /// @param beginInfo Information needed to begin the render pass.
+        virtual void BeginRenderPass(const RenderPassBeginInfo& beginInfo)                                                                                                      = 0;
+
+        /// @brief Ends the current render pass.
+        virtual void EndRenderPass()                                                                                                                                            = 0;
+
+        /// @brief Begins a compute pass for dispatch commands.
+        /// @param beginInfo Information needed to begin the compute pass.
+        virtual void BeginComputePass(const ComputePassBeginInfo& beginInfo)                                                                                                    = 0;
+
+        /// @brief Ends the current compute pass.
+        virtual void EndComputePass()                                                                                                                                           = 0;
 
         /// @brief Pushes a debug marker with a name and color onto the command list.
         /// @param name Name of the debug marker.
         /// @param color Color value of the debug marker.
-        virtual void DebugMarkerPush(const char* name, ColorValue<float> color)                                                    = 0;
+        virtual void PushDebugMarker(const char* name, ClearValue color)                                                                                                        = 0;
 
         /// @brief Pops the last debug marker off the command list.
-        virtual void DebugMarkerPop()                                                                                              = 0;
+        virtual void PopDebugMarker()                                                                                                                                           = 0;
 
         /// @brief Begins a conditional command block based on a buffer.
         /// @param conditionBuffer Binding information for the condition buffer.
         /// @param inverted If true, the condition is inverted.
-        virtual void BeginConditionalCommands(const BufferBindingInfo& conditionBuffer, bool inverted)                             = 0;
+        virtual void BeginConditionalCommands(const BufferBindingInfo& conditionBuffer, bool inverted)                                                                          = 0;
 
         /// @brief Ends a conditional command block.
-        virtual void EndConditionalCommands()                                                                                      = 0;
+        virtual void EndConditionalCommands()                                                                                                                                   = 0;
 
         /// @brief Executes a set of command lists.
         /// @param commandLists Span of command lists to execute.
-        virtual void Execute(TL::Span<const CommandList*> commandLists)                                                            = 0;
+        virtual void Execute(TL::Span<const CommandList*> commandLists)                                                                                                         = 0;
 
         /// @brief Binds a graphics pipeline.
         /// @param pipelineState Handle to the graphics pipeline.
         /// @param bindGroups Span of bind group binding information.
-        virtual void BindGraphicsPipeline(Handle<GraphicsPipeline> pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups) = 0;
+        virtual void BindGraphicsPipeline(Handle<GraphicsPipeline> pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups)                                              = 0;
 
         /// @brief Binds a compute pipeline.
         /// @param pipelineState Handle to the compute pipeline.
         /// @param bindGroups Span of bind group binding information.
-        virtual void BindComputePipeline(Handle<ComputePipeline> pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups)   = 0;
+        virtual void BindComputePipeline(Handle<ComputePipeline> pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups)                                                = 0;
 
         /// @brief Sets the viewport for rendering.
         /// @param viewport The viewport to set.
-        virtual void SetViewport(const Viewport& viewport)                                                                         = 0;
+        virtual void SetViewport(const Viewport& viewport)                                                                                                                      = 0;
 
         /// @brief Sets the scissor rectangle for rendering.
         /// @param scissor The scissor rectangle to set.
-        virtual void SetScissor(const Scissor& sicssor)                                                                            = 0;
+        virtual void SetScissor(const Scissor& sicssor)                                                                                                                         = 0;
 
         /// @brief Binds the vertex buffers for drawing.
         /// @param firstBinding Index of the first binding.
         /// @param vertexBuffers Span of vertex buffer binding information.
-        virtual void BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> vertexBuffers)                     = 0;
+        virtual void BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> vertexBuffers)                                                                  = 0;
 
         /// @brief Binds the index buffer for drawing.
         /// @param indexBuffer Information about the index buffer binding.
         /// @param indexType Type of indices in the index buffer.
-        virtual void BindIndexBuffer(const BufferBindingInfo& indexBuffer, IndexType indexType)                                    = 0;
+        virtual void BindIndexBuffer(const BufferBindingInfo& indexBuffer, IndexType indexType)                                                                                 = 0;
 
         /// @brief Issues a draw command.
         /// @param parameters Parameters for the draw command.
-        virtual void Draw(const DrawParameters& parameters)                                                                        = 0;
+        virtual void Draw(const DrawParameters& parameters)                                                                                                                     = 0;
 
         /// @brief Issues an indexed draw command.
         /// @param parameters Parameters for the indexed draw command.
-        virtual void DrawIndexed(const DrawIndexedParameters& parameters)                                                          = 0;
+        virtual void DrawIndexed(const DrawIndexedParameters& parameters)                                                                                                       = 0;
 
         /// @brief Issues an indirect draw command.
         /// @param argumentBuffer Binding information about the buffer containing draw arguments.
         /// @param countBuffer Binding information about the buffer containing draw counts.
         /// @param maxDrawCount Maximum number of draws to issue in this indirect draw call.
         /// @param stride Stride between draw commands in bytes.
-        virtual void DrawIndirect(
-            const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride) = 0;
+        virtual void DrawIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride)                        = 0;
 
         /// @brief Issues an indexed indirect draw command.
         /// @param argumentBuffer Binding information about the buffer containing draw arguments.
         /// @param countBuffer Binding information about the buffer containing draw counts.
         /// @param maxDrawCount Maximum number of draws to issue in this indirect draw call.
         /// @param stride Stride between draw commands in bytes.
-        virtual void DrawIndexedIndirect(
-            const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride) = 0;
+        virtual void DrawIndexedIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride)                 = 0;
 
         /// @brief Issues a dispatch command.
         /// @param parameters Information for the dispatch command.
-        virtual void Dispatch(const DispatchParameters& parameters)                                                                = 0;
+        virtual void Dispatch(const DispatchParameters& parameters)                                                                                                             = 0;
 
         /// @brief Issues an indexed dispatch command.
         /// @param parameters Information for the dispatch command.
-        virtual void DispatchIndirect(const BufferBindingInfo& argumentBuffer)                                                     = 0;
+        virtual void DispatchIndirect(const BufferBindingInfo& argumentBuffer)                                                                                                  = 0;
 
         /// @brief Issues a buffer-to-buffer copy command.
         /// @param copyInfo Information for the buffer copy command.
-        virtual void CopyBuffer(const BufferCopyInfo& copyInfo)                                                                    = 0;
+        virtual void CopyBuffer(const BufferCopyInfo& copyInfo)                                                                                                                 = 0;
 
         /// @brief Issues an image-to-image copy command.
         /// @param copyInfo Information for the image copy command.
-        virtual void CopyImage(const ImageCopyInfo& copyInfo)                                                                      = 0;
+        virtual void CopyImage(const ImageCopyInfo& copyInfo)                                                                                                                   = 0;
 
         /// @brief Issues a buffer-to-image copy command.
         /// @param copyInfo Information for the buffer-to-image copy command.
-        virtual void CopyImageToBuffer(const BufferImageCopyInfo& copyInfo)                                                        = 0;
+        virtual void CopyImageToBuffer(const BufferImageCopyInfo& copyInfo)                                                                                                     = 0;
 
         /// @brief Issues an image-to-buffer copy command.
         /// @param copyInfo Information for the image-to-buffer copy command.
-        virtual void CopyBufferToImage(const BufferImageCopyInfo& copyInfo)                                                        = 0;
+        virtual void CopyBufferToImage(const BufferImageCopyInfo& copyInfo)                                                                                                     = 0;
     };
 } // namespace RHI

@@ -496,9 +496,13 @@ namespace RHI::Vulkan
             if (access & Access::Read) result |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
             if (access & Access::Write) result |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
             break;
+        case ImageUsage::Present:
+            if (access & Access::Read) result |= VK_ACCESS_2_NONE;
+            if (access & Access::Write) result |= VK_ACCESS_2_NONE;
+            break;
         default: break;
         };
-        TL_ASSERT(result != VK_ACCESS_2_NONE);
+        // TL_ASSERT(result != VK_ACCESS_2_NONE);
         return result;
     }
 
@@ -570,6 +574,7 @@ namespace RHI::Vulkan
         case ImageUsage::DepthStencil: return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         case ImageUsage::CopySrc:      return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
         case ImageUsage::CopyDst:      return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        case ImageUsage::Present:      return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
         default:                       return isReadOnly ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
         }
     }

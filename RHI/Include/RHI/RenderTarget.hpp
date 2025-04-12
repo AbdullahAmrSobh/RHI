@@ -2,6 +2,7 @@
 
 #include "RHI/Handle.hpp"
 #include "RHI/PipelineAccess.hpp"
+#include "RHI/Resources.hpp"
 
 #include <cstdint>
 
@@ -77,8 +78,57 @@ namespace RHI
 
     struct RenderPassBeginInfo
     {
+        ImageSize2D size;
+        ImageOffset2D offset;
         TL::Span<const ColorAttachment>      colorAttachments;
         TL::Optional<DepthStencilAttachment> depthStencilAttachment;
+    };
+
+    struct BarrierState
+    {
+        TL::Flags<PipelineStage> stage  = PipelineStage::None;
+        TL::Flags<Access>        access = Access::None;
+    };
+
+    struct ImageBarrierState
+    {
+        ImageUsage               usage  = ImageUsage::None;
+        TL::Flags<PipelineStage> stage  = PipelineStage::None;
+        TL::Flags<Access>        access = Access::None;
+    };
+
+    struct BufferBarrierState
+    {
+        BufferUsage              usage  = BufferUsage::None;
+        TL::Flags<PipelineStage> stage  = PipelineStage::None;
+        TL::Flags<Access>        access = Access::None;
+    };
+
+    struct BarrierInfo
+    {
+        BarrierState srcState = {};
+        BarrierState dstState = {};
+    };
+
+    struct ImageBarrierInfo
+    {
+        Handle<Image>         image        = NullHandle;
+        ImageBarrierState     srcState     = {};
+        ImageBarrierState     dstState     = {};
+        ImageSubresourceRange subresources = {};
+    };
+
+    struct BufferBarrierInfo
+    {
+        Handle<Buffer>     buffer    = NullHandle;
+        BufferBarrierState srcState  = {};
+        BufferBarrierState dstState  = {};
+        BufferSubregion    subregion = {};
+    };
+
+    struct ComputePassBeginInfo
+    {
+        const char* name;
     };
 
     inline static RHI::Access LoadStoreToAccess(LoadOperation loadOp, StoreOperation storeOp)

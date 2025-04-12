@@ -65,17 +65,19 @@ namespace RHI::Vulkan
         ResultCode Init(IDevice* device, const CommandListCreateInfo& createInfo);
         void       Shutdown();
 
+        // [[deprecated]]
         void AddPipelineBarriers(const PipelineBarriers& barriers);
-
-        void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups);
 
         // Interface implementation
         void Begin() override;
         void End() override;
-        void BeginRenderPass(const Pass& pass) override;
+        void AddPipelineBarrier(TL::Span<const BarrierInfo> barriers, TL::Span<const ImageBarrierInfo> imageBarriers, TL::Span<const BufferBarrierInfo> bufferBarriers) override;
+        void BeginRenderPass(const RenderPassBeginInfo& beginInfo) override;
         void EndRenderPass() override;
-        void DebugMarkerPush(const char* name, ColorValue<float> color) override;
-        void DebugMarkerPop() override;
+        void BeginComputePass(const ComputePassBeginInfo& beginInfo) override;
+        void EndComputePass() override;
+        void PushDebugMarker(const char* name, ClearValue color) override;
+        void PopDebugMarker() override;
         void BeginConditionalCommands(const BufferBindingInfo& conditionBuffer, bool inverted) override;
         void EndConditionalCommands() override;
         void Execute(TL::Span<const CommandList*> commandLists) override;
@@ -99,9 +101,11 @@ namespace RHI::Vulkan
         VkCommandBuffer GetHandle() const { return m_commandBuffer; }
 
     private:
+        void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups);
+
+    private:
         IDevice*        m_device                      = nullptr;
         VkCommandBuffer m_commandBuffer               = VK_NULL_HANDLE;
-        bool            m_isInsideRenderPass      : 1 = false;
         bool            m_hasVertexBuffer         : 1 = false;
         bool            m_hasIndexBuffer          : 1 = false;
         bool            m_isGraphicsPipelineBound : 1 = false;

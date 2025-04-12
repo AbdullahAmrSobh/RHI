@@ -21,31 +21,28 @@ namespace RHI
     class Pass;
     class RenderGraphResource;
 
-    struct RenderGraphResourceTransition
+    struct GraphTransition
     {
-        Pass*                          pass     = nullptr;
-        RenderGraphResourceTransition* next     = nullptr;
-        RenderGraphResourceTransition* prev     = nullptr;
-        RenderGraphResource*           resource = nullptr;
+        Pass*                   pass     = nullptr;
+        GraphTransition* next     = nullptr;
+        GraphTransition* prev     = nullptr;
+        RenderGraphResource*    resource = nullptr;
+    };
 
-        union
-        {
-            struct
-            {
-                ImageUsage               usage;
-                TL::Flags<PipelineStage> stage;
-                TL::Flags<Access>        access;
-                ImageSubresourceRange    subresourceRange;
-            } asImage = {};
+    struct ImageGraphTransition : public GraphTransition
+    {
+        ImageUsage               usage;
+        TL::Flags<PipelineStage> stage;
+        TL::Flags<Access>        access;
+        ImageSubresourceRange    subresourceRange;
+    };
 
-            struct
-            {
-                BufferUsage              usage;
-                TL::Flags<PipelineStage> stage;
-                TL::Flags<Access>        access;
-                BufferSubregion          subregion;
-            } asBuffer;
-        };
+    struct BufferGraphTransition : public GraphTransition
+    {
+        BufferUsage              usage;
+        TL::Flags<PipelineStage> stage;
+        TL::Flags<Access>        access;
+        BufferSubregion          subregion;
     };
 
     class RenderGraphResource
@@ -57,38 +54,38 @@ namespace RHI
             Buffer
         };
 
-        Type                                 GetType() const { return m_type; }
+        Type                          GetType() const { return m_type; }
 
-        const char*                          GetName() const { return m_name.c_str(); }
+        const char*                   GetName() const { return m_name.c_str(); }
 
-        const RenderGraphResourceTransition* GetFirstAccess() const { return m_first; }
+        const GraphTransition* GetFirstAccess() const { return m_first; }
 
-        RenderGraphResourceTransition*       GetFirstAccess() { return m_first; }
+        GraphTransition*       GetFirstAccess() { return m_first; }
 
-        const RenderGraphResourceTransition* GetLastAccess() const { return m_last; }
+        const GraphTransition* GetLastAccess() const { return m_last; }
 
-        RenderGraphResourceTransition*       GetLastAccess() { return m_last; }
+        GraphTransition*       GetLastAccess() { return m_last; }
 
-        const Pass*                          GetFirstPass() const { return m_first->pass; }
+        const Pass*                   GetFirstPass() const { return m_first->pass; }
 
-        Pass*                                GetFirstPass() { return m_first->pass; }
+        Pass*                         GetFirstPass() { return m_first->pass; }
 
-        const Pass*                          GetLastPass() const { return m_last->pass; }
+        const Pass*                   GetLastPass() const { return m_last->pass; }
 
-        Pass*                                GetLastPass() { return m_last->pass; }
+        Pass*                         GetLastPass() { return m_last->pass; }
 
-        void                                 PushAccess(RenderGraphResourceTransition* access);
+        void                          PushAccess(GraphTransition* access);
 
     protected:
         friend class RenderGraph;
 
         RenderGraphResource(const char* name, Type type);
 
-        TL::String                     m_name;
-        RenderGraphResourceTransition* m_first;
-        RenderGraphResourceTransition* m_last;
-        Type                           m_type;
-        Format                         m_format = Format::Unknown;
+        TL::String              m_name;
+        GraphTransition* m_first;
+        GraphTransition* m_last;
+        Type                    m_type;
+        Format                  m_format = Format::Unknown;
 
         union
         {
@@ -108,6 +105,7 @@ namespace RHI
     class RenderGraphImage final : public RenderGraphResource
     {
         friend RenderGraph;
+        friend class Pass;
 
     public:
         RenderGraphImage(const char* name, Handle<Image> image, Format format);
@@ -122,6 +120,7 @@ namespace RHI
 
     class RenderGraphBuffer final : public RenderGraphResource
     {
+        friend class Pass;
     public:
         RenderGraphBuffer(const char* name, Handle<Buffer> buffer);
         RenderGraphBuffer(const char* name);

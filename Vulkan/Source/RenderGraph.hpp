@@ -19,7 +19,6 @@ namespace RHI::Vulkan
         ResultCode Init(IDevice* device, const RenderGraphCreateInfo& createInfo);
         void       Shutdown();
 
-        Pass*    CreatePass(const PassCreateInfo& createInfo) override;
         void     OnGraphExecutionBegin() override;
         void     OnGraphExecutionEnd() override;
         uint64_t ExecutePassGroup(const RenderGraphExecuteGroup& group, QueueType queueType) override;

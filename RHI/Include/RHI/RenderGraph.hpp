@@ -138,8 +138,6 @@ namespace RHI
     protected:
         void             ExecutePassCallback(Pass& pass, CommandList& commandList) { pass.m_onExecuteCallback(commandList); }
 
-        virtual Pass*    CreatePass(const PassCreateInfo& createInfo)                                = 0;
-
         virtual void     OnGraphExecutionBegin()                                                     = 0;
 
         virtual void     OnGraphExecutionEnd()                                                       = 0;

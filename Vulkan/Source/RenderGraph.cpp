@@ -8,62 +8,10 @@
 
 #include "CommandList.hpp"
 #include "Device.hpp"
-#include "RenderGraphPass.hpp"
 #include "Swapchain.hpp"
 
 namespace RHI::Vulkan
 {
-
-    inline static void RecordPassBarriers(IDevice& device, CompiledPass& pass)
-    {
-        for (const auto& resourceTransition : pass.GetRenderGraphResourceTransitions())
-        {
-            auto [srcStageMask, srcAccessMask, srcLayout, srcQfi] = GetBarrierStage(resourceTransition->prev);
-            auto [dstStageMask, dstAccessMask, dstLayout, dstQfi] = GetBarrierStage(resourceTransition);
-            if (resourceTransition->resource->GetType() == RenderGraphResource::Type::Image)
-            {
-                auto imageTransition = (RenderGraphImage*)resourceTransition->resource;
-                auto image           = device.m_imageOwner.Get(imageTransition->GetImage());
-                pass.PushPassBarrier(
-                    BarrierSlot::Prilogue,
-                    {
-                        .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-                        .pNext               = nullptr,
-                        .srcStageMask        = srcStageMask,
-                        .srcAccessMask       = srcAccessMask,
-                        .dstStageMask        = dstStageMask,
-                        .dstAccessMask       = dstAccessMask,
-                        .oldLayout           = srcLayout,
-                        .newLayout           = dstLayout,
-                        .srcQueueFamilyIndex = srcQfi == dstQfi ? VK_QUEUE_FAMILY_IGNORED : srcQfi,
-                        .dstQueueFamilyIndex = srcQfi == dstQfi ? VK_QUEUE_FAMILY_IGNORED : dstQfi,
-                        .image               = image->handle,
-                        .subresourceRange    = GetAccessedSubresourceRange(*resourceTransition),
-                    });
-            }
-            else
-            {
-                auto bufferTransition = (RenderGraphBuffer*)resourceTransition->resource;
-                auto buffer           = device.m_bufferOwner.Get(bufferTransition->GetBuffer());
-                pass.PushPassBarrier(
-                    BarrierSlot::Prilogue,
-                    {
-                        .sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
-                        .pNext               = nullptr,
-                        .srcStageMask        = srcStageMask,
-                        .srcAccessMask       = srcAccessMask,
-                        .dstStageMask        = dstStageMask,
-                        .dstAccessMask       = dstAccessMask,
-                        .srcQueueFamilyIndex = srcQfi == dstQfi ? VK_QUEUE_FAMILY_IGNORED : srcQfi,
-                        .dstQueueFamilyIndex = srcQfi == dstQfi ? VK_QUEUE_FAMILY_IGNORED : dstQfi,
-                        .buffer              = buffer->handle,
-                        .offset              = resourceTransition->asBuffer.subregion.offset,
-                        .size                = resourceTransition->asBuffer.subregion.size,
-                    });
-            }
-        }
-    }
-
     IRenderGraph::IRenderGraph()  = default;
     IRenderGraph::~IRenderGraph() = default;
 
@@ -75,11 +23,6 @@ namespace RHI::Vulkan
 
     void IRenderGraph::Shutdown()
     {
-    }
-
-    Pass* IRenderGraph::CreatePass(const PassCreateInfo& createInfo)
-    {
-        return m_tempAllocator.Construct<CompiledPass>(createInfo, &m_tempAllocator);
     }
 
     void IRenderGraph::OnGraphExecutionBegin()
@@ -121,24 +64,9 @@ namespace RHI::Vulkan
         auto  commandList = (ICommandList*)m_device->CreateCommandList({.queueType = queueType});
 
         commandList->Begin();
-        for (auto _pass : passGroup.GetPassList())
+        for (auto pass : passGroup.GetPassList())
         {
-            auto pass = (CompiledPass*)_pass;
-            RecordPassBarriers(*device, *pass);
-
-            commandList->DebugMarkerPush(pass->GetName(), QueueTypeToColor(queueType));
-            pass->EmitBarriers(*commandList, BarrierSlot::Prilogue);
-            if (pass->GetQueueType() == QueueType::Graphics)
-            {
-                commandList->BeginRenderPass(*pass);
-            }
-            ExecutePassCallback(*pass, *commandList);
-            if (pass->GetQueueType() == QueueType::Graphics)
-            {
-                commandList->EndRenderPass();
-            }
-            pass->EmitBarriers(*commandList, BarrierSlot::Epilogue);
-            commandList->DebugMarkerPop();
+            pass->Execute(*commandList);
         }
         commandList->End();
 

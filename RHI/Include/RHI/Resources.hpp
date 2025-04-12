@@ -48,6 +48,7 @@ namespace RHI
         CopySrc         = 1 << 6,          ///< Image is used as a source in copy operations.
         CopyDst         = 1 << 7,          ///< Image is used as a destination in copy operations.
         Resolve         = CopyDst,         ///< Image is used for resolve operations.
+        Present         = 1 << 8,          ///< Image is used for presentation.
     };
 
     TL_DEFINE_FLAG_OPERATORS(ImageUsage);
@@ -218,11 +219,11 @@ namespace RHI
     /// @brief Describes a range of subresources in an image.
     struct ImageSubresourceRange
     {
-        TL::Flags<ImageAspect> imageAspects  = ImageAspect::Color; ///< Image aspects to access.
-        uint8_t                mipBase       = 0;                  ///< Base mip level.
-        uint8_t                mipLevelCount = 1;                  ///< Number of mip levels.
-        uint8_t                arrayBase     = 0;                  ///< Base array layer.
-        uint8_t                arrayCount    = 1;                  ///< Number of array layers.
+        TL::Flags<ImageAspect> imageAspects  = ImageAspect::All; ///< Image aspects to access.
+        uint8_t                mipBase       = 0;                ///< Base mip level.
+        uint8_t                mipLevelCount = 1;                ///< Number of mip levels.
+        uint8_t                arrayBase     = 0;                ///< Base array layer.
+        uint8_t                arrayCount    = 1;                ///< Number of array layers.
 
         inline bool            operator==(const ImageSubresourceRange& other) const { return imageAspects == other.imageAspects && mipBase == other.mipBase && mipLevelCount == other.mipLevelCount && arrayBase == other.arrayBase && arrayCount == other.arrayCount; }
     };

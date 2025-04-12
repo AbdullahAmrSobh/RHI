@@ -11,7 +11,7 @@
 
 namespace RHI::Vulkan
 {
-    VkImageSubresourceLayers ConvertSubresourceLayer(const ImageSubresourceLayers& subresource, Format format)
+    inline static VkImageSubresourceLayers ConvertSubresourceLayer(const ImageSubresourceLayers& subresource, Format format)
     {
         auto vkSubresource           = VkImageSubresourceLayers{};
         vkSubresource.aspectMask     = ConvertImageAspect(subresource.imageAspects, format);
@@ -21,7 +21,7 @@ namespace RHI::Vulkan
         return vkSubresource;
     }
 
-    VkResolveModeFlagBits ConvertResolveMode(ResolveMode resolveMode)
+    inline static VkResolveModeFlagBits ConvertResolveMode(ResolveMode resolveMode)
     {
         switch (resolveMode)
         {
@@ -31,6 +31,44 @@ namespace RHI::Vulkan
         case ResolveMode::Avg:  return VK_RESOLVE_MODE_AVERAGE_BIT;
         }
         return {};
+    }
+
+    struct BarrierStage
+    {
+        VkPipelineStageFlags2 stageMask        = VK_PIPELINE_STAGE_2_NONE;
+        VkAccessFlags2        accessMask       = VK_ACCESS_2_NONE;
+        VkImageLayout         layout           = VK_IMAGE_LAYOUT_UNDEFINED;
+        uint32_t              queueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    };
+
+    inline BarrierStage ConvertBarrierState(const BarrierState& barrierState)
+    {
+        return {
+            // .stageMask        = ConvertPipelineStageFlags(barrierState.stage),
+            // .accessMask       = GetAccessFlags2(barrierState.usage, barrierState.access),
+            // .layout           = VK_IMAGE_LAYOUT_UNDEFINED,
+            // .queueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        };
+    }
+
+    inline BarrierStage ConvertBarrierState(const ImageBarrierState& barrierState)
+    {
+        return {
+            .stageMask        = ConvertPipelineStageFlags(barrierState.stage),
+            .accessMask       = GetAccessFlags2(barrierState.usage, barrierState.access),
+            .layout           = GetImageLayout(barrierState.usage, barrierState.access, ImageAspect::All),
+            .queueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        };
+    }
+
+    inline BarrierStage ConvertBarrierState(const BufferBarrierState& barrierState)
+    {
+        return {
+            .stageMask        = ConvertPipelineStageFlags(barrierState.stage),
+            .accessMask       = GetAccessFlags2(barrierState.usage, barrierState.access),
+            .layout           = VK_IMAGE_LAYOUT_UNDEFINED,
+            .queueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        };
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -186,47 +224,6 @@ namespace RHI::Vulkan
         vkCmdPipelineBarrier2(m_commandBuffer, &dependencyInfo);
     }
 
-    void ICommandList::BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups)
-    {
-        ZoneScoped;
-
-        if (bindGroups.empty()) return;
-
-        constexpr size_t MaxDescriptorSets = 4;
-        constexpr size_t MaxDynamicOffsets = MaxDescriptorSets;
-
-        VkDescriptorSet descriptorSets[MaxDescriptorSets];
-        uint32_t        dynamicOffsets[MaxDynamicOffsets];
-
-        uint32_t descriptorSetCount = 0;
-        uint32_t dynamicOffsetCount = 0;
-
-        for (const auto& bindingInfo : bindGroups)
-        {
-            auto bindGroup = m_device->m_bindGroupOwner.Get(bindingInfo.bindGroup);
-
-            // Ensure we don't exceed the array limits
-            TL_ASSERT(descriptorSetCount < MaxDescriptorSets);
-            descriptorSets[descriptorSetCount++] = bindGroup->descriptorSet;
-
-            for (uint32_t offset : bindingInfo.dynamicOffsets)
-            {
-                TL_ASSERT(dynamicOffsetCount < MaxDynamicOffsets);
-                dynamicOffsets[dynamicOffsetCount++] = offset;
-            }
-        }
-
-        vkCmdBindDescriptorSets(
-            m_commandBuffer,
-            bindPoint,
-            pipelineLayout,
-            0,
-            descriptorSetCount,
-            descriptorSets,
-            dynamicOffsetCount,
-            dynamicOffsets);
-    }
-
     void ICommandList::Begin()
     {
         ZoneScoped;
@@ -247,21 +244,112 @@ namespace RHI::Vulkan
         vkEndCommandBuffer(m_commandBuffer);
     }
 
-    void ICommandList::BeginRenderPass(const Pass& pass)
+    void ICommandList::AddPipelineBarrier(TL::Span<const BarrierInfo> barriers, TL::Span<const ImageBarrierInfo> imageBarriers, TL::Span<const BufferBarrierInfo> bufferBarriers)
     {
         ZoneScoped;
 
-        m_isInsideRenderPass = true;
+        if (barriers.empty() && imageBarriers.empty() && bufferBarriers.empty())
+            return;
+
+        TL::Vector<VkMemoryBarrier2>       vmemoryBarriers;
+        TL::Vector<VkBufferMemoryBarrier2> vbufferBarriers;
+        TL::Vector<VkImageMemoryBarrier2>  vimageBarriers;
+
+        for (auto barrier : barriers)
+        {
+            auto [srcStageMask, srcAccessMask, srcLayout, srcQueueFamilyIndex] = ConvertBarrierState(barrier.srcState);
+            auto [dstStageMask, dstAccessMask, dstLayout, dstQueueFamilyIndex] = ConvertBarrierState(barrier.dstState);
+
+            vmemoryBarriers.push_back({
+                .sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
+                .pNext         = nullptr,
+                .srcStageMask  = srcStageMask,
+                .srcAccessMask = srcAccessMask,
+                .dstStageMask  = dstStageMask,
+                .dstAccessMask = srcAccessMask,
+            });
+        }
+
+        for (auto imageBarrier : imageBarriers)
+        {
+            auto image = m_device->m_imageOwner.Get(imageBarrier.image);
+
+            auto [srcStageMask, srcAccessMask, srcLayout, srcQueueFamilyIndex] = ConvertBarrierState(imageBarrier.srcState);
+            auto [dstStageMask, dstAccessMask, dstLayout, dstQueueFamilyIndex] = ConvertBarrierState(imageBarrier.dstState);
+
+            vimageBarriers.push_back({
+                .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                .pNext               = nullptr,
+                .srcStageMask        = srcStageMask,
+                .srcAccessMask       = srcAccessMask,
+                .dstStageMask        = dstStageMask,
+                .dstAccessMask       = srcAccessMask,
+                .oldLayout           = srcLayout,
+                .newLayout           = dstLayout,
+                .srcQueueFamilyIndex = srcQueueFamilyIndex,
+                .dstQueueFamilyIndex = dstQueueFamilyIndex,
+                .image               = image->handle,
+                .subresourceRange    = {
+                                        // .aspectMask     = ConvertImageAspect(imageBarrier.subresources.imageAspects, image->format),
+                                        .aspectMask     = ConvertImageAspect(ImageAspect::All, image->format),
+                                        .baseMipLevel   = imageBarrier.subresources.mipBase,
+                                        .levelCount     = imageBarrier.subresources.mipLevelCount,
+                                        .baseArrayLayer = imageBarrier.subresources.arrayBase,
+                                        .layerCount     = imageBarrier.subresources.arrayCount,
+                                        }
+            });
+        }
+
+        for (auto bufferBarrier : bufferBarriers)
+        {
+            auto buffer = m_device->m_bufferOwner.Get(bufferBarrier.buffer);
+
+            auto [srcStageMask, srcAccessMask, srcLayout, srcQueueFamilyIndex] = ConvertBarrierState(bufferBarrier.srcState);
+            auto [dstStageMask, dstAccessMask, dstLayout, dstQueueFamilyIndex] = ConvertBarrierState(bufferBarrier.dstState);
+
+            vbufferBarriers.push_back({
+                .sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+                .pNext               = nullptr,
+                .srcStageMask        = srcStageMask,
+                .srcAccessMask       = srcAccessMask,
+                .dstStageMask        = dstStageMask,
+                .dstAccessMask       = srcAccessMask,
+                .srcQueueFamilyIndex = srcQueueFamilyIndex,
+                .dstQueueFamilyIndex = dstQueueFamilyIndex,
+                .buffer              = buffer->handle,
+                .offset              = bufferBarrier.subregion.offset,
+                .size                = VK_WHOLE_SIZE, // bufferBarrier.subregion.size,
+            });
+        }
+
+        VkDependencyInfo dependencyInfo =
+            {
+                .sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+                .pNext                    = nullptr,
+                .dependencyFlags          = 0,
+                .memoryBarrierCount       = uint32_t(vmemoryBarriers.size()),
+                .pMemoryBarriers          = vmemoryBarriers.data(),
+                .bufferMemoryBarrierCount = uint32_t(vbufferBarriers.size()),
+                .pBufferMemoryBarriers    = vbufferBarriers.data(),
+                .imageMemoryBarrierCount  = uint32_t(vimageBarriers.size()),
+                .pImageMemoryBarriers     = vimageBarriers.data(),
+            };
+        vkCmdPipelineBarrier2(m_commandBuffer, &dependencyInfo);
+    }
+
+    void ICommandList::BeginRenderPass(const RenderPassBeginInfo& beginInfo)
+    {
+        ZoneScoped;
 
         TL::Vector<VkRenderingAttachmentInfo>   colorAttachments  = {};
         TL::Optional<VkRenderingAttachmentInfo> depthAttachment   = {};
         TL::Optional<VkRenderingAttachmentInfo> stencilAttachment = {};
 
-        for (const auto& colorAttachment : pass.GetColorAttachment())
+        for (const auto& colorAttachment : beginInfo.colorAttachments)
         {
-            auto colorImage  = m_device->m_imageOwner.Get(colorAttachment.view->GetImage());
-            auto resolveView = colorAttachment.resolveView ? m_device->m_imageOwner.Get(colorAttachment.resolveView->GetImage()) : nullptr;
-            auto clearValue  = ConvertColorValue(colorAttachment.clearValue.f32);
+            auto         colorImage  = m_device->m_imageOwner.Get(colorAttachment.view);
+            auto         resolveView = colorAttachment.resolveView ? m_device->m_imageOwner.Get(colorAttachment.resolveView) : nullptr;
+            VkClearValue clearValue  = {.color = ConvertClearValue(colorAttachment.clearValue)};
             colorAttachments.push_back({
                 .sType              = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
                 .pNext              = nullptr,
@@ -276,16 +364,17 @@ namespace RHI::Vulkan
             });
         }
 
-        if (auto depthStencilAttachment = pass.GetDepthStencilAttachment())
+        if (auto depthStencilAttachment = beginInfo.depthStencilAttachment)
         {
-            auto depthStencilImage = m_device->m_imageOwner.Get(depthStencilAttachment->view->GetImage());
-            auto clearValue        = ConvertDepthStencilValue(depthStencilAttachment->clearValue);
-            if (depthStencilImage->subresources.imageAspects & ImageAspect::Depth)
+            auto image      = m_device->m_imageOwner.Get(depthStencilAttachment->view);
+            auto clearValue = ConvertDepthStencilValue(depthStencilAttachment->clearValue);
+
+            if (image->subresources.imageAspects & ImageAspect::Depth)
             {
                 depthAttachment = VkRenderingAttachmentInfo{
                     .sType              = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
                     .pNext              = nullptr,
-                    .imageView          = depthStencilImage->viewHandle,
+                    .imageView          = image->viewHandle,
                     .imageLayout        = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
                     .resolveMode        = VK_RESOLVE_MODE_NONE,
                     .resolveImageView   = VK_NULL_HANDLE,
@@ -295,12 +384,13 @@ namespace RHI::Vulkan
                     .clearValue         = {.depthStencil = clearValue},
                 };
             }
-            if (depthStencilImage->subresources.imageAspects & ImageAspect::Stencil)
+
+            if (image->subresources.imageAspects & ImageAspect::Stencil)
             {
                 stencilAttachment = VkRenderingAttachmentInfo{
                     .sType              = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
                     .pNext              = nullptr,
-                    .imageView          = depthStencilImage->viewHandle,
+                    .imageView          = image->viewHandle,
                     .imageLayout        = VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL,
                     .resolveMode        = VK_RESOLVE_MODE_NONE,
                     .resolveImageView   = VK_NULL_HANDLE,
@@ -310,7 +400,7 @@ namespace RHI::Vulkan
                     .clearValue         = {.depthStencil = clearValue},
                 };
             }
-            if ((depthStencilImage->subresources.imageAspects & ImageAspect::DepthStencil) == ImageAspect::DepthStencil)
+            if ((image->subresources.imageAspects & ImageAspect::DepthStencil) == ImageAspect::DepthStencil)
             {
                 depthAttachment->imageLayout   = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
                 stencilAttachment->imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -321,7 +411,7 @@ namespace RHI::Vulkan
             .sType                = VK_STRUCTURE_TYPE_RENDERING_INFO,
             .pNext                = nullptr,
             .flags                = 0,
-            .renderArea           = {.offset = {0, 0}, .extent = ConvertExtent2D(pass.GetSize())},
+            .renderArea           = {.offset = ConvertOffset2D(beginInfo.offset), .extent = ConvertExtent2D(beginInfo.size)},
             .layerCount           = 1,
             .viewMask             = 0,
             .colorAttachmentCount = static_cast<uint32_t>(colorAttachments.size()),
@@ -335,14 +425,20 @@ namespace RHI::Vulkan
     void ICommandList::EndRenderPass()
     {
         ZoneScoped;
-
-        if (m_isInsideRenderPass)
-        {
-            vkCmdEndRendering(m_commandBuffer);
-        }
+        vkCmdEndRendering(m_commandBuffer);
     }
 
-    void ICommandList::DebugMarkerPush([[maybe_unused]] const char* name, [[maybe_unused]] ColorValue<float> color)
+    void ICommandList::BeginComputePass(const ComputePassBeginInfo& beginInfo)
+    {
+        // No-Op
+    }
+
+    void ICommandList::EndComputePass()
+    {
+        // No-Op
+    }
+
+    void ICommandList::PushDebugMarker(const char* name, ClearValue color)
     {
         ZoneScoped;
 
@@ -353,14 +449,17 @@ namespace RHI::Vulkan
                 .sType      = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
                 .pNext      = nullptr,
                 .pLabelName = name,
-                .color      = {color.r, color.g, color.b, color.a},
+                // .color      = {(float)color.r, (float)color.g, (float)color.b, (float)color.a},
             };
             fn(m_commandBuffer, &info);
         }
+#else
+        (void)name;
+        (void)color;
 #endif
     }
 
-    void ICommandList::DebugMarkerPop()
+    void ICommandList::PopDebugMarker()
     {
         ZoneScoped;
 
@@ -699,4 +798,46 @@ namespace RHI::Vulkan
         };
         vkCmdCopyBufferToImage(m_commandBuffer, buffer->handle, image->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferImageCopy);
     }
+
+    void ICommandList::BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups)
+    {
+        ZoneScoped;
+
+        if (bindGroups.empty()) return;
+
+        constexpr size_t MaxDescriptorSets = 4;
+        constexpr size_t MaxDynamicOffsets = MaxDescriptorSets;
+
+        VkDescriptorSet descriptorSets[MaxDescriptorSets];
+        uint32_t        dynamicOffsets[MaxDynamicOffsets];
+
+        uint32_t descriptorSetCount = 0;
+        uint32_t dynamicOffsetCount = 0;
+
+        for (const auto& bindingInfo : bindGroups)
+        {
+            auto bindGroup = m_device->m_bindGroupOwner.Get(bindingInfo.bindGroup);
+
+            // Ensure we don't exceed the array limits
+            TL_ASSERT(descriptorSetCount < MaxDescriptorSets);
+            descriptorSets[descriptorSetCount++] = bindGroup->descriptorSet;
+
+            for (uint32_t offset : bindingInfo.dynamicOffsets)
+            {
+                TL_ASSERT(dynamicOffsetCount < MaxDynamicOffsets);
+                dynamicOffsets[dynamicOffsetCount++] = offset;
+            }
+        }
+
+        vkCmdBindDescriptorSets(
+            m_commandBuffer,
+            bindPoint,
+            pipelineLayout,
+            0,
+            descriptorSetCount,
+            descriptorSets,
+            dynamicOffsetCount,
+            dynamicOffsets);
+    }
+
 } // namespace RHI::Vulkan

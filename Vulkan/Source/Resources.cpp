@@ -32,6 +32,7 @@ namespace RHI::Vulkan
         if (imageUsageFlags & ImageUsage::Stencil) result |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
         if (imageUsageFlags & ImageUsage::CopySrc) result |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
         if (imageUsageFlags & ImageUsage::CopyDst) result |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        if (imageUsageFlags & ImageUsage::Present) TL_UNREACHABLE(); // TODO: Handle present usage;
         return result;
     }
 
@@ -65,25 +66,22 @@ namespace RHI::Vulkan
 
     VkImageAspectFlags ConvertImageAspect(TL::Flags<ImageAspect> imageAspect, Format format)
     {
+        auto formatInfo = GetFormatInfo(format);
         imageAspect &= GetFormatAspects(format);
 
         VkImageAspectFlags vkAspectFlags = 0;
 
-        if (imageAspect & ImageAspect::Color) vkAspectFlags |= VK_IMAGE_ASPECT_COLOR_BIT;
-        if (imageAspect & ImageAspect::Depth) vkAspectFlags |= VK_IMAGE_ASPECT_DEPTH_BIT;
-        if (imageAspect & ImageAspect::Stencil) vkAspectFlags |= VK_IMAGE_ASPECT_STENCIL_BIT;
-
-        // Validate for combined flags or specific cases
-        if (vkAspectFlags == 0)
+        if (formatInfo.hasDepth || formatInfo.hasStencil)
         {
-            if (imageAspect == ImageAspect::All)
-                return VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-            if (imageAspect == ImageAspect::DepthStencil)
-                return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-
-            TL_UNREACHABLE(); // This handles invalid input
+            if (imageAspect & ImageAspect::Depth) vkAspectFlags |= VK_IMAGE_ASPECT_DEPTH_BIT;
+            if (imageAspect & ImageAspect::Stencil) vkAspectFlags |= VK_IMAGE_ASPECT_STENCIL_BIT;
+        }
+        else
+        {
+            if (imageAspect & ImageAspect::Color) vkAspectFlags |= VK_IMAGE_ASPECT_COLOR_BIT;
         }
 
+        TL_ASSERT(vkAspectFlags != 0);
         return vkAspectFlags;
     }
 
