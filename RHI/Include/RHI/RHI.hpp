@@ -7,7 +7,6 @@
 #include <RHI/PipelineAccess.hpp>
 #include <RHI/Swapchain.hpp>
 #include <RHI/RenderGraph.hpp>
-#include <RHI/RenderTarget.hpp>
 
 #include <RHI/Resources.hpp>
 

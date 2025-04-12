@@ -9,8 +9,6 @@
 #include "RHI/RenderGraphResources.hpp"
 #include "RHI/RenderGraphExecuteGroup.hpp"
 
-#include "RHI/RenderTarget.hpp"
-
 #include <TL/Allocator/Mimalloc.hpp>
 #include <TL/Containers.hpp>
 #include <TL/UniquePtr.hpp>

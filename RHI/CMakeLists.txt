@@ -1,16 +1,13 @@
 cmake_minimum_required(VERSION 3.19)
 
 set(HEADER_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/BindGroup.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/CommandList.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Device.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RenderTarget.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Export.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Format.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Handle.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Handle.inl
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Pipeline.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Queue.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RenderGraph.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/PipelineAccess.hpp

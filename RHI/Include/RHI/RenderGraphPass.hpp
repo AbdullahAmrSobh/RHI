@@ -4,7 +4,6 @@
 #include "RHI/Export.hpp"
 #include "RHI/RenderGraphResources.hpp"
 #include "RHI/CommandList.hpp"
-#include "RHI/RenderTarget.hpp"
 
 #include <TL/Containers.hpp>
 #include <TL/Memory.hpp>
