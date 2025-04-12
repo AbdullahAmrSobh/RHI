@@ -23,6 +23,7 @@ namespace RHI
     class ShaderModule;
 
     // Opaque Resource Declarations
+    using DeviceMemoryPtr = void*;
     RHI_DECLARE_OPAQUE_RESOURCE(BindGroupLayout);
     RHI_DECLARE_OPAQUE_RESOURCE(BindGroup);
     RHI_DECLARE_OPAQUE_RESOURCE(Buffer);
@@ -527,8 +528,6 @@ namespace RHI
     public:
         RHI_INTERFACE_BOILERPLATE(ShaderModule);
     };
-
-    using DeviceMemoryPtr = void*;
 
     inline static ImageSize3D CalcaulteImageMipSize(ImageSize3D size, uint32_t mipLevel)
     {

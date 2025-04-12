@@ -2,11 +2,9 @@
 
 #include "RHI/Export.hpp"
 #include "RHI/Handle.hpp"
-#include "RHI/Result.hpp"
-#include "RHI/Swapchain.hpp"
-#include "RHI/CommandList.hpp"
 #include "RHI/Resources.hpp"
-#include "RHI/Queue.hpp"
+#include "RHI/CommandList.hpp"
+#include "RHI/Swapchain.hpp"
 
 #include <TL/Span.hpp>
 #include <TL/UniquePtr.hpp>
@@ -161,8 +159,14 @@ namespace RHI
 
         /// @brief A resource update scope, resources will
         virtual void                     BeginResourceUpdate(RenderGraph* renderGraph)                                                                                    = 0;
+
+        /// @brief Ends the resource update scope, resources will be flushed to the GPU.
         virtual void                     EndResourceUpdate()                                                                                                              = 0;
+
+        /// @brief Writes data to a buffer.
         virtual void                     BufferWrite(Handle<Buffer> buffer, size_t offset, TL::Block block)                                                               = 0;
+
+        /// @brief Writes data to an image.
         virtual void                     ImageWrite(Handle<Image> image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block) = 0;
 
         /// @brief Collects unused resources for reuse.

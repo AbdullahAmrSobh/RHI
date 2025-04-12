@@ -2,7 +2,6 @@
 
 #include "RHI/Common.hpp"
 #include "RHI/Resources.hpp"
-#include "RHI/Queue.hpp"
 
 #include <TL/Containers.hpp>
 #include <TL/Span.hpp>
@@ -14,6 +13,16 @@ namespace RHI
 
     class RenderGraph;
     class Pass;
+
+    enum class QueueType : uint8_t
+    {
+        Graphics,
+        Compute,
+        Transfer,
+        Count,
+    };
+
+    inline static constexpr uint32_t AsyncQueuesCount = (uint32_t)QueueType::Count;
 
     enum class LoadOperation : uint8_t
     {

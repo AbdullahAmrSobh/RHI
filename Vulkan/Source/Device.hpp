@@ -1,7 +1,6 @@
 #pragma once
 
 #include <RHI/Device.hpp>
-#include <RHI/Queue.hpp>
 
 #include <TL/Containers.hpp>
 #include <TL/UniquePtr.hpp>

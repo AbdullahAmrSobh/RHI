@@ -7,8 +7,6 @@
 
 namespace RHI::Vulkan
 {
-    // TODO: Sort functions in this file
-
     VkBufferUsageFlags ConvertBufferUsageFlags(TL::Flags<BufferUsage> bufferUsageFlags)
     {
         VkBufferUsageFlags result = 0;

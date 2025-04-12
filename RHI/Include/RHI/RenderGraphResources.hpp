@@ -3,7 +3,6 @@
 #include "RHI/Handle.hpp"
 #include "RHI/Resources.hpp"
 #include "RHI/PipelineAccess.hpp"
-#include "RHI/Queue.hpp"
 #include "RHI/CommandList.hpp"
 
 #include <TL/Flags.hpp>

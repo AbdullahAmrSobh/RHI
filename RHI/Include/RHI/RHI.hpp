@@ -10,5 +10,4 @@
 
 #include <RHI/Resources.hpp>
 
-#include <RHI/Queue.hpp>
 #include <RHI/Result.hpp>

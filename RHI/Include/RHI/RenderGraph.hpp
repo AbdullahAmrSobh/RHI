@@ -24,6 +24,7 @@ namespace RHI
 
     struct RenderGraphCreateInfo
     {
+        TL::Allocator* allocator = nullptr; ///< Allocator to use for memory management.
     };
 
     class RHI_EXPORT RenderGraph
