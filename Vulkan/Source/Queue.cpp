@@ -125,7 +125,8 @@ namespace RHI::Vulkan
 
         VkResult result;
 
-        AddSignalSemaphore(m_timelineSemaphore, m_timelineValue++, signalStage);
+        auto timelineValue = ++m_timelineValue;
+        AddSignalSemaphore(m_timelineSemaphore, timelineValue, signalStage);
 
         TL::Vector<VkCommandBufferSubmitInfo> commandBufferSubmitInfos;
         for (auto commandList : commandLists)
@@ -155,7 +156,7 @@ namespace RHI::Vulkan
         m_waitSemaphores.clear();
         m_signalSemaphores.clear();
 
-        return m_timelineValue;
+        return timelineValue;
     }
 
 } // namespace RHI::Vulkan

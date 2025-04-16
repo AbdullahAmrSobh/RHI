@@ -5,9 +5,7 @@
 #include "RHI/Common.hpp"
 #include "RHI/Resources.hpp"
 #include "RHI/PipelineAccess.hpp"
-#include "RHI/RenderGraphPass.hpp"
-#include "RHI/RenderGraphResources.hpp"
-#include "RHI/RenderGraphExecuteGroup.hpp"
+#include "RHI/CommandList.hpp"
 
 #include <TL/Allocator/Mimalloc.hpp>
 #include <TL/Containers.hpp>
@@ -21,14 +19,337 @@ namespace RHI
     class RenderGraph;
     class RenderGraphExecuteGroup;
     struct RenderTargetInfo;
+    class Device;
+    class Pass;
+    class RenderGraph;
+    class CommandList;
+    class Swapchain;
+    class RenderGraphResource;
+    class RenderGraphExecuteGroup;
+
+    using PassSetupCallback   = TL::Function<void(RenderGraph& renderGraph, Pass& pass)>;
+    using PassCompileCallback = TL::Function<void(RenderGraph& renderGraph, Pass& pass)>;
+    using PassExecuteCallback = TL::Function<void(CommandList& commandList)>;
 
     struct RenderGraphCreateInfo
     {
         TL::Allocator* allocator = nullptr; ///< Allocator to use for memory management.
     };
 
+    struct PassCreateInfo
+    {
+        const char*         name;
+        QueueType           queue;
+        ImageSize2D         size;
+        PassSetupCallback   setupCallback;
+        PassCompileCallback compileCallback;
+        PassExecuteCallback executeCallback;
+    };
+
+    enum BarrierSlot
+    {
+        BarrierSlot_None,
+        BarrierSlot_Epilogue,
+        BarrierSlot_Prologue, // Fixed typo
+        BarrierSlot_Resolve,
+        BarrierSlot_Count,
+    };
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// Render Graph
+    ///////////////////////////////////////////////////////////////////////////
+
+    struct GraphTransition
+    {
+        Pass*                pass     = nullptr;
+        GraphTransition*     next     = nullptr;
+        GraphTransition*     prev     = nullptr;
+        RenderGraphResource* resource = nullptr;
+    };
+
+    struct ImageGraphTransition : public GraphTransition
+    {
+        ImageUsage               usage;
+        TL::Flags<PipelineStage> stage;
+        TL::Flags<Access>        access;
+        ImageSubresourceRange    subresourceRange;
+    };
+
+    struct BufferGraphTransition : public GraphTransition
+    {
+        BufferUsage              usage;
+        TL::Flags<PipelineStage> stage;
+        TL::Flags<Access>        access;
+        BufferSubregion          subregion;
+    };
+
+    class RenderGraphResource
+    {
+    public:
+        enum class Type : uint8_t
+        {
+            Image,
+            Buffer
+        };
+
+        Type                   GetType() const { return m_type; }
+
+        const char*            GetName() const { return m_name.c_str(); }
+
+        const GraphTransition* GetFirstAccess() const { return m_first; }
+
+        GraphTransition*       GetFirstAccess() { return m_first; }
+
+        const GraphTransition* GetLastAccess() const { return m_last; }
+
+        GraphTransition*       GetLastAccess() { return m_last; }
+
+        const Pass*            GetFirstPass() const { return m_first->pass; }
+
+        Pass*                  GetFirstPass() { return m_first->pass; }
+
+        const Pass*            GetLastPass() const { return m_last->pass; }
+
+        Pass*                  GetLastPass() { return m_last->pass; }
+
+        void                   PushAccess(GraphTransition* access);
+
+    protected:
+        friend class RenderGraph;
+
+        RenderGraphResource(const char* name, Type type);
+
+        TL::String       m_name;
+        GraphTransition* m_first;
+        GraphTransition* m_last;
+        Type             m_type;
+        Format           m_format = Format::Unknown;
+
+        union
+        {
+            Handle<Image>  asImage;
+            Handle<Buffer> asBuffer;
+        } m_handle;
+
+        union
+        {
+            TL::Flags<ImageUsage>  asImage;
+            TL::Flags<BufferUsage> asBuffer;
+        } m_usage;
+
+        bool isImported = false;
+    };
+
+    class RenderGraphImage final : public RenderGraphResource
+    {
+        friend RenderGraph;
+        friend class Pass;
+
+    public:
+        RenderGraphImage(const char* name, Handle<Image> image, Format format);
+        RenderGraphImage(const char* name, Format format);
+
+        Handle<Image>         GetImage() const { return m_handle.asImage; }
+
+        Format                GetFormat() const { return m_format; }
+
+        TL::Flags<ImageUsage> GetImageUsage() const { return m_usage.asImage; }
+    };
+
+    class RenderGraphBuffer final : public RenderGraphResource
+    {
+        friend class Pass;
+
+    public:
+        RenderGraphBuffer(const char* name, Handle<Buffer> buffer);
+        RenderGraphBuffer(const char* name);
+
+        Handle<Buffer>         GetBuffer() const { return m_handle.asBuffer; }
+
+        TL::Flags<BufferUsage> GetBufferUsage() const { return m_usage.asBuffer; }
+    };
+
+    struct ColorRGAttachment
+    {
+        RenderGraphImage* view        = nullptr;
+        LoadOperation     loadOp      = LoadOperation::Discard;
+        StoreOperation    storeOp     = StoreOperation::Store;
+        ClearValue        clearValue  = {.f32 = {0.0f, 0.0f, 0.0f, 1.0f}};
+        ResolveMode       resolveMode = ResolveMode::None;
+        RenderGraphImage* resolveView = nullptr;
+    };
+
+    struct DepthStencilRGAttachment
+    {
+        RenderGraphImage* view           = nullptr;
+        LoadOperation     depthLoadOp    = LoadOperation::Discard;
+        StoreOperation    depthStoreOp   = StoreOperation::Store;
+        LoadOperation     stencilLoadOp  = LoadOperation::Discard;
+        StoreOperation    stencilStoreOp = StoreOperation::Store;
+        DepthStencilValue clearValue     = {0.0f, 0};
+    };
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// Render Graph
+    ///////////////////////////////////////////////////////////////////////////
+
+    class RHI_EXPORT Pass
+    {
+        friend class RenderGraph;
+
+    public:
+        Pass(const PassCreateInfo& createInfo, TL::IAllocator* allocator);
+        ~Pass();
+
+        // Accessors
+        TL::Span<GraphTransition* const>       GetTransitions() const;
+        TL::Span<ImageGraphTransition* const>  GetImageTransitions() const;
+        TL::Span<BufferGraphTransition* const> GetBufferTransitions() const;
+
+        // Execution
+        void                                   Execute(CommandList& commandList);
+
+        // Resource usage
+        void                                   UseResource(RenderGraphImage& resource, ImageSubresourceRange subresourceRange, ImageUsage usage, TL::Flags<PipelineStage> stage, TL::Flags<Access> access);
+        void                                   UseResource(RenderGraphBuffer& resource, BufferSubregion subregion, BufferUsage usage, TL::Flags<PipelineStage> stage, TL::Flags<Access> access);
+        void                                   PresentSwapchain(RenderGraphImage& resource);
+
+        // Render targets
+        void                                   AddRenderTarget(const ColorRGAttachment& attachment);
+        void                                   AddRenderTarget(const DepthStencilRGAttachment& attachment);
+
+    private:
+        // Barrier management
+        TL::Span<const BarrierInfo>       GetMemoryBarriers(BarrierSlot slot) const;
+        TL::Span<const ImageBarrierInfo>  GetImageBarriers(BarrierSlot slot) const;
+        TL::Span<const BufferBarrierInfo> GetBufferBarriers(BarrierSlot slot) const;
+        void                              PrepareBarriers();
+
+        // Execution group
+        RenderGraphExecuteGroup*          GetExecuteGroup() const { return m_group; }
+
+        void                              SetExecuteGroup(RenderGraphExecuteGroup* group) { m_group = group; }
+
+    private:
+        TL::IAllocator*                    m_allocator;
+        const char*                        m_name;
+        QueueType                          m_queueType;
+        ImageSize2D                        m_size;
+        PassSetupCallback                  m_onSetupCallback;
+        PassCompileCallback                m_onCompileCallback;
+        PassExecuteCallback                m_onExecuteCallback;
+
+        TL::Vector<GraphTransition*>       m_transitions;
+        TL::Vector<ImageGraphTransition*>  m_imageTransitions;
+        TL::Vector<BufferGraphTransition*> m_bufferTransitions;
+
+        struct RenderPass
+        {
+            ImageSize2D                            m_size;
+            TL::Vector<ColorRGAttachment>          m_colorAttachments;
+            TL::Optional<DepthStencilRGAttachment> m_depthStencilAttachment;
+        };
+
+        RenderPass                    m_renderPass;
+
+        TL::Vector<BarrierInfo>       m_memoryBarriers[BarrierSlot_Count];
+        TL::Vector<ImageBarrierInfo>  m_imageBarriers[BarrierSlot_Count];
+        TL::Vector<BufferBarrierInfo> m_bufferBarriers[BarrierSlot_Count];
+
+    public:
+        RenderGraphExecuteGroup* m_group;
+    };
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// Render Graph
+    ///////////////////////////////////////////////////////////////////////////
+
+    struct AsyncQueueSyncInfo
+    {
+        uint64_t                 timelineValue;
+        TL::Flags<PipelineStage> waitStage;
+    };
+
+    struct SwapchainSyncInfo
+    {
+        Swapchain*               swapchain;
+        TL::Flags<PipelineStage> stage;
+    };
+
+    /// @class RenderGraphExecuteGroup
+    /// @brief Interface for managing the execution of passes in a render graph.
+    ///
+    /// The RenderGraphExecuteGroup class handles the scheduling and synchronization of render passes
+    /// and their dependencies, ensuring proper execution order and resource usage within the rendering pipeline.
+    class RHI_EXPORT RenderGraphExecuteGroup
+    {
+    public:
+        /// @brief Constructs a new render graph execution group.
+        RenderGraphExecuteGroup(TL::IAllocator& allocator)
+            : m_passList(allocator)
+        {
+        }
+
+        /// @brief Adds a render pass to the execution group.
+        ///
+        /// @param pass   The render pass to be added.
+        void AddPass(Pass& pass)
+        {
+            m_passList.push_back(&pass);
+            // m_queueSignalInfo = pass
+        }
+
+        /// @brief Specifies a queue dependency that the group must wait for before proceeding.
+        ///
+        /// @param type          The type of queue to wait for.
+        /// @param timelineValue The timeline semaphore value to wait until.
+        /// @param waitStage     The pipeline stages where the wait operation should occur.
+        void WaitForQueue(QueueType type, uint64_t timelineValue, TL::Flags<PipelineStage> waitStage)
+        {
+            m_queueWaitInfos[(uint32_t)type] = {timelineValue, waitStage};
+        }
+
+        /// @brief Specifies a swapchain dependency that the group must wait for before proceeding.
+        ///
+        /// @param swapchain   The swapchain to wait for.
+        /// @param waitStage   The pipeline stages where the wait operation should occur.
+        void WaitForSwapchain(Swapchain& swapchain, TL::Flags<PipelineStage> waitStage) { m_swapchainToWait = {&swapchain, waitStage}; }
+
+        /// @brief Signals that the swapchain is ready for presentation.
+        ///
+        /// @param swapchain   The swapchain to signal for presentation.
+        /// @param signalStage The pipeline stages where the signal operation should occur.
+        void SignalSwapchainPresent(Swapchain& swapchain, TL::Flags<PipelineStage> signalStage)
+        {
+            m_swapchainToSignal = {&swapchain, signalStage};
+        }
+
+        TL::Span<Pass* const> GetPassList() const { return m_passList; }
+
+        AsyncQueueSyncInfo    GetQueueSignalInfo() const { return m_queueSignalInfo; }
+
+        AsyncQueueSyncInfo    GetQueueWaitInfo(QueueType type) const { return m_queueWaitInfos[(uint32_t)type]; }
+
+        SwapchainSyncInfo     GetSwapchainToWait() const { return m_swapchainToWait; }
+
+        SwapchainSyncInfo     GetSwapchainToSignal() const { return m_swapchainToSignal; }
+
+    protected:
+        TL::Vector<Pass*, TL::IAllocator> m_passList;
+        AsyncQueueSyncInfo                m_queueSignalInfo;
+        AsyncQueueSyncInfo                m_queueWaitInfos[AsyncQueuesCount];
+        SwapchainSyncInfo                 m_swapchainToWait;
+        SwapchainSyncInfo                 m_swapchainToSignal;
+    };
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// Render Graph
+    ///////////////////////////////////////////////////////////////////////////
+
     class RHI_EXPORT RenderGraph
     {
+        friend Device;
+
     public:
         RHI_INTERFACE_BOILERPLATE(RenderGraph);
 
@@ -135,13 +456,13 @@ namespace RHI
         static void           ExtendResourceUsage(RenderGraphBuffer& resource, BufferUsage usage) { resource.m_usage.asBuffer |= usage; }
 
     protected:
-        void             ExecutePassCallback(Pass& pass, CommandList& commandList) { pass.m_onExecuteCallback(commandList); }
+        void     ExecutePassCallback(Pass& pass, CommandList& commandList) { pass.m_onExecuteCallback(commandList); }
 
-        virtual void     OnGraphExecutionBegin()                                                     = 0;
+        void     OnGraphExecutionBegin();
 
-        virtual void     OnGraphExecutionEnd()                                                       = 0;
+        void     OnGraphExecutionEnd();
 
-        virtual uint64_t ExecutePassGroup(const RenderGraphExecuteGroup& group, QueueType queueType) = 0;
+        uint64_t ExecutePassGroup(const RenderGraphExecuteGroup& group, QueueType queueType);
 
     protected:
         /// Main allocator for graph resources.

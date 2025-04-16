@@ -1,9 +1,6 @@
 #include "RHI/RenderGraph.hpp"
 
 #include "RHI/Device.hpp"
-#include "RHI/RenderGraphExecuteGroup.hpp"
-#include "RHI/RenderGraphPass.hpp"
-#include "RHI/RenderGraphResources.hpp"
 
 #include <TL/Allocator/Allocator.hpp>
 #include <TL/Allocator/Mimalloc.hpp>
@@ -13,6 +10,318 @@
 
 namespace RHI
 {
+
+
+    inline static RHI::Access LoadStoreToAccess(LoadOperation loadOp, StoreOperation storeOp)
+    {
+        if (loadOp == LoadOperation::Load && storeOp == StoreOperation::Store)
+        {
+            return RHI::Access::ReadWrite;
+        }
+        else if (loadOp == LoadOperation::Load && storeOp != StoreOperation::Store)
+        {
+            return RHI::Access::Read;
+        }
+        else
+        {
+            return RHI::Access::Write;
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// Render Graph
+    ///////////////////////////////////////////////////////////////////////////
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// Render Graph
+    ///////////////////////////////////////////////////////////////////////////
+
+    RenderGraphResource::RenderGraphResource(const char* name, Type type)
+        : m_name(name)
+        , m_first(nullptr)
+        , m_last(nullptr)
+        , m_type(type)
+        , m_format(Format::Unknown)
+        , m_handle(NullHandle)
+        , m_usage({})
+    {
+        m_handle.asImage = {};
+        m_usage.asImage  = {};
+    }
+
+    void RenderGraphResource::PushAccess(GraphTransition* access)
+    {
+        if (!m_last)
+        {
+            m_first = m_last = access;
+        }
+        else
+        {
+            access->prev = m_last;
+            m_last->next = access;
+            m_last       = access;
+        }
+
+        switch (access->resource->m_type)
+        {
+        case Type::Image:
+            m_usage.asImage |= static_cast<ImageGraphTransition*>(access)->usage;
+            break;
+        case Type::Buffer:
+            m_usage.asBuffer |= static_cast<BufferGraphTransition*>(access)->usage;
+            break;
+        }
+    }
+
+    RenderGraphImage::RenderGraphImage(const char* name, Handle<Image> image, Format format)
+        : RenderGraphResource(name, Type::Image)
+    {
+        m_handle.asImage = image;
+        m_format         = format;
+    }
+
+    RenderGraphImage::RenderGraphImage(const char* name, Format format)
+        : RenderGraphResource(name, Type::Image)
+    {
+        m_format = format;
+    }
+
+    RenderGraphBuffer::RenderGraphBuffer(const char* name, Handle<Buffer> buffer)
+        : RenderGraphResource(name, Type::Buffer)
+    {
+        m_handle.asBuffer = buffer;
+    }
+
+    RenderGraphBuffer::RenderGraphBuffer(const char* name)
+        : RenderGraphResource(name, Type::Buffer)
+    {
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// Render Graph
+    ///////////////////////////////////////////////////////////////////////////
+
+    Pass::Pass(const PassCreateInfo& createInfo, TL::IAllocator* allocator)
+        : m_allocator(allocator)
+        , m_name(createInfo.name)
+        , m_queueType(createInfo.queue)
+        , m_size(createInfo.size)
+        , m_onSetupCallback(createInfo.setupCallback)
+        , m_onCompileCallback(createInfo.compileCallback)
+        , m_onExecuteCallback(createInfo.executeCallback)
+    {
+    }
+
+    Pass::~Pass()
+    {
+        // default
+    }
+
+    TL::Span<GraphTransition* const> Pass::GetTransitions() const
+    {
+        return m_transitions;
+    }
+
+    TL::Span<ImageGraphTransition* const> Pass::GetImageTransitions() const
+    {
+        return m_imageTransitions;
+    }
+
+    TL::Span<BufferGraphTransition* const> Pass::GetBufferTransitions() const
+    {
+        return m_bufferTransitions;
+    }
+
+    ColorAttachment GetColorAttachment(const ColorRGAttachment& attachment)
+    {
+        return ColorAttachment{
+            .view        = attachment.view->GetImage(),
+            .loadOp      = attachment.loadOp,
+            .storeOp     = attachment.storeOp,
+            .clearValue  = attachment.clearValue,
+            .resolveMode = attachment.resolveMode,
+            .resolveView = attachment.resolveView ? attachment.resolveView->GetImage() : NullHandle,
+        };
+    }
+
+    DepthStencilAttachment GetDepthStencilAttachment(const DepthStencilRGAttachment& attachment)
+    {
+        return DepthStencilAttachment{
+            .view           = attachment.view->GetImage(),
+            .depthLoadOp    = attachment.depthLoadOp,
+            .depthStoreOp   = attachment.depthStoreOp,
+            .stencilLoadOp  = attachment.stencilLoadOp,
+            .stencilStoreOp = attachment.stencilStoreOp,
+            .clearValue     = attachment.clearValue,
+        };
+    }
+
+    void Pass::Execute(CommandList& commandList)
+    {
+        PrepareBarriers();
+
+        commandList.PushDebugMarker(m_name, {});
+
+        // Prologue barriers
+        auto prologueMemoryBarriers = GetMemoryBarriers(BarrierSlot_Prologue);
+        auto prologueImageBarriers  = GetImageBarriers(BarrierSlot_Prologue);
+        auto prologueBufferBarriers = GetBufferBarriers(BarrierSlot_Prologue);
+        commandList.AddPipelineBarrier(prologueMemoryBarriers, prologueImageBarriers, prologueBufferBarriers);
+
+        // Begin render pass if graphics queue
+        if (m_queueType == QueueType::Graphics)
+        {
+            TL::Vector<ColorAttachment>          colorAttachments;
+            TL::Optional<DepthStencilAttachment> depthStencilAttachment;
+
+            for (auto attachment : m_renderPass.m_colorAttachments)
+            {
+                if (attachment.view != nullptr)
+                    colorAttachments.push_back(GetColorAttachment(attachment));
+            }
+
+            if (m_renderPass.m_depthStencilAttachment.has_value())
+            {
+                depthStencilAttachment = GetDepthStencilAttachment(m_renderPass.m_depthStencilAttachment.value());
+            }
+
+            RenderPassBeginInfo beginInfo{
+                .size                   = m_size,
+                .offset                 = {},
+                .colorAttachments       = colorAttachments,
+                .depthStencilAttachment = depthStencilAttachment,
+            };
+            commandList.BeginRenderPass(beginInfo);
+        }
+
+        // Execute pass callback
+        m_onExecuteCallback(commandList);
+
+        // End render pass if graphics queue
+        if (m_queueType == QueueType::Graphics)
+        {
+            commandList.EndRenderPass();
+        }
+
+        // Epilogue barriers
+        auto epilogueMemoryBarriers = GetMemoryBarriers(BarrierSlot_Epilogue);
+        auto epilogueImageBarriers  = GetImageBarriers(BarrierSlot_Epilogue);
+        auto epilogueBufferBarriers = GetBufferBarriers(BarrierSlot_Epilogue);
+        commandList.AddPipelineBarrier(epilogueMemoryBarriers, epilogueImageBarriers, epilogueBufferBarriers);
+
+        commandList.PopDebugMarker();
+    }
+
+    void Pass::UseResource(RenderGraphImage& resource, ImageSubresourceRange subresourceRange, ImageUsage usage, TL::Flags<PipelineStage> stage, TL::Flags<Access> access)
+    {
+        auto transition              = m_allocator->Allocate<ImageGraphTransition>();
+        transition->pass             = this;
+        transition->prev             = resource.GetLastAccess();
+        transition->next             = nullptr;
+        transition->resource         = &resource;
+        transition->usage            = usage;
+        transition->stage            = stage;
+        transition->access           = access;
+        transition->subresourceRange = subresourceRange;
+        resource.PushAccess(transition);
+        m_imageTransitions.push_back(transition);
+    }
+
+    void Pass::UseResource(RenderGraphBuffer& resource, BufferSubregion subregion, BufferUsage usage, TL::Flags<PipelineStage> stage, TL::Flags<Access> access)
+    {
+        auto transition       = m_allocator->Allocate<BufferGraphTransition>();
+        transition->pass      = this;
+        transition->prev      = resource.GetLastAccess();
+        transition->next      = nullptr;
+        transition->resource  = &resource;
+        transition->usage     = usage;
+        transition->stage     = stage;
+        transition->access    = access;
+        transition->subregion = subregion;
+        resource.PushAccess(transition);
+        m_bufferTransitions.push_back(transition);
+    }
+
+    void Pass::PresentSwapchain(RenderGraphImage& resource)
+    {
+        auto transition              = m_allocator->Allocate<ImageGraphTransition>();
+        transition->pass             = this;
+        transition->prev             = resource.GetLastAccess();
+        transition->next             = nullptr;
+        transition->resource         = &resource;
+        transition->usage            = ImageUsage::Present;
+        transition->stage            = PipelineStage::ColorAttachmentOutput;
+        transition->access           = Access::ReadWrite;
+        transition->subresourceRange = {};
+        resource.PushAccess(transition);
+        m_imageTransitions.push_back(transition);
+
+        {
+            auto& imageBarrier        = m_imageBarriers[BarrierSlot_Epilogue].emplace_back();
+            imageBarrier.image        = resource.GetImage();
+            imageBarrier.srcState     = {transition->usage, transition->stage, transition->access};
+            imageBarrier.dstState     = {transition->usage, transition->stage, transition->access};
+            imageBarrier.subresources = {};
+        }
+    }
+
+    void Pass::AddRenderTarget(const ColorRGAttachment& attachment)
+    {
+        m_renderPass.m_colorAttachments.push_back(attachment);
+        UseResource(*attachment.view, {}, ImageUsage::Color, PipelineStage::ColorAttachmentOutput, Access::ReadWrite);
+    }
+
+    void Pass::AddRenderTarget(const DepthStencilRGAttachment& attachment)
+    {
+        m_renderPass.m_depthStencilAttachment = attachment;
+        UseResource(*attachment.view, {}, ImageUsage::DepthStencil, PipelineStage::EarlyFragmentTests | PipelineStage::LateFragmentTests, Access::ReadWrite);
+    }
+
+    TL::Span<const BarrierInfo> Pass::GetMemoryBarriers(BarrierSlot slot) const
+    {
+        return m_memoryBarriers[slot];
+    }
+
+    TL::Span<const ImageBarrierInfo> Pass::GetImageBarriers(BarrierSlot slot) const
+    {
+        return m_imageBarriers[slot];
+    }
+
+    TL::Span<const BufferBarrierInfo> Pass::GetBufferBarriers(BarrierSlot slot) const
+    {
+        return m_bufferBarriers[slot];
+    }
+
+    void Pass::PrepareBarriers()
+    {
+        // Prepare image barriers
+        for (auto imageTransition : m_imageTransitions)
+        {
+            auto  image               = (RenderGraphImage*)imageTransition->resource;
+            auto& imageBarrier        = m_imageBarriers[BarrierSlot_Prologue].emplace_back();
+            imageBarrier.image        = image->GetImage();
+            imageBarrier.srcState     = {imageTransition->usage, imageTransition->stage, imageTransition->access};
+            imageBarrier.dstState     = {imageTransition->usage, imageTransition->stage, imageTransition->access};
+            imageBarrier.subresources = imageTransition->subresourceRange;
+        }
+
+        // Prepare buffer barriers
+        for (auto bufferTransition : m_bufferTransitions)
+        {
+            auto buffer = (RenderGraphBuffer*)bufferTransition->resource;
+
+            auto& bufferBarrier     = m_bufferBarriers[BarrierSlot_Prologue].emplace_back();
+            bufferBarrier.buffer    = buffer->GetBuffer();
+            bufferBarrier.srcState  = {bufferTransition->usage, bufferTransition->stage, bufferTransition->access};
+            bufferBarrier.dstState  = {bufferTransition->usage, bufferTransition->stage, bufferTransition->access};
+            bufferBarrier.subregion = bufferTransition->subregion;
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// Render Graph
+    ///////////////////////////////////////////////////////////////////////////
+
     struct GraphNode
     {
         Pass*                                  m_pass;
@@ -391,6 +700,36 @@ namespace RHI
             bufferCI.usageFlags            = graphBuffer->GetBufferUsage();
             graphBuffer->m_handle.asBuffer = m_device->CreateBuffer(bufferCI).GetValue();
         }
+    }
+
+    void RenderGraph::OnGraphExecutionBegin()
+    {
+    }
+
+    void RenderGraph::OnGraphExecutionEnd()
+    {
+    }
+
+    uint64_t RenderGraph::ExecutePassGroup(const RenderGraphExecuteGroup& group, QueueType queueType)
+    {
+        auto commandList = m_device->CreateCommandList({.queueType = queueType});
+
+        commandList->Begin();
+        for (auto pass : group.GetPassList())
+        {
+            pass->Execute(*commandList);
+        }
+        commandList->End();
+
+        QueueSubmitInfo queueSubmitInfo{
+            .queueType            = queueType,
+            .commandLists         = {commandList},
+            .signalStage          = PipelineStage::BottomOfPipe,
+            .m_swapchainToAcquire = group.GetSwapchainToWait().swapchain,
+            .m_swapchainToSignal  = group.GetSwapchainToSignal().swapchain,
+        };
+
+        return m_device->QueueSubmit(queueSubmitInfo);
     }
 
 } // namespace RHI

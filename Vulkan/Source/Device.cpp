@@ -28,7 +28,6 @@
 #include "Common.hpp"
 #include "Queue.hpp"
 #include "RHI-Vulkan/Loader.hpp"
-#include "RenderGraph.hpp"
 #include "StagingBuffer.hpp"
 #include "Swapchain.hpp"
 
@@ -818,6 +817,37 @@ namespace RHI::Vulkan
         vkDeviceWaitIdle(m_device);
     }
 
+    uint64_t IDevice::QueueSubmit(const QueueSubmitInfo& submitInfo)
+    {
+        ZoneScoped;
+
+        // TODO: Add validation
+
+        auto queue = GetDeviceQueue(submitInfo.queueType);
+        for (auto waitInfo : submitInfo.waitInfos)
+        {
+            if (auto waitQueue = GetDeviceQueue(waitInfo.queueType))
+            {
+                queue->AddWaitSemaphore(waitQueue->GetTimelineHandle(), waitInfo.timelineValue, ConvertPipelineStageFlags(waitInfo.waitStage));
+            }
+        }
+
+        if (auto swapchain = (ISwapchain*)submitInfo.m_swapchainToAcquire)
+        {
+            // TODO: VkPipelineStageFlags can be deduced based on the swapchain image usage flags.
+            queue->AddWaitSemaphore(swapchain->GetImageAcquiredSemaphore(), 0, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+        }
+
+        if (auto swapchain = (ISwapchain*)submitInfo.m_swapchainToSignal)
+        {
+            // TODO: VkPipelineStageFlags can be deduced based on the swapchain image usage flags.
+            queue->AddSignalSemaphore(swapchain->GetImageAcquiredSemaphore(), 0, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+        }
+
+        auto commandLists = TL::Span{(ICommandList**)submitInfo.commandLists.data(), submitInfo.commandLists.size()};
+        return queue->Submit(commandLists, ConvertPipelineStageFlags(submitInfo.signalStage));
+    }
+
     void IDevice::CollectResources()
     {
         ZoneScoped;
@@ -827,7 +857,6 @@ namespace RHI::Vulkan
         m_frameIndex++;
     }
 
-    IMPLEMENT_DISPATCHABLE_TYPES_FUNCTIONS(RenderGraph);
     IMPLEMENT_DISPATCHABLE_TYPES_FUNCTIONS(Swapchain);
     IMPLEMENT_DISPATCHABLE_TYPES_FUNCTIONS(ShaderModule);
     IMPLEMENT_DISPATCHABLE_TYPES_FUNCTIONS(CommandList);

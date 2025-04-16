@@ -256,8 +256,8 @@ namespace RHI
     // Structs (General Purpose)
     struct BufferSubregion
     {
-        size_t      offset = 0; ///< Offset into the buffer.
-        size_t      size   = 0; ///< Size of the subregion.
+        size_t      offset = 0;         ///< Offset into the buffer.
+        size_t      size   = WholeSize; ///< Size of the subregion.
 
         inline bool operator==(const BufferSubregion& other) const { return size == other.size && offset == other.offset; }
     };

@@ -41,6 +41,23 @@ namespace RHI
         uint32_t minUniformBufferOffsetAlignment = 256;
     };
 
+    struct QueueWaitInfo
+    {
+        QueueType     queueType;
+        uint64_t      timelineValue;
+        PipelineStage waitStage;
+    };
+
+    struct QueueSubmitInfo
+    {
+        QueueType                     queueType            = QueueType::Graphics;
+        TL::Span<CommandList* const>  commandLists         = {};
+        PipelineStage                 signalStage          = {};
+        TL::Span<const QueueWaitInfo> waitInfos            = {};
+        Swapchain*                    m_swapchainToAcquire = nullptr;
+        Swapchain*                    m_swapchainToSignal  = nullptr;
+    };
+
     class RHI_EXPORT Device
     {
     public:
@@ -50,9 +67,9 @@ namespace RHI
         /// @return Device Limits struct.
         DeviceLimits                     GetLimits() const;
 
-        virtual RenderGraph*             CreateRenderGraph(const RenderGraphCreateInfo& createInfo)                                                                       = 0;
+        RenderGraph*                     CreateRenderGraph(const RenderGraphCreateInfo& createInfo);
 
-        virtual void                     DestroyRenderGraph(RenderGraph* renderGraph)                                                                                     = 0;
+        void                             DestroyRenderGraph(RenderGraph* renderGraph);
 
         /// @brief Creates a swapchain.
         /// @param createInfo Swapchain creation parameters.
@@ -168,6 +185,8 @@ namespace RHI
 
         /// @brief Writes data to an image.
         virtual void                     ImageWrite(Handle<Image> image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block) = 0;
+
+        virtual uint64_t                 QueueSubmit(const QueueSubmitInfo& submitInfo)                                                                                   = 0;
 
         /// @brief Collects unused resources for reuse.
         virtual void                     CollectResources()                                                                                                               = 0;

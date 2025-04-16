@@ -64,15 +64,15 @@ namespace RHI::Vulkan
         template<typename T, typename... FMT_ARGS>
         void SetDebugName(T handle, const char* fmt, FMT_ARGS... args) const;
 
-        IQueue& GetDeviceQueue(QueueType type);
+        IQueue* GetDeviceQueue(QueueType type);
 
         void WaitIdle() { vkDeviceWaitIdle(m_device); }
 
         uint64_t GetFrameIndex() const { return m_frameIndex; }
 
         // Interface Implementation
-        RenderGraph*             CreateRenderGraph(const RenderGraphCreateInfo& createInfo) override;
-        void                     DestroyRenderGraph(RenderGraph* renderGraph) override;
+        // RenderGraph*             CreateRenderGraph(const RenderGraphCreateInfo& createInfo) override;
+        // void                     DestroyRenderGraph(RenderGraph* renderGraph) override;
         Swapchain*               CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
         void                     DestroySwapchain(Swapchain* swapchain) override;
         ShaderModule*            CreateShaderModule(const ShaderModuleCreateInfo& createInfo) override;
@@ -101,6 +101,7 @@ namespace RHI::Vulkan
         void                     EndResourceUpdate() override;
         void                     BufferWrite(Handle<Buffer> buffer, size_t offset, TL::Block block) override;
         void                     ImageWrite(Handle<Image> image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block) override;
+        uint64_t                 QueueSubmit(const QueueSubmitInfo& submitInfo) override;
         void                     CollectResources() override;
 
     public:
@@ -148,14 +149,14 @@ namespace RHI::Vulkan
         SetDebugName(handle, formattedName.c_str());
     }
 
-    inline IQueue& IDevice::GetDeviceQueue(QueueType type)
+    inline IQueue* IDevice::GetDeviceQueue(QueueType type)
     {
         auto& queue = m_queue[(uint32_t)type];
         if (queue.GetHandle() != VK_NULL_HANDLE)
         {
-            return m_queue[(int)QueueType::Graphics];
+            return &m_queue[(int)QueueType::Graphics];
         }
-        return queue;
+        return nullptr;
     }
 
 } // namespace RHI::Vulkan

@@ -10,7 +10,6 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Device.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/DeleteQueue.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Queue.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraph.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/StagingBuffer.hpp
@@ -22,7 +21,6 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Device.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/DeleteQueue.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Queue.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraph.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Surface.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.cpp

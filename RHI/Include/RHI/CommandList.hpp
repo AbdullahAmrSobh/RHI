@@ -384,20 +384,4 @@ namespace RHI
         /// @param copyInfo Information for the image-to-buffer copy command.
         virtual void CopyBufferToImage(const BufferImageCopyInfo& copyInfo)                                                                                                     = 0;
     };
-
-    inline static RHI::Access LoadStoreToAccess(LoadOperation loadOp, StoreOperation storeOp)
-    {
-        if (loadOp == LoadOperation::Load && storeOp == StoreOperation::Store)
-        {
-            return RHI::Access::ReadWrite;
-        }
-        else if (loadOp == LoadOperation::Load && storeOp != StoreOperation::Store)
-        {
-            return RHI::Access::Read;
-        }
-        else
-        {
-            return RHI::Access::Write;
-        }
-    }
 } // namespace RHI

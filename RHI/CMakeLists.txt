@@ -11,8 +11,6 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RenderGraph.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/PipelineAccess.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Result.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RenderGraphPass.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RenderGraphResources.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Resources.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RHI.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Swapchain.hpp
@@ -24,8 +22,6 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Format.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Handle.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraph.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraphPass.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraphResources.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.cpp
 )

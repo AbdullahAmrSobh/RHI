@@ -129,4 +129,4 @@ namespace RHI
 
 } // namespace RHI
 
-#include "RHI/Handle.inl"
+#include "RHI/Handle.inl" // IWYU pragma: export
