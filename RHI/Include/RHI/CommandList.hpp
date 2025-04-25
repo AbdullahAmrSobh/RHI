@@ -206,7 +206,7 @@ namespace RHI
         Handle<Image>         image        = NullHandle;
         ImageBarrierState     srcState     = {};
         ImageBarrierState     dstState     = {};
-        ImageSubresourceRange subresources = {};
+        ImageSubresourceRange subresources = {}; //
     };
 
     struct BufferBarrierInfo
