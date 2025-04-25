@@ -18,7 +18,7 @@ namespace RHI::Vulkan
     VkImageViewType         ConvertImageViewType(ImageViewType imageType);
     VkImageAspectFlags      ConvertImageAspect(TL::Flags<ImageAspect> imageAspect, Format format);
     VkComponentSwizzle      ConvertComponentSwizzle(ComponentSwizzle componentSwizzle);
-    VkImageSubresourceRange ConvertSubresourceRange(const ImageSubresourceRange& subresource);
+    VkImageSubresourceRange ConvertSubresourceRange(const ImageSubresourceRange& subresource, Format format);
     VkComponentMapping      ConvertComponentMapping(ComponentMapping componentMapping);
     VkExtent2D              ConvertExtent2D(ImageSize2D size);
     VkExtent3D              ConvertExtent3D(ImageSize3D size);
