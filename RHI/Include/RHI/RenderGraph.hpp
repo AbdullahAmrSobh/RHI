@@ -19,15 +19,15 @@ namespace RHI
     class CommandList;
     class RenderGraph;
     class RenderGraphExecuteGroup;
-    struct RenderTargetInfo;
     class Device;
     class Pass;
     class RenderGraph;
     class CommandList;
     class Swapchain;
-    class RenderGraphExecuteGroup;
 
-    // Based on (https://anki3d.org/simplified-pipeline-barriers/)
+    using PassSetupCallback   = TL::Function<void(Pass& pass)>;
+    using PassCompileCallback = TL::Function<void(Pass& pass)>;
+    using PassExecuteCallback = TL::Function<void(CommandList& commandList)>;
 
     enum class PassType
     {
@@ -36,112 +36,9 @@ namespace RHI
         Transfer,
     };
 
-    ///////////////////////////////////////////////////////////////////////////
-    /// Render Graph Resource Data
-    ///////////////////////////////////////////////////////////////////////////
-
-    struct RenderGraphResource
-    {
-        // empty for now
-    };
-
-    class RGResourcePool
-    {
-    public:
-        Handle<Image>                               m_handle;
-    };
-
-    struct RenderGraphImage : RenderGraphResource
-    {
-        TL::String            m_name;
-        TL::Flags<ImageUsage> m_usageFlags;
-        ImageType             m_type;
-        ImageSize3D           m_size;
-        Format                m_format;
-        SampleCount           m_sampleCount;
-        uint32_t              m_mipLevels;
-        uint32_t              m_arrayCount;
-
-        Handle<Image>         m_handle;
-
-
-        TL::Map<ImageViewCreateInfo, Handle<Image>> m_views;
-
-        struct PassDependency
-        {
-            Handle<RenderGraphImage> rgImage          = NullHandle;
-            Pass*                    pass             = nullptr;
-            Handle<Image>            view             = NullHandle;
-            ImageSubresourceRange    subresourceRange = ImageSubresourceRange::All();
-            ImageBarrierState        state            = {};
-        };
-
-        // List of this resource's dependencies based on their access order
-        TL::Vector<Dependency> m_orderedDependencies;
-    };
-
-    struct RenderGraphBuffer : RenderGraphResource
-    {
-        TL::String             m_name;
-        TL::Flags<BufferUsage> m_usageFlags;
-        size_t                 m_size;
-
-        Handle<Buffer>         m_handle;
-
-        struct Dependency
-        {
-            Pass*              pass             = nullptr;
-            BufferSubregion    subresourceRange = {};
-            BufferBarrierState state            = {};
-        };
-
-        // List of this resource's dependencies based on their access order
-        TL::Vector<Dependency> m_orderedDependencies;
-    };
-
-    ///////////////////////////////////////////////////////////////////////////
-    /// Render Graph Bindings
-    ///////////////////////////////////////////////////////////////////////////
-
-    struct ColorRGAttachment
-    {
-        Handle<RenderGraphImage> view        = NullHandle;
-        LoadOperation            loadOp      = LoadOperation::Discard;
-        StoreOperation           storeOp     = StoreOperation::Store;
-        ClearValue               clearValue  = {.f32 = {0.0f, 0.0f, 0.0f, 1.0f}};
-        ResolveMode              resolveMode = ResolveMode::None;
-        Handle<RenderGraphImage> resolveView = NullHandle;
-    };
-
-    struct DepthStencilRGAttachment
-    {
-        Handle<RenderGraphImage> view           = NullHandle;
-        LoadOperation            depthLoadOp    = LoadOperation::Discard;
-        StoreOperation           depthStoreOp   = StoreOperation::Store;
-        LoadOperation            stencilLoadOp  = LoadOperation::Discard;
-        StoreOperation           stencilStoreOp = StoreOperation::Store;
-        DepthStencilValue        clearValue     = {0.0f, 0};
-    };
-
-    struct RGRenderPassBeginInfo
-    {
-        ImageSize2D                            size;
-        ImageOffset2D                          offset;
-        TL::Span<const ColorRGAttachment>      colorAttachments;
-        TL::Optional<DepthStencilRGAttachment> depthStencilAttachment;
-    };
-
-    ///////////////////////////////////////////////////////////////////////////
-    /// Render Graph Common and helper types
-    ///////////////////////////////////////////////////////////////////////////
-
-    using PassSetupCallback   = TL::Function<void(Pass& pass)>;
-    using PassCompileCallback = TL::Function<void(Pass& pass)>;
-    using PassExecuteCallback = TL::Function<void(CommandList& commandList)>;
-
     struct RenderGraphCreateInfo
     {
-        TL::Allocator* allocator = nullptr; ///< Allocator to use for memory management.
+        TL::Allocator* allocator = nullptr;
     };
 
     struct PassCreateInfo
@@ -154,38 +51,115 @@ namespace RHI
         PassExecuteCallback executeCallback;
     };
 
+    ///////////////////////////////////////////////////////////////////////////
+    /// Render Graph Resource Data
+    ///////////////////////////////////////////////////////////////////////////
+
+    struct RenderGraphResource
+    {
+    };
+
+    struct ImagePassDependency;
+    struct BufferPassDependency;
+
+    struct RenderGraphImage : RenderGraphResource
+    {
+        TL::String                                  m_name;
+        TL::Flags<ImageUsage>                       m_usageFlags;
+        ImageType                                   m_type;
+        ImageSize3D                                 m_size;
+        Format                                      m_format;
+        SampleCount                                 m_sampleCount;
+        uint32_t                                    m_mipLevels;
+        uint32_t                                    m_arrayCount;
+        Handle<Image>                               m_handle;
+        TL::Map<ImageViewCreateInfo, Handle<Image>> m_views;
+        ImagePassDependency*                        m_begin = nullptr;
+        ImagePassDependency*                        m_end   = nullptr;
+    };
+
+    struct RenderGraphBuffer : RenderGraphResource
+    {
+        TL::String             m_name;
+        TL::Flags<BufferUsage> m_usageFlags;
+        size_t                 m_size;
+        Handle<Buffer>         m_handle;
+        BufferPassDependency*  m_begin = nullptr;
+        BufferPassDependency*  m_end   = nullptr;
+    };
+
+    struct ImagePassDependency
+    {
+        Pass*                    pass             = nullptr;
+        Handle<RenderGraphImage> rgImage          = NullHandle;
+        Handle<Image>            view             = NullHandle;
+        ImageSubresourceRange    subresourceRange = ImageSubresourceRange::All();
+        ImageUsage               usage            = ImageUsage::None;
+        PipelineStage            stage            = PipelineStage::None;
+        Access                   access           = Access::None;
+
+        ImagePassDependency *    next, *prev;
+    };
+
+    struct BufferPassDependency
+    {
+        Pass*                     pass             = nullptr;
+        Handle<RenderGraphBuffer> rgBuffer         = NullHandle;
+        BufferSubregion           subresourceRange = {};
+        BufferUsage               usage            = BufferUsage::None;
+        PipelineStage             stage            = PipelineStage::None;
+        Access                    access           = Access::None;
+        BufferPassDependency *    next, *prev;
+    };
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// Render Graph Bindings
+    ///////////////////////////////////////////////////////////////////////////
+
     struct ImageUseInfo
     {
         Handle<RenderGraphImage> image;
         ImageSubresourceRange    subresourcesRange;
-        ImageUsage               usage;
-        PipelineStage            stage;
-        Access                   access;
     };
 
     struct BufferUseInfo
     {
         Handle<RenderGraphBuffer> buffer;
         BufferSubregion           subregion;
-        BufferUsage               usage;
-        PipelineStage             stage;
-        Access                    access;
     };
 
-    using RGResourceHandle       = uint32_t;
-    using RGResourceTransitionID = uint32_t;
-
-    struct ImageDependency
+    struct RGColorAttachment
     {
-        Handle<RenderGraphImage> image;
-        uint32_t                 usageIndex;
+        ImageUseInfo   view        = {};
+        LoadOperation  loadOp      = LoadOperation::Discard;
+        StoreOperation storeOp     = StoreOperation::Store;
+        ClearValue     clearValue  = {.f32 = {0.0f, 0.0f, 0.0f, 1.0f}};
+        ResolveMode    resolveMode = ResolveMode::None;
+        ImageUseInfo   resolveView = {};
     };
 
-    struct BufferDependency
+    struct RGDepthStencilAttachment
     {
+        ImageUseInfo      view           = {};
+        LoadOperation     depthLoadOp    = LoadOperation::Discard;
+        StoreOperation    depthStoreOp   = StoreOperation::Store;
+        LoadOperation     stencilLoadOp  = LoadOperation::Discard;
+        StoreOperation    stencilStoreOp = StoreOperation::Store;
+        DepthStencilValue clearValue     = {0.0f, 0};
     };
 
-    /// @brief Represents a render graph pass, encapsulating its setup, execution, and resource usage.
+    struct RGRenderPassBeginInfo
+    {
+        ImageSize2D                            size;
+        ImageOffset2D                          offset;
+        TL::Span<const RGColorAttachment>      colorAttachments;
+        TL::Optional<RGDepthStencilAttachment> depthStencilAttachment;
+    };
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// Render Graph Common and helper types
+    ///////////////////////////////////////////////////////////////////////////
+
     class RHI_EXPORT Pass
     {
         friend RenderGraph;
@@ -196,10 +170,10 @@ namespace RHI
         /// @brief Enum representing different barrier slots for a pass.
         enum BarrierSlot
         {
-            Prilogue, ///< Barriers executed before the pass begins.
-            Epilogue, ///< Barriers executed after the pass ends.
-            Resolve,  ///< Barriers for resolving resources.
-            Count,    ///< Total number of barrier slots.
+            Prilogue,
+            Epilogue,
+            Resolve,
+            Count,
         };
 
         ResultCode  Init(RenderGraph* rg, const PassCreateInfo& ci);
@@ -221,34 +195,96 @@ namespace RHI
             return m_type;
         }
 
-        void UseImage(const ImageUseInfo& useInfo);
-        void UseBuffer(const BufferUseInfo& useInfo);
-        void UseColorAttachment(ColorRGAttachment colorAttachment);
-        void UseDepthStencil(DepthStencilRGAttachment depthStencilAttachment);
+        void UseImage(const ImageUseInfo& useInfo, ImageUsage usage, PipelineStage stage, Access access);
+        void UseBuffer(const BufferUseInfo& useInfo, ImageUsage usage, PipelineStage stage, Access access);
+        void AddColorAttachment(RGColorAttachment colorAttachment);
+        void SetDepthStencil(RGDepthStencilAttachment depthStencilAttachment);
 
     private:
-        RenderGraph*                           m_renderGraph;            ///< Pointer to the render graph this pass belongs to.
-        TL::String                             m_name;                   ///< Name of the pass.
-        PassType                               m_type;                   ///< The type of the pass.
-        PassSetupCallback                      m_setupCallback;          ///< Callback for setting up the pass.
-        PassCompileCallback                    m_compileCallback;        ///< Callback for compiling the pass.
-        PassExecuteCallback                    m_executeCallback;        ///< Callback for executing the pass.
-        ImageSize2D                            m_imageSize;              ///< Size of the images used in the pass.
-        TL::Vector<ColorRGAttachment>          m_colorAttachments;       ///< List of color attachments used in the pass.
-        TL::Optional<DepthStencilRGAttachment> m_depthStencilAttachment; ///< Depth-stencil attachment used in the pass.
-        TL::Vector<ImageDependency>            m_imageDependencies;
-        TL::Vector<BufferDependency>           m_bufferDependencies;
+        RenderGraph*                              m_renderGraph;
+        TL::String                                m_name;
+        PassType                                  m_type;
+        PassSetupCallback                         m_setupCallback;
+        PassCompileCallback                       m_compileCallback;
+        PassExecuteCallback                       m_executeCallback;
+
+        TL::Vector<TL::Ptr<ImagePassDependency>>  m_imageDependencies;
+        TL::Vector<TL::Ptr<BufferPassDependency>> m_bufferDependencies;
+
+        uint64_t                                  m_globalExecutionIndex                 = 0;
+        uint64_t                                  m_dependencyLevelIndex                 = 0;
+        uint64_t                                  m_localToDependencyLevelExecutionIndex = 0;
+        uint64_t                                  m_localToQueueExecutionIndex           = 0;
+        uint64_t                                  m_indexInUnorderedList                 = 0;
+
+        ImageSize2D                               m_imageSize;
+        TL::Vector<RGColorAttachment>             m_colorAttachments;
+        TL::Optional<RGDepthStencilAttachment>    m_depthStencilAttachment;
 
         struct Barriers
         {
-            TL::Vector<BarrierInfo>       memoryBarriers; ///< Memory barriers for synchronization.
-            TL::Vector<ImageBarrierInfo>  imageBarriers;  ///< Image barriers for image transitions.
-            TL::Vector<BufferBarrierInfo> bufferBarriers; ///< Buffer barriers for buffer transitions.
+            TL::Vector<BarrierInfo>       memoryBarriers;
+            TL::Vector<ImageBarrierInfo>  imageBarriers;
+            TL::Vector<BufferBarrierInfo> bufferBarriers;
         };
 
-        Barriers m_barriers[BarrierSlot::Count]; ///< Barriers for each slot in the pass.
+        Barriers m_barriers[BarrierSlot::Count];
         bool     m_isActive   : 1 = false;
-        bool     m_isCompiled : 1 = false; ///< Flag indicating if the pass has been compiled.
+        bool     m_isCompiled : 1 = false;
+    };
+
+    class DependencyLevel
+    {
+    public:
+        using Node         = Pass; // Assuming Node refers to Pass for this context
+        using NodeList     = TL::Vector<Node*>;
+        using NodeIterator = typename NodeList::iterator;
+
+        friend RenderGraph;
+
+        DependencyLevel(uint64_t levelIndex = 0)
+            : m_levelIndex(levelIndex)
+        {
+        }
+
+        void AddNode(Node* node)
+        {
+            m_nodes.push_back(node);
+        }
+
+        const NodeList&                            Nodes() const { return m_nodes; }
+
+        const TL::Vector<TL::Vector<const Node*>>& NodesForQueue() const { return m_nodesPerQueue; }
+
+        const TL::Set<uint32_t>&                   QueuesInvolvedInCrossQueueResourceReads() const { return m_queuesInvolvedInCrossQueueResourceReads; }
+
+        const TL::Set<uint64_t>&                   SubresourcesReadByMultipleQueues() const { return m_subresourcesReadByMultipleQueues; }
+
+        uint64_t                                   LevelIndex() const { return m_levelIndex; }
+
+        void                                       AddNodeForQueue(uint32_t queueIndex, const Node* node)
+        {
+            if (queueIndex >= m_nodesPerQueue.size())
+                m_nodesPerQueue.resize(queueIndex + 1);
+            m_nodesPerQueue[queueIndex].push_back(node);
+        }
+
+        void AddQueueInvolved(uint32_t queueIndex)
+        {
+            m_queuesInvolvedInCrossQueueResourceReads.insert(queueIndex);
+        }
+
+        void AddSubresourceRead(uint64_t subresourceName)
+        {
+            m_subresourcesReadByMultipleQueues.insert(subresourceName);
+        }
+
+    private:
+        uint64_t                            m_levelIndex = 0;
+        NodeList                            m_nodes;
+        TL::Vector<TL::Vector<const Node*>> m_nodesPerQueue;
+        TL::Set<uint32_t>                   m_queuesInvolvedInCrossQueueResourceReads;
+        TL::Set<uint64_t>                   m_subresourcesReadByMultipleQueues;
     };
 
     ///////////////////////////////////////////////////////////////////////////
@@ -257,6 +293,7 @@ namespace RHI
 
     class RHI_EXPORT RenderGraph
     {
+        friend Device;
         friend Pass;
 
     public:
@@ -267,61 +304,21 @@ namespace RHI
 
         // Import existing resources into the render graph.
 
-        /// @brief Imports a swapchain into the render graph for rendering.
-        /// @param name The name of the swapchain resource.
-        /// @param swapchain The swapchain object to import.
-        /// @param format The format of the imported swapchain image.
-        /// @return A handle to the imported RenderGraphImage.
         TL_NODISCARD Handle<RenderGraphImage>  ImportSwapchain(const char* name, Swapchain& swapchain, Format format);
-
-        /// @brief Imports an existing image into the render graph.
-        /// @param name The name of the image resource.
-        /// @param image The handle to the existing image.
-        /// @param format The format of the imported image.
-        /// @return A handle to the imported RenderGraphImage.
         TL_NODISCARD Handle<RenderGraphImage>  ImportImage(const char* name, Handle<Image> image, Format format);
-
-        /// @brief Imports an existing buffer into the render graph.
-        /// @param name The name of the buffer resource.
-        /// @param buffer The handle to the existing buffer.
-        /// @return A handle to the imported RenderGraphBuffer.
         TL_NODISCARD Handle<RenderGraphBuffer> ImportBuffer(const char* name, Handle<Buffer> buffer);
 
-        /// @brief Creates a new image in the render graph.
-        /// @param createInfo The creation parameters for the image.
-        /// @return A handle to the created RenderGraphImage.
         TL_NODISCARD Handle<RenderGraphImage>  CreateImage(const char* name, ImageType type, ImageSize3D size, Format format, uint32_t mipLevels = 1, uint32_t arrayCount = 1, SampleCount samples = SampleCount::Samples1);
-
-        /// @brief Creates a new buffer in the render graph.
-        /// @param createInfo The creation parameters for the buffer.
-        /// @return A handle to the created RenderGraphBuffer.
         TL_NODISCARD Handle<RenderGraphBuffer> CreateBuffer(const char* name, size_t size);
 
-        /// @brief Finds an imported image in the render graph.
-        /// @param image The handle to the existing image.
-        /// @return A handle to the imported RenderGraphImage, or NullHandle if not found.
         TL_NODISCARD Handle<RenderGraphImage>  FindImportedImage(Handle<Image> image) const;
-
-        /// @brief Finds an imported buffer in the render graph.
-        /// @param buffer The handle to the existing buffer.
-        /// @return A handle to the imported RenderGraphBuffer, or NullHandle if not found.
         TL_NODISCARD Handle<RenderGraphBuffer> FindImportedBuffer(Handle<Buffer> buffer) const;
 
-        /// @brief Destroys an existing image in the render graph.
-        /// @param handle The handle to the RenderGraphImage to destroy.
         void                                   DestroyImage(Handle<RenderGraphImage> handle);
-
-        /// @brief Destroys an existing buffer in the render graph.
-        /// @param handle The handle to the RenderGraphBuffer to destroy.
         void                                   DestroyBuffer(Handle<RenderGraphBuffer> handle);
 
         // Frame management.
-
-        /// @brief Begins a new frame in the render graph.
-        /// @param frameSize The size of the frame (typically matches swapchain size).
         void                                   BeginFrame(ImageSize2D frameSize);
-
-        /// @brief Ends the current frame and executes the render graph.
         void                                   EndFrame();
 
         /////////////////////////////////////////////////////////////////////////////////
@@ -329,63 +326,30 @@ namespace RHI
         /// And must never be called outside of Begin/End Scopes
         /////////////////////////////////////////////////////////////////////////////////
 
-        /// @brief Returns the default render target size.
-        /// @return The size of the render target.
         TL_NODISCARD ImageSize2D               GetFrameSize() const;
-
-        /// @brief Returns the image associated with the given handle.
-        /// @param handle The handle to the RenderGraphImage.
-        /// @return A pointer to the RenderGraphImage, or nullptr if not found.
         TL_NODISCARD const RenderGraphImage*   GetImage(Handle<RenderGraphImage> handle) const;
-
-        /// @brief Returns the buffer associated with the given handle.
-        /// @param handle The handle to the RenderGraphBuffer.
-        /// @return A pointer to the RenderGraphBuffer, or nullptr if not found.
         TL_NODISCARD const RenderGraphBuffer*  GetBuffer(Handle<RenderGraphBuffer> handle) const;
-
-        /// @brief Returns the underlying image handle for a RenderGraphImage.
-        /// @param handle The handle to the RenderGraphImage.
-        /// @return The handle to the underlying Image.
         TL_NODISCARD Handle<Image>             GetImageHandle(Handle<RenderGraphImage> handle) const;
-
-        /// @brief Returns the underlying buffer handle for a RenderGraphBuffer.
-        /// @param handle The handle to the RenderGraphBuffer.
-        /// @return The handle to the underlying Buffer.
         TL_NODISCARD Handle<Buffer>            GetBufferHandle(Handle<RenderGraphBuffer> handle) const;
 
-        // // clang-format off
-        // template<typename T>
-        // T*                                     AllocatePassParams(const char* name);
-        // // clang-format on
+        Pass*                                  AddPass(const PassCreateInfo& createInfo);
 
-        [[maybe_unused]] Pass*                 AddPass(const PassCreateInfo& createInfo);
-
-        /// @brief Queues a buffer upload operation.
-        /// @param buffer The handle to the RenderGraphBuffer to upload data to.
-        /// @param data The data block to upload.
-        void                                   QueueBufferUpload(Handle<RenderGraphBuffer> buffer, TL::Block data);
-
-        /// @brief Queues a buffer upload operation with an offset.
-        /// @param buffer The handle to the RenderGraphBuffer to upload data to.
-        /// @param offset The offset in the buffer to start the upload.
-        /// @param data The data block to upload.
-        void                                   QueueBufferUpload(Handle<RenderGraphBuffer> buffer, uint32_t offset, TL::Block data);
-
-        // clang-format off
-        // /// @brief Queues a buffer upload operation for a storage buffer.
-        // /// @tparam ElementType The type of the elements in the storage buffer.
-        // /// @param buffer The storage buffer to upload data to.
-        // /// @param elements The span of elements to upload.
-        // template<typename ElementType>
-        // void                                   QueueBufferUpload(StorageBuffer<ElementType> buffer, TL::Span<const ElementType> elements);
-        // clang-format on
+        // void                                   QueueBufferRead(Handle<RenderGraphBuffer> buffer, uint32_t offset, TL::Block data);
+        // void                                   QueueBufferWrite(Handle<RenderGraphBuffer> buffer, uint32_t offset, TL::Block data);
+        // void                                   QueueImageRead(Handle<RenderGraphImage> image, ImageOffset3D offset, ImageSize3D size, ImageSubresourceLayers dstLayers, TL::Block block);
+        // void                                   QueueImageWrite(Handle<RenderGraphImage> image, ImageOffset3D offset, ImageSize3D size, ImageSubresourceLayers dstLayers, TL::Block block);
+        // template<typename ElementType> void    QueueBufferUpload(Handle<RenderGraphBuffer> buffer, TL::Span<const ElementType> elements);
 
     private:
-        void               ExtendImageUsageFlags(Handle<RenderGraphImage> resource, ImageUsage usage);
-        void               ExtendBufferUsageFlags(Handle<RenderGraphBuffer> resource, BufferUsage usage);
+        void ExtendImageUsageFlags(Handle<RenderGraphImage> resource, ImageUsage usage);
+        void ExtendBufferUsageFlags(Handle<RenderGraphBuffer> resource, BufferUsage usage);
 
-        ImageBarrierState  GetBarrierStateInfo(Handle<RenderGraphImage> image, int32_t accessIndex);
-        BufferBarrierState GetBarrierStateInfo(Handle<RenderGraphBuffer> buffer, int32_t accessIndex);
+    private:
+        // Utility functions
+        bool      CheckDependency(const Pass* src, const Pass* dst) const;
+        bool      CheckDependency(const struct Node* src, const struct Node* dst) const;
+        Access    GetResourcePassAccess(Pass* pass, const RenderGraphResource* resource) const;
+        QueueType GetPassAssignedQueue(const Pass* pass) const;
 
     private:
         void TransientResourcesInit(bool enableAliasing = false);
@@ -395,29 +359,18 @@ namespace RHI
         void Execute();
 
     protected:
-        /// Main allocator for graph resources.
-        TL::IAllocator*                                    m_allocator = new TL::Mimalloc();
-        /// Temporary allocator for transient data.
+        TL::IAllocator*                                    m_allocator;
         TL::Arena                                          m_tempAllocator;
-        /// The associated device for the render graph.
         Device*                                            m_device;
-        /// The current frame index.
         uint64_t                                           m_frameIndex;
 
-        /// List of images in the graph.
         HandlePool<RenderGraphImage>                       m_imageOwner;
-        /// List of buffers in the graph.
         HandlePool<RenderGraphBuffer>                      m_bufferOwner;
 
-        /// Lookup table for imported images.
         TL::Map<Handle<Image>, Handle<RenderGraphImage>>   m_graphImportedImagesLookup;
-        /// Lookup table for transient images.
         TL::Set<Handle<RenderGraphImage>>                  m_graphTransientImagesLookup;
-        /// Lookup table for imported buffers.
         TL::Map<Handle<Buffer>, Handle<RenderGraphBuffer>> m_graphImportedBuffersLookup;
-        /// Lookup table for transient buffers.
         TL::Set<Handle<RenderGraphBuffer>>                 m_graphTransientBuffersLookup;
-        /// Lookup table for imported swapchains.
         TL::Map<Swapchain*, Handle<RenderGraphImage>>      m_graphImportedSwapchainsLookup;
 
         /// List of passes in the graph.

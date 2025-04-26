@@ -398,95 +398,97 @@ namespace Engine
     RHI::Pass* ImGuiRenderer::RenderDrawData(ImDrawData* drawData, RHI::RenderGraph& renderGraph, RHI::ImageSize2D size, RHI::RenderGraphImage* outputImage)
     {
         UpdateBuffers(drawData);
-        return renderGraph.AddPass({
-            .name          = "ImGui",
-            .queue         = RHI::QueueType::Graphics,
-            .size          = size,
-            .setupCallback = [outputImage](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
-            {
-                renderGraph.UseColorAttachment(
-                    pass,
-                    {
-                        .view   = outputImage,
-                        .loadOp = RHI::LoadOperation::Load,
-                    });
-            },
-            .compileCallback = [](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
-            {
-            },
-            .executeCallback = [this, drawData](RHI::CommandList& commandList)
-            {
-                // Render command lists
-                // (Because we merged all buffers into a single one, we maintain our own offset into them)
-                int globalIdxOffset = 0;
-                int globalVtxOffset = 0;
 
-                // Will project scissor/clipping rectangles into framebuffer space
-                ImVec2 clipOff   = drawData->DisplayPos;       // (0,0) unless using multi-viewports
-                ImVec2 clipScale = drawData->FramebufferScale; // (1,1) unless using retina display which are often (2,2)
-                for (int n = 0; n < drawData->CmdListsCount; n++)
-                {
-                    const ImDrawList* drawList = drawData->CmdLists[n];
-                    for (int i = 0; i < drawList->CmdBuffer.Size; i++)
-                    {
-                        const ImDrawCmd* drawCmd = &drawList->CmdBuffer[i];
+        return nullptr;
+        // return renderGraph.AddPass({
+        //     .name          = "ImGui",
+        //     .queue         = RHI::QueueType::Graphics,
+        //     .size          = size,
+        //     .setupCallback = [outputImage](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
+        //     {
+        //         renderGraph.UseColorAttachment(
+        //             pass,
+        //             {
+        //                 .view   = outputImage,
+        //                 .loadOp = RHI::LoadOperation::Load,
+        //             });
+        //     },
+        //     .compileCallback = [](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
+        //     {
+        //     },
+        //     .executeCallback = [this, drawData](RHI::CommandList& commandList)
+        //     {
+        //         // Render command lists
+        //         // (Because we merged all buffers into a single one, we maintain our own offset into them)
+        //         int globalIdxOffset = 0;
+        //         int globalVtxOffset = 0;
 
-                        if (drawCmd->UserCallback)
-                        {
-                            drawCmd->UserCallback(drawList, drawCmd);
-                        }
-                        else
-                        {
-                            // Project scissor/clipping rectangles into framebuffer space
-                            ImVec2 clip_min((drawCmd->ClipRect.x - clipOff.x) * clipScale.x, (drawCmd->ClipRect.y - clipOff.y) * clipScale.y);
-                            ImVec2 clip_max((drawCmd->ClipRect.z - clipOff.x) * clipScale.x, (drawCmd->ClipRect.w - clipOff.y) * clipScale.y);
+        //         // Will project scissor/clipping rectangles into framebuffer space
+        //         ImVec2 clipOff   = drawData->DisplayPos;       // (0,0) unless using multi-viewports
+        //         ImVec2 clipScale = drawData->FramebufferScale; // (1,1) unless using retina display which are often (2,2)
+        //         for (int n = 0; n < drawData->CmdListsCount; n++)
+        //         {
+        //             const ImDrawList* drawList = drawData->CmdLists[n];
+        //             for (int i = 0; i < drawList->CmdBuffer.Size; i++)
+        //             {
+        //                 const ImDrawCmd* drawCmd = &drawList->CmdBuffer[i];
 
-                            // Clamp to viewport as commandList.SetSicssor() won't accept values that are off bounds
-                            clip_min.x = std::clamp(clip_min.x, 0.0f, drawData->DisplaySize.x);
-                            clip_min.y = std::clamp(clip_min.y, 0.0f, drawData->DisplaySize.y);
-                            clip_max.x = std::clamp(clip_max.x, 0.0f, drawData->DisplaySize.x);
-                            clip_max.y = std::clamp(clip_max.y, 0.0f, drawData->DisplaySize.y);
-                            if (clip_max.x <= clip_min.x || clip_max.y <= clip_min.y)
-                                continue;
+        //                 if (drawCmd->UserCallback)
+        //                 {
+        //                     drawCmd->UserCallback(drawList, drawCmd);
+        //                 }
+        //                 else
+        //                 {
+        //                     // Project scissor/clipping rectangles into framebuffer space
+        //                     ImVec2 clip_min((drawCmd->ClipRect.x - clipOff.x) * clipScale.x, (drawCmd->ClipRect.y - clipOff.y) * clipScale.y);
+        //                     ImVec2 clip_max((drawCmd->ClipRect.z - clipOff.x) * clipScale.x, (drawCmd->ClipRect.w - clipOff.y) * clipScale.y);
 
-                            // Apply scissor/clipping rectangle
-                            RHI::Scissor scissor{
-                                .offsetX = (int32_t)(clip_min.x),
-                                .offsetY = (int32_t)(clip_min.y),
-                                .width   = (uint32_t)(clip_max.x - clip_min.x),
-                                .height  = (uint32_t)(clip_max.y - clip_min.y),
-                            };
-                            commandList.SetScissor(scissor);
+        //                     // Clamp to viewport as commandList.SetSicssor() won't accept values that are off bounds
+        //                     clip_min.x = std::clamp(clip_min.x, 0.0f, drawData->DisplaySize.x);
+        //                     clip_min.y = std::clamp(clip_min.y, 0.0f, drawData->DisplaySize.y);
+        //                     clip_max.x = std::clamp(clip_max.x, 0.0f, drawData->DisplaySize.x);
+        //                     clip_max.y = std::clamp(clip_max.y, 0.0f, drawData->DisplaySize.y);
+        //                     if (clip_max.x <= clip_min.x || clip_max.y <= clip_min.y)
+        //                         continue;
 
-                            // Bind texture, Draw
+        //                     // Apply scissor/clipping rectangle
+        //                     RHI::Scissor scissor{
+        //                         .offsetX = (int32_t)(clip_min.x),
+        //                         .offsetY = (int32_t)(clip_min.y),
+        //                         .width   = (uint32_t)(clip_max.x - clip_min.x),
+        //                         .height  = (uint32_t)(clip_max.y - clip_min.y),
+        //                     };
+        //                     commandList.SetScissor(scissor);
 
-                            // Bind
-                            commandList.BindGraphicsPipeline(m_pipeline, {{.bindGroup = m_bindGroup}});
-                            commandList.BindIndexBuffer({
-                                                            .buffer = m_indexBuffer,
-                                                        },
-                                RHI::IndexType::uint16);
-                            commandList.BindVertexBuffers(0, {
-                                                                 {
-                                                                  .buffer = m_vertexBuffer,
-                                                                  }
-                            });
-                            commandList.DrawIndexed({
-                                .indexCount    = drawCmd->ElemCount,
-                                .instanceCount = 1,
-                                .firstIndex    = drawCmd->IdxOffset + globalIdxOffset,
-                                .vertexOffset  = int32_t(drawCmd->VtxOffset + globalVtxOffset),
-                                .firstInstance = 0,
+        //                     // Bind texture, Draw
 
-                            });
-                        }
-                    }
+        //                     // Bind
+        //                     commandList.BindGraphicsPipeline(m_pipeline, {{.bindGroup = m_bindGroup}});
+        //                     commandList.BindIndexBuffer({
+        //                                                     .buffer = m_indexBuffer,
+        //                                                 },
+        //                         RHI::IndexType::uint16);
+        //                     commandList.BindVertexBuffers(0, {
+        //                                                          {
+        //                                                           .buffer = m_vertexBuffer,
+        //                                                           }
+        //                     });
+        //                     commandList.DrawIndexed({
+        //                         .indexCount    = drawCmd->ElemCount,
+        //                         .instanceCount = 1,
+        //                         .firstIndex    = drawCmd->IdxOffset + globalIdxOffset,
+        //                         .vertexOffset  = int32_t(drawCmd->VtxOffset + globalVtxOffset),
+        //                         .firstInstance = 0,
 
-                    globalIdxOffset += drawList->IdxBuffer.Size;
-                    globalVtxOffset += drawList->VtxBuffer.Size;
-                }
-            },
-        });
+        //                     });
+        //                 }
+        //             }
+
+        //             globalIdxOffset += drawList->IdxBuffer.Size;
+        //             globalVtxOffset += drawList->VtxBuffer.Size;
+        //         }
+        //     },
+        // });
     }
 
     void ImGuiRenderer::UpdateBuffers(ImDrawData* drawData)
