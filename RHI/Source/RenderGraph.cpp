@@ -11,304 +11,648 @@
 
 namespace RHI
 {
-    inline static RHI::Access LoadStoreToAccess(LoadOperation loadOp, StoreOperation storeOp)
+    namespace Colors
     {
-        if (loadOp == LoadOperation::Load && storeOp == StoreOperation::Store)
+        constexpr uint32_t Red   = 0x7F000000;
+        constexpr uint32_t Green = 0x007F7F00;
+        constexpr uint32_t Blue  = 0x00007FFF;
+
+        constexpr ClearValue DebugMarker_Graphics{
+            .f32{0.7f, 0.2f, 0.2f, 1.0f}
+        };
+
+        constexpr ClearValue DebugMarker_Compute{
+            .f32{0.2f, 0.7f, 0.2f, 1.0f}
+        };
+
+        constexpr ClearValue DebugMarker_Transfer{
+            .f32{0.2f, 0.4f, 0.7f, 1.0f}
+        };
+
+    }; // namespace Colors
+
+    class RenderGraph::TransientResourceAllocator
+    {
+    public:
+        void Create(RGImage* rgImage)
         {
-            return RHI::Access::ReadWrite;
+            TL_LOG_WARNNING("Recreating resource {}", rgImage->m_name);
         }
-        else if (loadOp == LoadOperation::Load && storeOp != StoreOperation::Store)
+
+    private:
+        TL::Map<size_t, Handle<Image>>  m_images;
+        TL::Map<size_t, Handle<Buffer>> m_buffers;
+    };
+
+    class RenderGraph::DependencyLevel
+    {
+    public:
+        DependencyLevel(uint32_t m_index = 0)
+            : m_levelIndex(m_index)
         {
-            return RHI::Access::Read;
         }
-        else
-        {
-            return RHI::Access::Write;
-        }
+
+        void AddPass(RGPass* pass) { m_passes.push_back(pass); }
+
+        TL::Span<RGPass* const> GetPasses() const { return m_passes; }
+
+        uint32_t m_levelIndex;
+
+    private:
+        TL::Vector<RGPass*> m_passes;
+    };
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// Pass Resource types
+    ///////////////////////////////////////////////////////////////////////////
+
+    RGImage::RGImage(const char* name, ImageType type, ImageSize3D size, Format format, uint32_t mipLevels, uint32_t arrayCount, SampleCount samples)
+        : m_name(name)
+    {
+    }
+
+    RGImage::RGImage(const char* name, Handle<Image> handle, Format format)
+        : m_name(name)
+    {
+    }
+
+    RGBuffer::RGBuffer(const char* name, size_t size)
+        : m_name(name)
+    {
+    }
+
+    RGBuffer::RGBuffer(const char* name, Handle<Buffer> handle)
+        : m_name(name)
+    {
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    /// Pass
+    /// Render Graph Builder Interface
     ///////////////////////////////////////////////////////////////////////////
 
-    ResultCode Pass::Init(RenderGraph* rg, const PassCreateInfo& ci)
+    RenderGraphBuilder::RenderGraphBuilder(RenderGraph* rg, RGPass* pass)
+        : m_rg(rg)
+        , m_pass(pass)
     {
-        m_renderGraph     = rg;
-        m_name            = ci.name;
-        m_type            = ci.type;
-        m_setupCallback   = ci.setupCallback;
-        m_compileCallback = ci.compileCallback;
+    }
+
+    void RenderGraphBuilder::ReadImage(Handle<RGImage> imageHandle, ImageUsage usage, PipelineStage stage)
+    {
+        ReadImage(imageHandle, ImageSubresourceRange::All(), usage, stage);
+    }
+
+    void RenderGraphBuilder::ReadImage(Handle<RGImage> imageHandle, const ImageSubresourceRange& subresource, ImageUsage usage, PipelineStage stage)
+    {
+        TL_ASSERT(m_rg->m_state.frameRecording);
+        TL_ASSERT(m_rg->CheckHandleIsValid(imageHandle));
+
+        RGImageDependency dep{imageHandle, subresource, usage, stage, Access::Read};
+        m_pass->m_imageDependencies.push_back(dep);
+    }
+
+    Handle<RGImage> RenderGraphBuilder::WriteImage(Handle<RGImage> imageHandle, ImageUsage usage, PipelineStage stage)
+    {
+        return WriteImage(imageHandle, ImageSubresourceRange::All(), usage, stage);
+    }
+
+    Handle<RGImage> RenderGraphBuilder::WriteImage(Handle<RGImage> imageHandle, const ImageSubresourceRange& subresource, ImageUsage usage, PipelineStage stage)
+    {
+        TL_ASSERT(m_rg->m_state.frameRecording);
+        TL_ASSERT(m_rg->CheckHandleIsValid(imageHandle));
+
+        auto image     = m_rg->GetImage(imageHandle);
+        image->m_valid = false; //
+
+        RGImageDependency dep{imageHandle, subresource, usage, stage, Access::Write};
+        m_pass->m_imageDependencies.push_back(dep);
+
+        // Mark this pass depends on the last pass that wrote to this resource.
+        // this means, when the graph is sorted, current pass will execute after the last
+        // pass wrote to this resource.
+        m_rg->AddDependency(image->m_pass, m_pass);
+
+        auto newHandle         = m_rg->CreateImage(image->m_name.c_str(), ImageType::None, {}, Format::Unknown);
+        auto newImage          = m_rg->GetImage(newHandle);
+        newImage->m_prevHandle = imageHandle;
+        image->m_nextHandle    = newHandle;
+        return newHandle;
+    }
+
+    void RenderGraphBuilder::ReadBuffer(Handle<RGBuffer> bufferHandle, BufferUsage usage, PipelineStage stage)
+    {
+        ReadBuffer(bufferHandle, BufferSubregion{.offset = 0, .size = WholeSize}, usage, stage);
+    }
+
+    void RenderGraphBuilder::ReadBuffer(Handle<RGBuffer> bufferHandle, const BufferSubregion& subregion, BufferUsage usage, PipelineStage stage)
+    {
+        TL_ASSERT(m_rg->m_state.frameRecording);
+        TL_ASSERT(m_rg->CheckHandleIsValid(bufferHandle));
+
+        RGBufferDependency dep{bufferHandle, subregion, usage, stage, Access::Read};
+        m_pass->m_bufferDependencies.push_back(dep);
+    }
+
+    Handle<RGBuffer> RenderGraphBuilder::WriteBuffer(Handle<RGBuffer> bufferHandle, BufferUsage usage, PipelineStage stage)
+    {
+        return WriteBuffer(bufferHandle, BufferSubregion{.offset = 0, .size = WholeSize}, usage, stage);
+    }
+
+    Handle<RGBuffer> RenderGraphBuilder::WriteBuffer(Handle<RGBuffer> bufferHandle, const BufferSubregion& subregion, BufferUsage usage, PipelineStage stage)
+    {
+        TL_ASSERT(m_rg->m_state.frameRecording);
+        TL_ASSERT(m_rg->CheckHandleIsValid(bufferHandle));
+
+        RGBufferDependency dep{bufferHandle, subregion, usage, stage, Access::Write};
+        m_pass->m_bufferDependencies.push_back(dep);
+
+        auto buffer     = m_rg->GetBuffer(bufferHandle);
+        buffer->m_valid = false;
+
+        // Mark this pass depends on the last pass that wrote to this resource.
+        // this means, when the graph is sorted, current pass will execute after the last
+        // pass wrote to this resource.
+        m_rg->AddDependency(buffer->m_pass, m_pass);
+
+        auto newHandle         = m_rg->CreateBuffer(buffer->m_name.c_str(), 0);
+        auto newImage          = m_rg->GetBuffer(newHandle);
+        newImage->m_prevHandle = bufferHandle;
+        buffer->m_nextHandle   = newHandle;
+        return newHandle;
+    }
+
+    Handle<RGImage> RenderGraphBuilder::AddColorAttachment(RGColorAttachment attachment)
+    {
+        TL_ASSERT(m_rg->m_state.frameRecording);
+        TL_ASSERT(m_rg->CheckHandleIsValid(attachment.color));
+        if (attachment.resolveView) TL_ASSERT(m_rg->CheckHandleIsValid(attachment.resolveView));
+
+        m_pass->m_gfxPassInfo.m_colorAttachments.push_back(attachment);
+
+        auto color = WriteImage(attachment.color, attachment.colorRange, ImageUsage::Color, PipelineStage::ColorAttachmentOutput);
+        if (attachment.resolveView)
+        {
+            return WriteImage(attachment.resolveView, attachment.resolveRange, ImageUsage::Resolve, PipelineStage::Resolve);
+        }
+        return color;
+    }
+
+    Handle<RGImage> RenderGraphBuilder::SetDepthStencil(RGDepthStencilAttachment attachment)
+    {
+        TL_ASSERT(m_rg->m_state.frameRecording);
+        TL_ASSERT(m_rg->CheckHandleIsValid(attachment.depthStencil));
+
+        // TODO: fix this function
+
+        m_pass->m_gfxPassInfo.m_depthStencilAttachment = attachment;
+        return WriteImage(attachment.depthStencil, attachment.depthStencilRange, ImageUsage::DepthStencil, PipelineStage::LateFragmentTests);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// Render Graph Context Interface
+    ///////////////////////////////////////////////////////////////////////////
+
+    RenderGraphContext::RenderGraphContext(RenderGraph* rg, RGPass* pass)
+        : m_rg(rg)
+        , m_pass(pass)
+    {
+    }
+
+    Handle<Image> RenderGraphContext::GetImage(Handle<RGImage> handle) const
+    {
+        return m_rg->GetImageHandle(handle);
+    }
+
+    Handle<Buffer> RenderGraphContext::GetBuffer(Handle<RGBuffer> handle) const
+    {
+        return m_rg->GetBufferHandle(handle);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// Render Graph Pass
+    ///////////////////////////////////////////////////////////////////////////
+
+    RGPass::RGPass() = default;
+
+    RGPass::~RGPass()
+    {
+        Shutdown();
+    }
+
+    ResultCode RGPass::Init(RenderGraph* rg, const PassCreateInfo& ci)
+    {
+        m_renderGraph   = rg;
+        m_name          = ci.name;
+        m_type          = ci.type;
+        m_setupCallback = ci.setupCallback;
+
+        if (ci.compileCallback)
+        {
+            m_compileCallback     = ci.compileCallback;
+            m_state.shouldCompile = true;
+        }
         m_executeCallback = ci.executeCallback;
-        m_imageSize       = ci.size;
-        m_isCompiled      = false;
+        // m_globalExecutionIndex
+        // m_dependencyLevelIndex
+        // m_localToDependencyLevelExecutionIndex
+        // m_localToQueueExecutionIndex
+        // m_indexInUnorderedList
+        // m_producers
+        // m_imageWrites
+        // m_imageReads
+        // m_bufferWrites
+        // m_bufferReads
         return ResultCode::Success;
     }
 
-    void Pass::Shutdown()
+    void RGPass::Shutdown()
     {
+    }
+
+    void RGPass::Setup(RenderGraphBuilder& builder)
+    {
+        ZoneScopedN("RGPass::Setup");
+        TL_ASSERT(m_setupCallback);
+        m_setupCallback(builder);
+    }
+
+    void RGPass::Compile(RenderGraphContext& context)
+    {
+        ZoneScopedN("RGPass::Compile");
+        TL_ASSERT(m_compileCallback);
+        m_compileCallback(context);
+    }
+
+    void RGPass::Execute(CommandList& commandList)
+    {
+        ZoneScopedN("RGPass::Execute");
+        TL_ASSERT(m_executeCallback);
+        m_executeCallback(commandList);
     }
 
     ///////////////////////////////////////////////////////////////////////////
     /// Render Graph
     ///////////////////////////////////////////////////////////////////////////
 
-    ResultCode RenderGraph::Init(const RenderGraphCreateInfo& ci)
+    RenderGraph::RenderGraph()  = default;
+    RenderGraph::~RenderGraph() = default;
+
+    ResultCode RenderGraph::Init(Device* device, const RenderGraphCreateInfo& ci)
     {
-        m_allocator = (TL::IAllocator*)ci.allocator;
+        m_device        = device;
+        m_allocator     = (TL::IAllocator*)ci.allocator;
+        m_tempAllocator = new TL::Arena();
         return ResultCode::Success;
     }
 
     void RenderGraph::Shutdown()
     {
         delete m_allocator;
-    }
-
-    Handle<RenderGraphImage> RenderGraph::ImportSwapchain(const char* name, Swapchain& swapchain, Format format)
-    {
-        if (auto handle = FindImportedImage(swapchain.GetImage()))
-            return handle;
-
-        auto [imageHandle, result] = m_imageOwner.Create(name, swapchain.GetImage(), format);
-        TL_ASSERT(IsSuccess(result));
-        m_graphImportedSwapchainsLookup[&swapchain]       = imageHandle;
-        m_graphImportedImagesLookup[swapchain.GetImage()] = imageHandle;
-        return imageHandle;
-    }
-
-    Handle<RenderGraphImage> RenderGraph::ImportImage(const char* name, Handle<Image> image, Format format)
-    {
-        if (auto handle = FindImportedImage(image))
-            return handle;
-
-        auto [imageHandle, result] = m_imageOwner.Create(name, image, format);
-        TL_ASSERT(IsSuccess(result));
-        m_graphImportedImagesLookup[image] = imageHandle;
-        return imageHandle;
-    }
-
-    Handle<RenderGraphBuffer> RenderGraph::ImportBuffer(const char* name, Handle<Buffer> buffer)
-    {
-        if (auto handle = FindImportedBuffer(buffer))
-            return handle;
-
-        auto [bufferHandle, result] = m_bufferOwner.Create(name, buffer);
-        TL_ASSERT(IsSuccess(result));
-        m_graphImportedBuffersLookup[buffer] = bufferHandle;
-        return bufferHandle;
-    }
-
-    Handle<RenderGraphImage> RenderGraph::CreateImage(const char* name, ImageType type, ImageSize3D size, Format format, uint32_t mipLevels, uint32_t arrayCount, SampleCount samples)
-    {
-        auto [image, result] = m_imageOwner.Create(name, type, size, format, mipLevels, arrayCount, samples);
-        TL_ASSERT(IsSuccess(result));
-
-        // m_graphImportedImagesLookup[image] = imageHandle;
-
-        return image;
-    }
-
-    Handle<RenderGraphBuffer> RenderGraph::CreateBuffer(const char* name, size_t size)
-    {
-        auto [buffer, result] = m_bufferOwner.Create(name, size);
-        TL_ASSERT(IsSuccess(result));
-
-        // m_graphImportedBuffersLookup[buffer] = bufferHandle;
-
-        return buffer;
-    }
-
-    Handle<RenderGraphImage> RenderGraph::FindImportedImage(Handle<Image> image) const
-    {
-        if (auto it = m_graphImportedImagesLookup.find(image); it != m_graphImportedImagesLookup.end())
-            return it->second;
-        return NullHandle;
-    }
-
-    Handle<RenderGraphBuffer> RenderGraph::FindImportedBuffer(Handle<Buffer> buffer) const
-    {
-        if (auto it = m_graphImportedBuffersLookup.find(buffer); it != m_graphImportedBuffersLookup.end())
-            return it->second;
-        return NullHandle;
-    }
-
-    void RenderGraph::DestroyImage(Handle<RenderGraphImage> handle)
-    {
-        // To destroy an image, the image must no be used by any pass
-    }
-
-    void RenderGraph::DestroyBuffer(Handle<RenderGraphBuffer> handle)
-    {
+        delete m_tempAllocator;
     }
 
     void RenderGraph::BeginFrame(ImageSize2D frameSize)
     {
-        TL_ASSERT(m_isCompiled == true);
-        TL_ASSERT(m_isExecuting == false);
-        m_isExecuting = true;
+        ZoneScopedC(Colors::Red);
 
-        m_frameSize = frameSize;
+        m_state.frameRecording = true;
+        m_frameSize            = frameSize;
     }
 
     void RenderGraph::EndFrame()
     {
-        TL_ASSERT(m_isExecuting == true);
-        m_isExecuting = false;
+        ZoneScopedC(Colors::Red);
 
-        if (m_isCompiled == false)
+        TL_ASSERT(m_state.frameRecording == true);
+        m_state.frameRecording = false;
+
+        Compile();
+        Execute();
+
         {
-            Compile();
-        }
-    }
-
-    // ImageSize2D RenderGraph::GetFrameSize() const
-    // {
-    //     TL_ASSERT(m_isExecuting);
-    //     return m_frameSize;
-    // }
-
-    // const RenderGraphImage* RenderGraph::GetImage(Handle<RenderGraphImage> handle) const
-    // {
-    //     TL_ASSERT(m_isCompiled == true);
-    //     return m_imageOwner.Get(handle);
-    // }
-
-    // const RenderGraphBuffer* RenderGraph::GetBuffer(Handle<RenderGraphBuffer> handle) const
-    // {
-    //     TL_ASSERT(m_isCompiled == true);
-    //     return m_bufferOwner.Get(handle);
-    // }
-
-    // Handle<Image> RenderGraph::GetImageHandle(Handle<RenderGraphImage> handle) const
-    // {
-    //     TL_ASSERT(m_isCompiled == true);
-    //     return m_imageOwner.Get(handle)->m_handle;
-    // }
-
-    // Handle<Buffer> RenderGraph::GetBufferHandle(Handle<RenderGraphBuffer> handle) const
-    // {
-    //     TL_ASSERT(m_isCompiled == true);
-    //     return m_bufferOwner.Get(handle)->m_handle;
-    // }
-
-    // Pass* RenderGraph::AddPass(const PassCreateInfo& createInfo)
-    // {
-    //     auto pass   = m_graphPasses.emplace_back(TL::CreatePtr<Pass>()).get();
-    //     auto result = pass->Init(this, createInfo);
-    //     pass->m_setupCallback(*pass);
-    //     TL_ASSERT(result == ResultCode::Success);
-    //     return pass;
-    // }
-
-    // void RenderGraph::QueueBufferRead(Handle<RenderGraphBuffer> buffer, uint32_t offset, TL::Block data)
-    // {
-    // }
-
-    // void RenderGraph::QueueBufferWrite(Handle<RenderGraphBuffer> buffer, uint32_t offset, TL::Block data)
-    // {
-    // }
-
-    // void RenderGraph::QueueImageRead(Handle<RenderGraphImage> image, ImageOffset3D offset, ImageSize3D size, ImageSubresourceLayers dstLayers, TL::Block block)
-    // {
-    // }
-
-    // void RenderGraph::QueueImageWrite(Handle<RenderGraphImage> image, ImageOffset3D offset, ImageSize3D size, ImageSubresourceLayers dstLayers, TL::Block block)
-    // {
-    // }
-
-    void RenderGraph::TransientResourcesInit(bool enableAliasing)
-    {
-        TransientResourcesShutdown();
-
-        if (enableAliasing)
-        {
-            TL_UNREACHABLE();
-        }
-        else
-        {
-            for (auto transientImageHandle : m_graphTransientImagesLookup)
+            // Print RenderGraph state: dependency levels, passes, inputs, outputs
+            TL_LOG_INFO("=== RenderGraph State ===");
+            for (size_t levelIdx = 0; levelIdx < m_dependencyLevels.size(); ++levelIdx)
             {
-                auto image            = m_imageOwner.Get(transientImageHandle);
-                auto [handle, result] = m_device->CreateImage({
-                    .name        = image->m_name.c_str(),
-                    .usageFlags  = image->m_usageFlags,
-                    .type        = image->m_type,
-                    .size        = image->m_size,
-                    .format      = image->m_format,
-                    .sampleCount = image->m_sampleCount,
-                    .mipLevels   = image->m_mipLevels,
-                    .arrayCount  = image->m_arrayCount,
-                });
-                TL_ASSERT(result == ResultCode::Success);
-                image->m_handle = handle;
-            }
-
-            for (auto transientBufferHandle : m_graphTransientBuffersLookup)
+            const auto& level = m_dependencyLevels[levelIdx];
+            TL_LOG_INFO("Dependency Level {}:", levelIdx);
+            for (auto pass : level.GetPasses())
             {
-                auto buffer           = m_bufferOwner.Get(transientBufferHandle);
-                auto [handle, result] = m_device->CreateBuffer({
-                    .name       = buffer->m_name.c_str(),
-                    .hostMapped = true,
-                    .usageFlags = buffer->m_usageFlags,
-                    .byteSize   = buffer->m_size,
-                });
-                TL_ASSERT(result == ResultCode::Success);
-                buffer->m_handle = handle;
-            }
-        }
+                TL_LOG_INFO("  Pass: {}", pass->GetName());
 
-        for (auto transientImageHandle : m_graphTransientImagesLookup)
-        {
-            auto image = m_imageOwner.Get(transientImageHandle);
-            for (auto it = image->m_begin; it != nullptr; it = it->next)
-            {
-                ImageViewCreateInfo viewCI{};
-                if (auto handle = image->m_views.find(viewCI); handle != image->m_views.end())
+                // Print previous producers
+                if (!pass->m_producers.empty())
                 {
-                    it->view = image->m_views[viewCI] = m_device->CreateImageView(viewCI);
+                TL_LOG_INFO("    Previous Producers:");
+                for (auto producer : pass->m_producers)
+                {
+                    TL_LOG_INFO("      - {}", producer ? producer->GetName() : "null");
                 }
-                else
+                }
+
+                // Print input images
+                if (!pass->m_imageDependencies.empty())
                 {
-                    it->view = handle->second;
+                TL_LOG_INFO("    Image Inputs:");
+                for (const auto& dep : pass->m_imageDependencies)
+                {
+                    if (dep.access == Access::Read)
+                    {
+                    auto img = GetImage(dep.image);
+                    TL_LOG_INFO("      - {} (usage: {}, stage: {})", img ? img->m_name.c_str() : "null", (uint32_t)dep.usage, (uint32_t)dep.stage);
+                    }
+                }
+                }
+                // Print output images
+                if (!pass->m_imageDependencies.empty())
+                {
+                TL_LOG_INFO("    Image Outputs:");
+                for (const auto& dep : pass->m_imageDependencies)
+                {
+                    if (dep.access == Access::Write)
+                    {
+                    auto img = GetImage(dep.image);
+                    TL_LOG_INFO("      - {} (usage: {}, stage: {})", img ? img->m_name.c_str() : "null", (uint32_t)dep.usage, (uint32_t)dep.stage);
+                    }
+                }
+                }
+                // Print input buffers
+                if (!pass->m_bufferDependencies.empty())
+                {
+                TL_LOG_INFO("    Buffer Inputs:");
+                for (const auto& dep : pass->m_bufferDependencies)
+                {
+                    if (dep.access == Access::Read)
+                    {
+                    auto buf = GetBuffer(dep.buffer);
+                    TL_LOG_INFO("      - {} (usage: {}, stage: {})", buf ? buf->m_name.c_str() : "null", (uint32_t)dep.usage, (uint32_t)dep.stage);
+                    }
+                }
+                }
+                // Print output buffers
+                if (!pass->m_bufferDependencies.empty())
+                {
+                TL_LOG_INFO("    Buffer Outputs:");
+                for (const auto& dep : pass->m_bufferDependencies)
+                {
+                    if (dep.access == Access::Write)
+                    {
+                    auto buf = GetBuffer(dep.buffer);
+                    TL_LOG_INFO("      - {} (usage: {}, stage: {})", buf ? buf->m_name.c_str() : "null", (uint32_t)dep.usage, (uint32_t)dep.stage);
+                    }
+                }
                 }
             }
+            }
+            TL_LOG_INFO("=========================");
+        }
+
+        {
+            m_passPool.clear();
+            m_imagePool.Clear();
+            m_bufferPool.Clear();
+            m_dependencyLevels.clear();
+            m_dependencyLevels.clear();
+
+            // Finally collect temp arena allocations
+            m_tempAllocator->Collect();
+        }
+
+        m_frameIndex++;
+    }
+
+    Handle<RGImage> RenderGraph::ImportSwapchain(const char* name, Swapchain& swapchain, Format format)
+    {
+        TL_ASSERT(m_state.frameRecording == true);
+        TL_ASSERT(IsNameValid(name));
+
+        m_swapchain = &swapchain;
+        auto handle = m_imagePool.Emplace(RGImage(name, swapchain.GetImage(), format));
+        return handle;
+    }
+
+    Handle<RGImage> RenderGraph::ImportImage(const char* name, Handle<Image> image, Format format)
+    {
+        TL_ASSERT(m_state.frameRecording == true);
+        TL_ASSERT(IsNameValid(name));
+
+        auto handle = m_imagePool.Emplace(RGImage(name, image, format));
+        return handle;
+    }
+
+    Handle<RGBuffer> RenderGraph::ImportBuffer(const char* name, Handle<Buffer> buffer)
+    {
+        TL_ASSERT(m_state.frameRecording == true);
+        TL_ASSERT(IsNameValid(name));
+
+        auto handle = m_bufferPool.Emplace(RGBuffer(name, buffer));
+        return handle;
+    }
+
+    Handle<RGImage> RenderGraph::CreateImage(const char* name, ImageType type, ImageSize3D size, Format format, uint32_t mipLevels, uint32_t arrayCount, SampleCount samples)
+    {
+        TL_ASSERT(m_state.frameRecording == true);
+        TL_ASSERT(IsNameValid(name));
+
+        auto handle = m_imagePool.Emplace(RGImage(name, type, size, format, mipLevels, arrayCount, samples));
+        return handle;
+    }
+
+    Handle<RGImage> RenderGraph::CreateRenderTarget(const char* name, ImageSize2D size, Format format, uint32_t mipLevels, uint32_t arrayCount, SampleCount samples)
+    {
+        TL_ASSERT(m_state.frameRecording == true);
+        return CreateImage(name, ImageType::Image2D, {size.width, size.height}, format, mipLevels, arrayCount, samples);
+    }
+
+    Handle<RGBuffer> RenderGraph::CreateBuffer(const char* name, size_t size)
+    {
+        TL_ASSERT(m_state.frameRecording == true);
+        auto handle = m_bufferPool.Emplace(RGBuffer(name, size));
+        return handle;
+    }
+
+    RGPass* RenderGraph::AddPass(const PassCreateInfo& createInfo)
+    {
+        ZoneScoped;
+        TL_ASSERT(m_state.frameRecording == true);
+        uint32_t   indexInUnorderedList = m_passPool.size();
+        RGPass*    pass                 = m_passPool.emplace_back(TL::CreatePtr<RGPass>()).get();
+        ResultCode result               = pass->Init(this, createInfo);
+        TL_ASSERT(IsSuccess(result));
+        auto builder = RenderGraphBuilder(this, pass);
+        pass->Setup(builder);
+        pass->m_indexInUnorderedList = indexInUnorderedList;
+        return pass;
+    }
+
+    void RenderGraph::QueueBufferRead(TL_MAYBE_UNUSED Handle<RGBuffer> buffer, TL_MAYBE_UNUSED uint32_t offset, TL_MAYBE_UNUSED TL::Block data)
+    {
+        TL_ASSERT(m_state.frameRecording == true);
+        TL_UNREACHABLE_MSG("TODO: Implement");
+    }
+
+    Handle<RGBuffer> RenderGraph::QueueBufferWrite(TL_MAYBE_UNUSED Handle<RGBuffer> buffer, TL_MAYBE_UNUSED uint32_t offset, TL_MAYBE_UNUSED TL::Block data)
+    {
+        TL_ASSERT(m_state.frameRecording == true);
+        TL_UNREACHABLE_MSG("TODO: Implement");
+    }
+
+    void RenderGraph::QueueImageRead(TL_MAYBE_UNUSED Handle<RGImage> image, TL_MAYBE_UNUSED ImageOffset3D offset, TL_MAYBE_UNUSED ImageSize3D size, TL_MAYBE_UNUSED ImageSubresourceLayers dstLayers, TL_MAYBE_UNUSED TL::Block block)
+    {
+        TL_ASSERT(m_state.frameRecording == true);
+        TL_UNREACHABLE_MSG("TODO: Implement");
+    }
+
+    Handle<RGImage> RenderGraph::QueueImageWrite(TL_MAYBE_UNUSED Handle<RGImage> image, TL_MAYBE_UNUSED ImageOffset3D offset, TL_MAYBE_UNUSED ImageSize3D size, TL_MAYBE_UNUSED ImageSubresourceLayers dstLayers, TL_MAYBE_UNUSED TL::Block block)
+    {
+        TL_ASSERT(m_state.frameRecording == true);
+        TL_UNREACHABLE_MSG("TODO: Implement");
+    }
+
+    // private:
+
+    ImageSize2D RenderGraph::GetFrameSize() const
+    {
+        TL_ASSERT(m_state.compiled);
+        return m_frameSize;
+    }
+
+    const RGImage* RenderGraph::GetImage(Handle<RGImage> handle) const
+    {
+        // TL_ASSERT(m_state.compiled);
+        return m_imagePool.Get(handle);
+    }
+
+    RGImage* RenderGraph::GetImage(Handle<RGImage> handle)
+    {
+        // TL_ASSERT(m_state.compiled);
+        return m_imagePool.Get(handle);
+    }
+
+    const RGBuffer* RenderGraph::GetBuffer(Handle<RGBuffer> handle) const
+    {
+        // TL_ASSERT(m_state.compiled);
+        return m_bufferPool.Get(handle);
+    }
+
+    RGBuffer* RenderGraph::GetBuffer(Handle<RGBuffer> handle)
+    {
+        // TL_ASSERT(m_state.compiled);
+        return m_bufferPool.Get(handle);
+    }
+
+    Handle<Image> RenderGraph::GetImageHandle(Handle<RGImage> handle) const
+    {
+        TL_ASSERT(m_state.compiled);
+        auto image = GetImage(handle);
+        TL_ASSERT(image->m_handle);
+        return image->m_handle;
+    }
+
+    Handle<Buffer> RenderGraph::GetBufferHandle(Handle<RGBuffer> handle) const
+    {
+        TL_ASSERT(m_state.compiled);
+        auto buffer = GetBuffer(handle);
+        TL_ASSERT(buffer->m_handle);
+        return buffer->m_handle;
+    }
+
+    bool RenderGraph::IsNameValid(TL_MAYBE_UNUSED const char* name) const
+    {
+        TL_LOG_WARNNING("!TODO: Update this method to ensure graph names are unique");
+        return true;
+    }
+
+    bool RenderGraph::CheckHandleIsValid(Handle<RGImage> imageHandle) const
+    {
+        return GetImage(imageHandle)->m_valid;
+    }
+
+    bool RenderGraph::CheckHandleIsValid(Handle<RGBuffer> bufferHandle) const
+    {
+        return GetBuffer(bufferHandle)->m_valid;
+    }
+
+    bool RenderGraph::CheckDependency(const RGPass* producer, const RGPass* consumer) const
+    {
+        auto passesCount = m_passPool.size();
+        return m_dependencyTable[producer->m_indexInUnorderedList + consumer->m_indexInUnorderedList * passesCount] == true;
+    }
+
+    void RenderGraph::AddDependency(const RGPass* producer, RGPass* consumer)
+    {
+        auto passesCount = m_passPool.size();
+
+        if (producer == nullptr)
+            return; // consumer is actually the first producer of this resource
+        TL_ASSERT(producer->m_indexInUnorderedList != consumer->m_indexInUnorderedList);
+
+        consumer->m_producers.push_back((RGPass*)producer);
+
+        m_dependencyTable[producer->m_indexInUnorderedList + consumer->m_indexInUnorderedList * passesCount] = true;
+    }
+
+    void RenderGraph::Compile()
+    {
+        ZoneScoped;
+        m_dependencyTable.resize(m_passPool.size() * m_passPool.size(), false);
+
+        TL::Vector<TL::Vector<uint32_t>> adjacencyLists(m_passPool.size());
+        BuildAdjacencyLists(adjacencyLists);
+
+        TL::Vector<uint32_t> sortedPasses;
+        TopologicalSort(adjacencyLists, sortedPasses);
+
+        uint32_t                    detectedQueueCount = 0;
+        // TL::Vector<DependencyLevel> dependencyLevels;
+        BuildDependencyLevels(sortedPasses, adjacencyLists, m_dependencyLevels, detectedQueueCount);
+
+        // TODO: Move to new function
+        // for (auto& pass : m_passPool)
+        // {
+        //     if (pass->m_state.culled)
+        //         continue;
+        //     // Look up the pass hash in a map
+        //     if (auto state = GetPassState(pass.get()); state->shouldCompile)
+        //     {
+        //         RenderGraphContext ctx(this, pass.get());
+        //         pass->Compile(ctx);
+        //         state->shouldCompile = false;
+        //     }
+        // }
+    }
+
+    void RenderGraph::BuildAdjacencyLists(TL::Vector<TL::Vector<uint32_t>>& adjacencyLists)
+    {
+        for (size_t nodeIdx = 0; nodeIdx < m_passPool.size(); ++nodeIdx)
+        {
+            auto  pass                = m_passPool[nodeIdx].get();
+            auto& adjacentNodeIndices = adjacencyLists[nodeIdx];
+            for (size_t otherNodeIdx = 0; otherNodeIdx < m_passPool.size(); ++otherNodeIdx)
+            {
+                // Do not check dependencies on itself
+                if (nodeIdx == otherNodeIdx) continue;
+                auto otherNode = m_passPool[otherNodeIdx].get();
+                if (CheckDependency(pass, otherNode))
+                {
+                    adjacentNodeIndices.push_back(otherNodeIdx);
+                }
+            }
         }
     }
 
-    void RenderGraph::TransientResourcesShutdown()
-    {
-        for (auto transientImageHandle : m_graphTransientImagesLookup)
-        {
-            auto image = m_imageOwner.Get(transientImageHandle);
-            m_device->DestroyImage(image->m_handle);
-        }
-        for (auto transientBufferHandle : m_graphTransientBuffersLookup)
-        {
-            auto buffer = m_bufferOwner.Get(transientBufferHandle);
-            m_device->DestroyBuffer(buffer->m_handle);
-        }
-    }
-
-    struct Node
-    {
-        uint32_t          mIndexInUnorderedList;
-        Pass*             pass;
-        TL::Vector<Pass*> producers; // list of passes that this pass will depend on for reading or writing or whatever
-    };
-
-    inline static void DepthFirstSearch(
-        uint64_t                                nodeIndex,
+    void RenderGraph::DepthFirstSearch(
+        uint32_t                                nodeIndex,
         TL::Vector<bool>&                       visited,
         TL::Vector<bool>&                       onStack,
         bool&                                   isCyclic,
-        const TL::Vector<Node*>&                passNodes,
-        const TL::Vector<TL::Vector<uint64_t>>& adjacencyLists,
-        TL::Vector<Node*>&                      topologicallySortedNodes)
+        const TL::Vector<TL::Vector<uint32_t>>& adjacencyLists,
+        TL::Vector<uint32_t>&                   sortedPasses)
     {
         if (isCyclic) return;
         visited[nodeIndex]          = true;
         onStack[nodeIndex]          = true;
-        uint64_t adjacencyListIndex = passNodes[nodeIndex]->mIndexInUnorderedList;
-        for (uint64_t neighbour : adjacencyLists[adjacencyListIndex])
+        uint64_t adjacencyListIndex = m_passPool[nodeIndex]->m_indexInUnorderedList;
+        for (uint32_t neighbour : adjacencyLists[adjacencyListIndex])
         {
             if (visited[neighbour] && onStack[neighbour])
             {
@@ -317,633 +661,208 @@ namespace RHI
             }
             if (!visited[neighbour])
             {
-                DepthFirstSearch(neighbour, visited, onStack, isCyclic, passNodes, adjacencyLists, topologicallySortedNodes);
+                DepthFirstSearch(neighbour, visited, onStack, isCyclic, adjacencyLists, sortedPasses);
             }
         }
         onStack[nodeIndex] = false;
-        topologicallySortedNodes.push_back(passNodes[nodeIndex]);
+        sortedPasses.push_back(m_passPool[nodeIndex]->m_indexInUnorderedList);
     }
 
-    void RenderGraph::Compile()
+    void RenderGraph::TopologicalSort(const TL::Vector<TL::Vector<uint32_t>>& adjacencyLists, TL::Vector<uint32_t>& sortedPasses)
     {
-        ZoneScoped;
-
-        TL::Vector<TL::Vector<uint32_t>> adjacencyLists;
-        TL::Vector<Node*>                topologicallySortedNodes;
-
-        auto BuildAdjacencyLists = [this](const TL::Vector<Node>& passNodes, TL::Vector<TL::Vector<uint64_t>>& adjacencyLists)
+        TL::Vector<bool> visitedNodes(m_passPool.size(), false);
+        TL::Vector<bool> onStackNodes(m_passPool.size(), false);
+        bool             isCyclic = false;
+        for (uint32_t nodeIndex = 0; nodeIndex < (uint32_t)m_passPool.size(); ++nodeIndex)
         {
-            adjacencyLists.resize(passNodes.size());
-            for (size_t nodeIdx = 0; nodeIdx < passNodes.size(); ++nodeIdx)
+            if (!visitedNodes[nodeIndex])
             {
-                auto& node                = passNodes[nodeIdx];
-                auto& adjacentNodeIndices = adjacencyLists[nodeIdx];
-
-                for (size_t otherNodeIdx = 0; otherNodeIdx < passNodes.size(); ++otherNodeIdx)
-                {
-                    // Do not check dependencies on itself
-                    if (nodeIdx == otherNodeIdx) continue;
-
-                    auto& otherNode = passNodes[otherNodeIdx];
-                    if (CheckDependency(&node, &otherNode))
-                    {
-                        adjacentNodeIndices.push_back(otherNodeIdx);
-                    }
-                }
+                DepthFirstSearch(nodeIndex, visitedNodes, onStackNodes, isCyclic, adjacencyLists, sortedPasses);
+                TL_ASSERT(!isCyclic, "Detected cyclic dependency in pass: ", m_passPool[nodeIndex]->GetName());
             }
-        };
+        }
+        std::reverse(sortedPasses.begin(), sortedPasses.end());
+    }
 
-        auto TopologicalSort = [this](TL::Vector<Node*>& topologicallySortedNodes)
+    void RenderGraph::BuildDependencyLevels(TL::Span<const uint32_t> sortedPasses, const TL::Vector<TL::Vector<uint32_t>>& adjacencyLists, TL::Vector<DependencyLevel>& dependencyLevels, uint32_t& detectedQueueCount)
+    {
+        TL::Vector<int32_t> longestDistances(sortedPasses.size(), 0);
+        uint64_t            dependencyLevelCount = 1;
+        // Perform longest node distance search
+        for (auto nodeIndex = 0; nodeIndex < sortedPasses.size(); ++nodeIndex)
         {
-            TL::Vector<bool> visitedNodes(m_graphPasses.size(), false);
-            TL::Vector<bool> onStackNodes(m_graphPasses.size(), false);
-            bool             isCyclic = false;
-            for (auto nodeIndex = 0; nodeIndex < m_graphPasses.size(); ++nodeIndex)
+            uint64_t originalIndex      = m_passPool[sortedPasses[nodeIndex]]->m_indexInUnorderedList;
+            uint64_t adjacencyListIndex = originalIndex;
+
+            for (uint64_t adjacentNodeIndex : adjacencyLists[adjacencyListIndex])
             {
-                if (!visitedNodes[nodeIndex])
+                if (longestDistances[adjacentNodeIndex] < longestDistances[originalIndex] + 1)
                 {
-                    DepthFirstSearch(nodeIndex, visitedNodes, onStackNodes, isCyclic, {}, {}, topologicallySortedNodes);
-                    // TL_ASSERT(!isCyclic, "Detected cyclic dependency in pass: ", m_graphPasses[nodeIndex].PassMetadata().Name.ToString());
+                    int32_t newLongestDistance          = longestDistances[originalIndex] + 1;
+                    longestDistances[adjacentNodeIndex] = newLongestDistance;
+                    dependencyLevelCount                = std::max(uint64_t(newLongestDistance + 1), dependencyLevelCount);
                 }
             }
-            std::reverse(topologicallySortedNodes.begin(), topologicallySortedNodes.end());
-        };
-
-        auto BuildDependencyLevels = [](TL::Vector<Node*>& topologicallySortedNodes)
+        }
+        dependencyLevels.resize(dependencyLevelCount);
+        detectedQueueCount = 1;
+        // Dispatch nodes to corresponding dependency levels.
+        // Iterate through unordered nodes because adjacency lists contain indices to
+        // initial unordered list of nodes and longest distances also correspond to them.
+        for (uint32_t nodeIndex = 0; nodeIndex < (uint32_t)m_passPool.size(); nodeIndex++)
         {
-            TL::Vector<int64_t> longestDistances(topologicallySortedNodes.size(), 0);
-
-            uint64_t dependencyLevelCount = 1;
-
-            // Perform longest node distance search
-            for (auto nodeIndex = 0; nodeIndex < topologicallySortedNodes.size(); ++nodeIndex)
-            {
-                uint64_t originalIndex      = topologicallySortedNodes[nodeIndex]->mIndexInUnorderedList;
-                uint64_t adjacencyListIndex = originalIndex;
-
-                for (uint64_t adjacentNodeIndex : mAdjacencyLists[adjacencyListIndex])
-                {
-                    if (longestDistances[adjacentNodeIndex] < longestDistances[originalIndex] + 1)
-                    {
-                        int64_t newLongestDistance          = longestDistances[originalIndex] + 1;
-                        longestDistances[adjacentNodeIndex] = newLongestDistance;
-                        dependencyLevelCount                = std::max(uint64_t(newLongestDistance + 1), dependencyLevelCount);
-                    }
-                }
-            }
-
-            mDependencyLevels.resize(dependencyLevelCount);
-            mDetectedQueueCount = 1;
-
-            // Dispatch nodes to corresponding dependency levels.
-            // Iterate through unordered nodes because adjacency lists contain indices to
-            // initial unordered list of nodes and longest distances also correspond to them.
-            for (auto nodeIndex = 0; nodeIndex < mPassNodes.size(); ++nodeIndex)
-            {
-                Node&            node            = mPassNodes[nodeIndex];
-                uint64_t         levelIndex      = longestDistances[nodeIndex];
-                DependencyLevel& dependencyLevel = mDependencyLevels[levelIndex];
-                dependencyLevel.mLevelIndex      = levelIndex;
-                dependencyLevel.AddNode(&node);
-                node.mDependencyLevelIndex = levelIndex;
-                mDetectedQueueCount        = std::max(mDetectedQueueCount, node.ExecutionQueueIndex + 1);
-            }
-        };
-
-#if 0
-        auto CullRedundantSynchronizations = []()
-        {
-            // Initialize synchronization index sets
-            for (Node& node : mPassNodes)
-            {
-                node.mSynchronizationIndexSet.resize(mDetectedQueueCount, Node::InvalidSynchronizationIndex);
-            }
-
-            for (DependencyLevel& dependencyLevel : mDependencyLevels)
-            {
-                // First pass: find closest nodes to sync with, compute initial SSIS (sufficient synchronization index set)
-                for (Node* node : dependencyLevel.mNodes)
-                {
-                    // Closest node to sync with on each queue
-                    TL::Vector<const Node*> closestNodesToSyncWith{mDetectedQueueCount, nullptr};
-
-                    // Find closest dependencies from other queues for the current node
-                    for (const Node* dependencyNode : node->mNodesToSyncWith)
-                    {
-                        const Node* closestNode = closestNodesToSyncWith[dependencyNode->ExecutionQueueIndex];
-
-                        if (!closestNode || dependencyNode->LocalToQueueExecutionIndex() > closestNode->LocalToQueueExecutionIndex())
-                        {
-                            closestNodesToSyncWith[dependencyNode->ExecutionQueueIndex] = dependencyNode;
-                        }
-                    }
-
-                    // Get rid of nodes to sync that may have had redundancies
-                    node->mNodesToSyncWith.clear();
-
-                    for (const Node* closestNode : closestNodesToSyncWith)
-                    {
-                        if (!closestNode)
-                        {
-                            continue;
-                        }
-
-                        // Update SSIS using closest nodes' indices
-                        if (closestNode->ExecutionQueueIndex != node->ExecutionQueueIndex)
-                        {
-                            node->mSynchronizationIndexSet[closestNode->ExecutionQueueIndex] = closestNode->LocalToQueueExecutionIndex();
-                        }
-
-                        // Store only closest nodes to sync with
-                        node->mNodesToSyncWith.push_back(closestNode);
-                    }
-
-                    // Use node's execution index as synchronization index on its own queue
-                    node->mSynchronizationIndexSet[node->ExecutionQueueIndex] = node->LocalToQueueExecutionIndex();
-                }
-
-                // Second pass: cull redundant dependencies by searching for indirect synchronizations
-                for (Node* node : dependencyLevel.mNodes)
-                {
-                    // Keep track of queues we still need to sync with
-                    std::unordered_set<uint64_t> queueToSyncWithIndices;
-
-                    // Store nodes and queue syncs they cover
-                    TL::Vector<SyncCoverage> syncCoverageArray;
-
-                    // Final optimized list of nodes without redundant dependencies
-                    TL::Vector<const Node*> optimalNodesToSyncWith;
-
-                    for (const Node* nodeToSyncWith : node->mNodesToSyncWith)
-                    {
-                        queueToSyncWithIndices.insert(nodeToSyncWith->ExecutionQueueIndex);
-                    }
-
-                    while (!queueToSyncWithIndices.empty())
-                    {
-                        uint64_t maxNumberOfSyncsCoveredBySingleNode = 0;
-
-                        for (auto dependencyNodeIdx = 0u; dependencyNodeIdx < node->mNodesToSyncWith.size(); ++dependencyNodeIdx)
-                        {
-                            const Node* dependencyNode = node->mNodesToSyncWith[dependencyNodeIdx];
-
-                            // Take a dependency node and check how many queues we would sync with
-                            // if we would only sync with this one node. We very well may encounter a case
-                            // where by synchronizing with just one node we will sync with more then one queue
-                            // or even all of them through indirect synchronizations,
-                            // which will make other synchronizations previously detected for this node redundant.
-
-                            TL::Vector<uint64_t> syncedQueueIndices;
-
-                            for (uint64_t queueIndex : queueToSyncWithIndices)
-                            {
-                                uint64_t currentNodeDesiredSyncIndex = node->mSynchronizationIndexSet[queueIndex];
-                                uint64_t dependencyNodeSyncIndex     = dependencyNode->mSynchronizationIndexSet[queueIndex];
-
-                                assert_format(currentNodeDesiredSyncIndex != Node::InvalidSynchronizationIndex,
-                                    "Bug! Node that wants to sync with some queue must have a valid sync index for that queue.");
-
-                                if (queueIndex == node->ExecutionQueueIndex)
-                                {
-                                    currentNodeDesiredSyncIndex -= 1;
-                                }
-
-                                if (dependencyNodeSyncIndex != Node::InvalidSynchronizationIndex &&
-                                    dependencyNodeSyncIndex >= currentNodeDesiredSyncIndex)
-                                {
-                                    syncedQueueIndices.push_back(queueIndex);
-                                }
-                            }
-
-                            syncCoverageArray.emplace_back(SyncCoverage{dependencyNode, dependencyNodeIdx, syncedQueueIndices});
-                            maxNumberOfSyncsCoveredBySingleNode = std::max(maxNumberOfSyncsCoveredBySingleNode, syncedQueueIndices.size());
-                        }
-
-                        for (const SyncCoverage& syncCoverage : syncCoverageArray)
-                        {
-                            auto coveredSyncCount = syncCoverage.SyncedQueueIndices.size();
-
-                            if (coveredSyncCount >= maxNumberOfSyncsCoveredBySingleNode)
-                            {
-                                // Optimal list of synchronizations should not contain nodes from the same queue,
-                                // because work on the same queue is synchronized automatically and implicitly
-                                if (syncCoverage.NodeToSyncWith->ExecutionQueueIndex != node->ExecutionQueueIndex)
-                                {
-                                    optimalNodesToSyncWith.push_back(syncCoverage.NodeToSyncWith);
-
-                                    // Update SSIS
-                                    auto& index = node->mSynchronizationIndexSet[syncCoverage.NodeToSyncWith->ExecutionQueueIndex];
-                                    index       = std::max(index, node->mSynchronizationIndexSet[syncCoverage.NodeToSyncWith->ExecutionQueueIndex]);
-                                }
-
-                                // Remove covered queues from the list of queues we need to sync with
-                                for (uint64_t syncedQueueIndex : syncCoverage.SyncedQueueIndices)
-                                {
-                                    queueToSyncWithIndices.erase(syncedQueueIndex);
-                                }
-                            }
-                        }
-
-                        // Remove nodes that we synced with from the original list. Reverse iterating to avoid index invalidation.
-                        for (auto syncCoverageIt = syncCoverageArray.rbegin(); syncCoverageIt != syncCoverageArray.rend(); ++syncCoverageIt)
-                        {
-                            node->mNodesToSyncWith.erase(node->mNodesToSyncWith.begin() + syncCoverageIt->NodeToSyncWithIndex);
-                        }
-                    }
-
-                    // Finally, assign an optimal list of nodes to sync with to the current node
-                    node->mNodesToSyncWith = optimalNodesToSyncWith;
-                }
-            }
-        };
-
-        auto GatherResourceTransitionKnowledge = [](const RenderPassGraph::DependencyLevel& dependencyLevel)
-        {
-            mDependencyLevelQueuesThatRequireTransitionRerouting = dependencyLevel.QueuesInvoledInCrossQueueResourceReads();
-
-            bool backBufferTransitioned = false;
-
-            for (const RenderPassGraph::Node* node : dependencyLevel.Nodes())
-            {
-                auto requestTransition = [&](RenderPassGraph::SubresourceName subresourceName, bool isReadDependency)
-                {
-                    auto [resourceName, subresourceIndex]         = mRenderPassGraph->DecodeSubresourceName(subresourceName);
-                    PipelineResourceStorageResource* resourceData = mResourceStorage->GetPerResourceData(resourceName);
-
-                    HAL::ResourceState newState = isReadDependency ? resourceData->SchedulingInfo.GetSubresourceCombinedReadStates(subresourceIndex) : resourceData->SchedulingInfo.GetSubresourceWriteState(subresourceIndex);
-
-                    std::optional<HAL::ResourceTransitionBarrier> barrier =
-                        mResourceStateTracker->TransitionToStateImmediately(resourceData->GetGPUResource()->HALResource(), newState, subresourceIndex, false);
-
-                    if (node->ExecutionQueueIndex == 0 && !backBufferTransitioned)
-                    {
-                        std::optional<HAL::ResourceTransitionBarrier> backBufferBarrier =
-                            mResourceStateTracker->TransitionToStateImmediately(mBackBuffer->HALResource(), HAL::ResourceState::RenderTarget, 0, false);
-
-                        if (backBufferBarrier)
-                        {
-                            mDependencyLevelTransitionBarriers[node->LocalToDependencyLevelExecutionIndex()].push_back({0, *backBufferBarrier, mBackBuffer->HALResource()});
-                        }
-
-                        backBufferTransitioned = true;
-                    }
-
-                    // Redundant transition
-                    if (!barrier)
-                    {
-                        return;
-                    }
-
-                    mDependencyLevelTransitionBarriers[node->LocalToDependencyLevelExecutionIndex()].push_back({subresourceName, *barrier, resourceData->GetGPUResource()->HALResource()});
-
-                    // Another reason to reroute resource transitions into another queue is incompatibility
-                    // of resource state transitions with receiving queue
-                    if (!IsStateTransitionSupportedOnQueue(node->ExecutionQueueIndex, barrier->BeforeStates(), barrier->AfterStates()))
-                    {
-                        mDependencyLevelQueuesThatRequireTransitionRerouting.insert(node->ExecutionQueueIndex);
-                    }
-                };
-
-                for (RenderPassGraph::SubresourceName subresourceName : node->ReadSubresources())
-                {
-                    requestTransition(subresourceName, true);
-                }
-
-                for (RenderPassGraph::SubresourceName subresourceName : node->WrittenSubresources())
-                {
-                    requestTransition(subresourceName, false);
-                }
-
-                for (Foundation::Name resourceName : node->AllResources())
-                {
-                    const PipelineResourceStorageResource*          resourceData = mResourceStorage->GetPerResourceData(resourceName);
-                    const PipelineResourceSchedulingInfo::PassInfo* passInfo     = resourceData->SchedulingInfo.GetInfoForPass(node->PassMetadata().Name);
-
-                    if (passInfo->NeedsAliasingBarrier)
-                    {
-                        mPerNodeAliasingBarriers[node->GlobalExecutionIndex()].AddBarrier(HAL::ResourceAliasingBarrier{nullptr, resourceData->GetGPUResource()->HALResource()});
-                    }
-
-                    if (passInfo->NeedsUnorderedAccessBarrier)
-                    {
-                        mPassHelpers[node->GlobalExecutionIndex()].UAVBarriers.AddBarrier(HAL::UnorderedAccessResourceBarrier{resourceData->GetGPUResource()->HALResource()});
-                    }
-                }
-            }
-        };
-
-        auto BatchCommandListsWithTransitionRerouting = [](const RenderPassGraph::DependencyLevel& dependencyLevel)
-        {
-            if (mDependencyLevelQueuesThatRequireTransitionRerouting.empty())
-            {
-                return;
-            }
-
-            uint64_t mostCompetentQueueIndex                               = FindMostCompetentQueueIndex(mDependencyLevelQueuesThatRequireTransitionRerouting);
-            mReroutedTransitionsCommandLists[dependencyLevel.LevelIndex()] = AllocateCommandListForQueue(mostCompetentQueueIndex);
-            CommandListPtrVariant&       commandListVariant                = mReroutedTransitionsCommandLists[dependencyLevel.LevelIndex()];
-            HAL::ComputeCommandListBase* transitionsCommandList            = GetComputeCommandListBase(commandListVariant);
-
-            TL::Vector<CommandListBatch>& mostCompetentQueueBatches = mCommandListBatches[mostCompetentQueueIndex];
-            CommandListBatch*             reroutedTransitionsBatch  = &mostCompetentQueueBatches.emplace_back();
-            reroutedTransitionsBatch->FenceToSignal                 = &FenceForQueueIndex(mostCompetentQueueIndex);
-            reroutedTransitionsBatch->CommandLists.emplace_back(GetHALCommandListVariant(commandListVariant));
-            uint64_t reroutedTransitionsBatchIndex = mostCompetentQueueBatches.size() - 1;
-
-            HAL::ResourceBarrierCollection reroutedTransitionBarrires;
-
-            TL::Vector<CommandListBatch*> dependencyLevelPerQueueBatches{mQueueCount, nullptr};
-
-            for (RenderPassGraph::Node::QueueIndex queueIndex : mDependencyLevelQueuesThatRequireTransitionRerouting)
-            {
-                // Make rerouted transitions wait for fences from involved queues
-                if (queueIndex != mostCompetentQueueIndex)
-                {
-                    mostCompetentQueueBatches[reroutedTransitionsBatchIndex].FencesToWait.insert(&FenceForQueueIndex(queueIndex));
-                }
-
-                for (const RenderPassGraph::Node* node : dependencyLevel.NodesForQueue(queueIndex))
-                {
-                    // A special case of waiting for BVH build fence, if of course pass is not executed on the same queue as BVH build
-                    if (mRenderPassGraph->FirstNodeThatUsesRayTracing() == node && mBVHBuildsQueueIndex != queueIndex)
-                    {
-                        mostCompetentQueueBatches[reroutedTransitionsBatchIndex].FencesToWait.insert(&FenceForQueueIndex(mBVHBuildsQueueIndex));
-                    }
-
-                    if (!dependencyLevelPerQueueBatches[node->ExecutionQueueIndex])
-                    {
-                        dependencyLevelPerQueueBatches[node->ExecutionQueueIndex] = &mCommandListBatches[node->ExecutionQueueIndex].emplace_back();
-                    }
-
-                    CommandListBatch* currentBatchInCurrentDependencyLevel = dependencyLevelPerQueueBatches[node->ExecutionQueueIndex];
-
-                    // Make command lists in a batch wait for rerouted transitions
-                    currentBatchInCurrentDependencyLevel->FencesToWait.insert(mostCompetentQueueBatches[reroutedTransitionsBatchIndex].FenceToSignal);
-                    currentBatchInCurrentDependencyLevel->CommandLists.push_back(GetHALCommandListVariant(mPassCommandLists[node->GlobalExecutionIndex()].WorkCommandList));
-
-                    uint64_t currentCommandListBatchIndex = mCommandListBatches[queueIndex].size() - 1;
-                    CollectNodeTransitions(node, currentCommandListBatchIndex, reroutedTransitionBarrires);
-
-                    if (node->IsSyncSignalRequired())
-                    {
-                        currentBatchInCurrentDependencyLevel->FenceToSignal       = &FenceForQueueIndex(node->ExecutionQueueIndex);
-                        dependencyLevelPerQueueBatches[node->ExecutionQueueIndex] = &mCommandListBatches[node->ExecutionQueueIndex].emplace_back();
-                    }
-                }
-
-                // Do not leave empty batches
-                if (mCommandListBatches[queueIndex].back().CommandLists.empty())
-                {
-                    mCommandListBatches[queueIndex].pop_back();
-                }
-            }
-
-            transitionsCommandList->InsertBarriers(reroutedTransitionBarrires);
-        };
-
-        auto CollectNodeTransitions = [](const RenderPassGraph::Node* node, uint64_t currentCommandListBatchIndex, HAL::ResourceBarrierCollection& collection)
-        {
-            const TL::Vector<SubresourceTransitionInfo>& nodeTransitionBarriers = mDependencyLevelTransitionBarriers[node->LocalToDependencyLevelExecutionIndex()];
-            const HAL::ResourceBarrierCollection&        nodeAliasingBarriers   = mPerNodeAliasingBarriers[node->GlobalExecutionIndex()];
-
-            collection.AddBarriers(nodeAliasingBarriers);
-
-            for (const SubresourceTransitionInfo& transitionInfo : nodeTransitionBarriers)
-            {
-                auto previousTransitionInfoIt           = mSubresourcesPreviousTransitionInfo.find(transitionInfo.SubresourceName);
-                bool foundPreviousTransition            = previousTransitionInfoIt != mSubresourcesPreviousTransitionInfo.end();
-                bool subresourceTransitionedAtLeastOnce = foundPreviousTransition && previousTransitionInfoIt->second.CommandListBatchIndex == currentCommandListBatchIndex;
-
-                if (!subresourceTransitionedAtLeastOnce)
-                {
-                    bool implicitTransitionPossible = Memory::ResourceStateTracker::CanResourceBeImplicitlyTransitioned(
-                        *transitionInfo.Resource, transitionInfo.TransitionBarrier.BeforeStates(), transitionInfo.TransitionBarrier.AfterStates());
-
-                    if (implicitTransitionPossible)
-                    {
-                        continue;
-                    }
-                }
-
-                if (foundPreviousTransition)
-                {
-                    const SubresourcePreviousTransitionInfo& previousTransitionInfo = previousTransitionInfoIt->second;
-
-                    // Split barrier is only possible when transmitting queue supports transitions for both before and after states
-                    bool isSplitBarrierPossible = IsStateTransitionSupportedOnQueue(
-                        previousTransitionInfo.Node->ExecutionQueueIndex, transitionInfo.TransitionBarrier.BeforeStates(), transitionInfo.TransitionBarrier.AfterStates());
-
-                    // There is no sense in splitting barriers between two adjacent render passes.
-                    // That will only double the amount of barriers without any performance gain.
-                    bool currentNodeIsNextToPrevious = node->LocalToQueueExecutionIndex() - previousTransitionInfo.Node->LocalToQueueExecutionIndex() <= 1;
-
-                    if (isSplitBarrierPossible && !currentNodeIsNextToPrevious)
-                    {
-                        auto [beginBarrier, endBarrier] = transitionInfo.TransitionBarrier.Split();
-                        collection.AddBarrier(endBarrier);
-                        mPerNodeBeginBarriers[previousTransitionInfo.Node->GlobalExecutionIndex()].AddBarrier(beginBarrier);
-                    }
-                    else
-                    {
-                        collection.AddBarrier(transitionInfo.TransitionBarrier);
-                    }
-                }
-                else
-                {
-                    collection.AddBarrier(transitionInfo.TransitionBarrier);
-                }
-
-                mSubresourcesPreviousTransitionInfo[transitionInfo.SubresourceName] = {node, currentCommandListBatchIndex};
-            }
-        };
-
-        auto ExetuteCommandLists = []()
-        {
-            // Run initial upload commands
-            mGraphicsQueueFence.IncrementExpectedValue();
-            // Transition uploaded resources to readable states
-            mPreRenderUploadsCommandList->InsertBarriers(mResourceStateTracker->ApplyRequestedTransitions());
-            mPreRenderUploadsCommandList->Close();
-            mGraphicsQueue.ExecuteCommandList(*mPreRenderUploadsCommandList);
-            mGraphicsQueue.SignalFence(mGraphicsQueueFence);
-
-            // Wait for uploads, run RT AS builds
-            mComputeQueueFence.IncrementExpectedValue();
-            mComputeQueue.WaitFence(mGraphicsQueueFence);
-            mRTASBuildsCommandList->Close();
-            mComputeQueue.ExecuteCommandList(*mRTASBuildsCommandList);
-            mComputeQueue.SignalFence(mComputeQueueFence);
-
-            for (auto queueIdx = 0; queueIdx < mQueueCount; ++queueIdx)
-            {
-                TL::Vector<CommandListBatch>& batches = mCommandListBatches[queueIdx];
-
-                for (auto batchIdx = 0; batchIdx < batches.size(); ++batchIdx)
-                {
-                    CommandListBatch&  batch = batches[batchIdx];
-                    HAL::CommandQueue& queue = GetCommandQueue(queueIdx);
-
-                    for (const HAL::Fence* fenceToWait : batch.FencesToWait)
-                    {
-                        queue.WaitFence(*fenceToWait);
-                    }
-
-                    if (RenderPassExecutionQueue{queueIdx} == RenderPassExecutionQueue::Graphics)
-                    {
-                        TL::Vector<HAL::GraphicsCommandList*> graphicsCommands;
-                        HAL::GraphicsCommandQueue*            graphicsQueue = dynamic_cast<HAL::GraphicsCommandQueue*>(&queue);
-
-                        for (auto cmdListIdx = 0; cmdListIdx < batch.CommandLists.size(); ++cmdListIdx)
-                        {
-                            HALCommandListPtrVariant& cmdListVariant = batch.CommandLists[cmdListIdx];
-                            auto                      cmdList        = std::get<HAL::GraphicsCommandList*>(cmdListVariant);
-
-                            bool isLastGraphicsCmdList = batchIdx == batches.size() - 1 && cmdListIdx == batch.CommandLists.size() - 1;
-
-                            if (isLastGraphicsCmdList)
-                            {
-                                cmdList->InsertBarriers(mResourceStateTracker->TransitionToStateImmediately(mBackBuffer->HALResource(), HAL::ResourceState::Present));
-                            }
-
-                            cmdList->Close();
-                            graphicsCommands.push_back(cmdList);
-                        }
-
-                        graphicsQueue->ExecuteCommandLists(graphicsCommands.data(), graphicsCommands.size());
-                    }
-                    else
-                    {
-                        TL::Vector<HAL::ComputeCommandList*> computeCommands;
-                        HAL::ComputeCommandQueue*            computeQueue = dynamic_cast<HAL::ComputeCommandQueue*>(&queue);
-
-                        for (HALCommandListPtrVariant& cmdListVariant : batch.CommandLists)
-                        {
-                            auto cmdList = std::get<HAL::ComputeCommandList*>(cmdListVariant);
-                            cmdList->Close();
-                            computeCommands.push_back(cmdList);
-                        }
-
-                        computeQueue->ExecuteCommandLists(computeCommands.data(), computeCommands.size());
-                    }
-
-                    if (batch.FenceToSignal)
-                    {
-                        batch.FenceToSignal->IncrementExpectedValue();
-                        queue.SignalFence(*batch.FenceToSignal);
-                    }
-                }
-            }
-        };
-#endif
+            RGPass*          pass            = m_passPool[nodeIndex].get();
+            auto             levelIndex      = longestDistances[nodeIndex];
+            DependencyLevel& dependencyLevel = dependencyLevels[levelIndex];
+            dependencyLevel.m_levelIndex     = levelIndex;
+            dependencyLevel.AddPass(pass);
+            pass->m_dependencyLevelIndex = levelIndex;
+            detectedQueueCount           = std::max(detectedQueueCount, pass->m_executionQueueIndex + 1);
+        }
     }
 
     void RenderGraph::Execute()
     {
-        constexpr ClearValue queueColor[3] =
-            {
-                {.f32{0.0f, 0.5f, 0.0f, 1.0f}},
-                {.f32{0.0f, 0.0f, 0.5f, 1.0f}},
-                {.f32{0.5f, 0.0f, 0.0f, 1.0f}},
-            };
+        ZoneScoped;
 
-        // for (auto& pass : m_graphPasses)
+        // TODO: Handle resource transition barriers
+        // // for every pass in topologically sorted passes
+        // for (auto& level : m_dependencyLevels)
         // {
-        //     // Only update deps of active passes
-        //     if (pass->m_isActive == false)
-        //         continue;
-
-        //     for (auto imageDep : pass->m_imageDependencies)
+        //     for (auto pass : level.GetPasses())
         //     {
-        //         ImageBarrierState prevState = GetBarrierStateInfo(imageDep);
+        //         if (pass->m_state.culled)
+        //             continue;
 
-        //         ImageBarrierInfo barrier{};
-        //         pass->m_barriers[Pass::BarrierSlot::Prilogue].imageBarriers.push_back(barrier);
+        //         for (auto dep : pass->m_imageDependencies)
+        //         {
+        //             // last known state
+        //         }
+        //         for (auto dep : pass->m_bufferDependencies)
+        //         {
+        //         }
         //     }
-        //     for (auto bufferDep : pass->m_bufferDependencies)
-        //     {
-        //         BufferBarrierState prevState = GetBarrierStateInfo(bufferDep);
 
-        //         BufferBarrierInfo barrier{};
-        //         pass->m_barriers[Pass::BarrierSlot::Prilogue].bufferBarriers.push_back(barrier);
-        //     }
+        //     // for every dep in pass
+        //     // if current state = dep.state (skip)
+        //     // if resource.last_pass = dep.pass (skip)
+        //     // dep.resource.push_back(transition)
         // }
 
-        auto executePass = [=, this](CommandList& commandList, Pass* pass)
-        {
-            commandList.PushDebugMarker(pass->GetName(), queueColor[(uint32_t)pass->GetType()]);
+        // ExecuteSerialSingleThreaded();
 
-            commandList.AddPipelineBarrier(
-                pass->m_barriers[Pass::BarrierSlot::Prilogue].memoryBarriers,
-                pass->m_barriers[Pass::BarrierSlot::Prilogue].imageBarriers,
-                pass->m_barriers[Pass::BarrierSlot::Prilogue].bufferBarriers);
-
-            if (pass->GetType() == PassType::Graphics)
-            {
-                TL::Vector<ColorAttachment>          colorAttachments{};
-                TL::Optional<DepthStencilAttachment> depthStencilAttachment{};
-
-                for (auto colorAttachment : pass->m_colorAttachments)
-                {
-                    colorAttachments.push_back(
-                        ColorAttachment{
-                            .view        = GetImageHandle(colorAttachment.view),
-                            .loadOp      = colorAttachment.loadOp,
-                            .storeOp     = colorAttachment.storeOp,
-                            .clearValue  = colorAttachment.clearValue,
-                            .resolveMode = colorAttachment.resolveMode,
-                            .resolveView = colorAttachment.resolveView ? GetImageHandle(colorAttachment.resolveView) : NullHandle,
-                        });
-                }
-
-                if (pass->m_depthStencilAttachment)
-                {
-                    depthStencilAttachment = DepthStencilAttachment{
-                        .view           = GetImageHandle(pass->m_depthStencilAttachment->view),
-                        .depthLoadOp    = pass->m_depthStencilAttachment->depthLoadOp,
-                        .depthStoreOp   = pass->m_depthStencilAttachment->depthStoreOp,
-                        .stencilLoadOp  = pass->m_depthStencilAttachment->stencilLoadOp,
-                        .stencilStoreOp = pass->m_depthStencilAttachment->stencilStoreOp,
-                        .clearValue     = pass->m_depthStencilAttachment->clearValue,
-                    };
-                }
-
-                RenderPassBeginInfo beginInfo{
-                    .size                   = pass->GetImageSize(),
-                    .offset                 = {},
-                    .colorAttachments       = colorAttachments,
-                    .depthStencilAttachment = depthStencilAttachment,
-                };
-                commandList.BeginRenderPass(beginInfo);
-            }
-            else if (pass->GetType() == PassType::Compute)
-            {
-                ComputePassBeginInfo beginInfo{};
-                commandList.BeginComputePass(beginInfo);
-            }
-
-            pass->m_executeCallback(commandList);
-
-            if (pass->GetType() == PassType::Graphics)
-            {
-                commandList.EndRenderPass();
-            }
-            else if (pass->GetType() == PassType::Compute)
-            {
-                commandList.EndComputePass();
-            }
-
-            commandList.AddPipelineBarrier(
-                pass->m_barriers[Pass::BarrierSlot::Epilogue].memoryBarriers,
-                pass->m_barriers[Pass::BarrierSlot::Epilogue].imageBarriers,
-                pass->m_barriers[Pass::BarrierSlot::Epilogue].bufferBarriers);
-
-            commandList.PopDebugMarker();
-        };
-
-        auto commandList = m_device->CreateCommandList({.name = "Frame", .queueType = QueueType::Graphics});
-        for (auto& pass : m_graphPasses)
-        {
-            executePass(CommandList & commandList, pass.get());
-        }
+        m_frameIndex++;
     }
+
+    void RenderGraph::ExecutePass(RGPass* pass, CommandList* commandList)
+    {
+        ZoneScoped;
+
+        bool isCompute = pass->m_type == PassType::Compute || pass->m_type == PassType::AsyncCompute;
+
+        if (pass->m_type == PassType::Graphics)
+            commandList->PushDebugMarker(pass->GetName(), Colors::DebugMarker_Graphics);
+        else if (isCompute)
+            commandList->PushDebugMarker(pass->GetName(), Colors::DebugMarker_Compute);
+        else
+            commandList->PushDebugMarker(pass->GetName(), Colors::DebugMarker_Transfer);
+
+        const auto& [prebarriers, preImageBarriers, preBufferBarriers] = pass->m_barriers[RGPass::Prilogue];
+
+        commandList->AddPipelineBarrier(prebarriers, preImageBarriers, preBufferBarriers);
+        if (pass->m_type == PassType::Graphics)
+        {
+            TL::Vector<ColorAttachment>          attachments;
+            TL::Optional<DepthStencilAttachment> dsAttachment;
+            attachments.reserve(pass->m_gfxPassInfo.m_colorAttachments.size());
+
+            for (auto attachment : pass->m_gfxPassInfo.m_colorAttachments)
+            {
+                auto color   = GetImageHandle(attachment.color);
+                auto resolve = attachment.resolveView ? GetImageHandle(attachment.resolveView) : NullHandle;
+                attachments.push_back({
+                    .view        = color,
+                    .loadOp      = attachment.loadOp,
+                    .storeOp     = attachment.storeOp,
+                    .clearValue  = attachment.clearValue,
+                    .resolveMode = attachment.resolveMode,
+                    .resolveView = resolve,
+                });
+            }
+            if (auto dsv = pass->m_gfxPassInfo.m_depthStencilAttachment)
+            {
+                auto depthStencil = GetImageHandle(dsv->depthStencil);
+                dsAttachment      = DepthStencilAttachment{
+                         .view           = depthStencil,
+                         .depthLoadOp    = dsv->depthLoadOp,
+                         .depthStoreOp   = dsv->depthStoreOp,
+                         .stencilLoadOp  = dsv->stencilLoadOp,
+                         .stencilStoreOp = dsv->stencilStoreOp,
+                         .clearValue     = dsv->clearValue,
+                };
+            }
+            RenderPassBeginInfo beginInfo{
+                .name                   = pass->GetName(),
+                .size                   = pass->m_gfxPassInfo.m_size,
+                .offset                 = pass->m_gfxPassInfo.m_offset,
+                .colorAttachments       = attachments,
+                .depthStencilAttachment = dsAttachment,
+            };
+            commandList->BeginRenderPass(beginInfo);
+        }
+        else if (isCompute)
+        {
+            ComputePassBeginInfo beginInfo{
+                .name = pass->GetName(),
+            };
+            commandList->BeginComputePass(beginInfo);
+        }
+
+        pass->Execute(*commandList);
+
+        if (pass->m_type == PassType::Graphics)
+            commandList->EndRenderPass();
+        else if (isCompute)
+            commandList->EndComputePass();
+
+        const auto& [postbarriers, postImageBarriers, postBufferBarriers] = pass->m_barriers[RGPass::Epilogue];
+        commandList->AddPipelineBarrier(postbarriers, postImageBarriers, postBufferBarriers);
+        commandList->PopDebugMarker();
+    }
+
+    void RenderGraph::ExecuteSerialSingleThreaded()
+    {
+        CommandListCreateInfo cmdCI{
+            .name      = "RG-CMD",
+            .queueType = QueueType::Graphics,
+        };
+        auto commandList = m_device->CreateCommandList(cmdCI);
+
+        commandList->Begin();
+        for (const auto& level : m_dependencyLevels)
+        {
+            for (auto pass : level.GetPasses())
+            {
+                ExecutePass(pass, commandList);
+            }
+        }
+
+        if (m_swapchain)
+        {
+            // Add barrier to blits swapchain to its original
+        }
+
+        commandList->End();
+
+        QueueSubmitInfo submitInfo{
+            .queueType            = QueueType::Graphics,
+            .commandLists         = commandList,
+            .signalStage          = PipelineStage::BottomOfPipe,
+            .waitInfos            = {},
+            .m_swapchainToAcquire = m_swapchain,
+            .m_swapchainToSignal  = m_swapchain,
+        };
+        TL_MAYBE_UNUSED auto timeline = m_device->QueueSubmit(submitInfo);
+    }
+
 } // namespace RHI
