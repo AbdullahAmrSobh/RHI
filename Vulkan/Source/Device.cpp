@@ -21,15 +21,17 @@
 #include <TL/Assert.hpp>
 #include <TL/Log.hpp>
 
-#include <format>
-#include <tracy/Tracy.hpp>
-
 #include "CommandList.hpp"
 #include "Common.hpp"
 #include "Queue.hpp"
 #include "RHI-Vulkan/Loader.hpp"
 #include "StagingBuffer.hpp"
 #include "Swapchain.hpp"
+
+#include <format>
+#include <algorithm>
+
+#include <tracy/Tracy.hpp>
 
 #define VULKAN_DEVICE_FUNC_LOAD(device, proc) reinterpret_cast<PFN_##proc>(vkGetDeviceProcAddr(device, #proc));
 #define VULKAN_INSTANCE_FUNC_LOAD(instance, proc) reinterpret_cast<PFN_##proc>(vkGetInstanceProcAddr(instance, #proc));
@@ -699,7 +701,7 @@ namespace RHI::Vulkan
         bindGroup->Write(this, updateInfo);
     }
 
-    void IDevice::BeginResourceUpdate(RenderGraph* renderGraph)
+    void IDevice::BeginResourceUpdate(TL_MAYBE_UNUSED RenderGraph* renderGraph)
     {
     }
 
@@ -868,7 +870,7 @@ namespace RHI::Vulkan
     IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(Sampler, m_samplerOwner);
     IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS_WITH_RESULTS(Image, m_imageOwner);
 
-    Handle<Image> IDevice::CreateImageView(const ImageViewCreateInfo& createInfo)
+    Handle<Image> IDevice::CreateImageView(TL_MAYBE_UNUSED const ImageViewCreateInfo& createInfo)
     {
         TL_UNREACHABLE_MSG("TODO! Implement image views for Vulkan Backend!");
         return {};

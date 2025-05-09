@@ -11,17 +11,17 @@
 
 namespace RHI::Vulkan
 {
-    inline static VkImageSubresourceLayers ConvertSubresourceLayer(const ImageSubresourceLayers& subresource, Format format)
+    /* inline static */ VkImageSubresourceLayers ConvertSubresourceLayer(const ImageSubresourceLayers& subresource, Format format)
     {
-        auto vkSubresource           = VkImageSubresourceLayers{};
-        vkSubresource.aspectMask     = ConvertImageAspect(subresource.imageAspects, format);
-        vkSubresource.mipLevel       = subresource.mipLevel;
-        vkSubresource.baseArrayLayer = subresource.arrayBase;
-        vkSubresource.layerCount     = subresource.arrayCount;
-        return vkSubresource;
+        return VkImageSubresourceLayers{
+            .aspectMask     = ConvertImageAspect(subresource.imageAspects, format),
+            .mipLevel       = subresource.mipLevel,
+            .baseArrayLayer = subresource.arrayBase,
+            .layerCount     = subresource.arrayCount,
+        };
     }
 
-    inline static VkResolveModeFlagBits ConvertResolveMode(ResolveMode resolveMode)
+    /* inline static  */ VkResolveModeFlagBits ConvertResolveMode(ResolveMode resolveMode)
     {
         switch (resolveMode)
         {
@@ -41,7 +41,7 @@ namespace RHI::Vulkan
         uint32_t              queueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     };
 
-    inline BarrierStage ConvertBarrierState(const BarrierState& barrierState)
+    inline BarrierStage ConvertBarrierState(TL_MAYBE_UNUSED const BarrierState& barrierState)
     {
         return {
             // .stageMask        = ConvertPipelineStageFlags(barrierState.stage),
@@ -421,7 +421,7 @@ namespace RHI::Vulkan
         vkCmdEndRendering(m_commandBuffer);
     }
 
-    void ICommandList::BeginComputePass(const ComputePassBeginInfo& beginInfo)
+    void ICommandList::BeginComputePass(TL_MAYBE_UNUSED const ComputePassBeginInfo& beginInfo)
     {
         // No-Op
     }
@@ -431,7 +431,7 @@ namespace RHI::Vulkan
         // No-Op
     }
 
-    void ICommandList::PushDebugMarker(const char* name, ClearValue color)
+    void ICommandList::PushDebugMarker(TL_MAYBE_UNUSED const char* name, TL_MAYBE_UNUSED ClearValue color)
     {
         ZoneScoped;
 

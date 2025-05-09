@@ -8,6 +8,8 @@
 #include "Device.hpp"
 #include "Resources.hpp"
 
+#include <algorithm>
+
 namespace RHI::Vulkan
 {
 
@@ -101,6 +103,8 @@ namespace RHI::Vulkan
 
         if (m_surface != VK_NULL_HANDLE)
             vkDestroySurfaceKHR(m_device->m_instance, m_surface, nullptr);
+
+        m_device->m_imageOwner.Release(m_image);
     }
 
     VkSemaphore ISwapchain::GetImageAcquiredSemaphore() const
