@@ -27,8 +27,6 @@ namespace RHI::WebGPU
         void       Shutdown();
 
         // Interface Implementation
-        RenderGraph*             CreateRenderGraph(const RenderGraphCreateInfo& createInfo) override;
-        void                     DestroyRenderGraph(RenderGraph* renderGraph) override;
         Swapchain*               CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
         void                     DestroySwapchain(Swapchain* swapchain) override;
         ShaderModule*            CreateShaderModule(const ShaderModuleCreateInfo& createInfo) override;
