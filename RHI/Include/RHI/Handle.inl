@@ -90,6 +90,12 @@ namespace RHI
         size_t   index = handle.m_rawHandle.index;
         uint16_t genId = handle.m_rawHandle.genId;
 
+        // Always call the destructor
+        if (index < m_resources.size())
+        {
+            m_resources[index].~Resource();
+        }
+
         // Check if index is within bounds and generation ID matches
         if (index < m_resources.size() && m_genIds[index] == genId)
         {

@@ -186,6 +186,8 @@ namespace RHI
         ImageUsage               usage  = ImageUsage::None;
         TL::Flags<PipelineStage> stage  = PipelineStage::None;
         TL::Flags<Access>        access = Access::None;
+
+        bool operator == (const ImageBarrierState& self) const = default;
     };
 
     struct BufferBarrierState
@@ -193,6 +195,8 @@ namespace RHI
         BufferUsage              usage  = BufferUsage::None;
         TL::Flags<PipelineStage> stage  = PipelineStage::None;
         TL::Flags<Access>        access = Access::None;
+
+        bool operator == (const BufferBarrierState& self) const = default;
     };
 
     struct BarrierInfo
