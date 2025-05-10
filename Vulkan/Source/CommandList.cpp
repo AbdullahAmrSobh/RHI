@@ -266,7 +266,7 @@ namespace RHI::Vulkan
                 .srcStageMask  = srcStageMask,
                 .srcAccessMask = srcAccessMask,
                 .dstStageMask  = dstStageMask,
-                .dstAccessMask = srcAccessMask,
+                .dstAccessMask = dstAccessMask,
             });
         }
 
@@ -283,7 +283,7 @@ namespace RHI::Vulkan
                 .srcStageMask        = srcStageMask,
                 .srcAccessMask       = srcAccessMask,
                 .dstStageMask        = dstStageMask,
-                .dstAccessMask       = srcAccessMask,
+                .dstAccessMask       = dstAccessMask,
                 .oldLayout           = srcLayout,
                 .newLayout           = dstLayout,
                 .srcQueueFamilyIndex = srcQueueFamilyIndex,
@@ -306,7 +306,7 @@ namespace RHI::Vulkan
                 .srcStageMask        = srcStageMask,
                 .srcAccessMask       = srcAccessMask,
                 .dstStageMask        = dstStageMask,
-                .dstAccessMask       = srcAccessMask,
+                .dstAccessMask       = dstAccessMask,
                 .srcQueueFamilyIndex = srcQueueFamilyIndex,
                 .dstQueueFamilyIndex = dstQueueFamilyIndex,
                 .buffer              = buffer->handle,
@@ -610,7 +610,7 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        TL_ASSERT(m_isGraphicsPipelineBound && m_hasViewportSet && m_hasScissorSet && m_hasVertexBuffer);
+        TL_ASSERT(m_isGraphicsPipelineBound && m_hasViewportSet && m_hasScissorSet);
         vkCmdDraw(
             m_commandBuffer,
             parameters.vertexCount,
@@ -623,7 +623,7 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        TL_ASSERT(m_isGraphicsPipelineBound && m_hasViewportSet && m_hasScissorSet && m_hasVertexBuffer && m_hasIndexBuffer);
+        TL_ASSERT(m_isGraphicsPipelineBound && m_hasViewportSet && m_hasScissorSet);
         vkCmdDrawIndexed(
             m_commandBuffer,
             parameters.indexCount,
@@ -832,5 +832,4 @@ namespace RHI::Vulkan
             dynamicOffsetCount,
             dynamicOffsets);
     }
-
 } // namespace RHI::Vulkan

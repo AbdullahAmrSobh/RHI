@@ -12,7 +12,6 @@ namespace RHI
     struct ComputePipeline;
 
     class RenderGraph;
-    class Pass;
 
     enum class QueueType : uint8_t
     {

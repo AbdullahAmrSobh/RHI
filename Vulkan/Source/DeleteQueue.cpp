@@ -20,7 +20,13 @@ namespace RHI::Vulkan
     void DeleteQueue::Shutdown()
     {
         m_device->WaitIdle();
-        DestroyObjects();
+
+        for (auto& deletion : m_destructionQueue)
+        {
+            if (deletion.deleteFunc)
+                deletion.deleteFunc(m_device);
+        }
+
         TL_ASSERT(m_destructionQueue.empty());
     }
 
@@ -60,6 +66,7 @@ namespace RHI::Vulkan
             if (m_destructionQueue[m_readIndex].frameIndex <= m_completedFrameIndex)
             {
                 m_destructionQueue[m_readIndex].deleteFunc(m_device);
+                m_destructionQueue[m_readIndex].deleteFunc = nullptr;
                 m_readIndex++;
 
                 if (m_readIndex >= m_destructionQueue.capacity())

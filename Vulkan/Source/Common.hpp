@@ -545,6 +545,7 @@ namespace RHI::Vulkan
         bool isReadOnly = access == Access::Read;
         switch (usage)
         {
+        case ImageUsage::None: return VK_IMAGE_LAYOUT_UNDEFINED;
         case ImageUsage::ShaderResource:
             {
                 if (aspect & ImageAspect::Color)
@@ -575,7 +576,7 @@ namespace RHI::Vulkan
         case ImageUsage::CopySrc:      return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
         case ImageUsage::CopyDst:      return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         case ImageUsage::Present:      return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-        default:                       return isReadOnly ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+        default:                       TL_UNREACHABLE(); return VK_IMAGE_LAYOUT_UNDEFINED;
         }
     }
 } // namespace RHI::Vulkan

@@ -1,13 +1,20 @@
 #include "RHI/RenderGraph.hpp"
 
 #include "RHI/Device.hpp"
+#include "RHI/Reflect.hpp"
 
 #include <TL/Allocator/Allocator.hpp>
 #include <TL/Allocator/Mimalloc.hpp>
 #include <TL/Containers.hpp>
+#include <TL/Utils.hpp>
 
 #include <cstdint>
 #include <tracy/Tracy.hpp>
+
+namespace std
+{
+    // Add hash functions for ImageCreateInfo, ImageViewCreateInfo, and BufferView ...
+}
 
 namespace RHI
 {
@@ -31,19 +38,6 @@ namespace RHI
 
     }; // namespace Colors
 
-    class RenderGraph::TransientResourceAllocator
-    {
-    public:
-        void Create(RGImage* rgImage)
-        {
-            TL_LOG_WARNNING("Recreating resource {}", rgImage->m_name);
-        }
-
-    private:
-        TL::Map<size_t, Handle<Image>>  m_images;
-        TL::Map<size_t, Handle<Buffer>> m_buffers;
-    };
-
     class RenderGraph::DependencyLevel
     {
     public:
@@ -62,29 +56,31 @@ namespace RHI
         TL::Vector<RGPass*> m_passes;
     };
 
-    ///////////////////////////////////////////////////////////////////////////
-    /// Pass Resource types
-    ///////////////////////////////////////////////////////////////////////////
+    // ///////////////////////////////////////////////////////////////////////////
+    // /// Pass Resource types
+    // ///////////////////////////////////////////////////////////////////////////
 
-    RGImage::RGImage(const char* name, ImageType type, ImageSize3D size, Format format, uint32_t mipLevels, uint32_t arrayCount, SampleCount samples)
-        : m_name(name)
-    {
-    }
+    // size_t RGImage::GetHash() const
+    // {
+    //     uint64_t hash = 0;
+    //     TL::HashCombine(hash, (uint64_t)m_desc.usageFlags.GetHash());
+    //     TL::HashCombine(hash, m_desc.size.width);
+    //     TL::HashCombine(hash, m_desc.size.height);
+    //     TL::HashCombine(hash, m_desc.size.depth);
+    //     TL::HashCombine(hash, (uint64_t)m_desc.format);
+    //     TL::HashCombine(hash, m_desc.mipLevels);
+    //     TL::HashCombine(hash, m_desc.arrayCount);
+    //     TL::HashCombine(hash, (uint64_t)m_desc.sampleCount);
+    //     return hash;
+    // }
 
-    RGImage::RGImage(const char* name, Handle<Image> handle, Format format)
-        : m_name(name)
-    {
-    }
-
-    RGBuffer::RGBuffer(const char* name, size_t size)
-        : m_name(name)
-    {
-    }
-
-    RGBuffer::RGBuffer(const char* name, Handle<Buffer> handle)
-        : m_name(name)
-    {
-    }
+    // size_t RGBuffer::GetHash() const
+    // {
+    //     uint64_t hash = 0;
+    //     TL::HashCombine(hash, (uint64_t)m_desc.usageFlags.GetHash());
+    //     TL::HashCombine(hash, m_desc.size);
+    //     return hash;
+    // }
 
     ///////////////////////////////////////////////////////////////////////////
     /// Render Graph Builder Interface
@@ -103,11 +99,7 @@ namespace RHI
 
     void RenderGraphBuilder::ReadImage(Handle<RGImage> imageHandle, const ImageSubresourceRange& subresource, ImageUsage usage, PipelineStage stage)
     {
-        TL_ASSERT(m_rg->m_state.frameRecording);
-        TL_ASSERT(m_rg->CheckHandleIsValid(imageHandle));
-
-        RGImageDependency dep{imageHandle, subresource, usage, stage, Access::Read};
-        m_pass->m_imageDependencies.push_back(dep);
+        UseImageInternal(imageHandle, m_rg->m_imagePool, Access::Read, subresource, usage, stage);
     }
 
     Handle<RGImage> RenderGraphBuilder::WriteImage(Handle<RGImage> imageHandle, ImageUsage usage, PipelineStage stage)
@@ -117,25 +109,7 @@ namespace RHI
 
     Handle<RGImage> RenderGraphBuilder::WriteImage(Handle<RGImage> imageHandle, const ImageSubresourceRange& subresource, ImageUsage usage, PipelineStage stage)
     {
-        TL_ASSERT(m_rg->m_state.frameRecording);
-        TL_ASSERT(m_rg->CheckHandleIsValid(imageHandle));
-
-        auto image     = m_rg->GetImage(imageHandle);
-        image->m_valid = false; //
-
-        RGImageDependency dep{imageHandle, subresource, usage, stage, Access::Write};
-        m_pass->m_imageDependencies.push_back(dep);
-
-        // Mark this pass depends on the last pass that wrote to this resource.
-        // this means, when the graph is sorted, current pass will execute after the last
-        // pass wrote to this resource.
-        m_rg->AddDependency(image->m_pass, m_pass);
-
-        auto newHandle         = m_rg->CreateImage(image->m_name.c_str(), ImageType::None, {}, Format::Unknown);
-        auto newImage          = m_rg->GetImage(newHandle);
-        newImage->m_prevHandle = imageHandle;
-        image->m_nextHandle    = newHandle;
-        return newHandle;
+        return UseImageInternal(imageHandle, m_rg->m_imagePool, Access::Write, subresource, usage, stage);
     }
 
     void RenderGraphBuilder::ReadBuffer(Handle<RGBuffer> bufferHandle, BufferUsage usage, PipelineStage stage)
@@ -145,11 +119,7 @@ namespace RHI
 
     void RenderGraphBuilder::ReadBuffer(Handle<RGBuffer> bufferHandle, const BufferSubregion& subregion, BufferUsage usage, PipelineStage stage)
     {
-        TL_ASSERT(m_rg->m_state.frameRecording);
-        TL_ASSERT(m_rg->CheckHandleIsValid(bufferHandle));
-
-        RGBufferDependency dep{bufferHandle, subregion, usage, stage, Access::Read};
-        m_pass->m_bufferDependencies.push_back(dep);
+        UseBufferInternal(bufferHandle, m_rg->m_bufferPool, Access::Read, subregion, usage, stage);
     }
 
     Handle<RGBuffer> RenderGraphBuilder::WriteBuffer(Handle<RGBuffer> bufferHandle, BufferUsage usage, PipelineStage stage)
@@ -159,25 +129,7 @@ namespace RHI
 
     Handle<RGBuffer> RenderGraphBuilder::WriteBuffer(Handle<RGBuffer> bufferHandle, const BufferSubregion& subregion, BufferUsage usage, PipelineStage stage)
     {
-        TL_ASSERT(m_rg->m_state.frameRecording);
-        TL_ASSERT(m_rg->CheckHandleIsValid(bufferHandle));
-
-        RGBufferDependency dep{bufferHandle, subregion, usage, stage, Access::Write};
-        m_pass->m_bufferDependencies.push_back(dep);
-
-        auto buffer     = m_rg->GetBuffer(bufferHandle);
-        buffer->m_valid = false;
-
-        // Mark this pass depends on the last pass that wrote to this resource.
-        // this means, when the graph is sorted, current pass will execute after the last
-        // pass wrote to this resource.
-        m_rg->AddDependency(buffer->m_pass, m_pass);
-
-        auto newHandle         = m_rg->CreateBuffer(buffer->m_name.c_str(), 0);
-        auto newImage          = m_rg->GetBuffer(newHandle);
-        newImage->m_prevHandle = bufferHandle;
-        buffer->m_nextHandle   = newHandle;
-        return newHandle;
+        return UseBufferInternal(bufferHandle, m_rg->m_bufferPool, Access::Write, subregion, usage, stage);
     }
 
     Handle<RGImage> RenderGraphBuilder::AddColorAttachment(RGColorAttachment attachment)
@@ -205,6 +157,72 @@ namespace RHI
 
         m_pass->m_gfxPassInfo.m_depthStencilAttachment = attachment;
         return WriteImage(attachment.depthStencil, attachment.depthStencilRange, ImageUsage::DepthStencil, PipelineStage::LateFragmentTests);
+    }
+
+    Handle<RGImage> RenderGraphBuilder::UseImageInternal(Handle<RGImage> handle, HandlePool<RGImage>& pool, Access access, const ImageSubresourceRange& subresource, ImageUsage usage, PipelineStage stage)
+    {
+        TL_ASSERT(m_rg->m_state.frameRecording);
+        TL_ASSERT(m_rg->CheckHandleIsValid(handle));
+
+        RGImage* resource = pool.Get(handle);
+
+        if (resource->m_producer == nullptr)
+        {
+            TL_ASSERT(access & Access::Write);
+            resource->m_producer = m_pass;
+        }
+
+        // Add dependency from the resource's producer to this pass
+        if (resource->m_producer && resource->m_producer != m_pass)
+            m_rg->AddDependency(resource->m_producer, m_pass);
+
+        // Add resource dependency to the pass
+        m_rg->ExtendImageUsage(resource, usage);
+        RGImageDependency dep{
+            .image        = handle,
+            .viewID       = 0,
+            .state        = ImageBarrierState{usage, stage, access},
+        };
+        m_pass->m_imageDependencies.push_back(dep);
+
+        // If writing, invalidate the handle and create a new version
+        if (access & Access::Write)
+            return m_rg->CreateRGImageHandle(handle, m_pass);
+
+        return handle;
+    }
+
+    Handle<RGBuffer> RenderGraphBuilder::UseBufferInternal(Handle<RGBuffer> handle, HandlePool<RGBuffer>& pool, Access access, const BufferSubregion& subresource, BufferUsage usage, PipelineStage stage)
+    {
+        TL_ASSERT(m_rg->m_state.frameRecording);
+        TL_ASSERT(m_rg->CheckHandleIsValid(handle));
+
+        RGBuffer* resource = pool.Get(handle);
+
+        if (resource->m_producer == nullptr)
+        {
+            TL_ASSERT(access & Access::Write);
+            resource->m_producer = m_pass;
+        }
+
+        // Add dependency from the resource's producer to this pass
+        if (resource->m_producer && resource->m_producer != m_pass)
+            m_rg->AddDependency(resource->m_producer, m_pass);
+
+        // Add resource dependency to the pass
+        m_rg->ExtendBufferUsage(resource, usage);
+        RGBufferDependency dep{
+            .buffer    = handle,
+            .subregion = subresource,
+            .state     = BufferBarrierState{usage, stage, access},
+        };
+        m_pass->m_bufferDependencies.push_back(dep);
+
+        // If writing, invalidate the handle and create a new version
+        if (access & Access::Write)
+            return m_rg->CreateRGBufferHandle(handle, m_pass);
+
+        return handle;
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -257,10 +275,6 @@ namespace RHI
         // m_localToQueueExecutionIndex
         // m_indexInUnorderedList
         // m_producers
-        // m_imageWrites
-        // m_imageReads
-        // m_bufferWrites
-        // m_bufferReads
         return ResultCode::Success;
     }
 
@@ -278,8 +292,10 @@ namespace RHI
     void RGPass::Compile(RenderGraphContext& context)
     {
         ZoneScopedN("RGPass::Compile");
-        TL_ASSERT(m_compileCallback);
-        m_compileCallback(context);
+        if (m_compileCallback)
+        {
+            m_compileCallback(context);
+        }
     }
 
     void RGPass::Execute(CommandList& commandList)
@@ -287,6 +303,120 @@ namespace RHI
         ZoneScopedN("RGPass::Execute");
         TL_ASSERT(m_executeCallback);
         m_executeCallback(commandList);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// Render Graph Resource Pool
+    ///////////////////////////////////////////////////////////////////////////
+
+    inline static bool CompareImageCreateInfo(const ImageCreateInfo& ci1, const ImageCreateInfo& ci2)
+    {
+        return (ci1.usageFlags == ci2.usageFlags) &&
+               (ci1.type == ci2.type) &&
+               (ci1.size == ci2.size) &&
+               (ci1.format == ci2.format) &&
+               (ci1.sampleCount == ci2.sampleCount) &&
+               (ci1.mipLevels == ci2.mipLevels) &&
+               (ci1.arrayCount == ci2.arrayCount);
+    }
+
+    inline static bool CompareBufferCreateInfo(const BufferCreateInfo& ci1, const BufferCreateInfo& ci2)
+    {
+        return (ci1.hostMapped == ci2.hostMapped) &&
+               (ci1.usageFlags == ci2.usageFlags) &&
+               (ci1.byteSize == ci2.byteSize);
+    }
+
+    ResultCode RenderGraphResourcePool::Init(Device* device)
+    {
+        m_device = device;
+
+        // m_imageCache.clear();
+        // m_bufferCache.clear();
+
+        return ResultCode::Success;
+    }
+
+    void RenderGraphResourcePool::Shutdown()
+    {
+        for (const auto& [_, handle] : m_imageCache)
+        {
+            m_device->DestroyImage(handle.second);
+        }
+        for (const auto& [_, handle] : m_bufferCache)
+        {
+            m_device->DestroyBuffer(handle.second);
+        }
+
+        m_imageCache.clear();
+        m_bufferCache.clear();
+    }
+
+    Handle<Image> RenderGraphResourcePool::InitTransientImage(RGImage* rgImage)
+    {
+        auto it = m_imageCache.find(rgImage->m_name);
+
+        ImageCreateInfo ci{
+            .name        = rgImage->m_name.c_str(),
+            .usageFlags  = rgImage->m_desc.usageFlags,
+            .type        = rgImage->m_desc.type,
+            .size        = rgImage->m_desc.size,
+            .format      = rgImage->m_desc.format,
+            .sampleCount = rgImage->m_desc.sampleCount,
+            .mipLevels   = rgImage->m_desc.mipLevels,
+            .arrayCount  = rgImage->m_desc.arrayCount,
+        };
+
+        // First try to find a in cache
+        if (it != m_imageCache.end())
+        {
+            const auto& [cachedCI, handle] = it->second;
+            if (CompareImageCreateInfo(cachedCI, ci))
+                return handle;
+
+            // Resource with same name, but different properties were found, so recreate the resource.
+            TL_LOG_INFO("...Recreating resource {}", rgImage->m_name);
+            m_device->DestroyImage(handle);
+            m_imageCache.erase(it); // No need (I think) as
+        }
+
+        TL_LOG_INFO("Creating image {}", Debug::ToString(ci));
+
+        auto [handle, result] = m_device->CreateImage(ci);
+        TL_ASSERT(IsSuccess(result));
+        m_imageCache[rgImage->m_name] = std::pair{ci, handle};
+        return handle;
+    }
+
+    Handle<Buffer> RenderGraphResourcePool::InitTransientBuffer(RGBuffer* rgBuffer)
+    {
+        auto it = m_bufferCache.find(rgBuffer->m_name);
+
+        BufferCreateInfo ci{
+            .name       = rgBuffer->m_name.c_str(),
+            .hostMapped = true, // TODO: Should be I don't care?
+            .usageFlags = rgBuffer->m_desc.usageFlags,
+            .byteSize   = rgBuffer->m_desc.size,
+        };
+
+        if (it != m_bufferCache.end())
+        {
+            const auto& [cachedCI, handle] = it->second;
+            if (CompareBufferCreateInfo(cachedCI, ci))
+                return handle;
+
+            // Resource with same name, but different properties were found, so recreate the resource.
+            TL_LOG_INFO("...Recreating resource {}", rgBuffer->m_name);
+            m_device->DestroyBuffer(handle);
+            m_bufferCache.erase(it);
+        }
+
+        TL_LOG_INFO("Creating buffer {}", Debug::ToString(ci));
+
+        auto [handle, result] = m_device->CreateBuffer(ci);
+        TL_ASSERT(IsSuccess(result));
+        m_bufferCache[rgBuffer->m_name] = std::pair{ci, handle};
+        return handle;
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -301,13 +431,24 @@ namespace RHI
         m_device        = device;
         m_allocator     = (TL::IAllocator*)ci.allocator;
         m_tempAllocator = new TL::Arena();
-        return ResultCode::Success;
+        m_resourcePool  = TL::CreatePtr<RenderGraphResourcePool>();
+
+        auto result = m_resourcePool->Init(device);
+
+        return result;
     }
 
     void RenderGraph::Shutdown()
     {
-        delete m_allocator;
+        m_resourcePool->Shutdown();
+
+        // Only delete m_allocator if you own it!
+        // delete m_allocator;
         delete m_tempAllocator;
+        // Ensure all pools free their objects
+        m_passPool.clear();   // If TL::Ptr is not unique_ptr, manually delete
+        m_imagePool.Clear();  // Ensure this frees all images
+        m_bufferPool.Clear(); // Ensure this frees all buffers
     }
 
     void RenderGraph::BeginFrame(ImageSize2D frameSize)
@@ -328,93 +469,52 @@ namespace RHI
         Compile();
         Execute();
 
+        if (m_state.dumpGraphviz)
         {
-            // Print RenderGraph state: dependency levels, passes, inputs, outputs
-            TL_LOG_INFO("=== RenderGraph State ===");
+            TL::String output;
+            output += "====== RenderGraph State ======\n";
             for (size_t levelIdx = 0; levelIdx < m_dependencyLevels.size(); ++levelIdx)
             {
-            const auto& level = m_dependencyLevels[levelIdx];
-            TL_LOG_INFO("Dependency Level {}:", levelIdx);
-            for (auto pass : level.GetPasses())
-            {
-                TL_LOG_INFO("  Pass: {}", pass->GetName());
-
-                // Print previous producers
-                if (!pass->m_producers.empty())
+                const auto& level = m_dependencyLevels[levelIdx];
+                output += std::format("Dependency Level {}:\n", levelIdx);
+                for (auto pass : level.GetPasses())
                 {
-                TL_LOG_INFO("    Previous Producers:");
-                for (auto producer : pass->m_producers)
-                {
-                    TL_LOG_INFO("      - {}", producer ? producer->GetName() : "null");
-                }
-                }
-
-                // Print input images
-                if (!pass->m_imageDependencies.empty())
-                {
-                TL_LOG_INFO("    Image Inputs:");
-                for (const auto& dep : pass->m_imageDependencies)
-                {
-                    if (dep.access == Access::Read)
+                    output += std::format("  Pass: {}\n", pass->GetName());
+                    // Print image transitions
+                    for (const auto& dep : pass->m_imageDependencies)
                     {
-                    auto img = GetImage(dep.image);
-                    TL_LOG_INFO("      - {} (usage: {}, stage: {})", img ? img->m_name.c_str() : "null", (uint32_t)dep.usage, (uint32_t)dep.stage);
+                        auto img = m_imagePool.Get(dep.image);
+                        output += std::format("    Image: {} | Usage: {}\n", img->m_name, Debug::ToString(dep.state.usage));
                     }
-                }
-                }
-                // Print output images
-                if (!pass->m_imageDependencies.empty())
-                {
-                TL_LOG_INFO("    Image Outputs:");
-                for (const auto& dep : pass->m_imageDependencies)
-                {
-                    if (dep.access == Access::Write)
+                    // Print buffer transitions
+                    for (const auto& dep : pass->m_bufferDependencies)
                     {
-                    auto img = GetImage(dep.image);
-                    TL_LOG_INFO("      - {} (usage: {}, stage: {})", img ? img->m_name.c_str() : "null", (uint32_t)dep.usage, (uint32_t)dep.stage);
+                        auto buf = m_bufferPool.Get(dep.buffer);
+                        output += std::format("    Buffer: {} | Usage: {}\n", buf->m_name, Debug::ToString(dep.state.usage));
                     }
-                }
-                }
-                // Print input buffers
-                if (!pass->m_bufferDependencies.empty())
-                {
-                TL_LOG_INFO("    Buffer Inputs:");
-                for (const auto& dep : pass->m_bufferDependencies)
-                {
-                    if (dep.access == Access::Read)
-                    {
-                    auto buf = GetBuffer(dep.buffer);
-                    TL_LOG_INFO("      - {} (usage: {}, stage: {})", buf ? buf->m_name.c_str() : "null", (uint32_t)dep.usage, (uint32_t)dep.stage);
-                    }
-                }
-                }
-                // Print output buffers
-                if (!pass->m_bufferDependencies.empty())
-                {
-                TL_LOG_INFO("    Buffer Outputs:");
-                for (const auto& dep : pass->m_bufferDependencies)
-                {
-                    if (dep.access == Access::Write)
-                    {
-                    auto buf = GetBuffer(dep.buffer);
-                    TL_LOG_INFO("      - {} (usage: {}, stage: {})", buf ? buf->m_name.c_str() : "null", (uint32_t)dep.usage, (uint32_t)dep.stage);
-                    }
-                }
                 }
             }
-            }
-            TL_LOG_INFO("=========================");
+            output += "================================\n";
+            TL_LOG_INFO("{}", output);
+            m_state.dumpGraphviz = false;
         }
 
         {
+            ZoneScopedN("Clear");
             m_passPool.clear();
             m_imagePool.Clear();
             m_bufferPool.Clear();
+            m_imageList.clear();
+            m_bufferList.clear();
             m_dependencyLevels.clear();
             m_dependencyLevels.clear();
 
             // Finally collect temp arena allocations
             m_tempAllocator->Collect();
+
+            m_device->CollectResources();
+
+            memset(&m_state, 0, sizeof(State));
         }
 
         m_frameIndex++;
@@ -423,37 +523,40 @@ namespace RHI
     Handle<RGImage> RenderGraph::ImportSwapchain(const char* name, Swapchain& swapchain, Format format)
     {
         TL_ASSERT(m_state.frameRecording == true);
-        TL_ASSERT(IsNameValid(name));
 
         m_swapchain = &swapchain;
         auto handle = m_imagePool.Emplace(RGImage(name, swapchain.GetImage(), format));
+        m_imageList.push_back(handle);
         return handle;
     }
 
     Handle<RGImage> RenderGraph::ImportImage(const char* name, Handle<Image> image, Format format)
     {
         TL_ASSERT(m_state.frameRecording == true);
-        TL_ASSERT(IsNameValid(name));
 
-        auto handle = m_imagePool.Emplace(RGImage(name, image, format));
+        auto handle                           = m_imagePool.Emplace(RGImage(name, image, format));
+        m_imagePool.Get(handle)->m_isImported = true;
+
+        m_imageList.push_back(handle);
         return handle;
     }
 
     Handle<RGBuffer> RenderGraph::ImportBuffer(const char* name, Handle<Buffer> buffer)
     {
         TL_ASSERT(m_state.frameRecording == true);
-        TL_ASSERT(IsNameValid(name));
 
-        auto handle = m_bufferPool.Emplace(RGBuffer(name, buffer));
+        auto handle                            = m_bufferPool.Emplace(RGBuffer(name, buffer));
+        m_bufferPool.Get(handle)->m_isImported = true;
+        m_bufferList.push_back(handle);
         return handle;
     }
 
     Handle<RGImage> RenderGraph::CreateImage(const char* name, ImageType type, ImageSize3D size, Format format, uint32_t mipLevels, uint32_t arrayCount, SampleCount samples)
     {
         TL_ASSERT(m_state.frameRecording == true);
-        TL_ASSERT(IsNameValid(name));
 
         auto handle = m_imagePool.Emplace(RGImage(name, type, size, format, mipLevels, arrayCount, samples));
+        m_imageList.push_back(handle);
         return handle;
     }
 
@@ -467,6 +570,7 @@ namespace RHI
     {
         TL_ASSERT(m_state.frameRecording == true);
         auto handle = m_bufferPool.Emplace(RGBuffer(name, size));
+        m_bufferList.push_back(handle);
         return handle;
     }
 
@@ -484,28 +588,9 @@ namespace RHI
         return pass;
     }
 
-    void RenderGraph::QueueBufferRead(TL_MAYBE_UNUSED Handle<RGBuffer> buffer, TL_MAYBE_UNUSED uint32_t offset, TL_MAYBE_UNUSED TL::Block data)
+    void RenderGraph::Dump()
     {
-        TL_ASSERT(m_state.frameRecording == true);
-        TL_UNREACHABLE_MSG("TODO: Implement");
-    }
-
-    Handle<RGBuffer> RenderGraph::QueueBufferWrite(TL_MAYBE_UNUSED Handle<RGBuffer> buffer, TL_MAYBE_UNUSED uint32_t offset, TL_MAYBE_UNUSED TL::Block data)
-    {
-        TL_ASSERT(m_state.frameRecording == true);
-        TL_UNREACHABLE_MSG("TODO: Implement");
-    }
-
-    void RenderGraph::QueueImageRead(TL_MAYBE_UNUSED Handle<RGImage> image, TL_MAYBE_UNUSED ImageOffset3D offset, TL_MAYBE_UNUSED ImageSize3D size, TL_MAYBE_UNUSED ImageSubresourceLayers dstLayers, TL_MAYBE_UNUSED TL::Block block)
-    {
-        TL_ASSERT(m_state.frameRecording == true);
-        TL_UNREACHABLE_MSG("TODO: Implement");
-    }
-
-    Handle<RGImage> RenderGraph::QueueImageWrite(TL_MAYBE_UNUSED Handle<RGImage> image, TL_MAYBE_UNUSED ImageOffset3D offset, TL_MAYBE_UNUSED ImageSize3D size, TL_MAYBE_UNUSED ImageSubresourceLayers dstLayers, TL_MAYBE_UNUSED TL::Block block)
-    {
-        TL_ASSERT(m_state.frameRecording == true);
-        TL_UNREACHABLE_MSG("TODO: Implement");
+        m_state.dumpGraphviz = true;
     }
 
     // private:
@@ -516,34 +601,10 @@ namespace RHI
         return m_frameSize;
     }
 
-    const RGImage* RenderGraph::GetImage(Handle<RGImage> handle) const
-    {
-        // TL_ASSERT(m_state.compiled);
-        return m_imagePool.Get(handle);
-    }
-
-    RGImage* RenderGraph::GetImage(Handle<RGImage> handle)
-    {
-        // TL_ASSERT(m_state.compiled);
-        return m_imagePool.Get(handle);
-    }
-
-    const RGBuffer* RenderGraph::GetBuffer(Handle<RGBuffer> handle) const
-    {
-        // TL_ASSERT(m_state.compiled);
-        return m_bufferPool.Get(handle);
-    }
-
-    RGBuffer* RenderGraph::GetBuffer(Handle<RGBuffer> handle)
-    {
-        // TL_ASSERT(m_state.compiled);
-        return m_bufferPool.Get(handle);
-    }
-
     Handle<Image> RenderGraph::GetImageHandle(Handle<RGImage> handle) const
     {
         TL_ASSERT(m_state.compiled);
-        auto image = GetImage(handle);
+        auto image = m_imagePool.Get(handle);
         TL_ASSERT(image->m_handle);
         return image->m_handle;
     }
@@ -551,50 +612,40 @@ namespace RHI
     Handle<Buffer> RenderGraph::GetBufferHandle(Handle<RGBuffer> handle) const
     {
         TL_ASSERT(m_state.compiled);
-        auto buffer = GetBuffer(handle);
+        auto buffer = m_bufferPool.Get(handle);
         TL_ASSERT(buffer->m_handle);
         return buffer->m_handle;
     }
 
-    bool RenderGraph::IsNameValid(TL_MAYBE_UNUSED const char* name) const
-    {
-        TL_LOG_WARNNING("!TODO: Update this method to ensure graph names are unique");
-        return true;
-    }
-
     bool RenderGraph::CheckHandleIsValid(Handle<RGImage> imageHandle) const
     {
-        return GetImage(imageHandle)->m_valid;
+        return m_imagePool.Get(imageHandle)->m_isValid;
     }
 
     bool RenderGraph::CheckHandleIsValid(Handle<RGBuffer> bufferHandle) const
     {
-        return GetBuffer(bufferHandle)->m_valid;
+        return m_bufferPool.Get(bufferHandle)->m_isValid;
     }
 
     bool RenderGraph::CheckDependency(const RGPass* producer, const RGPass* consumer) const
     {
-        auto passesCount = m_passPool.size();
-        return m_dependencyTable[producer->m_indexInUnorderedList + consumer->m_indexInUnorderedList * passesCount] == true;
+        return consumer->m_producers.contains(producer->m_indexInUnorderedList);
     }
 
     void RenderGraph::AddDependency(const RGPass* producer, RGPass* consumer)
     {
-        auto passesCount = m_passPool.size();
-
         if (producer == nullptr)
             return; // consumer is actually the first producer of this resource
-        TL_ASSERT(producer->m_indexInUnorderedList != consumer->m_indexInUnorderedList);
 
-        consumer->m_producers.push_back((RGPass*)producer);
+        if (producer == consumer)
+            return;
 
-        m_dependencyTable[producer->m_indexInUnorderedList + consumer->m_indexInUnorderedList * passesCount] = true;
+        consumer->m_producers.insert(producer->m_indexInUnorderedList);
     }
 
     void RenderGraph::Compile()
     {
         ZoneScoped;
-        m_dependencyTable.resize(m_passPool.size() * m_passPool.size(), false);
 
         TL::Vector<TL::Vector<uint32_t>> adjacencyLists(m_passPool.size());
         BuildAdjacencyLists(adjacencyLists);
@@ -602,23 +653,41 @@ namespace RHI
         TL::Vector<uint32_t> sortedPasses;
         TopologicalSort(adjacencyLists, sortedPasses);
 
-        uint32_t                    detectedQueueCount = 0;
-        // TL::Vector<DependencyLevel> dependencyLevels;
+        uint32_t detectedQueueCount = 0;
         BuildDependencyLevels(sortedPasses, adjacencyLists, m_dependencyLevels, detectedQueueCount);
 
-        // TODO: Move to new function
-        // for (auto& pass : m_passPool)
+        CreateTransientResources();
+
         // {
-        //     if (pass->m_state.culled)
-        //         continue;
-        //     // Look up the pass hash in a map
-        //     if (auto state = GetPassState(pass.get()); state->shouldCompile)
+        //     ZoneScopedN("Compile Pass Resources");
+        //     for (auto& pass : m_passPool)
         //     {
-        //         RenderGraphContext ctx(this, pass.get());
-        //         pass->Compile(ctx);
-        //         state->shouldCompile = false;
+        //         size_t hash = 0;
+        //         for (auto& dep : pass->m_imageDependencies)
+        //         {
+        //             auto rgImage = m_imagePool.Get(dep.image);
+        //             hash         = TL::HashCombine(hash, rgImage->GetHash());
+        //         }
+        //         for (auto& dep : pass->m_bufferDependencies)
+        //         {
+        //             auto rgBuffer = m_bufferPool.Get(dep.buffer);
+        //             hash          = TL::HashCombine(hash, rgBuffer->GetHash());
+        //         }
+
+        //         auto hashValue = m_passHashMap[pass->GetName()];
+        //         if (hashValue != hash)
+        //         {
+        //             m_passHashMap[pass->GetName()] = hash;
+
+        //             RenderGraphContext context(this, pass.get());
+        //             pass->Compile(context);
+        //         }
         //     }
         // }
+
+        PassBuildBarriers();
+
+        m_state.compiled = true;
     }
 
     void RenderGraph::BuildAdjacencyLists(TL::Vector<TL::Vector<uint32_t>>& adjacencyLists)
@@ -627,7 +696,7 @@ namespace RHI
         {
             auto  pass                = m_passPool[nodeIdx].get();
             auto& adjacentNodeIndices = adjacencyLists[nodeIdx];
-            for (size_t otherNodeIdx = 0; otherNodeIdx < m_passPool.size(); ++otherNodeIdx)
+            for (uint32_t otherNodeIdx = 0; otherNodeIdx < m_passPool.size(); ++otherNodeIdx)
             {
                 // Do not check dependencies on itself
                 if (nodeIdx == otherNodeIdx) continue;
@@ -689,7 +758,7 @@ namespace RHI
         TL::Vector<int32_t> longestDistances(sortedPasses.size(), 0);
         uint64_t            dependencyLevelCount = 1;
         // Perform longest node distance search
-        for (auto nodeIndex = 0; nodeIndex < sortedPasses.size(); ++nodeIndex)
+        for (uint32_t nodeIndex = 0; nodeIndex < sortedPasses.size(); ++nodeIndex)
         {
             uint64_t originalIndex      = m_passPool[sortedPasses[nodeIndex]]->m_indexInUnorderedList;
             uint64_t adjacencyListIndex = originalIndex;
@@ -721,35 +790,158 @@ namespace RHI
         }
     }
 
+    void RenderGraph::CreateTransientResources()
+    {
+        ZoneScoped;
+
+        for (auto image : m_imageList)
+        {
+            auto rgImage = m_imagePool.Get(image);
+            if (rgImage->m_isImported)
+                continue;
+
+            rgImage->m_handle = m_resourcePool->InitTransientImage(rgImage);
+            for (auto before = rgImage->m_prevHandle; before != NullHandle; before = m_imagePool.Get(before)->m_prevHandle)
+            {
+                auto beforeImage      = m_imagePool.Get(before);
+                beforeImage->m_handle = rgImage->m_handle;
+            }
+        }
+
+        for (auto buffer : m_bufferList)
+        {
+            auto rgBuffer = m_bufferPool.Get(buffer);
+            if (rgBuffer->m_isImported)
+                continue;
+
+            rgBuffer->m_handle = m_resourcePool->InitTransientBuffer(rgBuffer);
+            for (auto before = rgBuffer->m_prevHandle; before != NullHandle; before = m_bufferPool.Get(before)->m_prevHandle)
+            {
+                auto beforeImage      = m_bufferPool.Get(before);
+                beforeImage->m_handle = rgBuffer->m_handle;
+            }
+        }
+    }
+
+    void RenderGraph::PassBuildBarriers()
+    {
+        ZoneScoped;
+
+        auto TransitionImageResource = [this](RGPass* pass, RGImageDependency dep)
+        {
+            auto resource = m_imagePool.Get(dep.image);
+
+            if (resource->m_activeState == dep.state)
+            {
+                return;
+            }
+
+            auto& passImageBarriers = pass->m_barriers[0].imageBarriers;
+
+            passImageBarriers.push_back({
+                .image    = resource->m_handle,
+                .srcState = resource->m_activeState,
+                .dstState = dep.state,
+            });
+
+            resource->m_activeState = dep.state;
+        };
+
+        auto TransitionBufferResource = [this](RGPass* pass, RGBufferDependency dep)
+        {
+            auto resource = m_bufferPool.Get(dep.buffer);
+
+            if (resource->m_activeState == dep.state)
+            {
+                return;
+            }
+
+            auto& passBufferBarriers = pass->m_barriers[0].bufferBarriers;
+
+            passBufferBarriers.push_back({
+                .buffer   = resource->m_handle,
+                .srcState = resource->m_activeState,
+                .dstState = dep.state,
+            });
+
+            resource->m_activeState = dep.state;
+        };
+
+        for (auto level : m_dependencyLevels)
+        {
+            for (auto pass : level.GetPasses())
+            {
+                if (pass->m_state.culled)
+                    continue;
+
+                for (auto dep : pass->m_imageDependencies)
+                {
+                    TransitionImageResource(pass, dep);
+                }
+                for (auto dep : pass->m_bufferDependencies)
+                {
+                    TransitionBufferResource(pass, dep);
+                }
+            }
+        }
+    }
+
     void RenderGraph::Execute()
     {
         ZoneScoped;
 
-        // TODO: Handle resource transition barriers
-        // // for every pass in topologically sorted passes
-        // for (auto& level : m_dependencyLevels)
-        // {
-        //     for (auto pass : level.GetPasses())
-        //     {
-        //         if (pass->m_state.culled)
-        //             continue;
+#if RHI_RG_EXECUTE_MULTITHREADED
+    #error "TODO: Implement"
+#else
+        if (false)
+        {
+            CommandListCreateInfo cmdCI{
+                .name      = "RG-CMD",
+                .queueType = QueueType::Graphics,
+            };
+            auto commandList = m_device->CreateCommandList(cmdCI);
 
-        //         for (auto dep : pass->m_imageDependencies)
-        //         {
-        //             // last known state
-        //         }
-        //         for (auto dep : pass->m_bufferDependencies)
-        //         {
-        //         }
-        //     }
+            commandList->Begin();
+            for (const auto& level : m_dependencyLevels)
+            {
+                for (auto pass : level.GetPasses())
+                {
+                    ExecutePass(pass, commandList);
+                }
+            }
 
-        //     // for every dep in pass
-        //     // if current state = dep.state (skip)
-        //     // if resource.last_pass = dep.pass (skip)
-        //     // dep.resource.push_back(transition)
-        // }
+            if (m_swapchain)
+            {
+                // FIXME: This is hardcoded for now
+                RHI::ImageBarrierInfo barrier{
+                    .image    = m_swapchain->GetImage(),
+                    .srcState = {
+                                 .usage  = ImageUsage::Color,
+                                 .stage  = PipelineStage::ColorAttachmentOutput,
+                                 .access = Access::ReadWrite,
+                                 },
+                    .dstState = {
+                                 .usage  = ImageUsage::Present,
+                                 .stage  = PipelineStage::BottomOfPipe,
+                                 .access = Access::None,
+                                 },
+                };
+                commandList->AddPipelineBarrier({}, barrier, {});
+            }
 
-        // ExecuteSerialSingleThreaded();
+            commandList->End();
+
+            QueueSubmitInfo submitInfo{
+                .queueType            = QueueType::Graphics,
+                .commandLists         = commandList,
+                .signalStage          = PipelineStage::BottomOfPipe,
+                .waitInfos            = {},
+                .m_swapchainToAcquire = m_swapchain,
+                .m_swapchainToSignal  = m_swapchain,
+            };
+            TL_MAYBE_UNUSED auto timeline = m_device->QueueSubmit(submitInfo);
+        }
+#endif
 
         m_frameIndex++;
     }
@@ -802,7 +994,7 @@ namespace RHI
                 };
             }
             RenderPassBeginInfo beginInfo{
-                .name                   = pass->GetName(),
+                // .name                   = pass->GetName(),
                 .size                   = pass->m_gfxPassInfo.m_size,
                 .offset                 = pass->m_gfxPassInfo.m_offset,
                 .colorAttachments       = attachments,
@@ -830,39 +1022,74 @@ namespace RHI
         commandList->PopDebugMarker();
     }
 
-    void RenderGraph::ExecuteSerialSingleThreaded()
+    void RenderGraph::ExtendImageUsage(RGImage* imageBefore, ImageUsage usage)
     {
-        CommandListCreateInfo cmdCI{
-            .name      = "RG-CMD",
-            .queueType = QueueType::Graphics,
-        };
-        auto commandList = m_device->CreateCommandList(cmdCI);
+        // Add the new usage flag to the image's usageFlags
+        imageBefore->m_desc.usageFlags |= usage;
 
-        commandList->Begin();
-        for (const auto& level : m_dependencyLevels)
+        for (auto before = imageBefore->m_prevHandle; before != NullHandle; before = m_imagePool.Get(before)->m_prevHandle)
         {
-            for (auto pass : level.GetPasses())
-            {
-                ExecutePass(pass, commandList);
-            }
+            auto beforeImage = m_imagePool.Get(before);
+            beforeImage->m_desc.usageFlags |= usage;
         }
-
-        if (m_swapchain)
-        {
-            // Add barrier to blits swapchain to its original
-        }
-
-        commandList->End();
-
-        QueueSubmitInfo submitInfo{
-            .queueType            = QueueType::Graphics,
-            .commandLists         = commandList,
-            .signalStage          = PipelineStage::BottomOfPipe,
-            .waitInfos            = {},
-            .m_swapchainToAcquire = m_swapchain,
-            .m_swapchainToSignal  = m_swapchain,
-        };
-        TL_MAYBE_UNUSED auto timeline = m_device->QueueSubmit(submitInfo);
     }
 
+    void RenderGraph::ExtendBufferUsage(RGBuffer* bufferBefore, BufferUsage usage)
+    {
+        // Add the new usage flag to the buffer's usageFlags
+        bufferBefore->m_desc.usageFlags |= usage;
+
+        for (auto before = bufferBefore->m_prevHandle; before != NullHandle; before = m_bufferPool.Get(before)->m_prevHandle)
+        {
+            auto beforeBuffer = m_bufferPool.Get(before);
+            beforeBuffer->m_desc.usageFlags |= usage;
+        }
+    }
+
+    Handle<RGImage> RenderGraph::CreateRGImageHandle(Handle<RGImage> imageBeforeHandle, RGPass* producer)
+    {
+        auto imageBefore = m_imagePool.Get(imageBeforeHandle);
+
+        // Create a new RGImage as a versioned copy of imageBefore, update producer
+        auto     handle           = m_imagePool.Emplace(RGImage(
+            imageBefore->m_name.c_str(),
+            imageBefore->m_desc.type,
+            imageBefore->m_desc.size,
+            imageBefore->m_desc.format,
+            imageBefore->m_desc.mipLevels,
+            imageBefore->m_desc.arrayCount,
+            imageBefore->m_desc.sampleCount));
+        RGImage* newImage         = m_imagePool.Get(handle);
+        newImage->m_producer      = producer;
+        newImage->m_isImported    = imageBefore->m_isImported;
+        newImage->m_prevHandle    = imageBefore->m_prevHandle;
+        newImage->m_nextHandle    = {};
+        newImage->m_state         = imageBefore->m_state;
+        newImage->m_activeState   = imageBefore->m_activeState;
+        // Link version chain
+        imageBefore->m_nextHandle = handle;
+        newImage->m_prevHandle    = imageBeforeHandle;
+        return handle;
+    }
+
+    Handle<RGBuffer> RenderGraph::CreateRGBufferHandle(Handle<RGBuffer> bufferBeforeHandle, RGPass* producer)
+    {
+        auto bufferBefore = m_bufferPool.Get(bufferBeforeHandle);
+
+        // Create a new RGBuffer as a versioned copy of bufferBefore, update producer
+        auto      handle           = m_bufferPool.Emplace(RGBuffer(
+            bufferBefore->m_name.c_str(),
+            bufferBefore->m_desc.size));
+        RGBuffer* newBuffer        = m_bufferPool.Get(handle);
+        newBuffer->m_producer      = producer;
+        newBuffer->m_isImported    = bufferBefore->m_isImported;
+        newBuffer->m_prevHandle    = bufferBefore->m_prevHandle;
+        newBuffer->m_nextHandle    = {};
+        newBuffer->m_state         = bufferBefore->m_state;
+        newBuffer->m_activeState   = bufferBefore->m_activeState;
+        // Link version chain
+        bufferBefore->m_nextHandle = handle;
+        newBuffer->m_prevHandle    = bufferBeforeHandle;
+        return handle;
+    }
 } // namespace RHI

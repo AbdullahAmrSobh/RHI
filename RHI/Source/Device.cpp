@@ -36,7 +36,7 @@ namespace RHI
     {
         ZoneScoped;
         auto* renderGraph     = new RenderGraph();
-        renderGraph->m_device = this;
+        renderGraph->Init(this, createInfo);
         return renderGraph;
     }
 

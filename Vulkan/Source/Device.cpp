@@ -641,10 +641,10 @@ namespace RHI::Vulkan
 
         vkDeviceWaitIdle(m_device);
 
+        m_destroyQueue->Shutdown();
         m_stagingBuffer->Shutdown();
         m_commandsAllocator->Shutdown();
         m_bindGroupAllocator->Shutdown();
-        m_destroyQueue->Shutdown();
         for (auto& queue : m_queue)
         {
             if (queue.GetHandle() != VK_NULL_HANDLE)

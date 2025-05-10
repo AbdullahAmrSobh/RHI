@@ -9,6 +9,8 @@
 
 namespace RHI
 {
+    // TODO: Replace compare operatrs with default
+
     // Constants
     inline static constexpr uint64_t WholeSize         = UINT64_MAX;
     inline static constexpr uint32_t BindlessArraySize = UINT32_MAX;
