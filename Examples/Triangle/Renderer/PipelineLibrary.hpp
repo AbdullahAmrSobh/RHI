@@ -12,6 +12,8 @@ namespace Engine
         inline constexpr const char* Cull        = "./Shaders/Cull";
     }; // namespace ShaderNames
 
+    class ShaderPipeline{};
+
     /// A class which holds all the pipelines that are used by the renderer
     /// Also handles hot reloading of the pipelines when the shader files change
     class PipelineLibrary
@@ -35,6 +37,8 @@ namespace Engine
 
         void ReloadInvalidatedShaders();
 
+        static ShaderPipeline* GetShaderPipeline(const char* name);
+
     private:
         RHI::Device*                      m_device;
         RHI::Handle<RHI::BindGroupLayout> m_gBufferBGL;
@@ -46,4 +50,6 @@ namespace Engine
         TL::Map<TL::String, RHI::Handle<RHI::GraphicsPipeline>> m_graphicsPipelines;
         TL::Map<TL::String, RHI::Handle<RHI::ComputePipeline>>  m_computePipelines;
     };
+
+
 } // namespace Engine

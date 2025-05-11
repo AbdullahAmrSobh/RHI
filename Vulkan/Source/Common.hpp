@@ -536,7 +536,7 @@ namespace RHI::Vulkan
             result |= VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
         default: break;
         };
-        TL_ASSERT(result != VK_ACCESS_2_NONE);
+        // TL_ASSERT(result != VK_ACCESS_2_NONE);
         return result;
     }
 

@@ -310,11 +310,11 @@ namespace RHI::Vulkan
         if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
             return ResultCode::Success;
 
-        m_currentSemaphoreIndex = (m_currentSemaphoreIndex + 1) % m_imageCount;
-
-        auto semaphore = m_imageAcquiredSemaphore[m_currentSemaphoreIndex];
+        auto semaphore = GetImageAcquiredSemaphore();
         result         = vkAcquireNextImageKHR(m_device->m_device, m_swapchain, UINT64_MAX, semaphore, VK_NULL_HANDLE, &m_currentImageIndex);
         TL_ASSERT(result == VK_SUCCESS);
+
+        m_currentSemaphoreIndex = (m_currentSemaphoreIndex + 1) % m_imageCount;
 
         auto image        = m_device->m_imageOwner.Get(m_image);
         image->handle     = m_images[m_currentImageIndex];

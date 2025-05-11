@@ -66,7 +66,7 @@ namespace Engine
         {
             RHI::SwapchainConfigureInfo configuration{
                 .size        = {width, height},
-                .imageCount  = 3,
+                .imageCount  = 1,
                 .imageUsage  = RHI::ImageUsage::Color,
                 .format      = RHI::Format::RGBA8_UNORM,
                 .presentMode = RHI::SwapchainPresentMode::Fifo,
@@ -76,36 +76,6 @@ namespace Engine
         }
 
         m_renderGraph = m_device->CreateRenderGraph({});
-
-        // m_gBuffer.colorAttachment    = m_renderGraph->ImportSwapchain("Color", *m_swapchain, RHI::Format::RGBA8_UNORM);
-        // m_gBuffer.normalsAttachment  = m_renderGraph->CreateImage({
-        //      .name       = "Normal",
-        //      .usageFlags = RHI::ImageUsage::Depth,
-        //      .type       = RHI::ImageType::Image2D,
-        //      .size       = {width, height, 1},
-        //      .format     = RHI::Format::RGBA32_FLOAT,
-        // });
-        // m_gBuffer.positionAttachment = m_renderGraph->CreateImage({
-        //     .name       = "Position",
-        //     .usageFlags = RHI::ImageUsage::Depth,
-        //     .type       = RHI::ImageType::Image2D,
-        //     .size       = {width, height, 1},
-        //     .format     = RHI::Format::RGBA32_FLOAT,
-        // });
-        // m_gBuffer.materialAttachment = m_renderGraph->CreateImage({
-        //     .name       = "Material",
-        //     .usageFlags = RHI::ImageUsage::Depth,
-        //     .type       = RHI::ImageType::Image2D,
-        //     .size       = {width, height, 1},
-        //     .format     = RHI::Format::RG8_UNORM,
-        // });
-        // m_gBuffer.depthAttachment    = m_renderGraph->CreateImage({
-        //        .name       = "Depth",
-        //        .usageFlags = RHI::ImageUsage::Depth,
-        //        .type       = RHI::ImageType::Image2D,
-        //        .size       = {width, height, 1},
-        //        .format     = RHI::Format::D32,
-        // });
 
         ResultCode resultCode;
 
@@ -221,87 +191,88 @@ namespace Engine
 
         m_renderGraph->BeginFrame({width, height});
 
-        // static auto indirectBuffer = m_renderGraph->CreateBuffer({.name = "Indirect-Test", .usageFlags = RHI::BufferUsage::Indirect | RHI::BufferUsage::Storage, .byteSize = sizeof(RHI::DrawIndexedParameters)});
+        auto indirectBuffer = m_renderGraph->CreateBuffer("Indirect-Test", sizeof(RHI::DrawIndexedParameters));
 
-        // m_renderGraph->AddPass({
-        //     .name          = "Name",
-        //     .queue         = RHI::QueueType::Compute,
-        //     .size          = {},
-        //     .setupCallback = [&](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
-        //     {
-        //         m_renderGraph->UseBuffer(pass, indirectBuffer, RHI::BufferUsage::Storage, RHI::PipelineStage::ComputeShader, RHI::Access::Write);
-        //     },
-        //     .compileCallback = [&](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
-        //     {
-        //         m_device->UpdateBindGroup(
-        //             m_bindGroup,
-        //             {
-        //                 .buffers = {
-        //                             RHI::BindGroupBuffersUpdateInfo{
-        //                         .dstBinding = 0,
-        //                         .buffers    = indirectBuffer->GetBuffer(),
-        //                         .subregions = {{0, ~0ULL}},
-        //                     },
-        //                             },
-        //         });
-        //     },
-        //     .executeCallback = [&](RHI::CommandList& commandList)
-        //     {
-        //         auto pipeline = m_pipelineLibrary.GetComputePipeline(ShaderNames::Cull);
-        //         commandList.BindComputePipeline(pipeline, {{m_bindGroup}});
-        //         commandList.Dispatch({4, 1, 1});
-        //     },
-        // });
+        m_renderGraph->AddPass({
+            .name          = "Indirect-Fill",
+            .type          = RHI::PassType::Compute,
+            .size          = {},
+            .setupCallback = [&](RHI::RenderGraphBuilder& builder)
+            {
+                indirectBuffer = builder.WriteBuffer(indirectBuffer, RHI::BufferUsage::Storage, RHI::PipelineStage::ComputeShader);
+            },
+            .compileCallback = [&](RHI::RenderGraphContext& context)
+            {
+                auto buffer = context.GetBuffer(indirectBuffer);
+                m_device->UpdateBindGroup(m_bindGroup,
+                    {
+                        .buffers = {RHI::BindGroupBuffersUpdateInfo{
+                            .dstBinding = 0,
+                            .buffers    = buffer,
+                            .subregions = {{0, RHI::WholeSize}},
+                        }},
+                    });
+            },
+            .executeCallback = [&](RHI::CommandList& commandList)
+            {
+                auto pipeline = m_pipelineLibrary.GetComputePipeline(ShaderNames::Cull);
+                commandList.BindComputePipeline(pipeline, {{m_bindGroup}});
+                commandList.Dispatch({4, 1, 1});
+            },
+        });
 
-        // m_renderGraph->AddPass({
-        //     .name          = "main-buffer",
-        //     .queue         = RHI::QueueType::Graphics,
-        //     .size          = {width, height},
-        //     .setupCallback = [&](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
-        //     {
-        //         m_renderGraph->UseColorAttachment(pass, {.view = m_gBuffer.colorAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
-        //         m_renderGraph->UseColorAttachment(pass, {.view = m_gBuffer.positionAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
-        //         m_renderGraph->UseColorAttachment(pass, {.view = m_gBuffer.normalsAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
-        //         m_renderGraph->UseColorAttachment(pass, {.view = m_gBuffer.materialAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
-        //         // Depth attachment
-        //         m_renderGraph->UseDepthStencilAttachment(pass, {
-        //                                                            .view = m_gBuffer.depthAttachment, .clearValue = {1.0f, 0}});
+        auto colorAttachment = m_renderGraph->ImportSwapchain("color", *m_swapchain, RHI::Format::RGBA8_UNORM);
+        m_renderGraph->AddPass({
+            .name          = "main-buffer",
+            .type          = RHI::PassType::Graphics,
+            .size          = {width, height},
+            .setupCallback = [&](RHI::RenderGraphBuilder& builder)
+            {
+                auto positionAttachment = m_renderGraph->CreateRenderTarget("position", {width, height}, RHI::Format::RGBA8_UNORM);
+                auto normalsAttachment  = m_renderGraph->CreateRenderTarget("normals", {width, height}, RHI::Format::RGBA8_UNORM);
+                auto materialAttachment = m_renderGraph->CreateRenderTarget("material", {width, height}, RHI::Format::RGBA8_UNORM);
+                auto depthAttachment    = m_renderGraph->CreateRenderTarget("depth", {width, height}, RHI::Format::D32);
 
-        //         m_renderGraph->UseBuffer(pass, indirectBuffer, RHI::BufferUsage::Indirect, RHI::PipelineStage::DrawIndirect, RHI::Access::Read);
-        //                       },
-        //     .compileCallback = [&](RHI::RenderGraph& renderGraph, RHI::Pass& pass)
-        //     {
-        //                       },
-        //     .executeCallback = [&](RHI::CommandList& commandList)
-        //     {
-        //         commandList.SetViewport({
-        //             .offsetX  = 0.0f,
-        //             .offsetY  = 0.0f,
-        //             .width    = (float)width,
-        //             .height   = (float)height,
-        //             .minDepth = 0.0f,
-        //             .maxDepth = 1.0f,
-        //         });
-        //         commandList.SetScissor({
-        //             .offsetX = 0,
-        //             .offsetY = 0,
-        //             .width   = width,
-        //             .height  = height,
-        //         });
+                builder.AddColorAttachment({.color = colorAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
+                builder.AddColorAttachment({.color = colorAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
+                builder.AddColorAttachment({.color = colorAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
+                builder.AddColorAttachment({.color = colorAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
+                builder.SetDepthStencil({
+                    .depthStencil = depthAttachment, .clearValue = {1.0f, 0}});
 
-        //         for (auto scene : m_activeScenes)
-        //         {
-        //             FillGBuffer(scene, commandList);
-        //             commandList.DrawIndexedIndirect({indirectBuffer->GetBuffer(), 0}, {}, 1, sizeof(RHI::DrawIndexedParameters));
-        //         }
-        //                       },
-        // });
+                builder.ReadBuffer(indirectBuffer, RHI::BufferUsage::Indirect, RHI::PipelineStage::DrawIndirect);
+                              },
+            .compileCallback = [&](RHI::RenderGraphContext& context)
+            {
+                              },
+            .executeCallback = [&](RHI::CommandList& commandList)
+            {
+                commandList.SetViewport({
+                    .offsetX  = 0.0f,
+                    .offsetY  = 0.0f,
+                    .width    = (float)width,
+                    .height   = (float)height,
+                    .minDepth = 0.0f,
+                    .maxDepth = 1.0f,
+                });
+                commandList.SetScissor({
+                    .offsetX = 0,
+                    .offsetY = 0,
+                    .width   = width,
+                    .height  = height,
+                });
 
-        // // ImGui
-        // m_imguiRenderer.RenderDrawData(ImGui::GetDrawData(), *m_renderGraph, {width, height}, m_gBuffer.colorAttachment);
+                for (auto scene : m_activeScenes)
+                {
+                    FillGBuffer(scene, commandList);
+                    commandList.DrawIndexedIndirect({m_renderGraph->GetBufferHandle(indirectBuffer), 0}, {}, 1, sizeof(RHI::DrawIndexedParameters));
+                }
+                              },
+        });
 
-        // m_renderGraph->EndFrame();
-        // m_device->CollectResources();
+        // ImGui
+        m_imguiRenderer.RenderDrawData(ImGui::GetDrawData(), *m_renderGraph, colorAttachment);
+        m_renderGraph->EndFrame();
     }
 
     void Renderer::OnWindowResize()

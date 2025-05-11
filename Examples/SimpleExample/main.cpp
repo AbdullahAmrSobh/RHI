@@ -55,111 +55,94 @@ int main(int argc, const char* argv[])
     auto swapchain = device->CreateSwapchain(swapchainCI);
     auto result    = swapchain->Configure({
            .size        = windowSize,
-           .imageCount  = 2,
+           .imageCount  = 1,
            .imageUsage  = RHI::ImageUsage::Color,
            .format      = RHI::Format::RGBA8_UNORM,
            .presentMode = RHI::SwapchainPresentMode::Fifo,
-           .alphaMode   = RHI::SwapchainAlphaMode::PostMultiplied,
+           .alphaMode   = RHI::SwapchainAlphaMode::None,
     });
     TL_ASSERT(RHI::IsSuccess(result));
 
     auto renderGraph = device->CreateRenderGraph({});
 
-#if 0 // Pipeline logic
-    {
-        RHI::BindGroupLayoutCreateInfo bindGroupLayoutCI{
-            .name     = "ImGui-BindGroupLayout",
-            .bindings = {
-                         RHI::ShaderBinding{.type = RHI::BindingType::UniformBuffer, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Vertex},
-                         RHI::ShaderBinding{.type = RHI::BindingType::Sampler, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel},
-                         RHI::ShaderBinding{.type = RHI::BindingType::SampledImage, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel}}
+    RHI::BindGroupLayoutCreateInfo bindGroupLayoutCI{
+        .name = "ImGui-BindGroupLayout",
+        // .bindings = {
+        //  RHI::ShaderBinding{.type = RHI::BindingType::UniformBuffer, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Vertex},
+        //  RHI::ShaderBinding{.type = RHI::BindingType::Sampler, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel},
+        //  RHI::ShaderBinding{.type = RHI::BindingType::SampledImage, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel}}
+    };
+    // auto bindGroupLayout = device->CreateBindGroupLayout(bindGroupLayoutCI);
+
+    RHI::PipelineLayoutCreateInfo pipelineLayoutCI{.layouts = {}};
+    auto                          pipelineLayout = device->CreatePipelineLayout(pipelineLayoutCI);
+
+    auto vertexShaderModule = LoadShaderModule(device, "Shaders/Triangle.vertex.spv");
+    auto fragmentShader     = LoadShaderModule(device, "Shaders/Triangle.fragment.spv");
+
+    RHI::ColorAttachmentBlendStateDesc attachmentBlendDesc =
+        {
+            true,
+            RHI::BlendEquation::Add,
+            RHI::BlendFactor::SrcAlpha,
+            RHI::BlendFactor::OneMinusSrcAlpha,
+            RHI::BlendEquation::Add,
+            RHI::BlendFactor::One,
+            RHI::BlendFactor::OneMinusSrcAlpha,
+            RHI::ColorWriteMask::All,
         };
-        auto bindGroupLayout = device->CreateBindGroupLayout(bindGroupLayoutCI);
 
-        RHI::PipelineLayoutCreateInfo pipelineLayoutCI{.layouts = {bindGroupLayout}};
-        auto                          pipelineLayout = device->CreatePipelineLayout(pipelineLayoutCI);
-
-        auto vertexShaderModule = LoadShaderModule(device, "Shaders/ImGui.vertex.spv");
-        auto fragmentShader     = LoadShaderModule(device, "Shaders/ImGui.fragment.spv");
-
-        RHI::ColorAttachmentBlendStateDesc attachmentBlendDesc =
-            {
-                true,
-                RHI::BlendEquation::Add,
-                RHI::BlendFactor::SrcAlpha,
-                RHI::BlendFactor::OneMinusSrcAlpha,
-                RHI::BlendEquation::Add,
-                RHI::BlendFactor::One,
-                RHI::BlendFactor::OneMinusSrcAlpha,
-                RHI::ColorWriteMask::All,
-            };
-        RHI::GraphicsPipelineCreateInfo pipelineCI =
-            {
-                .name               = "ImGui Pipeline",
-                .vertexShaderName   = "VSMain",
-                .vertexShaderModule = vertexShaderModule,
-                .pixelShaderName    = "PSMain",
-                .pixelShaderModule  = fragmentShader,
-                .layout             = pipelineLayout,
-                .vertexBufferBindings =
-                    {
-                                           {
-                            .stride   = 20,
-                            .stepRate = RHI::PipelineVertexInputRate::PerVertex,
-                            .attributes =
-                                {
-                                    {.offset = 0, .format = RHI::Format::RG32_FLOAT},
-                                    {.offset = 8, .format = RHI::Format::RG32_FLOAT},
-                                    {.offset = 16, .format = RHI::Format::RGBA8_UNORM},
-                                },
-                        },
-                                           },
-                .renderTargetLayout =
-                    {
-                                           .colorAttachmentsFormats = {RHI::Format::RGBA8_UNORM},
-                                           .depthAttachmentFormat   = RHI::Format::D32,
-                                           },
-                .colorBlendState =
-                    {
-                                           .blendStates    = {attachmentBlendDesc},
-                                           .blendConstants = {},
-                                           },
-                .topologyMode = RHI::PipelineTopologyMode::Triangles,
-                .rasterizationState =
-                    {
-                                           .cullMode  = RHI::PipelineRasterizerStateCullMode::None,
-                                           .fillMode  = RHI::PipelineRasterizerStateFillMode::Triangle,
-                                           .frontFace = RHI::PipelineRasterizerStateFrontFace::CounterClockwise,
-                                           .lineWidth = 1.0f,
-                                           },
-                .multisampleState =
-                    {
-                                           .sampleCount   = RHI::SampleCount::Samples1,
-                                           .sampleShading = false,
-                                           },
-                .depthStencilState =
-                    {
-                                           .depthTestEnable   = false,
-                                           .depthWriteEnable  = true,
-                                           .compareOperator   = RHI::CompareOperator::Always,
-                                           .stencilTestEnable = false,
-                                           },
-        };
-        auto pipeline = device->CreateGraphicsPipeline(pipelineCI);
-    }
-#endif
-
+    RHI::GraphicsPipelineCreateInfo pipelineCI{
+        .name                 = "ImGui Pipeline",
+        .vertexShaderName     = "VSMain",
+        .vertexShaderModule   = vertexShaderModule,
+        .pixelShaderName      = "PSMain",
+        .pixelShaderModule    = fragmentShader,
+        .layout               = pipelineLayout,
+        .vertexBufferBindings = {},
+        .renderTargetLayout   = {
+                                 .colorAttachmentsFormats = {RHI::Format::RGBA8_UNORM},
+                                 .depthAttachmentFormat   = RHI::Format::D32,
+                                 },
+        .colorBlendState = {
+                                 .blendStates    = {attachmentBlendDesc},
+                                 .blendConstants = {},
+                                 },
+        .depthStencilState = {
+                                 .depthTestEnable   = false,
+                                 .depthWriteEnable  = true,
+                                 .compareOperator   = RHI::CompareOperator::Always,
+                                 .stencilTestEnable = false,
+                                 },
+    };
+    auto pipeline = device->CreateGraphicsPipeline(pipelineCI);
+    device->DestroyShaderModule(vertexShaderModule);
+    device->DestroyShaderModule(fragmentShader);
     while (!glfwWindowShouldClose(window))
     {
         ZoneScopedN("DrawLoop");
 
-        auto rg = renderGraph;
+        glfwGetWindowSize(window, (int*)&windowSize.width, (int*)&windowSize.height);
 
-        bool EnableGPUDrivenPipeline      = true;
-        bool EnableSSAO                   = true;
-        bool EnableScreenSpaceReflections = true;
-        bool EnableFXAA                   = true;
-        bool EnableTAA                    = true;
+        auto        rg                           = renderGraph;
+        static bool EnableGPUDrivenPipeline      = true;
+        static bool EnableSSAO                   = true;
+        static bool EnableScreenSpaceReflections = true;
+        static bool EnableFXAA                   = true;
+        static bool EnableTAA                    = true;
+
+        static bool GraphDumpEnabled = false;
+
+        // Keyboard toggles: Q=FXAA, W=TAA, E=SSAO
+        if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+            EnableFXAA = !EnableFXAA;
+        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+            EnableTAA = !EnableTAA;
+        if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+            EnableSSAO = !EnableSSAO;
+
+        if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
+            GraphDumpEnabled = true;
 
         // The following should invalidate the graph, and require new setup
         // 1. adding new pass that was not added before
@@ -168,6 +151,7 @@ int main(int argc, const char* argv[])
         // 1. disabling pass
 
         rg->BeginFrame(windowSize);
+#if 0
         {
             RHI::Handle<RHI::RGBuffer> indirectDrawList = rg->CreateBuffer("indirectDrawList", 1);
             RHI::Handle<RHI::RGBuffer> indirectDrawArgs;
@@ -179,8 +163,12 @@ int main(int argc, const char* argv[])
                     .size          = windowSize,
                     .setupCallback = [&](RHI::RenderGraphBuilder& builder)
                     {
-                        builder.ReadBuffer(indirectDrawList, RHI::BufferUsage::Storage, RHI::PipelineStage::ComputeShader);
+                        indirectDrawList = builder.WriteBuffer(indirectDrawList, RHI::BufferUsage::Storage, RHI::PipelineStage::ComputeShader);
                         indirectDrawArgs = builder.WriteBuffer(rg->CreateBuffer("indirectDrawArgs", 1), RHI::BufferUsage::Storage, RHI::PipelineStage::ComputeShader);
+                    },
+                    .compileCallback = [&](RHI::RenderGraphContext& context)
+                    {
+                        TL_LOG_INFO("Cull pass compiled");
                     },
                     .executeCallback = [=](RHI::CommandList& cmd)
                     {
@@ -207,6 +195,10 @@ int main(int argc, const char* argv[])
                     materialRT   = builder.AddColorAttachment({.color = rg->CreateRenderTarget("material", windowSize, RHI::Format::RGBA32_FLOAT)});
                     depthRT      = builder.SetDepthStencil({.depthStencil = rg->CreateRenderTarget("depth", windowSize, RHI::Format::D32)});
                 },
+                .compileCallback = [&](RHI::RenderGraphContext& context)
+                {
+                    TL_LOG_INFO("GBuffer pass compiled");
+                },
                 .executeCallback = [=](RHI::CommandList& cmd)
                 {
                     // GBuffer rendering
@@ -217,17 +209,22 @@ int main(int argc, const char* argv[])
             TL::Vector<RHI::Handle<RHI::RGImage>> shadowMaps;
             for (int i = 0; i < 6; ++i)
             {
+                auto passName  = std::format("Shadow[{}]", i);
                 auto name      = std::format("shadowMap[{}]", i);
                 auto shadowMap = rg->CreateRenderTarget(name.c_str(), windowSize, RHI::Format::D32);
                 shadowMaps.push_back(shadowMap);
                 rg->AddPass({
-                    .name          = "Shadow",
+                    .name          = passName.c_str(),
                     .type          = RHI::PassType::Graphics,
                     .size          = windowSize,
                     .setupCallback = [&, shadowMap](RHI::RenderGraphBuilder& builder)
                     {
                         shadowMaps[i] = builder.SetDepthStencil({.depthStencil = shadowMap});
                         // Read scene geometry buffers if needed
+                    },
+                    .compileCallback = [=](RHI::RenderGraphContext& context)
+                    {
+                        TL_LOG_INFO("Shadow pass compiled");
                     },
                     .executeCallback = [=](RHI::CommandList& cmd)
                     {
@@ -252,6 +249,10 @@ int main(int argc, const char* argv[])
                         builder.ReadImage(shadowMap, RHI::ImageUsage::ShaderResource, RHI::PipelineStage::PixelShader);
                     lightingRT = builder.AddColorAttachment({.color = rg->CreateRenderTarget("lighting", windowSize, RHI::Format::RGBA16_FLOAT)});
                 },
+                .compileCallback = [&](RHI::RenderGraphContext& context)
+                {
+                    TL_LOG_INFO("Lighting pass compiled");
+                },
                 .executeCallback = [=](RHI::CommandList& cmd)
                 {
                     // Lighting calculations
@@ -273,6 +274,10 @@ int main(int argc, const char* argv[])
 
                         ssaoRT = rg->CreateRenderTarget("ssao", windowSize, RHI::Format::R8_UNORM);
                         ssaoRT = builder.WriteImage(ssaoRT, RHI::ImageUsage::StorageResource, RHI::PipelineStage::ComputeShader);
+                    },
+                    .compileCallback = [=](RHI::RenderGraphContext& context)
+                    {
+                        TL_LOG_INFO("SSAO pass compiled");
                     },
                     .executeCallback = [=](RHI::CommandList& cmd)
                     {
@@ -296,6 +301,10 @@ int main(int argc, const char* argv[])
                         builder.ReadImage(normalRT, RHI::ImageUsage::ShaderResource, RHI::PipelineStage::ComputeShader);
                         builder.ReadImage(depthRT, RHI::ImageUsage::ShaderResource, RHI::PipelineStage::ComputeShader);
                         builder.WriteImage(ssrRT, RHI::ImageUsage::StorageResource, RHI::PipelineStage::ComputeShader);
+                    },
+                    .compileCallback = [=](RHI::RenderGraphContext& context)
+                    {
+                        TL_LOG_INFO("SSR pass compiled");
                     },
                     .executeCallback = [=](RHI::CommandList& cmd)
                     {
@@ -321,6 +330,10 @@ int main(int argc, const char* argv[])
                         builder.ReadImage(postProcessInput, RHI::ImageUsage::ShaderResource, RHI::PipelineStage::ComputeShader);
                         postProcessOutput = builder.WriteImage(postProcessOutput, RHI::ImageUsage::StorageResource, RHI::PipelineStage::ComputeShader);
                     },
+                    .compileCallback = [=](RHI::RenderGraphContext& context)
+                    {
+                        TL_LOG_INFO("FXAA pass compiled");
+                    },
                     .executeCallback = [=](RHI::CommandList& cmd)
                     {
                         // FXAA compute
@@ -341,6 +354,10 @@ int main(int argc, const char* argv[])
                     {
                         builder.ReadImage(postProcessInput, RHI::ImageUsage::ShaderResource, RHI::PipelineStage::ComputeShader);
                         postProcessOutput = builder.WriteImage(postProcessOutput, RHI::ImageUsage::StorageResource, RHI::PipelineStage::ComputeShader);
+                    },
+                    .compileCallback = [=](RHI::RenderGraphContext& context)
+                    {
+                        TL_LOG_INFO("TAA pass compiled");
                     },
                     .executeCallback = [=](RHI::CommandList& cmd)
                     {
@@ -367,7 +384,58 @@ int main(int argc, const char* argv[])
                 },
             });
         }
+#else
+        // Simple hello-world triangle
+        {
+            auto pass = rg->AddPass({
+                .name          = "HelloWorld",
+                .type          = RHI::PassType::Graphics,
+                .size          = windowSize,
+                .setupCallback = [&](RHI::RenderGraphBuilder& builder)
+                {
+                    auto colorAttachment = rg->ImportSwapchain("color", *swapchain, RHI::Format::RGBA8_UNORM);
+                    builder.AddColorAttachment({.color = colorAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
+                },
+                .compileCallback = [&](RHI::RenderGraphContext& context)
+                {
+                    TL_LOG_INFO("HelloWorld pass compiled");
+                },
+                .executeCallback = [&](RHI::CommandList& cmd)
+                {
+                    cmd.SetViewport({
+                        .offsetX  = 0,
+                        .offsetY  = 0,
+                        .width    = (float)windowSize.width,
+                        .height   = (float)windowSize.height,
+                        .minDepth = 0.0,
+                        .maxDepth = 1.0,
+                    });
+                    cmd.SetScissor({
+                        .offsetX = 0,
+                        .offsetY = 0,
+                        .width   = windowSize.width,
+                        .height  = windowSize.height,
+                    });
+                    cmd.BindGraphicsPipeline(pipeline, {});
+                    cmd.Draw({
+                        .vertexCount   = 3,
+                        .instanceCount = 1,
+                        .firstVertex   = 0,
+                        .firstInstance = 0,
+                    });
+                },
+            });
+        }
+#endif
         rg->EndFrame();
+
+        TL_MAYBE_UNUSED auto result = swapchain->Present();
+
+        if (GraphDumpEnabled)
+        {
+            rg->Dump();
+            GraphDumpEnabled = false;
+        }
 
         glfwPollEvents();
         FrameMark;

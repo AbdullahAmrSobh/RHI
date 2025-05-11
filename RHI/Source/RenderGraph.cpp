@@ -179,9 +179,9 @@ namespace RHI
         // Add resource dependency to the pass
         m_rg->ExtendImageUsage(resource, usage);
         RGImageDependency dep{
-            .image        = handle,
-            .viewID       = 0,
-            .state        = ImageBarrierState{usage, stage, access},
+            .image  = handle,
+            .viewID = 0,
+            .state  = ImageBarrierState{usage, stage, access},
         };
         m_pass->m_imageDependencies.push_back(dep);
 
@@ -219,8 +219,8 @@ namespace RHI
         m_pass->m_bufferDependencies.push_back(dep);
 
         // If writing, invalidate the handle and create a new version
-        if (access & Access::Write)
-            return m_rg->CreateRGBufferHandle(handle, m_pass);
+        // if (access & Access::Write)
+        //     return m_rg->CreateRGBufferHandle(handle, m_pass);
 
         return handle;
     }
@@ -356,6 +356,12 @@ namespace RHI
     {
         auto it = m_imageCache.find(rgImage->m_name);
 
+        if (rgImage->m_handle)
+        {
+            // Imported
+            return rgImage->m_handle;
+        }
+
         ImageCreateInfo ci{
             .name        = rgImage->m_name.c_str(),
             .usageFlags  = rgImage->m_desc.usageFlags,
@@ -391,6 +397,12 @@ namespace RHI
     Handle<Buffer> RenderGraphResourcePool::InitTransientBuffer(RGBuffer* rgBuffer)
     {
         auto it = m_bufferCache.find(rgBuffer->m_name);
+
+        if (rgBuffer->m_handle)
+        {
+            // Imported
+            return rgBuffer->m_handle;
+        }
 
         BufferCreateInfo ci{
             .name       = rgBuffer->m_name.c_str(),
@@ -508,12 +520,9 @@ namespace RHI
             m_bufferList.clear();
             m_dependencyLevels.clear();
             m_dependencyLevels.clear();
-
             // Finally collect temp arena allocations
             m_tempAllocator->Collect();
-
             m_device->CollectResources();
-
             memset(&m_state, 0, sizeof(State));
         }
 
@@ -523,7 +532,6 @@ namespace RHI
     Handle<RGImage> RenderGraph::ImportSwapchain(const char* name, Swapchain& swapchain, Format format)
     {
         TL_ASSERT(m_state.frameRecording == true);
-
         m_swapchain = &swapchain;
         auto handle = m_imagePool.Emplace(RGImage(name, swapchain.GetImage(), format));
         m_imageList.push_back(handle);
@@ -533,10 +541,8 @@ namespace RHI
     Handle<RGImage> RenderGraph::ImportImage(const char* name, Handle<Image> image, Format format)
     {
         TL_ASSERT(m_state.frameRecording == true);
-
         auto handle                           = m_imagePool.Emplace(RGImage(name, image, format));
         m_imagePool.Get(handle)->m_isImported = true;
-
         m_imageList.push_back(handle);
         return handle;
     }
@@ -544,8 +550,7 @@ namespace RHI
     Handle<RGBuffer> RenderGraph::ImportBuffer(const char* name, Handle<Buffer> buffer)
     {
         TL_ASSERT(m_state.frameRecording == true);
-
-        auto handle                            = m_bufferPool.Emplace(RGBuffer(name, buffer));
+        auto handle = m_bufferPool.Emplace(RGBuffer(name, buffer));
         m_bufferPool.Get(handle)->m_isImported = true;
         m_bufferList.push_back(handle);
         return handle;
@@ -554,7 +559,6 @@ namespace RHI
     Handle<RGImage> RenderGraph::CreateImage(const char* name, ImageType type, ImageSize3D size, Format format, uint32_t mipLevels, uint32_t arrayCount, SampleCount samples)
     {
         TL_ASSERT(m_state.frameRecording == true);
-
         auto handle = m_imagePool.Emplace(RGImage(name, type, size, format, mipLevels, arrayCount, samples));
         m_imageList.push_back(handle);
         return handle;
@@ -584,6 +588,7 @@ namespace RHI
         TL_ASSERT(IsSuccess(result));
         auto builder = RenderGraphBuilder(this, pass);
         pass->Setup(builder);
+        pass->m_gfxPassInfo.m_size   = createInfo.size;
         pass->m_indexInUnorderedList = indexInUnorderedList;
         return pass;
     }
@@ -597,7 +602,7 @@ namespace RHI
 
     ImageSize2D RenderGraph::GetFrameSize() const
     {
-        TL_ASSERT(m_state.compiled);
+        // TL_ASSERT(m_state.compiled);
         return m_frameSize;
     }
 
@@ -673,12 +678,10 @@ namespace RHI
         //             auto rgBuffer = m_bufferPool.Get(dep.buffer);
         //             hash          = TL::HashCombine(hash, rgBuffer->GetHash());
         //         }
-
         //         auto hashValue = m_passHashMap[pass->GetName()];
         //         if (hashValue != hash)
         //         {
         //             m_passHashMap[pass->GetName()] = hash;
-
         //             RenderGraphContext context(this, pass.get());
         //             pass->Compile(context);
         //         }
@@ -893,7 +896,7 @@ namespace RHI
 #if RHI_RG_EXECUTE_MULTITHREADED
     #error "TODO: Implement"
 #else
-        if (false)
+        // if (false)
         {
             CommandListCreateInfo cmdCI{
                 .name      = "RG-CMD",

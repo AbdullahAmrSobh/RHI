@@ -24,7 +24,7 @@ namespace Engine
         void       Shutdown();
 
         void NewFrame();
-        RHI::Pass* RenderDrawData(ImDrawData* drawData, RHI::RenderGraph& renderGraph, RHI::ImageSize2D size, RHI::RenderGraphImage* outputImage);
+        RHI::RGPass* RenderDrawData(ImDrawData* drawData, RHI::RenderGraph& renderGraph, RHI::Handle<RHI::RGImage> attachment);
 
     private:
         void InitGraphicsPipeline();

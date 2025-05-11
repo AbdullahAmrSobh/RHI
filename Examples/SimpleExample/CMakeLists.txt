@@ -20,7 +20,7 @@ tl_add_target(
 
 set(SHADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/Basic.slang
-    ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/ImGui.slang
+    ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/Triangle.slang
 )
 
 set(SHADER_LIB_FILES

@@ -65,17 +65,6 @@ namespace Engine
 
         Examples::Window* m_window;
 
-        /// Rendering Pipeline stuff
-
-        struct GBufferData
-        {
-            RHI::RenderGraphImage* colorAttachment;
-            RHI::RenderGraphImage* positionAttachment;
-            RHI::RenderGraphImage* normalsAttachment;
-            RHI::RenderGraphImage* materialAttachment;
-            RHI::RenderGraphImage* depthAttachment;
-        } m_gBuffer;
-
         /// @todo: maybe uniformBuffersAllocator, and storageBuffersAllocator should be part of the render graph?
 
         ///< Allocator for uniform buffers.
