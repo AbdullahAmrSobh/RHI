@@ -340,7 +340,7 @@ namespace RHI
 
         ImageBarrierState m_activeState; // Resource state used during pass build
 
-        size_t GetHash() const;
+        size_t            GetHash() const;
     };
 
     struct RGBuffer : RGResource
@@ -384,7 +384,7 @@ namespace RHI
 
         BufferBarrierState m_activeState; // Resource state used during pass build
 
-        size_t GetHash() const;
+        size_t             GetHash() const;
     };
 
     ///////////////////////////////////////////////////////////////////////////
@@ -452,9 +452,9 @@ namespace RHI
 
     struct RGImageDependency
     {
-        Handle<RGImage>       image;
-        uint32_t              viewID;
-        ImageBarrierState     state;
+        Handle<RGImage>   image;
+        uint32_t          viewID;
+        ImageBarrierState state;
     };
 
     struct RGBufferDependency

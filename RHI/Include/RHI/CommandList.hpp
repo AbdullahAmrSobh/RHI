@@ -182,20 +182,20 @@ namespace RHI
 
     struct ImageBarrierState
     {
-        ImageUsage               usage  = ImageUsage::None;
-        TL::Flags<PipelineStage> stage  = PipelineStage::None;
-        TL::Flags<Access>        access = Access::None;
+        ImageUsage               usage                                           = ImageUsage::None;
+        TL::Flags<PipelineStage> stage                                           = PipelineStage::None;
+        TL::Flags<Access>        access                                          = Access::None;
 
-        bool operator == (const ImageBarrierState& self) const = default;
+        bool                     operator==(const ImageBarrierState& self) const = default;
     };
 
     struct BufferBarrierState
     {
-        BufferUsage              usage  = BufferUsage::None;
-        TL::Flags<PipelineStage> stage  = PipelineStage::None;
-        TL::Flags<Access>        access = Access::None;
+        BufferUsage              usage                                            = BufferUsage::None;
+        TL::Flags<PipelineStage> stage                                            = PipelineStage::None;
+        TL::Flags<Access>        access                                           = Access::None;
 
-        bool operator == (const BufferBarrierState& self) const = default;
+        bool                     operator==(const BufferBarrierState& self) const = default;
     };
 
     struct BarrierInfo
@@ -206,9 +206,9 @@ namespace RHI
 
     struct ImageBarrierInfo
     {
-        Handle<Image>         image        = NullHandle;
-        ImageBarrierState     srcState     = {};
-        ImageBarrierState     dstState     = {};
+        Handle<Image>     image    = NullHandle;
+        ImageBarrierState srcState = {};
+        ImageBarrierState dstState = {};
     };
 
     struct BufferBarrierInfo

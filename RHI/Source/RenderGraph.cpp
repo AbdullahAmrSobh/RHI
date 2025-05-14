@@ -327,7 +327,6 @@ namespace RHI
 
         // m_imageCache.clear();
         // m_bufferCache.clear();
-
         return ResultCode::Success;
     }
 
@@ -516,7 +515,6 @@ namespace RHI
             m_dependencyLevels.clear();
             // Finally collect temp arena allocations
             m_tempAllocator->Collect();
-            m_device->CollectResources();
             memset(&m_state, 0, sizeof(State));
         }
 
@@ -544,7 +542,7 @@ namespace RHI
     Handle<RGBuffer> RenderGraph::ImportBuffer(const char* name, Handle<Buffer> buffer)
     {
         TL_ASSERT(m_state.frameRecording == true);
-        auto handle = m_bufferPool.Emplace(RGBuffer(name, buffer));
+        auto handle                            = m_bufferPool.Emplace(RGBuffer(name, buffer));
         m_bufferPool.Get(handle)->m_isImported = true;
         m_bufferList.push_back(handle);
         return handle;

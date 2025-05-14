@@ -101,7 +101,7 @@ int main(int argc, const char* argv[])
         .layout               = pipelineLayout,
         .vertexBufferBindings = {},
         .renderTargetLayout   = {
-                                 .colorAttachmentsFormats = {RHI::Format::RGBA8_UNORM},
+                                 .colorAttachmentsFormats = {RHI::Format::RGBA8_UNORM, RHI::Format::RGBA8_UNORM},
                                  .depthAttachmentFormat   = RHI::Format::D32,
                                  },
         .colorBlendState = {
@@ -391,7 +391,9 @@ int main(int argc, const char* argv[])
                 .setupCallback = [&](RHI::RenderGraphBuilder& builder)
                 {
                     auto colorAttachment = rg->ImportSwapchain("color", *swapchain, RHI::Format::RGBA8_UNORM);
+                    auto anotherAttachment = rg->CreateRenderTarget("another", windowSize, RHI::Format::RGBA8_UNORM);
                     builder.AddColorAttachment({.color = colorAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
+                    builder.AddColorAttachment({.color = anotherAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
                 },
                 .compileCallback = [&](RHI::RenderGraphContext& context)
                 {
@@ -452,10 +454,10 @@ int main(int argc, const char* argv[])
         FrameMark;
     }
 
-
+    device->DestroySwapchain(swapchain);
+    device->DestroyRenderGraph(renderGraph);
     device->DestroyPipelineLayout(pipelineLayout);
     device->DestroyGraphicsPipeline(pipeline);
-    device->DestroySwapchain(swapchain);
     RHI::DestroyVulkanDevice(device);
     glfwTerminate();
     return 0;

@@ -51,10 +51,10 @@ namespace RHI::Vulkan
 
         VkResult m_lastPresentResult;
 
-        uint32_t    m_acquireSemaphoreIndex = 0;
-        uint32_t    m_acquireSemaphoreNextIndex = 0;
-        uint32_t    m_presentSemaphoreIndex = 0;
-        uint32_t    m_imageIndex = 0;
+        uint32_t m_acquireSemaphoreIndex     = 0;
+        uint32_t m_acquireSemaphoreNextIndex = 0;
+        uint32_t m_presentSemaphoreIndex     = 0;
+        uint32_t m_imageIndex                = 0;
 
         VkSemaphore m_imageAcquiredSemaphore[MaxImageCount];
         VkSemaphore m_imagePresentSemaphore[MaxImageCount];

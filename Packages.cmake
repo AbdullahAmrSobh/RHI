@@ -25,7 +25,7 @@ if(RHI_BACKEND_VULKAN)
 	CPMAddPackage(
 		NAME           RHI_vma
 		GIT_REPOSITORY git@github.com:GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
-		GIT_TAG        v3.0.1
+		GIT_TAG        v3.3.0
 	)
 endif()
 

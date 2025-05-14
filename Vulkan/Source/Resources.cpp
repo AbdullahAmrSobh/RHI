@@ -3,6 +3,7 @@
 #include <vk_mem_alloc.h>
 
 #include "Common.hpp"
+#include "DeleteQueue.hpp"
 #include "Device.hpp"
 
 namespace RHI::Vulkan
@@ -384,12 +385,12 @@ namespace RHI::Vulkan
 
     void BindGroupAllocator::ShutdownBindGroup(IBindGroup* bindGroup)
     {
-        m_device->m_destroyQueue->Push(
-            m_device->m_frameIndex,
-            [=](IDevice* device)
-            {
-                vkFreeDescriptorSets(device->m_device, m_descriptorPool, 1, &bindGroup->descriptorSet);
-            });
+        // m_device->m_destroyQueue->Push(
+        //     m_device->m_frameIndex,
+        //     [=](IDevice* device)
+        //     {
+        //         vkFreeDescriptorSets(device->m_device, m_descriptorPool, 1, &bindGroup->descriptorSet);
+        //     });
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -919,7 +920,10 @@ namespace RHI::Vulkan
 
     void IGraphicsPipeline::Shutdown(IDevice* device)
     {
-        vkDestroyPipeline(device->m_device, handle, nullptr);
+        uint64_t timeline = 9;
+
+        if (handle)
+            device->m_destroyQueue->Push(timeline, handle);
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -957,7 +961,10 @@ namespace RHI::Vulkan
 
     void IComputePipeline::Shutdown(IDevice* device)
     {
-        vkDestroyPipeline(device->m_device, handle, nullptr);
+        uint64_t timeline = 9;
+
+        if (handle)
+            device->m_destroyQueue->Push(timeline, handle);
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -997,7 +1004,13 @@ namespace RHI::Vulkan
 
     void IBuffer::Shutdown(IDevice* device)
     {
-        vmaDestroyBuffer(device->m_deviceAllocator, handle, allocation);
+        uint64_t timeline = 9;
+
+        if (handle)
+            device->m_destroyQueue->Push(timeline, handle);
+
+        if (allocation)
+            device->m_destroyQueue->Push(timeline, allocation);
     }
 
     VkMemoryRequirements IBuffer::GetMemoryRequirements(IDevice* device) const
@@ -1054,7 +1067,9 @@ namespace RHI::Vulkan
             .pQueueFamilyIndices   = nullptr,
             .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED,
         };
-        result = vmaCreateImage(device->m_deviceAllocator, &imageCI, &allocationInfo, &handle, &allocation, nullptr);
+        result = vkCreateImage(device->m_device, &imageCI, nullptr, &handle); //, &allocation, nullptr);
+        result = vmaAllocateMemoryForImage(device->m_deviceAllocator, handle, &allocationInfo, &allocation, nullptr);
+        vmaBindImageMemory(device->m_deviceAllocator, allocation, handle);
 
         if (result == VK_SUCCESS && createInfo.name)
         {
@@ -1149,10 +1164,16 @@ namespace RHI::Vulkan
 
     void IImage::Shutdown(IDevice* device)
     {
+        uint64_t timeline = 9;
+
+        if (handle)
+            device->m_destroyQueue->Push(timeline, handle);
+
         if (viewHandle)
-            vkDestroyImageView(device->m_device, viewHandle, nullptr);
+            device->m_destroyQueue->Push(timeline, viewHandle);
+
         if (allocation)
-            vmaDestroyImage(device->m_deviceAllocator, handle, allocation);
+            device->m_destroyQueue->Push(timeline, allocation);
     }
 
     VkMemoryRequirements IImage::GetMemoryRequirements(IDevice* device) const
@@ -1203,7 +1224,8 @@ namespace RHI::Vulkan
 
     void ISampler::Shutdown(IDevice* device)
     {
-        vkDestroySampler(device->m_device, handle, nullptr);
+        uint64_t timeline = 9;
+        device->m_destroyQueue->Push(timeline, handle);
     }
 
 } // namespace RHI::Vulkan

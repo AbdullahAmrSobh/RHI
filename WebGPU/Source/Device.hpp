@@ -55,7 +55,6 @@ namespace RHI::WebGPU
         void                     EndResourceUpdate() override;
         void                     BufferWrite(Handle<Buffer> buffer, size_t offset, TL::Block block) override;
         void                     ImageWrite(Handle<Image> image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block) override;
-        void                     CollectResources() override;
 
     public:
         void ExecuteCommandList(class ICommandList* commandList);

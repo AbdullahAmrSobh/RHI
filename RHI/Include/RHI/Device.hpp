@@ -188,9 +188,6 @@ namespace RHI
 
         virtual uint64_t                 QueueSubmit(const QueueSubmitInfo& submitInfo)                                                                                   = 0;
 
-        /// @brief Collects unused resources for reuse.
-        virtual void                     CollectResources()                                                                                                               = 0;
-
     protected:
         BackendType           m_backend;
         TL::Ptr<DeviceLimits> m_limits; ///< Device-specific limits.

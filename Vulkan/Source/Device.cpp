@@ -1,3 +1,5 @@
+#define VMA_IMPLEMENTATION
+
 #if RHI_PLATFORM_WINDOWS
     #define VK_USE_PLATFORM_WIN32_KHR
     #define VULKAN_SURFACE_OS_EXTENSION_NAME VK_KHR_WIN32_SURFACE_EXTENSION_NAME
@@ -21,17 +23,17 @@
 #include <TL/Assert.hpp>
 #include <TL/Log.hpp>
 
+#include <algorithm>
+#include <format>
+#include <tracy/Tracy.hpp>
+
 #include "CommandList.hpp"
 #include "Common.hpp"
+#include "DeleteQueue.hpp"
 #include "Queue.hpp"
 #include "RHI-Vulkan/Loader.hpp"
 #include "StagingBuffer.hpp"
 #include "Swapchain.hpp"
-
-#include <format>
-#include <algorithm>
-
-#include <tracy/Tracy.hpp>
 
 #define VULKAN_DEVICE_FUNC_LOAD(device, proc) reinterpret_cast<PFN_##proc>(vkGetDeviceProcAddr(device, #proc));
 #define VULKAN_INSTANCE_FUNC_LOAD(instance, proc) reinterpret_cast<PFN_##proc>(vkGetInstanceProcAddr(instance, #proc));
@@ -100,12 +102,9 @@ namespace RHI
     {                                                                          \
         ZoneScoped;                                                            \
         TL_ASSERT(handle != NullHandle, "Cannot call destroy on null handle"); \
-        m_destroyQueue->Push(                                                  \
-            m_frameIndex,                                                      \
-            [handle](IDevice* device)                                          \
-            {                                                                  \
-                device->OwnerField.Destroy(handle, device);                    \
-            });                                                                \
+        auto resource = Get(handle);                                           \
+        resource->Shutdown(this);                                              \
+        Release(handle);                                                       \
     }
 
 #define IMPLEMENT_DEVICE_RESOURCE_METHODS(ResourceType) \
@@ -848,15 +847,6 @@ namespace RHI::Vulkan
 
         auto commandLists = TL::Span{(ICommandList**)submitInfo.commandLists.data(), submitInfo.commandLists.size()};
         return queue->Submit(commandLists, ConvertPipelineStageFlags(submitInfo.signalStage));
-    }
-
-    void IDevice::CollectResources()
-    {
-        ZoneScoped;
-        m_tempAllocator.Collect();
-        m_destroyQueue->DestroyObjects();
-        m_stagingBuffer->ReleaseAll();
-        m_frameIndex++;
     }
 
     IMPLEMENT_DISPATCHABLE_TYPES_FUNCTIONS(Swapchain);

@@ -4,11 +4,11 @@
 
 #include <TL/Assert.hpp>
 
-#define VMA_DEBUG_LOG(format, ...)        \
-    do                                    \
-    {                                     \
-        TL_LOG_INFO(format, __VA_ARGS__); \
-    } while (false)
+// #define VMA_DEBUG_LOG(format, ...)        \
+//     do                                    \
+//     {                                     \
+//         TL_LOG_INFO(format, __VA_ARGS__); \
+//     } while (false)
 
 #include <vk_mem_alloc.h>
 

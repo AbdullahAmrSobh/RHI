@@ -8,7 +8,6 @@
 #include <RHI-Vulkan/Loader.hpp>
 
 #include "Common.hpp"
-#include "DeleteQueue.hpp"
 #include "Queue.hpp"
 #include "Resources.hpp"
 
@@ -71,8 +70,6 @@ namespace RHI::Vulkan
         uint64_t GetFrameIndex() const { return m_frameIndex; }
 
         // Interface Implementation
-        // RenderGraph*             CreateRenderGraph(const RenderGraphCreateInfo& createInfo) override;
-        // void                     DestroyRenderGraph(RenderGraph* renderGraph) override;
         Swapchain*               CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
         void                     DestroySwapchain(Swapchain* swapchain) override;
         ShaderModule*            CreateShaderModule(const ShaderModuleCreateInfo& createInfo) override;
@@ -102,11 +99,27 @@ namespace RHI::Vulkan
         void                     BufferWrite(Handle<Buffer> buffer, size_t offset, TL::Block block) override;
         void                     ImageWrite(Handle<Image> image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block) override;
         uint64_t                 QueueSubmit(const QueueSubmitInfo& submitInfo) override;
-        void                     CollectResources() override;
+
+        // clang-format off
+        IImage*                  Get(Handle<IImage> handle)                { return m_imageOwner.Get(handle); }
+        void                     Release(Handle<IImage> handle)            { return m_imageOwner.Release(handle); }
+        IBuffer*                 Get(Handle<IBuffer> handle)               { return m_bufferOwner.Get(handle); }
+        void                     Release(Handle<IBuffer> handle)           { return m_bufferOwner.Release(handle); }
+        IBindGroupLayout*        Get(Handle<IBindGroupLayout> handle)      { return m_bindGroupLayoutsOwner.Get(handle); }
+        void                     Release(Handle<IBindGroupLayout> handle)  { return m_bindGroupLayoutsOwner.Release(handle); }
+        IBindGroup*              Get(Handle<IBindGroup> handle)            { return m_bindGroupOwner.Get(handle); }
+        void                     Release(Handle<IBindGroup> handle)        { return m_bindGroupOwner.Release(handle); }
+        IPipelineLayout*         Get(Handle<IPipelineLayout> handle)       { return m_pipelineLayoutOwner.Get(handle); }
+        void                     Release(Handle<IPipelineLayout> handle)   { return m_pipelineLayoutOwner.Release(handle); }
+        IGraphicsPipeline        * Get(Handle<IGraphicsPipeline> handle)   { return m_graphicsPipelineOwner.Get(handle); }
+        void                     Release(Handle<IGraphicsPipeline> handle) { return m_graphicsPipelineOwner.Release(handle); }
+        IComputePipeline*        Get(Handle<IComputePipeline> handle)      { return m_computePipelineOwner.Get(handle); }
+        void                     Release(Handle<IComputePipeline> handle)  { return m_computePipelineOwner.Release(handle); }
+        ISampler*                Get(Handle<ISampler> handle)              { return m_samplerOwner.Get(handle); }
+        void                     Release(Handle<ISampler> handle)          { return m_samplerOwner.Release(handle); }
+        // clang-format on
 
     public:
-        /// @todo: everything here should be made private
-        TL::Arena                         m_tempAllocator = TL::Arena();
         // Vulkan instance and core objects
         VkInstance                        m_instance;            ///< Vulkan instance handle.
         VkDebugUtilsMessengerEXT          m_debugUtilsMessenger; ///< Debug messenger for Vulkan validation layers.
@@ -115,14 +128,14 @@ namespace RHI::Vulkan
         VmaAllocator                      m_deviceAllocator;     ///< Vulkan memory allocator.
         VulkanFunctions                   m_pfn;                 ///< Function pointers for Vulkan extensions and commands.
         // Resource pools
-        HandlePool<IImage>                m_imageOwner;            ///< Pool for managing image resource handles.
-        HandlePool<IBuffer>               m_bufferOwner;           ///< Pool for managing buffer resource handles.
-        HandlePool<IBindGroupLayout>      m_bindGroupLayoutsOwner; ///< Pool for managing bind group layout handles.
-        HandlePool<IBindGroup>            m_bindGroupOwner;        ///< Pool for managing bind group handles.
-        HandlePool<IPipelineLayout>       m_pipelineLayoutOwner;   ///< Pool for managing pipeline layout handles.
-        HandlePool<IGraphicsPipeline>     m_graphicsPipelineOwner; ///< Pool for managing graphics pipeline handles.
-        HandlePool<IComputePipeline>      m_computePipelineOwner;  ///< Pool for managing compute pipeline handles.
-        HandlePool<ISampler>              m_samplerOwner;          ///< Pool for managing sampler handles.
+        HandlePool<IImage>                m_imageOwner;
+        HandlePool<IBuffer>               m_bufferOwner;
+        HandlePool<IBindGroupLayout>      m_bindGroupLayoutsOwner;
+        HandlePool<IBindGroup>            m_bindGroupOwner;
+        HandlePool<IPipelineLayout>       m_pipelineLayoutOwner;
+        HandlePool<IGraphicsPipeline>     m_graphicsPipelineOwner;
+        HandlePool<IComputePipeline>      m_computePipelineOwner;
+        HandlePool<ISampler>              m_samplerOwner;
         // Queue and allocator management
         IQueue                            m_queue[AsyncQueuesCount]; ///< Array of queues for different operations (e.g., graphics, compute).
         TL::Ptr<class DeleteQueue>        m_destroyQueue;            ///< Queue for handling deferred resource destruction.
@@ -145,8 +158,8 @@ namespace RHI::Vulkan
     template<typename T, typename... FMT_ARGS>
     void IDevice::SetDebugName(T handle, const char* fmt, FMT_ARGS... args) const
     {
-        auto formattedName = std::vformat(fmt, std::make_format_args(args...));
-        SetDebugName(handle, formattedName.c_str());
+        auto name = std::vformat(fmt, std::make_format_args(args...));
+        SetDebugName(handle, name.c_str());
     }
 
     inline IQueue* IDevice::GetDeviceQueue(QueueType type)

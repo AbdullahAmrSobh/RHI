@@ -35,7 +35,7 @@ namespace RHI
     RenderGraph* Device::CreateRenderGraph([[maybe_unused]] const RenderGraphCreateInfo& createInfo)
     {
         ZoneScoped;
-        auto* renderGraph     = new RenderGraph();
+        auto* renderGraph = new RenderGraph();
         renderGraph->Init(this, createInfo);
         return renderGraph;
     }
@@ -44,6 +44,7 @@ namespace RHI
     {
         ZoneScoped;
         TL_ASSERT(renderGraph != nullptr, "Cannot destroy a null render graph");
+        renderGraph->Shutdown();
         delete renderGraph;
     }
 

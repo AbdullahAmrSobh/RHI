@@ -9,7 +9,6 @@
 #include "Device.hpp"
 #include "Resources.hpp"
 
-
 namespace RHI::Vulkan
 {
 
@@ -95,9 +94,6 @@ namespace RHI::Vulkan
         }
 
         CleanupOldSwapchain(m_swapchain, m_imageCount);
-
-        if (m_swapchain != VK_NULL_HANDLE)
-            vkDestroySwapchainKHR(m_device->m_device, m_swapchain, nullptr);
 
         if (m_surface != VK_NULL_HANDLE)
             vkDestroySurfaceKHR(m_device->m_instance, m_surface, nullptr);
@@ -250,12 +246,12 @@ namespace RHI::Vulkan
             .oldSwapchain          = m_swapchain,
         };
         result = vkCreateSwapchainKHR(m_device->m_device, &createInfo, nullptr, &m_swapchain);
-
-        if (createInfo.oldSwapchain != VK_NULL_HANDLE)
-            CleanupOldSwapchain(createInfo.oldSwapchain, m_imageCount);
+        vkDeviceWaitIdle(m_device->m_device);
 
         if (m_name.empty() == false)
             m_device->SetDebugName(m_swapchain, m_name.c_str());
+
+        CleanupOldSwapchain(VK_NULL_HANDLE, m_imageCount);
 
         result = vkGetSwapchainImagesKHR(m_device->m_device, m_swapchain, &m_imageCount, nullptr);
         TL_ASSERT(result == VK_SUCCESS, "Failed to get swapchain images count");
@@ -375,13 +371,15 @@ namespace RHI::Vulkan
 
     void ISwapchain::CleanupOldSwapchain(VkSwapchainKHR oldSwapchain, uint32_t oldImageCount)
     {
-        if (oldSwapchain == VK_NULL_HANDLE)
-            return;
-
         for (uint32_t i = 0; i < oldImageCount; i++)
         {
             vkDestroyImageView(m_device->m_device, m_imageViews[i], nullptr);
             m_imageViews[i] = VK_NULL_HANDLE;
         }
+
+        if (oldSwapchain == VK_NULL_HANDLE)
+            return;
+
+        vkDestroySwapchainKHR(m_device->m_device, m_swapchain, nullptr);
     }
 } // namespace RHI::Vulkan
