@@ -122,8 +122,6 @@ int main(int argc, const char* argv[])
     {
         ZoneScopedN("DrawLoop");
 
-        glfwGetWindowSize(window, (int*)&windowSize.width, (int*)&windowSize.height);
-
         auto        rg                           = renderGraph;
         static bool EnableGPUDrivenPipeline      = true;
         static bool EnableSSAO                   = true;
@@ -140,7 +138,6 @@ int main(int argc, const char* argv[])
             EnableTAA = !EnableTAA;
         if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
             EnableSSAO = !EnableSSAO;
-
         if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
             GraphDumpEnabled = true;
 
@@ -430,6 +427,18 @@ int main(int argc, const char* argv[])
         rg->EndFrame();
 
         TL_MAYBE_UNUSED auto result = swapchain->Present();
+        if (RHI::IsError(result))
+        {
+            result = swapchain->Configure({
+                .size        = windowSize,
+                .imageCount  = 1,
+                .imageUsage  = RHI::ImageUsage::Color,
+                .format      = RHI::Format::RGBA8_UNORM,
+                .presentMode = RHI::SwapchainPresentMode::Fifo,
+                .alphaMode   = RHI::SwapchainAlphaMode::None,
+            });
+            TL_ASSERT(RHI::IsSuccess(result));
+        }
 
         if (GraphDumpEnabled)
         {
@@ -437,10 +446,15 @@ int main(int argc, const char* argv[])
             GraphDumpEnabled = false;
         }
 
+        glfwGetWindowSize(window, (int*)&windowSize.width, (int*)&windowSize.height);
+
         glfwPollEvents();
         FrameMark;
     }
 
+
+    device->DestroyPipelineLayout(pipelineLayout);
+    device->DestroyGraphicsPipeline(pipeline);
     device->DestroySwapchain(swapchain);
     RHI::DestroyVulkanDevice(device);
     glfwTerminate();

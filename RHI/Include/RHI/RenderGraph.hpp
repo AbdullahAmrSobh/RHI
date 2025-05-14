@@ -500,10 +500,7 @@ namespace RHI
         PassSetupCallback              m_setupCallback;
         PassCompileCallback            m_compileCallback;
         PassExecuteCallback            m_executeCallback;
-        uint32_t                       m_globalExecutionIndex;
         uint32_t                       m_dependencyLevelIndex;
-        uint32_t                       m_localToDependencyLevelExecutionIndex;
-        uint32_t                       m_localToQueueExecutionIndex;
         uint32_t                       m_indexInUnorderedList;
         uint32_t                       m_executionQueueIndex;
 

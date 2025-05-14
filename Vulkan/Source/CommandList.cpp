@@ -442,13 +442,10 @@ namespace RHI::Vulkan
                 .sType      = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
                 .pNext      = nullptr,
                 .pLabelName = name,
-                // .color      = {(float)color.r, (float)color.g, (float)color.b, (float)color.a},
+                .color      = {(float)color.f32.r, (float)color.f32.g, (float)color.f32.b, (float)color.f32.a},
             };
             fn(m_commandBuffer, &info);
         }
-#else
-        (void)name;
-        (void)color;
 #endif
     }
 

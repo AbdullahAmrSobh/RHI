@@ -26,8 +26,6 @@ namespace RHI::Vulkan
             if (deletion.deleteFunc)
                 deletion.deleteFunc(m_device);
         }
-
-        TL_ASSERT(m_destructionQueue.empty());
     }
 
     void DeleteQueue::Push(uint64_t frameIndex, DeleteFunc&& deleteFunc)

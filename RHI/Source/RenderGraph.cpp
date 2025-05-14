@@ -269,12 +269,6 @@ namespace RHI
             m_state.shouldCompile = true;
         }
         m_executeCallback = ci.executeCallback;
-        // m_globalExecutionIndex
-        // m_dependencyLevelIndex
-        // m_localToDependencyLevelExecutionIndex
-        // m_localToQueueExecutionIndex
-        // m_indexInUnorderedList
-        // m_producers
         return ResultCode::Success;
     }
 
