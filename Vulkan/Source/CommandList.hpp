@@ -33,15 +33,13 @@ namespace RHI::Vulkan
         ResultCode Init(IDevice* device);
         void       Shutdown();
 
-        /// @brief Allocates a command list for the specified queue type.
-        /// @param queueType The type of queue (Graphics, Compute, Transfer) for the command list.
-        /// @return A pointer to the allocated CommandList.
         VkCommandBuffer AllocateCommandBuffer(QueueType queueType);
+        void            ReleaseCommandBuffers(TL::Span<const VkCommandBuffer> commandBuffers);
+        void            Reset();
 
-        void ReleaseCommandBuffers(TL::Span<const VkCommandBuffer> commandBuffers);
-
-        /// @brief Resets all command lists used within the current frame.
-        void Reset();
+    private:
+        VkCommandPool CreateCommandPool(QueueType queueType);
+        void          DestroyCommandPools();
 
     private:
         using CommandPoolPerQueue = std::array<VkCommandPool, AsyncQueuesCount>;
@@ -50,10 +48,6 @@ namespace RHI::Vulkan
 
         std::mutex                                    m_poolMutex;
         TL::Map<std::thread::id, CommandPoolPerQueue> m_pools;
-
-        // Helper functions to create and destroy command pools
-        VkCommandPool CreateCommandPool(QueueType queueType);
-        void          DestroyCommandPools();
     };
 
     class ICommandList final : public CommandList

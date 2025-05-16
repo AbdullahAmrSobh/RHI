@@ -66,17 +66,17 @@ MaxEmptyLinesToKeep: 1
 NamespaceIndentation: All
 PenaltyReturnTypeOnItsOwnLine: 1000
 PointerAlignment: Left
-SortIncludes: true
-IncludeBlocks: Regroup
-IncludeCategories:
-  - Regex: '^("RHI/.*"|<RHI/.*>)'
-    Priority: 1
-  - Regex: '^<Vulkan/.*>'
-    Priority: 2
-  - Regex: '^<TL/.*>'
-    Priority: 3
-  - Regex: '^<.*>'
-    Priority: 4
+SortIncludes: false
+# IncludeBlocks: Regroup
+# IncludeCategories:
+#   - Regex: '^("RHI/.*"|<RHI/.*>)'
+#     Priority: 1
+#   - Regex: '^<Vulkan/.*>'
+#     Priority: 2
+#   - Regex: '^<TL/.*>'
+#     Priority: 3
+#   - Regex: '^<.*>'
+#     Priority: 4
 SpaceAfterLogicalNot: false
 SpaceAfterTemplateKeyword: false
 SpaceBeforeAssignmentOperators: true

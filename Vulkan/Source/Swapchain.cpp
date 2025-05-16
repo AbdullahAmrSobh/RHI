@@ -1,24 +1,16 @@
 #include "Swapchain.hpp"
-
-#include <TL/Log.hpp>
-
-#include <algorithm>
-#include <tracy/Tracy.hpp>
-
 #include "Common.hpp"
 #include "Device.hpp"
 #include "Resources.hpp"
 
+#include <tracy/Tracy.hpp>
+
+#include <TL/Log.hpp>
+
+#include <algorithm>
+
 namespace RHI::Vulkan
 {
-
-#define CHECK_RESULT(result)          \
-    if (result != VK_SUCCESS)         \
-    {                                 \
-        Shutdown();                   \
-        return ConvertResult(result); \
-    }
-
     inline static VkPresentModeKHR ConvertToPresentMode(SwapchainPresentMode presentMode)
     {
         switch (presentMode)

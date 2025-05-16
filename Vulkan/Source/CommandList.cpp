@@ -1,13 +1,12 @@
 #include "CommandList.hpp"
-
-#include <RHI/Format.hpp>
-
-#include <tracy/Tracy.hpp>
-
 #include "Common.hpp"
 #include "Device.hpp"
 #include "Resources.hpp"
 #include "Swapchain.hpp"
+
+#include <RHI/Format.hpp>
+
+#include <tracy/Tracy.hpp>
 
 namespace RHI::Vulkan
 {
@@ -581,12 +580,7 @@ namespace RHI::Vulkan
             offsets[i] = bindingInfo.offset;
         }
 
-        vkCmdBindVertexBuffers(
-            m_commandBuffer,
-            firstBinding,
-            static_cast<uint32_t>(vertexBufferCount),
-            buffers,
-            offsets);
+        vkCmdBindVertexBuffers(m_commandBuffer, firstBinding, static_cast<uint32_t>(vertexBufferCount), buffers, offsets);
         m_hasVertexBuffer = true;
     }
 
@@ -595,11 +589,7 @@ namespace RHI::Vulkan
         ZoneScoped;
 
         auto buffer = m_device->m_bufferOwner.Get(indexBuffer.buffer);
-        vkCmdBindIndexBuffer(
-            m_commandBuffer,
-            buffer->handle,
-            indexBuffer.offset,
-            indexType == IndexType::uint32 ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16);
+        vkCmdBindIndexBuffer(m_commandBuffer, buffer->handle, indexBuffer.offset, indexType == IndexType::uint32 ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16);
         m_hasIndexBuffer = true;
     }
 
@@ -608,12 +598,7 @@ namespace RHI::Vulkan
         ZoneScoped;
 
         TL_ASSERT(m_isGraphicsPipelineBound && m_hasViewportSet && m_hasScissorSet);
-        vkCmdDraw(
-            m_commandBuffer,
-            parameters.vertexCount,
-            parameters.instanceCount,
-            parameters.firstVertex,
-            parameters.firstInstance);
+        vkCmdDraw(m_commandBuffer, parameters.vertexCount, parameters.instanceCount, parameters.firstVertex, parameters.firstInstance);
     }
 
     void ICommandList::DrawIndexed(const DrawIndexedParameters& parameters)
@@ -621,13 +606,7 @@ namespace RHI::Vulkan
         ZoneScoped;
 
         TL_ASSERT(m_isGraphicsPipelineBound && m_hasViewportSet && m_hasScissorSet);
-        vkCmdDrawIndexed(
-            m_commandBuffer,
-            parameters.indexCount,
-            parameters.instanceCount,
-            parameters.firstIndex,
-            parameters.vertexOffset,
-            parameters.firstInstance);
+        vkCmdDrawIndexed(m_commandBuffer, parameters.indexCount, parameters.instanceCount, parameters.firstIndex, parameters.vertexOffset, parameters.firstInstance);
     }
 
     void ICommandList::DrawIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride)
@@ -640,23 +619,11 @@ namespace RHI::Vulkan
         if (countBuffer.buffer != NullHandle)
         {
             auto countBuf = m_device->m_bufferOwner.Get(countBuffer.buffer);
-            vkCmdDrawIndirectCount(
-                m_commandBuffer,
-                cmdBuffer->handle,
-                argumentBuffer.offset,
-                countBuf->handle,
-                countBuffer.offset,
-                maxDrawCount,
-                stride);
+            vkCmdDrawIndirectCount(m_commandBuffer, cmdBuffer->handle, argumentBuffer.offset, countBuf->handle, countBuffer.offset, maxDrawCount, stride);
         }
         else
         {
-            vkCmdDrawIndirect(
-                m_commandBuffer,
-                cmdBuffer->handle,
-                argumentBuffer.offset,
-                maxDrawCount,
-                stride);
+            vkCmdDrawIndirect(m_commandBuffer, cmdBuffer->handle, argumentBuffer.offset, maxDrawCount, stride);
         }
     }
 
@@ -670,23 +637,11 @@ namespace RHI::Vulkan
         if (countBuffer.buffer != NullHandle)
         {
             auto countBuf = m_device->m_bufferOwner.Get(countBuffer.buffer);
-            vkCmdDrawIndexedIndirectCount(
-                m_commandBuffer,
-                cmdBuffer->handle,
-                argumentBuffer.offset,
-                countBuf->handle,
-                countBuffer.offset,
-                maxDrawCount,
-                stride);
+            vkCmdDrawIndexedIndirectCount(m_commandBuffer, cmdBuffer->handle, argumentBuffer.offset, countBuf->handle, countBuffer.offset, maxDrawCount, stride);
         }
         else
         {
-            vkCmdDrawIndexedIndirect(
-                m_commandBuffer,
-                cmdBuffer->handle,
-                argumentBuffer.offset,
-                maxDrawCount,
-                stride);
+            vkCmdDrawIndexedIndirect(m_commandBuffer, cmdBuffer->handle, argumentBuffer.offset, maxDrawCount, stride);
         }
     }
 
@@ -743,14 +698,7 @@ namespace RHI::Vulkan
             .dstOffset      = ConvertOffset3D(copyInfo.dstOffset),
             .extent         = ConvertExtent3D(copyInfo.srcSize),
         };
-        vkCmdCopyImage(
-            m_commandBuffer,
-            srcImage->handle,
-            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            dstImage->handle,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            1,
-            &imageCopy);
+        vkCmdCopyImage(m_commandBuffer, srcImage->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
     }
 
     void ICommandList::CopyImageToBuffer(const BufferImageCopyInfo& copyInfo)
@@ -819,14 +767,6 @@ namespace RHI::Vulkan
             }
         }
 
-        vkCmdBindDescriptorSets(
-            m_commandBuffer,
-            bindPoint,
-            pipelineLayout,
-            0,
-            descriptorSetCount,
-            descriptorSets,
-            dynamicOffsetCount,
-            dynamicOffsets);
+        vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, descriptorSetCount, descriptorSets, dynamicOffsetCount, dynamicOffsets);
     }
 } // namespace RHI::Vulkan

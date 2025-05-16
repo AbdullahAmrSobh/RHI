@@ -1,15 +1,14 @@
 #pragma once
 
-#include <RHI/Device.hpp>
-
-#include <TL/Containers.hpp>
-#include <TL/UniquePtr.hpp>
-
-#include <RHI-Vulkan/Loader.hpp>
-
 #include "Common.hpp"
 #include "Queue.hpp"
 #include "Resources.hpp"
+
+#include <RHI/Device.hpp>
+#include <RHI-Vulkan/Loader.hpp>
+
+#include <TL/Containers.hpp>
+#include <TL/UniquePtr.hpp>
 
 namespace RHI::Vulkan
 {

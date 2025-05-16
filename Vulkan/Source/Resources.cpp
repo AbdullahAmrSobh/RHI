@@ -1,10 +1,9 @@
 #include "Resources.hpp"
-
-#include <vk_mem_alloc.h>
-
 #include "Common.hpp"
 #include "DeleteQueue.hpp"
 #include "Device.hpp"
+
+#include <vk_mem_alloc.h>
 
 namespace RHI::Vulkan
 {
