@@ -57,6 +57,8 @@ namespace RHI
         Vertex  = 1 << 1, ///< Vertex shader stage.
         Pixel   = 1 << 2, ///< Pixel (fragment) shader stage.
         Compute = 1 << 3, ///< Compute shader stage.
+
+        AllGraphics = Vertex | Pixel,
     };
 
     TL_DEFINE_FLAG_OPERATORS(ShaderStage);
@@ -261,7 +263,7 @@ namespace RHI
         size_t offset = 0;         ///< Offset into the buffer.
         size_t size   = WholeSize; ///< Size of the subregion.
 
-        bool   operator==(const BufferSubregion& other) const  = default;
+        bool   operator==(const BufferSubregion& other) const = default;
     };
 
     struct ShaderBinding
