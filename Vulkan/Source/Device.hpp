@@ -81,9 +81,9 @@ namespace RHI::Vulkan
         Handle<BindGroup>        CreateBindGroup(const BindGroupCreateInfo& createInfo) override;
         void                     DestroyBindGroup(Handle<BindGroup> handle) override;
         void                     UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo) override;
-        Result<Handle<Buffer>>   CreateBuffer(const BufferCreateInfo& createInfo) override;
+        Handle<Buffer>           CreateBuffer(const BufferCreateInfo& createInfo) override;
         void                     DestroyBuffer(Handle<Buffer> handle) override;
-        Result<Handle<Image>>    CreateImage(const ImageCreateInfo& createInfo) override;
+        Handle<Image>            CreateImage(const ImageCreateInfo& createInfo) override;
         Handle<Image>            CreateImageView(const ImageViewCreateInfo& createInfo) override;
         Handle<Sampler>          CreateSampler(const SamplerCreateInfo& createInfo) override;
         void                     DestroySampler(Handle<Sampler> handle) override;
@@ -111,7 +111,7 @@ namespace RHI::Vulkan
         void                     Release(Handle<IBindGroup> handle)        { return m_bindGroupOwner.Release(handle); }
         IPipelineLayout*         Get(Handle<IPipelineLayout> handle)       { return m_pipelineLayoutOwner.Get(handle); }
         void                     Release(Handle<IPipelineLayout> handle)   { return m_pipelineLayoutOwner.Release(handle); }
-        IGraphicsPipeline        * Get(Handle<IGraphicsPipeline> handle)   { return m_graphicsPipelineOwner.Get(handle); }
+        IGraphicsPipeline*       Get(Handle<IGraphicsPipeline> handle)     { return m_graphicsPipelineOwner.Get(handle); }
         void                     Release(Handle<IGraphicsPipeline> handle) { return m_graphicsPipelineOwner.Release(handle); }
         IComputePipeline*        Get(Handle<IComputePipeline> handle)      { return m_computePipelineOwner.Get(handle); }
         void                     Release(Handle<IComputePipeline> handle)  { return m_computePipelineOwner.Release(handle); }

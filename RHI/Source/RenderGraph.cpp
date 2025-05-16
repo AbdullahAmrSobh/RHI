@@ -381,9 +381,7 @@ namespace RHI
 
         TL_LOG_INFO("Creating image {}", Debug::ToString(ci));
 
-        auto [handle, result] = m_device->CreateImage(ci);
-        TL_ASSERT(IsSuccess(result));
-        m_imageCache[rgImage->m_name] = std::pair{ci, handle};
+        auto [_, handle] = m_imageCache[rgImage->m_name] = std::pair{ci, m_device->CreateImage(ci)};
         return handle;
     }
 
@@ -418,9 +416,7 @@ namespace RHI
 
         TL_LOG_INFO("Creating buffer {}", Debug::ToString(ci));
 
-        auto [handle, result] = m_device->CreateBuffer(ci);
-        TL_ASSERT(IsSuccess(result));
-        m_bufferCache[rgBuffer->m_name] = std::pair{ci, handle};
+        auto [_, handle] = m_bufferCache[rgBuffer->m_name] = std::pair{ci, m_device->CreateBuffer(ci)};
         return handle;
     }
 

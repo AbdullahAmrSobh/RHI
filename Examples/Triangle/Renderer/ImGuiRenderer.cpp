@@ -264,7 +264,7 @@ namespace Engine
         uniformBufferCI.name       = "ImGui-UniformBuffer";
         uniformBufferCI.byteSize   = sizeof(float) * 4 * 4;
         uniformBufferCI.usageFlags = RHI::BufferUsage::Uniform;
-        m_uniformBuffer            = m_device->CreateBuffer(uniformBufferCI).GetValue();
+        m_uniformBuffer            = m_device->CreateBuffer(uniformBufferCI);
 
         unsigned char* pixels;
         int            width, height;
@@ -277,7 +277,7 @@ namespace Engine
             .size       = {uint32_t(width), uint32_t(height)},
             .format     = RHI::Format::RGBA8_UNORM,
         };
-        m_image = RHI::CreateImageWithContent(*m_device, atlasTextureCI, TL::Block{pixels, size_t(width * height * 4)}).GetValue();
+        m_image = RHI::CreateImageWithContent(*m_device, atlasTextureCI, TL::Block{pixels, size_t(width * height * 4)});
 
         m_bindGroup = m_device->CreateBindGroup({.layout = bindGroupLayout});
         RHI::BindGroupUpdateInfo bindings{
@@ -488,7 +488,7 @@ namespace Engine
             createInfo.name       = "ImGui-VertexBuffer";
             createInfo.byteSize   = m_vertexBufferSize * sizeof(ImDrawVert);
             createInfo.usageFlags = RHI::BufferUsage::Vertex;
-            m_vertexBuffer        = m_device->CreateBuffer(createInfo).GetValue();
+            m_vertexBuffer        = m_device->CreateBuffer(createInfo);
         }
 
         if ((size_t)drawData->TotalIdxCount > m_indexBufferSize)
@@ -502,7 +502,7 @@ namespace Engine
             createInfo.name       = "ImGui-IndexBuffer";
             createInfo.byteSize   = m_indexBufferSize * sizeof(ImDrawIdx);
             createInfo.usageFlags = RHI::BufferUsage::Index;
-            m_indexBuffer         = m_device->CreateBuffer(createInfo).GetValue();
+            m_indexBuffer         = m_device->CreateBuffer(createInfo);
         }
 
         if (drawData->TotalIdxCount == 0 || drawData->TotalVtxCount == 0)

@@ -78,12 +78,12 @@ namespace RHI
 
         /// @brief Queries the capabilities of the presentation surface
         /// @return Structure containing supported formats, modes, and capabilities
-        virtual SurfaceCapabilities GetSurfaceCapabilities()                            = 0;
+        virtual SurfaceCapabilities GetSurfaceCapabilities() = 0;
 
         /// @brief Resizes the swapchain to match new window dimensions
         /// @param size New dimensions for the swapchain images
         /// @return Result code indicating success or failure
-        virtual ResultCode          Resize(ImageSize2D size)                            = 0;
+        virtual ResultCode          Resize(ImageSize2D size) = 0;
 
         /// @brief Reconfigures the swapchain with new parameters
         /// @note  Must be called before using the swapchain
@@ -93,7 +93,7 @@ namespace RHI
 
         /// @brief Presents the current swapchain image to the display
         /// @return Result code indicating success or failure of the presentation
-        virtual ResultCode          Present()                                           = 0;
+        virtual ResultCode          Present() = 0;
 
     protected:
         uint32_t      m_imageCount;

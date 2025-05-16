@@ -147,6 +147,8 @@ int main(int argc, const char* argv[])
         // The following will only update the resource transitions (but graph may be un-optimal)
         // 1. disabling pass
 
+        device->Tick();
+
         rg->BeginFrame(windowSize);
 #if 0
         {

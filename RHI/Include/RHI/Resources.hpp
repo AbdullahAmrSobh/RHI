@@ -12,10 +12,10 @@ namespace RHI
     // TODO: Replace compare operatrs with default
 
     // Constants
-    inline static constexpr uint64_t WholeSize         = UINT64_MAX;
-    inline static constexpr uint32_t BindlessArraySize = UINT32_MAX;
-    inline static constexpr uint8_t  AllLayers         = UINT8_MAX;
-    inline static constexpr uint8_t  AllMipLevels      = UINT8_MAX;
+    static constexpr uint64_t WholeSize         = UINT64_MAX;
+    static constexpr uint32_t BindlessArraySize = UINT32_MAX;
+    static constexpr uint8_t  AllLayers         = UINT8_MAX;
+    static constexpr uint8_t  AllMipLevels      = UINT8_MAX;
 
     // Forward Declarations
     struct Buffer;
@@ -258,10 +258,10 @@ namespace RHI
     // Structs (General Purpose)
     struct BufferSubregion
     {
-        size_t      offset = 0;         ///< Offset into the buffer.
-        size_t      size   = WholeSize; ///< Size of the subregion.
+        size_t offset = 0;         ///< Offset into the buffer.
+        size_t size   = WholeSize; ///< Size of the subregion.
 
-        inline bool operator==(const BufferSubregion& other) const { return size == other.size && offset == other.offset; }
+        bool   operator==(const BufferSubregion& other) const  = default;
     };
 
     struct ShaderBinding
@@ -326,39 +326,36 @@ namespace RHI
     // Structs (Image Related)
     struct ImageOffset2D
     {
-        int32_t     x = 0; ///< X coordinate offset.
-        int32_t     y = 0; ///< Y coordinate offset.
+        int32_t x = 0; ///< X coordinate offset.
+        int32_t y = 0; ///< Y coordinate offset.
 
-        inline bool operator==(const ImageOffset2D& other) const { return x == other.x && y == other.y; }
+        bool    operator==(const ImageOffset2D& other) const = default;
     };
 
     struct ImageOffset3D
     {
-        int32_t     x = 0; ///< X coordinate offset.
-        int32_t     y = 0; ///< Y coordinate offset.
-        int32_t     z = 0; ///< Z coordinate offset.
+        int32_t x = 0; ///< X coordinate offset.
+        int32_t y = 0; ///< Y coordinate offset.
+        int32_t z = 0; ///< Z coordinate offset.
 
-        inline bool operator==(const ImageOffset3D& other) const { return x == other.x && y == other.y && z == other.z; }
+        bool    operator==(const ImageOffset3D& other) const = default;
     };
 
     struct ImageSize2D
     {
-        uint32_t    width  = 1; ///< Width of the image.
-        uint32_t    height = 1; ///< Height of the image.
+        uint32_t width  = 1; ///< Width of the image.
+        uint32_t height = 1; ///< Height of the image.
 
-        inline bool operator==(const ImageSize2D& other) const { return width == other.width && height == other.height; }
+        bool     operator==(const ImageSize2D& other) const = default;
     };
 
     struct ImageSize3D
     {
-        uint32_t    width  = 1; ///< Width of the image.
-        uint32_t    height = 1; ///< Height of the image.
-        uint32_t    depth  = 1; ///< Depth of the image.
+        uint32_t width  = 1; ///< Width of the image.
+        uint32_t height = 1; ///< Height of the image.
+        uint32_t depth  = 1; ///< Depth of the image.
 
-        inline bool operator==(const ImageSize3D& other) const
-        {
-            return width == other.width && height == other.height && depth == other.depth;
-        }
+        bool     operator==(const ImageSize3D& other) const = default;
     };
 
     struct ComponentMapping
@@ -368,7 +365,7 @@ namespace RHI
         ComponentSwizzle b = ComponentSwizzle::Identity; ///< Blue component swizzle.
         ComponentSwizzle a = ComponentSwizzle::Identity; ///< Alpha component swizzle.
 
-        inline bool      operator==(const ComponentMapping& other) const { return r == other.r && g == other.g && b == other.b && a == other.a; }
+        bool             operator==(const ComponentMapping& other) const = default;
     };
 
     struct ImageSubresourceRange
@@ -379,7 +376,7 @@ namespace RHI
         uint8_t                      arrayBase     = 0;                ///< Base array layer.
         uint8_t                      arrayCount    = 1;                ///< Number of array layers.
 
-        inline bool                  operator==(const ImageSubresourceRange& other) const { return imageAspects == other.imageAspects && mipBase == other.mipBase && mipLevelCount == other.mipLevelCount && arrayBase == other.arrayBase && arrayCount == other.arrayCount; }
+        bool                         operator==(const ImageSubresourceRange& other) const = default;
 
         static ImageSubresourceRange All() { return {ImageAspect::All, 0, AllMipLevels, 0, AllLayers}; }
     };
@@ -405,10 +402,7 @@ namespace RHI
         ComponentMapping      components  = {};                  ///< Component mapping.
         ImageSubresourceRange subresource = {};                  ///< Subresource range.
 
-        inline bool           operator==(const ImageViewCreateInfo& other) const
-        {
-            return components == other.components && viewType == other.viewType && subresource == other.subresource;
-        }
+        bool                  operator==(const ImageViewCreateInfo& other) const = default;
     };
 
     // Structs (Sampler Related)

@@ -60,69 +60,6 @@ namespace RHI
     }
 } // namespace RHI
 
-#define IMPLEMENT_DEVICE_CREATE_METHOD_UNIQUE_WITH_INFO(ResourceType)                       \
-    ResourceType* IDevice::Create##ResourceType(const ResourceType##CreateInfo& createInfo) \
-    {                                                                                       \
-        ZoneScoped;                                                                         \
-        auto handle = new I##ResourceType();                                                \
-        auto result = handle->Init(this, createInfo);                                       \
-        TL_ASSERT(IsSuccess(result));                                                       \
-        return handle;                                                                      \
-    }
-
-#define IMPLEMENT_DEVICE_DESTROY_METHOD_UNIQUE(ResourceType)   \
-    void IDevice::Destroy##ResourceType(ResourceType* _handle) \
-    {                                                          \
-        ZoneScoped;                                            \
-        auto handle = (I##ResourceType*)_handle;               \
-        handle->Shutdown();                                    \
-        delete handle;                                         \
-    }
-
-#define IMPLEMENT_DEVICE_CREATE_METHOD(HandleType, OwnerField)                               \
-    Handle<HandleType> IDevice::Create##HandleType(const HandleType##CreateInfo& createInfo) \
-    {                                                                                        \
-        ZoneScoped;                                                                          \
-        auto [handle, result] = OwnerField.Create(this, createInfo);                         \
-        TL_ASSERT(IsSuccess(result));                                                        \
-        return handle;                                                                       \
-    }
-
-#define IMPLEMENT_DEVICE_CREATE_METHOD_WITH_RESULT(HandleType, OwnerField)                           \
-    Result<Handle<HandleType>> IDevice::Create##HandleType(const HandleType##CreateInfo& createInfo) \
-    {                                                                                                \
-        ZoneScoped;                                                                                  \
-        auto [handle, result] = OwnerField.Create(this, createInfo);                                 \
-        if (IsSuccess(result)) return (Handle<HandleType>)handle;                                    \
-        return result;                                                                               \
-    }
-
-#define IMPLEMENT_DEVICE_DESTROY_METHOD(HandleType, OwnerField)                \
-    void IDevice::Destroy##HandleType(Handle<HandleType> handle)               \
-    {                                                                          \
-        ZoneScoped;                                                            \
-        TL_ASSERT(handle != NullHandle, "Cannot call destroy on null handle"); \
-        auto resource = Get(handle);                                           \
-        resource->Shutdown(this);                                              \
-        Release(handle);                                                       \
-    }
-
-#define IMPLEMENT_DEVICE_RESOURCE_METHODS(ResourceType) \
-    IMPLEMENT_DEVICE_CREATE_METHOD_UNIQUE(ResourceType) \
-    IMPLEMENT_DEVICE_DESTROY_METHOD_UNIQUE(ResourceType)
-
-#define IMPLEMENT_DISPATCHABLE_TYPES_FUNCTIONS(ResourceType)      \
-    IMPLEMENT_DEVICE_CREATE_METHOD_UNIQUE_WITH_INFO(ResourceType) \
-    IMPLEMENT_DEVICE_DESTROY_METHOD_UNIQUE(ResourceType)
-
-#define IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(HandleType, OwnerField) \
-    IMPLEMENT_DEVICE_CREATE_METHOD(HandleType, OwnerField)                \
-    IMPLEMENT_DEVICE_DESTROY_METHOD(HandleType, OwnerField)
-
-#define IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS_WITH_RESULTS(HandleType, OwnerField) \
-    IMPLEMENT_DEVICE_CREATE_METHOD_WITH_RESULT(HandleType, OwnerField)                 \
-    IMPLEMENT_DEVICE_DESTROY_METHOD(HandleType, OwnerField)
-
 namespace RHI::Vulkan
 {
     // Validation settings: to fine tune what is checked
@@ -178,12 +115,10 @@ namespace RHI::Vulkan
     };
 
     /// @todo: add support for a custom sink, so vulkan errors are spereated
-    VkBool32 DebugMessengerCallbacks(
-        [[maybe_unused]] VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
-        [[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT             messageTypes,
-        [[maybe_unused]] const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-        [[maybe_unused]] void*                                       pUserData)
+    VkBool32 DebugMessengerCallbacks(TL_MAYBE_UNUSED VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, TL_MAYBE_UNUSED VkDebugUtilsMessageTypeFlagsEXT messageTypes, TL_MAYBE_UNUSED const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, TL_MAYBE_UNUSED void* pUserData)
     {
+        constexpr auto seperator = "==============================================================================================";
+
         TL::String additionalInfo;
 
         if (pCallbackData->objectCount > 0)
@@ -232,20 +167,11 @@ namespace RHI::Vulkan
 
         switch (messageSeverity)
         {
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
-            TL_LOG_INFO("{}\nMessage: {}", additionalInfo, pCallbackData->pMessage);
-            break;
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
-            TL_LOG_INFO("{}\nMessage: {}", additionalInfo, pCallbackData->pMessage);
-            break;
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-            TL_LOG_WARNNING("{}\nMessage: {}", additionalInfo, pCallbackData->pMessage);
-            break;
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-            TL_LOG_ERROR("{}\nMessage: {}", additionalInfo, pCallbackData->pMessage);
-            break;
-        default:
-            TL_UNREACHABLE();
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: TL_LOG_INFO("{}\nMessage: {}", additionalInfo, pCallbackData->pMessage); break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:    TL_LOG_INFO("{}\nMessage: {}", additionalInfo, pCallbackData->pMessage); break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: TL_LOG_WARNNING("{}\nMessage: {}", additionalInfo, pCallbackData->pMessage); break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:   TL_LOG_ERROR("{}\nMessage: {}", additionalInfo, pCallbackData->pMessage); break;
+        default:                                              TL_UNREACHABLE();
         }
 
         return VK_FALSE;
@@ -547,14 +473,15 @@ namespace RHI::Vulkan
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES,
             .pNext = &features12,
         };
-        VkPhysicalDeviceFeatures2 features{
-            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-            .pNext = &features11,
+        VkPhysicalDeviceFeatures2 features
+        {
+            .sType    = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+            .pNext    = &features11,
             .features =
-                {
-                           .independentBlend  = VK_TRUE,
-                           .samplerAnisotropy = VK_TRUE,
-                           },
+            {
+                        .independentBlend  = VK_TRUE,
+                        .samplerAnisotropy = VK_TRUE,
+            },
         };
         VkDeviceCreateInfo deviceCI{
             .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
@@ -640,32 +567,25 @@ namespace RHI::Vulkan
 
         vkDeviceWaitIdle(m_device);
 
+        if (auto count = m_imageOwner.ReportLiveResourcesCount())             { TL_LOG_WARNNING("Detected {} Image leaked", count);            }
+        if (auto count = m_bufferOwner.ReportLiveResourcesCount())            { TL_LOG_WARNNING("Detected {} Buffer leaked", count);           }
+        if (auto count = m_bindGroupLayoutsOwner.ReportLiveResourcesCount())  { TL_LOG_WARNNING("Detected {} BindGroupLayout leaked", count);  }
+        if (auto count = m_bindGroupOwner.ReportLiveResourcesCount())         { TL_LOG_WARNNING("Detected {} BindGroup leaked", count);        }
+        if (auto count = m_pipelineLayoutOwner.ReportLiveResourcesCount())    { TL_LOG_WARNNING("Detected {} PipelineLayout leaked", count);   }
+        if (auto count = m_graphicsPipelineOwner.ReportLiveResourcesCount())  { TL_LOG_WARNNING("Detected {} GraphicsPipeline leaked", count); }
+        if (auto count = m_computePipelineOwner.ReportLiveResourcesCount())   { TL_LOG_WARNNING("Detected {} ComputePipeline leaked", count);  }
+        if (auto count = m_samplerOwner.ReportLiveResourcesCount())           { TL_LOG_WARNNING("Detected {} Sampler leaked", count);          }
+
         m_destroyQueue->Shutdown();
         m_stagingBuffer->Shutdown();
         m_commandsAllocator->Shutdown();
         m_bindGroupAllocator->Shutdown();
+
         for (auto& queue : m_queue)
         {
             if (queue.GetHandle() != VK_NULL_HANDLE)
                 queue.Shutdown();
         }
-
-        if (auto count = m_imageOwner.ReportLiveResourcesCount())
-            TL_LOG_WARNNING("Detected {} Image leaked", count);
-        if (auto count = m_bufferOwner.ReportLiveResourcesCount())
-            TL_LOG_WARNNING("Detected {} Buffer leaked", count);
-        if (auto count = m_bindGroupLayoutsOwner.ReportLiveResourcesCount())
-            TL_LOG_WARNNING("Detected {} BindGroupLayout leaked", count);
-        if (auto count = m_bindGroupOwner.ReportLiveResourcesCount())
-            TL_LOG_WARNNING("Detected {} BindGroup leaked", count);
-        if (auto count = m_pipelineLayoutOwner.ReportLiveResourcesCount())
-            TL_LOG_WARNNING("Detected {} PipelineLayout leaked", count);
-        if (auto count = m_graphicsPipelineOwner.ReportLiveResourcesCount())
-            TL_LOG_WARNNING("Detected {} GraphicsPipeline leaked", count);
-        if (auto count = m_computePipelineOwner.ReportLiveResourcesCount())
-            TL_LOG_WARNNING("Detected {} ComputePipeline leaked", count);
-        if (auto count = m_samplerOwner.ReportLiveResourcesCount())
-            TL_LOG_WARNNING("Detected {} Sampler leaked", count);
 
         vmaDestroyAllocator(m_deviceAllocator);
         vkDestroyDevice(m_device, nullptr);
@@ -849,6 +769,56 @@ namespace RHI::Vulkan
         return queue->Submit(commandLists, ConvertPipelineStageFlags(submitInfo.signalStage));
     }
 
+#define IMPLEMENT_DEVICE_CREATE_METHOD_UNIQUE_WITH_INFO(ResourceType)                       \
+    ResourceType* IDevice::Create##ResourceType(const ResourceType##CreateInfo& createInfo) \
+    {                                                                                       \
+        ZoneScoped;                                                                         \
+        auto handle = new I##ResourceType();                                                \
+        auto result = handle->Init(this, createInfo);                                       \
+        TL_ASSERT(IsSuccess(result));                                                       \
+        return handle;                                                                      \
+    }
+
+#define IMPLEMENT_DEVICE_DESTROY_METHOD_UNIQUE(ResourceType)   \
+    void IDevice::Destroy##ResourceType(ResourceType* _handle) \
+    {                                                          \
+        ZoneScoped;                                            \
+        auto handle = (I##ResourceType*)_handle;               \
+        handle->Shutdown();                                    \
+        delete handle;                                         \
+    }
+
+#define IMPLEMENT_DEVICE_CREATE_METHOD(HandleType, OwnerField)                               \
+    Handle<HandleType> IDevice::Create##HandleType(const HandleType##CreateInfo& createInfo) \
+    {                                                                                        \
+        ZoneScoped;                                                                          \
+        auto [handle, result] = OwnerField.Create(this, createInfo);                         \
+        TL_ASSERT(IsSuccess(result));                                                        \
+        return handle;                                                                       \
+    }
+
+#define IMPLEMENT_DEVICE_DESTROY_METHOD(HandleType, OwnerField)                \
+    void IDevice::Destroy##HandleType(Handle<HandleType> handle)               \
+    {                                                                          \
+        ZoneScoped;                                                            \
+        TL_ASSERT(handle != NullHandle, "Cannot call destroy on null handle"); \
+        auto resource = Get(handle);                                           \
+        resource->Shutdown(this);                                              \
+        Release(handle);                                                       \
+    }
+
+#define IMPLEMENT_DEVICE_RESOURCE_METHODS(ResourceType) \
+    IMPLEMENT_DEVICE_CREATE_METHOD_UNIQUE(ResourceType) \
+    IMPLEMENT_DEVICE_DESTROY_METHOD_UNIQUE(ResourceType)
+
+#define IMPLEMENT_DISPATCHABLE_TYPES_FUNCTIONS(ResourceType)      \
+    IMPLEMENT_DEVICE_CREATE_METHOD_UNIQUE_WITH_INFO(ResourceType) \
+    IMPLEMENT_DEVICE_DESTROY_METHOD_UNIQUE(ResourceType)
+
+#define IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(HandleType, OwnerField) \
+    IMPLEMENT_DEVICE_CREATE_METHOD(HandleType, OwnerField)                \
+    IMPLEMENT_DEVICE_DESTROY_METHOD(HandleType, OwnerField)
+
     IMPLEMENT_DISPATCHABLE_TYPES_FUNCTIONS(Swapchain);
     IMPLEMENT_DISPATCHABLE_TYPES_FUNCTIONS(ShaderModule);
     IMPLEMENT_DISPATCHABLE_TYPES_FUNCTIONS(CommandList);
@@ -858,7 +828,7 @@ namespace RHI::Vulkan
     IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(GraphicsPipeline, m_graphicsPipelineOwner);
     IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(ComputePipeline, m_computePipelineOwner);
     IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(Sampler, m_samplerOwner);
-    IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS_WITH_RESULTS(Image, m_imageOwner);
+    IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(Image, m_imageOwner);
 
     Handle<Image> IDevice::CreateImageView(TL_MAYBE_UNUSED const ImageViewCreateInfo& createInfo)
     {
@@ -866,5 +836,5 @@ namespace RHI::Vulkan
         return {};
     }
 
-    IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS_WITH_RESULTS(Buffer, m_bufferOwner);
+    IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(Buffer, m_bufferOwner);
 } // namespace RHI::Vulkan

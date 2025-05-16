@@ -1,4 +1,5 @@
 #pragma once
+
 #include <RHI/Handle.hpp>
 #include <RHI/Common.hpp>
 #include <RHI/CommandList.hpp>
@@ -7,7 +8,5 @@
 #include <RHI/PipelineAccess.hpp>
 #include <RHI/Swapchain.hpp>
 #include <RHI/RenderGraph.hpp>
-
 #include <RHI/Resources.hpp>
-
 #include <RHI/Result.hpp>

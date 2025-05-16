@@ -229,11 +229,7 @@ namespace Engine
             .byteSize   = bufferSize,
 
         };
-        auto [buffer, result] = m_device->CreateBuffer(bufferCI);
-        m_buffer              = buffer;
-
-        if (result != ResultCode::Success)
-            return result;
+        m_buffer              = m_device->CreateBuffer(bufferCI);
 
         m_bufferOffset = 0;
         m_freeList.clear();

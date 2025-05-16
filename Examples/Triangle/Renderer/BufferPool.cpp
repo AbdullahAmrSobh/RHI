@@ -15,9 +15,8 @@ namespace Engine
         // Ugly hack to avoid calling the constructor of the allocator
         new (&m_allocator) OffsetAllocator::Allocator(createInfo.byteSize);
 
-        auto [buffer, result] = device.CreateBuffer(createInfo);
-        m_buffer              = buffer;
-        return result;
+        m_buffer              = device.CreateBuffer(createInfo);
+        return ResultCode::Success;
     }
 
     void BufferPool::Shutdown()

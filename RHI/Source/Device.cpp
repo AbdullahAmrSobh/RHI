@@ -7,7 +7,7 @@
 
 namespace RHI
 {
-    Result<Handle<Image>> CreateImageWithContent(Device& device, const ImageCreateInfo& createInfo, TL::Block content)
+    Handle<Image> CreateImageWithContent(Device& device, const ImageCreateInfo& createInfo, TL::Block content)
     {
         // auto imageSizeBytes = CalcaulteImageSize(createInfo.format, createInfo.size, createInfo.mipLevels, createInfo.arrayCount);
         auto imageSizeBytes = content.size;
@@ -16,15 +16,9 @@ namespace RHI
         // TL_ASSERT(imageSizeBytes == content.size);
         TL_ASSERT(createInfo.usageFlags & ImageUsage::CopyDst);
 
-        if (auto [image, result] = device.CreateImage(createInfo); IsSuccess(result))
-        {
-            device.ImageWrite(image, ImageOffset3D{}, createInfo.size, 0, 0, content);
-            return image;
-        }
-        else
-        {
-            return result;
-        }
+        auto image = device.CreateImage(createInfo);
+        device.ImageWrite(image, ImageOffset3D{}, createInfo.size, 0, 0, content);
+        return image;
     }
 
     DeviceLimits Device::GetLimits() const

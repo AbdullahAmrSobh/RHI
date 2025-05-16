@@ -48,7 +48,7 @@ namespace RHI::Vulkan
             .byteSize   = size,
         };
 
-        auto bufferHandle = m_device->CreateBuffer(stagingBufferCI).GetValue();
+        auto bufferHandle = m_device->CreateBuffer(stagingBufferCI);
         auto buffer       = m_device->m_bufferOwner.Get(bufferHandle);
 
         m_pages.push_back(
