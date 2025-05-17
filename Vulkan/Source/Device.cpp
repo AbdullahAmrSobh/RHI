@@ -21,10 +21,8 @@
 #include "Common.hpp"
 #include "Queue.hpp"
 #include "Swapchain.hpp"
-
-#include "RHI-Vulkan/Loader.hpp"
-
 #include "Frame.hpp"
+#include "RHI-Vulkan/Loader.hpp"
 
 #include <TL/Allocator/Allocator.hpp>
 #include <TL/Assert.hpp>
@@ -32,6 +30,7 @@
 
 #include <algorithm>
 #include <format>
+
 #include <tracy/Tracy.hpp>
 
 #define VULKAN_DEVICE_FUNC_LOAD(device, proc) reinterpret_cast<PFN_##proc>(vkGetDeviceProcAddr(device, #proc));
@@ -75,7 +74,7 @@ namespace RHI::Vulkan
         VkBool32                unique_handles        = VK_TRUE;
         VkBool32                object_lifetime       = VK_TRUE;
         VkBool32                stateless_param       = VK_TRUE;
-        TL::Vector<const char*> debug_action          = {"VK_DBG_LAYER_ACTION_LOG_MSG"}; // "VK_DBG_LAYER_ACTION_DEBUG_OUTPUT", "VK_DBG_LAYER_ACTION_BREAK"
+        TL::Vector<const char*> debug_action          = {}; // "VK_DBG_LAYER_ACTION_LOG_MSG", "VK_DBG_LAYER_ACTION_DEBUG_OUTPUT", "VK_DBG_LAYER_ACTION_BREAK"
         TL::Vector<const char*> report_flags          = {"error"};
 
         VkBaseInStructure* BuildPNextChain(void* pNext)
@@ -566,37 +565,21 @@ namespace RHI::Vulkan
         vkDeviceWaitIdle(m_device);
 
         if (auto count = m_imageOwner.ReportLiveResourcesCount())
-        {
             TL_LOG_WARNNING("Detected {} Image leaked", count);
-        }
         if (auto count = m_bufferOwner.ReportLiveResourcesCount())
-        {
             TL_LOG_WARNNING("Detected {} Buffer leaked", count);
-        }
         if (auto count = m_bindGroupLayoutsOwner.ReportLiveResourcesCount())
-        {
             TL_LOG_WARNNING("Detected {} BindGroupLayout leaked", count);
-        }
         if (auto count = m_bindGroupOwner.ReportLiveResourcesCount())
-        {
             TL_LOG_WARNNING("Detected {} BindGroup leaked", count);
-        }
         if (auto count = m_pipelineLayoutOwner.ReportLiveResourcesCount())
-        {
             TL_LOG_WARNNING("Detected {} PipelineLayout leaked", count);
-        }
         if (auto count = m_graphicsPipelineOwner.ReportLiveResourcesCount())
-        {
             TL_LOG_WARNNING("Detected {} GraphicsPipeline leaked", count);
-        }
         if (auto count = m_computePipelineOwner.ReportLiveResourcesCount())
-        {
             TL_LOG_WARNNING("Detected {} ComputePipeline leaked", count);
-        }
         if (auto count = m_samplerOwner.ReportLiveResourcesCount())
-        {
             TL_LOG_WARNNING("Detected {} Sampler leaked", count);
-        }
 
         for (auto& frame : m_framesInFlight)
         {
@@ -638,17 +621,22 @@ namespace RHI::Vulkan
         }
     }
 
+    void IDevice::WaitIdle()
+    {
+        ZoneScoped;
+        vkDeviceWaitIdle(m_device);
+    }
+
     void IDevice::UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo)
     {
         ZoneScoped;
         auto bindGroup = m_bindGroupOwner.Get(handle);
-        bindGroup->Write(this, updateInfo);
+        bindGroup->Update(this, updateInfo);
     }
 
     void IDevice::BufferWrite(Handle<Buffer> bufferHandle, size_t offset, TL::Block block)
     {
         ZoneScoped;
-
         auto frame = GetCurrentFrame();
         frame->BufferWrite(bufferHandle, offset, block);
     }
@@ -656,7 +644,6 @@ namespace RHI::Vulkan
     void IDevice::ImageWrite(Handle<Image> imageHandle, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block)
     {
         ZoneScoped;
-
         auto frame = GetCurrentFrame();
         frame->ImageWrite(imageHandle, offset, size, mipLevel, arrayLayer, block);
     }

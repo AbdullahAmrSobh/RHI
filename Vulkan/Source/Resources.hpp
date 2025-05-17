@@ -71,7 +71,7 @@ namespace RHI::Vulkan
         ResultCode Init(IDevice* device, const BindGroupCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
 
-        void Write(IDevice* device, const BindGroupUpdateInfo& updateInfo);
+        void Update(IDevice* device, const BindGroupUpdateInfo& updateInfo);
     };
 
     class IShaderModule final : public ShaderModule

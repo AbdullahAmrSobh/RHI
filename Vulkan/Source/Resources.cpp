@@ -489,7 +489,7 @@ namespace RHI::Vulkan
         allocator->ShutdownBindGroup(this);
     }
 
-    void IBindGroup::Write(IDevice* device, const BindGroupUpdateInfo& updateInfo)
+    void IBindGroup::Update(IDevice* device, const BindGroupUpdateInfo& updateInfo)
     {
         uint32_t writeInfosCount = 0;
 
@@ -1169,10 +1169,10 @@ namespace RHI::Vulkan
             device->m_destroyQueue->Push(frame->m_timeline, handle);
 
         if (viewHandle)
-            device->m_destroyQueue->Push(frame->m_timeline, handle);
+            device->m_destroyQueue->Push(frame->m_timeline, viewHandle);
 
         if (allocation)
-            device->m_destroyQueue->Push(frame->m_timeline, handle);
+            device->m_destroyQueue->Push(frame->m_timeline, allocation);
     }
 
     VkMemoryRequirements IImage::GetMemoryRequirements(IDevice* device) const

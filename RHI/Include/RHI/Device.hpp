@@ -63,6 +63,8 @@ namespace RHI
     public:
         virtual ~Frame() = default;
 
+        // TODO: integrate with renderdoc API
+
         virtual void         Begin(TL::Span<Swapchain* const> swapchains)                                                                                     = 0;
         virtual uint64_t     End()                                                                                                                            = 0;
         virtual CommandList* CreateCommandList(const CommandListCreateInfo& createInfo)                                                                       = 0;

@@ -152,7 +152,7 @@ namespace RHI::Vulkan
     {
         VkCommandPoolCreateInfo poolCreateInfo = {
             .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-            .flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+            .flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT | VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
             .queueFamilyIndex = m_device->m_queue[(uint32_t)queueType].GetFamilyIndex(),
         };
 
@@ -176,7 +176,8 @@ namespace RHI::Vulkan
         for (size_t i = 0; i < (int)QueueType::Count; ++i)
         {
             VkCommandPool pool = poolMap[i];
-            vkDestroyCommandPool(m_device->m_device, pool, nullptr);
+            if (pool != VK_NULL_HANDLE)
+                vkDestroyCommandPool(m_device->m_device, pool, nullptr);
         }
 
         m_pools.erase(std::this_thread::get_id()); // Clean up the pools for this thread

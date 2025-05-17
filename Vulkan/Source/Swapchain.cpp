@@ -2,6 +2,7 @@
 #include "Common.hpp"
 #include "Device.hpp"
 #include "Resources.hpp"
+#include "Frame.hpp"
 
 #include <tracy/Tracy.hpp>
 
@@ -72,23 +73,21 @@ namespace RHI::Vulkan
 
     void ISwapchain::Shutdown()
     {
-        VkResult result;
-        result = vkDeviceWaitIdle(m_device->m_device);
-        TL_ASSERT(result == VK_SUCCESS);
+        auto frame = (IFrame*)m_device->GetCurrentFrame();
 
         for (uint32_t i = 0; i < MaxImageCount; i++)
         {
             if (m_imageAcquiredSemaphore[i] != VK_NULL_HANDLE)
-                vkDestroySemaphore(m_device->m_device, m_imageAcquiredSemaphore[i], nullptr);
+                m_device->m_destroyQueue->Push(frame->m_timeline, m_imageAcquiredSemaphore[i]);
 
             if (m_imagePresentSemaphore[i] != VK_NULL_HANDLE)
-                vkDestroySemaphore(m_device->m_device, m_imagePresentSemaphore[i], nullptr);
+                m_device->m_destroyQueue->Push(frame->m_timeline, m_imagePresentSemaphore[i]);
         }
 
         CleanupOldSwapchain(m_swapchain, m_imageCount);
 
         if (m_surface != VK_NULL_HANDLE)
-            vkDestroySurfaceKHR(m_device->m_instance, m_surface, nullptr);
+            m_device->m_destroyQueue->Push(frame->m_timeline, m_surface);
 
         m_device->m_imageOwner.Release(m_image);
     }
@@ -243,7 +242,7 @@ namespace RHI::Vulkan
         if (m_name.empty() == false)
             m_device->SetDebugName(m_swapchain, m_name.c_str());
 
-        CleanupOldSwapchain(VK_NULL_HANDLE, m_imageCount);
+        CleanupOldSwapchain(createInfo.oldSwapchain, m_imageCount);
 
         result = vkGetSwapchainImagesKHR(m_device->m_device, m_swapchain, &m_imageCount, nullptr);
         TL_ASSERT(result == VK_SUCCESS, "Failed to get swapchain images count");
@@ -363,15 +362,14 @@ namespace RHI::Vulkan
 
     void ISwapchain::CleanupOldSwapchain(VkSwapchainKHR oldSwapchain, uint32_t oldImageCount)
     {
+        auto frame = (IFrame*)m_device->GetCurrentFrame();
+
         for (uint32_t i = 0; i < oldImageCount; i++)
         {
-            vkDestroyImageView(m_device->m_device, m_imageViews[i], nullptr);
+            m_device->m_destroyQueue->Push(frame->m_timeline, m_imageViews[i]);
             m_imageViews[i] = VK_NULL_HANDLE;
         }
 
-        if (oldSwapchain == VK_NULL_HANDLE)
-            return;
-
-        vkDestroySwapchainKHR(m_device->m_device, m_swapchain, nullptr);
+        m_device->m_destroyQueue->Push(frame->m_timeline, oldSwapchain);
     }
 } // namespace RHI::Vulkan

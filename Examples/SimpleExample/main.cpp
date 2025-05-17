@@ -33,6 +33,8 @@ inline static RHI::ShaderModule* LoadShaderModule(RHI::Device* device, const cha
 
 int main(int argc, const char* argv[])
 {
+    TL::MemPlumber::start();
+
     auto device = RHI::CreateVulkanDevice({});
 
     if (!glfwInit())
@@ -390,7 +392,7 @@ int main(int argc, const char* argv[])
                 .size          = windowSize,
                 .setupCallback = [&](RHI::RenderGraphBuilder& builder)
                 {
-                    auto colorAttachment = rg->ImportSwapchain("color", *swapchain, RHI::Format::RGBA8_UNORM);
+                    auto colorAttachment   = rg->ImportSwapchain("color", *swapchain, RHI::Format::RGBA8_UNORM);
                     auto anotherAttachment = rg->CreateRenderTarget("another", windowSize, RHI::Format::RGBA8_UNORM);
                     builder.AddColorAttachment({.color = colorAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
                     builder.AddColorAttachment({.color = anotherAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
@@ -460,5 +462,9 @@ int main(int argc, const char* argv[])
     device->DestroyGraphicsPipeline(pipeline);
     RHI::DestroyVulkanDevice(device);
     glfwTerminate();
+
+    size_t memLeakCount, memLeakSize;
+    TL::MemPlumber::memLeakCheck(memLeakCount, memLeakSize);
+    TL_LOG_INFO("Detected {} leaked allocations, with total size {}.", memLeakCount, memLeakSize);
     return 0;
 }

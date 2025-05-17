@@ -44,7 +44,7 @@ namespace RHI::Vulkan
     void IFrame::Begin(TL::Span<Swapchain* const> swapchains)
     {
         auto queue        = m_device->GetDeviceQueue(QueueType::Graphics);
-        bool waitComplete = queue->WaitTimeline(m_timeline);
+        bool waitComplete = queue->WaitTimeline(m_prevTimeline);
         TL_ASSERT(waitComplete, "Failed to wait for current frame in flight");
 
         {
@@ -53,7 +53,6 @@ namespace RHI::Vulkan
             m_device->m_destroyQueue->Flush(timeline);
         }
 
-        /// @todo: adopt a consitant naming convention
         m_tempAllocator.Collect();
         m_commandListAllocator->Reset();
         m_stagingPool->Reset();
@@ -66,7 +65,7 @@ namespace RHI::Vulkan
     uint64_t IFrame::End()
     {
         m_device->m_currentFrameIndex = (m_device->m_currentFrameIndex + 1) % (m_device->m_framesInFlight.size() - 1);
-
+        m_prevTimeline = m_timeline;
         return m_device->m_currentFrameIndex;
     }
 
@@ -290,6 +289,7 @@ namespace RHI::Vulkan
     ////////////////////////////////////////////////////////////////
     /// Release Queue
     ////////////////////////////////////////////////////////////////
+
     DeleteQueue::~DeleteQueue()
     {
         TL_ASSERT(m_allocation.empty());
@@ -313,46 +313,6 @@ namespace RHI::Vulkan
         Flush(UINT64_MAX);
     }
 
-    void DeleteQueue::Push(uint64_t timeline, VmaAllocation h)
-    {
-        m_allocation.emplace_back(timeline, h);
-    }
-
-    void DeleteQueue::Push(uint64_t timeline, VkBuffer h)
-    {
-        m_buffer.emplace_back(timeline, h);
-    }
-
-    void DeleteQueue::Push(uint64_t timeline, VkBufferView h)
-    {
-        m_bufferView.emplace_back(timeline, h);
-    }
-
-    void DeleteQueue::Push(uint64_t timeline, VkImage h)
-    {
-        m_image.emplace_back(timeline, h);
-    }
-
-    void DeleteQueue::Push(uint64_t timeline, VkImageView h)
-    {
-        m_imageView.emplace_back(timeline, h);
-    }
-
-    void DeleteQueue::Push(uint64_t timeline, VkSampler h)
-    {
-        m_sampler.emplace_back(timeline, h);
-    }
-
-    void DeleteQueue::Push(uint64_t timeline, VkPipeline h)
-    {
-        m_pipeline.emplace_back(timeline, h);
-    }
-
-    void DeleteQueue::Push(uint64_t timeline, VkDescriptorPool h)
-    {
-        m_descriptorPool.emplace_back(timeline, h);
-    }
-
     void DeleteQueue::Flush(uint64_t timeline)
     {
         // NOTE: Order is important
@@ -364,5 +324,8 @@ namespace RHI::Vulkan
         FlushQueue(*m_device, m_sampler, timeline);
         FlushQueue(*m_device, m_pipeline, timeline);
         FlushQueue(*m_device, m_descriptorPool, timeline);
+        FlushQueue(*m_device, m_swapchain, timeline);
+        FlushQueue(*m_device, m_surface, timeline);
+        FlushQueue(*m_device, m_semaphore, timeline);
     }
 } // namespace RHI::Vulkan

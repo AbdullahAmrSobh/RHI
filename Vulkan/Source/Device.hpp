@@ -13,8 +13,6 @@
 namespace RHI::Vulkan
 {
     class BindGroupAllocator;
-    class CommandPool;
-    class StagingBuffer;
 
     struct VulkanFunctions
     {
@@ -46,25 +44,19 @@ namespace RHI::Vulkan
         ~IDevice();
 
     public:
-        /// @brief Initializes the device with application-specific information.
         ResultCode Init(const ApplicationInfo& appInfo);
-
-        /// @brief Shuts down the device and releases all associated resources.
-        void Shutdown();
+        void       Shutdown();
 
         /// @brief Assigns a debug name to a Vulkan object.
         void SetDebugName(VkObjectType type, uint64_t handle, const char* name) const;
-
-        /// @brief Assigns a debug name to a Vulkan object.
         template<typename T>
         void SetDebugName(T handle, const char* name) const;
-
         template<typename T, typename... FMT_ARGS>
         void SetDebugName(T handle, const char* fmt, FMT_ARGS... args) const;
 
         IQueue* GetDeviceQueue(QueueType type);
 
-        void WaitIdle() { vkDeviceWaitIdle(m_device); }
+        void WaitIdle();
 
         // Interface Implementation
         Swapchain*               CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
@@ -80,6 +72,7 @@ namespace RHI::Vulkan
         void                     DestroyBuffer(Handle<Buffer> handle) override;
         Handle<Image>            CreateImage(const ImageCreateInfo& createInfo) override;
         Handle<Image>            CreateImageView(const ImageViewCreateInfo& createInfo) override;
+        void                     DestroyImage(Handle<Image> handle) override;
         Handle<Sampler>          CreateSampler(const SamplerCreateInfo& createInfo) override;
         void                     DestroySampler(Handle<Sampler> handle) override;
         Handle<PipelineLayout>   CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo) override;
@@ -88,7 +81,6 @@ namespace RHI::Vulkan
         void                     DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle) override;
         Handle<ComputePipeline>  CreateComputePipeline(const ComputePipelineCreateInfo& createInfo) override;
         void                     DestroyComputePipeline(Handle<ComputePipeline> handle) override;
-        void                     DestroyImage(Handle<Image> handle) override;
         void                     BufferWrite(Handle<Buffer> buffer, size_t offset, TL::Block block) override;
         void                     ImageWrite(Handle<Image> image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block) override;
         ResultCode               SetFramesInFlightCount(uint32_t count) override;
@@ -116,26 +108,29 @@ namespace RHI::Vulkan
 
     public:
         // Vulkan instance and core objects
-        VkInstance                        m_instance;            ///< Vulkan instance handle.
-        VkDebugUtilsMessengerEXT          m_debugUtilsMessenger; ///< Debug messenger for Vulkan validation layers.
-        VkPhysicalDevice                  m_physicalDevice;      ///< Physical device selected for use.
-        VkDevice                          m_device;              ///< Logical device handle.
-        VmaAllocator                      m_deviceAllocator;     ///< Vulkan memory allocator.
-        VulkanFunctions                   m_pfn;                 ///< Function pointers for Vulkan extensions and commands.
-        // Resource pools
-        HandlePool<IImage>                m_imageOwner;
-        HandlePool<IBuffer>               m_bufferOwner;
-        HandlePool<IBindGroupLayout>      m_bindGroupLayoutsOwner;
-        HandlePool<IBindGroup>            m_bindGroupOwner;
-        HandlePool<IPipelineLayout>       m_pipelineLayoutOwner;
-        HandlePool<IGraphicsPipeline>     m_graphicsPipelineOwner;
-        HandlePool<IComputePipeline>      m_computePipelineOwner;
-        HandlePool<ISampler>              m_samplerOwner;
-        // Queue and allocator management
-        IQueue                            m_queue[AsyncQueuesCount]; ///< Array of queues for different operations (e.g., graphics, compute).
-        TL::Ptr<class DeleteQueue>        m_destroyQueue;            ///< Queue for handling deferred resource destruction.
-        TL::Ptr<class BindGroupAllocator> m_bindGroupAllocator;      ///< Allocator for bind group resources.
+        VkInstance               m_instance;
+        VkDebugUtilsMessengerEXT m_debugUtilsMessenger;
+        VkPhysicalDevice         m_physicalDevice;
+        VkDevice                 m_device;
+        VmaAllocator             m_deviceAllocator;
+        VulkanFunctions          m_pfn;
 
+        // Resource pools
+        HandlePool<IImage>            m_imageOwner;
+        HandlePool<IBuffer>           m_bufferOwner;
+        HandlePool<IBindGroupLayout>  m_bindGroupLayoutsOwner;
+        HandlePool<IBindGroup>        m_bindGroupOwner;
+        HandlePool<IPipelineLayout>   m_pipelineLayoutOwner;
+        HandlePool<IGraphicsPipeline> m_graphicsPipelineOwner;
+        HandlePool<IComputePipeline>  m_computePipelineOwner;
+        HandlePool<ISampler>          m_samplerOwner;
+
+        // Queue and allocator management
+        IQueue                            m_queue[AsyncQueuesCount];
+        TL::Ptr<class DeleteQueue>        m_destroyQueue;
+        TL::Ptr<class BindGroupAllocator> m_bindGroupAllocator;
+
+        // Frames in flight
         uint32_t                          m_currentFrameIndex;
         TL::Vector<TL::Ptr<class IFrame>> m_framesInFlight;
     };

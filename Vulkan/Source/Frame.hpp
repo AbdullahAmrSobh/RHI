@@ -7,6 +7,8 @@
 #include <TL/UniquePtr.hpp>
 #include <TL/Allocator/Arena.hpp>
 
+#include <tracy/TracyVulkan.hpp>
+
 namespace RHI::Vulkan
 {
     class CommandPool;
@@ -48,8 +50,9 @@ namespace RHI::Vulkan
         TL::Ptr<StagingBuffer> m_stagingPool;
         std::atomic_uint64_t   m_timeline;
         ICommandList*          m_activeTransferCommandList;
-
         TL::Vector<ISwapchain*> m_swapchains;
+
+        uint64_t               m_prevTimeline;
     };
 
     ////////////////////////////////////////////////////////////////
@@ -106,6 +109,9 @@ namespace RHI::Vulkan
         TL::Deque<std::pair<uint64_t, VkSampler>>        m_sampler;
         TL::Deque<std::pair<uint64_t, VkPipeline>>       m_pipeline;
         TL::Deque<std::pair<uint64_t, VkDescriptorPool>> m_descriptorPool;
+        TL::Deque<std::pair<uint64_t, VkSwapchainKHR>>   m_swapchain;
+        TL::Deque<std::pair<uint64_t, VkSurfaceKHR>>     m_surface;
+        TL::Deque<std::pair<uint64_t, VkSemaphore>>      m_semaphore;
 
     public:
         ~DeleteQueue();
@@ -114,14 +120,28 @@ namespace RHI::Vulkan
 
         void Shutdown();
 
-        void Push(uint64_t timeline, VmaAllocation h);
-        void Push(uint64_t timeline, VkBuffer h);
-        void Push(uint64_t timeline, VkBufferView h);
-        void Push(uint64_t timeline, VkImage h);
-        void Push(uint64_t timeline, VkImageView h);
-        void Push(uint64_t timeline, VkSampler h);
-        void Push(uint64_t timeline, VkPipeline h);
-        void Push(uint64_t timeline, VkDescriptorPool h);
+        void Push(uint64_t timeline, VmaAllocation h) { m_allocation.emplace_back(timeline, h); }
+
+        void Push(uint64_t timeline, VkBuffer h) { m_buffer.emplace_back(timeline, h); }
+
+        void Push(uint64_t timeline, VkBufferView h) { m_bufferView.emplace_back(timeline, h); }
+
+        void Push(uint64_t timeline, VkImage h) { m_image.emplace_back(timeline, h); }
+
+        void Push(uint64_t timeline, VkImageView h) { m_imageView.emplace_back(timeline, h); }
+
+        void Push(uint64_t timeline, VkSampler h) { m_sampler.emplace_back(timeline, h); }
+
+        void Push(uint64_t timeline, VkPipeline h) { m_pipeline.emplace_back(timeline, h); }
+
+        void Push(uint64_t timeline, VkDescriptorPool h) { m_descriptorPool.emplace_back(timeline, h); }
+
+        void Push(uint64_t timeline, VkSwapchainKHR h) { m_swapchain.emplace_back(timeline, h); }
+
+        void Push(uint64_t timeline, VkSurfaceKHR h) { m_surface.emplace_back(timeline, h); }
+
+        void Push(uint64_t timeline, VkSemaphore h) { m_semaphore.emplace_back(timeline, h); }
+
         void Flush(uint64_t timeline);
 
     private:
@@ -150,6 +170,9 @@ namespace RHI::Vulkan
             else if constexpr (std::is_same_v<VkHandleType, VkSampler>)        vkDestroySampler(device.m_device, handle, nullptr);
             else if constexpr (std::is_same_v<VkHandleType, VkPipeline>)       vkDestroyPipeline(device.m_device, handle, nullptr);
             else if constexpr (std::is_same_v<VkHandleType, VkDescriptorPool>) vkDestroyDescriptorPool(device.m_device, handle, nullptr);
+            else if constexpr (std::is_same_v<VkHandleType, VkSemaphore>)      vkDestroySemaphore(device.m_device, handle, nullptr);
+            else if constexpr (std::is_same_v<VkHandleType, VkSwapchainKHR>)   vkDestroySwapchainKHR(device.m_device, handle, nullptr);
+            else if constexpr (std::is_same_v<VkHandleType, VkSurfaceKHR>)     vkDestroySurfaceKHR(device.m_instance, handle, nullptr);
             // clang-format on
         }
     };
