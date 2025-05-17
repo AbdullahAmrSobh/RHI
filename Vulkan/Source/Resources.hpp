@@ -45,6 +45,8 @@ namespace RHI::Vulkan
         ResultCode InitBindGroup(IBindGroup* bindGroup, IBindGroupLayout* bindGroupLayout);
         void       ShutdownBindGroup(IBindGroup* bindGroup);
 
+        void Reset();
+
     public:
         IDevice*         m_device;
         VkDescriptorPool m_descriptorPool;
@@ -114,8 +116,8 @@ namespace RHI::Vulkan
 
     struct IBuffer : Buffer
     {
-        VmaAllocation allocation;
         VkBuffer      handle;
+        VmaAllocation allocation;
 
         ResultCode Init(IDevice* device, const BufferCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
@@ -128,9 +130,11 @@ namespace RHI::Vulkan
 
     struct IImage : Image
     {
-        VmaAllocation         allocation;
-        VkImage               handle;
-        VkImageView           viewHandle;
+        VkImage       handle;
+        VkImageView   viewHandle;
+        VmaAllocation allocation;
+
+        // TODO: the following should be removed
         ImageSize3D           size;
         Format                format;
         ImageSubresourceRange subresources;

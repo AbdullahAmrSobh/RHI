@@ -1,7 +1,7 @@
 #include "Resources.hpp"
 #include "Common.hpp"
-#include "DeleteQueue.hpp"
 #include "Device.hpp"
+#include "Frame.hpp"
 
 #include <vk_mem_alloc.h>
 
@@ -919,10 +919,10 @@ namespace RHI::Vulkan
 
     void IGraphicsPipeline::Shutdown(IDevice* device)
     {
-        uint64_t timeline = 9;
+        auto frame = (IFrame*)device->GetCurrentFrame();
 
         if (handle)
-            device->m_destroyQueue->Push(timeline, handle);
+            device->m_destroyQueue->Push(frame->m_timeline, handle);
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -960,10 +960,10 @@ namespace RHI::Vulkan
 
     void IComputePipeline::Shutdown(IDevice* device)
     {
-        uint64_t timeline = 9;
+        auto frame = (IFrame*)device->GetCurrentFrame();
 
         if (handle)
-            device->m_destroyQueue->Push(timeline, handle);
+            device->m_destroyQueue->Push(frame->m_timeline, handle);
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -1003,13 +1003,13 @@ namespace RHI::Vulkan
 
     void IBuffer::Shutdown(IDevice* device)
     {
-        uint64_t timeline = 9;
+        auto frame = (IFrame*)device->GetCurrentFrame();
 
         if (handle)
-            device->m_destroyQueue->Push(timeline, handle);
+            device->m_destroyQueue->Push(frame->m_timeline, handle);
 
         if (allocation)
-            device->m_destroyQueue->Push(timeline, allocation);
+            device->m_destroyQueue->Push(frame->m_timeline, handle);
     }
 
     VkMemoryRequirements IBuffer::GetMemoryRequirements(IDevice* device) const
@@ -1163,16 +1163,16 @@ namespace RHI::Vulkan
 
     void IImage::Shutdown(IDevice* device)
     {
-        uint64_t timeline = 9;
+        auto frame = (IFrame*)device->GetCurrentFrame();
 
         if (handle)
-            device->m_destroyQueue->Push(timeline, handle);
+            device->m_destroyQueue->Push(frame->m_timeline, handle);
 
         if (viewHandle)
-            device->m_destroyQueue->Push(timeline, viewHandle);
+            device->m_destroyQueue->Push(frame->m_timeline, handle);
 
         if (allocation)
-            device->m_destroyQueue->Push(timeline, allocation);
+            device->m_destroyQueue->Push(frame->m_timeline, handle);
     }
 
     VkMemoryRequirements IImage::GetMemoryRequirements(IDevice* device) const
@@ -1223,8 +1223,8 @@ namespace RHI::Vulkan
 
     void ISampler::Shutdown(IDevice* device)
     {
-        uint64_t timeline = 9;
-        device->m_destroyQueue->Push(timeline, handle);
+        auto frame = (IFrame*)device->GetCurrentFrame();
+        device->m_destroyQueue->Push(frame->m_timeline, handle);
     }
 
 } // namespace RHI::Vulkan

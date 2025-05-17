@@ -1,7 +1,6 @@
 
 #include "Queue.hpp"
 #include "CommandList.hpp"
-#include "DeleteQueue.hpp"
 #include "Device.hpp"
 #include "Swapchain.hpp"
 
@@ -154,17 +153,6 @@ namespace RHI::Vulkan
 
         m_waitSemaphores.clear();
         m_signalSemaphores.clear();
-
-        {
-            uint64_t timeline;
-            vkGetSemaphoreCounterValue(m_device->m_device, m_timelineSemaphore, &timeline);
-            m_device->m_destroyQueue->Flush(timeline);
-        }
-
-        for (auto commandList : commandLists)
-        {
-            m_device->DestroyCommandList(commandList);
-        }
 
         return timelineValue;
     }

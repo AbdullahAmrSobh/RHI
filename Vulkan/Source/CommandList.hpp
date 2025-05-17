@@ -56,7 +56,7 @@ namespace RHI::Vulkan
         ICommandList();
         ~ICommandList();
 
-        ResultCode Init(IDevice* device, const CommandListCreateInfo& createInfo);
+        ResultCode Init(IDevice* device, CommandPool* pool, const CommandListCreateInfo& createInfo);
         void       Shutdown();
 
         // [[deprecated]]

@@ -1,16 +1,99 @@
 #pragma once
 
-#include <RHI/RHI.hpp>
-
-#include <TL/Containers.hpp>
-
-#include <vk_mem_alloc.h>
-
 #include "Device.hpp"
+#include "CommandList.hpp"
+#include "Resources.hpp"
+
+#include <TL/UniquePtr.hpp>
+#include <TL/Allocator/Arena.hpp>
 
 namespace RHI::Vulkan
 {
-    class IDevice;
+    class CommandPool;
+    class ICommandList;
+    class StagingBuffer;
+    class ISwapchain;
+
+    ////////////////////////////////////////////////////////////////
+    /// Frame
+    ////////////////////////////////////////////////////////////////
+    struct StagingBufferBlock;
+
+    class IFrame final : public Frame
+    {
+    public:
+        IFrame() = default;
+
+        ~IFrame()
+        {
+            Shutdown();
+        }
+
+        ResultCode Init(IDevice* device);
+        void       Shutdown();
+
+        ICommandList*      GetActiveTransferCommandList();
+        StagingBufferBlock AllocateStaging(TL::Block block);
+
+        void         Begin(TL::Span<Swapchain* const> swapchains) override;
+        uint64_t     End() override;
+        CommandList* CreateCommandList(const CommandListCreateInfo& createInfo) override;
+        uint64_t     QueueSubmit(const QueueSubmitInfo& submitInfo) override;
+        void         BufferWrite(Handle<Buffer> buffer, size_t offset, TL::Block block) override;
+        void         ImageWrite(Handle<Image> image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block) override;
+
+        IDevice*               m_device;
+        TL::Arena              m_tempAllocator;
+        TL::Ptr<CommandPool>   m_commandListAllocator;
+        TL::Ptr<StagingBuffer> m_stagingPool;
+        std::atomic_uint64_t   m_timeline;
+        ICommandList*          m_activeTransferCommandList;
+
+        TL::Vector<ISwapchain*> m_swapchains;
+    };
+
+    ////////////////////////////////////////////////////////////////
+    /// Staging buffer allocator
+    ////////////////////////////////////////////////////////////////
+
+    struct StagingBufferBlock
+    {
+        Handle<Buffer>  buffer;
+        BufferSubregion subregion;
+    };
+
+    class StagingBuffer
+    {
+    public:
+        StagingBuffer();
+        ~StagingBuffer();
+
+        ResultCode Init(IDevice* device);
+        void       Shutdown();
+
+        StagingBufferBlock Allocate(size_t size);
+        StagingBufferBlock Allocate(TL::Block block);
+
+        void Reset();
+
+    private:
+        struct Page
+        {
+            DeviceMemoryPtr ptr;
+            Handle<Buffer>  buffer;
+            size_t          offset;
+            const size_t    size;
+
+            size_t GetRemainingSize() const { return size - offset; }
+        };
+
+        IDevice*         m_device;
+        TL::Vector<Page> m_pages;
+    };
+
+    ////////////////////////////////////////////////////////////////
+    /// Release Queue
+    ////////////////////////////////////////////////////////////////
 
     class DeleteQueue
     {

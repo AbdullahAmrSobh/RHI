@@ -58,6 +58,19 @@ namespace RHI
         Swapchain*                    m_swapchainToSignal  = nullptr;
     };
 
+    class Frame // internal for now
+    {
+    public:
+        virtual ~Frame() = default;
+
+        virtual void         Begin(TL::Span<Swapchain* const> swapchains)                                                                                     = 0;
+        virtual uint64_t     End()                                                                                                                            = 0;
+        virtual CommandList* CreateCommandList(const CommandListCreateInfo& createInfo)                                                                       = 0;
+        virtual uint64_t     QueueSubmit(const QueueSubmitInfo& submitInfo)                                                                                   = 0;
+        virtual void         BufferWrite(Handle<Buffer> buffer, size_t offset, TL::Block block)                                                               = 0;
+        virtual void         ImageWrite(Handle<Image> image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block) = 0;
+    };
+
     class RHI_EXPORT Device
     {
     public:
@@ -89,11 +102,6 @@ namespace RHI
         /// @param shaderModule Pointer to the shader module to destroy. Must not be null and must be a valid shader module created by this
         /// device
         virtual void                     DestroyShaderModule(ShaderModule* shaderModule) = 0;
-
-        /// @brief Creates a command list.
-        /// @param createInfo Command list creation parameters.
-        /// @return Pointer to the created command list.
-        virtual CommandList*             CreateCommandList(const CommandListCreateInfo& createInfo) = 0;
 
         /// @brief Creates a bind group layout.
         /// @param createInfo Bind group layout creation parameters.
@@ -128,11 +136,13 @@ namespace RHI
         virtual void                     DestroyBuffer(Handle<Buffer> handle) = 0;
 
         /// @brief Creates an image.
-        /// @param createInfo Image creation parameters.
-        /// @return Result containing the handle to the created image.
         virtual Handle<Image>            CreateImage(const ImageCreateInfo& createInfo) = 0;
 
+        /// @brief Creates an image that is a view of another image.
         virtual Handle<Image>            CreateImageView(const ImageViewCreateInfo& createInfo) = 0;
+
+        /// @param handle Handle to the image to destroy.
+        virtual void                     DestroyImage(Handle<Image> handle) = 0;
 
         /// @brief Creates a sampler.
         /// @param createInfo Sampler creation parameters.
@@ -170,25 +180,12 @@ namespace RHI
         /// @param handle Handle to the compute pipeline to destroy.
         virtual void                     DestroyComputePipeline(Handle<ComputePipeline> handle) = 0;
 
-        /// @brief Destroys an image.
-        /// @param handle Handle to the image to destroy.
-        virtual void                     DestroyImage(Handle<Image> handle) = 0;
-
-        /// @brief A resource update scope, resources will
-        virtual void                     BeginResourceUpdate(RenderGraph* renderGraph) = 0;
-
-        /// @brief Ends the resource update scope, resources will be flushed to the GPU.
-        virtual void                     EndResourceUpdate() = 0;
-
         /// @brief Writes data to a buffer.
-        virtual void                     BufferWrite(Handle<Buffer> buffer, size_t offset, TL::Block block) = 0;
-
-        /// @brief Writes data to an image.
+        virtual void                     BufferWrite(Handle<Buffer> buffer, size_t offset, TL::Block block)                                                               = 0;
         virtual void                     ImageWrite(Handle<Image> image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block) = 0;
 
-        virtual uint64_t                 QueueSubmit(const QueueSubmitInfo& submitInfo) = 0;
-
-        virtual void Tick() {};
+        virtual ResultCode               SetFramesInFlightCount(uint32_t count) = 0;
+        virtual Frame*                   GetCurrentFrame()                      = 0;
 
     protected:
         BackendType           m_backend;

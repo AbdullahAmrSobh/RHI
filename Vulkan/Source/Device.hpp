@@ -66,15 +66,11 @@ namespace RHI::Vulkan
 
         void WaitIdle() { vkDeviceWaitIdle(m_device); }
 
-        uint64_t GetFrameIndex() const { return m_frameIndex; }
-
         // Interface Implementation
         Swapchain*               CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
         void                     DestroySwapchain(Swapchain* swapchain) override;
         ShaderModule*            CreateShaderModule(const ShaderModuleCreateInfo& createInfo) override;
         void                     DestroyShaderModule(ShaderModule* shaderModule) override;
-        CommandList*             CreateCommandList(const CommandListCreateInfo& createInfo) override;
-        void                     DestroyCommandList(CommandList*);
         Handle<BindGroupLayout>  CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) override;
         void                     DestroyBindGroupLayout(Handle<BindGroupLayout> handle) override;
         Handle<BindGroup>        CreateBindGroup(const BindGroupCreateInfo& createInfo) override;
@@ -93,11 +89,10 @@ namespace RHI::Vulkan
         Handle<ComputePipeline>  CreateComputePipeline(const ComputePipelineCreateInfo& createInfo) override;
         void                     DestroyComputePipeline(Handle<ComputePipeline> handle) override;
         void                     DestroyImage(Handle<Image> handle) override;
-        void                     BeginResourceUpdate(RenderGraph* renderGraph) override;
-        void                     EndResourceUpdate() override;
         void                     BufferWrite(Handle<Buffer> buffer, size_t offset, TL::Block block) override;
         void                     ImageWrite(Handle<Image> image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block) override;
-        uint64_t                 QueueSubmit(const QueueSubmitInfo& submitInfo) override;
+        ResultCode               SetFramesInFlightCount(uint32_t count) override;
+        Frame*                   GetCurrentFrame() override;
 
         // clang-format off
         IImage*                  Get(Handle<IImage> handle)                { return m_imageOwner.Get(handle); }
@@ -116,6 +111,7 @@ namespace RHI::Vulkan
         void                     Release(Handle<IComputePipeline> handle)  { return m_computePipelineOwner.Release(handle); }
         ISampler*                Get(Handle<ISampler> handle)              { return m_samplerOwner.Get(handle); }
         void                     Release(Handle<ISampler> handle)          { return m_samplerOwner.Release(handle); }
+
         // clang-format on
 
     public:
@@ -139,13 +135,9 @@ namespace RHI::Vulkan
         IQueue                            m_queue[AsyncQueuesCount]; ///< Array of queues for different operations (e.g., graphics, compute).
         TL::Ptr<class DeleteQueue>        m_destroyQueue;            ///< Queue for handling deferred resource destruction.
         TL::Ptr<class BindGroupAllocator> m_bindGroupAllocator;      ///< Allocator for bind group resources.
-        TL::Ptr<class CommandPool>        m_commandsAllocator;       ///< Allocator for Vulkan command buffers.
-        TL::Ptr<class StagingBuffer>      m_stagingBuffer;           ///< Allocator for staging buffers.
-        // Frame
-        std::atomic_uint64_t              m_frameIndex;
 
-        //
-        TL::Set<Handle<Buffer>> m_buffersToUnmap;
+        uint32_t                          m_currentFrameIndex;
+        TL::Vector<TL::Ptr<class IFrame>> m_framesInFlight;
     };
 
     template<typename T>

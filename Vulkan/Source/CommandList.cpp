@@ -144,7 +144,7 @@ namespace RHI::Vulkan
         for (size_t i = 0; i < (int)QueueType::Count; ++i)
         {
             VkCommandPool pool = poolMap[i];
-            vkResetCommandPool(m_device->m_device, pool, 0);
+            vkResetCommandPool(m_device->m_device, pool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
         }
     }
 
@@ -189,16 +189,16 @@ namespace RHI::Vulkan
     ICommandList::ICommandList()  = default;
     ICommandList::~ICommandList() = default;
 
-    ResultCode ICommandList::Init(IDevice* device, const CommandListCreateInfo& createInfo)
+    ResultCode ICommandList::Init(IDevice* device, CommandPool* pool, const CommandListCreateInfo& createInfo)
     {
         m_device        = device;
-        m_commandBuffer = m_device->m_commandsAllocator->AllocateCommandBuffer(createInfo.queueType);
+        m_commandBuffer = pool->AllocateCommandBuffer(createInfo.queueType);
         return ResultCode::Success;
     }
 
     void ICommandList::Shutdown()
     {
-        m_device->m_commandsAllocator->ReleaseCommandBuffers(m_commandBuffer);
+        // m_device->m_commandsAllocator->ReleaseCommandBuffers(m_commandBuffer);
     }
 
     void ICommandList::AddPipelineBarriers(const PipelineBarriers& barriers)

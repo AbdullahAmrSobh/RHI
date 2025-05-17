@@ -37,11 +37,9 @@ namespace RHI::Vulkan
         void WaitIdle() const;
 
         void AddWaitSemaphore(VkSemaphore semaphore, uint64_t value, VkPipelineStageFlags2 stageMask);
-
         void AddSignalSemaphore(VkSemaphore semaphore, uint64_t value, VkPipelineStageFlags2 stageMask);
 
         void BeginLabel(const char* name);
-
         void EndLabel();
 
         uint64_t Submit(TL::Span<ICommandList* const> commandLists, VkPipelineStageFlags2 signalStage);

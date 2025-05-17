@@ -8,23 +8,21 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Common.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Device.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/DeleteQueue.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Queue.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/StagingBuffer.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Frame.hpp
 )
 
 # Add source files
 set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Device.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/DeleteQueue.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Queue.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Surface.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/StagingBuffer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Frame.cpp
 )
 
 if(NOT TARGET TL)

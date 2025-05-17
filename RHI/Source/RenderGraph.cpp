@@ -883,55 +883,58 @@ namespace RHI
 
 #if RHI_RG_EXECUTE_MULTITHREADED
     #error "TODO: Implement"
-#else
-        // if (false)
+#elif 1
+        auto frame = m_device->GetCurrentFrame();
+
+        frame->Begin(m_swapchain);
+
+        CommandListCreateInfo cmdCI{
+            .name      = "cmd-rendergraph",
+            .queueType = QueueType::Graphics,
+        };
+        auto commandList = frame->CreateCommandList(cmdCI);
+
+        commandList->Begin();
+        for (const auto& level : m_dependencyLevels)
         {
-            CommandListCreateInfo cmdCI{
-                .name      = "RG-CMD",
-                .queueType = QueueType::Graphics,
-            };
-            auto commandList = m_device->CreateCommandList(cmdCI);
-
-            commandList->Begin();
-            for (const auto& level : m_dependencyLevels)
+            for (auto pass : level.GetPasses())
             {
-                for (auto pass : level.GetPasses())
-                {
-                    ExecutePass(pass, commandList);
-                }
+                ExecutePass(pass, commandList);
             }
-
-            if (m_swapchain)
-            {
-                // FIXME: This is hardcoded for now
-                RHI::ImageBarrierInfo barrier{
-                    .image    = m_swapchain->GetImage(),
-                    .srcState = {
-                                 .usage  = ImageUsage::Color,
-                                 .stage  = PipelineStage::ColorAttachmentOutput,
-                                 .access = Access::ReadWrite,
-                                 },
-                    .dstState = {
-                                 .usage  = ImageUsage::Present,
-                                 .stage  = PipelineStage::BottomOfPipe,
-                                 .access = Access::None,
-                                 },
-                };
-                commandList->AddPipelineBarrier({}, barrier, {});
-            }
-
-            commandList->End();
-
-            QueueSubmitInfo submitInfo{
-                .queueType            = QueueType::Graphics,
-                .commandLists         = commandList,
-                .signalStage          = PipelineStage::BottomOfPipe,
-                .waitInfos            = {},
-                .m_swapchainToAcquire = m_swapchain,
-                .m_swapchainToSignal  = m_swapchain,
-            };
-            TL_MAYBE_UNUSED auto timeline = m_device->QueueSubmit(submitInfo);
         }
+
+        if (m_swapchain)
+        {
+            // FIXME: This is hardcoded for now
+            RHI::ImageBarrierInfo barrier{
+                .image    = m_swapchain->GetImage(),
+                .srcState = {
+                             .usage  = ImageUsage::Color,
+                             .stage  = PipelineStage::ColorAttachmentOutput,
+                             .access = Access::ReadWrite,
+                             },
+                .dstState = {
+                             .usage  = ImageUsage::Present,
+                             .stage  = PipelineStage::BottomOfPipe,
+                             .access = Access::None,
+                             },
+            };
+            commandList->AddPipelineBarrier({}, barrier, {});
+        }
+
+        commandList->End();
+
+        QueueSubmitInfo submitInfo{
+            .queueType            = QueueType::Graphics,
+            .commandLists         = commandList,
+            .signalStage          = PipelineStage::BottomOfPipe,
+            .waitInfos            = {},
+            .m_swapchainToAcquire = m_swapchain,
+            .m_swapchainToSignal  = m_swapchain,
+        };
+        TL_MAYBE_UNUSED auto timeline = frame->QueueSubmit(submitInfo);
+
+        m_frameIndex = frame->End();
 #endif
 
         m_frameIndex++;

@@ -18,6 +18,13 @@
 #endif // VK_USE_PLATFORM_WIN32_KHR
 
 #include "Device.hpp"
+#include "Common.hpp"
+#include "Queue.hpp"
+#include "Swapchain.hpp"
+
+#include "RHI-Vulkan/Loader.hpp"
+
+#include "Frame.hpp"
 
 #include <TL/Allocator/Allocator.hpp>
 #include <TL/Assert.hpp>
@@ -26,14 +33,6 @@
 #include <algorithm>
 #include <format>
 #include <tracy/Tracy.hpp>
-
-#include "CommandList.hpp"
-#include "Common.hpp"
-#include "DeleteQueue.hpp"
-#include "Queue.hpp"
-#include "RHI-Vulkan/Loader.hpp"
-#include "StagingBuffer.hpp"
-#include "Swapchain.hpp"
 
 #define VULKAN_DEVICE_FUNC_LOAD(device, proc) reinterpret_cast<PFN_##proc>(vkGetDeviceProcAddr(device, #proc));
 #define VULKAN_INSTANCE_FUNC_LOAD(instance, proc) reinterpret_cast<PFN_##proc>(vkGetInstanceProcAddr(instance, #proc));
@@ -117,8 +116,6 @@ namespace RHI::Vulkan
     /// @todo: add support for a custom sink, so vulkan errors are spereated
     VkBool32 DebugMessengerCallbacks(TL_MAYBE_UNUSED VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, TL_MAYBE_UNUSED VkDebugUtilsMessageTypeFlagsEXT messageTypes, TL_MAYBE_UNUSED const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, TL_MAYBE_UNUSED void* pUserData)
     {
-        constexpr auto seperator = "==============================================================================================";
-
         TL::String additionalInfo;
 
         if (pCallbackData->objectCount > 0)
@@ -240,8 +237,6 @@ namespace RHI::Vulkan
     {
         m_destroyQueue       = TL::CreatePtr<DeleteQueue>();
         m_bindGroupAllocator = TL::CreatePtr<BindGroupAllocator>();
-        m_commandsAllocator  = TL::CreatePtr<CommandPool>();
-        m_stagingBuffer      = TL::CreatePtr<StagingBuffer>();
     }
 
     IDevice::~IDevice() = default;
@@ -351,6 +346,7 @@ namespace RHI::Vulkan
             {
                 availableDeviceLayers[layer.layerName] = layer;
             }
+
             TL::Map<TL::String, VkExtensionProperties> availableDeviceExtensions;
             for (VkExtensionProperties extension : GetAvailableDeviceExtensions(physicalDevice))
             {
@@ -358,15 +354,12 @@ namespace RHI::Vulkan
             }
 
             // search for a suitable physical device if it contains the required extensions
-            bool containAllLayers = std::all_of(
-                requiredDeviceLayers.begin(),
-                requiredDeviceLayers.end(),
-                [&](const char* layer)
+            bool containAllLayers = std::all_of(requiredDeviceLayers.begin(), requiredDeviceLayers.end(), [&](const char* layer)
                 {
                     return availableDeviceExtensions.contains(layer);
                 });
-            bool containAllExtensions = std::all_of(
-                requiredDeviceExtensions.begin(), requiredDeviceExtensions.end(), [&](const char* ext)
+
+            bool containAllExtensions = std::all_of(requiredDeviceExtensions.begin(), requiredDeviceExtensions.end(), [&](const char* ext)
                 {
                     return availableDeviceExtensions.contains(ext);
                 });
@@ -410,8 +403,8 @@ namespace RHI::Vulkan
             }
         }
 
-        float                               queuePriority = 1.0f;
-        TL::Vector<VkDeviceQueueCreateInfo> queueCreateInfos{};
+        float                               queuePriority    = 1.0f;
+        TL::Vector<VkDeviceQueueCreateInfo> queueCreateInfos = {};
 
         VkDeviceQueueCreateInfo queueCI{
             .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
@@ -443,6 +436,7 @@ namespace RHI::Vulkan
             .synchronization2 = VK_TRUE,
             .dynamicRendering = VK_TRUE,
         };
+
         VkPhysicalDeviceVulkan12Features features12{
             .sType                                              = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
             .pNext                                              = &features13,
@@ -469,20 +463,22 @@ namespace RHI::Vulkan
             .runtimeDescriptorArray                             = VK_TRUE,
             .timelineSemaphore                                  = VK_TRUE,
         };
+
         VkPhysicalDeviceVulkan11Features features11{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES,
             .pNext = &features12,
         };
-        VkPhysicalDeviceFeatures2 features
-        {
-            .sType    = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-            .pNext    = &features11,
+
+        VkPhysicalDeviceFeatures2 features = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+            .pNext = &features11,
             .features =
-            {
-                        .independentBlend  = VK_TRUE,
-                        .samplerAnisotropy = VK_TRUE,
-            },
+                {
+                           .independentBlend  = VK_TRUE,
+                           .samplerAnisotropy = VK_TRUE,
+                           },
         };
+
         VkDeviceCreateInfo deviceCI{
             .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
             .pNext                   = &features,
@@ -546,17 +542,19 @@ namespace RHI::Vulkan
             if (IsError(resultCode)) return resultCode;
         }
 
-        resultCode = m_stagingBuffer->Init(this);
-        if (IsError(resultCode)) return resultCode;
-
-        resultCode = m_commandsAllocator->Init(this);
-        if (IsError(resultCode)) return resultCode;
-
         resultCode = m_bindGroupAllocator->Init(this);
         if (IsError(resultCode)) return resultCode;
 
         resultCode = m_destroyQueue->Init(this);
         if (IsError(resultCode)) return resultCode;
+
+        m_framesInFlight.resize(2);
+        for (auto& frame : m_framesInFlight)
+        {
+            frame      = TL::CreatePtr<IFrame>();
+            resultCode = frame->Init(this);
+            if (IsError(resultCode)) return resultCode;
+        }
 
         return resultCode;
     }
@@ -567,18 +565,45 @@ namespace RHI::Vulkan
 
         vkDeviceWaitIdle(m_device);
 
-        if (auto count = m_imageOwner.ReportLiveResourcesCount())             { TL_LOG_WARNNING("Detected {} Image leaked", count);            }
-        if (auto count = m_bufferOwner.ReportLiveResourcesCount())            { TL_LOG_WARNNING("Detected {} Buffer leaked", count);           }
-        if (auto count = m_bindGroupLayoutsOwner.ReportLiveResourcesCount())  { TL_LOG_WARNNING("Detected {} BindGroupLayout leaked", count);  }
-        if (auto count = m_bindGroupOwner.ReportLiveResourcesCount())         { TL_LOG_WARNNING("Detected {} BindGroup leaked", count);        }
-        if (auto count = m_pipelineLayoutOwner.ReportLiveResourcesCount())    { TL_LOG_WARNNING("Detected {} PipelineLayout leaked", count);   }
-        if (auto count = m_graphicsPipelineOwner.ReportLiveResourcesCount())  { TL_LOG_WARNNING("Detected {} GraphicsPipeline leaked", count); }
-        if (auto count = m_computePipelineOwner.ReportLiveResourcesCount())   { TL_LOG_WARNNING("Detected {} ComputePipeline leaked", count);  }
-        if (auto count = m_samplerOwner.ReportLiveResourcesCount())           { TL_LOG_WARNNING("Detected {} Sampler leaked", count);          }
+        if (auto count = m_imageOwner.ReportLiveResourcesCount())
+        {
+            TL_LOG_WARNNING("Detected {} Image leaked", count);
+        }
+        if (auto count = m_bufferOwner.ReportLiveResourcesCount())
+        {
+            TL_LOG_WARNNING("Detected {} Buffer leaked", count);
+        }
+        if (auto count = m_bindGroupLayoutsOwner.ReportLiveResourcesCount())
+        {
+            TL_LOG_WARNNING("Detected {} BindGroupLayout leaked", count);
+        }
+        if (auto count = m_bindGroupOwner.ReportLiveResourcesCount())
+        {
+            TL_LOG_WARNNING("Detected {} BindGroup leaked", count);
+        }
+        if (auto count = m_pipelineLayoutOwner.ReportLiveResourcesCount())
+        {
+            TL_LOG_WARNNING("Detected {} PipelineLayout leaked", count);
+        }
+        if (auto count = m_graphicsPipelineOwner.ReportLiveResourcesCount())
+        {
+            TL_LOG_WARNNING("Detected {} GraphicsPipeline leaked", count);
+        }
+        if (auto count = m_computePipelineOwner.ReportLiveResourcesCount())
+        {
+            TL_LOG_WARNNING("Detected {} ComputePipeline leaked", count);
+        }
+        if (auto count = m_samplerOwner.ReportLiveResourcesCount())
+        {
+            TL_LOG_WARNNING("Detected {} Sampler leaked", count);
+        }
+
+        for (auto& frame : m_framesInFlight)
+        {
+            frame->Shutdown();
+        }
 
         m_destroyQueue->Shutdown();
-        m_stagingBuffer->Shutdown();
-        m_commandsAllocator->Shutdown();
         m_bindGroupAllocator->Shutdown();
 
         for (auto& queue : m_queue)
@@ -620,153 +645,38 @@ namespace RHI::Vulkan
         bindGroup->Write(this, updateInfo);
     }
 
-    void IDevice::BeginResourceUpdate(TL_MAYBE_UNUSED RenderGraph* renderGraph)
-    {
-    }
-
-    void IDevice::EndResourceUpdate()
-    {
-        for (auto bufferHandle : m_buffersToUnmap)
-        {
-            auto buffer = m_bufferOwner.Get(bufferHandle);
-            buffer->Unmap(this);
-        }
-    }
-
     void IDevice::BufferWrite(Handle<Buffer> bufferHandle, size_t offset, TL::Block block)
     {
         ZoneScoped;
 
-        auto buffer = m_bufferOwner.Get(bufferHandle);
-        if (auto ptr = buffer->Map(this))
-        {
-            memcpy((char*)ptr + offset, block.ptr, block.size);
-            buffer->Unmap(this);
-        }
-        else
-        {
-            // auto [srcBuffer, srcOffset] = m_stagingBuffer->Allocate(block);
-            // RHI::BufferCopyInfo copyInfo{
-            //     .srcBuffer = srcBuffer,
-            //     .srcOffset = srcOffset,
-            //     .dstBuffer = bufferHandle,
-            //     .dstOffset = offset,
-            //     .size      = block.size,
-            // };
-            // // auto copyCommand = GetActiveTransferCommandList();
-            // // copyCommand->CopyBuffer(copyInfo);
-            // // TL_UNREACHABLE_MSG("This method is missing some barriers :D ");
-
-            // QueueSubmitInfo submitInfo(*this);
-            // // submitInfo.AddCommandList(copyCommand->GetHandle());
-            // submitInfo.signalStage = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-            // auto res               = m_queue[(int)QueueType::Transfer].Submit(submitInfo);
-            // vkDeviceWaitIdle(m_device);
-        }
+        auto frame = GetCurrentFrame();
+        frame->BufferWrite(bufferHandle, offset, block);
     }
 
     void IDevice::ImageWrite(Handle<Image> imageHandle, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block)
     {
         ZoneScoped;
 
-        auto [srcBuffer, srcOffset]   = m_stagingBuffer->Allocate(block);
-        auto                    image = m_imageOwner.Get(imageHandle);
-        VkImageSubresourceRange subresourceRange{
-            .aspectMask     = image->SelectImageAspect(ImageAspect::All),
-            .baseMipLevel   = mipLevel,
-            .levelCount     = 1,
-            .baseArrayLayer = arrayLayer,
-            .layerCount     = 1,
-        };
-
-        auto _commandList = CreateCommandList({.queueType = QueueType::Transfer});
-        auto copyCommand  = (ICommandList*)_commandList;
-
-        copyCommand->Begin();
-        copyCommand->AddPipelineBarriers({
-            .imageBarriers = {{
-                .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-                .pNext               = nullptr,
-                .srcStageMask        = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
-                .srcAccessMask       = VK_ACCESS_2_NONE,
-                .dstStageMask        = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                .dstAccessMask       = VK_ACCESS_2_TRANSFER_WRITE_BIT,
-                .oldLayout           = VK_IMAGE_LAYOUT_UNDEFINED,
-                .newLayout           = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .image               = image->handle,
-                .subresourceRange    = subresourceRange,
-            }},
-        });
-        copyCommand->CopyBufferToImage({
-            .image       = imageHandle,
-            .subresource = {
-                            .imageAspects = ImageAspect::All,
-                            .mipLevel     = mipLevel,
-                            .arrayBase    = arrayLayer,
-                            .arrayCount   = 1,
-                            },
-            .imageSize     = size,
-            .imageOffset   = offset,
-            .buffer        = srcBuffer,
-            .bufferOffset  = srcOffset,
-            .bufferSize    = {},
-            .bytesPerRow   = {},
-            .bytesPerImage = {},
-        });
-        copyCommand->AddPipelineBarriers({
-            .imageBarriers = {{
-                .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-                .pNext               = nullptr,
-                .srcStageMask        = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                .srcAccessMask       = VK_ACCESS_2_TRANSFER_WRITE_BIT,
-                .dstStageMask        = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
-                .dstAccessMask       = VK_ACCESS_2_NONE,
-                .oldLayout           = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                .newLayout           = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .image               = image->handle,
-                .subresourceRange    = subresourceRange,
-            }},
-        });
-        copyCommand->End();
-
-        auto&                 queue       = m_queue[(int)QueueType::Transfer];
-        [[maybe_unused]] auto newTimeline = queue.Submit({copyCommand}, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
-        vkDeviceWaitIdle(m_device);
+        auto frame = GetCurrentFrame();
+        frame->ImageWrite(imageHandle, offset, size, mipLevel, arrayLayer, block);
     }
 
-    uint64_t IDevice::QueueSubmit(const QueueSubmitInfo& submitInfo)
+    ResultCode IDevice::SetFramesInFlightCount(uint32_t count)
     {
-        ZoneScoped;
-
-        // TODO: Add validation
-
-        auto queue = GetDeviceQueue(submitInfo.queueType);
-        for (auto waitInfo : submitInfo.waitInfos)
+        auto previousSize = m_framesInFlight.size();
+        m_framesInFlight.resize(count);
+        for (size_t i = previousSize; i < m_framesInFlight.size(); i++)
         {
-            if (auto waitQueue = GetDeviceQueue(waitInfo.queueType))
-            {
-                queue->AddWaitSemaphore(waitQueue->GetTimelineHandle(), waitInfo.timelineValue, ConvertPipelineStageFlags(waitInfo.waitStage));
-            }
+            auto result = m_framesInFlight[i]->Init(this);
+            if (IsError(result))
+                return result;
         }
+        return ResultCode::Success;
+    }
 
-        if (auto swapchain = (ISwapchain*)submitInfo.m_swapchainToAcquire)
-        {
-            // TODO: VkPipelineStageFlags can be deduced based on the swapchain image usage flags.
-            queue->AddWaitSemaphore(swapchain->GetImageAcquiredSemaphore(), 0, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
-        }
-
-        if (auto swapchain = (ISwapchain*)submitInfo.m_swapchainToSignal)
-        {
-            // TODO: VkPipelineStageFlags can be deduced based on the swapchain image usage flags.
-            queue->AddSignalSemaphore(swapchain->GetImagePresentSemaphore(), 0, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
-        }
-
-        auto commandLists = TL::Span{(ICommandList**)submitInfo.commandLists.data(), submitInfo.commandLists.size()};
-        return queue->Submit(commandLists, ConvertPipelineStageFlags(submitInfo.signalStage));
+    Frame* IDevice::GetCurrentFrame()
+    {
+        return m_framesInFlight[m_currentFrameIndex].get();
     }
 
 #define IMPLEMENT_DEVICE_CREATE_METHOD_UNIQUE_WITH_INFO(ResourceType)                       \
@@ -821,7 +731,6 @@ namespace RHI::Vulkan
 
     IMPLEMENT_DISPATCHABLE_TYPES_FUNCTIONS(Swapchain);
     IMPLEMENT_DISPATCHABLE_TYPES_FUNCTIONS(ShaderModule);
-    IMPLEMENT_DISPATCHABLE_TYPES_FUNCTIONS(CommandList);
     IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(BindGroupLayout, m_bindGroupLayoutsOwner);
     IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(BindGroup, m_bindGroupOwner);
     IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(PipelineLayout, m_pipelineLayoutOwner);
