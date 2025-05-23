@@ -27,27 +27,36 @@ namespace RHI::Vulkan
     class CommandPool
     {
     public:
-        CommandPool();
-        ~CommandPool();
+        CommandPool()  = default;
+        ~CommandPool() = default;
 
-        ResultCode Init(IDevice* device);
-        void       Shutdown();
+        VkCommandPool Init(IDevice* device, QueueType queueType);
+        void          Shutdown(IDevice* device);
 
+        VkCommandBuffer AllocateCommandBuffer(IDevice* device);
+
+        void Reset(IDevice* device);
+
+        VkCommandPool               m_pool;
+        uint32_t                    m_allocatedCommandBuffers;
+        TL::Vector<VkCommandBuffer> m_commandBuffers;
+    };
+
+    class CommandAllocator
+    {
+    public:
+        CommandAllocator()  = default;
+        ~CommandAllocator() = default;
+
+        ResultCode      Init(IDevice* device);
+        void            Shutdown();
         VkCommandBuffer AllocateCommandBuffer(QueueType queueType);
-        void            ReleaseCommandBuffers(TL::Span<const VkCommandBuffer> commandBuffers);
         void            Reset();
 
-    private:
-        VkCommandPool CreateCommandPool(QueueType queueType);
-        void          DestroyCommandPools();
-
-    private:
-        using CommandPoolPerQueue = std::array<VkCommandPool, AsyncQueuesCount>;
-
-        IDevice* m_device = nullptr;
-
-        std::mutex                                    m_poolMutex;
-        TL::Map<std::thread::id, CommandPoolPerQueue> m_pools;
+        using QueuesCommandPool    = std::array<CommandPool, AsyncQueuesCount>;
+        IDevice*          m_device = nullptr;
+        std::mutex        m_mutex;
+        QueuesCommandPool m_queuePools;
     };
 
     class ICommandList final : public CommandList

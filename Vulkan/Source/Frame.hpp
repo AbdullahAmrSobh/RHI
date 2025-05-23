@@ -11,7 +11,7 @@
 
 namespace RHI::Vulkan
 {
-    class CommandPool;
+    class CommandAllocator;
     class ICommandList;
     class StagingBuffer;
     class ISwapchain;
@@ -19,6 +19,7 @@ namespace RHI::Vulkan
     ////////////////////////////////////////////////////////////////
     /// Frame
     ////////////////////////////////////////////////////////////////
+
     struct StagingBufferBlock;
 
     class IFrame final : public Frame
@@ -44,15 +45,14 @@ namespace RHI::Vulkan
         void         BufferWrite(Handle<Buffer> buffer, size_t offset, TL::Block block) override;
         void         ImageWrite(Handle<Image> image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block) override;
 
-        IDevice*               m_device;
-        TL::Arena              m_tempAllocator;
-        TL::Ptr<CommandPool>   m_commandListAllocator;
-        TL::Ptr<StagingBuffer> m_stagingPool;
-        std::atomic_uint64_t   m_timeline;
-        ICommandList*          m_activeTransferCommandList;
-        TL::Vector<ISwapchain*> m_swapchains;
-
-        uint64_t               m_prevTimeline;
+        IDevice*                  m_device;
+        TL::Arena                 m_tempAllocator;
+        TL::Ptr<CommandAllocator> m_commandListAllocator;
+        TL::Ptr<StagingBuffer>    m_stagingPool;
+        std::atomic_uint64_t      m_timeline;
+        ICommandList*             m_activeTransferCommandList;
+        TL::Vector<ISwapchain*>   m_swapchains;
+        uint64_t                  m_prevTimeline;
     };
 
     ////////////////////////////////////////////////////////////////

@@ -14,7 +14,7 @@ namespace RHI::Vulkan
 {
     class BindGroupAllocator;
 
-    struct VulkanFunctions
+    struct VulkanAPI
     {
 #ifdef RHI_DEBUG
         // VK_EXT_debug_utils
@@ -113,7 +113,7 @@ namespace RHI::Vulkan
         VkPhysicalDevice         m_physicalDevice;
         VkDevice                 m_device;
         VmaAllocator             m_deviceAllocator;
-        VulkanFunctions          m_pfn;
+        VulkanAPI                m_pfn;
 
         // Resource pools
         HandlePool<IImage>            m_imageOwner;

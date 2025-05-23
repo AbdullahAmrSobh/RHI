@@ -14,7 +14,7 @@ namespace RHI::Vulkan
     {
         m_device = device;
 
-        m_commandListAllocator = TL::CreatePtr<CommandPool>();
+        m_commandListAllocator = TL::CreatePtr<CommandAllocator>();
         if (auto result = m_commandListAllocator->Init(m_device); IsError(result))
             return result;
 
@@ -65,14 +65,14 @@ namespace RHI::Vulkan
     uint64_t IFrame::End()
     {
         m_device->m_currentFrameIndex = (m_device->m_currentFrameIndex + 1) % (m_device->m_framesInFlight.size() - 1);
-        m_prevTimeline = m_timeline;
+        m_prevTimeline                = m_timeline;
         return m_device->m_currentFrameIndex;
     }
 
     CommandList* IFrame::CreateCommandList(const CommandListCreateInfo& createInfo)
     {
         auto commandList = m_tempAllocator.Construct<ICommandList>();
-        auto result      = commandList->Init(m_device, m_commandListAllocator.get(), createInfo);
+        auto result      = commandList->Init(m_device, &m_commandListAllocator->m_queuePools[int(createInfo.queueType)], createInfo);
         TL_ASSERT(result == ResultCode::Success, "Failed to allocate command list for current frame");
         return commandList;
     }
@@ -205,6 +205,7 @@ namespace RHI::Vulkan
     ////////////////////////////////////////////////////////////////
     /// Staging buffer allocator
     ////////////////////////////////////////////////////////////////
+
     constexpr static size_t MinStagingBufferAllocationSize = 64 * 1024 * 1024; // 64 mb
 
     StagingBuffer::StagingBuffer()  = default;

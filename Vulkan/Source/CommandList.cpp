@@ -74,113 +74,88 @@ namespace RHI::Vulkan
     /// CommandPool
     ////////////////////////////////////////////////////////////////////////////////////
 
-    CommandPool::CommandPool()  = default;
-    CommandPool::~CommandPool() = default;
-
-    ResultCode CommandPool::Init(IDevice* device)
+    VkCommandPool CommandPool::Init(IDevice* device, QueueType queueType)
     {
-        m_device = device;
+        VkCommandPoolCreateInfo poolInfo = {
+            .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+            .pNext            = nullptr,
+            .flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+            .queueFamilyIndex = device->GetDeviceQueue(queueType)->GetFamilyIndex(),
+        };
 
-        // Lock mutex while initializing pools
-        std::lock_guard<std::mutex> lock(m_poolMutex);
+        VkResult result = vkCreateCommandPool(device->m_device, &poolInfo, nullptr, &m_pool);
+        TL_ASSERT(result == VK_SUCCESS);
+        m_allocatedCommandBuffers = 0;
+        m_commandBuffers.clear();
+        return m_pool;
+    }
 
-        // Initialize command pools for each queue type per thread
-        auto& poolMap = m_pools[std::this_thread::get_id()];
-
-        for (size_t i = 0; i < (int)QueueType::Count; ++i)
+    void CommandPool::Shutdown(IDevice* device)
+    {
+        if (m_pool != VK_NULL_HANDLE)
         {
-            poolMap[i] = CreateCommandPool(static_cast<QueueType>(i));
+            vkDestroyCommandPool(device->m_device, m_pool, nullptr);
+            m_pool = VK_NULL_HANDLE;
+            m_commandBuffers.clear();
+            m_allocatedCommandBuffers = 0;
         }
-
-        return ResultCode::Success;
     }
 
-    void CommandPool::Shutdown()
+    VkCommandBuffer CommandPool::AllocateCommandBuffer(IDevice* device)
     {
-        std::lock_guard<std::mutex> lock(m_poolMutex);
-        DestroyCommandPools();
-    }
-
-    VkCommandBuffer CommandPool::AllocateCommandBuffer(QueueType queueType)
-    {
-        // Lock mutex for thread-safe pool access
-        std::lock_guard<std::mutex> lock(m_poolMutex);
-
-        // Get command pool for this queue type and create a command buffer
-        VkCommandPool pool = m_pools[std::this_thread::get_id()][(uint32_t)queueType];
+        if (m_allocatedCommandBuffers < m_commandBuffers.size())
+        {
+            return m_commandBuffers[m_allocatedCommandBuffers++];
+        }
 
         VkCommandBufferAllocateInfo allocateInfo = {
             .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-            .commandPool        = pool,
+            .commandPool        = m_pool,
             .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
             .commandBufferCount = 1,
         };
 
         VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
-        VkResult        result        = vkAllocateCommandBuffers(m_device->m_device, &allocateInfo, &commandBuffer);
-
-        if (result != VK_SUCCESS)
-        {
-            TL_UNREACHABLE_MSG("Failed to allocate Vulkan command buffer");
-            return nullptr;
-        }
-
+        VkResult        result        = vkAllocateCommandBuffers(device->m_device, &allocateInfo, &commandBuffer);
+        TL_ASSERT(result == VK_SUCCESS);
+        m_commandBuffers.push_back(commandBuffer);
         return commandBuffer;
     }
 
-    void CommandPool::ReleaseCommandBuffers([[maybe_unused]] TL::Span<const VkCommandBuffer> commandBuffers)
+    void CommandPool::Reset(IDevice* device)
     {
-        // Commands are all transient nothing to do here.
+        vkResetCommandPool(device->m_device, m_pool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
+        m_allocatedCommandBuffers = 0;
     }
 
-    void CommandPool::Reset()
+    ////////////////////////////////////////////////////////////////////////////////////
+    /// CommandAllocator
+    ////////////////////////////////////////////////////////////////////////////////////
+
+    ResultCode CommandAllocator::Init(IDevice* device)
     {
-        // Lock mutex for thread-safe reset
-        std::lock_guard<std::mutex> lock(m_poolMutex);
-
-        // Reset command pools for the current thread
-        auto& poolMap = m_pools[std::this_thread::get_id()];
-
-        for (size_t i = 0; i < (int)QueueType::Count; ++i)
-        {
-            VkCommandPool pool = poolMap[i];
-            vkResetCommandPool(m_device->m_device, pool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
-        }
+        m_device      = device;
+        int queueType = 0;
+        for (auto& p : m_queuePools)
+            p.Init(m_device, (QueueType)queueType++);
+        return ResultCode::Success;
     }
 
-    VkCommandPool CommandPool::CreateCommandPool(QueueType queueType)
+    void CommandAllocator::Shutdown()
     {
-        VkCommandPoolCreateInfo poolCreateInfo = {
-            .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-            .flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT | VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
-            .queueFamilyIndex = m_device->m_queue[(uint32_t)queueType].GetFamilyIndex(),
-        };
-
-        VkCommandPool pool;
-        VkResult      result = vkCreateCommandPool(m_device->m_device, &poolCreateInfo, nullptr, &pool);
-
-        if (result != VK_SUCCESS)
-        {
-            // Handle error
-            TL_UNREACHABLE_MSG("Failed to create Vulkan command pool");
-        }
-
-        return pool;
+        for (auto& p : m_queuePools)
+            p.Shutdown(m_device);
     }
 
-    void CommandPool::DestroyCommandPools()
+    VkCommandBuffer CommandAllocator::AllocateCommandBuffer(QueueType queueType)
     {
-        // Destroy command pools for the current thread
-        auto& poolMap = m_pools[std::this_thread::get_id()];
+        return m_queuePools[(uint32_t)queueType].AllocateCommandBuffer(m_device);
+    }
 
-        for (size_t i = 0; i < (int)QueueType::Count; ++i)
-        {
-            VkCommandPool pool = poolMap[i];
-            if (pool != VK_NULL_HANDLE)
-                vkDestroyCommandPool(m_device->m_device, pool, nullptr);
-        }
-
-        m_pools.erase(std::this_thread::get_id()); // Clean up the pools for this thread
+    void CommandAllocator::Reset()
+    {
+        for (auto& p : m_queuePools)
+            p.Reset(m_device);
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -193,7 +168,7 @@ namespace RHI::Vulkan
     ResultCode ICommandList::Init(IDevice* device, CommandPool* pool, const CommandListCreateInfo& createInfo)
     {
         m_device        = device;
-        m_commandBuffer = pool->AllocateCommandBuffer(createInfo.queueType);
+        m_commandBuffer = pool->AllocateCommandBuffer(m_device);
         return ResultCode::Success;
     }
 
