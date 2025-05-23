@@ -485,10 +485,14 @@ namespace RHI::Vulkan
             return;
         }
 
-        auto pipeline = m_device->m_graphicsPipelineOwner.Get(pipelineState);
-        vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->handle);
-        BindShaderBindGroups(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->layout, bindGroups);
-        m_isGraphicsPipelineBound = true;
+        m_isGraphicsPipelineBound       = true;
+        IGraphicsPipeline* pipeline     = m_device->m_graphicsPipelineOwner.Get(pipelineState);
+        m_pipelineLayout                = pipeline->layout;
+        IPipelineLayout* pipelineLayout = m_device->Get(m_pipelineLayout);
+        m_pipelineBindPoint             = VK_PIPELINE_BIND_POINT_GRAPHICS;
+
+        vkCmdBindPipeline(m_commandBuffer, m_pipelineBindPoint, pipeline->handle);
+        BindShaderBindGroups(VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout->handle, bindGroups);
     }
 
     void ICommandList::BindComputePipeline(Handle<ComputePipeline> pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups)
@@ -501,10 +505,14 @@ namespace RHI::Vulkan
             return;
         }
 
-        auto pipeline = m_device->m_computePipelineOwner.Get(pipelineState);
-        vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->handle);
-        BindShaderBindGroups(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->layout, bindGroups);
-        m_isComputePipelineBound = true;
+        m_isComputePipelineBound        = true;
+        IComputePipeline* pipeline      = m_device->m_computePipelineOwner.Get(pipelineState);
+        m_pipelineLayout                = pipeline->layout;
+        IPipelineLayout* pipelineLayout = m_device->Get(m_pipelineLayout);
+        m_pipelineBindPoint             = VK_PIPELINE_BIND_POINT_COMPUTE;
+
+        vkCmdBindPipeline(m_commandBuffer, m_pipelineBindPoint, pipeline->handle);
+        BindShaderBindGroups(VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout->handle, bindGroups);
     }
 
     void ICommandList::SetViewport(const Viewport& viewport)

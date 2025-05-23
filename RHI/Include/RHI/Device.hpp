@@ -65,11 +65,16 @@ namespace RHI
 
         // TODO: integrate with renderdoc API
 
-        virtual void         Begin(TL::Span<Swapchain* const> swapchains)                                                                                     = 0;
-        virtual uint64_t     End()                                                                                                                            = 0;
-        virtual CommandList* CreateCommandList(const CommandListCreateInfo& createInfo)                                                                       = 0;
-        virtual uint64_t     QueueSubmit(const QueueSubmitInfo& submitInfo)                                                                                   = 0;
-        virtual void         BufferWrite(Handle<Buffer> buffer, size_t offset, TL::Block block)                                                               = 0;
+        virtual void         Begin(TL::Span<Swapchain* const> swapchains) = 0;
+
+        virtual uint64_t     End() = 0;
+
+        virtual CommandList* CreateCommandList(const CommandListCreateInfo& createInfo) = 0;
+
+        virtual uint64_t     QueueSubmit(const QueueSubmitInfo& submitInfo) = 0;
+
+        virtual void         BufferWrite(Handle<Buffer> buffer, size_t offset, TL::Block block) = 0;
+
         virtual void         ImageWrite(Handle<Image> image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block) = 0;
     };
 
@@ -183,11 +188,13 @@ namespace RHI
         virtual void                     DestroyComputePipeline(Handle<ComputePipeline> handle) = 0;
 
         /// @brief Writes data to a buffer.
-        virtual void                     BufferWrite(Handle<Buffer> buffer, size_t offset, TL::Block block)                                                               = 0;
+        virtual void                     BufferWrite(Handle<Buffer> buffer, size_t offset, TL::Block block) = 0;
+
         virtual void                     ImageWrite(Handle<Image> image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block) = 0;
 
         virtual ResultCode               SetFramesInFlightCount(uint32_t count) = 0;
-        virtual Frame*                   GetCurrentFrame()                      = 0;
+
+        virtual Frame*                   GetCurrentFrame() = 0;
 
     protected:
         BackendType           m_backend;

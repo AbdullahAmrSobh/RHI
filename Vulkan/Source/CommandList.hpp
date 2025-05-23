@@ -107,13 +107,15 @@ namespace RHI::Vulkan
         void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups);
 
     private:
-        IDevice*        m_device                      = nullptr;
-        VkCommandBuffer m_commandBuffer               = VK_NULL_HANDLE;
-        bool            m_hasVertexBuffer         : 1 = false;
-        bool            m_hasIndexBuffer          : 1 = false;
-        bool            m_isGraphicsPipelineBound : 1 = false;
-        bool            m_isComputePipelineBound  : 1 = false;
-        bool            m_hasViewportSet          : 1 = false;
-        bool            m_hasScissorSet           : 1 = false;
+        IDevice*               m_device                      = nullptr;
+        VkCommandBuffer        m_commandBuffer               = VK_NULL_HANDLE;
+        Handle<PipelineLayout> m_pipelineLayout              = NullHandle;
+        VkPipelineBindPoint    m_pipelineBindPoint           = VK_PIPELINE_BIND_POINT_MAX_ENUM;
+        bool                   m_hasVertexBuffer         : 1 = false;
+        bool                   m_hasIndexBuffer          : 1 = false;
+        bool                   m_isGraphicsPipelineBound : 1 = false;
+        bool                   m_isComputePipelineBound  : 1 = false;
+        bool                   m_hasViewportSet          : 1 = false;
+        bool                   m_hasScissorSet           : 1 = false;
     };
 } // namespace RHI::Vulkan

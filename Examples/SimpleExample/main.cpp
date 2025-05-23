@@ -16,6 +16,8 @@
 #include <iostream>
 #include <tracy/Tracy.hpp>
 
+#include <glm/glm.hpp>
+
 // #include "CommandList.hpp"
 // #include "Device.hpp"
 
@@ -33,7 +35,7 @@ inline static RHI::ShaderModule* LoadShaderModule(RHI::Device* device, const cha
 
 int main(int argc, const char* argv[])
 {
-    TL::MemPlumber::start();
+    // TL::MemPlumber::start();
 
     auto device = RHI::CreateVulkanDevice({});
 
@@ -67,59 +69,119 @@ int main(int argc, const char* argv[])
 
     auto renderGraph = device->CreateRenderGraph({});
 
-    RHI::BindGroupLayoutCreateInfo bindGroupLayoutCI{
-        .name = "ImGui-BindGroupLayout",
-        // .bindings = {
-        //  RHI::ShaderBinding{.type = RHI::BindingType::UniformBuffer, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Vertex},
-        //  RHI::ShaderBinding{.type = RHI::BindingType::Sampler, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel},
-        //  RHI::ShaderBinding{.type = RHI::BindingType::SampledImage, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel}}
+    struct CBSceneView
+    {
+        glm::mat4 modelToView;
+        glm::mat4 viewToClip;
+        glm::mat4 modelToClip;
+        glm::mat4 clipToView;
+        glm::mat4 clipToLocal;
     };
-    // auto bindGroupLayout = device->CreateBindGroupLayout(bindGroupLayoutCI);
 
-    RHI::PipelineLayoutCreateInfo pipelineLayoutCI{.layouts = {}};
+    // // Test bind groups
+    // struct BindGroup0
+    // {
+    //     ConstantBuffer<CBSceneView> sceneView;
+    //     StructuredBuffer<uint32_t> ib;
+    //     StructuredBuffer<float3> positionsVB;
+    //     StructuredBuffer<float3> normalsVB;
+    //     StructuredBuffer<float3> texcoordsVB;
+    //     SamplerState             sampler;
+    //     Texture2D                textures[];
+    // };
+
+    RHI::BindGroupLayoutCreateInfo bindGroupLayoutCI{
+        .name     = "default-BindGroupLayout",
+        .bindings = {
+                     {RHI::BindingType::UniformBuffer, RHI::Access::Read, 1, RHI::ShaderStage::AllGraphics, sizeof(CBSceneView)},
+                     {RHI::BindingType::StorageBuffer, RHI::Access::Read, 1, RHI::ShaderStage::AllGraphics},
+                     {RHI::BindingType::StorageBuffer, RHI::Access::Read, 1, RHI::ShaderStage::AllGraphics},
+                     {RHI::BindingType::StorageBuffer, RHI::Access::Read, 1, RHI::ShaderStage::AllGraphics},
+                     {RHI::BindingType::StorageBuffer, RHI::Access::Read, 1, RHI::ShaderStage::AllGraphics},
+                     {RHI::BindingType::Sampler, RHI::Access::Read, 1, RHI::ShaderStage::Pixel},
+                     {RHI::BindingType::SampledImage, RHI::Access::Read, RHI::BindlessArraySize, RHI::ShaderStage::Pixel},
+                     }
+    };
+    auto bindGroupLayout = device->CreateBindGroupLayout(bindGroupLayoutCI);
+    TL_defer
+    {
+        device->DestroyBindGroupLayout(bindGroupLayout);
+    };
+
+    RHI::PipelineLayoutCreateInfo pipelineLayoutCI{.name = "default-PipelineLayout", .layouts = {bindGroupLayout}};
     auto                          pipelineLayout = device->CreatePipelineLayout(pipelineLayoutCI);
 
     auto vertexShaderModule = LoadShaderModule(device, "Shaders/Triangle.vertex.spv");
     auto fragmentShader     = LoadShaderModule(device, "Shaders/Triangle.fragment.spv");
 
-    RHI::ColorAttachmentBlendStateDesc attachmentBlendDesc =
-        {
-            true,
-            RHI::BlendEquation::Add,
-            RHI::BlendFactor::SrcAlpha,
-            RHI::BlendFactor::OneMinusSrcAlpha,
-            RHI::BlendEquation::Add,
-            RHI::BlendFactor::One,
-            RHI::BlendFactor::OneMinusSrcAlpha,
-            RHI::ColorWriteMask::All,
-        };
+    RHI::Handle<RHI::Buffer> uniformBuffer = device->CreateBuffer({
+        .name       = "default-UniformBuffer",
+        .hostMapped = true,
+        .usageFlags = RHI::BufferUsage::Uniform,
+        .byteSize   = sizeof(CBSceneView),
+    });
 
-    RHI::GraphicsPipelineCreateInfo pipelineCI{
-        .name                 = "ImGui Pipeline",
-        .vertexShaderName     = "VSMain",
-        .vertexShaderModule   = vertexShaderModule,
-        .pixelShaderName      = "PSMain",
-        .pixelShaderModule    = fragmentShader,
-        .layout               = pipelineLayout,
-        .vertexBufferBindings = {},
-        .renderTargetLayout   = {
-                                 .colorAttachmentsFormats = {RHI::Format::RGBA8_UNORM, RHI::Format::RGBA8_UNORM},
-                                 .depthAttachmentFormat   = RHI::Format::D32,
-                                 },
-        .colorBlendState = {
-                                 .blendStates    = {attachmentBlendDesc},
-                                 .blendConstants = {},
-                                 },
+    RHI::Handle<RHI::Buffer> ib = device->CreateBuffer({
+        .name       = "default-IndexBuffer",
+        .hostMapped = true,
+        .usageFlags = RHI::BufferUsage::Index | RHI::BufferUsage::Storage,
+        .byteSize   = 1024 * 1024 * sizeof(uint32_t),
+    });
+
+    RHI::Handle<RHI::Buffer> positionsIB = device->CreateBuffer({
+        .name       = "default-VertexBuffer",
+        .hostMapped = true,
+        .usageFlags = RHI::BufferUsage::Vertex | RHI::BufferUsage::Storage,
+        .byteSize   = 1024 * 1024 * sizeof(uint32_t),
+    });
+
+    RHI::Handle<RHI::Buffer> normalsIB = device->CreateBuffer({
+        .name       = "default-NormalBuffer",
+        .hostMapped = true,
+        .usageFlags = RHI::BufferUsage::Vertex | RHI::BufferUsage::Storage,
+        .byteSize   = 1024 * 1024 * sizeof(uint32_t),
+    });
+
+    RHI::Handle<RHI::Buffer> texcoordsIB = device->CreateBuffer({
+        .name       = "default-TexcoordBuffer",
+        .hostMapped = true,
+        .usageFlags = RHI::BufferUsage::Vertex | RHI::BufferUsage::Storage,
+        .byteSize   = 1024 * 1024 * sizeof(uint32_t),
+    });
+
+    RHI::Handle<RHI::Sampler> sampler = device->CreateSampler({
+        .name = "default-Sampler",
+    });
+
+    auto bindGroup = device->CreateBindGroup({
+        .name               = "default-BindGroup",
+        .layout             = bindGroupLayout,
+        .bindlessArrayCount = 2048,
+    });
+
+    RHI::GraphicsPipelineCreateInfo pipelineCI = {
+        .name               = "ImGui Pipeline",
+        .vertexShaderName   = "VSMain",
+        .vertexShaderModule = vertexShaderModule,
+        .pixelShaderName    = "PSMain",
+        .pixelShaderModule  = fragmentShader,
+        .layout             = pipelineLayout,
+        .renderTargetLayout = {
+                               .colorAttachmentsFormats = {RHI::Format::RGBA8_UNORM, RHI::Format::RGBA8_UNORM},
+                               .depthAttachmentFormat   = RHI::Format::D32,
+                               },
         .depthStencilState = {
-                                 .depthTestEnable   = false,
-                                 .depthWriteEnable  = true,
-                                 .compareOperator   = RHI::CompareOperator::Always,
-                                 .stencilTestEnable = false,
-                                 },
+                               .depthTestEnable   = false,
+                               .depthWriteEnable  = true,
+                               .compareOperator   = RHI::CompareOperator::Always,
+                               .stencilTestEnable = false,
+                               },
     };
     auto pipeline = device->CreateGraphicsPipeline(pipelineCI);
     device->DestroyShaderModule(vertexShaderModule);
     device->DestroyShaderModule(fragmentShader);
+
+    // #if 0
     while (!glfwWindowShouldClose(window))
     {
         ZoneScopedN("DrawLoop");
@@ -397,12 +459,24 @@ int main(int argc, const char* argv[])
                     builder.AddColorAttachment({.color = colorAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
                     builder.AddColorAttachment({.color = anotherAttachment, .clearValue = {.f32{0.1f, 0.1f, 0.4f, 1.0f}}});
                 },
-                .compileCallback = [&](RHI::RenderGraphContext& context)
-                {
-                    TL_LOG_INFO("HelloWorld pass compiled");
-                },
                 .executeCallback = [&](RHI::CommandList& cmd)
                 {
+                    RHI::BindGroupUpdateInfo updateInfo{
+                        .buffers = {
+                                    {0, 0, RHI::BufferBindingInfo{uniformBuffer, 0}},
+                                    {1, 0, RHI::BufferBindingInfo{ib, 0}},
+                                    {2, 0, RHI::BufferBindingInfo{positionsIB, 0}},
+                                    {3, 0, RHI::BufferBindingInfo{normalsIB, 0}},
+                                    {4, 0, RHI::BufferBindingInfo{texcoordsIB, 0}},
+                                    },
+                        .samplers = {
+                                    {5, 0, sampler},
+                                    },
+                        // .images = {},
+                    };
+
+                    device->UpdateBindGroup(bindGroup, updateInfo);
+
                     cmd.SetViewport({
                         .offsetX  = 0,
                         .offsetY  = 0,
@@ -417,7 +491,7 @@ int main(int argc, const char* argv[])
                         .width   = windowSize.width,
                         .height  = windowSize.height,
                     });
-                    cmd.BindGraphicsPipeline(pipeline, {});
+                    cmd.BindGraphicsPipeline(pipeline, RHI::BindGroupBindingInfo{bindGroup});
                     cmd.Draw({
                         .vertexCount   = 3,
                         .instanceCount = 1,
@@ -455,6 +529,22 @@ int main(int argc, const char* argv[])
         glfwPollEvents();
         FrameMark;
     }
+    // #endif
+
+    // TL::Arena a;
+    // while (!glfwWindowShouldClose(window))
+    // {
+    //     for (int i = 0 ; i < 100; i++)
+    //     {
+    //         a.Allocate<float>(100);
+    //         auto b = TL::Allocator::Allocate<int>();
+    //         TL::Allocator::Release(b);
+    //         // auto b = malloc(sizeof(int));
+    //         // free(b);
+    //     }
+    //     a.Collect();
+    //     glfwPollEvents();
+    // }
 
     device->DestroySwapchain(swapchain);
     device->DestroyRenderGraph(renderGraph);
@@ -463,8 +553,8 @@ int main(int argc, const char* argv[])
     RHI::DestroyVulkanDevice(device);
     glfwTerminate();
 
-    size_t memLeakCount, memLeakSize;
-    TL::MemPlumber::memLeakCheck(memLeakCount, memLeakSize);
-    TL_LOG_INFO("Detected {} leaked allocations, with total size {}.", memLeakCount, memLeakSize);
+    // size_t memLeakCount, memLeakSize;
+    // TL::MemPlumber::memLeakCheck(memLeakCount, memLeakSize);
+    // TL_LOG_INFO("Detected {} leaked allocations, with total size {}.", memLeakCount, memLeakSize);
     return 0;
 }

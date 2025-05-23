@@ -266,12 +266,20 @@ namespace RHI
         bool   operator==(const BufferSubregion& other) const = default;
     };
 
+    /// @brief Contains information about binding a buffer.
+    struct BufferBindingInfo
+    {
+        Handle<Buffer> buffer = NullHandle; ///< Handle to the buffer.
+        size_t         offset = 0;          ///< Offset into the buffer.
+    };
+
     struct ShaderBinding
     {
-        BindingType            type       = BindingType::None; ///< Type of the binding.
-        Access                 access     = Access::Read;      ///< Access type (read/write) for the resource.
-        uint32_t               arrayCount = 1;                 ///< Number of elements in the array for this binding.
-        TL::Flags<ShaderStage> stages     = ShaderStage::None; ///< Shader stages where this binding is accessible.
+        BindingType            type         = BindingType::None; ///< Type of the binding.
+        Access                 access       = Access::Read;      ///< Access type (read/write) for the resource.
+        uint32_t               arrayCount   = 1;                 ///< Number of elements in the array for this binding.
+        TL::Flags<ShaderStage> stages       = ShaderStage::None; ///< Shader stages where this binding is accessible.
+        size_t                 bufferStride = 0;                 ///< Stride for buffer bindings.
     };
 
     // Structs (Bind Group Related)
@@ -283,8 +291,9 @@ namespace RHI
 
     struct BindGroupCreateInfo
     {
-        const char*             name   = nullptr;    ///!< Name of the bind group.
-        Handle<BindGroupLayout> layout = NullHandle; // !< The layout of the bind group.
+        const char*             name               = nullptr;    ///!< Name of the bind group.
+        Handle<BindGroupLayout> layout             = NullHandle; // !< The layout of the bind group.
+        uint32_t                bindlessArrayCount = 0;          //!< Count of bindless array elements.
     };
 
     struct BindGroupImagesUpdateInfo
@@ -296,10 +305,9 @@ namespace RHI
 
     struct BindGroupBuffersUpdateInfo
     {
-        uint32_t                        dstBinding      = 0;  ///< Target binding index.
-        uint32_t                        dstArrayElement = 0;  ///< Target array element for binding.
-        TL::Span<const Handle<Buffer>>  buffers         = {}; ///< Span of buffer handles to bind.
-        TL::Span<const BufferSubregion> subregions      = {}; ///< Span of buffer subregions to bind.
+        uint32_t                          dstBinding      = 0;  ///< Target binding index.
+        uint32_t                          dstArrayElement = 0;  ///< Target array element for binding.
+        TL::Span<const BufferBindingInfo> buffers         = {}; ///< Span of buffer handles to bind.
     };
 
     struct BindGroupSamplersUpdateInfo
@@ -486,8 +494,8 @@ namespace RHI
 
     struct PipelineColorBlendStateDesc
     {
-        TL::Span<const ColorAttachmentBlendStateDesc> blendStates       = {};                       ///< Color blend states for each attachment.
-        float                                         blendConstants[4] = {0.0f, 0.0f, 0.0f, 0.0f}; ///< Blend constants.
+        TL::Span<const ColorAttachmentBlendStateDesc> blendStates       = ColorAttachmentBlendStateDesc{}; ///< Color blend states for each attachment.
+        float                                         blendConstants[4] = {0.0f, 0.0f, 0.0f, 0.0f};        ///< Blend constants.
     };
 
     struct GraphicsPipelineCreateInfo

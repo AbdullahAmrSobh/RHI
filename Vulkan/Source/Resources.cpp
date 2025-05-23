@@ -313,6 +313,117 @@ namespace RHI::Vulkan
         }
     }
 
+    DescriptorSetWriter::DescriptorSetWriter(IDevice* device, VkDescriptorSet descriptorSet, Handle<IBindGroupLayout> layout, TL::Allocator* allocator)
+        : m_device(device)
+        , m_allocator(allocator)
+        , m_bindGroupLayout(layout)
+        , m_descriptorSet(descriptorSet)
+    {
+    }
+
+    VkWriteDescriptorSet DescriptorSetWriter::BindImages(uint32_t dstBinding, uint32_t dstArray, TL::Span<const Handle<Image>> images)
+    {
+        auto layout        = m_device->Get(m_bindGroupLayout);
+        auto shaderBinding = layout->GetBinding(dstBinding);
+        auto isStorage     = shaderBinding.type == BindingType::StorageImage;
+        auto hasWrite      = (shaderBinding.access & Access::Write) == Access::Write;
+
+        VkImageLayout    imageLayout    = (isStorage && hasWrite) ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        VkDescriptorType descriptorType = isStorage ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+
+        TL::Vector<VkDescriptorImageInfo>& descriptorImageInfos = m_images.emplace_back();
+        descriptorImageInfos.reserve(images.size());
+        for (auto imageHandle : images)
+        {
+            auto                  image          = m_device->m_imageOwner.Get(imageHandle);
+            VkDescriptorImageInfo descriptorInfo = {
+                .sampler     = VK_NULL_HANDLE,
+                .imageView   = image->viewHandle,
+                .imageLayout = imageLayout,
+            };
+            descriptorImageInfos.push_back(descriptorInfo);
+        }
+
+        VkWriteDescriptorSet writeInfo{
+            .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .pNext           = nullptr,
+            .dstSet          = m_descriptorSet,
+            .dstBinding      = dstBinding,
+            .dstArrayElement = dstArray,
+            .descriptorCount = (uint32_t)descriptorImageInfos.size(),
+            .descriptorType  = descriptorType,
+            .pImageInfo      = descriptorImageInfos.data(),
+        };
+        return m_writes.emplace_back(writeInfo);
+    }
+
+    VkWriteDescriptorSet DescriptorSetWriter::BindSamplers(uint32_t dstBinding, uint32_t dstArray, TL::Span<const Handle<Sampler>> samplers)
+    {
+        auto layout = m_device->Get(m_bindGroupLayout);
+
+        TL::Vector<VkDescriptorImageInfo>& descriptorImageInfos = m_sampler.emplace_back();
+        descriptorImageInfos.reserve(samplers.size());
+        for (auto samplerHandle : samplers)
+        {
+            auto sampler = m_device->m_samplerOwner.Get(samplerHandle);
+
+            VkDescriptorImageInfo descriptorInfo = {
+                .sampler     = sampler->handle,
+                .imageView   = VK_NULL_HANDLE,
+                .imageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            };
+            descriptorImageInfos.push_back(descriptorInfo);
+        }
+
+        VkWriteDescriptorSet writeInfo{
+            .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .pNext           = nullptr,
+            .dstSet          = m_descriptorSet,
+            .dstBinding      = dstBinding,
+            .dstArrayElement = dstArray,
+            .descriptorCount = (uint32_t)descriptorImageInfos.size(),
+            .descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLER,
+            .pImageInfo      = descriptorImageInfos.data(),
+        };
+        return m_writes.emplace_back(writeInfo);
+    }
+
+    VkWriteDescriptorSet DescriptorSetWriter::BindBuffers(uint32_t dstBinding, uint32_t dstArray, TL::Span<const BufferBindingInfo> buffers)
+    {
+        auto layout         = m_device->Get(m_bindGroupLayout);
+        auto shaderBinding  = layout->GetBinding(dstBinding);
+        auto descriptorType = ConvertDescriptorType(shaderBinding.type);
+
+        TL::Vector<VkDescriptorBufferInfo>& descriptorBufferInfos = m_buffers.emplace_back();
+        descriptorBufferInfos.reserve(buffers.size());
+        for (const auto& b : buffers)
+        {
+            auto buffer = m_device->m_bufferOwner.Get(b.buffer);
+            auto stride = shaderBinding.bufferStride;
+            if (stride == 0)
+                stride = VK_WHOLE_SIZE;
+
+            VkDescriptorBufferInfo descriptorInfo = {
+                .buffer = buffer->handle,
+                .offset = b.offset,
+                .range  = stride,
+            };
+            descriptorBufferInfos.push_back(descriptorInfo);
+        }
+
+        VkWriteDescriptorSet writeInfo{
+            .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .pNext           = nullptr,
+            .dstSet          = m_descriptorSet,
+            .dstBinding      = dstBinding,
+            .dstArrayElement = dstArray,
+            .descriptorCount = (uint32_t)descriptorBufferInfos.size(),
+            .descriptorType  = descriptorType,
+            .pBufferInfo     = descriptorBufferInfos.data(),
+        };
+        return m_writes.emplace_back(writeInfo);
+    }
+
     ////////////////////////////////////////////////////////////////////////
     // BindGroupAllocator
     ////////////////////////////////////////////////////////////////////////
@@ -326,16 +437,16 @@ namespace RHI::Vulkan
 
         /// @todo: (don't do this)
         VkDescriptorPoolSize poolSizes[] = {
-            {VK_DESCRIPTOR_TYPE_SAMPLER,                1024},
-            {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          1024},
-            {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          1024},
-            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         1024},
-            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         1024},
-            {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   1024},
-            {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   1024},
-            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1024},
-            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1024},
-            {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,       1024},
+            {VK_DESCRIPTOR_TYPE_SAMPLER,                2048},
+            {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          2048},
+            {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          2048},
+            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         2048},
+            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         2048},
+            {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   2048},
+            {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   2048},
+            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2048},
+            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 2048},
+            {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,       2048},
         };
 
         VkDescriptorPoolCreateFlags poolFlags =
@@ -358,38 +469,31 @@ namespace RHI::Vulkan
         vkDestroyDescriptorPool(m_device->m_device, m_descriptorPool, nullptr);
     }
 
-    ResultCode BindGroupAllocator::InitBindGroup(IBindGroup* bindGroup, IBindGroupLayout* bindGroupLayout)
+    ResultCode BindGroupAllocator::InitBindGroup(IBindGroup* bindGroup, IBindGroupLayout* bindGroupLayout, uint32_t bindlessResourcesCount)
     {
-        bindGroup->bindlessCount = bindGroupLayout->bindlessCount;
-        VkDescriptorSetVariableDescriptorCountAllocateInfo variableDescriptorInfo =
-            {
-                .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO,
-                .pNext              = nullptr,
-                .descriptorSetCount = 1,
-                .pDescriptorCounts  = &bindGroup->bindlessCount,
-            };
-        VkDescriptorSetAllocateInfo allocateInfo =
-            {
-                .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-                .pNext              = bindGroupLayout->bindlessCount ? &variableDescriptorInfo : nullptr,
-                .descriptorPool     = m_descriptorPool,
-                .descriptorSetCount = 1,
-                .pSetLayouts        = &bindGroupLayout->handle,
-            };
-        auto result = vkAllocateDescriptorSets(m_device->m_device, &allocateInfo, &bindGroup->descriptorSet);
-        if (result != VK_SUCCESS)
-            return ResultCode::ErrorOutOfMemory;
-        return ResultCode::Success;
+        VkDescriptorSetVariableDescriptorCountAllocateInfo variableDescriptorCountInfo{
+            .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO,
+            .pNext              = nullptr,
+            .descriptorSetCount = 1,
+            .pDescriptorCounts  = &bindlessResourcesCount,
+        };
+
+        VkDescriptorSetAllocateInfo allocateInfo{
+            .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+            .pNext              = bindGroupLayout->hasBindless ? &variableDescriptorCountInfo : nullptr,
+            .descriptorPool     = m_descriptorPool,
+            .descriptorSetCount = 1,
+            .pSetLayouts        = &bindGroupLayout->handle,
+        };
+
+        VkResult result;
+        result = vkAllocateDescriptorSets(m_device->m_device, &allocateInfo, &bindGroup->descriptorSet);
+        return ConvertResult(result);
     }
 
     void BindGroupAllocator::ShutdownBindGroup(IBindGroup* bindGroup)
     {
-        // m_device->m_destroyQueue->Push(
-        //     m_device->m_frameIndex,
-        //     [=](IDevice* device)
-        //     {
-        //         vkFreeDescriptorSets(device->m_device, m_descriptorPool, 1, &bindGroup->descriptorSet);
-        //     });
+        vkFreeDescriptorSets(m_device->m_device, m_descriptorPool, 1, &bindGroup->descriptorSet);
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -398,69 +502,87 @@ namespace RHI::Vulkan
 
     ResultCode IBindGroupLayout::Init(IDevice* device, const BindGroupLayoutCreateInfo& createInfo)
     {
-        uint32_t                 bindingFlagsCount = 0;
-        VkDescriptorBindingFlags bindingFlags[32]  = {};
+        this->shaderBindings = {createInfo.bindings.begin(), createInfo.bindings.end()};
 
-        uint32_t                     bindingLayoutsCount = 0;
-        VkDescriptorSetLayoutBinding bindingLayouts[32]  = {};
+        TL::Vector<VkDescriptorBindingFlags>     bindingFlags;
+        TL::Vector<VkDescriptorSetLayoutBinding> setLayoutBindings;
 
-        uint32_t bindingCount = 0;
-        for (size_t i = 0; i < createInfo.bindings.size(); ++i)
+        // Query the physical device limits for descriptor counts
+        VkPhysicalDeviceProperties2 properties{};
+        properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+
+        VkPhysicalDeviceDescriptorIndexingProperties descriptorIndexingProps{};
+        descriptorIndexingProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES;
+        properties.pNext              = &descriptorIndexingProps;
+
+        vkGetPhysicalDeviceProperties2(device->m_physicalDevice, &properties);
+
+        // Example: retrieve max descriptor counts
+        TL_MAYBE_UNUSED uint32_t maxSampledImages          = properties.properties.limits.maxPerStageDescriptorSampledImages;
+        TL_MAYBE_UNUSED uint32_t maxStorageImages          = properties.properties.limits.maxPerStageDescriptorStorageImages;
+        TL_MAYBE_UNUSED uint32_t maxSamplers               = properties.properties.limits.maxPerStageDescriptorSamplers;
+        TL_MAYBE_UNUSED uint32_t maxUniformBuffers         = properties.properties.limits.maxPerStageDescriptorUniformBuffers;
+        TL_MAYBE_UNUSED uint32_t maxStorageBuffers         = properties.properties.limits.maxPerStageDescriptorStorageBuffers;
+        TL_MAYBE_UNUSED uint32_t maxCombinedImageSamplers  = properties.properties.limits.maxPerStageDescriptorSampledImages + properties.properties.limits.maxPerStageDescriptorSamplers;
+        uint32_t                 maxBindlessSampledImages  = descriptorIndexingProps.maxPerStageDescriptorUpdateAfterBindSampledImages;
+        TL_MAYBE_UNUSED uint32_t maxBindlessStorageImages  = descriptorIndexingProps.maxPerStageDescriptorUpdateAfterBindStorageImages;
+        TL_MAYBE_UNUSED uint32_t maxBindlessSamplers       = descriptorIndexingProps.maxPerStageDescriptorUpdateAfterBindSamplers;
+        TL_MAYBE_UNUSED uint32_t maxBindlessUniformBuffers = descriptorIndexingProps.maxPerStageDescriptorUpdateAfterBindUniformBuffers;
+        TL_MAYBE_UNUSED uint32_t maxBindlessStorageBuffers = descriptorIndexingProps.maxPerStageDescriptorUpdateAfterBindStorageBuffers;
+        // Use these values as needed for validation or allocation
+
+        for (uint32_t bindingIndex = 0; bindingIndex < createInfo.bindings.size(); bindingIndex++)
         {
-            const auto& binding          = createInfo.bindings[i];
-            shaderBindings[bindingCount] = binding; // Store ShaderBinding in IBindGroupLayout
+            auto binding = createInfo.bindings[bindingIndex];
 
-            // Check if this binding is bindless (array count is large or other criteria)
-            bool isBindless = binding.arrayCount == BindlessArraySize;
+            auto isBindless = binding.arrayCount == BindlessArraySize;
 
-            // Assign bindless descriptor binding flags if necessary
-            if (isBindless)
-            {
-                bindingFlags[bindingFlagsCount++] = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
-                                                    VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT |
-                                                    VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
-
-                bindlessCount = 1024;
-            }
-            else
-            {
-                bindingFlags[bindingFlagsCount++] = 0;
-            }
-
-            // Fill out VkDescriptorSetLayoutBinding
-            bindingLayouts[bindingLayoutsCount++] = {
-                .binding            = bindingCount++,
+            VkDescriptorSetLayoutBinding layoutBinding{
+                .binding            = bindingIndex,
                 .descriptorType     = ConvertDescriptorType(binding.type),
-                .descriptorCount    = binding.arrayCount, // Bindless types will have large counts or variable counts
+                .descriptorCount    = isBindless ? maxBindlessSampledImages : binding.arrayCount,
                 .stageFlags         = ConvertShaderStage(binding.stages),
                 .pImmutableSamplers = nullptr,
             };
+            setLayoutBindings.push_back(layoutBinding);
+
+            if (isBindless)
+            {
+                auto flags =
+                    VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT |
+                    VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
+                    VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT |
+                    VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT;
+                bindingFlags.push_back(flags);
+                hasBindless = true;
+            }
+            else
+            {
+                bindingFlags.push_back(0);
+            }
         }
 
-        // If bindless, set up VkDescriptorSetLayoutBindingFlagsCreateInfo
-        VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsInfo{
+        VkDescriptorSetLayoutBindingFlagsCreateInfo layoutBindingFlagsCI{
             .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
             .pNext         = nullptr,
-            .bindingCount  = bindingFlagsCount,
-            .pBindingFlags = bindingFlags,
+            .bindingCount  = (uint32_t)bindingFlags.size(),
+            .pBindingFlags = bindingFlags.data(),
         };
 
-        VkDescriptorSetLayoutCreateInfo setLayoutCI{
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-            .pNext = bindlessCount ? &bindingFlagsInfo : nullptr,
-            .flags = static_cast<VkDescriptorSetLayoutCreateFlags>(
-                bindlessCount ? VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT : 0),
-            .bindingCount = bindingLayoutsCount,
-            .pBindings    = bindingLayouts,
+        VkDescriptorSetLayoutCreateInfo layoutCI{
+            .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+            .pNext        = hasBindless ? &layoutBindingFlagsCI : nullptr,
+            .flags        = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT,
+            .bindingCount = (uint32_t)setLayoutBindings.size(),
+            .pBindings    = setLayoutBindings.data(),
         };
 
-        // Create the descriptor set layout
-        auto result = vkCreateDescriptorSetLayout(device->m_device, &setLayoutCI, nullptr, &handle);
+        VkResult result;
+        result = vkCreateDescriptorSetLayout(device->m_device, &layoutCI, nullptr, &handle);
         if (result == VK_SUCCESS && createInfo.name)
         {
             device->SetDebugName(handle, createInfo.name);
         }
-
         return ConvertResult(result);
     }
 
@@ -478,9 +600,9 @@ namespace RHI::Vulkan
         auto allocator    = device->m_bindGroupAllocator.get();
         auto layoutObject = device->m_bindGroupLayoutsOwner.Get(createInfo.layout);
 
-        std::copy(std::begin(layoutObject->shaderBindings), std::end(layoutObject->shaderBindings), std::begin(shaderBindings));
+        this->bindGroupLayout = createInfo.layout;
 
-        return allocator->InitBindGroup(this, layoutObject);
+        return allocator->InitBindGroup(this, layoutObject, createInfo.bindlessArrayCount);
     }
 
     void IBindGroup::Shutdown(IDevice* device)
@@ -491,129 +613,43 @@ namespace RHI::Vulkan
 
     void IBindGroup::Update(IDevice* device, const BindGroupUpdateInfo& updateInfo)
     {
-        uint32_t writeInfosCount = 0;
+        DescriptorSetWriter writer(device, this->descriptorSet, this->bindGroupLayout, nullptr);
 
-        uint32_t              imageInfosCount = 0;
-        VkDescriptorImageInfo imageInfos[128] = {};
-
-        uint32_t               bufferInfosCount = 0;
-        VkDescriptorBufferInfo bufferInfos[128] = {};
-
-        uint32_t              samplerInfosCount = 0;
-        VkDescriptorImageInfo samplerInfos[128] = {};
-
-        VkWriteDescriptorSet writeInfos[128 * 3]{};
-
-        for (const auto& imageUpdate : updateInfo.images)
+        for (auto [dstBindings, dstArrayelements, buffers] : updateInfo.buffers)
         {
-            const auto&      binding        = shaderBindings[imageUpdate.dstBinding];
-            VkDescriptorType descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-
-            for (size_t i = 0; i < imageUpdate.images.size(); ++i)
-            {
-                imageInfos[imageInfosCount] = {
-                    .sampler     = VK_NULL_HANDLE,
-                    .imageView   = device->m_imageOwner.Get(imageUpdate.images[i])->viewHandle,
-                    .imageLayout = (descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) ? VK_IMAGE_LAYOUT_GENERAL
-                                                                                        : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                };
-
-                writeInfos[writeInfosCount++] = {
-                    .sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                    .pNext            = nullptr,
-                    .dstSet           = descriptorSet,
-                    .dstBinding       = imageUpdate.dstBinding,
-                    .dstArrayElement  = imageUpdate.dstArrayElement + static_cast<uint32_t>(i),
-                    .descriptorCount  = 1,
-                    .descriptorType   = descriptorType,
-                    .pImageInfo       = &imageInfos[imageInfosCount++],
-                    .pBufferInfo      = nullptr,
-                    .pTexelBufferView = nullptr,
-                };
-            }
+            writer.BindBuffers(dstBindings, dstArrayelements, buffers);
         }
 
-        for (const auto& bufferUpdate : updateInfo.buffers)
+        for (auto [dstBindings, dstArrayelements, images] : updateInfo.images)
         {
-            TL_ASSERT(bufferUpdate.buffers.size() == bufferUpdate.subregions.size());
-
-            const auto&      binding        = shaderBindings[bufferUpdate.dstBinding];
-            VkDescriptorType descriptorType = ConvertDescriptorType(binding.type);
-
-            for (size_t i = 0; i < bufferUpdate.buffers.size(); ++i)
-            {
-                auto buffer    = device->m_bufferOwner.Get(bufferUpdate.buffers[i]);
-                auto subregion = bufferUpdate.subregions[i];
-
-                bufferInfos[bufferInfosCount] = {
-                    .buffer = buffer->handle,
-                    .offset = subregion.offset,
-                    .range  = subregion.size,
-                };
-
-                writeInfos[writeInfosCount++] = {
-                    .sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                    .pNext            = nullptr,
-                    .dstSet           = descriptorSet,
-                    .dstBinding       = bufferUpdate.dstBinding,
-                    .dstArrayElement  = bufferUpdate.dstArrayElement + static_cast<uint32_t>(i),
-                    .descriptorCount  = 1,
-                    .descriptorType   = descriptorType,
-                    .pImageInfo       = nullptr,
-                    .pBufferInfo      = &bufferInfos[bufferInfosCount++],
-                    .pTexelBufferView = nullptr,
-                };
-            }
+            writer.BindImages(dstBindings, dstArrayelements, images);
         }
 
-        for (const auto& samplerUpdate : updateInfo.samplers)
+        for (auto [dstBindings, dstArrayelements, samplers] : updateInfo.samplers)
         {
-            [[maybe_unused]] const auto& binding        = shaderBindings[samplerUpdate.dstBinding];
-            VkDescriptorType             descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-
-            for (size_t i = 0; i < samplerUpdate.samplers.size(); ++i)
-            {
-                samplerInfos[samplerInfosCount] = {
-                    .sampler     = device->m_samplerOwner.Get(samplerUpdate.samplers[i])->handle,
-                    .imageView   = VK_NULL_HANDLE,
-                    .imageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-                };
-
-                writeInfos[writeInfosCount++] = {
-                    .sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                    .pNext            = nullptr,
-                    .dstSet           = descriptorSet,
-                    .dstBinding       = samplerUpdate.dstBinding,
-                    .dstArrayElement  = samplerUpdate.dstArrayElement + static_cast<uint32_t>(i),
-                    .descriptorCount  = 1,
-                    .descriptorType   = descriptorType,
-                    .pImageInfo       = &samplerInfos[samplerInfosCount++],
-                    .pBufferInfo      = nullptr,
-                    .pTexelBufferView = nullptr,
-                };
-            }
+            writer.BindSamplers(dstBindings, dstArrayelements, samplers);
         }
 
-        vkUpdateDescriptorSets(device->m_device, writeInfosCount, writeInfos, 0, nullptr);
+        vkUpdateDescriptorSets(device->m_device, (uint32_t)writer.GetWrites().size(), writer.GetWrites().data(), 0, nullptr);
     }
 
     ////////////////////////////////////////////////////////////////////////
     // IShaderModule
     ////////////////////////////////////////////////////////////////////////
+
     IShaderModule::IShaderModule()  = default;
     IShaderModule::~IShaderModule() = default;
 
     ResultCode IShaderModule::Init(IDevice* device, const ShaderModuleCreateInfo& createInfo)
     {
         m_device = device;
-        VkShaderModuleCreateInfo shaderModuleCI =
-            {
-                .sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-                .pNext    = nullptr,
-                .flags    = {},
-                .codeSize = createInfo.code.size_bytes(),
-                .pCode    = createInfo.code.data(),
-            };
+        VkShaderModuleCreateInfo shaderModuleCI{
+            .sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+            .pNext    = nullptr,
+            .flags    = {},
+            .codeSize = createInfo.code.size_bytes(),
+            .pCode    = createInfo.code.data(),
+        };
         auto result = vkCreateShaderModule(device->m_device, &shaderModuleCI, nullptr, &m_shaderModule);
         return ConvertResult(result);
     }
@@ -626,18 +662,16 @@ namespace RHI::Vulkan
     ////////////////////////////////////////////////////////////////////////
     // IPipelineLayout
     ////////////////////////////////////////////////////////////////////////
+
     ResultCode IPipelineLayout::Init(IDevice* device, const PipelineLayoutCreateInfo& createInfo)
     {
         TL::Vector<VkDescriptorSetLayout> descriptorSetLayouts;
+        uint32_t                          index = 0;
         for (auto bindGroupLayout : createInfo.layouts)
         {
-            if (bindGroupLayout == RHI::NullHandle)
-            {
-                break;
-            }
-
             auto layout = device->m_bindGroupLayoutsOwner.Get(bindGroupLayout);
             descriptorSetLayouts.push_back(layout->handle);
+            this->bindGroupLayouts[index++] = bindGroupLayout;
         }
 
         VkPipelineLayoutCreateInfo pipelineLayouCI{
@@ -860,6 +894,7 @@ namespace RHI::Vulkan
             if (blendState.writeMask & ColorWriteMask::Alpha) state.colorWriteMask |= VK_COLOR_COMPONENT_A_BIT;
         }
 
+        auto [r, g, b, a] = createInfo.colorBlendState.blendConstants;
         VkPipelineColorBlendStateCreateInfo colorBlendStateCI{
             .sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
             .pNext           = nullptr,
@@ -868,12 +903,7 @@ namespace RHI::Vulkan
             .logicOp         = VK_LOGIC_OP_SET,
             .attachmentCount = colorAttachmentFormatCount,
             .pAttachments    = pipelineColorBlendAttachmentStates,
-            .blendConstants  = {
-                                createInfo.colorBlendState.blendConstants[0],
-                                createInfo.colorBlendState.blendConstants[1],
-                                createInfo.colorBlendState.blendConstants[2],
-                                createInfo.colorBlendState.blendConstants[3],
-                                },
+            .blendConstants  = {r, g, b, a},
         };
 
         VkPipelineRenderingCreateInfo renderTargetLayout{
@@ -886,7 +916,8 @@ namespace RHI::Vulkan
             .stencilAttachmentFormat = ConvertFormat(createInfo.renderTargetLayout.stencilAttachmentFormat),
         };
 
-        layout = device->m_pipelineLayoutOwner.Get(createInfo.layout)->handle;
+        auto pipelineLayout = device->m_pipelineLayoutOwner.Get(createInfo.layout);
+        this->layout        = createInfo.layout;
 
         VkGraphicsPipelineCreateInfo graphicsPipelineCI{
             .sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
@@ -903,7 +934,7 @@ namespace RHI::Vulkan
             .pDepthStencilState  = &depthStencilStateCI,
             .pColorBlendState    = &colorBlendStateCI,
             .pDynamicState       = &dynamicStateCI,
-            .layout              = layout,
+            .layout              = pipelineLayout->handle,
             .renderPass          = VK_NULL_HANDLE,
             .subpass             = 0,
             .basePipelineHandle  = VK_NULL_HANDLE,
@@ -928,11 +959,13 @@ namespace RHI::Vulkan
     ////////////////////////////////////////////////////////////////////////
     // IComputePipeline
     ////////////////////////////////////////////////////////////////////////
+
     ResultCode IComputePipeline::Init(IDevice* device, const ComputePipelineCreateInfo& createInfo)
     {
         auto shaderModule = static_cast<IShaderModule*>(createInfo.shaderModule);
 
-        layout = device->m_pipelineLayoutOwner.Get(createInfo.layout)->handle;
+        auto pipelineLayout = device->m_pipelineLayoutOwner.Get(createInfo.layout);
+        this->layout        = createInfo.layout;
 
         VkPipelineShaderStageCreateInfo shaderStageCI{
             .sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -949,7 +982,7 @@ namespace RHI::Vulkan
             .pNext              = nullptr,
             .flags              = {},
             .stage              = shaderStageCI,
-            .layout             = layout,
+            .layout             = pipelineLayout->handle,
             .basePipelineHandle = VK_NULL_HANDLE,
             .basePipelineIndex  = 0,
         };
@@ -969,30 +1002,29 @@ namespace RHI::Vulkan
     ////////////////////////////////////////////////////////////////////////
     // IBuffer
     ////////////////////////////////////////////////////////////////////////
+
     ResultCode IBuffer::Init(IDevice* device, const BufferCreateInfo& createInfo)
     {
-        VmaAllocationCreateInfo allocationCI =
-            {
-                .flags          = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT,
-                .usage          = createInfo.hostMapped ? VMA_MEMORY_USAGE_AUTO_PREFER_HOST : VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-                .requiredFlags  = 0,
-                .preferredFlags = 0,
-                .memoryTypeBits = 0,
-                .pool           = VK_NULL_HANDLE,
-                .pUserData      = nullptr,
-                .priority       = 0.0f,
-            };
-        VkBufferCreateInfo bufferCI =
-            {
-                .sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-                .pNext                 = nullptr,
-                .flags                 = 0,
-                .size                  = createInfo.byteSize,
-                .usage                 = ConvertBufferUsageFlags(createInfo.usageFlags),
-                .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
-                .queueFamilyIndexCount = 0,
-                .pQueueFamilyIndices   = nullptr,
-            };
+        VmaAllocationCreateInfo allocationCI{
+            .flags          = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT,
+            .usage          = createInfo.hostMapped ? VMA_MEMORY_USAGE_AUTO_PREFER_HOST : VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+            .requiredFlags  = 0,
+            .preferredFlags = 0,
+            .memoryTypeBits = 0,
+            .pool           = VK_NULL_HANDLE,
+            .pUserData      = nullptr,
+            .priority       = 0.0f,
+        };
+        VkBufferCreateInfo bufferCI{
+            .sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            .pNext                 = nullptr,
+            .flags                 = 0,
+            .size                  = createInfo.byteSize,
+            .usage                 = ConvertBufferUsageFlags(createInfo.usageFlags),
+            .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
+            .queueFamilyIndexCount = 0,
+            .pQueueFamilyIndices   = nullptr,
+        };
         auto result = vmaCreateBuffer(device->m_deviceAllocator, &bufferCI, &allocationCI, &handle, &allocation, nullptr);
         if (result == VK_SUCCESS && createInfo.name)
         {
@@ -1076,26 +1108,25 @@ namespace RHI::Vulkan
         }
 
         VkImageViewCreateInfo imageViewCI{
-            .sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .pNext    = nullptr,
-            .flags    = 0,
-            .image    = handle,
-            .viewType = VK_IMAGE_VIEW_TYPE_1D,
-            .format   = imageCI.format,
-            .components{
-                        VK_COMPONENT_SWIZZLE_IDENTITY,
-                        VK_COMPONENT_SWIZZLE_IDENTITY,
-                        VK_COMPONENT_SWIZZLE_IDENTITY,
-                        VK_COMPONENT_SWIZZLE_IDENTITY,
-                        },
-            .subresourceRange =
-                {
-                        .aspectMask     = ConvertImageAspect(GetFormatAspects(createInfo.format), createInfo.format),
-                        .baseMipLevel   = 0,
-                        .levelCount     = VK_REMAINING_MIP_LEVELS,
-                        .baseArrayLayer = 0,
-                        .layerCount     = VK_REMAINING_ARRAY_LAYERS,
-                        },
+            .sType      = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .pNext      = nullptr,
+            .flags      = 0,
+            .image      = handle,
+            .viewType   = VK_IMAGE_VIEW_TYPE_1D,
+            .format     = imageCI.format,
+            .components = {
+                           VK_COMPONENT_SWIZZLE_IDENTITY,
+                           VK_COMPONENT_SWIZZLE_IDENTITY,
+                           VK_COMPONENT_SWIZZLE_IDENTITY,
+                           VK_COMPONENT_SWIZZLE_IDENTITY,
+                           },
+            .subresourceRange = {
+                           .aspectMask     = ConvertImageAspect(GetFormatAspects(createInfo.format), createInfo.format),
+                           .baseMipLevel   = 0,
+                           .levelCount     = VK_REMAINING_MIP_LEVELS,
+                           .baseArrayLayer = 0,
+                           .layerCount     = VK_REMAINING_ARRAY_LAYERS,
+                           },
         };
 
         switch (imageCI.imageType)
@@ -1108,33 +1139,31 @@ namespace RHI::Vulkan
 
         result = vkCreateImageView(device->m_device, &imageViewCI, nullptr, &viewHandle);
 
-        this->size   = createInfo.size;
-        this->format = createInfo.format;
-        this->subresources =
-            {
-                .imageAspects  = GetFormatAspects(format),
-                .mipBase       = 0,
-                .mipLevelCount = (uint8_t)createInfo.mipLevels,
-                .arrayBase     = 0,
-                .arrayCount    = (uint8_t)createInfo.arrayCount,
-            };
+        this->size         = createInfo.size;
+        this->format       = createInfo.format;
+        this->subresources = {
+            .imageAspects  = GetFormatAspects(format),
+            .mipBase       = 0,
+            .mipLevelCount = (uint8_t)createInfo.mipLevels,
+            .arrayBase     = 0,
+            .arrayCount    = (uint8_t)createInfo.arrayCount,
+        };
 
         return ConvertResult(result);
     }
 
     ResultCode IImage::Init(IDevice* device, VkImage image, const VkSwapchainCreateInfoKHR& swapchainCI)
     {
-        this->handle = image;
-        this->size   = {swapchainCI.imageExtent.width, swapchainCI.imageExtent.height, 1};
-        this->format = ConvertFormat(swapchainCI.imageFormat);
-        this->subresources =
-            {
-                .imageAspects  = GetFormatAspects(format),
-                .mipBase       = 0,
-                .mipLevelCount = 1,
-                .arrayBase     = 0,
-                .arrayCount    = 1,
-            };
+        this->handle       = image;
+        this->size         = {swapchainCI.imageExtent.width, swapchainCI.imageExtent.height, 1};
+        this->format       = ConvertFormat(swapchainCI.imageFormat);
+        this->subresources = {
+            .imageAspects  = GetFormatAspects(format),
+            .mipBase       = 0,
+            .mipLevelCount = 1,
+            .arrayBase     = 0,
+            .arrayCount    = 1,
+        };
 
         // VkImageViewCreateInfo imageViewCI{
         //     .sType      = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,

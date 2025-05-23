@@ -25,16 +25,16 @@ namespace RHI
 
     enum class LoadOperation : uint8_t
     {
-        DontCare, // The attachment load operation undefined.
-        Load,     // Load attachment content.
-        Discard,  // Discard attachment content.
+        DontCare,
+        Load,
+        Discard,
     };
 
     enum class StoreOperation : uint8_t
     {
-        DontCare, // Attachment Store operation is undefined
-        Store,    // Writes to the attachment are stored
-        Discard,  // Writes to the attachment are discarded
+        DontCare,
+        Store,
+        Discard,
     };
 
     enum class ResolveMode : uint8_t
@@ -131,13 +131,6 @@ namespace RHI
         size_t                 bufferSize    = SIZE_MAX;   ///< Size of the buffer region.
         uint32_t               bytesPerRow   = 0;          ///< Number of bytes per row in the buffer.
         uint32_t               bytesPerImage = 0;          ///< Number of bytes per image in the buffer.
-    };
-
-    /// @brief Contains information about binding a buffer.
-    struct BufferBindingInfo
-    {
-        Handle<Buffer> buffer = NullHandle; ///< Handle to the buffer.
-        size_t         offset = 0;          ///< Offset into the buffer.
     };
 
     /// @brief Contains information about binding a bind group.

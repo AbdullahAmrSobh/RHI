@@ -282,11 +282,9 @@ namespace Engine
         m_bindGroup = m_device->CreateBindGroup({.layout = bindGroupLayout});
         RHI::BindGroupUpdateInfo bindings{
             .buffers = {
-                        {
-                    .dstBinding = 0,
-                    .buffers    = {m_uniformBuffer},
-                    .subregions = RHI::BufferSubregion{.offset = 0, .size = sizeof(float) * 4 * 4},
-                },
+                //         {
+                //     .buffers = {m_uniformBuffer, 0, sizeof(float) * 4 * 4},
+                // },
                         },
             .images = {
                         {
