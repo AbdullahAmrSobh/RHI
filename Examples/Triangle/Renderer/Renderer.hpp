@@ -8,14 +8,12 @@
 #include <glm/glm.hpp>
 
 #include "BufferPool.hpp"
-#include "ImGuiRenderer.hpp"
 #include "Mesh.hpp"
 #include "PipelineLibrary.hpp"
 #include "Scene.hpp"
 
-#ifndef ENGINE_EXPORT
-    #define ENGINE_EXPORT
-#endif
+#include "Passes/ImGuiPass.hpp"
+#include "Passes/GBufferPass.hpp"
 
 namespace Examples
 {
@@ -26,65 +24,48 @@ namespace Engine
 {
     class Scene;
 
-    /// @class Renderer
-    /// @brief Manages the rendering process, including initialization, rendering, and shutdown.
     class Renderer
     {
     public:
-        /// @brief Initializes the renderer.
-        /// @return ResultCode indicating success or failure.
         ResultCode Init(Examples::Window* window, RHI::BackendType backend);
-
-        /// @brief Shuts down the renderer and releases resources.
-        void Shutdown();
-
-        Scene* CreateScene();
-        void   DestroyScene(Scene* scene);
+        void       Shutdown();
 
         /// @brief Renders the scene.
         void RenderScene();
 
         void ProcessEvent(Examples::Event& event)
         {
-            m_imguiRenderer.ProcessEvent(event);
+            m_imguiPass.ProcessEvent(event);
         }
 
         void OnWindowResize();
 
     private:
-
-        void FillGBuffer(const Scene* scene, RHI::CommandList& commandList);
-
-    private:
-        ///< Pointer to the rendering device.
         RHI::Device*      m_device;
-        ///< Pointer to the render graph.
         RHI::RenderGraph* m_renderGraph;
-        ///< Pointer to the swapchain.
         RHI::Swapchain*   m_swapchain;
-
         Examples::Window* m_window;
 
-        /// @todo: maybe uniformBuffersAllocator, and storageBuffersAllocator should be part of the render graph?
+        struct Allocators
+        {
+            BufferPool uniformPool;
+            BufferPool storagePool;
+        } m_allocators;
 
-        ///< Allocator for uniform buffers.
-        BufferPool m_uniformBuffersAllocator;
+        PipelineLibrary    m_pipelineLibrary;
+        GeometryBufferPool m_geometryBufferPool;
 
-        ///< Allocator for storage buffers.
-        BufferPool m_storageBuffersAllocator;
+        // Per game/level
+        StorageBuffer<GpuScene::MeshMaterialBindless>  m_materials;
+        StorageBuffer<GpuScene::MeshUniform>           m_meshUniform;
+        StorageBuffer<GpuScene::DrawIndexedParameters> m_drawParameters;
 
-        ///< Library of rendering pipelines.
-        PipelineLibrary           m_pipelineLibrary;
-        ///< ImGui renderer.
-        ImGuiRenderer             m_imguiRenderer;
-        ///< Geometry buffer for meshes.
-        UnifiedGeometryBufferPool m_unifiedGeometryBufferPool;
+        // Passes
+        ImGuiPass   m_imguiPass;
+        // GBufferPass m_gbufferPass;
 
-        TL::Vector<Scene*> m_activeScenes;
+        SceneView* m_sceneView;
 
         RHI::Handle<RHI::BindGroup> m_bindGroup;
-
-    private:
-        RHI::BackendType m_backend;
     };
 } // namespace Engine

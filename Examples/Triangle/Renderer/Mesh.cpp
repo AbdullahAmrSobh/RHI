@@ -11,9 +11,9 @@ namespace Engine
     };
     constexpr static U32 kVertexCount = 6; // 64k vertices
 
-    UnifiedGeometryBufferPool::UnifiedGeometryBufferPool() = default;
+    GeometryBufferPool::GeometryBufferPool() = default;
 
-    ResultCode UnifiedGeometryBufferPool::Init(RHI::Device& device)
+    ResultCode GeometryBufferPool::Init(RHI::Device& device)
     {
         m_device = &device;
 
@@ -23,21 +23,26 @@ namespace Engine
         auto sizeTexCoord = kVertexCount * sizeof(glm::vec2);
 
         RHI::ResultCode result;
-        result = m_bufferPools[U32(MeshAttributeType::Index)].Init(device, {.name = "Vertex-Index-Attribute", .hostMapped = true, .usageFlags = RHI::BufferUsage::Index, .byteSize = sizeIndex});
+
+        result = m_bufferPools[U32(MeshAttributeType::Index)].Init(device, {.name = "ib", .hostMapped = true, .usageFlags = RHI::BufferUsage::Index, .byteSize = sizeIndex});
         if (RHI::IsError(result)) return result;
-        result = m_bufferPools[U32(MeshAttributeType::Position)].Init(device, {.name = "Vertex-Position-Attribute", .hostMapped = true, .usageFlags = RHI::BufferUsage::Vertex, .byteSize = sizePosition});
+
+        result = m_bufferPools[U32(MeshAttributeType::Position)].Init(device, {.name = "vb-position", .hostMapped = true, .usageFlags = RHI::BufferUsage::Vertex, .byteSize = sizePosition});
         if (RHI::IsError(result)) return result;
-        result = m_bufferPools[U32(MeshAttributeType::Normal)].Init(device, {.name = "Vertex-Normal-Attribute", .hostMapped = true, .usageFlags = RHI::BufferUsage::Vertex, .byteSize = sizeNormal});
+
+        result = m_bufferPools[U32(MeshAttributeType::Normal)].Init(device, {.name = "vb-normal", .hostMapped = true, .usageFlags = RHI::BufferUsage::Vertex, .byteSize = sizeNormal});
         if (RHI::IsError(result)) return result;
-        result = m_bufferPools[U32(MeshAttributeType::TexCoord)].Init(device, {.name = "Vertex-TexCoord-Attribute", .hostMapped = true, .usageFlags = RHI::BufferUsage::Vertex, .byteSize = sizeTexCoord});
+
+        result = m_bufferPools[U32(MeshAttributeType::TexCoord)].Init(device, {.name = "vb-texCoord", .hostMapped = true, .usageFlags = RHI::BufferUsage::Vertex, .byteSize = sizeTexCoord});
         if (RHI::IsError(result)) return result;
+
         result = m_drawParams.Init(*m_device, "DrawIndexedParameters", RHI::BufferUsage::Indirect, 32);
         if (RHI::IsError(result)) return result;
 
         return result;
     }
 
-    void UnifiedGeometryBufferPool::Shutdown()
+    void GeometryBufferPool::Shutdown()
     {
         m_drawParams.Shutdown();
         m_bufferPools[U32(MeshAttributeType::TexCoord)].Shutdown();
@@ -46,13 +51,13 @@ namespace Engine
         m_bufferPools[U32(MeshAttributeType::Index)].Shutdown();
     }
 
-    RHI::BufferBindingInfo UnifiedGeometryBufferPool::GetAttributeBindingInfo(MeshAttributeType attribute) const
+    RHI::BufferBindingInfo GeometryBufferPool::GetAttributeBindingInfo(MeshAttributeType attribute) const
     {
         auto buffer = m_bufferPools[U32(attribute)].GetBuffer();
         return {buffer, 0};
     }
 
-    StaticMeshLOD* UnifiedGeometryBufferPool::CreateStaticMeshLOD(U32 vertexCount, U32 indexCount)
+    StaticMeshLOD* GeometryBufferPool::CreateStaticMeshLOD(U32 vertexCount, U32 indexCount)
     {
         auto staticMesh = TL::Allocator::Construct<StaticMeshLOD>();
 
@@ -77,7 +82,7 @@ namespace Engine
         return staticMesh;
     }
 
-    StaticMeshLOD* UnifiedGeometryBufferPool::CreateStaticMeshLOD(
+    StaticMeshLOD* GeometryBufferPool::CreateStaticMeshLOD(
         TL::Span<const uint32_t>  indicies,
         TL::Span<const glm::vec3> positions,
         TL::Span<const glm::vec3> normals,
@@ -104,7 +109,7 @@ namespace Engine
         return staticMesh;
     }
 
-    void UnifiedGeometryBufferPool::ReleaseStaticMeshLOD(StaticMeshLOD* lod)
+    void GeometryBufferPool::ReleaseStaticMeshLOD(StaticMeshLOD* lod)
     {
         ReleaseMeshAttribute(lod->m_indexAttribute);
         ReleaseMeshAttribute(lod->m_positionAttribute);
@@ -113,7 +118,7 @@ namespace Engine
         TL::Allocator::Destruct(lod);
     }
 
-    MeshAttribute* UnifiedGeometryBufferPool::CreateMeshAttribute(U32 elementCount, MeshAttributeType type, TL::Block content)
+    MeshAttribute* GeometryBufferPool::CreateMeshAttribute(U32 elementCount, MeshAttributeType type, TL::Block content)
     {
         auto format               = kMeshAttributeFormat[U32(type)];
         auto [allocation, result] = m_bufferPools[U32(type)].Allocate(elementCount * RHI::GetFormatByteSize(format), alignof(float));
@@ -134,13 +139,13 @@ namespace Engine
         return attribute;
     }
 
-    void UnifiedGeometryBufferPool::ReleaseMeshAttribute(MeshAttribute* attribute)
+    void GeometryBufferPool::ReleaseMeshAttribute(MeshAttribute* attribute)
     {
         m_bufferPools[(U32)attribute->m_type].Release(attribute->m_allocation);
         TL::Allocator::Destruct(attribute);
     }
 
-    void UnifiedGeometryBufferPool::WriteMeshAttribute(MeshAttribute* attribute, size_t offset, TL::Block content)
+    void GeometryBufferPool::WriteMeshAttribute(MeshAttribute* attribute, size_t offset, TL::Block content)
     {
         auto [bufferOffset, _] = attribute->GetAllocation();
         m_bufferPools[(U32)attribute->m_type].Write({U32(bufferOffset + offset), _}, content);

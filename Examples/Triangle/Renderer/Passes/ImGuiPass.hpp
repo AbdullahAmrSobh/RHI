@@ -4,7 +4,7 @@
 
 #include <imgui.h>
 
-#include "Common.hpp"
+#include "../Common.hpp"
 
 namespace Examples
 {
@@ -13,17 +13,19 @@ namespace Examples
 
 namespace Engine
 {
-    class IMGUI_IMPL_API ImGuiRenderer
+    class IMGUI_IMPL_API ImGuiPass
     {
     public:
-        ImGuiRenderer() = default;
+        ImGuiPass() = default;
 
         void ProcessEvent(Examples::Event& event);
 
-        ResultCode   Init(RHI::Device* device, RHI::Format colorAttachmentFormat);
-        void         Shutdown();
-        void         NewFrame();
-        RHI::RGPass* AddPass(RHI::RenderGraph& renderGraph, RHI::Handle<RHI::RGImage>& outAttachment, ImDrawData* drawData);
+        ResultCode Init(RHI::Device* device, RHI::Format colorAttachmentFormat);
+        void       Shutdown();
+
+        bool Enabled() const  {  return true; }
+
+        RHI::RGPass* AddPass(RHI::RenderGraph* renderGraph, RHI::Handle<RHI::RGImage>& outAttachment, ImDrawData* drawData);
 
     private:
         void InitGraphicsPipeline();

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Shaders//Public//GpuScene.h"
+
 #include <RHI/RHI.hpp>
 
 #include <TL/Containers.hpp>
@@ -13,19 +15,11 @@
 
 namespace Engine
 {
-    class Scene
+    class SceneView
     {
     public:
-        Scene()  = default;
-        ~Scene() = default;
-
-        ResultCode Init(RHI::Device* device);
-        void       Shutdown();
-
-        RHI::BufferBindingInfo GetTransformsInstanceBuffer() const { return m_transforms.GetBindingInfo(); }
-
-    private:
-        RHI::Device*        m_device;
-        GpuArray<glm::mat4> m_transforms;
+        TL::String                           m_name;
+        UniformBuffer<GpuScene::SceneView>   m_sceneViewUB;
+        StorageBuffer<GpuScene::DrawRequest> m_drawList; // TODO: Replace with TL::Ptr<DrawList>
     };
 } // namespace Engine

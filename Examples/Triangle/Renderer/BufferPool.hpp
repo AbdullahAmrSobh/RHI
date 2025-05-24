@@ -158,6 +158,28 @@ namespace Engine
         uint32_t m_allocated = 0;
     };
 
+    template<typename T>
+    class UniformBuffer
+    {
+    public:
+        T m_content;
+
+        RHI::Handle<RHI::Buffer> m_buffer = RHI::NullHandle;
+
+        // void OnRender(RHI::RenderGraph* rg); // will use rg to update GPU buffer when needed
+    };
+
+    template<typename T>
+    class StorageBuffer
+    {
+    public:
+        T*                       m_content;
+        TL::Vector<uint32_t>     m_dirtySlots; // sorted
+        RHI::Handle<RHI::Buffer> m_buffer = RHI::NullHandle;
+
+        // void OnRender(RHI::RenderGraph* rg); // will use rg to update GPU buffer when needed
+    };
+
     // --- GpuArrayHandle Implementation ---
 
     template<typename T>
@@ -229,7 +251,7 @@ namespace Engine
             .byteSize   = bufferSize,
 
         };
-        m_buffer              = m_device->CreateBuffer(bufferCI);
+        m_buffer = m_device->CreateBuffer(bufferCI);
 
         m_bufferOffset = 0;
         m_freeList.clear();

@@ -1,4 +1,4 @@
-#include "ImGuiRenderer.hpp"
+#include "ImGuiPass.hpp"
 
 #include <TL/Allocator/MemPlumber.hpp>
 #include <TL/Defer.hpp>
@@ -163,7 +163,7 @@ namespace Engine
         }
     }
 
-    void ImGuiRenderer::ProcessEvent(Event& e)
+    void ImGuiPass::ProcessEvent(Event& e)
     {
         ImGuiIO& io = ImGui::GetIO();
 
@@ -233,7 +233,7 @@ namespace Engine
         }
     }
 
-    ResultCode ImGuiRenderer::Init(RHI::Device* device, RHI::Format colorAttachmentFormat)
+    ResultCode ImGuiPass::Init(RHI::Device* device, RHI::Format colorAttachmentFormat)
     {
         m_imguiContext = ImGui::CreateContext();
         ImGui::SetCurrentContext(m_imguiContext);
@@ -349,7 +349,7 @@ namespace Engine
         return ResultCode::Success;
     }
 
-    void ImGuiRenderer::Shutdown()
+    void ImGuiPass::Shutdown()
     {
         m_device->DestroyGraphicsPipeline(m_pipeline);
         m_device->DestroyPipelineLayout(m_pipelineLayout);
@@ -364,18 +364,14 @@ namespace Engine
             m_device->DestroyBuffer(m_uniformBuffer);
     }
 
-    void ImGuiRenderer::NewFrame()
-    {
-    }
-
-    RHI::RGPass* ImGuiRenderer::AddPass(RHI::RenderGraph& rg, RHI::Handle<RHI::RGImage>& outAttachment, ImDrawData* drawData)
+    RHI::RGPass* ImGuiPass::AddPass(RHI::RenderGraph* rg, RHI::Handle<RHI::RGImage>& outAttachment, ImDrawData* drawData)
     {
         UpdateBuffers(drawData);
 
-        return rg.AddPass({
+        return rg->AddPass({
             .name          = "ImGui",
             .type          = RHI::PassType::Graphics,
-            .size          = rg.GetFrameSize(),
+            .size          = rg->GetFrameSize(),
             .setupCallback = [&](RHI::RenderGraphBuilder& builder)
             {
                 builder.AddColorAttachment({.color = outAttachment, .loadOp = RHI::LoadOperation::Discard});
@@ -415,8 +411,8 @@ namespace Engine
                                 continue;
 
                             commandList.SetViewport({
-                                .width    = (float)rg.GetFrameSize().width,
-                                .height   = (float)rg.GetFrameSize().height,
+                                .width    = (float)rg->GetFrameSize().width,
+                                .height   = (float)rg->GetFrameSize().height,
                                 .maxDepth = 1.0,
                             });
                             // Apply scissor/clipping rectangle
@@ -449,7 +445,7 @@ namespace Engine
         });
     }
 
-    void ImGuiRenderer::UpdateBuffers(ImDrawData* drawData)
+    void ImGuiPass::UpdateBuffers(ImDrawData* drawData)
     {
         // Avoid rendering when minimized
         if (drawData->DisplaySize.x <= 0.0f || drawData->DisplaySize.y <= 0.0f)

@@ -1,18 +1,14 @@
 #include "GBufferPass.hpp"
 
+#include "../Scene.hpp"
+
 namespace Engine
 {
-
-    void printResourceShape(SlangResourceShape shape)
-    {
-
-    }
-
     void Shader::Init(RHI::Device& device, const char* path)
     {
     }
 
-    void GBufferPass::AddPass(RHI::RenderGraph& rg)
+    void GBufferPass::AddPass(RHI::RenderGraph* rg, const SceneView* view)
     {
         auto frameSize = rg.GetFrameSize();
         rg.AddPass({
@@ -21,10 +17,10 @@ namespace Engine
             .size          = frameSize,
             .setupCallback = [&](RHI::RenderGraphBuilder& builder)
             {
-                auto position = rg.CreateRenderTarget("gbuffer-position", frameSize, FormatPosition);
-                auto normal   = rg.CreateRenderTarget("gbuffer-normal", frameSize, FormatNormal);
-                auto material = rg.CreateRenderTarget("gbuffer-material", frameSize, FormatMaterial);
-                auto depth    = rg.CreateRenderTarget("gbuffer-depth", frameSize, FormatDepth);
+                auto position = rg->CreateRenderTarget("gbuffer-position", frameSize, FormatPosition);
+                auto normal   = rg->CreateRenderTarget("gbuffer-normal", frameSize, FormatNormal);
+                auto material = rg->CreateRenderTarget("gbuffer-material", frameSize, FormatMaterial);
+                auto depth    = rg->CreateRenderTarget("gbuffer-depth", frameSize, FormatDepth);
 
                 m_position = builder.AddColorAttachment({.color = position, .clearValue = ClearPosition});
                 m_normal   = builder.AddColorAttachment({.color = normal, .clearValue = ClearNormal});

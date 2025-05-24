@@ -83,6 +83,8 @@ namespace RHI
     public:
         RHI_INTERFACE_BOILERPLATE(Device);
 
+        BackendType                      GetBackend() const { return m_backend; };
+
         /// @brief Get the device limits.
         /// @return Device Limits struct.
         DeviceLimits                     GetLimits() const;

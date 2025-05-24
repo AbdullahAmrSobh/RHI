@@ -3,64 +3,66 @@
 #include "Common.h"
 #include "Light.h"
 
-#ifdef __cplusplus
-namespace Shader
+namespace GpuScene
 {
-#endif
-
-    struct ObjectID
+    struct DrawParameters // Matches RHI
     {
-        U32 objectID;
-        U32 materialID;
-        U32 transformID;
+        U32 vertexCount;
+        U32 instanceCount;
+        U32 firstVertex;
+        U32 firstInstance;
     };
 
-    /// Contains transformation matrices and lighting information for the GPU scene.
-    struct SceneView
+    struct DrawIndexedParameters // Matches RHI
     {
-        F32_4x4 worldToViewMatrix; /// World to view transformation matrix.
-        F32_4x4 viewToClipMatrix;  /// View to clip transformation matrix.
-        F32_4x4 worldToClipMatrix; /// World to clip transformation matrix.
-        F32_4x4 clipToViewMatrix;  /// Clip to view transformation matrix.
-        F32_4x4 viewToWorldMatrix; /// View to world transformation matrix.
-        F32_4x4 clipToWorldMatrix; /// Clip to world transformation matrix.
-        F32_3   cameraPosition;    /// Camera position in world space.
+        U32 indexCount;
+        U32 instanceCount;
+        U32 firstIndex;
+        I32 vertexOffset;
+        U32 firstInstance;
     };
 
-    struct PbrMaterial
+    struct StaticMeshNonIndexed
+    {
+        U32 vertexCount;
+        U32 firstVertex;
+    };
+
+    struct StaticMeshIndexed
+    {
+        U32 indexCount;
+        U32 firstIndex;
+        I32 vertexOffset;
+    };
+
+    struct MeshMaterialBindless
     {
         F32_4 albedo;
-        U32   albedoMapIndex;
-        U32   normalMapIndex;
-        F32   roughness;
-        F32   metallic;
-        U32   metallicRoughnessMapIndex;
+        F32_2 roughnessMetallic;
+        U32   albedoTextureId;
+        U32   normalTextureId;
+        U32   roughnessMetallicTextureId;
     };
 
-    struct Drawable
+    struct MeshUniform
     {
-        F32_3x4 modelToWorldMatrix;
+        F32_4x4 modelToWorldMatrix;
+        U32     materialId;
+        U32     _padding[3];
     };
 
-    /// @brief Parameters for drawing primitives.
-    struct DrawParameters
+    struct DrawRequest
     {
-        uint32_t vertexCount;   ///< Number of vertices to draw.
-        uint32_t instanceCount; ///< Number of instances to draw.
-        uint32_t firstVertex;   ///< Index of the first vertex to draw.
-        uint32_t firstInstance; ///< Index of the first instance to draw.
+        U32 meshId;
+        U32 materialId;
+        U32 uniformId;
     };
 
-    /// @brief Parameters for drawing indexed primitives.
-    struct DrawIndexedParameters
+    struct SceneView
     {
-        uint32_t indexCount;    ///< Number of indices to draw.
-        uint32_t instanceCount; ///< Number of instances to draw.
-        uint32_t firstIndex;    ///< Index of the first index to draw.
-        int32_t  vertexOffset;  ///< Offset added to each index.
-        uint32_t firstInstance; ///< Index of the first instance to draw.
+        F32_4x4 worldToViewMatrix;
+        F32_4x4 viewToClipMatrix;
+        F32_4x4 worldToClipMatrix;
+        F32_4x4 clipToWorldMatrix;
     };
-
-#ifdef __cplusplus
-} // namespace Shader
-#endif
+} // namespace GpuScene

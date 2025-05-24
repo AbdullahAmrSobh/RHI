@@ -22,7 +22,7 @@ class Playground final : public ApplicationBase
 {
 public:
     TL::Ptr<Engine::Renderer> m_renderer;
-    Engine::Scene*    m_scene;
+    Engine::Scene*            m_scene;
 
     Playground()
         : ApplicationBase("", 1600, 900) // Empty title, will be set in OnInit
@@ -52,15 +52,12 @@ public:
         }
 
         auto result = m_renderer->Init(m_window.get(), backend);
-        // Create empty scene
-        m_scene     = m_renderer->CreateScene();
     }
 
     void OnShutdown() override
     {
         ZoneScoped;
 
-        m_renderer->DestroyScene(m_scene);
         m_renderer->Shutdown();
     }
 

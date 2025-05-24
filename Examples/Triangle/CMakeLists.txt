@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.19)
 
 set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Triangle.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/ImGuiRenderer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Passes/ImGuiPass.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Renderer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/PipelineLibrary.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/BufferPool.cpp
@@ -12,7 +12,7 @@ set(SOURCE_FILES
 )
 
 set(SHADER_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/Basic.slang
+    # ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/Basic.slang
     ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/ImGui.slang
 )
 

@@ -1,18 +1,42 @@
 #include "Public/GpuScene.h"
 
-RWStructuredBuffer<DrawIndexedParameters> outputBuffer;
+// Input buffers
 
-[[shader("compute"), numthreads(4, 1, 1)]]
+StructuredBuffer<GpuScene::StaticMeshIndexed>    indexedMeshResources;
+StructuredBuffer<GpuScene::StaticMeshNonIndexed> nonIndexedMeshResources;
+StructuredBuffer<GpuScene::MeshMaterialBindless> materialResources;
+StructuredBuffer<GpuScene::MeshUniform>          modelUniforms;
+StructuredBuffer<GpuScene::DrawRequest>          drawRequests;
+
+RWStructuredBuffer<GpuScene::MeshUniform>           outModelUniforms;
+RWStructuredBuffer<GpuScene::DrawIndexedParameters> drawIndexedResources;
+RWStructuredBuffer<GpuScene::DrawParameters>        drawNonIndexedResources;
+
+void StructuredBufferPushBack<T>(RWStructuredBuffer<T> buffer, T value)
+{
+    var count = 1;
+    buffer[count] = value;
+}
+
+// Output buffer
+void ProcessIndexedDrawRequest(U32 drawRequestId)
+{
+    var drawRequest  = drawRequests[drawRequestId];
+    var mesh         = indexedMeshResources[drawRequest.meshId];
+    var material     = materialResources[drawRequest.materialId];
+    var modelUniform = modelUniforms[drawRequest.uniformId];
+
+    GpuScene::DrawIndexedParameters parameters;
+
+    StructuredBufferPushBack(drawIndexedResources, parameters);
+}
+
+[[shader("compute"), numthreads(1, 1, 1)]]
 void CSMain(uint3 threadId : SV_DispatchThreadID)
 {
-    if (threadId.x < 4)
+    for (U32 i = 0; i < 1; i++)
     {
-        DrawIndexedParameters params;
-        params.indexCount    = 3;
-        params.instanceCount = 1;
-        params.firstIndex    = 0;
-        params.vertexOffset  = 0;
-        params.firstInstance = 0;
-        outputBuffer[threadId.x] = params;
+        var drawRequest = drawRequests[i];
+        ProcessIndexedDrawRequest(i);
     }
 }

@@ -16,7 +16,7 @@
 namespace Engine
 {
     /**
-     * Unified geometry buffer archtecture where all meshes share same layout. data is stored in a single growing buffer.
+     *  geometry buffer archtecture where all meshes share same layout. data is stored in a single growing buffer.
      * Mesh attributes (position, normal, etc.) are stored non-interleaved in separate sections of the buffer.
      * Use GetAttributeBindingInfo to obtain the starting location of each attribute section. The buffer is partitioned
      * into MeshAttributeType::Count segments. Optional attributes (e.g. skinning data) are stored in the last segment.
@@ -41,7 +41,7 @@ namespace Engine
     class MeshAttribute
     {
     public:
-        friend class UnifiedGeometryBufferPool;
+        friend class GeometryBufferPool;
         MeshAttribute()  = default;
         ~MeshAttribute() = default;
 
@@ -60,7 +60,7 @@ namespace Engine
     class StaticMeshLOD
     {
     public:
-        friend class UnifiedGeometryBufferPool;
+        friend class GeometryBufferPool;
         StaticMeshLOD()  = default;
         ~StaticMeshLOD() = default;
 
@@ -97,13 +97,13 @@ namespace Engine
         AABB m_aabb;
     };
 
-    class UnifiedGeometryBufferPool
+    class GeometryBufferPool
     {
     public:
-        UnifiedGeometryBufferPool();
-        UnifiedGeometryBufferPool(const UnifiedGeometryBufferPool&)            = delete;
-        UnifiedGeometryBufferPool& operator=(const UnifiedGeometryBufferPool&) = delete;
-        ~UnifiedGeometryBufferPool()                                           = default;
+        GeometryBufferPool();
+        GeometryBufferPool(const GeometryBufferPool&)            = delete;
+        GeometryBufferPool& operator=(const GeometryBufferPool&) = delete;
+        ~GeometryBufferPool()                                           = default;
 
         ResultCode Init(RHI::Device& device);
         void       Shutdown();
