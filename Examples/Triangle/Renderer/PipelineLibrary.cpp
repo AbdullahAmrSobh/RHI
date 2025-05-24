@@ -58,24 +58,27 @@ namespace Engine
                     .stepRate   = RHI::PipelineVertexInputRate::PerInstance,
                     .attributes = {{.format = RHI::Format::RGBA32_FLOAT}, {.format = RHI::Format::RGBA32_FLOAT}, {.format = RHI::Format::RGBA32_FLOAT}, {.format = RHI::Format::RGBA32_FLOAT}},
                 },
-                                     },
+            },
             .renderTargetLayout = {
-                                     .colorAttachmentsFormats = {RHI::Format::RGBA8_UNORM, RHI::Format::RGBA32_FLOAT, RHI::Format::RGBA32_FLOAT, RHI::Format::RG8_UNORM},
-                                     .depthAttachmentFormat   = RHI::Format::D32,
-                                     },
-            .colorBlendState = {
-                                     .blendStates = {
+                .colorAttachmentsFormats = {RHI::Format::RGBA8_UNORM, RHI::Format::RGBA32_FLOAT, RHI::Format::RGBA32_FLOAT, RHI::Format::RG8_UNORM},
+                .depthAttachmentFormat   = RHI::Format::D32,
+            },
+            .colorBlendState
+            {
+                .blendStates = {
                     {.blendEnable = false},
                 },
-                                     },
-            .rasterizationState = {
-                                     .cullMode  = RHI::PipelineRasterizerStateCullMode::BackFace,
-                                     .frontFace = RHI::PipelineRasterizerStateFrontFace::Clockwise,
-                                     },
-            .depthStencilState = {
-                                     .depthTestEnable  = true,
-                                     .depthWriteEnable = true,
-                                     },
+            },
+            .rasterizationState
+            {
+                .cullMode  = RHI::PipelineRasterizerStateCullMode::BackFace,
+                .frontFace = RHI::PipelineRasterizerStateFrontFace::Clockwise,
+            },
+            .depthStencilState =
+            {
+                .depthTestEnable  = true,
+                .depthWriteEnable = true,
+            },
         };
         return device->CreateGraphicsPipeline(pipelineCI);
     }

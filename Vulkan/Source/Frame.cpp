@@ -146,6 +146,7 @@ namespace RHI::Vulkan
             auto _commandList = CreateCommandList({.queueType = QueueType::Transfer});
             auto copyCommand  = (ICommandList*)_commandList;
 
+            copyCommand->Begin();
             copyCommand->AddPipelineBarriers({
                 .imageBarriers = {{
                     .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
@@ -194,12 +195,12 @@ namespace RHI::Vulkan
                     .subresourceRange    = subresourceRange,
                 }},
             });
-
+            copyCommand->End();
             [[maybe_unused]] auto newTimeline = queue->Submit({copyCommand}, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
             vkDeviceWaitIdle(m_device->m_device);
         }
 
-        TL_UNREACHABLE();
+        // TL_UNREACHABLE();
     }
 
     ////////////////////////////////////////////////////////////////

@@ -201,7 +201,7 @@ namespace RHI
 
         if (resource->m_producer == nullptr)
         {
-            TL_ASSERT(access & Access::Write);
+            // TL_ASSERT(access & Access::Write);
             resource->m_producer = m_pass;
         }
 

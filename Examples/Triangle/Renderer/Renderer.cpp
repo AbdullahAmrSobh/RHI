@@ -97,30 +97,30 @@ namespace Engine
 
 #undef RESULT_CHECK
 
-        m_testTriangleMesh = m_unifiedGeometryBufferPool.CreateStaticMeshLOD(
-            {
-                0, 1, 2
-        },
-            {
-                {0.5f, 0.5f, 0.0f},
-                {0.0f, -0.5f, 0.0f},
-                {-0.5f, 0.5f, 0.0f},
-            },
-            {
-                {0.0f, -1.0f, 0.0f},
-                {1.0f, 1.0f, 0.0f},
-                {-1.0f, 1.0f, 0.0f},
-            },
-            {
-                {0.0f, -0.5f},
-                {0.5f, 0.5f},
-                {-0.5f, 0.5f},
-            });
+        // m_testTriangleMesh = m_unifiedGeometryBufferPool.CreateStaticMeshLOD(
+        //     {
+        //         0, 1, 2
+        // },
+        //     {
+        //         {0.5f, 0.5f, 0.0f},
+        //         {0.0f, -0.5f, 0.0f},
+        //         {-0.5f, 0.5f, 0.0f},
+        //     },
+        //     {
+        //         {0.0f, -1.0f, 0.0f},
+        //         {1.0f, 1.0f, 0.0f},
+        //         {-1.0f, 1.0f, 0.0f},
+        //     },
+        //     {
+        //         {0.0f, -0.5f},
+        //         {0.5f, 0.5f},
+        //         {-0.5f, 0.5f},
+        //     });
 
-        m_bindGroup = m_device->CreateBindGroup({
-            .name   = "compute-bgl",
-            .layout = m_pipelineLibrary.GetBindGroupLayout(ShaderNames::Cull, 0),
-        });
+        // m_bindGroup = m_device->CreateBindGroup({
+        //     .name   = "compute-bgl",
+        //     .layout = m_pipelineLibrary.GetBindGroupLayout(ShaderNames::Cull, 0),
+        // });
 
         return ResultCode::Success;
     }
@@ -190,38 +190,53 @@ namespace Engine
         auto [width, height] = m_window->GetWindowSize();
 
         m_renderGraph->BeginFrame({width, height});
-
-        auto indirectBuffer = m_renderGraph->CreateBuffer("Indirect-Test", sizeof(RHI::DrawIndexedParameters));
-
-        m_renderGraph->AddPass({
-            .name          = "Indirect-Fill",
-            .type          = RHI::PassType::Compute,
-            .size          = {},
-            .setupCallback = [&](RHI::RenderGraphBuilder& builder)
-            {
-                indirectBuffer = builder.WriteBuffer(indirectBuffer, RHI::BufferUsage::Storage, RHI::PipelineStage::ComputeShader);
-            },
-            .compileCallback = [&](RHI::RenderGraphContext& context)
-            {
-                auto buffer = context.GetBuffer(indirectBuffer);
-                // m_device->UpdateBindGroup(m_bindGroup,
-                //     {
-                //         .buffers = {
-                //                     .dstBinding = 0,
-                //                     .buffers    = buffer,
-                //                     .subregions = {{0, RHI::WholeSize}},
-                //                     },
-                // });
-            },
-            .executeCallback = [&](RHI::CommandList& commandList)
-            {
-                auto pipeline = m_pipelineLibrary.GetComputePipeline(ShaderNames::Cull);
-                commandList.BindComputePipeline(pipeline, {{m_bindGroup}});
-                commandList.Dispatch({4, 1, 1});
-            },
-        });
-
         auto colorAttachment = m_renderGraph->ImportSwapchain("color", *m_swapchain, RHI::Format::RGBA8_UNORM);
+        m_imguiRenderer.AddPass(*m_renderGraph, colorAttachment, ImGui::GetDrawData());
+        m_renderGraph->EndFrame();
+
+        TL_MAYBE_UNUSED auto result = m_swapchain->Present();
+        if (RHI::IsError(result))
+        {
+            result = m_swapchain->Configure({
+                .size        = {width, height},
+                .imageCount  = 1,
+                .imageUsage  = RHI::ImageUsage::Color,
+                .format      = RHI::Format::RGBA8_UNORM,
+                .presentMode = RHI::SwapchainPresentMode::Fifo,
+                .alphaMode   = RHI::SwapchainAlphaMode::None,
+            });
+            TL_ASSERT(RHI::IsSuccess(result));
+        }
+
+        // auto indirectBuffer = m_renderGraph->CreateBuffer("Indirect-Test", sizeof(RHI::DrawIndexedParameters));
+
+        // m_renderGraph->AddPass({
+        //     .name          = "Indirect-Fill",
+        //     .type          = RHI::PassType::Compute,
+        //     .size          = {},
+        //     .setupCallback = [&](RHI::RenderGraphBuilder& builder)
+        //     {
+        //         indirectBuffer = builder.WriteBuffer(indirectBuffer, RHI::BufferUsage::Storage, RHI::PipelineStage::ComputeShader);
+        //     },
+        //     .compileCallback = [&](RHI::RenderGraphContext& context)
+        //     {
+        //         auto buffer = context.GetBuffer(indirectBuffer);
+        //         // m_device->UpdateBindGroup(m_bindGroup,
+        //         //     {
+        //         //         .buffers = {
+        //         //                     .dstBinding = 0,
+        //         //                     .buffers    = buffer,
+        //         //                     .subregions = {{0, RHI::WholeSize}},
+        //         //                     },
+        //         // });
+        //     },
+        //     .executeCallback = [&](RHI::CommandList& commandList)
+        //     {
+        //         auto pipeline = m_pipelineLibrary.GetComputePipeline(ShaderNames::Cull);
+        //         commandList.BindComputePipeline(pipeline, {{m_bindGroup}});
+        //         commandList.Dispatch({4, 1, 1});
+        //     },
+        // });
 
         // m_renderGraph->AddPass(
         //     {
@@ -273,37 +288,6 @@ namespace Engine
         //             }
         //         },
         // });
-
-        // ImGui
-        m_imguiRenderer.RenderDrawData(ImGui::GetDrawData(), *m_renderGraph, colorAttachment);
-        m_renderGraph->EndFrame();
-
-        struct FrameConstants
-        {
-            glm::vec4 primaryViewDir;
-        };
-
-        // FrameConstants* constants = AllocateUniformBuffer<FrameConstants>(m_renderGraph);
-
-        // auto views    = GatherActiveViews();
-        // auto gpuScene = BuildGPUScene();
-
-        // *constants = {
-        //     .primaryViewDir = {},
-        // };
-
-        // RenderingPipeline::GBuffer(m_renderGraph, ... );
-        // RenderingPipeline::GBuffer(m_renderGraph, ... );
-        // RenderingPipeline::GBuffer(m_renderGraph, ... );
-        // RenderingPipeline::GBuffer(m_renderGraph, ... );
-        // RenderingPipeline::GBuffer(m_renderGraph, ... );
-        // RenderingPipeline::GBuffer(m_renderGraph, ... );
-        // RenderingPipeline::GBuffer(m_renderGraph, ... );
-
-        // if (ImGui::Enabled())
-        // {
-        //     RenderingPipeline::AddPass(m_renderGraph);
-        // }
     }
 
     void Renderer::OnWindowResize()

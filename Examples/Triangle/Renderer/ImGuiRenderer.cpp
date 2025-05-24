@@ -254,9 +254,10 @@ namespace Engine
         RHI::BindGroupLayoutCreateInfo bindGroupLayoutCI{
             .name     = "ImGui-BindGroupLayout",
             .bindings = {
-                         RHI::ShaderBinding{.type = RHI::BindingType::UniformBuffer, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Vertex},
-                         RHI::ShaderBinding{.type = RHI::BindingType::Sampler, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel},
-                         RHI::ShaderBinding{.type = RHI::BindingType::SampledImage, .access = RHI::Access::Read, .arrayCount = 1, .stages = RHI::ShaderStage::Pixel}}
+                         {RHI::BindingType::UniformBuffer, RHI::Access::Read, 1, RHI::ShaderStage::Vertex, sizeof(float) * 4 * 4},
+                         {RHI::BindingType::Sampler, RHI::Access::Read, 1, RHI::ShaderStage::Pixel},
+                         {RHI::BindingType::SampledImage, RHI::Access::Read, 1, RHI::ShaderStage::Pixel},
+                         }
         };
         auto bindGroupLayout = m_device->CreateBindGroupLayout(bindGroupLayoutCI);
 
@@ -281,23 +282,9 @@ namespace Engine
 
         m_bindGroup = m_device->CreateBindGroup({.layout = bindGroupLayout});
         RHI::BindGroupUpdateInfo bindings{
-            .buffers = {
-                //         {
-                //     .buffers = {m_uniformBuffer, 0, sizeof(float) * 4 * 4},
-                // },
-                        },
-            .images = {
-                        {
-                    .dstBinding = 2,
-                    .images     = m_image,
-                },
-                        },
-            .samplers = {
-                        {
-                    .dstBinding = 1,
-                    .samplers   = m_sampler,
-                },
-                        },
+            .buffers  = {{0, 0, {{m_uniformBuffer}}}},
+            .images   = {{2, 0, {m_image}}},
+            .samplers = {{1, 0, {m_sampler}}},
         };
         m_device->UpdateBindGroup(m_bindGroup, bindings);
 
@@ -348,7 +335,6 @@ namespace Engine
                                            .blendStates    = {attachmentBlendDesc},
                                            .blendConstants = {},
                                            },
-                .topologyMode = RHI::PipelineTopologyMode::Triangles,
                 .rasterizationState =
                     {
                                            .cullMode  = RHI::PipelineRasterizerStateCullMode::None,
@@ -356,18 +342,7 @@ namespace Engine
                                            .frontFace = RHI::PipelineRasterizerStateFrontFace::CounterClockwise,
                                            .lineWidth = 1.0f,
                                            },
-                .multisampleState =
-                    {
-                                           .sampleCount   = RHI::SampleCount::Samples1,
-                                           .sampleShading = false,
-                                           },
-                .depthStencilState =
-                    {
-                                           .depthTestEnable   = false,
-                                           .depthWriteEnable  = true,
-                                           .compareOperator   = RHI::CompareOperator::Always,
-                                           .stencilTestEnable = false,
-                                           },
+
         };
         m_pipeline = m_device->CreateGraphicsPipeline(pipelineCI);
         m_device->DestroyBindGroupLayout(bindGroupLayout);
@@ -393,7 +368,7 @@ namespace Engine
     {
     }
 
-    RHI::RGPass* ImGuiRenderer::RenderDrawData(ImDrawData* drawData, RHI::RenderGraph& rg, RHI::Handle<RHI::RGImage> attachment)
+    RHI::RGPass* ImGuiRenderer::AddPass(RHI::RenderGraph& rg, RHI::Handle<RHI::RGImage>& outAttachment, ImDrawData* drawData)
     {
         UpdateBuffers(drawData);
 
@@ -403,9 +378,9 @@ namespace Engine
             .size          = rg.GetFrameSize(),
             .setupCallback = [&](RHI::RenderGraphBuilder& builder)
             {
-                builder.AddColorAttachment({.color = attachment, .loadOp = RHI::LoadOperation::Load});
+                builder.AddColorAttachment({.color = outAttachment, .loadOp = RHI::LoadOperation::Discard});
             },
-            .executeCallback = [this, drawData](RHI::CommandList& commandList)
+            .executeCallback = [this, drawData, &rg](RHI::CommandList& commandList)
             {
                 // Render command lists
                 int globalIdxOffset = 0;
@@ -439,6 +414,11 @@ namespace Engine
                             if (clip_max.x <= clip_min.x || clip_max.y <= clip_min.y)
                                 continue;
 
+                            commandList.SetViewport({
+                                .width    = (float)rg.GetFrameSize().width,
+                                .height   = (float)rg.GetFrameSize().height,
+                                .maxDepth = 1.0,
+                            });
                             // Apply scissor/clipping rectangle
                             RHI::Scissor scissor{
                                 .offsetX = (int32_t)(clip_min.x),

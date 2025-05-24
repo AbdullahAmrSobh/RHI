@@ -85,7 +85,6 @@ namespace Engine
         RHI::Handle<RHI::BindGroup> m_bindGroup;
 
     private:
-        StaticMeshLOD* m_testTriangleMesh;
         RHI::BackendType m_backend;
     };
 } // namespace Engine

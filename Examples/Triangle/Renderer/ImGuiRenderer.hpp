@@ -20,11 +20,10 @@ namespace Engine
 
         void ProcessEvent(Examples::Event& event);
 
-        ResultCode Init(RHI::Device* device, RHI::Format colorAttachmentFormat);
-        void       Shutdown();
-
-        void NewFrame();
-        RHI::RGPass* RenderDrawData(ImDrawData* drawData, RHI::RenderGraph& renderGraph, RHI::Handle<RHI::RGImage> attachment);
+        ResultCode   Init(RHI::Device* device, RHI::Format colorAttachmentFormat);
+        void         Shutdown();
+        void         NewFrame();
+        RHI::RGPass* AddPass(RHI::RenderGraph& renderGraph, RHI::Handle<RHI::RGImage>& outAttachment, ImDrawData* drawData);
 
     private:
         void InitGraphicsPipeline();
