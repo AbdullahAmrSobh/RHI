@@ -30,7 +30,7 @@ using Handle = RHI::Handle<T>;
 
 namespace Shader // TODO: this should be reflected from slang-shaders using some tool
 {
-#include "Shaders/Public/GpuScene.h"
+#include "Shaders/Public/GPU.h"
 
     inline constexpr auto kUniformMinOffsetAlignment = 64;
     inline constexpr auto kAlignedSceneSize          = (sizeof(Scene) + kUniformMinOffsetAlignment - 1) & ~(kUniformMinOffsetAlignment - 1);

@@ -26,7 +26,6 @@ set(SHADER_FILES
 set(SHADER_LIB_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/BxDF.slang
     ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/DirectLighting.slang
-    ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/Public/GpuScene.slang
 )
 
 include(${CMAKE_SOURCE_DIR}/cmake/compile-slang-shaders.cmake)

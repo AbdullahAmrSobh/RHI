@@ -59,6 +59,7 @@ namespace RHI
         Compute = 1 << 3, ///< Compute shader stage.
 
         AllGraphics = Vertex | Pixel,
+        AllStages   = AllGraphics | Compute,
     };
 
     TL_DEFINE_FLAG_OPERATORS(ShaderStage);

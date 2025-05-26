@@ -85,6 +85,8 @@ namespace Engine
         bool operator==(const GpuArrayHandle& other) const;
         bool operator!=(const GpuArrayHandle& other) const;
 
+        uint32_t GetIndex() const { return m_index; }
+
     private:
         GpuArray<T>* m_array = nullptr;
         uint32_t     m_index = UINT32_MAX;
@@ -125,6 +127,7 @@ namespace Engine
         /// @brief Gets the binding info of the underlying GPU buffer for shader usage.
         /// @return The buffer binding info.
         RHI::BufferBindingInfo GetBindingInfo() const;
+        RHI::BufferBindingInfo GetCountBindingInfo() const;
 
         /// @brief Gets the number of active elements stored in the GPU array.
         /// @return The current count of elements.
@@ -296,10 +299,11 @@ namespace Engine
             m_allocated++;
         }
 
-        m_device->BufferWrite(m_buffer, m_bufferOffset, TL::Block{.ptr = (void*)&element, .size = sizeof(T)});
+        m_device->BufferWrite(m_buffer, m_bufferOffset + (sizeof(uint32_t) * 4) + (sizeof(T) * index), TL::Block::Create(element));
         m_count++;
+        m_device->BufferWrite(m_buffer, m_bufferOffset, TL::Block::Create(m_count));
 
-        return RHI::ResultCode::Success;
+        return GpuArrayHandle(this, index);
     }
 
     template<typename T>
@@ -338,6 +342,14 @@ namespace Engine
     // Returns the binding info of the underlying GPU buffer.
     template<typename T>
     RHI::BufferBindingInfo GpuArray<T>::GetBindingInfo() const
+    {
+        return RHI::BufferBindingInfo{
+            .buffer = m_buffer,
+            .offset = m_bufferOffset + (sizeof(uint32_t) * 4),
+        };
+    }
+    template<typename T>
+    RHI::BufferBindingInfo GpuArray<T>::GetCountBindingInfo() const
     {
         return RHI::BufferBindingInfo{
             .buffer = m_buffer,

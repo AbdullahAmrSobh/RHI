@@ -13,6 +13,8 @@
 #include "BufferPool.hpp"
 #include "Common.hpp"
 
+#include "Shaders/Public/GPU.h"
+
 namespace Engine
 {
     /**
@@ -82,17 +84,19 @@ namespace Engine
 
         const MeshAttribute* GetUVAttribute() const { return m_uvAttribute; }
 
+        GpuArrayHandle<GPU::StaticMeshIndexed> GetGpuHandle() const { return m_indirectDrawArgs; }
+
     private:
         U32 m_indexCount;
         U32 m_vertexCount;
         U32 m_indexOffset;
         U32 m_vertexOffset;
 
-        GpuArrayHandle<RHI::DrawIndexedParameters> m_indirectDrawArgs;
-        MeshAttribute*                             m_indexAttribute;
-        MeshAttribute*                             m_positionAttribute;
-        MeshAttribute*                             m_normalAttribute;
-        MeshAttribute*                             m_uvAttribute;
+        GpuArrayHandle<GPU::StaticMeshIndexed> m_indirectDrawArgs;
+        MeshAttribute*                              m_indexAttribute;
+        MeshAttribute*                              m_positionAttribute;
+        MeshAttribute*                              m_normalAttribute;
+        MeshAttribute*                              m_uvAttribute;
 
         AABB m_aabb;
     };
@@ -103,23 +107,21 @@ namespace Engine
         GeometryBufferPool();
         GeometryBufferPool(const GeometryBufferPool&)            = delete;
         GeometryBufferPool& operator=(const GeometryBufferPool&) = delete;
-        ~GeometryBufferPool()                                           = default;
+        ~GeometryBufferPool()                                    = default;
 
         ResultCode Init(RHI::Device& device);
         void       Shutdown();
 
-        RHI::BufferBindingInfo GetAttributeBindingInfo(MeshAttributeType attribute) const;
+        RHI::BufferBindingInfo GetAttribute(MeshAttributeType attribute) const;
 
         void BeginUpdate();
         void EndUpdate();
 
         StaticMeshLOD* CreateStaticMeshLOD(U32 vertexCount, U32 indexCount);
-        StaticMeshLOD* CreateStaticMeshLOD(
-            TL::Span<const uint32_t>  indicies,
-            TL::Span<const glm::vec3> positions,
-            TL::Span<const glm::vec3> normals,
-            TL::Span<const glm::vec2> uvs);
-        void ReleaseStaticMeshLOD(StaticMeshLOD* lod);
+        StaticMeshLOD* CreateStaticMeshLOD(TL::Span<const uint32_t> indicies, TL::Span<const glm::vec3> positions, TL::Span<const glm::vec3> normals, TL::Span<const glm::vec2> uvs);
+        void           ReleaseStaticMeshLOD(StaticMeshLOD* lod);
+
+        inline static GeometryBufferPool* ptr = nullptr;
 
     private:
         MeshAttribute* CreateMeshAttribute(U32 elementCount, MeshAttributeType type, TL::Block content);
@@ -131,6 +133,6 @@ namespace Engine
         BufferPool   m_bufferPools[U32(MeshAttributeType::Count)];
 
     public:
-        GpuArray<RHI::DrawIndexedParameters> m_drawParams;
+        GpuArray<GPU::StaticMeshIndexed> m_drawParams;
     };
 } // namespace Engine

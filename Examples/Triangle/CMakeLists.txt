@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.19)
 
 set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Triangle.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Passes/CullPass.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Passes/GBufferPass.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Passes/ImGuiPass.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Renderer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/PipelineLibrary.cpp
@@ -9,17 +11,18 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Mesh.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/OffsetAllocator/OffsetAllocator.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Scene.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/DrawList.cpp
 )
 
 set(SHADER_FILES
-    # ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/Basic.slang
+    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/GBufferPass.slang
     ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/ImGui.slang
 )
 
 set(SHADER_GFX_FILES
     # ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/BxDF.slang
     # ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/DirectLighting.slang
-    # ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/Public/GpuScene.slang
+    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/ShaderBindingTable.slang
 )
 
 set(SHADER_COMPUTE_FILES
@@ -51,7 +54,7 @@ if (RHI_BACKEND_D3D12)
 endif()
 
 
-target_link_libraries(Triangle fastgltf)
+target_link_libraries(Triangle assimp)
 
 include(${CMAKE_SOURCE_DIR}/cmake/compile-slang-shaders.cmake)
 compile_slang_shaders(

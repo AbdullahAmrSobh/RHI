@@ -4,8 +4,11 @@
 
 #include <glm/glm.hpp>
 
-// #include <fileapi.h>
-// #include <winbase.h>
+#include "Shaders/Public/GPU.h"
+
+#include "Passes/GBufferPass.hpp"
+
+#include <TL/Defer.hpp>
 
 namespace Engine
 {
@@ -26,9 +29,26 @@ namespace Engine
     {
         auto vertexShaderPath   = std::format("{}.vertex.spv", name);
         auto fragmentShaderPath = std::format("{}.fragment.spv", name);
-        auto vertexModule       = LoadShaderModule(device, vertexShaderPath.c_str());
-        auto pixelModule        = LoadShaderModule(device, fragmentShaderPath.c_str());
 
+        auto vertexModule = LoadShaderModule(device, vertexShaderPath.c_str());
+        auto pixelModule  = LoadShaderModule(device, fragmentShaderPath.c_str());
+
+        TL_defer
+        {
+            device->DestroyShaderModule(vertexModule);
+            device->DestroyShaderModule(pixelModule);
+        };
+        RHI::ColorAttachmentBlendStateDesc attachmentBlendDesc =
+            {
+                true,
+                RHI::BlendEquation::Add,
+                RHI::BlendFactor::SrcAlpha,
+                RHI::BlendFactor::OneMinusSrcAlpha,
+                RHI::BlendEquation::Add,
+                RHI::BlendFactor::One,
+                RHI::BlendFactor::OneMinusSrcAlpha,
+                RHI::ColorWriteMask::All,
+            };
         RHI::GraphicsPipelineCreateInfo pipelineCI{
             .name                 = name,
             .vertexShaderName     = "VSMain",
@@ -58,27 +78,23 @@ namespace Engine
                     .stepRate   = RHI::PipelineVertexInputRate::PerInstance,
                     .attributes = {{.format = RHI::Format::RGBA32_FLOAT}, {.format = RHI::Format::RGBA32_FLOAT}, {.format = RHI::Format::RGBA32_FLOAT}, {.format = RHI::Format::RGBA32_FLOAT}},
                 },
-            },
+                                     },
             .renderTargetLayout = {
-                .colorAttachmentsFormats = {RHI::Format::RGBA8_UNORM, RHI::Format::RGBA32_FLOAT, RHI::Format::RGBA32_FLOAT, RHI::Format::RG8_UNORM},
-                .depthAttachmentFormat   = RHI::Format::D32,
-            },
-            .colorBlendState
-            {
-                .blendStates = {
-                    {.blendEnable = false},
-                },
-            },
-            .rasterizationState
-            {
-                .cullMode  = RHI::PipelineRasterizerStateCullMode::BackFace,
-                .frontFace = RHI::PipelineRasterizerStateFrontFace::Clockwise,
-            },
-            .depthStencilState =
-            {
-                .depthTestEnable  = true,
-                .depthWriteEnable = true,
-            },
+                                     .colorAttachmentsFormats = {GBufferPass::FormatPosition, GBufferPass::FormatNormal, GBufferPass::FormatMaterial},
+                                     .depthAttachmentFormat   = GBufferPass::FormatDepth,
+                                     },
+            .colorBlendState = {
+                                     .blendStates    = {attachmentBlendDesc, attachmentBlendDesc, attachmentBlendDesc},
+                                     .blendConstants = {},
+                                     },
+            .rasterizationState{
+                                     .cullMode  = RHI::PipelineRasterizerStateCullMode::BackFace,
+                                     .frontFace = RHI::PipelineRasterizerStateFrontFace::Clockwise,
+                                     },
+            .depthStencilState = {
+                                     .depthTestEnable  = true,
+                                     .depthWriteEnable = true,
+                                     },
         };
         return device->CreateGraphicsPipeline(pipelineCI);
     }
@@ -99,54 +115,52 @@ namespace Engine
 
     ResultCode PipelineLibrary::Init(RHI::Device* device)
     {
+        PipelineLibrary::ptr = this;
+
         m_device = device;
 
-        {
-            RHI::BindGroupLayoutCreateInfo bindGroupLayoutCI = {
-                .name     = "BGL-Bindless",
-                .bindings = {
-                             // Global scene uniform data
-                    {.type = RHI::BindingType::UniformBuffer, .stages = RHI::ShaderStage::Vertex | RHI::ShaderStage::Pixel},
-                             // Per Draw Uniform data e.g. (Transforms, Material ID, ...etc)
-                    {.type = RHI::BindingType::StorageBuffer, .stages = RHI::ShaderStage::Pixel},
-                             // Material Properties
-                    {.type = RHI::BindingType::StorageBuffer, .stages = RHI::ShaderStage::Pixel},
-                             // Global sampler
-                    {.type = RHI::BindingType::Sampler, .stages = RHI::ShaderStage::Pixel},
-                             // Bindless Textures
-                    // TODO: bindless currently broken, change back to RHI::BindlessArraySize when fixed
-                    {.type = RHI::BindingType::SampledImage, .arrayCount = 1048576, .stages = RHI::ShaderStage::Pixel},
-                             },
-            };
-            m_gBufferBGL             = m_device->CreateBindGroupLayout(bindGroupLayoutCI);
-            // m_graphicsPipelineLayout = m_device->CreatePipelineLayout({.name = "GraphicsPipelineLayout", .layouts = m_gBufferBGL});
-            m_graphicsPipelineLayout = m_device->CreatePipelineLayout({.name = "GraphicsPipelineLayout", .layouts = {}});
-        }
+        // struct ShaderBindingTable
+        // {
+        //     ConstantBuffer<GPU::SceneView>              sceneView;                // 0
+        //     StructuredBuffer<GPU::DrawRequest>          drawRequests;             // 1
+        //     StructuredBuffer<GPU::StaticMeshIndexed>    indexedMeshes;            // 2
+        //     StructuredBuffer<float4x4>                  transforms;               // 3
+        //     StructuredBuffer<GPU::MeshMaterialBindless> materials;                // 4
+        //     RWStructuredBuffer<U32>                     drawParametersCount;      // 5
+        //     RWStructuredBuffer<GPU::DrawIndexedParameters> outDrawParameters;     // 6
+        //     Texture2D                                   bindlessTextures[];       // 7
+        // };
 
-#define LOAD_SHADER(map, name, layout) \
-    map[name] = CreateGraphicsPipeline(device, m_graphicsPipelineLayout, name);
+        RHI::BindGroupLayoutCreateInfo bindGroupLayoutCI = {
+            .name     = "BGL-Bindless",
+            .bindings = {
+                         {RHI::BindingType::UniformBuffer, RHI::Access::Read, 1, RHI::ShaderStage::AllGraphics, sizeof(GPU::SceneView)},
+                         {RHI::BindingType::StorageBuffer, RHI::Access::Read, 1, RHI::ShaderStage::AllStages},
+                         {RHI::BindingType::StorageBuffer, RHI::Access::Read, 1, RHI::ShaderStage::AllStages},
+                         {RHI::BindingType::StorageBuffer, RHI::Access::Read, 1, RHI::ShaderStage::AllStages},
+                         {RHI::BindingType::StorageBuffer, RHI::Access::Read, 1, RHI::ShaderStage::AllStages},
+                         {RHI::BindingType::StorageBuffer, RHI::Access::Read, 1, RHI::ShaderStage::AllStages},
+                         {RHI::BindingType::StorageBuffer, RHI::Access::Write, 1, RHI::ShaderStage::AllStages},
+                         {RHI::BindingType::StorageBuffer, RHI::Access::Write, 1, RHI::ShaderStage::AllStages},
+                         {RHI::BindingType::SampledImage, RHI::Access::Read, RHI::BindlessArraySize, RHI::ShaderStage::AllStages},
+                         },
+        };
+        m_bindGroupLayout = m_device->CreateBindGroupLayout(bindGroupLayoutCI);
 
-        LOAD_SHADER(m_graphicsPipelines, ShaderNames::GBufferFill, m_graphicsPipelineLayout);
+        m_graphicsPipelineLayout = m_device->CreatePipelineLayout({"GraphicsPipelineLayout", m_bindGroupLayout});
+        m_computePipelineLayout  = m_device->CreatePipelineLayout({"ComputePipelineLayout", m_bindGroupLayout});
 
-#undef LOAD_SHADER
-
-        {
-            RHI::BindGroupLayoutCreateInfo bindGroupLayoutCI{
-                .name     = "Cull-BGL",
-                .bindings = {
-                    {.type = RHI::BindingType::StorageBuffer, .stages = RHI::ShaderStage::Compute}},
-            };
-            m_computeBGL            = m_device->CreateBindGroupLayout(bindGroupLayoutCI);
-            m_computePipelineLayout = m_device->CreatePipelineLayout({.name = "ComputePipelineLayout", .layouts = {m_computeBGL}});
-        }
-        m_computePipelines[ShaderNames::Cull] = CreateComputePipeline(device, m_computePipelineLayout, ShaderNames::Cull);
+        m_graphicsPipelines[ShaderNames::GBufferFill] = CreateGraphicsPipeline(m_device, m_graphicsPipelineLayout, ShaderNames::GBufferFill);
+        m_computePipelines[ShaderNames::Cull]         = CreateComputePipeline(m_device, m_computePipelineLayout, ShaderNames::Cull);
 
         return ResultCode::Success;
     }
 
     void PipelineLibrary::Shutdown()
     {
-        m_device->DestroyBindGroupLayout(m_gBufferBGL);
+        PipelineLibrary::ptr = nullptr;
+
+        m_device->DestroyBindGroupLayout(m_bindGroupLayout);
 
         for (auto [_, pipeline] : m_graphicsPipelines)
             m_device->DestroyGraphicsPipeline(pipeline);
@@ -168,57 +182,6 @@ namespace Engine
     {
         auto it = m_computePipelines.find(name);
         return (it != m_computePipelines.end()) ? it->second : RHI::NullHandle;
-    }
-
-    void PipelineLibrary::ReloadInvalidatedShaders()
-    {
-        // // Create a handle to watch for changes in the shader directory
-        // static HANDLE hChangeHandle = FindFirstChangeNotificationA(
-        //     "path/to/shader/directory",   // directory to watch
-        //     FALSE,                        // do not watch subdirectories
-        //     FILE_NOTIFY_CHANGE_LAST_WRITE // watch for changes to the last write time
-        // );
-
-        // if (hChangeHandle == INVALID_HANDLE_VALUE)
-        // {
-        //     // Handle error
-        //     return;
-        // }
-
-        // // Wait for a change to occur
-        // DWORD dwWaitStatus = WaitForSingleObject(hChangeHandle, INFINITE);
-
-        // switch (dwWaitStatus)
-        // {
-        // case WAIT_OBJECT_0:
-        //     // A change has occurred, reload shaders
-        //     for (auto& [name, pipeline] : m_graphicsPipelines)
-        //     {
-        //         m_device->DestroyGraphicsPipeline(pipeline);
-        //         pipeline = CreateGraphicsPipeline(m_device, m_graphicsPipelineLayout, name.c_str());
-        //     }
-
-        //     for (auto& [name, pipeline] : m_computePipelines)
-        //     {
-        //         m_device->DestroyComputePipeline(pipeline);
-        //         pipeline = CreateComputePipeline(m_device, m_computePipelineLayout, name.c_str());
-        //     }
-
-        //     // Reset the change notification
-        //     if (FindNextChangeNotification(hChangeHandle) == FALSE)
-        //     {
-        //         // Handle error
-        //         return;
-        //     }
-        //     break;
-
-        // default:
-        //     // Handle error
-        //     break;
-        // }
-
-        // // Close the change notification handle
-        // FindCloseChangeNotification(hChangeHandle);
     }
 
 } // namespace Engine

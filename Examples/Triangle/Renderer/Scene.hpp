@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Shaders//Public//GpuScene.h"
+#include "Shaders//Public//GPU.h"
 
 #include <RHI/RHI.hpp>
 
@@ -18,8 +18,8 @@ namespace Engine
     class SceneView
     {
     public:
-        TL::String                           m_name;
-        UniformBuffer<GpuScene::SceneView>   m_sceneViewUB;
-        StorageBuffer<GpuScene::DrawRequest> m_drawList; // TODO: Replace with TL::Ptr<DrawList>
+        TL::String                         m_name;
+        UniformBuffer<GPU::SceneView> m_uniformBuffer;
+        class IndirectDrawList*            m_drawList;
     };
 } // namespace Engine

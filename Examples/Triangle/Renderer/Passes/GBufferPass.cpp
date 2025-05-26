@@ -1,17 +1,28 @@
+#include "CullPass.hpp"
 #include "GBufferPass.hpp"
 
-#include "../Scene.hpp"
+#include "../PipelineLibrary.hpp"
 
 namespace Engine
 {
-    void Shader::Init(RHI::Device& device, const char* path)
+    ResultCode GBufferPass::Init(RHI::Device* device)
+    {
+        m_pipeline = PipelineLibrary::ptr->GetGraphicsPipeline(ShaderNames::GBufferFill);
+
+        auto bindGroupLayout = PipelineLibrary::ptr->GetBindGroupLayout();
+        m_bindGroup          = device->CreateBindGroup({.name = "GBuffer-BindGroup", .layout = bindGroupLayout});
+
+        return ResultCode::Success;
+    }
+
+    void GBufferPass::Shutdown()
     {
     }
 
-    void GBufferPass::AddPass(RHI::RenderGraph* rg, const SceneView* view)
+    void GBufferPass::AddPass(RHI::RenderGraph* rg, const CullPass& cullPass, TL::Function<void(RHI::CommandList&)> cb)
     {
-        auto frameSize = rg.GetFrameSize();
-        rg.AddPass({
+        auto frameSize = rg->GetFrameSize();
+        rg->AddPass({
             .name          = "GBuffer",
             .type          = RHI::PassType::Graphics,
             .size          = frameSize,
@@ -26,10 +37,25 @@ namespace Engine
                 m_normal   = builder.AddColorAttachment({.color = normal, .clearValue = ClearNormal});
                 m_material = builder.AddColorAttachment({.color = material, .clearValue = ClearMaterial});
                 m_depth    = builder.SetDepthStencil({.depthStencil = depth, .clearValue = ClearDepth});
+
+                builder.ReadBuffer(cullPass.m_drawIndirectArgs, RHI::BufferUsage::Indirect, RHI::PipelineStage::DrawIndirect);
             },
-            .executeCallback = [this](RHI::CommandList& cmd)
+            .executeCallback = [this, rg, cb](RHI::CommandList& cmd)
             {
-                cmd.BindGraphicsPipeline(m_shader->m_pipeline, {{m_shader->m_bindGroup[0]}});
+                cmd.SetViewport({
+                    .width    = (float)rg->GetFrameSize().width,
+                    .height   = (float)rg->GetFrameSize().height,
+                    .maxDepth = 1.0,
+                });
+                // Apply scissor/clipping rectangle
+                RHI::Scissor scissor{
+                    .offsetX = 0,
+                    .offsetY = 0,
+                    .width   = rg->GetFrameSize().width,
+                    .height  = rg->GetFrameSize().height,
+                };
+                cmd.SetScissor(scissor);
+                cb(cmd);
             },
         });
     }

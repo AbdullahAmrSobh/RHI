@@ -439,6 +439,7 @@ namespace RHI::Vulkan
         VkPhysicalDeviceVulkan12Features features12{
             .sType                                              = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
             .pNext                                              = &features13,
+            .drawIndirectCount                                  = VK_TRUE,
             .descriptorIndexing                                 = VK_TRUE,
             .shaderInputAttachmentArrayDynamicIndexing          = VK_TRUE,
             .shaderUniformTexelBufferArrayDynamicIndexing       = VK_TRUE,

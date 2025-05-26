@@ -12,8 +12,11 @@
 #include "PipelineLibrary.hpp"
 #include "Scene.hpp"
 
-#include "Passes/ImGuiPass.hpp"
+#include "DrawList.hpp"
+
+#include "Passes/CullPass.hpp"
 #include "Passes/GBufferPass.hpp"
+#include "Passes/ImGuiPass.hpp"
 
 namespace Examples
 {
@@ -56,16 +59,15 @@ namespace Engine
         GeometryBufferPool m_geometryBufferPool;
 
         // Per game/level
-        StorageBuffer<GpuScene::MeshMaterialBindless>  m_materials;
-        StorageBuffer<GpuScene::MeshUniform>           m_meshUniform;
-        StorageBuffer<GpuScene::DrawIndexedParameters> m_drawParameters;
+        // StorageBuffer<GPU::MeshMaterialBindless>  m_materials;
+
+        public:
+        IndirectDrawList m_drawList;
+        private:
 
         // Passes
+        CullPass    m_cullPass;
+        GBufferPass m_gbufferPass;
         ImGuiPass   m_imguiPass;
-        // GBufferPass m_gbufferPass;
-
-        SceneView* m_sceneView;
-
-        RHI::Handle<RHI::BindGroup> m_bindGroup;
     };
 } // namespace Engine

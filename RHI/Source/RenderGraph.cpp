@@ -201,7 +201,7 @@ namespace RHI
 
         if (resource->m_producer == nullptr)
         {
-            // TL_ASSERT(access & Access::Write);
+            TL_ASSERT(access & Access::Write);
             resource->m_producer = m_pass;
         }
 
@@ -1081,6 +1081,7 @@ namespace RHI
         newBuffer->m_nextHandle    = {};
         newBuffer->m_state         = bufferBefore->m_state;
         newBuffer->m_activeState   = bufferBefore->m_activeState;
+        newBuffer->m_desc = bufferBefore->m_desc;
         // Link version chain
         bufferBefore->m_nextHandle = handle;
         newBuffer->m_prevHandle    = bufferBeforeHandle;

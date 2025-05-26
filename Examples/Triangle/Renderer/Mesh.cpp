@@ -9,12 +9,13 @@ namespace Engine
         RHI::Format::RGB32_FLOAT, // Normal
         RHI::Format::RG32_FLOAT,  // TexCoord
     };
-    constexpr static U32 kVertexCount = 6; // 64k vertices
+    constexpr static U32 kVertexCount = 6400000; // 64k vertices
 
     GeometryBufferPool::GeometryBufferPool() = default;
 
     ResultCode GeometryBufferPool::Init(RHI::Device& device)
     {
+        GeometryBufferPool::ptr = this;
         m_device = &device;
 
         auto sizeIndex    = kVertexCount * sizeof(uint32_t);
@@ -36,7 +37,7 @@ namespace Engine
         result = m_bufferPools[U32(MeshAttributeType::TexCoord)].Init(device, {.name = "vb-texCoord", .hostMapped = true, .usageFlags = RHI::BufferUsage::Vertex, .byteSize = sizeTexCoord});
         if (RHI::IsError(result)) return result;
 
-        result = m_drawParams.Init(*m_device, "DrawIndexedParameters", RHI::BufferUsage::Indirect, 32);
+        result = m_drawParams.Init(*m_device, "static-mesh-params", RHI::BufferUsage::Storage, 32);
         if (RHI::IsError(result)) return result;
 
         return result;
@@ -44,6 +45,8 @@ namespace Engine
 
     void GeometryBufferPool::Shutdown()
     {
+        GeometryBufferPool::ptr = nullptr;
+
         m_drawParams.Shutdown();
         m_bufferPools[U32(MeshAttributeType::TexCoord)].Shutdown();
         m_bufferPools[U32(MeshAttributeType::Normal)].Shutdown();
@@ -51,7 +54,7 @@ namespace Engine
         m_bufferPools[U32(MeshAttributeType::Index)].Shutdown();
     }
 
-    RHI::BufferBindingInfo GeometryBufferPool::GetAttributeBindingInfo(MeshAttributeType attribute) const
+    RHI::BufferBindingInfo GeometryBufferPool::GetAttribute(MeshAttributeType attribute) const
     {
         auto buffer = m_bufferPools[U32(attribute)].GetBuffer();
         return {buffer, 0};
@@ -67,15 +70,13 @@ namespace Engine
         staticMesh->m_uvAttribute       = CreateMeshAttribute(vertexCount, MeshAttributeType::TexCoord, {nullptr, vertexCount * sizeof(glm::vec2)});
         staticMesh->m_indexCount        = indexCount;
         staticMesh->m_vertexCount       = vertexCount;
-        staticMesh->m_indexOffset       = static_cast<uint32_t>(staticMesh->m_indexAttribute->m_allocation.offset % sizeof(uint32_t));
-        staticMesh->m_vertexOffset      = I32(staticMesh->m_positionAttribute->m_allocation.offset % sizeof(glm::vec3));
+        staticMesh->m_indexOffset       = static_cast<uint32_t>(staticMesh->m_indexAttribute->m_allocation.offset / sizeof(uint32_t));
+        staticMesh->m_vertexOffset      = I32(staticMesh->m_positionAttribute->m_allocation.offset / sizeof(glm::vec3));
 
         auto [indirectDrawArgs, result] = m_drawParams.Insert({
             .indexCount    = staticMesh->m_indexCount,
-            .instanceCount = 1,
             .firstIndex    = staticMesh->m_indexOffset,
             .vertexOffset  = I32(staticMesh->m_vertexOffset),
-            .firstInstance = 0,
         });
         staticMesh->m_indirectDrawArgs  = indirectDrawArgs;
 

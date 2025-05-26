@@ -82,15 +82,6 @@ if(RHI_BUILD_EXAMPLES)
 			"GLM_CLIP_CONTROL_ZO_BIT ON"
 	)
 
-	CPMAddPackage(
-		NAME            fastgltf
-		GIT_REPOSITORY 	git@github.com:spnda/fastgltf.git
-		GIT_TAG         v0.8.0
-		OPTIONS
-			# "GLM_CONFIG_CLIP_CONTROL ON"
-			# "GLM_CLIP_CONTROL_ZO_BIT ON"
-	)
-
 	# CPMAddPackage(
 	# 	NAME           Compressonator
 	# 	GIT_REPOSITORY git@github.com:GPUOpen-Tools/compressonator.git
@@ -120,12 +111,12 @@ if(RHI_BUILD_EXAMPLES)
 	# 	OPTIONS
 	# )
 
-	# CPMAddPackage(
-	# 	NAME           assimp
-	# 	GIT_REPOSITORY git@github.com:assimp/assimp.git
-	# 	GIT_TAG        v5.4.2
-	# 	OPTIONS
-	# )
-	# set_target_properties(assimp PROPERTIES EXCLUDE_FROM_ALL TRUE)
+	CPMAddPackage(
+		NAME           assimp
+		GIT_REPOSITORY git@github.com:assimp/assimp.git
+		GIT_TAG        v5.4.2
+		OPTIONS
+	)
+	set_target_properties(assimp PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 endif()

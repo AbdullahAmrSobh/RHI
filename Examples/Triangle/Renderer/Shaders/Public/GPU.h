@@ -1,9 +1,8 @@
 #pragma once
 
 #include "Common.h"
-#include "Light.h"
 
-namespace GpuScene
+namespace GPU
 {
     struct DrawParameters // Matches RHI
     {
@@ -65,4 +64,47 @@ namespace GpuScene
         F32_4x4 worldToClipMatrix;
         F32_4x4 clipToWorldMatrix;
     };
-} // namespace GpuScene
+
+    /// Stub
+
+    struct DirectionalLight
+    {
+        F32_3 color;
+        F32   intensity;
+        F32_3 direction;
+
+        static constexpr uint32_t Weight = 0;
+    };
+
+    struct SpotLight
+    {
+        F32_3 color;
+        F32   intensity;
+        F32_3 position;
+
+        static constexpr uint32_t Weight = 2;
+    };
+
+    struct AreaLight
+    {
+        F32_3 color;
+        F32   intensity;
+        F32_3 position;
+        F32   innerAngle;
+        F32_3 direction;
+        F32   outerAngle;
+
+        static constexpr uint32_t Weight = 3;
+    };
+
+    struct PointLight
+    {
+        F32_3 color;
+        F32   intensity;
+        F32_3 position;
+        F32_3 direction;
+        F32_2 size;
+
+        static constexpr uint32_t Weight = 4;
+    };
+} // namespace GPU
