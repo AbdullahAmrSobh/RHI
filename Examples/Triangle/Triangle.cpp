@@ -22,15 +22,26 @@
 #include <assimp/scene.h>       // Output data structure
 #include <assimp/postprocess.h> // Post processing flags
 
+inline static glm::mat4x4 ToGlmMatrix(const aiMatrix4x4& matrix)
+{
+    return glm::mat4(
+        matrix.a1, matrix.b1, matrix.c1, matrix.d1, matrix.a2, matrix.b2, matrix.c2, matrix.d2, matrix.a3, matrix.b3, matrix.c3, matrix.d3, matrix.a4, matrix.b4, matrix.c4, matrix.d4);
+}
+
 class Playground final : public ApplicationBase
 {
 public:
     TL::Ptr<Engine::Renderer> m_renderer;
+    Engine::Scene*            m_scene;
+    Engine::SceneView*        m_sceneView;
+
+    Camera m_camera;
 
     Playground()
         : ApplicationBase("", 1600, 900) // Empty title, will be set in OnInit
         , m_renderer(TL::CreatePtr<Engine::Renderer>())
     {
+        m_camera.SetPerspective(1600, 900, 45, 0.00001, 1000000);
     }
 
     Engine::StaticMeshLOD* ImportStaticMesh(const aiMesh* mesh) const
@@ -136,7 +147,7 @@ public:
                     aiString path;
                     if (material->GetTexture(texType, t, &path) == AI_SUCCESS)
                     {
-                        const char* texPath = path.C_Str();
+                        const char*      texPath     = path.C_Str();
                         // If the path starts with '*', it's an embedded texture
                         const aiTexture* embeddedTex = nullptr;
                         if (texPath[0] == '*')
@@ -155,33 +166,29 @@ public:
     void ImportScene(const aiScene* scene)
     {
         EnumerateSceneMeshes(scene, [this, scene](uint32_t index, aiMatrix4x4 modelToWorldMat, const aiNode* node)
-        {
-            if (index > 40)
-                return;
+            {
+                if (index > 40)
+                    return;
 
-            auto mesh = scene->mMeshes[index];
-            auto staticMesh = ImportStaticMesh(mesh);
+                auto mesh       = scene->mMeshes[index];
+                auto staticMesh = ImportStaticMesh(mesh);
+                m_scene->AddStaticMesh(staticMesh, ToGlmMatrix(modelToWorldMat));
+            });
 
-            GPU::MeshUniform uniform;
-            static_assert(sizeof(aiMatrix4x4) == sizeof(glm::mat4x4), "unexpcted");
-            memcpy(&uniform.modelToWorldMatrix, &modelToWorldMat, sizeof(aiMatrix4x4));
-            m_renderer->m_drawList.AddStaticMesh(staticMesh, uniform);
-        });
-
-        ImportTextures(scene, [this, scene](const std::string& path, aiTextureType type, const aiTexture * texture)
-        {
-            TL_LOG_INFO("Loading texture: {}", path);
-        });
+        ImportTextures(scene, [this, scene](const std::string& path, aiTextureType type, const aiTexture* texture)
+            {
+                TL_LOG_INFO("Loading texture: {}", path);
+            });
     }
 
     void LoadFromArgPath()
     {
         Assimp::Importer importer;
-        auto flags = aiProcess_MakeLeftHanded|
-                    aiProcess_Triangulate |
-                    aiProcess_GenNormals |
-                    aiProcess_PreTransformVertices;
-        auto scene =importer.ReadFile("C:/Users/abdul/Desktop/Main.1_Sponza/NewSponza_Main_glTF_002.gltf", flags);
+        auto             flags = aiProcess_MakeLeftHanded |
+                     aiProcess_Triangulate |
+                     aiProcess_GenNormals |
+                     aiProcess_PreTransformVertices;
+        auto scene = importer.ReadFile("C:/Users/abdul/Desktop/Main.1_Sponza/NewSponza_Main_glTF_002.gltf", flags);
         ImportScene(scene);
     }
 
@@ -207,6 +214,14 @@ public:
         }
 
         auto result = m_renderer->Init(m_window.get(), backend);
+        m_scene     = m_renderer->CreateScene();
+        m_sceneView = m_scene->CreateView();
+
+        GPU::SceneView sceneViewData{
+            glm::identity<glm::mat4x4>(),
+            glm::identity<glm::mat4x4>(),
+        };
+        m_sceneView->m_sceneViewUB.Update(sceneViewData);
 
         LoadFromArgPath();
     }
@@ -221,6 +236,18 @@ public:
     void OnUpdate(Timestep ts) override
     {
         ZoneScoped;
+
+        m_camera.Update(ts);
+
+        auto worldToView = m_camera.GetView();
+        auto viewToClip  = m_camera.GetProjection();
+
+        GPU::SceneView sceneViewData{
+            worldToView,
+            viewToClip,
+
+        };
+        m_sceneView->m_sceneViewUB.Update(sceneViewData);
     }
 
     void Render() override
@@ -236,7 +263,7 @@ public:
         ImGui::ShowDemoWindow();
         ImGui::Render();
 
-        m_renderer->RenderScene();
+        m_renderer->Render(m_scene);
 
         FrameMark;
     }
@@ -268,6 +295,8 @@ public:
             break;
         }
         m_renderer->ProcessEvent(event);
+
+        m_camera.ProcessEvent(event, *m_window);
     }
 };
 

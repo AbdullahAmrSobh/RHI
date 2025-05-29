@@ -74,6 +74,44 @@ if(RHI_BUILD_EXAMPLES)
 	endif()
 
 	CPMAddPackage(
+		NAME           imgui
+		GIT_REPOSITORY git@github.com:ocornut/imgui.git
+		GIT_TAG        v1.91.9b-docking
+		DOWNLOAD_ONLY  YES
+	)
+
+	if (imgui_ADDED)
+		set(SOURCE_FILES ${imgui_SOURCE_DIR}/imgui.cpp
+						${imgui_SOURCE_DIR}/imgui_widgets.cpp
+						${imgui_SOURCE_DIR}/imgui_tables.cpp
+						${imgui_SOURCE_DIR}/imgui_demo.cpp
+						${imgui_SOURCE_DIR}/imgui_draw.cpp
+		)
+		set(HEADER_FILES ${imgui_SOURCE_DIR}/imstb_truetype.h
+						${imgui_SOURCE_DIR}/imstb_textedit.h
+						${imgui_SOURCE_DIR}/imstb_rectpack.h
+						${imgui_SOURCE_DIR}/imgui.h
+						${imgui_SOURCE_DIR}/imgui_internal.h
+						${imgui_SOURCE_DIR}/imconfig.h
+		)
+		if(NOT TARGET TL)
+			include(${CMAKE_SOURCE_DIR}/CMake/add-target.cmake)
+		else()
+			include(${CPM_TL_SOURCE}/CMake/add-target.cmake)
+		endif()
+		tl_add_target(
+			NAME imgui
+			# NAMESPACE Thirdparty
+			STATIC
+			HEADERS ${HEADER_FILES}
+			SOURCES ${SOURCE_FILES}
+		)
+		target_include_directories(imgui ${warning_guard} PUBLIC ${imgui_SOURCE_DIR})
+		# Set compiler flags for your target
+		target_compile_options(imgui PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/W3>" "$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall;-Wextra>")
+	endif()
+
+	CPMAddPackage(
 		NAME           glm
 		GIT_REPOSITORY git@github.com:g-truc/glm.git
 		GIT_TAG        0.9.9.8

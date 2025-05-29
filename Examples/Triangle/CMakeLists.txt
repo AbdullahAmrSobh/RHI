@@ -8,10 +8,9 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Renderer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/PipelineLibrary.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/BufferPool.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Mesh.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Geometry.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/OffsetAllocator/OffsetAllocator.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Scene.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/DrawList.cpp
 )
 
 set(SHADER_FILES
@@ -73,6 +72,4 @@ compile_slang_shaders(
 target_compile_definitions(Triangle PUBLIC GLM_FORCE_LEFT_HANDED)
 target_compile_definitions(Triangle PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE)
 
-
-add_subdirectory(ImGui)
-target_link_libraries(Triangle ImGui)
+target_link_libraries(Triangle imgui)

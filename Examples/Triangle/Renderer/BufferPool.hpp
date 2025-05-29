@@ -6,6 +6,9 @@
 
 namespace Engine
 {
+    template<typename T>
+    class UniformBuffer;
+
     /// @brief A buffer pool that manages sub-allocations from a single large buffer
     /// @details Allows efficient allocation and deallocation of smaller buffer regions from a pre-allocated buffer
     class BufferPool
@@ -32,6 +35,12 @@ namespace Engine
         /// @return Result containing the suballocation details if successful
         Result<Suballocation> Allocate(size_t size, size_t alignment);
 
+        template<typename T>
+        UniformBuffer<T> AllocateUniformBuffer(T content);
+
+        template<typename T>
+        UniformBuffer<T> AllocateUniformBuffer();
+
         /// @brief Release a previously allocated region
         /// @param allocation The suballocation to deallocate
         void Release(const Suballocation& allocation);
@@ -39,10 +48,6 @@ namespace Engine
         /// @brief Gets the handle to the underlying buffer
         /// @return Handle to the RHI buffer being suballocated from
         RHI::Handle<RHI::Buffer> GetBuffer() const;
-
-        // void BeginUpdate();
-
-        // void EndUpdate();
 
         void Write(Suballocation suballocation, TL::Block block);
 
@@ -115,9 +120,6 @@ namespace Engine
         /// @param index The index of the element to remove.
         void Remove(uint32_t index);
 
-        void BeginUpdate();
-        void EndUpdate();
-
         /// @brief Updates the element at the specified index.
         /// @param index The index of the element to update.
         /// @param element The new value for the element.
@@ -159,28 +161,6 @@ namespace Engine
         // Total capacity (maximum number of elements) of the GPU array
         uint32_t m_capacity  = 0;
         uint32_t m_allocated = 0;
-    };
-
-    template<typename T>
-    class UniformBuffer
-    {
-    public:
-        T m_content;
-
-        RHI::Handle<RHI::Buffer> m_buffer = RHI::NullHandle;
-
-        // void OnRender(RHI::RenderGraph* rg); // will use rg to update GPU buffer when needed
-    };
-
-    template<typename T>
-    class StorageBuffer
-    {
-    public:
-        T*                       m_content;
-        TL::Vector<uint32_t>     m_dirtySlots; // sorted
-        RHI::Handle<RHI::Buffer> m_buffer = RHI::NullHandle;
-
-        // void OnRender(RHI::RenderGraph* rg); // will use rg to update GPU buffer when needed
     };
 
     // --- GpuArrayHandle Implementation ---
@@ -314,18 +294,6 @@ namespace Engine
         m_count--;
     }
 
-    // template<typename T>
-    // void GpuArray<T>::BeginUpdate()
-    // {
-    //     m_mappedPtr = Map();
-    // }
-
-    // template<typename T>
-    // void GpuArray<T>::EndUpdate()
-    // {
-    //     Unmap();
-    // }
-
     // Updates the element at the position specified by the handle.
     template<typename T>
     ResultCode GpuArray<T>::Update(GpuArrayHandle<T> iterator, const T& element)
@@ -348,6 +316,7 @@ namespace Engine
             .offset = m_bufferOffset + (sizeof(uint32_t) * 4),
         };
     }
+
     template<typename T>
     RHI::BufferBindingInfo GpuArray<T>::GetCountBindingInfo() const
     {
@@ -369,6 +338,41 @@ namespace Engine
     uint32_t GpuArray<T>::GetCapacity() const
     {
         return m_capacity;
+    }
+
+    template<typename T>
+    class UniformBuffer
+    {
+    public:
+        Suballocation m_bufferSuballocation;
+        BufferPool*   m_parentPool;
+
+        RHI::BufferBindingInfo GetBinding() const
+        {
+            return {m_parentPool->GetBuffer(), m_bufferSuballocation.offset};
+        };
+
+        void Update(T data)
+        {
+            m_parentPool->Write(m_bufferSuballocation, TL::Block::Create(data));
+        }
+    };
+
+    template<typename T>
+    UniformBuffer<T> BufferPool::AllocateUniformBuffer(T content)
+    {
+        auto buffer = AllocateUniformBuffer<T>();
+        buffer.Update(content);
+        return buffer;
+    }
+
+    template<typename T>
+    UniformBuffer<T> BufferPool::AllocateUniformBuffer()
+    {
+        return UniformBuffer<T>{
+            .m_bufferSuballocation = Allocate(sizeof(T), alignof(T)).GetValue(),
+            .m_parentPool          = this,
+        };
     }
 
 } // namespace Engine

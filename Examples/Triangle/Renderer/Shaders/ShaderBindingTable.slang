@@ -60,10 +60,10 @@ bool PushDrawParameter(GPU::DrawRequest request)
     bindings.outDrawParameters[currentIdnex] = outData;
 }
 
-float4 TransformModelToClip(float3 position, U32 modelID)
-{
-    var modelToWorld = GetTransform(modelID);
-    return mul(modelToWorld * bindings.sceneView.worldToClipMatrix, float4(position, 1));
-}
+// float4 TransformModelToClip(float3 position, U32 modelID)
+// {
+//     var modelToWorld = GetTransform(modelID);
+//     return mul(modelToWorld * bindings.sceneView.worldToClipMatrix, float4(position, 1));
+// }
 
 float4 TransfromWorldToClip(float3 position);

@@ -61,8 +61,6 @@ namespace GPU
     {
         F32_4x4 worldToViewMatrix;
         F32_4x4 viewToClipMatrix;
-        F32_4x4 worldToClipMatrix;
-        F32_4x4 clipToWorldMatrix;
     };
 
     /// Stub

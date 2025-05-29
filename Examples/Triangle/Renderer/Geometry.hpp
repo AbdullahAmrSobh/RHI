@@ -17,13 +17,11 @@
 
 namespace Engine
 {
-    /**
-     *  geometry buffer archtecture where all meshes share same layout. data is stored in a single growing buffer.
-     * Mesh attributes (position, normal, etc.) are stored non-interleaved in separate sections of the buffer.
-     * Use GetAttributeBindingInfo to obtain the starting location of each attribute section. The buffer is partitioned
-     * into MeshAttributeType::Count segments. Optional attributes (e.g. skinning data) are stored in the last segment.
-     * Allocations from this buffer should never fail, as the buffer is grown as needed.
-     */
+    /// geometry buffer archtecture where all meshes share same layout. data is stored in a single growing buffer.
+    /// Mesh attributes (position, normal, etc.) are stored non-interleaved in separate sections of the buffer.
+    /// Use GetAttributeBindingInfo to obtain the starting location of each attribute section. The buffer is partitioned
+    /// into MeshAttributeType::Count segments. Optional attributes (e.g. skinning data) are stored in the last segment.
+    /// Allocations from this buffer should never fail, as the buffer is grown as needed.
 
     enum class MeshAttributeType
     {
@@ -63,6 +61,7 @@ namespace Engine
     {
     public:
         friend class GeometryBufferPool;
+
         StaticMeshLOD()  = default;
         ~StaticMeshLOD() = default;
 
@@ -93,10 +92,10 @@ namespace Engine
         U32 m_vertexOffset;
 
         GpuArrayHandle<GPU::StaticMeshIndexed> m_indirectDrawArgs;
-        MeshAttribute*                              m_indexAttribute;
-        MeshAttribute*                              m_positionAttribute;
-        MeshAttribute*                              m_normalAttribute;
-        MeshAttribute*                              m_uvAttribute;
+        MeshAttribute*                         m_indexAttribute;
+        MeshAttribute*                         m_positionAttribute;
+        MeshAttribute*                         m_normalAttribute;
+        MeshAttribute*                         m_uvAttribute;
 
         AABB m_aabb;
     };

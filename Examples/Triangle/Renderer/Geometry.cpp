@@ -1,5 +1,5 @@
 
-#include "Mesh.hpp"
+#include "Geometry.hpp"
 
 namespace Engine
 {
@@ -16,7 +16,7 @@ namespace Engine
     ResultCode GeometryBufferPool::Init(RHI::Device& device)
     {
         GeometryBufferPool::ptr = this;
-        m_device = &device;
+        m_device                = &device;
 
         auto sizeIndex    = kVertexCount * sizeof(uint32_t);
         auto sizePosition = kVertexCount * sizeof(glm::vec3);
@@ -26,19 +26,24 @@ namespace Engine
         RHI::ResultCode result;
 
         result = m_bufferPools[U32(MeshAttributeType::Index)].Init(device, {.name = "ib", .hostMapped = true, .usageFlags = RHI::BufferUsage::Index, .byteSize = sizeIndex});
-        if (RHI::IsError(result)) return result;
+        if (RHI::IsError(result) == true)
+            return result;
 
         result = m_bufferPools[U32(MeshAttributeType::Position)].Init(device, {.name = "vb-position", .hostMapped = true, .usageFlags = RHI::BufferUsage::Vertex, .byteSize = sizePosition});
-        if (RHI::IsError(result)) return result;
+        if (RHI::IsError(result) == true)
+            return result;
 
         result = m_bufferPools[U32(MeshAttributeType::Normal)].Init(device, {.name = "vb-normal", .hostMapped = true, .usageFlags = RHI::BufferUsage::Vertex, .byteSize = sizeNormal});
-        if (RHI::IsError(result)) return result;
+        if (RHI::IsError(result) == true)
+            return result;
 
         result = m_bufferPools[U32(MeshAttributeType::TexCoord)].Init(device, {.name = "vb-texCoord", .hostMapped = true, .usageFlags = RHI::BufferUsage::Vertex, .byteSize = sizeTexCoord});
-        if (RHI::IsError(result)) return result;
+        if (RHI::IsError(result) == true)
+            return result;
 
         result = m_drawParams.Init(*m_device, "static-mesh-params", RHI::BufferUsage::Storage, 32);
-        if (RHI::IsError(result)) return result;
+        if (RHI::IsError(result) == true)
+            return result;
 
         return result;
     }
@@ -74,9 +79,9 @@ namespace Engine
         staticMesh->m_vertexOffset      = I32(staticMesh->m_positionAttribute->m_allocation.offset / sizeof(glm::vec3));
 
         auto [indirectDrawArgs, result] = m_drawParams.Insert({
-            .indexCount    = staticMesh->m_indexCount,
-            .firstIndex    = staticMesh->m_indexOffset,
-            .vertexOffset  = I32(staticMesh->m_vertexOffset),
+            .indexCount   = staticMesh->m_indexCount,
+            .firstIndex   = staticMesh->m_indexOffset,
+            .vertexOffset = I32(staticMesh->m_vertexOffset),
         });
         staticMesh->m_indirectDrawArgs  = indirectDrawArgs;
 

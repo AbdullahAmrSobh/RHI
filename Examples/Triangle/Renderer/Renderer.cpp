@@ -65,17 +65,11 @@ namespace Engine
         };
     }
 
-    struct TestCode
-    {
-        RHI::Handle<RHI::BindGroup> bindGroup;
-        Suballocation               primarySceneView;
-    };
-
-    static TestCode s_testData = {};
-
     ResultCode Renderer::Init(Examples::Window* window, RHI::BackendType backend)
     {
         ZoneScoped;
+
+        Renderer::ptr = this;
 
         m_window = window;
 
@@ -127,56 +121,12 @@ namespace Engine
         result = m_imguiPass.Init(m_device, RHI::Format::RGBA8_UNORM);
         TL_ASSERT(RHI::IsSuccess(result));
 
-        result = m_drawList.Init(m_device, 1024);
-        TL_ASSERT(RHI::IsSuccess(result));
-
-        // Some plate test code
-        {
-            s_testData.bindGroup = m_device->CreateBindGroup({.name = "test-bind-group", .layout = m_pipelineLibrary.GetBindGroupLayout()});
-            m_device->UpdateBindGroup(s_testData.bindGroup, {.buffers = {{BINDING_SCENEVIEW, 0, {{m_allocators.uniformPool.GetBuffer(), 0}}}}});
-            s_testData.primarySceneView = m_allocators.uniformPool.Allocate(sizeof(GPU::SceneView), sizeof(GPU::SceneView)).GetValue();
-
-            GPU::SceneView view{};
-            view.worldToViewMatrix = glm::identity<glm::mat4>();
-            view.viewToClipMatrix  = glm::identity<glm::mat4>();
-            view.worldToClipMatrix = glm::identity<glm::mat4>();
-            view.clipToWorldMatrix = glm::identity<glm::mat4>();
-            m_device->BufferWrite(m_allocators.uniformPool.GetBuffer(), 0, TL::Block::Create(view));
-
-            // Fullscreen quad (two triangles)
-            // TL::Vector<uint32_t>  indcies  = {0, 1, 2, 2, 3, 0};
-            // TL::Vector<glm::vec3> vertcies = {
-            //     {-1.0f, -1.0f, 0.0f},
-            //     {1.0f,  -1.0f, 0.0f},
-            //     {1.0f,  1.0f,  0.0f},
-            //     {-1.0f, 1.0f,  0.0f},
-            // };
-            // TL::Vector<glm::vec3> normals = {
-            //     {0.0f, 0.0f, 1.0f},
-            //     {0.0f, 0.0f, 1.0f},
-            //     {0.0f, 0.0f, 1.0f},
-            //     {0.0f, 0.0f, 1.0f}
-            // };
-            // TL::Vector<glm::vec2> uvs = {
-            //     {0.0f, 0.0f},
-            //     {1.0f, 0.0f},
-            //     {1.0f, 1.0f},
-            //     {0.0f, 1.0f}
-            // };
-            //  s_testData.m_staticMesh.push_back(m_geometryBufferPool.CreateStaticMeshLOD(indcies, vertcies, normals, uvs));
-
-            // GPU::MeshUniform uniform {};
-            // m_drawList.AddStaticMesh(s_testData.m_staticMesh[0], uniform);
-        }
-
         return result;
     }
 
     void Renderer::Shutdown()
     {
         ZoneScoped;
-
-        m_drawList.Shutdown(m_device);
 
         m_imguiPass.Shutdown();
         m_gbufferPass.Shutdown();
@@ -188,9 +138,25 @@ namespace Engine
 
         m_device->DestroySwapchain(m_swapchain);
         DestroyDevice(m_device);
+
+        Renderer::ptr = nullptr;
     }
 
-    void Renderer::RenderScene()
+    Scene* Renderer::CreateScene()
+    {
+        auto scene  = TL::Allocator::Construct<Scene>();
+        auto result = scene->Init(m_device);
+        TL_ASSERT(result == RHI::ResultCode::Success);
+        return scene;
+    }
+
+    void Renderer::DestroyScene(Scene* scene)
+    {
+        scene->Shutdown(m_device);
+        TL::Allocator::Destruct(scene);
+    }
+
+    void Renderer::Render(Scene* scene)
     {
         // Update scene views
         {
@@ -204,27 +170,9 @@ namespace Engine
 
         auto swapchainBackbuffer = m_renderGraph->ImportSwapchain("swapchain-color-attachment", *m_swapchain, RHI::Format::RGBA8_UNORM);
 
-        m_cullPass.AddPass(m_renderGraph, m_drawList);
+        m_cullPass.AddPass(m_renderGraph, scene);
 
-        m_gbufferPass.AddPass(m_renderGraph, m_cullPass, [this](RHI::CommandList& cmd)
-            {
-                auto pipeline = this->m_pipelineLibrary.GetGraphicsPipeline(ShaderNames::GBufferFill);
-                cmd.BindGraphicsPipeline(pipeline, {{s_testData.bindGroup}});
-
-                // Bind index buffer
-                cmd.BindIndexBuffer(m_geometryBufferPool.GetAttribute(MeshAttributeType::Index), RHI::IndexType::uint32);
-                cmd.BindVertexBuffers(
-                    0,
-                    {
-                        m_geometryBufferPool.GetAttribute(MeshAttributeType::Position),
-                        m_geometryBufferPool.GetAttribute(MeshAttributeType::Normal),
-                        m_geometryBufferPool.GetAttribute(MeshAttributeType::TexCoord),
-                        m_geometryBufferPool.GetAttribute(MeshAttributeType::TexCoord),
-                    });
-
-                auto argBuffer = RHI::BufferBindingInfo{m_renderGraph->GetBufferHandle(m_cullPass.m_drawIndirectArgs), 64};
-                cmd.DrawIndexedIndirect(argBuffer, m_drawList.m_drawRequests.GetCountBindingInfo(), m_drawList.m_drawRequests.GetCount(), sizeof(RHI::DrawIndexedParameters));
-            });
+        m_gbufferPass.AddPass(m_renderGraph, m_cullPass, scene);
 
         if (m_imguiPass.Enabled())
         {

@@ -38,6 +38,6 @@ namespace Engine
         ResultCode Init(RHI::Device* device);
         void       Shutdown();
 
-        void AddPass(RHI::RenderGraph* rg, const class CullPass& cullPass, TL::Function<void(RHI::CommandList&)> cb);
+        void AddPass(RHI::RenderGraph* rg, const class CullPass& cullPass, const class Scene* scene);
     };
 } // namespace Engine

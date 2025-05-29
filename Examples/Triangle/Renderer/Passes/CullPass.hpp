@@ -3,7 +3,6 @@
 #include <RHI/RHI.hpp>
 
 #include "../Common.hpp"
-#include "../DrawList.hpp"
 
 namespace Engine
 {
@@ -24,6 +23,6 @@ namespace Engine
         ResultCode Init(RHI::Device* device);
         void       Shutdown();
 
-        void AddPass(RHI::RenderGraph* rg, const IndirectDrawList& drawList);
+        void AddPass(RHI::RenderGraph* rg, const class Scene* scene);
     };
 } // namespace Engine

@@ -1,7 +1,10 @@
 #include "CullPass.hpp"
 #include "GBufferPass.hpp"
 
+#include "../Geometry.hpp"
+#include "../Scene.hpp"
 #include "../PipelineLibrary.hpp"
+#include "../Renderer.hpp"
 
 namespace Engine
 {
@@ -19,7 +22,7 @@ namespace Engine
     {
     }
 
-    void GBufferPass::AddPass(RHI::RenderGraph* rg, const CullPass& cullPass, TL::Function<void(RHI::CommandList&)> cb)
+    void GBufferPass::AddPass(RHI::RenderGraph* rg, const CullPass& cullPass, const Scene* scene)
     {
         auto frameSize = rg->GetFrameSize();
         rg->AddPass({
@@ -40,7 +43,7 @@ namespace Engine
 
                 builder.ReadBuffer(cullPass.m_drawIndirectArgs, RHI::BufferUsage::Indirect, RHI::PipelineStage::DrawIndirect);
             },
-            .executeCallback = [this, rg, cb](RHI::CommandList& cmd)
+            .executeCallback = [this, rg, cullPass, scene](RHI::CommandList& cmd)
             {
                 cmd.SetViewport({
                     .width    = (float)rg->GetFrameSize().width,
@@ -55,7 +58,29 @@ namespace Engine
                     .height  = rg->GetFrameSize().height,
                 };
                 cmd.SetScissor(scissor);
-                cb(cmd);
+
+                auto pipeline = PipelineLibrary::ptr->GetGraphicsPipeline(ShaderNames::GBufferFill);
+
+                RHI::BindGroupBuffersUpdateInfo updateInfo[] = {
+                    {BINDING_SCENEVIEW, 0, scene->m_primaryView->m_sceneViewUB.GetBinding()}
+                };
+                Renderer::ptr->m_device->UpdateBindGroup(m_bindGroup, {.buffers = updateInfo});
+                cmd.BindGraphicsPipeline(pipeline, {{m_bindGroup}});
+
+                // Bind index buffer
+                cmd.BindIndexBuffer(GeometryBufferPool::ptr->GetAttribute(MeshAttributeType::Index), RHI::IndexType::uint32);
+                cmd.BindVertexBuffers(
+                    0,
+                    {
+                        GeometryBufferPool::ptr->GetAttribute(MeshAttributeType::Position),
+                        GeometryBufferPool::ptr->GetAttribute(MeshAttributeType::Normal),
+                        GeometryBufferPool::ptr->GetAttribute(MeshAttributeType::TexCoord),
+                        GeometryBufferPool::ptr->GetAttribute(MeshAttributeType::TexCoord),
+                    });
+
+                RHI::BufferBindingInfo argCountBuffer{rg->GetBufferHandle(cullPass.m_drawIndirectArgs), 0};
+                RHI::BufferBindingInfo argParamsBuffer{rg->GetBufferHandle(cullPass.m_drawIndirectArgs), 64};
+                cmd.DrawIndexedIndirect(argParamsBuffer, argCountBuffer, 40, sizeof(RHI::DrawIndexedParameters));
             },
         });
     }

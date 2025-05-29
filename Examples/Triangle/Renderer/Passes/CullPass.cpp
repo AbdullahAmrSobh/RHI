@@ -1,7 +1,8 @@
 #include "CullPass.hpp"
 
 #include "../PipelineLibrary.hpp"
-#include "../Mesh.hpp"
+#include "../Geometry.hpp"
+#include "../Scene.hpp"
 
 namespace Engine
 {
@@ -21,9 +22,9 @@ namespace Engine
     {
     }
 
-    void CullPass::AddPass(RHI::RenderGraph* rg, const IndirectDrawList& drawList)
+    void CullPass::AddPass(RHI::RenderGraph* rg, const Scene* scene)
     {
-        this->m_drawIndirectArgs = rg->CreateBuffer("draw-indexed-indirect", drawList.m_capacity);
+        this->m_drawIndirectArgs = rg->CreateBuffer("draw-indexed-indirect", kCapacity * sizeof(RHI::DrawIndexedParameters));
 
         rg->AddPass({
             .name          = "Cull",
@@ -32,12 +33,12 @@ namespace Engine
             {
                 this->m_drawIndirectArgs = builder.WriteBuffer(this->m_drawIndirectArgs, RHI::BufferUsage::Storage, RHI::PipelineStage::ComputeShader);
             },
-            .executeCallback = [this, rg, drawList](RHI::CommandList& cmd)
+            .executeCallback = [this, rg, scene](RHI::CommandList& cmd)
             {
                 auto& meshDrawData = GeometryBufferPool::ptr->m_drawParams;
 
                 RHI::BindGroupBuffersUpdateInfo updateInfo[] = {
-                    {BINDING_DRAWREQUESTS,        0, drawList.m_drawRequests.GetBindingInfo()                                 },
+                    {BINDING_DRAWREQUESTS,        0, scene->m_drawRequests.GetBindingInfo()                                   },
                     {BINDING_INDEXEDMESHES,       0, meshDrawData.GetBindingInfo()                                            },
                     {BINDING_DRAWPARAMETERSCOUNT, 0, RHI::BufferBindingInfo{rg->GetBufferHandle(this->m_drawIndirectArgs), 0} },
                     {BINDING_OUTDRAWPARAMETERS,   0, RHI::BufferBindingInfo{rg->GetBufferHandle(this->m_drawIndirectArgs), 64}},
@@ -45,7 +46,7 @@ namespace Engine
                 m_device->UpdateBindGroup(m_bindGroup, {.buffers = updateInfo});
 
                 cmd.BindComputePipeline(m_pipeline, {{m_bindGroup}});
-                cmd.Dispatch({drawList.m_drawRequests.GetCount(), 1, 1});
+                cmd.Dispatch({scene->m_drawRequests.GetCount(), 1, 1});
             },
         });
     }

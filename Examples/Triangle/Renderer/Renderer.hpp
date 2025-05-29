@@ -8,11 +8,9 @@
 #include <glm/glm.hpp>
 
 #include "BufferPool.hpp"
-#include "Mesh.hpp"
+#include "Geometry.hpp"
 #include "PipelineLibrary.hpp"
 #include "Scene.hpp"
-
-#include "DrawList.hpp"
 
 #include "Passes/CullPass.hpp"
 #include "Passes/GBufferPass.hpp"
@@ -30,11 +28,15 @@ namespace Engine
     class Renderer
     {
     public:
+        inline static Renderer* ptr = nullptr;
+
         ResultCode Init(Examples::Window* window, RHI::BackendType backend);
         void       Shutdown();
 
-        /// @brief Renders the scene.
-        void RenderScene();
+        Scene* CreateScene();
+        void   DestroyScene(Scene* scene);
+
+        void Render(Scene* scene);
 
         void ProcessEvent(Examples::Event& event)
         {
@@ -43,27 +45,24 @@ namespace Engine
 
         void OnWindowResize();
 
+    public:
+        RHI::Device* m_device;
+
     private:
-        RHI::Device*      m_device;
         RHI::RenderGraph* m_renderGraph;
         RHI::Swapchain*   m_swapchain;
         Examples::Window* m_window;
 
+    public:
         struct Allocators
         {
             BufferPool uniformPool;
             BufferPool storagePool;
         } m_allocators;
 
+    private:
         PipelineLibrary    m_pipelineLibrary;
         GeometryBufferPool m_geometryBufferPool;
-
-        // Per game/level
-        // StorageBuffer<GPU::MeshMaterialBindless>  m_materials;
-
-        public:
-        IndirectDrawList m_drawList;
-        private:
 
         // Passes
         CullPass    m_cullPass;
