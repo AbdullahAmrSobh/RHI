@@ -19,13 +19,9 @@ function(compile_slang_shaders)
         list(APPEND SLANG_SHADER_INCLUDE_FLAGS "-I${INCLUDE_DIR}")
     endforeach()
 
-    # Determine platform-specific executables
-    # if(WIN32)
-        set(SLANGC_EXECUTABLE "${CMAKE_SOURCE_DIR}/Examples/Dependencies/slang-v2024.10/bin/slangc.exe")
-        set(SPIRV_LINK_EXECUTABLE "$ENV{VULKAN_SDK}/bin/spirv-link.exe")
-    # else()
-    #     message(FATAL_ERROR "Platform not supported.")
-    # endif()
+    # Use slangc from the Vulkan SDK
+    set(SLANGC_EXECUTABLE "$ENV{VULKAN_SDK}/bin/slangc${CMAKE_EXECUTABLE_SUFFIX}")
+    set(SPIRV_LINK_EXECUTABLE "$ENV{VULKAN_SDK}/bin/spirv-link${CMAKE_EXECUTABLE_SUFFIX}")
 
     # Initialize list to store output files
     set(COMPILE_SLANG_SHADERS_OUTPUT_FILES)

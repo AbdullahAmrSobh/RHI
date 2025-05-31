@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.19)
 
-# # Find Vulkan
+# Find Vulkan
 find_package(Vulkan REQUIRED)
 
 # Add header files

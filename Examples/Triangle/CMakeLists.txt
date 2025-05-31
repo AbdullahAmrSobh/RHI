@@ -52,8 +52,13 @@ if (RHI_BACKEND_D3D12)
     target_link_libraries(Triangle RHI::D3D12)
 endif()
 
-
 target_link_libraries(Triangle assimp)
+
+find_package(Vulkan REQUIRED)
+if (Vulkan_FOUND)
+    get_filename_component(VULKAN_LIB_DIR "${Vulkan_LIBRARY}" DIRECTORY)
+    target_link_libraries(Triangle "${VULKAN_LIB_DIR}/slangd.lib")
+endif()
 
 include(${CMAKE_SOURCE_DIR}/cmake/compile-slang-shaders.cmake)
 compile_slang_shaders(

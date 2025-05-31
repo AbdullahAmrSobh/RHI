@@ -4,6 +4,11 @@
 
 #include "Common.hpp"
 
+#include <slang/slang.h>
+#include <slang/slang-com-helper.h>
+#include <slang/slang-com-ptr.h>
+#include <slang/slang-gfx.h>
+
 namespace Engine
 {
     constexpr uint32_t BINDING_SCENEVIEW           = 0;

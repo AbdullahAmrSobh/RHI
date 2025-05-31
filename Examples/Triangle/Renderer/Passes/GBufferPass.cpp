@@ -31,15 +31,15 @@ namespace Engine
             .size          = frameSize,
             .setupCallback = [&](RHI::RenderGraphBuilder& builder)
             {
-                auto position = rg->CreateRenderTarget("gbuffer-position", frameSize, FormatPosition);
-                auto normal   = rg->CreateRenderTarget("gbuffer-normal", frameSize, FormatNormal);
-                auto material = rg->CreateRenderTarget("gbuffer-material", frameSize, FormatMaterial);
-                auto depth    = rg->CreateRenderTarget("gbuffer-depth", frameSize, FormatDepth);
+                auto position = rg->CreateRenderTarget("gbuffer-position", frameSize, GBufferPass::Formats[0]);
+                auto normal   = rg->CreateRenderTarget("gbuffer-normal", frameSize, GBufferPass::Formats[1]);
+                auto material = rg->CreateRenderTarget("gbuffer-material", frameSize, GBufferPass::Formats[2]);
+                auto depth    = rg->CreateRenderTarget("gbuffer-depth", frameSize, GBufferPass::DepthFormat);
 
-                m_position = builder.AddColorAttachment({.color = position, .clearValue = ClearPosition});
-                m_normal   = builder.AddColorAttachment({.color = normal, .clearValue = ClearNormal});
-                m_material = builder.AddColorAttachment({.color = material, .clearValue = ClearMaterial});
-                m_depth    = builder.SetDepthStencil({.depthStencil = depth, .clearValue = ClearDepth});
+                m_attachments[0] = builder.AddColorAttachment({.color = position});
+                m_attachments[1] = builder.AddColorAttachment({.color = normal});
+                m_attachments[2] = builder.AddColorAttachment({.color = material});
+                m_attachments[3] = builder.SetDepthStencil({.depthStencil = depth, .clearValue = {.depthValue = 1.0}});
 
                 builder.ReadBuffer(cullPass.m_drawIndirectArgs, RHI::BufferUsage::Indirect, RHI::PipelineStage::DrawIndirect);
             },

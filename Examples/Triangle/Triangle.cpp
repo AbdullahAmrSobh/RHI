@@ -245,8 +245,8 @@ public:
         GPU::SceneView sceneViewData{
             worldToView,
             viewToClip,
-
         };
+
         m_sceneView->m_sceneViewUB.Update(sceneViewData);
     }
 

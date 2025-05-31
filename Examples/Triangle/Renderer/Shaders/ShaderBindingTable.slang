@@ -2,14 +2,14 @@
 
 struct ShaderBindingTable
 {
-    ConstantBuffer<GPU::SceneView>              sceneView;
-    StructuredBuffer<GPU::DrawRequest>          drawRequests;
-    StructuredBuffer<GPU::StaticMeshIndexed>    indexedMeshes;
-    StructuredBuffer<float4x4>                  transforms;
-    StructuredBuffer<GPU::MeshMaterialBindless> materials;
+    ConstantBuffer<GPU::SceneView>                 sceneView;
+    StructuredBuffer<GPU::DrawRequest>             drawRequests;
+    StructuredBuffer<GPU::StaticMeshIndexed>       indexedMeshes;
+    StructuredBuffer<float4x4>                     transforms;
+    StructuredBuffer<GPU::MeshMaterialBindless>    materials;
     RWStructuredBuffer<U32>                        drawParametersCount;
     RWStructuredBuffer<GPU::DrawIndexedParameters> outDrawParameters;
-    Texture2D                                   bindlessTextures[];
+    Texture2D                                      bindlessTextures[];
 };
 
 ParameterBlock<ShaderBindingTable> bindings;
