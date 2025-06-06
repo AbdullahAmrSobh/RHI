@@ -59,6 +59,7 @@ namespace RHI::Vulkan
         void WaitIdle();
 
         // Interface Implementation
+        uint64_t                 GetNativeHandle(NativeHandleType type, uint64_t handle) override;
         Swapchain*               CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
         void                     DestroySwapchain(Swapchain* swapchain) override;
         ShaderModule*            CreateShaderModule(const ShaderModuleCreateInfo& createInfo) override;

@@ -48,8 +48,8 @@ namespace Engine
     public:
         RHI::Device* m_device;
 
-    private:
         RHI::RenderGraph* m_renderGraph;
+    private:
         RHI::Swapchain*   m_swapchain;
         Examples::Window* m_window;
 

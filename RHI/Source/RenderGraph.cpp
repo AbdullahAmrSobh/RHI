@@ -7,6 +7,7 @@
 #include <TL/Allocator/Mimalloc.hpp>
 #include <TL/Containers.hpp>
 #include <TL/Utils.hpp>
+#include <TL/Defer.hpp>
 
 #include <cstdint>
 #include <tracy/Tracy.hpp>
@@ -452,6 +453,11 @@ namespace RHI
         m_bufferPool.Clear(); // Ensure this frees all buffers
     }
 
+    void RenderGraph::Debug_CaptureNextFrame()
+    {
+        m_state.debug_triggerNextFrameCapture = true;
+    }
+
     void RenderGraph::BeginFrame(ImageSize2D frameSize)
     {
         ZoneScopedC(Colors::Red);
@@ -886,6 +892,16 @@ namespace RHI
 #elif 1
         auto frame = m_device->GetCurrentFrame();
 
+        if (m_state.debug_triggerNextFrameCapture)
+        {
+            m_device->GetDebugRenderdoc()->FrameStartCapture();
+        }
+        TL_defer
+        {
+            if (m_state.debug_triggerNextFrameCapture)
+                m_device->GetDebugRenderdoc()->FrameEndCapture();
+        };
+
         frame->Begin(m_swapchain);
 
         CommandListCreateInfo cmdCI{
@@ -1081,7 +1097,7 @@ namespace RHI
         newBuffer->m_nextHandle    = {};
         newBuffer->m_state         = bufferBefore->m_state;
         newBuffer->m_activeState   = bufferBefore->m_activeState;
-        newBuffer->m_desc = bufferBefore->m_desc;
+        newBuffer->m_desc          = bufferBefore->m_desc;
         // Link version chain
         bufferBefore->m_nextHandle = handle;
         newBuffer->m_prevHandle    = bufferBeforeHandle;

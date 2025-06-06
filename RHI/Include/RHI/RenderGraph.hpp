@@ -591,6 +591,8 @@ namespace RHI
         /// @brief Shutdown the render graph.
         void                          Shutdown();
 
+        void                          Debug_CaptureNextFrame() ;
+
         void                          BeginFrame(ImageSize2D frameSize);
         void                          EndFrame();
 
@@ -654,6 +656,8 @@ namespace RHI
             bool compiled       : 1;
             bool frameRecording : 1;
             bool dumpGraphviz   : 1;
+
+            bool debug_triggerNextFrameCapture : 1;
         } m_state;
 
         TL::IAllocator*                  m_allocator;

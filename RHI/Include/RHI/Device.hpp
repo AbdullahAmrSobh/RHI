@@ -8,6 +8,7 @@
 
 #include <TL/Span.hpp>
 #include <TL/UniquePtr.hpp>
+#include <TL/Library.hpp>
 
 namespace RHI
 {
@@ -16,6 +17,23 @@ namespace RHI
         Vulkan1_3,
         DirectX12_2,
         WebGPU,
+    };
+
+    enum class NativeHandleType
+    {
+        None,
+        Device,
+        CommandList,
+        Buffer,
+        Image,
+        ImageView,
+        Sampler,
+        ShaderModule,
+        Pipeline,
+        PipelineLayout,
+        BindGroupLayout,
+        BindGroup,
+        Swapchain,
     };
 
     struct RenderGraphCreateInfo;
@@ -58,6 +76,22 @@ namespace RHI
         Swapchain*                    m_swapchainToSignal  = nullptr;
     };
 
+    class Renderdoc
+    {
+    public:
+        ResultCode Init(class Device* device);
+        void       Shutdown();
+        void       FrameTriggerMultiCapture(uint32_t numFrames);
+        bool       FrameIsCapturing();
+        void       FrameStartCapture();
+        void       FrameEndCapture();
+
+    private:
+        Device*     m_device;
+        TL::Library m_library;
+        void*       m_renderdocAPi;
+    };
+
     class Frame // internal for now
     {
     public:
@@ -85,6 +119,8 @@ namespace RHI
 
         BackendType                      GetBackend() const { return m_backend; };
 
+        Renderdoc*                       GetDebugRenderdoc() const { return m_renderdoc.get(); }
+
         /// @brief Get the device limits.
         /// @return Device Limits struct.
         DeviceLimits                     GetLimits() const;
@@ -92,6 +128,9 @@ namespace RHI
         RenderGraph*                     CreateRenderGraph(const RenderGraphCreateInfo& createInfo);
 
         void                             DestroyRenderGraph(RenderGraph* renderGraph);
+
+        /// @brief Reterive object underlying native handle.
+        virtual uint64_t                 GetNativeHandle(NativeHandleType type, uint64_t handle) = 0;
 
         /// @brief Creates a swapchain.
         /// @param createInfo Swapchain creation parameters.
@@ -200,7 +239,8 @@ namespace RHI
 
     protected:
         BackendType           m_backend;
-        TL::Ptr<DeviceLimits> m_limits; ///< Device-specific limits.
+        TL::Ptr<DeviceLimits> m_limits;
+        TL::Ptr<Renderdoc>    m_renderdoc;
     };
 
     RHI_EXPORT Handle<Image> CreateImageWithContent(Device& device, const ImageCreateInfo& createInfo, TL::Block content);

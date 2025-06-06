@@ -556,6 +556,11 @@ namespace RHI::Vulkan
             if (IsError(resultCode)) return resultCode;
         }
 
+        {
+            m_renderdoc            = TL::CreatePtr<Renderdoc>();
+            TL_MAYBE_UNUSED auto _ = m_renderdoc->Init(this);
+        }
+
         return resultCode;
     }
 
@@ -564,6 +569,11 @@ namespace RHI::Vulkan
         ZoneScoped;
 
         vkDeviceWaitIdle(m_device);
+
+        if (GetDebugRenderdoc())
+        {
+            m_renderdoc->Shutdown();
+        }
 
         if (auto count = m_imageOwner.ReportLiveResourcesCount())
             TL_LOG_WARNNING("Detected {} Image leaked", count);
@@ -626,6 +636,36 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
         vkDeviceWaitIdle(m_device);
+    }
+
+    uint64_t IDevice::GetNativeHandle(NativeHandleType type, uint64_t _handle)
+    {
+        switch (type)
+        {
+        case NativeHandleType::None: return 0;
+        case NativeHandleType::Device:
+            {
+                auto handle = reinterpret_cast<IDevice*>(_handle);
+                return (uint64_t)handle->m_device;
+            }
+        case NativeHandleType::CommandList:
+            {
+                auto handle = reinterpret_cast<ICommandList*>(_handle);
+                return (uint64_t)handle->m_commandBuffer;
+            }
+        case NativeHandleType::Buffer:
+        case NativeHandleType::Image:
+        case NativeHandleType::ImageView:
+        case NativeHandleType::Sampler:
+        case NativeHandleType::ShaderModule:
+        case NativeHandleType::Pipeline:
+        case NativeHandleType::PipelineLayout:
+        case NativeHandleType::BindGroupLayout:
+        case NativeHandleType::BindGroup:
+        case NativeHandleType::Swapchain:
+            TL_UNREACHABLE_MSG("TODO! implement");
+            return 0;
+        }
     }
 
     void IDevice::UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo)

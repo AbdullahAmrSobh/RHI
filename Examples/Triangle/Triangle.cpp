@@ -260,7 +260,11 @@ public:
         io.DisplaySize.y     = float(height);
 
         ImGui::NewFrame();
-        ImGui::ShowDemoWindow();
+        // ImGui::ShowDemoWindow();
+        if (ImGui::Button("rdoc capture"))
+        {
+            m_renderer->m_renderGraph->Debug_CaptureNextFrame();
+        }
         ImGui::Render();
 
         m_renderer->Render(m_scene);

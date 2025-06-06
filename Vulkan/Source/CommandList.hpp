@@ -106,7 +106,8 @@ namespace RHI::Vulkan
     private:
         void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups);
 
-    private:
+        // private:
+    public:
         IDevice*               m_device                      = nullptr;
         VkCommandBuffer        m_commandBuffer               = VK_NULL_HANDLE;
         Handle<PipelineLayout> m_pipelineLayout              = NullHandle;
