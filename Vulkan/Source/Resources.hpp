@@ -36,7 +36,7 @@ namespace RHI::Vulkan
     class DescriptorSetWriter
     {
     public:
-        DescriptorSetWriter(IDevice* device, VkDescriptorSet descriptorSet, Handle<IBindGroupLayout> layout, TL::Allocator* allocator);
+        DescriptorSetWriter(IDevice* device, VkDescriptorSet descriptorSet, Handle<IBindGroupLayout> layout, TL::IAllocator* allocator);
         VkWriteDescriptorSet BindImages(uint32_t dstBinding, uint32_t dstArray, TL::Span<const Handle<Image>> images);
         VkWriteDescriptorSet BindSamplers(uint32_t dstBinding, uint32_t dstArray, TL::Span<const Handle<Sampler>> samplers);
         VkWriteDescriptorSet BindBuffers(uint32_t dstBinding, uint32_t dstArray, TL::Span<const BufferBindingInfo> buffers);
@@ -45,7 +45,7 @@ namespace RHI::Vulkan
 
     private:
         IDevice*                                       m_device;
-        TL::Allocator*                                 m_allocator;
+        TL::IAllocator*                                m_allocator;
         Handle<BindGroupLayout>                        m_bindGroupLayout;
         VkDescriptorSet                                m_descriptorSet;
         TL::Vector<TL::Vector<VkDescriptorImageInfo>>  m_images;

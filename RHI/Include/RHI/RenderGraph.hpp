@@ -35,7 +35,7 @@ namespace RHI
 
     struct RenderGraphCreateInfo
     {
-        TL::Allocator* allocator = nullptr;
+        TL::IAllocator* allocator = nullptr;
     };
 
     struct PassCreateInfo

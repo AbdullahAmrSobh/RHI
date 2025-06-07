@@ -23,7 +23,7 @@ namespace Engine
             .name = path,
             .code = {(uint32_t*)code.ptr, code.size / 4},
         });
-        TL::Allocator::Release(code, 1);
+        TL::Release(code, 1);
         return module;
     }
 

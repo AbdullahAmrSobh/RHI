@@ -313,7 +313,7 @@ namespace RHI::Vulkan
         }
     }
 
-    DescriptorSetWriter::DescriptorSetWriter(IDevice* device, VkDescriptorSet descriptorSet, Handle<IBindGroupLayout> layout, TL::Allocator* allocator)
+    DescriptorSetWriter::DescriptorSetWriter(IDevice* device, VkDescriptorSet descriptorSet, Handle<IBindGroupLayout> layout, TL::IAllocator* allocator)
         : m_device(device)
         , m_allocator(allocator)
         , m_bindGroupLayout(layout)

@@ -144,7 +144,7 @@ namespace Engine
 
     Scene* Renderer::CreateScene()
     {
-        auto scene  = TL::Allocator::Construct<Scene>();
+        auto scene  = TL::Construct<Scene>();
         auto result = scene->Init(m_device);
         TL_ASSERT(result == RHI::ResultCode::Success);
         return scene;
@@ -153,7 +153,7 @@ namespace Engine
     void Renderer::DestroyScene(Scene* scene)
     {
         scene->Shutdown(m_device);
-        TL::Allocator::Destruct(scene);
+        TL::Destruct(scene);
     }
 
     void Renderer::Render(Scene* scene)

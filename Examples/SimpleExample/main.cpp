@@ -29,7 +29,7 @@ inline static RHI::ShaderModule* LoadShaderModule(RHI::Device* device, const cha
         .name = path,
         .code = {(uint32_t*)code.ptr, code.size / 4},
     });
-    TL::Allocator::Release(code, 1);
+    TL::Release(code, 1);
     return module;
 }
 
@@ -537,8 +537,8 @@ int main(int argc, const char* argv[])
     //     for (int i = 0 ; i < 100; i++)
     //     {
     //         a.Allocate<float>(100);
-    //         auto b = TL::Allocator::Allocate<int>();
-    //         TL::Allocator::Release(b);
+    //         auto b = TL::Allocate<int>();
+    //         TL::Release(b);
     //         // auto b = malloc(sizeof(int));
     //         // free(b);
     //     }

@@ -20,7 +20,7 @@ namespace Engine
 
     SceneView* Scene::CreateView()
     {
-        auto                 view = TL::Allocator::Construct<SceneView>();
+        auto                 view = TL::Construct<SceneView>();
         TL_MAYBE_UNUSED auto res  = view->Init();
         m_primaryView             = view;
         return view;
@@ -29,7 +29,7 @@ namespace Engine
     void Scene::DestroyView(SceneView* view)
     {
         view->Shutdown();
-        TL::Allocator::Destruct(view);
+        TL::Destruct(view);
     }
 
     MeshComponent* Scene::AddStaticMesh(const StaticMeshLOD* staticMesh, glm::mat4x4 transform)

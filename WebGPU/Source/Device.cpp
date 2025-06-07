@@ -14,7 +14,7 @@
 
 RHI::Device* RHI::CreateWebGPUDevice()
 {
-    auto device = TL::Allocator::Construct<RHI::WebGPU::IDevice>();
+    auto device = TL::Construct<RHI::WebGPU::IDevice>();
     auto result = device->Init();
     if (IsSuccess(result))
     {
@@ -27,7 +27,7 @@ void RHI::DestroyWebGPUDevice(RHI::Device* _device)
 {
     auto device = (RHI::WebGPU::IDevice*)_device;
     device->Shutdown();
-    TL::Allocator::Destruct(device);
+    TL::Destruct(device);
 }
 
 namespace RHI::WebGPU

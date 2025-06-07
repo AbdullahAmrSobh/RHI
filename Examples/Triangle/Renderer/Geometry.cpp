@@ -67,7 +67,7 @@ namespace Engine
 
     StaticMeshLOD* GeometryBufferPool::CreateStaticMeshLOD(U32 vertexCount, U32 indexCount)
     {
-        auto staticMesh = TL::Allocator::Construct<StaticMeshLOD>();
+        auto staticMesh = TL::Construct<StaticMeshLOD>();
 
         staticMesh->m_indexAttribute    = CreateMeshAttribute(indexCount, MeshAttributeType::Index, {nullptr, indexCount * sizeof(uint32_t)});
         staticMesh->m_positionAttribute = CreateMeshAttribute(vertexCount, MeshAttributeType::Position, {nullptr, vertexCount * sizeof(glm::vec3)});
@@ -121,7 +121,7 @@ namespace Engine
         ReleaseMeshAttribute(lod->m_positionAttribute);
         ReleaseMeshAttribute(lod->m_normalAttribute);
         ReleaseMeshAttribute(lod->m_uvAttribute);
-        TL::Allocator::Destruct(lod);
+        TL::Destruct(lod);
     }
 
     MeshAttribute* GeometryBufferPool::CreateMeshAttribute(U32 elementCount, MeshAttributeType type, TL::Block content)
@@ -133,7 +133,7 @@ namespace Engine
             TL_UNREACHABLE();
             return nullptr;
         }
-        auto attribute            = TL::Allocator::Construct<MeshAttribute>();
+        auto attribute            = TL::Construct<MeshAttribute>();
         attribute->m_type         = type;
         attribute->m_allocation   = allocation;
         attribute->m_elementCount = elementCount;
@@ -148,7 +148,7 @@ namespace Engine
     void GeometryBufferPool::ReleaseMeshAttribute(MeshAttribute* attribute)
     {
         m_bufferPools[(U32)attribute->m_type].Release(attribute->m_allocation);
-        TL::Allocator::Destruct(attribute);
+        TL::Destruct(attribute);
     }
 
     void GeometryBufferPool::WriteMeshAttribute(MeshAttribute* attribute, size_t offset, TL::Block content)
