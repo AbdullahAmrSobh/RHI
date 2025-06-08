@@ -25,7 +25,7 @@ namespace Engine
 
         bool Enabled() const  {  return true; }
 
-        RHI::RGPass* AddPass(RHI::RenderGraph* renderGraph, RHI::Handle<RHI::RGImage>& outAttachment, ImDrawData* drawData);
+        RHI::RGPass* AddPass(RHI::RenderGraph* renderGraph, RHI::RGImage*& outAttachment, ImDrawData* drawData);
 
     private:
         void InitGraphicsPipeline();

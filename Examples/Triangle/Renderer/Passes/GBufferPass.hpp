@@ -18,7 +18,7 @@ namespace Engine
 
         RHI::Handle<RHI::GraphicsPipeline>       m_pipeline;
         RHI::Handle<RHI::BindGroup>              m_bindGroup;
-        std::array<RHI::Handle<RHI::RGImage>, 4> m_attachments;
+        std::array<RHI::RGImage*, 4> m_attachments;
 
         ResultCode Init(RHI::Device* device);
         void       Shutdown();

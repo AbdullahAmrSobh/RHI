@@ -364,7 +364,7 @@ namespace Engine
             m_device->DestroyBuffer(m_uniformBuffer);
     }
 
-    RHI::RGPass* ImGuiPass::AddPass(RHI::RenderGraph* rg, RHI::Handle<RHI::RGImage>& outAttachment, ImDrawData* drawData)
+    RHI::RGPass* ImGuiPass::AddPass(RHI::RenderGraph* rg, RHI::RGImage*& outAttachment, ImDrawData* drawData)
     {
         UpdateBuffers(drawData);
 

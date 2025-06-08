@@ -214,8 +214,8 @@ int main(int argc, const char* argv[])
         rg->BeginFrame(windowSize);
 #if 0
         {
-            RHI::Handle<RHI::RGBuffer> indirectDrawList = rg->CreateBuffer("indirectDrawList", 1);
-            RHI::Handle<RHI::RGBuffer> indirectDrawArgs;
+            RHI::RGBuffer* indirectDrawList = rg->CreateBuffer("indirectDrawList", 1);
+            RHI::RGBuffer* indirectDrawArgs;
             if (EnableGPUDrivenPipeline)
             {
                 rg->AddPass({
@@ -238,7 +238,7 @@ int main(int argc, const char* argv[])
                 });
             }
 
-            RHI::Handle<RHI::RGImage> wsPositionRT, normalRT, materialRT, depthRT;
+            RHI::RGImage* wsPositionRT, normalRT, materialRT, depthRT;
             rg->AddPass({
                 .name          = "GBuffer",
                 .type          = RHI::PassType::Graphics,
@@ -267,7 +267,7 @@ int main(int argc, const char* argv[])
             });
 
             // Shadow Pass (up to 6 cascades)
-            TL::Vector<RHI::Handle<RHI::RGImage>> shadowMaps;
+            TL::Vector<RHI::RGImage>* shadowMaps;
             for (int i = 0; i < 6; ++i)
             {
                 auto passName  = std::format("Shadow[{}]", i);
@@ -295,7 +295,7 @@ int main(int argc, const char* argv[])
             }
 
             // Lighting Pass
-            RHI::Handle<RHI::RGImage> lightingRT;
+            RHI::RGImage* lightingRT;
             rg->AddPass({
                 .name          = "Lighting",
                 .type          = RHI::PassType::Graphics,
@@ -321,7 +321,7 @@ int main(int argc, const char* argv[])
             });
 
             // SSAO Pass (optional)
-            RHI::Handle<RHI::RGImage> ssaoRT;
+            RHI::RGImage* ssaoRT;
             if (EnableSSAO)
             {
                 rg->AddPass({
@@ -348,7 +348,7 @@ int main(int argc, const char* argv[])
             }
 
             // Screen Space Reflections Pass (optional)
-            RHI::Handle<RHI::RGImage> ssrRT;
+            RHI::RGImage* ssrRT;
             if (EnableScreenSpaceReflections)
             {
                 ssrRT = rg->CreateRenderTarget("ssr", windowSize, RHI::Format::RGBA16_FLOAT);
@@ -375,8 +375,8 @@ int main(int argc, const char* argv[])
             }
 
             // FXAA/TAA/Tonemap Passes (chained, writing to the same handle)
-            RHI::Handle<RHI::RGImage> postProcessInput = lightingRT;
-            RHI::Handle<RHI::RGImage> postProcessOutput;
+            RHI::RGImage* postProcessInput = lightingRT;
+            RHI::RGImage* postProcessOutput;
 
             // FXAA Pass (optional)
             if (EnableFXAA)
@@ -429,7 +429,7 @@ int main(int argc, const char* argv[])
             }
 
             // Tonemap Pass
-            RHI::Handle<RHI::RGImage> swapchainRT = rg->ImportSwapchain("final", *swapchain, RHI::Format::RGBA8_UNORM);
+            RHI::RGImage* swapchainRT = rg->ImportSwapchain("final", *swapchain, RHI::Format::RGBA8_UNORM);
             rg->AddPass({
                 .name          = "Tonemap",
                 .type          = RHI::PassType::Graphics,

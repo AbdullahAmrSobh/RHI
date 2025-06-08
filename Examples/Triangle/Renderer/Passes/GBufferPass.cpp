@@ -45,7 +45,7 @@ namespace Engine
             },
             .executeCallback = [this, rg, cullPass, scene](RHI::CommandList& cmd)
             {
-                cmd.SetViewport({
+                cmd.SetViewport(RHI::Viewport{
                     .width    = (float)rg->GetFrameSize().width,
                     .height   = (float)rg->GetFrameSize().height,
                     .maxDepth = 1.0,

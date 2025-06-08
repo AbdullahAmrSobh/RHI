@@ -16,7 +16,7 @@ namespace Engine
         RHI::Handle<RHI::ComputePipeline>  m_pipeline;
         RHI::Handle<RHI::BindGroup>        m_bindGroup;
 
-        RHI::Handle<RHI::RGBuffer> m_drawIndirectArgs;
+        RHI::RGBuffer* m_drawIndirectArgs;
 
         RHI::Device* m_device;
 
