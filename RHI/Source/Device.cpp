@@ -31,7 +31,8 @@ namespace RHI
     {
         ZoneScoped;
         auto* renderGraph = new RenderGraph();
-        renderGraph->Init(this, createInfo);
+        auto  result      = renderGraph->Init(this, createInfo);
+        TL_ASSERT(result == ResultCode::Success);
         return renderGraph;
     }
 
@@ -71,8 +72,8 @@ namespace RHI
             return ResultCode::ErrorUnknown;
         }
 
-        if (auto* api = (RENDERDOC_API_1_6_0*)m_renderdocAPi)
-            api->MaskOverlayBits(0, 0);
+        if (api)
+            (*api)->MaskOverlayBits(0, 0);
 
         TL_LOG_INFO("Renderdoc connected");
         return ResultCode::Success;

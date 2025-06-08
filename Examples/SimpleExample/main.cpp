@@ -3,7 +3,7 @@
 
 #include <TL/Allocator/MemPlumber.hpp>
 #include <TL/Defer.hpp>
-#include <TL/FileSystem/FileSystem.hpp>
+#include <TL/FileSystem/File.hpp>
 #include <TL/Log.hpp>
 #include <TL/Utils.hpp>
 
@@ -23,13 +23,14 @@
 
 inline static RHI::ShaderModule* LoadShaderModule(RHI::Device* device, const char* path)
 {
-    auto code   = TL::ReadBinaryFile(path);
-    // NOTE: Code might not be correctly aligned here?
+    auto file       = TL::File(path, TL::IOMode::Read);
+    auto shaderBlob = TL::Vector<uint32_t>(file.size());
+    auto [_, err]   = file.read(TL::Block::create(shaderBlob));
+    TL_ASSERT(err == TL::IOResultCode::Success);
     auto module = device->CreateShaderModule({
         .name = path,
-        .code = {(uint32_t*)code.ptr, code.size / 4},
+        .code = shaderBlob,
     });
-    TL::Release(code, 1);
     return module;
 }
 

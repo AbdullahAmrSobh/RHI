@@ -3,25 +3,12 @@
 #include "PipelineLibrary.hpp"
 #include "Passes/GBufferPass.hpp"
 
-#include <TL/FileSystem/FileSystem.hpp>
 #include <TL/Defer.hpp>
 
 #include <glm/glm.hpp>
 
 namespace Engine
 {
-    inline static RHI::ShaderModule* LoadShaderModule(RHI::Device* device, const char* path)
-    {
-        auto code   = TL::ReadBinaryFile(path);
-        // NOTE: Code might not be correctly aligned here?
-        auto module = device->CreateShaderModule({
-            .name = path,
-            .code = {(uint32_t*)code.ptr, code.size / 4},
-        });
-        TL::Release(code, 1);
-        return module;
-    }
-
     inline static RHI::Handle<RHI::GraphicsPipeline> CreateGraphicsPipeline(RHI::Device* device, RHI::Handle<RHI::PipelineLayout> layout, const char* name)
     {
         auto vertexShaderPath   = std::format("{}.vertex.spv", name);
@@ -175,7 +162,7 @@ namespace Engine
 
             const char* moduleName = "VSMain";
             const char* modulePath = "I:/repos/repos3/RHI/Examples/Triangle/Renderer/Shaders/GBufferPass.slang";
-            auto        sourceCode = TL::ReadTextFile(modulePath);
+            // auto        sourceCode = TL::ReadTextFile(modulePath);
 
             Slang::ComPtr<slang::IModule> slangModule;
             Slang::ComPtr<slang::IBlob>   diagnosticsBlob;

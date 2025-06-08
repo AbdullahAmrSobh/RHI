@@ -279,9 +279,9 @@ namespace Engine
             m_allocated++;
         }
 
-        m_device->BufferWrite(m_buffer, m_bufferOffset + (sizeof(uint32_t) * 4) + (sizeof(T) * index), TL::Block::Create(element));
+        m_device->BufferWrite(m_buffer, m_bufferOffset + (sizeof(uint32_t) * 4) + (sizeof(T) * index), TL::Block::create(element));
         m_count++;
-        m_device->BufferWrite(m_buffer, m_bufferOffset, TL::Block::Create(m_count));
+        m_device->BufferWrite(m_buffer, m_bufferOffset, TL::Block::create(m_count));
 
         return GpuArrayHandle(this, index);
     }
@@ -354,7 +354,7 @@ namespace Engine
 
         void Update(T data)
         {
-            m_parentPool->Write(m_bufferSuballocation, TL::Block::Create(data));
+            m_parentPool->Write(m_bufferSuballocation, TL::Block::create(data));
         }
     };
 

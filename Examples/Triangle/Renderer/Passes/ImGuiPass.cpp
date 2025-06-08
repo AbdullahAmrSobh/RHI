@@ -2,7 +2,7 @@
 
 #include <TL/Allocator/MemPlumber.hpp>
 #include <TL/Defer.hpp>
-#include <TL/FileSystem/FileSystem.hpp>
+#include <TL/FileSystem/File.hpp>
 #include <TL/Log.hpp>
 #include <TL/Utils.hpp>
 
@@ -11,22 +11,12 @@
 #include "Examples-Base/Event.hpp"
 #include "Examples-Base/Window.hpp"
 
+#include "../PipelineLibrary.hpp"
+
 using namespace Examples;
 
 namespace Engine
 {
-    inline static RHI::ShaderModule* LoadShaderModule(RHI::Device* device, const char* path)
-    {
-        auto code   = TL::ReadBinaryFile(path);
-        // NOTE: Code might not be correctly aligned here?
-        auto module = device->CreateShaderModule({
-            .name = path,
-            .code = {(uint32_t*)code.ptr, code.size / 4},
-        });
-        TL::Release(code, 1);
-        return module;
-    }
-
     inline static ImGuiKey ConvertToImguiKeycode(KeyCode key)
     {
         switch (key)

@@ -4,6 +4,8 @@
 
 #include "Common.hpp"
 
+#include <TL/FileSystem/File.hpp>
+
 #include <slang/slang.h>
 #include <slang/slang-com-helper.h>
 #include <slang/slang-com-ptr.h>
@@ -11,6 +13,19 @@
 
 namespace Engine
 {
+    inline static RHI::ShaderModule* LoadShaderModule(RHI::Device* device, const char* path)
+    {
+        auto file       = TL::File(path, TL::IOMode::Read);
+        auto shaderBlob = TL::Vector<uint8_t>(file.size());
+        auto [_, err]   = file.read(TL::Block::create(shaderBlob));
+        TL_ASSERT(err == TL::IOResultCode::Success);
+        auto module = device->CreateShaderModule({
+            .name = path,
+            .code = {(uint32_t*)shaderBlob.data(), shaderBlob.size() / size_t(4)},
+        });
+        return module;
+    }
+
     constexpr uint32_t BINDING_SCENEVIEW           = 0;
     constexpr uint32_t BINDING_DRAWREQUESTS        = 1;
     constexpr uint32_t BINDING_INDEXEDMESHES       = 2;
