@@ -9,7 +9,14 @@
 
 namespace Engine
 {
-    inline static RHI::Handle<RHI::GraphicsPipeline> CreateGraphicsPipeline(RHI::Device* device, RHI::Handle<RHI::PipelineLayout> layout, const char* name)
+    static TL::Map<const char*, std::pair<std::vector<RHI::Format>, RHI::Format>> formatsLookup =
+        {
+            {ShaderNames::GBufferFill, {{GBufferPass::Formats[0], GBufferPass::Formats[1], GBufferPass::Formats[2]}, GBufferPass::DepthFormat}},
+            {ShaderNames::Compose,     {{RHI::Format::RGBA8_UNORM}, RHI::Format::Unknown}                                                     },
+    };
+
+    inline static RHI::Handle<RHI::GraphicsPipeline>
+    CreateGraphicsPipeline(RHI::Device* device, RHI::Handle<RHI::PipelineLayout> layout, const char* name)
     {
         auto vertexShaderPath   = std::format("{}.vertex.spv", name);
         auto fragmentShaderPath = std::format("{}.fragment.spv", name);
@@ -33,49 +40,54 @@ namespace Engine
                 RHI::BlendFactor::OneMinusSrcAlpha,
                 RHI::ColorWriteMask::All,
             };
+        // Fetch render target layouts from the lookup table using the shader name
+        auto it = formatsLookup.find(name);
+        TL_ASSERT(it != formatsLookup.end(), "No render target layout found for shader");
+        const auto& [colorFormats, depthFormat] = it->second;
+
         RHI::GraphicsPipelineCreateInfo pipelineCI{
-            .name                 = name,
-            .vertexShaderName     = "VSMain",
-            .vertexShaderModule   = vertexModule,
-            .pixelShaderName      = "PSMain",
-            .pixelShaderModule    = pixelModule,
-            .layout               = layout,
+            .name               = name,
+            .vertexShaderName   = "VSMain",
+            .vertexShaderModule = vertexModule,
+            .pixelShaderName    = "PSMain",
+            .pixelShaderModule  = pixelModule,
+            .layout             = layout,
             .vertexBufferBindings =
-            {
                 {
-                    .stride     = sizeof(glm::vec3),
-                    .attributes = {{.format = RHI::Format::RGB32_FLOAT}},
-                },
-                {
-                    .stride     = sizeof(glm::vec3),
-                    .attributes = {{.format = RHI::Format::RGB32_FLOAT}},
-                },
-                {
-                    .stride     = sizeof(glm::vec2),
-                    .attributes = {{.format = RHI::Format::RG32_FLOAT}},
-                },
-                {
-                    .stride     = sizeof(glm::mat4),
-                    .stepRate   = RHI::PipelineVertexInputRate::PerInstance,
-                    .attributes = {{.format = RHI::Format::RGBA32_FLOAT}, {.format = RHI::Format::RGBA32_FLOAT}, {.format = RHI::Format::RGBA32_FLOAT}, {.format = RHI::Format::RGBA32_FLOAT}},
-                },
-            },
+                                       {
+                        .stride     = sizeof(glm::vec3),
+                        .attributes = {{.format = RHI::Format::RGB32_FLOAT}},
+                    },
+                                       {
+                        .stride     = sizeof(glm::vec3),
+                        .attributes = {{.format = RHI::Format::RGB32_FLOAT}},
+                    },
+                                       {
+                        .stride     = sizeof(glm::vec2),
+                        .attributes = {{.format = RHI::Format::RG32_FLOAT}},
+                    },
+                                       {
+                        .stride     = sizeof(glm::mat4),
+                        .stepRate   = RHI::PipelineVertexInputRate::PerInstance,
+                        .attributes = {{.format = RHI::Format::RGBA32_FLOAT}, {.format = RHI::Format::RGBA32_FLOAT}, {.format = RHI::Format::RGBA32_FLOAT}, {.format = RHI::Format::RGBA32_FLOAT}},
+                    },
+                                       },
             .renderTargetLayout =
-            {
-                .colorAttachmentsFormats = GBufferPass::Formats,
-                .depthAttachmentFormat   = GBufferPass::DepthFormat,
-            },
+                {
+                                       .colorAttachmentsFormats = colorFormats,
+                                       .depthAttachmentFormat   = depthFormat,
+                                       },
             .colorBlendState = {
-                .blendStates    = {attachmentBlendDesc, attachmentBlendDesc, attachmentBlendDesc},
-            },
+                                       .blendStates = {attachmentBlendDesc, attachmentBlendDesc, attachmentBlendDesc},
+                                       },
             .rasterizationState = {
-                .cullMode  = RHI::PipelineRasterizerStateCullMode::BackFace,
-                .frontFace = RHI::PipelineRasterizerStateFrontFace::Clockwise,
-            },
+                                       .cullMode  = RHI::PipelineRasterizerStateCullMode::BackFace,
+                                       .frontFace = RHI::PipelineRasterizerStateFrontFace::Clockwise,
+                                       },
             .depthStencilState = {
-                .depthTestEnable  = true,
-                .depthWriteEnable = true,
-            },
+                                       .depthTestEnable  = true,
+                                       .depthWriteEnable = true,
+                                       },
         };
         return device->CreateGraphicsPipeline(pipelineCI);
     }
@@ -122,17 +134,53 @@ namespace Engine
                          {RHI::BindingType::StorageBuffer, RHI::Access::Read, 1, RHI::ShaderStage::AllStages},
                          {RHI::BindingType::StorageBuffer, RHI::Access::Read, 1, RHI::ShaderStage::AllStages},
                          {RHI::BindingType::StorageBuffer, RHI::Access::Write, 1, RHI::ShaderStage::AllStages},
-                         {RHI::BindingType::StorageBuffer, RHI::Access::Write, 1, RHI::ShaderStage::AllStages},
+
+                         // GBuffer
+                {RHI::BindingType::SampledImage, RHI::Access::Read, 1, RHI::ShaderStage::AllStages},
+                         {RHI::BindingType::SampledImage, RHI::Access::Read, 1, RHI::ShaderStage::AllStages},
+                         {RHI::BindingType::SampledImage, RHI::Access::Read, 1, RHI::ShaderStage::AllStages},
+                         {RHI::BindingType::SampledImage, RHI::Access::Read, 1, RHI::ShaderStage::AllStages},
+
+                         // Lighting
+                {RHI::BindingType::SampledImage, RHI::Access::Read, 1, RHI::ShaderStage::AllStages},
+
+                         // compute compose
+                {RHI::BindingType::StorageImage, RHI::Access::Write, 1, RHI::ShaderStage::AllStages},
+
                          {RHI::BindingType::SampledImage, RHI::Access::Read, RHI::BindlessArraySize, RHI::ShaderStage::AllStages},
                          },
         };
         m_bindGroupLayout = m_device->CreateBindGroupLayout(bindGroupLayoutCI);
+        m_pipelineLayout  = m_device->CreatePipelineLayout({"PipelineLayout", m_bindGroupLayout});
 
-        m_graphicsPipelineLayout = m_device->CreatePipelineLayout({"GraphicsPipelineLayout", m_bindGroupLayout});
-        m_computePipelineLayout  = m_device->CreatePipelineLayout({"ComputePipelineLayout", m_bindGroupLayout});
+        m_watcher.subscribe([this](const TL::FileEvent& event)
+            {
+                if (event.type == TL::FileEventType::Modified)
+                    return;
 
-        m_graphicsPipelines[ShaderNames::GBufferFill] = CreateGraphicsPipeline(m_device, m_graphicsPipelineLayout, ShaderNames::GBufferFill);
-        m_computePipelines[ShaderNames::Cull]         = CreateComputePipeline(m_device, m_computePipelineLayout, ShaderNames::Cull);
+                TL_LOG_INFO("Reloading `{}`", event.path);
+
+                if (auto computeIt = m_computePipelines.find(event.path); computeIt != m_computePipelines.end())
+                {
+                    m_device->DestroyComputePipeline(computeIt->second);
+                    // m_computePipelines[event.path.data()] = CreateComputePipeline(event.path.data());
+
+                    m_computePipelines[event.path.data()] = CreateComputePipeline(m_device, m_pipelineLayout, event.path.data());
+                }
+                else if (auto graphicsIt = m_graphicsPipelines.find(event.path); graphicsIt != m_graphicsPipelines.end())
+                {
+                    m_device->DestroyGraphicsPipeline(graphicsIt->second);
+                    // m_graphicsPipelines[event.path.data()] = CreateGraphicsPipeline(event.path.data());
+
+                    m_graphicsPipelines[event.path.data()] = CreateGraphicsPipeline(m_device, m_pipelineLayout, event.path.data());
+                }
+                else
+                {
+                    TL_UNREACHABLE();
+                }
+            });
+
+#if 0
 
         {
             Slang::ComPtr<slang::IGlobalSession> globalSession;
@@ -169,8 +217,8 @@ namespace Engine
             slangModule = session->loadModule(modulePath, diagnosticsBlob.writeRef());
 
             {
-#define TRY_SLANG_RETURN_ON_FAIL(x) \
-    if ((x) != SLANG_OK) return ResultCode::ErrorUnknown;
+    #define TRY_SLANG_RETURN_ON_FAIL(x) \
+        if ((x) != SLANG_OK) return ResultCode::ErrorUnknown;
 
                 // Next we will collect all of the entry points defined in the module,
                 // to form the list of components we want to link together to form
@@ -230,6 +278,7 @@ namespace Engine
                 auto name                     = elementTypeLayout->getName();
             }
         }
+#endif
 
         return ResultCode::Success;
     }
@@ -238,27 +287,45 @@ namespace Engine
     {
         PipelineLibrary::ptr = nullptr;
 
-        m_device->DestroyBindGroupLayout(m_bindGroupLayout);
-
         for (auto [_, pipeline] : m_graphicsPipelines)
             m_device->DestroyGraphicsPipeline(pipeline);
 
         for (auto [_, pipeline] : m_computePipelines)
             m_device->DestroyComputePipeline(pipeline);
 
-        if (m_graphicsPipelineLayout) m_device->DestroyPipelineLayout(m_graphicsPipelineLayout);
-        if (m_computePipelineLayout) m_device->DestroyPipelineLayout(m_computePipelineLayout);
+        if (m_pipelineLayout != RHI::NullHandle)
+            m_device->DestroyPipelineLayout(m_pipelineLayout);
+
+        if (m_bindGroupLayout != RHI::NullHandle)
+            m_device->DestroyBindGroupLayout(m_bindGroupLayout);
     }
 
     RHI::Handle<RHI::GraphicsPipeline> PipelineLibrary::GetGraphicsPipeline(const char* name)
     {
         auto it = m_graphicsPipelines.find(name);
-        return (it != m_graphicsPipelines.end()) ? it->second : RHI::NullHandle;
+        if (it == m_graphicsPipelines.end())
+        {
+            auto vertexPath   = std::format("{}.vertex.spv", name);
+            auto fragmentPath = std::format("{}.fragment.spv", name);
+            m_watcher.watch(vertexPath.data(), TL::FileEventType::Modified, false);
+            m_watcher.watch(fragmentPath.data(), TL::FileEventType::Modified, false);
+            m_graphicsPipelines[name] = CreateGraphicsPipeline(m_device, m_pipelineLayout, name);
+            it                        = m_graphicsPipelines.find(name);
+        }
+        return it->second;
     }
 
     RHI::Handle<RHI::ComputePipeline> PipelineLibrary::GetComputePipeline(const char* name)
     {
         auto it = m_computePipelines.find(name);
-        return (it != m_computePipelines.end()) ? it->second : RHI::NullHandle;
+        if (it == m_computePipelines.end())
+        {
+            auto computePath = std::format("{}.compute.spv", name);
+            m_watcher.watch(computePath.data(), TL::FileEventType::Modified, false);
+            m_computePipelines[name] = CreateComputePipeline(m_device, m_pipelineLayout, name);
+            it                       = m_computePipelines.find(name);
+        }
+        return it->second;
     }
+
 } // namespace Engine

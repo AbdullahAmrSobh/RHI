@@ -524,7 +524,9 @@ namespace RHI::Vulkan
         TL_MAYBE_UNUSED uint32_t maxUniformBuffers         = properties.properties.limits.maxPerStageDescriptorUniformBuffers;
         TL_MAYBE_UNUSED uint32_t maxStorageBuffers         = properties.properties.limits.maxPerStageDescriptorStorageBuffers;
         TL_MAYBE_UNUSED uint32_t maxCombinedImageSamplers  = properties.properties.limits.maxPerStageDescriptorSampledImages + properties.properties.limits.maxPerStageDescriptorSamplers;
-        uint32_t                 maxBindlessSampledImages  = descriptorIndexingProps.maxPerStageDescriptorUpdateAfterBindSampledImages;
+
+        /// @todo: subtract 100 to reserve for pass inputs
+        uint32_t                 maxBindlessSampledImages  = descriptorIndexingProps.maxPerStageDescriptorUpdateAfterBindSampledImages - 100;
         TL_MAYBE_UNUSED uint32_t maxBindlessStorageImages  = descriptorIndexingProps.maxPerStageDescriptorUpdateAfterBindStorageImages;
         TL_MAYBE_UNUSED uint32_t maxBindlessSamplers       = descriptorIndexingProps.maxPerStageDescriptorUpdateAfterBindSamplers;
         TL_MAYBE_UNUSED uint32_t maxBindlessUniformBuffers = descriptorIndexingProps.maxPerStageDescriptorUpdateAfterBindUniformBuffers;

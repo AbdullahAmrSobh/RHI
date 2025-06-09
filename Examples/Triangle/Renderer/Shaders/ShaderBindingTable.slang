@@ -9,6 +9,17 @@ struct ShaderBindingTable
     StructuredBuffer<GPU::MeshMaterialBindless>    materials;
     RWStructuredBuffer<U32>                        drawParametersCount;
     RWStructuredBuffer<GPU::DrawIndexedParameters> outDrawParameters;
+
+    // Pass bind points
+    Texture2D                                      pass_gBuffer_wsPosition;
+    Texture2D                                      pass_gBuffer_normal;;
+    Texture2D                                      pass_gBuffer_material;
+    Texture2D                                      pass_gBuffer_depth;
+
+    Texture2D                                      pass_lighting_input;
+
+    RWTexture2D                                    pass_compose_output;
+
     Texture2D                                      bindlessTextures[];
 };
 
@@ -58,6 +69,8 @@ bool PushDrawParameter(GPU::DrawRequest request)
     outData.firstInstance = 0;
     outData.instanceCount = 1;
     bindings.outDrawParameters[currentIdnex] = outData;
+
+    return false;
 }
 
 // float4 TransformModelToClip(float3 position, U32 modelID)

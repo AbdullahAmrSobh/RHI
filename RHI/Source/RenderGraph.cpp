@@ -28,6 +28,10 @@ namespace RHI
             .f32{0.2f, 0.7f, 0.2f, 1.0f}
         };
 
+        constexpr ClearValue DebugMarker_AsyncCompute{
+            .f32{0.3f, 0.6f, 0.24f, 1.0f}
+        };
+
         constexpr ClearValue DebugMarker_Transfer{
             .f32{0.2f, 0.4f, 0.7f, 1.0f}
         };
@@ -167,6 +171,10 @@ namespace RHI
     {
         TL_ASSERT(m_rg->m_state.frameRecording);
 
+        // Add dependency from the resource's producer to this pass
+        if (resource->m_producer && resource->m_producer != m_pass)
+            m_rg->AddDependency(resource->m_producer, m_pass);
+
         if (resource->m_producer == nullptr)
         {
             TL_ASSERT(access & Access::Write);
@@ -176,10 +184,6 @@ namespace RHI
         {
             resource = m_rg->EmplacePassImage(resource->m_frameResource, m_pass, ImageBarrierState{usage, stage, access});
         }
-
-        // Add dependency from the resource's producer to this pass
-        if (resource->m_producer && resource->m_producer != m_pass)
-            m_rg->AddDependency(resource->m_producer, m_pass);
 
         // Add resource dependency to the pass
         resource->m_frameResource->usageFlags |= usage; // extend actual usage
@@ -197,6 +201,10 @@ namespace RHI
     {
         TL_ASSERT(m_rg->m_state.frameRecording);
 
+        // Add dependency from the resource's producer to this pass
+        if (resource->m_producer && resource->m_producer != m_pass)
+            m_rg->AddDependency(resource->m_producer, m_pass);
+
         if (resource->m_producer == nullptr)
         {
             TL_ASSERT(access & Access::Write);
@@ -206,10 +214,6 @@ namespace RHI
         {
             resource = m_rg->EmplacePassBuffer(resource->m_frameResource, m_pass, BufferBarrierState{usage, stage, access});
         }
-
-        // Add dependency from the resource's producer to this pass
-        if (resource->m_producer && resource->m_producer != m_pass)
-            m_rg->AddDependency(resource->m_producer, m_pass);
 
         // Add resource dependency to the pass
         resource->m_frameResource->usageFlags |= usage; // extend actual usage
@@ -703,6 +707,7 @@ namespace RHI
                 TL_ASSERT(!isCyclic, "Detected cyclic dependency in pass: ", m_passPool[nodeIndex]->GetName());
             }
         }
+        // I don't know why/how but it flips the expected order
         std::reverse(sortedPasses.begin(), sortedPasses.end());
     }
 
@@ -906,19 +911,19 @@ namespace RHI
 
         bool isCompute = pass->m_type == PassType::Compute || pass->m_type == PassType::AsyncCompute;
 
-        ClearValue markerColor = Colors::DebugMarker_Compute;
+        ClearValue markerColor{};
         switch (pass->m_type)
         {
         case PassType::Graphics:     markerColor = Colors::DebugMarker_Graphics; break;
-        case PassType::Compute:      markerColor = Colors::DebugMarker_Graphics; break;
-        case PassType::AsyncCompute: markerColor = Colors::DebugMarker_Graphics; break;
-        case PassType::Transfer:     markerColor = Colors::DebugMarker_Graphics; break;
+        case PassType::Compute:      markerColor = Colors::DebugMarker_Compute; break;
+        case PassType::AsyncCompute: markerColor = Colors::DebugMarker_AsyncCompute; break;
+        case PassType::Transfer:     markerColor = Colors::DebugMarker_Transfer; break;
         }
         commandList->PushDebugMarker(pass->GetName(), markerColor);
 
         const auto& [prebarriers, preImageBarriers, preBufferBarriers] = pass->m_barriers[RGPass::Prilogue];
-
         commandList->AddPipelineBarrier(prebarriers, preImageBarriers, preBufferBarriers);
+
         if (pass->m_type == PassType::Graphics)
         {
             TL::Vector<ColorAttachment>          attachments;

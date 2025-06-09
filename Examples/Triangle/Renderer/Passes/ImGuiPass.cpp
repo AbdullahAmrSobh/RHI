@@ -364,7 +364,7 @@ namespace Engine
             .size          = rg->GetFrameSize(),
             .setupCallback = [&](RHI::RenderGraphBuilder& builder)
             {
-                builder.AddColorAttachment({.color = outAttachment, .loadOp = RHI::LoadOperation::Discard});
+                builder.AddColorAttachment({.color = outAttachment, .loadOp = RHI::LoadOperation::Load});
             },
             .executeCallback = [this, drawData, &rg](RHI::CommandList& commandList)
             {

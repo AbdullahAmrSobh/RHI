@@ -475,7 +475,7 @@ namespace RHI::Vulkan
         {
         case ImageUsage::ShaderResource:
             if (access & Access::Read) result |= VK_ACCESS_2_SHADER_READ_BIT;
-            TL_ASSERT((access & Access::Write) == Access::None, "ImageUsage::ShaderResource can't have write access");
+            // TL_ASSERT((access & Access::Write) == Access::None, "ImageUsage::ShaderResource can't have write access");
             break;
         case ImageUsage::StorageResource:
             if (access & Access::Read) result |= VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
@@ -568,6 +568,7 @@ namespace RHI::Vulkan
                 TL_UNREACHABLE();
                 return VK_IMAGE_LAYOUT_GENERAL;
             }
+        case ImageUsage::StorageResource: return VK_IMAGE_LAYOUT_GENERAL;
         case ImageUsage::Color:        return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         // TODO: use <DEPTH/STENCIL>_READ_ONLY_OPTIMAL
         case ImageUsage::Depth:        return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;

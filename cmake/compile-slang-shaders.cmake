@@ -50,6 +50,22 @@ function(compile_slang_shaders)
             COMMENT "Compiling ${STAGE_SUFFIX} shader: ${SHADER_PATH}..."
         )
 
+        # # If both vertex and fragment shaders exist, merge them using spirv-link
+        # if(${STAGE_SUFFIX} STREQUAL "fragment")
+        #     get_filename_component(SHADER_NAME ${SHADER_PATH} NAME_WE)
+        #     set(VERTEX_SPV "${SLANG_SHADER_OUTPUT_DIR}/${SHADER_NAME}.vertex.spv")
+        #     set(FRAGMENT_SPV "${SLANG_SHADER_OUTPUT_DIR}/${SHADER_NAME}.fragment.spv")
+        #     set(MODULE_SPV "${SLANG_SHADER_OUTPUT_DIR}/${SHADER_NAME}.module.spv")
+        #     add_custom_command(
+        #     OUTPUT ${MODULE_SPV}
+        #     COMMAND ${SPIRV_LINK_EXECUTABLE} -o ${MODULE_SPV} ${VERTEX_SPV} ${FRAGMENT_SPV}
+        #     DEPENDS ${SPIRV_LINK_EXECUTABLE} ${VERTEX_SPV} ${FRAGMENT_SPV}
+        #     COMMENT "Linking vertex and fragment shaders into module: ${MODULE_SPV}..."
+        #     )
+        #     list(APPEND COMPILE_SLANG_SHADERS_OUTPUT_FILES ${MODULE_SPV})
+        #     set(COMPILE_SLANG_SHADERS_OUTPUT_FILES ${COMPILE_SLANG_SHADERS_OUTPUT_FILES} PARENT_SCOPE)
+        # endif()
+
         list(APPEND COMPILE_SLANG_SHADERS_OUTPUT_FILES ${OUTPUT_PATH})
         set(COMPILE_SLANG_SHADERS_OUTPUT_FILES ${COMPILE_SLANG_SHADERS_OUTPUT_FILES} PARENT_SCOPE)
     endfunction()

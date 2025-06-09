@@ -49,6 +49,7 @@ namespace Engine
         RHI::Device* m_device;
 
         RHI::RenderGraph* m_renderGraph;
+
     private:
         RHI::Swapchain*   m_swapchain;
         Examples::Window* m_window;
@@ -65,8 +66,10 @@ namespace Engine
         GeometryBufferPool m_geometryBufferPool;
 
         // Passes
-        CullPass    m_cullPass;
-        GBufferPass m_gbufferPass;
-        ImGuiPass   m_imguiPass;
+        CullPass     m_cullPass;
+        GBufferPass  m_gbufferPass;
+        LightingPass m_lightingPass;
+        ComposePass  m_composePass;
+        ImGuiPass    m_imguiPass;
     };
 } // namespace Engine

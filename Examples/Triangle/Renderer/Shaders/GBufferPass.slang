@@ -1,5 +1,13 @@
 import ShaderBindingTable;
 
+// struct GBufferInputs
+// {
+//     GPU::SceneView sceneView;
+//     StructuredBuffer<float4x4> transforms;
+//     [[bindless]] Texture2D bindlessTextures[];
+// };
+// ParameterBlock<GBufferInput> shaderInputs;
+
 struct UGBVertexInput
 {
     float3 position;

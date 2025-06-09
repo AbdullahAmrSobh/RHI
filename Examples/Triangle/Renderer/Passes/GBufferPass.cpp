@@ -10,16 +10,13 @@ namespace Engine
 {
     ResultCode GBufferPass::Init(RHI::Device* device)
     {
-        m_pipeline = PipelineLibrary::ptr->GetGraphicsPipeline(ShaderNames::GBufferFill);
-
-        auto bindGroupLayout = PipelineLibrary::ptr->GetBindGroupLayout();
-        m_bindGroup          = device->CreateBindGroup({.name = "GBuffer-BindGroup", .layout = bindGroupLayout});
-
+        m_bindGroup = device->CreateBindGroup({.name = "GBuffer-BindGroup", .layout = PipelineLibrary::ptr->GetBindGroupLayout()});
         return ResultCode::Success;
     }
 
-    void GBufferPass::Shutdown()
+    void GBufferPass::Shutdown(RHI::Device* device)
     {
+        device->DestroyBindGroup(m_bindGroup);
     }
 
     void GBufferPass::AddPass(RHI::RenderGraph* rg, const CullPass& cullPass, const Scene* scene)
@@ -62,7 +59,7 @@ namespace Engine
                 auto pipeline = PipelineLibrary::ptr->GetGraphicsPipeline(ShaderNames::GBufferFill);
 
                 RHI::BindGroupBuffersUpdateInfo updateInfo[] = {
-                    {BINDING_SCENEVIEW, 0, scene->m_primaryView->m_sceneViewUB.GetBinding()}
+                    {Bindings::SceneView, 0, scene->m_primaryView->m_sceneViewUB.GetBinding()}
                 };
                 Renderer::ptr->m_device->UpdateBindGroup(m_bindGroup, {.buffers = updateInfo});
                 cmd.BindGraphicsPipeline(pipeline, {{m_bindGroup}});
@@ -81,6 +78,118 @@ namespace Engine
                 RHI::BufferBindingInfo argCountBuffer{rg->GetBufferHandle(cullPass.m_drawIndirectArgs), 0};
                 RHI::BufferBindingInfo argParamsBuffer{rg->GetBufferHandle(cullPass.m_drawIndirectArgs), 64};
                 cmd.DrawIndexedIndirect(argParamsBuffer, argCountBuffer, 40, sizeof(RHI::DrawIndexedParameters));
+            },
+        });
+    }
+
+    ResultCode LightingPass::Init(RHI::Device* device)
+    {
+        m_bindGroup = device->CreateBindGroup({.name = "Lighting-BindGroup", .layout = PipelineLibrary::ptr->GetBindGroupLayout()});
+        return ResultCode::Success;
+    }
+
+    void LightingPass::Shutdown(RHI::Device* device)
+    {
+        device->DestroyBindGroup(m_bindGroup);
+    }
+
+    void LightingPass::AddPass(RHI::RenderGraph* rg, const GBufferPass& gbuffer, const class Scene* scene)
+    {
+        rg->AddPass({
+            .name          = "Lighting-Pass",
+            .type          = RHI::PassType::Compute,
+            .setupCallback = [&](RHI::RenderGraphBuilder& builder)
+            {
+                builder.ReadImage(gbuffer.m_attachments[0], RHI::ImageUsage::ShaderResource, RHI::PipelineStage::ComputeShader);
+                builder.ReadImage(gbuffer.m_attachments[1], RHI::ImageUsage::ShaderResource, RHI::PipelineStage::ComputeShader);
+                builder.ReadImage(gbuffer.m_attachments[2], RHI::ImageUsage::ShaderResource, RHI::PipelineStage::ComputeShader);
+                builder.ReadImage(gbuffer.m_attachments[3], RHI::ImageUsage::ShaderResource, RHI::PipelineStage::ComputeShader);
+
+                auto size    = rg->GetFrameSize();
+                m_attachment = rg->CreateImage("lighting", RHI::ImageType::Image2D, {size.width, size.height}, RHI::Format::RGBA8_UNORM);
+                m_attachment = builder.WriteImage(m_attachment, RHI::ImageUsage::StorageResource, RHI::PipelineStage::ComputeShader);
+            },
+            .executeCallback = [this, rg, gbuffer, scene](RHI::CommandList& cmd)
+            {
+                // update bind groups
+                RHI::BindGroupImagesUpdateInfo updateInfo[] = {
+                    {Bindings::gBuffer_wsPosition, 0, rg->GetImageHandle(gbuffer.m_attachments[0])},
+                    {Bindings::gBuffer_normal,     0, rg->GetImageHandle(gbuffer.m_attachments[1])},
+                    {Bindings::gBuffer_material,   0, rg->GetImageHandle(gbuffer.m_attachments[2])},
+                    {Bindings::gBuffer_depth,      0, rg->GetImageHandle(gbuffer.m_attachments[3])},
+                    {Bindings::compose_output,     0, rg->GetImageHandle(m_attachment)            },
+                };
+                Renderer::ptr->m_device->UpdateBindGroup(m_bindGroup, {.images = updateInfo});
+
+                // bind pipeline and bind group states
+                auto pipeline = PipelineLibrary::ptr->GetComputePipeline(ShaderNames::Lighting);
+                cmd.BindComputePipeline(pipeline, {{m_bindGroup}});
+
+                // dispatch
+                static constexpr RHI::ImageSize3D workgroupSize{32, 32, 1};
+
+                auto frameSize = rg->GetFrameSize();
+
+                RHI::DispatchParameters params{
+                    .countX = (uint32_t)std::ceil((float)frameSize.width / (float)workgroupSize.width),
+                    .countY = (uint32_t)std::ceil((float)frameSize.height / (float)workgroupSize.height),
+                    .countZ = 1,
+                };
+                cmd.Dispatch(params);
+            },
+        });
+    }
+
+    ResultCode ComposePass::Init(RHI::Device* device)
+    {
+        m_bindGroup = device->CreateBindGroup({.name = "Lighting-BindGroup", .layout = PipelineLibrary::ptr->GetBindGroupLayout()});
+        return ResultCode::Success;
+    }
+
+    void ComposePass::Shutdown(RHI::Device* device)
+    {
+        device->DestroyBindGroup(m_bindGroup);
+    }
+
+    void ComposePass::AddPass(RHI::RenderGraph* rg, RHI::RGImage* input, RHI::RGImage*& output)
+    {
+        rg->AddPass({
+            .name          = "Compose-Pass",
+            .type          = RHI::PassType::Graphics,
+            .size          = rg->GetFrameSize(),
+            .setupCallback = [&](RHI::RenderGraphBuilder& builder)
+            {
+                builder.ReadImage(input, RHI::ImageUsage::ShaderResource, RHI::PipelineStage::ComputeShader);
+
+                output = builder.AddColorAttachment({.color = output, .loadOp = RHI::LoadOperation::Discard});
+            },
+            .executeCallback = [this, rg, input, output](RHI::CommandList& cmd)
+            {
+                cmd.SetViewport(RHI::Viewport{
+                    .width    = (float)rg->GetFrameSize().width,
+                    .height   = (float)rg->GetFrameSize().height,
+                    .maxDepth = 1.0,
+                });
+                // Apply scissor/clipping rectangle
+                RHI::Scissor scissor{
+                    .offsetX = 0,
+                    .offsetY = 0,
+                    .width   = rg->GetFrameSize().width,
+                    .height  = rg->GetFrameSize().height,
+                };
+                cmd.SetScissor(scissor);
+
+                // update bind groups
+                RHI::BindGroupImagesUpdateInfo updateInfo[] = {
+                    {Bindings::lighting_input, 0, rg->GetImageHandle(input)},
+                };
+                Renderer::ptr->m_device->UpdateBindGroup(m_bindGroup, {.images = updateInfo});
+
+                // bind pipeline and bind group states
+                auto pipeline = PipelineLibrary::ptr->GetGraphicsPipeline(ShaderNames::Compose);
+                cmd.BindGraphicsPipeline(pipeline, {{m_bindGroup}});
+
+                cmd.Draw({6, 1});
             },
         });
     }

@@ -8,13 +8,8 @@ namespace Engine
 {
     ResultCode CullPass::Init(RHI::Device* device)
     {
-        m_device = device;
-
-        m_pipeline = PipelineLibrary::ptr->GetComputePipeline(ShaderNames::Cull);
-
-        auto bindGroupLayout = PipelineLibrary::ptr->GetBindGroupLayout();
-        m_bindGroup          = device->CreateBindGroup({.name = "Cull-BindGroup", .layout = bindGroupLayout});
-
+        m_device    = device;
+        m_bindGroup = device->CreateBindGroup({.name = "Cull-BindGroup", .layout = PipelineLibrary::ptr->GetBindGroupLayout()});
         return ResultCode::Success;
     }
 
@@ -38,14 +33,16 @@ namespace Engine
                 auto& meshDrawData = GeometryBufferPool::ptr->m_drawParams;
 
                 RHI::BindGroupBuffersUpdateInfo updateInfo[] = {
-                    {BINDING_DRAWREQUESTS,        0, scene->m_drawRequests.GetBindingInfo()                                   },
-                    {BINDING_INDEXEDMESHES,       0, meshDrawData.GetBindingInfo()                                            },
-                    {BINDING_DRAWPARAMETERSCOUNT, 0, RHI::BufferBindingInfo{rg->GetBufferHandle(this->m_drawIndirectArgs), 0} },
-                    {BINDING_OUTDRAWPARAMETERS,   0, RHI::BufferBindingInfo{rg->GetBufferHandle(this->m_drawIndirectArgs), 64}},
+                    {Bindings::DrawRequests,        0, scene->m_drawRequests.GetBindingInfo()                                   },
+                    {Bindings::IndexedMeshes,       0, meshDrawData.GetBindingInfo()                                            },
+                    {Bindings::DrawParametersCount, 0, RHI::BufferBindingInfo{rg->GetBufferHandle(this->m_drawIndirectArgs), 0} },
+                    {Bindings::OutDrawParameters,   0, RHI::BufferBindingInfo{rg->GetBufferHandle(this->m_drawIndirectArgs), 64}},
                 };
                 m_device->UpdateBindGroup(m_bindGroup, {.buffers = updateInfo});
 
-                cmd.BindComputePipeline(m_pipeline, {{m_bindGroup}});
+                auto pipeline = PipelineLibrary::ptr->GetComputePipeline(ShaderNames::Cull);
+
+                cmd.BindComputePipeline(pipeline, {{m_bindGroup}});
                 cmd.Dispatch({scene->m_drawRequests.GetCount(), 1, 1});
             },
         });

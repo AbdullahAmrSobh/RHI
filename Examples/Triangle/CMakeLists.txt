@@ -16,6 +16,7 @@ set(SOURCE_FILES
 set(SHADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/GBufferPass.slang
     ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/ImGui.slang
+    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/Compose.slang
 )
 
 set(SHADER_GFX_FILES
@@ -26,6 +27,7 @@ set(SHADER_GFX_FILES
 
 set(SHADER_COMPUTE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/Cull.slang
+    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/Lighting.slang
 )
 
 # @note: for some reason I need to copy dawn dlls next to every executable (the build script should handle this!)

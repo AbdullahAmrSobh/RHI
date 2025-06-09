@@ -118,6 +118,12 @@ namespace Engine
         result = m_gbufferPass.Init(m_device);
         TL_ASSERT(RHI::IsSuccess(result));
 
+        result = m_lightingPass.Init(m_device);
+        TL_ASSERT(RHI::IsSuccess(result));
+
+        result = m_composePass.Init(m_device);
+        TL_ASSERT(RHI::IsSuccess(result));
+
         result = m_imguiPass.Init(m_device, RHI::Format::RGBA8_UNORM);
         TL_ASSERT(RHI::IsSuccess(result));
 
@@ -129,7 +135,9 @@ namespace Engine
         ZoneScoped;
 
         m_imguiPass.Shutdown();
-        m_gbufferPass.Shutdown();
+        m_gbufferPass.Shutdown(m_device);
+        m_lightingPass.Shutdown(m_device);
+        m_composePass.Shutdown(m_device);
 
         m_geometryBufferPool.Shutdown();
         m_pipelineLibrary.Shutdown();
@@ -167,18 +175,20 @@ namespace Engine
 
         auto [width, height] = m_window->GetWindowSize();
         m_renderGraph->BeginFrame({width, height});
-
-        auto swapchainBackbuffer = m_renderGraph->ImportSwapchain("swapchain-color-attachment", *m_swapchain, RHI::Format::RGBA8_UNORM);
-
-        m_cullPass.AddPass(m_renderGraph, scene);
-
-        m_gbufferPass.AddPass(m_renderGraph, m_cullPass, scene);
-
-        if (m_imguiPass.Enabled())
+        // TODO: Hot reloading this section
         {
-            m_imguiPass.AddPass(m_renderGraph, swapchainBackbuffer, ImGui::GetDrawData());
-        }
+            m_cullPass.AddPass(m_renderGraph, scene);
+            m_gbufferPass.AddPass(m_renderGraph, m_cullPass, scene);
+            m_lightingPass.AddPass(m_renderGraph, m_gbufferPass, scene);
 
+            auto swapchainBackbuffer = m_renderGraph->ImportSwapchain("swapchain-color-attachment", *m_swapchain, RHI::Format::RGBA8_UNORM);
+            // Needs to be graphics because swapchain
+            m_composePass.AddPass(m_renderGraph, m_lightingPass.m_attachment, swapchainBackbuffer);
+            if (m_imguiPass.Enabled())
+            {
+                m_imguiPass.AddPass(m_renderGraph, swapchainBackbuffer, ImGui::GetDrawData());
+            }
+        }
         m_renderGraph->EndFrame();
 
         TL_MAYBE_UNUSED auto result = m_swapchain->Present();
