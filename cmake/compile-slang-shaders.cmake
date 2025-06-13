@@ -46,6 +46,7 @@ function(compile_slang_shaders)
                     -fvk-use-entrypoint-name
                     -capability spirv_1_3
                     ${SHADER_PATH}
+                    -reflection-json ${OUTPUT_PATH}.json
             DEPENDS ${SLANGC_EXECUTABLE} ${SHADER_PATH} ${SLANG_SHADER_DEPENDENCIES}
             COMMENT "Compiling ${STAGE_SUFFIX} shader: ${SHADER_PATH}..."
         )
