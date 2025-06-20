@@ -94,7 +94,8 @@ namespace RHI::Debug
         case BindingType::DynamicStorageBuffer: return "BindingType::DynamicStorageBuffer";
         case BindingType::BufferView:           return "BindingType::BufferView";
         case BindingType::StorageBufferView:    return "BindingType::StorageBufferView";
-        case BindingType::Count:                return "BindingType::Count";
+        // case BindingType::Count:                return "BindingType::Count";
+        default:                return "BindingType::Count";
         }
     }
 
@@ -527,6 +528,18 @@ namespace RHI::Debug
         result += ToString(ci.usageFlags);
         result += ",\n    size: ";
         result += std::to_string(ci.byteSize);
+        result += "\n}";
+        return result;
+    }
+
+    inline static TL::String ToString(const ShaderBinding& shaderBinding)
+    {
+        TL::String result;
+        result += "ShaderBinding{\n";
+        result += ",\n    type: ";
+        result += ToString(shaderBinding.type);
+        result += ",\n    count: ";
+        result += std::to_string(shaderBinding.arrayCount);
         result += "\n}";
         return result;
     }

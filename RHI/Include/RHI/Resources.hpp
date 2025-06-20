@@ -35,6 +35,8 @@ namespace RHI
     RHI_DECLARE_OPAQUE_RESOURCE(GraphicsPipeline);
     RHI_DECLARE_OPAQUE_RESOURCE(ComputePipeline);
 
+#define RHI_FLAG_NAME_RESERVED 0
+
     // Enums (General Purpose)
     enum class BindingType
     {
@@ -48,18 +50,31 @@ namespace RHI
         DynamicStorageBuffer, ///< Dynamic storage buffer.
         BufferView,           ///< Buffer view.
         StorageBufferView,    ///< Storage buffer view.
-        Count,                ///< Number of binding types.
+
+        InputAttachment = RHI_FLAG_NAME_RESERVED,
+        RayTracingAccelerationStructure = RHI_FLAG_NAME_RESERVED,
+
+        Count, ///< Number of binding types.
     };
 
     enum class ShaderStage
     {
-        None    = 0 << 0, ///< No shader stage.
-        Vertex  = 1 << 1, ///< Vertex shader stage.
-        Pixel   = 1 << 2, ///< Pixel (fragment) shader stage.
-        Compute = 1 << 3, ///< Compute shader stage.
-
-        AllGraphics = Vertex | Pixel,
-        AllStages   = AllGraphics | Compute,
+        None          = 0 << 0,                 ///< No shader stage.
+        Vertex        = 1 << 1,                 ///< Vertex shader stage.
+        Pixel         = 1 << 2,                 ///< Pixel (fragment) shader stage.
+        Compute       = 1 << 3,                 ///< Compute shader stage.
+        Hull          = RHI_FLAG_NAME_RESERVED, ///< Hull (tessellation control) shader stage.
+        Domain        = RHI_FLAG_NAME_RESERVED, ///< Domain (tessellation evaluation) shader stage.
+        RayGen        = RHI_FLAG_NAME_RESERVED, ///< Ray generation shader stage.
+        RayIntersect  = RHI_FLAG_NAME_RESERVED, ///< Ray intersection shader stage.
+        RayAnyHit     = RHI_FLAG_NAME_RESERVED, ///< Ray any-hit shader stage.
+        RayClosestHit = RHI_FLAG_NAME_RESERVED, ///< Ray closest-hit shader stage.
+        RayMiss       = RHI_FLAG_NAME_RESERVED, ///< Ray miss shader stage.
+        RayCallable   = RHI_FLAG_NAME_RESERVED, ///< Ray callable shader stage.
+        Mesh          = RHI_FLAG_NAME_RESERVED, ///< Mesh shader stage.
+        Amplification = RHI_FLAG_NAME_RESERVED, ///< Amplification shader stage.
+        AllGraphics   = Vertex | Pixel,
+        AllStages     = AllGraphics | Compute,
     };
 
     TL_DEFINE_FLAG_OPERATORS(ShaderStage);
