@@ -37,7 +37,7 @@ GBufferInput VSMain(UGBVertexInput input)
     var sceneView = GetSceneView();
 
     float4x4 worldToViewMatrix = sceneView.worldToViewMatrix;
-    float4x4 worldToClipMatrix = mul(worldToViewMatrix, sceneView.viewToClipMatrix);
+    float4x4 worldToClipMatrix = mul(sceneView.viewToClipMatrix, worldToViewMatrix);
 
     float4 wsPosition = mul(worldToViewMatrix, float4(input.position, 1.0f));
     float4 csPosition = mul(worldToClipMatrix, wsPosition);

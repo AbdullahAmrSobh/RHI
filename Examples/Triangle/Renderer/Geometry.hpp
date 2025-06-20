@@ -22,6 +22,12 @@ namespace Engine
     /// Use GetAttributeBindingInfo to obtain the starting location of each attribute section. The buffer is partitioned
     /// into MeshAttributeType::Count segments. Optional attributes (e.g. skinning data) are stored in the last segment.
     /// Allocations from this buffer should never fail, as the buffer is grown as needed.
+    inline static RHI::PipelineVertexBindingDesc VertexBufferLayout[] = {
+        {sizeof(glm::vec3), RHI::PipelineVertexInputRate::PerVertex, {{0, RHI::Format::RGB32_FLOAT}}},
+        {sizeof(glm::vec3), RHI::PipelineVertexInputRate::PerVertex, {{0, RHI::Format::RGB32_FLOAT}}},
+        {sizeof(glm::vec2), RHI::PipelineVertexInputRate::PerVertex, {{0, RHI::Format::RG32_FLOAT}} },
+        {sizeof(glm::vec3), RHI::PipelineVertexInputRate::PerInstance, {{0, RHI::Format::RGBA32_FLOAT}}},
+    };
 
     enum class MeshAttributeType
     {
