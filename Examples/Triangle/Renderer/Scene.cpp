@@ -53,7 +53,7 @@ namespace Engine
 
     ResultCode SceneView::Init()
     {
-        m_sceneViewUB = Renderer::ptr->m_allocators.uniformPool.AllocateUniformBuffer<GPU::SceneView>();
+        m_sceneViewUB = Renderer::ptr->AllocateUniformBuffer<GPU::SceneView>();
 
         return ResultCode::Success;
     }

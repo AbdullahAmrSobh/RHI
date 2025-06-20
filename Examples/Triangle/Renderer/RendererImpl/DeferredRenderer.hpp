@@ -2,15 +2,23 @@
 
 #include <RHI/RHI.hpp>
 
+#include "ImGuiPass.hpp"
 #include "../Common.hpp"
 
 namespace Engine
 {
-    class SceneView;
-
-    class GBufferPass
+    struct CullPass
     {
-    public:
+        RHI::Handle<RHI::BindGroup> m_bindGroup;
+        RHI::RGBuffer*              m_drawIndirectArgs;
+
+        ResultCode Init(RHI::Device* device);
+        void       Shutdown(RHI::Device* device);
+        void       AddPass(RHI::Device* device, RHI::RenderGraph* rg, const class Scene* scene);
+    };
+
+    struct GBufferPass
+    {
         // clang-format off
         static constexpr RHI::Format Formats[] = {RHI::Format::RGBA16_FLOAT, RHI::Format::RGBA16_FLOAT, RHI::Format::RG16_FLOAT};
         static constexpr RHI::Format DepthFormat = RHI::Format::D16;
@@ -24,9 +32,8 @@ namespace Engine
         void       AddPass(RHI::RenderGraph* rg, const class CullPass& cullPass, const class Scene* scene);
     };
 
-    class LightingPass
+    struct LightingPass
     {
-    public:
         RHI::Handle<RHI::BindGroup> m_bindGroup;
         RHI::RGImage*               m_attachment;
 
@@ -35,13 +42,28 @@ namespace Engine
         void       AddPass(RHI::RenderGraph* rg, const GBufferPass& gbuffer, const class Scene* scene);
     };
 
-    class ComposePass
+    struct ComposePass
     {
-    public:
         RHI::Handle<RHI::BindGroup> m_bindGroup;
 
         ResultCode Init(RHI::Device* device);
         void       Shutdown(RHI::Device* device);
         void       AddPass(RHI::RenderGraph* rg, RHI::RGImage* input, RHI::RGImage*& output);
+    };
+
+    class DeferredRenderer
+    {
+    public:
+        // Passes
+        CullPass     m_cullPass;
+        GBufferPass  m_gbufferPass;
+        LightingPass m_lightingPass;
+        ComposePass  m_composePass;
+        ImGuiPass    m_imguiPass;
+
+        ResultCode Init(RHI::Device* device);
+        void       Shutdown(RHI::Device* device);
+
+        void Render(RHI::Device* device, RHI::RenderGraph* rg, const Scene* scene, RHI::RGImage* outputAttachment);
     };
 } // namespace Engine

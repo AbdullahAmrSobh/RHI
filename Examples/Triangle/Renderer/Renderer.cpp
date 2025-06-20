@@ -1,8 +1,6 @@
 
 #include "Renderer.hpp"
 
-#include <Examples-Base/ApplicationBase.hpp>
-
 #include <tracy/Tracy.hpp>
 
 #if RHI_BACKEND_D3D12
@@ -65,89 +63,106 @@ namespace Engine
         };
     }
 
-    ResultCode Renderer::Init(Examples::Window* window, RHI::BackendType backend)
+    ResultCode Renderer::Init(RHI::BackendType backend)
     {
         ZoneScoped;
 
-        Renderer::ptr = this;
-
-        m_window = window;
+        // m_window = window;
 
         m_device = CreateDevice(backend);
 
-        auto [width, height] = window->GetWindowSize();
-        RHI::SwapchainCreateInfo swapchainInfo{
-            .name        = "Swapchain",
-            .win32Window = {window->GetNativeHandle()},
-        };
-        m_swapchain = m_device->CreateSwapchain(swapchainInfo);
-        {
-            RHI::SwapchainConfigureInfo configuration{
-                .size        = {width, height},
-                .imageCount  = 1,
-                .imageUsage  = RHI::ImageUsage::Color,
-                .format      = RHI::Format::RGBA8_UNORM,
-                .presentMode = RHI::SwapchainPresentMode::Fifo,
-                .alphaMode   = RHI::SwapchainAlphaMode::None
-            };
-            auto result = m_swapchain->Configure(configuration);
-            TL_ASSERT(RHI::IsSuccess(result));
-        }
+        // auto [width, height] = window->GetWindowSize();
+        // RHI::SwapchainCreateInfo swapchainInfo{
+        //     .name        = "Swapchain",
+        //     .win32Window = {window->GetNativeHandle()},
+        // };
+        // m_swapchain = m_device->CreateSwapchain(swapchainInfo);
+        // {
+        //     RHI::SwapchainConfigureInfo configuration{
+        //         .size        = {width, height},
+        //         .imageCount  = 1,
+        //         .imageUsage  = RHI::ImageUsage::Color,
+        //         .format      = RHI::Format::RGBA8_UNORM,
+        //         .presentMode = RHI::SwapchainPresentMode::Fifo,
+        //         .alphaMode   = RHI::SwapchainAlphaMode::None
+        //     };
+        //     auto result = m_swapchain->Configure(configuration);
+        //     TL_ASSERT(RHI::IsSuccess(result));
+        // }
 
         m_renderGraph = m_device->CreateRenderGraph({});
 
-        RHI::ResultCode result;
+#define TRY(expr)                                  \
+    {                                              \
+        auto result = (expr);                      \
+        if (RHI::IsError(result))                  \
+        {                                          \
+            TL_LOG_ERROR("Renderer::Init failed"); \
+            this->Shutdown();                      \
+            return result;                         \
+        }                                          \
+    }
 
-        result = m_allocators.uniformPool.Init(*m_device, {"uniform-buffers-pool", true, RHI::BufferUsage::Uniform, sizeof(GPU::SceneView) * 100});
-        TL_ASSERT(RHI::IsSuccess(result));
+        TRY(m_allocators.uniformPool.Init(*m_device, {"uniform-buffers-pool", true, RHI::BufferUsage::Uniform, sizeof(GPU::SceneView) * 100}));
+        TRY(m_allocators.storagePool.Init(*m_device, {"storage-buffers-pool", true, RHI::BufferUsage::Storage, sizeof(GPU::SceneView) * 100}));
+        TRY(m_pipelineLibrary.Init(m_device));
+        TRY(m_geometryBufferPool.Init(*m_device));
+        TRY(m_deferredRenderer->Init(m_device));
 
-        result = m_allocators.storagePool.Init(*m_device, {"storage-buffers-pool", true, RHI::BufferUsage::Storage, sizeof(GPU::SceneView) * 100});
-        TL_ASSERT(RHI::IsSuccess(result));
+#undef TRY
 
-        result = m_pipelineLibrary.Init(m_device);
-        TL_ASSERT(RHI::IsSuccess(result));
-
-        result = m_geometryBufferPool.Init(*m_device);
-        TL_ASSERT(RHI::IsSuccess(result));
-
-        // Init passes
-
-        result = m_cullPass.Init(m_device);
-        TL_ASSERT(RHI::IsSuccess(result));
-
-        result = m_gbufferPass.Init(m_device);
-        TL_ASSERT(RHI::IsSuccess(result));
-
-        result = m_lightingPass.Init(m_device);
-        TL_ASSERT(RHI::IsSuccess(result));
-
-        result = m_composePass.Init(m_device);
-        TL_ASSERT(RHI::IsSuccess(result));
-
-        result = m_imguiPass.Init(m_device, RHI::Format::RGBA8_UNORM);
-        TL_ASSERT(RHI::IsSuccess(result));
-
-        return result;
+        return ResultCode::Success;
     }
 
     void Renderer::Shutdown()
     {
         ZoneScoped;
 
-        m_imguiPass.Shutdown();
-        m_gbufferPass.Shutdown(m_device);
-        m_lightingPass.Shutdown(m_device);
-        m_composePass.Shutdown(m_device);
+        m_deferredRenderer->Shutdown(m_device);
 
         m_geometryBufferPool.Shutdown();
         m_pipelineLibrary.Shutdown();
-
         m_device->DestroyRenderGraph(m_renderGraph);
-
-        m_device->DestroySwapchain(m_swapchain);
         DestroyDevice(m_device);
+    }
 
-        Renderer::ptr = nullptr;
+    PresentationViewport Renderer::CreatePresentationViewport(Examples::Window* window)
+    {
+        RHI::SwapchainCreateInfo swapchainInfo{
+            .name        = "Swapchain",
+            .win32Window = {window->GetNativeHandle()},
+        };
+        auto swapchain = m_device->CreateSwapchain(swapchainInfo);
+
+        RHI::SwapchainConfigureInfo configuration{
+            .size        = {window->GetWindowSize().width, window->GetWindowSize().height},
+            .imageCount  = 1,
+            .imageUsage  = RHI::ImageUsage::Color,
+            .format      = RHI::Format::RGBA8_UNORM,
+            .presentMode = RHI::SwapchainPresentMode::Fifo,
+            .alphaMode   = RHI::SwapchainAlphaMode::None
+        };
+        auto result = swapchain->Configure(configuration);
+        TL_ASSERT(RHI::IsSuccess(result));
+        if (result != RHI::ResultCode::Success)
+        {
+            TL_LOG_ERROR("Failed to configure swapchain");
+            m_device->DestroySwapchain(swapchain);
+            return {};
+        }
+
+        return {
+            .swapchain = swapchain,
+            .window    = window,
+        };
+    }
+
+    void Renderer::DestroyPresentationViewport(PresentationViewport& viewport)
+    {
+        TL_ASSERT(viewport.swapchain != nullptr, "Swapchain must not be null");
+        m_device->DestroySwapchain(viewport.swapchain);
+        viewport.swapchain = nullptr;
+        viewport.window    = nullptr;
     }
 
     Scene* Renderer::CreateScene()
@@ -164,52 +179,18 @@ namespace Engine
         TL::Destruct(scene);
     }
 
-    void Renderer::Render(Scene* scene)
+    void Renderer::Render(Scene* scene, const PresentationViewport& viewport)
     {
         // Update scene views
         {
-            ZoneScopedN("Update GPU Buffers");
+            // ZoneScopedN("Update GPU Buffers");
             // m_sceneView->m_sceneViewUB.OnRender(m_renderGraph);
             // m_sceneView->m_drawList.OnRender(m_renderGraph);
         }
 
-        auto [width, height] = m_window->GetWindowSize();
-        m_renderGraph->BeginFrame({width, height});
-        // TODO: Hot reloading this section
-        {
-            m_cullPass.AddPass(m_renderGraph, scene);
-            m_gbufferPass.AddPass(m_renderGraph, m_cullPass, scene);
-            m_lightingPass.AddPass(m_renderGraph, m_gbufferPass, scene);
-
-            auto swapchainBackbuffer = m_renderGraph->ImportSwapchain("swapchain-color-attachment", *m_swapchain, RHI::Format::RGBA8_UNORM);
-            // Needs to be graphics because swapchain
-            m_composePass.AddPass(m_renderGraph, m_lightingPass.m_attachment, swapchainBackbuffer);
-            if (m_imguiPass.Enabled())
-            {
-                m_imguiPass.AddPass(m_renderGraph, swapchainBackbuffer, ImGui::GetDrawData());
-            }
-        }
+        m_renderGraph->BeginFrame(viewport.GetSize());
+        auto swapchainBackbuffer = m_renderGraph->ImportSwapchain("swapchain-color-attachment", *viewport.swapchain, RHI::Format::RGBA8_UNORM);
+        m_deferredRenderer->Render(m_device, m_renderGraph, scene, swapchainBackbuffer);
         m_renderGraph->EndFrame();
-
-        TL_MAYBE_UNUSED auto result = m_swapchain->Present();
-        if (RHI::IsError(result))
-        {
-            result = m_swapchain->Configure({
-                .size        = {width, height},
-                .imageCount  = 1,
-                .imageUsage  = RHI::ImageUsage::Color,
-                .format      = RHI::Format::RGBA8_UNORM,
-                .presentMode = RHI::SwapchainPresentMode::Fifo,
-                .alphaMode   = RHI::SwapchainAlphaMode::None,
-            });
-            TL_ASSERT(RHI::IsSuccess(result));
-        }
-    }
-
-    void Renderer::OnWindowResize()
-    {
-        auto [width, height] = m_window->GetWindowSize();
-        auto result          = m_swapchain->Resize({width, height});
-        TL_ASSERT(RHI::IsSuccess(result));
     }
 } // namespace Engine

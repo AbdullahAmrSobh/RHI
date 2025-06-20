@@ -9,15 +9,6 @@ using namespace Examples;
 
 namespace Engine
 {
-    struct ImGuiViewportWindow
-    {
-        Examples::Window window;
-    };
-
-    struct ImGuiManager::Impl
-    {
-
-    };
 
     inline static ImGuiKey ConvertToImguiKeycode(KeyCode key)
     {
@@ -157,17 +148,10 @@ namespace Engine
 
     void ImGui_Platform_CreateWindow(ImGuiViewport* vp)
     {
-        auto window = (ImGuiViewportWindow*)(vp->PlatformUserData = TL::Construct<ImGuiViewportWindow>());
-
-        Window::EventHandler ev;
-        window->window = Window(nullptr, Window::Size{(uint32_t)vp->Size.x, (uint32_t)vp->Size.y}, ev);
-
     }
 
     void ImGui_Platform_DestroyWindow(ImGuiViewport* vp)
     {
-        auto window = (ImGuiViewportWindow*)vp->PlatformUserData;
-        window->window;
     }
 
     void ImGui_Platform_ShowWindow(ImGuiViewport* vp)
@@ -267,7 +251,7 @@ namespace Engine
     {
     }
 
-    void ProcessEvent(Event& e)
+    void ImGuiManager::ProcessEvent(Event& e)
     {
         ImGuiIO& io = ImGui::GetIO();
 
@@ -341,35 +325,36 @@ namespace Engine
     {
         m_imguiContext = ImGui::CreateContext();
 
-        auto& platformIO                            = ImGui::GetPlatformIO();
-        platformIO.Platform_CreateWindow            = ImGui_Platform_CreateWindow;
-        platformIO.Platform_DestroyWindow           = ImGui_Platform_DestroyWindow;
-        platformIO.Platform_ShowWindow              = ImGui_Platform_ShowWindow;
-        platformIO.Platform_SetWindowPos            = ImGui_Platform_SetWindowPos;
-        platformIO.Platform_GetWindowPos            = ImGui_Platform_GetWindowPos;
-        platformIO.Platform_SetWindowSize           = ImGui_Platform_SetWindowSize;
-        platformIO.Platform_GetWindowSize           = ImGui_Platform_GetWindowSize;
-        platformIO.Platform_SetWindowFocus          = ImGui_Platform_SetWindowFocus;
-        platformIO.Platform_GetWindowFocus          = ImGui_Platform_GetWindowFocus;
-        platformIO.Platform_GetWindowMinimized      = ImGui_Platform_GetWindowMinimized;
-        platformIO.Platform_SetWindowTitle          = ImGui_Platform_SetWindowTitle;
-        platformIO.Platform_SetWindowAlpha          = ImGui_Platform_SetWindowAlpha;
-        platformIO.Platform_UpdateWindow            = ImGui_Platform_UpdateWindow;
-        platformIO.Platform_RenderWindow            = ImGui_Platform_RenderWindow;
-        platformIO.Platform_SwapBuffers             = ImGui_Platform_SwapBuffers;
-        platformIO.Platform_GetWindowDpiScale       = ImGui_Platform_GetWindowDpiScale;
-        platformIO.Platform_OnChangedViewport       = ImGui_Platform_OnChangedViewport;
-        platformIO.Platform_GetWindowWorkAreaInsets = ImGui_Platform_GetWindowWorkAreaInsets;
-        platformIO.Platform_CreateVkSurface         = ImGui_Platform_CreateVkSurface;
-        platformIO.Renderer_CreateWindow            = ImGui_Renderer_CreateWindow;
-        platformIO.Renderer_DestroyWindow           = ImGui_Renderer_DestroyWindow;
-        platformIO.Renderer_SetWindowSize           = ImGui_Renderer_SetWindowSize;
-        platformIO.Renderer_RenderWindow            = ImGui_Renderer_RenderWindow;
-        platformIO.Renderer_SwapBuffers             = ImGui_Renderer_SwapBuffers;
+        // auto& platformIO                            = ImGui::GetPlatformIO();
+        // platformIO.Platform_CreateWindow            = ImGui_Platform_CreateWindow;
+        // platformIO.Platform_DestroyWindow           = ImGui_Platform_DestroyWindow;
+        // platformIO.Platform_ShowWindow              = ImGui_Platform_ShowWindow;
+        // platformIO.Platform_SetWindowPos            = ImGui_Platform_SetWindowPos;
+        // platformIO.Platform_GetWindowPos            = ImGui_Platform_GetWindowPos;
+        // platformIO.Platform_SetWindowSize           = ImGui_Platform_SetWindowSize;
+        // platformIO.Platform_GetWindowSize           = ImGui_Platform_GetWindowSize;
+        // platformIO.Platform_SetWindowFocus          = ImGui_Platform_SetWindowFocus;
+        // platformIO.Platform_GetWindowFocus          = ImGui_Platform_GetWindowFocus;
+        // platformIO.Platform_GetWindowMinimized      = ImGui_Platform_GetWindowMinimized;
+        // platformIO.Platform_SetWindowTitle          = ImGui_Platform_SetWindowTitle;
+        // platformIO.Platform_SetWindowAlpha          = ImGui_Platform_SetWindowAlpha;
+        // platformIO.Platform_UpdateWindow            = ImGui_Platform_UpdateWindow;
+        // platformIO.Platform_RenderWindow            = ImGui_Platform_RenderWindow;
+        // platformIO.Platform_SwapBuffers             = ImGui_Platform_SwapBuffers;
+        // platformIO.Platform_GetWindowDpiScale       = ImGui_Platform_GetWindowDpiScale;
+        // platformIO.Platform_OnChangedViewport       = ImGui_Platform_OnChangedViewport;
+        // platformIO.Platform_GetWindowWorkAreaInsets = ImGui_Platform_GetWindowWorkAreaInsets;
+        // platformIO.Platform_CreateVkSurface         = ImGui_Platform_CreateVkSurface;
+        // platformIO.Renderer_CreateWindow            = ImGui_Renderer_CreateWindow;
+        // platformIO.Renderer_DestroyWindow           = ImGui_Renderer_DestroyWindow;
+        // platformIO.Renderer_SetWindowSize           = ImGui_Renderer_SetWindowSize;
+        // platformIO.Renderer_RenderWindow            = ImGui_Renderer_RenderWindow;
+        // platformIO.Renderer_SwapBuffers             = ImGui_Renderer_SwapBuffers;
     }
 
     void ImGuiManager::Shutdown()
     {
+        ImGui::DestroyContext(m_imguiContext);
     }
 
 } // namespace Engine

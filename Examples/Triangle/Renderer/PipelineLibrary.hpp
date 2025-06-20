@@ -60,7 +60,7 @@ namespace Engine
 
     /// A class which holds all the pipelines that are used by the renderer
     /// Also handles hot reloading of the pipelines when the shader files change
-    class PipelineLibrary
+    class PipelineLibrary final : public Singleton<PipelineLibrary>
     {
     public:
         ResultCode Init(RHI::Device* device);
@@ -73,8 +73,6 @@ namespace Engine
         {
             return m_bindGroupLayout;
         }
-
-        inline static PipelineLibrary* ptr = nullptr;
 
     private:
         RHI::Device*    m_device;

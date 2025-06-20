@@ -13,32 +13,33 @@
 #include <glm/glm.hpp>
 #include <tracy/Tracy.hpp>
 
-#include "Camera.hpp"
 #include "Examples-Base/ApplicationBase.hpp"
 #include "Renderer/Renderer.hpp"
+#include "Camera.hpp"
+#include "ImGuiManager.hpp"
 
-#include <assimp/Importer.hpp>  // C++ importer interface
-#include <assimp/scene.h>       // Output data structure
-#include <assimp/postprocess.h> // Post processing flags
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
 
 inline static glm::mat4x4 ToGlmMatrix(const aiMatrix4x4& matrix)
 {
-    return glm::mat4(
-        matrix.a1, matrix.b1, matrix.c1, matrix.d1, matrix.a2, matrix.b2, matrix.c2, matrix.d2, matrix.a3, matrix.b3, matrix.c3, matrix.d3, matrix.a4, matrix.b4, matrix.c4, matrix.d4);
+    return glm::mat4(matrix.a1, matrix.b1, matrix.c1, matrix.d1, matrix.a2, matrix.b2, matrix.c2, matrix.d2, matrix.a3, matrix.b3, matrix.c3, matrix.d3, matrix.a4, matrix.b4, matrix.c4, matrix.d4);
 }
 
 class Playground final : public ApplicationBase
 {
 public:
-    TL::Ptr<Engine::Renderer> m_renderer;
-    Engine::Scene*            m_scene;
-    Engine::SceneView*        m_sceneView;
+    TL::Ptr<Engine::ImGuiManager> m_imguiManager = TL::CreatePtr<Engine::ImGuiManager>();
+    TL::Ptr<Engine::Renderer>     m_renderer     = TL::CreatePtr<Engine::Renderer>();
+    Engine::PresentationViewport  m_presentationViewport;
 
-    Camera m_camera;
+    Engine::Scene*     m_scene;
+    Engine::SceneView* m_sceneView;
+    Camera             m_camera;
 
     Playground()
         : ApplicationBase("", 1600, 900) // Empty title, will be set in OnInit
-        , m_renderer(TL::CreatePtr<Engine::Renderer>())
     {
         m_camera.SetPerspective(1600, 900, 45, 0.00001, 1000000);
     }
@@ -195,7 +196,7 @@ public:
     {
         ZoneScoped;
 
-        RHI::BackendType backend = RHI::BackendType::Vulkan1_3;
+        RHI::BackendType backend;
         switch (ApplicationBase::GetLaunchSettings().backend)
         {
         case Examples::CommandLine::LaunchSettings::Backend::Vulkan:
@@ -210,9 +211,17 @@ public:
             backend = RHI::BackendType::DirectX12_2;
             m_window->SetTitle("Playground - RHI::D3D12");
             break;
+        default:
+            m_window->SetTitle("Playground - RHI::Vulkan");
+            backend = RHI::BackendType::Vulkan1_3;
+            break;
         }
 
-        auto result = m_renderer->Init(m_window.get(), backend);
+        auto result = m_renderer->Init(backend);
+        TL_ASSERT(RHI::IsSuccess(result), "Failed to initialize renderer");
+        m_presentationViewport = m_renderer->CreatePresentationViewport(m_window.get());
+        m_imguiManager->Init();
+
         m_scene     = m_renderer->CreateScene();
         m_sceneView = m_scene->CreateView();
 
@@ -229,6 +238,10 @@ public:
     {
         ZoneScoped;
 
+        m_imguiManager->Shutdown();
+        m_renderer->DestroyPresentationViewport(m_presentationViewport);
+        m_scene->DestroyView(m_sceneView);
+        m_renderer->DestroyScene(m_scene);
         m_renderer->Shutdown();
     }
 
@@ -259,14 +272,20 @@ public:
         io.DisplaySize.y     = float(height);
 
         ImGui::NewFrame();
-        // ImGui::ShowDemoWindow();
-        if (ImGui::Button("rdoc capture"))
-        {
-            m_renderer->m_renderGraph->Debug_CaptureNextFrame();
-        }
+        // if (ImGui::Button("rdoc capture"))
+        // {
+        //     m_renderer->m_renderGraph->Debug_CaptureNextFrame();
+        // }
+        ImGui::ShowDemoWindow();
         ImGui::Render();
 
-        m_renderer->Render(m_scene);
+        // ImGui::UpdatePlatformWindows();
+        // ImGui::RenderPlatformWindowsDefault();
+
+        m_renderer->Render(m_scene, m_presentationViewport);
+
+        auto result = m_presentationViewport.swapchain->Present();
+        TL_ASSERT(RHI::IsSuccess(result), "Failed to present swapchain");
 
         FrameMark;
     }
@@ -276,29 +295,16 @@ public:
         ZoneScoped;
         switch (event.GetEventType())
         {
-        case EventType::None:
-        case EventType::WindowClose:
         case EventType::WindowResize:
-            m_renderer->OnWindowResize();
+            {
+                auto [width, height] = m_presentationViewport.window->GetWindowSize();
+                auto result          = m_presentationViewport.swapchain->Resize({.width = width, .height = height});
+                TL_ASSERT(RHI::IsSuccess(result), "Failed to resize swapchain");
+            }
             break;
-        case EventType::WindowFocus:
-        case EventType::WindowLostFocus:
-        case EventType::WindowMoved:
-        case EventType::AppTick:
-        case EventType::AppUpdate:
-        case EventType::AppRender:
-        case EventType::KeyPressed:
-        case EventType::KeyReleased:
-        case EventType::KeyTyped:
-        case EventType::MouseButtonPressed:
-        case EventType::MouseButtonReleased:
-        case EventType::MouseMoved:
-        case EventType::MouseScrolled:
-        default:
-            break;
+        default: break;
         }
-        m_renderer->ProcessEvent(event);
-
+        m_imguiManager->ProcessEvent(event);
         m_camera.ProcessEvent(event, *m_window);
     }
 };

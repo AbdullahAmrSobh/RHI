@@ -13,7 +13,7 @@ namespace Examples
 
 namespace Engine
 {
-    class IMGUI_IMPL_API ImGuiPass
+    class ImGuiPass
     {
     public:
         ImGuiPass() = default;

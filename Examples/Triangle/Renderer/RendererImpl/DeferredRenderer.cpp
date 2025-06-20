@@ -1,5 +1,4 @@
-#include "CullPass.hpp"
-#include "GBufferPass.hpp"
+#include "DeferredRenderer.hpp"
 
 #include "../Geometry.hpp"
 #include "../Scene.hpp"
@@ -8,6 +7,47 @@
 
 namespace Engine
 {
+    ResultCode CullPass::Init(RHI::Device* device)
+    {
+        m_bindGroup = device->CreateBindGroup({.name = "Cull-BindGroup", .layout = PipelineLibrary::ptr->GetBindGroupLayout()});
+        return ResultCode::Success;
+    }
+
+    void CullPass::Shutdown(RHI::Device* device)
+    {
+    }
+
+    void CullPass::AddPass(RHI::Device* device, RHI::RenderGraph* rg, const Scene* scene)
+    {
+        this->m_drawIndirectArgs = rg->CreateBuffer("draw-indexed-indirect", kCapacity * sizeof(RHI::DrawIndexedParameters));
+
+        rg->AddPass({
+            .name          = "Cull",
+            .type          = RHI::PassType::Compute,
+            .setupCallback = [&](RHI::RenderGraphBuilder& builder)
+            {
+                this->m_drawIndirectArgs = builder.WriteBuffer(this->m_drawIndirectArgs, RHI::BufferUsage::Storage, RHI::PipelineStage::ComputeShader);
+            },
+            .executeCallback = [=](RHI::CommandList& cmd)
+            {
+                auto& meshDrawData = GeometryBufferPool::ptr->m_drawParams;
+
+                RHI::BindGroupBuffersUpdateInfo updateInfo[] = {
+                    {Bindings::DrawRequests,        0, scene->m_drawRequests.GetBindingInfo()                                   },
+                    {Bindings::IndexedMeshes,       0, meshDrawData.GetBindingInfo()                                            },
+                    {Bindings::DrawParametersCount, 0, RHI::BufferBindingInfo{rg->GetBufferHandle(this->m_drawIndirectArgs), 0} },
+                    {Bindings::OutDrawParameters,   0, RHI::BufferBindingInfo{rg->GetBufferHandle(this->m_drawIndirectArgs), 64}},
+                };
+                device->UpdateBindGroup(m_bindGroup, {.buffers = updateInfo});
+
+                auto pipeline = PipelineLibrary::ptr->GetComputePipeline(ShaderNames::Cull);
+
+                cmd.BindComputePipeline(pipeline, {{m_bindGroup}});
+                cmd.Dispatch({scene->m_drawRequests.GetCount(), 1, 1});
+            },
+        });
+    }
+
     ResultCode GBufferPass::Init(RHI::Device* device)
     {
         m_bindGroup = device->CreateBindGroup({.name = "GBuffer-BindGroup", .layout = PipelineLibrary::ptr->GetBindGroupLayout()});
@@ -61,7 +101,7 @@ namespace Engine
                 RHI::BindGroupBuffersUpdateInfo updateInfo[] = {
                     {Bindings::SceneView, 0, scene->m_primaryView->m_sceneViewUB.GetBinding()}
                 };
-                Renderer::ptr->m_device->UpdateBindGroup(m_bindGroup, {.buffers = updateInfo});
+                Renderer::ptr->GetDevice()->UpdateBindGroup(m_bindGroup, {.buffers = updateInfo});
                 cmd.BindGraphicsPipeline(pipeline, {{m_bindGroup}});
 
                 // Bind index buffer
@@ -119,7 +159,7 @@ namespace Engine
                     {Bindings::gBuffer_depth,      0, rg->GetImageHandle(gbuffer.m_attachments[3])},
                     {Bindings::compose_output,     0, rg->GetImageHandle(m_attachment)            },
                 };
-                Renderer::ptr->m_device->UpdateBindGroup(m_bindGroup, {.images = updateInfo});
+                Renderer::ptr->GetDevice()->UpdateBindGroup(m_bindGroup, {.images = updateInfo});
 
                 // bind pipeline and bind group states
                 auto pipeline = PipelineLibrary::ptr->GetComputePipeline(ShaderNames::Lighting);
@@ -183,7 +223,7 @@ namespace Engine
                 RHI::BindGroupImagesUpdateInfo updateInfo[] = {
                     {Bindings::lighting_input, 0, rg->GetImageHandle(input)},
                 };
-                Renderer::ptr->m_device->UpdateBindGroup(m_bindGroup, {.images = updateInfo});
+                Renderer::ptr->GetDevice()->UpdateBindGroup(m_bindGroup, {.images = updateInfo});
 
                 // bind pipeline and bind group states
                 auto pipeline = PipelineLibrary::ptr->GetGraphicsPipeline(ShaderNames::Compose);
@@ -193,4 +233,52 @@ namespace Engine
             },
         });
     }
+
+    ///
+
+    ResultCode DeferredRenderer::Init(RHI::Device* device)
+    {
+#define TRY(expr)                                          \
+    {                                                      \
+        auto result = (expr);                              \
+        if (result != ResultCode::Success)                 \
+        {                                                  \
+            TL_LOG_ERROR("DeferredRenderer::Init failed"); \
+            this->Shutdown(device);                        \
+            return result;                                 \
+        }                                                  \
+    }
+        TRY(m_cullPass.Init(device));
+        TRY(m_gbufferPass.Init(device));
+        TRY(m_lightingPass.Init(device));
+        TRY(m_composePass.Init(device));
+        TRY(m_imguiPass.Init(device, RHI::Format::RGBA8_UNORM));
+
+#undef TRY
+        return ResultCode::Success;
+    }
+
+    void DeferredRenderer::Shutdown(RHI::Device* device)
+    {
+        m_imguiPass.Shutdown();
+        m_composePass.Shutdown(device);
+        m_lightingPass.Shutdown(device);
+        m_gbufferPass.Shutdown(device);
+        m_cullPass.Shutdown(device);
+    }
+
+    void DeferredRenderer::Render(RHI::Device* device, RHI::RenderGraph* rg, const Scene* scene, RHI::RGImage* outputAttachment)
+    {
+        // TODO: Hot reloading this section
+        m_cullPass.AddPass(device, rg, scene);
+        m_gbufferPass.AddPass(rg, m_cullPass, scene);
+        m_lightingPass.AddPass(rg, m_gbufferPass, scene);
+        // Needs to be graphics because swapchain
+        m_composePass.AddPass(rg, m_lightingPass.m_attachment, outputAttachment);
+        if (m_imguiPass.Enabled())
+        {
+            m_imguiPass.AddPass(rg, outputAttachment, ImGui::GetDrawData());
+        }
+    }
+
 } // namespace Engine

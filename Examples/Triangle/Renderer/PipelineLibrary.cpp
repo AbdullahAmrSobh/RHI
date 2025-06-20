@@ -1,7 +1,7 @@
 #include "Shaders/Public/GPU.h"
 
 #include "PipelineLibrary.hpp"
-#include "Passes/GBufferPass.hpp"
+#include "RendererImpl/DeferredRenderer.hpp"
 
 #include <TL/Defer.hpp>
 
@@ -108,8 +108,6 @@ namespace Engine
 
     ResultCode PipelineLibrary::Init(RHI::Device* device)
     {
-        PipelineLibrary::ptr = this;
-
         m_device = device;
 
         // struct ShaderBindingTable
@@ -285,8 +283,6 @@ namespace Engine
 
     void PipelineLibrary::Shutdown()
     {
-        PipelineLibrary::ptr = nullptr;
-
         for (auto [_, pipeline] : m_graphicsPipelines)
             m_device->DestroyGraphicsPipeline(pipeline);
 

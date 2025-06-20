@@ -9,7 +9,7 @@ namespace Examples
 
 namespace Engine
 {
-    class IMGUI_IMPL_API ImGuiManager
+    class ImGuiManager
     {
     public:
         ImGuiManager() = default;
@@ -21,7 +21,5 @@ namespace Engine
 
     private:
         ImGuiContext* m_imguiContext;
-        struct Impl;
-        Impl* m_impl;
     };
 } // namespace Engine

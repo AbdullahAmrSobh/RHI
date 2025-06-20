@@ -2,9 +2,9 @@ cmake_minimum_required(VERSION 3.19)
 
 set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Triangle.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Passes/CullPass.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Passes/GBufferPass.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Passes/ImGuiPass.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ImGuiManager.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/RendererImpl/DeferredRenderer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/RendererImpl/ImGuiPass.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Renderer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/PipelineLibrary.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Renderer/BufferPool.cpp
