@@ -5,7 +5,7 @@
 
 #include <filesystem>
 
-namespace Examples::CommandLine
+namespace Engine::CommandLine
 {
     struct LaunchSettings
     {
@@ -168,4 +168,4 @@ namespace Examples::CommandLine
 
         return settings;
     }
-} // namespace Examples::CommandLine
+} // namespace Engine::CommandLine

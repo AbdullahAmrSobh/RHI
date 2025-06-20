@@ -2,24 +2,19 @@
 
 #include <imgui.h>
 
-namespace Examples
-{
-    class Event;
-}
-
 namespace Engine
 {
+    class Window;
     class ImGuiManager
     {
     public:
         ImGuiManager() = default;
 
-        void ProcessEvent(Examples::Event& event);
-
-        void Init();
+        void Init(Window* primaryWindow);
         void Shutdown();
 
     private:
+        Window* m_primaryWindow;
         ImGuiContext* m_imguiContext;
     };
 } // namespace Engine

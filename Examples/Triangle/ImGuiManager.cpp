@@ -1,15 +1,13 @@
 #include "ImGuiManager.hpp"
 
-#include "Examples-Base/Event.hpp"
 #include "Examples-Base/Window.hpp"
 
 #include <TL/UniquePtr.hpp>
 
-using namespace Examples;
+using namespace Engine;
 
 namespace Engine
 {
-
     inline static ImGuiKey ConvertToImguiKeycode(KeyCode key)
     {
         switch (key)
@@ -146,210 +144,274 @@ namespace Engine
         }
     }
 
-    void ImGui_Platform_CreateWindow(ImGuiViewport* vp)
+    inline static Window* GetWindowFromViewport(ImGuiViewport* vp)
     {
+        if (vp->PlatformUserData)
+        {
+            return static_cast<Window*>(vp->PlatformUserData);
+        }
+        return nullptr;
     }
 
-    void ImGui_Platform_DestroyWindow(ImGuiViewport* vp)
+    inline static bool WindowEventsHandler(const WindowEvent& e)
     {
+        auto& io = ImGui::GetIO();
+        switch (e.type)
+        {
+        case WindowEventType::Resized:
+            io.DisplaySize.x           = (float)e.size.width;
+            io.DisplaySize.y           = (float)e.size.height;
+            io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
+            break;
+        case WindowEventType::Focused:   io.AddFocusEvent(true); break;
+        case WindowEventType::Unfocused: io.AddFocusEvent(false); break;
+        case WindowEventType::Closed:    break;
+        case WindowEventType::Moved:     break;
+        case WindowEventType::CursorMoved:
+            io.AddMousePosEvent(e.cursorPosition.x, e.cursorPosition.y);
+            return io.WantCaptureMouse;
+        case WindowEventType::MouseScrolled:
+            io.AddMouseWheelEvent(e.cursorPosition.x, e.cursorPosition.y);
+            return io.WantCaptureMouse;
+        case WindowEventType::MouseInput:
+            switch (e.mouseInput.state)
+            {
+            case KeyState::Press:
+            case KeyState::Repeat:  io.AddMouseButtonEvent(ConvertToImguiMouseButton(e.mouseInput.code), true); break;
+            case KeyState::Release: io.AddMouseButtonEvent(ConvertToImguiMouseButton(e.mouseInput.code), false); break;
+            default:                break;
+            }
+            return io.WantCaptureMouse;
+        case WindowEventType::KeyInput:
+            switch (e.keyInput.state)
+            {
+            case KeyState::Press:
+            case KeyState::Repeat:  io.AddKeyEvent(ConvertToImguiKeycode(e.keyInput.code), true); break;
+            case KeyState::Release: io.AddKeyEvent(ConvertToImguiKeycode(e.keyInput.code), false); break;
+            default:                break;
+            }
+            return io.WantCaptureKeyboard;
+        case WindowEventType::KeyTyped:
+            io.AddInputCharacter(e.keyCode);
+            return io.WantCaptureKeyboard;
+        }
+        return false; // event not captured
     }
 
-    void ImGui_Platform_ShowWindow(ImGuiViewport* vp)
+    // . . U . .  // Create a new platform window for the given viewport
+    inline static void ImGuiPlatformIO_CreateWindow(ImGuiViewport* vp)
     {
+        auto position = vp->Pos;
+        auto size     = vp->Size;
 
+        TL::Flags<WindowFlags> attributes;
+        if (vp->Flags & ImGuiViewportFlags_NoDecoration)
+            attributes |= WindowFlags::NoDecorations;
+        auto window = WindowManager::CreateWindow({}, attributes, {(uint32_t)size.x, (uint32_t)size.y});
+        window->SetPosition({position.x, position.y});
+
+        // if (!(vp->Flags & ImGuiViewportFlags_NoInputs))
+        {
+            window->Subscribe([](const WindowEvent& e) -> bool
+                {
+                    return WindowEventsHandler(e);
+                });
+        }
     }
 
-    void ImGui_Platform_SetWindowPos(ImGuiViewport* vp, ImVec2 pos)
+    // N . U . D  //
+    inline static void ImGuiPlatformIO_DestroyWindow(ImGuiViewport* vp)
     {
+        auto window = GetWindowFromViewport(vp);
     }
 
-    ImVec2 ImGui_Platform_GetWindowPos(ImGuiViewport* vp)
+    // . . U . .  // Newly created windows are initially hidden so SetWindowPos/Size/Title can be called on them before showing the window
+    inline static void ImGuiPlatformIO_ShowWindow(ImGuiViewport* vp)
     {
-        return ImVec2(0, 0);
+        auto window = GetWindowFromViewport(vp);
+        window->Show();
     }
 
-    void ImGui_Platform_SetWindowSize(ImGuiViewport* vp, ImVec2 size)
+    // . . U . .  // Set platform window position (given the upper-left corner of client area)
+    inline static void ImGuiPlatformIO_SetWindowPos(ImGuiViewport* vp, ImVec2 pos)
     {
+        auto window = GetWindowFromViewport(vp);
+        window->SetPosition(WindowPosition{pos.x, pos.y});
     }
 
-    ImVec2 ImGui_Platform_GetWindowSize(ImGuiViewport* vp)
+    // N . . . .  //
+    inline static ImVec2 ImGuiPlatformIO_GetWindowPos(ImGuiViewport* vp)
     {
-        return ImVec2(0, 0);
+        auto window = GetWindowFromViewport(vp);
+        return ImVec2(window->GetPosition().x, window->GetPosition().y);
     }
 
-    void ImGui_Platform_SetWindowFocus(ImGuiViewport* vp)
+    // . . U . .  // Set platform window client area size (ignoring OS decorations such as OS title bar etc.)
+    inline static void ImGuiPlatformIO_SetWindowSize(ImGuiViewport* vp, ImVec2 size)
     {
+        auto window = GetWindowFromViewport(vp);
+        window->SetSize({(uint32_t)size.x, (uint32_t)size.y});
     }
 
-    bool ImGui_Platform_GetWindowFocus(ImGuiViewport* vp)
+    // N . . . .  // Get platform window client area size
+    inline static ImVec2 ImGuiPlatformIO_GetWindowSize(ImGuiViewport* vp)
     {
-        return false;
+        auto window = GetWindowFromViewport(vp);
+        return ImVec2(window->GetSize().width, window->GetSize().height);
     }
 
-    bool ImGui_Platform_GetWindowMinimized(ImGuiViewport* vp)
+    // N . . . .  // Move window to front and set input focus
+    inline static void ImGuiPlatformIO_SetWindowFocus(ImGuiViewport* vp)
     {
-        return false;
+        auto window = GetWindowFromViewport(vp);
+        window->SetFocus();
     }
 
-    void ImGui_Platform_SetWindowTitle(ImGuiViewport* vp, const char* str)
+    // . . U . .  //
+    inline static bool ImGuiPlatformIO_GetWindowFocus(ImGuiViewport* vp)
     {
+        auto window = GetWindowFromViewport(vp);
+        return window->IsFocused();
     }
 
-    void ImGui_Platform_SetWindowAlpha(ImGuiViewport* vp, float alpha)
+    // N . . . .  // Get platform window minimized state. When minimized, we generally won't attempt to get/set size and contents will be culled more easily
+    inline static bool ImGuiPlatformIO_GetWindowMinimized(ImGuiViewport* vp)
     {
+        auto window = GetWindowFromViewport(vp);
+        return !window->GetAttribute(WindowAttribute::Maximized);
     }
 
-    void ImGui_Platform_UpdateWindow(ImGuiViewport* vp)
+    // . . U . .  // Set platform window title (given an UTF-8 string)
+    inline static void ImGuiPlatformIO_SetWindowTitle(ImGuiViewport* vp, const char* str)
     {
+        auto window = GetWindowFromViewport(vp);
+        window->SetTitle(str);
     }
 
-    void ImGui_Platform_RenderWindow(ImGuiViewport* vp, void* render_arg)
+    // (Optional) Setup global transparency (not per-pixel transparency)
+    inline static void ImGuiPlatformIO_SetWindowAlpha(ImGuiViewport* vp, float alpha)
     {
+        auto window = GetWindowFromViewport(vp);
+        window->SetOpacity(alpha);
     }
 
-    void ImGui_Platform_SwapBuffers(ImGuiViewport* vp, void* render_arg)
+    // . . U . .  // (Optional) Called by UpdatePlatformWindows(). Optional hook to allow the platform backend from doing general book-keeping every frame.
+    inline static void ImGuiPlatformIO_UpdateWindow(ImGuiViewport* vp)
     {
+        auto window = GetWindowFromViewport(vp);
+        window->Poll();
     }
 
-    float ImGui_Platform_GetWindowDpiScale(ImGuiViewport* vp)
+    // . . . R .  // (Optional) Main rendering (platform side! This is often unused, or just setting a "current" context for OpenGL bindings). 'render_arg' is the value passed to RenderPlatformWindowsDefault().
+    inline static void ImGuiPlatformIO_RenderWindow(ImGuiViewport* vp, void* render_arg)
     {
+        auto window = GetWindowFromViewport(vp);
+    }
+
+    // . . . R .  // (Optional) Call Present/SwapBuffers (platform side! This is often unused!). 'render_arg' is the value passed to RenderPlatformWindowsDefault().
+    inline static void ImGuiPlatformIO_SwapBuffers(ImGuiViewport* vp, void* render_arg)
+    {
+        auto window = GetWindowFromViewport(vp);
+    }
+
+    // N . . . .  // (Optional) [BETA] FIXME-DPI: DPI handling: Return DPI scale for this viewport. 1.0f = 96 DPI.
+    inline static float ImGuiPlatformIO_GetWindowDpiScale(ImGuiViewport* vp)
+    {
+        auto window = GetWindowFromViewport(vp);
         return 1.0f;
     }
 
-    void ImGui_Platform_OnChangedViewport(ImGuiViewport* vp)
-    {
-    }
+    // . F . . .  // (Optional) [BETA] FIXME-DPI: DPI handling: Called during Begin() every time the viewport we are outputting into changes, so backend has a chance to swap fonts to adjust style.
+    // inline static void ImGuiPlatformIO_OnChangedViewport(ImGuiViewport* vp)
+    // {
+    //     auto window = GetWindowFromViewport(vp);
+    // }
 
-    ImVec4 ImGui_Platform_GetWindowWorkAreaInsets(ImGuiViewport* vp)
-    {
-        return ImVec4(0, 0, 0, 0);
-    }
+    // inline static ImVec4 ImGuiPlatformIO_GetWindowWorkAreaInsets(ImGuiViewport* vp)
+    // {
+    //     auto window = GetWindowFromViewport(vp);
 
-    int ImGui_Platform_CreateVkSurface(ImGuiViewport* vp, ImU64 vk_inst, const void* vk_allocators, ImU64* out_vk_surface)
-    {
-        return 0;
-    }
+    //     return ImVec4(0, 0, 0, 0);
+    // }
+
+    // inline static int ImGuiPlatformIO_CreateVkSurface(ImGuiViewport* vp, ImU64 vk_inst, const void* vk_allocators, ImU64* out_vk_surface)
+    // {
+    //     auto window = GetWindowFromViewport(vp);
+
+    //     return 0;
+    // }
 
     // Renderer Backend functions (e.g. DirectX, OpenGL, Vulkan) ------------
-    void ImGui_Renderer_CreateWindow(ImGuiViewport* vp)
+
+    // Create swap chain, frame buffers etc. (called after Platform_CreateWindow)
+    inline static void
+    ImGui_Renderer_CreateWindow(ImGuiViewport* vp)
     {
     }
 
-    void ImGui_Renderer_DestroyWindow(ImGuiViewport* vp)
+    // Destroy swap chain, frame buffers etc. (called before Platform_DestroyWindow)
+    inline static void ImGui_Renderer_DestroyWindow(ImGuiViewport* vp)
     {
     }
 
-    void ImGui_Renderer_SetWindowSize(ImGuiViewport* vp, ImVec2 size)
+    // Resize swap chain, frame buffers etc. (called after Platform_SetWindowSize)
+    inline static void ImGui_Renderer_SetWindowSize(ImGuiViewport* vp, ImVec2 size)
     {
     }
 
-    void ImGui_Renderer_RenderWindow(ImGuiViewport* vp, void* render_arg)
+    // (Optional) Clear framebuffer, setup render target, then render the viewport->DrawData. 'render_arg' is the value passed to RenderPlatformWindowsDefault().
+    inline static void ImGui_Renderer_RenderWindow(ImGuiViewport* vp, void* render_arg)
     {
     }
 
-    void ImGui_Renderer_SwapBuffers(ImGuiViewport* vp, void* render_arg)
+    // (Optional) Call Present/SwapBuffers. 'render_arg' is the value passed to RenderPlatformWindowsDefault().
+    inline static void ImGui_Renderer_SwapBuffers(ImGuiViewport* vp, void* render_arg)
     {
     }
 
-    void ImGuiManager::ProcessEvent(Event& e)
+    void ImGuiManager::Init(Window* primaryWindow)
     {
-        ImGuiIO& io = ImGui::GetIO();
+        m_primaryWindow = primaryWindow;
 
-        if ((e.GetCategoryFlags() & EventCategory::Mouse) && io.WantCaptureMouse)
-        {
-            e.Handled = true;
-        }
+        m_imguiContext       = ImGui::CreateContext();
+        auto [width, height] = m_primaryWindow->GetSize();
+        ImGuiIO& io          = ImGui::GetIO();
+        // io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+        io.DisplaySize.x = float(width);
+        io.DisplaySize.y = float(height);
 
-        if ((e.GetCategoryFlags() & EventCategory::Keyboard) && io.WantCaptureKeyboard)
-        {
-            e.Handled = true;
-        }
+        primaryWindow->Subscribe([](const WindowEvent& e) -> bool
+            {
+                return WindowEventsHandler(e);
+            });
 
-        switch (e.GetEventType())
-        {
-        case EventType::WindowResize:
-            {
-                auto& event                = (WindowResizeEvent&)e;
-                io.DisplaySize.x           = (float)event.GetSize().width;
-                io.DisplaySize.y           = (float)event.GetSize().height;
-                io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
-                break;
-            }
-        case EventType::KeyPressed:
-            {
-                auto& event = (KeyPressedEvent&)e;
-                io.AddKeyEvent(ConvertToImguiKeycode(event.GetKeyCode()), true);
-                break;
-            }
-        case EventType::KeyReleased:
-            {
-                auto& event = (KeyReleasedEvent&)e;
-                io.AddKeyEvent(ConvertToImguiKeycode(event.GetKeyCode()), false);
-                break;
-            }
-        case EventType::KeyTyped:
-            {
-                auto& event = (KeyTypedEvent&)e;
-                io.AddInputCharacter(ConvertToImguiKeycode(event.GetKeyCode()));
-                break;
-            }
-        case EventType::MouseButtonPressed:
-            {
-                auto& event = (MouseButtonPressedEvent&)e;
-                io.AddMouseButtonEvent(ConvertToImguiMouseButton(event.GetMouseButton()), true);
-                break;
-            }
-        case EventType::MouseButtonReleased:
-            {
-                auto& event = (MouseButtonReleasedEvent&)e;
-                io.AddMouseButtonEvent(ConvertToImguiMouseButton(event.GetMouseButton()), false);
-                break;
-            }
-        case EventType::MouseMoved:
-            {
-                auto& event = (MouseMovedEvent&)e;
-                io.AddMousePosEvent(event.GetX(), event.GetY());
-                break;
-            }
-        case EventType::MouseScrolled:
-            {
-                auto& event = (MouseScrolledEvent&)e;
-                io.AddMouseWheelEvent(event.GetXOffset(), event.GetYOffset());
-                break;
-            }
-        default: break;
-        }
-    }
-
-    void ImGuiManager::Init()
-    {
-        m_imguiContext = ImGui::CreateContext();
-
-        // auto& platformIO                            = ImGui::GetPlatformIO();
-        // platformIO.Platform_CreateWindow            = ImGui_Platform_CreateWindow;
-        // platformIO.Platform_DestroyWindow           = ImGui_Platform_DestroyWindow;
-        // platformIO.Platform_ShowWindow              = ImGui_Platform_ShowWindow;
-        // platformIO.Platform_SetWindowPos            = ImGui_Platform_SetWindowPos;
-        // platformIO.Platform_GetWindowPos            = ImGui_Platform_GetWindowPos;
-        // platformIO.Platform_SetWindowSize           = ImGui_Platform_SetWindowSize;
-        // platformIO.Platform_GetWindowSize           = ImGui_Platform_GetWindowSize;
-        // platformIO.Platform_SetWindowFocus          = ImGui_Platform_SetWindowFocus;
-        // platformIO.Platform_GetWindowFocus          = ImGui_Platform_GetWindowFocus;
-        // platformIO.Platform_GetWindowMinimized      = ImGui_Platform_GetWindowMinimized;
-        // platformIO.Platform_SetWindowTitle          = ImGui_Platform_SetWindowTitle;
-        // platformIO.Platform_SetWindowAlpha          = ImGui_Platform_SetWindowAlpha;
-        // platformIO.Platform_UpdateWindow            = ImGui_Platform_UpdateWindow;
-        // platformIO.Platform_RenderWindow            = ImGui_Platform_RenderWindow;
-        // platformIO.Platform_SwapBuffers             = ImGui_Platform_SwapBuffers;
-        // platformIO.Platform_GetWindowDpiScale       = ImGui_Platform_GetWindowDpiScale;
-        // platformIO.Platform_OnChangedViewport       = ImGui_Platform_OnChangedViewport;
-        // platformIO.Platform_GetWindowWorkAreaInsets = ImGui_Platform_GetWindowWorkAreaInsets;
-        // platformIO.Platform_CreateVkSurface         = ImGui_Platform_CreateVkSurface;
-        // platformIO.Renderer_CreateWindow            = ImGui_Renderer_CreateWindow;
-        // platformIO.Renderer_DestroyWindow           = ImGui_Renderer_DestroyWindow;
-        // platformIO.Renderer_SetWindowSize           = ImGui_Renderer_SetWindowSize;
-        // platformIO.Renderer_RenderWindow            = ImGui_Renderer_RenderWindow;
-        // platformIO.Renderer_SwapBuffers             = ImGui_Renderer_SwapBuffers;
+        // Update ImGui platform IO
+        auto& platformIO                       = ImGui::GetPlatformIO();
+        platformIO.Platform_CreateWindow       = ImGuiPlatformIO_CreateWindow;
+        platformIO.Platform_DestroyWindow      = ImGuiPlatformIO_DestroyWindow;
+        platformIO.Platform_ShowWindow         = ImGuiPlatformIO_ShowWindow;
+        platformIO.Platform_SetWindowPos       = ImGuiPlatformIO_SetWindowPos;
+        platformIO.Platform_GetWindowPos       = ImGuiPlatformIO_GetWindowPos;
+        platformIO.Platform_SetWindowSize      = ImGuiPlatformIO_SetWindowSize;
+        platformIO.Platform_GetWindowSize      = ImGuiPlatformIO_GetWindowSize;
+        platformIO.Platform_SetWindowFocus     = ImGuiPlatformIO_SetWindowFocus;
+        platformIO.Platform_GetWindowFocus     = ImGuiPlatformIO_GetWindowFocus;
+        platformIO.Platform_GetWindowMinimized = ImGuiPlatformIO_GetWindowMinimized;
+        platformIO.Platform_SetWindowTitle     = ImGuiPlatformIO_SetWindowTitle;
+        platformIO.Platform_SetWindowAlpha     = ImGuiPlatformIO_SetWindowAlpha;
+        platformIO.Platform_UpdateWindow       = ImGuiPlatformIO_UpdateWindow;
+        platformIO.Platform_RenderWindow       = ImGuiPlatformIO_RenderWindow;
+        platformIO.Platform_SwapBuffers        = ImGuiPlatformIO_SwapBuffers;
+        platformIO.Platform_GetWindowDpiScale  = ImGuiPlatformIO_GetWindowDpiScale;
+        // platformIO.Platform_OnChangedViewport       = ImGuiPlatformIO_OnChangedViewport;
+        // platformIO.Platform_GetWindowWorkAreaInsets = ImGuiPlatformIO_GetWindowWorkAreaInsets;
+        // platformIO.Platform_CreateVkSurface         = ImGuiPlatformIO_CreateVkSurface;
+        platformIO.Renderer_CreateWindow       = ImGui_Renderer_CreateWindow;
+        platformIO.Renderer_DestroyWindow      = ImGui_Renderer_DestroyWindow;
+        platformIO.Renderer_SetWindowSize      = ImGui_Renderer_SetWindowSize;
+        platformIO.Renderer_RenderWindow       = ImGui_Renderer_RenderWindow;
+        platformIO.Renderer_SwapBuffers        = ImGui_Renderer_SwapBuffers;
     }
 
     void ImGuiManager::Shutdown()

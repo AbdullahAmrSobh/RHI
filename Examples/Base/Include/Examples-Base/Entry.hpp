@@ -1,7 +1,7 @@
 #pragma once
 #include <Examples-Base/CommandLine.hpp>
 
-namespace Examples
+namespace Engine
 {
     template<typename AppType>
     inline int Entry(TL::Span<const char*> args)
@@ -26,4 +26,4 @@ namespace Examples
 
         return 0;
     }
-} // namespace Examples
+} // namespace Engine

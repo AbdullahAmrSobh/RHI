@@ -7,10 +7,9 @@
 #include <TL/UniquePtr.hpp>
 #include <TL/Span.hpp>
 
-namespace Examples
+namespace Engine
 {
     class Window;
-    class Event;
 
     class ApplicationBase
     {
@@ -31,8 +30,6 @@ namespace Examples
 
         void Shutdown();
 
-        void DispatchEvent(Event& event);
-
         void Run();
 
         virtual void OnInit() = 0;
@@ -43,12 +40,10 @@ namespace Examples
 
         virtual void Render() = 0;
 
-        virtual void OnEvent(Event& event) = 0;
-
     protected:
-        TL::Ptr<Window> m_window;
+        Window* m_window;
 
     private:
         CommandLine::LaunchSettings m_launchSettings;
     };
-} // namespace Examples
+} // namespace Engine

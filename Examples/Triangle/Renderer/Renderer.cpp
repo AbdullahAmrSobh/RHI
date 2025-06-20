@@ -126,7 +126,7 @@ namespace Engine
         DestroyDevice(m_device);
     }
 
-    PresentationViewport Renderer::CreatePresentationViewport(Examples::Window* window)
+    PresentationViewport Renderer::CreatePresentationViewport(Window* window)
     {
         RHI::SwapchainCreateInfo swapchainInfo{
             .name        = "Swapchain",
@@ -135,7 +135,7 @@ namespace Engine
         auto swapchain = m_device->CreateSwapchain(swapchainInfo);
 
         RHI::SwapchainConfigureInfo configuration{
-            .size        = {window->GetWindowSize().width, window->GetWindowSize().height},
+            .size        = {window->GetSize().width, window->GetSize().height},
             .imageCount  = 1,
             .imageUsage  = RHI::ImageUsage::Color,
             .format      = RHI::Format::RGBA8_UNORM,
@@ -152,8 +152,8 @@ namespace Engine
         }
 
         return {
-            .swapchain = swapchain,
             .window    = window,
+            .swapchain = swapchain,
         };
     }
 

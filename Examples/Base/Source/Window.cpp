@@ -1,5 +1,5 @@
+#define WINDOWS_LEAN_AND_MEAN
 #include "Examples-Base/Window.hpp"
-#include "Examples-Base/Event.hpp"
 
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3.h>
@@ -7,128 +7,129 @@
 
 #include <TL/Assert.hpp>
 
-namespace Examples
+namespace Engine
 {
-    void Window::Init()
+    TL::Error WindowManager::Init()
     {
         auto result = glfwInit();
-        TL_ASSERT(result);
+        if (result == GLFW_FALSE)
+        {
+            return TL::Error("Failed to initialize GLFW");
+        }
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+        return TL::Error();
     }
 
-    void Window::Shutdown()
+    void WindowManager::Shutdown()
     {
         glfwTerminate();
     }
 
-    Window::Window(const char* name, Size size, const EventHandler& eventHandler)
-        : m_name(name)
-        , m_currentSize(size)
-        , m_previousCursorPosition({})
-        , m_window(nullptr)
-        , m_handler(eventHandler)
+    // clang-format off
+    // Thanks windows
+    #ifdef CreateWindow
+    #undef CreateWindow
+    #endif
+    // clang-format on
+
+    Window* WindowManager::CreateWindow(TL::StringView title, TL::Flags<WindowFlags> flags, WindowSize size)
     {
-        m_window = glfwCreateWindow(int(m_currentSize.width), int(m_currentSize.height), name, nullptr, nullptr);
+        return TL::Construct<Window>(title, flags, size);
+    }
 
-        glfwMakeContextCurrent(m_window);
+    void WindowManager::DestroyWindow(Window* window)
+    {
+        TL::Destruct(window);
+    }
 
+    Window::Window(TL::StringView title, TL::Flags<WindowFlags> flags, WindowSize size)
+    {
+        m_window = glfwCreateWindow(int(size.width), int(size.height), title.data(), nullptr, nullptr);
         glfwSetWindowUserPointer(m_window, this);
-
-        // Set GLFW callbacks
+        glfwMakeContextCurrent(m_window);
         glfwSetWindowSizeCallback(m_window, [](GLFWwindow* window, int width, int height)
-        {
-            Window& self = *(Window*)glfwGetWindowUserPointer(window);
-            self.m_currentSize.width = (uint32_t)width;
-            self.m_currentSize.height = (uint32_t)height;
-
-            WindowResizeEvent event((uint32_t)width, (uint32_t)height);
-            self.m_handler(event);
-        });
-
+            {
+                Window&     self = *(Window*)glfwGetWindowUserPointer(window);
+                WindowEvent event{WindowEventType::Resized};
+                event.size = {(uint32_t)width, (uint32_t)height};
+                self.m_eventQueue.broadcast(event);
+            });
         glfwSetWindowCloseCallback(m_window, [](GLFWwindow* window)
-        {
-            Window& self = *(Window*)glfwGetWindowUserPointer(window);
-
-            WindowCloseEvent event;
-            self.m_handler(event);
-        });
-
+            {
+                Window&     self = *(Window*)glfwGetWindowUserPointer(window);
+                WindowEvent event{WindowEventType::Closed};
+                self.m_eventQueue.broadcast(event);
+            });
         glfwSetKeyCallback(m_window, [](GLFWwindow* window, int key, int scancode, int action, int mods)
-        {
-            (void)scancode;
-            (void)mods;
-
-            Window& self = *(Window*)glfwGetWindowUserPointer(window);
-
-            switch (action)
             {
-            case GLFW_PRESS:
+                Window&     self = *(Window*)glfwGetWindowUserPointer(window);
+                WindowEvent event{WindowEventType::KeyInput};
+                switch (action)
                 {
-                    KeyPressedEvent event((KeyCode)key, 0);
-                    self.m_handler(event);
+                case GLFW_PRESS:
+                    event.keyInput.code  = static_cast<KeyCode>(key);
+                    event.keyInput.state = KeyState::Press;
+                    event.keyInput.mods  = static_cast<KeyMod>(mods);
                     break;
-                }
-            case GLFW_RELEASE:
-                {
-                    KeyReleasedEvent event((KeyCode)key);
-                    self.m_handler(event);
+                case GLFW_RELEASE:
+                    event.keyInput.code  = static_cast<KeyCode>(key);
+                    event.keyInput.state = KeyState::Release;
+                    event.keyInput.mods  = static_cast<KeyMod>(mods);
                     break;
-                }
-            case GLFW_REPEAT:
-                {
-                    KeyPressedEvent event((KeyCode)key, true);
-                    self.m_handler(event);
+                case GLFW_REPEAT:
+                    event.keyInput.code  = static_cast<KeyCode>(key);
+                    event.keyInput.state = KeyState::Repeat;
+                    event.keyInput.mods  = static_cast<KeyMod>(mods);
                     break;
+                default:
+                    return;
                 }
-            }
-        });
-
+                self.m_eventQueue.broadcast(event);
+            });
         glfwSetCharCallback(m_window, [](GLFWwindow* window, unsigned int keycode)
-        {
-            Window& self = *(Window*)glfwGetWindowUserPointer(window);
-
-            KeyTypedEvent event((KeyCode)keycode);
-            self.m_handler(event);
-        });
-
-        glfwSetMouseButtonCallback(m_window, [](GLFWwindow* window, int button, int action, int mods)
-        {
-            (void)mods;
-
-            Window& self = *(Window*)glfwGetWindowUserPointer(window);
-
-            switch (action)
             {
-            case GLFW_PRESS:
+                Window&     self = *(Window*)glfwGetWindowUserPointer(window);
+                WindowEvent event{WindowEventType::KeyTyped};
+                event.keyCode = keycode;
+                self.m_eventQueue.broadcast(event);
+            });
+        glfwSetMouseButtonCallback(m_window, [](GLFWwindow* window, int button, int action, int mods)
+            {
+                Window&     self = *(Window*)glfwGetWindowUserPointer(window);
+                WindowEvent event{WindowEventType::MouseInput};
+                switch (action)
                 {
-                    MouseButtonPressedEvent event((MouseCode)button);
-                    self.m_handler(event);
+                case GLFW_PRESS:
+                    event.mouseInput.code  = static_cast<MouseCode>(button);
+                    event.mouseInput.state = KeyState::Press;
+                    event.mouseInput.mods  = static_cast<KeyMod>(mods);
                     break;
-                }
-            case GLFW_RELEASE:
-                {
-                    MouseButtonReleasedEvent event((MouseCode)button);
-                    self.m_handler(event);
+                case GLFW_RELEASE:
+                    event.mouseInput.code  = static_cast<MouseCode>(button);
+                    event.mouseInput.state = KeyState::Release;
+                    event.mouseInput.mods  = static_cast<KeyMod>(mods);
                     break;
+                default:
+                    return;
                 }
-            }
-        });
-
+                self.m_eventQueue.broadcast(event);
+            });
         glfwSetScrollCallback(m_window, [](GLFWwindow* window, double xOffset, double yOffset)
-        {
-            Window& self = *(Window*)glfwGetWindowUserPointer(window);
-
-            MouseScrolledEvent event((float)xOffset, (float)yOffset);
-            self.m_handler(event);
-        });
-
+            {
+                Window&     self = *(Window*)glfwGetWindowUserPointer(window);
+                WindowEvent event{WindowEventType::MouseScrolled};
+                event.scrolled.x = xOffset;
+                event.scrolled.y = yOffset;
+                self.m_eventQueue.broadcast(event);
+            });
         glfwSetCursorPosCallback(m_window, [](GLFWwindow* window, double xPos, double yPos)
-        {
-            Window& self = *(Window*)glfwGetWindowUserPointer(window);
-
-            MouseMovedEvent event((float)xPos, (float)yPos);
-            self.m_handler(event);
-        });
+            {
+                Window&     self = *(Window*)glfwGetWindowUserPointer(window);
+                WindowEvent event{WindowEventType::CursorMoved};
+                event.cursorPosition.x = xPos;
+                event.cursorPosition.y = yPos;
+                self.m_eventQueue.broadcast(event);
+            });
     }
 
     Window::~Window()
@@ -136,36 +137,14 @@ namespace Examples
         glfwDestroyWindow(m_window);
     }
 
-    bool Window::IsKeyPressed(KeyCode key) const
+    Window::HandlerID Window::Subscribe(EventHandler&& handler)
     {
-        auto state = glfwGetKey(m_window, (int32_t)key);
-        return state == GLFW_PRESS;
+        return m_eventQueue.subscribe(std::move(handler));
     }
 
-    bool Window::IsMouseButtonPressed(MouseCode button) const
+    void Window::Unsubscribe(HandlerID id)
     {
-        auto state = glfwGetMouseButton(m_window, (int32_t)button);
-        return state == GLFW_PRESS;
-    }
-
-    Window::Size Window::GetWindowSize() const
-    {
-        return m_currentSize;
-    }
-
-    Window::Cursor Window::GetCursorPosition() const
-    {
-        double xpos, ypos;
-        glfwGetCursorPos(m_window, &xpos, &ypos);
-        return Cursor{ (float)xpos, (float)ypos };
-    }
-
-    Window::Cursor Window::GetCursrorDeltaPosition() const
-    {
-        auto currentPosition = GetCursorPosition();
-        auto cursorDeltaX = currentPosition.x - m_previousCursorPosition.x;
-        auto cursorDeltaY = currentPosition.y - m_previousCursorPosition.y;
-        return { cursorDeltaX, cursorDeltaY };
+        m_eventQueue.unsubscribe(id);
     }
 
     void* Window::GetNativeHandle() const
@@ -173,25 +152,176 @@ namespace Examples
         return glfwGetWin32Window(m_window);
     }
 
-    GLFWwindow* Window::GetGlfwWindow() const
+    void Window::Show() const
     {
-        return m_window;
+        glfwShowWindow(m_window);
     }
 
-    void Window::SetEventCallback(const EventHandler& eventHandler)
+    TL::StringView Window::GetTitle() const
     {
-        m_handler = eventHandler;
+        const char* title = glfwGetWindowTitle(m_window);
+        if (title)
+        {
+            return TL::StringView(title);
+        }
+        return {};
     }
 
-    void Window::SetTitle(const char* name)
+    void Window::SetTitle(TL::StringView title)
     {
-        glfwSetWindowTitle(m_window, name);
+        if (title.empty())
+        {
+            TL_ASSERT(false, "Title cannot be empty");
+        }
+        glfwSetWindowTitle(m_window, title.data());
     }
 
-    void Window::OnUpdate()
+    WindowSize Window::GetSize() const
+    {
+        int width, height;
+        glfwGetWindowSize(m_window, &width, &height);
+        return {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
+    }
+
+    void Window::SetSize(WindowSize size)
+    {
+        if (size.width == 0 || size.height == 0)
+        {
+            TL_ASSERT(false, "Size cannot be zero");
+        }
+        glfwSetWindowSize(m_window, int(size.width), int(size.height));
+    }
+
+    void Window::SetSizeLimits(WindowSize minSize, WindowSize maxSize)
+    {
+        if (minSize.width > maxSize.width || minSize.height > maxSize.height)
+        {
+            TL_ASSERT(false, "Minimum size cannot be greater than maximum size");
+        }
+        glfwSetWindowSizeLimits(m_window, int(minSize.width), int(minSize.height), int(maxSize.width), int(maxSize.height));
+    }
+
+    WindowPosition Window::GetPosition() const
+    {
+        int x, y;
+        glfwGetWindowPos(m_window, &x, &y);
+        return WindowPosition{(float)x, (float)y};
+    }
+
+    void Window::SetPosition(WindowPosition position)
+    {
+        glfwSetWindowPos(m_window, position.x, position.y);
+    }
+
+    WindowPosition Window::GetCursorPosition() const
+    {
+        double xpos, ypos;
+        glfwGetCursorPos(m_window, &xpos, &ypos);
+        return {(float)xpos, (float)ypos};
+    }
+
+    WindowPosition Window::GetCursorDeltaPosition() const
+    {
+        auto prevDelta       = m_previousCursorPosition;
+        auto currentPosition = GetCursorPosition();
+        auto cursorDeltaX    = currentPosition.x - prevDelta.x;
+        auto cursorDeltaY    = currentPosition.y - prevDelta.y;
+        return {cursorDeltaX, cursorDeltaY};
+    }
+
+    void Window::SetCursorPosition(WindowPosition position)
+    {
+        glfwSetCursorPos(m_window, position.x, position.y);
+    }
+
+    bool Window::GetKeyState(KeyCode key, KeyState state) const
+    {
+        int glfwState = glfwGetKey(m_window, static_cast<int>(key));
+        switch (state)
+        {
+        case KeyState::None:    return glfwState == GLFW_RELEASE;
+        case KeyState::Release: return glfwState == GLFW_RELEASE;
+        case KeyState::Press:   return glfwState == GLFW_PRESS;
+        case KeyState::Repeat:  return glfwState == GLFW_REPEAT;
+        default:                return false;
+        }
+    }
+
+    bool Window::GetMouseState(MouseCode button, KeyState state) const
+    {
+        int glfwState = glfwGetMouseButton(m_window, static_cast<int>(button));
+        switch (state)
+        {
+        case KeyState::None:    return glfwState == GLFW_RELEASE;
+        case KeyState::Release: return glfwState == GLFW_RELEASE;
+        case KeyState::Press:   return glfwState == GLFW_PRESS;
+        case KeyState::Repeat:
+        default:                return false; // GLFW does not support mouse button repeat, so always return falsereturn false;
+        }
+    }
+
+    void Window::SetOpacity(float opacity)
+    {
+        if (opacity < 0.0f || opacity > 1.0f)
+        {
+            TL_ASSERT(false, "Opacity must be between 0.0 and 1.0");
+        }
+        glfwSetWindowOpacity(m_window, opacity);
+    }
+
+    bool Window::ShouldWindowClose() const
+    {
+        return glfwWindowShouldClose(m_window) == GLFW_TRUE;
+    }
+
+    void Window::SetWindowShouldClose(bool shouldClose)
+    {
+        glfwSetWindowShouldClose(m_window, shouldClose ? GLFW_TRUE : GLFW_FALSE);
+    }
+
+    TL::StringView Window::GetClipboardText() const
+    {
+        if (const char* clipboardText = glfwGetClipboardString(m_window))
+            return TL::StringView(clipboardText);
+        return {};
+    }
+
+    void Window::SetClipboardText(TL::StringView text)
+    {
+        glfwSetClipboardString(m_window, text.data());
+    }
+
+    bool Window::IsFocused() const
+    {
+        return glfwGetWindowAttrib(m_window, GLFW_FOCUSED) == GLFW_TRUE;
+    }
+
+    void Window::SetFocus()
+    {
+        glfwFocusWindow(m_window);
+    }
+
+    bool Window::GetAttribute(WindowAttribute attribute) const
+    {
+        switch (attribute)
+        {
+        case WindowAttribute::None:
+            return false;
+        case WindowAttribute::Iconified:
+            return glfwGetWindowAttrib(m_window, GLFW_ICONIFIED) == GLFW_TRUE;
+        case WindowAttribute::Maximized:
+            return glfwGetWindowAttrib(m_window, GLFW_MAXIMIZED) == GLFW_TRUE;
+        default:
+            TL_ASSERT(false, "Unknown window attribute");
+            return false;
+        }
+    }
+
+    void Window::Poll()
     {
         glfwPollEvents();
         m_previousCursorPosition = GetCursorPosition();
+        m_eventQueue.poll();
     }
 
-} // namespace Examples
+} // namespace Engine

@@ -154,7 +154,7 @@ namespace Engine
         m_watcher.subscribe([this](const TL::FileEvent& event)
             {
                 if (event.type == TL::FileEventType::Modified)
-                    return;
+                    return false;
 
                 TL_LOG_INFO("Reloading `{}`", event.path);
 
@@ -176,6 +176,8 @@ namespace Engine
                 {
                     TL_UNREACHABLE();
                 }
+
+                return false;
             });
 
 #if 0

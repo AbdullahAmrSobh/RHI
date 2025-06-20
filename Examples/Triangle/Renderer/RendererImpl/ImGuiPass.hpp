@@ -6,7 +6,7 @@
 
 #include "../Common.hpp"
 
-namespace Examples
+namespace Engine
 {
     class Event;
 }
@@ -18,8 +18,6 @@ namespace Engine
     public:
         ImGuiPass() = default;
 
-        void ProcessEvent(Examples::Event& event);
-
         ResultCode Init(RHI::Device* device, RHI::Format colorAttachmentFormat);
         void       Shutdown();
 
@@ -29,12 +27,10 @@ namespace Engine
 
     private:
         void InitGraphicsPipeline();
-        void UpdateBuffers(ImDrawData* drawData);
+        bool UpdateBuffers(ImDrawData* drawData);
 
     private:
         RHI::Device* m_device;
-
-        ImGuiContext* m_imguiContext;
 
         RHI::Handle<RHI::BindGroup>        m_bindGroup;
         RHI::Handle<RHI::PipelineLayout>   m_pipelineLayout;

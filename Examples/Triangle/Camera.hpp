@@ -10,10 +10,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 
-#include "Examples-Base/Event.hpp"
 #include "Examples-Base/Timestep.hpp"
-
-using namespace Examples;
+#include "Examples-Base/Window.hpp"
 
 /// @paragraph Coordinate-System The coordinate system used in the engine is a left-handed Y-up coordinate system.
 
@@ -198,73 +196,73 @@ public:
         UpdateViewMatrix();
     }
 
-    void ProcessEvent(class Event& event, Window& window);
+    // void ProcessEvent(class Event& event, Window& window);
 };
 
-inline void Camera::ProcessEvent(Event& e, Window& window)
-{
-    switch (e.GetEventType())
-    {
-    case EventType::WindowResize:
-        {
-            auto& event          = (WindowResizeEvent&)e;
-            auto [width, height] = event.GetSize();
-            if (projectionMode == ProjectionMode::Perspective)
-            {
-                SetPerspective(width, height, 60.0f, m_znear, m_zfar);
-            }
-            else if (projectionMode == ProjectionMode::Orthographic)
-            {
-                SetOrthographic(width, height, m_znear, m_zfar);
-            }
-            break;
-        }
-    case EventType::KeyPressed:
-        {
-            auto& event = (KeyPressedEvent&)e;
-            switch (event.GetKeyCode())
-            {
-            case KeyCode::W: m_keys.up = true; break;
-            case KeyCode::A: m_keys.left = true; break;
-            case KeyCode::S: m_keys.down = true; break;
-            case KeyCode::D: m_keys.right = true; break;
-            default:         break;
-            };
-            break;
-        }
-    case EventType::KeyReleased:
-        {
-            auto& event = (KeyReleasedEvent&)e;
-            switch (event.GetKeyCode())
-            {
-            case KeyCode::W: m_keys.up = false; break;
-            case KeyCode::A: m_keys.left = false; break;
-            case KeyCode::S: m_keys.down = false; break;
-            case KeyCode::D: m_keys.right = false; break;
-            default:         break;
-            };
-            break;
-        }
-    case EventType::MouseMoved:
-        {
-            [[maybe_unused]] auto& event = (MouseMovedEvent&)e;
+// inline void Camera::ProcessEvent(Event& e, Window& window)
+// {
+//     // switch (e.GetEventType())
+//     // {
+//     // case EventType::WindowResize:
+//     //     {
+//     //         auto& event          = (WindowResizeEvent&)e;
+//     //         auto [width, height] = event.GetSize();
+//     //         if (projectionMode == ProjectionMode::Perspective)
+//     //         {
+//     //             SetPerspective(width, height, 60.0f, m_znear, m_zfar);
+//     //         }
+//     //         else if (projectionMode == ProjectionMode::Orthographic)
+//     //         {
+//     //             SetOrthographic(width, height, m_znear, m_zfar);
+//     //         }
+//     //         break;
+//     //     }
+//     // case EventType::KeyPressed:
+//     //     {
+//     //         auto& event = (KeyPressedEvent&)e;
+//     //         switch (event.GetKeyCode())
+//     //         {
+//     //         case KeyCode::W: m_keys.up = true; break;
+//     //         case KeyCode::A: m_keys.left = true; break;
+//     //         case KeyCode::S: m_keys.down = true; break;
+//     //         case KeyCode::D: m_keys.right = true; break;
+//     //         default:         break;
+//     //         };
+//     //         break;
+//     //     }
+//     // case EventType::KeyReleased:
+//     //     {
+//     //         auto& event = (KeyReleasedEvent&)e;
+//     //         switch (event.GetKeyCode())
+//     //         {
+//     //         case KeyCode::W: m_keys.up = false; break;
+//     //         case KeyCode::A: m_keys.left = false; break;
+//     //         case KeyCode::S: m_keys.down = false; break;
+//     //         case KeyCode::D: m_keys.right = false; break;
+//     //         default:         break;
+//     //         };
+//     //         break;
+//     //     }
+//     // case EventType::MouseMoved:
+//     //     {
+//     //         [[maybe_unused]] auto& event = (MouseMovedEvent&)e;
 
-            // Window returns cursor relative to top-left
-            if (window.IsMouseButtonPressed(MouseCode::ButtonLeft))
-            {
-                auto [x, y] = window.GetCursrorDeltaPosition();
-                y *= -1;
-                Rotate({x, y});
-            }
+//     //         // Window returns cursor relative to top-left
+//     //         if (window.IsMouseButtonPressed(MouseCode::ButtonLeft))
+//     //         {
+//     //             auto [x, y] = window.GetCursrorDeltaPosition();
+//     //             y *= -1;
+//     //             Rotate({x, y});
+//     //         }
 
-            break;
-        }
-    case EventType::MouseScrolled:
-        {
-            auto& event = (MouseScrolledEvent&)e;
-            SetMovementSpeed(m_movementSpeed + event.GetXOffset());
-            break;
-        }
-    default: break;
-    }
-}
+//     //         break;
+//     //     }
+//     // case EventType::MouseScrolled:
+//     //     {
+//     //         auto& event = (MouseScrolledEvent&)e;
+//     //         SetMovementSpeed(m_movementSpeed + event.GetXOffset());
+//     //         break;
+//     //     }
+//     // default: break;
+//     // }
+// }

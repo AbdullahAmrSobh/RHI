@@ -1,6 +1,5 @@
 #include "Examples-Base/ApplicationBase.hpp"
 #include "Examples-Base/Window.hpp"
-#include "Examples-Base/Event.hpp"
 
 #include <tracy/Tracy.hpp>
 
@@ -8,24 +7,18 @@
 
 static bool APP_SHOULD_CLOSE = false;
 
-namespace Examples
+namespace Engine
 {
     ApplicationBase::ApplicationBase(const char* name, uint32_t windowWidth, uint32_t windowHeight)
         : m_window(nullptr)
     {
-        Window::Init();
-
-        auto windowEventDispatcher = [this](Event& event)
-        {
-            this->DispatchEvent(event);
-        };
-
-        m_window = TL::CreatePtr<Window>(name, Window::Size{ windowWidth, windowHeight }, windowEventDispatcher);
+        WindowManager::Init();
+        m_window = WindowManager::CreateWindow(name, WindowFlags::None, WindowSize{ windowWidth, windowHeight });
     }
 
     ApplicationBase::~ApplicationBase()
     {
-        Window::Shutdown();
+        WindowManager::Shutdown();
     }
 
     void ApplicationBase::Init()
@@ -40,22 +33,6 @@ namespace Examples
         ZoneScoped;
 
         OnShutdown();
-    }
-
-    void ApplicationBase::DispatchEvent(Event& event)
-    {
-        if (event.GetEventType() == EventType::WindowClose)
-        {
-            APP_SHOULD_CLOSE = true;
-        }
-
-        if (event.Handled)
-            return;
-
-        // propagate to application level event handling.
-        OnEvent(event);
-        if (event.Handled)
-            return;
     }
 
     void ApplicationBase::Run()
@@ -76,7 +53,7 @@ namespace Examples
             while (accumulator >= deltaTime)
             {
                 accumulator -= deltaTime;
-                m_window->OnUpdate();
+                m_window->Poll();
                 OnUpdate(Timestep(deltaTime));
             }
 
@@ -84,4 +61,4 @@ namespace Examples
         }
     }
 
-} // namespace Examples
+} // namespace Engine

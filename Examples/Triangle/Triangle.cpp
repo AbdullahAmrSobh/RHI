@@ -14,6 +14,7 @@
 #include <tracy/Tracy.hpp>
 
 #include "Examples-Base/ApplicationBase.hpp"
+#include "Examples-Base/Window.hpp"
 #include "Renderer/Renderer.hpp"
 #include "Camera.hpp"
 #include "ImGuiManager.hpp"
@@ -21,6 +22,8 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+
+using namespace Engine;
 
 inline static glm::mat4x4 ToGlmMatrix(const aiMatrix4x4& matrix)
 {
@@ -199,28 +202,28 @@ public:
         RHI::BackendType backend;
         switch (ApplicationBase::GetLaunchSettings().backend)
         {
-        case Examples::CommandLine::LaunchSettings::Backend::Vulkan:
+        case Engine::CommandLine::LaunchSettings::Backend::Vulkan:
             backend = RHI::BackendType::Vulkan1_3;
-            m_window->SetTitle("Playground - RHI::Vulkan");
+            m_window->SetTitle("Playground - RHI::Vulkan 1.3");
             break;
-        case Examples::CommandLine::LaunchSettings::Backend::WebGPU:
+        case Engine::CommandLine::LaunchSettings::Backend::WebGPU:
             backend = RHI::BackendType::WebGPU;
             m_window->SetTitle("Playground - RHI::WebGPU");
             break;
-        case Examples::CommandLine::LaunchSettings::Backend::D3D12:
+        case Engine::CommandLine::LaunchSettings::Backend::D3D12:
             backend = RHI::BackendType::DirectX12_2;
             m_window->SetTitle("Playground - RHI::D3D12");
             break;
         default:
-            m_window->SetTitle("Playground - RHI::Vulkan");
+            m_window->SetTitle("Playground - RHI::Vulkan 1.3");
             backend = RHI::BackendType::Vulkan1_3;
             break;
         }
 
+        m_imguiManager->Init(m_window);
         auto result = m_renderer->Init(backend);
         TL_ASSERT(RHI::IsSuccess(result), "Failed to initialize renderer");
-        m_presentationViewport = m_renderer->CreatePresentationViewport(m_window.get());
-        m_imguiManager->Init();
+        m_presentationViewport = m_renderer->CreatePresentationViewport(m_window);
 
         m_scene     = m_renderer->CreateScene();
         m_sceneView = m_scene->CreateView();
@@ -266,21 +269,55 @@ public:
     {
         ZoneScoped;
 
-        auto [width, height] = m_window->GetWindowSize();
-        ImGuiIO& io          = ImGui::GetIO();
-        io.DisplaySize.x     = float(width);
-        io.DisplaySize.y     = float(height);
+// {
+//         ImGui::NewFrame();
+
+//         // Create a fullscreen dockspace
+//         ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
+//         const ImGuiViewport* viewport = ImGui::GetMainViewport();
+//         ImGui::SetNextWindowPos(viewport->WorkPos);
+//         ImGui::SetNextWindowSize(viewport->WorkSize);
+//         ImGui::SetNextWindowViewport(viewport->ID);
+//         window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+//         window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+
+//         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+//         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+//         ImGui::Begin("DockSpace Demo", nullptr, window_flags);
+//         ImGui::PopStyleVar(2);
+
+//         // DockSpace
+//         ImGuiID dockspace_id = ImGui::GetID("MyDockSpace");
+//         ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
+
+//         ImGui::End();
+
+//         // Example window
+//         ImGui::Begin("Window1");
+//             ImGui::Text("hello");
+//         ImGui::End();
+
+//         ImGui::Render();
+//         ImGui::UpdatePlatformWindows();
+//         ImGui::RenderPlatformWindowsDefault();
+
+// }
 
         ImGui::NewFrame();
+
+        // ImGui::DockSpaceOverViewport();
+
         // if (ImGui::Button("rdoc capture"))
         // {
-        //     m_renderer->m_renderGraph->Debug_CaptureNextFrame();
+        //     m_renderer->ptr->GetRenderGraph()->Debug_CaptureNextFrame();
         // }
-        ImGui::ShowDemoWindow();
-        ImGui::Render();
 
-        // ImGui::UpdatePlatformWindows();
-        // ImGui::RenderPlatformWindowsDefault();
+        ImGui::ShowDemoWindow();
+
+
+        ImGui::Render();
+        ImGui::UpdatePlatformWindows();
+        ImGui::RenderPlatformWindowsDefault();
 
         m_renderer->Render(m_scene, m_presentationViewport);
 
@@ -289,31 +326,12 @@ public:
 
         FrameMark;
     }
-
-    void OnEvent(Event& event) override
-    {
-        ZoneScoped;
-        switch (event.GetEventType())
-        {
-        case EventType::WindowResize:
-            {
-                auto [width, height] = m_presentationViewport.window->GetWindowSize();
-                auto result          = m_presentationViewport.swapchain->Resize({.width = width, .height = height});
-                TL_ASSERT(RHI::IsSuccess(result), "Failed to resize swapchain");
-            }
-            break;
-        default: break;
-        }
-        m_imguiManager->ProcessEvent(event);
-        m_camera.ProcessEvent(event, *m_window);
-    }
 };
 
 #include <Examples-Base/Entry.hpp>
 
 int main(int argc, const char* argv[])
 {
-    using namespace Examples;
     TL::Span args{argv, (size_t)argc};
     // TL::MemPlumber::start();
     auto     result = Entry<Playground>(args);

@@ -12,7 +12,7 @@
 #include "RendererImpl/DeferredRenderer.hpp"
 #include <Examples-Base/Window.hpp>
 
-namespace Examples
+namespace Engine
 {
     class Window;
 }
@@ -23,10 +23,9 @@ namespace Engine
 
     struct PresentationViewport
     {
-        RHI::Swapchain*   swapchain = nullptr;
-        Examples::Window* window    = nullptr;
-
-        RHI::ImageSize2D GetSize() const { return {window->GetWindowSize().width, window->GetWindowSize().height}; }
+        Window*         window    = nullptr;
+        RHI::Swapchain* swapchain = nullptr;
+        RHI::ImageSize2D GetSize() const { return {window->GetSize().width, window->GetSize().height}; }
     };
 
     // Renderer interface
@@ -52,7 +51,7 @@ namespace Engine
             return m_allocators.uniformPool.AllocateUniformBuffer<T>();
         }
 
-        PresentationViewport CreatePresentationViewport(Examples::Window* window);
+        PresentationViewport CreatePresentationViewport(Window* window);
         void                 DestroyPresentationViewport(PresentationViewport& viewport);
 
         Scene* CreateScene();

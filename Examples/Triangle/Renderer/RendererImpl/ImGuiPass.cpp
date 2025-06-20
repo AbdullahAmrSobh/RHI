@@ -12,12 +12,8 @@
 
 namespace Engine
 {
-
     ResultCode ImGuiPass::Init(RHI::Device* device, RHI::Format colorAttachmentFormat)
     {
-        m_imguiContext = ImGui::CreateContext();
-        ImGui::SetCurrentContext(m_imguiContext);
-
         ImGuiIO& io = ImGui::GetIO();
         TL_ASSERT(io.BackendRendererUserData == nullptr && "Already initialized a renderer backend!");
 
@@ -87,42 +83,27 @@ namespace Engine
             };
         RHI::GraphicsPipelineCreateInfo pipelineCI =
             {
-                .name               = "ImGui Pipeline",
-                .vertexShaderName   = "VSMain",
-                .vertexShaderModule = vertexShaderModule,
-                .pixelShaderName    = "PSMain",
-                .pixelShaderModule  = fragmentShader,
-                .layout             = m_pipelineLayout,
-                .vertexBufferBindings =
+                .name                 = "ImGui Pipeline",
+                .vertexShaderName     = "VSMain",
+                .vertexShaderModule   = vertexShaderModule,
+                .pixelShaderName      = "PSMain",
+                .pixelShaderModule    = fragmentShader,
+                .layout               = m_pipelineLayout,
+                .vertexBufferBindings = {
                     {
-                                           {
-                            .stride   = sizeof(ImDrawVert),
-                            .stepRate = RHI::PipelineVertexInputRate::PerVertex,
-                            .attributes =
-                                {
-                                    {.offset = offsetof(ImDrawVert, pos), .format = RHI::Format::RG32_FLOAT},
-                                    {.offset = offsetof(ImDrawVert, uv), .format = RHI::Format::RG32_FLOAT},
-                                    {.offset = offsetof(ImDrawVert, col), .format = RHI::Format::RGBA8_UNORM},
-                                },
-                        },
-                                           },
-                .renderTargetLayout =
-                    {
-                                           .colorAttachmentsFormats = RHI::Format::RGBA8_UNORM,
-                                           },
-                .colorBlendState =
-                    {
-                                           .blendStates    = {attachmentBlendDesc},
-                                           .blendConstants = {},
-                                           },
-                .rasterizationState =
-                    {
-                                           .cullMode  = RHI::PipelineRasterizerStateCullMode::None,
-                                           .fillMode  = RHI::PipelineRasterizerStateFillMode::Triangle,
-                                           .frontFace = RHI::PipelineRasterizerStateFrontFace::CounterClockwise,
-                                           .lineWidth = 1.0f,
-                                           },
-        };
+                        .stride   = sizeof(ImDrawVert),
+                        .stepRate = RHI::PipelineVertexInputRate::PerVertex,
+                        .attributes =
+                            {
+                                {.offset = offsetof(ImDrawVert, pos), .format = RHI::Format::RG32_FLOAT},
+                                {.offset = offsetof(ImDrawVert, uv), .format = RHI::Format::RG32_FLOAT},
+                                {.offset = offsetof(ImDrawVert, col), .format = RHI::Format::RGBA8_UNORM},
+                            },
+                    }},
+                .renderTargetLayout = {.colorAttachmentsFormats = RHI::Format::RGBA8_UNORM},
+                .colorBlendState    = {.blendStates = {attachmentBlendDesc}},
+                .rasterizationState = {.cullMode = RHI::PipelineRasterizerStateCullMode::None},
+            };
         m_pipeline = m_device->CreateGraphicsPipeline(pipelineCI);
         m_device->DestroyBindGroupLayout(bindGroupLayout);
         return ResultCode::Success;
@@ -145,7 +126,22 @@ namespace Engine
 
     RHI::RGPass* ImGuiPass::AddPass(RHI::RenderGraph* rg, RHI::RGImage*& outAttachment, ImDrawData* drawData)
     {
-        UpdateBuffers(drawData);
+        if (UpdateBuffers(drawData) == false)
+            return nullptr;
+
+        {
+            float L         = drawData->DisplayPos.x;
+            float R         = drawData->DisplayPos.x + drawData->DisplaySize.x;
+            float T         = drawData->DisplayPos.y;
+            float B         = drawData->DisplayPos.y + drawData->DisplaySize.y;
+            float mvp[4][4] = {
+                {2.0f / (R - L),    0.0f,              0.0f, 0.0f},
+                {0.0f,              2.0f / (T - B),    0.0f, 0.0f},
+                {0.0f,              0.0f,              0.5f, 0.0f},
+                {(R + L) / (L - R), (T + B) / (B - T), 0.5f, 1.0f},
+            };
+            m_device->BufferWrite(m_uniformBuffer, 0, {mvp, sizeof(mvp)});
+        }
 
         return rg->AddPass({
             .name          = "ImGui",
@@ -155,31 +151,36 @@ namespace Engine
             {
                 builder.AddColorAttachment({.color = outAttachment, .loadOp = RHI::LoadOperation::Load});
             },
-            .executeCallback = [=](RHI::CommandList& commandList)
+            .executeCallback = [=, this](RHI::CommandList& commandList)
             {
-                // Render command lists
-                int globalIdxOffset = 0;
-                int globalVtxOffset = 0;
-
                 // Will project scissor/clipping rectangles into framebuffer space
-                ImVec2 clipOff   = drawData->DisplayPos;       // (0,0) unless using multi-viewports
-                ImVec2 clipScale = drawData->FramebufferScale; // (1,1) unless using retina display which are often (2,2)
-                for (int n = 0; n < drawData->CmdListsCount; n++)
+                ImVec2 clipOff            = drawData->DisplayPos;       // (0,0) unless using multi-viewports
+                ImVec2 clipScale          = drawData->FramebufferScale; // (1,1) unless using retina display which are often (2,2)
+                size_t indexBufferOffset  = 0;
+                size_t vertexBufferOffset = 0;
+                for (const auto& drawList : drawData->CmdLists)
                 {
-                    const ImDrawList* drawList = drawData->CmdLists[n];
-                    for (int i = 0; i < drawList->CmdBuffer.Size; i++)
-                    {
-                        const ImDrawCmd* drawCmd = &drawList->CmdBuffer[i];
+                    // clang-format off
+                    commandList.BindIndexBuffer({.buffer = m_indexBuffer, .offset = indexBufferOffset}, RHI::IndexType::uint16);
+                    commandList.BindVertexBuffers(0, {{.buffer = m_vertexBuffer, .offset = vertexBufferOffset}});
+                    // clang-format on
 
-                        if (drawCmd->UserCallback)
+                    m_device->BufferWrite(m_indexBuffer, indexBufferOffset, TL::Block{.ptr = drawList->IdxBuffer.Data, .size = drawList->IdxBuffer.Size * sizeof(ImDrawIdx)});
+                    m_device->BufferWrite(m_vertexBuffer, vertexBufferOffset, TL::Block{.ptr = drawList->VtxBuffer.Data, .size = drawList->VtxBuffer.Size * sizeof(ImDrawVert)});
+                    indexBufferOffset += drawList->IdxBuffer.Size * sizeof(ImDrawIdx);
+                    vertexBufferOffset += drawList->VtxBuffer.Size * sizeof(ImDrawVert);
+
+                    for (const auto& drawCmd : drawList->CmdBuffer)
+                    {
+                        if (drawCmd.UserCallback)
                         {
-                            drawCmd->UserCallback(drawList, drawCmd);
+                            drawCmd.UserCallback(drawList, &drawCmd);
                         }
                         else
                         {
                             // Project scissor/clipping rectangles into framebuffer space
-                            ImVec2 clip_min((drawCmd->ClipRect.x - clipOff.x) * clipScale.x, (drawCmd->ClipRect.y - clipOff.y) * clipScale.y);
-                            ImVec2 clip_max((drawCmd->ClipRect.z - clipOff.x) * clipScale.x, (drawCmd->ClipRect.w - clipOff.y) * clipScale.y);
+                            ImVec2 clip_min((drawCmd.ClipRect.x - clipOff.x) * clipScale.x, (drawCmd.ClipRect.y - clipOff.y) * clipScale.y);
+                            ImVec2 clip_max((drawCmd.ClipRect.z - clipOff.x) * clipScale.x, (drawCmd.ClipRect.w - clipOff.y) * clipScale.y);
 
                             // Clamp to viewport as commandList.SetSicssor() won't accept values that are off bounds
                             clip_min.x = std::clamp(clip_min.x, 0.0f, drawData->DisplaySize.x);
@@ -204,31 +205,27 @@ namespace Engine
                             commandList.SetScissor(scissor);
 
                             commandList.BindGraphicsPipeline(m_pipeline, {{.bindGroup = m_bindGroup}});
-                            commandList.BindIndexBuffer({.buffer = m_indexBuffer}, RHI::IndexType::uint16);
-                            commandList.BindVertexBuffers(0, {{.buffer = m_vertexBuffer}});
+
                             commandList.DrawIndexed({
-                                .indexCount    = drawCmd->ElemCount,
+                                .indexCount    = drawCmd.ElemCount,
                                 .instanceCount = 1,
-                                .firstIndex    = drawCmd->IdxOffset + globalIdxOffset,
-                                .vertexOffset  = int32_t(drawCmd->VtxOffset + globalVtxOffset),
+                                .firstIndex    = drawCmd.IdxOffset,
+                                .vertexOffset  = int32_t(drawCmd.VtxOffset),
                                 .firstInstance = 0,
 
                             });
                         }
                     }
-
-                    globalIdxOffset += drawList->IdxBuffer.Size;
-                    globalVtxOffset += drawList->VtxBuffer.Size;
                 }
             },
         });
     }
 
-    void ImGuiPass::UpdateBuffers(ImDrawData* drawData)
+    bool ImGuiPass::UpdateBuffers(ImDrawData* drawData)
     {
         // Avoid rendering when minimized
         if (drawData->DisplaySize.x <= 0.0f || drawData->DisplaySize.y <= 0.0f)
-            return;
+            return false;
 
         if ((size_t)drawData->TotalVtxCount > m_vertexBufferSize)
         {
@@ -259,38 +256,8 @@ namespace Engine
         }
 
         if (drawData->TotalIdxCount == 0 || drawData->TotalVtxCount == 0)
-            return;
+            return false;
 
-        size_t indexBufferOffset  = 0;
-        size_t vertexBufferOffset = 0;
-        for (int n = 0; n < drawData->CmdListsCount; n++)
-        {
-            const ImDrawList* cmdList = drawData->CmdLists[n];
-            m_device->BufferWrite(m_indexBuffer, indexBufferOffset, TL::Block{.ptr = cmdList->IdxBuffer.Data, .size = cmdList->IdxBuffer.Size * sizeof(ImDrawIdx)});
-            m_device->BufferWrite(m_vertexBuffer, vertexBufferOffset, TL::Block{.ptr = cmdList->VtxBuffer.Data, .size = cmdList->VtxBuffer.Size * sizeof(ImDrawVert)});
-            indexBufferOffset += cmdList->IdxBuffer.Size;
-            vertexBufferOffset += cmdList->VtxBuffer.Size;
-        }
-        // m_device->UnmapBuffer(m_vertexBuffer);
-        // m_device->UnmapBuffer(m_indexBuffer);
-
-        {
-            float L = drawData->DisplayPos.x;
-            float R = drawData->DisplayPos.x + drawData->DisplaySize.x;
-            float T = drawData->DisplayPos.y;
-            float B = drawData->DisplayPos.y + drawData->DisplaySize.y;
-            // clang-format off
-            float mvp[4][4] =
-            {
-                { 2.0f / (R - L), 0.0f,                 0.0f, 0.0f },
-                { 0.0f,           2.0f / (T - B),       0.0f, 0.0f },
-                { 0.0f,           0.0f,                 0.5f, 0.0f },
-                { (R + L) / (L - R), (T + B) / (B - T), 0.5f, 1.0f },
-            };
-            // clang-format on
-            // auto  uniformBufferPtr = m_device->MapBuffer(m_uniformBuffer);
-            m_device->BufferWrite(m_uniformBuffer, 0, {mvp, sizeof(mvp)});
-            // m_device->UnmapBuffer(m_uniformBuffer);
-        }
+        return true;
     }
 } // namespace Engine
