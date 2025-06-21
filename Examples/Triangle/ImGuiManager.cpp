@@ -160,12 +160,21 @@ namespace Engine
         case WindowEventType::Focused:   io.AddFocusEvent(true); break;
         case WindowEventType::Unfocused: io.AddFocusEvent(false); break;
         case WindowEventType::Closed:    break;
-        case WindowEventType::Moved:     break;
+        case WindowEventType::Moved:
         case WindowEventType::CursorMoved:
-            io.AddMousePosEvent(e.cursorPosition.x, e.cursorPosition.y);
+        {
+            float x = e.cursorPosition.x;
+            float y = e.cursorPosition.y;
+            if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+            {
+                x += e.window->GetPosition().x;
+                y += e.window->GetPosition().y;
+            }
+            io.AddMousePosEvent(x, y);
             return io.WantCaptureMouse;
+        }
         case WindowEventType::MouseScrolled:
-            io.AddMouseWheelEvent(e.cursorPosition.x, e.cursorPosition.y);
+            io.AddMouseWheelEvent(e.scrolled.x, e.scrolled.y);
             return io.WantCaptureMouse;
         case WindowEventType::MouseInput:
             switch (e.mouseInput.state)
@@ -233,12 +242,8 @@ namespace Engine
         auto position = vp->Pos;
         auto size     = vp->Size;
 
-        TL::Flags<WindowFlags> attributes;
-        if (vp->Flags & ImGuiViewportFlags_NoDecoration)
-            attributes |= WindowFlags::NoDecorations;
-
         auto windowData    = TL::Construct<ImGuiPlatformWindowData>();
-        windowData->window = WindowManager::CreateWindow("", attributes, {(uint32_t)size.x, (uint32_t)size.y});
+        windowData->window = WindowManager::CreateWindow("", WindowFlags::NoDecorations, {(uint32_t)size.x, (uint32_t)size.y});
         windowData->window->SetPosition({position.x, position.y});
         windowData->window->SetSize({(uint32_t)size.x, (uint32_t)size.y});
         windowData->window->Subscribe([](const WindowEvent& e) -> bool

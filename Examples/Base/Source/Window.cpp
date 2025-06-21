@@ -110,20 +110,20 @@ namespace Engine
         glfwSetWindowSizeCallback(m_window, [](GLFWwindow* window, int width, int height)
             {
                 Window&     self = *(Window*)glfwGetWindowUserPointer(window);
-                WindowEvent event{WindowEventType::Resized};
+                WindowEvent event{&self, WindowEventType::Resized};
                 event.size = {(uint32_t)width, (uint32_t)height};
                 self.m_eventQueue.broadcast(event);
             });
         glfwSetWindowCloseCallback(m_window, [](GLFWwindow* window)
             {
                 Window&     self = *(Window*)glfwGetWindowUserPointer(window);
-                WindowEvent event{WindowEventType::Closed};
+                WindowEvent event{&self, WindowEventType::Closed};
                 self.m_eventQueue.broadcast(event);
             });
         glfwSetKeyCallback(m_window, [](GLFWwindow* window, int key, int scancode, int action, int mods)
             {
                 Window&     self = *(Window*)glfwGetWindowUserPointer(window);
-                WindowEvent event{WindowEventType::KeyInput};
+                WindowEvent event{&self, WindowEventType::KeyInput};
                 switch (action)
                 {
                 case GLFW_PRESS:
@@ -149,14 +149,14 @@ namespace Engine
         glfwSetCharCallback(m_window, [](GLFWwindow* window, unsigned int keycode)
             {
                 Window&     self = *(Window*)glfwGetWindowUserPointer(window);
-                WindowEvent event{WindowEventType::KeyTyped};
+                WindowEvent event{&self, WindowEventType::KeyTyped};
                 event.keyCode = keycode;
                 self.m_eventQueue.broadcast(event);
             });
         glfwSetMouseButtonCallback(m_window, [](GLFWwindow* window, int button, int action, int mods)
             {
                 Window&     self = *(Window*)glfwGetWindowUserPointer(window);
-                WindowEvent event{WindowEventType::MouseInput};
+                WindowEvent event{&self, WindowEventType::MouseInput};
                 switch (action)
                 {
                 case GLFW_PRESS:
@@ -174,20 +174,28 @@ namespace Engine
                 }
                 self.m_eventQueue.broadcast(event);
             });
-        glfwSetScrollCallback(m_window, [](GLFWwindow* window, double xOffset, double yOffset)
+        glfwSetWindowPosCallback(m_window, [](GLFWwindow* window, int xpos, int ypos)
             {
                 Window&     self = *(Window*)glfwGetWindowUserPointer(window);
-                WindowEvent event{WindowEventType::MouseScrolled};
-                event.scrolled.x = xOffset;
-                event.scrolled.y = yOffset;
+                WindowEvent event{&self, WindowEventType::Moved};
+                event.position.x = (float)(xpos);
+                event.position.y = (float)(ypos);
                 self.m_eventQueue.broadcast(event);
             });
         glfwSetCursorPosCallback(m_window, [](GLFWwindow* window, double xPos, double yPos)
             {
                 Window&     self = *(Window*)glfwGetWindowUserPointer(window);
-                WindowEvent event{WindowEventType::CursorMoved};
+                WindowEvent event{&self, WindowEventType::CursorMoved};
                 event.cursorPosition.x = xPos;
                 event.cursorPosition.y = yPos;
+                self.m_eventQueue.broadcast(event);
+            });
+        glfwSetScrollCallback(m_window, [](GLFWwindow* window, double xOffset, double yOffset)
+            {
+                Window&     self = *(Window*)glfwGetWindowUserPointer(window);
+                WindowEvent event{&self, WindowEventType::MouseScrolled};
+                event.scrolled.x = xOffset;
+                event.scrolled.y = yOffset;
                 self.m_eventQueue.broadcast(event);
             });
     }

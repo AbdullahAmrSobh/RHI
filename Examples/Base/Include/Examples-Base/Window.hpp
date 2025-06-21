@@ -237,9 +237,12 @@ namespace Engine
         KeyState          state;
         TL::Flags<KeyMod> mods;
     };
+    class Window;
+    class Monitor;
 
     struct WindowEvent
     {
+        Window*         window;
         WindowEventType type;
 
         union
@@ -253,9 +256,6 @@ namespace Engine
             uint32_t       keyCode;        // WindowEventType::KeyTyped
         };
     };
-
-    class Window;
-    class Monitor;
 
 #ifdef CreateWindow
     #warning "CreateWindow macro is defined, which may cause conflicts with Engine::WindowManager::CreateWindow."
