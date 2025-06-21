@@ -15,16 +15,13 @@
 namespace Engine
 {
     class Window;
-}
-
-namespace Engine
-{
     class Scene;
 
     struct PresentationViewport
     {
         Window*         window    = nullptr;
         RHI::Swapchain* swapchain = nullptr;
+
         RHI::ImageSize2D GetSize() const { return {window->GetSize().width, window->GetSize().height}; }
     };
 
@@ -69,8 +66,8 @@ namespace Engine
             BufferPool storagePool;
         } m_allocators;
 
-        PipelineLibrary           m_pipelineLibrary;
-        GeometryBufferPool        m_geometryBufferPool;
+        PipelineLibrary    m_pipelineLibrary;
+        GeometryBufferPool m_geometryBufferPool;
         TL::Ptr<DeferredRenderer> m_deferredRenderer = TL::CreatePtr<DeferredRenderer>();
     };
 } // namespace Engine

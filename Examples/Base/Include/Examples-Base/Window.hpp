@@ -315,6 +315,8 @@ namespace Engine
         void           Unsubscribe(HandlerID id);
         // Return the native OS window handle (e.g. HWND on windows)
         void*          GetNativeHandle() const;
+        // Return true if the window should be closed
+        bool           ShouldClose() const;
         // Newly created windows are initially hidden so SetWindowPos/Size/Title can be called on them before showing the window
         void           Show() const;
         // title

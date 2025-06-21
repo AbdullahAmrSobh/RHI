@@ -32,6 +32,9 @@ namespace Engine
 
         void Run();
 
+    protected:
+        void NotifyShouldClose();
+
         virtual void OnInit() = 0;
 
         virtual void OnShutdown() = 0;

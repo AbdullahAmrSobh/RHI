@@ -143,10 +143,11 @@ namespace Engine
             m_device->BufferWrite(m_uniformBuffer, 0, {mvp, sizeof(mvp)});
         }
 
+        auto [width, height] = drawData->OwnerViewport->Size;
         return rg->AddPass({
             .name          = "ImGui",
             .type          = RHI::PassType::Graphics,
-            .size          = rg->GetFrameSize(),
+            .size          = {(uint32_t)width, (uint32_t)height},
             .setupCallback = [&](RHI::RenderGraphBuilder& builder)
             {
                 builder.AddColorAttachment({.color = outAttachment, .loadOp = RHI::LoadOperation::Load});

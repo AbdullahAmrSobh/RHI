@@ -13,7 +13,7 @@ namespace Engine
         : m_window(nullptr)
     {
         WindowManager::Init();
-        m_window = WindowManager::CreateWindow(name, WindowFlags::None, WindowSize{ windowWidth, windowHeight });
+        m_window = WindowManager::CreateWindow(name, WindowFlags::None, WindowSize{windowWidth, windowHeight});
     }
 
     ApplicationBase::~ApplicationBase()
@@ -40,12 +40,12 @@ namespace Engine
         auto currentTime = std::chrono::high_resolution_clock::now().time_since_epoch();
 
         double accumulator = 0.0;
-        double deltaTime = 0.01;
+        double deltaTime   = 0.01;
         while (!APP_SHOULD_CLOSE)
         {
-            auto newTime = std::chrono::high_resolution_clock::now().time_since_epoch();
+            auto   newTime   = std::chrono::high_resolution_clock::now().time_since_epoch();
             double frameTime = std::chrono::duration<double>(newTime - currentTime).count();
-            currentTime = newTime;
+            currentTime      = newTime;
 
             frameTime = std::min(frameTime, 0.25);
             accumulator += frameTime;
@@ -54,11 +54,20 @@ namespace Engine
             {
                 accumulator -= deltaTime;
                 m_window->Poll();
+                if (m_window->ShouldWindowClose())
+                {
+                    NotifyShouldClose();
+                }
                 OnUpdate(Timestep(deltaTime));
             }
 
             Render();
         }
+    }
+
+    void ApplicationBase::NotifyShouldClose()
+    {
+        APP_SHOULD_CLOSE = true;
     }
 
 } // namespace Engine

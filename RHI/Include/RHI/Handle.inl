@@ -10,7 +10,7 @@ namespace RHI
         m_resources.clear();
         m_genIds.clear();
         m_freeSlots.clear();
-        m_liveResources.clear();
+        // m_liveResources.clear();
     }
 
     template<typename Resource>
@@ -76,7 +76,7 @@ namespace RHI
         m_genIds.emplace_back(uint16_t(1));
         auto genId              = m_genIds.back();
         auto handle             = Handle<Resource>(m_resources.size() - 1, genId);
-        m_liveResources[handle] = TL::CaptureStacktrace(3);
+        // m_liveResources[handle] = TL::CaptureStacktrace(3);
         return handle;
     }
 
@@ -103,30 +103,30 @@ namespace RHI
             m_freeSlots.push_back(index);
         }
 
-        m_liveResources.erase(handle);
+        // m_liveResources.erase(handle);
     }
 
-    template<typename T>
-    TL::String HandlePool<T>::ReportLiveResources() const
-    {
-        auto breakline = "\n=============================================================================\n";
-        auto message   = std::format("{}{} leak count {} \n", breakline, typeid(T).name(), m_liveResources.size());
+    // template<typename T>
+    // TL::String HandlePool<T>::ReportLiveResources() const
+    // {
+    //     auto breakline = "\n=============================================================================\n";
+    //     // auto message   = std::format("{}{} leak count {} \n", breakline, typeid(T).name(), m_liveResources.size());
 
-        for (auto [handle, stacktrace] : m_liveResources)
-        {
-            auto stacktraceReport = TL::ReportStacktrace(stacktrace);
-            message.append(std::format("{}\n", stacktraceReport));
-        }
+    //     // for (auto [handle, stacktrace] : m_liveResources)
+    //     // {
+    //     //     auto stacktraceReport = TL::ReportStacktrace(stacktrace);
+    //     //     message.append(std::format("{}\n", stacktraceReport));
+    //     // }
 
-        message.append(std::format("{}", breakline));
-        return TL::String{message};
-    }
+    //     message.append(std::format("{}", breakline));
+    //     return TL::String{message};
+    // }
 
-    template<typename T>
-    uint32_t HandlePool<T>::ReportLiveResourcesCount() const
-    {
-        return (uint32_t)m_liveResources.size();
-    }
+    // template<typename T>
+    // uint32_t HandlePool<T>::ReportLiveResourcesCount() const
+    // {
+    //     // return (uint32_t)m_liveResources.size();
+    // }
 
 } // namespace RHI
 

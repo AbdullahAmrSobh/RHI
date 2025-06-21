@@ -67,30 +67,9 @@ namespace Engine
     {
         ZoneScoped;
 
-        // m_window = window;
-
         m_device = CreateDevice(backend);
-
-        // auto [width, height] = window->GetWindowSize();
-        // RHI::SwapchainCreateInfo swapchainInfo{
-        //     .name        = "Swapchain",
-        //     .win32Window = {window->GetNativeHandle()},
-        // };
-        // m_swapchain = m_device->CreateSwapchain(swapchainInfo);
-        // {
-        //     RHI::SwapchainConfigureInfo configuration{
-        //         .size        = {width, height},
-        //         .imageCount  = 1,
-        //         .imageUsage  = RHI::ImageUsage::Color,
-        //         .format      = RHI::Format::RGBA8_UNORM,
-        //         .presentMode = RHI::SwapchainPresentMode::Fifo,
-        //         .alphaMode   = RHI::SwapchainAlphaMode::None
-        //     };
-        //     auto result = m_swapchain->Configure(configuration);
-        //     TL_ASSERT(RHI::IsSuccess(result));
-        // }
-
-        m_renderGraph = m_device->CreateRenderGraph({});
+        RHI::RenderGraphCreateInfo rgCI{};
+        m_renderGraph = m_device->CreateRenderGraph(rgCI);
 
 #define TRY(expr)                                  \
     {                                              \
@@ -103,8 +82,11 @@ namespace Engine
         }                                          \
     }
 
-        TRY(m_allocators.uniformPool.Init(*m_device, {"uniform-buffers-pool", true, RHI::BufferUsage::Uniform, sizeof(GPU::SceneView) * 100}));
-        TRY(m_allocators.storagePool.Init(*m_device, {"storage-buffers-pool", true, RHI::BufferUsage::Storage, sizeof(GPU::SceneView) * 100}));
+        RHI::BufferCreateInfo uniformPoolCI{"uniform-buffers-pool", true, RHI::BufferUsage::Uniform, sizeof(GPU::SceneView) * 100};
+        RHI::BufferCreateInfo storagePoolCI{"storage-buffers-pool", true, RHI::BufferUsage::Storage, sizeof(GPU::SceneView) * 100};
+
+        TRY(m_allocators.uniformPool.Init(*m_device, uniformPoolCI));
+        TRY(m_allocators.storagePool.Init(*m_device, storagePoolCI));
         TRY(m_pipelineLibrary.Init(m_device));
         TRY(m_geometryBufferPool.Init(*m_device));
         TRY(m_deferredRenderer->Init(m_device));
@@ -117,11 +99,10 @@ namespace Engine
     void Renderer::Shutdown()
     {
         ZoneScoped;
-
         m_deferredRenderer->Shutdown(m_device);
-
         m_geometryBufferPool.Shutdown();
         m_pipelineLibrary.Shutdown();
+
         m_device->DestroyRenderGraph(m_renderGraph);
         DestroyDevice(m_device);
     }

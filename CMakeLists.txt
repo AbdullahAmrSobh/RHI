@@ -14,7 +14,7 @@ project(
 )
 
 # Set C++ standard and extensions
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -67,8 +67,8 @@ endif()
 add_subdirectory(RHI)
 
 if(RHI_BACKEND_D3D12)
-    add_compile_definitions(RHI_BACKEND_D3D12)
-    add_subdirectory(D3D12)
+    # add_compile_definitions(RHI_BACKEND_D3D12)
+    # add_subdirectory(D3D12)
 endif()
 
 if(RHI_BACKEND_VULKAN)
@@ -77,8 +77,8 @@ if(RHI_BACKEND_VULKAN)
 endif()
 
 if(RHI_BACKEND_WEBGPU)
-    add_compile_definitions(RHI_BACKEND_WEBGPU)
-    add_subdirectory(WebGPU)
+    # add_compile_definitions(RHI_BACKEND_WEBGPU)
+    # add_subdirectory(WebGPU)
 endif()
 
 if(RHI_BUILD_EXAMPLES)

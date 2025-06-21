@@ -224,6 +224,12 @@ public:
         auto result = m_renderer->Init(backend);
         TL_ASSERT(RHI::IsSuccess(result), "Failed to initialize renderer");
         m_presentationViewport = m_renderer->CreatePresentationViewport(m_window);
+        auto handler = [this](const auto& e)
+            {
+                m_camera.ProcessEvent(e);
+                return false;
+            };
+        m_window->Subscribe(handler);
 
         m_scene     = m_renderer->CreateScene();
         m_sceneView = m_scene->CreateView();
@@ -271,7 +277,7 @@ public:
 
         // Begin ImGui frame and create a fullscreen dockspace over the main viewport
         ImGui::NewFrame();
-        ImGui::DockSpaceOverViewport();
+        // ImGui::DockSpaceOverViewport();
         // Example window
         ImGui::Begin("Window1");
         ImGui::Text("hello");

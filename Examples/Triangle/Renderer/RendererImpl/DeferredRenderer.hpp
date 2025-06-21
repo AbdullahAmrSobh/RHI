@@ -5,6 +5,8 @@
 #include "ImGuiPass.hpp"
 #include "../Common.hpp"
 
+#include <array>
+
 namespace Engine
 {
     struct CullPass

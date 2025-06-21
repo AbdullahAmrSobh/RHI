@@ -105,6 +105,9 @@ namespace Engine
 
     Window::Window(TL::StringView title, TL::Flags<WindowFlags> flags, WindowSize size)
     {
+        glfwWindowHint(GLFW_RESIZABLE, (flags & WindowFlags::NonResizable) ? GLFW_FALSE : GLFW_TRUE);
+        glfwWindowHint(GLFW_DECORATED, (flags & WindowFlags::NoDecorations) ? GLFW_FALSE : GLFW_TRUE);
+        glfwWindowHint(GLFW_VISIBLE, (flags & WindowFlags::Hidden) ? GLFW_FALSE : GLFW_TRUE);
         m_window = glfwCreateWindow(int(size.width), int(size.height), title.data(), nullptr, nullptr);
         glfwSetWindowUserPointer(m_window, this);
         glfwSetWindowSizeCallback(m_window, [](GLFWwindow* window, int width, int height)
@@ -218,6 +221,11 @@ namespace Engine
     void* Window::GetNativeHandle() const
     {
         return glfwGetWin32Window(m_window);
+    }
+
+    bool Window::ShouldClose() const
+    {
+        return glfwWindowShouldClose(m_window) == GLFW_TRUE;
     }
 
     void Window::Show() const

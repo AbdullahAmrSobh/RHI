@@ -6,7 +6,6 @@
 #include <vulkan/vulkan.h>
 
 #include <TL/Containers.hpp>
-#include <TL/Memory.hpp>
 #include <TL/Span.hpp>
 
 namespace RHI::Vulkan

@@ -44,21 +44,21 @@ namespace RHI
 
     RGFrameImage* RenderGraph::CreateFrameImage(const char* name)
     {
-        auto image  = m_arena.Construct<RGFrameImage>();
+        auto image  = TL::ConstructFrom<RGFrameImage>(&m_arena);
         image->name = name;
         return image;
     }
 
     RGFrameBuffer* RenderGraph::CreateFrameBuffer(const char* name)
     {
-        auto buffer  = m_arena.Construct<RGFrameBuffer>();
+        auto buffer  = TL::ConstructFrom<RGFrameBuffer>(&m_arena);
         buffer->name = name;
         return buffer;
     }
 
     RGImage* RenderGraph::EmplacePassImage(RGFrameImage* frameImage, RGPass* pass, ImageBarrierState initialState)
     {
-        auto image             = m_arena.Construct<RGImage>();
+        auto image             = TL::ConstructFrom<RGImage>(&m_arena);
         image->m_frameResource = frameImage;
         image->m_state         = initialState;
         image->m_producer      = pass;
@@ -75,7 +75,7 @@ namespace RHI
 
     RGBuffer* RenderGraph::EmplacePassBuffer(RGFrameBuffer* frameBuffer, RGPass* pass, BufferBarrierState initialState)
     {
-        auto buffer             = m_arena.Construct<RGBuffer>();
+        auto buffer             = TL::ConstructFrom<RGBuffer>(&m_arena);
         buffer->m_frameResource = frameBuffer;
         buffer->m_state         = initialState;
         buffer->m_producer      = pass;
@@ -509,8 +509,8 @@ namespace RHI
         TL_ASSERT(m_state.frameRecording == true);
         m_swapchain.push_back(&swapchain);
 
-        auto frameResource        = m_arena.Construct<RGFrameImage>();
-        frameResource->name = name;
+        auto frameResource        = TL::ConstructFrom<RGFrameImage>(&m_arena);
+        frameResource->name       = name;
         frameResource->handle     = swapchain.GetImage();
         frameResource->format     = format;
         frameResource->isImported = true;
@@ -520,7 +520,7 @@ namespace RHI
     RGImage* RenderGraph::ImportImage(const char* name, Handle<Image> image, Format format)
     {
         TL_ASSERT(m_state.frameRecording == true);
-        auto frameImage        = m_arena.Construct<RGFrameImage>();
+        auto frameImage        = TL::ConstructFrom<RGFrameImage>(&m_arena);
         frameImage->name       = name;
         frameImage->handle     = image;
         frameImage->format     = format;
@@ -532,7 +532,7 @@ namespace RHI
     RGBuffer* RenderGraph::ImportBuffer(const char* name, Handle<Buffer> buffer)
     {
         TL_ASSERT(m_state.frameRecording == true);
-        auto frameBuffer        = m_arena.Construct<RGFrameBuffer>();
+        auto frameBuffer        = TL::ConstructFrom<RGFrameBuffer>(&m_arena);
         frameBuffer->name       = name;
         frameBuffer->handle     = buffer;
         frameBuffer->isImported = true;
@@ -543,7 +543,7 @@ namespace RHI
     RGImage* RenderGraph::CreateImage(const char* name, ImageType type, ImageSize3D size, Format format, uint32_t mipLevels, uint32_t arrayCount, SampleCount samples)
     {
         TL_ASSERT(m_state.frameRecording == true);
-        auto frameImage         = m_arena.Construct<RGFrameImage>();
+        auto frameImage         = TL::ConstructFrom<RGFrameImage>(&m_arena);
         frameImage->name        = name;
         frameImage->type        = type;
         frameImage->size        = size;
@@ -564,7 +564,7 @@ namespace RHI
     RGBuffer* RenderGraph::CreateBuffer(const char* name, size_t size)
     {
         TL_ASSERT(m_state.frameRecording == true);
-        auto frameBuffer  = m_arena.Construct<RGFrameBuffer>();
+        auto frameBuffer  = TL::ConstructFrom<RGFrameBuffer>(&m_arena);
         frameBuffer->name = name;
         frameBuffer->size = size;
         m_bufferPool.push_back(frameBuffer);
@@ -890,6 +890,8 @@ namespace RHI
 
         commandList->End();
 
+        std::reverse(m_swapchain.begin(), m_swapchain.end());
+
         QueueSubmitInfo submitInfo{
             .queueType            = QueueType::Graphics,
             .commandLists         = commandList,
@@ -931,8 +933,17 @@ namespace RHI
             TL::Optional<DepthStencilAttachment> dsAttachment;
             attachments.reserve(pass->m_gfxPassInfo.m_colorAttachments.size());
 
+            // auto [passWidth, passHeight]    = pass->m_gfxPassInfo.m_size;
             for (auto attachment : pass->m_gfxPassInfo.m_colorAttachments)
             {
+                auto [imgWidth, imgHeight, imgDepth] = attachment.color->m_frameResource->size;
+                // TL_ASSERT(imgWidth == passWidth && imgHeight == passHeight);
+                if (attachment.resolveView)
+                {
+                    auto [resWidth, resHeight, resDepth] = attachment.resolveView->m_frameResource->size;
+                    // TL_ASSERT(resWidth == passWidth && resHeight == passHeight);
+                }
+
                 auto color   = GetImageHandle(attachment.color);
                 auto resolve = attachment.resolveView ? GetImageHandle(attachment.resolveView) : NullHandle;
                 attachments.push_back({
@@ -944,16 +955,18 @@ namespace RHI
                     .resolveView = resolve,
                 });
             }
-            if (auto dsv = pass->m_gfxPassInfo.m_depthStencilAttachment)
+            if (auto attachment = pass->m_gfxPassInfo.m_depthStencilAttachment)
             {
-                auto depthStencil = GetImageHandle(dsv->depthStencil);
+                auto [dsWidth, dsHeight, dsDepth] = attachment->depthStencil->m_frameResource->size;
+                // TL_ASSERT(dsWidth == passWidth && dsHeight == passHeight);
+                auto depthStencil = GetImageHandle(attachment->depthStencil);
                 dsAttachment      = DepthStencilAttachment{
                          .view           = depthStencil,
-                         .depthLoadOp    = dsv->depthLoadOp,
-                         .depthStoreOp   = dsv->depthStoreOp,
-                         .stencilLoadOp  = dsv->stencilLoadOp,
-                         .stencilStoreOp = dsv->stencilStoreOp,
-                         .clearValue     = dsv->clearValue,
+                         .depthLoadOp    = attachment->depthLoadOp,
+                         .depthStoreOp   = attachment->depthStoreOp,
+                         .stencilLoadOp  = attachment->stencilLoadOp,
+                         .stencilStoreOp = attachment->stencilStoreOp,
+                         .clearValue     = attachment->clearValue,
                 };
             }
             RenderPassBeginInfo beginInfo{

@@ -5,7 +5,7 @@
 
 #include <TL/Assert.hpp>
 #include <TL/Containers.hpp>
-#include <TL/Stacktrace.hpp>
+// #include <TL/Stacktrace.hpp>
 
 #include <type_traits>
 #include <utility>
@@ -21,7 +21,7 @@ namespace RHI
     {
     };
 
-    inline constexpr NullHandle_T NullHandle = {};
+    constexpr NullHandle_T NullHandle = {};
 
     template<typename Resource>
     class Handle final
@@ -86,7 +86,7 @@ namespace RHI
 
         TL::String              ReportLiveResources() const;
 
-        uint32_t                ReportLiveResourcesCount() const;
+        uint32_t                ReportLiveResourcesCount() const { return 0;}
 
         // Clears all resources in the pool
         inline void             Clear();
@@ -124,7 +124,7 @@ namespace RHI
         TL::Vector<uint16_t>                m_genIds;
         TL::Vector<size_t>                  m_freeSlots;
 
-        TL::Map<HandleType, TL::Stacktrace> m_liveResources;
+        // TL::Map<HandleType, TL::Stacktrace> m_liveResources;
     };
 
 } // namespace RHI

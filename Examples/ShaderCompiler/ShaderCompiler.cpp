@@ -7,6 +7,8 @@
 
 #include <glm/glm.hpp>
 
+#include <array>
+
 namespace Engine
 {
     struct PipelineLayoutBuilder

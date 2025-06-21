@@ -71,7 +71,7 @@ namespace RHI::Vulkan
 
     CommandList* IFrame::CreateCommandList(const CommandListCreateInfo& createInfo)
     {
-        auto commandList = m_tempAllocator.Construct<ICommandList>();
+        auto commandList = TL::ConstructFrom<ICommandList>(&m_tempAllocator);
         auto result      = commandList->Init(m_device, &m_commandListAllocator->m_queuePools[int(createInfo.queueType)], createInfo);
         TL_ASSERT(result == ResultCode::Success, "Failed to allocate command list for current frame");
         return commandList;

@@ -12,8 +12,8 @@ tl_add_target(
         glfw
         RHI::RHI
         $<$<BOOL:${RHI_BACKEND_VULKAN}>:RHI::Vulkan>
-        $<$<BOOL:${RHI_BACKEND_WEBGPU}>:RHI::WebGPU>
-        $<$<BOOL:${RHI_BACKEND_WEBGPU}>:RHI::D3D12>
+        # $<$<BOOL:${RHI_BACKEND_WEBGPU}>:RHI::WebGPU>
+        # $<$<BOOL:${RHI_BACKEND_WEBGPU}>:RHI::D3D12>
 )
 
 # target_link_libraries(Triangle fastgltf)
