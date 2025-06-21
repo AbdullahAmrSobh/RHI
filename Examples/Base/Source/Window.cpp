@@ -107,7 +107,6 @@ namespace Engine
     {
         m_window = glfwCreateWindow(int(size.width), int(size.height), title.data(), nullptr, nullptr);
         glfwSetWindowUserPointer(m_window, this);
-        glfwMakeContextCurrent(m_window);
         glfwSetWindowSizeCallback(m_window, [](GLFWwindow* window, int width, int height)
             {
                 Window&     self = *(Window*)glfwGetWindowUserPointer(window);

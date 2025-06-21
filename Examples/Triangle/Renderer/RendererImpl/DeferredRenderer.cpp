@@ -278,6 +278,10 @@ namespace Engine
         if (m_imguiPass.Enabled())
         {
             m_imguiPass.AddPass(rg, outputAttachment, ImGui::GetDrawData());
+            if (const auto& io = ImGui::GetIO(); io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+            {
+                ImGui::RenderPlatformWindowsDefault(nullptr, &m_imguiPass);
+            }
         }
     }
 

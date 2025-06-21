@@ -89,14 +89,16 @@ namespace RHI::Vulkan
             }
         }
 
-        if (auto swapchain = (ISwapchain*)submitInfo.m_swapchainToAcquire)
+        for (auto _swapchain : submitInfo.m_swapchainToAcquire)
         {
+            auto swapchain = (ISwapchain*)_swapchain;
             // TODO: VkPipelineStageFlags can be deduced based on the swapchain image usage flags.
             queue->AddWaitSemaphore(swapchain->GetImageAcquiredSemaphore(), 0, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
         }
 
-        if (auto swapchain = (ISwapchain*)submitInfo.m_swapchainToSignal)
+        for (auto _swapchain : submitInfo.m_swapchainToSignal)
         {
+            auto swapchain = (ISwapchain*)_swapchain;
             // TODO: VkPipelineStageFlags can be deduced based on the swapchain image usage flags.
             queue->AddSignalSemaphore(swapchain->GetImagePresentSemaphore(), 0, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
         }

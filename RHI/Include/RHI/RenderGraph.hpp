@@ -423,8 +423,8 @@ namespace RHI
         uint64_t                         m_frameIndex;
         TL::Ptr<RenderGraphResourcePool> m_resourcePool;
         ImageSize2D                      m_frameSize;
-        Swapchain*                       m_swapchain;
         TL::Arena                        m_arena;
+        TL::Vector<Swapchain*>           m_swapchain{m_arena};
         TL::Vector<TL::Ptr<RGPass>>      m_passPool{m_arena};
         TL::Vector<RGFrameImage*>        m_imagePool{m_arena};
         TL::Vector<RGFrameBuffer*>       m_bufferPool{m_arena};

@@ -2,9 +2,12 @@
 
 #include <imgui.h>
 
+#include <RHI/RHI.hpp>
+
 namespace Engine
 {
     class Window;
+
     class ImGuiManager
     {
     public:
@@ -14,7 +17,7 @@ namespace Engine
         void Shutdown();
 
     private:
-        Window* m_primaryWindow;
+        Window*       m_primaryWindow;
         ImGuiContext* m_imguiContext;
     };
 } // namespace Engine

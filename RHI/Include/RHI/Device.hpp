@@ -72,8 +72,8 @@ namespace RHI
         TL::Span<CommandList* const>  commandLists         = {};
         PipelineStage                 signalStage          = {};
         TL::Span<const QueueWaitInfo> waitInfos            = {};
-        Swapchain*                    m_swapchainToAcquire = nullptr;
-        Swapchain*                    m_swapchainToSignal  = nullptr;
+        TL::Vector<Swapchain*>                    m_swapchainToAcquire = {};
+        TL::Vector<Swapchain*>                    m_swapchainToSignal  = {};
     };
 
     class Renderdoc

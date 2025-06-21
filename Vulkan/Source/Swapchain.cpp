@@ -45,7 +45,7 @@ namespace RHI::Vulkan
         ZoneScoped;
 
         m_device = device;
-        m_name   = createInfo.name;
+        if (createInfo.name) m_name = createInfo.name;
 
         IImage image{}; // default image (initialized on acquire)
         m_image = m_device->m_imageOwner.Emplace(std::move(image));

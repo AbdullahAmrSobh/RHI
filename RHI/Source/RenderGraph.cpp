@@ -496,7 +496,7 @@ namespace RHI
             m_imagePool.clear();
             m_bufferPool.clear();
             m_dependencyLevels.clear();
-            m_dependencyLevels.clear();
+            m_swapchain.clear();
             m_arena.Collect();
             memset(&m_state, 0, sizeof(State));
         }
@@ -507,9 +507,10 @@ namespace RHI
     RGImage* RenderGraph::ImportSwapchain(const char* name, Swapchain& swapchain, Format format)
     {
         TL_ASSERT(m_state.frameRecording == true);
-        m_swapchain = &swapchain;
+        m_swapchain.push_back(&swapchain);
 
         auto frameResource        = m_arena.Construct<RGFrameImage>();
+        frameResource->name = name;
         frameResource->handle     = swapchain.GetImage();
         frameResource->format     = format;
         frameResource->isImported = true;
@@ -868,11 +869,11 @@ namespace RHI
             }
         }
 
-        if (m_swapchain)
+        for (auto swapchain : m_swapchain)
         {
             // FIXME: This is hardcoded for now
             RHI::ImageBarrierInfo barrier{
-                .image    = m_swapchain->GetImage(),
+                .image    = swapchain->GetImage(),
                 .srcState = {
                              .usage  = ImageUsage::Color,
                              .stage  = PipelineStage::ColorAttachmentOutput,

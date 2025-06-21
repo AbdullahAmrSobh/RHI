@@ -2,12 +2,15 @@
 
 #include "Examples-Base/Window.hpp"
 
-#include <TL/UniquePtr.hpp>
+#include "Renderer/Renderer.hpp"
+#include "Renderer/RendererImpl/ImGuiPass.hpp"
 
-using namespace Engine;
+#include <TL/UniquePtr.hpp>
 
 namespace Engine
 {
+    static uint32_t window_count = 0;
+
     inline static ImGuiKey ConvertToImguiKeycode(KeyCode key)
     {
         switch (key)
@@ -144,15 +147,6 @@ namespace Engine
         }
     }
 
-    inline static Window* GetWindowFromViewport(ImGuiViewport* vp)
-    {
-        if (vp->PlatformUserData)
-        {
-            return static_cast<Window*>(vp->PlatformUserData);
-        }
-        return nullptr;
-    }
-
     inline static bool WindowEventsHandler(const WindowEvent& e)
     {
         auto& io = ImGui::GetIO();
@@ -198,195 +192,266 @@ namespace Engine
         return false; // event not captured
     }
 
-    // . . U . .  // Create a new platform window for the given viewport
+    struct ImGuiPlatformWindowData
+    {
+        ImGuiPlatformWindowData() { window_count ++; };
+        ~ImGuiPlatformWindowData() { window_count --; };
+
+        uint32_t id = window_count + 1;
+        Window* window = nullptr;
+    };
+
+    struct ImGuiPlatformRenderData
+    {
+        RHI::Swapchain* swapchain;
+    };
+
+    inline static ImGuiPlatformWindowData* GetViewportWindowData(ImGuiViewport* vp)
+    {
+        TL_ASSERT(vp->PlatformUserData != nullptr);
+        if (vp->PlatformUserData)
+        {
+            return (ImGuiPlatformWindowData*)vp->PlatformUserData;
+        }
+        return nullptr;
+    }
+
+    inline static ImGuiPlatformRenderData* GetViewportRenderData(ImGuiViewport* vp)
+    {
+        TL_ASSERT(vp->PlatformUserData != nullptr);
+        if (vp->PlatformUserData)
+        {
+            return (ImGuiPlatformRenderData*)vp->PlatformUserData;
+        }
+        return nullptr;
+    }
+
     inline static void ImGuiPlatformIO_CreateWindow(ImGuiViewport* vp)
     {
+        TL_LOG_INFO("ImGuiPlatformIO_CreateWindow: ");
+
         auto position = vp->Pos;
         auto size     = vp->Size;
 
         TL::Flags<WindowFlags> attributes;
         if (vp->Flags & ImGuiViewportFlags_NoDecoration)
             attributes |= WindowFlags::NoDecorations;
-        auto window = WindowManager::CreateWindow({}, attributes, {(uint32_t)size.x, (uint32_t)size.y});
-        window->SetPosition({position.x, position.y});
 
-        // if (!(vp->Flags & ImGuiViewportFlags_NoInputs))
+        auto windowData    = TL::Construct<ImGuiPlatformWindowData>();
+        windowData->window = WindowManager::CreateWindow("", attributes, {(uint32_t)size.x, (uint32_t)size.y});
+        windowData->window->SetPosition({position.x, position.y});
+        windowData->window->SetSize({(uint32_t)size.x, (uint32_t)size.y});
+        windowData->window->Subscribe([](const WindowEvent& e) -> bool
+            {
+                return WindowEventsHandler(e);
+            });
+
+        vp->PlatformUserData      = windowData;
+    }
+
+    inline static void ImGuiPlatformIO_DestroyWindow(ImGuiViewport* vp)
+    {
+        auto windowData = GetViewportWindowData(vp);
+        if (windowData && windowData->window)
         {
-            window->Subscribe([](const WindowEvent& e) -> bool
-                {
-                    return WindowEventsHandler(e);
-                });
+            WindowManager::DestroyWindow(windowData->window);
+            TL::Destruct(windowData);
+            vp->PlatformUserData = nullptr;
         }
     }
 
-    // N . U . D  //
-    inline static void ImGuiPlatformIO_DestroyWindow(ImGuiViewport* vp)
-    {
-        auto window = GetWindowFromViewport(vp);
-    }
-
-    // . . U . .  // Newly created windows are initially hidden so SetWindowPos/Size/Title can be called on them before showing the window
     inline static void ImGuiPlatformIO_ShowWindow(ImGuiViewport* vp)
     {
-        auto window = GetWindowFromViewport(vp);
-        window->Show();
+        auto windowData = GetViewportWindowData(vp);
+        auto renderData = GetViewportRenderData(vp);
+        windowData->window->Show();
     }
 
-    // . . U . .  // Set platform window position (given the upper-left corner of client area)
     inline static void ImGuiPlatformIO_SetWindowPos(ImGuiViewport* vp, ImVec2 pos)
     {
-        auto window = GetWindowFromViewport(vp);
-        window->SetPosition(WindowPosition{pos.x, pos.y});
+        auto windowData = GetViewportWindowData(vp);
+        auto renderData = GetViewportRenderData(vp);
+        windowData->window->SetPosition(WindowPosition{pos.x, pos.y});
     }
 
-    // N . . . .  //
     inline static ImVec2 ImGuiPlatformIO_GetWindowPos(ImGuiViewport* vp)
     {
-        auto window = GetWindowFromViewport(vp);
-        return ImVec2(window->GetPosition().x, window->GetPosition().y);
+        auto windowData = GetViewportWindowData(vp);
+        auto renderData = GetViewportRenderData(vp);
+        auto [x, y]     = windowData->window->GetPosition();
+        return ImVec2(x, y);
     }
 
-    // . . U . .  // Set platform window client area size (ignoring OS decorations such as OS title bar etc.)
     inline static void ImGuiPlatformIO_SetWindowSize(ImGuiViewport* vp, ImVec2 size)
     {
-        auto window = GetWindowFromViewport(vp);
-        window->SetSize({(uint32_t)size.x, (uint32_t)size.y});
+        auto windowData = GetViewportWindowData(vp);
+        auto renderData = GetViewportRenderData(vp);
+        windowData->window->SetSize({(uint32_t)size.x, (uint32_t)size.y});
     }
 
-    // N . . . .  // Get platform window client area size
     inline static ImVec2 ImGuiPlatformIO_GetWindowSize(ImGuiViewport* vp)
     {
-        auto window = GetWindowFromViewport(vp);
-        return ImVec2(window->GetSize().width, window->GetSize().height);
+        auto windowData      = GetViewportWindowData(vp);
+        auto renderData      = GetViewportRenderData(vp);
+        auto [width, height] = windowData->window->GetSize();
+        return ImVec2(width, height);
     }
 
-    // N . . . .  // Move window to front and set input focus
     inline static void ImGuiPlatformIO_SetWindowFocus(ImGuiViewport* vp)
     {
-        auto window = GetWindowFromViewport(vp);
-        window->SetFocus();
+        auto windowData = GetViewportWindowData(vp);
+        auto renderData = GetViewportRenderData(vp);
+        windowData->window->SetFocus();
     }
 
-    // . . U . .  //
     inline static bool ImGuiPlatformIO_GetWindowFocus(ImGuiViewport* vp)
     {
-        auto window = GetWindowFromViewport(vp);
-        return window->IsFocused();
+        auto windowData = GetViewportWindowData(vp);
+        auto renderData = GetViewportRenderData(vp);
+        return windowData->window->IsFocused();
     }
 
-    // N . . . .  // Get platform window minimized state. When minimized, we generally won't attempt to get/set size and contents will be culled more easily
     inline static bool ImGuiPlatformIO_GetWindowMinimized(ImGuiViewport* vp)
     {
-        auto window = GetWindowFromViewport(vp);
-        return !window->GetAttribute(WindowAttribute::Maximized);
+        auto windowData = GetViewportWindowData(vp);
+        auto renderData = GetViewportRenderData(vp);
+        return windowData->window->GetAttribute(WindowAttribute::Maximized); // == false // @FIXME!
     }
 
-    // . . U . .  // Set platform window title (given an UTF-8 string)
     inline static void ImGuiPlatformIO_SetWindowTitle(ImGuiViewport* vp, const char* str)
     {
-        auto window = GetWindowFromViewport(vp);
-        window->SetTitle(str);
+        auto windowData = GetViewportWindowData(vp);
+        auto renderData = GetViewportRenderData(vp);
+        windowData->window->SetTitle(str);
     }
 
-    // (Optional) Setup global transparency (not per-pixel transparency)
     inline static void ImGuiPlatformIO_SetWindowAlpha(ImGuiViewport* vp, float alpha)
     {
-        auto window = GetWindowFromViewport(vp);
-        window->SetOpacity(alpha);
+        auto windowData = GetViewportWindowData(vp);
+        auto renderData = GetViewportRenderData(vp);
+        windowData->window->SetOpacity(alpha);
     }
 
-    // . . U . .  // (Optional) Called by UpdatePlatformWindows(). Optional hook to allow the platform backend from doing general book-keeping every frame.
     inline static void ImGuiPlatformIO_UpdateWindow(ImGuiViewport* vp)
     {
-        auto window = GetWindowFromViewport(vp);
-        window->Poll();
+        auto windowData = GetViewportWindowData(vp);
+        auto renderData = GetViewportRenderData(vp);
+        windowData->window->Poll();
     }
 
-    // . . . R .  // (Optional) Main rendering (platform side! This is often unused, or just setting a "current" context for OpenGL bindings). 'render_arg' is the value passed to RenderPlatformWindowsDefault().
     inline static void ImGuiPlatformIO_RenderWindow(ImGuiViewport* vp, void* render_arg)
     {
-        auto window = GetWindowFromViewport(vp);
+        auto windowData = GetViewportWindowData(vp);
+        auto renderData = GetViewportRenderData(vp);
     }
 
-    // . . . R .  // (Optional) Call Present/SwapBuffers (platform side! This is often unused!). 'render_arg' is the value passed to RenderPlatformWindowsDefault().
     inline static void ImGuiPlatformIO_SwapBuffers(ImGuiViewport* vp, void* render_arg)
     {
-        auto window = GetWindowFromViewport(vp);
+        auto windowData = GetViewportWindowData(vp);
+        auto renderData = GetViewportRenderData(vp);
     }
 
-    // N . . . .  // (Optional) [BETA] FIXME-DPI: DPI handling: Return DPI scale for this viewport. 1.0f = 96 DPI.
     inline static float ImGuiPlatformIO_GetWindowDpiScale(ImGuiViewport* vp)
     {
-        auto window = GetWindowFromViewport(vp);
+        auto windowData = GetViewportWindowData(vp);
+        auto renderData = GetViewportRenderData(vp);
         return 1.0f;
     }
 
-    // . F . . .  // (Optional) [BETA] FIXME-DPI: DPI handling: Called during Begin() every time the viewport we are outputting into changes, so backend has a chance to swap fonts to adjust style.
-    // inline static void ImGuiPlatformIO_OnChangedViewport(ImGuiViewport* vp)
-    // {
-    //     auto window = GetWindowFromViewport(vp);
-    // }
-
-    // inline static ImVec4 ImGuiPlatformIO_GetWindowWorkAreaInsets(ImGuiViewport* vp)
-    // {
-    //     auto window = GetWindowFromViewport(vp);
-
-    //     return ImVec4(0, 0, 0, 0);
-    // }
-
-    // inline static int ImGuiPlatformIO_CreateVkSurface(ImGuiViewport* vp, ImU64 vk_inst, const void* vk_allocators, ImU64* out_vk_surface)
-    // {
-    //     auto window = GetWindowFromViewport(vp);
-
-    //     return 0;
-    // }
-
-    // Renderer Backend functions (e.g. DirectX, OpenGL, Vulkan) ------------
-
-    // Create swap chain, frame buffers etc. (called after Platform_CreateWindow)
-    inline static void
-    ImGui_Renderer_CreateWindow(ImGuiViewport* vp)
+    inline static void ImGuiRenderer_CreateWindow(ImGuiViewport* vp)
     {
+        auto windowData = GetViewportWindowData(vp);
+        auto renderData = GetViewportRenderData(vp);
+        auto device     = Renderer::ptr->GetDevice();
+
+        RHI::SwapchainCreateInfo swapchainCI{};
+        swapchainCI.win32Window.hwnd = windowData->window->GetNativeHandle(),
+        renderData->swapchain        = device->CreateSwapchain(swapchainCI);
+
+        auto [width, height] = windowData->window->GetSize();
+        RHI::SwapchainConfigureInfo config{
+            .size        = {height},
+            .imageCount  = 1,
+            .imageUsage  = RHI::ImageUsage::Color,
+            .format      = RHI::Format::RGBA8_UNORM,
+            .presentMode = RHI::SwapchainPresentMode::Fifo,
+            .alphaMode   = RHI::SwapchainAlphaMode::None};
+        auto result = renderData->swapchain->Configure(config);
+        TL_ASSERT(RHI::IsSuccess(result));
     }
 
-    // Destroy swap chain, frame buffers etc. (called before Platform_DestroyWindow)
-    inline static void ImGui_Renderer_DestroyWindow(ImGuiViewport* vp)
+    inline static void ImGuiRenderer_DestroyWindow(ImGuiViewport* vp)
     {
+        auto windowData = GetViewportWindowData(vp);
+        auto renderData = GetViewportRenderData(vp);
+        auto device     = Renderer::ptr->GetDevice();
+        device->DestroySwapchain(renderData->swapchain);
     }
 
-    // Resize swap chain, frame buffers etc. (called after Platform_SetWindowSize)
-    inline static void ImGui_Renderer_SetWindowSize(ImGuiViewport* vp, ImVec2 size)
+    inline static void ImGuiRenderer_SetWindowSize(ImGuiViewport* vp, ImVec2 size)
     {
+        auto windowData = GetViewportWindowData(vp);
+        auto renderData = GetViewportRenderData(vp);
+        auto result     = renderData->swapchain->Resize({(uint32_t)size.x, (uint32_t)size.y});
+        TL_ASSERT(RHI::IsSuccess(result));
     }
 
-    // (Optional) Clear framebuffer, setup render target, then render the viewport->DrawData. 'render_arg' is the value passed to RenderPlatformWindowsDefault().
-    inline static void ImGui_Renderer_RenderWindow(ImGuiViewport* vp, void* render_arg)
+    inline static void ImGuiRenderer_RenderWindow(ImGuiViewport* vp, void* render_arg)
     {
+        auto       windowData = GetViewportWindowData(vp);
+        auto       renderData = GetViewportRenderData(vp);
+        auto       rg         = Renderer::ptr->GetRenderGraph();
+        ImGuiPass* pass       = (ImGuiPass*)render_arg;
+
+        auto swapchainBackbuffer = rg->ImportSwapchain("imgui-vp", *renderData->swapchain, RHI::Format::RGBA8_UNORM);
+        pass->AddPass(rg, swapchainBackbuffer, vp->DrawData);
     }
 
-    // (Optional) Call Present/SwapBuffers. 'render_arg' is the value passed to RenderPlatformWindowsDefault().
-    inline static void ImGui_Renderer_SwapBuffers(ImGuiViewport* vp, void* render_arg)
+    inline static void ImGuiRenderer_SwapBuffers(ImGuiViewport* vp, void* render_arg)
     {
+        auto windowData = GetViewportWindowData(vp);
+        auto renderData = GetViewportRenderData(vp);
+
+        auto present = renderData->swapchain->Present();
+        if (present == RHI::ResultCode::ErrorOutdated || present == RHI::ResultCode::ErrorOutdated)
+        {
+            TL_UNREACHABLE();
+        }
+        else if (TL::IsError(present))
+        {
+            TL_UNREACHABLE();
+        }
     }
 
     void ImGuiManager::Init(Window* primaryWindow)
     {
+        auto device     = Renderer::ptr->GetDevice();
         m_primaryWindow = primaryWindow;
+        m_imguiContext  = ImGui::CreateContext();
 
-        m_imguiContext       = ImGui::CreateContext();
+        ImGuiIO& io = ImGui::GetIO();
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable;
+        io.BackendFlags |= ImGuiBackendFlags_PlatformHasViewports | ImGuiBackendFlags_RendererHasViewports;
+
         auto [width, height] = m_primaryWindow->GetSize();
-        ImGuiIO& io          = ImGui::GetIO();
-        // io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-        io.DisplaySize.x = float(width);
-        io.DisplaySize.y = float(height);
+        io.DisplaySize.x     = float(width);
+        io.DisplaySize.y     = float(height);
+
+        auto* windowData   = TL::Construct<ImGuiPlatformWindowData>();
+        windowData->window = primaryWindow;
+
+        ImGuiViewport* mainViewport = ImGui::GetMainViewport();
+        mainViewport->Flags |= ImGuiViewportFlags_IsPlatformWindow | ImGuiViewportFlags_OwnedByApp;
+        mainViewport->PlatformUserData      = windowData;
+        // mainViewport->PlatformHandle        = primaryWindow;
+        mainViewport->PlatformWindowCreated = true;
 
         primaryWindow->Subscribe([](const WindowEvent& e) -> bool
             {
                 return WindowEventsHandler(e);
             });
 
-        // Update ImGui platform IO
+        // Update ImGui platform IOs
         auto& platformIO                       = ImGui::GetPlatformIO();
         platformIO.Platform_CreateWindow       = ImGuiPlatformIO_CreateWindow;
         platformIO.Platform_DestroyWindow      = ImGuiPlatformIO_DestroyWindow;
@@ -404,14 +469,22 @@ namespace Engine
         platformIO.Platform_RenderWindow       = ImGuiPlatformIO_RenderWindow;
         platformIO.Platform_SwapBuffers        = ImGuiPlatformIO_SwapBuffers;
         platformIO.Platform_GetWindowDpiScale  = ImGuiPlatformIO_GetWindowDpiScale;
-        // platformIO.Platform_OnChangedViewport       = ImGuiPlatformIO_OnChangedViewport;
-        // platformIO.Platform_GetWindowWorkAreaInsets = ImGuiPlatformIO_GetWindowWorkAreaInsets;
-        // platformIO.Platform_CreateVkSurface         = ImGuiPlatformIO_CreateVkSurface;
-        platformIO.Renderer_CreateWindow       = ImGui_Renderer_CreateWindow;
-        platformIO.Renderer_DestroyWindow      = ImGui_Renderer_DestroyWindow;
-        platformIO.Renderer_SetWindowSize      = ImGui_Renderer_SetWindowSize;
-        platformIO.Renderer_RenderWindow       = ImGui_Renderer_RenderWindow;
-        platformIO.Renderer_SwapBuffers        = ImGui_Renderer_SwapBuffers;
+        platformIO.Renderer_CreateWindow       = ImGuiRenderer_CreateWindow;
+        platformIO.Renderer_DestroyWindow      = ImGuiRenderer_DestroyWindow;
+        platformIO.Renderer_SetWindowSize      = ImGuiRenderer_SetWindowSize;
+        platformIO.Renderer_RenderWindow       = ImGuiRenderer_RenderWindow;
+        platformIO.Renderer_SwapBuffers        = ImGuiRenderer_SwapBuffers;
+        for (const auto& m : WindowManager::GetMonitors())
+        {
+            ImGuiPlatformMonitor monitor{};
+            monitor.MainPos  = {m.GetPosition().x, m.GetPosition().y};
+            monitor.MainSize = {(float)m.GetPhysicalSize().width, (float)m.GetPhysicalSize().height};
+            // TODO: Implement later (if needed)
+            monitor.WorkPos  = monitor.MainPos;
+            monitor.WorkSize = monitor.MainSize;
+            monitor.DpiScale = 1.0;
+            platformIO.Monitors.push_back(monitor);
+        }
     }
 
     void ImGuiManager::Shutdown()
