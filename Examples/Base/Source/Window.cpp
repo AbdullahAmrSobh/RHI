@@ -42,6 +42,67 @@ namespace Engine
         TL::Destruct(window);
     }
 
+    TL::Span<const Monitor> WindowManager::GetMonitors()
+    {
+        int           count        = 0;
+        GLFWmonitor** glfwMonitors = glfwGetMonitors(&count);
+
+        static TL::Vector<Monitor> s_monitors;
+        s_monitors.clear();
+        for (int i = 0; i < count; ++i)
+        {
+            Monitor monitor{};
+            monitor.m_monitor = glfwMonitors[i];
+            s_monitors.push_back(monitor);
+        }
+        return s_monitors;
+    }
+
+    /// Monitor
+
+    void* Monitor::GetNativeHandle() const
+    {
+        return m_monitor;
+    }
+
+    WindowPosition Monitor::GetPosition() const
+    {
+        int x = 0, y = 0;
+        glfwGetMonitorPos(m_monitor, &x, &y);
+        return WindowPosition{(float)x, (float)y};
+    }
+
+    WindowSize Monitor::GetPhysicalSize() const
+    {
+        int width = 0, height = 0;
+        glfwGetMonitorPhysicalSize(m_monitor, &width, &height);
+        return WindowSize{static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
+    }
+
+    WindowPosition Monitor::GetContentScale() const
+    {
+        float xscale = 1.0f, yscale = 1.0f;
+        glfwGetMonitorContentScale(m_monitor, &xscale, &yscale);
+        return WindowPosition{xscale, yscale};
+    }
+
+    WindowSize Monitor::GetCurrentVideoMode() const
+    {
+        const GLFWvidmode* mode = glfwGetVideoMode(m_monitor);
+        if (mode)
+        {
+            return WindowSize{static_cast<uint32_t>(mode->width), static_cast<uint32_t>(mode->height)};
+        }
+        return WindowSize{0, 0};
+    }
+
+    bool Monitor::IsPrimary() const
+    {
+        return m_monitor == glfwGetPrimaryMonitor();
+    }
+
+    /// Window
+
     Window::Window(TL::StringView title, TL::Flags<WindowFlags> flags, WindowSize size)
     {
         m_window = glfwCreateWindow(int(size.width), int(size.height), title.data(), nullptr, nullptr);

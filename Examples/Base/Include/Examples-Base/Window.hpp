@@ -9,6 +9,7 @@
 #include <cstdint>
 
 struct GLFWwindow;
+struct GLFWmonitor;
 
 namespace Engine
 {
@@ -254,6 +255,7 @@ namespace Engine
     };
 
     class Window;
+    class Monitor;
 
 #ifdef CreateWindow
     #warning "CreateWindow macro is defined, which may cause conflicts with Engine::WindowManager::CreateWindow."
@@ -262,10 +264,36 @@ namespace Engine
     class WindowManager
     {
     public:
-        static TL::Error Init();
-        static void      Shutdown();
-        static Window*   CreateWindow(TL::StringView title, TL::Flags<WindowFlags> flags, WindowSize size);
-        static void      DestroyWindow(Window* window);
+        static TL::Error               Init();
+        static void                    Shutdown();
+        static Window*                 CreateWindow(TL::StringView title, TL::Flags<WindowFlags> flags, WindowSize size);
+        static void                    DestroyWindow(Window* window);
+        static TL::Span<const Monitor> GetMonitors();
+    };
+
+    class Monitor
+    {
+        friend class WindowManager;
+        friend class TL::IAllocator;
+
+    public:
+        Monitor()  = default;
+        ~Monitor() = default;
+        // Returns the native handle of this monitor
+        void*          GetNativeHandle() const;
+        // Returns the position of the monitor in virtual screen coordinates
+        WindowPosition GetPosition() const;
+        // Returns the physical size of the monitor in millimeters
+        WindowSize     GetPhysicalSize() const;
+        // Returns the content scale of the monitor (DPI scaling)
+        WindowPosition GetContentScale() const;
+        // Returns the current video mode of the monitor
+        WindowSize     GetCurrentVideoMode() const;
+        // Returns true if this monitor is the primary monitor
+        bool           IsPrimary() const;
+
+    private:
+        GLFWmonitor* m_monitor;
     };
 
     /// @brief Window abstraction class that wraps GLFW functionality
