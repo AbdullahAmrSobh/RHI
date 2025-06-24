@@ -88,12 +88,18 @@ namespace Engine
 
     WindowSize Monitor::GetCurrentVideoMode() const
     {
-        const GLFWvidmode* mode = glfwGetVideoMode(m_monitor);
-        if (mode)
+        if (const GLFWvidmode* mode = glfwGetVideoMode(m_monitor))
         {
             return WindowSize{static_cast<uint32_t>(mode->width), static_cast<uint32_t>(mode->height)};
         }
         return WindowSize{0, 0};
+    }
+
+    WindowRect Monitor::GetWorkArea() const
+    {
+        int x = 0, y = 0, width = 0, height = 0;
+        glfwGetMonitorWorkarea(m_monitor, &x, &y, &width, &height);
+        return WindowRect{x, y, width, height};
     }
 
     bool Monitor::IsPrimary() const

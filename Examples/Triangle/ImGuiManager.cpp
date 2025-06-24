@@ -147,233 +147,266 @@ namespace Engine
         }
     }
 
-    inline static bool WindowEventsHandler(const WindowEvent& e)
+    struct ImGuiImplViewportData
     {
-        auto& io = ImGui::GetIO();
-        switch (e.type)
-        {
-        case WindowEventType::Resized:
-            io.DisplaySize.x           = (float)e.size.width;
-            io.DisplaySize.y           = (float)e.size.height;
-            io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
-            break;
-        case WindowEventType::Focused:   io.AddFocusEvent(true); break;
-        case WindowEventType::Unfocused: io.AddFocusEvent(false); break;
-        case WindowEventType::Closed:    break;
-        case WindowEventType::Moved:
-        case WindowEventType::CursorMoved:
-        {
-            float x = e.cursorPosition.x;
-            float y = e.cursorPosition.y;
-            if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-            {
-                x += e.window->GetPosition().x;
-                y += e.window->GetPosition().y;
-            }
-            io.AddMousePosEvent(x, y);
-            return io.WantCaptureMouse;
-        }
-        case WindowEventType::MouseScrolled:
-            io.AddMouseWheelEvent(e.scrolled.x, e.scrolled.y);
-            return io.WantCaptureMouse;
-        case WindowEventType::MouseInput:
-            switch (e.mouseInput.state)
-            {
-            case KeyState::Press:
-            case KeyState::Repeat:  io.AddMouseButtonEvent(ConvertToImguiMouseButton(e.mouseInput.code), true); break;
-            case KeyState::Release: io.AddMouseButtonEvent(ConvertToImguiMouseButton(e.mouseInput.code), false); break;
-            default:                break;
-            }
-            return io.WantCaptureMouse;
-        case WindowEventType::KeyInput:
-            switch (e.keyInput.state)
-            {
-            case KeyState::Press:
-            case KeyState::Repeat:  io.AddKeyEvent(ConvertToImguiKeycode(e.keyInput.code), true); break;
-            case KeyState::Release: io.AddKeyEvent(ConvertToImguiKeycode(e.keyInput.code), false); break;
-            default:                break;
-            }
-            return io.WantCaptureKeyboard;
-        case WindowEventType::KeyTyped:
-            io.AddInputCharacter(e.keyCode);
-            return io.WantCaptureKeyboard;
-        }
-        return false; // event not captured
-    }
-
-    struct ImGuiPlatformWindowData
-    {
-        ImGuiPlatformWindowData() { window_count ++; };
-        ~ImGuiPlatformWindowData() { window_count --; };
-
-        uint32_t id = window_count + 1;
-        Window* window = nullptr;
+        Window* window                     = nullptr;
+        bool    windowOwned                = false;
+        int     ignoreWindowPosEventFrame  = -1;
+        int     ignoreWindowSizeEventFrame = -1;
     };
 
     struct ImGuiPlatformRenderData
     {
-        RHI::Swapchain* swapchain;
+        uint32_t        viewportId = 0;
+        RHI::Swapchain* swapchain  = nullptr;
     };
 
-    inline static ImGuiPlatformWindowData* GetViewportWindowData(ImGuiViewport* vp)
+    inline static ImGuiImplViewportData* GetViewportWindowData(ImGuiViewport* vp)
     {
         TL_ASSERT(vp->PlatformUserData != nullptr);
-        if (vp->PlatformUserData)
-        {
-            return (ImGuiPlatformWindowData*)vp->PlatformUserData;
-        }
-        return nullptr;
+        return (ImGuiImplViewportData*)vp->PlatformUserData;
     }
 
     inline static ImGuiPlatformRenderData* GetViewportRenderData(ImGuiViewport* vp)
     {
-        TL_ASSERT(vp->PlatformUserData != nullptr);
-        if (vp->PlatformUserData)
+        TL_ASSERT(vp->RendererUserData != nullptr);
+        return (ImGuiPlatformRenderData*)vp->RendererUserData;
+    }
+
+    inline static bool WindowEventsHandler(const WindowEvent& e)
+    {
+        auto& io         = ImGui::GetIO();
+        auto  vp         = ImGui::FindViewportByPlatformHandle(e.window);
+        auto  windowData = GetViewportWindowData(vp);
+
+        auto [w, h] = e.window->GetSize();
+        io.DisplaySize.x           = (float)w;
+        io.DisplaySize.y           = (float)h;
+        io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
+
+        TL_ASSERT(vp != nullptr)
+
+        switch (e.type)
         {
-            return (ImGuiPlatformRenderData*)vp->PlatformUserData;
+        case WindowEventType::Resized:
+            {
+                io.DisplaySize.x           = (float)e.size.width;
+                io.DisplaySize.y           = (float)e.size.height;
+                io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
+                bool ignore                = ImGui::GetFrameCount() <= (windowData->ignoreWindowSizeEventFrame + 1);
+                if (!ignore)
+                    vp->PlatformRequestResize = true;
+            }
+            break;
+        case WindowEventType::Focused:
+            {
+                io.AddFocusEvent(true);
+            }
+            break;
+        case WindowEventType::Unfocused:
+            {
+                io.AddFocusEvent(false);
+            }
+            break;
+        case WindowEventType::Closed:
+            {
+                vp->PlatformRequestClose = true;
+            }
+            break;
+        case WindowEventType::Moved:
+            {
+                bool ignore = ImGui::GetFrameCount() <= (windowData->ignoreWindowPosEventFrame + 1);
+                if (!ignore)
+                    vp->PlatformRequestMove = true;
+            }
+            break;
+        case WindowEventType::CursorMoved:
+            {
+                auto [x, y] = e.cursorPosition;
+                if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+                {
+                    auto [windowX, windowY] = e.window->GetPosition();
+                    x += windowX;
+                    y += windowY;
+                }
+                io.AddMousePosEvent(x, y);
+                return io.WantCaptureMouse;
+            }
+        case WindowEventType::MouseScrolled:
+            {
+                io.AddMouseWheelEvent(e.scrolled.x, e.scrolled.y);
+                return io.WantCaptureMouse;
+            }
+        case WindowEventType::MouseInput:
+            {
+                switch (e.mouseInput.state)
+                {
+                case KeyState::Press:
+                case KeyState::Repeat:  io.AddMouseButtonEvent(ConvertToImguiMouseButton(e.mouseInput.code), true); break;
+                case KeyState::Release: io.AddMouseButtonEvent(ConvertToImguiMouseButton(e.mouseInput.code), false); break;
+                default:                break;
+                }
+                return io.WantCaptureMouse;
+            }
+        case WindowEventType::KeyInput:
+            {
+                switch (e.keyInput.state)
+                {
+                case KeyState::Press:
+                case KeyState::Repeat:  io.AddKeyEvent(ConvertToImguiKeycode(e.keyInput.code), true); break;
+                case KeyState::Release: io.AddKeyEvent(ConvertToImguiKeycode(e.keyInput.code), false); break;
+                default:                break;
+                }
+                return io.WantCaptureKeyboard;
+            }
+        case WindowEventType::KeyTyped:
+            {
+                io.AddInputCharacter(e.keyCode);
+                return io.WantCaptureKeyboard;
+            }
         }
-        return nullptr;
+        return false; // event not captured
     }
 
     inline static void ImGuiPlatformIO_CreateWindow(ImGuiViewport* vp)
     {
-        TL_LOG_INFO("ImGuiPlatformIO_CreateWindow: ");
-
         auto position = vp->Pos;
         auto size     = vp->Size;
 
-        auto windowData    = TL::Construct<ImGuiPlatformWindowData>();
-        windowData->window = WindowManager::CreateWindow("", WindowFlags::NoDecorations, {(uint32_t)size.x, (uint32_t)size.y});
-        windowData->window->SetPosition({position.x, position.y});
-        windowData->window->SetSize({(uint32_t)size.x, (uint32_t)size.y});
-        windowData->window->Subscribe([](const WindowEvent& e) -> bool
+        auto viewportData = TL::Construct<ImGuiImplViewportData>();
+        viewportData->windowOwned = true;
+        auto window = viewportData->window = WindowManager::CreateWindow("", WindowFlags::NoDecorations, {(uint32_t)size.x, (uint32_t)size.y});
+        window->SetPosition({position.x, position.y});
+        window->Subscribe([](const WindowEvent& e) -> bool
             {
                 return WindowEventsHandler(e);
             });
 
-        vp->PlatformUserData      = windowData;
+        vp->PlatformUserData  = viewportData;
+        vp->PlatformHandle    = viewportData->window;
+        vp->PlatformHandleRaw = window->GetNativeHandle();
+        vp->RendererUserData  = TL::Construct<ImGuiPlatformRenderData>();
     }
 
     inline static void ImGuiPlatformIO_DestroyWindow(ImGuiViewport* vp)
     {
-        auto windowData = GetViewportWindowData(vp);
-        if (windowData && windowData->window)
-        {
-            WindowManager::DestroyWindow(windowData->window);
-            TL::Destruct(windowData);
-            vp->PlatformUserData = nullptr;
-        }
+        auto window = GetViewportWindowData(vp);
+
+        // TODO:
+        // // Release any keys that were pressed in the window being destroyed and are still held down,
+        // // because we will not receive any release events after window is destroyed.
+        // for (int i = 0; i < IM_ARRAYSIZE(bd->KeyOwnerWindows); i++)
+        //     if (bd->KeyOwnerWindows[i] == vd->Window)
+        //         ImGui_ImplGlfw_KeyCallback(vd->Window, i, 0, GLFW_RELEASE, 0); // Later params are only used for main viewport, on which this function is never called.
+
+        WindowManager::DestroyWindow(window->window);
+        vp->PlatformUserData = nullptr;
+        vp->PlatformHandle   = nullptr;
     }
 
     inline static void ImGuiPlatformIO_ShowWindow(ImGuiViewport* vp)
     {
-        auto windowData = GetViewportWindowData(vp);
+        auto window     = GetViewportWindowData(vp);
         auto renderData = GetViewportRenderData(vp);
-        windowData->window->Show();
+        window->window->Show();
     }
 
     inline static void ImGuiPlatformIO_SetWindowPos(ImGuiViewport* vp, ImVec2 pos)
     {
-        auto windowData = GetViewportWindowData(vp);
+        auto window     = GetViewportWindowData(vp);
         auto renderData = GetViewportRenderData(vp);
-        windowData->window->SetPosition(WindowPosition{pos.x, pos.y});
+
+        window->window->SetPosition(WindowPosition{pos.x, pos.y});
     }
 
     inline static ImVec2 ImGuiPlatformIO_GetWindowPos(ImGuiViewport* vp)
     {
-        auto windowData = GetViewportWindowData(vp);
-        auto renderData = GetViewportRenderData(vp);
-        auto [x, y]     = windowData->window->GetPosition();
+        auto window = GetViewportWindowData(vp);
+        auto [x, y] = window->window->GetPosition();
         return ImVec2(x, y);
     }
 
     inline static void ImGuiPlatformIO_SetWindowSize(ImGuiViewport* vp, ImVec2 size)
     {
-        auto windowData = GetViewportWindowData(vp);
-        auto renderData = GetViewportRenderData(vp);
-        windowData->window->SetSize({(uint32_t)size.x, (uint32_t)size.y});
+        auto window                       = GetViewportWindowData(vp);
+        window->ignoreWindowPosEventFrame = ImGui::GetFrameCount();
+        window->window->SetSize({(uint32_t)size.x, (uint32_t)size.y});
     }
 
     inline static ImVec2 ImGuiPlatformIO_GetWindowSize(ImGuiViewport* vp)
     {
-        auto windowData      = GetViewportWindowData(vp);
-        auto renderData      = GetViewportRenderData(vp);
-        auto [width, height] = windowData->window->GetSize();
+        auto window                        = GetViewportWindowData(vp);
+        auto renderData                    = GetViewportRenderData(vp);
+        auto [width, height]               = window->window->GetSize();
         return ImVec2(width, height);
     }
 
     inline static void ImGuiPlatformIO_SetWindowFocus(ImGuiViewport* vp)
     {
-        auto windowData = GetViewportWindowData(vp);
-        auto renderData = GetViewportRenderData(vp);
-        windowData->window->SetFocus();
+        auto window = GetViewportWindowData(vp);
+        window->window->SetFocus();
     }
 
     inline static bool ImGuiPlatformIO_GetWindowFocus(ImGuiViewport* vp)
     {
-        auto windowData = GetViewportWindowData(vp);
-        auto renderData = GetViewportRenderData(vp);
-        return windowData->window->IsFocused();
+        auto window = GetViewportWindowData(vp);
+        return window->window->IsFocused();
     }
 
     inline static bool ImGuiPlatformIO_GetWindowMinimized(ImGuiViewport* vp)
     {
-        auto windowData = GetViewportWindowData(vp);
-        auto renderData = GetViewportRenderData(vp);
-        return windowData->window->GetAttribute(WindowAttribute::Maximized); // == false // @FIXME!
+        auto window = GetViewportWindowData(vp);
+        return window->window->GetAttribute(WindowAttribute::Maximized); // == false // @FIXME!
     }
 
     inline static void ImGuiPlatformIO_SetWindowTitle(ImGuiViewport* vp, const char* str)
     {
-        auto windowData = GetViewportWindowData(vp);
-        auto renderData = GetViewportRenderData(vp);
-        windowData->window->SetTitle(str);
+        auto window = GetViewportWindowData(vp);
+        window->window->SetTitle(str);
     }
 
     inline static void ImGuiPlatformIO_SetWindowAlpha(ImGuiViewport* vp, float alpha)
     {
-        auto windowData = GetViewportWindowData(vp);
-        auto renderData = GetViewportRenderData(vp);
-        windowData->window->SetOpacity(alpha);
+        auto window = GetViewportWindowData(vp);
+        window->window->SetOpacity(alpha);
     }
 
     inline static void ImGuiPlatformIO_UpdateWindow(ImGuiViewport* vp)
     {
-        auto windowData = GetViewportWindowData(vp);
-        auto renderData = GetViewportRenderData(vp);
-        windowData->window->Poll();
+        auto window = GetViewportWindowData(vp);
+        window->window->Poll();
     }
 
     inline static void ImGuiPlatformIO_RenderWindow(ImGuiViewport* vp, void* render_arg)
     {
-        auto windowData = GetViewportWindowData(vp);
-        auto renderData = GetViewportRenderData(vp);
+        // auto window = GetViewportWindowData(vp);
+        // auto renderData = GetViewportRenderData(vp);
     }
 
     inline static void ImGuiPlatformIO_SwapBuffers(ImGuiViewport* vp, void* render_arg)
     {
-        auto windowData = GetViewportWindowData(vp);
-        auto renderData = GetViewportRenderData(vp);
+        // auto window = GetViewportWindowData(vp);
+        // auto renderData = GetViewportRenderData(vp);
     }
 
     inline static float ImGuiPlatformIO_GetWindowDpiScale(ImGuiViewport* vp)
     {
-        auto windowData = GetViewportWindowData(vp);
-        auto renderData = GetViewportRenderData(vp);
+        // auto window = GetViewportWindowData(vp);
+        // auto renderData = GetViewportRenderData(vp);
         return 1.0f;
     }
 
     inline static void ImGuiRenderer_CreateWindow(ImGuiViewport* vp)
     {
-        auto windowData = GetViewportWindowData(vp);
+        auto window     = GetViewportWindowData(vp);
         auto renderData = GetViewportRenderData(vp);
         auto device     = Renderer::ptr->GetDevice();
 
         RHI::SwapchainCreateInfo swapchainCI{};
-        swapchainCI.win32Window.hwnd = windowData->window->GetNativeHandle(),
+        swapchainCI.win32Window.hwnd = window->window->GetNativeHandle(),
         renderData->swapchain        = device->CreateSwapchain(swapchainCI);
 
-        auto [width, height] = windowData->window->GetSize();
+        auto [width, height] = window->window->GetSize();
         RHI::SwapchainConfigureInfo config{
             .size        = {height},
             .imageCount  = 1,
@@ -381,21 +414,24 @@ namespace Engine
             .format      = RHI::Format::RGBA8_UNORM,
             .presentMode = RHI::SwapchainPresentMode::Fifo,
             .alphaMode   = RHI::SwapchainAlphaMode::None};
-        auto result = renderData->swapchain->Configure(config);
+        auto result            = renderData->swapchain->Configure(config);
+        renderData->viewportId = (window_count++) + 1;
         TL_ASSERT(RHI::IsSuccess(result));
     }
 
     inline static void ImGuiRenderer_DestroyWindow(ImGuiViewport* vp)
     {
-        auto windowData = GetViewportWindowData(vp);
         auto renderData = GetViewportRenderData(vp);
         auto device     = Renderer::ptr->GetDevice();
         device->DestroySwapchain(renderData->swapchain);
+        TL::Destruct(renderData);
+        vp->RendererUserData = nullptr;
+        window_count--;
     }
 
     inline static void ImGuiRenderer_SetWindowSize(ImGuiViewport* vp, ImVec2 size)
     {
-        auto windowData = GetViewportWindowData(vp);
+        auto window     = GetViewportWindowData(vp);
         auto renderData = GetViewportRenderData(vp);
         auto result     = renderData->swapchain->Resize({(uint32_t)size.x, (uint32_t)size.y});
         TL_ASSERT(RHI::IsSuccess(result));
@@ -409,12 +445,12 @@ namespace Engine
         ImGuiPass* pass       = (ImGuiPass*)render_arg;
 
         auto swapchainBackbuffer = rg->ImportSwapchain("imgui-vp", *renderData->swapchain, RHI::Format::RGBA8_UNORM);
-        pass->AddPass(rg, swapchainBackbuffer, vp->DrawData);
+        pass->AddPass(rg, swapchainBackbuffer, vp->DrawData, renderData->viewportId);
     }
 
     inline static void ImGuiRenderer_SwapBuffers(ImGuiViewport* vp, void* render_arg)
     {
-        auto windowData = GetViewportWindowData(vp);
+        auto window     = GetViewportWindowData(vp);
         auto renderData = GetViewportRenderData(vp);
 
         auto present = renderData->swapchain->Present();
@@ -442,14 +478,15 @@ namespace Engine
         io.DisplaySize.x     = float(width);
         io.DisplaySize.y     = float(height);
 
-        auto* windowData   = TL::Construct<ImGuiPlatformWindowData>();
-        windowData->window = primaryWindow;
-
         ImGuiViewport* mainViewport = ImGui::GetMainViewport();
         mainViewport->Flags |= ImGuiViewportFlags_IsPlatformWindow | ImGuiViewportFlags_OwnedByApp;
-        mainViewport->PlatformUserData      = windowData;
-        // mainViewport->PlatformHandle        = primaryWindow;
-        mainViewport->PlatformWindowCreated = true;
+
+        auto viewportData = TL::Construct<ImGuiImplViewportData>();
+        viewportData->window = primaryWindow;
+        mainViewport->PlatformUserData  = viewportData;
+        mainViewport->PlatformHandle    = viewportData->window;
+        mainViewport->PlatformHandleRaw = primaryWindow->GetNativeHandle();
+        mainViewport->RendererUserData  = TL::Construct<ImGuiPlatformRenderData>();
 
         primaryWindow->Subscribe([](const WindowEvent& e) -> bool
             {
@@ -481,10 +518,13 @@ namespace Engine
         platformIO.Renderer_SwapBuffers        = ImGuiRenderer_SwapBuffers;
         for (const auto& m : WindowManager::GetMonitors())
         {
+            auto [monitorPosX, monitorPosY]    = m.GetPosition();
+            auto [monitorWidth, monitorHeight] = m.GetCurrentVideoMode();
+            // auto [wPosX, wPosY, wWidth, wHeight] = m.GetWorkArea();
+
             ImGuiPlatformMonitor monitor{};
-            monitor.MainPos  = {m.GetPosition().x, m.GetPosition().y};
-            monitor.MainSize = {(float)m.GetPhysicalSize().width, (float)m.GetPhysicalSize().height};
-            // TODO: Implement later (if needed)
+            monitor.MainPos  = {monitorPosX, monitorPosY};
+            monitor.MainSize = {(float)width, (float)height};
             monitor.WorkPos  = monitor.MainPos;
             monitor.WorkSize = monitor.MainSize;
             monitor.DpiScale = 1.0;

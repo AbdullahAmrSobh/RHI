@@ -12,7 +12,9 @@
 
 namespace Engine
 {
-    ResultCode ImGuiPass::Init(RHI::Device* device, RHI::Format colorAttachmentFormat)
+    using ImGuiMat4 = float[4][4];
+
+    ResultCode ImGuiPass::Init(RHI::Device* device, RHI::Format colorAttachmentFormat, uint32_t maxViewportsCount)
     {
         ImGuiIO& io = ImGui::GetIO();
         TL_ASSERT(io.BackendRendererUserData == nullptr && "Already initialized a renderer backend!");
@@ -30,18 +32,20 @@ namespace Engine
         RHI::BindGroupLayoutCreateInfo bindGroupLayoutCI{
             .name     = "ImGui-BindGroupLayout",
             .bindings = {
-                         {RHI::BindingType::UniformBuffer, RHI::Access::Read, 1, RHI::ShaderStage::Vertex, sizeof(float) * 4 * 4},
-                         {RHI::BindingType::Sampler, RHI::Access::Read, 1, RHI::ShaderStage::Pixel},
-                         {RHI::BindingType::SampledImage, RHI::Access::Read, 1, RHI::ShaderStage::Pixel},
+                         {RHI::BindingType::DynamicUniformBuffer, RHI::Access::Read, 1, RHI::ShaderStage::Vertex, sizeof(ImGuiMat4)},
+                         {RHI::BindingType::Sampler,              RHI::Access::Read, 1, RHI::ShaderStage::Pixel, 0},
+                         {RHI::BindingType::SampledImage,         RHI::Access::Read, 1, RHI::ShaderStage::Pixel, 0},
                          }
         };
         auto bindGroupLayout = m_device->CreateBindGroupLayout(bindGroupLayoutCI);
 
-        RHI::BufferCreateInfo uniformBufferCI{};
-        uniformBufferCI.name       = "ImGui-UniformBuffer";
-        uniformBufferCI.byteSize   = sizeof(float) * 4 * 4;
-        uniformBufferCI.usageFlags = RHI::BufferUsage::Uniform;
-        m_uniformBuffer            = m_device->CreateBuffer(uniformBufferCI);
+        m_maxViewportsCount = maxViewportsCount;
+        RHI::BufferCreateInfo uniformBufferCI{
+            .name       = "ImGui-UniformBuffer",
+            .usageFlags = RHI::BufferUsage::Uniform,
+            .byteSize   = sizeof(ImGuiMat4) * m_maxViewportsCount,
+        };
+        m_uniformBuffer = m_device->CreateBuffer(uniformBufferCI);
 
         unsigned char* pixels;
         int            width, height;
@@ -124,23 +128,25 @@ namespace Engine
             m_device->DestroyBuffer(m_uniformBuffer);
     }
 
-    RHI::RGPass* ImGuiPass::AddPass(RHI::RenderGraph* rg, RHI::RGImage*& outAttachment, ImDrawData* drawData)
+    RHI::RGPass* ImGuiPass::AddPass(RHI::RenderGraph* rg, RHI::RGImage*& outAttachment, ImDrawData* drawData, uint32_t viewportID)
     {
+        TL_ASSERT(m_maxViewportsCount > viewportID);
+
         if (UpdateBuffers(drawData) == false)
             return nullptr;
 
         {
-            float L         = drawData->DisplayPos.x;
-            float R         = drawData->DisplayPos.x + drawData->DisplaySize.x;
-            float T         = drawData->DisplayPos.y;
-            float B         = drawData->DisplayPos.y + drawData->DisplaySize.y;
-            float mvp[4][4] = {
+            float     L   = drawData->DisplayPos.x;
+            float     R   = drawData->DisplayPos.x + drawData->DisplaySize.x;
+            float     T   = drawData->DisplayPos.y;
+            float     B   = drawData->DisplayPos.y + drawData->DisplaySize.y;
+            ImGuiMat4 mvp = {
                 {2.0f / (R - L),    0.0f,              0.0f, 0.0f},
                 {0.0f,              2.0f / (T - B),    0.0f, 0.0f},
                 {0.0f,              0.0f,              0.5f, 0.0f},
                 {(R + L) / (L - R), (T + B) / (B - T), 0.5f, 1.0f},
             };
-            m_device->BufferWrite(m_uniformBuffer, 0, {mvp, sizeof(mvp)});
+            m_device->BufferWrite(m_uniformBuffer, sizeof(ImGuiMat4) * viewportID, {mvp, sizeof(ImGuiMat4)});
         }
 
         auto [width, height] = drawData->OwnerViewport->Size;
@@ -151,7 +157,7 @@ namespace Engine
             .setupCallback = [&](RHI::RenderGraphBuilder& builder)
             {
                 builder.AddColorAttachment({.color = outAttachment, .loadOp = RHI::LoadOperation::Load});
-            },
+                              },
             .executeCallback = [=, this](RHI::CommandList& commandList)
             {
                 // Will project scissor/clipping rectangles into framebuffer space
@@ -191,11 +197,12 @@ namespace Engine
                             if (clip_max.x <= clip_min.x || clip_max.y <= clip_min.y)
                                 continue;
 
-                            commandList.SetViewport({
+                            RHI::Viewport viewport{
                                 .width    = (float)rg->GetFrameSize().width,
                                 .height   = (float)rg->GetFrameSize().height,
                                 .maxDepth = 1.0,
-                            });
+                            };
+                            commandList.SetViewport(viewport);
                             // Apply scissor/clipping rectangle
                             RHI::Scissor scissor{
                                 .offsetX = (int32_t)(clip_min.x),
@@ -205,7 +212,8 @@ namespace Engine
                             };
                             commandList.SetScissor(scissor);
 
-                            commandList.BindGraphicsPipeline(m_pipeline, {{.bindGroup = m_bindGroup}});
+                            RHI::BindGroupBindingInfo binding{m_bindGroup, viewportID * sizeof(ImGuiMat4)};
+                            commandList.BindGraphicsPipeline(m_pipeline, binding);
 
                             commandList.DrawIndexed({
                                 .indexCount    = drawCmd.ElemCount,
@@ -218,7 +226,7 @@ namespace Engine
                         }
                     }
                 }
-            },
+                              },
         });
     }
 

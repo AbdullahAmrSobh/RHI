@@ -214,6 +214,12 @@ namespace Engine
         Maximized,
     };
 
+    struct WindowRect
+    {
+        int32_t x, y, width, height;
+    };
+
+
     struct WindowSize
     {
         uint32_t width, height;
@@ -289,6 +295,8 @@ namespace Engine
         WindowPosition GetContentScale() const;
         // Returns the current video mode of the monitor
         WindowSize     GetCurrentVideoMode() const;
+        // Returns the current video mode of the monitor
+        WindowRect     GetWorkArea() const;
         // Returns true if this monitor is the primary monitor
         bool           IsPrimary() const;
 

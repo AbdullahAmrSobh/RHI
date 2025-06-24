@@ -18,12 +18,12 @@ namespace Engine
     public:
         ImGuiPass() = default;
 
-        ResultCode Init(RHI::Device* device, RHI::Format colorAttachmentFormat);
+        ResultCode Init(RHI::Device* device, RHI::Format colorAttachmentFormat, uint32_t maxViewportsCount = 8);
         void       Shutdown();
 
         bool Enabled() const  {  return true; }
 
-        RHI::RGPass* AddPass(RHI::RenderGraph* renderGraph, RHI::RGImage*& outAttachment, ImDrawData* drawData);
+        RHI::RGPass* AddPass(RHI::RenderGraph* renderGraph, RHI::RGImage*& outAttachment, ImDrawData* drawData, uint32_t viewportID = 0);
 
     private:
         void InitGraphicsPipeline();
@@ -31,6 +31,8 @@ namespace Engine
 
     private:
         RHI::Device* m_device;
+
+        uint32_t m_maxViewportsCount;
 
         RHI::Handle<RHI::BindGroup>        m_bindGroup;
         RHI::Handle<RHI::PipelineLayout>   m_pipelineLayout;
