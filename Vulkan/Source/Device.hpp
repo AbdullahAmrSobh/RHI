@@ -82,8 +82,6 @@ namespace RHI::Vulkan
         void                     DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle) override;
         Handle<ComputePipeline>  CreateComputePipeline(const ComputePipelineCreateInfo& createInfo) override;
         void                     DestroyComputePipeline(Handle<ComputePipeline> handle) override;
-        void                     BufferWrite(Handle<Buffer> buffer, size_t offset, TL::Block block) override;
-        void                     ImageWrite(Handle<Image> image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block) override;
         ResultCode               SetFramesInFlightCount(uint32_t count) override;
         Frame*                   GetCurrentFrame() override;
 
@@ -120,6 +118,7 @@ namespace RHI::Vulkan
         VkDevice                 m_device;
         VmaAllocator             m_deviceAllocator;
         VulkanAPI                m_pfn;
+        TL::Ptr<Renderdoc>       m_renderdoc;
 
         // Resource pools
         HandlePool<IImage>            m_imageOwner;
@@ -139,6 +138,7 @@ namespace RHI::Vulkan
         // Frames in flight
         uint32_t                          m_currentFrameIndex;
         TL::Vector<TL::Ptr<class IFrame>> m_framesInFlight;
+        IFrame* m_activeFrame;
     };
 
     template<typename T>

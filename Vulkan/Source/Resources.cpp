@@ -428,7 +428,7 @@ namespace RHI::Vulkan
     BindGroupAllocator::BindGroupAllocator()  = default;
     BindGroupAllocator::~BindGroupAllocator() = default;
 
-    ResultCode BindGroupAllocator::Init(IDevice* device)
+    VkResult BindGroupAllocator::Init(IDevice* device)
     {
         m_device = device;
 
@@ -456,8 +456,10 @@ namespace RHI::Vulkan
             .poolSizeCount = sizeof(poolSizes) / sizeof(VkDescriptorPoolSize),
             .pPoolSizes    = poolSizes,
         };
-        Validate(vkCreateDescriptorPool(m_device->m_device, &createInfo, nullptr, &m_descriptorPool));
-        return ResultCode::Success;
+
+        VulkanResult result;
+        result = vkCreateDescriptorPool(m_device->m_device, &createInfo, nullptr, &m_descriptorPool);
+        return result;
     }
 
     void BindGroupAllocator::Shutdown()
@@ -483,9 +485,9 @@ namespace RHI::Vulkan
             .pSetLayouts        = &bindGroupLayout->handle,
         };
 
-        VkResult result;
+        VulkanResult result;
         result = vkAllocateDescriptorSets(m_device->m_device, &allocateInfo, &bindGroup->descriptorSet);
-        return ConvertResult(result);
+        return result;
     }
 
     void BindGroupAllocator::ShutdownBindGroup(IBindGroup* bindGroup)
@@ -547,7 +549,7 @@ namespace RHI::Vulkan
 
             if (isBindless)
             {
-                auto flags =
+                VkDescriptorBindingFlags flags =
                     VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT |
                     VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
                     VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT |
@@ -926,7 +928,7 @@ namespace RHI::Vulkan
         auto frame = (IFrame*)device->GetCurrentFrame();
 
         if (handle)
-            device->m_destroyQueue->Push(frame->m_timeline, handle);
+            device->m_destroyQueue->Push(frame->GetTimelineValue(), handle);
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -969,7 +971,7 @@ namespace RHI::Vulkan
         auto frame = (IFrame*)device->GetCurrentFrame();
 
         if (handle)
-            device->m_destroyQueue->Push(frame->m_timeline, handle);
+            device->m_destroyQueue->Push(frame->GetTimelineValue(), handle);
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -1011,10 +1013,10 @@ namespace RHI::Vulkan
         auto frame = (IFrame*)device->GetCurrentFrame();
 
         if (handle)
-            device->m_destroyQueue->Push(frame->m_timeline, handle);
+            device->m_destroyQueue->Push(frame->GetTimelineValue(), handle);
 
         if (allocation)
-            device->m_destroyQueue->Push(frame->m_timeline, handle);
+            device->m_destroyQueue->Push(frame->GetTimelineValue(), handle);
     }
 
     VkMemoryRequirements IBuffer::GetMemoryRequirements(IDevice* device) const
@@ -1027,8 +1029,9 @@ namespace RHI::Vulkan
     DeviceMemoryPtr IBuffer::Map(IDevice* device)
     {
         DeviceMemoryPtr ptr = nullptr;
-        auto            res = vmaMapMemory(device->m_deviceAllocator, allocation, &ptr);
-        Validate(res);
+        VulkanResult    result;
+        result = vmaMapMemory(device->m_deviceAllocator, allocation, &ptr);
+        TL_ASSERT(result)
         return ptr;
     }
 
@@ -1126,7 +1129,7 @@ namespace RHI::Vulkan
         return ConvertResult(result);
     }
 
-    ResultCode IImage::Init(IDevice* device, VkImage image, const VkSwapchainCreateInfoKHR& swapchainCI)
+    ResultCode IImage::Init(TL_MAYBE_UNUSED IDevice* device, VkImage image, const VkSwapchainCreateInfoKHR& swapchainCI)
     {
         this->handle       = image;
         this->size         = {swapchainCI.imageExtent.width, swapchainCI.imageExtent.height, 1};
@@ -1169,13 +1172,13 @@ namespace RHI::Vulkan
         auto frame = (IFrame*)device->GetCurrentFrame();
 
         if (handle)
-            device->m_destroyQueue->Push(frame->m_timeline, handle);
+            device->m_destroyQueue->Push(frame->GetTimelineValue(), handle);
 
         if (viewHandle)
-            device->m_destroyQueue->Push(frame->m_timeline, viewHandle);
+            device->m_destroyQueue->Push(frame->GetTimelineValue(), viewHandle);
 
         if (allocation)
-            device->m_destroyQueue->Push(frame->m_timeline, allocation);
+            device->m_destroyQueue->Push(frame->GetTimelineValue(), allocation);
     }
 
     VkMemoryRequirements IImage::GetMemoryRequirements(IDevice* device) const
@@ -1227,7 +1230,7 @@ namespace RHI::Vulkan
     void ISampler::Shutdown(IDevice* device)
     {
         auto frame = (IFrame*)device->GetCurrentFrame();
-        device->m_destroyQueue->Push(frame->m_timeline, handle);
+        device->m_destroyQueue->Push(frame->GetTimelineValue(), handle);
     }
 
 } // namespace RHI::Vulkan

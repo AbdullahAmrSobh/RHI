@@ -112,11 +112,11 @@ namespace RHI::Vulkan
         VkCommandBuffer        m_commandBuffer               = VK_NULL_HANDLE;
         Handle<PipelineLayout> m_pipelineLayout              = NullHandle;
         VkPipelineBindPoint    m_pipelineBindPoint           = VK_PIPELINE_BIND_POINT_MAX_ENUM;
-        bool                   m_hasVertexBuffer         : 1 = false;
-        bool                   m_hasIndexBuffer          : 1 = false;
-        bool                   m_isGraphicsPipelineBound : 1 = false;
-        bool                   m_isComputePipelineBound  : 1 = false;
-        bool                   m_hasViewportSet          : 1 = false;
-        bool                   m_hasScissorSet           : 1 = false;
+        bool                   m_hasVertexBuffer         : 1;
+        bool                   m_hasIndexBuffer          : 1;
+        bool                   m_isGraphicsPipelineBound : 1;
+        bool                   m_isComputePipelineBound  : 1;
+        bool                   m_hasViewportSet          : 1;
+        bool                   m_hasScissorSet           : 1;
     };
 } // namespace RHI::Vulkan

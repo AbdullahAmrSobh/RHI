@@ -8,6 +8,8 @@
 #include <TL/Containers.hpp>
 #include <TL/Span.hpp>
 
+#include <atomic>
+
 namespace RHI::Vulkan
 {
     class IDevice;
@@ -19,9 +21,8 @@ namespace RHI::Vulkan
         IQueue();
         ~IQueue();
 
-        ResultCode Init(IDevice* device, const char* debugName, uint32_t familyIndex, uint32_t queueIndex);
-
-        void Shutdown();
+        VkResult Init(IDevice* device, const char* debugName, uint32_t familyIndex, uint32_t queueIndex);
+        void     Shutdown();
 
         inline VkQueue GetHandle() const { return m_queue; }
 
@@ -31,9 +32,9 @@ namespace RHI::Vulkan
 
         inline uint64_t GetTimelineValue() const { return m_timelineValue; }
 
+        void WaitIdle() const;
         bool WaitTimeline(uint64_t timelineValue, uint64_t duration = UINT64_MAX);
 
-        void WaitIdle() const;
 
         void AddWaitSemaphore(VkSemaphore semaphore, uint64_t value, VkPipelineStageFlags2 stageMask);
         void AddSignalSemaphore(VkSemaphore semaphore, uint64_t value, VkPipelineStageFlags2 stageMask);

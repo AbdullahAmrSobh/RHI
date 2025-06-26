@@ -68,15 +68,15 @@ namespace RHI
 
     struct QueueSubmitInfo
     {
-        QueueType                     queueType            = QueueType::Graphics;
-        TL::Span<CommandList* const>  commandLists         = {};
-        PipelineStage                 signalStage          = {};
-        TL::Span<const QueueWaitInfo> waitInfos            = {};
-        TL::Vector<Swapchain*>        m_swapchainToAcquire = {};
-        TL::Vector<Swapchain*>        m_swapchainToSignal  = {};
+        TL::Span<CommandList* const>  commandLists          = {};
+        PipelineStage                 signalStage           = {};
+        TL::Span<const QueueWaitInfo> waitInfos             = {};
+        TL::Span<Swapchain* const>    m_swapchainToAcquire  = {};
+        TL::Span<PipelineStage>       m_swapchainWaitStages = {};
+        bool                          signalPresent         = false;
     };
 
-    class Renderdoc
+    class RHI_EXPORT Renderdoc
     {
     public:
         ResultCode Init(class Device* device);
@@ -92,26 +92,20 @@ namespace RHI
         void*       m_renderdocAPi;
     };
 
-    class Frame // internal for now
+    class RHI_EXPORT Frame
     {
     public:
         virtual ~Frame() = default;
 
-        // TODO: integrate with renderdoc API
-
-        virtual void            Begin(TL::Span<Swapchain* const> swapchains) = 0;
-
-        virtual uint64_t        End() = 0;
-
-        virtual CommandList*    CreateCommandList(const CommandListCreateInfo& createInfo) = 0;
-
-        virtual uint64_t        QueueSubmit(const QueueSubmitInfo& submitInfo) = 0;
-
-        virtual void            BufferWrite(Handle<Buffer> buffer, size_t offset, TL::Block block) = 0;
-
-        virtual void            ImageWrite(Handle<Image> image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block) = 0;
-
         virtual TL::IAllocator& GetAllocator() = 0;
+
+        virtual void            CaptureNextFrame()                                                                                                               = 0;
+        virtual void            Begin(TL::Span<Swapchain* const> swapchains)                                                                       = 0;
+        virtual uint64_t        End()                                                                                                                            = 0;
+        virtual CommandList*    CreateCommandList(const CommandListCreateInfo& createInfo)                                                                       = 0;
+        virtual uint64_t        QueueSubmit(QueueType queueType, const QueueSubmitInfo& submitInfo)                                                              = 0;
+        virtual void            BufferWrite(Handle<Buffer> buffer, size_t offset, TL::Block block)                                                               = 0;
+        virtual void            ImageWrite(Handle<Image> image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block) = 0;
     };
 
     class RHI_EXPORT Device
@@ -229,11 +223,6 @@ namespace RHI
         /// @brief Destroys a compute pipeline.
         /// @param handle Handle to the compute pipeline to destroy.
         virtual void                     DestroyComputePipeline(Handle<ComputePipeline> handle) = 0;
-
-        /// @brief Writes data to a buffer.
-        virtual void                     BufferWrite(Handle<Buffer> buffer, size_t offset, TL::Block block) = 0;
-
-        virtual void                     ImageWrite(Handle<Image> image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block) = 0;
 
         virtual ResultCode               SetFramesInFlightCount(uint32_t count) = 0;
 

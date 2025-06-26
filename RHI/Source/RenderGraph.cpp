@@ -476,6 +476,7 @@ namespace RHI
             m_bufferPool.clear();
             m_dependencyLevels.clear();
             m_swapchain.clear();
+            m_swapchainAcquireStage.clear();
             m_arena.Collect();
             memset(&m_state, 0, sizeof(State));
         }
@@ -487,6 +488,7 @@ namespace RHI
     {
         TL_ASSERT(m_state.frameRecording == true);
         m_swapchain.push_back(&swapchain);
+        m_swapchainAcquireStage.push_back(PipelineStage::BottomOfPipe);
 
         auto frameResource        = TL::ConstructFrom<RGFrameImage>(&m_arena);
         frameResource->name       = name;
@@ -801,14 +803,8 @@ namespace RHI
 
         if (m_state.debug_triggerNextFrameCapture)
         {
-            m_device->GetDebugRenderdoc()->FrameStartCapture();
+            frame->CaptureNextFrame();
         }
-        TL_defer
-        {
-            if (m_state.debug_triggerNextFrameCapture)
-                m_device->GetDebugRenderdoc()->FrameEndCapture();
-        };
-
         frame->Begin(m_swapchain);
 
         CommandListCreateInfo cmdCI{
@@ -850,14 +846,14 @@ namespace RHI
         std::reverse(m_swapchain.begin(), m_swapchain.end());
 
         QueueSubmitInfo submitInfo{
-            .queueType            = QueueType::Graphics,
-            .commandLists         = commandList,
-            .signalStage          = PipelineStage::BottomOfPipe,
-            .waitInfos            = {},
-            .m_swapchainToAcquire = m_swapchain,
-            .m_swapchainToSignal  = m_swapchain,
+            .commandLists          = commandList,
+            .signalStage           = PipelineStage::BottomOfPipe,
+            .waitInfos             = {},
+            .m_swapchainToAcquire  = m_swapchain,
+            .m_swapchainWaitStages = m_swapchainAcquireStage,
+            .signalPresent         = true,
         };
-        TL_MAYBE_UNUSED auto timeline = frame->QueueSubmit(submitInfo);
+        TL_MAYBE_UNUSED auto timeline = frame->QueueSubmit(QueueType::Graphics, submitInfo);
 
         m_frameIndex = frame->End();
 #endif

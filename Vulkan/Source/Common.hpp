@@ -14,18 +14,6 @@
 
 namespace RHI::Vulkan
 {
-    [[maybe_unused]] inline static bool Validate(ResultCode result)
-    {
-        TL_ASSERT(IsSuccess(result));
-        return IsSuccess(result);
-    }
-
-    [[maybe_unused]] inline static bool Validate(VkResult result)
-    {
-        TL_ASSERT(result == VK_SUCCESS);
-        return result == VK_SUCCESS;
-    }
-
     inline static ResultCode ConvertResult(VkResult result)
     {
         switch (result)
@@ -83,6 +71,129 @@ namespace RHI::Vulkan
         default:                                                    return ResultCode::ErrorUnknown;
         }
     }
+
+    struct VulkanResult
+    {
+        VkResult result;
+
+        VulkanResult()
+            : result(VK_SUCCESS)
+        {
+        }
+
+        VulkanResult(VkResult result)
+            : result(result)
+        {
+        }
+
+        const char* AsString() const
+        {
+            switch (result)
+            {
+            case VK_SUCCESS:                                            return "VK_SUCCESS";
+            case VK_NOT_READY:                                          return "VK_NOT_READY";
+            case VK_TIMEOUT:                                            return "VK_TIMEOUT";
+            case VK_EVENT_SET:                                          return "VK_EVENT_SET";
+            case VK_EVENT_RESET:                                        return "VK_EVENT_RESET";
+            case VK_INCOMPLETE:                                         return "VK_INCOMPLETE";
+            case VK_ERROR_OUT_OF_HOST_MEMORY:                           return "VK_ERROR_OUT_OF_HOST_MEMORY";
+            case VK_ERROR_OUT_OF_DEVICE_MEMORY:                         return "VK_ERROR_OUT_OF_DEVICE_MEMORY";
+            case VK_ERROR_INITIALIZATION_FAILED:                        return "VK_ERROR_INITIALIZATION_FAILED";
+            case VK_ERROR_DEVICE_LOST:                                  return "VK_ERROR_DEVICE_LOST";
+            case VK_ERROR_MEMORY_MAP_FAILED:                            return "VK_ERROR_MEMORY_MAP_FAILED";
+            case VK_ERROR_LAYER_NOT_PRESENT:                            return "VK_ERROR_LAYER_NOT_PRESENT";
+            case VK_ERROR_EXTENSION_NOT_PRESENT:                        return "VK_ERROR_EXTENSION_NOT_PRESENT";
+            case VK_ERROR_FEATURE_NOT_PRESENT:                          return "VK_ERROR_FEATURE_NOT_PRESENT";
+            case VK_ERROR_INCOMPATIBLE_DRIVER:                          return "VK_ERROR_INCOMPATIBLE_DRIVER";
+            case VK_ERROR_TOO_MANY_OBJECTS:                             return "VK_ERROR_TOO_MANY_OBJECTS";
+            case VK_ERROR_FORMAT_NOT_SUPPORTED:                         return "VK_ERROR_FORMAT_NOT_SUPPORTED";
+            case VK_ERROR_FRAGMENTED_POOL:                              return "VK_ERROR_FRAGMENTED_POOL";
+            case VK_ERROR_UNKNOWN:                                      return "VK_ERROR_UNKNOWN";
+            case VK_ERROR_OUT_OF_POOL_MEMORY:                           return "VK_ERROR_OUT_OF_POOL_MEMORY";
+            case VK_ERROR_INVALID_EXTERNAL_HANDLE:                      return "VK_ERROR_INVALID_EXTERNAL_HANDLE";
+            case VK_ERROR_FRAGMENTATION:                                return "VK_ERROR_FRAGMENTATION";
+            case VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS:               return "VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS";
+            case VK_PIPELINE_COMPILE_REQUIRED:                          return "VK_PIPELINE_COMPILE_REQUIRED";
+            case VK_ERROR_SURFACE_LOST_KHR:                             return "VK_ERROR_SURFACE_LOST_KHR";
+            case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:                     return "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR";
+            case VK_SUBOPTIMAL_KHR:                                     return "VK_SUBOPTIMAL_KHR";
+            case VK_ERROR_OUT_OF_DATE_KHR:                              return "VK_ERROR_OUT_OF_DATE_KHR";
+            case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR:                     return "VK_ERROR_INCOMPATIBLE_DISPLAY_KHR";
+            case VK_ERROR_VALIDATION_FAILED_EXT:                        return "VK_ERROR_VALIDATION_FAILED_EXT";
+            case VK_ERROR_INVALID_SHADER_NV:                            return "VK_ERROR_INVALID_SHADER_NV";
+            case VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR:                return "VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR";
+            case VK_ERROR_VIDEO_PICTURE_LAYOUT_NOT_SUPPORTED_KHR:       return "VK_ERROR_VIDEO_PICTURE_LAYOUT_NOT_SUPPORTED_KHR";
+            case VK_ERROR_VIDEO_PROFILE_OPERATION_NOT_SUPPORTED_KHR:    return "VK_ERROR_VIDEO_PROFILE_OPERATION_NOT_SUPPORTED_KHR";
+            case VK_ERROR_VIDEO_PROFILE_FORMAT_NOT_SUPPORTED_KHR:       return "VK_ERROR_VIDEO_PROFILE_FORMAT_NOT_SUPPORTED_KHR";
+            case VK_ERROR_VIDEO_PROFILE_CODEC_NOT_SUPPORTED_KHR:        return "VK_ERROR_VIDEO_PROFILE_CODEC_NOT_SUPPORTED_KHR";
+            case VK_ERROR_VIDEO_STD_VERSION_NOT_SUPPORTED_KHR:          return "VK_ERROR_VIDEO_STD_VERSION_NOT_SUPPORTED_KHR";
+            case VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT: return "VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT";
+            case VK_ERROR_NOT_PERMITTED_KHR:                            return "VK_ERROR_NOT_PERMITTED_KHR";
+            case VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:          return "VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT";
+            case VK_THREAD_IDLE_KHR:                                    return "VK_THREAD_IDLE_KHR";
+            case VK_THREAD_DONE_KHR:                                    return "VK_THREAD_DONE_KHR";
+            case VK_OPERATION_DEFERRED_KHR:                             return "VK_OPERATION_DEFERRED_KHR";
+            case VK_OPERATION_NOT_DEFERRED_KHR:                         return "VK_OPERATION_NOT_DEFERRED_KHR";
+            case VK_ERROR_INVALID_VIDEO_STD_PARAMETERS_KHR:             return "VK_ERROR_INVALID_VIDEO_STD_PARAMETERS_KHR";
+            case VK_ERROR_COMPRESSION_EXHAUSTED_EXT:                    return "VK_ERROR_COMPRESSION_EXHAUSTED_EXT";
+            case VK_INCOMPATIBLE_SHADER_BINARY_EXT:                     return "VK_INCOMPATIBLE_SHADER_BINARY_EXT";
+            case VK_PIPELINE_BINARY_MISSING_KHR:                        return "VK_PIPELINE_BINARY_MISSING_KHR";
+            case VK_ERROR_NOT_ENOUGH_SPACE_KHR:                         return "VK_ERROR_NOT_ENOUGH_SPACE_KHR";
+            case VK_RESULT_MAX_ENUM:                                    return "VK_RESULT_MAX_ENUM";
+            default:                                                    TL_UNREACHABLE(); return "Unknown";
+            }
+        }
+
+        operator const char*() const
+        {
+            return AsString();
+        }
+
+        bool IsSuccess() const
+        {
+            return result == VK_SUCCESS;
+        }
+
+        bool IsError() const
+        {
+            return !IsSuccess();
+        }
+
+        bool IsSwapchainSuccess() const
+        {
+            return result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR;
+        }
+
+        operator ResultCode() const
+        {
+            return ConvertResult(result);
+        }
+
+        operator VkResult() const
+        {
+            return result;
+        }
+
+        operator bool() const
+        {
+            return IsSuccess();
+        }
+
+        bool operator==(VkResult other) const
+        {
+            return result == other;
+        }
+    };
+
+#define VkResultTry(x, ...)        \
+    do                             \
+    {                              \
+        if (!x)                    \
+        {                          \
+            Shutdown(__VA_ARGS__); \
+            return x;              \
+        }                          \
+    } while (0);
 
     inline static VkFormat ConvertFormat(Format format)
     {
@@ -569,15 +680,15 @@ namespace RHI::Vulkan
                 return VK_IMAGE_LAYOUT_GENERAL;
             }
         case ImageUsage::StorageResource: return VK_IMAGE_LAYOUT_GENERAL;
-        case ImageUsage::Color:        return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        case ImageUsage::Color:           return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         // TODO: use <DEPTH/STENCIL>_READ_ONLY_OPTIMAL
-        case ImageUsage::Depth:        return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-        case ImageUsage::Stencil:      return VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
-        case ImageUsage::DepthStencil: return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        case ImageUsage::CopySrc:      return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        case ImageUsage::CopyDst:      return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        case ImageUsage::Present:      return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-        default:                       TL_UNREACHABLE(); return VK_IMAGE_LAYOUT_UNDEFINED;
+        case ImageUsage::Depth:           return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+        case ImageUsage::Stencil:         return VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
+        case ImageUsage::DepthStencil:    return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        case ImageUsage::CopySrc:         return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        case ImageUsage::CopyDst:         return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        case ImageUsage::Present:         return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        default:                          TL_UNREACHABLE(); return VK_IMAGE_LAYOUT_UNDEFINED;
         }
     }
 } // namespace RHI::Vulkan

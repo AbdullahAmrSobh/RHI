@@ -1,4 +1,5 @@
 
+#include "Common.hpp"
 #include "Queue.hpp"
 #include "CommandList.hpp"
 #include "Device.hpp"
@@ -8,10 +9,12 @@
 
 namespace RHI::Vulkan
 {
+    // TODO: dissolve to frame ?
+
     IQueue::IQueue()  = default;
     IQueue::~IQueue() = default;
 
-    ResultCode IQueue::Init(IDevice* device, const char* debugName, uint32_t familyIndex, uint32_t queueIndex)
+    VkResult IQueue::Init(IDevice* device, const char* debugName, uint32_t familyIndex, uint32_t queueIndex)
     {
         m_device = device;
 
@@ -31,15 +34,15 @@ namespace RHI::Vulkan
             .pNext = &timelineCreateInfo,
             .flags = 0,
         };
-        if (vkCreateSemaphore(device->m_device, &semaphoreInfo, nullptr, &m_timelineSemaphore) != VK_SUCCESS)
-        {
-            return ResultCode::ErrorUnknown;
-        }
+
+        VulkanResult result;
+        result = vkCreateSemaphore(device->m_device, &semaphoreInfo, nullptr, &m_timelineSemaphore);
+        VkResultTry(result);
 
         m_device->SetDebugName(m_timelineSemaphore, "{}-timeline-semaphore", debugName);
         m_timelineValue.store(0);
 
-        return ResultCode::Success;
+        return result;
     }
 
     void IQueue::Shutdown()
@@ -58,9 +61,8 @@ namespace RHI::Vulkan
             .pSemaphores    = &m_timelineSemaphore,
             .pValues        = &timelineValue,
         };
-
-        auto result = vkWaitSemaphores(m_device->m_device, &waitInfo, duration);
-        return result == VK_SUCCESS;
+        VulkanResult result = vkWaitSemaphores(m_device->m_device, &waitInfo, duration);
+        return result;
     }
 
     void IQueue::WaitIdle() const
@@ -123,7 +125,7 @@ namespace RHI::Vulkan
 
         VkResult result;
 
-        auto timelineValue = ++m_timelineValue;
+        auto timelineValue = m_timelineValue++;
         AddSignalSemaphore(m_timelineSemaphore, timelineValue, signalStage);
 
         TL::Vector<VkCommandBufferSubmitInfo> commandBufferSubmitInfos{m_device->GetCurrentFrame()->GetAllocator()};

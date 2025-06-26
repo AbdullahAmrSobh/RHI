@@ -417,6 +417,7 @@ namespace RHI
         ImageSize2D                      m_frameSize;
         TL::Arena                        m_arena;
         TL::Vector<Swapchain*>           m_swapchain{m_arena};
+        TL::Vector<PipelineStage>        m_swapchainAcquireStage{m_arena};
         TL::Vector<RGPass*>              m_passPool{m_arena};
         TL::Vector<RGFrameImage*>        m_imagePool{m_arena};
         TL::Vector<RGFrameBuffer*>       m_bufferPool{m_arena};

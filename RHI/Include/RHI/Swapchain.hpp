@@ -91,10 +91,6 @@ namespace RHI
         /// @return Result code indicating success or failure
         virtual ResultCode          Configure(const SwapchainConfigureInfo& configInfo) = 0;
 
-        /// @brief Presents the current swapchain image to the display
-        /// @return Result code indicating success or failure of the presentation
-        virtual ResultCode          Present() = 0;
-
     protected:
         uint32_t      m_imageCount;
         Handle<Image> m_image;

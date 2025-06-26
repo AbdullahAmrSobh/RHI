@@ -450,18 +450,6 @@ namespace Engine
 
     inline static void ImGuiRenderer_SwapBuffers(ImGuiViewport* vp, void* render_arg)
     {
-        auto window     = GetViewportWindowData(vp);
-        auto renderData = GetViewportRenderData(vp);
-
-        auto present = renderData->swapchain->Present();
-        if (present == RHI::ResultCode::ErrorOutdated || present == RHI::ResultCode::ErrorOutdated)
-        {
-            TL_UNREACHABLE();
-        }
-        else if (TL::IsError(present))
-        {
-            TL_UNREACHABLE();
-        }
     }
 
     void ImGuiManager::Init(Window* primaryWindow)

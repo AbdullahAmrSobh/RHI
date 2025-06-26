@@ -18,7 +18,8 @@ namespace RHI
         TL_ASSERT(createInfo.usageFlags & ImageUsage::CopyDst);
 
         auto image = device.CreateImage(createInfo);
-        device.ImageWrite(image, ImageOffset3D{}, createInfo.size, 0, 0, content);
+        auto frame = device.GetCurrentFrame();
+        frame->ImageWrite(image, ImageOffset3D{}, createInfo.size, 0, 0, content);
         return image;
     }
 

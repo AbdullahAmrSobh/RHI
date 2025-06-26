@@ -224,11 +224,11 @@ public:
         auto result = m_renderer->Init(backend);
         TL_ASSERT(RHI::IsSuccess(result), "Failed to initialize renderer");
         m_presentationViewport = m_renderer->CreatePresentationViewport(m_window);
-        auto handler = [this](const auto& e)
-            {
-                m_camera.ProcessEvent(e);
-                return false;
-            };
+        auto handler           = [this](const auto& e)
+        {
+            m_camera.ProcessEvent(e);
+            return false;
+        };
         m_window->Subscribe(handler);
 
         m_scene     = m_renderer->CreateScene();
@@ -281,15 +281,18 @@ public:
         // Example window
         ImGui::Begin("Window1");
         ImGui::Text("hello");
+
         ImGui::End();
         ImGui::ShowDemoWindow();
         ImGui::Render();
         ImGui::UpdatePlatformWindows();
 
-        m_renderer->Render(m_scene, m_presentationViewport);
+        if (ImGui::IsKeyDown(ImGuiKey_F1))
+        {
+            m_renderer->GetRenderGraph()->Debug_CaptureNextFrame();
+        }
 
-        auto result = m_presentationViewport.swapchain->Present();
-        TL_ASSERT(RHI::IsSuccess(result), "Failed to present swapchain");
+        m_renderer->Render(m_scene, m_presentationViewport);
 
         FrameMark;
     }

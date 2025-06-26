@@ -47,10 +47,16 @@ namespace RHI::Vulkan
         m_device = device;
         if (createInfo.name) m_name = createInfo.name;
 
+        VulkanResult result;
+        result = CreateSurface(*m_device, createInfo, m_surface);
+        if (result != VK_SUCCESS)
+        {
+            Shutdown();
+            return result;
+        }
+
         IImage image{}; // default image (initialized on acquire)
         m_image = m_device->m_imageOwner.Emplace(std::move(image));
-
-        VkResult result;
 
         for (uint32_t i = 0; i < MaxImageCount; i++)
         {
@@ -58,17 +64,13 @@ namespace RHI::Vulkan
 
             result = vkCreateSemaphore(m_device->m_device, &semaphoreCI, nullptr, &m_imageAcquiredSemaphore[i]);
             TL_ASSERT(result == VK_SUCCESS, "Failed to create swapchain semaphore");
-            result = vkCreateSemaphore(m_device->m_device, &semaphoreCI, nullptr, &m_imagePresentSemaphore[i]);
-            TL_ASSERT(result == VK_SUCCESS, "Failed to create swapchain semaphore");
-
             if (m_name.empty() == false)
             {
                 m_device->SetDebugName(m_imageAcquiredSemaphore[i], "swapchain: {} - acquire_semaphore[{}]", m_name, i);
-                m_device->SetDebugName(m_imagePresentSemaphore[i], "swapchain: {} - present_semaphore[{}]", m_name, i);
             }
         }
 
-        return ConvertResult(InitSurface(createInfo));
+        return result;
     }
 
     void ISwapchain::Shutdown()
@@ -78,16 +80,13 @@ namespace RHI::Vulkan
         for (uint32_t i = 0; i < MaxImageCount; i++)
         {
             if (m_imageAcquiredSemaphore[i] != VK_NULL_HANDLE)
-                m_device->m_destroyQueue->Push(frame->m_timeline, m_imageAcquiredSemaphore[i]);
-
-            if (m_imagePresentSemaphore[i] != VK_NULL_HANDLE)
-                m_device->m_destroyQueue->Push(frame->m_timeline, m_imagePresentSemaphore[i]);
+                m_device->m_destroyQueue->Push(frame->GetTimelineValue(), m_imageAcquiredSemaphore[i]);
         }
 
         CleanupOldSwapchain(m_swapchain, m_imageCount);
 
         if (m_surface != VK_NULL_HANDLE)
-            m_device->m_destroyQueue->Push(frame->m_timeline, m_surface);
+            m_device->m_destroyQueue->Push(frame->GetTimelineValue(), m_surface);
 
         m_device->m_imageOwner.Release(m_image);
     }
@@ -95,11 +94,6 @@ namespace RHI::Vulkan
     VkSemaphore ISwapchain::GetImageAcquiredSemaphore() const
     {
         return m_imageAcquiredSemaphore[m_acquireSemaphoreIndex];
-    }
-
-    VkSemaphore ISwapchain::GetImagePresentSemaphore() const
-    {
-        return m_imagePresentSemaphore[m_presentSemaphoreIndex];
     }
 
     SurfaceCapabilities ISwapchain::GetSurfaceCapabilities()
@@ -161,8 +155,6 @@ namespace RHI::Vulkan
 
     ResultCode ISwapchain::Configure(const SwapchainConfigureInfo& configInfo)
     {
-        vkDeviceWaitIdle(m_device->m_device);
-
         TL_ASSERT(configInfo.imageCount <= MaxImageCount, "Swapchain returned more images than supported.");
 
         m_configuration = configInfo;
@@ -271,92 +263,102 @@ namespace RHI::Vulkan
             }
         }
 
-        result = AcquireNextImage();
-
         return ConvertResult(result);
     }
 
-    ResultCode ISwapchain::Present()
+    // ResultCode ISwapchain::Present()
+    // {
+    //     ZoneScoped;
+
+    //     VkResult result;
+
+    //     VkSemaphore waitSemaphore = GetImagePresentSemaphore();
+
+    //     VkPresentInfoKHR presentInfo{
+    //         .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+    //         .pNext              = nullptr,
+    //         .waitSemaphoreCount = 1,
+    //         .pWaitSemaphores    = &waitSemaphore,
+    //         .swapchainCount     = 1,
+    //         .pSwapchains        = &m_swapchain,
+    //         .pImageIndices      = &m_imageIndex,
+    //         .pResults           = &m_lastPresentResult,
+    //     };
+
+    //     auto queue = m_device->GetDeviceQueue(QueueType::Graphics);
+    //     result     = vkQueuePresentKHR(queue->GetHandle(), &presentInfo);
+    //     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+    //     {
+    //         TL_LOG_INFO("Swapchain out of date, reconfiguring");
+    //         return Configure(m_configuration);
+    //     }
+    //     else if (result != VK_SUCCESS)
+    //     {
+    //         TL_LOG_ERROR("Failed to present swapchain image");
+    //         return ConvertResult(result);
+    //     }
+
+    //     {
+    //         // wait for previous swapchain frame in flight
+    //         queue->WaitTimeline(m_timelineValue[m_imageIndex]);
+    //         m_timelineValue[m_imageIndex] = queue->GetTimelineValue();
+    //     }
+
+    //     m_acquireSemaphoreIndex = m_acquireSemaphoreNextIndex;
+
+    //     result = AcquireNextImage();
+    //     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+    //     {
+    //         TL_LOG_INFO("Swapchain out of date, reconfiguring");
+    //         return Configure(m_configuration);
+    //     }
+    //     else if (result != VK_SUCCESS)
+    //     {
+    //         TL_LOG_ERROR("Failed to acquire next swapchain image");
+    //         return ConvertResult(result);
+    //     }
+
+    //     m_presentSemaphoreIndex = (m_presentSemaphoreIndex + 1) % MaxImageCount;
+
+    //     return ConvertResult(result);
+    // }
+
+    VkResult ISwapchain::AcquireNextImage(VkSemaphore& acquiredSemaphore)
     {
-        ZoneScoped;
-
-        VkResult result;
-
-        VkSemaphore waitSemaphore = GetImagePresentSemaphore();
-
-        VkPresentInfoKHR presentInfo{
-            .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-            .pNext              = nullptr,
-            .waitSemaphoreCount = 1,
-            .pWaitSemaphores    = &waitSemaphore,
-            .swapchainCount     = 1,
-            .pSwapchains        = &m_swapchain,
-            .pImageIndices      = &m_imageIndex,
-            .pResults           = &m_lastPresentResult,
-        };
-
-        auto queue = m_device->GetDeviceQueue(QueueType::Graphics);
-        result     = vkQueuePresentKHR(queue->GetHandle(), &presentInfo);
-        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
-        {
-            TL_LOG_INFO("Swapchain out of date, reconfiguring");
-            return Configure(m_configuration);
-        }
-        else if (result != VK_SUCCESS)
-        {
-            TL_LOG_ERROR("Failed to present swapchain image");
-            return ConvertResult(result);
-        }
-
-        {
-            // wait for previous swapchain frame in flight
-            queue->WaitTimeline(m_timelineValue[m_imageIndex]);
-            m_timelineValue[m_imageIndex] = queue->GetTimelineValue();
-        }
-
-        m_acquireSemaphoreIndex = m_acquireSemaphoreNextIndex;
-
-        result = AcquireNextImage();
-        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
-        {
-            TL_LOG_INFO("Swapchain out of date, reconfiguring");
-            return Configure(m_configuration);
-        }
-        else if (result != VK_SUCCESS)
-        {
-            TL_LOG_ERROR("Failed to acquire next swapchain image");
-            return ConvertResult(result);
-        }
-
-        m_presentSemaphoreIndex = (m_presentSemaphoreIndex + 1) % MaxImageCount;
-
-        return ConvertResult(result);
-    }
-
-    VkResult ISwapchain::AcquireNextImage()
-    {
-        VkResult                  result;
-        VkSemaphore               semaphore = GetImageAcquiredSemaphore();
+        VulkanResult              result;
         VkAcquireNextImageInfoKHR acquireInfo{
             .sType      = VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHR,
             .pNext      = nullptr,
             .swapchain  = m_swapchain,
             .timeout    = UINT64_MAX,
-            .semaphore  = semaphore,
+            .semaphore  = GetImageAcquiredSemaphore(),
             .fence      = VK_NULL_HANDLE,
             .deviceMask = 0x00000001,
         };
         result = vkAcquireNextImage2KHR(m_device->m_device, &acquireInfo, &m_imageIndex);
+
+        if (result.IsSwapchainSuccess())
+        {
+            acquiredSemaphore = GetImageAcquiredSemaphore();
+        }
+
+        // TODO:
+        // if (result == VK_ERROR_OUT_OF_DATE_KHR)
+        // {
+        //     result = Configure(m_configuration);
+        //     result = vkAcquireNextImage2KHR(m_device->m_device, &acquireInfo, &m_imageIndex);
+        // }
+
         if (result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR)
         {
-            auto image        = m_device->m_imageOwner.Get(m_image);
-            image->handle     = m_images[m_imageIndex];
-            image->viewHandle = m_imageViews[m_imageIndex];
-            image->format     = m_configuration.format;
-            image->size       = {m_size.width, m_size.height};
-
-            m_acquireSemaphoreNextIndex = (m_acquireSemaphoreIndex + 1) % MaxImageCount;
+            auto [width, height]    = m_configuration.size;
+            auto image              = m_device->m_imageOwner.Get(m_image);
+            image->handle           = m_images[m_imageIndex];
+            image->viewHandle       = m_imageViews[m_imageIndex];
+            image->format           = m_configuration.format;
+            image->size             = {width, height};
         }
+
         return result;
     }
 
@@ -366,10 +368,10 @@ namespace RHI::Vulkan
 
         for (uint32_t i = 0; i < oldImageCount; i++)
         {
-            m_device->m_destroyQueue->Push(frame->m_timeline, m_imageViews[i]);
+            m_device->m_destroyQueue->Push(frame->GetTimelineValue(), m_imageViews[i]);
             m_imageViews[i] = VK_NULL_HANDLE;
         }
 
-        m_device->m_destroyQueue->Push(frame->m_timeline, oldSwapchain);
+        m_device->m_destroyQueue->Push(frame->GetTimelineValue(), oldSwapchain);
     }
 } // namespace RHI::Vulkan

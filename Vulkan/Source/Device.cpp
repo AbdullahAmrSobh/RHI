@@ -36,9 +36,6 @@
 #define VULKAN_DEVICE_FUNC_LOAD(device, proc) reinterpret_cast<PFN_##proc>(vkGetDeviceProcAddr(device, #proc));
 #define VULKAN_INSTANCE_FUNC_LOAD(instance, proc) reinterpret_cast<PFN_##proc>(vkGetInstanceProcAddr(instance, #proc));
 
-#define RHI_VK_TRY(expr) \
-    if (auto _result_ = expr; _result_ != VK_SUCCESS) return ConvertResult(_result_);
-
 namespace RHI
 {
     Device* CreateVulkanDevice(const ApplicationInfo& appInfo)
@@ -175,50 +172,63 @@ namespace RHI::Vulkan
 
     inline static TL::Vector<VkLayerProperties> GetAvailableInstanceLayerExtensions()
     {
-        uint32_t instanceLayerCount;
-        Validate(vkEnumerateInstanceLayerProperties(&instanceLayerCount, nullptr));
+        VulkanResult result;
+        uint32_t     instanceLayerCount;
+        result = vkEnumerateInstanceLayerProperties(&instanceLayerCount, nullptr);
+        TL_ASSERT(result);
         TL::Vector<VkLayerProperties> layers;
         layers.resize(instanceLayerCount);
-        Validate(vkEnumerateInstanceLayerProperties(&instanceLayerCount, layers.data()));
+        result = vkEnumerateInstanceLayerProperties(&instanceLayerCount, layers.data());
+        TL_ASSERT(result);
         return layers;
     }
 
     inline static TL::Vector<VkExtensionProperties> GetAvailableInstanceExtensions()
     {
-        uint32_t instanceExtensionsCount;
-        Validate(vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionsCount, nullptr));
+        VulkanResult result;
+        uint32_t     instanceExtensionsCount;
+        result = vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionsCount, nullptr);
+        TL_ASSERT(result);
         TL::Vector<VkExtensionProperties> extensions;
         extensions.resize(instanceExtensionsCount);
-        Validate(vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionsCount, extensions.data()));
+        result = vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionsCount, extensions.data());
+        TL_ASSERT(result);
         return extensions;
     }
 
     inline static TL::Vector<VkLayerProperties> GetAvailableDeviceLayerExtensions(VkPhysicalDevice physicalDevice)
     {
-        uint32_t instanceLayerCount;
-        Validate(vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, nullptr));
+        VulkanResult result;
+        uint32_t     instanceLayerCount;
+        result = vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, nullptr);
+        TL_ASSERT(result);
         TL::Vector<VkLayerProperties> layers;
         layers.resize(instanceLayerCount);
-        Validate(vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, layers.data()));
+        result = vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, layers.data());
+        TL_ASSERT(result);
         return layers;
     }
 
     inline static TL::Vector<VkExtensionProperties> GetAvailableDeviceExtensions(VkPhysicalDevice physicalDevice)
     {
-        uint32_t extensionsCount;
-        Validate(vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, nullptr));
+        VulkanResult result;
+        uint32_t     extensionsCount;
+        result = vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, nullptr);
+        TL_ASSERT(result);
         TL::Vector<VkExtensionProperties> extnesions;
         extnesions.resize(extensionsCount);
-        Validate(vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, extnesions.data()));
+        result = vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, extnesions.data());
+        TL_ASSERT(result);
         return extnesions;
     }
 
     inline static TL::Vector<VkPhysicalDevice> GetAvailablePhysicalDevices(VkInstance instance)
     {
-        uint32_t physicalDeviceCount;
-        Validate(vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr));
+        VulkanResult result;
+        uint32_t     physicalDeviceCount;
+        result = vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
         TL::Vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount, VK_NULL_HANDLE);
-        Validate(vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, physicalDevices.data()));
+        result = vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, physicalDevices.data());
         return physicalDevices;
     }
 
@@ -307,6 +317,8 @@ namespace RHI::Vulkan
             .pUserData       = this,
         };
 
+        VulkanResult result;
+
         ValidationSettings   validationSettings{};
         VkInstanceCreateInfo instanceCI{
             .sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
@@ -318,7 +330,12 @@ namespace RHI::Vulkan
             .enabledExtensionCount   = static_cast<uint32_t>(requiredInstanceExtensions.size()),
             .ppEnabledExtensionNames = requiredInstanceExtensions.data(),
         };
-        RHI_VK_TRY(vkCreateInstance(&instanceCI, nullptr, &m_instance));
+        result = vkCreateInstance(&instanceCI, nullptr, &m_instance);
+        if (!result)
+        {
+            Shutdown();
+            return result;
+        }
 
         if constexpr (DebugLayerEnabled)
         {
@@ -326,7 +343,12 @@ namespace RHI::Vulkan
             {
                 m_pfn.m_vkCreateDebugUtilsMessengerEXT  = VULKAN_INSTANCE_FUNC_LOAD(m_instance, vkCreateDebugUtilsMessengerEXT);
                 m_pfn.m_vkDestroyDebugUtilsMessengerEXT = VULKAN_INSTANCE_FUNC_LOAD(m_instance, vkDestroyDebugUtilsMessengerEXT);
-                RHI_VK_TRY(m_pfn.m_vkCreateDebugUtilsMessengerEXT(m_instance, &debugUtilsCI, nullptr, &m_debugUtilsMessenger));
+                result                                  = m_pfn.m_vkCreateDebugUtilsMessengerEXT(m_instance, &debugUtilsCI, nullptr, &m_debugUtilsMessenger);
+                if (!result)
+                {
+                    Shutdown();
+                    return result;
+                }
             }
         }
 
@@ -492,7 +514,12 @@ namespace RHI::Vulkan
             .pEnabledFeatures        = nullptr,
         };
 
-        RHI_VK_TRY(vkCreateDevice(m_physicalDevice, &deviceCI, nullptr, &m_device));
+        result = vkCreateDevice(m_physicalDevice, &deviceCI, nullptr, &m_device);
+        if (!result)
+        {
+            Shutdown();
+            return result;
+        }
 
         VmaAllocatorCreateInfo vmaCI{
             .physicalDevice   = m_physicalDevice,
@@ -500,7 +527,8 @@ namespace RHI::Vulkan
             .instance         = m_instance,
             .vulkanApiVersion = VK_API_VERSION_1_3,
         };
-        RHI_VK_TRY(vmaCreateAllocator(&vmaCI, &m_deviceAllocator));
+        result = vmaCreateAllocator(&vmaCI, &m_deviceAllocator);
+        VkResultTry(result);
 
         if constexpr (DebugLayerEnabled)
         {
@@ -525,34 +553,31 @@ namespace RHI::Vulkan
         m_limits                                  = TL::CreatePtr<DeviceLimits>();
         m_limits->minUniformBufferOffsetAlignment = uint32_t(properties.limits.minUniformBufferOffsetAlignment);
 
-        ResultCode resultCode;
-
-        resultCode = m_queue[(uint32_t)QueueType::Graphics].Init(this, "Graphics", graphicsQueueFamilyIndex.value(), 0);
-        if (IsError(resultCode)) return resultCode;
+        result = m_queue[(uint32_t)QueueType::Graphics].Init(this, "Graphics", graphicsQueueFamilyIndex.value(), 0);
+        VkResultTry(result);
 
         if (computeQueueFamilyIndex)
         {
-            resultCode = m_queue[(uint32_t)QueueType::Compute].Init(this, "Compute", computeQueueFamilyIndex.value(), 0);
-            if (IsError(resultCode)) return resultCode;
+            result = m_queue[(uint32_t)QueueType::Compute].Init(this, "Compute", computeQueueFamilyIndex.value(), 0);
+            VkResultTry(result);
         }
 
         if (transferQueueFamilyIndex)
         {
-            resultCode = m_queue[(uint32_t)QueueType::Transfer].Init(this, "Transfer", transferQueueFamilyIndex.value(), 0);
-            if (IsError(resultCode)) return resultCode;
+            result = m_queue[(uint32_t)QueueType::Transfer].Init(this, "Transfer", transferQueueFamilyIndex.value(), 0);
+            VkResultTry(result);
         }
 
-        resultCode = m_bindGroupAllocator->Init(this);
-        if (IsError(resultCode)) return resultCode;
+        result = m_bindGroupAllocator->Init(this);
+        VkResultTry(result);
 
-        resultCode = m_destroyQueue->Init(this);
-        if (IsError(resultCode)) return resultCode;
+        m_destroyQueue->Init(this);
 
         m_framesInFlight.resize(2);
         for (auto& frame : m_framesInFlight)
         {
             frame      = TL::CreatePtr<IFrame>();
-            resultCode = frame->Init(this);
+            auto resultCode = frame->Init(this);
             if (IsError(resultCode)) return resultCode;
         }
 
@@ -561,7 +586,7 @@ namespace RHI::Vulkan
             TL_MAYBE_UNUSED auto _ = m_renderdoc->Init(this);
         }
 
-        return resultCode;
+        return result;
     }
 
     void IDevice::Shutdown()
@@ -673,20 +698,6 @@ namespace RHI::Vulkan
         ZoneScoped;
         auto bindGroup = m_bindGroupOwner.Get(handle);
         bindGroup->Update(this, updateInfo);
-    }
-
-    void IDevice::BufferWrite(Handle<Buffer> bufferHandle, size_t offset, TL::Block block)
-    {
-        ZoneScoped;
-        auto frame = GetCurrentFrame();
-        frame->BufferWrite(bufferHandle, offset, block);
-    }
-
-    void IDevice::ImageWrite(Handle<Image> imageHandle, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block)
-    {
-        ZoneScoped;
-        auto frame = GetCurrentFrame();
-        frame->ImageWrite(imageHandle, offset, size, mipLevel, arrayLayer, block);
     }
 
     ResultCode IDevice::SetFramesInFlightCount(uint32_t count)

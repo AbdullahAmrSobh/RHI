@@ -4,6 +4,8 @@
 #include "Resources.hpp"
 #include "Swapchain.hpp"
 
+#include <TL/Time.hpp>
+
 namespace RHI::Vulkan
 {
     ////////////////////////////////////////////////////////////////
@@ -14,6 +16,9 @@ namespace RHI::Vulkan
     {
         m_device = device;
 
+        static int id = 0;
+        m_id          = id++;
+
         m_commandListAllocator = TL::CreatePtr<CommandAllocator>();
         if (auto result = m_commandListAllocator->Init(m_device); IsError(result))
             return result;
@@ -21,6 +26,9 @@ namespace RHI::Vulkan
         m_stagingPool = TL::CreatePtr<StagingBuffer>();
         if (auto result = m_stagingPool->Init(m_device); IsError(result))
             return result;
+
+        VkSemaphoreCreateInfo semaphoreCI{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, .pNext = nullptr, .flags = 0};
+        auto                  result = vkCreateSemaphore(m_device->m_device, &semaphoreCI, nullptr, &m_presentFrameSemaphore);
 
         return ResultCode::Success;
     }
@@ -41,32 +49,99 @@ namespace RHI::Vulkan
         return m_stagingPool->Allocate(block);
     }
 
+    void IFrame::CaptureNextFrame()
+    {
+        m_renderdocPendingCapture = true;
+    }
+
     void IFrame::Begin(TL::Span<Swapchain* const> swapchains)
     {
-        auto queue        = m_device->GetDeviceQueue(QueueType::Graphics);
-        bool waitComplete = queue->WaitTimeline(m_prevTimeline);
-        TL_ASSERT(waitComplete, "Failed to wait for current frame in flight");
+        ZoneScoped;
+
+        auto gfxQueue = m_device->GetDeviceQueue(QueueType::Graphics);
 
         {
-            uint64_t timeline;
-            vkGetSemaphoreCounterValue(m_device->m_device, queue->GetTimelineHandle(), &timeline);
-            m_device->m_destroyQueue->Flush(timeline);
+            ZoneScopedN("Frame: Wait for frame ready");
+
+            vkDeviceWaitIdle(m_device->m_device);
+            auto timeoutDuration = 10_tl_s;
+            bool timeout         = gfxQueue->WaitTimeline(m_timeline, timeoutDuration.count());
+            m_timeline           = gfxQueue->GetTimelineValue();
+            TL_ASSERT(timeout != false);
         }
 
-        m_tempAllocator.Collect();
-        m_commandListAllocator->Reset();
-        m_stagingPool->Reset();
-        m_swapchains.clear();
+        {
+            ZoneScopedN("Frame: cleanup temp allocations");
+            m_stagingPool->Reset();
+            m_commandListAllocator->Reset();
+            m_swapchains.clear();
+            m_tempAllocator.Collect();
+        }
 
-        for (auto swapchain : swapchains)
-            m_swapchains.push_back((ISwapchain*)swapchain);
+        if (m_renderdocPendingCapture)
+        {
+            m_device->m_renderdoc->FrameStartCapture();
+        }
+
+        {
+            ZoneScopedN("Frame: Acquire swapchain images");
+            for (auto _swapchain : swapchains)
+            {
+                auto swapchain = (ISwapchain*)_swapchain;
+
+                VkSemaphore acquiredSemaphore;
+                swapchain->AcquireNextImage(acquiredSemaphore);
+                m_swapchains.push_back(swapchain);
+            }
+        }
     }
 
     uint64_t IFrame::End()
     {
-        m_device->m_currentFrameIndex = (m_device->m_currentFrameIndex + 1) % (m_device->m_framesInFlight.size() - 1);
-        m_prevTimeline                = m_timeline;
-        return m_device->m_currentFrameIndex;
+        auto gfxQueue      = m_device->GetDeviceQueue(QueueType::Graphics);
+        auto cmpQueue      = m_device->GetDeviceQueue(QueueType::Compute);
+        auto transferQueue = m_device->GetDeviceQueue(QueueType::Transfer);
+
+        {
+            ZoneScopedN("Frame: Present swapchain images");
+
+            TL::Vector<VkSwapchainKHR> swapchains{m_tempAllocator};
+            TL::Vector<uint32_t>       imageIndices{m_tempAllocator};
+            // TL::Vector<VkResult>       results{m_tempAllocator};
+
+            for (auto swapchain : m_swapchains)
+            {
+                swapchains.push_back(swapchain->GetHandle());
+                imageIndices.push_back(swapchain->GetCurrentImageIndex());
+                swapchain->m_acquireSemaphoreIndex = (swapchain->m_acquireSemaphoreIndex + 1) % ISwapchain::MaxImageCount;
+            }
+
+            VkPresentInfoKHR presentInfo{
+                .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+                .pNext              = nullptr,
+                .waitSemaphoreCount = 1,
+                .pWaitSemaphores    = &m_presentFrameSemaphore,
+                .swapchainCount     = (uint32_t)swapchains.size(),
+                .pSwapchains        = swapchains.data(),
+                .pImageIndices      = imageIndices.data(),
+                .pResults           = nullptr, // results.data(),
+            };
+            VulkanResult result = vkQueuePresentKHR(gfxQueue->GetHandle(), &presentInfo);
+            TL_ASSERT(result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR);
+            if (!result.IsSwapchainSuccess())
+            {
+                TL_LOG_INFO("Swapchain present failed with error: {}", result.AsString());
+            }
+        }
+
+        if (m_renderdocPendingCapture)
+        {
+            m_device->m_renderdoc->FrameEndCapture();
+            m_renderdocPendingCapture = false;
+        }
+
+        m_device->m_currentFrameIndex = (m_device->m_currentFrameIndex + 1) % (m_device->m_framesInFlight.size());
+        return m_timeline;
     }
 
     CommandList* IFrame::CreateCommandList(const CommandListCreateInfo& createInfo)
@@ -77,9 +152,11 @@ namespace RHI::Vulkan
         return commandList;
     }
 
-    uint64_t IFrame::QueueSubmit(const QueueSubmitInfo& submitInfo)
+    uint64_t IFrame::QueueSubmit(QueueType queueType, const QueueSubmitInfo& submitInfo)
     {
-        auto queue = m_device->GetDeviceQueue(submitInfo.queueType);
+        ZoneScoped;
+
+        auto queue = m_device->GetDeviceQueue(queueType);
 
         for (auto waitInfo : submitInfo.waitInfos)
         {
@@ -89,22 +166,23 @@ namespace RHI::Vulkan
             }
         }
 
-        for (auto _swapchain : submitInfo.m_swapchainToAcquire)
+        TL_ASSERT(submitInfo.m_swapchainToAcquire.size() == submitInfo.m_swapchainWaitStages.size(), "swapchainToAcquire and swapchainWaitStages must be 1-to-1");
+        for (size_t i = 0; i < submitInfo.m_swapchainToAcquire.size(); ++i)
         {
-            auto swapchain = (ISwapchain*)_swapchain;
-            // TODO: VkPipelineStageFlags can be deduced based on the swapchain image usage flags.
-            queue->AddWaitSemaphore(swapchain->GetImageAcquiredSemaphore(), 0, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+            auto swapchain = (ISwapchain*)submitInfo.m_swapchainToAcquire[i];
+            auto waitStage = ConvertPipelineStageFlags(submitInfo.m_swapchainWaitStages[i]);
+            queue->AddWaitSemaphore(swapchain->GetImageAcquiredSemaphore(), 0, waitStage);
         }
 
-        for (auto _swapchain : submitInfo.m_swapchainToSignal)
+        if (submitInfo.signalPresent == true)
         {
-            auto swapchain = (ISwapchain*)_swapchain;
-            // TODO: VkPipelineStageFlags can be deduced based on the swapchain image usage flags.
-            queue->AddSignalSemaphore(swapchain->GetImagePresentSemaphore(), 0, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+            queue->AddSignalSemaphore(m_presentFrameSemaphore, 0, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
         }
 
         auto commandLists = TL::Span{(ICommandList**)submitInfo.commandLists.data(), submitInfo.commandLists.size()};
-        return m_timeline = queue->Submit(commandLists, ConvertPipelineStageFlags(submitInfo.signalStage));
+        m_timeline        = queue->Submit(commandLists, ConvertPipelineStageFlags(submitInfo.signalStage));
+        m_timeline        = queue->GetTimelineValue();
+        return queue->GetTimelineValue();
     }
 
     void IFrame::BufferWrite(Handle<Buffer> bufferHandle, size_t offset, TL::Block block)
@@ -205,11 +283,21 @@ namespace RHI::Vulkan
         // TL_UNREACHABLE();
     }
 
+    TL::IAllocator& IFrame::GetAllocator()
+    {
+        return m_tempAllocator;
+    }
+
+    uint64_t IFrame::GetTimelineValue() const
+    {
+        return m_timeline;
+    }
+
     ////////////////////////////////////////////////////////////////
     /// Staging buffer allocator
     ////////////////////////////////////////////////////////////////
 
-    constexpr static size_t MinStagingBufferAllocationSize = 64 * 1024 * 1024; // 64 mb
+    constexpr static size_t MinStagingBufferAllocationSize = 64_tl_mb;
 
     StagingBuffer::StagingBuffer()  = default;
     StagingBuffer::~StagingBuffer() = default;
@@ -306,10 +394,9 @@ namespace RHI::Vulkan
         TL_ASSERT(m_descriptorPool.empty());
     }
 
-    ResultCode DeleteQueue::Init(IDevice* device)
+    void DeleteQueue::Init(IDevice* device)
     {
         m_device = device;
-        return ResultCode::Success;
     }
 
     void DeleteQueue::Shutdown()

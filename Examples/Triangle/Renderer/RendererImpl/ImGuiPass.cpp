@@ -146,7 +146,7 @@ namespace Engine
                 {0.0f,              0.0f,              0.5f, 0.0f},
                 {(R + L) / (L - R), (T + B) / (B - T), 0.5f, 1.0f},
             };
-            m_device->BufferWrite(m_uniformBuffer, sizeof(ImGuiMat4) * viewportID, {mvp, sizeof(ImGuiMat4)});
+            m_device->GetCurrentFrame()->BufferWrite(m_uniformBuffer, sizeof(ImGuiMat4) * viewportID, {mvp, sizeof(ImGuiMat4)});
         }
 
         auto [width, height] = drawData->OwnerViewport->Size;
@@ -172,8 +172,8 @@ namespace Engine
                     commandList.BindVertexBuffers(0, {{.buffer = m_vertexBuffer, .offset = vertexBufferOffset}});
                     // clang-format on
 
-                    m_device->BufferWrite(m_indexBuffer, indexBufferOffset, TL::Block{.ptr = drawList->IdxBuffer.Data, .size = drawList->IdxBuffer.Size * sizeof(ImDrawIdx)});
-                    m_device->BufferWrite(m_vertexBuffer, vertexBufferOffset, TL::Block{.ptr = drawList->VtxBuffer.Data, .size = drawList->VtxBuffer.Size * sizeof(ImDrawVert)});
+                    m_device->GetCurrentFrame()->BufferWrite(m_indexBuffer, indexBufferOffset, TL::Block{.ptr = drawList->IdxBuffer.Data, .size = drawList->IdxBuffer.Size * sizeof(ImDrawIdx)});
+                    m_device->GetCurrentFrame()->BufferWrite(m_vertexBuffer, vertexBufferOffset, TL::Block{.ptr = drawList->VtxBuffer.Data, .size = drawList->VtxBuffer.Size * sizeof(ImDrawVert)});
                     indexBufferOffset += drawList->IdxBuffer.Size * sizeof(ImDrawIdx);
                     vertexBufferOffset += drawList->VtxBuffer.Size * sizeof(ImDrawVert);
 

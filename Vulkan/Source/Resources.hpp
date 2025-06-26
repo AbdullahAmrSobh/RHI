@@ -63,8 +63,8 @@ namespace RHI::Vulkan
         BindGroupAllocator();
         ~BindGroupAllocator();
 
-        ResultCode Init(IDevice* device);
-        void       Shutdown();
+        VkResult Init(IDevice* device);
+        void     Shutdown();
 
         ResultCode InitBindGroup(IBindGroup* bindGroup, IBindGroupLayout* bindGroupLayout, uint32_t bindlessResourcesCount);
         void       ShutdownBindGroup(IBindGroup* bindGroup);

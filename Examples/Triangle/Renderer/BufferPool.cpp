@@ -52,7 +52,7 @@ namespace Engine
 
     void BufferPool::Write(Suballocation suballocation, TL::Block block)
     {
-        m_device->BufferWrite(m_buffer, suballocation.offset, block);
+        m_device->GetCurrentFrame()->BufferWrite(m_buffer, suballocation.offset, block);
     }
 
 } // namespace Engine
