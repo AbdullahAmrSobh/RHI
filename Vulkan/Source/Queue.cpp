@@ -36,7 +36,7 @@ namespace RHI::Vulkan
             return ResultCode::ErrorUnknown;
         }
 
-        m_device->SetDebugName(m_timelineSemaphore, std::format("{}-timeline-semaphore", debugName).c_str());
+        m_device->SetDebugName(m_timelineSemaphore, "{}-timeline-semaphore", debugName);
         m_timelineValue.store(0);
 
         return ResultCode::Success;
@@ -126,7 +126,7 @@ namespace RHI::Vulkan
         auto timelineValue = ++m_timelineValue;
         AddSignalSemaphore(m_timelineSemaphore, timelineValue, signalStage);
 
-        TL::Vector<VkCommandBufferSubmitInfo> commandBufferSubmitInfos;
+        TL::Vector<VkCommandBufferSubmitInfo> commandBufferSubmitInfos{m_device->GetCurrentFrame()->GetAllocator()};
         for (auto commandList : commandLists)
         {
             commandBufferSubmitInfos.push_back({

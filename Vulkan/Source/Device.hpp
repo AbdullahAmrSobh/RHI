@@ -87,6 +87,11 @@ namespace RHI::Vulkan
         ResultCode               SetFramesInFlightCount(uint32_t count) override;
         Frame*                   GetCurrentFrame() override;
 
+        /// Frame
+        TL::IAllocator& GetTempAllocator();
+
+        ///
+
         // clang-format off
         IImage*                  Get(Handle<IImage> handle)                { return m_imageOwner.Get(handle); }
         void                     Release(Handle<IImage> handle)            { return m_imageOwner.Release(handle); }

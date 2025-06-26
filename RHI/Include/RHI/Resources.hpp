@@ -40,21 +40,19 @@ namespace RHI
     // Enums (General Purpose)
     enum class BindingType
     {
-        None,                 ///< No binding.
-        Sampler,              ///< Sampler resource.
-        SampledImage,         ///< Sampled image (read-only texture).
-        StorageImage,         ///< Storage image (read/write texture).
-        UniformBuffer,        ///< Uniform buffer (constant data).
-        StorageBuffer,        ///< Storage buffer (read/write data).
-        DynamicUniformBuffer, ///< Dynamic uniform buffer.
-        DynamicStorageBuffer, ///< Dynamic storage buffer.
-        BufferView,           ///< Buffer view.
-        StorageBufferView,    ///< Storage buffer view.
-
-        InputAttachment = RHI_FLAG_NAME_RESERVED,
-        RayTracingAccelerationStructure = RHI_FLAG_NAME_RESERVED,
-
-        Count, ///< Number of binding types.
+        None,                                                     ///< No binding.
+        Sampler,                                                  ///< Sampler resource.
+        SampledImage,                                             ///< Sampled image (read-only texture).
+        StorageImage,                                             ///< Storage image (read/write texture).
+        UniformBuffer,                                            ///< Uniform buffer (constant data).
+        StorageBuffer,                                            ///< Storage buffer (read/write data).
+        DynamicUniformBuffer,                                     ///< Dynamic uniform buffer.
+        DynamicStorageBuffer,                                     ///< Dynamic storage buffer.
+        BufferView,                                               ///< Buffer view.
+        StorageBufferView,                                        ///< Storage buffer view.
+        InputAttachment                 = RHI_FLAG_NAME_RESERVED, ///<
+        RayTracingAccelerationStructure = RHI_FLAG_NAME_RESERVED, ///<
+        Count,                                                    ///< Number of binding types.
     };
 
     enum class ShaderStage

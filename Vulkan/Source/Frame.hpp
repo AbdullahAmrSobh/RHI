@@ -45,6 +45,8 @@ namespace RHI::Vulkan
         void         BufferWrite(Handle<Buffer> buffer, size_t offset, TL::Block block) override;
         void         ImageWrite(Handle<Image> image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block) override;
 
+        inline TL::IAllocator& GetAllocator() override { return m_tempAllocator; }
+
         IDevice*                  m_device;
         TL::Arena                 m_tempAllocator;
         TL::Ptr<CommandAllocator> m_commandListAllocator;

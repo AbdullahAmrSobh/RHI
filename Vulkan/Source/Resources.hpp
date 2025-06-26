@@ -6,6 +6,8 @@
 
 #include <vk_mem_alloc.h>
 
+#include <TL/Context.hpp>
+
 namespace RHI::Vulkan
 {
     class IDevice;
@@ -36,7 +38,7 @@ namespace RHI::Vulkan
     class DescriptorSetWriter
     {
     public:
-        DescriptorSetWriter(IDevice* device, VkDescriptorSet descriptorSet, Handle<IBindGroupLayout> layout, TL::IAllocator* allocator);
+        DescriptorSetWriter(IDevice* device, VkDescriptorSet descriptorSet, Handle<IBindGroupLayout> layout, TL::IAllocator& allocator);
         VkWriteDescriptorSet BindImages(uint32_t dstBinding, uint32_t dstArray, TL::Span<const Handle<Image>> images);
         VkWriteDescriptorSet BindSamplers(uint32_t dstBinding, uint32_t dstArray, TL::Span<const Handle<Sampler>> samplers);
         VkWriteDescriptorSet BindBuffers(uint32_t dstBinding, uint32_t dstArray, TL::Span<const BufferBindingInfo> buffers);

@@ -90,6 +90,11 @@ namespace RHI
         return buffer;
     }
 
+    TL::IAllocator& RenderGraph::GetFrameAllocator()
+    {
+        return m_activeFrame->GetAllocator();
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     /// Render Graph Builder Interface
     ///////////////////////////////////////////////////////////////////////////
@@ -228,47 +233,24 @@ namespace RHI
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    /// Render Graph Context Interface
-    ///////////////////////////////////////////////////////////////////////////
-
-    RenderGraphContext::RenderGraphContext(RenderGraph* rg, RGPass* pass)
-        : m_rg(rg)
-        , m_pass(pass)
-    {
-    }
-
-    Handle<Image> RenderGraphContext::GetImage(RGImage* handle) const
-    {
-        return m_rg->GetImageHandle(handle);
-    }
-
-    Handle<Buffer> RenderGraphContext::GetBuffer(RGBuffer* handle) const
-    {
-        return m_rg->GetBufferHandle(handle);
-    }
-
-    ///////////////////////////////////////////////////////////////////////////
     /// Render Graph Pass
     ///////////////////////////////////////////////////////////////////////////
 
-    RGPass::RGPass() = default;
+    RGPass::RGPass(RenderGraph* rg, const PassCreateInfo& ci)
+        : m_renderGraph{rg}
+        , m_name("UNNAMED")
+        , m_type{ci.type}
+        , m_setupCallback{ci.setupCallback}
+        , m_executeCallback{ci.executeCallback}
+        , m_imageDependencies(rg->GetFrameAllocator())
+        , m_bufferDependencies(rg->GetFrameAllocator())
+        , m_producers(rg->GetFrameAllocator())
+        , m_gfxPassInfo(rg->GetFrameAllocator())
+        , m_barriers{rg->GetFrameAllocator()}
+    {
+    }
 
     RGPass::~RGPass()
-    {
-        Shutdown();
-    }
-
-    ResultCode RGPass::Init(RenderGraph* rg, const PassCreateInfo& ci)
-    {
-        m_renderGraph     = rg;
-        m_name            = ci.name;
-        m_type            = ci.type;
-        m_setupCallback   = ci.setupCallback;
-        m_executeCallback = ci.executeCallback;
-        return ResultCode::Success;
-    }
-
-    void RGPass::Shutdown()
     {
     }
 
@@ -277,11 +259,6 @@ namespace RHI
         ZoneScopedN("RGPass::Setup");
         TL_ASSERT(m_setupCallback);
         m_setupCallback(builder);
-    }
-
-    void RGPass::Compile(RenderGraphContext& context)
-    {
-        ZoneScopedN("RGPass::Compile");
     }
 
     void RGPass::Execute(CommandList& commandList)
@@ -448,6 +425,8 @@ namespace RHI
 
         m_state.frameRecording = true;
         m_frameSize            = frameSize;
+
+        m_activeFrame = m_device->GetCurrentFrame();
     }
 
     void RenderGraph::EndFrame()
@@ -575,10 +554,9 @@ namespace RHI
     {
         ZoneScoped;
         TL_ASSERT(m_state.frameRecording == true);
-        uint32_t   indexInUnorderedList = m_passPool.size();
-        RGPass*    pass                 = m_passPool.emplace_back(TL::CreatePtr<RGPass>()).get();
-        ResultCode result               = pass->Init(this, createInfo);
-        TL_ASSERT(IsSuccess(result));
+        uint32_t indexInUnorderedList = m_passPool.size();
+        RGPass*  pass                 = m_passPool.emplace_back(TL::ConstructFrom<RGPass>(&GetFrameAllocator(), this, createInfo));
+
         auto builder = RenderGraphBuilder(this, pass);
         pass->Setup(builder);
         pass->m_gfxPassInfo.m_size   = createInfo.size;
@@ -633,38 +611,66 @@ namespace RHI
     {
         ZoneScoped;
 
-        TL::Vector<TL::Vector<uint32_t>> adjacencyLists(m_passPool.size());
-        BuildAdjacencyLists(adjacencyLists);
+        TL::Vector<TL::Vector<uint32_t>> adjacencyLists(GetFrameAllocator());
+        adjacencyLists.resize(m_passPool.size(), TL::Vector<uint32_t>{GetFrameAllocator()});
+        for (size_t nodeIdx = 0; nodeIdx < m_passPool.size(); ++nodeIdx)
+        {
+            auto pass = m_passPool[nodeIdx];
+            for (uint32_t otherNodeIdx = 0; otherNodeIdx < m_passPool.size(); ++otherNodeIdx)
+            {
+                if (nodeIdx == otherNodeIdx) continue;
+                auto otherNode = m_passPool[otherNodeIdx];
+                if (CheckDependency(pass, otherNode))
+                {
+                    adjacencyLists[nodeIdx].push_back(otherNodeIdx);
+                }
+            }
+        }
 
-        TL::Vector<uint32_t> sortedPasses;
+        TL::Vector<uint32_t> sortedPasses(GetFrameAllocator());
         TopologicalSort(adjacencyLists, sortedPasses);
 
         uint32_t detectedQueueCount = 0;
-        BuildDependencyLevels(sortedPasses, adjacencyLists, m_dependencyLevels, detectedQueueCount);
+        {
+            TL::Vector<int32_t> longestDistances(sortedPasses.size(), 0, GetFrameAllocator());
+            uint64_t            dependencyLevelCount = 1;
+            // Perform longest node distance search
+            for (uint32_t nodeIndex = 0; nodeIndex < sortedPasses.size(); ++nodeIndex)
+            {
+                uint64_t originalIndex      = m_passPool[sortedPasses[nodeIndex]]->m_indexInUnorderedList;
+                uint64_t adjacencyListIndex = originalIndex;
+
+                for (uint64_t adjacentNodeIndex : adjacencyLists[adjacencyListIndex])
+                {
+                    if (longestDistances[adjacentNodeIndex] < longestDistances[originalIndex] + 1)
+                    {
+                        int32_t newLongestDistance          = longestDistances[originalIndex] + 1;
+                        longestDistances[adjacentNodeIndex] = newLongestDistance;
+                        dependencyLevelCount                = std::max(uint64_t(newLongestDistance + 1), dependencyLevelCount);
+                    }
+                }
+            }
+            m_dependencyLevels.resize(dependencyLevelCount, {GetFrameAllocator()});
+            detectedQueueCount = 1;
+            // Dispatch nodes to corresponding dependency levels.
+            // Iterate through unordered nodes because adjacency lists contain indices to
+            // initial unordered list of nodes and longest distances also correspond to them.
+            for (uint32_t nodeIndex = 0; nodeIndex < (uint32_t)m_passPool.size(); nodeIndex++)
+            {
+                RGPass*          pass            = m_passPool[nodeIndex];
+                auto             levelIndex      = longestDistances[nodeIndex];
+                DependencyLevel& dependencyLevel = m_dependencyLevels[levelIndex];
+                dependencyLevel.m_levelIndex     = (uint32_t)levelIndex;
+                dependencyLevel.AddPass(pass);
+                pass->m_dependencyLevelIndex = levelIndex;
+                detectedQueueCount           = std::max(detectedQueueCount, pass->m_executionQueueIndex + 1);
+            }
+        }
 
         CreateTransientResources();
         PassBuildBarriers();
 
         m_state.compiled = true;
-    }
-
-    void RenderGraph::BuildAdjacencyLists(TL::Vector<TL::Vector<uint32_t>>& adjacencyLists)
-    {
-        for (size_t nodeIdx = 0; nodeIdx < m_passPool.size(); ++nodeIdx)
-        {
-            auto  pass                = m_passPool[nodeIdx].get();
-            auto& adjacentNodeIndices = adjacencyLists[nodeIdx];
-            for (uint32_t otherNodeIdx = 0; otherNodeIdx < m_passPool.size(); ++otherNodeIdx)
-            {
-                // Do not check dependencies on itself
-                if (nodeIdx == otherNodeIdx) continue;
-                auto otherNode = m_passPool[otherNodeIdx].get();
-                if (CheckDependency(pass, otherNode))
-                {
-                    adjacentNodeIndices.push_back(otherNodeIdx);
-                }
-            }
-        }
     }
 
     void RenderGraph::DepthFirstSearch(
@@ -697,8 +703,8 @@ namespace RHI
 
     void RenderGraph::TopologicalSort(const TL::Vector<TL::Vector<uint32_t>>& adjacencyLists, TL::Vector<uint32_t>& sortedPasses)
     {
-        TL::Vector<bool> visitedNodes(m_passPool.size(), false);
-        TL::Vector<bool> onStackNodes(m_passPool.size(), false);
+        TL::Vector<bool> visitedNodes(m_passPool.size(), false, GetFrameAllocator());
+        TL::Vector<bool> onStackNodes(m_passPool.size(), false, GetFrameAllocator());
         bool             isCyclic = false;
         for (uint32_t nodeIndex = 0; nodeIndex < (uint32_t)m_passPool.size(); ++nodeIndex)
         {
@@ -710,43 +716,6 @@ namespace RHI
         }
         // I don't know why/how but it flips the expected order
         std::reverse(sortedPasses.begin(), sortedPasses.end());
-    }
-
-    void RenderGraph::BuildDependencyLevels(TL::Span<const uint32_t> sortedPasses, const TL::Vector<TL::Vector<uint32_t>>& adjacencyLists, TL::Vector<DependencyLevel>& dependencyLevels, uint32_t& detectedQueueCount)
-    {
-        TL::Vector<int32_t> longestDistances(sortedPasses.size(), 0);
-        uint64_t            dependencyLevelCount = 1;
-        // Perform longest node distance search
-        for (uint32_t nodeIndex = 0; nodeIndex < sortedPasses.size(); ++nodeIndex)
-        {
-            uint64_t originalIndex      = m_passPool[sortedPasses[nodeIndex]]->m_indexInUnorderedList;
-            uint64_t adjacencyListIndex = originalIndex;
-
-            for (uint64_t adjacentNodeIndex : adjacencyLists[adjacencyListIndex])
-            {
-                if (longestDistances[adjacentNodeIndex] < longestDistances[originalIndex] + 1)
-                {
-                    int32_t newLongestDistance          = longestDistances[originalIndex] + 1;
-                    longestDistances[adjacentNodeIndex] = newLongestDistance;
-                    dependencyLevelCount                = std::max(uint64_t(newLongestDistance + 1), dependencyLevelCount);
-                }
-            }
-        }
-        dependencyLevels.resize(dependencyLevelCount);
-        detectedQueueCount = 1;
-        // Dispatch nodes to corresponding dependency levels.
-        // Iterate through unordered nodes because adjacency lists contain indices to
-        // initial unordered list of nodes and longest distances also correspond to them.
-        for (uint32_t nodeIndex = 0; nodeIndex < (uint32_t)m_passPool.size(); nodeIndex++)
-        {
-            RGPass*          pass            = m_passPool[nodeIndex].get();
-            auto             levelIndex      = longestDistances[nodeIndex];
-            DependencyLevel& dependencyLevel = dependencyLevels[levelIndex];
-            dependencyLevel.m_levelIndex     = levelIndex;
-            dependencyLevel.AddPass(pass);
-            pass->m_dependencyLevelIndex = levelIndex;
-            detectedQueueCount           = std::max(detectedQueueCount, pass->m_executionQueueIndex + 1);
-        }
     }
 
     void RenderGraph::CreateTransientResources()
@@ -777,14 +746,10 @@ namespace RHI
         auto TransitionImageResource = [this](RGPass* pass, RGImageDependency dep)
         {
             auto resource = dep.image;
-
             if (resource->m_state == dep.state)
-            {
                 return;
-            }
 
-            auto& passImageBarriers = pass->m_barriers[0].imageBarriers;
-
+            auto& passImageBarriers = pass->m_barriers.imageBarriers;
             passImageBarriers.push_back({
                 .image    = resource->m_frameResource->handle,
                 .srcState = resource->m_state,
@@ -797,14 +762,10 @@ namespace RHI
         auto TransitionBufferResource = [this](RGPass* pass, RGBufferDependency dep)
         {
             auto resource = dep.buffer;
-
             if (resource->m_state == dep.state)
-            {
                 return;
-            }
 
-            auto& passBufferBarriers = pass->m_barriers[0].bufferBarriers;
-
+            auto& passBufferBarriers = pass->m_barriers.bufferBarriers;
             passBufferBarriers.push_back({
                 .buffer   = resource->m_frameResource->handle,
                 .srcState = resource->m_state,
@@ -822,13 +783,9 @@ namespace RHI
                     continue;
 
                 for (auto dep : pass->m_imageDependencies)
-                {
                     TransitionImageResource(pass, dep);
-                }
                 for (auto dep : pass->m_bufferDependencies)
-                {
                     TransitionBufferResource(pass, dep);
-                }
             }
         }
     }
@@ -924,12 +881,13 @@ namespace RHI
         }
         commandList->PushDebugMarker(pass->GetName(), markerColor);
 
-        const auto& [prebarriers, preImageBarriers, preBufferBarriers] = pass->m_barriers[RGPass::Prilogue];
+        // const auto& [prebarriers, preImageBarriers, preBufferBarriers] = pass->m_barriers[RGPass::Prilogue];
+        const auto& [prebarriers, preImageBarriers, preBufferBarriers] = pass->m_barriers;
         commandList->AddPipelineBarrier(prebarriers, preImageBarriers, preBufferBarriers);
 
         if (pass->m_type == PassType::Graphics)
         {
-            TL::Vector<ColorAttachment>          attachments;
+            TL::Vector<ColorAttachment>          attachments(GetFrameAllocator());
             TL::Optional<DepthStencilAttachment> dsAttachment;
             attachments.reserve(pass->m_gfxPassInfo.m_colorAttachments.size());
 
@@ -959,14 +917,14 @@ namespace RHI
             {
                 auto [dsWidth, dsHeight, dsDepth] = attachment->depthStencil->m_frameResource->size;
                 // TL_ASSERT(dsWidth == passWidth && dsHeight == passHeight);
-                auto depthStencil = GetImageHandle(attachment->depthStencil);
-                dsAttachment      = DepthStencilAttachment{
-                         .view           = depthStencil,
-                         .depthLoadOp    = attachment->depthLoadOp,
-                         .depthStoreOp   = attachment->depthStoreOp,
-                         .stencilLoadOp  = attachment->stencilLoadOp,
-                         .stencilStoreOp = attachment->stencilStoreOp,
-                         .clearValue     = attachment->clearValue,
+                auto depthStencil                 = GetImageHandle(attachment->depthStencil);
+                dsAttachment                      = DepthStencilAttachment{
+                                         .view           = depthStencil,
+                                         .depthLoadOp    = attachment->depthLoadOp,
+                                         .depthStoreOp   = attachment->depthStoreOp,
+                                         .stencilLoadOp  = attachment->stencilLoadOp,
+                                         .stencilStoreOp = attachment->stencilStoreOp,
+                                         .clearValue     = attachment->clearValue,
                 };
             }
             RenderPassBeginInfo beginInfo{
@@ -993,8 +951,8 @@ namespace RHI
         else if (isCompute)
             commandList->EndComputePass();
 
-        const auto& [postbarriers, postImageBarriers, postBufferBarriers] = pass->m_barriers[RGPass::Epilogue];
-        commandList->AddPipelineBarrier(postbarriers, postImageBarriers, postBufferBarriers);
+        // const auto& [postbarriers, postImageBarriers, postBufferBarriers] = pass->m_barriers[RGPass::Epilogue];
+        // commandList->AddPipelineBarrier(postbarriers, postImageBarriers, postBufferBarriers);
         commandList->PopDebugMarker();
     }
 } // namespace RHI

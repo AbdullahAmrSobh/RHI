@@ -176,12 +176,6 @@ namespace RHI::Vulkan
         }
     }
 
-    // TODO: remove or assert
-    inline static constexpr uint32_t c_MaxRenderTargetAttachmentsCount = 16u;
-    inline static constexpr uint32_t c_MaxPipelineVertexBindings       = 32u;
-    inline static constexpr uint32_t c_MaxPipelineVertexAttributes     = 32u;
-    inline static constexpr uint32_t c_MaxPipelineBindGroupsCount      = 4u;
-
     inline static VkBool32 ConvertBool(bool value)
     {
         return value ? VK_TRUE : VK_FALSE;
@@ -313,11 +307,16 @@ namespace RHI::Vulkan
         }
     }
 
-    DescriptorSetWriter::DescriptorSetWriter(IDevice* device, VkDescriptorSet descriptorSet, Handle<IBindGroupLayout> layout, TL::IAllocator* allocator)
+    DescriptorSetWriter::DescriptorSetWriter(IDevice* device, VkDescriptorSet descriptorSet, Handle<IBindGroupLayout> layout, TL::IAllocator& allocator)
         : m_device(device)
-        , m_allocator(allocator)
+        , m_allocator(&allocator)
         , m_bindGroupLayout(layout)
         , m_descriptorSet(descriptorSet)
+        , m_images(allocator)
+        , m_sampler(allocator)
+        , m_buffers(allocator)
+        , m_bufferViews(allocator)
+        , m_writes(allocator)
     {
     }
 
@@ -331,7 +330,7 @@ namespace RHI::Vulkan
         VkImageLayout    imageLayout    = (isStorage && hasWrite) ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         VkDescriptorType descriptorType = isStorage ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 
-        TL::Vector<VkDescriptorImageInfo>& descriptorImageInfos = m_images.emplace_back();
+        TL::Vector<VkDescriptorImageInfo>& descriptorImageInfos = m_images.emplace_back(*m_allocator);
         descriptorImageInfos.reserve(images.size());
         for (auto imageHandle : images)
         {
@@ -359,9 +358,7 @@ namespace RHI::Vulkan
 
     VkWriteDescriptorSet DescriptorSetWriter::BindSamplers(uint32_t dstBinding, uint32_t dstArray, TL::Span<const Handle<Sampler>> samplers)
     {
-        auto layout = m_device->Get(m_bindGroupLayout);
-
-        TL::Vector<VkDescriptorImageInfo>& descriptorImageInfos = m_sampler.emplace_back();
+        TL::Vector<VkDescriptorImageInfo>& descriptorImageInfos = m_sampler.emplace_back(*m_allocator);
         descriptorImageInfos.reserve(samplers.size());
         for (auto samplerHandle : samplers)
         {
@@ -394,7 +391,7 @@ namespace RHI::Vulkan
         auto shaderBinding  = layout->GetBinding(dstBinding);
         auto descriptorType = ConvertDescriptorType(shaderBinding.type);
 
-        TL::Vector<VkDescriptorBufferInfo>& descriptorBufferInfos = m_buffers.emplace_back();
+        TL::Vector<VkDescriptorBufferInfo>& descriptorBufferInfos = m_buffers.emplace_back(*m_allocator);
         descriptorBufferInfos.reserve(buffers.size());
         for (const auto& b : buffers)
         {
@@ -504,8 +501,8 @@ namespace RHI::Vulkan
     {
         this->shaderBindings = {createInfo.bindings.begin(), createInfo.bindings.end()};
 
-        TL::Vector<VkDescriptorBindingFlags>     bindingFlags;
-        TL::Vector<VkDescriptorSetLayoutBinding> setLayoutBindings;
+        TL::Vector<VkDescriptorBindingFlags>     bindingFlags{device->GetTempAllocator()};
+        TL::Vector<VkDescriptorSetLayoutBinding> setLayoutBindings{device->GetTempAllocator()};
 
         // Query the physical device limits for descriptor counts
         VkPhysicalDeviceProperties2 properties{};
@@ -518,12 +515,12 @@ namespace RHI::Vulkan
         vkGetPhysicalDeviceProperties2(device->m_physicalDevice, &properties);
 
         // Example: retrieve max descriptor counts
-        TL_MAYBE_UNUSED uint32_t maxSampledImages          = properties.properties.limits.maxPerStageDescriptorSampledImages;
-        TL_MAYBE_UNUSED uint32_t maxStorageImages          = properties.properties.limits.maxPerStageDescriptorStorageImages;
-        TL_MAYBE_UNUSED uint32_t maxSamplers               = properties.properties.limits.maxPerStageDescriptorSamplers;
-        TL_MAYBE_UNUSED uint32_t maxUniformBuffers         = properties.properties.limits.maxPerStageDescriptorUniformBuffers;
-        TL_MAYBE_UNUSED uint32_t maxStorageBuffers         = properties.properties.limits.maxPerStageDescriptorStorageBuffers;
-        TL_MAYBE_UNUSED uint32_t maxCombinedImageSamplers  = properties.properties.limits.maxPerStageDescriptorSampledImages + properties.properties.limits.maxPerStageDescriptorSamplers;
+        TL_MAYBE_UNUSED uint32_t maxSampledImages         = properties.properties.limits.maxPerStageDescriptorSampledImages;
+        TL_MAYBE_UNUSED uint32_t maxStorageImages         = properties.properties.limits.maxPerStageDescriptorStorageImages;
+        TL_MAYBE_UNUSED uint32_t maxSamplers              = properties.properties.limits.maxPerStageDescriptorSamplers;
+        TL_MAYBE_UNUSED uint32_t maxUniformBuffers        = properties.properties.limits.maxPerStageDescriptorUniformBuffers;
+        TL_MAYBE_UNUSED uint32_t maxStorageBuffers        = properties.properties.limits.maxPerStageDescriptorStorageBuffers;
+        TL_MAYBE_UNUSED uint32_t maxCombinedImageSamplers = properties.properties.limits.maxPerStageDescriptorSampledImages + properties.properties.limits.maxPerStageDescriptorSamplers;
 
         /// @todo: subtract 100 to reserve for pass inputs
         uint32_t                 maxBindlessSampledImages  = descriptorIndexingProps.maxPerStageDescriptorUpdateAfterBindSampledImages - 100;
@@ -615,7 +612,7 @@ namespace RHI::Vulkan
 
     void IBindGroup::Update(IDevice* device, const BindGroupUpdateInfo& updateInfo)
     {
-        DescriptorSetWriter writer(device, this->descriptorSet, this->bindGroupLayout, nullptr);
+        DescriptorSetWriter writer(device, this->descriptorSet, this->bindGroupLayout, device->GetTempAllocator());
 
         for (auto [dstBindings, dstArrayelements, buffers] : updateInfo.buffers)
         {
@@ -667,7 +664,7 @@ namespace RHI::Vulkan
 
     ResultCode IPipelineLayout::Init(IDevice* device, const PipelineLayoutCreateInfo& createInfo)
     {
-        TL::Vector<VkDescriptorSetLayout> descriptorSetLayouts;
+        TL::Vector<VkDescriptorSetLayout> descriptorSetLayouts{device->GetTempAllocator()};
         uint32_t                          index = 0;
         for (auto bindGroupLayout : createInfo.layouts)
         {
@@ -705,10 +702,7 @@ namespace RHI::Vulkan
 
     ResultCode IGraphicsPipeline::Init(IDevice* device, const GraphicsPipelineCreateInfo& createInfo)
     {
-        // auto scopeAllocator = TL::ScopeAllocator(TL::TempAllocator);
-
-        uint32_t                        stagesCreateInfoCount = 2;
-        VkPipelineShaderStageCreateInfo stagesCreateInfos[4];
+        TL::Vector<VkPipelineShaderStageCreateInfo> stagesCreateInfos{device->GetTempAllocator()};
         {
             VkPipelineShaderStageCreateInfo vertexStageCI{
                 .sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -719,7 +713,7 @@ namespace RHI::Vulkan
                 .pName               = createInfo.vertexShaderName,
                 .pSpecializationInfo = nullptr,
             };
-            stagesCreateInfos[0] = vertexStageCI;
+            stagesCreateInfos.push_back(vertexStageCI);
 
             VkPipelineShaderStageCreateInfo pixelStageCI{
                 .sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -730,49 +724,39 @@ namespace RHI::Vulkan
                 .pName               = createInfo.pixelShaderName,
                 .pSpecializationInfo = nullptr,
             };
-            stagesCreateInfos[1] = pixelStageCI;
+            stagesCreateInfos.push_back(pixelStageCI);
         }
 
-        uint32_t vertexBindingsCount   = 0;
-        uint32_t vertexAttributesCount = 0;
-
-        VkVertexInputBindingDescription   vertexBindings[c_MaxPipelineVertexBindings]     = {};
-        VkVertexInputAttributeDescription vertexAttributes[c_MaxPipelineVertexAttributes] = {};
-
-        uint32_t bindingIndex = 0;
+        TL::Vector<VkVertexInputBindingDescription>   vertexBindings{device->GetTempAllocator()};
+        TL::Vector<VkVertexInputAttributeDescription> vertexAttributes{device->GetTempAllocator()};
         for (const auto& bindingDesc : createInfo.vertexBufferBindings)
         {
-            // Set up vertex binding
-            auto& binding     = vertexBindings[vertexBindingsCount];
-            binding.binding   = bindingIndex;
-            binding.stride    = bindingDesc.stride;
-            binding.inputRate = ConvertVertexInputRate(bindingDesc.stepRate);
-
-            // Iterate through vertex attributes for this binding
+            VkVertexInputBindingDescription binding{
+                .binding   = (uint32_t)vertexBindings.size(),
+                .stride    = bindingDesc.stride,
+                .inputRate = ConvertVertexInputRate(bindingDesc.stepRate),
+            };
             for (const auto& attributeDesc : bindingDesc.attributes)
             {
-                // Set up vertex attribute
-                auto& attribute    = vertexAttributes[vertexAttributesCount];
-                attribute.location = vertexAttributesCount;
-                attribute.binding  = bindingIndex;
-                attribute.format   = ConvertFormat(attributeDesc.format);
-                attribute.offset   = attributeDesc.offset;
-
-                vertexAttributesCount++;
+                VkVertexInputAttributeDescription attribute{
+                    .location = (uint32_t)vertexAttributes.size(),
+                    .binding  = (uint32_t)vertexBindings.size(),
+                    .format   = ConvertFormat(attributeDesc.format),
+                    .offset   = attributeDesc.offset,
+                };
+                vertexAttributes.push_back(attribute);
             }
-
-            vertexBindingsCount++;
-            bindingIndex++;
+            vertexBindings.push_back(binding);
         }
 
         VkPipelineVertexInputStateCreateInfo vertexInputStateCI{
             .sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
             .pNext                           = nullptr,
             .flags                           = 0,
-            .vertexBindingDescriptionCount   = vertexBindingsCount,
-            .pVertexBindingDescriptions      = vertexBindings,
-            .vertexAttributeDescriptionCount = vertexAttributesCount,
-            .pVertexAttributeDescriptions    = vertexAttributes,
+            .vertexBindingDescriptionCount   = (uint32_t)vertexBindings.size(),
+            .pVertexBindingDescriptions      = vertexBindings.data(),
+            .vertexAttributeDescriptionCount = (uint32_t)vertexAttributes.size(),
+            .pVertexAttributeDescriptions    = vertexAttributes.data(),
         };
 
         VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCI{
@@ -843,11 +827,7 @@ namespace RHI::Vulkan
             .maxDepthBounds        = 1.0,
         };
 
-        VkDynamicState dynamicStates[] = {
-            VK_DYNAMIC_STATE_VIEWPORT,
-            VK_DYNAMIC_STATE_SCISSOR,
-        };
-
+        VkDynamicState                   dynamicStates[] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
         VkPipelineDynamicStateCreateInfo dynamicStateCI{
             .sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
             .pNext             = nullptr,
@@ -856,31 +836,19 @@ namespace RHI::Vulkan
             .pDynamicStates    = dynamicStates,
         };
 
-        uint32_t colorAttachmentFormatCount                                = 0;
-        VkFormat colorAttachmentFormats[c_MaxRenderTargetAttachmentsCount] = {};
-
-        for (uint32_t formatIndex = 0; formatIndex < createInfo.renderTargetLayout.colorAttachmentsFormats.size(); formatIndex++)
+        TL::Vector<VkFormat> colorAttachmentFormats{device->GetTempAllocator()};
+        colorAttachmentFormats.reserve(createInfo.renderTargetLayout.colorAttachmentsFormats.size());
+        for (auto format : createInfo.renderTargetLayout.colorAttachmentsFormats)
         {
-            auto format = createInfo.renderTargetLayout.colorAttachmentsFormats[formatIndex];
-            if (format == Format::Unknown)
-            {
-                break;
-            }
-            colorAttachmentFormatCount++;
-            colorAttachmentFormats[formatIndex] = ConvertFormat(format);
+            colorAttachmentFormats.push_back(ConvertFormat(format));
         }
 
-        VkPipelineColorBlendAttachmentState pipelineColorBlendAttachmentStates[c_MaxRenderTargetAttachmentsCount] = {};
+        TL::Vector<VkPipelineColorBlendAttachmentState> pipelineColorBlendAttachmentStates{device->GetTempAllocator()};
+        pipelineColorBlendAttachmentStates.reserve(colorAttachmentFormats.size());
 
-        uint32_t location = 0;
         for (auto blendState : createInfo.colorBlendState.blendStates)
         {
-            if (location >= colorAttachmentFormatCount)
-            {
-                break;
-            }
-
-            auto& state = pipelineColorBlendAttachmentStates[location++] = {
+            VkPipelineColorBlendAttachmentState state{
                 .blendEnable         = blendState.blendEnable ? VK_TRUE : VK_FALSE,
                 .srcColorBlendFactor = ConvertBlendFactor(blendState.srcColor),
                 .dstColorBlendFactor = ConvertBlendFactor(blendState.dstColor),
@@ -894,6 +862,8 @@ namespace RHI::Vulkan
             if (blendState.writeMask & ColorWriteMask::Green) state.colorWriteMask |= VK_COLOR_COMPONENT_G_BIT;
             if (blendState.writeMask & ColorWriteMask::Blue) state.colorWriteMask |= VK_COLOR_COMPONENT_B_BIT;
             if (blendState.writeMask & ColorWriteMask::Alpha) state.colorWriteMask |= VK_COLOR_COMPONENT_A_BIT;
+
+            pipelineColorBlendAttachmentStates.push_back(state);
         }
 
         auto [r, g, b, a] = createInfo.colorBlendState.blendConstants;
@@ -903,8 +873,8 @@ namespace RHI::Vulkan
             .flags           = 0,
             .logicOpEnable   = VK_FALSE,
             .logicOp         = VK_LOGIC_OP_SET,
-            .attachmentCount = colorAttachmentFormatCount,
-            .pAttachments    = pipelineColorBlendAttachmentStates,
+            .attachmentCount = (uint32_t)colorAttachmentFormats.size(),
+            .pAttachments    = pipelineColorBlendAttachmentStates.data(),
             .blendConstants  = {r, g, b, a},
         };
 
@@ -912,21 +882,21 @@ namespace RHI::Vulkan
             .sType                   = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
             .pNext                   = nullptr,
             .viewMask                = 0,
-            .colorAttachmentCount    = colorAttachmentFormatCount,
-            .pColorAttachmentFormats = colorAttachmentFormats,
+            .colorAttachmentCount    = (uint32_t)colorAttachmentFormats.size(),
+            .pColorAttachmentFormats = colorAttachmentFormats.data(),
             .depthAttachmentFormat   = ConvertFormat(createInfo.renderTargetLayout.depthAttachmentFormat),
             .stencilAttachmentFormat = ConvertFormat(createInfo.renderTargetLayout.stencilAttachmentFormat),
         };
 
-        auto pipelineLayout = device->m_pipelineLayoutOwner.Get(createInfo.layout);
+        auto pipelineLayout = device->Get(createInfo.layout);
         this->layout        = createInfo.layout;
 
         VkGraphicsPipelineCreateInfo graphicsPipelineCI{
             .sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
             .pNext               = &renderTargetLayout,
             .flags               = 0,
-            .stageCount          = stagesCreateInfoCount,
-            .pStages             = stagesCreateInfos,
+            .stageCount          = (uint32_t)stagesCreateInfos.size(),
+            .pStages             = stagesCreateInfos.data(),
             .pVertexInputState   = &vertexInputStateCI,
             .pInputAssemblyState = &inputAssemblyStateCI,
             .pTessellationState  = &tessellationStateCI,
@@ -942,7 +912,8 @@ namespace RHI::Vulkan
             .basePipelineHandle  = VK_NULL_HANDLE,
             .basePipelineIndex   = 0,
         };
-        auto result = vkCreateGraphicsPipelines(device->m_device, VK_NULL_HANDLE, 1, &graphicsPipelineCI, nullptr, &handle);
+
+        VkResult result = vkCreateGraphicsPipelines(device->m_device, VK_NULL_HANDLE, 1, &graphicsPipelineCI, nullptr, &handle);
         if (result == VK_SUCCESS && createInfo.name)
         {
             device->SetDebugName(handle, createInfo.name);
@@ -1069,6 +1040,7 @@ namespace RHI::Vulkan
     ////////////////////////////////////////////////////////////////////////
     // IImage
     ////////////////////////////////////////////////////////////////////////
+
     ResultCode IImage::Init(IDevice* device, const ImageCreateInfo& createInfo)
     {
         VkResult result;

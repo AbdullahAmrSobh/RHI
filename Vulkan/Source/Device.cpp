@@ -707,6 +707,11 @@ namespace RHI::Vulkan
         return m_framesInFlight[m_currentFrameIndex].get();
     }
 
+    TL::IAllocator& IDevice::GetTempAllocator()
+    {
+        return m_framesInFlight[m_currentFrameIndex]->GetAllocator();
+    }
+
 #define IMPLEMENT_DEVICE_CREATE_METHOD_UNIQUE_WITH_INFO(ResourceType)                       \
     ResourceType* IDevice::Create##ResourceType(const ResourceType##CreateInfo& createInfo) \
     {                                                                                       \

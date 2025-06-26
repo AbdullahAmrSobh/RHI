@@ -195,25 +195,6 @@ namespace RHI
     };
 
     ///////////////////////////////////////////////////////////////////////////
-    /// Render Graph Context Interface
-    ///////////////////////////////////////////////////////////////////////////
-
-    class RHI_EXPORT RenderGraphContext
-    {
-        friend RenderGraph;
-
-        RenderGraphContext(RenderGraph* rg, RGPass* pass);
-
-    public:
-        Handle<Image>  GetImage(RGImage* handle) const;
-        Handle<Buffer> GetBuffer(RGBuffer* handle) const;
-
-    private:
-        RenderGraph* m_rg;
-        RGPass*      m_pass;
-    };
-
-    ///////////////////////////////////////////////////////////////////////////
     /// Render Graph Pass
     ///////////////////////////////////////////////////////////////////////////
 
@@ -224,9 +205,6 @@ namespace RHI
         friend RenderGraphContext;
 
     public:
-        RGPass();
-        ~RGPass();
-
         /// @brief Enum representing different barrier slots for a pass.
         enum BarrierSlot
         {
@@ -236,19 +214,18 @@ namespace RHI
             Count,
         };
 
-        ResultCode  Init(RenderGraph* rg, const PassCreateInfo& ci);
-        void        Shutdown();
+        RGPass(RenderGraph* rg, const PassCreateInfo& ci);
+        ~RGPass();
 
-        const char* GetName() const { return m_name.c_str(); }
+        const char* GetName() const { return m_name; }
 
     private:
         void Setup(RenderGraphBuilder& builder);
-        void Compile(RenderGraphContext& context);
         void Execute(CommandList& commandList);
 
     private:
         RenderGraph*                   m_renderGraph;
-        TL::String                     m_name;
+        const char*                    m_name;
         PassType                       m_type;
         PassSetupCallback              m_setupCallback;
         PassExecuteCallback            m_executeCallback;
@@ -262,6 +239,11 @@ namespace RHI
 
         struct GfxPassInfo
         {
+            GfxPassInfo(TL::IAllocator& allocator)
+                : m_colorAttachments(allocator)
+            {
+            }
+
             ImageOffset2D                          m_offset;
             ImageSize2D                            m_size;
             TL::Vector<RGColorAttachment>          m_colorAttachments;
@@ -272,12 +254,20 @@ namespace RHI
 
         struct Barriers
         {
+            Barriers(TL::IAllocator& allocator)
+                : memoryBarriers(allocator)
+                , imageBarriers(allocator)
+                , bufferBarriers(allocator)
+
+            {
+            }
+
             TL::Vector<BarrierInfo>       memoryBarriers;
             TL::Vector<ImageBarrierInfo>  imageBarriers;
             TL::Vector<BufferBarrierInfo> bufferBarriers;
         };
 
-        Barriers m_barriers[BarrierSlot::Count];
+        Barriers m_barriers;
 
         struct State
         {
@@ -328,8 +318,9 @@ namespace RHI
         class DependencyLevel
         {
         public:
-            DependencyLevel(uint32_t m_index = 0)
+            DependencyLevel(TL::IAllocator& allocator, uint32_t m_index = 0)
                 : m_levelIndex(m_index)
+                , m_passes(allocator)
             {
             }
 
@@ -386,21 +377,22 @@ namespace RHI
         TL_NODISCARD Handle<Buffer> GetBufferHandle(RGBuffer* handle) const;
 
     private:
-        RGFrameImage*  CreateFrameImage(const char* name);
-        RGFrameBuffer* CreateFrameBuffer(const char* name);
+        RGFrameImage*   CreateFrameImage(const char* name);
+        RGFrameBuffer*  CreateFrameBuffer(const char* name);
 
-        RGImage*       EmplacePassImage(RGFrameImage* frameImage, RGPass* pass, ImageBarrierState initialState);
-        RGBuffer*      EmplacePassBuffer(RGFrameBuffer* frameBuffer, RGPass* pass, BufferBarrierState initialState);
+        RGImage*        EmplacePassImage(RGFrameImage* frameImage, RGPass* pass, ImageBarrierState initialState);
+        RGBuffer*       EmplacePassBuffer(RGFrameBuffer* frameBuffer, RGPass* pass, BufferBarrierState initialState);
+
+        Frame*          m_activeFrame;
+        TL::IAllocator& GetFrameAllocator();
 
     private:
         bool CheckDependency(const RGPass* producer, const RGPass* consumer) const;
         void AddDependency(const RGPass* producer, RGPass* consumer);
 
         void Compile();
-        void BuildAdjacencyLists(TL::Vector<TL::Vector<uint32_t>>& adjacencyLists);
         void TopologicalSort(const TL::Vector<TL::Vector<uint32_t>>& adjacencyLists, TL::Vector<uint32_t>& sortedPasses);
         void DepthFirstSearch(uint32_t nodeIndex, TL::Vector<bool>& visited, TL::Vector<bool>& onStack, bool& isCyclic, const TL::Vector<TL::Vector<uint32_t>>& adjacencyLists, TL::Vector<uint32_t>& sortedPasses);
-        void BuildDependencyLevels(TL::Span<const uint32_t> sortedPasses, const TL::Vector<TL::Vector<uint32_t>>& adjacencyLists, TL::Vector<DependencyLevel>& dependencyLevels, uint32_t& detectedQueueCount);
 
         void CreateTransientResources();
 
@@ -425,7 +417,7 @@ namespace RHI
         ImageSize2D                      m_frameSize;
         TL::Arena                        m_arena;
         TL::Vector<Swapchain*>           m_swapchain{m_arena};
-        TL::Vector<TL::Ptr<RGPass>>      m_passPool{m_arena};
+        TL::Vector<RGPass*>              m_passPool{m_arena};
         TL::Vector<RGFrameImage*>        m_imagePool{m_arena};
         TL::Vector<RGFrameBuffer*>       m_bufferPool{m_arena};
         TL::Vector<DependencyLevel>      m_dependencyLevels{m_arena};

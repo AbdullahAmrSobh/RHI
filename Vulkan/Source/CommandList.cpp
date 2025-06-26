@@ -226,9 +226,9 @@ namespace RHI::Vulkan
         if (barriers.empty() && imageBarriers.empty() && bufferBarriers.empty())
             return;
 
-        TL::Vector<VkMemoryBarrier2>       vmemoryBarriers;
-        TL::Vector<VkBufferMemoryBarrier2> vbufferBarriers;
-        TL::Vector<VkImageMemoryBarrier2>  vimageBarriers;
+        TL::Vector<VkMemoryBarrier2>       vmemoryBarriers{m_device->GetTempAllocator()};
+        TL::Vector<VkBufferMemoryBarrier2> vbufferBarriers{m_device->GetTempAllocator()};
+        TL::Vector<VkImageMemoryBarrier2>  vimageBarriers{m_device->GetTempAllocator()};
 
         for (auto barrier : barriers)
         {
@@ -309,9 +309,9 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        TL::Vector<VkRenderingAttachmentInfo>   colorAttachments  = {};
-        TL::Optional<VkRenderingAttachmentInfo> depthAttachment   = {};
-        TL::Optional<VkRenderingAttachmentInfo> stencilAttachment = {};
+        TL::Vector<VkRenderingAttachmentInfo>   colorAttachments{m_device->GetTempAllocator()};
+        TL::Optional<VkRenderingAttachmentInfo> depthAttachment{};
+        TL::Optional<VkRenderingAttachmentInfo> stencilAttachment{};
 
         for (const auto& colorAttachment : beginInfo.colorAttachments)
         {
@@ -463,16 +463,16 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        constexpr size_t MaxCommandLists = 16;
-        VkCommandBuffer  commandBuffers[MaxCommandLists];
-        size_t           commandListCount = commandLists.size();
-        TL_ASSERT(commandListCount <= MaxCommandLists, "Exceeded MaxCommandLists limit!");
-        for (size_t i = 0; i < commandListCount; ++i)
+        TL::Vector<VkCommandBuffer> commandBuffers{m_device->GetTempAllocator()};
+        commandBuffers.reserve(commandLists.size());
+
+        for (const auto* commandList : commandLists)
         {
-            auto commandList  = (const ICommandList*)commandLists[i];
-            commandBuffers[i] = commandList->m_commandBuffer;
+            auto vkCmdList = static_cast<const ICommandList*>(commandList);
+            commandBuffers.push_back(vkCmdList->m_commandBuffer);
         }
-        vkCmdExecuteCommands(m_commandBuffer, static_cast<uint32_t>(commandListCount), commandBuffers);
+
+        vkCmdExecuteCommands(m_commandBuffer, commandBuffers.size(), commandBuffers.data());
     }
 
     void ICommandList::BindGraphicsPipeline(Handle<GraphicsPipeline> pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups)
@@ -725,32 +725,21 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        if (bindGroups.empty()) return;
+        if (bindGroups.empty())
+            return;
 
-        constexpr size_t MaxDescriptorSets = 4;
-        constexpr size_t MaxDynamicOffsets = MaxDescriptorSets;
-
-        VkDescriptorSet descriptorSets[MaxDescriptorSets];
-        uint32_t        dynamicOffsets[MaxDynamicOffsets];
-
-        uint32_t descriptorSetCount = 0;
-        uint32_t dynamicOffsetCount = 0;
+        TL::Vector<VkDescriptorSet> descriptorSets{m_device->GetTempAllocator()};
+        TL::Vector<uint32_t>        dynamicOffsets{m_device->GetTempAllocator()};
 
         for (const auto& bindingInfo : bindGroups)
         {
-            auto bindGroup = m_device->m_bindGroupOwner.Get(bindingInfo.bindGroup);
-
-            // Ensure we don't exceed the array limits
-            TL_ASSERT(descriptorSetCount < MaxDescriptorSets);
-            descriptorSets[descriptorSetCount++] = bindGroup->descriptorSet;
-
+            auto bindGroup = m_device->Get(bindingInfo.bindGroup);
+            descriptorSets.push_back(bindGroup->descriptorSet);
             for (uint32_t offset : bindingInfo.dynamicOffsets)
             {
-                TL_ASSERT(dynamicOffsetCount < MaxDynamicOffsets);
-                dynamicOffsets[dynamicOffsetCount++] = offset;
+                dynamicOffsets.push_back(offset);
             }
         }
-
-        vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, descriptorSetCount, descriptorSets, dynamicOffsetCount, dynamicOffsets);
+        vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, (uint32_t)descriptorSets.size(), descriptorSets.data(), dynamicOffsets.size(), dynamicOffsets.data());
     }
 } // namespace RHI::Vulkan
