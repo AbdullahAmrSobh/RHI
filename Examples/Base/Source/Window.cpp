@@ -102,6 +102,20 @@ namespace Engine
         return WindowRect{x, y, width, height};
     }
 
+    WindowSize Monitor::GetDpiScale() const
+    {
+        int w = 0, h = 0;
+#if GLFW_HAS_PER_MONITOR_DPI
+        glfwGetMonitorWorkarea(glfw_monitors[n], &x, &y, &w, &h);
+        if (w > 0 && h > 0) // Workaround a small GLFW issue reporting zero on monitor changes: https://github.com/glfw/glfw/pull/1761
+        {
+            monitor.WorkPos  = ImVec2((float)x, (float)y);
+            monitor.WorkSize = ImVec2((float)w, (float)h);
+        }
+#endif
+        return WindowSize{(uint32_t)w, (uint32_t)h};
+    }
+
     bool Monitor::IsPrimary() const
     {
         return m_monitor == glfwGetPrimaryMonitor();
@@ -256,6 +270,13 @@ namespace Engine
             TL_ASSERT(false, "Title cannot be empty");
         }
         glfwSetWindowTitle(m_window, title.data());
+    }
+
+    WindowSize Window::GetFramebufferSize() const
+    {
+        int width, height;
+        glfwGetFramebufferSize(m_window, &width, &height);
+        return {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
     }
 
     WindowSize Window::GetSize() const

@@ -21,29 +21,29 @@ namespace RHI::Vulkan
         ResultCode Init(IDevice* device, const SwapchainCreateInfo& createInfo);
         void       Shutdown();
 
-        VkSemaphore GetImageAcquiredSemaphore() const;
-
-        SurfaceCapabilities GetSurfaceCapabilities() override;
-        ResultCode          Resize(ImageSize2D size) override;
+        // Interface
+        uint32_t            GetImagesCount() const override;
+        Handle<Image>       GetImage() const override;
+        SurfaceCapabilities GetSurfaceCapabilities() const override;
+        ResultCode          Resize(const ImageSize2D& size) override;
         ResultCode          Configure(const SwapchainConfigureInfo& configInfo) override;
 
-        VkResult AcquireNextImage(VkSemaphore& acquiredSemaphore);
+        VkResult       AcquireNextImage(VkSemaphore& acquireImageSemaphore);
+        uint32_t       GetImageIndex() const;
+        VkSwapchainKHR GetHandle() const;
 
-        void CleanupOldSwapchain(VkSwapchainKHR oldSwapchain, uint32_t oldImageCount);
-
-        VkSwapchainKHR GetHandle () const { return m_swapchain; }
-        uint32_t GetCurrentImageIndex () const { return m_imageIndex; }
-
-    // private:
-        IDevice*               m_device;
-        VkSwapchainKHR         m_swapchain;
-        VkSurfaceKHR           m_surface;
-        uint32_t               m_acquireSemaphoreIndex;
-        VkSemaphore            m_imageAcquiredSemaphore[MaxImageCount];
+    private:
+        IDevice*               m_device                = nullptr;
+        VkSwapchainKHR         m_swapchain             = VK_NULL_HANDLE;
+        VkSurfaceKHR           m_surface               = VK_NULL_HANDLE;
+        uint32_t               m_acquireSemaphoreIndex = 0;
+        VkSemaphore            m_acquireSemaphore[MaxImageCount];
         uint32_t               m_imageIndex;
         VkImage                m_images[MaxImageCount];
         VkImageView            m_imageViews[MaxImageCount];
         TL::String             m_name;
         SwapchainConfigureInfo m_configuration;
+        uint32_t               m_imageCount = 0;
+        Handle<Image>          m_imageHandle;
     };
 } // namespace RHI::Vulkan

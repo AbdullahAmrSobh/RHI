@@ -475,20 +475,16 @@ namespace RHI
             m_imagePool.clear();
             m_bufferPool.clear();
             m_dependencyLevels.clear();
-            m_swapchain.clear();
-            m_swapchainAcquireStage.clear();
+            m_swapchains.clear();
             m_arena.Collect();
             memset(&m_state, 0, sizeof(State));
         }
-
-        m_frameIndex++;
     }
 
     RGImage* RenderGraph::ImportSwapchain(const char* name, Swapchain& swapchain, Format format)
     {
         TL_ASSERT(m_state.frameRecording == true);
-        m_swapchain.push_back(&swapchain);
-        m_swapchainAcquireStage.push_back(PipelineStage::BottomOfPipe);
+        m_swapchains.push_back({&swapchain, PipelineStage::TopOfPipe});
 
         auto frameResource        = TL::ConstructFrom<RGFrameImage>(&m_arena);
         frameResource->name       = name;
@@ -758,6 +754,15 @@ namespace RHI
                 .dstState = dep.state,
             });
 
+            // TL_LOG_INFO("Image: {} src: (access: {} stage: {} usage: {}) -> dst: (access: {} stage: {} usage: {})",
+            //     resource->m_frameResource->name,
+            //     (int)resource->m_state.access,
+            //     (int)resource->m_state.stage,
+            //     (int)resource->m_state.usage,
+            //     (int)dep.state.access,
+            //     (int)dep.state.stage,
+            //     (int)dep.state.usage);
+
             resource->m_state = dep.state;
         };
 
@@ -781,8 +786,8 @@ namespace RHI
         {
             for (auto pass : level.GetPasses())
             {
-                if (pass->m_state.culled)
-                    continue;
+                // if (pass->m_state.culled)
+                //     continue;
 
                 for (auto dep : pass->m_imageDependencies)
                     TransitionImageResource(pass, dep);
@@ -805,60 +810,47 @@ namespace RHI
         {
             frame->CaptureNextFrame();
         }
-        frame->Begin(m_swapchain);
+
+        frame->Begin(m_swapchains);
 
         CommandListCreateInfo cmdCI{
             .name      = "cmd-rendergraph",
             .queueType = QueueType::Graphics,
         };
         auto commandList = frame->CreateCommandList(cmdCI);
-
-        commandList->Begin();
-        for (const auto& level : m_dependencyLevels)
         {
-            for (auto pass : level.GetPasses())
+            commandList->Begin();
+            for (const auto& level : m_dependencyLevels)
             {
-                ExecutePass(pass, commandList);
+                for (auto pass : level.GetPasses())
+                {
+                    ExecutePass(pass, commandList);
+                }
             }
+            TL::Vector<ImageBarrierInfo> swapchainBarriers{m_arena};
+            for (auto swapchain : m_swapchains)
+            {
+                RHI::ImageBarrierInfo barrier{
+                    .image    = swapchain.swapchain->GetImage(),
+                    .srcState = {ImageUsage::Color,   PipelineStage::ColorAttachmentOutput, Access::ReadWrite},
+                    .dstState = {ImageUsage::Present, PipelineStage::BottomOfPipe,          Access::None     },
+                };
+                swapchainBarriers.push_back(barrier);
+            }
+            commandList->AddPipelineBarrier({}, swapchainBarriers, {});
+            commandList->End();
         }
-
-        for (auto swapchain : m_swapchain)
-        {
-            // FIXME: This is hardcoded for now
-            RHI::ImageBarrierInfo barrier{
-                .image    = swapchain->GetImage(),
-                .srcState = {
-                             .usage  = ImageUsage::Color,
-                             .stage  = PipelineStage::ColorAttachmentOutput,
-                             .access = Access::ReadWrite,
-                             },
-                .dstState = {
-                             .usage  = ImageUsage::Present,
-                             .stage  = PipelineStage::BottomOfPipe,
-                             .access = Access::None,
-                             },
-            };
-            commandList->AddPipelineBarrier({}, barrier, {});
-        }
-
-        commandList->End();
-
-        std::reverse(m_swapchain.begin(), m_swapchain.end());
 
         QueueSubmitInfo submitInfo{
-            .commandLists          = commandList,
-            .signalStage           = PipelineStage::BottomOfPipe,
-            .waitInfos             = {},
-            .m_swapchainToAcquire  = m_swapchain,
-            .m_swapchainWaitStages = m_swapchainAcquireStage,
-            .signalPresent         = true,
+            .commandLists  = commandList,
+            .signalStage   = PipelineStage::BottomOfPipe,
+            .waitInfos     = {},
+            .signalPresent = true,
         };
         TL_MAYBE_UNUSED auto timeline = frame->QueueSubmit(QueueType::Graphics, submitInfo);
 
-        m_frameIndex = frame->End();
+        frame->End();
 #endif
-
-        m_frameIndex++;
     }
 
     void RenderGraph::ExecutePass(RGPass* pass, CommandList* commandList)

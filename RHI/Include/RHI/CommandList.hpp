@@ -254,10 +254,9 @@ namespace RHI
 
     class RHI_EXPORT CommandList
     {
-    protected:
-        virtual ~CommandList() = default;
-
     public:
+        RHI_INTERFACE_BOILERPLATE(CommandList);
+
         /// @brief Begins recording commands to the command list.
         virtual void Begin() = 0;
 

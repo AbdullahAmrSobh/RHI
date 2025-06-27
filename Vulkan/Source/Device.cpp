@@ -110,7 +110,7 @@ namespace RHI::Vulkan
     };
 
     /// @todo: add support for a custom sink, so vulkan errors are spereated
-    VkBool32 DebugMessengerCallbacks(TL_MAYBE_UNUSED VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, TL_MAYBE_UNUSED VkDebugUtilsMessageTypeFlagsEXT messageTypes, TL_MAYBE_UNUSED const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, TL_MAYBE_UNUSED void* pUserData)
+    inline static VkBool32 DebugMessengerCallbacks(TL_MAYBE_UNUSED VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, TL_MAYBE_UNUSED VkDebugUtilsMessageTypeFlagsEXT messageTypes, TL_MAYBE_UNUSED const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, TL_MAYBE_UNUSED void* pUserData)
     {
         TL::String additionalInfo;
 

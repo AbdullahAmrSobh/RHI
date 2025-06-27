@@ -38,9 +38,9 @@ namespace RHI::Vulkan
         ICommandList*      GetActiveTransferCommandList();
         StagingBufferBlock AllocateStaging(TL::Block block);
 
-         void            CaptureNextFrame() override;
-        void            Begin(TL::Span<Swapchain* const> swapchains) override;
-        uint64_t        End() override;
+        void            CaptureNextFrame() override;
+        void            Begin(TL::Span<SwapchainImageAcquireInfo> swapchainToAcquire) override;
+        void            End() override;
         CommandList*    CreateCommandList(const CommandListCreateInfo& createInfo) override;
         uint64_t        QueueSubmit(QueueType queueType, const QueueSubmitInfo& submitInfo) override;
         void            BufferWrite(Handle<Buffer> buffer, size_t offset, TL::Block block) override;
@@ -62,7 +62,7 @@ namespace RHI::Vulkan
 
         VkSemaphore             m_presentFrameSemaphore;
 
-        TL::Vector<ISwapchain*> m_swapchains{m_tempAllocator};
+        TL::Vector<Swapchain*> m_acquiredSwapchains{m_tempAllocator};
 
         bool m_renderdocPendingCapture : 1;
     };

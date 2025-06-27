@@ -180,7 +180,7 @@ public:
 
         ImportTextures(scene, [this, scene](const std::string& path, aiTextureType type, const aiTexture* texture)
             {
-                TL_LOG_INFO("Loading texture: {}", path);
+                // TL_LOG_INFO("Loading texture: {}", path);
             });
     }
 
@@ -276,6 +276,7 @@ public:
         ZoneScoped;
 
         // Begin ImGui frame and create a fullscreen dockspace over the main viewport
+
         ImGui::NewFrame();
         // ImGui::DockSpaceOverViewport();
         // Example window
@@ -291,6 +292,7 @@ public:
         {
             m_renderer->GetRenderGraph()->Debug_CaptureNextFrame();
         }
+
 
         m_renderer->Render(m_scene, m_presentationViewport);
 
