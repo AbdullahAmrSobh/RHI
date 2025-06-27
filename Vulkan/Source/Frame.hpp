@@ -38,9 +38,9 @@ namespace RHI::Vulkan
         ICommandList*      GetActiveTransferCommandList();
         StagingBufferBlock AllocateStaging(TL::Block block);
 
-         void            CaptureNextFrame() override;
-        void            Begin(TL::Span<Swapchain* const> swapchains) override;
-        uint64_t        End() override;
+        void            CaptureNextFrame() override;
+        void            Begin(TL::Span<SwapchainImageAcquireInfo> swapchainToAcquire) override;
+        void            End() override;
         CommandList*    CreateCommandList(const CommandListCreateInfo& createInfo) override;
         uint64_t        QueueSubmit(QueueType queueType, const QueueSubmitInfo& submitInfo) override;
         void            BufferWrite(Handle<Buffer> buffer, size_t offset, TL::Block block) override;
@@ -49,10 +49,7 @@ namespace RHI::Vulkan
         uint64_t        GetTimelineValue() const;
 
     private:
-        uint32_t m_id;
-        IDevice*  m_device;
-        TL::Arena m_tempAllocator;
-
+        IDevice*                  m_device;
         TL::Ptr<StagingBuffer>    m_stagingPool;
         TL::Ptr<CommandAllocator> m_commandListAllocator;
 
@@ -60,9 +57,13 @@ namespace RHI::Vulkan
 
         ICommandList* m_activeTransferCommandList;
 
-        VkSemaphore             m_presentFrameSemaphore;
+        VkSemaphore m_presentFrameSemaphore;
 
-        TL::Vector<ISwapchain*> m_swapchains{m_tempAllocator};
+        // transient states
+        TL::Arena              m_arena;                       ///< Arena allocator used for per-frame allocations.
+        TL::Vector<Swapchain*> m_acquiredSwapchains{m_arena}; ///< List of swapchains acquired by this frame.
+        // TL::Vector<struct BufferStreamRequest> m_bufferStreamRequests{m_arena}; ///<
+        // TL::Vector<struct BufferStreamRequest> m_imageStreamRequests{m_arena};  ///<
 
         bool m_renderdocPendingCapture : 1;
     };
@@ -83,13 +84,11 @@ namespace RHI::Vulkan
         StagingBuffer();
         ~StagingBuffer();
 
-        ResultCode Init(IDevice* device);
-        void       Shutdown();
-
+        ResultCode         Init(IDevice* device);
+        void               Shutdown();
         StagingBufferBlock Allocate(size_t size);
         StagingBufferBlock Allocate(TL::Block block);
-
-        void Reset();
+        void               Reset();
 
     private:
         struct Page
@@ -173,19 +172,17 @@ namespace RHI::Vulkan
         template<typename VkHandleType>
         static void DestroyObject(IDevice& device, VkHandleType handle)
         {
-            // clang-format off
-            if      constexpr (std::is_same_v<VkHandleType, VmaAllocation>)    vmaFreeMemory(device.m_deviceAllocator, handle);
-            else if constexpr (std::is_same_v<VkHandleType, VkBuffer>)         vkDestroyBuffer(device.m_device, handle, nullptr);
-            else if constexpr (std::is_same_v<VkHandleType, VkBufferView>)     vkDestroyBufferView(device.m_device, handle, nullptr);
-            else if constexpr (std::is_same_v<VkHandleType, VkImage>)          vkDestroyImage(device.m_device, handle, nullptr);
-            else if constexpr (std::is_same_v<VkHandleType, VkImageView>)      vkDestroyImageView(device.m_device, handle, nullptr);
-            else if constexpr (std::is_same_v<VkHandleType, VkSampler>)        vkDestroySampler(device.m_device, handle, nullptr);
-            else if constexpr (std::is_same_v<VkHandleType, VkPipeline>)       vkDestroyPipeline(device.m_device, handle, nullptr);
+            if constexpr (std::is_same_v<VkHandleType, VmaAllocation>) vmaFreeMemory(device.m_deviceAllocator, handle);
+            else if constexpr (std::is_same_v<VkHandleType, VkBuffer>) vkDestroyBuffer(device.m_device, handle, nullptr);
+            else if constexpr (std::is_same_v<VkHandleType, VkBufferView>) vkDestroyBufferView(device.m_device, handle, nullptr);
+            else if constexpr (std::is_same_v<VkHandleType, VkImage>) vkDestroyImage(device.m_device, handle, nullptr);
+            else if constexpr (std::is_same_v<VkHandleType, VkImageView>) vkDestroyImageView(device.m_device, handle, nullptr);
+            else if constexpr (std::is_same_v<VkHandleType, VkSampler>) vkDestroySampler(device.m_device, handle, nullptr);
+            else if constexpr (std::is_same_v<VkHandleType, VkPipeline>) vkDestroyPipeline(device.m_device, handle, nullptr);
             else if constexpr (std::is_same_v<VkHandleType, VkDescriptorPool>) vkDestroyDescriptorPool(device.m_device, handle, nullptr);
-            else if constexpr (std::is_same_v<VkHandleType, VkSemaphore>)      vkDestroySemaphore(device.m_device, handle, nullptr);
-            else if constexpr (std::is_same_v<VkHandleType, VkSwapchainKHR>)   vkDestroySwapchainKHR(device.m_device, handle, nullptr);
-            else if constexpr (std::is_same_v<VkHandleType, VkSurfaceKHR>)     vkDestroySurfaceKHR(device.m_instance, handle, nullptr);
-            // clang-format on
+            else if constexpr (std::is_same_v<VkHandleType, VkSemaphore>) vkDestroySemaphore(device.m_device, handle, nullptr);
+            else if constexpr (std::is_same_v<VkHandleType, VkSwapchainKHR>) vkDestroySwapchainKHR(device.m_device, handle, nullptr);
+            else if constexpr (std::is_same_v<VkHandleType, VkSurfaceKHR>) vkDestroySurfaceKHR(device.m_instance, handle, nullptr);
         }
     };
 } // namespace RHI::Vulkan

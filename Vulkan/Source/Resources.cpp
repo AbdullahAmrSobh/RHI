@@ -578,13 +578,14 @@ namespace RHI::Vulkan
             .pBindings    = setLayoutBindings.data(),
         };
 
-        VkResult result;
+        VulkanResult result;
         result = vkCreateDescriptorSetLayout(device->m_device, &layoutCI, nullptr, &handle);
-        if (result == VK_SUCCESS && createInfo.name)
+        TL_ASSERT(result, "vkCreateDescriptorSetLayout failed with error: {}", result.AsString());
+        if (result && createInfo.name)
         {
             device->SetDebugName(handle, createInfo.name);
         }
-        return ConvertResult(result);
+        return result;
     }
 
     void IBindGroupLayout::Shutdown(IDevice* device)
@@ -915,12 +916,14 @@ namespace RHI::Vulkan
             .basePipelineIndex   = 0,
         };
 
-        VkResult result = vkCreateGraphicsPipelines(device->m_device, VK_NULL_HANDLE, 1, &graphicsPipelineCI, nullptr, &handle);
-        if (result == VK_SUCCESS && createInfo.name)
+        VulkanResult result;
+        result = vkCreateGraphicsPipelines(device->m_device, VK_NULL_HANDLE, 1, &graphicsPipelineCI, nullptr, &handle);
+        TL_ASSERT(result, "vkCreateGraphicsPipelines failed with error: {}", result.AsString());
+        if (result && createInfo.name)
         {
             device->SetDebugName(handle, createInfo.name);
         }
-        return ConvertResult(result);
+        return result;
     }
 
     void IGraphicsPipeline::Shutdown(IDevice* device)
@@ -1046,7 +1049,7 @@ namespace RHI::Vulkan
 
     ResultCode IImage::Init(IDevice* device, const ImageCreateInfo& createInfo)
     {
-        VkResult result;
+        VulkanResult result;
 
         VmaAllocationCreateInfo allocationInfo{
             .flags          = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT,
@@ -1076,7 +1079,11 @@ namespace RHI::Vulkan
             .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED,
         };
         result = vkCreateImage(device->m_device, &imageCI, nullptr, &handle); //, &allocation, nullptr);
+        TL_ASSERT(result, "vkCreateImage failed with error: {}", result.AsString());
+
         result = vmaAllocateMemoryForImage(device->m_deviceAllocator, handle, &allocationInfo, &allocation, nullptr);
+        TL_ASSERT(result, "vmaAllocateMemoryForImage failed with error: {}", result.AsString());
+
         vmaBindImageMemory(device->m_deviceAllocator, allocation, handle);
 
         if (result == VK_SUCCESS && createInfo.name)
@@ -1115,6 +1122,7 @@ namespace RHI::Vulkan
         }
 
         result = vkCreateImageView(device->m_device, &imageViewCI, nullptr, &viewHandle);
+        TL_ASSERT(result, "vkCreateImageView failed with error: {}", result.AsString());
 
         this->size         = createInfo.size;
         this->format       = createInfo.format;
@@ -1163,7 +1171,7 @@ namespace RHI::Vulkan
         //                    .layerCount     = VK_REMAINING_ARRAY_LAYERS,
         //                    },
         // };
-        // VkResult result = vkCreateImageView(device->m_device, &imageViewCI, nullptr, &viewHandle);
+        // VulkanResult result = vkCreateImageView(device->m_device, &imageViewCI, nullptr, &viewHandle);
         return ResultCode::Success;
     }
 

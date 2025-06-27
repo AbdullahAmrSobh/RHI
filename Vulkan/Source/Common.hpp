@@ -691,4 +691,23 @@ namespace RHI::Vulkan
         default:                          TL_UNREACHABLE(); return VK_IMAGE_LAYOUT_UNDEFINED;
         }
     }
+
+    // template<typename NativeHandle>
+    // class DeviceObject
+    // {
+    // public:
+    //     using HandleType = NativeHandle;
+
+    //     ~DeviceObject() = default;
+
+    //     NativeHandle GetHandle() const { return handle; }
+
+    //     operator NativeHandle() const { return handle; }
+
+    //     bool IsValid() const { return handle != VK_NULL_HANDLE; }
+
+    // protected:
+    //     class IDevice* m_device;
+    //     NativeHandle   handle;
+    // };
 } // namespace RHI::Vulkan

@@ -297,6 +297,8 @@ namespace Engine
         WindowSize     GetCurrentVideoMode() const;
         // Returns the current video mode of the monitor
         WindowRect     GetWorkArea() const;
+        // Returns monitor DPI scale.
+        WindowSize     GetDpiScale() const;
         // Returns true if this monitor is the primary monitor
         bool           IsPrimary() const;
 
@@ -331,6 +333,7 @@ namespace Engine
         TL::StringView GetTitle() const;
         void           SetTitle(TL::StringView title);
         // size
+        WindowSize     GetFramebufferSize() const;
         WindowSize     GetSize() const;
         void           SetSize(WindowSize size);
         // size limits

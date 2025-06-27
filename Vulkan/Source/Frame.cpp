@@ -16,9 +16,6 @@ namespace RHI::Vulkan
     {
         m_device = device;
 
-        static int id = 0;
-        m_id          = id++;
-
         m_commandListAllocator = TL::CreatePtr<CommandAllocator>();
         if (auto result = m_commandListAllocator->Init(m_device); IsError(result))
             return result;
@@ -54,7 +51,7 @@ namespace RHI::Vulkan
         m_renderdocPendingCapture = true;
     }
 
-    void IFrame::Begin(TL::Span<Swapchain* const> swapchains)
+    void IFrame::Begin(TL::Span<SwapchainImageAcquireInfo> swapchainToAcquire)
     {
         ZoneScoped;
 
@@ -74,8 +71,8 @@ namespace RHI::Vulkan
             ZoneScopedN("Frame: cleanup temp allocations");
             m_stagingPool->Reset();
             m_commandListAllocator->Reset();
-            m_swapchains.clear();
-            m_tempAllocator.Collect();
+            m_acquiredSwapchains.clear();
+            m_arena.Collect();
         }
 
         if (m_renderdocPendingCapture)
@@ -83,20 +80,27 @@ namespace RHI::Vulkan
             m_device->m_renderdoc->FrameStartCapture();
         }
 
+        VulkanResult result;
+
+        if (!swapchainToAcquire.empty())
         {
             ZoneScopedN("Frame: Acquire swapchain images");
-            for (auto _swapchain : swapchains)
+            for (auto [_swapchain, pipelineStage] : swapchainToAcquire)
             {
                 auto swapchain = (ISwapchain*)_swapchain;
+                auto waitStage = ConvertPipelineStageFlags(pipelineStage);
 
-                VkSemaphore acquiredSemaphore;
-                swapchain->AcquireNextImage(acquiredSemaphore);
-                m_swapchains.push_back(swapchain);
+                VkSemaphore imageAcquiredSemaphore{VK_NULL_HANDLE};
+                result = swapchain->AcquireNextImage(imageAcquiredSemaphore);
+                TL_ASSERT(result);
+                m_device->GetDeviceQueue(QueueType::Graphics)->AddWaitSemaphore(imageAcquiredSemaphore, 0, waitStage);
+
+                m_acquiredSwapchains.push_back({swapchain});
             }
         }
     }
 
-    uint64_t IFrame::End()
+    void IFrame::End()
     {
         auto gfxQueue      = m_device->GetDeviceQueue(QueueType::Graphics);
         auto cmpQueue      = m_device->GetDeviceQueue(QueueType::Compute);
@@ -105,32 +109,33 @@ namespace RHI::Vulkan
         {
             ZoneScopedN("Frame: Present swapchain images");
 
-            TL::Vector<VkSwapchainKHR> swapchains{m_tempAllocator};
-            TL::Vector<uint32_t>       imageIndices{m_tempAllocator};
-            // TL::Vector<VkResult>       results{m_tempAllocator};
+            TL::Vector<VkSwapchainKHR> swapchains{m_arena};
+            TL::Vector<uint32_t>       imageIndices{m_arena};
+            TL_MAYBE_UNUSED TL::Vector<VkResult> results{m_arena};
 
-            for (auto swapchain : m_swapchains)
+            for (auto _swapchain : m_acquiredSwapchains)
             {
+                auto swapchain = (ISwapchain*)_swapchain;
                 swapchains.push_back(swapchain->GetHandle());
-                imageIndices.push_back(swapchain->GetCurrentImageIndex());
-                swapchain->m_acquireSemaphoreIndex = (swapchain->m_acquireSemaphoreIndex + 1) % ISwapchain::MaxImageCount;
+                imageIndices.push_back(swapchain->GetImageIndex());
             }
-
-            VkPresentInfoKHR presentInfo{
-                .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-                .pNext              = nullptr,
-                .waitSemaphoreCount = 1,
-                .pWaitSemaphores    = &m_presentFrameSemaphore,
-                .swapchainCount     = (uint32_t)swapchains.size(),
-                .pSwapchains        = swapchains.data(),
-                .pImageIndices      = imageIndices.data(),
-                .pResults           = nullptr, // results.data(),
-            };
-            VulkanResult result = vkQueuePresentKHR(gfxQueue->GetHandle(), &presentInfo);
-            TL_ASSERT(result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR);
-            if (!result.IsSwapchainSuccess())
+            if (!m_acquiredSwapchains.empty())
             {
-                TL_LOG_INFO("Swapchain present failed with error: {}", result.AsString());
+                VkPresentInfoKHR presentInfo{
+                    .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+                    .pNext              = nullptr,
+                    .waitSemaphoreCount = 1,
+                    .pWaitSemaphores    = &m_presentFrameSemaphore,
+                    .swapchainCount     = (uint32_t)swapchains.size(),
+                    .pSwapchains        = swapchains.data(),
+                    .pImageIndices      = imageIndices.data(),
+                    .pResults           = results.data(),
+                };
+                VulkanResult result = vkQueuePresentKHR(gfxQueue->GetHandle(), &presentInfo);
+                if (!result.IsSwapchainSuccess())
+                {
+                    TL_LOG_INFO("Swapchain present failed with error: {}", result.AsString());
+                }
             }
         }
 
@@ -141,12 +146,11 @@ namespace RHI::Vulkan
         }
 
         m_device->m_currentFrameIndex = (m_device->m_currentFrameIndex + 1) % (m_device->m_framesInFlight.size());
-        return m_timeline;
     }
 
     CommandList* IFrame::CreateCommandList(const CommandListCreateInfo& createInfo)
     {
-        auto commandList = TL::ConstructFrom<ICommandList>(&m_tempAllocator);
+        auto commandList = TL::ConstructFrom<ICommandList>(&m_arena);
         auto result      = commandList->Init(m_device, &m_commandListAllocator->m_queuePools[int(createInfo.queueType)], createInfo);
         TL_ASSERT(result == ResultCode::Success, "Failed to allocate command list for current frame");
         return commandList;
@@ -164,14 +168,6 @@ namespace RHI::Vulkan
             {
                 queue->AddWaitSemaphore(waitQueue->GetTimelineHandle(), waitInfo.timelineValue, ConvertPipelineStageFlags(waitInfo.waitStage));
             }
-        }
-
-        TL_ASSERT(submitInfo.m_swapchainToAcquire.size() == submitInfo.m_swapchainWaitStages.size(), "swapchainToAcquire and swapchainWaitStages must be 1-to-1");
-        for (size_t i = 0; i < submitInfo.m_swapchainToAcquire.size(); ++i)
-        {
-            auto swapchain = (ISwapchain*)submitInfo.m_swapchainToAcquire[i];
-            auto waitStage = ConvertPipelineStageFlags(submitInfo.m_swapchainWaitStages[i]);
-            queue->AddWaitSemaphore(swapchain->GetImageAcquiredSemaphore(), 0, waitStage);
         }
 
         if (submitInfo.signalPresent == true)
@@ -210,7 +206,6 @@ namespace RHI::Vulkan
         TL_ASSERT(range.size >= block.size, "Unexpected error");
 
         // auto commandList = GetActiveTransferCommandList();
-
         auto queue = m_device->GetDeviceQueue(QueueType::Transfer);
 
         {
@@ -279,13 +274,11 @@ namespace RHI::Vulkan
             [[maybe_unused]] auto newTimeline = queue->Submit({copyCommand}, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
             vkDeviceWaitIdle(m_device->m_device);
         }
-
-        // TL_UNREACHABLE();
     }
 
     TL::IAllocator& IFrame::GetAllocator()
     {
-        return m_tempAllocator;
+        return m_arena;
     }
 
     uint64_t IFrame::GetTimelineValue() const

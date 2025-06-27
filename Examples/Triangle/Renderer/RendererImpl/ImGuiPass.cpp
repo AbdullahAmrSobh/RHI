@@ -1,4 +1,5 @@
 #include "ImGuiPass.hpp"
+#include <imgui_internal.h>
 
 #include "../PipelineLibrary.hpp"
 
@@ -17,7 +18,16 @@ namespace Engine
     ResultCode ImGuiPass::Init(RHI::Device* device, RHI::Format colorAttachmentFormat, uint32_t maxViewportsCount)
     {
         ImGuiIO& io = ImGui::GetIO();
+
         TL_ASSERT(io.BackendRendererUserData == nullptr && "Already initialized a renderer backend!");
+        m_newframeHook.Type     = ImGuiContextHookType_NewFramePre;
+        m_newframeHook.UserData = this;
+        m_newframeHook.Callback = [](TL_MAYBE_UNUSED ImGuiContext* ctx, ImGuiContextHook* hook)
+        {
+            auto self                 = (ImGuiPass*)hook->UserData;
+            self->m_indexBufferOffset = self->m_vertexBufferOffset = 0;
+        };
+        ImGui::AddContextHook(ImGui::GetCurrentContext(), &m_newframeHook);
 
         m_device = device;
 
@@ -33,8 +43,8 @@ namespace Engine
             .name     = "ImGui-BindGroupLayout",
             .bindings = {
                          {RHI::BindingType::DynamicUniformBuffer, RHI::Access::Read, 1, RHI::ShaderStage::Vertex, sizeof(ImGuiMat4)},
-                         {RHI::BindingType::Sampler,              RHI::Access::Read, 1, RHI::ShaderStage::Pixel, 0},
-                         {RHI::BindingType::SampledImage,         RHI::Access::Read, 1, RHI::ShaderStage::Pixel, 0},
+                         {RHI::BindingType::Sampler, RHI::Access::Read, 1, RHI::ShaderStage::Pixel, 0},
+                         {RHI::BindingType::SampledImage, RHI::Access::Read, 1, RHI::ShaderStage::Pixel, 0},
                          }
         };
         auto bindGroupLayout = m_device->CreateBindGroupLayout(bindGroupLayoutCI);
@@ -115,6 +125,7 @@ namespace Engine
 
     void ImGuiPass::Shutdown()
     {
+        ImGui::RemoveContextHook(ImGui::GetCurrentContext(), m_newframeHook.HookId);
         m_device->DestroyGraphicsPipeline(m_pipeline);
         m_device->DestroyPipelineLayout(m_pipelineLayout);
         m_device->DestroyBindGroup(m_bindGroup);
@@ -156,15 +167,21 @@ namespace Engine
             .size          = {(uint32_t)width, (uint32_t)height},
             .setupCallback = [&](RHI::RenderGraphBuilder& builder)
             {
-                builder.AddColorAttachment({.color = outAttachment, .loadOp = RHI::LoadOperation::Load});
+                builder.AddColorAttachment({.color = outAttachment, .loadOp = RHI::LoadOperation::Discard});
                               },
             .executeCallback = [=, this](RHI::CommandList& commandList)
             {
                 // Will project scissor/clipping rectangles into framebuffer space
-                ImVec2 clipOff            = drawData->DisplayPos;       // (0,0) unless using multi-viewports
-                ImVec2 clipScale          = drawData->FramebufferScale; // (1,1) unless using retina display which are often (2,2)
-                size_t indexBufferOffset  = 0;
-                size_t vertexBufferOffset = 0;
+                ImVec2 clipOff   = drawData->DisplayPos;       // (0,0) unless using multi-viewports
+                ImVec2 clipScale = drawData->FramebufferScale; // (1,1) unless using retina display which are often (2,2)
+
+                int fb_width  = (int)(drawData->DisplaySize.x * drawData->FramebufferScale.x);
+                int fb_height = (int)(drawData->DisplaySize.y * drawData->FramebufferScale.y);
+                if (fb_width <= 0 || fb_height <= 0)
+                    return;
+
+                size_t& indexBufferOffset  = m_indexBufferOffset;
+                size_t& vertexBufferOffset = m_vertexBufferOffset;
                 for (const auto& drawList : drawData->CmdLists)
                 {
                     // clang-format off
@@ -189,17 +206,17 @@ namespace Engine
                             ImVec2 clip_min((drawCmd.ClipRect.x - clipOff.x) * clipScale.x, (drawCmd.ClipRect.y - clipOff.y) * clipScale.y);
                             ImVec2 clip_max((drawCmd.ClipRect.z - clipOff.x) * clipScale.x, (drawCmd.ClipRect.w - clipOff.y) * clipScale.y);
 
-                            // Clamp to viewport as commandList.SetSicssor() won't accept values that are off bounds
-                            clip_min.x = std::clamp(clip_min.x, 0.0f, drawData->DisplaySize.x);
-                            clip_min.y = std::clamp(clip_min.y, 0.0f, drawData->DisplaySize.y);
-                            clip_max.x = std::clamp(clip_max.x, 0.0f, drawData->DisplaySize.x);
-                            clip_max.y = std::clamp(clip_max.y, 0.0f, drawData->DisplaySize.y);
+                            // Clamp to viewport as vkCmdSetScissor won't accept values that are off bounds
+                            clip_min.x = std::max(clip_min.x, 0.0f);
+                            clip_min.y = std::max(clip_min.y, 0.0f);
+                            clip_max.x = std::max(clip_max.x, (float)fb_width);
+                            clip_max.y = std::max(clip_max.y, (float)fb_height);
                             if (clip_max.x <= clip_min.x || clip_max.y <= clip_min.y)
                                 continue;
 
                             RHI::Viewport viewport{
-                                .width    = (float)rg->GetFrameSize().width,
-                                .height   = (float)rg->GetFrameSize().height,
+                                .width    = (float)width,
+                                .height   = (float)height,
                                 .maxDepth = 1.0,
                             };
                             commandList.SetViewport(viewport);

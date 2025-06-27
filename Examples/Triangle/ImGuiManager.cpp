@@ -179,10 +179,11 @@ namespace Engine
         auto  vp         = ImGui::FindViewportByPlatformHandle(e.window);
         auto  windowData = GetViewportWindowData(vp);
 
-        auto [w, h] = e.window->GetSize();
+        auto [w, h]                = e.window->GetSize();
+        auto [displayW, displayH]  = e.window->GetFramebufferSize();
         io.DisplaySize.x           = (float)w;
         io.DisplaySize.y           = (float)h;
-        io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
+        io.DisplayFramebufferScale = ImVec2((float)displayW / (float)w, (float)displayH / (float)h);
 
         TL_ASSERT(vp != nullptr)
 
@@ -190,10 +191,12 @@ namespace Engine
         {
         case WindowEventType::Resized:
             {
+                auto [w, h]                = e.size;
                 io.DisplaySize.x           = (float)e.size.width;
                 io.DisplaySize.y           = (float)e.size.height;
-                io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
-                bool ignore                = ImGui::GetFrameCount() <= (windowData->ignoreWindowSizeEventFrame + 1);
+                io.DisplayFramebufferScale = ImVec2((float)displayW / (float)w, (float)displayH / (float)h);
+
+                bool ignore = ImGui::GetFrameCount() <= (windowData->ignoreWindowSizeEventFrame + 1);
                 if (!ignore)
                     vp->PlatformRequestResize = true;
             }
@@ -270,13 +273,10 @@ namespace Engine
 
     inline static void ImGuiPlatformIO_CreateWindow(ImGuiViewport* vp)
     {
-        auto position = vp->Pos;
-        auto size     = vp->Size;
-
-        auto viewportData = TL::Construct<ImGuiImplViewportData>();
+        auto viewportData         = TL::Construct<ImGuiImplViewportData>();
         viewportData->windowOwned = true;
-        auto window = viewportData->window = WindowManager::CreateWindow("", WindowFlags::NoDecorations, {(uint32_t)size.x, (uint32_t)size.y});
-        window->SetPosition({position.x, position.y});
+        auto window = viewportData->window = WindowManager::CreateWindow("", WindowFlags::NoDecorations, {(uint32_t)vp->Size.x, (uint32_t)vp->Size.y});
+        window->SetPosition({vp->Pos.x, vp->Pos.y});
         window->Subscribe([](const WindowEvent& e) -> bool
             {
                 return WindowEventsHandler(e);
@@ -315,7 +315,6 @@ namespace Engine
     {
         auto window     = GetViewportWindowData(vp);
         auto renderData = GetViewportRenderData(vp);
-
         window->window->SetPosition(WindowPosition{pos.x, pos.y});
     }
 
@@ -330,14 +329,14 @@ namespace Engine
     {
         auto window                       = GetViewportWindowData(vp);
         window->ignoreWindowPosEventFrame = ImGui::GetFrameCount();
-        window->window->SetSize({(uint32_t)size.x, (uint32_t)size.y});
+        window->window->SetSize(WindowSize{(uint32_t)size.x, (uint32_t)size.y});
     }
 
     inline static ImVec2 ImGuiPlatformIO_GetWindowSize(ImGuiViewport* vp)
     {
-        auto window                        = GetViewportWindowData(vp);
-        auto renderData                    = GetViewportRenderData(vp);
-        auto [width, height]               = window->window->GetSize();
+        auto window          = GetViewportWindowData(vp);
+        auto renderData      = GetViewportRenderData(vp);
+        auto [width, height] = window->window->GetSize();
         return ImVec2(width, height);
     }
 
@@ -408,12 +407,13 @@ namespace Engine
 
         auto [width, height] = window->window->GetSize();
         RHI::SwapchainConfigureInfo config{
-            .size        = {height},
-            .imageCount  = 1,
+            .size        = {width, height},
+            .imageCount  = 2,
             .imageUsage  = RHI::ImageUsage::Color,
             .format      = RHI::Format::RGBA8_UNORM,
             .presentMode = RHI::SwapchainPresentMode::Fifo,
-            .alphaMode   = RHI::SwapchainAlphaMode::None};
+            .alphaMode   = RHI::SwapchainAlphaMode::None,
+        };
         auto result            = renderData->swapchain->Configure(config);
         renderData->viewportId = (window_count++) + 1;
         TL_ASSERT(RHI::IsSuccess(result));
@@ -469,8 +469,8 @@ namespace Engine
         ImGuiViewport* mainViewport = ImGui::GetMainViewport();
         mainViewport->Flags |= ImGuiViewportFlags_IsPlatformWindow | ImGuiViewportFlags_OwnedByApp;
 
-        auto viewportData = TL::Construct<ImGuiImplViewportData>();
-        viewportData->window = primaryWindow;
+        auto viewportData               = TL::Construct<ImGuiImplViewportData>();
+        viewportData->window            = primaryWindow;
         mainViewport->PlatformUserData  = viewportData;
         mainViewport->PlatformHandle    = viewportData->window;
         mainViewport->PlatformHandleRaw = primaryWindow->GetNativeHandle();
@@ -504,6 +504,7 @@ namespace Engine
         platformIO.Renderer_SetWindowSize      = ImGuiRenderer_SetWindowSize;
         platformIO.Renderer_RenderWindow       = ImGuiRenderer_RenderWindow;
         platformIO.Renderer_SwapBuffers        = ImGuiRenderer_SwapBuffers;
+
         for (const auto& m : WindowManager::GetMonitors())
         {
             auto [monitorPosX, monitorPosY]    = m.GetPosition();

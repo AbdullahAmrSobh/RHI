@@ -411,16 +411,14 @@ namespace RHI
             bool debug_triggerNextFrameCapture : 1;
         } m_state;
 
-        Device*                          m_device;
-        uint64_t                         m_frameIndex;
-        TL::Ptr<RenderGraphResourcePool> m_resourcePool;
-        ImageSize2D                      m_frameSize;
-        TL::Arena                        m_arena;
-        TL::Vector<Swapchain*>           m_swapchain{m_arena};
-        TL::Vector<PipelineStage>        m_swapchainAcquireStage{m_arena};
-        TL::Vector<RGPass*>              m_passPool{m_arena};
-        TL::Vector<RGFrameImage*>        m_imagePool{m_arena};
-        TL::Vector<RGFrameBuffer*>       m_bufferPool{m_arena};
-        TL::Vector<DependencyLevel>      m_dependencyLevels{m_arena};
+        Device*                               m_device;
+        TL::Ptr<RenderGraphResourcePool>      m_resourcePool;
+        ImageSize2D                           m_frameSize;
+        TL::Arena                             m_arena;
+        TL::Vector<SwapchainImageAcquireInfo> m_swapchains{m_arena};
+        TL::Vector<RGPass*>                   m_passPool{m_arena};
+        TL::Vector<RGFrameImage*>             m_imagePool{m_arena};
+        TL::Vector<RGFrameBuffer*>            m_bufferPool{m_arena};
+        TL::Vector<DependencyLevel>           m_dependencyLevels{m_arena};
     };
 } // namespace RHI

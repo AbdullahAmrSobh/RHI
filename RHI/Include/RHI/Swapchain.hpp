@@ -25,22 +25,22 @@ namespace RHI
         Mailbox     = 1 << 3,
     };
 
-#ifdef RHI_PLATFORM_WINDOWS
     /// @brief struct contains win32 surface handles.
     struct Win32WindowDesc
     {
         void* hwnd;
         void* hinstance;
     };
-#endif
 
     /// @brief Structure specifying the parameters of the swapchain.
     struct SwapchainCreateInfo
     {
         const char* name;
-#ifdef RHI_PLATFORM_WINDOWS
-        Win32WindowDesc win32Window; // win32 surface handles. (Availabe only on windows)
-#endif
+
+        union
+        {
+            Win32WindowDesc win32Window; // win32 surface handles. (Availabe only on windows)
+        };
     };
 
     struct SwapchainConfigureInfo
@@ -56,6 +56,10 @@ namespace RHI
     /// @brief Structure containing the capabilities of a presentation surface
     struct SurfaceCapabilities
     {
+        ImageSize2D                     minImageSize;
+        ImageSize2D                     maxImageSize;
+        uint32_t                        minImageCount;
+        uint32_t                        maxImageCount;
         TL::Flags<ImageUsage>           usages;       ///< Supported image usage flags for the surface
         TL::Flags<SwapchainPresentMode> presentModes; ///< List of supported presentation modes
         TL::Flags<SwapchainAlphaMode>   alphaModes;   ///< List of supported alpha compositing modes
@@ -68,31 +72,19 @@ namespace RHI
     public:
         RHI_INTERFACE_BOILERPLATE(Swapchain);
 
-        /// @brief Returns the total number of images in the swapchain's back buffer
-        /// @return Number of swapchain images
-        uint32_t                    GetImagesCount() const { return m_imageCount; }
+        /// @brief Returns the total number of images in the swapchain's back buffer.
+        virtual uint32_t            GetImagesCount() const = 0;
 
-        /// @brief Returns the handle to the currently acquired swapchain image
-        /// @return Handle to the current swapchain image
-        Handle<Image>               GetImage() const { return m_image; }
+        /// @brief Returns the handle to the currently acquired swapchain image.
+        virtual Handle<Image>       GetImage() const = 0;
 
-        /// @brief Queries the capabilities of the presentation surface
-        /// @return Structure containing supported formats, modes, and capabilities
-        virtual SurfaceCapabilities GetSurfaceCapabilities() = 0;
+        /// @brief Queries the capabilities of the presentation surface.
+        virtual SurfaceCapabilities GetSurfaceCapabilities() const = 0;
 
-        /// @brief Resizes the swapchain to match new window dimensions
-        /// @param size New dimensions for the swapchain images
-        /// @return Result code indicating success or failure
-        virtual ResultCode          Resize(ImageSize2D size) = 0;
+        /// @brief Resizes the swapchain to match new window dimensions.
+        virtual ResultCode          Resize(const ImageSize2D& size) = 0;
 
-        /// @brief Reconfigures the swapchain with new parameters
-        /// @note  Must be called before using the swapchain
-        /// @param configInfo ...
-        /// @return Result code indicating success or failure
+        /// @brief Reconfigures the swapchain with new parameters.
         virtual ResultCode          Configure(const SwapchainConfigureInfo& configInfo) = 0;
-
-    protected:
-        uint32_t      m_imageCount;
-        Handle<Image> m_image;
     };
 } // namespace RHI
