@@ -77,7 +77,6 @@ namespace RHI
         TL::Span<CommandList* const>        commandLists       = {};
         PipelineStage                       signalStage        = {};
         TL::Span<const QueueWaitInfo>       waitInfos          = {};
-        // TL::Span<SwapchainImageAcquireInfo> swapchainToAcquire = {};
         bool                                signalPresent      = false;
     };
 

@@ -9,7 +9,7 @@
 
 namespace RHI::Vulkan
 {
-    // TODO: dissolve to frame ?
+    // TODO: dissolv to frame ?
 
     IQueue::IQueue()  = default;
     IQueue::~IQueue() = default;
@@ -50,7 +50,13 @@ namespace RHI::Vulkan
         vkDestroySemaphore(m_device->m_device, m_timelineSemaphore, nullptr);
     }
 
-    bool IQueue::WaitTimeline(uint64_t timelineValue, uint64_t duration)
+    void IQueue::Wait() const
+    {
+        ZoneScoped;
+        vkQueueWaitIdle(m_queue);
+    }
+
+    bool IQueue::Wait(uint64_t timelineValue, uint64_t duration)
     {
         ZoneScoped;
         VkSemaphoreWaitInfo waitInfo = {
@@ -63,12 +69,6 @@ namespace RHI::Vulkan
         };
         VulkanResult result = vkWaitSemaphores(m_device->m_device, &waitInfo, duration);
         return result;
-    }
-
-    void IQueue::WaitIdle() const
-    {
-        ZoneScoped;
-        vkQueueWaitIdle(m_queue);
     }
 
     void IQueue::AddWaitSemaphore(VkSemaphore semaphore, uint64_t value, VkPipelineStageFlags2 stageMask)
@@ -123,10 +123,9 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        VkResult result;
+        VulkanResult result;
 
-        auto timelineValue = m_timelineValue++;
-        AddSignalSemaphore(m_timelineSemaphore, timelineValue, signalStage);
+        AddSignalSemaphore(m_timelineSemaphore, ++m_timelineValue, signalStage);
 
         TL::Vector<VkCommandBufferSubmitInfo> commandBufferSubmitInfos{m_device->GetCurrentFrame()->GetAllocator()};
         for (auto commandList : commandLists)
@@ -139,24 +138,24 @@ namespace RHI::Vulkan
             });
         }
 
-        VkSubmitInfo2 submitInfo2 = {
+        VkSubmitInfo2 submitInfo = {
             .sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
             .pNext                    = nullptr,
             .flags                    = {},
-            .waitSemaphoreInfoCount   = static_cast<uint32_t>(m_waitSemaphores.size()),
+            .waitSemaphoreInfoCount   = (uint32_t)m_waitSemaphores.size(),
             .pWaitSemaphoreInfos      = m_waitSemaphores.data(),
-            .commandBufferInfoCount   = static_cast<uint32_t>(commandBufferSubmitInfos.size()),
+            .commandBufferInfoCount   = (uint32_t)commandBufferSubmitInfos.size(),
             .pCommandBufferInfos      = commandBufferSubmitInfos.data(),
-            .signalSemaphoreInfoCount = static_cast<uint32_t>(m_signalSemaphores.size()),
+            .signalSemaphoreInfoCount = (uint32_t)m_signalSemaphores.size(),
             .pSignalSemaphoreInfos    = m_signalSemaphores.data(),
         };
-        result = vkQueueSubmit2(m_queue, 1, &submitInfo2, VK_NULL_HANDLE);
-        TL_ASSERT(result == VK_SUCCESS);
+        result = vkQueueSubmit2(m_queue, 1, &submitInfo, VK_NULL_HANDLE);
+        TL_ASSERT(result);
 
         m_waitSemaphores.clear();
         m_signalSemaphores.clear();
 
-        return timelineValue;
+        return m_timelineValue;
     }
 
 } // namespace RHI::Vulkan

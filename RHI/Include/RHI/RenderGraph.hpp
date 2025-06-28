@@ -224,19 +224,21 @@ namespace RHI
         void Execute(CommandList& commandList);
 
     private:
-        RenderGraph*                   m_renderGraph;
         const char*                    m_name;
         PassType                       m_type;
+        RenderGraph*                   m_renderGraph;
         PassSetupCallback              m_setupCallback;
         PassExecuteCallback            m_executeCallback;
+
         uint32_t                       m_dependencyLevelIndex;
         uint32_t                       m_indexInUnorderedList;
         uint32_t                       m_executionQueueIndex;
+        TL::Set<uint32_t>              m_producers;
 
         TL::Vector<RGImageDependency>  m_imageDependencies;
         TL::Vector<RGBufferDependency> m_bufferDependencies;
-        TL::Set<uint32_t>              m_producers;
 
+        // Graphics pass specific
         struct GfxPassInfo
         {
             GfxPassInfo(TL::IAllocator& allocator)
@@ -258,7 +260,6 @@ namespace RHI
                 : memoryBarriers(allocator)
                 , imageBarriers(allocator)
                 , bufferBarriers(allocator)
-
             {
             }
 
@@ -315,66 +316,63 @@ namespace RHI
         friend RenderGraphBuilder;
         friend RenderGraphContext;
 
-        class DependencyLevel
-        {
-        public:
-            DependencyLevel(TL::IAllocator& allocator, uint32_t m_index = 0)
-                : m_levelIndex(m_index)
-                , m_passes(allocator)
-            {
-            }
-
-            void                    AddPass(RGPass* pass) { m_passes.push_back(pass); }
-
-            TL::Span<RGPass* const> GetPasses() const { return m_passes; }
-
-            uint32_t                m_levelIndex;
-
-        private:
-            TL::Vector<RGPass*> m_passes;
-        };
-
     public:
         RenderGraph();
         ~RenderGraph();
 
         /// @brief Initializes the render graph.
-        TL_MAYBE_UNUSED ResultCode  Init(Device* device, const RenderGraphCreateInfo& ci);
+        TL_MAYBE_UNUSED ResultCode Init(Device* device, const RenderGraphCreateInfo& ci);
 
         /// @brief Shutdown the render graph.
-        void                        Shutdown();
+        void                       Shutdown();
 
-        void                        Debug_CaptureNextFrame();
+        /// @brief Capture next rendered frame.
+        void                       Debug_CaptureNextFrame();
 
-        void                        BeginFrame(ImageSize2D frameSize);
-        void                        EndFrame();
+        /// @brief Prints graph debug information to console.
+        void                       Dump();
+
+        /// @brief Begins a frame recording.
+        void                       BeginFrame(ImageSize2D frameSize);
+
+        /// @brief Ends frame recording.
+        void                       EndFrame();
 
         /// @brief Imports a swapchain image into the render graph.
-        TL_NODISCARD RGImage*       ImportSwapchain(const char* name, Swapchain& swapchain, Format format);
+        TL_NODISCARD RGImage*      ImportSwapchain(const char* name, Swapchain& swapchain, Format format);
 
         /// @brief Imports an image into the render graph.
-        TL_NODISCARD RGImage*       ImportImage(const char* name, Handle<Image> image, Format format);
+        TL_NODISCARD RGImage*      ImportImage(const char* name, Handle<Image> image, Format format);
 
         /// @brief Imports a buffer into the render graph.
-        TL_NODISCARD RGBuffer*      ImportBuffer(const char* name, Handle<Buffer> buffer);
+        TL_NODISCARD RGBuffer*     ImportBuffer(const char* name, Handle<Buffer> buffer);
 
         /// @brief Creates a transient image in the render graph.
-        TL_NODISCARD RGImage*       CreateImage(const char* name, ImageType type, ImageSize3D size, Format format, uint32_t mipLevels = 1, uint32_t arrayCount = 1, SampleCount samples = SampleCount::Samples1);
+        TL_NODISCARD RGImage*      CreateImage(const char* name, ImageType type, ImageSize3D size, Format format, uint32_t mipLevels = 1, uint32_t arrayCount = 1, SampleCount samples = SampleCount::Samples1);
 
         /// @brief Creates a transient render target image in the render graph.
-        TL_NODISCARD RGImage*       CreateRenderTarget(const char* name, ImageSize2D size, Format format, uint32_t mipLevels = 1, uint32_t arrayCount = 1, SampleCount samples = SampleCount::Samples1);
+        TL_NODISCARD RGImage*      CreateRenderTarget(const char* name, ImageSize2D size, Format format, uint32_t mipLevels = 1, uint32_t arrayCount = 1, SampleCount samples = SampleCount::Samples1);
 
         /// @brief Creates a transient buffer in the render graph.
-        TL_NODISCARD RGBuffer*      CreateBuffer(const char* name, size_t size);
+        TL_NODISCARD RGBuffer*     CreateBuffer(const char* name, size_t size);
 
         /// @brief Adds a pass to the render graph.
-        TL_MAYBE_UNUSED RGPass*     AddPass(const PassCreateInfo& createInfo);
+        TL_MAYBE_UNUSED RGPass*    AddPass(const PassCreateInfo& createInfo);
 
-        void                        Dump();
-
+        /// @brief Returns the graph primary frame size.
+        [[deprecated("This function was deprecated to support multi swapchain setup, instead you graph should be able to deduce input size based on attachment sizes")]]
         TL_NODISCARD ImageSize2D    GetFrameSize() const;
+
+        /// @brief Returns render graph resource's handle.
         TL_NODISCARD Handle<Image>  GetImageHandle(RGImage* handle) const;
         TL_NODISCARD Handle<Buffer> GetBufferHandle(RGBuffer* handle) const;
+
+    private:
+        // Bind group stuff
+
+        /// Gets or creates a new bind group with provided resources.
+        Handle<BindGroup> AllocateBindGroup(Handle<BindGroupLayout> layout, const BindGroupUpdateInfo& updateInfo);
+
 
     private:
         RGFrameImage*   CreateFrameImage(const char* name);
@@ -385,6 +383,8 @@ namespace RHI
 
         Frame*          m_activeFrame;
         TL::IAllocator& GetFrameAllocator();
+
+    private:
 
     private:
         bool CheckDependency(const RGPass* producer, const RGPass* consumer) const;
@@ -411,7 +411,30 @@ namespace RHI
             bool debug_triggerNextFrameCapture : 1;
         } m_state;
 
+        struct DependencyLevel
+        {
+            DependencyLevel(TL::IAllocator& allocator, uint32_t m_index = 0)
+                : m_levelIndex(m_index)
+                , m_passes(allocator)
+            {
+            }
+
+            void AddPass(RGPass* pass)
+            {
+                m_passes.push_back(pass);
+            }
+
+            TL::Span<RGPass* const> GetPasses() const
+            {
+                return m_passes;
+            }
+
+            uint32_t            m_levelIndex;
+            TL::Vector<RGPass*> m_passes;
+        };
+
         Device*                               m_device;
+
         TL::Ptr<RenderGraphResourcePool>      m_resourcePool;
         ImageSize2D                           m_frameSize;
         TL::Arena                             m_arena;

@@ -32,16 +32,19 @@ namespace RHI::Vulkan
 
         inline uint64_t GetTimelineValue() const { return m_timelineValue; }
 
-        void WaitIdle() const;
-        bool WaitTimeline(uint64_t timelineValue, uint64_t duration = UINT64_MAX);
-
+        void Wait() const;
+        bool Wait(uint64_t timelineValue, uint64_t duration = UINT64_MAX);
 
         void AddWaitSemaphore(VkSemaphore semaphore, uint64_t value, VkPipelineStageFlags2 stageMask);
+
+        inline void AddWaitSemaphore(VkSemaphore semaphore, VkPipelineStageFlags2 stageMask) { AddWaitSemaphore(semaphore, 0, stageMask); }
+
         void AddSignalSemaphore(VkSemaphore semaphore, uint64_t value, VkPipelineStageFlags2 stageMask);
 
-        void BeginLabel(const char* name);
-        void EndLabel();
+        inline void AddSignalSemaphore(VkSemaphore semaphore, VkPipelineStageFlags2 stageMask) { AddSignalSemaphore(semaphore, 0, stageMask); }
 
+        void     BeginLabel(const char* name);
+        void     EndLabel();
         uint64_t Submit(TL::Span<ICommandList* const> commandLists, VkPipelineStageFlags2 signalStage);
 
     private:

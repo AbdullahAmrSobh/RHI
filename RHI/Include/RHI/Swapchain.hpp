@@ -56,14 +56,14 @@ namespace RHI
     /// @brief Structure containing the capabilities of a presentation surface
     struct SurfaceCapabilities
     {
-        ImageSize2D                     minImageSize;
-        ImageSize2D                     maxImageSize;
-        uint32_t                        minImageCount;
-        uint32_t                        maxImageCount;
-        TL::Flags<ImageUsage>           usages;       ///< Supported image usage flags for the surface
-        TL::Flags<SwapchainPresentMode> presentModes; ///< List of supported presentation modes
-        TL::Flags<SwapchainAlphaMode>   alphaModes;   ///< List of supported alpha compositing modes
-        TL::Vector<Format>              formats;      ///< List of supported image formats
+        ImageSize2D                     minImageSize;  ///<
+        ImageSize2D                     maxImageSize;  ///<
+        uint32_t                        minImageCount; ///<
+        uint32_t                        maxImageCount; ///<
+        TL::Flags<ImageUsage>           usages;        ///< Supported image usage flags for the surface
+        TL::Flags<SwapchainPresentMode> presentModes;  ///< List of supported presentation modes
+        TL::Flags<SwapchainAlphaMode>   alphaModes;    ///< List of supported alpha compositing modes
+        TL::Vector<Format>              formats;       ///< List of supported image formats
     };
 
     /// @brief Swapchain object which is an interface between the API and a presentation surface.

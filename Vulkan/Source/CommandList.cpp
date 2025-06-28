@@ -226,9 +226,12 @@ namespace RHI::Vulkan
         if (barriers.empty() && imageBarriers.empty() && bufferBarriers.empty())
             return;
 
-        TL::Vector<VkMemoryBarrier2>       vmemoryBarriers{m_device->GetTempAllocator()};
+        TL::Vector<VkMemoryBarrier2> vmemoryBarriers{m_device->GetTempAllocator()};
+        vmemoryBarriers.reserve(barriers.size());
         TL::Vector<VkBufferMemoryBarrier2> vbufferBarriers{m_device->GetTempAllocator()};
-        TL::Vector<VkImageMemoryBarrier2>  vimageBarriers{m_device->GetTempAllocator()};
+        vbufferBarriers.reserve(imageBarriers.size());
+        TL::Vector<VkImageMemoryBarrier2> vimageBarriers{m_device->GetTempAllocator()};
+        vimageBarriers.reserve(bufferBarriers.size());
 
         for (auto barrier : barriers)
         {

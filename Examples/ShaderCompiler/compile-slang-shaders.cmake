@@ -1,4 +1,4 @@
-function(compile_slang_shaders)
+function(compile_slang_shaders2)
     # Parse the input arguments
     cmake_parse_arguments(
         SLANG_SHADER
@@ -20,7 +20,7 @@ function(compile_slang_shaders)
     endforeach()
 
     # Use slangc from the Vulkan SDK
-    set(SLANGC_EXECUTABLE "$ENV{VULKAN_SDK}/bin/slangc${CMAKE_EXECUTABLE_SUFFIX}")
+    set(SHADER_COMPILER $<TARGET_FILE:ShaderCompiler>)
     set(SPIRV_LINK_EXECUTABLE "$ENV{VULKAN_SDK}/bin/spirv-link${CMAKE_EXECUTABLE_SUFFIX}")
 
     # Initialize list to store output files
@@ -33,21 +33,15 @@ function(compile_slang_shaders)
 
         add_custom_command(
             OUTPUT ${OUTPUT_PATH}
-            COMMAND ${SLANGC_EXECUTABLE}
+            COMMAND ${SHADER_COMPILER}
             # -g3 # fixme: WebGPU fails to compile shader module with this flag!
             ${SLANG_SHADER_INCLUDE_FLAGS}
-                    -o ${OUTPUT_PATH}
-                    -matrix-layout-row-major
+                    -output ${OUTPUT_PATH}
                     -entry ${ENTRY_POINT}
                     -stage ${STAGE_SUFFIX}
                     -target spirv
-                    # -emit-spirv-directly
-                    -profile sm_5_1
-                    -fvk-use-entrypoint-name
-                    -capability spirv_1_3
-                    ${SHADER_PATH}
-                    -reflection-json ${OUTPUT_PATH}.json
-            DEPENDS ${SLANGC_EXECUTABLE} ${SHADER_PATH} ${SLANG_SHADER_DEPENDENCIES}
+                    -shader ${SHADER_PATH}
+            DEPENDS $<TARGET_FILE:ShaderCompiler> ${SHADER_PATH} ${SLANG_SHADER_DEPENDENCIES}
             COMMENT "Compiling ${STAGE_SUFFIX} shader: ${SHADER_PATH}..."
         )
 

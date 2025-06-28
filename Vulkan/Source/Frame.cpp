@@ -59,10 +59,7 @@ namespace RHI::Vulkan
 
         {
             ZoneScopedN("Frame: Wait for frame ready");
-
-            vkDeviceWaitIdle(m_device->m_device);
-            auto timeoutDuration = 10_tl_s;
-            bool timeout         = gfxQueue->WaitTimeline(m_timeline, timeoutDuration.count());
+            bool timeout         = gfxQueue->Wait(m_timeline, UINT64_MAX);
             m_timeline           = gfxQueue->GetTimelineValue();
             TL_ASSERT(timeout != false);
         }
@@ -172,7 +169,7 @@ namespace RHI::Vulkan
 
         if (submitInfo.signalPresent == true)
         {
-            queue->AddSignalSemaphore(m_presentFrameSemaphore, 0, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
+            queue->AddSignalSemaphore(m_presentFrameSemaphore, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
         }
 
         auto commandLists = TL::Span{(ICommandList**)submitInfo.commandLists.data(), submitInfo.commandLists.size()};
