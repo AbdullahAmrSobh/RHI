@@ -3,6 +3,8 @@
 #include "PipelineLibrary.hpp"
 #include "RendererImpl/DeferredRenderer.hpp"
 
+#include <RHI/ShaderUtils.inl>
+
 #include <TL/Defer.hpp>
 
 #include <glm/glm.hpp>
@@ -325,5 +327,27 @@ namespace Engine
         }
         return it->second;
     }
+
+    // RHI::Handle<RHI::BindGroupLayout> LoadGroupLayout(RHI::Device& device)
+    // {
+
+    // }
+
+    // DeserializedLayouts LoadPipelineLayout(RHI::Device& device, RHI::Shader::PipelineLayoutsReflectionBlob& layouts)
+    // {
+    //     for (auto group : layouts.GetGroups())
+    //     {
+
+    //     }
+    // }
+
+    // RHI::ShaderModule* LoadShaderModuleFromFile(RHI::Device& device, const RHI::Shader::Spirv& module)
+    // {
+    //     RHI::ShaderModuleCreateInfo ci
+    //     {
+    //         .code = module.GetCode(),
+    //     };
+    //     return device.CreateShaderModule(ci);
+    // };
 
 } // namespace Engine

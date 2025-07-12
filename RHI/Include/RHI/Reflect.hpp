@@ -4,6 +4,52 @@
 
 namespace RHI::Debug
 {
+    inline static TL::String ToString(TL::Flags<RHI::Access> access)
+    {
+        if (access == RHI::Access::ReadWrite) return "ReadWrite";
+        else if (access == RHI::Access::Read) return "Read";
+        else if (access == RHI::Access::Write) return "Write";
+        else return "None";
+    }
+
+    inline static TL::String ToString(TL::Flags<RHI::ShaderStage> stages)
+    {
+        TL::String result;
+        bool       first = true;
+
+        auto       append = [&](const char* name)
+        {
+            if (!first) result += " | ";
+            result += name;
+            first = false;
+        };
+
+        if (stages == RHI::ShaderStage::None)
+            return "ShaderStage::None";
+        else if ((stages & RHI::ShaderStage::AllStages) == RHI::ShaderStage::AllStages)
+            append("ShaderStage::AllStages");
+        else if ((stages & RHI::ShaderStage::AllGraphics) == RHI::ShaderStage::AllGraphics)
+            append("ShaderStage::AllGraphics");
+        else
+        {
+            if (stages & RHI::ShaderStage::Vertex) append("ShaderStage::Vertex");
+            if (stages & RHI::ShaderStage::Pixel) append("ShaderStage::Pixel");
+            if (stages & RHI::ShaderStage::Compute) append("ShaderStage::Compute");
+            if (stages & RHI::ShaderStage::Hull) append("ShaderStage::Hull");
+            if (stages & RHI::ShaderStage::Domain) append("ShaderStage::Domain");
+            if (stages & RHI::ShaderStage::RayGen) append("ShaderStage::RayGen");
+            if (stages & RHI::ShaderStage::RayIntersect) append("ShaderStage::RayIntersect");
+            if (stages & RHI::ShaderStage::RayAnyHit) append("ShaderStage::RayAnyHit");
+            if (stages & RHI::ShaderStage::RayClosestHit) append("ShaderStage::RayClosestHit");
+            if (stages & RHI::ShaderStage::RayMiss) append("ShaderStage::RayMiss");
+            if (stages & RHI::ShaderStage::RayCallable) append("ShaderStage::RayCallable");
+            if (stages & RHI::ShaderStage::Mesh) append("ShaderStage::Mesh");
+            if (stages & RHI::ShaderStage::Amplification) append("ShaderStage::Amplification");
+        }
+
+        return result;
+    }
+
     inline static const char* ToString(Format format)
     {
         switch (format)
@@ -95,7 +141,7 @@ namespace RHI::Debug
         case BindingType::BufferView:           return "BindingType::BufferView";
         case BindingType::StorageBufferView:    return "BindingType::StorageBufferView";
         // case BindingType::Count:                return "BindingType::Count";
-        default:                return "BindingType::Count";
+        default:                                return "BindingType::Count";
         }
     }
 
@@ -545,41 +591,40 @@ namespace RHI::Debug
     }
 }; // namespace RHI::Debug
 
-#ifdef __cpp_lib_format
+#include <format>
 
-    #include <format>
+#define RHI_DEFINE_ENUM_FORMATTER(RHI_TYPE)                                          \
+    namespace std                                                                    \
+    {                                                                                \
+        template<>                                                                   \
+        struct formatter<RHI_TYPE> : formatter<TL::String>                       \
+        {                                                                            \
+            auto format(RHI_TYPE e, format_context& ctx) const                       \
+            {                                                                        \
+                return formatter<const char*>::format(RHI::Debug::ToString(e), ctx); \
+            }                                                                        \
+        }                                                                            \
+    }
 
-    // Macro to define std::formatter for enum types using ToString
-    #define RHI_DEFINE_ENUM_FORMATTER(EnumType)                                           \
-        template<>                                                                        \
-        struct std::formatter<EnumType> : std::formatter<const char*>                     \
-        {                                                                                 \
-            auto format(EnumType e, format_context& ctx) const                            \
-            {                                                                             \
-                return std::formatter<const char*>::format(RHI::Debug::ToString(e), ctx); \
-            }                                                                             \
-        }
-
-RHI_DEFINE_ENUM_FORMATTER(RHI::BindingType);
-RHI_DEFINE_ENUM_FORMATTER(RHI::ShaderStage);
-RHI_DEFINE_ENUM_FORMATTER(RHI::BufferUsage);
-RHI_DEFINE_ENUM_FORMATTER(RHI::IndexType);
-RHI_DEFINE_ENUM_FORMATTER(RHI::ImageUsage);
-RHI_DEFINE_ENUM_FORMATTER(RHI::ImageType);
-RHI_DEFINE_ENUM_FORMATTER(RHI::ImageViewType);
-RHI_DEFINE_ENUM_FORMATTER(RHI::ImageAspect);
-RHI_DEFINE_ENUM_FORMATTER(RHI::ComponentSwizzle);
-RHI_DEFINE_ENUM_FORMATTER(RHI::PipelineVertexInputRate);
-RHI_DEFINE_ENUM_FORMATTER(RHI::PipelineRasterizerStateCullMode);
-RHI_DEFINE_ENUM_FORMATTER(RHI::PipelineRasterizerStateFillMode);
-RHI_DEFINE_ENUM_FORMATTER(RHI::PipelineTopologyMode);
-RHI_DEFINE_ENUM_FORMATTER(RHI::PipelineRasterizerStateFrontFace);
-RHI_DEFINE_ENUM_FORMATTER(RHI::BlendFactor);
-RHI_DEFINE_ENUM_FORMATTER(RHI::BlendEquation);
-RHI_DEFINE_ENUM_FORMATTER(RHI::ColorWriteMask);
-RHI_DEFINE_ENUM_FORMATTER(RHI::SampleCount);
-RHI_DEFINE_ENUM_FORMATTER(RHI::SamplerFilter);
-RHI_DEFINE_ENUM_FORMATTER(RHI::SamplerAddressMode);
-RHI_DEFINE_ENUM_FORMATTER(RHI::CompareOperator);
-
-#endif
+//
+// RHI_DEFINE_ENUM_FORMATTER(RHI::BindingType);
+// RHI_DEFINE_ENUM_FORMATTER(RHI::ShaderStage);
+// RHI_DEFINE_ENUM_FORMATTER(RHI::BufferUsage);
+// RHI_DEFINE_ENUM_FORMATTER(RHI::IndexType);
+// RHI_DEFINE_ENUM_FORMATTER(RHI::ImageUsage);
+// RHI_DEFINE_ENUM_FORMATTER(RHI::ImageType);
+// RHI_DEFINE_ENUM_FORMATTER(RHI::ImageViewType);
+// RHI_DEFINE_ENUM_FORMATTER(RHI::ImageAspect);
+// RHI_DEFINE_ENUM_FORMATTER(RHI::ComponentSwizzle);
+// RHI_DEFINE_ENUM_FORMATTER(RHI::PipelineVertexInputRate);
+// RHI_DEFINE_ENUM_FORMATTER(RHI::PipelineRasterizerStateCullMode);
+// RHI_DEFINE_ENUM_FORMATTER(RHI::PipelineRasterizerStateFillMode);
+// RHI_DEFINE_ENUM_FORMATTER(RHI::PipelineTopologyMode);
+// RHI_DEFINE_ENUM_FORMATTER(RHI::PipelineRasterizerStateFrontFace);
+// RHI_DEFINE_ENUM_FORMATTER(RHI::BlendFactor);
+// RHI_DEFINE_ENUM_FORMATTER(RHI::BlendEquation);
+// RHI_DEFINE_ENUM_FORMATTER(RHI::ColorWriteMask);
+// RHI_DEFINE_ENUM_FORMATTER(RHI::SampleCount);
+// RHI_DEFINE_ENUM_FORMATTER(RHI::SamplerFilter);
+// RHI_DEFINE_ENUM_FORMATTER(RHI::SamplerAddressMode);
+// RHI_DEFINE_ENUM_FORMATTER(RHI::CompareOperator);

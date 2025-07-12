@@ -1,12 +1,13 @@
 import ShaderBindingTable;
 
-// struct GBufferInputs
-// {
-//     GPU::SceneView sceneView;
-//     StructuredBuffer<float4x4> transforms;
-//     [[bindless]] Texture2D bindlessTextures[];
-// };
-// ParameterBlock<GBufferInput> shaderInputs;
+struct GBufferInputs
+{
+    GPU::SceneView sceneView;
+    StructuredBuffer<float4x4> transforms;
+    SamplerState defaultSampler;
+    Texture2D bindlessTextures[];
+};
+ParameterBlock<GBufferInput> shaderInputs;
 
 struct UGBVertexInput
 {
@@ -52,7 +53,8 @@ GBufferInput VSMain(UGBVertexInput input)
 }
 
 [[shader("fragment")]]
-GBufferOutput PSMain(GBufferInput input)
+GBufferOutput PSMain(GBufferInput input,
+ uniform GBufferInput inputs)
 {
     GBufferOutput output;
     output.wsPosition = float4(input.wsPosition, 1.0);
