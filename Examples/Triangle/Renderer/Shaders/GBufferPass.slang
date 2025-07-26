@@ -62,3 +62,13 @@ GBufferOutput PSMain(GBufferInput input,
     output.material = input.uv;
     return output;
 }
+
+
+[[shader("compute"), numthreads(1, 1, 1)]]
+void CSMain(
+    uint3 threadId : SV_DispatchThreadID,
+    ParameterBlock<GBufferInputs> gbuff
+)
+{
+
+}
