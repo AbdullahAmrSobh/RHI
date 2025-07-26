@@ -23,15 +23,17 @@ set(RHI_DEVELOPER_MODE ${PROJECT_IS_TOP_LEVEL})
 
 option(TRACY_ENABLE       "Enable Tracy profiler"          ${PROJECT_IS_TOP_LEVEL})
 option(RHI_DEBUG          "Enable RHI debug mode"          ${PROJECT_IS_TOP_LEVEL})
+
 if(NOT EMSCRIPTEN)
     option(RHI_BACKEND_D3D12  "Enable RHI DirectX 12 Backend"  OFF) # TODO: Should enable later
     option(RHI_BACKEND_VULKAN "Enable RHI Vulkan 1.3 Backend"  ON)
-    option(RHI_BACKEND_WEBGPU "Enable RHI WebGPU Backend"      ON)
+    option(RHI_BACKEND_WEBGPU "Enable RHI WebGPU Backend"      OFF)
 else()
     set(RHI_BACKEND_D3D12 OFF)
     set(RHI_BACKEND_VULKAN OFF)
     set(RHI_BACKEND_WEBGPU ON)
 endif()
+
 option(RHI_BUILD_EXAMPLES "Build examples tree."           ${PROJECT_IS_TOP_LEVEL})
 
 if(TRACY_ENABLE)

@@ -65,6 +65,12 @@ namespace RHI::Shader
         {
         }
 
+        TL::StringView                          GetName() const { return m_name; }
+
+        void                                    AddBinding(const ShaderBindingReflection& binding) { m_bindings.push_back(binding); }
+
+        TL::Span<const ShaderBindingReflection> GetBindings() const { return m_bindings; }
+
         template<typename Archive>
         void Serialize(Archive& archive) const
         {
@@ -77,33 +83,6 @@ namespace RHI::Shader
         {
             TL::Decode(archive, m_name);
             TL::Decode(archive, m_bindings);
-        }
-
-        // TL::String ToString() const
-        // {
-        //     TL::String s = std::format("\"name\": \"{}\", \"bindings\": [\n", m_name);
-        //     for (size_t i = 0; i < m_bindings.size(); ++i)
-        //     {
-        //         s += std::format("    {}", m_bindings[i].ToString());
-        //         if (i + 1 < m_bindings.size())
-        //             s += ",\n";
-        //         else
-        //             s += "\n";
-        //     }
-        //     s += "] }";
-        //     return s;
-        // }
-
-        TL::StringView                            GetName() const;
-
-        void AddBinding(const ShaderBindingReflection& binding)
-        {
-            m_bindings.push_back(binding);
-        }
-
-        TL::Span<const ShaderBindingReflection> GetBindings() const
-        {
-            return m_bindings;
         }
 
     private:

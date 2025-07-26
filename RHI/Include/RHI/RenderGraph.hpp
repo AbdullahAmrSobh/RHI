@@ -373,33 +373,27 @@ namespace RHI
         /// Gets or creates a new bind group with provided resources.
         Handle<BindGroup> AllocateBindGroup(Handle<BindGroupLayout> layout, const BindGroupUpdateInfo& updateInfo);
 
+        RGFrameImage*     CreateFrameImage(const char* name);
+        RGFrameBuffer*    CreateFrameBuffer(const char* name);
 
-    private:
-        RGFrameImage*   CreateFrameImage(const char* name);
-        RGFrameBuffer*  CreateFrameBuffer(const char* name);
+        RGImage*          EmplacePassImage(RGFrameImage* frameImage, RGPass* pass, ImageBarrierState initialState);
+        RGBuffer*         EmplacePassBuffer(RGFrameBuffer* frameBuffer, RGPass* pass, BufferBarrierState initialState);
 
-        RGImage*        EmplacePassImage(RGFrameImage* frameImage, RGPass* pass, ImageBarrierState initialState);
-        RGBuffer*       EmplacePassBuffer(RGFrameBuffer* frameBuffer, RGPass* pass, BufferBarrierState initialState);
+        TL::IAllocator&   GetFrameAllocator();
 
-        Frame*          m_activeFrame;
-        TL::IAllocator& GetFrameAllocator();
+        bool              CheckDependency(const RGPass* producer, const RGPass* consumer) const;
+        void              AddDependency(const RGPass* producer, RGPass* consumer);
 
-    private:
+        void              Compile();
+        void              TopologicalSort(const TL::Vector<TL::Vector<uint32_t>>& adjacencyLists, TL::Vector<uint32_t>& sortedPasses);
+        void              DepthFirstSearch(uint32_t nodeIndex, TL::Vector<bool>& visited, TL::Vector<bool>& onStack, bool& isCyclic, const TL::Vector<TL::Vector<uint32_t>>& adjacencyLists, TL::Vector<uint32_t>& sortedPasses);
 
-    private:
-        bool CheckDependency(const RGPass* producer, const RGPass* consumer) const;
-        void AddDependency(const RGPass* producer, RGPass* consumer);
+        void              CreateTransientResources();
 
-        void Compile();
-        void TopologicalSort(const TL::Vector<TL::Vector<uint32_t>>& adjacencyLists, TL::Vector<uint32_t>& sortedPasses);
-        void DepthFirstSearch(uint32_t nodeIndex, TL::Vector<bool>& visited, TL::Vector<bool>& onStack, bool& isCyclic, const TL::Vector<TL::Vector<uint32_t>>& adjacencyLists, TL::Vector<uint32_t>& sortedPasses);
+        void              PassBuildBarriers();
 
-        void CreateTransientResources();
-
-        void PassBuildBarriers();
-
-        void Execute();
-        void ExecutePass(RGPass* pass, CommandList* commandList);
+        void              Execute();
+        void              ExecutePass(RGPass* pass, CommandList* commandList);
 
     private:
         struct State
@@ -434,7 +428,7 @@ namespace RHI
         };
 
         Device*                               m_device;
-
+        Frame*                                m_activeFrame;
         TL::Ptr<RenderGraphResourcePool>      m_resourcePool;
         ImageSize2D                           m_frameSize;
         TL::Arena                             m_arena;

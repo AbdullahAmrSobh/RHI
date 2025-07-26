@@ -71,5 +71,4 @@ namespace neon
         RHI::Device*      m_device;
         RHI::RenderGraph* m_renderGraph;
     };
-
 }; // namespace neon

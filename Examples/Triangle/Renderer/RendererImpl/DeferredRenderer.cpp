@@ -50,7 +50,7 @@ namespace Engine
 
     ResultCode GBufferPass::Init(RHI::Device* device)
     {
-        m_bindGroup = device->CreateBindGroup({.name = "GBuffer-BindGroup", .layout = PipelineLibrary::ptr->GetBindGroupLayout()});
+        m_bindGroup = device->CreateBindGroup({ "GBuffer-BindGroup", PipelineLibrary::ptr->GetBindGroupLayout()});
         return ResultCode::Success;
     }
 
