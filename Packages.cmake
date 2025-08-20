@@ -107,7 +107,7 @@ if(RHI_BUILD_EXAMPLES)
 	CPMAddPackage(
 		NAME           glm
 		GIT_REPOSITORY git@github.com:g-truc/glm.git
-		GIT_TAG        0.9.9.8
+		GIT_TAG        1.0.1
 		OPTIONS
 			"GLM_CONFIG_CLIP_CONTROL ON"
 			"GLM_CLIP_CONTROL_ZO_BIT ON"
