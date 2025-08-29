@@ -312,7 +312,7 @@ namespace RHI::WebGPU
     void IDevice::Destroy##HandleType(Handle<HandleType> handle)               \
     {                                                                          \
         ZoneScoped;                                                            \
-        TL_ASSERT(handle != NullHandle, "Cannot call destroy on null handle"); \
+        TL_ASSERT(handle != nullptr, "Cannot call destroy on null handle"); \
         OwnerField.Destroy(handle, this);                                      \
     }
 

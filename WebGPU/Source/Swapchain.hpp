@@ -16,7 +16,7 @@ namespace RHI::WebGPU
         ~ISwapchain();
 
         ResultCode Init(IDevice* device, const SwapchainCreateInfo& createInfo);
-        void       Shutdown();
+        void       Shutdown(IDevice* device);
 
         SurfaceCapabilities GetSurfaceCapabilities() override;
         ResultCode          Resize(ImageSize2D size) override;
@@ -26,8 +26,8 @@ namespace RHI::WebGPU
     private:
         ResultCode SwapBackTextures();
 
-        IDevice*               m_device = nullptr;
-        WGPUSurface           m_surface = nullptr;
+        IDevice*               m_device  = nullptr;
+        WGPUSurface            m_surface = nullptr;
         SwapchainConfigureInfo m_configuration;
     };
 } // namespace RHI::WebGPU

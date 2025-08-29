@@ -307,7 +307,7 @@ namespace RHI::Vulkan
         }
     }
 
-    DescriptorSetWriter::DescriptorSetWriter(IDevice* device, VkDescriptorSet descriptorSet, Handle<IBindGroupLayout> layout, TL::IAllocator& allocator)
+    DescriptorSetWriter::DescriptorSetWriter(IDevice* device, VkDescriptorSet descriptorSet, IBindGroupLayout* layout, TL::IAllocator& allocator)
         : m_device(device)
         , m_allocator(&allocator)
         , m_bindGroupLayout(layout)
@@ -320,9 +320,9 @@ namespace RHI::Vulkan
     {
     }
 
-    VkWriteDescriptorSet DescriptorSetWriter::BindImages(uint32_t dstBinding, uint32_t dstArray, TL::Span<const Handle<Image>> images)
+    VkWriteDescriptorSet DescriptorSetWriter::BindImages(uint32_t dstBinding, uint32_t dstArray, TL::Span<Image* const> images)
     {
-        auto layout        = m_device->Get(m_bindGroupLayout);
+        auto layout        = (IBindGroupLayout*)(m_bindGroupLayout);
         auto shaderBinding = layout->GetBinding(dstBinding);
         auto isStorage     = shaderBinding.type == BindingType::StorageImage;
         auto hasWrite      = (shaderBinding.access & Access::Write) == Access::Write;
@@ -334,7 +334,7 @@ namespace RHI::Vulkan
         descriptorImageInfos.reserve(images.size());
         for (auto imageHandle : images)
         {
-            auto                  image          = m_device->m_imageOwner.Get(imageHandle);
+            auto                  image          = (IImage*)(imageHandle);
             VkDescriptorImageInfo descriptorInfo = {
                 .sampler     = VK_NULL_HANDLE,
                 .imageView   = image->viewHandle,
@@ -356,13 +356,13 @@ namespace RHI::Vulkan
         return m_writes.emplace_back(writeInfo);
     }
 
-    VkWriteDescriptorSet DescriptorSetWriter::BindSamplers(uint32_t dstBinding, uint32_t dstArray, TL::Span<const Handle<Sampler>> samplers)
+    VkWriteDescriptorSet DescriptorSetWriter::BindSamplers(uint32_t dstBinding, uint32_t dstArray, TL::Span<Sampler* const> samplers)
     {
         TL::Vector<VkDescriptorImageInfo>& descriptorImageInfos = m_sampler.emplace_back(*m_allocator);
         descriptorImageInfos.reserve(samplers.size());
         for (auto samplerHandle : samplers)
         {
-            auto sampler = m_device->m_samplerOwner.Get(samplerHandle);
+            auto sampler = (ISampler*)(samplerHandle);
 
             VkDescriptorImageInfo descriptorInfo = {
                 .sampler     = sampler->handle,
@@ -387,7 +387,7 @@ namespace RHI::Vulkan
 
     VkWriteDescriptorSet DescriptorSetWriter::BindBuffers(uint32_t dstBinding, uint32_t dstArray, TL::Span<const BufferBindingInfo> buffers)
     {
-        auto layout         = m_device->Get(m_bindGroupLayout);
+        auto layout         = (IBindGroupLayout*)(m_bindGroupLayout);
         auto shaderBinding  = layout->GetBinding(dstBinding);
         auto descriptorType = ConvertDescriptorType(shaderBinding.type);
 
@@ -395,7 +395,7 @@ namespace RHI::Vulkan
         descriptorBufferInfos.reserve(buffers.size());
         for (const auto& b : buffers)
         {
-            auto buffer = m_device->m_bufferOwner.Get(b.buffer);
+            auto buffer = (IBuffer*)(b.buffer);
             auto stride = shaderBinding.bufferStride;
             if (stride == 0)
                 stride = VK_WHOLE_SIZE;
@@ -600,9 +600,9 @@ namespace RHI::Vulkan
     ResultCode IBindGroup::Init(IDevice* device, const BindGroupCreateInfo& createInfo)
     {
         auto allocator    = device->m_bindGroupAllocator.get();
-        auto layoutObject = device->m_bindGroupLayoutsOwner.Get(createInfo.layout);
+        auto layoutObject = (IBindGroupLayout*)(createInfo.layout);
 
-        this->bindGroupLayout = createInfo.layout;
+        this->bindGroupLayout = (IBindGroupLayout*)createInfo.layout;
 
         return allocator->InitBindGroup(this, layoutObject, createInfo.bindlessArrayCount);
     }
@@ -656,7 +656,7 @@ namespace RHI::Vulkan
         return ConvertResult(result);
     }
 
-    void IShaderModule::Shutdown()
+    void IShaderModule::Shutdown(IDevice* device)
     {
         vkDestroyShaderModule(m_device->m_device, m_shaderModule, nullptr);
     }
@@ -671,7 +671,7 @@ namespace RHI::Vulkan
         uint32_t                          index = 0;
         for (auto bindGroupLayout : createInfo.layouts)
         {
-            auto layout = device->m_bindGroupLayoutsOwner.Get(bindGroupLayout);
+            auto layout = (IBindGroupLayout*)(bindGroupLayout);
             descriptorSetLayouts.push_back(layout->handle);
             this->bindGroupLayouts[index++] = bindGroupLayout;
         }
@@ -891,8 +891,7 @@ namespace RHI::Vulkan
             .stencilAttachmentFormat = ConvertFormat(createInfo.renderTargetLayout.stencilAttachmentFormat),
         };
 
-        auto pipelineLayout = device->Get(createInfo.layout);
-        this->layout        = createInfo.layout;
+        this->layout = (IPipelineLayout*)createInfo.layout;
 
         VkGraphicsPipelineCreateInfo graphicsPipelineCI{
             .sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
@@ -909,7 +908,7 @@ namespace RHI::Vulkan
             .pDepthStencilState  = &depthStencilStateCI,
             .pColorBlendState    = &colorBlendStateCI,
             .pDynamicState       = &dynamicStateCI,
-            .layout              = pipelineLayout->handle,
+            .layout              = this->layout->handle,
             .renderPass          = VK_NULL_HANDLE,
             .subpass             = 0,
             .basePipelineHandle  = VK_NULL_HANDLE,
@@ -942,8 +941,7 @@ namespace RHI::Vulkan
     {
         auto shaderModule = static_cast<IShaderModule*>(createInfo.shaderModule);
 
-        auto pipelineLayout = device->m_pipelineLayoutOwner.Get(createInfo.layout);
-        this->layout        = createInfo.layout;
+        this->layout = (IPipelineLayout*)createInfo.layout;
 
         VkPipelineShaderStageCreateInfo shaderStageCI{
             .sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -960,7 +958,7 @@ namespace RHI::Vulkan
             .pNext              = nullptr,
             .flags              = {},
             .stage              = shaderStageCI,
-            .layout             = pipelineLayout->handle,
+            .layout             = layout->handle,
             .basePipelineHandle = VK_NULL_HANDLE,
             .basePipelineIndex  = 0,
         };

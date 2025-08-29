@@ -91,11 +91,11 @@ namespace RHI
     /// @brief Contains information needed to copy a buffer.
     struct BufferCopyInfo
     {
-        Handle<Buffer> srcBuffer = NullHandle; ///< Handle to the source buffer.
-        size_t         srcOffset = 0;          ///< Offset in the source buffer.
-        Handle<Buffer> dstBuffer = NullHandle; ///< Handle to the destination buffer.
-        size_t         dstOffset = 0;          ///< Offset in the destination buffer.
-        size_t         size      = SIZE_MAX;   ///< Size of the data to copy.
+        Buffer* srcBuffer = nullptr;  ///< Pointer to the source buffer.
+        size_t  srcOffset = 0;        ///< Offset in the source buffer.
+        Buffer* dstBuffer = nullptr;  ///< Pointer to the destination buffer.
+        size_t  dstOffset = 0;        ///< Offset in the destination buffer.
+        size_t  size      = SIZE_MAX; ///< Size of the data to copy.
     };
 
     /// @brief Defines subresource layers of an image.
@@ -110,34 +110,34 @@ namespace RHI
     /// @brief Contains information needed to copy an image.
     struct ImageCopyInfo
     {
-        Handle<Image>          srcImage       = NullHandle; ///< Handle to the source image.
-        ImageSubresourceLayers srcSubresource = {};         ///< Subresource layers of the source image.
-        ImageOffset3D          srcOffset      = {};         ///< Offset in the source image.
-        ImageSize3D            srcSize        = {};         ///< Size of the source image region.
-        Handle<Image>          dstImage       = NullHandle; ///< Handle to the destination image.
-        ImageSubresourceLayers dstSubresource = {};         ///< Subresource layers of the destination image.
-        ImageOffset3D          dstOffset      = {};         ///< Offset in the destination image.
+        Image*                 srcImage       = nullptr; ///< Pointer to the source image.
+        ImageSubresourceLayers srcSubresource = {};      ///< Subresource layers of the source image.
+        ImageOffset3D          srcOffset      = {};      ///< Offset in the source image.
+        ImageSize3D            srcSize        = {};      ///< Size of the source image region.
+        Image*                 dstImage       = nullptr; ///< Pointer to the destination image.
+        ImageSubresourceLayers dstSubresource = {};      ///< Subresource layers of the destination image.
+        ImageOffset3D          dstOffset      = {};      ///< Offset in the destination image.
     };
 
     /// @brief Contains information needed to copy between a buffer and an image.
     struct BufferImageCopyInfo
     {
-        Handle<Image>          image         = NullHandle; ///< Handle to the image.
-        ImageSubresourceLayers subresource   = {};         ///< Subresource layers of the image.
-        ImageSize3D            imageSize     = {};         ///< Size of the image.
-        ImageOffset3D          imageOffset   = {};         ///< Offset in the image.
-        Handle<Buffer>         buffer        = NullHandle; ///< Handle to the buffer.
-        size_t                 bufferOffset  = 0;          ///< Offset in the buffer.
-        size_t                 bufferSize    = SIZE_MAX;   ///< Size of the buffer region.
-        uint32_t               bytesPerRow   = 0;          ///< Number of bytes per row in the buffer.
-        uint32_t               bytesPerImage = 0;          ///< Number of bytes per image in the buffer.
+        Image*                 image         = nullptr;  ///< Pointer to the image.
+        ImageSubresourceLayers subresource   = {};       ///< Subresource layers of the image.
+        ImageSize3D            imageSize     = {};       ///< Size of the image.
+        ImageOffset3D          imageOffset   = {};       ///< Offset in the image.
+        Buffer*                buffer        = nullptr;  ///< Pointer to the buffer.
+        size_t                 bufferOffset  = 0;        ///< Offset in the buffer.
+        size_t                 bufferSize    = SIZE_MAX; ///< Size of the buffer region.
+        uint32_t               bytesPerRow   = 0;        ///< Number of bytes per row in the buffer.
+        uint32_t               bytesPerImage = 0;        ///< Number of bytes per image in the buffer.
     };
 
     /// @brief Contains information about binding a bind group.
     struct BindGroupBindingInfo
     {
-        Handle<BindGroup>        bindGroup      = NullHandle; ///< Handle to the bind group.
-        TL::Span<const uint32_t> dynamicOffsets = {};         ///< Span of dynamic offsets for the bind group.
+        BindGroup*               bindGroup      = nullptr; ///< Pointer to the bind group.
+        TL::Span<const uint32_t> dynamicOffsets = {};      ///< Span of dynamic offsets for the bind group.
     };
 
     /// @brief Parameters for drawing primitives.
@@ -199,14 +199,14 @@ namespace RHI
 
     struct ImageBarrierInfo
     {
-        Handle<Image>     image    = NullHandle;
+        Image*            image    = nullptr;
         ImageBarrierState srcState = {};
         ImageBarrierState dstState = {};
     };
 
     struct BufferBarrierInfo
     {
-        Handle<Buffer>     buffer    = NullHandle;
+        Buffer*            buffer    = nullptr;
         BufferBarrierState srcState  = {};
         BufferBarrierState dstState  = {};
         BufferSubregion    subregion = {};
@@ -219,17 +219,17 @@ namespace RHI
 
     struct ColorAttachment
     {
-        Handle<Image>  view        = NullHandle;
+        Image*         view        = nullptr;
         LoadOperation  loadOp      = LoadOperation::Discard;
         StoreOperation storeOp     = StoreOperation::Store;
         ClearValue     clearValue  = {.f32 = {0.0f, 0.0f, 0.0f, 1.0f}};
         ResolveMode    resolveMode = ResolveMode::None;
-        Handle<Image>  resolveView = NullHandle;
+        Image*         resolveView = nullptr;
     };
 
     struct DepthStencilAttachment
     {
-        Handle<Image>     view           = NullHandle;
+        Image*            view           = nullptr;
         LoadOperation     depthLoadOp    = LoadOperation::Discard;
         StoreOperation    depthStoreOp   = StoreOperation::Store;
         LoadOperation     stencilLoadOp  = LoadOperation::Discard;
@@ -239,10 +239,10 @@ namespace RHI
 
     struct RenderPassBeginInfo
     {
-        ImageSize2D                          size;
-        ImageOffset2D                        offset;
-        TL::Span<const ColorAttachment>      colorAttachments;
-        TL::Optional<DepthStencilAttachment> depthStencilAttachment;
+        ImageSize2D                     size;
+        ImageOffset2D                   offset;
+        TL::Span<const ColorAttachment> colorAttachments;
+        DepthStencilAttachment          depthStencilAttachment;
     };
 
     /// @brief Contains information for creating a command list.
@@ -305,14 +305,14 @@ namespace RHI
         virtual void Execute(TL::Span<const CommandList*> commandLists) = 0;
 
         /// @brief Binds a graphics pipeline.
-        /// @param pipelineState Handle to the graphics pipeline.
+        /// @param pipelineState Pointer to the graphics pipeline.
         /// @param bindGroups Span of bind group binding information.
-        virtual void BindGraphicsPipeline(Handle<GraphicsPipeline> pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups) = 0;
+        virtual void BindGraphicsPipeline(GraphicsPipeline* pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups) = 0;
 
         /// @brief Binds a compute pipeline.
-        /// @param pipelineState Handle to the compute pipeline.
+        /// @param pipelineState Pointer to the compute pipeline.
         /// @param bindGroups Span of bind group binding information.
-        virtual void BindComputePipeline(Handle<ComputePipeline> pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups) = 0;
+        virtual void BindComputePipeline(ComputePipeline* pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups) = 0;
 
         /// @brief Sets the viewport for rendering.
         /// @param viewport The viewport to set.

@@ -49,11 +49,11 @@ namespace RHI::Vulkan
         VulkanResult result = CreateSurface(*m_device, createInfo, m_surface);
         if (!result)
         {
-            Shutdown();
+            Shutdown(device);
             return result;
         }
 
-        m_imageHandle = m_device->m_imageOwner.Emplace(IImage{});
+        m_imageHandle = TL::Construct<IImage>();
 
         for (uint32_t i = 0; i < MaxImageCount; ++i)
         {
@@ -68,7 +68,7 @@ namespace RHI::Vulkan
         return result;
     }
 
-    void ISwapchain::Shutdown()
+    void ISwapchain::Shutdown(IDevice* device)
     {
         auto frame = (IFrame*)m_device->GetCurrentFrame();
 
@@ -107,7 +107,7 @@ namespace RHI::Vulkan
             m_images[i] = VK_NULL_HANDLE;
         }
 
-        m_device->m_imageOwner.Release(m_imageHandle);
+        TL::Release(m_imageHandle);
     }
 
     uint32_t ISwapchain::GetImagesCount() const
@@ -115,7 +115,7 @@ namespace RHI::Vulkan
         return m_configuration.imageCount;
     }
 
-    Handle<Image> ISwapchain::GetImage() const
+    Image* ISwapchain::GetImage() const
     {
         return m_imageHandle;
     }
@@ -364,8 +364,7 @@ namespace RHI::Vulkan
         auto updateCurrentImage = [this]()
         {
             auto [width, height] = m_configuration.size;
-            auto image           = m_device->m_imageOwner.Get(m_imageHandle);
-            if (image)
+            if (auto image = (IImage*)(m_imageHandle))
             {
                 image->handle     = m_images[m_imageIndex];
                 image->viewHandle = m_imageViews[m_imageIndex];

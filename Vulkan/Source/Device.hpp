@@ -59,56 +59,36 @@ namespace RHI::Vulkan
         void WaitIdle();
 
         // Interface Implementation
-        uint64_t                 GetNativeHandle(NativeHandleType type, uint64_t handle) override;
-        Swapchain*               CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
-        void                     DestroySwapchain(Swapchain* swapchain) override;
-        ShaderModule*            CreateShaderModule(const ShaderModuleCreateInfo& createInfo) override;
-        void                     DestroyShaderModule(ShaderModule* shaderModule) override;
-        Handle<BindGroupLayout>  CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) override;
-        void                     DestroyBindGroupLayout(Handle<BindGroupLayout> handle) override;
-        Handle<BindGroup>        CreateBindGroup(const BindGroupCreateInfo& createInfo) override;
-        void                     DestroyBindGroup(Handle<BindGroup> handle) override;
-        void                     UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo) override;
-        Handle<Buffer>           CreateBuffer(const BufferCreateInfo& createInfo) override;
-        void                     DestroyBuffer(Handle<Buffer> handle) override;
-        Handle<Image>            CreateImage(const ImageCreateInfo& createInfo) override;
-        Handle<Image>            CreateImageView(const ImageViewCreateInfo& createInfo) override;
-        void                     DestroyImage(Handle<Image> handle) override;
-        Handle<Sampler>          CreateSampler(const SamplerCreateInfo& createInfo) override;
-        void                     DestroySampler(Handle<Sampler> handle) override;
-        Handle<PipelineLayout>   CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo) override;
-        void                     DestroyPipelineLayout(Handle<PipelineLayout> handle) override;
-        Handle<GraphicsPipeline> CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) override;
-        void                     DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle) override;
-        Handle<ComputePipeline>  CreateComputePipeline(const ComputePipelineCreateInfo& createInfo) override;
-        void                     DestroyComputePipeline(Handle<ComputePipeline> handle) override;
-        ResultCode               SetFramesInFlightCount(uint32_t count) override;
-        Frame*                   GetCurrentFrame() override;
+        uint64_t          GetNativeHandle(NativeHandleType type, uint64_t handle) override;
+        Swapchain*        CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
+        void              DestroySwapchain(Swapchain* swapchain) override;
+        ShaderModule*     CreateShaderModule(const ShaderModuleCreateInfo& createInfo) override;
+        void              DestroyShaderModule(ShaderModule* shaderModule) override;
+        BindGroupLayout*  CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) override;
+        void              DestroyBindGroupLayout(BindGroupLayout* handle) override;
+        BindGroup*        CreateBindGroup(const BindGroupCreateInfo& createInfo) override;
+        void              DestroyBindGroup(BindGroup* handle) override;
+        void              UpdateBindGroup(BindGroup* handle, const BindGroupUpdateInfo& updateInfo) override;
+        Buffer*           CreateBuffer(const BufferCreateInfo& createInfo) override;
+        void              DestroyBuffer(Buffer* handle) override;
+        Image*            CreateImage(const ImageCreateInfo& createInfo) override;
+        Image*            CreateImageView(const ImageViewCreateInfo& createInfo) override;
+        void              DestroyImage(Image* handle) override;
+        Sampler*          CreateSampler(const SamplerCreateInfo& createInfo) override;
+        void              DestroySampler(Sampler* handle) override;
+        PipelineLayout*   CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo) override;
+        void              DestroyPipelineLayout(PipelineLayout* handle) override;
+        GraphicsPipeline* CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) override;
+        void              DestroyGraphicsPipeline(GraphicsPipeline* handle) override;
+        ComputePipeline*  CreateComputePipeline(const ComputePipelineCreateInfo& createInfo) override;
+        void              DestroyComputePipeline(ComputePipeline* handle) override;
+        ResultCode        SetFramesInFlightCount(uint32_t count) override;
+        Frame*            GetCurrentFrame() override;
 
         /// Frame
         TL::IAllocator& GetTempAllocator();
 
         ///
-
-        // clang-format off
-        IImage*                  Get(Handle<IImage> handle)                { return m_imageOwner.Get(handle); }
-        void                     Release(Handle<IImage> handle)            { return m_imageOwner.Release(handle); }
-        IBuffer*                 Get(Handle<IBuffer> handle)               { return m_bufferOwner.Get(handle); }
-        void                     Release(Handle<IBuffer> handle)           { return m_bufferOwner.Release(handle); }
-        IBindGroupLayout*        Get(Handle<IBindGroupLayout> handle)      { return m_bindGroupLayoutsOwner.Get(handle); }
-        void                     Release(Handle<IBindGroupLayout> handle)  { return m_bindGroupLayoutsOwner.Release(handle); }
-        IBindGroup*              Get(Handle<IBindGroup> handle)            { return m_bindGroupOwner.Get(handle); }
-        void                     Release(Handle<IBindGroup> handle)        { return m_bindGroupOwner.Release(handle); }
-        IPipelineLayout*         Get(Handle<IPipelineLayout> handle)       { return m_pipelineLayoutOwner.Get(handle); }
-        void                     Release(Handle<IPipelineLayout> handle)   { return m_pipelineLayoutOwner.Release(handle); }
-        IGraphicsPipeline*       Get(Handle<IGraphicsPipeline> handle)     { return m_graphicsPipelineOwner.Get(handle); }
-        void                     Release(Handle<IGraphicsPipeline> handle) { return m_graphicsPipelineOwner.Release(handle); }
-        IComputePipeline*        Get(Handle<IComputePipeline> handle)      { return m_computePipelineOwner.Get(handle); }
-        void                     Release(Handle<IComputePipeline> handle)  { return m_computePipelineOwner.Release(handle); }
-        ISampler*                Get(Handle<ISampler> handle)              { return m_samplerOwner.Get(handle); }
-        void                     Release(Handle<ISampler> handle)          { return m_samplerOwner.Release(handle); }
-
-        // clang-format on
 
     public:
         // Vulkan instance and core objects
@@ -120,16 +100,6 @@ namespace RHI::Vulkan
         VulkanAPI                m_pfn;
         TL::Ptr<Renderdoc>       m_renderdoc;
 
-        // Resource pools
-        HandlePool<IImage>            m_imageOwner;
-        HandlePool<IBuffer>           m_bufferOwner;
-        HandlePool<IBindGroupLayout>  m_bindGroupLayoutsOwner;
-        HandlePool<IBindGroup>        m_bindGroupOwner;
-        HandlePool<IPipelineLayout>   m_pipelineLayoutOwner;
-        HandlePool<IGraphicsPipeline> m_graphicsPipelineOwner;
-        HandlePool<IComputePipeline>  m_computePipelineOwner;
-        HandlePool<ISampler>          m_samplerOwner;
-
         // Queue and allocator management
         IQueue                            m_queue[AsyncQueuesCount];
         TL::Ptr<class DeleteQueue>        m_destroyQueue;
@@ -138,7 +108,7 @@ namespace RHI::Vulkan
         // Frames in flight
         uint32_t                          m_currentFrameIndex;
         TL::Vector<TL::Ptr<class IFrame>> m_framesInFlight;
-        IFrame* m_activeFrame;
+        IFrame*                           m_activeFrame;
     };
 
     template<typename T>

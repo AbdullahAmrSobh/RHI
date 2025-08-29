@@ -59,8 +59,8 @@ namespace RHI::Vulkan
 
         {
             ZoneScopedN("Frame: Wait for frame ready");
-            bool timeout         = gfxQueue->Wait(m_timeline, UINT64_MAX);
-            m_timeline           = gfxQueue->GetTimelineValue();
+            bool timeout = gfxQueue->Wait(m_timeline, UINT64_MAX);
+            m_timeline   = gfxQueue->GetTimelineValue();
             TL_ASSERT(timeout != false);
         }
 
@@ -178,9 +178,9 @@ namespace RHI::Vulkan
         return queue->GetTimelineValue();
     }
 
-    void IFrame::BufferWrite(Handle<Buffer> bufferHandle, size_t offset, TL::Block block)
+    void IFrame::BufferWrite(Buffer* _buffer, size_t offset, TL::Block block)
     {
-        auto buffer = m_device->Get(bufferHandle);
+        auto buffer = (IBuffer*)_buffer;
 
         if (auto ptr = buffer->Map(m_device))
         {
@@ -197,7 +197,7 @@ namespace RHI::Vulkan
         TL_UNREACHABLE();
     }
 
-    void IFrame::ImageWrite(Handle<Image> imageHandle, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block)
+    void IFrame::ImageWrite(Image* imageHandle, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block)
     {
         auto [stagingBuffer, range] = AllocateStaging(block);
         TL_ASSERT(range.size >= block.size, "Unexpected error");
@@ -206,7 +206,7 @@ namespace RHI::Vulkan
         auto queue = m_device->GetDeviceQueue(QueueType::Transfer);
 
         {
-            auto                    image = m_device->m_imageOwner.Get(imageHandle);
+            auto                    image = (IImage*)imageHandle;
             VkImageSubresourceRange subresourceRange{
                 .aspectMask     = image->SelectImageAspect(ImageAspect::All),
                 .baseMipLevel   = mipLevel,
@@ -332,7 +332,7 @@ namespace RHI::Vulkan
         };
 
         auto bufferHandle = m_device->CreateBuffer(stagingBufferCI);
-        auto buffer       = m_device->m_bufferOwner.Get(bufferHandle);
+        auto buffer       = (IBuffer*)(bufferHandle);
 
         m_pages.push_back(
             Page{
@@ -354,7 +354,7 @@ namespace RHI::Vulkan
     StagingBufferBlock StagingBuffer::Allocate(TL::Block block)
     {
         auto stagingBlock = Allocate(block.size);
-        auto buffer       = m_device->m_bufferOwner.Get(stagingBlock.buffer);
+        auto buffer       = (IBuffer*)(stagingBlock.buffer);
         auto ptr          = (char*)buffer->Map(m_device) + stagingBlock.subregion.offset;
         memcpy(ptr, block.ptr, block.size);
         return stagingBlock;

@@ -115,42 +115,42 @@ int main(int argc, const char* argv[])
     auto vertexShaderModule = LoadShaderModule(device, "Shaders/Triangle.vertex.spv");
     auto fragmentShader     = LoadShaderModule(device, "Shaders/Triangle.fragment.spv");
 
-    RHI::Handle<RHI::Buffer> uniformBuffer = device->CreateBuffer({
+    RHI::Buffer* uniformBuffer = device->CreateBuffer({
         .name       = "default-UniformBuffer",
         .hostMapped = true,
         .usageFlags = RHI::BufferUsage::Uniform,
         .byteSize   = sizeof(CBSceneView),
     });
 
-    RHI::Handle<RHI::Buffer> ib = device->CreateBuffer({
+    RHI::Buffer* ib = device->CreateBuffer({
         .name       = "default-IndexBuffer",
         .hostMapped = true,
         .usageFlags = RHI::BufferUsage::Index | RHI::BufferUsage::Storage,
         .byteSize   = 1024 * 1024 * sizeof(uint32_t),
     });
 
-    RHI::Handle<RHI::Buffer> positionsIB = device->CreateBuffer({
+    RHI::Buffer* positionsIB = device->CreateBuffer({
         .name       = "default-VertexBuffer",
         .hostMapped = true,
         .usageFlags = RHI::BufferUsage::Vertex | RHI::BufferUsage::Storage,
         .byteSize   = 1024 * 1024 * sizeof(uint32_t),
     });
 
-    RHI::Handle<RHI::Buffer> normalsIB = device->CreateBuffer({
+    RHI::Buffer* normalsIB = device->CreateBuffer({
         .name       = "default-NormalBuffer",
         .hostMapped = true,
         .usageFlags = RHI::BufferUsage::Vertex | RHI::BufferUsage::Storage,
         .byteSize   = 1024 * 1024 * sizeof(uint32_t),
     });
 
-    RHI::Handle<RHI::Buffer> texcoordsIB = device->CreateBuffer({
+    RHI::Buffer* texcoordsIB = device->CreateBuffer({
         .name       = "default-TexcoordBuffer",
         .hostMapped = true,
         .usageFlags = RHI::BufferUsage::Vertex | RHI::BufferUsage::Storage,
         .byteSize   = 1024 * 1024 * sizeof(uint32_t),
     });
 
-    RHI::Handle<RHI::Sampler> sampler = device->CreateSampler({
+    RHI::Sampler* sampler = device->CreateSampler({
         .name = "default-Sampler",
     });
 

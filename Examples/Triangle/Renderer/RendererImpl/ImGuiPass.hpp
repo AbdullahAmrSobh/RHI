@@ -35,20 +35,20 @@ namespace Engine
 
         uint32_t m_maxViewportsCount;
 
-        RHI::Handle<RHI::BindGroup>        m_bindGroup;
-        RHI::Handle<RHI::PipelineLayout>   m_pipelineLayout;
-        RHI::Handle<RHI::GraphicsPipeline> m_pipeline;
+        RHI::BindGroup*        m_bindGroup;
+        RHI::PipelineLayout*   m_pipelineLayout;
+        RHI::GraphicsPipeline* m_pipeline;
 
-        RHI::Handle<RHI::Buffer>  m_uniformBuffer;
-        RHI::Handle<RHI::Sampler> m_sampler;
-        RHI::Handle<RHI::Image>   m_image;
+        RHI::Buffer*  m_uniformBuffer;
+        RHI::Sampler* m_sampler;
+        RHI::Image*   m_image;
 
         ImGuiContextHook         m_newframeHook{};
         size_t                   m_vertexBufferSize   = 0;
         size_t                   m_indexBufferSize    = 0;
         size_t                   m_vertexBufferOffset = 0;
         size_t                   m_indexBufferOffset  = 0;
-        RHI::Handle<RHI::Buffer> m_vertexBuffer;
-        RHI::Handle<RHI::Buffer> m_indexBuffer;
+        RHI::Buffer* m_vertexBuffer;
+        RHI::Buffer* m_indexBuffer;
     };
 } // namespace Engine

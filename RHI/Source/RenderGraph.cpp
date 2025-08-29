@@ -314,7 +314,7 @@ namespace RHI
         m_bufferCache.clear();
     }
 
-    Handle<Image> RenderGraphResourcePool::InitTransientImage(RGFrameImage* rgImage)
+    Image* RenderGraphResourcePool::InitTransientImage(RGFrameImage* rgImage)
     {
         auto it = m_imageCache.find(rgImage->name);
 
@@ -352,7 +352,7 @@ namespace RHI
         return handle;
     }
 
-    Handle<Buffer> RenderGraphResourcePool::InitTransientBuffer(RGFrameBuffer* rgBuffer)
+    Buffer* RenderGraphResourcePool::InitTransientBuffer(RGFrameBuffer* rgBuffer)
     {
         auto it = m_bufferCache.find(rgBuffer->name);
 
@@ -494,7 +494,7 @@ namespace RHI
         return EmplacePassImage(frameResource, nullptr, {});
     }
 
-    RGImage* RenderGraph::ImportImage(const char* name, Handle<Image> image, Format format)
+    RGImage* RenderGraph::ImportImage(const char* name, Image* image, Format format)
     {
         TL_ASSERT(m_state.frameRecording == true);
         auto frameImage        = TL::ConstructFrom<RGFrameImage>(&m_arena);
@@ -506,7 +506,7 @@ namespace RHI
         return EmplacePassImage(frameImage, nullptr, {});
     }
 
-    RGBuffer* RenderGraph::ImportBuffer(const char* name, Handle<Buffer> buffer)
+    RGBuffer* RenderGraph::ImportBuffer(const char* name, Buffer* buffer)
     {
         TL_ASSERT(m_state.frameRecording == true);
         auto frameBuffer        = TL::ConstructFrom<RGFrameBuffer>(&m_arena);
@@ -575,14 +575,14 @@ namespace RHI
         return m_frameSize;
     }
 
-    Handle<Image> RenderGraph::GetImageHandle(RGImage* image) const
+    Image* RenderGraph::GetImageHandle(RGImage* image) const
     {
         TL_ASSERT(m_state.compiled);
         TL_ASSERT(image->m_frameResource->handle);
         return image->m_frameResource->handle;
     }
 
-    Handle<Buffer> RenderGraph::GetBufferHandle(RGBuffer* buffer) const
+    Buffer* RenderGraph::GetBufferHandle(RGBuffer* buffer) const
     {
         TL_ASSERT(m_state.compiled);
         TL_ASSERT(buffer->m_frameResource->handle);
@@ -875,8 +875,8 @@ namespace RHI
 
         if (pass->m_type == PassType::Graphics)
         {
-            TL::Vector<ColorAttachment>          attachments(GetFrameAllocator());
-            TL::Optional<DepthStencilAttachment> dsAttachment;
+            TL::Vector<ColorAttachment> attachments(GetFrameAllocator());
+            DepthStencilAttachment      dsAttachment{};
             attachments.reserve(pass->m_gfxPassInfo.m_colorAttachments.size());
 
             // auto [passWidth, passHeight]    = pass->m_gfxPassInfo.m_size;
@@ -891,7 +891,7 @@ namespace RHI
                 }
 
                 auto color   = GetImageHandle(attachment.color);
-                auto resolve = attachment.resolveView ? GetImageHandle(attachment.resolveView) : NullHandle;
+                auto resolve = attachment.resolveView ? GetImageHandle(attachment.resolveView) : nullptr;
                 attachments.push_back({
                     .view        = color,
                     .loadOp      = attachment.loadOp,
@@ -901,19 +901,16 @@ namespace RHI
                     .resolveView = resolve,
                 });
             }
-            if (auto attachment = pass->m_gfxPassInfo.m_depthStencilAttachment)
+            if (auto attachment = pass->m_gfxPassInfo.m_depthStencilAttachment.depthStencil)
             {
-                auto [dsWidth, dsHeight, dsDepth] = attachment->depthStencil->m_frameResource->size;
+                auto [dsWidth, dsHeight, dsDepth] = attachment->m_frameResource->size;
                 // TL_ASSERT(dsWidth == passWidth && dsHeight == passHeight);
-                auto depthStencil                 = GetImageHandle(attachment->depthStencil);
-                dsAttachment                      = DepthStencilAttachment{
-                                         .view           = depthStencil,
-                                         .depthLoadOp    = attachment->depthLoadOp,
-                                         .depthStoreOp   = attachment->depthStoreOp,
-                                         .stencilLoadOp  = attachment->stencilLoadOp,
-                                         .stencilStoreOp = attachment->stencilStoreOp,
-                                         .clearValue     = attachment->clearValue,
-                };
+                dsAttachment.view                 = GetImageHandle(attachment);
+                dsAttachment.depthLoadOp          = pass->m_gfxPassInfo.m_depthStencilAttachment.depthLoadOp;
+                dsAttachment.depthStoreOp         = pass->m_gfxPassInfo.m_depthStencilAttachment.depthStoreOp;
+                dsAttachment.stencilLoadOp        = pass->m_gfxPassInfo.m_depthStencilAttachment.stencilLoadOp;
+                dsAttachment.stencilStoreOp       = pass->m_gfxPassInfo.m_depthStencilAttachment.stencilStoreOp;
+                dsAttachment.clearValue           = pass->m_gfxPassInfo.m_depthStencilAttachment.clearValue;
             }
             RenderPassBeginInfo beginInfo{
                 // .name                   = pass->GetName(),

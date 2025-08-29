@@ -576,7 +576,7 @@ namespace RHI::Vulkan
         m_framesInFlight.resize(2);
         for (auto& frame : m_framesInFlight)
         {
-            frame      = TL::CreatePtr<IFrame>();
+            frame           = TL::CreatePtr<IFrame>();
             auto resultCode = frame->Init(this);
             if (IsError(resultCode)) return resultCode;
         }
@@ -600,22 +600,22 @@ namespace RHI::Vulkan
             m_renderdoc->Shutdown();
         }
 
-        if (auto count = m_imageOwner.ReportLiveResourcesCount())
-            TL_LOG_WARNNING("Detected {} Image leaked", count);
-        if (auto count = m_bufferOwner.ReportLiveResourcesCount())
-            TL_LOG_WARNNING("Detected {} Buffer leaked", count);
-        if (auto count = m_bindGroupLayoutsOwner.ReportLiveResourcesCount())
-            TL_LOG_WARNNING("Detected {} BindGroupLayout leaked", count);
-        if (auto count = m_bindGroupOwner.ReportLiveResourcesCount())
-            TL_LOG_WARNNING("Detected {} BindGroup leaked", count);
-        if (auto count = m_pipelineLayoutOwner.ReportLiveResourcesCount())
-            TL_LOG_WARNNING("Detected {} PipelineLayout leaked", count);
-        if (auto count = m_graphicsPipelineOwner.ReportLiveResourcesCount())
-            TL_LOG_WARNNING("Detected {} GraphicsPipeline leaked", count);
-        if (auto count = m_computePipelineOwner.ReportLiveResourcesCount())
-            TL_LOG_WARNNING("Detected {} ComputePipeline leaked", count);
-        if (auto count = m_samplerOwner.ReportLiveResourcesCount())
-            TL_LOG_WARNNING("Detected {} Sampler leaked", count);
+        // if (auto count = m_imageOwner.ReportLiveResourcesCount())
+        //     TL_LOG_WARNNING("Detected {} Image leaked", count);
+        // if (auto count = m_bufferOwner.ReportLiveResourcesCount())
+        //     TL_LOG_WARNNING("Detected {} Buffer leaked", count);
+        // if (auto count = m_bindGroupLayoutsOwner.ReportLiveResourcesCount())
+        //     TL_LOG_WARNNING("Detected {} BindGroupLayout leaked", count);
+        // if (auto count = m_bindGroupOwner.ReportLiveResourcesCount())
+        //     TL_LOG_WARNNING("Detected {} BindGroup leaked", count);
+        // if (auto count = m_pipelineLayoutOwner.ReportLiveResourcesCount())
+        //     TL_LOG_WARNNING("Detected {} PipelineLayout leaked", count);
+        // if (auto count = m_graphicsPipelineOwner.ReportLiveResourcesCount())
+        //     TL_LOG_WARNNING("Detected {} GraphicsPipeline leaked", count);
+        // if (auto count = m_computePipelineOwner.ReportLiveResourcesCount())
+        //     TL_LOG_WARNNING("Detected {} ComputePipeline leaked", count);
+        // if (auto count = m_samplerOwner.ReportLiveResourcesCount())
+        //     TL_LOG_WARNNING("Detected {} Sampler leaked", count);
 
         for (auto& frame : m_framesInFlight)
         {
@@ -693,10 +693,10 @@ namespace RHI::Vulkan
         }
     }
 
-    void IDevice::UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo)
+    void IDevice::UpdateBindGroup(BindGroup* handle, const BindGroupUpdateInfo& updateInfo)
     {
         ZoneScoped;
-        auto bindGroup = m_bindGroupOwner.Get(handle);
+        auto bindGroup = (IBindGroup*)(handle);
         bindGroup->Update(this, updateInfo);
     }
 
@@ -723,71 +723,40 @@ namespace RHI::Vulkan
         return m_framesInFlight[m_currentFrameIndex]->GetAllocator();
     }
 
-#define IMPLEMENT_DEVICE_CREATE_METHOD_UNIQUE_WITH_INFO(ResourceType)                       \
+#define IMPL_DEVICE_CREATE_AND_DESTROY(ResourceType)                                        \
     ResourceType* IDevice::Create##ResourceType(const ResourceType##CreateInfo& createInfo) \
     {                                                                                       \
         ZoneScoped;                                                                         \
-        auto handle = new I##ResourceType();                                                \
+        auto handle = TL::Construct<I##ResourceType>();                                     \
         auto result = handle->Init(this, createInfo);                                       \
         TL_ASSERT(IsSuccess(result));                                                       \
         return handle;                                                                      \
+    }                                                                                       \
+    void IDevice::Destroy##ResourceType(ResourceType* _handle)                              \
+    {                                                                                       \
+        ZoneScoped;                                                                         \
+        auto handle = (I##ResourceType*)_handle;                                            \
+        handle->Shutdown(this);                                                             \
+        TL::Destruct(_handle);                                                              \
     }
 
-#define IMPLEMENT_DEVICE_DESTROY_METHOD_UNIQUE(ResourceType)   \
-    void IDevice::Destroy##ResourceType(ResourceType* _handle) \
-    {                                                          \
-        ZoneScoped;                                            \
-        auto handle = (I##ResourceType*)_handle;               \
-        handle->Shutdown();                                    \
-        delete handle;                                         \
-    }
+    IMPL_DEVICE_CREATE_AND_DESTROY(Swapchain);
+    IMPL_DEVICE_CREATE_AND_DESTROY(ShaderModule);
+    IMPL_DEVICE_CREATE_AND_DESTROY(BindGroupLayout);
+    IMPL_DEVICE_CREATE_AND_DESTROY(BindGroup);
+    IMPL_DEVICE_CREATE_AND_DESTROY(PipelineLayout);
+    IMPL_DEVICE_CREATE_AND_DESTROY(GraphicsPipeline);
+    IMPL_DEVICE_CREATE_AND_DESTROY(ComputePipeline);
+    IMPL_DEVICE_CREATE_AND_DESTROY(Sampler);
+    IMPL_DEVICE_CREATE_AND_DESTROY(Image);
+    IMPL_DEVICE_CREATE_AND_DESTROY(Buffer);
 
-#define IMPLEMENT_DEVICE_CREATE_METHOD(HandleType, OwnerField)                               \
-    Handle<HandleType> IDevice::Create##HandleType(const HandleType##CreateInfo& createInfo) \
-    {                                                                                        \
-        ZoneScoped;                                                                          \
-        auto [handle, result] = OwnerField.Create(this, createInfo);                         \
-        TL_ASSERT(IsSuccess(result));                                                        \
-        return handle;                                                                       \
-    }
-
-#define IMPLEMENT_DEVICE_DESTROY_METHOD(HandleType, OwnerField)                \
-    void IDevice::Destroy##HandleType(Handle<HandleType> handle)               \
-    {                                                                          \
-        ZoneScoped;                                                            \
-        TL_ASSERT(handle != NullHandle, "Cannot call destroy on null handle"); \
-        auto resource = Get(handle);                                           \
-        resource->Shutdown(this);                                              \
-        Release(handle);                                                       \
-    }
-
-#define IMPLEMENT_DEVICE_RESOURCE_METHODS(ResourceType) \
-    IMPLEMENT_DEVICE_CREATE_METHOD_UNIQUE(ResourceType) \
-    IMPLEMENT_DEVICE_DESTROY_METHOD_UNIQUE(ResourceType)
-
-#define IMPLEMENT_DISPATCHABLE_TYPES_FUNCTIONS(ResourceType)      \
-    IMPLEMENT_DEVICE_CREATE_METHOD_UNIQUE_WITH_INFO(ResourceType) \
-    IMPLEMENT_DEVICE_DESTROY_METHOD_UNIQUE(ResourceType)
-
-#define IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(HandleType, OwnerField) \
-    IMPLEMENT_DEVICE_CREATE_METHOD(HandleType, OwnerField)                \
-    IMPLEMENT_DEVICE_DESTROY_METHOD(HandleType, OwnerField)
-
-    IMPLEMENT_DISPATCHABLE_TYPES_FUNCTIONS(Swapchain);
-    IMPLEMENT_DISPATCHABLE_TYPES_FUNCTIONS(ShaderModule);
-    IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(BindGroupLayout, m_bindGroupLayoutsOwner);
-    IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(BindGroup, m_bindGroupOwner);
-    IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(PipelineLayout, m_pipelineLayoutOwner);
-    IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(GraphicsPipeline, m_graphicsPipelineOwner);
-    IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(ComputePipeline, m_computePipelineOwner);
-    IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(Sampler, m_samplerOwner);
-    IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(Image, m_imageOwner);
-
-    Handle<Image> IDevice::CreateImageView(TL_MAYBE_UNUSED const ImageViewCreateInfo& createInfo)
+    Image* IDevice::CreateImageView(TL_MAYBE_UNUSED const ImageViewCreateInfo& createInfo)
     {
         TL_UNREACHABLE_MSG("TODO! Implement image views for Vulkan Backend!");
         return {};
     }
 
-    IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(Buffer, m_bufferOwner);
+#undef IMPL_DEVICE_CREATE_AND_DESTROY
+
 } // namespace RHI::Vulkan

@@ -33,14 +33,12 @@ namespace RHI::Vulkan
     VkShaderStageFlags      ConvertShaderStage(TL::Flags<ShaderStage> shaderStageFlags);
     VkDescriptorType        ConvertDescriptorType(BindingType bindingType);
 
-    static constexpr uint32_t MaxShaderBindingsCount = 32;
-
     class DescriptorSetWriter
     {
     public:
-        DescriptorSetWriter(IDevice* device, VkDescriptorSet descriptorSet, Handle<IBindGroupLayout> layout, TL::IAllocator& allocator);
-        VkWriteDescriptorSet BindImages(uint32_t dstBinding, uint32_t dstArray, TL::Span<const Handle<Image>> images);
-        VkWriteDescriptorSet BindSamplers(uint32_t dstBinding, uint32_t dstArray, TL::Span<const Handle<Sampler>> samplers);
+        DescriptorSetWriter(IDevice* device, VkDescriptorSet descriptorSet, IBindGroupLayout* layout, TL::IAllocator& allocator);
+        VkWriteDescriptorSet BindImages(uint32_t dstBinding, uint32_t dstArray, TL::Span<Image* const> images);
+        VkWriteDescriptorSet BindSamplers(uint32_t dstBinding, uint32_t dstArray, TL::Span<Sampler* const> samplers);
         VkWriteDescriptorSet BindBuffers(uint32_t dstBinding, uint32_t dstArray, TL::Span<const BufferBindingInfo> buffers);
 
         TL::Span<const VkWriteDescriptorSet> GetWrites() const { return m_writes; }
@@ -48,7 +46,7 @@ namespace RHI::Vulkan
     private:
         IDevice*                                       m_device;
         TL::IAllocator*                                m_allocator;
-        Handle<BindGroupLayout>                        m_bindGroupLayout;
+        BindGroupLayout*                               m_bindGroupLayout;
         VkDescriptorSet                                m_descriptorSet;
         TL::Vector<TL::Vector<VkDescriptorImageInfo>>  m_images;
         TL::Vector<TL::Vector<VkDescriptorImageInfo>>  m_sampler;
@@ -90,8 +88,8 @@ namespace RHI::Vulkan
 
     struct IBindGroup : BindGroup
     {
-        VkDescriptorSet          descriptorSet;
-        Handle<IBindGroupLayout> bindGroupLayout;
+        VkDescriptorSet   descriptorSet;
+        IBindGroupLayout* bindGroupLayout;
 
         ResultCode Init(IDevice* device, const BindGroupCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
@@ -106,7 +104,7 @@ namespace RHI::Vulkan
         ~IShaderModule();
 
         ResultCode Init(IDevice* device, const ShaderModuleCreateInfo& createInfo);
-        void       Shutdown();
+        void       Shutdown(IDevice* device);
 
     public:
         IDevice*       m_device;
@@ -115,8 +113,8 @@ namespace RHI::Vulkan
 
     struct IPipelineLayout : PipelineLayout
     {
-        VkPipelineLayout        handle;
-        Handle<BindGroupLayout> bindGroupLayouts[4];
+        VkPipelineLayout handle;
+        BindGroupLayout* bindGroupLayouts[4];
 
         ResultCode Init(IDevice* device, const PipelineLayoutCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
@@ -124,8 +122,8 @@ namespace RHI::Vulkan
 
     struct IGraphicsPipeline : GraphicsPipeline
     {
-        VkPipeline              handle;
-        Handle<IPipelineLayout> layout;
+        VkPipeline       handle;
+        IPipelineLayout* layout;
 
         ResultCode Init(IDevice* device, const GraphicsPipelineCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
@@ -133,8 +131,8 @@ namespace RHI::Vulkan
 
     struct IComputePipeline : ComputePipeline
     {
-        VkPipeline              handle;
-        Handle<IPipelineLayout> layout;
+        VkPipeline       handle;
+        IPipelineLayout* layout;
 
         ResultCode Init(IDevice* device, const ComputePipelineCreateInfo& createInfo);
         void       Shutdown(IDevice* device);

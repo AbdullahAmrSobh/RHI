@@ -17,8 +17,8 @@ namespace Engine
             {ShaderNames::Compose,     {{RHI::Format::RGBA8_UNORM}, RHI::Format::Unknown}                                                     },
     };
 
-    inline static RHI::Handle<RHI::GraphicsPipeline>
-    CreateGraphicsPipeline(RHI::Device* device, RHI::Handle<RHI::PipelineLayout> layout, const char* name)
+    inline static RHI::GraphicsPipeline*
+    CreateGraphicsPipeline(RHI::Device* device, RHI::PipelineLayout* layout, const char* name)
     {
         auto vertexShaderPath   = std::format("{}.vertex.spv", name);
         auto fragmentShaderPath = std::format("{}.fragment.spv", name);
@@ -94,7 +94,7 @@ namespace Engine
         return device->CreateGraphicsPipeline(pipelineCI);
     }
 
-    RHI::Handle<RHI::ComputePipeline> CreateComputePipeline(RHI::Device* device, RHI::Handle<RHI::PipelineLayout> layout, const char* name)
+    RHI::ComputePipeline* CreateComputePipeline(RHI::Device* device, RHI::PipelineLayout* layout, const char* name)
     {
         auto computeShaderPath = std::format("{}.compute.spv", name);
         auto computeModule     = LoadShaderModule(device, computeShaderPath.c_str());
@@ -151,7 +151,7 @@ namespace Engine
                          },
         };
         m_bindGroupLayout = m_device->CreateBindGroupLayout(bindGroupLayoutCI);
-        m_pipelineLayout  = m_device->CreatePipelineLayout({"PipelineLayout", m_bindGroupLayout});
+        m_pipelineLayout  = m_device->CreatePipelineLayout({"PipelineLayout", {m_bindGroupLayout}});
 
         m_watcher.subscribe([this](const TL::FileEvent& event)
             {
@@ -293,14 +293,14 @@ namespace Engine
         for (auto [_, pipeline] : m_computePipelines)
             m_device->DestroyComputePipeline(pipeline);
 
-        if (m_pipelineLayout != RHI::NullHandle)
+        if (m_pipelineLayout != nullptr)
             m_device->DestroyPipelineLayout(m_pipelineLayout);
 
-        if (m_bindGroupLayout != RHI::NullHandle)
+        if (m_bindGroupLayout != nullptr)
             m_device->DestroyBindGroupLayout(m_bindGroupLayout);
     }
 
-    RHI::Handle<RHI::GraphicsPipeline> PipelineLibrary::GetGraphicsPipeline(const char* name)
+    RHI::GraphicsPipeline* PipelineLibrary::GetGraphicsPipeline(const char* name)
     {
         auto it = m_graphicsPipelines.find(name);
         if (it == m_graphicsPipelines.end())
@@ -315,7 +315,7 @@ namespace Engine
         return it->second;
     }
 
-    RHI::Handle<RHI::ComputePipeline> PipelineLibrary::GetComputePipeline(const char* name)
+    RHI::ComputePipeline* PipelineLibrary::GetComputePipeline(const char* name)
     {
         auto it = m_computePipelines.find(name);
         if (it == m_computePipelines.end())
@@ -328,7 +328,7 @@ namespace Engine
         return it->second;
     }
 
-    // RHI::Handle<RHI::BindGroupLayout> LoadGroupLayout(RHI::Device& device)
+    // RHI::BindGroupLayout* LoadGroupLayout(RHI::Device& device)
     // {
 
     // }

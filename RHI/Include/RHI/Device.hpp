@@ -1,7 +1,7 @@
 #pragma once
 
 #include "RHI/Export.hpp"
-#include "RHI/Handle.hpp"
+#include "RHI/Common.hpp"
 #include "RHI/Resources.hpp"
 #include "RHI/CommandList.hpp"
 #include "RHI/Swapchain.hpp"
@@ -74,22 +74,22 @@ namespace RHI
 
     struct QueueSubmitInfo
     {
-        TL::Span<CommandList* const>        commandLists       = {};
-        PipelineStage                       signalStage        = {};
-        TL::Span<const QueueWaitInfo>       waitInfos          = {};
-        bool                                signalPresent      = false;
+        TL::Span<CommandList* const>  commandLists  = {};
+        PipelineStage                 signalStage   = {};
+        TL::Span<const QueueWaitInfo> waitInfos     = {};
+        bool                          signalPresent = false;
     };
 
     struct BufferStreamInfo
     {
-        Handle<Buffer> buffer;
-        size_t         offset;
-        TL::Block      block;
+        Buffer*   buffer;
+        size_t    offset;
+        TL::Block block;
     };
 
     struct ImageStreamInfo
     {
-        Handle<Image> image;
+        Image*        image;
         ImageOffset3D offset;
         ImageSize3D   size;
         uint32_t      mipLevel;
@@ -157,10 +157,10 @@ namespace RHI
         virtual uint64_t        QueueSubmit(QueueType queueType, const QueueSubmitInfo& submitInfo) = 0;
 
         /// @brief Schedules a buffer update operation.
-        virtual void            BufferWrite(Handle<Buffer> buffer, size_t offset, TL::Block block) = 0;
+        virtual void            BufferWrite(Buffer* buffer, size_t offset, TL::Block block) = 0;
 
         /// @brief Schedules an image update operation.
-        virtual void            ImageWrite(Handle<Image> image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block) = 0;
+        virtual void            ImageWrite(Image* image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block) = 0;
     };
 
     /// @brief Represents a logical rendering device and provides resource creation and management.
@@ -170,94 +170,94 @@ namespace RHI
         RHI_INTERFACE_BOILERPLATE(Device);
 
         /// @brief Returns the backend type.
-        BackendType                      GetBackend() const { return m_backend; }
+        BackendType               GetBackend() const { return m_backend; }
 
         /// @brief Returns the Renderdoc debug interface, if available.
-        Renderdoc*                       GetDebugRenderdoc() const { return m_renderdoc.get(); }
+        Renderdoc*                GetDebugRenderdoc() const { return m_renderdoc.get(); }
 
         /// @brief Returns device limits.
-        DeviceLimits                     GetLimits() const;
+        DeviceLimits              GetLimits() const;
 
         /// @brief Creates a render graph.
-        RenderGraph*                     CreateRenderGraph(const RenderGraphCreateInfo& createInfo);
+        RenderGraph*              CreateRenderGraph(const RenderGraphCreateInfo& createInfo);
 
         /// @brief Destroys a render graph.
-        void                             DestroyRenderGraph(RenderGraph* renderGraph);
+        void                      DestroyRenderGraph(RenderGraph* renderGraph);
 
         /// @brief Retrieves a native handle for the specified type and object.
-        virtual uint64_t                 GetNativeHandle(NativeHandleType type, uint64_t handle) = 0;
+        virtual uint64_t          GetNativeHandle(NativeHandleType type, uint64_t handle) = 0;
 
         /// @brief Creates a swapchain.
-        virtual Swapchain*               CreateSwapchain(const SwapchainCreateInfo& createInfo) = 0;
+        virtual Swapchain*        CreateSwapchain(const SwapchainCreateInfo& createInfo) = 0;
 
         /// @brief Destroys a swapchain.
-        virtual void                     DestroySwapchain(Swapchain* swapchain) = 0;
+        virtual void              DestroySwapchain(Swapchain* swapchain) = 0;
 
         /// @brief Creates a shader module.
-        virtual ShaderModule*            CreateShaderModule(const ShaderModuleCreateInfo& createInfo) = 0;
+        virtual ShaderModule*     CreateShaderModule(const ShaderModuleCreateInfo& createInfo) = 0;
 
         /// @brief Destroys a shader module.
-        virtual void                     DestroyShaderModule(ShaderModule* shaderModule) = 0;
+        virtual void              DestroyShaderModule(ShaderModule* shaderModule) = 0;
 
         /// @brief Creates a bind group layout.
-        virtual Handle<BindGroupLayout>  CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) = 0;
+        virtual BindGroupLayout*  CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) = 0;
 
         /// @brief Destroys a bind group layout.
-        virtual void                     DestroyBindGroupLayout(Handle<BindGroupLayout> handle) = 0;
+        virtual void              DestroyBindGroupLayout(BindGroupLayout* handle) = 0;
 
         /// @brief Creates a bind group.
-        virtual Handle<BindGroup>        CreateBindGroup(const BindGroupCreateInfo& createInfo) = 0;
+        virtual BindGroup*        CreateBindGroup(const BindGroupCreateInfo& createInfo) = 0;
 
         /// @brief Destroys a bind group.
-        virtual void                     DestroyBindGroup(Handle<BindGroup> handle) = 0;
+        virtual void              DestroyBindGroup(BindGroup* handle) = 0;
 
         /// @brief Updates a bind group.
-        virtual void                     UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo) = 0;
+        virtual void              UpdateBindGroup(BindGroup* handle, const BindGroupUpdateInfo& updateInfo) = 0;
 
         /// @brief Creates a buffer.
-        virtual Handle<Buffer>           CreateBuffer(const BufferCreateInfo& createInfo) = 0;
+        virtual Buffer*           CreateBuffer(const BufferCreateInfo& createInfo) = 0;
 
         /// @brief Destroys a buffer.
-        virtual void                     DestroyBuffer(Handle<Buffer> handle) = 0;
+        virtual void              DestroyBuffer(Buffer* handle) = 0;
 
         /// @brief Creates an image.
-        virtual Handle<Image>            CreateImage(const ImageCreateInfo& createInfo) = 0;
+        virtual Image*            CreateImage(const ImageCreateInfo& createInfo) = 0;
 
         /// @brief Creates an image view.
-        virtual Handle<Image>            CreateImageView(const ImageViewCreateInfo& createInfo) = 0;
+        virtual Image*            CreateImageView(const ImageViewCreateInfo& createInfo) = 0;
 
         /// @brief Destroys an image or image view.
-        virtual void                     DestroyImage(Handle<Image> handle) = 0;
+        virtual void              DestroyImage(Image* handle) = 0;
 
         /// @brief Creates a sampler.
-        virtual Handle<Sampler>          CreateSampler(const SamplerCreateInfo& createInfo) = 0;
+        virtual Sampler*          CreateSampler(const SamplerCreateInfo& createInfo) = 0;
 
         /// @brief Destroys a sampler.
-        virtual void                     DestroySampler(Handle<Sampler> handle) = 0;
+        virtual void              DestroySampler(Sampler* handle) = 0;
 
         /// @brief Creates a pipeline layout.
-        virtual Handle<PipelineLayout>   CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo) = 0;
+        virtual PipelineLayout*   CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo) = 0;
 
         /// @brief Destroys a pipeline layout.
-        virtual void                     DestroyPipelineLayout(Handle<PipelineLayout> handle) = 0;
+        virtual void              DestroyPipelineLayout(PipelineLayout* handle) = 0;
 
         /// @brief Creates a graphics pipeline.
-        virtual Handle<GraphicsPipeline> CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) = 0;
+        virtual GraphicsPipeline* CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) = 0;
 
         /// @brief Destroys a graphics pipeline.
-        virtual void                     DestroyGraphicsPipeline(Handle<GraphicsPipeline> handle) = 0;
+        virtual void              DestroyGraphicsPipeline(GraphicsPipeline* handle) = 0;
 
         /// @brief Creates a compute pipeline.
-        virtual Handle<ComputePipeline>  CreateComputePipeline(const ComputePipelineCreateInfo& createInfo) = 0;
+        virtual ComputePipeline*  CreateComputePipeline(const ComputePipelineCreateInfo& createInfo) = 0;
 
         /// @brief Destroys a compute pipeline.
-        virtual void                     DestroyComputePipeline(Handle<ComputePipeline> handle) = 0;
+        virtual void              DestroyComputePipeline(ComputePipeline* handle) = 0;
 
         /// @brief Sets the number of frames in flight.
-        virtual ResultCode               SetFramesInFlightCount(uint32_t count) = 0;
+        virtual ResultCode        SetFramesInFlightCount(uint32_t count) = 0;
 
         /// @brief Returns the current frame.
-        virtual Frame*                   GetCurrentFrame() = 0;
+        virtual Frame*            GetCurrentFrame() = 0;
 
     protected:
         BackendType           m_backend;   ///< Backend type used by this device.
@@ -265,5 +265,5 @@ namespace RHI
         TL::Ptr<Renderdoc>    m_renderdoc; ///< Optional Renderdoc interface.
     };
 
-    RHI_EXPORT Handle<Image> CreateImageWithContent(Device& device, const ImageCreateInfo& createInfo, TL::Block content);
+    RHI_EXPORT Image* CreateImageWithContent(Device& device, const ImageCreateInfo& createInfo, TL::Block content);
 } // namespace RHI

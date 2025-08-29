@@ -8,7 +8,7 @@
 
 namespace RHI
 {
-    Handle<Image> CreateImageWithContent(Device& device, const ImageCreateInfo& createInfo, TL::Block content)
+    Image* CreateImageWithContent(Device& device, const ImageCreateInfo& createInfo, TL::Block content)
     {
         // auto imageSizeBytes = CalcaulteImageSize(createInfo.format, createInfo.size, createInfo.mipLevels, createInfo.arrayCount);
         auto imageSizeBytes = content.size;

@@ -3,7 +3,7 @@
 namespace Engine
 {
     BufferPool::BufferPool()
-        : m_buffer(RHI::NullHandle)
+        : m_buffer(nullptr)
         , m_allocator(0)
     {
     }
@@ -44,7 +44,7 @@ namespace Engine
         m_allocator.free(allocation);
     }
 
-    RHI::Handle<RHI::Buffer> BufferPool::GetBuffer() const
+    RHI::Buffer* BufferPool::GetBuffer() const
     {
         return m_buffer;
     }

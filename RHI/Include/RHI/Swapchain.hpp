@@ -76,7 +76,7 @@ namespace RHI
         virtual uint32_t            GetImagesCount() const = 0;
 
         /// @brief Returns the handle to the currently acquired swapchain image.
-        virtual Handle<Image>       GetImage() const = 0;
+        virtual Image*       GetImage() const = 0;
 
         /// @brief Queries the capabilities of the presentation surface.
         virtual SurfaceCapabilities GetSurfaceCapabilities() const = 0;

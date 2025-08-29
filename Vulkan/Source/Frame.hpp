@@ -43,8 +43,8 @@ namespace RHI::Vulkan
         void            End() override;
         CommandList*    CreateCommandList(const CommandListCreateInfo& createInfo) override;
         uint64_t        QueueSubmit(QueueType queueType, const QueueSubmitInfo& submitInfo) override;
-        void            BufferWrite(Handle<Buffer> buffer, size_t offset, TL::Block block) override;
-        void            ImageWrite(Handle<Image> image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block) override;
+        void            BufferWrite(Buffer* buffer, size_t offset, TL::Block block) override;
+        void            ImageWrite(Image* image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block) override;
         TL::IAllocator& GetAllocator() override;
         uint64_t        GetTimelineValue() const;
 
@@ -74,7 +74,7 @@ namespace RHI::Vulkan
 
     struct StagingBufferBlock
     {
-        Handle<Buffer>  buffer;
+        Buffer*         buffer;
         BufferSubregion subregion;
     };
 
@@ -94,7 +94,7 @@ namespace RHI::Vulkan
         struct Page
         {
             DeviceMemoryPtr ptr;
-            Handle<Buffer>  buffer;
+            Buffer*         buffer;
             size_t          offset;
             const size_t    size;
 

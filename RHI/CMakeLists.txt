@@ -6,8 +6,6 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Export.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Format.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Handle.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Handle.inl
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RenderGraph.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/PipelineAccess.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Result.hpp
@@ -20,7 +18,6 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Device.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Format.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Handle.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraph.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.cpp

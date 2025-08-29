@@ -1,7 +1,6 @@
 #pragma once
 
 #include "RHI/Device.hpp"
-#include "RHI/Handle.hpp"
 #include "RHI/Export.hpp"
 #include "RHI/Resources.hpp"
 #include "RHI/PipelineAccess.hpp"
@@ -54,7 +53,7 @@ namespace RHI
 
     struct RGColorAttachment
     {
-        RGImage*              color        = {};
+        RGImage*              color        = nullptr;
         ImageSubresourceRange colorRange   = ImageSubresourceRange::All();
         LoadOperation         loadOp       = LoadOperation::Discard;
         StoreOperation        storeOp      = StoreOperation::Store;
@@ -66,7 +65,7 @@ namespace RHI
 
     struct RGDepthStencilAttachment
     {
-        RGImage*              depthStencil      = {};
+        RGImage*              depthStencil      = nullptr;
         ImageSubresourceRange depthStencilRange = ImageSubresourceRange::All();
         LoadOperation         depthLoadOp       = LoadOperation::Discard;
         StoreOperation        depthStoreOp      = StoreOperation::Store;
@@ -77,10 +76,10 @@ namespace RHI
 
     struct RGRenderPassBeginInfo
     {
-        ImageSize2D                            size                   = {};
-        ImageOffset2D                          offset                 = {};
-        TL::Span<const RGColorAttachment>      colorAttachments       = {};
-        TL::Optional<RGDepthStencilAttachment> depthStencilAttachment = {};
+        ImageSize2D                       size                   = {};
+        ImageOffset2D                     offset                 = {};
+        TL::Span<const RGColorAttachment> colorAttachments       = {};
+        RGDepthStencilAttachment          depthStencilAttachment = {};
     };
 
     ///////////////////////////////////////////////////////////////////////////
@@ -104,7 +103,7 @@ namespace RHI
         SampleCount           sampleCount   = SampleCount::Samples1;
         uint32_t              mipLevels     = 1;
         uint32_t              arrayCount    = 1;
-        Handle<Image>         handle        = NullHandle;
+        Image*                handle        = nullptr;
         RGImage*              firstProducer = nullptr;
         RGImage*              lastProducer  = nullptr;
     };
@@ -115,14 +114,14 @@ namespace RHI
         TL::Flags<BufferUsage> usageFlags    = BufferUsage::None;
         size_t                 size          = 0;
         bool                   isImported    = false;
-        Handle<Buffer>         handle        = NullHandle;
+        Buffer*                handle        = nullptr;
         RGBuffer*              firstProducer = nullptr;
         RGBuffer*              lastProducer  = nullptr;
     };
 
     struct RGImage : RGResource
     {
-        // Handle<Image>     m_handle        = NullHandle;
+        // Image*     m_handle        = nullptr;
         ImageBarrierState m_state         = {};
         RGPass*           m_producer      = nullptr;
         RGFrameImage*     m_frameResource = nullptr;
@@ -132,7 +131,7 @@ namespace RHI
 
     struct RGBuffer : RGResource
     {
-        // Handle<Buffer>     m_handle        = NullHandle;
+        // Buffer*     m_handle        = nullptr;
         BufferBarrierState m_state         = {};
         RGPass*            m_producer      = nullptr;
         RGFrameBuffer*     m_frameResource = nullptr;
@@ -246,10 +245,10 @@ namespace RHI
             {
             }
 
-            ImageOffset2D                          m_offset;
-            ImageSize2D                            m_size;
-            TL::Vector<RGColorAttachment>          m_colorAttachments;
-            TL::Optional<RGDepthStencilAttachment> m_depthStencilAttachment;
+            ImageOffset2D                 m_offset;
+            ImageSize2D                   m_size;
+            TL::Vector<RGColorAttachment> m_colorAttachments;
+            RGDepthStencilAttachment      m_depthStencilAttachment;
         };
 
         GfxPassInfo m_gfxPassInfo;
@@ -289,20 +288,20 @@ namespace RHI
         RenderGraphResourcePool()  = default;
         ~RenderGraphResourcePool() = default;
 
-        ResultCode     Init(Device* device);
-        void           Shutdown();
+        ResultCode Init(Device* device);
+        void       Shutdown();
 
-        Handle<Image>  InitTransientImage(RGFrameImage* rgImage);
-        Handle<Buffer> InitTransientBuffer(RGFrameBuffer* rgBuffer);
+        Image*     InitTransientImage(RGFrameImage* rgImage);
+        Buffer*    InitTransientBuffer(RGFrameBuffer* rgBuffer);
 
         // Create or retrieve an image view for a given image and subresource range.
         // In this design, an image view is represented as an RGImage that aliases the parent image's resources.
-        RGImage*       GetOrCreateImageView(RGFrameImage* parentImage, const ImageSubresourceRange& range);
+        RGImage*   GetOrCreateImageView(RGFrameImage* parentImage, const ImageSubresourceRange& range);
 
     private:
-        Device*                                                          m_device;
-        TL::Map<TL::String, std::pair<ImageCreateInfo, Handle<Image>>>   m_imageCache;
-        TL::Map<TL::String, std::pair<BufferCreateInfo, Handle<Buffer>>> m_bufferCache;
+        Device*                                                   m_device;
+        TL::Map<TL::String, std::pair<ImageCreateInfo, Image*>>   m_imageCache;
+        TL::Map<TL::String, std::pair<BufferCreateInfo, Buffer*>> m_bufferCache;
     };
 
     ///////////////////////////////////////////////////////////////////////////
@@ -342,10 +341,10 @@ namespace RHI
         TL_NODISCARD RGImage*      ImportSwapchain(const char* name, Swapchain& swapchain, Format format);
 
         /// @brief Imports an image into the render graph.
-        TL_NODISCARD RGImage*      ImportImage(const char* name, Handle<Image> image, Format format);
+        TL_NODISCARD RGImage*      ImportImage(const char* name, Image* image, Format format);
 
         /// @brief Imports a buffer into the render graph.
-        TL_NODISCARD RGBuffer*     ImportBuffer(const char* name, Handle<Buffer> buffer);
+        TL_NODISCARD RGBuffer*     ImportBuffer(const char* name, Buffer* buffer);
 
         /// @brief Creates a transient image in the render graph.
         TL_NODISCARD RGImage*      CreateImage(const char* name, ImageType type, ImageSize3D size, Format format, uint32_t mipLevels = 1, uint32_t arrayCount = 1, SampleCount samples = SampleCount::Samples1);
@@ -361,39 +360,39 @@ namespace RHI
 
         /// @brief Returns the graph primary frame size.
         [[deprecated("This function was deprecated to support multi swapchain setup, instead you graph should be able to deduce input size based on attachment sizes")]]
-        TL_NODISCARD ImageSize2D    GetFrameSize() const;
+        TL_NODISCARD ImageSize2D GetFrameSize() const;
 
         /// @brief Returns render graph resource's handle.
-        TL_NODISCARD Handle<Image>  GetImageHandle(RGImage* handle) const;
-        TL_NODISCARD Handle<Buffer> GetBufferHandle(RGBuffer* handle) const;
+        TL_NODISCARD Image*      GetImageHandle(RGImage* handle) const;
+        TL_NODISCARD Buffer*     GetBufferHandle(RGBuffer* handle) const;
 
     private:
         // Bind group stuff
 
         /// Gets or creates a new bind group with provided resources.
-        Handle<BindGroup> AllocateBindGroup(Handle<BindGroupLayout> layout, const BindGroupUpdateInfo& updateInfo);
+        BindGroup*      AllocateBindGroup(BindGroupLayout* layout, const BindGroupUpdateInfo& updateInfo);
 
-        RGFrameImage*     CreateFrameImage(const char* name);
-        RGFrameBuffer*    CreateFrameBuffer(const char* name);
+        RGFrameImage*   CreateFrameImage(const char* name);
+        RGFrameBuffer*  CreateFrameBuffer(const char* name);
 
-        RGImage*          EmplacePassImage(RGFrameImage* frameImage, RGPass* pass, ImageBarrierState initialState);
-        RGBuffer*         EmplacePassBuffer(RGFrameBuffer* frameBuffer, RGPass* pass, BufferBarrierState initialState);
+        RGImage*        EmplacePassImage(RGFrameImage* frameImage, RGPass* pass, ImageBarrierState initialState);
+        RGBuffer*       EmplacePassBuffer(RGFrameBuffer* frameBuffer, RGPass* pass, BufferBarrierState initialState);
 
-        TL::IAllocator&   GetFrameAllocator();
+        TL::IAllocator& GetFrameAllocator();
 
-        bool              CheckDependency(const RGPass* producer, const RGPass* consumer) const;
-        void              AddDependency(const RGPass* producer, RGPass* consumer);
+        bool            CheckDependency(const RGPass* producer, const RGPass* consumer) const;
+        void            AddDependency(const RGPass* producer, RGPass* consumer);
 
-        void              Compile();
-        void              TopologicalSort(const TL::Vector<TL::Vector<uint32_t>>& adjacencyLists, TL::Vector<uint32_t>& sortedPasses);
-        void              DepthFirstSearch(uint32_t nodeIndex, TL::Vector<bool>& visited, TL::Vector<bool>& onStack, bool& isCyclic, const TL::Vector<TL::Vector<uint32_t>>& adjacencyLists, TL::Vector<uint32_t>& sortedPasses);
+        void            Compile();
+        void            TopologicalSort(const TL::Vector<TL::Vector<uint32_t>>& adjacencyLists, TL::Vector<uint32_t>& sortedPasses);
+        void            DepthFirstSearch(uint32_t nodeIndex, TL::Vector<bool>& visited, TL::Vector<bool>& onStack, bool& isCyclic, const TL::Vector<TL::Vector<uint32_t>>& adjacencyLists, TL::Vector<uint32_t>& sortedPasses);
 
-        void              CreateTransientResources();
+        void            CreateTransientResources();
 
-        void              PassBuildBarriers();
+        void            PassBuildBarriers();
 
-        void              Execute();
-        void              ExecutePass(RGPass* pass, CommandList* commandList);
+        void            Execute();
+        void            ExecutePass(RGPass* pass, CommandList* commandList);
 
     private:
         struct State

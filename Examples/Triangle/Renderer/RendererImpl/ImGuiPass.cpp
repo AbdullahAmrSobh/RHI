@@ -131,11 +131,11 @@ namespace Engine
         m_device->DestroyBindGroup(m_bindGroup);
         m_device->DestroySampler(m_sampler);
         m_device->DestroyImage(m_image);
-        if (m_indexBuffer != RHI::NullHandle)
+        if (m_indexBuffer != nullptr)
             m_device->DestroyBuffer(m_indexBuffer);
-        if (m_vertexBuffer != RHI::NullHandle)
+        if (m_vertexBuffer != nullptr)
             m_device->DestroyBuffer(m_vertexBuffer);
-        if (m_uniformBuffer != RHI::NullHandle)
+        if (m_uniformBuffer != nullptr)
             m_device->DestroyBuffer(m_uniformBuffer);
     }
 
@@ -257,7 +257,7 @@ namespace Engine
         {
             m_vertexBufferSize = (size_t)drawData->TotalVtxCount + 5000;
 
-            if (m_vertexBuffer != RHI::NullHandle)
+            if (m_vertexBuffer != nullptr)
                 m_device->DestroyBuffer(m_vertexBuffer);
 
             RHI::BufferCreateInfo createInfo{};
@@ -271,7 +271,7 @@ namespace Engine
         {
             m_indexBufferSize = (size_t)drawData->TotalIdxCount + 10000;
 
-            if (m_indexBuffer != RHI::NullHandle)
+            if (m_indexBuffer != nullptr)
                 m_device->DestroyBuffer(m_indexBuffer);
 
             RHI::BufferCreateInfo createInfo{};

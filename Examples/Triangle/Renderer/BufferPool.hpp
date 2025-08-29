@@ -47,13 +47,13 @@ namespace Engine
 
         /// @brief Gets the handle to the underlying buffer
         /// @return Handle to the RHI buffer being suballocated from
-        RHI::Handle<RHI::Buffer> GetBuffer() const;
+        RHI::Buffer* GetBuffer() const;
 
         void Write(Suballocation suballocation, TL::Block block);
 
     protected:
         RHI::Device*             m_device;
-        RHI::Handle<RHI::Buffer> m_buffer;
+        RHI::Buffer* m_buffer;
         Suballocator             m_allocator;
         RHI::DeviceMemoryPtr     m_mappedPtr;
     };
@@ -149,7 +149,7 @@ namespace Engine
         size_t m_bufferOffset = 0;
 
         // Handle to the GPU buffer that stores the array elements
-        RHI::Handle<RHI::Buffer> m_buffer = RHI::NullHandle;
+        RHI::Buffer* m_buffer = nullptr;
 
         // Mapped pointer to the device memory for CPU access (if applicable)
         uint32_t             m_mappedPtrCount = 0;

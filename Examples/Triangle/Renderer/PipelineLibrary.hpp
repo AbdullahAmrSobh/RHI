@@ -66,10 +66,10 @@ namespace Engine
         ResultCode Init(RHI::Device* device);
         void       Shutdown();
 
-        RHI::Handle<RHI::GraphicsPipeline> GetGraphicsPipeline(const char* name);
-        RHI::Handle<RHI::ComputePipeline>  GetComputePipeline(const char* name);
+        RHI::GraphicsPipeline* GetGraphicsPipeline(const char* name);
+        RHI::ComputePipeline*  GetComputePipeline(const char* name);
 
-        RHI::Handle<RHI::BindGroupLayout> GetBindGroupLayout() const
+        RHI::BindGroupLayout* GetBindGroupLayout() const
         {
             return m_bindGroupLayout;
         }
@@ -78,10 +78,10 @@ namespace Engine
         RHI::Device*    m_device;
         TL::FileWatcher m_watcher;
 
-        RHI::Handle<RHI::BindGroupLayout> m_bindGroupLayout;
-        RHI::Handle<RHI::PipelineLayout>  m_pipelineLayout;
+        RHI::BindGroupLayout* m_bindGroupLayout;
+        RHI::PipelineLayout*  m_pipelineLayout;
 
-        TL::Map<TL::String, RHI::Handle<RHI::GraphicsPipeline>> m_graphicsPipelines;
-        TL::Map<TL::String, RHI::Handle<RHI::ComputePipeline>>  m_computePipelines;
+        TL::Map<TL::String, RHI::GraphicsPipeline*> m_graphicsPipelines;
+        TL::Map<TL::String, RHI::ComputePipeline*>  m_computePipelines;
     };
 } // namespace Engine

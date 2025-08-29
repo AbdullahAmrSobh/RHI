@@ -1,7 +1,7 @@
 #pragma once
 
 #include "RHI/Format.hpp"
-#include "RHI/Handle.hpp"
+#include "RHI/Common.hpp"
 #include "RHI/PipelineAccess.hpp"
 
 #include <TL/Flags.hpp>
@@ -26,14 +26,38 @@ namespace RHI
 
     // Opaque Resource Declarations
     using DeviceMemoryPtr = void*;
-    RHI_DECLARE_OPAQUE_RESOURCE(BindGroupLayout);
-    RHI_DECLARE_OPAQUE_RESOURCE(BindGroup);
-    RHI_DECLARE_OPAQUE_RESOURCE(Buffer);
-    RHI_DECLARE_OPAQUE_RESOURCE(Image);
-    RHI_DECLARE_OPAQUE_RESOURCE(Sampler);
-    RHI_DECLARE_OPAQUE_RESOURCE(PipelineLayout);
-    RHI_DECLARE_OPAQUE_RESOURCE(GraphicsPipeline);
-    RHI_DECLARE_OPAQUE_RESOURCE(ComputePipeline);
+
+    struct BindGroupLayout
+    {
+    };
+
+    struct BindGroup
+    {
+    };
+
+    struct Buffer
+    {
+    };
+
+    struct Image
+    {
+    };
+
+    struct Sampler
+    {
+    };
+
+    struct PipelineLayout
+    {
+    };
+
+    struct GraphicsPipeline
+    {
+    };
+
+    struct ComputePipeline
+    {
+    };
 
 #define RHI_FLAG_NAME_RESERVED 0
 
@@ -283,8 +307,8 @@ namespace RHI
     /// @brief Contains information about binding a buffer.
     struct BufferBindingInfo
     {
-        Handle<Buffer> buffer = NullHandle; ///< Handle to the buffer.
-        size_t         offset = 0;          ///< Offset into the buffer.
+        Buffer* buffer = nullptr; ///< Handle to the buffer.
+        size_t  offset = 0;       ///< Offset into the buffer.
     };
 
     struct ShaderBinding
@@ -305,16 +329,16 @@ namespace RHI
 
     struct BindGroupCreateInfo
     {
-        const char*             name               = nullptr;    ///!< Name of the bind group.
-        Handle<BindGroupLayout> layout             = NullHandle; // !< The layout of the bind group.
-        uint32_t                bindlessArrayCount = 0;          //!< Count of bindless array elements.
+        const char*      name               = nullptr; ///!< Name of the bind group.
+        BindGroupLayout* layout             = nullptr; // !< The layout of the bind group.
+        uint32_t         bindlessArrayCount = 0;       //!< Count of bindless array elements.
     };
 
     struct BindGroupImagesUpdateInfo
     {
-        uint32_t                      dstBinding      = 0;  ///< Target binding index.
-        uint32_t                      dstArrayElement = 0;  ///< Target array element for binding.
-        TL::Span<const Handle<Image>> images          = {}; ///< Span of image views to bind.
+        uint32_t               dstBinding      = 0;  ///< Target binding index.
+        uint32_t               dstArrayElement = 0;  ///< Target array element for binding.
+        TL::Span<Image* const> images          = {}; ///< Span of image views to bind.
     };
 
     struct BindGroupBuffersUpdateInfo
@@ -326,9 +350,9 @@ namespace RHI
 
     struct BindGroupSamplersUpdateInfo
     {
-        uint32_t                        dstBinding      = 0;  ///< Target binding index.
-        uint32_t                        dstArrayElement = 0;  ///< Target array element for binding.
-        TL::Span<const Handle<Sampler>> samplers        = {}; ///< Span of sampler handles to bind.
+        uint32_t                 dstBinding      = 0;  ///< Target binding index.
+        uint32_t                 dstArrayElement = 0;  ///< Target array element for binding.
+        TL::Span<Sampler* const> samplers        = {}; ///< Span of sampler handles to bind.
     };
 
     struct BindGroupUpdateInfo
@@ -420,7 +444,7 @@ namespace RHI
     struct ImageViewCreateInfo
     {
         const char*           name        = nullptr;             ///< Name of the image view.
-        Handle<Image>         image       = NullHandle;          ///< Handle to the image.
+        Image*                image       = nullptr;             ///< Handle to the image.
         Format                format      = Format::Unknown;     ///< Format used to override original image format
         ImageViewType         viewType    = ImageViewType::None; ///< Type of the image view.
         ComponentMapping      components  = {};                  ///< Component mapping.
@@ -448,8 +472,8 @@ namespace RHI
     // Structs (Pipeline Related)
     struct PipelineLayoutCreateInfo
     {
-        const char*                             name    = nullptr; ///< Debug name of the pipeline layout object.
-        TL::Span<const Handle<BindGroupLayout>> layouts = {};      ///< List of bind group layouts.
+        const char*                      name    = nullptr; ///< Debug name of the pipeline layout object.
+        TL::Span<BindGroupLayout* const> layouts = {};      ///< List of bind group layouts.
     };
 
     struct ColorAttachmentBlendStateDesc
@@ -519,7 +543,7 @@ namespace RHI
         ShaderModule*                             vertexShaderModule   = nullptr;                         ///< Vertex shader module.
         const char*                               pixelShaderName      = nullptr;                         ///< Name of the pixel shader.
         ShaderModule*                             pixelShaderModule    = nullptr;                         ///< Pixel shader module.
-        Handle<PipelineLayout>                    layout               = NullHandle;                      ///< Pipeline layout.
+        PipelineLayout*                           layout               = nullptr;                         ///< Pipeline layout.
         TL::Span<const PipelineVertexBindingDesc> vertexBufferBindings = {};                              ///< Input assembler state.
         PipelineRenderTargetLayout                renderTargetLayout   = {};                              ///< Render target layout.
         PipelineColorBlendStateDesc               colorBlendState      = {};                              ///< Color blend state.
@@ -531,10 +555,10 @@ namespace RHI
 
     struct ComputePipelineCreateInfo
     {
-        const char*            name         = nullptr;    ///< Name of the pipeline.
-        const char*            shaderName   = nullptr;    ///< Name of the compute shader.
-        ShaderModule*          shaderModule = nullptr;    ///< Compute shader module.
-        Handle<PipelineLayout> layout       = NullHandle; ///< Pipeline layout.
+        const char*     name         = nullptr; ///< Name of the pipeline.
+        const char*     shaderName   = nullptr; ///< Name of the compute shader.
+        ShaderModule*   shaderModule = nullptr; ///< Compute shader module.
+        PipelineLayout* layout       = nullptr; ///< Pipeline layout.
     };
 
     // Structs (Shader Related)

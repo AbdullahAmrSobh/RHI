@@ -84,8 +84,8 @@ namespace RHI::Vulkan
         void BeginConditionalCommands(const BufferBindingInfo& conditionBuffer, bool inverted) override;
         void EndConditionalCommands() override;
         void Execute(TL::Span<const CommandList*> commandLists) override;
-        void BindGraphicsPipeline(Handle<GraphicsPipeline> pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups) override;
-        void BindComputePipeline(Handle<ComputePipeline> pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups) override;
+        void BindGraphicsPipeline(GraphicsPipeline* pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups) override;
+        void BindComputePipeline(ComputePipeline* pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups) override;
         void SetViewport(const Viewport& viewport) override;
         void SetScissor(const Scissor& sicssor) override;
         void BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> vertexBuffers) override;
@@ -110,7 +110,7 @@ namespace RHI::Vulkan
     public:
         IDevice*               m_device                      = nullptr;
         VkCommandBuffer        m_commandBuffer               = VK_NULL_HANDLE;
-        Handle<PipelineLayout> m_pipelineLayout              = NullHandle;
+        PipelineLayout* m_pipelineLayout              = nullptr;
         VkPipelineBindPoint    m_pipelineBindPoint           = VK_PIPELINE_BIND_POINT_MAX_ENUM;
         bool                   m_hasVertexBuffer         : 1;
         bool                   m_hasIndexBuffer          : 1;

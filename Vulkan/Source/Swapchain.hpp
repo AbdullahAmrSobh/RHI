@@ -19,11 +19,11 @@ namespace RHI::Vulkan
         ~ISwapchain();
 
         ResultCode Init(IDevice* device, const SwapchainCreateInfo& createInfo);
-        void       Shutdown();
+        void       Shutdown(IDevice* device);
 
         // Interface
         uint32_t            GetImagesCount() const override;
-        Handle<Image>       GetImage() const override;
+        Image*              GetImage() const override;
         SurfaceCapabilities GetSurfaceCapabilities() const override;
         ResultCode          Resize(const ImageSize2D& size) override;
         ResultCode          Configure(const SwapchainConfigureInfo& configInfo) override;
@@ -44,6 +44,6 @@ namespace RHI::Vulkan
         TL::String             m_name;
         SwapchainConfigureInfo m_configuration;
         uint32_t               m_imageCount = 0;
-        Handle<Image>          m_imageHandle;
+        struct IImage*         m_imageHandle;
     };
 } // namespace RHI::Vulkan

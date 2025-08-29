@@ -11,7 +11,7 @@ namespace Engine
 {
     struct CullPass
     {
-        RHI::Handle<RHI::BindGroup> m_bindGroup;
+        RHI::BindGroup* m_bindGroup;
         RHI::RGBuffer*              m_drawIndirectArgs;
 
         ResultCode Init(RHI::Device* device);
@@ -26,7 +26,7 @@ namespace Engine
         static constexpr RHI::Format DepthFormat = RHI::Format::D16;
         // clang-format on
 
-        RHI::Handle<RHI::BindGroup>  m_bindGroup;
+        RHI::BindGroup*  m_bindGroup;
         std::array<RHI::RGImage*, 4> m_attachments;
 
         ResultCode Init(RHI::Device* device);
@@ -36,7 +36,7 @@ namespace Engine
 
     struct LightingPass
     {
-        RHI::Handle<RHI::BindGroup> m_bindGroup;
+        RHI::BindGroup* m_bindGroup;
         RHI::RGImage*               m_attachment;
 
         ResultCode Init(RHI::Device* device);
@@ -46,7 +46,7 @@ namespace Engine
 
     struct ComposePass
     {
-        RHI::Handle<RHI::BindGroup> m_bindGroup;
+        RHI::BindGroup* m_bindGroup;
 
         ResultCode Init(RHI::Device* device);
         void       Shutdown(RHI::Device* device);
