@@ -23,8 +23,8 @@ namespace Engine
         auto vertexShaderPath   = std::format("{}.vertex.spv", name);
         auto fragmentShaderPath = std::format("{}.fragment.spv", name);
 
-        auto vertexModule = LoadShaderModule(device, vertexShaderPath.c_str());
-        auto pixelModule  = LoadShaderModule(device, fragmentShaderPath.c_str());
+        auto vertexModule = PipelineLibrary::ptr->LoadShaderModule(vertexShaderPath.data());
+        auto pixelModule  = PipelineLibrary::ptr->LoadShaderModule(fragmentShaderPath.data());
 
         TL_defer
         {
@@ -97,7 +97,7 @@ namespace Engine
     RHI::ComputePipeline* CreateComputePipeline(RHI::Device* device, RHI::PipelineLayout* layout, const char* name)
     {
         auto computeShaderPath = std::format("{}.compute.spv", name);
-        auto computeModule     = LoadShaderModule(device, computeShaderPath.c_str());
+        auto computeModule     = PipelineLibrary::ptr->LoadShaderModule(computeShaderPath.data());
 
         RHI::ComputePipelineCreateInfo pipelineCI{
             .name         = name,
@@ -298,6 +298,19 @@ namespace Engine
 
         if (m_bindGroupLayout != nullptr)
             m_device->DestroyBindGroupLayout(m_bindGroupLayout);
+    }
+
+    RHI::ShaderModule* PipelineLibrary::LoadShaderModule(TL::StringView path)
+    {
+        auto file       = TL::File(path, TL::IOMode::Read);
+        auto shaderBlob = TL::Vector<uint8_t>(file.size());
+        auto [_, err]   = file.read(TL::Block::create(shaderBlob));
+        TL_ASSERT(err == TL::IOResultCode::Success);
+        auto module = m_device->CreateShaderModule({
+            .name = path.data(),
+            .code = {(uint32_t*)shaderBlob.data(), shaderBlob.size() / size_t(4)},
+        });
+        return module;
     }
 
     RHI::GraphicsPipeline* PipelineLibrary::GetGraphicsPipeline(const char* name)

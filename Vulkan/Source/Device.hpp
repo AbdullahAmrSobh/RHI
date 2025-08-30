@@ -92,19 +92,17 @@ namespace RHI::Vulkan
 
     public:
         // Vulkan instance and core objects
-        VkInstance               m_instance;
-        VkDebugUtilsMessengerEXT m_debugUtilsMessenger;
-        VkPhysicalDevice         m_physicalDevice;
-        VkDevice                 m_device;
-        VmaAllocator             m_deviceAllocator;
-        VulkanAPI                m_pfn;
-        TL::Ptr<Renderdoc>       m_renderdoc;
-
+        VkInstance                        m_instance;
+        VkDebugUtilsMessengerEXT          m_debugUtilsMessenger;
+        VkPhysicalDevice                  m_physicalDevice;
+        VkDevice                          m_device;
+        VmaAllocator                      m_deviceAllocator;
+        VulkanAPI                         m_pfn;
+        TL::Ptr<Renderdoc>                m_renderdoc;
         // Queue and allocator management
         IQueue                            m_queue[AsyncQueuesCount];
         TL::Ptr<class DeleteQueue>        m_destroyQueue;
         TL::Ptr<class BindGroupAllocator> m_bindGroupAllocator;
-
         // Frames in flight
         uint32_t                          m_currentFrameIndex;
         TL::Vector<TL::Ptr<class IFrame>> m_framesInFlight;

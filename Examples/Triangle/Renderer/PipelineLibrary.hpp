@@ -14,19 +14,6 @@
 
 namespace Engine
 {
-    inline static RHI::ShaderModule* LoadShaderModule(RHI::Device* device, const char* path)
-    {
-        auto file       = TL::File(path, TL::IOMode::Read);
-        auto shaderBlob = TL::Vector<uint8_t>(file.size());
-        auto [_, err]   = file.read(TL::Block::create(shaderBlob));
-        TL_ASSERT(err == TL::IOResultCode::Success);
-        auto module = device->CreateShaderModule({
-            .name = path,
-            .code = {(uint32_t*)shaderBlob.data(), shaderBlob.size() / size_t(4)},
-        });
-        return module;
-    }
-
     namespace Bindings
     {
         inline static constexpr uint32_t SceneView           = 0;
@@ -65,6 +52,8 @@ namespace Engine
     public:
         ResultCode Init(RHI::Device* device);
         void       Shutdown();
+
+        RHI::ShaderModule* LoadShaderModule(TL::StringView path);
 
         RHI::GraphicsPipeline* GetGraphicsPipeline(const char* name);
         RHI::ComputePipeline*  GetComputePipeline(const char* name);

@@ -81,43 +81,39 @@ namespace Engine
         RHI::PipelineLayoutCreateInfo pipelineLayoutCI{.layouts = {bindGroupLayout}};
         m_pipelineLayout = m_device->CreatePipelineLayout(pipelineLayoutCI);
 
-        auto vertexShaderModule = LoadShaderModule(m_device, "Shaders/ImGui.vertex.spv");
-        auto fragmentShader     = LoadShaderModule(m_device, "Shaders/ImGui.fragment.spv");
+        auto vertexShaderModule = PipelineLibrary::ptr->LoadShaderModule("Shaders/ImGui.vertex.spv");
+        auto fragmentShader     = PipelineLibrary::ptr->LoadShaderModule("Shaders/ImGui.fragment.spv");
 
-        RHI::ColorAttachmentBlendStateDesc attachmentBlendDesc =
-            {
-                true,
-                RHI::BlendEquation::Add,
-                RHI::BlendFactor::SrcAlpha,
-                RHI::BlendFactor::OneMinusSrcAlpha,
-                RHI::BlendEquation::Add,
-                RHI::BlendFactor::One,
-                RHI::BlendFactor::OneMinusSrcAlpha,
-                RHI::ColorWriteMask::All,
-            };
-        RHI::GraphicsPipelineCreateInfo pipelineCI =
-            {
-                .name                 = "ImGui Pipeline",
-                .vertexShaderName     = "VSMain",
-                .vertexShaderModule   = vertexShaderModule,
-                .pixelShaderName      = "PSMain",
-                .pixelShaderModule    = fragmentShader,
-                .layout               = m_pipelineLayout,
-                .vertexBufferBindings = {
-                    {
-                        .stride   = sizeof(ImDrawVert),
-                        .stepRate = RHI::PipelineVertexInputRate::PerVertex,
-                        .attributes =
-                            {
-                                {.offset = offsetof(ImDrawVert, pos), .format = RHI::Format::RG32_FLOAT},
-                                {.offset = offsetof(ImDrawVert, uv), .format = RHI::Format::RG32_FLOAT},
-                                {.offset = offsetof(ImDrawVert, col), .format = RHI::Format::RGBA8_UNORM},
-                            },
-                    }},
-                .renderTargetLayout = {.colorAttachmentsFormats = RHI::Format::RGBA8_UNORM},
-                .colorBlendState    = {.blendStates = {attachmentBlendDesc}},
-                .rasterizationState = {.cullMode = RHI::PipelineRasterizerStateCullMode::None},
-            };
+        RHI::ColorAttachmentBlendStateDesc attachmentBlendDesc{
+            true,
+            RHI::BlendEquation::Add,
+            RHI::BlendFactor::SrcAlpha,
+            RHI::BlendFactor::OneMinusSrcAlpha,
+            RHI::BlendEquation::Add,
+            RHI::BlendFactor::One,
+            RHI::BlendFactor::OneMinusSrcAlpha,
+            RHI::ColorWriteMask::All,
+        };
+        RHI::GraphicsPipelineCreateInfo pipelineCI{
+            .name                 = "ImGui Pipeline",
+            .vertexShaderName     = "VSMain",
+            .vertexShaderModule   = vertexShaderModule,
+            .pixelShaderName      = "PSMain",
+            .pixelShaderModule    = fragmentShader,
+            .layout               = m_pipelineLayout,
+            .vertexBufferBindings = {{
+                .stride     = sizeof(ImDrawVert),
+                .stepRate   = RHI::PipelineVertexInputRate::PerVertex,
+                .attributes = {
+                    {.offset = offsetof(ImDrawVert, pos), .format = RHI::Format::RG32_FLOAT},
+                    {.offset = offsetof(ImDrawVert, uv), .format = RHI::Format::RG32_FLOAT},
+                    {.offset = offsetof(ImDrawVert, col), .format = RHI::Format::RGBA8_UNORM},
+                },
+            }},
+            .renderTargetLayout   = {.colorAttachmentsFormats = RHI::Format::RGBA8_UNORM},
+            .colorBlendState      = {.blendStates = {attachmentBlendDesc}},
+            .rasterizationState   = {.cullMode = RHI::PipelineRasterizerStateCullMode::None},
+        };
         m_pipeline = m_device->CreateGraphicsPipeline(pipelineCI);
         m_device->DestroyBindGroupLayout(bindGroupLayout);
         return ResultCode::Success;

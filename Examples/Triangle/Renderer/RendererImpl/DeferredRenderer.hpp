@@ -12,7 +12,7 @@ namespace Engine
     struct CullPass
     {
         RHI::BindGroup* m_bindGroup;
-        RHI::RGBuffer*              m_drawIndirectArgs;
+        RHI::RGBuffer*  m_drawIndirectArgs;
 
         ResultCode Init(RHI::Device* device);
         void       Shutdown(RHI::Device* device);
@@ -26,7 +26,7 @@ namespace Engine
         static constexpr RHI::Format DepthFormat = RHI::Format::D16;
         // clang-format on
 
-        RHI::BindGroup*  m_bindGroup;
+        RHI::BindGroup*              m_bindGroup;
         std::array<RHI::RGImage*, 4> m_attachments;
 
         ResultCode Init(RHI::Device* device);
@@ -37,7 +37,7 @@ namespace Engine
     struct LightingPass
     {
         RHI::BindGroup* m_bindGroup;
-        RHI::RGImage*               m_attachment;
+        RHI::RGImage*   m_attachment;
 
         ResultCode Init(RHI::Device* device);
         void       Shutdown(RHI::Device* device);
@@ -56,7 +56,6 @@ namespace Engine
     class DeferredRenderer
     {
     public:
-        // Passes
         CullPass     m_cullPass;
         GBufferPass  m_gbufferPass;
         LightingPass m_lightingPass;
@@ -65,7 +64,6 @@ namespace Engine
 
         ResultCode Init(RHI::Device* device);
         void       Shutdown(RHI::Device* device);
-
-        void Render(RHI::Device* device, RHI::RenderGraph* rg, const Scene* scene, RHI::RGImage* outputAttachment);
+        void       Render(RHI::Device* device, RHI::RenderGraph* rg, const Scene* scene, RHI::RGImage* outputAttachment);
     };
 } // namespace Engine

@@ -29,11 +29,11 @@ namespace Engine
         GpuArray<GPU::DrawRequest> m_drawRequests;
         GpuArray<glm::mat4x4>      m_transforms;
 
-        ResultCode Init(RHI::Device* device);
-        void       Shutdown(RHI::Device* device);
+        ResultCode     Init(RHI::Device* device);
+        void           Shutdown(RHI::Device* device);
 
-        SceneView* CreateView();
-        void       DestroyView(SceneView* view);
+        SceneView*     CreateView();
+        void           DestroyView(SceneView* view);
 
         MeshComponent* AddStaticMesh(const class StaticMeshLOD* staticMesh, glm::mat4x4 transform);
         void           RemoveStaticMesh(MeshComponent* component);
