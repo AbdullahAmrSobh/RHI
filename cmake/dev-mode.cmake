@@ -15,7 +15,7 @@ include(cmake/folders.cmake)
 #   include(cmake/coverage.cmake)
 # endif()
 
-# include(cmake/lint-targets.cmake)
+include(cmake/lint-targets.cmake)
 # include(cmake/spell-targets.cmake)
 
 add_folders(Project)

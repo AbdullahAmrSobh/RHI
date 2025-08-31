@@ -1,0 +1,177 @@
+; SPIR-V
+; Version: 1.5
+; Generator: Khronos; 40
+; Bound: 332
+; Schema: 0
+OpCapability Shader
+%147 = OpExtInstImport "GLSL.std.450"
+OpMemoryModel Logical GLSL450
+OpEntryPoint Vertex %VSMain "VSMain" %bindings_sceneView %gl_Position %entryPointParam_VSMain_wsPosition %entryPointParam_VSMain_normal %entryPointParam_VSMain_uv %input_position %input_normal %input_uv %input_transform
+OpEntryPoint Fragment %PSMain "PSMain" %entryPointParam_PSMain_wsPosition %entryPointParam_PSMain_normal %entryPointParam_PSMain_material %input_wsPosition %input_normal_0 %input_uv_0
+OpEntryPoint GLCompute %CSMain "CSMain"
+OpExecutionMode %PSMain OriginUpperLeft
+OpExecutionMode %CSMain LocalSize 1 1 1
+
+; Debug Information
+OpSource Slang 1
+OpName %input_position "input.position"             ; id %14
+OpName %input_normal "input.normal"                 ; id %16
+OpName %input_uv "input.uv"                         ; id %19
+OpName %_MatrixStorage_float4x4natural_natural "_MatrixStorage_float4x4natural_natural"     ; id %20
+OpMemberName %_MatrixStorage_float4x4natural_natural 0 "data"
+OpName %input_transform "input.transform"           ; id %26
+OpName %_MatrixStorage_float4x4std140 "_MatrixStorage_float4x4std140"   ; id %75
+OpMemberName %_MatrixStorage_float4x4std140 0 "data"
+OpName %GPU_SceneView_std140 "GPU.SceneView_std140"     ; id %74
+OpMemberName %GPU_SceneView_std140 0 "worldToViewMatrix"
+OpMemberName %GPU_SceneView_std140 1 "viewToClipMatrix"
+OpName %bindings_sceneView "bindings.sceneView"     ; id %77
+OpName %entryPointParam_VSMain_wsPosition "entryPointParam_VSMain.wsPosition"   ; id %160
+OpName %entryPointParam_VSMain_normal "entryPointParam_VSMain.normal"           ; id %163
+OpName %entryPointParam_VSMain_uv "entryPointParam_VSMain.uv"                   ; id %167
+OpName %VSMain "VSMain"                                                         ; id %2
+OpName %input_wsPosition "input.wsPosition"                                     ; id %176
+OpName %input_normal_0 "input.normal"                                           ; id %178
+OpName %input_uv_0 "input.uv"                                                   ; id %180
+OpName %entryPointParam_PSMain_wsPosition "entryPointParam_PSMain.wsPosition"   ; id %191
+OpName %entryPointParam_PSMain_normal "entryPointParam_PSMain.normal"           ; id %194
+OpName %entryPointParam_PSMain_material "entryPointParam_PSMain.material"       ; id %197
+OpName %PSMain "PSMain"                                                         ; id %170
+OpName %CSMain "CSMain"                                                         ; id %200
+
+; Annotations
+OpDecorate %input_position Location 0
+OpDecorate %input_normal Location 1
+OpDecorate %input_uv Location 2
+OpDecorate %_arr_v4float_int_4 ArrayStride 16
+OpMemberDecorate %_MatrixStorage_float4x4natural_natural 0 Offset 0
+OpDecorate %input_transform Location 3
+OpMemberDecorate %_MatrixStorage_float4x4std140 0 Offset 0
+OpDecorate %GPU_SceneView_std140 Block
+OpMemberDecorate %GPU_SceneView_std140 0 Offset 0
+OpMemberDecorate %GPU_SceneView_std140 1 Offset 64
+OpDecorate %bindings_sceneView Binding 0
+OpDecorate %bindings_sceneView DescriptorSet 1
+OpDecorate %gl_Position BuiltIn Position
+OpDecorate %entryPointParam_VSMain_wsPosition Location 0
+OpDecorate %entryPointParam_VSMain_normal Location 1
+OpDecorate %entryPointParam_VSMain_uv Location 2
+OpDecorate %input_wsPosition Location 0
+OpDecorate %input_normal_0 Location 1
+OpDecorate %input_uv_0 Location 2
+OpDecorate %entryPointParam_PSMain_wsPosition Location 0
+OpDecorate %entryPointParam_PSMain_normal Location 1
+OpDecorate %entryPointParam_PSMain_material Location 2
+
+; Types, variables and constants
+%void = OpTypeVoid
+%3 = OpTypeFunction %void
+%float = OpTypeFloat 32
+%v4float = OpTypeVector %float 4
+%v3float = OpTypeVector %float 3
+%v2float = OpTypeVector %float 2
+%_ptr_Input_v3float = OpTypePointer Input %v3float
+%_ptr_Input_v2float = OpTypePointer Input %v2float
+%int = OpTypeInt 32 1
+%int_4 = OpConstant %int 4
+%_arr_v4float_int_4 = OpTypeArray %v4float %int_4   ; ArrayStride 16
+%_MatrixStorage_float4x4natural_natural = OpTypeStruct %_arr_v4float_int_4
+%_ptr_Input__MatrixStorage_float4x4natural_natural = OpTypePointer Input %_MatrixStorage_float4x4natural_natural
+%mat4v4float = OpTypeMatrix %v4float 4
+%_MatrixStorage_float4x4std140 = OpTypeStruct %_arr_v4float_int_4
+%GPU_SceneView_std140 = OpTypeStruct %_MatrixStorage_float4x4std140 %_MatrixStorage_float4x4std140  ; Block
+%_ptr_Uniform_GPU_SceneView_std140 = OpTypePointer Uniform %GPU_SceneView_std140
+%int_0 = OpConstant %int 0
+%_ptr_Uniform__MatrixStorage_float4x4std140 = OpTypePointer Uniform %_MatrixStorage_float4x4std140
+%int_1 = OpConstant %int 1
+%float_1 = OpConstant %float 1
+%mat3v3float = OpTypeMatrix %v3float 3
+%_ptr_Output_v4float = OpTypePointer Output %v4float
+%_ptr_Output_v3float = OpTypePointer Output %v3float
+%_ptr_Output_v2float = OpTypePointer Output %v2float
+%input_position = OpVariable %_ptr_Input_v3float Input  ; Location 0
+%input_normal = OpVariable %_ptr_Input_v3float Input    ; Location 1
+%input_uv = OpVariable %_ptr_Input_v2float Input        ; Location 2
+%input_transform = OpVariable %_ptr_Input__MatrixStorage_float4x4natural_natural Input  ; Location 3
+%bindings_sceneView = OpVariable %_ptr_Uniform_GPU_SceneView_std140 Uniform             ; Binding 0, DescriptorSet 1
+%gl_Position = OpVariable %_ptr_Output_v4float Output                                   ; BuiltIn Position
+%entryPointParam_VSMain_wsPosition = OpVariable %_ptr_Output_v3float Output             ; Location 0
+%entryPointParam_VSMain_normal = OpVariable %_ptr_Output_v3float Output                 ; Location 1
+%entryPointParam_VSMain_uv = OpVariable %_ptr_Output_v2float Output                     ; Location 2
+%input_wsPosition = OpVariable %_ptr_Input_v3float Input                                ; Location 0
+%input_normal_0 = OpVariable %_ptr_Input_v3float Input                                  ; Location 1
+%input_uv_0 = OpVariable %_ptr_Input_v2float Input                                      ; Location 2
+%entryPointParam_PSMain_wsPosition = OpVariable %_ptr_Output_v4float Output             ; Location 0
+%entryPointParam_PSMain_normal = OpVariable %_ptr_Output_v4float Output                 ; Location 1
+%entryPointParam_PSMain_material = OpVariable %_ptr_Output_v2float Output               ; Location 2
+
+; Function VSMain
+%VSMain = OpFunction %void None %3
+%4 = OpLabel
+%12 = OpLoad %v3float %input_position
+%15 = OpLoad %v3float %input_normal
+%17 = OpLoad %v2float %input_uv
+%24 = OpLoad %_MatrixStorage_float4x4natural_natural %input_transform
+%206 = OpCompositeExtract %_arr_v4float_int_4 %24 0
+%328 = OpCompositeExtract %v4float %206 0
+%329 = OpCompositeExtract %v4float %206 1
+%330 = OpCompositeExtract %v4float %206 2
+%331 = OpCompositeExtract %v4float %206 3
+%236 = OpCompositeConstruct %mat4v4float %328 %329 %330 %331
+%240 = OpAccessChain %_ptr_Uniform__MatrixStorage_float4x4std140 %bindings_sceneView %int_0
+%241 = OpLoad %_MatrixStorage_float4x4std140 %240
+%249 = OpCompositeExtract %_arr_v4float_int_4 %241 0
+%250 = OpCompositeExtract %v4float %249 0
+%255 = OpCompositeExtract %v4float %249 1
+%260 = OpCompositeExtract %v4float %249 2
+%265 = OpCompositeExtract %v4float %249 3
+%274 = OpCompositeConstruct %mat4v4float %250 %255 %260 %265
+%243 = OpAccessChain %_ptr_Uniform__MatrixStorage_float4x4std140 %bindings_sceneView %int_1
+%244 = OpLoad %_MatrixStorage_float4x4std140 %243
+%277 = OpCompositeExtract %_arr_v4float_int_4 %244 0
+%278 = OpCompositeExtract %v4float %277 0
+%283 = OpCompositeExtract %v4float %277 1
+%288 = OpCompositeExtract %v4float %277 2
+%293 = OpCompositeExtract %v4float %277 3
+%302 = OpCompositeConstruct %mat4v4float %278 %283 %288 %293
+%122 = OpMatrixTimesMatrix %mat4v4float %274 %302
+%123 = OpCompositeConstruct %v4float %12 %float_1
+%125 = OpVectorTimesMatrix %v4float %123 %274
+%126 = OpVectorTimesMatrix %v4float %125 %122
+%127 = OpCompositeExtract %v4float %236 0
+%128 = OpVectorShuffle %v3float %127 %127 0 1 2
+%129 = OpCompositeExtract %v4float %236 1
+%130 = OpVectorShuffle %v3float %129 %129 0 1 2
+%131 = OpCompositeExtract %v4float %236 2
+%132 = OpVectorShuffle %v3float %131 %131 0 1 2
+%134 = OpCompositeConstruct %mat3v3float %128 %130 %132
+%135 = OpVectorTimesMatrix %v3float %15 %134
+%138 = OpVectorShuffle %v4float %126 %126 0 1 2 3
+%142 = OpVectorShuffle %v3float %125 %125 0 1 2
+%146 = OpExtInst %v3float %147 Normalize %135
+OpStore %gl_Position %138
+OpStore %entryPointParam_VSMain_wsPosition %142
+OpStore %entryPointParam_VSMain_normal %146
+OpStore %entryPointParam_VSMain_uv %17
+OpReturn
+OpFunctionEnd
+
+; Function PSMain
+%PSMain = OpFunction %void None %3
+%171 = OpLabel
+%175 = OpLoad %v3float %input_wsPosition
+%177 = OpLoad %v3float %input_normal_0
+%179 = OpLoad %v2float %input_uv_0
+%182 = OpCompositeConstruct %v4float %175 %float_1
+%185 = OpCompositeConstruct %v4float %177 %float_1
+OpStore %entryPointParam_PSMain_wsPosition %182
+OpStore %entryPointParam_PSMain_normal %185
+OpStore %entryPointParam_PSMain_material %179
+OpReturn
+OpFunctionEnd
+
+; Function CSMain
+%CSMain = OpFunction %void None %3
+%201 = OpLabel
+OpReturn
+OpFunctionEnd

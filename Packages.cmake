@@ -1,16 +1,40 @@
 include(${CMAKE_SOURCE_DIR}/CMake/CPM.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/variables.cmake)
 
-# CPMAddPackage(
-#   NAME           slang
-# 	GIT_REPOSITORY git@github.com:shader-slang/slang.git
-# 	GIT_TAG        c00f461aad3d997a2e1c59559421275d6339ae6f # v2024.1.22
-# 	OPTIONS
-# 		"SLANG_ENABLE_TESTS OFF"
-# 		"SLANG_ENABLE_EXAMPLES OFF"
-# 		"SLANG_ENABLE_GFX OFF"
-# 		"SLANG_ENABLE_CUDA FALSE"
-# )
+CPMAddPackage(
+  NAME             slang
+	GIT_REPOSITORY git@github.com:shader-slang/slang.git
+	GIT_TAG        v2025.15.1
+	OPTIONS
+		"SLANG_EMBED_CORE_MODULE_SOURCE ON"
+		"SLANG_EMBED_CORE_MODULE ON"
+		"SLANG_ENABLE_DXIL OFF"
+		"SLANG_ENABLE_FULL_IR_VALIDATION OFF"
+		"SLANG_ENABLE_IR_BREAK_ALLOC OFF"
+		"SLANG_ENABLE_ASAN OFF"
+		"SLANG_ENABLE_PREBUILT_BINARIES OFF"
+		"SLANG_ENABLE_GFX OFF"
+		"SLANG_ENABLE_SLANGD OFF"
+		"SLANG_ENABLE_SLANGC OFF"
+		"SLANG_ENABLE_SLANGI OFF"
+		"SLANG_ENABLE_SLANGRT OFF"
+		"SLANG_ENABLE_TESTS OFF"
+		"SLANG_ENABLE_EXAMPLES OFF"
+		"SLANG_ENABLE_REPLAYER OFF"
+		"SLANG_SPIRV_HEADERS_INCLUDE_DIR OFF"
+		"SLANG_ENABLE_RELEASE_DEBUG_INFO OFF"
+		"SLANG_ENABLE_RELEASE_LTO OFF"
+		"SLANG_ENABLE_SPLIT_DEBUG_INFO OFF"
+		"SLANG_ENABLE_SLANG_RHI OFF"
+		"SLANG_RHI_ENABLE_AGILITY_SDK OFF"
+		"SLANG_RHI_ENABLE_CPU OFF"
+		"SLANG_RHI_ENABLE_D3D11 OFF"
+		"SLANG_RHI_ENABLE_D3D12 OFF"
+		"SLANG_RHI_ENABLE_NVAPI OFF"
+		"SLANG_RHI_ENABLE_OPTIX OFF"
+		"SLANG_RHI_ENABLE_VULKAN OFF"
+		"SLANG_RHI_ENABLE_WGPU OFF"
+)
 
 CPMAddPackage(
     NAME           TL
@@ -93,15 +117,15 @@ if(RHI_BUILD_EXAMPLES)
 			include(${CPM_TL_SOURCE}/CMake/add-target.cmake)
 		endif()
 		tl_add_target(
-			NAME imgui
+			NAME rhi_imgui
 			# NAMESPACE Thirdparty
 			STATIC
 			HEADERS ${HEADER_FILES}
 			SOURCES ${SOURCE_FILES}
 		)
-		target_include_directories(imgui ${warning_guard} PUBLIC ${imgui_SOURCE_DIR})
+		target_include_directories(rhi_imgui ${warning_guard} PUBLIC ${imgui_SOURCE_DIR})
 		# Set compiler flags for your target
-		target_compile_options(imgui PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/W3>" "$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall;-Wextra>")
+		target_compile_options(rhi_imgui PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/W3>" "$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall;-Wextra>")
 	endif()
 
 	CPMAddPackage(
@@ -116,8 +140,9 @@ if(RHI_BUILD_EXAMPLES)
 	CPMAddPackage(
 		NAME           assimp
 		GIT_REPOSITORY git@github.com:assimp/assimp.git
-		GIT_TAG        v5.4.2
+		GIT_TAG        v6.0.2
 		OPTIONS
+			ASSIMP_WARNINGS_AS_ERRORS OFF
 			ASSIMP_BUILD_TESTS OFF
 	)
 	set_target_properties(assimp PROPERTIES EXCLUDE_FROM_ALL TRUE)

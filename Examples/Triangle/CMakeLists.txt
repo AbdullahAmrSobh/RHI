@@ -79,4 +79,4 @@ compile_slang_shaders(
 target_compile_definitions(Triangle PUBLIC GLM_FORCE_LEFT_HANDED)
 target_compile_definitions(Triangle PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE)
 
-target_link_libraries(Triangle imgui)
+target_link_libraries(Triangle rhi_imgui)

@@ -37,6 +37,6 @@ tl_add_target(
     SOURCES ${SOURCE_FILES}
 )
 
-target_compile_options(RHI PRIVATE ${RHI_COMPILE_FLAGS})
+# target_compile_options(RHI PRIVATE ${RHI_COMPILE_FLAGS})
 
 target_link_libraries(RHI PUBLIC TL)

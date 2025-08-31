@@ -7,7 +7,7 @@ struct GBufferInputs
     SamplerState defaultSampler;
     Texture2D bindlessTextures[];
 };
-ParameterBlock<GBufferInput> shaderInputs;
+ParameterBlock<GBufferInputs> shaderInputs;
 
 struct UGBVertexInput
 {
