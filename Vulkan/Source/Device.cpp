@@ -357,7 +357,7 @@ namespace RHI::Vulkan
         TL::Vector<const char*> requiredDeviceLayers;
         TL::Vector<const char*> requiredDeviceExtensions{
             VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-            VK_KHR_CALIBRATED_TIMESTAMPS_EXTENSION_NAME,
+            // VK_KHR_CALIBRATED_TIMESTAMPS_EXTENSION_NAME,
         };
 
         for (VkPhysicalDevice physicalDevice : GetAvailablePhysicalDevices(m_instance))
@@ -463,22 +463,22 @@ namespace RHI::Vulkan
             .pNext                                              = &features13,
             .drawIndirectCount                                  = VK_TRUE,
             .descriptorIndexing                                 = VK_TRUE,
-            .shaderInputAttachmentArrayDynamicIndexing          = VK_TRUE,
-            .shaderUniformTexelBufferArrayDynamicIndexing       = VK_TRUE,
-            .shaderStorageTexelBufferArrayDynamicIndexing       = VK_TRUE,
-            .shaderUniformBufferArrayNonUniformIndexing         = VK_TRUE,
+            // .shaderInputAttachmentArrayDynamicIndexing          = VK_TRUE,
+            // .shaderUniformTexelBufferArrayDynamicIndexing       = VK_TRUE,
+            // .shaderStorageTexelBufferArrayDynamicIndexing       = VK_TRUE,
+            // .shaderUniformBufferArrayNonUniformIndexing         = VK_TRUE,
             .shaderSampledImageArrayNonUniformIndexing          = VK_TRUE,
-            .shaderStorageBufferArrayNonUniformIndexing         = VK_TRUE,
-            .shaderStorageImageArrayNonUniformIndexing          = VK_TRUE,
-            .shaderInputAttachmentArrayNonUniformIndexing       = VK_TRUE,
-            .shaderUniformTexelBufferArrayNonUniformIndexing    = VK_TRUE,
-            .shaderStorageTexelBufferArrayNonUniformIndexing    = VK_TRUE,
-            .descriptorBindingUniformBufferUpdateAfterBind      = VK_TRUE,
+            // .shaderStorageBufferArrayNonUniformIndexing         = VK_TRUE,
+            // .shaderStorageImageArrayNonUniformIndexing          = VK_TRUE,
+            // .shaderInputAttachmentArrayNonUniformIndexing       = VK_TRUE,
+            // .shaderUniformTexelBufferArrayNonUniformIndexing    = VK_TRUE,
+            // .shaderStorageTexelBufferArrayNonUniformIndexing    = VK_TRUE,
+            // .descriptorBindingUniformBufferUpdateAfterBind      = VK_TRUE,
             .descriptorBindingSampledImageUpdateAfterBind       = VK_TRUE,
-            .descriptorBindingStorageImageUpdateAfterBind       = VK_TRUE,
-            .descriptorBindingStorageBufferUpdateAfterBind      = VK_TRUE,
-            .descriptorBindingUniformTexelBufferUpdateAfterBind = VK_TRUE,
-            .descriptorBindingStorageTexelBufferUpdateAfterBind = VK_TRUE,
+            // .descriptorBindingStorageImageUpdateAfterBind       = VK_TRUE,
+            // .descriptorBindingStorageBufferUpdateAfterBind      = VK_TRUE,
+            // .descriptorBindingUniformTexelBufferUpdateAfterBind = VK_TRUE,
+            // .descriptorBindingStorageTexelBufferUpdateAfterBind = VK_TRUE,
             .descriptorBindingUpdateUnusedWhilePending          = VK_TRUE,
             .descriptorBindingPartiallyBound                    = VK_TRUE,
             .descriptorBindingVariableDescriptorCount           = VK_TRUE,
@@ -723,33 +723,148 @@ namespace RHI::Vulkan
         return m_framesInFlight[m_currentFrameIndex]->GetAllocator();
     }
 
-#define IMPL_DEVICE_CREATE_AND_DESTROY(ResourceType)                                        \
-    ResourceType* IDevice::Create##ResourceType(const ResourceType##CreateInfo& createInfo) \
-    {                                                                                       \
-        ZoneScoped;                                                                         \
-        auto handle = TL::Construct<I##ResourceType>();                                     \
-        auto result = handle->Init(this, createInfo);                                       \
-        TL_ASSERT(IsSuccess(result));                                                       \
-        return handle;                                                                      \
-    }                                                                                       \
-    void IDevice::Destroy##ResourceType(ResourceType* _handle)                              \
-    {                                                                                       \
-        ZoneScoped;                                                                         \
-        auto handle = (I##ResourceType*)_handle;                                            \
-        handle->Shutdown(this);                                                             \
-        TL::Destruct(_handle);                                                              \
+    // #define IMPL_DEVICE_CREATE_AND_DESTROY(ResourceType)                                        \
+//     ResourceType* IDevice::Create##ResourceType(const ResourceType##CreateInfo& createInfo) \
+//     {                                                                                       \
+//         auto handle = TL::Construct<I##ResourceType>();                                     \
+//         auto result = handle->Init(this, createInfo);                                       \
+//         TL_ASSERT(IsSuccess(result));                                                       \
+//         return handle;                                                                      \
+//     }                                                                                       \
+//     void IDevice::Destroy##ResourceType(ResourceType* _handle)                              \
+//     {                                                                                       \
+//         auto handle = (I##ResourceType*)_handle;                                            \
+//         handle->Shutdown(this);                                                             \
+//         TL::Destruct(_handle);                                                              \
+//     }
+
+    Swapchain* IDevice ::CreateSwapchain(const SwapchainCreateInfo& createInfo)
+    {
+        auto handle = TL ::Construct<ISwapchain>();
+        auto result = handle->Init(this, createInfo);
+        TL_ASSERT(IsSuccess(result));
+        return handle;
     }
 
-    IMPL_DEVICE_CREATE_AND_DESTROY(Swapchain);
-    IMPL_DEVICE_CREATE_AND_DESTROY(ShaderModule);
-    IMPL_DEVICE_CREATE_AND_DESTROY(BindGroupLayout);
-    IMPL_DEVICE_CREATE_AND_DESTROY(BindGroup);
-    IMPL_DEVICE_CREATE_AND_DESTROY(PipelineLayout);
-    IMPL_DEVICE_CREATE_AND_DESTROY(GraphicsPipeline);
-    IMPL_DEVICE_CREATE_AND_DESTROY(ComputePipeline);
-    IMPL_DEVICE_CREATE_AND_DESTROY(Sampler);
-    IMPL_DEVICE_CREATE_AND_DESTROY(Image);
-    IMPL_DEVICE_CREATE_AND_DESTROY(Buffer);
+    void IDevice ::DestroySwapchain(Swapchain* _handle)
+    {
+        auto handle = (ISwapchain*)_handle;
+        handle->Shutdown(this);
+        TL ::Destruct(_handle);
+    };
+
+    ShaderModule* IDevice ::CreateShaderModule(const ShaderModuleCreateInfo& createInfo)
+    {
+        auto handle = TL ::Construct<IShaderModule>();
+        auto result = handle->Init(this, createInfo);
+        TL_ASSERT(IsSuccess(result));
+        return handle;
+    }
+
+    void IDevice ::DestroyShaderModule(ShaderModule* _handle)
+    {
+        auto handle = (IShaderModule*)_handle;
+        handle->Shutdown(this);
+        TL ::Destruct(_handle);
+    };
+
+    BindGroupLayout* IDevice ::CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)
+    {
+        auto handle = TL ::Construct<IBindGroupLayout>();
+        auto result = handle->Init(this, createInfo);
+        TL_ASSERT(IsSuccess(result));
+        return handle;
+    }
+
+    void IDevice ::DestroyBindGroupLayout(BindGroupLayout* _handle)
+    {
+        auto handle = (IBindGroupLayout*)_handle;
+        handle->Shutdown(this);
+        TL ::Destruct(_handle);
+    };
+
+    BindGroup* IDevice ::CreateBindGroup(const BindGroupCreateInfo& createInfo)
+    {
+        auto handle = TL ::Construct<IBindGroup>();
+        auto result = handle->Init(this, createInfo);
+        TL_ASSERT(IsSuccess(result));
+        return handle;
+    }
+
+    void IDevice ::DestroyBindGroup(BindGroup* _handle)
+    {
+        auto handle = (IBindGroup*)_handle;
+        handle->Shutdown(this);
+        TL ::Destruct(_handle);
+    };
+
+    PipelineLayout* IDevice ::CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)
+    {
+        auto handle = TL ::Construct<IPipelineLayout>();
+        auto result = handle->Init(this, createInfo);
+        TL_ASSERT(IsSuccess(result));
+        return handle;
+    }
+
+    void IDevice ::DestroyPipelineLayout(PipelineLayout* _handle)
+    {
+        auto handle = (IPipelineLayout*)_handle;
+        handle->Shutdown(this);
+        TL ::Destruct(_handle);
+    };
+
+    GraphicsPipeline* IDevice ::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)
+    {
+        auto handle = TL ::Construct<IGraphicsPipeline>();
+        auto result = handle->Init(this, createInfo);
+        TL_ASSERT(IsSuccess(result));
+        return handle;
+    }
+
+    void IDevice ::DestroyGraphicsPipeline(GraphicsPipeline* _handle)
+    {
+        auto handle = (IGraphicsPipeline*)_handle;
+        handle->Shutdown(this);
+        TL ::Destruct(_handle);
+    };
+
+    ComputePipeline* IDevice ::CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
+    {
+        auto handle = TL ::Construct<IComputePipeline>();
+        auto result = handle->Init(this, createInfo);
+        TL_ASSERT(IsSuccess(result));
+        return handle;
+    }
+
+    void IDevice ::DestroyComputePipeline(ComputePipeline* _handle)
+    {
+        auto handle = (IComputePipeline*)_handle;
+        handle->Shutdown(this);
+        TL ::Destruct(_handle);
+    };
+
+    Sampler* IDevice ::CreateSampler(const SamplerCreateInfo& createInfo)
+    {
+        auto handle = TL ::Construct<ISampler>();
+        auto result = handle->Init(this, createInfo);
+        TL_ASSERT(IsSuccess(result));
+        return handle;
+    }
+
+    void IDevice ::DestroySampler(Sampler* _handle)
+    {
+        auto handle = (ISampler*)_handle;
+        handle->Shutdown(this);
+        TL ::Destruct(_handle);
+    };
+
+    Image* IDevice ::CreateImage(const ImageCreateInfo& createInfo)
+    {
+        auto handle = TL ::Construct<IImage>();
+        auto result = handle->Init(this, createInfo);
+        TL_ASSERT(IsSuccess(result));
+        return handle;
+    }
 
     Image* IDevice::CreateImageView(TL_MAYBE_UNUSED const ImageViewCreateInfo& createInfo)
     {
@@ -757,6 +872,28 @@ namespace RHI::Vulkan
         return {};
     }
 
-#undef IMPL_DEVICE_CREATE_AND_DESTROY
+    void IDevice ::DestroyImage(Image* _handle)
+    {
+        auto handle = (IImage*)_handle;
+        handle->Shutdown(this);
+        TL ::Destruct(_handle);
+    };
+
+    Buffer* IDevice ::CreateBuffer(const BufferCreateInfo& createInfo)
+    {
+        auto handle = TL ::Construct<IBuffer>();
+        auto result = handle->Init(this, createInfo);
+        TL_ASSERT(IsSuccess(result));
+        return handle;
+    }
+
+    void IDevice ::DestroyBuffer(Buffer* _handle)
+    {
+        auto handle = (IBuffer*)_handle;
+        handle->Shutdown(this);
+        TL ::Destruct(_handle);
+    };
+
+    // #undef IMPL_DEVICE_CREATE_AND_DESTROY
 
 } // namespace RHI::Vulkan

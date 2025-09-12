@@ -92,21 +92,20 @@ namespace RHI::Vulkan
 
     public:
         // Vulkan instance and core objects
-        VkInstance                        m_instance;
-        VkDebugUtilsMessengerEXT          m_debugUtilsMessenger;
-        VkPhysicalDevice                  m_physicalDevice;
-        VkDevice                          m_device;
-        VmaAllocator                      m_deviceAllocator;
-        VulkanAPI                         m_pfn;
-        TL::Ptr<Renderdoc>                m_renderdoc;
+        VkInstance                        m_instance                = VK_NULL_HANDLE;
+        VkDebugUtilsMessengerEXT          m_debugUtilsMessenger     = VK_NULL_HANDLE;
+        VkPhysicalDevice                  m_physicalDevice          = VK_NULL_HANDLE;
+        VkDevice                          m_device                  = VK_NULL_HANDLE;
+        VmaAllocator                      m_deviceAllocator         = VK_NULL_HANDLE;
+        VulkanAPI                         m_pfn                     = {};
+        TL::Ptr<Renderdoc>                m_renderdoc               = nullptr;
         // Queue and allocator management
-        IQueue                            m_queue[AsyncQueuesCount];
-        TL::Ptr<class DeleteQueue>        m_destroyQueue;
-        TL::Ptr<class BindGroupAllocator> m_bindGroupAllocator;
+        IQueue                            m_queue[AsyncQueuesCount] = {};
+        TL::Ptr<class DeleteQueue>        m_destroyQueue            = nullptr;
+        TL::Ptr<class BindGroupAllocator> m_bindGroupAllocator      = nullptr;
         // Frames in flight
-        uint32_t                          m_currentFrameIndex;
-        TL::Vector<TL::Ptr<class IFrame>> m_framesInFlight;
-        IFrame*                           m_activeFrame;
+        uint32_t                          m_currentFrameIndex       = 0;
+        TL::Vector<TL::Ptr<class IFrame>> m_framesInFlight          = {};
     };
 
     template<typename T>
