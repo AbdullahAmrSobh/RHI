@@ -408,18 +408,18 @@ namespace RHI::Vulkan
             auto queueFamilyProperty = queueFamilyProperties[queueFamilyIndex];
             if (graphicsQueueFamilyIndex.has_value() == false && (queueFamilyProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT))
             {
-                graphicsQueueFamilyIndex = queueFamilyIndex;
+                graphicsQueueFamilyIndex.emplace(queueFamilyIndex);
                 continue;
             }
             if constexpr (EnableAsyncQueues)
             {
                 if (computeQueueFamilyIndex.has_value() == false && (queueFamilyProperty.queueFlags & VK_QUEUE_COMPUTE_BIT))
                 {
-                    computeQueueFamilyIndex = queueFamilyIndex;
+                    computeQueueFamilyIndex.emplace(queueFamilyIndex);
                 }
                 else if (transferQueueFamilyIndex.has_value() == false && (queueFamilyProperty.queueFlags & VK_QUEUE_TRANSFER_BIT))
                 {
-                    transferQueueFamilyIndex = queueFamilyIndex;
+                    transferQueueFamilyIndex.emplace(queueFamilyIndex);
                 }
             }
         }

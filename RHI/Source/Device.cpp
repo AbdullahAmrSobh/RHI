@@ -57,7 +57,7 @@ namespace RHI
         }
 
         m_library    = library;
-        auto* getAPI = reinterpret_cast<pRENDERDOC_GetAPI>(m_library.GetProc("RENDERDOC_GetAPI"));
+        auto* getAPI = m_library.GetProc<pRENDERDOC_GetAPI>("RENDERDOC_GetAPI");
         if (!getAPI)
         {
             TL_LOG_ERROR("Failed to get RENDERDOC_GetAPI function pointer");

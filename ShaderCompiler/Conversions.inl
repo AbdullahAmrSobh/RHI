@@ -102,7 +102,7 @@ namespace BGC
         case slang::BindingType::MutableRawBuffer:                return RHI::BindingType::StorageImage;
         case slang::BindingType::InputRenderTarget:               return RHI::BindingType::InputAttachment;
         case slang::BindingType::RayTracingAccelerationStructure: return RHI::BindingType::RayTracingAccelerationStructure;
-        default:                                                  TL_UNREACHABLE(); return RHI::BindingType::None;
+        default:                                                  /*TL_UNREACHABLE();*/ return RHI::BindingType::None;
         }
     }
 

@@ -2,6 +2,8 @@
 
 #include <RHI/Resources.hpp>
 
+#include <TL/String.hpp>
+
 namespace RHI::Debug
 {
     inline static TL::String ToString(TL::Flags<RHI::Access> access)
