@@ -5,8 +5,8 @@
 #include <TL/Block.hpp>
 #include <TL/Allocator/Allocator.hpp>
 #include <TL/Assert.hpp>
-
 #include <TL/FileSystem/File.hpp>
+#include <TL/Result.hpp>
 
 #include <RHI/RHI.hpp>
 #include <RHI/ShaderUtils.inl>
@@ -183,72 +183,129 @@ namespace BGC
 
         codegen::Generator generator       = {};
         codegen::Scope     scopeSig        = {"sig", generator.rootScope(), codegen::ScopeKind::Namespace};
-        codegen::Type*     device          = getType("RHI::Device", true);
-        codegen::Type*     bindGroup       = getType("RHI::BindGroup", true);
-        codegen::Type*     bindGroupLayout = getType("RHI::BindGroupLayout", true);
+        codegen::Type*     device          = getType("RHI::Device*", true);
+        codegen::Type*     bindGroup       = getType("RHI::BindGroup*", true);
+        codegen::Type*     bindGroupLayout = getType("RHI::BindGroupLayout*", true);
 
         void genFunction_createBindGroupLayout(codegen::Type* genType, TL::Span<std::string> shaderBindings)
         {
-            auto func = genType->addFunction("createBindGroupLayout", generator.t_void);
+            auto func = genType->addFunction("createBindGroupLayout", bindGroupLayout, true);
             func->addArgument("device", device);
-            func->addArgument("bindGroup", bindGroupLayout);
-            func->addLine("BindGroupUpdateInfo updateInfo = {");
-            for (auto updateInfo : shaderBindings)
+            func->addLine("RHI::BindGroupLayoutCreateInfo createInfo = {");
+            func->addLine("\t.name = nullptr,"); // TODO: add name
+            func->addLine("\t.bindings = {");    // TODO: add name
+            for (auto binding : shaderBindings)
             {
-                func->addLine(updateInfo.data());
+                func->addLine(binding.data());
             }
+            func->addLine("\t},");
             func->addLine("};");
-            func->addLine("device->UpdateBindGroup(bindGroup, updateInfo);");
+            func->addLine("return device->CreateBindGroupLayout(createInfo);");
         }
 
-        void genFunction_updateBindGroup(codegen::Type* genType, std::span<std::string> buffers, std::span<std::string> images, std::span<std::string> samplers)
+        void addBufferUpdateLine(codegen::Function* func, uint32_t bindingIndex, const std::string& memberName)
+        {
+            func->addLine(std::format("if ({}.m_dirty) \n{{", memberName));
+            func->addLine(std::format("\t{}.m_dirty = false;", memberName));
+            func->addLine(std::format("\tbufferInfos[bufferCount].dstBinding = {};", bindingIndex));
+            func->addLine(std::format("\tbufferInfos[bufferCount].dstArrayElement = 0;"));
+            func->addLine(std::format("\tbufferInfos[bufferCount].buffers = {{ &{}.bindingInfo, 1 }};", memberName));
+            func->addLine("\tbufferCount++;");
+            func->addLine("}");
+        }
+
+        void addImageUpdateLine(codegen::Function* func, uint32_t bindingIndex, const std::string& memberName)
+        {
+            func->addLine(std::format("if ({}.m_dirty) \n{{", memberName));
+            func->addLine(std::format("\t{}.m_dirty = false;", memberName));
+            func->addLine(std::format("\timageInfos[imageCount].dstBinding = {};", bindingIndex));
+            func->addLine(std::format("\timageInfos[imageCount].dstArrayElement = 0;"));
+            func->addLine(std::format("\timageInfos[imageCount].images = {{ &{}.m_image, 1 }};", memberName));
+            func->addLine("\timageCount++;");
+            func->addLine("}");
+        }
+
+        void addSamplerUpdateLine(codegen::Function* func, uint32_t bindingIndex, const std::string& memberName)
+        {
+            func->addLine(std::format("if ({}.m_dirty) \n{{", memberName));
+            func->addLine(std::format("\t{}.m_dirty = false;", memberName));
+            func->addLine(std::format("\tsamplerInfos[samplerCount].dstBinding = {};", bindingIndex));
+            func->addLine(std::format("\tsamplerInfos[samplerCount].dstArrayElement = 0;"));
+            func->addLine(std::format("\tsamplerInfos[samplerCount].samplers = {{ &{}.m_sampler, 1 }};", memberName));
+            func->addLine("\tsamplerCount++;");
+            func->addLine("}");
+        }
+
+        void genFunction_updateBindGroup(codegen::Type* genType, std::span<std::pair<uint32_t, std::string>> buffers, std::span<std::pair<uint32_t, std::string>> images, std::span<std::pair<uint32_t, std::string>> samplers)
         {
             auto func = genType->addFunction("updateBindGroup", generator.t_void);
             func->addArgument("device", device);
             func->addArgument("bindGroup", bindGroup);
 
-            func->addLine(std::format("static constexpr uint32_t MAX_BUFFERS   = {};", buffers.size()));
-            func->addLine(std::format("static constexpr uint32_t MAX_IMAGES    = {};", images.size()));
-            func->addLine(std::format("static constexpr uint32_t MAX_SAMPLERS  = {};", samplers.size()));
+            // Generate constants for array sizes
+            func->addLine(std::format("static constexpr uint32_t MAX_BUFFERS = {};", buffers.size()));
+            func->addLine(std::format("static constexpr uint32_t MAX_IMAGES = {};", images.size()));
+            func->addLine(std::format("static constexpr uint32_t MAX_SAMPLERS = {};", samplers.size()));
 
-            // Buffers
-            func->addLine("uint32_t bufferCount = 0;");
-            func->addLine("RHI::BindGroupBuffersUpdateInfo bufferInfos[MAX_BUFFERS] = {};");
-            for (size_t i = 0; i < buffers.size(); i++)
+            // Generate buffer update code
+            if (!buffers.empty())
             {
-                func->addLine(std::format(
-                    "if (m_dirtyMask & (1u << {})) bufferInfos[bufferCount++] = {};",
-                    i,
-                    buffers[i]));
+                func->addLine("uint32_t bufferCount = 0;");
+                func->addLine("RHI::BindGroupBuffersUpdateInfo bufferInfos[MAX_BUFFERS] = {};");
+
+                for (const auto& [bindingIndex, memberName] : buffers)
+                {
+                    addBufferUpdateLine(func, bindingIndex, memberName);
+                }
             }
 
-            // Images
-            func->addLine("uint32_t imageCount = 0;");
-            func->addLine("RHI::BindGroupImagesUpdateInfo imageInfos[MAX_IMAGES] = {};");
-            for (size_t i = 0; i < images.size(); i++)
+            // Generate image update code
+            if (!images.empty())
             {
-                func->addLine(std::format(
-                    "if (m_dirtyMask & (1u << ({} + MAX_BUFFERS))) imageInfos[imageCount++] = {};",
-                    i,
-                    images[i]));
+                func->addLine("uint32_t imageCount = 0;");
+                func->addLine("RHI::BindGroupImagesUpdateInfo imageInfos[MAX_IMAGES] = {};");
+
+                for (const auto& [bindingIndex, memberName] : images)
+                {
+                    addImageUpdateLine(func, bindingIndex, memberName);
+                }
             }
 
-            // Samplers
-            func->addLine("uint32_t samplerCount = 0;");
-            func->addLine("RHI::BindGroupSamplersUpdateInfo samplerInfos[MAX_SAMPLERS] = {};");
-            for (size_t i = 0; i < samplers.size(); i++)
+            // Generate sampler update code
+            if (!samplers.empty())
             {
-                func->addLine(std::format(
-                    "if (m_dirtyMask & (1u << ({} + MAX_BUFFERS + MAX_IMAGES))) samplerInfos[samplerCount++] = {};",
-                    i,
-                    samplers[i]));
+                func->addLine("uint32_t samplerCount = 0;");
+                func->addLine("RHI::BindGroupSamplersUpdateInfo samplerInfos[MAX_SAMPLERS] = {};");
+
+                for (const auto& [bindingIndex, memberName] : samplers)
+                {
+                    addSamplerUpdateLine(func, bindingIndex, memberName);
+                }
             }
 
+            // Create and populate the update info
             func->addLine("RHI::BindGroupUpdateInfo updateInfo = {};");
-            func->addLine("updateInfo.buffers  = { bufferInfos, bufferCount };");
-            func->addLine("updateInfo.images   = { imageInfos, imageCount };");
-            func->addLine("updateInfo.samplers = { samplerInfos, samplerCount };");
+
+            if (!buffers.empty())
+            {
+                func->addLine("updateInfo.buffers = { bufferInfos, bufferCount };");
+            }
+
+            if (!images.empty())
+            {
+                func->addLine("updateInfo.images = { imageInfos, imageCount };");
+            }
+
+            if (!samplers.empty())
+            {
+                func->addLine("updateInfo.samplers = { samplerInfos, samplerCount };");
+            }
+
             func->addLine("device->UpdateBindGroup(bindGroup, updateInfo);");
+            // Call the device update function
+            func->addLine("if (bufferCount || imageCount || samplerCount) \n {");
+            func->addLine("\tdevice->UpdateBindGroup(bindGroup, updateInfo);");
+            func->addLine("}");
         }
 
         codegen::Type* getType(TL::StringView name, bool imported = false)
@@ -312,7 +369,7 @@ namespace BGC
 
         codegen::Type* sampler()
         {
-            return getType("RHI::BindGroupSamplersUpdateInfo", true);
+            return getType("Engine::SamplerBinding", true);
         }
 
         codegen::Type* texture(RHI::ImageViewType type, bool msaa, bool rw)
@@ -320,68 +377,101 @@ namespace BGC
             switch (type)
             {
             case RHI::ImageViewType::None:
-            case RHI::ImageViewType::View1D:
-            case RHI::ImageViewType::View1DArray:
-            case RHI::ImageViewType::View2D:
-            case RHI::ImageViewType::View2DArray:
-            case RHI::ImageViewType::View3D:
-            case RHI::ImageViewType::CubeMap:
-            default:
-                break;
+            case RHI::ImageViewType::View1D:      return getType("Engine::Texture1DBinding", true);
+            case RHI::ImageViewType::View1DArray: return getType("Engine::Texture1DArrayBinding", true);
+            case RHI::ImageViewType::View2D:      return getType("Engine::Texture2DBinding", true);
+            case RHI::ImageViewType::View2DArray: return getType("Engine::Texture2DArrayBinding", true);
+            case RHI::ImageViewType::View3D:      return getType("Engine::Texture3DBinding", true);
+            case RHI::ImageViewType::CubeMap:     return getType("Engine::TextureCubeBinding", true);
+            default:                              TL_UNREACHABLE(); break;
             }
-
-            return getType("RHI::BindGroupImagesUpdateInfo", true);
+            TL_LOG_ERROR("texture type not supported");
+            return nullptr;
         }
 
         codegen::Type* constantBuffer(codegen::Type* innerType)
         {
-            return getType(std::format("neon::ConstantBuffer<{}>", innerType->getName()), true);
+            return getType(std::format("Engine::ConstantBufferBinding<{}>", innerType->getName()), true);
         }
 
         codegen::Type* rawByteAddressBuffer(bool rw)
         {
             TL_UNREACHABLE();
-            return getType(std::format("{}ByteAddressBuffer", rw ? "RW" : "", true));
+            return getType("RHI::BufferBindingInfo", true);
         }
 
         codegen::Type* structuredBuffer(codegen::Type* innerType, bool rw)
         {
-            return getType(std::format("{}StructuredBuffer<{}>", rw ? "RW" : "", innerType->getName()), true);
+            return getType(std::format("Engine::StructuredBufferBinding<{}>", innerType->getName()), true);
         }
 
         codegen::Type* bindless(codegen::Type* innerType)
         {
-            return getType(std::format("bindless<{}>", innerType->getName()), true);
+            return getType(std::format("Engine::BindlessArray<{}>", innerType->getName()), true);
         }
 
-        // codegen::Type* genStructType(uint32_t fieldsCount, slang::TypeLayoutReflection*** )
+        TL::String getStructName(slang::TypeReflection* type)
+        {
+            Slang::ComPtr<ISlangBlob> fullnameBlob = nullptr;
 
-        // generate a C++ resource type
-        codegen::Type* genResourceType(slang::TypeLayoutReflection* type)
+            type->getFullName(fullnameBlob.writeRef());
+
+            if (fullnameBlob->getBufferSize() == 0)
+            {
+                return type->getName();
+            }
+
+            TL::String name((const char*)fullnameBlob->getBufferPointer(), fullnameBlob->getBufferSize());
+
+            // replace all dots with ::
+
+            size_t pos = 0;
+            while ((pos = name.find(".", pos)) != TL::String::npos)
+            {
+                name.replace(pos, 1, "::");
+                pos += 2;
+            }
+
+            return name;
+        }
+
+        // generate a C++ struct type (scalars, vectors, matrices, arrays, structs)
+        codegen::Type* genStructType(slang::TypeLayoutReflection* type, bool imported = true)
         {
             switch (type->getKind())
             {
-            case slang::TypeReflection::Kind::Array:          return genResourceType(type->getElementTypeLayout());
-            case slang::TypeReflection::Kind::Matrix:         return matrix(type->getScalarType(), type->getRowCount(), type->getColumnCount());
-            case slang::TypeReflection::Kind::Vector:         return vector(type->getScalarType(), type->getRowCount());
-            case slang::TypeReflection::Kind::Scalar:         return scaler(type->getScalarType());
-            case slang::TypeReflection::Kind::ConstantBuffer: return constantBuffer(genResourceType(type->getElementTypeLayout()));
-            case slang::TypeReflection::Kind::SamplerState:   return sampler();
+            case slang::TypeReflection::Kind::Array:  return genStructType(type->getElementTypeLayout());
+            case slang::TypeReflection::Kind::Matrix: return matrix(type->getScalarType(), type->getRowCount(), type->getColumnCount());
+            case slang::TypeReflection::Kind::Vector: return vector(type->getScalarType(), type->getRowCount());
+            case slang::TypeReflection::Kind::Scalar: return scaler(type->getScalarType());
             case slang::TypeReflection::Kind::Struct:
                 {
-                    auto structType = getType(type->getName());
+                    auto structType = getType(getStructName(type->getType()), imported);
                     for (int i = 0; i < type->getFieldCount(); ++i)
                     {
                         auto field = type->getFieldByIndex(i);
-                        structType->addField(field->getName(), genResourceType(field->getTypeLayout()));
+                        structType->addField(field->getName(), genStructType(field->getTypeLayout()));
                     }
                     return structType;
                 }
+            default:
+                TL_UNREACHABLE_MSG("UNSUPPORTED STRUCT TYPE");
+                return nullptr;
+            }
+        }
+
+        // generate a C++ API resource type (textures, buffers, samplers, etc.)
+        codegen::Type* genAPIResourceType(slang::TypeLayoutReflection* type)
+        {
+            switch (type->getKind())
+            {
+            case slang::TypeReflection::Kind::ConstantBuffer: return constantBuffer(genStructType(type->getElementTypeLayout()));
+            case slang::TypeReflection::Kind::SamplerState:   return sampler();
             case slang::TypeReflection::Kind::ShaderStorageBuffer:
                 {
                     auto access = type->getResourceAccess();
                     bool isRW   = access == SLANG_RESOURCE_ACCESS_WRITE;
-                    return structuredBuffer(genResourceType(type->getElementTypeLayout()), isRW);
+                    return structuredBuffer(genStructType(type->getElementTypeLayout()), isRW);
                 }
             case slang::TypeReflection::Kind::Resource:
                 {
@@ -395,7 +485,7 @@ namespace BGC
                     case SLANG_TEXTURE_2D:                   return texture(RHI::ImageViewType::View2D, false, hasWriteAccess);
                     case SLANG_TEXTURE_3D:                   return texture(RHI::ImageViewType::View3D, false, hasWriteAccess);
                     case SLANG_TEXTURE_CUBE:                 return texture(RHI::ImageViewType::CubeMap, false, hasWriteAccess);
-                    case SLANG_STRUCTURED_BUFFER:            return structuredBuffer(genResourceType(type->getElementTypeLayout()), hasWriteAccess);
+                    case SLANG_STRUCTURED_BUFFER:            return structuredBuffer(genStructType(type->getElementTypeLayout()), hasWriteAccess);
                     case SLANG_BYTE_ADDRESS_BUFFER:          return rawByteAddressBuffer(hasWriteAccess);
                     case SLANG_TEXTURE_1D_ARRAY:             return texture(RHI::ImageViewType::View1DArray, false, hasWriteAccess);
                     case SLANG_TEXTURE_2D_ARRAY:             return texture(RHI::ImageViewType::View2DArray, false, hasWriteAccess);
@@ -414,10 +504,18 @@ namespace BGC
                     case SLANG_TEXTURE_ARRAY_FLAG:
                     case SLANG_TEXTURE_MULTISAMPLE_FLAG:
                     case SLANG_TEXTURE_SUBPASS_MULTISAMPLE:
-                    default:                                 TL_UNREACHABLE(); return nullptr;
+                    default:                                 TL_UNREACHABLE_MSG("UNSUPPORTED API RESOURCE TYPE"); return nullptr;
                     }
                 }
                 break;
+            case slang::TypeReflection::Kind::Array:
+            case slang::TypeReflection::Kind::Matrix:
+            case slang::TypeReflection::Kind::Vector:
+            case slang::TypeReflection::Kind::Scalar:
+            case slang::TypeReflection::Kind::Struct:
+                // These should be handled by genStructType, not genAPIResourceType
+                TL_UNREACHABLE_MSG("STRUCT TYPE PASSED TO API RESOURCE FUNCTION");
+                return nullptr;
             case slang::TypeReflection::Kind::None:
             case slang::TypeReflection::Kind::ParameterBlock:
             case slang::TypeReflection::Kind::TextureBuffer:
@@ -428,41 +526,78 @@ namespace BGC
             case slang::TypeReflection::Kind::Feedback:
             case slang::TypeReflection::Kind::Pointer:
             case slang::TypeReflection::Kind::DynamicResource:
-                TL_UNREACHABLE();
+                TL_UNREACHABLE_MSG("UNSUPPORTED API RESOURCE TYPE");
                 break;
             }
             return nullptr;
+        }
+
+        // generate a C++ resource type (wrapper that delegates to appropriate function)
+        codegen::Type* genResourceType(slang::TypeLayoutReflection* type, bool nested = false)
+        {
+            switch (type->getKind())
+            {
+            case slang::TypeReflection::Kind::Array:
+            case slang::TypeReflection::Kind::Matrix:
+            case slang::TypeReflection::Kind::Vector:
+            case slang::TypeReflection::Kind::Scalar:
+            case slang::TypeReflection::Kind::Struct:
+                return genStructType(type, !nested);
+            case slang::TypeReflection::Kind::ConstantBuffer:
+            case slang::TypeReflection::Kind::SamplerState:
+            case slang::TypeReflection::Kind::ShaderStorageBuffer:
+            case slang::TypeReflection::Kind::Resource:
+                return genAPIResourceType(type);
+            default:
+                TL_UNREACHABLE_MSG("UNSUPPORTED TYPE");
+                return nullptr;
+            }
         }
     };
 
     static StructReflector reflector{};
 
-    static void addShaderBinding(std::vector<std::string>& out, RHI::BindingType binding, RHI::Access access, uint32_t count, size_t bufferStirde)
+    static void addShaderBinding(std::vector<std::string>& out, RHI::BindingType binding, RHI::Access access, int32_t count, size_t bufferStirde)
     {
         bool isBuffer = binding == RHI::BindingType::StorageBuffer || binding == RHI::BindingType::UniformBuffer ||
                         binding == RHI::BindingType::DynamicStorageBuffer || binding == RHI::BindingType::DynamicUniformBuffer;
 
         out.push_back(std::format(
-            "\t{{.type = RHI::{}, .access = RHI::{}, .arrayCount = {}, .stages = RHI::ShaderStage::All, .bufferStride = {} }},",
+            "\t{{.type = RHI::{}, .access = RHI::Access::{}, .arrayCount = {}, .stages = RHI::ShaderStage::AllStages, .bufferStride = {} }},",
             RHI::Debug::ToString(binding),
             RHI::Debug::ToString(access),
-            count,
+            count == -1 ? "= RHI::BindlessArraySize" : std::to_string(count),
             isBuffer ? bufferStirde : 0));
     }
 
-    static void addImageUpdate(std::vector<std::string>& out, std::string_view name)
+    static void addImageUpdate(std::vector<std::pair<uint32_t, std::string>>& out, uint32_t bindingIndex, std::string_view name)
     {
-        out.push_back(std::format("{}", name));
+        out.push_back({bindingIndex, std::string(name)});
     }
 
-    static void addBufferUpdate(std::vector<std::string>& out, std::string_view name)
+    static void addBufferUpdate(std::vector<std::pair<uint32_t, std::string>>& out, uint32_t bindingIndex, std::string_view name)
     {
-        out.push_back(std::format("{}", name));
+        out.push_back({bindingIndex, std::string(name)});
     }
 
-    static void addSamplerUpdate(std::vector<std::string>& out, std::string_view name)
+    static void addSamplerUpdate(std::vector<std::pair<uint32_t, std::string>>& out, uint32_t bindingIndex, std::string_view name)
     {
-        out.push_back(std::format("{}", name));
+        out.push_back({bindingIndex, std::string(name)});
+    }
+
+    static bool hasDynamicAttribute(slang::UserAttribute* attr)
+    {
+        for (int i = 0; i < attr->getArgumentCount(); ++i)
+        {
+            auto arg  = attr->getArgumentType(i);
+            auto name = attr->getArgumentValueString(i, nullptr);
+            if (strcmp(name, "dynamic") == 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     static void reflectParameterBlock(slang::TypeLayoutReflection* parameterBlock, uint32_t relativeSetIndex)
@@ -470,19 +605,58 @@ namespace BGC
         slang::TypeLayoutReflection* typeLayout = parameterBlock->getElementTypeLayout();
         slang::TypeReflection*       type       = typeLayout->getType();
 
+        if (typeLayout == nullptr || type == nullptr)
+        {
+            return;
+        }
+
         auto generetedType = reflector.scopeSig.createType(type->getName(), false);
 
-        std::vector<std::string> shaderbindings, buffersUpdateInfo, imagesUpdateInfo, samplersUpdateInfo;
+        std::vector<std::string>                      shaderbindings;
+        std::vector<std::pair<uint32_t, std::string>> buffersUpdateInfo, imagesUpdateInfo, samplersUpdateInfo;
 
         if (auto size = typeLayout->getSize())
         {
             auto constantStructType = generetedType->innerScope()->createType("CB");
-            generetedType->addField("cb", constantStructType);
-            addShaderBinding(shaderbindings, RHI::BindingType::UniformBuffer, RHI::Access::Read, 1, typeLayout->getStride());
-            addBufferUpdate(buffersUpdateInfo, "cb");
+
+            // Add fields to the constantStructType
+            bool                                         isDynamic = false;
+            TL::Vector<slang::VariableLayoutReflection*> fields;
+            for (int i = 0; i < typeLayout->getFieldCount(); ++i)
+            {
+                auto field = typeLayout->getFieldByIndex(i);
+                auto kind  = field->getTypeLayout()->getKind();
+
+                // TODO: Only allow single dynamic buffer per group
+                auto attr = field->getType()->getUserAttributeByIndex(0);
+                isDynamic = hasDynamicAttribute(attr);
+
+                if (kind == slang::TypeReflection::Kind::Array)
+                {
+                    kind = field->getTypeLayout()->getElementTypeLayout()->getKind();
+                }
+
+                bool isCB = kind == slang::TypeReflection::Kind::Struct ||
+                            kind == slang::TypeReflection::Kind::Matrix ||
+                            kind == slang::TypeReflection::Kind::Vector ||
+                            kind == slang::TypeReflection::Kind::Scalar;
+
+                if (isCB)
+                {
+                    fields.push_back(field);
+                    constantStructType->addField(field->getName(), reflector.genResourceType(field->getTypeLayout()), true);
+                }
+            }
+
+            auto bindingType = isDynamic ? RHI::BindingType::DynamicUniformBuffer : RHI::BindingType::UniformBuffer;
+            generetedType->addField("cb", reflector.constantBuffer(constantStructType));
+            addShaderBinding(shaderbindings, bindingType, RHI::Access::Read, 1, typeLayout->getStride());
+            addBufferUpdate(buffersUpdateInfo, 0, "cb");
         }
 
-        int rangeCount = typeLayout->getDescriptorSetDescriptorRangeCount(relativeSetIndex);
+        int      rangeCount          = typeLayout->getDescriptorSetDescriptorRangeCount(relativeSetIndex);
+        uint32_t currentBindingIndex = typeLayout->getSize() ? 1 : 0; // Start from 1 if we have a constant buffer (binding 0)
+
         for (int rangeIndex = 0; rangeIndex < rangeCount; ++rangeIndex)
         {
             slang::BindingType slangBindingType = typeLayout->getDescriptorSetDescriptorRangeType(relativeSetIndex, rangeIndex);
@@ -497,155 +671,270 @@ namespace BGC
 
             bool isBindless = field->getType()->getKind() == slang::TypeReflection::Kind::Array && field->getType()->getTotalArrayElementCount() == 0;
             if (isBindless)
+            {
                 TL_ASSERT(descriptorCount == -1);
+            }
 
             switch (bindingType)
             {
-            case RHI::BindingType::Sampler:              addSamplerUpdate(samplersUpdateInfo, field->getName()); break;
-            case RHI::BindingType::SampledImage:         addImageUpdate(imagesUpdateInfo, field->getName()); break;
-            case RHI::BindingType::StorageImage:         addImageUpdate(imagesUpdateInfo, field->getName()); break;
-            case RHI::BindingType::UniformBuffer:        addBufferUpdate(buffersUpdateInfo, field->getName()); break;
-            case RHI::BindingType::StorageBuffer:        addBufferUpdate(buffersUpdateInfo, field->getName()); break;
-            case RHI::BindingType::DynamicUniformBuffer: addBufferUpdate(buffersUpdateInfo, field->getName()); break;
-            case RHI::BindingType::DynamicStorageBuffer: addBufferUpdate(buffersUpdateInfo, field->getName()); break;
-            case RHI::BindingType::BufferView:           addBufferUpdate(buffersUpdateInfo, field->getName()); break;
-            case RHI::BindingType::StorageBufferView:    addBufferUpdate(buffersUpdateInfo, field->getName()); break;
+            case RHI::BindingType::Sampler:              addSamplerUpdate(samplersUpdateInfo, currentBindingIndex, field->getName()); break;
+            case RHI::BindingType::SampledImage:         addImageUpdate(imagesUpdateInfo, currentBindingIndex, field->getName()); break;
+            case RHI::BindingType::StorageImage:         addImageUpdate(imagesUpdateInfo, currentBindingIndex, field->getName()); break;
+            case RHI::BindingType::UniformBuffer:        addBufferUpdate(buffersUpdateInfo, currentBindingIndex, field->getName()); break;
+            case RHI::BindingType::StorageBuffer:        addBufferUpdate(buffersUpdateInfo, currentBindingIndex, field->getName()); break;
+            case RHI::BindingType::DynamicUniformBuffer: addBufferUpdate(buffersUpdateInfo, currentBindingIndex, field->getName()); break;
+            case RHI::BindingType::DynamicStorageBuffer: addBufferUpdate(buffersUpdateInfo, currentBindingIndex, field->getName()); break;
+            case RHI::BindingType::BufferView:           addBufferUpdate(buffersUpdateInfo, currentBindingIndex, field->getName()); break;
+            case RHI::BindingType::StorageBufferView:    addBufferUpdate(buffersUpdateInfo, currentBindingIndex, field->getName()); break;
             default:                                     TL_UNREACHABLE(); break;
             }
 
             addShaderBinding(shaderbindings, bindingType, access, descriptorCount, fieldType->getElementTypeLayout()->getStride());
+            currentBindingIndex++;
         }
 
         reflector.genFunction_createBindGroupLayout(generetedType, shaderbindings);
         reflector.genFunction_updateBindGroup(generetedType, buffersUpdateInfo, imagesUpdateInfo, samplersUpdateInfo);
     }
 
-    void reflectProgram(slang::ProgramLayout* programLayout)
+    void reflectProgram(slang::ProgramLayout* programLayout, std::ostream& stream)
     {
         auto paramsCount = programLayout->getParameterCount();
         for (int paramIndex = 0; paramIndex < paramsCount; ++paramIndex)
         {
-            reflectParameterBlock(programLayout->getParameterByIndex(paramIndex)->getTypeLayout(), 0);
+            if (auto parameterBlock = programLayout->getParameterByIndex(paramIndex)->getTypeLayout())
+            {
+                reflectParameterBlock(parameterBlock, 0);
+            }
         }
 
-        std::stringstream ss;
-        reflector.scopeSig.render(ss, 0);
-        TL_LOG_INFO("\n{}", ss.str());
+        reflector.scopeSig.render(stream, 0);
     }
 }; // namespace BGC
+
+bool createSlangSession(Slang::ComPtr<slang::IGlobalSession>& globalSession, TL::String& errorMessage)
+{
+    SlangResult result = createGlobalSession(globalSession.writeRef());
+    if (SLANG_FAILED(result))
+    {
+        errorMessage = "Failed to create Slang global session";
+        return false;
+    }
+    return true;
+}
+
+bool createCompileSession(Slang::ComPtr<slang::IGlobalSession> globalSession, Slang::ComPtr<slang::ISession>& session, TL::String& errorMessage)
+{
+    slang::SessionDesc sessionDesc{};
+    SlangResult        result = globalSession->createSession(sessionDesc, session.writeRef());
+    if (SLANG_FAILED(result))
+    {
+        errorMessage = "Failed to create Slang session";
+        return false;
+    }
+    return true;
+}
+
+bool setupCompileRequest(Slang::ComPtr<slang::ISession> session, const Args& args, Slang::ComPtr<slang::ICompileRequest>& compileRequest, TL::String& errorMessage)
+{
+    SlangResult result = session->createCompileRequest(compileRequest.writeRef());
+    if (SLANG_FAILED(result))
+    {
+        errorMessage = "Failed to create compile request";
+        return false;
+    }
+
+    // Read source file
+    TL::File   sourceCodeFile(args.input, TL::IOMode::Read);
+    TL::String sourceCode;
+    auto       ioresult = sourceCodeFile.read(sourceCode);
+    if (ioresult.result != TL::IOResultCode::Success)
+    {
+        errorMessage = std::format("Failed to read shader file '{}'", args.input);
+        return false;
+    }
+
+    for (auto includeDir : args.include)
+    {
+        compileRequest->addSearchPath(includeDir.c_str());
+    }
+
+    compileRequest->setCodeGenTarget(SlangCompileTarget::SLANG_SPIRV);
+
+    auto tu = compileRequest->addTranslationUnit(SLANG_SOURCE_LANGUAGE_SLANG, args.input.c_str());
+    compileRequest->addTranslationUnitSourceFile(tu, args.input.c_str());
+
+    for (const auto& e : args.entries)
+    {
+        compileRequest->addEntryPoint(tu, e.second.c_str(), e.first);
+    }
+
+    return true;
+}
+
+bool compileShader(Slang::ComPtr<slang::ICompileRequest> compileRequest, TL::String& errorMessage)
+{
+    SlangResult result = compileRequest->compile();
+    if (SLANG_FAILED(result))
+    {
+        TL::String diagnosticOutput = compileRequest->getDiagnosticOutput();
+        if (diagnosticOutput != TL::String("\0"))
+        {
+            errorMessage = std::format("Shader compilation failed:\n{}", diagnosticOutput.c_str());
+        }
+        else
+        {
+            errorMessage = "Shader compilation failed with no diagnostic output";
+        }
+        return false;
+    }
+
+    // Log any warnings or info
+    TL::String diagnosticOutput = compileRequest->getDiagnosticOutput();
+    if (diagnosticOutput != TL::String("\0"))
+    {
+        TL_LOG_INFO("Compilation warnings/info:\n{}", diagnosticOutput.c_str());
+    }
+
+    return true;
+}
+
+bool getCompiledProgram(Slang::ComPtr<slang::ICompileRequest> compileRequest, Slang::ComPtr<slang::IComponentType>& outProgram, TL::String& errorMessage)
+{
+    SlangResult result = compileRequest->getProgramWithEntryPoints(outProgram.writeRef());
+    if (SLANG_FAILED(result))
+    {
+        errorMessage = "Failed to get compiled program with entry points";
+        return false;
+    }
+    return true;
+}
+
+bool writeShaderOutput(Slang::ComPtr<slang::IComponentType> outProgram, const Args& args, TL::String& errorMessage)
+{
+    for (int i = 0; i < args.entries.size(); ++i)
+    {
+        Slang::ComPtr<slang::IBlob> outCode;
+        Slang::ComPtr<slang::IBlob> outDiag;
+        SlangResult                 result = outProgram->getTargetCode(0, outCode.writeRef(), outDiag.writeRef());
+        if (SLANG_FAILED(result))
+        {
+            errorMessage = std::format("Failed to get target code for entry point '{}'", args.entries[i].second);
+            return false;
+        }
+
+        if (outDiag && outDiag->getBufferSize())
+        {
+            errorMessage = std::format("Target code generation failed for entry point '{}': {}",
+                args.entries[i].second,
+                (const char*)outDiag->getBufferPointer());
+            return false;
+        }
+
+        TL::String outputPath = std::format("{}.{}", args.output, args.entries[i].second);
+        TL::File   file(outputPath, TL::IOMode::Write);
+        TL_LOG_INFO("Writing shader output: {}", outputPath);
+
+        auto outCodeAsBlock = TL::Block{(void*)outCode->getBufferPointer(), outCode->getBufferSize()};
+        auto ioresult       = file.write(outCodeAsBlock);
+        if (ioresult.result != TL::IOResultCode::Success)
+        {
+            errorMessage = std::format("Failed to write shader file '{}'", outputPath);
+            return false;
+        }
+    }
+    return true;
+}
+
+bool generateHeaderFile(Slang::ComPtr<slang::IComponentType> outProgram, const Args& args, TL::String& errorMessage)
+{
+    if (args.gen.empty())
+    {
+        return true;
+    }
+
+    std::fstream f(args.gen, std::fstream::out);
+    if (!f.is_open())
+    {
+        errorMessage = std::format("Failed to open header file '{}' for writing", args.gen);
+        return false;
+    }
+
+    TL_LOG_INFO("Generating header: {}", args.gen);
+    f << "#pragma once\n\n";
+    f << "#include \"Renderer/ShaderParameters.hpp\"\n\n";
+    f << "#include <RHI/RHI.hpp>\n\n";
+    f << "#include <glm/glm.hpp>\n\n";
+
+    BGC::reflectProgram(outProgram->getLayout(), f);
+    return true;
+}
 
 int main(int argc, const char* argv[])
 {
     Args args{};
     if (!Args::parse(args, argc, argv))
     {
-        return 0;
+        return 1;
     }
 
     TL_LOG_INFO("Compiling `{}`", args.input);
 
-    SlangResult result;
+    TL::String errorMessage;
 
-    // create global slang session
+    // Create Slang global session
     Slang::ComPtr<slang::IGlobalSession> globalSession;
-    result = createGlobalSession(globalSession.writeRef());
-    SLANG_ASSERT_ON_FAIL(result);
-
-    struct TargetAndProfileName
+    if (!createSlangSession(globalSession, errorMessage))
     {
-        SlangCompileTarget format;
-        const char*        profile;
-    };
+        TL_LOG_ERROR("{}", errorMessage);
+        return 1;
+    }
 
-    // TL::Vector<slang::TargetDesc> targetDescs{
-    //     {.format = SLANG_SPIRV_ASM, .profile = globalSession->findProfile("sm_6_0")}
-    // };
-
-    // std::array<slang::CompilerOptionEntry, 1> options{
-    //     // {slang::CompilerOptionName::EmitSpirvDirectly, {slang::CompilerOptionValueKind::Int, 1, 0, nullptr, nullptr}},
-    // };
-
-    TL::Vector<const char*> searchPaths{};
-
-    slang::SessionDesc sessionDesc{
-        // .targets     = targetDescs.data(),
-        // .targetCount = (uint32_t)targetDescs.size(),
-        // .searchPaths     = searchPaths.data(),
-        // .searchPathCount = (SlangInt)searchPaths.size(),
-        // .compilerOptionEntries    = options.data(),
-        // .compilerOptionEntryCount = options.size(),
-    };
+    // Create compile session
     Slang::ComPtr<slang::ISession> session;
-    result = globalSession->createSession(sessionDesc, session.writeRef());
-    SLANG_ASSERT_ON_FAIL(result);
+    if (!createCompileSession(globalSession, session, errorMessage))
+    {
+        TL_LOG_ERROR("{}", errorMessage);
+        return 1;
+    }
 
+    // Setup compile request
     Slang::ComPtr<slang::ICompileRequest> compileRequest;
+    if (!setupCompileRequest(session, args, compileRequest, errorMessage))
     {
-        result = session->createCompileRequest(compileRequest.writeRef());
-        SLANG_ASSERT_ON_FAIL(result);
-
-        TL::String sourceCode;
-        TL::File   sourceCodeFile(args.input, TL::IOMode::Read);
-        auto       ioresult = sourceCodeFile.read(sourceCode);
-
-        compileRequest->setCodeGenTarget(SlangCompileTarget::SLANG_SPIRV);
-
-        TL_ASSERT(!args.input.empty())
-        auto tu = compileRequest->addTranslationUnit(SLANG_SOURCE_LANGUAGE_SLANG, args.input.c_str());
-        compileRequest->addTranslationUnitSourceFile(tu, args.input.c_str());
-
-        for (const auto& e : args.entries)
-            compileRequest->addEntryPoint(tu, e.second.c_str(), e.first);
-
-        if (compileRequest->getDiagnosticOutput())
-        {
-            TL_LOG_INFO("{}", compileRequest->getDiagnosticOutput());
-        }
+        TL_LOG_ERROR("{}", errorMessage);
+        return 1;
     }
 
-    result = compileRequest->compile();
-    SLANG_ASSERT_ON_FAIL(result);
-    if (compileRequest->getDiagnosticOutput() != TL::String("\0"))
+    // Compile shader
+    if (!compileShader(compileRequest, errorMessage))
     {
-        TL_LOG_INFO("{}", compileRequest->getDiagnosticOutput());
+        TL_LOG_ERROR("{}", errorMessage);
+        return 1;
     }
 
+    // Get compiled program
     Slang::ComPtr<slang::IComponentType> outProgram;
-    result = compileRequest->getProgramWithEntryPoints(outProgram.writeRef());
-    SLANG_ASSERT_ON_FAIL(result);
-
-    for (int i = 0; i < args.entries.size(); ++i)
+    if (!getCompiledProgram(compileRequest, outProgram, errorMessage))
     {
-        Slang::ComPtr<slang::IBlob> outCode;
-        Slang::ComPtr<slang::IBlob> outDiag;
-        result = outProgram->getTargetCode(0, outCode.writeRef(), outDiag.writeRef());
-        // result = outProgram->getEntryPointCode(i, 0, outCode.writeRef(), outDiag.writeRef());
-        SLANG_ASSERT_ON_FAIL(result);
-
-        if (outDiag && outDiag->getBufferSize())
-        {
-            TL_LOG_ERROR("{}", (const char*)outDiag->getBufferPointer());
-            return 1;
-        }
-        TL::File file(std::format("./shader.spirv", args.output, args.entries[i].second), TL::IOMode::Write);
-
-        auto outCodeAsBlock = TL::Block{(void*)outCode->getBufferPointer(), outCode->getBufferSize()};
-        auto ioresult       = file.write(outCodeAsBlock);
-        TL_ASSERT(ioresult.result == TL::IOResultCode::Success);
+        TL_LOG_ERROR("{}", errorMessage);
+        return 1;
     }
 
-    // Slang::ComPtr<slang::IBlob> outCode;
-    // result = outProgram->getTargetCode(0, outCode.writeRef());
-    // SLANG_ASSERT_ON_FAIL(result);
-
-    // auto outCodeAsBlock = TL::Block{(void*)outCode->getBufferPointer(), outCode->getBufferSize()};
-    // auto ioresult       = TL::File(std::format("{}.spirv", args.output), TL::IOMode::Write).write(outCodeAsBlock);
-    // TL_ASSERT(ioresult.result == TL::IOResultCode::Success);
-
-    if (!args.gen.empty())
+    // Write shader output files
+    if (!writeShaderOutput(outProgram, args, errorMessage))
     {
-        BGC::reflectProgram(outProgram->getLayout());
+        TL_LOG_ERROR("{}", errorMessage);
+        return 1;
     }
 
+    // Generate header file
+    if (!generateHeaderFile(outProgram, args, errorMessage))
+    {
+        TL_LOG_ERROR("{}", errorMessage);
+        return 1;
+    }
+
+    TL_LOG_INFO("Shader compilation completed successfully");
     return 0;
 }

@@ -1,4 +1,4 @@
-#include "Public/GPU.h"
+#include <Shaders/GpuCommonStructs.h>
 
 struct ShaderBindingTable
 {

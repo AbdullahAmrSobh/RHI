@@ -1,7 +1,7 @@
-#include "ImGuiPass.hpp"
-#include <imgui_internal.h>
-
-#include "../PipelineLibrary.hpp"
+#include "Renderer/ImGuiPass.hpp"
+#include "Renderer/Renderer.hpp"
+#include "Renderer/PipelineLibrary.hpp"
+#include "Renderer/Scene.hpp"
 
 #include <TL/Allocator/MemPlumber.hpp>
 #include <TL/Defer.hpp>
@@ -11,25 +11,18 @@
 
 #include <algorithm>
 
+#include <Renderer-Shaders/ImGui.hpp>
+
 namespace Engine
 {
-    using ImGuiMat4 = float[4][4];
-
     ResultCode ImGuiPass::Init(RHI::Device* device, RHI::Format colorAttachmentFormat, uint32_t maxViewportsCount)
     {
+        m_device            = device;
+        m_maxViewportsCount = maxViewportsCount;
+        m_indexBuffer       = {};
+        m_vertexBuffer      = {};
+
         ImGuiIO& io = ImGui::GetIO();
-
-        TL_ASSERT(io.BackendRendererUserData == nullptr && "Already initialized a renderer backend!");
-        m_newframeHook.Type     = ImGuiContextHookType_NewFramePre;
-        m_newframeHook.UserData = this;
-        m_newframeHook.Callback = [](TL_MAYBE_UNUSED ImGuiContext* ctx, ImGuiContextHook* hook)
-        {
-            auto self                 = (ImGuiPass*)hook->UserData;
-            self->m_indexBufferOffset = self->m_vertexBufferOffset = 0;
-        };
-        ImGui::AddContextHook(ImGui::GetCurrentContext(), &m_newframeHook);
-
-        m_device = device;
 
         // create sampler state
         RHI::SamplerCreateInfo samplerCI{
@@ -39,28 +32,10 @@ namespace Engine
         };
         m_sampler = m_device->CreateSampler(samplerCI);
 
-        RHI::BindGroupLayoutCreateInfo bindGroupLayoutCI{
-            .name     = "ImGui-BindGroupLayout",
-            .bindings = {
-                         {RHI::BindingType::DynamicUniformBuffer, RHI::Access::Read, 1, RHI::ShaderStage::Vertex, sizeof(ImGuiMat4)},
-                         {RHI::BindingType::Sampler, RHI::Access::Read, 1, RHI::ShaderStage::Pixel, 0},
-                         {RHI::BindingType::SampledImage, RHI::Access::Read, 1, RHI::ShaderStage::Pixel, 0},
-                         }
-        };
-        auto bindGroupLayout = m_device->CreateBindGroupLayout(bindGroupLayoutCI);
-
-        m_maxViewportsCount = maxViewportsCount;
-        RHI::BufferCreateInfo uniformBufferCI{
-            .name       = "ImGui-UniformBuffer",
-            .usageFlags = RHI::BufferUsage::Uniform,
-            .byteSize   = sizeof(ImGuiMat4) * m_maxViewportsCount,
-        };
-        m_uniformBuffer = m_device->CreateBuffer(uniformBufferCI);
-
+        // create ImGui font atlas texture
         unsigned char* pixels;
         int            width, height;
         io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-
         RHI::ImageCreateInfo atlasTextureCI{
             .name       = "ImGui-Atlas",
             .usageFlags = RHI::ImageUsage::CopyDst | RHI::ImageUsage::ShaderResource,
@@ -69,20 +44,24 @@ namespace Engine
             .format     = RHI::Format::RGBA8_UNORM,
         };
         m_image = RHI::CreateImageWithContent(*m_device, atlasTextureCI, TL::Block{pixels, size_t(width * height * 4)});
+        m_projectionCB = createDynamicConstantBuffer<glm::mat4x4>(GpuSceneData::ptr->m_constantBuffersPool, m_maxViewportsCount);
 
-        m_bindGroup = m_device->CreateBindGroup({.layout = bindGroupLayout});
-        RHI::BindGroupUpdateInfo bindings{
-            .buffers  = {{0, 0, {{m_uniformBuffer}}}},
-            .images   = {{2, 0, {m_image}}},
-            .samplers = {{1, 0, {m_sampler}}},
+        RHI::BindGroupLayout* bindGroupLayout = sig::ImGuiShaderParam::createBindGroupLayout(device);
+
+        m_bindGroup                        = m_device->CreateBindGroup({.layout = bindGroupLayout});
+        sig::ImGuiShaderParam shaderParams = {};
+        shaderParams.cb                    = this->m_projectionCB;
+        shaderParams.texture0              = m_image;
+        shaderParams.sampler0              = m_sampler;
+        shaderParams.updateBindGroup(m_device, m_bindGroup);
+
+        RHI::PipelineLayoutCreateInfo pipelineLayoutCI{
+            .layouts = {bindGroupLayout},
         };
-        m_device->UpdateBindGroup(m_bindGroup, bindings);
-
-        RHI::PipelineLayoutCreateInfo pipelineLayoutCI{.layouts = {bindGroupLayout}};
         m_pipelineLayout = m_device->CreatePipelineLayout(pipelineLayoutCI);
 
-        auto vertexShaderModule = PipelineLibrary::ptr->LoadShaderModule("Shaders/ImGui.vertex.spv");
-        auto fragmentShader     = PipelineLibrary::ptr->LoadShaderModule("Shaders/ImGui.fragment.spv");
+        auto vertexShaderModule = PipelineLibrary::ptr->LoadShaderModule("I:/repos/repos3/RHI/build/Examples/Renderer/Shaders/ImGui.spirv.VSMain");
+        auto fragmentShader     = PipelineLibrary::ptr->LoadShaderModule("I:/repos/repos3/RHI/build/Examples/Renderer/Shaders/ImGui.spirv.PSMain");
 
         RHI::ColorAttachmentBlendStateDesc attachmentBlendDesc{
             true,
@@ -116,11 +95,23 @@ namespace Engine
         };
         m_pipeline = m_device->CreateGraphicsPipeline(pipelineCI);
         m_device->DestroyBindGroupLayout(bindGroupLayout);
+
+        TL_ASSERT(io.BackendRendererUserData == nullptr && "Already initialized a renderer backend!");
+        m_newframeHook.Type     = ImGuiContextHookType_NewFramePre;
+        m_newframeHook.UserData = this;
+        m_newframeHook.Callback = [](TL_MAYBE_UNUSED ImGuiContext* ctx, ImGuiContextHook* hook)
+        {
+            auto self = (ImGuiPass*)hook->UserData;
+            // self->m_indexBufferOffset = self->m_vertexBufferOffset = 0;
+        };
+        ImGui::AddContextHook(ImGui::GetCurrentContext(), &m_newframeHook);
+
         return ResultCode::Success;
     }
 
     void ImGuiPass::Shutdown()
     {
+#if 0
         ImGui::RemoveContextHook(ImGui::GetCurrentContext(), m_newframeHook.HookId);
         m_device->DestroyGraphicsPipeline(m_pipeline);
         m_device->DestroyPipelineLayout(m_pipelineLayout);
@@ -133,6 +124,7 @@ namespace Engine
             m_device->DestroyBuffer(m_vertexBuffer);
         if (m_uniformBuffer != nullptr)
             m_device->DestroyBuffer(m_uniformBuffer);
+#endif
     }
 
     RHI::RGPass* ImGuiPass::AddPass(RHI::RenderGraph* rg, RHI::RGImage*& outAttachment, ImDrawData* drawData, uint32_t viewportID)
@@ -143,17 +135,18 @@ namespace Engine
             return nullptr;
 
         {
-            float     L   = drawData->DisplayPos.x;
-            float     R   = drawData->DisplayPos.x + drawData->DisplaySize.x;
-            float     T   = drawData->DisplayPos.y;
-            float     B   = drawData->DisplayPos.y + drawData->DisplaySize.y;
-            ImGuiMat4 mvp = {
+            float L = drawData->DisplayPos.x;
+            float R = drawData->DisplayPos.x + drawData->DisplaySize.x;
+            float T = drawData->DisplayPos.y;
+            float B = drawData->DisplayPos.y + drawData->DisplaySize.y;
+
+            glm::mat4x4 mvp = {
                 {2.0f / (R - L),    0.0f,              0.0f, 0.0f},
                 {0.0f,              2.0f / (T - B),    0.0f, 0.0f},
                 {0.0f,              0.0f,              0.5f, 0.0f},
                 {(R + L) / (L - R), (T + B) / (B - T), 0.5f, 1.0f},
             };
-            m_device->GetCurrentFrame()->BufferWrite(m_uniformBuffer, sizeof(ImGuiMat4) * viewportID, {mvp, sizeof(ImGuiMat4)});
+            bufferWrite(GpuSceneData::ptr->m_constantBuffersPool, m_projectionCB, viewportID, mvp);
         }
 
         auto [width, height] = drawData->OwnerViewport->Size;
@@ -176,19 +169,28 @@ namespace Engine
                 if (fb_width <= 0 || fb_height <= 0)
                     return;
 
-                size_t& indexBufferOffset  = m_indexBufferOffset;
-                size_t& vertexBufferOffset = m_vertexBufferOffset;
+                uint32_t indexBufferOffset  = m_indexBuffer.getOffset();
+                uint32_t vertexBufferOffset = m_vertexBuffer.getOffset();
                 for (const auto& drawList : drawData->CmdLists)
                 {
+
+                    // TODO: use api, but need to accmulate elements count instead of offset in bytes ...
+
                     // clang-format off
-                    commandList.BindIndexBuffer({.buffer = m_indexBuffer, .offset = indexBufferOffset}, RHI::IndexType::uint16);
-                    commandList.BindVertexBuffers(0, {{.buffer = m_vertexBuffer, .offset = vertexBufferOffset}});
+                    commandList.BindIndexBuffer({.buffer = m_indexBuffer.getBuffer(), .offset = indexBufferOffset}, RHI::IndexType::uint16);
+                    commandList.BindVertexBuffers(0, {{.buffer = m_vertexBuffer.getBuffer(), .offset = vertexBufferOffset}});
                     // clang-format on
 
-                    m_device->GetCurrentFrame()->BufferWrite(m_indexBuffer, indexBufferOffset, TL::Block{.ptr = drawList->IdxBuffer.Data, .size = drawList->IdxBuffer.Size * sizeof(ImDrawIdx)});
-                    m_device->GetCurrentFrame()->BufferWrite(m_vertexBuffer, vertexBufferOffset, TL::Block{.ptr = drawList->VtxBuffer.Data, .size = drawList->VtxBuffer.Size * sizeof(ImDrawVert)});
+                    // TODO: use gpuscenedata::update
+                    m_device->GetCurrentFrame()->BufferWrite(m_indexBuffer.getBuffer(), indexBufferOffset, TL::Block{.ptr = drawList->IdxBuffer.Data, .size = drawList->IdxBuffer.Size * sizeof(ImDrawIdx)});
+                    m_device->GetCurrentFrame()->BufferWrite(m_vertexBuffer.getBuffer(), vertexBufferOffset, TL::Block{.ptr = drawList->VtxBuffer.Data, .size = drawList->VtxBuffer.Size * sizeof(ImDrawVert)});
                     indexBufferOffset += drawList->IdxBuffer.Size * sizeof(ImDrawIdx);
                     vertexBufferOffset += drawList->VtxBuffer.Size * sizeof(ImDrawVert);
+
+                    // bufferWrite(GpuSceneData::ptr->m_geometryBuffersPool, m_indexBuffer, indexBufferOffset, {drawList->IdxBuffer.Data, (size_t)drawList->IdxBuffer.size()});
+                    // bufferWrite(GpuSceneData::ptr->m_geometryBuffersPool, m_vertexBuffer, vertexBufferOffset, {drawList->VtxBuffer.Data, (size_t)drawList->VtxBuffer.size()});
+                    // indexBufferOffset += drawList->IdxBuffer.size();
+                    // vertexBufferOffset += drawList->VtxBuffer.size();
 
                     for (const auto& drawCmd : drawList->CmdBuffer)
                     {
@@ -225,7 +227,9 @@ namespace Engine
                             };
                             commandList.SetScissor(scissor);
 
-                            RHI::BindGroupBindingInfo binding{m_bindGroup, viewportID * sizeof(ImGuiMat4)};
+                            // TODO: dynamic offset are not supported yet
+                            RHI::BindGroupBindingInfo binding{m_bindGroup, {}};
+                            // RHI::BindGroupBindingInfo binding{m_bindGroup, (uint32_t)m_projectionCB.getOffset(viewportID)};
                             commandList.BindGraphicsPipeline(m_pipeline, binding);
 
                             commandList.DrawIndexed({
@@ -249,32 +253,27 @@ namespace Engine
         if (drawData->DisplaySize.x <= 0.0f || drawData->DisplaySize.y <= 0.0f)
             return false;
 
-        if ((size_t)drawData->TotalVtxCount > m_vertexBufferSize)
+        auto& geometryBuffers  = GpuSceneData::ptr->m_geometryBuffersPool;
+        auto  vertexBufferSize = geometryBuffers.getBufferElementsCount(m_vertexBuffer);
+        if ((size_t)drawData->TotalVtxCount > vertexBufferSize)
         {
-            m_vertexBufferSize = (size_t)drawData->TotalVtxCount + 5000;
+            vertexBufferSize = (size_t)drawData->TotalVtxCount + 5000;
 
-            if (m_vertexBuffer != nullptr)
-                m_device->DestroyBuffer(m_vertexBuffer);
+            if (m_vertexBuffer.getBuffer())
+                geometryBuffers.free(m_vertexBuffer);
 
-            RHI::BufferCreateInfo createInfo{};
-            createInfo.name       = "ImGui-VertexBuffer";
-            createInfo.byteSize   = m_vertexBufferSize * sizeof(ImDrawVert);
-            createInfo.usageFlags = RHI::BufferUsage::Vertex;
-            m_vertexBuffer        = m_device->CreateBuffer(createInfo);
+            m_vertexBuffer = geometryBuffers.allocate<ImDrawVert>(vertexBufferSize);
         }
 
-        if ((size_t)drawData->TotalIdxCount > m_indexBufferSize)
+        auto indexBufferSize = geometryBuffers.getBufferElementsCount(m_indexBuffer);
+        if ((size_t)drawData->TotalIdxCount > indexBufferSize)
         {
-            m_indexBufferSize = (size_t)drawData->TotalIdxCount + 10000;
+            indexBufferSize = (size_t)drawData->TotalIdxCount + 10000;
 
-            if (m_indexBuffer != nullptr)
-                m_device->DestroyBuffer(m_indexBuffer);
+            if (m_indexBuffer.getBuffer())
+                geometryBuffers.free(m_indexBuffer);
 
-            RHI::BufferCreateInfo createInfo{};
-            createInfo.name       = "ImGui-IndexBuffer";
-            createInfo.byteSize   = m_indexBufferSize * sizeof(ImDrawIdx);
-            createInfo.usageFlags = RHI::BufferUsage::Index;
-            m_indexBuffer         = m_device->CreateBuffer(createInfo);
+            m_indexBuffer = geometryBuffers.allocate<ImDrawIdx>(indexBufferSize);
         }
 
         if (drawData->TotalIdxCount == 0 || drawData->TotalVtxCount == 0)

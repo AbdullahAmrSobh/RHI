@@ -12,15 +12,21 @@ struct PSInput
     float2 uv  : TEXCOORD0;
 };
 
-ConstantBuffer<float4x4> projection;
-SamplerState             sampler0;
-Texture2D                texture0;
+struct ImGuiShaderParam
+{
+    [[dynamic]]
+    float4x4     projection;
+    Texture2D    texture0;
+    SamplerState sampler0;
+};
+
+ParameterBlock<ImGuiShaderParam> params;
 
 [[shader("vertex")]]
 PSInput VSMain(VSInput input)
 {
     PSInput output;
-    output.pos = mul(float4(input.pos.xy, 0.f, 1.f), projection);
+    output.pos = mul(float4(input.pos.xy, 0.f, 1.f), params.projection);
     output.col = input.col;
     output.uv  = input.uv;
     return output;
@@ -29,6 +35,6 @@ PSInput VSMain(VSInput input)
 [[shader("fragment")]]
 float4 PSMain(PSInput input) : SV_Target0
 {
-    let color = input.col * texture0.Sample(sampler0, input.uv);
+    let color = input.col * params.texture0.Sample(params.sampler0, input.uv);
     return color;
 }

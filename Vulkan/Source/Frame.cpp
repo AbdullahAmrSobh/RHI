@@ -4,7 +4,7 @@
 #include "Resources.hpp"
 #include "Swapchain.hpp"
 
-#include <TL/Time.hpp>
+#include <TL/Literals.hpp>
 
 namespace RHI::Vulkan
 {
@@ -287,7 +287,7 @@ namespace RHI::Vulkan
     /// Staging buffer allocator
     ////////////////////////////////////////////////////////////////
 
-    constexpr static size_t MinStagingBufferAllocationSize = 64_tl_mb;
+    constexpr static size_t MinStagingBufferAllocationSize = 64_mb;
 
     StagingBuffer::StagingBuffer()  = default;
     StagingBuffer::~StagingBuffer() = default;

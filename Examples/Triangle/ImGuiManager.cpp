@@ -3,7 +3,7 @@
 #include "Examples-Base/Window.hpp"
 
 #include "Renderer/Renderer.hpp"
-#include "Renderer/RendererImpl/ImGuiPass.hpp"
+#include "Renderer/ImGuiPass.hpp"
 
 #include <TL/UniquePtr.hpp>
 

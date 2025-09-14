@@ -5,7 +5,10 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
-#include "../Common.hpp"
+#include <glm/glm.hpp>
+
+#include "Renderer/Common.hpp"
+#include "Renderer/Resources.hpp"
 
 namespace Engine
 {
@@ -35,20 +38,16 @@ namespace Engine
 
         uint32_t m_maxViewportsCount;
 
-        RHI::BindGroup*        m_bindGroup;
         RHI::PipelineLayout*   m_pipelineLayout;
         RHI::GraphicsPipeline* m_pipeline;
 
-        RHI::Buffer*  m_uniformBuffer;
-        RHI::Sampler* m_sampler;
-        RHI::Image*   m_image;
+        ImGuiContextHook m_newframeHook{};
 
-        ImGuiContextHook         m_newframeHook{};
-        size_t                   m_vertexBufferSize   = 0;
-        size_t                   m_indexBufferSize    = 0;
-        size_t                   m_vertexBufferOffset = 0;
-        size_t                   m_indexBufferOffset  = 0;
-        RHI::Buffer* m_vertexBuffer;
-        RHI::Buffer* m_indexBuffer;
+        RHI::Sampler*                      m_sampler;
+        RHI::Image*                        m_image;
+        DynamicConstantBuffer<glm::mat4x4> m_projectionCB;
+        Buffer<ImDrawIdx>                  m_indexBuffer;
+        Buffer<ImDrawVert>                 m_vertexBuffer;
+        RHI::BindGroup* m_bindGroup;
     };
 } // namespace Engine

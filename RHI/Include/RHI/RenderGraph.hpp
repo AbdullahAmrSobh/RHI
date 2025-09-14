@@ -184,6 +184,9 @@ namespace RHI
         RGImage*  AddColorAttachment(RGColorAttachment attachment);
         RGImage*  SetDepthStencil(RGDepthStencilAttachment attachment);
 
+        RGImage*  AddColorAttachment(RGImage* target, LoadOperation loadOp, ClearValue clear = {});
+        RGImage*  CreateColorTarget(const char* name, ImageSize2D size, Format format, ClearValue clear = {});
+
     private:
         RGImage*  UseImageInternal(RGImage* handle, Access access, const ImageSubresourceRange& subresource, ImageUsage usage, PipelineStage stage);
         RGBuffer* UseBufferInternal(RGBuffer* handle, Access access, const BufferSubregion& subresource, BufferUsage usage, PipelineStage stage);
@@ -221,6 +224,39 @@ namespace RHI
     private:
         void Setup(RenderGraphBuilder& builder);
         void Execute(CommandList& commandList);
+
+    public:
+                /// @brief Declare pass image read dependencey.
+        void      ReadImage(RGImage* image, ImageUsage usage, PipelineStage stage);
+        void      ReadImage(RGImage* image, const ImageSubresourceRange& subresource, ImageUsage usage, PipelineStage stage);
+
+        /// @brief Declare pass image write dependencey.
+        RGImage*  WriteImage(RGImage* image, ImageUsage usage, PipelineStage stage);
+        RGImage*  WriteImage(RGImage* image, const ImageSubresourceRange& subresource, ImageUsage usage, PipelineStage stage);
+
+        /// @brief Declare pass buffer read dependencey.
+        void      ReadBuffer(RGBuffer* buffer, BufferUsage usage, PipelineStage stage);
+        void      ReadBuffer(RGBuffer* buffer, const BufferSubregion& subresource, BufferUsage usage, PipelineStage stage);
+
+        /// @brief Declare pass buffer write dependencey.
+        RGBuffer* WriteBuffer(RGBuffer* buffer, BufferUsage usage, PipelineStage stage);
+        RGBuffer* WriteBuffer(RGBuffer* buffer, const BufferSubregion& subresource, BufferUsage usage, PipelineStage stage);
+
+        /// Graphics Pass specfic
+        RGImage*  AddColorAttachment(RGColorAttachment attachment);
+        RGImage*  SetDepthStencil(RGDepthStencilAttachment attachment);
+
+        RGImage*  AddColorAttachment(RGImage* target, LoadOperation loadOp, ClearValue clear = {})
+        {
+            RGColorAttachment attachment{
+                .color        = target,
+                .loadOp       = loadOp,
+                .storeOp      = StoreOperation::Store,
+                .clearValue   = clear,
+            };
+            return AddColorAttachment(attachment);
+        }
+
 
     private:
         const char*                    m_name;

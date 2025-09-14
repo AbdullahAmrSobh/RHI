@@ -200,5 +200,3 @@ namespace codegen
         std::unique_ptr<Scope> m_innerScope;
     };
 }; // namespace codegen
-
-//

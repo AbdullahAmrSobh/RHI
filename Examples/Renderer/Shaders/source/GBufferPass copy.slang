@@ -13,21 +13,22 @@ struct ShaderBindingTable22
 {
     GPU::SceneView                 sceneView;
     StructuredBuffer<GPU::DrawRequest>             drawRequests;
-    // float4 someotherConstants;
+    float4 someotherConstants;
     StructuredBuffer<GPU::StaticMeshIndexed>       indexedMeshes;
-    // float4 someotherConstants1;
+    float4 someotherConstants1;
     StructuredBuffer<float4x4>                     transforms;
-    // float4 someotherConstants12;
+    float4 someotherConstants12;
     StructuredBuffer<GPU::MeshMaterialBindless>    materials;
     RWStructuredBuffer<uint32_t>                        drawParametersCount;
-    // float4 someotherConstants123;
-    RWStructuredBuffer<GPU::DrawIndexedParameters> outDrawParameters;
+    float4 someotherConstants123;
 
     // Pass bind points
     Texture2D                                      pass_gBuffer_wsPosition;
     Texture2D                                      pass_gBuffer_normal;;
     Texture2D                                      pass_gBuffer_material;
     Texture2D                                      pass_gBuffer_depth;
+
+    RWStructuredBuffer<GPU::DrawIndexedParameters> outDrawParameters;
 
     Texture2D                                      pass_lighting_input[4];
 

@@ -4,6 +4,15 @@
 
 namespace GPU
 {
+    // template<typename T, uint32_t Count>
+    // struct Array
+    // {
+    // };
+
+    // struct CBScene
+    // {
+    // };
+
     struct DrawParameters // Matches RHI
     {
         U32 vertexCount;
@@ -32,6 +41,7 @@ namespace GPU
         U32 indexCount;
         U32 firstIndex;
         I32 vertexOffset;
+        // TODO: Add AABB
     };
 
     struct MeshMaterialBindless
@@ -105,4 +115,58 @@ namespace GPU
 
         static constexpr uint32_t Weight = 4;
     };
+
+    struct SceneGlobalConstants
+    {
+        F32_4 simple_color;
+    };
+
+    struct SceneMeshLod
+    {
+    };
+
+    struct SceneParticleEmitter
+    {
+    };
+
+    struct SceneLightVisibleRenderablesHash
+    {
+    };
+
+    struct SceneLight
+    {
+    };
+
+    struct SceneReflectionProbe
+    {
+    };
+
+    struct SceneGlobalIlluminationProbe
+    {
+    };
+
+    struct SceneDecal
+    {
+    };
+
+    struct SceneFogDensityVolume
+    {
+    };
+
+    struct SceneRenderable
+    {
+        U32 m_worldTransformsIndex; ///< First index points to the crnt transform and the 2nd to the previous.
+        U32 m_constantsOffset;
+        U32 m_meshLodsIndex;                    ///< Points to the array of GpuSceneMeshLod. kMaxLodCount are reserved for each renderable.
+        U32 m_boneTransformsOffset;             ///< Array of Mat3x4 or 0 if its not a skin.
+        U32 m_particleEmitterIndex;             ///< Index to the GpuSceneParticleEmitter array or kMaxU32 if it's not an emitter.
+        U32 m_rtShadowsShaderHandleIndex;       ///< The index of the shader handle in the array of library's handles.
+        U32 m_rtMaterialFetchShaderHandleIndex; ///< The index of the shader handle in the array of library's handles.
+        U32 m_uuid;
+    };
+
+    struct SceneRenderableBoundingVolume
+    {
+    };
+
 } // namespace GPU

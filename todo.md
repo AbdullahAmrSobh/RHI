@@ -83,3 +83,5 @@ Idea:
 - Add unit test & setup CI workflow
 
 
+shader-hot-reloading at runtime
+

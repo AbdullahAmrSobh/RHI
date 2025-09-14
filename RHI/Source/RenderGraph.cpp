@@ -172,6 +172,28 @@ namespace RHI
         return WriteImage(attachment.depthStencil, attachment.depthStencilRange, ImageUsage::DepthStencil, PipelineStage::LateFragmentTests);
     }
 
+    RGImage* RenderGraphBuilder::AddColorAttachment(RGImage* target, LoadOperation loadOp, ClearValue clear)
+    {
+        RGColorAttachment attachment{
+            .color      = target,
+            .loadOp     = loadOp,
+            .storeOp    = StoreOperation::Store,
+            .clearValue = clear,
+        };
+        return AddColorAttachment(attachment);
+    }
+
+    RGImage* RenderGraphBuilder::CreateColorTarget(const char* name, ImageSize2D size, Format format, ClearValue clear)
+    {
+        RGColorAttachment attachment{
+            .color      = m_rg->CreateRenderTarget(name, size, format),
+            .loadOp     = LoadOperation::Discard,
+            .storeOp    = StoreOperation::Store,
+            .clearValue = clear,
+        };
+        return AddColorAttachment(attachment);
+    }
+
     RGImage* RenderGraphBuilder::UseImageInternal(RGImage* resource, Access access, const ImageSubresourceRange& subresource, ImageUsage usage, PipelineStage stage)
     {
         TL_ASSERT(m_rg->m_state.frameRecording);

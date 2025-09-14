@@ -3,19 +3,19 @@
 #include <RHI/RHI.hpp>
 
 #include <TL/Containers.hpp>
+#include <TL/Utils.hpp>
 
-#include "BufferPool.hpp"
-#include "Geometry.hpp"
-#include "PipelineLibrary.hpp"
-#include "Scene.hpp"
-
-#include "RendererImpl/DeferredRenderer.hpp"
 #include <Examples-Base/Window.hpp>
+
+#include "Renderer/Resources.hpp"
+#include "Renderer/Geometry.hpp"
 
 namespace Engine
 {
     class Window;
     class Scene;
+
+    class DeferredRenderer;
 
     struct PresentationViewport
     {
@@ -25,7 +25,6 @@ namespace Engine
         RHI::ImageSize2D GetSize() const { return {window->GetSize().width, window->GetSize().height}; }
     };
 
-    // Renderer interface
     class Renderer final : public Singleton<Renderer>
     {
     public:
@@ -35,18 +34,6 @@ namespace Engine
         RHI::Device* GetDevice() const { return m_device; }
 
         RHI::RenderGraph* GetRenderGraph() const { return m_renderGraph; }
-
-        template<typename T>
-        UniformBuffer<T> AllocateUniformBuffer(T content)
-        {
-            return m_allocators.uniformPool.AllocateUniformBuffer(content);
-        }
-
-        template<typename T>
-        UniformBuffer<T> AllocateUniformBuffer()
-        {
-            return m_allocators.uniformPool.AllocateUniformBuffer<T>();
-        }
 
         PresentationViewport CreatePresentationViewport(Window* window);
         void                 DestroyPresentationViewport(PresentationViewport& viewport);
@@ -59,15 +46,7 @@ namespace Engine
     private:
         RHI::Device*      m_device;
         RHI::RenderGraph* m_renderGraph;
-
-        struct Allocators
-        {
-            BufferPool uniformPool;
-            BufferPool storagePool;
-        } m_allocators;
-
-        PipelineLibrary    m_pipelineLibrary;
-        GeometryBufferPool m_geometryBufferPool;
-        TL::Ptr<DeferredRenderer> m_deferredRenderer = TL::CreatePtr<DeferredRenderer>();
+        GpuSceneData*     m_gpuSceneData;
+        DeferredRenderer* m_deferredRenderer;
     };
 } // namespace Engine

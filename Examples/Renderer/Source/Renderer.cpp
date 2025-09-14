@@ -1,5 +1,8 @@
 
-#include "Renderer.hpp"
+#include "DeferredRenderer.hpp"
+#include "Renderer/Renderer.hpp"
+#include "Renderer/PipelineLibrary.hpp"
+#include "Renderer/Scene.hpp"
 
 #include <tracy/Tracy.hpp>
 
@@ -14,6 +17,8 @@
 #if RHI_BACKEND_WEBGPU
     #include <RHI-WebGPU/Loader.hpp>
 #endif
+
+#include <TL/Literals.hpp>
 
 namespace Engine
 {
@@ -68,30 +73,33 @@ namespace Engine
         ZoneScoped;
 
         m_device = CreateDevice(backend);
-        RHI::RenderGraphCreateInfo rgCI{};
+
+        RHI::RenderGraphCreateInfo rgCI{
+            // .name = "primary-render-graph",
+        };
         m_renderGraph = m_device->CreateRenderGraph(rgCI);
 
-#define TRY(expr)                                  \
-    {                                              \
-        auto result = (expr);                      \
-        if (RHI::IsError(result))                  \
-        {                                          \
-            TL_LOG_ERROR("Renderer::Init failed"); \
-            this->Shutdown();                      \
-            return result;                         \
-        }                                          \
-    }
+        ResultCode result;
 
-        RHI::BufferCreateInfo uniformPoolCI{"uniform-buffers-pool", true, RHI::BufferUsage::Uniform, sizeof(GPU::SceneView) * 100};
-        RHI::BufferCreateInfo storagePoolCI{"storage-buffers-pool", true, RHI::BufferUsage::Storage, sizeof(GPU::SceneView) * 100};
+        result = (PipelineLibrary::ptr->Init(m_device));
+        if (RHI ::IsError(result))
+        {
+            this->Shutdown();
+            TL_LOG_ERROR("Renderer::Init failed");
+            return result;
+        }
 
-        TRY(m_allocators.uniformPool.Init(*m_device, uniformPoolCI));
-        TRY(m_allocators.storagePool.Init(*m_device, storagePoolCI));
-        TRY(m_pipelineLibrary.Init(m_device));
-        TRY(m_geometryBufferPool.Init(*m_device));
-        TRY(m_deferredRenderer->Init(m_device));
+        m_gpuSceneData = new GpuSceneData();
+        m_gpuSceneData->init(m_device);
 
-#undef TRY
+        m_deferredRenderer = TL::Construct<DeferredRenderer>();
+        result             = (m_deferredRenderer->Init(m_device));
+        if (RHI ::IsError(result))
+        {
+            TL_LOG_ERROR("Renderer::Init failed");
+            this->Shutdown();
+            return result;
+        }
 
         return ResultCode::Success;
     }
@@ -99,12 +107,11 @@ namespace Engine
     void Renderer::Shutdown()
     {
         ZoneScoped;
-        m_deferredRenderer->Shutdown(m_device);
-        m_geometryBufferPool.Shutdown();
-        m_pipelineLibrary.Shutdown();
 
-        m_device->DestroyRenderGraph(m_renderGraph);
-        DestroyDevice(m_device);
+        // m_deferredRenderer->Shutdown(m_device);
+        // m_gpuSceneData.shutdown();
+        // m_device->DestroyRenderGraph(m_renderGraph);
+        // DestroyDevice(m_device);
     }
 
     PresentationViewport Renderer::CreatePresentationViewport(Window* window)
@@ -148,27 +155,20 @@ namespace Engine
 
     Scene* Renderer::CreateScene()
     {
-        auto scene  = TL::Construct<Scene>();
-        auto result = scene->Init(m_device);
-        TL_ASSERT(result == RHI::ResultCode::Success);
+        auto scene = TL::Construct<Scene>();
+        // auto result = scene->Init(m_device);
+        // TL_ASSERT(result == RHI::ResultCode::Success);
         return scene;
     }
 
     void Renderer::DestroyScene(Scene* scene)
     {
-        scene->Shutdown(m_device);
+        // scene->Shutdown(m_device);
         TL::Destruct(scene);
     }
 
     void Renderer::Render(Scene* scene, const PresentationViewport& viewport)
     {
-        // Update scene views
-        {
-            // ZoneScopedN("Update GPU Buffers");
-            // m_sceneView->m_sceneViewUB.OnRender(m_renderGraph);
-            // m_sceneView->m_drawList.OnRender(m_renderGraph);
-        }
-
         m_renderGraph->BeginFrame(viewport.GetSize());
         auto swapchainBackbuffer = m_renderGraph->ImportSwapchain("swapchain-color-attachment", *viewport.swapchain, RHI::Format::RGBA8_UNORM);
         m_deferredRenderer->Render(m_device, m_renderGraph, scene, swapchainBackbuffer);

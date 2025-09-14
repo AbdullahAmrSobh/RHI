@@ -1,3 +1,4 @@
+
 // Fix swapchain resizing and moving into other monitor
 // Fix validation errors and change API if needed!
 // Fix all memory and resource leaks!
@@ -15,13 +16,18 @@
 
 #include "Examples-Base/ApplicationBase.hpp"
 #include "Examples-Base/Window.hpp"
-#include "Renderer/Renderer.hpp"
+
+#include <Renderer/Renderer.hpp>
+#include <Renderer/Scene.hpp>
+
 #include "Camera.hpp"
 #include "ImGuiManager.hpp"
 
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+
+// #include "shaders/Cull.hpp"
 
 using namespace Engine;
 
@@ -38,7 +44,6 @@ public:
     Engine::PresentationViewport  m_presentationViewport;
 
     Engine::Scene*     m_scene;
-    Engine::SceneView* m_sceneView;
     Camera             m_camera;
 
     Playground()
@@ -47,6 +52,7 @@ public:
         m_camera.SetPerspective(1600, 900, 45, 0.00001, 1000000);
     }
 
+#if 0
     Engine::StaticMeshLOD* ImportStaticMesh(const aiMesh* mesh) const
     {
         // Indices
@@ -183,7 +189,6 @@ public:
                 // TL_LOG_INFO("Loading texture: {}", path);
             });
     }
-
     void LoadFromArgPath()
     {
         Assimp::Importer importer;
@@ -194,6 +199,7 @@ public:
         auto scene = importer.ReadFile("C:/Users/abdul/Desktop/Main.1_Sponza/NewSponza_Main_glTF_002.gltf", flags);
         ImportScene(scene);
     }
+#endif
 
     void OnInit() override
     {
@@ -221,8 +227,10 @@ public:
         }
 
         m_imguiManager->Init(m_window);
+
         auto result = m_renderer->Init(backend);
         TL_ASSERT(RHI::IsSuccess(result), "Failed to initialize renderer");
+
         m_presentationViewport = m_renderer->CreatePresentationViewport(m_window);
         auto handler           = [this](const auto& e)
         {
@@ -231,16 +239,17 @@ public:
         };
         m_window->Subscribe(handler);
 
-        m_scene     = m_renderer->CreateScene();
-        m_sceneView = m_scene->CreateView();
+        m_scene     = new Scene();// m_renderer->CreateScene();
+        m_scene->Init();
+        // m_sceneView = m_scene->CreateView();
 
-        GPU::SceneView sceneViewData{
-            glm::identity<glm::mat4x4>(),
-            glm::identity<glm::mat4x4>(),
-        };
-        m_sceneView->m_sceneViewUB.Update(sceneViewData);
+        // GPU::SceneView sceneViewData{
+        //     glm::identity<glm::mat4x4>(),
+        //     glm::identity<glm::mat4x4>(),
+        // };
+        // m_sceneView->m_sceneViewUB.Update(sceneViewData);
 
-        LoadFromArgPath();
+        // LoadFromArgPath();
     }
 
     void OnShutdown() override
@@ -248,9 +257,9 @@ public:
         ZoneScoped;
 
         m_imguiManager->Shutdown();
-        m_renderer->DestroyPresentationViewport(m_presentationViewport);
-        m_scene->DestroyView(m_sceneView);
-        m_renderer->DestroyScene(m_scene);
+        // m_renderer->DestroyPresentationViewport(m_presentationViewport);
+        // m_scene->DestroyView(m_sceneView);
+        // m_renderer->DestroyScene(m_scene);
         m_renderer->Shutdown();
     }
 
@@ -258,17 +267,17 @@ public:
     {
         ZoneScoped;
 
-        m_camera.Update(ts);
+        // m_camera.Update(ts);
 
-        auto worldToView = m_camera.GetView();
-        auto viewToClip  = m_camera.GetProjection();
+        // auto worldToView = m_camera.GetView();
+        // auto viewToClip  = m_camera.GetProjection();
 
-        GPU::SceneView sceneViewData{
-            worldToView,
-            viewToClip,
-        };
+        // GPU::SceneView sceneViewData{
+        //     worldToView,
+        //     viewToClip,
+        // };
 
-        m_sceneView->m_sceneViewUB.Update(sceneViewData);
+        // m_sceneView->m_sceneViewUB.Update(sceneViewData);
     }
 
     void Render() override
@@ -292,7 +301,6 @@ public:
         {
             m_renderer->GetRenderGraph()->Debug_CaptureNextFrame();
         }
-
 
         m_renderer->Render(m_scene, m_presentationViewport);
 

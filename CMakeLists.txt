@@ -25,11 +25,12 @@ option(TRACY_ENABLE       "Enable Tracy profiler"          ${PROJECT_IS_TOP_LEVE
 option(RHI_DEBUG          "Enable RHI debug mode"          ${PROJECT_IS_TOP_LEVEL})
 
 if(NOT EMSCRIPTEN)
-    option(RHI_BACKEND_D3D12  "Enable RHI DirectX 12 Backend"  OFF) # TODO: Should enable later
     option(RHI_BACKEND_VULKAN "Enable RHI Vulkan 1.3 Backend"  ON)
+    # Planned:
+    option(RHI_BACKEND_D3D12  "Enable RHI DirectX 12 Backend"  OFF)
     option(RHI_BACKEND_WEBGPU "Enable RHI WebGPU Backend"      OFF)
 else()
-    set(RHI_BACKEND_D3D12 OFF)
+    set(RHI_BACKEND_D3D12  OFF)
     set(RHI_BACKEND_VULKAN OFF)
     set(RHI_BACKEND_WEBGPU ON)
 endif()
@@ -75,8 +76,8 @@ endif()
 
 
 if(RHI_BACKEND_D3D12)
-    # add_compile_definitions(RHI_BACKEND_D3D12)
-    # add_subdirectory(D3D12)
+    add_compile_definitions(RHI_BACKEND_D3D12)
+    add_subdirectory(D3D12)
 endif()
 
 if(RHI_BACKEND_VULKAN)
@@ -84,10 +85,10 @@ if(RHI_BACKEND_VULKAN)
     add_subdirectory(Vulkan)
 endif()
 
-# if(RHI_BACKEND_WEBGPU)
-#     add_compile_definitions(RHI_BACKEND_WEBGPU)
-#     add_subdirectory(WebGPU)
-# endif()
+if(RHI_BACKEND_WEBGPU)
+    add_compile_definitions(RHI_BACKEND_WEBGPU)
+    add_subdirectory(WebGPU)
+endif()
 
 if(RHI_BUILD_EXAMPLES)
     add_compile_definitions(RHI_BUILD_EXAMPLES)
