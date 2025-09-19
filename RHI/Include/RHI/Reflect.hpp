@@ -4,55 +4,25 @@
 
 #include <TL/String.hpp>
 
+#include <format>
+#include <string>
+#include <string_view>
+#include <array>
+
 namespace RHI::Debug
 {
-    inline static TL::String ToString(TL::Flags<RHI::Access> access)
+    inline static constexpr const char* ToString(RHI::Access access)
     {
-        if (access == RHI::Access::ReadWrite) return "ReadWrite";
-        else if (access == RHI::Access::Read) return "Read";
-        else if (access == RHI::Access::Write) return "Write";
-        else return "None";
-    }
-
-    inline static TL::String ToString(TL::Flags<RHI::ShaderStage> stages)
-    {
-        TL::String result;
-        bool       first = true;
-
-        auto       append = [&](const char* name)
+        switch (access)
         {
-            if (!first) result += " | ";
-            result += name;
-            first = false;
-        };
-
-        if (stages == RHI::ShaderStage::None)
-            return "ShaderStage::None";
-        else if ((stages & RHI::ShaderStage::AllStages) == RHI::ShaderStage::AllStages)
-            append("ShaderStage::AllStages");
-        else if ((stages & RHI::ShaderStage::AllGraphics) == RHI::ShaderStage::AllGraphics)
-            append("ShaderStage::AllGraphics");
-        else
-        {
-            if (stages & RHI::ShaderStage::Vertex) append("ShaderStage::Vertex");
-            if (stages & RHI::ShaderStage::Pixel) append("ShaderStage::Pixel");
-            if (stages & RHI::ShaderStage::Compute) append("ShaderStage::Compute");
-            if (stages & RHI::ShaderStage::Hull) append("ShaderStage::Hull");
-            if (stages & RHI::ShaderStage::Domain) append("ShaderStage::Domain");
-            if (stages & RHI::ShaderStage::RayGen) append("ShaderStage::RayGen");
-            if (stages & RHI::ShaderStage::RayIntersect) append("ShaderStage::RayIntersect");
-            if (stages & RHI::ShaderStage::RayAnyHit) append("ShaderStage::RayAnyHit");
-            if (stages & RHI::ShaderStage::RayClosestHit) append("ShaderStage::RayClosestHit");
-            if (stages & RHI::ShaderStage::RayMiss) append("ShaderStage::RayMiss");
-            if (stages & RHI::ShaderStage::RayCallable) append("ShaderStage::RayCallable");
-            if (stages & RHI::ShaderStage::Mesh) append("ShaderStage::Mesh");
-            if (stages & RHI::ShaderStage::Amplification) append("ShaderStage::Amplification");
+        case Access::None:      return "Access::None";
+        case Access::Read:      return "Access::Read";
+        case Access::Write:     return "Access::Write";
+        case Access::ReadWrite: return "Access::ReadWrite";
         }
-
-        return result;
     }
 
-    inline static const char* ToString(Format format)
+    inline static constexpr const char* ToString(Format format)
     {
         switch (format)
         {
@@ -126,9 +96,11 @@ namespace RHI::Debug
         case Format::BC7_UNORM_SRGB:    return "Format::BC7_UNORM_SRGB";
         case Format::COUNT:             return "Format::COUNT";
         }
+        TL_UNREACHABLE();
+        return "---";
     }
 
-    inline static const char* ToString(BindingType e)
+    inline static constexpr const char* ToString(BindingType e)
     {
         switch (e)
         {
@@ -145,20 +117,36 @@ namespace RHI::Debug
         // case BindingType::Count:                return "BindingType::Count";
         default:                                return "BindingType::Count";
         }
+        TL_UNREACHABLE();
+        return "---";
     }
 
-    inline static const char* ToString(ShaderStage e)
+    inline static constexpr const char* ToString(ShaderStage e)
     {
         switch (e)
         {
-        case ShaderStage::None:    return "ShaderStage::None";
-        case ShaderStage::Vertex:  return "ShaderStage::Vertex";
-        case ShaderStage::Pixel:   return "ShaderStage::Pixel";
-        case ShaderStage::Compute: return "ShaderStage::Compute";
+        case ShaderStage::None:        return "ShaderStage";
+        case ShaderStage::Vertex:      return "ShaderStage";
+        case ShaderStage::Pixel:       return "ShaderStage";
+        case ShaderStage::Compute:     return "ShaderStage";
+        // case ShaderStage::Hull: return "ShaderStage";
+        // case ShaderStage::Domain: return "ShaderStage";
+        // case ShaderStage::RayGen: return "ShaderStage";
+        // case ShaderStage::RayIntersect: return "ShaderStage";
+        // case ShaderStage::RayAnyHit: return "ShaderStage";
+        // case ShaderStage::RayClosestHit: return "ShaderStage";
+        // case ShaderStage::RayMiss: return "ShaderStage";
+        // case ShaderStage::RayCallable: return "ShaderStage";
+        // case ShaderStage::Mesh: return "ShaderStage";
+        // case ShaderStage::Amplification: return "ShaderStage";
+        case ShaderStage::AllGraphics: return "ShaderStage";
+        case ShaderStage::AllStages:   return "ShaderStage";
         }
+        TL_UNREACHABLE();
+        return "---";
     }
 
-    inline static const char* ToString(BufferUsage e)
+    inline static constexpr const char* ToString(BufferUsage e)
     {
         switch (e)
         {
@@ -171,72 +159,22 @@ namespace RHI::Debug
         case BufferUsage::CopyDst:  return "BufferUsage::CopyDst";
         case BufferUsage::Indirect: return "BufferUsage::Indirect";
         }
+        TL_UNREACHABLE();
+        return "---";
     }
 
-    inline static TL::String ToString(TL::Flags<BufferUsage> f)
-    {
-        TL::String result;
-
-        if (f == BufferUsage::None)
-            return "BufferUsage::None";
-
-        bool first = true;
-        if (f & BufferUsage::Storage)
-        {
-            if (!first) result += " | ";
-            result += "BufferUsage::Storage";
-            first = false;
-        }
-        if (f & BufferUsage::Uniform)
-        {
-            if (!first) result += " | ";
-            result += "BufferUsage::Uniform";
-            first = false;
-        }
-        if (f & BufferUsage::Vertex)
-        {
-            if (!first) result += " | ";
-            result += "BufferUsage::Vertex";
-            first = false;
-        }
-        if (f & BufferUsage::Index)
-        {
-            if (!first) result += " | ";
-            result += "BufferUsage::Index";
-            first = false;
-        }
-        if (f & BufferUsage::CopySrc)
-        {
-            if (!first) result += " | ";
-            result += "BufferUsage::CopySrc";
-            first = false;
-        }
-        if (f & BufferUsage::CopyDst)
-        {
-            if (!first) result += " | ";
-            result += "BufferUsage::CopyDst";
-            first = false;
-        }
-        if (f & BufferUsage::Indirect)
-        {
-            if (!first) result += " | ";
-            result += "BufferUsage::Indirect";
-            first = false;
-        }
-
-        return result;
-    }
-
-    inline static const char* ToString(IndexType e)
+    inline static constexpr const char* ToString(IndexType e)
     {
         switch (e)
         {
         case IndexType::uint16: return "IndexType::uint16";
         case IndexType::uint32: return "IndexType::uint32";
         }
+        TL_UNREACHABLE();
+        return "---";
     }
 
-    inline static const char* ToString(ImageUsage e)
+    inline static constexpr const char* ToString(ImageUsage e)
     {
         switch (e)
         {
@@ -251,75 +189,11 @@ namespace RHI::Debug
         case ImageUsage::CopyDst:         return "ImageUsage::CopyDst";
         case ImageUsage::Present:         return "ImageUsage::Present";
         }
+        TL_UNREACHABLE();
+        return "---";
     }
 
-    inline static TL::String ToString(TL::Flags<ImageUsage> f)
-    {
-        TL::String result;
-
-        if (f == ImageUsage::None)
-            return "ImageUsage::None";
-
-        bool first = true;
-        if (f & ImageUsage::ShaderResource)
-        {
-            if (!first) result += " | ";
-            result += "ImageUsage::ShaderResource";
-            first = false;
-        }
-        if (f & ImageUsage::StorageResource)
-        {
-            if (!first) result += " | ";
-            result += "ImageUsage::StorageResource";
-            first = false;
-        }
-        if (f & ImageUsage::Color)
-        {
-            if (!first) result += " | ";
-            result += "ImageUsage::Color";
-            first = false;
-        }
-        if (f & ImageUsage::Depth)
-        {
-            if (!first) result += " | ";
-            result += "ImageUsage::Depth";
-            first = false;
-        }
-        if (f & ImageUsage::Stencil)
-        {
-            if (!first) result += " | ";
-            result += "ImageUsage::Stencil";
-            first = false;
-        }
-        if (f & ImageUsage::DepthStencil)
-        {
-            if (!first) result += " | ";
-            result += "ImageUsage::DepthStencil";
-            first = false;
-        }
-        if (f & ImageUsage::CopySrc)
-        {
-            if (!first) result += " | ";
-            result += "ImageUsage::CopySrc";
-            first = false;
-        }
-        if (f & ImageUsage::CopyDst)
-        {
-            if (!first) result += " | ";
-            result += "ImageUsage::CopyDst";
-            first = false;
-        }
-        if (f & ImageUsage::Present)
-        {
-            if (!first) result += " | ";
-            result += "ImageUsage::Present";
-            first = false;
-        }
-
-        return result;
-    }
-
-    inline static const char* ToString(ImageType e)
+    inline static constexpr const char* ToString(ImageType e)
     {
         switch (e)
         {
@@ -328,9 +202,11 @@ namespace RHI::Debug
         case ImageType::Image2D: return "ImageType::Image2D";
         case ImageType::Image3D: return "ImageType::Image3D";
         }
+        TL_UNREACHABLE();
+        return "---";
     }
 
-    inline static const char* ToString(ImageViewType e)
+    inline static constexpr const char* ToString(ImageViewType e)
     {
         switch (e)
         {
@@ -342,9 +218,11 @@ namespace RHI::Debug
         case ImageViewType::View3D:      return "ImageViewType::View3D";
         case ImageViewType::CubeMap:     return "ImageViewType::CubeMap";
         }
+        TL_UNREACHABLE();
+        return "---";
     }
 
-    inline static const char* ToString(ImageAspect e)
+    inline static constexpr const char* ToString(ImageAspect e)
     {
         switch (e)
         {
@@ -355,9 +233,11 @@ namespace RHI::Debug
         case ImageAspect::DepthStencil: return "ImageAspect::DepthStencil";
         case ImageAspect::All:          return "ImageAspect::All";
         }
+        TL_UNREACHABLE();
+        return "---";
     }
 
-    inline static const char* ToString(ComponentSwizzle e)
+    inline static constexpr const char* ToString(ComponentSwizzle e)
     {
         switch (e)
         {
@@ -369,9 +249,11 @@ namespace RHI::Debug
         case ComponentSwizzle::B:        return "ComponentSwizzle::B";
         case ComponentSwizzle::A:        return "ComponentSwizzle::A";
         }
+        TL_UNREACHABLE();
+        return "---";
     }
 
-    inline static const char* ToString(PipelineVertexInputRate e)
+    inline static constexpr const char* ToString(PipelineVertexInputRate e)
     {
         switch (e)
         {
@@ -379,9 +261,11 @@ namespace RHI::Debug
         case PipelineVertexInputRate::PerInstance: return "PipelineVertexInputRate::PerInstance";
         case PipelineVertexInputRate::PerVertex:   return "PipelineVertexInputRate::PerVertex";
         }
+        TL_UNREACHABLE();
+        return "---";
     }
 
-    inline static const char* ToString(PipelineRasterizerStateCullMode e)
+    inline static constexpr const char* ToString(PipelineRasterizerStateCullMode e)
     {
         switch (e)
         {
@@ -390,9 +274,11 @@ namespace RHI::Debug
         case PipelineRasterizerStateCullMode::BackFace:  return "PipelineRasterizerStateCullMode::BackFace";
         case PipelineRasterizerStateCullMode::Discard:   return "PipelineRasterizerStateCullMode::Discard";
         }
+        TL_UNREACHABLE();
+        return "---";
     }
 
-    inline static const char* ToString(PipelineRasterizerStateFillMode e)
+    inline static constexpr const char* ToString(PipelineRasterizerStateFillMode e)
     {
         switch (e)
         {
@@ -400,9 +286,11 @@ namespace RHI::Debug
         case PipelineRasterizerStateFillMode::Triangle: return "PipelineRasterizerStateFillMode::Triangle";
         case PipelineRasterizerStateFillMode::Line:     return "PipelineRasterizerStateFillMode::Line";
         }
+        TL_UNREACHABLE();
+        return "---";
     }
 
-    inline static const char* ToString(PipelineTopologyMode e)
+    inline static constexpr const char* ToString(PipelineTopologyMode e)
     {
         switch (e)
         {
@@ -410,18 +298,22 @@ namespace RHI::Debug
         case PipelineTopologyMode::Lines:     return "PipelineTopologyMode::Lines";
         case PipelineTopologyMode::Triangles: return "PipelineTopologyMode::Triangles";
         }
+        TL_UNREACHABLE();
+        return "---";
     }
 
-    inline static const char* ToString(PipelineRasterizerStateFrontFace e)
+    inline static constexpr const char* ToString(PipelineRasterizerStateFrontFace e)
     {
         switch (e)
         {
         case PipelineRasterizerStateFrontFace::Clockwise:        return "PipelineRasterizerStateFrontFace::Clockwise";
         case PipelineRasterizerStateFrontFace::CounterClockwise: return "PipelineRasterizerStateFrontFace::CounterClockwise";
         }
+        TL_UNREACHABLE();
+        return "---";
     }
 
-    inline static const char* ToString(BlendFactor e)
+    inline static constexpr const char* ToString(BlendFactor e)
     {
         switch (e)
         {
@@ -440,9 +332,11 @@ namespace RHI::Debug
         case BlendFactor::ConstantAlpha:         return "BlendFactor::ConstantAlpha";
         case BlendFactor::OneMinusConstantAlpha: return "BlendFactor::OneMinusConstantAlpha";
         }
+        TL_UNREACHABLE();
+        return "---";
     }
 
-    inline static const char* ToString(BlendEquation e)
+    inline static constexpr const char* ToString(BlendEquation e)
     {
         switch (e)
         {
@@ -452,9 +346,11 @@ namespace RHI::Debug
         case BlendEquation::Min:             return "BlendEquation::Min";
         case BlendEquation::Max:             return "BlendEquation::Max";
         }
+        TL_UNREACHABLE();
+        return "---";
     }
 
-    inline static const char* ToString(ColorWriteMask e)
+    inline static constexpr const char* ToString(ColorWriteMask e)
     {
         switch (e)
         {
@@ -464,9 +360,11 @@ namespace RHI::Debug
         case ColorWriteMask::Alpha: return "ColorWriteMask::Alpha";
         case ColorWriteMask::All:   return "ColorWriteMask::All";
         }
+        TL_UNREACHABLE();
+        return "---";
     }
 
-    inline static const char* ToString(SampleCount e)
+    inline static constexpr const char* ToString(SampleCount e)
     {
         switch (e)
         {
@@ -479,27 +377,33 @@ namespace RHI::Debug
         case SampleCount::Samples32: return "SampleCount::Samples32";
         case SampleCount::Samples64: return "SampleCount::Samples64";
         }
+        TL_UNREACHABLE();
+        return "---";
     }
 
-    inline static const char* ToString(SamplerFilter e)
+    inline static constexpr const char* ToString(SamplerFilter e)
     {
         switch (e)
         {
         case SamplerFilter::Point:  return "SamplerFilter::Point";
         case SamplerFilter::Linear: return "SamplerFilter::Linear";
         }
+        TL_UNREACHABLE();
+        return "---";
     }
 
-    inline static const char* ToString(SamplerAddressMode e)
+    inline static constexpr const char* ToString(SamplerAddressMode e)
     {
         switch (e)
         {
         case SamplerAddressMode::Repeat: return "SamplerAddressMode::Repeat";
         case SamplerAddressMode::Clamp:  return "SamplerAddressMode::Clamp";
         }
+        TL_UNREACHABLE();
+        return "---";
     }
 
-    inline static const char* ToString(CompareOperator e)
+    inline static constexpr const char* ToString(CompareOperator e)
     {
         switch (e)
         {
@@ -513,120 +417,85 @@ namespace RHI::Debug
         case CompareOperator::LessOrEqual:    return "CompareOperator::LessOrEqual";
         case CompareOperator::Always:         return "CompareOperator::Always";
         }
+        TL_UNREACHABLE();
+        return "---";
     }
 
-    inline static TL::String ToString(const ImageCreateInfo& ci)
+    template<typename Enum>
+    inline static std::string ToString(TL::Flags<Enum> flags)
     {
-        TL::String result;
-        result += "ImageCreateInfo{\n";
-        result += "    name: ";
-        result += ci.name;
-        result += ",\n    usageFlags: ";
-        result += ToString(ci.usageFlags);
-        result += ",\n    type: ";
-        result += ToString(ci.type);
-        result += ",\n    size: ";
-        result += std::format("({}, {}, {})", ci.size.width, ci.size.height, ci.size.depth);
-        result += ",\n    format: ";
-        result += ToString(ci.format);
-        result += ",\n    sampleCount: ";
-        result += ToString(ci.sampleCount);
-        result += ",\n    mipLevels: ";
-        result += std::to_string(ci.mipLevels);
-        result += ",\n    arrayCount: ";
-        result += std::to_string(ci.arrayCount);
-        result += "\n}";
-        return result;
+        using U = typename TL::Flags<Enum>::MaskType;
+        U bits  = static_cast<U>(flags);
+        if (bits == 0) return "0";
+        std::string out;
+        bool        first = true;
+        for (U bit = 1; bit; bit <<= 1)
+        {
+            if (bits & bit)
+            {
+                auto e = static_cast<Enum>(bit);
+                if (!first) out += " | ";
+                out += ToString(e);
+                first = false;
+            }
+        }
+        return out;
     }
 
-    inline static TL::String ToString(const ImageViewCreateInfo& ci)
+    inline static std::string ToString(const RHI::ImageCreateInfo& ci)
     {
-        TL::String result;
-        result += "ImageViewCreateInfo{\n";
-        result += "    name: ";
-        result += ci.name;
-        result += ",\n    image: ";
-        // result += ci.image ? std::format("{}", static_cast<const void*>(ci.image)) : "nullptr";
-        result += "TODO:D";
-        result += ",\n    type: ";
-        result += "TODO:D";
-        result += ",\n    format: ";
-        result += ToString(ci.format);
-        result += ",\n    aspect: ";
-        result += "TODO:D";
-        result += ",\n    baseMipLevel: ";
-        result += std::to_string(ci.subresource.mipBase);
-        result += ",\n    mipLevelCount: ";
-        result += std::to_string(ci.subresource.mipLevelCount);
-        result += ",\n    baseArrayLayer: ";
-        result += std::to_string(ci.subresource.arrayBase);
-        result += ",\n    arrayLayerCount: ";
-        result += std::to_string(ci.subresource.arrayCount);
-        result += "\n}";
-        return result;
+        std::string out = "ImageCreateInfo{ name: ";
+        out += (ci.name ? ci.name : "nullptr");
+        out += ", usageFlags: ";
+        out += ToString(ci.usageFlags);
+        out += ", type: ";
+        out += ToString(ci.type);
+        out += ", size: (";
+        out += std::to_string(ci.size.width);
+        out += ", ";
+        out += std::to_string(ci.size.height);
+        out += ", ";
+        out += std::to_string(ci.size.depth);
+        out += "), format: ";
+        out += ToString(ci.format);
+        out += ", sampleCount: ";
+        out += ToString(ci.sampleCount);
+        out += ", mipLevels: ";
+        out += std::to_string(ci.mipLevels);
+        out += ", arrayCount: ";
+        out += std::to_string(ci.arrayCount);
+        out += " }";
+        return out;
     }
 
-    inline static TL::String ToString(const BufferCreateInfo& ci)
+    inline static std::string ToString(const RHI::BufferCreateInfo& ci)
     {
-        TL::String result;
-        result += "BufferCreateInfo{\n";
-        result += "    name: ";
-        result += ci.name;
-        result += ",\n    usageFlags: ";
-        result += ToString(ci.usageFlags);
-        result += ",\n    size: ";
-        result += std::to_string(ci.byteSize);
-        result += "\n}";
-        return result;
+        std::string out = "BufferCreateInfo{ name: ";
+        out += (ci.name ? ci.name : "nullptr");
+        out += ", hostMapped: ";
+        out += (ci.hostMapped ? "true" : "false");
+        out += ", usageFlags: ";
+        out += ToString(ci.usageFlags);
+        out += ", byteSize: ";
+        out += std::to_string(ci.byteSize);
+        out += " }";
+        return out;
     }
 
-    inline static TL::String ToString(const ShaderBinding& shaderBinding)
+    inline static std::string ToString(const RHI::ShaderBinding& ci)
     {
-        TL::String result;
-        result += "ShaderBinding{\n";
-        result += ",\n    type: ";
-        result += ToString(shaderBinding.type);
-        result += ",\n    count: ";
-        result += std::to_string(shaderBinding.arrayCount);
-        result += "\n}";
-        return result;
+        std::string out = "ShaderBinding{ type: ";
+        out += ToString(ci.type);
+        out += ", access: ";
+        out += ToString(ci.access);
+        out += ", arrayCount: ";
+        out += std::to_string(ci.arrayCount);
+        out += ", stages: ";
+        out += ToString(ci.stages);
+        out += ", bufferStride: ";
+        out += std::to_string(ci.bufferStride);
+        out += " }";
+        return out;
     }
+
 }; // namespace RHI::Debug
-
-#include <format>
-
-#define RHI_DEFINE_ENUM_FORMATTER(RHI_TYPE)                                          \
-    namespace std                                                                    \
-    {                                                                                \
-        template<>                                                                   \
-        struct formatter<RHI_TYPE> : formatter<TL::String>                           \
-        {                                                                            \
-            auto format(RHI_TYPE e, format_context& ctx) const                       \
-            {                                                                        \
-                return formatter<const char*>::format(RHI::Debug::ToString(e), ctx); \
-            }                                                                        \
-        }                                                                            \
-    }
-
-//
-// RHI_DEFINE_ENUM_FORMATTER(RHI::BindingType);
-// RHI_DEFINE_ENUM_FORMATTER(RHI::ShaderStage);
-// RHI_DEFINE_ENUM_FORMATTER(RHI::BufferUsage);
-// RHI_DEFINE_ENUM_FORMATTER(RHI::IndexType);
-// RHI_DEFINE_ENUM_FORMATTER(RHI::ImageUsage);
-// RHI_DEFINE_ENUM_FORMATTER(RHI::ImageType);
-// RHI_DEFINE_ENUM_FORMATTER(RHI::ImageViewType);
-// RHI_DEFINE_ENUM_FORMATTER(RHI::ImageAspect);
-// RHI_DEFINE_ENUM_FORMATTER(RHI::ComponentSwizzle);
-// RHI_DEFINE_ENUM_FORMATTER(RHI::PipelineVertexInputRate);
-// RHI_DEFINE_ENUM_FORMATTER(RHI::PipelineRasterizerStateCullMode);
-// RHI_DEFINE_ENUM_FORMATTER(RHI::PipelineRasterizerStateFillMode);
-// RHI_DEFINE_ENUM_FORMATTER(RHI::PipelineTopologyMode);
-// RHI_DEFINE_ENUM_FORMATTER(RHI::PipelineRasterizerStateFrontFace);
-// RHI_DEFINE_ENUM_FORMATTER(RHI::BlendFactor);
-// RHI_DEFINE_ENUM_FORMATTER(RHI::BlendEquation);
-// RHI_DEFINE_ENUM_FORMATTER(RHI::ColorWriteMask);
-// RHI_DEFINE_ENUM_FORMATTER(RHI::SampleCount);
-// RHI_DEFINE_ENUM_FORMATTER(RHI::SamplerFilter);
-// RHI_DEFINE_ENUM_FORMATTER(RHI::SamplerAddressMode);
-// RHI_DEFINE_ENUM_FORMATTER(RHI::CompareOperator);

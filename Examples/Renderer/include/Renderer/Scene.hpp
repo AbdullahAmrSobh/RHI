@@ -2,6 +2,7 @@
 
 #include "Renderer/Common.hpp"
 #include "Renderer/Resources.hpp"
+#include "Renderer/Geometry.hpp"
 
 #include "Shaders/GpuCommonStructs.h"
 
@@ -16,33 +17,30 @@ namespace Engine
         TL::Error init(RHI::Device* device);
         void      shutdown();
 
+        TL::Ptr<StaticMeshLOD> createMesh(uint32_t elementsCount, uint32_t vertexCount);
+
     public:
+        auto& getConstantBuffersPool()  { return m_constantBuffersPool; }
+
+        auto& getSBPoolRenderables()  { return m_SBPoolRenderables; }
+
+        auto& getIndexPool()  { return m_indexPool; }
+
+        auto& getVertexPoolPositions()  { return m_vertexPoolPositions; }
+
+        auto& getVertexPoolNormals()  { return m_vertexPoolNormals; }
+
+        auto& getVertexPoolUVs()  { return m_vertexPoolUVs; }
+
+    private:
         RHI::Device* m_device;
 
-        BufferPool m_constantBuffersPool;
-
-        static constexpr int k_transformMaxCapacity  = 1000;
-        static constexpr int k_meshLodMaxCapacity    = 1000;
-        static constexpr int k_lightMaxCapacity      = 1000;
-        static constexpr int k_renderableMaxCapacity = 1000;
-
-        BufferPool                             m_structuredBuffersPool;
-        StructuredBuffer<glm::mat4x4>          m_transform;
-        StructuredBuffer<GPU::SceneMeshLod>    m_meshLod;
-        StructuredBuffer<GPU::SceneLight>      m_light;
-        StructuredBuffer<GPU::SceneRenderable> m_renderable;
-
-        static constexpr int k_maxIndexBufferElementsCount    = 1000;
-        static constexpr int k_maxVertexBufferElementsCount   = 1000;
-        static constexpr int k_maxInstanceBufferElementsCount = 1000;
-
-        // vertex-buffers
-        BufferPool         m_geometryBuffersPool;
-        Buffer<uint32_t>   m_indexBuffer           = m_geometryBuffersPool.allocate<uint32_t>(k_maxIndexBufferElementsCount);
-        Buffer<glm::vec3>  m_vertexBufferPositions = m_geometryBuffersPool.allocate<glm::vec3>(k_maxVertexBufferElementsCount);
-        Buffer<glm::vec3>  m_vertexBufferNormals   = m_geometryBuffersPool.allocate<glm::vec3>(k_maxVertexBufferElementsCount);
-        Buffer<glm::vec2>  m_vertexBufferTexcoords = m_geometryBuffersPool.allocate<glm::vec2>(k_maxVertexBufferElementsCount);
-        Buffer<glm::ivec2> m_vertexBufferDrawIDs   = m_geometryBuffersPool.allocate<glm::ivec2>(k_maxInstanceBufferElementsCount);
+        ConstantBufferPool                           m_constantBuffersPool;
+        StructuredBufferPool<GPU::StaticMeshIndexed> m_SBPoolRenderables;
+        MeshBufferPool m_indexPool;
+        MeshBufferPool m_vertexPoolPositions;
+        MeshBufferPool m_vertexPoolNormals;
+        MeshBufferPool m_vertexPoolUVs;
     };
 
     class Scene
@@ -50,9 +48,10 @@ namespace Engine
     public:
         Scene() = default;
 
-        TL::Error init();
-        void      shutdown();
+        TL::Error init(RHI::Device* m_device);
+        void      shutdown(RHI::Device* m_device);
 
+        RHI::ImageSize2D               m_imageSize;
         ConstantBuffer<GPU::SceneView> m_sceneView;
     };
 } // namespace Engine

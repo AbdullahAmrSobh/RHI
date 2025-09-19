@@ -15,69 +15,40 @@ namespace Engine
     {
         m_device = device;
 
-        RHI::BufferCreateInfo m_geometryBuffersPoolCI{
-            .name       = "geometry-buffers",
-            .hostMapped = true,
-            .usageFlags = RHI::BufferUsage::Vertex | RHI::BufferUsage::Index,
-            .byteSize   = 1_gb,
-        };
-        m_geometryBuffersPool.init(device, m_geometryBuffersPoolCI);
-
-        RHI::BufferCreateInfo m_constantBuffersPoolCI{
-            .name       = "constant-buffers",
-            .hostMapped = true,
-            .usageFlags = RHI::BufferUsage::Uniform,
-            .byteSize   = 1_mb,
-        };
-        m_constantBuffersPool.init(device, m_constantBuffersPoolCI);
-
-        RHI::BufferCreateInfo m_structuredBuffersPoolCI{
-            .name       = "structurd-buffers",
-            .hostMapped = true,
-            .usageFlags = RHI::BufferUsage::Storage,
-            .byteSize   = 64_mb,
-        };
-        m_structuredBuffersPool.init(device, m_structuredBuffersPoolCI);
-
-        m_transform  = createStructuredBuffer<glm::mat4x4>(m_structuredBuffersPool, k_transformMaxCapacity);
-        m_meshLod    = createStructuredBuffer<GPU::SceneMeshLod>(m_structuredBuffersPool, k_meshLodMaxCapacity);
-        m_light      = createStructuredBuffer<GPU::SceneLight>(m_structuredBuffersPool, k_lightMaxCapacity);
-        m_renderable = createStructuredBuffer<GPU::SceneRenderable>(m_structuredBuffersPool, k_renderableMaxCapacity);
-
-        // m_indexBuffer           = createStructuredBuffer<uint32_t>(m_geometryBuffersPool, k_maxIndexBufferElementsCount);
-        // m_vertexBufferPositions = createStructuredBuffer<glm::vec3>(m_geometryBuffersPool, k_maxVertexBufferElementsCount);
-        // m_vertexBufferNormals   = createStructuredBuffer<glm::vec3>(m_geometryBuffersPool, k_maxVertexBufferElementsCount);
-        // m_vertexBufferTexcoords = createStructuredBuffer<glm::vec2>(m_geometryBuffersPool, k_maxVertexBufferElementsCount);
-        // m_vertexBufferDrawIDs   = createStructuredBuffer<glm::vec2>(m_geometryBuffersPool, k_maxInstanceBufferElementsCount);
+        m_constantBuffersPool = createConstantBufferPool(device, 1_mb);
+        m_SBPoolRenderables   = createStructuredBufferPool<GPU::StaticMeshIndexed>(device, 4);
+        m_indexPool           = createMeshBufferPool(device, sizeof(uint32_t) * 1024);
+        m_vertexPoolPositions = createMeshBufferPool(device, sizeof(glm::vec3) * 1024);
+        m_vertexPoolNormals   = createMeshBufferPool(device, sizeof(glm::vec3) * 1024);
+        m_vertexPoolUVs       = createMeshBufferPool(device, sizeof(glm::vec2) * 1024);
 
         return TL::NoError;
     }
 
     void GpuSceneData::shutdown()
     {
-        freeStructuredBuffer(m_structuredBuffersPool, m_renderable);
-        freeStructuredBuffer(m_structuredBuffersPool, m_light);
-        freeStructuredBuffer(m_structuredBuffersPool, m_meshLod);
-        freeStructuredBuffer(m_structuredBuffersPool, m_transform);
-        m_structuredBuffersPool.shutdown();
-        m_constantBuffersPool.shutdown();
-        m_geometryBuffersPool.shutdown();
+        // freeMeshBufferPool(m_device, m_vertexPoolUVs);
+        // freeMeshBufferPool(m_device, m_vertexPoolNormals);
+        // freeMeshBufferPool(m_device, m_vertexPoolPositions);
+        // freeMeshBufferPool(m_device, m_indexPool);
+        // freeStructuredBufferPool(m_device, m_SBPoolRenderables);
+        // freeConstantBufferPool(m_device, m_constantBuffersPool);
     }
 
-    TL::Error Scene::init()
+    TL::Error Scene::init(RHI::Device* device)
     {
-        auto& pool  = GpuSceneData::ptr->m_constantBuffersPool;
-        m_sceneView = createConstantBuffer<GPU::SceneView>(pool);
+        auto& pool  = GpuSceneData::ptr->getConstantBuffersPool();
+        m_sceneView = pool.allocate<GPU::SceneView>();
 
         GPU::SceneView v{};
         v.viewToClipMatrix  = glm::identity<glm::mat4x4>();
         v.worldToViewMatrix = glm::identity<glm::mat4x4>();
-        bufferWrite(pool, m_sceneView, v);
+        pool.update(device, m_sceneView, v);
 
         return TL::NoError;
     }
 
-    void Scene::shutdown()
+    void Scene::shutdown(RHI::Device* m_device)
     {
         // auto& sbPool = GpuSceneData::ptr->m_structuredBuffersPool;
         // freeStructuredBuffer(sbPool, m_renderables);

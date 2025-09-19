@@ -14,10 +14,10 @@ namespace Engine
     void GBufferFill::init(RHI::Device* device)
     {
         m_bindGroupLayout = sig::GBufferInputs::createBindGroupLayout(device);
-        m_pipelineLayout = device->CreatePipelineLayout({.name = "GBufferInputs", .layouts = m_bindGroupLayout});
-        m_bindGroup      = device->CreateBindGroup({.name = "bindgrou", .layout = m_bindGroupLayout});
+        m_pipelineLayout  = device->CreatePipelineLayout({.name = "GBufferInputs", .layouts = m_bindGroupLayout});
+        m_bindGroup       = device->CreateBindGroup({.name = "bindgrou", .layout = m_bindGroupLayout});
 
-        m_sampler      = device->CreateSampler({.name = "gbuffer-sampler"});
+        // m_sampler      = device->CreateSampler({.name = "gbuffer-sampler"});
         // m_texture      = device->CreateImage({});
         m_shaderParams = {};
 
@@ -75,21 +75,22 @@ namespace Engine
     {
         // freeConstantBuffer({}, m_sceneView);
         // freeConstantBuffer({}, m_constantBuffer);
-        device->DestroyImage(m_texture);
-        device->DestroySampler(m_sampler);
+        // device->DestroyImage(m_texture);
+        // device->DestroySampler(m_sampler);
         device->DestroyGraphicsPipeline(m_pipeline);
         device->DestroyPipelineLayout(m_pipelineLayout);
         device->DestroyBindGroup(m_bindGroup);
         device->DestroyBindGroupLayout(m_bindGroupLayout);
     }
 
-    void GBufferFill::render(RHI::Device* device, RHI::RenderGraph* rg, const Scene& scene, RHI::ImageSize2D frameSize)
+    void GBufferFill::render(RHI::Device* device, RHI::RenderGraph* rg, const Scene& scene)
     {
         m_shaderParams.view           = scene.m_sceneView;
         m_shaderParams.defaultSampler = m_sampler;
         // m_shaderParams.simpleTexture  = m_texture;
         m_shaderParams.updateBindGroup(device, m_bindGroup);
 
+        RHI::ImageSize2D frameSize = scene.m_imageSize;
         rg->AddPass({
             .name          = "main",
             .type          = RHI::PassType::Graphics,
@@ -169,7 +170,26 @@ namespace Engine
 
     void DeferredRenderer::render(RHI::Device* device, RHI::RenderGraph* rg, const Scene* scene, RHI::RGImage* outputAttachment)
     {
-        m_gbufferPass.render(device, rg, *scene, rg->GetFrameSize());
+        m_gbufferPass.render(device, rg, *scene);
+
+        rg->AddPass({
+            .name          = "copy-to-output",
+            .type          = RHI::PassType::Transfer,
+            .setupCallback = [&](RHI::RenderGraphBuilder& builder)
+            {
+                builder.ReadImage(m_gbufferPass.colorAttachment, RHI::ImageUsage::CopySrc, RHI::PipelineStage::Copy);
+                outputAttachment = builder.WriteImage(outputAttachment, RHI::ImageUsage::CopyDst, RHI::PipelineStage::Copy);
+            },
+            .executeCallback = [=, this](RHI::CommandList& cmd)
+            {
+                cmd.CopyImage({
+                    .srcImage = rg->GetImageHandle(m_gbufferPass.colorAttachment),
+                    .srcSize  = m_gbufferPass.colorAttachment->m_frameResource->size,
+                    .dstImage = rg->GetImageHandle(outputAttachment),
+                });
+            },
+        });
+
         if (m_imguiPass.enabled())
         {
             m_imguiPass.addPass(rg, outputAttachment, ImGui::GetDrawData());

@@ -238,11 +238,11 @@ namespace RHI::Vulkan
             copyCommand->CopyBufferToImage({
                 .image       = imageHandle,
                 .subresource = {
-                                .imageAspects = ImageAspect::All,
-                                .mipLevel     = mipLevel,
-                                .arrayBase    = arrayLayer,
-                                .arrayCount   = 1,
-                                },
+                    .imageAspects = ImageAspect::All,
+                    .mipLevel     = mipLevel,
+                    .arrayBase    = arrayLayer,
+                    .arrayCount   = 1,
+                },
                 .imageSize     = size,
                 .imageOffset   = offset,
                 .buffer        = stagingBuffer,
@@ -315,8 +315,7 @@ namespace RHI::Vulkan
             {
                 auto               offset       = page.offset;
                 StagingBufferBlock stagingBlock = {
-                    page.buffer, {offset, size}
-                };
+                    page.buffer, {offset, size}};
                 page.offset += size;
                 return stagingBlock;
             }
@@ -345,10 +344,9 @@ namespace RHI::Vulkan
         return StagingBufferBlock{
             .buffer    = m_pages.back().buffer,
             .subregion = {
-                          0,
-                          size,
-                          }
-        };
+                0,
+                size,
+            }};
     }
 
     StagingBufferBlock StagingBuffer::Allocate(TL::Block block)

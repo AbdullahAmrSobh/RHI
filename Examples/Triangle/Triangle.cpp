@@ -240,7 +240,8 @@ public:
 
         m_presentationViewport = m_renderer->CreatePresentationViewport(m_window);
 
-        m_scene = Renderer::ptr->CreateScene();
+        m_scene              = Renderer::ptr->CreateScene();
+        m_scene->m_imageSize = {m_window->GetSize().width, m_window->GetSize().height};
 
         // LoadFromArgPath();
     }
@@ -260,17 +261,14 @@ public:
     {
         ZoneScoped;
 
-        // m_camera.Update(ts);
+        m_camera.Update(ts);
+        GPU::SceneView sceneViewData{
+            .worldToViewMatrix = m_camera.GetView(),
+            .viewToClipMatrix = m_camera.GetProjection(),
+        };
 
-        // auto worldToView = m_camera.GetView();
-        // auto viewToClip  = m_camera.GetProjection();
-
-        // GPU::SceneView sceneViewData{
-        //     worldToView,
-        //     viewToClip,
-        // };
-
-        // m_sceneView->m_sceneViewUB.Update(sceneViewData);
+        auto& pool = GpuSceneData::ptr->getConstantBuffersPool();
+        pool.update(Renderer::ptr->GetDevice(), m_scene->m_sceneView, sceneViewData);
     }
 
     void Render() override

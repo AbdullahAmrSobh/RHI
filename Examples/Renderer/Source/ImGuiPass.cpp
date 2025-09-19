@@ -8,6 +8,7 @@
 #include <TL/FileSystem/File.hpp>
 #include <TL/Log.hpp>
 #include <TL/Utils.hpp>
+#include <TL/Literals.hpp>
 
 #include <algorithm>
 
@@ -19,6 +20,7 @@ namespace Engine
     {
         m_device            = device;
         m_maxViewportsCount = maxViewportsCount;
+        m_buffersPool       = createMeshBufferPool(device, 1_mb);
         m_indexBuffer       = {};
         m_vertexBuffer      = {};
 
@@ -44,11 +46,11 @@ namespace Engine
             .format     = RHI::Format::RGBA8_UNORM,
         };
         m_image        = RHI::CreateImageWithContent(*m_device, atlasTextureCI, TL::Block{pixels, size_t(width * height * 4)});
-        m_projectionCB = createDynamicConstantBuffer<glm::mat4x4>(GpuSceneData::ptr->m_constantBuffersPool, m_maxViewportsCount);
+        m_projectionCB = GpuSceneData::ptr->getConstantBuffersPool().allocate<glm::mat4x4>(m_maxViewportsCount);
 
         RHI::BindGroupLayout* bindGroupLayout = sig::ImGuiShaderParam::createBindGroupLayout(device);
 
-        m_bindGroup                        = m_device->CreateBindGroup({.layout = bindGroupLayout});
+        m_bindGroup = m_device->CreateBindGroup({.layout = bindGroupLayout});
 
         sig::ImGuiShaderParam shaderParams = {};
         shaderParams.cb                    = this->m_projectionCB;
@@ -92,8 +94,8 @@ namespace Engine
                             },
                         },
                         .renderTargetLayout = {.colorAttachmentsFormats = RHI::Format::RGBA8_UNORM},
-                        .colorBlendState = {
-                            .blendStates = RHI::ColorAttachmentBlendStateDesc{
+                        .colorBlendState    = {
+                               .blendStates = RHI::ColorAttachmentBlendStateDesc{
                                 true,
                                 RHI::BlendEquation::Add,
                                 RHI::BlendFactor::SrcAlpha,
@@ -109,35 +111,30 @@ namespace Engine
                 m_pipeline = device->CreateGraphicsPipeline(gfxPipelineCI);
             });
 
-        // TL_ASSERT(io.BackendRendererUserData == nullptr && "Already initialized a renderer backend!");
-        // m_newframeHook.Type     = ImGuiContextHookType_NewFramePre;
-        // m_newframeHook.UserData = this;
-        // m_newframeHook.Callback = [](TL_MAYBE_UNUSED ImGuiContext* ctx, ImGuiContextHook* hook)
-        // {
-        //     auto self = (ImGuiPass*)hook->UserData;
-        //     // self->m_indexBufferOffset = self->m_vertexBufferOffset = 0;
-        // };
-        // ImGui::AddContextHook(ImGui::GetCurrentContext(), &m_newframeHook);
+        TL_ASSERT(io.BackendRendererUserData == nullptr, "Already initialized a renderer backend!");
+        m_newframeHook.Type     = ImGuiContextHookType_NewFramePre;
+        m_newframeHook.UserData = this;
+        m_newframeHook.Callback = [](TL_MAYBE_UNUSED ImGuiContext* ctx, ImGuiContextHook* hook)
+        {
+            auto self = (ImGuiPass*)hook->UserData;
+            // self->m_indexBufferOffset = self->m_vertexBufferOffset = 0;
+        };
+        ImGui::AddContextHook(ImGui::GetCurrentContext(), &m_newframeHook);
 
         return TL::NoError;
     }
 
     void ImGuiPass::shutdown()
     {
-#if 0
-        ImGui::RemoveContextHook(ImGui::GetCurrentContext(), m_newframeHook.HookId);
+        // ImGui::RemoveContextHook(ImGui::GetCurrentContext(), m_newframeHook.HookId);
+        // GpuSceneData::ptr->m_geometryBuffersPool.free(m_vertexBuffer);
+        // GpuSceneData::ptr->m_geometryBuffersPool.free(m_indexBuffer);
+        // freeDynamicConstantBuffer(GpuSceneData::ptr->m_constantBuffersPool, m_projectionCB);
+        m_device->DestroyImage(m_image);
+        m_device->DestroySampler(m_sampler);
+        m_device->DestroyBindGroup(m_bindGroup);
         m_device->DestroyGraphicsPipeline(m_pipeline);
         m_device->DestroyPipelineLayout(m_pipelineLayout);
-        m_device->DestroyBindGroup(m_bindGroup);
-        m_device->DestroySampler(m_sampler);
-        m_device->DestroyImage(m_image);
-        if (m_indexBuffer != nullptr)
-            m_device->DestroyBuffer(m_indexBuffer);
-        if (m_vertexBuffer != nullptr)
-            m_device->DestroyBuffer(m_vertexBuffer);
-        if (m_uniformBuffer != nullptr)
-            m_device->DestroyBuffer(m_uniformBuffer);
-#endif
     }
 
     RHI::RGPass* ImGuiPass::addPass(RHI::RenderGraph* rg, RHI::RGImage*& outAttachment, ImDrawData* drawData, uint32_t viewportID)
@@ -149,18 +146,17 @@ namespace Engine
 
         {
             // clang-format on
-            float L = drawData->DisplayPos.x;
-            float R = drawData->DisplayPos.x + drawData->DisplaySize.x;
-            float T = drawData->DisplayPos.y;
-            float B = drawData->DisplayPos.y + drawData->DisplaySize.y;
-            glm::mat4x4 mvp
-            {
-                {2.0f / (R - L),    0.0f,              0.0f, 0.0f},
-                {0.0f,              2.0f / (T - B),    0.0f, 0.0f},
-                {0.0f,              0.0f,              0.5f, 0.0f},
+            float       L = drawData->DisplayPos.x;
+            float       R = drawData->DisplayPos.x + drawData->DisplaySize.x;
+            float       T = drawData->DisplayPos.y;
+            float       B = drawData->DisplayPos.y + drawData->DisplaySize.y;
+            glm::mat4x4 mvp{
+                {2.0f / (R - L), 0.0f, 0.0f, 0.0f},
+                {0.0f, 2.0f / (T - B), 0.0f, 0.0f},
+                {0.0f, 0.0f, 0.5f, 0.0f},
                 {(R + L) / (L - R), (T + B) / (B - T), 0.5f, 1.0f},
             };
-            bufferWrite(GpuSceneData::ptr->m_constantBuffersPool, m_projectionCB, viewportID, mvp);
+            GpuSceneData::ptr->getConstantBuffersPool().update(m_device, m_projectionCB, viewportID, mvp);
             // clang-format off
         }
 
@@ -171,10 +167,12 @@ namespace Engine
             .size          = {(uint32_t)width, (uint32_t)height},
             .setupCallback = [&](RHI::RenderGraphBuilder& builder)
             {
-                builder.AddColorAttachment({.color = outAttachment, .loadOp = RHI::LoadOperation::Discard});
+                builder.AddColorAttachment({.color = outAttachment, .loadOp = RHI::LoadOperation::Load});
             },
             .executeCallback = [=, this](RHI::CommandList& commandList)
             {
+                auto& pool  = m_buffersPool;
+
                 // Will project scissor/clipping rectangles into framebuffer space
                 ImVec2 clipOff   = drawData->DisplayPos;       // (0,0) unless using multi-viewports
                 ImVec2 clipScale = drawData->FramebufferScale; // (1,1) unless using retina display which are often (2,2)
@@ -184,27 +182,22 @@ namespace Engine
                 if (fb_width <= 0 || fb_height <= 0)
                     return;
 
-                uint32_t indexBufferOffset  = m_indexBuffer.getOffset();
-                uint32_t vertexBufferOffset = m_vertexBuffer.getOffset();
+                uint32_t indexBufferOffset  = 0; // = m_indexBuffer.getOffset();
+                uint32_t vertexBufferOffset = 0; // = m_vertexBuffer.getOffset();
                 for (const auto& drawList : drawData->CmdLists)
                 {
                     // TODO: use api, but need to accmulate elements count instead of offset in bytes ...
 
-                    // clang-format off
-                    commandList.BindIndexBuffer({.buffer = m_indexBuffer.getBuffer(), .offset = indexBufferOffset}, RHI::IndexType::uint16);
-                    commandList.BindVertexBuffers(0, {{.buffer = m_vertexBuffer.getBuffer(), .offset = vertexBufferOffset}});
-                    // clang-format on
+                    auto indexBinding = m_indexBuffer.getBindingAt(indexBufferOffset);
+                    auto vertexBinding = m_vertexBuffer.getBindingAt(vertexBufferOffset);
 
-                    // TODO: use gpuscenedata::update
-                    m_device->GetCurrentFrame()->BufferWrite(m_indexBuffer.getBuffer(), indexBufferOffset, TL::Block{.ptr = drawList->IdxBuffer.Data, .size = drawList->IdxBuffer.Size * sizeof(ImDrawIdx)});
-                    m_device->GetCurrentFrame()->BufferWrite(m_vertexBuffer.getBuffer(), vertexBufferOffset, TL::Block{.ptr = drawList->VtxBuffer.Data, .size = drawList->VtxBuffer.Size * sizeof(ImDrawVert)});
-                    indexBufferOffset += drawList->IdxBuffer.Size * sizeof(ImDrawIdx);
-                    vertexBufferOffset += drawList->VtxBuffer.Size * sizeof(ImDrawVert);
+                    commandList.BindIndexBuffer(indexBinding, RHI::IndexType::uint16);
+                    commandList.BindVertexBuffers(0, vertexBinding);
 
-                    // bufferWrite(GpuSceneData::ptr->m_geometryBuffersPool, m_indexBuffer, indexBufferOffset, {drawList->IdxBuffer.Data, (size_t)drawList->IdxBuffer.size()});
-                    // bufferWrite(GpuSceneData::ptr->m_geometryBuffersPool, m_vertexBuffer, vertexBufferOffset, {drawList->VtxBuffer.Data, (size_t)drawList->VtxBuffer.size()});
-                    // indexBufferOffset += drawList->IdxBuffer.size();
-                    // vertexBufferOffset += drawList->VtxBuffer.size();
+                    m_buffersPool.update<ImDrawIdx>(m_device, m_indexBuffer, indexBufferOffset, { drawList->IdxBuffer.Data, (size_t)drawList->IdxBuffer.Size});
+                    m_buffersPool.update<ImDrawVert>(m_device, m_vertexBuffer, vertexBufferOffset, { drawList->VtxBuffer.Data, (size_t)drawList->VtxBuffer.Size});
+                    indexBufferOffset += drawList->IdxBuffer.Size;
+                    vertexBufferOffset += drawList->VtxBuffer.Size;
 
                     for (const auto& drawCmd : drawList->CmdBuffer)
                     {
@@ -267,27 +260,28 @@ namespace Engine
         if (drawData->DisplaySize.x <= 0.0f || drawData->DisplaySize.y <= 0.0f)
             return false;
 
-        auto& geometryBuffers  = GpuSceneData::ptr->m_geometryBuffersPool;
-        auto  vertexBufferSize = geometryBuffers.getBufferElementsCount(m_vertexBuffer);
+        auto& pool  = m_buffersPool;
+
+        auto  vertexBufferSize = m_vertexBuffer.getCount();
         if ((size_t)drawData->TotalVtxCount > vertexBufferSize)
         {
             vertexBufferSize = (size_t)drawData->TotalVtxCount + 5000;
 
             if (m_vertexBuffer.getBuffer())
-                geometryBuffers.free(m_vertexBuffer);
+                pool.free<ImDrawVert>(m_vertexBuffer);
 
-            m_vertexBuffer = geometryBuffers.allocate<ImDrawVert>(vertexBufferSize);
+            m_vertexBuffer = pool.allocate<ImDrawVert>(vertexBufferSize);
         }
 
-        auto indexBufferSize = geometryBuffers.getBufferElementsCount(m_indexBuffer);
+        auto indexBufferSize = m_indexBuffer.getCount();
         if ((size_t)drawData->TotalIdxCount > indexBufferSize)
         {
             indexBufferSize = (size_t)drawData->TotalIdxCount + 10000;
 
             if (m_indexBuffer.getBuffer())
-                geometryBuffers.free(m_indexBuffer);
+                pool.free<ImDrawIdx>(m_indexBuffer);
 
-            m_indexBuffer = geometryBuffers.allocate<ImDrawIdx>(indexBufferSize);
+            m_indexBuffer = pool.allocate<ImDrawIdx>(indexBufferSize);
         }
 
         if (drawData->TotalIdxCount == 0 || drawData->TotalVtxCount == 0)

@@ -367,7 +367,7 @@ namespace RHI
         void                       Dump();
 
         /// @brief Begins a frame recording.
-        void                       BeginFrame(ImageSize2D frameSize);
+        void                       BeginFrame();
 
         /// @brief Ends frame recording.
         void                       EndFrame();
@@ -393,13 +393,9 @@ namespace RHI
         /// @brief Adds a pass to the render graph.
         TL_MAYBE_UNUSED RGPass*    AddPass(const PassCreateInfo& createInfo);
 
-        /// @brief Returns the graph primary frame size.
-        [[deprecated("This function was deprecated to support multi swapchain setup, instead you graph should be able to deduce input size based on attachment sizes")]]
-        TL_NODISCARD ImageSize2D GetFrameSize() const;
-
         /// @brief Returns render graph resource's handle.
-        TL_NODISCARD Image*      GetImageHandle(RGImage* handle) const;
-        TL_NODISCARD Buffer*     GetBufferHandle(RGBuffer* handle) const;
+        TL_NODISCARD Image*        GetImageHandle(RGImage* handle) const;
+        TL_NODISCARD Buffer*       GetBufferHandle(RGBuffer* handle) const;
 
     private:
         // Bind group stuff
@@ -464,7 +460,6 @@ namespace RHI
         Device*                               m_device;
         Frame*                                m_activeFrame;
         TL::Ptr<RenderGraphResourcePool>      m_resourcePool;
-        ImageSize2D                           m_frameSize;
         TL::Arena                             m_arena;
         TL::Vector<SwapchainImageAcquireInfo> m_swapchains{m_arena};
         TL::Vector<RGPass*>                   m_passPool{m_arena};

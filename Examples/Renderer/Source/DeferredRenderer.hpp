@@ -30,7 +30,7 @@ namespace Engine
 
         void init(RHI::Device* device);
         void shutdown(RHI::Device* device);
-        void render(RHI::Device* device, RHI::RenderGraph* rg, const Scene& scene, RHI::ImageSize2D size);
+        void render(RHI::Device* device, RHI::RenderGraph* rg, const Scene& scene);
     };
 
     class DeferredRenderer : public Singleton<DeferredRenderer>

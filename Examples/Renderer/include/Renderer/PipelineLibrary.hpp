@@ -18,20 +18,15 @@ namespace Engine
         static RHI::ShaderModule* LoadShaderModule(TL::StringView path);
 
         using AcquireGraphicsPipelineCB = std::function<void(RHI::Device* device, RHI::ShaderModule* vs, RHI::ShaderModule* ps)>;
-        void acquireGraphicsPipeline(
-            TL::StringView              vertexShaderPath,
-            TL::StringView              pixelShaderPath,
-            AcquireGraphicsPipelineCB&& cb);
+        using AcquireComputePipelineCB  = std::function<void(RHI::Device* device, RHI::ShaderModule* cs)>;
 
-        using AcquireComputePipelineCB = std::function<void(RHI::Device* device, RHI::ShaderModule* cs)>;
-        void acquireComputePipeline(
-            TL::StringView             computeShaderPath,
-            AcquireComputePipelineCB&& cb);
+        void acquireGraphicsPipeline(TL::StringView vertexShaderPath, TL::StringView pixelShaderPath, AcquireGraphicsPipelineCB&& cb);
+
+        void acquireComputePipeline(TL::StringView computeShaderPath, AcquireComputePipelineCB&& cb);
 
         void updatePipelinesIfChanged();
 
     private:
-
         void invokeGraphicsCallback(TL::StringView path);
         void invokeComputeCallback(TL::StringView path);
 
@@ -39,7 +34,6 @@ namespace Engine
         RHI::Device*    m_device;
         TL::FileWatcher m_gfxWatcher;
         TL::FileWatcher m_cmpWatcher;
-
 
         // Maps vs and ps to vs\nps
         TL::Map<TL::String, TL::String> m_gfxStageToCombinedStagePaths;

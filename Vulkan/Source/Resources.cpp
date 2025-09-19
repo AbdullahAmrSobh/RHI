@@ -434,16 +434,16 @@ namespace RHI::Vulkan
 
         /// @todo: (don't do this)
         VkDescriptorPoolSize poolSizes[] = {
-            {VK_DESCRIPTOR_TYPE_SAMPLER,                2048},
-            {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          2048},
-            {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          2048},
-            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         2048},
-            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         2048},
-            {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   2048},
-            {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   2048},
+            {VK_DESCRIPTOR_TYPE_SAMPLER, 2048},
+            {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 2048},
+            {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 2048},
+            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2048},
+            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2048},
+            {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 2048},
+            {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 2048},
             {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2048},
             {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 2048},
-            {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,       2048},
+            {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 2048},
         };
 
         VkDescriptorPoolCreateFlags poolFlags =
@@ -1097,18 +1097,18 @@ namespace RHI::Vulkan
             .viewType   = VK_IMAGE_VIEW_TYPE_1D,
             .format     = imageCI.format,
             .components = {
-                           VK_COMPONENT_SWIZZLE_IDENTITY,
-                           VK_COMPONENT_SWIZZLE_IDENTITY,
-                           VK_COMPONENT_SWIZZLE_IDENTITY,
-                           VK_COMPONENT_SWIZZLE_IDENTITY,
-                           },
+                VK_COMPONENT_SWIZZLE_IDENTITY,
+                VK_COMPONENT_SWIZZLE_IDENTITY,
+                VK_COMPONENT_SWIZZLE_IDENTITY,
+                VK_COMPONENT_SWIZZLE_IDENTITY,
+            },
             .subresourceRange = {
-                           .aspectMask     = ConvertImageAspect(GetFormatAspects(createInfo.format), createInfo.format),
-                           .baseMipLevel   = 0,
-                           .levelCount     = VK_REMAINING_MIP_LEVELS,
-                           .baseArrayLayer = 0,
-                           .layerCount     = VK_REMAINING_ARRAY_LAYERS,
-                           },
+                .aspectMask     = ConvertImageAspect(GetFormatAspects(createInfo.format), createInfo.format),
+                .baseMipLevel   = 0,
+                .levelCount     = VK_REMAINING_MIP_LEVELS,
+                .baseArrayLayer = 0,
+                .layerCount     = VK_REMAINING_ARRAY_LAYERS,
+            },
         };
 
         switch (imageCI.imageType)

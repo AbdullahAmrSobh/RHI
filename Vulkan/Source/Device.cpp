@@ -496,9 +496,9 @@ namespace RHI::Vulkan
             .pNext = &features11,
             .features =
                 {
-                           .independentBlend  = VK_TRUE,
-                           .samplerAnisotropy = VK_TRUE,
-                           },
+                    .independentBlend  = VK_TRUE,
+                    .samplerAnisotropy = VK_TRUE,
+                },
         };
 
         VkDeviceCreateInfo deviceCI{
@@ -600,72 +600,82 @@ namespace RHI::Vulkan
             m_renderdoc->Shutdown();
         }
 
-        // Report live object stack tracecs
-        {
-            for (auto [ptr, stacktrace] : m_liveSwapchains)
-            {
-                TL_LOG_WARNNING("Leaked: RHI::Swapchain at:\n", TL::ReportStacktrace(stacktrace));
-                DestroySwapchain(ptr);
-            }
-
-            for (auto [ptr, stacktrace] : m_liveShaderModules)
-            {
-                TL_LOG_WARNNING("Leaked: RHI::ShaderModule at:\n", TL::ReportStacktrace(stacktrace));
-                DestroyShaderModule(ptr);
-            }
-
-            for (auto [ptr, stacktrace] : m_liveImages)
-            {
-                TL_LOG_WARNNING("Leaked: RHI::Image at:\n", TL::ReportStacktrace(stacktrace));
-                DestroyImage(ptr);
-            }
-
-            for (auto [ptr, stacktrace] : m_liveBuffers)
-            {
-                TL_LOG_WARNNING("Leaked: RHI::Buffer at:\n", TL::ReportStacktrace(stacktrace));
-                DestroyBuffer(ptr);
-            }
-
-            for (auto [ptr, stacktrace] : m_liveBindGroupLayouts)
-            {
-                TL_LOG_WARNNING("Leaked: RHI::BindGroupLayout at:\n", TL::ReportStacktrace(stacktrace));
-                DestroyBindGroupLayout(ptr);
-            }
-
-            for (auto [ptr, stacktrace] : m_liveBindGroups)
-            {
-                TL_LOG_WARNNING("Leaked: RHI::BindGroup at:\n", TL::ReportStacktrace(stacktrace));
-                DestroyBindGroup(ptr);
-            }
-
-            for (auto [ptr, stacktrace] : m_livePipelineLayouts)
-            {
-                TL_LOG_WARNNING("Leaked: RHI::PipelineLayout at:\n", TL::ReportStacktrace(stacktrace));
-                DestroyPipelineLayout(ptr);
-            }
-
-            for (auto [ptr, stacktrace] : m_liveGraphicsPipelines)
-            {
-                TL_LOG_WARNNING("Leaked: RHI::GraphicsPipeline at:\n", TL::ReportStacktrace(stacktrace));
-                DestroyGraphicsPipeline(ptr);
-            }
-
-            for (auto [ptr, stacktrace] : m_liveComputePipelines)
-            {
-                TL_LOG_WARNNING("Leaked: RHI::ComputePipeline at:\n", TL::ReportStacktrace(stacktrace));
-                DestroyComputePipeline(ptr);
-            }
-
-            for (auto [ptr, stacktrace] : m_liveSamplers)
-            {
-                TL_LOG_WARNNING("Leaked: RHI::Sampler at:\n", TL::ReportStacktrace(stacktrace));
-                DestroySampler(ptr);
-            }
-        }
-
         for (auto& frame : m_framesInFlight)
         {
             frame->Shutdown();
+        }
+
+        // Report live object stack tracecs
+        {
+            auto liveSwapchains = m_liveSwapchains;
+            for (auto [ptr, stacktrace] : liveSwapchains)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::Swapchain at:\n{}", TL::ReportStacktrace(stacktrace));
+                DestroySwapchain(ptr);
+            }
+
+            auto liveShaderModules = m_liveShaderModules;
+            for (auto [ptr, stacktrace] : liveShaderModules)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::ShaderModule at:\n{}", TL::ReportStacktrace(stacktrace));
+                DestroyShaderModule(ptr);
+            }
+
+            auto liveImages = m_liveImages;
+            for (auto [ptr, stacktrace] : liveImages)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::Image at:\n{}", TL::ReportStacktrace(stacktrace));
+                DestroyImage(ptr);
+            }
+
+            auto liveBuffers = m_liveBuffers;
+            for (auto [ptr, stacktrace] : liveBuffers)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::Buffer at:\n{}", TL::ReportStacktrace(stacktrace));
+                DestroyBuffer(ptr);
+            }
+
+            auto liveBindGroupLayouts = m_liveBindGroupLayouts;
+            for (auto [ptr, stacktrace] : liveBindGroupLayouts)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::BindGroupLayout at:\n{}", TL::ReportStacktrace(stacktrace));
+                DestroyBindGroupLayout(ptr);
+            }
+
+            auto liveBindGroups = m_liveBindGroups;
+            for (auto [ptr, stacktrace] : liveBindGroups)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::BindGroup at:\n{}", TL::ReportStacktrace(stacktrace));
+                DestroyBindGroup(ptr);
+            }
+
+            auto livePipelineLayouts = m_livePipelineLayouts;
+            for (auto [ptr, stacktrace] : livePipelineLayouts)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::PipelineLayout at:\n{}", TL::ReportStacktrace(stacktrace));
+                DestroyPipelineLayout(ptr);
+            }
+
+            auto liveGraphicsPipelines = m_liveGraphicsPipelines;
+            for (auto [ptr, stacktrace] : liveGraphicsPipelines)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::GraphicsPipeline at:\n{}", TL::ReportStacktrace(stacktrace));
+                DestroyGraphicsPipeline(ptr);
+            }
+
+            auto liveComputePipelines = m_liveComputePipelines;
+            for (auto [ptr, stacktrace] : liveComputePipelines)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::ComputePipeline at:\n{}", TL::ReportStacktrace(stacktrace));
+                DestroyComputePipeline(ptr);
+            }
+
+            auto liveSamplers = m_liveSamplers;
+            for (auto [ptr, stacktrace] : liveSamplers)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::Sampler at:\n{}", TL::ReportStacktrace(stacktrace));
+                DestroySampler(ptr);
+            }
         }
 
         m_destroyQueue->Shutdown();

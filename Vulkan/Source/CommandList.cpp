@@ -540,7 +540,7 @@ namespace RHI::Vulkan
 
         VkRect2D vkScissor{
             .offset = {scissor.offsetX, scissor.offsetY},
-            .extent = {scissor.width,   scissor.height },
+            .extent = {scissor.width, scissor.height},
         };
         vkCmdSetScissor(m_commandBuffer, 0, 1, &vkScissor);
         m_hasScissorSet = true;

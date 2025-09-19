@@ -3,37 +3,71 @@
 #include <TL/Utils.hpp>
 #include <TL/OffsetAllocator/OffsetAllocator.hpp>
 
+#include <RHI/RHI.hpp>
+
 #include "Renderer/Common.hpp"
-#include <cassert>
 
 namespace Engine
 {
     // buffer range that contains elements of type T
-    template<typename T>
     class Buffer
     {
     public:
+        friend class BufferPool;
+
         Buffer() = default;
+
+        Buffer(RHI::Buffer* buffer, OffsetAllocator::Allocation allocation, uint32_t elementSize, uint32_t elementCount)
+            : m_buffer(buffer)
+            , m_allocation(allocation)
+            , m_elementSize(elementSize)
+            , m_elementsCount(elementCount)
+        {
+            TL_ASSERT(elementSize != 0, "Buffer elementSize must not be zero");
+            TL_ASSERT(elementCount != 0, "Buffer elementCount must not be zero");
+        }
 
         inline const RHI::Buffer* getBuffer() const
         {
             return m_buffer;
         }
 
-        // Get the underlying buffer
         inline RHI::Buffer* getBuffer()
         {
             return m_buffer;
         }
 
-        inline size_t getOffset() const
+        inline uint32_t getOffset() const
         {
             return m_allocation.offset;
         }
 
+        inline uint32_t getOffsetAtElement(uint32_t element) const
+        {
+            return getOffset() + (m_elementSize * element);
+        }
+
+        inline RHI::BufferBindingInfo getBindingAt(uint32_t element)
+        {
+            return {
+                .buffer = getBuffer(),
+                .offset = getOffsetAtElement(element),
+            };
+        }
+
+        inline uint32_t getByteSize() const
+        {
+            return m_elementSize * m_elementsCount;
+        }
+
         inline uint32_t getStride() const
         {
-            return m_stride;
+            return m_elementSize;
+        }
+
+        inline uint32_t getCount() const
+        {
+            return m_elementsCount;
         }
 
         inline bool valid() const
@@ -43,7 +77,7 @@ namespace Engine
 
         inline operator bool() const
         {
-            return m_buffer != nullptr && m_allocation.offset != OffsetAllocator::Allocation::NO_SPACE;
+            return valid();
         }
 
         inline operator RHI::BufferBindingInfo() const
@@ -53,415 +87,246 @@ namespace Engine
         }
 
     private:
-        friend class BufferPool;
-
-        template<typename U>
-        friend void bufferWrite(BufferPool&, Buffer<U>, TL::Span<const U>);
-
-        template<typename U>
-        friend void bufferWrite(BufferPool&, Buffer<U>, size_t, TL::Span<const U>);
-
-        RHI::Buffer*                m_buffer     = nullptr;
-        OffsetAllocator::Allocation m_allocation = {};
-        uint32_t                    m_stride     = 0;
+        RHI::Buffer*                m_buffer        = nullptr;
+        OffsetAllocator::Allocation m_allocation    = {};
+        // size in bytes = elementSize * elementCount !
+        // size of a single element in the buffer (element-width)
+        uint32_t                    m_elementSize   = 0;
+        // number of elements in the buffer
+        uint32_t                    m_elementsCount = 0;
     };
 
-    // Buffer pool manages RHI buffer and allocate subregion within it
+    // Generic buffer pool that can be allocated from
     class BufferPool
     {
     public:
-        BufferPool() = default;
+        BufferPool()
+        {
+            m_allocator = TL::CreatePtr<OffsetAllocator::Allocator>();
+        }
+
+        using sizeType          = uint32_t;
+        using StorageReport     = OffsetAllocator::StorageReport;
+        using StorageReportFull = OffsetAllocator::StorageReportFull;
 
         void init(RHI::Device* device, const RHI::BufferCreateInfo& createInfo);
-
-        void shutdown();
-
-        // Accessor for the underlying device (useful for bufferWrite helpers)
-        RHI::Device* getDevice() const { return m_device; }
+        void shutdown(RHI::Device* device);
 
         // Allocate a buffer range for T elements (element size is sizeof(T))
-        template<typename T>
-        Buffer<T> allocate(size_t count, uint32_t elementAlignment = alignof(T))
+        Buffer allocate(uint32_t count, uint32_t elementSize)
         {
-            // elementAlignment is the per-element alignment requested by the caller (e.g. constant buffer alignment)
-            uint32_t alignedElementSize = TL::AlignUp<uint32_t>(sizeof(T), elementAlignment);
-            auto     totalSizeBytes     = uint32_t(alignedElementSize * count);
-            auto     allocation         = m_allocator.allocate(totalSizeBytes);
+            auto allocation = m_allocator->allocate(count * elementSize);
             if (allocation.offset == OffsetAllocator::Allocation::NO_SPACE)
             {
-                return Buffer<T>();
-            }
-
-            Buffer<T> out;
-            out.m_allocation = allocation;
-            out.m_buffer     = m_buffer;
-            out.m_stride     = elementAlignment; // store requested alignment (used for aligned element size computation)
-            return out;
-        }
-
-        // Free a previously allocated buffer range
-        template<typename T>
-        void free(Buffer<T> allocation)
-        {
-            if (!allocation.valid())
-                return;
-            m_allocator.free(allocation.m_allocation);
-        }
-
-        // Get the size of the buffer allocation
-        template<typename T>
-        size_t getBufferSize(Buffer<T> buffer) const
-        {
-            return m_allocator.allocationSize(buffer.m_allocation);
-        }
-
-        // Get number of elements in buffer
-        template<typename T>
-        uint32_t getBufferElementsCount(Buffer<T> buffer) const
-        {
-            if (!buffer.valid()) return 0;
-            return uint32_t(getBufferSize(buffer) / buffer.getStride());
-        }
-
-    private:
-        RHI::Device*               m_device = nullptr;
-        RHI::Buffer*               m_buffer = nullptr;
-        OffsetAllocator::Allocator m_allocator;
-    };
-
-    // --- Resource wrappers ---
-
-    template<typename T>
-    struct StructuredBuffer
-    {
-        friend class GpuSceneData;
-        template<typename U>
-        friend void bufferWrite(BufferPool&, StructuredBuffer<U>&, uint32_t, const U&);
-        template<typename U>
-        friend StructuredBuffer<U> createStructuredBuffer(BufferPool&, size_t, uint32_t);
-        template<typename U>
-        friend void freeStructuredBuffer(BufferPool&, StructuredBuffer<U>&);
-
-        StructuredBuffer() = default;
-
-        // Constructor to initialize from a Buffer allocation
-        StructuredBuffer(Buffer<T> buffer, size_t capacity)
-            : m_buffer(buffer)
-            , m_capacity(capacity)
-            , m_count(0)
-        {
-        }
-
-        // todo: rename to Index
-        using Allocation = uint32_t;
-
-        // Allocate a new element in the structured buffer
-        Allocation allocate()
-        {
-            if (!m_buffer.valid())
-                return UINT32_MAX;
-
-            if (m_freeList.empty())
-            {
-                if (m_count >= m_capacity)
-                {
-                    return UINT32_MAX; // No space available
-                }
-
-                return static_cast<Allocation>(m_count++);
+                return {};
             }
             else
             {
-                auto index = m_freeList.back();
-                m_freeList.pop_back();
-                return index;
+                // protect against stride == 0 here too
+                TL_ASSERT(elementSize != 0, "Requested stride must not be zero");
+                return {m_buffer, allocation, elementSize, count};
             }
         }
 
-        // Free a previously allocated element
-        void free(Allocation allocation)
+        // Free a previously allocated buffer range
+        void free(Buffer allocation)
         {
-            if (allocation != UINT32_MAX && allocation < m_count)
-            {
-                m_freeList.push_back(allocation);
-            }
+            TL_ASSERT(allocation.valid());
+            m_allocator->free(allocation.m_allocation);
         }
 
-        // Get the underlying buffer
-        RHI::Buffer* getBuffer() const
+        // Get the size of the buffer allocation (in bytes)
+        size_t getBufferSize(Buffer buffer) const
         {
-            return m_buffer.getBuffer();
+            return m_allocator->allocationSize(buffer.m_allocation);
         }
 
-        // Get the offset within the buffer
-        size_t getOffset() const
+        StorageReport storageReport() const
         {
-            return m_buffer.getOffset();
+            return m_allocator->storageReport();
         }
 
-        // Get the offset of a specific element
-        size_t getOffset(Allocation element) const
+        StorageReportFull storageReportFull() const
         {
-            // Element offset must account for per-element alignment used when allocating the buffer
-            size_t elementSize = m_buffer.getAlignedElementSize();
-            return m_buffer.getOffset() + (elementSize * element);
+            return m_allocator->storageReportFull();
         }
 
-        // Get the number of allocated elements
-        uint32_t getCount() const
-        {
-            return uint32_t(m_count);
-        }
-
-        // Get the maximum number of elements
-        uint32_t getCapacity() const
-        {
-            return uint32_t(m_capacity);
-        }
-
-        // Get the size of each element (un-aligned)
-        size_t getElementSize() const
-        {
-            return sizeof(T);
-        }
-
-        operator RHI::BufferBindingInfo() const
-        {
-            return {m_buffer.getBuffer(), m_buffer.getOffset()};
-        }
-
-    private:
-        Buffer<T>            m_buffer;
-        size_t               m_capacity = 0;
-        size_t               m_count    = 0;
-        TL::Vector<uint32_t> m_freeList;
+    protected:
+        RHI::Buffer*                        m_buffer = nullptr;
+        TL::Ptr<OffsetAllocator::Allocator> m_allocator;
     };
 
     template<typename T>
-    struct ConstantBuffer
+    using GpuArrayAllocation = Buffer;
+
+    // Could be Vertex/Index/Structured buffer of elements of type T ...
+    template<uint32_t ID>
+    class GpuArray : private BufferPool
     {
-        friend class GpuSceneData;
-        template<typename U>
-        friend void bufferWrite(BufferPool&, ConstantBuffer<U>, const U&);
-        template<typename U>
-        friend ConstantBuffer<U> createConstantBuffer(BufferPool&, uint32_t);
-        template<typename U>
-        friend void freeConstantBuffer(BufferPool&, ConstantBuffer<U>&);
+    public:
+        using sizeType          = uint32_t;
+        using StorageReport     = OffsetAllocator::StorageReport;
+        using StorageReportFull = OffsetAllocator::StorageReportFull;
 
-        ConstantBuffer() = default;
+        template<typename T>
+        using Allocation = GpuArrayAllocation<T>;
 
-        // Constructor to initialize from a Buffer allocation
-        ConstantBuffer(Buffer<T> buffer)
-            : m_buffer(buffer)
+        void init(RHI::Device* device, TL::StringView name, uint32_t size, TL::Flags<RHI::BufferUsage> usageFlags)
         {
+            RHI::BufferCreateInfo createInfo{
+                .name       = name.data(),
+                .hostMapped = true,
+                .usageFlags = usageFlags,
+                .byteSize   = size,
+            };
+            BufferPool::init(device, createInfo);
         }
 
-        // Get the underlying buffer
-        RHI::Buffer* getBuffer()
+        void shutdown(RHI::Device* device)
         {
-            return m_buffer.getBuffer();
+            BufferPool::shutdown(device);
         }
 
-        // Get the offset within the buffer
-        size_t getOffset() const
+        template<typename T>
+        void update(RHI::Device* device, Allocation<T> allocation, uint32_t atIndex, TL::Span<const T> data)
         {
-            return m_buffer.getOffset();
+            TL_ASSERT(atIndex < allocation.getCount());
+            TL_ASSERT(sizeof(T) == allocation.getStride(), "TODO: Addd message here :D");
+            device->GetCurrentFrame()->BufferWrite(allocation.getBuffer(), allocation.getOffsetAtElement(atIndex), TL::Block::create(data));
         }
 
-    private:
-        Buffer<T> m_buffer;
+        template<typename T>
+        Allocation<T> allocate(uint32_t count)
+        {
+            return BufferPool::allocate(count, sizeof(T));
+        }
+
+        template<typename T>
+        void free(Allocation<T> allocation)
+        {
+            BufferPool::free(allocation);
+        }
+
+        StorageReport storageReport() const
+        {
+            return BufferPool::storageReport();
+        }
+
+        StorageReportFull storageReportFull() const
+        {
+            return BufferPool::storageReportFull();
+        }
     };
 
     template<typename T>
-    struct DynamicConstantBuffer
+    using StructuredBufferPool = GpuArray<0>;
+    template<typename T>
+    using StructuredBuffer = typename GpuArray<0>::Allocation<T>;
+
+    template<typename T>
+    static StructuredBufferPool<T> createStructuredBufferPool(RHI::Device* device, uint32_t elementsCount)
     {
-        friend class GpuSceneData;
-        template<typename U>
-        friend void bufferWrite(BufferPool&, DynamicConstantBuffer<U>, uint32_t, const U&);
-        template<typename U>
-        friend DynamicConstantBuffer<U> CreateDynamicConstantBuffer(BufferPool&, size_t);
-        template<typename U>
-        friend void FreeDynamicConstantBuffer(BufferPool&, DynamicConstantBuffer<U>&);
+        StructuredBufferPool<T> pool;
+        pool.init(device, "StructuredBuffer", sizeof(T) * elementsCount, RHI::BufferUsage::Storage);
+        return pool;
+    }
 
-        struct Element
+    template<typename T>
+    static void freeStructuredBufferPool(RHI::Device* device, StructuredBufferPool<T>& pool)
+    {
+        pool.shutdown(device);
+    }
+
+    // Make mesh buffer pool non templated ...
+    using MeshBufferPool = GpuArray<1>;
+
+    template<typename T>
+    using MeshBuffer = typename GpuArray<1>::Allocation<T>;
+
+    static MeshBufferPool createMeshBufferPool(RHI::Device* device, uint32_t sizeBytes)
+    {
+        MeshBufferPool pool;
+        pool.init(device, "MeshBuffer", sizeBytes, RHI::BufferUsage::Vertex | RHI::BufferUsage::Index);
+        return pool;
+    }
+
+    template<typename T>
+    static void freeMeshBufferPool(RHI::Device* device, MeshBufferPool& pool)
+    {
+        pool.shutdown(device);
+    }
+
+    template<typename T>
+    using ConstantBuffer = Buffer;
+
+    class ConstantBufferPool : private BufferPool
+    {
+    public:
+        ConstantBufferPool() = default;
+
+        inline void init(RHI::Device* device, TL::StringView name, uint32_t byteSize)
         {
-            friend class GpuSceneData;
-            friend DynamicConstantBuffer<T>;
+            const uint32_t m_alignment = device->GetLimits().minUniformBufferOffsetAlignment;
 
-            Element() = default;
-
-        private:
-            uint32_t index = 0;
-        };
-
-        DynamicConstantBuffer() = default;
-
-        // Constructor to initialize from a Buffer allocation (buffer must be a raw byte buffer)
-        DynamicConstantBuffer(Buffer<char> buffer, size_t count, size_t perElementAlignment)
-            : m_buffer(buffer)
-            , m_count(uint32_t(count))
-            , m_alignment(perElementAlignment)
-        {
+            RHI::BufferCreateInfo createInfo{
+                .name       = name.data(),
+                .hostMapped = true,
+                .usageFlags = RHI::BufferUsage::Uniform,
+                .byteSize   = TL::AlignUp(byteSize, m_alignment),
+            };
+            BufferPool::init(device, createInfo);
         }
 
-        // Get the underlying buffer
-        RHI::Buffer* getBuffer()
+        inline void shutdown(RHI::Device* device)
         {
-            return m_buffer.getBuffer();
+            BufferPool::shutdown(device);
         }
 
-        // Get the offset within the buffer (base offset)
-        size_t getOffset() const
+        /// Allocate raw region (caller chooses size, must be <= stride-aligned)
+        template<typename T>
+        inline ConstantBuffer<T> allocate(uint32_t count = 1)
         {
-            return m_buffer.getOffset();
+            uint32_t stride = TL::AlignUp<uint32_t>(sizeof(T), m_alignment);
+            return BufferPool::allocate(count, stride); // count=1, stride=aligned size
         }
 
-        // Get the offset of element idx within the buffer
-        size_t getOffset(uint32_t idx) const
+        template<typename T>
+        inline void free(ConstantBuffer<T> allocation)
         {
-            return m_buffer.getOffset() + (m_alignment * idx);
+            BufferPool::free(allocation);
         }
 
-        // Get the number of elements
-        uint32_t getCount() const
+        template<typename T>
+        void update(RHI::Device* device, ConstantBuffer<T> allocation, uint32_t index, const T& data)
         {
-            return m_count;
+            TL_ASSERT(index < allocation.getCount());
+            device->GetCurrentFrame()->BufferWrite(allocation.getBuffer(), allocation.getOffsetAtElement(index), TL::Block::create(data));
         }
 
-        // Get the alignment (per-element stride)
-        size_t getAlignment() const
+        template<typename T>
+        void update(RHI::Device* device, ConstantBuffer<T> allocation, const T& data)
+        {
+            update(device, allocation, 0, data);
+        }
+
+        inline uint32_t alignment() const
         {
             return m_alignment;
         }
 
-        // Get the size of each logical element (sizeof(T))
-        size_t getElementSize() const
-        {
-            return sizeof(T);
-        }
-
-        // Get the offset of a specific element
-        size_t getOffset(const Element& element) const
-        {
-            return m_buffer.getOffset() + (TL::AlignUp<uint32_t>(getElementSize(), m_alignment) * element.index);
-        }
-
     private:
-        Buffer<char> m_buffer;
-        uint32_t     m_count     = 0;
-        size_t       m_alignment = 0; // stride in bytes (already aligned to the dynamic alignment requirement)
+        uint32_t m_alignment = 256;
     };
 
-    // --- Convenience create/free functions ---
-
-    // Create a structured buffer from the pool. Returns an empty StructuredBuffer if allocation fails.
-    template<typename T>
-    StructuredBuffer<T> createStructuredBuffer(BufferPool& pool, size_t capacity, uint32_t elementAlignment = alignof(T))
+    static ConstantBufferPool createConstantBufferPool(RHI::Device* device, uint32_t size)
     {
-        auto buffer = pool.allocate<T>(capacity, elementAlignment);
-        if (!buffer.valid())
-            return StructuredBuffer<T>();
-        return StructuredBuffer<T>(buffer, capacity);
+        ConstantBufferPool pool;
+        pool.init(device, "ConstantBuffer", size);
+        return pool;
     }
 
-    template<typename T>
-    void freeStructuredBuffer(BufferPool& pool, StructuredBuffer<T>& buffer)
+    static void freeConstantBufferPool(RHI::Device* device, ConstantBufferPool& pool)
     {
-        pool.free(buffer.m_buffer);
-        buffer = StructuredBuffer<T>();
+        pool.shutdown(device);
     }
-
-    // Create a constant buffer for a single element
-    template<typename T>
-    ConstantBuffer<T> createConstantBuffer(BufferPool& pool, uint32_t elementAlignment = alignof(T))
-    {
-        auto cb = pool.allocate<T>(1, elementAlignment);
-        if (!cb.valid())
-            return ConstantBuffer<T>();
-        return ConstantBuffer<T>(cb);
-    }
-
-    template<typename T>
-    void freeConstantBuffer(BufferPool& pool, ConstantBuffer<T>& buffer)
-    {
-        pool.free(buffer.m_buffer);
-        buffer = ConstantBuffer<T>();
-    }
-
-    // Create a dynamic constant buffer. dynamicAlignment is the GPU required alignment for dynamic CB offsets
-    template<typename T>
-    DynamicConstantBuffer<T> createDynamicConstantBuffer(BufferPool& pool, size_t count)
-    {
-        // stride = AlignUp(sizeof(T), dynamicAlignment)
-        auto minAlignment = pool.getDevice()->GetLimits().minUniformBufferOffsetAlignment;
-
-        uint32_t stride = TL::AlignUp<uint32_t>(uint32_t(sizeof(T)), minAlignment);
-        size_t   total  = size_t(stride) * count;
-        auto     raw    = pool.allocate<char>(total, stride);
-        if (!raw.valid())
-            return DynamicConstantBuffer<T>();
-        return DynamicConstantBuffer<T>(raw, count, stride);
-    }
-
-    template<typename T>
-    void freeDynamicConstantBuffer(BufferPool& pool, DynamicConstantBuffer<T>& dcb)
-    {
-        pool.free(dcb.m_buffer);
-        dcb = DynamicConstantBuffer<T>();
-    }
-
-    template<typename T>
-    inline void bufferWrite(BufferPool& pool, Buffer<T> buffer, TL::Span<const T> data)
-    {
-        TL_ASSERT(pool.getDevice() != nullptr);
-        TL_ASSERT(buffer.valid());
-        // Ensure buffer alignment can contain T
-        TL_ASSERT(buffer.getStride() == alignof(T));
-        auto frame = pool.getDevice()->GetCurrentFrame();
-        frame->BufferWrite(
-            buffer.getBuffer(),
-            buffer.getOffset(),
-            TL::Block::fromSpan(data));
-    }
-
-    template<typename T>
-    inline void bufferWrite(BufferPool& pool, Buffer<T> buffer, size_t offset, TL::Span<const T> data)
-    {
-        TL_ASSERT(pool.getDevice() != nullptr);
-        TL_ASSERT(buffer.valid());
-        TL_ASSERT(buffer.getStride() == alignof(T));
-        auto frame = pool.getDevice()->GetCurrentFrame();
-
-        frame->BufferWrite(
-            buffer.getBuffer(),
-            buffer.getOffset() + (buffer.getAlignedElementSize() * offset),
-            TL::Block::fromSpan(data));
-    }
-
-    template<typename T>
-    inline void bufferWrite(BufferPool& pool, ConstantBuffer<T> buffer, const T& data)
-    {
-        TL_ASSERT(pool.getDevice() != nullptr);
-        auto frame = pool.getDevice()->GetCurrentFrame();
-        frame->BufferWrite(buffer.getBuffer(), buffer.getOffset(), TL::Block::create(data));
-    }
-
-    template<typename T>
-    inline void bufferWrite(BufferPool& pool, DynamicConstantBuffer<T> buffer, uint32_t index, const T& data)
-    {
-        TL_ASSERT(pool.getDevice() != nullptr);
-        TL_ASSERT(index < buffer.getCount());
-        auto frame = pool.getDevice()->GetCurrentFrame();
-        frame->BufferWrite(buffer.getBuffer(), buffer.getOffset(index), TL::Block::create(data));
-    }
-
-    template<typename T>
-    inline void bufferWrite(BufferPool& pool, StructuredBuffer<T>& buffer, uint32_t index, const T& data)
-    {
-        TL_ASSERT(pool.getDevice() != nullptr);
-        TL_ASSERT(index < buffer.getCount());
-        auto frame = pool.getDevice()->GetCurrentFrame();
-        frame->BufferWrite(buffer.getBuffer(), buffer.getOffset(index), TL::Block::create(data));
-    }
-
 } // namespace Engine

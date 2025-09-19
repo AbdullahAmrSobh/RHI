@@ -45,12 +45,12 @@ namespace RHI
 
     struct SwapchainConfigureInfo
     {
-        ImageSize2D          size;
-        uint32_t             imageCount;
-        ImageUsage           imageUsage;
-        Format               format;
-        SwapchainPresentMode presentMode;
-        SwapchainAlphaMode   alphaMode;
+        ImageSize2D           size;
+        uint32_t              imageCount;
+        TL::Flags<ImageUsage> imageUsage;
+        Format                format;
+        SwapchainPresentMode  presentMode;
+        SwapchainAlphaMode    alphaMode;
     };
 
     /// @brief Structure containing the capabilities of a presentation surface

@@ -21,20 +21,16 @@ namespace RHI
         constexpr uint32_t Blue  = 0x00007FFF;
 
         constexpr ClearValue DebugMarker_Graphics{
-            .f32{0.7f, 0.2f, 0.2f, 1.0f}
-        };
+            .f32{0.7f, 0.2f, 0.2f, 1.0f}};
 
         constexpr ClearValue DebugMarker_Compute{
-            .f32{0.2f, 0.7f, 0.2f, 1.0f}
-        };
+            .f32{0.2f, 0.7f, 0.2f, 1.0f}};
 
         constexpr ClearValue DebugMarker_AsyncCompute{
-            .f32{0.3f, 0.6f, 0.24f, 1.0f}
-        };
+            .f32{0.3f, 0.6f, 0.24f, 1.0f}};
 
         constexpr ClearValue DebugMarker_Transfer{
-            .f32{0.2f, 0.4f, 0.7f, 1.0f}
-        };
+            .f32{0.2f, 0.4f, 0.7f, 1.0f}};
 
     }; // namespace Colors
 
@@ -441,14 +437,12 @@ namespace RHI
         m_state.debug_triggerNextFrameCapture = true;
     }
 
-    void RenderGraph::BeginFrame(ImageSize2D frameSize)
+    void RenderGraph::BeginFrame()
     {
         ZoneScopedC(Colors::Red);
 
         m_state.frameRecording = true;
-        m_frameSize            = frameSize;
-
-        m_activeFrame = m_device->GetCurrentFrame();
+        m_activeFrame          = m_device->GetCurrentFrame();
     }
 
     void RenderGraph::EndFrame()
@@ -590,12 +584,6 @@ namespace RHI
     }
 
     // private:
-
-    ImageSize2D RenderGraph::GetFrameSize() const
-    {
-        // TL_ASSERT(m_state.compiled);
-        return m_frameSize;
-    }
 
     Image* RenderGraph::GetImageHandle(RGImage* image) const
     {
@@ -854,8 +842,8 @@ namespace RHI
             {
                 RHI::ImageBarrierInfo barrier{
                     .image    = swapchain.swapchain->GetImage(),
-                    .srcState = {ImageUsage::Color,   PipelineStage::ColorAttachmentOutput, Access::ReadWrite},
-                    .dstState = {ImageUsage::Present, PipelineStage::BottomOfPipe,          Access::None     },
+                    .srcState = {ImageUsage::Color, PipelineStage::ColorAttachmentOutput, Access::ReadWrite},
+                    .dstState = {ImageUsage::Present, PipelineStage::BottomOfPipe, Access::None},
                 };
                 swapchainBarriers.push_back(barrier);
             }

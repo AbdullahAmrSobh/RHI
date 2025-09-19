@@ -73,7 +73,7 @@ namespace Engine
         };
         m_renderGraph = m_device->CreateRenderGraph(renderGraphCI);
 
-        // Initialize renderer's systemss
+        // Initialize renderer's systems
 
         if (auto err = PipelineLibrary::ptr->init(m_device); err.IsError())
         {
@@ -118,7 +118,7 @@ namespace Engine
         RHI::SwapchainConfigureInfo configuration{
             .size        = {window->GetSize().width, window->GetSize().height},
             .imageCount  = 1,
-            .imageUsage  = RHI::ImageUsage::Color,
+            .imageUsage  = RHI::ImageUsage::Color | RHI::ImageUsage::CopyDst,
             .format      = RHI::Format::RGBA8_UNORM,
             .presentMode = RHI::SwapchainPresentMode::Fifo,
             .alphaMode   = RHI::SwapchainAlphaMode::None
@@ -149,20 +149,20 @@ namespace Engine
     Scene* Renderer::CreateScene()
     {
         auto scene = TL::Construct<Scene>();
-        auto result = scene->init();
+        auto result = scene->init(m_device);
         TL_ASSERT(result.IsSuccess(), result.GetMessage());
         return scene;
     }
 
     void Renderer::DestroyScene(Scene* scene)
     {
-        // scene->Shutdown(m_device);
+        scene->shutdown(m_device);
         TL::Destruct(scene);
     }
 
     void Renderer::Render(Scene* scene, const PresentationViewport& viewport)
     {
-        m_renderGraph->BeginFrame(viewport.GetSize());
+        m_renderGraph->BeginFrame();
 
         auto swapchainBackbuffer = m_renderGraph->ImportSwapchain("swapchain-color-attachment", *viewport.swapchain, RHI::Format::RGBA8_UNORM);
 

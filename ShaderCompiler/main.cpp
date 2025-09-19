@@ -9,7 +9,6 @@
 #include <TL/Result.hpp>
 
 #include <RHI/RHI.hpp>
-#include <RHI/ShaderUtils.inl>
 
 #include <slang/slang.h>
 #include <slang/slang-com-ptr.h>
@@ -563,7 +562,7 @@ namespace BGC
                         binding == RHI::BindingType::DynamicStorageBuffer || binding == RHI::BindingType::DynamicUniformBuffer;
 
         out.push_back(std::format(
-            "\t{{.type = RHI::{}, .access = RHI::Access::{}, .arrayCount = {}, .stages = RHI::ShaderStage::AllStages, .bufferStride = {} }},",
+            "\t{{.type = RHI::{}, .access = RHI::{}, .arrayCount = {}, .stages = RHI::ShaderStage::AllStages, .bufferStride = {} }},",
             RHI::Debug::ToString(binding),
             RHI::Debug::ToString(access),
             count == -1 ? "= RHI::BindlessArraySize" : std::to_string(count),

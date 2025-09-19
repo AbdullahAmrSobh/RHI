@@ -29,20 +29,22 @@ namespace Engine
         bool updateBuffers(ImDrawData* drawData);
 
     private:
+        ImGuiContextHook m_newframeHook{};
+
         RHI::Device* m_device;
 
         uint32_t m_maxViewportsCount;
 
         RHI::PipelineLayout*   m_pipelineLayout;
         RHI::GraphicsPipeline* m_pipeline;
+        RHI::BindGroup*        m_bindGroup;
 
-        ImGuiContextHook m_newframeHook{};
+        RHI::Sampler*               m_sampler;
+        RHI::Image*                 m_image;
+        ConstantBuffer<glm::mat4x4> m_projectionCB;
 
-        RHI::Sampler*                      m_sampler;
-        RHI::Image*                        m_image;
-        DynamicConstantBuffer<glm::mat4x4> m_projectionCB;
-        Buffer<ImDrawIdx>                  m_indexBuffer;
-        Buffer<ImDrawVert>                 m_vertexBuffer;
-        RHI::BindGroup*                    m_bindGroup;
+        MeshBufferPool          m_buffersPool;
+        MeshBuffer<ImDrawIdx>   m_indexBuffer;
+        MeshBuffer<ImDrawVert>  m_vertexBuffer;
     };
 } // namespace Engine

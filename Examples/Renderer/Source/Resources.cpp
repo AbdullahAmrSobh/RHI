@@ -4,13 +4,12 @@ namespace Engine
 {
     void BufferPool::init(RHI::Device* device, const RHI::BufferCreateInfo& createInfo)
     {
-        m_device = device;
-        m_allocator.init(createInfo.byteSize);
-        m_buffer = m_device->CreateBuffer(createInfo);
+        m_allocator->init(createInfo.byteSize);
+        m_buffer = device->CreateBuffer(createInfo);
     }
 
-    void BufferPool::shutdown()
+    void BufferPool::shutdown(RHI::Device* device)
     {
-        m_device->DestroyBuffer(m_buffer);
+        device->DestroyBuffer(m_buffer);
     }
 } // namespace Engine
