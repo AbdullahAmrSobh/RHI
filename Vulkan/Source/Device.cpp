@@ -459,31 +459,31 @@ namespace RHI::Vulkan
         };
 
         VkPhysicalDeviceVulkan12Features features12{
-            .sType                                              = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
-            .pNext                                              = &features13,
-            .drawIndirectCount                                  = VK_TRUE,
-            .descriptorIndexing                                 = VK_TRUE,
+            .sType                                        = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+            .pNext                                        = &features13,
+            .drawIndirectCount                            = VK_TRUE,
+            .descriptorIndexing                           = VK_TRUE,
             // .shaderInputAttachmentArrayDynamicIndexing          = VK_TRUE,
             // .shaderUniformTexelBufferArrayDynamicIndexing       = VK_TRUE,
             // .shaderStorageTexelBufferArrayDynamicIndexing       = VK_TRUE,
             // .shaderUniformBufferArrayNonUniformIndexing         = VK_TRUE,
-            .shaderSampledImageArrayNonUniformIndexing          = VK_TRUE,
+            .shaderSampledImageArrayNonUniformIndexing    = VK_TRUE,
             // .shaderStorageBufferArrayNonUniformIndexing         = VK_TRUE,
             // .shaderStorageImageArrayNonUniformIndexing          = VK_TRUE,
             // .shaderInputAttachmentArrayNonUniformIndexing       = VK_TRUE,
             // .shaderUniformTexelBufferArrayNonUniformIndexing    = VK_TRUE,
             // .shaderStorageTexelBufferArrayNonUniformIndexing    = VK_TRUE,
             // .descriptorBindingUniformBufferUpdateAfterBind      = VK_TRUE,
-            .descriptorBindingSampledImageUpdateAfterBind       = VK_TRUE,
+            .descriptorBindingSampledImageUpdateAfterBind = VK_TRUE,
             // .descriptorBindingStorageImageUpdateAfterBind       = VK_TRUE,
             // .descriptorBindingStorageBufferUpdateAfterBind      = VK_TRUE,
             // .descriptorBindingUniformTexelBufferUpdateAfterBind = VK_TRUE,
             // .descriptorBindingStorageTexelBufferUpdateAfterBind = VK_TRUE,
-            .descriptorBindingUpdateUnusedWhilePending          = VK_TRUE,
-            .descriptorBindingPartiallyBound                    = VK_TRUE,
-            .descriptorBindingVariableDescriptorCount           = VK_TRUE,
-            .runtimeDescriptorArray                             = VK_TRUE,
-            .timelineSemaphore                                  = VK_TRUE,
+            .descriptorBindingUpdateUnusedWhilePending    = VK_TRUE,
+            .descriptorBindingPartiallyBound              = VK_TRUE,
+            .descriptorBindingVariableDescriptorCount     = VK_TRUE,
+            .runtimeDescriptorArray                       = VK_TRUE,
+            .timelineSemaphore                            = VK_TRUE,
         };
 
         VkPhysicalDeviceVulkan11Features features11{
@@ -593,29 +593,75 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        vkDeviceWaitIdle(m_device);
+        WaitIdle();
 
         if (GetDebugRenderdoc())
         {
             m_renderdoc->Shutdown();
         }
 
-        // if (auto count = m_imageOwner.ReportLiveResourcesCount())
-        //     TL_LOG_WARNNING("Detected {} Image leaked", count);
-        // if (auto count = m_bufferOwner.ReportLiveResourcesCount())
-        //     TL_LOG_WARNNING("Detected {} Buffer leaked", count);
-        // if (auto count = m_bindGroupLayoutsOwner.ReportLiveResourcesCount())
-        //     TL_LOG_WARNNING("Detected {} BindGroupLayout leaked", count);
-        // if (auto count = m_bindGroupOwner.ReportLiveResourcesCount())
-        //     TL_LOG_WARNNING("Detected {} BindGroup leaked", count);
-        // if (auto count = m_pipelineLayoutOwner.ReportLiveResourcesCount())
-        //     TL_LOG_WARNNING("Detected {} PipelineLayout leaked", count);
-        // if (auto count = m_graphicsPipelineOwner.ReportLiveResourcesCount())
-        //     TL_LOG_WARNNING("Detected {} GraphicsPipeline leaked", count);
-        // if (auto count = m_computePipelineOwner.ReportLiveResourcesCount())
-        //     TL_LOG_WARNNING("Detected {} ComputePipeline leaked", count);
-        // if (auto count = m_samplerOwner.ReportLiveResourcesCount())
-        //     TL_LOG_WARNNING("Detected {} Sampler leaked", count);
+        // Report live object stack tracecs
+        {
+            for (auto [ptr, stacktrace] : m_liveSwapchains)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::Swapchain at:\n", TL::ReportStacktrace(stacktrace));
+                DestroySwapchain(ptr);
+            }
+
+            for (auto [ptr, stacktrace] : m_liveShaderModules)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::ShaderModule at:\n", TL::ReportStacktrace(stacktrace));
+                DestroyShaderModule(ptr);
+            }
+
+            for (auto [ptr, stacktrace] : m_liveImages)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::Image at:\n", TL::ReportStacktrace(stacktrace));
+                DestroyImage(ptr);
+            }
+
+            for (auto [ptr, stacktrace] : m_liveBuffers)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::Buffer at:\n", TL::ReportStacktrace(stacktrace));
+                DestroyBuffer(ptr);
+            }
+
+            for (auto [ptr, stacktrace] : m_liveBindGroupLayouts)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::BindGroupLayout at:\n", TL::ReportStacktrace(stacktrace));
+                DestroyBindGroupLayout(ptr);
+            }
+
+            for (auto [ptr, stacktrace] : m_liveBindGroups)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::BindGroup at:\n", TL::ReportStacktrace(stacktrace));
+                DestroyBindGroup(ptr);
+            }
+
+            for (auto [ptr, stacktrace] : m_livePipelineLayouts)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::PipelineLayout at:\n", TL::ReportStacktrace(stacktrace));
+                DestroyPipelineLayout(ptr);
+            }
+
+            for (auto [ptr, stacktrace] : m_liveGraphicsPipelines)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::GraphicsPipeline at:\n", TL::ReportStacktrace(stacktrace));
+                DestroyGraphicsPipeline(ptr);
+            }
+
+            for (auto [ptr, stacktrace] : m_liveComputePipelines)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::ComputePipeline at:\n", TL::ReportStacktrace(stacktrace));
+                DestroyComputePipeline(ptr);
+            }
+
+            for (auto [ptr, stacktrace] : m_liveSamplers)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::Sampler at:\n", TL::ReportStacktrace(stacktrace));
+                DestroySampler(ptr);
+            }
+        }
 
         for (auto& frame : m_framesInFlight)
         {
@@ -688,9 +734,10 @@ namespace RHI::Vulkan
         case NativeHandleType::BindGroupLayout:
         case NativeHandleType::BindGroup:
         case NativeHandleType::Swapchain:
+        default:
             TL_UNREACHABLE_MSG("TODO! implement");
-            return 0;
         }
+        return 0;
     }
 
     void IDevice::UpdateBindGroup(BindGroup* handle, const BindGroupUpdateInfo& updateInfo)
@@ -743,11 +790,14 @@ namespace RHI::Vulkan
         auto handle = TL ::Construct<ISwapchain>();
         auto result = handle->Init(this, createInfo);
         TL_ASSERT(IsSuccess(result));
+        m_liveSwapchains.emplace(handle, TL::CaptureStacktrace());
         return handle;
     }
 
     void IDevice ::DestroySwapchain(Swapchain* _handle)
     {
+        auto erased = m_liveSwapchains.erase(_handle);
+        TL_ASSERT(erased);
         auto handle = (ISwapchain*)_handle;
         handle->Shutdown(this);
         TL ::Destruct(_handle);
@@ -758,11 +808,14 @@ namespace RHI::Vulkan
         auto handle = TL ::Construct<IShaderModule>();
         auto result = handle->Init(this, createInfo);
         TL_ASSERT(IsSuccess(result));
+        m_liveShaderModules.emplace(handle, TL::CaptureStacktrace());
         return handle;
     }
 
     void IDevice ::DestroyShaderModule(ShaderModule* _handle)
     {
+        auto erased = m_liveShaderModules.erase(_handle);
+        TL_ASSERT(erased);
         auto handle = (IShaderModule*)_handle;
         handle->Shutdown(this);
         TL ::Destruct(_handle);
@@ -773,11 +826,14 @@ namespace RHI::Vulkan
         auto handle = TL ::Construct<IBindGroupLayout>();
         auto result = handle->Init(this, createInfo);
         TL_ASSERT(IsSuccess(result));
+        m_liveBindGroupLayouts.emplace(handle, TL::CaptureStacktrace());
         return handle;
     }
 
     void IDevice ::DestroyBindGroupLayout(BindGroupLayout* _handle)
     {
+        auto erased = m_liveBindGroupLayouts.erase(_handle);
+        TL_ASSERT(erased);
         auto handle = (IBindGroupLayout*)_handle;
         handle->Shutdown(this);
         TL ::Destruct(_handle);
@@ -788,11 +844,14 @@ namespace RHI::Vulkan
         auto handle = TL ::Construct<IBindGroup>();
         auto result = handle->Init(this, createInfo);
         TL_ASSERT(IsSuccess(result));
+        m_liveBindGroups.emplace(handle, TL::CaptureStacktrace());
         return handle;
     }
 
     void IDevice ::DestroyBindGroup(BindGroup* _handle)
     {
+        auto erased = m_liveBindGroups.erase(_handle);
+        TL_ASSERT(erased);
         auto handle = (IBindGroup*)_handle;
         handle->Shutdown(this);
         TL ::Destruct(_handle);
@@ -803,11 +862,14 @@ namespace RHI::Vulkan
         auto handle = TL ::Construct<IPipelineLayout>();
         auto result = handle->Init(this, createInfo);
         TL_ASSERT(IsSuccess(result));
+        m_livePipelineLayouts.emplace(handle, TL::CaptureStacktrace());
         return handle;
     }
 
     void IDevice ::DestroyPipelineLayout(PipelineLayout* _handle)
     {
+        auto erased = m_livePipelineLayouts.erase(_handle);
+        TL_ASSERT(erased);
         auto handle = (IPipelineLayout*)_handle;
         handle->Shutdown(this);
         TL ::Destruct(_handle);
@@ -818,11 +880,14 @@ namespace RHI::Vulkan
         auto handle = TL ::Construct<IGraphicsPipeline>();
         auto result = handle->Init(this, createInfo);
         TL_ASSERT(IsSuccess(result));
+        m_liveGraphicsPipelines.emplace(handle, TL::CaptureStacktrace());
         return handle;
     }
 
     void IDevice ::DestroyGraphicsPipeline(GraphicsPipeline* _handle)
     {
+        auto erased = m_liveGraphicsPipelines.erase(_handle);
+        TL_ASSERT(erased);
         auto handle = (IGraphicsPipeline*)_handle;
         handle->Shutdown(this);
         TL ::Destruct(_handle);
@@ -833,11 +898,14 @@ namespace RHI::Vulkan
         auto handle = TL ::Construct<IComputePipeline>();
         auto result = handle->Init(this, createInfo);
         TL_ASSERT(IsSuccess(result));
+        m_liveComputePipelines.emplace(handle, TL::CaptureStacktrace());
         return handle;
     }
 
     void IDevice ::DestroyComputePipeline(ComputePipeline* _handle)
     {
+        auto erased = m_liveComputePipelines.erase(_handle);
+        TL_ASSERT(erased);
         auto handle = (IComputePipeline*)_handle;
         handle->Shutdown(this);
         TL ::Destruct(_handle);
@@ -848,11 +916,14 @@ namespace RHI::Vulkan
         auto handle = TL ::Construct<ISampler>();
         auto result = handle->Init(this, createInfo);
         TL_ASSERT(IsSuccess(result));
+        m_liveSamplers.emplace(handle, TL::CaptureStacktrace());
         return handle;
     }
 
     void IDevice ::DestroySampler(Sampler* _handle)
     {
+        auto erased = m_liveSamplers.erase(_handle);
+        TL_ASSERT(erased);
         auto handle = (ISampler*)_handle;
         handle->Shutdown(this);
         TL ::Destruct(_handle);
@@ -863,6 +934,7 @@ namespace RHI::Vulkan
         auto handle = TL ::Construct<IImage>();
         auto result = handle->Init(this, createInfo);
         TL_ASSERT(IsSuccess(result));
+        m_liveImages.emplace(handle, TL::CaptureStacktrace());
         return handle;
     }
 
@@ -874,6 +946,8 @@ namespace RHI::Vulkan
 
     void IDevice ::DestroyImage(Image* _handle)
     {
+        auto erased = m_liveImages.erase(_handle);
+        TL_ASSERT(erased);
         auto handle = (IImage*)_handle;
         handle->Shutdown(this);
         TL ::Destruct(_handle);
@@ -884,11 +958,14 @@ namespace RHI::Vulkan
         auto handle = TL ::Construct<IBuffer>();
         auto result = handle->Init(this, createInfo);
         TL_ASSERT(IsSuccess(result));
+        m_liveBuffers.emplace(handle, TL::CaptureStacktrace());
         return handle;
     }
 
     void IDevice ::DestroyBuffer(Buffer* _handle)
     {
+        auto erased = m_liveBuffers.erase(_handle);
+        TL_ASSERT(erased);
         auto handle = (IBuffer*)_handle;
         handle->Shutdown(this);
         TL ::Destruct(_handle);

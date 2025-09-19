@@ -8,6 +8,7 @@
 #include <RHI-Vulkan/Loader.hpp>
 
 #include <TL/Containers.hpp>
+#include <TL/Stacktrace.hpp>
 #include <TL/UniquePtr.hpp>
 
 namespace RHI::Vulkan
@@ -106,6 +107,18 @@ namespace RHI::Vulkan
         // Frames in flight
         uint32_t                          m_currentFrameIndex       = 0;
         TL::Vector<TL::Ptr<class IFrame>> m_framesInFlight          = {};
+
+    private:
+        TL::Map<Swapchain*, TL::Stacktrace>        m_liveSwapchains;
+        TL::Map<ShaderModule*, TL::Stacktrace>     m_liveShaderModules;
+        TL::Map<Image*, TL::Stacktrace>            m_liveImages;
+        TL::Map<Buffer*, TL::Stacktrace>           m_liveBuffers;
+        TL::Map<BindGroupLayout*, TL::Stacktrace>  m_liveBindGroupLayouts;
+        TL::Map<BindGroup*, TL::Stacktrace>        m_liveBindGroups;
+        TL::Map<PipelineLayout*, TL::Stacktrace>   m_livePipelineLayouts;
+        TL::Map<GraphicsPipeline*, TL::Stacktrace> m_liveGraphicsPipelines;
+        TL::Map<ComputePipeline*, TL::Stacktrace>  m_liveComputePipelines;
+        TL::Map<Sampler*, TL::Stacktrace>          m_liveSamplers;
     };
 
     template<typename T>
