@@ -71,7 +71,9 @@ VSOutput VSMain(uint vertexID : SV_VertexID)
 GBufferOutput PSMain(VSOutput input)
 {
     GBufferOutput output;
-    output.wsPosition = float4(input.wsPosition, 1.0);
+    var c= input.wsPosition;
+    c.r = 0.11;
+    output.wsPosition = float4(c, 1.0);
     // output.normal = float4(input.normal, 1.0f);
     // output.material = input.uv;
     return output;

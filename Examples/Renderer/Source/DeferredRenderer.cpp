@@ -1,7 +1,7 @@
 #include "DeferredRenderer.hpp"
 
-#include "Renderer/Renderer.hpp"
 #include "Renderer/PipelineLibrary.hpp"
+#include "Renderer/Renderer.hpp"
 #include "Renderer/Scene.hpp"
 
 #include "Renderer-Shaders/GBufferPass.hpp"
@@ -13,66 +13,62 @@ namespace Engine
     // GBufferFill pass
     void GBufferFill::init(RHI::Device* device)
     {
-        RHI::BindGroupLayout* bindGroupLayout = sig::GBufferInputs::createBindGroupLayout(device);
-        TL_defer
-        {
-            device->DestroyBindGroupLayout(bindGroupLayout);
-        };
-
-        m_bindGroup      = device->CreateBindGroup({.name = "bindgrou", .layout = bindGroupLayout});
-        m_pipelineLayout = device->CreatePipelineLayout({.name = "GBufferInputs", .layouts = bindGroupLayout});
-
-        auto vertexModule = PipelineLibrary::LoadShaderModule("I:/repos/repos3/RHI/build/Examples/Renderer/Shaders/GBufferPass.spirv.VSMain");
-        auto pixelModule  = PipelineLibrary::LoadShaderModule("I:/repos/repos3/RHI/build/Examples/Renderer/Shaders/GBufferPass.spirv.PSMain");
-
-        TL_defer
-        {
-            device->DestroyShaderModule(vertexModule);
-            device->DestroyShaderModule(pixelModule);
-        };
-
-        // clang-format off
-        RHI::GraphicsPipelineCreateInfo gfxPipelineCI = {
-            .name                 = "ImGui Pipeline",
-            .vertexShaderName     = "VSMain",
-            .vertexShaderModule   = vertexModule,
-            .pixelShaderName      = "PSMain",
-            .pixelShaderModule    = pixelModule,
-            .layout               = m_pipelineLayout,
-            .vertexBufferBindings = {
-                {sizeof(glm::vec3), RHI::PipelineVertexInputRate::PerVertex,   {{0, RHI::Format::RGB32_FLOAT}} }, // position
-                {sizeof(glm::vec3), RHI::PipelineVertexInputRate::PerVertex,   {{0, RHI::Format::RGB32_FLOAT}} }, // normal
-                {sizeof(glm::vec2), RHI::PipelineVertexInputRate::PerVertex,   {{0, RHI::Format::RG32_FLOAT}}  }, // texcoord
-                {sizeof(glm::vec3), RHI::PipelineVertexInputRate::PerInstance, {{0, RHI::Format::RGBA32_FLOAT}}}, // draw-id
-            },
-            .renderTargetLayout =
-            {
-                .colorAttachmentsFormats = { RHI::Format::RGBA8_UNORM },
-                .depthAttachmentFormat = RHI::Format::D16,
-            },
-            .colorBlendState =
-            {
-                .blendStates =
-                {
-                    {
-                        true,
-                        RHI::BlendEquation::Add,
-                        RHI::BlendFactor::SrcAlpha,
-                        RHI::BlendFactor::OneMinusSrcAlpha,
-                        RHI::BlendEquation::Add,
-                        RHI::BlendFactor::One,
-                        RHI::BlendFactor::OneMinusSrcAlpha,
-                        RHI::ColorWriteMask::All,
-                    },
-                },
-            },
-        };
-        m_pipeline = device->CreateGraphicsPipeline(gfxPipelineCI);
-        // clang-format on
+        m_bindGroupLayout = sig::GBufferInputs::createBindGroupLayout(device);
+        m_pipelineLayout = device->CreatePipelineLayout({.name = "GBufferInputs", .layouts = m_bindGroupLayout});
+        m_bindGroup      = device->CreateBindGroup({.name = "bindgrou", .layout = m_bindGroupLayout});
 
         m_sampler      = device->CreateSampler({.name = "gbuffer-sampler"});
         // m_texture      = device->CreateImage({});
         m_shaderParams = {};
+
+        // create PSOs
+
+        PipelineLibrary::ptr->acquireGraphicsPipeline(
+            "I:/repos/repos3/RHI/build/Examples/Renderer/Shaders/GBufferPass.spirv.VSMain",
+            "I:/repos/repos3/RHI/build/Examples/Renderer/Shaders/GBufferPass.spirv.PSMain",
+            [this](RHI::Device* device, RHI::ShaderModule* vs, RHI::ShaderModule* ps)
+            {
+                if (m_pipeline)
+                {
+                    device->DestroyGraphicsPipeline(m_pipeline);
+                }
+
+                RHI::GraphicsPipelineCreateInfo gfxPipelineCI =
+                    {
+                        .name               = "ImGui Pipeline",
+                        .vertexShaderName   = "VSMain",
+                        .vertexShaderModule = vs,
+                        .pixelShaderName    = "PSMain",
+                        .pixelShaderModule  = ps,
+                        .layout             = m_pipelineLayout,
+                        .vertexBufferBindings =
+                            {
+                                {sizeof(glm::vec3), RHI::PipelineVertexInputRate::PerVertex, {{0, RHI::Format::RGB32_FLOAT}}},
+                                {sizeof(glm::vec3), RHI::PipelineVertexInputRate::PerVertex, {{0, RHI::Format::RGB32_FLOAT}}},
+                                {sizeof(glm::vec2), RHI::PipelineVertexInputRate::PerVertex, {{0, RHI::Format::RG32_FLOAT}}},
+                                {sizeof(glm::vec3), RHI::PipelineVertexInputRate::PerInstance, {{0, RHI::Format::RGBA32_FLOAT}}},
+                            },
+                        .renderTargetLayout =
+                            {
+                                .colorAttachmentsFormats = {RHI::Format::RGBA8_UNORM},
+                                .depthAttachmentFormat   = RHI::Format::D16,
+                            },
+                        .colorBlendState =
+                            {
+                                .blendStates = RHI::ColorAttachmentBlendStateDesc{
+                                    true,
+                                    RHI::BlendEquation::Add,
+                                    RHI::BlendFactor::SrcAlpha,
+                                    RHI::BlendFactor::OneMinusSrcAlpha,
+                                    RHI::BlendEquation::Add,
+                                    RHI::BlendFactor::One,
+                                    RHI::BlendFactor::OneMinusSrcAlpha,
+                                    RHI::ColorWriteMask::All,
+                                },
+                            },
+                    };
+                m_pipeline = device->CreateGraphicsPipeline(gfxPipelineCI);
+            });
     }
 
     void GBufferFill::shutdown(RHI::Device* device)
@@ -81,9 +77,10 @@ namespace Engine
         // freeConstantBuffer({}, m_constantBuffer);
         device->DestroyImage(m_texture);
         device->DestroySampler(m_sampler);
-        device->DestroyBindGroup(m_bindGroup);
         device->DestroyGraphicsPipeline(m_pipeline);
         device->DestroyPipelineLayout(m_pipelineLayout);
+        device->DestroyBindGroup(m_bindGroup);
+        device->DestroyBindGroupLayout(m_bindGroupLayout);
     }
 
     void GBufferFill::render(RHI::Device* device, RHI::RenderGraph* rg, const Scene& scene, RHI::ImageSize2D frameSize)

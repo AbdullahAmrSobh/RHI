@@ -92,13 +92,13 @@ SpacesInParentheses: false
 Standard: c++20
 UseTab: Never
 SeparateDefinitionBlocks: Always
-AlignArrayOfStructures: Left
+# AlignArrayOfStructures: Right
 AllowShortIfStatementsOnASingleLine: AllIfsAndElse
 AlignConsecutiveBitFields:
   Enabled: true
   AcrossComments: true
   AlignCompound: true
-#   AlignFunctionPointers: true
+  #   AlignFunctionPointers: true
   PadOperators: true
   AcrossEmptyLines: false
 ReferenceAlignment: Left

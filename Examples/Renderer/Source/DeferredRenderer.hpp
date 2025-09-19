@@ -15,14 +15,15 @@ namespace Engine
     struct GBufferFill
     {
     private:
-        RHI::PipelineLayout*                      m_pipelineLayout = nullptr;
-        RHI::GraphicsPipeline*                    m_pipeline       = nullptr;
-        RHI::BindGroup*                           m_bindGroup      = nullptr;
-        RHI::Sampler*                             m_sampler        = nullptr;
-        RHI::Image*                               m_texture        = nullptr;
-        ConstantBuffer<GPU::SceneGlobalConstants> m_constantBuffer = {};
-        ConstantBuffer<GPU::SceneView>            m_sceneView      = {};
-        sig::GBufferInputs                        m_shaderParams   = {};
+        RHI::BindGroupLayout*                     m_bindGroupLayout = nullptr;
+        RHI::PipelineLayout*                      m_pipelineLayout  = nullptr;
+        RHI::GraphicsPipeline*                    m_pipeline        = nullptr;
+        RHI::BindGroup*                           m_bindGroup       = nullptr;
+        RHI::Sampler*                             m_sampler         = nullptr;
+        RHI::Image*                               m_texture         = nullptr;
+        ConstantBuffer<GPU::SceneGlobalConstants> m_constantBuffer  = {};
+        ConstantBuffer<GPU::SceneView>            m_sceneView       = {};
+        sig::GBufferInputs                        m_shaderParams    = {};
 
     public:
         RHI::RGImage* colorAttachment = nullptr;

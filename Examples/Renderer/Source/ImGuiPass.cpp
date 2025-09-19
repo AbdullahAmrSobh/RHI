@@ -43,12 +43,13 @@ namespace Engine
             .size       = {uint32_t(width), uint32_t(height)},
             .format     = RHI::Format::RGBA8_UNORM,
         };
-        m_image = RHI::CreateImageWithContent(*m_device, atlasTextureCI, TL::Block{pixels, size_t(width * height * 4)});
+        m_image        = RHI::CreateImageWithContent(*m_device, atlasTextureCI, TL::Block{pixels, size_t(width * height * 4)});
         m_projectionCB = createDynamicConstantBuffer<glm::mat4x4>(GpuSceneData::ptr->m_constantBuffersPool, m_maxViewportsCount);
 
         RHI::BindGroupLayout* bindGroupLayout = sig::ImGuiShaderParam::createBindGroupLayout(device);
 
         m_bindGroup                        = m_device->CreateBindGroup({.layout = bindGroupLayout});
+
         sig::ImGuiShaderParam shaderParams = {};
         shaderParams.cb                    = this->m_projectionCB;
         shaderParams.texture0              = m_image;
@@ -59,52 +60,64 @@ namespace Engine
             .layouts = {bindGroupLayout},
         };
         m_pipelineLayout = m_device->CreatePipelineLayout(pipelineLayoutCI);
-
-        auto vertexShaderModule = PipelineLibrary::ptr->LoadShaderModule("I:/repos/repos3/RHI/build/Examples/Renderer/Shaders/ImGui.spirv.VSMain");
-        auto fragmentShader     = PipelineLibrary::ptr->LoadShaderModule("I:/repos/repos3/RHI/build/Examples/Renderer/Shaders/ImGui.spirv.PSMain");
-
-        RHI::ColorAttachmentBlendStateDesc attachmentBlendDesc{
-            true,
-            RHI::BlendEquation::Add,
-            RHI::BlendFactor::SrcAlpha,
-            RHI::BlendFactor::OneMinusSrcAlpha,
-            RHI::BlendEquation::Add,
-            RHI::BlendFactor::One,
-            RHI::BlendFactor::OneMinusSrcAlpha,
-            RHI::ColorWriteMask::All,
-        };
-        RHI::GraphicsPipelineCreateInfo pipelineCI{
-            .name                 = "ImGui Pipeline",
-            .vertexShaderName     = "VSMain",
-            .vertexShaderModule   = vertexShaderModule,
-            .pixelShaderName      = "PSMain",
-            .pixelShaderModule    = fragmentShader,
-            .layout               = m_pipelineLayout,
-            .vertexBufferBindings = {{
-                .stride     = sizeof(ImDrawVert),
-                .stepRate   = RHI::PipelineVertexInputRate::PerVertex,
-                .attributes = {
-                    {.offset = offsetof(ImDrawVert, pos), .format = RHI::Format::RG32_FLOAT},
-                    {.offset = offsetof(ImDrawVert, uv), .format = RHI::Format::RG32_FLOAT},
-                    {.offset = offsetof(ImDrawVert, col), .format = RHI::Format::RGBA8_UNORM},
-                },
-            }},
-            .renderTargetLayout   = {.colorAttachmentsFormats = RHI::Format::RGBA8_UNORM},
-            .colorBlendState      = {.blendStates = {attachmentBlendDesc}},
-            .rasterizationState   = {.cullMode = RHI::PipelineRasterizerStateCullMode::None},
-        };
-        m_pipeline = m_device->CreateGraphicsPipeline(pipelineCI);
         m_device->DestroyBindGroupLayout(bindGroupLayout);
 
-        TL_ASSERT(io.BackendRendererUserData == nullptr && "Already initialized a renderer backend!");
-        m_newframeHook.Type     = ImGuiContextHookType_NewFramePre;
-        m_newframeHook.UserData = this;
-        m_newframeHook.Callback = [](TL_MAYBE_UNUSED ImGuiContext* ctx, ImGuiContextHook* hook)
-        {
-            auto self = (ImGuiPass*)hook->UserData;
-            // self->m_indexBufferOffset = self->m_vertexBufferOffset = 0;
-        };
-        ImGui::AddContextHook(ImGui::GetCurrentContext(), &m_newframeHook);
+        PipelineLibrary::ptr->acquireGraphicsPipeline(
+            "I:/repos/repos3/RHI/build/Examples/Renderer/Shaders/ImGui.spirv.VSMain",
+            "I:/repos/repos3/RHI/build/Examples/Renderer/Shaders/ImGui.spirv.PSMain",
+            [this](RHI::Device* device, RHI::ShaderModule* vs, RHI::ShaderModule* ps)
+            {
+                if (m_pipeline)
+                {
+                    device->DestroyGraphicsPipeline(m_pipeline);
+                }
+
+                RHI::GraphicsPipelineCreateInfo gfxPipelineCI =
+                    {
+                        .name                 = "ImGui Pipeline",
+                        .vertexShaderName     = "VSMain",
+                        .vertexShaderModule   = vs,
+                        .pixelShaderName      = "PSMain",
+                        .pixelShaderModule    = ps,
+                        .layout               = m_pipelineLayout,
+                        .vertexBufferBindings = {
+                            {
+                                .stride     = sizeof(ImDrawVert),
+                                .stepRate   = RHI::PipelineVertexInputRate::PerVertex,
+                                .attributes = {
+                                    {.offset = offsetof(ImDrawVert, pos), .format = RHI::Format::RG32_FLOAT},
+                                    {.offset = offsetof(ImDrawVert, uv), .format = RHI::Format::RG32_FLOAT},
+                                    {.offset = offsetof(ImDrawVert, col), .format = RHI::Format::RGBA8_UNORM},
+                                },
+                            },
+                        },
+                        .renderTargetLayout = {.colorAttachmentsFormats = RHI::Format::RGBA8_UNORM},
+                        .colorBlendState = {
+                            .blendStates = RHI::ColorAttachmentBlendStateDesc{
+                                true,
+                                RHI::BlendEquation::Add,
+                                RHI::BlendFactor::SrcAlpha,
+                                RHI::BlendFactor::OneMinusSrcAlpha,
+                                RHI::BlendEquation::Add,
+                                RHI::BlendFactor::One,
+                                RHI::BlendFactor::OneMinusSrcAlpha,
+                                RHI::ColorWriteMask::All,
+                            },
+                        },
+                        .rasterizationState = {.cullMode = RHI::PipelineRasterizerStateCullMode::None},
+                    };
+                m_pipeline = device->CreateGraphicsPipeline(gfxPipelineCI);
+            });
+
+        // TL_ASSERT(io.BackendRendererUserData == nullptr && "Already initialized a renderer backend!");
+        // m_newframeHook.Type     = ImGuiContextHookType_NewFramePre;
+        // m_newframeHook.UserData = this;
+        // m_newframeHook.Callback = [](TL_MAYBE_UNUSED ImGuiContext* ctx, ImGuiContextHook* hook)
+        // {
+        //     auto self = (ImGuiPass*)hook->UserData;
+        //     // self->m_indexBufferOffset = self->m_vertexBufferOffset = 0;
+        // };
+        // ImGui::AddContextHook(ImGui::GetCurrentContext(), &m_newframeHook);
 
         return TL::NoError;
     }
@@ -135,18 +148,20 @@ namespace Engine
             return nullptr;
 
         {
+            // clang-format on
             float L = drawData->DisplayPos.x;
             float R = drawData->DisplayPos.x + drawData->DisplaySize.x;
             float T = drawData->DisplayPos.y;
             float B = drawData->DisplayPos.y + drawData->DisplaySize.y;
-
-            glm::mat4x4 mvp = {
+            glm::mat4x4 mvp
+            {
                 {2.0f / (R - L),    0.0f,              0.0f, 0.0f},
                 {0.0f,              2.0f / (T - B),    0.0f, 0.0f},
                 {0.0f,              0.0f,              0.5f, 0.0f},
                 {(R + L) / (L - R), (T + B) / (B - T), 0.5f, 1.0f},
             };
             bufferWrite(GpuSceneData::ptr->m_constantBuffersPool, m_projectionCB, viewportID, mvp);
+            // clang-format off
         }
 
         auto [width, height] = drawData->OwnerViewport->Size;
@@ -157,7 +172,7 @@ namespace Engine
             .setupCallback = [&](RHI::RenderGraphBuilder& builder)
             {
                 builder.AddColorAttachment({.color = outAttachment, .loadOp = RHI::LoadOperation::Discard});
-                              },
+            },
             .executeCallback = [=, this](RHI::CommandList& commandList)
             {
                 // Will project scissor/clipping rectangles into framebuffer space
@@ -173,7 +188,6 @@ namespace Engine
                 uint32_t vertexBufferOffset = m_vertexBuffer.getOffset();
                 for (const auto& drawList : drawData->CmdLists)
                 {
-
                     // TODO: use api, but need to accmulate elements count instead of offset in bytes ...
 
                     // clang-format off
@@ -243,7 +257,7 @@ namespace Engine
                         }
                     }
                 }
-                              },
+            },
         });
     }
 

@@ -12,11 +12,6 @@
 
 namespace Engine
 {
-    class Event;
-}
-
-namespace Engine
-{
     class ImGuiPass
     {
     public:

@@ -169,5 +169,8 @@ namespace Engine
         DeferredRenderer::ptr->render(m_device, m_renderGraph, scene, swapchainBackbuffer);
 
         m_renderGraph->EndFrame();
+
+        // TODO: move out of here
+        PipelineLibrary::ptr->updatePipelinesIfChanged();
     }
 } // namespace Engine

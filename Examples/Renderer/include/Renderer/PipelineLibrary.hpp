@@ -9,11 +9,6 @@
 
 namespace Engine
 {
-    using GraphicsPipelineInitCB = TL::Function<RHI::GraphicsPipeline*(const char* path)>;
-    using ComputePipelineInitCB  = TL::Function<RHI::GraphicsPipeline*(const char* path)>;
-
-    /// A class which holds all the pipelines that are used by the renderer
-    /// Also handles hot reloading of the pipelines when the shader files change
     class PipelineLibrary final : public Singleton<PipelineLibrary>
     {
     public:
@@ -22,17 +17,34 @@ namespace Engine
 
         static RHI::ShaderModule* LoadShaderModule(TL::StringView path);
 
-        // RHI::GraphicsPipeline* GetGraphicsPipeline(const char* name, GraphicsPipelineInitCB&& cb);
-        // RHI::ComputePipeline*  GetComputePipeline(const char* name, ComputePipelineInitCB&& cb);
+        using AcquireGraphicsPipelineCB = std::function<void(RHI::Device* device, RHI::ShaderModule* vs, RHI::ShaderModule* ps)>;
+        void acquireGraphicsPipeline(
+            TL::StringView              vertexShaderPath,
+            TL::StringView              pixelShaderPath,
+            AcquireGraphicsPipelineCB&& cb);
+
+        using AcquireComputePipelineCB = std::function<void(RHI::Device* device, RHI::ShaderModule* cs)>;
+        void acquireComputePipeline(
+            TL::StringView             computeShaderPath,
+            AcquireComputePipelineCB&& cb);
+
+        void updatePipelinesIfChanged();
+
+    private:
+
+        void invokeGraphicsCallback(TL::StringView path);
+        void invokeComputeCallback(TL::StringView path);
 
     private:
         RHI::Device*    m_device;
-        TL::FileWatcher m_watcher;
+        TL::FileWatcher m_gfxWatcher;
+        TL::FileWatcher m_cmpWatcher;
 
-        RHI::BindGroupLayout* m_bindGroupLayout;
-        RHI::PipelineLayout*  m_pipelineLayout;
 
-        TL::Map<TL::String, RHI::GraphicsPipeline*> m_graphicsPipelines;
-        TL::Map<TL::String, RHI::ComputePipeline*>  m_computePipelines;
+        // Maps vs and ps to vs\nps
+        TL::Map<TL::String, TL::String> m_gfxStageToCombinedStagePaths;
+
+        TL::Map<TL::String, AcquireGraphicsPipelineCB> m_graphicsHandler;
+        TL::Map<TL::String, AcquireComputePipelineCB>  m_computeHandler;
     };
 } // namespace Engine

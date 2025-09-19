@@ -113,7 +113,7 @@ function(compile_shaders_with_headers)
 
     # Add a custom target to compile all shaders
     add_custom_target(${SHADER_COMPILE_TARGET}-compile-shaders
-        DEPENDS ${SHADER_COMPILE_SHADER_FILES}
+        DEPENDS ${COMPILE_SHADERS_OUTPUT_FILES} ${COMPILE_SHADERS_HEADER_FILES}
     )
 
     # Ensure the main target depends on the shader compilation target
