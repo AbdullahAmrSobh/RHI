@@ -13,8 +13,8 @@ namespace Engine
     public:
         GpuSceneData() = default;
 
-        void init(RHI::Device* device);
-        void shutdown();
+        TL::Error init(RHI::Device* device);
+        void      shutdown();
 
     public:
         RHI::Device* m_device;
@@ -50,9 +50,9 @@ namespace Engine
     public:
         Scene() = default;
 
-        ResultCode Init();
-        void       Shutdown();
+        TL::Error init();
+        void      shutdown();
 
         ConstantBuffer<GPU::SceneView> m_sceneView;
     };
-}
+} // namespace Engine

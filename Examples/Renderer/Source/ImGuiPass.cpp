@@ -15,7 +15,7 @@
 
 namespace Engine
 {
-    ResultCode ImGuiPass::Init(RHI::Device* device, RHI::Format colorAttachmentFormat, uint32_t maxViewportsCount)
+    TL::Error ImGuiPass::init(RHI::Device* device, RHI::Format colorAttachmentFormat, uint32_t maxViewportsCount)
     {
         m_device            = device;
         m_maxViewportsCount = maxViewportsCount;
@@ -106,10 +106,10 @@ namespace Engine
         };
         ImGui::AddContextHook(ImGui::GetCurrentContext(), &m_newframeHook);
 
-        return ResultCode::Success;
+        return TL::NoError;
     }
 
-    void ImGuiPass::Shutdown()
+    void ImGuiPass::shutdown()
     {
 #if 0
         ImGui::RemoveContextHook(ImGui::GetCurrentContext(), m_newframeHook.HookId);
@@ -127,11 +127,11 @@ namespace Engine
 #endif
     }
 
-    RHI::RGPass* ImGuiPass::AddPass(RHI::RenderGraph* rg, RHI::RGImage*& outAttachment, ImDrawData* drawData, uint32_t viewportID)
+    RHI::RGPass* ImGuiPass::addPass(RHI::RenderGraph* rg, RHI::RGImage*& outAttachment, ImDrawData* drawData, uint32_t viewportID)
     {
         TL_ASSERT(m_maxViewportsCount > viewportID);
 
-        if (UpdateBuffers(drawData) == false)
+        if (updateBuffers(drawData) == false)
             return nullptr;
 
         {
@@ -247,7 +247,7 @@ namespace Engine
         });
     }
 
-    bool ImGuiPass::UpdateBuffers(ImDrawData* drawData)
+    bool ImGuiPass::updateBuffers(ImDrawData* drawData)
     {
         // Avoid rendering when minimized
         if (drawData->DisplaySize.x <= 0.0f || drawData->DisplaySize.y <= 0.0f)

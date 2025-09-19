@@ -43,8 +43,8 @@ public:
     TL::Ptr<Engine::Renderer>     m_renderer     = TL::CreatePtr<Engine::Renderer>();
     Engine::PresentationViewport  m_presentationViewport;
 
-    Engine::Scene*     m_scene;
-    Camera             m_camera;
+    Engine::Scene* m_scene;
+    Camera         m_camera;
 
     Playground()
         : ApplicationBase("", 1600, 900) // Empty title, will be set in OnInit
@@ -205,6 +205,11 @@ public:
     {
         ZoneScoped;
 
+        m_window->Subscribe([this](WindowEvent event)
+            {
+                return m_camera.ProcessEvent(event);
+            });
+
         RHI::BackendType backend;
         switch (ApplicationBase::GetLaunchSettings().backend)
         {
@@ -228,26 +233,14 @@ public:
 
         m_imguiManager->Init(m_window);
 
-        auto result = m_renderer->Init(backend);
-        TL_ASSERT(RHI::IsSuccess(result), "Failed to initialize renderer");
+        if (auto result = m_renderer->init(backend); result.IsError())
+        {
+            TL_LOG_ERROR("Failed to init renderer. Error: {}", result.GetMessage());
+        }
 
         m_presentationViewport = m_renderer->CreatePresentationViewport(m_window);
-        auto handler           = [this](const auto& e)
-        {
-            m_camera.ProcessEvent(e);
-            return false;
-        };
-        m_window->Subscribe(handler);
 
-        m_scene     = new Scene();// m_renderer->CreateScene();
-        m_scene->Init();
-        // m_sceneView = m_scene->CreateView();
-
-        // GPU::SceneView sceneViewData{
-        //     glm::identity<glm::mat4x4>(),
-        //     glm::identity<glm::mat4x4>(),
-        // };
-        // m_sceneView->m_sceneViewUB.Update(sceneViewData);
+        m_scene = Renderer::ptr->CreateScene();
 
         // LoadFromArgPath();
     }
@@ -257,10 +250,10 @@ public:
         ZoneScoped;
 
         m_imguiManager->Shutdown();
-        // m_renderer->DestroyPresentationViewport(m_presentationViewport);
         // m_scene->DestroyView(m_sceneView);
-        // m_renderer->DestroyScene(m_scene);
-        m_renderer->Shutdown();
+        m_renderer->DestroyScene(m_scene);
+        m_renderer->DestroyPresentationViewport(m_presentationViewport);
+        m_renderer->shutdown();
     }
 
     void OnUpdate(Timestep ts) override

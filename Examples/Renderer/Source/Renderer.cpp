@@ -22,35 +22,6 @@
 
 namespace Engine
 {
-    inline static RHI::Device* CreateDevice(RHI::BackendType backend)
-    {
-        switch (backend)
-        {
-#if RHI_BACKEND_D3D12
-        case RHI::BackendType::DirectX12_2: return RHI::CreateD3D12Device(); break;
-#endif
-#if RHI_BACKEND_VULKAN
-        case RHI::BackendType::Vulkan1_3:
-            {
-                RHI::ApplicationInfo applicationInfo{
-                    .applicationName    = "Example",
-                    .applicationVersion = {0, 1, 0},
-                    .engineName         = "Neons",
-                    .engineVersion      = {0, 1, 0},
-                };
-                return RHI::CreateVulkanDevice(applicationInfo);
-            }
-            break;
-#endif
-#if RHI_BACKEND_WEBGPU
-        case RHI::BackendType::WebGPU: return RHI::CreateWebGPUDevice(); break;
-#endif
-        default: TL_UNREACHABLE_MSG("Must select a backend");
-        }
-
-        return nullptr;
-    }
-
     inline static void DestroyDevice(RHI::Device* device)
     {
         switch (device->GetBackend())
@@ -68,56 +39,78 @@ namespace Engine
         };
     }
 
-    ResultCode Renderer::Init(RHI::BackendType backend)
+    TL::Error Renderer::init(RHI::BackendType backend)
     {
         ZoneScoped;
 
-        m_device = CreateDevice(backend);
+        switch (backend)
+        {
+#if RHI_BACKEND_D3D12
+        case RHI::BackendType::DirectX12_2: m_device = RHI::CreateD3D12Device(); break;
+#endif
+#if RHI_BACKEND_VULKAN
+        case RHI::BackendType::Vulkan1_3:
+            {
+                RHI::ApplicationInfo applicationInfo{
+                    .applicationName    = "Example",
+                    .applicationVersion = {0, 1, 0},
+                    .engineName         = "Neons",
+                    .engineVersion      = {0, 1, 0},
+                };
+                m_device = RHI::CreateVulkanDevice(applicationInfo);
+            }
+            break;
+#endif
+#if RHI_BACKEND_WEBGPU
+        case RHI::BackendType::WebGPU: m_device = RHI::CreateWebGPUDevice(); break;
+#endif
+        default:
+            return TL::Error("Failed to create RHI::Device with specified backend");
+        }
 
-        RHI::RenderGraphCreateInfo rgCI{
+        RHI::RenderGraphCreateInfo renderGraphCI{
             // .name = "primary-render-graph",
         };
-        m_renderGraph = m_device->CreateRenderGraph(rgCI);
+        m_renderGraph = m_device->CreateRenderGraph(renderGraphCI);
 
-        ResultCode result;
+        // Initialize renderer's systemss
 
-        result = (PipelineLibrary::ptr->Init(m_device));
-        if (RHI ::IsError(result))
+        if (auto err = PipelineLibrary::ptr->init(m_device); err.IsError())
         {
-            this->Shutdown();
-            TL_LOG_ERROR("Renderer::Init failed");
-            return result;
+            shutdown();
+            return err;
         }
 
-        m_gpuSceneData = new GpuSceneData();
-        m_gpuSceneData->init(m_device);
-
-        m_deferredRenderer = TL::Construct<DeferredRenderer>();
-        result             = (m_deferredRenderer->Init(m_device));
-        if (RHI ::IsError(result))
+        if (auto err = GpuSceneData::ptr->init(m_device); err.IsError())
         {
-            TL_LOG_ERROR("Renderer::Init failed");
-            this->Shutdown();
-            return result;
+            shutdown();
+            return err;
         }
 
-        return ResultCode::Success;
+        if (auto err = DeferredRenderer::ptr->init(m_device); err.IsError())
+        {
+            shutdown();
+            return err;
+        }
+
+        return TL::NoError;
     }
 
-    void Renderer::Shutdown()
+    void Renderer::shutdown()
     {
         ZoneScoped;
 
-        // m_deferredRenderer->Shutdown(m_device);
-        // m_gpuSceneData.shutdown();
-        // m_device->DestroyRenderGraph(m_renderGraph);
-        // DestroyDevice(m_device);
+        DeferredRenderer::ptr->shutdown(m_device);
+        GpuSceneData::ptr->shutdown();
+        PipelineLibrary::ptr->shutdown();
+        m_device->DestroyRenderGraph(m_renderGraph);
+        DestroyDevice(m_device);
     }
 
     PresentationViewport Renderer::CreatePresentationViewport(Window* window)
     {
         RHI::SwapchainCreateInfo swapchainInfo{
-            .name        = "Swapchain",
+            .name        = window->GetTitle().empty() ? window->GetTitle().data() : "swapchain",
             .win32Window = {window->GetNativeHandle()},
         };
         auto swapchain = m_device->CreateSwapchain(swapchainInfo);
@@ -156,8 +149,8 @@ namespace Engine
     Scene* Renderer::CreateScene()
     {
         auto scene = TL::Construct<Scene>();
-        // auto result = scene->Init(m_device);
-        // TL_ASSERT(result == RHI::ResultCode::Success);
+        auto result = scene->init();
+        TL_ASSERT(result.IsSuccess(), result.GetMessage());
         return scene;
     }
 
@@ -170,8 +163,11 @@ namespace Engine
     void Renderer::Render(Scene* scene, const PresentationViewport& viewport)
     {
         m_renderGraph->BeginFrame(viewport.GetSize());
+
         auto swapchainBackbuffer = m_renderGraph->ImportSwapchain("swapchain-color-attachment", *viewport.swapchain, RHI::Format::RGBA8_UNORM);
-        m_deferredRenderer->Render(m_device, m_renderGraph, scene, swapchainBackbuffer);
+
+        DeferredRenderer::ptr->render(m_device, m_renderGraph, scene, swapchainBackbuffer);
+
         m_renderGraph->EndFrame();
     }
 } // namespace Engine

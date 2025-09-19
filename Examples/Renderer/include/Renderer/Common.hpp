@@ -5,10 +5,6 @@
 namespace Engine
 {
     template<typename T>
-    using Result     = RHI::Result<T>;
-    using ResultCode = RHI::ResultCode;
-
-    template<typename T>
     class Singleton
     {
     public:
@@ -18,7 +14,7 @@ namespace Engine
 
         ~Singleton()
         {
-            TL::Destruct(this);
+            // TL::Destruct(ptr);
             Singleton::ptr = nullptr;
         }
     };

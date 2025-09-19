@@ -423,7 +423,8 @@ namespace Engine
     {
         auto renderData = GetViewportRenderData(vp);
         auto device     = Renderer::ptr->GetDevice();
-        device->DestroySwapchain(renderData->swapchain);
+        if (renderData->swapchain)
+            device->DestroySwapchain(renderData->swapchain);
         TL::Destruct(renderData);
         vp->RendererUserData = nullptr;
         window_count--;
@@ -445,7 +446,7 @@ namespace Engine
         ImGuiPass* pass       = (ImGuiPass*)render_arg;
 
         auto swapchainBackbuffer = rg->ImportSwapchain("imgui-vp", *renderData->swapchain, RHI::Format::RGBA8_UNORM);
-        pass->AddPass(rg, swapchainBackbuffer, vp->DrawData, renderData->viewportId);
+        pass->addPass(rg, swapchainBackbuffer, vp->DrawData, renderData->viewportId);
     }
 
     inline static void ImGuiRenderer_SwapBuffers(ImGuiViewport* vp, void* render_arg)

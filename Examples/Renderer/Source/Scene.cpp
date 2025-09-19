@@ -11,7 +11,7 @@
 namespace Engine
 {
 
-    void GpuSceneData::init(RHI::Device* device)
+    TL::Error GpuSceneData::init(RHI::Device* device)
     {
         m_device = device;
 
@@ -49,6 +49,8 @@ namespace Engine
         // m_vertexBufferNormals   = createStructuredBuffer<glm::vec3>(m_geometryBuffersPool, k_maxVertexBufferElementsCount);
         // m_vertexBufferTexcoords = createStructuredBuffer<glm::vec2>(m_geometryBuffersPool, k_maxVertexBufferElementsCount);
         // m_vertexBufferDrawIDs   = createStructuredBuffer<glm::vec2>(m_geometryBuffersPool, k_maxInstanceBufferElementsCount);
+
+        return TL::NoError;
     }
 
     void GpuSceneData::shutdown()
@@ -62,7 +64,7 @@ namespace Engine
         m_geometryBuffersPool.shutdown();
     }
 
-    ResultCode Scene::Init()
+    TL::Error Scene::init()
     {
         auto& pool  = GpuSceneData::ptr->m_constantBuffersPool;
         m_sceneView = createConstantBuffer<GPU::SceneView>(pool);
@@ -72,10 +74,10 @@ namespace Engine
         v.worldToViewMatrix = glm::identity<glm::mat4x4>();
         bufferWrite(pool, m_sceneView, v);
 
-        return ResultCode::Success;
+        return TL::NoError;
     }
 
-    void Scene::Shutdown()
+    void Scene::shutdown()
     {
         // auto& sbPool = GpuSceneData::ptr->m_structuredBuffersPool;
         // freeStructuredBuffer(sbPool, m_renderables);

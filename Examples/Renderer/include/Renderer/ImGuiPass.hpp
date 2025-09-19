@@ -22,16 +22,16 @@ namespace Engine
     public:
         ImGuiPass() = default;
 
-        ResultCode Init(RHI::Device* device, RHI::Format colorAttachmentFormat, uint32_t maxViewportsCount = 8);
-        void       Shutdown();
+        TL::Error init(RHI::Device* device, RHI::Format colorAttachmentFormat, uint32_t maxViewportsCount = 8);
+        void      shutdown();
 
-        bool Enabled() const { return true; }
+        bool enabled() const { return true; }
 
-        RHI::RGPass* AddPass(RHI::RenderGraph* renderGraph, RHI::RGImage*& outAttachment, ImDrawData* drawData, uint32_t viewportID = 0);
+        RHI::RGPass* addPass(RHI::RenderGraph* renderGraph, RHI::RGImage*& outAttachment, ImDrawData* drawData, uint32_t viewportID = 0);
 
     private:
-        void InitGraphicsPipeline();
-        bool UpdateBuffers(ImDrawData* drawData);
+        void initGraphicsPipeline();
+        bool updateBuffers(ImDrawData* drawData);
 
     private:
         RHI::Device* m_device;
@@ -48,6 +48,6 @@ namespace Engine
         DynamicConstantBuffer<glm::mat4x4> m_projectionCB;
         Buffer<ImDrawIdx>                  m_indexBuffer;
         Buffer<ImDrawVert>                 m_vertexBuffer;
-        RHI::BindGroup* m_bindGroup;
+        RHI::BindGroup*                    m_bindGroup;
     };
 } // namespace Engine

@@ -7,14 +7,13 @@
 
 namespace Engine
 {
-
-    ResultCode PipelineLibrary::Init(RHI::Device* device)
+    TL::Error PipelineLibrary::init(RHI::Device* device)
     {
         m_device = device;
-        return ResultCode::Success;
+        return TL::NoError;
     }
 
-    void PipelineLibrary::Shutdown()
+    void PipelineLibrary::shutdown()
     {
     }
 

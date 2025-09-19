@@ -14,7 +14,10 @@ namespace Engine
     void GBufferFill::init(RHI::Device* device)
     {
         RHI::BindGroupLayout* bindGroupLayout = sig::GBufferInputs::createBindGroupLayout(device);
-        TL_defer { device->DestroyBindGroupLayout(bindGroupLayout); };
+        TL_defer
+        {
+            device->DestroyBindGroupLayout(bindGroupLayout);
+        };
 
         m_bindGroup      = device->CreateBindGroup({.name = "bindgrou", .layout = bindGroupLayout});
         m_pipelineLayout = device->CreatePipelineLayout({.name = "GBufferInputs", .layouts = bindGroupLayout});
@@ -149,29 +152,30 @@ namespace Engine
 
     // end
 
-    ResultCode DeferredRenderer::Init(RHI::Device* device)
+    TL::Error DeferredRenderer::init(RHI::Device* device)
     {
-        ResultCode result;
-
-        result = m_imguiPass.Init(device, RHI ::Format ::BGRA8_UNORM);
+        if (auto err = m_imguiPass.init(device, RHI ::Format ::BGRA8_UNORM); err.IsError())
+        {
+            return err;
+        }
 
         m_gbufferPass.init(device);
 
-        return result;
+        return TL::NoError;
     }
 
-    void DeferredRenderer::Shutdown(RHI::Device* device)
+    void DeferredRenderer::shutdown(RHI::Device* device)
     {
-        m_imguiPass.Shutdown();
+        m_imguiPass.shutdown();
         m_gbufferPass.shutdown(device);
     }
 
-    void DeferredRenderer::Render(RHI::Device* device, RHI::RenderGraph* rg, const Scene* scene, RHI::RGImage* outputAttachment)
+    void DeferredRenderer::render(RHI::Device* device, RHI::RenderGraph* rg, const Scene* scene, RHI::RGImage* outputAttachment)
     {
         m_gbufferPass.render(device, rg, *scene, rg->GetFrameSize());
-        if (m_imguiPass.Enabled())
+        if (m_imguiPass.enabled())
         {
-            m_imguiPass.AddPass(rg, outputAttachment, ImGui::GetDrawData());
+            m_imguiPass.addPass(rg, outputAttachment, ImGui::GetDrawData());
             if (const auto& io = ImGui::GetIO(); io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
             {
                 ImGui::RenderPlatformWindowsDefault(nullptr, &m_imguiPass);

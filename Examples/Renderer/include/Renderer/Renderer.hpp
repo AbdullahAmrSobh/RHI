@@ -7,7 +7,7 @@
 
 #include <Examples-Base/Window.hpp>
 
-#include "Renderer/Resources.hpp"
+#include "Renderer/Common.hpp"
 #include "Renderer/Geometry.hpp"
 
 namespace Engine
@@ -28,8 +28,8 @@ namespace Engine
     class Renderer final : public Singleton<Renderer>
     {
     public:
-        ResultCode Init(RHI::BackendType backend);
-        void       Shutdown();
+        TL::Error init(RHI::BackendType backend);
+        void      shutdown();
 
         RHI::Device* GetDevice() const { return m_device; }
 
@@ -46,7 +46,5 @@ namespace Engine
     private:
         RHI::Device*      m_device;
         RHI::RenderGraph* m_renderGraph;
-        GpuSceneData*     m_gpuSceneData;
-        DeferredRenderer* m_deferredRenderer;
     };
 } // namespace Engine

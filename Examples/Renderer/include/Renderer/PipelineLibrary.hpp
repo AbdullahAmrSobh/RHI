@@ -17,8 +17,8 @@ namespace Engine
     class PipelineLibrary final : public Singleton<PipelineLibrary>
     {
     public:
-        ResultCode Init(RHI::Device* device);
-        void       Shutdown();
+        TL::Error init(RHI::Device* device);
+        void      shutdown();
 
         static RHI::ShaderModule* LoadShaderModule(TL::StringView path);
 

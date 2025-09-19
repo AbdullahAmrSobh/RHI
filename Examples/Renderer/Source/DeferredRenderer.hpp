@@ -32,14 +32,14 @@ namespace Engine
         void render(RHI::Device* device, RHI::RenderGraph* rg, const Scene& scene, RHI::ImageSize2D size);
     };
 
-    class DeferredRenderer
+    class DeferredRenderer : public Singleton<DeferredRenderer>
     {
     public:
         ImGuiPass   m_imguiPass;
         GBufferFill m_gbufferPass;
 
-        ResultCode Init(RHI::Device* device);
-        void       Shutdown(RHI::Device* device);
-        void       Render(RHI::Device* device, RHI::RenderGraph* rg, const Scene* scene, RHI::RGImage* outputAttachment);
+        TL::Error init(RHI::Device* device);
+        void      shutdown(RHI::Device* device);
+        void      render(RHI::Device* device, RHI::RenderGraph* rg, const Scene* scene, RHI::RGImage* outputAttachment);
     };
 } // namespace Engine

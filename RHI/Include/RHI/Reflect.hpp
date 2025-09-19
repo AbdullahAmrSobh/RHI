@@ -599,7 +599,7 @@ namespace RHI::Debug
     namespace std                                                                    \
     {                                                                                \
         template<>                                                                   \
-        struct formatter<RHI_TYPE> : formatter<TL::String>                       \
+        struct formatter<RHI_TYPE> : formatter<TL::String>                           \
         {                                                                            \
             auto format(RHI_TYPE e, format_context& ctx) const                       \
             {                                                                        \

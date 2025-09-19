@@ -226,7 +226,7 @@ namespace RHI
         void Execute(CommandList& commandList);
 
     public:
-                /// @brief Declare pass image read dependencey.
+        /// @brief Declare pass image read dependencey.
         void      ReadImage(RGImage* image, ImageUsage usage, PipelineStage stage);
         void      ReadImage(RGImage* image, const ImageSubresourceRange& subresource, ImageUsage usage, PipelineStage stage);
 
@@ -249,14 +249,13 @@ namespace RHI
         RGImage*  AddColorAttachment(RGImage* target, LoadOperation loadOp, ClearValue clear = {})
         {
             RGColorAttachment attachment{
-                .color        = target,
-                .loadOp       = loadOp,
-                .storeOp      = StoreOperation::Store,
-                .clearValue   = clear,
+                .color      = target,
+                .loadOp     = loadOp,
+                .storeOp    = StoreOperation::Store,
+                .clearValue = clear,
             };
             return AddColorAttachment(attachment);
         }
-
 
     private:
         const char*                    m_name;
