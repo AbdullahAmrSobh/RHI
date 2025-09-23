@@ -5,8 +5,10 @@
 #include "Renderer/Common.hpp"
 #include "Renderer/ImGuiPass.hpp"
 
-#include "Shaders/GpuCommonStructs.h"
 #include "Renderer-Shaders/GBufferPass.hpp"
+#include "Renderer-Shaders/Compose.hpp"
+
+#include "Shaders/GpuCommonStructs.h"
 
 namespace Engine
 {

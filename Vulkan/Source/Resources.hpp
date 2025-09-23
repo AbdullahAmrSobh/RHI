@@ -142,6 +142,7 @@ namespace RHI::Vulkan
     {
         VkBuffer      handle;
         VmaAllocation allocation;
+        bool          mapped;
 
         ResultCode Init(IDevice* device, const BufferCreateInfo& createInfo);
         void       Shutdown(IDevice* device);

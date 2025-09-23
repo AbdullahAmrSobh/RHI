@@ -130,6 +130,7 @@ namespace Engine
         // GpuSceneData::ptr->m_geometryBuffersPool.free(m_vertexBuffer);
         // GpuSceneData::ptr->m_geometryBuffersPool.free(m_indexBuffer);
         // freeDynamicConstantBuffer(GpuSceneData::ptr->m_constantBuffersPool, m_projectionCB);
+        freeMeshBufferPool(m_device, m_buffersPool);
         m_device->DestroyImage(m_image);
         m_device->DestroySampler(m_sampler);
         m_device->DestroyBindGroup(m_bindGroup);
@@ -182,17 +183,12 @@ namespace Engine
                 if (fb_width <= 0 || fb_height <= 0)
                     return;
 
-                uint32_t indexBufferOffset  = 0; // = m_indexBuffer.getOffset();
-                uint32_t vertexBufferOffset = 0; // = m_vertexBuffer.getOffset();
+                uint32_t indexBufferOffset  = 0;
+                uint32_t vertexBufferOffset = 0;
                 for (const auto& drawList : drawData->CmdLists)
                 {
-                    // TODO: use api, but need to accmulate elements count instead of offset in bytes ...
-
-                    auto indexBinding = m_indexBuffer.getBindingAt(indexBufferOffset);
-                    auto vertexBinding = m_vertexBuffer.getBindingAt(vertexBufferOffset);
-
-                    commandList.BindIndexBuffer(indexBinding, RHI::IndexType::uint16);
-                    commandList.BindVertexBuffers(0, vertexBinding);
+                    commandList.BindIndexBuffer(m_indexBuffer.getBindingAt(indexBufferOffset), RHI::IndexType::uint16);
+                    commandList.BindVertexBuffers(0, m_vertexBuffer.getBindingAt(vertexBufferOffset));
 
                     m_buffersPool.update<ImDrawIdx>(m_device, m_indexBuffer, indexBufferOffset, { drawList->IdxBuffer.Data, (size_t)drawList->IdxBuffer.Size});
                     m_buffersPool.update<ImDrawVert>(m_device, m_vertexBuffer, vertexBufferOffset, { drawList->VtxBuffer.Data, (size_t)drawList->VtxBuffer.Size});

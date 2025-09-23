@@ -1011,13 +1011,15 @@ namespace RHI::Vulkan
 
     void IBuffer::Shutdown(IDevice* device)
     {
+        TL_ASSERT(mapped == false, "Unmap buffer first");
+
         auto frame = (IFrame*)device->GetCurrentFrame();
 
         if (handle)
             device->m_destroyQueue->Push(frame->GetTimelineValue(), handle);
 
         if (allocation)
-            device->m_destroyQueue->Push(frame->GetTimelineValue(), handle);
+            device->m_destroyQueue->Push(frame->GetTimelineValue(), allocation);
     }
 
     VkMemoryRequirements IBuffer::GetMemoryRequirements(IDevice* device) const
@@ -1029,6 +1031,9 @@ namespace RHI::Vulkan
 
     DeviceMemoryPtr IBuffer::Map(IDevice* device)
     {
+        TL_ASSERT(mapped == false, "Buffer is already mapped");
+        mapped = true;
+
         DeviceMemoryPtr ptr = nullptr;
         VulkanResult    result;
         result = vmaMapMemory(device->m_deviceAllocator, allocation, &ptr);
@@ -1038,6 +1043,8 @@ namespace RHI::Vulkan
 
     void IBuffer::Unmap(IDevice* device)
     {
+        TL_ASSERT(mapped == true, "Buffer is already unmapped");
+        mapped = false;
         vmaUnmapMemory(device->m_deviceAllocator, allocation);
     }
 

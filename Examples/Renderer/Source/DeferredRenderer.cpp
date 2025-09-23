@@ -46,7 +46,7 @@ namespace Engine
                                 {sizeof(glm::vec3), RHI::PipelineVertexInputRate::PerVertex, {{0, RHI::Format::RGB32_FLOAT}}},
                                 {sizeof(glm::vec3), RHI::PipelineVertexInputRate::PerVertex, {{0, RHI::Format::RGB32_FLOAT}}},
                                 {sizeof(glm::vec2), RHI::PipelineVertexInputRate::PerVertex, {{0, RHI::Format::RG32_FLOAT}}},
-                                {sizeof(glm::vec3), RHI::PipelineVertexInputRate::PerInstance, {{0, RHI::Format::RGBA32_FLOAT}}},
+                                // {sizeof(glm::ivec4), RHI::PipelineVertexInputRate::PerInstance, {{0, RHI::Format::RGBA32_UINT}}},
                             },
                         .renderTargetLayout =
                             {
@@ -99,7 +99,7 @@ namespace Engine
             {
                 this->colorAttachment = builder.CreateColorTarget("color", frameSize, RHI::Format::RGBA8_UNORM);
             },
-            .executeCallback = [=, this](RHI::CommandList& cmd)
+            .executeCallback = [=, this, &scene](RHI::CommandList& cmd)
             {
                 cmd.SetViewport(RHI::Viewport{
                     .width    = (float)frameSize.width,
@@ -121,29 +121,26 @@ namespace Engine
                     });
 
                 // // Bind index buffer
-                // // cmd.BindIndexBuffer(GpuSceneData::ptr->m_indexBuffer, RHI::IndexType::uint32);
-                // cmd.BindVertexBuffers(
-                //     0,
-                //     {
-                //         GpuSceneData::ptr->m_vertexBufferPositions,
-                //         GpuSceneData::ptr->m_vertexBufferNormals,
-                //         GpuSceneData::ptr->m_vertexBufferTexcoords,
-                //         GpuSceneData::ptr->m_vertexBufferDrawIDs,
-                //     });
+                cmd.BindIndexBuffer(GpuSceneData::ptr->getIndexPool().getBaseBinding(), RHI::IndexType::uint32);
+                cmd.BindVertexBuffers(
+                    0,
+                    {
+                        GpuSceneData::ptr->getVertexPoolPositions().getBaseBinding(),
+                        GpuSceneData::ptr->getVertexPoolNormals().getBaseBinding(),
+                        GpuSceneData::ptr->getVertexPoolUVs().getBaseBinding(),
+                    });
 
                 // RHI::BufferBindingInfo argCountBuffer{rg->GetBufferHandle(cullPass.m_drawIndirectArgs), 0};
                 // RHI::BufferBindingInfo argParamsBuffer{rg->GetBufferHandle(cullPass.m_drawIndirectArgs), 64};
                 // cmd.DrawIndexedIndirect(argParamsBuffer, argCountBuffer, 40, sizeof(RHI::DrawIndexedParameters));
 
-                cmd.Draw({.vertexCount = 3, .instanceCount = 1});
-
-                // cmd.DrawIndexed({
-                //     .indexCount    = mesh.m_drawArgs.indexCount,
-                //     .instanceCount = 1,
-                //     .firstIndex    = mesh.m_drawArgs.firstIndex,
-                //     .vertexOffset  = mesh.m_drawArgs.vertexOffset,
-                //     .firstInstance = 0,
-                // });
+                cmd.DrawIndexed({
+                    .indexCount    = scene.m_mesh->m_drawArgs.indexCount,
+                    .instanceCount = 1,
+                    .firstIndex    = scene.m_mesh->m_drawArgs.firstIndex,
+                    .vertexOffset  = scene.m_mesh->m_drawArgs.vertexOffset,
+                    .firstInstance = 0,
+                });
             },
         });
     }

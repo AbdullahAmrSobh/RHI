@@ -38,25 +38,9 @@ namespace RHI
 
     struct RenderGraphCreateInfo;
 
-    struct Version
-    {
-        uint16_t major = 0;
-        uint16_t minor = 0;
-        uint32_t patch = 0;
-    };
-
-    struct ApplicationInfo
-    {
-        const char* applicationName    = nullptr; // The name of the users application.
-        Version     applicationVersion = {};      // The version of the users application.
-        const char* engineName         = nullptr; // The version of the users application.
-        Version     engineVersion      = {};      // The version of the users application.
-    };
-
     struct DeviceLimits
     {
-        // TODO: remove defaults
-        uint32_t minUniformBufferOffsetAlignment = 256;
+        uint32_t minUniformBufferOffsetAlignment;
     };
 
     struct QueueWaitInfo

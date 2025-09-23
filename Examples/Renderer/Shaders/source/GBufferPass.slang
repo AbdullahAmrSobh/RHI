@@ -15,7 +15,7 @@ struct UGBVertexInput
     float3 position;
     float3 normal;
     float2 uv;
-    uint32_t4 renderableID;
+    // uint32_t4 renderableID;
 };
 
 struct VSOutput
@@ -33,21 +33,14 @@ struct GBufferOutput
     // float2 material : SV_Target2;   // (UV + material ID + roughness + metallic)
 };
 
-static const float3 positions[] =
-{
-    float3(-0.5, -0.5, 1.0),
-    float3( 0.5, -0.5, 1.0),
-    float3( 0.0,  0.5, 1.0)
-};
-
 [[shader("vertex")]]
-VSOutput VSMain(uint vertexID : SV_VertexID)
+VSOutput VSMain(UGBVertexInput vsInput)
 {
     let worldToView = shaderParams.view.worldToViewMatrix;
     let viewToClip = shaderParams.view.viewToClipMatrix;
     let worldToClip = mul(worldToView, viewToClip);
 
-    let position = float4(positions[vertexID], 1.0);
+    let position = float4(vsInput.position, 1.0);
     let csPosition = mul(position, worldToClip);
 
     VSOutput output;

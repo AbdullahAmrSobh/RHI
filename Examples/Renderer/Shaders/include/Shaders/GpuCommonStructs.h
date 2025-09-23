@@ -62,9 +62,10 @@ namespace GPU
 
     struct DrawRequest
     {
-        U32 meshId;
-        U32 materialId;
-        U32 uniformId;
+        U32 meshID;
+        U32 materialID;
+        U32 instanceID;
+        U32 drawViewMask;
     };
 
     struct SceneView
@@ -155,14 +156,18 @@ namespace GPU
 
     struct SceneRenderable
     {
-        U32 m_worldTransformsIndex; ///< First index points to the crnt transform and the 2nd to the previous.
-        U32 m_constantsOffset;
-        U32 m_meshLodsIndex;                    ///< Points to the array of GpuSceneMeshLod. kMaxLodCount are reserved for each renderable.
-        U32 m_boneTransformsOffset;             ///< Array of Mat3x4 or 0 if its not a skin.
-        U32 m_particleEmitterIndex;             ///< Index to the GpuSceneParticleEmitter array or kMaxU32 if it's not an emitter.
-        U32 m_rtShadowsShaderHandleIndex;       ///< The index of the shader handle in the array of library's handles.
-        U32 m_rtMaterialFetchShaderHandleIndex; ///< The index of the shader handle in the array of library's handles.
-        U32 m_uuid;
+        // U32 m_worldTransformsIndex; ///< First index points to the crnt transform and the 2nd to the previous.
+        // U32 m_constantsOffset;
+        // U32 m_meshLodsIndex;                    ///< Points to the array of GpuSceneMeshLod. kMaxLodCount are reserved for each renderable.
+        // U32 m_boneTransformsOffset;             ///< Array of Mat3x4 or 0 if its not a skin.
+        // U32 m_particleEmitterIndex;             ///< Index to the GpuSceneParticleEmitter array or kMaxU32 if it's not an emitter.
+        // U32 m_rtShadowsShaderHandleIndex;       ///< The index of the shader handle in the array of library's handles.
+        // U32 m_rtMaterialFetchShaderHandleIndex; ///< The index of the shader handle in the array of library's handles.
+        // U32 m_uuid;
+
+        U32 instanceID;
+        U32 materialID;
+        U32 meshID;
     };
 
     struct SceneRenderableBoundingVolume

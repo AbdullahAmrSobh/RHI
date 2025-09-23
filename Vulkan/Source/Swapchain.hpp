@@ -33,17 +33,17 @@ namespace RHI::Vulkan
         VkSwapchainKHR GetHandle() const;
 
     private:
-        IDevice*               m_device                = nullptr;
-        VkSwapchainKHR         m_swapchain             = VK_NULL_HANDLE;
-        VkSurfaceKHR           m_surface               = VK_NULL_HANDLE;
-        uint32_t               m_acquireSemaphoreIndex = 0;
-        VkSemaphore            m_acquireSemaphore[MaxImageCount];
-        uint32_t               m_imageIndex;
-        VkImage                m_images[MaxImageCount];
-        VkImageView            m_imageViews[MaxImageCount];
-        TL::String             m_name;
-        SwapchainConfigureInfo m_configuration;
-        uint32_t               m_imageCount = 0;
-        struct IImage*         m_imageHandle;
+        IDevice*               m_device                          = nullptr;
+        VkSwapchainKHR         m_swapchain                       = VK_NULL_HANDLE;
+        VkSurfaceKHR           m_surface                         = VK_NULL_HANDLE;
+        uint32_t               m_acquireSemaphoreIndex           = 0;
+        VkSemaphore            m_acquireSemaphore[MaxImageCount] = {};
+        uint32_t               m_imageIndex                      = {};
+        VkImage                m_images[MaxImageCount]           = {};
+        VkImageView            m_imageViews[MaxImageCount]       = {};
+        TL::String             m_name                            = {};
+        SwapchainConfigureInfo m_configuration                   = {};
+        uint32_t               m_imageCount                      = 0;
+        struct IImage*         m_imageHandle                     = nullptr;
     };
 } // namespace RHI::Vulkan

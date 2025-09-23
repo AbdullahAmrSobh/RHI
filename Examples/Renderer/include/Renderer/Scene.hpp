@@ -33,10 +33,11 @@ namespace Engine
         auto& getVertexPoolUVs()  { return m_vertexPoolUVs; }
 
     private:
+        friend struct StaticMeshLOD;
         RHI::Device* m_device;
 
         ConstantBufferPool                           m_constantBuffersPool;
-        StructuredBufferPool<GPU::StaticMeshIndexed> m_SBPoolRenderables;
+        StructuredBufferPool m_SBPoolRenderables;
         MeshBufferPool m_indexPool;
         MeshBufferPool m_vertexPoolPositions;
         MeshBufferPool m_vertexPoolNormals;
@@ -50,6 +51,8 @@ namespace Engine
 
         TL::Error init(RHI::Device* m_device);
         void      shutdown(RHI::Device* m_device);
+
+        TL::Ptr<StaticMeshLOD> m_mesh;
 
         RHI::ImageSize2D               m_imageSize;
         ConstantBuffer<GPU::SceneView> m_sceneView;

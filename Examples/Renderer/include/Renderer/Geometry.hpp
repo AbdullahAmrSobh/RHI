@@ -17,10 +17,10 @@
 namespace Engine
 {
     static RHI::PipelineVertexBindingDesc UGB_VertexLayout[] = {
-        {sizeof(glm::vec3), RHI::PipelineVertexInputRate::PerVertex, {{0, RHI::Format::RGB32_FLOAT}}},    // position
-        {sizeof(glm::vec3), RHI::PipelineVertexInputRate::PerVertex, {{0, RHI::Format::RGB32_FLOAT}}},    // normal
-        {sizeof(glm::vec2), RHI::PipelineVertexInputRate::PerVertex, {{0, RHI::Format::RG32_FLOAT}}},     // texcoord
-        {sizeof(glm::vec3), RHI::PipelineVertexInputRate::PerInstance, {{0, RHI::Format::RGBA32_FLOAT}}}, // draw-id
+        {sizeof(glm::vec3), RHI::PipelineVertexInputRate::PerVertex, RHI::PipelineVertexAttributeDesc{0, RHI::Format::RGB32_FLOAT}},    // position
+        {sizeof(glm::vec3), RHI::PipelineVertexInputRate::PerVertex, RHI::PipelineVertexAttributeDesc{0, RHI::Format::RGB32_FLOAT}},    // normal
+        {sizeof(glm::vec2), RHI::PipelineVertexInputRate::PerVertex, RHI::PipelineVertexAttributeDesc{0, RHI::Format::RG32_FLOAT}},     // texcoord
+        // {sizeof(glm::ivec4), RHI::PipelineVertexInputRate::PerInstance, RHI::PipelineVertexAttributeDesc{0, RHI::Format::RGBA32_UINT}}, // draw-id
     };
 
     struct StaticMeshLOD
@@ -33,10 +33,8 @@ namespace Engine
             TL::Span<const glm::vec3> normals,
             TL::Span<const glm::vec2> texcoord);
 
-        ~StaticMeshLOD();
-
-    private:
         StaticMeshLOD(uint32_t indexCount, uint32_t elementsCount);
+        ~StaticMeshLOD();
 
         GPU::StaticMeshIndexed                   m_drawArgs;
         StructuredBuffer<GPU::StaticMeshIndexed> m_sbDrawArgs;

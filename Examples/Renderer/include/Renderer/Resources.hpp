@@ -9,6 +9,8 @@
 
 namespace Engine
 {
+    // TODO: address copy-move-ownership sementics issue
+
     // buffer range that contains elements of type T
     class Buffer
     {
@@ -171,6 +173,11 @@ namespace Engine
         template<typename T>
         using Allocation = GpuArrayAllocation<T>;
 
+        RHI::BufferBindingInfo getBaseBinding()
+        {
+            return {BufferPool::m_buffer, 0};
+        }
+
         void init(RHI::Device* device, TL::StringView name, uint32_t size, TL::Flags<RHI::BufferUsage> usageFlags)
         {
             RHI::BufferCreateInfo createInfo{
@@ -218,21 +225,19 @@ namespace Engine
         }
     };
 
-    template<typename T>
     using StructuredBufferPool = GpuArray<0>;
+
     template<typename T>
     using StructuredBuffer = typename GpuArray<0>::Allocation<T>;
 
-    template<typename T>
-    static StructuredBufferPool<T> createStructuredBufferPool(RHI::Device* device, uint32_t elementsCount)
+    static StructuredBufferPool createStructuredBufferPool(RHI::Device* device, uint32_t sizeBytes)
     {
-        StructuredBufferPool<T> pool;
-        pool.init(device, "StructuredBuffer", sizeof(T) * elementsCount, RHI::BufferUsage::Storage);
+        StructuredBufferPool pool;
+        pool.init(device, "StructuredBuffer", sizeBytes, RHI::BufferUsage::Storage);
         return pool;
     }
 
-    template<typename T>
-    static void freeStructuredBufferPool(RHI::Device* device, StructuredBufferPool<T>& pool)
+    static void freeStructuredBufferPool(RHI::Device* device, StructuredBufferPool& pool)
     {
         pool.shutdown(device);
     }
@@ -250,7 +255,6 @@ namespace Engine
         return pool;
     }
 
-    template<typename T>
     static void freeMeshBufferPool(RHI::Device* device, MeshBufferPool& pool)
     {
         pool.shutdown(device);

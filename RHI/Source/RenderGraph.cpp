@@ -190,6 +190,11 @@ namespace RHI
         return AddColorAttachment(attachment);
     }
 
+    RGBuffer* RenderGraphBuilder::CreateBuffer(const char* name, size_t size, BufferUsage usage, PipelineStage stage)
+    {
+        return WriteBuffer(m_rg->CreateBuffer(name, size), usage, stage);
+    }
+
     RGImage* RenderGraphBuilder::UseImageInternal(RGImage* resource, Access access, const ImageSubresourceRange& subresource, ImageUsage usage, PipelineStage stage)
     {
         TL_ASSERT(m_rg->m_state.frameRecording);
@@ -256,7 +261,7 @@ namespace RHI
 
     RGPass::RGPass(RenderGraph* rg, const PassCreateInfo& ci)
         : m_renderGraph{rg}
-        , m_name("UNNAMED")
+        , m_name(ci.name)
         , m_type{ci.type}
         , m_setupCallback{ci.setupCallback}
         , m_executeCallback{ci.executeCallback}
@@ -751,58 +756,70 @@ namespace RHI
     {
         ZoneScoped;
 
-        auto TransitionImageResource = [this](RGPass* pass, RGImageDependency dep)
+        for (auto& level : m_dependencyLevels)
         {
-            auto resource = dep.image;
-            if (resource->m_state == dep.state)
-                return;
-
-            auto& passImageBarriers = pass->m_barriers.imageBarriers;
-            passImageBarriers.push_back({
-                .image    = resource->m_frameResource->handle,
-                .srcState = resource->m_state,
-                .dstState = dep.state,
-            });
-
-            // TL_LOG_INFO("Image: {} src: (access: {} stage: {} usage: {}) -> dst: (access: {} stage: {} usage: {})",
-            //     resource->m_frameResource->name,
-            //     (int)resource->m_state.access,
-            //     (int)resource->m_state.stage,
-            //     (int)resource->m_state.usage,
-            //     (int)dep.state.access,
-            //     (int)dep.state.stage,
-            //     (int)dep.state.usage);
-
-            resource->m_state = dep.state;
-        };
-
-        auto TransitionBufferResource = [this](RGPass* pass, RGBufferDependency dep)
-        {
-            auto resource = dep.buffer;
-            if (resource->m_state == dep.state)
-                return;
-
-            auto& passBufferBarriers = pass->m_barriers.bufferBarriers;
-            passBufferBarriers.push_back({
-                .buffer   = resource->m_frameResource->handle,
-                .srcState = resource->m_state,
-                .dstState = dep.state,
-            });
-
-            resource->m_state = dep.state;
-        };
-
-        for (auto level : m_dependencyLevels)
-        {
-            for (auto pass : level.GetPasses())
+            for (auto* pass : level.GetPasses())
             {
                 // if (pass->m_state.culled)
                 //     continue;
 
-                for (auto dep : pass->m_imageDependencies)
-                    TransitionImageResource(pass, dep);
-                for (auto dep : pass->m_bufferDependencies)
-                    TransitionBufferResource(pass, dep);
+                // TL_LOG_INFO("Collecting {} barriers", pass->GetName());
+
+                for (auto& dep : pass->m_imageDependencies)
+                {
+                    auto* resource = dep.image;
+                    if (resource->m_state == dep.state)
+                        continue;
+
+                    pass->m_barriers.imageBarriers.push_back({
+                        .image    = resource->m_frameResource->handle,
+                        .srcState = resource->m_state,
+                        .dstState = dep.state,
+                    });
+
+#if RHI_DEBUG_RG_VERBOSE
+                    TL_LOG_INFO(
+                        "Image Barrier: {} "
+                        "src (access={} stage={} usage={}) -> dst (access={} stage={} usage={})",
+                        resource->m_frameResource->name,
+                        Debug::ToString(resource->m_state.access),
+                        Debug::ToString(resource->m_state.stage),
+                        Debug::ToString(resource->m_state.usage),
+                        Debug::ToString(dep.state.access),
+                        Debug::ToString(dep.state.stage),
+                        Debug::ToString(dep.state.usage));
+#endif
+
+                    resource->m_state = dep.state;
+                }
+
+                for (auto& dep : pass->m_bufferDependencies)
+                {
+                    auto* resource = dep.buffer;
+                    if (resource->m_state == dep.state)
+                        continue;
+
+                    pass->m_barriers.bufferBarriers.push_back({
+                        .buffer   = resource->m_frameResource->handle,
+                        .srcState = resource->m_state,
+                        .dstState = dep.state,
+                    });
+
+#if RHI_DEBUG_RG_VERBOSE
+                    TL_LOG_INFO(
+                        "Buffer Barrier: {} "
+                        "src (access={} stage={} usage={}) -> dst (access={} stage={} usage={})",
+                        resource->m_frameResource->name,
+                        Debug::ToString(resource->m_state.access),
+                        Debug::ToString(resource->m_state.stage),
+                        Debug::ToString(resource->m_state.usage),
+                        Debug::ToString(dep.state.access),
+                        Debug::ToString(dep.state.stage),
+                        Debug::ToString(dep.state.usage));
+#endif
+
+                    resource->m_state = dep.state;
+                }
             }
         }
     }
@@ -811,9 +828,6 @@ namespace RHI
     {
         ZoneScoped;
 
-#if RHI_RG_EXECUTE_MULTITHREADED
-    #error "TODO: Implement"
-#elif 1
         auto frame = m_device->GetCurrentFrame();
 
         if (m_state.debug_triggerNextFrameCapture)
@@ -842,7 +856,7 @@ namespace RHI
             {
                 RHI::ImageBarrierInfo barrier{
                     .image    = swapchain.swapchain->GetImage(),
-                    .srcState = {ImageUsage::Color, PipelineStage::ColorAttachmentOutput, Access::ReadWrite},
+                    .srcState = {ImageUsage::CopyDst, PipelineStage::Copy, Access::Write},
                     .dstState = {ImageUsage::Present, PipelineStage::BottomOfPipe, Access::None},
                 };
                 swapchainBarriers.push_back(barrier);
@@ -860,7 +874,6 @@ namespace RHI
         TL_MAYBE_UNUSED auto timeline = frame->QueueSubmit(QueueType::Graphics, submitInfo);
 
         frame->End();
-#endif
     }
 
     void RenderGraph::ExecutePass(RGPass* pass, CommandList* commandList)

@@ -421,6 +421,47 @@ namespace RHI::Debug
         return "---";
     }
 
+    inline static constexpr const char* ToString(PipelineStage e)
+    {
+        switch (e)
+        {
+        case PipelineStage::None:                          return "PipelineStage::None";
+        case PipelineStage::TopOfPipe:                     return "PipelineStage::TopOfPipe";
+        case PipelineStage::DrawIndirect:                  return "PipelineStage::DrawIndirect";
+        case PipelineStage::VertexInput:                   return "PipelineStage::VertexInput";
+        case PipelineStage::VertexShader:                  return "PipelineStage::VertexShader";
+        case PipelineStage::TessellationControlShader:     return "PipelineStage::TessellationControlShader";
+        case PipelineStage::TessellationEvaluationShader:  return "PipelineStage::TessellationEvaluationShader";
+        case PipelineStage::PixelShader:                   return "PipelineStage::PixelShader";
+        case PipelineStage::EarlyFragmentTests:            return "PipelineStage::EarlyFragmentTests";
+        case PipelineStage::LateFragmentTests:             return "PipelineStage::LateFragmentTests";
+        case PipelineStage::ColorAttachmentOutput:         return "PipelineStage::ColorAttachmentOutput";
+        case PipelineStage::ComputeShader:                 return "PipelineStage::ComputeShader";
+        case PipelineStage::Transfer:                      return "PipelineStage::Transfer";
+        case PipelineStage::BottomOfPipe:                  return "PipelineStage::BottomOfPipe";
+        case PipelineStage::Host:                          return "PipelineStage::Host";
+        case PipelineStage::AllGraphics:                   return "PipelineStage::AllGraphics";
+        case PipelineStage::AllCommands:                   return "PipelineStage::AllCommands";
+        case PipelineStage::Copy:                          return "PipelineStage::Copy";
+        case PipelineStage::Resolve:                       return "PipelineStage::Resolve";
+        case PipelineStage::Blit:                          return "PipelineStage::Blit";
+        case PipelineStage::Clear:                         return "PipelineStage::Clear";
+        case PipelineStage::IndexInput:                    return "PipelineStage::IndexInput";
+        case PipelineStage::VertexAttributeInput:          return "PipelineStage::VertexAttributeInput";
+        case PipelineStage::PreRasterizationShaders:       return "PipelineStage::PreRasterizationShaders";
+        case PipelineStage::TransformFeedback:             return "PipelineStage::TransformFeedback";
+        case PipelineStage::ConditionalRendering:          return "PipelineStage::ConditionalRendering";
+        case PipelineStage::FragmentShadingRateAttachment: return "PipelineStage::FragmentShadingRateAttachment";
+        case PipelineStage::AccelerationStructureBuild:    return "PipelineStage::AccelerationStructureBuild";
+        case PipelineStage::RayTracingShader:              return "PipelineStage::RayTracingShader";
+        case PipelineStage::TaskShader:                    return "PipelineStage::TaskShader";
+        case PipelineStage::MeshShader:                    return "PipelineStage::MeshShader";
+        case PipelineStage::AccelerationStructureCopy:     return "PipelineStage::AccelerationStructureCopy";
+        }
+        TL_UNREACHABLE();
+        return "---";
+    }
+
     template<typename Enum>
     inline static std::string ToString(TL::Flags<Enum> flags)
     {

@@ -4,12 +4,6 @@
 
 #include <TL/Assert.hpp>
 
-// #define VMA_DEBUG_LOG(format, ...)        \
-//     do                                    \
-//     {                                     \
-//         TL_LOG_INFO(format, __VA_ARGS__); \
-//     } while (false)
-
 #include <vk_mem_alloc.h>
 
 namespace RHI::Vulkan
@@ -467,6 +461,10 @@ namespace RHI::Vulkan
         else if constexpr (std::is_same_v<T, VkValidationCacheEXT>) return VK_OBJECT_TYPE_VALIDATION_CACHE_EXT;
         else if constexpr (std::is_same_v<T, VkDescriptorUpdateTemplateKHR>) return VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_KHR;
         else if constexpr (std::is_same_v<T, VkSamplerYcbcrConversionKHR>) return VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_KHR;
+        else
+        {
+            return VK_OBJECT_TYPE_UNKNOWN;
+        }
     }
 
     inline static VkSemaphoreSubmitInfo CreateSemaphoreSubmitInfo(VkSemaphore semaphore, VkPipelineStageFlags2 stages, uint64_t value = 0)
@@ -484,6 +482,7 @@ namespace RHI::Vulkan
     {
         switch (type)
         {
+        case VK_OBJECT_TYPE_UNKNOWN:                    return "UNKNOWN";
         case VK_OBJECT_TYPE_INSTANCE:                   return "VkInstance";
         case VK_OBJECT_TYPE_PHYSICAL_DEVICE:            return "VkPhysicalDevice";
         case VK_OBJECT_TYPE_DEVICE:                     return "VkDevice";
@@ -691,23 +690,4 @@ namespace RHI::Vulkan
         default:                          TL_UNREACHABLE(); return VK_IMAGE_LAYOUT_UNDEFINED;
         }
     }
-
-    // template<typename NativeHandle>
-    // class DeviceObject
-    // {
-    // public:
-    //     using HandleType = NativeHandle;
-
-    //     ~DeviceObject() = default;
-
-    //     NativeHandle GetHandle() const { return handle; }
-
-    //     operator NativeHandle() const { return handle; }
-
-    //     bool IsValid() const { return handle != VK_NULL_HANDLE; }
-
-    // protected:
-    //     class IDevice* m_device;
-    //     NativeHandle   handle;
-    // };
 } // namespace RHI::Vulkan

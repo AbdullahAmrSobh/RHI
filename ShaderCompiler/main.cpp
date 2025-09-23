@@ -643,7 +643,7 @@ namespace BGC
                 if (isCB)
                 {
                     fields.push_back(field);
-                    constantStructType->addField(field->getName(), reflector.genResourceType(field->getTypeLayout()), true);
+                    constantStructType->addField(field->getName(), reflector.genResourceType(field->getTypeLayout()));
                 }
             }
 
@@ -862,6 +862,7 @@ bool generateHeaderFile(Slang::ComPtr<slang::IComponentType> outProgram, const A
     TL_LOG_INFO("Generating header: {}", args.gen);
     f << "#pragma once\n\n";
     f << "#include \"Renderer/ShaderParameters.hpp\"\n\n";
+    f << "#include \"Shaders/GpuCommonStructs.h\"\n\n";
     f << "#include <RHI/RHI.hpp>\n\n";
     f << "#include <glm/glm.hpp>\n\n";
 

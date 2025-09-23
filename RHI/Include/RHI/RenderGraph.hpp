@@ -187,6 +187,8 @@ namespace RHI
         RGImage*  AddColorAttachment(RGImage* target, LoadOperation loadOp, ClearValue clear = {});
         RGImage*  CreateColorTarget(const char* name, ImageSize2D size, Format format, ClearValue clear = {});
 
+        RGBuffer*  CreateBuffer(const char* name, size_t size, BufferUsage usage, PipelineStage stage);
+
     private:
         RGImage*  UseImageInternal(RGImage* handle, Access access, const ImageSubresourceRange& subresource, ImageUsage usage, PipelineStage stage);
         RGBuffer* UseBufferInternal(RGBuffer* handle, Access access, const BufferSubregion& subresource, BufferUsage usage, PipelineStage stage);

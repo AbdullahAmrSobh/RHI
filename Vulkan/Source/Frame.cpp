@@ -302,7 +302,6 @@ namespace RHI::Vulkan
     {
         for (auto& page : m_pages)
         {
-            // m_device->UnmapBuffer(page.buffer);
             m_device->DestroyBuffer(page.buffer);
         }
     }
@@ -335,7 +334,6 @@ namespace RHI::Vulkan
 
         m_pages.push_back(
             Page{
-                .ptr    = buffer->Map(m_device),
                 .buffer = bufferHandle,
                 .offset = size,
                 .size   = stagingBufferCI.byteSize,
