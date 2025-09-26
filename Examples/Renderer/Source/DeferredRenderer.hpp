@@ -4,6 +4,7 @@
 
 #include "Renderer/Common.hpp"
 #include "Renderer/ImGuiPass.hpp"
+#include "Renderer/MeshDrawProcessor.hpp"
 
 #include "Renderer-Shaders/GBufferPass.hpp"
 #include "Renderer-Shaders/Compose.hpp"
@@ -32,13 +33,15 @@ namespace Engine
 
         void init(RHI::Device* device);
         void shutdown(RHI::Device* device);
-        void render(RHI::Device* device, RHI::RenderGraph* rg, const Scene& scene);
+        void render(RHI::Device* device, RHI::RenderGraph* rg, const Scene& scene,  MeshVisibilityPass& visIn);
     };
 
     class DeferredRenderer : public Singleton<DeferredRenderer>
     {
     public:
         ImGuiPass   m_imguiPass;
+
+        MeshVisibilityPass m_vizabilityPass;
         GBufferFill m_gbufferPass;
 
         TL::Error init(RHI::Device* device);

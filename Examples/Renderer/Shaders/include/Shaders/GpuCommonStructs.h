@@ -65,7 +65,7 @@ namespace GPU
         U32 meshID;
         U32 materialID;
         U32 instanceID;
-        U32 drawViewMask;
+        U32 viewMask;
     };
 
     struct SceneView

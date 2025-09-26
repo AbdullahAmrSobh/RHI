@@ -99,7 +99,7 @@ namespace BGC
         case slang::BindingType::MutableTypedBuffer:              return RHI::BindingType::StorageBufferView;
         case slang::BindingType::ConstantBuffer:                  return RHI::BindingType::UniformBuffer;
         case slang::BindingType::RawBuffer:                       return RHI::BindingType::StorageBuffer;
-        case slang::BindingType::MutableRawBuffer:                return RHI::BindingType::StorageImage;
+        case slang::BindingType::MutableRawBuffer:                return RHI::BindingType::StorageBuffer;
         case slang::BindingType::InputRenderTarget:               return RHI::BindingType::InputAttachment;
         case slang::BindingType::RayTracingAccelerationStructure: return RHI::BindingType::RayTracingAccelerationStructure;
         default:                                                  /*TL_UNREACHABLE();*/ return RHI::BindingType::None;

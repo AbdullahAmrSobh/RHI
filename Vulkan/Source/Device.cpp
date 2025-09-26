@@ -552,6 +552,7 @@ namespace RHI::Vulkan
         vkGetPhysicalDeviceProperties(m_physicalDevice, &properties);
         m_limits                                  = TL::CreatePtr<DeviceLimits>();
         m_limits->minUniformBufferOffsetAlignment = uint32_t(properties.limits.minUniformBufferOffsetAlignment);
+        m_limits->minStorageBufferOffsetAlignment = uint32_t(properties.limits.minStorageBufferOffsetAlignment);
 
         result = m_queue[(uint32_t)QueueType::Graphics].Init(this, "Graphics", graphicsQueueFamilyIndex.value(), 0);
         VkResultTry(result);

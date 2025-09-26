@@ -53,7 +53,7 @@ namespace Engine
         m_bindGroup = m_device->CreateBindGroup({.layout = bindGroupLayout});
 
         sig::ImGuiShaderParam shaderParams = {};
-        shaderParams.cb                    = this->m_projectionCB;
+        shaderParams.projection                    = this->m_projectionCB;
         shaderParams.texture0              = m_image;
         shaderParams.sampler0              = m_sampler;
         shaderParams.updateBindGroup(m_device, m_bindGroup);

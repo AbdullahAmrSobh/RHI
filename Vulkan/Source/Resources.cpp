@@ -492,6 +492,7 @@ namespace RHI::Vulkan
 
     void BindGroupAllocator::ShutdownBindGroup(IBindGroup* bindGroup)
     {
+        // todo this should be deleted throuh deletion queue
         vkFreeDescriptorSets(m_device->m_device, m_descriptorPool, 1, &bindGroup->descriptorSet);
     }
 
@@ -677,7 +678,6 @@ namespace RHI::Vulkan
         }
 
         VkPipelineLayoutCreateInfo pipelineLayouCI{
-
             .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
             .pNext                  = nullptr,
             .flags                  = 0,

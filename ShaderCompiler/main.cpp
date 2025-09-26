@@ -246,10 +246,13 @@ namespace BGC
             func->addLine(std::format("static constexpr uint32_t MAX_IMAGES = {};", images.size()));
             func->addLine(std::format("static constexpr uint32_t MAX_SAMPLERS = {};", samplers.size()));
 
+            func->addLine("uint32_t bufferCount = 0;");
+            func->addLine("uint32_t imageCount = 0;");
+            func->addLine("uint32_t samplerCount = 0;");
+
             // Generate buffer update code
             if (!buffers.empty())
             {
-                func->addLine("uint32_t bufferCount = 0;");
                 func->addLine("RHI::BindGroupBuffersUpdateInfo bufferInfos[MAX_BUFFERS] = {};");
 
                 for (const auto& [bindingIndex, memberName] : buffers)
@@ -261,7 +264,6 @@ namespace BGC
             // Generate image update code
             if (!images.empty())
             {
-                func->addLine("uint32_t imageCount = 0;");
                 func->addLine("RHI::BindGroupImagesUpdateInfo imageInfos[MAX_IMAGES] = {};");
 
                 for (const auto& [bindingIndex, memberName] : images)
@@ -273,7 +275,6 @@ namespace BGC
             // Generate sampler update code
             if (!samplers.empty())
             {
-                func->addLine("uint32_t samplerCount = 0;");
                 func->addLine("RHI::BindGroupSamplersUpdateInfo samplerInfos[MAX_SAMPLERS] = {};");
 
                 for (const auto& [bindingIndex, memberName] : samplers)
@@ -672,6 +673,27 @@ namespace BGC
             if (isBindless)
             {
                 TL_ASSERT(descriptorCount == -1);
+            }
+
+
+            // TODO: Fix this
+            bool hasDynamic = false;
+            for (auto attrIdx = 0; attrIdx < field->getUserAttributeCount(); attrIdx++)
+            {
+                auto       attr = field->getUserAttributeByIndex(attrIdx);
+                TL::String name = attr->getName();
+                hasDynamic      = name == "dynamic";
+                TL_LOG_INFO("Found attr {}", name);
+            }
+
+            if (hasDynamic)
+            {
+                switch (bindingType)
+                {
+                case RHI::BindingType::StorageImage:  bindingType = RHI::BindingType::DynamicStorageBuffer; break;
+                case RHI::BindingType::UniformBuffer: bindingType = RHI::BindingType::DynamicUniformBuffer; break;
+                default:                              break;
+                };
             }
 
             switch (bindingType)

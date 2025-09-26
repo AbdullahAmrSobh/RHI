@@ -11,6 +11,7 @@ set(RENDERER_HEADER_FILES
         ${RENDERER_INCLUDE_DIR}/ShaderParameters.h
         ${RENDERER_INCLUDE_DIR}/ImGuiPass.hpp
         ${RENDERER_INCLUDE_DIR}/Scene.hpp
+        ${RENDERER_INCLUDE_DIR}/MeshDrawProcessor.hpp
 )
 
 set(RENDERER_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Source)
@@ -23,6 +24,7 @@ set(RENDERER_SOURCE_FILES
     ${RENDERER_SOURCE_DIR}/Renderer.cpp
     ${RENDERER_SOURCE_DIR}/Resources.cpp
     ${RENDERER_SOURCE_DIR}/Scene.cpp
+    ${RENDERER_SOURCE_DIR}/MeshDrawProcessor.cpp
 )
 
 set(RENDERER_SHADERS_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/include)

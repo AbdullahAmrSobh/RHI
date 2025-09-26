@@ -83,7 +83,7 @@ namespace Engine
         device->DestroyBindGroupLayout(m_bindGroupLayout);
     }
 
-    void GBufferFill::render(RHI::Device* device, RHI::RenderGraph* rg, const Scene& scene)
+    void GBufferFill::render(RHI::Device* device, RHI::RenderGraph* rg, const Scene& scene, MeshVisibilityPass& visIn)
     {
         m_shaderParams.view           = scene.m_sceneView;
         m_shaderParams.defaultSampler = m_sampler;
@@ -98,8 +98,10 @@ namespace Engine
             .setupCallback = [&](RHI::RenderGraphBuilder& builder)
             {
                 this->colorAttachment = builder.CreateColorTarget("color", frameSize, RHI::Format::RGBA8_UNORM);
+
+                visIn.setup(builder);
             },
-            .executeCallback = [=, this, &scene](RHI::CommandList& cmd)
+            .executeCallback = [=, this, &scene, &visIn](RHI::CommandList& cmd)
             {
                 cmd.SetViewport(RHI::Viewport{
                     .width    = (float)frameSize.width,
@@ -120,27 +122,7 @@ namespace Engine
                         .dynamicOffsets = {},
                     });
 
-                // // Bind index buffer
-                cmd.BindIndexBuffer(GpuSceneData::ptr->getIndexPool().getBaseBinding(), RHI::IndexType::uint32);
-                cmd.BindVertexBuffers(
-                    0,
-                    {
-                        GpuSceneData::ptr->getVertexPoolPositions().getBaseBinding(),
-                        GpuSceneData::ptr->getVertexPoolNormals().getBaseBinding(),
-                        GpuSceneData::ptr->getVertexPoolUVs().getBaseBinding(),
-                    });
-
-                // RHI::BufferBindingInfo argCountBuffer{rg->GetBufferHandle(cullPass.m_drawIndirectArgs), 0};
-                // RHI::BufferBindingInfo argParamsBuffer{rg->GetBufferHandle(cullPass.m_drawIndirectArgs), 64};
-                // cmd.DrawIndexedIndirect(argParamsBuffer, argCountBuffer, 40, sizeof(RHI::DrawIndexedParameters));
-
-                cmd.DrawIndexed({
-                    .indexCount    = scene.m_mesh->m_drawArgs.indexCount,
-                    .instanceCount = 1,
-                    .firstIndex    = scene.m_mesh->m_drawArgs.firstIndex,
-                    .vertexOffset  = scene.m_mesh->m_drawArgs.vertexOffset,
-                    .firstInstance = 0,
-                });
+                visIn.draw(rg, cmd);
             },
         });
     }
@@ -155,6 +137,7 @@ namespace Engine
         }
 
         m_gbufferPass.init(device);
+        m_vizabilityPass.init(device);
 
         return TL::NoError;
     }
@@ -163,11 +146,17 @@ namespace Engine
     {
         m_imguiPass.shutdown();
         m_gbufferPass.shutdown(device);
+        m_vizabilityPass.shutdown();
     }
 
     void DeferredRenderer::render(RHI::Device* device, RHI::RenderGraph* rg, const Scene* scene, RHI::RGImage* outputAttachment)
     {
-        m_gbufferPass.render(device, rg, *scene);
+        MeshVisibilityPassParams params{
+            .name     = "Cull",
+            .capacity = 4,
+        };
+        m_vizabilityPass.addPass(rg, params);
+        m_gbufferPass.render(device, rg, *scene, m_vizabilityPass);
 
         rg->AddPass({
             .name          = "copy-to-output",

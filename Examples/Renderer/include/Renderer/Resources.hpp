@@ -9,8 +9,6 @@
 
 namespace Engine
 {
-    // TODO: address copy-move-ownership sementics issue
-
     // buffer range that contains elements of type T
     class Buffer
     {

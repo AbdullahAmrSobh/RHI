@@ -14,8 +14,7 @@ struct PSInput
 
 struct ImGuiShaderParam
 {
-    [[dynamic]]
-    float4x4     projection;
+    ConstantBuffer<float4x4> projection;
     Texture2D    texture0;
     SamplerState sampler0;
 };

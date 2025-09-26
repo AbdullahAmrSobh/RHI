@@ -41,6 +41,7 @@ namespace RHI
     struct DeviceLimits
     {
         uint32_t minUniformBufferOffsetAlignment;
+        uint32_t minStorageBufferOffsetAlignment;
     };
 
     struct QueueWaitInfo

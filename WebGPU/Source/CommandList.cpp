@@ -75,7 +75,11 @@ namespace RHI::WebGPU
         m_state = State::CommandBuffer;
     }
 
-    void ICommandList::BeginRenderPass(const Pass& pass)
+    void ICommandList::AddPipelineBarrier(TL::Span<const BarrierInfo> barriers, TL::Span<const ImageBarrierInfo> imageBarriers, TL::Span<const BufferBarrierInfo> bufferBarriers)
+    {
+    }
+
+    void ICommandList::BeginRenderPass(const RenderPassBeginInfo& beginInfo)
     {
         ZoneScoped;
 
@@ -159,6 +163,14 @@ namespace RHI::WebGPU
         m_state = State::CommandEncoder;
     }
 
+    void ICommandList::BeginComputePass(const ComputePassBeginInfo& beginInfo)
+    {
+    }
+
+    void ICommandList::EndComputePass()
+    {
+    }
+
     void ICommandList::DebugMarkerPush(const char* name, [[maybe_unused]] ColorValue<float> color)
     {
         switch (m_state)
@@ -204,7 +216,7 @@ namespace RHI::WebGPU
         wgpuRenderPassEncoderExecuteBundles(m_renderPassEncoder, bundles.size(), bundles.data());
     }
 
-    void ICommandList::BindGraphicsPipeline(Handle<GraphicsPipeline> pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups)
+    void ICommandList::BindGraphicsPipeline(GraphicsPipeline* pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups)
     {
         auto pipeline = m_device->m_graphicsPipelineOwner.Get(pipelineState);
         wgpuRenderPassEncoderSetPipeline(m_renderPassEncoder, pipeline->pipeline);
@@ -217,7 +229,7 @@ namespace RHI::WebGPU
         }
     }
 
-    void ICommandList::BindComputePipeline(Handle<ComputePipeline> pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups)
+    void ICommandList::BindComputePipeline(ComputePipeline* pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups)
     {
         auto pipeline = m_device->m_computePipelineOwner.Get(pipelineState);
         wgpuComputePassEncoderSetPipeline(m_computePassEncoder, pipeline->pipeline);
@@ -364,10 +376,10 @@ namespace RHI::WebGPU
         };
         WGPUTexelCopyBufferInfo destination{
             .layout = {
-                       .offset       = copyInfo.bufferOffset,
-                       .bytesPerRow  = copyInfo.bytesPerRow,
-                       .rowsPerImage = copyInfo.bytesPerImage,
-                       },
+                .offset       = copyInfo.bufferOffset,
+                .bytesPerRow  = copyInfo.bytesPerRow,
+                .rowsPerImage = copyInfo.bytesPerImage,
+            },
             .buffer = dstBuffer->buffer,
         };
         WGPUExtent3D copySize = ConvertToExtent3D(copyInfo.imageSize);
@@ -387,10 +399,10 @@ namespace RHI::WebGPU
         };
         WGPUTexelCopyBufferInfo destination{
             .layout = {
-                       .offset       = copyInfo.bufferOffset,
-                       .bytesPerRow  = copyInfo.bytesPerRow,
-                       .rowsPerImage = copyInfo.bytesPerImage,
-                       },
+                .offset       = copyInfo.bufferOffset,
+                .bytesPerRow  = copyInfo.bytesPerRow,
+                .rowsPerImage = copyInfo.bytesPerImage,
+            },
             .buffer = srcBuffer->buffer,
         };
         WGPUExtent3D copySize = ConvertToExtent3D(copyInfo.imageSize);
