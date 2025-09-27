@@ -17,38 +17,44 @@ namespace Engine
         TL_ASSERT(positions.size() == normals.size());
         TL_ASSERT(positions.size() == texcoord.size());
         auto  meshLod = create(indcies.size(), positions.size());
-        auto& pool    = GpuSceneData::ptr->getUnifiedGeometryBuffersPool();
+        auto& pool    = RenderContext::ptr->getUnifiedGeometryBuffersPool();
 
-        pool.update(GpuSceneData::ptr->m_device, meshLod->m_indexBuffer.getBuffer(), meshLod->m_indexBuffer.getOffsetElements(), indcies);
-        pool.update(GpuSceneData::ptr->m_device, meshLod->m_vbPositions.getBuffer(), meshLod->m_vbPositions.getOffsetElements(), positions);
-        pool.update(GpuSceneData::ptr->m_device, meshLod->m_vbNormals.getBuffer(), meshLod->m_vbNormals.getOffsetElements(), normals);
-        pool.update(GpuSceneData::ptr->m_device, meshLod->m_vbTexcoord.getBuffer(), meshLod->m_vbTexcoord.getOffsetElements(), texcoord);
+        RenderContext::ptr->getIndexPool().update(meshLod->m_indexBuffer, indcies);
+        RenderContext::ptr->getVertexPoolPositions().update(meshLod->m_vbPositions, positions);
+        RenderContext::ptr->getVertexPoolNormals().update(meshLod->m_vbNormals, normals);
+        RenderContext::ptr->getVertexPoolUVs().update(meshLod->m_vbTexcoord, texcoord);
         return meshLod;
     }
 
     StaticMeshLOD::StaticMeshLOD(uint32_t indexCount, uint32_t elementsCount)
     {
-        m_sbDrawArgs  = GpuSceneData::ptr->getSBPoolRenderables().allocate(1);
-        m_indexBuffer = GpuSceneData::ptr->getIndexPool().allocate(indexCount);
-        m_vbPositions = GpuSceneData::ptr->getVertexPoolPositions().allocate(elementsCount);
-        m_vbNormals   = GpuSceneData::ptr->getVertexPoolNormals().allocate(elementsCount);
-        m_vbTexcoord  = GpuSceneData::ptr->getVertexPoolUVs().allocate(elementsCount);
+        m_sbDrawArgs = RenderContext::ptr->getSBPoolRenderables().allocate(1);
+
+        auto& mIndexPool           = RenderContext::ptr->getIndexPool();
+        auto& mVertexPoolPositions = RenderContext::ptr->getVertexPoolPositions();
+        auto& mVertexPoolNormals   = RenderContext::ptr->getVertexPoolNormals();
+        auto& mVertexPoolUVs       = RenderContext::ptr->getVertexPoolUVs();
+
+        m_indexBuffer = mIndexPool.allocate(indexCount);
+        m_vbPositions = mVertexPoolPositions.allocate(elementsCount);
+        m_vbNormals   = mVertexPoolNormals.allocate(elementsCount);
+        m_vbTexcoord  = mVertexPoolUVs.allocate(elementsCount);
 
         m_drawArgs = GPU::StaticMeshIndexed{
-            .indexCount   = m_indexBuffer.getCount(),
-            .firstIndex   = m_indexBuffer.getOffsetElements(),
-            .vertexOffset = (int32_t)m_vbPositions.getOffsetElements(),
+            .indexCount   = m_indexBuffer.getElementsCount(),
+            .firstIndex   = m_indexBuffer.getOffsetIndex(),
+            .vertexOffset = (int32_t)m_vbPositions.getOffsetIndex(),
         };
-        auto& pool = GpuSceneData::ptr->getStructuredBuffersPool();
-        pool.update(GpuSceneData::ptr->m_device, m_sbDrawArgs.getBuffer(), m_sbDrawArgs.getOffsetElements(), TL::Span<const GPU::StaticMeshIndexed>{m_drawArgs});
+        auto& pool = RenderContext::ptr->getStructuredBuffersPool();
+        RenderContext::ptr->getSBPoolRenderables().update(m_sbDrawArgs, m_drawArgs);
     }
 
     StaticMeshLOD::~StaticMeshLOD()
     {
-        GpuSceneData::ptr->getVertexPoolUVs().free(m_vbTexcoord);
-        GpuSceneData::ptr->getVertexPoolNormals().free(m_vbNormals);
-        GpuSceneData::ptr->getVertexPoolPositions().free(m_vbPositions);
-        GpuSceneData::ptr->getIndexPool().free(m_indexBuffer);
-        GpuSceneData::ptr->getSBPoolRenderables().free(m_sbDrawArgs);
+        RenderContext::ptr->getVertexPoolUVs().free(m_vbTexcoord);
+        RenderContext::ptr->getVertexPoolNormals().free(m_vbNormals);
+        RenderContext::ptr->getVertexPoolPositions().free(m_vbPositions);
+        RenderContext::ptr->getIndexPool().free(m_indexBuffer);
+        RenderContext::ptr->getSBPoolRenderables().free(m_sbDrawArgs);
     }
 } // namespace Engine

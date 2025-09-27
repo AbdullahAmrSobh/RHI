@@ -12,7 +12,7 @@ namespace RHI
     // TODO: Replace compare operatrs with default
 
     // Constants
-    static constexpr uint64_t WholeSize         = UINT64_MAX;
+    static constexpr uint32_t RemainingSize     = UINT64_MAX;
     static constexpr uint32_t BindlessArraySize = UINT32_MAX;
     static constexpr uint8_t  AllLayers         = UINT8_MAX;
     static constexpr uint8_t  AllMipLevels      = UINT8_MAX;
@@ -59,42 +59,40 @@ namespace RHI
     {
     };
 
-#define RHI_FLAG_NAME_RESERVED 0
-
     // Enums (General Purpose)
     enum class BindingType
     {
-        None,                                                     ///< No binding.
-        Sampler,                                                  ///< Sampler resource.
-        SampledImage,                                             ///< Sampled image (read-only texture).
-        StorageImage,                                             ///< Storage image (read/write texture).
-        UniformBuffer,                                            ///< Uniform buffer (constant data).
-        StorageBuffer,                                            ///< Storage buffer (read/write data).
-        DynamicUniformBuffer,                                     ///< Dynamic uniform buffer.
-        DynamicStorageBuffer,                                     ///< Dynamic storage buffer.
-        BufferView,                                               ///< Buffer view.
-        StorageBufferView,                                        ///< Storage buffer view.
-        InputAttachment                 = RHI_FLAG_NAME_RESERVED, ///<
-        RayTracingAccelerationStructure = RHI_FLAG_NAME_RESERVED, ///<
-        Count,                                                    ///< Number of binding types.
+        None,                            ///< No binding.
+        Sampler,                         ///< Sampler resource.
+        SampledImage,                    ///< Sampled image (read-only texture).
+        StorageImage,                    ///< Storage image (read/write texture).
+        UniformBuffer,                   ///< Uniform buffer (constant data).
+        StorageBuffer,                   ///< Storage buffer (read/write data).
+        DynamicUniformBuffer,            ///< Dynamic uniform buffer.
+        DynamicStorageBuffer,            ///< Dynamic storage buffer.
+        BufferView,                      ///< Buffer view.
+        StorageBufferView,               ///< Storage buffer view.
+        InputAttachment,                 ///<
+        RayTracingAccelerationStructure, ///<
+        Count,                           ///< Number of binding types.
     };
 
     enum class ShaderStage
     {
-        None          = 0 << 0,                 ///< No shader stage.
-        Vertex        = 1 << 1,                 ///< Vertex shader stage.
-        Pixel         = 1 << 2,                 ///< Pixel (fragment) shader stage.
-        Compute       = 1 << 3,                 ///< Compute shader stage.
-        Hull          = RHI_FLAG_NAME_RESERVED, ///< Hull (tessellation control) shader stage.
-        Domain        = RHI_FLAG_NAME_RESERVED, ///< Domain (tessellation evaluation) shader stage.
-        RayGen        = RHI_FLAG_NAME_RESERVED, ///< Ray generation shader stage.
-        RayIntersect  = RHI_FLAG_NAME_RESERVED, ///< Ray intersection shader stage.
-        RayAnyHit     = RHI_FLAG_NAME_RESERVED, ///< Ray any-hit shader stage.
-        RayClosestHit = RHI_FLAG_NAME_RESERVED, ///< Ray closest-hit shader stage.
-        RayMiss       = RHI_FLAG_NAME_RESERVED, ///< Ray miss shader stage.
-        RayCallable   = RHI_FLAG_NAME_RESERVED, ///< Ray callable shader stage.
-        Mesh          = RHI_FLAG_NAME_RESERVED, ///< Mesh shader stage.
-        Amplification = RHI_FLAG_NAME_RESERVED, ///< Amplification shader stage.
+        None          = 0 << 0,  ///< No shader stage.
+        Vertex        = 1 << 1,  ///< Vertex shader stage.
+        Pixel         = 1 << 2,  ///< Pixel (fragment) shader stage.
+        Compute       = 1 << 3,  ///< Compute shader stage.
+        Hull          = 1 << 4,  ///< Hull (tessellation control) shader stage.
+        Domain        = 1 << 5,  ///< Domain (tessellation evaluation) shader stage.
+        RayGen        = 1 << 6,  ///< Ray generation shader stage.
+        RayIntersect  = 1 << 7,  ///< Ray intersection shader stage.
+        RayAnyHit     = 1 << 8,  ///< Ray any-hit shader stage.
+        RayClosestHit = 1 << 9,  ///< Ray closest-hit shader stage.
+        RayMiss       = 1 << 10, ///< Ray miss shader stage.
+        RayCallable   = 1 << 11, ///< Ray callable shader stage.
+        Mesh          = 1 << 12, ///< Mesh shader stage.
+        Amplification = 1 << 13, ///< Amplification shader stage.
         AllGraphics   = Vertex | Pixel,
         AllStages     = AllGraphics | Compute,
     };
@@ -103,14 +101,15 @@ namespace RHI
 
     enum class BufferUsage
     {
-        None     = 0 << 0, ///< No usage flags set.
-        Storage  = 1 << 1, ///< Buffer used for storage operations.
-        Uniform  = 1 << 2, ///< Buffer used for uniform data.
-        Vertex   = 1 << 3, ///< Buffer used for vertex data.
-        Index    = 1 << 4, ///< Buffer used for index data.
-        CopySrc  = 1 << 5, ///< Buffer used as a source in copy operations.
-        CopyDst  = 1 << 6, ///< Buffer used as a destination in copy operations.
-        Indirect = 1 << 7, ///< Buffer used for indirect draw calls.
+        None        = 0 << 0, ///< No usage flags set.
+        Storage     = 1 << 1, ///< Buffer used for storage operations.
+        Uniform     = 1 << 2, ///< Buffer used for uniform data.
+        Vertex      = 1 << 3, ///< Buffer used for vertex data.
+        Index       = 1 << 4, ///< Buffer used for index data.
+        VertexIndex = Vertex | Index,
+        CopySrc     = 1 << 5, ///< Buffer used as a source in copy operations.
+        CopyDst     = 1 << 6, ///< Buffer used as a destination in copy operations.
+        Indirect    = 1 << 7, ///< Buffer used for indirect draw calls.
     };
 
     TL_DEFINE_FLAG_OPERATORS(BufferUsage);
@@ -298,8 +297,8 @@ namespace RHI
     // Structs (General Purpose)
     struct BufferSubregion
     {
-        size_t offset = 0;         ///< Offset into the buffer.
-        size_t size   = WholeSize; ///< Size of the subregion.
+        size_t offset = 0;             ///< Offset into the buffer.
+        size_t size   = RemainingSize; ///< Size of the subregion.
 
         bool   operator==(const BufferSubregion& other) const = default;
     };
@@ -307,8 +306,9 @@ namespace RHI
     /// @brief Contains information about binding a buffer.
     struct BufferBindingInfo
     {
-        Buffer* buffer = nullptr; ///< Handle to the buffer.
-        size_t  offset = 0;       ///< Offset into the buffer.
+        Buffer*  buffer = nullptr; ///< Handle to the buffer.
+        uint32_t offset = 0;       ///< Offset into the buffer.
+        uint32_t range  = 0;       ///< Range from starting from offset to bind
     };
 
     struct ShaderBinding
@@ -583,4 +583,46 @@ namespace RHI
             std::max(1u, size.depth >> mipLevel),
         };
     }
+
+    // struct ColorAttachmentBlendState
+    // {
+    // };
+
+    // struct PipelineRasterizerState
+    // {
+    // };
+
+    // struct PipelineMultisampleState
+    // {
+    // };
+
+    // struct PipelineDepthStencilState
+    // {
+    // };
+
+    // struct PipelineColorBlendState
+    // {
+    // };
+
+    // class PipelineLibrary
+    // {
+    // public:
+    //     ~PipelineLibrary() = default;
+
+    //     ColorAttachmentBlendState* createColorAttachmentBlendState(ColorAttachmentBlendStateDesc& ci);
+    //     void                       destroyColorAttachmentBlendState(ColorAttachmentBlendState* ci);
+
+    //     PipelineRasterizerState*   createPipelineRasterizerState(PipelineRasterizerStateDesc& ci);
+    //     void                       destroyPipelineRasterizerState(PipelineRasterizerState* ci);
+
+    //     PipelineMultisampleState*  createPipelineMultisampleState(PipelineMultisampleStateDesc& ci);
+    //     void                       destroyPipelineMultisampleState(PipelineMultisampleState* ci);
+
+    //     PipelineDepthStencilState* createPipelineDepthStencilState(PipelineDepthStencilStateDesc& ci);
+    //     void                       destroyPipelineDepthStencilState(PipelineDepthStencilState* ci);
+
+    //     PipelineColorBlendState*   createPipelineColorBlendState(PipelineColorBlendStateDesc& ci);
+    //     void                       destroyPipelineColorBlendState(PipelineColorBlendState* ci);
+    // };
+
 } // namespace RHI

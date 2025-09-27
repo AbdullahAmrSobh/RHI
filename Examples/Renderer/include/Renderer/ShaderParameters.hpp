@@ -6,28 +6,46 @@
 
 namespace Engine
 {
-    // template<typename T>
-    // concept BindableBuffer = requires(T t) {
-    //     { t.getBuffer() } -> std::same_as<RHI::Buffer*>;
-    //     { t.getOffset() } -> std::same_as<size_t>;
-    // };
-
     template<typename T>
     struct ConstantBufferBinding
     {
         RHI::BufferBindingInfo bindingInfo;
         bool                   m_dirty;
 
-        template<typename CB>
-        inline auto& operator=(CB buffer)
+        inline auto& operator=(GPUArray<T> buffer)
         {
-            auto newBuffer = buffer.getBuffer();
-            auto newOffset = buffer.getOffset();
-            if (bindingInfo.buffer != newBuffer || bindingInfo.offset != newOffset)
+            auto binding = buffer.getBinding();
+            if (bindingInfo.buffer != binding.buffer || bindingInfo.offset != binding.offset)
             {
-                bindingInfo.buffer = newBuffer;
-                bindingInfo.offset = newOffset;
-                m_dirty = true;
+                bindingInfo.buffer = binding.buffer;
+                bindingInfo.offset = binding.offset;
+                bindingInfo.range  = binding.range;
+                m_dirty            = true;
+            }
+            return *this;
+        }
+
+        inline auto& operator=(Buffer<T> buffer)
+        {
+            auto binding = buffer.getBinding();
+            if (bindingInfo.buffer != binding.buffer || bindingInfo.offset != binding.offset)
+            {
+                bindingInfo.buffer = binding.buffer;
+                bindingInfo.offset = binding.offset;
+                bindingInfo.range  = binding.range;
+                m_dirty            = true;
+            }
+            return *this;
+        }
+
+        inline auto& operator=(RHI::BufferBindingInfo binding)
+        {
+            if (bindingInfo.buffer != binding.buffer || bindingInfo.offset != binding.offset)
+            {
+                bindingInfo.buffer = binding.buffer;
+                bindingInfo.offset = binding.offset;
+                bindingInfo.range  = binding.range;
+                m_dirty            = true;
             }
             return *this;
         }
@@ -39,15 +57,40 @@ namespace Engine
         RHI::BufferBindingInfo bindingInfo;
         bool                   m_dirty;
 
-        inline auto& operator=(T buffer)
+        inline auto& operator=(GPUArray<T> buffer)
         {
-            auto newBuffer = buffer.getBuffer();
-            auto newOffset = buffer.getOffset();
-            if (bindingInfo.buffer != newBuffer || bindingInfo.offset != newOffset)
+            auto binding = buffer.getBinding();
+            if (bindingInfo.buffer != binding.buffer || bindingInfo.offset != binding.offset)
             {
-                bindingInfo.buffer = newBuffer;
-                bindingInfo.offset = newOffset;
-                m_dirty = true;
+                bindingInfo.buffer = binding.buffer;
+                bindingInfo.offset = binding.offset;
+                bindingInfo.range  = binding.range;
+                m_dirty            = true;
+            }
+            return *this;
+        }
+
+        inline auto& operator=(Buffer<T> buffer)
+        {
+            auto binding = buffer.getBinding();
+            if (bindingInfo.buffer != binding.buffer || bindingInfo.offset != binding.offset)
+            {
+                bindingInfo.buffer = binding.buffer;
+                bindingInfo.offset = binding.offset;
+                bindingInfo.range  = binding.range;
+                m_dirty            = true;
+            }
+            return *this;
+        }
+
+        inline auto& operator=(RHI::BufferBindingInfo binding)
+        {
+            if (bindingInfo.buffer != binding.buffer || bindingInfo.offset != binding.offset)
+            {
+                bindingInfo.buffer = binding.buffer;
+                bindingInfo.offset = binding.offset;
+                bindingInfo.range  = binding.range;
+                m_dirty            = true;
             }
             return *this;
         }
@@ -159,7 +202,7 @@ namespace Engine
             if (m_sampler != sampler)
             {
                 m_sampler = sampler;
-                m_dirty = true;
+                m_dirty   = true;
             }
             return *this;
         }

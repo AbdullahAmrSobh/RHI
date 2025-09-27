@@ -34,6 +34,7 @@ set(RENDERER_SHADER_FILES
     ${RENDERER_SHADERS_DIR}/ImGui.slang
     ${RENDERER_SHADERS_DIR}/Compose.slang
     ${RENDERER_SHADERS_DIR}/Cull.slang
+    ${RENDERER_SHADERS_DIR}/Lighting.slang
 )
 
 # @note: for some reason I need to copy dawn dlls next to every executable (the build script should handle this!)

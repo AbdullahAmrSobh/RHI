@@ -46,14 +46,15 @@ public:
     Engine::Scene* m_scene;
     Camera         m_camera;
 
+    TL::Ptr<StaticMeshLOD> m_mesh;
+
     Playground()
         : ApplicationBase("", 1600, 900) // Empty title, will be set in OnInit
     {
         m_camera.SetPerspective(1600, 900, 45, 0.00001, 1000000);
     }
 
-#if 0
-    Engine::StaticMeshLOD* ImportStaticMesh(const aiMesh* mesh) const
+    TL::Ptr<Engine::StaticMeshLOD> ImportStaticMesh(const aiMesh* mesh) const
     {
         // Indices
         TL::Vector<uint32_t> indices;
@@ -99,9 +100,7 @@ public:
             }
         }
 
-        auto* staticMesh = Engine::GeometryBufferPool::ptr->CreateStaticMeshLOD(indices, positions, normals, uvs);
-
-        return staticMesh;
+        return StaticMeshLOD::create(indices, positions, normals, uvs);
     }
 
     // Helper function to recursively enumerate all meshes in the scene graph.
@@ -125,6 +124,34 @@ public:
         for (unsigned i = 0; i < node->mNumChildren; ++i)
         {
             EnumerateSceneMeshes(scene, callback, node->mChildren[i], globalTransform);
+        }
+    }
+
+    // Helper function to recursively enumerate all lights in the scene graph.
+    // The callback is called as: callback(lightIndex, globalTransform, node)
+    void EnumerateSceneLights(const aiScene* scene, TL::Function<void(uint32_t, aiMatrix4x4, const aiNode*)> callback, const aiNode* node = nullptr, const aiMatrix4x4& parentTransform = aiMatrix4x4()) const
+    {
+        if (!node)
+            node = scene->mRootNode;
+
+        // Compute the global transform for this node
+        aiMatrix4x4 globalTransform = parentTransform * node->mTransformation;
+
+        // Iterate over all lights referenced by this node (Assimp does not directly associate lights with nodes,
+        // but you can match by name if needed)
+        for (unsigned i = 0; i < scene->mNumLights; ++i)
+        {
+            const aiLight* light = scene->mLights[i];
+            if (light->mName == node->mName)
+            {
+                callback(i, globalTransform, node);
+            }
+        }
+
+        // Recurse into children
+        for (unsigned i = 0; i < node->mNumChildren; ++i)
+        {
+            EnumerateSceneLights(scene, callback, node->mChildren[i], globalTransform);
         }
     }
 
@@ -172,16 +199,37 @@ public:
         }
     }
 
+    TL::Vector<TL::Ptr<Engine::StaticMeshLOD>> m_staticMeshes;
+
     void ImportScene(const aiScene* scene)
     {
         EnumerateSceneMeshes(scene, [this, scene](uint32_t index, aiMatrix4x4 modelToWorldMat, const aiNode* node)
             {
-                if (index > 40)
-                    return;
+                auto  mesh       = scene->mMeshes[index];
+                auto& staticMesh = m_staticMeshes.emplace_back(ImportStaticMesh(mesh));
+                m_scene->addMesh(staticMesh.get(), nullptr, ToGlmMatrix(modelToWorldMat), 0);
+            });
 
-                auto mesh       = scene->mMeshes[index];
-                auto staticMesh = ImportStaticMesh(mesh);
-                m_scene->AddStaticMesh(staticMesh, ToGlmMatrix(modelToWorldMat));
+        EnumerateSceneLights(scene, [this, scene](uint32_t index, aiMatrix4x4 modelToWorldMat, const aiNode* node)
+            {
+                auto      light     = scene->mLights[index];
+                glm::mat4 transform = ToGlmMatrix(modelToWorldMat);
+                switch (light->mType)
+                {
+                case aiLightSource_DIRECTIONAL:
+                    {
+                        GPU::DirectionalLight dirLight{
+                            .color     = {light->mColorDiffuse.r, light->mColorDiffuse.g, light->mColorDiffuse.b},
+                            .intensity = 1.0,
+                            .direction = {light->mDirection.x, light->mDirection.y, light->mDirection.z},
+                        };
+                        // m_scene->addLight(dirLight);
+                        break;
+                    }
+                default:
+                    // Unsupported light type
+                    break;
+                }
             });
 
         ImportTextures(scene, [this, scene](const std::string& path, aiTextureType type, const aiTexture* texture)
@@ -189,6 +237,7 @@ public:
                 // TL_LOG_INFO("Loading texture: {}", path);
             });
     }
+
     void LoadFromArgPath()
     {
         Assimp::Importer importer;
@@ -199,7 +248,6 @@ public:
         auto scene = importer.ReadFile("C:/Users/abdul/Desktop/Main.1_Sponza/NewSponza_Main_glTF_002.gltf", flags);
         ImportScene(scene);
     }
-#endif
 
     void OnInit() override
     {
@@ -243,7 +291,48 @@ public:
         m_scene              = Renderer::ptr->CreateScene();
         m_scene->m_imageSize = {m_window->GetSize().width, m_window->GetSize().height};
 
-        // LoadFromArgPath();
+        // // 4 vertices (quad in XY plane)
+        // static const std::array<glm::vec3, 4> positions = {
+        //     glm::vec3(-0.5f, -0.5f, 0.0f), // bottom-left
+        //     glm::vec3(0.5f, -0.5f, 0.0f),  // bottom-right
+        //     glm::vec3(0.5f, 0.5f, 0.0f),   // top-right
+        //     glm::vec3(-0.5f, 0.5f, 0.0f)   // top-left
+        // };
+
+        // // All normals facing +Z
+        // static const std::array<glm::vec3, 4> normals = {
+        //     glm::vec3(0.0f, 0.0f, 1.0f),
+        //     glm::vec3(0.0f, 0.0f, 1.0f),
+        //     glm::vec3(0.0f, 0.0f, 1.0f),
+        //     glm::vec3(0.0f, 0.0f, 1.0f)};
+
+        // // Simple UVs
+        // static const std::array<glm::vec2, 4> texcoords = {
+        //     glm::vec2(0.0f, 0.0f), // bottom-left
+        //     glm::vec2(1.0f, 0.0f), // bottom-right
+        //     glm::vec2(1.0f, 1.0f), // top-right
+        //     glm::vec2(0.0f, 1.0f)  // top-left
+        // };
+
+        // // Two triangles
+        // static const std::array<uint32_t, 6> indices = {
+        //     0,
+        //     1,
+        //     2,
+        //     0,
+        //     2,
+        //     3,
+        // };
+
+        // m_mesh = StaticMeshLOD::create(
+        //     TL::Span<const uint32_t>(indices.data(), indices.size()),
+        //     TL::Span<const glm::vec3>(positions.data(), positions.size()),
+        //     TL::Span<const glm::vec3>(normals.data(), normals.size()),
+        //     TL::Span<const glm::vec2>(texcoords.data(), texcoords.size()));
+
+        // m_scene->addMesh(m_mesh.get(), nullptr, glm::identity<glm::mat4x4>());
+
+        LoadFromArgPath();
     }
 
     void OnShutdown() override
@@ -264,11 +353,11 @@ public:
         m_camera.Update(ts);
         GPU::SceneView sceneViewData{
             .worldToViewMatrix = m_camera.GetView(),
-            .viewToClipMatrix = m_camera.GetProjection(),
+            .viewToClipMatrix  = m_camera.GetProjection(),
         };
 
-        auto& pool = GpuSceneData::ptr->getConstantBuffersPool();
-        pool.update(Renderer::ptr->GetDevice(), m_scene->m_sceneView, sceneViewData);
+        auto& pool = RenderContext::ptr->getConstantBuffersPool();
+        pool.update(m_scene->m_sceneView, sceneViewData);
     }
 
     void Render() override

@@ -81,7 +81,7 @@ namespace Engine
             return err;
         }
 
-        if (auto err = GpuSceneData::ptr->init(m_device); err.IsError())
+        if (auto err = RenderContext::ptr->init(m_device); err.IsError())
         {
             shutdown();
             return err;
@@ -101,7 +101,7 @@ namespace Engine
         ZoneScoped;
 
         DeferredRenderer::ptr->shutdown(m_device);
-        GpuSceneData::ptr->shutdown();
+        RenderContext::ptr->shutdown();
         PipelineLibrary::ptr->shutdown();
         m_device->DestroyRenderGraph(m_renderGraph);
         DestroyDevice(m_device);
@@ -162,7 +162,10 @@ namespace Engine
 
     void Renderer::Render(Scene* scene, const PresentationViewport& viewport)
     {
+
         m_renderGraph->BeginFrame();
+
+        scene->m_drawList.onUpdate(m_device);
 
         auto swapchainBackbuffer = m_renderGraph->ImportSwapchain("swapchain-color-attachment", *viewport.swapchain, RHI::Format::RGBA8_UNORM);
 

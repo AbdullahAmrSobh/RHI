@@ -790,6 +790,13 @@ bool setupCompileRequest(Slang::ComPtr<slang::ISession> session, const Args& arg
         compileRequest->addEntryPoint(tu, e.second.c_str(), e.first);
     }
 
+    // for debug
+    {
+        compileRequest->setOptimizationLevel(SLANG_OPTIMIZATION_LEVEL_NONE);
+        compileRequest->setDebugInfoLevel(SLANG_DEBUG_INFO_LEVEL_MAXIMAL);
+        compileRequest->setDebugInfoFormat(SLANG_DEBUG_INFO_FORMAT_DWARF);
+    }
+
     return true;
 }
 

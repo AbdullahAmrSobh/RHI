@@ -13,13 +13,16 @@ namespace Engine
     // GBufferFill pass
     void GBufferFill::init(RHI::Device* device)
     {
-        m_bindGroupLayout = GPU::GBufferInputs::createBindGroupLayout(device);
-        m_pipelineLayout  = device->CreatePipelineLayout({.name = "GBufferInputs", .layouts = m_bindGroupLayout});
-        m_bindGroup       = device->CreateBindGroup({.name = "bindgrou", .layout = m_bindGroupLayout});
+        // m_bindGroupLayout = GPU::GBufferInputs::createBindGroupLayout(device);
+
+        auto layout = ShaderBindGroup<GPU::GBufferInputs>::getLayout()->get();
+
+        m_pipelineLayout = device->CreatePipelineLayout({.name = "GBufferInputs", .layouts = layout});
 
         // m_sampler      = device->CreateSampler({.name = "gbuffer-sampler"});
         // m_texture      = device->CreateImage({});
-        m_shaderParams = {};
+
+        m_shaderParams.init(device, 0);
 
         // create PSOs
 
@@ -79,8 +82,7 @@ namespace Engine
         // device->DestroySampler(m_sampler);
         device->DestroyGraphicsPipeline(m_pipeline);
         device->DestroyPipelineLayout(m_pipelineLayout);
-        device->DestroyBindGroup(m_bindGroup);
-        device->DestroyBindGroupLayout(m_bindGroupLayout);
+        m_shaderParams.shutdown(device);
     }
 
     void GBufferFill::render(RHI::Device* device, RHI::RenderGraph* rg, const Scene& scene, MeshVisibilityPass& visIn)
@@ -88,7 +90,7 @@ namespace Engine
         m_shaderParams.view           = scene.m_sceneView;
         m_shaderParams.defaultSampler = m_sampler;
         // m_shaderParams.simpleTexture  = m_texture;
-        m_shaderParams.updateBindGroup(device, m_bindGroup);
+        m_shaderParams.update(device);
 
         RHI::ImageSize2D frameSize = scene.m_imageSize;
         rg->AddPass({
@@ -115,14 +117,9 @@ namespace Engine
                     .height  = frameSize.height,
                 });
 
-                cmd.BindGraphicsPipeline(
-                    m_pipeline,
-                    RHI::BindGroupBindingInfo{
-                        .bindGroup      = m_bindGroup,
-                        .dynamicOffsets = {},
-                    });
+                cmd.BindGraphicsPipeline(m_pipeline, m_shaderParams.bind());
 
-                visIn.draw(rg, cmd);
+                visIn.draw(rg, cmd, scene.m_drawList.getCount());
             },
         });
     }
@@ -154,8 +151,7 @@ namespace Engine
         MeshVisibilityPassParams params{
             .name     = "Cull",
             .capacity = 4,
-            .drawList = &scene->m_drawList
-        };
+            .drawList = &scene->m_drawList};
         m_vizabilityPass.addPass(rg, params);
         m_gbufferPass.render(device, rg, *scene, m_vizabilityPass);
 

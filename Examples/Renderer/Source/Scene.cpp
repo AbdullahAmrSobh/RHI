@@ -10,98 +10,72 @@
 
 namespace Engine
 {
-    TL::Error GpuSceneData::init(RHI::Device* device)
+    TL::Error RenderContext::init(RHI::Device* device)
     {
         m_device = device;
 
-        m_constantBuffersPool        = createConstantBufferPool(device, 1_mb);
-        m_structuredBuffersPool      = createStructuredBufferPool(device, 1_mb);
-        m_unifiedGeometryBuffersPool = createMeshBufferPool(device, 1_gb);
+        m_constantBuffersPool.init(device, "constant-buffers", RHI::BufferUsage::Uniform, 4_mb);
+        m_structuredBuffersPool.init(device, "structured-buffers", RHI::BufferUsage::Storage, 4_mb);
+        m_unifiedGeometryBuffersPool.init(device, "unified-geometry-buffers", RHI::BufferUsage::VertexIndex, 2_gb);
 
-        m_SBPoolRenderables.init(m_structuredBuffersPool, 6);
-        m_indexPool.init(m_unifiedGeometryBuffersPool, 1024);
-        m_vertexPoolPositions.init(m_unifiedGeometryBuffersPool, 1024);
-        m_vertexPoolNormals.init(m_unifiedGeometryBuffersPool, 1024);
-        m_vertexPoolUVs.init(m_unifiedGeometryBuffersPool, 1024);
+        m_SBPoolRenderables.init(m_structuredBuffersPool, 1000);
+        m_indexPool.init(m_unifiedGeometryBuffersPool, 15625000);
+        m_vertexPoolPositions.init(m_unifiedGeometryBuffersPool, 15625000);
+        m_vertexPoolNormals.init(m_unifiedGeometryBuffersPool, 15625000);
+        m_vertexPoolUVs.init(m_unifiedGeometryBuffersPool, 15625000);
 
         return TL::NoError;
     }
 
-    void GpuSceneData::shutdown()
+    void RenderContext::shutdown()
     {
-        // freeStructuredBufferPool(m_device, m_SBPoolRenderables);
+        m_SBPoolRenderables.shutdown();
+        m_vertexPoolUVs.shutdown();
+        m_vertexPoolNormals.shutdown();
+        m_vertexPoolPositions.shutdown();
+        m_indexPool.shutdown();
 
-        m_SBPoolRenderables.shutdown(m_structuredBuffersPool);
-        m_vertexPoolUVs.shutdown(m_unifiedGeometryBuffersPool);
-        m_vertexPoolNormals.shutdown(m_unifiedGeometryBuffersPool);
-        m_vertexPoolPositions.shutdown(m_unifiedGeometryBuffersPool);
-        m_indexPool.shutdown(m_unifiedGeometryBuffersPool);
-
-        freeConstantBufferPool(m_device, m_constantBuffersPool);
+        m_constantBuffersPool.shutdown();
     }
 
     TL::Error Scene::init(RHI::Device* device)
     {
-        auto& pool  = GpuSceneData::ptr->getConstantBuffersPool();
-        m_sceneView = pool.allocate<GPU::SceneView>();
+        auto& pool  = RenderContext::ptr->getConstantBuffersPool();
+        m_sceneView = pool.allocate<GPU::SceneView>(1, device->GetLimits().minUniformBufferOffsetAlignment);
 
-        m_drawList.init(10);
+        m_drawList.init(2048);
+        // m_lights.init(RenderContext::ptr->getStructuredBuffersPool(), 128);
 
-        GPU::SceneView v{};
-        v.viewToClipMatrix  = glm::identity<glm::mat4x4>();
-        v.worldToViewMatrix = glm::identity<glm::mat4x4>();
-        pool.update(device, m_sceneView, v);
-
-        // 4 vertices (quad in XY plane)
-        static const std::array<glm::vec3, 4> positions = {
-            glm::vec3(-0.5f, -0.5f, 0.0f), // bottom-left
-            glm::vec3(0.5f, -0.5f, 0.0f),  // bottom-right
-            glm::vec3(0.5f, 0.5f, 0.0f),   // top-right
-            glm::vec3(-0.5f, 0.5f, 0.0f)   // top-left
+        GPU::SceneView v{
+            .worldToViewMatrix = glm::identity<glm::mat4x4>(),
+            .viewToClipMatrix  = glm::identity<glm::mat4x4>(),
         };
-
-        // All normals facing +Z
-        static const std::array<glm::vec3, 4> normals = {
-            glm::vec3(0.0f, 0.0f, 1.0f),
-            glm::vec3(0.0f, 0.0f, 1.0f),
-            glm::vec3(0.0f, 0.0f, 1.0f),
-            glm::vec3(0.0f, 0.0f, 1.0f)};
-
-        // Simple UVs
-        static const std::array<glm::vec2, 4> texcoords = {
-            glm::vec2(0.0f, 0.0f), // bottom-left
-            glm::vec2(1.0f, 0.0f), // bottom-right
-            glm::vec2(1.0f, 1.0f), // top-right
-            glm::vec2(0.0f, 1.0f)  // top-left
-        };
-
-        // Two triangles
-        static const std::array<uint32_t, 6> indices = {
-            0,
-            1,
-            2,
-            0,
-            2,
-            3,
-        };
-
-        m_mesh = StaticMeshLOD::create(
-            TL::Span<const uint32_t>(indices.data(), indices.size()),
-            TL::Span<const glm::vec3>(positions.data(), positions.size()),
-            TL::Span<const glm::vec3>(normals.data(), normals.size()),
-            TL::Span<const glm::vec2>(texcoords.data(), texcoords.size()));
-
-        m_drawList.push(m_mesh.get(), nullptr, glm::identity<glm::mat4x4>());
+        pool.update(m_sceneView, v);
 
         return TL::NoError;
     }
 
     void Scene::shutdown(RHI::Device* m_device)
     {
-        // auto& sbPool = GpuSceneData::ptr->m_structuredBuffersPool;
+        // auto& sbPool = RenderContext::ptr->m_structuredBuffersPool;
         // freeStructuredBuffer(sbPool, m_renderables);
 
-        // auto& cbPool = GpuSceneData::ptr->m_constantBuffersPool;
+        // auto& cbPool = RenderContext::ptr->m_constantBuffersPool;
         // freeConstantBuffer(cbPool, m_sceneCB);
     }
+
+    void Scene::addMesh(const StaticMeshLOD* mesh,
+        const Material*                      material,
+        glm::mat4x4                          transform,
+        uint32_t                             viewMask)
+    {
+        m_drawList.push(mesh, material, transform, viewMask);
+    }
+
+    // void Scene::addLight(GPU::DirectionalLight dirLight)
+    // {
+    //     auto light = m_lights.allocate(1);
+    //     m_lights.update(light, dirLight);
+    // }
+
 } // namespace Engine

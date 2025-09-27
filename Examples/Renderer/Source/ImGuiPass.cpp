@@ -45,7 +45,7 @@ namespace Engine
             .format     = RHI::Format::RGBA8_UNORM,
         };
         m_image        = RHI::CreateImageWithContent(*m_device, atlasTextureCI, TL::Block{pixels, size_t(width * height * 4)});
-        m_projectionCB = GpuSceneData::ptr->getConstantBuffersPool().allocate<glm::mat4x4>(m_maxViewportsCount);
+        m_projectionCB = RenderContext::ptr->getConstantBuffersPool().allocate<glm::mat4x4>(m_maxViewportsCount);
 
         RHI::BindGroupLayout* bindGroupLayout = GPU::ImGuiShaderParam::createBindGroupLayout(device);
 
@@ -126,9 +126,9 @@ namespace Engine
     void ImGuiPass::shutdown()
     {
         // ImGui::RemoveContextHook(ImGui::GetCurrentContext(), m_newframeHook.HookId);
-        // GpuSceneData::ptr->m_geometryBuffersPool.free(m_vertexBuffer);
-        // GpuSceneData::ptr->m_geometryBuffersPool.free(m_indexBuffer);
-        // freeDynamicConstantBuffer(GpuSceneData::ptr->m_constantBuffersPool, m_projectionCB);
+        // RenderContext::ptr->m_geometryBuffersPool.free(m_vertexBuffer);
+        // RenderContext::ptr->m_geometryBuffersPool.free(m_indexBuffer);
+        // freeDynamicConstantBuffer(RenderContext::ptr->m_constantBuffersPool, m_projectionCB);
         m_device->DestroyImage(m_image);
         m_device->DestroySampler(m_sampler);
         m_device->DestroyBindGroup(m_bindGroup);
@@ -144,7 +144,6 @@ namespace Engine
             return nullptr;
 
         {
-            // clang-format on
             float       L = drawData->DisplayPos.x;
             float       R = drawData->DisplayPos.x + drawData->DisplaySize.x;
             float       T = drawData->DisplayPos.y;
@@ -155,8 +154,7 @@ namespace Engine
                 {0.0f, 0.0f, 0.5f, 0.0f},
                 {(R + L) / (L - R), (T + B) / (B - T), 0.5f, 1.0f},
             };
-            GpuSceneData::ptr->getConstantBuffersPool().update(m_device, m_projectionCB, viewportID, mvp);
-            // clang-format off
+            RenderContext::ptr->getConstantBuffersPool().update(m_projectionCB, viewportID, TL::Span<const glm::mat4x4>{mvp});
         }
 
         auto [width, height] = drawData->OwnerViewport->Size;
@@ -170,7 +168,7 @@ namespace Engine
             },
             .executeCallback = [=, this](RHI::CommandList& commandList)
             {
-                auto& pool  = GpuSceneData::ptr->getUnifiedGeometryBuffersPool();
+                auto& pool = RenderContext::ptr->getUnifiedGeometryBuffersPool();
 
                 // Will project scissor/clipping rectangles into framebuffer space
                 ImVec2 clipOff   = drawData->DisplayPos;       // (0,0) unless using multi-viewports
@@ -185,11 +183,11 @@ namespace Engine
                 uint32_t vertexBufferOffset = 0;
                 for (const auto& drawList : drawData->CmdLists)
                 {
-                    commandList.BindIndexBuffer(m_indexBuffer.getBindingAt(indexBufferOffset), RHI::IndexType::uint16);
-                    commandList.BindVertexBuffers(0, m_vertexBuffer.getBindingAt(vertexBufferOffset));
+                    commandList.BindIndexBuffer(m_indexBuffer.getBinding(indexBufferOffset), RHI::IndexType::uint16);
+                    commandList.BindVertexBuffers(0, m_vertexBuffer.getBinding(vertexBufferOffset));
 
-                    pool.update(m_device, m_indexBuffer, indexBufferOffset, { drawList->IdxBuffer.Data, (size_t)drawList->IdxBuffer.Size});
-                    pool.update(m_device, m_vertexBuffer, vertexBufferOffset, { drawList->VtxBuffer.Data, (size_t)drawList->VtxBuffer.Size});
+                    pool.update(m_indexBuffer, indexBufferOffset, {drawList->IdxBuffer.Data, (size_t)drawList->IdxBuffer.Size});
+                    pool.update(m_vertexBuffer, vertexBufferOffset, {drawList->VtxBuffer.Data, (size_t)drawList->VtxBuffer.Size});
                     indexBufferOffset += drawList->IdxBuffer.Size;
                     vertexBufferOffset += drawList->VtxBuffer.Size;
 
@@ -254,9 +252,9 @@ namespace Engine
         if (drawData->DisplaySize.x <= 0.0f || drawData->DisplaySize.y <= 0.0f)
             return false;
 
-        auto& pool  = GpuSceneData::ptr->getUnifiedGeometryBuffersPool();
+        auto& pool = RenderContext::ptr->getUnifiedGeometryBuffersPool();
 
-        auto  vertexBufferSize = m_vertexBuffer.getCount();
+        auto vertexBufferSize = m_vertexBuffer.getElementsCount();
         if ((size_t)drawData->TotalVtxCount > vertexBufferSize)
         {
             vertexBufferSize = (size_t)drawData->TotalVtxCount + 5000;
@@ -267,7 +265,7 @@ namespace Engine
             m_vertexBuffer = pool.allocate<ImDrawVert>(vertexBufferSize);
         }
 
-        auto indexBufferSize = m_indexBuffer.getCount();
+        auto indexBufferSize = m_indexBuffer.getElementsCount();
         if ((size_t)drawData->TotalIdxCount > indexBufferSize)
         {
             indexBufferSize = (size_t)drawData->TotalIdxCount + 10000;

@@ -21,9 +21,9 @@ struct UGBVertexInput
 struct VSOutput
 {
     float4 csPosition: SV_Position;
-    // float3 wsPosition: TEXCOORD1;
-    // float3 normal: TEXCOORD1;
-    // float2 uv: TEXCOORD2;
+    float3 wsPosition: TEXCOORD1;
+    float3 normal: TEXCOORD1;
+    float2 uv: TEXCOORD2;
 };
 
 struct GBufferOutput
@@ -45,9 +45,9 @@ VSOutput VSMain(UGBVertexInput vsInput)
 
     VSOutput output;
     output.csPosition = csPosition;
-    // output.wsPosition = csPosition.xyz;
-    // output.normal = normalize(wsNormal.xyz);
-    // output.uv = input.uv;
+    output.wsPosition = vsInput.position;
+    output.normal = normalize(vsInput.normal);
+    output.uv = vsInput.uv;
     return output;
 }
 
@@ -55,6 +55,6 @@ VSOutput VSMain(UGBVertexInput vsInput)
 GBufferOutput PSMain(VSOutput input)
 {
     GBufferOutput output;
-    output.wsPosition = float4(1.0, 0.4, 0.3, 1.0);
+    output.wsPosition = float4(input.normal, 1.0);
     return output;
 }

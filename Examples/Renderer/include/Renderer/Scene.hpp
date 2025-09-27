@@ -9,10 +9,10 @@
 
 namespace Engine
 {
-    class GpuSceneData : public Singleton<GpuSceneData>
+    class RenderContext : public Singleton<RenderContext>
     {
     public:
-        GpuSceneData() = default;
+        // GpuSceneData() = default;
 
         TL::Error init(RHI::Device* device);
         void      shutdown();
@@ -23,21 +23,26 @@ namespace Engine
         auto& getSBPoolRenderables() { return m_SBPoolRenderables; }
 
         auto& getIndexPool() { return m_indexPool; }
+
         auto& getVertexPoolPositions() { return m_vertexPoolPositions; }
+
         auto& getVertexPoolNormals() { return m_vertexPoolNormals; }
+
         auto& getVertexPoolUVs() { return m_vertexPoolUVs; }
 
-        auto& getConstantBuffersPool() {return m_constantBuffersPool;}
-        auto& getStructuredBuffersPool() {return m_structuredBuffersPool;}
-        auto& getUnifiedGeometryBuffersPool() {return m_unifiedGeometryBuffersPool;}
+        auto& getConstantBuffersPool() { return m_constantBuffersPool; }
 
-    private:
+        auto& getStructuredBuffersPool() { return m_structuredBuffersPool; }
+
+        auto& getUnifiedGeometryBuffersPool() { return m_unifiedGeometryBuffersPool; }
+
+    // private:
         friend struct StaticMeshLOD;
         RHI::Device* m_device;
 
-        ConstantBufferPool m_constantBuffersPool;
-        BufferPool         m_structuredBuffersPool;
-        BufferPool         m_unifiedGeometryBuffersPool;
+        BufferPool m_constantBuffersPool;
+        BufferPool m_structuredBuffersPool;
+        BufferPool m_unifiedGeometryBuffersPool;
 
         GPUArray<GPU::StaticMeshIndexed> m_SBPoolRenderables;
         GPUArray<uint32_t>               m_indexPool;
@@ -46,7 +51,40 @@ namespace Engine
         GPUArray<glm::vec2>              m_vertexPoolUVs;
     };
 
-    class SceneView;
+    // template<typename T>
+    // class SceneComponent
+    // {
+    // public:
+    // };
+
+    // class MeshComponent final : public SceneComponent<MeshComponent>
+    // {
+    // public:
+    //     void updateTransform(const glm::mat4x4& transform);
+    // };
+
+    // class LightComponent final : public SceneComponent<MeshComponent>
+    // {
+    // public:
+    // };
+
+    // class SceneView final : public SceneComponent<SceneView>
+    // {
+    // public:
+    //     SceneView();
+    //     ~SceneView();
+
+    //     void setPosition(const glm::vec3& position);
+    //     void setDirection(const glm::vec3& direction);
+    //     void setUp(const glm::vec3& up);
+    //     void setRight(const glm::vec3& right);
+    //     void setViewMatrix(const glm::mat4x4& view);
+    //     void setProjMatrix(const glm::mat4x4& proj);
+
+    //     void onUpdate(RHI::RenderGraph* rg);
+
+    //     const Buffer<GPU::SceneView>& getConstantBuffer() const;
+    // };
 
     class Scene
     {
@@ -56,11 +94,13 @@ namespace Engine
         TL::Error init(RHI::Device* m_device);
         void      shutdown(RHI::Device* m_device);
 
-        TL::Ptr<StaticMeshLOD> m_mesh;
+        void addMesh(const StaticMeshLOD* mesh,
+            const Material*               material,
+            glm::mat4x4                   transform,
+            uint32_t                      viewMask = 0x1u);
 
         RHI::ImageSize2D       m_imageSize;
         Buffer<GPU::SceneView> m_sceneView;
-
 
         DrawList m_drawList;
     };

@@ -41,6 +41,8 @@ namespace GPU
         U32 indexCount;
         U32 firstIndex;
         I32 vertexOffset;
+
+        I32 _padding;
         // TODO: Add AABB
     };
 

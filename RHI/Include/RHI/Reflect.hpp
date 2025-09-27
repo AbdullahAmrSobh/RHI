@@ -125,22 +125,22 @@ namespace RHI::Debug
     {
         switch (e)
         {
-        case ShaderStage::None:        return "ShaderStage";
-        case ShaderStage::Vertex:      return "ShaderStage";
-        case ShaderStage::Pixel:       return "ShaderStage";
-        case ShaderStage::Compute:     return "ShaderStage";
-        // case ShaderStage::Hull: return "ShaderStage";
-        // case ShaderStage::Domain: return "ShaderStage";
-        // case ShaderStage::RayGen: return "ShaderStage";
-        // case ShaderStage::RayIntersect: return "ShaderStage";
-        // case ShaderStage::RayAnyHit: return "ShaderStage";
-        // case ShaderStage::RayClosestHit: return "ShaderStage";
-        // case ShaderStage::RayMiss: return "ShaderStage";
-        // case ShaderStage::RayCallable: return "ShaderStage";
-        // case ShaderStage::Mesh: return "ShaderStage";
-        // case ShaderStage::Amplification: return "ShaderStage";
-        case ShaderStage::AllGraphics: return "ShaderStage";
-        case ShaderStage::AllStages:   return "ShaderStage";
+        case ShaderStage::None:          return "ShaderStage::None";
+        case ShaderStage::Vertex:        return "ShaderStage::Vertex";
+        case ShaderStage::Pixel:         return "ShaderStage::Pixel";
+        case ShaderStage::Compute:       return "ShaderStage::Compute";
+        case ShaderStage::Hull:          return "ShaderStage::Hull";
+        case ShaderStage::Domain:        return "ShaderStage::Domain";
+        case ShaderStage::RayGen:        return "ShaderStage::RayGen";
+        case ShaderStage::RayIntersect:  return "ShaderStage::RayIntersect";
+        case ShaderStage::RayAnyHit:     return "ShaderStage::RayAnyHit";
+        case ShaderStage::RayClosestHit: return "ShaderStage::RayClosestHit";
+        case ShaderStage::RayMiss:       return "ShaderStage::RayMiss";
+        case ShaderStage::RayCallable:   return "ShaderStage::RayCallable";
+        case ShaderStage::Mesh:          return "ShaderStage::Mesh";
+        case ShaderStage::Amplification: return "ShaderStage::Amplification";
+        case ShaderStage::AllGraphics:   return "ShaderStage::AllGraphics";
+        case ShaderStage::AllStages:     return "ShaderStage::AllStages";
         }
         TL_UNREACHABLE();
         return "---";
@@ -150,14 +150,15 @@ namespace RHI::Debug
     {
         switch (e)
         {
-        case BufferUsage::None:     return "BufferUsage::None";
-        case BufferUsage::Storage:  return "BufferUsage::Storage";
-        case BufferUsage::Uniform:  return "BufferUsage::Uniform";
-        case BufferUsage::Vertex:   return "BufferUsage::Vertex";
-        case BufferUsage::Index:    return "BufferUsage::Index";
-        case BufferUsage::CopySrc:  return "BufferUsage::CopySrc";
-        case BufferUsage::CopyDst:  return "BufferUsage::CopyDst";
-        case BufferUsage::Indirect: return "BufferUsage::Indirect";
+        case BufferUsage::None:        return "BufferUsage::None";
+        case BufferUsage::Storage:     return "BufferUsage::Storage";
+        case BufferUsage::Uniform:     return "BufferUsage::Uniform";
+        case BufferUsage::VertexIndex: return "BufferUsage::VertexIndex";
+        case BufferUsage::Vertex:      return "BufferUsage::Vertex";
+        case BufferUsage::Index:       return "BufferUsage::Index";
+        case BufferUsage::CopySrc:     return "BufferUsage::CopySrc";
+        case BufferUsage::CopyDst:     return "BufferUsage::CopyDst";
+        case BufferUsage::Indirect:    return "BufferUsage::Indirect";
         }
         TL_UNREACHABLE();
         return "---";

@@ -31,6 +31,7 @@ function(compile_shaders_with_headers)
     # Initialize lists to store output files
     set(COMPILE_SHADERS_OUTPUT_FILES)
     set(COMPILE_SHADERS_HEADER_FILES)
+    set(COMPILE_SHADERS_INPUTS)
 
     find_program(CLANG_FORMAT_EXECUTABLE clang-format)
 
@@ -53,7 +54,7 @@ function(compile_shaders_with_headers)
         endforeach()
 
         add_custom_command(
-            OUTPUT ${SPIRV_OUTPUT_PATH} ${HEADER_OUTPUT_PATH}
+            OUTPUT ${SPIRV_OUTPUT_PATH} # ${HEADER_OUTPUT_PATH}
             COMMAND ${SHADER_COMPILER_EXECUTABLE}
                     -s ${SHADER_PATH}
                     ${ENTRY_FLAGS}
@@ -69,8 +70,10 @@ function(compile_shaders_with_headers)
 
         list(APPEND COMPILE_SHADERS_OUTPUT_FILES ${SPIRV_OUTPUT_PATH})
         list(APPEND COMPILE_SHADERS_HEADER_FILES ${HEADER_OUTPUT_PATH})
+        list(APPEND COMPILE_SHADERS_INPUTS ${SHADER_PATH})
         set(COMPILE_SHADERS_OUTPUT_FILES ${COMPILE_SHADERS_OUTPUT_FILES} PARENT_SCOPE)
         set(COMPILE_SHADERS_HEADER_FILES ${COMPILE_SHADERS_HEADER_FILES} PARENT_SCOPE)
+        set(COMPILE_SHADERS_INPUTS ${SHADER_PATH} PARENT_SCOPE)
     endfunction()
 
     # Process shader files
@@ -113,7 +116,7 @@ function(compile_shaders_with_headers)
 
     # Add a custom target to compile all shaders
     add_custom_target(${SHADER_COMPILE_TARGET}-compile-shaders
-        DEPENDS ${COMPILE_SHADERS_OUTPUT_FILES} ${COMPILE_SHADERS_HEADER_FILES}
+        DEPENDS ${COMPILE_SHADERS_OUTPUT_FILES} # ${COMPILE_SHADERS_HEADER_FILES}
     )
 
     # Ensure the main target depends on the shader compilation target

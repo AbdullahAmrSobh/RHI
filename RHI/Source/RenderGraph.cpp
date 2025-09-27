@@ -123,7 +123,7 @@ namespace RHI
 
     void RenderGraphBuilder::ReadBuffer(RGBuffer* bufferHandle, BufferUsage usage, PipelineStage stage)
     {
-        ReadBuffer(bufferHandle, BufferSubregion{.offset = 0, .size = WholeSize}, usage, stage);
+        ReadBuffer(bufferHandle, BufferSubregion{.offset = 0, .size = RemainingSize}, usage, stage);
     }
 
     void RenderGraphBuilder::ReadBuffer(RGBuffer* bufferHandle, const BufferSubregion& subregion, BufferUsage usage, PipelineStage stage)
@@ -133,7 +133,7 @@ namespace RHI
 
     RGBuffer* RenderGraphBuilder::WriteBuffer(RGBuffer* bufferHandle, BufferUsage usage, PipelineStage stage)
     {
-        return WriteBuffer(bufferHandle, BufferSubregion{.offset = 0, .size = WholeSize}, usage, stage);
+        return WriteBuffer(bufferHandle, BufferSubregion{.offset = 0, .size = RemainingSize}, usage, stage);
     }
 
     RGBuffer* RenderGraphBuilder::WriteBuffer(RGBuffer* bufferHandle, const BufferSubregion& subregion, BufferUsage usage, PipelineStage stage)

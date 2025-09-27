@@ -1,10 +1,11 @@
 #include "Shaders/GpuCommonStructs.h"
-
 struct CullParams
 {
-    StructuredBuffer<GPU::StaticMeshIndexed>   staticMeshOffsets;
-    StructuredBuffer<GPU::DrawRequest>         drawRequests;
-    RWStructuredBuffer<uint>                       drawCount;
+    uint32_t drawCount;
+
+    StructuredBuffer<GPU::StaticMeshIndexed>       staticMeshOffsets;
+    StructuredBuffer<GPU::DrawRequest>             drawRequests;
+    RWStructuredBuffer<uint>                       drawCountOut;
     RWStructuredBuffer<GPU::DrawIndexedParameters> drawIndirectArgs;
 };
 
@@ -16,39 +17,35 @@ void CSMain(uint3 dispatchThreadID : SV_DispatchThreadID,
             uint3 groupID          : SV_GroupID)
 {
     uint idx = dispatchThreadID.x;
-    // if (idx >= params.drawRequestCount)
-    //     return;
 
-    // Reset counter once per dispatch (thread 0 only)
+    // Reset once at the beginning
     if (idx == 0)
     {
-        params.drawCount[0] = 0;
-        AllMemoryBarrierWithGroupSync();
+        params.drawCountOut[0] = 0;
     }
+    GroupMemoryBarrierWithGroupSync();
 
-    // GPU::DrawRequest req = params.drawRequests[idx];
-    // GPU::DrawIndexedParameters mesh = params.indexedMeshes[req.meshID];
+    if (idx >= params.drawCount)
+        return;
+
+    // Get request + mesh info
+    GPU::DrawRequest req      = params.drawRequests[idx];
+    GPU::StaticMeshIndexed sm = params.staticMeshOffsets[req.meshID];
 
     // Reserve a slot in the output
     uint outIndex;
-    InterlockedAdd(params.drawCount[0], 1, outIndex);
-
-
-    let staticMesh = params.staticMeshOffsets[outIndex];
+    InterlockedAdd(params.drawCountOut[0], 1, outIndex);
 
     // Fill indirect draw args
     GPU::DrawIndexedParameters args;
-    args.indexCount     = staticMesh.indexCount;
-    args.instanceCount  = 1;
-    args.firstIndex     = staticMesh.firstIndex;
-    args.vertexOffset   = staticMesh.vertexOffset;
-    args.firstInstance  = 0;
+    args.indexCount    = sm.indexCount;
+    args.instanceCount = 1;
+    args.firstIndex    = sm.firstIndex;
+    args.vertexOffset  = sm.vertexOffset;
+    args.firstInstance = idx;
     params.drawIndirectArgs[outIndex] = args;
 
-    // // Fill renderable info (minimal for now)
-    // GPU::SceneRenderable renderable;
-    // renderable.instanceID = req.instanceID;
-    // renderable.materialID = req.materialID;
-    // renderable.meshID     = req.meshID;
-    // params.renderables[outIndex] = renderable;
+    printf("di: idx: %i, meshID: %i (sm.indexCount: %i, sm.firstIndex: %i, sm.vertexOffset: %i) ",
+        idx, req.meshID,
+        sm.indexCount, sm.firstIndex, sm.vertexOffset);
 }

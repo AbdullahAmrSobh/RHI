@@ -385,25 +385,24 @@ namespace RHI::Vulkan
         return m_writes.emplace_back(writeInfo);
     }
 
-    VkWriteDescriptorSet DescriptorSetWriter::BindBuffers(uint32_t dstBinding, uint32_t dstArray, TL::Span<const BufferBindingInfo> buffers)
+    VkWriteDescriptorSet DescriptorSetWriter::BindBuffers(uint32_t dstBinding, uint32_t dstArray, TL::Span<const BufferBindingInfo> bufferBindings)
     {
         auto layout         = (IBindGroupLayout*)(m_bindGroupLayout);
         auto shaderBinding  = layout->GetBinding(dstBinding);
         auto descriptorType = ConvertDescriptorType(shaderBinding.type);
 
         TL::Vector<VkDescriptorBufferInfo>& descriptorBufferInfos = m_buffers.emplace_back(*m_allocator);
-        descriptorBufferInfos.reserve(buffers.size());
-        for (const auto& b : buffers)
+        descriptorBufferInfos.reserve(bufferBindings.size());
+        for (const auto& bufferBinding : bufferBindings)
         {
-            auto buffer = (IBuffer*)(b.buffer);
-            auto stride = shaderBinding.bufferStride;
-            if (stride == 0)
-                stride = VK_WHOLE_SIZE;
+            auto buffer = (IBuffer*)(bufferBinding.buffer);
+            auto offset = bufferBinding.offset;
+            auto range  = (bufferBinding.range == RemainingSize) ? VK_WHOLE_SIZE : bufferBinding.range;
 
             VkDescriptorBufferInfo descriptorInfo = {
                 .buffer = buffer->handle,
-                .offset = b.offset,
-                .range  = stride,
+                .offset = offset,
+                .range  = range,
             };
             descriptorBufferInfos.push_back(descriptorInfo);
         }

@@ -3,11 +3,13 @@
 #include <RHI/RHI.hpp>
 
 #include "Renderer/Common.hpp"
-#include "Renderer/ImGuiPass.hpp"
+#include "Renderer/BindGroup.hpp"
+
+#include "Renderer-Shaders/Compose.hpp"
 #include "Renderer/MeshDrawProcessor.hpp"
+#include "Renderer/ImGuiPass.hpp"
 
 #include "Renderer-Shaders/GBufferPass.hpp"
-#include "Renderer-Shaders/Compose.hpp"
 
 #include "Shaders/GpuCommonStructs.h"
 
@@ -18,15 +20,14 @@ namespace Engine
     struct GBufferFill
     {
     private:
-        RHI::BindGroupLayout*             m_bindGroupLayout = nullptr;
         RHI::PipelineLayout*              m_pipelineLayout  = nullptr;
         RHI::GraphicsPipeline*            m_pipeline        = nullptr;
-        RHI::BindGroup*                   m_bindGroup       = nullptr;
         RHI::Sampler*                     m_sampler         = nullptr;
         RHI::Image*                       m_texture         = nullptr;
         Buffer<GPU::SceneGlobalConstants> m_constantBuffer  = {};
         Buffer<GPU::SceneView>            m_sceneView       = {};
-        GPU::GBufferInputs                m_shaderParams    = {};
+
+        ShaderBindGroup<GPU::GBufferInputs> m_shaderParams;
 
     public:
         RHI::RGImage* colorAttachment = nullptr;

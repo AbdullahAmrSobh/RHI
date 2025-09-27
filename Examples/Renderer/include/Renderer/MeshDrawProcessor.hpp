@@ -4,6 +4,7 @@
 #include <Shaders/GpuCommonStructs.h>
 
 #include "Renderer/Resources.hpp"
+#include "Renderer/BindGroup.hpp"
 
 #include "Renderer-Shaders/Cull.hpp"
 
@@ -84,17 +85,15 @@ namespace Engine
         RHI::BufferBindingInfo getCountBuffer(RHI::RenderGraph* rg);
         RHI::BufferBindingInfo getArgBuffer(RHI::RenderGraph* rg);
         void                   setup(RHI::RenderGraphBuilder& builder);
-        void                   draw(RHI::RenderGraph* rg, RHI::CommandList& cmd);
+        void                   draw(RHI::RenderGraph* rg, RHI::CommandList& cmd, uint32_t maxDrawCount);
 
     private:
         RHI::Device* m_device;
 
         RHI::RGBuffer* m_drawIndirectArgs = nullptr;
 
-        RHI::BindGroupLayout* m_bindGroupLayout;
-
-        GPU::CullParams m_shaderParams;
-        RHI::BindGroup* m_bindGroup;
+        ShaderBindGroup<GPU::CullParams> m_shaderParams;
+        Buffer<GPU::CullParams::CB> m_constants;
 
         RHI::PipelineLayout*  m_pipelineLayout;
         RHI::ComputePipeline* m_pipeline;
