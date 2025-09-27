@@ -1,5 +1,6 @@
 #include "Renderer/MeshDrawProcessor.hpp"
 #include "Renderer/PipelineLibrary.hpp"
+#include "Renderer/Scene.hpp"
 
 namespace Engine
 {
@@ -7,102 +8,98 @@ namespace Engine
     // DrawList
     // --------------------------------------------------------------
 
-    // DrawList::DrawList(uint32_t capacity)
-    // {
-    //     auto& pool = GpuSceneData::ptr->getSBPoolRenderables();
-    //     m_drawList = pool.allocate<DrawList>(capacity);
+    void DrawList::init(uint32_t capacity)
+    {
+        m_capacity = capacity;
+        m_count    = 0;
 
-    //     m_transformData.clear();
-    //     m_drawListData.clear();
+        auto& pool = GpuSceneData::ptr->getStructuredBuffersPool();
+        m_transformAlloc .init(pool, capacity);
+        m_drawAlloc      .init(pool, capacity);
 
-    //     m_drawListData.resize(capacity, GPU::DrawRequest{});
-    // }
+        m_entries.reserve(capacity);
+    }
 
-    // DrawList::~DrawList()
-    // {
-    //     auto& pool = GpuSceneData::ptr->getSBPoolRenderables();
-    //     pool.free<DrawList>(m_drawList);
-    // }
+    void DrawList::shutdown(RHI::Device* device)
+    {
+        if (m_capacity == 0)
+            return;
 
-    // DrawList::DrawList(uint32_t capacity)
-    //     : m_capacity(capacity)
-    //     , m_count(0)
-    // {
-    //     m_transformData.reserve(capacity);
-    //     m_drawListData.reserve(capacity);
-    // }
+        auto& pool = GpuSceneData::ptr->getStructuredBuffersPool();
+        m_transformAlloc.shutdown(pool);
+        m_drawAlloc.shutdown(pool);
 
-    // DrawList::~DrawList()
-    // {
-    // }
+        m_entries.clear();
+        m_capacity = 0;
+        m_count    = 0;
+    }
 
-    // uint32_t DrawList::push(const StaticMeshLOD* mesh, const Material* material, glm::mat4x4 transform, uint32_t viewMask)
-    // {
-    //     TL_ASSERT(m_count < m_capacity, "DrawList overflow");
+    uint32_t DrawList::push(const StaticMeshLOD* mesh,
+        const Material*                          material,
+        glm::mat4x4                              transform,
+        uint32_t                                 viewMask)
+    {
+        TL_ASSERT(m_count < m_capacity);
 
-    //     uint32_t instanceID = m_count++;
+        auto transformAlloc = m_transformAlloc.allocate(1);
+        auto drawAlloc      = m_drawAlloc.allocate(1);
 
-    //     // record transform
-    //     m_transformData.push_back(transform);
+        TL_ASSERT(transformAlloc.valid() && drawAlloc.valid());
 
-    //     // record GPU draw request
-    //     GPU::DrawRequest req{};
-    //     req.meshID     = meshID;
-    //     req.materialID = materialID;
-    //     req.instanceID = instanceID;
-    //     req.viewMask   = viewMask;
-    //     m_drawListData.push_back(req);
+        GPU::DrawRequest req{
+            .meshID     = mesh->m_sbDrawArgs.getOffsetElements(),
+            .materialID = 0, // TODO: hook up material->id
+            .instanceID = transformAlloc.getOffsetElements(),
+            .viewMask   = viewMask,
+        };
 
-    //     return instanceID;
-    // }
+        Entry e{
+            .transformCPU = transform,
+            .drawCPU      = req,
+            .transformGPU = transformAlloc,
+            .drawGPU      = drawAlloc,
+        };
 
-    // void DrawList::remove(uint32_t instanceID)
-    // {
-    //     TL_ASSERT(instanceID < m_count);
+        m_entries.push_back(e);
+        return m_count++;
+    }
 
-    //     // swap with last element
-    //     m_transformData[instanceID] = m_transformData.back();
-    //     m_transformData.pop_back();
+    void DrawList::remove(uint32_t id)
+    {
+        TL_ASSERT(id < m_count);
 
-    //     m_drawListData[instanceID] = m_drawListData.back();
-    //     m_drawListData.pop_back();
+        auto& entry = m_entries[id];
+        m_transformAlloc.free(entry.transformGPU);
+        m_drawAlloc.free(entry.drawGPU);
 
-    //     --m_count;
+        if (id != m_count - 1)
+        {
+            m_entries[id] = m_entries.back();
+        }
+        m_entries.pop_back();
+        --m_count;
+    }
 
-    //     // fix moved element’s instanceID
-    //     if (instanceID < m_count)
-    //     {
-    //         m_drawListData[instanceID].instanceID = instanceID;
-    //     }
-    // }
+    void DrawList::onUpdate(RHI::Device* device)
+    {
+        if (m_count == 0)
+            return;
 
-    // void DrawList::onUpdate(RHI::Device* device)
-    // {
-    //     if (!m_transform.valid())
-    //     {
-    //         // allocate GPU buffers lazily
-    //         auto& meshPool   = GpuSceneData::ptr->(device); // global/shared pool
-    //         auto& structPool = GpuSceneData::ptr->(device); // global/shared pool
+        auto* frame = device->GetCurrentFrame();
 
-    //         m_transform = meshPool.allocate<glm::mat4x4>(m_capacity);
-    //         m_drawList  = structPool.allocate<GPU::DrawRequest>(m_capacity);
-    //     }
+        for (auto& e : m_entries)
+        {
+            frame->BufferWrite(
+                e.transformGPU.getBuffer().getBuffer(),
+                e.transformGPU.getOffsetElementsRaw(),
+                TL::Block::create(&e.transformCPU, sizeof(glm::mat4x4)));
 
-    //     if (m_count > 0)
-    //     {
-    //         device->GetCurrentFrame()->BufferWrite(
-    //             m_transform.getBuffer(),
-    //             m_transform.getOffset(),
-    //             TL::Block::create(m_transformData.data(),
-    //                 m_count * sizeof(glm::mat4x4)));
-
-    //         device->GetCurrentFrame()->BufferWrite(
-    //             m_drawList.getBuffer(),
-    //             m_drawList.getOffset(),
-    //             TL::Block::create(m_drawListData.data(),
-    //                 m_count * sizeof(GPU::DrawRequest)));
-    //     }
-    // }
+            frame->BufferWrite(
+                e.drawGPU.getBuffer().getBuffer(),
+                e.drawGPU.getOffsetElementsRaw(),
+                TL::Block::create(&e.drawCPU, sizeof(GPU::DrawRequest)));
+        }
+    }
 
     // --------------------------------------------------------------
     // MeshVisibilityPass
@@ -135,6 +132,7 @@ namespace Engine
 
         m_shaderParams.drawCount.m_dirty        = true;
         m_shaderParams.drawIndirectArgs.m_dirty = true;
+        m_shaderParams.staticMeshOffsets.m_dirty = true;
 
         return TL::NoError;
     }
@@ -172,6 +170,9 @@ namespace Engine
             },
             .executeCallback = [=, this](RHI::CommandList& cmd)
             {
+                m_shaderParams.drawIndirectArgs.bindingInfo         = input.drawList->getDrawRequests();
+                m_shaderParams.staticMeshOffsets.bindingInfo        = GpuSceneData::ptr->getSBPoolRenderables();
+
                 m_shaderParams.drawCount.bindingInfo        = getCountBuffer(rg);
                 m_shaderParams.drawIndirectArgs.bindingInfo = getArgBuffer(rg);
                 m_shaderParams.updateBindGroup(m_device, m_bindGroup);

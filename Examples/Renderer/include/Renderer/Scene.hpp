@@ -2,6 +2,7 @@
 
 #include "Renderer/Common.hpp"
 #include "Renderer/Resources.hpp"
+#include "Renderer/MeshDrawProcessor.hpp"
 #include "Renderer/Geometry.hpp"
 
 #include "Shaders/GpuCommonStructs.h"
@@ -59,5 +60,8 @@ namespace Engine
 
         RHI::ImageSize2D       m_imageSize;
         Buffer<GPU::SceneView> m_sceneView;
+
+
+        DrawList m_drawList;
     };
 } // namespace Engine

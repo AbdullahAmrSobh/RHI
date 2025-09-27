@@ -2,17 +2,8 @@
 
 struct CullParams
 {
-    // float4x4 viewProjection;
-    // float2   viewportSize;
-    // float2   cameraPosition;
-
-    // uint drawRequestCount;
-    // uint indexedMeshCount;
-
-    // StructuredBuffer<GPU::DrawRequest>         drawRequests;
-    // StructuredBuffer<GPU::DrawIndexedParameters>         indexedMeshes;
-
-    // OUTPUT
+    StructuredBuffer<GPU::StaticMeshIndexed>   staticMeshOffsets;
+    StructuredBuffer<GPU::DrawRequest>         drawRequests;
     RWStructuredBuffer<uint>                       drawCount;
     RWStructuredBuffer<GPU::DrawIndexedParameters> drawIndirectArgs;
 };
@@ -42,12 +33,15 @@ void CSMain(uint3 dispatchThreadID : SV_DispatchThreadID,
     uint outIndex;
     InterlockedAdd(params.drawCount[0], 1, outIndex);
 
+
+    let staticMesh = params.staticMeshOffsets[outIndex];
+
     // Fill indirect draw args
     GPU::DrawIndexedParameters args;
-    args.indexCount     = 6;
+    args.indexCount     = staticMesh.indexCount;
     args.instanceCount  = 1;
-    args.firstIndex     = 0;
-    args.vertexOffset   = 0;
+    args.firstIndex     = staticMesh.firstIndex;
+    args.vertexOffset   = staticMesh.vertexOffset;
     args.firstInstance  = 0;
     params.drawIndirectArgs[outIndex] = args;
 

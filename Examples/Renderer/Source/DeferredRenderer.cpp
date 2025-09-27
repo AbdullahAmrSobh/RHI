@@ -154,6 +154,7 @@ namespace Engine
         MeshVisibilityPassParams params{
             .name     = "Cull",
             .capacity = 4,
+            .drawList = &scene->m_drawList
         };
         m_vizabilityPass.addPass(rg, params);
         m_gbufferPass.render(device, rg, *scene, m_vizabilityPass);

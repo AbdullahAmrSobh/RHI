@@ -291,6 +291,8 @@ namespace Engine
 
         uint32_t getCount() const { return m_count; }
 
+        uint32_t getOffsetElementsRaw() const { return m_parent.getOffsetAtElement(m_offset); } // offset in elements
+
         uint32_t getOffsetElements() const { return m_offset; } // offset in elements
 
         uint32_t getStride() const { return sizeof(T); }
@@ -383,7 +385,7 @@ namespace Engine
             pool.update(device, allocation.getBuffer(), 0, data);
         }
 
-        operator RHI::BufferBindingInfo()
+        operator RHI::BufferBindingInfo() const
         {
             return m_buffer;
         }

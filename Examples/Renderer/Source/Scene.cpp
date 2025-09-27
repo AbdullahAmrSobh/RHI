@@ -14,8 +14,8 @@ namespace Engine
     {
         m_device = device;
 
-        m_constantBuffersPool = createConstantBufferPool(device, 1_mb);
-        m_structuredBuffersPool = createStructuredBufferPool(device, 1_mb);
+        m_constantBuffersPool        = createConstantBufferPool(device, 1_mb);
+        m_structuredBuffersPool      = createStructuredBufferPool(device, 1_mb);
         m_unifiedGeometryBuffersPool = createMeshBufferPool(device, 1_gb);
 
         m_SBPoolRenderables.init(m_structuredBuffersPool, 6);
@@ -44,6 +44,8 @@ namespace Engine
     {
         auto& pool  = GpuSceneData::ptr->getConstantBuffersPool();
         m_sceneView = pool.allocate<GPU::SceneView>();
+
+        m_drawList.init(10);
 
         GPU::SceneView v{};
         v.viewToClipMatrix  = glm::identity<glm::mat4x4>();
@@ -88,6 +90,8 @@ namespace Engine
             TL::Span<const glm::vec3>(positions.data(), positions.size()),
             TL::Span<const glm::vec3>(normals.data(), normals.size()),
             TL::Span<const glm::vec2>(texcoords.data(), texcoords.size()));
+
+        m_drawList.push(m_mesh.get(), nullptr, glm::identity<glm::mat4x4>());
 
         return TL::NoError;
     }
