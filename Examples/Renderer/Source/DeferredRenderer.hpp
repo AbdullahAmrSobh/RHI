@@ -26,7 +26,7 @@ namespace Engine
         RHI::Image*                       m_texture         = nullptr;
         Buffer<GPU::SceneGlobalConstants> m_constantBuffer  = {};
         Buffer<GPU::SceneView>            m_sceneView       = {};
-        sig::GBufferInputs                m_shaderParams    = {};
+        GPU::GBufferInputs                m_shaderParams    = {};
 
     public:
         RHI::RGImage* colorAttachment = nullptr;

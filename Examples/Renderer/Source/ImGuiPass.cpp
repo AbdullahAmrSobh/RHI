@@ -47,11 +47,11 @@ namespace Engine
         m_image        = RHI::CreateImageWithContent(*m_device, atlasTextureCI, TL::Block{pixels, size_t(width * height * 4)});
         m_projectionCB = GpuSceneData::ptr->getConstantBuffersPool().allocate<glm::mat4x4>(m_maxViewportsCount);
 
-        RHI::BindGroupLayout* bindGroupLayout = sig::ImGuiShaderParam::createBindGroupLayout(device);
+        RHI::BindGroupLayout* bindGroupLayout = GPU::ImGuiShaderParam::createBindGroupLayout(device);
 
         m_bindGroup = m_device->CreateBindGroup({.layout = bindGroupLayout});
 
-        sig::ImGuiShaderParam shaderParams = {};
+        GPU::ImGuiShaderParam shaderParams = {};
         shaderParams.projection            = this->m_projectionCB;
         shaderParams.texture0              = m_image;
         shaderParams.sampler0              = m_sampler;

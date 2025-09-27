@@ -93,7 +93,7 @@ namespace Engine
 
         RHI::BindGroupLayout* m_bindGroupLayout;
 
-        sig::CullParams m_shaderParams;
+        GPU::CullParams m_shaderParams;
         RHI::BindGroup* m_bindGroup;
 
         RHI::PipelineLayout*  m_pipelineLayout;

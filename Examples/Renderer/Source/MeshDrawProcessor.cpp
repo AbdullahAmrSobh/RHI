@@ -108,7 +108,7 @@ namespace Engine
     TL::Error MeshVisibilityPass::init(RHI::Device* device)
     {
         m_device          = device;
-        m_bindGroupLayout = sig::CullParams::createBindGroupLayout(device);
+        m_bindGroupLayout = GPU::CullParams::createBindGroupLayout(device);
         m_bindGroup       = device->CreateBindGroup({.name = "CULL-BG", .layout = m_bindGroupLayout});
 
         m_pipelineLayout = device->CreatePipelineLayout({.name = "CULL-PL", .layouts = m_bindGroupLayout});
@@ -147,7 +147,7 @@ namespace Engine
 
     RHI::RGPass* MeshVisibilityPass::addPass(RHI::RenderGraph* rg, const MeshVisibilityPassParams& input)
     {
-        // sig::CullParams::CB cb{
+        // GPU::CullParams::CB cb{
         //     .viewProjection   = {},
         //     .viewportSize     = {},
         //     .cameraPosition   = {},

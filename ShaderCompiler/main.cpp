@@ -181,7 +181,7 @@ namespace BGC
         TL::Map<TL::String, codegen::Type*> types = {};
 
         codegen::Generator generator       = {};
-        codegen::Scope     scopeSig        = {"sig", generator.rootScope(), codegen::ScopeKind::Namespace};
+        codegen::Scope     scopeSig        = {"GPU", generator.rootScope(), codegen::ScopeKind::Namespace};
         codegen::Type*     device          = getType("RHI::Device*", true);
         codegen::Type*     bindGroup       = getType("RHI::BindGroup*", true);
         codegen::Type*     bindGroupLayout = getType("RHI::BindGroupLayout*", true);

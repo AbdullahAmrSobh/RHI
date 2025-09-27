@@ -13,7 +13,7 @@ namespace Engine
     // GBufferFill pass
     void GBufferFill::init(RHI::Device* device)
     {
-        m_bindGroupLayout = sig::GBufferInputs::createBindGroupLayout(device);
+        m_bindGroupLayout = GPU::GBufferInputs::createBindGroupLayout(device);
         m_pipelineLayout  = device->CreatePipelineLayout({.name = "GBufferInputs", .layouts = m_bindGroupLayout});
         m_bindGroup       = device->CreateBindGroup({.name = "bindgrou", .layout = m_bindGroupLayout});
 
