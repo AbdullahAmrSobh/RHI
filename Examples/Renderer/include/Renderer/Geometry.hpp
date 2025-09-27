@@ -16,13 +16,6 @@
 
 namespace Engine
 {
-    static RHI::PipelineVertexBindingDesc UGB_VertexLayout[] = {
-        {sizeof(glm::vec3), RHI::PipelineVertexInputRate::PerVertex, RHI::PipelineVertexAttributeDesc{0, RHI::Format::RGB32_FLOAT}},    // position
-        {sizeof(glm::vec3), RHI::PipelineVertexInputRate::PerVertex, RHI::PipelineVertexAttributeDesc{0, RHI::Format::RGB32_FLOAT}},    // normal
-        {sizeof(glm::vec2), RHI::PipelineVertexInputRate::PerVertex, RHI::PipelineVertexAttributeDesc{0, RHI::Format::RG32_FLOAT}},     // texcoord
-        // {sizeof(glm::ivec4), RHI::PipelineVertexInputRate::PerInstance, RHI::PipelineVertexAttributeDesc{0, RHI::Format::RGBA32_UINT}}, // draw-id
-    };
-
     struct StaticMeshLOD
     {
     public:
@@ -36,11 +29,11 @@ namespace Engine
         StaticMeshLOD(uint32_t indexCount, uint32_t elementsCount);
         ~StaticMeshLOD();
 
-        GPU::StaticMeshIndexed                   m_drawArgs;
-        StructuredBuffer<GPU::StaticMeshIndexed> m_sbDrawArgs;
-        MeshBuffer<uint32_t>                     m_indexBuffer;
-        MeshBuffer<glm::vec3>                    m_vbPositions;
-        MeshBuffer<glm::vec3>                    m_vbNormals;
-        MeshBuffer<glm::vec2>                    m_vbTexcoord;
+        GPU::StaticMeshIndexed                     m_drawArgs;
+        GPUArrayAllocation<GPU::StaticMeshIndexed> m_sbDrawArgs;
+        GPUArrayAllocation<uint32_t>               m_indexBuffer;
+        GPUArrayAllocation<glm::vec3>              m_vbPositions;
+        GPUArrayAllocation<glm::vec3>              m_vbNormals;
+        GPUArrayAllocation<glm::vec2>              m_vbTexcoord;
     };
 } // namespace Engine

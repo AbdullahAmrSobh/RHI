@@ -8,7 +8,6 @@
 
 namespace Engine
 {
-
     class GpuSceneData : public Singleton<GpuSceneData>
     {
     public:
@@ -20,29 +19,33 @@ namespace Engine
         TL::Ptr<StaticMeshLOD> createMesh(uint32_t elementsCount, uint32_t vertexCount);
 
     public:
-        auto& getConstantBuffersPool()  { return m_constantBuffersPool; }
+        auto& getSBPoolRenderables() { return m_SBPoolRenderables; }
 
-        auto& getSBPoolRenderables()  { return m_SBPoolRenderables; }
+        auto& getIndexPool() { return m_indexPool; }
+        auto& getVertexPoolPositions() { return m_vertexPoolPositions; }
+        auto& getVertexPoolNormals() { return m_vertexPoolNormals; }
+        auto& getVertexPoolUVs() { return m_vertexPoolUVs; }
 
-        auto& getIndexPool()  { return m_indexPool; }
-
-        auto& getVertexPoolPositions()  { return m_vertexPoolPositions; }
-
-        auto& getVertexPoolNormals()  { return m_vertexPoolNormals; }
-
-        auto& getVertexPoolUVs()  { return m_vertexPoolUVs; }
+        auto& getConstantBuffersPool() {return m_constantBuffersPool;}
+        auto& getStructuredBuffersPool() {return m_structuredBuffersPool;}
+        auto& getUnifiedGeometryBuffersPool() {return m_unifiedGeometryBuffersPool;}
 
     private:
         friend struct StaticMeshLOD;
         RHI::Device* m_device;
 
-        ConstantBufferPool                           m_constantBuffersPool;
-        StructuredBufferPool m_SBPoolRenderables;
-        MeshBufferPool m_indexPool;
-        MeshBufferPool m_vertexPoolPositions;
-        MeshBufferPool m_vertexPoolNormals;
-        MeshBufferPool m_vertexPoolUVs;
+        ConstantBufferPool m_constantBuffersPool;
+        BufferPool         m_structuredBuffersPool;
+        BufferPool         m_unifiedGeometryBuffersPool;
+
+        GPUArray<GPU::StaticMeshIndexed> m_SBPoolRenderables;
+        GPUArray<uint32_t>               m_indexPool;
+        GPUArray<glm::vec3>              m_vertexPoolPositions;
+        GPUArray<glm::vec3>              m_vertexPoolNormals;
+        GPUArray<glm::vec2>              m_vertexPoolUVs;
     };
+
+    class SceneView;
 
     class Scene
     {
@@ -54,7 +57,7 @@ namespace Engine
 
         TL::Ptr<StaticMeshLOD> m_mesh;
 
-        RHI::ImageSize2D               m_imageSize;
-        ConstantBuffer<GPU::SceneView> m_sceneView;
+        RHI::ImageSize2D       m_imageSize;
+        Buffer<GPU::SceneView> m_sceneView;
     };
 } // namespace Engine

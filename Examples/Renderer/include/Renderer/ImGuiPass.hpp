@@ -39,12 +39,11 @@ namespace Engine
         RHI::GraphicsPipeline* m_pipeline;
         RHI::BindGroup*        m_bindGroup;
 
-        RHI::Sampler*               m_sampler;
-        RHI::Image*                 m_image;
-        ConstantBuffer<glm::mat4x4> m_projectionCB;
+        RHI::Sampler* m_sampler;
+        RHI::Image*   m_image;
 
-        MeshBufferPool          m_buffersPool;
-        MeshBuffer<ImDrawIdx>   m_indexBuffer;
-        MeshBuffer<ImDrawVert>  m_vertexBuffer;
+        Buffer<glm::mat4x4> m_projectionCB;
+        Buffer<ImDrawIdx>   m_indexBuffer;
+        Buffer<ImDrawVert>  m_vertexBuffer;
     };
 } // namespace Engine

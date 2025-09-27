@@ -10,28 +10,33 @@
 
 namespace Engine
 {
-
     TL::Error GpuSceneData::init(RHI::Device* device)
     {
         m_device = device;
 
         m_constantBuffersPool = createConstantBufferPool(device, 1_mb);
-        m_SBPoolRenderables   = createStructuredBufferPool(device, 4_mb);
-        m_indexPool           = createMeshBufferPool(device, sizeof(uint32_t) * 1024);
-        m_vertexPoolPositions = createMeshBufferPool(device, sizeof(glm::vec3) * 1024);
-        m_vertexPoolNormals   = createMeshBufferPool(device, sizeof(glm::vec3) * 1024);
-        m_vertexPoolUVs       = createMeshBufferPool(device, sizeof(glm::vec2) * 1024);
+        m_structuredBuffersPool = createStructuredBufferPool(device, 1_mb);
+        m_unifiedGeometryBuffersPool = createMeshBufferPool(device, 1_gb);
+
+        m_SBPoolRenderables.init(m_structuredBuffersPool, 6);
+        m_indexPool.init(m_unifiedGeometryBuffersPool, 1024);
+        m_vertexPoolPositions.init(m_unifiedGeometryBuffersPool, 1024);
+        m_vertexPoolNormals.init(m_unifiedGeometryBuffersPool, 1024);
+        m_vertexPoolUVs.init(m_unifiedGeometryBuffersPool, 1024);
 
         return TL::NoError;
     }
 
     void GpuSceneData::shutdown()
     {
-        freeMeshBufferPool(m_device, m_vertexPoolUVs);
-        freeMeshBufferPool(m_device, m_vertexPoolNormals);
-        freeMeshBufferPool(m_device, m_vertexPoolPositions);
-        freeMeshBufferPool(m_device, m_indexPool);
-        freeStructuredBufferPool(m_device, m_SBPoolRenderables);
+        // freeStructuredBufferPool(m_device, m_SBPoolRenderables);
+
+        m_SBPoolRenderables.shutdown(m_structuredBuffersPool);
+        m_vertexPoolUVs.shutdown(m_unifiedGeometryBuffersPool);
+        m_vertexPoolNormals.shutdown(m_unifiedGeometryBuffersPool);
+        m_vertexPoolPositions.shutdown(m_unifiedGeometryBuffersPool);
+        m_indexPool.shutdown(m_unifiedGeometryBuffersPool);
+
         freeConstantBufferPool(m_device, m_constantBuffersPool);
     }
 
@@ -70,8 +75,12 @@ namespace Engine
 
         // Two triangles
         static const std::array<uint32_t, 6> indices = {
-            0, 1, 2,
-            0, 2, 3,
+            0,
+            1,
+            2,
+            0,
+            2,
+            3,
         };
 
         m_mesh = StaticMeshLOD::create(

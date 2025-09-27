@@ -203,13 +203,13 @@ namespace Engine
 
     void MeshVisibilityPass::draw(RHI::RenderGraph* rg, RHI::CommandList& cmd)
     {
-        cmd.BindIndexBuffer(GpuSceneData::ptr->getIndexPool().getBaseBinding(), RHI::IndexType::uint32);
+        cmd.BindIndexBuffer(GpuSceneData::ptr->getIndexPool(), RHI::IndexType::uint32);
         cmd.BindVertexBuffers(
             0,
             {
-                GpuSceneData::ptr->getVertexPoolPositions().getBaseBinding(),
-                GpuSceneData::ptr->getVertexPoolNormals().getBaseBinding(),
-                GpuSceneData::ptr->getVertexPoolUVs().getBaseBinding(),
+                GpuSceneData::ptr->getVertexPoolPositions(),
+                GpuSceneData::ptr->getVertexPoolNormals(),
+                GpuSceneData::ptr->getVertexPoolUVs(),
                 // {rg->GetBufferHandle(m_instanceBuffer), 0},
             });
         cmd.DrawIndexedIndirect(

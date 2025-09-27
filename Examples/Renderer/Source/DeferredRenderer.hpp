@@ -18,31 +18,31 @@ namespace Engine
     struct GBufferFill
     {
     private:
-        RHI::BindGroupLayout*                     m_bindGroupLayout = nullptr;
-        RHI::PipelineLayout*                      m_pipelineLayout  = nullptr;
-        RHI::GraphicsPipeline*                    m_pipeline        = nullptr;
-        RHI::BindGroup*                           m_bindGroup       = nullptr;
-        RHI::Sampler*                             m_sampler         = nullptr;
-        RHI::Image*                               m_texture         = nullptr;
-        ConstantBuffer<GPU::SceneGlobalConstants> m_constantBuffer  = {};
-        ConstantBuffer<GPU::SceneView>            m_sceneView       = {};
-        sig::GBufferInputs                        m_shaderParams    = {};
+        RHI::BindGroupLayout*             m_bindGroupLayout = nullptr;
+        RHI::PipelineLayout*              m_pipelineLayout  = nullptr;
+        RHI::GraphicsPipeline*            m_pipeline        = nullptr;
+        RHI::BindGroup*                   m_bindGroup       = nullptr;
+        RHI::Sampler*                     m_sampler         = nullptr;
+        RHI::Image*                       m_texture         = nullptr;
+        Buffer<GPU::SceneGlobalConstants> m_constantBuffer  = {};
+        Buffer<GPU::SceneView>            m_sceneView       = {};
+        sig::GBufferInputs                m_shaderParams    = {};
 
     public:
         RHI::RGImage* colorAttachment = nullptr;
 
         void init(RHI::Device* device);
         void shutdown(RHI::Device* device);
-        void render(RHI::Device* device, RHI::RenderGraph* rg, const Scene& scene,  MeshVisibilityPass& visIn);
+        void render(RHI::Device* device, RHI::RenderGraph* rg, const Scene& scene, MeshVisibilityPass& visIn);
     };
 
     class DeferredRenderer : public Singleton<DeferredRenderer>
     {
     public:
-        ImGuiPass   m_imguiPass;
+        ImGuiPass m_imguiPass;
 
         MeshVisibilityPass m_vizabilityPass;
-        GBufferFill m_gbufferPass;
+        GBufferFill        m_gbufferPass;
 
         TL::Error init(RHI::Device* device);
         void      shutdown(RHI::Device* device);

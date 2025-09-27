@@ -20,7 +20,6 @@ namespace Engine
     {
         m_device            = device;
         m_maxViewportsCount = maxViewportsCount;
-        m_buffersPool       = createMeshBufferPool(device, 1_mb);
         m_indexBuffer       = {};
         m_vertexBuffer      = {};
 
@@ -53,7 +52,7 @@ namespace Engine
         m_bindGroup = m_device->CreateBindGroup({.layout = bindGroupLayout});
 
         sig::ImGuiShaderParam shaderParams = {};
-        shaderParams.projection                    = this->m_projectionCB;
+        shaderParams.projection            = this->m_projectionCB;
         shaderParams.texture0              = m_image;
         shaderParams.sampler0              = m_sampler;
         shaderParams.updateBindGroup(m_device, m_bindGroup);
@@ -130,7 +129,6 @@ namespace Engine
         // GpuSceneData::ptr->m_geometryBuffersPool.free(m_vertexBuffer);
         // GpuSceneData::ptr->m_geometryBuffersPool.free(m_indexBuffer);
         // freeDynamicConstantBuffer(GpuSceneData::ptr->m_constantBuffersPool, m_projectionCB);
-        freeMeshBufferPool(m_device, m_buffersPool);
         m_device->DestroyImage(m_image);
         m_device->DestroySampler(m_sampler);
         m_device->DestroyBindGroup(m_bindGroup);
@@ -172,7 +170,7 @@ namespace Engine
             },
             .executeCallback = [=, this](RHI::CommandList& commandList)
             {
-                auto& pool  = m_buffersPool;
+                auto& pool  = GpuSceneData::ptr->getUnifiedGeometryBuffersPool();
 
                 // Will project scissor/clipping rectangles into framebuffer space
                 ImVec2 clipOff   = drawData->DisplayPos;       // (0,0) unless using multi-viewports
@@ -190,8 +188,8 @@ namespace Engine
                     commandList.BindIndexBuffer(m_indexBuffer.getBindingAt(indexBufferOffset), RHI::IndexType::uint16);
                     commandList.BindVertexBuffers(0, m_vertexBuffer.getBindingAt(vertexBufferOffset));
 
-                    m_buffersPool.update<ImDrawIdx>(m_device, m_indexBuffer, indexBufferOffset, { drawList->IdxBuffer.Data, (size_t)drawList->IdxBuffer.Size});
-                    m_buffersPool.update<ImDrawVert>(m_device, m_vertexBuffer, vertexBufferOffset, { drawList->VtxBuffer.Data, (size_t)drawList->VtxBuffer.Size});
+                    pool.update(m_device, m_indexBuffer, indexBufferOffset, { drawList->IdxBuffer.Data, (size_t)drawList->IdxBuffer.Size});
+                    pool.update(m_device, m_vertexBuffer, vertexBufferOffset, { drawList->VtxBuffer.Data, (size_t)drawList->VtxBuffer.Size});
                     indexBufferOffset += drawList->IdxBuffer.Size;
                     vertexBufferOffset += drawList->VtxBuffer.Size;
 
@@ -256,7 +254,7 @@ namespace Engine
         if (drawData->DisplaySize.x <= 0.0f || drawData->DisplaySize.y <= 0.0f)
             return false;
 
-        auto& pool  = m_buffersPool;
+        auto& pool  = GpuSceneData::ptr->getUnifiedGeometryBuffersPool();
 
         auto  vertexBufferSize = m_vertexBuffer.getCount();
         if ((size_t)drawData->TotalVtxCount > vertexBufferSize)
