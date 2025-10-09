@@ -702,32 +702,27 @@ namespace RHI::Vulkan
     // IGraphicsPipeline
     ////////////////////////////////////////////////////////////////////////
 
+    VkPipelineShaderStageCreateInfo convertShaderStage(PipelineShaderStage stage, VkShaderStageFlagBits stageFlags)
+    {
+        auto shaderModule = (IShaderModule*)stage.module;
+
+        return {
+            .sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .pNext               = nullptr,
+            .flags               = 0,
+            .stage               = stageFlags,
+            .module              = shaderModule->m_shaderModule,
+            .pName               = stage.name,
+            .pSpecializationInfo = nullptr,
+        };
+    }
+
     ResultCode IGraphicsPipeline::Init(IDevice* device, const GraphicsPipelineCreateInfo& createInfo)
     {
-        TL::Vector<VkPipelineShaderStageCreateInfo> stagesCreateInfos{device->GetTempAllocator()};
-        {
-            VkPipelineShaderStageCreateInfo vertexStageCI{
-                .sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-                .pNext               = nullptr,
-                .flags               = 0,
-                .stage               = VK_SHADER_STAGE_VERTEX_BIT,
-                .module              = static_cast<IShaderModule*>(createInfo.vertexShaderModule)->m_shaderModule,
-                .pName               = createInfo.vertexShaderName,
-                .pSpecializationInfo = nullptr,
-            };
-            stagesCreateInfos.push_back(vertexStageCI);
-
-            VkPipelineShaderStageCreateInfo pixelStageCI{
-                .sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-                .pNext               = nullptr,
-                .flags               = 0,
-                .stage               = VK_SHADER_STAGE_FRAGMENT_BIT,
-                .module              = static_cast<IShaderModule*>(createInfo.pixelShaderModule)->m_shaderModule,
-                .pName               = createInfo.pixelShaderName,
-                .pSpecializationInfo = nullptr,
-            };
-            stagesCreateInfos.push_back(pixelStageCI);
-        }
+        std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages = {
+            (convertShaderStage(createInfo.vertexShader, VK_SHADER_STAGE_VERTEX_BIT)),
+            (convertShaderStage(createInfo.pixelShader, VK_SHADER_STAGE_FRAGMENT_BIT)),
+        };
 
         TL::Vector<VkVertexInputBindingDescription>   vertexBindings{device->GetTempAllocator()};
         TL::Vector<VkVertexInputAttributeDescription> vertexAttributes{device->GetTempAllocator()};
@@ -896,8 +891,8 @@ namespace RHI::Vulkan
             .sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
             .pNext               = &renderTargetLayout,
             .flags               = 0,
-            .stageCount          = (uint32_t)stagesCreateInfos.size(),
-            .pStages             = stagesCreateInfos.data(),
+            .stageCount          = (uint32_t)shaderStages.size(),
+            .pStages             = shaderStages.data(),
             .pVertexInputState   = &vertexInputStateCI,
             .pInputAssemblyState = &inputAssemblyStateCI,
             .pTessellationState  = &tessellationStateCI,
@@ -938,25 +933,14 @@ namespace RHI::Vulkan
 
     ResultCode IComputePipeline::Init(IDevice* device, const ComputePipelineCreateInfo& createInfo)
     {
-        auto shaderModule = static_cast<IShaderModule*>(createInfo.shaderModule);
-
         this->layout = (IPipelineLayout*)createInfo.layout;
-
-        VkPipelineShaderStageCreateInfo shaderStageCI{
-            .sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-            .pNext               = nullptr,
-            .flags               = 0,
-            .stage               = VK_SHADER_STAGE_COMPUTE_BIT,
-            .module              = shaderModule->m_shaderModule,
-            .pName               = createInfo.shaderName,
-            .pSpecializationInfo = nullptr,
-        };
+        auto shaderStage = convertShaderStage(createInfo.computeShader, VK_SHADER_STAGE_COMPUTE_BIT);
 
         VkComputePipelineCreateInfo computePipelineCI{
             .sType              = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
             .pNext              = nullptr,
             .flags              = {},
-            .stage              = shaderStageCI,
+            .stage              = shaderStage,
             .layout             = layout->handle,
             .basePipelineHandle = VK_NULL_HANDLE,
             .basePipelineIndex  = 0,
@@ -972,6 +956,43 @@ namespace RHI::Vulkan
 
         if (handle)
             device->m_destroyQueue->Push(frame->GetTimelineValue(), handle);
+    }
+
+    ResultCode IRayTracingPipeline::Init(IDevice* device, const ComputePipelineCreateInfo& createInfo)
+    {
+        TL::Vector<VkPipelineShaderStageCreateInfo> shaderStagesCI{
+
+        };
+
+        TL::Vector<VkRayTracingShaderGroupCreateInfoKHR> shaderGroupsCI{
+
+        };
+
+        // VkPipelineLibraryCreateInfoKHR
+        // VkRayTracingPipelineInterfaceCreateInfoKHR
+        // VkPipelineDynamicStateCreateInfo
+
+        VkRayTracingPipelineCreateInfoKHR pipelineCI{
+            .sType                        = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR,
+            .pNext                        = {},
+            .flags                        = {},
+            .stageCount                   = {},
+            .pStages                      = {},
+            .groupCount                   = {},
+            .pGroups                      = {},
+            .maxPipelineRayRecursionDepth = {},
+            .pLibraryInfo                 = {},
+            .pLibraryInterface            = {},
+            .pDynamicState                = {},
+            .layout                       = {},
+            .basePipelineHandle           = {},
+            .basePipelineIndex            = {},
+        };
+        return ResultCode::Success;
+    }
+
+    void IRayTracingPipeline::Shutdown(IDevice* device)
+    {
     }
 
     ////////////////////////////////////////////////////////////////////////

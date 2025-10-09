@@ -6,9 +6,13 @@
 #include "RHI/PipelineAccess.hpp"
 #include "RHI/CommandList.hpp"
 
+#include <TL/Ptr.hpp>
+
 #include <TL/Allocator/Arena.hpp>
-#include <TL/Containers.hpp>
-#include <TL/UniquePtr.hpp>
+#include <TL/Containers/Function.hpp>
+#include <TL/Containers/Set.hpp>
+#include <TL/Containers/Map.hpp>
+#include <TL/Containers/Vector.hpp>
 
 namespace RHI
 {
@@ -182,10 +186,16 @@ namespace RHI
 
         /// Graphics Pass specfic
         RGImage*  AddColorAttachment(RGColorAttachment attachment);
+
         RGImage*  SetDepthStencil(RGDepthStencilAttachment attachment);
 
         RGImage*  AddColorAttachment(RGImage* target, LoadOperation loadOp, ClearValue clear = {});
+
         RGImage*  CreateColorTarget(const char* name, ImageSize2D size, Format format, ClearValue clear = {});
+
+        RGImage*  CreateDepthStencil(const char* name, ImageSize2D size, Format format, ClearValue clear = {});
+
+        RGImage*  CreateImage(const char* name, ImageType type, ImageSize3D size, Format format, uint32_t mipLevels = 1, uint32_t arrayCount = 1, SampleCount samples = SampleCount::Samples1);
 
         RGBuffer* CreateBuffer(const char* name, size_t size, BufferUsage usage, PipelineStage stage);
 
@@ -402,9 +412,6 @@ namespace RHI
     private:
         // Bind group stuff
 
-        /// Gets or creates a new bind group with provided resources.
-        BindGroup*      AllocateBindGroup(BindGroupLayout* layout, const BindGroupUpdateInfo& updateInfo);
-
         RGFrameImage*   CreateFrameImage(const char* name);
         RGFrameBuffer*  CreateFrameBuffer(const char* name);
 
@@ -462,6 +469,7 @@ namespace RHI
         Device*                               m_device;
         Frame*                                m_activeFrame;
         TL::Ptr<RenderGraphResourcePool>      m_resourcePool;
+
         TL::Arena                             m_arena;
         TL::Vector<SwapchainImageAcquireInfo> m_swapchains{m_arena};
         TL::Vector<RGPass*>                   m_passPool{m_arena};

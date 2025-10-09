@@ -24,9 +24,14 @@
 #include "Frame.hpp"
 #include "RHI-Vulkan/Loader.hpp"
 
-#include <TL/Allocator/Allocator.hpp>
-#include <TL/Assert.hpp>
 #include <TL/Log.hpp>
+#include <TL/Assert.hpp>
+#include <TL/Containers/Optional.hpp>
+#include <TL/Allocator/Allocator.hpp>
+
+#include <Libraries/Foundation/Assert.h>
+
+#include <Libraries/Containers/Vector.h>
 
 #include <algorithm>
 #include <format>
@@ -798,7 +803,7 @@ namespace RHI::Vulkan
 
     Swapchain* IDevice ::CreateSwapchain(const SwapchainCreateInfo& createInfo)
     {
-        auto handle = TL ::Construct<ISwapchain>();
+        auto handle = TL ::construct<ISwapchain>();
         auto result = handle->Init(this, createInfo);
         TL_ASSERT(IsSuccess(result));
         m_liveSwapchains.emplace(handle, TL::CaptureStacktrace());
@@ -811,12 +816,12 @@ namespace RHI::Vulkan
         TL_ASSERT(erased);
         auto handle = (ISwapchain*)_handle;
         handle->Shutdown(this);
-        TL ::Destruct(_handle);
+        TL::destruct(_handle);
     };
 
     ShaderModule* IDevice ::CreateShaderModule(const ShaderModuleCreateInfo& createInfo)
     {
-        auto handle = TL ::Construct<IShaderModule>();
+        auto handle = TL ::construct<IShaderModule>();
         auto result = handle->Init(this, createInfo);
         TL_ASSERT(IsSuccess(result));
         m_liveShaderModules.emplace(handle, TL::CaptureStacktrace());
@@ -829,12 +834,12 @@ namespace RHI::Vulkan
         TL_ASSERT(erased);
         auto handle = (IShaderModule*)_handle;
         handle->Shutdown(this);
-        TL ::Destruct(_handle);
+        TL::destruct(_handle);
     };
 
     BindGroupLayout* IDevice ::CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)
     {
-        auto handle = TL ::Construct<IBindGroupLayout>();
+        auto handle = TL ::construct<IBindGroupLayout>();
         auto result = handle->Init(this, createInfo);
         TL_ASSERT(IsSuccess(result));
         m_liveBindGroupLayouts.emplace(handle, TL::CaptureStacktrace());
@@ -847,12 +852,12 @@ namespace RHI::Vulkan
         TL_ASSERT(erased);
         auto handle = (IBindGroupLayout*)_handle;
         handle->Shutdown(this);
-        TL ::Destruct(_handle);
+        TL::destruct(_handle);
     };
 
     BindGroup* IDevice ::CreateBindGroup(const BindGroupCreateInfo& createInfo)
     {
-        auto handle = TL ::Construct<IBindGroup>();
+        auto handle = TL ::construct<IBindGroup>();
         auto result = handle->Init(this, createInfo);
         TL_ASSERT(IsSuccess(result));
         m_liveBindGroups.emplace(handle, TL::CaptureStacktrace());
@@ -865,12 +870,12 @@ namespace RHI::Vulkan
         TL_ASSERT(erased);
         auto handle = (IBindGroup*)_handle;
         handle->Shutdown(this);
-        TL ::Destruct(_handle);
+        TL::destruct(_handle);
     };
 
     PipelineLayout* IDevice ::CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)
     {
-        auto handle = TL ::Construct<IPipelineLayout>();
+        auto handle = TL ::construct<IPipelineLayout>();
         auto result = handle->Init(this, createInfo);
         TL_ASSERT(IsSuccess(result));
         m_livePipelineLayouts.emplace(handle, TL::CaptureStacktrace());
@@ -883,12 +888,12 @@ namespace RHI::Vulkan
         TL_ASSERT(erased);
         auto handle = (IPipelineLayout*)_handle;
         handle->Shutdown(this);
-        TL ::Destruct(_handle);
+        TL::destruct(_handle);
     };
 
     GraphicsPipeline* IDevice ::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)
     {
-        auto handle = TL ::Construct<IGraphicsPipeline>();
+        auto handle = TL ::construct<IGraphicsPipeline>();
         auto result = handle->Init(this, createInfo);
         TL_ASSERT(IsSuccess(result));
         m_liveGraphicsPipelines.emplace(handle, TL::CaptureStacktrace());
@@ -901,12 +906,12 @@ namespace RHI::Vulkan
         TL_ASSERT(erased);
         auto handle = (IGraphicsPipeline*)_handle;
         handle->Shutdown(this);
-        TL ::Destruct(_handle);
+        TL::destruct(_handle);
     };
 
     ComputePipeline* IDevice ::CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
     {
-        auto handle = TL ::Construct<IComputePipeline>();
+        auto handle = TL ::construct<IComputePipeline>();
         auto result = handle->Init(this, createInfo);
         TL_ASSERT(IsSuccess(result));
         m_liveComputePipelines.emplace(handle, TL::CaptureStacktrace());
@@ -919,12 +924,12 @@ namespace RHI::Vulkan
         TL_ASSERT(erased);
         auto handle = (IComputePipeline*)_handle;
         handle->Shutdown(this);
-        TL ::Destruct(_handle);
+        TL::destruct(_handle);
     };
 
     Sampler* IDevice ::CreateSampler(const SamplerCreateInfo& createInfo)
     {
-        auto handle = TL ::Construct<ISampler>();
+        auto handle = TL ::construct<ISampler>();
         auto result = handle->Init(this, createInfo);
         TL_ASSERT(IsSuccess(result));
         m_liveSamplers.emplace(handle, TL::CaptureStacktrace());
@@ -937,12 +942,12 @@ namespace RHI::Vulkan
         TL_ASSERT(erased);
         auto handle = (ISampler*)_handle;
         handle->Shutdown(this);
-        TL ::Destruct(_handle);
+        TL::destruct(_handle);
     };
 
     Image* IDevice ::CreateImage(const ImageCreateInfo& createInfo)
     {
-        auto handle = TL ::Construct<IImage>();
+        auto handle = TL ::construct<IImage>();
         auto result = handle->Init(this, createInfo);
         TL_ASSERT(IsSuccess(result));
         m_liveImages.emplace(handle, TL::CaptureStacktrace());
@@ -961,12 +966,12 @@ namespace RHI::Vulkan
         TL_ASSERT(erased);
         auto handle = (IImage*)_handle;
         handle->Shutdown(this);
-        TL ::Destruct(_handle);
+        TL::destruct(_handle);
     };
 
     Buffer* IDevice ::CreateBuffer(const BufferCreateInfo& createInfo)
     {
-        auto handle = TL ::Construct<IBuffer>();
+        auto handle = TL ::construct<IBuffer>();
         auto result = handle->Init(this, createInfo);
         TL_ASSERT(IsSuccess(result));
         m_liveBuffers.emplace(handle, TL::CaptureStacktrace());
@@ -979,7 +984,7 @@ namespace RHI::Vulkan
         TL_ASSERT(erased);
         auto handle = (IBuffer*)_handle;
         handle->Shutdown(this);
-        TL ::Destruct(_handle);
+        TL::destruct(_handle);
     };
 
     // #undef IMPL_DEVICE_CREATE_AND_DESTROY

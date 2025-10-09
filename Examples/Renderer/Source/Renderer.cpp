@@ -75,19 +75,19 @@ namespace Engine
 
         // Initialize renderer's systems
 
-        if (auto err = PipelineLibrary::ptr->init(m_device); err.IsError())
-        {
-            shutdown();
-            return err;
-        }
-
         if (auto err = RenderContext::ptr->init(m_device); err.IsError())
         {
             shutdown();
             return err;
         }
 
-        if (auto err = DeferredRenderer::ptr->init(m_device); err.IsError())
+        if (auto err = PipelineLibrary::ptr->init(); err.IsError())
+        {
+            shutdown();
+            return err;
+        }
+
+        if (auto err = DeferredRenderer::ptr->init(); err.IsError())
         {
             shutdown();
             return err;
@@ -100,7 +100,7 @@ namespace Engine
     {
         ZoneScoped;
 
-        DeferredRenderer::ptr->shutdown(m_device);
+        DeferredRenderer::ptr->shutdown();
         RenderContext::ptr->shutdown();
         PipelineLibrary::ptr->shutdown();
         m_device->DestroyRenderGraph(m_renderGraph);
@@ -121,8 +121,7 @@ namespace Engine
             .imageUsage  = RHI::ImageUsage::Color | RHI::ImageUsage::CopyDst,
             .format      = RHI::Format::RGBA8_UNORM,
             .presentMode = RHI::SwapchainPresentMode::Fifo,
-            .alphaMode   = RHI::SwapchainAlphaMode::None
-        };
+            .alphaMode   = RHI::SwapchainAlphaMode::None};
         auto result = swapchain->Configure(configuration);
         TL_ASSERT(RHI::IsSuccess(result));
         if (result != RHI::ResultCode::Success)
@@ -148,32 +147,26 @@ namespace Engine
 
     Scene* Renderer::CreateScene()
     {
-        auto scene = TL::Construct<Scene>();
-        auto result = scene->init(m_device);
-        TL_ASSERT(result.IsSuccess(), result.GetMessage());
-        return scene;
+        return TL::construct<Scene>();
     }
 
     void Renderer::DestroyScene(Scene* scene)
     {
-        scene->shutdown(m_device);
-        TL::Destruct(scene);
+        TL::destruct(scene);
     }
 
     void Renderer::Render(Scene* scene, const PresentationViewport& viewport)
     {
-
         m_renderGraph->BeginFrame();
 
-        scene->m_drawList.onUpdate(m_device);
+        scene->m_drawList.onUpdate();
 
-        auto swapchainBackbuffer = m_renderGraph->ImportSwapchain("swapchain-color-attachment", *viewport.swapchain, RHI::Format::RGBA8_UNORM);
+        auto swapchainBuffer = m_renderGraph->ImportSwapchain("swapchain-color", *viewport.swapchain, RHI::Format::RGBA8_UNORM);
 
-        DeferredRenderer::ptr->render(m_device, m_renderGraph, scene, swapchainBackbuffer);
+        DeferredRenderer::ptr->render(m_renderGraph, scene, swapchainBuffer);
 
         m_renderGraph->EndFrame();
 
-        // TODO: move out of here
-        PipelineLibrary::ptr->updatePipelinesIfChanged();
+        PipelineLibrary::ptr->pollUpdates();
     }
 } // namespace Engine

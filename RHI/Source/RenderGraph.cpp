@@ -3,9 +3,6 @@
 #include "RHI/Device.hpp"
 #include "RHI/Reflect.hpp"
 
-#include <TL/Allocator/Allocator.hpp>
-#include <TL/Allocator/Mimalloc.hpp>
-#include <TL/Containers.hpp>
 #include <TL/Utils.hpp>
 #include <TL/Defer.hpp>
 
@@ -40,21 +37,21 @@ namespace RHI
 
     RGFrameImage* RenderGraph::CreateFrameImage(const char* name)
     {
-        auto image  = TL::ConstructFrom<RGFrameImage>(&m_arena);
+        auto image  = TL::constructFrom<RGFrameImage>(&m_arena);
         image->name = name;
         return image;
     }
 
     RGFrameBuffer* RenderGraph::CreateFrameBuffer(const char* name)
     {
-        auto buffer  = TL::ConstructFrom<RGFrameBuffer>(&m_arena);
+        auto buffer  = TL::constructFrom<RGFrameBuffer>(&m_arena);
         buffer->name = name;
         return buffer;
     }
 
     RGImage* RenderGraph::EmplacePassImage(RGFrameImage* frameImage, RGPass* pass, ImageBarrierState initialState)
     {
-        auto image             = TL::ConstructFrom<RGImage>(&m_arena);
+        auto image             = TL::constructFrom<RGImage>(&m_arena);
         image->m_frameResource = frameImage;
         image->m_state         = initialState;
         image->m_producer      = pass;
@@ -71,7 +68,7 @@ namespace RHI
 
     RGBuffer* RenderGraph::EmplacePassBuffer(RGFrameBuffer* frameBuffer, RGPass* pass, BufferBarrierState initialState)
     {
-        auto buffer             = TL::ConstructFrom<RGBuffer>(&m_arena);
+        auto buffer             = TL::constructFrom<RGBuffer>(&m_arena);
         buffer->m_frameResource = frameBuffer;
         buffer->m_state         = initialState;
         buffer->m_producer      = pass;
@@ -295,7 +292,7 @@ namespace RHI
     /// Render Graph Resource Pool
     ///////////////////////////////////////////////////////////////////////////
 
-    inline static bool CompareImageCreateInfo(const ImageCreateInfo& ci1, const ImageCreateInfo& ci2)
+    inline static bool operator==(const ImageCreateInfo& ci1, const ImageCreateInfo& ci2)
     {
         return (ci1.usageFlags == ci2.usageFlags) &&
                (ci1.type == ci2.type) &&
@@ -306,7 +303,7 @@ namespace RHI
                (ci1.arrayCount == ci2.arrayCount);
     }
 
-    inline static bool CompareBufferCreateInfo(const BufferCreateInfo& ci1, const BufferCreateInfo& ci2)
+    inline static bool operator==(const BufferCreateInfo& ci1, const BufferCreateInfo& ci2)
     {
         return (ci1.hostMapped == ci2.hostMapped) &&
                (ci1.usageFlags == ci2.usageFlags) &&
@@ -359,7 +356,7 @@ namespace RHI
         if (it != m_imageCache.end())
         {
             const auto& [cachedCI, handle] = it->second;
-            if (CompareImageCreateInfo(cachedCI, imageCI))
+            if (cachedCI == imageCI)
                 return handle;
             // Resource with same name, but different properties were found, so recreate the resource.
             TL_LOG_INFO("...Recreating resource {}\n {}", rgImage->name, Debug::ToString(imageCI));
@@ -394,7 +391,7 @@ namespace RHI
         if (it != m_bufferCache.end())
         {
             const auto& [cachedCI, handle] = it->second;
-            if (CompareBufferCreateInfo(cachedCI, ci))
+            if (cachedCI == ci)
                 return handle;
 
             // Resource with same name, but different properties were found, so recreate the resource.
@@ -431,7 +428,7 @@ namespace RHI
     void RenderGraph::Shutdown()
     {
         m_resourcePool->Shutdown();
-        m_arena.Collect();
+        m_arena.reset();
         m_passPool.clear();
         m_imagePool.clear();
         m_bufferPool.clear();
@@ -492,12 +489,12 @@ namespace RHI
 
         {
             ZoneScopedN("Clear");
-            m_passPool.clear();
-            m_imagePool.clear();
-            m_bufferPool.clear();
-            m_dependencyLevels.clear();
-            m_swapchains.clear();
-            m_arena.Collect();
+            m_dependencyLevels = TL::Vector<DependencyLevel>{m_arena};
+            m_bufferPool       = TL::Vector<RGFrameBuffer*>{m_arena};
+            m_imagePool        = TL::Vector<RGFrameImage*>{m_arena};
+            m_passPool         = TL::Vector<RGPass*>{m_arena};
+            m_swapchains       = TL::Vector<SwapchainImageAcquireInfo>{m_arena};
+            m_arena.reset();
             memset(&m_state, 0, sizeof(State));
         }
     }
@@ -507,7 +504,7 @@ namespace RHI
         TL_ASSERT(m_state.frameRecording == true);
         m_swapchains.push_back({&swapchain, PipelineStage::TopOfPipe});
 
-        auto frameResource        = TL::ConstructFrom<RGFrameImage>(&m_arena);
+        auto frameResource        = TL::constructFrom<RGFrameImage>(&m_arena);
         frameResource->name       = name;
         frameResource->handle     = swapchain.GetImage();
         frameResource->format     = format;
@@ -518,7 +515,7 @@ namespace RHI
     RGImage* RenderGraph::ImportImage(const char* name, Image* image, Format format)
     {
         TL_ASSERT(m_state.frameRecording == true);
-        auto frameImage        = TL::ConstructFrom<RGFrameImage>(&m_arena);
+        auto frameImage        = TL::constructFrom<RGFrameImage>(&m_arena);
         frameImage->name       = name;
         frameImage->handle     = image;
         frameImage->format     = format;
@@ -530,7 +527,7 @@ namespace RHI
     RGBuffer* RenderGraph::ImportBuffer(const char* name, Buffer* buffer)
     {
         TL_ASSERT(m_state.frameRecording == true);
-        auto frameBuffer        = TL::ConstructFrom<RGFrameBuffer>(&m_arena);
+        auto frameBuffer        = TL::constructFrom<RGFrameBuffer>(&m_arena);
         frameBuffer->name       = name;
         frameBuffer->handle     = buffer;
         frameBuffer->isImported = true;
@@ -541,7 +538,7 @@ namespace RHI
     RGImage* RenderGraph::CreateImage(const char* name, ImageType type, ImageSize3D size, Format format, uint32_t mipLevels, uint32_t arrayCount, SampleCount samples)
     {
         TL_ASSERT(m_state.frameRecording == true);
-        auto frameImage         = TL::ConstructFrom<RGFrameImage>(&m_arena);
+        auto frameImage         = TL::constructFrom<RGFrameImage>(&m_arena);
         frameImage->name        = name;
         frameImage->type        = type;
         frameImage->size        = size;
@@ -562,7 +559,7 @@ namespace RHI
     RGBuffer* RenderGraph::CreateBuffer(const char* name, size_t size)
     {
         TL_ASSERT(m_state.frameRecording == true);
-        auto frameBuffer  = TL::ConstructFrom<RGFrameBuffer>(&m_arena);
+        auto frameBuffer  = TL::constructFrom<RGFrameBuffer>(&m_arena);
         frameBuffer->name = name;
         frameBuffer->size = size;
         m_bufferPool.push_back(frameBuffer);
@@ -574,7 +571,7 @@ namespace RHI
         ZoneScoped;
         TL_ASSERT(m_state.frameRecording == true);
         uint32_t indexInUnorderedList = m_passPool.size();
-        RGPass*  pass                 = m_passPool.emplace_back(TL::ConstructFrom<RGPass>(&GetFrameAllocator(), this, createInfo));
+        RGPass*  pass                 = m_passPool.emplace_back(TL::constructFrom<RGPass>(&GetFrameAllocator(), this, createInfo));
 
         auto builder = RenderGraphBuilder(this, pass);
         pass->Setup(builder);

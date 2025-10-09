@@ -138,6 +138,15 @@ namespace RHI::Vulkan
         void       Shutdown(IDevice* device);
     };
 
+    struct IRayTracingPipeline
+    {
+        VkPipeline handle;
+        IPipelineLayout* layout;
+
+        ResultCode Init(IDevice* device, const ComputePipelineCreateInfo& createInfo);
+        void       Shutdown(IDevice* device);
+    };
+
     struct IBuffer : Buffer
     {
         VkBuffer      handle;

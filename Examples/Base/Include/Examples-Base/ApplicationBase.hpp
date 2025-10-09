@@ -4,7 +4,7 @@
 #include "Examples-Base/Window.hpp"
 #include "Examples-Base/CommandLine.hpp"
 
-#include <TL/UniquePtr.hpp>
+#include <TL/Ptr.hpp>
 #include <TL/Span.hpp>
 
 namespace Engine

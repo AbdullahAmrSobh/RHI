@@ -3,9 +3,10 @@
 #include <RHI/RHI.hpp>
 
 #include "Renderer/Common.hpp"
+#include "Renderer/Scene.hpp"
 
-#include <TL/FileSystem/File.hpp>
-#include <TL/FileSystem/FileWatcher.hpp>
+#include <TL/File/File.hpp>
+#include <TL/FileSystem/FileSystemWatcher.hpp>
 
 namespace Engine
 {
@@ -60,25 +61,28 @@ namespace Engine
     class PipelineLibrary final : public Singleton<PipelineLibrary>
     {
     public:
-        TL::Error init(RHI::Device* device);
+        TL::Error init();
         void      shutdown();
-
-        static RHI::ShaderModule* LoadShaderModule(TL::StringView path);
-
-        void updatePipelinesIfChanged();
 
         template<typename ShaderBindGroupStruct>
         TL::Ptr<GraphicsShader> acquireGraphicsPipeline(TL::StringView view, TL::Span<const RHI::PipelineVertexBindingDesc> vertexBindings, RHI::PipelineRenderTargetLayout renderPassLayout)
         {
-            auto bindGroupLayout = ShaderBindGroupStruct::createBindGroupLayout(m_device);
+            auto device = RenderContext::ptr->m_device;
+            auto bindGroupLayout = ShaderBindGroupStruct::createBindGroupLayout(device);
             return acquireGraphicsPipeline(view, bindGroupLayout, vertexBindings, renderPassLayout);
         }
 
         template<typename ShaderBindGroupStruct>
         TL::Ptr<ComputeShader> acquireComputePipeline(TL::StringView view)
         {
-            auto bindGroupLayout = ShaderBindGroupStruct::createBindGroupLayout(m_device);
+            auto device = RenderContext::ptr->m_device;
+            auto bindGroupLayout = ShaderBindGroupStruct::createBindGroupLayout(device);
             return acquireComputePipeline(view, bindGroupLayout);
+        }
+
+        void pollUpdates()
+        {
+            m_watcher.poll();
         }
 
     private:
@@ -87,10 +91,7 @@ namespace Engine
         TL::Ptr<ComputeShader> acquireComputePipeline(TL::StringView view, RHI::BindGroupLayout* layout);
 
     private:
-        RHI::Device* m_device;
-
         TL::FileWatcher m_watcher;
-
         TL::Map<TL::String, GraphicsShader*> m_graphicsHandler;
         TL::Map<TL::String, ComputeShader*>  m_computeHandler;
     };

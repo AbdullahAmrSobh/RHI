@@ -10,7 +10,7 @@ namespace Engine
     struct ConstantBufferBinding
     {
         RHI::BufferBindingInfo bindingInfo;
-        bool                   m_dirty;
+        bool                   m_dirty = true;
 
         inline auto& operator=(GPUArray<T> buffer)
         {
@@ -55,7 +55,7 @@ namespace Engine
     struct StructuredBufferBinding
     {
         RHI::BufferBindingInfo bindingInfo;
-        bool                   m_dirty;
+        bool                   m_dirty = true;
 
         inline auto& operator=(GPUArray<T> buffer)
         {
@@ -99,7 +99,7 @@ namespace Engine
     struct Texture1DBinding
     {
         RHI::Image* m_image;
-        bool        m_dirty;
+        bool        m_dirty = true;
 
         inline auto& operator=(RHI::Image* image)
         {
@@ -115,7 +115,7 @@ namespace Engine
     struct Texture1DArrayBinding
     {
         RHI::Image* m_image;
-        bool        m_dirty;
+        bool        m_dirty = true;
 
         inline auto& operator=(RHI::Image* image)
         {
@@ -131,7 +131,7 @@ namespace Engine
     struct Texture2DBinding
     {
         RHI::Image* m_image;
-        bool        m_dirty;
+        bool        m_dirty = true;
 
         inline auto& operator=(RHI::Image* image)
         {
@@ -147,7 +147,7 @@ namespace Engine
     struct Texture2DArrayBinding
     {
         RHI::Image* m_image;
-        bool        m_dirty;
+        bool        m_dirty = true;
 
         inline auto& operator=(RHI::Image* image)
         {
@@ -163,7 +163,7 @@ namespace Engine
     struct Texture3DBinding
     {
         RHI::Image* m_image;
-        bool        m_dirty;
+        bool        m_dirty = true;
 
         inline auto& operator=(RHI::Image* image)
         {
@@ -179,7 +179,7 @@ namespace Engine
     struct TextureCubeBinding
     {
         RHI::Image* m_image;
-        bool        m_dirty;
+        bool        m_dirty = true;
 
         inline auto& operator=(RHI::Image* image)
         {
@@ -195,7 +195,7 @@ namespace Engine
     struct SamplerBinding
     {
         RHI::Sampler* m_sampler;
-        bool          m_dirty;
+        bool          m_dirty = true;
 
         inline auto& operator=(RHI::Sampler* sampler)
         {

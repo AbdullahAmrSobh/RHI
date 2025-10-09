@@ -68,8 +68,6 @@ namespace RHI::Vulkan
             ZoneScopedN("Frame: cleanup temp allocations");
             m_stagingPool->Reset();
             m_commandListAllocator->Reset();
-            m_acquiredSwapchains.clear();
-            m_arena.Collect();
         }
 
         if (m_renderdocPendingCapture)
@@ -143,11 +141,13 @@ namespace RHI::Vulkan
         }
 
         m_device->m_currentFrameIndex = (m_device->m_currentFrameIndex + 1) % (m_device->m_framesInFlight.size());
+        m_acquiredSwapchains = TL::Vector<Swapchain*>{m_arena};
+        m_arena.reset();
     }
 
     CommandList* IFrame::CreateCommandList(const CommandListCreateInfo& createInfo)
     {
-        auto commandList = TL::ConstructFrom<ICommandList>(&m_arena);
+        auto commandList = TL::constructFrom<ICommandList>(&m_arena);
         auto result      = commandList->Init(m_device, &m_commandListAllocator->m_queuePools[int(createInfo.queueType)], createInfo);
         TL_ASSERT(result == ResultCode::Success, "Failed to allocate command list for current frame");
         return commandList;

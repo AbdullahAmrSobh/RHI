@@ -34,12 +34,12 @@ namespace Engine
 
     Window* WindowManager::CreateWindow(TL::StringView title, TL::Flags<WindowFlags> flags, WindowSize size)
     {
-        return TL::Construct<Window>(title, flags, size);
+        return TL::construct<Window>(title, flags, size);
     }
 
     void WindowManager::DestroyWindow(Window* window)
     {
-        TL::Destruct(window);
+        TL::destruct(window);
     }
 
     TL::Span<const Monitor> WindowManager::GetMonitors()

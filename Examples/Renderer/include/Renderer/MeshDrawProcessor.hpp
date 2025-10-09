@@ -14,15 +14,11 @@ namespace Engine
     class ComputeShader;
     class StaticMeshLOD;
 
-    // --------------------------------------
-    // DrawList
-    // --------------------------------------
-
     class DrawList
     {
     public:
-        void init(uint32_t capacity);
-        void shutdown(RHI::Device* device);
+        DrawList(uint32_t capacity = 1024);
+        ~DrawList();
 
         uint32_t getCapacity() const { return m_capacity; }
 
@@ -39,7 +35,7 @@ namespace Engine
         void remove(uint32_t id);
 
         /// Uploads CPU-side draw data into GPU buffers.
-        void onUpdate(RHI::Device* device);
+        void onUpdate();
 
         auto& getTransforms() const { return m_transformAlloc; }
 
@@ -61,40 +57,5 @@ namespace Engine
 
         GPUArray<glm::mat4x4>      m_transformAlloc;
         GPUArray<GPU::DrawRequest> m_drawAlloc;
-    };
-
-    // --------------------------------------
-    // Mesh visibility
-    // --------------------------------------
-    struct MeshVisibilityPassParams
-    {
-        TL::StringView  name;
-        uint32_t        capacity;
-        // glm::mat4x4                        viewProjection;
-        // RHI::ImageSize2D                   viewportSize;
-        // glm::vec3                          cameraPosition;
-        // StructuredBuffer<GPU::DrawRequest> drawRequests;
-        const DrawList* drawList;
-    };
-
-    class MeshVisibilityPass
-    {
-    public:
-        TL::Error              init(RHI::Device* device);
-        void                   shutdown();
-        RHI::RGPass*           addPass(RHI::RenderGraph* rg, const MeshVisibilityPassParams& input);
-        RHI::BufferBindingInfo getCountBuffer(RHI::RenderGraph* rg);
-        RHI::BufferBindingInfo getArgBuffer(RHI::RenderGraph* rg);
-        void                   setup(RHI::RenderGraphBuilder& builder);
-        void                   draw(RHI::RenderGraph* rg, RHI::CommandList& cmd, uint32_t maxDrawCount);
-
-    private:
-        RHI::Device* m_device;
-
-        RHI::RGBuffer* m_drawIndirectArgs = nullptr;
-
-        TL::Ptr<ComputeShader>           m_shader;
-        Buffer<GPU::CullParams::CB>      m_constants;
-        ShaderBindGroup<GPU::CullParams> m_shaderParams;
     };
 } // namespace Engine

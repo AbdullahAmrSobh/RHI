@@ -5,7 +5,7 @@
 #include "Renderer/Renderer.hpp"
 #include "Renderer/ImGuiPass.hpp"
 
-#include <TL/UniquePtr.hpp>
+#include <TL/Ptr.hpp>
 
 namespace Engine
 {
@@ -273,7 +273,7 @@ namespace Engine
 
     inline static void ImGuiPlatformIO_CreateWindow(ImGuiViewport* vp)
     {
-        auto viewportData         = TL::Construct<ImGuiImplViewportData>();
+        auto viewportData         = TL::construct<ImGuiImplViewportData>();
         viewportData->windowOwned = true;
         auto window = viewportData->window = WindowManager::CreateWindow("", WindowFlags::NoDecorations, {(uint32_t)vp->Size.x, (uint32_t)vp->Size.y});
         window->SetPosition({vp->Pos.x, vp->Pos.y});
@@ -285,7 +285,7 @@ namespace Engine
         vp->PlatformUserData  = viewportData;
         vp->PlatformHandle    = viewportData->window;
         vp->PlatformHandleRaw = window->GetNativeHandle();
-        vp->RendererUserData  = TL::Construct<ImGuiPlatformRenderData>();
+        vp->RendererUserData  = TL::construct<ImGuiPlatformRenderData>();
     }
 
     inline static void ImGuiPlatformIO_DestroyWindow(ImGuiViewport* vp)
@@ -425,7 +425,7 @@ namespace Engine
         auto device     = Renderer::ptr->GetDevice();
         if (renderData->swapchain)
             device->DestroySwapchain(renderData->swapchain);
-        TL::Destruct(renderData);
+        TL::destruct(renderData);
         vp->RendererUserData = nullptr;
         window_count--;
     }
@@ -470,12 +470,12 @@ namespace Engine
         ImGuiViewport* mainViewport = ImGui::GetMainViewport();
         mainViewport->Flags |= ImGuiViewportFlags_IsPlatformWindow | ImGuiViewportFlags_OwnedByApp;
 
-        auto viewportData               = TL::Construct<ImGuiImplViewportData>();
+        auto viewportData               = TL::construct<ImGuiImplViewportData>();
         viewportData->window            = primaryWindow;
         mainViewport->PlatformUserData  = viewportData;
         mainViewport->PlatformHandle    = viewportData->window;
         mainViewport->PlatformHandleRaw = primaryWindow->GetNativeHandle();
-        mainViewport->RendererUserData  = TL::Construct<ImGuiPlatformRenderData>();
+        mainViewport->RendererUserData  = TL::construct<ImGuiPlatformRenderData>();
 
         primaryWindow->Subscribe([](const WindowEvent& e) -> bool
             {

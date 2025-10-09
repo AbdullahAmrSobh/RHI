@@ -2,6 +2,8 @@
 
 #include <RHI/Swapchain.hpp>
 
+#include <TL/Containers/String.hpp>
+
 #include <vulkan/vulkan.h>
 
 namespace RHI::Vulkan

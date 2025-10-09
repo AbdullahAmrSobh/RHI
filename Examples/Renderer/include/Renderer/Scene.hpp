@@ -19,6 +19,36 @@ namespace Engine
 
         TL::Ptr<StaticMeshLOD> createMesh(uint32_t elementsCount, uint32_t vertexCount);
 
+        RHI::Device* getDevice() const { return m_device; }
+
+        template<typename T>
+        Buffer<T> allocateConstantBuffer(uint32_t count = 1)
+        {
+            auto alignment = m_device->GetLimits().minUniformBufferOffsetAlignment;
+            return m_constantBuffersPool.allocate<T>(count, alignment);
+        }
+
+        template<typename T>
+        void freeConstantBuffer(Buffer<T>& buffer)
+        {
+            m_constantBuffersPool.free(buffer);
+            buffer = {};
+        }
+
+        template<typename T>
+        Buffer<T> allocateStructuredBuffer(uint32_t count = 1)
+        {
+            auto alignment = m_device->GetLimits().minStorageBufferOffsetAlignment;
+            return m_structuredBuffersPool.allocate<T>(count, alignment);
+        }
+
+        template<typename T>
+        void freeStructuredBuffer(Buffer<T>& buffer)
+        {
+            m_structuredBuffersPool.free(buffer);
+            buffer = {};
+        }
+
     public:
         auto& getSBPoolRenderables() { return m_SBPoolRenderables; }
 
@@ -36,7 +66,7 @@ namespace Engine
 
         auto& getUnifiedGeometryBuffersPool() { return m_unifiedGeometryBuffersPool; }
 
-    // private:
+        // private:
         friend struct StaticMeshLOD;
         RHI::Device* m_device;
 
@@ -89,10 +119,8 @@ namespace Engine
     class Scene
     {
     public:
-        Scene() = default;
-
-        TL::Error init(RHI::Device* m_device);
-        void      shutdown(RHI::Device* m_device);
+        Scene();
+        ~Scene();
 
         void addMesh(const StaticMeshLOD* mesh,
             const Material*               material,

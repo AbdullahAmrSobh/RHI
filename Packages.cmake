@@ -38,7 +38,16 @@ CPMAddPackage(
 
 CPMAddPackage(
     NAME           TL
-	GIT_REPOSITORY git@github.com:AbdullahAmrSobh/TL.git
+	GIT_REPOSITORY git@github.com:Pagghiu/SaneCppLibraries.git
+	GIT_TAG        main
+	OPTIONS
+		# TL_ENABLE_TRACY ${PROJECT_IS_TOP_LEVEL}
+		# TL_ENABLE_TRACY_MEMORY_TRACKING ${PROJECT_IS_TOP_LEVEL}
+)
+
+CPMAddPackage(
+    NAME           SC
+	GIT_REPOSITORY git@github.com:AbdullahAmrSobh/SC.git
 	GIT_TAG        main
 	OPTIONS
 		TL_ENABLE_TRACY ${PROJECT_IS_TOP_LEVEL}

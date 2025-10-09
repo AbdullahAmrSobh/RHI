@@ -38,12 +38,14 @@ namespace Engine
         m_constantBuffersPool.shutdown();
     }
 
-    TL::Error Scene::init(RHI::Device* device)
+    Scene::Scene()
+        : m_drawList(2048)
     {
+        auto device = RenderContext::ptr->m_device;
+
         auto& pool  = RenderContext::ptr->getConstantBuffersPool();
         m_sceneView = pool.allocate<GPU::SceneView>(1, device->GetLimits().minUniformBufferOffsetAlignment);
 
-        m_drawList.init(2048);
         // m_lights.init(RenderContext::ptr->getStructuredBuffersPool(), 128);
 
         GPU::SceneView v{
@@ -51,11 +53,9 @@ namespace Engine
             .viewToClipMatrix  = glm::identity<glm::mat4x4>(),
         };
         pool.update(m_sceneView, v);
-
-        return TL::NoError;
     }
 
-    void Scene::shutdown(RHI::Device* m_device)
+    Scene::~Scene()
     {
         // auto& sbPool = RenderContext::ptr->m_structuredBuffersPool;
         // freeStructuredBuffer(sbPool, m_renderables);

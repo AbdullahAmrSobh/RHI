@@ -7,9 +7,9 @@
 #include <RHI/Device.hpp>
 #include <RHI-Vulkan/Loader.hpp>
 
-#include <TL/Containers.hpp>
+#include <TL/Ptr.hpp>
 #include <TL/Stacktrace.hpp>
-#include <TL/UniquePtr.hpp>
+#include <TL/Containers/Vector.hpp>
 
 namespace RHI::Vulkan
 {

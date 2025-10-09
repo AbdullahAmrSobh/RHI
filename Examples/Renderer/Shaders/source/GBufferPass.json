@@ -40,9 +40,9 @@
   },
   "topologyMode": "Triangles",
   "rasterizationState": {
-    "cullMode": "Back",
+    "cullMode": "BackFace",
     "fillMode": "Triangle",
-    "frontFace": "CounterClockwise",
+    "frontFace": "Clockwise",
     "lineWidth": 1
   },
   "depthStencilState": {

@@ -7,7 +7,7 @@
 #include "RHI/Swapchain.hpp"
 
 #include <TL/Span.hpp>
-#include <TL/UniquePtr.hpp>
+#include <TL/Ptr.hpp>
 #include <TL/Library.hpp>
 
 namespace RHI

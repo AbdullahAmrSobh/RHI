@@ -122,9 +122,4 @@ namespace RHI
     RHI_EXPORT FormatType             GetFormatType(Format format);
 
     RHI_EXPORT TL::Flags<ImageAspect> GetFormatAspects(Format format);
-
-    RHI_EXPORT ImageUsage             GetImageUsage(TL::Flags<ImageAspect> aspect);
-
-    RHI_EXPORT ImageUsage             GetImageUsage(FormatInfo info);
-
 } // namespace RHI

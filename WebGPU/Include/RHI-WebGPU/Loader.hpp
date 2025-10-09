@@ -1,7 +1,7 @@
 #pragma once
 #include <RHI/Device.hpp>
 
-#include <TL/UniquePtr.hpp>
+#include <TL/Ptr.hpp>
 
 #include <RHI-WebGPU/Export.hpp>
 

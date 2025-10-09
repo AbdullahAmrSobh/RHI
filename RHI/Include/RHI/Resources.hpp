@@ -536,13 +536,17 @@ namespace RHI
         float                                         blendConstants[4] = {0.0f, 0.0f, 0.0f, 0.0f};        ///< Blend constants.
     };
 
+    struct PipelineShaderStage
+    {
+        const char*   name   = nullptr; ///< Entry name of the shader.
+        ShaderModule* module = nullptr; ///< Shader module object.
+    };
+
     struct GraphicsPipelineCreateInfo
     {
-        const char*                               name                 = nullptr;                         ///< Name of the pipeline.
-        const char*                               vertexShaderName     = nullptr;                         ///< Name of the vertex shader.
-        ShaderModule*                             vertexShaderModule   = nullptr;                         ///< Vertex shader module.
-        const char*                               pixelShaderName      = nullptr;                         ///< Name of the pixel shader.
-        ShaderModule*                             pixelShaderModule    = nullptr;                         ///< Pixel shader module.
+        const char*                               name                 = nullptr; ///< Name of the pipeline.
+        PipelineShaderStage                       vertexShader         = {};
+        PipelineShaderStage                       pixelShader          = {};
         PipelineLayout*                           layout               = nullptr;                         ///< Pipeline layout.
         TL::Span<const PipelineVertexBindingDesc> vertexBufferBindings = {};                              ///< Input assembler state.
         PipelineRenderTargetLayout                renderTargetLayout   = {};                              ///< Render target layout.
@@ -555,10 +559,9 @@ namespace RHI
 
     struct ComputePipelineCreateInfo
     {
-        const char*     name         = nullptr; ///< Name of the pipeline.
-        const char*     shaderName   = nullptr; ///< Name of the compute shader.
-        ShaderModule*   shaderModule = nullptr; ///< Compute shader module.
-        PipelineLayout* layout       = nullptr; ///< Pipeline layout.
+        const char*         name          = nullptr; ///< Name of the pipeline.
+        PipelineShaderStage computeShader = {};      ///< Compute Shader stage
+        PipelineLayout*     layout        = nullptr; ///< Pipeline layout.
     };
 
     // Structs (Shader Related)

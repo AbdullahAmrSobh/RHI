@@ -8,7 +8,7 @@ namespace Engine
     class Singleton
     {
     public:
-        inline static T* ptr = TL::Construct<T>();
+        inline static T* ptr = TL::construct<T>();
 
         Singleton() { Singleton::ptr = (T*)this; }
 

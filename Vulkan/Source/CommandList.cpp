@@ -5,6 +5,7 @@
 #include "Swapchain.hpp"
 
 #include <RHI/Format.hpp>
+#include <TL/Containers/Optional.hpp>
 
 #include <tracy/Tracy.hpp>
 

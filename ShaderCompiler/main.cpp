@@ -1,11 +1,11 @@
-#include <TL/String.hpp>
+#include <TL/Containers/String.hpp>
 #include <TL/Serialization/Binary.hpp>
-#include <TL/FileSystem/File.hpp>
-#include <TL/Containers.hpp>
+#include <TL/File/File.hpp>
+#include <TL/Containers/Vector.hpp>
+#include <TL/Containers/Map.hpp>
 #include <TL/Block.hpp>
 #include <TL/Allocator/Allocator.hpp>
 #include <TL/Assert.hpp>
-#include <TL/FileSystem/File.hpp>
 #include <TL/Result.hpp>
 
 #include <RHI/RHI.hpp>
@@ -204,7 +204,7 @@ namespace BGC
 
         void addBufferUpdateLine(codegen::Function* func, uint32_t bindingIndex, const std::string& memberName)
         {
-            func->addLine(std::format("if ({}.m_dirty) \n{{", memberName));
+            func->addLine(std::format("if ({}.m_dirty && {}.bindingInfo.buffer) \n{{", memberName, memberName));
             func->addLine(std::format("\t{}.m_dirty = false;", memberName));
             func->addLine(std::format("\tbufferInfos[bufferCount].dstBinding = {};", bindingIndex));
             func->addLine(std::format("\tbufferInfos[bufferCount].dstArrayElement = 0;"));
@@ -215,7 +215,7 @@ namespace BGC
 
         void addImageUpdateLine(codegen::Function* func, uint32_t bindingIndex, const std::string& memberName)
         {
-            func->addLine(std::format("if ({}.m_dirty) \n{{", memberName));
+            func->addLine(std::format("if ({}.m_dirty && {}.m_image) \n{{", memberName, memberName));
             func->addLine(std::format("\t{}.m_dirty = false;", memberName));
             func->addLine(std::format("\timageInfos[imageCount].dstBinding = {};", bindingIndex));
             func->addLine(std::format("\timageInfos[imageCount].dstArrayElement = 0;"));
@@ -226,7 +226,7 @@ namespace BGC
 
         void addSamplerUpdateLine(codegen::Function* func, uint32_t bindingIndex, const std::string& memberName)
         {
-            func->addLine(std::format("if ({}.m_dirty) \n{{", memberName));
+            func->addLine(std::format("if ({}.m_dirty && {}.m_sampler) \n{{", memberName, memberName));
             func->addLine(std::format("\t{}.m_dirty = false;", memberName));
             func->addLine(std::format("\tsamplerInfos[samplerCount].dstBinding = {};", bindingIndex));
             func->addLine(std::format("\tsamplerInfos[samplerCount].dstArrayElement = 0;"));
@@ -768,10 +768,12 @@ bool setupCompileRequest(Slang::ComPtr<slang::ISession> session, const Args& arg
     // Read source file
     TL::File   sourceCodeFile(args.input, TL::IOMode::Read);
     TL::String sourceCode;
+    sourceCode.resize(sourceCodeFile.size());
+
     auto       ioresult = sourceCodeFile.read(sourceCode);
     if (ioresult.result != TL::IOResultCode::Success)
     {
-        errorMessage = std::format("Failed to read shader file '{}'", args.input);
+        errorMessage = std::format("Failed to read shader file '{}' code {}", args.input, (uint32_t)ioresult.result);
         return false;
     }
 

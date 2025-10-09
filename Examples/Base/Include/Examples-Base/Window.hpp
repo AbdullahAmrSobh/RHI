@@ -1,10 +1,10 @@
 #pragma once
 
-#include <TL/Containers.hpp>
 #include <TL/Result.hpp>
-#include <TL/String.hpp>
 #include <TL/Flags.hpp>
 #include <TL/Event.hpp>
+#include <TL/Containers/Vector.hpp>
+#include <TL/Containers/String.hpp>
 
 #include <cstdint>
 

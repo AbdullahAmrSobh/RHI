@@ -49,7 +49,7 @@ namespace RHI
     {
         m_device = device;
 
-        auto [library, result] = TL::Library::Open("renderdoc.dll");
+        auto [library, result] = TL::Library::open("renderdoc.dll");
         if (result.IsError())
         {
             TL_LOG_ERROR("Failed to load RenderDoc API: {}", result.GetMessage());
@@ -57,11 +57,11 @@ namespace RHI
         }
 
         m_library    = library;
-        auto* getAPI = m_library.GetProc<pRENDERDOC_GetAPI>("RENDERDOC_GetAPI");
+        auto* getAPI = m_library.getProc<pRENDERDOC_GetAPI>("RENDERDOC_GetAPI");
         if (!getAPI)
         {
             TL_LOG_ERROR("Failed to get RENDERDOC_GetAPI function pointer");
-            TL::Library::Close(m_library);
+            TL::Library::close(m_library);
             return ResultCode::ErrorUnknown;
         }
 
@@ -69,7 +69,7 @@ namespace RHI
         if (!getAPI(eRENDERDOC_API_Version_1_6_0, reinterpret_cast<void**>(api)))
         {
             TL_LOG_ERROR("Failed to initialize RenderDoc API");
-            TL::Library::Close(m_library);
+            TL::Library::close(m_library);
             return ResultCode::ErrorUnknown;
         }
 
@@ -84,7 +84,7 @@ namespace RHI
     {
         if (auto* api = (RENDERDOC_API_1_6_0*)m_renderdocAPi)
             api->Shutdown();
-        TL::Library::Close(m_library);
+        TL::Library::close(m_library);
     }
 
     void Renderdoc::FrameTriggerMultiCapture(uint32_t numFrames)

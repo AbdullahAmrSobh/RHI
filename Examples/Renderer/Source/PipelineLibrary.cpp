@@ -1,4 +1,5 @@
 #include "Renderer/PipelineLibrary.hpp"
+#include "Renderer/Scene.hpp"
 #include "Shaders/GpuCommonStructs.h"
 
 #include <nlohmann/json.hpp>
@@ -20,6 +21,22 @@ namespace Engine
         auto [_, err] = file.read(json_string);
         TL_ASSERT(err == TL::IOResultCode::Success);
         return json_string;
+    }
+
+    inline static RHI::ShaderModule* loadShaderModule(TL::StringView path)
+    {
+        auto device = RenderContext::ptr->m_device;
+
+        auto file       = TL::File(path, TL::IOMode::Read);
+        auto shaderBlob = TL::Vector<uint8_t>(file.size());
+        auto [_, err]   = file.read(TL::Block::create(shaderBlob));
+        TL_ASSERT(err == TL::IOResultCode::Success);
+
+        RHI::ShaderModuleCreateInfo shaderCI{
+            .name = path.data(),
+            .code = {(uint32_t*)shaderBlob.data(), shaderBlob.size() / size_t(4)},
+        };
+        return device->CreateShaderModule(shaderCI);
     }
 
     class PipelineStateInitializer
@@ -196,7 +213,7 @@ namespace Engine
             return ShaderStage{
                 .entry  = json.at("entry").get<std::string>(),
                 .stage  = stage,
-                .module = PipelineLibrary::ptr->LoadShaderModule(json.at("path").get<std::string>()),
+                .module = loadShaderModule(json.at("path").get<std::string>()),
             };
         }
 
@@ -252,11 +269,9 @@ namespace Engine
 
             RHI::GraphicsPipelineCreateInfo ci{
                 .name                 = m_name.c_str(),
-                .vertexShaderName     = m_vertexShader.entry.c_str(),
-                .vertexShaderModule   = m_vertexShader.module,
-                .pixelShaderName      = m_pixelShader.entry.c_str(),
-                .pixelShaderModule    = m_pixelShader.module,
-                // .layout               = nullptr,
+                .vertexShader         = {m_vertexShader.entry.c_str(), m_vertexShader.module},
+                .pixelShader          = {m_pixelShader.entry.c_str(), m_pixelShader.module},
+                .layout               = nullptr,
                 .vertexBufferBindings = vertexAttribute,
                 .renderTargetLayout   = rtLayout,
                 .multisampleState     = msaa,
@@ -292,10 +307,13 @@ namespace Engine
         ShaderStage                                    m_pixelShader;
     };
 
-    TL::Error PipelineLibrary::init(RHI::Device* device)
+    TL::Error PipelineLibrary::init()
     {
-        m_device = device;
-
+        m_watcher.subscribe([](const TL::FileEvent& e)
+            {
+                TL_LOG_INFO("File changed: {}", e.path.c_str());
+                return false;
+            });
         return TL::NoError;
     }
 
@@ -309,45 +327,32 @@ namespace Engine
         TL::Span<const RHI::PipelineVertexBindingDesc> vertexBindings,
         RHI::PipelineRenderTargetLayout                renderPassLayout)
     {
+        m_watcher.watch(view, TL::FileEventType::Modified, false);
+
+        auto device = RenderContext::ptr->m_device;
+
         PipelineStateInitializer psoInitializer;
         auto                     ci = psoInitializer.parsePipelineDesc(view, vertexBindings, renderPassLayout);
-        ci.layout                   = m_device->CreatePipelineLayout({.name = view.data(), .layouts = {layout}});
+        ci.layout                   = device->CreatePipelineLayout({.name = view.data(), .layouts = {layout}});
 
-        auto pipeline = m_device->CreateGraphicsPipeline(ci);
+        auto pipeline = device->CreateGraphicsPipeline(ci);
         return TL::CreatePtr<GraphicsShader>(layout, ci.layout, pipeline);
     }
 
     TL::Ptr<ComputeShader> PipelineLibrary::acquireComputePipeline(TL::StringView view, RHI::BindGroupLayout* layout)
     {
+        auto device = RenderContext::ptr->m_device;
+
         auto json                   = nlohmann::json::parse(readFile(view));
         auto name                   = json.value("name", "");
         auto [entry, stage, shader] = PipelineStateInitializer::parseShaderStage(json.at("cs"), RHI::ShaderStage::Compute);
 
         RHI::ComputePipelineCreateInfo ci{
-            .name         = name.c_str(),
-            .shaderName   = entry.c_str(),
-            .shaderModule = shader,
-            .layout       = m_device->CreatePipelineLayout({.name = name.c_str(), .layouts = {layout}}),
+            .name          = name.c_str(),
+            .computeShader = {entry.c_str(), shader},
+            .layout        = device->CreatePipelineLayout({.name = name.c_str(), .layouts = {layout}}),
         };
-        auto pipeline = m_device->CreateComputePipeline(ci);
+        auto pipeline = device->CreateComputePipeline(ci);
         return TL::CreatePtr<ComputeShader>(layout, ci.layout, pipeline);
     }
-
-    RHI::ShaderModule* PipelineLibrary::LoadShaderModule(TL::StringView path)
-    {
-        auto file       = TL::File(path, TL::IOMode::Read);
-        auto shaderBlob = TL::Vector<uint8_t>(file.size());
-        auto [_, err]   = file.read(TL::Block::create(shaderBlob));
-        TL_ASSERT(err == TL::IOResultCode::Success);
-        auto module = PipelineLibrary::ptr->m_device->CreateShaderModule({
-            .name = path.data(),
-            .code = {(uint32_t*)shaderBlob.data(), shaderBlob.size() / size_t(4)},
-        });
-        return module;
-    }
-
-    void PipelineLibrary::updatePipelinesIfChanged()
-    {
-    }
-
 } // namespace Engine

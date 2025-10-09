@@ -53,7 +53,7 @@ namespace RHI::Vulkan
             return result;
         }
 
-        m_imageHandle = TL::Construct<IImage>();
+        m_imageHandle = TL::construct<IImage>();
 
         for (uint32_t i = 0; i < MaxImageCount; ++i)
         {
@@ -107,7 +107,7 @@ namespace RHI::Vulkan
             m_images[i] = VK_NULL_HANDLE;
         }
 
-        TL::Release(m_imageHandle);
+        TL::free(m_imageHandle);
     }
 
     uint32_t ISwapchain::GetImagesCount() const
