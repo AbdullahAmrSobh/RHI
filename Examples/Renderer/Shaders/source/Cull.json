@@ -1,0 +1,7 @@
+{
+  "name": "Cull",
+  "cs": {
+    "entry": "main",
+    "path": "I:/repos/repos3/RHI/build/Examples/Renderer/Shaders/Cull.spirv.CSMain"
+  }
+}

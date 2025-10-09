@@ -17,61 +17,20 @@ namespace Engine
 
         auto layout = ShaderBindGroup<GPU::GBufferInputs>::getLayout()->get();
 
-        m_pipelineLayout = device->CreatePipelineLayout({.name = "GBufferInputs", .layouts = layout});
-
-        // m_sampler      = device->CreateSampler({.name = "gbuffer-sampler"});
-        // m_texture      = device->CreateImage({});
+        m_shader = PipelineLibrary::ptr->acquireGraphicsPipeline<GPU::GBufferInputs>(
+            "I:/repos/repos3/RHI/Examples/Renderer/Shaders/source/GBufferPass.json",
+            {
+                {sizeof(glm::vec3), RHI::PipelineVertexInputRate::PerVertex, {{0, RHI::Format::RGB32_FLOAT}}},
+                {sizeof(glm::vec3), RHI::PipelineVertexInputRate::PerVertex, {{0, RHI::Format::RGB32_FLOAT}}},
+                {sizeof(glm::vec2), RHI::PipelineVertexInputRate::PerVertex, {{0, RHI::Format::RG32_FLOAT}}},
+                // {sizeof(glm::ivec4), RHI::PipelineVertexInputRate::PerInstance, {{0, RHI::Format::RGBA32_UINT}}},
+            },
+            {
+                .colorAttachmentsFormats = {RHI::Format::RGBA8_UNORM},
+                .depthAttachmentFormat   = RHI::Format::D16,
+            });
 
         m_shaderParams.init(device, 0);
-
-        // create PSOs
-
-        PipelineLibrary::ptr->acquireGraphicsPipeline(
-            "I:/repos/repos3/RHI/build/Examples/Renderer/Shaders/GBufferPass.spirv.VSMain",
-            "I:/repos/repos3/RHI/build/Examples/Renderer/Shaders/GBufferPass.spirv.PSMain",
-            [this](RHI::Device* device, RHI::ShaderModule* vs, RHI::ShaderModule* ps)
-            {
-                if (m_pipeline)
-                {
-                    device->DestroyGraphicsPipeline(m_pipeline);
-                }
-
-                RHI::GraphicsPipelineCreateInfo gfxPipelineCI =
-                    {
-                        .name               = "ImGui Pipeline",
-                        .vertexShaderName   = "VSMain",
-                        .vertexShaderModule = vs,
-                        .pixelShaderName    = "PSMain",
-                        .pixelShaderModule  = ps,
-                        .layout             = m_pipelineLayout,
-                        .vertexBufferBindings =
-                            {
-                                {sizeof(glm::vec3), RHI::PipelineVertexInputRate::PerVertex, {{0, RHI::Format::RGB32_FLOAT}}},
-                                {sizeof(glm::vec3), RHI::PipelineVertexInputRate::PerVertex, {{0, RHI::Format::RGB32_FLOAT}}},
-                                {sizeof(glm::vec2), RHI::PipelineVertexInputRate::PerVertex, {{0, RHI::Format::RG32_FLOAT}}},
-                                // {sizeof(glm::ivec4), RHI::PipelineVertexInputRate::PerInstance, {{0, RHI::Format::RGBA32_UINT}}},
-                            },
-                        .renderTargetLayout =
-                            {
-                                .colorAttachmentsFormats = {RHI::Format::RGBA8_UNORM},
-                                .depthAttachmentFormat   = RHI::Format::D16,
-                            },
-                        .colorBlendState =
-                            {
-                                .blendStates = RHI::ColorAttachmentBlendStateDesc{
-                                    true,
-                                    RHI::BlendEquation::Add,
-                                    RHI::BlendFactor::SrcAlpha,
-                                    RHI::BlendFactor::OneMinusSrcAlpha,
-                                    RHI::BlendEquation::Add,
-                                    RHI::BlendFactor::One,
-                                    RHI::BlendFactor::OneMinusSrcAlpha,
-                                    RHI::ColorWriteMask::All,
-                                },
-                            },
-                    };
-                m_pipeline = device->CreateGraphicsPipeline(gfxPipelineCI);
-            });
     }
 
     void GBufferFill::shutdown(RHI::Device* device)
@@ -80,8 +39,6 @@ namespace Engine
         // freeConstantBuffer({}, m_constantBuffer);
         // device->DestroyImage(m_texture);
         // device->DestroySampler(m_sampler);
-        device->DestroyGraphicsPipeline(m_pipeline);
-        device->DestroyPipelineLayout(m_pipelineLayout);
         m_shaderParams.shutdown(device);
     }
 
@@ -117,7 +74,7 @@ namespace Engine
                     .height  = frameSize.height,
                 });
 
-                cmd.BindGraphicsPipeline(m_pipeline, m_shaderParams.bind());
+                cmd.BindGraphicsPipeline(m_shader->getPipeline(), m_shaderParams.bind());
 
                 visIn.draw(rg, cmd, scene.m_drawList.getCount());
             },

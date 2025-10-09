@@ -11,6 +11,7 @@
 namespace Engine
 {
     class Material;
+    class ComputeShader;
     class StaticMeshLOD;
 
     // --------------------------------------
@@ -67,13 +68,13 @@ namespace Engine
     // --------------------------------------
     struct MeshVisibilityPassParams
     {
-        TL::StringView name;
-        uint32_t       capacity;
+        TL::StringView  name;
+        uint32_t        capacity;
         // glm::mat4x4                        viewProjection;
         // RHI::ImageSize2D                   viewportSize;
         // glm::vec3                          cameraPosition;
         // StructuredBuffer<GPU::DrawRequest> drawRequests;
-        const DrawList*      drawList;
+        const DrawList* drawList;
     };
 
     class MeshVisibilityPass
@@ -92,10 +93,8 @@ namespace Engine
 
         RHI::RGBuffer* m_drawIndirectArgs = nullptr;
 
+        TL::Ptr<ComputeShader>           m_shader;
+        Buffer<GPU::CullParams::CB>      m_constants;
         ShaderBindGroup<GPU::CullParams> m_shaderParams;
-        Buffer<GPU::CullParams::CB> m_constants;
-
-        RHI::PipelineLayout*  m_pipelineLayout;
-        RHI::ComputePipeline* m_pipeline;
     };
 } // namespace Engine

@@ -9,6 +9,54 @@
 
 namespace Engine
 {
+    class Shader
+    {
+    public:
+        Shader(RHI::BindGroupLayout* layout, RHI::PipelineLayout* pipelineLayout)
+            : m_bindGroupLayout(layout)
+            , m_pipelineLayout(pipelineLayout)
+        {
+        }
+
+        RHI::BindGroupLayout* getBindGroupLayout(uint32_t group) { return m_bindGroupLayout; }
+
+        RHI::PipelineLayout* getPipelineLayout() { return m_pipelineLayout; }
+
+    protected:
+        RHI::BindGroupLayout* m_bindGroupLayout;
+        RHI::PipelineLayout*  m_pipelineLayout;
+    };
+
+    class GraphicsShader final : public Shader
+    {
+    public:
+        GraphicsShader(RHI::BindGroupLayout* layout, RHI::PipelineLayout* pipelineLayout, RHI::GraphicsPipeline* pipeline)
+            : Shader(layout, pipelineLayout)
+            , m_pipeline(pipeline)
+        {
+        }
+
+        RHI::GraphicsPipeline* getPipeline() { return m_pipeline; }
+
+    private:
+        RHI::GraphicsPipeline* m_pipeline;
+    };
+
+    class ComputeShader final : public Shader
+    {
+    public:
+        ComputeShader(RHI::BindGroupLayout* layout, RHI::PipelineLayout* pipelineLayout, RHI::ComputePipeline* pipeline)
+            : Shader(layout, pipelineLayout)
+            , m_pipeline(pipeline)
+        {
+        }
+
+        RHI::ComputePipeline* getPipeline() { return m_pipeline; }
+
+    private:
+        RHI::ComputePipeline* m_pipeline;
+    };
+
     class PipelineLibrary final : public Singleton<PipelineLibrary>
     {
     public:
@@ -17,28 +65,33 @@ namespace Engine
 
         static RHI::ShaderModule* LoadShaderModule(TL::StringView path);
 
-        using AcquireGraphicsPipelineCB = std::function<void(RHI::Device* device, RHI::ShaderModule* vs, RHI::ShaderModule* ps)>;
-        using AcquireComputePipelineCB  = std::function<void(RHI::Device* device, RHI::ShaderModule* cs)>;
-
-        void acquireGraphicsPipeline(TL::StringView vertexShaderPath, TL::StringView pixelShaderPath, AcquireGraphicsPipelineCB&& cb);
-
-        void acquireComputePipeline(TL::StringView computeShaderPath, AcquireComputePipelineCB&& cb);
-
         void updatePipelinesIfChanged();
 
-    private:
-        void invokeGraphicsCallback(TL::StringView path);
-        void invokeComputeCallback(TL::StringView path);
+        template<typename ShaderBindGroupStruct>
+        TL::Ptr<GraphicsShader> acquireGraphicsPipeline(TL::StringView view, TL::Span<const RHI::PipelineVertexBindingDesc> vertexBindings, RHI::PipelineRenderTargetLayout renderPassLayout)
+        {
+            auto bindGroupLayout = ShaderBindGroupStruct::createBindGroupLayout(m_device);
+            return acquireGraphicsPipeline(view, bindGroupLayout, vertexBindings, renderPassLayout);
+        }
+
+        template<typename ShaderBindGroupStruct>
+        TL::Ptr<ComputeShader> acquireComputePipeline(TL::StringView view)
+        {
+            auto bindGroupLayout = ShaderBindGroupStruct::createBindGroupLayout(m_device);
+            return acquireComputePipeline(view, bindGroupLayout);
+        }
 
     private:
-        RHI::Device*    m_device;
-        TL::FileWatcher m_gfxWatcher;
-        TL::FileWatcher m_cmpWatcher;
+        TL::Ptr<GraphicsShader> acquireGraphicsPipeline(TL::StringView view, RHI::BindGroupLayout* layout, TL::Span<const RHI::PipelineVertexBindingDesc> vertexBindings, RHI::PipelineRenderTargetLayout renderPassLayout);
 
-        // Maps vs and ps to vs\nps
-        TL::Map<TL::String, TL::String> m_gfxStageToCombinedStagePaths;
+        TL::Ptr<ComputeShader> acquireComputePipeline(TL::StringView view, RHI::BindGroupLayout* layout);
 
-        TL::Map<TL::String, AcquireGraphicsPipelineCB> m_graphicsHandler;
-        TL::Map<TL::String, AcquireComputePipelineCB>  m_computeHandler;
+    private:
+        RHI::Device* m_device;
+
+        TL::FileWatcher m_watcher;
+
+        TL::Map<TL::String, GraphicsShader*> m_graphicsHandler;
+        TL::Map<TL::String, ComputeShader*>  m_computeHandler;
     };
 } // namespace Engine

@@ -47,9 +47,22 @@ namespace Engine
         m_image        = RHI::CreateImageWithContent(*m_device, atlasTextureCI, TL::Block{pixels, size_t(width * height * 4)});
         m_projectionCB = RenderContext::ptr->getConstantBuffersPool().allocate<glm::mat4x4>(m_maxViewportsCount);
 
-        RHI::BindGroupLayout* bindGroupLayout = GPU::ImGuiShaderParam::createBindGroupLayout(device);
+        m_shader = PipelineLibrary::ptr->acquireGraphicsPipeline<GPU::ImGuiShaderParam>(
+            "I:/repos/repos3/RHI/Examples/Renderer/Shaders/source/ImGui.json",
+            {
+                {
+                    .stride     = sizeof(ImDrawVert),
+                    .stepRate   = RHI::PipelineVertexInputRate::PerVertex,
+                    .attributes = {
+                        {.offset = offsetof(ImDrawVert, pos), .format = RHI::Format::RG32_FLOAT},
+                        {.offset = offsetof(ImDrawVert, uv), .format = RHI::Format::RG32_FLOAT},
+                        {.offset = offsetof(ImDrawVert, col), .format = RHI::Format::RGBA8_UNORM},
+                    },
+                },
+            },
+            {RHI::Format::RGBA8_UNORM});
 
-        m_bindGroup = m_device->CreateBindGroup({.layout = bindGroupLayout});
+        m_bindGroup = m_device->CreateBindGroup({.layout = m_shader->getBindGroupLayout(0)});
 
         GPU::ImGuiShaderParam shaderParams = {};
         shaderParams.projection            = this->m_projectionCB;
@@ -57,58 +70,6 @@ namespace Engine
         shaderParams.sampler0              = m_sampler;
         shaderParams.updateBindGroup(m_device, m_bindGroup);
 
-        RHI::PipelineLayoutCreateInfo pipelineLayoutCI{
-            .layouts = {bindGroupLayout},
-        };
-        m_pipelineLayout = m_device->CreatePipelineLayout(pipelineLayoutCI);
-        m_device->DestroyBindGroupLayout(bindGroupLayout);
-
-        PipelineLibrary::ptr->acquireGraphicsPipeline(
-            "I:/repos/repos3/RHI/build/Examples/Renderer/Shaders/ImGui.spirv.VSMain",
-            "I:/repos/repos3/RHI/build/Examples/Renderer/Shaders/ImGui.spirv.PSMain",
-            [this](RHI::Device* device, RHI::ShaderModule* vs, RHI::ShaderModule* ps)
-            {
-                if (m_pipeline)
-                {
-                    device->DestroyGraphicsPipeline(m_pipeline);
-                }
-
-                RHI::GraphicsPipelineCreateInfo gfxPipelineCI =
-                    {
-                        .name                 = "ImGui Pipeline",
-                        .vertexShaderName     = "VSMain",
-                        .vertexShaderModule   = vs,
-                        .pixelShaderName      = "PSMain",
-                        .pixelShaderModule    = ps,
-                        .layout               = m_pipelineLayout,
-                        .vertexBufferBindings = {
-                            {
-                                .stride     = sizeof(ImDrawVert),
-                                .stepRate   = RHI::PipelineVertexInputRate::PerVertex,
-                                .attributes = {
-                                    {.offset = offsetof(ImDrawVert, pos), .format = RHI::Format::RG32_FLOAT},
-                                    {.offset = offsetof(ImDrawVert, uv), .format = RHI::Format::RG32_FLOAT},
-                                    {.offset = offsetof(ImDrawVert, col), .format = RHI::Format::RGBA8_UNORM},
-                                },
-                            },
-                        },
-                        .renderTargetLayout = {.colorAttachmentsFormats = RHI::Format::RGBA8_UNORM},
-                        .colorBlendState    = {
-                               .blendStates = RHI::ColorAttachmentBlendStateDesc{
-                                true,
-                                RHI::BlendEquation::Add,
-                                RHI::BlendFactor::SrcAlpha,
-                                RHI::BlendFactor::OneMinusSrcAlpha,
-                                RHI::BlendEquation::Add,
-                                RHI::BlendFactor::One,
-                                RHI::BlendFactor::OneMinusSrcAlpha,
-                                RHI::ColorWriteMask::All,
-                            },
-                        },
-                        .rasterizationState = {.cullMode = RHI::PipelineRasterizerStateCullMode::None},
-                    };
-                m_pipeline = device->CreateGraphicsPipeline(gfxPipelineCI);
-            });
 
         TL_ASSERT(io.BackendRendererUserData == nullptr, "Already initialized a renderer backend!");
         m_newframeHook.Type     = ImGuiContextHookType_NewFramePre;
@@ -132,8 +93,8 @@ namespace Engine
         m_device->DestroyImage(m_image);
         m_device->DestroySampler(m_sampler);
         m_device->DestroyBindGroup(m_bindGroup);
-        m_device->DestroyGraphicsPipeline(m_pipeline);
-        m_device->DestroyPipelineLayout(m_pipelineLayout);
+        // m_device->DestroyGraphicsPipeline(m_pipeline);
+        // m_device->DestroyPipelineLayout(m_pipelineLayout);
     }
 
     RHI::RGPass* ImGuiPass::addPass(RHI::RenderGraph* rg, RHI::RGImage*& outAttachment, ImDrawData* drawData, uint32_t viewportID)
@@ -229,7 +190,7 @@ namespace Engine
                             // TODO: dynamic offset are not supported yet
                             RHI::BindGroupBindingInfo binding{m_bindGroup, {}};
                             // RHI::BindGroupBindingInfo binding{m_bindGroup, (uint32_t)m_projectionCB.getOffset(viewportID)};
-                            commandList.BindGraphicsPipeline(m_pipeline, binding);
+                            commandList.BindGraphicsPipeline(m_shader->getPipeline(), binding);
 
                             commandList.DrawIndexed({
                                 .indexCount    = drawCmd.ElemCount,

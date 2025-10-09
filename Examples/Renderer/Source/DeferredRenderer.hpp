@@ -16,16 +16,17 @@
 namespace Engine
 {
     class Scene;
+    class GraphicsShader;
 
     struct GBufferFill
     {
     private:
-        RHI::PipelineLayout*              m_pipelineLayout  = nullptr;
-        RHI::GraphicsPipeline*            m_pipeline        = nullptr;
-        RHI::Sampler*                     m_sampler         = nullptr;
-        RHI::Image*                       m_texture         = nullptr;
-        Buffer<GPU::SceneGlobalConstants> m_constantBuffer  = {};
-        Buffer<GPU::SceneView>            m_sceneView       = {};
+        TL::Ptr<GraphicsShader> m_shader = nullptr;
+
+        RHI::Sampler*                     m_sampler        = nullptr;
+        RHI::Image*                       m_texture        = nullptr;
+        Buffer<GPU::SceneGlobalConstants> m_constantBuffer = {};
+        Buffer<GPU::SceneView>            m_sceneView      = {};
 
         ShaderBindGroup<GPU::GBufferInputs> m_shaderParams;
 

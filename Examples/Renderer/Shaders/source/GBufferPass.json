@@ -1,0 +1,54 @@
+{
+  "name": "GBufferPass",
+  "vs": {
+    "entry": "VSMain",
+    "path": "I:/repos/repos3/RHI/build/Examples/Renderer/Shaders/GBufferPass.spirv.VSMain"
+  },
+  "ps": {
+    "entry": "PSMain",
+    "path": "I:/repos/repos3/RHI/build/Examples/Renderer/Shaders/GBufferPass.spirv.PSMain"
+  },
+  "colorBlendState": {
+    "blendStates": [
+      {
+        "blendEnable": false,
+        "colorBlendOp": "Add",
+        "srcColor": "One",
+        "dstColor": "Zero",
+        "alphaBlendOp": "Add",
+        "srcAlpha": "One",
+        "dstAlpha": "Zero",
+        "writeMask": "All"
+      },
+      {
+        "blendEnable": false,
+        "colorBlendOp": "Add",
+        "srcColor": "One",
+        "dstColor": "Zero",
+        "alphaBlendOp": "Add",
+        "srcAlpha": "One",
+        "dstAlpha": "Zero",
+        "writeMask": "All"
+      }
+    ],
+    "blendConstants": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "topologyMode": "Triangles",
+  "rasterizationState": {
+    "cullMode": "Back",
+    "fillMode": "Triangle",
+    "frontFace": "CounterClockwise",
+    "lineWidth": 1
+  },
+  "depthStencilState": {
+    "depthTestEnable": true,
+    "depthWriteEnable": true,
+    "compareOperator": "Less",
+    "stencilTestEnable": false
+  }
+}

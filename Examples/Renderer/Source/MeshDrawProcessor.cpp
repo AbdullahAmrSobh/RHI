@@ -107,25 +107,8 @@ namespace Engine
         auto layout = m_shaderParams.getLayout()->get();
         m_shaderParams.init(device, 0);
 
-        m_pipelineLayout = device->CreatePipelineLayout({.name = "CULL-PL", .layouts = layout});
-
-        PipelineLibrary::ptr->acquireComputePipeline(
-            "I:/repos/repos3/RHI/build/Examples/Renderer/Shaders/Cull.spirv.CSMain",
-            [this](RHI::Device* device, RHI::ShaderModule* cs)
-            {
-                if (m_pipeline)
-                {
-                    device->DestroyComputePipeline(m_pipeline);
-                }
-                RHI::ComputePipelineCreateInfo createInfo{
-                    .name         = "CULL-CS",
-                    .shaderName   = "main", // TODO: Should be csmain
-                    .shaderModule = cs,
-                    .layout       = m_pipelineLayout,
-                };
-                m_pipeline = device->CreateComputePipeline(createInfo);
-            });
-
+        m_shader = PipelineLibrary::ptr->acquireComputePipeline<GPU::CullParams>(
+            "I:/repos/repos3/RHI/Examples/Renderer/Shaders/source/Cull.json");
         m_shaderParams.cb.m_dirty                = true;
         m_shaderParams.staticMeshOffsets.m_dirty = true;
         m_shaderParams.drawRequests.m_dirty      = true;
@@ -140,8 +123,8 @@ namespace Engine
 
     void MeshVisibilityPass::shutdown()
     {
-        m_device->DestroyComputePipeline(m_pipeline);
-        m_device->DestroyPipelineLayout(m_pipelineLayout);
+        // m_device->DestroyComputePipeline(m_pipeline);
+        // m_device->DestroyPipelineLayout(m_pipelineLayout);
         m_shaderParams.shutdown(m_device);
     }
 
@@ -174,7 +157,8 @@ namespace Engine
                 m_shaderParams.drawIndirectArgs  = getArgBuffer(rg);
                 m_shaderParams.update(m_device);
 
-                cmd.BindComputePipeline(m_pipeline, m_shaderParams.bind());
+                cmd.BindComputePipeline(m_shader->getPipeline(), m_shaderParams.bind());
+
                 const uint32_t groupSize = 64; // must match [numthreads(x,y,z)] in shader
                 uint32_t       numGroups = (groupSize) / groupSize;
                 cmd.Dispatch({groupSize, 1, 1});

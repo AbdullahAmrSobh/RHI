@@ -12,6 +12,8 @@
 
 namespace Engine
 {
+    class GraphicsShader;
+
     class ImGuiPass
     {
     public:
@@ -35,8 +37,7 @@ namespace Engine
 
         uint32_t m_maxViewportsCount;
 
-        RHI::PipelineLayout*   m_pipelineLayout;
-        RHI::GraphicsPipeline* m_pipeline;
+        TL::Ptr<GraphicsShader>  m_shader;
         RHI::BindGroup*        m_bindGroup;
 
         RHI::Sampler* m_sampler;
