@@ -36,6 +36,8 @@ namespace Engine
         m_indexPool.shutdown();
 
         m_constantBuffersPool.shutdown();
+        m_structuredBuffersPool.shutdown();
+        m_unifiedGeometryBuffersPool.shutdown();
     }
 
     Scene::Scene()

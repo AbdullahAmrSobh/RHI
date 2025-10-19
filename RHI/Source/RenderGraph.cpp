@@ -13,36 +13,229 @@ namespace RHI
 {
     namespace Colors
     {
-        constexpr uint32_t Red   = 0x7F000000;
-        constexpr uint32_t Green = 0x007F7F00;
-        constexpr uint32_t Blue  = 0x00007FFF;
+        static constexpr uint32_t Red = 0x7F000000;
 
-        constexpr ClearValue DebugMarker_Graphics{
-            .f32{0.7f, 0.2f, 0.2f, 1.0f}};
+        static constexpr uint32_t Green = 0x007F7F00;
 
-        constexpr ClearValue DebugMarker_Compute{
-            .f32{0.2f, 0.7f, 0.2f, 1.0f}};
+        static constexpr uint32_t Blue = 0x00007FFF;
 
-        constexpr ClearValue DebugMarker_AsyncCompute{
-            .f32{0.3f, 0.6f, 0.24f, 1.0f}};
+        static constexpr ColorValue<float> GraphicsQueue = {0.7f, 0.2f, 0.2f, 1.0f};
 
-        constexpr ClearValue DebugMarker_Transfer{
-            .f32{0.2f, 0.4f, 0.7f, 1.0f}};
+        static constexpr ColorValue<float> ComputeQueue = {0.2f, 0.7f, 0.2f, 1.0f};
+
+        static constexpr ColorValue<float> AsyncComputeQueue = {0.3f, 0.6f, 0.24f, 1.0f};
+
+        static constexpr ColorValue<float> TransferQueue = {0.2f, 0.4f, 0.7f, 1.0f};
 
     }; // namespace Colors
+
+    struct ImageUsageAndPipelineStage
+    {
+        ImageUsage    usage;
+        PipelineStage stage;
+        Access        access;
+    };
+
+    inline static constexpr ImageUsageAndPipelineStage
+    getUsageAndStage(TL::Flags<RGImageUsage> usageMask)
+    {
+        ImageUsageAndPipelineStage out{ImageUsage::None, PipelineStage::TopOfPipe, Access::None};
+
+        // Build image usage flags
+        ImageUsage iu          = ImageUsage::None;
+        bool       needRead    = false;
+        bool       needWrite   = false;
+        bool       anyStageSet = false;
+
+        // SRV usages -> shader resource
+        if (usageMask & (RGImageUsage::SrvGeometry | RGImageUsage::SrvPixel | RGImageUsage::SrvCompute | RGImageUsage::SrvTraceRays))
+        {
+            iu          = ImageUsage::ShaderResource;
+            needRead    = true;
+            anyStageSet = true;
+        }
+        // UAV usages -> storage resource
+        else if (usageMask & (RGImageUsage::UavGeometry | RGImageUsage::UavPixel | RGImageUsage::UavCompute | RGImageUsage::UavTraceRays))
+        {
+            iu          = ImageUsage::StorageResource;
+            needRead    = true;
+            needWrite   = true;
+            anyStageSet = true;
+        }
+        // RTV/DSV usages
+        else if (usageMask & RGImageUsage::RtvDsvRead)
+        {
+            iu          = ImageUsage::Color;
+            needRead    = true;
+            anyStageSet = true;
+            out.stage   = PipelineStage::ColorAttachmentOutput;
+        }
+        else if (usageMask & RGImageUsage::RtvDsvWrite)
+        {
+            iu          = ImageUsage::Color;
+            needWrite   = true;
+            anyStageSet = true;
+            out.stage   = PipelineStage::ColorAttachmentOutput;
+        }
+
+        // Copy destination
+        if (usageMask & RGImageUsage::CopyDestination)
+        {
+            iu          = ImageUsage::CopyDst;
+            needWrite   = true;
+            out.stage   = PipelineStage::Copy;
+            anyStageSet = true;
+        }
+        // Copy source
+        if (usageMask & RGImageUsage::CopySource)
+        {
+            iu          = ImageUsage::CopySrc;
+            needRead    = true;
+            out.stage   = PipelineStage::Copy;
+            anyStageSet = true;
+        }
+        // Present
+        if (usageMask & RGImageUsage::Present)
+        {
+            iu          = ImageUsage::Present;
+            // Prefer BottomOfPipe only if no shader stages are required. We'll combine stages below.
+            out.stage   = PipelineStage::BottomOfPipe;
+            anyStageSet = true;
+        }
+
+        // Decide pipeline stage based on specific flags. Prefer more-specific stages when possible.
+        PipelineStage stageVar = PipelineStage::TopOfPipe;
+        // Prefer raytracing if requested
+        if (usageMask & (RGImageUsage::SrvTraceRays | RGImageUsage::UavTraceRays))
+            stageVar = PipelineStage::RayTracingShader;
+        else if (usageMask & (RGImageUsage::SrvCompute | RGImageUsage::UavCompute))
+            stageVar = PipelineStage::ComputeShader;
+        else if (usageMask & (RGImageUsage::SrvPixel | RGImageUsage::UavPixel))
+            stageVar = PipelineStage::PixelShader;
+        else if (usageMask & (RGImageUsage::SrvGeometry | RGImageUsage::UavGeometry))
+            stageVar = PipelineStage::VertexShader;
+
+        // RTV/DSV, copy, present influence common shader stages.
+        if (usageMask & (RGImageUsage::RtvDsvRead | RGImageUsage::RtvDsvWrite))
+            stageVar = PipelineStage::ColorAttachmentOutput;
+        if (usageMask & (RGImageUsage::CopyDestination | RGImageUsage::CopySource))
+            stageVar = PipelineStage::Copy;
+        // If present was requested but shader stages are also requested, keep shader stages and OR with BottomOfPipe later when forming barriers.
+        if ((usageMask & RGImageUsage::Present) && !(usageMask & (RGImageUsage::SrvCompute | RGImageUsage::SrvPixel | RGImageUsage::SrvGeometry | RGImageUsage::SrvTraceRays | RGImageUsage::UavCompute | RGImageUsage::UavPixel | RGImageUsage::UavGeometry | RGImageUsage::UavTraceRays)))
+            stageVar = PipelineStage::BottomOfPipe;
+
+        if (!anyStageSet)
+            stageVar = PipelineStage::AllCommands;
+
+        out.stage = stageVar;
+
+        if (needRead && needWrite)
+            out.access = Access::ReadWrite;
+        else if (needWrite)
+            out.access = Access::Write;
+        else if (needRead)
+            out.access = Access::Read;
+        else
+            out.access = Access::None;
+
+        out.usage = iu;
+        return out;
+    }
+
+    struct BufferUsageAndPipelineStage
+    {
+        BufferUsage   usage;
+        PipelineStage stage;
+        Access        access;
+    };
+
+    inline static constexpr BufferUsageAndPipelineStage
+    getUsageAndStage(TL::Flags<RGBufferUsage> usageMask)
+    {
+        BufferUsageAndPipelineStage out{BufferUsage::None, PipelineStage::TopOfPipe, Access::None};
+
+        BufferUsage bu        = BufferUsage::None;
+        bool        needRead  = false;
+        bool        needWrite = false;
+
+        // Constants (uniform) and SRV-like -> read-only uniform if constant, otherwise treated as uniform/read
+        if (usageMask & RGBufferUsage::AllConstant)
+        {
+            bu       = BufferUsage::Uniform;
+            needRead = true;
+        }
+        else if (usageMask & RGBufferUsage::AllSrv)
+        {
+            // no direct map for SRV; treat as uniform/read for now
+            bu       = BufferUsage::Uniform;
+            needRead = true;
+        }
+
+        // UAV or write -> storage + read/write
+        else if (usageMask & RGBufferUsage::AllUav)
+        {
+            bu        = BufferUsage::Storage;
+            needRead  = true;
+            needWrite = true;
+        }
+        else if (usageMask & RGBufferUsage::AllWrite)
+        {
+            bu        = BufferUsage::Storage;
+            needWrite = true;
+        }
+
+        // Copy usages
+        else if (usageMask & RGBufferUsage::CopyDestination)
+        {
+            bu        = BufferUsage::CopyDst;
+            needWrite = true;
+            out.stage = PipelineStage::Copy;
+        }
+        else if (usageMask & RGBufferUsage::CopySource)
+        {
+            bu        = BufferUsage::CopySrc;
+            needRead  = true;
+            out.stage = PipelineStage::Copy;
+        }
+
+        // Indirect draws/dispatches
+        if (usageMask & RGBufferUsage::AllIndirect)
+        {
+            bu        = BufferUsage::Indirect;
+            // Indirect draws are executed by the DrawIndirect pipeline stage
+            out.stage = PipelineStage::DrawIndirect;
+            needRead  = true;
+        }
+
+        // Default stage
+        if (out.stage == PipelineStage::TopOfPipe)
+            out.stage = PipelineStage::AllCommands;
+
+        if (needRead && needWrite)
+            out.access = Access::ReadWrite;
+        else if (needWrite)
+            out.access = Access::Write;
+        else if (needRead)
+            out.access = Access::Read;
+        else
+            out.access = Access::None;
+
+        out.usage = bu;
+        return out;
+    }
 
     // ///////////////////////////////////////////////////////////////////////////
     // /// Pass Resource types
     // ///////////////////////////////////////////////////////////////////////////
 
-    RGFrameImage* RenderGraph::CreateFrameImage(const char* name)
+    RGFrameImage* RenderGraph::CreateFrameImage(TL::StringView name)
     {
         auto image  = TL::constructFrom<RGFrameImage>(&m_arena);
         image->name = name;
         return image;
     }
 
-    RGFrameBuffer* RenderGraph::CreateFrameBuffer(const char* name)
+    RGFrameBuffer* RenderGraph::CreateFrameBuffer(TL::StringView name)
     {
         auto buffer  = TL::constructFrom<RGFrameBuffer>(&m_arena);
         buffer->name = name;
@@ -89,196 +282,297 @@ namespace RHI
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    /// Render Graph Builder Interface
-    ///////////////////////////////////////////////////////////////////////////
-
-    RenderGraphBuilder::RenderGraphBuilder(RenderGraph* rg, RGPass* pass)
-        : m_rg(rg)
-        , m_pass(pass)
-    {
-    }
-
-    void RenderGraphBuilder::ReadImage(RGImage* imageHandle, ImageUsage usage, PipelineStage stage)
-    {
-        ReadImage(imageHandle, ImageSubresourceRange::All(), usage, stage);
-    }
-
-    void RenderGraphBuilder::ReadImage(RGImage* imageHandle, const ImageSubresourceRange& subresource, ImageUsage usage, PipelineStage stage)
-    {
-        UseImageInternal(imageHandle, Access::Read, subresource, usage, stage);
-    }
-
-    RGImage* RenderGraphBuilder::WriteImage(RGImage* imageHandle, ImageUsage usage, PipelineStage stage)
-    {
-        return WriteImage(imageHandle, ImageSubresourceRange::All(), usage, stage);
-    }
-
-    RGImage* RenderGraphBuilder::WriteImage(RGImage* imageHandle, const ImageSubresourceRange& subresource, ImageUsage usage, PipelineStage stage)
-    {
-        return UseImageInternal(imageHandle, Access::Write, subresource, usage, stage);
-    }
-
-    void RenderGraphBuilder::ReadBuffer(RGBuffer* bufferHandle, BufferUsage usage, PipelineStage stage)
-    {
-        ReadBuffer(bufferHandle, BufferSubregion{.offset = 0, .size = RemainingSize}, usage, stage);
-    }
-
-    void RenderGraphBuilder::ReadBuffer(RGBuffer* bufferHandle, const BufferSubregion& subregion, BufferUsage usage, PipelineStage stage)
-    {
-        UseBufferInternal(bufferHandle, Access::Read, subregion, usage, stage);
-    }
-
-    RGBuffer* RenderGraphBuilder::WriteBuffer(RGBuffer* bufferHandle, BufferUsage usage, PipelineStage stage)
-    {
-        return WriteBuffer(bufferHandle, BufferSubregion{.offset = 0, .size = RemainingSize}, usage, stage);
-    }
-
-    RGBuffer* RenderGraphBuilder::WriteBuffer(RGBuffer* bufferHandle, const BufferSubregion& subregion, BufferUsage usage, PipelineStage stage)
-    {
-        return UseBufferInternal(bufferHandle, Access::Write, subregion, usage, stage);
-    }
-
-    RGImage* RenderGraphBuilder::AddColorAttachment(RGColorAttachment attachment)
-    {
-        TL_ASSERT(m_rg->m_state.frameRecording);
-        // TL_ASSERT(m_rg->CheckHandleIsValid(attachment.color));
-        // if (attachment.resolveView) TL_ASSERT(m_rg->CheckHandleIsValid(attachment.resolveView));
-
-        m_pass->m_gfxPassInfo.m_colorAttachments.push_back(attachment);
-
-        auto color = WriteImage(attachment.color, attachment.colorRange, ImageUsage::Color, PipelineStage::ColorAttachmentOutput);
-        if (attachment.resolveView)
-        {
-            return WriteImage(attachment.resolveView, attachment.resolveRange, ImageUsage::Resolve, PipelineStage::Resolve);
-        }
-        return color;
-    }
-
-    RGImage* RenderGraphBuilder::SetDepthStencil(RGDepthStencilAttachment attachment)
-    {
-        TL_ASSERT(m_rg->m_state.frameRecording);
-        // TL_ASSERT(m_rg->CheckHandleIsValid(attachment.depthStencil));
-
-        // TODO: fix this function
-
-        m_pass->m_gfxPassInfo.m_depthStencilAttachment = attachment;
-        return WriteImage(attachment.depthStencil, attachment.depthStencilRange, ImageUsage::DepthStencil, PipelineStage::LateFragmentTests);
-    }
-
-    RGImage* RenderGraphBuilder::AddColorAttachment(RGImage* target, LoadOperation loadOp, ClearValue clear)
-    {
-        RGColorAttachment attachment{
-            .color      = target,
-            .loadOp     = loadOp,
-            .storeOp    = StoreOperation::Store,
-            .clearValue = clear,
-        };
-        return AddColorAttachment(attachment);
-    }
-
-    RGImage* RenderGraphBuilder::CreateColorTarget(const char* name, ImageSize2D size, Format format, ClearValue clear)
-    {
-        RGColorAttachment attachment{
-            .color      = m_rg->CreateRenderTarget(name, size, format),
-            .loadOp     = LoadOperation::Discard,
-            .storeOp    = StoreOperation::Store,
-            .clearValue = clear,
-        };
-        return AddColorAttachment(attachment);
-    }
-
-    RGBuffer* RenderGraphBuilder::CreateBuffer(const char* name, size_t size, BufferUsage usage, PipelineStage stage)
-    {
-        return WriteBuffer(m_rg->CreateBuffer(name, size), usage, stage);
-    }
-
-    RGImage* RenderGraphBuilder::UseImageInternal(RGImage* resource, Access access, const ImageSubresourceRange& subresource, ImageUsage usage, PipelineStage stage)
-    {
-        TL_ASSERT(m_rg->m_state.frameRecording);
-
-        // Add dependency from the resource's producer to this pass
-        if (resource->m_producer && resource->m_producer != m_pass)
-            m_rg->AddDependency(resource->m_producer, m_pass);
-
-        if (resource->m_producer == nullptr)
-        {
-            TL_ASSERT(access & Access::Write);
-            resource->m_producer = m_pass;
-        }
-        else if (access & Access::Write)
-        {
-            resource = m_rg->EmplacePassImage(resource->m_frameResource, m_pass, ImageBarrierState{usage, stage, access});
-        }
-
-        // Add resource dependency to the pass
-        resource->m_frameResource->usageFlags |= usage; // extend actual usage
-        RGImageDependency dep{
-            .image  = resource,
-            .viewID = 0,
-            .state  = ImageBarrierState{usage, stage, access},
-        };
-        m_pass->m_imageDependencies.push_back(dep);
-
-        return resource;
-    }
-
-    RGBuffer* RenderGraphBuilder::UseBufferInternal(RGBuffer* resource, Access access, const BufferSubregion& subresource, BufferUsage usage, PipelineStage stage)
-    {
-        TL_ASSERT(m_rg->m_state.frameRecording);
-
-        // Add dependency from the resource's producer to this pass
-        if (resource->m_producer && resource->m_producer != m_pass)
-            m_rg->AddDependency(resource->m_producer, m_pass);
-
-        if (resource->m_producer == nullptr)
-        {
-            TL_ASSERT(access & Access::Write);
-            resource->m_producer = m_pass;
-        }
-        else if (access & Access::Write)
-        {
-            resource = m_rg->EmplacePassBuffer(resource->m_frameResource, m_pass, BufferBarrierState{usage, stage, access});
-        }
-
-        // Add resource dependency to the pass
-        resource->m_frameResource->usageFlags |= usage; // extend actual usage
-        RGBufferDependency dep{
-            .buffer    = resource,
-            .subregion = subresource,
-            .state     = BufferBarrierState{usage, stage, access},
-        };
-        m_pass->m_bufferDependencies.push_back(dep);
-
-        return resource;
-    }
-
-    ///////////////////////////////////////////////////////////////////////////
     /// Render Graph Pass
     ///////////////////////////////////////////////////////////////////////////
 
-    RGPass::RGPass(RenderGraph* rg, const PassCreateInfo& ci)
-        : m_renderGraph{rg}
-        , m_name(ci.name)
-        , m_type{ci.type}
-        , m_setupCallback{ci.setupCallback}
-        , m_executeCallback{ci.executeCallback}
+    RGPass::RGPass(RenderGraph* rg, TL::StringView name, RGPassType type, ImageSize2D size2D)
+        : m_name(name)
+        , m_type(type)
+        , m_renderGraph(rg)
+        , m_dependencyLevelIndex(0)
+        , m_indexInUnorderedList(0)
+        , m_executionQueueIndex(0)
+        , m_producers(rg->GetFrameAllocator())
         , m_imageDependencies(rg->GetFrameAllocator())
         , m_bufferDependencies(rg->GetFrameAllocator())
-        , m_producers(rg->GetFrameAllocator())
         , m_gfxPassInfo(rg->GetFrameAllocator())
-        , m_barriers{rg->GetFrameAllocator()}
+        , m_barriers(rg->GetFrameAllocator())
     {
+        // default state
+        m_state.culled        = false;
+        m_state.shouldCompile = true;
+        m_gfxPassInfo.m_size  = size2D;
     }
 
     RGPass::~RGPass()
     {
     }
 
-    void RGPass::Setup(RenderGraphBuilder& builder)
+    TL::StringView RGPass::name() const
     {
-        ZoneScopedN("RGPass::Setup");
-        TL_ASSERT(m_setupCallback);
-        m_setupCallback(builder);
+        return m_name;
+    }
+
+    RGImage* RGPass::createRenderTarget(const RGAttachmentCreateInfo& ci)
+    {
+        bool isColor        = GetFormatInfo(ci.format).hasRed || GetFormatInfo(ci.format).hasGreen || GetFormatInfo(ci.format).hasBlue || GetFormatInfo(ci.format).hasAlpha;
+        bool isDepth        = GetFormatInfo(ci.format).hasDepth;
+        bool isStencil      = GetFormatInfo(ci.format).hasStencil;
+        bool isDepthStencil = isDepth && isStencil;
+
+        RGFrameImage* frameImage = m_renderGraph->CreateFrameImage(ci.name);
+        frameImage->format       = ci.format;
+        frameImage->sampleCount  = ci.sampleCount;
+        frameImage->type         = ImageType::Image2D;
+        frameImage->size.width   = this->m_gfxPassInfo.m_size.width;
+        frameImage->size.height  = this->m_gfxPassInfo.m_size.height;
+
+        m_renderGraph->m_imagePool.push_back(frameImage);
+
+        // mark usage for the frame image (color or depth/stencil)
+        if (isColor)
+            frameImage->usageFlags |= ImageUsage::Color;
+        else if (isDepthStencil || isDepth || isStencil)
+            frameImage->usageFlags |= ImageUsage::DepthStencil;
+
+        auto img = m_renderGraph->EmplacePassImage(frameImage, this, {});
+
+        // record that this pass produces the image
+        m_renderGraph->AddDependency(nullptr, this);
+
+        // Use the unified useRenderTarget path to register dependencies and attach info.
+        // Pass through resolveMode so attachments can be configured appropriately.
+        return useRenderTarget(img, ImageSubresourceRange::All(), LoadOperation::Discard, ci.storeOp, ci.clearValue, ci.resolveMode);
+    }
+
+    RGImage* RGPass::useRenderTarget(RGImage* image, const ImageSubresourceRange& range, LoadOperation loadOp, StoreOperation storeOp, ClearValue clearValue, ResolveMode resolveMode)
+    {
+        // mark that this pass reads/writes the provided render target
+        m_renderGraph->AddDependency(image->m_producer, this);
+
+        RGImageDependency dep{};
+        dep.image  = image;
+        dep.viewID = 0;
+
+        bool isColor = GetFormatInfo(image->m_frameResource->format).hasRed || GetFormatInfo(image->m_frameResource->format).hasGreen || GetFormatInfo(image->m_frameResource->format).hasBlue || GetFormatInfo(image->m_frameResource->format).hasAlpha;
+        if (isColor)
+            dep.state.usage = ImageUsage::Color;
+        else
+            dep.state.usage = ImageUsage::DepthStencil;
+
+        dep.state.stage  = PipelineStage::ColorAttachmentOutput;
+        dep.state.access = Access::None;
+        if (loadOp == LoadOperation::Load)
+            dep.state.access = Access::Read;
+        if (storeOp == StoreOperation::Store)
+            dep.state.access = Access::Write;
+
+        m_imageDependencies.push_back(dep);
+
+        // Update the underlying frame image usage flags so the allocator knows how the image will be used
+        image->m_frameResource->usageFlags |= dep.state.usage;
+
+        // Also register this image as an attachment on the graphics pass (color or depth/stencil)
+        if (isColor)
+        {
+            RGColorAttachment attachment{};
+            attachment.color       = image;
+            attachment.loadOp      = loadOp;
+            attachment.storeOp     = storeOp;
+            attachment.clearValue  = clearValue;
+            attachment.resolveMode = resolveMode;
+            attachment.resolveView = nullptr;
+            m_gfxPassInfo.m_colorAttachments.push_back(attachment);
+        }
+        else
+        {
+            // depth and/or stencil attachment(s)
+            if (GetFormatInfo(image->m_frameResource->format).hasDepth)
+            {
+                m_gfxPassInfo.m_depthStencilAttachment.depthStencil          = image;
+                m_gfxPassInfo.m_depthStencilAttachment.depthLoadOp           = loadOp == LoadOperation::Load ? LoadOperation::Load : LoadOperation::Discard;
+                m_gfxPassInfo.m_depthStencilAttachment.depthStoreOp          = storeOp;
+                m_gfxPassInfo.m_depthStencilAttachment.clearValue.depthValue = clearValue.ds.depthValue;
+            }
+            if (GetFormatInfo(image->m_frameResource->format).hasStencil)
+            {
+                m_gfxPassInfo.m_depthStencilAttachment.depthStencil            = image;
+                m_gfxPassInfo.m_depthStencilAttachment.stencilLoadOp           = loadOp == LoadOperation::Load ? LoadOperation::Load : LoadOperation::Discard;
+                m_gfxPassInfo.m_depthStencilAttachment.stencilStoreOp          = storeOp;
+                m_gfxPassInfo.m_depthStencilAttachment.clearValue.stencilValue = clearValue.ds.stencilValue;
+            }
+        }
+
+        return image;
+    }
+
+    RGImage* RGPass::useRenderTarget(RGImage* image, LoadOperation loadOp, StoreOperation storeOp, ClearValue clearValue)
+    {
+        return useRenderTarget(image, ImageSubresourceRange::All(), loadOp, storeOp, clearValue);
+    }
+
+    RGImage* RGPass::createImage(const RGImageCreateInfo& ci, RGImageUsage usage)
+    {
+        RGFrameImage* frameImage = m_renderGraph->CreateFrameImage(ci.name);
+        frameImage->type         = ci.type;
+        frameImage->size         = ci.size;
+        frameImage->format       = ci.format;
+        frameImage->sampleCount  = ci.sampleCount;
+        frameImage->mipLevels    = ci.mipLevels;
+        frameImage->arrayCount   = ci.arrayCount;
+        m_renderGraph->m_imagePool.push_back(frameImage);
+        auto img = m_renderGraph->EmplacePassImage(frameImage, this, {});
+
+        // Record that this pass produces the image
+        m_renderGraph->AddDependency(nullptr, this);
+
+        auto [imageUsage, stage, access] = getUsageAndStage(usage);
+
+        // Accumulate usage flags on the frame resource
+        frameImage->usageFlags |= imageUsage;
+
+        // Add an explicit write dependency for this image
+        RGImageDependency dep{};
+        dep.image        = img;
+        dep.viewID       = 0;
+        dep.state.usage  = imageUsage;
+        dep.state.stage  = stage;
+        dep.state.access = access;
+        m_imageDependencies.push_back(dep);
+        return img;
+    }
+
+    RGImage* RGPass::writeImage(RGImage* image, const ImageSubresourceRange& range, RGImageUsage usage)
+    {
+        // find or create RGImage for that view (represented by EmplacePassImage)
+        RGImage* rgView = m_renderGraph->EmplacePassImage(image->m_frameResource, this, {});
+
+        // add dependency from previous producer to this pass
+        m_renderGraph->AddDependency(image->m_producer, this);
+
+        auto [imageUsage, stage, access] = getUsageAndStage(usage);
+
+        // Update the frame resource usage
+        image->m_frameResource->usageFlags |= imageUsage;
+
+        RGImageDependency dep{};
+        dep.image        = rgView;
+        dep.viewID       = 0;
+        dep.state.usage  = imageUsage;
+        dep.state.stage  = stage;
+        dep.state.access = access;
+        m_imageDependencies.push_back(dep);
+        return rgView;
+    }
+
+    RGImage* RGPass::writeImage(RGImage* image, RGImageUsage usage)
+    {
+        return writeImage(image, ImageSubresourceRange::All(), usage);
+    }
+
+    RGImage* RGPass::resolveImage(RGImage* src, const ImageSubresourceRange& range)
+    {
+        // TODO: implement
+        return nullptr;
+    }
+
+    RGImage* RGPass::resolveImage(RGImage* src)
+    {
+        return resolveImage(src, ImageSubresourceRange::All());
+    }
+
+    void RGPass::readImage(RGImage* image, const ImageSubresourceRange& range, RGImageUsage usage)
+    {
+        m_renderGraph->AddDependency(image->m_producer, this);
+
+        auto [imageUsage, stage, access] = getUsageAndStage(usage);
+
+        RGImageDependency dep{};
+        dep.image        = image;
+        dep.viewID       = 0;
+        dep.state.usage  = imageUsage;
+        dep.state.stage  = stage;
+        dep.state.access = access;
+        m_imageDependencies.push_back(dep);
+        // Update the frame resource usage
+        image->m_frameResource->usageFlags |= imageUsage;
+    }
+
+    void RGPass::readImage(RGImage* image, RGImageUsage usage)
+    {
+        readImage(image, ImageSubresourceRange::All(), usage);
+    }
+
+    RGBuffer* RGPass::createBuffer(const RGBufferCreateInfo& ci, RGBufferUsage usage)
+    {
+        RGFrameBuffer* frameBuffer = m_renderGraph->CreateFrameBuffer(ci.name);
+        frameBuffer->size          = ci.size;
+        m_renderGraph->m_bufferPool.push_back(frameBuffer);
+        auto buf = m_renderGraph->EmplacePassBuffer(frameBuffer, this, {});
+
+        m_renderGraph->AddDependency(nullptr, this);
+
+        auto [bufferUsage, stage, access] = getUsageAndStage(usage);
+
+        // Accumulate usage flags on the frame buffer
+        frameBuffer->usageFlags |= bufferUsage;
+
+        RGBufferDependency dep{};
+        dep.buffer       = buf;
+        dep.subregion    = BufferSubregion{0, ci.size};
+        dep.state.usage  = bufferUsage;
+        dep.state.stage  = stage;
+        dep.state.access = access;
+        m_bufferDependencies.push_back(dep);
+        return buf;
+    }
+
+    RGBuffer* RGPass::readBuffer(RGBuffer* buffer, const BufferSubregion& subregion, RGBufferUsage usage)
+    {
+        m_renderGraph->AddDependency(buffer->m_producer, this);
+
+        auto [bufferUsage, stage, access] = getUsageAndStage(usage);
+
+        RGBufferDependency dep{};
+        dep.buffer       = buffer;
+        dep.subregion    = subregion;
+        dep.state.usage  = bufferUsage;
+        dep.state.stage  = stage;
+        dep.state.access = access;
+        m_bufferDependencies.push_back(dep);
+        // Update the frame buffer usage flags
+        buffer->m_frameResource->usageFlags |= bufferUsage;
+        return buffer;
+    }
+
+    RGBuffer* RGPass::readBuffer(RGBuffer* buffer, RGBufferUsage usage)
+    {
+        return readBuffer(buffer, BufferSubregion{0, buffer->m_frameResource->size}, usage);
+    }
+
+    RGBuffer* RGPass::writeBuffer(RGBuffer* buffer, const BufferSubregion& subregion, RGBufferUsage usage)
+    {
+        auto buf = m_renderGraph->EmplacePassBuffer(buffer->m_frameResource, this, {});
+
+        m_renderGraph->AddDependency(buffer->m_producer, this);
+
+        auto [bufferUsage, stage, access] = getUsageAndStage(usage);
+
+        RGBufferDependency dep{};
+        dep.buffer       = buf;
+        dep.subregion    = subregion;
+        dep.state.usage  = bufferUsage;
+        dep.state.stage  = stage;
+        dep.state.access = access;
+        m_bufferDependencies.push_back(dep);
+        // Update the frame buffer usage flags
+        buf->m_frameResource->usageFlags |= bufferUsage;
+        return buf;
+    }
+
+    RGBuffer* RGPass::writeBuffer(RGBuffer* buffer, RGBufferUsage usage)
+    {
+        return writeBuffer(buffer, BufferSubregion{0, buffer->m_frameResource->size}, usage);
     }
 
     void RGPass::Execute(CommandList& commandList)
@@ -383,7 +677,6 @@ namespace RHI
 
         BufferCreateInfo ci{
             .name       = rgBuffer->name.c_str(),
-            .hostMapped = true, // TODO: Should be I don't care?
             .usageFlags = rgBuffer->usageFlags,
             .byteSize   = rgBuffer->size,
         };
@@ -434,15 +727,11 @@ namespace RHI
         m_bufferPool.clear();
     }
 
-    void RenderGraph::Debug_CaptureNextFrame()
-    {
-        m_state.debug_triggerNextFrameCapture = true;
-    }
-
-    void RenderGraph::BeginFrame()
+    void RenderGraph::BeginFrame(const RGBeginInfo& beginInfo)
     {
         ZoneScopedC(Colors::Red);
 
+        m_beginInfo            = beginInfo;
         m_state.frameRecording = true;
         m_activeFrame          = m_device->GetCurrentFrame();
     }
@@ -457,49 +746,24 @@ namespace RHI
         Compile();
         Execute();
 
-        if (m_state.dumpGraphviz)
-        {
-            TL::String output;
-            output += "====== RenderGraph State ======\n";
-            for (size_t levelIdx = 0; levelIdx < m_dependencyLevels.size(); ++levelIdx)
-            {
-                const auto& level = m_dependencyLevels[levelIdx];
-                output += std::format("Dependency Level {}:\n", levelIdx);
-                for (auto pass : level.GetPasses())
-                {
-                    output += std::format("  Pass: {}\n", pass->GetName());
-                    // Print image transitions
-                    for (const auto& dep : pass->m_imageDependencies)
-                    {
-                        auto img = dep.image;
-                        output += std::format("    Image: {} | Usage: {}\n", img->m_frameResource->name, Debug::ToString(dep.state.usage));
-                    }
-                    // Print buffer transitions
-                    for (const auto& dep : pass->m_bufferDependencies)
-                    {
-                        auto buf = dep.buffer;
-                        output += std::format("    Buffer: {} | Usage: {}\n", buf->m_frameResource->name, Debug::ToString(dep.state.usage));
-                    }
-                }
-            }
-            output += "================================\n";
-            TL_LOG_INFO("{}", output);
-            m_state.dumpGraphviz = false;
-        }
+        DumpGraphViz();
 
         {
             ZoneScopedN("Clear");
+
             m_dependencyLevels = TL::Vector<DependencyLevel>{m_arena};
             m_bufferPool       = TL::Vector<RGFrameBuffer*>{m_arena};
             m_imagePool        = TL::Vector<RGFrameImage*>{m_arena};
             m_passPool         = TL::Vector<RGPass*>{m_arena};
             m_swapchains       = TL::Vector<SwapchainImageAcquireInfo>{m_arena};
             m_arena.reset();
-            memset(&m_state, 0, sizeof(State));
+
+            m_beginInfo = {};
+            m_state     = {};
         }
     }
 
-    RGImage* RenderGraph::ImportSwapchain(const char* name, Swapchain& swapchain, Format format)
+    RGImage* RenderGraph::importSwapchain(TL::StringView name, Swapchain& swapchain, Format format)
     {
         TL_ASSERT(m_state.frameRecording == true);
         m_swapchains.push_back({&swapchain, PipelineStage::TopOfPipe});
@@ -509,10 +773,11 @@ namespace RHI
         frameResource->handle     = swapchain.GetImage();
         frameResource->format     = format;
         frameResource->isImported = true;
+        m_imagePool.push_back(frameResource);
         return EmplacePassImage(frameResource, nullptr, {});
     }
 
-    RGImage* RenderGraph::ImportImage(const char* name, Image* image, Format format)
+    RGImage* RenderGraph::importImage(TL::StringView name, Image* image, Format format)
     {
         TL_ASSERT(m_state.frameRecording == true);
         auto frameImage        = TL::constructFrom<RGFrameImage>(&m_arena);
@@ -524,7 +789,7 @@ namespace RHI
         return EmplacePassImage(frameImage, nullptr, {});
     }
 
-    RGBuffer* RenderGraph::ImportBuffer(const char* name, Buffer* buffer)
+    RGBuffer* RenderGraph::importBuffer(TL::StringView name, Buffer* buffer)
     {
         TL_ASSERT(m_state.frameRecording == true);
         auto frameBuffer        = TL::constructFrom<RGFrameBuffer>(&m_arena);
@@ -535,54 +800,22 @@ namespace RHI
         return EmplacePassBuffer(frameBuffer, nullptr, {});
     }
 
-    RGImage* RenderGraph::CreateImage(const char* name, ImageType type, ImageSize3D size, Format format, uint32_t mipLevels, uint32_t arrayCount, SampleCount samples)
-    {
-        TL_ASSERT(m_state.frameRecording == true);
-        auto frameImage         = TL::constructFrom<RGFrameImage>(&m_arena);
-        frameImage->name        = name;
-        frameImage->type        = type;
-        frameImage->size        = size;
-        frameImage->format      = format;
-        frameImage->mipLevels   = mipLevels;
-        frameImage->arrayCount  = arrayCount;
-        frameImage->sampleCount = samples;
-        m_imagePool.push_back(frameImage);
-        return EmplacePassImage(frameImage, nullptr, {});
-    }
-
-    RGImage* RenderGraph::CreateRenderTarget(const char* name, ImageSize2D size, Format format, uint32_t mipLevels, uint32_t arrayCount, SampleCount samples)
-    {
-        TL_ASSERT(m_state.frameRecording == true);
-        return CreateImage(name, ImageType::Image2D, {size.width, size.height, 1}, format, mipLevels, arrayCount, samples);
-    }
-
-    RGBuffer* RenderGraph::CreateBuffer(const char* name, size_t size)
-    {
-        TL_ASSERT(m_state.frameRecording == true);
-        auto frameBuffer  = TL::constructFrom<RGFrameBuffer>(&m_arena);
-        frameBuffer->name = name;
-        frameBuffer->size = size;
-        m_bufferPool.push_back(frameBuffer);
-        return EmplacePassBuffer(frameBuffer, nullptr, {});
-    }
-
-    RGPass* RenderGraph::AddPass(const PassCreateInfo& createInfo)
+    RGPass* RenderGraph::addPass(TL::StringView name, RGPassType type, ImageSize2D size2D)
     {
         ZoneScoped;
         TL_ASSERT(m_state.frameRecording == true);
         uint32_t indexInUnorderedList = m_passPool.size();
-        RGPass*  pass                 = m_passPool.emplace_back(TL::constructFrom<RGPass>(&GetFrameAllocator(), this, createInfo));
 
-        auto builder = RenderGraphBuilder(this, pass);
-        pass->Setup(builder);
-        pass->m_gfxPassInfo.m_size   = createInfo.size;
+        RGPass* pass                 = m_passPool.emplace_back(TL::constructFrom<RGPass>(&GetFrameAllocator(), this, name, type, size2D));
         pass->m_indexInUnorderedList = indexInUnorderedList;
         return pass;
     }
 
-    void RenderGraph::Dump()
+    void RenderGraph::submitPass(RGPass* pass, PassExecuteCallback&& executeCallback)
     {
-        m_state.dumpGraphviz = true;
+        ZoneScoped;
+        TL_ASSERT(m_state.frameRecording == true);
+        pass->m_executeCallback = std::move(executeCallback);
     }
 
     // private:
@@ -620,6 +853,14 @@ namespace RHI
     void RenderGraph::Compile()
     {
         ZoneScoped;
+
+        /// TODO: cleanup
+        TL::Context ctx{&GetFrameAllocator()};
+        TL::Context::push(&ctx);
+        TL_defer
+        {
+            TL::Context::pop();
+        };
 
         TL::Vector<TL::Vector<uint32_t>> adjacencyLists(GetFrameAllocator());
         adjacencyLists.resize(m_passPool.size(), TL::Vector<uint32_t>{GetFrameAllocator()});
@@ -721,7 +962,7 @@ namespace RHI
             if (!visitedNodes[nodeIndex])
             {
                 DepthFirstSearch(nodeIndex, visitedNodes, onStackNodes, isCyclic, adjacencyLists, sortedPasses);
-                TL_ASSERT(!isCyclic, "Detected cyclic dependency in pass: ", m_passPool[nodeIndex]->GetName());
+                TL_ASSERT(!isCyclic, "Detected cyclic dependency in pass: {}", m_passPool[nodeIndex]->name().data());
             }
         }
         // I don't know why/how but it flips the expected order
@@ -821,79 +1062,27 @@ namespace RHI
         }
     }
 
-    void RenderGraph::Execute()
-    {
-        ZoneScoped;
-
-        auto frame = m_device->GetCurrentFrame();
-
-        if (m_state.debug_triggerNextFrameCapture)
-        {
-            frame->CaptureNextFrame();
-        }
-
-        frame->Begin(m_swapchains);
-
-        CommandListCreateInfo cmdCI{
-            .name      = "cmd-rendergraph",
-            .queueType = QueueType::Graphics,
-        };
-        auto commandList = frame->CreateCommandList(cmdCI);
-        {
-            commandList->Begin();
-            for (const auto& level : m_dependencyLevels)
-            {
-                for (auto pass : level.GetPasses())
-                {
-                    ExecutePass(pass, commandList);
-                }
-            }
-            TL::Vector<ImageBarrierInfo> swapchainBarriers{m_arena};
-            for (auto swapchain : m_swapchains)
-            {
-                RHI::ImageBarrierInfo barrier{
-                    .image    = swapchain.swapchain->GetImage(),
-                    .srcState = {ImageUsage::CopyDst, PipelineStage::Copy, Access::Write},
-                    .dstState = {ImageUsage::Present, PipelineStage::BottomOfPipe, Access::None},
-                };
-                swapchainBarriers.push_back(barrier);
-            }
-            commandList->AddPipelineBarrier({}, swapchainBarriers, {});
-            commandList->End();
-        }
-
-        QueueSubmitInfo submitInfo{
-            .commandLists  = commandList,
-            .signalStage   = PipelineStage::BottomOfPipe,
-            .waitInfos     = {},
-            .signalPresent = true,
-        };
-        TL_MAYBE_UNUSED auto timeline = frame->QueueSubmit(QueueType::Graphics, submitInfo);
-
-        frame->End();
-    }
-
     void RenderGraph::ExecutePass(RGPass* pass, CommandList* commandList)
     {
         ZoneScoped;
 
-        bool isCompute = pass->m_type == PassType::Compute || pass->m_type == PassType::AsyncCompute;
+        bool isCompute = pass->m_type == RGPassType::Compute || pass->m_type == RGPassType::AsyncCompute;
 
         ClearValue markerColor{};
         switch (pass->m_type)
         {
-        case PassType::Graphics:     markerColor = Colors::DebugMarker_Graphics; break;
-        case PassType::Compute:      markerColor = Colors::DebugMarker_Compute; break;
-        case PassType::AsyncCompute: markerColor = Colors::DebugMarker_AsyncCompute; break;
-        case PassType::Transfer:     markerColor = Colors::DebugMarker_Transfer; break;
+        case RGPassType::Graphics:     markerColor.f32 = Colors::GraphicsQueue; break;
+        case RGPassType::Compute:      markerColor.f32 = Colors::ComputeQueue; break;
+        case RGPassType::AsyncCompute: markerColor.f32 = Colors::AsyncComputeQueue; break;
+        case RGPassType::Transfer:     markerColor.f32 = Colors::TransferQueue; break;
         }
-        commandList->PushDebugMarker(pass->GetName(), markerColor);
+        commandList->PushDebugMarker(pass->name().data(), markerColor);
 
         // const auto& [prebarriers, preImageBarriers, preBufferBarriers] = pass->m_barriers[RGPass::Prilogue];
         const auto& [prebarriers, preImageBarriers, preBufferBarriers] = pass->m_barriers;
         commandList->AddPipelineBarrier(prebarriers, preImageBarriers, preBufferBarriers);
 
-        if (pass->m_type == PassType::Graphics)
+        if (pass->m_type == RGPassType::Graphics)
         {
             TL::Vector<ColorAttachment> attachments(GetFrameAllocator());
             DepthStencilAttachment      dsAttachment{};
@@ -944,14 +1133,14 @@ namespace RHI
         else if (isCompute)
         {
             ComputePassBeginInfo beginInfo{
-                .name = pass->GetName(),
+                .name = pass->name().data(),
             };
             commandList->BeginComputePass(beginInfo);
         }
 
         pass->Execute(*commandList);
 
-        if (pass->m_type == PassType::Graphics)
+        if (pass->m_type == RGPassType::Graphics)
             commandList->EndRenderPass();
         else if (isCompute)
             commandList->EndComputePass();
@@ -960,4 +1149,114 @@ namespace RHI
         // commandList->AddPipelineBarrier(postbarriers, postImageBarriers, postBufferBarriers);
         commandList->PopDebugMarker();
     }
+
+    void RenderGraph::Execute()
+    {
+        ZoneScoped;
+
+        auto frame = m_device->GetCurrentFrame();
+
+        TL::Context ctx{&GetFrameAllocator()};
+        TL::Context::push(&ctx);
+        TL_defer
+        {
+            TL::Context::pop();
+        };
+
+        if (m_beginInfo.rdocDebugCapture)
+        {
+            frame->CaptureNextFrame();
+        }
+
+        frame->Begin(m_swapchains);
+
+        CommandListCreateInfo cmdCI{
+            .name      = "cmd-rendergraph",
+            .queueType = QueueType::Graphics,
+        };
+        auto commandList = frame->CreateCommandList(cmdCI);
+        {
+            commandList->Begin();
+            for (const auto& level : m_dependencyLevels)
+            {
+                for (auto pass : level.GetPasses())
+                {
+                    ExecutePass(pass, commandList);
+                }
+            }
+            TL::Vector<ImageBarrierInfo> swapchainBarriers{m_arena};
+            for (auto swapchain : m_swapchains)
+            {
+                // Try to find the corresponding imported RGFrameImage for this swapchain image so we can
+                // use its last producer state as the srcState for transitioning back to present.
+
+                ImageBarrierState srcState{ImageUsage::CopyDst, swapchain.waitStage, Access::Write};
+                Image*            scImage = swapchain.swapchain->GetImage();
+                for (auto frameImg : m_imagePool)
+                {
+                    if (!frameImg->isImported)
+                        continue;
+                    if (frameImg->handle != scImage)
+                        continue;
+                    // If there is a last producer handle for this frame image, use its current state as the srcState
+                    if (frameImg->lastProducer)
+                    {
+                        srcState = frameImg->lastProducer->m_state;
+                    }
+                    break;
+                }
+
+                RHI::ImageBarrierInfo barrier{
+                    .image    = scImage,
+                    .srcState = srcState,
+                    .dstState = {ImageUsage::Present, PipelineStage::BottomOfPipe, Access::None},
+                };
+                swapchainBarriers.push_back(barrier);
+            }
+            commandList->AddPipelineBarrier({}, swapchainBarriers, {});
+            commandList->End();
+        }
+
+        QueueSubmitInfo submitInfo{
+            .commandLists  = commandList,
+            .signalStage   = PipelineStage::BottomOfPipe,
+            .waitInfos     = {},
+            .signalPresent = true,
+        };
+        TL_MAYBE_UNUSED auto timeline = frame->QueueSubmit(QueueType::Graphics, submitInfo);
+        frame->DestroyCommandList(commandList);
+        frame->End();
+    }
+
+    void RenderGraph::DumpGraphViz()
+    {
+        if (m_beginInfo.dumpGraphVizString == nullptr)
+            return;
+        TL::String output;
+        output += "====== RenderGraph State ======\n";
+        for (size_t levelIdx = 0; levelIdx < m_dependencyLevels.size(); ++levelIdx)
+        {
+            const auto& level = m_dependencyLevels[levelIdx];
+            output += std::format("Dependency Level {}:\n", levelIdx);
+            for (auto pass : level.GetPasses())
+            {
+                output += std::format("  Pass: {}\n", pass->name());
+                // Print image transitions
+                for (const auto& dep : pass->m_imageDependencies)
+                {
+                    auto img = dep.image;
+                    output += std::format("    Image: {} | Usage: {}\n", img->m_frameResource->name, Debug::ToString(dep.state.usage));
+                }
+                // Print buffer transitions
+                for (const auto& dep : pass->m_bufferDependencies)
+                {
+                    auto buf = dep.buffer;
+                    output += std::format("    Buffer: {} | Usage: {}\n", buf->m_frameResource->name, Debug::ToString(dep.state.usage));
+                }
+            }
+        }
+        output += "================================\n";
+        TL_LOG_INFO("{}", output);
+    }
+
 } // namespace RHI

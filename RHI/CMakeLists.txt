@@ -20,7 +20,6 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Format.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraph.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.cpp
 )
 
 if(NOT TARGET TL)

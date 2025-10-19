@@ -445,7 +445,7 @@ namespace Engine
         auto       rg         = Renderer::ptr->GetRenderGraph();
         ImGuiPass* pass       = (ImGuiPass*)render_arg;
 
-        auto swapchainBackbuffer = rg->ImportSwapchain("imgui-vp", *renderData->swapchain, RHI::Format::RGBA8_UNORM);
+        auto swapchainBackbuffer = rg->importSwapchain("imgui-vp", *renderData->swapchain, RHI::Format::RGBA8_UNORM);
         pass->addPass(rg, swapchainBackbuffer, vp->DrawData, renderData->viewportId);
     }
 

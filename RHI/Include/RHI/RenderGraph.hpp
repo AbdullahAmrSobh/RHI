@@ -22,12 +22,10 @@ namespace RHI
 
     class RenderGraph;
     class RenderGraphBuilder;
-    class RenderGraphContext;
 
-    using PassSetupCallback   = TL::Function<void(RenderGraphBuilder& builder)>;
     using PassExecuteCallback = TL::Function<void(CommandList& commandList)>;
 
-    enum class PassType
+    enum class RGPassType
     {
         Graphics,
         Compute,
@@ -37,15 +35,9 @@ namespace RHI
 
     struct RenderGraphCreateInfo
     {
-    };
-
-    struct PassCreateInfo
-    {
-        const char*         name;
-        PassType            type;
-        ImageSize2D         size;
-        PassSetupCallback   setupCallback;
-        PassExecuteCallback executeCallback;
+        TL::StringView name                    = {};
+        TL::Arena*     tmpAllocator            = nullptr;
+        bool           tmpAllocatorShouldClear = 0;
     };
 
     ///////////////////////////////////////////////////////////////////////////
@@ -158,122 +150,167 @@ namespace RHI
     };
 
     ///////////////////////////////////////////////////////////////////////////
-    /// Render Graph Builder Interface
-    ///////////////////////////////////////////////////////////////////////////
-
-    class RHI_EXPORT RenderGraphBuilder
-    {
-        friend RenderGraph;
-
-        RenderGraphBuilder(RenderGraph* rg, RGPass* pass);
-
-    public:
-        /// @brief Declare pass image read dependencey.
-        void      ReadImage(RGImage* image, ImageUsage usage, PipelineStage stage);
-        void      ReadImage(RGImage* image, const ImageSubresourceRange& subresource, ImageUsage usage, PipelineStage stage);
-
-        /// @brief Declare pass image write dependencey.
-        RGImage*  WriteImage(RGImage* image, ImageUsage usage, PipelineStage stage);
-        RGImage*  WriteImage(RGImage* image, const ImageSubresourceRange& subresource, ImageUsage usage, PipelineStage stage);
-
-        /// @brief Declare pass buffer read dependencey.
-        void      ReadBuffer(RGBuffer* buffer, BufferUsage usage, PipelineStage stage);
-        void      ReadBuffer(RGBuffer* buffer, const BufferSubregion& subresource, BufferUsage usage, PipelineStage stage);
-
-        /// @brief Declare pass buffer write dependencey.
-        RGBuffer* WriteBuffer(RGBuffer* buffer, BufferUsage usage, PipelineStage stage);
-        RGBuffer* WriteBuffer(RGBuffer* buffer, const BufferSubregion& subresource, BufferUsage usage, PipelineStage stage);
-
-        /// Graphics Pass specfic
-        RGImage*  AddColorAttachment(RGColorAttachment attachment);
-
-        RGImage*  SetDepthStencil(RGDepthStencilAttachment attachment);
-
-        RGImage*  AddColorAttachment(RGImage* target, LoadOperation loadOp, ClearValue clear = {});
-
-        RGImage*  CreateColorTarget(const char* name, ImageSize2D size, Format format, ClearValue clear = {});
-
-        RGImage*  CreateDepthStencil(const char* name, ImageSize2D size, Format format, ClearValue clear = {});
-
-        RGImage*  CreateImage(const char* name, ImageType type, ImageSize3D size, Format format, uint32_t mipLevels = 1, uint32_t arrayCount = 1, SampleCount samples = SampleCount::Samples1);
-
-        RGBuffer* CreateBuffer(const char* name, size_t size, BufferUsage usage, PipelineStage stage);
-
-    private:
-        RGImage*  UseImageInternal(RGImage* handle, Access access, const ImageSubresourceRange& subresource, ImageUsage usage, PipelineStage stage);
-        RGBuffer* UseBufferInternal(RGBuffer* handle, Access access, const BufferSubregion& subresource, BufferUsage usage, PipelineStage stage);
-
-    private:
-        RenderGraph* m_rg;
-        RGPass*      m_pass;
-    };
-
-    ///////////////////////////////////////////////////////////////////////////
     /// Render Graph Pass
     ///////////////////////////////////////////////////////////////////////////
+
+    enum class RGBufferUsage : uint64_t
+    {
+        None = 0,
+
+        ConstantGeometry                  = 1 << 0,
+        ConstantPixel                     = 1 << 1,
+        ConstantCompute                   = 1 << 2,
+        ConstantTraceRays                 = 1 << 3,
+        SrvGeometry                       = 1 << 4,
+        SrvPixel                          = 1 << 5,
+        SrvCompute                        = 1 << 6,
+        SrvTraceRays                      = 1 << 7,
+        UavGeometry                       = 1 << 8,
+        UavPixel                          = 1 << 9,
+        UavCompute                        = 1 << 10,
+        UavTraceRays                      = 1 << 11,
+        VertexOrIndex                     = 1 << 12,
+        IndirectCompute                   = 1 << 14ll,
+        IndirectDraw                      = 1 << 15,
+        IndirectTraceRays                 = 1 << 16,
+        CopySource                        = 1 << 17,
+        CopyDestination                   = 1 << 18,
+        AccelerationStructureBuild        = 1 << 19, ///< Will be used as a position or index buffer in a BLAS build.
+        ShaderBindingTable                = 1 << 20, ///< Will be used as SBT in a traceRays() command.
+        AccelerationStructureBuildScratch = 1 << 21, ///< Used in buildAccelerationStructureXXX commands.
+
+        // Derived
+        AllConstant = ConstantGeometry | ConstantPixel | ConstantCompute | ConstantTraceRays,
+        AllSrv      = SrvGeometry | SrvPixel | SrvCompute | SrvTraceRays,
+        AllUav      = UavGeometry | UavPixel | UavCompute | UavTraceRays,
+        AllIndirect = IndirectCompute | IndirectDraw | IndirectTraceRays,
+        AllCopy     = CopySource | CopyDestination,
+
+        AllGeometry  = ConstantGeometry | SrvGeometry | UavGeometry | VertexOrIndex,
+        AllPixel     = ConstantPixel | SrvPixel | UavPixel,
+        AllGraphics  = AllGeometry | AllPixel | IndirectDraw,
+        AllCompute   = ConstantCompute | SrvCompute | UavCompute | IndirectCompute,
+        AllTraceRays = ConstantTraceRays | SrvTraceRays | UavTraceRays | IndirectTraceRays | ShaderBindingTable,
+
+        AllRayTracing = AllTraceRays | AccelerationStructureBuild | AccelerationStructureBuildScratch,
+        AllRead       = AllConstant | AllSrv | AllUav | VertexOrIndex | AllIndirect | CopySource | AccelerationStructureBuild | ShaderBindingTable,
+        AllWrite      = AllUav | CopyDestination | AccelerationStructureBuildScratch,
+
+        AllShaderResource = AllConstant | AllSrv | AllUav,
+
+        All = AllRead | AllWrite,
+    };
+
+    TL_DEFINE_FLAG_OPERATORS(RGBufferUsage);
+
+    enum class RGImageUsage : uint32_t
+    {
+        None = 0,
+
+        SrvGeometry     = 1 << 0,
+        SrvPixel        = 1 << 1,
+        SrvCompute      = 1 << 2,
+        SrvTraceRays    = 1 << 3,
+        UavGeometry     = 1 << 4,
+        UavPixel        = 1 << 5,
+        UavCompute      = 1 << 6,
+        UavTraceRays    = 1 << 7,
+        RtvDsvRead      = 1 << 8,
+        RtvDsvWrite     = 1 << 9,
+        ShadingRate     = 1 << 10,
+        CopyDestination = 1 << 11,
+        CopySource      = 1 << 13,
+        Present         = 1 << 12,
+
+        // Derived
+        AllSrv    = SrvGeometry | SrvPixel | SrvCompute | SrvTraceRays,
+        AllUav    = UavGeometry | UavPixel | UavCompute | UavTraceRays,
+        AllRtvDsv = RtvDsvRead | RtvDsvWrite,
+
+        AllGeometry = SrvGeometry | UavGeometry,
+        AllPixel    = SrvPixel | UavPixel,
+        AllGraphics = AllGeometry | AllPixel | RtvDsvRead | RtvDsvWrite | ShadingRate,
+        AllCompute  = SrvCompute | UavCompute,
+        AllCopy     = CopySource | CopyDestination,
+
+        AllRead           = AllSrv | AllUav | RtvDsvRead | ShadingRate | Present,
+        AllWrite          = AllUav | RtvDsvWrite | CopyDestination,
+        All               = AllRead | AllWrite,
+        AllShaderResource = AllSrv | AllUav,
+    };
+
+    TL_DEFINE_FLAG_OPERATORS(RGImageUsage);
+
+    struct RGImageCreateInfo
+    {
+        TL::StringView name        = {};
+        ImageType      type        = ImageType::None;
+        ImageSize3D    size        = ImageSize3D();
+        Format         format      = Format::Unknown;
+        SampleCount    sampleCount = SampleCount::Samples1;
+        uint32_t       mipLevels   = 1;
+        uint32_t       arrayCount  = 1;
+    };
+
+    struct RGAttachmentCreateInfo
+    {
+        TL::StringView name        = {};
+        Format         format      = Format::Unknown;
+        SampleCount    sampleCount = SampleCount::Samples1;
+        StoreOperation storeOp     = StoreOperation::Store;
+        ClearValue     clearValue  = {.f32 = {0.0f, 0.0f, 0.0f, 1.0f}};
+        ResolveMode    resolveMode = ResolveMode::None;
+    };
+
+    struct RGBufferCreateInfo
+    {
+        TL::StringView name = {};
+        size_t         size = 0;
+    };
 
     class RHI_EXPORT RGPass
     {
         friend RenderGraph;
-        friend RenderGraphBuilder;
-        friend RenderGraphContext;
 
     public:
-        /// @brief Enum representing different barrier slots for a pass.
-        enum BarrierSlot
-        {
-            Prilogue,
-            Epilogue,
-            Resolve,
-            Count,
-        };
-
-        RGPass(RenderGraph* rg, const PassCreateInfo& ci);
+        RGPass(RenderGraph* rg, TL::StringView name, RGPassType type, ImageSize2D size2D);
         ~RGPass();
 
-        const char* GetName() const { return m_name; }
+        TL::StringView name() const;
+
+        /// @brief Creates a attachment for this pass.
+        // TODO: should have different overloads for depth-stencil
+        RGImage*       createRenderTarget(const RGAttachmentCreateInfo& ci);
+        RGImage*       useRenderTarget(RGImage* image, const ImageSubresourceRange& range, LoadOperation loadOp, StoreOperation storeOp, ClearValue clearValue, ResolveMode resolveMode = ResolveMode::None);
+        RGImage*       useRenderTarget(RGImage* image, LoadOperation loadOp = LoadOperation::Load, StoreOperation storeOp = StoreOperation::Store, ClearValue clearValue = {});
+
+        /// @brief creates an image for this pass.
+        RGImage*       createImage(const RGImageCreateInfo& ci, RGImageUsage usage);
+
+        RGImage*       writeImage(RGImage* image, const ImageSubresourceRange& range, RGImageUsage usage);
+        RGImage*       writeImage(RGImage* image, RGImageUsage usage);
+
+        RGImage*       resolveImage(RGImage* src, const ImageSubresourceRange& range);
+        RGImage*       resolveImage(RGImage* src);
+
+        void           readImage(RGImage* image, const ImageSubresourceRange& range, RGImageUsage usage);
+        void           readImage(RGImage* image, RGImageUsage usage);
+
+        RGBuffer*      createBuffer(const RGBufferCreateInfo& ci, RGBufferUsage usage);
+
+        RGBuffer*      readBuffer(RGBuffer* buffer, const BufferSubregion& subregion, RGBufferUsage usage);
+        RGBuffer*      readBuffer(RGBuffer* buffer, RGBufferUsage usage);
+
+        RGBuffer*      writeBuffer(RGBuffer* buffer, const BufferSubregion& subregion, RGBufferUsage usage);
+        RGBuffer*      writeBuffer(RGBuffer* buffer, RGBufferUsage usage);
 
     private:
-        void Setup(RenderGraphBuilder& builder);
         void Execute(CommandList& commandList);
 
-    public:
-        /// @brief Declare pass image read dependencey.
-        void      ReadImage(RGImage* image, ImageUsage usage, PipelineStage stage);
-        void      ReadImage(RGImage* image, const ImageSubresourceRange& subresource, ImageUsage usage, PipelineStage stage);
-
-        /// @brief Declare pass image write dependencey.
-        RGImage*  WriteImage(RGImage* image, ImageUsage usage, PipelineStage stage);
-        RGImage*  WriteImage(RGImage* image, const ImageSubresourceRange& subresource, ImageUsage usage, PipelineStage stage);
-
-        /// @brief Declare pass buffer read dependencey.
-        void      ReadBuffer(RGBuffer* buffer, BufferUsage usage, PipelineStage stage);
-        void      ReadBuffer(RGBuffer* buffer, const BufferSubregion& subresource, BufferUsage usage, PipelineStage stage);
-
-        /// @brief Declare pass buffer write dependencey.
-        RGBuffer* WriteBuffer(RGBuffer* buffer, BufferUsage usage, PipelineStage stage);
-        RGBuffer* WriteBuffer(RGBuffer* buffer, const BufferSubregion& subresource, BufferUsage usage, PipelineStage stage);
-
-        /// Graphics Pass specfic
-        RGImage*  AddColorAttachment(RGColorAttachment attachment);
-        RGImage*  SetDepthStencil(RGDepthStencilAttachment attachment);
-
-        RGImage*  AddColorAttachment(RGImage* target, LoadOperation loadOp, ClearValue clear = {})
-        {
-            RGColorAttachment attachment{
-                .color      = target,
-                .loadOp     = loadOp,
-                .storeOp    = StoreOperation::Store,
-                .clearValue = clear,
-            };
-            return AddColorAttachment(attachment);
-        }
-
     private:
-        const char*                    m_name;
-        PassType                       m_type;
+        TL::String                     m_name;
+        RGPassType                     m_type;
         RenderGraph*                   m_renderGraph;
-        PassSetupCallback              m_setupCallback;
         PassExecuteCallback            m_executeCallback;
 
         uint32_t                       m_dependencyLevelIndex;
@@ -355,12 +392,17 @@ namespace RHI
     /// Render Graph
     ///////////////////////////////////////////////////////////////////////////
 
+    struct RGBeginInfo
+    {
+        bool        rdocDebugCapture   = false;
+        TL::String* dumpGraphVizString = nullptr;
+    };
+
     class RHI_EXPORT RenderGraph
     {
         friend Device;
         friend RGPass;
         friend RenderGraphBuilder;
-        friend RenderGraphContext;
 
     public:
         RenderGraph();
@@ -372,38 +414,24 @@ namespace RHI
         /// @brief Shutdown the render graph.
         void                       Shutdown();
 
-        /// @brief Capture next rendered frame.
-        void                       Debug_CaptureNextFrame();
-
-        /// @brief Prints graph debug information to console.
-        void                       Dump();
-
         /// @brief Begins a frame recording.
-        void                       BeginFrame();
+        void                       BeginFrame(const RGBeginInfo& beginInfo = {});
 
         /// @brief Ends frame recording.
         void                       EndFrame();
 
         /// @brief Imports a swapchain image into the render graph.
-        TL_NODISCARD RGImage*      ImportSwapchain(const char* name, Swapchain& swapchain, Format format);
+        TL_NODISCARD RGImage*      importSwapchain(TL::StringView name, Swapchain& swapchain, Format format);
 
         /// @brief Imports an image into the render graph.
-        TL_NODISCARD RGImage*      ImportImage(const char* name, Image* image, Format format);
+        TL_NODISCARD RGImage*      importImage(TL::StringView name, Image* image, Format format);
 
         /// @brief Imports a buffer into the render graph.
-        TL_NODISCARD RGBuffer*     ImportBuffer(const char* name, Buffer* buffer);
-
-        /// @brief Creates a transient image in the render graph.
-        TL_NODISCARD RGImage*      CreateImage(const char* name, ImageType type, ImageSize3D size, Format format, uint32_t mipLevels = 1, uint32_t arrayCount = 1, SampleCount samples = SampleCount::Samples1);
-
-        /// @brief Creates a transient render target image in the render graph.
-        TL_NODISCARD RGImage*      CreateRenderTarget(const char* name, ImageSize2D size, Format format, uint32_t mipLevels = 1, uint32_t arrayCount = 1, SampleCount samples = SampleCount::Samples1);
-
-        /// @brief Creates a transient buffer in the render graph.
-        TL_NODISCARD RGBuffer*     CreateBuffer(const char* name, size_t size);
+        TL_NODISCARD RGBuffer*     importBuffer(TL::StringView name, Buffer* buffer);
 
         /// @brief Adds a pass to the render graph.
-        TL_MAYBE_UNUSED RGPass*    AddPass(const PassCreateInfo& createInfo);
+        TL_MAYBE_UNUSED RGPass*    addPass(TL::StringView name, RGPassType type, ImageSize2D size2D);
+        void                       submitPass(RGPass* pass, PassExecuteCallback&& executeCallback);
 
         /// @brief Returns render graph resource's handle.
         TL_NODISCARD Image*        GetImageHandle(RGImage* handle) const;
@@ -412,8 +440,8 @@ namespace RHI
     private:
         // Bind group stuff
 
-        RGFrameImage*   CreateFrameImage(const char* name);
-        RGFrameBuffer*  CreateFrameBuffer(const char* name);
+        RGFrameImage*   CreateFrameImage(TL::StringView name);
+        RGFrameBuffer*  CreateFrameBuffer(TL::StringView name);
 
         RGImage*        EmplacePassImage(RGFrameImage* frameImage, RGPass* pass, ImageBarrierState initialState);
         RGBuffer*       EmplacePassBuffer(RGFrameBuffer* frameBuffer, RGPass* pass, BufferBarrierState initialState);
@@ -431,17 +459,19 @@ namespace RHI
 
         void            PassBuildBarriers();
 
-        void            Execute();
         void            ExecutePass(RGPass* pass, CommandList* commandList);
+        void            Execute();
+
+        void            DumpGraphViz();
 
     private:
+        RGBeginInfo m_beginInfo;
+
         struct State
         {
             // States that are reset every frame
-            bool compiled                      : 1;
-            bool frameRecording                : 1;
-            bool dumpGraphviz                  : 1;
-            bool debug_triggerNextFrameCapture : 1;
+            bool compiled       : 1;
+            bool frameRecording : 1;
         } m_state;
 
         struct DependencyLevel

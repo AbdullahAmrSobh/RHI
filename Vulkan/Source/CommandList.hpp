@@ -65,6 +65,7 @@ namespace RHI::Vulkan
         ICommandList();
         ~ICommandList();
 
+        // TODO: Should depend on the CommandPool not IDevice ...
         ResultCode Init(IDevice* device, CommandPool* pool, const CommandListCreateInfo& createInfo);
         void       Shutdown();
 

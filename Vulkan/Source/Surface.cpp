@@ -6,7 +6,7 @@
 
 #include "Common.hpp"
 #include "Device.hpp"
-#include "Swapchain.hpp"
+#include "Resources.hpp"
 #include "Queue.hpp"
 
 // Platform specifc surface creation are contained witihn this file,
@@ -14,7 +14,7 @@
 
 namespace RHI::Vulkan
 {
-    VkResult CreateSurface(IDevice& device, const SwapchainCreateInfo& createInfo, VkSurfaceKHR& outSurface)
+    VkResult ISwapchain::CreateSurface(IDevice& device, const SwapchainCreateInfo& createInfo, VkSurfaceKHR& outSurface)
     {
         VulkanResult result;
 #ifdef VK_USE_PLATFORM_WIN32_KHR

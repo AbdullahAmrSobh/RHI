@@ -20,7 +20,6 @@
 #include "Device.hpp"
 #include "Common.hpp"
 #include "Queue.hpp"
-#include "Swapchain.hpp"
 #include "Frame.hpp"
 #include "RHI-Vulkan/Loader.hpp"
 
@@ -577,8 +576,6 @@ namespace RHI::Vulkan
         result = m_bindGroupAllocator->Init(this);
         VkResultTry(result);
 
-        m_destroyQueue->Init(this);
-
         m_framesInFlight.resize(2);
         for (auto& frame : m_framesInFlight)
         {
@@ -684,7 +681,7 @@ namespace RHI::Vulkan
             }
         }
 
-        m_destroyQueue->Shutdown();
+        m_destroyQueue->shutdown(this);
         m_bindGroupAllocator->Shutdown();
 
         for (auto& queue : m_queue)
@@ -694,11 +691,14 @@ namespace RHI::Vulkan
         }
 
         vmaDestroyAllocator(m_deviceAllocator);
+
         vkDestroyDevice(m_device, nullptr);
+
         if (m_debugUtilsMessenger != VK_NULL_HANDLE)
         {
             m_pfn.m_vkDestroyDebugUtilsMessengerEXT(m_instance, m_debugUtilsMessenger, nullptr);
         }
+
         vkDestroyInstance(m_instance, nullptr);
     }
 
@@ -801,7 +801,7 @@ namespace RHI::Vulkan
 //         TL::Destruct(_handle);                                                              \
 //     }
 
-    Swapchain* IDevice ::CreateSwapchain(const SwapchainCreateInfo& createInfo)
+    Swapchain* IDevice::CreateSwapchain(const SwapchainCreateInfo& createInfo)
     {
         auto handle = TL ::construct<ISwapchain>();
         auto result = handle->Init(this, createInfo);
@@ -810,7 +810,7 @@ namespace RHI::Vulkan
         return handle;
     }
 
-    void IDevice ::DestroySwapchain(Swapchain* _handle)
+    void IDevice::DestroySwapchain(Swapchain* _handle)
     {
         auto erased = m_liveSwapchains.erase(_handle);
         TL_ASSERT(erased);
@@ -819,7 +819,7 @@ namespace RHI::Vulkan
         TL::destruct(_handle);
     };
 
-    ShaderModule* IDevice ::CreateShaderModule(const ShaderModuleCreateInfo& createInfo)
+    ShaderModule* IDevice::CreateShaderModule(const ShaderModuleCreateInfo& createInfo)
     {
         auto handle = TL ::construct<IShaderModule>();
         auto result = handle->Init(this, createInfo);
@@ -828,7 +828,7 @@ namespace RHI::Vulkan
         return handle;
     }
 
-    void IDevice ::DestroyShaderModule(ShaderModule* _handle)
+    void IDevice::DestroyShaderModule(ShaderModule* _handle)
     {
         auto erased = m_liveShaderModules.erase(_handle);
         TL_ASSERT(erased);
@@ -837,7 +837,7 @@ namespace RHI::Vulkan
         TL::destruct(_handle);
     };
 
-    BindGroupLayout* IDevice ::CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)
+    BindGroupLayout* IDevice::CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)
     {
         auto handle = TL ::construct<IBindGroupLayout>();
         auto result = handle->Init(this, createInfo);
@@ -846,7 +846,7 @@ namespace RHI::Vulkan
         return handle;
     }
 
-    void IDevice ::DestroyBindGroupLayout(BindGroupLayout* _handle)
+    void IDevice::DestroyBindGroupLayout(BindGroupLayout* _handle)
     {
         auto erased = m_liveBindGroupLayouts.erase(_handle);
         TL_ASSERT(erased);
@@ -855,7 +855,7 @@ namespace RHI::Vulkan
         TL::destruct(_handle);
     };
 
-    BindGroup* IDevice ::CreateBindGroup(const BindGroupCreateInfo& createInfo)
+    BindGroup* IDevice::CreateBindGroup(const BindGroupCreateInfo& createInfo)
     {
         auto handle = TL ::construct<IBindGroup>();
         auto result = handle->Init(this, createInfo);
@@ -864,7 +864,7 @@ namespace RHI::Vulkan
         return handle;
     }
 
-    void IDevice ::DestroyBindGroup(BindGroup* _handle)
+    void IDevice::DestroyBindGroup(BindGroup* _handle)
     {
         auto erased = m_liveBindGroups.erase(_handle);
         TL_ASSERT(erased);
@@ -873,7 +873,7 @@ namespace RHI::Vulkan
         TL::destruct(_handle);
     };
 
-    PipelineLayout* IDevice ::CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)
+    PipelineLayout* IDevice::CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)
     {
         auto handle = TL ::construct<IPipelineLayout>();
         auto result = handle->Init(this, createInfo);
@@ -882,7 +882,7 @@ namespace RHI::Vulkan
         return handle;
     }
 
-    void IDevice ::DestroyPipelineLayout(PipelineLayout* _handle)
+    void IDevice::DestroyPipelineLayout(PipelineLayout* _handle)
     {
         auto erased = m_livePipelineLayouts.erase(_handle);
         TL_ASSERT(erased);
@@ -891,7 +891,7 @@ namespace RHI::Vulkan
         TL::destruct(_handle);
     };
 
-    GraphicsPipeline* IDevice ::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)
+    GraphicsPipeline* IDevice::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)
     {
         auto handle = TL ::construct<IGraphicsPipeline>();
         auto result = handle->Init(this, createInfo);
@@ -900,7 +900,7 @@ namespace RHI::Vulkan
         return handle;
     }
 
-    void IDevice ::DestroyGraphicsPipeline(GraphicsPipeline* _handle)
+    void IDevice::DestroyGraphicsPipeline(GraphicsPipeline* _handle)
     {
         auto erased = m_liveGraphicsPipelines.erase(_handle);
         TL_ASSERT(erased);
@@ -909,7 +909,7 @@ namespace RHI::Vulkan
         TL::destruct(_handle);
     };
 
-    ComputePipeline* IDevice ::CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
+    ComputePipeline* IDevice::CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
     {
         auto handle = TL ::construct<IComputePipeline>();
         auto result = handle->Init(this, createInfo);
@@ -918,7 +918,7 @@ namespace RHI::Vulkan
         return handle;
     }
 
-    void IDevice ::DestroyComputePipeline(ComputePipeline* _handle)
+    void IDevice::DestroyComputePipeline(ComputePipeline* _handle)
     {
         auto erased = m_liveComputePipelines.erase(_handle);
         TL_ASSERT(erased);
@@ -927,7 +927,7 @@ namespace RHI::Vulkan
         TL::destruct(_handle);
     };
 
-    Sampler* IDevice ::CreateSampler(const SamplerCreateInfo& createInfo)
+    Sampler* IDevice::CreateSampler(const SamplerCreateInfo& createInfo)
     {
         auto handle = TL ::construct<ISampler>();
         auto result = handle->Init(this, createInfo);
@@ -936,7 +936,7 @@ namespace RHI::Vulkan
         return handle;
     }
 
-    void IDevice ::DestroySampler(Sampler* _handle)
+    void IDevice::DestroySampler(Sampler* _handle)
     {
         auto erased = m_liveSamplers.erase(_handle);
         TL_ASSERT(erased);
@@ -945,7 +945,7 @@ namespace RHI::Vulkan
         TL::destruct(_handle);
     };
 
-    Image* IDevice ::CreateImage(const ImageCreateInfo& createInfo)
+    Image* IDevice::CreateImage(const ImageCreateInfo& createInfo)
     {
         auto handle = TL ::construct<IImage>();
         auto result = handle->Init(this, createInfo);
@@ -960,7 +960,7 @@ namespace RHI::Vulkan
         return {};
     }
 
-    void IDevice ::DestroyImage(Image* _handle)
+    void IDevice::DestroyImage(Image* _handle)
     {
         auto erased = m_liveImages.erase(_handle);
         TL_ASSERT(erased);
@@ -969,7 +969,7 @@ namespace RHI::Vulkan
         TL::destruct(_handle);
     };
 
-    Buffer* IDevice ::CreateBuffer(const BufferCreateInfo& createInfo)
+    Buffer* IDevice::CreateBuffer(const BufferCreateInfo& createInfo)
     {
         auto handle = TL ::construct<IBuffer>();
         auto result = handle->Init(this, createInfo);
@@ -978,7 +978,7 @@ namespace RHI::Vulkan
         return handle;
     }
 
-    void IDevice ::DestroyBuffer(Buffer* _handle)
+    void IDevice::DestroyBuffer(Buffer* _handle)
     {
         auto erased = m_liveBuffers.erase(_handle);
         TL_ASSERT(erased);
@@ -987,6 +987,41 @@ namespace RHI::Vulkan
         TL::destruct(_handle);
     };
 
-    // #undef IMPL_DEVICE_CREATE_AND_DESTROY
+    void DeleteQueue::shutdown(IDevice* device)
+    {
+        Flush(device, UINT64_MAX);
+        TL_ASSERT(m_allocation.empty());
+        TL_ASSERT(m_buffer.empty());
+        TL_ASSERT(m_bufferView.empty());
+        TL_ASSERT(m_image.empty());
+        TL_ASSERT(m_imageView.empty());
+        TL_ASSERT(m_sampler.empty());
+        TL_ASSERT(m_pipeline.empty());
+        TL_ASSERT(m_descriptorPool.empty());
+        TL_ASSERT(m_swapchain.empty());
+        TL_ASSERT(m_surface.empty());
+        TL_ASSERT(m_semaphore.empty());
+        TL_ASSERT(m_vmaBuffer.empty());
+        TL_ASSERT(m_vmaImage.empty());
+        TL_ASSERT(m_pending.empty());
+    }
+
+    void DeleteQueue::Flush(IDevice* device, uint64_t timeline)
+    {
+        // flush in an order that is safe: destroy child objects before parents
+        FlushQueue(device, m_bufferView, timeline);
+        FlushQueue(device, m_imageView, timeline);
+        FlushQueue(device, m_descriptorPool, timeline);
+        FlushQueue(device, m_pipeline, timeline);
+        FlushQueue(device, m_sampler, timeline);
+        FlushQueue(device, m_buffer, timeline);
+        FlushQueue(device, m_image, timeline);
+        FlushQueue(device, m_swapchain, timeline);
+        FlushQueue(device, m_surface, timeline);
+        FlushQueue(device, m_semaphore, timeline);
+        FlushQueue(device, m_vmaBuffer, timeline);
+        FlushQueue(device, m_vmaImage, timeline);
+        FlushQueue(device, m_allocation, timeline);
+    }
 
 } // namespace RHI::Vulkan

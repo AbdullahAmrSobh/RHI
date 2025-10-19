@@ -138,6 +138,9 @@ namespace RHI
         /// @brief Allocates a command list valid only for the duration of the current frame.
         virtual CommandList*    CreateCommandList(const CommandListCreateInfo& createInfo) = 0;
 
+        /// @brief Frees previouslly allocated command lists
+        virtual void            DestroyCommandList(CommandList* commandList) = 0;
+
         /// @brief Submits commands to be executed on the specified queue.
         virtual uint64_t        QueueSubmit(QueueType queueType, const QueueSubmitInfo& submitInfo) = 0;
 
@@ -147,6 +150,8 @@ namespace RHI
         /// @brief Schedules an image update operation.
         virtual void            ImageWrite(Image* image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block) = 0;
     };
+
+    class RenderGraph;
 
     /// @brief Represents a logical rendering device and provides resource creation and management.
     class RHI_EXPORT Device

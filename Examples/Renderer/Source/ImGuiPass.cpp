@@ -69,7 +69,6 @@ namespace Engine
         shaderParams.sampler0              = m_sampler;
         shaderParams.updateBindGroup(m_device, m_bindGroup);
 
-
         TL_ASSERT(io.BackendRendererUserData == nullptr, "Already initialized a renderer backend!");
         m_newframeHook.Type     = ImGuiContextHookType_NewFramePre;
         m_newframeHook.UserData = this;
@@ -118,15 +117,11 @@ namespace Engine
         }
 
         auto [width, height] = drawData->OwnerViewport->Size;
-        return rg->AddPass({
-            .name          = "ImGui",
-            .type          = RHI::PassType::Graphics,
-            .size          = {(uint32_t)width, (uint32_t)height},
-            .setupCallback = [&](RHI::RenderGraphBuilder& builder)
-            {
-                builder.AddColorAttachment({.color = outAttachment, .loadOp = RHI::LoadOperation::Load});
-            },
-            .executeCallback = [=, this](RHI::CommandList& commandList)
+
+        auto* pass = rg->addPass("ImGui", RHI::RGPassType::Graphics, {(uint32_t)width, (uint32_t)height});
+        outAttachment = pass->useRenderTarget(outAttachment);
+
+        rg->submitPass(pass, [this, drawData, width, height, outAttachment, rg](RHI::CommandList& commandList)
             {
                 auto& pool = RenderContext::ptr->getUnifiedGeometryBuffersPool();
 
@@ -202,8 +197,8 @@ namespace Engine
                         }
                     }
                 }
-            },
-        });
+            });
+        return pass;
     }
 
     bool ImGuiPass::updateBuffers(ImDrawData* drawData)

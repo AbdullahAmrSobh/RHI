@@ -2,12 +2,119 @@
 #include "Device.hpp"
 #include "CommandList.hpp"
 #include "Resources.hpp"
-#include "Swapchain.hpp"
 
 #include <TL/Literals.hpp>
 
 namespace RHI::Vulkan
 {
+    ResultCode StagingBuffer::init(IDevice* device)
+    {
+        (void)device;
+        return ResultCode::Success;
+    }
+
+    void StagingBuffer::shutdown(IDevice* device)
+    {
+        for (auto& page : m_pages)
+        {
+            if (page.buffer)
+            {
+                // If mapped, unmap first
+                if (page.isMapped)
+                {
+                    auto ibuf = (IBuffer*)page.buffer;
+                    ibuf->Unmap(device);
+                    page.isMapped  = false;
+                    page.mappedPtr = nullptr;
+                }
+                device->DestroyBuffer(page.buffer);
+            }
+        }
+        m_pages.clear();
+    }
+
+    StagingBufferBlock StagingBuffer::allocate(IDevice* device, size_t size)
+    {
+        // Find page with enough space
+        for (auto& page : m_pages)
+        {
+            if (page.getRemainingSize() >= size)
+            {
+                auto               offset       = page.offset;
+                StagingBufferBlock stagingBlock = {page.buffer, {offset, size}};
+                page.offset += size;
+                return stagingBlock;
+            }
+        }
+
+        // No page found - create a new one
+        size_t      pageSize = std::max(size, MinPageSize);
+        std::string name     = std::string("StagingBuffer-") + std::to_string(m_pages.size());
+
+        BufferCreateInfo stagingBufferCI{
+            .name       = name.c_str(),
+            .hostMapped = true,
+            .usageFlags = BufferUsage::CopyDst | BufferUsage::CopySrc,
+            .byteSize   = pageSize,
+        };
+
+        auto bufferHandle = device->CreateBuffer(stagingBufferCI);
+        auto buffer       = (IBuffer*)bufferHandle;
+
+        // Map immediately so we can memcpy into it
+        DeviceMemoryPtr mapped = nullptr;
+        if (buffer)
+        {
+            mapped = buffer->Map(device);
+        }
+
+        m_pages.push_back(Page{
+            .buffer    = (IBuffer*)bufferHandle,
+            .mappedPtr = mapped,
+            .size      = stagingBufferCI.byteSize,
+            .offset    = size,
+            .isMapped  = mapped != nullptr,
+        });
+
+        return StagingBufferBlock{
+            .buffer    = m_pages.back().buffer,
+            .subregion = {0, size},
+        };
+    }
+
+    StagingBufferBlock StagingBuffer::allocate(IDevice* device, TL::Block block)
+    {
+        auto stagingBlock = allocate(device, block.size);
+
+        // Find the page for this buffer to copy into mapped pointer
+        for (auto& page : m_pages)
+        {
+            if (page.buffer == stagingBlock.buffer)
+            {
+                TL_ASSERT(page.mappedPtr != nullptr, "Staging page not mapped");
+                auto dst = (char*)page.mappedPtr + stagingBlock.subregion.offset;
+                memcpy(dst, block.ptr, block.size);
+                return stagingBlock;
+            }
+        }
+
+        // Fallback: map the buffer and copy (shouldn't happen)
+        auto ibuf = (IBuffer*)stagingBlock.buffer;
+        auto ptr  = ibuf->Map(device);
+        memcpy((char*)ptr + stagingBlock.subregion.offset, block.ptr, block.size);
+        ibuf->Unmap(device);
+        return stagingBlock;
+    }
+
+    void StagingBuffer::reset(IDevice* device)
+    {
+        (void)device;
+        for (auto& page : m_pages)
+        {
+            page.offset = 0;
+        }
+    }
+
     ////////////////////////////////////////////////////////////////
     /// Frame
     ////////////////////////////////////////////////////////////////
@@ -21,7 +128,7 @@ namespace RHI::Vulkan
             return result;
 
         m_stagingPool = TL::CreatePtr<StagingBuffer>();
-        if (auto result = m_stagingPool->Init(m_device); IsError(result))
+        if (auto result = m_stagingPool->init(m_device); IsError(result))
             return result;
 
         VkSemaphoreCreateInfo semaphoreCI{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, .pNext = nullptr, .flags = 0};
@@ -32,7 +139,7 @@ namespace RHI::Vulkan
 
     void IFrame::Shutdown()
     {
-        m_stagingPool->Shutdown();
+        m_stagingPool->shutdown(m_device);
         m_commandListAllocator->Shutdown();
     }
 
@@ -43,7 +150,7 @@ namespace RHI::Vulkan
 
     StagingBufferBlock IFrame::AllocateStaging(TL::Block block)
     {
-        return m_stagingPool->Allocate(block);
+        return m_stagingPool->allocate(m_device, block);
     }
 
     void IFrame::CaptureNextFrame()
@@ -66,7 +173,7 @@ namespace RHI::Vulkan
 
         {
             ZoneScopedN("Frame: cleanup temp allocations");
-            m_stagingPool->Reset();
+            m_stagingPool->reset(m_device);
             m_commandListAllocator->Reset();
         }
 
@@ -141,7 +248,7 @@ namespace RHI::Vulkan
         }
 
         m_device->m_currentFrameIndex = (m_device->m_currentFrameIndex + 1) % (m_device->m_framesInFlight.size());
-        m_acquiredSwapchains = TL::Vector<Swapchain*>{m_arena};
+        m_acquiredSwapchains          = TL::Vector<Swapchain*>{m_arena};
         m_arena.reset();
     }
 
@@ -151,6 +258,13 @@ namespace RHI::Vulkan
         auto result      = commandList->Init(m_device, &m_commandListAllocator->m_queuePools[int(createInfo.queueType)], createInfo);
         TL_ASSERT(result == ResultCode::Success, "Failed to allocate command list for current frame");
         return commandList;
+    }
+
+    void IFrame::DestroyCommandList(CommandList* _commandList)
+    {
+        auto commandList = (ICommandList*)_commandList;
+        commandList->Shutdown();
+        TL::destructFrom(&m_arena, commandList);
     }
 
     uint64_t IFrame::QueueSubmit(QueueType queueType, const QueueSubmitInfo& submitInfo)
@@ -283,126 +397,4 @@ namespace RHI::Vulkan
         return m_timeline;
     }
 
-    ////////////////////////////////////////////////////////////////
-    /// Staging buffer allocator
-    ////////////////////////////////////////////////////////////////
-
-    constexpr static size_t MinStagingBufferAllocationSize = 64_mb;
-
-    StagingBuffer::StagingBuffer()  = default;
-    StagingBuffer::~StagingBuffer() = default;
-
-    ResultCode StagingBuffer::Init(IDevice* device)
-    {
-        m_device = device;
-        return ResultCode::Success;
-    }
-
-    void StagingBuffer::Shutdown()
-    {
-        for (auto& page : m_pages)
-        {
-            m_device->DestroyBuffer(page.buffer);
-        }
-    }
-
-    StagingBufferBlock StagingBuffer::Allocate(size_t size)
-    {
-        for (auto& page : m_pages)
-        {
-            if (page.GetRemainingSize() >= size)
-            {
-                auto               offset       = page.offset;
-                StagingBufferBlock stagingBlock = {
-                    page.buffer, {offset, size}};
-                page.offset += size;
-                return stagingBlock;
-            }
-        }
-
-        std::string      name = std::format("StagingBuffer-{}", m_pages.size());
-        BufferCreateInfo stagingBufferCI{
-            .name       = name.c_str(),
-            .hostMapped = true,
-            .usageFlags = BufferUsage::CopyDst | BufferUsage::CopySrc,
-            // .byteSize   = std::max(size, static_cast<size_t>(64 * 1024 * 1024)), // 64 MB
-            .byteSize   = size,
-        };
-
-        auto bufferHandle = m_device->CreateBuffer(stagingBufferCI);
-        auto buffer       = (IBuffer*)(bufferHandle);
-
-        m_pages.push_back(
-            Page{
-                .buffer = bufferHandle,
-                .offset = size,
-                .size   = stagingBufferCI.byteSize,
-            });
-
-        return StagingBufferBlock{
-            .buffer    = m_pages.back().buffer,
-            .subregion = {
-                0,
-                size,
-            }};
-    }
-
-    StagingBufferBlock StagingBuffer::Allocate(TL::Block block)
-    {
-        auto stagingBlock = Allocate(block.size);
-        auto buffer       = (IBuffer*)(stagingBlock.buffer);
-        auto ptr          = (char*)buffer->Map(m_device) + stagingBlock.subregion.offset;
-        memcpy(ptr, block.ptr, block.size);
-        return stagingBlock;
-    }
-
-    void StagingBuffer::Reset()
-    {
-        for (auto& page : m_pages)
-        {
-            page.offset = 0;
-        }
-    }
-
-    ////////////////////////////////////////////////////////////////
-    /// Release Queue
-    ////////////////////////////////////////////////////////////////
-
-    DeleteQueue::~DeleteQueue()
-    {
-        TL_ASSERT(m_allocation.empty());
-        TL_ASSERT(m_buffer.empty());
-        TL_ASSERT(m_bufferView.empty());
-        TL_ASSERT(m_image.empty());
-        TL_ASSERT(m_imageView.empty());
-        TL_ASSERT(m_sampler.empty());
-        TL_ASSERT(m_pipeline.empty());
-        TL_ASSERT(m_descriptorPool.empty());
-    }
-
-    void DeleteQueue::Init(IDevice* device)
-    {
-        m_device = device;
-    }
-
-    void DeleteQueue::Shutdown()
-    {
-        Flush(UINT64_MAX);
-    }
-
-    void DeleteQueue::Flush(uint64_t timeline)
-    {
-        // NOTE: Order is important
-        FlushQueue(*m_device, m_bufferView, timeline);
-        FlushQueue(*m_device, m_buffer, timeline);
-        FlushQueue(*m_device, m_imageView, timeline);
-        FlushQueue(*m_device, m_image, timeline);
-        FlushQueue(*m_device, m_allocation, timeline);
-        FlushQueue(*m_device, m_sampler, timeline);
-        FlushQueue(*m_device, m_pipeline, timeline);
-        FlushQueue(*m_device, m_descriptorPool, timeline);
-        FlushQueue(*m_device, m_swapchain, timeline);
-        FlushQueue(*m_device, m_surface, timeline);
-        FlushQueue(*m_device, m_semaphore, timeline);
-    }
 } // namespace RHI::Vulkan

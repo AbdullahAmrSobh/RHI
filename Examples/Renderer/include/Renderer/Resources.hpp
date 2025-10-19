@@ -310,6 +310,7 @@ namespace Engine
     {
     public:
         GPUArray() = default;
+        GPUArray(const GPUArray&) = delete;
 
         void init(BufferPool& pool, uint32_t maxElementsCapacity)
         {

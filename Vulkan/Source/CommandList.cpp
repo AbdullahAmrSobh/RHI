@@ -2,7 +2,6 @@
 #include "Common.hpp"
 #include "Device.hpp"
 #include "Resources.hpp"
-#include "Swapchain.hpp"
 
 #include <RHI/Format.hpp>
 #include <TL/Containers/Optional.hpp>

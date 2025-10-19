@@ -1,180 +1,168 @@
-# CMake script for compiling shaders with custom ShaderCompiler and generating C++ headers
-# This script uses the custom RHIShaderCompiler to compile .slang shaders and generate C++ header files
+# ==========================================================
+# CMake Shader Compilation Script
+# Compiles .slang shaders via ShaderCompiler and generates C++ headers.
+# ==========================================================
 
+# TODO: This script is vibe coded (I don't like it but it works for now), will cleanup later
+
+# Incremental-safe shader compile helper
 function(compile_shaders_with_headers)
-    # Parse the input arguments
     cmake_parse_arguments(
-        SHADER_COMPILE
-        "" # No boolean flags
-        "TARGET;OUTPUT_DIR;HEADER_OUTPUT_DIR" # Single-valued arguments
-        "SHADER_FILES;INCLUDE_DIRS;ENTRY_POINTS" # Multi-valued arguments
+        SHADER
+        ""
+        "TARGET;OUTPUT_DIR;HEADER_OUTPUT_DIR"
+        "SHADER_FILES;INCLUDE_DIRS;ENTRY_POINTS"
         ${ARGN}
     )
 
-    # Ensure required arguments are provided
-    if(NOT SHADER_COMPILE_TARGET OR NOT SHADER_COMPILE_OUTPUT_DIR)
-        message(FATAL_ERROR "TARGET and OUTPUT_DIR are required arguments.")
+    if(NOT SHADER_TARGET OR NOT SHADER_OUTPUT_DIR)
+        message(FATAL_ERROR "compile_shaders_with_headers: TARGET and OUTPUT_DIR are required.")
     endif()
 
-    # Set default header output directory if not provided
-    if(NOT SHADER_COMPILE_HEADER_OUTPUT_DIR)
-        set(SHADER_COMPILE_HEADER_OUTPUT_DIR "${SHADER_COMPILE_OUTPUT_DIR}/include/shaders")
+    if(NOT SHADER_HEADER_OUTPUT_DIR)
+        set(SHADER_HEADER_OUTPUT_DIR "${SHADER_OUTPUT_DIR}/include/shaders")
     endif()
 
-    # Get the ShaderCompiler executable path
-    set(SHADER_COMPILER_EXECUTABLE $<TARGET_FILE:ShaderCompiler>)
+    file(MAKE_DIRECTORY "${SHADER_OUTPUT_DIR}")
+    file(MAKE_DIRECTORY "${SHADER_HEADER_OUTPUT_DIR}")
 
-    # Create output directories
-    file(MAKE_DIRECTORY ${SHADER_COMPILE_OUTPUT_DIR})
-    file(MAKE_DIRECTORY ${SHADER_COMPILE_HEADER_OUTPUT_DIR})
-
-    # Initialize lists to store output files
-    set(COMPILE_SHADERS_OUTPUT_FILES)
-    set(COMPILE_SHADERS_HEADER_FILES)
-    set(COMPILE_SHADERS_INPUTS)
+    # Command to run - depend on the target name so CMake builds it when required.
+    set(SHADER_COMPILER_TARGET ShaderCompiler)
+    set(SHADER_COMPILER_CMD $<TARGET_FILE:${SHADER_COMPILER_TARGET}>)
 
     find_program(CLANG_FORMAT_EXECUTABLE clang-format)
 
-    # Function to add a custom command for compiling a shader with header generation
-    function(add_shader_compile_command SHADER_PATH ENTRY_POINTS_LIST)
-        get_filename_component(SHADER_NAME ${SHADER_PATH} NAME_WE)
-        set(SPIRV_OUTPUT_PATH "${SHADER_COMPILE_OUTPUT_DIR}/${SHADER_NAME}.spirv")
-        set(HEADER_OUTPUT_PATH "${SHADER_COMPILE_HEADER_OUTPUT_DIR}/${SHADER_NAME}.hpp")
+    set(ALL_SPV)
+    set(ALL_HEADERS)
+
+    foreach(SHADER_FILE IN LISTS SHADER_SHADER_FILES)
+        get_filename_component(SHADER_NAME ${SHADER_FILE} NAME_WE)
+        # Absolute build-tree paths for outputs
+        set(SPIRV_OUT "${SHADER_OUTPUT_DIR}/${SHADER_NAME}.spirv")
+        set(HEADER_OUT "${SHADER_HEADER_OUTPUT_DIR}/${SHADER_NAME}.hpp")
+        # temp header in build tree
+        set(HEADER_TMP "${SHADER_OUTPUT_DIR}/${SHADER_NAME}.hpp.tmp")
 
         # Build include flags
         set(INCLUDE_FLAGS "")
-        foreach(INCLUDE_DIR IN LISTS SHADER_COMPILE_INCLUDE_DIRS)
-            list(APPEND INCLUDE_FLAGS "-i" "${INCLUDE_DIR}")
+        foreach(INC IN LISTS SHADER_INCLUDE_DIRS)
+            list(APPEND INCLUDE_FLAGS "-i" "${INC}")
         endforeach()
 
-        # Build entry point flags
+        # Entry points (auto-detect if not provided)
+        if(SHADER_ENTRY_POINTS)
+            set(ENTRY_POINTS ${SHADER_ENTRY_POINTS})
+        else()
+            file(READ ${SHADER_FILE} SHADER_CONTENT)
+            set(ENTRY_POINTS "")
+            foreach(PREFIX IN ITEMS VS PS FS CS)
+                if(SHADER_CONTENT MATCHES ".*${PREFIX}Main.*")
+                    list(APPEND ENTRY_POINTS "${PREFIX}:${PREFIX}Main")
+                endif()
+            endforeach()
+            if(NOT ENTRY_POINTS)
+                message(WARNING "No entry points detected in ${SHADER_FILE}. Skipping.")
+                continue()
+            endif()
+            message(STATUS "Auto-detected entry points for ${SHADER_FILE}: ${ENTRY_POINTS}")
+        endif()
+
         set(ENTRY_FLAGS "")
-        foreach(ENTRY_POINT IN LISTS ENTRY_POINTS_LIST)
-            list(APPEND ENTRY_FLAGS "-e" "${ENTRY_POINT}")
+        foreach(ENTRY IN LISTS ENTRY_POINTS)
+            list(APPEND ENTRY_FLAGS "-e" "${ENTRY}")
         endforeach()
 
+        #
+        # IMPORTANT: write to a temporary header, format it, then only copy_if_different
+        # This prevents touching HEADER_OUT when its content didn't change.
+        #
         add_custom_command(
-            OUTPUT ${SPIRV_OUTPUT_PATH} # ${HEADER_OUTPUT_PATH}
-            COMMAND ${SHADER_COMPILER_EXECUTABLE}
-                    -s ${SHADER_PATH}
-                    ${ENTRY_FLAGS}
-                    ${INCLUDE_FLAGS}
-                    -o ${SPIRV_OUTPUT_PATH}
-                    -g ${HEADER_OUTPUT_PATH}
-            COMMAND
-                    ${CLANG_FORMAT_EXECUTABLE} -i ${HEADER_OUTPUT_PATH}
-            DEPENDS ShaderCompiler ${SHADER_PATH}
-            COMMENT "Compiling shader: ${SHADER_PATH}..."
+            OUTPUT "${SPIRV_OUT}" "${HEADER_OUT}"
+            COMMAND ${SHADER_COMPILER_CMD}
+                    -s "${SHADER_FILE}"
+                    ${ENTRY_FLAGS} ${INCLUDE_FLAGS}
+                    -o "${SPIRV_OUT}" -g "${HEADER_TMP}"
+            # format the tmp header (if clang-format found)
+            COMMAND ${CMAKE_COMMAND} -E echo_append "" # keep command list stable
+            COMMAND ${CLANG_FORMAT_EXECUTABLE} -i "${HEADER_TMP}"
+            # compare tmp -> final; use copy_if_different so timestamp only changes if content changed
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${HEADER_TMP}" "${HEADER_OUT}"
+            # cleanup tmp only if copy_if_different left final identical (copy_if_different won't create a new file when identical)
+            COMMAND ${CMAKE_COMMAND} -E rm -f "${HEADER_TMP}"
+            DEPENDS "${SHADER_FILE}" ${SHADER_COMPILER_TARGET}
+            COMMENT "Compiling shader ${SHADER_FILE} -> ${SPIRV_OUT} + ${HEADER_OUT}"
             VERBATIM
         )
 
-        list(APPEND COMPILE_SHADERS_OUTPUT_FILES ${SPIRV_OUTPUT_PATH})
-        list(APPEND COMPILE_SHADERS_HEADER_FILES ${HEADER_OUTPUT_PATH})
-        list(APPEND COMPILE_SHADERS_INPUTS ${SHADER_PATH})
-        set(COMPILE_SHADERS_OUTPUT_FILES ${COMPILE_SHADERS_OUTPUT_FILES} PARENT_SCOPE)
-        set(COMPILE_SHADERS_HEADER_FILES ${COMPILE_SHADERS_HEADER_FILES} PARENT_SCOPE)
-        set(COMPILE_SHADERS_INPUTS ${SHADER_PATH} PARENT_SCOPE)
-    endfunction()
+        list(APPEND ALL_SPV "${SPIRV_OUT}")
+        list(APPEND ALL_HEADERS "${HEADER_OUT}")
+    endforeach()
 
-    # Process shader files
-    if(SHADER_COMPILE_SHADER_FILES)
-        foreach(SHADER_FILE IN LISTS SHADER_COMPILE_SHADER_FILES)
-            # Check if specific entry points are provided for this shader
-            set(SHADER_ENTRY_POINTS ${SHADER_COMPILE_ENTRY_POINTS})
-
-            # If no entry points specified, try to detect common patterns
-            if(NOT SHADER_ENTRY_POINTS)
-                # Look for common entry point patterns in the shader file
-                file(READ ${SHADER_FILE} SHADER_CONTENT)
-
-                set(DETECTED_ENTRY_POINTS "")
-                if(SHADER_CONTENT MATCHES ".*VSMain.*")
-                    list(APPEND DETECTED_ENTRY_POINTS "VS:VSMain")
-                endif()
-                if(SHADER_CONTENT MATCHES ".*PSMain.*")
-                    list(APPEND DETECTED_ENTRY_POINTS "PS:PSMain")
-                endif()
-                if(SHADER_CONTENT MATCHES ".*FSMain.*")
-                    list(APPEND DETECTED_ENTRY_POINTS "FS:FSMain")
-                endif()
-                if(SHADER_CONTENT MATCHES ".*CSMain.*")
-                    list(APPEND DETECTED_ENTRY_POINTS "CS:CSMain")
-                endif()
-
-                if(DETECTED_ENTRY_POINTS)
-                    set(SHADER_ENTRY_POINTS ${DETECTED_ENTRY_POINTS})
-                    message(STATUS "Auto-detected entry points for ${SHADER_FILE}: ${SHADER_ENTRY_POINTS}")
-                else()
-                    message(WARNING "No entry points detected for ${SHADER_FILE}. Please specify ENTRY_POINTS manually.")
-                    continue()
-                endif()
-            endif()
-
-            add_shader_compile_command(${SHADER_FILE} "${SHADER_ENTRY_POINTS}")
-        endforeach()
+    # Mark generated artifacts (helps IDEs)
+    if(ALL_SPV)
+        set_source_files_properties(${ALL_SPV} PROPERTIES GENERATED TRUE)
+    endif()
+    if(ALL_HEADERS)
+        set_source_files_properties(${ALL_HEADERS} PROPERTIES GENERATED TRUE)
     endif()
 
-    # Add a custom target to compile all shaders
-    add_custom_target(${SHADER_COMPILE_TARGET}-compile-shaders
-        DEPENDS ${COMPILE_SHADERS_OUTPUT_FILES} # ${COMPILE_SHADERS_HEADER_FILES}
+    # Custom target depends on the real output files (so it won't always run)
+    add_custom_target(${SHADER_TARGET}_compile_shaders
+        DEPENDS ${ALL_SPV} ${ALL_HEADERS}
     )
 
-    # Ensure the main target depends on the shader compilation target
-    add_dependencies(${SHADER_COMPILE_TARGET} ${SHADER_COMPILE_TARGET}-compile-shaders)
+    # Make sure the target using shaders depends on the compile step
+    add_dependencies(${SHADER_TARGET} ${SHADER_TARGET}_compile_shaders)
 
-    # Disabled because, to include a sshader you will have to type #include "shader-name.hpp" instead of "shaders-dir/shader-name"
-    # # Add the generated header directory to the target's include directories
-    # target_include_directories(${SHADER_COMPILE_TARGET} PUBLIC ${SHADER_COMPILE_HEADER_OUTPUT_DIR})
-
-    # Store the generated files for potential use by other targets
-    set_property(TARGET ${SHADER_COMPILE_TARGET} PROPERTY SHADER_OUTPUT_FILES ${COMPILE_SHADERS_OUTPUT_FILES})
-    set_property(TARGET ${SHADER_COMPILE_TARGET} PROPERTY SHADER_HEADER_FILES ${COMPILE_SHADERS_HEADER_FILES})
-    set_property(TARGET ${SHADER_COMPILE_TARGET} PROPERTY SHADER_HEADER_DIR ${SHADER_COMPILE_HEADER_OUTPUT_DIR})
-
-    # Make the header directory available to other targets that might need it
-    set_property(GLOBAL PROPERTY ${SHADER_COMPILE_TARGET}_SHADER_HEADER_DIR ${SHADER_COMPILE_HEADER_OUTPUT_DIR})
+    # expose properties
+    set_property(TARGET ${SHADER_TARGET} PROPERTY SHADER_OUTPUT_FILES ${ALL_SPV})
+    set_property(TARGET ${SHADER_TARGET} PROPERTY SHADER_HEADER_FILES ${ALL_HEADERS})
+    set_property(TARGET ${SHADER_TARGET} PROPERTY SHADER_HEADER_DIR ${SHADER_HEADER_OUTPUT_DIR})
+    set_property(GLOBAL PROPERTY ${SHADER_TARGET}_SHADER_HEADER_DIR ${SHADER_HEADER_OUTPUT_DIR})
 endfunction()
-
-# Function to add shader header include directory to a target
+# ==========================================================
+# Helper: Add shader headers from another target
+# ==========================================================
 function(add_shader_headers TARGET_NAME)
     cmake_parse_arguments(
         SHADER_HEADERS
-        "PUBLIC;PRIVATE;INTERFACE" # Boolean flags
-        "" # Single-valued arguments
-        "FROM_TARGETS" # Multi-valued arguments
+        "PUBLIC;PRIVATE;INTERFACE"
+        ""
+        "FROM_TARGETS"
         ${ARGN}
     )
 
-    # If no scope specified, default to PRIVATE
     if(NOT SHADER_HEADERS_PUBLIC AND NOT SHADER_HEADERS_PRIVATE AND NOT SHADER_HEADERS_INTERFACE)
         set(SHADER_HEADERS_PRIVATE TRUE)
     endif()
 
-    # Add include directories from specified targets
-    foreach(FROM_TARGET IN LISTS SHADER_HEADERS_FROM_TARGETS)
-        get_property(HEADER_DIR TARGET ${FROM_TARGET} PROPERTY SHADER_HEADER_DIR)
-        if(HEADER_DIR)
-            if(SHADER_HEADERS_PUBLIC)
-                target_include_directories(${TARGET_NAME} PUBLIC ${HEADER_DIR})
-            elseif(SHADER_HEADERS_PRIVATE)
-                target_include_directories(${TARGET_NAME} PRIVATE ${HEADER_DIR})
-            elseif(SHADER_HEADERS_INTERFACE)
-                target_include_directories(${TARGET_NAME} INTERFACE ${HEADER_DIR})
-            endif()
+    foreach(SRC_TARGET IN LISTS SHADER_HEADERS_FROM_TARGETS)
+        get_property(HEADER_DIR TARGET ${SRC_TARGET} PROPERTY SHADER_HEADER_DIR)
+        if(NOT HEADER_DIR)
+            message(WARNING "Target ${SRC_TARGET} has no shader header directory property.")
+            continue()
+        endif()
+
+        if(SHADER_HEADERS_PUBLIC)
+            target_include_directories(${TARGET_NAME} PUBLIC ${HEADER_DIR})
+        elseif(SHADER_HEADERS_INTERFACE)
+            target_include_directories(${TARGET_NAME} INTERFACE ${HEADER_DIR})
         else()
-            message(WARNING "Target ${FROM_TARGET} does not have shader header directory property")
+            target_include_directories(${TARGET_NAME} PRIVATE ${HEADER_DIR})
         endif()
     endforeach()
 endfunction()
 
-# Function to get shader output files from a target
-function(get_shader_output_files TARGET_NAME OUTPUT_VARIABLE)
-    get_property(SHADER_FILES TARGET ${TARGET_NAME} PROPERTY SHADER_OUTPUT_FILES)
-    set(${OUTPUT_VARIABLE} ${SHADER_FILES} PARENT_SCOPE)
+
+# ==========================================================
+# Helper: Get generated shader files
+# ==========================================================
+function(get_shader_output_files TARGET_NAME OUTPUT_VAR)
+    get_property(FILES TARGET ${TARGET_NAME} PROPERTY SHADER_OUTPUT_FILES)
+    set(${OUTPUT_VAR} ${FILES} PARENT_SCOPE)
 endfunction()
 
-# Function to get shader header files from a target
-function(get_shader_header_files TARGET_NAME OUTPUT_VARIABLE)
-    get_property(HEADER_FILES TARGET ${TARGET_NAME} PROPERTY SHADER_HEADER_FILES)
-    set(${OUTPUT_VARIABLE} ${HEADER_FILES} PARENT_SCOPE)
+function(get_shader_header_files TARGET_NAME OUTPUT_VAR)
+    get_property(FILES TARGET ${TARGET_NAME} PROPERTY SHADER_HEADER_FILES)
+    set(${OUTPUT_VAR} ${FILES} PARENT_SCOPE)
 endfunction()

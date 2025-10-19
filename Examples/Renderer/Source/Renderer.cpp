@@ -161,7 +161,7 @@ namespace Engine
 
         scene->m_drawList.onUpdate();
 
-        auto swapchainBuffer = m_renderGraph->ImportSwapchain("swapchain-color", *viewport.swapchain, RHI::Format::RGBA8_UNORM);
+        auto swapchainBuffer = m_renderGraph->importSwapchain("swapchain-color", *viewport.swapchain, RHI::Format::RGBA8_UNORM);
 
         DeferredRenderer::ptr->render(m_renderGraph, scene, swapchainBuffer);
 

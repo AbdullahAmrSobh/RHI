@@ -267,6 +267,13 @@ namespace Engine
             m_vertexShader = parseShaderStage(json.at("vs"), RHI::ShaderStage::Vertex);
             m_pixelShader  = parseShaderStage(json.at("ps"), RHI::ShaderStage::Pixel);
 
+            TL_defer
+            {
+                auto device = RenderContext::ptr->m_device;
+                device->DestroyShaderModule(m_vertexShader.module);
+                device->DestroyShaderModule(m_pixelShader.module);
+            };
+
             RHI::GraphicsPipelineCreateInfo ci{
                 .name                 = m_name.c_str(),
                 .vertexShader         = {m_vertexShader.entry.c_str(), m_vertexShader.module},
@@ -346,6 +353,11 @@ namespace Engine
         auto json                   = nlohmann::json::parse(readFile(view));
         auto name                   = json.value("name", "");
         auto [entry, stage, shader] = PipelineStateInitializer::parseShaderStage(json.at("cs"), RHI::ShaderStage::Compute);
+        TL_defer
+        {
+            auto device = RenderContext::ptr->m_device;
+            device->DestroyShaderModule(shader);
+        };
 
         RHI::ComputePipelineCreateInfo ci{
             .name          = name.c_str(),

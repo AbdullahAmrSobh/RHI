@@ -144,4 +144,112 @@ namespace RHI::Vulkan
         return nullptr;
     }
 
+    using VmaImageAllocation  = std::pair<VkImage, VmaAllocation>;
+    using VmaBufferAllocation = std::pair<VkBuffer, VmaAllocation>;
+
+    // Entry for any resource type
+    template<typename Resource>
+    struct ResourceDeleteQueueEntry
+    {
+        uint64_t       timeline;
+        Resource       resource;
+        TL::Stacktrace stacktrace;
+    };
+
+    class DeleteQueue
+    {
+    public:
+        void shutdown(IDevice* device);
+
+        // clang-format off
+        // simple handle pushes
+        void Push(uint64_t timeline, VmaAllocation h) { PushImpl(m_allocation, timeline, h); }
+        void Push(uint64_t timeline, VkBuffer h) { PushImpl(m_buffer, timeline, h); }
+        void Push(uint64_t timeline, VkBufferView h) { PushImpl(m_bufferView, timeline, h); }
+        void Push(uint64_t timeline, VkImage h) { PushImpl(m_image, timeline, h); }
+        void Push(uint64_t timeline, VkImageView h) { PushImpl(m_imageView, timeline, h); }
+        void Push(uint64_t timeline, VkSampler h) { PushImpl(m_sampler, timeline, h); }
+        void Push(uint64_t timeline, VkPipeline h) { PushImpl(m_pipeline, timeline, h); }
+        void Push(uint64_t timeline, VkDescriptorPool h) { PushImpl(m_descriptorPool, timeline, h); }
+        void Push(uint64_t timeline, VkSwapchainKHR h) { PushImpl(m_swapchain, timeline, h); }
+        void Push(uint64_t timeline, VkSurfaceKHR h) { PushImpl(m_surface, timeline, h); }
+        void Push(uint64_t timeline, VkSemaphore h) { PushImpl(m_semaphore, timeline, h); }
+        // void Push(uint64_t timeline, VmaBufferAllocation h) { PushImpl(m_vma, timeline, h.first);  PushImpl(m_vmaBuffer, timeline, h.second);}
+        // void Push(uint64_t timeline, VmaImageAllocation h) { PushImpl(m_vmaImage, timeline, h.first);  PushImpl(m_vmaImage, timeline, h.second);}
+        // clang-format on
+
+        void Flush(IDevice* device, uint64_t timeline);
+
+    private:
+        // FlushQueue that works on ResourceDeleteQueueEntry<ResourceType>
+        template<typename ResourceType>
+        void FlushQueue(IDevice* device, TL::Vector<ResourceDeleteQueueEntry<ResourceType>>& queue, uint64_t timeline)
+        {
+            uint32_t deleteCount = 0;
+            for (const auto& entry : queue)
+            {
+                if (entry.timeline > timeline)
+                    break;
+
+                DestroyObject(device, entry.resource);
+
+                uint64_t key = TL::hashBytes(TL::Block::create(entry.resource));
+                TL_ASSERT(m_pending.erase(key));
+                deleteCount++;
+            }
+            queue.erase(queue.begin(), queue.begin() + deleteCount);
+        }
+
+        // Generic push implementation for single-handle resources
+        template<typename ResourceType>
+        void PushImpl(TL::Vector<ResourceDeleteQueueEntry<ResourceType>>& queue, uint64_t timeline, ResourceType h)
+        {
+            uint64_t key = TL::hashBytes(TL::Block::create(h));
+            if (auto it = m_pending.find(key); it != m_pending.end())
+            {
+                auto st = TL::ReportStacktrace(it->second);
+                TL_LOG_ERROR("Object was already requested for deletion at {}", st);
+                TL_UNREACHABLE();
+            }
+            else
+            {
+                m_pending[key] = TL::CaptureStacktrace();
+            }
+
+            queue.emplace_back(ResourceDeleteQueueEntry<ResourceType>{timeline, h, TL::CaptureStacktrace()});
+        }
+
+        // clang-format off
+        inline static void DestroyObject(IDevice* device, VmaAllocation handle) { vmaFreeMemory(device->m_deviceAllocator, handle); }
+        inline static void DestroyObject(IDevice* device, VkBuffer handle) { vkDestroyBuffer(device->m_device, handle, nullptr); }
+        inline static void DestroyObject(IDevice* device, VkBufferView handle) { vkDestroyBufferView(device->m_device, handle, nullptr); }
+        inline static void DestroyObject(IDevice* device, VkImage handle) { vkDestroyImage(device->m_device, handle, nullptr); }
+        inline static void DestroyObject(IDevice* device, VkImageView handle) { vkDestroyImageView(device->m_device, handle, nullptr); }
+        inline static void DestroyObject(IDevice* device, VkSampler handle) { vkDestroySampler(device->m_device, handle, nullptr); }
+        inline static void DestroyObject(IDevice* device, VkPipeline handle) { vkDestroyPipeline(device->m_device, handle, nullptr); }
+        inline static void DestroyObject(IDevice* device, VkDescriptorPool handle) { vkDestroyDescriptorPool(device->m_device, handle, nullptr); }
+        inline static void DestroyObject(IDevice* device, VkSemaphore handle) { vkDestroySemaphore(device->m_device, handle, nullptr); }
+        inline static void DestroyObject(IDevice* device, VkSwapchainKHR handle) { vkDestroySwapchainKHR(device->m_device, handle, nullptr); }
+        inline static void DestroyObject(IDevice* device, VkSurfaceKHR handle) { vkDestroySurfaceKHR(device->m_instance, handle, nullptr); }
+        inline static void DestroyObject(IDevice* device, const VmaBufferAllocation& handle) { vmaDestroyBuffer(device->m_deviceAllocator, handle.first, handle.second); }
+        inline static void DestroyObject(IDevice* device, const VmaImageAllocation& handle) { vmaDestroyImage(device->m_deviceAllocator, handle.first, handle.second); }
+
+        // clang-format on
+
+    private:
+        TL::Vector<ResourceDeleteQueueEntry<VmaAllocation>>       m_allocation;
+        TL::Vector<ResourceDeleteQueueEntry<VkBuffer>>            m_buffer;
+        TL::Vector<ResourceDeleteQueueEntry<VkBufferView>>        m_bufferView;
+        TL::Vector<ResourceDeleteQueueEntry<VkImage>>             m_image;
+        TL::Vector<ResourceDeleteQueueEntry<VkImageView>>         m_imageView;
+        TL::Vector<ResourceDeleteQueueEntry<VkSampler>>           m_sampler;
+        TL::Vector<ResourceDeleteQueueEntry<VkPipeline>>          m_pipeline;
+        TL::Vector<ResourceDeleteQueueEntry<VkDescriptorPool>>    m_descriptorPool;
+        TL::Vector<ResourceDeleteQueueEntry<VkSwapchainKHR>>      m_swapchain;
+        TL::Vector<ResourceDeleteQueueEntry<VkSurfaceKHR>>        m_surface;
+        TL::Vector<ResourceDeleteQueueEntry<VkSemaphore>>         m_semaphore;
+        TL::Vector<ResourceDeleteQueueEntry<VmaBufferAllocation>> m_vmaBuffer;
+        TL::Vector<ResourceDeleteQueueEntry<VmaImageAllocation>>  m_vmaImage;
+        TL::Map<uint64_t, TL::Stacktrace>                         m_pending;
+    };
 } // namespace RHI::Vulkan

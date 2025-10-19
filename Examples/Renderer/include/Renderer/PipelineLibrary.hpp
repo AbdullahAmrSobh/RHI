@@ -4,9 +4,12 @@
 
 #include "Renderer/Common.hpp"
 #include "Renderer/Scene.hpp"
+#include "Renderer/Renderer.hpp"
 
 #include <TL/File/File.hpp>
 #include <TL/FileSystem/FileSystemWatcher.hpp>
+
+#include <typeindex>
 
 namespace Engine
 {
@@ -64,6 +67,17 @@ namespace Engine
         TL::Error init();
         void      shutdown();
 
+        template<typename T>
+        RHI::BindGroupLayout* acquireLayout()
+        {
+            if (auto it = m_bindGroupLayoutLookup.find(typeid(T)); it != m_bindGroupLayoutLookup.end())
+            {
+                return it->second;
+            }
+            auto device = RenderContext::ptr->m_device;
+            return m_bindGroupLayoutLookup[typeid(T)] = T::createBindGroupLayout(device);
+        }
+
         template<typename ShaderBindGroupStruct>
         TL::Ptr<GraphicsShader> acquireGraphicsPipeline(TL::StringView view, TL::Span<const RHI::PipelineVertexBindingDesc> vertexBindings, RHI::PipelineRenderTargetLayout renderPassLayout)
         {
@@ -87,12 +101,12 @@ namespace Engine
 
     private:
         TL::Ptr<GraphicsShader> acquireGraphicsPipeline(TL::StringView view, RHI::BindGroupLayout* layout, TL::Span<const RHI::PipelineVertexBindingDesc> vertexBindings, RHI::PipelineRenderTargetLayout renderPassLayout);
-
         TL::Ptr<ComputeShader> acquireComputePipeline(TL::StringView view, RHI::BindGroupLayout* layout);
 
     private:
-        TL::FileWatcher m_watcher;
-        TL::Map<TL::String, GraphicsShader*> m_graphicsHandler;
-        TL::Map<TL::String, ComputeShader*>  m_computeHandler;
+        TL::FileWatcher                                 m_watcher;
+        TL::Map<TL::String, GraphicsShader*>            m_graphicsHandler;
+        TL::Map<TL::String, ComputeShader*>             m_computeHandler;
+        TL::Map<std::type_index, RHI::BindGroupLayout*> m_bindGroupLayoutLookup;
     };
 } // namespace Engine

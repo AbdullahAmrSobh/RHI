@@ -6,6 +6,7 @@
 
 #include <TL/Flags.hpp>
 #include <TL/Span.hpp>
+#include <atomic>
 
 namespace RHI
 {
@@ -27,35 +28,61 @@ namespace RHI
     // Opaque Resource Declarations
     using DeviceMemoryPtr = void*;
 
-    struct BindGroupLayout
+    struct ResourceBase
+    {
+        void addRef() const noexcept
+        {
+            m_refCount.fetch_add(1, std::memory_order_relaxed);
+        }
+
+        bool release() const noexcept
+        {
+            uint32_t prev = m_refCount.fetch_sub(1, std::memory_order_acq_rel);
+            return prev == 1;
+        }
+
+        uint32_t getRefCount() const noexcept
+        {
+            return m_refCount.load(std::memory_order_relaxed);
+        }
+
+    private:
+        mutable std::atomic<uint16_t> m_refCount{1};
+    };
+
+    struct BindGroupLayout : ResourceBase
     {
     };
 
-    struct BindGroup
+    struct BindGroup : ResourceBase
     {
     };
 
-    struct Buffer
+    struct Buffer : ResourceBase
     {
     };
 
-    struct Image
+    struct Image : ResourceBase
     {
     };
 
-    struct Sampler
+    struct Sampler : ResourceBase
     {
     };
 
-    struct PipelineLayout
+    struct PipelineLayout : ResourceBase
     {
     };
 
-    struct GraphicsPipeline
+    struct GraphicsPipeline : ResourceBase
     {
     };
 
-    struct ComputePipeline
+    struct ComputePipeline : ResourceBase
+    {
+    };
+
+    struct RayTracingPipeline : ResourceBase
     {
     };
 
@@ -366,7 +393,7 @@ namespace RHI
     struct BufferCreateInfo
     {
         const char*            name       = nullptr;           ///< Name of the buffer.
-        bool                   hostMapped = true;              ///< Buffer will be mappable by host.
+        bool                   hostMapped = false;             ///< Buffer will be mappable by host.
         TL::Flags<BufferUsage> usageFlags = BufferUsage::None; ///< Usage flags for the buffer.
         size_t                 byteSize   = 0;                 ///< Size of the buffer in bytes.
     };
@@ -586,46 +613,4 @@ namespace RHI
             std::max(1u, size.depth >> mipLevel),
         };
     }
-
-    // struct ColorAttachmentBlendState
-    // {
-    // };
-
-    // struct PipelineRasterizerState
-    // {
-    // };
-
-    // struct PipelineMultisampleState
-    // {
-    // };
-
-    // struct PipelineDepthStencilState
-    // {
-    // };
-
-    // struct PipelineColorBlendState
-    // {
-    // };
-
-    // class PipelineLibrary
-    // {
-    // public:
-    //     ~PipelineLibrary() = default;
-
-    //     ColorAttachmentBlendState* createColorAttachmentBlendState(ColorAttachmentBlendStateDesc& ci);
-    //     void                       destroyColorAttachmentBlendState(ColorAttachmentBlendState* ci);
-
-    //     PipelineRasterizerState*   createPipelineRasterizerState(PipelineRasterizerStateDesc& ci);
-    //     void                       destroyPipelineRasterizerState(PipelineRasterizerState* ci);
-
-    //     PipelineMultisampleState*  createPipelineMultisampleState(PipelineMultisampleStateDesc& ci);
-    //     void                       destroyPipelineMultisampleState(PipelineMultisampleState* ci);
-
-    //     PipelineDepthStencilState* createPipelineDepthStencilState(PipelineDepthStencilStateDesc& ci);
-    //     void                       destroyPipelineDepthStencilState(PipelineDepthStencilState* ci);
-
-    //     PipelineColorBlendState*   createPipelineColorBlendState(PipelineColorBlendStateDesc& ci);
-    //     void                       destroyPipelineColorBlendState(PipelineColorBlendState* ci);
-    // };
-
 } // namespace RHI

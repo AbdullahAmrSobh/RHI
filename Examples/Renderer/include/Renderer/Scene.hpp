@@ -2,13 +2,15 @@
 
 #include "Renderer/Common.hpp"
 #include "Renderer/Resources.hpp"
-#include "Renderer/MeshDrawProcessor.hpp"
+#include "Renderer/DrawList.hpp"
 #include "Renderer/Geometry.hpp"
 
 #include "Shaders/GpuCommonStructs.h"
 
 namespace Engine
 {
+    class Material;
+
     class RenderContext : public Singleton<RenderContext>
     {
     public:

@@ -379,7 +379,7 @@ public:
 
         if (ImGui::IsKeyDown(ImGuiKey_F1))
         {
-            m_renderer->GetRenderGraph()->Debug_CaptureNextFrame();
+            // m_renderer->GetRenderGraph()->Debug_CaptureNextFrame();
         }
 
         m_renderer->Render(m_scene, m_presentationViewport);

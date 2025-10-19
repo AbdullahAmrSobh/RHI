@@ -11,8 +11,6 @@ namespace RHI
     struct GraphicsPipeline;
     struct ComputePipeline;
 
-    class RenderGraph;
-
     enum class QueueType : uint8_t
     {
         Graphics,
@@ -66,6 +64,7 @@ namespace RHI
         ColorValue<uint16_t> u16;
         ColorValue<uint32_t> u32;
         ColorValue<float>    f32;
+        DepthStencilValue    ds;
     };
 
     /// @brief Defines a viewport for rendering.

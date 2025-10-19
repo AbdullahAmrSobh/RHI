@@ -98,32 +98,26 @@ namespace RHI
 
     uint32_t GetFormatByteSize(Format format)
     {
-        auto info = GetFormatInfo(format);
-        return info.bytesPerBlock;
+        return GetFormatInfo(format).bytesPerBlock;
     }
 
     uint32_t GetFormatComponentByteSize(Format format)
     {
-        auto info = GetFormatInfo(format);
-        return info.bytesPerBlock;
+        return GetFormatInfo(format).bytesPerBlock;
     }
 
     FormatType GetFormatType(Format format)
     {
-        auto info = GetFormatInfo(format);
-        return info.type;
+        return GetFormatInfo(format).type;
     }
 
     TL::Flags<ImageAspect> GetFormatAspects(Format format)
     {
-        TL::Flags<ImageAspect> flags;
-
-        auto formatInfo = GetFormatInfo(format);
-
+        auto                   formatInfo = GetFormatInfo(format);
+        TL::Flags<ImageAspect> flags      = ImageAspect::None;
         if (formatInfo.hasDepth) flags |= ImageAspect::Depth;
         if (formatInfo.hasStencil) flags |= ImageAspect::Stencil;
         if (formatInfo.hasRed || formatInfo.hasGreen || formatInfo.hasBlue || formatInfo.hasAlpha) flags |= ImageAspect::Color;
-
         return flags;
     }
 } // namespace RHI

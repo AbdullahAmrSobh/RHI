@@ -93,7 +93,7 @@ namespace RHI::WebGPU
     struct IBuffer : Buffer
     {
         WGPUBuffer buffer;
-        void* mappedPtr;
+        void*      mappedPtr;
 
         ResultCode Init(IDevice* device, const BufferCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
@@ -120,5 +120,27 @@ namespace RHI::WebGPU
 
         ResultCode Init(IDevice* device, const SamplerCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
+    };
+
+    class ISwapchain final : public Swapchain
+    {
+    public:
+        ISwapchain();
+        ~ISwapchain();
+
+        ResultCode Init(IDevice* device, const SwapchainCreateInfo& createInfo);
+        void       Shutdown(IDevice* device);
+
+        SurfaceCapabilities GetSurfaceCapabilities() override;
+        ResultCode          Resize(ImageSize2D size) override;
+        ResultCode          Configure(const SwapchainConfigureInfo& configInfo) override;
+        ResultCode          Present() override;
+
+    private:
+        ResultCode SwapBackTextures();
+
+        IDevice*               m_device  = nullptr;
+        WGPUSurface            m_surface = nullptr;
+        SwapchainConfigureInfo m_configuration;
     };
 } // namespace RHI::WebGPU

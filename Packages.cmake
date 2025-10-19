@@ -73,8 +73,9 @@ endif()
 if(RHI_BACKEND_WEBGPU)
 	CPMAddPackage(
 		NAME           dawn
-		GIT_REPOSITORY git@github.com:google/dawn.git
-		GIT_TAG        46b4670bc67cb4f6d34f6ce6a46ba7e1d6059abf # chromium/7258
+		GIT_REPOSITORY dawn.googlesource.com/dawn
+		GIT_TAG        chromium/7482
+		DOWNLOAD_ONLY  YES
 		OPTIONS
 			"DAWN_ENABLE_D3D11 OFF"
 			"DAWN_ENABLE_NULL OFF"

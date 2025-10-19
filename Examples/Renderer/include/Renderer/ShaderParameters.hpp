@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Renderer/Resources.hpp"
+#include "Renderer/PipelineLibrary.hpp"
 
 #include <RHI/Resources.hpp>
 
@@ -12,7 +13,7 @@ namespace Engine
         RHI::BufferBindingInfo bindingInfo;
         bool                   m_dirty = true;
 
-        inline auto& operator=(GPUArray<T> buffer)
+        inline auto& operator=(const GPUArray<T>& buffer)
         {
             auto binding = buffer.getBinding();
             if (bindingInfo.buffer != binding.buffer || bindingInfo.offset != binding.offset)
@@ -25,7 +26,7 @@ namespace Engine
             return *this;
         }
 
-        inline auto& operator=(Buffer<T> buffer)
+        inline auto& operator=(const Buffer<T>& buffer)
         {
             auto binding = buffer.getBinding();
             if (bindingInfo.buffer != binding.buffer || bindingInfo.offset != binding.offset)
@@ -57,7 +58,7 @@ namespace Engine
         RHI::BufferBindingInfo bindingInfo;
         bool                   m_dirty = true;
 
-        inline auto& operator=(GPUArray<T> buffer)
+        inline auto& operator=(const GPUArray<T>& buffer)
         {
             auto binding = buffer.getBinding();
             if (bindingInfo.buffer != binding.buffer || bindingInfo.offset != binding.offset)
@@ -70,7 +71,7 @@ namespace Engine
             return *this;
         }
 
-        inline auto& operator=(Buffer<T> buffer)
+        inline auto& operator=(const Buffer<T>& buffer)
         {
             auto binding = buffer.getBinding();
             if (bindingInfo.buffer != binding.buffer || bindingInfo.offset != binding.offset)
@@ -83,7 +84,7 @@ namespace Engine
             return *this;
         }
 
-        inline auto& operator=(RHI::BufferBindingInfo binding)
+        inline auto& operator=(const RHI::BufferBindingInfo& binding)
         {
             if (bindingInfo.buffer != binding.buffer || bindingInfo.offset != binding.offset)
             {
@@ -206,5 +207,47 @@ namespace Engine
             }
             return *this;
         }
+    };
+
+    template<typename T>
+    class ShaderBindGroup final : public T
+    {
+    public:
+        void init(RHI::Device* device, uint32_t bindlessArrayCount)
+        {
+            m_bindGroup = device->CreateBindGroup(RHI::BindGroupCreateInfo{
+                .name               = typeid(T).name(),
+                .layout             = PipelineLibrary::ptr->acquireLayout<T>(),
+                .bindlessArrayCount = bindlessArrayCount,
+            });
+        }
+
+        void shutdown(RHI::Device* device)
+        {
+            device->DestroyBindGroup(m_bindGroup);
+        }
+
+        void update(RHI::Device* device)
+        {
+            T::updateBindGroup(device, m_bindGroup);
+        }
+
+        RHI::BindGroupBindingInfo bind(uint32_t dynamicOffset) const
+        {
+            return {
+                .bindGroup      = m_bindGroup,
+                .dynamicOffsets = dynamicOffset,
+            };
+        }
+
+        RHI::BindGroupBindingInfo bind() const
+        {
+            return {
+                .bindGroup      = m_bindGroup,
+                .dynamicOffsets = {},
+            };
+        }
+    private:
+        RHI::BindGroup*                     m_bindGroup;
     };
 } // namespace Engine

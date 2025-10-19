@@ -28,7 +28,7 @@ namespace RHI
         return *m_limits;
     }
 
-    RenderGraph* Device::CreateRenderGraph([[maybe_unused]] const RenderGraphCreateInfo& createInfo)
+    RenderGraph* Device::CreateRenderGraph(const RenderGraphCreateInfo& createInfo)
     {
         ZoneScoped;
         auto* renderGraph = new RenderGraph();

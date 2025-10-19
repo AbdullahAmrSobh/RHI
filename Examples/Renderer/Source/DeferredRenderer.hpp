@@ -2,15 +2,16 @@
 
 #include <RHI/RHI.hpp>
 
-#include "Renderer/BindGroup.hpp"
 #include "Renderer/Common.hpp"
 #include "Renderer/ImGuiPass.hpp"
-#include "Renderer/MeshDrawProcessor.hpp"
+#include "Renderer/DrawList.hpp"
 #include "Renderer/PipelineLibrary.hpp"
 #include "Renderer/Renderer.hpp"
 #include "Renderer/Scene.hpp"
 
-#include "Renderer-Shaders/Compose.hpp"
+#include "Renderer/Resources.hpp"
+
+#include "Renderer-Shaders/Cull.hpp"
 #include "Renderer-Shaders/GBufferPass.hpp"
 
 #include "Shaders/GpuCommonStructs.h"
@@ -19,16 +20,10 @@
 
 namespace Engine
 {
-    // ────────────────────────────────
-    // Shader Paths
-    // ────────────────────────────────
-    inline static constexpr const char* kCullShaderPath     = "I:/repos/repos3/RHI/Examples/Renderer/Shaders/source/Cull.json";
-    inline static constexpr const char* kGBufferShaderPath  = "I:/repos/repos3/RHI/Examples/Renderer/Shaders/source/GBufferPass.json";
-    inline static constexpr const char* kLightingShaderPath = "I:/repos/repos3/RHI/Examples/Renderer/Shaders/source/Lighting.json";
+    static constexpr const char* kCullShaderPath     = "Renderer/Shaders/source/Cull.json";
+    static constexpr const char* kGBufferShaderPath  = "Renderer/Shaders/source/GBufferPass.json";
+    static constexpr const char* kLightingShaderPath = "Renderer/Shaders/source/Lighting.json";
 
-    // ────────────────────────────────
-    // Utility Dispatch Helpers
-    // ────────────────────────────────
     static void dispatchPP2D(RHI::CommandList& cmd, RHI::ImageSize2D workgroupSize, RHI::ImageSize2D imageSize)
     {
         const uint32_t sizeX = (imageSize.width + workgroupSize.width - 1) / workgroupSize.width;
@@ -76,19 +71,14 @@ namespace Engine
             auto& pool = RenderContext::ptr->getConstantBuffersPool();
             pool.update(m_constants, cb);
 
-            return rg->AddPass({
-                .name          = name.data(),
-                .type          = RHI::PassType::Compute,
-                .setupCallback = [&](RHI::RenderGraphBuilder& builder)
-                {
-                    auto argsBufferSize = TL::AlignUp<uint32_t>(sizeof(uint32_t), m_device->GetLimits().minStorageBufferOffsetAlignment) + (sizeof(RHI::DrawIndexedParameters) * drawList->getCapacity());
-                    m_drawIndirectArgs  = builder.CreateBuffer(
-                        "mdi-args",
-                        drawList->getCapacity() * sizeof(RHI::DrawIndexedParameters) + argsBufferSize,
-                        RHI::BufferUsage::Storage,
-                        RHI::PipelineStage::ComputeShader);
-                },
-                .executeCallback = [=, this](RHI::CommandList& cmd)
+            auto* pass = rg->addPass(name.data(), RHI::RGPassType::Compute, {});
+            // Setup: translate builder calls to pass methods
+
+            auto argsBufferSize = TL::AlignUp<uint32_t>(sizeof(uint32_t), m_device->GetLimits().minStorageBufferOffsetAlignment) + (sizeof(RHI::DrawIndexedParameters) * drawList->getCapacity());
+            m_drawIndirectArgs  = pass->createBuffer({"mdi-args", drawList->getCapacity() * sizeof(RHI::DrawIndexedParameters) + argsBufferSize}, RHI::RGBufferUsage::UavCompute);
+
+            // Execute
+            rg->submitPass(pass, [this, drawList, rg](RHI::CommandList& cmd)
                 {
                     m_shaderParams.cb                = this->m_constants;
                     m_shaderParams.drawRequests      = drawList->getDrawRequests();
@@ -102,8 +92,8 @@ namespace Engine
                     const uint32_t groupSize = 64; // must match [numthreads(x,y,z)] in shader
                     uint32_t       numGroups = (groupSize) / groupSize;
                     cmd.Dispatch({groupSize, 1, 1});
-                },
-            });
+                });
+            return pass;
         }
 
         RHI::BufferBindingInfo getCountBuffer(RHI::RenderGraph* rg)
@@ -123,9 +113,9 @@ namespace Engine
             return bindingInfo;
         }
 
-        void setup(RHI::RenderGraphBuilder& builder)
+        void setup(RHI::RGPass* pass)
         {
-            builder.ReadBuffer(m_drawIndirectArgs, RHI::BufferUsage::Indirect, RHI::PipelineStage::DrawIndirect);
+            pass->readBuffer(m_drawIndirectArgs, RHI::RGBufferUsage::IndirectDraw);
         }
 
         void draw(RHI::RenderGraph* rg, RHI::CommandList& cmd, uint32_t maxDrawCount)
@@ -160,21 +150,18 @@ namespace Engine
     {
     private:
         TL::Ptr<GraphicsShader> m_shader = nullptr;
-
         Buffer<GPU::SceneGlobalConstants> m_constantBuffer = {};
         Buffer<GPU::SceneView>            m_sceneView      = {};
-
         ShaderBindGroup<GPU::GBufferInputs> m_shaderParams;
 
     public:
-        RHI::RGImage* colorAttachment = nullptr;
+        RHI::RGImage* colorAttachment      = nullptr;
+        RHI::RGImage* wsPositionAttachment = nullptr;
+        RHI::RGImage* normalAttachment     = nullptr;
+        RHI::RGImage* depthAttachment      = nullptr;
 
         void init()
         {
-            auto* renderCtx = RenderContext::ptr;
-
-            [[maybe_unused]] auto layoutHandle = ShaderBindGroup<GPU::GBufferInputs>::getLayout()->get();
-
             m_shader = PipelineLibrary::ptr->acquireGraphicsPipeline<GPU::GBufferInputs>(
                 kGBufferShaderPath,
                 {
@@ -188,7 +175,10 @@ namespace Engine
                     .depthAttachmentFormat   = RHI::Format::D16,
                 });
 
-            m_shaderParams.init(renderCtx->m_device, 0);
+
+            m_constantBuffer = RenderContext::ptr->allocateConstantBuffer<GPU::SceneGlobalConstants>();
+
+            m_shaderParams.init(RenderContext::ptr->m_device, 0);
         }
 
         void shutdown()
@@ -209,17 +199,10 @@ namespace Engine
             m_shaderParams.update(renderCtx->m_device);
 
             RHI::ImageSize2D frameSize = scene.m_imageSize;
-
-            rg->AddPass({
-                .name          = "main",
-                .type          = RHI::PassType::Graphics,
-                .size          = frameSize,
-                .setupCallback = [&](RHI::RenderGraphBuilder& builder)
-                {
-                    this->colorAttachment = builder.CreateColorTarget("color", frameSize, RHI::Format::RGBA8_UNORM);
-                    visIn.setup(builder);
-                },
-                .executeCallback = [=, this, &scene, &visIn](RHI::CommandList& cmd)
+            auto pass = rg->addPass("GBufferFill", RHI::RGPassType::Graphics, frameSize);
+            this->colorAttachment      = pass->createRenderTarget({"color", RHI::Format::RGBA8_UNORM});
+            visIn.setup(pass);
+            rg->submitPass(pass, [this, &scene, &visIn, rg, frameSize](RHI::CommandList& cmd)
                 {
                     cmd.SetViewport(RHI::Viewport{
                         .width    = (float)frameSize.width,
@@ -236,8 +219,7 @@ namespace Engine
                     cmd.BindGraphicsPipeline(m_shader->getPipeline(), m_shaderParams.bind());
 
                     visIn.draw(rg, cmd, scene.m_drawList.getCount());
-                },
-            });
+                });
         }
     };
 
@@ -277,23 +259,17 @@ namespace Engine
             m_vizabilityPass.addPass(rg, "cull", &scene->m_drawList);
             m_gbufferPass.render(rg, *scene, m_vizabilityPass);
 
-            rg->AddPass({
-                .name          = "copy-to-output",
-                .type          = RHI::PassType::Transfer,
-                .setupCallback = [&](RHI::RenderGraphBuilder& builder)
-                {
-                    builder.ReadImage(m_gbufferPass.colorAttachment, RHI::ImageUsage::CopySrc, RHI::PipelineStage::Copy);
-                    outputAttachment = builder.WriteImage(outputAttachment, RHI::ImageUsage::CopyDst, RHI::PipelineStage::Copy);
-                },
-                .executeCallback = [=, this](RHI::CommandList& cmd)
+            auto* pass = rg->addPass("copy-to-output", RHI::RGPassType::Transfer, {});
+            pass->readImage(m_gbufferPass.colorAttachment, RHI::RGImageUsage::CopySource);
+            outputAttachment = pass->writeImage(outputAttachment, RHI::RGImageUsage::CopyDestination);
+            rg->submitPass(pass, [this, rg, outputAttachment](RHI::CommandList& cmd)
                 {
                     cmd.CopyImage({
                         .srcImage = rg->GetImageHandle(m_gbufferPass.colorAttachment),
                         .srcSize  = m_gbufferPass.colorAttachment->m_frameResource->size,
                         .dstImage = rg->GetImageHandle(outputAttachment),
                     });
-                },
-            });
+                });
 
             if (m_imguiPass.enabled())
             {
