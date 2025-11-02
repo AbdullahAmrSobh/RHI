@@ -28,10 +28,6 @@
 #include <TL/Containers/Optional.hpp>
 #include <TL/Allocator/Allocator.hpp>
 
-#include <Libraries/Foundation/Assert.h>
-
-#include <Libraries/Containers/Vector.h>
-
 #include <algorithm>
 #include <format>
 
@@ -45,17 +41,17 @@ namespace RHI
     Device* CreateVulkanDevice(const ApplicationInfo& appInfo)
     {
         ZoneScoped;
-        auto device = new Vulkan::IDevice();
+        auto device = TL::construct<Vulkan::IDevice>();
         auto result = device->Init(appInfo);
         TL_ASSERT(IsSuccess(result));
-        return std::move(device);
+        return device;
     }
 
     void DestroyVulkanDevice(Device* _device)
     {
         auto device = (Vulkan::IDevice*)_device;
         device->Shutdown();
-        delete device;
+        TL::destruct(device);
     }
 } // namespace RHI
 

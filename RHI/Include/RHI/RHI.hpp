@@ -1,6 +1,5 @@
 #pragma once
 
-#include <RHI/Common.hpp>
 #include <RHI/CommandList.hpp>
 #include <RHI/Device.hpp>
 #include <RHI/Format.hpp>

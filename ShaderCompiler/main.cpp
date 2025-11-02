@@ -892,9 +892,9 @@ bool generateHeaderFile(Slang::ComPtr<slang::IComponentType> outProgram, const A
 
     TL_LOG_INFO("Generating header: {}", args.gen);
     f << "#pragma once\n\n";
-    f << "#include \"Renderer/ShaderParameters.hpp\"\n\n";
-    f << "#include \"Shaders/GpuCommonStructs.h\"\n\n";
     f << "#include <RHI/RHI.hpp>\n\n";
+    f << "#include <RenderCore/ShaderParameters.hpp>\n\n";
+    f << "#include \"Shaders/GpuCommonStructs.h\"\n\n";
     f << "#include <glm/glm.hpp>\n\n";
 
     BGC::reflectProgram(outProgram->getLayout(), f);

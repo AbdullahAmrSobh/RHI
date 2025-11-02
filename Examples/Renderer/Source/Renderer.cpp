@@ -71,7 +71,7 @@ namespace Engine
         RHI::RenderGraphCreateInfo renderGraphCI{
             // .name = "primary-render-graph",
         };
-        m_renderGraph = m_device->CreateRenderGraph(renderGraphCI);
+        m_renderGraph = RHI::RenderGraph::create(m_device, renderGraphCI);
 
         // Initialize renderer's systems
 
@@ -103,7 +103,7 @@ namespace Engine
         DeferredRenderer::ptr->shutdown();
         RenderContext::ptr->shutdown();
         PipelineLibrary::ptr->shutdown();
-        m_device->DestroyRenderGraph(m_renderGraph);
+        RHI::RenderGraph::destroy(m_renderGraph);
         DestroyDevice(m_device);
     }
 

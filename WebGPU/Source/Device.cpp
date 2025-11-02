@@ -8,26 +8,28 @@
 
 #include "CommandList.hpp"
 #include "Common.hpp"
-#include "RenderGraph.hpp"
+#include "Frame.hpp"
 #include "Resources.hpp"
 #include "Swapchain.hpp"
 
+#include <TL/Log.hpp>
+#include <TL/Assert.hpp>
+#include <TL/Stacktrace.hpp>
+
 RHI::Device* RHI::CreateWebGPUDevice()
 {
-    auto device = TL::Construct<RHI::WebGPU::IDevice>();
+    ZoneScoped;
+    auto device = TL::construct<RHI::WebGPU::IDevice>();
     auto result = device->Init();
-    if (IsSuccess(result))
-    {
-        return device;
-    }
-    return nullptr;
+    TL_ASSERT(IsSuccess(result));
+    return device;
 }
 
 void RHI::DestroyWebGPUDevice(RHI::Device* _device)
 {
     auto device = (RHI::WebGPU::IDevice*)_device;
     device->Shutdown();
-    TL::Destruct(device);
+    TL::destruct(device);
 }
 
 namespace RHI::WebGPU
@@ -178,176 +180,385 @@ namespace RHI::WebGPU
 
         m_queue = wgpuDeviceGetQueue(m_device);
 
+        WGPUAdapterProperties adapterProps{};
+        wgpuAdapterGetProperties(m_adapter, &adapterProps);
+        m_limits                                  = TL::CreatePtr<DeviceLimits>();
+        m_limits->minUniformBufferOffsetAlignment = 256; // WebGPU minimum
+        m_limits->minStorageBufferOffsetAlignment = 256; // WebGPU minimum
+
+        m_framesInFlight.resize(2);
+        for (auto& frame : m_framesInFlight)
+        {
+            frame           = TL::CreatePtr<IFrame>();
+            auto resultCode = frame->Init(this);
+            if (IsError(resultCode))
+            {
+                Shutdown();
+                return resultCode;
+            }
+        }
+
         return ResultCode::Success;
     }
 
     void IDevice::Shutdown()
     {
+        WaitIdle();
+
+        for (auto& frame : m_framesInFlight)
+        {
+            frame->Shutdown();
+        }
+
+        // Report live object stack traces
+        {
+            auto liveSwapchains = m_liveSwapchains;
+            for (auto [ptr, stacktrace] : liveSwapchains)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::Swapchain at:\n{}", TL::ReportStacktrace(stacktrace));
+                DestroySwapchain(ptr);
+            }
+
+            auto liveShaderModules = m_liveShaderModules;
+            for (auto [ptr, stacktrace] : liveShaderModules)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::ShaderModule at:\n{}", TL::ReportStacktrace(stacktrace));
+                DestroyShaderModule(ptr);
+            }
+
+            auto liveImages = m_liveImages;
+            for (auto [ptr, stacktrace] : liveImages)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::Image at:\n{}", TL::ReportStacktrace(stacktrace));
+                DestroyImage(ptr);
+            }
+
+            auto liveBuffers = m_liveBuffers;
+            for (auto [ptr, stacktrace] : liveBuffers)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::Buffer at:\n{}", TL::ReportStacktrace(stacktrace));
+                DestroyBuffer(ptr);
+            }
+
+            auto liveBindGroupLayouts = m_liveBindGroupLayouts;
+            for (auto [ptr, stacktrace] : liveBindGroupLayouts)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::BindGroupLayout at:\n{}", TL::ReportStacktrace(stacktrace));
+                DestroyBindGroupLayout(ptr);
+            }
+
+            auto liveBindGroups = m_liveBindGroups;
+            for (auto [ptr, stacktrace] : liveBindGroups)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::BindGroup at:\n{}", TL::ReportStacktrace(stacktrace));
+                DestroyBindGroup(ptr);
+            }
+
+            auto livePipelineLayouts = m_livePipelineLayouts;
+            for (auto [ptr, stacktrace] : livePipelineLayouts)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::PipelineLayout at:\n{}", TL::ReportStacktrace(stacktrace));
+                DestroyPipelineLayout(ptr);
+            }
+
+            auto liveGraphicsPipelines = m_liveGraphicsPipelines;
+            for (auto [ptr, stacktrace] : liveGraphicsPipelines)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::GraphicsPipeline at:\n{}", TL::ReportStacktrace(stacktrace));
+                DestroyGraphicsPipeline(ptr);
+            }
+
+            auto liveComputePipelines = m_liveComputePipelines;
+            for (auto [ptr, stacktrace] : liveComputePipelines)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::ComputePipeline at:\n{}", TL::ReportStacktrace(stacktrace));
+                DestroyComputePipeline(ptr);
+            }
+
+            auto liveSamplers = m_liveSamplers;
+            for (auto [ptr, stacktrace] : liveSamplers)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::Sampler at:\n{}", TL::ReportStacktrace(stacktrace));
+                DestroySampler(ptr);
+            }
+        }
+
         wgpuDeviceRelease(m_device);
         wgpuAdapterRelease(m_adapter);
         wgpuInstanceRelease(m_instance);
     }
 
-    void IDevice::UpdateBindGroup(Handle<BindGroup> handle, const BindGroupUpdateInfo& updateInfo)
+    void IDevice::WaitIdle()
     {
-        auto bindGroup = m_bindGroupOwner.Get(handle);
-        bindGroup->Update(this, updateInfo);
-    }
-
-    void IDevice::BeginResourceUpdate([[maybe_unused]] RenderGraph* renderGraph)
-    {
-        // No op
-    }
-
-    void IDevice::EndResourceUpdate()
-    {
-        for (auto buffer : m_buffersToUnmap)
-        {
-            wgpuBufferUnmap(buffer);
-        }
-    }
-
-    void IDevice::BufferWrite(Handle<Buffer> bufferHandle, size_t offset, TL::Block block)
-    {
-        auto buffer = m_bufferOwner.Get(bufferHandle);
-        // if (wgpuBufferGetMapState(buffer->buffer) == WGPUBufferMapState_Mapped)
-        // {
-        //     auto result = wgpuBufferWriteMappedRange(buffer->buffer, offset, block.ptr, block.size);
-        //     TL_ASSERT(result == WGPUStatus_Success);
-        //     return;
-        // }
-        wgpuQueueWriteBuffer(m_queue, buffer->buffer, offset, block.ptr, block.size);
-    }
-
-    void IDevice::ImageWrite(Handle<Image> imageHandle, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block)
-    {
-        TL_ASSERT(arrayLayer == 0, "Can't write to array layers");
-
-        auto image = m_imageOwner.Get(imageHandle);
-
-        auto formatInfo = GetFormatInfo(image->format);
-
-        WGPUTexelCopyTextureInfo destination{
-            .texture  = image->texture,
-            .mipLevel = mipLevel,
-            .origin   = ConvertToOffset3D(offset),
-            .aspect   = WGPUTextureAspect_All,
-        };
-        WGPUTexelCopyBufferLayout dataLayout{
-            .offset       = 0,
-            .bytesPerRow  = size.width * formatInfo.bytesPerBlock,
-            .rowsPerImage = size.height,
-        };
-        auto writeSize = ConvertToExtent3D(size);
-
-        // auto mipSize     = CalcaulteImageMipSize(image->size, mipLevel);
-        // auto widthValid  = (offset.x + size.width) >= mipSize.width;
-        // auto heightValid = (offset.y + size.height) >= mipSize.height;
-        // auto depthValid  = (offset.z + size.depth) >= mipSize.depth;
-        // TL_ASSERT(
-        //     widthValid && heightValid && depthValid,
-        //     "Invalid Offset ({}, {}, {}) + Size ({}, {}, {}), Exceed image mip level size ({}, {}, {})",
-        //     (int32_t)offset.x,
-        //     (int32_t)offset.y,
-        //     (int32_t)offset.z,
-        //     (int32_t)size.width,
-        //     (int32_t)size.height,
-        //     (int32_t)size.depth,
-        //     (int32_t)mipSize.width,
-        //     (int32_t)mipSize.height,
-        //     (int32_t)mipSize.depth);
-        wgpuQueueWriteTexture(m_queue, &destination, block.ptr, block.size, &dataLayout, &writeSize);
-    }
-
-    void IDevice::CollectResources()
-    {
+        ZoneScoped;
         wgpuDeviceTick(m_device);
     }
 
-    void IDevice::ExecuteCommandList(ICommandList* commandList)
+    void IDevice::UpdateBindGroup(BindGroup* handle, const BindGroupUpdateInfo& updateInfo)
     {
-        wgpuQueueSubmit(m_queue, 1, &commandList->m_cmdBuffer);
-        wgpuCommandBufferRelease(commandList->m_cmdBuffer);
-        delete commandList;
+        ZoneScoped;
+        auto bindGroup = (IBindGroup*)(handle);
+        bindGroup->Update(this, updateInfo);
     }
 
-#define IMPLEMENT_DEVICE_CREATE_METHOD_UNIQUE_WITH_INFO(ResourceType)                       \
-    ResourceType* IDevice::Create##ResourceType(const ResourceType##CreateInfo& createInfo) \
-    {                                                                                       \
-        ZoneScoped;                                                                         \
-        auto handle = new I##ResourceType();                                                \
-        auto result = handle->Init(this, createInfo);                                       \
-        TL_ASSERT(IsSuccess(result));                                                       \
-        return handle;                                                                      \
+    TL::IAllocator& IDevice::GetTempAllocator()
+    {
+        return m_framesInFlight[m_currentFrameIndex]->GetAllocator();
     }
 
-#define IMPLEMENT_DEVICE_DESTROY_METHOD_UNIQUE(ResourceType)   \
-    void IDevice::Destroy##ResourceType(ResourceType* _handle) \
-    {                                                          \
-        ZoneScoped;                                            \
-        auto handle = (I##ResourceType*)_handle;               \
-        handle->Shutdown();                                    \
-        delete handle;                                         \
+    ResultCode IDevice::SetFramesInFlightCount(uint32_t count)
+    {
+        auto previousSize = m_framesInFlight.size();
+        m_framesInFlight.resize(count);
+        for (size_t i = previousSize; i < m_framesInFlight.size(); i++)
+        {
+            auto result = m_framesInFlight[i]->Init(this);
+            if (IsError(result))
+                return result;
+        }
+        return ResultCode::Success;
     }
 
-#define IMPLEMENT_DEVICE_CREATE_METHOD(HandleType, OwnerField)                               \
-    Handle<HandleType> IDevice::Create##HandleType(const HandleType##CreateInfo& createInfo) \
-    {                                                                                        \
-        ZoneScoped;                                                                          \
-        auto [handle, result] = OwnerField.Create(this, createInfo);                         \
-        TL_ASSERT(IsSuccess(result));                                                        \
-        return handle;                                                                       \
+    Frame* IDevice::GetCurrentFrame()
+    {
+        return m_framesInFlight[m_currentFrameIndex].get();
     }
 
-#define IMPLEMENT_DEVICE_CREATE_METHOD_WITH_RESULT(HandleType, OwnerField)                           \
-    Result<Handle<HandleType>> IDevice::Create##HandleType(const HandleType##CreateInfo& createInfo) \
-    {                                                                                                \
-        ZoneScoped;                                                                                  \
-        auto [handle, result] = OwnerField.Create(this, createInfo);                                 \
-        if (IsSuccess(result)) return (Handle<HandleType>)handle;                                    \
-        return result;                                                                               \
+    uint64_t IDevice::GetNativeHandle(NativeHandleType type, uint64_t _handle)
+    {
+        switch (type)
+        {
+        case NativeHandleType::None: return 0;
+        case NativeHandleType::Device:
+            {
+                auto handle = reinterpret_cast<IDevice*>(_handle);
+                return (uint64_t)handle->m_device;
+            }
+        case NativeHandleType::CommandList:
+            {
+                auto handle = reinterpret_cast<ICommandList*>(_handle);
+                return (uint64_t)handle->m_cmdBuffer;
+            }
+        case NativeHandleType::Buffer:
+        case NativeHandleType::Image:
+        case NativeHandleType::ImageView:
+        case NativeHandleType::Sampler:
+        case NativeHandleType::ShaderModule:
+        case NativeHandleType::Pipeline:
+        case NativeHandleType::PipelineLayout:
+        case NativeHandleType::BindGroupLayout:
+        case NativeHandleType::BindGroup:
+        case NativeHandleType::Swapchain:
+        default:
+            TL_UNREACHABLE_MSG("TODO! implement");
+        }
+        return 0;
     }
 
-#define IMPLEMENT_DEVICE_DESTROY_METHOD(HandleType, OwnerField)                \
-    void IDevice::Destroy##HandleType(Handle<HandleType> handle)               \
-    {                                                                          \
-        ZoneScoped;                                                            \
-        TL_ASSERT(handle != nullptr, "Cannot call destroy on null handle"); \
-        OwnerField.Destroy(handle, this);                                      \
+
+    Swapchain* IDevice::CreateSwapchain(const SwapchainCreateInfo& createInfo)
+    {
+        ZoneScoped;
+        auto handle = TL::construct<ISwapchain>();
+        auto result = handle->Init(this, createInfo);
+        TL_ASSERT(IsSuccess(result));
+        m_liveSwapchains.emplace(handle, TL::CaptureStacktrace());
+        return handle;
     }
 
-#define IMPLEMENT_DEVICE_RESOURCE_METHODS(ResourceType) \
-    IMPLEMENT_DEVICE_CREATE_METHOD_UNIQUE(ResourceType) \
-    IMPLEMENT_DEVICE_DESTROY_METHOD_UNIQUE(ResourceType)
+    void IDevice::DestroySwapchain(Swapchain* _handle)
+    {
+        ZoneScoped;
+        auto erased = m_liveSwapchains.erase(_handle);
+        TL_ASSERT(erased);
+        auto handle = (ISwapchain*)_handle;
+        handle->Shutdown(this);
+        TL::destruct(_handle);
+    }
 
-#define IMPLEMENT_DISPATCHABLE_TYPES_FUNCTIONS(ResourceType)      \
-    IMPLEMENT_DEVICE_CREATE_METHOD_UNIQUE_WITH_INFO(ResourceType) \
-    IMPLEMENT_DEVICE_DESTROY_METHOD_UNIQUE(ResourceType)
+    ShaderModule* IDevice::CreateShaderModule(const ShaderModuleCreateInfo& createInfo)
+    {
+        ZoneScoped;
+        auto handle = TL::construct<IShaderModule>();
+        auto result = handle->Init(this, createInfo);
+        TL_ASSERT(IsSuccess(result));
+        m_liveShaderModules.emplace(handle, TL::CaptureStacktrace());
+        return handle;
+    }
 
-#define IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(HandleType, OwnerField) \
-    IMPLEMENT_DEVICE_CREATE_METHOD(HandleType, OwnerField)                \
-    IMPLEMENT_DEVICE_DESTROY_METHOD(HandleType, OwnerField)
+    void IDevice::DestroyShaderModule(ShaderModule* _handle)
+    {
+        ZoneScoped;
+        auto erased = m_liveShaderModules.erase(_handle);
+        TL_ASSERT(erased);
+        auto handle = (IShaderModule*)_handle;
+        handle->Shutdown();
+        TL::destruct(_handle);
+    }
 
-#define IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS_WITH_RESULTS(HandleType, OwnerField) \
-    IMPLEMENT_DEVICE_CREATE_METHOD_WITH_RESULT(HandleType, OwnerField)                 \
-    IMPLEMENT_DEVICE_DESTROY_METHOD(HandleType, OwnerField)
+    BindGroupLayout* IDevice::CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)
+    {
+        ZoneScoped;
+        auto handle = TL::construct<IBindGroupLayout>();
+        auto result = handle->Init(this, createInfo);
+        TL_ASSERT(IsSuccess(result));
+        m_liveBindGroupLayouts.emplace(handle, TL::CaptureStacktrace());
+        return handle;
+    }
 
-    IMPLEMENT_DISPATCHABLE_TYPES_FUNCTIONS(Swapchain);
-    IMPLEMENT_DISPATCHABLE_TYPES_FUNCTIONS(ShaderModule);
-    IMPLEMENT_DISPATCHABLE_TYPES_FUNCTIONS(CommandList);
-    IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(BindGroupLayout, m_bindGroupLayoutsOwner);
-    IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(BindGroup, m_bindGroupOwner);
-    IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(PipelineLayout, m_pipelineLayoutOwner);
-    IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(GraphicsPipeline, m_graphicsPipelineOwner);
-    IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(ComputePipeline, m_computePipelineOwner);
-    IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS(Sampler, m_samplerOwner);
-    IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS_WITH_RESULTS(Image, m_imageOwner);
+    void IDevice::DestroyBindGroupLayout(BindGroupLayout* _handle)
+    {
+        ZoneScoped;
+        auto erased = m_liveBindGroupLayouts.erase(_handle);
+        TL_ASSERT(erased);
+        auto handle = (IBindGroupLayout*)_handle;
+        handle->Shutdown(this);
+        TL::destruct(_handle);
+    }
 
-    Handle<Image> IDevice::CreateImageView(const ImageViewCreateInfo& createInfo)
+    BindGroup* IDevice::CreateBindGroup(const BindGroupCreateInfo& createInfo)
+    {
+        ZoneScoped;
+        auto handle = TL::construct<IBindGroup>();
+        auto result = handle->Init(this, createInfo);
+        TL_ASSERT(IsSuccess(result));
+        m_liveBindGroups.emplace(handle, TL::CaptureStacktrace());
+        return handle;
+    }
+
+    void IDevice::DestroyBindGroup(BindGroup* _handle)
+    {
+        ZoneScoped;
+        auto erased = m_liveBindGroups.erase(_handle);
+        TL_ASSERT(erased);
+        auto handle = (IBindGroup*)_handle;
+        handle->Shutdown(this);
+        TL::destruct(_handle);
+    }
+
+    PipelineLayout* IDevice::CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)
+    {
+        ZoneScoped;
+        auto handle = TL::construct<IPipelineLayout>();
+        auto result = handle->Init(this, createInfo);
+        TL_ASSERT(IsSuccess(result));
+        m_livePipelineLayouts.emplace(handle, TL::CaptureStacktrace());
+        return handle;
+    }
+
+    void IDevice::DestroyPipelineLayout(PipelineLayout* _handle)
+    {
+        ZoneScoped;
+        auto erased = m_livePipelineLayouts.erase(_handle);
+        TL_ASSERT(erased);
+        auto handle = (IPipelineLayout*)_handle;
+        handle->Shutdown(this);
+        TL::destruct(_handle);
+    }
+
+    GraphicsPipeline* IDevice::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)
+    {
+        ZoneScoped;
+        auto handle = TL::construct<IGraphicsPipeline>();
+        auto result = handle->Init(this, createInfo);
+        TL_ASSERT(IsSuccess(result));
+        m_liveGraphicsPipelines.emplace(handle, TL::CaptureStacktrace());
+        return handle;
+    }
+
+    void IDevice::DestroyGraphicsPipeline(GraphicsPipeline* _handle)
+    {
+        ZoneScoped;
+        auto erased = m_liveGraphicsPipelines.erase(_handle);
+        TL_ASSERT(erased);
+        auto handle = (IGraphicsPipeline*)_handle;
+        handle->Shutdown(this);
+        TL::destruct(_handle);
+    }
+
+    ComputePipeline* IDevice::CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
+    {
+        ZoneScoped;
+        auto handle = TL::construct<IComputePipeline>();
+        auto result = handle->Init(this, createInfo);
+        TL_ASSERT(IsSuccess(result));
+        m_liveComputePipelines.emplace(handle, TL::CaptureStacktrace());
+        return handle;
+    }
+
+    void IDevice::DestroyComputePipeline(ComputePipeline* _handle)
+    {
+        ZoneScoped;
+        auto erased = m_liveComputePipelines.erase(_handle);
+        TL_ASSERT(erased);
+        auto handle = (IComputePipeline*)_handle;
+        handle->Shutdown(this);
+        TL::destruct(_handle);
+    }
+
+    Sampler* IDevice::CreateSampler(const SamplerCreateInfo& createInfo)
+    {
+        ZoneScoped;
+        auto handle = TL::construct<ISampler>();
+        auto result = handle->Init(this, createInfo);
+        TL_ASSERT(IsSuccess(result));
+        m_liveSamplers.emplace(handle, TL::CaptureStacktrace());
+        return handle;
+    }
+
+    void IDevice::DestroySampler(Sampler* _handle)
+    {
+        ZoneScoped;
+        auto erased = m_liveSamplers.erase(_handle);
+        TL_ASSERT(erased);
+        auto handle = (ISampler*)_handle;
+        handle->Shutdown(this);
+        TL::destruct(_handle);
+    }
+
+    Image* IDevice::CreateImage(const ImageCreateInfo& createInfo)
+    {
+        ZoneScoped;
+        auto handle = TL::construct<IImage>();
+        auto result = handle->Init(this, createInfo);
+        TL_ASSERT(IsSuccess(result));
+        m_liveImages.emplace(handle, TL::CaptureStacktrace());
+        return handle;
+    }
+
+    Image* IDevice::CreateImageView(TL_MAYBE_UNUSED const ImageViewCreateInfo& createInfo)
     {
         TL_UNREACHABLE_MSG("TODO! Implement image views for WebGPU backend!");
         return {};
     }
 
-    IMPLEMENT_NONDISPATCHABLE_TYPES_FUNCTIONS_WITH_RESULTS(Buffer, m_bufferOwner);
+    void IDevice::DestroyImage(Image* _handle)
+    {
+        ZoneScoped;
+        auto erased = m_liveImages.erase(_handle);
+        TL_ASSERT(erased);
+        auto handle = (IImage*)_handle;
+        handle->Shutdown(this);
+        TL::destruct(_handle);
+    }
+
+    Buffer* IDevice::CreateBuffer(const BufferCreateInfo& createInfo)
+    {
+        ZoneScoped;
+        auto handle = TL::construct<IBuffer>();
+        auto result = handle->Init(this, createInfo);
+        TL_ASSERT(IsSuccess(result));
+        m_liveBuffers.emplace(handle, TL::CaptureStacktrace());
+        return handle;
+    }
+
+    void IDevice::DestroyBuffer(Buffer* _handle)
+    {
+        ZoneScoped;
+        auto erased = m_liveBuffers.erase(_handle);
+        TL_ASSERT(erased);
+        auto handle = (IBuffer*)_handle;
+        handle->Shutdown(this);
+        TL::destruct(_handle);
+    }
 } // namespace RHI::WebGPU

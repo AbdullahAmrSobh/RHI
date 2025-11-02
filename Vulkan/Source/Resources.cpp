@@ -3,6 +3,8 @@
 #include "Device.hpp"
 #include "Frame.hpp"
 
+#include <algorithm>
+
 #include <vk_mem_alloc.h>
 
 namespace RHI::Vulkan
@@ -1307,8 +1309,6 @@ namespace RHI::Vulkan
 
     ResultCode ISwapchain::Init(IDevice* device, const SwapchainCreateInfo& createInfo)
     {
-        ZoneScoped;
-
         m_device = device;
         if (createInfo.name)
             m_name = createInfo.name;
@@ -1389,8 +1389,6 @@ namespace RHI::Vulkan
 
     SurfaceCapabilities ISwapchain::GetSurfaceCapabilities() const
     {
-        ZoneScoped;
-
         TL_ASSERT(m_surface);
 
         VulkanResult result;

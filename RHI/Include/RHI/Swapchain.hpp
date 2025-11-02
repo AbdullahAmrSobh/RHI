@@ -3,7 +3,6 @@
 #include "RHI/Export.hpp"
 #include "RHI/Resources.hpp"
 #include "RHI/Result.hpp"
-#include "RHI/Common.hpp"
 
 #include <TL/Containers/Vector.hpp>
 #include <TL/Containers/Map.hpp>
@@ -73,7 +72,8 @@ namespace RHI
     class RHI_EXPORT Swapchain
     {
     public:
-        RHI_INTERFACE_BOILERPLATE(Swapchain);
+        Swapchain()          = default;
+        virtual ~Swapchain() = default;
 
         /// @brief Returns the total number of images in the swapchain's back buffer.
         virtual uint32_t            GetImagesCount() const = 0;

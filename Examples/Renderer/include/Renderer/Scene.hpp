@@ -1,7 +1,8 @@
 #pragma once
 
+#include <RenderCore/Resources.hpp>
+
 #include "Renderer/Common.hpp"
-#include "Renderer/Resources.hpp"
 #include "Renderer/DrawList.hpp"
 #include "Renderer/Geometry.hpp"
 

@@ -1,9 +1,11 @@
 #pragma once
 
-#include <RHI/RHI.hpp>
+#include <RenderCore/Resources.hpp>
+
 #include <Shaders/GpuCommonStructs.h>
 
-#include "Renderer/Resources.hpp"
+#include <RHI/RHI.hpp>
+
 
 namespace Engine
 {

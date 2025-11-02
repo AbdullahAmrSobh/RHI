@@ -1,5 +1,7 @@
 #pragma once
 
+#include <RenderCore/Resources.hpp>
+
 #include <RHI/RHI.hpp>
 
 #include <TL/Block.hpp>
@@ -10,7 +12,6 @@
 #include <glm/glm.hpp>
 
 #include "Renderer/Common.hpp"
-#include "Renderer/Resources.hpp"
 
 #include "Shaders/GpuCommonStructs.h"
 

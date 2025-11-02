@@ -1,7 +1,6 @@
 #pragma once
 
 #include "RHI/Export.hpp"
-#include "RHI/Common.hpp"
 #include "RHI/Resources.hpp"
 #include "RHI/CommandList.hpp"
 #include "RHI/Swapchain.hpp"
@@ -86,7 +85,8 @@ namespace RHI
     class RHI_EXPORT Renderdoc
     {
     public:
-        RHI_INTERFACE_BOILERPLATE(Renderdoc);
+        Renderdoc()          = default;
+        virtual ~Renderdoc() = default;
 
         /// @brief Initializes the Renderdoc interface for the given device.
         /// @param device The device to associate with Renderdoc.
@@ -120,7 +120,8 @@ namespace RHI
     class RHI_EXPORT Frame
     {
     public:
-        RHI_INTERFACE_BOILERPLATE(Frame);
+        Frame()          = default;
+        virtual ~Frame() = default;
 
         /// @brief Returns the arena allocator valid for the duration of the current frame.
         virtual TL::IAllocator& GetAllocator() = 0;
@@ -157,7 +158,8 @@ namespace RHI
     class RHI_EXPORT Device
     {
     public:
-        RHI_INTERFACE_BOILERPLATE(Device);
+        Device()          = default;
+        virtual ~Device() = default;
 
         /// @brief Returns the backend type.
         BackendType               GetBackend() const { return m_backend; }
@@ -167,12 +169,6 @@ namespace RHI
 
         /// @brief Returns device limits.
         DeviceLimits              GetLimits() const;
-
-        /// @brief Creates a render graph.
-        RenderGraph*              CreateRenderGraph(const RenderGraphCreateInfo& createInfo);
-
-        /// @brief Destroys a render graph.
-        void                      DestroyRenderGraph(RenderGraph* renderGraph);
 
         /// @brief Retrieves a native handle for the specified type and object.
         virtual uint64_t          GetNativeHandle(NativeHandleType type, uint64_t handle) = 0;

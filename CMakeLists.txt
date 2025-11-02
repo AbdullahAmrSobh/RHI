@@ -35,6 +35,14 @@ else()
     set(RHI_BACKEND_WEBGPU ON)
 endif()
 
+message(STATUS "RHI config options  : ${TRACY_ENABLE}")
+message(STATUS "RHI_DEBUG           : ${RHI_DEBUG}")
+message(STATUS "RHI_BACKEND_VULKAN  : ${RHI_BACKEND_VULKAN}")
+message(STATUS "RHI_BACKEND_D3D12   : ${RHI_BACKEND_D3D12}")
+message(STATUS "RHI_BACKEND_WEBGPU  : ${RHI_BACKEND_WEBGPU}")
+message(STATUS "RHI_SHADER_COMPILER : ${RHI_SHADER_COMPILER}")
+message(STATUS "RHI_BUILD_EXAMPLES  : ${RHI_BUILD_EXAMPLES}")
+
 option(RHI_SHADER_COMPILER "Builds RHI shader compiler and reflection tool" ON)
 option(RHI_BUILD_EXAMPLES "Build examples tree." ${PROJECT_IS_TOP_LEVEL})
 
@@ -76,17 +84,17 @@ endif()
 
 
 if(RHI_BACKEND_D3D12)
-    add_compile_definitions(RHI_BACKEND_D3D12)
+    target_compile_definitions(RHI PUBLIC RHI_BACKEND_D3D12)
     add_subdirectory(D3D12)
 endif()
 
 if(RHI_BACKEND_VULKAN)
-    add_compile_definitions(RHI_BACKEND_VULKAN)
+    target_compile_definitions(RHI PUBLIC RHI_BACKEND_VULKAN)
     add_subdirectory(Vulkan)
 endif()
 
 if(RHI_BACKEND_WEBGPU)
-    add_compile_definitions(RHI_BACKEND_WEBGPU)
+    target_compile_definitions(RHI PUBLIC RHI_BACKEND_WEBGPU)
     add_subdirectory(WebGPU)
 endif()
 

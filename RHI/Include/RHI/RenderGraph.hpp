@@ -408,34 +408,32 @@ namespace RHI
         RenderGraph();
         ~RenderGraph();
 
-        /// @brief Initializes the render graph.
-        TL_MAYBE_UNUSED ResultCode Init(Device* device, const RenderGraphCreateInfo& ci);
+        static RenderGraph*     create(Device* device, const RenderGraphCreateInfo& createInfo);
 
-        /// @brief Shutdown the render graph.
-        void                       Shutdown();
+        static void             destroy(RenderGraph* renderGraph);
 
         /// @brief Begins a frame recording.
-        void                       BeginFrame(const RGBeginInfo& beginInfo = {});
+        void                    BeginFrame(const RGBeginInfo& beginInfo = {});
 
         /// @brief Ends frame recording.
-        void                       EndFrame();
+        void                    EndFrame();
 
         /// @brief Imports a swapchain image into the render graph.
-        TL_NODISCARD RGImage*      importSwapchain(TL::StringView name, Swapchain& swapchain, Format format);
+        TL_NODISCARD RGImage*   importSwapchain(TL::StringView name, Swapchain& swapchain, Format format);
 
         /// @brief Imports an image into the render graph.
-        TL_NODISCARD RGImage*      importImage(TL::StringView name, Image* image, Format format);
+        TL_NODISCARD RGImage*   importImage(TL::StringView name, Image* image, Format format);
 
         /// @brief Imports a buffer into the render graph.
-        TL_NODISCARD RGBuffer*     importBuffer(TL::StringView name, Buffer* buffer);
+        TL_NODISCARD RGBuffer*  importBuffer(TL::StringView name, Buffer* buffer);
 
         /// @brief Adds a pass to the render graph.
-        TL_MAYBE_UNUSED RGPass*    addPass(TL::StringView name, RGPassType type, ImageSize2D size2D);
-        void                       submitPass(RGPass* pass, PassExecuteCallback&& executeCallback);
+        TL_MAYBE_UNUSED RGPass* addPass(TL::StringView name, RGPassType type, ImageSize2D size2D);
+        void                    submitPass(RGPass* pass, PassExecuteCallback&& executeCallback);
 
         /// @brief Returns render graph resource's handle.
-        TL_NODISCARD Image*        GetImageHandle(RGImage* handle) const;
-        TL_NODISCARD Buffer*       GetBufferHandle(RGBuffer* handle) const;
+        TL_NODISCARD Image*     GetImageHandle(RGImage* handle) const;
+        TL_NODISCARD Buffer*    GetBufferHandle(RGBuffer* handle) const;
 
     private:
         // Bind group stuff

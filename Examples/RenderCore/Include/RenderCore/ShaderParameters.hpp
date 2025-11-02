@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Renderer/Resources.hpp"
+#include <RenderCore/Resources.hpp>
+
 #include "Renderer/PipelineLibrary.hpp"
 
 #include <RHI/Resources.hpp>

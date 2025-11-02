@@ -9,7 +9,7 @@
 #include "Renderer/Renderer.hpp"
 #include "Renderer/Scene.hpp"
 
-#include "Renderer/Resources.hpp"
+#include <RenderCore/Resources.hpp>
 
 #include "Renderer-Shaders/Cull.hpp"
 #include "Renderer-Shaders/GBufferPass.hpp"
@@ -20,9 +20,9 @@
 
 namespace Engine
 {
-    static constexpr const char* kCullShaderPath     = "Renderer/Shaders/source/Cull.json";
-    static constexpr const char* kGBufferShaderPath  = "Renderer/Shaders/source/GBufferPass.json";
-    static constexpr const char* kLightingShaderPath = "Renderer/Shaders/source/Lighting.json";
+    static constexpr const char* kCullShaderPath     = "I:/repos/repos3/RHI/Examples/Renderer/Shaders/source/Cull.json";
+    static constexpr const char* kGBufferShaderPath  = "I:/repos/repos3/RHI/Examples/Renderer/Shaders/source/GBufferPass.json";
+    static constexpr const char* kLightingShaderPath = "I:/repos/repos3/RHI/Examples/Renderer/Shaders/source/Lighting.json";
 
     static void dispatchPP2D(RHI::CommandList& cmd, RHI::ImageSize2D workgroupSize, RHI::ImageSize2D imageSize)
     {

@@ -37,14 +37,13 @@ namespace RHI::Vulkan
 
     class IDevice final : public Device
     {
-    private:
+    public:
         friend Device* RHI::CreateVulkanDevice(const ApplicationInfo& appInfo);
         friend void    RHI::DestroyVulkanDevice(Device* device);
 
         IDevice();
         ~IDevice();
 
-    public:
         ResultCode Init(const ApplicationInfo& appInfo);
         void       Shutdown();
 

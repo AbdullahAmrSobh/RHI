@@ -118,7 +118,7 @@ namespace Engine
 
         auto [width, height] = drawData->OwnerViewport->Size;
 
-        auto* pass = rg->addPass("ImGui", RHI::RGPassType::Graphics, {(uint32_t)width, (uint32_t)height});
+        auto* pass    = rg->addPass("ImGui", RHI::RGPassType::Graphics, {(uint32_t)width, (uint32_t)height});
         outAttachment = pass->useRenderTarget(outAttachment);
 
         rg->submitPass(pass, [this, drawData, width, height, outAttachment, rg](RHI::CommandList& commandList)

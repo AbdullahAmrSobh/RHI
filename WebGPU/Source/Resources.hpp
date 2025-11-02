@@ -10,31 +10,32 @@
 namespace RHI::WebGPU
 {
     class IDevice;
+    struct IBindGroup;
+    struct IBindGroupLayout;
 
     WGPUTextureFormat        ConvertToTextureFormat(Format format);
     WGPUVertexFormat         ConvertToVertexFormat(Format format);
     WGPUFilterMode           ConvertToSamplerFilter(SamplerFilter filter);
     uint32_t                 ConvertToSampleCount(SampleCount count);
     WGPUTextureUsage         ConvertToTextureUsage(TL::Flags<ImageUsage> usage);
-    WGPUBufferUsage          ConvertToBufferUsage(TL::Flags<BufferUsage> filter);
-    WGPUTextureDimension     ConvertToTextureDimension(ImageType type);
-    WGPUTextureViewDimension ConvertToTextureViewDimension(ImageType type, bool asArray);
-    WGPUExtent2D             ConvertToExtent2D(ImageSize2D extent);
-    WGPUExtent3D             ConvertToExtent3D(ImageSize3D extent);
-    WGPUOrigin2D             ConvertToOffset2D(ImageOffset2D extent);
-    WGPUOrigin3D             ConvertToOffset3D(ImageOffset3D extent);
-    WGPUAddressMode          ConvertToAddressMode(SamplerAddressMode mode);
-    WGPUMipmapFilterMode     ConvertToMipmapFilter(SamplerFilter filter);
-    WGPUBufferUsage          ConvertToBufferUsage(TL::Flags<BufferUsage> usage);
-    WGPUTextureAspect        ConvertToTextureAspect(TL::Flags<ImageAspect> type);
-    uint32_t                 ConvertToSampleCount(SampleCount count);
+    WGPUBufferUsage          ConvertToBufferUsage(TL::Flags<BufferUsage> bufferUsageFlags);
+    WGPUTextureDimension     ConvertToTextureDimension(ImageType imageType);
+    WGPUTextureViewDimension ConvertToTextureViewDimension(ImageViewType imageViewType, bool asArray);
+    WGPUExtent2D             ConvertToExtent2D(ImageSize2D size);
+    WGPUExtent3D             ConvertToExtent3D(ImageSize3D size);
+    WGPUExtent2D             ConvertToExtent2D(ImageSize3D size);
+    WGPUOrigin2D             ConvertToOffset2D(ImageOffset2D offset);
+    WGPUOrigin3D             ConvertToOffset3D(ImageOffset3D offset);
+    WGPUAddressMode          ConvertToAddressMode(SamplerAddressMode addressMode);
+    WGPUMipmapFilterMode     ConvertToMipmapFilter(SamplerFilter samplerFilter);
+    WGPUTextureAspect        ConvertToTextureAspect(TL::Flags<ImageAspect> imageAspect, Format format);
+    WGPUShaderStage          ConvertToShaderStage(TL::Flags<ShaderStage> shaderStageFlags);
     WGPUPrimitiveTopology    ConvertToPrimitiveTopology(PipelineTopologyMode topology);
     WGPUIndexFormat          ConvertToIndexFormat(IndexType indexType);
     WGPUFrontFace            ConvertToFrontFace(PipelineRasterizerStateFrontFace frontFace);
-    WGPUCullMode             ConvertToCullMode(PipelineRasterizerStateCullMode);
-    WGPUCompareFunction      ConvertToCompareFunction(CompareOperator compareOp);
+    WGPUCullMode             ConvertToCullMode(PipelineRasterizerStateCullMode cullMode);
+    WGPUCompareFunction      ConvertToCompareFunction(CompareOperator compareOperator);
     WGPUVertexStepMode       ConvertToVertexStepMode(PipelineVertexInputRate rate);
-    WGPUShaderStage          ConvertToShaderStage(TL::Flags<ShaderStage> stage);
 
     struct IBindGroupLayout : BindGroupLayout
     {
@@ -90,28 +91,46 @@ namespace RHI::WebGPU
         void       Shutdown(IDevice* device);
     };
 
+    struct IRayTracingPipeline : RayTracingPipeline
+    {
+        WGPUPipelineLayout layout;
+        // WebGPU doesn't support ray tracing yet
+        void* pipeline;
+
+        ResultCode Init(IDevice* device, const ComputePipelineCreateInfo& createInfo);
+        void       Shutdown(IDevice* device);
+    };
+
     struct IBuffer : Buffer
     {
         WGPUBuffer buffer;
         void*      mappedPtr;
+        bool       mapped;
 
         ResultCode Init(IDevice* device, const BufferCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
-        void*      Map(IDevice* device);
-        void       Unmap(IDevice* device);
+
+        DeviceMemoryPtr Map(IDevice* device);
+        void           Unmap(IDevice* device);
     };
 
     struct IImage : Image
     {
         WGPUTexture     texture;
         WGPUTextureView view;
-        ImageSize3D     size;
-        Format          format;
+
+        // TODO: the following should be removed
+        ImageSize3D           size;
+        Format                format;
+        ImageSubresourceRange subresources;
 
         ResultCode Init(IDevice* device, const ImageCreateInfo& createInfo);
         ResultCode Init(IDevice* device, WGPUTexture texture, WGPUSurfaceConfiguration desc);
         void       Shutdown(IDevice* device);
         void       Write(IDevice* device, uint32_t mipLevel, TL::Block data);
+
+        // Selects specific aspect from the available image aspects
+        WGPUTextureAspect SelectImageAspect(ImageAspect aspect);
     };
 
     struct ISampler : Sampler
@@ -131,8 +150,11 @@ namespace RHI::WebGPU
         ResultCode Init(IDevice* device, const SwapchainCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
 
-        SurfaceCapabilities GetSurfaceCapabilities() override;
-        ResultCode          Resize(ImageSize2D size) override;
+        // Interface
+        uint32_t            GetImagesCount() const override;
+        Image*              GetImage() const override;
+        SurfaceCapabilities GetSurfaceCapabilities() const override;
+        ResultCode          Resize(const ImageSize2D& size) override;
         ResultCode          Configure(const SwapchainConfigureInfo& configInfo) override;
         ResultCode          Present() override;
 
@@ -142,5 +164,7 @@ namespace RHI::WebGPU
         IDevice*               m_device  = nullptr;
         WGPUSurface            m_surface = nullptr;
         SwapchainConfigureInfo m_configuration;
+        Image*                 m_imageHandle = nullptr;
+        uint32_t               m_imageCount  = 0;
     };
 } // namespace RHI::WebGPU

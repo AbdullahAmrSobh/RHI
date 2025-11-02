@@ -1,7 +1,6 @@
 #pragma once
 
 #include "RHI/Format.hpp"
-#include "RHI/Common.hpp"
 #include "RHI/PipelineAccess.hpp"
 
 #include <TL/Flags.hpp>
@@ -602,7 +601,8 @@ namespace RHI
     class RHI_EXPORT ShaderModule
     {
     public:
-        RHI_INTERFACE_BOILERPLATE(ShaderModule);
+        ShaderModule()          = default;
+        virtual ~ShaderModule() = default;
     };
 
     inline static ImageSize3D CalcaulteImageMipSize(ImageSize3D size, uint32_t mipLevel)

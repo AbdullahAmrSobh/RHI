@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.19)
 
-
 include(${CPM_TL_SOURCE}/CMake/add-target.cmake)
 tl_add_target(
     NAME Simple

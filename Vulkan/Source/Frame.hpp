@@ -59,11 +59,7 @@ namespace RHI::Vulkan
     {
     public:
         IFrame() = default;
-
-        ~IFrame()
-        {
-            Shutdown();
-        }
+        ~IFrame() = default;
 
         ResultCode Init(IDevice* device);
         void       Shutdown();

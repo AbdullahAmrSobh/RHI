@@ -7,8 +7,6 @@ set(RENDERER_HEADER_FILES
         ${RENDERER_INCLUDE_DIR}/Geometry.h
         ${RENDERER_INCLUDE_DIR}/PipelineLibrary.h
         ${RENDERER_INCLUDE_DIR}/Renderer.h
-        ${RENDERER_INCLUDE_DIR}/Resources.h
-        ${RENDERER_INCLUDE_DIR}/ShaderParameters.h
         ${RENDERER_INCLUDE_DIR}/ImGuiPass.hpp
         ${RENDERER_INCLUDE_DIR}/Scene.hpp
         ${RENDERER_INCLUDE_DIR}/DrawList.hpp
@@ -21,7 +19,6 @@ set(RENDERER_SOURCE_FILES
     ${RENDERER_SOURCE_DIR}/ImGuiPass.cpp
     ${RENDERER_SOURCE_DIR}/PipelineLibrary.cpp
     ${RENDERER_SOURCE_DIR}/Renderer.cpp
-    ${RENDERER_SOURCE_DIR}/Resources.cpp
     ${RENDERER_SOURCE_DIR}/Scene.cpp
     ${RENDERER_SOURCE_DIR}/DrawList.cpp
 )
@@ -86,5 +83,7 @@ endif()
 target_link_libraries(Renderer TL)
 
 target_link_libraries(Renderer Examples::Base)
+
+target_link_libraries(Renderer Examples::RenderCore)
 
 target_link_libraries(Renderer rhi_imgui)

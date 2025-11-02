@@ -1,6 +1,5 @@
 #pragma once
 
-#include "RHI/Common.hpp"
 #include "RHI/Resources.hpp"
 
 #include <TL/Containers/Vector.hpp>
@@ -254,7 +253,8 @@ namespace RHI
     class RHI_EXPORT CommandList
     {
     public:
-        RHI_INTERFACE_BOILERPLATE(CommandList);
+        CommandList()          = default;
+        virtual ~CommandList() = default;
 
         /// @brief Begins recording commands to the command list.
         virtual void Begin() = 0;

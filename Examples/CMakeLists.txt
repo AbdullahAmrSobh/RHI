@@ -1,5 +1,5 @@
 add_subdirectory(Base)
-
+add_subdirectory(RenderCore)
 add_subdirectory(Renderer)
 
 # add_subdirectory(SimpleExample)

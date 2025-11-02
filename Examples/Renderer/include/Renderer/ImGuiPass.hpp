@@ -1,5 +1,7 @@
 #pragma once
 
+#include <RenderCore/Resources.hpp>
+
 #include <RHI/RHI.hpp>
 
 #include <imgui.h>
@@ -8,7 +10,6 @@
 #include <glm/glm.hpp>
 
 #include "Renderer/Common.hpp"
-#include "Renderer/Resources.hpp"
 
 namespace Engine
 {

@@ -4,6 +4,8 @@
 #include <RHI/Queue.hpp>
 
 #include <TL/Containers/Containers.hpp>
+#include <TL/Ptr.hpp>
+#include <TL/Stacktrace.hpp>
 
 #include <RHI-WebGPU/Loader.hpp>
 #include <webgpu/webgpu.h>
@@ -13,6 +15,7 @@
 
 namespace RHI::WebGPU
 {
+    class IFrame;
     class IDevice final : public Device
     {
     private:
@@ -53,16 +56,23 @@ namespace RHI::WebGPU
         ResultCode        SetFramesInFlightCount(uint32_t count) override;
         Frame*            GetCurrentFrame() override;
 
+        /// Frame
+        TL::IAllocator& GetTempAllocator();
+
+        void WaitIdle();
+
     public:
-        /// @todo: everything here should be made private
-        TL::Arena    m_tempAllocator = TL::Arena();
-        // Vulkan instance and core objects
+        // WebGPU instance and core objects
         WGPUInstance m_instance; ///< WGPU instance handle.
         WGPUAdapter  m_adapter;  ///< Physical device selected for use.
         WGPUDevice   m_device;   ///< Logical device handle.
 
         // Queue and allocator management
         WGPUQueue    m_queue;
+
+        // Frames in flight
+        uint32_t                          m_currentFrameIndex = 0;
+        TL::Vector<TL::Ptr<class IFrame>> m_framesInFlight    = {};
 
     private:
         TL::Map<Swapchain*, TL::Stacktrace>        m_liveSwapchains;
@@ -75,8 +85,5 @@ namespace RHI::WebGPU
         TL::Map<GraphicsPipeline*, TL::Stacktrace> m_liveGraphicsPipelines;
         TL::Map<ComputePipeline*, TL::Stacktrace>  m_liveComputePipelines;
         TL::Map<Sampler*, TL::Stacktrace>          m_liveSamplers;
-
-        // Frame
-        std::atomic_uint64_t                       m_frameIndex;
     };
 } // namespace RHI::WebGPU

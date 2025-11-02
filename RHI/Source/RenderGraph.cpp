@@ -708,23 +708,28 @@ namespace RHI
     RenderGraph::RenderGraph()  = default;
     RenderGraph::~RenderGraph() = default;
 
-    ResultCode RenderGraph::Init(Device* device, const RenderGraphCreateInfo& ci)
+    RenderGraph* RenderGraph::create(Device* device, const RenderGraphCreateInfo& createInfo)
     {
-        m_device       = device;
-        m_resourcePool = TL::CreatePtr<RenderGraphResourcePool>();
+        ZoneScoped;
 
-        auto result = m_resourcePool->Init(device);
-
-        return result;
+        auto* rg           = TL::construct<RenderGraph>();
+        rg->m_device       = device;
+        rg->m_resourcePool = TL::CreatePtr<RenderGraphResourcePool>();
+        auto result        = rg->m_resourcePool->Init(rg->m_device);
+        TL_ASSERT(result == ResultCode::Success);
+        return rg;
     }
 
-    void RenderGraph::Shutdown()
+    void RenderGraph::destroy(RenderGraph* rg)
     {
-        m_resourcePool->Shutdown();
-        m_arena.reset();
-        m_passPool.clear();
-        m_imagePool.clear();
-        m_bufferPool.clear();
+        ZoneScoped;
+
+        rg->m_resourcePool->Shutdown();
+        rg->m_arena.reset();
+        rg->m_passPool.clear();
+        rg->m_imagePool.clear();
+        rg->m_bufferPool.clear();
+        TL::destruct(rg);
     }
 
     void RenderGraph::BeginFrame(const RGBeginInfo& beginInfo)

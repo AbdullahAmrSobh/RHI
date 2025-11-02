@@ -1,6 +1,4 @@
 include(${CMAKE_SOURCE_DIR}/CMake/CPM.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/variables.cmake)
-
 CPMAddPackage(
   NAME             slang
 	GIT_REPOSITORY git@github.com:shader-slang/slang.git
@@ -43,15 +41,6 @@ CPMAddPackage(
 	OPTIONS
 		# TL_ENABLE_TRACY ${PROJECT_IS_TOP_LEVEL}
 		# TL_ENABLE_TRACY_MEMORY_TRACKING ${PROJECT_IS_TOP_LEVEL}
-)
-
-CPMAddPackage(
-    NAME           SC
-	GIT_REPOSITORY git@github.com:AbdullahAmrSobh/SC.git
-	GIT_TAG        main
-	OPTIONS
-		TL_ENABLE_TRACY ${PROJECT_IS_TOP_LEVEL}
-		TL_ENABLE_TRACY_MEMORY_TRACKING ${PROJECT_IS_TOP_LEVEL}
 )
 
 if(RHI_BACKEND_VULKAN)

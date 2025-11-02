@@ -5,6 +5,8 @@
 
 #include <TL/Literals.hpp>
 
+#include <tracy/Tracy.hpp>
+
 namespace RHI::Vulkan
 {
     ResultCode StagingBuffer::init(IDevice* device)
@@ -133,6 +135,7 @@ namespace RHI::Vulkan
 
         VkSemaphoreCreateInfo semaphoreCI{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, .pNext = nullptr, .flags = 0};
         auto                  result = vkCreateSemaphore(m_device->m_device, &semaphoreCI, nullptr, &m_presentFrameSemaphore);
+        m_device->SetDebugName(m_presentFrameSemaphore, "present-semaphore");
 
         return ResultCode::Success;
     }
@@ -141,6 +144,7 @@ namespace RHI::Vulkan
     {
         m_stagingPool->shutdown(m_device);
         m_commandListAllocator->Shutdown();
+        m_device->m_destroyQueue->Push(m_timeline, m_presentFrameSemaphore);
     }
 
     ICommandList* IFrame::GetActiveTransferCommandList()

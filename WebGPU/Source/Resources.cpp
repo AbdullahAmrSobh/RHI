@@ -218,48 +218,56 @@ namespace RHI::WebGPU
         return res;
     }
 
-    WGPUTextureDimension ConvertToTextureDimension(ImageType type)
+    WGPUTextureDimension ConvertToTextureDimension(ImageType imageType)
     {
-        switch (type)
+        switch (imageType)
         {
         case ImageType::None:
         case ImageType::Image1D: return WGPUTextureDimension_1D;
         case ImageType::Image2D: return WGPUTextureDimension_2D;
         case ImageType::Image3D: return WGPUTextureDimension_3D;
+        default:                 return WGPUTextureDimension_Undefined;
         }
-        return WGPUTextureDimension_Undefined;
     }
 
-    WGPUTextureViewDimension ConvertToTextureViewDimension(ImageType type, bool asArray)
+    WGPUTextureViewDimension ConvertToTextureViewDimension(ImageViewType imageViewType, bool asArray)
     {
-        switch (type)
+        switch (imageViewType)
         {
-        case ImageType::None:
-        case ImageType::Image1D: return WGPUTextureViewDimension_1D;
-        case ImageType::Image2D: return asArray ? WGPUTextureViewDimension_2DArray : WGPUTextureViewDimension_2D;
-        case ImageType::Image3D: return WGPUTextureViewDimension_3D;
+        case ImageViewType::View1D:      return WGPUTextureViewDimension_1D;
+        case ImageViewType::View1DArray: return WGPUTextureViewDimension_1D;
+        case ImageViewType::View2D:      return asArray ? WGPUTextureViewDimension_2DArray : WGPUTextureViewDimension_2D;
+        case ImageViewType::View2DArray: return WGPUTextureViewDimension_2DArray;
+        case ImageViewType::View3D:      return WGPUTextureViewDimension_3D;
+        case ImageViewType::CubeMap:     return WGPUTextureViewDimension_Cube;
+        case ImageViewType::None:
+        default:                         return WGPUTextureViewDimension_Undefined;
         }
-        return WGPUTextureViewDimension_Undefined;
     }
 
-    WGPUExtent2D ConvertToExtent2D(ImageSize2D extent)
+    WGPUExtent2D ConvertToExtent2D(ImageSize2D size)
     {
-        return {extent.width, extent.height};
+        return {size.width, size.height};
     }
 
-    WGPUExtent3D ConvertToExtent3D(ImageSize3D extent)
+    WGPUExtent3D ConvertToExtent3D(ImageSize3D size)
     {
-        return {extent.width, extent.height, extent.depth};
+        return {size.width, size.height, size.depth};
     }
 
-    WGPUOrigin2D ConvertToOffset2D(ImageOffset2D extent)
+    WGPUExtent2D ConvertToExtent2D(ImageSize3D size)
     {
-        return {(uint32_t)extent.x, (uint32_t)extent.y};
+        return {size.width, size.height};
     }
 
-    WGPUOrigin3D ConvertToOffset3D(ImageOffset3D extent)
+    WGPUOrigin2D ConvertToOffset2D(ImageOffset2D offset)
     {
-        return {(uint32_t)extent.x, (uint32_t)extent.y, (uint32_t)extent.z};
+        return {(uint32_t)offset.x, (uint32_t)offset.y};
+    }
+
+    WGPUOrigin3D ConvertToOffset3D(ImageOffset3D offset)
+    {
+        return {(uint32_t)offset.x, (uint32_t)offset.y, (uint32_t)offset.z};
     }
 
     WGPUAddressMode ConvertToAddressMode(SamplerAddressMode mode)
@@ -282,11 +290,21 @@ namespace RHI::WebGPU
         return WGPUMipmapFilterMode_Undefined;
     }
 
-    WGPUTextureAspect ConvertToTextureAspect(TL::Flags<ImageAspect> type)
+    WGPUTextureAspect ConvertToTextureAspect(TL::Flags<ImageAspect> imageAspect, Format format)
     {
-        if (type == ImageAspect::Color) return WGPUTextureAspect_All;
-        if (type == ImageAspect::Depth) return WGPUTextureAspect_DepthOnly;
-        if (type == ImageAspect::Stencil) return WGPUTextureAspect_StencilOnly;
+        auto formatInfo = GetFormatInfo(format);
+        imageAspect &= GetFormatAspects(format);
+
+        if (formatInfo.hasDepth || formatInfo.hasStencil)
+        {
+            if (imageAspect & ImageAspect::Depth) return WGPUTextureAspect_DepthOnly;
+            if (imageAspect & ImageAspect::Stencil) return WGPUTextureAspect_StencilOnly;
+        }
+        else
+        {
+            if (imageAspect & ImageAspect::Color) return WGPUTextureAspect_All;
+        }
+
         return WGPUTextureAspect_All;
     }
 
@@ -329,14 +347,15 @@ namespace RHI::WebGPU
         case PipelineRasterizerStateCullMode::FrontFace: return WGPUCullMode_Front;
         case PipelineRasterizerStateCullMode::BackFace:  return WGPUCullMode_Back;
         case PipelineRasterizerStateCullMode::Discard:   return WGPUCullMode_Force32;
+        default:                                         return WGPUCullMode_Undefined;
         }
-        return WGPUCullMode_Undefined;
     }
 
-    WGPUCompareFunction ConvertToCompareFunction(CompareOperator compareOp)
+    WGPUCompareFunction ConvertToCompareFunction(CompareOperator compareOperator)
     {
-        switch (compareOp)
+        switch (compareOperator)
         {
+        case CompareOperator::Undefined:      return WGPUCompareFunction_Never;
         case CompareOperator::Never:          return WGPUCompareFunction_Never;
         case CompareOperator::Equal:          return WGPUCompareFunction_Equal;
         case CompareOperator::NotEqual:       return WGPUCompareFunction_NotEqual;
@@ -345,31 +364,27 @@ namespace RHI::WebGPU
         case CompareOperator::Less:           return WGPUCompareFunction_Less;
         case CompareOperator::LessOrEqual:    return WGPUCompareFunction_LessEqual;
         case CompareOperator::Always:         return WGPUCompareFunction_Always;
+        default:                             return WGPUCompareFunction_Undefined;
         }
-        return WGPUCompareFunction_Undefined;
     }
 
-    WGPUVertexStepMode ConvertToVertexStepMode(PipelineVertexInputRate rate)
+    WGPUVertexStepMode ConvertToVertexStepMode(PipelineVertexInputRate inputRate)
     {
-        switch (rate)
+        switch (inputRate)
         {
-        case PipelineVertexInputRate::None:        return WGPUVertexStepMode_Undefined;
         case PipelineVertexInputRate::PerInstance: return WGPUVertexStepMode_Instance;
         case PipelineVertexInputRate::PerVertex:   return WGPUVertexStepMode_Vertex;
+        default:                                   return WGPUVertexStepMode_Undefined;
         }
-        return WGPUVertexStepMode_Undefined;
     }
 
-    WGPUShaderStage ConvertToShaderStage(TL::Flags<ShaderStage> stage)
+    WGPUShaderStage ConvertToShaderStage(TL::Flags<ShaderStage> shaderStageFlags)
     {
-        WGPUShaderStage res = WGPUShaderStage_None;
-        if (stage & ShaderStage::Vertex)
-            res |= WGPUShaderStage_Vertex;
-        if (stage & ShaderStage::Pixel)
-            res |= WGPUShaderStage_Fragment;
-        if (stage & ShaderStage::Compute)
-            res |= WGPUShaderStage_Compute;
-        return res;
+        WGPUShaderStage result = WGPUShaderStage_None;
+        if (shaderStageFlags & ShaderStage::Vertex) result |= WGPUShaderStage_Vertex;
+        if (shaderStageFlags & ShaderStage::Pixel) result |= WGPUShaderStage_Fragment;
+        if (shaderStageFlags & ShaderStage::Compute) result |= WGPUShaderStage_Compute;
+        return result;
     }
 
     inline static ImageSize3D CalcaulteMiplevelSize(ImageSize3D size, uint32_t mipLevel)
@@ -799,8 +814,22 @@ namespace RHI::WebGPU
         wgpuPipelineLayoutRelease(this->layout);
     }
 
+    ResultCode IRayTracingPipeline::Init([[maybe_unused]] IDevice* device, [[maybe_unused]] const ComputePipelineCreateInfo& createInfo)
+    {
+        // WebGPU doesn't support ray tracing yet
+        return ResultCode::ErrorUnknown;
+    }
+
+    void IRayTracingPipeline::Shutdown([[maybe_unused]] IDevice* device)
+    {
+        // WebGPU doesn't support ray tracing yet
+    }
+
     ResultCode IBuffer::Init(IDevice* device, const BufferCreateInfo& createInfo)
     {
+        mapped = false;
+        mappedPtr = nullptr;
+
         WGPUBufferDescriptor desc{
             .nextInChain      = nullptr,
             .label            = ConvertToStringView(createInfo.name),
@@ -815,17 +844,25 @@ namespace RHI::WebGPU
         }
 
         this->buffer = wgpuDeviceCreateBuffer(device->m_device, &desc);
-        if (desc.mappedAtCreation) mappedPtr = wgpuBufferGetMappedRange(buffer, 0, WGPU_WHOLE_MAP_SIZE);
+        if (desc.mappedAtCreation)
+        {
+            mappedPtr = wgpuBufferGetMappedRange(buffer, 0, WGPU_WHOLE_MAP_SIZE);
+            mapped = true;
+        }
         return ResultCode::Success;
     }
 
     void IBuffer::Shutdown([[maybe_unused]] IDevice* device)
     {
+        TL_ASSERT(mapped == false, "Unmap buffer first");
         wgpuBufferRelease(this->buffer);
     }
 
-    void* IBuffer::Map(IDevice* device)
+    DeviceMemoryPtr IBuffer::Map(IDevice* device)
     {
+        TL_ASSERT(mapped == false, "Buffer is already mapped");
+        mapped = true;
+
         if (mappedPtr) return mappedPtr;
 
         // FIXME: This is a blocking implementation. Should be made async in the future.
@@ -857,11 +894,14 @@ namespace RHI::WebGPU
         };
 
         wgpuInstanceWaitAny(device->m_instance, 1, &waitInfo, UINT64_MAX);
-        return wgpuBufferGetMappedRange(buffer, 0, WGPU_WHOLE_MAP_SIZE);
+        mappedPtr = wgpuBufferGetMappedRange(buffer, 0, WGPU_WHOLE_MAP_SIZE);
+        return mappedPtr;
     }
 
     void IBuffer::Unmap(IDevice* device)
     {
+        TL_ASSERT(mapped == true, "Buffer is already unmapped");
+        mapped = false;
         wgpuBufferUnmap(buffer);
         mappedPtr = nullptr;
     }
@@ -885,24 +925,41 @@ namespace RHI::WebGPU
             .nextInChain     = nullptr,
             .label           = ConvertToStringView(createInfo.name),
             .format          = format,
-            .dimension       = ConvertToTextureViewDimension(createInfo.type, createInfo.arrayCount > 1),
+            .dimension       = ConvertToTextureViewDimension(ImageViewType::View2D, createInfo.arrayCount > 1),
             .baseMipLevel    = 0,
             .mipLevelCount   = createInfo.mipLevels,
             .baseArrayLayer  = 0,
             .arrayLayerCount = createInfo.arrayCount,
-            .aspect          = WGPUTextureAspect_All, // TODO:
+            .aspect          = ConvertToTextureAspect(GetFormatAspects(createInfo.format), createInfo.format),
             .usage           = ConvertToTextureUsage(createInfo.usageFlags),
         };
         this->texture = wgpuDeviceCreateTexture(device->m_device, &desc);
         this->view    = wgpuTextureCreateView(this->texture, &viewDesc);
         this->size    = createInfo.size;
         this->format  = createInfo.format;
+        this->subresources = {
+            .imageAspects  = GetFormatAspects(format),
+            .mipBase       = 0,
+            .mipLevelCount = (uint8_t)createInfo.mipLevels,
+            .arrayBase     = 0,
+            .arrayCount    = (uint8_t)createInfo.arrayCount,
+        };
         return ResultCode::Success;
     }
 
     ResultCode IImage::Init([[maybe_unused]] IDevice* device, WGPUTexture surfaceTexture, WGPUSurfaceConfiguration desc)
     {
         this->texture = surfaceTexture;
+        this->size    = {desc.width, desc.height, 1};
+        // Format will be set when swapchain is configured via SwapBackTextures
+        this->format  = Format::Unknown;
+        this->subresources = {
+            .imageAspects  = ImageAspect::Color, // Swapchain images are typically color
+            .mipBase       = 0,
+            .mipLevelCount = 1,
+            .arrayBase     = 0,
+            .arrayCount    = 1,
+        };
         WGPUTextureViewDescriptor viewDesc{
             .nextInChain     = nullptr,
             .label           = {},
@@ -917,6 +974,11 @@ namespace RHI::WebGPU
         };
         this->view = wgpuTextureCreateView(this->texture, &viewDesc);
         return ResultCode::Success;
+    }
+
+    WGPUTextureAspect IImage::SelectImageAspect(ImageAspect aspect)
+    {
+        return ConvertToTextureAspect(aspect, format);
     }
 
     void IImage::Shutdown([[maybe_unused]] IDevice* device)
@@ -1039,13 +1101,14 @@ namespace RHI::WebGPU
 
         // Initialize empty image handle
         IImage image{};
-        m_image      = m_device->m_imageOwner.Emplace(std::move(image));
-        m_imageCount = 1;
+        auto imageHandleId = m_device->m_imageOwner.Emplace(std::move(image));
+        m_imageHandle      = (Image*)m_device->m_imageOwner.Get(imageHandleId);
+        m_imageCount       = 1;
 
         return ResultCode::Success;
     }
 
-    void ISwapchain::Shutdown()
+    void ISwapchain::Shutdown(IDevice* device)
     {
         if (m_surface)
         {
@@ -1053,8 +1116,9 @@ namespace RHI::WebGPU
             m_surface = nullptr;
         }
 
-        if (auto image = m_device->m_imageOwner.Get(m_image))
+        if (m_imageHandle)
         {
+            auto image = (IImage*)m_imageHandle;
             if (image->view)
             {
                 wgpuTextureViewRelease(image->view);
@@ -1070,43 +1134,72 @@ namespace RHI::WebGPU
         m_device = nullptr;
     }
 
-    SurfaceCapabilities ISwapchain::GetSurfaceCapabilities()
+    SurfaceCapabilities ISwapchain::GetSurfaceCapabilities() const
     {
+        TL_ASSERT(m_surface);
+
         WGPUSurfaceCapabilities capabilities;
         wgpuSurfaceGetCapabilities(m_surface, m_device->m_adapter, &capabilities);
 
-        SurfaceCapabilities outCaps{};
+        SurfaceCapabilities output{};
 
-        /// @fixme: Dont hardcode values here!
-        outCaps.usages |= ImageUsage::Color;
-        outCaps.usages |= ImageUsage::CopyDst;
-        outCaps.formats.push_back(Format::RGBA8_UNORM);
-
-        for (size_t i = 0; i < capabilities.presentModeCount; i++)
+        // Add image size and count limits
         {
-            switch (capabilities.presentModes[i])
+            output.minImageSize  = {capabilities.minWidth, capabilities.minHeight};
+            output.maxImageSize  = {capabilities.maxWidth, capabilities.maxHeight};
+            output.minImageCount = capabilities.minImageCount;
+            output.maxImageCount = capabilities.maxImageCount;
+        }
+
+        // Add image usage flags
+        {
+            if (capabilities.usages & WGPUTextureUsage_RenderAttachment) output.usages |= ImageUsage::Color;
+            if (capabilities.usages & WGPUTextureUsage_TextureBinding) output.usages |= ImageUsage::ShaderResource;
+            if (capabilities.usages & WGPUTextureUsage_StorageBinding) output.usages |= ImageUsage::StorageResource;
+            if (capabilities.usages & WGPUTextureUsage_CopyDst) output.usages |= ImageUsage::CopyDst;
+        }
+
+        // Add formats
+        {
+            for (size_t i = 0; i < capabilities.formatCount; i++)
             {
-            case WGPUPresentMode_Immediate:   outCaps.presentModes |= SwapchainPresentMode::Immediate; break;
-            case WGPUPresentMode_Mailbox:     outCaps.presentModes |= SwapchainPresentMode::Mailbox; break;
-            case WGPUPresentMode_Fifo:        outCaps.presentModes |= SwapchainPresentMode::Fifo; break;
-            case WGPUPresentMode_FifoRelaxed: outCaps.presentModes |= SwapchainPresentMode::FifoRelaxed; break;
-            default:                          TL_UNREACHABLE(); break;
+                // TODO: Add reverse conversion from WGPUTextureFormat to Format
+                // For now, add common formats
+                output.formats.push_back(Format::RGBA8_UNORM);
             }
         }
 
-        for (size_t i = 0; i < capabilities.alphaModeCount; i++)
+        // Add composite alpha modes
         {
-            switch (capabilities.alphaModes[i])
+            for (size_t i = 0; i < capabilities.alphaModeCount; i++)
             {
-            case WGPUCompositeAlphaMode_Auto:            outCaps.alphaModes |= SwapchainAlphaMode::None; break;
-            case WGPUCompositeAlphaMode_Premultiplied:   outCaps.alphaModes |= SwapchainAlphaMode::PreMultiplied; break;
-            case WGPUCompositeAlphaMode_Unpremultiplied: outCaps.alphaModes |= SwapchainAlphaMode::PostMultiplied; break;
-            default:                                     TL_UNREACHABLE(); break;
+                switch (capabilities.alphaModes[i])
+                {
+                case WGPUCompositeAlphaMode_Auto:            output.alphaModes |= SwapchainAlphaMode::None; break;
+                case WGPUCompositeAlphaMode_Premultiplied:   output.alphaModes |= SwapchainAlphaMode::PreMultiplied; break;
+                case WGPUCompositeAlphaMode_Unpremultiplied: output.alphaModes |= SwapchainAlphaMode::PostMultiplied; break;
+                default:                                     TL_UNREACHABLE(); break;
+                }
+            }
+        }
+
+        // Add present modes
+        {
+            for (size_t i = 0; i < capabilities.presentModeCount; i++)
+            {
+                switch (capabilities.presentModes[i])
+                {
+                case WGPUPresentMode_Immediate:   output.presentModes |= SwapchainPresentMode::Immediate; break;
+                case WGPUPresentMode_Mailbox:     output.presentModes |= SwapchainPresentMode::Mailbox; break;
+                case WGPUPresentMode_Fifo:        output.presentModes |= SwapchainPresentMode::Fifo; break;
+                case WGPUPresentMode_FifoRelaxed: output.presentModes |= SwapchainPresentMode::FifoRelaxed; break;
+                default:                          TL_UNREACHABLE(); break;
+                }
             }
         }
 
         wgpuSurfaceCapabilitiesFreeMembers(capabilities);
-        return outCaps;
+        return output;
     }
 
     ResultCode ISwapchain::Configure(const SwapchainConfigureInfo& configInfo)
@@ -1154,10 +1247,20 @@ namespace RHI::WebGPU
         return SwapBackTextures();
     }
 
-    ResultCode ISwapchain::Resize(ImageSize2D size)
+    ResultCode ISwapchain::Resize(const ImageSize2D& size)
     {
         m_configuration.size = size;
         return Configure(m_configuration);
+    }
+
+    uint32_t ISwapchain::GetImagesCount() const
+    {
+        return m_imageCount;
+    }
+
+    Image* ISwapchain::GetImage() const
+    {
+        return m_imageHandle;
     }
 
     ResultCode ISwapchain::Present()
@@ -1177,7 +1280,7 @@ namespace RHI::WebGPU
             return ConvertToResultCode(status);
         }
 
-        auto image = m_device->m_imageOwner.Get(m_image);
+        auto image = (IImage*)m_imageHandle;
         if (image->view)
         {
             wgpuTextureViewRelease(image->view);
@@ -1188,6 +1291,15 @@ namespace RHI::WebGPU
         }
 
         image->texture = surfaceTexture.texture;
+        image->size    = {m_configuration.size.width, m_configuration.size.height, 1};
+        image->format  = m_configuration.format;
+        image->subresources = {
+            .imageAspects  = GetFormatAspects(m_configuration.format),
+            .mipBase       = 0,
+            .mipLevelCount = 1,
+            .arrayBase     = 0,
+            .arrayCount    = 1,
+        };
 
         WGPUTextureViewDescriptor viewDesc{
             .format          = ConvertToTextureFormat(m_configuration.format),

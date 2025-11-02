@@ -1,4 +1,4 @@
-#include "Renderer/Resources.hpp"
+#include <RenderCore/Resources.hpp>
 
 namespace Engine
 {

@@ -28,23 +28,6 @@ namespace RHI
         return *m_limits;
     }
 
-    RenderGraph* Device::CreateRenderGraph(const RenderGraphCreateInfo& createInfo)
-    {
-        ZoneScoped;
-        auto* renderGraph = new RenderGraph();
-        auto  result      = renderGraph->Init(this, createInfo);
-        TL_ASSERT(result == ResultCode::Success);
-        return renderGraph;
-    }
-
-    void Device::DestroyRenderGraph(RenderGraph* renderGraph)
-    {
-        ZoneScoped;
-        TL_ASSERT(renderGraph != nullptr, "Cannot destroy a null render graph");
-        renderGraph->Shutdown();
-        delete renderGraph;
-    }
-
     ResultCode Renderdoc::Init(Device* device)
     {
         m_device = device;

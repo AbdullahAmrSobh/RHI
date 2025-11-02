@@ -3,8 +3,6 @@ cmake_minimum_required(VERSION 3.19)
 set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/CommandList.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Device.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Common.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Export.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Format.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RenderGraph.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/PipelineAccess.hpp
@@ -39,4 +37,3 @@ tl_add_target(
 # target_compile_options(RHI PRIVATE ${RHI_COMPILE_FLAGS})
 
 target_link_libraries(RHI PUBLIC TL)
-target_link_libraries(RHI PUBLIC SC)
