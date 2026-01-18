@@ -78,9 +78,10 @@ namespace RHI::Vulkan
 
     struct IBindGroupLayout : BindGroupLayout
     {
-        VkDescriptorSetLayout     handle;
-        TL::Vector<ShaderBinding> shaderBindings;
-        bool                      hasBindless;
+        VkDescriptorSetLayout      handle;
+        // TODO: Figure out why TL::Vector causes leaks here
+        std::vector<ShaderBinding> shaderBindings;
+        bool                       hasBindless;
 
         ResultCode Init(IDevice* device, const BindGroupLayoutCreateInfo& createInfo);
         void       Shutdown(IDevice* device);

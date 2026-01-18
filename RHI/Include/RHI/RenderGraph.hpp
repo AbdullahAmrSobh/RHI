@@ -412,6 +412,8 @@ namespace RHI
 
         static void             destroy(RenderGraph* renderGraph);
 
+        RHI::Device*            getDevice() const { return m_device; }
+
         /// @brief Begins a frame recording.
         void                    BeginFrame(const RGBeginInfo& beginInfo = {});
 
@@ -434,6 +436,9 @@ namespace RHI
         /// @brief Returns render graph resource's handle.
         TL_NODISCARD Image*     GetImageHandle(RGImage* handle) const;
         TL_NODISCARD Buffer*    GetBufferHandle(RGBuffer* handle) const;
+
+        // Allocates a transient bind group for the current local bind group
+        RHI::BindGroup*         createBindGroup(RHI::BindGroupLayout* layout);
 
     private:
         // Bind group stuff
@@ -504,5 +509,15 @@ namespace RHI
         TL::Vector<RGFrameImage*>             m_imagePool{m_arena};
         TL::Vector<RGFrameBuffer*>            m_bufferPool{m_arena};
         TL::Vector<DependencyLevel>           m_dependencyLevels{m_arena};
+
+        template<typename T>
+        struct FreeList
+        {
+            uint32_t      head = 0;
+            uint32_t      lastFrame; // rests the bind group if the
+            TL::Vector<T> items;
+        };
+
+        TL::Map<RHI::BindGroupLayout*, FreeList<RHI::BindGroup*>> m_bindGroupsLookup;
     };
 } // namespace RHI
