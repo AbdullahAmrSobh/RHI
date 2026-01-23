@@ -103,6 +103,13 @@ namespace RHI
         Count,                           ///< Number of binding types.
     };
 
+    enum class BindPoint
+    {
+        Graphics,
+        Compute,
+        RayTracing,
+    };
+
     enum class ShaderStage
     {
         None          = 0 << 0,  ///< No shader stage.
@@ -497,10 +504,18 @@ namespace RHI
     };
 
     // Structs (Pipeline Related)
+    struct PushConstantRange
+    {
+        TL::Flags<RHI::ShaderStage> stages = RHI::ShaderStage::None; ///< Shader stages.
+        uint32_t                    offset = 0;                      ///< Offset.
+        uint32_t                    size   = 0;                      ///< Size.
+    };
+
     struct PipelineLayoutCreateInfo
     {
-        const char*                      name    = nullptr; ///< Debug name of the pipeline layout object.
-        TL::Span<BindGroupLayout* const> layouts = {};      ///< List of bind group layouts.
+        const char*                      name          = nullptr; ///< Debug name of the pipeline layout object.
+        TL::Span<BindGroupLayout* const> layouts       = {};      ///< List of bind group layouts.
+        TL::Span<PushConstantRange>      pushConstants = {};      ///< List of push constant ranges.
     };
 
     struct ColorAttachmentBlendStateDesc

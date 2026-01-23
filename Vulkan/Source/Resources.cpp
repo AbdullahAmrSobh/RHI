@@ -703,14 +703,24 @@ namespace RHI::Vulkan
             this->bindGroupLayouts[index++] = bindGroupLayout;
         }
 
+        TL::Vector<VkPushConstantRange> pushConstantRanges{device->GetTempAllocator()};
+        for (auto range : createInfo.pushConstants)
+        {
+            pushConstantRanges.push_back({
+                .stageFlags = ConvertShaderStage(range.stages),
+                .offset     = range.offset,
+                .size       = range.size,
+            });
+        }
+
         VkPipelineLayoutCreateInfo pipelineLayouCI{
             .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
             .pNext                  = nullptr,
             .flags                  = 0,
             .setLayoutCount         = uint32_t(descriptorSetLayouts.size()),
             .pSetLayouts            = descriptorSetLayouts.data(),
-            .pushConstantRangeCount = 0,
-            .pPushConstantRanges    = nullptr,
+            .pushConstantRangeCount = uint32_t(pushConstantRanges.size()),
+            .pPushConstantRanges    = pushConstantRanges.data(),
         };
         auto result = vkCreatePipelineLayout(device->m_device, &pipelineLayouCI, nullptr, &handle);
         if (result == VK_SUCCESS && createInfo.name)
@@ -1111,13 +1121,13 @@ namespace RHI::Vulkan
 
     uint64_t IBuffer::getDeviceAddress(IDevice* device)
     {
-        VkBufferDeviceAddressInfo info {
-            .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-            .pNext = nullptr,
+        VkBufferDeviceAddressInfo info{
+            .sType  = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+            .pNext  = nullptr,
             .buffer = this->handle,
         };
         this->address = vkGetBufferDeviceAddress(device->m_device, &info);
-        return  (uint64_t) this->address;
+        return (uint64_t)this->address;
     }
 
     ////////////////////////////////////////////////////////////////////////

@@ -57,69 +57,19 @@ namespace RHI
 
 namespace RHI::Vulkan
 {
-    // Validation settings: to fine tune what is checked
-    struct ValidationSettings
-    {
-        VkBool32                fine_grained_locking  = VK_TRUE;
-        VkBool32                validate_core         = VK_TRUE;
-        VkBool32                check_image_layout    = VK_TRUE;
-        VkBool32                check_command_buffer  = VK_TRUE;
-        VkBool32                check_object_in_use   = VK_TRUE;
-        VkBool32                check_query           = VK_TRUE;
-        VkBool32                check_shaders         = VK_TRUE;
-        VkBool32                check_shaders_caching = VK_TRUE;
-        VkBool32                unique_handles        = VK_TRUE;
-        VkBool32                object_lifetime       = VK_TRUE;
-        VkBool32                stateless_param       = VK_TRUE;
-        TL::Vector<const char*> debug_action          = {}; // "VK_DBG_LAYER_ACTION_LOG_MSG", "VK_DBG_LAYER_ACTION_DEBUG_OUTPUT", "VK_DBG_LAYER_ACTION_BREAK"
-        TL::Vector<const char*> report_flags          = {"error"};
-
-        VkBaseInStructure* BuildPNextChain(void* pNext)
-        {
-            // clang-format off
-            layerSettings = {
-                {layerName, "fine_grained_locking",  VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1,                             &fine_grained_locking },
-                {layerName, "validate_core",         VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1,                             &validate_core        },
-                {layerName, "check_image_layout",    VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1,                             &check_image_layout   },
-                {layerName, "check_command_buffer",  VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1,                             &check_command_buffer },
-                {layerName, "check_object_in_use",   VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1,                             &check_object_in_use  },
-                {layerName, "check_query",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1,                             &check_query          },
-                {layerName, "check_shaders",         VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1,                             &check_shaders        },
-                {layerName, "check_shaders_caching", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1,                             &check_shaders_caching},
-                {layerName, "unique_handles",        VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1,                             &unique_handles       },
-                {layerName, "object_lifetime",       VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1,                             &object_lifetime      },
-                {layerName, "stateless_param",       VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1,                             &stateless_param      },
-                {layerName, "debug_action",          VK_LAYER_SETTING_TYPE_STRING_EXT, uint32_t(debug_action.size()), debug_action.data()   },
-                {layerName, "report_flags",          VK_LAYER_SETTING_TYPE_STRING_EXT, uint32_t(report_flags.size()), report_flags.data()   },
-            };
-            // clang-format on
-
-            layerSettingsCreateInfo = {
-                .sType        = VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT,
-                .pNext        = pNext,
-                .settingCount = uint32_t(layerSettings.size()),
-                .pSettings    = layerSettings.data(),
-            };
-
-            return reinterpret_cast<VkBaseInStructure*>(&layerSettingsCreateInfo);
-        }
-
-        static constexpr const char*  layerName{"VK_LAYER_KHRONOS_validation"};
-        TL::Vector<VkLayerSettingEXT> layerSettings{};
-        VkLayerSettingsCreateInfoEXT  layerSettingsCreateInfo{};
-    };
 
     /// @todo: add support for a custom sink, so vulkan errors are spereated
     inline static VkBool32 DebugMessengerCallbacks(TL_MAYBE_UNUSED VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, TL_MAYBE_UNUSED VkDebugUtilsMessageTypeFlagsEXT messageTypes, TL_MAYBE_UNUSED const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, TL_MAYBE_UNUSED void* pUserData)
     {
-        TL::String additionalInfo;
+        TL::String message = std::format("Vulkan Validation: {}\n", pCallbackData->pMessage);
 
         if (pCallbackData->objectCount > 0)
         {
+            message += "Objects:\n";
             for (uint32_t i = 0; i < pCallbackData->objectCount; ++i)
             {
-                additionalInfo += std::format(
-                    "Object[{}]: Type: {}, Name: {}\n",
+                message += std::format(
+                    "  [{}] Type: {}, Name: {}\n",
                     i,
                     ObjectTypeToName(pCallbackData->pObjects[i].objectType),
                     pCallbackData->pObjects[i].pObjectName ? pCallbackData->pObjects[i].pObjectName : "Unnamed");
@@ -128,11 +78,11 @@ namespace RHI::Vulkan
 
         if (pCallbackData->cmdBufLabelCount > 0)
         {
-            additionalInfo += "Active Debug Markers:\n";
+            message += "Debug Markers:\n";
             for (uint32_t i = 0; i < pCallbackData->cmdBufLabelCount; ++i)
             {
-                additionalInfo += std::format(
-                    "Label[{}]: {} (color: [{:.2f}, {:.2f}, {:.2f}, {:.2f}])\n",
+                message += std::format(
+                    "  [{}] {} (color: [{:.2f}, {:.2f}, {:.2f}, {:.2f}])\n",
                     i,
                     pCallbackData->pCmdBufLabels[i].pLabelName ? pCallbackData->pCmdBufLabels[i].pLabelName : "Unnamed",
                     pCallbackData->pCmdBufLabels[i].color[0],
@@ -144,11 +94,11 @@ namespace RHI::Vulkan
 
         if (pCallbackData->queueLabelCount > 0)
         {
-            additionalInfo += "Queue Labels:\n";
+            message += "Queue Labels:\n";
             for (uint32_t i = 0; i < pCallbackData->queueLabelCount; ++i)
             {
-                additionalInfo += std::format(
-                    "Queue[{}]: {} (color: [{:.2f}, {:.2f}, {:.2f}, {:.2f}])\n",
+                message += std::format(
+                    "  [{}] {} (color: [{:.2f}, {:.2f}, {:.2f}, {:.2f}])\n",
                     i,
                     pCallbackData->pQueueLabels[i].pLabelName ? pCallbackData->pQueueLabels[i].pLabelName : "Unnamed",
                     pCallbackData->pQueueLabels[i].color[0],
@@ -160,10 +110,10 @@ namespace RHI::Vulkan
 
         switch (messageSeverity)
         {
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: TL_LOG_INFO("{}\nMessage: {}", additionalInfo, pCallbackData->pMessage); break;
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:    TL_LOG_INFO("{}\nMessage: {}", additionalInfo, pCallbackData->pMessage); break;
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: TL_LOG_WARNNING("{}\nMessage: {}", additionalInfo, pCallbackData->pMessage); break;
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:   TL_LOG_ERROR("{}\nMessage: {}", additionalInfo, pCallbackData->pMessage); break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: TL_LOG_INFO("{}", message); break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:    TL_LOG_INFO("{}", message); break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: TL_LOG_WARNNING("{}", message); break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:   TL_LOG_ERROR("{}", message); break;
         default:                                              TL_UNREACHABLE();
         }
 
@@ -283,9 +233,9 @@ namespace RHI::Vulkan
 
         if constexpr (DebugLayerEnabled)
         {
-            if (availableInstanceLayers.contains(ValidationSettings::layerName))
+            if (availableInstanceLayers.contains("VK_LAYER_KHRONOS_validation"))
             {
-                requiredInstanceLayers.push_back(ValidationSettings::layerName);
+                requiredInstanceLayers.push_back("VK_LAYER_KHRONOS_validation");
             }
 
             if (availableInstanceExtensions.contains(VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
@@ -319,10 +269,9 @@ namespace RHI::Vulkan
 
         VulkanResult result;
 
-        ValidationSettings   validationSettings{};
         VkInstanceCreateInfo instanceCI{
             .sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-            .pNext                   = DebugLayerEnabled ? validationSettings.BuildPNextChain(availableInstanceExtensions.contains(VK_EXT_DEBUG_UTILS_EXTENSION_NAME) ? &debugUtilsCI : nullptr) : nullptr,
+            .pNext                   = DebugLayerEnabled ? &debugUtilsCI : nullptr,
             .flags                   = {},
             .pApplicationInfo        = &applicationInfo,
             .enabledLayerCount       = static_cast<uint32_t>(requiredInstanceLayers.size()),
@@ -484,6 +433,9 @@ namespace RHI::Vulkan
             .descriptorBindingVariableDescriptorCount     = VK_TRUE,
             .runtimeDescriptorArray                       = VK_TRUE,
             .timelineSemaphore                            = VK_TRUE,
+            .bufferDeviceAddress                          = VK_TRUE,
+            // .bufferDeviceAddressCaptureReplay             = VK_TRUE,
+            // .bufferDeviceAddressMultiDevice               = VK_TRUE,
         };
 
         VkPhysicalDeviceVulkan11Features features11{
@@ -781,21 +733,6 @@ namespace RHI::Vulkan
     {
         return m_framesInFlight[m_currentFrameIndex]->GetAllocator();
     }
-
-    // #define IMPL_DEVICE_CREATE_AND_DESTROY(ResourceType)                                        \
-//     ResourceType* IDevice::Create##ResourceType(const ResourceType##CreateInfo& createInfo) \
-//     {                                                                                       \
-//         auto handle = TL::Construct<I##ResourceType>();                                     \
-//         auto result = handle->Init(this, createInfo);                                       \
-//         TL_ASSERT(IsSuccess(result));                                                       \
-//         return handle;                                                                      \
-//     }                                                                                       \
-//     void IDevice::Destroy##ResourceType(ResourceType* _handle)                              \
-//     {                                                                                       \
-//         auto handle = (I##ResourceType*)_handle;                                            \
-//         handle->Shutdown(this);                                                             \
-//         TL::Destruct(_handle);                                                              \
-//     }
 
     Swapchain* IDevice::CreateSwapchain(const SwapchainCreateInfo& createInfo)
     {

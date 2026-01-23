@@ -7,8 +7,7 @@ namespace Engine
         m_device = device;
         RHI::BufferCreateInfo createInfo{
             .name       = name.data(),
-            .hostMapped = true,
-            .usageFlags = usage,
+            .usageFlags = usage | RHI::BufferUsage::HostMapped,
             .byteSize   = sizeBytes,
         };
         m_allocator->init(createInfo.byteSize);

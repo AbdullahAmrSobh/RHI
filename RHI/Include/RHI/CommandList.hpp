@@ -286,10 +286,12 @@ namespace RHI
         /// @brief Pushes a debug marker with a name and color onto the command list.
         /// @param name Name of the debug marker.
         /// @param color Color value of the debug marker.
-        virtual void PushDebugMarker(const char* name, ClearValue color) = 0;
+        virtual void PushDebugMarker(const char* name, uint32_t bgra) = 0;
 
         /// @brief Pops the last debug marker off the command list.
         virtual void PopDebugMarker() = 0;
+
+        virtual void InsertDebugMarker(const char* name, uint32_t bgra) = 0;
 
         /// @brief Begins a conditional command block based on a buffer.
         /// @param conditionBuffer Binding information for the condition buffer.
@@ -303,15 +305,21 @@ namespace RHI
         /// @param commandLists Span of command lists to execute.
         virtual void Execute(TL::Span<const CommandList*> commandLists) = 0;
 
+        virtual void BindPipelineLayout(BindPoint bindPoint, const PipelineLayout* pipelineLayout)       = 0;
+
+        virtual void SetPushConstants(BindPoint bindPoint, uint32_t offset, TL::Block content)           = 0;
+
+        virtual void SetBindGroups(BindPoint bindPoint, TL::Span<const BindGroupBindingInfo> bindGroups) = 0;
+
         /// @brief Binds a graphics pipeline.
         /// @param pipelineState Pointer to the graphics pipeline.
         /// @param bindGroups Span of bind group binding information.
-        virtual void BindGraphicsPipeline(GraphicsPipeline* pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups) = 0;
+        virtual void BindGraphicsPipeline(const GraphicsPipeline* pipelineState) = 0;
 
         /// @brief Binds a compute pipeline.
         /// @param pipelineState Pointer to the compute pipeline.
         /// @param bindGroups Span of bind group binding information.
-        virtual void BindComputePipeline(ComputePipeline* pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups) = 0;
+        virtual void BindComputePipeline(const ComputePipeline* pipelineState) = 0;
 
         /// @brief Sets the viewport for rendering.
         /// @param viewport The viewport to set.

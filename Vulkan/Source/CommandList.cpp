@@ -409,18 +409,22 @@ namespace RHI::Vulkan
         // No-Op
     }
 
-    void ICommandList::PushDebugMarker(TL_MAYBE_UNUSED const char* name, TL_MAYBE_UNUSED ClearValue color)
+    void ICommandList::PushDebugMarker(TL_MAYBE_UNUSED const char* name, TL_MAYBE_UNUSED uint32_t bgra)
     {
         ZoneScoped;
 
 #if RHI_DEBUG
         if (auto fn = m_device->m_pfn.m_vkCmdBeginDebugUtilsLabelEXT)
         {
+            uint32_t             r = (bgra >> 16) & 0xFF;
+            uint32_t             g = (bgra >> 8) & 0xFF;
+            uint32_t             b = bgra & 0xFF;
+            uint32_t             a = (bgra >> 24) & 0xFF;
             VkDebugUtilsLabelEXT info{
                 .sType      = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
                 .pNext      = nullptr,
                 .pLabelName = name,
-                .color      = {(float)color.f32.r, (float)color.f32.g, (float)color.f32.b, (float)color.f32.a},
+                .color      = {r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f},
             };
             fn(m_commandBuffer, &info);
         }
@@ -429,12 +433,30 @@ namespace RHI::Vulkan
 
     void ICommandList::PopDebugMarker()
     {
-        ZoneScoped;
-
-#if RHI_DEBUG
         if (auto fn = m_device->m_pfn.m_vkCmdEndDebugUtilsLabelEXT)
         {
             fn(m_commandBuffer);
+        }
+    }
+
+    void ICommandList::InsertDebugMarker(TL_MAYBE_UNUSED const char* name, TL_MAYBE_UNUSED uint32_t bgra)
+    {
+        ZoneScoped;
+
+#if RHI_DEBUG
+        if (auto fn = m_device->m_pfn.m_vkCmdInsertDebugUtilsLabelEXT)
+        {
+            uint32_t             r = (bgra >> 16) & 0xFF;
+            uint32_t             g = (bgra >> 8) & 0xFF;
+            uint32_t             b = bgra & 0xFF;
+            uint32_t             a = (bgra >> 24) & 0xFF;
+            VkDebugUtilsLabelEXT info{
+                .sType      = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
+                .pNext      = nullptr,
+                .pLabelName = name,
+                .color      = {r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f},
+            };
+            fn(m_commandBuffer, &info);
         }
 #endif
     }
@@ -478,7 +500,35 @@ namespace RHI::Vulkan
         vkCmdExecuteCommands(m_commandBuffer, commandBuffers.size(), commandBuffers.data());
     }
 
-    void ICommandList::BindGraphicsPipeline(GraphicsPipeline* pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups)
+    void ICommandList::BindPipelineLayout(BindPoint bindPoint, const PipelineLayout* pipelineLayout)
+    {
+        ZoneScoped;
+
+        m_pipelineLayout    = (PipelineLayout*)pipelineLayout;
+        m_pipelineBindPoint = bindPoint == BindPoint::Graphics ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE;
+    }
+
+    void ICommandList::SetPushConstants(BindPoint bindPoint, uint32_t offset, TL::Block content)
+    {
+        ZoneScoped;
+
+        IPipelineLayout*    pipelineLayout = (IPipelineLayout*)m_pipelineLayout;
+        VkPipelineBindPoint vkBindPoint    = bindPoint == BindPoint::Graphics ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE;
+
+        vkCmdPushConstants(m_commandBuffer, pipelineLayout->handle, VK_SHADER_STAGE_ALL, offset, (uint32_t)content.size, content.ptr);
+    }
+
+    void ICommandList::SetBindGroups(BindPoint bindPoint, TL::Span<const BindGroupBindingInfo> bindGroups)
+    {
+        ZoneScoped;
+
+        IPipelineLayout*    pipelineLayout = (IPipelineLayout*)m_pipelineLayout;
+        VkPipelineBindPoint vkBindPoint    = bindPoint == BindPoint::Graphics ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE;
+
+        BindShaderBindGroups(vkBindPoint, pipelineLayout->handle, bindGroups);
+    }
+
+    void ICommandList::BindGraphicsPipeline(const GraphicsPipeline* pipelineState)
     {
         ZoneScoped;
 
@@ -495,10 +545,9 @@ namespace RHI::Vulkan
         m_pipelineBindPoint             = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
         vkCmdBindPipeline(m_commandBuffer, m_pipelineBindPoint, pipeline->handle);
-        BindShaderBindGroups(VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout->handle, bindGroups);
     }
 
-    void ICommandList::BindComputePipeline(ComputePipeline* pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups)
+    void ICommandList::BindComputePipeline(const ComputePipeline* pipelineState)
     {
         ZoneScoped;
 
@@ -515,7 +564,6 @@ namespace RHI::Vulkan
         m_pipelineBindPoint             = VK_PIPELINE_BIND_POINT_COMPUTE;
 
         vkCmdBindPipeline(m_commandBuffer, m_pipelineBindPoint, pipeline->handle);
-        BindShaderBindGroups(VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout->handle, bindGroups);
     }
 
     void ICommandList::SetViewport(const Viewport& viewport)
@@ -744,18 +792,21 @@ namespace RHI::Vulkan
             }
         }
 
-        // VkBindDescriptorSetsInfo infos{};
+        #if 1 // todo: use the vkCmdBindDescriptorSets2
         vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, (uint32_t)descriptorSets.size(), descriptorSets.data(), dynamicOffsets.size(), dynamicOffsets.data());
-
-        // VkPushConstantsInfo pushConstantsInfo{
-        //     .sType      = VK_STRUCTURE_TYPE_PUSH_CONSTANTS_INFO,
-        //     .pNext      = nullptr,
-        //     .layout     = pipelineLayout,
-        //     .stageFlags = VK_SHADER_STAGE_ALL,
-        //     .offset     = offset,
-        //     .size       = data.size,
-        //     .pValues    = data.ptr,
-        // };
-        // vkCmdPushConstants2(m_commandBuffer, &pushConstantsInfo);
+        #else
+        VkBindDescriptorSetsInfo bindInfo{
+            .sType              = VK_STRUCTURE_TYPE_BIND_DESCRIPTOR_SETS_INFO,
+            .pNext              = nullptr,
+            .stageFlags         = VK_SHADER_STAGE_ALL,
+            .layout             = pipelineLayout,
+            .firstSet           = 0,
+            .descriptorSetCount = (uint32_t)descriptorSets.size(),
+            .pDescriptorSets    = descriptorSets.data(),
+            .dynamicOffsetCount = (uint32_t)dynamicOffsets.size(),
+            .pDynamicOffsets    = dynamicOffsets.data(),
+        };
+        vkCmdBindDescriptorSets2(m_commandBuffer, &bindInfo);
+        #endif
     }
 } // namespace RHI::Vulkan

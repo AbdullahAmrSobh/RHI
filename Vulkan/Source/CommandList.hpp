@@ -80,13 +80,17 @@ namespace RHI::Vulkan
         void EndRenderPass() override;
         void BeginComputePass(const ComputePassBeginInfo& beginInfo) override;
         void EndComputePass() override;
-        void PushDebugMarker(const char* name, ClearValue color) override;
+        void PushDebugMarker(const char* name, uint32_t bgra) override;
         void PopDebugMarker() override;
+        void InsertDebugMarker(const char* name, uint32_t bgra) override;
         void BeginConditionalCommands(const BufferBindingInfo& conditionBuffer, bool inverted) override;
         void EndConditionalCommands() override;
         void Execute(TL::Span<const CommandList*> commandLists) override;
-        void BindGraphicsPipeline(GraphicsPipeline* pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups) override;
-        void BindComputePipeline(ComputePipeline* pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups) override;
+        void BindPipelineLayout(BindPoint bindPoint, const PipelineLayout* pipelineLayout) override;
+        void SetPushConstants(BindPoint bindPoint, uint32_t offset, TL::Block content) override;
+        void SetBindGroups(BindPoint bindPoint, TL::Span<const BindGroupBindingInfo> bindGroups) override;
+        void BindGraphicsPipeline(const GraphicsPipeline* pipelineState) override;
+        void BindComputePipeline(const ComputePipeline* pipelineState) override;
         void SetViewport(const Viewport& viewport) override;
         void SetScissor(const Scissor& sicssor) override;
         void BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> vertexBuffers) override;
@@ -104,7 +108,6 @@ namespace RHI::Vulkan
 
         VkCommandBuffer GetHandle() const { return m_commandBuffer; }
 
-    private:
         void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups);
 
     public:

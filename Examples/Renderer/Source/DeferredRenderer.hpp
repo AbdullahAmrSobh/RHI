@@ -87,7 +87,9 @@ namespace Engine
                     m_shaderParams.drawIndirectArgs  = getArgBuffer(rg);
                     m_shaderParams.update(m_device);
 
-                    cmd.BindComputePipeline(m_shader->getPipeline(), m_shaderParams.bind());
+                    cmd.BindComputePipeline(m_shader->getPipeline());
+                    cmd.BindPipelineLayout(RHI::BindPoint::Compute, m_shader->getPipelineLayout());
+                    cmd.SetBindGroups(RHI::BindPoint::Compute, m_shaderParams.bind());
 
                     const uint32_t groupSize = 64; // must match [numthreads(x,y,z)] in shader
                     uint32_t       numGroups = (groupSize) / groupSize;
@@ -216,7 +218,9 @@ namespace Engine
                         .height  = frameSize.height,
                     });
 
-                    cmd.BindGraphicsPipeline(m_shader->getPipeline(), m_shaderParams.bind());
+                    cmd.BindGraphicsPipeline(m_shader->getPipeline());
+                    cmd.BindPipelineLayout(RHI::BindPoint::Graphics, m_shader->getPipelineLayout());
+                    cmd.SetBindGroups(RHI::BindPoint::Graphics, m_shaderParams.bind());
 
                     visIn.draw(rg, cmd, scene.m_drawList.getCount());
                 });

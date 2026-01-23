@@ -13,20 +13,13 @@ namespace RHI
 {
     namespace Colors
     {
-        static constexpr uint32_t Red = 0x7F000000;
-
-        static constexpr uint32_t Green = 0x007F7F00;
-
-        static constexpr uint32_t Blue = 0x00007FFF;
-
-        static constexpr ColorValue<float> GraphicsQueue = {0.7f, 0.2f, 0.2f, 1.0f};
-
-        static constexpr ColorValue<float> ComputeQueue = {0.2f, 0.7f, 0.2f, 1.0f};
-
-        static constexpr ColorValue<float> AsyncComputeQueue = {0.3f, 0.6f, 0.24f, 1.0f};
-
-        static constexpr ColorValue<float> TransferQueue = {0.2f, 0.4f, 0.7f, 1.0f};
-
+        static constexpr uint32_t Red               = 0x7F000000;
+        static constexpr uint32_t Green             = 0x007F7F00;
+        static constexpr uint32_t Blue              = 0x00007FFF;
+        static constexpr uint32_t GraphicsQueue     = 0xFF3232B3;
+        static constexpr uint32_t ComputeQueue      = 0xFF32B332;
+        static constexpr uint32_t AsyncComputeQueue = 0xFF3D993D;
+        static constexpr uint32_t TransferQueue     = 0xFFB36432;
     }; // namespace Colors
 
     struct ImageUsageAndPipelineStage
@@ -1072,13 +1065,13 @@ namespace RHI
 
         bool isCompute = pass->m_type == RGPassType::Compute || pass->m_type == RGPassType::AsyncCompute;
 
-        ClearValue markerColor{};
+        uint32_t markerColor = 0;
         switch (pass->m_type)
         {
-        case RGPassType::Graphics:     markerColor.f32 = Colors::GraphicsQueue; break;
-        case RGPassType::Compute:      markerColor.f32 = Colors::ComputeQueue; break;
-        case RGPassType::AsyncCompute: markerColor.f32 = Colors::AsyncComputeQueue; break;
-        case RGPassType::Transfer:     markerColor.f32 = Colors::TransferQueue; break;
+        case RGPassType::Graphics:     markerColor = Colors::GraphicsQueue; break;
+        case RGPassType::Compute:      markerColor = Colors::ComputeQueue; break;
+        case RGPassType::AsyncCompute: markerColor = Colors::AsyncComputeQueue; break;
+        case RGPassType::Transfer:     markerColor = Colors::TransferQueue; break;
         }
         commandList->PushDebugMarker(pass->name().data(), markerColor);
 

@@ -44,7 +44,7 @@ namespace Engine
             .format     = RHI::Format::RGBA8_UNORM,
         };
         m_image        = RHI::CreateImageWithContent(*m_device, atlasTextureCI, TL::Block{pixels, size_t(width * height * 4)});
-        m_projectionCB = RenderContext::ptr->getConstantBuffersPool().allocate<glm::mat4x4>(m_maxViewportsCount);
+        m_projectionCB = RenderContext::ptr->getConstantBuffersPool().allocate<GPU::ImGuiShaderParam::CB>(m_maxViewportsCount);
 
         m_shader = PipelineLibrary::ptr->acquireGraphicsPipeline<GPU::ImGuiShaderParam>(
             "I:/repos/repos3/RHI/Examples/Renderer/Shaders/source/ImGui.json",
@@ -64,7 +64,7 @@ namespace Engine
         m_bindGroup = m_device->CreateBindGroup({.layout = m_shader->getBindGroupLayout(0)});
 
         GPU::ImGuiShaderParam shaderParams = {};
-        shaderParams.projection            = this->m_projectionCB;
+        shaderParams.cb            = this->m_projectionCB;
         shaderParams.texture0              = m_image;
         shaderParams.sampler0              = m_sampler;
         shaderParams.updateBindGroup(m_device, m_bindGroup);
@@ -113,7 +113,10 @@ namespace Engine
                 {0.0f, 0.0f, 0.5f, 0.0f},
                 {(R + L) / (L - R), (T + B) / (B - T), 0.5f, 1.0f},
             };
-            RenderContext::ptr->getConstantBuffersPool().update(m_projectionCB, viewportID, TL::Span<const glm::mat4x4>{mvp});
+            GPU::ImGuiShaderParam::CB cb{mvp};
+
+            // auto s = TL::Span<const GPU::ImGuiShaderParam::CB>{cb}; //::Span<const GPU::ImGuiShaderParam::CB>{mvp};
+            RenderContext::ptr->getConstantBuffersPool().update(m_projectionCB, viewportID, TL::Span<const GPU::ImGuiShaderParam::CB>{cb});
         }
 
         auto [width, height] = drawData->OwnerViewport->Size;
@@ -184,7 +187,10 @@ namespace Engine
                             // TODO: dynamic offset are not supported yet
                             RHI::BindGroupBindingInfo binding{m_bindGroup, {}};
                             // RHI::BindGroupBindingInfo binding{m_bindGroup, (uint32_t)m_projectionCB.getOffset(viewportID)};
-                            commandList.BindGraphicsPipeline(m_shader->getPipeline(), binding);
+
+                            commandList.BindGraphicsPipeline(m_shader->getPipeline());
+                            commandList.BindPipelineLayout(RHI::BindPoint::Graphics, m_shader->getPipelineLayout());
+                            commandList.SetBindGroups(RHI::BindPoint::Graphics, binding);
 
                             commandList.DrawIndexed({
                                 .indexCount    = drawCmd.ElemCount,

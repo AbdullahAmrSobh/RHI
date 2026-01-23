@@ -10,6 +10,7 @@
 #include <glm/glm.hpp>
 
 #include "Renderer/Common.hpp"
+#include <Renderer-Shaders/ImGui.hpp>
 
 namespace Engine
 {
@@ -44,7 +45,7 @@ namespace Engine
         RHI::Sampler* m_sampler;
         RHI::Image*   m_image;
 
-        Buffer<glm::mat4x4> m_projectionCB;
+        Buffer<GPU::ImGuiShaderParam::CB> m_projectionCB;
         Buffer<ImDrawIdx>   m_indexBuffer;
         Buffer<ImDrawVert>  m_vertexBuffer;
     };

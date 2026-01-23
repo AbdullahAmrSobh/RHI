@@ -14,7 +14,7 @@ struct PSInput
 
 struct ImGuiShaderParam
 {
-    ConstantBuffer<float4x4> projection;
+    float4x4     projection;
     Texture2D    texture0;
     SamplerState sampler0;
 };
@@ -34,6 +34,6 @@ PSInput VSMain(VSInput input)
 [[shader("fragment")]]
 float4 PSMain(PSInput input) : SV_Target0
 {
-    let color = input.col * params.texture0.Sample(params.sampler0, input.uv);
+    let color = input.col * params.texture0.Sample(params.sampler0, input.uv) * 0.2;
     return color;
 }
