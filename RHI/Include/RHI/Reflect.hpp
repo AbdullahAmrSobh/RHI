@@ -514,8 +514,6 @@ namespace RHI::Debug
     {
         std::string out = "BufferCreateInfo{ name: ";
         out += (ci.name ? ci.name : "nullptr");
-        out += ", hostMapped: ";
-        out += (ci.hostMapped ? "true" : "false");
         out += ", usageFlags: ";
         out += ToString(ci.usageFlags);
         out += ", byteSize: ";

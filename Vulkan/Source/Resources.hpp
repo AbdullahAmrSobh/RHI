@@ -152,9 +152,10 @@ namespace RHI::Vulkan
 
     struct IBuffer : Buffer
     {
-        VkBuffer      handle;
-        VmaAllocation allocation;
-        bool          mapped;
+        bool            mapped;
+        VkBuffer        handle;
+        VmaAllocation   allocation;
+        VkDeviceAddress address;
 
         ResultCode Init(IDevice* device, const BufferCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
@@ -163,6 +164,8 @@ namespace RHI::Vulkan
 
         DeviceMemoryPtr Map(IDevice* device);
         void            Unmap(IDevice* device);
+
+        uint64_t        getDeviceAddress(IDevice* device);
     };
 
     struct IImage : Image

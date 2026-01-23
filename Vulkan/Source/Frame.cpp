@@ -55,8 +55,7 @@ namespace RHI::Vulkan
 
         BufferCreateInfo stagingBufferCI{
             .name       = name.c_str(),
-            .hostMapped = true,
-            .usageFlags = BufferUsage::CopyDst | BufferUsage::CopySrc,
+            .usageFlags = BufferUsage::CopyDst | BufferUsage::CopySrc | BufferUsage::HostMapped,
             .byteSize   = pageSize,
         };
 

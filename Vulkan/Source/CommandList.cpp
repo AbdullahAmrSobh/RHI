@@ -743,6 +743,19 @@ namespace RHI::Vulkan
                 dynamicOffsets.push_back(offset);
             }
         }
+
+        // VkBindDescriptorSetsInfo infos{};
         vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, (uint32_t)descriptorSets.size(), descriptorSets.data(), dynamicOffsets.size(), dynamicOffsets.data());
+
+        // VkPushConstantsInfo pushConstantsInfo{
+        //     .sType      = VK_STRUCTURE_TYPE_PUSH_CONSTANTS_INFO,
+        //     .pNext      = nullptr,
+        //     .layout     = pipelineLayout,
+        //     .stageFlags = VK_SHADER_STAGE_ALL,
+        //     .offset     = offset,
+        //     .size       = data.size,
+        //     .pValues    = data.ptr,
+        // };
+        // vkCmdPushConstants2(m_commandBuffer, &pushConstantsInfo);
     }
 } // namespace RHI::Vulkan

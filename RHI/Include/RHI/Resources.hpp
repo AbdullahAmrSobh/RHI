@@ -127,15 +127,17 @@ namespace RHI
 
     enum class BufferUsage
     {
-        None        = 0 << 0, ///< No usage flags set.
-        Storage     = 1 << 1, ///< Buffer used for storage operations.
-        Uniform     = 1 << 2, ///< Buffer used for uniform data.
-        Vertex      = 1 << 3, ///< Buffer used for vertex data.
-        Index       = 1 << 4, ///< Buffer used for index data.
-        VertexIndex = Vertex | Index,
-        CopySrc     = 1 << 5, ///< Buffer used as a source in copy operations.
-        CopyDst     = 1 << 6, ///< Buffer used as a destination in copy operations.
-        Indirect    = 1 << 7, ///< Buffer used for indirect draw calls.
+        None                = 0 << 0,         ///< No usage flags set.
+        Storage             = 1 << 1,         ///< Buffer used for storage operations.
+        Uniform             = 1 << 2,         ///< Buffer used for uniform data.
+        Vertex              = 1 << 3,         ///< Buffer used for vertex data.
+        Index               = 1 << 4,         ///< Buffer used for index data.
+        VertexIndex         = Vertex | Index, ///< Buffer used for both vertex and index data.
+        CopySrc             = 1 << 5,         ///< Buffer used as a source in copy operations.
+        CopyDst             = 1 << 6,         ///< Buffer used as a destination in copy operations.
+        Indirect            = 1 << 7,         ///< Buffer used for indirect draw calls.
+        HostMapped          = 1 << 8,         ///< Buffer can be mapped by CPU.
+        DeviceBufferAddress = 1 << 9,         ///< Buffer GPU virtual address can be queried.
     };
 
     TL_DEFINE_FLAG_OPERATORS(BufferUsage);
@@ -392,7 +394,6 @@ namespace RHI
     struct BufferCreateInfo
     {
         const char*            name       = nullptr;           ///< Name of the buffer.
-        bool                   hostMapped = false;             ///< Buffer will be mappable by host.
         TL::Flags<BufferUsage> usageFlags = BufferUsage::None; ///< Usage flags for the buffer.
         size_t                 byteSize   = 0;                 ///< Size of the buffer in bytes.
     };

@@ -19,6 +19,8 @@ namespace RHI::Vulkan
         if (bufferUsageFlags & BufferUsage::CopySrc) result |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
         if (bufferUsageFlags & BufferUsage::CopyDst) result |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
         if (bufferUsageFlags & BufferUsage::Indirect) result |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+        if (bufferUsageFlags & BufferUsage::DeviceBufferAddress) result |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+        if (bufferUsageFlags & BufferUsage::Indirect) result |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
         return result;
     }
 
@@ -1029,10 +1031,16 @@ namespace RHI::Vulkan
 
     ResultCode IBuffer::Init(IDevice* device, const BufferCreateInfo& createInfo)
     {
+        VkMemoryPropertyFlags requiredFlags = 0;
+        if (createInfo.usageFlags & BufferUsage::HostMapped)
+        {
+            requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+        }
+
         VmaAllocationCreateInfo allocationCI{
             .flags          = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT,
-            .usage          = createInfo.hostMapped ? VMA_MEMORY_USAGE_AUTO_PREFER_HOST : VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-            .requiredFlags  = 0,
+            .usage          = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+            .requiredFlags  = requiredFlags,
             .preferredFlags = 0,
             .memoryTypeBits = 0,
             .pool           = VK_NULL_HANDLE,
@@ -1099,6 +1107,17 @@ namespace RHI::Vulkan
         TL_ASSERT(mapped == true, "Buffer is already unmapped");
         mapped = false;
         vmaUnmapMemory(device->m_deviceAllocator, allocation);
+    }
+
+    uint64_t IBuffer::getDeviceAddress(IDevice* device)
+    {
+        VkBufferDeviceAddressInfo info {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+            .pNext = nullptr,
+            .buffer = this->handle,
+        };
+        this->address = vkGetBufferDeviceAddress(device->m_device, &info);
+        return  (uint64_t) this->address;
     }
 
     ////////////////////////////////////////////////////////////////////////

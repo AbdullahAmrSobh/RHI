@@ -599,8 +599,7 @@ namespace RHI
 
     inline static bool operator==(const BufferCreateInfo& ci1, const BufferCreateInfo& ci2)
     {
-        return (ci1.hostMapped == ci2.hostMapped) &&
-               (ci1.usageFlags == ci2.usageFlags) &&
+        return (ci1.usageFlags == ci2.usageFlags) &&
                (ci1.byteSize == ci2.byteSize);
     }
 
