@@ -9,7 +9,20 @@
 
 namespace RHI::Vulkan
 {
-    VkBufferUsageFlags ConvertBufferUsageFlags(TL::Flags<BufferUsage> bufferUsageFlags)
+    inline static VkQueryType ConvertQueryType(QueryType queryType)
+    {
+        switch (queryType)
+        {
+        case QueryType::Occlusion:                          return VK_QUERY_TYPE_OCCLUSION;
+        case QueryType::Timestamp:                          return VK_QUERY_TYPE_TIMESTAMP;
+        case QueryType::AccelerationStructureSize:          return VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SIZE_KHR;
+        case QueryType::AccelerationStructureCompactedSize: return VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR;
+        case QueryType::PipelineStatistics:                 return VK_QUERY_TYPE_PIPELINE_STATISTICS;
+        default:                                            TL_UNREACHABLE(); return VK_QUERY_TYPE_MAX_ENUM;
+        }
+    }
+
+    inline static VkBufferUsageFlags ConvertBufferUsageFlags(TL::Flags<BufferUsage> bufferUsageFlags)
     {
         VkBufferUsageFlags result = 0;
         if (bufferUsageFlags & BufferUsage::Storage) result |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
@@ -24,7 +37,7 @@ namespace RHI::Vulkan
         return result;
     }
 
-    VkImageUsageFlags ConvertImageUsageFlags(TL::Flags<ImageUsage> imageUsageFlags)
+    inline static VkImageUsageFlags ConvertImageUsageFlags(TL::Flags<ImageUsage> imageUsageFlags)
     {
         VkImageUsageFlags result = 0;
         if (imageUsageFlags & ImageUsage::ShaderResource) result |= VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -38,7 +51,7 @@ namespace RHI::Vulkan
         return result;
     }
 
-    VkImageType ConvertImageType(ImageType imageType)
+    inline static VkImageType ConvertImageType(ImageType imageType)
     {
         switch (imageType)
         {
@@ -50,7 +63,7 @@ namespace RHI::Vulkan
         }
     }
 
-    VkImageViewType ConvertImageViewType(ImageViewType imageType)
+    inline static VkImageViewType ConvertImageViewType(ImageViewType imageType)
     {
         switch (imageType)
         {
@@ -87,7 +100,7 @@ namespace RHI::Vulkan
         return vkAspectFlags;
     }
 
-    VkComponentSwizzle ConvertComponentSwizzle(ComponentSwizzle componentSwizzle)
+    inline static VkComponentSwizzle ConvertComponentSwizzle(ComponentSwizzle componentSwizzle)
     {
         switch (componentSwizzle)
         {
@@ -104,46 +117,27 @@ namespace RHI::Vulkan
 
     VkImageSubresourceRange ConvertSubresourceRange(const ImageSubresourceRange& subresource, Format format)
     {
-        auto vkSubresource           = VkImageSubresourceRange{};
-        vkSubresource.aspectMask     = ConvertImageAspect(subresource.imageAspects, format);
-        vkSubresource.baseMipLevel   = subresource.mipBase;
-        vkSubresource.levelCount     = subresource.mipLevelCount;
-        vkSubresource.baseArrayLayer = subresource.arrayBase;
-        vkSubresource.layerCount     = subresource.arrayCount;
-        return vkSubresource;
+        return VkImageSubresourceRange{
+            .aspectMask     = ConvertImageAspect(subresource.imageAspects, format),
+            .baseMipLevel   = subresource.mipBase,
+            .levelCount     = subresource.mipLevelCount,
+            .baseArrayLayer = subresource.arrayBase,
+            .layerCount     = subresource.arrayCount,
+        };
     }
 
-    VkExtent2D ConvertExtent2D(ImageSize2D size)
+    inline static VkComponentMapping ConvertComponentMapping(ComponentMapping componentMapping)
     {
-        return {size.width, size.height};
-    }
-
-    VkExtent3D ConvertExtent3D(ImageSize3D size)
-    {
-        return {size.width, size.height, size.depth};
-    }
-
-    VkOffset2D ConvertOffset2D(ImageOffset2D offset)
-    {
-        return {offset.x, offset.y};
-    }
-
-    VkOffset3D ConvertOffset3D(ImageOffset3D offset)
-    {
-        return {offset.x, offset.y, offset.z};
-    }
-
-    VkComponentMapping ConvertComponentMapping(ComponentMapping componentMapping)
-    {
-        VkComponentMapping mapping{};
-        mapping.r = ConvertComponentSwizzle(componentMapping.r);
-        mapping.g = ConvertComponentSwizzle(componentMapping.g);
-        mapping.b = ConvertComponentSwizzle(componentMapping.b);
-        mapping.a = ConvertComponentSwizzle(componentMapping.a);
+        VkComponentMapping mapping{
+            .r = ConvertComponentSwizzle(componentMapping.r),
+            .g = ConvertComponentSwizzle(componentMapping.g),
+            .b = ConvertComponentSwizzle(componentMapping.b),
+            .a = ConvertComponentSwizzle(componentMapping.a),
+        };
         return mapping;
     }
 
-    VkFilter ConvertFilter(SamplerFilter samplerFilter)
+    inline static VkFilter ConvertFilter(SamplerFilter samplerFilter)
     {
         switch (samplerFilter)
         {
@@ -153,7 +147,7 @@ namespace RHI::Vulkan
         }
     }
 
-    VkSamplerAddressMode ConvertSamplerAddressMode(SamplerAddressMode addressMode)
+    inline static VkSamplerAddressMode ConvertSamplerAddressMode(SamplerAddressMode addressMode)
     {
         switch (addressMode)
         {
@@ -163,7 +157,7 @@ namespace RHI::Vulkan
         }
     }
 
-    VkCompareOp ConvertCompareOp(CompareOperator compareOperator)
+    inline static VkCompareOp ConvertCompareOp(CompareOperator compareOperator)
     {
         switch (compareOperator)
         {
@@ -196,7 +190,7 @@ namespace RHI::Vulkan
         }
     }
 
-    VkShaderStageFlags ConvertShaderStage(TL::Flags<ShaderStage> shaderStageFlags)
+    inline static VkShaderStageFlags ConvertShaderStage(TL::Flags<ShaderStage> shaderStageFlags)
     {
         VkShaderStageFlags result = 0;
         if (shaderStageFlags & ShaderStage::Vertex) result |= VK_SHADER_STAGE_VERTEX_BIT;
@@ -294,7 +288,7 @@ namespace RHI::Vulkan
         }
     }
 
-    VkDescriptorType ConvertDescriptorType(BindingType bindingType)
+    inline static VkDescriptorType ConvertDescriptorType(BindingType bindingType)
     {
         switch (bindingType)
         {
@@ -666,12 +660,8 @@ namespace RHI::Vulkan
     // IShaderModule
     ////////////////////////////////////////////////////////////////////////
 
-    IShaderModule::IShaderModule()  = default;
-    IShaderModule::~IShaderModule() = default;
-
     ResultCode IShaderModule::Init(IDevice* device, const ShaderModuleCreateInfo& createInfo)
     {
-        m_device = device;
         VkShaderModuleCreateInfo shaderModuleCI{
             .sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
             .pNext    = nullptr,
@@ -685,7 +675,7 @@ namespace RHI::Vulkan
 
     void IShaderModule::Shutdown(IDevice* device)
     {
-        vkDestroyShaderModule(m_device->m_device, m_shaderModule, nullptr);
+        vkDestroyShaderModule(device->m_device, m_shaderModule, nullptr);
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -700,7 +690,7 @@ namespace RHI::Vulkan
         {
             auto layout = (IBindGroupLayout*)(bindGroupLayout);
             descriptorSetLayouts.push_back(layout->handle);
-            this->bindGroupLayouts[index++] = bindGroupLayout;
+            this->bindGroupLayouts[index++] = (IBindGroupLayout*)bindGroupLayout;
         }
 
         TL::Vector<VkPushConstantRange> pushConstantRanges{device->GetTempAllocator()};
@@ -742,7 +732,7 @@ namespace RHI::Vulkan
     // IGraphicsPipeline
     ////////////////////////////////////////////////////////////////////////
 
-    VkPipelineShaderStageCreateInfo convertShaderStage(PipelineShaderStage stage, VkShaderStageFlagBits stageFlags)
+    VkPipelineShaderStageCreateInfo convertShaderStage(PipelineShaderStage stage)
     {
         auto shaderModule = (IShaderModule*)stage.module;
 
@@ -750,7 +740,7 @@ namespace RHI::Vulkan
             .sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .pNext               = nullptr,
             .flags               = 0,
-            .stage               = stageFlags,
+            .stage               = ConvertShaderStage(stage.stage),
             .module              = shaderModule->m_shaderModule,
             .pName               = stage.name,
             .pSpecializationInfo = nullptr,
@@ -759,10 +749,11 @@ namespace RHI::Vulkan
 
     ResultCode IGraphicsPipeline::Init(IDevice* device, const GraphicsPipelineCreateInfo& createInfo)
     {
-        std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages = {
-            (convertShaderStage(createInfo.vertexShader, VK_SHADER_STAGE_VERTEX_BIT)),
-            (convertShaderStage(createInfo.pixelShader, VK_SHADER_STAGE_FRAGMENT_BIT)),
-        };
+        TL::Vector<VkPipelineShaderStageCreateInfo> shaderStageCIs{device->GetTempAllocator()};
+        for (const auto& stage : createInfo.shaderStages)
+        {
+            shaderStageCIs.push_back(convertShaderStage(stage));
+        }
 
         TL::Vector<VkVertexInputBindingDescription>   vertexBindings{device->GetTempAllocator()};
         TL::Vector<VkVertexInputAttributeDescription> vertexAttributes{device->GetTempAllocator()};
@@ -931,8 +922,8 @@ namespace RHI::Vulkan
             .sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
             .pNext               = &renderTargetLayout,
             .flags               = 0,
-            .stageCount          = (uint32_t)shaderStages.size(),
-            .pStages             = shaderStages.data(),
+            .stageCount          = (uint32_t)shaderStageCIs.size(),
+            .pStages             = shaderStageCIs.data(),
             .pVertexInputState   = &vertexInputStateCI,
             .pInputAssemblyState = &inputAssemblyStateCI,
             .pTessellationState  = &tessellationStateCI,
@@ -974,7 +965,7 @@ namespace RHI::Vulkan
     ResultCode IComputePipeline::Init(IDevice* device, const ComputePipelineCreateInfo& createInfo)
     {
         this->layout     = (IPipelineLayout*)createInfo.layout;
-        auto shaderStage = convertShaderStage(createInfo.computeShader, VK_SHADER_STAGE_COMPUTE_BIT);
+        auto shaderStage = convertShaderStage(createInfo.computeShader);
 
         VkComputePipelineCreateInfo computePipelineCI{
             .sType              = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
@@ -998,41 +989,104 @@ namespace RHI::Vulkan
             device->m_destroyQueue->Push(frame->GetTimelineValue(), handle);
     }
 
-    ResultCode IRayTracingPipeline::Init(IDevice* device, const ComputePipelineCreateInfo& createInfo)
+    ResultCode IRayTracingPipeline::Init(IDevice* device, const RayTracingPipelineCreateInfo& createInfo)
     {
-        TL::Vector<VkPipelineShaderStageCreateInfo> shaderStagesCI{
+        this->layout = (IPipelineLayout*)createInfo.layout;
 
-        };
+        TL::Vector<VkPipelineShaderStageCreateInfo>      shaderStagesCI{device->GetTempAllocator()};
+        TL::Vector<VkRayTracingShaderGroupCreateInfoKHR> shaderGroupsCI{device->GetTempAllocator()};
 
-        TL::Vector<VkRayTracingShaderGroupCreateInfoKHR> shaderGroupsCI{
-
-        };
+        for (const auto& stage : createInfo.shaderStages)
+        {
+            shaderStagesCI.push_back(convertShaderStage(stage));
+        }
 
         // VkPipelineLibraryCreateInfoKHR
         // VkRayTracingPipelineInterfaceCreateInfoKHR
         // VkPipelineDynamicStateCreateInfo
 
+        VkDynamicState                   dynamicStates[] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+        VkPipelineDynamicStateCreateInfo dynamicStateCI{
+            .sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+            .pNext             = nullptr,
+            .flags             = 0,
+            .dynamicStateCount = sizeof(dynamicStates) / sizeof(VkDynamicState),
+            .pDynamicStates    = dynamicStates,
+        };
+
         VkRayTracingPipelineCreateInfoKHR pipelineCI{
             .sType                        = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR,
-            .pNext                        = {},
-            .flags                        = {},
-            .stageCount                   = {},
-            .pStages                      = {},
-            .groupCount                   = {},
-            .pGroups                      = {},
-            .maxPipelineRayRecursionDepth = {},
-            .pLibraryInfo                 = {},
-            .pLibraryInterface            = {},
-            .pDynamicState                = {},
-            .layout                       = {},
-            .basePipelineHandle           = {},
-            .basePipelineIndex            = {},
+            .pNext                        = nullptr,
+            .flags                        = 0,
+            .stageCount                   = (uint32_t)shaderStagesCI.size(),
+            .pStages                      = shaderStagesCI.data(),
+            .groupCount                   = (uint32_t)shaderGroupsCI.size(),
+            .pGroups                      = shaderGroupsCI.data(),
+            .maxPipelineRayRecursionDepth = createInfo.maxRecursionDepth,
+            .pLibraryInfo                 = nullptr,
+            .pLibraryInterface            = nullptr,
+            .pDynamicState                = &dynamicStateCI,
+            .layout                       = layout->handle,
+            .basePipelineHandle           = VK_NULL_HANDLE,
+            .basePipelineIndex            = 0,
         };
-        return ResultCode::Success;
+
+        VulkanResult result;
+        result = device->m_pfn.m_vkCreateRayTracingPipelinesKHR(device->m_device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &pipelineCI, nullptr, &handle);
+        return result;
     }
 
     void IRayTracingPipeline::Shutdown(IDevice* device)
     {
+        auto frame = (IFrame*)device->GetCurrentFrame();
+
+        if (handle)
+            device->m_destroyQueue->Push(frame->GetTimelineValue(), handle);
+    }
+
+    ////////////////////////////////////////////////////////////////////////
+    // QueryPool
+    /////////////////////////////////////////////////////////////////////
+
+    ResultCode IQueryPool::Init(IDevice* device, const QueryPoolCreateInfo& createInfo)
+    {
+        VkQueryPoolCreateInfo queryPoolCI{
+            .sType              = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
+            .pNext              = nullptr,
+            .flags              = 0,
+            .queryType          = ConvertQueryType(createInfo.type),
+            .queryCount         = createInfo.count,
+            .pipelineStatistics = 0,
+        };
+
+        // clang-format off
+        if (queryPoolCI.queryType == VK_QUERY_TYPE_PIPELINE_STATISTICS)
+        {
+            queryPoolCI.pipelineStatistics = VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT
+                | VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT
+                | VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT
+                | VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_INVOCATIONS_BIT
+                | VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT
+                | VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT
+                | VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT
+                | VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT
+                | VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_CONTROL_SHADER_PATCHES_BIT
+                | VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_EVALUATION_SHADER_INVOCATIONS_BIT
+                | VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT;
+        }
+        // clang-format on
+
+        VulkanResult result;
+        result = vkCreateQueryPool(device->m_device, &queryPoolCI, nullptr, &handle);
+        return ConvertResult(result);
+    }
+
+    void IQueryPool::Shutdown(IDevice* device)
+    {
+        auto frame = (IFrame*)device->GetCurrentFrame();
+
+        if (handle)
+            device->m_destroyQueue->Push(frame->GetTimelineValue(), handle);
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -1073,10 +1127,17 @@ namespace RHI::Vulkan
             device->SetDebugName(handle, createInfo.name);
             vmaSetAllocationName(device->m_deviceAllocator, allocation, createInfo.name);
         }
-        else
+
+        if (createInfo.usageFlags & BufferUsage::DeviceBufferAddress)
         {
-            vmaSetAllocationName(device->m_deviceAllocator, allocation, "unnamed");
+            VkBufferDeviceAddressInfo info{
+                .sType  = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+                .pNext  = nullptr,
+                .buffer = this->handle,
+            };
+            this->address = vkGetBufferDeviceAddress(device->m_device, &info);
         }
+
         return ConvertResult(result);
     }
 
@@ -1117,17 +1178,6 @@ namespace RHI::Vulkan
         TL_ASSERT(mapped == true, "Buffer is already unmapped");
         mapped = false;
         vmaUnmapMemory(device->m_deviceAllocator, allocation);
-    }
-
-    uint64_t IBuffer::getDeviceAddress(IDevice* device)
-    {
-        VkBufferDeviceAddressInfo info{
-            .sType  = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-            .pNext  = nullptr,
-            .buffer = this->handle,
-        };
-        this->address = vkGetBufferDeviceAddress(device->m_device, &info);
-        return (uint64_t)this->address;
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -1404,6 +1454,41 @@ namespace RHI::Vulkan
         }
 
         TL::free(m_imageHandle);
+    }
+
+    VkResult ISwapchain::CreateSurface(IDevice& device, const SwapchainCreateInfo& createInfo, VkSurfaceKHR& outSurface)
+    {
+        VulkanResult result;
+#ifdef VK_USE_PLATFORM_WIN32_KHR
+        VkWin32SurfaceCreateInfoKHR win32SurfaceCI =
+            {
+                .sType     = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
+                .pNext     = nullptr,
+                .flags     = 0,
+                .hinstance = static_cast<HINSTANCE>(createInfo.win32Window.hinstance),
+                .hwnd      = static_cast<HWND>(createInfo.win32Window.hwnd),
+            };
+        result = vkCreateWin32SurfaceKHR(device.m_instance, &win32SurfaceCI, nullptr, &outSurface);
+#endif
+
+        if (!result)
+        {
+            TL_LOG_ERROR("Failed to create swapchain surface with error: {}", result.AsString());
+        }
+
+        IQueue*  queue = device.GetDeviceQueue(QueueType::Graphics);
+        VkBool32 surfaceSupportPresent;
+        result = vkGetPhysicalDeviceSurfaceSupportKHR(device.m_physicalDevice, queue->GetFamilyIndex(), outSurface, &surfaceSupportPresent);
+        TL_ASSERT(result);
+
+        if (surfaceSupportPresent != VK_TRUE)
+        {
+            TL_LOG_ERROR("surface does not support present: {}", result.AsString());
+            vkDestroySurfaceKHR(device.m_instance, outSurface, nullptr);
+            outSurface = VK_NULL_HANDLE;
+        }
+
+        return VK_SUCCESS;
     }
 
     uint32_t ISwapchain::GetImagesCount() const

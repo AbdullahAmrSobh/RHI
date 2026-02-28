@@ -275,9 +275,11 @@ namespace Engine
             };
 
             RHI::GraphicsPipelineCreateInfo ci{
-                .name                 = m_name.c_str(),
-                .vertexShader         = {m_vertexShader.entry.c_str(), m_vertexShader.module},
-                .pixelShader          = {m_pixelShader.entry.c_str(), m_pixelShader.module},
+                .name         = m_name.c_str(),
+                .shaderStages = {
+                    {m_vertexShader.entry.c_str(), m_vertexShader.module, RHI::ShaderStage::Vertex},
+                    {m_pixelShader.entry.c_str(), m_pixelShader.module, RHI::ShaderStage::Pixel},
+                },
                 .layout               = nullptr,
                 .vertexBufferBindings = vertexAttribute,
                 .renderTargetLayout   = rtLayout,

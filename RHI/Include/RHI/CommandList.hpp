@@ -7,9 +7,6 @@
 
 namespace RHI
 {
-    struct GraphicsPipeline;
-    struct ComputePipeline;
-
     enum class QueueType : uint8_t
     {
         Graphics,
@@ -40,6 +37,12 @@ namespace RHI
         Min,
         Max,
         Avg,
+    };
+
+    enum class CopyMode : uint8_t
+    {
+        Clone,
+        Compact,
     };
 
     struct DepthStencilValue
@@ -157,6 +160,20 @@ namespace RHI
         uint32_t firstInstance = 0; ///< Index of the first instance to draw.
     };
 
+    struct DrawMeshTasksInfo
+    {
+        uint32_t x;
+        uint32_t y;
+        uint32_t z;
+    };
+
+    struct DispatchRaysIndirectInfo
+    {
+        uint32_t x;
+        uint32_t y;
+        uint32_t z;
+    };
+
     /// @brief Parameters for dispatching compute work.
     struct DispatchParameters
     {
@@ -250,6 +267,41 @@ namespace RHI
         QueueType   queueType = QueueType::Graphics; ///< Type of queue for the command list.
     };
 
+    struct BuildMicromapDesc
+    {
+        const char* name = nullptr;
+    };
+
+    struct BuildTopLevelAccelerationStructureDesc
+    {
+        const char* name = nullptr;
+    };
+
+    struct BuildBottomLevelAccelerationStructureDesc
+    {
+        const char* name = nullptr;
+    };
+
+    struct DispatchRaysInfo
+    {
+        BufferBindingInfo raygenShader;
+        BufferBindingInfo missShaders;
+        BufferBindingInfo hitShaderGroups;
+        BufferBindingInfo callableShaders;
+        uint32_t          x;
+        uint32_t          y;
+        uint32_t          z;
+    };
+
+    class QueueInterface
+    {
+    };
+
+    class RHI_EXPORT CommandPool
+    {
+    };
+
+    /// @brief Represents a list of commands to be executed on the GPU.
     class RHI_EXPORT CommandList
     {
     public:
@@ -291,6 +343,9 @@ namespace RHI
         /// @brief Pops the last debug marker off the command list.
         virtual void PopDebugMarker() = 0;
 
+        /// @brief Inserts a debug marker at the current position in the command list.
+        /// @param name Name of the debug marker.
+        /// @param bgra Color value of the debug marker in BGRA format.
         virtual void InsertDebugMarker(const char* name, uint32_t bgra) = 0;
 
         /// @brief Begins a conditional command block based on a buffer.
@@ -305,16 +360,31 @@ namespace RHI
         /// @param commandLists Span of command lists to execute.
         virtual void Execute(TL::Span<const CommandList*> commandLists) = 0;
 
-        virtual void BindPipelineLayout(BindPoint bindPoint, const PipelineLayout* pipelineLayout)       = 0;
+        /// @brief Binds a pipeline layout for resource binding.
+        /// @param bindPoint The bind point (graphics or compute) for which to bind the layout.
+        /// @param pipelineLayout Pointer to the pipeline layout to bind.
+        virtual void BindPipelineLayout(BindPoint bindPoint, const PipelineLayout* pipelineLayout) = 0;
 
-        virtual void SetPushConstants(BindPoint bindPoint, uint32_t offset, TL::Block content)           = 0;
+        /// @brief Sets push constant values for the current pipeline layout.
+        /// @param bindPoint The bind point (graphics or compute) for which to set constants.
+        /// @param offset Offset in bytes within the push constant range.
+        /// @param content Block of data containing the push constant values.
+        virtual void SetPushConstants(BindPoint bindPoint, uint32_t offset, TL::Block content) = 0;
 
+        /// @brief Pushes bind group updates to the command list.
+        /// @param bindPoint The bind point (graphics or compute) for which to update bind groups.
+        /// @param firstGroup Index of the first bind group to update.
+        /// @param updateInfos Span of bind group update information.
+        virtual void PushBindGroup(BindPoint bindPoint, uint32_t firstGroup, TL::Span<const BindGroupUpdateInfo> updateInfos) = 0;
+
+        /// @brief Sets bind groups for resource binding.
+        /// @param bindPoint The bind point (graphics or compute) for which to set bind groups.
+        /// @param bindGroups Span of bind group binding information to set.
         virtual void SetBindGroups(BindPoint bindPoint, TL::Span<const BindGroupBindingInfo> bindGroups) = 0;
-
         /// @brief Binds a graphics pipeline.
         /// @param pipelineState Pointer to the graphics pipeline.
         /// @param bindGroups Span of bind group binding information.
-        virtual void BindGraphicsPipeline(const GraphicsPipeline* pipelineState) = 0;
+        virtual void BindGraphicsPipeline(const GraphicsPipeline* pipelineState)                         = 0;
 
         /// @brief Binds a compute pipeline.
         /// @param pipelineState Pointer to the compute pipeline.
@@ -361,12 +431,31 @@ namespace RHI
         /// @param stride Stride between draw commands in bytes.
         virtual void DrawIndexedIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride) = 0;
 
-        /// @brief Issues a dispatch command.
+        /// @brief Issues a mesh task drawing command.
+        /// @param drawMeshTasksDesc Information for the mesh task drawing command.
+        virtual void DrawMeshTasks(const DrawMeshTasksInfo drawMeshTasksDesc) = 0;
+
+        /// @brief Issues an indirect mesh task drawing command.
+        /// @param argumentBuffer Binding information about the buffer containing draw arguments.
+        /// @param countBuffer Binding information about the buffer containing draw counts.
+        /// @param drawNum Number of draws to issue.
+        /// @param stride Stride between draw commands in bytes.
+        virtual void DrawMeshTasksIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t drawNum, uint32_t stride) = 0;
+
+        /// @brief Issues a ray tracing dispatch command.
+        /// @param dispatchRaysDesc Information for the ray tracing dispatch command.
+        virtual void DispatchRays(const DispatchRaysInfo& dispatchRaysDesc) = 0;
+
+        /// @brief Issues an indirect ray tracing dispatch command.
+        /// @param argumentBuffer Binding information about the buffer containing dispatch arguments.
+        virtual void DispatchRaysIndirect(const BufferBindingInfo& argumentBuffer) = 0;
+
+        /// @brief Issues a compute dispatch command.
         /// @param parameters Information for the dispatch command.
         virtual void Dispatch(const DispatchParameters& parameters) = 0;
 
-        /// @brief Issues an indexed dispatch command.
-        /// @param parameters Information for the dispatch command.
+        /// @brief Issues an indirect compute dispatch command.
+        /// @param argumentBuffer Binding information about the buffer containing dispatch arguments.
         virtual void DispatchIndirect(const BufferBindingInfo& argumentBuffer) = 0;
 
         /// @brief Issues a buffer-to-buffer copy command.
@@ -384,5 +473,41 @@ namespace RHI
         /// @brief Issues an image-to-buffer copy command.
         /// @param copyInfo Information for the image-to-buffer copy command.
         virtual void CopyBufferToImage(const BufferImageCopyInfo& copyInfo) = 0;
+
+        /// @brief Builds micromaps for ray tracing acceleration structures.
+        /// @param buildMicromapDescs Span of micromap build descriptions.
+        virtual void BuildMicromaps(TL::Span<const BuildMicromapDesc> buildMicromapDescs) = 0;
+
+        /// @brief Writes micromap sizes to a query pool.
+        /// @param micromaps Span of micromaps to query.
+        /// @param queryPool Query pool to write the sizes to.
+        /// @param queryPoolOffset Offset in the query pool to write to.
+        virtual void WriteMicromapsSizes(TL::Span<const Micromap*> micromaps, QueryPool* queryPool, uint32_t queryPoolOffset) = 0;
+
+        /// @brief Copies a micromap from source to destination.
+        /// @param dst Destination micromap.
+        /// @param src Source micromap.
+        /// @param copyMode Mode of the copy operation.
+        virtual void CopyMicromap(Micromap* dst, const Micromap* src, CopyMode copyMode) = 0;
+
+        /// @brief Builds top-level acceleration structures for ray tracing.
+        /// @param buildTopLevelAccelerationStructureDescs Span of TLAS build descriptions.
+        virtual void BuildTopLevelAccelerationStructures(TL::Span<const BuildTopLevelAccelerationStructureDesc> buildTopLevelAccelerationStructureDescs) = 0;
+
+        /// @brief Builds bottom-level acceleration structures for ray tracing.
+        /// @param buildBottomLevelAccelerationStructureDescs Span of BLAS build descriptions.
+        virtual void BuildBottomLevelAccelerationStructures(TL::Span<const BuildBottomLevelAccelerationStructureDesc> buildBottomLevelAccelerationStructureDescs) = 0;
+
+        /// @brief Writes acceleration structure sizes to a query pool.
+        /// @param accelerationStructures Span of acceleration structures to query.
+        /// @param queryPool Query pool to write the sizes to.
+        /// @param queryPoolOffset Offset in the query pool to write to.
+        virtual void WriteAccelerationStructuresSizes(TL::Span<const AccelerationStructure*> accelerationStructures, QueryPool* queryPool, uint32_t queryPoolOffset) = 0;
+
+        /// @brief Copies an acceleration structure from source to destination.
+        /// @param dst Destination acceleration structure.
+        /// @param src Source acceleration structure.
+        /// @param copyMode Mode of the copy operation.
+        virtual void CopyAccelerationStructure(AccelerationStructure* dst, const AccelerationStructure* src, CopyMode copyMode) = 0;
     };
 } // namespace RHI

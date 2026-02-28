@@ -19,7 +19,6 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Device.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Queue.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Surface.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Frame.cpp
 )
 
@@ -38,7 +37,13 @@ tl_add_target(
     BUILD_DEPENDENCIES
         RHI::RHI
         Vulkan::Vulkan
+        # volk
         VulkanMemoryAllocator
 )
 
-# target_compile_options(Vulkan PRIVATE ${RHI_COMPILE_FLAGS})
+target_compile_options(Vulkan PRIVATE ${RHI_COMPILE_FLAGS})
+
+# target_compile_definitions(Vulkan
+#     PRIVATE
+#         VK_NO_PROTOTYPES=1
+# )

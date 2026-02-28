@@ -57,9 +57,12 @@ namespace RHI
 
 namespace RHI::Vulkan
 {
-
-    /// @todo: add support for a custom sink, so vulkan errors are spereated
-    inline static VkBool32 DebugMessengerCallbacks(TL_MAYBE_UNUSED VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, TL_MAYBE_UNUSED VkDebugUtilsMessageTypeFlagsEXT messageTypes, TL_MAYBE_UNUSED const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, TL_MAYBE_UNUSED void* pUserData)
+    inline static VkBool32
+    DebugMessengerCallbacks(
+        VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
+        VkDebugUtilsMessageTypeFlagsEXT             messageTypes,
+        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+        void*                                       pUserData)
     {
         TL::String message = std::format("Vulkan Validation: {}\n", pCallbackData->pMessage);
 
@@ -192,6 +195,7 @@ namespace RHI::Vulkan
         return queueFamilyProperties;
     }
 
+
     IDevice::IDevice()
     {
         m_destroyQueue       = TL::CreatePtr<DeleteQueue>();
@@ -206,24 +210,22 @@ namespace RHI::Vulkan
 
         m_backend = BackendType::Vulkan1_3;
 
-#if RHI_DEBUG
-        constexpr bool DebugLayerEnabled = true;
-#else
-        constexpr bool DebugLayerEnabled = false;
-#endif
+        VulkanResult result;
+        TL_ASSERT(result.IsSuccess());
+
+        // result = volkInitialize();
+
+        constexpr bool DebugLayerEnabled = RHI_DEBUG;
         constexpr bool EnableAsyncQueues = true;
 
-        TL::Map<TL::String, VkLayerProperties> availableInstanceLayers;
-        for (VkLayerProperties layer : GetAvailableInstanceLayerExtensions())
-        {
-            availableInstanceLayers[layer.layerName] = layer;
-        }
-
+        TL::Map<TL::String, VkLayerProperties>     availableInstanceLayers;
         TL::Map<TL::String, VkExtensionProperties> availableInstanceExtensions;
+
+        for (VkLayerProperties layer : GetAvailableInstanceLayerExtensions())
+            availableInstanceLayers[layer.layerName] = layer;
+
         for (VkExtensionProperties extension : GetAvailableInstanceExtensions())
-        {
             availableInstanceExtensions[extension.extensionName] = extension;
-        }
 
         TL::Vector<const char*> requiredInstanceLayers;
         TL::Vector<const char*> requiredInstanceExtensions{
@@ -233,19 +235,8 @@ namespace RHI::Vulkan
 
         if constexpr (DebugLayerEnabled)
         {
-            if (availableInstanceLayers.contains("VK_LAYER_KHRONOS_validation"))
-            {
-                requiredInstanceLayers.push_back("VK_LAYER_KHRONOS_validation");
-            }
-
-            if (availableInstanceExtensions.contains(VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
-            {
-                requiredInstanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-            }
-            else
-            {
-                TL_LOG_WARNNING("RHI Vulkan: Debug extension not present.");
-            }
+            requiredInstanceLayers.push_back("VK_LAYER_KHRONOS_validation");
+            requiredInstanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
         }
 
         VkApplicationInfo applicationInfo{
@@ -267,19 +258,21 @@ namespace RHI::Vulkan
             .pUserData       = this,
         };
 
-        VulkanResult result;
-
         VkInstanceCreateInfo instanceCI{
             .sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
             .pNext                   = DebugLayerEnabled ? &debugUtilsCI : nullptr,
             .flags                   = {},
             .pApplicationInfo        = &applicationInfo,
-            .enabledLayerCount       = static_cast<uint32_t>(requiredInstanceLayers.size()),
+            .enabledLayerCount       = uint32_t(requiredInstanceLayers.size()),
             .ppEnabledLayerNames     = requiredInstanceLayers.data(),
-            .enabledExtensionCount   = static_cast<uint32_t>(requiredInstanceExtensions.size()),
+            .enabledExtensionCount   = uint32_t(requiredInstanceExtensions.size()),
             .ppEnabledExtensionNames = requiredInstanceExtensions.data(),
         };
+
+        TL_ASSERT(result.IsSuccess());
         result = vkCreateInstance(&instanceCI, nullptr, &m_instance);
+        // volkLoadInstanceOnly(m_instance);
+
         if (!result)
         {
             Shutdown();
@@ -306,8 +299,35 @@ namespace RHI::Vulkan
         TL::Vector<const char*> requiredDeviceLayers;
         TL::Vector<const char*> requiredDeviceExtensions{
             VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+            VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
+            VK_EXT_MESH_SHADER_EXTENSION_NAME,
             // VK_KHR_CALIBRATED_TIMESTAMPS_EXTENSION_NAME,
         };
+
+        bool enablePushDescriptors         = true;
+        bool enableMeshShaders             = true;
+        bool enableRayTracing              = true;
+        bool enableDescriptorIndexing      = true;
+        bool enableDeviceGeneratedCommands = true;
+
+        if (enablePushDescriptors)
+        {
+            requiredDeviceExtensions.push_back(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
+        }
+
+        if (enableMeshShaders)
+        {
+            requiredDeviceExtensions.push_back(VK_EXT_MESH_SHADER_EXTENSION_NAME);
+        }
+
+        if (enableRayTracing)
+        {
+            requiredDeviceExtensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+            requiredDeviceExtensions.push_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+            requiredDeviceExtensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+            requiredDeviceExtensions.push_back(VK_KHR_RAY_QUERY_EXTENSION_NAME);
+            requiredDeviceExtensions.push_back(VK_KHR_RAY_TRACING_POSITION_FETCH_EXTENSION_NAME);
+        }
 
         for (VkPhysicalDevice physicalDevice : GetAvailablePhysicalDevices(m_instance))
         {
@@ -347,33 +367,40 @@ namespace RHI::Vulkan
             return ResultCode::ErrorUnknown;
         }
 
-        TL::Optional<uint32_t> graphicsQueueFamilyIndex;
-        TL::Optional<uint32_t> transferQueueFamilyIndex;
-        TL::Optional<uint32_t> computeQueueFamilyIndex;
+        uint32_t graphicsQueueFamilyIndex = UINT32_MAX;
+        uint32_t transferQueueFamilyIndex = UINT32_MAX;
+        uint32_t computeQueueFamilyIndex  = UINT32_MAX;
 
         auto queueFamilyProperties = GetPhysicalDeviceQueueFamilyProperties(m_physicalDevice);
-        for (uint32_t queueFamilyIndex = 0; queueFamilyIndex < queueFamilyProperties.size(); queueFamilyIndex++)
+
+        for (uint32_t queueFamilyIndex = 0; queueFamilyIndex < uint32_t(queueFamilyProperties.size()); ++queueFamilyIndex)
         {
-            auto queueFamilyProperty = queueFamilyProperties[queueFamilyIndex];
-            if (graphicsQueueFamilyIndex.has_value() == false && (queueFamilyProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT))
+            const auto& queueFamilyProperty = queueFamilyProperties[queueFamilyIndex];
+
+            if (graphicsQueueFamilyIndex == UINT32_MAX &&
+                (queueFamilyProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT))
             {
-                graphicsQueueFamilyIndex.emplace(queueFamilyIndex);
+                graphicsQueueFamilyIndex = queueFamilyIndex;
                 continue;
             }
+
             if constexpr (EnableAsyncQueues)
             {
-                if (computeQueueFamilyIndex.has_value() == false && (queueFamilyProperty.queueFlags & VK_QUEUE_COMPUTE_BIT))
+                if (computeQueueFamilyIndex == UINT32_MAX &&
+                    (queueFamilyProperty.queueFlags & VK_QUEUE_COMPUTE_BIT))
                 {
-                    computeQueueFamilyIndex.emplace(queueFamilyIndex);
+                    computeQueueFamilyIndex = queueFamilyIndex;
                 }
-                else if (transferQueueFamilyIndex.has_value() == false && (queueFamilyProperty.queueFlags & VK_QUEUE_TRANSFER_BIT))
+                else if (transferQueueFamilyIndex == UINT32_MAX &&
+                         (queueFamilyProperty.queueFlags & VK_QUEUE_TRANSFER_BIT))
                 {
-                    transferQueueFamilyIndex.emplace(queueFamilyIndex);
+                    transferQueueFamilyIndex = queueFamilyIndex;
                 }
             }
         }
 
-        float                               queuePriority    = 1.0f;
+        float queuePriority = 1.0f;
+
         TL::Vector<VkDeviceQueueCreateInfo> queueCreateInfos = {};
 
         VkDeviceQueueCreateInfo queueCI{
@@ -384,75 +411,227 @@ namespace RHI::Vulkan
             .pQueuePriorities = &queuePriority,
         };
 
-        if (graphicsQueueFamilyIndex)
+        if (graphicsQueueFamilyIndex != UINT32_MAX)
         {
-            queueCI.queueFamilyIndex = graphicsQueueFamilyIndex.value();
+            queueCI.queueFamilyIndex = graphicsQueueFamilyIndex;
             queueCreateInfos.push_back(queueCI);
         }
-        if (computeQueueFamilyIndex)
+        if (computeQueueFamilyIndex != UINT32_MAX)
         {
-            queueCI.queueFamilyIndex = computeQueueFamilyIndex.value();
+            queueCI.queueFamilyIndex = computeQueueFamilyIndex;
             queueCreateInfos.push_back(queueCI);
         }
-        if (transferQueueFamilyIndex)
+        if (transferQueueFamilyIndex != UINT32_MAX)
         {
-            queueCI.queueFamilyIndex = transferQueueFamilyIndex.value();
+            queueCI.queueFamilyIndex = transferQueueFamilyIndex;
             queueCreateInfos.push_back(queueCI);
         }
 
+        VkPhysicalDeviceDeviceGeneratedCommandsFeaturesEXT deviceGeneratedCommandsFeatures{};
+        VkPhysicalDeviceMeshShaderFeaturesEXT              meshShaderFeatures{};
+        VkPhysicalDeviceRayTracingPipelineFeaturesKHR      rayTracingPipelineFeatures{};
+        VkPhysicalDeviceAccelerationStructureFeaturesKHR   accelerationStructureFeatures{};
+        VkPhysicalDeviceRayQueryFeaturesKHR                rayQueryFeatures{};
+        VkPhysicalDeviceRayTracingPositionFetchFeaturesKHR rayTracingPositionFetchFeaturesKHR{};
+
+        void* pNext = nullptr;
+        if (enableDeviceGeneratedCommands)
+        {
+            deviceGeneratedCommandsFeatures = {
+                .sType                          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_FEATURES_EXT,
+                .pNext                          = pNext,
+                .deviceGeneratedCommands        = VK_TRUE,
+                .dynamicGeneratedPipelineLayout = VK_TRUE,
+            };
+            pNext = &deviceGeneratedCommandsFeatures;
+        }
+        if (enableMeshShaders)
+        {
+            meshShaderFeatures = {
+                .sType      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT,
+                .pNext      = pNext,
+            };
+            pNext = &meshShaderFeatures;
+        }
+        if (enableRayTracing)
+        {
+            rayTracingPipelineFeatures = {
+                .sType                                                 = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR,
+                .pNext                                                 = pNext,
+                .rayTracingPipeline                                    = VK_TRUE,
+                .rayTracingPipelineShaderGroupHandleCaptureReplay      = VK_TRUE,
+                .rayTracingPipelineShaderGroupHandleCaptureReplayMixed = VK_FALSE,
+                .rayTracingPipelineTraceRaysIndirect                   = VK_TRUE,
+                .rayTraversalPrimitiveCulling                          = VK_TRUE,
+            };
+            accelerationStructureFeatures = {
+                .sType                                                 = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR,
+                .pNext                                                 = &rayTracingPipelineFeatures,
+                .accelerationStructure                                 = VK_TRUE,
+                .accelerationStructureCaptureReplay                    = VK_TRUE,
+                .accelerationStructureIndirectBuild                    = VK_FALSE, // TODO: test
+                .accelerationStructureHostCommands                     = VK_FALSE,// TODO: test
+                .descriptorBindingAccelerationStructureUpdateAfterBind = VK_TRUE,
+            };
+            rayQueryFeatures = {
+                .sType    = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR,
+                .pNext    = &accelerationStructureFeatures,
+                .rayQuery = VK_TRUE,
+            };
+            rayTracingPositionFetchFeaturesKHR = {
+                .sType                   = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_POSITION_FETCH_FEATURES_KHR,
+                .pNext                   = &rayQueryFeatures,
+                .rayTracingPositionFetch = VK_TRUE,
+            };
+            pNext = &rayTracingPositionFetchFeaturesKHR;
+        }
         VkPhysicalDeviceVulkan13Features features13{
-            .sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
-            .pNext            = nullptr,
-            .synchronization2 = VK_TRUE,
-            .dynamicRendering = VK_TRUE,
+            .sType                                              = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+            .pNext                                              = pNext,
+            .robustImageAccess                                  = VK_FALSE,
+            .inlineUniformBlock                                 = VK_FALSE,
+            .descriptorBindingInlineUniformBlockUpdateAfterBind = VK_FALSE,
+            .pipelineCreationCacheControl                       = VK_FALSE,
+            .privateData                                        = VK_FALSE,
+            .shaderDemoteToHelperInvocation                     = VK_FALSE,
+            .shaderTerminateInvocation                          = VK_FALSE,
+            .subgroupSizeControl                                = VK_FALSE,
+            .computeFullSubgroups                               = VK_FALSE,
+            .synchronization2                                   = VK_TRUE,
+            .textureCompressionASTC_HDR                         = VK_FALSE,
+            .shaderZeroInitializeWorkgroupMemory                = VK_FALSE,
+            .dynamicRendering                                   = VK_TRUE,
+            .shaderIntegerDotProduct                            = VK_FALSE,
+            .maintenance4                                       = VK_FALSE,
         };
-
         VkPhysicalDeviceVulkan12Features features12{
-            .sType                                        = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
-            .pNext                                        = &features13,
-            .drawIndirectCount                            = VK_TRUE,
-            .descriptorIndexing                           = VK_TRUE,
-            // .shaderInputAttachmentArrayDynamicIndexing          = VK_TRUE,
-            // .shaderUniformTexelBufferArrayDynamicIndexing       = VK_TRUE,
-            // .shaderStorageTexelBufferArrayDynamicIndexing       = VK_TRUE,
-            // .shaderUniformBufferArrayNonUniformIndexing         = VK_TRUE,
-            .shaderSampledImageArrayNonUniformIndexing    = VK_TRUE,
-            // .shaderStorageBufferArrayNonUniformIndexing         = VK_TRUE,
-            // .shaderStorageImageArrayNonUniformIndexing          = VK_TRUE,
-            // .shaderInputAttachmentArrayNonUniformIndexing       = VK_TRUE,
-            // .shaderUniformTexelBufferArrayNonUniformIndexing    = VK_TRUE,
-            // .shaderStorageTexelBufferArrayNonUniformIndexing    = VK_TRUE,
-            // .descriptorBindingUniformBufferUpdateAfterBind      = VK_TRUE,
-            .descriptorBindingSampledImageUpdateAfterBind = VK_TRUE,
-            // .descriptorBindingStorageImageUpdateAfterBind       = VK_TRUE,
-            // .descriptorBindingStorageBufferUpdateAfterBind      = VK_TRUE,
-            // .descriptorBindingUniformTexelBufferUpdateAfterBind = VK_TRUE,
-            // .descriptorBindingStorageTexelBufferUpdateAfterBind = VK_TRUE,
-            .descriptorBindingUpdateUnusedWhilePending    = VK_TRUE,
-            .descriptorBindingPartiallyBound              = VK_TRUE,
-            .descriptorBindingVariableDescriptorCount     = VK_TRUE,
-            .runtimeDescriptorArray                       = VK_TRUE,
-            .timelineSemaphore                            = VK_TRUE,
-            .bufferDeviceAddress                          = VK_TRUE,
-            // .bufferDeviceAddressCaptureReplay             = VK_TRUE,
-            // .bufferDeviceAddressMultiDevice               = VK_TRUE,
+            .sType                                              = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+            .pNext                                              = &features13,
+            .samplerMirrorClampToEdge                           = VK_FALSE,
+            .drawIndirectCount                                  = VK_TRUE,
+            .storageBuffer8BitAccess                            = VK_FALSE,
+            .uniformAndStorageBuffer8BitAccess                  = VK_FALSE,
+            .storagePushConstant8                               = VK_FALSE,
+            .shaderBufferInt64Atomics                           = VK_FALSE,
+            .shaderSharedInt64Atomics                           = VK_FALSE,
+            .shaderFloat16                                      = VK_FALSE,
+            .shaderInt8                                         = VK_FALSE,
+            .descriptorIndexing                                 = VK_TRUE,
+            .shaderInputAttachmentArrayDynamicIndexing          = VK_FALSE,
+            .shaderUniformTexelBufferArrayDynamicIndexing       = VK_FALSE,
+            .shaderStorageTexelBufferArrayDynamicIndexing       = VK_FALSE,
+            .shaderUniformBufferArrayNonUniformIndexing         = VK_FALSE,
+            .shaderSampledImageArrayNonUniformIndexing          = VK_TRUE,
+            .shaderStorageBufferArrayNonUniformIndexing         = VK_FALSE,
+            .shaderStorageImageArrayNonUniformIndexing          = VK_TRUE,
+            .shaderInputAttachmentArrayNonUniformIndexing       = VK_TRUE,
+            .shaderUniformTexelBufferArrayNonUniformIndexing    = VK_FALSE,
+            .shaderStorageTexelBufferArrayNonUniformIndexing    = VK_FALSE,
+            .descriptorBindingUniformBufferUpdateAfterBind      = VK_TRUE,
+            .descriptorBindingSampledImageUpdateAfterBind       = VK_TRUE,
+            .descriptorBindingStorageImageUpdateAfterBind       = VK_TRUE,
+            .descriptorBindingStorageBufferUpdateAfterBind      = VK_TRUE,
+            .descriptorBindingUniformTexelBufferUpdateAfterBind = VK_TRUE,
+            .descriptorBindingStorageTexelBufferUpdateAfterBind = VK_TRUE,
+            .descriptorBindingUpdateUnusedWhilePending          = VK_TRUE,
+            .descriptorBindingPartiallyBound                    = VK_TRUE,
+            .descriptorBindingVariableDescriptorCount           = VK_FALSE,
+            .runtimeDescriptorArray                             = VK_TRUE,
+            .samplerFilterMinmax                                = VK_FALSE,
+            .scalarBlockLayout                                  = VK_FALSE,
+            .imagelessFramebuffer                               = VK_FALSE,
+            .uniformBufferStandardLayout                        = VK_FALSE,
+            .shaderSubgroupExtendedTypes                        = VK_FALSE,
+            .separateDepthStencilLayouts                        = VK_FALSE,
+            .hostQueryReset                                     = VK_FALSE,
+            .timelineSemaphore                                  = VK_TRUE,
+            .bufferDeviceAddress                                = VK_TRUE,
+            .bufferDeviceAddressCaptureReplay                   = DebugLayerEnabled ? VK_TRUE : VK_FALSE,
+            .bufferDeviceAddressMultiDevice                     = VK_FALSE,
+            .vulkanMemoryModel                                  = VK_FALSE,
+            .vulkanMemoryModelDeviceScope                       = VK_FALSE,
+            .vulkanMemoryModelAvailabilityVisibilityChains      = VK_FALSE,
+            .shaderOutputViewportIndex                          = VK_FALSE,
+            .shaderOutputLayer                                  = VK_FALSE,
+            .subgroupBroadcastDynamicId                         = VK_FALSE,
         };
-
         VkPhysicalDeviceVulkan11Features features11{
-            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES,
-            .pNext = &features12,
+            .sType                              = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES,
+            .pNext                              = &features12,
+            .storageBuffer16BitAccess           = VK_FALSE,
+            .uniformAndStorageBuffer16BitAccess = VK_FALSE,
+            .storagePushConstant16              = VK_FALSE,
+            .storageInputOutput16               = VK_FALSE,
+            .multiview                          = VK_FALSE,
+            .multiviewGeometryShader            = VK_FALSE,
+            .multiviewTessellationShader        = VK_FALSE,
+            .variablePointersStorageBuffer      = VK_FALSE,
+            .variablePointers                   = VK_FALSE,
+            .protectedMemory                    = VK_FALSE,
+            .samplerYcbcrConversion             = VK_FALSE,
+            .shaderDrawParameters               = VK_FALSE,
         };
-
-        VkPhysicalDeviceFeatures2 features = {
+        VkPhysicalDeviceFeatures2 features{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
             .pNext = &features11,
-            .features =
-                {
-                    .independentBlend  = VK_TRUE,
-                    .samplerAnisotropy = VK_TRUE,
-                },
         };
-
+        features.features = {
+            .robustBufferAccess                      = VK_FALSE,
+            .fullDrawIndexUint32                     = VK_FALSE,
+            .imageCubeArray                          = VK_FALSE,
+            .independentBlend                        = VK_TRUE,
+            .geometryShader                          = VK_FALSE,
+            .tessellationShader                      = VK_FALSE,
+            .sampleRateShading                       = VK_FALSE,
+            .dualSrcBlend                            = VK_FALSE,
+            .logicOp                                 = VK_FALSE,
+            .multiDrawIndirect                       = VK_FALSE,
+            .drawIndirectFirstInstance               = VK_FALSE,
+            .depthClamp                              = VK_FALSE,
+            .depthBiasClamp                          = VK_FALSE,
+            .fillModeNonSolid                        = VK_FALSE,
+            .depthBounds                             = VK_FALSE,
+            .wideLines                               = VK_FALSE,
+            .largePoints                             = VK_FALSE,
+            .alphaToOne                              = VK_FALSE,
+            .multiViewport                           = VK_FALSE,
+            .samplerAnisotropy                       = VK_TRUE,
+            .textureCompressionETC2                  = VK_FALSE,
+            .textureCompressionASTC_LDR              = VK_FALSE,
+            .textureCompressionBC                    = VK_FALSE,
+            .occlusionQueryPrecise                   = VK_FALSE,
+            .pipelineStatisticsQuery                 = VK_FALSE,
+            .vertexPipelineStoresAndAtomics          = VK_FALSE,
+            .fragmentStoresAndAtomics                = VK_FALSE,
+            .shaderTessellationAndGeometryPointSize  = VK_FALSE,
+            .shaderImageGatherExtended               = VK_FALSE,
+            .shaderStorageImageExtendedFormats       = VK_FALSE,
+            .shaderStorageImageMultisample           = VK_FALSE,
+            .shaderStorageImageReadWithoutFormat     = VK_FALSE,
+            .shaderStorageImageWriteWithoutFormat    = VK_FALSE,
+            .shaderUniformBufferArrayDynamicIndexing = VK_FALSE,
+            .shaderSampledImageArrayDynamicIndexing  = VK_FALSE,
+            .shaderStorageBufferArrayDynamicIndexing = VK_FALSE,
+            .shaderStorageImageArrayDynamicIndexing  = VK_FALSE,
+            .shaderClipDistance                      = VK_FALSE,
+            .shaderCullDistance                      = VK_FALSE,
+            .shaderFloat64                           = VK_FALSE,
+            .shaderInt64                             = VK_FALSE,
+            .shaderInt16                             = VK_FALSE,
+            .shaderResourceResidency                 = VK_FALSE,
+            .shaderResourceMinLod                    = VK_FALSE,
+            .sparseBinding                           = VK_FALSE,
+            .sparseResidencyBuffer                   = VK_FALSE,
+            .sparseResidencyImage2D                  = VK_FALSE,
+            .sparseResidencyImage3D                  = VK_FALSE,
+            .sparseResidency2Samples                 = VK_FALSE,
+            .sparseResidency4Samples                 = VK_FALSE,
+            .sparseResidency8Samples                 = VK_FALSE,
+            .sparseResidency16Samples                = VK_FALSE,
+            .sparseResidencyAliased                  = VK_FALSE,
+            .variableMultisampleRate                 = VK_FALSE,
+            .inheritedQueries                        = VK_FALSE,
+        };
         VkDeviceCreateInfo deviceCI{
             .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
             .pNext                   = &features,
@@ -486,38 +665,47 @@ namespace RHI::Vulkan
         {
             if (m_pfn.m_vkCreateDebugUtilsMessengerEXT)
             {
-                m_pfn.m_vkCmdBeginDebugUtilsLabelEXT    = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdBeginDebugUtilsLabelEXT);
-                m_pfn.m_vkCmdEndDebugUtilsLabelEXT      = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdEndDebugUtilsLabelEXT);
-                m_pfn.m_vkCmdInsertDebugUtilsLabelEXT   = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdInsertDebugUtilsLabelEXT);
-                m_pfn.m_vkQueueBeginDebugUtilsLabelEXT  = VULKAN_DEVICE_FUNC_LOAD(m_device, vkQueueBeginDebugUtilsLabelEXT);
-                m_pfn.m_vkQueueEndDebugUtilsLabelEXT    = VULKAN_DEVICE_FUNC_LOAD(m_device, vkQueueEndDebugUtilsLabelEXT);
-                m_pfn.m_vkQueueInsertDebugUtilsLabelEXT = VULKAN_DEVICE_FUNC_LOAD(m_device, vkQueueInsertDebugUtilsLabelEXT);
-                m_pfn.m_vkSetDebugUtilsObjectNameEXT    = VULKAN_DEVICE_FUNC_LOAD(m_device, vkSetDebugUtilsObjectNameEXT);
-                m_pfn.m_vkSetDebugUtilsObjectTagEXT     = VULKAN_DEVICE_FUNC_LOAD(m_device, vkSetDebugUtilsObjectTagEXT);
-                m_pfn.m_vkSubmitDebugUtilsMessageEXT    = VULKAN_INSTANCE_FUNC_LOAD(m_instance, vkSubmitDebugUtilsMessageEXT);
+                m_pfn.m_vkSubmitDebugUtilsMessageEXT       = VULKAN_INSTANCE_FUNC_LOAD(m_instance, vkSubmitDebugUtilsMessageEXT);
+                m_pfn.m_vkCmdBeginDebugUtilsLabelEXT       = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdBeginDebugUtilsLabelEXT);
+                m_pfn.m_vkCmdEndDebugUtilsLabelEXT         = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdEndDebugUtilsLabelEXT);
+                m_pfn.m_vkCmdInsertDebugUtilsLabelEXT      = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdInsertDebugUtilsLabelEXT);
+                m_pfn.m_vkQueueBeginDebugUtilsLabelEXT     = VULKAN_DEVICE_FUNC_LOAD(m_device, vkQueueBeginDebugUtilsLabelEXT);
+                m_pfn.m_vkQueueEndDebugUtilsLabelEXT       = VULKAN_DEVICE_FUNC_LOAD(m_device, vkQueueEndDebugUtilsLabelEXT);
+                m_pfn.m_vkQueueInsertDebugUtilsLabelEXT    = VULKAN_DEVICE_FUNC_LOAD(m_device, vkQueueInsertDebugUtilsLabelEXT);
+                m_pfn.m_vkSetDebugUtilsObjectNameEXT       = VULKAN_DEVICE_FUNC_LOAD(m_device, vkSetDebugUtilsObjectNameEXT);
+                m_pfn.m_vkSetDebugUtilsObjectTagEXT        = VULKAN_DEVICE_FUNC_LOAD(m_device, vkSetDebugUtilsObjectTagEXT);
+                m_pfn.m_vkCreateRayTracingPipelinesKHR     = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCreateRayTracingPipelinesKHR);
+                m_pfn.m_vkCmdTraceRaysIndirect2KHR         = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdTraceRaysIndirect2KHR);
+                m_pfn.m_vkCmdPushDescriptorSet2KHR         = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdPushDescriptorSet2KHR);
+                m_pfn.m_vkCmdTraceRaysKHR                  = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdTraceRaysKHR);
+                m_pfn.m_vkCmdDrawMeshTasksEXT              = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdDrawMeshTasksEXT);
+                m_pfn.m_vkCmdDrawMeshTasksIndirectEXT      = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdDrawMeshTasksIndirectEXT);
+                m_pfn.m_vkCmdDrawMeshTasksIndirectCountEXT = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdDrawMeshTasksIndirectCountEXT);
             }
         }
         m_pfn.m_vkCmdBeginConditionalRenderingEXT = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdBeginConditionalRenderingEXT);
         m_pfn.m_vkCmdEndConditionalRenderingEXT   = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdEndConditionalRenderingEXT);
 
-        VkPhysicalDeviceProperties properties{};
-        vkGetPhysicalDeviceProperties(m_physicalDevice, &properties);
-        m_limits                                  = TL::CreatePtr<DeviceLimits>();
-        m_limits->minUniformBufferOffsetAlignment = uint32_t(properties.limits.minUniformBufferOffsetAlignment);
-        m_limits->minStorageBufferOffsetAlignment = uint32_t(properties.limits.minStorageBufferOffsetAlignment);
+        VkPhysicalDevicePushDescriptorProperties pushDescriptorProperties{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR};
+        VkPhysicalDeviceProperties2              physicalDeviceProperties{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, .pNext = &pushDescriptorProperties};
+        vkGetPhysicalDeviceProperties2(m_physicalDevice, &physicalDeviceProperties);
 
-        result = m_queue[(uint32_t)QueueType::Graphics].Init(this, "Graphics", graphicsQueueFamilyIndex.value(), 0);
+        m_limits                                  = TL::CreatePtr<DeviceLimits>();
+        m_limits->minUniformBufferOffsetAlignment = uint32_t(physicalDeviceProperties.properties.limits.minUniformBufferOffsetAlignment);
+        m_limits->minStorageBufferOffsetAlignment = uint32_t(physicalDeviceProperties.properties.limits.minStorageBufferOffsetAlignment);
+
+        result = m_queue[(uint32_t)QueueType::Graphics].Init(this, "Graphics", graphicsQueueFamilyIndex, 0);
         VkResultTry(result);
 
         if (computeQueueFamilyIndex)
         {
-            result = m_queue[(uint32_t)QueueType::Compute].Init(this, "Compute", computeQueueFamilyIndex.value(), 0);
+            result = m_queue[(uint32_t)QueueType::Compute].Init(this, "Compute", computeQueueFamilyIndex, 0);
             VkResultTry(result);
         }
 
         if (transferQueueFamilyIndex)
         {
-            result = m_queue[(uint32_t)QueueType::Transfer].Init(this, "Transfer", transferQueueFamilyIndex.value(), 0);
+            result = m_queue[(uint32_t)QueueType::Transfer].Init(this, "Transfer", transferQueueFamilyIndex, 0);
             VkResultTry(result);
         }
 
@@ -639,7 +827,6 @@ namespace RHI::Vulkan
         }
 
         vmaDestroyAllocator(m_deviceAllocator);
-
         vkDestroyDevice(m_device, nullptr);
 
         if (m_debugUtilsMessenger != VK_NULL_HANDLE)
@@ -709,6 +896,24 @@ namespace RHI::Vulkan
         ZoneScoped;
         auto bindGroup = (IBindGroup*)(handle);
         bindGroup->Update(this, updateInfo);
+    }
+
+    QueryPool* IDevice::CreateQueryPool(const QueryPoolCreateInfo& createInfo)
+    {
+        auto handle = TL ::construct<IQueryPool>();
+        auto result = handle->Init(this, createInfo);
+        TL_ASSERT(IsSuccess(result));
+        m_liveQueryPools.emplace(handle, TL::CaptureStacktrace());
+        return handle;
+    }
+
+    void IDevice::DestroyQueryPool(QueryPool* handle)
+    {
+        auto erased = m_liveQueryPools.erase(handle);
+        TL_ASSERT(erased);
+        auto queryPool = (IQueryPool*)handle;
+        queryPool->Shutdown(this);
+        TL::destruct(handle);
     }
 
     ResultCode IDevice::SetFramesInFlightCount(uint32_t count)
@@ -841,6 +1046,24 @@ namespace RHI::Vulkan
         handle->Shutdown(this);
         TL::destruct(_handle);
     };
+
+    RayTracingPipeline* IDevice::CreateRayTracingPipeline(const RayTracingPipelineCreateInfo& createInfo)
+    {
+        auto handle = TL ::construct<IRayTracingPipeline>();
+        auto result = handle->Init(this, createInfo);
+        TL_ASSERT(IsSuccess(result));
+        m_liveRayTracingPipelines.emplace(handle, TL::CaptureStacktrace());
+        return handle;
+    }
+
+    void IDevice::DestroyRayTracingPipeline(RayTracingPipeline* handle)
+    {
+        auto erased = m_liveRayTracingPipelines.erase(handle);
+        TL_ASSERT(erased);
+        auto pipeline = (IRayTracingPipeline*)handle;
+        pipeline->Shutdown(this);
+        TL::destruct(handle);
+    }
 
     ComputePipeline* IDevice::CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
     {

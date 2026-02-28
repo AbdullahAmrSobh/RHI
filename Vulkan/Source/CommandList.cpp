@@ -10,7 +10,23 @@
 
 namespace RHI::Vulkan
 {
-    /* inline static */ VkImageSubresourceLayers ConvertSubresourceLayer(const ImageSubresourceLayers& subresource, Format format)
+    inline static VkDeviceAddress GetBufferDeviceAddress(IDevice* device, const BufferBindingInfo& bufferBindingInfo)
+    {
+        auto buffer = (IBuffer*)bufferBindingInfo.buffer;
+        return buffer->address + bufferBindingInfo.offset;
+    }
+
+    inline static VkStridedDeviceAddressRegionKHR GetStridedDeviceAddressRegion(IDevice* device, const BufferBindingInfo& bufferBindingInfo, uint32_t stride, uint32_t drawCount)
+    {
+        auto buffer = (IBuffer*)bufferBindingInfo.buffer;
+        return {
+            .deviceAddress = buffer->address + bufferBindingInfo.offset,
+            .stride        = stride,
+            .size          = stride * drawCount,
+        };
+    }
+
+    inline static VkImageSubresourceLayers ConvertSubresourceLayer(const ImageSubresourceLayers& subresource, Format format)
     {
         return VkImageSubresourceLayers{
             .aspectMask     = ConvertImageAspect(subresource.imageAspects, format),
@@ -20,7 +36,7 @@ namespace RHI::Vulkan
         };
     }
 
-    /* inline static  */ VkResolveModeFlagBits ConvertResolveMode(ResolveMode resolveMode)
+    inline static VkResolveModeFlagBits ConvertResolveMode(ResolveMode resolveMode)
     {
         switch (resolveMode)
         {
@@ -40,7 +56,7 @@ namespace RHI::Vulkan
         uint32_t              queueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     };
 
-    inline BarrierStage ConvertBarrierState(TL_MAYBE_UNUSED const BarrierState& barrierState)
+    inline static BarrierStage ConvertBarrierState(TL_MAYBE_UNUSED const BarrierState& barrierState)
     {
         return {
             // .stageMask        = ConvertPipelineStageFlags(barrierState.stage),
@@ -50,7 +66,7 @@ namespace RHI::Vulkan
         };
     }
 
-    inline BarrierStage ConvertBarrierState(const ImageBarrierState& barrierState)
+    inline static BarrierStage ConvertBarrierState(const ImageBarrierState& barrierState)
     {
         return {
             .stageMask        = ConvertPipelineStageFlags(barrierState.stage),
@@ -60,7 +76,7 @@ namespace RHI::Vulkan
         };
     }
 
-    inline BarrierStage ConvertBarrierState(const BufferBarrierState& barrierState)
+    inline static BarrierStage ConvertBarrierState(const BufferBarrierState& barrierState)
     {
         return {
             .stageMask        = ConvertPipelineStageFlags(barrierState.stage),
@@ -378,11 +394,13 @@ namespace RHI::Vulkan
             }
         }
 
+        auto [offsetX, offsetY] = beginInfo.offset;
+        auto [width, height]    = beginInfo.size;
         VkRenderingInfo renderingInfo{
             .sType                = VK_STRUCTURE_TYPE_RENDERING_INFO,
             .pNext                = nullptr,
             .flags                = 0,
-            .renderArea           = {.offset = ConvertOffset2D(beginInfo.offset), .extent = ConvertExtent2D(beginInfo.size)},
+            .renderArea           = {.offset = {offsetX, offsetY}, .extent = {width, height}},
             .layerCount           = 1,
             .viewMask             = 0,
             .colorAttachmentCount = static_cast<uint32_t>(colorAttachments.size()),
@@ -518,6 +536,26 @@ namespace RHI::Vulkan
         vkCmdPushConstants(m_commandBuffer, pipelineLayout->handle, VK_SHADER_STAGE_ALL, offset, (uint32_t)content.size, content.ptr);
     }
 
+    void ICommandList::PushBindGroup(BindPoint bindPoint, uint32_t firstGroup, TL::Span<const BindGroupUpdateInfo> updateInfos)
+    {
+        ZoneScoped;
+
+        IPipelineLayout*    pipelineLayout = (IPipelineLayout*)m_pipelineLayout;
+        IBindGroupLayout*   groupLayout    = pipelineLayout->bindGroupLayouts[firstGroup];
+        DescriptorSetWriter writer{m_device, VK_NULL_HANDLE, groupLayout, m_device->GetTempAllocator()};
+
+        VkPushDescriptorSetInfo pushDescriptorSetInfo{
+            .sType                = VK_STRUCTURE_TYPE_PUSH_DESCRIPTOR_SET_INFO_KHR,
+            .pNext                = nullptr,
+            .stageFlags           = VK_SHADER_STAGE_ALL,
+            .layout               = pipelineLayout->handle,
+            .set                  = firstGroup,
+            .descriptorWriteCount = (uint32_t)writer.GetWrites().size(),
+            .pDescriptorWrites    = writer.GetWrites().data(),
+        };
+        m_device->m_pfn.m_vkCmdPushDescriptorSet2KHR(m_commandBuffer, &pushDescriptorSetInfo);
+    }
+
     void ICommandList::SetBindGroups(BindPoint bindPoint, TL::Span<const BindGroupBindingInfo> bindGroups)
     {
         ZoneScoped;
@@ -632,7 +670,7 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        TL_ASSERT(m_isGraphicsPipelineBound && m_hasViewportSet && m_hasScissorSet);
+        TL_ASSERT(m_isGraphicsPipelineBound && m_hasViewportSet);
         vkCmdDraw(m_commandBuffer, parameters.vertexCount, parameters.instanceCount, parameters.firstVertex, parameters.firstInstance);
     }
 
@@ -678,6 +716,58 @@ namespace RHI::Vulkan
         {
             vkCmdDrawIndexedIndirect(m_commandBuffer, cmdBuffer->handle, argumentBuffer.offset, maxDrawCount, stride);
         }
+    }
+
+    void ICommandList::DrawMeshTasks(const DrawMeshTasksInfo drawMeshTasksDesc)
+    {
+        m_device->m_pfn.m_vkCmdDrawMeshTasksEXT(m_commandBuffer, drawMeshTasksDesc.x, drawMeshTasksDesc.y, drawMeshTasksDesc.z);
+    }
+
+    void ICommandList::DrawMeshTasksIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t drawNum, uint32_t stride)
+    {
+        auto cmdBuffer = (IBuffer*)(argumentBuffer.buffer);
+
+        if (countBuffer.buffer != nullptr)
+        {
+            auto countBuf = (IBuffer*)(countBuffer.buffer);
+
+            m_device->m_pfn.m_vkCmdDrawMeshTasksIndirectCountEXT(
+                m_commandBuffer,
+                cmdBuffer->handle,
+                argumentBuffer.offset,
+                countBuf->handle,
+                countBuffer.offset,
+                drawNum,
+                stride);
+        }
+        else
+        {
+            m_device->m_pfn.m_vkCmdDrawMeshTasksIndirectEXT(m_commandBuffer, cmdBuffer->handle, argumentBuffer.offset, drawNum, stride);
+        }
+    }
+
+    void ICommandList::DispatchRays(const DispatchRaysInfo& dispatchRaysDesc)
+    {
+        VkStridedDeviceAddressRegionKHR raygenShaderBindingTable{};
+        VkStridedDeviceAddressRegionKHR missShaderBindingTable{};
+        VkStridedDeviceAddressRegionKHR hitShaderBindingTable{};
+        VkStridedDeviceAddressRegionKHR callableShaderBindingTable{};
+        m_device->m_pfn.m_vkCmdTraceRaysKHR(
+            m_commandBuffer,
+            &raygenShaderBindingTable,
+            &missShaderBindingTable,
+            &hitShaderBindingTable,
+            &callableShaderBindingTable,
+            dispatchRaysDesc.x,
+            dispatchRaysDesc.y,
+            dispatchRaysDesc.z);
+    }
+
+    void ICommandList::DispatchRaysIndirect(const BufferBindingInfo& argumentBuffer)
+    {
+        auto            cmdBuffer             = (IBuffer*)(argumentBuffer.buffer);
+        VkDeviceAddress indirectDeviceAddress = cmdBuffer->address + argumentBuffer.offset;
+        m_device->m_pfn.m_vkCmdTraceRaysIndirect2KHR(m_commandBuffer, indirectDeviceAddress);
     }
 
     void ICommandList::Dispatch(const DispatchParameters& parameters)
@@ -792,9 +882,9 @@ namespace RHI::Vulkan
             }
         }
 
-        #if 1 // todo: use the vkCmdBindDescriptorSets2
+#if 1 // todo: use the vkCmdBindDescriptorSets2
         vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, (uint32_t)descriptorSets.size(), descriptorSets.data(), dynamicOffsets.size(), dynamicOffsets.data());
-        #else
+#else
         VkBindDescriptorSetsInfo bindInfo{
             .sType              = VK_STRUCTURE_TYPE_BIND_DESCRIPTOR_SETS_INFO,
             .pNext              = nullptr,
@@ -807,6 +897,35 @@ namespace RHI::Vulkan
             .pDynamicOffsets    = dynamicOffsets.data(),
         };
         vkCmdBindDescriptorSets2(m_commandBuffer, &bindInfo);
-        #endif
+#endif
     }
+
+    void ICommandList::BuildMicromaps(TL::Span<const BuildMicromapDesc> buildMicromapDescs)
+    {
+    }
+
+    void ICommandList::WriteMicromapsSizes(TL::Span<const Micromap*> micromaps, QueryPool* queryPool, uint32_t queryPoolOffset)
+    {
+    }
+
+    void ICommandList::CopyMicromap(Micromap* dst, const Micromap* src, CopyMode copyMode)
+    {
+    }
+
+    void ICommandList::BuildTopLevelAccelerationStructures(TL::Span<const BuildTopLevelAccelerationStructureDesc> buildTopLevelAccelerationStructureDescs)
+    {
+    }
+
+    void ICommandList::BuildBottomLevelAccelerationStructures(TL::Span<const BuildBottomLevelAccelerationStructureDesc> buildBottomLevelAccelerationStructureDescs)
+    {
+    }
+
+    void ICommandList::WriteAccelerationStructuresSizes(TL::Span<const AccelerationStructure*> accelerationStructures, QueryPool* queryPool, uint32_t queryPoolOffset)
+    {
+    }
+
+    void ICommandList::CopyAccelerationStructure(AccelerationStructure* dst, const AccelerationStructure* src, CopyMode copyMode)
+    {
+    }
+
 } // namespace RHI::Vulkan

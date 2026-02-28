@@ -17,13 +17,6 @@ namespace RHI
     static constexpr uint8_t  AllLayers         = UINT8_MAX;
     static constexpr uint8_t  AllMipLevels      = UINT8_MAX;
 
-    // Forward Declarations
-    struct Buffer;
-    struct Image;
-    struct Sampler;
-
-    class ShaderModule;
-
     // Opaque Resource Declarations
     using DeviceMemoryPtr = void*;
 
@@ -69,6 +62,10 @@ namespace RHI
     {
     };
 
+    struct ShaderModule : ResourceBase
+    {
+    };
+
     struct PipelineLayout : ResourceBase
     {
     };
@@ -83,6 +80,28 @@ namespace RHI
 
     struct RayTracingPipeline : ResourceBase
     {
+    };
+
+    struct AccelerationStructure : ResourceBase
+    {
+    };
+
+    struct Micromap : ResourceBase
+    {
+    };
+
+    struct QueryPool : ResourceBase
+    {
+    };
+
+    enum class QueryType
+    {
+        Timestamp,
+        PipelineStatistics,
+        Occlusion,
+        AccelerationStructureSize,
+        AccelerationStructureCompactedSize,
+        MicromapSize,
     };
 
     // Enums (General Purpose)
@@ -359,6 +378,7 @@ namespace RHI
     struct BindGroupLayoutCreateInfo
     {
         const char*                   name     = nullptr; ///< Name of the bind group layout.
+        bool                          pushable = false;   ///< Indicates if the bind group layout is pushable.
         TL::Span<const ShaderBinding> bindings = {};      ///< Span of shader bindings for this layout.
     };
 
@@ -578,17 +598,24 @@ namespace RHI
         float                                         blendConstants[4] = {0.0f, 0.0f, 0.0f, 0.0f};        ///< Blend constants.
     };
 
+    struct QueryPoolCreateInfo
+    {
+        const char* name  = nullptr;              ///< Name of the query pool.
+        QueryType   type  = QueryType::Timestamp; ///< Type of queries in the pool.
+        uint32_t    count = 0;                    ///< Number of queries in the pool.
+    };
+
     struct PipelineShaderStage
     {
-        const char*   name   = nullptr; ///< Entry name of the shader.
-        ShaderModule* module = nullptr; ///< Shader module object.
+        const char*   name   = nullptr;           ///< Entry name of the shader.
+        ShaderModule* module = nullptr;           ///< Shader module object.
+        ShaderStage   stage  = ShaderStage::None; ///< Shader stage.
     };
 
     struct GraphicsPipelineCreateInfo
     {
-        const char*                               name                 = nullptr; ///< Name of the pipeline.
-        PipelineShaderStage                       vertexShader         = {};
-        PipelineShaderStage                       pixelShader          = {};
+        const char*                               name                 = nullptr;                         ///< Name of the pipeline.
+        TL::Span<const PipelineShaderStage>       shaderStages         = {};                              ///< shader stages
         PipelineLayout*                           layout               = nullptr;                         ///< Pipeline layout.
         TL::Span<const PipelineVertexBindingDesc> vertexBufferBindings = {};                              ///< Input assembler state.
         PipelineRenderTargetLayout                renderTargetLayout   = {};                              ///< Render target layout.
@@ -597,6 +624,20 @@ namespace RHI
         PipelineRasterizerStateDesc               rasterizationState   = {};                              ///< Rasterizer state.
         PipelineMultisampleStateDesc              multisampleState     = {};                              ///< Multisample state.
         PipelineDepthStencilStateDesc             depthStencilState    = {};                              ///< Depth/stencil state.
+    };
+
+    struct ShaderGroupInfo
+    {
+        uint32_t shaderIndices[3];
+    };
+
+    struct RayTracingPipelineCreateInfo
+    {
+        const char*                         name              = nullptr; ///< Name of the pipeline.
+        TL::Span<const PipelineShaderStage> shaderStages      = {};      ///< shader stages
+        PipelineLayout*                     layout            = nullptr; ///< Pipeline layout.
+        TL::Span<const ShaderGroupInfo>     shaderGroups      = {};      ///< Input assembler state.
+        uint32_t                            maxRecursionDepth = 0;
     };
 
     struct ComputePipelineCreateInfo
@@ -611,14 +652,6 @@ namespace RHI
     {
         const char*              name = nullptr;
         TL::Span<const uint32_t> code = {};
-    };
-
-    // Classes
-    class RHI_EXPORT ShaderModule
-    {
-    public:
-        ShaderModule()          = default;
-        virtual ~ShaderModule() = default;
     };
 
     inline static ImageSize3D CalcaulteImageMipSize(ImageSize3D size, uint32_t mipLevel)

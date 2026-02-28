@@ -1,15 +1,19 @@
 #pragma once
 
-#include "Common.hpp"
-#include "Queue.hpp"
-#include "Resources.hpp"
-
 #include <RHI/Device.hpp>
 #include <RHI-Vulkan/Loader.hpp>
 
 #include <TL/Ptr.hpp>
 #include <TL/Stacktrace.hpp>
 #include <TL/Containers/Vector.hpp>
+
+// #include <Volk/volk.h>
+#include <vk_mem_alloc.h>
+
+#include "Common.hpp"
+#include "Queue.hpp"
+#include "Resources.hpp"
+#include "Frame.hpp"
 
 namespace RHI::Vulkan
 {
@@ -31,8 +35,15 @@ namespace RHI::Vulkan
         PFN_vkSetDebugUtilsObjectTagEXT     m_vkSetDebugUtilsObjectTagEXT;
         PFN_vkSubmitDebugUtilsMessageEXT    m_vkSubmitDebugUtilsMessageEXT;
 #endif
-        PFN_vkCmdBeginConditionalRenderingEXT m_vkCmdBeginConditionalRenderingEXT;
-        PFN_vkCmdEndConditionalRenderingEXT   m_vkCmdEndConditionalRenderingEXT;
+        PFN_vkCmdBeginConditionalRenderingEXT  m_vkCmdBeginConditionalRenderingEXT;
+        PFN_vkCmdEndConditionalRenderingEXT    m_vkCmdEndConditionalRenderingEXT;
+        PFN_vkCreateRayTracingPipelinesKHR     m_vkCreateRayTracingPipelinesKHR;
+        PFN_vkCmdTraceRaysIndirect2KHR         m_vkCmdTraceRaysIndirect2KHR;
+        PFN_vkCmdPushDescriptorSet2KHR         m_vkCmdPushDescriptorSet2KHR;
+        PFN_vkCmdTraceRaysKHR                  m_vkCmdTraceRaysKHR;
+        PFN_vkCmdDrawMeshTasksEXT              m_vkCmdDrawMeshTasksEXT;
+        PFN_vkCmdDrawMeshTasksIndirectEXT      m_vkCmdDrawMeshTasksIndirectEXT;
+        PFN_vkCmdDrawMeshTasksIndirectCountEXT m_vkCmdDrawMeshTasksIndirectCountEXT;
     };
 
     class IDevice final : public Device
@@ -59,31 +70,35 @@ namespace RHI::Vulkan
         void WaitIdle();
 
         // Interface Implementation
-        uint64_t          GetNativeHandle(NativeHandleType type, uint64_t handle) override;
-        Swapchain*        CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
-        void              DestroySwapchain(Swapchain* swapchain) override;
-        ShaderModule*     CreateShaderModule(const ShaderModuleCreateInfo& createInfo) override;
-        void              DestroyShaderModule(ShaderModule* shaderModule) override;
-        BindGroupLayout*  CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) override;
-        void              DestroyBindGroupLayout(BindGroupLayout* handle) override;
-        BindGroup*        CreateBindGroup(const BindGroupCreateInfo& createInfo) override;
-        void              DestroyBindGroup(BindGroup* handle) override;
-        void              UpdateBindGroup(BindGroup* handle, const BindGroupUpdateInfo& updateInfo) override;
-        Buffer*           CreateBuffer(const BufferCreateInfo& createInfo) override;
-        void              DestroyBuffer(Buffer* handle) override;
-        Image*            CreateImage(const ImageCreateInfo& createInfo) override;
-        Image*            CreateImageView(const ImageViewCreateInfo& createInfo) override;
-        void              DestroyImage(Image* handle) override;
-        Sampler*          CreateSampler(const SamplerCreateInfo& createInfo) override;
-        void              DestroySampler(Sampler* handle) override;
-        PipelineLayout*   CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo) override;
-        void              DestroyPipelineLayout(PipelineLayout* handle) override;
-        GraphicsPipeline* CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) override;
-        void              DestroyGraphicsPipeline(GraphicsPipeline* handle) override;
-        ComputePipeline*  CreateComputePipeline(const ComputePipelineCreateInfo& createInfo) override;
-        void              DestroyComputePipeline(ComputePipeline* handle) override;
-        ResultCode        SetFramesInFlightCount(uint32_t count) override;
-        Frame*            GetCurrentFrame() override;
+        uint64_t            GetNativeHandle(NativeHandleType type, uint64_t handle) override;
+        Swapchain*          CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
+        void                DestroySwapchain(Swapchain* swapchain) override;
+        ShaderModule*       CreateShaderModule(const ShaderModuleCreateInfo& createInfo) override;
+        void                DestroyShaderModule(ShaderModule* shaderModule) override;
+        BindGroupLayout*    CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) override;
+        void                DestroyBindGroupLayout(BindGroupLayout* handle) override;
+        BindGroup*          CreateBindGroup(const BindGroupCreateInfo& createInfo) override;
+        void                DestroyBindGroup(BindGroup* handle) override;
+        void                UpdateBindGroup(BindGroup* handle, const BindGroupUpdateInfo& updateInfo) override;
+        QueryPool*          CreateQueryPool(const QueryPoolCreateInfo& createInfo) override;
+        void                DestroyQueryPool(QueryPool* handle) override;
+        Buffer*             CreateBuffer(const BufferCreateInfo& createInfo) override;
+        void                DestroyBuffer(Buffer* handle) override;
+        Image*              CreateImage(const ImageCreateInfo& createInfo) override;
+        Image*              CreateImageView(const ImageViewCreateInfo& createInfo) override;
+        void                DestroyImage(Image* handle) override;
+        Sampler*            CreateSampler(const SamplerCreateInfo& createInfo) override;
+        void                DestroySampler(Sampler* handle) override;
+        PipelineLayout*     CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo) override;
+        void                DestroyPipelineLayout(PipelineLayout* handle) override;
+        GraphicsPipeline*   CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) override;
+        RayTracingPipeline* CreateRayTracingPipeline(const RayTracingPipelineCreateInfo& createInfo) override;
+        void                DestroyRayTracingPipeline(RayTracingPipeline* handle) override;
+        void                DestroyGraphicsPipeline(GraphicsPipeline* handle) override;
+        ComputePipeline*    CreateComputePipeline(const ComputePipelineCreateInfo& createInfo) override;
+        void                DestroyComputePipeline(ComputePipeline* handle) override;
+        ResultCode          SetFramesInFlightCount(uint32_t count) override;
+        Frame*              GetCurrentFrame() override;
 
         /// Frame
         TL::IAllocator& GetTempAllocator();
@@ -108,16 +123,18 @@ namespace RHI::Vulkan
         TL::Vector<TL::Ptr<class IFrame>> m_framesInFlight          = {};
 
     private:
-        TL::Map<Swapchain*, TL::Stacktrace>        m_liveSwapchains;
-        TL::Map<ShaderModule*, TL::Stacktrace>     m_liveShaderModules;
-        TL::Map<Image*, TL::Stacktrace>            m_liveImages;
-        TL::Map<Buffer*, TL::Stacktrace>           m_liveBuffers;
-        TL::Map<BindGroupLayout*, TL::Stacktrace>  m_liveBindGroupLayouts;
-        TL::Map<BindGroup*, TL::Stacktrace>        m_liveBindGroups;
-        TL::Map<PipelineLayout*, TL::Stacktrace>   m_livePipelineLayouts;
-        TL::Map<GraphicsPipeline*, TL::Stacktrace> m_liveGraphicsPipelines;
-        TL::Map<ComputePipeline*, TL::Stacktrace>  m_liveComputePipelines;
-        TL::Map<Sampler*, TL::Stacktrace>          m_liveSamplers;
+        TL::Map<QueryPool*, TL::Stacktrace>          m_liveQueryPools;
+        TL::Map<Swapchain*, TL::Stacktrace>          m_liveSwapchains;
+        TL::Map<ShaderModule*, TL::Stacktrace>       m_liveShaderModules;
+        TL::Map<Image*, TL::Stacktrace>              m_liveImages;
+        TL::Map<Buffer*, TL::Stacktrace>             m_liveBuffers;
+        TL::Map<BindGroupLayout*, TL::Stacktrace>    m_liveBindGroupLayouts;
+        TL::Map<BindGroup*, TL::Stacktrace>          m_liveBindGroups;
+        TL::Map<PipelineLayout*, TL::Stacktrace>     m_livePipelineLayouts;
+        TL::Map<GraphicsPipeline*, TL::Stacktrace>   m_liveGraphicsPipelines;
+        TL::Map<RayTracingPipeline*, TL::Stacktrace> m_liveRayTracingPipelines;
+        TL::Map<ComputePipeline*, TL::Stacktrace>    m_liveComputePipelines;
+        TL::Map<Sampler*, TL::Stacktrace>            m_liveSamplers;
     };
 
     template<typename T>
@@ -170,14 +187,38 @@ namespace RHI::Vulkan
         void Push(uint64_t timeline, VkSampler h) { PushImpl(m_sampler, timeline, h); }
         void Push(uint64_t timeline, VkPipeline h) { PushImpl(m_pipeline, timeline, h); }
         void Push(uint64_t timeline, VkDescriptorPool h) { PushImpl(m_descriptorPool, timeline, h); }
+        void Push(uint64_t timeline, VkQueryPool h) { PushImpl(m_queryPool, timeline, h); }
         void Push(uint64_t timeline, VkSwapchainKHR h) { PushImpl(m_swapchain, timeline, h); }
         void Push(uint64_t timeline, VkSurfaceKHR h) { PushImpl(m_surface, timeline, h); }
         void Push(uint64_t timeline, VkSemaphore h) { PushImpl(m_semaphore, timeline, h); }
-        // void Push(uint64_t timeline, VmaBufferAllocation h) { PushImpl(m_vma, timeline, h.first);  PushImpl(m_vmaBuffer, timeline, h.second);}
+        // void Push(uint64_t timeline, VmaBufferAllocation h) { PushImpl(, timeline, h.first);  PushImpl(m_vmaBuffer, timeline, h.second);}
         // void Push(uint64_t timeline, VmaImageAllocation h) { PushImpl(m_vmaImage, timeline, h.first);  PushImpl(m_vmaImage, timeline, h.second);}
         // clang-format on
 
         void Flush(IDevice* device, uint64_t timeline);
+
+        template<typename ResourceType>
+        inline static void destroyVkResource(IDevice* device, ResourceType handle)
+        {
+            if constexpr (std::is_same_v<VmaAllocation, ResourceType>) vmaFreeMemory(device->m_deviceAllocator, handle);
+            else if constexpr (std::is_same_v<VkBuffer, ResourceType>) vkDestroyBuffer(device->m_device, handle, nullptr);
+            else if constexpr (std::is_same_v<VkBufferView, ResourceType>) vkDestroyBufferView(device->m_device, handle, nullptr);
+            else if constexpr (std::is_same_v<VkImage, ResourceType>) vkDestroyImage(device->m_device, handle, nullptr);
+            else if constexpr (std::is_same_v<VkImageView, ResourceType>) vkDestroyImageView(device->m_device, handle, nullptr);
+            else if constexpr (std::is_same_v<VkSampler, ResourceType>) vkDestroySampler(device->m_device, handle, nullptr);
+            else if constexpr (std::is_same_v<VkPipeline, ResourceType>) vkDestroyPipeline(device->m_device, handle, nullptr);
+            else if constexpr (std::is_same_v<VkDescriptorPool, ResourceType>) vkDestroyDescriptorPool(device->m_device, handle, nullptr);
+            else if constexpr (std::is_same_v<VkQueryPool, ResourceType>) vkDestroyQueryPool(device->m_device, handle, nullptr);
+            else if constexpr (std::is_same_v<VkSemaphore, ResourceType>) vkDestroySemaphore(device->m_device, handle, nullptr);
+            else if constexpr (std::is_same_v<VkSwapchainKHR, ResourceType>) vkDestroySwapchainKHR(device->m_device, handle, nullptr);
+            else if constexpr (std::is_same_v<VkSurfaceKHR, ResourceType>) vkDestroySurfaceKHR(device->m_instance, handle, nullptr);
+            else if constexpr (std::is_same_v<VmaBufferAllocation, ResourceType>) vmaDestroyBuffer(device->m_deviceAllocator, handle.first, handle.second);
+            else if constexpr (std::is_same_v<VmaImageAllocation, ResourceType>) vmaDestroyImage(device->m_deviceAllocator, handle.first, handle.second);
+            else
+            {
+                static_assert(false, "Invalid ResourceType");
+            }
+        }
 
     private:
         // FlushQueue that works on ResourceDeleteQueueEntry<ResourceType>
@@ -190,7 +231,7 @@ namespace RHI::Vulkan
                 if (entry.timeline > timeline)
                     break;
 
-                DestroyObject(device, entry.resource);
+                destroyVkResource(device, entry.resource);
 
                 uint64_t key = TL::hashBytes(TL::Block::create(entry.resource));
                 TL_ASSERT(m_pending.erase(key));
@@ -218,23 +259,6 @@ namespace RHI::Vulkan
             queue.emplace_back(ResourceDeleteQueueEntry<ResourceType>{timeline, h, TL::CaptureStacktrace()});
         }
 
-        // clang-format off
-        inline static void DestroyObject(IDevice* device, VmaAllocation handle) { vmaFreeMemory(device->m_deviceAllocator, handle); }
-        inline static void DestroyObject(IDevice* device, VkBuffer handle) { vkDestroyBuffer(device->m_device, handle, nullptr); }
-        inline static void DestroyObject(IDevice* device, VkBufferView handle) { vkDestroyBufferView(device->m_device, handle, nullptr); }
-        inline static void DestroyObject(IDevice* device, VkImage handle) { vkDestroyImage(device->m_device, handle, nullptr); }
-        inline static void DestroyObject(IDevice* device, VkImageView handle) { vkDestroyImageView(device->m_device, handle, nullptr); }
-        inline static void DestroyObject(IDevice* device, VkSampler handle) { vkDestroySampler(device->m_device, handle, nullptr); }
-        inline static void DestroyObject(IDevice* device, VkPipeline handle) { vkDestroyPipeline(device->m_device, handle, nullptr); }
-        inline static void DestroyObject(IDevice* device, VkDescriptorPool handle) { vkDestroyDescriptorPool(device->m_device, handle, nullptr); }
-        inline static void DestroyObject(IDevice* device, VkSemaphore handle) { vkDestroySemaphore(device->m_device, handle, nullptr); }
-        inline static void DestroyObject(IDevice* device, VkSwapchainKHR handle) { vkDestroySwapchainKHR(device->m_device, handle, nullptr); }
-        inline static void DestroyObject(IDevice* device, VkSurfaceKHR handle) { vkDestroySurfaceKHR(device->m_instance, handle, nullptr); }
-        inline static void DestroyObject(IDevice* device, const VmaBufferAllocation& handle) { vmaDestroyBuffer(device->m_deviceAllocator, handle.first, handle.second); }
-        inline static void DestroyObject(IDevice* device, const VmaImageAllocation& handle) { vmaDestroyImage(device->m_deviceAllocator, handle.first, handle.second); }
-
-        // clang-format on
-
     private:
         TL::Vector<ResourceDeleteQueueEntry<VmaAllocation>>       m_allocation;
         TL::Vector<ResourceDeleteQueueEntry<VkBuffer>>            m_buffer;
@@ -244,6 +268,7 @@ namespace RHI::Vulkan
         TL::Vector<ResourceDeleteQueueEntry<VkSampler>>           m_sampler;
         TL::Vector<ResourceDeleteQueueEntry<VkPipeline>>          m_pipeline;
         TL::Vector<ResourceDeleteQueueEntry<VkDescriptorPool>>    m_descriptorPool;
+        TL::Vector<ResourceDeleteQueueEntry<VkQueryPool>>         m_queryPool;
         TL::Vector<ResourceDeleteQueueEntry<VkSwapchainKHR>>      m_swapchain;
         TL::Vector<ResourceDeleteQueueEntry<VkSurfaceKHR>>        m_surface;
         TL::Vector<ResourceDeleteQueueEntry<VkSemaphore>>         m_semaphore;
@@ -251,4 +276,5 @@ namespace RHI::Vulkan
         TL::Vector<ResourceDeleteQueueEntry<VmaImageAllocation>>  m_vmaImage;
         TL::Map<uint64_t, TL::Stacktrace>                         m_pending;
     };
+
 } // namespace RHI::Vulkan

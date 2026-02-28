@@ -81,6 +81,7 @@ namespace RHI
         TL::Block     block;
     };
 
+    // TODO: Move to RenderGraph
     /// @brief Provides an interface to the Renderdoc graphics debugger for frame capture and debugging.
     class RHI_EXPORT Renderdoc
     {
@@ -116,6 +117,7 @@ namespace RHI
         void*       m_renderdocAPi; ///< Pointer to the Renderdoc API interface.
     };
 
+    // TODO: Move to RenderGraph
     /// @brief Represents a single frame in flight, providing per-frame resource management and command submission.
     class RHI_EXPORT Frame
     {
@@ -162,88 +164,109 @@ namespace RHI
         virtual ~Device() = default;
 
         /// @brief Returns the backend type.
-        BackendType               GetBackend() const { return m_backend; }
+        BackendType                 GetBackend() const { return m_backend; }
 
         /// @brief Returns the Renderdoc debug interface, if available.
-        Renderdoc*                GetDebugRenderdoc() const { return m_renderdoc.get(); }
+        Renderdoc*                  GetDebugRenderdoc() const { return m_renderdoc.get(); }
 
         /// @brief Returns device limits.
-        DeviceLimits              GetLimits() const;
+        DeviceLimits                GetLimits() const;
 
         /// @brief Retrieves a native handle for the specified type and object.
-        virtual uint64_t          GetNativeHandle(NativeHandleType type, uint64_t handle) = 0;
+        virtual uint64_t            GetNativeHandle(NativeHandleType type, uint64_t handle) = 0;
 
         /// @brief Creates a swapchain.
-        virtual Swapchain*        CreateSwapchain(const SwapchainCreateInfo& createInfo) = 0;
+        virtual Swapchain*          CreateSwapchain(const SwapchainCreateInfo& createInfo) = 0;
 
         /// @brief Destroys a swapchain.
-        virtual void              DestroySwapchain(Swapchain* swapchain) = 0;
+        virtual void                DestroySwapchain(Swapchain* swapchain) = 0;
 
         /// @brief Creates a shader module.
-        virtual ShaderModule*     CreateShaderModule(const ShaderModuleCreateInfo& createInfo) = 0;
+        virtual ShaderModule*       CreateShaderModule(const ShaderModuleCreateInfo& createInfo) = 0;
 
         /// @brief Destroys a shader module.
-        virtual void              DestroyShaderModule(ShaderModule* shaderModule) = 0;
+        virtual void                DestroyShaderModule(ShaderModule* shaderModule) = 0;
 
         /// @brief Creates a bind group layout.
-        virtual BindGroupLayout*  CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) = 0;
+        virtual BindGroupLayout*    CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) = 0;
 
         /// @brief Destroys a bind group layout.
-        virtual void              DestroyBindGroupLayout(BindGroupLayout* handle) = 0;
+        virtual void                DestroyBindGroupLayout(BindGroupLayout* handle) = 0;
 
         /// @brief Creates a bind group.
-        virtual BindGroup*        CreateBindGroup(const BindGroupCreateInfo& createInfo) = 0;
+        virtual BindGroup*          CreateBindGroup(const BindGroupCreateInfo& createInfo) = 0;
 
         /// @brief Destroys a bind group.
-        virtual void              DestroyBindGroup(BindGroup* handle) = 0;
+        virtual void                DestroyBindGroup(BindGroup* handle) = 0;
 
         /// @brief Updates a bind group.
-        virtual void              UpdateBindGroup(BindGroup* handle, const BindGroupUpdateInfo& updateInfo) = 0;
+        virtual void                UpdateBindGroup(BindGroup* handle, const BindGroupUpdateInfo& updateInfo) = 0;
+
+        /// @brief Creates a query pool.
+        virtual QueryPool*          CreateQueryPool(const QueryPoolCreateInfo& createInfo) = 0;
+
+        /// @brief Destroys a query pool.
+        virtual void                DestroyQueryPool(QueryPool* handle) = 0;
 
         /// @brief Creates a buffer.
-        virtual Buffer*           CreateBuffer(const BufferCreateInfo& createInfo) = 0;
+        virtual Buffer*             CreateBuffer(const BufferCreateInfo& createInfo) = 0;
 
         /// @brief Destroys a buffer.
-        virtual void              DestroyBuffer(Buffer* handle) = 0;
+        virtual void                DestroyBuffer(Buffer* handle) = 0;
 
         /// @brief Creates an image.
-        virtual Image*            CreateImage(const ImageCreateInfo& createInfo) = 0;
+        virtual Image*              CreateImage(const ImageCreateInfo& createInfo) = 0;
 
         /// @brief Creates an image view.
-        virtual Image*            CreateImageView(const ImageViewCreateInfo& createInfo) = 0;
+        virtual Image*              CreateImageView(const ImageViewCreateInfo& createInfo) = 0;
 
         /// @brief Destroys an image or image view.
-        virtual void              DestroyImage(Image* handle) = 0;
+        virtual void                DestroyImage(Image* handle) = 0;
+
+        // virtual AccelerationStructure* CreateAccelerationStructure(const AccelerationStructureCreateInfo& createInfo) = 0;
+        // virtual void DestroyAccelerationStructure(AccelerationStructure* handle) = 0;
+
+        // virtual QueryPool* CreateQueryPool(const QueryPoolCreateInfo& createInfo) = 0;
+        // virtual void DestroyQueryPool(QueryPool* handle) = 0;
+
+        // virtual Micromap* CreateMicromap(const MicromapCreateInfo& createInfo) = 0;
+        // virtual void DestroyMicromap(Micromap* handle) = 0;
 
         /// @brief Creates a sampler.
-        virtual Sampler*          CreateSampler(const SamplerCreateInfo& createInfo) = 0;
+        virtual Sampler*            CreateSampler(const SamplerCreateInfo& createInfo) = 0;
 
         /// @brief Destroys a sampler.
-        virtual void              DestroySampler(Sampler* handle) = 0;
+        virtual void                DestroySampler(Sampler* handle) = 0;
 
         /// @brief Creates a pipeline layout.
-        virtual PipelineLayout*   CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo) = 0;
+        virtual PipelineLayout*     CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo) = 0;
 
         /// @brief Destroys a pipeline layout.
-        virtual void              DestroyPipelineLayout(PipelineLayout* handle) = 0;
+        virtual void                DestroyPipelineLayout(PipelineLayout* handle) = 0;
 
         /// @brief Creates a graphics pipeline.
-        virtual GraphicsPipeline* CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) = 0;
+        virtual GraphicsPipeline*   CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) = 0;
 
         /// @brief Destroys a graphics pipeline.
-        virtual void              DestroyGraphicsPipeline(GraphicsPipeline* handle) = 0;
+        virtual void                DestroyGraphicsPipeline(GraphicsPipeline* handle) = 0;
+
+        /// @brief Creates a ray tracing pipeline.
+        virtual RayTracingPipeline* CreateRayTracingPipeline(const RayTracingPipelineCreateInfo& createInfo) = 0;
+
+        /// @brief Destroys a ray tracing pipeline.
+        virtual void                DestroyRayTracingPipeline(RayTracingPipeline* handle) = 0;
 
         /// @brief Creates a compute pipeline.
-        virtual ComputePipeline*  CreateComputePipeline(const ComputePipelineCreateInfo& createInfo) = 0;
+        virtual ComputePipeline*    CreateComputePipeline(const ComputePipelineCreateInfo& createInfo) = 0;
 
         /// @brief Destroys a compute pipeline.
-        virtual void              DestroyComputePipeline(ComputePipeline* handle) = 0;
+        virtual void                DestroyComputePipeline(ComputePipeline* handle) = 0;
 
         /// @brief Sets the number of frames in flight.
-        virtual ResultCode        SetFramesInFlightCount(uint32_t count) = 0;
+        virtual ResultCode          SetFramesInFlightCount(uint32_t count) = 0;
 
         /// @brief Returns the current frame.
-        virtual Frame*            GetCurrentFrame() = 0;
+        virtual Frame*              GetCurrentFrame() = 0;
 
     protected:
         BackendType           m_backend;   ///< Backend type used by this device.

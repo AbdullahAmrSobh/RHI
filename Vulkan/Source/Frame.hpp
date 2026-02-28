@@ -58,7 +58,7 @@ namespace RHI::Vulkan
     class IFrame final : public Frame
     {
     public:
-        IFrame() = default;
+        IFrame()  = default;
         ~IFrame() = default;
 
         ResultCode Init(IDevice* device);

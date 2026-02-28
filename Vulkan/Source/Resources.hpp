@@ -1,14 +1,21 @@
 #pragma once
 
+#ifdef RHI_PLATFORM_WINDOWS
+    #define WINDOWS_LEAN_AND_MEAN
+    #define VK_USE_PLATFORM_WIN32_KHR
+#else
+    #error "Current platfrom is not supported yet"
+#endif
+
 #include <RHI/Device.hpp>
 #include <RHI/Resources.hpp>
 #include <RHI/Result.hpp>
 
-#include <vk_mem_alloc.h>
-
 #include <TL/Context.hpp>
 #include <TL/Stacktrace.hpp>
 #include <TL/Utils.hpp>
+
+#include <vk_mem_alloc.h>
 
 namespace RHI::Vulkan
 {
@@ -16,29 +23,36 @@ namespace RHI::Vulkan
     struct IBindGroup;
     struct IBindGroupLayout;
 
-    VkBufferUsageFlags      ConvertBufferUsageFlags(TL::Flags<BufferUsage> bufferUsageFlags);
-    VkImageUsageFlags       ConvertImageUsageFlags(TL::Flags<ImageUsage> imageUsageFlags);
-    VkImageType             ConvertImageType(ImageType imageType);
-    VkImageViewType         ConvertImageViewType(ImageViewType imageType);
+    inline static VkExtent2D ConvertExtent2D(ImageSize2D size)
+    {
+        return {size.width, size.height};
+    }
+
+    inline static VkExtent3D ConvertExtent3D(ImageSize3D size)
+    {
+        return {size.width, size.height, size.depth};
+    }
+
+    inline static VkOffset2D ConvertOffset2D(ImageOffset2D offset)
+    {
+        return {offset.x, offset.y};
+    }
+
+    inline static VkOffset3D ConvertOffset3D(ImageOffset3D offset)
+    {
+        return {offset.x, offset.y, offset.z};
+    }
+
     VkImageAspectFlags      ConvertImageAspect(TL::Flags<ImageAspect> imageAspect, Format format);
-    VkComponentSwizzle      ConvertComponentSwizzle(ComponentSwizzle componentSwizzle);
     VkImageSubresourceRange ConvertSubresourceRange(const ImageSubresourceRange& subresource, Format format);
-    VkComponentMapping      ConvertComponentMapping(ComponentMapping componentMapping);
-    VkExtent2D              ConvertExtent2D(ImageSize2D size);
     VkExtent3D              ConvertExtent3D(ImageSize3D size);
-    VkExtent2D              ConvertExtent2D(ImageSize3D size);
-    VkOffset2D              ConvertOffset2D(ImageOffset2D offset);
     VkOffset3D              ConvertOffset3D(ImageOffset3D offset);
-    VkFilter                ConvertFilter(SamplerFilter samplerFilter);
-    VkSamplerAddressMode    ConvertSamplerAddressMode(SamplerAddressMode addressMode);
-    VkCompareOp             ConvertCompareOp(CompareOperator compareOperator);
-    VkShaderStageFlags      ConvertShaderStage(TL::Flags<ShaderStage> shaderStageFlags);
-    VkDescriptorType        ConvertDescriptorType(BindingType bindingType);
 
     class DescriptorSetWriter
     {
     public:
         DescriptorSetWriter(IDevice* device, VkDescriptorSet descriptorSet, IBindGroupLayout* layout, TL::IAllocator& allocator);
+
         VkWriteDescriptorSet BindImages(uint32_t dstBinding, uint32_t dstArray, TL::Span<Image* const> images);
         VkWriteDescriptorSet BindSamplers(uint32_t dstBinding, uint32_t dstArray, TL::Span<Sampler* const> samplers);
         VkWriteDescriptorSet BindBuffers(uint32_t dstBinding, uint32_t dstArray, TL::Span<const BufferBindingInfo> buffers);
@@ -100,24 +114,18 @@ namespace RHI::Vulkan
         void Update(IDevice* device, const BindGroupUpdateInfo& updateInfo);
     };
 
-    class IShaderModule final : public ShaderModule
+    struct IShaderModule : ShaderModule
     {
-    public:
-        IShaderModule();
-        ~IShaderModule();
+        VkShaderModule m_shaderModule;
 
         ResultCode Init(IDevice* device, const ShaderModuleCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
-
-    public:
-        IDevice*       m_device;
-        VkShaderModule m_shaderModule;
     };
 
     struct IPipelineLayout : PipelineLayout
     {
-        VkPipelineLayout handle;
-        BindGroupLayout* bindGroupLayouts[4];
+        VkPipelineLayout  handle;
+        IBindGroupLayout* bindGroupLayouts[4];
 
         ResultCode Init(IDevice* device, const PipelineLayoutCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
@@ -146,7 +154,15 @@ namespace RHI::Vulkan
         VkPipeline       handle;
         IPipelineLayout* layout;
 
-        ResultCode Init(IDevice* device, const ComputePipelineCreateInfo& createInfo);
+        ResultCode Init(IDevice* device, const RayTracingPipelineCreateInfo& createInfo);
+        void       Shutdown(IDevice* device);
+    };
+
+    struct IQueryPool : QueryPool
+    {
+        VkQueryPool handle;
+
+        ResultCode Init(IDevice* device, const QueryPoolCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
     };
 
@@ -164,8 +180,6 @@ namespace RHI::Vulkan
 
         DeviceMemoryPtr Map(IDevice* device);
         void            Unmap(IDevice* device);
-
-        uint64_t        getDeviceAddress(IDevice* device);
     };
 
     struct IImage : Image

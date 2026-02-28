@@ -13,10 +13,6 @@ namespace RHI::Vulkan
 {
     class IDevice;
 
-    VkImageSubresourceLayers ConvertSubresourceLayer(const ImageSubresourceLayers& subresource, Format format);
-
-    VkResolveModeFlagBits ConvertResolveMode(ResolveMode resolveMode);
-
     struct PipelineBarriers
     {
         TL::Span<const VkMemoryBarrier2>       memoryBarriers = {};
@@ -88,6 +84,7 @@ namespace RHI::Vulkan
         void Execute(TL::Span<const CommandList*> commandLists) override;
         void BindPipelineLayout(BindPoint bindPoint, const PipelineLayout* pipelineLayout) override;
         void SetPushConstants(BindPoint bindPoint, uint32_t offset, TL::Block content) override;
+        void PushBindGroup(BindPoint bindPoint, uint32_t firstGroup, TL::Span<const BindGroupUpdateInfo> updateInfos) override;
         void SetBindGroups(BindPoint bindPoint, TL::Span<const BindGroupBindingInfo> bindGroups) override;
         void BindGraphicsPipeline(const GraphicsPipeline* pipelineState) override;
         void BindComputePipeline(const ComputePipeline* pipelineState) override;
@@ -99,12 +96,24 @@ namespace RHI::Vulkan
         void DrawIndexed(const DrawIndexedParameters& parameters) override;
         void DrawIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride) override;
         void DrawIndexedIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride) override;
+        void DrawMeshTasks(const DrawMeshTasksInfo drawMeshTasksDesc) override;
+        void DrawMeshTasksIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t drawNum, uint32_t stride) override;
+        void DispatchRays(const DispatchRaysInfo& dispatchRaysDesc) override;
+        void DispatchRaysIndirect(const BufferBindingInfo& argumentBuffer) override;
         void Dispatch(const DispatchParameters& parameters) override;
         void DispatchIndirect(const BufferBindingInfo& argumentBuffer) override;
         void CopyBuffer(const BufferCopyInfo& copyInfo) override;
         void CopyImage(const ImageCopyInfo& copyInfo) override;
         void CopyImageToBuffer(const BufferImageCopyInfo& copyInfo) override;
         void CopyBufferToImage(const BufferImageCopyInfo& copyInfo) override;
+
+        void BuildMicromaps(TL::Span<const BuildMicromapDesc> buildMicromapDescs) override;
+        void WriteMicromapsSizes(TL::Span<const Micromap*> micromaps, QueryPool* queryPool, uint32_t queryPoolOffset) override;
+        void CopyMicromap(Micromap* dst, const Micromap* src, CopyMode copyMode) override;
+        void BuildTopLevelAccelerationStructures(TL::Span<const BuildTopLevelAccelerationStructureDesc> buildTopLevelAccelerationStructureDescs) override;
+        void BuildBottomLevelAccelerationStructures(TL::Span<const BuildBottomLevelAccelerationStructureDesc> buildBottomLevelAccelerationStructureDescs) override;
+        void WriteAccelerationStructuresSizes(TL::Span<const AccelerationStructure*> accelerationStructures, QueryPool* queryPool, uint32_t queryPoolOffset) override;
+        void CopyAccelerationStructure(AccelerationStructure* dst, const AccelerationStructure* src, CopyMode copyMode) override;
 
         VkCommandBuffer GetHandle() const { return m_commandBuffer; }
 

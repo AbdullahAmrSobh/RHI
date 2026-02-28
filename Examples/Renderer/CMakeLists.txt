@@ -73,11 +73,11 @@ if (RHI_BACKEND_VULKAN)
 endif()
 
 if (RHI_BACKEND_WEBGPU)
-    target_link_libraries(Renderer RHI::WebGPU)
+    # target_link_libraries(Renderer RHI::WebGPU)
 endif()
 
 if (RHI_BACKEND_D3D12)
-    target_link_libraries(Renderer RHI::D3D12)
+    # target_link_libraries(Renderer RHI::D3D12)
 endif()
 
 target_link_libraries(Renderer TL)

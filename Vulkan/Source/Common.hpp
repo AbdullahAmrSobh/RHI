@@ -455,8 +455,6 @@ namespace RHI::Vulkan
         else if constexpr (std::is_same_v<T, VkCuFunctionNVX>) return VK_OBJECT_TYPE_CU_FUNCTION_NVX;
         else if constexpr (std::is_same_v<T, VkAccelerationStructureKHR>) return VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR;
         else if constexpr (std::is_same_v<T, VkAccelerationStructureNV>) return VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_NV;
-        else if constexpr (std::is_same_v<T, VkCudaModuleNV>) return VK_OBJECT_TYPE_CUDA_MODULE_NV;
-        else if constexpr (std::is_same_v<T, VkCudaFunctionNV>) return VK_OBJECT_TYPE_CUDA_FUNCTION_NV;
         else if constexpr (std::is_same_v<T, VkDebugReportCallbackEXT>) return VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT;
         else if constexpr (std::is_same_v<T, VkValidationCacheEXT>) return VK_OBJECT_TYPE_VALIDATION_CACHE_EXT;
         else if constexpr (std::is_same_v<T, VkDescriptorUpdateTemplateKHR>) return VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_KHR;
@@ -520,8 +518,6 @@ namespace RHI::Vulkan
         case VK_OBJECT_TYPE_CU_FUNCTION_NVX:            return "VkCuFunctionNVX";
         case VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR: return "VkAccelerationStructureKHR";
         case VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_NV:  return "VkAccelerationStructureNV";
-        case VK_OBJECT_TYPE_CUDA_MODULE_NV:             return "VkCudaModuleNV";
-        case VK_OBJECT_TYPE_CUDA_FUNCTION_NV:           return "VkCudaFunctionNV";
         default:                                        return "Unknowen";
         };
     }
