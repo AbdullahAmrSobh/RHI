@@ -194,6 +194,7 @@ namespace RHI::Vulkan
         ImageSubresourceRange subresources;
 
         ResultCode Init(IDevice* device, const ImageCreateInfo& createInfo);
+        ResultCode Init(IDevice* device, const ImageViewCreateInfo& createInfo);
         ResultCode Init(IDevice* device, VkImage image, const VkSwapchainCreateInfoKHR& swapchainCreateInfo);
         void       Shutdown(IDevice* device);
 

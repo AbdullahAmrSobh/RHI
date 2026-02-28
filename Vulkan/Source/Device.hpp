@@ -11,39 +11,75 @@
 #include <vk_mem_alloc.h>
 
 #include "Common.hpp"
-#include "Queue.hpp"
 #include "Resources.hpp"
 #include "Frame.hpp"
 
 namespace RHI::Vulkan
 {
     class BindGroupAllocator;
+    class ICommandList;
 
     struct VulkanAPI
     {
 #ifdef RHI_DEBUG
         // VK_EXT_debug_utils
-        PFN_vkCmdBeginDebugUtilsLabelEXT    m_vkCmdBeginDebugUtilsLabelEXT;
-        PFN_vkCmdEndDebugUtilsLabelEXT      m_vkCmdEndDebugUtilsLabelEXT;
-        PFN_vkCmdInsertDebugUtilsLabelEXT   m_vkCmdInsertDebugUtilsLabelEXT;
-        PFN_vkCreateDebugUtilsMessengerEXT  m_vkCreateDebugUtilsMessengerEXT;
-        PFN_vkDestroyDebugUtilsMessengerEXT m_vkDestroyDebugUtilsMessengerEXT;
-        PFN_vkQueueBeginDebugUtilsLabelEXT  m_vkQueueBeginDebugUtilsLabelEXT;
-        PFN_vkQueueEndDebugUtilsLabelEXT    m_vkQueueEndDebugUtilsLabelEXT;
-        PFN_vkQueueInsertDebugUtilsLabelEXT m_vkQueueInsertDebugUtilsLabelEXT;
-        PFN_vkSetDebugUtilsObjectNameEXT    m_vkSetDebugUtilsObjectNameEXT;
-        PFN_vkSetDebugUtilsObjectTagEXT     m_vkSetDebugUtilsObjectTagEXT;
-        PFN_vkSubmitDebugUtilsMessageEXT    m_vkSubmitDebugUtilsMessageEXT;
+        PFN_vkCmdBeginDebugUtilsLabelEXT    vkCmdBeginDebugUtilsLabelEXT;
+        PFN_vkCmdEndDebugUtilsLabelEXT      vkCmdEndDebugUtilsLabelEXT;
+        PFN_vkCmdInsertDebugUtilsLabelEXT   vkCmdInsertDebugUtilsLabelEXT;
+        PFN_vkCreateDebugUtilsMessengerEXT  vkCreateDebugUtilsMessengerEXT;
+        PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT;
+        PFN_vkQueueBeginDebugUtilsLabelEXT  vkQueueBeginDebugUtilsLabelEXT;
+        PFN_vkQueueEndDebugUtilsLabelEXT    vkQueueEndDebugUtilsLabelEXT;
+        PFN_vkQueueInsertDebugUtilsLabelEXT vkQueueInsertDebugUtilsLabelEXT;
+        PFN_vkSetDebugUtilsObjectNameEXT    vkSetDebugUtilsObjectNameEXT;
+        PFN_vkSetDebugUtilsObjectTagEXT     vkSetDebugUtilsObjectTagEXT;
+        PFN_vkSubmitDebugUtilsMessageEXT    vkSubmitDebugUtilsMessageEXT;
 #endif
-        PFN_vkCmdBeginConditionalRenderingEXT  m_vkCmdBeginConditionalRenderingEXT;
-        PFN_vkCmdEndConditionalRenderingEXT    m_vkCmdEndConditionalRenderingEXT;
-        PFN_vkCreateRayTracingPipelinesKHR     m_vkCreateRayTracingPipelinesKHR;
-        PFN_vkCmdTraceRaysIndirect2KHR         m_vkCmdTraceRaysIndirect2KHR;
-        PFN_vkCmdPushDescriptorSet2KHR         m_vkCmdPushDescriptorSet2KHR;
-        PFN_vkCmdTraceRaysKHR                  m_vkCmdTraceRaysKHR;
-        PFN_vkCmdDrawMeshTasksEXT              m_vkCmdDrawMeshTasksEXT;
-        PFN_vkCmdDrawMeshTasksIndirectEXT      m_vkCmdDrawMeshTasksIndirectEXT;
-        PFN_vkCmdDrawMeshTasksIndirectCountEXT m_vkCmdDrawMeshTasksIndirectCountEXT;
+        PFN_vkCmdBeginConditionalRenderingEXT  vkCmdBeginConditionalRenderingEXT;
+        PFN_vkCmdEndConditionalRenderingEXT    vkCmdEndConditionalRenderingEXT;
+        PFN_vkCreateRayTracingPipelinesKHR     vkCreateRayTracingPipelinesKHR;
+        PFN_vkCmdTraceRaysIndirect2KHR         vkCmdTraceRaysIndirect2KHR;
+        PFN_vkCmdPushDescriptorSet2KHR         vkCmdPushDescriptorSet2KHR;
+        PFN_vkCmdTraceRaysKHR                  vkCmdTraceRaysKHR;
+        PFN_vkCmdDrawMeshTasksEXT              vkCmdDrawMeshTasksEXT;
+        PFN_vkCmdDrawMeshTasksIndirectEXT      vkCmdDrawMeshTasksIndirectEXT;
+        PFN_vkCmdDrawMeshTasksIndirectCountEXT vkCmdDrawMeshTasksIndirectCountEXT;
+    };
+
+    class IQueue
+    {
+    public:
+        VkResult Init(IDevice* device, const char* debugName, uint32_t familyIndex, uint32_t queueIndex);
+
+        void Shutdown();
+
+        void waitTimelineQueueIdle() const;
+
+        bool waitTimeline(uint64_t timelineValue, uint64_t duration = UINT64_MAX);
+
+        void waitTimelineSemaphore(VkSemaphore semaphore, uint64_t value, VkPipelineStageFlags2 stageMask);
+
+        void waitBinarySemaphore(VkSemaphore semaphore, VkPipelineStageFlags2 stageMask) { waitTimelineSemaphore(semaphore, 0, stageMask); }
+
+        void signalTimelineSemaphore(VkSemaphore semaphore, uint64_t value, VkPipelineStageFlags2 stageMask);
+
+        void signalBinarySemaphore(VkSemaphore semaphore, VkPipelineStageFlags2 stageMask) { signalTimelineSemaphore(semaphore, 0, stageMask); }
+
+        void beginDebugUtilsLabel(const char* name);
+
+        void endDebugUtilsLabel();
+
+        uint64_t submit(TL::Span<ICommandList* const> commandLists, VkPipelineStageFlags2 signalStage);
+
+        IDevice*             m_device            = nullptr;
+        VkQueue              m_queue             = VK_NULL_HANDLE;
+        uint32_t             m_familyIndex       = UINT32_MAX;
+        VkSemaphore          m_timelineSemaphore = VK_NULL_HANDLE;
+        std::atomic_uint64_t m_timelineValue     = {0};
+
+    private:
+        TL::Vector<VkSemaphoreSubmitInfo> m_waitTimelineSemaphores;
+        TL::Vector<VkSemaphoreSubmitInfo> m_signalSemaphores;
     };
 
     class IDevice final : public Device
@@ -67,7 +103,7 @@ namespace RHI::Vulkan
 
         IQueue* GetDeviceQueue(QueueType type);
 
-        void WaitIdle();
+        void waitTimelineIdle();
 
         // Interface Implementation
         uint64_t            GetNativeHandle(NativeHandleType type, uint64_t handle) override;
@@ -92,9 +128,9 @@ namespace RHI::Vulkan
         PipelineLayout*     CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo) override;
         void                DestroyPipelineLayout(PipelineLayout* handle) override;
         GraphicsPipeline*   CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) override;
+        void                DestroyGraphicsPipeline(GraphicsPipeline* handle) override;
         RayTracingPipeline* CreateRayTracingPipeline(const RayTracingPipelineCreateInfo& createInfo) override;
         void                DestroyRayTracingPipeline(RayTracingPipeline* handle) override;
-        void                DestroyGraphicsPipeline(GraphicsPipeline* handle) override;
         ComputePipeline*    CreateComputePipeline(const ComputePipelineCreateInfo& createInfo) override;
         void                DestroyComputePipeline(ComputePipeline* handle) override;
         ResultCode          SetFramesInFlightCount(uint32_t count) override;
@@ -116,25 +152,25 @@ namespace RHI::Vulkan
         TL::Ptr<Renderdoc>                m_renderdoc               = nullptr;
         // Queue and allocator management
         IQueue                            m_queue[AsyncQueuesCount] = {};
-        TL::Ptr<class DeleteQueue>        m_destroyQueue            = nullptr;
-        TL::Ptr<class BindGroupAllocator> m_bindGroupAllocator      = nullptr;
+        BindGroupAllocator                m_bindGroupAllocator;
+        TL::Ptr<class DeleteQueue>        m_destroyQueue      = nullptr;
         // Frames in flight
-        uint32_t                          m_currentFrameIndex       = 0;
-        TL::Vector<TL::Ptr<class IFrame>> m_framesInFlight          = {};
+        uint32_t                          m_currentFrameIndex = 0;
+        TL::Vector<TL::Ptr<class IFrame>> m_framesInFlight    = {};
 
     private:
-        TL::Map<QueryPool*, TL::Stacktrace>          m_liveQueryPools;
-        TL::Map<Swapchain*, TL::Stacktrace>          m_liveSwapchains;
-        TL::Map<ShaderModule*, TL::Stacktrace>       m_liveShaderModules;
-        TL::Map<Image*, TL::Stacktrace>              m_liveImages;
-        TL::Map<Buffer*, TL::Stacktrace>             m_liveBuffers;
-        TL::Map<BindGroupLayout*, TL::Stacktrace>    m_liveBindGroupLayouts;
-        TL::Map<BindGroup*, TL::Stacktrace>          m_liveBindGroups;
-        TL::Map<PipelineLayout*, TL::Stacktrace>     m_livePipelineLayouts;
-        TL::Map<GraphicsPipeline*, TL::Stacktrace>   m_liveGraphicsPipelines;
-        TL::Map<RayTracingPipeline*, TL::Stacktrace> m_liveRayTracingPipelines;
-        TL::Map<ComputePipeline*, TL::Stacktrace>    m_liveComputePipelines;
-        TL::Map<Sampler*, TL::Stacktrace>            m_liveSamplers;
+        TL::Map<IQueryPool*, TL::Stacktrace>          m_liveQueryPools;
+        TL::Map<ISwapchain*, TL::Stacktrace>          m_liveSwapchains;
+        TL::Map<IShaderModule*, TL::Stacktrace>       m_liveShaderModules;
+        TL::Map<IImage*, TL::Stacktrace>              m_liveImages;
+        TL::Map<IBuffer*, TL::Stacktrace>             m_liveBuffers;
+        TL::Map<IBindGroupLayout*, TL::Stacktrace>    m_liveBindGroupLayouts;
+        TL::Map<IBindGroup*, TL::Stacktrace>          m_liveBindGroups;
+        TL::Map<IPipelineLayout*, TL::Stacktrace>     m_livePipelineLayouts;
+        TL::Map<IGraphicsPipeline*, TL::Stacktrace>   m_liveGraphicsPipelines;
+        TL::Map<IRayTracingPipeline*, TL::Stacktrace> m_liveRayTracingPipelines;
+        TL::Map<IComputePipeline*, TL::Stacktrace>    m_liveComputePipelines;
+        TL::Map<ISampler*, TL::Stacktrace>            m_liveSamplers;
     };
 
     template<typename T>
@@ -153,7 +189,7 @@ namespace RHI::Vulkan
     inline IQueue* IDevice::GetDeviceQueue(QueueType type)
     {
         auto& queue = m_queue[(uint32_t)type];
-        if (queue.GetHandle() != VK_NULL_HANDLE)
+        if (queue.m_queue != VK_NULL_HANDLE)
         {
             return &m_queue[(int)QueueType::Graphics];
         }
@@ -197,48 +233,9 @@ namespace RHI::Vulkan
 
         void Flush(IDevice* device, uint64_t timeline);
 
-        template<typename ResourceType>
-        inline static void destroyVkResource(IDevice* device, ResourceType handle)
-        {
-            if constexpr (std::is_same_v<VmaAllocation, ResourceType>) vmaFreeMemory(device->m_deviceAllocator, handle);
-            else if constexpr (std::is_same_v<VkBuffer, ResourceType>) vkDestroyBuffer(device->m_device, handle, nullptr);
-            else if constexpr (std::is_same_v<VkBufferView, ResourceType>) vkDestroyBufferView(device->m_device, handle, nullptr);
-            else if constexpr (std::is_same_v<VkImage, ResourceType>) vkDestroyImage(device->m_device, handle, nullptr);
-            else if constexpr (std::is_same_v<VkImageView, ResourceType>) vkDestroyImageView(device->m_device, handle, nullptr);
-            else if constexpr (std::is_same_v<VkSampler, ResourceType>) vkDestroySampler(device->m_device, handle, nullptr);
-            else if constexpr (std::is_same_v<VkPipeline, ResourceType>) vkDestroyPipeline(device->m_device, handle, nullptr);
-            else if constexpr (std::is_same_v<VkDescriptorPool, ResourceType>) vkDestroyDescriptorPool(device->m_device, handle, nullptr);
-            else if constexpr (std::is_same_v<VkQueryPool, ResourceType>) vkDestroyQueryPool(device->m_device, handle, nullptr);
-            else if constexpr (std::is_same_v<VkSemaphore, ResourceType>) vkDestroySemaphore(device->m_device, handle, nullptr);
-            else if constexpr (std::is_same_v<VkSwapchainKHR, ResourceType>) vkDestroySwapchainKHR(device->m_device, handle, nullptr);
-            else if constexpr (std::is_same_v<VkSurfaceKHR, ResourceType>) vkDestroySurfaceKHR(device->m_instance, handle, nullptr);
-            else if constexpr (std::is_same_v<VmaBufferAllocation, ResourceType>) vmaDestroyBuffer(device->m_deviceAllocator, handle.first, handle.second);
-            else if constexpr (std::is_same_v<VmaImageAllocation, ResourceType>) vmaDestroyImage(device->m_deviceAllocator, handle.first, handle.second);
-            else
-            {
-                static_assert(false, "Invalid ResourceType");
-            }
-        }
-
     private:
-        // FlushQueue that works on ResourceDeleteQueueEntry<ResourceType>
         template<typename ResourceType>
-        void FlushQueue(IDevice* device, TL::Vector<ResourceDeleteQueueEntry<ResourceType>>& queue, uint64_t timeline)
-        {
-            uint32_t deleteCount = 0;
-            for (const auto& entry : queue)
-            {
-                if (entry.timeline > timeline)
-                    break;
-
-                destroyVkResource(device, entry.resource);
-
-                uint64_t key = TL::hashBytes(TL::Block::create(entry.resource));
-                TL_ASSERT(m_pending.erase(key));
-                deleteCount++;
-            }
-            queue.erase(queue.begin(), queue.begin() + deleteCount);
-        }
+        void FlushQueue(IDevice* device, TL::Vector<ResourceDeleteQueueEntry<ResourceType>>& queue, uint64_t timeline);
 
         // Generic push implementation for single-handle resources
         template<typename ResourceType>

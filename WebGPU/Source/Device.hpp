@@ -1,7 +1,6 @@
 #pragma once
 
 #include <RHI/Device.hpp>
-#include <RHI/Queue.hpp>
 
 #include <TL/Containers/Containers.hpp>
 #include <TL/Ptr.hpp>
@@ -59,7 +58,7 @@ namespace RHI::WebGPU
         /// Frame
         TL::IAllocator& GetTempAllocator();
 
-        void WaitIdle();
+        void waitTimelineIdle();
 
     public:
         // WebGPU instance and core objects

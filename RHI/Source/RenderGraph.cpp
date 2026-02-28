@@ -1187,7 +1187,7 @@ namespace RHI
                 // Try to find the corresponding imported RGFrameImage for this swapchain image so we can
                 // use its last producer state as the srcState for transitioning back to present.
 
-                ImageBarrierState srcState{ImageUsage::CopyDst, swapchain.waitStage, Access::Write};
+                ImageBarrierState srcState{ImageUsage::CopyDst, swapchain.stage, Access::Write};
                 Image*            scImage = swapchain.swapchain->GetImage();
                 for (auto frameImg : m_imagePool)
                 {
@@ -1217,7 +1217,7 @@ namespace RHI
         QueueSubmitInfo submitInfo{
             .commandLists  = commandList,
             .signalStage   = PipelineStage::BottomOfPipe,
-            .waitInfos     = {},
+            .waitTimelineInfos     = {},
             .signalPresent = true,
         };
         TL_MAYBE_UNUSED auto timeline = frame->QueueSubmit(QueueType::Graphics, submitInfo);

@@ -165,12 +165,12 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        auto gfxQueue = m_device->GetDeviceQueue(QueueType::Graphics);
+        IQueue* gfxQueue = m_device->GetDeviceQueue(QueueType::Graphics);
 
         {
-            ZoneScopedN("Frame: Wait for frame ready");
-            bool timeout = gfxQueue->Wait(m_timeline, UINT64_MAX);
-            m_timeline   = gfxQueue->GetTimelineValue();
+            ZoneScopedN("Frame: waitTimeline for frame ready");
+            bool timeout = gfxQueue->waitTimeline(m_timeline, UINT64_MAX);
+            m_timeline   = gfxQueue->m_timelineValue.load();
             TL_ASSERT(timeout != false);
         }
 
@@ -192,13 +192,13 @@ namespace RHI::Vulkan
             ZoneScopedN("Frame: Acquire swapchain images");
             for (auto [_swapchain, pipelineStage] : swapchainToAcquire)
             {
-                auto swapchain = (ISwapchain*)_swapchain;
-                auto waitStage = ConvertPipelineStageFlags(pipelineStage);
+                auto swapchain         = (ISwapchain*)_swapchain;
+                auto waitTimelineStage = ConvertPipelineStageFlags(pipelineStage);
 
                 VkSemaphore imageAcquiredSemaphore{VK_NULL_HANDLE};
                 result = swapchain->AcquireNextImage(imageAcquiredSemaphore);
                 TL_ASSERT(result);
-                m_device->GetDeviceQueue(QueueType::Graphics)->AddWaitSemaphore(imageAcquiredSemaphore, 0, waitStage);
+                m_device->GetDeviceQueue(QueueType::Graphics)->waitTimelineSemaphore(imageAcquiredSemaphore, 0, waitTimelineStage);
 
                 m_acquiredSwapchains.push_back({swapchain});
             }
@@ -236,7 +236,7 @@ namespace RHI::Vulkan
                     .pImageIndices      = imageIndices.data(),
                     .pResults           = results.data(),
                 };
-                VulkanResult result = vkQueuePresentKHR(gfxQueue->GetHandle(), &presentInfo);
+                VulkanResult result = vkQueuePresentKHR(gfxQueue->m_queue, &presentInfo);
                 if (!result.IsSwapchainSuccess())
                 {
                     TL_LOG_INFO("Swapchain present failed with error: {}", result.AsString());
@@ -276,23 +276,23 @@ namespace RHI::Vulkan
 
         auto queue = m_device->GetDeviceQueue(queueType);
 
-        for (auto waitInfo : submitInfo.waitInfos)
+        for (auto waitTimelineInfo : submitInfo.waitTimelineInfos)
         {
-            if (auto waitQueue = m_device->GetDeviceQueue(waitInfo.queueType))
+            if (IQueue* waitTimelineQueue = m_device->GetDeviceQueue(waitTimelineInfo.type))
             {
-                queue->AddWaitSemaphore(waitQueue->GetTimelineHandle(), waitInfo.timelineValue, ConvertPipelineStageFlags(waitInfo.waitStage));
+                queue->waitTimelineSemaphore(waitTimelineQueue->m_timelineSemaphore, waitTimelineInfo.value, ConvertPipelineStageFlags(waitTimelineInfo.stage));
             }
         }
 
         if (submitInfo.signalPresent == true)
         {
-            queue->AddSignalSemaphore(m_presentFrameSemaphore, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
+            queue->signalBinarySemaphore(m_presentFrameSemaphore, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
         }
 
         auto commandLists = TL::Span{(ICommandList**)submitInfo.commandLists.data(), submitInfo.commandLists.size()};
-        m_timeline        = queue->Submit(commandLists, ConvertPipelineStageFlags(submitInfo.signalStage));
-        m_timeline        = queue->GetTimelineValue();
-        return queue->GetTimelineValue();
+        m_timeline        = queue->submit(commandLists, ConvertPipelineStageFlags(submitInfo.signalStage));
+        m_timeline        = queue->m_timelineValue.load();
+        return queue->m_timelineValue;
     }
 
     void IFrame::BufferWrite(Buffer* _buffer, size_t offset, TL::Block block)
@@ -385,7 +385,7 @@ namespace RHI::Vulkan
                 }},
             });
             copyCommand->End();
-            [[maybe_unused]] auto newTimeline = queue->Submit({copyCommand}, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
+            [[maybe_unused]] auto newTimeline = queue->submit({copyCommand}, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
             vkDeviceWaitIdle(m_device->m_device);
         }
     }

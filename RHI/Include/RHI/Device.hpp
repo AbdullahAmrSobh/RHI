@@ -43,25 +43,25 @@ namespace RHI
         uint32_t minStorageBufferOffsetAlignment;
     };
 
-    struct QueueWaitInfo
+    struct QueueSubmitWaitInfo
     {
-        QueueType     queueType;
-        uint64_t      timelineValue;
-        PipelineStage waitStage;
+        QueueType     type;
+        uint64_t      value;
+        PipelineStage stage;
     };
 
     struct SwapchainImageAcquireInfo
     {
         Swapchain*    swapchain;
-        PipelineStage waitStage;
+        PipelineStage stage;
     };
 
     struct QueueSubmitInfo
     {
-        TL::Span<CommandList* const>  commandLists  = {};
-        PipelineStage                 signalStage   = {};
-        TL::Span<const QueueWaitInfo> waitInfos     = {};
-        bool                          signalPresent = false;
+        TL::Span<CommandList* const>        commandLists      = {};
+        PipelineStage                       signalStage       = {};
+        TL::Span<const QueueSubmitWaitInfo> waitTimelineInfos = {};
+        bool                                signalPresent     = false;
     };
 
     struct BufferStreamInfo

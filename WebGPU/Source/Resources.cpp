@@ -888,12 +888,12 @@ namespace RHI::WebGPU
             .userdata2   = {},
         };
         auto               future = wgpuBufferMapAsync(buffer, WGPUMapMode_Write, 0, WGPU_WHOLE_MAP_SIZE, mapCallbackInfo);
-        WGPUFutureWaitInfo waitInfo{
+        WGPUFuturewaitTimelineInfo waitTimelineInfo{
             .future    = future,
             .completed = true,
         };
 
-        wgpuInstanceWaitAny(device->m_instance, 1, &waitInfo, UINT64_MAX);
+        wgpuInstancewaitTimelineAny(device->m_instance, 1, &waitTimelineInfo, UINT64_MAX);
         mappedPtr = wgpuBufferGetMappedRange(buffer, 0, WGPU_WHOLE_MAP_SIZE);
         return mappedPtr;
     }

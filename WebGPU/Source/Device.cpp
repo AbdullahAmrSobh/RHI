@@ -45,8 +45,8 @@ namespace RHI::WebGPU
             .nextInChain  = nullptr,
             .capabilities = {
                              .nextInChain          = nullptr,
-                             .timedWaitAnyEnable   = false,
-                             .timedWaitAnyMaxCount = 0,
+                             .timedwaitTimelineAnyEnable   = false,
+                             .timedwaitTimelineAnyMaxCount = 0,
                              },
         };
         m_instance = wgpuCreateInstance(&instanceDesc);
@@ -76,18 +76,18 @@ namespace RHI::WebGPU
         };
         WGPURequestAdapterCallbackInfo cb{
             .nextInChain = nullptr,
-            .mode        = WGPUCallbackMode_WaitAnyOnly,
+            .mode        = WGPUCallbackMode_waitTimelineAnyOnly,
             .callback    = requestAdapterCallback,
             .userdata1   = &m_adapter,
             .userdata2   = nullptr,
         };
         auto               future = wgpuInstanceRequestAdapter(m_instance, &options, cb);
-        WGPUFutureWaitInfo waitInfo{
+        WGPUFuturewaitTimelineInfo waitTimelineInfo{
             .future    = future,
             .completed = true,
         };
-        auto result = wgpuInstanceWaitAny(m_instance, 1, &waitInfo, 0);
-        TL_ASSERT(result == WGPUWaitStatus_Success);
+        auto result = wgpuInstancewaitTimelineAny(m_instance, 1, &waitTimelineInfo, 0);
+        TL_ASSERT(result == WGPUwaitTimelineStatus_Success);
 
         // auto buffermapcallback = [](WGPUMapAsyncStatus status, struct WGPUStringView message, void* userdata1, void* userdata2)
         // {
@@ -203,7 +203,7 @@ namespace RHI::WebGPU
 
     void IDevice::Shutdown()
     {
-        WaitIdle();
+        waitTimelineIdle();
 
         for (auto& frame : m_framesInFlight)
         {
@@ -288,7 +288,7 @@ namespace RHI::WebGPU
         wgpuInstanceRelease(m_instance);
     }
 
-    void IDevice::WaitIdle()
+    void IDevice::waitTimelineIdle()
     {
         ZoneScoped;
         wgpuDeviceTick(m_device);

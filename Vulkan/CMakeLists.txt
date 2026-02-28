@@ -8,7 +8,6 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Common.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Device.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Queue.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Frame.hpp
 )
@@ -17,7 +16,6 @@ set(HEADER_FILES
 set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Device.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Queue.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Frame.cpp
 )

@@ -620,18 +620,16 @@ namespace RHI::Vulkan
 
     ResultCode IBindGroup::Init(IDevice* device, const BindGroupCreateInfo& createInfo)
     {
-        auto allocator    = device->m_bindGroupAllocator.get();
-        auto layoutObject = (IBindGroupLayout*)(createInfo.layout);
+        IBindGroupLayout* bindGroupLayout = (IBindGroupLayout*)(createInfo.layout);
 
         this->bindGroupLayout = (IBindGroupLayout*)createInfo.layout;
 
-        return allocator->InitBindGroup(this, layoutObject, createInfo.bindlessArrayCount);
+        return device->m_bindGroupAllocator.InitBindGroup(this, bindGroupLayout, createInfo.bindlessArrayCount);
     }
 
     void IBindGroup::Shutdown(IDevice* device)
     {
-        auto allocator = device->m_bindGroupAllocator.get();
-        device->m_bindGroupAllocator->ShutdownBindGroup(this);
+        device->m_bindGroupAllocator.ShutdownBindGroup(this);
     }
 
     void IBindGroup::Update(IDevice* device, const BindGroupUpdateInfo& updateInfo)
@@ -1032,7 +1030,7 @@ namespace RHI::Vulkan
         };
 
         VulkanResult result;
-        result = device->m_pfn.m_vkCreateRayTracingPipelinesKHR(device->m_device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &pipelineCI, nullptr, &handle);
+        result = device->m_pfn.vkCreateRayTracingPipelinesKHR(device->m_device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &pipelineCI, nullptr, &handle);
         return result;
     }
 
@@ -1275,6 +1273,12 @@ namespace RHI::Vulkan
         return ConvertResult(result);
     }
 
+    ResultCode IImage::Init(IDevice* device, const ImageViewCreateInfo& createInfo)
+    {
+        TL_UNREACHABLE_MSG("TODO: Implement!");
+        return ResultCode::ErrorUnknown;
+    }
+
     ResultCode IImage::Init(TL_MAYBE_UNUSED IDevice* device, VkImage image, const VkSwapchainCreateInfoKHR& swapchainCI)
     {
         this->handle       = image;
@@ -1478,7 +1482,7 @@ namespace RHI::Vulkan
 
         IQueue*  queue = device.GetDeviceQueue(QueueType::Graphics);
         VkBool32 surfaceSupportPresent;
-        result = vkGetPhysicalDeviceSurfaceSupportKHR(device.m_physicalDevice, queue->GetFamilyIndex(), outSurface, &surfaceSupportPresent);
+        result = vkGetPhysicalDeviceSurfaceSupportKHR(device.m_physicalDevice, queue->m_familyIndex, outSurface, &surfaceSupportPresent);
         TL_ASSERT(result);
 
         if (surfaceSupportPresent != VK_TRUE)

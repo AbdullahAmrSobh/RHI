@@ -96,7 +96,7 @@ namespace RHI::Vulkan
             .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
             .pNext            = nullptr,
             .flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-            .queueFamilyIndex = device->GetDeviceQueue(queueType)->GetFamilyIndex(),
+            .queueFamilyIndex = device->GetDeviceQueue(queueType)->m_familyIndex,
         };
 
         VkResult result = vkCreateCommandPool(device->m_device, &poolInfo, nullptr, &m_pool);
@@ -432,7 +432,7 @@ namespace RHI::Vulkan
         ZoneScoped;
 
 #if RHI_DEBUG
-        if (auto fn = m_device->m_pfn.m_vkCmdBeginDebugUtilsLabelEXT)
+        if (auto fn = m_device->m_pfn.vkCmdBeginDebugUtilsLabelEXT)
         {
             uint32_t             r = (bgra >> 16) & 0xFF;
             uint32_t             g = (bgra >> 8) & 0xFF;
@@ -451,7 +451,7 @@ namespace RHI::Vulkan
 
     void ICommandList::PopDebugMarker()
     {
-        if (auto fn = m_device->m_pfn.m_vkCmdEndDebugUtilsLabelEXT)
+        if (auto fn = m_device->m_pfn.vkCmdEndDebugUtilsLabelEXT)
         {
             fn(m_commandBuffer);
         }
@@ -462,7 +462,7 @@ namespace RHI::Vulkan
         ZoneScoped;
 
 #if RHI_DEBUG
-        if (auto fn = m_device->m_pfn.m_vkCmdInsertDebugUtilsLabelEXT)
+        if (auto fn = m_device->m_pfn.vkCmdInsertDebugUtilsLabelEXT)
         {
             uint32_t             r = (bgra >> 16) & 0xFF;
             uint32_t             g = (bgra >> 8) & 0xFF;
@@ -492,14 +492,14 @@ namespace RHI::Vulkan
             .offset = conditionBuffer.offset,
             .flags  = inverted ? VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT : 0u,
         };
-        m_device->m_pfn.m_vkCmdBeginConditionalRenderingEXT(m_commandBuffer, &beginInfo);
+        m_device->m_pfn.vkCmdBeginConditionalRenderingEXT(m_commandBuffer, &beginInfo);
     }
 
     void ICommandList::EndConditionalCommands()
     {
         ZoneScoped;
 
-        m_device->m_pfn.m_vkCmdEndConditionalRenderingEXT(m_commandBuffer);
+        m_device->m_pfn.vkCmdEndConditionalRenderingEXT(m_commandBuffer);
     }
 
     void ICommandList::Execute(TL::Span<const CommandList*> commandLists)
@@ -553,7 +553,7 @@ namespace RHI::Vulkan
             .descriptorWriteCount = (uint32_t)writer.GetWrites().size(),
             .pDescriptorWrites    = writer.GetWrites().data(),
         };
-        m_device->m_pfn.m_vkCmdPushDescriptorSet2KHR(m_commandBuffer, &pushDescriptorSetInfo);
+        m_device->m_pfn.vkCmdPushDescriptorSet2KHR(m_commandBuffer, &pushDescriptorSetInfo);
     }
 
     void ICommandList::SetBindGroups(BindPoint bindPoint, TL::Span<const BindGroupBindingInfo> bindGroups)
@@ -720,7 +720,7 @@ namespace RHI::Vulkan
 
     void ICommandList::DrawMeshTasks(const DrawMeshTasksInfo drawMeshTasksDesc)
     {
-        m_device->m_pfn.m_vkCmdDrawMeshTasksEXT(m_commandBuffer, drawMeshTasksDesc.x, drawMeshTasksDesc.y, drawMeshTasksDesc.z);
+        m_device->m_pfn.vkCmdDrawMeshTasksEXT(m_commandBuffer, drawMeshTasksDesc.x, drawMeshTasksDesc.y, drawMeshTasksDesc.z);
     }
 
     void ICommandList::DrawMeshTasksIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t drawNum, uint32_t stride)
@@ -731,7 +731,7 @@ namespace RHI::Vulkan
         {
             auto countBuf = (IBuffer*)(countBuffer.buffer);
 
-            m_device->m_pfn.m_vkCmdDrawMeshTasksIndirectCountEXT(
+            m_device->m_pfn.vkCmdDrawMeshTasksIndirectCountEXT(
                 m_commandBuffer,
                 cmdBuffer->handle,
                 argumentBuffer.offset,
@@ -742,7 +742,7 @@ namespace RHI::Vulkan
         }
         else
         {
-            m_device->m_pfn.m_vkCmdDrawMeshTasksIndirectEXT(m_commandBuffer, cmdBuffer->handle, argumentBuffer.offset, drawNum, stride);
+            m_device->m_pfn.vkCmdDrawMeshTasksIndirectEXT(m_commandBuffer, cmdBuffer->handle, argumentBuffer.offset, drawNum, stride);
         }
     }
 
@@ -752,7 +752,7 @@ namespace RHI::Vulkan
         VkStridedDeviceAddressRegionKHR missShaderBindingTable{};
         VkStridedDeviceAddressRegionKHR hitShaderBindingTable{};
         VkStridedDeviceAddressRegionKHR callableShaderBindingTable{};
-        m_device->m_pfn.m_vkCmdTraceRaysKHR(
+        m_device->m_pfn.vkCmdTraceRaysKHR(
             m_commandBuffer,
             &raygenShaderBindingTable,
             &missShaderBindingTable,
@@ -767,7 +767,7 @@ namespace RHI::Vulkan
     {
         auto            cmdBuffer             = (IBuffer*)(argumentBuffer.buffer);
         VkDeviceAddress indirectDeviceAddress = cmdBuffer->address + argumentBuffer.offset;
-        m_device->m_pfn.m_vkCmdTraceRaysIndirect2KHR(m_commandBuffer, indirectDeviceAddress);
+        m_device->m_pfn.vkCmdTraceRaysIndirect2KHR(m_commandBuffer, indirectDeviceAddress);
     }
 
     void ICommandList::Dispatch(const DispatchParameters& parameters)

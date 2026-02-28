@@ -19,7 +19,6 @@
 
 #include "Device.hpp"
 #include "Common.hpp"
-#include "Queue.hpp"
 #include "Frame.hpp"
 #include "RHI-Vulkan/Loader.hpp"
 
@@ -71,6 +70,8 @@ namespace RHI::Vulkan
             message += "Objects:\n";
             for (uint32_t i = 0; i < pCallbackData->objectCount; ++i)
             {
+                const char* objectName = pCallbackData->pObjects[i].pObjectName;
+
                 message += std::format(
                     "  [{}] Type: {}, Name: {}\n",
                     i,
@@ -84,14 +85,9 @@ namespace RHI::Vulkan
             message += "Debug Markers:\n";
             for (uint32_t i = 0; i < pCallbackData->cmdBufLabelCount; ++i)
             {
-                message += std::format(
-                    "  [{}] {} (color: [{:.2f}, {:.2f}, {:.2f}, {:.2f}])\n",
-                    i,
-                    pCallbackData->pCmdBufLabels[i].pLabelName ? pCallbackData->pCmdBufLabels[i].pLabelName : "Unnamed",
-                    pCallbackData->pCmdBufLabels[i].color[0],
-                    pCallbackData->pCmdBufLabels[i].color[1],
-                    pCallbackData->pCmdBufLabels[i].color[2],
-                    pCallbackData->pCmdBufLabels[i].color[3]);
+                const char* labelName = pCallbackData->pCmdBufLabels[i].pLabelName;
+                auto [r, g, b, a]     = pCallbackData->pCmdBufLabels[i].color;
+                message += std::format("  [{}] {} (color: [{:.2f}, {:.2f}, {:.2f}, {:.2f}])\n", i, labelName, r, g, b, a);
             }
         }
 
@@ -100,14 +96,9 @@ namespace RHI::Vulkan
             message += "Queue Labels:\n";
             for (uint32_t i = 0; i < pCallbackData->queueLabelCount; ++i)
             {
-                message += std::format(
-                    "  [{}] {} (color: [{:.2f}, {:.2f}, {:.2f}, {:.2f}])\n",
-                    i,
-                    pCallbackData->pQueueLabels[i].pLabelName ? pCallbackData->pQueueLabels[i].pLabelName : "Unnamed",
-                    pCallbackData->pQueueLabels[i].color[0],
-                    pCallbackData->pQueueLabels[i].color[1],
-                    pCallbackData->pQueueLabels[i].color[2],
-                    pCallbackData->pQueueLabels[i].color[3]);
+                const char* labelName = pCallbackData->pQueueLabels[i].pLabelName;
+                auto [r, g, b, a]     = pCallbackData->pQueueLabels[i].color;
+                message += std::format("  [{}] {} (color: [{:.2f}, {:.2f}, {:.2f}, {:.2f}])\n", i, labelName, r, g, b, a);
             }
         }
 
@@ -136,70 +127,159 @@ namespace RHI::Vulkan
         return layers;
     }
 
-    inline static TL::Vector<VkExtensionProperties> GetAvailableInstanceExtensions()
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    VkResult IQueue::Init(IDevice* device, const char* debugName, uint32_t familyIndex, uint32_t queueIndex)
     {
+        m_device = device;
+
+        vkGetDeviceQueue(device->m_device, familyIndex, queueIndex, &m_queue);
+        m_familyIndex = familyIndex;
+
+        m_device->SetDebugName(m_queue, debugName);
+
+        VkSemaphoreTypeCreateInfo timelineCreateInfo = {
+            .sType         = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
+            .pNext         = nullptr,
+            .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
+            .initialValue  = 0,
+        };
+        VkSemaphoreCreateInfo semaphoreInfo = {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+            .pNext = &timelineCreateInfo,
+            .flags = 0,
+        };
+
         VulkanResult result;
-        uint32_t     instanceExtensionsCount;
-        result = vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionsCount, nullptr);
-        TL_ASSERT(result);
-        TL::Vector<VkExtensionProperties> extensions;
-        extensions.resize(instanceExtensionsCount);
-        result = vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionsCount, extensions.data());
-        TL_ASSERT(result);
-        return extensions;
+        result = vkCreateSemaphore(device->m_device, &semaphoreInfo, nullptr, &m_timelineSemaphore);
+        VkResultTry(result);
+
+        m_device->SetDebugName(m_timelineSemaphore, "{}-timeline-semaphore", debugName);
+        m_timelineValue.store(0);
+
+        return result;
     }
 
-    inline static TL::Vector<VkLayerProperties> GetAvailableDeviceLayerExtensions(VkPhysicalDevice physicalDevice)
+    void IQueue::Shutdown()
     {
+        vkDestroySemaphore(m_device->m_device, m_timelineSemaphore, nullptr);
+    }
+
+    void IQueue::waitTimelineQueueIdle() const
+    {
+        ZoneScoped;
+        vkQueueWaitIdle(m_queue);
+    }
+
+    bool IQueue::waitTimeline(uint64_t timelineValue, uint64_t duration)
+    {
+        ZoneScoped;
+        VkSemaphoreWaitInfo waitTimelineInfo = {
+            .sType          = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
+            .pNext          = nullptr,
+            .flags          = 0,
+            .semaphoreCount = 1,
+            .pSemaphores    = &m_timelineSemaphore,
+            .pValues        = &timelineValue,
+        };
+        VulkanResult result = vkWaitSemaphores(m_device->m_device, &waitTimelineInfo, duration);
+        return result;
+    }
+
+    void IQueue::waitTimelineSemaphore(VkSemaphore semaphore, uint64_t value, VkPipelineStageFlags2 stageMask)
+    {
+        ZoneScoped;
+        m_waitTimelineSemaphores.push_back({
+            .sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+            .pNext       = nullptr,
+            .semaphore   = semaphore,
+            .value       = value,
+            .stageMask   = stageMask,
+            .deviceIndex = 0,
+        });
+    }
+
+    void IQueue::signalTimelineSemaphore(VkSemaphore semaphore, uint64_t value, VkPipelineStageFlags2 stageMask)
+    {
+        ZoneScoped;
+        m_signalSemaphores.push_back({
+            .sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+            .pNext       = nullptr,
+            .semaphore   = semaphore,
+            .value       = value,
+            .stageMask   = stageMask,
+            .deviceIndex = 0,
+        });
+    }
+
+    void IQueue::beginDebugUtilsLabel(const char* name)
+    {
+        if (auto fn = m_device->m_pfn.vkQueueBeginDebugUtilsLabelEXT)
+        {
+            VkDebugUtilsLabelEXT label = {
+                .sType      = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
+                .pNext      = nullptr,
+                .pLabelName = name,
+                .color      = {},
+            };
+            fn(m_queue, &label);
+        }
+    }
+
+    void IQueue::endDebugUtilsLabel()
+    {
+        if (auto fn = m_device->m_pfn.vkQueueEndDebugUtilsLabelEXT)
+        {
+            fn(m_queue);
+        }
+    }
+
+    uint64_t IQueue::submit(TL::Span<ICommandList* const> commandLists, VkPipelineStageFlags2 signalStage)
+    {
+        ZoneScoped;
+
         VulkanResult result;
-        uint32_t     instanceLayerCount;
-        result = vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, nullptr);
+
+        signalTimelineSemaphore(m_timelineSemaphore, ++m_timelineValue, signalStage);
+
+        TL::Vector<VkCommandBufferSubmitInfo> commandBufferSubmitInfos{m_device->GetCurrentFrame()->GetAllocator()};
+        for (auto commandList : commandLists)
+        {
+            commandBufferSubmitInfos.push_back({
+                .sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+                .pNext         = nullptr,
+                .commandBuffer = commandList->GetHandle(),
+                .deviceMask    = 0,
+            });
+        }
+
+        VkSubmitInfo2 submitInfo = {
+            .sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+            .pNext                    = nullptr,
+            .flags                    = {},
+            .waitSemaphoreInfoCount   = (uint32_t)m_waitTimelineSemaphores.size(),
+            .pWaitSemaphoreInfos      = m_waitTimelineSemaphores.data(),
+            .commandBufferInfoCount   = (uint32_t)commandBufferSubmitInfos.size(),
+            .pCommandBufferInfos      = commandBufferSubmitInfos.data(),
+            .signalSemaphoreInfoCount = (uint32_t)m_signalSemaphores.size(),
+            .pSignalSemaphoreInfos    = m_signalSemaphores.data(),
+        };
+        result = vkQueueSubmit2(m_queue, 1, &submitInfo, VK_NULL_HANDLE);
         TL_ASSERT(result);
-        TL::Vector<VkLayerProperties> layers;
-        layers.resize(instanceLayerCount);
-        result = vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, layers.data());
-        TL_ASSERT(result);
-        return layers;
+
+        m_waitTimelineSemaphores.clear();
+        m_signalSemaphores.clear();
+
+        return m_timelineValue;
     }
 
-    inline static TL::Vector<VkExtensionProperties> GetAvailableDeviceExtensions(VkPhysicalDevice physicalDevice)
-    {
-        VulkanResult result;
-        uint32_t     extensionsCount;
-        result = vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, nullptr);
-        TL_ASSERT(result);
-        TL::Vector<VkExtensionProperties> extnesions;
-        extnesions.resize(extensionsCount);
-        result = vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, extnesions.data());
-        TL_ASSERT(result);
-        return extnesions;
-    }
-
-    inline static TL::Vector<VkPhysicalDevice> GetAvailablePhysicalDevices(VkInstance instance)
-    {
-        VulkanResult result;
-        uint32_t     physicalDeviceCount;
-        result = vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
-        TL::Vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount, VK_NULL_HANDLE);
-        result = vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, physicalDevices.data());
-        return physicalDevices;
-    }
-
-    inline static TL::Vector<VkQueueFamilyProperties> GetPhysicalDeviceQueueFamilyProperties(VkPhysicalDevice physicalDevice)
-    {
-        uint32_t queueFamilyPropertiesCount;
-        vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyPropertiesCount, nullptr);
-        TL::Vector<VkQueueFamilyProperties> queueFamilyProperties{};
-        queueFamilyProperties.resize(queueFamilyPropertiesCount);
-        vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyPropertiesCount, queueFamilyProperties.data());
-        return queueFamilyProperties;
-    }
-
+    ///
 
     IDevice::IDevice()
     {
-        m_destroyQueue       = TL::CreatePtr<DeleteQueue>();
-        m_bindGroupAllocator = TL::CreatePtr<BindGroupAllocator>();
+        m_destroyQueue = TL::CreatePtr<DeleteQueue>();
     }
 
     IDevice::~IDevice() = default;
@@ -224,8 +304,18 @@ namespace RHI::Vulkan
         for (VkLayerProperties layer : GetAvailableInstanceLayerExtensions())
             availableInstanceLayers[layer.layerName] = layer;
 
-        for (VkExtensionProperties extension : GetAvailableInstanceExtensions())
-            availableInstanceExtensions[extension.extensionName] = extension;
+        {
+            VulkanResult result;
+            uint32_t     instanceExtensionsCount;
+            result = vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionsCount, nullptr);
+            TL_ASSERT(result);
+            TL::Vector<VkExtensionProperties> extensions;
+            extensions.resize(instanceExtensionsCount);
+            result = vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionsCount, extensions.data());
+            TL_ASSERT(result);
+            for (VkExtensionProperties extension : extensions)
+                availableInstanceExtensions[extension.extensionName] = extension;
+        }
 
         TL::Vector<const char*> requiredInstanceLayers;
         TL::Vector<const char*> requiredInstanceExtensions{
@@ -263,9 +353,9 @@ namespace RHI::Vulkan
             .pNext                   = DebugLayerEnabled ? &debugUtilsCI : nullptr,
             .flags                   = {},
             .pApplicationInfo        = &applicationInfo,
-            .enabledLayerCount       = uint32_t(requiredInstanceLayers.size()),
+            .enabledLayerCount       = (uint32_t)requiredInstanceLayers.size(),
             .ppEnabledLayerNames     = requiredInstanceLayers.data(),
-            .enabledExtensionCount   = uint32_t(requiredInstanceExtensions.size()),
+            .enabledExtensionCount   = (uint32_t)requiredInstanceExtensions.size(),
             .ppEnabledExtensionNames = requiredInstanceExtensions.data(),
         };
 
@@ -283,9 +373,9 @@ namespace RHI::Vulkan
         {
             if (availableInstanceExtensions.contains(VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
             {
-                m_pfn.m_vkCreateDebugUtilsMessengerEXT  = VULKAN_INSTANCE_FUNC_LOAD(m_instance, vkCreateDebugUtilsMessengerEXT);
-                m_pfn.m_vkDestroyDebugUtilsMessengerEXT = VULKAN_INSTANCE_FUNC_LOAD(m_instance, vkDestroyDebugUtilsMessengerEXT);
-                result                                  = m_pfn.m_vkCreateDebugUtilsMessengerEXT(m_instance, &debugUtilsCI, nullptr, &m_debugUtilsMessenger);
+                m_pfn.vkCreateDebugUtilsMessengerEXT  = VULKAN_INSTANCE_FUNC_LOAD(m_instance, vkCreateDebugUtilsMessengerEXT);
+                m_pfn.vkDestroyDebugUtilsMessengerEXT = VULKAN_INSTANCE_FUNC_LOAD(m_instance, vkDestroyDebugUtilsMessengerEXT);
+                result                                = m_pfn.vkCreateDebugUtilsMessengerEXT(m_instance, &debugUtilsCI, nullptr, &m_debugUtilsMessenger);
                 if (!result)
                 {
                     Shutdown();
@@ -329,49 +419,76 @@ namespace RHI::Vulkan
             requiredDeviceExtensions.push_back(VK_KHR_RAY_TRACING_POSITION_FETCH_EXTENSION_NAME);
         }
 
-        for (VkPhysicalDevice physicalDevice : GetAvailablePhysicalDevices(m_instance))
         {
-            TL::Map<TL::String, VkLayerProperties> availableDeviceLayers;
-            for (VkLayerProperties layer : GetAvailableDeviceLayerExtensions(physicalDevice))
+            VulkanResult result;
+            uint32_t     physicalDeviceCount;
+            result = vkEnumeratePhysicalDevices(m_instance, &physicalDeviceCount, nullptr);
+            TL::Vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount, VK_NULL_HANDLE);
+            result = vkEnumeratePhysicalDevices(m_instance, &physicalDeviceCount, physicalDevices.data());
+            for (VkPhysicalDevice physicalDevice : physicalDevices)
             {
-                availableDeviceLayers[layer.layerName] = layer;
-            }
-
-            TL::Map<TL::String, VkExtensionProperties> availableDeviceExtensions;
-            for (VkExtensionProperties extension : GetAvailableDeviceExtensions(physicalDevice))
-            {
-                availableDeviceExtensions[extension.extensionName] = extension;
-            }
-
-            // search for a suitable physical device if it contains the required extensions
-            bool containAllLayers = std::all_of(requiredDeviceLayers.begin(), requiredDeviceLayers.end(), [&](const char* layer)
+                TL::Map<TL::String, VkLayerProperties> availableDeviceLayers;
                 {
-                    return availableDeviceExtensions.contains(layer);
-                });
+                    VulkanResult result;
+                    uint32_t     instanceLayerCount;
+                    result = vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, nullptr);
+                    TL_ASSERT(result);
+                    TL::Vector<VkLayerProperties> layers;
+                    layers.resize(instanceLayerCount);
+                    result = vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, layers.data());
+                    TL_ASSERT(result);
+                    for (VkLayerProperties layer : layers)
+                        availableDeviceLayers[layer.layerName] = layer;
+                }
 
-            bool containAllExtensions = std::all_of(requiredDeviceExtensions.begin(), requiredDeviceExtensions.end(), [&](const char* ext)
+                TL::Map<TL::String, VkExtensionProperties> availableDeviceExtensions;
                 {
-                    return availableDeviceExtensions.contains(ext);
-                });
+                    VulkanResult result;
+                    uint32_t     extensionsCount;
+                    result = vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, nullptr);
+                    TL_ASSERT(result);
+                    TL::Vector<VkExtensionProperties> extnesions;
+                    extnesions.resize(extensionsCount);
+                    result = vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, extnesions.data());
+                    TL_ASSERT(result);
+                    for (VkExtensionProperties extension : extnesions)
+                        availableDeviceExtensions[extension.extensionName] = extension;
+                }
 
-            if (containAllLayers && containAllExtensions)
-            {
-                m_physicalDevice = physicalDevice;
-                break;
+                // search for a suitable physical device if it contains the required extensions
+                bool containAllLayers = std::all_of(requiredDeviceLayers.begin(), requiredDeviceLayers.end(), [&](const char* layer)
+                    {
+                        return availableDeviceExtensions.contains(layer);
+                    });
+
+                bool containAllExtensions = std::all_of(requiredDeviceExtensions.begin(), requiredDeviceExtensions.end(), [&](const char* ext)
+                    {
+                        return availableDeviceExtensions.contains(ext);
+                    });
+
+                if (containAllLayers && containAllExtensions)
+                {
+                    m_physicalDevice = physicalDevice;
+                    break;
+                }
             }
-        }
 
-        if (m_physicalDevice == VK_NULL_HANDLE)
-        {
-            TL_LOG_ERROR("RHI Vulkan: No suitable physical device found.");
-            return ResultCode::ErrorUnknown;
+            if (m_physicalDevice == VK_NULL_HANDLE)
+            {
+                TL_LOG_ERROR("RHI Vulkan: No suitable physical device found.");
+                return ResultCode::ErrorUnknown;
+            }
         }
 
         uint32_t graphicsQueueFamilyIndex = UINT32_MAX;
         uint32_t transferQueueFamilyIndex = UINT32_MAX;
         uint32_t computeQueueFamilyIndex  = UINT32_MAX;
 
-        auto queueFamilyProperties = GetPhysicalDeviceQueueFamilyProperties(m_physicalDevice);
+        uint32_t queueFamilyPropertiesCount;
+        vkGetPhysicalDeviceQueueFamilyProperties(m_physicalDevice, &queueFamilyPropertiesCount, nullptr);
+        TL::Vector<VkQueueFamilyProperties> queueFamilyProperties{};
+        queueFamilyProperties.resize(queueFamilyPropertiesCount);
+        vkGetPhysicalDeviceQueueFamilyProperties(m_physicalDevice, &queueFamilyPropertiesCount, queueFamilyProperties.data());
 
         for (uint32_t queueFamilyIndex = 0; queueFamilyIndex < uint32_t(queueFamilyProperties.size()); ++queueFamilyIndex)
         {
@@ -427,64 +544,58 @@ namespace RHI::Vulkan
             queueCreateInfos.push_back(queueCI);
         }
 
-        VkPhysicalDeviceDeviceGeneratedCommandsFeaturesEXT deviceGeneratedCommandsFeatures{};
-        VkPhysicalDeviceMeshShaderFeaturesEXT              meshShaderFeatures{};
-        VkPhysicalDeviceRayTracingPipelineFeaturesKHR      rayTracingPipelineFeatures{};
-        VkPhysicalDeviceAccelerationStructureFeaturesKHR   accelerationStructureFeatures{};
-        VkPhysicalDeviceRayQueryFeaturesKHR                rayQueryFeatures{};
-        VkPhysicalDeviceRayTracingPositionFetchFeaturesKHR rayTracingPositionFetchFeaturesKHR{};
-
         void* pNext = nullptr;
-        if (enableDeviceGeneratedCommands)
-        {
-            deviceGeneratedCommandsFeatures = {
-                .sType                          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_FEATURES_EXT,
-                .pNext                          = pNext,
-                .deviceGeneratedCommands        = VK_TRUE,
-                .dynamicGeneratedPipelineLayout = VK_TRUE,
-            };
-            pNext = &deviceGeneratedCommandsFeatures;
-        }
-        if (enableMeshShaders)
-        {
-            meshShaderFeatures = {
-                .sType      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT,
-                .pNext      = pNext,
-            };
-            pNext = &meshShaderFeatures;
-        }
-        if (enableRayTracing)
-        {
-            rayTracingPipelineFeatures = {
-                .sType                                                 = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR,
-                .pNext                                                 = pNext,
-                .rayTracingPipeline                                    = VK_TRUE,
-                .rayTracingPipelineShaderGroupHandleCaptureReplay      = VK_TRUE,
-                .rayTracingPipelineShaderGroupHandleCaptureReplayMixed = VK_FALSE,
-                .rayTracingPipelineTraceRaysIndirect                   = VK_TRUE,
-                .rayTraversalPrimitiveCulling                          = VK_TRUE,
-            };
-            accelerationStructureFeatures = {
-                .sType                                                 = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR,
-                .pNext                                                 = &rayTracingPipelineFeatures,
-                .accelerationStructure                                 = VK_TRUE,
-                .accelerationStructureCaptureReplay                    = VK_TRUE,
-                .accelerationStructureIndirectBuild                    = VK_FALSE, // TODO: test
-                .accelerationStructureHostCommands                     = VK_FALSE,// TODO: test
-                .descriptorBindingAccelerationStructureUpdateAfterBind = VK_TRUE,
-            };
-            rayQueryFeatures = {
-                .sType    = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR,
-                .pNext    = &accelerationStructureFeatures,
-                .rayQuery = VK_TRUE,
-            };
-            rayTracingPositionFetchFeaturesKHR = {
-                .sType                   = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_POSITION_FETCH_FEATURES_KHR,
-                .pNext                   = &rayQueryFeatures,
-                .rayTracingPositionFetch = VK_TRUE,
-            };
-            pNext = &rayTracingPositionFetchFeaturesKHR;
-        }
+
+        VkPhysicalDeviceDeviceGeneratedCommandsFeaturesEXT deviceGeneratedCommandsFeatures{
+            .sType                          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_FEATURES_EXT,
+            .pNext                          = pNext,
+            .deviceGeneratedCommands        = VK_TRUE,
+            .dynamicGeneratedPipelineLayout = VK_TRUE,
+        };
+        if (enableDeviceGeneratedCommands) pNext = &deviceGeneratedCommandsFeatures;
+
+        VkPhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures{
+            .sType                                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT,
+            .pNext                                  = pNext,
+            .taskShader                             = VK_TRUE,
+            .meshShader                             = VK_TRUE,
+            .multiviewMeshShader                    = VK_TRUE,
+            .primitiveFragmentShadingRateMeshShader = VK_TRUE,
+            .meshShaderQueries                      = VK_TRUE,
+        };
+        if (enableMeshShaders) pNext = &meshShaderFeatures;
+
+        VkPhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingPipelineFeatures{
+            .sType                                                 = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR,
+            .pNext                                                 = pNext,
+            .rayTracingPipeline                                    = VK_TRUE,
+            .rayTracingPipelineShaderGroupHandleCaptureReplay      = VK_TRUE,
+            .rayTracingPipelineShaderGroupHandleCaptureReplayMixed = VK_FALSE,
+            .rayTracingPipelineTraceRaysIndirect                   = VK_TRUE,
+            .rayTraversalPrimitiveCulling                          = VK_TRUE,
+        };
+        VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures{
+            .sType                                                 = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR,
+            .pNext                                                 = &rayTracingPipelineFeatures,
+            .accelerationStructure                                 = VK_TRUE,
+            .accelerationStructureCaptureReplay                    = VK_TRUE,
+            .accelerationStructureIndirectBuild                    = VK_FALSE, // TODO: test
+            .accelerationStructureHostCommands                     = VK_FALSE, // TODO: test
+            .descriptorBindingAccelerationStructureUpdateAfterBind = VK_TRUE,
+        };
+        VkPhysicalDeviceRayQueryFeaturesKHR rayQueryFeatures{
+            .sType    = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR,
+            .pNext    = &accelerationStructureFeatures,
+            .rayQuery = VK_TRUE,
+        };
+        VkPhysicalDeviceRayTracingPositionFetchFeaturesKHR rayTracingPositionFetchFeaturesKHR{
+
+            .sType                   = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_POSITION_FETCH_FEATURES_KHR,
+            .pNext                   = &rayQueryFeatures,
+            .rayTracingPositionFetch = VK_TRUE,
+        };
+
+        if (enableRayTracing) pNext = &rayTracingPositionFetchFeaturesKHR;
         VkPhysicalDeviceVulkan13Features features13{
             .sType                                              = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
             .pNext                                              = pNext,
@@ -661,38 +772,39 @@ namespace RHI::Vulkan
         result = vmaCreateAllocator(&vmaCI, &m_deviceAllocator);
         VkResultTry(result);
 
-        if constexpr (DebugLayerEnabled)
-        {
-            if (m_pfn.m_vkCreateDebugUtilsMessengerEXT)
-            {
-                m_pfn.m_vkSubmitDebugUtilsMessageEXT       = VULKAN_INSTANCE_FUNC_LOAD(m_instance, vkSubmitDebugUtilsMessageEXT);
-                m_pfn.m_vkCmdBeginDebugUtilsLabelEXT       = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdBeginDebugUtilsLabelEXT);
-                m_pfn.m_vkCmdEndDebugUtilsLabelEXT         = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdEndDebugUtilsLabelEXT);
-                m_pfn.m_vkCmdInsertDebugUtilsLabelEXT      = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdInsertDebugUtilsLabelEXT);
-                m_pfn.m_vkQueueBeginDebugUtilsLabelEXT     = VULKAN_DEVICE_FUNC_LOAD(m_device, vkQueueBeginDebugUtilsLabelEXT);
-                m_pfn.m_vkQueueEndDebugUtilsLabelEXT       = VULKAN_DEVICE_FUNC_LOAD(m_device, vkQueueEndDebugUtilsLabelEXT);
-                m_pfn.m_vkQueueInsertDebugUtilsLabelEXT    = VULKAN_DEVICE_FUNC_LOAD(m_device, vkQueueInsertDebugUtilsLabelEXT);
-                m_pfn.m_vkSetDebugUtilsObjectNameEXT       = VULKAN_DEVICE_FUNC_LOAD(m_device, vkSetDebugUtilsObjectNameEXT);
-                m_pfn.m_vkSetDebugUtilsObjectTagEXT        = VULKAN_DEVICE_FUNC_LOAD(m_device, vkSetDebugUtilsObjectTagEXT);
-                m_pfn.m_vkCreateRayTracingPipelinesKHR     = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCreateRayTracingPipelinesKHR);
-                m_pfn.m_vkCmdTraceRaysIndirect2KHR         = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdTraceRaysIndirect2KHR);
-                m_pfn.m_vkCmdPushDescriptorSet2KHR         = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdPushDescriptorSet2KHR);
-                m_pfn.m_vkCmdTraceRaysKHR                  = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdTraceRaysKHR);
-                m_pfn.m_vkCmdDrawMeshTasksEXT              = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdDrawMeshTasksEXT);
-                m_pfn.m_vkCmdDrawMeshTasksIndirectEXT      = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdDrawMeshTasksIndirectEXT);
-                m_pfn.m_vkCmdDrawMeshTasksIndirectCountEXT = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdDrawMeshTasksIndirectCountEXT);
-            }
-        }
-        m_pfn.m_vkCmdBeginConditionalRenderingEXT = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdBeginConditionalRenderingEXT);
-        m_pfn.m_vkCmdEndConditionalRenderingEXT   = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdEndConditionalRenderingEXT);
+        m_pfn.vkSubmitDebugUtilsMessageEXT       = VULKAN_INSTANCE_FUNC_LOAD(m_instance, vkSubmitDebugUtilsMessageEXT);
+        m_pfn.vkCmdBeginDebugUtilsLabelEXT       = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdBeginDebugUtilsLabelEXT);
+        m_pfn.vkCmdEndDebugUtilsLabelEXT         = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdEndDebugUtilsLabelEXT);
+        m_pfn.vkCmdInsertDebugUtilsLabelEXT      = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdInsertDebugUtilsLabelEXT);
+        m_pfn.vkQueueBeginDebugUtilsLabelEXT     = VULKAN_DEVICE_FUNC_LOAD(m_device, vkQueueBeginDebugUtilsLabelEXT);
+        m_pfn.vkQueueEndDebugUtilsLabelEXT       = VULKAN_DEVICE_FUNC_LOAD(m_device, vkQueueEndDebugUtilsLabelEXT);
+        m_pfn.vkQueueInsertDebugUtilsLabelEXT    = VULKAN_DEVICE_FUNC_LOAD(m_device, vkQueueInsertDebugUtilsLabelEXT);
+        m_pfn.vkSetDebugUtilsObjectNameEXT       = VULKAN_DEVICE_FUNC_LOAD(m_device, vkSetDebugUtilsObjectNameEXT);
+        m_pfn.vkSetDebugUtilsObjectTagEXT        = VULKAN_DEVICE_FUNC_LOAD(m_device, vkSetDebugUtilsObjectTagEXT);
+        m_pfn.vkCreateRayTracingPipelinesKHR     = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCreateRayTracingPipelinesKHR);
+        m_pfn.vkCmdTraceRaysIndirect2KHR         = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdTraceRaysIndirect2KHR);
+        m_pfn.vkCmdPushDescriptorSet2KHR         = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdPushDescriptorSet2KHR);
+        m_pfn.vkCmdTraceRaysKHR                  = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdTraceRaysKHR);
+        m_pfn.vkCmdDrawMeshTasksEXT              = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdDrawMeshTasksEXT);
+        m_pfn.vkCmdDrawMeshTasksIndirectEXT      = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdDrawMeshTasksIndirectEXT);
+        m_pfn.vkCmdDrawMeshTasksIndirectCountEXT = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdDrawMeshTasksIndirectCountEXT);
+        m_pfn.vkCmdBeginConditionalRenderingEXT  = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdBeginConditionalRenderingEXT);
+        m_pfn.vkCmdEndConditionalRenderingEXT    = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdEndConditionalRenderingEXT);
 
-        VkPhysicalDevicePushDescriptorProperties pushDescriptorProperties{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR};
-        VkPhysicalDeviceProperties2              physicalDeviceProperties{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, .pNext = &pushDescriptorProperties};
-        vkGetPhysicalDeviceProperties2(m_physicalDevice, &physicalDeviceProperties);
+        // VkPhysicalDeviceRayTracingPipelinePropertiesKHR rayTracingProperties = {};
+        // VkPhysicalDeviceRayQueryFeaturesKHR             rayQueryFeatures     = {};
+
+        VkPhysicalDeviceMeshShaderPropertiesEXT  meshShadersFeatures      = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT, .pNext = nullptr};
+        VkPhysicalDevicePushDescriptorProperties pushDescriptorProperties = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR, .pNext = &meshShadersFeatures};
+        VkPhysicalDeviceVulkan13Properties       deviceProperties13       = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES, .pNext = &pushDescriptorProperties};
+        VkPhysicalDeviceVulkan12Properties       deviceProperties12       = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES, .pNext = &deviceProperties13};
+        VkPhysicalDeviceVulkan11Properties       deviceProperties11       = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES, .pNext = &deviceProperties12};
+        VkPhysicalDeviceProperties2              deviceProperties         = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, .pNext = &deviceProperties11};
+        vkGetPhysicalDeviceProperties2(m_physicalDevice, &deviceProperties);
 
         m_limits                                  = TL::CreatePtr<DeviceLimits>();
-        m_limits->minUniformBufferOffsetAlignment = uint32_t(physicalDeviceProperties.properties.limits.minUniformBufferOffsetAlignment);
-        m_limits->minStorageBufferOffsetAlignment = uint32_t(physicalDeviceProperties.properties.limits.minStorageBufferOffsetAlignment);
+        m_limits->minUniformBufferOffsetAlignment = uint32_t(deviceProperties.properties.limits.minUniformBufferOffsetAlignment);
+        m_limits->minStorageBufferOffsetAlignment = uint32_t(deviceProperties.properties.limits.minStorageBufferOffsetAlignment);
 
         result = m_queue[(uint32_t)QueueType::Graphics].Init(this, "Graphics", graphicsQueueFamilyIndex, 0);
         VkResultTry(result);
@@ -709,7 +821,7 @@ namespace RHI::Vulkan
             VkResultTry(result);
         }
 
-        result = m_bindGroupAllocator->Init(this);
+        result = m_bindGroupAllocator.Init(this);
         VkResultTry(result);
 
         m_framesInFlight.resize(2);
@@ -732,7 +844,7 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        WaitIdle();
+        waitTimelineIdle();
 
         if (GetDebugRenderdoc())
         {
@@ -746,71 +858,61 @@ namespace RHI::Vulkan
 
         // Report live object stack tracecs
         {
-            auto liveSwapchains = m_liveSwapchains;
-            for (auto [ptr, stacktrace] : liveSwapchains)
+            for (auto [ptr, stacktrace] : m_liveSwapchains)
             {
                 TL_LOG_WARNNING("Leaked: RHI::Swapchain at:\n{}", TL::ReportStacktrace(stacktrace));
                 DestroySwapchain(ptr);
             }
 
-            auto liveShaderModules = m_liveShaderModules;
-            for (auto [ptr, stacktrace] : liveShaderModules)
+            for (auto [ptr, stacktrace] : m_liveShaderModules)
             {
                 TL_LOG_WARNNING("Leaked: RHI::ShaderModule at:\n{}", TL::ReportStacktrace(stacktrace));
                 DestroyShaderModule(ptr);
             }
 
-            auto liveImages = m_liveImages;
-            for (auto [ptr, stacktrace] : liveImages)
+            for (auto [ptr, stacktrace] : m_liveImages)
             {
                 TL_LOG_WARNNING("Leaked: RHI::Image at:\n{}", TL::ReportStacktrace(stacktrace));
                 DestroyImage(ptr);
             }
 
-            auto liveBuffers = m_liveBuffers;
-            for (auto [ptr, stacktrace] : liveBuffers)
+            for (auto [ptr, stacktrace] : m_liveBuffers)
             {
                 TL_LOG_WARNNING("Leaked: RHI::Buffer at:\n{}", TL::ReportStacktrace(stacktrace));
                 DestroyBuffer(ptr);
             }
 
-            auto liveBindGroupLayouts = m_liveBindGroupLayouts;
-            for (auto [ptr, stacktrace] : liveBindGroupLayouts)
+            for (auto [ptr, stacktrace] : m_liveBindGroupLayouts)
             {
                 TL_LOG_WARNNING("Leaked: RHI::BindGroupLayout at:\n{}", TL::ReportStacktrace(stacktrace));
                 DestroyBindGroupLayout(ptr);
             }
 
-            auto liveBindGroups = m_liveBindGroups;
-            for (auto [ptr, stacktrace] : liveBindGroups)
+            for (auto [ptr, stacktrace] : m_liveBindGroups)
             {
                 TL_LOG_WARNNING("Leaked: RHI::BindGroup at:\n{}", TL::ReportStacktrace(stacktrace));
                 DestroyBindGroup(ptr);
             }
 
-            auto livePipelineLayouts = m_livePipelineLayouts;
-            for (auto [ptr, stacktrace] : livePipelineLayouts)
+            for (auto [ptr, stacktrace] : m_livePipelineLayouts)
             {
                 TL_LOG_WARNNING("Leaked: RHI::PipelineLayout at:\n{}", TL::ReportStacktrace(stacktrace));
                 DestroyPipelineLayout(ptr);
             }
 
-            auto liveGraphicsPipelines = m_liveGraphicsPipelines;
-            for (auto [ptr, stacktrace] : liveGraphicsPipelines)
+            for (auto [ptr, stacktrace] : m_liveGraphicsPipelines)
             {
                 TL_LOG_WARNNING("Leaked: RHI::GraphicsPipeline at:\n{}", TL::ReportStacktrace(stacktrace));
                 DestroyGraphicsPipeline(ptr);
             }
 
-            auto liveComputePipelines = m_liveComputePipelines;
-            for (auto [ptr, stacktrace] : liveComputePipelines)
+            for (auto [ptr, stacktrace] : m_liveComputePipelines)
             {
                 TL_LOG_WARNNING("Leaked: RHI::ComputePipeline at:\n{}", TL::ReportStacktrace(stacktrace));
                 DestroyComputePipeline(ptr);
             }
 
-            auto liveSamplers = m_liveSamplers;
-            for (auto [ptr, stacktrace] : liveSamplers)
+            for (auto [ptr, stacktrace] : m_liveSamplers)
             {
                 TL_LOG_WARNNING("Leaked: RHI::Sampler at:\n{}", TL::ReportStacktrace(stacktrace));
                 DestroySampler(ptr);
@@ -818,11 +920,11 @@ namespace RHI::Vulkan
         }
 
         m_destroyQueue->shutdown(this);
-        m_bindGroupAllocator->Shutdown();
+        m_bindGroupAllocator.Shutdown();
 
         for (auto& queue : m_queue)
         {
-            if (queue.GetHandle() != VK_NULL_HANDLE)
+            if (queue.m_queue != VK_NULL_HANDLE)
                 queue.Shutdown();
         }
 
@@ -831,7 +933,7 @@ namespace RHI::Vulkan
 
         if (m_debugUtilsMessenger != VK_NULL_HANDLE)
         {
-            m_pfn.m_vkDestroyDebugUtilsMessengerEXT(m_instance, m_debugUtilsMessenger, nullptr);
+            m_pfn.vkDestroyDebugUtilsMessengerEXT(m_instance, m_debugUtilsMessenger, nullptr);
         }
 
         vkDestroyInstance(m_instance, nullptr);
@@ -841,7 +943,7 @@ namespace RHI::Vulkan
     {
         if (handle == 0 /* VK_NULL_HANDLE */) return;
 
-        if (auto fn = m_pfn.m_vkSetDebugUtilsObjectNameEXT; fn && name)
+        if (auto fn = m_pfn.vkSetDebugUtilsObjectNameEXT; fn && name)
         {
             VkDebugUtilsObjectNameInfoEXT nameInfo{
                 .sType        = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
@@ -854,39 +956,79 @@ namespace RHI::Vulkan
         }
     }
 
-    void IDevice::WaitIdle()
+    void IDevice::waitTimelineIdle()
     {
         ZoneScoped;
         vkDeviceWaitIdle(m_device);
     }
 
-    uint64_t IDevice::GetNativeHandle(NativeHandleType type, uint64_t _handle)
+    uint64_t IDevice::GetNativeHandle(NativeHandleType type, uint64_t _resource)
     {
         switch (type)
         {
         case NativeHandleType::None: return 0;
         case NativeHandleType::Device:
             {
-                auto handle = reinterpret_cast<IDevice*>(_handle);
-                return (uint64_t)handle->m_device;
+                auto resource = (IDevice*)_resource;
+                return (uint64_t)resource->m_device;
             }
         case NativeHandleType::CommandList:
             {
-                auto handle = reinterpret_cast<ICommandList*>(_handle);
-                return (uint64_t)handle->m_commandBuffer;
+                auto resource = (ICommandList*)_resource;
+                return (uint64_t)resource->m_commandBuffer;
             }
         case NativeHandleType::Buffer:
+            {
+                auto resource = (IBuffer*)_resource;
+                return (uint64_t)resource->handle;
+            }
         case NativeHandleType::Image:
+            {
+                auto resource = (IImage*)_resource;
+                return (uint64_t)resource->handle;
+            }
         case NativeHandleType::ImageView:
+            {
+                auto resource = (IImage*)_resource;
+                return (uint64_t)resource->viewHandle;
+            }
         case NativeHandleType::Sampler:
+            {
+                auto resource = (ISampler*)_resource;
+                return (uint64_t)resource->handle;
+            }
         case NativeHandleType::ShaderModule:
+            {
+                auto resource = (IShaderModule*)_resource;
+                return (uint64_t)resource->m_shaderModule;
+            }
         case NativeHandleType::Pipeline:
+            {
+                auto resource = (IGraphicsPipeline*)_resource;
+                return (uint64_t)resource->handle;
+            }
         case NativeHandleType::PipelineLayout:
+            {
+                auto resource = (IPipelineLayout*)_resource;
+                return (uint64_t)resource->handle;
+            }
         case NativeHandleType::BindGroupLayout:
+            {
+                auto resource = (IBindGroupLayout*)_resource;
+                return (uint64_t)resource->handle;
+            }
         case NativeHandleType::BindGroup:
+            {
+                auto resource = (IBindGroup*)_resource;
+                return (uint64_t)resource->descriptorSet;
+            }
         case NativeHandleType::Swapchain:
+            {
+                auto resource = (ISwapchain*)_resource;
+                return (uint64_t)resource->GetHandle();
+            }
         default:
-            TL_UNREACHABLE_MSG("TODO! implement");
+            TL_UNREACHABLE_MSG("Unknown NativeHandleType");
         }
         return 0;
     }
@@ -896,24 +1038,6 @@ namespace RHI::Vulkan
         ZoneScoped;
         auto bindGroup = (IBindGroup*)(handle);
         bindGroup->Update(this, updateInfo);
-    }
-
-    QueryPool* IDevice::CreateQueryPool(const QueryPoolCreateInfo& createInfo)
-    {
-        auto handle = TL ::construct<IQueryPool>();
-        auto result = handle->Init(this, createInfo);
-        TL_ASSERT(IsSuccess(result));
-        m_liveQueryPools.emplace(handle, TL::CaptureStacktrace());
-        return handle;
-    }
-
-    void IDevice::DestroyQueryPool(QueryPool* handle)
-    {
-        auto erased = m_liveQueryPools.erase(handle);
-        TL_ASSERT(erased);
-        auto queryPool = (IQueryPool*)handle;
-        queryPool->Shutdown(this);
-        TL::destruct(handle);
     }
 
     ResultCode IDevice::SetFramesInFlightCount(uint32_t count)
@@ -939,209 +1063,60 @@ namespace RHI::Vulkan
         return m_framesInFlight[m_currentFrameIndex]->GetAllocator();
     }
 
-    Swapchain* IDevice::CreateSwapchain(const SwapchainCreateInfo& createInfo)
+    //
+
+    template<typename Resource>
+    using ResourceAllocationTracker = TL::Map<Resource*, TL::Stacktrace>;
+
+    template<typename Resource, typename... Args>
+    inline Resource* createImpl(IDevice* device, ResourceAllocationTracker<Resource>& liveResources, Args... args)
     {
-        auto handle = TL ::construct<ISwapchain>();
-        auto result = handle->Init(this, createInfo);
-        TL_ASSERT(IsSuccess(result));
-        m_liveSwapchains.emplace(handle, TL::CaptureStacktrace());
-        return handle;
+        Resource*  resource = TL ::construct<Resource>();
+        ResultCode result   = resource->Init(device, args...);
+        if (IsSuccess(result))
+        {
+            liveResources.emplace(resource, TL::CaptureStacktrace());
+            return resource;
+        }
+        return nullptr;
     }
 
-    void IDevice::DestroySwapchain(Swapchain* _handle)
+    template<typename Resource>
+    inline void destroyImpl(IDevice* device, Resource* resource, ResourceAllocationTracker<Resource>& liveResources)
     {
-        auto erased = m_liveSwapchains.erase(_handle);
+        auto erased = liveResources.erase(resource);
         TL_ASSERT(erased);
-        auto handle = (ISwapchain*)_handle;
-        handle->Shutdown(this);
-        TL::destruct(_handle);
-    };
-
-    ShaderModule* IDevice::CreateShaderModule(const ShaderModuleCreateInfo& createInfo)
-    {
-        auto handle = TL ::construct<IShaderModule>();
-        auto result = handle->Init(this, createInfo);
-        TL_ASSERT(IsSuccess(result));
-        m_liveShaderModules.emplace(handle, TL::CaptureStacktrace());
-        return handle;
+        resource->Shutdown(device);
     }
 
-    void IDevice::DestroyShaderModule(ShaderModule* _handle)
-    {
-        auto erased = m_liveShaderModules.erase(_handle);
-        TL_ASSERT(erased);
-        auto handle = (IShaderModule*)_handle;
-        handle->Shutdown(this);
-        TL::destruct(_handle);
-    };
+    // clang-format off
+    Swapchain*          IDevice::CreateSwapchain(const SwapchainCreateInfo& createInfo)                    { return createImpl<ISwapchain>(this, this->m_liveSwapchains, createInfo);                                 }
+    void                IDevice::DestroySwapchain(Swapchain* resource)                                     { destroyImpl<ISwapchain>(this, (ISwapchain*)resource, this->m_liveSwapchains);                            }
+    ShaderModule*       IDevice::CreateShaderModule(const ShaderModuleCreateInfo& createInfo)              { return createImpl<IShaderModule>(this, this->m_liveShaderModules, createInfo);                           }
+    void                IDevice::DestroyShaderModule(ShaderModule* resource)                               { destroyImpl<IShaderModule>(this, (IShaderModule*)resource, this->m_liveShaderModules);                   }
+    BindGroupLayout*    IDevice::CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)        { return createImpl<IBindGroupLayout>(this, this->m_liveBindGroupLayouts, createInfo);                     }
+    void                IDevice::DestroyBindGroupLayout(BindGroupLayout* resource)                         { destroyImpl<IBindGroupLayout>(this, (IBindGroupLayout*)resource, this->m_liveBindGroupLayouts);          }
+    BindGroup*          IDevice::CreateBindGroup(const BindGroupCreateInfo& createInfo)                    { return createImpl<IBindGroup>(this, this->m_liveBindGroups, createInfo);                                 }
+    void                IDevice::DestroyBindGroup(BindGroup* resource)                                     { destroyImpl<IBindGroup>(this, (IBindGroup*)resource, this->m_liveBindGroups);                            }
+    QueryPool*          IDevice::CreateQueryPool(const QueryPoolCreateInfo& createInfo)                    { return createImpl<IQueryPool>(this, this->m_liveQueryPools, createInfo);                                 }
+    void                IDevice::DestroyQueryPool(QueryPool* resource)                                     { destroyImpl<IQueryPool>(this, (IQueryPool*)resource, this->m_liveQueryPools);                            }
+    Buffer*             IDevice::CreateBuffer(const BufferCreateInfo& createInfo)                          { return createImpl<IBuffer>(this, this->m_liveBuffers, createInfo);                                       }
+    void                IDevice::DestroyBuffer(Buffer* resource)                                           { destroyImpl<IBuffer>(this, (IBuffer*)resource, this->m_liveBuffers);                                     }
+    Image*              IDevice::CreateImage(const ImageCreateInfo& createInfo)                            { return createImpl<IImage>(this, this->m_liveImages, createInfo);                                         }
+    Image*              IDevice::CreateImageView(const ImageViewCreateInfo& createInfo)                    { return createImpl<IImage>(this, this->m_liveImages, createInfo);                                         }
+    void                IDevice::DestroyImage(Image* resource)                                             { destroyImpl<IImage>(this, (IImage*)resource, this->m_liveImages);                                        }
+    Sampler*            IDevice::CreateSampler(const SamplerCreateInfo& createInfo)                        { return createImpl<ISampler>(this, this->m_liveSamplers, createInfo);                                     }
+    void                IDevice::DestroySampler(Sampler* resource)                                         { destroyImpl<ISampler>(this, (ISampler*)resource, this->m_liveSamplers);                                  }
+    PipelineLayout*     IDevice::CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)          { return createImpl<IPipelineLayout>(this, this->m_livePipelineLayouts, createInfo);                       }
+    void                IDevice::DestroyPipelineLayout(PipelineLayout* resource)                           { destroyImpl<IPipelineLayout>(this, (IPipelineLayout*)resource, this->m_livePipelineLayouts);             }
+    GraphicsPipeline*   IDevice::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)      { return createImpl<IGraphicsPipeline>(this, this->m_liveGraphicsPipelines, createInfo);                   }
+    void                IDevice::DestroyGraphicsPipeline(GraphicsPipeline* resource)                       { destroyImpl<IGraphicsPipeline>(this, (IGraphicsPipeline*)resource, this->m_liveGraphicsPipelines);       }
+    RayTracingPipeline* IDevice::CreateRayTracingPipeline(const RayTracingPipelineCreateInfo& createInfo)  { return createImpl<IRayTracingPipeline>(this, this->m_liveRayTracingPipelines, createInfo);               }
+    void                IDevice::DestroyRayTracingPipeline(RayTracingPipeline* resource)                   { destroyImpl<IRayTracingPipeline>(this, (IRayTracingPipeline*)resource, this->m_liveRayTracingPipelines); }
+    ComputePipeline*    IDevice::CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)        { return createImpl<IComputePipeline>(this, this->m_liveComputePipelines, createInfo);                     }
+    void                IDevice::DestroyComputePipeline(ComputePipeline* resource)                         { destroyImpl<IComputePipeline>(this, (IComputePipeline*)resource, this->m_liveComputePipelines);          }
 
-    BindGroupLayout* IDevice::CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)
-    {
-        auto handle = TL ::construct<IBindGroupLayout>();
-        auto result = handle->Init(this, createInfo);
-        TL_ASSERT(IsSuccess(result));
-        m_liveBindGroupLayouts.emplace(handle, TL::CaptureStacktrace());
-        return handle;
-    }
-
-    void IDevice::DestroyBindGroupLayout(BindGroupLayout* _handle)
-    {
-        auto erased = m_liveBindGroupLayouts.erase(_handle);
-        TL_ASSERT(erased);
-        auto handle = (IBindGroupLayout*)_handle;
-        handle->Shutdown(this);
-        TL::destruct(_handle);
-    };
-
-    BindGroup* IDevice::CreateBindGroup(const BindGroupCreateInfo& createInfo)
-    {
-        auto handle = TL ::construct<IBindGroup>();
-        auto result = handle->Init(this, createInfo);
-        TL_ASSERT(IsSuccess(result));
-        m_liveBindGroups.emplace(handle, TL::CaptureStacktrace());
-        return handle;
-    }
-
-    void IDevice::DestroyBindGroup(BindGroup* _handle)
-    {
-        auto erased = m_liveBindGroups.erase(_handle);
-        TL_ASSERT(erased);
-        auto handle = (IBindGroup*)_handle;
-        handle->Shutdown(this);
-        TL::destruct(_handle);
-    };
-
-    PipelineLayout* IDevice::CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)
-    {
-        auto handle = TL ::construct<IPipelineLayout>();
-        auto result = handle->Init(this, createInfo);
-        TL_ASSERT(IsSuccess(result));
-        m_livePipelineLayouts.emplace(handle, TL::CaptureStacktrace());
-        return handle;
-    }
-
-    void IDevice::DestroyPipelineLayout(PipelineLayout* _handle)
-    {
-        auto erased = m_livePipelineLayouts.erase(_handle);
-        TL_ASSERT(erased);
-        auto handle = (IPipelineLayout*)_handle;
-        handle->Shutdown(this);
-        TL::destruct(_handle);
-    };
-
-    GraphicsPipeline* IDevice::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)
-    {
-        auto handle = TL ::construct<IGraphicsPipeline>();
-        auto result = handle->Init(this, createInfo);
-        TL_ASSERT(IsSuccess(result));
-        m_liveGraphicsPipelines.emplace(handle, TL::CaptureStacktrace());
-        return handle;
-    }
-
-    void IDevice::DestroyGraphicsPipeline(GraphicsPipeline* _handle)
-    {
-        auto erased = m_liveGraphicsPipelines.erase(_handle);
-        TL_ASSERT(erased);
-        auto handle = (IGraphicsPipeline*)_handle;
-        handle->Shutdown(this);
-        TL::destruct(_handle);
-    };
-
-    RayTracingPipeline* IDevice::CreateRayTracingPipeline(const RayTracingPipelineCreateInfo& createInfo)
-    {
-        auto handle = TL ::construct<IRayTracingPipeline>();
-        auto result = handle->Init(this, createInfo);
-        TL_ASSERT(IsSuccess(result));
-        m_liveRayTracingPipelines.emplace(handle, TL::CaptureStacktrace());
-        return handle;
-    }
-
-    void IDevice::DestroyRayTracingPipeline(RayTracingPipeline* handle)
-    {
-        auto erased = m_liveRayTracingPipelines.erase(handle);
-        TL_ASSERT(erased);
-        auto pipeline = (IRayTracingPipeline*)handle;
-        pipeline->Shutdown(this);
-        TL::destruct(handle);
-    }
-
-    ComputePipeline* IDevice::CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
-    {
-        auto handle = TL ::construct<IComputePipeline>();
-        auto result = handle->Init(this, createInfo);
-        TL_ASSERT(IsSuccess(result));
-        m_liveComputePipelines.emplace(handle, TL::CaptureStacktrace());
-        return handle;
-    }
-
-    void IDevice::DestroyComputePipeline(ComputePipeline* _handle)
-    {
-        auto erased = m_liveComputePipelines.erase(_handle);
-        TL_ASSERT(erased);
-        auto handle = (IComputePipeline*)_handle;
-        handle->Shutdown(this);
-        TL::destruct(_handle);
-    };
-
-    Sampler* IDevice::CreateSampler(const SamplerCreateInfo& createInfo)
-    {
-        auto handle = TL ::construct<ISampler>();
-        auto result = handle->Init(this, createInfo);
-        TL_ASSERT(IsSuccess(result));
-        m_liveSamplers.emplace(handle, TL::CaptureStacktrace());
-        return handle;
-    }
-
-    void IDevice::DestroySampler(Sampler* _handle)
-    {
-        auto erased = m_liveSamplers.erase(_handle);
-        TL_ASSERT(erased);
-        auto handle = (ISampler*)_handle;
-        handle->Shutdown(this);
-        TL::destruct(_handle);
-    };
-
-    Image* IDevice::CreateImage(const ImageCreateInfo& createInfo)
-    {
-        auto handle = TL ::construct<IImage>();
-        auto result = handle->Init(this, createInfo);
-        TL_ASSERT(IsSuccess(result));
-        m_liveImages.emplace(handle, TL::CaptureStacktrace());
-        return handle;
-    }
-
-    Image* IDevice::CreateImageView(TL_MAYBE_UNUSED const ImageViewCreateInfo& createInfo)
-    {
-        TL_UNREACHABLE_MSG("TODO! Implement image views for Vulkan Backend!");
-        return {};
-    }
-
-    void IDevice::DestroyImage(Image* _handle)
-    {
-        auto erased = m_liveImages.erase(_handle);
-        TL_ASSERT(erased);
-        auto handle = (IImage*)_handle;
-        handle->Shutdown(this);
-        TL::destruct(_handle);
-    };
-
-    Buffer* IDevice::CreateBuffer(const BufferCreateInfo& createInfo)
-    {
-        auto handle = TL ::construct<IBuffer>();
-        auto result = handle->Init(this, createInfo);
-        TL_ASSERT(IsSuccess(result));
-        m_liveBuffers.emplace(handle, TL::CaptureStacktrace());
-        return handle;
-    }
-
-    void IDevice::DestroyBuffer(Buffer* _handle)
-    {
-        auto erased = m_liveBuffers.erase(_handle);
-        TL_ASSERT(erased);
-        auto handle = (IBuffer*)_handle;
-        handle->Shutdown(this);
-        TL::destruct(_handle);
-    };
+    // clang-format on
 
     void DeleteQueue::shutdown(IDevice* device)
     {
@@ -1160,6 +1135,48 @@ namespace RHI::Vulkan
         TL_ASSERT(m_vmaBuffer.empty());
         TL_ASSERT(m_vmaImage.empty());
         TL_ASSERT(m_pending.empty());
+    }
+
+    template<typename ResourceType>
+    inline static void destroyVkResource(IDevice* device, ResourceType handle)
+    {
+        if constexpr (std::is_same_v<VmaAllocation, ResourceType>) vmaFreeMemory(device->m_deviceAllocator, handle);
+        else if constexpr (std::is_same_v<VkBuffer, ResourceType>) vkDestroyBuffer(device->m_device, handle, nullptr);
+        else if constexpr (std::is_same_v<VkBufferView, ResourceType>) vkDestroyBufferView(device->m_device, handle, nullptr);
+        else if constexpr (std::is_same_v<VkImage, ResourceType>) vkDestroyImage(device->m_device, handle, nullptr);
+        else if constexpr (std::is_same_v<VkImageView, ResourceType>) vkDestroyImageView(device->m_device, handle, nullptr);
+        else if constexpr (std::is_same_v<VkSampler, ResourceType>) vkDestroySampler(device->m_device, handle, nullptr);
+        else if constexpr (std::is_same_v<VkPipeline, ResourceType>) vkDestroyPipeline(device->m_device, handle, nullptr);
+        else if constexpr (std::is_same_v<VkDescriptorPool, ResourceType>) vkDestroyDescriptorPool(device->m_device, handle, nullptr);
+        else if constexpr (std::is_same_v<VkQueryPool, ResourceType>) vkDestroyQueryPool(device->m_device, handle, nullptr);
+        else if constexpr (std::is_same_v<VkSemaphore, ResourceType>) vkDestroySemaphore(device->m_device, handle, nullptr);
+        else if constexpr (std::is_same_v<VkSwapchainKHR, ResourceType>) vkDestroySwapchainKHR(device->m_device, handle, nullptr);
+        else if constexpr (std::is_same_v<VkSurfaceKHR, ResourceType>) vkDestroySurfaceKHR(device->m_instance, handle, nullptr);
+        else if constexpr (std::is_same_v<VmaBufferAllocation, ResourceType>) vmaDestroyBuffer(device->m_deviceAllocator, handle.first, handle.second);
+        else if constexpr (std::is_same_v<VmaImageAllocation, ResourceType>) vmaDestroyImage(device->m_deviceAllocator, handle.first, handle.second);
+        else
+        {
+            static_assert(false, "Invalid ResourceType");
+        }
+    }
+
+    // FlushQueue that works on ResourceDeleteQueueEntry<ResourceType>
+    template<typename ResourceType>
+    void DeleteQueue::FlushQueue(IDevice* device, TL::Vector<ResourceDeleteQueueEntry<ResourceType>>& queue, uint64_t timeline)
+    {
+        uint32_t deleteCount = 0;
+        for (const auto& entry : queue)
+        {
+            if (entry.timeline > timeline)
+                break;
+
+            destroyVkResource(device, entry.resource);
+
+            uint64_t key = TL::hashBytes(TL::Block::create(entry.resource));
+            TL_ASSERT(m_pending.erase(key));
+            deleteCount++;
+        }
+        queue.erase(queue.begin(), queue.begin() + deleteCount);
     }
 
     void DeleteQueue::Flush(IDevice* device, uint64_t timeline)
