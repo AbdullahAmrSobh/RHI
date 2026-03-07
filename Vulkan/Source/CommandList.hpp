@@ -5,57 +5,29 @@
 
 #include <vulkan/vulkan.h>
 
-#include <array>
-#include <mutex>
-#include <thread>
+#include <TL/Allocator/Arena.hpp>
 
 namespace RHI::Vulkan
 {
     class IDevice;
+    class ICommandList;
 
-    struct PipelineBarriers
-    {
-        TL::Span<const VkMemoryBarrier2>       memoryBarriers = {};
-        TL::Span<const VkImageMemoryBarrier2>  imageBarriers  = {};
-        TL::Span<const VkBufferMemoryBarrier2> bufferBarriers = {};
-    };
-
-    class CommandPool
+    class ICommandPool final : public RHI::CommandPool
     {
     public:
-        CommandPool()  = default;
-        ~CommandPool() = default;
+        ResultCode Init(IDevice* device, const CommandPoolCreateInfo& createInfo);
+        void       Shutdown(IDevice* device);
 
-        VkCommandPool Init(IDevice* device, QueueType queueType);
-        void          Shutdown(IDevice* device);
+        void         Reset() override;
+        CommandList* Allocate() override;
 
-        VkCommandBuffer AllocateCommandBuffer(IDevice* device);
-
-        void Reset(IDevice* device);
-
-        VkCommandPool               m_pool;
-        uint32_t                    m_allocatedCommandBuffers;
-        TL::Vector<VkCommandBuffer> m_commandBuffers;
+        TL::Arena                 m_arena;
+        IDevice*                  m_device;
+        VkCommandPool             m_commandPool;
+        TL::Vector<ICommandList*> m_commandList;
     };
 
-    class CommandAllocator
-    {
-    public:
-        CommandAllocator()  = default;
-        ~CommandAllocator() = default;
-
-        ResultCode      Init(IDevice* device);
-        void            Shutdown();
-        VkCommandBuffer AllocateCommandBuffer(QueueType queueType);
-        void            Reset();
-
-        using QueuesCommandPool    = std::array<CommandPool, AsyncQueuesCount>;
-        IDevice*          m_device = nullptr;
-        std::mutex        m_mutex;
-        QueuesCommandPool m_queuePools;
-    };
-
-    class ICommandList final : public CommandList
+    class ICommandList final : public RHI::CommandList
     {
     public:
         ICommandList();
@@ -64,9 +36,6 @@ namespace RHI::Vulkan
         // TODO: Should depend on the CommandPool not IDevice ...
         ResultCode Init(IDevice* device, CommandPool* pool, const CommandListCreateInfo& createInfo);
         void       Shutdown();
-
-        // [[deprecated]]
-        void AddPipelineBarriers(const PipelineBarriers& barriers);
 
         // Interface implementation
         void Begin() override;
@@ -114,8 +83,6 @@ namespace RHI::Vulkan
         void BuildBottomLevelAccelerationStructures(TL::Span<const BuildBottomLevelAccelerationStructureDesc> buildBottomLevelAccelerationStructureDescs) override;
         void WriteAccelerationStructuresSizes(TL::Span<const AccelerationStructure*> accelerationStructures, QueryPool* queryPool, uint32_t queryPoolOffset) override;
         void CopyAccelerationStructure(AccelerationStructure* dst, const AccelerationStructure* src, CopyMode copyMode) override;
-
-        VkCommandBuffer GetHandle() const { return m_commandBuffer; }
 
         void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups);
 

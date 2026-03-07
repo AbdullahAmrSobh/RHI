@@ -44,10 +44,10 @@ namespace RHI::WebGPU
         WGPUInstanceDescriptor instanceDesc = {
             .nextInChain  = nullptr,
             .capabilities = {
-                             .nextInChain          = nullptr,
-                             .timedwaitTimelineAnyEnable   = false,
-                             .timedwaitTimelineAnyMaxCount = 0,
-                             },
+                .nextInChain                  = nullptr,
+                .timedwaitTimelineAnyEnable   = false,
+                .timedwaitTimelineAnyMaxCount = 0,
+            },
         };
         m_instance = wgpuCreateInstance(&instanceDesc);
 
@@ -81,7 +81,7 @@ namespace RHI::WebGPU
             .userdata1   = &m_adapter,
             .userdata2   = nullptr,
         };
-        auto               future = wgpuInstanceRequestAdapter(m_instance, &options, cb);
+        auto                       future = wgpuInstanceRequestAdapter(m_instance, &options, cb);
         WGPUFuturewaitTimelineInfo waitTimelineInfo{
             .future    = future,
             .completed = true,
@@ -140,22 +140,22 @@ namespace RHI::WebGPU
             .requiredFeatures     = enabledFeatures.data(),
             .requiredLimits       = &requiredLimits,
             .defaultQueue         = {
-                                     .nextInChain = nullptr,
-                                     .label       = {},
-                                     },
+                        .nextInChain = nullptr,
+                        .label       = {},
+            },
             .deviceLostCallbackInfo = {
-                                     .nextInChain = nullptr,
-                                     .mode        = WGPUCallbackMode_AllowProcessEvents,
-                                     .callback    = deviceLostCallback,
-                                     .userdata1   = this,
-                                     .userdata2   = nullptr,
-                                     },
+                .nextInChain = nullptr,
+                .mode        = WGPUCallbackMode_AllowProcessEvents,
+                .callback    = deviceLostCallback,
+                .userdata1   = this,
+                .userdata2   = nullptr,
+            },
             .uncapturedErrorCallbackInfo = {
-                                     .nextInChain = nullptr,
-                                     .callback    = uncapturedErrorCallback,
-                                     .userdata1   = this,
-                                     .userdata2   = nullptr,
-                                     },
+                .nextInChain = nullptr,
+                .callback    = uncapturedErrorCallback,
+                .userdata1   = this,
+                .userdata2   = nullptr,
+            },
         };
         m_device = wgpuAdapterCreateDevice(m_adapter, &deviceDesc);
 
@@ -324,241 +324,127 @@ namespace RHI::WebGPU
         return m_framesInFlight[m_currentFrameIndex].get();
     }
 
-    uint64_t IDevice::GetNativeHandle(NativeHandleType type, uint64_t _handle)
+    uint64_t IDevice::GetNativeHandle(NativeHandleType type, uint64_t _resource)
     {
         switch (type)
         {
         case NativeHandleType::None: return 0;
         case NativeHandleType::Device:
             {
-                auto handle = reinterpret_cast<IDevice*>(_handle);
-                return (uint64_t)handle->m_device;
+                auto resource = (IDevice*)_resource;
+                return (uint64_t)resource->m_device;
             }
         case NativeHandleType::CommandList:
             {
-                auto handle = reinterpret_cast<ICommandList*>(_handle);
-                return (uint64_t)handle->m_cmdBuffer;
+                auto resource = (ICommandList*)_resource;
+                return (uint64_t)resource->m_commandBuffer;
             }
         case NativeHandleType::Buffer:
+            {
+                auto resource = (IBuffer*)_resource;
+                return (uint64_t)resource->handle;
+            }
         case NativeHandleType::Image:
+            {
+                auto resource = (IImage*)_resource;
+                return (uint64_t)resource->handle;
+            }
         case NativeHandleType::ImageView:
+            {
+                auto resource = (IImage*)_resource;
+                return (uint64_t)resource->viewHandle;
+            }
         case NativeHandleType::Sampler:
+            {
+                auto resource = (ISampler*)_resource;
+                return (uint64_t)resource->handle;
+            }
         case NativeHandleType::ShaderModule:
+            {
+                auto resource = (IShaderModule*)_resource;
+                return (uint64_t)resource->m_shaderModule;
+            }
         case NativeHandleType::Pipeline:
+            {
+                auto resource = (IGraphicsPipeline*)_resource;
+                return (uint64_t)resource->handle;
+            }
         case NativeHandleType::PipelineLayout:
+            {
+                auto resource = (IPipelineLayout*)_resource;
+                return (uint64_t)resource->handle;
+            }
         case NativeHandleType::BindGroupLayout:
+            {
+                auto resource = (IBindGroupLayout*)_resource;
+                return (uint64_t)resource->handle;
+            }
         case NativeHandleType::BindGroup:
+            {
+                auto resource = (IBindGroup*)_resource;
+                return (uint64_t)resource->descriptorSet;
+            }
         case NativeHandleType::Swapchain:
+            {
+                auto resource = (ISwapchain*)_resource;
+                return (uint64_t)resource->GetHandle();
+            }
         default:
-            TL_UNREACHABLE_MSG("TODO! implement");
+            TL_UNREACHABLE_MSG("Unknown NativeHandleType");
         }
         return 0;
     }
 
+    // interface implementation
 
-    Swapchain* IDevice::CreateSwapchain(const SwapchainCreateInfo& createInfo)
+    template<typename Resource, typename... Args>
+    inline Resource* createImpl(IDevice* device, TL::Map<Resource*, TL::Stacktrace>& liveResources, Args... args)
     {
-        ZoneScoped;
-        auto handle = TL::construct<ISwapchain>();
-        auto result = handle->Init(this, createInfo);
-        TL_ASSERT(IsSuccess(result));
-        m_liveSwapchains.emplace(handle, TL::CaptureStacktrace());
-        return handle;
+        Resource* resource = TL ::construct<Resource>();
+        resource->Init(device, args...);
+        liveResources.emplace(resource, TL::CaptureStacktrace());
+        return resource;
     }
 
-    void IDevice::DestroySwapchain(Swapchain* _handle)
+    template<typename Resource>
+    inline void destroyImpl(IDevice* device, Resource* resource, TL::Map<Resource*, TL::Stacktrace>& liveResources)
     {
-        ZoneScoped;
-        auto erased = m_liveSwapchains.erase(_handle);
+        auto erased = liveResources.erase(resource);
         TL_ASSERT(erased);
-        auto handle = (ISwapchain*)_handle;
-        handle->Shutdown(this);
-        TL::destruct(_handle);
+        resource->Shutdown(device);
     }
 
-    ShaderModule* IDevice::CreateShaderModule(const ShaderModuleCreateInfo& createInfo)
-    {
-        ZoneScoped;
-        auto handle = TL::construct<IShaderModule>();
-        auto result = handle->Init(this, createInfo);
-        TL_ASSERT(IsSuccess(result));
-        m_liveShaderModules.emplace(handle, TL::CaptureStacktrace());
-        return handle;
-    }
+    // clang-format off
+    CommandPool*        IDevice::CreateCommandPool(const CommandPoolCreateInfo& createInfo)                { return createImpl<ICommandPool>(this, this->m_liveCommandPools, createInfo);                             }
+    void                IDevice::DestroyCommandPool(CommandPool* resource)                                 { destroyImpl<ICommandPool>(this, (ICommandPool*)resource, this->m_liveCommandPools);                      }
+    Fence*              IDevice::CreateFence(const FenceCreateInfo& createInfo)                            { return createImpl<IFence>(this, this->m_liveFences, createInfo);                                         }
+    void                IDevice::DestroyFence(Fence* resource)                                             { destroyImpl<IFence>(this, (IFence*)resource, this->m_liveFences);                                        }
+    Swapchain*          IDevice::CreateSwapchain(const SwapchainCreateInfo& createInfo)                    { return createImpl<ISwapchain>(this, this->m_liveSwapchains, createInfo);                                 }
+    void                IDevice::DestroySwapchain(Swapchain* resource)                                     { destroyImpl<ISwapchain>(this, (ISwapchain*)resource, this->m_liveSwapchains);                            }
+    ShaderModule*       IDevice::CreateShaderModule(const ShaderModuleCreateInfo& createInfo)              { return createImpl<IShaderModule>(this, this->m_liveShaderModules, createInfo);                           }
+    void                IDevice::DestroyShaderModule(ShaderModule* resource)                               { destroyImpl<IShaderModule>(this, (IShaderModule*)resource, this->m_liveShaderModules);                   }
+    BindGroupLayout*    IDevice::CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)        { return createImpl<IBindGroupLayout>(this, this->m_liveBindGroupLayouts, createInfo);                     }
+    void                IDevice::DestroyBindGroupLayout(BindGroupLayout* resource)                         { destroyImpl<IBindGroupLayout>(this, (IBindGroupLayout*)resource, this->m_liveBindGroupLayouts);          }
+    BindGroup*          IDevice::CreateBindGroup(const BindGroupCreateInfo& createInfo)                    { return createImpl<IBindGroup>(this, this->m_liveBindGroups, createInfo);                                 }
+    void                IDevice::DestroyBindGroup(BindGroup* resource)                                     { destroyImpl<IBindGroup>(this, (IBindGroup*)resource, this->m_liveBindGroups);                            }
+    QueryPool*          IDevice::CreateQueryPool(const QueryPoolCreateInfo& createInfo)                    { return createImpl<IQueryPool>(this, this->m_liveQueryPools, createInfo);                                 }
+    void                IDevice::DestroyQueryPool(QueryPool* resource)                                     { destroyImpl<IQueryPool>(this, (IQueryPool*)resource, this->m_liveQueryPools);                            }
+    Buffer*             IDevice::CreateBuffer(const BufferCreateInfo& createInfo)                          { return createImpl<IBuffer>(this, this->m_liveBuffers, createInfo);                                       }
+    void                IDevice::DestroyBuffer(Buffer* resource)                                           { destroyImpl<IBuffer>(this, (IBuffer*)resource, this->m_liveBuffers);                                     }
+    Image*              IDevice::CreateImage(const ImageCreateInfo& createInfo)                            { return createImpl<IImage>(this, this->m_liveImages, createInfo);                                         }
+    Image*              IDevice::CreateImageView(const ImageViewCreateInfo& createInfo)                    { return createImpl<IImage>(this, this->m_liveImages, createInfo);                                         }
+    void                IDevice::DestroyImage(Image* resource)                                             { destroyImpl<IImage>(this, (IImage*)resource, this->m_liveImages);                                        }
+    Sampler*            IDevice::CreateSampler(const SamplerCreateInfo& createInfo)                        { return createImpl<ISampler>(this, this->m_liveSamplers, createInfo);                                     }
+    void                IDevice::DestroySampler(Sampler* resource)                                         { destroyImpl<ISampler>(this, (ISampler*)resource, this->m_liveSamplers);                                  }
+    PipelineLayout*     IDevice::CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)          { return createImpl<IPipelineLayout>(this, this->m_livePipelineLayouts, createInfo);                       }
+    void                IDevice::DestroyPipelineLayout(PipelineLayout* resource)                           { destroyImpl<IPipelineLayout>(this, (IPipelineLayout*)resource, this->m_livePipelineLayouts);             }
+    GraphicsPipeline*   IDevice::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)      { return createImpl<IGraphicsPipeline>(this, this->m_liveGraphicsPipelines, createInfo);                   }
+    void                IDevice::DestroyGraphicsPipeline(GraphicsPipeline* resource)                       { destroyImpl<IGraphicsPipeline>(this, (IGraphicsPipeline*)resource, this->m_liveGraphicsPipelines);       }
+    RayTracingPipeline* IDevice::CreateRayTracingPipeline(const RayTracingPipelineCreateInfo& createInfo)  { return createImpl<IRayTracingPipeline>(this, this->m_liveRayTracingPipelines, createInfo);               }
+    void                IDevice::DestroyRayTracingPipeline(RayTracingPipeline* resource)                   { destroyImpl<IRayTracingPipeline>(this, (IRayTracingPipeline*)resource, this->m_liveRayTracingPipelines); }
+    ComputePipeline*    IDevice::CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)        { return createImpl<IComputePipeline>(this, this->m_liveComputePipelines, createInfo);                     }
+    void                IDevice::DestroyComputePipeline(ComputePipeline* resource)                         { destroyImpl<IComputePipeline>(this, (IComputePipeline*)resource, this->m_liveComputePipelines);          }
 
-    void IDevice::DestroyShaderModule(ShaderModule* _handle)
-    {
-        ZoneScoped;
-        auto erased = m_liveShaderModules.erase(_handle);
-        TL_ASSERT(erased);
-        auto handle = (IShaderModule*)_handle;
-        handle->Shutdown();
-        TL::destruct(_handle);
-    }
+    // clang-format on
 
-    BindGroupLayout* IDevice::CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)
-    {
-        ZoneScoped;
-        auto handle = TL::construct<IBindGroupLayout>();
-        auto result = handle->Init(this, createInfo);
-        TL_ASSERT(IsSuccess(result));
-        m_liveBindGroupLayouts.emplace(handle, TL::CaptureStacktrace());
-        return handle;
-    }
-
-    void IDevice::DestroyBindGroupLayout(BindGroupLayout* _handle)
-    {
-        ZoneScoped;
-        auto erased = m_liveBindGroupLayouts.erase(_handle);
-        TL_ASSERT(erased);
-        auto handle = (IBindGroupLayout*)_handle;
-        handle->Shutdown(this);
-        TL::destruct(_handle);
-    }
-
-    BindGroup* IDevice::CreateBindGroup(const BindGroupCreateInfo& createInfo)
-    {
-        ZoneScoped;
-        auto handle = TL::construct<IBindGroup>();
-        auto result = handle->Init(this, createInfo);
-        TL_ASSERT(IsSuccess(result));
-        m_liveBindGroups.emplace(handle, TL::CaptureStacktrace());
-        return handle;
-    }
-
-    void IDevice::DestroyBindGroup(BindGroup* _handle)
-    {
-        ZoneScoped;
-        auto erased = m_liveBindGroups.erase(_handle);
-        TL_ASSERT(erased);
-        auto handle = (IBindGroup*)_handle;
-        handle->Shutdown(this);
-        TL::destruct(_handle);
-    }
-
-    PipelineLayout* IDevice::CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)
-    {
-        ZoneScoped;
-        auto handle = TL::construct<IPipelineLayout>();
-        auto result = handle->Init(this, createInfo);
-        TL_ASSERT(IsSuccess(result));
-        m_livePipelineLayouts.emplace(handle, TL::CaptureStacktrace());
-        return handle;
-    }
-
-    void IDevice::DestroyPipelineLayout(PipelineLayout* _handle)
-    {
-        ZoneScoped;
-        auto erased = m_livePipelineLayouts.erase(_handle);
-        TL_ASSERT(erased);
-        auto handle = (IPipelineLayout*)_handle;
-        handle->Shutdown(this);
-        TL::destruct(_handle);
-    }
-
-    GraphicsPipeline* IDevice::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)
-    {
-        ZoneScoped;
-        auto handle = TL::construct<IGraphicsPipeline>();
-        auto result = handle->Init(this, createInfo);
-        TL_ASSERT(IsSuccess(result));
-        m_liveGraphicsPipelines.emplace(handle, TL::CaptureStacktrace());
-        return handle;
-    }
-
-    void IDevice::DestroyGraphicsPipeline(GraphicsPipeline* _handle)
-    {
-        ZoneScoped;
-        auto erased = m_liveGraphicsPipelines.erase(_handle);
-        TL_ASSERT(erased);
-        auto handle = (IGraphicsPipeline*)_handle;
-        handle->Shutdown(this);
-        TL::destruct(_handle);
-    }
-
-    ComputePipeline* IDevice::CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
-    {
-        ZoneScoped;
-        auto handle = TL::construct<IComputePipeline>();
-        auto result = handle->Init(this, createInfo);
-        TL_ASSERT(IsSuccess(result));
-        m_liveComputePipelines.emplace(handle, TL::CaptureStacktrace());
-        return handle;
-    }
-
-    void IDevice::DestroyComputePipeline(ComputePipeline* _handle)
-    {
-        ZoneScoped;
-        auto erased = m_liveComputePipelines.erase(_handle);
-        TL_ASSERT(erased);
-        auto handle = (IComputePipeline*)_handle;
-        handle->Shutdown(this);
-        TL::destruct(_handle);
-    }
-
-    Sampler* IDevice::CreateSampler(const SamplerCreateInfo& createInfo)
-    {
-        ZoneScoped;
-        auto handle = TL::construct<ISampler>();
-        auto result = handle->Init(this, createInfo);
-        TL_ASSERT(IsSuccess(result));
-        m_liveSamplers.emplace(handle, TL::CaptureStacktrace());
-        return handle;
-    }
-
-    void IDevice::DestroySampler(Sampler* _handle)
-    {
-        ZoneScoped;
-        auto erased = m_liveSamplers.erase(_handle);
-        TL_ASSERT(erased);
-        auto handle = (ISampler*)_handle;
-        handle->Shutdown(this);
-        TL::destruct(_handle);
-    }
-
-    Image* IDevice::CreateImage(const ImageCreateInfo& createInfo)
-    {
-        ZoneScoped;
-        auto handle = TL::construct<IImage>();
-        auto result = handle->Init(this, createInfo);
-        TL_ASSERT(IsSuccess(result));
-        m_liveImages.emplace(handle, TL::CaptureStacktrace());
-        return handle;
-    }
-
-    Image* IDevice::CreateImageView(TL_MAYBE_UNUSED const ImageViewCreateInfo& createInfo)
-    {
-        TL_UNREACHABLE_MSG("TODO! Implement image views for WebGPU backend!");
-        return {};
-    }
-
-    void IDevice::DestroyImage(Image* _handle)
-    {
-        ZoneScoped;
-        auto erased = m_liveImages.erase(_handle);
-        TL_ASSERT(erased);
-        auto handle = (IImage*)_handle;
-        handle->Shutdown(this);
-        TL::destruct(_handle);
-    }
-
-    Buffer* IDevice::CreateBuffer(const BufferCreateInfo& createInfo)
-    {
-        ZoneScoped;
-        auto handle = TL::construct<IBuffer>();
-        auto result = handle->Init(this, createInfo);
-        TL_ASSERT(IsSuccess(result));
-        m_liveBuffers.emplace(handle, TL::CaptureStacktrace());
-        return handle;
-    }
-
-    void IDevice::DestroyBuffer(Buffer* _handle)
-    {
-        ZoneScoped;
-        auto erased = m_liveBuffers.erase(_handle);
-        TL_ASSERT(erased);
-        auto handle = (IBuffer*)_handle;
-        handle->Shutdown(this);
-        TL::destruct(_handle);
-    }
 } // namespace RHI::WebGPU

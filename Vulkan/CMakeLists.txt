@@ -1,23 +1,18 @@
 cmake_minimum_required(VERSION 3.19)
 
-# Find Vulkan
 find_package(Vulkan REQUIRED)
 
-# Add header files
 set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Common.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Device.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Frame.hpp
 )
 
-# Add source files
 set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Device.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Frame.cpp
 )
 
 if(NOT TARGET TL)

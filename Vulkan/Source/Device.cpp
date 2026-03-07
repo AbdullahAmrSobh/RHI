@@ -17,10 +17,10 @@
     #define VULKAN_SURFACE_OS_EXTENSION_NAME VK_MVK_IOS_SURFACE_EXTENSION_NAME
 #endif // VK_USE_PLATFORM_WIN32_KHR
 
+#include "RHI-Vulkan/Loader.hpp"
+
 #include "Device.hpp"
 #include "Common.hpp"
-#include "Frame.hpp"
-#include "RHI-Vulkan/Loader.hpp"
 
 #include <TL/Log.hpp>
 #include <TL/Assert.hpp>
@@ -114,165 +114,202 @@ namespace RHI::Vulkan
         return VK_FALSE;
     }
 
-    inline static TL::Vector<VkLayerProperties> GetAvailableInstanceLayerExtensions()
-    {
-        VulkanResult result;
-        uint32_t     instanceLayerCount;
-        result = vkEnumerateInstanceLayerProperties(&instanceLayerCount, nullptr);
-        TL_ASSERT(result);
-        TL::Vector<VkLayerProperties> layers;
-        layers.resize(instanceLayerCount);
-        result = vkEnumerateInstanceLayerProperties(&instanceLayerCount, layers.data());
-        TL_ASSERT(result);
-        return layers;
-    }
-
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //
+    // IQueue
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     VkResult IQueue::Init(IDevice* device, const char* debugName, uint32_t familyIndex, uint32_t queueIndex)
     {
-        m_device = device;
-
-        vkGetDeviceQueue(device->m_device, familyIndex, queueIndex, &m_queue);
+        m_device      = device;
         m_familyIndex = familyIndex;
 
-        m_device->SetDebugName(m_queue, debugName);
+        vkGetDeviceQueue(device->m_device, familyIndex, queueIndex, &m_queue);
+        if (debugName)
+            m_device->SetDebugName(m_queue, debugName);
 
-        VkSemaphoreTypeCreateInfo timelineCreateInfo = {
-            .sType         = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
-            .pNext         = nullptr,
-            .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
-            .initialValue  = 0,
-        };
-        VkSemaphoreCreateInfo semaphoreInfo = {
-            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-            .pNext = &timelineCreateInfo,
-            .flags = 0,
-        };
-
-        VulkanResult result;
-        result = vkCreateSemaphore(device->m_device, &semaphoreInfo, nullptr, &m_timelineSemaphore);
-        VkResultTry(result);
-
-        m_device->SetDebugName(m_timelineSemaphore, "{}-timeline-semaphore", debugName);
-        m_timelineValue.store(0);
-
-        return result;
+        return VK_SUCCESS;
     }
 
     void IQueue::Shutdown()
     {
-        vkDestroySemaphore(m_device->m_device, m_timelineSemaphore, nullptr);
-    }
-
-    void IQueue::waitTimelineQueueIdle() const
-    {
-        ZoneScoped;
         vkQueueWaitIdle(m_queue);
     }
 
-    bool IQueue::waitTimeline(uint64_t timelineValue, uint64_t duration)
+    void IQueue::BeginAnnotation(const char* name, uint32_t bgra)
     {
-        ZoneScoped;
-        VkSemaphoreWaitInfo waitTimelineInfo = {
-            .sType          = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
-            .pNext          = nullptr,
-            .flags          = 0,
-            .semaphoreCount = 1,
-            .pSemaphores    = &m_timelineSemaphore,
-            .pValues        = &timelineValue,
-        };
-        VulkanResult result = vkWaitSemaphores(m_device->m_device, &waitTimelineInfo, duration);
-        return result;
-    }
-
-    void IQueue::waitTimelineSemaphore(VkSemaphore semaphore, uint64_t value, VkPipelineStageFlags2 stageMask)
-    {
-        ZoneScoped;
-        m_waitTimelineSemaphores.push_back({
-            .sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-            .pNext       = nullptr,
-            .semaphore   = semaphore,
-            .value       = value,
-            .stageMask   = stageMask,
-            .deviceIndex = 0,
-        });
-    }
-
-    void IQueue::signalTimelineSemaphore(VkSemaphore semaphore, uint64_t value, VkPipelineStageFlags2 stageMask)
-    {
-        ZoneScoped;
-        m_signalSemaphores.push_back({
-            .sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-            .pNext       = nullptr,
-            .semaphore   = semaphore,
-            .value       = value,
-            .stageMask   = stageMask,
-            .deviceIndex = 0,
-        });
-    }
-
-    void IQueue::beginDebugUtilsLabel(const char* name)
-    {
-        if (auto fn = m_device->m_pfn.vkQueueBeginDebugUtilsLabelEXT)
+        if (m_device->m_pfn.vkQueueBeginDebugUtilsLabelEXT)
         {
-            VkDebugUtilsLabelEXT label = {
+            VkDebugUtilsLabelEXT label{
                 .sType      = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
                 .pNext      = nullptr,
                 .pLabelName = name,
                 .color      = {},
             };
-            fn(m_queue, &label);
+            m_device->m_pfn.vkQueueBeginDebugUtilsLabelEXT(m_queue, &label);
         }
     }
 
-    void IQueue::endDebugUtilsLabel()
+    void IQueue::EndAnnotation()
     {
-        if (auto fn = m_device->m_pfn.vkQueueEndDebugUtilsLabelEXT)
+        if (m_device->m_pfn.vkQueueEndDebugUtilsLabelEXT)
         {
-            fn(m_queue);
+            m_device->m_pfn.vkQueueEndDebugUtilsLabelEXT(m_queue);
         }
     }
 
-    uint64_t IQueue::submit(TL::Span<ICommandList* const> commandLists, VkPipelineStageFlags2 signalStage)
+    void IQueue::InsertAnnotation(const char* name, uint32_t bgra)
     {
-        ZoneScoped;
-
-        VulkanResult result;
-
-        signalTimelineSemaphore(m_timelineSemaphore, ++m_timelineValue, signalStage);
-
-        TL::Vector<VkCommandBufferSubmitInfo> commandBufferSubmitInfos{m_device->GetCurrentFrame()->GetAllocator()};
-        for (auto commandList : commandLists)
+        if (m_device->m_pfn.vkQueueBeginDebugUtilsLabelEXT)
         {
-            commandBufferSubmitInfos.push_back({
-                .sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
-                .pNext         = nullptr,
-                .commandBuffer = commandList->GetHandle(),
-                .deviceMask    = 0,
+            VkDebugUtilsLabelEXT label{
+                .sType      = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
+                .pNext      = nullptr,
+                .pLabelName = name,
+                .color      = {},
+            };
+            m_device->m_pfn.vkQueueInsertDebugUtilsLabelEXT(m_queue, &label);
+        }
+    }
+
+    void IQueue::Submit(const QueueSubmitInfo& submitInfo)
+    {
+        TL::Vector<VkSemaphoreSubmitInfo>     waitSemaphores{m_device->m_arena};
+        TL::Vector<VkCommandBufferSubmitInfo> commandBufferSubmitInfos{m_device->m_arena};
+        TL::Vector<VkSemaphoreSubmitInfo>     signalSemaphores{m_device->m_arena};
+
+        for (auto _fence : submitInfo.waitFences)
+        {
+            auto fence = (IFence*)_fence.fence;
+            waitSemaphores.push_back({
+                .sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+                .semaphore = fence->semaphore,
+                .value     = _fence.value,
+                .stageMask = ConvertPipelineStageFlags(_fence.stage)
+                // .deviceMask    = 1,
             });
         }
 
-        VkSubmitInfo2 submitInfo = {
+        for (auto _fence : submitInfo.signalFences)
+        {
+            auto fence = (IFence*)_fence.fence;
+            signalSemaphores.push_back({
+                .sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+                .semaphore = fence->semaphore,
+                .value     = _fence.value,
+                .stageMask = ConvertPipelineStageFlags(_fence.stage),
+            });
+        }
+
+        for (auto cmd : submitInfo.commandLists)
+        {
+            auto commandList = (ICommandList*)cmd;
+            commandBufferSubmitInfos.push_back({
+                .sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+                .commandBuffer = commandList->m_commandBuffer,
+                // .deviceMask    = 1,
+            });
+        }
+
+        for (auto _swapchain : submitInfo.acquireSwapchains)
+        {
+            ISwapchain* swapchain = (ISwapchain*)_swapchain;
+
+            VkSemaphore acquireSemaphore       = swapchain->m_acquireSemaphore[swapchain->m_acquireSemaphoreIndex];
+            VkSemaphore presentSemaphore       = swapchain->m_presentSemaphore[swapchain->m_presentSemaphoreIndex];
+            swapchain->m_acquireSemaphoreIndex = (swapchain->m_acquireSemaphoreIndex + 1) % ISwapchain::MaxImageCount;
+
+            swapchain->m_acquireSemaphoreIndex += 1;
+            swapchain->m_acquireSemaphoreIndex %= ISwapchain::MaxImageCount;
+
+            // increment down during vkQueuePresent
+            // swapchain->m_presentSemaphoreIndex += 1;
+            // swapchain->m_presentSemaphoreIndex %= ISwapchain::MaxImageCount;
+
+            waitSemaphores.push_back({
+                .sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+                .semaphore = acquireSemaphore,
+            });
+            signalSemaphores.push_back({
+                .sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+                .semaphore = presentSemaphore,
+            });
+        }
+
+        // m_lastSubmitValue++;
+
+        VkSubmitInfo2 vksubmitInfo = {
             .sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
             .pNext                    = nullptr,
             .flags                    = {},
-            .waitSemaphoreInfoCount   = (uint32_t)m_waitTimelineSemaphores.size(),
-            .pWaitSemaphoreInfos      = m_waitTimelineSemaphores.data(),
+            .waitSemaphoreInfoCount   = (uint32_t)waitSemaphores.size(),
+            .pWaitSemaphoreInfos      = waitSemaphores.data(),
             .commandBufferInfoCount   = (uint32_t)commandBufferSubmitInfos.size(),
             .pCommandBufferInfos      = commandBufferSubmitInfos.data(),
-            .signalSemaphoreInfoCount = (uint32_t)m_signalSemaphores.size(),
-            .pSignalSemaphoreInfos    = m_signalSemaphores.data(),
+            .signalSemaphoreInfoCount = (uint32_t)signalSemaphores.size(),
+            .pSignalSemaphoreInfos    = signalSemaphores.data(),
         };
-        result = vkQueueSubmit2(m_queue, 1, &submitInfo, VK_NULL_HANDLE);
-        TL_ASSERT(result);
+        VulkanResult result = vkQueueSubmit2(m_queue, 1, &vksubmitInfo, VK_NULL_HANDLE);
+        TL_ASSERT(result.IsSuccess());
 
-        m_waitTimelineSemaphores.clear();
-        m_signalSemaphores.clear();
+        vkQueueWaitIdle(m_queue);
 
-        return m_timelineValue;
+        // assert queue is graphics
+        if (submitInfo.presentSwapchains.empty() == false)
+        {
+            TL::Vector<VkSwapchainKHR> swapchains{m_device->m_arena};
+            TL::Vector<uint32_t>       imageIndcies{m_device->m_arena};
+            TL::Vector<VkSemaphore>    presentWaitSemaphores{m_device->m_arena};
+
+            for (auto _swapchain : submitInfo.presentSwapchains)
+            {
+                ISwapchain* swapchain = (ISwapchain*)_swapchain;
+                VkSemaphore semaphore = swapchain->m_presentSemaphore[swapchain->m_presentSemaphoreIndex];
+                swapchain->m_presentSemaphoreIndex += 1;
+                swapchain->m_presentSemaphoreIndex %= ISwapchain::MaxImageCount;
+                presentWaitSemaphores.push_back(semaphore);
+                imageIndcies.push_back(swapchain->m_imageIndex);
+                swapchains.push_back(swapchain->m_swapchain);
+            }
+
+            VkPresentInfoKHR presentInfos{
+                .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+                .pNext              = 0,
+                .waitSemaphoreCount = (uint32_t)presentWaitSemaphores.size(),
+                .pWaitSemaphores    = presentWaitSemaphores.data(),
+                .swapchainCount     = (uint32_t)swapchains.size(),
+                .pSwapchains        = swapchains.data(),
+                .pImageIndices      = imageIndcies.data(),
+                .pResults           = nullptr,
+            };
+            vkQueuePresentKHR(m_queue, &presentInfos);
+        }
+
+        vkQueueWaitIdle(m_queue);
+
+        for (auto _swapchain : submitInfo.presentSwapchains)
+        {
+            ISwapchain* swapchain = (ISwapchain*)_swapchain;
+            swapchain->AcquireNextImage();
+        }
+    }
+
+    void IQueue::WaitIdle()
+    {
+        vkQueueWaitIdle(m_queue);
+    }
+
+    void IQueue::WaitFence(Fence* _fence, uint64_t value)
+    {
+        VkSemaphoreWaitInfo waitInfo{
+            .sType          = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
+            .pNext          = nullptr,
+            .flags          = 0,
+            .semaphoreCount = {},
+            .pSemaphores    = {},
+            .pValues        = &value,
+        };
+        VulkanResult result = vkWaitSemaphores(m_device->m_device, &waitInfo, UINT32_MAX);
+        TL_ASSERT(result.IsSuccess());
     }
 
     ///
@@ -301,7 +338,15 @@ namespace RHI::Vulkan
         TL::Map<TL::String, VkLayerProperties>     availableInstanceLayers;
         TL::Map<TL::String, VkExtensionProperties> availableInstanceExtensions;
 
-        for (VkLayerProperties layer : GetAvailableInstanceLayerExtensions())
+        uint32_t instanceLayerCount;
+        result = vkEnumerateInstanceLayerProperties(&instanceLayerCount, nullptr);
+        TL_ASSERT(result);
+        TL::Vector<VkLayerProperties> instanceLayers;
+        instanceLayers.resize(instanceLayerCount);
+        result = vkEnumerateInstanceLayerProperties(&instanceLayerCount, instanceLayers.data());
+        TL_ASSERT(result);
+
+        for (VkLayerProperties layer : instanceLayers)
             availableInstanceLayers[layer.layerName] = layer;
 
         {
@@ -338,7 +383,6 @@ namespace RHI::Vulkan
             .engineVersion      = VK_MAKE_API_VERSION(0, appInfo.engineVersion.major, appInfo.engineVersion.minor, appInfo.engineVersion.patch),
             .apiVersion         = VK_API_VERSION_1_3,
         };
-
         VkDebugUtilsMessengerCreateInfoEXT debugUtilsCI{
             .sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
             .flags           = 0,
@@ -347,7 +391,6 @@ namespace RHI::Vulkan
             .pfnUserCallback = DebugMessengerCallbacks,
             .pUserData       = this,
         };
-
         VkInstanceCreateInfo instanceCI{
             .sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
             .pNext                   = DebugLayerEnabled ? &debugUtilsCI : nullptr,
@@ -772,39 +815,44 @@ namespace RHI::Vulkan
         result = vmaCreateAllocator(&vmaCI, &m_deviceAllocator);
         VkResultTry(result);
 
-        m_pfn.vkSubmitDebugUtilsMessageEXT       = VULKAN_INSTANCE_FUNC_LOAD(m_instance, vkSubmitDebugUtilsMessageEXT);
-        m_pfn.vkCmdBeginDebugUtilsLabelEXT       = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdBeginDebugUtilsLabelEXT);
-        m_pfn.vkCmdEndDebugUtilsLabelEXT         = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdEndDebugUtilsLabelEXT);
-        m_pfn.vkCmdInsertDebugUtilsLabelEXT      = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdInsertDebugUtilsLabelEXT);
-        m_pfn.vkQueueBeginDebugUtilsLabelEXT     = VULKAN_DEVICE_FUNC_LOAD(m_device, vkQueueBeginDebugUtilsLabelEXT);
-        m_pfn.vkQueueEndDebugUtilsLabelEXT       = VULKAN_DEVICE_FUNC_LOAD(m_device, vkQueueEndDebugUtilsLabelEXT);
-        m_pfn.vkQueueInsertDebugUtilsLabelEXT    = VULKAN_DEVICE_FUNC_LOAD(m_device, vkQueueInsertDebugUtilsLabelEXT);
-        m_pfn.vkSetDebugUtilsObjectNameEXT       = VULKAN_DEVICE_FUNC_LOAD(m_device, vkSetDebugUtilsObjectNameEXT);
-        m_pfn.vkSetDebugUtilsObjectTagEXT        = VULKAN_DEVICE_FUNC_LOAD(m_device, vkSetDebugUtilsObjectTagEXT);
-        m_pfn.vkCreateRayTracingPipelinesKHR     = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCreateRayTracingPipelinesKHR);
-        m_pfn.vkCmdTraceRaysIndirect2KHR         = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdTraceRaysIndirect2KHR);
-        m_pfn.vkCmdPushDescriptorSet2KHR         = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdPushDescriptorSet2KHR);
-        m_pfn.vkCmdTraceRaysKHR                  = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdTraceRaysKHR);
-        m_pfn.vkCmdDrawMeshTasksEXT              = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdDrawMeshTasksEXT);
-        m_pfn.vkCmdDrawMeshTasksIndirectEXT      = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdDrawMeshTasksIndirectEXT);
-        m_pfn.vkCmdDrawMeshTasksIndirectCountEXT = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdDrawMeshTasksIndirectCountEXT);
-        m_pfn.vkCmdBeginConditionalRenderingEXT  = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdBeginConditionalRenderingEXT);
-        m_pfn.vkCmdEndConditionalRenderingEXT    = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdEndConditionalRenderingEXT);
+        m_pfn.vkSubmitDebugUtilsMessageEXT        = VULKAN_INSTANCE_FUNC_LOAD(m_instance, vkSubmitDebugUtilsMessageEXT);
+        m_pfn.vkCmdBeginDebugUtilsLabelEXT        = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdBeginDebugUtilsLabelEXT);
+        m_pfn.vkCmdEndDebugUtilsLabelEXT          = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdEndDebugUtilsLabelEXT);
+        m_pfn.vkCmdInsertDebugUtilsLabelEXT       = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdInsertDebugUtilsLabelEXT);
+        m_pfn.vkQueueBeginDebugUtilsLabelEXT      = VULKAN_DEVICE_FUNC_LOAD(m_device, vkQueueBeginDebugUtilsLabelEXT);
+        m_pfn.vkQueueEndDebugUtilsLabelEXT        = VULKAN_DEVICE_FUNC_LOAD(m_device, vkQueueEndDebugUtilsLabelEXT);
+        m_pfn.vkQueueInsertDebugUtilsLabelEXT     = VULKAN_DEVICE_FUNC_LOAD(m_device, vkQueueInsertDebugUtilsLabelEXT);
+        m_pfn.vkSetDebugUtilsObjectNameEXT        = VULKAN_DEVICE_FUNC_LOAD(m_device, vkSetDebugUtilsObjectNameEXT);
+        m_pfn.vkSetDebugUtilsObjectTagEXT         = VULKAN_DEVICE_FUNC_LOAD(m_device, vkSetDebugUtilsObjectTagEXT);
+        m_pfn.vkCreateRayTracingPipelinesKHR      = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCreateRayTracingPipelinesKHR);
+        m_pfn.vkCmdTraceRaysIndirect2KHR          = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdTraceRaysIndirect2KHR);
+        m_pfn.vkCmdPushDescriptorSet2KHR          = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdPushDescriptorSet2KHR);
+        m_pfn.vkCmdTraceRaysKHR                   = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdTraceRaysKHR);
+        m_pfn.vkCmdDrawMeshTasksEXT               = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdDrawMeshTasksEXT);
+        m_pfn.vkCmdDrawMeshTasksIndirectEXT       = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdDrawMeshTasksIndirectEXT);
+        m_pfn.vkCmdDrawMeshTasksIndirectCountEXT  = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdDrawMeshTasksIndirectCountEXT);
+        m_pfn.vkCmdBeginConditionalRenderingEXT   = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdBeginConditionalRenderingEXT);
+        m_pfn.vkCmdEndConditionalRenderingEXT     = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdEndConditionalRenderingEXT);
+        m_pfn.vkCmdBuildAccelerationStructuresKHR = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdBuildAccelerationStructuresKHR);
 
         // VkPhysicalDeviceRayTracingPipelinePropertiesKHR rayTracingProperties = {};
         // VkPhysicalDeviceRayQueryFeaturesKHR             rayQueryFeatures     = {};
 
-        VkPhysicalDeviceMeshShaderPropertiesEXT  meshShadersFeatures      = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT, .pNext = nullptr};
-        VkPhysicalDevicePushDescriptorProperties pushDescriptorProperties = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR, .pNext = &meshShadersFeatures};
-        VkPhysicalDeviceVulkan13Properties       deviceProperties13       = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES, .pNext = &pushDescriptorProperties};
-        VkPhysicalDeviceVulkan12Properties       deviceProperties12       = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES, .pNext = &deviceProperties13};
-        VkPhysicalDeviceVulkan11Properties       deviceProperties11       = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES, .pNext = &deviceProperties12};
-        VkPhysicalDeviceProperties2              deviceProperties         = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, .pNext = &deviceProperties11};
+        // clang-format off
+        VkPhysicalDeviceMeshShaderPropertiesEXT  meshShadersFeatures      = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT,     .pNext = nullptr                   };
+        VkPhysicalDevicePushDescriptorProperties pushDescriptorProperties = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR, .pNext = &meshShadersFeatures      };
+        VkPhysicalDeviceVulkan13Properties       deviceProperties13       = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES,          .pNext = &pushDescriptorProperties };
+        VkPhysicalDeviceVulkan12Properties       deviceProperties12       = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES,          .pNext = &deviceProperties13       };
+        VkPhysicalDeviceVulkan11Properties       deviceProperties11       = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES,          .pNext = &deviceProperties12       };
+        VkPhysicalDeviceProperties2              deviceProperties         = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,                   .pNext = &deviceProperties11       };
+        // clang-format on
         vkGetPhysicalDeviceProperties2(m_physicalDevice, &deviceProperties);
 
-        m_limits                                  = TL::CreatePtr<DeviceLimits>();
-        m_limits->minUniformBufferOffsetAlignment = uint32_t(deviceProperties.properties.limits.minUniformBufferOffsetAlignment);
-        m_limits->minStorageBufferOffsetAlignment = uint32_t(deviceProperties.properties.limits.minStorageBufferOffsetAlignment);
+        // Fill DeviceLimits
+        {
+            m_limits.minUniformBufferOffsetAlignment = uint32_t(deviceProperties.properties.limits.minUniformBufferOffsetAlignment);
+            m_limits.minStorageBufferOffsetAlignment = uint32_t(deviceProperties.properties.limits.minStorageBufferOffsetAlignment);
+        }
 
         result = m_queue[(uint32_t)QueueType::Graphics].Init(this, "Graphics", graphicsQueueFamilyIndex, 0);
         VkResultTry(result);
@@ -823,20 +871,6 @@ namespace RHI::Vulkan
 
         result = m_bindGroupAllocator.Init(this);
         VkResultTry(result);
-
-        m_framesInFlight.resize(2);
-        for (auto& frame : m_framesInFlight)
-        {
-            frame           = TL::CreatePtr<IFrame>();
-            auto resultCode = frame->Init(this);
-            if (IsError(resultCode)) return resultCode;
-        }
-
-        {
-            m_renderdoc            = TL::CreatePtr<Renderdoc>();
-            TL_MAYBE_UNUSED auto _ = m_renderdoc->Init(this);
-        }
-
         return result;
     }
 
@@ -844,20 +878,20 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        waitTimelineIdle();
-
-        if (GetDebugRenderdoc())
-        {
-            m_renderdoc->Shutdown();
-        }
-
-        for (auto& frame : m_framesInFlight)
-        {
-            frame->Shutdown();
-        }
-
         // Report live object stack tracecs
         {
+            for (auto [ptr, stacktrace] : m_liveCommandPools)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::CommandPool at:\n{}", TL::ReportStacktrace(stacktrace));
+                DestroyCommandPool(ptr);
+            }
+
+            for (auto [ptr, stacktrace] : m_liveFences)
+            {
+                TL_LOG_WARNNING("Leaked: RHI::Fence at:\n{}", TL::ReportStacktrace(stacktrace));
+                DestroyFence(ptr);
+            }
+
             for (auto [ptr, stacktrace] : m_liveSwapchains)
             {
                 TL_LOG_WARNNING("Leaked: RHI::Swapchain at:\n{}", TL::ReportStacktrace(stacktrace));
@@ -922,20 +956,16 @@ namespace RHI::Vulkan
         m_destroyQueue->shutdown(this);
         m_bindGroupAllocator.Shutdown();
 
-        for (auto& queue : m_queue)
-        {
-            if (queue.m_queue != VK_NULL_HANDLE)
-                queue.Shutdown();
-        }
+        m_queue[(int)QueueType::Transfer].Shutdown();
+        m_queue[(int)QueueType::Compute].Shutdown();
+        m_queue[(int)QueueType::Graphics].Shutdown();
 
         vmaDestroyAllocator(m_deviceAllocator);
         vkDestroyDevice(m_device, nullptr);
-
         if (m_debugUtilsMessenger != VK_NULL_HANDLE)
         {
             m_pfn.vkDestroyDebugUtilsMessengerEXT(m_instance, m_debugUtilsMessenger, nullptr);
         }
-
         vkDestroyInstance(m_instance, nullptr);
     }
 
@@ -954,12 +984,6 @@ namespace RHI::Vulkan
             };
             fn(m_device, &nameInfo);
         }
-    }
-
-    void IDevice::waitTimelineIdle()
-    {
-        ZoneScoped;
-        vkDeviceWaitIdle(m_device);
     }
 
     uint64_t IDevice::GetNativeHandle(NativeHandleType type, uint64_t _resource)
@@ -1025,7 +1049,7 @@ namespace RHI::Vulkan
         case NativeHandleType::Swapchain:
             {
                 auto resource = (ISwapchain*)_resource;
-                return (uint64_t)resource->GetHandle();
+                return (uint64_t)resource->m_swapchain;
             }
         default:
             TL_UNREACHABLE_MSG("Unknown NativeHandleType");
@@ -1040,36 +1064,36 @@ namespace RHI::Vulkan
         bindGroup->Update(this, updateInfo);
     }
 
-    ResultCode IDevice::SetFramesInFlightCount(uint32_t count)
+    Queue* IDevice::GetQueue(QueueType queueType)
     {
-        auto previousSize = m_framesInFlight.size();
-        m_framesInFlight.resize(count);
-        for (size_t i = previousSize; i < m_framesInFlight.size(); i++)
-        {
-            auto result = m_framesInFlight[i]->Init(this);
-            if (IsError(result))
-                return result;
-        }
-        return ResultCode::Success;
+        return &m_queue[(int)queueType];
     }
 
-    Frame* IDevice::GetCurrentFrame()
+    uint64_t IDevice::GetFenceValue(Fence* _fence)
     {
-        return m_framesInFlight[m_currentFrameIndex].get();
+        IFence* fence = (IFence*)_fence;
+
+        uint64_t value;
+        vkGetSemaphoreCounterValue(m_device, fence->semaphore, &value);
+        return value;
     }
 
-    TL::IAllocator& IDevice::GetTempAllocator()
+    uint64_t IDevice::GarbageCollect(uint64_t graphicsTimeline)
     {
-        return m_framesInFlight[m_currentFrameIndex]->GetAllocator();
+        m_arena.reset();
+        m_destroyQueue->Flush(this, graphicsTimeline);
+        return graphicsTimeline;
     }
 
-    //
-
-    template<typename Resource>
-    using ResourceAllocationTracker = TL::Map<Resource*, TL::Stacktrace>;
+    uint64_t IDevice::GetBufferDeviceAddress(Buffer* _buffer)
+    {
+        IBuffer* buffer = (IBuffer*)_buffer;
+        TL_ASSERT(buffer->address != 0, "Buffer is not shader addressable");
+        return buffer->address;
+    }
 
     template<typename Resource, typename... Args>
-    inline Resource* createImpl(IDevice* device, ResourceAllocationTracker<Resource>& liveResources, Args... args)
+    inline Resource* createImpl(IDevice* device, TL::Map<Resource*, TL::Stacktrace>& liveResources, Args... args)
     {
         Resource*  resource = TL ::construct<Resource>();
         ResultCode result   = resource->Init(device, args...);
@@ -1082,7 +1106,7 @@ namespace RHI::Vulkan
     }
 
     template<typename Resource>
-    inline void destroyImpl(IDevice* device, Resource* resource, ResourceAllocationTracker<Resource>& liveResources)
+    inline void destroyImpl(IDevice* device, Resource* resource, TL::Map<Resource*, TL::Stacktrace>& liveResources)
     {
         auto erased = liveResources.erase(resource);
         TL_ASSERT(erased);
@@ -1090,6 +1114,12 @@ namespace RHI::Vulkan
     }
 
     // clang-format off
+    // interface implementation
+
+    CommandPool*        IDevice::CreateCommandPool(const CommandPoolCreateInfo& createInfo)                { return createImpl<ICommandPool>(this, this->m_liveCommandPools, createInfo);                             }
+    void                IDevice::DestroyCommandPool(CommandPool* resource)                                 { destroyImpl<ICommandPool>(this, (ICommandPool*)resource, this->m_liveCommandPools);                      }
+    Fence*              IDevice::CreateFence(const FenceCreateInfo& createInfo)                            { return createImpl<IFence>(this, this->m_liveFences, createInfo);                                         }
+    void                IDevice::DestroyFence(Fence* resource)                                             { destroyImpl<IFence>(this, (IFence*)resource, this->m_liveFences);                                        }
     Swapchain*          IDevice::CreateSwapchain(const SwapchainCreateInfo& createInfo)                    { return createImpl<ISwapchain>(this, this->m_liveSwapchains, createInfo);                                 }
     void                IDevice::DestroySwapchain(Swapchain* resource)                                     { destroyImpl<ISwapchain>(this, (ISwapchain*)resource, this->m_liveSwapchains);                            }
     ShaderModule*       IDevice::CreateShaderModule(const ShaderModuleCreateInfo& createInfo)              { return createImpl<IShaderModule>(this, this->m_liveShaderModules, createInfo);                           }

@@ -10,22 +10,6 @@
 
 namespace RHI::Vulkan
 {
-    inline static VkDeviceAddress GetBufferDeviceAddress(IDevice* device, const BufferBindingInfo& bufferBindingInfo)
-    {
-        auto buffer = (IBuffer*)bufferBindingInfo.buffer;
-        return buffer->address + bufferBindingInfo.offset;
-    }
-
-    inline static VkStridedDeviceAddressRegionKHR GetStridedDeviceAddressRegion(IDevice* device, const BufferBindingInfo& bufferBindingInfo, uint32_t stride, uint32_t drawCount)
-    {
-        auto buffer = (IBuffer*)bufferBindingInfo.buffer;
-        return {
-            .deviceAddress = buffer->address + bufferBindingInfo.offset,
-            .stride        = stride,
-            .size          = stride * drawCount,
-        };
-    }
-
     inline static VkImageSubresourceLayers ConvertSubresourceLayer(const ImageSubresourceLayers& subresource, Format format)
     {
         return VkImageSubresourceLayers{
@@ -86,92 +70,50 @@ namespace RHI::Vulkan
         };
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////
-    /// CommandPool
-    ////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////
+    /// ICommandPool
+    //////////////////////////////////////////////////////////////////////////////////////////
 
-    VkCommandPool CommandPool::Init(IDevice* device, QueueType queueType)
+    ResultCode ICommandPool::Init(IDevice* device, const CommandPoolCreateInfo& createInfo)
     {
+        m_device = device;
+        IQueue* queue = (IQueue*)device->GetQueue(createInfo.queue);
+
         VkCommandPoolCreateInfo poolInfo = {
             .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
             .pNext            = nullptr,
             .flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-            .queueFamilyIndex = device->GetDeviceQueue(queueType)->m_familyIndex,
+            .queueFamilyIndex = queue->m_familyIndex,
         };
 
-        VkResult result = vkCreateCommandPool(device->m_device, &poolInfo, nullptr, &m_pool);
-        TL_ASSERT(result == VK_SUCCESS);
-        m_allocatedCommandBuffers = 0;
-        m_commandBuffers.clear();
-        return m_pool;
+        VulkanResult result = vkCreateCommandPool(device->m_device, &poolInfo, nullptr, &m_commandPool);
+        return result;
     }
 
-    void CommandPool::Shutdown(IDevice* device)
+    void ICommandPool::Shutdown(IDevice* device)
     {
-        if (m_pool != VK_NULL_HANDLE)
-        {
-            vkDestroyCommandPool(device->m_device, m_pool, nullptr);
-            m_pool = VK_NULL_HANDLE;
-            m_commandBuffers.clear();
-            m_allocatedCommandBuffers = 0;
-        }
+        vkDestroyCommandPool(device->m_device, m_commandPool, nullptr);
     }
 
-    VkCommandBuffer CommandPool::AllocateCommandBuffer(IDevice* device)
+    void ICommandPool::Reset()
     {
-        if (m_allocatedCommandBuffers < m_commandBuffers.size())
-        {
-            return m_commandBuffers[m_allocatedCommandBuffers++];
-        }
+        vkResetCommandPool(m_device->m_device, m_commandPool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
+    }
 
+    CommandList* ICommandPool::Allocate()
+    {
         VkCommandBufferAllocateInfo allocateInfo = {
-            .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-            .commandPool        = m_pool,
-            .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-            .commandBufferCount = 1,
+            VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            nullptr,
+            m_commandPool,
+            VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            1,
         };
-
-        VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
-        VkResult        result        = vkAllocateCommandBuffers(device->m_device, &allocateInfo, &commandBuffer);
-        TL_ASSERT(result == VK_SUCCESS);
-        m_commandBuffers.push_back(commandBuffer);
-        return commandBuffer;
-    }
-
-    void CommandPool::Reset(IDevice* device)
-    {
-        vkResetCommandPool(device->m_device, m_pool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
-        m_allocatedCommandBuffers = 0;
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////
-    /// CommandAllocator
-    ////////////////////////////////////////////////////////////////////////////////////
-
-    ResultCode CommandAllocator::Init(IDevice* device)
-    {
-        m_device      = device;
-        int queueType = 0;
-        for (auto& p : m_queuePools)
-            p.Init(m_device, (QueueType)queueType++);
-        return ResultCode::Success;
-    }
-
-    void CommandAllocator::Shutdown()
-    {
-        for (auto& p : m_queuePools)
-            p.Shutdown(m_device);
-    }
-
-    VkCommandBuffer CommandAllocator::AllocateCommandBuffer(QueueType queueType)
-    {
-        return m_queuePools[(uint32_t)queueType].AllocateCommandBuffer(m_device);
-    }
-
-    void CommandAllocator::Reset()
-    {
-        for (auto& p : m_queuePools)
-            p.Reset(m_device);
+        ICommandList* commandList = TL::constructFrom<ICommandList>(&m_arena);
+        commandList->m_device     = m_device;
+        VulkanResult result       = vkAllocateCommandBuffers(m_device->m_device, &allocateInfo, &commandList->m_commandBuffer);
+        TL_ASSERT(result.IsSuccess());
+        return commandList;
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -183,36 +125,14 @@ namespace RHI::Vulkan
 
     ResultCode ICommandList::Init(IDevice* device, CommandPool* pool, const CommandListCreateInfo& createInfo)
     {
-        m_device        = device;
-        m_commandBuffer = pool->AllocateCommandBuffer(m_device);
+        // m_device        = device;
+        // m_commandBuffer = pool->AllocateCommandBuffer(m_device);
         return ResultCode::Success;
     }
 
     void ICommandList::Shutdown()
     {
         // m_device->m_commandsAllocator->ReleaseCommandBuffers(m_commandBuffer);
-    }
-
-    void ICommandList::AddPipelineBarriers(const PipelineBarriers& barriers)
-    {
-        ZoneScoped;
-
-        if (barriers.memoryBarriers.empty() && barriers.bufferBarriers.empty() && barriers.imageBarriers.empty())
-            return;
-
-        VkDependencyInfo dependencyInfo =
-            {
-                .sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-                .pNext                    = nullptr,
-                .dependencyFlags          = 0,
-                .memoryBarrierCount       = uint32_t(barriers.memoryBarriers.size()),
-                .pMemoryBarriers          = barriers.memoryBarriers.data(),
-                .bufferMemoryBarrierCount = uint32_t(barriers.bufferBarriers.size()),
-                .pBufferMemoryBarriers    = barriers.bufferBarriers.data(),
-                .imageMemoryBarrierCount  = uint32_t(barriers.imageBarriers.size()),
-                .pImageMemoryBarriers     = barriers.imageBarriers.data(),
-            };
-        vkCmdPipelineBarrier2(m_commandBuffer, &dependencyInfo);
     }
 
     void ICommandList::Begin()
@@ -242,11 +162,11 @@ namespace RHI::Vulkan
         if (barriers.empty() && imageBarriers.empty() && bufferBarriers.empty())
             return;
 
-        TL::Vector<VkMemoryBarrier2> vmemoryBarriers{m_device->GetTempAllocator()};
+        TL::Vector<VkMemoryBarrier2>       vmemoryBarriers{m_device->m_arena};
+        TL::Vector<VkBufferMemoryBarrier2> vbufferBarriers{m_device->m_arena};
+        TL::Vector<VkImageMemoryBarrier2>  vimageBarriers{m_device->m_arena};
         vmemoryBarriers.reserve(barriers.size());
-        TL::Vector<VkBufferMemoryBarrier2> vbufferBarriers{m_device->GetTempAllocator()};
         vbufferBarriers.reserve(imageBarriers.size());
-        TL::Vector<VkImageMemoryBarrier2> vimageBarriers{m_device->GetTempAllocator()};
         vimageBarriers.reserve(bufferBarriers.size());
 
         for (auto barrier : barriers)
@@ -328,7 +248,7 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        TL::Vector<VkRenderingAttachmentInfo>   colorAttachments{m_device->GetTempAllocator()};
+        TL::Vector<VkRenderingAttachmentInfo>   colorAttachments{m_device->m_arena};
         TL::Optional<VkRenderingAttachmentInfo> depthAttachment{};
         TL::Optional<VkRenderingAttachmentInfo> stencilAttachment{};
 
@@ -506,7 +426,7 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        TL::Vector<VkCommandBuffer> commandBuffers{m_device->GetTempAllocator()};
+        TL::Vector<VkCommandBuffer> commandBuffers{m_device->m_arena};
         commandBuffers.reserve(commandLists.size());
 
         for (const auto* commandList : commandLists)
@@ -542,7 +462,7 @@ namespace RHI::Vulkan
 
         IPipelineLayout*    pipelineLayout = (IPipelineLayout*)m_pipelineLayout;
         IBindGroupLayout*   groupLayout    = pipelineLayout->bindGroupLayouts[firstGroup];
-        DescriptorSetWriter writer{m_device, VK_NULL_HANDLE, groupLayout, m_device->GetTempAllocator()};
+        DescriptorSetWriter writer{m_device, VK_NULL_HANDLE, groupLayout, m_device->m_arena};
 
         VkPushDescriptorSetInfo pushDescriptorSetInfo{
             .sType                = VK_STRUCTURE_TYPE_PUSH_DESCRIPTOR_SET_INFO_KHR,
@@ -748,10 +668,26 @@ namespace RHI::Vulkan
 
     void ICommandList::DispatchRays(const DispatchRaysInfo& dispatchRaysDesc)
     {
-        VkStridedDeviceAddressRegionKHR raygenShaderBindingTable{};
-        VkStridedDeviceAddressRegionKHR missShaderBindingTable{};
-        VkStridedDeviceAddressRegionKHR hitShaderBindingTable{};
-        VkStridedDeviceAddressRegionKHR callableShaderBindingTable{};
+        VkStridedDeviceAddressRegionKHR raygenShaderBindingTable{
+            .deviceAddress = dispatchRaysDesc.raygenShader.offset,
+            .stride        = dispatchRaysDesc.raygenShader.stride,
+            .size          = dispatchRaysDesc.raygenShader.size,
+        };
+        VkStridedDeviceAddressRegionKHR missShaderBindingTable{
+            .deviceAddress = dispatchRaysDesc.missShaders.offset,
+            .stride        = dispatchRaysDesc.missShaders.stride,
+            .size          = dispatchRaysDesc.missShaders.size,
+        };
+        VkStridedDeviceAddressRegionKHR hitShaderBindingTable{
+            .deviceAddress = dispatchRaysDesc.hitShaderGroups.offset,
+            .stride        = dispatchRaysDesc.hitShaderGroups.stride,
+            .size          = dispatchRaysDesc.hitShaderGroups.size,
+        };
+        VkStridedDeviceAddressRegionKHR callableShaderBindingTable{
+            .deviceAddress = dispatchRaysDesc.callableShaders.offset,
+            .stride        = dispatchRaysDesc.callableShaders.stride,
+            .size          = dispatchRaysDesc.callableShaders.size,
+        };
         m_device->m_pfn.vkCmdTraceRaysKHR(
             m_commandBuffer,
             &raygenShaderBindingTable,
@@ -869,8 +805,8 @@ namespace RHI::Vulkan
         if (bindGroups.empty())
             return;
 
-        TL::Vector<VkDescriptorSet> descriptorSets{m_device->GetTempAllocator()};
-        TL::Vector<uint32_t>        dynamicOffsets{m_device->GetTempAllocator()};
+        TL::Vector<VkDescriptorSet> descriptorSets{m_device->m_arena};
+        TL::Vector<uint32_t>        dynamicOffsets{m_device->m_arena};
 
         for (const auto& bindingInfo : bindGroups)
         {
@@ -882,9 +818,6 @@ namespace RHI::Vulkan
             }
         }
 
-#if 1 // todo: use the vkCmdBindDescriptorSets2
-        vkCmdBindDescriptorSets(m_commandBuffer, bindPoint, pipelineLayout, 0, (uint32_t)descriptorSets.size(), descriptorSets.data(), dynamicOffsets.size(), dynamicOffsets.data());
-#else
         VkBindDescriptorSetsInfo bindInfo{
             .sType              = VK_STRUCTURE_TYPE_BIND_DESCRIPTOR_SETS_INFO,
             .pNext              = nullptr,
@@ -897,7 +830,6 @@ namespace RHI::Vulkan
             .pDynamicOffsets    = dynamicOffsets.data(),
         };
         vkCmdBindDescriptorSets2(m_commandBuffer, &bindInfo);
-#endif
     }
 
     void ICommandList::BuildMicromaps(TL::Span<const BuildMicromapDesc> buildMicromapDescs)
@@ -914,6 +846,10 @@ namespace RHI::Vulkan
 
     void ICommandList::BuildTopLevelAccelerationStructures(TL::Span<const BuildTopLevelAccelerationStructureDesc> buildTopLevelAccelerationStructureDescs)
     {
+        TL::Vector<VkAccelerationStructureBuildGeometryInfoKHR> buildInfo{m_device->m_arena};
+        TL::Vector<VkAccelerationStructureBuildRangeInfoKHR*>   buildRangeInfos{m_device->m_arena};
+
+        m_device->m_pfn.vkCmdBuildAccelerationStructuresKHR(m_commandBuffer, buildInfo.size(), buildInfo.data(), buildRangeInfos.data());
     }
 
     void ICommandList::BuildBottomLevelAccelerationStructures(TL::Span<const BuildBottomLevelAccelerationStructureDesc> buildBottomLevelAccelerationStructureDescs)

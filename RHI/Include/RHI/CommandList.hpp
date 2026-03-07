@@ -15,8 +15,6 @@ namespace RHI
         Count,
     };
 
-    inline static constexpr uint32_t AsyncQueuesCount = (uint32_t)QueueType::Count;
-
     enum class LoadOperation : uint8_t
     {
         DontCare,
@@ -62,8 +60,7 @@ namespace RHI
 
     union ClearValue
     {
-        ColorValue<uint8_t>  u8;
-        ColorValue<uint16_t> u16;
+        ColorValue<int32_t>  i32;
         ColorValue<uint32_t> u32;
         ColorValue<float>    f32;
         DepthStencilValue    ds;
@@ -282,23 +279,37 @@ namespace RHI
         const char* name = nullptr;
     };
 
-    struct DispatchRaysInfo
+    struct StridedDeviceAddressRegion
     {
-        BufferBindingInfo raygenShader;
-        BufferBindingInfo missShaders;
-        BufferBindingInfo hitShaderGroups;
-        BufferBindingInfo callableShaders;
-        uint32_t          x;
-        uint32_t          y;
-        uint32_t          z;
+        size_t offset = 0;
+        size_t stride = 0;
+        size_t size   = 0;
     };
 
-    class QueueInterface
+    struct DispatchRaysInfo
     {
+        StridedDeviceAddressRegion raygenShader;
+        StridedDeviceAddressRegion missShaders;
+        StridedDeviceAddressRegion hitShaderGroups;
+        StridedDeviceAddressRegion callableShaders;
+        uint32_t                   x;
+        uint32_t                   y;
+        uint32_t                   z;
+    };
+
+    class CommandList;
+
+    struct CommandPoolCreateInfo
+    {
+        const char* name;
+        QueueType   queue;
     };
 
     class RHI_EXPORT CommandPool
     {
+    public:
+        virtual void         Reset()    = 0;
+        virtual CommandList* Allocate() = 0;
     };
 
     /// @brief Represents a list of commands to be executed on the GPU.

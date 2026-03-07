@@ -12,13 +12,10 @@
 
 #include "Common.hpp"
 #include "Resources.hpp"
-#include "Frame.hpp"
+#include "CommandList.hpp"
 
 namespace RHI::Vulkan
 {
-    class BindGroupAllocator;
-    class ICommandList;
-
     struct VulkanAPI
     {
 #ifdef RHI_DEBUG
@@ -44,45 +41,30 @@ namespace RHI::Vulkan
         PFN_vkCmdDrawMeshTasksEXT              vkCmdDrawMeshTasksEXT;
         PFN_vkCmdDrawMeshTasksIndirectEXT      vkCmdDrawMeshTasksIndirectEXT;
         PFN_vkCmdDrawMeshTasksIndirectCountEXT vkCmdDrawMeshTasksIndirectCountEXT;
+        PFN_vkCmdBuildAccelerationStructuresKHR vkCmdBuildAccelerationStructuresKHR;
     };
 
-    class IQueue
+    class IQueue final : public Queue
     {
     public:
         VkResult Init(IDevice* device, const char* debugName, uint32_t familyIndex, uint32_t queueIndex);
+        void     Shutdown();
 
-        void Shutdown();
+        void BeginAnnotation(const char* name, uint32_t bgra) override;
+        void EndAnnotation() override;
+        void InsertAnnotation(const char* name, uint32_t bgra) override;
+        void Submit(const QueueSubmitInfo& submitInfo) override;
+        void WaitIdle() override;
+        void WaitFence(Fence* fence, uint64_t value) override;
 
-        void waitTimelineQueueIdle() const;
-
-        bool waitTimeline(uint64_t timelineValue, uint64_t duration = UINT64_MAX);
-
-        void waitTimelineSemaphore(VkSemaphore semaphore, uint64_t value, VkPipelineStageFlags2 stageMask);
-
-        void waitBinarySemaphore(VkSemaphore semaphore, VkPipelineStageFlags2 stageMask) { waitTimelineSemaphore(semaphore, 0, stageMask); }
-
-        void signalTimelineSemaphore(VkSemaphore semaphore, uint64_t value, VkPipelineStageFlags2 stageMask);
-
-        void signalBinarySemaphore(VkSemaphore semaphore, VkPipelineStageFlags2 stageMask) { signalTimelineSemaphore(semaphore, 0, stageMask); }
-
-        void beginDebugUtilsLabel(const char* name);
-
-        void endDebugUtilsLabel();
-
-        uint64_t submit(TL::Span<ICommandList* const> commandLists, VkPipelineStageFlags2 signalStage);
-
-        IDevice*             m_device            = nullptr;
-        VkQueue              m_queue             = VK_NULL_HANDLE;
-        uint32_t             m_familyIndex       = UINT32_MAX;
-        VkSemaphore          m_timelineSemaphore = VK_NULL_HANDLE;
-        std::atomic_uint64_t m_timelineValue     = {0};
-
-    private:
-        TL::Vector<VkSemaphoreSubmitInfo> m_waitTimelineSemaphores;
-        TL::Vector<VkSemaphoreSubmitInfo> m_signalSemaphores;
+        IDevice*  m_device;
+        VkQueue   m_queue;
+        uint32_t  m_familyIndex;
+        QueueType m_queueType;
+        std::atomic_uint64_t m_lastSubmitValue;
     };
 
-    class IDevice final : public Device
+    class IDevice final : public RHI::Device
     {
     public:
         friend Device* RHI::CreateVulkanDevice(const ApplicationInfo& appInfo);
@@ -94,19 +76,25 @@ namespace RHI::Vulkan
         ResultCode Init(const ApplicationInfo& appInfo);
         void       Shutdown();
 
-        /// @brief Assigns a debug name to a Vulkan object.
         void SetDebugName(VkObjectType type, uint64_t handle, const char* name) const;
+
         template<typename T>
         void SetDebugName(T handle, const char* name) const;
+
         template<typename T, typename... FMT_ARGS>
         void SetDebugName(T handle, const char* fmt, FMT_ARGS... args) const;
 
-        IQueue* GetDeviceQueue(QueueType type);
-
-        void waitTimelineIdle();
+        void WaitIdle();
 
         // Interface Implementation
         uint64_t            GetNativeHandle(NativeHandleType type, uint64_t handle) override;
+        uint64_t            GarbageCollect(uint64_t graphicsTimeline) override;
+        Queue*              GetQueue(QueueType queueType) override;
+        CommandPool*        CreateCommandPool(const CommandPoolCreateInfo& createInfo) override;
+        void                DestroyCommandPool(CommandPool* handle) override;
+        Fence*              CreateFence(const FenceCreateInfo& createInfo) override;
+        void                DestroyFence(Fence* handle) override;
+        uint64_t            GetFenceValue(Fence* handle) override;
         Swapchain*          CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
         void                DestroySwapchain(Swapchain* swapchain) override;
         ShaderModule*       CreateShaderModule(const ShaderModuleCreateInfo& createInfo) override;
@@ -120,6 +108,7 @@ namespace RHI::Vulkan
         void                DestroyQueryPool(QueryPool* handle) override;
         Buffer*             CreateBuffer(const BufferCreateInfo& createInfo) override;
         void                DestroyBuffer(Buffer* handle) override;
+        uint64_t            GetBufferDeviceAddress(Buffer* buffer) override;
         Image*              CreateImage(const ImageCreateInfo& createInfo) override;
         Image*              CreateImageView(const ImageViewCreateInfo& createInfo) override;
         void                DestroyImage(Image* handle) override;
@@ -133,32 +122,25 @@ namespace RHI::Vulkan
         void                DestroyRayTracingPipeline(RayTracingPipeline* handle) override;
         ComputePipeline*    CreateComputePipeline(const ComputePipelineCreateInfo& createInfo) override;
         void                DestroyComputePipeline(ComputePipeline* handle) override;
-        ResultCode          SetFramesInFlightCount(uint32_t count) override;
-        Frame*              GetCurrentFrame() override;
 
-        /// Frame
-        TL::IAllocator& GetTempAllocator();
-
-        ///
 
     public:
         // Vulkan instance and core objects
-        VkInstance                        m_instance                = VK_NULL_HANDLE;
-        VkDebugUtilsMessengerEXT          m_debugUtilsMessenger     = VK_NULL_HANDLE;
-        VkPhysicalDevice                  m_physicalDevice          = VK_NULL_HANDLE;
-        VkDevice                          m_device                  = VK_NULL_HANDLE;
-        VmaAllocator                      m_deviceAllocator         = VK_NULL_HANDLE;
-        VulkanAPI                         m_pfn                     = {};
-        TL::Ptr<Renderdoc>                m_renderdoc               = nullptr;
-        // Queue and allocator management
-        IQueue                            m_queue[AsyncQueuesCount] = {};
-        BindGroupAllocator                m_bindGroupAllocator;
-        TL::Ptr<class DeleteQueue>        m_destroyQueue      = nullptr;
-        // Frames in flight
-        uint32_t                          m_currentFrameIndex = 0;
-        TL::Vector<TL::Ptr<class IFrame>> m_framesInFlight    = {};
+        VkInstance                 m_instance                          = VK_NULL_HANDLE;
+        VkDebugUtilsMessengerEXT   m_debugUtilsMessenger               = VK_NULL_HANDLE;
+        VkPhysicalDevice           m_physicalDevice                    = VK_NULL_HANDLE;
+        VkDevice                   m_device                            = VK_NULL_HANDLE;
+        VmaAllocator               m_deviceAllocator                   = VK_NULL_HANDLE;
+        VulkanAPI                  m_pfn                               = {};
+        IQueue                     m_queue[(uint32_t)QueueType::Count] = {};
+        BindGroupAllocator         m_bindGroupAllocator;
+        TL::Ptr<class DeleteQueue> m_destroyQueue = nullptr;
+        TL::Arena                  m_arena;
 
     private:
+        // Track resource allocations to report leaks
+        TL::Map<ICommandPool*, TL::Stacktrace>        m_liveCommandPools;
+        TL::Map<IFence*, TL::Stacktrace>              m_liveFences;
         TL::Map<IQueryPool*, TL::Stacktrace>          m_liveQueryPools;
         TL::Map<ISwapchain*, TL::Stacktrace>          m_liveSwapchains;
         TL::Map<IShaderModule*, TL::Stacktrace>       m_liveShaderModules;
@@ -184,16 +166,6 @@ namespace RHI::Vulkan
     {
         auto name = std::vformat(fmt, std::make_format_args(args...));
         SetDebugName(handle, name.c_str());
-    }
-
-    inline IQueue* IDevice::GetDeviceQueue(QueueType type)
-    {
-        auto& queue = m_queue[(uint32_t)type];
-        if (queue.m_queue != VK_NULL_HANDLE)
-        {
-            return &m_queue[(int)QueueType::Graphics];
-        }
-        return nullptr;
     }
 
     using VmaImageAllocation  = std::pair<VkImage, VmaAllocation>;

@@ -43,7 +43,7 @@ namespace Engine
             .size       = {uint32_t(width), uint32_t(height)},
             .format     = RHI::Format::RGBA8_UNORM,
         };
-        m_image        = RHI::CreateImageWithContent(*m_device, atlasTextureCI, TL::Block{pixels, size_t(width * height * 4)});
+        // m_image        = RHI::CreateImageWithContent(*m_device, atlasTextureCI, TL::Block{pixels, size_t(width * height * 4)});
         m_projectionCB = RenderContext::ptr->getConstantBuffersPool().allocate<GPU::ImGuiShaderParam::CB>(m_maxViewportsCount);
 
         m_shader = PipelineLibrary::ptr->acquireGraphicsPipeline<GPU::ImGuiShaderParam>(

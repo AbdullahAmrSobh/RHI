@@ -43,118 +43,47 @@ namespace RHI
         uint32_t minStorageBufferOffsetAlignment;
     };
 
-    struct QueueSubmitWaitInfo
+    struct SwapchainSignalInfo
     {
-        QueueType     type;
-        uint64_t      value;
-        PipelineStage stage;
-    };
-
-    struct SwapchainImageAcquireInfo
-    {
-        Swapchain*    swapchain;
-        PipelineStage stage;
+        Swapchain*    swapchain = nullptr;
+        PipelineStage stage     = PipelineStage::None;
     };
 
     struct QueueSubmitInfo
     {
-        TL::Span<CommandList* const>        commandLists      = {};
-        PipelineStage                       signalStage       = {};
-        TL::Span<const QueueSubmitWaitInfo> waitTimelineInfos = {};
-        bool                                signalPresent     = false;
-    };
-
-    struct BufferStreamInfo
-    {
-        Buffer*   buffer;
-        size_t    offset;
-        TL::Block block;
-    };
-
-    struct ImageStreamInfo
-    {
-        Image*        image;
-        ImageOffset3D offset;
-        ImageSize3D   size;
-        uint32_t      mipLevel;
-        uint32_t      arrayLayer;
-        TL::Block     block;
-    };
-
-    // TODO: Move to RenderGraph
-    /// @brief Provides an interface to the Renderdoc graphics debugger for frame capture and debugging.
-    class RHI_EXPORT Renderdoc
-    {
-    public:
-        Renderdoc()          = default;
-        virtual ~Renderdoc() = default;
-
-        /// @brief Initializes the Renderdoc interface for the given device.
-        /// @param device The device to associate with Renderdoc.
-        /// @return ResultCode indicating success or failure.
-        ResultCode Init(class Device* device);
-
-        /// @brief Shuts down the Renderdoc interface and releases resources.
-        void       Shutdown();
-
-        /// @brief Triggers multi-frame capture for the specified number of frames.
-        /// @param numFrames Number of frames to capture.
-        void       FrameTriggerMultiCapture(uint32_t numFrames);
-
-        /// @brief Checks if Renderdoc is currently capturing a frame.
-        /// @return True if capturing, false otherwise.
-        bool       FrameIsCapturing();
-
-        /// @brief Starts a frame capture.
-        void       FrameStartCapture();
-
-        /// @brief Ends a frame capture.
-        void       FrameEndCapture();
-
-    private:
-        Device*     m_device;       ///< Associated device.
-        TL::Library m_library;      ///< Handle to the Renderdoc library.
-        void*       m_renderdocAPi; ///< Pointer to the Renderdoc API interface.
-    };
-
-    // TODO: Move to RenderGraph
-    /// @brief Represents a single frame in flight, providing per-frame resource management and command submission.
-    class RHI_EXPORT Frame
-    {
-    public:
-        Frame()          = default;
-        virtual ~Frame() = default;
-
-        /// @brief Returns the arena allocator valid for the duration of the current frame.
-        virtual TL::IAllocator& GetAllocator() = 0;
-
-        /// @brief Marks the next frame to be captured through Renderdoc.
-        /// @todo Rename to RdocCaptureNextFrame().
-        virtual void            CaptureNextFrame() = 0;
-
-        /// @brief Begins the frame.
-        virtual void            Begin(TL::Span<SwapchainImageAcquireInfo> swapchainToAcquire) = 0;
-
-        /// @brief Ends the frame.
-        virtual void            End() = 0;
-
-        /// @brief Allocates a command list valid only for the duration of the current frame.
-        virtual CommandList*    CreateCommandList(const CommandListCreateInfo& createInfo) = 0;
-
-        /// @brief Frees previouslly allocated command lists
-        virtual void            DestroyCommandList(CommandList* commandList) = 0;
-
-        /// @brief Submits commands to be executed on the specified queue.
-        virtual uint64_t        QueueSubmit(QueueType queueType, const QueueSubmitInfo& submitInfo) = 0;
-
-        /// @brief Schedules a buffer update operation.
-        virtual void            BufferWrite(Buffer* buffer, size_t offset, TL::Block block) = 0;
-
-        /// @brief Schedules an image update operation.
-        virtual void            ImageWrite(Image* image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block) = 0;
+        TL::Span<FenceSubmitInfo>    waitFences        = {};
+        TL::Span<CommandList* const> commandLists      = {};
+        TL::Span<FenceSubmitInfo>    signalFences      = {};
+        TL::Span<Swapchain*>         acquireSwapchains = {};
+        TL::Span<Swapchain*>         presentSwapchains = {};
     };
 
     class RenderGraph;
+
+    class RHI_EXPORT Queue
+    {
+    public:
+        Queue()          = default;
+        virtual ~Queue() = default;
+
+        /// @brief
+        virtual void BeginAnnotation(const char* name, uint32_t bgra) = 0;
+
+        /// @brief ...
+        virtual void EndAnnotation() = 0;
+
+        /// @brief ...
+        virtual void InsertAnnotation(const char* name, uint32_t bgra) = 0;
+
+        /// @brief ...
+        virtual void Submit(const QueueSubmitInfo& submitInfo) = 0;
+
+        /// @brief ...
+        virtual void WaitIdle() = 0;
+
+        /// @brief ...
+        virtual void WaitFence(Fence* fence, uint64_t value) = 0;
+    };
 
     /// @brief Represents a logical rendering device and provides resource creation and management.
     class RHI_EXPORT Device
@@ -166,14 +95,31 @@ namespace RHI
         /// @brief Returns the backend type.
         BackendType                 GetBackend() const { return m_backend; }
 
-        /// @brief Returns the Renderdoc debug interface, if available.
-        Renderdoc*                  GetDebugRenderdoc() const { return m_renderdoc.get(); }
-
         /// @brief Returns device limits.
-        DeviceLimits                GetLimits() const;
+        DeviceLimits                GetLimits() const { return m_limits; }
+
+        virtual uint64_t            GarbageCollect(uint64_t graphicsTimeline) = 0;
 
         /// @brief Retrieves a native handle for the specified type and object.
         virtual uint64_t            GetNativeHandle(NativeHandleType type, uint64_t handle) = 0;
+
+        /// @brief Returns Device Queue with queueType.
+        virtual Queue*              GetQueue(QueueType queueType) = 0;
+
+        /// @brief Creates a fence.
+        virtual CommandPool*        CreateCommandPool(const CommandPoolCreateInfo& createInfo) = 0;
+
+        /// @brief Destroy a CommandPool.
+        virtual void                DestroyCommandPool(CommandPool* handle) = 0;
+
+        /// @brief Creates a fence.
+        virtual Fence*              CreateFence(const FenceCreateInfo& createInfo) = 0;
+
+        /// @brief Destroy a fence.
+        virtual void                DestroyFence(Fence* handle) = 0;
+
+        /// @brief Query fence value.
+        virtual uint64_t            GetFenceValue(Fence* handle) = 0;
 
         /// @brief Creates a swapchain.
         virtual Swapchain*          CreateSwapchain(const SwapchainCreateInfo& createInfo) = 0;
@@ -213,6 +159,8 @@ namespace RHI
 
         /// @brief Destroys a buffer.
         virtual void                DestroyBuffer(Buffer* handle) = 0;
+
+        virtual uint64_t            GetBufferDeviceAddress(Buffer* buffer) = 0;
 
         /// @brief Creates an image.
         virtual Image*              CreateImage(const ImageCreateInfo& createInfo) = 0;
@@ -262,17 +210,8 @@ namespace RHI
         /// @brief Destroys a compute pipeline.
         virtual void                DestroyComputePipeline(ComputePipeline* handle) = 0;
 
-        /// @brief Sets the number of frames in flight.
-        virtual ResultCode          SetFramesInFlightCount(uint32_t count) = 0;
-
-        /// @brief Returns the current frame.
-        virtual Frame*              GetCurrentFrame() = 0;
-
     protected:
-        BackendType           m_backend;   ///< Backend type used by this device.
-        TL::Ptr<DeviceLimits> m_limits;    ///< Device limits.
-        TL::Ptr<Renderdoc>    m_renderdoc; ///< Optional Renderdoc interface.
+        BackendType  m_backend;
+        DeviceLimits m_limits;
     };
-
-    RHI_EXPORT Image* CreateImageWithContent(Device& device, const ImageCreateInfo& createInfo, TL::Block content);
 } // namespace RHI

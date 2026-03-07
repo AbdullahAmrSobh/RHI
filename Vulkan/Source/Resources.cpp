@@ -1,7 +1,6 @@
 #include "Resources.hpp"
 #include "Common.hpp"
 #include "Device.hpp"
-#include "Frame.hpp"
 
 #include <algorithm>
 
@@ -524,8 +523,8 @@ namespace RHI::Vulkan
     {
         this->shaderBindings = {createInfo.bindings.begin(), createInfo.bindings.end()};
 
-        TL::Vector<VkDescriptorBindingFlags>     bindingFlags{device->GetTempAllocator()};
-        TL::Vector<VkDescriptorSetLayoutBinding> setLayoutBindings{device->GetTempAllocator()};
+        TL::Vector<VkDescriptorBindingFlags>     bindingFlags{device->m_arena};
+        TL::Vector<VkDescriptorSetLayoutBinding> setLayoutBindings{device->m_arena};
 
         // Query the physical device limits for descriptor counts
         VkPhysicalDeviceProperties2 properties{};
@@ -634,7 +633,7 @@ namespace RHI::Vulkan
 
     void IBindGroup::Update(IDevice* device, const BindGroupUpdateInfo& updateInfo)
     {
-        DescriptorSetWriter writer(device, this->descriptorSet, this->bindGroupLayout, device->GetTempAllocator());
+        DescriptorSetWriter writer(device, this->descriptorSet, this->bindGroupLayout, device->m_arena);
 
         for (auto [dstBindings, dstArrayelements, buffers] : updateInfo.buffers)
         {
@@ -652,6 +651,48 @@ namespace RHI::Vulkan
         }
 
         vkUpdateDescriptorSets(device->m_device, (uint32_t)writer.GetWrites().size(), writer.GetWrites().data(), 0, nullptr);
+    }
+
+    ////////////////////////////////////////////////////////////////////////
+    // IFence
+    ////////////////////////////////////////////////////////////////////////
+
+    ResultCode IFence::Init(IDevice* device, const FenceCreateInfo& createInfo)
+    {
+        VkSemaphoreTypeCreateInfo semaphoreTypeCI = {
+            .sType         = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
+            .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
+            .initialValue  = createInfo.initialValue,
+        };
+
+        VkSemaphoreCreateInfo semaphoreCI{
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+            .pNext = &semaphoreTypeCI,
+        };
+
+        VulkanResult result = vkCreateSemaphore(device->m_device, &semaphoreCI, nullptr, &this->semaphore);
+        if (result.IsSuccess() && createInfo.name)
+        {
+            device->SetDebugName(semaphore, createInfo.name);
+        }
+        return result;
+    }
+
+    void IFence::Shutdown(IDevice* device)
+    {
+    }
+
+    bool IFence::waitValue(IDevice* device, uint64_t value)
+    {
+        VkSemaphoreWaitInfo semaphoreWaitInfo = {
+            .sType          = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
+            .semaphoreCount = 1,
+            .pSemaphores    = &semaphore,
+            .pValues        = &value,
+        };
+        VulkanResult result = vkWaitSemaphores(device->m_device, &semaphoreWaitInfo, UINT64_MAX);
+        TL_ASSERT(result.IsSuccess());
+        return true;
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -682,7 +723,7 @@ namespace RHI::Vulkan
 
     ResultCode IPipelineLayout::Init(IDevice* device, const PipelineLayoutCreateInfo& createInfo)
     {
-        TL::Vector<VkDescriptorSetLayout> descriptorSetLayouts{device->GetTempAllocator()};
+        TL::Vector<VkDescriptorSetLayout> descriptorSetLayouts{device->m_arena};
         uint32_t                          index = 0;
         for (auto bindGroupLayout : createInfo.layouts)
         {
@@ -691,7 +732,7 @@ namespace RHI::Vulkan
             this->bindGroupLayouts[index++] = (IBindGroupLayout*)bindGroupLayout;
         }
 
-        TL::Vector<VkPushConstantRange> pushConstantRanges{device->GetTempAllocator()};
+        TL::Vector<VkPushConstantRange> pushConstantRanges{device->m_arena};
         for (auto range : createInfo.pushConstants)
         {
             pushConstantRanges.push_back({
@@ -747,14 +788,14 @@ namespace RHI::Vulkan
 
     ResultCode IGraphicsPipeline::Init(IDevice* device, const GraphicsPipelineCreateInfo& createInfo)
     {
-        TL::Vector<VkPipelineShaderStageCreateInfo> shaderStageCIs{device->GetTempAllocator()};
+        TL::Vector<VkPipelineShaderStageCreateInfo> shaderStageCIs{device->m_arena};
         for (const auto& stage : createInfo.shaderStages)
         {
             shaderStageCIs.push_back(convertShaderStage(stage));
         }
 
-        TL::Vector<VkVertexInputBindingDescription>   vertexBindings{device->GetTempAllocator()};
-        TL::Vector<VkVertexInputAttributeDescription> vertexAttributes{device->GetTempAllocator()};
+        TL::Vector<VkVertexInputBindingDescription>   vertexBindings{device->m_arena};
+        TL::Vector<VkVertexInputAttributeDescription> vertexAttributes{device->m_arena};
         for (const auto& bindingDesc : createInfo.vertexBufferBindings)
         {
             VkVertexInputBindingDescription binding{
@@ -862,14 +903,14 @@ namespace RHI::Vulkan
             .pDynamicStates    = dynamicStates,
         };
 
-        TL::Vector<VkFormat> colorAttachmentFormats{device->GetTempAllocator()};
+        TL::Vector<VkFormat> colorAttachmentFormats{device->m_arena};
         colorAttachmentFormats.reserve(createInfo.renderTargetLayout.colorAttachmentsFormats.size());
         for (auto format : createInfo.renderTargetLayout.colorAttachmentsFormats)
         {
             colorAttachmentFormats.push_back(ConvertFormat(format));
         }
 
-        TL::Vector<VkPipelineColorBlendAttachmentState> pipelineColorBlendAttachmentStates{device->GetTempAllocator()};
+        TL::Vector<VkPipelineColorBlendAttachmentState> pipelineColorBlendAttachmentStates{device->m_arena};
         pipelineColorBlendAttachmentStates.reserve(colorAttachmentFormats.size());
 
         for (auto blendState : createInfo.colorBlendState.blendStates)
@@ -950,10 +991,10 @@ namespace RHI::Vulkan
 
     void IGraphicsPipeline::Shutdown(IDevice* device)
     {
-        auto frame = (IFrame*)device->GetCurrentFrame();
+        auto frame = ((IQueue*)device->GetQueue(QueueType::Graphics))->m_lastSubmitValue.load();
 
         if (handle)
-            device->m_destroyQueue->Push(frame->GetTimelineValue(), handle);
+            device->m_destroyQueue->Push(frame, handle);
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -981,18 +1022,18 @@ namespace RHI::Vulkan
 
     void IComputePipeline::Shutdown(IDevice* device)
     {
-        auto frame = (IFrame*)device->GetCurrentFrame();
+        auto frame = ((IQueue*)device->GetQueue(QueueType::Graphics))->m_lastSubmitValue.load();
 
         if (handle)
-            device->m_destroyQueue->Push(frame->GetTimelineValue(), handle);
+            device->m_destroyQueue->Push(frame, handle);
     }
 
     ResultCode IRayTracingPipeline::Init(IDevice* device, const RayTracingPipelineCreateInfo& createInfo)
     {
         this->layout = (IPipelineLayout*)createInfo.layout;
 
-        TL::Vector<VkPipelineShaderStageCreateInfo>      shaderStagesCI{device->GetTempAllocator()};
-        TL::Vector<VkRayTracingShaderGroupCreateInfoKHR> shaderGroupsCI{device->GetTempAllocator()};
+        TL::Vector<VkPipelineShaderStageCreateInfo>      shaderStagesCI{device->m_arena};
+        TL::Vector<VkRayTracingShaderGroupCreateInfoKHR> shaderGroupsCI{device->m_arena};
 
         for (const auto& stage : createInfo.shaderStages)
         {
@@ -1036,10 +1077,10 @@ namespace RHI::Vulkan
 
     void IRayTracingPipeline::Shutdown(IDevice* device)
     {
-        auto frame = (IFrame*)device->GetCurrentFrame();
+        auto frame = ((IQueue*)device->GetQueue(QueueType::Graphics))->m_lastSubmitValue.load();
 
         if (handle)
-            device->m_destroyQueue->Push(frame->GetTimelineValue(), handle);
+            device->m_destroyQueue->Push(frame, handle);
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -1081,10 +1122,10 @@ namespace RHI::Vulkan
 
     void IQueryPool::Shutdown(IDevice* device)
     {
-        auto frame = (IFrame*)device->GetCurrentFrame();
+        auto frame = ((IQueue*)device->GetQueue(QueueType::Graphics))->m_lastSubmitValue.load();
 
         if (handle)
-            device->m_destroyQueue->Push(frame->GetTimelineValue(), handle);
+            device->m_destroyQueue->Push(frame, handle);
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -1143,13 +1184,13 @@ namespace RHI::Vulkan
     {
         TL_ASSERT(mapped == false, "Unmap buffer first");
 
-        auto frame = (IFrame*)device->GetCurrentFrame();
+        auto frame = ((IQueue*)device->GetQueue(QueueType::Graphics))->m_lastSubmitValue.load();
 
         if (handle)
-            device->m_destroyQueue->Push(frame->GetTimelineValue(), handle);
+            device->m_destroyQueue->Push(frame, handle);
 
         if (allocation)
-            device->m_destroyQueue->Push(frame->GetTimelineValue(), allocation);
+            device->m_destroyQueue->Push(frame, allocation);
     }
 
     VkMemoryRequirements IBuffer::GetMemoryRequirements(IDevice* device) const
@@ -1319,16 +1360,16 @@ namespace RHI::Vulkan
 
     void IImage::Shutdown(IDevice* device)
     {
-        auto frame = (IFrame*)device->GetCurrentFrame();
+        auto frame = ((IQueue*)device->GetQueue(QueueType::Graphics))->m_lastSubmitValue.load();
 
         if (handle)
-            device->m_destroyQueue->Push(frame->GetTimelineValue(), handle);
+            device->m_destroyQueue->Push(frame, handle);
 
         if (viewHandle)
-            device->m_destroyQueue->Push(frame->GetTimelineValue(), viewHandle);
+            device->m_destroyQueue->Push(frame, viewHandle);
 
         if (allocation)
-            device->m_destroyQueue->Push(frame->GetTimelineValue(), allocation);
+            device->m_destroyQueue->Push(frame, allocation);
     }
 
     VkMemoryRequirements IImage::GetMemoryRequirements(IDevice* device) const
@@ -1379,8 +1420,8 @@ namespace RHI::Vulkan
 
     void ISampler::Shutdown(IDevice* device)
     {
-        auto frame = (IFrame*)device->GetCurrentFrame();
-        device->m_destroyQueue->Push(frame->GetTimelineValue(), handle);
+        auto frame = ((IQueue*)device->GetQueue(QueueType::Graphics))->m_lastSubmitValue.load();
+        device->m_destroyQueue->Push(frame, handle);
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -1410,9 +1451,12 @@ namespace RHI::Vulkan
             VkSemaphoreCreateInfo semaphoreCI{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
             result = vkCreateSemaphore(m_device->m_device, &semaphoreCI, nullptr, &m_acquireSemaphore[i]);
             TL_ASSERT(result, "Failed to create swapchain semaphore");
+            result = vkCreateSemaphore(m_device->m_device, &semaphoreCI, nullptr, &m_presentSemaphore[i]);
+            TL_ASSERT(result, "Failed to create swapchain semaphore");
             if (!m_name.empty())
             {
-                m_device->SetDebugName(m_acquireSemaphore[i], "swapchain: {} - acquire_semaphore[{}]", m_name, i);
+                m_device->SetDebugName(m_acquireSemaphore[i], "swapchain: {} - acquire[{}]", m_name, i);
+                m_device->SetDebugName(m_presentSemaphore[i], "swapchain: {} - present[{}]", m_name, i);
             }
         }
         return result;
@@ -1420,13 +1464,13 @@ namespace RHI::Vulkan
 
     void ISwapchain::Shutdown(IDevice* device)
     {
-        auto frame = (IFrame*)m_device->GetCurrentFrame();
+        auto frame = ((IQueue*)device->GetQueue(QueueType::Graphics))->m_lastSubmitValue.load();
 
         for (uint32_t i = 0; i < MaxImageCount; ++i)
         {
             if (m_acquireSemaphore[i])
             {
-                m_device->m_destroyQueue->Push(frame->GetTimelineValue(), m_acquireSemaphore[i]);
+                m_device->m_destroyQueue->Push(frame, m_acquireSemaphore[i]);
                 m_acquireSemaphore[i] = VK_NULL_HANDLE;
             }
         }
@@ -1435,20 +1479,20 @@ namespace RHI::Vulkan
         {
             if (m_imageViews[i])
             {
-                m_device->m_destroyQueue->Push(frame->GetTimelineValue(), m_imageViews[i]);
+                m_device->m_destroyQueue->Push(frame, m_imageViews[i]);
                 m_imageViews[i] = VK_NULL_HANDLE;
             }
         }
 
         if (m_swapchain)
         {
-            m_device->m_destroyQueue->Push(frame->GetTimelineValue(), m_swapchain);
+            m_device->m_destroyQueue->Push(frame, m_swapchain);
             m_swapchain = VK_NULL_HANDLE;
         }
 
         if (m_surface)
         {
-            m_device->m_destroyQueue->Push(frame->GetTimelineValue(), m_surface);
+            m_device->m_destroyQueue->Push(frame, m_surface);
             m_surface = VK_NULL_HANDLE;
         }
 
@@ -1480,7 +1524,7 @@ namespace RHI::Vulkan
             TL_LOG_ERROR("Failed to create swapchain surface with error: {}", result.AsString());
         }
 
-        IQueue*  queue = device.GetDeviceQueue(QueueType::Graphics);
+        IQueue*  queue = (IQueue*)device.GetQueue(QueueType::Graphics);
         VkBool32 surfaceSupportPresent;
         result = vkGetPhysicalDeviceSurfaceSupportKHR(device.m_physicalDevice, queue->m_familyIndex, outSurface, &surfaceSupportPresent);
         TL_ASSERT(result);
@@ -1684,19 +1728,19 @@ namespace RHI::Vulkan
 
         // Destroy old image views and old swapchain if present
         {
-            auto frame = (IFrame*)m_device->GetCurrentFrame();
+            // auto frame = ((IQueue*)device->GetQueue(QueueType::Graphics))->m_lastSubmitValue.load();
             for (uint32_t i = 0; i < MaxImageCount; i++)
             {
                 if (m_imageViews[i] != VK_NULL_HANDLE)
                 {
-                    m_device->m_destroyQueue->Push(frame->GetTimelineValue(), m_imageViews[i]);
+                    // m_device->m_destroyQueue->Push(frame, m_imageViews[i]);
                     m_imageViews[i] = VK_NULL_HANDLE;
                 }
             }
 
             if (createInfo.oldSwapchain)
             {
-                m_device->m_destroyQueue->Push(frame->GetTimelineValue(), createInfo.oldSwapchain);
+                m_device->m_destroyQueue->Push(0, createInfo.oldSwapchain);
             }
         }
 
@@ -1727,18 +1771,22 @@ namespace RHI::Vulkan
             }
         }
 
+        AcquireNextImage();
+
         return ConvertResult(result);
     }
 
-    VkResult ISwapchain::AcquireNextImage(VkSemaphore& acquiredSemaphore)
+    VkResult ISwapchain::AcquireNextImage()
     {
+        VkSemaphore acquireSemaphore = m_acquireSemaphore[m_acquireSemaphoreIndex];
+
         VulkanResult              result;
         VkAcquireNextImageInfoKHR acquireInfo{
             .sType      = VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHR,
             .pNext      = nullptr,
             .swapchain  = m_swapchain,
             .timeout    = UINT64_MAX,
-            .semaphore  = m_acquireSemaphore[m_acquireSemaphoreIndex],
+            .semaphore  = acquireSemaphore,
             .fence      = VK_NULL_HANDLE,
             .deviceMask = 0x00000001,
         };
@@ -1758,7 +1806,6 @@ namespace RHI::Vulkan
 
         if (result.IsSwapchainSuccess())
         {
-            acquiredSemaphore = m_acquireSemaphore[m_acquireSemaphoreIndex];
             updateCurrentImage();
         }
         else if (result == VK_ERROR_OUT_OF_DATE_KHR)
@@ -1770,7 +1817,6 @@ namespace RHI::Vulkan
                 result                = vkAcquireNextImage2KHR(m_device->m_device, &acquireInfo, &m_imageIndex);
                 if (result.IsSwapchainSuccess())
                 {
-                    acquiredSemaphore = m_acquireSemaphore[m_acquireSemaphoreIndex];
                     updateCurrentImage();
                 }
                 else
@@ -1788,21 +1834,40 @@ namespace RHI::Vulkan
             TL_LOG_ERROR("Failed to acquire next swapchain image (result: {})", result.AsString());
         }
 
-        if (result)
+        if (result.IsSuccess())
         {
-            m_acquireSemaphoreIndex = (m_acquireSemaphoreIndex + 1) % MaxImageCount;
+            // m_acquireSemaphoreIndex = (m_acquireSemaphoreIndex + 1) % MaxImageCount;
         }
 
         return result;
     }
 
-    uint32_t ISwapchain::GetImageIndex() const
+    VkResult ISwapchain::Present(TL::Span<Fence* const> fences)
     {
-        return m_imageIndex;
+        TL::Vector<VkSemaphore> waitSemaphores{m_device->m_arena};
+        for (auto& _fence : fences)
+        {
+            auto fence = (IFence*)_fence;
+            waitSemaphores.push_back(fence->semaphore);
+            // TL_ASSERT(fence->value == SWAPCHAIN_VALUE)
+        }
+
+        VkResult presentResult;
+
+        IQueue*          graphicsQueue = (IQueue*)m_device->GetQueue(QueueType::Graphics);
+        VkPresentInfoKHR presentInfo{
+            .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+            .pNext              = nullptr,
+            .waitSemaphoreCount = (uint32_t)waitSemaphores.size(),
+            .pWaitSemaphores    = waitSemaphores.data(),
+            .swapchainCount     = 1,
+            .pSwapchains        = &m_swapchain,
+            .pImageIndices      = &m_imageIndex,
+            .pResults           = &presentResult,
+        };
+        VkResult presentSubmitResult = vkQueuePresentKHR(graphicsQueue->m_queue, &presentInfo);
+
+        return presentResult;
     }
 
-    VkSwapchainKHR ISwapchain::GetHandle() const
-    {
-        return m_swapchain;
-    }
 } // namespace RHI::Vulkan

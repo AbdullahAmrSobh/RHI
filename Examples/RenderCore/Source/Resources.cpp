@@ -42,6 +42,6 @@ namespace Engine
 
     void BufferPool::update(uint32_t offset, TL::Block block)
     {
-        m_device->GetCurrentFrame()->BufferWrite(m_buffer, offset, block);
+        // m_device->GetCurrentFrame()->BufferWrite(m_buffer, offset, block);
     }
 } // namespace Engine

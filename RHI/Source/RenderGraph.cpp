@@ -9,8 +9,91 @@
 #include <cstdint>
 #include <tracy/Tracy.hpp>
 
+#include "RHI/internal/renderdoc_app.h"
+
 namespace RHI
 {
+    struct Renderdoc
+    {
+        ResultCode Init(class Device* device)
+        {
+            m_device = device;
+
+            auto [library, result] = TL::Library::open("renderdoc.dll");
+            if (result.IsError())
+            {
+                TL_LOG_ERROR("Failed to load RenderDoc API: {}", result.GetMessage());
+                return ResultCode::ErrorUnknown;
+            }
+
+            m_library    = library;
+            auto* getAPI = m_library.getProc<pRENDERDOC_GetAPI>("RENDERDOC_GetAPI");
+            if (!getAPI)
+            {
+                TL_LOG_ERROR("Failed to get RENDERDOC_GetAPI function pointer");
+                TL::Library::close(m_library);
+                return ResultCode::ErrorUnknown;
+            }
+
+            auto api = reinterpret_cast<RENDERDOC_API_1_6_0**>(&m_renderdocAPi);
+            if (!getAPI(eRENDERDOC_API_Version_1_6_0, reinterpret_cast<void**>(api)))
+            {
+                TL_LOG_ERROR("Failed to initialize RenderDoc API");
+                TL::Library::close(m_library);
+                return ResultCode::ErrorUnknown;
+            }
+
+            if (api)
+                (*api)->MaskOverlayBits(0, 0);
+
+            TL_LOG_INFO("Renderdoc connected");
+            return ResultCode::Success;
+        }
+
+        void Shutdown()
+        {
+            if (auto* api = (RENDERDOC_API_1_6_0*)m_renderdocAPi)
+                api->Shutdown();
+            TL::Library::close(m_library);
+        }
+
+        void FrameTriggerMultiCapture(uint32_t numFrames)
+        {
+            if (auto* api = (RENDERDOC_API_1_6_0*)m_renderdocAPi)
+                api->TriggerMultiFrameCapture(numFrames);
+        }
+
+        bool FrameIsCapturing()
+        {
+            if (auto* api = (RENDERDOC_API_1_6_0*)m_renderdocAPi)
+                return api->IsFrameCapturing();
+            return false;
+        }
+
+        void FrameStartCapture()
+        {
+            if (auto* api = (RENDERDOC_API_1_6_0*)m_renderdocAPi)
+            {
+                auto device = (void*)m_device->GetNativeHandle(NativeHandleType::Device, (uint64_t)m_device);
+                api->StartFrameCapture(device, nullptr);
+            }
+        }
+
+        void FrameEndCapture()
+        {
+            if (auto* api = (RENDERDOC_API_1_6_0*)m_renderdocAPi)
+            {
+                auto device = (void*)m_device->GetNativeHandle(NativeHandleType::Device, (uint64_t)m_device);
+                api->EndFrameCapture(device, nullptr);
+            }
+        }
+
+    private:
+        Device*              m_device;       ///< Associated device.
+        TL::Library          m_library;      ///< Handle to the Renderdoc library.
+        RENDERDOC_API_1_6_0* m_renderdocAPi; ///< Pointer to the Renderdoc API interface.
+    };
+
     namespace Colors
     {
         static constexpr uint32_t Red               = 0x7F000000;
@@ -269,11 +352,6 @@ namespace RHI
         return buffer;
     }
 
-    TL::IAllocator& RenderGraph::GetFrameAllocator()
-    {
-        return m_activeFrame->GetAllocator();
-    }
-
     ///////////////////////////////////////////////////////////////////////////
     /// Render Graph Pass
     ///////////////////////////////////////////////////////////////////////////
@@ -285,11 +363,11 @@ namespace RHI
         , m_dependencyLevelIndex(0)
         , m_indexInUnorderedList(0)
         , m_executionQueueIndex(0)
-        , m_producers(rg->GetFrameAllocator())
-        , m_imageDependencies(rg->GetFrameAllocator())
-        , m_bufferDependencies(rg->GetFrameAllocator())
-        , m_gfxPassInfo(rg->GetFrameAllocator())
-        , m_barriers(rg->GetFrameAllocator())
+        , m_producers(rg->m_arena)
+        , m_imageDependencies(rg->m_arena)
+        , m_bufferDependencies(rg->m_arena)
+        , m_gfxPassInfo(rg->m_arena)
+        , m_barriers(rg->m_arena)
     {
         // default state
         m_state.culled        = false;
@@ -708,7 +786,25 @@ namespace RHI
         rg->m_device       = device;
         rg->m_resourcePool = TL::CreatePtr<RenderGraphResourcePool>();
         auto result        = rg->m_resourcePool->Init(rg->m_device);
+
+        rg->m_activeFrame = 0;
+        for (uint32_t i = 0; i < 2; i++)
+        {
+            PerFrame& perFrame = rg->m_frame[i];
+            for (int queueType = (int)QueueType::Graphics; queueType < (int)QueueType::Count; queueType++)
+            {
+                perFrame.commandPool[queueType] = device->CreateCommandPool({.queue = (QueueType)queueType});
+            }
+        }
         TL_ASSERT(result == ResultCode::Success);
+
+
+        for (auto& perQueue : rg->m_perQueue)
+        {
+            perQueue.queue = device->GetQueue(QueueType::Graphics);
+            perQueue.fence = device->CreateFence({});
+            perQueue.value = 0;
+        }
         return rg;
     }
 
@@ -730,7 +826,11 @@ namespace RHI
 
         m_beginInfo            = beginInfo;
         m_state.frameRecording = true;
-        m_activeFrame          = m_device->GetCurrentFrame();
+
+        for (auto& pool : m_frame[m_activeFrame].commandPool)
+        {
+            pool->Reset();
+        }
     }
 
     void RenderGraph::EndFrame()
@@ -752,18 +852,26 @@ namespace RHI
             m_bufferPool       = TL::Vector<RGFrameBuffer*>{m_arena};
             m_imagePool        = TL::Vector<RGFrameImage*>{m_arena};
             m_passPool         = TL::Vector<RGPass*>{m_arena};
-            m_swapchains       = TL::Vector<SwapchainImageAcquireInfo>{m_arena};
+            m_swapchains       = TL::Vector<SwapchainRGInfo>{m_arena};
             m_arena.reset();
 
             m_beginInfo = {};
             m_state     = {};
+
+            auto& cmdPools = m_frame[m_activeFrame].commandPool;
+            for (auto cmdPool : cmdPools)
+            {
+                cmdPool->Reset();
+            }
+
+            m_activeFrame += 1;
+            m_activeFrame = m_activeFrame % FramesInFlightCount;
         }
     }
 
     RGImage* RenderGraph::importSwapchain(TL::StringView name, Swapchain& swapchain, Format format)
     {
         TL_ASSERT(m_state.frameRecording == true);
-        m_swapchains.push_back({&swapchain, PipelineStage::TopOfPipe});
 
         auto frameResource        = TL::constructFrom<RGFrameImage>(&m_arena);
         frameResource->name       = name;
@@ -771,6 +879,9 @@ namespace RHI
         frameResource->format     = format;
         frameResource->isImported = true;
         m_imagePool.push_back(frameResource);
+
+        m_swapchains.push_back({&swapchain, frameResource});
+
         return EmplacePassImage(frameResource, nullptr, {});
     }
 
@@ -803,7 +914,7 @@ namespace RHI
         TL_ASSERT(m_state.frameRecording == true);
         uint32_t indexInUnorderedList = m_passPool.size();
 
-        RGPass* pass                 = m_passPool.emplace_back(TL::constructFrom<RGPass>(&GetFrameAllocator(), this, name, type, size2D));
+        RGPass* pass                 = m_passPool.emplace_back(TL::constructFrom<RGPass>(&m_arena, this, name, type, size2D));
         pass->m_indexInUnorderedList = indexInUnorderedList;
         return pass;
     }
@@ -852,15 +963,15 @@ namespace RHI
         ZoneScoped;
 
         /// TODO: cleanup
-        TL::Context ctx{&GetFrameAllocator()};
+        TL::Context ctx{&m_arena};
         TL::Context::push(&ctx);
         TL_defer
         {
             TL::Context::pop();
         };
 
-        TL::Vector<TL::Vector<uint32_t>> adjacencyLists(GetFrameAllocator());
-        adjacencyLists.resize(m_passPool.size(), TL::Vector<uint32_t>{GetFrameAllocator()});
+        TL::Vector<TL::Vector<uint32_t>> adjacencyLists(m_arena);
+        adjacencyLists.resize(m_passPool.size(), TL::Vector<uint32_t>{m_arena});
         for (size_t nodeIdx = 0; nodeIdx < m_passPool.size(); ++nodeIdx)
         {
             auto pass = m_passPool[nodeIdx];
@@ -875,12 +986,12 @@ namespace RHI
             }
         }
 
-        TL::Vector<uint32_t> sortedPasses(GetFrameAllocator());
+        TL::Vector<uint32_t> sortedPasses(m_arena);
         TopologicalSort(adjacencyLists, sortedPasses);
 
         uint32_t detectedQueueCount = 0;
         {
-            TL::Vector<int32_t> longestDistances(sortedPasses.size(), 0, GetFrameAllocator());
+            TL::Vector<int32_t> longestDistances(sortedPasses.size(), 0, m_arena);
             uint64_t            dependencyLevelCount = 1;
             // Perform longest node distance search
             for (uint32_t nodeIndex = 0; nodeIndex < sortedPasses.size(); ++nodeIndex)
@@ -898,7 +1009,7 @@ namespace RHI
                     }
                 }
             }
-            m_dependencyLevels.resize(dependencyLevelCount, {GetFrameAllocator()});
+            m_dependencyLevels.resize(dependencyLevelCount, {m_arena});
             detectedQueueCount = 1;
             // Dispatch nodes to corresponding dependency levels.
             // Iterate through unordered nodes because adjacency lists contain indices to
@@ -951,8 +1062,8 @@ namespace RHI
 
     void RenderGraph::TopologicalSort(const TL::Vector<TL::Vector<uint32_t>>& adjacencyLists, TL::Vector<uint32_t>& sortedPasses)
     {
-        TL::Vector<bool> visitedNodes(m_passPool.size(), false, GetFrameAllocator());
-        TL::Vector<bool> onStackNodes(m_passPool.size(), false, GetFrameAllocator());
+        TL::Vector<bool> visitedNodes(m_passPool.size(), false, m_arena);
+        TL::Vector<bool> onStackNodes(m_passPool.size(), false, m_arena);
         bool             isCyclic = false;
         for (uint32_t nodeIndex = 0; nodeIndex < (uint32_t)m_passPool.size(); ++nodeIndex)
         {
@@ -1081,7 +1192,7 @@ namespace RHI
 
         if (pass->m_type == RGPassType::Graphics)
         {
-            TL::Vector<ColorAttachment> attachments(GetFrameAllocator());
+            TL::Vector<ColorAttachment> attachments(m_arena);
             DepthStencilAttachment      dsAttachment{};
             attachments.reserve(pass->m_gfxPassInfo.m_colorAttachments.size());
 
@@ -1151,78 +1262,122 @@ namespace RHI
     {
         ZoneScoped;
 
-        auto frame = m_device->GetCurrentFrame();
-
-        TL::Context ctx{&GetFrameAllocator()};
+        TL::Context ctx{&m_arena};
         TL::Context::push(&ctx);
         TL_defer
         {
             TL::Context::pop();
         };
 
+        bool enableThreading   = false;
+        bool enableAsyncQueues = false;
+        if (enableThreading)
+        {
+            if (enableAsyncQueues)
+                ExecuteMultithreadUsingAsyncQueues();
+            else
+                ExecuteMultithreadUsingSingleQueue();
+        }
+        else
+        {
+            if (enableAsyncQueues)
+                ExecuteSingleThreadUsingAsyncQueues();
+            else
+                ExecuteSingleThreadUsingSignelQueue();
+        }
+    }
+
+    void RenderGraph::ExecuteSingleThreadUsingSignelQueue()
+    {
+        PerFrame*    frame       = &m_frame[m_activeFrame];
+        CommandPool* commandPool = frame->commandPool[(int)QueueType::Graphics];
+
+        auto queue = m_perQueue[(int)QueueType::Graphics].queue;
+        auto fence = m_perQueue[(int)QueueType::Graphics].fence;
+        auto value = m_perQueue[(int)QueueType::Graphics].value;
+
+        TL::Vector<FenceSubmitInfo> fenceWaitInfos{m_arena};
+        TL::Vector<FenceSubmitInfo> fenceSignalInfos{m_arena};
+
+        FenceSubmitInfo fenceWaitInfo   {
+            .fence = fence,
+            .value = value,
+            .stage = PipelineStage::TopOfPipe,
+        };
+        value++;
+        FenceSubmitInfo fenceSignalInfo {
+            .fence = fence,
+            .value = value,
+            .stage = PipelineStage::BottomOfPipe,
+        };
+
+        TL::Vector<Swapchain*>      swapchains{m_arena};
+
         if (m_beginInfo.rdocDebugCapture)
         {
-            frame->CaptureNextFrame();
+            // m_rdoc->FrameStartCapture();
         }
 
-        frame->Begin(m_swapchains);
+        // CommandListCreateInfo commandAllocateInfo{
+        //     .name      = "cmd-rendergraph",
+        //     .queueType = QueueType::Graphics,
+        // };
+        CommandList* commandList = commandPool->Allocate();
+        commandList->Begin();
 
-        CommandListCreateInfo cmdCI{
-            .name      = "cmd-rendergraph",
-            .queueType = QueueType::Graphics,
-        };
-        auto commandList = frame->CreateCommandList(cmdCI);
+        // execute passes
+        for (const auto& level : m_dependencyLevels)
         {
-            commandList->Begin();
-            for (const auto& level : m_dependencyLevels)
+            for (auto pass : level.GetPasses())
             {
-                for (auto pass : level.GetPasses())
-                {
-                    ExecutePass(pass, commandList);
-                }
+                ExecutePass(pass, commandList);
             }
-            TL::Vector<ImageBarrierInfo> swapchainBarriers{m_arena};
-            for (auto swapchain : m_swapchains)
-            {
-                // Try to find the corresponding imported RGFrameImage for this swapchain image so we can
-                // use its last producer state as the srcState for transitioning back to present.
-
-                ImageBarrierState srcState{ImageUsage::CopyDst, swapchain.stage, Access::Write};
-                Image*            scImage = swapchain.swapchain->GetImage();
-                for (auto frameImg : m_imagePool)
-                {
-                    if (!frameImg->isImported)
-                        continue;
-                    if (frameImg->handle != scImage)
-                        continue;
-                    // If there is a last producer handle for this frame image, use its current state as the srcState
-                    if (frameImg->lastProducer)
-                    {
-                        srcState = frameImg->lastProducer->m_state;
-                    }
-                    break;
-                }
-
-                RHI::ImageBarrierInfo barrier{
-                    .image    = scImage,
-                    .srcState = srcState,
-                    .dstState = {ImageUsage::Present, PipelineStage::BottomOfPipe, Access::None},
-                };
-                swapchainBarriers.push_back(barrier);
-            }
-            commandList->AddPipelineBarrier({}, swapchainBarriers, {});
-            commandList->End();
         }
 
-        QueueSubmitInfo submitInfo{
-            .commandLists  = commandList,
-            .signalStage   = PipelineStage::BottomOfPipe,
-            .waitTimelineInfos     = {},
-            .signalPresent = true,
+        // transition swapchain images to present state, and submit them for presentation
+        TL::Vector<ImageBarrierInfo> imageBarriers{m_arena};
+        for (auto swapchain : m_swapchains)
+        {
+            ImageBarrierInfo presentBarrier{
+                .image    = swapchain.frameImage->handle,
+                .srcState = swapchain.frameImage->lastProducer->m_state,
+                .dstState = {ImageUsage::Present, PipelineStage::BottomOfPipe, Access::None},
+            };
+            swapchains.push_back({swapchain.swapchain});
+            imageBarriers.push_back(presentBarrier);
+        }
+        commandList->AddPipelineBarrier({}, imageBarriers, {});
+
+        commandList->End();
+
+        QueueSubmitInfo queueSubmitInfo{
+            .waitFences        = fenceWaitInfos,
+            .commandLists      = commandList,
+            .signalFences      = fenceSignalInfos,
+            .acquireSwapchains = swapchains,
+            .presentSwapchains = swapchains,
         };
-        TL_MAYBE_UNUSED auto timeline = frame->QueueSubmit(QueueType::Graphics, submitInfo);
-        frame->DestroyCommandList(commandList);
-        frame->End();
+        queue->Submit(queueSubmitInfo);
+
+        if (m_beginInfo.rdocDebugCapture)
+        {
+            // m_rdoc->FrameEndCapture();
+        }
+    }
+
+    void RenderGraph::ExecuteSingleThreadUsingAsyncQueues()
+    {
+        TL_UNREACHABLE_MSG("TODO: Implement!");
+    }
+
+    void RenderGraph::ExecuteMultithreadUsingSingleQueue()
+    {
+        TL_UNREACHABLE_MSG("TODO: Implement!");
+    }
+
+    void RenderGraph::ExecuteMultithreadUsingAsyncQueues()
+    {
+        TL_UNREACHABLE_MSG("TODO: Implement!");
     }
 
     void RenderGraph::DumpGraphViz()

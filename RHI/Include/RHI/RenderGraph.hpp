@@ -102,6 +102,8 @@ namespace RHI
         Image*                handle        = nullptr;
         RGImage*              firstProducer = nullptr;
         RGImage*              lastProducer  = nullptr;
+
+        Fence*                fence;
     };
 
     struct RGFrameBuffer
@@ -117,7 +119,6 @@ namespace RHI
 
     struct RGImage : RGResource
     {
-        // Image*     m_handle        = nullptr;
         ImageBarrierState m_state         = {};
         RGPass*           m_producer      = nullptr;
         RGFrameImage*     m_frameResource = nullptr;
@@ -170,7 +171,7 @@ namespace RHI
         UavCompute                        = 1 << 10,
         UavTraceRays                      = 1 << 11,
         VertexOrIndex                     = 1 << 12,
-        IndirectCompute                   = 1 << 14ll,
+        IndirectCompute                   = 1 << 14,
         IndirectDraw                      = 1 << 15,
         IndirectTraceRays                 = 1 << 16,
         CopySource                        = 1 << 17,
@@ -388,6 +389,14 @@ namespace RHI
         TL::Map<TL::String, std::pair<BufferCreateInfo, Buffer*>> m_bufferCache;
     };
 
+    ///
+
+    class StagingBuffer
+    {
+    };
+
+    ///
+
     ///////////////////////////////////////////////////////////////////////////
     /// Render Graph
     ///////////////////////////////////////////////////////////////////////////
@@ -438,37 +447,50 @@ namespace RHI
         TL_NODISCARD Buffer*    GetBufferHandle(RGBuffer* handle) const;
 
         // Allocates a transient bind group for the current local bind group
-        RHI::BindGroup*         createBindGroup(RHI::BindGroupLayout* layout);
+        BindGroup*              createBindGroup(RHI::BindGroupLayout* layout);
+
+        BufferBindingInfo*      allocateConstantBuffer(size_t size, uint8_t alignment);
+
+        // streaming functions
+        void                    streamBegin();
+        void                    streamEnd();
+        void                    streamBufferWrite(Buffer* buffer, size_t offset, TL::Block block);
+        void                    streamImageWrite(Image* image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block);
 
     private:
         // Bind group stuff
 
-        RGFrameImage*   CreateFrameImage(TL::StringView name);
-        RGFrameBuffer*  CreateFrameBuffer(TL::StringView name);
+        RGFrameImage*  CreateFrameImage(TL::StringView name);
+        RGFrameBuffer* CreateFrameBuffer(TL::StringView name);
 
-        RGImage*        EmplacePassImage(RGFrameImage* frameImage, RGPass* pass, ImageBarrierState initialState);
-        RGBuffer*       EmplacePassBuffer(RGFrameBuffer* frameBuffer, RGPass* pass, BufferBarrierState initialState);
+        RGImage*       EmplacePassImage(RGFrameImage* frameImage, RGPass* pass, ImageBarrierState initialState);
+        RGBuffer*      EmplacePassBuffer(RGFrameBuffer* frameBuffer, RGPass* pass, BufferBarrierState initialState);
 
-        TL::IAllocator& GetFrameAllocator();
+        bool           CheckDependency(const RGPass* producer, const RGPass* consumer) const;
+        void           AddDependency(const RGPass* producer, RGPass* consumer);
 
-        bool            CheckDependency(const RGPass* producer, const RGPass* consumer) const;
-        void            AddDependency(const RGPass* producer, RGPass* consumer);
+        void           Compile();
+        void           TopologicalSort(const TL::Vector<TL::Vector<uint32_t>>& adjacencyLists, TL::Vector<uint32_t>& sortedPasses);
+        void           DepthFirstSearch(uint32_t nodeIndex, TL::Vector<bool>& visited, TL::Vector<bool>& onStack, bool& isCyclic, const TL::Vector<TL::Vector<uint32_t>>& adjacencyLists, TL::Vector<uint32_t>& sortedPasses);
 
-        void            Compile();
-        void            TopologicalSort(const TL::Vector<TL::Vector<uint32_t>>& adjacencyLists, TL::Vector<uint32_t>& sortedPasses);
-        void            DepthFirstSearch(uint32_t nodeIndex, TL::Vector<bool>& visited, TL::Vector<bool>& onStack, bool& isCyclic, const TL::Vector<TL::Vector<uint32_t>>& adjacencyLists, TL::Vector<uint32_t>& sortedPasses);
+        void           CreateTransientResources();
 
-        void            CreateTransientResources();
+        void           PassBuildBarriers();
 
-        void            PassBuildBarriers();
+        void           ExecutePass(RGPass* pass, CommandList* commandList);
 
-        void            ExecutePass(RGPass* pass, CommandList* commandList);
-        void            Execute();
+        void           Execute();
+        void           ExecuteSingleThreadUsingSignelQueue();
+        void           ExecuteSingleThreadUsingAsyncQueues();
+        void           ExecuteMultithreadUsingSingleQueue();
+        void           ExecuteMultithreadUsingAsyncQueues();
 
-        void            DumpGraphViz();
+        void           DumpGraphViz();
 
     private:
-        RGBeginInfo m_beginInfo;
+        static constexpr uint32_t FramesInFlightCount = 2;
+
+        RGBeginInfo               m_beginInfo;
 
         struct State
         {
@@ -499,16 +521,23 @@ namespace RHI
             TL::Vector<RGPass*> m_passes;
         };
 
-        Device*                               m_device;
-        Frame*                                m_activeFrame;
-        TL::Ptr<RenderGraphResourcePool>      m_resourcePool;
+        struct SwapchainRGInfo
+        {
+            Swapchain*    swapchain;
+            RGFrameImage* frameImage;
+        };
 
-        TL::Arena                             m_arena;
-        TL::Vector<SwapchainImageAcquireInfo> m_swapchains{m_arena};
-        TL::Vector<RGPass*>                   m_passPool{m_arena};
-        TL::Vector<RGFrameImage*>             m_imagePool{m_arena};
-        TL::Vector<RGFrameBuffer*>            m_bufferPool{m_arena};
-        TL::Vector<DependencyLevel>           m_dependencyLevels{m_arena};
+        Device*                          m_device;
+        TL::Ptr<RenderGraphResourcePool> m_resourcePool;
+
+        TL::Arena                        m_arena;
+        TL::Vector<RGPass*>              m_passPool{m_arena};
+        TL::Vector<RGFrameImage*>        m_imagePool{m_arena};
+        TL::Vector<RGFrameBuffer*>       m_bufferPool{m_arena};
+        TL::Vector<DependencyLevel>      m_dependencyLevels{m_arena};
+        TL::Vector<SwapchainRGInfo>      m_swapchains{m_arena};
+
+        // TL::Ptr<RenderDoc> m_rdoc;
 
         template<typename T>
         struct FreeList
@@ -519,5 +548,22 @@ namespace RHI
         };
 
         TL::Map<RHI::BindGroupLayout*, FreeList<RHI::BindGroup*>> m_bindGroupsLookup;
+
+        struct PerFrame
+        {
+            CommandPool* commandPool[(int)QueueType::Count];
+        };
+
+        uint64_t      m_activeFrame = 0;
+        PerFrame      m_frame[2];
+        StagingBuffer m_stagingBuffer;
+
+        struct PerQueue
+        {
+            Queue*   queue;
+            Fence*   fence;
+            uint64_t value;
+        };
+        PerQueue m_perQueue[(int)QueueType::Count];
     };
 } // namespace RHI

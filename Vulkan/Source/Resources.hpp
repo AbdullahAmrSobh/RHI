@@ -90,6 +90,16 @@ namespace RHI::Vulkan
         VkDescriptorPool m_descriptorPool;
     };
 
+    struct IFence : Fence
+    {
+        VkSemaphore          semaphore;
+        std::atomic_uint64_t value;
+
+        ResultCode Init(IDevice* device, const FenceCreateInfo& createInfo);
+        void       Shutdown(IDevice* device);
+        bool       waitValue(IDevice* device, uint64_t value);
+    };
+
     struct IBindGroupLayout : BindGroupLayout
     {
         VkDescriptorSetLayout      handle;
@@ -232,16 +242,19 @@ namespace RHI::Vulkan
         ResultCode          Resize(const ImageSize2D& size) override;
         ResultCode          Configure(const SwapchainConfigureInfo& configInfo) override;
 
-        VkResult       AcquireNextImage(VkSemaphore& acquireImageSemaphore);
-        uint32_t       GetImageIndex() const;
-        VkSwapchainKHR GetHandle() const;
+        VkResult AcquireNextImage();
+        VkResult Present(TL::Span<Fence* const> fences);
 
-    private:
         IDevice*               m_device                          = nullptr;
         VkSwapchainKHR         m_swapchain                       = VK_NULL_HANDLE;
         VkSurfaceKHR           m_surface                         = VK_NULL_HANDLE;
+
         uint32_t               m_acquireSemaphoreIndex           = 0;
         VkSemaphore            m_acquireSemaphore[MaxImageCount] = {};
+
+        uint32_t               m_presentSemaphoreIndex           = 0;
+        VkSemaphore            m_presentSemaphore[MaxImageCount] = {};
+
         uint32_t               m_imageIndex                      = {};
         VkImage                m_images[MaxImageCount]           = {};
         VkImageView            m_imageViews[MaxImageCount]       = {};

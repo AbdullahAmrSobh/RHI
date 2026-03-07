@@ -42,57 +42,24 @@ namespace RHI
         mutable std::atomic<uint16_t> m_refCount{1};
     };
 
-    struct BindGroupLayout : ResourceBase
-    {
+#define RHI_DEFINE_HANDLE(X) \
+    struct X : ResourceBase  \
+    {                        \
     };
-
-    struct BindGroup : ResourceBase
-    {
-    };
-
-    struct Buffer : ResourceBase
-    {
-    };
-
-    struct Image : ResourceBase
-    {
-    };
-
-    struct Sampler : ResourceBase
-    {
-    };
-
-    struct ShaderModule : ResourceBase
-    {
-    };
-
-    struct PipelineLayout : ResourceBase
-    {
-    };
-
-    struct GraphicsPipeline : ResourceBase
-    {
-    };
-
-    struct ComputePipeline : ResourceBase
-    {
-    };
-
-    struct RayTracingPipeline : ResourceBase
-    {
-    };
-
-    struct AccelerationStructure : ResourceBase
-    {
-    };
-
-    struct Micromap : ResourceBase
-    {
-    };
-
-    struct QueryPool : ResourceBase
-    {
-    };
+    RHI_DEFINE_HANDLE(Fence);
+    RHI_DEFINE_HANDLE(BindGroupLayout);
+    RHI_DEFINE_HANDLE(BindGroup);
+    RHI_DEFINE_HANDLE(Buffer);
+    RHI_DEFINE_HANDLE(Image);
+    RHI_DEFINE_HANDLE(Sampler);
+    RHI_DEFINE_HANDLE(ShaderModule);
+    RHI_DEFINE_HANDLE(PipelineLayout);
+    RHI_DEFINE_HANDLE(GraphicsPipeline);
+    RHI_DEFINE_HANDLE(ComputePipeline);
+    RHI_DEFINE_HANDLE(RayTracingPipeline);
+    RHI_DEFINE_HANDLE(AccelerationStructure);
+    RHI_DEFINE_HANDLE(Micromap);
+    RHI_DEFINE_HANDLE(QueryPool);
 
     enum class QueryType
     {
@@ -652,6 +619,22 @@ namespace RHI
     {
         const char*              name = nullptr;
         TL::Span<const uint32_t> code = {};
+    };
+
+    // TODO: Move from here
+    // Fence create info
+    struct FenceCreateInfo
+    {
+        const char* name         = nullptr;
+        uint64_t    initialValue = 0;
+    };
+
+    // Fence queue submit info (wait or signal)
+    struct FenceSubmitInfo
+    {
+        Fence*        fence = nullptr;
+        uint64_t      value = 0;
+        PipelineStage stage = PipelineStage::None;
     };
 
     inline static ImageSize3D CalcaulteImageMipSize(ImageSize3D size, uint32_t mipLevel)

@@ -79,7 +79,7 @@ namespace Engine
     {
         auto  device = RenderContext::ptr->m_device;
         auto& pool   = RenderContext::ptr->getStructuredBuffersPool();
-        auto* frame  = device->GetCurrentFrame();
+        // auto* frame  = device->GetCurrentFrame();
 
         if (m_count == 0)
             return;
