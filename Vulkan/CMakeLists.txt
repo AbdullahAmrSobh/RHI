@@ -29,14 +29,14 @@ tl_add_target(
     SOURCES ${SOURCE_FILES}
     BUILD_DEPENDENCIES
         RHI::RHI
-        Vulkan::Vulkan
-        # volk
+        volk
         VulkanMemoryAllocator
 )
 
 target_compile_options(Vulkan PRIVATE ${RHI_COMPILE_FLAGS})
 
-# target_compile_definitions(Vulkan
-#     PRIVATE
-#         VK_NO_PROTOTYPES=1
-# )
+target_compile_definitions(Vulkan
+    PRIVATE
+        VK_NO_PROTOTYPES=1
+        VK_USE_PLATFORM_WIN32_KHR=1
+)

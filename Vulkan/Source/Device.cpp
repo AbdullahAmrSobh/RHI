@@ -1,21 +1,5 @@
+#define VOLK_IMPLEMENTATION
 #define VMA_IMPLEMENTATION
-
-#if RHI_PLATFORM_WINDOWS
-    #define VK_USE_PLATFORM_WIN32_KHR
-    #define VULKAN_SURFACE_OS_EXTENSION_NAME VK_KHR_WIN32_SURFACE_EXTENSION_NAME
-#elif RHI_PLATFORM_MACOS
-    #define VULKAN_SURFACE_OS_EXTENSION_NAME VK_MVK_MACOS_SURFACE_EXTENSION_NAME
-#elif RHI_PLATFORM_ANDROID
-    #define VULKAN_SURFACE_OS_EXTENSION_NAME VK_KHR_ANDROID_SURFACE_EXTENSION_NAME
-#elif RHI_PLATFORM_XLIB
-    #define VULKAN_SURFACE_OS_EXTENSION_NAME VK_KHR_XLIB_SURFACE_EXTENSION_NAME
-#elif RHI_PLATFORM_WAYLAND
-    #define VULKAN_SURFACE_OS_EXTENSION_NAME VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME
-#elif RHI_PLATFORM_ANDROID
-    #define VULKAN_SURFACE_OS_EXTENSION_NAME VK_KHR_ANDROID_SURFACE_EXTENSION_NAME
-#elif RHI_PLATFORM_IOS
-    #define VULKAN_SURFACE_OS_EXTENSION_NAME VK_MVK_IOS_SURFACE_EXTENSION_NAME
-#endif // VK_USE_PLATFORM_WIN32_KHR
 
 #include "RHI-Vulkan/Loader.hpp"
 
@@ -31,9 +15,6 @@
 #include <format>
 
 #include <tracy/Tracy.hpp>
-
-#define VULKAN_DEVICE_FUNC_LOAD(device, proc) reinterpret_cast<PFN_##proc>(vkGetDeviceProcAddr(device, #proc));
-#define VULKAN_INSTANCE_FUNC_LOAD(instance, proc) reinterpret_cast<PFN_##proc>(vkGetInstanceProcAddr(instance, #proc));
 
 namespace RHI
 {
@@ -137,7 +118,7 @@ namespace RHI::Vulkan
 
     void IQueue::BeginAnnotation(const char* name, uint32_t bgra)
     {
-        if (m_device->m_pfn.vkQueueBeginDebugUtilsLabelEXT)
+        if (vkQueueBeginDebugUtilsLabelEXT)
         {
             VkDebugUtilsLabelEXT label{
                 .sType      = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
@@ -145,21 +126,21 @@ namespace RHI::Vulkan
                 .pLabelName = name,
                 .color      = {},
             };
-            m_device->m_pfn.vkQueueBeginDebugUtilsLabelEXT(m_queue, &label);
+            vkQueueBeginDebugUtilsLabelEXT(m_queue, &label);
         }
     }
 
     void IQueue::EndAnnotation()
     {
-        if (m_device->m_pfn.vkQueueEndDebugUtilsLabelEXT)
+        if (vkQueueEndDebugUtilsLabelEXT)
         {
-            m_device->m_pfn.vkQueueEndDebugUtilsLabelEXT(m_queue);
+            vkQueueEndDebugUtilsLabelEXT(m_queue);
         }
     }
 
     void IQueue::InsertAnnotation(const char* name, uint32_t bgra)
     {
-        if (m_device->m_pfn.vkQueueBeginDebugUtilsLabelEXT)
+        if (vkQueueBeginDebugUtilsLabelEXT)
         {
             VkDebugUtilsLabelEXT label{
                 .sType      = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
@@ -167,7 +148,7 @@ namespace RHI::Vulkan
                 .pLabelName = name,
                 .color      = {},
             };
-            m_device->m_pfn.vkQueueInsertDebugUtilsLabelEXT(m_queue, &label);
+            vkQueueInsertDebugUtilsLabelEXT(m_queue, &label);
         }
     }
 
@@ -330,7 +311,8 @@ namespace RHI::Vulkan
         VulkanResult result;
         TL_ASSERT(result.IsSuccess());
 
-        // result = volkInitialize();
+        result = volkInitialize();
+        TL_ASSERT(result.IsSuccess());
 
         constexpr bool DebugLayerEnabled = RHI_DEBUG;
         constexpr bool EnableAsyncQueues = true;
@@ -365,7 +347,21 @@ namespace RHI::Vulkan
         TL::Vector<const char*> requiredInstanceLayers;
         TL::Vector<const char*> requiredInstanceExtensions{
             VK_KHR_SURFACE_EXTENSION_NAME,
-            VULKAN_SURFACE_OS_EXTENSION_NAME,
+#if RHI_PLATFORM_WINDOWS
+            VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
+#elif RHI_PLATFORM_MACOS
+            VK_MVK_MACOS_SURFACE_EXTENSION_NAME,
+#elif RHI_PLATFORM_ANDROID
+            VK_KHR_ANDROID_SURFACE_EXTENSION_NAME,
+#elif RHI_PLATFORM_XLIB
+            VK_KHR_XLIB_SURFACE_EXTENSION_NAME,
+#elif RHI_PLATFORM_WAYLAND
+            VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME,
+#elif RHI_PLATFORM_ANDROID
+            VK_KHR_ANDROID_SURFACE_EXTENSION_NAME,
+#elif RHI_PLATFORM_IOS
+            VK_MVK_IOS_SURFACE_EXTENSION_NAME,
+#endif // VK_USE_PLATFORM_WIN32_KHR
         };
 
         if constexpr (DebugLayerEnabled)
@@ -404,27 +400,12 @@ namespace RHI::Vulkan
 
         TL_ASSERT(result.IsSuccess());
         result = vkCreateInstance(&instanceCI, nullptr, &m_instance);
-        // volkLoadInstanceOnly(m_instance);
+        volkLoadInstanceOnly(m_instance);
 
         if (!result)
         {
             Shutdown();
             return result;
-        }
-
-        if constexpr (DebugLayerEnabled)
-        {
-            if (availableInstanceExtensions.contains(VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
-            {
-                m_pfn.vkCreateDebugUtilsMessengerEXT  = VULKAN_INSTANCE_FUNC_LOAD(m_instance, vkCreateDebugUtilsMessengerEXT);
-                m_pfn.vkDestroyDebugUtilsMessengerEXT = VULKAN_INSTANCE_FUNC_LOAD(m_instance, vkDestroyDebugUtilsMessengerEXT);
-                result                                = m_pfn.vkCreateDebugUtilsMessengerEXT(m_instance, &debugUtilsCI, nullptr, &m_debugUtilsMessenger);
-                if (!result)
-                {
-                    Shutdown();
-                    return result;
-                }
-            }
         }
 
         // Select the physical device
@@ -806,35 +787,60 @@ namespace RHI::Vulkan
             return result;
         }
 
+        volkLoadDevice(m_device);
+
+        VmaVulkanFunctions vulkanFunctions{
+            .vkGetInstanceProcAddr               = vkGetInstanceProcAddr,
+            .vkGetDeviceProcAddr                 = vkGetDeviceProcAddr,
+            .vkGetPhysicalDeviceProperties       = vkGetPhysicalDeviceProperties,
+            .vkGetPhysicalDeviceMemoryProperties = vkGetPhysicalDeviceMemoryProperties,
+            .vkAllocateMemory                    = vkAllocateMemory,
+            .vkFreeMemory                        = vkFreeMemory,
+            .vkMapMemory                         = vkMapMemory,
+            .vkUnmapMemory                       = vkUnmapMemory,
+            .vkFlushMappedMemoryRanges           = vkFlushMappedMemoryRanges,
+            .vkInvalidateMappedMemoryRanges      = vkInvalidateMappedMemoryRanges,
+            .vkBindBufferMemory                  = vkBindBufferMemory,
+            .vkBindImageMemory                   = vkBindImageMemory,
+            .vkGetBufferMemoryRequirements       = vkGetBufferMemoryRequirements,
+            .vkGetImageMemoryRequirements        = vkGetImageMemoryRequirements,
+            .vkCreateBuffer                      = vkCreateBuffer,
+            .vkDestroyBuffer                     = vkDestroyBuffer,
+            .vkCreateImage                       = vkCreateImage,
+            .vkDestroyImage                      = vkDestroyImage,
+            .vkCmdCopyBuffer                     = vkCmdCopyBuffer,
+#if VMA_DEDICATED_ALLOCATION || VMA_VULKAN_VERSION >= 1001000
+            .vkGetBufferMemoryRequirements2KHR = vkGetBufferMemoryRequirements2KHR,
+            .vkGetImageMemoryRequirements2KHR  = vkGetImageMemoryRequirements2KHR,
+#endif
+#if VMA_BIND_MEMORY2 || VMA_VULKAN_VERSION >= 1001000
+            .vkBindBufferMemory2KHR = vkBindBufferMemory2KHR,
+            .vkBindImageMemory2KHR  = vkBindImageMemory2KHR,
+#endif
+#if VMA_MEMORY_BUDGET || VMA_VULKAN_VERSION >= 1001000
+            .vkGetPhysicalDeviceMemoryProperties2KHR = vkGetPhysicalDeviceMemoryProperties2KHR,
+#endif
+#if VMA_KHR_MAINTENANCE4 || VMA_VULKAN_VERSION >= 1003000
+            .vkGetDeviceBufferMemoryRequirements = vkGetDeviceBufferMemoryRequirements,
+            .vkGetDeviceImageMemoryRequirements  = vkGetDeviceImageMemoryRequirements,
+#endif
+#if VMA_EXTERNAL_MEMORY_WIN32
+            .vkGetMemoryWin32HandleKHR = vkGetMemoryWin32HandleKHR,
+#else
+            .vkGetMemoryWin32HandleKHR = vkGetMemoryWin32HandleKHR,
+#endif
+        };
+
         VmaAllocatorCreateInfo vmaCI{
             .flags            = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
             .physicalDevice   = m_physicalDevice,
             .device           = m_device,
+            .pVulkanFunctions = &vulkanFunctions,
             .instance         = m_instance,
             .vulkanApiVersion = VK_API_VERSION_1_3,
         };
         result = vmaCreateAllocator(&vmaCI, &m_deviceAllocator);
         VkResultTry(result);
-
-        m_pfn.vkSubmitDebugUtilsMessageEXT        = VULKAN_INSTANCE_FUNC_LOAD(m_instance, vkSubmitDebugUtilsMessageEXT);
-        m_pfn.vkCmdBeginDebugUtilsLabelEXT        = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdBeginDebugUtilsLabelEXT);
-        m_pfn.vkCmdEndDebugUtilsLabelEXT          = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdEndDebugUtilsLabelEXT);
-        m_pfn.vkCmdInsertDebugUtilsLabelEXT       = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdInsertDebugUtilsLabelEXT);
-        m_pfn.vkQueueBeginDebugUtilsLabelEXT      = VULKAN_DEVICE_FUNC_LOAD(m_device, vkQueueBeginDebugUtilsLabelEXT);
-        m_pfn.vkQueueEndDebugUtilsLabelEXT        = VULKAN_DEVICE_FUNC_LOAD(m_device, vkQueueEndDebugUtilsLabelEXT);
-        m_pfn.vkQueueInsertDebugUtilsLabelEXT     = VULKAN_DEVICE_FUNC_LOAD(m_device, vkQueueInsertDebugUtilsLabelEXT);
-        m_pfn.vkSetDebugUtilsObjectNameEXT        = VULKAN_DEVICE_FUNC_LOAD(m_device, vkSetDebugUtilsObjectNameEXT);
-        m_pfn.vkSetDebugUtilsObjectTagEXT         = VULKAN_DEVICE_FUNC_LOAD(m_device, vkSetDebugUtilsObjectTagEXT);
-        m_pfn.vkCreateRayTracingPipelinesKHR      = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCreateRayTracingPipelinesKHR);
-        m_pfn.vkCmdTraceRaysIndirect2KHR          = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdTraceRaysIndirect2KHR);
-        m_pfn.vkCmdPushDescriptorSet2KHR          = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdPushDescriptorSet2KHR);
-        m_pfn.vkCmdTraceRaysKHR                   = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdTraceRaysKHR);
-        m_pfn.vkCmdDrawMeshTasksEXT               = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdDrawMeshTasksEXT);
-        m_pfn.vkCmdDrawMeshTasksIndirectEXT       = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdDrawMeshTasksIndirectEXT);
-        m_pfn.vkCmdDrawMeshTasksIndirectCountEXT  = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdDrawMeshTasksIndirectCountEXT);
-        m_pfn.vkCmdBeginConditionalRenderingEXT   = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdBeginConditionalRenderingEXT);
-        m_pfn.vkCmdEndConditionalRenderingEXT     = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdEndConditionalRenderingEXT);
-        m_pfn.vkCmdBuildAccelerationStructuresKHR = VULKAN_DEVICE_FUNC_LOAD(m_device, vkCmdBuildAccelerationStructuresKHR);
 
         // VkPhysicalDeviceRayTracingPipelinePropertiesKHR rayTracingProperties = {};
         // VkPhysicalDeviceRayQueryFeaturesKHR             rayQueryFeatures     = {};
@@ -965,7 +971,7 @@ namespace RHI::Vulkan
         vkDestroyDevice(m_device, nullptr);
         if (m_debugUtilsMessenger != VK_NULL_HANDLE)
         {
-            m_pfn.vkDestroyDebugUtilsMessengerEXT(m_instance, m_debugUtilsMessenger, nullptr);
+            vkDestroyDebugUtilsMessengerEXT(m_instance, m_debugUtilsMessenger, nullptr);
         }
         vkDestroyInstance(m_instance, nullptr);
     }
@@ -974,7 +980,7 @@ namespace RHI::Vulkan
     {
         if (handle == 0 /* VK_NULL_HANDLE */) return;
 
-        if (auto fn = m_pfn.vkSetDebugUtilsObjectNameEXT; fn && name)
+        if (auto fn = vkSetDebugUtilsObjectNameEXT; fn && name)
         {
             VkDebugUtilsObjectNameInfoEXT nameInfo{
                 .sType        = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,

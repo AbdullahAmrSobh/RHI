@@ -7,7 +7,8 @@
 #include <TL/Stacktrace.hpp>
 #include <TL/Containers/Vector.hpp>
 
-// #include <Volk/volk.h>
+#define VK_USE_PLATFORM_WIN32_KHR
+#include <volk.h>
 #include <vk_mem_alloc.h>
 
 #include "Common.hpp"
@@ -16,34 +17,6 @@
 
 namespace RHI::Vulkan
 {
-    struct VulkanAPI
-    {
-#ifdef RHI_DEBUG
-        // VK_EXT_debug_utils
-        PFN_vkCmdBeginDebugUtilsLabelEXT    vkCmdBeginDebugUtilsLabelEXT;
-        PFN_vkCmdEndDebugUtilsLabelEXT      vkCmdEndDebugUtilsLabelEXT;
-        PFN_vkCmdInsertDebugUtilsLabelEXT   vkCmdInsertDebugUtilsLabelEXT;
-        PFN_vkCreateDebugUtilsMessengerEXT  vkCreateDebugUtilsMessengerEXT;
-        PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT;
-        PFN_vkQueueBeginDebugUtilsLabelEXT  vkQueueBeginDebugUtilsLabelEXT;
-        PFN_vkQueueEndDebugUtilsLabelEXT    vkQueueEndDebugUtilsLabelEXT;
-        PFN_vkQueueInsertDebugUtilsLabelEXT vkQueueInsertDebugUtilsLabelEXT;
-        PFN_vkSetDebugUtilsObjectNameEXT    vkSetDebugUtilsObjectNameEXT;
-        PFN_vkSetDebugUtilsObjectTagEXT     vkSetDebugUtilsObjectTagEXT;
-        PFN_vkSubmitDebugUtilsMessageEXT    vkSubmitDebugUtilsMessageEXT;
-#endif
-        PFN_vkCmdBeginConditionalRenderingEXT   vkCmdBeginConditionalRenderingEXT;
-        PFN_vkCmdEndConditionalRenderingEXT     vkCmdEndConditionalRenderingEXT;
-        PFN_vkCreateRayTracingPipelinesKHR      vkCreateRayTracingPipelinesKHR;
-        PFN_vkCmdTraceRaysIndirect2KHR          vkCmdTraceRaysIndirect2KHR;
-        PFN_vkCmdPushDescriptorSet2KHR          vkCmdPushDescriptorSet2KHR;
-        PFN_vkCmdTraceRaysKHR                   vkCmdTraceRaysKHR;
-        PFN_vkCmdDrawMeshTasksEXT               vkCmdDrawMeshTasksEXT;
-        PFN_vkCmdDrawMeshTasksIndirectEXT       vkCmdDrawMeshTasksIndirectEXT;
-        PFN_vkCmdDrawMeshTasksIndirectCountEXT  vkCmdDrawMeshTasksIndirectCountEXT;
-        PFN_vkCmdBuildAccelerationStructuresKHR vkCmdBuildAccelerationStructuresKHR;
-    };
-
     class IQueue final : public Queue
     {
     public:
@@ -132,7 +105,6 @@ namespace RHI::Vulkan
         VkPhysicalDevice           m_physicalDevice                    = VK_NULL_HANDLE;
         VkDevice                   m_device                            = VK_NULL_HANDLE;
         VmaAllocator               m_deviceAllocator                   = VK_NULL_HANDLE;
-        VulkanAPI                  m_pfn                               = {};
         IQueue                     m_queue[(uint32_t)QueueType::Count] = {};
         BindGroupAllocator         m_bindGroupAllocator;
         TL::Ptr<class DeleteQueue> m_destroyQueue = nullptr;

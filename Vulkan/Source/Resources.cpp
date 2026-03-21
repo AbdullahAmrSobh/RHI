@@ -1072,7 +1072,7 @@ namespace RHI::Vulkan
         };
 
         VulkanResult result;
-        result = device->m_pfn.vkCreateRayTracingPipelinesKHR(device->m_device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &pipelineCI, nullptr, &handle);
+        result = vkCreateRayTracingPipelinesKHR(device->m_device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &pipelineCI, nullptr, &handle);
         return result;
     }
 

@@ -49,11 +49,12 @@ if(RHI_BACKEND_VULKAN)
 		GIT_REPOSITORY git@github.com:GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
 		GIT_TAG        v3.3.0
 	)
-	# CPMAddPackage(
-	# 	NAME           RHI_volk
-	# 	GIT_REPOSITORY git@github.com:zeux/volk.git
-	# 	GIT_TAG        1.4.304
-	# )
+
+	CPMAddPackage(
+		NAME           RHI_volk
+		GIT_REPOSITORY git@github.com:zeux/volk.git
+		GIT_TAG        1.4.304
+	)
 endif()
 
 if(RHI_BACKEND_D3D12)
