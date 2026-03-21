@@ -798,7 +798,6 @@ namespace RHI
         }
         TL_ASSERT(result == ResultCode::Success);
 
-
         for (auto& perQueue : rg->m_perQueue)
         {
             perQueue.queue = device->GetQueue(QueueType::Graphics);
@@ -941,6 +940,23 @@ namespace RHI
         TL_ASSERT(buffer->m_frameResource->handle);
         return buffer->m_frameResource->handle;
     }
+
+    // void RenderGraph::streamBegin()
+    // {
+    // }
+
+    // void RenderGraph::streamEnd()
+    // {
+    // }
+
+    // void RenderGraph::streamBufferWrite(Buffer* buffer, size_t offset, TL::Block block)
+    // {
+
+    // }
+
+    // void RenderGraph::streamImageWrite(Image* image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block)
+    // {
+    // }
 
     bool RenderGraph::CheckDependency(const RGPass* producer, const RGPass* consumer) const
     {
@@ -1299,19 +1315,19 @@ namespace RHI
         TL::Vector<FenceSubmitInfo> fenceWaitInfos{m_arena};
         TL::Vector<FenceSubmitInfo> fenceSignalInfos{m_arena};
 
-        FenceSubmitInfo fenceWaitInfo   {
+        FenceSubmitInfo fenceWaitInfo{
             .fence = fence,
             .value = value,
             .stage = PipelineStage::TopOfPipe,
         };
         value++;
-        FenceSubmitInfo fenceSignalInfo {
+        FenceSubmitInfo fenceSignalInfo{
             .fence = fence,
             .value = value,
             .stage = PipelineStage::BottomOfPipe,
         };
 
-        TL::Vector<Swapchain*>      swapchains{m_arena};
+        TL::Vector<Swapchain*> swapchains{m_arena};
 
         if (m_beginInfo.rdocDebugCapture)
         {

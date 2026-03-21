@@ -76,7 +76,7 @@ namespace RHI::Vulkan
 
     ResultCode ICommandPool::Init(IDevice* device, const CommandPoolCreateInfo& createInfo)
     {
-        m_device = device;
+        m_device      = device;
         IQueue* queue = (IQueue*)device->GetQueue(createInfo.queue);
 
         VkCommandPoolCreateInfo poolInfo = {

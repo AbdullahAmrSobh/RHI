@@ -183,6 +183,7 @@ namespace RHI::Vulkan
         switch (shaderStage)
         {
         case ShaderStage::Vertex:  return VK_SHADER_STAGE_VERTEX_BIT;
+        case ShaderStage::Mesh:    return VK_SHADER_STAGE_MESH_BIT_EXT;
         case ShaderStage::Pixel:   return VK_SHADER_STAGE_FRAGMENT_BIT;
         case ShaderStage::Compute: return VK_SHADER_STAGE_COMPUTE_BIT;
         default:                   TL_UNREACHABLE(); return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;

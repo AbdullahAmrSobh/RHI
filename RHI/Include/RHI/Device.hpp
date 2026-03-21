@@ -162,6 +162,12 @@ namespace RHI
 
         virtual uint64_t            GetBufferDeviceAddress(Buffer* buffer) = 0;
 
+        /// @brief Maps buffer
+        virtual DeviceMemoryPtr     MapBuffer(Buffer* buffer, uint64_t offset, uint64_t sizeBytes) = 0;
+
+        /// @brief Unmaps buffer
+        virtual void                UnmapBuffer(Buffer* buffer) = 0;
+
         /// @brief Creates an image.
         virtual Image*              CreateImage(const ImageCreateInfo& createInfo) = 0;
 

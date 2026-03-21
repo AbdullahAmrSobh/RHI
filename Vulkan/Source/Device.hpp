@@ -32,15 +32,15 @@ namespace RHI::Vulkan
         PFN_vkSetDebugUtilsObjectTagEXT     vkSetDebugUtilsObjectTagEXT;
         PFN_vkSubmitDebugUtilsMessageEXT    vkSubmitDebugUtilsMessageEXT;
 #endif
-        PFN_vkCmdBeginConditionalRenderingEXT  vkCmdBeginConditionalRenderingEXT;
-        PFN_vkCmdEndConditionalRenderingEXT    vkCmdEndConditionalRenderingEXT;
-        PFN_vkCreateRayTracingPipelinesKHR     vkCreateRayTracingPipelinesKHR;
-        PFN_vkCmdTraceRaysIndirect2KHR         vkCmdTraceRaysIndirect2KHR;
-        PFN_vkCmdPushDescriptorSet2KHR         vkCmdPushDescriptorSet2KHR;
-        PFN_vkCmdTraceRaysKHR                  vkCmdTraceRaysKHR;
-        PFN_vkCmdDrawMeshTasksEXT              vkCmdDrawMeshTasksEXT;
-        PFN_vkCmdDrawMeshTasksIndirectEXT      vkCmdDrawMeshTasksIndirectEXT;
-        PFN_vkCmdDrawMeshTasksIndirectCountEXT vkCmdDrawMeshTasksIndirectCountEXT;
+        PFN_vkCmdBeginConditionalRenderingEXT   vkCmdBeginConditionalRenderingEXT;
+        PFN_vkCmdEndConditionalRenderingEXT     vkCmdEndConditionalRenderingEXT;
+        PFN_vkCreateRayTracingPipelinesKHR      vkCreateRayTracingPipelinesKHR;
+        PFN_vkCmdTraceRaysIndirect2KHR          vkCmdTraceRaysIndirect2KHR;
+        PFN_vkCmdPushDescriptorSet2KHR          vkCmdPushDescriptorSet2KHR;
+        PFN_vkCmdTraceRaysKHR                   vkCmdTraceRaysKHR;
+        PFN_vkCmdDrawMeshTasksEXT               vkCmdDrawMeshTasksEXT;
+        PFN_vkCmdDrawMeshTasksIndirectEXT       vkCmdDrawMeshTasksIndirectEXT;
+        PFN_vkCmdDrawMeshTasksIndirectCountEXT  vkCmdDrawMeshTasksIndirectCountEXT;
         PFN_vkCmdBuildAccelerationStructuresKHR vkCmdBuildAccelerationStructuresKHR;
     };
 
@@ -57,10 +57,10 @@ namespace RHI::Vulkan
         void WaitIdle() override;
         void WaitFence(Fence* fence, uint64_t value) override;
 
-        IDevice*  m_device;
-        VkQueue   m_queue;
-        uint32_t  m_familyIndex;
-        QueueType m_queueType;
+        IDevice*             m_device;
+        VkQueue              m_queue;
+        uint32_t             m_familyIndex;
+        QueueType            m_queueType;
         std::atomic_uint64_t m_lastSubmitValue;
     };
 
@@ -109,6 +109,8 @@ namespace RHI::Vulkan
         Buffer*             CreateBuffer(const BufferCreateInfo& createInfo) override;
         void                DestroyBuffer(Buffer* handle) override;
         uint64_t            GetBufferDeviceAddress(Buffer* buffer) override;
+        DeviceMemoryPtr     MapBuffer(Buffer* buffer, uint64_t offset, uint64_t sizeBytes) override;
+        void                UnmapBuffer(Buffer* buffer) override;
         Image*              CreateImage(const ImageCreateInfo& createInfo) override;
         Image*              CreateImageView(const ImageViewCreateInfo& createInfo) override;
         void                DestroyImage(Image* handle) override;
@@ -122,7 +124,6 @@ namespace RHI::Vulkan
         void                DestroyRayTracingPipeline(RayTracingPipeline* handle) override;
         ComputePipeline*    CreateComputePipeline(const ComputePipelineCreateInfo& createInfo) override;
         void                DestroyComputePipeline(ComputePipeline* handle) override;
-
 
     public:
         // Vulkan instance and core objects

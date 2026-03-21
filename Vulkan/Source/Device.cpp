@@ -602,8 +602,8 @@ namespace RHI::Vulkan
             .pNext                                  = pNext,
             .taskShader                             = VK_TRUE,
             .meshShader                             = VK_TRUE,
-            .multiviewMeshShader                    = VK_TRUE,
-            .primitiveFragmentShadingRateMeshShader = VK_TRUE,
+            .multiviewMeshShader                    = VK_FALSE,
+            .primitiveFragmentShadingRateMeshShader = VK_FALSE,
             .meshShaderQueries                      = VK_TRUE,
         };
         if (enableMeshShaders) pNext = &meshShaderFeatures;
@@ -723,7 +723,7 @@ namespace RHI::Vulkan
             .variablePointers                   = VK_FALSE,
             .protectedMemory                    = VK_FALSE,
             .samplerYcbcrConversion             = VK_FALSE,
-            .shaderDrawParameters               = VK_FALSE,
+            .shaderDrawParameters               = VK_TRUE,
         };
         VkPhysicalDeviceFeatures2 features{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
@@ -807,6 +807,7 @@ namespace RHI::Vulkan
         }
 
         VmaAllocatorCreateInfo vmaCI{
+            .flags            = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
             .physicalDevice   = m_physicalDevice,
             .device           = m_device,
             .instance         = m_instance,
@@ -1090,6 +1091,18 @@ namespace RHI::Vulkan
         IBuffer* buffer = (IBuffer*)_buffer;
         TL_ASSERT(buffer->address != 0, "Buffer is not shader addressable");
         return buffer->address;
+    }
+
+    DeviceMemoryPtr IDevice::MapBuffer(Buffer* _buffer, uint64_t offset, uint64_t sizeBytes)
+    {
+        IBuffer* buffer = (IBuffer*)_buffer;
+        return buffer->Map(this);
+    }
+
+    void IDevice::UnmapBuffer(Buffer* _buffer)
+    {
+        IBuffer* buffer = (IBuffer*)_buffer;
+        buffer->Unmap(this);
     }
 
     template<typename Resource, typename... Args>

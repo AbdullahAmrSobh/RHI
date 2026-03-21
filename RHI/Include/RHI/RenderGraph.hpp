@@ -446,16 +446,15 @@ namespace RHI
         TL_NODISCARD Image*     GetImageHandle(RGImage* handle) const;
         TL_NODISCARD Buffer*    GetBufferHandle(RGBuffer* handle) const;
 
-        // Allocates a transient bind group for the current local bind group
-        BindGroup*              createBindGroup(RHI::BindGroupLayout* layout);
-
-        BufferBindingInfo*      allocateConstantBuffer(size_t size, uint8_t alignment);
-
         // streaming functions
         void                    streamBegin();
         void                    streamEnd();
         void                    streamBufferWrite(Buffer* buffer, size_t offset, TL::Block block);
         void                    streamImageWrite(Image* image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block);
+
+        // Allocates a transient bind group for the current local bind group
+        BindGroup*              createBindGroup(RHI::BindGroupLayout* layout);
+        BufferBindingInfo*      allocateConstantBuffer(size_t size, uint8_t alignment);
 
     private:
         // Bind group stuff
@@ -564,6 +563,7 @@ namespace RHI
             Fence*   fence;
             uint64_t value;
         };
+
         PerQueue m_perQueue[(int)QueueType::Count];
     };
 } // namespace RHI
