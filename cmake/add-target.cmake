@@ -1,6 +1,3 @@
-
-# @todo: remove target_link_libraries, target_include_directories ...etc
-
 function(tl_add_target)
     set(options STATIC SHARED HEADERONLY EXECUTABLE)
     set(single_value_args NAME NAMESPACE OUTPUT_SUBDIRECTORY OUTPUT_NAME)
@@ -9,7 +6,7 @@ function(tl_add_target)
     cmake_parse_arguments(tl_add_target "${options}" "${single_value_args}" "${multi_value_args}" ${ARGN})
 
     if (NOT tl_add_target_NAME)
-        message(FATEL_ERROR "Target must have a name")
+        message(FATAL_ERROR "Target must have a name")
     endif()
 
     if (tl_add_target_HEADERONLY)
@@ -18,7 +15,7 @@ function(tl_add_target)
 
     if (NOT tl_add_target_HEADERONLY)
         if (NOT tl_add_target_SOURCES)
-            message(FATAL_ERROR "You must provide a list of source files files for the target")
+            message(FATAL_ERROR "You must provide a list of source files for the target")
         endif()
     endif()
 
@@ -48,7 +45,9 @@ function(tl_add_target)
         endif()
 
         add_library(${tl_add_target_NAME} ${target_library_type} ${tl_add_target_SOURCES} ${tl_add_target_HEADERS})
-        add_library(${tl_add_target_NAMESPACE}::${tl_add_target_NAME} ALIAS ${tl_add_target_NAME})
+        if (tl_add_target_NAMESPACE)
+            add_library(${tl_add_target_NAMESPACE}::${tl_add_target_NAME} ALIAS ${tl_add_target_NAME})
+        endif()
 
         target_include_directories(
             ${tl_add_target_NAME} ${warning_guard}
@@ -67,7 +66,9 @@ function(tl_add_target)
 
     else()
         add_executable(${tl_add_target_NAME} ${tl_add_target_SOURCES} ${tl_add_target_HEADERS})
-        add_executable(${tl_add_target_NAMESPACE}::${tl_add_target_NAME} ALIAS ${tl_add_target_NAME})
+        if (tl_add_target_NAMESPACE)
+            add_executable(${tl_add_target_NAMESPACE}::${tl_add_target_NAME} ALIAS ${tl_add_target_NAME})
+        endif()
     endif()
 
     # Detect the current platform
@@ -92,41 +93,35 @@ function(tl_add_target)
     if (CMAKE_SIZEOF_VOID_P EQUAL 8)
         set(SYSTEM_ARCH_NAME ${tl_add_target_NAME}_SYSTEM_ARCHITECTURE_X86_64)
     elseif (CMAKE_SIZEOF_VOID_P EQUAL 4)
-        set (SYSTEM_ARCH_NAME ${tl_add_target_NAME}_SYSTEM_ARCHITECTURE_X86_32)
+        set(SYSTEM_ARCH_NAME ${tl_add_target_NAME}_SYSTEM_ARCHITECTURE_X86_32)
     elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "arm" OR CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
         set(SYSTEM_ARCH_NAME ${tl_add_target_NAME}_SYSTEM_ARCHITECTURE_ARM)
     else()
         set(SYSTEM_ARCH_NAME ${tl_add_target_NAME}_SYSTEM_ARCHITECTURE_UNKNOWN)
     endif()
 
-    # Specify target compile definitions
-    target_compile_definitions(${tl_add_target_NAME} PUBLIC ${PLATFORM_NAME} ${SYSTEM_ARCH_NAME})
+    target_compile_definitions(${tl_add_target_NAME} PRIVATE ${PLATFORM_NAME} ${SYSTEM_ARCH_NAME})
 
     if (tl_add_target_COMPILE_DEFINITIONS)
         target_compile_definitions(${tl_add_target_NAME} PRIVATE ${tl_add_target_COMPILE_DEFINITIONS})
     endif()
 
-    # Specify target include directories
     if (tl_add_target_INCLUDE_DIRECTORIES)
         target_include_directories(${tl_add_target_NAME} PRIVATE ${tl_add_target_INCLUDE_DIRECTORIES})
     endif()
 
-    # Specify target public include directories
     if (tl_add_target_PUBLIC_INCLUDE_DIRECTORIES)
         target_include_directories(${tl_add_target_NAME} PUBLIC ${tl_add_target_PUBLIC_INCLUDE_DIRECTORIES})
     endif()
 
-    # Specify target custome properties
     if(tl_add_target_TARGET_PROPERTIES)
         set_target_properties(${tl_add_target_NAME} PROPERTIES ${tl_add_target_TARGET_PROPERTIES})
     endif()
 
-    # Specify target link static libraries
     if (tl_add_target_BUILD_DEPENDENCIES)
         target_link_libraries(${tl_add_target_NAME} ${tl_add_target_BUILD_DEPENDENCIES})
     endif()
 
-    # Specify target link dynamic shared libraries
     if (tl_add_target_RUNTIME_LIBRARIES)
         target_link_libraries(${tl_add_target_NAME} ${tl_add_target_RUNTIME_LIBRARIES})
         foreach(runtime_lib ${tl_add_target_RUNTIME_LIBRARIES})
@@ -137,12 +132,5 @@ function(tl_add_target)
             )
         endforeach()
     endif()
-
-    # # Enable all warnings as errors for the target
-    # target_compile_options(${tl_add_target_NAME} PRIVATE
-    #     $<$<CXX_COMPILER_ID:MSVC>:/WX /W4>
-    #     $<$<CXX_COMPILER_ID:GNU>:-Werror -Wall -Wextra>
-    #     $<$<CXX_COMPILER_ID:Clang>:-Werror -Wall -Wextra>
-    # )
 
 endfunction(tl_add_target)

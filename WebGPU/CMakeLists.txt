@@ -1,6 +1,3 @@
-cmake_minimum_required(VERSION 3.19)
-
-# Add header files
 set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Common.hpp
@@ -11,7 +8,6 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.hpp
 )
 
-# Add source files
 set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Device.cpp
@@ -20,13 +16,6 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.cpp
 )
-
-
-if(NOT TARGET TL)
-    include(${CMAKE_SOURCE_DIR}/CMake/add-target.cmake)
-else()
-    include(${CPM_TL_SOURCE}/CMake/add-target.cmake)
-endif()
 
 tl_add_target(
     NAME WebGPU
@@ -39,15 +28,12 @@ tl_add_target(
 )
 
 if (NOT EMSCRIPTEN)
-    target_link_libraries(
-        WebGPU
-            webgpu_dawn
-            dawn_common
-            dawn_native
-            dawn_headers
-        )
+    target_link_libraries(WebGPU
+        webgpu_dawn
+        dawn_common
+        dawn_native
+        dawn_headers
+    )
 else()
     target_link_libraries(WebGPU webgpu_headers)
 endif()
-
-target_compile_options(WebGPU PRIVATE ${RHI_COMPILE_FLAGS})

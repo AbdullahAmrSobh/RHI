@@ -38,10 +38,9 @@ CPMAddPackage(
     NAME           TL
 	GIT_REPOSITORY git@github.com:Pagghiu/SaneCppLibraries.git
 	GIT_TAG        main
-	OPTIONS
-		# TL_ENABLE_TRACY ${PROJECT_IS_TOP_LEVEL}
-		# TL_ENABLE_TRACY_MEMORY_TRACKING ${PROJECT_IS_TOP_LEVEL}
 )
+
+include(${CMAKE_SOURCE_DIR}/cmake/add-target.cmake)
 
 if(RHI_BACKEND_VULKAN)
 	CPMAddPackage(
@@ -116,21 +115,13 @@ if(RHI_BUILD_EXAMPLES)
 			${imgui_SOURCE_DIR}/imgui_internal.h
 			${imgui_SOURCE_DIR}/imconfig.h
 		)
-		if(NOT TARGET TL)
-			include(${CMAKE_SOURCE_DIR}/CMake/add-target.cmake)
-		else()
-			include(${CPM_TL_SOURCE}/CMake/add-target.cmake)
-		endif()
 		tl_add_target(
 			NAME rhi_imgui
-			# NAMESPACE Thirdparty
 			STATIC
 			HEADERS ${HEADER_FILES}
 			SOURCES ${SOURCE_FILES}
 		)
 		target_include_directories(rhi_imgui ${warning_guard} PUBLIC ${imgui_SOURCE_DIR})
-		# Set compiler flags for your target
-		target_compile_options(rhi_imgui PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/W3>" "$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall;-Wextra>")
 	endif()
 
 	CPMAddPackage(

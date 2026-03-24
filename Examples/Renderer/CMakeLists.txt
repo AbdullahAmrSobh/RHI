@@ -1,6 +1,3 @@
-cmake_minimum_required(VERSION 3.19)
-
-
 set(RENDERER_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 set(RENDERER_HEADER_FILES
         ${RENDERER_INCLUDE_DIR}/Common.h
@@ -33,21 +30,15 @@ set(RENDERER_SHADER_FILES
     ${RENDERER_SHADERS_DIR}/Lighting.slang
 )
 
-# @note: for some reason I need to copy dawn dlls next to every executable (the build script should handle this!)
-
-include(${CPM_TL_SOURCE}/CMake/add-target.cmake)
 tl_add_target(
-    NAME
-        Renderer
-    NAMESPACE
-        neon
+    NAME Renderer
+    NAMESPACE neon
     STATIC
     SOURCES
         ${RENDERER_INCLUDE_DIR}
         ${RENDERER_SOURCE_FILES}
 )
 
-# add include directories
 target_include_directories(Renderer PUBLIC ${RENDERER_INCLUDE_DIR})
 target_include_directories(Renderer PUBLIC ${RENDERER_SHADERS_INCLUDE_DIR})
 target_include_directories(Renderer PRIVATE ${RENDERER_SOURCE_DIR})
@@ -69,21 +60,19 @@ compile_shaders_with_headers(
 )
 
 if (RHI_BACKEND_VULKAN)
+    target_compile_definitions(Renderer PRIVATE RHI_BACKEND_VULKAN)
     target_link_libraries(Renderer RHI::Vulkan)
 endif()
 
 if (RHI_BACKEND_WEBGPU)
-    # target_link_libraries(Renderer RHI::WebGPU)
+    target_compile_definitions(Renderer PRIVATE RHI_BACKEND_WEBGPU)
 endif()
 
 if (RHI_BACKEND_D3D12)
-    # target_link_libraries(Renderer RHI::D3D12)
+    target_compile_definitions(Renderer PRIVATE RHI_BACKEND_D3D12)
 endif()
 
 target_link_libraries(Renderer TL)
-
 target_link_libraries(Renderer Examples::Base)
-
 target_link_libraries(Renderer Examples::RenderCore)
-
 target_link_libraries(Renderer rhi_imgui)

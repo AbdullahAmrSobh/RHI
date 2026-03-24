@@ -1,5 +1,3 @@
-cmake_minimum_required(VERSION 3.19)
-
 set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/CommandList.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Device.hpp
@@ -20,12 +18,6 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.cpp
 )
 
-if(NOT TARGET TL)
-    include(${CMAKE_SOURCE_DIR}/CMake/add-target.cmake)
-else()
-    include(${CPM_TL_SOURCE}/CMake/add-target.cmake)
-endif()
-
 tl_add_target(
     NAME RHI
     NAMESPACE RHI
@@ -33,7 +25,5 @@ tl_add_target(
     HEADERS ${HEADER_FILES}
     SOURCES ${SOURCE_FILES}
 )
-
-# target_compile_options(RHI PRIVATE ${RHI_COMPILE_FLAGS})
 
 target_link_libraries(RHI PUBLIC TL)
