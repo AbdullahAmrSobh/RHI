@@ -638,7 +638,7 @@ namespace RHI::Vulkan
         }
     }
 
-    void ICommandList::DrawMeshTasks(const DrawMeshTasksInfo drawMeshTasksDesc)
+    void ICommandList::DrawMeshTasks(const DispatchParameters drawMeshTasksDesc)
     {
         vkCmdDrawMeshTasksEXT(m_commandBuffer, drawMeshTasksDesc.x, drawMeshTasksDesc.y, drawMeshTasksDesc.z);
     }
@@ -688,15 +688,7 @@ namespace RHI::Vulkan
             .stride        = dispatchRaysDesc.callableShaders.stride,
             .size          = dispatchRaysDesc.callableShaders.size,
         };
-        vkCmdTraceRaysKHR(
-            m_commandBuffer,
-            &raygenShaderBindingTable,
-            &missShaderBindingTable,
-            &hitShaderBindingTable,
-            &callableShaderBindingTable,
-            dispatchRaysDesc.x,
-            dispatchRaysDesc.y,
-            dispatchRaysDesc.z);
+        vkCmdTraceRaysKHR(m_commandBuffer, &raygenShaderBindingTable, &missShaderBindingTable, &hitShaderBindingTable, &callableShaderBindingTable, dispatchRaysDesc.x, dispatchRaysDesc.y, dispatchRaysDesc.z);
     }
 
     void ICommandList::DispatchRaysIndirect(const BufferBindingInfo& argumentBuffer)
@@ -711,11 +703,7 @@ namespace RHI::Vulkan
         ZoneScoped;
 
         TL_ASSERT(m_isComputePipelineBound);
-        vkCmdDispatch(
-            m_commandBuffer,
-            parameters.countX,
-            parameters.countY,
-            parameters.countZ);
+        vkCmdDispatch(m_commandBuffer, parameters.x, parameters.y, parameters.z);
     }
 
     void ICommandList::DispatchIndirect(const BufferBindingInfo& argumentBuffer)
@@ -724,10 +712,7 @@ namespace RHI::Vulkan
 
         TL_ASSERT(m_isComputePipelineBound);
         auto cmdBuffer = (IBuffer*)(argumentBuffer.buffer);
-        vkCmdDispatchIndirect(
-            m_commandBuffer,
-            cmdBuffer->handle,
-            argumentBuffer.offset);
+        vkCmdDispatchIndirect(m_commandBuffer, cmdBuffer->handle, argumentBuffer.offset);
     }
 
     void ICommandList::CopyBuffer(const BufferCopyInfo& copyInfo)

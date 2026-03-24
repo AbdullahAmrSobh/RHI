@@ -157,26 +157,12 @@ namespace RHI
         uint32_t firstInstance = 0; ///< Index of the first instance to draw.
     };
 
-    struct DrawMeshTasksInfo
-    {
-        uint32_t x;
-        uint32_t y;
-        uint32_t z;
-    };
-
-    struct DispatchRaysIndirectInfo
-    {
-        uint32_t x;
-        uint32_t y;
-        uint32_t z;
-    };
-
     /// @brief Parameters for dispatching compute work.
     struct DispatchParameters
     {
-        uint32_t countX = 16; ///< Number of work groups in X dimension.
-        uint32_t countY = 16; ///< Number of work groups in Y dimension.
-        uint32_t countZ = 16; ///< Number of work groups in Z dimension.
+        uint32_t x = 1;
+        uint32_t y = 1;
+        uint32_t z = 1;
     };
 
     struct BarrierState
@@ -444,7 +430,7 @@ namespace RHI
 
         /// @brief Issues a mesh task drawing command.
         /// @param drawMeshTasksDesc Information for the mesh task drawing command.
-        virtual void DrawMeshTasks(const DrawMeshTasksInfo drawMeshTasksDesc) = 0;
+        virtual void DrawMeshTasks(const DispatchParameters drawMeshTasksDesc) = 0;
 
         /// @brief Issues an indirect mesh task drawing command.
         /// @param argumentBuffer Binding information about the buffer containing draw arguments.

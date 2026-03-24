@@ -65,7 +65,7 @@ namespace RHI::Vulkan
         void DrawIndexed(const DrawIndexedParameters& parameters) override;
         void DrawIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride) override;
         void DrawIndexedIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride) override;
-        void DrawMeshTasks(const DrawMeshTasksInfo drawMeshTasksDesc) override;
+        void DrawMeshTasks(const DispatchParameters drawMeshTasksDesc) override;
         void DrawMeshTasksIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t drawNum, uint32_t stride) override;
         void DispatchRays(const DispatchRaysInfo& dispatchRaysDesc) override;
         void DispatchRaysIndirect(const BufferBindingInfo& argumentBuffer) override;
