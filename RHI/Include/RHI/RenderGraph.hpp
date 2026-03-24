@@ -393,6 +393,28 @@ namespace RHI
 
     class StagingBuffer
     {
+    public:
+        static constexpr size_t DefaultCapacity = 32u * 1024u * 1024u; // 32 MiB per frame
+
+        ResultCode Init(Device* device, size_t capacity = DefaultCapacity);
+        void       Shutdown(Device* device);
+        void       Reset(); // call at the start of each frame
+
+        struct Allocation
+        {
+            uint8_t* ptr    = nullptr;
+            size_t   offset = 0;
+            bool     isValid() const { return ptr != nullptr; }
+        };
+
+        Allocation Allocate(size_t size, size_t alignment = 256);
+        Buffer*    GetBuffer() const { return m_buffer; }
+
+    private:
+        Buffer*  m_buffer   = nullptr;
+        uint8_t* m_mapped   = nullptr;
+        size_t   m_capacity = 0;
+        size_t   m_offset   = 0;
     };
 
     ///
@@ -433,10 +455,12 @@ namespace RHI
         TL_NODISCARD RGImage*   importSwapchain(TL::StringView name, Swapchain& swapchain, Format format);
 
         /// @brief Imports an image into the render graph.
-        TL_NODISCARD RGImage*   importImage(TL::StringView name, Image* image, Format format);
+        /// @param initialState The barrier state the image is already in (e.g. CopyDst after streaming).
+        TL_NODISCARD RGImage*   importImage(TL::StringView name, Image* image, Format format, ImageBarrierState initialState = {});
 
         /// @brief Imports a buffer into the render graph.
-        TL_NODISCARD RGBuffer*  importBuffer(TL::StringView name, Buffer* buffer);
+        /// @param initialState The barrier state the buffer is already in (e.g. CopyDst after streaming).
+        TL_NODISCARD RGBuffer*  importBuffer(TL::StringView name, Buffer* buffer, BufferBarrierState initialState = {});
 
         /// @brief Adds a pass to the render graph.
         TL_MAYBE_UNUSED RGPass* addPass(TL::StringView name, RGPassType type, ImageSize2D size2D);
@@ -553,9 +577,33 @@ namespace RHI
             CommandPool* commandPool[(int)QueueType::Count];
         };
 
+        // Streaming: pending upload operations collected between streamBegin/streamEnd
+        struct PendingBufferWrite
+        {
+            Buffer* dstBuffer;
+            size_t  dstOffset;
+            size_t  stagingOffset;
+            size_t  size;
+        };
+
+        struct PendingImageWrite
+        {
+            Image*        dstImage;
+            ImageOffset3D imageOffset;
+            ImageSize3D   imageSize;
+            uint32_t      mipLevel;
+            uint32_t      arrayLayer;
+            size_t        stagingOffset;
+            uint32_t      bytesPerRow;
+        };
+
+        bool                           m_streamingActive = false;
+        TL::Vector<PendingBufferWrite> m_pendingBufferWrites{m_arena};
+        TL::Vector<PendingImageWrite>  m_pendingImageWrites{m_arena};
+
         uint64_t      m_activeFrame = 0;
         PerFrame      m_frame[2];
-        StagingBuffer m_stagingBuffer;
+        StagingBuffer m_stagingBuffer[FramesInFlightCount];
 
         struct PerQueue
         {
