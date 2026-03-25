@@ -347,21 +347,9 @@ namespace RHI::Vulkan
         TL::Vector<const char*> requiredInstanceLayers;
         TL::Vector<const char*> requiredInstanceExtensions{
             VK_KHR_SURFACE_EXTENSION_NAME,
-#if RHI_PLATFORM_WINDOWS
+#ifdef VK_USE_PLATFORM_WIN32_KHR
             VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
-#elif RHI_PLATFORM_MACOS
-            VK_MVK_MACOS_SURFACE_EXTENSION_NAME,
-#elif RHI_PLATFORM_ANDROID
-            VK_KHR_ANDROID_SURFACE_EXTENSION_NAME,
-#elif RHI_PLATFORM_XLIB
-            VK_KHR_XLIB_SURFACE_EXTENSION_NAME,
-#elif RHI_PLATFORM_WAYLAND
-            VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME,
-#elif RHI_PLATFORM_ANDROID
-            VK_KHR_ANDROID_SURFACE_EXTENSION_NAME,
-#elif RHI_PLATFORM_IOS
-            VK_MVK_IOS_SURFACE_EXTENSION_NAME,
-#endif // VK_USE_PLATFORM_WIN32_KHR
+#endif
         };
 
         if constexpr (DebugLayerEnabled)

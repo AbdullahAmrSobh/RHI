@@ -40,8 +40,6 @@ CPMAddPackage(
 	GIT_TAG        main
 )
 
-include(${CMAKE_SOURCE_DIR}/cmake/add-target.cmake)
-
 if(RHI_BACKEND_VULKAN)
 	CPMAddPackage(
 		NAME           RHI_vma
@@ -82,65 +80,65 @@ if(RHI_BACKEND_WEBGPU)
 	)
 endif()
 
-if(RHI_BUILD_EXAMPLES)
-	if (NOT EMSCRIPTEN)
-		CPMAddPackage(
-			NAME           glfw
-			GIT_REPOSITORY git@github.com:glfw/glfw.git
-			GIT_TAG        3.4
-			OPTIONS
-		)
-	endif()
+# if(RHI_BUILD_EXAMPLES)
+# 	if (NOT EMSCRIPTEN)
+# 		CPMAddPackage(
+# 			NAME           glfw
+# 			GIT_REPOSITORY git@github.com:glfw/glfw.git
+# 			GIT_TAG        3.4
+# 			OPTIONS
+# 		)
+# 	endif()
 
-	CPMAddPackage(
-		NAME           imgui
-		GIT_REPOSITORY git@github.com:ocornut/imgui.git
-		GIT_TAG        v1.91.9b-docking
-		DOWNLOAD_ONLY  YES
-	)
+# 	CPMAddPackage(
+# 		NAME           imgui
+# 		GIT_REPOSITORY git@github.com:ocornut/imgui.git
+# 		GIT_TAG        v1.91.9b-docking
+# 		DOWNLOAD_ONLY  YES
+# 	)
 
-	if (imgui_ADDED)
-		set(SOURCE_FILES
-			${imgui_SOURCE_DIR}/imgui.cpp
-			${imgui_SOURCE_DIR}/imgui_widgets.cpp
-			${imgui_SOURCE_DIR}/imgui_tables.cpp
-			${imgui_SOURCE_DIR}/imgui_demo.cpp
-			${imgui_SOURCE_DIR}/imgui_draw.cpp
-		)
-		set(HEADER_FILES
-			${imgui_SOURCE_DIR}/imstb_truetype.h
-			${imgui_SOURCE_DIR}/imstb_textedit.h
-			${imgui_SOURCE_DIR}/imstb_rectpack.h
-			${imgui_SOURCE_DIR}/imgui.h
-			${imgui_SOURCE_DIR}/imgui_internal.h
-			${imgui_SOURCE_DIR}/imconfig.h
-		)
-		tl_add_target(
-			NAME rhi_imgui
-			STATIC
-			HEADERS ${HEADER_FILES}
-			SOURCES ${SOURCE_FILES}
-		)
-		target_include_directories(rhi_imgui ${warning_guard} PUBLIC ${imgui_SOURCE_DIR})
-	endif()
+# 	if (imgui_ADDED)
+# 		set(SOURCE_FILES
+# 			${imgui_SOURCE_DIR}/imgui.cpp
+# 			${imgui_SOURCE_DIR}/imgui_widgets.cpp
+# 			${imgui_SOURCE_DIR}/imgui_tables.cpp
+# 			${imgui_SOURCE_DIR}/imgui_demo.cpp
+# 			${imgui_SOURCE_DIR}/imgui_draw.cpp
+# 		)
+# 		set(HEADER_FILES
+# 			${imgui_SOURCE_DIR}/imstb_truetype.h
+# 			${imgui_SOURCE_DIR}/imstb_textedit.h
+# 			${imgui_SOURCE_DIR}/imstb_rectpack.h
+# 			${imgui_SOURCE_DIR}/imgui.h
+# 			${imgui_SOURCE_DIR}/imgui_internal.h
+# 			${imgui_SOURCE_DIR}/imconfig.h
+# 		)
+# 		tl_add_target(
+# 			NAME rhi_imgui
+# 			STATIC
+# 			HEADERS ${HEADER_FILES}
+# 			SOURCES ${SOURCE_FILES}
+# 		)
+# 		target_include_directories(rhi_imgui ${warning_guard} PUBLIC ${imgui_SOURCE_DIR})
+# 	endif()
 
-	CPMAddPackage(
-		NAME           glm
-		GIT_REPOSITORY git@github.com:g-truc/glm.git
-		GIT_TAG        1.0.3
-		OPTIONS
-			"GLM_CONFIG_CLIP_CONTROL ON"
-			"GLM_CLIP_CONTROL_ZO_BIT ON"
-	)
+# 	CPMAddPackage(
+# 		NAME           glm
+# 		GIT_REPOSITORY git@github.com:g-truc/glm.git
+# 		GIT_TAG        1.0.3
+# 		OPTIONS
+# 			"GLM_CONFIG_CLIP_CONTROL ON"
+# 			"GLM_CLIP_CONTROL_ZO_BIT ON"
+# 	)
 
-	CPMAddPackage(
-		NAME           assimp
-		GIT_REPOSITORY git@github.com:assimp/assimp.git
-		GIT_TAG        v6.0.2
-		OPTIONS
-			ASSIMP_WARNINGS_AS_ERRORS OFF
-			ASSIMP_BUILD_TESTS OFF
-	)
-	set_target_properties(assimp PROPERTIES EXCLUDE_FROM_ALL TRUE)
+# 	CPMAddPackage(
+# 		NAME           assimp
+# 		GIT_REPOSITORY git@github.com:assimp/assimp.git
+# 		GIT_TAG        v6.0.2
+# 		OPTIONS
+# 			ASSIMP_WARNINGS_AS_ERRORS OFF
+# 			ASSIMP_BUILD_TESTS OFF
+# 	)
+# 	set_target_properties(assimp PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
-endif()
+# endif()

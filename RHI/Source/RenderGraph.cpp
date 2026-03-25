@@ -927,7 +927,8 @@ namespace RHI
         TL_ASSERT(m_state.frameRecording == true);
         uint32_t indexInUnorderedList = m_passPool.size();
 
-        RGPass* pass                 = m_passPool.emplace_back(TL::constructFrom<RGPass>(&m_arena, this, name, type, size2D));
+        RGPass* pass = TL::constructFrom<RGPass>(&m_arena, this, name, type, size2D);
+        m_passPool.emplace_back(pass);
         pass->m_indexInUnorderedList = indexInUnorderedList;
         return pass;
     }
@@ -1036,10 +1037,10 @@ namespace RHI
         memcpy(alloc.ptr, block.ptr, block.size);
 
         m_pendingBufferWrites.push_back({
-            .dstBuffer    = buffer,
-            .dstOffset    = offset,
+            .dstBuffer     = buffer,
+            .dstOffset     = offset,
             .stagingOffset = alloc.offset,
-            .size         = block.size,
+            .size          = block.size,
         });
     }
 
@@ -1055,8 +1056,8 @@ namespace RHI
 
         memcpy(alloc.ptr, block.ptr, block.size);
 
-        uint32_t depth      = size.depth > 0 ? size.depth : 1;
-        uint32_t height     = size.height > 0 ? size.height : 1;
+        uint32_t depth       = size.depth > 0 ? size.depth : 1;
+        uint32_t height      = size.height > 0 ? size.height : 1;
         uint32_t bytesPerRow = (uint32_t)(block.size / (height * depth));
 
         m_pendingImageWrites.push_back({

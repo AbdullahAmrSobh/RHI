@@ -26,8 +26,12 @@ set(RHI_DEVELOPER_MODE ${PROJECT_IS_TOP_LEVEL})
 
 option(TRACY_ENABLE        "Enable Tracy profiler"                          ${PROJECT_IS_TOP_LEVEL})
 option(RHI_DEBUG           "Enable RHI debug mode"                          ${PROJECT_IS_TOP_LEVEL})
-option(RHI_SHADER_COMPILER "Builds RHI shader compiler and reflection tool" ON)
-option(RHI_BUILD_EXAMPLES  "Build examples tree"                            ${PROJECT_IS_TOP_LEVEL})
+option(RHI_SHADER_COMPILER "Builds RHI shader compiler and reflection tool" OFF)
+option(RHI_BUILD_EXAMPLES  "Build examples tree"                            OFF)
+
+# TODO: REMOVE!!!
+set(RHI_SHADER_COMPILER OFF)
+set(RHI_BUILD_EXAMPLES OFF)
 
 if(NOT EMSCRIPTEN)
     option(RHI_BACKEND_VULKAN "Enable RHI Vulkan 1.3 Backend"  ON)
@@ -58,10 +62,26 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
 endif()
 
 # ---- Add dependencies ----
+include(cmake/add-target.cmake)
 include(Packages.cmake)
 
 # ---- Declare library ----
 add_subdirectory(RHI)
+
+if(WIN32)
+    target_compile_definitions(RHI PUBLIC RHI_PLATFORM_WINDOWS)
+elseif(ANDROID)
+    target_compile_definitions(RHI PUBLIC RHI_PLATFORM_ANDROID)
+elseif(APPLE)
+    include(TargetConditionals)
+    if(TARGET_OS_MAC)
+        target_compile_definitions(RHI PUBLIC RHI_PLATFORM_MACOS)
+    elseif(TARGET_OS_IPHONE)
+        target_compile_definitions(RHI PUBLIC RHI_PLATFORM_IOS)
+    endif()
+elseif(UNIX)
+    target_compile_definitions(RHI PUBLIC RHI_PLATFORM_LINUX)
+endif()
 
 if(TRACY_ENABLE)
     target_compile_definitions(RHI PRIVATE TRACY_ENABLE)
