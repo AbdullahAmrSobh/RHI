@@ -98,6 +98,7 @@ namespace RHI::Vulkan
     void ICommandPool::Reset()
     {
         vkResetCommandPool(m_device->m_device, m_commandPool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
+        m_arena.reset();
     }
 
     CommandList* ICommandPool::Allocate()

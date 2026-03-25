@@ -6,6 +6,7 @@
 #include <TL/Ptr.hpp>
 #include <TL/Stacktrace.hpp>
 #include <TL/Containers/Vector.hpp>
+#include <TL/Utils.hpp>
 
 #define VK_USE_PLATFORM_WIN32_KHR
 #include <volk.h>
@@ -148,9 +149,8 @@ namespace RHI::Vulkan
     template<typename Resource>
     struct ResourceDeleteQueueEntry
     {
-        uint64_t       timeline;
-        Resource       resource;
-        TL::Stacktrace stacktrace;
+        uint64_t timeline;
+        Resource resource;
     };
 
     class DeleteQueue
@@ -182,11 +182,24 @@ namespace RHI::Vulkan
         template<typename ResourceType>
         void FlushQueue(IDevice* device, TL::Vector<ResourceDeleteQueueEntry<ResourceType>>& queue, uint64_t timeline);
 
+        // Returns a unique uint64_t per ResourceType, collision-free across types.
+        // Uses a static-local-variable address as a zero-cost type identity.
+        template<typename ResourceType>
+        static uint64_t typeKey()
+        {
+            static char s_tag;
+            return reinterpret_cast<uint64_t>(&s_tag);
+        }
+
         // Generic push implementation for single-handle resources
         template<typename ResourceType>
         void PushImpl(TL::Vector<ResourceDeleteQueueEntry<ResourceType>>& queue, uint64_t timeline, ResourceType h)
         {
-            uint64_t key = TL::hashBytes(TL::Block::create(h));
+            static_assert(sizeof(ResourceType) <= sizeof(uint64_t), "ResourceType must fit in a uint64_t key");
+            uint64_t handleVal = 0;
+            memcpy(&handleVal, &h, sizeof(h));
+            uint64_t key = TL::HashCombine(typeKey<ResourceType>(), handleVal);
+
             if (auto it = m_pending.find(key); it != m_pending.end())
             {
                 auto st = TL::ReportStacktrace(it->second);
@@ -195,10 +208,10 @@ namespace RHI::Vulkan
             }
             else
             {
-                m_pending[key] = TL::CaptureStacktrace();
+                m_pending.emplace(std::make_pair(key, TL::CaptureStacktrace()));
             }
 
-            queue.emplace_back(ResourceDeleteQueueEntry<ResourceType>{timeline, h, TL::CaptureStacktrace()});
+            queue.emplace_back(ResourceDeleteQueueEntry<ResourceType>{timeline, h});
         }
 
     private:
@@ -213,10 +226,8 @@ namespace RHI::Vulkan
         TL::Vector<ResourceDeleteQueueEntry<VkQueryPool>>         m_queryPool;
         TL::Vector<ResourceDeleteQueueEntry<VkSwapchainKHR>>      m_swapchain;
         TL::Vector<ResourceDeleteQueueEntry<VkSurfaceKHR>>        m_surface;
-        TL::Vector<ResourceDeleteQueueEntry<VkSemaphore>>         m_semaphore;
-        TL::Vector<ResourceDeleteQueueEntry<VmaBufferAllocation>> m_vmaBuffer;
-        TL::Vector<ResourceDeleteQueueEntry<VmaImageAllocation>>  m_vmaImage;
-        TL::Map<uint64_t, TL::Stacktrace>                         m_pending;
+        TL::Vector<ResourceDeleteQueueEntry<VkSemaphore>>      m_semaphore;
+        TL::Map<uint64_t, TL::Stacktrace>                      m_pending;
     };
 
 } // namespace RHI::Vulkan

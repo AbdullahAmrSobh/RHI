@@ -193,9 +193,13 @@ namespace RHI::Vulkan
     inline static VkShaderStageFlags ConvertShaderStage(TL::Flags<ShaderStage> shaderStageFlags)
     {
         VkShaderStageFlags result = 0;
-        if (shaderStageFlags & ShaderStage::Vertex) result |= VK_SHADER_STAGE_VERTEX_BIT;
-        if (shaderStageFlags & ShaderStage::Pixel) result |= VK_SHADER_STAGE_FRAGMENT_BIT;
-        if (shaderStageFlags & ShaderStage::Compute) result |= VK_SHADER_STAGE_COMPUTE_BIT;
+        if (shaderStageFlags & ShaderStage::Vertex)        result |= VK_SHADER_STAGE_VERTEX_BIT;
+        if (shaderStageFlags & ShaderStage::Pixel)         result |= VK_SHADER_STAGE_FRAGMENT_BIT;
+        if (shaderStageFlags & ShaderStage::Compute)       result |= VK_SHADER_STAGE_COMPUTE_BIT;
+        if (shaderStageFlags & ShaderStage::Hull)          result |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+        if (shaderStageFlags & ShaderStage::Domain)        result |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+        if (shaderStageFlags & ShaderStage::Mesh)          result |= VK_SHADER_STAGE_MESH_BIT_EXT;
+        if (shaderStageFlags & ShaderStage::Amplification) result |= VK_SHADER_STAGE_TASK_BIT_EXT;
         return result;
     }
 
@@ -681,6 +685,9 @@ namespace RHI::Vulkan
 
     void IFence::Shutdown(IDevice* device)
     {
+        auto frame = ((IQueue*)device->GetQueue(QueueType::Graphics))->m_lastSubmitValue.load();
+        if (semaphore)
+            device->m_destroyQueue->Push(frame, semaphore);
     }
 
     bool IFence::waitValue(IDevice* device, uint64_t value)
@@ -1473,6 +1480,11 @@ namespace RHI::Vulkan
             {
                 m_device->m_destroyQueue->Push(frame, m_acquireSemaphore[i]);
                 m_acquireSemaphore[i] = VK_NULL_HANDLE;
+            }
+            if (m_presentSemaphore[i])
+            {
+                m_device->m_destroyQueue->Push(frame, m_presentSemaphore[i]);
+                m_presentSemaphore[i] = VK_NULL_HANDLE;
             }
         }
 

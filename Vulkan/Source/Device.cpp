@@ -683,7 +683,7 @@ namespace RHI::Vulkan
             .pNext                              = &features12,
             .storageBuffer16BitAccess           = VK_FALSE,
             .uniformAndStorageBuffer16BitAccess = VK_FALSE,
-            .storagePushConstant16              = VK_FALSE,
+            .storagePushConstant16              = VK_TRUE,
             .storageInputOutput16               = VK_FALSE,
             .multiview                          = VK_FALSE,
             .multiviewGeometryShader            = VK_FALSE,
@@ -740,7 +740,7 @@ namespace RHI::Vulkan
             .shaderCullDistance                      = VK_FALSE,
             .shaderFloat64                           = VK_FALSE,
             .shaderInt64                             = VK_FALSE,
-            .shaderInt16                             = VK_FALSE,
+            .shaderInt16                             = VK_TRUE,
             .shaderResourceResidency                 = VK_FALSE,
             .shaderResourceMinLod                    = VK_FALSE,
             .sparseBinding                           = VK_FALSE,
@@ -878,73 +878,73 @@ namespace RHI::Vulkan
             for (auto [ptr, stacktrace] : m_liveCommandPools)
             {
                 TL_LOG_WARNNING("Leaked: RHI::CommandPool at:\n{}", TL::ReportStacktrace(stacktrace));
-                DestroyCommandPool(ptr);
+                // DestroyCommandPool(ptr);
             }
 
             for (auto [ptr, stacktrace] : m_liveFences)
             {
                 TL_LOG_WARNNING("Leaked: RHI::Fence at:\n{}", TL::ReportStacktrace(stacktrace));
-                DestroyFence(ptr);
+                // DestroyFence(ptr);
             }
 
             for (auto [ptr, stacktrace] : m_liveSwapchains)
             {
                 TL_LOG_WARNNING("Leaked: RHI::Swapchain at:\n{}", TL::ReportStacktrace(stacktrace));
-                DestroySwapchain(ptr);
+                // DestroySwapchain(ptr);
             }
 
             for (auto [ptr, stacktrace] : m_liveShaderModules)
             {
                 TL_LOG_WARNNING("Leaked: RHI::ShaderModule at:\n{}", TL::ReportStacktrace(stacktrace));
-                DestroyShaderModule(ptr);
+                // DestroyShaderModule(ptr);
             }
 
             for (auto [ptr, stacktrace] : m_liveImages)
             {
                 TL_LOG_WARNNING("Leaked: RHI::Image at:\n{}", TL::ReportStacktrace(stacktrace));
-                DestroyImage(ptr);
+                // DestroyImage(ptr);
             }
 
             for (auto [ptr, stacktrace] : m_liveBuffers)
             {
                 TL_LOG_WARNNING("Leaked: RHI::Buffer at:\n{}", TL::ReportStacktrace(stacktrace));
-                DestroyBuffer(ptr);
+                // DestroyBuffer(ptr);
             }
 
             for (auto [ptr, stacktrace] : m_liveBindGroupLayouts)
             {
                 TL_LOG_WARNNING("Leaked: RHI::BindGroupLayout at:\n{}", TL::ReportStacktrace(stacktrace));
-                DestroyBindGroupLayout(ptr);
+                // DestroyBindGroupLayout(ptr);
             }
 
             for (auto [ptr, stacktrace] : m_liveBindGroups)
             {
                 TL_LOG_WARNNING("Leaked: RHI::BindGroup at:\n{}", TL::ReportStacktrace(stacktrace));
-                DestroyBindGroup(ptr);
+                // DestroyBindGroup(ptr);
             }
 
             for (auto [ptr, stacktrace] : m_livePipelineLayouts)
             {
                 TL_LOG_WARNNING("Leaked: RHI::PipelineLayout at:\n{}", TL::ReportStacktrace(stacktrace));
-                DestroyPipelineLayout(ptr);
+                // DestroyPipelineLayout(ptr);
             }
 
             for (auto [ptr, stacktrace] : m_liveGraphicsPipelines)
             {
                 TL_LOG_WARNNING("Leaked: RHI::GraphicsPipeline at:\n{}", TL::ReportStacktrace(stacktrace));
-                DestroyGraphicsPipeline(ptr);
+                // DestroyGraphicsPipeline(ptr);
             }
 
             for (auto [ptr, stacktrace] : m_liveComputePipelines)
             {
                 TL_LOG_WARNNING("Leaked: RHI::ComputePipeline at:\n{}", TL::ReportStacktrace(stacktrace));
-                DestroyComputePipeline(ptr);
+                // DestroyComputePipeline(ptr);
             }
 
             for (auto [ptr, stacktrace] : m_liveSamplers)
             {
                 TL_LOG_WARNNING("Leaked: RHI::Sampler at:\n{}", TL::ReportStacktrace(stacktrace));
-                DestroySampler(ptr);
+                // DestroySampler(ptr);
             }
         }
 
@@ -1118,6 +1118,7 @@ namespace RHI::Vulkan
         auto erased = liveResources.erase(resource);
         TL_ASSERT(erased);
         resource->Shutdown(device);
+        TL::destruct(resource);
     }
 
     // clang-format off
@@ -1166,11 +1167,10 @@ namespace RHI::Vulkan
         TL_ASSERT(m_sampler.empty());
         TL_ASSERT(m_pipeline.empty());
         TL_ASSERT(m_descriptorPool.empty());
+        TL_ASSERT(m_queryPool.empty());
         TL_ASSERT(m_swapchain.empty());
         TL_ASSERT(m_surface.empty());
         TL_ASSERT(m_semaphore.empty());
-        TL_ASSERT(m_vmaBuffer.empty());
-        TL_ASSERT(m_vmaImage.empty());
         TL_ASSERT(m_pending.empty());
     }
 
@@ -1209,7 +1209,9 @@ namespace RHI::Vulkan
 
             destroyVkResource(device, entry.resource);
 
-            uint64_t key = TL::hashBytes(TL::Block::create(entry.resource));
+            uint64_t handleVal = 0;
+            memcpy(&handleVal, &entry.resource, sizeof(entry.resource));
+            uint64_t key = TL::HashCombine(typeKey<ResourceType>(), handleVal);
             TL_ASSERT(m_pending.erase(key));
             deleteCount++;
         }
@@ -1222,6 +1224,7 @@ namespace RHI::Vulkan
         FlushQueue(device, m_bufferView, timeline);
         FlushQueue(device, m_imageView, timeline);
         FlushQueue(device, m_descriptorPool, timeline);
+        FlushQueue(device, m_queryPool, timeline);
         FlushQueue(device, m_pipeline, timeline);
         FlushQueue(device, m_sampler, timeline);
         FlushQueue(device, m_buffer, timeline);
@@ -1229,8 +1232,6 @@ namespace RHI::Vulkan
         FlushQueue(device, m_swapchain, timeline);
         FlushQueue(device, m_surface, timeline);
         FlushQueue(device, m_semaphore, timeline);
-        FlushQueue(device, m_vmaBuffer, timeline);
-        FlushQueue(device, m_vmaImage, timeline);
         FlushQueue(device, m_allocation, timeline);
     }
 

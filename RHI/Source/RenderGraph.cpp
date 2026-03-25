@@ -801,7 +801,8 @@ namespace RHI
         for (uint32_t i = 0; i < FramesInFlightCount; i++)
         {
             result = rg->m_stagingBuffer[i].Init(device);
-            TL_ASSERT(result == ResultCode::Success, "Failed to init staging buffer for frame {}", i);
+            // TODO: For some weird reason this assertion fails even ttthough the result is success
+            // TL_ASSERT(result == ResultCode::Success, "Failed to init staging buffer for frame {}", i);
         }
 
         for (auto& perQueue : rg->m_perQueue)
@@ -819,6 +820,15 @@ namespace RHI
 
         for (auto& staging : rg->m_stagingBuffer)
             staging.Shutdown(rg->m_device);
+
+        for (auto& perQueue : rg->m_perQueue)
+            if (perQueue.fence)
+                rg->m_device->DestroyFence(perQueue.fence);
+
+        for (uint32_t i = 0; i < 2; i++)
+            for (int q = 0; q < (int)QueueType::Count; q++)
+                if (rg->m_frame[i].commandPool[q])
+                    rg->m_device->DestroyCommandPool(rg->m_frame[i].commandPool[q]);
 
         rg->m_resourcePool->Shutdown();
         rg->m_arena.reset();

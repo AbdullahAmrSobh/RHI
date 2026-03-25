@@ -378,10 +378,11 @@ namespace RHI
         /// @param bindPoint The bind point (graphics or compute) for which to set bind groups.
         /// @param bindGroups Span of bind group binding information to set.
         virtual void SetBindGroups(BindPoint bindPoint, TL::Span<const BindGroupBindingInfo> bindGroups) = 0;
+
         /// @brief Binds a graphics pipeline.
         /// @param pipelineState Pointer to the graphics pipeline.
         /// @param bindGroups Span of bind group binding information.
-        virtual void BindGraphicsPipeline(const GraphicsPipeline* pipelineState)                         = 0;
+        virtual void BindGraphicsPipeline(const GraphicsPipeline* pipelineState) = 0;
 
         /// @brief Binds a compute pipeline.
         /// @param pipelineState Pointer to the compute pipeline.
