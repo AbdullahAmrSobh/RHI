@@ -900,20 +900,26 @@ namespace RHI
         }
     }
 
-    RGImage* RenderGraph::importSwapchain(TL::StringView name, Swapchain& swapchain, Format format)
+    RGImage* RenderGraph::acquireSwapchainImage(TL::StringView name, Swapchain& swapchain, Format format)
     {
         TL_ASSERT(m_state.frameRecording == true);
 
+        auto [image, acquireFence] = swapchain.AcquireImage();
+
         auto frameResource        = TL::constructFrom<RGFrameImage>(&m_arena);
         frameResource->name       = name;
-        frameResource->handle     = swapchain.GetImage();
+        frameResource->handle     = image;
         frameResource->format     = format;
         frameResource->isImported = true;
         m_imagePool.push_back(frameResource);
 
-        m_swapchains.push_back({&swapchain, frameResource});
+        m_swapchains.push_back({&swapchain, frameResource, acquireFence});
 
-        return EmplacePassImage(frameResource, nullptr, {});
+        return EmplacePassImage(frameResource, nullptr, {
+            .usage  = ImageUsage::None,
+            .stage  = PipelineStage::ColorAttachmentOutput,
+            .access = Access::None,
+        });
     }
 
     RGImage* RenderGraph::importImage(TL::StringView name, Image* image, Format format, ImageBarrierState initialState)
@@ -1460,6 +1466,16 @@ namespace RHI
             .stage = PipelineStage::BottomOfPipe,
         };
 
+        for (const auto& sc : m_swapchains)
+        {
+            fenceWaitInfos.push_back({
+                .fence = sc.acquireFence,
+                .value = 0,
+                // TODO: Use frame resource m_state instead of hardcode it here
+                .stage =  PipelineStage::ColorAttachmentOutput,
+            });
+        }
+
         TL::Vector<Swapchain*> swapchains{m_arena};
 
         if (m_beginInfo.rdocDebugCapture)
@@ -1583,7 +1599,6 @@ namespace RHI
             .waitFences        = fenceWaitInfos,
             .commandLists      = commandList,
             .signalFences      = fenceSignalInfos,
-            .acquireSwapchains = swapchains,
             .presentSwapchains = swapchains,
         };
         queue->Submit(queueSubmitInfo);

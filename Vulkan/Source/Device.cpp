@@ -193,25 +193,11 @@ namespace RHI::Vulkan
             });
         }
 
-        for (auto _swapchain : submitInfo.acquireSwapchains)
+        for (auto _swapchain : submitInfo.presentSwapchains)
         {
             ISwapchain* swapchain = (ISwapchain*)_swapchain;
 
-            VkSemaphore acquireSemaphore       = swapchain->m_acquireSemaphore[swapchain->m_acquireSemaphoreIndex];
-            VkSemaphore presentSemaphore       = swapchain->m_presentSemaphore[swapchain->m_presentSemaphoreIndex];
-            swapchain->m_acquireSemaphoreIndex = (swapchain->m_acquireSemaphoreIndex + 1) % ISwapchain::MaxImageCount;
-
-            swapchain->m_acquireSemaphoreIndex += 1;
-            swapchain->m_acquireSemaphoreIndex %= ISwapchain::MaxImageCount;
-
-            // increment down during vkQueuePresent
-            // swapchain->m_presentSemaphoreIndex += 1;
-            // swapchain->m_presentSemaphoreIndex %= ISwapchain::MaxImageCount;
-
-            waitSemaphores.push_back({
-                .sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-                .semaphore = acquireSemaphore,
-            });
+            VkSemaphore presentSemaphore = swapchain->m_presentSemaphore[swapchain->m_presentSemaphoreIndex];
             signalSemaphores.push_back({
                 .sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
                 .semaphore = presentSemaphore,

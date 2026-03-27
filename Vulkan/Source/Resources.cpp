@@ -1480,6 +1480,9 @@ namespace RHI::Vulkan
                 m_device->SetDebugName(m_acquireSemaphore[i], "swapchain: {} - acquire[{}]", m_name, i);
                 m_device->SetDebugName(m_presentSemaphore[i], "swapchain: {} - present[{}]", m_name, i);
             }
+            // Wrap the binary acquire semaphore as a Fence handle so the render graph can
+            // reference it without knowing Vulkan internals.
+            m_acquireFences[i].semaphore = m_acquireSemaphore[i];
         }
         return result;
     }
@@ -1531,49 +1534,9 @@ namespace RHI::Vulkan
         TL::free(m_imageHandle);
     }
 
-    VkResult ISwapchain::CreateSurface(IDevice& device, const SwapchainCreateInfo& createInfo, VkSurfaceKHR& outSurface)
-    {
-        VulkanResult result;
-#ifdef VK_USE_PLATFORM_WIN32_KHR
-        VkWin32SurfaceCreateInfoKHR win32SurfaceCI =
-            {
-                .sType     = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
-                .pNext     = nullptr,
-                .flags     = 0,
-                .hinstance = static_cast<HINSTANCE>(createInfo.win32Window.hinstance),
-                .hwnd      = static_cast<HWND>(createInfo.win32Window.hwnd),
-            };
-        result = vkCreateWin32SurfaceKHR(device.m_instance, &win32SurfaceCI, nullptr, &outSurface);
-#endif
-
-        if (!result)
-        {
-            TL_LOG_ERROR("Failed to create swapchain surface with error: {}", result.AsString());
-        }
-
-        IQueue*  queue = (IQueue*)device.GetQueue(QueueType::Graphics);
-        VkBool32 surfaceSupportPresent;
-        result = vkGetPhysicalDeviceSurfaceSupportKHR(device.m_physicalDevice, queue->m_familyIndex, outSurface, &surfaceSupportPresent);
-        TL_ASSERT(result);
-
-        if (surfaceSupportPresent != VK_TRUE)
-        {
-            TL_LOG_ERROR("surface does not support present: {}", result.AsString());
-            vkDestroySurfaceKHR(device.m_instance, outSurface, nullptr);
-            outSurface = VK_NULL_HANDLE;
-        }
-
-        return VK_SUCCESS;
-    }
-
     uint32_t ISwapchain::GetImagesCount() const
     {
         return m_configuration.imageCount;
-    }
-
-    Image* ISwapchain::GetImage() const
-    {
-        return m_imageHandle;
     }
 
     SurfaceCapabilities ISwapchain::GetSurfaceCapabilities() const
@@ -1803,9 +1766,15 @@ namespace RHI::Vulkan
         return ConvertResult(result);
     }
 
+    SwapchainAcquireResult ISwapchain::AcquireImage()
+    {
+        return {m_imageHandle, &m_acquireFences[m_currentAcquireIndex]};
+    }
+
     VkResult ISwapchain::AcquireNextImage()
     {
-        VkSemaphore acquireSemaphore = m_acquireSemaphore[m_acquireSemaphoreIndex];
+        m_currentAcquireIndex         = m_acquireSemaphoreIndex;
+        VkSemaphore imageAcquireFence = m_acquireSemaphore[m_currentAcquireIndex];
 
         VulkanResult              result;
         VkAcquireNextImageInfoKHR acquireInfo{
@@ -1813,7 +1782,7 @@ namespace RHI::Vulkan
             .pNext      = nullptr,
             .swapchain  = m_swapchain,
             .timeout    = UINT64_MAX,
-            .semaphore  = acquireSemaphore,
+            .semaphore  = imageAcquireFence,
             .fence      = VK_NULL_HANDLE,
             .deviceMask = 0x00000001,
         };
@@ -1834,6 +1803,7 @@ namespace RHI::Vulkan
         if (result.IsSwapchainSuccess())
         {
             updateCurrentImage();
+            m_acquireSemaphoreIndex = (m_acquireSemaphoreIndex + 1) % MaxImageCount;
         }
         else if (result == VK_ERROR_OUT_OF_DATE_KHR)
         {
@@ -1845,6 +1815,7 @@ namespace RHI::Vulkan
                 if (result.IsSwapchainSuccess())
                 {
                     updateCurrentImage();
+                    m_acquireSemaphoreIndex = (m_acquireSemaphoreIndex + 1) % MaxImageCount;
                 }
                 else
                 {
@@ -1859,11 +1830,6 @@ namespace RHI::Vulkan
         else
         {
             TL_LOG_ERROR("Failed to acquire next swapchain image (result: {})", result.AsString());
-        }
-
-        if (result.IsSuccess())
-        {
-            // m_acquireSemaphoreIndex = (m_acquireSemaphoreIndex + 1) % MaxImageCount;
         }
 
         return result;
@@ -1895,6 +1861,41 @@ namespace RHI::Vulkan
         VkResult presentSubmitResult = vkQueuePresentKHR(graphicsQueue->m_queue, &presentInfo);
 
         return presentResult;
+    }
+
+    VkResult CreateSurface(IDevice& device, const SwapchainCreateInfo& createInfo, VkSurfaceKHR& outSurface)
+    {
+        VulkanResult result;
+#ifdef VK_USE_PLATFORM_WIN32_KHR
+        VkWin32SurfaceCreateInfoKHR win32SurfaceCI =
+            {
+                .sType     = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
+                .pNext     = nullptr,
+                .flags     = 0,
+                .hinstance = static_cast<HINSTANCE>(createInfo.win32Window.hinstance),
+                .hwnd      = static_cast<HWND>(createInfo.win32Window.hwnd),
+            };
+        result = vkCreateWin32SurfaceKHR(device.m_instance, &win32SurfaceCI, nullptr, &outSurface);
+#endif
+
+        if (!result)
+        {
+            TL_LOG_ERROR("Failed to create swapchain surface with error: {}", result.AsString());
+        }
+
+        IQueue*  queue = (IQueue*)device.GetQueue(QueueType::Graphics);
+        VkBool32 surfaceSupportPresent;
+        result = vkGetPhysicalDeviceSurfaceSupportKHR(device.m_physicalDevice, queue->m_familyIndex, outSurface, &surfaceSupportPresent);
+        TL_ASSERT(result);
+
+        if (surfaceSupportPresent != VK_TRUE)
+        {
+            TL_LOG_ERROR("surface does not support present: {}", result.AsString());
+            vkDestroySurfaceKHR(device.m_instance, outSurface, nullptr);
+            outSurface = VK_NULL_HANDLE;
+        }
+
+        return VK_SUCCESS;
     }
 
 } // namespace RHI::Vulkan

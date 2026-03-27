@@ -54,7 +54,6 @@ namespace RHI
         TL::Span<FenceSubmitInfo>    waitFences        = {};
         TL::Span<CommandList* const> commandLists      = {};
         TL::Span<FenceSubmitInfo>    signalFences      = {};
-        TL::Span<Swapchain*>         acquireSwapchains = {};
         TL::Span<Swapchain*>         presentSwapchains = {};
     };
 

@@ -68,6 +68,13 @@ namespace RHI
         TL::Vector<Format>              formats;       ///< List of supported image formats
     };
 
+    /// @brief Result of acquiring a swapchain image for the current frame.
+    struct SwapchainAcquireResult
+    {
+        Image* image = nullptr; ///< The acquired swapchain image.
+        Fence* fence = nullptr; ///< Acquire fence; wait on this before writing to the image.
+    };
+
     /// @brief Swapchain object which is an interface between the API and a presentation surface.
     class RHI_EXPORT Swapchain
     {
@@ -76,18 +83,19 @@ namespace RHI
         virtual ~Swapchain() = default;
 
         /// @brief Returns the total number of images in the swapchain's back buffer.
-        virtual uint32_t            GetImagesCount() const = 0;
+        virtual uint32_t               GetImagesCount() const = 0;
 
-        /// @brief Returns the handle to the currently acquired swapchain image.
-        virtual Image*              GetImage() const = 0;
+        /// @brief Acquires the current swapchain image and returns it together with the
+        ///        acquire fence that must be waited on before the image is written to.
+        virtual SwapchainAcquireResult AcquireImage() = 0;
 
         /// @brief Queries the capabilities of the presentation surface.
-        virtual SurfaceCapabilities GetSurfaceCapabilities() const = 0;
+        virtual SurfaceCapabilities    GetSurfaceCapabilities() const = 0;
 
         /// @brief Resizes the swapchain to match new window dimensions.
-        virtual ResultCode          Resize(const ImageSize2D& size) = 0;
+        virtual ResultCode             Resize(const ImageSize2D& size) = 0;
 
         /// @brief Reconfigures the swapchain with new parameters.
-        virtual ResultCode          Configure(const SwapchainConfigureInfo& configInfo) = 0;
+        virtual ResultCode             Configure(const SwapchainConfigureInfo& configInfo) = 0;
     };
 } // namespace RHI

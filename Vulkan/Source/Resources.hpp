@@ -2,7 +2,6 @@
 
 #ifdef RHI_PLATFORM_WINDOWS
     #define WINDOWS_LEAN_AND_MEAN
-    #define VK_USE_PLATFORM_WIN32_KHR
 #else
     #error "Current platfrom is not supported yet"
 #endif
@@ -10,6 +9,7 @@
 #include <RHI/Device.hpp>
 #include <RHI/Resources.hpp>
 #include <RHI/Result.hpp>
+#include <RHI/Swapchain.hpp>
 
 #include <TL/Context.hpp>
 #include <TL/Stacktrace.hpp>
@@ -225,25 +225,24 @@ namespace RHI::Vulkan
     class ISwapchain final : public Swapchain
     {
     public:
-        constexpr static auto MaxImageCount = 4;
-
         ISwapchain();
         ~ISwapchain();
 
         ResultCode Init(IDevice* device, const SwapchainCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
 
-        static VkResult CreateSurface(IDevice& device, const SwapchainCreateInfo& createInfo, VkSurfaceKHR& outSurface);
-
         // Interface
-        uint32_t            GetImagesCount() const override;
-        Image*              GetImage() const override;
-        SurfaceCapabilities GetSurfaceCapabilities() const override;
-        ResultCode          Resize(const ImageSize2D& size) override;
-        ResultCode          Configure(const SwapchainConfigureInfo& configInfo) override;
+        uint32_t               GetImagesCount() const override;
+        SwapchainAcquireResult AcquireImage() override;
+        SurfaceCapabilities    GetSurfaceCapabilities() const override;
+        ResultCode             Resize(const ImageSize2D& size) override;
+        ResultCode             Configure(const SwapchainConfigureInfo& configInfo) override;
 
         VkResult AcquireNextImage();
+
         VkResult Present(TL::Span<Fence* const> fences);
+
+        constexpr static auto MaxImageCount = 4;
 
         IDevice*       m_device    = nullptr;
         VkSwapchainKHR m_swapchain = VK_NULL_HANDLE;
@@ -251,7 +250,8 @@ namespace RHI::Vulkan
 
         uint32_t    m_acquireSemaphoreIndex           = 0;
         VkSemaphore m_acquireSemaphore[MaxImageCount] = {};
-
+        uint32_t    m_currentAcquireIndex             = 0;
+        IFence      m_acquireFences[MaxImageCount]    = {};
         uint32_t    m_presentSemaphoreIndex           = 0;
         VkSemaphore m_presentSemaphore[MaxImageCount] = {};
 
@@ -261,6 +261,8 @@ namespace RHI::Vulkan
         TL::String             m_name                      = {};
         SwapchainConfigureInfo m_configuration             = {};
         uint32_t               m_imageCount                = 0;
-        struct IImage*         m_imageHandle               = nullptr;
+        IImage*                m_imageHandle               = nullptr;
     };
+
+    VkResult CreateSurface(IDevice& device, const SwapchainCreateInfo& createInfo, VkSurfaceKHR& outSurface);
 } // namespace RHI::Vulkan

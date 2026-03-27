@@ -453,8 +453,8 @@ namespace RHI
         /// @brief Ends frame recording.
         void                    EndFrame();
 
-        /// @brief Imports a swapchain image into the render graph.
-        TL_NODISCARD RGImage*   importSwapchain(TL::StringView name, Swapchain& swapchain, Format format);
+        /// @brief Acquires the current swapchain image and imports it into the render graph.
+        TL_NODISCARD RGImage*   acquireSwapchainImage(TL::StringView name, Swapchain& swapchain, Format format);
 
         /// @brief Imports an image into the render graph.
         /// @param initialState The barrier state the image is already in (e.g. CopyDst after streaming).
@@ -550,6 +550,7 @@ namespace RHI
         {
             Swapchain*    swapchain;
             RGFrameImage* frameImage;
+            Fence*        acquireFence;
         };
 
         Device*                          m_device;
