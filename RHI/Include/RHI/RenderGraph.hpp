@@ -476,7 +476,7 @@ namespace RHI
         void                    streamBegin();
         void                    streamEnd();
         void                    streamBufferWrite(Buffer* buffer, size_t offset, TL::Block block);
-        void                    streamImageWrite(Image* image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block);
+        void                    streamImageWrite(Image* image, RHI::Format format, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block);
 
         // Allocates a transient bind group for the current local bind group
         BindGroup*              createBindGroup(RHI::BindGroupLayout* layout);

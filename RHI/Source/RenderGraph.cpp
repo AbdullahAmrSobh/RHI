@@ -1062,7 +1062,7 @@ namespace RHI
         });
     }
 
-    void RenderGraph::streamImageWrite(Image* image, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block)
+    void RenderGraph::streamImageWrite(Image* image, RHI::Format format, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block)
     {
         TL_ASSERT(m_streamingActive, "streamImageWrite called outside streamBegin/streamEnd");
         TL_ASSERT(block.ptr && block.size > 0);
@@ -1074,9 +1074,11 @@ namespace RHI
 
         memcpy(alloc.ptr, block.ptr, block.size);
 
+        uint32_t bytesPerPixel = GetFormatByteSize(format);
+
         uint32_t depth       = size.depth > 0 ? size.depth : 1;
         uint32_t height      = size.height > 0 ? size.height : 1;
-        uint32_t bytesPerRow = (uint32_t)(block.size / (height * depth));
+        uint32_t bytesPerRow = (uint32_t)(block.size / (height * depth  * bytesPerPixel));
 
         m_pendingImageWrites.push_back({
             .dstImage      = image,
