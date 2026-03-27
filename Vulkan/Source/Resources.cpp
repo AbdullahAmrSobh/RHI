@@ -193,12 +193,26 @@ namespace RHI::Vulkan
     inline static VkShaderStageFlags ConvertShaderStage(TL::Flags<ShaderStage> shaderStageFlags)
     {
         VkShaderStageFlags result = 0;
-        if (shaderStageFlags & ShaderStage::Vertex)        result |= VK_SHADER_STAGE_VERTEX_BIT;
-        if (shaderStageFlags & ShaderStage::Pixel)         result |= VK_SHADER_STAGE_FRAGMENT_BIT;
-        if (shaderStageFlags & ShaderStage::Compute)       result |= VK_SHADER_STAGE_COMPUTE_BIT;
-        if (shaderStageFlags & ShaderStage::Hull)          result |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-        if (shaderStageFlags & ShaderStage::Domain)        result |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-        if (shaderStageFlags & ShaderStage::Mesh)          result |= VK_SHADER_STAGE_MESH_BIT_EXT;
+        if (shaderStageFlags & ShaderStage::Vertex) result |= VK_SHADER_STAGE_VERTEX_BIT;
+        if (shaderStageFlags & ShaderStage::Pixel) result |= VK_SHADER_STAGE_FRAGMENT_BIT;
+        if (shaderStageFlags & ShaderStage::Compute) result |= VK_SHADER_STAGE_COMPUTE_BIT;
+        if (shaderStageFlags & ShaderStage::Hull) result |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+        if (shaderStageFlags & ShaderStage::Domain) result |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+        if (shaderStageFlags & ShaderStage::Mesh) result |= VK_SHADER_STAGE_MESH_BIT_EXT;
+
+        if (shaderStageFlags & ShaderStage::Vertex) result |= VK_SHADER_STAGE_VERTEX_BIT;
+        if (shaderStageFlags & ShaderStage::Pixel) result |= VK_SHADER_STAGE_FRAGMENT_BIT;
+        if (shaderStageFlags & ShaderStage::Compute) result |= VK_SHADER_STAGE_COMPUTE_BIT;
+        if (shaderStageFlags & ShaderStage::Hull) result |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+        if (shaderStageFlags & ShaderStage::Domain) result |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+        if (shaderStageFlags & ShaderStage::RayGen) result |= VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+        if (shaderStageFlags & ShaderStage::RayIntersect) result |= VK_SHADER_STAGE_INTERSECTION_BIT_KHR;
+        if (shaderStageFlags & ShaderStage::RayAnyHit) result |= VK_SHADER_STAGE_ANY_HIT_BIT_KHR;
+        if (shaderStageFlags & ShaderStage::RayClosestHit) result |= VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+        if (shaderStageFlags & ShaderStage::RayMiss) result |= VK_SHADER_STAGE_MISS_BIT_KHR;
+        if (shaderStageFlags & ShaderStage::RayCallable) result |= VK_SHADER_STAGE_CALLABLE_BIT_KHR;
+        if (shaderStageFlags & ShaderStage::Mesh) result |= VK_SHADER_STAGE_MESH_BIT_EXT;
+        if (shaderStageFlags & ShaderStage::Amplification) result |= VK_SHADER_STAGE_TASK_BIT_EXT;
         if (shaderStageFlags & ShaderStage::Amplification) result |= VK_SHADER_STAGE_TASK_BIT_EXT;
         return result;
     }
@@ -598,7 +612,7 @@ namespace RHI::Vulkan
         VkDescriptorSetLayoutCreateInfo layoutCI{
             .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
             .pNext        = hasBindless ? &layoutBindingFlagsCI : nullptr,
-            .flags        = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT,
+            .flags        = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT | VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT,
             .bindingCount = (uint32_t)setLayoutBindings.size(),
             .pBindings    = setLayoutBindings.data(),
         };
