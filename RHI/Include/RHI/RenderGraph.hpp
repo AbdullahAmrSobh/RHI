@@ -396,18 +396,20 @@ namespace RHI
     public:
         static constexpr size_t DefaultCapacity = 32u * 1024u * 1024u; // 32 MiB per frame
 
-        ResultCode Init(Device* device, size_t capacity = DefaultCapacity);
-        void       Shutdown(Device* device);
-        void       Reset(); // call at the start of each frame
+        ResultCode              Init(Device* device, size_t capacity = DefaultCapacity);
+        void                    Shutdown(Device* device);
+        void                    Reset(); // call at the start of each frame
 
         struct Allocation
         {
             uint8_t* ptr    = nullptr;
             size_t   offset = 0;
+
             bool     isValid() const { return ptr != nullptr; }
         };
 
         Allocation Allocate(size_t size, size_t alignment = 256);
+
         Buffer*    GetBuffer() const { return m_buffer; }
 
     private:
@@ -601,9 +603,9 @@ namespace RHI
         TL::Vector<PendingBufferWrite> m_pendingBufferWrites{m_arena};
         TL::Vector<PendingImageWrite>  m_pendingImageWrites{m_arena};
 
-        uint64_t      m_activeFrame = 0;
-        PerFrame      m_frame[2];
-        StagingBuffer m_stagingBuffer[FramesInFlightCount];
+        uint64_t                       m_activeFrame = 0;
+        PerFrame                       m_frame[2];
+        StagingBuffer                  m_stagingBuffer[FramesInFlightCount];
 
         struct PerQueue
         {

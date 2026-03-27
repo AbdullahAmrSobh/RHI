@@ -300,9 +300,9 @@ namespace RHI
         return out;
     }
 
-    // ///////////////////////////////////////////////////////////////////////////
-    // /// Pass Resource types
-    // ///////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////
+    /// Pass Resource types
+    ///////////////////////////////////////////////////////////////////////////
 
     RGFrameImage* RenderGraph::CreateFrameImage(TL::StringView name)
     {
@@ -868,6 +868,16 @@ namespace RHI
         {
             ZoneScopedN("Clear");
 
+            m_dependencyLevels.clear();
+            m_bufferPool.clear();
+            m_imagePool.clear();
+            m_passPool.clear();
+            m_swapchains.clear();
+            m_pendingBufferWrites.clear();
+            m_pendingImageWrites.clear();
+            m_streamingActive = false;
+            m_arena.reset();
+
             m_dependencyLevels    = TL::Vector<DependencyLevel>{m_arena};
             m_bufferPool          = TL::Vector<RGFrameBuffer*>{m_arena};
             m_imagePool           = TL::Vector<RGFrameImage*>{m_arena};
@@ -875,8 +885,6 @@ namespace RHI
             m_swapchains          = TL::Vector<SwapchainRGInfo>{m_arena};
             m_pendingBufferWrites = TL::Vector<PendingBufferWrite>{m_arena};
             m_pendingImageWrites  = TL::Vector<PendingImageWrite>{m_arena};
-            m_streamingActive     = false;
-            m_arena.reset();
 
             m_beginInfo = {};
             m_state     = {};
@@ -1525,12 +1533,12 @@ namespace RHI
 
             for (auto& write : m_pendingImageWrites)
             {
-                // Leave images in CopyDst layout — importImage(initialState=CopyDst) will transition from here.
+                // Leave images in ShaderResource layout importImage(initialState=ShaderResource) will transition from here.
                 // This barrier makes the transfer write visible to all subsequent stages.
                 imagePostBarriers.push_back({
                     .image    = write.dstImage,
                     .srcState = {ImageUsage::CopyDst, PipelineStage::Copy, Access::Write},
-                    .dstState = {ImageUsage::CopyDst, PipelineStage::AllCommands, Access::Read},
+                    .dstState = {ImageUsage::ShaderResource, PipelineStage::AllCommands, Access::Read},
                 });
             }
             for (auto& write : m_pendingBufferWrites)
