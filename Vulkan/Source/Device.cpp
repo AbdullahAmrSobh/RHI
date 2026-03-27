@@ -415,6 +415,7 @@ namespace RHI::Vulkan
         if (enablePushDescriptors)
         {
             requiredDeviceExtensions.push_back(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
+            requiredDeviceExtensions.push_back(VK_KHR_MAINTENANCE_6_EXTENSION_NAME);
         }
 
         if (enableMeshShaders)

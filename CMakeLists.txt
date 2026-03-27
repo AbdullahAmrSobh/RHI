@@ -26,12 +26,12 @@ set(RHI_DEVELOPER_MODE ${PROJECT_IS_TOP_LEVEL})
 
 option(TRACY_ENABLE        "Enable Tracy profiler"                          ${PROJECT_IS_TOP_LEVEL})
 option(RHI_DEBUG           "Enable RHI debug mode"                          ${PROJECT_IS_TOP_LEVEL})
-option(RHI_SHADER_COMPILER "Builds RHI shader compiler and reflection tool" OFF)
-option(RHI_BUILD_EXAMPLES  "Build examples tree"                            OFF)
+# option(RHI_SHADER_COMPILER "Builds RHI shader compiler and reflection tool" OFF)
+# option(RHI_BUILD_EXAMPLES  "Build examples tree"                            OFF)
 
-# TODO: REMOVE!!!
-set(RHI_SHADER_COMPILER OFF)
-set(RHI_BUILD_EXAMPLES OFF)
+# # TODO: REMOVE!!!
+# set(RHI_SHADER_COMPILER OFF)
+# set(RHI_BUILD_EXAMPLES OFF)
 
 if(NOT EMSCRIPTEN)
     option(RHI_BACKEND_VULKAN "Enable RHI Vulkan 1.3 Backend"  ON)
@@ -63,6 +63,7 @@ endif()
 
 # ---- Add dependencies ----
 include(cmake/add-target.cmake)
+include(cmake/CPM.cmake)
 include(Packages.cmake)
 
 # ---- Declare library ----
@@ -91,9 +92,9 @@ if(RHI_DEBUG)
     target_compile_definitions(RHI PRIVATE RHI_DEBUG)
 endif()
 
-if(RHI_SHADER_COMPILER)
-    add_subdirectory(ShaderCompiler)
-endif()
+# if(RHI_SHADER_COMPILER)
+    # add_subdirectory(ShaderCompiler)
+# endif()
 
 if(RHI_BACKEND_D3D12)
     add_subdirectory(D3D12)
@@ -107,9 +108,9 @@ if(RHI_BACKEND_WEBGPU)
     add_subdirectory(WebGPU)
 endif()
 
-if(RHI_BUILD_EXAMPLES)
-    add_subdirectory(Examples)
-endif()
+# if(RHI_BUILD_EXAMPLES)
+    # add_subdirectory(Examples)
+# endif()
 
 # ---- Developer mode ----
 if(NOT RHI_DEVELOPER_MODE)

@@ -464,7 +464,23 @@ namespace RHI::Vulkan
         IPipelineLayout*    pipelineLayout = (IPipelineLayout*)m_pipelineLayout;
         IBindGroupLayout*   groupLayout    = pipelineLayout->bindGroupLayouts[firstGroup];
         DescriptorSetWriter writer{m_device, VK_NULL_HANDLE, groupLayout, m_device->m_arena};
+        for (const auto& updateInfo : updateInfos)
+        {
+            for (auto [dstBindings, dstArrayelements, buffers] : updateInfo.buffers)
+            {
+                writer.BindBuffers(dstBindings, dstArrayelements, buffers);
+            }
 
+            for (auto [dstBindings, dstArrayelements, images] : updateInfo.images)
+            {
+                writer.BindImages(dstBindings, dstArrayelements, images);
+            }
+
+            for (auto [dstBindings, dstArrayelements, samplers] : updateInfo.samplers)
+            {
+                writer.BindSamplers(dstBindings, dstArrayelements, samplers);
+            }
+        }
         VkPushDescriptorSetInfo pushDescriptorSetInfo{
             .sType                = VK_STRUCTURE_TYPE_PUSH_DESCRIPTOR_SET_INFO_KHR,
             .pNext                = nullptr,
