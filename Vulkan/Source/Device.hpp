@@ -110,23 +110,6 @@ namespace RHI::Vulkan
         BindGroupAllocator         m_bindGroupAllocator;
         TL::Ptr<class DeleteQueue> m_destroyQueue = nullptr;
         TL::Arena                  m_arena;
-
-    private:
-        // Track resource allocations to report leaks
-        TL::Map<ICommandPool*, TL::Stacktrace>        m_liveCommandPools;
-        TL::Map<IFence*, TL::Stacktrace>              m_liveFences;
-        TL::Map<IQueryPool*, TL::Stacktrace>          m_liveQueryPools;
-        TL::Map<ISwapchain*, TL::Stacktrace>          m_liveSwapchains;
-        TL::Map<IShaderModule*, TL::Stacktrace>       m_liveShaderModules;
-        TL::Map<IImage*, TL::Stacktrace>              m_liveImages;
-        TL::Map<IBuffer*, TL::Stacktrace>             m_liveBuffers;
-        TL::Map<IBindGroupLayout*, TL::Stacktrace>    m_liveBindGroupLayouts;
-        TL::Map<IBindGroup*, TL::Stacktrace>          m_liveBindGroups;
-        TL::Map<IPipelineLayout*, TL::Stacktrace>     m_livePipelineLayouts;
-        TL::Map<IGraphicsPipeline*, TL::Stacktrace>   m_liveGraphicsPipelines;
-        TL::Map<IRayTracingPipeline*, TL::Stacktrace> m_liveRayTracingPipelines;
-        TL::Map<IComputePipeline*, TL::Stacktrace>    m_liveComputePipelines;
-        TL::Map<ISampler*, TL::Stacktrace>            m_liveSamplers;
     };
 
     template<typename T>
@@ -215,17 +198,17 @@ namespace RHI::Vulkan
         }
 
     private:
-        TL::Vector<ResourceDeleteQueueEntry<VmaAllocation>>       m_allocation;
-        TL::Vector<ResourceDeleteQueueEntry<VkBuffer>>            m_buffer;
-        TL::Vector<ResourceDeleteQueueEntry<VkBufferView>>        m_bufferView;
-        TL::Vector<ResourceDeleteQueueEntry<VkImage>>             m_image;
-        TL::Vector<ResourceDeleteQueueEntry<VkImageView>>         m_imageView;
-        TL::Vector<ResourceDeleteQueueEntry<VkSampler>>           m_sampler;
-        TL::Vector<ResourceDeleteQueueEntry<VkPipeline>>          m_pipeline;
-        TL::Vector<ResourceDeleteQueueEntry<VkDescriptorPool>>    m_descriptorPool;
-        TL::Vector<ResourceDeleteQueueEntry<VkQueryPool>>         m_queryPool;
-        TL::Vector<ResourceDeleteQueueEntry<VkSwapchainKHR>>      m_swapchain;
-        TL::Vector<ResourceDeleteQueueEntry<VkSurfaceKHR>>        m_surface;
+        TL::Vector<ResourceDeleteQueueEntry<VmaAllocation>>    m_allocation;
+        TL::Vector<ResourceDeleteQueueEntry<VkBuffer>>         m_buffer;
+        TL::Vector<ResourceDeleteQueueEntry<VkBufferView>>     m_bufferView;
+        TL::Vector<ResourceDeleteQueueEntry<VkImage>>          m_image;
+        TL::Vector<ResourceDeleteQueueEntry<VkImageView>>      m_imageView;
+        TL::Vector<ResourceDeleteQueueEntry<VkSampler>>        m_sampler;
+        TL::Vector<ResourceDeleteQueueEntry<VkPipeline>>       m_pipeline;
+        TL::Vector<ResourceDeleteQueueEntry<VkDescriptorPool>> m_descriptorPool;
+        TL::Vector<ResourceDeleteQueueEntry<VkQueryPool>>      m_queryPool;
+        TL::Vector<ResourceDeleteQueueEntry<VkSwapchainKHR>>   m_swapchain;
+        TL::Vector<ResourceDeleteQueueEntry<VkSurfaceKHR>>     m_surface;
         TL::Vector<ResourceDeleteQueueEntry<VkSemaphore>>      m_semaphore;
         TL::Map<uint64_t, TL::Stacktrace>                      m_pending;
     };

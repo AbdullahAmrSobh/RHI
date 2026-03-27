@@ -1,4 +1,7 @@
 #define VOLK_IMPLEMENTATION
+
+#include <TL/Assert.hpp>
+#define VMA_ASSERT(expr) TL_ASSERT(expr)
 #define VMA_IMPLEMENTATION
 
 #include "RHI-Vulkan/Loader.hpp"
@@ -7,7 +10,6 @@
 #include "Common.hpp"
 
 #include <TL/Log.hpp>
-#include <TL/Assert.hpp>
 #include <TL/Containers/Optional.hpp>
 #include <TL/Allocator/Allocator.hpp>
 
@@ -874,81 +876,6 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        // Report live object stack tracecs
-        {
-            for (auto [ptr, stacktrace] : m_liveCommandPools)
-            {
-                TL_LOG_WARNNING("Leaked: RHI::CommandPool at:\n{}", TL::ReportStacktrace(stacktrace));
-                // DestroyCommandPool(ptr);
-            }
-
-            for (auto [ptr, stacktrace] : m_liveFences)
-            {
-                TL_LOG_WARNNING("Leaked: RHI::Fence at:\n{}", TL::ReportStacktrace(stacktrace));
-                // DestroyFence(ptr);
-            }
-
-            for (auto [ptr, stacktrace] : m_liveSwapchains)
-            {
-                TL_LOG_WARNNING("Leaked: RHI::Swapchain at:\n{}", TL::ReportStacktrace(stacktrace));
-                // DestroySwapchain(ptr);
-            }
-
-            for (auto [ptr, stacktrace] : m_liveShaderModules)
-            {
-                TL_LOG_WARNNING("Leaked: RHI::ShaderModule at:\n{}", TL::ReportStacktrace(stacktrace));
-                // DestroyShaderModule(ptr);
-            }
-
-            for (auto [ptr, stacktrace] : m_liveImages)
-            {
-                TL_LOG_WARNNING("Leaked: RHI::Image at:\n{}", TL::ReportStacktrace(stacktrace));
-                // DestroyImage(ptr);
-            }
-
-            for (auto [ptr, stacktrace] : m_liveBuffers)
-            {
-                TL_LOG_WARNNING("Leaked: RHI::Buffer at:\n{}", TL::ReportStacktrace(stacktrace));
-                // DestroyBuffer(ptr);
-            }
-
-            for (auto [ptr, stacktrace] : m_liveBindGroupLayouts)
-            {
-                TL_LOG_WARNNING("Leaked: RHI::BindGroupLayout at:\n{}", TL::ReportStacktrace(stacktrace));
-                // DestroyBindGroupLayout(ptr);
-            }
-
-            for (auto [ptr, stacktrace] : m_liveBindGroups)
-            {
-                TL_LOG_WARNNING("Leaked: RHI::BindGroup at:\n{}", TL::ReportStacktrace(stacktrace));
-                // DestroyBindGroup(ptr);
-            }
-
-            for (auto [ptr, stacktrace] : m_livePipelineLayouts)
-            {
-                TL_LOG_WARNNING("Leaked: RHI::PipelineLayout at:\n{}", TL::ReportStacktrace(stacktrace));
-                // DestroyPipelineLayout(ptr);
-            }
-
-            for (auto [ptr, stacktrace] : m_liveGraphicsPipelines)
-            {
-                TL_LOG_WARNNING("Leaked: RHI::GraphicsPipeline at:\n{}", TL::ReportStacktrace(stacktrace));
-                // DestroyGraphicsPipeline(ptr);
-            }
-
-            for (auto [ptr, stacktrace] : m_liveComputePipelines)
-            {
-                TL_LOG_WARNNING("Leaked: RHI::ComputePipeline at:\n{}", TL::ReportStacktrace(stacktrace));
-                // DestroyComputePipeline(ptr);
-            }
-
-            for (auto [ptr, stacktrace] : m_liveSamplers)
-            {
-                TL_LOG_WARNNING("Leaked: RHI::Sampler at:\n{}", TL::ReportStacktrace(stacktrace));
-                // DestroySampler(ptr);
-            }
-        }
-
         m_destroyQueue->shutdown(this);
         m_bindGroupAllocator.Shutdown();
 
@@ -1101,23 +1028,20 @@ namespace RHI::Vulkan
     }
 
     template<typename Resource, typename... Args>
-    inline Resource* createImpl(IDevice* device, TL::Map<Resource*, TL::Stacktrace>& liveResources, Args... args)
+    inline Resource* createImpl(IDevice* device, Args... args)
     {
         Resource*  resource = TL ::construct<Resource>();
         ResultCode result   = resource->Init(device, args...);
         if (IsSuccess(result))
         {
-            liveResources.emplace(resource, TL::CaptureStacktrace());
             return resource;
         }
         return nullptr;
     }
 
     template<typename Resource>
-    inline void destroyImpl(IDevice* device, Resource* resource, TL::Map<Resource*, TL::Stacktrace>& liveResources)
+    inline void destroyImpl(IDevice* device, Resource* resource)
     {
-        auto erased = liveResources.erase(resource);
-        TL_ASSERT(erased);
         resource->Shutdown(device);
         TL::destruct(resource);
     }
@@ -1125,35 +1049,35 @@ namespace RHI::Vulkan
     // clang-format off
     // interface implementation
 
-    CommandPool*        IDevice::CreateCommandPool(const CommandPoolCreateInfo& createInfo)                { return createImpl<ICommandPool>(this, this->m_liveCommandPools, createInfo);                             }
-    void                IDevice::DestroyCommandPool(CommandPool* resource)                                 { destroyImpl<ICommandPool>(this, (ICommandPool*)resource, this->m_liveCommandPools);                      }
-    Fence*              IDevice::CreateFence(const FenceCreateInfo& createInfo)                            { return createImpl<IFence>(this, this->m_liveFences, createInfo);                                         }
-    void                IDevice::DestroyFence(Fence* resource)                                             { destroyImpl<IFence>(this, (IFence*)resource, this->m_liveFences);                                        }
-    Swapchain*          IDevice::CreateSwapchain(const SwapchainCreateInfo& createInfo)                    { return createImpl<ISwapchain>(this, this->m_liveSwapchains, createInfo);                                 }
-    void                IDevice::DestroySwapchain(Swapchain* resource)                                     { destroyImpl<ISwapchain>(this, (ISwapchain*)resource, this->m_liveSwapchains);                            }
-    ShaderModule*       IDevice::CreateShaderModule(const ShaderModuleCreateInfo& createInfo)              { return createImpl<IShaderModule>(this, this->m_liveShaderModules, createInfo);                           }
-    void                IDevice::DestroyShaderModule(ShaderModule* resource)                               { destroyImpl<IShaderModule>(this, (IShaderModule*)resource, this->m_liveShaderModules);                   }
-    BindGroupLayout*    IDevice::CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)        { return createImpl<IBindGroupLayout>(this, this->m_liveBindGroupLayouts, createInfo);                     }
-    void                IDevice::DestroyBindGroupLayout(BindGroupLayout* resource)                         { destroyImpl<IBindGroupLayout>(this, (IBindGroupLayout*)resource, this->m_liveBindGroupLayouts);          }
-    BindGroup*          IDevice::CreateBindGroup(const BindGroupCreateInfo& createInfo)                    { return createImpl<IBindGroup>(this, this->m_liveBindGroups, createInfo);                                 }
-    void                IDevice::DestroyBindGroup(BindGroup* resource)                                     { destroyImpl<IBindGroup>(this, (IBindGroup*)resource, this->m_liveBindGroups);                            }
-    QueryPool*          IDevice::CreateQueryPool(const QueryPoolCreateInfo& createInfo)                    { return createImpl<IQueryPool>(this, this->m_liveQueryPools, createInfo);                                 }
-    void                IDevice::DestroyQueryPool(QueryPool* resource)                                     { destroyImpl<IQueryPool>(this, (IQueryPool*)resource, this->m_liveQueryPools);                            }
-    Buffer*             IDevice::CreateBuffer(const BufferCreateInfo& createInfo)                          { return createImpl<IBuffer>(this, this->m_liveBuffers, createInfo);                                       }
-    void                IDevice::DestroyBuffer(Buffer* resource)                                           { destroyImpl<IBuffer>(this, (IBuffer*)resource, this->m_liveBuffers);                                     }
-    Image*              IDevice::CreateImage(const ImageCreateInfo& createInfo)                            { return createImpl<IImage>(this, this->m_liveImages, createInfo);                                         }
-    Image*              IDevice::CreateImageView(const ImageViewCreateInfo& createInfo)                    { return createImpl<IImage>(this, this->m_liveImages, createInfo);                                         }
-    void                IDevice::DestroyImage(Image* resource)                                             { destroyImpl<IImage>(this, (IImage*)resource, this->m_liveImages);                                        }
-    Sampler*            IDevice::CreateSampler(const SamplerCreateInfo& createInfo)                        { return createImpl<ISampler>(this, this->m_liveSamplers, createInfo);                                     }
-    void                IDevice::DestroySampler(Sampler* resource)                                         { destroyImpl<ISampler>(this, (ISampler*)resource, this->m_liveSamplers);                                  }
-    PipelineLayout*     IDevice::CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)          { return createImpl<IPipelineLayout>(this, this->m_livePipelineLayouts, createInfo);                       }
-    void                IDevice::DestroyPipelineLayout(PipelineLayout* resource)                           { destroyImpl<IPipelineLayout>(this, (IPipelineLayout*)resource, this->m_livePipelineLayouts);             }
-    GraphicsPipeline*   IDevice::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)      { return createImpl<IGraphicsPipeline>(this, this->m_liveGraphicsPipelines, createInfo);                   }
-    void                IDevice::DestroyGraphicsPipeline(GraphicsPipeline* resource)                       { destroyImpl<IGraphicsPipeline>(this, (IGraphicsPipeline*)resource, this->m_liveGraphicsPipelines);       }
-    RayTracingPipeline* IDevice::CreateRayTracingPipeline(const RayTracingPipelineCreateInfo& createInfo)  { return createImpl<IRayTracingPipeline>(this, this->m_liveRayTracingPipelines, createInfo);               }
-    void                IDevice::DestroyRayTracingPipeline(RayTracingPipeline* resource)                   { destroyImpl<IRayTracingPipeline>(this, (IRayTracingPipeline*)resource, this->m_liveRayTracingPipelines); }
-    ComputePipeline*    IDevice::CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)        { return createImpl<IComputePipeline>(this, this->m_liveComputePipelines, createInfo);                     }
-    void                IDevice::DestroyComputePipeline(ComputePipeline* resource)                         { destroyImpl<IComputePipeline>(this, (IComputePipeline*)resource, this->m_liveComputePipelines);          }
+    CommandPool*        IDevice::CreateCommandPool(const CommandPoolCreateInfo& createInfo)                { return createImpl<ICommandPool>(this, createInfo); }
+    void                IDevice::DestroyCommandPool(CommandPool* resource)                                 { destroyImpl<ICommandPool>(this, (ICommandPool*)resource); }
+    Fence*              IDevice::CreateFence(const FenceCreateInfo& createInfo)                            { return createImpl<IFence>(this, createInfo); }
+    void                IDevice::DestroyFence(Fence* resource)                                             { destroyImpl<IFence>(this, (IFence*)resource); }
+    Swapchain*          IDevice::CreateSwapchain(const SwapchainCreateInfo& createInfo)                    { return createImpl<ISwapchain>(this, createInfo); }
+    void                IDevice::DestroySwapchain(Swapchain* resource)                                     { destroyImpl<ISwapchain>(this, (ISwapchain*)resource); }
+    ShaderModule*       IDevice::CreateShaderModule(const ShaderModuleCreateInfo& createInfo)              { return createImpl<IShaderModule>(this, createInfo); }
+    void                IDevice::DestroyShaderModule(ShaderModule* resource)                               { destroyImpl<IShaderModule>(this, (IShaderModule*)resource); }
+    BindGroupLayout*    IDevice::CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)        { return createImpl<IBindGroupLayout>(this, createInfo); }
+    void                IDevice::DestroyBindGroupLayout(BindGroupLayout* resource)                         { destroyImpl<IBindGroupLayout>(this, (IBindGroupLayout*)resource); }
+    BindGroup*          IDevice::CreateBindGroup(const BindGroupCreateInfo& createInfo)                    { return createImpl<IBindGroup>(this, createInfo); }
+    void                IDevice::DestroyBindGroup(BindGroup* resource)                                     { destroyImpl<IBindGroup>(this, (IBindGroup*)resource); }
+    QueryPool*          IDevice::CreateQueryPool(const QueryPoolCreateInfo& createInfo)                    { return createImpl<IQueryPool>(this, createInfo); }
+    void                IDevice::DestroyQueryPool(QueryPool* resource)                                     { destroyImpl<IQueryPool>(this, (IQueryPool*)resource); }
+    Buffer*             IDevice::CreateBuffer(const BufferCreateInfo& createInfo)                          { return createImpl<IBuffer>(this, createInfo); }
+    void                IDevice::DestroyBuffer(Buffer* resource)                                           { destroyImpl<IBuffer>(this, (IBuffer*)resource); }
+    Image*              IDevice::CreateImage(const ImageCreateInfo& createInfo)                            { return createImpl<IImage>(this, createInfo); }
+    Image*              IDevice::CreateImageView(const ImageViewCreateInfo& createInfo)                    { return createImpl<IImage>(this, createInfo); }
+    void                IDevice::DestroyImage(Image* resource)                                             { destroyImpl<IImage>(this, (IImage*)resource); }
+    Sampler*            IDevice::CreateSampler(const SamplerCreateInfo& createInfo)                        { return createImpl<ISampler>(this, createInfo); }
+    void                IDevice::DestroySampler(Sampler* resource)                                         { destroyImpl<ISampler>(this, (ISampler*)resource); }
+    PipelineLayout*     IDevice::CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)          { return createImpl<IPipelineLayout>(this, createInfo); }
+    void                IDevice::DestroyPipelineLayout(PipelineLayout* resource)                           { destroyImpl<IPipelineLayout>(this, (IPipelineLayout*)resource); }
+    GraphicsPipeline*   IDevice::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)      { return createImpl<IGraphicsPipeline>(this, createInfo); }
+    void                IDevice::DestroyGraphicsPipeline(GraphicsPipeline* resource)                       { destroyImpl<IGraphicsPipeline>(this, (IGraphicsPipeline*)resource); }
+    RayTracingPipeline* IDevice::CreateRayTracingPipeline(const RayTracingPipelineCreateInfo& createInfo)  { return createImpl<IRayTracingPipeline>(this, createInfo); }
+    void                IDevice::DestroyRayTracingPipeline(RayTracingPipeline* resource)                   { destroyImpl<IRayTracingPipeline>(this, (IRayTracingPipeline*)resource); }
+    ComputePipeline*    IDevice::CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)        { return createImpl<IComputePipeline>(this, createInfo); }
+    void                IDevice::DestroyComputePipeline(ComputePipeline* resource)                         { destroyImpl<IComputePipeline>(this, (IComputePipeline*)resource); }
 
     // clang-format on
 
