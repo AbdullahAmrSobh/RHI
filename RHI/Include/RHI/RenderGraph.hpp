@@ -376,8 +376,8 @@ namespace RHI
         ResultCode Init(Device* device);
         void       Shutdown();
 
-        Image*     InitTransientImage(RGFrameImage* rgImage);
-        Buffer*    InitTransientBuffer(RGFrameBuffer* rgBuffer);
+        Image*     InitTransientImage(RGFrameImage* rgImage, bool verbose);
+        Buffer*    InitTransientBuffer(RGFrameBuffer* rgBuffer, bool verbose);
 
         // Create or retrieve an image view for a given image and subresource range.
         // In this design, an image view is represented as an RGImage that aliases the parent image's resources.
@@ -429,6 +429,8 @@ namespace RHI
     {
         bool        rdocDebugCapture   = false;
         TL::String* dumpGraphVizString = nullptr;
+        /// @brief Enable verbose debug logging of resource creations, dependencies, barriers, and pass execution.
+        bool        verboseDebug       = false;
     };
 
     class RHI_EXPORT RenderGraph
@@ -466,6 +468,7 @@ namespace RHI
 
         /// @brief Adds a pass to the render graph.
         TL_MAYBE_UNUSED RGPass* addPass(TL::StringView name, RGPassType type, ImageSize2D size2D);
+        TL_MAYBE_UNUSED RGPass* addComputePass(TL::StringView name);
         void                    submitPass(RGPass* pass, PassExecuteCallback&& executeCallback);
 
         /// @brief Returns render graph resource's handle.

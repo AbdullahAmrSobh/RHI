@@ -484,6 +484,14 @@ namespace RHI
 
     RGImage* RGPass::createImage(const RGImageCreateInfo& ci, RGImageUsage usage)
     {
+        if (m_renderGraph->m_beginInfo.verboseDebug)
+            TL::LogInfo("[RenderGraph]     Pass '{}': Create image '{}' ({}x{}x{})",
+                m_name,
+                ci.name,
+                ci.size.width,
+                ci.size.height,
+                ci.size.depth);
+
         RGFrameImage* frameImage = m_renderGraph->CreateFrameImage(ci.name);
         frameImage->type         = ci.type;
         frameImage->size         = ci.size;
@@ -515,6 +523,9 @@ namespace RHI
 
     RGImage* RGPass::writeImage(RGImage* image, const ImageSubresourceRange& range, RGImageUsage usage)
     {
+        if (m_renderGraph->m_beginInfo.verboseDebug)
+            TL::LogInfo("[RenderGraph]     Pass '{}': Write image '{}'", m_name, image->m_frameResource->name);
+
         // find or create RGImage for that view (represented by EmplacePassImage)
         RGImage* rgView = m_renderGraph->EmplacePassImage(image->m_frameResource, this, {});
 
@@ -554,6 +565,9 @@ namespace RHI
 
     void RGPass::readImage(RGImage* image, const ImageSubresourceRange& range, RGImageUsage usage)
     {
+        if (m_renderGraph->m_beginInfo.verboseDebug)
+            TL::LogInfo("[RenderGraph]     Pass '{}': Read image '{}'", m_name, image->m_frameResource->name);
+
         m_renderGraph->AddDependency(image->m_producer, this);
 
         auto [imageUsage, stage, access] = getUsageAndStage(usage);
@@ -576,6 +590,9 @@ namespace RHI
 
     RGBuffer* RGPass::createBuffer(const RGBufferCreateInfo& ci, RGBufferUsage usage)
     {
+        if (m_renderGraph->m_beginInfo.verboseDebug)
+            TL::LogInfo("[RenderGraph]     Pass '{}': Create buffer '{}' ({} bytes)", m_name, ci.name, ci.size);
+
         RGFrameBuffer* frameBuffer = m_renderGraph->CreateFrameBuffer(ci.name);
         frameBuffer->size          = ci.size;
         m_renderGraph->m_bufferPool.push_back(frameBuffer);
@@ -600,6 +617,9 @@ namespace RHI
 
     RGBuffer* RGPass::readBuffer(RGBuffer* buffer, const BufferSubregion& subregion, RGBufferUsage usage)
     {
+        if (m_renderGraph->m_beginInfo.verboseDebug)
+            TL::LogInfo("[RenderGraph]     Pass '{}': Read buffer '{}'", m_name, buffer->m_frameResource->name);
+
         m_renderGraph->AddDependency(buffer->m_producer, this);
 
         auto [bufferUsage, stage, access] = getUsageAndStage(usage);
@@ -623,6 +643,9 @@ namespace RHI
 
     RGBuffer* RGPass::writeBuffer(RGBuffer* buffer, const BufferSubregion& subregion, RGBufferUsage usage)
     {
+        if (m_renderGraph->m_beginInfo.verboseDebug)
+            TL::LogInfo("[RenderGraph]     Pass '{}': Write buffer '{}'", m_name, buffer->m_frameResource->name);
+
         auto buf = m_renderGraph->EmplacePassBuffer(buffer->m_frameResource, this, {});
 
         m_renderGraph->AddDependency(buffer->m_producer, this);
@@ -698,7 +721,7 @@ namespace RHI
         m_bufferCache.clear();
     }
 
-    Image* RenderGraphResourcePool::InitTransientImage(RGFrameImage* rgImage)
+    Image* RenderGraphResourcePool::InitTransientImage(RGFrameImage* rgImage, bool verbose)
     {
         auto it = m_imageCache.find(rgImage->name);
 
@@ -716,34 +739,52 @@ namespace RHI
             .arrayCount  = rgImage->arrayCount,
         };
 
-        // First try to find a in cache
+        // First try to find in cache
         if (it != m_imageCache.end())
         {
             const auto& [cachedCI, handle] = it->second;
             if (cachedCI == imageCI)
+            {
+                if (verbose)
+                    TL::LogInfo("[RenderGraph]   Transient image '{}': reused from cache ({}x{}x{} {} mips={} layers={})",
+                        rgImage->name,
+                        rgImage->size.width,
+                        rgImage->size.height,
+                        rgImage->size.depth,
+                        Debug::ToString(rgImage->format),
+                        rgImage->mipLevels,
+                        rgImage->arrayCount);
                 return handle;
-            // Resource with same name, but different properties were found, so recreate the resource.
-            TL::LogInfo("...Recreating resource {}\n {}", rgImage->name, Debug::ToString(imageCI));
+            }
+            // Resource with same name but different properties — recreate.
+            if (verbose)
+                TL::LogInfo("[RenderGraph]   Transient image '{}': RECREATING (properties changed)", rgImage->name);
             m_device->DestroyImage(handle);
-            m_imageCache.erase(it); // No need (I think) as
+            m_imageCache.erase(it);
         }
         else
         {
-            TL::LogInfo("Creating image {}", Debug::ToString(imageCI));
+            if (verbose)
+                TL::LogInfo("[RenderGraph]   Transient image '{}': ALLOCATING ({}x{}x{} {} mips={} layers={})",
+                    rgImage->name,
+                    rgImage->size.width,
+                    rgImage->size.height,
+                    rgImage->size.depth,
+                    Debug::ToString(rgImage->format),
+                    rgImage->mipLevels,
+                    rgImage->arrayCount);
         }
 
         auto [_, handle] = m_imageCache[rgImage->name] = std::pair{imageCI, m_device->CreateImage(imageCI)};
         return handle;
     }
 
-    Buffer* RenderGraphResourcePool::InitTransientBuffer(RGFrameBuffer* rgBuffer)
+    Buffer* RenderGraphResourcePool::InitTransientBuffer(RGFrameBuffer* rgBuffer, bool verbose)
     {
         auto it = m_bufferCache.find(rgBuffer->name);
 
         if (rgBuffer->isImported)
-        {
             return rgBuffer->handle;
-        }
 
         BufferCreateInfo ci{
             .name       = rgBuffer->name.c_str(),
@@ -755,16 +796,27 @@ namespace RHI
         {
             const auto& [cachedCI, handle] = it->second;
             if (cachedCI == ci)
+            {
+                if (verbose)
+                    TL::LogInfo("[RenderGraph]   Transient buffer '{}': reused from cache ({} bytes)",
+                        rgBuffer->name,
+                        rgBuffer->size);
                 return handle;
-
-            // Resource with same name, but different properties were found, so recreate the resource.
-            TL::LogInfo("...Recreating resource {}\n {}", rgBuffer->name, Debug::ToString(ci));
+            }
+            // Resource with same name but different properties — recreate.
+            if (verbose)
+                TL::LogInfo("[RenderGraph]   Transient buffer '{}': RECREATING (properties changed, {} bytes)",
+                    rgBuffer->name,
+                    rgBuffer->size);
             m_device->DestroyBuffer(handle);
             m_bufferCache.erase(it);
         }
         else
         {
-            TL::LogInfo("Creating buffer {}", Debug::ToString(ci));
+            if (verbose)
+                TL::LogInfo("[RenderGraph]   Transient buffer '{}': ALLOCATING ({} bytes)",
+                    rgBuffer->name,
+                    rgBuffer->size);
         }
 
         auto [_, handle] = m_bufferCache[rgBuffer->name] = std::pair{ci, m_device->CreateBuffer(ci)};
@@ -845,6 +897,9 @@ namespace RHI
         m_beginInfo            = beginInfo;
         m_state.frameRecording = true;
 
+        if (m_beginInfo.verboseDebug)
+            TL::LogInfo("[RenderGraph] ====== BeginFrame (frame slot {}) ======", m_activeFrame);
+
         m_stagingBuffer[m_activeFrame].Reset();
 
         for (auto& pool : m_frame[m_activeFrame].commandPool)
@@ -859,6 +914,12 @@ namespace RHI
 
         TL_ASSERT(m_state.frameRecording == true);
         m_state.frameRecording = false;
+
+        if (m_beginInfo.verboseDebug)
+            TL::LogInfo("[RenderGraph] ====== EndFrame: {} passes, {} images, {} buffers ======",
+                m_passPool.size(),
+                m_imagePool.size(),
+                m_bufferPool.size());
 
         Compile();
         Execute();
@@ -904,6 +965,9 @@ namespace RHI
     {
         TL_ASSERT(m_state.frameRecording == true);
 
+        if (m_beginInfo.verboseDebug)
+            TL::LogInfo("[RenderGraph]   Import swapchain image: '{}'", name);
+
         auto [image, acquireFence] = swapchain.AcquireImage();
 
         auto frameResource        = TL::constructFrom<RGFrameImage>(&m_arena);
@@ -915,16 +979,23 @@ namespace RHI
 
         m_swapchains.push_back({&swapchain, frameResource, acquireFence});
 
-        return EmplacePassImage(frameResource, nullptr, {
-            .usage  = ImageUsage::None,
-            .stage  = PipelineStage::ColorAttachmentOutput,
-            .access = Access::None,
-        });
+        return EmplacePassImage(
+            frameResource,
+            nullptr,
+            {
+                .usage  = ImageUsage::None,
+                .stage  = PipelineStage::ColorAttachmentOutput,
+                .access = Access::None,
+            });
     }
 
     RGImage* RenderGraph::importImage(TL::StringView name, Image* image, Format format, ImageBarrierState initialState)
     {
         TL_ASSERT(m_state.frameRecording == true);
+
+        if (m_beginInfo.verboseDebug)
+            TL::LogInfo("[RenderGraph]   Import image: '{}'", name);
+
         auto frameImage        = TL::constructFrom<RGFrameImage>(&m_arena);
         frameImage->name       = name;
         frameImage->handle     = image;
@@ -937,6 +1008,10 @@ namespace RHI
     RGBuffer* RenderGraph::importBuffer(TL::StringView name, Buffer* buffer, BufferBarrierState initialState)
     {
         TL_ASSERT(m_state.frameRecording == true);
+
+        if (m_beginInfo.verboseDebug)
+            TL::LogInfo("[RenderGraph]   Import buffer: '{}'", name);
+
         auto frameBuffer        = TL::constructFrom<RGFrameBuffer>(&m_arena);
         frameBuffer->name       = name;
         frameBuffer->handle     = buffer;
@@ -951,7 +1026,34 @@ namespace RHI
         TL_ASSERT(m_state.frameRecording == true);
         uint32_t indexInUnorderedList = m_passPool.size();
 
+        if (m_beginInfo.verboseDebug)
+        {
+            const char* typeStr = type == RGPassType::Graphics       ? "Graphics"
+                                  : type == RGPassType::Compute      ? "Compute"
+                                  : type == RGPassType::AsyncCompute ? "AsyncCompute"
+                                                                     : "Transfer";
+            TL::LogInfo("[RenderGraph]   AddPass: '{}' ({})", name, typeStr);
+        }
+
         RGPass* pass = TL::constructFrom<RGPass>(&m_arena, this, name, type, size2D);
+        m_passPool.emplace_back(pass);
+        pass->m_indexInUnorderedList = indexInUnorderedList;
+        return pass;
+    }
+
+    RGPass* RenderGraph::addComputePass(TL::StringView name)
+    {
+        ZoneScoped;
+        TL_ASSERT(m_state.frameRecording == true);
+        uint32_t indexInUnorderedList = m_passPool.size();
+
+        if (m_beginInfo.verboseDebug)
+        {
+            const char* typeStr = "Compute";
+            TL::LogInfo("[RenderGraph]   AddPass: '{}' ({})", name, typeStr);
+        }
+
+        RGPass* pass = TL::constructFrom<RGPass>(&m_arena, this, name, RGPassType::Compute, RHI::ImageSize2D{});
         m_passPool.emplace_back(pass);
         pass->m_indexInUnorderedList = indexInUnorderedList;
         return pass;
@@ -1084,7 +1186,7 @@ namespace RHI
 
         uint32_t depth       = size.depth > 0 ? size.depth : 1;
         uint32_t height      = size.height > 0 ? size.height : 1;
-        uint32_t bytesPerRow = (uint32_t)(block.size / (height * depth  * bytesPerPixel));
+        uint32_t bytesPerRow = (uint32_t)(block.size / (height * depth * bytesPerPixel));
 
         m_pendingImageWrites.push_back({
             .dstImage      = image,
@@ -1236,12 +1338,15 @@ namespace RHI
     {
         ZoneScoped;
 
+        if (m_beginInfo.verboseDebug)
+            TL::LogInfo("[RenderGraph] -- CreateTransientResources --");
+
         for (auto frameImage : m_imagePool)
         {
             if (frameImage->isImported)
                 continue;
 
-            frameImage->handle = m_resourcePool->InitTransientImage(frameImage);
+            frameImage->handle = m_resourcePool->InitTransientImage(frameImage, m_beginInfo.verboseDebug);
         }
 
         for (auto frameBuffer : m_bufferPool)
@@ -1249,7 +1354,7 @@ namespace RHI
             if (frameBuffer->isImported)
                 continue;
 
-            frameBuffer->handle = m_resourcePool->InitTransientBuffer(frameBuffer);
+            frameBuffer->handle = m_resourcePool->InitTransientBuffer(frameBuffer, m_beginInfo.verboseDebug);
         }
     }
 
@@ -1264,7 +1369,8 @@ namespace RHI
                 // if (pass->m_state.culled)
                 //     continue;
 
-                // TL::LogInfo("Collecting {} barriers", pass->GetName());
+                if (m_beginInfo.verboseDebug)
+                    TL::LogInfo("[RenderGraph]   Building barriers for pass '{}'", pass->m_name);
 
                 for (auto& dep : pass->m_imageDependencies)
                 {
@@ -1278,18 +1384,17 @@ namespace RHI
                         .dstState = dep.state,
                     });
 
-#if RHI_DEBUG_RG_VERBOSE
-                    TL::LogInfo(
-                        "Image Barrier: {} "
-                        "src (access={} stage={} usage={}) -> dst (access={} stage={} usage={})",
-                        resource->m_frameResource->name,
-                        Debug::ToString(resource->m_state.access),
-                        Debug::ToString(resource->m_state.stage),
-                        Debug::ToString(resource->m_state.usage),
-                        Debug::ToString(dep.state.access),
-                        Debug::ToString(dep.state.stage),
-                        Debug::ToString(dep.state.usage));
-#endif
+                    if (m_beginInfo.verboseDebug)
+                        TL::LogInfo(
+                            "[RenderGraph]     Image barrier: '{}' "
+                            "src (access={} stage={} usage={}) -> dst (access={} stage={} usage={})",
+                            resource->m_frameResource->name,
+                            Debug::ToString(resource->m_state.access),
+                            Debug::ToString(resource->m_state.stage),
+                            Debug::ToString(resource->m_state.usage),
+                            Debug::ToString(dep.state.access),
+                            Debug::ToString(dep.state.stage),
+                            Debug::ToString(dep.state.usage));
 
                     resource->m_state = dep.state;
                 }
@@ -1306,18 +1411,17 @@ namespace RHI
                         .dstState = dep.state,
                     });
 
-#if RHI_DEBUG_RG_VERBOSE
-                    TL::LogInfo(
-                        "Buffer Barrier: {} "
-                        "src (access={} stage={} usage={}) -> dst (access={} stage={} usage={})",
-                        resource->m_frameResource->name,
-                        Debug::ToString(resource->m_state.access),
-                        Debug::ToString(resource->m_state.stage),
-                        Debug::ToString(resource->m_state.usage),
-                        Debug::ToString(dep.state.access),
-                        Debug::ToString(dep.state.stage),
-                        Debug::ToString(dep.state.usage));
-#endif
+                    if (m_beginInfo.verboseDebug)
+                        TL::LogInfo(
+                            "[RenderGraph]     Buffer barrier: '{}' "
+                            "src (access={} stage={} usage={}) -> dst (access={} stage={} usage={})",
+                            resource->m_frameResource->name,
+                            Debug::ToString(resource->m_state.access),
+                            Debug::ToString(resource->m_state.stage),
+                            Debug::ToString(resource->m_state.usage),
+                            Debug::ToString(dep.state.access),
+                            Debug::ToString(dep.state.stage),
+                            Debug::ToString(dep.state.usage));
 
                     resource->m_state = dep.state;
                 }
@@ -1340,6 +1444,57 @@ namespace RHI
         case RGPassType::Transfer:     markerColor = Colors::TransferQueue; break;
         }
         commandList->PushDebugMarker(pass->name().data(), markerColor);
+
+        if (m_beginInfo.verboseDebug)
+        {
+            TL::LogInfo("[RenderGraph]   Execute pass '{}' ({} image barriers, {} buffer barriers)",
+                pass->m_name,
+                pass->m_barriers.imageBarriers.size(),
+                pass->m_barriers.bufferBarriers.size());
+
+            for (const auto& b : pass->m_barriers.imageBarriers)
+            {
+                // Resolve name by finding the matching frame resource
+                TL::StringView name = "<unknown>";
+                for (const auto& dep : pass->m_imageDependencies)
+                {
+                    if (dep.image->m_frameResource->handle == b.image)
+                    {
+                        name = dep.image->m_frameResource->name;
+                        break;
+                    }
+                }
+                TL::LogInfo("[RenderGraph]     Image '{}': ({} {} {}) -> ({} {} {})",
+                    name,
+                    Debug::ToString(b.srcState.usage),
+                    Debug::ToString(b.srcState.stage),
+                    Debug::ToString(b.srcState.access),
+                    Debug::ToString(b.dstState.usage),
+                    Debug::ToString(b.dstState.stage),
+                    Debug::ToString(b.dstState.access));
+            }
+
+            for (const auto& b : pass->m_barriers.bufferBarriers)
+            {
+                TL::StringView name = "<unknown>";
+                for (const auto& dep : pass->m_bufferDependencies)
+                {
+                    if (dep.buffer->m_frameResource->handle == b.buffer)
+                    {
+                        name = dep.buffer->m_frameResource->name;
+                        break;
+                    }
+                }
+                TL::LogInfo("[RenderGraph]     Buffer '{}': ({} {} {}) -> ({} {} {})",
+                    name,
+                    Debug::ToString(b.srcState.usage),
+                    Debug::ToString(b.srcState.stage),
+                    Debug::ToString(b.srcState.access),
+                    Debug::ToString(b.dstState.usage),
+                    Debug::ToString(b.dstState.stage),
+                    Debug::ToString(b.dstState.access));
+            }
+        }
 
         // const auto& [prebarriers, preImageBarriers, preBufferBarriers] = pass->m_barriers[RGPass::Prilogue];
         const auto& [prebarriers, preImageBarriers, preBufferBarriers] = pass->m_barriers;
@@ -1472,7 +1627,7 @@ namespace RHI
                 .fence = sc.acquireFence,
                 .value = 0,
                 // TODO: Use frame resource m_state instead of hardcode it here
-                .stage =  PipelineStage::ColorAttachmentOutput,
+                .stage = PipelineStage::ColorAttachmentOutput,
             });
         }
 
