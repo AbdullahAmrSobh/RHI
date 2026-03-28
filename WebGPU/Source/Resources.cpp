@@ -877,7 +877,7 @@ namespace RHI::WebGPU
             case WGPUMapAsyncStatus_Aborted:
             case WGPUMapAsyncStatus_Force32:
                 if (message.data)
-                    TL_LOG_ERROR("RHI::WebGPU: Failed to mapped buffer - {}", message.data);
+                    TL::LogError("RHI::WebGPU: Failed to mapped buffer - {}", message.data);
             }
         };
         WGPUBufferMapCallbackInfo mapCallbackInfo{

@@ -186,7 +186,7 @@ namespace RHI::Vulkan
             if (auto it = m_pending.find(key); it != m_pending.end())
             {
                 auto st = TL::ReportStacktrace(it->second);
-                TL_LOG_ERROR("Object was already requested for deletion at {}", st);
+                TL::LogError("Object was already requested for deletion at {}", st);
                 TL_UNREACHABLE();
             }
             else

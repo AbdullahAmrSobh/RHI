@@ -1635,7 +1635,7 @@ namespace RHI::Vulkan
         VkImageUsageFlags imageUsage = ConvertImageUsageFlags(configInfo.imageUsage);
         if ((imageUsage & surfaceCaps.supportedUsageFlags) != imageUsage)
         {
-            TL_LOG_ERROR("Failed to create swapchain, image usage flags not supported");
+            TL::LogError("Failed to create swapchain, image usage flags not supported");
             return ResultCode::ErrorInvalidArguments;
         }
 
@@ -1645,7 +1645,7 @@ namespace RHI::Vulkan
         extent.height     = std::clamp(extent.height, surfaceCaps.minImageExtent.height, surfaceCaps.maxImageExtent.height);
         if (extent.width != configInfo.size.width || extent.height != configInfo.size.height)
         {
-            TL_LOG_WARNNING(
+            TL::LogWarn(
                 "Swapchain size clamped from requested ({}, {}) to supported ({}, {})",
                 configInfo.size.width,
                 configInfo.size.height,
@@ -1657,7 +1657,7 @@ namespace RHI::Vulkan
         uint32_t imageCount = std::clamp(configInfo.imageCount, surfaceCaps.minImageCount, surfaceCaps.maxImageCount);
         if (imageCount != configInfo.imageCount)
         {
-            TL_LOG_WARNNING(
+            TL::LogWarn(
                 "Swapchain image count clamped from requested ({}) to supported ({}, min: {}, max: {})",
                 configInfo.imageCount,
                 imageCount,
@@ -1807,7 +1807,7 @@ namespace RHI::Vulkan
         }
         else if (result == VK_ERROR_OUT_OF_DATE_KHR)
         {
-            TL_LOG_WARNNING("Swapchain is out of date, attempting to reconfigure (result: {})", result.AsString());
+            TL::LogWarn("Swapchain is out of date, attempting to reconfigure (result: {})", result.AsString());
             if (Configure(m_configuration) == ResultCode::Success)
             {
                 acquireInfo.swapchain = m_swapchain;
@@ -1819,17 +1819,17 @@ namespace RHI::Vulkan
                 }
                 else
                 {
-                    TL_LOG_ERROR("Failed to acquire next image after swapchain reconfiguration (result: {})", result.AsString());
+                    TL::LogError("Failed to acquire next image after swapchain reconfiguration (result: {})", result.AsString());
                 }
             }
             else
             {
-                TL_LOG_ERROR("Failed to reconfigure swapchain after out-of-date/suboptimal error.");
+                TL::LogError("Failed to reconfigure swapchain after out-of-date/suboptimal error.");
             }
         }
         else
         {
-            TL_LOG_ERROR("Failed to acquire next swapchain image (result: {})", result.AsString());
+            TL::LogError("Failed to acquire next swapchain image (result: {})", result.AsString());
         }
 
         return result;
@@ -1880,7 +1880,7 @@ namespace RHI::Vulkan
 
         if (!result)
         {
-            TL_LOG_ERROR("Failed to create swapchain surface with error: {}", result.AsString());
+            TL::LogError("Failed to create swapchain surface with error: {}", result.AsString());
         }
 
         IQueue*  queue = (IQueue*)device.GetQueue(QueueType::Graphics);
@@ -1890,7 +1890,7 @@ namespace RHI::Vulkan
 
         if (surfaceSupportPresent != VK_TRUE)
         {
-            TL_LOG_ERROR("surface does not support present: {}", result.AsString());
+            TL::LogError("surface does not support present: {}", result.AsString());
             vkDestroySurfaceKHR(device.m_instance, outSurface, nullptr);
             outSurface = VK_NULL_HANDLE;
         }

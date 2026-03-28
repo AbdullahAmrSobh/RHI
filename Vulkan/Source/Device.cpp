@@ -87,10 +87,10 @@ namespace RHI::Vulkan
 
         switch (messageSeverity)
         {
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: TL_LOG_INFO("{}", message); break;
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:    TL_LOG_INFO("{}", message); break;
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: TL_LOG_WARNNING("{}", message); break;
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:   TL_LOG_ERROR("{}", message); break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: TL::LogInfo("{}", message); break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:    TL::LogInfo("{}", message); break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: TL::LogWarn("{}", message); break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:   TL::LogError("{}", message); break;
         default:                                              TL_UNREACHABLE();
         }
 
@@ -476,7 +476,7 @@ namespace RHI::Vulkan
 
             if (m_physicalDevice == VK_NULL_HANDLE)
             {
-                TL_LOG_ERROR("RHI Vulkan: No suitable physical device found.");
+                TL::LogError("RHI Vulkan: No suitable physical device found.");
                 return ResultCode::ErrorUnknown;
             }
         }

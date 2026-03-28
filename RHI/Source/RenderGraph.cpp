@@ -22,7 +22,7 @@ namespace RHI
             auto [library, result] = TL::Library::open("renderdoc.dll");
             if (result.IsError())
             {
-                TL_LOG_ERROR("Failed to load RenderDoc API: {}", result.GetMessage());
+                TL::LogError("Failed to load RenderDoc API: {}", result.GetMessage());
                 return ResultCode::ErrorUnknown;
             }
 
@@ -30,7 +30,7 @@ namespace RHI
             auto* getAPI = m_library.getProc<pRENDERDOC_GetAPI>("RENDERDOC_GetAPI");
             if (!getAPI)
             {
-                TL_LOG_ERROR("Failed to get RENDERDOC_GetAPI function pointer");
+                TL::LogError("Failed to get RENDERDOC_GetAPI function pointer");
                 TL::Library::close(m_library);
                 return ResultCode::ErrorUnknown;
             }
@@ -38,7 +38,7 @@ namespace RHI
             auto api = reinterpret_cast<RENDERDOC_API_1_6_0**>(&m_renderdocAPi);
             if (!getAPI(eRENDERDOC_API_Version_1_6_0, reinterpret_cast<void**>(api)))
             {
-                TL_LOG_ERROR("Failed to initialize RenderDoc API");
+                TL::LogError("Failed to initialize RenderDoc API");
                 TL::Library::close(m_library);
                 return ResultCode::ErrorUnknown;
             }
@@ -46,7 +46,7 @@ namespace RHI
             if (api)
                 (*api)->MaskOverlayBits(0, 0);
 
-            TL_LOG_INFO("Renderdoc connected");
+            TL::LogInfo("Renderdoc connected");
             return ResultCode::Success;
         }
 
@@ -723,13 +723,13 @@ namespace RHI
             if (cachedCI == imageCI)
                 return handle;
             // Resource with same name, but different properties were found, so recreate the resource.
-            TL_LOG_INFO("...Recreating resource {}\n {}", rgImage->name, Debug::ToString(imageCI));
+            TL::LogInfo("...Recreating resource {}\n {}", rgImage->name, Debug::ToString(imageCI));
             m_device->DestroyImage(handle);
             m_imageCache.erase(it); // No need (I think) as
         }
         else
         {
-            TL_LOG_INFO("Creating image {}", Debug::ToString(imageCI));
+            TL::LogInfo("Creating image {}", Debug::ToString(imageCI));
         }
 
         auto [_, handle] = m_imageCache[rgImage->name] = std::pair{imageCI, m_device->CreateImage(imageCI)};
@@ -758,13 +758,13 @@ namespace RHI
                 return handle;
 
             // Resource with same name, but different properties were found, so recreate the resource.
-            TL_LOG_INFO("...Recreating resource {}\n {}", rgBuffer->name, Debug::ToString(ci));
+            TL::LogInfo("...Recreating resource {}\n {}", rgBuffer->name, Debug::ToString(ci));
             m_device->DestroyBuffer(handle);
             m_bufferCache.erase(it);
         }
         else
         {
-            TL_LOG_INFO("Creating buffer {}", Debug::ToString(ci));
+            TL::LogInfo("Creating buffer {}", Debug::ToString(ci));
         }
 
         auto [_, handle] = m_bufferCache[rgBuffer->name] = std::pair{ci, m_device->CreateBuffer(ci)};
@@ -1025,7 +1025,7 @@ namespace RHI
         size_t alignedOffset = (m_offset + alignment - 1) & ~(alignment - 1);
         if (alignedOffset + size > m_capacity)
         {
-            TL_LOG_ERROR("StagingBuffer OOM: requested {} B, {} B available", size, m_capacity - m_offset);
+            TL::LogError("StagingBuffer OOM: requested {} B, {} B available", size, m_capacity - m_offset);
             return {};
         }
         m_offset = alignedOffset + size;
@@ -1264,7 +1264,7 @@ namespace RHI
                 // if (pass->m_state.culled)
                 //     continue;
 
-                // TL_LOG_INFO("Collecting {} barriers", pass->GetName());
+                // TL::LogInfo("Collecting {} barriers", pass->GetName());
 
                 for (auto& dep : pass->m_imageDependencies)
                 {
@@ -1279,7 +1279,7 @@ namespace RHI
                     });
 
 #if RHI_DEBUG_RG_VERBOSE
-                    TL_LOG_INFO(
+                    TL::LogInfo(
                         "Image Barrier: {} "
                         "src (access={} stage={} usage={}) -> dst (access={} stage={} usage={})",
                         resource->m_frameResource->name,
@@ -1307,7 +1307,7 @@ namespace RHI
                     });
 
 #if RHI_DEBUG_RG_VERBOSE
-                    TL_LOG_INFO(
+                    TL::LogInfo(
                         "Buffer Barrier: {} "
                         "src (access={} stage={} usage={}) -> dst (access={} stage={} usage={})",
                         resource->m_frameResource->name,
@@ -1652,7 +1652,7 @@ namespace RHI
             }
         }
         output += "================================\n";
-        TL_LOG_INFO("{}", output);
+        TL::LogInfo("{}", output);
     }
 
 } // namespace RHI
