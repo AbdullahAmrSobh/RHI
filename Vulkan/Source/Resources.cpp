@@ -17,8 +17,10 @@ namespace RHI::Vulkan
         case QueryType::AccelerationStructureSize:          return VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SIZE_KHR;
         case QueryType::AccelerationStructureCompactedSize: return VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR;
         case QueryType::PipelineStatistics:                 return VK_QUERY_TYPE_PIPELINE_STATISTICS;
-        default:                                            TL_UNREACHABLE(); return VK_QUERY_TYPE_MAX_ENUM;
+        case QueryType::MicromapSize:                       return VK_QUERY_TYPE_MICROMAP_SERIALIZATION_SIZE_EXT;
         }
+        TL_UNREACHABLE();
+        return VK_QUERY_TYPE_MAX_ENUM;
     }
 
     inline static VkBufferUsageFlags ConvertBufferUsageFlags(TL::Flags<BufferUsage> bufferUsageFlags)
@@ -32,7 +34,6 @@ namespace RHI::Vulkan
         if (bufferUsageFlags & BufferUsage::CopyDst) result |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
         if (bufferUsageFlags & BufferUsage::Indirect) result |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
         if (bufferUsageFlags & BufferUsage::DeviceBufferAddress) result |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
-        if (bufferUsageFlags & BufferUsage::Indirect) result |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
         return result;
     }
 
@@ -58,8 +59,9 @@ namespace RHI::Vulkan
         case ImageType::Image1D: return VK_IMAGE_TYPE_1D;
         case ImageType::Image2D: return VK_IMAGE_TYPE_2D;
         case ImageType::Image3D: return VK_IMAGE_TYPE_3D;
-        default:                 TL_UNREACHABLE(); return VK_IMAGE_TYPE_MAX_ENUM;
         }
+        TL_UNREACHABLE();
+        return VK_IMAGE_TYPE_MAX_ENUM;
     }
 
     inline static VkImageViewType ConvertImageViewType(ImageViewType imageType)
@@ -72,10 +74,10 @@ namespace RHI::Vulkan
         case ImageViewType::View2DArray: return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
         case ImageViewType::View3D:      return VK_IMAGE_VIEW_TYPE_3D;
         case ImageViewType::CubeMap:     return VK_IMAGE_VIEW_TYPE_CUBE;
-        case ImageViewType::None:
-        default:
-            return VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+        case ImageViewType::None:        return VK_IMAGE_VIEW_TYPE_MAX_ENUM;
         }
+        TL_UNREACHABLE();
+        return VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     }
 
     VkImageAspectFlags ConvertImageAspect(TL::Flags<ImageAspect> imageAspect, Format format)
@@ -110,8 +112,9 @@ namespace RHI::Vulkan
         case ComponentSwizzle::G:        return VK_COMPONENT_SWIZZLE_G;
         case ComponentSwizzle::B:        return VK_COMPONENT_SWIZZLE_B;
         case ComponentSwizzle::A:        return VK_COMPONENT_SWIZZLE_A;
-        default:                         TL_UNREACHABLE(); return VK_COMPONENT_SWIZZLE_IDENTITY;
         }
+        TL_UNREACHABLE();
+        return VK_COMPONENT_SWIZZLE_IDENTITY;
     }
 
     VkImageSubresourceRange ConvertSubresourceRange(const ImageSubresourceRange& subresource, Format format)
@@ -142,8 +145,9 @@ namespace RHI::Vulkan
         {
         case SamplerFilter::Point:  return VK_FILTER_NEAREST;
         case SamplerFilter::Linear: return VK_FILTER_LINEAR;
-        default:                    TL_UNREACHABLE(); return VK_FILTER_MAX_ENUM;
         }
+        TL_UNREACHABLE();
+        return VK_FILTER_MAX_ENUM;
     }
 
     inline static VkSamplerAddressMode ConvertSamplerAddressMode(SamplerAddressMode addressMode)
@@ -152,8 +156,9 @@ namespace RHI::Vulkan
         {
         case SamplerAddressMode::Repeat: return VK_SAMPLER_ADDRESS_MODE_REPEAT;
         case SamplerAddressMode::Clamp:  return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        default:                         TL_UNREACHABLE(); return VK_SAMPLER_ADDRESS_MODE_MAX_ENUM;
         }
+        TL_UNREACHABLE();
+        return VK_SAMPLER_ADDRESS_MODE_MAX_ENUM;
     }
 
     inline static VkCompareOp ConvertCompareOp(CompareOperator compareOperator)
@@ -169,8 +174,9 @@ namespace RHI::Vulkan
         case CompareOperator::Less:           return VK_COMPARE_OP_LESS;
         case CompareOperator::LessOrEqual:    return VK_COMPARE_OP_LESS_OR_EQUAL;
         case CompareOperator::Always:         return VK_COMPARE_OP_ALWAYS;
-        default:                              TL_UNREACHABLE(); return VK_COMPARE_OP_MAX_ENUM;
         }
+        TL_UNREACHABLE();
+        return VK_COMPARE_OP_MAX_ENUM;
     }
 
     inline static VkBool32 ConvertBool(bool value)
@@ -182,24 +188,30 @@ namespace RHI::Vulkan
     {
         switch (shaderStage)
         {
-        case ShaderStage::Vertex:  return VK_SHADER_STAGE_VERTEX_BIT;
-        case ShaderStage::Mesh:    return VK_SHADER_STAGE_MESH_BIT_EXT;
-        case ShaderStage::Pixel:   return VK_SHADER_STAGE_FRAGMENT_BIT;
-        case ShaderStage::Compute: return VK_SHADER_STAGE_COMPUTE_BIT;
-        default:                   TL_UNREACHABLE(); return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
+        case ShaderStage::None:           break;
+        case ShaderStage::Vertex:         return VK_SHADER_STAGE_VERTEX_BIT;
+        case ShaderStage::Pixel:          return VK_SHADER_STAGE_FRAGMENT_BIT;
+        case ShaderStage::Compute:        return VK_SHADER_STAGE_COMPUTE_BIT;
+        case ShaderStage::Hull:           return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+        case ShaderStage::Domain:         return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+        case ShaderStage::RayGen:         return VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+        case ShaderStage::RayIntersect:   return VK_SHADER_STAGE_INTERSECTION_BIT_KHR;
+        case ShaderStage::RayAnyHit:      return VK_SHADER_STAGE_ANY_HIT_BIT_KHR;
+        case ShaderStage::RayClosestHit:  return VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+        case ShaderStage::RayMiss:        return VK_SHADER_STAGE_MISS_BIT_KHR;
+        case ShaderStage::RayCallable:    return VK_SHADER_STAGE_CALLABLE_BIT_KHR;
+        case ShaderStage::Mesh:           return VK_SHADER_STAGE_MESH_BIT_EXT;
+        case ShaderStage::Amplification:  return VK_SHADER_STAGE_TASK_BIT_EXT;
+        case ShaderStage::AllGraphics:    return VK_SHADER_STAGE_ALL_GRAPHICS;
+        case ShaderStage::AllStages:      return VK_SHADER_STAGE_ALL;
         }
+        TL_UNREACHABLE();
+        return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
     }
 
     inline static VkShaderStageFlags ConvertShaderStage(TL::Flags<ShaderStage> shaderStageFlags)
     {
         VkShaderStageFlags result = 0;
-        if (shaderStageFlags & ShaderStage::Vertex) result |= VK_SHADER_STAGE_VERTEX_BIT;
-        if (shaderStageFlags & ShaderStage::Pixel) result |= VK_SHADER_STAGE_FRAGMENT_BIT;
-        if (shaderStageFlags & ShaderStage::Compute) result |= VK_SHADER_STAGE_COMPUTE_BIT;
-        if (shaderStageFlags & ShaderStage::Hull) result |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-        if (shaderStageFlags & ShaderStage::Domain) result |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-        if (shaderStageFlags & ShaderStage::Mesh) result |= VK_SHADER_STAGE_MESH_BIT_EXT;
-
         if (shaderStageFlags & ShaderStage::Vertex) result |= VK_SHADER_STAGE_VERTEX_BIT;
         if (shaderStageFlags & ShaderStage::Pixel) result |= VK_SHADER_STAGE_FRAGMENT_BIT;
         if (shaderStageFlags & ShaderStage::Compute) result |= VK_SHADER_STAGE_COMPUTE_BIT;
@@ -213,7 +225,6 @@ namespace RHI::Vulkan
         if (shaderStageFlags & ShaderStage::RayCallable) result |= VK_SHADER_STAGE_CALLABLE_BIT_KHR;
         if (shaderStageFlags & ShaderStage::Mesh) result |= VK_SHADER_STAGE_MESH_BIT_EXT;
         if (shaderStageFlags & ShaderStage::Amplification) result |= VK_SHADER_STAGE_TASK_BIT_EXT;
-        if (shaderStageFlags & ShaderStage::Amplification) result |= VK_SHADER_STAGE_TASK_BIT_EXT;
         return result;
     }
 
@@ -221,10 +232,12 @@ namespace RHI::Vulkan
     {
         switch (inputRate)
         {
+        case PipelineVertexInputRate::None:        break;
         case PipelineVertexInputRate::PerInstance: return VK_VERTEX_INPUT_RATE_INSTANCE;
         case PipelineVertexInputRate::PerVertex:   return VK_VERTEX_INPUT_RATE_VERTEX;
-        default:                                   TL_UNREACHABLE(); return VK_VERTEX_INPUT_RATE_MAX_ENUM;
         }
+        TL_UNREACHABLE();
+        return VK_VERTEX_INPUT_RATE_MAX_ENUM;
     }
 
     inline static VkCullModeFlags ConvertCullModeFlags(PipelineRasterizerStateCullMode cullMode)
@@ -235,8 +248,9 @@ namespace RHI::Vulkan
         case PipelineRasterizerStateCullMode::FrontFace: return VK_CULL_MODE_FRONT_BIT;
         case PipelineRasterizerStateCullMode::BackFace:  return VK_CULL_MODE_BACK_BIT;
         case PipelineRasterizerStateCullMode::Discard:   return VK_CULL_MODE_FLAG_BITS_MAX_ENUM;
-        default:                                         TL_UNREACHABLE(); return VK_CULL_MODE_FLAG_BITS_MAX_ENUM;
         }
+        TL_UNREACHABLE();
+        return VK_CULL_MODE_FLAG_BITS_MAX_ENUM;
     }
 
     inline static VkPolygonMode ConvertPolygonMode(PipelineRasterizerStateFillMode fillMode)
@@ -246,8 +260,9 @@ namespace RHI::Vulkan
         case PipelineRasterizerStateFillMode::Point:    return VK_POLYGON_MODE_POINT;
         case PipelineRasterizerStateFillMode::Triangle: return VK_POLYGON_MODE_FILL;
         case PipelineRasterizerStateFillMode::Line:     return VK_POLYGON_MODE_LINE;
-        default:                                        TL_UNREACHABLE(); return VK_POLYGON_MODE_MAX_ENUM;
         }
+        TL_UNREACHABLE();
+        return VK_POLYGON_MODE_MAX_ENUM;
     }
 
     inline static VkPrimitiveTopology ConvertPrimitiveTopology(PipelineTopologyMode topologyMode)
@@ -257,8 +272,9 @@ namespace RHI::Vulkan
         case PipelineTopologyMode::Points:    return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
         case PipelineTopologyMode::Lines:     return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
         case PipelineTopologyMode::Triangles: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-        default:                              TL_UNREACHABLE(); return VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
         }
+        TL_UNREACHABLE();
+        return VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
     }
 
     inline static VkFrontFace ConvertFrontFace(PipelineRasterizerStateFrontFace frontFace)
@@ -267,8 +283,9 @@ namespace RHI::Vulkan
         {
         case PipelineRasterizerStateFrontFace::Clockwise:        return VK_FRONT_FACE_CLOCKWISE;
         case PipelineRasterizerStateFrontFace::CounterClockwise: return VK_FRONT_FACE_COUNTER_CLOCKWISE;
-        default:                                                 TL_UNREACHABLE(); return VK_FRONT_FACE_MAX_ENUM;
         }
+        TL_UNREACHABLE();
+        return VK_FRONT_FACE_MAX_ENUM;
     }
 
     inline static VkBlendFactor ConvertBlendFactor(BlendFactor blendFactor)
@@ -289,8 +306,9 @@ namespace RHI::Vulkan
         case BlendFactor::OneMinusConstantColor: return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
         case BlendFactor::ConstantAlpha:         return VK_BLEND_FACTOR_CONSTANT_ALPHA;
         case BlendFactor::OneMinusConstantAlpha: return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA;
-        default:                                 TL_UNREACHABLE(); return VK_BLEND_FACTOR_MAX_ENUM;
         }
+        TL_UNREACHABLE();
+        return VK_BLEND_FACTOR_MAX_ENUM;
     }
 
     inline static VkBlendOp ConvertBlendOp(BlendEquation blendEquation)
@@ -302,37 +320,45 @@ namespace RHI::Vulkan
         case BlendEquation::ReverseSubtract: return VK_BLEND_OP_REVERSE_SUBTRACT;
         case BlendEquation::Min:             return VK_BLEND_OP_MIN;
         case BlendEquation::Max:             return VK_BLEND_OP_MAX;
-        default:                             TL_UNREACHABLE(); return VK_BLEND_OP_MAX_ENUM;
         }
+        TL_UNREACHABLE();
+        return VK_BLEND_OP_MAX_ENUM;
     }
 
     inline static VkDescriptorType ConvertDescriptorType(BindingType bindingType)
     {
         switch (bindingType)
         {
-        case BindingType::Sampler:              return VK_DESCRIPTOR_TYPE_SAMPLER;
-        case BindingType::SampledImage:         return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        case BindingType::StorageImage:         return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        case BindingType::UniformBuffer:        return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        case BindingType::StorageBuffer:        return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        case BindingType::DynamicUniformBuffer: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-        case BindingType::DynamicStorageBuffer: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
-        case BindingType::BufferView:           return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
-        case BindingType::StorageBufferView:    return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-        default:                                TL_UNREACHABLE(); return VK_DESCRIPTOR_TYPE_MAX_ENUM;
+        case BindingType::None:                            break;
+        case BindingType::Sampler:                         return VK_DESCRIPTOR_TYPE_SAMPLER;
+        case BindingType::SampledImage:                    return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        case BindingType::StorageImage:                    return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        case BindingType::UniformBuffer:                   return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        case BindingType::StorageBuffer:                   return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        case BindingType::DynamicUniformBuffer:            return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+        case BindingType::DynamicStorageBuffer:            return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+        case BindingType::BufferView:                      return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+        case BindingType::StorageBufferView:               return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+        case BindingType::InputAttachment:                 return VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+        case BindingType::RayTracingAccelerationStructure: return VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+        case BindingType::Count:                           break;
         }
+        TL_UNREACHABLE();
+        return VK_DESCRIPTOR_TYPE_MAX_ENUM;
     }
 
     inline static VkPresentModeKHR ConvertToPresentMode(SwapchainPresentMode presentMode)
     {
         switch (presentMode)
         {
+        case SwapchainPresentMode::None:        break;
         case SwapchainPresentMode::Immediate:   return VK_PRESENT_MODE_IMMEDIATE_KHR;
         case SwapchainPresentMode::Fifo:        return VK_PRESENT_MODE_FIFO_KHR;
         case SwapchainPresentMode::FifoRelaxed: return VK_PRESENT_MODE_FIFO_RELAXED_KHR;
         case SwapchainPresentMode::Mailbox:     return VK_PRESENT_MODE_MAILBOX_KHR;
-        default:                                return VK_PRESENT_MODE_MAX_ENUM_KHR;
         }
+        TL_UNREACHABLE();
+        return VK_PRESENT_MODE_MAX_ENUM_KHR;
     }
 
     inline static VkCompositeAlphaFlagBitsKHR ConvertToAlphaMode(SwapchainAlphaMode alphaMode)
@@ -342,8 +368,9 @@ namespace RHI::Vulkan
         case SwapchainAlphaMode::None:           return VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
         case SwapchainAlphaMode::PreMultiplied:  return VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR;
         case SwapchainAlphaMode::PostMultiplied: return VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR;
-        default:                                 TL_UNREACHABLE(); return VK_COMPOSITE_ALPHA_FLAG_BITS_MAX_ENUM_KHR;
         }
+        TL_UNREACHABLE();
+        return VK_COMPOSITE_ALPHA_FLAG_BITS_MAX_ENUM_KHR;
     }
 
     DescriptorSetWriter::DescriptorSetWriter(IDevice* device, VkDescriptorSet descriptorSet, IBindGroupLayout* layout, TL::IAllocator& allocator)
@@ -755,10 +782,13 @@ namespace RHI::Vulkan
         }
 
         TL::Vector<VkPushConstantRange> pushConstantRanges{device->m_arena};
+        pushConstantStages = 0;
         for (auto range : createInfo.pushConstants)
         {
+            auto stageFlags = ConvertShaderStage(range.stages);
+            pushConstantStages |= stageFlags;
             pushConstantRanges.push_back({
-                .stageFlags = ConvertShaderStage(range.stages),
+                .stageFlags = stageFlags,
                 .offset     = range.offset,
                 .size       = range.size,
             });
@@ -1050,6 +1080,10 @@ namespace RHI::Vulkan
             device->m_destroyQueue->Push(frame, handle);
     }
 
+    ////////////////////////////////////////////////////////////////////////
+    // IRayTracingPipeline
+    ////////////////////////////////////////////////////////////////////////
+
     ResultCode IRayTracingPipeline::Init(IDevice* device, const RayTracingPipelineCreateInfo& createInfo)
     {
         this->layout = (IPipelineLayout*)createInfo.layout;
@@ -1213,13 +1247,6 @@ namespace RHI::Vulkan
 
         if (allocation)
             device->m_destroyQueue->Push(frame, allocation);
-    }
-
-    VkMemoryRequirements IBuffer::GetMemoryRequirements(IDevice* device) const
-    {
-        VkMemoryRequirements requirements;
-        vkGetBufferMemoryRequirements(device->m_device, handle, &requirements);
-        return requirements;
     }
 
     DeviceMemoryPtr IBuffer::Map(IDevice* device)
@@ -1394,18 +1421,6 @@ namespace RHI::Vulkan
             device->m_destroyQueue->Push(frame, allocation);
     }
 
-    VkMemoryRequirements IImage::GetMemoryRequirements(IDevice* device) const
-    {
-        VkMemoryRequirements requirements;
-        vkGetImageMemoryRequirements(device->m_device, handle, &requirements);
-        return requirements;
-    }
-
-    VkImageAspectFlags IImage::SelectImageAspect(ImageAspect aspect)
-    {
-        return ConvertImageAspect(aspect, format);
-    }
-
     ////////////////////////////////////////////////////////////////////////
     // ISampler
     ////////////////////////////////////////////////////////////////////////
@@ -1447,7 +1462,7 @@ namespace RHI::Vulkan
     }
 
     ////////////////////////////////////////////////////////////////////////
-    // ISampler
+    // ISwapchain
     ////////////////////////////////////////////////////////////////////////
 
     ISwapchain::ISwapchain()  = default;
@@ -1808,19 +1823,11 @@ namespace RHI::Vulkan
         else if (result == VK_ERROR_OUT_OF_DATE_KHR)
         {
             TL::LogWarn("Swapchain is out of date, attempting to reconfigure (result: {})", result.AsString());
+            // Configure() internally calls AcquireNextImage(), so the image is
+            // already acquired when it returns — do not acquire again.
             if (Configure(m_configuration) == ResultCode::Success)
             {
-                acquireInfo.swapchain = m_swapchain;
-                result                = vkAcquireNextImage2KHR(m_device->m_device, &acquireInfo, &m_imageIndex);
-                if (result.IsSwapchainSuccess())
-                {
-                    updateCurrentImage();
-                    m_acquireSemaphoreIndex = (m_acquireSemaphoreIndex + 1) % MaxImageCount;
-                }
-                else
-                {
-                    TL::LogError("Failed to acquire next image after swapchain reconfiguration (result: {})", result.AsString());
-                }
+                result = VK_SUCCESS;
             }
             else
             {

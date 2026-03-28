@@ -454,7 +454,7 @@ namespace RHI::Vulkan
         IPipelineLayout*    pipelineLayout = (IPipelineLayout*)m_pipelineLayout;
         VkPipelineBindPoint vkBindPoint    = bindPoint == BindPoint::Graphics ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE;
 
-        vkCmdPushConstants(m_commandBuffer, pipelineLayout->handle, VK_SHADER_STAGE_ALL, offset, (uint32_t)content.size, content.ptr);
+        vkCmdPushConstants(m_commandBuffer, pipelineLayout->handle, pipelineLayout->pushConstantStages, offset, (uint32_t)content.size, content.ptr);
     }
 
     void ICommandList::PushBindGroup(BindPoint bindPoint, uint32_t firstGroup, TL::Span<const BindGroupUpdateInfo> updateInfos)

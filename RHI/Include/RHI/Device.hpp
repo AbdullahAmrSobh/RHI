@@ -41,6 +41,8 @@ namespace RHI
     {
         uint32_t minUniformBufferOffsetAlignment;
         uint32_t minStorageBufferOffsetAlignment;
+        uint32_t maxMeshWorkGroupInvocations;
+        uint32_t maxMeshWorkGroupSize[3];
     };
 
     struct SwapchainSignalInfo

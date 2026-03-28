@@ -836,6 +836,10 @@ namespace RHI::Vulkan
         {
             m_limits.minUniformBufferOffsetAlignment = uint32_t(deviceProperties.properties.limits.minUniformBufferOffsetAlignment);
             m_limits.minStorageBufferOffsetAlignment = uint32_t(deviceProperties.properties.limits.minStorageBufferOffsetAlignment);
+            m_limits.maxMeshWorkGroupInvocations     = meshShadersFeatures.maxMeshWorkGroupInvocations;
+            m_limits.maxMeshWorkGroupSize[0]         = meshShadersFeatures.maxMeshWorkGroupSize[0];
+            m_limits.maxMeshWorkGroupSize[1]         = meshShadersFeatures.maxMeshWorkGroupSize[1];
+            m_limits.maxMeshWorkGroupSize[2]         = meshShadersFeatures.maxMeshWorkGroupSize[2];
         }
 
         result = m_queue[(uint32_t)QueueType::Graphics].Init(this, "Graphics", graphicsQueueFamilyIndex, 0);

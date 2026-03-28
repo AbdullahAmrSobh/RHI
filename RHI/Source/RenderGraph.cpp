@@ -427,11 +427,15 @@ namespace RHI
 
         bool isColor = GetFormatInfo(image->m_frameResource->format).hasRed || GetFormatInfo(image->m_frameResource->format).hasGreen || GetFormatInfo(image->m_frameResource->format).hasBlue || GetFormatInfo(image->m_frameResource->format).hasAlpha;
         if (isColor)
+        {
             dep.state.usage = ImageUsage::Color;
+            dep.state.stage = PipelineStage::ColorAttachmentOutput;
+        }
         else
+        {
             dep.state.usage = ImageUsage::DepthStencil;
-
-        dep.state.stage  = PipelineStage::ColorAttachmentOutput;
+            dep.state.stage = PipelineStage::EarlyFragmentTests;
+        }
         dep.state.access = Access::None;
         if (loadOp == LoadOperation::Load)
             dep.state.access = Access::Read;
@@ -1219,67 +1223,69 @@ namespace RHI
     {
         ZoneScoped;
 
-        /// TODO: cleanup
-        TL::Context ctx{&m_arena};
-        TL::Context::push(&ctx);
-        TL_defer
         {
-            TL::Context::pop();
-        };
-
-        TL::Vector<TL::Vector<uint32_t>> adjacencyLists(m_arena);
-        adjacencyLists.resize(m_passPool.size(), TL::Vector<uint32_t>{m_arena});
-        for (size_t nodeIdx = 0; nodeIdx < m_passPool.size(); ++nodeIdx)
-        {
-            auto pass = m_passPool[nodeIdx];
-            for (uint32_t otherNodeIdx = 0; otherNodeIdx < m_passPool.size(); ++otherNodeIdx)
+            /// TODO: cleanup
+            TL::Context ctx{&m_arena};
+            TL::Context::push(&ctx);
+            TL_defer
             {
-                if (nodeIdx == otherNodeIdx) continue;
-                auto otherNode = m_passPool[otherNodeIdx];
-                if (CheckDependency(pass, otherNode))
-                {
-                    adjacencyLists[nodeIdx].push_back(otherNodeIdx);
-                }
-            }
-        }
+                TL::Context::pop();
+            };
 
-        TL::Vector<uint32_t> sortedPasses(m_arena);
-        TopologicalSort(adjacencyLists, sortedPasses);
-
-        uint32_t detectedQueueCount = 0;
-        {
-            TL::Vector<int32_t> longestDistances(sortedPasses.size(), 0, m_arena);
-            uint64_t            dependencyLevelCount = 1;
-            // Perform longest node distance search
-            for (uint32_t nodeIndex = 0; nodeIndex < sortedPasses.size(); ++nodeIndex)
+            TL::Vector<TL::Vector<uint32_t>> adjacencyLists(m_arena);
+            adjacencyLists.resize(m_passPool.size(), TL::Vector<uint32_t>{m_arena});
+            for (size_t nodeIdx = 0; nodeIdx < m_passPool.size(); ++nodeIdx)
             {
-                uint64_t originalIndex      = m_passPool[sortedPasses[nodeIndex]]->m_indexInUnorderedList;
-                uint64_t adjacencyListIndex = originalIndex;
-
-                for (uint64_t adjacentNodeIndex : adjacencyLists[adjacencyListIndex])
+                auto pass = m_passPool[nodeIdx];
+                for (uint32_t otherNodeIdx = 0; otherNodeIdx < m_passPool.size(); ++otherNodeIdx)
                 {
-                    if (longestDistances[adjacentNodeIndex] < longestDistances[originalIndex] + 1)
+                    if (nodeIdx == otherNodeIdx) continue;
+                    auto otherNode = m_passPool[otherNodeIdx];
+                    if (CheckDependency(pass, otherNode))
                     {
-                        int32_t newLongestDistance          = longestDistances[originalIndex] + 1;
-                        longestDistances[adjacentNodeIndex] = newLongestDistance;
-                        dependencyLevelCount                = std::max(uint64_t(newLongestDistance + 1), dependencyLevelCount);
+                        adjacencyLists[nodeIdx].push_back(otherNodeIdx);
                     }
                 }
             }
-            m_dependencyLevels.resize(dependencyLevelCount, {m_arena});
-            detectedQueueCount = 1;
-            // Dispatch nodes to corresponding dependency levels.
-            // Iterate through unordered nodes because adjacency lists contain indices to
-            // initial unordered list of nodes and longest distances also correspond to them.
-            for (uint32_t nodeIndex = 0; nodeIndex < (uint32_t)m_passPool.size(); nodeIndex++)
+
+            TL::Vector<uint32_t> sortedPasses(m_arena);
+            TopologicalSort(adjacencyLists, sortedPasses);
+
+            uint32_t detectedQueueCount = 0;
             {
-                RGPass*          pass            = m_passPool[nodeIndex];
-                auto             levelIndex      = longestDistances[nodeIndex];
-                DependencyLevel& dependencyLevel = m_dependencyLevels[levelIndex];
-                dependencyLevel.m_levelIndex     = (uint32_t)levelIndex;
-                dependencyLevel.AddPass(pass);
-                pass->m_dependencyLevelIndex = levelIndex;
-                detectedQueueCount           = std::max(detectedQueueCount, pass->m_executionQueueIndex + 1);
+                TL::Vector<int32_t> longestDistances(sortedPasses.size(), 0, m_arena);
+                uint64_t            dependencyLevelCount = 1;
+                // Perform longest node distance search
+                for (uint32_t nodeIndex = 0; nodeIndex < sortedPasses.size(); ++nodeIndex)
+                {
+                    uint64_t originalIndex      = m_passPool[sortedPasses[nodeIndex]]->m_indexInUnorderedList;
+                    uint64_t adjacencyListIndex = originalIndex;
+
+                    for (uint64_t adjacentNodeIndex : adjacencyLists[adjacencyListIndex])
+                    {
+                        if (longestDistances[adjacentNodeIndex] < longestDistances[originalIndex] + 1)
+                        {
+                            int32_t newLongestDistance          = longestDistances[originalIndex] + 1;
+                            longestDistances[adjacentNodeIndex] = newLongestDistance;
+                            dependencyLevelCount                = std::max(uint64_t(newLongestDistance + 1), dependencyLevelCount);
+                        }
+                    }
+                }
+                m_dependencyLevels.resize(dependencyLevelCount, {m_arena});
+                detectedQueueCount = 1;
+                // Dispatch nodes to corresponding dependency levels.
+                // Iterate through unordered nodes because adjacency lists contain indices to
+                // initial unordered list of nodes and longest distances also correspond to them.
+                for (uint32_t nodeIndex = 0; nodeIndex < (uint32_t)m_passPool.size(); nodeIndex++)
+                {
+                    RGPass*          pass            = m_passPool[nodeIndex];
+                    auto             levelIndex      = longestDistances[nodeIndex];
+                    DependencyLevel& dependencyLevel = m_dependencyLevels[levelIndex];
+                    dependencyLevel.m_levelIndex     = (uint32_t)levelIndex;
+                    dependencyLevel.AddPass(pass);
+                    pass->m_dependencyLevelIndex = levelIndex;
+                    detectedQueueCount           = std::max(detectedQueueCount, pass->m_executionQueueIndex + 1);
+                }
             }
         }
 

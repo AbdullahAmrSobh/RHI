@@ -45,8 +45,6 @@ namespace RHI::Vulkan
 
     VkImageAspectFlags      ConvertImageAspect(TL::Flags<ImageAspect> imageAspect, Format format);
     VkImageSubresourceRange ConvertSubresourceRange(const ImageSubresourceRange& subresource, Format format);
-    VkExtent3D              ConvertExtent3D(ImageSize3D size);
-    VkOffset3D              ConvertOffset3D(ImageOffset3D offset);
 
     class DescriptorSetWriter
     {
@@ -134,8 +132,9 @@ namespace RHI::Vulkan
 
     struct IPipelineLayout : PipelineLayout
     {
-        VkPipelineLayout  handle;
-        IBindGroupLayout* bindGroupLayouts[4];
+        VkPipelineLayout   handle;
+        IBindGroupLayout*  bindGroupLayouts[4];
+        VkShaderStageFlags pushConstantStages = 0;
 
         ResultCode Init(IDevice* device, const PipelineLayoutCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
@@ -186,8 +185,6 @@ namespace RHI::Vulkan
         ResultCode Init(IDevice* device, const BufferCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
 
-        VkMemoryRequirements GetMemoryRequirements(IDevice* device) const;
-
         DeviceMemoryPtr Map(IDevice* device);
         void            Unmap(IDevice* device);
     };
@@ -207,11 +204,6 @@ namespace RHI::Vulkan
         ResultCode Init(IDevice* device, const ImageViewCreateInfo& createInfo);
         ResultCode Init(IDevice* device, VkImage image, const VkSwapchainCreateInfoKHR& swapchainCreateInfo);
         void       Shutdown(IDevice* device);
-
-        VkMemoryRequirements GetMemoryRequirements(IDevice* device) const;
-
-        // Selects specifc aspect from the available image aspects
-        VkImageAspectFlags SelectImageAspect(ImageAspect aspect);
     };
 
     struct ISampler : Sampler
