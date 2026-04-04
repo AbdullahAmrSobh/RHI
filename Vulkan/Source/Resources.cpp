@@ -188,22 +188,22 @@ namespace RHI::Vulkan
     {
         switch (shaderStage)
         {
-        case ShaderStage::None:           break;
-        case ShaderStage::Vertex:         return VK_SHADER_STAGE_VERTEX_BIT;
-        case ShaderStage::Pixel:          return VK_SHADER_STAGE_FRAGMENT_BIT;
-        case ShaderStage::Compute:        return VK_SHADER_STAGE_COMPUTE_BIT;
-        case ShaderStage::Hull:           return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-        case ShaderStage::Domain:         return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-        case ShaderStage::RayGen:         return VK_SHADER_STAGE_RAYGEN_BIT_KHR;
-        case ShaderStage::RayIntersect:   return VK_SHADER_STAGE_INTERSECTION_BIT_KHR;
-        case ShaderStage::RayAnyHit:      return VK_SHADER_STAGE_ANY_HIT_BIT_KHR;
-        case ShaderStage::RayClosestHit:  return VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
-        case ShaderStage::RayMiss:        return VK_SHADER_STAGE_MISS_BIT_KHR;
-        case ShaderStage::RayCallable:    return VK_SHADER_STAGE_CALLABLE_BIT_KHR;
-        case ShaderStage::Mesh:           return VK_SHADER_STAGE_MESH_BIT_EXT;
-        case ShaderStage::Amplification:  return VK_SHADER_STAGE_TASK_BIT_EXT;
-        case ShaderStage::AllGraphics:    return VK_SHADER_STAGE_ALL_GRAPHICS;
-        case ShaderStage::AllStages:      return VK_SHADER_STAGE_ALL;
+        case ShaderStage::None:          break;
+        case ShaderStage::Vertex:        return VK_SHADER_STAGE_VERTEX_BIT;
+        case ShaderStage::Pixel:         return VK_SHADER_STAGE_FRAGMENT_BIT;
+        case ShaderStage::Compute:       return VK_SHADER_STAGE_COMPUTE_BIT;
+        case ShaderStage::Hull:          return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+        case ShaderStage::Domain:        return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+        case ShaderStage::RayGen:        return VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+        case ShaderStage::RayIntersect:  return VK_SHADER_STAGE_INTERSECTION_BIT_KHR;
+        case ShaderStage::RayAnyHit:     return VK_SHADER_STAGE_ANY_HIT_BIT_KHR;
+        case ShaderStage::RayClosestHit: return VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+        case ShaderStage::RayMiss:       return VK_SHADER_STAGE_MISS_BIT_KHR;
+        case ShaderStage::RayCallable:   return VK_SHADER_STAGE_CALLABLE_BIT_KHR;
+        case ShaderStage::Mesh:          return VK_SHADER_STAGE_MESH_BIT_EXT;
+        case ShaderStage::Amplification: return VK_SHADER_STAGE_TASK_BIT_EXT;
+        case ShaderStage::AllGraphics:   return VK_SHADER_STAGE_ALL_GRAPHICS;
+        case ShaderStage::AllStages:     return VK_SHADER_STAGE_ALL;
         }
         TL_UNREACHABLE();
         return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;

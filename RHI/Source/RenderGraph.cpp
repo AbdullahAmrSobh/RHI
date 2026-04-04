@@ -436,11 +436,15 @@ namespace RHI
             dep.state.usage = ImageUsage::DepthStencil;
             dep.state.stage = PipelineStage::EarlyFragmentTests;
         }
-        dep.state.access = Access::None;
-        if (loadOp == LoadOperation::Load)
+
+        if (loadOp == LoadOperation::Load && storeOp == StoreOperation::Store)
+            dep.state.access = Access::ReadWrite;
+        else if (loadOp == LoadOperation::Load)
             dep.state.access = Access::Read;
-        if (storeOp == StoreOperation::Store)
+        else if (storeOp == StoreOperation::Store)
             dep.state.access = Access::Write;
+        else
+            dep.state.access = Access::None;
 
         m_imageDependencies.push_back(dep);
 
