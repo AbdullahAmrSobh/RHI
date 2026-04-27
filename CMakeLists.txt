@@ -62,11 +62,13 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
 endif()
 
 # ---- Add dependencies ----
+
 include(cmake/add-target.cmake)
 include(cmake/CPM.cmake)
 include(Packages.cmake)
 
 # ---- Declare library ----
+
 add_subdirectory(RHI)
 
 if(WIN32)
@@ -92,10 +94,6 @@ if(RHI_DEBUG)
     target_compile_definitions(RHI PRIVATE RHI_DEBUG)
 endif()
 
-# if(RHI_SHADER_COMPILER)
-    # add_subdirectory(ShaderCompiler)
-# endif()
-
 if(RHI_BACKEND_D3D12)
     add_subdirectory(D3D12)
 endif()
@@ -108,11 +106,8 @@ if(RHI_BACKEND_WEBGPU)
     add_subdirectory(WebGPU)
 endif()
 
-# if(RHI_BUILD_EXAMPLES)
-    # add_subdirectory(Examples)
-# endif()
-
 # ---- Developer mode ----
+
 if(NOT RHI_DEVELOPER_MODE)
     return()
 elseif(NOT PROJECT_IS_TOP_LEVEL)

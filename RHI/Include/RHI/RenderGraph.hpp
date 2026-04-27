@@ -394,7 +394,7 @@ namespace RHI
     class StagingBuffer
     {
     public:
-        static constexpr size_t DefaultCapacity = 32u * 1024u * 1024u; // 32 MiB per frame
+        static constexpr size_t DefaultCapacity = 512u * 1024u * 1024u; // 512 MiB per frame
 
         ResultCode              Init(Device* device, size_t capacity = DefaultCapacity);
         void                    Shutdown(Device* device);
@@ -411,6 +411,7 @@ namespace RHI
         Allocation Allocate(size_t size, size_t alignment = 256);
 
         Buffer*    GetBuffer() const { return m_buffer; }
+        size_t     GetCapacity() const { return m_capacity; }
 
     private:
         Buffer*  m_buffer   = nullptr;
