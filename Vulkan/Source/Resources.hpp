@@ -214,6 +214,24 @@ namespace RHI::Vulkan
         void       Shutdown(IDevice* device);
     };
 
+    struct IAccelerationStructure : AccelerationStructure
+    {
+        VkAccelerationStructureKHR handle;
+        VmaAllocation              allocation;
+
+        ResultCode Init(IDevice* device, const AccelerationStructureCreateInfo& createInfo);
+        void       Shutdown(IDevice* device);
+    };
+
+    struct IMicromap : Micromap
+    {
+        VkMicromapEXT handle;
+        VmaAllocation allocation;
+
+        ResultCode Init(IDevice* device, const MicromapCreateInfo& createInfo);
+        void       Shutdown(IDevice* device);
+    };
+
     class ISwapchain final : public Swapchain
     {
     public:

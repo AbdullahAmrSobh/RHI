@@ -250,17 +250,17 @@ namespace RHI
         QueueType   queueType = QueueType::Graphics; ///< Type of queue for the command list.
     };
 
-    struct BuildMicromapDesc
+    struct MicromapBuildInfo
     {
         const char* name = nullptr;
     };
 
-    struct BuildTopLevelAccelerationStructureDesc
+    struct TopLevelAccelerationStructureBuildInfo
     {
         const char* name = nullptr;
     };
 
-    struct BuildBottomLevelAccelerationStructureDesc
+    struct BottomLevelAccelerationStructureBuildInfo
     {
         const char* name = nullptr;
     };
@@ -473,8 +473,8 @@ namespace RHI
         virtual void CopyBufferToImage(const BufferImageCopyInfo& copyInfo) = 0;
 
         /// @brief Builds micromaps for ray tracing acceleration structures.
-        /// @param buildMicromapDescs Span of micromap build descriptions.
-        virtual void BuildMicromaps(TL::Span<const BuildMicromapDesc> buildMicromapDescs) = 0;
+        /// @param buildInfos Span of micromap build descriptions.
+        virtual void BuildMicromaps(TL::Span<const MicromapBuildInfo> buildInfos) = 0;
 
         /// @brief Writes micromap sizes to a query pool.
         /// @param micromaps Span of micromaps to query.
@@ -489,12 +489,12 @@ namespace RHI
         virtual void CopyMicromap(Micromap* dst, const Micromap* src, CopyMode copyMode) = 0;
 
         /// @brief Builds top-level acceleration structures for ray tracing.
-        /// @param buildTopLevelAccelerationStructureDescs Span of TLAS build descriptions.
-        virtual void BuildTopLevelAccelerationStructures(TL::Span<const BuildTopLevelAccelerationStructureDesc> buildTopLevelAccelerationStructureDescs) = 0;
+        /// @param buildInfos Span of TLAS build descriptions.
+        virtual void BuildTopLevelAccelerationStructures(TL::Span<const TopLevelAccelerationStructureBuildInfo> buildInfos) = 0;
 
         /// @brief Builds bottom-level acceleration structures for ray tracing.
-        /// @param buildBottomLevelAccelerationStructureDescs Span of BLAS build descriptions.
-        virtual void BuildBottomLevelAccelerationStructures(TL::Span<const BuildBottomLevelAccelerationStructureDesc> buildBottomLevelAccelerationStructureDescs) = 0;
+        /// @param buildInfos Span of BLAS build descriptions.
+        virtual void BuildBottomLevelAccelerationStructures(TL::Span<const BottomLevelAccelerationStructureBuildInfo> buildInfos) = 0;
 
         /// @brief Writes acceleration structure sizes to a query pool.
         /// @param accelerationStructures Span of acceleration structures to query.

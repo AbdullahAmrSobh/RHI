@@ -76,11 +76,12 @@ namespace RHI::Vulkan
         void CopyImageToBuffer(const BufferImageCopyInfo& copyInfo) override;
         void CopyBufferToImage(const BufferImageCopyInfo& copyInfo) override;
 
-        void BuildMicromaps(TL::Span<const BuildMicromapDesc> buildMicromapDescs) override;
+        void BuildMicromaps(TL::Span<const MicromapBuildInfo> buildInfos) override;
         void WriteMicromapsSizes(TL::Span<const Micromap*> micromaps, QueryPool* queryPool, uint32_t queryPoolOffset) override;
         void CopyMicromap(Micromap* dst, const Micromap* src, CopyMode copyMode) override;
-        void BuildTopLevelAccelerationStructures(TL::Span<const BuildTopLevelAccelerationStructureDesc> buildTopLevelAccelerationStructureDescs) override;
-        void BuildBottomLevelAccelerationStructures(TL::Span<const BuildBottomLevelAccelerationStructureDesc> buildBottomLevelAccelerationStructureDescs) override;
+
+        void BuildTopLevelAccelerationStructures(TL::Span<const TopLevelAccelerationStructureBuildInfo> buildInfos) override;
+        void BuildBottomLevelAccelerationStructures(TL::Span<const BottomLevelAccelerationStructureBuildInfo> buildInfos) override;
         void WriteAccelerationStructuresSizes(TL::Span<const AccelerationStructure*> accelerationStructures, QueryPool* queryPool, uint32_t queryPoolOffset) override;
         void CopyAccelerationStructure(AccelerationStructure* dst, const AccelerationStructure* src, CopyMode copyMode) override;
 

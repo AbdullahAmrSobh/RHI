@@ -474,6 +474,18 @@ namespace RHI
         bool                  operator==(const ImageViewCreateInfo& other) const = default;
     };
 
+    //
+    struct AccelerationStructureCreateInfo
+    {
+        const char* name = nullptr;
+    };
+
+    //
+    struct MicromapCreateInfo
+    {
+        const char* name = nullptr;
+    };
+
     // Structs (Sampler Related)
     struct SamplerCreateInfo
     {

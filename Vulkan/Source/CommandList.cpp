@@ -834,19 +834,43 @@ namespace RHI::Vulkan
         vkCmdBindDescriptorSets2(m_commandBuffer, &bindInfo);
     }
 
-    void ICommandList::BuildMicromaps(TL::Span<const BuildMicromapDesc> buildMicromapDescs)
+    void ICommandList::BuildMicromaps(TL::Span<const MicromapBuildInfo> buildInfos)
     {
+        TL::Vector<VkMicromapBuildInfoEXT> info{m_device->m_arena};
+        info.reserve(buildInfos.size());
+
+        vkCmdBuildMicromapsEXT(m_commandBuffer, info.size(), info.data());
     }
 
-    void ICommandList::WriteMicromapsSizes(TL::Span<const Micromap*> micromaps, QueryPool* queryPool, uint32_t queryPoolOffset)
+    void ICommandList::WriteMicromapsSizes(TL::Span<const Micromap*> micromaps, QueryPool* _queryPool, uint32_t queryPoolOffset)
     {
+        IQueryPool*               queryPool = (IQueryPool*)_queryPool;
+        TL::Vector<VkMicromapEXT> micromapHandles{m_device->m_arena};
+        micromapHandles.reserve(micromaps.size());
+        for (const auto* micromap : micromaps)
+        {
+            auto vkMicromap = (IMicromap*)micromap;
+            micromapHandles.push_back(vkMicromap->handle);
+        }
+        vkCmdWriteMicromapsPropertiesEXT(m_commandBuffer, (uint32_t)micromapHandles.size(), micromapHandles.data(), VK_QUERY_TYPE_MICROMAP_COMPACTED_SIZE_EXT, queryPool->handle, queryPoolOffset);
     }
 
-    void ICommandList::CopyMicromap(Micromap* dst, const Micromap* src, CopyMode copyMode)
+    void ICommandList::CopyMicromap(Micromap* _dst, const Micromap* _src, CopyMode copyMode)
     {
+        IMicromap* dst = (IMicromap*)_dst;
+        IMicromap* src = (IMicromap*)_src;
+
+        VkCopyMicromapInfoEXT copyInfo{
+            .sType  = VK_STRUCTURE_TYPE_COPY_MICROMAP_INFO_EXT,
+            .pNext  = nullptr,
+            .src    = src->handle,
+            .dst    = dst->handle,
+            // .mode   = ConvertMicromapCopyMode(copyMode),
+        };
+        vkCmdCopyMicromapEXT(m_commandBuffer, &copyInfo);
     }
 
-    void ICommandList::BuildTopLevelAccelerationStructures(TL::Span<const BuildTopLevelAccelerationStructureDesc> buildTopLevelAccelerationStructureDescs)
+    void ICommandList::BuildTopLevelAccelerationStructures(TL::Span<const TopLevelAccelerationStructureBuildInfo> buildInfos)
     {
         TL::Vector<VkAccelerationStructureBuildGeometryInfoKHR> buildInfo{m_device->m_arena};
         TL::Vector<VkAccelerationStructureBuildRangeInfoKHR*>   buildRangeInfos{m_device->m_arena};
@@ -854,16 +878,33 @@ namespace RHI::Vulkan
         vkCmdBuildAccelerationStructuresKHR(m_commandBuffer, buildInfo.size(), buildInfo.data(), buildRangeInfos.data());
     }
 
-    void ICommandList::BuildBottomLevelAccelerationStructures(TL::Span<const BuildBottomLevelAccelerationStructureDesc> buildBottomLevelAccelerationStructureDescs)
+    void ICommandList::BuildBottomLevelAccelerationStructures(TL::Span<const BottomLevelAccelerationStructureBuildInfo> buildInfos)
     {
+        TL::Vector<VkAccelerationStructureBuildGeometryInfoKHR> buildInfo{m_device->m_arena};
+        TL::Vector<VkAccelerationStructureBuildRangeInfoKHR*>   buildRangeInfos{m_device->m_arena};
+
+        vkCmdBuildAccelerationStructuresKHR(m_commandBuffer, buildInfo.size(), buildInfo.data(), buildRangeInfos.data());
     }
 
-    void ICommandList::WriteAccelerationStructuresSizes(TL::Span<const AccelerationStructure*> accelerationStructures, QueryPool* queryPool, uint32_t queryPoolOffset)
+    void ICommandList::WriteAccelerationStructuresSizes(TL::Span<const AccelerationStructure*> accelerationStructures, QueryPool* _queryPool, uint32_t queryPoolOffset)
     {
+        IQueryPool*                            queryPool = (IQueryPool*)_queryPool;
+        TL::Vector<VkAccelerationStructureKHR> asHandles{m_device->m_arena};
+        asHandles.reserve(accelerationStructures.size());
+        for (const auto* as : accelerationStructures)
+        {
+            auto vkAS = (IAccelerationStructure*)as;
+            asHandles.push_back(vkAS->handle);
+        }
+        vkCmdWriteAccelerationStructuresPropertiesKHR(m_commandBuffer, (uint32_t)asHandles.size(), asHandles.data(), VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR, queryPool->handle, queryPoolOffset);
     }
 
-    void ICommandList::CopyAccelerationStructure(AccelerationStructure* dst, const AccelerationStructure* src, CopyMode copyMode)
+    void ICommandList::CopyAccelerationStructure(AccelerationStructure* _dst, const AccelerationStructure* _src, CopyMode copyMode)
     {
+        IAccelerationStructure* dst = (IAccelerationStructure*)_dst;
+        IAccelerationStructure* src = (IAccelerationStructure*)_src;
+
+        // vkCmdCopyAccelerationStructureKHR(m_commandBuffer, dst->handle, src->handle, ConvertASCopyMode(copyMode));
     }
 
 } // namespace RHI::Vulkan

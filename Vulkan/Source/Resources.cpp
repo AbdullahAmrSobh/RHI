@@ -1422,6 +1422,36 @@ namespace RHI::Vulkan
     }
 
     ////////////////////////////////////////////////////////////////////////
+    // IAccelerationStructure
+    ////////////////////////////////////////////////////////////////////////
+
+    ResultCode IAccelerationStructure::Init(IDevice* device, const AccelerationStructureCreateInfo& createInfo)
+    {
+        TL_UNREACHABLE_MSG("TODO: Implement!");
+        return ResultCode::ErrorUnknown;
+    }
+
+    void IAccelerationStructure::Shutdown(IDevice* device)
+    {
+        TL_UNREACHABLE_MSG("TODO: Implement!");
+    }
+
+    /////////////////////////////////////////////////////////////////////////
+    /// IMicromap
+    /////////////////////////////////////////////////////////////////////////
+
+    ResultCode IMicromap::Init(IDevice* device, const MicromapCreateInfo& createInfo)
+    {
+        TL_UNREACHABLE_MSG("TODO: Implement!");
+        return ResultCode::ErrorUnknown;
+    }
+
+    void IMicromap::Shutdown(IDevice* device)
+    {
+        TL_UNREACHABLE_MSG("TODO: Implement!");
+    }
+
+    ////////////////////////////////////////////////////////////////////////
     // ISampler
     ////////////////////////////////////////////////////////////////////////
 
