@@ -71,10 +71,10 @@ namespace RHI::Vulkan
         void DispatchRaysIndirect(const BufferBindingInfo& argumentBuffer) override;
         void Dispatch(const DispatchParameters& parameters) override;
         void DispatchIndirect(const BufferBindingInfo& argumentBuffer) override;
-        void CopyBuffer(const BufferCopyInfo& copyInfo) override;
-        void CopyImage(const ImageCopyInfo& copyInfo) override;
-        void CopyImageToBuffer(const BufferImageCopyInfo& copyInfo) override;
-        void CopyBufferToImage(const BufferImageCopyInfo& copyInfo) override;
+        void CopyBuffer(const Buffer* srcBuffer, uint64_t srcOffset, const Buffer* dstBuffer, uint64_t dstOffset, uint64_t size) override;
+        void CopyImage(const ImageCopyInfo& srcImage, const ImageCopyInfo& dstImage, const ImageSize3D& size) override;
+        void CopyImageToBuffer(const ImageCopyInfo& srcImage, const ImageMemoryLayout& layout, const Buffer* dstBuffer) override;
+        void CopyBufferToImage(const Buffer* srcBuffer, const ImageCopyInfo& dstImage, const ImageMemoryLayout& layout) override;
 
         void BuildMicromaps(TL::Span<const MicromapBuildInfo> buildInfos) override;
         void WriteMicromapsSizes(TL::Span<const Micromap*> micromaps, QueryPool* queryPool, uint32_t queryPoolOffset) override;

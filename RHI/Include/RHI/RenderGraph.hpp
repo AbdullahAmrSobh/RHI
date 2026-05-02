@@ -53,7 +53,7 @@ namespace RHI
         ImageSubresourceRange colorRange   = ImageSubresourceRange::All();
         LoadOperation         loadOp       = LoadOperation::Discard;
         StoreOperation        storeOp      = StoreOperation::Store;
-        ClearValue            clearValue   = {.f32 = {0.0f, 0.0f, 0.0f, 1.0f}};
+        ClearValue            clearValue   = {0.0f, 0.0f, 0.0f, 1.0f};
         ResolveMode           resolveMode  = ResolveMode::None;
         RGImage*              resolveView  = {};
         ImageSubresourceRange resolveRange = ImageSubresourceRange::All();
@@ -259,7 +259,7 @@ namespace RHI
         Format         format      = Format::Unknown;
         SampleCount    sampleCount = SampleCount::Samples1;
         StoreOperation storeOp     = StoreOperation::Store;
-        ClearValue     clearValue  = {.f32 = {0.0f, 0.0f, 0.0f, 1.0f}};
+        ClearValue     clearValue  = {0.0f, 0.0f, 0.0f, 1.0f};
         ResolveMode    resolveMode = ResolveMode::None;
     };
 

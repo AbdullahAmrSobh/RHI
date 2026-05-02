@@ -10,13 +10,13 @@
 
 namespace RHI::Vulkan
 {
-    inline static VkImageSubresourceLayers ConvertSubresourceLayer(const ImageSubresourceLayers& subresource, Format format)
+    inline static VkImageSubresourceLayers ConvertSubresourceLayers(const ImageCopyInfo& copyInfo, Format format)
     {
         return VkImageSubresourceLayers{
-            .aspectMask     = ConvertImageAspect(subresource.imageAspects, format),
-            .mipLevel       = subresource.mipLevel,
-            .baseArrayLayer = subresource.arrayBase,
-            .layerCount     = subresource.arrayCount,
+            .aspectMask     = ConvertImageAspect(copyInfo.aspect, format),
+            .mipLevel       = copyInfo.mipLevel,
+            .baseArrayLayer = copyInfo.arrayLayer,
+            .layerCount     = 1,
         };
     }
 
@@ -255,9 +255,8 @@ namespace RHI::Vulkan
 
         for (const auto& colorAttachment : beginInfo.colorAttachments)
         {
-            auto         colorImage  = (IImage*)(colorAttachment.view);
-            auto         resolveView = colorAttachment.resolveView ? (IImage*)(colorAttachment.resolveView) : nullptr;
-            VkClearValue clearValue  = {.color = ConvertClearValue(colorAttachment.clearValue)};
+            auto colorImage  = (IImage*)(colorAttachment.view);
+            auto resolveView = colorAttachment.resolveView ? (IImage*)(colorAttachment.resolveView) : nullptr;
             colorAttachments.push_back({
                 .sType              = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
                 .pNext              = nullptr,
@@ -268,14 +267,13 @@ namespace RHI::Vulkan
                 .resolveImageLayout = resolveView ? VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED,
                 .loadOp             = ConvertLoadOp(colorAttachment.loadOp),
                 .storeOp            = ConvertStoreOp(colorAttachment.storeOp),
-                .clearValue         = {clearValue},
+                .clearValue         = {colorAttachment.clearValue.f32.r, colorAttachment.clearValue.f32.g, colorAttachment.clearValue.f32.b, colorAttachment.clearValue.f32.a},
             });
         }
 
         if (beginInfo.depthStencilAttachment.view)
         {
             auto image      = (IImage*)(beginInfo.depthStencilAttachment.view);
-            auto clearValue = ConvertDepthStencilValue(beginInfo.depthStencilAttachment.clearValue);
 
             if (image->subresources.imageAspects & ImageAspect::Depth)
             {
@@ -289,7 +287,7 @@ namespace RHI::Vulkan
                     .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
                     .loadOp             = ConvertLoadOp(beginInfo.depthStencilAttachment.depthLoadOp),
                     .storeOp            = ConvertStoreOp(beginInfo.depthStencilAttachment.depthStoreOp),
-                    .clearValue         = {.depthStencil = clearValue},
+                    .clearValue         = {.depthStencil = {.depth = beginInfo.depthStencilAttachment.clearValue.depthValue, .stencil = beginInfo.depthStencilAttachment.clearValue.stencilValue}},
                 };
             }
 
@@ -305,7 +303,7 @@ namespace RHI::Vulkan
                     .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
                     .loadOp             = ConvertLoadOp(beginInfo.depthStencilAttachment.stencilLoadOp),
                     .storeOp            = ConvertStoreOp(beginInfo.depthStencilAttachment.stencilStoreOp),
-                    .clearValue         = {.depthStencil = clearValue},
+                    .clearValue         = {.depthStencil = {.depth = beginInfo.depthStencilAttachment.clearValue.depthValue, .stencil = beginInfo.depthStencilAttachment.clearValue.stencilValue}},
                 };
             }
             if ((image->subresources.imageAspects & ImageAspect::DepthStencil) == ImageAspect::DepthStencil)
@@ -732,70 +730,70 @@ namespace RHI::Vulkan
         vkCmdDispatchIndirect(m_commandBuffer, cmdBuffer->handle, argumentBuffer.offset);
     }
 
-    void ICommandList::CopyBuffer(const BufferCopyInfo& copyInfo)
+    void ICommandList::CopyBuffer(const Buffer* srcBuffer, uint64_t srcOffset, const Buffer* dstBuffer, uint64_t dstOffset, uint64_t size)
     {
         ZoneScoped;
 
-        auto srcBuffer = (IBuffer*)(copyInfo.srcBuffer);
-        auto dstBuffer = (IBuffer*)(copyInfo.dstBuffer);
+        auto src = (const IBuffer*)(srcBuffer);
+        auto dst = (const IBuffer*)(dstBuffer);
 
         VkBufferCopy bufferCopy{
-            .srcOffset = copyInfo.srcOffset,
-            .dstOffset = copyInfo.dstOffset,
-            .size      = copyInfo.size,
+            .srcOffset = srcOffset,
+            .dstOffset = dstOffset,
+            .size      = size,
         };
-        vkCmdCopyBuffer(m_commandBuffer, srcBuffer->handle, dstBuffer->handle, 1, &bufferCopy);
+        vkCmdCopyBuffer(m_commandBuffer, src->handle, dst->handle, 1, &bufferCopy);
     }
 
-    void ICommandList::CopyImage(const ImageCopyInfo& copyInfo)
+    void ICommandList::CopyImage(const ImageCopyInfo& srcImage, const ImageCopyInfo& dstImage, const ImageSize3D& size)
     {
         ZoneScoped;
 
-        auto srcImage = (IImage*)(copyInfo.srcImage);
-        auto dstImage = (IImage*)(copyInfo.dstImage);
+        auto src = (const IImage*)(srcImage.image);
+        auto dst = (const IImage*)(dstImage.image);
 
         VkImageCopy imageCopy{
-            .srcSubresource = ConvertSubresourceLayer(copyInfo.srcSubresource, srcImage->format),
-            .srcOffset      = ConvertOffset3D(copyInfo.srcOffset),
-            .dstSubresource = ConvertSubresourceLayer(copyInfo.dstSubresource, dstImage->format),
-            .dstOffset      = ConvertOffset3D(copyInfo.dstOffset),
-            .extent         = ConvertExtent3D(copyInfo.srcSize),
+            .srcSubresource = ConvertSubresourceLayers(srcImage, src->format),
+            .srcOffset      = ConvertOffset3D(srcImage.offset),
+            .dstSubresource = ConvertSubresourceLayers(dstImage, dst->format),
+            .dstOffset      = ConvertOffset3D(dstImage.offset),
+            .extent         = ConvertExtent3D(size),
         };
-        vkCmdCopyImage(m_commandBuffer, srcImage->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
+        vkCmdCopyImage(m_commandBuffer, src->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dst->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
     }
 
-    void ICommandList::CopyImageToBuffer(const BufferImageCopyInfo& copyInfo)
+    void ICommandList::CopyImageToBuffer(const ImageCopyInfo& srcImage, const ImageMemoryLayout& layout, const Buffer* dstBuffer)
     {
         ZoneScoped;
 
-        auto buffer = (IBuffer*)(copyInfo.buffer);
-        auto image  = (IImage*)(copyInfo.image);
+        auto image  = (const IImage*)(srcImage.image);
+        auto buffer = (const IBuffer*)(dstBuffer);
 
         VkBufferImageCopy bufferImageCopy{
-            .bufferOffset      = copyInfo.bufferOffset,
-            .bufferRowLength   = copyInfo.bytesPerRow,
-            .bufferImageHeight = copyInfo.bytesPerImage,
-            .imageSubresource  = ConvertSubresourceLayer(copyInfo.subresource, image->format),
-            .imageOffset       = ConvertOffset3D(copyInfo.imageOffset),
-            .imageExtent       = ConvertExtent3D(copyInfo.imageSize),
+            .bufferOffset      = layout.offset,
+            .bufferRowLength   = layout.bytesPerRow,
+            .bufferImageHeight = layout.rowsPerImage,
+            .imageSubresource  = ConvertSubresourceLayers(srcImage, image->format),
+            .imageOffset       = ConvertOffset3D(srcImage.offset),
+            .imageExtent       = ConvertExtent3D(image->size),
         };
         vkCmdCopyImageToBuffer(m_commandBuffer, image->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, buffer->handle, 1, &bufferImageCopy);
     }
 
-    void ICommandList::CopyBufferToImage(const BufferImageCopyInfo& copyInfo)
+    void ICommandList::CopyBufferToImage(const Buffer* srcBuffer, const ImageCopyInfo& dstImage, const ImageMemoryLayout& layout)
     {
         ZoneScoped;
 
-        auto buffer = (IBuffer*)(copyInfo.buffer);
-        auto image  = (IImage*)(copyInfo.image);
+        auto buffer = (const IBuffer*)(srcBuffer);
+        auto image  = (const IImage*)(dstImage.image);
 
         VkBufferImageCopy bufferImageCopy{
-            .bufferOffset      = copyInfo.bufferOffset,
-            .bufferRowLength   = copyInfo.bytesPerRow,
-            .bufferImageHeight = copyInfo.bytesPerImage,
-            .imageSubresource  = ConvertSubresourceLayer(copyInfo.subresource, image->format),
-            .imageOffset       = ConvertOffset3D(copyInfo.imageOffset),
-            .imageExtent       = ConvertExtent3D(copyInfo.imageSize),
+            .bufferOffset      = layout.offset,
+            .bufferRowLength   = layout.bytesPerRow,
+            .bufferImageHeight = layout.rowsPerImage,
+            .imageSubresource  = ConvertSubresourceLayers(dstImage, image->format),
+            .imageOffset       = ConvertOffset3D(dstImage.offset),
+            .imageExtent       = ConvertExtent3D(image->size),
         };
         vkCmdCopyBufferToImage(m_commandBuffer, buffer->handle, image->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferImageCopy);
     }
@@ -861,10 +859,10 @@ namespace RHI::Vulkan
         IMicromap* src = (IMicromap*)_src;
 
         VkCopyMicromapInfoEXT copyInfo{
-            .sType  = VK_STRUCTURE_TYPE_COPY_MICROMAP_INFO_EXT,
-            .pNext  = nullptr,
-            .src    = src->handle,
-            .dst    = dst->handle,
+            .sType = VK_STRUCTURE_TYPE_COPY_MICROMAP_INFO_EXT,
+            .pNext = nullptr,
+            .src   = src->handle,
+            .dst   = dst->handle,
             // .mode   = ConvertMicromapCopyMode(copyMode),
         };
         vkCmdCopyMicromapEXT(m_commandBuffer, &copyInfo);

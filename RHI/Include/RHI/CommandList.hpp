@@ -43,27 +43,33 @@ namespace RHI
         Compact,
     };
 
+    struct ColorF32
+    {
+        float r = 0.0, g = 0.0, b = 0.0, a = 0.0;
+    };
+
+    struct ColorU32
+    {
+        uint32_t r = 0, g = 0, b = 0, a = 0;
+    };
+
+    struct ColorI32
+    {
+        int32_t r = 0, g = 0, b = 0, a = 0;
+    };
+
     struct DepthStencilValue
     {
         float   depthValue   = 1.0f;
         uint8_t stencilValue = 0u;
     };
 
-    template<typename T>
-    struct ColorValue
-    {
-        T r = 1;
-        T g = 1;
-        T b = 1;
-        T a = 1;
-    };
-
     union ClearValue
     {
-        ColorValue<int32_t>  i32;
-        ColorValue<uint32_t> u32;
-        ColorValue<float>    f32;
-        DepthStencilValue    ds;
+        ColorF32          f32;
+        ColorU32          u32;
+        ColorI32          i32;
+        DepthStencilValue ds;
     };
 
     /// @brief Defines a viewport for rendering.
@@ -96,39 +102,21 @@ namespace RHI
         size_t  size      = SIZE_MAX; ///< Size of the data to copy.
     };
 
-    /// @brief Defines subresource layers of an image.
-    struct ImageSubresourceLayers
+    struct ImageMemoryLayout
     {
-        TL::Flags<ImageAspect> imageAspects = ImageAspect::All; ///< Image aspects to access.
-        uint32_t               mipLevel     = 0;                ///< Mipmap level.
-        uint32_t               arrayBase    = 0;                ///< Base array layer.
-        uint32_t               arrayCount   = 1;                ///< Number of array layers.
+        uint64_t offset;
+        uint32_t bytesPerRow;
+        uint32_t rowsPerImage;
     };
 
     /// @brief Contains information needed to copy an image.
     struct ImageCopyInfo
     {
-        Image*                 srcImage       = nullptr; ///< Pointer to the source image.
-        ImageSubresourceLayers srcSubresource = {};      ///< Subresource layers of the source image.
-        ImageOffset3D          srcOffset      = {};      ///< Offset in the source image.
-        ImageSize3D            srcSize        = {};      ///< Size of the source image region.
-        Image*                 dstImage       = nullptr; ///< Pointer to the destination image.
-        ImageSubresourceLayers dstSubresource = {};      ///< Subresource layers of the destination image.
-        ImageOffset3D          dstOffset      = {};      ///< Offset in the destination image.
-    };
-
-    /// @brief Contains information needed to copy between a buffer and an image.
-    struct BufferImageCopyInfo
-    {
-        Image*                 image         = nullptr;  ///< Pointer to the image.
-        ImageSubresourceLayers subresource   = {};       ///< Subresource layers of the image.
-        ImageSize3D            imageSize     = {};       ///< Size of the image.
-        ImageOffset3D          imageOffset   = {};       ///< Offset in the image.
-        Buffer*                buffer        = nullptr;  ///< Pointer to the buffer.
-        size_t                 bufferOffset  = 0;        ///< Offset in the buffer.
-        size_t                 bufferSize    = SIZE_MAX; ///< Size of the buffer region.
-        uint32_t               bytesPerRow   = 0;        ///< Number of bytes per row in the buffer.
-        uint32_t               bytesPerImage = 0;        ///< Number of bytes per image in the buffer.
+        Image*        image      = nullptr; ///< Pointer to the source image.
+        uint32_t      mipLevel   = 0;       ///< Mipmap level of the source image.
+        uint32_t      arrayLayer = 0;       ///< Array layer of the source image
+        ImageOffset3D offset     = {};      ///< Offset in the source image.
+        ImageAspect   aspect     = ImageAspect::All;
     };
 
     /// @brief Contains information about binding a bind group.
@@ -220,7 +208,7 @@ namespace RHI
         Image*         view        = nullptr;
         LoadOperation  loadOp      = LoadOperation::Discard;
         StoreOperation storeOp     = StoreOperation::Store;
-        ClearValue     clearValue  = {.f32 = {0.0f, 0.0f, 0.0f, 1.0f}};
+        ClearValue     clearValue  = {0.0f, 0.0f, 0.0f, 1.0f};
         ResolveMode    resolveMode = ResolveMode::None;
         Image*         resolveView = nullptr;
     };
@@ -450,27 +438,15 @@ namespace RHI
 
         /// @brief Issues a compute dispatch command.
         /// @param parameters Information for the dispatch command.
-        virtual void Dispatch(const DispatchParameters& parameters) = 0;
-
-        /// @brief Issues an indirect compute dispatch command.
-        /// @param argumentBuffer Binding information about the buffer containing dispatch arguments.
+        virtual void Dispatch(const DispatchParameters& parameters)            = 0;
         virtual void DispatchIndirect(const BufferBindingInfo& argumentBuffer) = 0;
 
-        /// @brief Issues a buffer-to-buffer copy command.
-        /// @param copyInfo Information for the buffer copy command.
-        virtual void CopyBuffer(const BufferCopyInfo& copyInfo) = 0;
-
-        /// @brief Issues an image-to-image copy command.
-        /// @param copyInfo Information for the image copy command.
-        virtual void CopyImage(const ImageCopyInfo& copyInfo) = 0;
-
-        /// @brief Issues a buffer-to-image copy command.
-        /// @param copyInfo Information for the buffer-to-image copy command.
-        virtual void CopyImageToBuffer(const BufferImageCopyInfo& copyInfo) = 0;
-
-        /// @brief Issues an image-to-buffer copy command.
-        /// @param copyInfo Information for the image-to-buffer copy command.
-        virtual void CopyBufferToImage(const BufferImageCopyInfo& copyInfo) = 0;
+        virtual void CopyBuffer(const Buffer* srcBuffer, uint64_t srcOffset, const Buffer* dstBuffer, uint64_t dstOffset, uint64_t size) = 0;
+        virtual void CopyImage(const ImageCopyInfo& srcImage, const ImageCopyInfo& dstImage, const ImageSize3D& size)                    = 0;
+        virtual void CopyImageToBuffer(const ImageCopyInfo& srcImage, const ImageMemoryLayout& layout, const Buffer* dstBuffer)                = 0;
+        virtual void CopyBufferToImage(const Buffer* srcBuffer, const ImageCopyInfo& dstImage, const ImageMemoryLayout& layout)                = 0;
+        virtual void CopyMicromap(Micromap* dst, const Micromap* src, CopyMode copyMode)                                                 = 0;
+        virtual void CopyAccelerationStructure(AccelerationStructure* dst, const AccelerationStructure* src, CopyMode copyMode)          = 0;
 
         /// @brief Builds micromaps for ray tracing acceleration structures.
         /// @param buildInfos Span of micromap build descriptions.
@@ -481,12 +457,6 @@ namespace RHI
         /// @param queryPool Query pool to write the sizes to.
         /// @param queryPoolOffset Offset in the query pool to write to.
         virtual void WriteMicromapsSizes(TL::Span<const Micromap*> micromaps, QueryPool* queryPool, uint32_t queryPoolOffset) = 0;
-
-        /// @brief Copies a micromap from source to destination.
-        /// @param dst Destination micromap.
-        /// @param src Source micromap.
-        /// @param copyMode Mode of the copy operation.
-        virtual void CopyMicromap(Micromap* dst, const Micromap* src, CopyMode copyMode) = 0;
 
         /// @brief Builds top-level acceleration structures for ray tracing.
         /// @param buildInfos Span of TLAS build descriptions.
@@ -501,11 +471,5 @@ namespace RHI
         /// @param queryPool Query pool to write the sizes to.
         /// @param queryPoolOffset Offset in the query pool to write to.
         virtual void WriteAccelerationStructuresSizes(TL::Span<const AccelerationStructure*> accelerationStructures, QueryPool* queryPool, uint32_t queryPoolOffset) = 0;
-
-        /// @brief Copies an acceleration structure from source to destination.
-        /// @param dst Destination acceleration structure.
-        /// @param src Source acceleration structure.
-        /// @param copyMode Mode of the copy operation.
-        virtual void CopyAccelerationStructure(AccelerationStructure* dst, const AccelerationStructure* src, CopyMode copyMode) = 0;
     };
 } // namespace RHI

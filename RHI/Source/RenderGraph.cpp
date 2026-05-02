@@ -1687,25 +1687,24 @@ namespace RHI
             // Copy commands
             for (auto& write : m_pendingBufferWrites)
             {
-                commandList->CopyBuffer({
-                    .srcBuffer = stagingBuf,
-                    .srcOffset = write.stagingOffset,
-                    .dstBuffer = write.dstBuffer,
-                    .dstOffset = write.dstOffset,
-                    .size      = write.size,
-                });
+                commandList->CopyBuffer(stagingBuf, write.stagingOffset, write.dstBuffer, write.dstOffset, write.size);
             }
             for (auto& write : m_pendingImageWrites)
             {
-                commandList->CopyBufferToImage({
-                    .image        = write.dstImage,
-                    .subresource  = {.imageAspects = ImageAspect::All, .mipLevel = write.mipLevel, .arrayBase = write.arrayLayer, .arrayCount = 1},
-                    .imageSize    = write.imageSize,
-                    .imageOffset  = write.imageOffset,
-                    .buffer       = stagingBuf,
-                    .bufferOffset = write.stagingOffset,
-                    .bytesPerRow  = write.bytesPerRow,
-                });
+                commandList->CopyBufferToImage(
+                    stagingBuf,
+                    ImageCopyInfo{
+                        .image      = write.dstImage,
+                        .mipLevel   = write.mipLevel,
+                        .arrayLayer = write.arrayLayer,
+                        .offset     = write.imageOffset,
+                        .aspect     = ImageAspect::All,
+                    },
+                    ImageMemoryLayout{
+                        .offset       = write.stagingOffset,
+                        .bytesPerRow  = write.bytesPerRow,
+                        .rowsPerImage = write.imageSize.height,
+                    });
             }
 
             // Post-copy barrier: release transfer writes so render graph barriers compute correctly

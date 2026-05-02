@@ -171,7 +171,7 @@ namespace RHI::WebGPU
     {
     }
 
-    void ICommandList::DebugMarkerPush(const char* name, [[maybe_unused]] ColorValue<float> color)
+    void ICommandList::PushDebugMarker(const char* name, [[maybe_unused]] uint32_t bgra)
     {
         switch (m_state)
         {
@@ -183,7 +183,7 @@ namespace RHI::WebGPU
         }
     }
 
-    void ICommandList::DebugMarkerPop()
+    void ICommandList::PopDebugMarker()
     {
         switch (m_state)
         {
@@ -192,6 +192,18 @@ namespace RHI::WebGPU
         case State::RenderBundle:       wgpuRenderBundleEncoderPopDebugGroup(m_bundleEncoder); break;
         case State::RenderPassEncoder:  wgpuRenderPassEncoderPopDebugGroup(m_renderPassEncoder); break;
         case State::ComputePassEncoder: wgpuComputePassEncoderPopDebugGroup(m_computePassEncoder); break;
+        }
+    }
+
+    void ICommandList::InsertDebugMarker(const char* name, [[maybe_unused]] uint32_t bgra)
+    {
+        switch (m_state)
+        {
+        case State::CommandBuffer:      TL_UNREACHABLE(); break;
+        case State::CommandEncoder:     wgpuCommandEncoderInsertDebugMarker(m_cmdEncoder, ConvertToStringView(name)); break;
+        case State::RenderBundle:       wgpuRenderBundleEncoderInsertDebugMarker(m_bundleEncoder, ConvertToStringView(name)); break;
+        case State::RenderPassEncoder:  wgpuRenderPassEncoderInsertDebugMarker(m_renderPassEncoder, ConvertToStringView(name)); break;
+        case State::ComputePassEncoder: wgpuComputePassEncoderInsertDebugMarker(m_computePassEncoder, ConvertToStringView(name)); break;
         }
     }
 
@@ -216,30 +228,16 @@ namespace RHI::WebGPU
         wgpuRenderPassEncoderExecuteBundles(m_renderPassEncoder, bundles.size(), bundles.data());
     }
 
-    void ICommandList::BindGraphicsPipeline(GraphicsPipeline* pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups)
+    void ICommandList::BindGraphicsPipeline(const GraphicsPipeline* pipelineState)
     {
         auto pipeline = m_device->m_graphicsPipelineOwner.Get(pipelineState);
         wgpuRenderPassEncoderSetPipeline(m_renderPassEncoder, pipeline->pipeline);
-
-        uint32_t index = 0;
-        for (const auto& bindingInfo : bindGroups)
-        {
-            auto bindGroup = m_device->m_bindGroupOwner.Get(bindingInfo.bindGroup);
-            wgpuRenderPassEncoderSetBindGroup(m_renderPassEncoder, index++, bindGroup->bindGroup, bindingInfo.dynamicOffsets.size(), bindingInfo.dynamicOffsets.data());
-        }
     }
 
-    void ICommandList::BindComputePipeline(ComputePipeline* pipelineState, TL::Span<const BindGroupBindingInfo> bindGroups)
+    void ICommandList::BindComputePipeline(const ComputePipeline* pipelineState)
     {
         auto pipeline = m_device->m_computePipelineOwner.Get(pipelineState);
         wgpuComputePassEncoderSetPipeline(m_computePassEncoder, pipeline->pipeline);
-
-        uint32_t index = 0;
-        for (const auto& bindingInfo : bindGroups)
-        {
-            auto bindGroup = m_device->m_bindGroupOwner.Get(bindingInfo.bindGroup);
-            wgpuComputePassEncoderSetBindGroup(m_computePassEncoder, index++, bindGroup->bindGroup, bindingInfo.dynamicOffsets.size(), bindingInfo.dynamicOffsets.data());
-        }
     }
 
     void ICommandList::SetViewport(const Viewport& viewport)
@@ -316,7 +314,7 @@ namespace RHI::WebGPU
     void ICommandList::Dispatch(const DispatchParameters& parameters)
     {
         wgpuComputePassEncoderDispatchWorkgroups(
-            m_computePassEncoder, parameters.countX, parameters.countY, parameters.countZ);
+            m_computePassEncoder, parameters.x, parameters.y, parameters.z);
     }
 
     void ICommandList::DispatchIndirect(const BufferBindingInfo& argumentBuffer)
@@ -328,84 +326,27 @@ namespace RHI::WebGPU
             argumentBuffer.offset);
     }
 
-    void ICommandList::CopyBuffer(const BufferCopyInfo& copyInfo)
-    {
-        auto srcBuffer = m_device->m_bufferOwner.Get(copyInfo.srcBuffer);
-        auto dstBuffer = m_device->m_bufferOwner.Get(copyInfo.dstBuffer);
+    void ICommandList::BindPipelineLayout([[maybe_unused]] BindPoint bindPoint, [[maybe_unused]] const PipelineLayout* pipelineLayout) { TL_UNREACHABLE(); }
+    void ICommandList::SetPushConstants([[maybe_unused]] BindPoint bindPoint, [[maybe_unused]] uint32_t offset, [[maybe_unused]] TL::Block content) { TL_UNREACHABLE(); }
+    void ICommandList::PushBindGroup([[maybe_unused]] BindPoint bindPoint, [[maybe_unused]] uint32_t firstGroup, [[maybe_unused]] TL::Span<const BindGroupUpdateInfo> updateInfos) { TL_UNREACHABLE(); }
+    void ICommandList::SetBindGroups([[maybe_unused]] BindPoint bindPoint, [[maybe_unused]] TL::Span<const BindGroupBindingInfo> bindGroups) { TL_UNREACHABLE(); }
 
-        wgpuCommandEncoderCopyBufferToBuffer(
-            m_cmdEncoder,
-            srcBuffer->buffer,
-            copyInfo.srcOffset,
-            dstBuffer->buffer,
-            copyInfo.dstOffset,
-            copyInfo.size);
-    }
+    void ICommandList::DrawMeshTasks([[maybe_unused]] const DispatchParameters drawMeshTasksDesc) { TL_UNREACHABLE(); }
+    void ICommandList::DrawMeshTasksIndirect([[maybe_unused]] const BufferBindingInfo& argumentBuffer, [[maybe_unused]] const BufferBindingInfo& countBuffer, [[maybe_unused]] uint32_t drawNum, [[maybe_unused]] uint32_t stride) { TL_UNREACHABLE(); }
+    void ICommandList::DispatchRays([[maybe_unused]] const DispatchRaysInfo& dispatchRaysDesc) { TL_UNREACHABLE(); }
+    void ICommandList::DispatchRaysIndirect([[maybe_unused]] const BufferBindingInfo& argumentBuffer) { TL_UNREACHABLE(); }
 
-    void ICommandList::CopyImage(const ImageCopyInfo& copyInfo)
-    {
-        auto srcImage = m_device->m_imageOwner.Get(copyInfo.srcImage);
-        auto dstImage = m_device->m_imageOwner.Get(copyInfo.dstImage);
+    void ICommandList::CopyBuffer([[maybe_unused]] const Buffer* srcBuffer, [[maybe_unused]] uint64_t srcOffset, [[maybe_unused]] const Buffer* dstBuffer, [[maybe_unused]] uint64_t dstOffset, [[maybe_unused]] uint64_t size) { TL_UNREACHABLE(); }
+    void ICommandList::CopyImage([[maybe_unused]] const ImageCopyInfo& srcImage, [[maybe_unused]] const ImageCopyInfo& dstImage, [[maybe_unused]] const ImageSize3D& size) { TL_UNREACHABLE(); }
+    void ICommandList::CopyImageToBuffer([[maybe_unused]] const ImageCopyInfo& srcImage, [[maybe_unused]] const ImageMemoryLayout& layout, [[maybe_unused]] const Buffer* dstBuffer) { TL_UNREACHABLE(); }
+    void ICommandList::CopyBufferToImage([[maybe_unused]] const Buffer* srcBuffer, [[maybe_unused]] const ImageCopyInfo& dstImage, [[maybe_unused]] const ImageMemoryLayout& layout) { TL_UNREACHABLE(); }
+    void ICommandList::CopyMicromap([[maybe_unused]] Micromap* dst, [[maybe_unused]] const Micromap* src, [[maybe_unused]] CopyMode copyMode) { TL_UNREACHABLE(); }
+    void ICommandList::CopyAccelerationStructure([[maybe_unused]] AccelerationStructure* dst, [[maybe_unused]] const AccelerationStructure* src, [[maybe_unused]] CopyMode copyMode) { TL_UNREACHABLE(); }
 
-        WGPUTexelCopyTextureInfo source{
-            .texture  = srcImage->texture,
-            .mipLevel = copyInfo.srcSubresource.mipLevel,
-            .origin   = ConvertToOffset3D(copyInfo.srcOffset),
-            .aspect   = WGPUTextureAspect_All,
-        };
-        WGPUTexelCopyTextureInfo destination{
-            .texture  = dstImage->texture,
-            .mipLevel = copyInfo.dstSubresource.mipLevel,
-            .origin   = ConvertToOffset3D(copyInfo.dstOffset),
-            .aspect   = WGPUTextureAspect_All,
-        };
-        WGPUExtent3D copySize = ConvertToExtent3D(copyInfo.srcSize);
-        wgpuCommandEncoderCopyTextureToTexture(m_cmdEncoder, &source, &destination, &copySize);
-    }
+    void ICommandList::BuildMicromaps([[maybe_unused]] TL::Span<const MicromapBuildInfo> buildInfos) { TL_UNREACHABLE(); }
+    void ICommandList::WriteMicromapsSizes([[maybe_unused]] TL::Span<const Micromap*> micromaps, [[maybe_unused]] QueryPool* queryPool, [[maybe_unused]] uint32_t queryPoolOffset) { TL_UNREACHABLE(); }
+    void ICommandList::BuildTopLevelAccelerationStructures([[maybe_unused]] TL::Span<const TopLevelAccelerationStructureBuildInfo> buildInfos) { TL_UNREACHABLE(); }
+    void ICommandList::BuildBottomLevelAccelerationStructures([[maybe_unused]] TL::Span<const BottomLevelAccelerationStructureBuildInfo> buildInfos) { TL_UNREACHABLE(); }
+    void ICommandList::WriteAccelerationStructuresSizes([[maybe_unused]] TL::Span<const AccelerationStructure*> accelerationStructures, [[maybe_unused]] QueryPool* queryPool, [[maybe_unused]] uint32_t queryPoolOffset) { TL_UNREACHABLE(); }
 
-    void ICommandList::CopyImageToBuffer(const BufferImageCopyInfo& copyInfo)
-    {
-        auto srcImage  = m_device->m_imageOwner.Get(copyInfo.image);
-        auto dstBuffer = m_device->m_bufferOwner.Get(copyInfo.buffer);
-
-        WGPUTexelCopyTextureInfo source{
-            .texture  = srcImage->texture,
-            .mipLevel = copyInfo.subresource.mipLevel,
-            .origin   = ConvertToOffset3D(copyInfo.imageOffset),
-            .aspect   = WGPUTextureAspect_All,
-        };
-        WGPUTexelCopyBufferInfo destination{
-            .layout = {
-                .offset       = copyInfo.bufferOffset,
-                .bytesPerRow  = copyInfo.bytesPerRow,
-                .rowsPerImage = copyInfo.bytesPerImage,
-            },
-            .buffer = dstBuffer->buffer,
-        };
-        WGPUExtent3D copySize = ConvertToExtent3D(copyInfo.imageSize);
-        wgpuCommandEncoderCopyTextureToBuffer(m_cmdEncoder, &source, &destination, &copySize);
-    }
-
-    void ICommandList::CopyBufferToImage(const BufferImageCopyInfo& copyInfo)
-    {
-        auto srcBuffer = m_device->m_bufferOwner.Get(copyInfo.buffer);
-        auto dstImage  = m_device->m_imageOwner.Get(copyInfo.image);
-
-        WGPUTexelCopyTextureInfo source{
-            .texture  = dstImage->texture,
-            .mipLevel = copyInfo.subresource.mipLevel,
-            .origin   = ConvertToOffset3D(copyInfo.imageOffset),
-            .aspect   = WGPUTextureAspect_All,
-        };
-        WGPUTexelCopyBufferInfo destination{
-            .layout = {
-                .offset       = copyInfo.bufferOffset,
-                .bytesPerRow  = copyInfo.bytesPerRow,
-                .rowsPerImage = copyInfo.bytesPerImage,
-            },
-            .buffer = srcBuffer->buffer,
-        };
-        WGPUExtent3D copySize = ConvertToExtent3D(copyInfo.imageSize);
-        wgpuCommandEncoderCopyBufferToTexture(m_cmdEncoder, &destination, &source, &copySize);
-    }
 } // namespace RHI::WebGPU

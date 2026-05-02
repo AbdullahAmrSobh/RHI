@@ -392,30 +392,6 @@ namespace RHI::Vulkan
     }
 
     template<typename T>
-    inline static VkClearColorValue ConvertColorValue(ColorValue<T> value)
-    {
-        VkClearColorValue clearValue = {};
-        clearValue.float32[0]        = value.r;
-        clearValue.float32[1]        = value.g;
-        clearValue.float32[2]        = value.b;
-        clearValue.float32[3]        = value.a;
-        return clearValue;
-    }
-
-    inline static VkClearDepthStencilValue ConvertDepthStencilValue(DepthStencilValue value)
-    {
-        VkClearDepthStencilValue clearValue = {};
-        clearValue.depth                    = value.depthValue;
-        clearValue.stencil                  = value.stencilValue;
-        return clearValue;
-    }
-
-    inline static VkClearColorValue ConvertClearValue(ClearValue clearValue)
-    {
-        return ConvertColorValue(clearValue.f32);
-    };
-
-    template<typename T>
     inline static VkObjectType GetObjectType()
     {
         if constexpr (std::is_same_v<T, VkInstance>) return VK_OBJECT_TYPE_INSTANCE;
@@ -559,19 +535,6 @@ namespace RHI::Vulkan
         if (pipelineStages & PipelineStage::MeshShader) stageFlags |= VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT;
         if (pipelineStages & PipelineStage::AccelerationStructureCopy) stageFlags |= VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR;
         return stageFlags;
-    }
-
-    inline static ColorValue<float> QueueTypeToColor(QueueType queueType)
-    {
-        switch (queueType)
-        {
-        case QueueType::Graphics: return {0.8f, 0.2f, 0.2f, 1.0f};
-        case QueueType::Compute:  return {0.2f, 0.2f, 0.8f, 1.0f};
-        case QueueType::Transfer: return {0.2f, 0.8f, 0.2f, 1.0f};
-        case QueueType::Count:    TL_UNREACHABLE(); return {};
-        }
-        TL_UNREACHABLE();
-        return {};
     }
 
     inline static VkAccessFlags2 GetAccessFlags2(ImageUsage usage, TL::Flags<Access> access)
