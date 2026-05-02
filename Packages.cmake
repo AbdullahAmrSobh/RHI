@@ -1,6 +1,6 @@
 CPMAddPackage(
     NAME           TL
-	GIT_REPOSITORY git@github.com:Pagghiu/SaneCppLibraries.git
+	GIT_REPOSITORY git@github.com:AbdullahAmrSobh/TL.git
 	GIT_TAG        main
 )
 
