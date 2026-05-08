@@ -269,15 +269,16 @@ namespace RHI::Vulkan
 
     void IQueue::WaitFence(Fence* _fence, uint64_t value)
     {
+        IFence*             fence = (IFence*)_fence;
         VkSemaphoreWaitInfo waitInfo{
             .sType          = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
             .pNext          = nullptr,
             .flags          = 0,
-            .semaphoreCount = {},
-            .pSemaphores    = {},
+            .semaphoreCount = 1,
+            .pSemaphores    = &fence->semaphore,
             .pValues        = &value,
         };
-        VulkanResult result = vkWaitSemaphores(m_device->m_device, &waitInfo, UINT32_MAX);
+        VulkanResult result = vkWaitSemaphores(m_device->m_device, &waitInfo, UINT64_MAX);
         TL_ASSERT(result.IsSuccess());
     }
 

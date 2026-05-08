@@ -92,16 +92,6 @@ namespace RHI
         uint32_t height  = UINT32_MAX; ///< Height of the scissor rectangle.
     };
 
-    /// @brief Contains information needed to copy a buffer.
-    struct BufferCopyInfo
-    {
-        Buffer* srcBuffer = nullptr;  ///< Pointer to the source buffer.
-        size_t  srcOffset = 0;        ///< Offset in the source buffer.
-        Buffer* dstBuffer = nullptr;  ///< Pointer to the destination buffer.
-        size_t  dstOffset = 0;        ///< Offset in the destination buffer.
-        size_t  size      = SIZE_MAX; ///< Size of the data to copy.
-    };
-
     struct ImageMemoryLayout
     {
         uint64_t offset;

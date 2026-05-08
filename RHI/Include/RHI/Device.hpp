@@ -47,10 +47,10 @@ namespace RHI
 
     struct QueueSubmitInfo
     {
-        TL::Span<FenceSubmitInfo>    waitFences        = {};
-        TL::Span<CommandList* const> commandLists      = {};
-        TL::Span<FenceSubmitInfo>    signalFences      = {};
-        TL::Span<Swapchain*>         presentSwapchains = {};
+        TL::Span<const FenceSubmitInfo> waitFences        = {};
+        TL::Span<CommandList* const>    commandLists      = {};
+        TL::Span<const FenceSubmitInfo> signalFences      = {};
+        TL::Span<Swapchain*>            presentSwapchains = {};
     };
 
     class RenderGraph;
