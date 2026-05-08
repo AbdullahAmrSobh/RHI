@@ -8,6 +8,8 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Resources.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RHI.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Swapchain.hpp
+    # ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/resource-streaming.hpp
+
 )
 
 set(SOURCE_FILES
@@ -16,6 +18,8 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Format.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraph.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/resource-streaming.cpp
+
 )
 
 tl_add_target(

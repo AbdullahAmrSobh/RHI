@@ -5,6 +5,7 @@
 #include "RHI/Resources.hpp"
 #include "RHI/PipelineAccess.hpp"
 #include "RHI/CommandList.hpp"
+#include <RHI/resource-streaming.h>
 
 #include <TL/Ptr.hpp>
 
@@ -389,39 +390,6 @@ namespace RHI
         TL::Map<TL::String, std::pair<BufferCreateInfo, Buffer*>> m_bufferCache;
     };
 
-    ///
-
-    class StagingBuffer
-    {
-    public:
-        static constexpr size_t DefaultCapacity = 512u * 1024u * 1024u; // 512 MiB per frame
-
-        ResultCode              Init(Device* device, size_t capacity = DefaultCapacity);
-        void                    Shutdown(Device* device);
-        void                    Reset(); // call at the start of each frame
-
-        struct Allocation
-        {
-            uint8_t* ptr    = nullptr;
-            size_t   offset = 0;
-
-            bool     isValid() const { return ptr != nullptr; }
-        };
-
-        Allocation Allocate(size_t size, size_t alignment = 256);
-
-        Buffer*    GetBuffer() const { return m_buffer; }
-        size_t     GetCapacity() const { return m_capacity; }
-
-    private:
-        Buffer*  m_buffer   = nullptr;
-        uint8_t* m_mapped   = nullptr;
-        size_t   m_capacity = 0;
-        size_t   m_offset   = 0;
-    };
-
-    ///
-
     ///////////////////////////////////////////////////////////////////////////
     /// Render Graph
     ///////////////////////////////////////////////////////////////////////////
@@ -476,11 +444,9 @@ namespace RHI
         TL_NODISCARD Image*     GetImageHandle(RGImage* handle) const;
         TL_NODISCARD Buffer*    GetBufferHandle(RGBuffer* handle) const;
 
-        // streaming functions
-        void                    streamBegin();
-        void                    streamEnd();
-        void                    streamBufferWrite(Buffer* buffer, size_t offset, TL::Block block);
-        void                    streamImageWrite(Image* image, RHI::Format format, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block);
+        void                    streamImage(const ImageCopyInfo& dstImage, ImageSize3D size, uint32_t bytesPerRow, uint32_t rowsPerImage, TL::Block data);
+
+        void                    streamBuffer(RHI::Buffer* buffer, uint64_t offset, TL::Block block);
 
         // Allocates a transient bind group for the current local bind group
         BindGroup*              createBindGroup(RHI::BindGroupLayout* layout);
@@ -581,36 +547,12 @@ namespace RHI
 
         struct PerFrame
         {
-            CommandPool* commandPool[(int)QueueType::Count];
+            CommandPool* commandPool[2];
         };
 
-        // Streaming: pending upload operations collected between streamBegin/streamEnd
-        struct PendingBufferWrite
-        {
-            Buffer* dstBuffer;
-            size_t  dstOffset;
-            size_t  stagingOffset;
-            size_t  size;
-        };
-
-        struct PendingImageWrite
-        {
-            Image*        dstImage;
-            ImageOffset3D imageOffset;
-            ImageSize3D   imageSize;
-            uint32_t      mipLevel;
-            uint32_t      arrayLayer;
-            size_t        stagingOffset;
-            uint32_t      bytesPerRow;
-        };
-
-        bool                           m_streamingActive = false;
-        TL::Vector<PendingBufferWrite> m_pendingBufferWrites{m_arena};
-        TL::Vector<PendingImageWrite>  m_pendingImageWrites{m_arena};
-
-        uint64_t                       m_activeFrame = 0;
-        PerFrame                       m_frame[2];
-        StagingBuffer                  m_stagingBuffer[FramesInFlightCount];
+        uint64_t        m_activeFrame = 0;
+        PerFrame        m_frame[2];
+        StreamingBuffer m_streamingBuffer;
 
         struct PerQueue
         {

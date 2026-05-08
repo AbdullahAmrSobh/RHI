@@ -851,18 +851,21 @@ namespace RHI
         for (uint32_t i = 0; i < 2; i++)
         {
             PerFrame& perFrame = rg->m_frame[i];
-            for (int queueType = (int)QueueType::Graphics; queueType < (int)QueueType::Count; queueType++)
+            for (int queueType = 0; queueType < 2; queueType++)
             {
                 perFrame.commandPool[queueType] = device->CreateCommandPool({.queue = (QueueType)queueType});
             }
         }
         TL_ASSERT(result == ResultCode::Success);
 
-        for (uint32_t i = 0; i < FramesInFlightCount; i++)
         {
-            result = rg->m_stagingBuffer[i].Init(device);
-            // TODO: For some weird reason this assertion fails even ttthough the result is success
-            // TL_ASSERT(result == ResultCode::Success, "Failed to init staging buffer for frame {}", i);
+            result = rg->m_streamingBuffer.init(
+                32ull * 1024ull * 1024ull * FramesInFlightCount,
+                FramesInFlightCount,
+                device,
+                QueueType::Graphics,
+                device->GetQueue(QueueType::Graphics));
+            TL_ASSERT(result == ResultCode::Success);
         }
 
         for (auto& perQueue : rg->m_perQueue)
@@ -878,17 +881,18 @@ namespace RHI
     {
         ZoneScoped;
 
-        for (auto& staging : rg->m_stagingBuffer)
-            staging.Shutdown(rg->m_device);
+        rg->m_streamingBuffer.shutdown();
 
         for (auto& perQueue : rg->m_perQueue)
             if (perQueue.fence)
                 rg->m_device->DestroyFence(perQueue.fence);
 
         for (uint32_t i = 0; i < 2; i++)
-            for (int q = 0; q < (int)QueueType::Count; q++)
+        {
+            for (int q = 0; q < 2; q++)
                 if (rg->m_frame[i].commandPool[q])
                     rg->m_device->DestroyCommandPool(rg->m_frame[i].commandPool[q]);
+        }
 
         rg->m_resourcePool->Shutdown();
         rg->m_arena.reset();
@@ -907,8 +911,6 @@ namespace RHI
 
         if (m_beginInfo.verboseDebug)
             TL::LogInfo("[RenderGraph] ====== BeginFrame (frame slot {}) ======", m_activeFrame);
-
-        m_stagingBuffer[m_activeFrame].Reset();
 
         for (auto& pool : m_frame[m_activeFrame].commandPool)
         {
@@ -942,18 +944,13 @@ namespace RHI
             m_imagePool.clear();
             m_passPool.clear();
             m_swapchains.clear();
-            m_pendingBufferWrites.clear();
-            m_pendingImageWrites.clear();
-            m_streamingActive = false;
             m_arena.reset();
 
-            m_dependencyLevels    = TL::Vector<DependencyLevel>{m_arena};
-            m_bufferPool          = TL::Vector<RGFrameBuffer*>{m_arena};
-            m_imagePool           = TL::Vector<RGFrameImage*>{m_arena};
-            m_passPool            = TL::Vector<RGPass*>{m_arena};
-            m_swapchains          = TL::Vector<SwapchainRGInfo>{m_arena};
-            m_pendingBufferWrites = TL::Vector<PendingBufferWrite>{m_arena};
-            m_pendingImageWrites  = TL::Vector<PendingImageWrite>{m_arena};
+            m_dependencyLevels = TL::Vector<DependencyLevel>{m_arena};
+            m_bufferPool       = TL::Vector<RGFrameBuffer*>{m_arena};
+            m_imagePool        = TL::Vector<RGFrameImage*>{m_arena};
+            m_passPool         = TL::Vector<RGPass*>{m_arena};
+            m_swapchains       = TL::Vector<SwapchainRGInfo>{m_arena};
 
             m_beginInfo = {};
             m_state     = {};
@@ -1091,120 +1088,27 @@ namespace RHI
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    /// StagingBuffer
-    ///////////////////////////////////////////////////////////////////////////
-
-    ResultCode StagingBuffer::Init(Device* device, size_t capacity)
-    {
-        m_capacity = capacity;
-        m_offset   = 0;
-
-        BufferCreateInfo ci{
-            .name       = "RenderGraph-StagingBuffer",
-            .usageFlags = BufferUsage::HostMapped | BufferUsage::CopySrc,
-            .byteSize   = capacity,
-        };
-
-        m_buffer = device->CreateBuffer(ci);
-        TL_ASSERT(m_buffer, "Failed to create staging buffer");
-
-        m_mapped = static_cast<uint8_t*>(device->MapBuffer(m_buffer, 0, capacity));
-        TL_ASSERT(m_mapped, "Failed to map staging buffer");
-
-        return ResultCode::Success;
-    }
-
-    void StagingBuffer::Shutdown(Device* device)
-    {
-        if (m_buffer)
-        {
-            device->UnmapBuffer(m_buffer);
-            device->DestroyBuffer(m_buffer);
-            m_buffer = nullptr;
-            m_mapped = nullptr;
-        }
-    }
-
-    void StagingBuffer::Reset()
-    {
-        m_offset = 0;
-    }
-
-    StagingBuffer::Allocation StagingBuffer::Allocate(size_t size, size_t alignment)
-    {
-        size_t alignedOffset = (m_offset + alignment - 1) & ~(alignment - 1);
-        if (alignedOffset + size > m_capacity)
-        {
-            TL::LogError("StagingBuffer OOM: requested {} B, {} B available", size, m_capacity - m_offset);
-            return {};
-        }
-        m_offset = alignedOffset + size;
-        return {m_mapped + alignedOffset, alignedOffset};
-    }
-
-    ///////////////////////////////////////////////////////////////////////////
     /// Streaming
     ///////////////////////////////////////////////////////////////////////////
 
-    void RenderGraph::streamBegin()
+    void RenderGraph::streamImage(const ImageCopyInfo& dstImage, ImageSize3D size, uint32_t bytesPerRow, uint32_t rowsPerImage, TL::Block data)
     {
-        TL_ASSERT(m_state.frameRecording, "streamBegin called outside BeginFrame/EndFrame");
-        TL_ASSERT(!m_streamingActive, "streamBegin called twice without streamEnd");
-        m_streamingActive = true;
+        TL_ASSERT(m_state.frameRecording, "streamImage called outside BeginFrame/EndFrame");
+        TL_ASSERT(data.ptr && data.size > 0);
+
+        ImageBarrierState srcBarrier{.usage = RHI::ImageUsage::None, .stage = RHI::PipelineStage::None, .access = RHI::Access::None};
+        ImageBarrierState dstBarrier{.usage = RHI::ImageUsage::ShaderResource, .stage = RHI::PipelineStage::AllCommands, .access = RHI::Access::Read};
+        m_streamingBuffer.streamImage(dstImage, size, bytesPerRow, rowsPerImage, data, srcBarrier, dstBarrier);
     }
 
-    void RenderGraph::streamEnd()
+    void RenderGraph::streamBuffer(RHI::Buffer* buffer, uint64_t offset, TL::Block block)
     {
-        TL_ASSERT(m_streamingActive, "streamEnd called without matching streamBegin");
-        m_streamingActive = false;
-    }
-
-    void RenderGraph::streamBufferWrite(Buffer* buffer, size_t offset, TL::Block block)
-    {
-        TL_ASSERT(m_streamingActive, "streamBufferWrite called outside streamBegin/streamEnd");
+        TL_ASSERT(m_state.frameRecording, "streamBuffer called outside BeginFrame/EndFrame");
         TL_ASSERT(block.ptr && block.size > 0);
 
-        auto& staging = m_stagingBuffer[m_activeFrame];
-        auto  alloc   = staging.Allocate(block.size);
-        TL_ASSERT(alloc.isValid(), "Staging buffer exhausted during buffer write");
-
-        memcpy(alloc.ptr, block.ptr, block.size);
-
-        m_pendingBufferWrites.push_back({
-            .dstBuffer     = buffer,
-            .dstOffset     = offset,
-            .stagingOffset = alloc.offset,
-            .size          = block.size,
-        });
-    }
-
-    void RenderGraph::streamImageWrite(Image* image, RHI::Format format, ImageOffset3D offset, ImageSize3D size, uint32_t mipLevel, uint32_t arrayLayer, TL::Block block)
-    {
-        TL_ASSERT(m_streamingActive, "streamImageWrite called outside streamBegin/streamEnd");
-        TL_ASSERT(block.ptr && block.size > 0);
-
-        auto& staging = m_stagingBuffer[m_activeFrame];
-        // Images need 256-byte aligned staging offsets (Vulkan spec requirement)
-        auto  alloc   = staging.Allocate(block.size, 256);
-        TL_ASSERT(alloc.isValid(), "Staging buffer exhausted during image write");
-
-        memcpy(alloc.ptr, block.ptr, block.size);
-
-        uint32_t bytesPerPixel = GetFormatByteSize(format);
-
-        uint32_t depth       = size.depth > 0 ? size.depth : 1;
-        uint32_t height      = size.height > 0 ? size.height : 1;
-        uint32_t bytesPerRow = (uint32_t)(block.size / (height * depth * bytesPerPixel));
-
-        m_pendingImageWrites.push_back({
-            .dstImage      = image,
-            .imageOffset   = offset,
-            .imageSize     = size,
-            .mipLevel      = mipLevel,
-            .arrayLayer    = arrayLayer,
-            .stagingOffset = alloc.offset,
-            .bytesPerRow   = bytesPerRow,
-        });
+        BufferBarrierState srcBarrier{.usage = RHI::BufferUsage::None, .stage = RHI::PipelineStage::None, .access = RHI::Access::None};
+        BufferBarrierState dstBarrier{.usage = RHI::BufferUsage::Storage, .stage = RHI::PipelineStage::AllCommands, .access = RHI::Access::Read};
+        m_streamingBuffer.streamBuffer(buffer, offset, block, srcBarrier, dstBarrier);
     }
 
     bool RenderGraph::CheckDependency(const RGPass* producer, const RGPass* consumer) const
@@ -1609,6 +1513,8 @@ namespace RHI
 
     void RenderGraph::ExecuteSingleThreadUsingSignelQueue()
     {
+        m_streamingBuffer.flush();
+
         PerFrame*    frame       = &m_frame[m_activeFrame];
         CommandPool* commandPool = frame->commandPool[(int)QueueType::Graphics];
 
@@ -1648,91 +1554,8 @@ namespace RHI
             // m_rdoc->FrameStartCapture();
         }
 
-        // CommandListCreateInfo commandAllocateInfo{
-        //     .name      = "cmd-rendergraph",
-        //     .queueType = QueueType::Graphics,
-        // };
         CommandList* commandList = commandPool->Allocate();
         commandList->Begin();
-
-        // Emit streaming uploads collected via streamBegin/streamEnd
-        if (!m_pendingBufferWrites.empty() || !m_pendingImageWrites.empty())
-        {
-            Buffer* stagingBuf = m_stagingBuffer[m_activeFrame].GetBuffer();
-
-            // Pre-copy barriers
-            TL::Vector<ImageBarrierInfo>  imagePreBarriers{m_arena};
-            TL::Vector<BufferBarrierInfo> bufferPreBarriers{m_arena};
-            imagePreBarriers.reserve(m_pendingImageWrites.size());
-            bufferPreBarriers.reserve(m_pendingBufferWrites.size());
-
-            for (auto& write : m_pendingImageWrites)
-            {
-                imagePreBarriers.push_back({
-                    .image    = write.dstImage,
-                    .srcState = {ImageUsage::None, PipelineStage::TopOfPipe, Access::None},
-                    .dstState = {ImageUsage::CopyDst, PipelineStage::Copy, Access::Write},
-                });
-            }
-            for (auto& write : m_pendingBufferWrites)
-            {
-                bufferPreBarriers.push_back({
-                    .buffer   = write.dstBuffer,
-                    .srcState = {BufferUsage::None, PipelineStage::TopOfPipe, Access::None},
-                    .dstState = {BufferUsage::CopyDst, PipelineStage::Copy, Access::Write},
-                });
-            }
-            commandList->AddPipelineBarrier({}, imagePreBarriers, bufferPreBarriers);
-
-            // Copy commands
-            for (auto& write : m_pendingBufferWrites)
-            {
-                commandList->CopyBuffer(stagingBuf, write.stagingOffset, write.dstBuffer, write.dstOffset, write.size);
-            }
-            for (auto& write : m_pendingImageWrites)
-            {
-                commandList->CopyBufferToImage(
-                    stagingBuf,
-                    ImageCopyInfo{
-                        .image      = write.dstImage,
-                        .mipLevel   = write.mipLevel,
-                        .arrayLayer = write.arrayLayer,
-                        .offset     = write.imageOffset,
-                        .aspect     = ImageAspect::All,
-                    },
-                    ImageMemoryLayout{
-                        .offset       = write.stagingOffset,
-                        .bytesPerRow  = write.bytesPerRow,
-                        .rowsPerImage = write.imageSize.height,
-                    });
-            }
-
-            // Post-copy barrier: release transfer writes so render graph barriers compute correctly
-            TL::Vector<ImageBarrierInfo>  imagePostBarriers{m_arena};
-            TL::Vector<BufferBarrierInfo> bufferPostBarriers{m_arena};
-            imagePostBarriers.reserve(m_pendingImageWrites.size());
-            bufferPostBarriers.reserve(m_pendingBufferWrites.size());
-
-            for (auto& write : m_pendingImageWrites)
-            {
-                // Leave images in ShaderResource layout importImage(initialState=ShaderResource) will transition from here.
-                // This barrier makes the transfer write visible to all subsequent stages.
-                imagePostBarriers.push_back({
-                    .image    = write.dstImage,
-                    .srcState = {ImageUsage::CopyDst, PipelineStage::Copy, Access::Write},
-                    .dstState = {ImageUsage::ShaderResource, PipelineStage::AllCommands, Access::Read},
-                });
-            }
-            for (auto& write : m_pendingBufferWrites)
-            {
-                bufferPostBarriers.push_back({
-                    .buffer   = write.dstBuffer,
-                    .srcState = {BufferUsage::CopyDst, PipelineStage::Copy, Access::Write},
-                    .dstState = {BufferUsage::CopyDst, PipelineStage::AllCommands, Access::Read},
-                });
-            }
-            commandList->AddPipelineBarrier({}, imagePostBarriers, bufferPostBarriers);
-        }
 
         // execute passes
         for (const auto& level : m_dependencyLevels)

@@ -6,6 +6,8 @@
 #include <RHI/Format.hpp>
 #include <TL/Containers/Optional.hpp>
 
+#include <algorithm>
+
 #include <tracy/Tracy.hpp>
 
 namespace RHI::Vulkan
@@ -769,13 +771,20 @@ namespace RHI::Vulkan
         auto image  = (const IImage*)(srcImage.image);
         auto buffer = (const IBuffer*)(dstBuffer);
 
+        // TODO: Need to fix windows headers leaks here and use std::max/std::min
+
+        VkExtent3D mipExtent{
+            .width  = max(1u, image->size.width  >> srcImage.mipLevel),
+            .height = max(1u, image->size.height >> srcImage.mipLevel),
+            .depth  = max(1u, image->size.depth  >> srcImage.mipLevel),
+        };
         VkBufferImageCopy bufferImageCopy{
             .bufferOffset      = layout.offset,
-            .bufferRowLength   = layout.bytesPerRow,
-            .bufferImageHeight = layout.rowsPerImage,
+            .bufferRowLength   = 0, // 0 = tightly packed (rows = imageExtent.width texels)
+            .bufferImageHeight = 0, // 0 = tightly packed (slices = imageExtent.height rows)
             .imageSubresource  = ConvertSubresourceLayers(srcImage, image->format),
             .imageOffset       = ConvertOffset3D(srcImage.offset),
-            .imageExtent       = ConvertExtent3D(image->size),
+            .imageExtent       = mipExtent,
         };
         vkCmdCopyImageToBuffer(m_commandBuffer, image->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, buffer->handle, 1, &bufferImageCopy);
     }
@@ -787,13 +796,18 @@ namespace RHI::Vulkan
         auto buffer = (const IBuffer*)(srcBuffer);
         auto image  = (const IImage*)(dstImage.image);
 
+        VkExtent3D mipExtent{
+            .width  = max(1u, image->size.width  >> dstImage.mipLevel),
+            .height = max(1u, image->size.height >> dstImage.mipLevel),
+            .depth  = max(1u, image->size.depth  >> dstImage.mipLevel),
+        };
         VkBufferImageCopy bufferImageCopy{
             .bufferOffset      = layout.offset,
-            .bufferRowLength   = layout.bytesPerRow,
-            .bufferImageHeight = layout.rowsPerImage,
+            .bufferRowLength   = 0, // 0 = tightly packed (rows = imageExtent.width texels)
+            .bufferImageHeight = 0, // 0 = tightly packed (slices = imageExtent.height rows)
             .imageSubresource  = ConvertSubresourceLayers(dstImage, image->format),
             .imageOffset       = ConvertOffset3D(dstImage.offset),
-            .imageExtent       = ConvertExtent3D(image->size),
+            .imageExtent       = mipExtent,
         };
         vkCmdCopyBufferToImage(m_commandBuffer, buffer->handle, image->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferImageCopy);
     }
