@@ -7,6 +7,7 @@
 #include <TL/Stacktrace.hpp>
 #include <TL/Containers/Vector.hpp>
 #include <TL/Utils.hpp>
+#include <TL/Fmt.hpp>
 
 #define VK_USE_PLATFORM_WIN32_KHR
 #include <volk.h>
@@ -53,24 +54,23 @@ namespace RHI::Vulkan
         void SetDebugName(VkObjectType type, uint64_t handle, const char* name) const;
 
         template<typename T>
-        void SetDebugName(T handle, const char* name) const;
+        void SetDebugName(T handle, const char* name) const
+        {
+            SetDebugName(GetObjectType<T>(), reinterpret_cast<uint64_t>(handle), name);
+        }
 
-        template<typename T, typename... FMT_ARGS>
-        void SetDebugName(T handle, const char* fmt, FMT_ARGS... args) const;
+        template<typename T, typename... Args>
+        void SetDebugName(T handle, ::fmt::format_string<Args...> formatString, Args&&... args) const
+        {
+            auto name = TL::fmt(formatString, args...);
+            SetDebugName(GetObjectType<T>(), reinterpret_cast<uint64_t>(handle), name.c_str());
+        }
 
         void WaitIdle();
 
-        // Interface Implementation
-        uint64_t               GetNativeHandle(NativeHandleType type, uint64_t handle) override;
         uint64_t               GarbageCollect(uint64_t graphicsTimeline) override;
+        uint64_t               GetNativeHandle(NativeHandleType type, uint64_t handle) override;
         Queue*                 GetQueue(QueueType queueType) override;
-        CommandPool*           CreateCommandPool(const CommandPoolCreateInfo& createInfo) override;
-        void                   DestroyCommandPool(CommandPool* handle) override;
-        Fence*                 CreateFence(const FenceCreateInfo& createInfo) override;
-        void                   DestroyFence(Fence* handle) override;
-        uint64_t               GetFenceValue(Fence* handle) override;
-        Swapchain*             CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
-        void                   DestroySwapchain(Swapchain* swapchain) override;
         ShaderModule*          CreateShaderModule(const ShaderModuleCreateInfo& createInfo) override;
         void                   DestroyShaderModule(ShaderModule* shaderModule) override;
         BindGroupLayout*       CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) override;
@@ -78,8 +78,14 @@ namespace RHI::Vulkan
         BindGroup*             CreateBindGroup(const BindGroupCreateInfo& createInfo) override;
         void                   DestroyBindGroup(BindGroup* handle) override;
         void                   UpdateBindGroup(BindGroup* handle, const BindGroupUpdateInfo& updateInfo) override;
-        QueryPool*             CreateQueryPool(const QueryPoolCreateInfo& createInfo) override;
-        void                   DestroyQueryPool(QueryPool* handle) override;
+        PipelineLayout*        CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo) override;
+        void                   DestroyPipelineLayout(PipelineLayout* handle) override;
+        GraphicsPipeline*      CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) override;
+        void                   DestroyGraphicsPipeline(GraphicsPipeline* handle) override;
+        ComputePipeline*       CreateComputePipeline(const ComputePipelineCreateInfo& createInfo) override;
+        void                   DestroyComputePipeline(ComputePipeline* handle) override;
+        RayTracingPipeline*    CreateRayTracingPipeline(const RayTracingPipelineCreateInfo& createInfo) override;
+        void                   DestroyRayTracingPipeline(RayTracingPipeline* handle) override;
         Buffer*                CreateBuffer(const BufferCreateInfo& createInfo) override;
         void                   DestroyBuffer(Buffer* handle) override;
         uint64_t               GetBufferDeviceAddress(Buffer* buffer) override;
@@ -88,21 +94,22 @@ namespace RHI::Vulkan
         Image*                 CreateImage(const ImageCreateInfo& createInfo) override;
         Image*                 CreateImageView(const ImageViewCreateInfo& createInfo) override;
         void                   DestroyImage(Image* handle) override;
+        Sampler*               CreateSampler(const SamplerCreateInfo& createInfo) override;
+        void                   DestroySampler(Sampler* handle) override;
         AccelerationStructure* CreateAccelerationStructure(const AccelerationStructureCreateInfo& createInfo) override;
         void                   DestroyAccelerationStructure(AccelerationStructure* handle) override;
         uint64_t               GetAccelerationStructureDeviceAddress(AccelerationStructure* handle) override;
         Micromap*              CreateMicromap(const MicromapCreateInfo& createInfo) override;
         void                   DestroyMicromap(Micromap* handle) override;
-        Sampler*               CreateSampler(const SamplerCreateInfo& createInfo) override;
-        void                   DestroySampler(Sampler* handle) override;
-        PipelineLayout*        CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo) override;
-        void                   DestroyPipelineLayout(PipelineLayout* handle) override;
-        GraphicsPipeline*      CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) override;
-        void                   DestroyGraphicsPipeline(GraphicsPipeline* handle) override;
-        RayTracingPipeline*    CreateRayTracingPipeline(const RayTracingPipelineCreateInfo& createInfo) override;
-        void                   DestroyRayTracingPipeline(RayTracingPipeline* handle) override;
-        ComputePipeline*       CreateComputePipeline(const ComputePipelineCreateInfo& createInfo) override;
-        void                   DestroyComputePipeline(ComputePipeline* handle) override;
+        CommandPool*           CreateCommandPool(const CommandPoolCreateInfo& createInfo) override;
+        void                   DestroyCommandPool(CommandPool* handle) override;
+        Fence*                 CreateFence(const FenceCreateInfo& createInfo) override;
+        void                   DestroyFence(Fence* handle) override;
+        uint64_t               GetFenceValue(Fence* handle) override;
+        QueryPool*             CreateQueryPool(const QueryPoolCreateInfo& createInfo) override;
+        void                   DestroyQueryPool(QueryPool* handle) override;
+        Swapchain*             CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
+        void                   DestroySwapchain(Swapchain* swapchain) override;
 
     public:
         // Vulkan instance and core objects
@@ -116,19 +123,6 @@ namespace RHI::Vulkan
         TL::Ptr<class DeleteQueue> m_destroyQueue = nullptr;
         TL::Arena                  m_arena;
     };
-
-    template<typename T>
-    inline void IDevice::SetDebugName(T handle, const char* name) const
-    {
-        return SetDebugName(GetObjectType<T>(), reinterpret_cast<uint64_t>(handle), name);
-    }
-
-    template<typename T, typename... FMT_ARGS>
-    void IDevice::SetDebugName(T handle, const char* fmt, FMT_ARGS... args) const
-    {
-        auto name = std::vformat(fmt, std::make_format_args(args...));
-        SetDebugName(handle, name.c_str());
-    }
 
     using VmaImageAllocation  = std::pair<VkImage, VmaAllocation>;
     using VmaBufferAllocation = std::pair<VkBuffer, VmaAllocation>;

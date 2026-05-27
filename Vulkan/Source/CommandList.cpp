@@ -72,6 +72,15 @@ namespace RHI::Vulkan
         };
     }
 
+    inline static VkStridedDeviceAddressRegionKHR convertStridedDeviceAddressRegion(const StridedDeviceAddressRegion& r)
+    {
+        return VkStridedDeviceAddressRegionKHR{
+            .deviceAddress = (VkDeviceAddress)r.offset,
+            .stride        = r.stride,
+            .size          = r.size,
+        };
+    };
+
     //////////////////////////////////////////////////////////////////////////////////////////
     /// ICommandPool
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -138,6 +147,40 @@ namespace RHI::Vulkan
         // m_device->m_commandsAllocator->ReleaseCommandBuffers(m_commandBuffer);
     }
 
+    void ICommandList::BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups)
+    {
+        ZoneScoped;
+
+        if (bindGroups.empty())
+            return;
+
+        TL::Vector<VkDescriptorSet> descriptorSets{m_device->m_arena};
+        TL::Vector<uint32_t>        dynamicOffsets{m_device->m_arena};
+
+        for (const auto& bindingInfo : bindGroups)
+        {
+            auto bindGroup = (IBindGroup*)bindingInfo.bindGroup;
+            descriptorSets.push_back(bindGroup->descriptorSet);
+            for (uint32_t offset : bindingInfo.dynamicOffsets)
+            {
+                dynamicOffsets.push_back(offset);
+            }
+        }
+
+        VkBindDescriptorSetsInfo bindInfo{
+            .sType              = VK_STRUCTURE_TYPE_BIND_DESCRIPTOR_SETS_INFO,
+            .pNext              = nullptr,
+            .stageFlags         = VK_SHADER_STAGE_ALL,
+            .layout             = pipelineLayout,
+            .firstSet           = 0,
+            .descriptorSetCount = (uint32_t)descriptorSets.size(),
+            .pDescriptorSets    = descriptorSets.data(),
+            .dynamicOffsetCount = (uint32_t)dynamicOffsets.size(),
+            .pDynamicOffsets    = dynamicOffsets.data(),
+        };
+        vkCmdBindDescriptorSets2(m_commandBuffer, &bindInfo);
+    }
+
     void ICommandList::Begin()
     {
         ZoneScoped;
@@ -156,6 +199,58 @@ namespace RHI::Vulkan
         ZoneScoped;
 
         vkEndCommandBuffer(m_commandBuffer);
+    }
+
+    void ICommandList::PushDebugMarker(TL_MAYBE_UNUSED const char* name, TL_MAYBE_UNUSED uint32_t bgra)
+    {
+        ZoneScoped;
+
+#if RHI_DEBUG
+        if (auto fn = vkCmdBeginDebugUtilsLabelEXT)
+        {
+            uint32_t             r = (bgra >> 16) & 0xFF;
+            uint32_t             g = (bgra >> 8) & 0xFF;
+            uint32_t             b = bgra & 0xFF;
+            uint32_t             a = (bgra >> 24) & 0xFF;
+            VkDebugUtilsLabelEXT info{
+                .sType      = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
+                .pNext      = nullptr,
+                .pLabelName = name,
+                .color      = {r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f},
+            };
+            fn(m_commandBuffer, &info);
+        }
+#endif
+    }
+
+    void ICommandList::PopDebugMarker()
+    {
+        if (auto fn = vkCmdEndDebugUtilsLabelEXT)
+        {
+            fn(m_commandBuffer);
+        }
+    }
+
+    void ICommandList::InsertDebugMarker(TL_MAYBE_UNUSED const char* name, TL_MAYBE_UNUSED uint32_t bgra)
+    {
+        ZoneScoped;
+
+#if RHI_DEBUG
+        if (auto fn = vkCmdInsertDebugUtilsLabelEXT)
+        {
+            uint32_t             r = (bgra >> 16) & 0xFF;
+            uint32_t             g = (bgra >> 8) & 0xFF;
+            uint32_t             b = bgra & 0xFF;
+            uint32_t             a = (bgra >> 24) & 0xFF;
+            VkDebugUtilsLabelEXT info{
+                .sType      = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
+                .pNext      = nullptr,
+                .pLabelName = name,
+                .color      = {r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f},
+            };
+            fn(m_commandBuffer, &info);
+        }
+#endif
     }
 
     void ICommandList::AddPipelineBarrier(TL::Span<const BarrierInfo> barriers, TL::Span<const ImageBarrierInfo> imageBarriers, TL::Span<const BufferBarrierInfo> bufferBarriers)
@@ -348,57 +443,6 @@ namespace RHI::Vulkan
         // No-Op
     }
 
-    void ICommandList::PushDebugMarker(TL_MAYBE_UNUSED const char* name, TL_MAYBE_UNUSED uint32_t bgra)
-    {
-        ZoneScoped;
-
-#if RHI_DEBUG
-        if (auto fn = vkCmdBeginDebugUtilsLabelEXT)
-        {
-            uint32_t             r = (bgra >> 16) & 0xFF;
-            uint32_t             g = (bgra >> 8) & 0xFF;
-            uint32_t             b = bgra & 0xFF;
-            uint32_t             a = (bgra >> 24) & 0xFF;
-            VkDebugUtilsLabelEXT info{
-                .sType      = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
-                .pNext      = nullptr,
-                .pLabelName = name,
-                .color      = {r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f},
-            };
-            fn(m_commandBuffer, &info);
-        }
-#endif
-    }
-
-    void ICommandList::PopDebugMarker()
-    {
-        if (auto fn = vkCmdEndDebugUtilsLabelEXT)
-        {
-            fn(m_commandBuffer);
-        }
-    }
-
-    void ICommandList::InsertDebugMarker(TL_MAYBE_UNUSED const char* name, TL_MAYBE_UNUSED uint32_t bgra)
-    {
-        ZoneScoped;
-
-#if RHI_DEBUG
-        if (auto fn = vkCmdInsertDebugUtilsLabelEXT)
-        {
-            uint32_t             r = (bgra >> 16) & 0xFF;
-            uint32_t             g = (bgra >> 8) & 0xFF;
-            uint32_t             b = bgra & 0xFF;
-            uint32_t             a = (bgra >> 24) & 0xFF;
-            VkDebugUtilsLabelEXT info{
-                .sType      = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
-                .pNext      = nullptr,
-                .pLabelName = name,
-                .color      = {r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f},
-            };
-            fn(m_commandBuffer, &info);
-        }
-#endif
-    }
 
     void ICommandList::BeginConditionalCommands(const BufferBindingInfo& conditionBuffer, bool inverted)
     {
@@ -617,20 +661,25 @@ namespace RHI::Vulkan
         m_hasIndexBuffer = true;
     }
 
-    void ICommandList::Draw(const DrawParameters& parameters)
+    void ICommandList::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance)
     {
         ZoneScoped;
 
         TL_ASSERT(m_isGraphicsPipelineBound && m_hasViewportSet);
-        vkCmdDraw(m_commandBuffer, parameters.vertexCount, parameters.instanceCount, parameters.firstVertex, parameters.firstInstance);
+        vkCmdDraw(m_commandBuffer, vertexCount, instanceCount, firstVertex, firstInstance);
     }
 
-    void ICommandList::DrawIndexed(const DrawIndexedParameters& parameters)
+    void ICommandList::DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance)
     {
         ZoneScoped;
 
         TL_ASSERT(m_isGraphicsPipelineBound && m_hasViewportSet && m_hasScissorSet);
-        vkCmdDrawIndexed(m_commandBuffer, parameters.indexCount, parameters.instanceCount, parameters.firstIndex, parameters.vertexOffset, parameters.firstInstance);
+        vkCmdDrawIndexed(m_commandBuffer, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
+    }
+
+    void ICommandList::DrawMeshTasks(uint32_t x, uint32_t y, uint32_t z)
+    {
+        vkCmdDrawMeshTasksEXT(m_commandBuffer, x, y, z);
     }
 
     void ICommandList::DrawIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride)
@@ -669,11 +718,6 @@ namespace RHI::Vulkan
         }
     }
 
-    void ICommandList::DrawMeshTasks(const DispatchParameters drawMeshTasksDesc)
-    {
-        vkCmdDrawMeshTasksEXT(m_commandBuffer, drawMeshTasksDesc.x, drawMeshTasksDesc.y, drawMeshTasksDesc.z);
-    }
-
     void ICommandList::DrawMeshTasksIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t drawNum, uint32_t stride)
     {
         auto cmdBuffer = (IBuffer*)(argumentBuffer.buffer);
@@ -697,14 +741,22 @@ namespace RHI::Vulkan
         }
     }
 
-    inline static VkStridedDeviceAddressRegionKHR convertStridedDeviceAddressRegion(const StridedDeviceAddressRegion& r)
+    void ICommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z)
     {
-        return VkStridedDeviceAddressRegionKHR{
-            .deviceAddress = (VkDeviceAddress)r.offset,
-            .stride        = r.stride,
-            .size          = r.size,
-        };
-    };
+        ZoneScoped;
+
+        TL_ASSERT(m_isComputePipelineBound);
+        vkCmdDispatch(m_commandBuffer, x, y, z);
+    }
+
+    void ICommandList::DispatchIndirect(const BufferBindingInfo& argumentBuffer)
+    {
+        ZoneScoped;
+
+        TL_ASSERT(m_isComputePipelineBound);
+        auto cmdBuffer = (IBuffer*)(argumentBuffer.buffer);
+        vkCmdDispatchIndirect(m_commandBuffer, cmdBuffer->handle, argumentBuffer.offset);
+    }
 
     void ICommandList::DispatchRays(const DispatchRaysInfo& dispatchRaysDesc)
     {
@@ -720,23 +772,6 @@ namespace RHI::Vulkan
         auto            cmdBuffer             = (IBuffer*)(argumentBuffer.buffer);
         VkDeviceAddress indirectDeviceAddress = cmdBuffer->address + argumentBuffer.offset;
         vkCmdTraceRaysIndirect2KHR(m_commandBuffer, indirectDeviceAddress);
-    }
-
-    void ICommandList::Dispatch(const DispatchParameters& parameters)
-    {
-        ZoneScoped;
-
-        TL_ASSERT(m_isComputePipelineBound);
-        vkCmdDispatch(m_commandBuffer, parameters.x, parameters.y, parameters.z);
-    }
-
-    void ICommandList::DispatchIndirect(const BufferBindingInfo& argumentBuffer)
-    {
-        ZoneScoped;
-
-        TL_ASSERT(m_isComputePipelineBound);
-        auto cmdBuffer = (IBuffer*)(argumentBuffer.buffer);
-        vkCmdDispatchIndirect(m_commandBuffer, cmdBuffer->handle, argumentBuffer.offset);
     }
 
     void ICommandList::CopyBuffer(const Buffer* srcBuffer, uint64_t srcOffset, const Buffer* dstBuffer, uint64_t dstOffset, uint64_t size)
@@ -836,9 +871,9 @@ namespace RHI::Vulkan
         if (buildInfos.empty())
             return;
 
-        TL::Vector<VkAccelerationStructureGeometryKHR>           geometries{m_device->m_arena};
-        TL::Vector<VkAccelerationStructureBuildGeometryInfoKHR>  geometryInfos{m_device->m_arena};
-        TL::Vector<VkAccelerationStructureBuildRangeInfoKHR>     rangeInfos{m_device->m_arena};
+        TL::Vector<VkAccelerationStructureGeometryKHR>              geometries{m_device->m_arena};
+        TL::Vector<VkAccelerationStructureBuildGeometryInfoKHR>     geometryInfos{m_device->m_arena};
+        TL::Vector<VkAccelerationStructureBuildRangeInfoKHR>        rangeInfos{m_device->m_arena};
         TL::Vector<const VkAccelerationStructureBuildRangeInfoKHR*> pRangeInfos{m_device->m_arena};
 
         geometries.resize(buildInfos.size());
@@ -993,39 +1028,5 @@ namespace RHI::Vulkan
             micromapHandles.push_back(vkMicromap->handle);
         }
         vkCmdWriteMicromapsPropertiesEXT(m_commandBuffer, (uint32_t)micromapHandles.size(), micromapHandles.data(), VK_QUERY_TYPE_MICROMAP_COMPACTED_SIZE_EXT, queryPool->handle, queryPoolOffset);
-    }
-
-    void ICommandList::BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups)
-    {
-        ZoneScoped;
-
-        if (bindGroups.empty())
-            return;
-
-        TL::Vector<VkDescriptorSet> descriptorSets{m_device->m_arena};
-        TL::Vector<uint32_t>        dynamicOffsets{m_device->m_arena};
-
-        for (const auto& bindingInfo : bindGroups)
-        {
-            auto bindGroup = (IBindGroup*)bindingInfo.bindGroup;
-            descriptorSets.push_back(bindGroup->descriptorSet);
-            for (uint32_t offset : bindingInfo.dynamicOffsets)
-            {
-                dynamicOffsets.push_back(offset);
-            }
-        }
-
-        VkBindDescriptorSetsInfo bindInfo{
-            .sType              = VK_STRUCTURE_TYPE_BIND_DESCRIPTOR_SETS_INFO,
-            .pNext              = nullptr,
-            .stageFlags         = VK_SHADER_STAGE_ALL,
-            .layout             = pipelineLayout,
-            .firstSet           = 0,
-            .descriptorSetCount = (uint32_t)descriptorSets.size(),
-            .pDescriptorSets    = descriptorSets.data(),
-            .dynamicOffsetCount = (uint32_t)dynamicOffsets.size(),
-            .pDynamicOffsets    = dynamicOffsets.data(),
-        };
-        vkCmdBindDescriptorSets2(m_commandBuffer, &bindInfo);
     }
 } // namespace RHI::Vulkan
