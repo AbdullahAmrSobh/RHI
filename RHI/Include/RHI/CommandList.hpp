@@ -228,21 +228,6 @@ namespace RHI
         QueueType   queueType = QueueType::Graphics; ///< Type of queue for the command list.
     };
 
-    struct MicromapBuildInfo
-    {
-        const char* name = nullptr;
-    };
-
-    struct TopLevelAccelerationStructureBuildInfo
-    {
-        const char* name = nullptr;
-    };
-
-    struct BottomLevelAccelerationStructureBuildInfo
-    {
-        const char* name = nullptr;
-    };
-
     struct StridedDeviceAddressRegion
     {
         size_t offset = 0;
@@ -276,190 +261,97 @@ namespace RHI
         virtual CommandList* Allocate() = 0;
     };
 
-    /// @brief Represents a list of commands to be executed on the GPU.
+    struct MicromapBuildInfo
+    {
+    };
+
+    struct TlasBuildInfo
+    {
+        AccelerationStructure* src;
+        AccelerationStructure* dst;
+        uint32_t              instanceCount;
+        Buffer*               instanceBuffer;
+        uint32_t              instanceBufferOffset;
+        Buffer*               scratchBuffer;
+        uint32_t              scratchBufferOffset;
+    };
+
+    struct BlasBuildInfo
+    {
+        AccelerationStructure* src;
+        AccelerationStructure* dst;
+        uint32_t              geometryCount;
+        const AccelerationStructureGeometry* geometries;
+        Buffer*               scratchBuffer;
+        uint32_t              scratchBufferOffset;
+    };
+
     class RHI_EXPORT CommandList
     {
     public:
         CommandList()          = default;
         virtual ~CommandList() = default;
 
-        /// @brief Begins recording commands to the command list.
         virtual void Begin() = 0;
+        virtual void End()   = 0;
 
-        /// @brief Ends recording commands to the command list.
-        virtual void End() = 0;
-
-        /// @brief Represents a list of commands to be executed.
-        /// @brief Adds pipeline barriers to synchronize resource state transitions.
-        /// @param barriers Array of memory barrier states to synchronize memory access.
-        /// @param imageBarriers Array of image barrier information for image state transitions.
-        /// @param bufferBarriers Array of buffer barrier information for buffer state transitions.
         virtual void AddPipelineBarrier(TL::Span<const BarrierInfo> barriers, TL::Span<const ImageBarrierInfo> imageBarriers, TL::Span<const BufferBarrierInfo> bufferBarriers) = 0;
 
-        /// @brief Begins a render pass for drawing commands.
-        /// @param beginInfo Information needed to begin the render pass.
         virtual void BeginRenderPass(const RenderPassBeginInfo& beginInfo) = 0;
+        virtual void EndRenderPass()                                       = 0;
 
-        /// @brief Ends the current render pass.
-        virtual void EndRenderPass() = 0;
-
-        /// @brief Begins a compute pass for dispatch commands.
-        /// @param beginInfo Information needed to begin the compute pass.
         virtual void BeginComputePass(const ComputePassBeginInfo& beginInfo) = 0;
+        virtual void EndComputePass()                                        = 0;
 
-        /// @brief Ends the current compute pass.
-        virtual void EndComputePass() = 0;
-
-        /// @brief Pushes a debug marker with a name and color onto the command list.
-        /// @param name Name of the debug marker.
-        /// @param color Color value of the debug marker.
-        virtual void PushDebugMarker(const char* name, uint32_t bgra) = 0;
-
-        /// @brief Pops the last debug marker off the command list.
-        virtual void PopDebugMarker() = 0;
-
-        /// @brief Inserts a debug marker at the current position in the command list.
-        /// @param name Name of the debug marker.
-        /// @param bgra Color value of the debug marker in BGRA format.
+        virtual void PushDebugMarker(const char* name, uint32_t bgra)   = 0;
+        virtual void PopDebugMarker()                                   = 0;
         virtual void InsertDebugMarker(const char* name, uint32_t bgra) = 0;
 
-        /// @brief Begins a conditional command block based on a buffer.
-        /// @param conditionBuffer Binding information for the condition buffer.
-        /// @param inverted If true, the condition is inverted.
         virtual void BeginConditionalCommands(const BufferBindingInfo& conditionBuffer, bool inverted) = 0;
+        virtual void EndConditionalCommands()                                                          = 0;
 
-        /// @brief Ends a conditional command block.
-        virtual void EndConditionalCommands() = 0;
-
-        /// @brief Executes a set of command lists.
-        /// @param commandLists Span of command lists to execute.
         virtual void Execute(TL::Span<const CommandList*> commandLists) = 0;
 
-        /// @brief Binds a pipeline layout for resource binding.
-        /// @param bindPoint The bind point (graphics or compute) for which to bind the layout.
-        /// @param pipelineLayout Pointer to the pipeline layout to bind.
-        virtual void BindPipelineLayout(BindPoint bindPoint, const PipelineLayout* pipelineLayout) = 0;
-
-        /// @brief Sets push constant values for the current pipeline layout.
-        /// @param bindPoint The bind point (graphics or compute) for which to set constants.
-        /// @param offset Offset in bytes within the push constant range.
-        /// @param content Block of data containing the push constant values.
-        virtual void SetPushConstants(BindPoint bindPoint, uint32_t offset, TL::Block content) = 0;
-
-        /// @brief Pushes bind group updates to the command list.
-        /// @param bindPoint The bind point (graphics or compute) for which to update bind groups.
-        /// @param firstGroup Index of the first bind group to update.
-        /// @param updateInfos Span of bind group update information.
+        virtual void BindPipelineLayout(BindPoint bindPoint, const PipelineLayout* pipelineLayout)                            = 0;
+        virtual void SetPushConstants(BindPoint bindPoint, uint32_t offset, TL::Block content)                                = 0;
         virtual void PushBindGroup(BindPoint bindPoint, uint32_t firstGroup, TL::Span<const BindGroupUpdateInfo> updateInfos) = 0;
+        virtual void SetBindGroups(BindPoint bindPoint, TL::Span<const BindGroupBindingInfo> bindGroups)                      = 0;
+        virtual void BindGraphicsPipeline(const GraphicsPipeline* pipelineState)                                              = 0;
+        virtual void BindComputePipeline(const ComputePipeline* pipelineState)                                                = 0;
+        virtual void BindRayTracingPipeline(const RayTracingPipeline* pipelineState)                                          = 0;
 
-        /// @brief Sets bind groups for resource binding.
-        /// @param bindPoint The bind point (graphics or compute) for which to set bind groups.
-        /// @param bindGroups Span of bind group binding information to set.
-        virtual void SetBindGroups(BindPoint bindPoint, TL::Span<const BindGroupBindingInfo> bindGroups) = 0;
-
-        /// @brief Binds a graphics pipeline.
-        /// @param pipelineState Pointer to the graphics pipeline.
-        /// @param bindGroups Span of bind group binding information.
-        virtual void BindGraphicsPipeline(const GraphicsPipeline* pipelineState) = 0;
-
-        /// @brief Binds a compute pipeline.
-        /// @param pipelineState Pointer to the compute pipeline.
-        /// @param bindGroups Span of bind group binding information.
-        virtual void BindComputePipeline(const ComputePipeline* pipelineState) = 0;
-
-        /// @brief Sets the viewport for rendering.
-        /// @param viewport The viewport to set.
         virtual void SetViewport(const Viewport& viewport) = 0;
+        virtual void SetScissor(const Scissor& sicssor)    = 0;
 
-        /// @brief Sets the scissor rectangle for rendering.
-        /// @param scissor The scissor rectangle to set.
-        virtual void SetScissor(const Scissor& sicssor) = 0;
-
-        /// @brief Binds the vertex buffers for drawing.
-        /// @param firstBinding Index of the first binding.
-        /// @param vertexBuffers Span of vertex buffer binding information.
         virtual void BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> vertexBuffers) = 0;
+        virtual void BindIndexBuffer(const BufferBindingInfo& indexBuffer, IndexType indexType)                = 0;
 
-        /// @brief Binds the index buffer for drawing.
-        /// @param indexBuffer Information about the index buffer binding.
-        /// @param indexType Type of indices in the index buffer.
-        virtual void BindIndexBuffer(const BufferBindingInfo& indexBuffer, IndexType indexType) = 0;
-
-        /// @brief Issues a draw command.
-        /// @param parameters Parameters for the draw command.
-        virtual void Draw(const DrawParameters& parameters) = 0;
-
-        /// @brief Issues an indexed draw command.
-        /// @param parameters Parameters for the indexed draw command.
-        virtual void DrawIndexed(const DrawIndexedParameters& parameters) = 0;
-
-        /// @brief Issues an indirect draw command.
-        /// @param argumentBuffer Binding information about the buffer containing draw arguments.
-        /// @param countBuffer Binding information about the buffer containing draw counts.
-        /// @param maxDrawCount Maximum number of draws to issue in this indirect draw call.
-        /// @param stride Stride between draw commands in bytes.
-        virtual void DrawIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride) = 0;
-
-        /// @brief Issues an indexed indirect draw command.
-        /// @param argumentBuffer Binding information about the buffer containing draw arguments.
-        /// @param countBuffer Binding information about the buffer containing draw counts.
-        /// @param maxDrawCount Maximum number of draws to issue in this indirect draw call.
-        /// @param stride Stride between draw commands in bytes.
+        virtual void Draw(const DrawParameters& parameters)                                                                                                     = 0;
+        virtual void DrawIndexed(const DrawIndexedParameters& parameters)                                                                                       = 0;
+        virtual void DrawIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride)        = 0;
         virtual void DrawIndexedIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride) = 0;
+        virtual void DrawMeshTasks(const DispatchParameters drawMeshTasksDesc)                                                                                  = 0;
+        virtual void DrawMeshTasksIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t drawNum, uint32_t stride)    = 0;
 
-        /// @brief Issues a mesh task drawing command.
-        /// @param drawMeshTasksDesc Information for the mesh task drawing command.
-        virtual void DrawMeshTasks(const DispatchParameters drawMeshTasksDesc) = 0;
-
-        /// @brief Issues an indirect mesh task drawing command.
-        /// @param argumentBuffer Binding information about the buffer containing draw arguments.
-        /// @param countBuffer Binding information about the buffer containing draw counts.
-        /// @param drawNum Number of draws to issue.
-        /// @param stride Stride between draw commands in bytes.
-        virtual void DrawMeshTasksIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t drawNum, uint32_t stride) = 0;
-
-        /// @brief Issues a ray tracing dispatch command.
-        /// @param dispatchRaysDesc Information for the ray tracing dispatch command.
-        virtual void DispatchRays(const DispatchRaysInfo& dispatchRaysDesc) = 0;
-
-        /// @brief Issues an indirect ray tracing dispatch command.
-        /// @param argumentBuffer Binding information about the buffer containing dispatch arguments.
+        virtual void DispatchRays(const DispatchRaysInfo& dispatchRaysDesc)        = 0;
         virtual void DispatchRaysIndirect(const BufferBindingInfo& argumentBuffer) = 0;
 
-        /// @brief Issues a compute dispatch command.
-        /// @param parameters Information for the dispatch command.
         virtual void Dispatch(const DispatchParameters& parameters)            = 0;
         virtual void DispatchIndirect(const BufferBindingInfo& argumentBuffer) = 0;
 
         virtual void CopyBuffer(const Buffer* srcBuffer, uint64_t srcOffset, const Buffer* dstBuffer, uint64_t dstOffset, uint64_t size) = 0;
         virtual void CopyImage(const ImageCopyInfo& srcImage, const ImageCopyInfo& dstImage, const ImageSize3D& size)                    = 0;
-        virtual void CopyImageToBuffer(const ImageCopyInfo& srcImage, const ImageMemoryLayout& layout, const Buffer* dstBuffer)                = 0;
-        virtual void CopyBufferToImage(const Buffer* srcBuffer, const ImageCopyInfo& dstImage, const ImageMemoryLayout& layout)                = 0;
-        virtual void CopyMicromap(Micromap* dst, const Micromap* src, CopyMode copyMode)                                                 = 0;
-        virtual void CopyAccelerationStructure(AccelerationStructure* dst, const AccelerationStructure* src, CopyMode copyMode)          = 0;
+        virtual void CopyImageToBuffer(const ImageCopyInfo& srcImage, const ImageMemoryLayout& layout, const Buffer* dstBuffer)          = 0;
+        virtual void CopyBufferToImage(const Buffer* srcBuffer, const ImageCopyInfo& dstImage, const ImageMemoryLayout& layout)          = 0;
 
-        /// @brief Builds micromaps for ray tracing acceleration structures.
-        /// @param buildInfos Span of micromap build descriptions.
+        virtual void CopyAccelerationStructure(AccelerationStructure* dst, const AccelerationStructure* src, CopyMode copyMode)          = 0;
+        virtual void CopyMicromap(Micromap* dst, const Micromap* src, CopyMode copyMode)                                                 = 0;
+
+        virtual void BuildTlas(TL::Span<const TlasBuildInfo> buildInfos)          = 0;
+        virtual void BuildBlas(TL::Span<const BlasBuildInfo> buildInfos)          = 0;
         virtual void BuildMicromaps(TL::Span<const MicromapBuildInfo> buildInfos) = 0;
 
-        /// @brief Writes micromap sizes to a query pool.
-        /// @param micromaps Span of micromaps to query.
-        /// @param queryPool Query pool to write the sizes to.
-        /// @param queryPoolOffset Offset in the query pool to write to.
-        virtual void WriteMicromapsSizes(TL::Span<const Micromap*> micromaps, QueryPool* queryPool, uint32_t queryPoolOffset) = 0;
-
-        /// @brief Builds top-level acceleration structures for ray tracing.
-        /// @param buildInfos Span of TLAS build descriptions.
-        virtual void BuildTopLevelAccelerationStructures(TL::Span<const TopLevelAccelerationStructureBuildInfo> buildInfos) = 0;
-
-        /// @brief Builds bottom-level acceleration structures for ray tracing.
-        /// @param buildInfos Span of BLAS build descriptions.
-        virtual void BuildBottomLevelAccelerationStructures(TL::Span<const BottomLevelAccelerationStructureBuildInfo> buildInfos) = 0;
-
-        /// @brief Writes acceleration structure sizes to a query pool.
-        /// @param accelerationStructures Span of acceleration structures to query.
-        /// @param queryPool Query pool to write the sizes to.
-        /// @param queryPoolOffset Offset in the query pool to write to.
         virtual void WriteAccelerationStructuresSizes(TL::Span<const AccelerationStructure*> accelerationStructures, QueryPool* queryPool, uint32_t queryPoolOffset) = 0;
+        virtual void WriteMicromapsSizes(TL::Span<const Micromap*> micromaps, QueryPool* queryPool, uint32_t queryPoolOffset)                                        = 0;
     };
 } // namespace RHI

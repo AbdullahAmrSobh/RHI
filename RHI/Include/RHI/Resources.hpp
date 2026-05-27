@@ -19,6 +19,13 @@ namespace RHI
 
     // Opaque Resource Declarations
     using DeviceMemoryPtr = void*;
+    using BufferAddress   = uint64_t;
+    using DeviceSize      = uint64_t;
+
+    struct Transform
+    {
+        float transform[3][4]; ///< 3x4 row-major affine transformation matrix.
+    };
 
     struct ResourceBase
     {
@@ -71,7 +78,6 @@ namespace RHI
         MicromapSize,
     };
 
-    // Enums (General Purpose)
     enum class BindingType
     {
         None,                            ///< No binding.
@@ -137,11 +143,12 @@ namespace RHI
 
     enum class IndexType
     {
+        None,
+        uint8,
         uint16,
         uint32,
     };
 
-    // Enums (Image Related)
     enum class ImageUsage
     {
         None            = 0 << 0,          ///< No usage.
@@ -201,7 +208,6 @@ namespace RHI
         A,            ///< Alpha component.
     };
 
-    // Enums (Pipeline Related)
     enum class PipelineVertexInputRate
     {
         None,        ///< No input rate.
@@ -330,6 +336,11 @@ namespace RHI
         Buffer*  buffer = nullptr; ///< Handle to the buffer.
         uint32_t offset = 0;       ///< Offset into the buffer.
         uint32_t range  = 0;       ///< Range from starting from offset to bind
+    };
+
+    struct AccelerationStructureBindingInfo
+    {
+        AccelerationStructure* accelerationStructure;
     };
 
     struct ShaderBinding
@@ -474,11 +485,76 @@ namespace RHI
         bool                  operator==(const ImageViewCreateInfo& other) const = default;
     };
 
-    //
+    // RT
+    enum class AccelerationStructureType
+    {
+        BottomLevel,
+        TopLevel,
+    };
+
+    enum class AccelerationStructureFlags
+    {
+        None            = 0,
+        AllowUpdate     = 1 << 0,
+        AllowCompaction = 1 << 1,
+    };
+
+    TL_DEFINE_FLAG_OPERATORS(AccelerationStructureFlags);
+
+    enum class GeometryType
+    {
+        Triangles,
+        Aabbs,
+    };
+
+    enum class InstanceFlags
+    {
+        None = 0,
+        // TODO
+    };
+    TL_DEFINE_FLAG_OPERATORS(InstanceFlags);
+
+    struct AccelerationStructureGeometry
+    {
+        GeometryType  geometryType;
+
+        // AABB or triangle data
+        Format        vertexFormat;
+        BufferAddress data;
+        uint32_t      stride;
+        uint32_t      count;
+
+        IndexType     indexType;
+        BufferAddress indexData;
+        uint32_t      indexCount;
+
+        BufferAddress transformData;
+        uint32_t      transformCount;
+    };
+
+    struct AccelerationStructureInstance
+    {
+        Transform     transform;
+        uint32_t      instanceID;
+        uint32_t      instanceMask;
+        uint32_t      hitGroupIndex;
+        BufferAddress accelerationStructureAddress;
+        InstanceFlags flags;
+    };
+
     struct AccelerationStructureCreateInfo
     {
-        const char* name = nullptr;
+        const char*                           name  = nullptr;                                ///< Name of the acceleration structure.
+        TL::Flags<AccelerationStructureFlags> flags = AccelerationStructureFlags::None;       ///< Creation flags for the acceleration structure.
+        AccelerationStructureType             type  = AccelerationStructureType::BottomLevel; ///< Type of the acceleration structure.
+        union
+        {
+            TL::Span<const AccelerationStructureGeometry> geometries;
+            TL::Span<const AccelerationStructureInstance> instances;
+        };
     };
+
+    // RT
 
     //
     struct MicromapCreateInfo
@@ -626,14 +702,12 @@ namespace RHI
         PipelineLayout*     layout        = nullptr; ///< Pipeline layout.
     };
 
-    // Structs (Shader Related)
     struct ShaderModuleCreateInfo
     {
         const char*              name = nullptr;
         TL::Span<const uint32_t> code = {};
     };
 
-    // TODO: Move from here
     // Fence create info
     struct FenceCreateInfo
     {
@@ -648,13 +722,4 @@ namespace RHI
         uint64_t      value = 0;
         PipelineStage stage = PipelineStage::None;
     };
-
-    inline static ImageSize3D CalcaulteImageMipSize(ImageSize3D size, uint32_t mipLevel)
-    {
-        return {
-            std::max(1u, size.width >> mipLevel),
-            std::max(1u, size.height >> mipLevel),
-            std::max(1u, size.depth >> mipLevel),
-        };
-    }
 } // namespace RHI

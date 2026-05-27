@@ -53,6 +53,13 @@ namespace RHI
         TL::Span<Swapchain*>            presentSwapchains = {};
     };
 
+    struct AccelerationStructureSizesInfo
+    {
+        uint64_t size              = 0; ///< Required size for the resulting acceleration structure data.
+        uint64_t buildScratchSize  = 0; ///< Required size for the scratch buffer used during acceleration structure build.
+        uint64_t updateScratchSize = 0; ///< Required size for the scratch buffer used during acceleration structure update.
+    };
+
     class RenderGraph;
 
     /// @brief Represents a queue for submitting command lists and synchronizing GPU work.
@@ -178,6 +185,9 @@ namespace RHI
 
         /// @brief Destroys an acceleration structure.
         virtual void                   DestroyAccelerationStructure(AccelerationStructure* handle) = 0;
+
+        /// @brief Retrieves the device address of an acceleration structure for use in shader binding.
+        virtual uint64_t               GetAccelerationStructureDeviceAddress(AccelerationStructure* handle) = 0;
 
         /// @brief Creates a micromap.
         virtual Micromap*              CreateMicromap(const MicromapCreateInfo& createInfo) = 0;

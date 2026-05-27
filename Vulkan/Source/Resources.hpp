@@ -54,19 +54,21 @@ namespace RHI::Vulkan
         VkWriteDescriptorSet BindImages(uint32_t dstBinding, uint32_t dstArray, TL::Span<Image* const> images);
         VkWriteDescriptorSet BindSamplers(uint32_t dstBinding, uint32_t dstArray, TL::Span<Sampler* const> samplers);
         VkWriteDescriptorSet BindBuffers(uint32_t dstBinding, uint32_t dstArray, TL::Span<const BufferBindingInfo> buffers);
+        VkWriteDescriptorSet BindAccelerationStructures(uint32_t dstBinding, uint32_t dstArray, TL::Span<AccelerationStructure* const> accelerationStructures);
 
         TL::Span<const VkWriteDescriptorSet> GetWrites() const { return m_writes; }
 
     private:
-        IDevice*                                       m_device;
-        TL::IAllocator*                                m_allocator;
-        BindGroupLayout*                               m_bindGroupLayout;
-        VkDescriptorSet                                m_descriptorSet;
-        TL::Vector<TL::Vector<VkDescriptorImageInfo>>  m_images;
-        TL::Vector<TL::Vector<VkDescriptorImageInfo>>  m_sampler;
-        TL::Vector<TL::Vector<VkDescriptorBufferInfo>> m_buffers;
-        TL::Vector<TL::Vector<VkBufferView>>           m_bufferViews;
-        TL::Vector<VkWriteDescriptorSet>               m_writes;
+        IDevice*                                                             m_device;
+        TL::IAllocator*                                                      m_allocator;
+        BindGroupLayout*                                                     m_bindGroupLayout;
+        VkDescriptorSet                                                      m_descriptorSet;
+        TL::Vector<TL::Vector<VkDescriptorImageInfo>>                        m_images;
+        TL::Vector<TL::Vector<VkDescriptorImageInfo>>                        m_sampler;
+        TL::Vector<TL::Vector<VkDescriptorBufferInfo>>                       m_buffers;
+        TL::Vector<TL::Vector<VkBufferView>>                                 m_bufferViews;
+        TL::Vector<TL::Vector<VkWriteDescriptorSetAccelerationStructureKHR>> m_accelerationStructures;
+        TL::Vector<VkWriteDescriptorSet>                                     m_writes;
     };
 
     class BindGroupAllocator
@@ -177,7 +179,6 @@ namespace RHI::Vulkan
 
     struct IBuffer : Buffer
     {
-        bool            mapped;
         VkBuffer        handle;
         VmaAllocation   allocation;
         VkDeviceAddress address;
@@ -216,8 +217,15 @@ namespace RHI::Vulkan
 
     struct IAccelerationStructure : AccelerationStructure
     {
-        VkAccelerationStructureKHR handle;
-        VmaAllocation              allocation;
+        VkAccelerationStructureKHR handle = VK_NULL_HANDLE;
+
+        VkDeviceAddress address = 0;
+
+        // TODO: instead of having a buffer per AS, we should suballocate from a buffer pool
+        VkBuffer          buffer         = VK_NULL_HANDLE;
+        VmaAllocation     allocation     = VK_NULL_HANDLE;
+        VmaAllocationInfo allocationInfo = {};
+        VkDeviceAddress   bufferAddress  = 0;
 
         ResultCode Init(IDevice* device, const AccelerationStructureCreateInfo& createInfo);
         void       Shutdown(IDevice* device);

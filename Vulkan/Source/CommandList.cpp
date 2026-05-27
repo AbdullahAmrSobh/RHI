@@ -275,7 +275,7 @@ namespace RHI::Vulkan
 
         if (beginInfo.depthStencilAttachment.view)
         {
-            auto image      = (IImage*)(beginInfo.depthStencilAttachment.view);
+            auto image = (IImage*)(beginInfo.depthStencilAttachment.view);
 
             if (image->subresources.imageAspects & ImageAspect::Depth)
             {
@@ -541,6 +541,20 @@ namespace RHI::Vulkan
         vkCmdBindPipeline(m_commandBuffer, m_pipelineBindPoint, pipeline->handle);
     }
 
+    void ICommandList::BindRayTracingPipeline(const RayTracingPipeline* pipelineState)
+    {
+        ZoneScoped;
+
+        if (pipelineState == nullptr)
+            return;
+
+        IRayTracingPipeline* pipeline = (IRayTracingPipeline*)(pipelineState);
+        m_pipelineLayout              = pipeline->layout;
+        m_pipelineBindPoint           = VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR;
+
+        vkCmdBindPipeline(m_commandBuffer, m_pipelineBindPoint, pipeline->handle);
+    }
+
     void ICommandList::SetViewport(const Viewport& viewport)
     {
         ZoneScoped;
@@ -683,29 +697,22 @@ namespace RHI::Vulkan
         }
     }
 
+    inline static VkStridedDeviceAddressRegionKHR convertStridedDeviceAddressRegion(const StridedDeviceAddressRegion& r)
+    {
+        return VkStridedDeviceAddressRegionKHR{
+            .deviceAddress = (VkDeviceAddress)r.offset,
+            .stride        = r.stride,
+            .size          = r.size,
+        };
+    };
+
     void ICommandList::DispatchRays(const DispatchRaysInfo& dispatchRaysDesc)
     {
-        VkStridedDeviceAddressRegionKHR raygenShaderBindingTable{
-            .deviceAddress = dispatchRaysDesc.raygenShader.offset,
-            .stride        = dispatchRaysDesc.raygenShader.stride,
-            .size          = dispatchRaysDesc.raygenShader.size,
-        };
-        VkStridedDeviceAddressRegionKHR missShaderBindingTable{
-            .deviceAddress = dispatchRaysDesc.missShaders.offset,
-            .stride        = dispatchRaysDesc.missShaders.stride,
-            .size          = dispatchRaysDesc.missShaders.size,
-        };
-        VkStridedDeviceAddressRegionKHR hitShaderBindingTable{
-            .deviceAddress = dispatchRaysDesc.hitShaderGroups.offset,
-            .stride        = dispatchRaysDesc.hitShaderGroups.stride,
-            .size          = dispatchRaysDesc.hitShaderGroups.size,
-        };
-        VkStridedDeviceAddressRegionKHR callableShaderBindingTable{
-            .deviceAddress = dispatchRaysDesc.callableShaders.offset,
-            .stride        = dispatchRaysDesc.callableShaders.stride,
-            .size          = dispatchRaysDesc.callableShaders.size,
-        };
-        vkCmdTraceRaysKHR(m_commandBuffer, &raygenShaderBindingTable, &missShaderBindingTable, &hitShaderBindingTable, &callableShaderBindingTable, dispatchRaysDesc.x, dispatchRaysDesc.y, dispatchRaysDesc.z);
+        VkStridedDeviceAddressRegionKHR raygen   = convertStridedDeviceAddressRegion(dispatchRaysDesc.raygenShader);
+        VkStridedDeviceAddressRegionKHR miss     = convertStridedDeviceAddressRegion(dispatchRaysDesc.missShaders);
+        VkStridedDeviceAddressRegionKHR hit      = convertStridedDeviceAddressRegion(dispatchRaysDesc.hitShaderGroups);
+        VkStridedDeviceAddressRegionKHR callable = convertStridedDeviceAddressRegion(dispatchRaysDesc.callableShaders);
+        vkCmdTraceRaysKHR(m_commandBuffer, &raygen, &miss, &hit, &callable, dispatchRaysDesc.x, dispatchRaysDesc.y, dispatchRaysDesc.z);
     }
 
     void ICommandList::DispatchRaysIndirect(const BufferBindingInfo& argumentBuffer)
@@ -774,9 +781,9 @@ namespace RHI::Vulkan
         // TODO: Need to fix windows headers leaks here and use std::max/std::min
 
         VkExtent3D mipExtent{
-            .width  = max(1u, image->size.width  >> srcImage.mipLevel),
+            .width  = max(1u, image->size.width >> srcImage.mipLevel),
             .height = max(1u, image->size.height >> srcImage.mipLevel),
-            .depth  = max(1u, image->size.depth  >> srcImage.mipLevel),
+            .depth  = max(1u, image->size.depth >> srcImage.mipLevel),
         };
         VkBufferImageCopy bufferImageCopy{
             .bufferOffset      = layout.offset,
@@ -797,9 +804,9 @@ namespace RHI::Vulkan
         auto image  = (const IImage*)(dstImage.image);
 
         VkExtent3D mipExtent{
-            .width  = max(1u, image->size.width  >> dstImage.mipLevel),
+            .width  = max(1u, image->size.width >> dstImage.mipLevel),
             .height = max(1u, image->size.height >> dstImage.mipLevel),
-            .depth  = max(1u, image->size.depth  >> dstImage.mipLevel),
+            .depth  = max(1u, image->size.depth >> dstImage.mipLevel),
         };
         VkBufferImageCopy bufferImageCopy{
             .bufferOffset      = layout.offset,
@@ -810,6 +817,182 @@ namespace RHI::Vulkan
             .imageExtent       = mipExtent,
         };
         vkCmdCopyBufferToImage(m_commandBuffer, buffer->handle, image->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferImageCopy);
+    }
+
+    void ICommandList::CopyAccelerationStructure(AccelerationStructure* dst, const AccelerationStructure* src, CopyMode copyMode)
+    {
+        TL_UNREACHABLE();
+    }
+
+    void ICommandList::CopyMicromap(Micromap* dst, const Micromap* src, CopyMode copyMode)
+    {
+        TL_UNREACHABLE();
+    }
+
+    void ICommandList::BuildTlas(TL::Span<const TlasBuildInfo> buildInfos)
+    {
+        ZoneScoped;
+
+        if (buildInfos.empty())
+            return;
+
+        TL::Vector<VkAccelerationStructureGeometryKHR>           geometries{m_device->m_arena};
+        TL::Vector<VkAccelerationStructureBuildGeometryInfoKHR>  geometryInfos{m_device->m_arena};
+        TL::Vector<VkAccelerationStructureBuildRangeInfoKHR>     rangeInfos{m_device->m_arena};
+        TL::Vector<const VkAccelerationStructureBuildRangeInfoKHR*> pRangeInfos{m_device->m_arena};
+
+        geometries.resize(buildInfos.size());
+        geometryInfos.resize(buildInfos.size());
+        rangeInfos.resize(buildInfos.size());
+        pRangeInfos.resize(buildInfos.size());
+
+        for (size_t i = 0; i < buildInfos.size(); ++i)
+        {
+            const auto& info        = buildInfos[i];
+            auto*       dstAS       = (IAccelerationStructure*)info.dst;
+            auto*       srcAS       = (IAccelerationStructure*)info.src;
+            auto*       instanceBuf = (const IBuffer*)info.instanceBuffer;
+            auto*       scratchBuf  = (const IBuffer*)info.scratchBuffer;
+
+            geometries[i] = VkAccelerationStructureGeometryKHR{
+                .sType        = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
+                .pNext        = nullptr,
+                .geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR,
+                .geometry     = {
+                    .instances = {
+                        .sType           = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR,
+                        .pNext           = nullptr,
+                        .arrayOfPointers = VK_FALSE,
+                        .data            = {.deviceAddress = instanceBuf->address + info.instanceBufferOffset},
+                    },
+                },
+                .flags = {},
+            };
+
+            geometryInfos[i] = VkAccelerationStructureBuildGeometryInfoKHR{
+                .sType                    = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR,
+                .pNext                    = nullptr,
+                .type                     = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR,
+                .flags                    = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR,
+                .mode                     = srcAS ? VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR : VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR,
+                .srcAccelerationStructure = srcAS ? srcAS->handle : VK_NULL_HANDLE,
+                .dstAccelerationStructure = dstAS->handle,
+                .geometryCount            = 1,
+                .pGeometries              = &geometries[i],
+                .ppGeometries             = nullptr,
+                .scratchData              = {.deviceAddress = scratchBuf->address + info.scratchBufferOffset},
+            };
+
+            rangeInfos[i] = VkAccelerationStructureBuildRangeInfoKHR{
+                .primitiveCount  = info.instanceCount,
+                .primitiveOffset = 0,
+                .firstVertex     = 0,
+                .transformOffset = 0,
+            };
+            pRangeInfos[i] = &rangeInfos[i];
+        }
+
+        vkCmdBuildAccelerationStructuresKHR(m_commandBuffer, (uint32_t)geometryInfos.size(), geometryInfos.data(), pRangeInfos.data());
+    }
+
+    void ICommandList::BuildBlas(TL::Span<const BlasBuildInfo> buildInfos)
+    {
+        ZoneScoped;
+
+        if (buildInfos.empty())
+            return;
+
+        TL::Vector<VkAccelerationStructureGeometryKHR>              geometries{m_device->m_arena};
+        TL::Vector<VkAccelerationStructureBuildRangeInfoKHR>        rangeInfos{m_device->m_arena};
+        TL::Vector<VkAccelerationStructureBuildGeometryInfoKHR>     geometryInfos{m_device->m_arena};
+        TL::Vector<const VkAccelerationStructureBuildRangeInfoKHR*> pRangeInfos{m_device->m_arena};
+
+        uint32_t totalGeometries = 0;
+        for (const auto& info : buildInfos)
+            totalGeometries += info.geometryCount;
+
+        geometries.reserve(totalGeometries);
+        rangeInfos.reserve(totalGeometries);
+        geometryInfos.resize(buildInfos.size());
+        pRangeInfos.resize(buildInfos.size());
+
+        for (size_t i = 0; i < buildInfos.size(); ++i)
+        {
+            const auto& info       = buildInfos[i];
+            auto*       dstAS      = (IAccelerationStructure*)info.dst;
+            auto*       srcAS      = (IAccelerationStructure*)info.src;
+            auto*       scratchBuf = (const IBuffer*)info.scratchBuffer;
+
+            uint32_t firstGeometryIndex = (uint32_t)geometries.size();
+
+            for (uint32_t g = 0; g < info.geometryCount; ++g)
+            {
+                const auto& geom = info.geometries[g];
+                geometries.push_back(convertGeometryData(geom));
+
+                uint32_t primitiveCount = 0;
+                if (geom.geometryType == GeometryType::Triangles)
+                    primitiveCount = (geom.indexCount > 0 ? geom.indexCount : geom.count) / 3;
+                else
+                    primitiveCount = geom.count;
+
+                rangeInfos.push_back(VkAccelerationStructureBuildRangeInfoKHR{
+                    .primitiveCount  = primitiveCount,
+                    .primitiveOffset = 0,
+                    .firstVertex     = 0,
+                    .transformOffset = 0,
+                });
+            }
+
+            geometryInfos[i] = VkAccelerationStructureBuildGeometryInfoKHR{
+                .sType                    = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR,
+                .pNext                    = nullptr,
+                .type                     = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
+                .flags                    = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR,
+                .mode                     = srcAS ? VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR : VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR,
+                .srcAccelerationStructure = srcAS ? srcAS->handle : VK_NULL_HANDLE,
+                .dstAccelerationStructure = dstAS->handle,
+                .geometryCount            = info.geometryCount,
+                .pGeometries              = geometries.data() + firstGeometryIndex,
+                .ppGeometries             = nullptr,
+                .scratchData              = {.deviceAddress = scratchBuf->address + info.scratchBufferOffset},
+            };
+
+            pRangeInfos[i] = rangeInfos.data() + firstGeometryIndex;
+        }
+
+        vkCmdBuildAccelerationStructuresKHR(m_commandBuffer, (uint32_t)geometryInfos.size(), geometryInfos.data(), pRangeInfos.data());
+    }
+
+    void ICommandList::BuildMicromaps(TL::Span<const MicromapBuildInfo> buildInfos)
+    {
+        TL_UNREACHABLE();
+    }
+
+    void ICommandList::WriteAccelerationStructuresSizes(TL::Span<const AccelerationStructure*> accelerationStructures, QueryPool* _queryPool, uint32_t queryPoolOffset)
+    {
+        IQueryPool*                            queryPool = (IQueryPool*)_queryPool;
+        TL::Vector<VkAccelerationStructureKHR> asHandles{m_device->m_arena};
+        asHandles.reserve(accelerationStructures.size());
+        for (const auto* as : accelerationStructures)
+        {
+            auto vkAS = (IAccelerationStructure*)as;
+            asHandles.push_back(vkAS->handle);
+        }
+        vkCmdWriteAccelerationStructuresPropertiesKHR(m_commandBuffer, (uint32_t)asHandles.size(), asHandles.data(), VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR, queryPool->handle, queryPoolOffset);
+    }
+
+    void ICommandList::WriteMicromapsSizes(TL::Span<const Micromap*> micromaps, QueryPool* _queryPool, uint32_t queryPoolOffset)
+    {
+        IQueryPool*               queryPool = (IQueryPool*)_queryPool;
+        TL::Vector<VkMicromapEXT> micromapHandles{m_device->m_arena};
+        micromapHandles.reserve(micromaps.size());
+        for (const auto* micromap : micromaps)
+        {
+            auto vkMicromap = (IMicromap*)micromap;
+            micromapHandles.push_back(vkMicromap->handle);
+        }
+        vkCmdWriteMicromapsPropertiesEXT(m_commandBuffer, (uint32_t)micromapHandles.size(), micromapHandles.data(), VK_QUERY_TYPE_MICROMAP_COMPACTED_SIZE_EXT, queryPool->handle, queryPoolOffset);
     }
 
     void ICommandList::BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups)
@@ -845,78 +1028,4 @@ namespace RHI::Vulkan
         };
         vkCmdBindDescriptorSets2(m_commandBuffer, &bindInfo);
     }
-
-    void ICommandList::BuildMicromaps(TL::Span<const MicromapBuildInfo> buildInfos)
-    {
-        TL::Vector<VkMicromapBuildInfoEXT> info{m_device->m_arena};
-        info.reserve(buildInfos.size());
-
-        vkCmdBuildMicromapsEXT(m_commandBuffer, info.size(), info.data());
-    }
-
-    void ICommandList::WriteMicromapsSizes(TL::Span<const Micromap*> micromaps, QueryPool* _queryPool, uint32_t queryPoolOffset)
-    {
-        IQueryPool*               queryPool = (IQueryPool*)_queryPool;
-        TL::Vector<VkMicromapEXT> micromapHandles{m_device->m_arena};
-        micromapHandles.reserve(micromaps.size());
-        for (const auto* micromap : micromaps)
-        {
-            auto vkMicromap = (IMicromap*)micromap;
-            micromapHandles.push_back(vkMicromap->handle);
-        }
-        vkCmdWriteMicromapsPropertiesEXT(m_commandBuffer, (uint32_t)micromapHandles.size(), micromapHandles.data(), VK_QUERY_TYPE_MICROMAP_COMPACTED_SIZE_EXT, queryPool->handle, queryPoolOffset);
-    }
-
-    void ICommandList::CopyMicromap(Micromap* _dst, const Micromap* _src, CopyMode copyMode)
-    {
-        IMicromap* dst = (IMicromap*)_dst;
-        IMicromap* src = (IMicromap*)_src;
-
-        VkCopyMicromapInfoEXT copyInfo{
-            .sType = VK_STRUCTURE_TYPE_COPY_MICROMAP_INFO_EXT,
-            .pNext = nullptr,
-            .src   = src->handle,
-            .dst   = dst->handle,
-            // .mode   = ConvertMicromapCopyMode(copyMode),
-        };
-        vkCmdCopyMicromapEXT(m_commandBuffer, &copyInfo);
-    }
-
-    void ICommandList::BuildTopLevelAccelerationStructures(TL::Span<const TopLevelAccelerationStructureBuildInfo> buildInfos)
-    {
-        TL::Vector<VkAccelerationStructureBuildGeometryInfoKHR> buildInfo{m_device->m_arena};
-        TL::Vector<VkAccelerationStructureBuildRangeInfoKHR*>   buildRangeInfos{m_device->m_arena};
-
-        vkCmdBuildAccelerationStructuresKHR(m_commandBuffer, buildInfo.size(), buildInfo.data(), buildRangeInfos.data());
-    }
-
-    void ICommandList::BuildBottomLevelAccelerationStructures(TL::Span<const BottomLevelAccelerationStructureBuildInfo> buildInfos)
-    {
-        TL::Vector<VkAccelerationStructureBuildGeometryInfoKHR> buildInfo{m_device->m_arena};
-        TL::Vector<VkAccelerationStructureBuildRangeInfoKHR*>   buildRangeInfos{m_device->m_arena};
-
-        vkCmdBuildAccelerationStructuresKHR(m_commandBuffer, buildInfo.size(), buildInfo.data(), buildRangeInfos.data());
-    }
-
-    void ICommandList::WriteAccelerationStructuresSizes(TL::Span<const AccelerationStructure*> accelerationStructures, QueryPool* _queryPool, uint32_t queryPoolOffset)
-    {
-        IQueryPool*                            queryPool = (IQueryPool*)_queryPool;
-        TL::Vector<VkAccelerationStructureKHR> asHandles{m_device->m_arena};
-        asHandles.reserve(accelerationStructures.size());
-        for (const auto* as : accelerationStructures)
-        {
-            auto vkAS = (IAccelerationStructure*)as;
-            asHandles.push_back(vkAS->handle);
-        }
-        vkCmdWriteAccelerationStructuresPropertiesKHR(m_commandBuffer, (uint32_t)asHandles.size(), asHandles.data(), VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR, queryPool->handle, queryPoolOffset);
-    }
-
-    void ICommandList::CopyAccelerationStructure(AccelerationStructure* _dst, const AccelerationStructure* _src, CopyMode copyMode)
-    {
-        IAccelerationStructure* dst = (IAccelerationStructure*)_dst;
-        IAccelerationStructure* src = (IAccelerationStructure*)_src;
-
-        // vkCmdCopyAccelerationStructureKHR(m_commandBuffer, dst->handle, src->handle, ConvertASCopyMode(copyMode));
-    }
-
 } // namespace RHI::Vulkan

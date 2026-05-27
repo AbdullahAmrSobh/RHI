@@ -6,8 +6,22 @@
 
 #include <vk_mem_alloc.h>
 
+#include <tracy/Tracy.hpp>
+
 namespace RHI::Vulkan
 {
+    inline static VkIndexType convertIndexType(IndexType indexType)
+    {
+        switch (indexType)
+        {
+        case IndexType::uint8:  return VK_INDEX_TYPE_UINT8;
+        case IndexType::uint16: return VK_INDEX_TYPE_UINT16;
+        case IndexType::uint32: return VK_INDEX_TYPE_UINT32;
+        }
+        TL_UNREACHABLE();
+        return VK_INDEX_TYPE_MAX_ENUM;
+    }
+
     inline static VkQueryType ConvertQueryType(QueryType queryType)
     {
         switch (queryType)
@@ -482,6 +496,35 @@ namespace RHI::Vulkan
             .descriptorCount = (uint32_t)descriptorBufferInfos.size(),
             .descriptorType  = descriptorType,
             .pBufferInfo     = descriptorBufferInfos.data(),
+        };
+        return m_writes.emplace_back(writeInfo);
+    }
+
+    VkWriteDescriptorSet DescriptorSetWriter::BindAccelerationStructures(uint32_t dstBinding, uint32_t dstArray, TL::Span<AccelerationStructure* const> accelerationStructures)
+    {
+        TL::Vector<VkWriteDescriptorSetAccelerationStructureKHR>& descriptorASInfos = m_accelerationStructures.emplace_back(*m_allocator);
+        descriptorASInfos.reserve(accelerationStructures.size());
+        for (auto asHandle : accelerationStructures)
+        {
+            auto as = (IAccelerationStructure*)(asHandle);
+
+            VkWriteDescriptorSetAccelerationStructureKHR descriptorInfo = {
+                .sType                      = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR,
+                .pNext                      = nullptr,
+                .accelerationStructureCount = 1,
+                .pAccelerationStructures    = &as->handle,
+            };
+            descriptorASInfos.push_back(descriptorInfo);
+        }
+
+        VkWriteDescriptorSet writeInfo{
+            .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .pNext           = descriptorASInfos.data(),
+            .dstSet          = m_descriptorSet,
+            .dstBinding      = dstBinding,
+            .dstArrayElement = dstArray,
+            .descriptorCount = (uint32_t)descriptorASInfos.size(),
+            .descriptorType  = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
         };
         return m_writes.emplace_back(writeInfo);
     }
@@ -1091,14 +1134,59 @@ namespace RHI::Vulkan
         TL::Vector<VkPipelineShaderStageCreateInfo>      shaderStagesCI{device->m_arena};
         TL::Vector<VkRayTracingShaderGroupCreateInfoKHR> shaderGroupsCI{device->m_arena};
 
-        for (const auto& stage : createInfo.shaderStages)
-        {
-            shaderStagesCI.push_back(convertShaderStage(stage));
-        }
+        uint32_t            shaderGroupCount         = 0;
+        uint32_t            shaderGroupHandleSize    = 0;
+        uint32_t            shaderGroupBaseAlignment = 0;
+        TL::Vector<uint8_t> shaderGroupHandles       = {};
 
-        // VkPipelineLibraryCreateInfoKHR
-        // VkRayTracingPipelineInterfaceCreateInfoKHR
-        // VkPipelineDynamicStateCreateInfo
+        shaderStagesCI.reserve(createInfo.shaderStages.size());
+        for (const auto& stage : createInfo.shaderStages)
+            shaderStagesCI.push_back(convertShaderStage(stage));
+
+        // ShaderGroupInfo::shaderIndices[3] convention:
+        //   [0] = general shader (raygen/miss/callable)  -> if valid and [1]/[2] unused: general group
+        //   [0] = closest-hit, [1] = any-hit, [2] = intersection -> triangles/procedural hit group
+        shaderGroupsCI.reserve(createInfo.shaderGroups.size());
+        for (const auto& g : createInfo.shaderGroups)
+        {
+            const uint32_t idx0 = g.shaderIndices[0];
+            const uint32_t idx1 = g.shaderIndices[1];
+            const uint32_t idx2 = g.shaderIndices[2];
+
+            VkRayTracingShaderGroupTypeKHR vkType;
+            uint32_t                       generalShader      = VK_SHADER_UNUSED_KHR;
+            uint32_t                       closestHitShader   = VK_SHADER_UNUSED_KHR;
+            uint32_t                       anyHitShader       = VK_SHADER_UNUSED_KHR;
+            uint32_t                       intersectionShader = VK_SHADER_UNUSED_KHR;
+
+            const bool hasGeneral   = (idx0 != VK_SHADER_UNUSED_KHR) && (idx1 == VK_SHADER_UNUSED_KHR) && (idx2 == VK_SHADER_UNUSED_KHR);
+            const bool hasIntersect = (idx2 != VK_SHADER_UNUSED_KHR);
+
+            if (hasGeneral)
+            {
+                vkType        = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
+                generalShader = idx0;
+            }
+            else
+            {
+                vkType             = hasIntersect ? VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR
+                                                  : VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
+                closestHitShader   = idx0;
+                anyHitShader       = idx1;
+                intersectionShader = idx2;
+            }
+
+            shaderGroupsCI.push_back({
+                .sType                           = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR,
+                .pNext                           = nullptr,
+                .type                            = vkType,
+                .generalShader                   = generalShader,
+                .closestHitShader                = closestHitShader,
+                .anyHitShader                    = anyHitShader,
+                .intersectionShader              = intersectionShader,
+                .pShaderGroupCaptureReplayHandle = nullptr,
+            });
+        }
 
         VkDynamicState                   dynamicStates[] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
         VkPipelineDynamicStateCreateInfo dynamicStateCI{
@@ -1126,9 +1214,34 @@ namespace RHI::Vulkan
             .basePipelineIndex            = 0,
         };
 
-        VulkanResult result;
-        result = vkCreateRayTracingPipelinesKHR(device->m_device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &pipelineCI, nullptr, &handle);
-        return result;
+        VulkanResult result = vkCreateRayTracingPipelinesKHR(device->m_device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &pipelineCI, nullptr, &handle);
+        if (result != VK_SUCCESS) return result;
+
+        // Pull RT pipeline properties for SBT sizing.
+        VkPhysicalDeviceRayTracingPipelinePropertiesKHR rtProps{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR,
+        };
+        VkPhysicalDeviceProperties2 props2{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+            .pNext = &rtProps,
+        };
+        vkGetPhysicalDeviceProperties2(device->m_physicalDevice, &props2);
+
+        shaderGroupCount         = (uint32_t)shaderGroupsCI.size();
+        shaderGroupHandleSize    = rtProps.shaderGroupHandleSize;
+        shaderGroupBaseAlignment = rtProps.shaderGroupBaseAlignment;
+
+        if (shaderGroupCount > 0)
+        {
+            shaderGroupHandles.resize(shaderGroupCount * shaderGroupHandleSize);
+            VulkanResult hr = vkGetRayTracingShaderGroupHandlesKHR(device->m_device, handle, 0, shaderGroupCount, shaderGroupHandles.size(), shaderGroupHandles.data());
+            if (hr != VK_SUCCESS) return hr;
+        }
+
+        if (createInfo.name)
+            device->SetDebugName(handle, createInfo.name);
+
+        return ResultCode::Success;
     }
 
     void IRayTracingPipeline::Shutdown(IDevice* device)
@@ -1238,8 +1351,6 @@ namespace RHI::Vulkan
 
     void IBuffer::Shutdown(IDevice* device)
     {
-        TL_ASSERT(mapped == false, "Unmap buffer first");
-
         auto frame = ((IQueue*)device->GetQueue(QueueType::Graphics))->m_lastSubmitValue.load();
 
         if (handle)
@@ -1251,9 +1362,6 @@ namespace RHI::Vulkan
 
     DeviceMemoryPtr IBuffer::Map(IDevice* device)
     {
-        TL_ASSERT(mapped == false, "Buffer is already mapped");
-        mapped = true;
-
         DeviceMemoryPtr ptr = nullptr;
         VulkanResult    result;
         result = vmaMapMemory(device->m_deviceAllocator, allocation, &ptr);
@@ -1263,8 +1371,6 @@ namespace RHI::Vulkan
 
     void IBuffer::Unmap(IDevice* device)
     {
-        TL_ASSERT(mapped == true, "Buffer is already unmapped");
-        mapped = false;
         vmaUnmapMemory(device->m_deviceAllocator, allocation);
     }
 
@@ -1427,13 +1533,120 @@ namespace RHI::Vulkan
 
     ResultCode IAccelerationStructure::Init(IDevice* device, const AccelerationStructureCreateInfo& createInfo)
     {
-        TL_UNREACHABLE_MSG("TODO: Implement!");
-        return ResultCode::ErrorUnknown;
+        ZoneScoped;
+
+        VulkanResult result;
+
+        TL::Vector<VkAccelerationStructureGeometryKHR> geometries{device->m_arena};
+        TL::Vector<uint32_t> primitiveCounts{device->m_arena};
+
+        if (createInfo.type == AccelerationStructureType::BottomLevel)
+        {
+            for (const auto& geometry : createInfo.geometries)
+            {
+                geometries.push_back(convertGeometryData(geometry));
+                if (geometry.geometryType == GeometryType::Triangles)
+                {
+                    uint32_t triangleNum = (geometry.indexCount ? geometry.indexCount : geometry.count) / 3;
+                    primitiveCounts.push_back(triangleNum);
+                }
+                else
+                {
+                    primitiveCounts.push_back(geometry.count);
+                }
+            }
+        }
+        else
+        {
+            for (const auto& instance : createInfo.instances)
+            {
+                geometries.push_back(convertInstanceGeometryData(instance));
+            }
+            primitiveCounts.push_back(1);
+        }
+
+        VkAccelerationStructureBuildGeometryInfoKHR buildInfo{
+            .sType                    = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR,
+            .pNext                    = nullptr,
+            .type                     = (createInfo.type == AccelerationStructureType::BottomLevel) ? VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR : VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR,
+            // .flags                    = convertGeometryFlags(createInfo.flags),
+            .mode                     = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR,
+            .srcAccelerationStructure = VK_NULL_HANDLE, // TODO: support update mode with src AS
+            .dstAccelerationStructure = VK_NULL_HANDLE, // TODO: dst AS from buildInfo
+            .geometryCount            = (uint32_t)geometries.size(),
+            .pGeometries              = geometries.data(),
+            .ppGeometries             = nullptr,
+            .scratchData              = {.deviceAddress = 0}, // TODO: scratch buffer device address
+        };
+
+        VkAccelerationStructureBuildSizesInfoKHR sizeInfo{
+            .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR,
+        };
+        vkGetAccelerationStructureBuildSizesKHR(device->m_device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildInfo, primitiveCounts.data(), &sizeInfo);
+
+        VkBuffer asBuffer;
+        size_t   asBufferOffset;
+
+        {
+            VkBufferCreateInfo bufferCI{
+                .sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+                .pNext                 = nullptr,
+                .flags                 = 0,
+                .size                  = sizeInfo.accelerationStructureSize,
+                .usage                 = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
+                .queueFamilyIndexCount = 0,
+                .pQueueFamilyIndices   = nullptr,
+            };
+
+            VmaAllocationCreateInfo allocationCI{
+                .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+            };
+
+            result = vmaCreateBuffer(device->m_deviceAllocator, &bufferCI, &allocationCI, &asBuffer, &allocation, &allocationInfo);
+            if (result != VK_SUCCESS) return result;
+
+            VkBufferDeviceAddressInfo bufferAddressInfo{
+                .sType  = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+                .pNext  = nullptr,
+                .buffer = asBuffer,
+            };
+            bufferAddress  = vkGetBufferDeviceAddress(device->m_device, &bufferAddressInfo);
+            asBufferOffset = 0;
+        }
+
+        VkAccelerationStructureCreateInfoKHR ci{
+            .sType         = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR,
+            .pNext         = nullptr,
+            .createFlags   = {},
+            .buffer        = asBuffer,
+            .offset        = asBufferOffset,
+            .size          = sizeInfo.accelerationStructureSize,
+            .type          = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
+            .deviceAddress = {},
+        };
+        result = vkCreateAccelerationStructureKHR(device->m_device, &ci, nullptr, &handle);
+        if (result != VK_SUCCESS) return result;
+
+        VkAccelerationStructureDeviceAddressInfoKHR accellStructAddrInfo{
+            .sType                 = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR,
+            .pNext                 = nullptr,
+            .accelerationStructure = handle,
+        };
+        address = vkGetAccelerationStructureDeviceAddressKHR(device->m_device, &accellStructAddrInfo);
+
+        if (createInfo.name)
+            device->SetDebugName(handle, createInfo.name);
+
+        return ResultCode::Success;
     }
 
     void IAccelerationStructure::Shutdown(IDevice* device)
     {
-        TL_UNREACHABLE_MSG("TODO: Implement!");
+        auto frame = ((IQueue*)device->GetQueue(QueueType::Graphics))->m_lastSubmitValue.load();
+        if (handle) device->m_destroyQueue->Push(frame, handle);
+        if (buffer) device->m_destroyQueue->Push(frame, buffer);
+        if (allocation) device->m_destroyQueue->Push(frame, allocation);
     }
 
     /////////////////////////////////////////////////////////////////////////

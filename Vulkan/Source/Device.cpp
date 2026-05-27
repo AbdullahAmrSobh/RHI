@@ -1062,6 +1062,7 @@ namespace RHI::Vulkan
     Sampler*               IDevice::CreateSampler(const SamplerCreateInfo& createInfo)                              { return createImpl<ISampler>(this, createInfo); }
     AccelerationStructure* IDevice::CreateAccelerationStructure(const AccelerationStructureCreateInfo& createInfo)  { return createImpl<IAccelerationStructure>(this, createInfo); }
     void                   IDevice::DestroyAccelerationStructure(AccelerationStructure* handle)                     { destroyImpl<IAccelerationStructure>(this, (IAccelerationStructure*)handle); }
+    uint64_t               IDevice::GetAccelerationStructureDeviceAddress(AccelerationStructure* handle)            { return ((IAccelerationStructure*)handle)->address; }
     Micromap*              IDevice::CreateMicromap(const MicromapCreateInfo& createInfo)                            { return createImpl<IMicromap>(this, createInfo); }
     void                   IDevice::DestroyMicromap(Micromap* handle)                                               { destroyImpl<IMicromap>(this, (IMicromap*)handle); }
     void                   IDevice::DestroySampler(Sampler* resource)                                               { destroyImpl<ISampler>(this, (ISampler*)resource); }
@@ -1091,6 +1092,8 @@ namespace RHI::Vulkan
         TL_ASSERT(m_swapchain.empty());
         TL_ASSERT(m_surface.empty());
         TL_ASSERT(m_semaphore.empty());
+        TL_ASSERT(m_accelerationStructure.empty());
+        TL_ASSERT(m_micromap.empty());
         TL_ASSERT(m_pending.empty());
     }
 
@@ -1109,6 +1112,8 @@ namespace RHI::Vulkan
         else if constexpr (std::is_same_v<VkSemaphore, ResourceType>) vkDestroySemaphore(device->m_device, handle, nullptr);
         else if constexpr (std::is_same_v<VkSwapchainKHR, ResourceType>) vkDestroySwapchainKHR(device->m_device, handle, nullptr);
         else if constexpr (std::is_same_v<VkSurfaceKHR, ResourceType>) vkDestroySurfaceKHR(device->m_instance, handle, nullptr);
+        else if constexpr (std::is_same_v<VkAccelerationStructureKHR, ResourceType>) vkDestroyAccelerationStructureKHR(device->m_device, handle, nullptr);
+        else if constexpr (std::is_same_v<VkMicromapEXT, ResourceType>) vkDestroyMicromapEXT(device->m_device, handle, nullptr);
         else if constexpr (std::is_same_v<VmaBufferAllocation, ResourceType>) vmaDestroyBuffer(device->m_deviceAllocator, handle.first, handle.second);
         else if constexpr (std::is_same_v<VmaImageAllocation, ResourceType>) vmaDestroyImage(device->m_deviceAllocator, handle.first, handle.second);
         else
@@ -1152,6 +1157,8 @@ namespace RHI::Vulkan
         FlushQueue(device, m_swapchain, timeline);
         FlushQueue(device, m_surface, timeline);
         FlushQueue(device, m_semaphore, timeline);
+        FlushQueue(device, m_accelerationStructure, timeline);
+        FlushQueue(device, m_micromap, timeline);
         FlushQueue(device, m_allocation, timeline);
     }
 

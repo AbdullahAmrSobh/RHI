@@ -57,6 +57,7 @@ namespace RHI::Vulkan
         void SetBindGroups(BindPoint bindPoint, TL::Span<const BindGroupBindingInfo> bindGroups) override;
         void BindGraphicsPipeline(const GraphicsPipeline* pipelineState) override;
         void BindComputePipeline(const ComputePipeline* pipelineState) override;
+        void BindRayTracingPipeline(const RayTracingPipeline* pipelineState) override;
         void SetViewport(const Viewport& viewport) override;
         void SetScissor(const Scissor& sicssor) override;
         void BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> vertexBuffers) override;
@@ -75,16 +76,13 @@ namespace RHI::Vulkan
         void CopyImage(const ImageCopyInfo& srcImage, const ImageCopyInfo& dstImage, const ImageSize3D& size) override;
         void CopyImageToBuffer(const ImageCopyInfo& srcImage, const ImageMemoryLayout& layout, const Buffer* dstBuffer) override;
         void CopyBufferToImage(const Buffer* srcBuffer, const ImageCopyInfo& dstImage, const ImageMemoryLayout& layout) override;
-
-        void BuildMicromaps(TL::Span<const MicromapBuildInfo> buildInfos) override;
-        void WriteMicromapsSizes(TL::Span<const Micromap*> micromaps, QueryPool* queryPool, uint32_t queryPoolOffset) override;
-        void CopyMicromap(Micromap* dst, const Micromap* src, CopyMode copyMode) override;
-
-        void BuildTopLevelAccelerationStructures(TL::Span<const TopLevelAccelerationStructureBuildInfo> buildInfos) override;
-        void BuildBottomLevelAccelerationStructures(TL::Span<const BottomLevelAccelerationStructureBuildInfo> buildInfos) override;
-        void WriteAccelerationStructuresSizes(TL::Span<const AccelerationStructure*> accelerationStructures, QueryPool* queryPool, uint32_t queryPoolOffset) override;
         void CopyAccelerationStructure(AccelerationStructure* dst, const AccelerationStructure* src, CopyMode copyMode) override;
-
+        void CopyMicromap(Micromap* dst, const Micromap* src, CopyMode copyMode) override;
+        void BuildTlas(TL::Span<const TlasBuildInfo> buildInfos) override;
+        void BuildBlas(TL::Span<const BlasBuildInfo> buildInfos) override;
+        void BuildMicromaps(TL::Span<const MicromapBuildInfo> buildInfos) override;
+        void WriteAccelerationStructuresSizes(TL::Span<const AccelerationStructure*> accelerationStructures, QueryPool* queryPool, uint32_t queryPoolOffset) override;
+        void WriteMicromapsSizes(TL::Span<const Micromap*> micromaps, QueryPool* queryPool, uint32_t queryPoolOffset) override;
         void BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups);
 
     public:

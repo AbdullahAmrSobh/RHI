@@ -90,6 +90,7 @@ namespace RHI::Vulkan
         void                   DestroyImage(Image* handle) override;
         AccelerationStructure* CreateAccelerationStructure(const AccelerationStructureCreateInfo& createInfo) override;
         void                   DestroyAccelerationStructure(AccelerationStructure* handle) override;
+        uint64_t               GetAccelerationStructureDeviceAddress(AccelerationStructure* handle) override;
         Micromap*              CreateMicromap(const MicromapCreateInfo& createInfo) override;
         void                   DestroyMicromap(Micromap* handle) override;
         Sampler*               CreateSampler(const SamplerCreateInfo& createInfo) override;
@@ -159,6 +160,8 @@ namespace RHI::Vulkan
         void Push(uint64_t timeline, VkSwapchainKHR h) { PushImpl(m_swapchain, timeline, h); }
         void Push(uint64_t timeline, VkSurfaceKHR h) { PushImpl(m_surface, timeline, h); }
         void Push(uint64_t timeline, VkSemaphore h) { PushImpl(m_semaphore, timeline, h); }
+        void Push(uint64_t timeline, VkAccelerationStructureKHR h) { PushImpl(m_accelerationStructure, timeline, h); }
+        void Push(uint64_t timeline, VkMicromapEXT h) { PushImpl(m_micromap, timeline, h); }
         // void Push(uint64_t timeline, VmaBufferAllocation h) { PushImpl(, timeline, h.first);  PushImpl(m_vmaBuffer, timeline, h.second);}
         // void Push(uint64_t timeline, VmaImageAllocation h) { PushImpl(m_vmaImage, timeline, h.first);  PushImpl(m_vmaImage, timeline, h.second);}
         // clang-format on
@@ -202,19 +205,21 @@ namespace RHI::Vulkan
         }
 
     private:
-        TL::Vector<ResourceDeleteQueueEntry<VmaAllocation>>    m_allocation;
-        TL::Vector<ResourceDeleteQueueEntry<VkBuffer>>         m_buffer;
-        TL::Vector<ResourceDeleteQueueEntry<VkBufferView>>     m_bufferView;
-        TL::Vector<ResourceDeleteQueueEntry<VkImage>>          m_image;
-        TL::Vector<ResourceDeleteQueueEntry<VkImageView>>      m_imageView;
-        TL::Vector<ResourceDeleteQueueEntry<VkSampler>>        m_sampler;
-        TL::Vector<ResourceDeleteQueueEntry<VkPipeline>>       m_pipeline;
-        TL::Vector<ResourceDeleteQueueEntry<VkDescriptorPool>> m_descriptorPool;
-        TL::Vector<ResourceDeleteQueueEntry<VkQueryPool>>      m_queryPool;
-        TL::Vector<ResourceDeleteQueueEntry<VkSwapchainKHR>>   m_swapchain;
-        TL::Vector<ResourceDeleteQueueEntry<VkSurfaceKHR>>     m_surface;
-        TL::Vector<ResourceDeleteQueueEntry<VkSemaphore>>      m_semaphore;
-        TL::Map<uint64_t, TL::Stacktrace>                      m_pending;
+        TL::Vector<ResourceDeleteQueueEntry<VmaAllocation>>              m_allocation;
+        TL::Vector<ResourceDeleteQueueEntry<VkBuffer>>                   m_buffer;
+        TL::Vector<ResourceDeleteQueueEntry<VkBufferView>>               m_bufferView;
+        TL::Vector<ResourceDeleteQueueEntry<VkImage>>                    m_image;
+        TL::Vector<ResourceDeleteQueueEntry<VkImageView>>                m_imageView;
+        TL::Vector<ResourceDeleteQueueEntry<VkSampler>>                  m_sampler;
+        TL::Vector<ResourceDeleteQueueEntry<VkPipeline>>                 m_pipeline;
+        TL::Vector<ResourceDeleteQueueEntry<VkDescriptorPool>>           m_descriptorPool;
+        TL::Vector<ResourceDeleteQueueEntry<VkQueryPool>>                m_queryPool;
+        TL::Vector<ResourceDeleteQueueEntry<VkSwapchainKHR>>             m_swapchain;
+        TL::Vector<ResourceDeleteQueueEntry<VkSurfaceKHR>>               m_surface;
+        TL::Vector<ResourceDeleteQueueEntry<VkSemaphore>>                m_semaphore;
+        TL::Vector<ResourceDeleteQueueEntry<VkAccelerationStructureKHR>> m_accelerationStructure;
+        TL::Vector<ResourceDeleteQueueEntry<VkMicromapEXT>>              m_micromap;
+        TL::Map<uint64_t, TL::Stacktrace>                                m_pending;
     };
 
 } // namespace RHI::Vulkan

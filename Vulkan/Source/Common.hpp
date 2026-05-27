@@ -340,6 +340,18 @@ namespace RHI::Vulkan
         }
     }
 
+    inline static VkIndexType ConvertIndexType(IndexType indexType)
+    {
+        switch (indexType)
+        {
+        case IndexType::None:   return VK_INDEX_TYPE_NONE_KHR;
+        case IndexType::uint8:  return VK_INDEX_TYPE_UINT8;
+        case IndexType::uint16: return VK_INDEX_TYPE_UINT16;
+        case IndexType::uint32: return VK_INDEX_TYPE_UINT32;
+        default:                TL_UNREACHABLE(); return VK_INDEX_TYPE_MAX_ENUM;
+        }
+    }
+
     inline static VkAttachmentLoadOp ConvertLoadOp(LoadOperation op)
     {
         switch (op)
@@ -648,5 +660,79 @@ namespace RHI::Vulkan
         case ImageUsage::Present:         return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
         default:                          TL_UNREACHABLE(); return VK_IMAGE_LAYOUT_UNDEFINED;
         }
+    }
+
+    inline static VkGeometryFlagBitsKHR
+    convertGeometryFlags(TL::Flags<AccelerationStructureFlags> flags)
+    {
+        VkGeometryFlagBitsKHR result = {};
+        // if (flags & AccelerationStructureFlags::Opaque) result |= VK_GEOMETRY_OPAQUE_BIT_KHR;
+        // if (flags & AccelerationStructureFlags::NoDuplicateAnyHitInvocation) result |= VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR;
+        // if (flags & AccelerationStructureFlags::NoDuplicateIntersectionInvocation) result |= VK_GEOMETRY_NO_DUPLICATE_INTERSECTION_INVOCATION_BIT_KHR;
+        // if (flags & AccelerationStructureFlags::ForceOpaque) result |= VK_GEOMETRY_FORCE_OPAQUE_BIT_KHR;
+        // if (flags & AccelerationStructureFlags::ForceNoOpaque) result |= VK_GEOMETRY_FORCE_NO_OPAQUE_BIT_KHR;
+        return result;
+    }
+
+    inline static VkAccelerationStructureGeometryKHR
+    convertGeometryData(const AccelerationStructureGeometry& trianglesData)
+    {
+        switch (trianglesData.geometryType)
+        {
+        case GeometryType::Aabbs:
+            return VkAccelerationStructureGeometryKHR{
+                .sType        = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
+                .pNext        = nullptr,
+                .geometryType = VK_GEOMETRY_TYPE_AABBS_KHR,
+                .geometry     = {
+                    .aabbs = {
+                        .sType  = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR,
+                        .pNext  = nullptr,
+                        .data   = {.deviceAddress = trianglesData.data},
+                        .stride = trianglesData.stride,
+                    },
+                },
+                .flags = {},
+            };
+        case GeometryType::Triangles:
+            return VkAccelerationStructureGeometryKHR{
+                .sType        = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
+                .pNext        = nullptr,
+                .geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR,
+                .geometry     = {
+                    .triangles = {
+                        .sType         = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR,
+                        .pNext         = nullptr,
+                        .vertexFormat  = ConvertFormat(trianglesData.vertexFormat),
+                        .vertexData    = {.deviceAddress = trianglesData.data},
+                        .vertexStride  = trianglesData.stride,
+                        .maxVertex     = trianglesData.count,
+                        .indexType     = ConvertIndexType(trianglesData.indexType),
+                        .indexData     = {.deviceAddress = trianglesData.indexData},
+                        .transformData = {.deviceAddress = trianglesData.transformData},
+                    },
+                },
+                .flags = {},
+            };
+        }
+    }
+
+    inline static VkAccelerationStructureGeometryKHR
+    convertInstanceGeometryData(const AccelerationStructureInstance& instanceData)
+    {
+        return VkAccelerationStructureGeometryKHR{
+            .sType        = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
+            .pNext        = nullptr,
+            .geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR,
+            .geometry     = {
+                .instances = {
+                    .sType           = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR,
+                    .pNext           = nullptr,
+                    .arrayOfPointers = VK_FALSE, // TODO: support array of pointers for instances
+                    .data            = {.deviceAddress = instanceData.accelerationStructureAddress},
+                },
+            },
+            .flags = {},
+        };
     }
 } // namespace RHI::Vulkan
