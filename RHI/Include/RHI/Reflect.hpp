@@ -150,17 +150,21 @@ namespace RHI::Debug
     {
         switch (e)
         {
-        case BufferUsage::None:        return "BufferUsage::None";
-        case BufferUsage::Storage:     return "BufferUsage::Storage";
-        case BufferUsage::Uniform:     return "BufferUsage::Uniform";
-        case BufferUsage::VertexIndex: return "BufferUsage::VertexIndex";
-        case BufferUsage::Vertex:      return "BufferUsage::Vertex";
-        case BufferUsage::Index:       return "BufferUsage::Index";
-        case BufferUsage::CopySrc:     return "BufferUsage::CopySrc";
-        case BufferUsage::CopyDst:     return "BufferUsage::CopyDst";
-        case BufferUsage::Indirect:    return "BufferUsage::Indirect";
+        case BufferUsage::None:                         return "BufferUsage::None";
+        case BufferUsage::Storage:                      return "BufferUsage::Storage";
+        case BufferUsage::Uniform:                      return "BufferUsage::Uniform";
+        case BufferUsage::Vertex:                       return "BufferUsage::Vertex";
+        case BufferUsage::Index:                        return "BufferUsage::Index";
+        case BufferUsage::VertexIndex:                  return "BufferUsage::VertexIndex";
+        case BufferUsage::CopySrc:                      return "BufferUsage::CopySrc";
+        case BufferUsage::CopyDst:                      return "BufferUsage::CopyDst";
+        case BufferUsage::Indirect:                     return "BufferUsage::Indirect";
+        case BufferUsage::HostMapped:                   return "BufferUsage::HostMapped";
+        case BufferUsage::DeviceBufferAddress:          return "BufferUsage::DeviceBufferAddress";
+        case BufferUsage::AccelerationStructureInput:   return "BufferUsage::AccelerationStructureInput";
+        case BufferUsage::RayTracingShaderBindingTable: return "BufferUsage::RayTracingShaderBindingTable";
         }
-        TL_UNREACHABLE();
+        // TL_UNREACHABLE();
         return "---";
     }
 
@@ -168,6 +172,7 @@ namespace RHI::Debug
     {
         switch (e)
         {
+        case IndexType::uint8:  return "IndexType::uint8";
         case IndexType::uint16: return "IndexType::uint16";
         case IndexType::uint32: return "IndexType::uint32";
         }

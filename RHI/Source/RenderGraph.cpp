@@ -254,6 +254,12 @@ namespace RHI
             needRead  = true;
             needWrite = true;
         }
+        else if (usageMask & RGBufferUsage::AccelerationStructureBuildScratch)
+        {
+            bu        = BufferUsage::AccelerationStructureBuildScratch;
+            needWrite = true;
+            out.stage = PipelineStage::AccelerationStructureBuild;
+        }
         else if (usageMask & RGBufferUsage::AllWrite)
         {
             bu        = BufferUsage::Storage;
@@ -272,6 +278,14 @@ namespace RHI
             bu        = BufferUsage::CopySrc;
             needRead  = true;
             out.stage = PipelineStage::Copy;
+        }
+
+        // Acceleration-structure build input (instance / geometry data) -> read-only
+        else if (usageMask & RGBufferUsage::AccelerationStructureBuild)
+        {
+            bu        = BufferUsage::AccelerationStructureInput;
+            needRead  = true;
+            out.stage = PipelineStage::AccelerationStructureBuild;
         }
 
         // Indirect draws/dispatches
@@ -1069,6 +1083,27 @@ namespace RHI
         ZoneScoped;
         TL_ASSERT(m_state.frameRecording == true);
         pass->m_executeCallback = std::move(executeCallback);
+    }
+
+    void RenderGraph::addDependency(RGPass* src, RGPass* dst, PipelineStage stage)
+    {
+        ZoneScoped;
+        TL_ASSERT(m_state.frameRecording == true);
+
+        if (src == nullptr || dst == nullptr || src == dst)
+            return;
+
+        // Order dst after src in the dependency graph.
+        AddDependency(src, dst);
+
+        // The dependency is on a resource the graph does not track (e.g. an acceleration
+        // structure), so emit a global memory barrier at dst's start making src's writes at
+        // `stage` visible to dst's reads at `stage`.
+        // Using memory barrier here could be bad for occupancy in some cases
+        dst->m_barriers.memoryBarriers.push_back(BarrierInfo{
+            .srcState = {.stage = stage, .access = Access::Write},
+            .dstState = {.stage = stage, .access = Access::Read},
+        });
     }
 
     // private:

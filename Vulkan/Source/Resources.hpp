@@ -167,6 +167,8 @@ namespace RHI::Vulkan
 
         ResultCode Init(IDevice* device, const RayTracingPipelineCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
+
+        void GetShaderBindingTableEntry(IDevice* device, uint32_t group, size_t size, void* dstHandle);
     };
 
     struct IQueryPool : QueryPool
@@ -220,6 +222,12 @@ namespace RHI::Vulkan
         VkAccelerationStructureKHR handle = VK_NULL_HANDLE;
 
         VkDeviceAddress address = 0;
+
+        AccelerationStructureSizesInfo sizes = {};
+
+        // Build flags chosen at creation; the size query and the actual build must use the
+        // same flags or the build will require more memory than the AS/scratch was sized for.
+        VkBuildAccelerationStructureFlagsKHR buildFlags = {};
 
         // TODO: instead of having a buffer per AS, we should suballocate from a buffer pool
         VkBuffer          buffer         = VK_NULL_HANDLE;

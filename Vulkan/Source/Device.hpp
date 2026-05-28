@@ -86,6 +86,7 @@ namespace RHI::Vulkan
         void                   DestroyComputePipeline(ComputePipeline* handle) override;
         RayTracingPipeline*    CreateRayTracingPipeline(const RayTracingPipelineCreateInfo& createInfo) override;
         void                   DestroyRayTracingPipeline(RayTracingPipeline* handle) override;
+        void                   GetShaderBindingTableEntry(RayTracingPipeline* handle, uint32_t group, size_t size, void* dstHandle) override;
         Buffer*                CreateBuffer(const BufferCreateInfo& createInfo) override;
         void                   DestroyBuffer(Buffer* handle) override;
         uint64_t               GetBufferDeviceAddress(Buffer* buffer) override;
@@ -99,6 +100,7 @@ namespace RHI::Vulkan
         AccelerationStructure* CreateAccelerationStructure(const AccelerationStructureCreateInfo& createInfo) override;
         void                   DestroyAccelerationStructure(AccelerationStructure* handle) override;
         uint64_t               GetAccelerationStructureDeviceAddress(AccelerationStructure* handle) override;
+        AccelerationStructureSizesInfo GetAccelerationStructureSizesInfo(AccelerationStructure* handle) override;
         Micromap*              CreateMicromap(const MicromapCreateInfo& createInfo) override;
         void                   DestroyMicromap(Micromap* handle) override;
         CommandPool*           CreateCommandPool(const CommandPoolCreateInfo& createInfo) override;

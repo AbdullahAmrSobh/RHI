@@ -231,6 +231,7 @@ namespace RHI
 
     struct MicromapBuildInfo
     {
+        const char* name = nullptr;
     };
 
     struct TlasBuildInfo
@@ -246,12 +247,11 @@ namespace RHI
 
     struct BlasBuildInfo
     {
-        AccelerationStructure*               src;
-        AccelerationStructure*               dst;
-        uint32_t                             geometryCount;
-        const AccelerationStructureGeometry* geometries;
-        Buffer*                              scratchBuffer;
-        uint32_t                             scratchBufferOffset;
+        AccelerationStructure*                        src;
+        AccelerationStructure*                        dst;
+        TL::Span<const AccelerationStructureGeometry> geometries;
+        Buffer*                                       scratchBuffer;
+        uint32_t                                      scratchBufferOffset;
     };
 
     // Command list / pool

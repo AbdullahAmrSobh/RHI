@@ -179,15 +179,12 @@ namespace RHI::Vulkan
         }
     };
 
-#define VkResultTry(x, ...)        \
-    do                             \
-    {                              \
-        if (!x)                    \
-        {                          \
-            Shutdown(__VA_ARGS__); \
-            return x;              \
-        }                          \
-    } while (0);
+#define VkResultTry(x, ...)    \
+    if (!x)                    \
+    {                          \
+        Shutdown(__VA_ARGS__); \
+        return x;              \
+    }
 
     inline static VkFormat ConvertFormat(Format format)
     {
@@ -662,6 +659,16 @@ namespace RHI::Vulkan
         }
     }
 
+    inline static VkBuildAccelerationStructureFlagsKHR
+    convertBuildFlags(TL::Flags<AccelerationStructureFlags> flags)
+    {
+        // TODO: PREFER_FAST_TRACE is always requested, is that nessecerry?
+        VkBuildAccelerationStructureFlagsKHR result = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
+        if (flags & AccelerationStructureFlags::AllowUpdate) result |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR;
+        if (flags & AccelerationStructureFlags::AllowCompaction) result |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR;
+        return result;
+    }
+
     inline static VkGeometryFlagBitsKHR
     convertGeometryFlags(TL::Flags<AccelerationStructureFlags> flags)
     {
@@ -717,22 +724,23 @@ namespace RHI::Vulkan
         }
     }
 
-    inline static VkAccelerationStructureGeometryKHR
-    convertInstanceGeometryData(const AccelerationStructureInstance& instanceData)
-    {
-        return VkAccelerationStructureGeometryKHR{
-            .sType        = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
-            .pNext        = nullptr,
-            .geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR,
-            .geometry     = {
-                .instances = {
-                    .sType           = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR,
-                    .pNext           = nullptr,
-                    .arrayOfPointers = VK_FALSE, // TODO: support array of pointers for instances
-                    .data            = {.deviceAddress = instanceData.accelerationStructureAddress},
-                },
-            },
-            .flags = {},
-        };
-    }
+    // TODO: Delete
+    // inline static VkAccelerationStructureGeometryKHR
+    // convertInstanceGeometryData(const AccelerationStructureInstance& instanceData)
+    // {
+    //     return VkAccelerationStructureGeometryKHR{
+    //         .sType        = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
+    //         .pNext        = nullptr,
+    //         .geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR,
+    //         .geometry     = {
+    //             .instances = {
+    //                 .sType           = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR,
+    //                 .pNext           = nullptr,
+    //                 .arrayOfPointers = VK_FALSE, // TODO: support array of pointers for instances
+    //                 .data            = {.deviceAddress = instanceData.accelerationStructureReference},
+    //             },
+    //         },
+    //         .flags = {},
+    //     };
+    // }
 } // namespace RHI::Vulkan

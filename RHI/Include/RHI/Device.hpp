@@ -43,6 +43,11 @@ namespace RHI
         uint32_t minStorageBufferOffsetAlignment;
         uint32_t maxMeshWorkGroupInvocations;
         uint32_t maxMeshWorkGroupSize[3];
+
+        uint32_t minAccelerationStructureScratchOffsetAlignment;
+        uint32_t rayTracingShaderGroupHandleSize;
+        uint32_t rayTracingShaderGroupHandleAlignment;
+        uint32_t rayTracingShaderGroupBaseAlignment;
     };
 
     struct QueueSubmitInfo
@@ -117,6 +122,7 @@ namespace RHI
         virtual void                   DestroyComputePipeline(ComputePipeline* handle)                          = 0;
         virtual RayTracingPipeline*    CreateRayTracingPipeline(const RayTracingPipelineCreateInfo& createInfo) = 0;
         virtual void                   DestroyRayTracingPipeline(RayTracingPipeline* handle)                    = 0;
+        virtual void                   GetShaderBindingTableEntry(RayTracingPipeline* handle, uint32_t group, size_t size, void* dstHandle) = 0;
 
         // Buffer
         virtual Buffer*                CreateBuffer(const BufferCreateInfo& createInfo)               = 0;
@@ -138,6 +144,7 @@ namespace RHI
         virtual AccelerationStructure* CreateAccelerationStructure(const AccelerationStructureCreateInfo& createInfo) = 0;
         virtual void                   DestroyAccelerationStructure(AccelerationStructure* handle)                    = 0;
         virtual uint64_t               GetAccelerationStructureDeviceAddress(AccelerationStructure* handle)           = 0;
+        virtual AccelerationStructureSizesInfo GetAccelerationStructureSizesInfo(AccelerationStructure* as) = 0;
         virtual Micromap*              CreateMicromap(const MicromapCreateInfo& createInfo)                           = 0;
         virtual void                   DestroyMicromap(Micromap* handle)                                              = 0;
 

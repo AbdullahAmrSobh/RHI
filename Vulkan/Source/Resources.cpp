@@ -3,6 +3,7 @@
 #include "Device.hpp"
 
 #include <algorithm>
+#include <cstring>
 
 #include <vk_mem_alloc.h>
 
@@ -48,6 +49,9 @@ namespace RHI::Vulkan
         if (bufferUsageFlags & BufferUsage::CopyDst) result |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
         if (bufferUsageFlags & BufferUsage::Indirect) result |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
         if (bufferUsageFlags & BufferUsage::DeviceBufferAddress) result |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+        if (bufferUsageFlags & BufferUsage::AccelerationStructureInput) result |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+        if (bufferUsageFlags & BufferUsage::AccelerationStructureBuildScratch) result |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+        if (bufferUsageFlags & BufferUsage::RayTracingShaderBindingTable) result |= VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
         return result;
     }
 
@@ -405,9 +409,10 @@ namespace RHI::Vulkan
         auto layout        = (IBindGroupLayout*)(m_bindGroupLayout);
         auto shaderBinding = layout->GetBinding(dstBinding);
         auto isStorage     = shaderBinding.type == BindingType::StorageImage;
-        auto hasWrite      = (shaderBinding.access & Access::Write) == Access::Write;
 
-        VkImageLayout    imageLayout    = (isStorage && hasWrite) ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        // A storage image descriptor must be in GENERAL (or SHARED_PRESENT) regardless of whether
+        // the shader only reads it — VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL is not permitted.
+        VkImageLayout    imageLayout    = isStorage ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         VkDescriptorType descriptorType = isStorage ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 
         TL::Vector<VkDescriptorImageInfo>& descriptorImageInfos = m_images.emplace_back(*m_allocator);
@@ -1127,75 +1132,43 @@ namespace RHI::Vulkan
     // IRayTracingPipeline
     ////////////////////////////////////////////////////////////////////////
 
+    inline static VkRayTracingShaderGroupTypeKHR convertRayTracingShaderGroupType(RayTracingGroupType type)
+    {
+        switch (type)
+        {
+        case RayTracingGroupType::General:            return VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
+        case RayTracingGroupType::TrianglesHitGroup:  return VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
+        case RayTracingGroupType::ProceduralHitGroup: return VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR;
+        }
+        return VK_RAY_TRACING_SHADER_GROUP_TYPE_MAX_ENUM_KHR;
+    }
+
     ResultCode IRayTracingPipeline::Init(IDevice* device, const RayTracingPipelineCreateInfo& createInfo)
     {
         this->layout = (IPipelineLayout*)createInfo.layout;
 
-        TL::Vector<VkPipelineShaderStageCreateInfo>      shaderStagesCI{device->m_arena};
-        TL::Vector<VkRayTracingShaderGroupCreateInfoKHR> shaderGroupsCI{device->m_arena};
-
-        uint32_t            shaderGroupCount         = 0;
-        uint32_t            shaderGroupHandleSize    = 0;
-        uint32_t            shaderGroupBaseAlignment = 0;
-        TL::Vector<uint8_t> shaderGroupHandles       = {};
-
+        TL::Vector<VkPipelineShaderStageCreateInfo> shaderStagesCI{device->m_arena};
         shaderStagesCI.reserve(createInfo.shaderStages.size());
         for (const auto& stage : createInfo.shaderStages)
-            shaderStagesCI.push_back(convertShaderStage(stage));
-
-        // ShaderGroupInfo::shaderIndices[3] convention:
-        //   [0] = general shader (raygen/miss/callable)  -> if valid and [1]/[2] unused: general group
-        //   [0] = closest-hit, [1] = any-hit, [2] = intersection -> triangles/procedural hit group
-        shaderGroupsCI.reserve(createInfo.shaderGroups.size());
-        for (const auto& g : createInfo.shaderGroups)
         {
-            const uint32_t idx0 = g.shaderIndices[0];
-            const uint32_t idx1 = g.shaderIndices[1];
-            const uint32_t idx2 = g.shaderIndices[2];
+            shaderStagesCI.push_back(convertShaderStage(stage));
+        }
 
-            VkRayTracingShaderGroupTypeKHR vkType;
-            uint32_t                       generalShader      = VK_SHADER_UNUSED_KHR;
-            uint32_t                       closestHitShader   = VK_SHADER_UNUSED_KHR;
-            uint32_t                       anyHitShader       = VK_SHADER_UNUSED_KHR;
-            uint32_t                       intersectionShader = VK_SHADER_UNUSED_KHR;
-
-            const bool hasGeneral   = (idx0 != VK_SHADER_UNUSED_KHR) && (idx1 == VK_SHADER_UNUSED_KHR) && (idx2 == VK_SHADER_UNUSED_KHR);
-            const bool hasIntersect = (idx2 != VK_SHADER_UNUSED_KHR);
-
-            if (hasGeneral)
-            {
-                vkType        = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
-                generalShader = idx0;
-            }
-            else
-            {
-                vkType             = hasIntersect ? VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR
-                                                  : VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
-                closestHitShader   = idx0;
-                anyHitShader       = idx1;
-                intersectionShader = idx2;
-            }
-
+        TL::Vector<VkRayTracingShaderGroupCreateInfoKHR> shaderGroupsCI{device->m_arena};
+        shaderGroupsCI.reserve(createInfo.shaderGroups.size());
+        for (const auto& groupInfo : createInfo.shaderGroups)
+        {
             shaderGroupsCI.push_back({
                 .sType                           = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR,
                 .pNext                           = nullptr,
-                .type                            = vkType,
-                .generalShader                   = generalShader,
-                .closestHitShader                = closestHitShader,
-                .anyHitShader                    = anyHitShader,
-                .intersectionShader              = intersectionShader,
+                .type                            = convertRayTracingShaderGroupType(groupInfo.type),
+                .generalShader                   = groupInfo.generalShader,
+                .closestHitShader                = groupInfo.closestHitShader,
+                .anyHitShader                    = groupInfo.anyHitShader,
+                .intersectionShader              = groupInfo.intersectionShader,
                 .pShaderGroupCaptureReplayHandle = nullptr,
             });
         }
-
-        VkDynamicState                   dynamicStates[] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
-        VkPipelineDynamicStateCreateInfo dynamicStateCI{
-            .sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-            .pNext             = nullptr,
-            .flags             = 0,
-            .dynamicStateCount = sizeof(dynamicStates) / sizeof(VkDynamicState),
-            .pDynamicStates    = dynamicStates,
-        };
 
         VkRayTracingPipelineCreateInfoKHR pipelineCI{
             .sType                        = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR,
@@ -1208,7 +1181,7 @@ namespace RHI::Vulkan
             .maxPipelineRayRecursionDepth = createInfo.maxRecursionDepth,
             .pLibraryInfo                 = nullptr,
             .pLibraryInterface            = nullptr,
-            .pDynamicState                = &dynamicStateCI,
+            .pDynamicState                = nullptr,
             .layout                       = layout->handle,
             .basePipelineHandle           = VK_NULL_HANDLE,
             .basePipelineIndex            = 0,
@@ -1216,27 +1189,6 @@ namespace RHI::Vulkan
 
         VulkanResult result = vkCreateRayTracingPipelinesKHR(device->m_device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &pipelineCI, nullptr, &handle);
         if (result != VK_SUCCESS) return result;
-
-        // Pull RT pipeline properties for SBT sizing.
-        VkPhysicalDeviceRayTracingPipelinePropertiesKHR rtProps{
-            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR,
-        };
-        VkPhysicalDeviceProperties2 props2{
-            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
-            .pNext = &rtProps,
-        };
-        vkGetPhysicalDeviceProperties2(device->m_physicalDevice, &props2);
-
-        shaderGroupCount         = (uint32_t)shaderGroupsCI.size();
-        shaderGroupHandleSize    = rtProps.shaderGroupHandleSize;
-        shaderGroupBaseAlignment = rtProps.shaderGroupBaseAlignment;
-
-        if (shaderGroupCount > 0)
-        {
-            shaderGroupHandles.resize(shaderGroupCount * shaderGroupHandleSize);
-            VulkanResult hr = vkGetRayTracingShaderGroupHandlesKHR(device->m_device, handle, 0, shaderGroupCount, shaderGroupHandles.size(), shaderGroupHandles.data());
-            if (hr != VK_SUCCESS) return hr;
-        }
 
         if (createInfo.name)
             device->SetDebugName(handle, createInfo.name);
@@ -1250,6 +1202,12 @@ namespace RHI::Vulkan
 
         if (handle)
             device->m_destroyQueue->Push(frame, handle);
+    }
+
+    void IRayTracingPipeline::GetShaderBindingTableEntry(IDevice* device, uint32_t group, size_t size, void* dstHandle)
+    {
+        VulkanResult result = vkGetRayTracingShaderGroupHandlesKHR(device->m_device, handle, group, 1, size, dstHandle);
+        TL_ASSERT(result.IsSuccess());
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -1329,14 +1287,17 @@ namespace RHI::Vulkan
             .queueFamilyIndexCount = 0,
             .pQueueFamilyIndices   = nullptr,
         };
-        auto result = vmaCreateBuffer(device->m_deviceAllocator, &bufferCI, &allocationCI, &handle, &allocation, nullptr);
-        if (result == VK_SUCCESS && createInfo.name)
+        VulkanResult result = vmaCreateBuffer(device->m_deviceAllocator, &bufferCI, &allocationCI, &handle, &allocation, nullptr);
+        if (result != VK_SUCCESS)
+            return ConvertResult(result);
+
+        if (createInfo.name)
         {
             device->SetDebugName(handle, createInfo.name);
             vmaSetAllocationName(device->m_deviceAllocator, allocation, createInfo.name);
         }
 
-        if (createInfo.usageFlags & BufferUsage::DeviceBufferAddress)
+        if (bufferCI.usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)
         {
             VkBufferDeviceAddressInfo info{
                 .sType  = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
@@ -1538,7 +1499,7 @@ namespace RHI::Vulkan
         VulkanResult result;
 
         TL::Vector<VkAccelerationStructureGeometryKHR> geometries{device->m_arena};
-        TL::Vector<uint32_t> primitiveCounts{device->m_arena};
+        TL::Vector<uint32_t>                           primitiveCounts{device->m_arena};
 
         if (createInfo.type == AccelerationStructureType::BottomLevel)
         {
@@ -1558,18 +1519,33 @@ namespace RHI::Vulkan
         }
         else
         {
-            for (const auto& instance : createInfo.instances)
-            {
-                geometries.push_back(convertInstanceGeometryData(instance));
-            }
-            primitiveCounts.push_back(1);
+            // A TLAS has exactly one geometry of type INSTANCES; the instance count is
+            // conveyed as its primitive count, not as multiple geometries.
+            VkAccelerationStructureGeometryKHR instancesGeometry{
+                .sType        = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
+                .pNext        = nullptr,
+                .geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR,
+                .geometry     = {
+                    .instances = {
+                        .sType           = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR,
+                        .pNext           = nullptr,
+                        .arrayOfPointers = VK_FALSE,
+                        .data            = {.deviceAddress = 0},
+                    },
+                },
+                .flags = {},
+            };
+            geometries.push_back(instancesGeometry);
+            primitiveCounts.push_back((uint32_t)createInfo.instances.size());
         }
+
+        buildFlags = convertBuildFlags(createInfo.flags);
 
         VkAccelerationStructureBuildGeometryInfoKHR buildInfo{
             .sType                    = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR,
             .pNext                    = nullptr,
             .type                     = (createInfo.type == AccelerationStructureType::BottomLevel) ? VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR : VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR,
-            // .flags                    = convertGeometryFlags(createInfo.flags),
+            .flags                    = buildFlags,
             .mode                     = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR,
             .srcAccelerationStructure = VK_NULL_HANDLE, // TODO: support update mode with src AS
             .dstAccelerationStructure = VK_NULL_HANDLE, // TODO: dst AS from buildInfo
@@ -1583,6 +1559,12 @@ namespace RHI::Vulkan
             .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR,
         };
         vkGetAccelerationStructureBuildSizesKHR(device->m_device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildInfo, primitiveCounts.data(), &sizeInfo);
+
+        sizes = {
+            .size              = sizeInfo.accelerationStructureSize,
+            .buildScratchSize  = sizeInfo.buildScratchSize,
+            .updateScratchSize = sizeInfo.updateScratchSize,
+        };
 
         VkBuffer asBuffer;
         size_t   asBufferOffset;
@@ -1622,7 +1604,7 @@ namespace RHI::Vulkan
             .buffer        = asBuffer,
             .offset        = asBufferOffset,
             .size          = sizeInfo.accelerationStructureSize,
-            .type          = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
+            .type          = (createInfo.type == AccelerationStructureType::BottomLevel) ? VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR : VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR,
             .deviceAddress = {},
         };
         result = vkCreateAccelerationStructureKHR(device->m_device, &ci, nullptr, &handle);

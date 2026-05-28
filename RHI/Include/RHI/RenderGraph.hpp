@@ -177,9 +177,9 @@ namespace RHI
         IndirectTraceRays                 = 1 << 16,
         CopySource                        = 1 << 17,
         CopyDestination                   = 1 << 18,
-        AccelerationStructureBuild        = 1 << 19, ///< Will be used as a position or index buffer in a BLAS build.
-        ShaderBindingTable                = 1 << 20, ///< Will be used as SBT in a traceRays() command.
-        AccelerationStructureBuildScratch = 1 << 21, ///< Used in buildAccelerationStructureXXX commands.
+        AccelerationStructureBuild        = 1 << 19,
+        ShaderBindingTable                = 1 << 20,
+        AccelerationStructureBuildScratch = 1 << 21,
 
         // Derived
         AllConstant = ConstantGeometry | ConstantPixel | ConstantCompute | ConstantTraceRays,
@@ -451,6 +451,10 @@ namespace RHI
         // Allocates a transient bind group for the current local bind group
         BindGroup*              createBindGroup(RHI::BindGroupLayout* layout);
         BufferBindingInfo*      allocateConstantBuffer(size_t size, uint8_t alignment);
+
+        void                    addDependency(RGPass* src, RGPass* dst, PipelineStage stage);
+
+        inline TL::Arena&       getArena() { return m_arena; }
 
     private:
         // Bind group stuff

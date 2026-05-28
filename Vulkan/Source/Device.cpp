@@ -820,27 +820,27 @@ namespace RHI::Vulkan
         result = vmaCreateAllocator(&vmaCI, &m_deviceAllocator);
         VkResultTry(result);
 
-        // VkPhysicalDeviceRayTracingPipelinePropertiesKHR rayTracingProperties = {};
-        // VkPhysicalDeviceRayQueryFeaturesKHR             rayQueryFeatures     = {};
-
-        VkPhysicalDeviceMeshShaderPropertiesEXT  meshShadersFeatures      = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT, .pNext = nullptr};
-        VkPhysicalDevicePushDescriptorProperties pushDescriptorProperties = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR, .pNext = &meshShadersFeatures};
-        VkPhysicalDeviceVulkan13Properties       deviceProperties13       = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES, .pNext = &pushDescriptorProperties};
-        VkPhysicalDeviceVulkan12Properties       deviceProperties12       = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES, .pNext = &deviceProperties13};
-        VkPhysicalDeviceVulkan11Properties       deviceProperties11       = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES, .pNext = &deviceProperties12};
-        VkPhysicalDeviceProperties2              deviceProperties         = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, .pNext = &deviceProperties11};
+        VkPhysicalDeviceRayTracingPipelinePropertiesKHR    rayTracingPipelineProperties    = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR, .pNext = nullptr};
+        VkPhysicalDeviceAccelerationStructurePropertiesKHR accelerationStructureProperties = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR, .pNext = &rayTracingPipelineProperties};
+        VkPhysicalDeviceMeshShaderPropertiesEXT            meshShadersFeatures             = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT, .pNext = &accelerationStructureProperties};
+        VkPhysicalDevicePushDescriptorProperties           pushDescriptorProperties        = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR, .pNext = &meshShadersFeatures};
+        VkPhysicalDeviceVulkan13Properties                 deviceProperties13              = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES, .pNext = &pushDescriptorProperties};
+        VkPhysicalDeviceVulkan12Properties                 deviceProperties12              = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES, .pNext = &deviceProperties13};
+        VkPhysicalDeviceVulkan11Properties                 deviceProperties11              = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES, .pNext = &deviceProperties12};
+        VkPhysicalDeviceProperties2                        deviceProperties                = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, .pNext = &deviceProperties11};
         vkGetPhysicalDeviceProperties2(m_physicalDevice, &deviceProperties);
 
         // Fill DeviceLimits
-        {
-            m_limits.minUniformBufferOffsetAlignment = uint32_t(deviceProperties.properties.limits.minUniformBufferOffsetAlignment);
-            m_limits.minStorageBufferOffsetAlignment = uint32_t(deviceProperties.properties.limits.minStorageBufferOffsetAlignment);
-            m_limits.maxMeshWorkGroupInvocations     = meshShadersFeatures.maxMeshWorkGroupInvocations;
-            m_limits.maxMeshWorkGroupSize[0]         = meshShadersFeatures.maxMeshWorkGroupSize[0];
-            m_limits.maxMeshWorkGroupSize[1]         = meshShadersFeatures.maxMeshWorkGroupSize[1];
-            m_limits.maxMeshWorkGroupSize[2]         = meshShadersFeatures.maxMeshWorkGroupSize[2];
-        }
-
+        m_limits.minUniformBufferOffsetAlignment                = uint32_t(deviceProperties.properties.limits.minUniformBufferOffsetAlignment);
+        m_limits.minStorageBufferOffsetAlignment                = uint32_t(deviceProperties.properties.limits.minStorageBufferOffsetAlignment);
+        m_limits.minAccelerationStructureScratchOffsetAlignment = accelerationStructureProperties.minAccelerationStructureScratchOffsetAlignment;
+        m_limits.maxMeshWorkGroupInvocations                    = meshShadersFeatures.maxMeshWorkGroupInvocations;
+        m_limits.maxMeshWorkGroupSize[0]                        = meshShadersFeatures.maxMeshWorkGroupSize[0];
+        m_limits.maxMeshWorkGroupSize[1]                        = meshShadersFeatures.maxMeshWorkGroupSize[1];
+        m_limits.maxMeshWorkGroupSize[2]                        = meshShadersFeatures.maxMeshWorkGroupSize[2];
+        m_limits.rayTracingShaderGroupHandleSize                = rayTracingPipelineProperties.shaderGroupHandleSize;
+        m_limits.rayTracingShaderGroupHandleAlignment           = rayTracingPipelineProperties.shaderGroupHandleAlignment;
+        m_limits.rayTracingShaderGroupBaseAlignment             = rayTracingPipelineProperties.shaderGroupBaseAlignment;
         result = m_queue[(uint32_t)QueueType::Graphics].Init(this, "Graphics", graphicsQueueFamilyIndex, 0);
         VkResultTry(result);
 
@@ -1081,6 +1081,11 @@ namespace RHI::Vulkan
         destroyImpl<IRayTracingPipeline>(this, (IRayTracingPipeline*)resource);
     }
 
+    void IDevice::GetShaderBindingTableEntry(RayTracingPipeline* handle, uint32_t group, size_t size, void* dstHandle)
+    {
+        return ((IRayTracingPipeline*)handle)->GetShaderBindingTableEntry(this, group, size, dstHandle);
+    }
+
     Buffer* IDevice::CreateBuffer(const BufferCreateInfo& createInfo)
     {
         return createImpl<IBuffer>(this, createInfo);
@@ -1148,6 +1153,11 @@ namespace RHI::Vulkan
     uint64_t IDevice::GetAccelerationStructureDeviceAddress(AccelerationStructure* handle)
     {
         return ((IAccelerationStructure*)handle)->address;
+    }
+
+    AccelerationStructureSizesInfo IDevice::GetAccelerationStructureSizesInfo(AccelerationStructure* handle)
+    {
+        return ((IAccelerationStructure*)handle)->sizes;
     }
 
     Micromap* IDevice::CreateMicromap(const MicromapCreateInfo& createInfo)

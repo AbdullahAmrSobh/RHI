@@ -524,6 +524,11 @@ namespace RHI::Vulkan
             {
                 writer.BindSamplers(dstBindings, dstArrayelements, samplers);
             }
+
+            for (auto [dstBinding, dstArrayElement, accelerationStructure] : updateInfo.accelerationStructures)
+            {
+                writer.BindAccelerationStructures(dstBinding, dstArrayElement, {&accelerationStructure, 1});
+            }
         }
         VkPushDescriptorSetInfo pushDescriptorSetInfo{
             .sType                = VK_STRUCTURE_TYPE_PUSH_DESCRIPTOR_SET_INFO_KHR,
@@ -868,9 +873,6 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        if (buildInfos.empty())
-            return;
-
         TL::Vector<VkAccelerationStructureGeometryKHR>              geometries{m_device->m_arena};
         TL::Vector<VkAccelerationStructureBuildGeometryInfoKHR>     geometryInfos{m_device->m_arena};
         TL::Vector<VkAccelerationStructureBuildRangeInfoKHR>        rangeInfos{m_device->m_arena};
@@ -908,7 +910,7 @@ namespace RHI::Vulkan
                 .sType                    = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR,
                 .pNext                    = nullptr,
                 .type                     = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR,
-                .flags                    = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR,
+                .flags                    = dstAS->buildFlags,
                 .mode                     = srcAS ? VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR : VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR,
                 .srcAccelerationStructure = srcAS ? srcAS->handle : VK_NULL_HANDLE,
                 .dstAccelerationStructure = dstAS->handle,
@@ -934,9 +936,6 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        if (buildInfos.empty())
-            return;
-
         TL::Vector<VkAccelerationStructureGeometryKHR>              geometries{m_device->m_arena};
         TL::Vector<VkAccelerationStructureBuildRangeInfoKHR>        rangeInfos{m_device->m_arena};
         TL::Vector<VkAccelerationStructureBuildGeometryInfoKHR>     geometryInfos{m_device->m_arena};
@@ -944,7 +943,7 @@ namespace RHI::Vulkan
 
         uint32_t totalGeometries = 0;
         for (const auto& info : buildInfos)
-            totalGeometries += info.geometryCount;
+            totalGeometries += (uint32_t)info.geometries.size();
 
         geometries.reserve(totalGeometries);
         rangeInfos.reserve(totalGeometries);
@@ -960,7 +959,7 @@ namespace RHI::Vulkan
 
             uint32_t firstGeometryIndex = (uint32_t)geometries.size();
 
-            for (uint32_t g = 0; g < info.geometryCount; ++g)
+            for (uint32_t g = 0; g < (uint32_t)info.geometries.size(); ++g)
             {
                 const auto& geom = info.geometries[g];
                 geometries.push_back(convertGeometryData(geom));
@@ -983,11 +982,11 @@ namespace RHI::Vulkan
                 .sType                    = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR,
                 .pNext                    = nullptr,
                 .type                     = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
-                .flags                    = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR,
+                .flags                    = dstAS->buildFlags,
                 .mode                     = srcAS ? VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR : VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR,
                 .srcAccelerationStructure = srcAS ? srcAS->handle : VK_NULL_HANDLE,
                 .dstAccelerationStructure = dstAS->handle,
-                .geometryCount            = info.geometryCount,
+                .geometryCount            = (uint32_t)info.geometries.size(),
                 .pGeometries              = geometries.data() + firstGeometryIndex,
                 .ppGeometries             = nullptr,
                 .scratchData              = {.deviceAddress = scratchBuf->address + info.scratchBufferOffset},
