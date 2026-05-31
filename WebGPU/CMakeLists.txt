@@ -2,19 +2,13 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Common.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Device.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Frame.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraph.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.hpp
 )
 
 set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/CommandList.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Device.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Frame.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/RenderGraph.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Resources.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Swapchain.cpp
 )
 
 tl_add_target(

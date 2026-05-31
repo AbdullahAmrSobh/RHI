@@ -2,20 +2,21 @@
 
 **Render Hardware Interface (RHI)** is a lightweight abstraction layer on top of graphics APIs. Currently, it supports Vulkan and WebGPU.
 
-## Build
+## Build Native
 
 RHI requires the following to build:
-- CMake
-- C++20 compatible compiler
 
-### Windows
+> cmake -DCMAKE_BUILD_TYPE:STRING=Debug -S ./ -B ./build
 
-### Linux
+> cmake --build /build --config Debug --target all
 
-### WebAssembly
+## Build WebAssembly
 
+requires EMSDK 4.0+
 
-_TODO_
+> emcmake cmake -DCMAKE_BUILD_TYPE:STRING=Debug -S ./ -B ./build
+
+> cmake --build /build --config Debug --target all
 
 ## Example Usage
 
@@ -23,7 +24,7 @@ _TODO_
 
 ## Docs
 
-_TODO_
+The API is self expainatory, read the code
 
 ## Supported Platforms
 
@@ -35,5 +36,5 @@ _TODO_
 | WebAssembly| ❌     | ✅     | ❌    |
 
 Features
-    Ray-Tracing: ❌
-    Mesh-Shaders: ❌
+    Ray-Tracing: 🟨
+    Mesh-Shaders: 🟨

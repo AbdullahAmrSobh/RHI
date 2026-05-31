@@ -1,6 +1,6 @@
 #pragma once
 
-#include <RHI/CommandList.hpp>
+#include <RHI/Device.hpp>
 #include <RHI/Resources.hpp>
 #include <RHI/Result.hpp>
 #include <RHI/Swapchain.hpp>
@@ -14,57 +14,23 @@
 namespace RHI::D3D12
 {
     class IDevice;
-    class ICommandList;
-
-    ///////////////////////////////////////////////////////////
-    // IFence
-    ///////////////////////////////////////////////////////////
 
     struct IFence : Fence
     {
-        ID3D12Fence* m_fence      = nullptr;
-        HANDLE       m_event      = nullptr;
+        ID3D12Fence* fence = nullptr;
+        HANDLE       event = nullptr;
+        uint64_t     value = 0;
 
         ResultCode Init(IDevice* device, const FenceCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
     };
 
-    ///////////////////////////////////////////////////////////
-    // ICommandPool
-    ///////////////////////////////////////////////////////////
-
-    class ICommandPool final : public CommandPool
-    {
-    public:
-        ResultCode   Init(IDevice* device, const CommandPoolCreateInfo& createInfo);
-        void         Shutdown(IDevice* device);
-
-        void         Reset() override;
-        CommandList* Allocate() override;
-
-        IDevice*                     m_device         = nullptr;
-        ID3D12CommandAllocator*      m_allocator       = nullptr;
-        D3D12_COMMAND_LIST_TYPE      m_type            = D3D12_COMMAND_LIST_TYPE_DIRECT;
-        TL::Vector<ICommandList*>    m_commandLists;
-    };
-
-    ///////////////////////////////////////////////////////////
-    // Descriptors
-    ///////////////////////////////////////////////////////////
-
     struct IBindGroupLayout : BindGroupLayout
     {
-        TL::Vector<ShaderBinding> imageBindings;
-        TL::Vector<ShaderBinding> bufferBindings;
-        TL::Vector<ShaderBinding> samplerBindings;
+        TL::Vector<ShaderBinding> shaderBindings;
 
         ResultCode Init(IDevice* device, const BindGroupLayoutCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
-
-        ShaderBinding GetBindingInfo(int index) const;
-
-        D3D12_GPU_DESCRIPTOR_HANDLE GetHandleGPU(uint32_t binding, uint32_t arrayIndex) const;
-        D3D12_CPU_DESCRIPTOR_HANDLE GetHandleCPU(uint32_t binding, uint32_t arrayIndex) const;
     };
 
     struct IBindGroup : BindGroup
@@ -78,18 +44,14 @@ namespace RHI::D3D12
         void Update(IDevice* device, const BindGroupUpdateInfo& updateInfo);
     };
 
-    ///////////////////////////////////////////////////////////
-    // Shaders and pipelines
-    ///////////////////////////////////////////////////////////
-
     struct IShaderModule : ShaderModule
     {
         TL::Vector<uint8_t> code;
 
-        D3D12_SHADER_BYTECODE GetShaderBytecode() const;
-
         ResultCode Init(IDevice* device, const ShaderModuleCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
+
+        D3D12_SHADER_BYTECODE GetShaderBytecode() const;
     };
 
     struct IPipelineLayout : PipelineLayout
@@ -125,11 +87,9 @@ namespace RHI::D3D12
 
         ResultCode Init(IDevice* device, const RayTracingPipelineCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
-    };
 
-    ///////////////////////////////////////////////////////////
-    // Resources
-    ///////////////////////////////////////////////////////////
+        void GetShaderBindingTableEntry(IDevice* device, uint32_t group, size_t size, void* dstHandle);
+    };
 
     struct IQueryPool : QueryPool
     {
@@ -147,6 +107,9 @@ namespace RHI::D3D12
 
         ResultCode Init(IDevice* device, const BufferCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
+
+        DeviceMemoryPtr Map(IDevice* device);
+        void            Unmap(IDevice* device);
     };
 
     struct IImage : Image
@@ -154,13 +117,14 @@ namespace RHI::D3D12
         D3D12MA::Allocation* allocation = nullptr;
         ID3D12Resource*      resource   = nullptr;
 
+        // TODO: the following should be removed
         Format                format           = Format::Unknown;
         ImageType             type             = {};
         ImageSubresourceRange subresourceRange = {};
         bool                  isView           = false;
 
-        D3D12_CPU_DESCRIPTOR_HANDLE rtvDsvHandle     = {};
-        D3D12_GPU_DESCRIPTOR_HANDLE cbvSrvUavHandle  = {};
+        D3D12_CPU_DESCRIPTOR_HANDLE rtvDsvHandle    = {};
+        D3D12_GPU_DESCRIPTOR_HANDLE cbvSrvUavHandle = {};
 
         ResultCode Init(IDevice* device, const ImageCreateInfo& createInfo);
         ResultCode Init(IDevice* device, const ImageViewCreateInfo& createInfo);
@@ -176,9 +140,26 @@ namespace RHI::D3D12
         void       Shutdown(IDevice* device);
     };
 
-    ///////////////////////////////////////////////////////////
-    // ISwapchain
-    ///////////////////////////////////////////////////////////
+    struct IAccelerationStructure : AccelerationStructure
+    {
+        D3D12MA::Allocation*      allocation = nullptr;
+        ID3D12Resource*           resource   = nullptr;
+        D3D12_GPU_VIRTUAL_ADDRESS address    = 0;
+
+        AccelerationStructureSizesInfo sizes = {};
+
+        ResultCode Init(IDevice* device, const AccelerationStructureCreateInfo& createInfo);
+        void       Shutdown(IDevice* device);
+    };
+
+    struct IMicromap : Micromap
+    {
+        D3D12MA::Allocation* allocation = nullptr;
+        ID3D12Resource*      resource   = nullptr;
+
+        ResultCode Init(IDevice* device, const MicromapCreateInfo& createInfo);
+        void       Shutdown(IDevice* device);
+    };
 
     class ISwapchain final : public Swapchain
     {
@@ -192,18 +173,20 @@ namespace RHI::D3D12
         void       Shutdown(IDevice* device);
 
         // Interface
-        uint32_t            GetImagesCount() const override;
-        Image*              GetImage() const override;
-        SurfaceCapabilities GetSurfaceCapabilities() const override;
-        ResultCode          Resize(const ImageSize2D& size) override;
-        ResultCode          Configure(const SwapchainConfigureInfo& configInfo) override;
+        uint32_t               GetImagesCount() const override;
+        SwapchainAcquireResult AcquireImage() override;
+        SurfaceCapabilities    GetSurfaceCapabilities() const override;
+        ResultCode             Resize(const ImageSize2D& size) override;
+        ResultCode             Configure(const SwapchainConfigureInfo& configInfo) override;
 
-        IDevice*              m_device     = nullptr;
-        IDXGISwapChain4*      m_swapchain  = nullptr;
-        uint32_t              m_imageIndex = 0;
-        uint32_t              m_imageCount = 0;
-        IImage*               m_images[MaxImageCount]  = {};
+        ResultCode Present();
+
+        IDevice*               m_device                = nullptr;
+        IDXGISwapChain4*       m_swapchain             = nullptr;
+        uint32_t               m_imageIndex            = 0;
+        uint32_t               m_imageCount            = 0;
+        IImage*                m_images[MaxImageCount] = {};
+        IFence                 m_acquireFences[MaxImageCount] = {};
         SwapchainConfigureInfo m_configuration         = {};
     };
-
 } // namespace RHI::D3D12

@@ -4,7 +4,7 @@
 
 #include <TL/Assert.hpp>
 
-#include <webgpu/webgpu_cpp.h>
+#include <webgpu/webgpu.h>
 
 namespace RHI::WebGPU
 {

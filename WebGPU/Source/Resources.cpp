@@ -1,10 +1,13 @@
 #include "Resources.hpp"
 
-#include "Common.hpp"
 #include "Device.hpp"
 
 namespace RHI::WebGPU
 {
+    ///////////////////////////////////////////////////////////
+    // Conversion helpers
+    ///////////////////////////////////////////////////////////
+
     WGPUTextureFormat ConvertToTextureFormat(Format format)
     {
         switch (format)
@@ -207,14 +210,16 @@ namespace RHI::WebGPU
 
     WGPUBufferUsage ConvertToBufferUsage(TL::Flags<BufferUsage> usage)
     {
-        WGPUBufferUsage res{};
-        if (usage & BufferUsage::Storage) return WGPUBufferUsage_Storage;
-        if (usage & BufferUsage::Uniform) return WGPUBufferUsage_Uniform;
-        if (usage & BufferUsage::Vertex) return WGPUBufferUsage_Vertex;
-        if (usage & BufferUsage::Index) return WGPUBufferUsage_Index;
-        if (usage & BufferUsage::CopySrc) return WGPUBufferUsage_CopySrc;
-        if (usage & BufferUsage::CopyDst) return WGPUBufferUsage_CopyDst;
-        if (usage & BufferUsage::Indirect) return WGPUBufferUsage_Indirect;
+        WGPUBufferUsage res = WGPUBufferUsage_None;
+        if (usage & BufferUsage::Storage)    res |= WGPUBufferUsage_Storage;
+        if (usage & BufferUsage::Uniform)    res |= WGPUBufferUsage_Uniform;
+        if (usage & BufferUsage::Vertex)     res |= WGPUBufferUsage_Vertex;
+        if (usage & BufferUsage::Index)      res |= WGPUBufferUsage_Index;
+        if (usage & BufferUsage::CopySrc)    res |= WGPUBufferUsage_CopySrc;
+        if (usage & BufferUsage::CopyDst)    res |= WGPUBufferUsage_CopyDst;
+        if (usage & BufferUsage::Indirect)   res |= WGPUBufferUsage_Indirect;
+        // Host-mapped buffers need MapWrite; also allow them as a copy source for staging.
+        if (usage & BufferUsage::HostMapped) res |= WGPUBufferUsage_MapWrite | WGPUBufferUsage_CopySrc;
         return res;
     }
 
@@ -292,20 +297,21 @@ namespace RHI::WebGPU
 
     WGPUTextureAspect ConvertToTextureAspect(TL::Flags<ImageAspect> imageAspect, Format format)
     {
-        auto formatInfo = GetFormatInfo(format);
-        imageAspect &= GetFormatAspects(format);
-
-        if (formatInfo.hasDepth || formatInfo.hasStencil)
-        {
-            if (imageAspect & ImageAspect::Depth) return WGPUTextureAspect_DepthOnly;
-            if (imageAspect & ImageAspect::Stencil) return WGPUTextureAspect_StencilOnly;
-        }
-        else
-        {
-            if (imageAspect & ImageAspect::Color) return WGPUTextureAspect_All;
-        }
-
+        (void)format;
+        const bool depth   = imageAspect & ImageAspect::Depth;
+        const bool stencil = imageAspect & ImageAspect::Stencil;
+        if (depth && !stencil) return WGPUTextureAspect_DepthOnly;
+        if (stencil && !depth) return WGPUTextureAspect_StencilOnly;
         return WGPUTextureAspect_All;
+    }
+
+    WGPUShaderStage ConvertToShaderStage(TL::Flags<ShaderStage> shaderStageFlags)
+    {
+        WGPUShaderStage result = WGPUShaderStage_None;
+        if (shaderStageFlags & ShaderStage::Vertex) result |= WGPUShaderStage_Vertex;
+        if (shaderStageFlags & ShaderStage::Pixel) result |= WGPUShaderStage_Fragment;
+        if (shaderStageFlags & ShaderStage::Compute) result |= WGPUShaderStage_Compute;
+        return result;
     }
 
     WGPUPrimitiveTopology ConvertToPrimitiveTopology(PipelineTopologyMode topology)
@@ -323,6 +329,7 @@ namespace RHI::WebGPU
     {
         switch (indexType)
         {
+        // case IndexType::uint8: return WGPUIndexFormat_Uint8;
         case IndexType::uint16: return WGPUIndexFormat_Uint16;
         case IndexType::uint32: return WGPUIndexFormat_Uint32;
         }
@@ -368,9 +375,9 @@ namespace RHI::WebGPU
         }
     }
 
-    WGPUVertexStepMode ConvertToVertexStepMode(PipelineVertexInputRate inputRate)
+    WGPUVertexStepMode ConvertToVertexStepMode(PipelineVertexInputRate rate)
     {
-        switch (inputRate)
+        switch (rate)
         {
         case PipelineVertexInputRate::PerInstance: return WGPUVertexStepMode_Instance;
         case PipelineVertexInputRate::PerVertex:   return WGPUVertexStepMode_Vertex;
@@ -378,939 +385,392 @@ namespace RHI::WebGPU
         }
     }
 
-    WGPUShaderStage ConvertToShaderStage(TL::Flags<ShaderStage> shaderStageFlags)
+    ///////////////////////////////////////////////////////////
+    // IFence
+    ///////////////////////////////////////////////////////////
+
+    ResultCode IFence::Init(IDevice* device, const FenceCreateInfo& createInfo)
     {
-        WGPUShaderStage result = WGPUShaderStage_None;
-        if (shaderStageFlags & ShaderStage::Vertex) result |= WGPUShaderStage_Vertex;
-        if (shaderStageFlags & ShaderStage::Pixel) result |= WGPUShaderStage_Fragment;
-        if (shaderStageFlags & ShaderStage::Compute) result |= WGPUShaderStage_Compute;
-        return result;
+        // WebGPU has no fence object; fences are no-ops for now (single-queue ordering).
+        (void)device;
+        value = createInfo.initialValue;
+        return ResultCode::Success;
     }
 
-    inline static ImageSize3D CalcaulteMiplevelSize(ImageSize3D size, uint32_t mipLevel)
+    void IFence::Shutdown(IDevice* device)
     {
-        return {
-            std::max(1u, size.width >> mipLevel),
-            std::max(1u, size.height >> mipLevel),
-            std::max(1u, size.depth >> mipLevel)};
+        (void)device;
     }
 
-    inline static WGPUBlendOperation ConvertToBlendOperation(RHI::BlendEquation eq)
-    {
-        switch (eq)
-        {
-        case BlendEquation::Add:             return WGPUBlendOperation_Add;
-        case BlendEquation::Subtract:        return WGPUBlendOperation_Subtract;
-        case BlendEquation::ReverseSubtract: return WGPUBlendOperation_ReverseSubtract;
-        case BlendEquation::Min:             return WGPUBlendOperation_Min;
-        case BlendEquation::Max:             return WGPUBlendOperation_Max;
-        }
-    }
-
-    inline static WGPUBlendFactor ConverToBlendFactor(RHI::BlendFactor factor)
-    {
-        switch (factor)
-        {
-        case BlendFactor::Zero:                  return WGPUBlendFactor_Zero;
-        case BlendFactor::One:                   return WGPUBlendFactor_One;
-        case BlendFactor::SrcColor:              return WGPUBlendFactor_Src;
-        case BlendFactor::OneMinusSrcColor:      return WGPUBlendFactor_OneMinusSrc;
-        case BlendFactor::DstColor:              return WGPUBlendFactor_Dst;
-        case BlendFactor::OneMinusDstColor:      return WGPUBlendFactor_OneMinusDst;
-        case BlendFactor::SrcAlpha:              return WGPUBlendFactor_SrcAlpha;
-        case BlendFactor::OneMinusSrcAlpha:      return WGPUBlendFactor_OneMinusSrcAlpha;
-        case BlendFactor::DstAlpha:              return WGPUBlendFactor_DstAlpha;
-        case BlendFactor::OneMinusDstAlpha:      return WGPUBlendFactor_OneMinusDstAlpha;
-        case BlendFactor::ConstantColor:         return WGPUBlendFactor_Constant;
-        case BlendFactor::OneMinusConstantColor: return WGPUBlendFactor_OneMinusConstant;
-        case BlendFactor::ConstantAlpha:         return WGPUBlendFactor_Constant;
-        case BlendFactor::OneMinusConstantAlpha: return WGPUBlendFactor_OneMinusConstant;
-        }
-        TL_UNREACHABLE();
-        return WGPUBlendFactor_Zero;
-    }
+    ///////////////////////////////////////////////////////////
+    // IBindGroupLayout
+    ///////////////////////////////////////////////////////////
 
     ResultCode IBindGroupLayout::Init(IDevice* device, const BindGroupLayoutCreateInfo& createInfo)
     {
-        TL::Vector<WGPUBindGroupLayoutEntry> entries;
-        uint32_t                             bindingIndex = 0;
-        for (const auto& binding : createInfo.bindings)
-        {
-            WGPUBindGroupLayoutEntry entry{
-                .nextInChain    = nullptr,
-                .binding        = bindingIndex++,
-                .visibility     = ConvertToShaderStage(binding.stages),
-                .buffer         = {},
-                .sampler        = {},
-                .texture        = {},
-                .storageTexture = {},
-            };
-
-            switch (binding.type)
-            {
-            case BindingType::None:
-            case BindingType::SampledImage:
-                entry.texture = {
-                    .nextInChain   = nullptr,
-                    .sampleType    = WGPUTextureSampleType_Float, // TODO! expose from outside!
-                    .viewDimension = WGPUTextureViewDimension_2D, // TODO! expose from outside!
-                    .multisampled  = false,
-                };
-                break;
-            case BindingType::Sampler:
-                entry.sampler = {
-                    .nextInChain = nullptr,
-                    .type        = WGPUSamplerBindingType_Filtering,
-                };
-                break;
-            case BindingType::StorageImage:
-                entry.storageTexture = {
-                    .nextInChain   = nullptr,
-                    .access        = ConvertStorageTextureAccess(binding.access),
-                    .format        = {},
-                    .viewDimension = ConvertToTextureViewDimension(ImageType::Image2D, binding.arrayCount > 1),
-                };
-                break;
-            case BindingType::UniformBuffer:
-                entry.buffer = {
-                    .nextInChain      = nullptr,
-                    .type             = WGPUBufferBindingType_Uniform,
-                    .hasDynamicOffset = false,
-                    .minBindingSize   = {},
-                };
-                break;
-            case BindingType::StorageBuffer:
-                entry.buffer = {
-                    .nextInChain      = nullptr,
-                    .type             = WGPUBufferBindingType_Storage,
-                    .hasDynamicOffset = {},
-                    .minBindingSize   = {},
-                };
-                break;
-            case BindingType::DynamicUniformBuffer:
-                entry.buffer = {
-                    .nextInChain      = nullptr,
-                    .type             = WGPUBufferBindingType_Uniform,
-                    .hasDynamicOffset = true,
-                    .minBindingSize   = {},
-                };
-                break;
-            case BindingType::DynamicStorageBuffer:
-                entry.buffer = {
-                    .nextInChain      = nullptr,
-                    .type             = WGPUBufferBindingType_Storage,
-                    .hasDynamicOffset = true,
-                    .minBindingSize   = {},
-                };
-                break;
-            case BindingType::BufferView:
-            case BindingType::StorageBufferView:
-            default:
-                TL_UNREACHABLE();
-                break;
-            }
-            entries.push_back(entry);
-        }
-        WGPUBindGroupLayoutDescriptor desc{
-            .nextInChain = nullptr,
-            .label       = ConvertToStringView(createInfo.name),
-            .entryCount  = entries.size(),
-            .entries     = entries.data(),
-        };
-        this->bindGroupLayout = wgpuDeviceCreateBindGroupLayout(device->m_device, &desc);
+        (void)device;
+        (void)createInfo;
         return ResultCode::Success;
     }
 
-    void IBindGroupLayout::Shutdown([[maybe_unused]] IDevice* device)
+    void IBindGroupLayout::Shutdown(IDevice* device)
     {
-        wgpuBindGroupLayoutRelease(this->bindGroupLayout);
+        (void)device;
     }
+
+    ///////////////////////////////////////////////////////////
+    // IBindGroup
+    ///////////////////////////////////////////////////////////
 
     ResultCode IBindGroup::Init(IDevice* device, const BindGroupCreateInfo& createInfo)
     {
-        bindGroup = {};
-        layout    = device->m_bindGroupLayoutsOwner.Get(createInfo.layout)->bindGroupLayout;
-        wgpuBindGroupLayoutAddRef(layout);
+        (void)device;
+        (void)createInfo;
         return ResultCode::Success;
     }
 
-    void IBindGroup::Shutdown([[maybe_unused]] IDevice* device)
+    void IBindGroup::Shutdown(IDevice* device)
     {
-        wgpuBindGroupRelease(this->bindGroup);
-        wgpuBindGroupLayoutRelease(this->layout);
+        (void)device;
     }
 
     void IBindGroup::Update(IDevice* device, const BindGroupUpdateInfo& updateInfo)
     {
-        if (bindGroup) wgpuBindGroupRelease(bindGroup);
-
-        TL::Vector<WGPUBindGroupEntry> entry{};
-
-        for (auto bufferBindings : updateInfo.buffers)
-        {
-            uint32_t bindingCounter = 0;
-            for (uint32_t i = 0; i < bufferBindings.buffers.size(); i++)
-            {
-                auto bufferHandle    = bufferBindings.buffers[i];
-                auto bufferSubregion = bufferBindings.subregions[i];
-
-                auto buffer = device->m_bufferOwner.Get(bufferHandle);
-                entry.push_back({
-                    .binding = bufferBindings.dstBinding + (bindingCounter++),
-                    .buffer  = buffer->buffer,
-                    .offset  = bufferSubregion.offset,
-                    .size    = bufferSubregion.size,
-                });
-            }
-        }
-        for (auto imageBindings : updateInfo.images)
-        {
-            uint32_t bindingCounter = 0;
-            for (auto imageHandle : imageBindings.images)
-            {
-                auto image = device->m_imageOwner.Get(imageHandle);
-                entry.push_back({
-                    .binding     = imageBindings.dstBinding + (bindingCounter++),
-                    .textureView = image->view,
-                });
-            }
-        }
-        for (auto samplerBindings : updateInfo.samplers)
-        {
-            uint32_t bindingCounter = 0;
-            for (auto samplerHandle : samplerBindings.samplers)
-            {
-                auto sampler = device->m_samplerOwner.Get(samplerHandle);
-                entry.push_back({
-                    .binding = samplerBindings.dstBinding + samplerBindings.dstArrayElement + (bindingCounter++),
-                    .sampler = sampler->sampler,
-                });
-            }
-        }
-
-        if (bindGroup)
-            wgpuBindGroupRelease(bindGroup);
-
-        WGPUBindGroupDescriptor desc{
-            .nextInChain = nullptr,
-            .label       = ConvertToStringView("BindGroup"),
-            .layout      = layout,
-            .entryCount  = entry.size(),
-            .entries     = entry.data(),
-        };
-        bindGroup = wgpuDeviceCreateBindGroup(device->m_device, &desc);
+        (void)device;
+        (void)updateInfo;
     }
+
+    ///////////////////////////////////////////////////////////
+    // IShaderModule
+    ///////////////////////////////////////////////////////////
 
     ResultCode IShaderModule::Init(IDevice* device, const ShaderModuleCreateInfo& createInfo)
     {
-        WGPUShaderSourceSPIRV spirvSourceDesc{
-            .chain    = {.next = {}, .sType = WGPUSType_ShaderSourceSPIRV},
-            .codeSize = (uint32_t)createInfo.code.size(),
-            .code     = createInfo.code.data(),
-        };
-        WGPUShaderModuleDescriptor desc{
-            .nextInChain = &spirvSourceDesc.chain,
-            .label       = ConvertToStringView(createInfo.name),
-        };
-        this->module = wgpuDeviceCreateShaderModule(device->m_device, &desc);
+        (void)device;
+        (void)createInfo;
         return ResultCode::Success;
     }
 
-    void IShaderModule::Shutdown()
+    void IShaderModule::Shutdown(IDevice* device)
     {
-        wgpuShaderModuleRelease(module);
+        (void)device;
     }
+
+    ///////////////////////////////////////////////////////////
+    // IPipelineLayout
+    ///////////////////////////////////////////////////////////
 
     ResultCode IPipelineLayout::Init(IDevice* device, const PipelineLayoutCreateInfo& createInfo)
     {
-        TL::Vector<WGPUBindGroupLayout> layouts;
-        for (size_t i = 0; i < createInfo.layouts.size(); ++i)
-        {
-            auto bindGroupLayout = device->m_bindGroupLayoutsOwner.Get(createInfo.layouts[i]);
-            layouts.push_back(bindGroupLayout->bindGroupLayout);
-        }
-
-        WGPUPipelineLayoutDescriptor desc{
-            .nextInChain                = nullptr,
-            .label                      = ConvertToStringView(createInfo.name),
-            .bindGroupLayoutCount       = layouts.size(),
-            .bindGroupLayouts           = layouts.data(),
-            .immediateDataRangeByteSize = {},
-        };
-        this->layout = wgpuDeviceCreatePipelineLayout(device->m_device, &desc);
+        (void)device;
+        (void)createInfo;
         return ResultCode::Success;
     }
 
-    void IPipelineLayout::Shutdown([[maybe_unused]] IDevice* device)
+    void IPipelineLayout::Shutdown(IDevice* device)
     {
-        wgpuPipelineLayoutRelease(this->layout);
+        (void)device;
     }
+
+    ///////////////////////////////////////////////////////////
+    // IGraphicsPipeline
+    ///////////////////////////////////////////////////////////
 
     ResultCode IGraphicsPipeline::Init(IDevice* device, const GraphicsPipelineCreateInfo& createInfo)
     {
-        auto pipelineLayout = device->m_pipelineLayoutOwner.Get(createInfo.layout);
-        auto vs             = (IShaderModule*)createInfo.vertexShaderModule;
-        auto ps             = (IShaderModule*)createInfo.pixelShaderModule;
-
-        layout = pipelineLayout->layout;
-        wgpuPipelineLayoutAddRef(layout);
-
-        TL::Vector<WGPUVertexAttribute>    attributes{};
-        TL::Vector<WGPUVertexBufferLayout> vertexBufferLayouts{};
-
-        uint32_t bindingIndex = 0;
-        // First collect all attributes
-        for (const auto& bindingDesc : createInfo.vertexBufferBindings)
-        {
-            for (const auto& attributeDesc : bindingDesc.attributes)
-            {
-                attributes.push_back({
-                    .nextInChain    = nullptr,
-                    .format         = ConvertToVertexFormat(attributeDesc.format),
-                    .offset         = attributeDesc.offset,
-                    .shaderLocation = bindingIndex++,
-                });
-            }
-        }
-
-        // Then create vertex buffer layouts
-        size_t attributeOffset = 0;
-        for (const auto& bindingDesc : createInfo.vertexBufferBindings)
-        {
-            vertexBufferLayouts.push_back({
-                .nextInChain    = nullptr,
-                .arrayStride    = bindingDesc.stride,
-                .stepMode       = ConvertToVertexStepMode(bindingDesc.stepRate),
-                .attributeCount = bindingDesc.attributes.size(),
-                .attributes     = &attributes[attributeOffset],
-            });
-            attributeOffset += bindingDesc.attributes.size();
-        }
-
-        bool                  hasDepthStencil = createInfo.renderTargetLayout.depthAttachmentFormat != Format::Unknown || createInfo.renderTargetLayout.stencilAttachmentFormat != Format::Unknown;
-        WGPUDepthStencilState depthStencil{
-            .nextInChain         = nullptr,
-            .format              = ConvertToTextureFormat(createInfo.renderTargetLayout.depthAttachmentFormat),
-            .depthWriteEnabled   = createInfo.depthStencilState.depthWriteEnable ? WGPUOptionalBool_True : WGPUOptionalBool_False,
-            .depthCompare        = ConvertToCompareFunction(createInfo.depthStencilState.compareOperator),
-            .stencilFront        = {},
-            .stencilBack         = {},
-            .stencilReadMask     = {},
-            .stencilWriteMask    = {},
-            .depthBias           = {},
-            .depthBiasSlopeScale = {},
-            .depthBiasClamp      = {},
-        };
-
-        TL::Vector<WGPUColorTargetState> colorTargets;
-        for (uint32_t i = 0; i < createInfo.renderTargetLayout.colorAttachmentsFormats.size(); ++i)
-        {
-            auto blendStates = createInfo.colorBlendState.blendStates;
-            auto blendState  = blendStates[blendStates.size() == 1 ? 0 : i];
-
-            WGPUBlendState blend{};
-            if (blendState.blendEnable)
-            {
-                blend = {
-                    .color = {
-                        .operation = ConvertToBlendOperation(blendState.colorBlendOp),
-                        .srcFactor = ConverToBlendFactor(blendState.srcColor),
-                        .dstFactor = ConverToBlendFactor(blendState.dstColor),
-                    },
-                    .alpha = {
-                        .operation = ConvertToBlendOperation(blendState.alphaBlendOp),
-                        .srcFactor = ConverToBlendFactor(blendState.srcAlpha),
-                        .dstFactor = ConverToBlendFactor(blendState.dstAlpha),
-                    },
-                };
-            }
-
-            auto format = ConvertToTextureFormat(createInfo.renderTargetLayout.colorAttachmentsFormats[i]);
-            colorTargets.push_back({
-                .nextInChain = nullptr,
-                .format      = format,
-                .blend       = blendState.blendEnable ? &blend : nullptr,
-                .writeMask   = WGPUColorWriteMask_All,
-            });
-        }
-
-        WGPUFragmentState fragment{
-            .nextInChain   = nullptr,
-            .module        = ps->module,
-            .entryPoint    = ConvertToStringView(createInfo.pixelShaderName),
-            .constantCount = {},
-            .constants     = {},
-            .targetCount   = colorTargets.size(),
-            .targets       = colorTargets.data(),
-        };
-
-        // TODO: reivew the hardcoded values later
-        WGPURenderPipelineDescriptor desc{
-            .nextInChain = nullptr,
-            .label       = ConvertToStringView(createInfo.name),
-            .layout      = pipelineLayout->layout,
-            .vertex      = {
-                     .nextInChain   = nullptr,
-                     .module        = vs->module,
-                     .entryPoint    = ConvertToStringView(createInfo.vertexShaderName),
-                     .constantCount = {},
-                     .constants     = {},
-                     .bufferCount   = vertexBufferLayouts.size(),
-                     .buffers       = vertexBufferLayouts.data(),
-            },
-            .primitive = {
-                .nextInChain      = nullptr,
-                .topology         = ConvertToPrimitiveTopology(createInfo.topologyMode),
-                .stripIndexFormat = WGPUIndexFormat_Undefined,
-                .frontFace        = ConvertToFrontFace(createInfo.rasterizationState.frontFace),
-                .cullMode         = ConvertToCullMode(createInfo.rasterizationState.cullMode),
-                .unclippedDepth   = false,
-            },
-            .depthStencil = hasDepthStencil ? &depthStencil : nullptr,
-            .multisample  = {
-                 .nextInChain            = nullptr,
-                 .count                  = ConvertToSampleCount(createInfo.multisampleState.sampleCount),
-                 .mask                   = 0xFFFFFFFF,
-                 .alphaToCoverageEnabled = false,
-            },
-            .fragment = &fragment,
-        };
-        this->pipeline = wgpuDeviceCreateRenderPipeline(device->m_device, &desc);
+        (void)device;
+        (void)createInfo;
         return ResultCode::Success;
     }
 
-    void IGraphicsPipeline::Shutdown([[maybe_unused]] IDevice* device)
+    void IGraphicsPipeline::Shutdown(IDevice* device)
     {
-        wgpuRenderPipelineRelease(this->pipeline);
-        wgpuPipelineLayoutRelease(this->layout);
+        (void)device;
     }
+
+    ///////////////////////////////////////////////////////////
+    // IComputePipeline
+    ///////////////////////////////////////////////////////////
 
     ResultCode IComputePipeline::Init(IDevice* device, const ComputePipelineCreateInfo& createInfo)
     {
-        auto pipelineLayout = device->m_pipelineLayoutOwner.Get(createInfo.layout);
-        auto cs             = (IShaderModule*)createInfo.shaderModule;
-
-        layout = pipelineLayout->layout;
-        wgpuPipelineLayoutAddRef(layout);
-
-        WGPUComputePipelineDescriptor desc{
-            .nextInChain = nullptr,
-            .label       = ConvertToStringView(createInfo.name),
-            .layout      = pipelineLayout->layout,
-            .compute     = {
-                    .nextInChain   = nullptr,
-                    .module        = cs->module,
-                    .entryPoint    = ConvertToStringView(createInfo.name),
-                    .constantCount = {},
-                    .constants     = {},
-            }};
-        this->pipeline = wgpuDeviceCreateComputePipeline(device->m_device, &desc);
+        (void)device;
+        (void)createInfo;
         return ResultCode::Success;
     }
 
-    void IComputePipeline::Shutdown([[maybe_unused]] IDevice* device)
+    void IComputePipeline::Shutdown(IDevice* device)
     {
-        wgpuComputePipelineRelease(this->pipeline);
-        wgpuPipelineLayoutRelease(this->layout);
+        (void)device;
     }
 
-    ResultCode IRayTracingPipeline::Init([[maybe_unused]] IDevice* device, [[maybe_unused]] const ComputePipelineCreateInfo& createInfo)
+    ///////////////////////////////////////////////////////////
+    // IRayTracingPipeline (unsupported on WebGPU)
+    ///////////////////////////////////////////////////////////
+
+    ResultCode IRayTracingPipeline::Init(IDevice* device, const RayTracingPipelineCreateInfo& createInfo)
     {
-        // WebGPU doesn't support ray tracing yet
-        return ResultCode::ErrorUnknown;
+        (void)device;
+        (void)createInfo;
+        return ResultCode::Success;
     }
 
-    void IRayTracingPipeline::Shutdown([[maybe_unused]] IDevice* device)
+    void IRayTracingPipeline::Shutdown(IDevice* device)
     {
-        // WebGPU doesn't support ray tracing yet
+        (void)device;
     }
+
+    void IRayTracingPipeline::GetShaderBindingTableEntry(IDevice* device, uint32_t group, size_t size, void* dstHandle)
+    {
+        (void)device;
+        (void)group;
+        (void)size;
+        (void)dstHandle;
+    }
+
+    ///////////////////////////////////////////////////////////
+    // IQueryPool
+    ///////////////////////////////////////////////////////////
+
+    ResultCode IQueryPool::Init(IDevice* device, const QueryPoolCreateInfo& createInfo)
+    {
+        (void)device;
+        (void)createInfo;
+        return ResultCode::Success;
+    }
+
+    void IQueryPool::Shutdown(IDevice* device)
+    {
+        (void)device;
+    }
+
+    ///////////////////////////////////////////////////////////
+    // IBuffer
+    ///////////////////////////////////////////////////////////
 
     ResultCode IBuffer::Init(IDevice* device, const BufferCreateInfo& createInfo)
     {
-        mapped = false;
-        mappedPtr = nullptr;
+        WGPUBufferDescriptor desc = {};
+        desc.label                = createInfo.name;
+        desc.usage                = ConvertToBufferUsage(createInfo.usageFlags);
+        desc.size                 = createInfo.byteSize;
+        // Host-mapped buffers are created already mapped so the initial upload can use Map().
+        desc.mappedAtCreation     = (createInfo.usageFlags & BufferUsage::HostMapped) ? 1u : 0u;
 
-        WGPUBufferDescriptor desc{
-            .nextInChain      = nullptr,
-            .label            = ConvertToStringView(createInfo.name),
-            .usage            = ConvertToBufferUsage(createInfo.usageFlags),
-            .size             = createInfo.byteSize,
-            .mappedAtCreation = false, // .mappedAtCreation = createInfo.hostMapped ? true : false,
-        };
-
-        if (createInfo.hostMapped)
-        {
-            desc.usage |= WGPUBufferUsage_CopyDst;
-        }
-
-        this->buffer = wgpuDeviceCreateBuffer(device->m_device, &desc);
-        if (desc.mappedAtCreation)
-        {
-            mappedPtr = wgpuBufferGetMappedRange(buffer, 0, WGPU_WHOLE_MAP_SIZE);
-            mapped = true;
-        }
-        return ResultCode::Success;
+        buffer = wgpuDeviceCreateBuffer(device->m_device, &desc);
+        return buffer ? ResultCode::Success : ResultCode::ErrorUnknown;
     }
 
-    void IBuffer::Shutdown([[maybe_unused]] IDevice* device)
+    void IBuffer::Shutdown(IDevice* device)
     {
-        TL_ASSERT(mapped == false, "Unmap buffer first");
-        wgpuBufferRelease(this->buffer);
+        (void)device;
+        if (buffer)
+        {
+            wgpuBufferRelease(buffer);
+            buffer = nullptr;
+        }
     }
 
     DeviceMemoryPtr IBuffer::Map(IDevice* device)
     {
-        TL_ASSERT(mapped == false, "Buffer is already mapped");
-        mapped = true;
-
-        if (mappedPtr) return mappedPtr;
-
-        // FIXME: This is a blocking implementation. Should be made async in the future.
-        auto callback = [](WGPUMapAsyncStatus status, struct WGPUStringView message, void* userdata1, void* userdata2)
-        {
-            switch (status)
-            {
-            case WGPUMapAsyncStatus_Success:
-                return;
-            case WGPUMapAsyncStatus_InstanceDropped:
-            case WGPUMapAsyncStatus_Error:
-            case WGPUMapAsyncStatus_Aborted:
-            case WGPUMapAsyncStatus_Force32:
-                if (message.data)
-                    TL::LogError("RHI::WebGPU: Failed to mapped buffer - {}", message.data);
-            }
-        };
-        WGPUBufferMapCallbackInfo mapCallbackInfo{
-            .nextInChain = {},
-            .mode        = WGPUCallbackMode_AllowProcessEvents,
-            .callback    = callback,
-            .userdata1   = {},
-            .userdata2   = {},
-        };
-        auto               future = wgpuBufferMapAsync(buffer, WGPUMapMode_Write, 0, WGPU_WHOLE_MAP_SIZE, mapCallbackInfo);
-        WGPUFuturewaitTimelineInfo waitTimelineInfo{
-            .future    = future,
-            .completed = true,
-        };
-
-        wgpuInstancewaitTimelineAny(device->m_instance, 1, &waitTimelineInfo, UINT64_MAX);
-        mappedPtr = wgpuBufferGetMappedRange(buffer, 0, WGPU_WHOLE_MAP_SIZE);
-        return mappedPtr;
+        (void)device;
+        return wgpuBufferGetMappedRange(buffer, 0, WGPU_WHOLE_MAP_SIZE);
     }
 
     void IBuffer::Unmap(IDevice* device)
     {
-        TL_ASSERT(mapped == true, "Buffer is already unmapped");
-        mapped = false;
+        (void)device;
         wgpuBufferUnmap(buffer);
-        mappedPtr = nullptr;
     }
+
+    ///////////////////////////////////////////////////////////
+    // IImage
+    ///////////////////////////////////////////////////////////
 
     ResultCode IImage::Init(IDevice* device, const ImageCreateInfo& createInfo)
     {
-        auto                  format = ConvertToTextureFormat(createInfo.format);
-        WGPUTextureDescriptor desc{
-            .nextInChain     = nullptr,
-            .label           = ConvertToStringView(createInfo.name),
-            .usage           = ConvertToTextureUsage(createInfo.usageFlags),
-            .dimension       = ConvertToTextureDimension(createInfo.type),
-            .size            = ConvertToExtent3D(createInfo.size),
-            .format          = format,
-            .mipLevelCount   = createInfo.mipLevels,
-            .sampleCount     = ConvertToSampleCount(createInfo.sampleCount),
-            .viewFormatCount = 1,
-            .viewFormats     = &format,
-        };
-        WGPUTextureViewDescriptor viewDesc{
-            .nextInChain     = nullptr,
-            .label           = ConvertToStringView(createInfo.name),
-            .format          = format,
-            .dimension       = ConvertToTextureViewDimension(ImageViewType::View2D, createInfo.arrayCount > 1),
-            .baseMipLevel    = 0,
-            .mipLevelCount   = createInfo.mipLevels,
-            .baseArrayLayer  = 0,
-            .arrayLayerCount = createInfo.arrayCount,
-            .aspect          = ConvertToTextureAspect(GetFormatAspects(createInfo.format), createInfo.format),
-            .usage           = ConvertToTextureUsage(createInfo.usageFlags),
-        };
-        this->texture = wgpuDeviceCreateTexture(device->m_device, &desc);
-        this->view    = wgpuTextureCreateView(this->texture, &viewDesc);
-        this->size    = createInfo.size;
-        this->format  = createInfo.format;
-        this->subresources = {
-            .imageAspects  = GetFormatAspects(format),
-            .mipBase       = 0,
-            .mipLevelCount = (uint8_t)createInfo.mipLevels,
-            .arrayBase     = 0,
-            .arrayCount    = (uint8_t)createInfo.arrayCount,
-        };
+        const uint32_t layers = (createInfo.type == ImageType::Image3D) ? createInfo.size.depth : createInfo.arrayCount;
+
+        WGPUTextureDescriptor desc = {};
+        desc.label                 = createInfo.name;
+        desc.usage                 = ConvertToTextureUsage(createInfo.usageFlags);
+        desc.dimension             = ConvertToTextureDimension(createInfo.type);
+        desc.size                  = {createInfo.size.width, createInfo.size.height, layers};
+        desc.format                = ConvertToTextureFormat(createInfo.format);
+        desc.mipLevelCount         = createInfo.mipLevels;
+        desc.sampleCount           = ConvertToSampleCount(createInfo.sampleCount);
+
+        texture = wgpuDeviceCreateTexture(device->m_device, &desc);
+        if (!texture)
+            return ResultCode::ErrorUnknown;
+
+        view   = wgpuTextureCreateView(texture, nullptr);
+        size   = createInfo.size;
+        format = createInfo.format;
         return ResultCode::Success;
     }
 
-    ResultCode IImage::Init([[maybe_unused]] IDevice* device, WGPUTexture surfaceTexture, WGPUSurfaceConfiguration desc)
+    ResultCode IImage::Init(IDevice* device, const ImageViewCreateInfo& createInfo)
     {
-        this->texture = surfaceTexture;
-        this->size    = {desc.width, desc.height, 1};
-        // Format will be set when swapchain is configured via SwapBackTextures
-        this->format  = Format::Unknown;
-        this->subresources = {
-            .imageAspects  = ImageAspect::Color, // Swapchain images are typically color
-            .mipBase       = 0,
-            .mipLevelCount = 1,
-            .arrayBase     = 0,
-            .arrayCount    = 1,
-        };
-        WGPUTextureViewDescriptor viewDesc{
-            .nextInChain     = nullptr,
-            .label           = {},
-            .format          = desc.format,
-            .dimension       = WGPUTextureViewDimension_2D,
-            .baseMipLevel    = 0,
-            .mipLevelCount   = 1,
-            .baseArrayLayer  = 0,
-            .arrayLayerCount = 1,
-            .aspect          = WGPUTextureAspect_All,
-            .usage           = desc.usage,
-        };
-        this->view = wgpuTextureCreateView(this->texture, &viewDesc);
-        return ResultCode::Success;
+        (void)device;
+        auto* source = (IImage*)createInfo.image;
+
+        const auto& sub = createInfo.subresource;
+        WGPUTextureViewDescriptor desc = {};
+        desc.label                     = createInfo.name;
+        desc.format                    = ConvertToTextureFormat(createInfo.format != Format::Unknown ? createInfo.format : source->format);
+        desc.dimension                 = ConvertToTextureViewDimension(createInfo.viewType, sub.arrayCount > 1);
+        desc.baseMipLevel              = sub.mipBase;
+        desc.mipLevelCount             = (sub.mipLevelCount == AllMipLevels) ? WGPU_MIP_LEVEL_COUNT_UNDEFINED : sub.mipLevelCount;
+        desc.baseArrayLayer            = sub.arrayBase;
+        desc.arrayLayerCount           = (sub.arrayCount == AllLayers) ? WGPU_ARRAY_LAYER_COUNT_UNDEFINED : sub.arrayCount;
+        desc.aspect                    = ConvertToTextureAspect(sub.imageAspects, source->format);
+
+        // View-only image: it references the source texture but does not own it.
+        view    = wgpuTextureCreateView(source->texture, &desc);
+        texture = nullptr;
+        size    = source->size;
+        format  = (createInfo.format != Format::Unknown) ? createInfo.format : source->format;
+        return view ? ResultCode::Success : ResultCode::ErrorUnknown;
     }
 
-    WGPUTextureAspect IImage::SelectImageAspect(ImageAspect aspect)
+    ResultCode IImage::Init(IDevice* device, WGPUTexture surfaceTexture, const WGPUSurfaceConfiguration& configuration)
     {
-        return ConvertToTextureAspect(aspect, format);
+        (void)device;
+        texture = surfaceTexture;
+        view    = wgpuTextureCreateView(surfaceTexture, nullptr);
+        size    = {configuration.width, configuration.height, 1};
+        return view ? ResultCode::Success : ResultCode::ErrorUnknown;
     }
 
-    void IImage::Shutdown([[maybe_unused]] IDevice* device)
+    void IImage::Shutdown(IDevice* device)
     {
-        if (view) wgpuTextureViewRelease(view);
-        if (texture) wgpuTextureRelease(texture);
+        (void)device;
+        if (view)
+        {
+            wgpuTextureViewRelease(view);
+            view = nullptr;
+        }
+        if (texture)
+        {
+            wgpuTextureRelease(texture);
+            texture = nullptr;
+        }
     }
 
-    void IImage::Write(IDevice* device, uint32_t mipLevel, TL::Block data)
-    {
-        WGPUTexelCopyTextureInfo copyInfo{
-            .texture  = texture,
-            .mipLevel = mipLevel,
-            .origin   = ConvertToOffset3D(ImageOffset3D{0, 0, 0}),
-            .aspect   = WGPUTextureAspect_All,
-        };
-
-        auto writeSize  = ConvertToExtent3D(CalcaulteMiplevelSize(this->size, mipLevel));
-        auto formatInfo = GetFormatInfo(this->format);
-
-        WGPUTexelCopyBufferLayout bufferLayout{
-            .offset       = 0,
-            .bytesPerRow  = writeSize.width * formatInfo.bytesPerBlock,
-            .rowsPerImage = writeSize.width * writeSize.width * formatInfo.bytesPerBlock,
-        };
-        wgpuQueueWriteTexture(device->m_queue, &copyInfo, data.ptr, data.size, &bufferLayout, &writeSize);
-    }
+    ///////////////////////////////////////////////////////////
+    // ISampler
+    ///////////////////////////////////////////////////////////
 
     ResultCode ISampler::Init(IDevice* device, const SamplerCreateInfo& createInfo)
     {
-        WGPUSamplerDescriptor desc{
-            .nextInChain   = nullptr,
-            .label         = ConvertToStringView(createInfo.name),
-            .addressModeU  = ConvertToAddressMode(createInfo.addressU),
-            .addressModeV  = ConvertToAddressMode(createInfo.addressV),
-            .addressModeW  = ConvertToAddressMode(createInfo.addressW),
-            .magFilter     = ConvertToSamplerFilter(createInfo.filterMag),
-            .minFilter     = ConvertToSamplerFilter(createInfo.filterMin),
-            .mipmapFilter  = ConvertToMipmapFilter(createInfo.filterMip),
-            .lodMinClamp   = createInfo.minLod,
-            .lodMaxClamp   = createInfo.maxLod,
-            .compare       = ConvertToCompareFunction(createInfo.compare),
-            .maxAnisotropy = 1, // TODO: implement anisotropy
-        };
-        this->sampler = wgpuDeviceCreateSampler(device->m_device, &desc);
+        WGPUSamplerDescriptor desc = {};
+        desc.label                 = createInfo.name;
+        desc.addressModeU          = ConvertToAddressMode(createInfo.addressU);
+        desc.addressModeV          = ConvertToAddressMode(createInfo.addressV);
+        desc.addressModeW          = ConvertToAddressMode(createInfo.addressW);
+        desc.magFilter             = ConvertToSamplerFilter(createInfo.filterMag);
+        desc.minFilter             = ConvertToSamplerFilter(createInfo.filterMin);
+        desc.mipmapFilter          = ConvertToMipmapFilter(createInfo.filterMip);
+        desc.lodMinClamp           = createInfo.minLod;
+        desc.lodMaxClamp           = createInfo.maxLod;
+        desc.compare               = (createInfo.compare == CompareOperator::Undefined) ? WGPUCompareFunction_Undefined : ConvertToCompareFunction(createInfo.compare);
+        desc.maxAnisotropy         = 1;
+
+        sampler = wgpuDeviceCreateSampler(device->m_device, &desc);
+        return sampler ? ResultCode::Success : ResultCode::ErrorUnknown;
+    }
+
+    void ISampler::Shutdown(IDevice* device)
+    {
+        (void)device;
+        if (sampler)
+        {
+            wgpuSamplerRelease(sampler);
+            sampler = nullptr;
+        }
+    }
+
+    ///////////////////////////////////////////////////////////
+    // IAccelerationStructure (unsupported on WebGPU)
+    ///////////////////////////////////////////////////////////
+
+    ResultCode IAccelerationStructure::Init(IDevice* device, const AccelerationStructureCreateInfo& createInfo)
+    {
+        (void)device;
+        (void)createInfo;
         return ResultCode::Success;
     }
 
-    void ISampler::Shutdown([[maybe_unused]] IDevice* device)
+    void IAccelerationStructure::Shutdown(IDevice* device)
     {
-        wgpuSamplerRelease(sampler);
+        (void)device;
     }
 
-    WGPUCompositeAlphaMode ConvertToAlphaMode(SwapchainAlphaMode alpha)
+    ///////////////////////////////////////////////////////////
+    // IMicromap (unsupported on WebGPU)
+    ///////////////////////////////////////////////////////////
+
+    ResultCode IMicromap::Init(IDevice* device, const MicromapCreateInfo& createInfo)
     {
-        switch (alpha)
-        {
-        case SwapchainAlphaMode::None:           return WGPUCompositeAlphaMode_Auto;
-        case SwapchainAlphaMode::PreMultiplied:  return WGPUCompositeAlphaMode_Premultiplied;
-        case SwapchainAlphaMode::PostMultiplied: return WGPUCompositeAlphaMode_Unpremultiplied;
-        }
-        return WGPUCompositeAlphaMode_Auto;
+        (void)device;
+        (void)createInfo;
+        return ResultCode::Success;
     }
 
-    WGPUPresentMode ConvertToPresentMode(SwapchainPresentMode present)
+    void IMicromap::Shutdown(IDevice* device)
     {
-        switch (present)
-        {
-        case SwapchainPresentMode::Immediate:   return WGPUPresentMode_Immediate;
-        case SwapchainPresentMode::Fifo:        return WGPUPresentMode_Fifo;
-        case SwapchainPresentMode::FifoRelaxed: return WGPUPresentMode_FifoRelaxed;
-        case SwapchainPresentMode::Mailbox:     return WGPUPresentMode_Mailbox;
-        default:                                TL_UNREACHABLE(); break;
-        }
-        return WGPUPresentMode_Fifo;
+        (void)device;
     }
 
-    inline static ResultCode ConvertToResultCode(WGPUSurfaceGetCurrentTextureStatus status)
-    {
-        switch (status)
-        {
-        case WGPUSurfaceGetCurrentTextureStatus_SuccessOptimal:    return ResultCode::Success;
-        case WGPUSurfaceGetCurrentTextureStatus_SuccessSuboptimal: return ResultCode::SuccessSuboptimal;
-        case WGPUSurfaceGetCurrentTextureStatus_Timeout:           return ResultCode::ErrorTimeout;
-        case WGPUSurfaceGetCurrentTextureStatus_Outdated:          return ResultCode::ErrorOutdated;
-        case WGPUSurfaceGetCurrentTextureStatus_Lost:              return ResultCode::ErrorSurfaceLost;
-        case WGPUSurfaceGetCurrentTextureStatus_Force32:
-        case WGPUSurfaceGetCurrentTextureStatus_Error:             return ResultCode::ErrorUnknown;
-        }
-        return ResultCode::ErrorUnknown;
-    }
+    ///////////////////////////////////////////////////////////
+    // ISwapchain
+    ///////////////////////////////////////////////////////////
 
     ISwapchain::ISwapchain()  = default;
     ISwapchain::~ISwapchain() = default;
 
     ResultCode ISwapchain::Init(IDevice* device, const SwapchainCreateInfo& createInfo)
     {
-        m_device = device;
-
-#ifdef WIN32
-        WGPUSurfaceSourceWindowsHWND windowDesc{
-            .chain     = {.next = nullptr, .sType = WGPUSType_SurfaceSourceWindowsHWND},
-            .hinstance = createInfo.win32Window.hinstance,
-            .hwnd      = createInfo.win32Window.hwnd,
-        };
-#else
-    #error "Not implemented yet!"
-#endif
-
-        WGPUSurfaceDescriptor desc{
-            .nextInChain = &windowDesc.chain,
-            .label       = ConvertToStringView(createInfo.name),
-        };
-
-        m_surface = wgpuInstanceCreateSurface(device->m_instance, &desc);
-        if (!m_surface)
-        {
-            return ResultCode::ErrorSurfaceLost;
-        }
-
-        // Initialize empty image handle
-        IImage image{};
-        auto imageHandleId = m_device->m_imageOwner.Emplace(std::move(image));
-        m_imageHandle      = (Image*)m_device->m_imageOwner.Get(imageHandleId);
-        m_imageCount       = 1;
-
+        (void)device;
+        (void)createInfo;
         return ResultCode::Success;
     }
 
     void ISwapchain::Shutdown(IDevice* device)
     {
-        if (m_surface)
-        {
-            wgpuSurfaceRelease(m_surface);
-            m_surface = nullptr;
-        }
-
-        if (m_imageHandle)
-        {
-            auto image = (IImage*)m_imageHandle;
-            if (image->view)
-            {
-                wgpuTextureViewRelease(image->view);
-                image->view = nullptr;
-            }
-            if (image->texture)
-            {
-                wgpuTextureRelease(image->texture);
-                image->texture = nullptr;
-            }
-        }
-
-        m_device = nullptr;
-    }
-
-    SurfaceCapabilities ISwapchain::GetSurfaceCapabilities() const
-    {
-        TL_ASSERT(m_surface);
-
-        WGPUSurfaceCapabilities capabilities;
-        wgpuSurfaceGetCapabilities(m_surface, m_device->m_adapter, &capabilities);
-
-        SurfaceCapabilities output{};
-
-        // Add image size and count limits
-        {
-            output.minImageSize  = {capabilities.minWidth, capabilities.minHeight};
-            output.maxImageSize  = {capabilities.maxWidth, capabilities.maxHeight};
-            output.minImageCount = capabilities.minImageCount;
-            output.maxImageCount = capabilities.maxImageCount;
-        }
-
-        // Add image usage flags
-        {
-            if (capabilities.usages & WGPUTextureUsage_RenderAttachment) output.usages |= ImageUsage::Color;
-            if (capabilities.usages & WGPUTextureUsage_TextureBinding) output.usages |= ImageUsage::ShaderResource;
-            if (capabilities.usages & WGPUTextureUsage_StorageBinding) output.usages |= ImageUsage::StorageResource;
-            if (capabilities.usages & WGPUTextureUsage_CopyDst) output.usages |= ImageUsage::CopyDst;
-        }
-
-        // Add formats
-        {
-            for (size_t i = 0; i < capabilities.formatCount; i++)
-            {
-                // TODO: Add reverse conversion from WGPUTextureFormat to Format
-                // For now, add common formats
-                output.formats.push_back(Format::RGBA8_UNORM);
-            }
-        }
-
-        // Add composite alpha modes
-        {
-            for (size_t i = 0; i < capabilities.alphaModeCount; i++)
-            {
-                switch (capabilities.alphaModes[i])
-                {
-                case WGPUCompositeAlphaMode_Auto:            output.alphaModes |= SwapchainAlphaMode::None; break;
-                case WGPUCompositeAlphaMode_Premultiplied:   output.alphaModes |= SwapchainAlphaMode::PreMultiplied; break;
-                case WGPUCompositeAlphaMode_Unpremultiplied: output.alphaModes |= SwapchainAlphaMode::PostMultiplied; break;
-                default:                                     TL_UNREACHABLE(); break;
-                }
-            }
-        }
-
-        // Add present modes
-        {
-            for (size_t i = 0; i < capabilities.presentModeCount; i++)
-            {
-                switch (capabilities.presentModes[i])
-                {
-                case WGPUPresentMode_Immediate:   output.presentModes |= SwapchainPresentMode::Immediate; break;
-                case WGPUPresentMode_Mailbox:     output.presentModes |= SwapchainPresentMode::Mailbox; break;
-                case WGPUPresentMode_Fifo:        output.presentModes |= SwapchainPresentMode::Fifo; break;
-                case WGPUPresentMode_FifoRelaxed: output.presentModes |= SwapchainPresentMode::FifoRelaxed; break;
-                default:                          TL_UNREACHABLE(); break;
-                }
-            }
-        }
-
-        wgpuSurfaceCapabilitiesFreeMembers(capabilities);
-        return output;
-    }
-
-    ResultCode ISwapchain::Configure(const SwapchainConfigureInfo& configInfo)
-    {
-        m_configuration = configInfo;
-
-        WGPUSurfaceCapabilities capabilities;
-        auto                    status = wgpuSurfaceGetCapabilities(m_surface, m_device->m_adapter, &capabilities);
-        if (status != WGPUStatus_Success)
-        {
-            wgpuSurfaceCapabilitiesFreeMembers(capabilities);
-            return ResultCode::ErrorInvalidArguments;
-        }
-
-        auto usage       = ConvertToTextureUsage(configInfo.imageUsage);
-        auto format      = ConvertToTextureFormat(configInfo.format);
-        auto presentMode = ConvertToPresentMode(configInfo.presentMode);
-        auto alphaMode   = ConvertToAlphaMode(configInfo.alphaMode);
-
-        if (!(capabilities.usages & usage) ||
-            !std::find(capabilities.formats, capabilities.formats + capabilities.formatCount, format) ||
-            !std::find(capabilities.presentModes, capabilities.presentModes + capabilities.presentModeCount, presentMode) ||
-            !std::find(capabilities.alphaModes, capabilities.alphaModes + capabilities.alphaModeCount, alphaMode))
-        {
-            wgpuSurfaceCapabilitiesFreeMembers(capabilities);
-            return ResultCode::ErrorInvalidArguments;
-        }
-
-        wgpuSurfaceCapabilitiesFreeMembers(capabilities);
-
-        WGPUSurfaceConfiguration config{
-            .nextInChain     = nullptr,
-            .device          = m_device->m_device,
-            .format          = format,
-            .usage           = usage,
-            .viewFormatCount = 1,
-            .viewFormats     = &format,
-            .alphaMode       = alphaMode,
-            .width           = configInfo.size.width,
-            .height          = configInfo.size.height,
-            .presentMode     = presentMode,
-        };
-
-        wgpuSurfaceConfigure(m_surface, &config);
-        return SwapBackTextures();
-    }
-
-    ResultCode ISwapchain::Resize(const ImageSize2D& size)
-    {
-        m_configuration.size = size;
-        return Configure(m_configuration);
+        (void)device;
     }
 
     uint32_t ISwapchain::GetImagesCount() const
     {
-        return m_imageCount;
+        return 0;
     }
 
-    Image* ISwapchain::GetImage() const
+    SwapchainAcquireResult ISwapchain::AcquireImage()
     {
-        return m_imageHandle;
+        return {};
+    }
+
+    SurfaceCapabilities ISwapchain::GetSurfaceCapabilities() const
+    {
+        return {};
+    }
+
+    ResultCode ISwapchain::Resize(const ImageSize2D& size)
+    {
+        (void)size;
+        return ResultCode::Success;
+    }
+
+    ResultCode ISwapchain::Configure(const SwapchainConfigureInfo& configInfo)
+    {
+        (void)configInfo;
+        return ResultCode::Success;
     }
 
     ResultCode ISwapchain::Present()
     {
-        wgpuSurfacePresent(m_surface);
-        return SwapBackTextures();
-    }
-
-    ResultCode ISwapchain::SwapBackTextures()
-    {
-        WGPUSurfaceTexture surfaceTexture;
-        wgpuSurfaceGetCurrentTexture(m_surface, &surfaceTexture);
-
-        auto status = surfaceTexture.status;
-        if (status != WGPUSurfaceGetCurrentTextureStatus_SuccessOptimal)
-        {
-            return ConvertToResultCode(status);
-        }
-
-        auto image = (IImage*)m_imageHandle;
-        if (image->view)
-        {
-            wgpuTextureViewRelease(image->view);
-        }
-        if (image->texture)
-        {
-            wgpuTextureRelease(image->texture);
-        }
-
-        image->texture = surfaceTexture.texture;
-        image->size    = {m_configuration.size.width, m_configuration.size.height, 1};
-        image->format  = m_configuration.format;
-        image->subresources = {
-            .imageAspects  = GetFormatAspects(m_configuration.format),
-            .mipBase       = 0,
-            .mipLevelCount = 1,
-            .arrayBase     = 0,
-            .arrayCount    = 1,
-        };
-
-        WGPUTextureViewDescriptor viewDesc{
-            .format          = ConvertToTextureFormat(m_configuration.format),
-            .dimension       = WGPUTextureViewDimension_2D,
-            .baseMipLevel    = 0,
-            .mipLevelCount   = 1,
-            .baseArrayLayer  = 0,
-            .arrayLayerCount = 1,
-            .aspect          = WGPUTextureAspect_All};
-
-        image->view = wgpuTextureCreateView(image->texture, &viewDesc);
         return ResultCode::Success;
     }
 } // namespace RHI::WebGPU
