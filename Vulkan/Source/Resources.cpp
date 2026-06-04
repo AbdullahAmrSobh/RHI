@@ -547,16 +547,17 @@ namespace RHI::Vulkan
 
         /// @todo: (don't do this)
         VkDescriptorPoolSize poolSizes[] = {
-            {VK_DESCRIPTOR_TYPE_SAMPLER, 2048},
-            {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 2048},
-            {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 2048},
-            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2048},
-            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2048},
-            {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 2048},
-            {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 2048},
-            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2048},
-            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 2048},
-            {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 2048},
+            {VK_DESCRIPTOR_TYPE_SAMPLER, 2048 * 10},
+            {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 2048 * 10},
+            {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 2048 * 10},
+            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2048 * 10},
+            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2048 * 10},
+            {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 2048 * 10},
+            {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 2048 * 10},
+            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2048 * 10},
+            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 2048 * 10},
+            {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 2048 * 10},
+            {VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 2048 * 10},
         };
 
         VkDescriptorPoolCreateFlags poolFlags =
@@ -565,7 +566,7 @@ namespace RHI::Vulkan
             .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
             .pNext         = nullptr,
             .flags         = poolFlags,
-            .maxSets       = 8,
+            .maxSets       = 4096 * 1000,
             .poolSizeCount = sizeof(poolSizes) / sizeof(VkDescriptorPoolSize),
             .pPoolSizes    = poolSizes,
         };
@@ -684,10 +685,17 @@ namespace RHI::Vulkan
             .pBindingFlags = bindingFlags.data(),
         };
 
+        // UPDATE_AFTER_BIND is only needed for bindless layouts (their bindings carry the matching  per-binding flag).
+        VkDescriptorSetLayoutCreateFlags layoutFlags = 0;
+        if (createInfo.pushable)
+            layoutFlags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT;
+        if (hasBindless)
+            layoutFlags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
+
         VkDescriptorSetLayoutCreateInfo layoutCI{
             .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
             .pNext        = hasBindless ? &layoutBindingFlagsCI : nullptr,
-            .flags        = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT | VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT,
+            .flags        = layoutFlags,
             .bindingCount = (uint32_t)setLayoutBindings.size(),
             .pBindings    = setLayoutBindings.data(),
         };
@@ -695,9 +703,9 @@ namespace RHI::Vulkan
         VulkanResult result;
         result = vkCreateDescriptorSetLayout(device->m_device, &layoutCI, nullptr, &handle);
         TL_ASSERT(result, "vkCreateDescriptorSetLayout failed with error: {}", result.AsString());
-        if (result && createInfo.name)
+        if (result && !getName().empty())
         {
-            device->SetDebugName(handle, createInfo.name);
+            device->SetDebugName(handle, getName().c_str());
         }
         return result;
     }
@@ -713,11 +721,12 @@ namespace RHI::Vulkan
 
     ResultCode IBindGroup::Init(IDevice* device, const BindGroupCreateInfo& createInfo)
     {
-        IBindGroupLayout* bindGroupLayout = (IBindGroupLayout*)(createInfo.layout);
+        this->bindGroupLayout = (IBindGroupLayout*)(createInfo.layout);
 
-        this->bindGroupLayout = (IBindGroupLayout*)createInfo.layout;
-
-        return device->m_bindGroupAllocator.InitBindGroup(this, bindGroupLayout, createInfo.bindlessArrayCount);
+        ResultCode result = device->m_bindGroupAllocator.InitBindGroup(this, this->bindGroupLayout, createInfo.bindlessArrayCount);
+        if (IsSuccess(result) && !getName().empty())
+            device->SetDebugName(descriptorSet, getName().c_str());
+        return result;
     }
 
     void IBindGroup::Shutdown(IDevice* device)
@@ -744,6 +753,11 @@ namespace RHI::Vulkan
             writer.BindSamplers(dstBindings, dstArrayelements, samplers);
         }
 
+        for (auto [dstBinding, dstArrayElement, accelerationStructure] : updateInfo.accelerationStructures)
+        {
+            writer.BindAccelerationStructures(dstBinding, dstArrayElement, {&accelerationStructure, 1});
+        }
+
         vkUpdateDescriptorSets(device->m_device, (uint32_t)writer.GetWrites().size(), writer.GetWrites().data(), 0, nullptr);
     }
 
@@ -765,9 +779,9 @@ namespace RHI::Vulkan
         };
 
         VulkanResult result = vkCreateSemaphore(device->m_device, &semaphoreCI, nullptr, &this->semaphore);
-        if (result.IsSuccess() && createInfo.name)
+        if (result.IsSuccess() && !getName().empty())
         {
-            device->SetDebugName(semaphore, createInfo.name);
+            device->SetDebugName(semaphore, getName().c_str());
         }
         return result;
     }
@@ -806,6 +820,8 @@ namespace RHI::Vulkan
             .pCode    = createInfo.code.data(),
         };
         auto result = vkCreateShaderModule(device->m_device, &shaderModuleCI, nullptr, &m_shaderModule);
+        if (result == VK_SUCCESS && !getName().empty())
+            device->SetDebugName(m_shaderModule, getName().c_str());
         return ConvertResult(result);
     }
 
@@ -852,9 +868,9 @@ namespace RHI::Vulkan
             .pPushConstantRanges    = pushConstantRanges.data(),
         };
         auto result = vkCreatePipelineLayout(device->m_device, &pipelineLayouCI, nullptr, &handle);
-        if (result == VK_SUCCESS && createInfo.name)
+        if (result == VK_SUCCESS && !getName().empty())
         {
-            device->SetDebugName(handle, createInfo.name);
+            device->SetDebugName(handle, getName().c_str());
         }
         return ConvertResult(result);
     }
@@ -1082,9 +1098,9 @@ namespace RHI::Vulkan
         VulkanResult result;
         result = vkCreateGraphicsPipelines(device->m_device, VK_NULL_HANDLE, 1, &graphicsPipelineCI, nullptr, &handle);
         TL_ASSERT(result, "vkCreateGraphicsPipelines failed with error: {}", result.AsString());
-        if (result && createInfo.name)
+        if (result && !getName().empty())
         {
-            device->SetDebugName(handle, createInfo.name);
+            device->SetDebugName(handle, getName().c_str());
         }
         return result;
     }
@@ -1117,6 +1133,8 @@ namespace RHI::Vulkan
         };
 
         auto result = vkCreateComputePipelines(device->m_device, VK_NULL_HANDLE, 1, &computePipelineCI, nullptr, &handle);
+        if (result == VK_SUCCESS && !getName().empty())
+            device->SetDebugName(handle, getName().c_str());
         return ConvertResult(result);
     }
 
@@ -1190,8 +1208,8 @@ namespace RHI::Vulkan
         VulkanResult result = vkCreateRayTracingPipelinesKHR(device->m_device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &pipelineCI, nullptr, &handle);
         if (result != VK_SUCCESS) return result;
 
-        if (createInfo.name)
-            device->SetDebugName(handle, createInfo.name);
+        if (!getName().empty())
+            device->SetDebugName(handle, getName().c_str());
 
         return ResultCode::Success;
     }
@@ -1244,6 +1262,8 @@ namespace RHI::Vulkan
 
         VulkanResult result;
         result = vkCreateQueryPool(device->m_device, &queryPoolCI, nullptr, &handle);
+        if (result && !getName().empty())
+            device->SetDebugName(handle, getName().c_str());
         return ConvertResult(result);
     }
 
@@ -1291,10 +1311,10 @@ namespace RHI::Vulkan
         if (result != VK_SUCCESS)
             return ConvertResult(result);
 
-        if (createInfo.name)
+        if (!getName().empty())
         {
-            device->SetDebugName(handle, createInfo.name);
-            vmaSetAllocationName(device->m_deviceAllocator, allocation, createInfo.name);
+            device->SetDebugName(handle, getName().c_str());
+            vmaSetAllocationName(device->m_deviceAllocator, allocation, getName().c_str());
         }
 
         if (bufferCI.usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)
@@ -1378,10 +1398,10 @@ namespace RHI::Vulkan
 
         vmaBindImageMemory(device->m_deviceAllocator, allocation, handle);
 
-        if (result == VK_SUCCESS && createInfo.name)
+        if (result == VK_SUCCESS && !getName().empty())
         {
-            device->SetDebugName(handle, createInfo.name);
-            vmaSetAllocationName(device->m_deviceAllocator, allocation, createInfo.name);
+            device->SetDebugName(handle, getName().c_str());
+            vmaSetAllocationName(device->m_deviceAllocator, allocation, getName().c_str());
         }
 
         VkImageViewCreateInfo imageViewCI{
@@ -1416,6 +1436,9 @@ namespace RHI::Vulkan
 
         result = vkCreateImageView(device->m_device, &imageViewCI, nullptr, &viewHandle);
         TL_ASSERT(result, "vkCreateImageView failed with error: {}", result.AsString());
+
+        if (result == VK_SUCCESS && !getName().empty())
+            device->SetDebugName(viewHandle, getName().c_str());
 
         this->size         = createInfo.size;
         this->format       = createInfo.format;
@@ -1617,8 +1640,11 @@ namespace RHI::Vulkan
         };
         address = vkGetAccelerationStructureDeviceAddressKHR(device->m_device, &accellStructAddrInfo);
 
-        if (createInfo.name)
-            device->SetDebugName(handle, createInfo.name);
+        if (!getName().empty())
+        {
+            device->SetDebugName(handle, getName().c_str());
+            device->SetDebugName(asBuffer, getName().c_str());
+        }
 
         return ResultCode::Success;
     }
@@ -1673,9 +1699,9 @@ namespace RHI::Vulkan
             .unnormalizedCoordinates = VK_FALSE,
         };
         auto result = vkCreateSampler(device->m_device, &samplerCI, nullptr, &handle);
-        if (result == VK_SUCCESS && createInfo.name)
+        if (result == VK_SUCCESS && !getName().empty())
         {
-            device->SetDebugName(handle, createInfo.name);
+            device->SetDebugName(handle, getName().c_str());
         }
         return ConvertResult(result);
     }
@@ -1690,14 +1716,16 @@ namespace RHI::Vulkan
     // ISwapchain
     ////////////////////////////////////////////////////////////////////////
 
-    ISwapchain::ISwapchain()  = default;
+    ISwapchain::ISwapchain(TL::StringView name)
+        : m_name(name)
+    {
+    }
+
     ISwapchain::~ISwapchain() = default;
 
     ResultCode ISwapchain::Init(IDevice* device, const SwapchainCreateInfo& createInfo)
     {
         m_device = device;
-        if (createInfo.name)
-            m_name = createInfo.name;
 
         VulkanResult result = CreateSurface(*m_device, createInfo, m_surface);
         if (!result)

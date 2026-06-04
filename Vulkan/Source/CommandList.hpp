@@ -15,12 +15,18 @@ namespace RHI::Vulkan
     class ICommandPool final : public RHI::CommandPool
     {
     public:
+        ICommandPool(TL::StringView name = {})
+            : m_name(name)
+        {
+        }
+
         ResultCode Init(IDevice* device, const CommandPoolCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
 
         void         Reset() override;
         CommandList* Allocate() override;
 
+        TL::String                m_name;
         TL::Arena                 m_arena;
         IDevice*                  m_device;
         VkCommandPool             m_commandPool;
@@ -36,7 +42,6 @@ namespace RHI::Vulkan
         // TODO: Should depend on the CommandPool not IDevice ...
         ResultCode Init(IDevice* device, CommandPool* pool, const CommandListCreateInfo& createInfo);
         void       Shutdown();
-        void       BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups);
 
         // Interface implementation
         void Begin() override;
@@ -59,8 +64,8 @@ namespace RHI::Vulkan
         void BindGraphicsPipeline(const GraphicsPipeline* pipelineState) override;
         void BindComputePipeline(const ComputePipeline* pipelineState) override;
         void BindRayTracingPipeline(const RayTracingPipeline* pipelineState) override;
-        void SetViewport(const Viewport& viewport) override;
-        void SetScissor(const Scissor& sicssor) override;
+        void SetViewport(float offsetX, float offsetY, float width, float height, float minDepth, float maxDepth) override;
+        void SetScissor(int32_t offsetX, int32_t offsetY, uint32_t width, uint32_t height) override;
         void BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> vertexBuffers) override;
         void BindIndexBuffer(const BufferBindingInfo& indexBuffer, IndexType indexType) override;
         void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t firstVertex = 0, uint32_t firstInstance = 0) override;

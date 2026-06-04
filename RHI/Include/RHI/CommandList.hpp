@@ -79,26 +79,6 @@ namespace RHI
         DepthStencilValue ds;
     };
 
-    // Pipeline dynamic states
-
-    struct Viewport
-    {
-        float offsetX  = 0.0f;
-        float offsetY  = 0.0f;
-        float width    = 1.0f;
-        float height   = 1.0f;
-        float minDepth = 0.0f;
-        float maxDepth = 1.0f;
-    };
-
-    struct Scissor
-    {
-        int32_t  offsetX = 0;
-        int32_t  offsetY = 0;
-        uint32_t width   = UINT32_MAX;
-        uint32_t height  = UINT32_MAX;
-    };
-
     // Copy descriptors
 
     struct ImageMemoryLayout
@@ -264,7 +244,7 @@ namespace RHI
 
     struct CommandPoolCreateInfo
     {
-        const char* name;
+        const char* name = nullptr;
         QueueType   queue;
     };
 
@@ -314,8 +294,8 @@ namespace RHI
         virtual void BindRayTracingPipeline(const RayTracingPipeline* pipelineState)                                          = 0;
 
         // Dynamic state
-        virtual void SetViewport(const Viewport& viewport) = 0;
-        virtual void SetScissor(const Scissor& sicssor)    = 0;
+        virtual void SetViewport(float offsetX, float offsetY, float width, float height, float minDepth, float maxDepth) = 0;
+        virtual void SetScissor(int32_t offsetX, int32_t offsetY, uint32_t width, uint32_t height)                        = 0;
 
         // Vertex input
         virtual void BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> vertexBuffers) = 0;

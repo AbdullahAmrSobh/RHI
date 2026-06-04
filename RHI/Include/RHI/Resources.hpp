@@ -5,6 +5,10 @@
 
 #include <TL/Flags.hpp>
 #include <TL/Span.hpp>
+
+#include <TL/Containers/String.hpp>
+#include <TL/Containers/StringView.hpp>
+
 #include <atomic>
 
 namespace RHI
@@ -13,6 +17,7 @@ namespace RHI
     static constexpr uint32_t BindlessArraySize = UINT32_MAX;
     static constexpr uint8_t  AllLayers         = UINT8_MAX;
     static constexpr uint8_t  AllMipLevels      = UINT8_MAX;
+    static constexpr uint32_t ShaderUnused      = UINT32_MAX;
 
     using DeviceMemoryPtr = void*;
     using BufferAddress   = uint64_t;
@@ -25,6 +30,20 @@ namespace RHI
 
     struct ResourceBase
     {
+        ResourceBase() = default;
+
+        ResourceBase(TL::StringView name)
+            : m_name(name)
+        {
+        }
+
+
+        // TL::StringView getName() const noexcept
+        const TL::String& getName() const noexcept
+        {
+            return m_name;
+        }
+
         void addRef() const noexcept
         {
             m_refCount.fetch_add(1, std::memory_order_relaxed);
@@ -42,12 +61,14 @@ namespace RHI
         }
 
     private:
+        TL::String                    m_name;
         mutable std::atomic<uint16_t> m_refCount{1};
     };
 
-#define RHI_DEFINE_HANDLE(X) \
-    struct X : ResourceBase  \
-    {                        \
+#define RHI_DEFINE_HANDLE(X)              \
+    struct X : ResourceBase               \
+    {                                     \
+        using ResourceBase::ResourceBase; \
     };
     RHI_DEFINE_HANDLE(Fence);
     RHI_DEFINE_HANDLE(BindGroupLayout);
@@ -686,7 +707,6 @@ namespace RHI
         PipelineDepthStencilStateDesc             depthStencilState    = {};
     };
 
-    constexpr uint32_t ShaderUnused = UINT32_MAX;
     struct RayTracingShaderGroupCreateInfo
     {
         RayTracingGroupType type               = RayTracingGroupType::General;

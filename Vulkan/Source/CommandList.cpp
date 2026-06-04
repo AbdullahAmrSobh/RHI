@@ -34,6 +34,16 @@ namespace RHI::Vulkan
         return {};
     }
 
+    inline static VkPipelineBindPoint convertBindPoint(BindPoint bp)
+    {
+        switch (bp)
+        {
+        case BindPoint::Graphics:   return VK_PIPELINE_BIND_POINT_GRAPHICS;
+        case BindPoint::Compute:    return VK_PIPELINE_BIND_POINT_COMPUTE;
+        case BindPoint::RayTracing: return VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR;
+        }
+    }
+
     struct BarrierStage
     {
         VkPipelineStageFlags2 stageMask        = VK_PIPELINE_STAGE_2_NONE;
@@ -98,6 +108,8 @@ namespace RHI::Vulkan
         };
 
         VulkanResult result = vkCreateCommandPool(device->m_device, &poolInfo, nullptr, &m_commandPool);
+        if (result && !m_name.empty())
+            device->SetDebugName(m_commandPool, m_name.c_str());
         return result;
     }
 
@@ -145,40 +157,6 @@ namespace RHI::Vulkan
     void ICommandList::Shutdown()
     {
         // m_device->m_commandsAllocator->ReleaseCommandBuffers(m_commandBuffer);
-    }
-
-    void ICommandList::BindShaderBindGroups(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, TL::Span<const BindGroupBindingInfo> bindGroups)
-    {
-        ZoneScoped;
-
-        if (bindGroups.empty())
-            return;
-
-        TL::Vector<VkDescriptorSet> descriptorSets{m_device->m_arena};
-        TL::Vector<uint32_t>        dynamicOffsets{m_device->m_arena};
-
-        for (const auto& bindingInfo : bindGroups)
-        {
-            auto bindGroup = (IBindGroup*)bindingInfo.bindGroup;
-            descriptorSets.push_back(bindGroup->descriptorSet);
-            for (uint32_t offset : bindingInfo.dynamicOffsets)
-            {
-                dynamicOffsets.push_back(offset);
-            }
-        }
-
-        VkBindDescriptorSetsInfo bindInfo{
-            .sType              = VK_STRUCTURE_TYPE_BIND_DESCRIPTOR_SETS_INFO,
-            .pNext              = nullptr,
-            .stageFlags         = VK_SHADER_STAGE_ALL,
-            .layout             = pipelineLayout,
-            .firstSet           = 0,
-            .descriptorSetCount = (uint32_t)descriptorSets.size(),
-            .pDescriptorSets    = descriptorSets.data(),
-            .dynamicOffsetCount = (uint32_t)dynamicOffsets.size(),
-            .pDynamicOffsets    = dynamicOffsets.data(),
-        };
-        vkCmdBindDescriptorSets2(m_commandBuffer, &bindInfo);
     }
 
     void ICommandList::Begin()
@@ -443,7 +421,6 @@ namespace RHI::Vulkan
         // No-Op
     }
 
-
     void ICommandList::BeginConditionalCommands(const BufferBindingInfo& conditionBuffer, bool inverted)
     {
         ZoneScoped;
@@ -547,9 +524,22 @@ namespace RHI::Vulkan
         ZoneScoped;
 
         IPipelineLayout*    pipelineLayout = (IPipelineLayout*)m_pipelineLayout;
-        VkPipelineBindPoint vkBindPoint    = bindPoint == BindPoint::Graphics ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE;
+        VkPipelineBindPoint vkBindPoint    = convertBindPoint(bindPoint);
 
-        BindShaderBindGroups(vkBindPoint, pipelineLayout->handle, bindGroups);
+        TL::Vector<VkDescriptorSet> descriptorSets{m_device->m_arena};
+        TL::Vector<uint32_t>        dynamicOffsets{m_device->m_arena};
+
+        for (const auto& bindingInfo : bindGroups)
+        {
+            auto bindGroup = (IBindGroup*)bindingInfo.bindGroup;
+            descriptorSets.push_back(bindGroup->descriptorSet);
+            for (uint32_t offset : bindingInfo.dynamicOffsets)
+            {
+                dynamicOffsets.push_back(offset);
+            }
+        }
+
+        vkCmdBindDescriptorSets(m_commandBuffer, vkBindPoint, pipelineLayout->handle, 0, (uint32_t)descriptorSets.size(), descriptorSets.data(), (uint32_t)dynamicOffsets.size(), dynamicOffsets.data());
     }
 
     void ICommandList::BindGraphicsPipeline(const GraphicsPipeline* pipelineState)
@@ -604,29 +594,29 @@ namespace RHI::Vulkan
         vkCmdBindPipeline(m_commandBuffer, m_pipelineBindPoint, pipeline->handle);
     }
 
-    void ICommandList::SetViewport(const Viewport& viewport)
+    void ICommandList::SetViewport(float offsetX, float offsetY, float width, float height, float minDepth, float maxDepth)
     {
         ZoneScoped;
         // Flip the viewport so Vulkan NDC is consitant with other APIs
         VkViewport vkViewport{
-            .x        = viewport.offsetX,
-            .y        = viewport.offsetY + viewport.height,
-            .width    = viewport.width,
-            .height   = -viewport.height,
-            .minDepth = viewport.minDepth,
-            .maxDepth = viewport.maxDepth,
+            .x        = offsetX,
+            .y        = offsetY + height,
+            .width    = width,
+            .height   = -height,
+            .minDepth = minDepth,
+            .maxDepth = maxDepth,
         };
         vkCmdSetViewport(m_commandBuffer, 0, 1, &vkViewport);
         m_hasViewportSet = true;
     }
 
-    void ICommandList::SetScissor(const Scissor& scissor)
+    void ICommandList::SetScissor(int32_t offsetX, int32_t offsetY, uint32_t width, uint32_t height)
     {
         ZoneScoped;
 
         VkRect2D vkScissor{
-            .offset = {scissor.offsetX, scissor.offsetY},
-            .extent = {scissor.width, scissor.height},
+            .offset = {offsetX, offsetY},
+            .extent = {width, height},
         };
         vkCmdSetScissor(m_commandBuffer, 0, 1, &vkScissor);
         m_hasScissorSet = true;

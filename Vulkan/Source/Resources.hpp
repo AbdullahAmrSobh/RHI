@@ -92,6 +92,11 @@ namespace RHI::Vulkan
 
     struct IFence : Fence
     {
+        IFence(TL::StringView name = {})
+            : Fence(name)
+        {
+        }
+
         VkSemaphore          semaphore;
         std::atomic_uint64_t value;
 
@@ -102,19 +107,29 @@ namespace RHI::Vulkan
 
     struct IBindGroupLayout : BindGroupLayout
     {
-        VkDescriptorSetLayout      handle;
+        IBindGroupLayout(TL::StringView name = {})
+            : BindGroupLayout(name)
+        {
+        }
+
+        VkDescriptorSetLayout      handle = VK_NULL_HANDLE;
         // TODO: Figure out why TL::Vector causes leaks here
         std::vector<ShaderBinding> shaderBindings;
-        bool                       hasBindless;
+        bool hasBindless = false;
 
         ResultCode Init(IDevice* device, const BindGroupLayoutCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
 
-        ShaderBinding GetBinding(uint32_t binding) { return shaderBindings[binding]; }
+        ShaderBinding GetBinding(uint32_t binding) const { return shaderBindings[binding]; }
     };
 
     struct IBindGroup : BindGroup
     {
+        IBindGroup(TL::StringView name = {})
+            : BindGroup(name)
+        {
+        }
+
         VkDescriptorSet   descriptorSet;
         IBindGroupLayout* bindGroupLayout;
 
@@ -126,6 +141,11 @@ namespace RHI::Vulkan
 
     struct IShaderModule : ShaderModule
     {
+        IShaderModule(TL::StringView name = {})
+            : ShaderModule(name)
+        {
+        }
+
         VkShaderModule m_shaderModule;
 
         ResultCode Init(IDevice* device, const ShaderModuleCreateInfo& createInfo);
@@ -134,6 +154,11 @@ namespace RHI::Vulkan
 
     struct IPipelineLayout : PipelineLayout
     {
+        IPipelineLayout(TL::StringView name = {})
+            : PipelineLayout(name)
+        {
+        }
+
         VkPipelineLayout   handle;
         IBindGroupLayout*  bindGroupLayouts[4];
         VkShaderStageFlags pushConstantStages = 0;
@@ -144,6 +169,11 @@ namespace RHI::Vulkan
 
     struct IGraphicsPipeline : GraphicsPipeline
     {
+        IGraphicsPipeline(TL::StringView name = {})
+            : GraphicsPipeline(name)
+        {
+        }
+
         VkPipeline       handle;
         IPipelineLayout* layout;
 
@@ -153,6 +183,11 @@ namespace RHI::Vulkan
 
     struct IComputePipeline : ComputePipeline
     {
+        IComputePipeline(TL::StringView name = {})
+            : ComputePipeline(name)
+        {
+        }
+
         VkPipeline       handle;
         IPipelineLayout* layout;
 
@@ -162,6 +197,11 @@ namespace RHI::Vulkan
 
     struct IRayTracingPipeline : RayTracingPipeline
     {
+        IRayTracingPipeline(TL::StringView name = {})
+            : RayTracingPipeline(name)
+        {
+        }
+
         VkPipeline       handle;
         IPipelineLayout* layout;
 
@@ -173,6 +213,11 @@ namespace RHI::Vulkan
 
     struct IQueryPool : QueryPool
     {
+        IQueryPool(TL::StringView name = {})
+            : QueryPool(name)
+        {
+        }
+
         VkQueryPool handle;
 
         ResultCode Init(IDevice* device, const QueryPoolCreateInfo& createInfo);
@@ -181,6 +226,11 @@ namespace RHI::Vulkan
 
     struct IBuffer : Buffer
     {
+        IBuffer(TL::StringView name = {})
+            : Buffer(name)
+        {
+        }
+
         VkBuffer        handle;
         VmaAllocation   allocation;
         VkDeviceAddress address;
@@ -194,6 +244,11 @@ namespace RHI::Vulkan
 
     struct IImage : Image
     {
+        IImage(TL::StringView name = {})
+            : Image(name)
+        {
+        }
+
         VkImage       handle;
         VkImageView   viewHandle;
         VmaAllocation allocation;
@@ -211,6 +266,11 @@ namespace RHI::Vulkan
 
     struct ISampler : Sampler
     {
+        ISampler(TL::StringView name = {})
+            : Sampler(name)
+        {
+        }
+
         VkSampler handle;
 
         ResultCode Init(IDevice* device, const SamplerCreateInfo& createInfo);
@@ -219,6 +279,11 @@ namespace RHI::Vulkan
 
     struct IAccelerationStructure : AccelerationStructure
     {
+        IAccelerationStructure(TL::StringView name = {})
+            : AccelerationStructure(name)
+        {
+        }
+
         VkAccelerationStructureKHR handle = VK_NULL_HANDLE;
 
         VkDeviceAddress address = 0;
@@ -241,6 +306,11 @@ namespace RHI::Vulkan
 
     struct IMicromap : Micromap
     {
+        IMicromap(TL::StringView name = {})
+            : Micromap(name)
+        {
+        }
+
         VkMicromapEXT handle;
         VmaAllocation allocation;
 
@@ -251,7 +321,7 @@ namespace RHI::Vulkan
     class ISwapchain final : public Swapchain
     {
     public:
-        ISwapchain();
+        ISwapchain(TL::StringView name = {});
         ~ISwapchain();
 
         ResultCode Init(IDevice* device, const SwapchainCreateInfo& createInfo);
@@ -274,20 +344,19 @@ namespace RHI::Vulkan
         VkSwapchainKHR m_swapchain = VK_NULL_HANDLE;
         VkSurfaceKHR   m_surface   = VK_NULL_HANDLE;
 
-        uint32_t    m_acquireSemaphoreIndex           = 0;
-        VkSemaphore m_acquireSemaphore[MaxImageCount] = {};
-        uint32_t    m_currentAcquireIndex             = 0;
-        IFence      m_acquireFences[MaxImageCount]    = {};
-        uint32_t    m_presentSemaphoreIndex           = 0;
-        VkSemaphore m_presentSemaphore[MaxImageCount] = {};
-
-        uint32_t               m_imageIndex                = {};
-        VkImage                m_images[MaxImageCount]     = {};
-        VkImageView            m_imageViews[MaxImageCount] = {};
-        TL::String             m_name                      = {};
-        SwapchainConfigureInfo m_configuration             = {};
-        uint32_t               m_imageCount                = 0;
-        IImage*                m_imageHandle               = nullptr;
+        uint32_t               m_acquireSemaphoreIndex           = 0;
+        VkSemaphore            m_acquireSemaphore[MaxImageCount] = {};
+        uint32_t               m_currentAcquireIndex             = 0;
+        IFence                 m_acquireFences[MaxImageCount]    = {};
+        uint32_t               m_presentSemaphoreIndex           = 0;
+        VkSemaphore            m_presentSemaphore[MaxImageCount] = {};
+        uint32_t               m_imageIndex                      = {};
+        VkImage                m_images[MaxImageCount]           = {};
+        VkImageView            m_imageViews[MaxImageCount]       = {};
+        TL::String             m_name                            = {};
+        SwapchainConfigureInfo m_configuration                   = {};
+        uint32_t               m_imageCount                      = 0;
+        IImage*                m_imageHandle                     = nullptr;
     };
 
     VkResult CreateSurface(IDevice& device, const SwapchainCreateInfo& createInfo, VkSurfaceKHR& outSurface);

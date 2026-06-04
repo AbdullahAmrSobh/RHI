@@ -899,14 +899,15 @@ namespace RHI::Vulkan
     }
 
     template<typename Resource, typename... Args>
-    inline Resource* createImpl(IDevice* device, Args... args)
+    inline Resource* createImpl(IDevice* device, const char* debugName, Args... args)
     {
-        Resource*  resource = TL ::construct<Resource>();
+        Resource*  resource = TL ::construct<Resource>(debugName ? TL::StringView(debugName) : TL::StringView{});
         ResultCode result   = resource->Init(device, args...);
         if (IsSuccess(result))
         {
             return resource;
         }
+        TL_UNREACHABLE();
         return nullptr;
     }
 
@@ -1006,7 +1007,7 @@ namespace RHI::Vulkan
 
     ShaderModule* IDevice::CreateShaderModule(const ShaderModuleCreateInfo& createInfo)
     {
-        return createImpl<IShaderModule>(this, createInfo);
+        return createImpl<IShaderModule>(this, createInfo.name, createInfo);
     }
 
     void IDevice::DestroyShaderModule(ShaderModule* resource)
@@ -1016,7 +1017,7 @@ namespace RHI::Vulkan
 
     BindGroupLayout* IDevice::CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)
     {
-        return createImpl<IBindGroupLayout>(this, createInfo);
+        return createImpl<IBindGroupLayout>(this, createInfo.name, createInfo);
     }
 
     void IDevice::DestroyBindGroupLayout(BindGroupLayout* resource)
@@ -1026,7 +1027,7 @@ namespace RHI::Vulkan
 
     BindGroup* IDevice::CreateBindGroup(const BindGroupCreateInfo& createInfo)
     {
-        return createImpl<IBindGroup>(this, createInfo);
+        return createImpl<IBindGroup>(this, createInfo.name, createInfo);
     }
 
     void IDevice::DestroyBindGroup(BindGroup* resource)
@@ -1043,7 +1044,7 @@ namespace RHI::Vulkan
 
     PipelineLayout* IDevice::CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)
     {
-        return createImpl<IPipelineLayout>(this, createInfo);
+        return createImpl<IPipelineLayout>(this, createInfo.name, createInfo);
     }
 
     void IDevice::DestroyPipelineLayout(PipelineLayout* resource)
@@ -1053,7 +1054,7 @@ namespace RHI::Vulkan
 
     GraphicsPipeline* IDevice::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)
     {
-        return createImpl<IGraphicsPipeline>(this, createInfo);
+        return createImpl<IGraphicsPipeline>(this, createInfo.name, createInfo);
     }
 
     void IDevice::DestroyGraphicsPipeline(GraphicsPipeline* resource)
@@ -1063,7 +1064,7 @@ namespace RHI::Vulkan
 
     ComputePipeline* IDevice::CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
     {
-        return createImpl<IComputePipeline>(this, createInfo);
+        return createImpl<IComputePipeline>(this, createInfo.name, createInfo);
     }
 
     void IDevice::DestroyComputePipeline(ComputePipeline* resource)
@@ -1073,7 +1074,7 @@ namespace RHI::Vulkan
 
     RayTracingPipeline* IDevice::CreateRayTracingPipeline(const RayTracingPipelineCreateInfo& createInfo)
     {
-        return createImpl<IRayTracingPipeline>(this, createInfo);
+        return createImpl<IRayTracingPipeline>(this, createInfo.name, createInfo);
     }
 
     void IDevice::DestroyRayTracingPipeline(RayTracingPipeline* resource)
@@ -1088,7 +1089,7 @@ namespace RHI::Vulkan
 
     Buffer* IDevice::CreateBuffer(const BufferCreateInfo& createInfo)
     {
-        return createImpl<IBuffer>(this, createInfo);
+        return createImpl<IBuffer>(this, createInfo.name, createInfo);
     }
 
     void IDevice::DestroyBuffer(Buffer* resource)
@@ -1117,12 +1118,12 @@ namespace RHI::Vulkan
 
     Image* IDevice::CreateImage(const ImageCreateInfo& createInfo)
     {
-        return createImpl<IImage>(this, createInfo);
+        return createImpl<IImage>(this, createInfo.name, createInfo);
     }
 
     Image* IDevice::CreateImageView(const ImageViewCreateInfo& createInfo)
     {
-        return createImpl<IImage>(this, createInfo);
+        return createImpl<IImage>(this, createInfo.name, createInfo);
     }
 
     void IDevice::DestroyImage(Image* resource)
@@ -1132,7 +1133,7 @@ namespace RHI::Vulkan
 
     Sampler* IDevice::CreateSampler(const SamplerCreateInfo& createInfo)
     {
-        return createImpl<ISampler>(this, createInfo);
+        return createImpl<ISampler>(this, createInfo.name, createInfo);
     }
 
     void IDevice::DestroySampler(Sampler* resource)
@@ -1142,7 +1143,7 @@ namespace RHI::Vulkan
 
     AccelerationStructure* IDevice::CreateAccelerationStructure(const AccelerationStructureCreateInfo& createInfo)
     {
-        return createImpl<IAccelerationStructure>(this, createInfo);
+        return createImpl<IAccelerationStructure>(this, createInfo.name, createInfo);
     }
 
     void IDevice::DestroyAccelerationStructure(AccelerationStructure* handle)
@@ -1162,7 +1163,7 @@ namespace RHI::Vulkan
 
     Micromap* IDevice::CreateMicromap(const MicromapCreateInfo& createInfo)
     {
-        return createImpl<IMicromap>(this, createInfo);
+        return createImpl<IMicromap>(this, createInfo.name, createInfo);
     }
 
     void IDevice::DestroyMicromap(Micromap* handle)
@@ -1172,7 +1173,7 @@ namespace RHI::Vulkan
 
     CommandPool* IDevice::CreateCommandPool(const CommandPoolCreateInfo& createInfo)
     {
-        return createImpl<ICommandPool>(this, createInfo);
+        return createImpl<ICommandPool>(this, createInfo.name, createInfo);
     }
 
     void IDevice::DestroyCommandPool(CommandPool* resource)
@@ -1182,7 +1183,7 @@ namespace RHI::Vulkan
 
     Fence* IDevice::CreateFence(const FenceCreateInfo& createInfo)
     {
-        return createImpl<IFence>(this, createInfo);
+        return createImpl<IFence>(this, createInfo.name, createInfo);
     }
 
     void IDevice::DestroyFence(Fence* resource)
@@ -1201,7 +1202,7 @@ namespace RHI::Vulkan
 
     QueryPool* IDevice::CreateQueryPool(const QueryPoolCreateInfo& createInfo)
     {
-        return createImpl<IQueryPool>(this, createInfo);
+        return createImpl<IQueryPool>(this, createInfo.name, createInfo);
     }
 
     void IDevice::DestroyQueryPool(QueryPool* resource)
@@ -1211,7 +1212,7 @@ namespace RHI::Vulkan
 
     Swapchain* IDevice::CreateSwapchain(const SwapchainCreateInfo& createInfo)
     {
-        return createImpl<ISwapchain>(this, createInfo);
+        return createImpl<ISwapchain>(this, createInfo.name, createInfo);
     }
 
     void IDevice::DestroySwapchain(Swapchain* resource)
