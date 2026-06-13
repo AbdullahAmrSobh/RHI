@@ -1,6 +1,6 @@
 #pragma once
 
-#include <RHI/RHI.hpp>
+#include <RHI/RHI.h>
 
 #include <TL/Containers/Vector.hpp>
 

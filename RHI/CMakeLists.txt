@@ -3,7 +3,7 @@ tl_add_target(
     NAMESPACE RHI
     STATIC
     HEADERS
-        ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RHI.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RHI.h
         ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Reflect.hpp
     SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/Source/RHI.cpp

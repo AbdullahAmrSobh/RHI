@@ -634,6 +634,7 @@ namespace RHI
     RHI_DEFINE_HANDLE(BindGroup);
     RHI_DEFINE_HANDLE(Buffer);
     RHI_DEFINE_HANDLE(Image);
+    RHI_DEFINE_HANDLE(ImageView);
     RHI_DEFINE_HANDLE(Sampler);
     RHI_DEFINE_HANDLE(ShaderModule);
     RHI_DEFINE_HANDLE(PipelineLayout);
@@ -862,6 +863,7 @@ namespace RHI
 
         bool                         operator==(const ImageSubresourceRange& other) const = default;
 
+        // TODO: remove and update defaults to use AllMips/AllLayers
         static ImageSubresourceRange All() { return {ImageAspect::All, 0, AllMipLevels, 0, AllLayers}; }
     };
 
@@ -963,24 +965,6 @@ namespace RHI
     {
         const char* name = nullptr;
         // TODO: micromap build inputs
-    };
-
-    struct RayTracingShaderGroupCreateInfo
-    {
-        RayTracingGroupType type               = RayTracingGroupType::General;
-        uint32_t            generalShader      = ShaderUnused;
-        uint32_t            closestHitShader   = ShaderUnused;
-        uint32_t            anyHitShader       = ShaderUnused;
-        uint32_t            intersectionShader = ShaderUnused;
-    };
-
-    struct RayTracingPipelineCreateInfo
-    {
-        const char*                                     name              = nullptr;
-        TL::Span<const PipelineShaderStage>             shaderStages      = {};
-        PipelineLayout*                                 layout            = nullptr;
-        TL::Span<const RayTracingShaderGroupCreateInfo> shaderGroups      = {};
-        uint32_t                                        maxRecursionDepth = 0;
     };
 
     struct MicromapBuildInfo
@@ -1107,6 +1091,24 @@ namespace RHI
         const char*         name          = nullptr;
         PipelineShaderStage computeShader = {};
         PipelineLayout*     layout        = nullptr;
+    };
+
+    struct RayTracingShaderGroupCreateInfo
+    {
+        RayTracingGroupType type               = RayTracingGroupType::General;
+        uint32_t            generalShader      = ShaderUnused;
+        uint32_t            closestHitShader   = ShaderUnused;
+        uint32_t            anyHitShader       = ShaderUnused;
+        uint32_t            intersectionShader = ShaderUnused;
+    };
+
+    struct RayTracingPipelineCreateInfo
+    {
+        const char*                                     name              = nullptr;
+        TL::Span<const PipelineShaderStage>             shaderStages      = {};
+        PipelineLayout*                                 layout            = nullptr;
+        TL::Span<const RayTracingShaderGroupCreateInfo> shaderGroups      = {};
+        uint32_t                                        maxRecursionDepth = 0;
     };
 
     // Synchronization
@@ -1319,6 +1321,7 @@ namespace RHI
         TL::Flags<ImageUsage>           usages;
         TL::Flags<SwapchainPresentMode> presentModes;
         TL::Flags<SwapchainAlphaMode>   alphaModes;
+        // TODO: move out (no allocations in the interface) or make it span to const Format that is owned by the swapchain?
         TL::Vector<Format>              formats;
     };
 

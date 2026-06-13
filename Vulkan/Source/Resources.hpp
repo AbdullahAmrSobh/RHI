@@ -6,7 +6,7 @@
     #error "Current platfrom is not supported yet"
 #endif
 
-#include <RHI/RHI.hpp>
+#include <RHI/RHI.h>
 
 #include <TL/Context.hpp>
 #include <TL/Stacktrace.hpp>

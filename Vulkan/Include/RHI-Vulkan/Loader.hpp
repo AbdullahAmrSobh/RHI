@@ -1,5 +1,5 @@
 #pragma once
-#include <RHI/RHI.hpp>
+#include <RHI/RHI.h>
 
 #include <TL/Ptr.hpp>
 
