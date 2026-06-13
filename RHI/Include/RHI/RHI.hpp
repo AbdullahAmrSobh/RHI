@@ -647,6 +647,13 @@ namespace RHI
 
     // Device
 
+    struct DeviceFeatures
+    {
+        bool hasRaytracing;
+        bool hasMeshShaders;
+        bool hasPushBindGroups;
+    };
+
     struct DeviceLimits
     {
         uint32_t minUniformBufferOffsetAlignment;
@@ -1345,6 +1352,8 @@ namespace RHI
 
         BackendType                            GetBackend() const { return m_backend; }
 
+        DeviceFeatures                         GetFeatures() const { return m_features; }
+
         DeviceLimits                           GetLimits() const { return m_limits; }
 
         virtual uint64_t                       GarbageCollect(uint64_t graphicsTimeline)               = 0;
@@ -1416,8 +1425,8 @@ namespace RHI
         virtual void                           DestroyQueryPool(QueryPool* handle)                    = 0;
 
         // Swapchain
-        virtual Swapchain*                     CreateSwapchain(const SwapchainCreateInfo& createInfo)                    = 0;
-        virtual void                           DestroySwapchain(Swapchain* swapchain)                                    = 0;
+        virtual Swapchain*                     CreateSwapchain(const SwapchainCreateInfo& createInfo)                             = 0;
+        virtual void                           DestroySwapchain(Swapchain* swapchain)                                             = 0;
         virtual uint32_t                       GetSwapchainImagesCount(Swapchain* swapchain)                                      = 0;
         virtual SwapchainAcquireResult         AcquireSwapchainImage(Swapchain* swapchain)                                        = 0;
         virtual SurfaceCapabilities            GetSwapchainSurfaceCapabilities(Swapchain* swapchain)                              = 0;
@@ -1425,8 +1434,9 @@ namespace RHI
         virtual ResultCode                     ConfigureSwapchain(Swapchain* swapchain, const SwapchainConfigureInfo& configInfo) = 0;
 
     protected:
-        BackendType  m_backend;
-        DeviceLimits m_limits;
+        BackendType    m_backend;
+        DeviceLimits   m_limits;
+        DeviceFeatures m_features;
     };
 
     class RHI_EXPORT CommandPool
@@ -1442,7 +1452,7 @@ namespace RHI
         CommandList()          = default;
         virtual ~CommandList() = default;
 
-        // Lifecycle
+        // state
         virtual void Begin() = 0;
         virtual void End()   = 0;
 
