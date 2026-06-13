@@ -3,7 +3,6 @@
 #include "Device.hpp"
 #include "Resources.hpp"
 
-#include <RHI/Format.hpp>
 #include <TL/Containers/Optional.hpp>
 
 #include <algorithm>

@@ -12,6 +12,7 @@
 #include <TL/Log.hpp>
 #include <TL/Containers/Optional.hpp>
 #include <TL/Allocator/Allocator.hpp>
+#include <TL/Containers/Map.hpp>
 
 #include <algorithm>
 #include <format>
@@ -258,7 +259,7 @@ namespace RHI::Vulkan
         for (auto _swapchain : submitInfo.presentSwapchains)
         {
             ISwapchain* swapchain = (ISwapchain*)_swapchain;
-            swapchain->AcquireNextImage();
+            swapchain->AcquireNextImage(m_device);
         }
     }
 
@@ -841,7 +842,7 @@ namespace RHI::Vulkan
         m_limits.rayTracingShaderGroupHandleSize                = rayTracingPipelineProperties.shaderGroupHandleSize;
         m_limits.rayTracingShaderGroupHandleAlignment           = rayTracingPipelineProperties.shaderGroupHandleAlignment;
         m_limits.rayTracingShaderGroupBaseAlignment             = rayTracingPipelineProperties.shaderGroupBaseAlignment;
-        result = m_queue[(uint32_t)QueueType::Graphics].Init(this, "Graphics", graphicsQueueFamilyIndex, 0);
+        result                                                  = m_queue[(uint32_t)QueueType::Graphics].Init(this, "Graphics", graphicsQueueFamilyIndex, 0);
         VkResultTry(result);
 
         if (computeQueueFamilyIndex)
@@ -1218,6 +1219,36 @@ namespace RHI::Vulkan
     void IDevice::DestroySwapchain(Swapchain* resource)
     {
         destroyImpl<ISwapchain>(this, (ISwapchain*)resource);
+    }
+
+    uint32_t IDevice::GetSwapchainImagesCount(Swapchain* _swapchain)
+    {
+        auto swapchain = (ISwapchain*)_swapchain;
+        return swapchain->GetImagesCount();
+    }
+
+    SwapchainAcquireResult IDevice::AcquireSwapchainImage(Swapchain* _swapchain)
+    {
+        auto swapchain = (ISwapchain*)_swapchain;
+        return swapchain->AcquireSwapchainImage();
+    }
+
+    SurfaceCapabilities IDevice::GetSwapchainSurfaceCapabilities(Swapchain* _swapchain)
+    {
+        auto swapchain = (ISwapchain*)_swapchain;
+        return swapchain->GetSurfaceCapabilities(this);
+    }
+
+    ResultCode IDevice::ResizeSwapchain(Swapchain* _swapchain, const ImageSize2D& size)
+    {
+        auto swapchain = (ISwapchain*)_swapchain;
+        return swapchain->ResizeSwapchain(this, size);
+    }
+
+    ResultCode IDevice::ConfigureSwapchain(Swapchain* _swapchain, const SwapchainConfigureInfo& configInfo)
+    {
+        auto swapchain = (ISwapchain*)_swapchain;
+        return swapchain->ConfigureSwapchain(this, configInfo);
     }
 
     void DeleteQueue::shutdown(IDevice* device)

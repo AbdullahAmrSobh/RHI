@@ -1,15 +1,17 @@
 #pragma once
 
-#include <RHI/Device.hpp>
+#include <RHI/RHI.hpp>
+
 #include <RHI-Vulkan/Loader.hpp>
 
 #include <TL/Ptr.hpp>
 #include <TL/Stacktrace.hpp>
 #include <TL/Containers/Vector.hpp>
+#include <TL/Containers/Map.hpp>
 #include <TL/Utils.hpp>
 #include <TL/Fmt.hpp>
 
-#define VK_USE_PLATFORM_WIN32_KHR
+// #define VK_USE_PLATFORM_WIN32_KHR
 #include <volk.h>
 #include <vk_mem_alloc.h>
 
@@ -68,50 +70,55 @@ namespace RHI::Vulkan
 
         void WaitIdle();
 
-        uint64_t               GarbageCollect(uint64_t graphicsTimeline) override;
-        uint64_t               GetNativeHandle(NativeHandleType type, uint64_t handle) override;
-        Queue*                 GetQueue(QueueType queueType) override;
-        ShaderModule*          CreateShaderModule(const ShaderModuleCreateInfo& createInfo) override;
-        void                   DestroyShaderModule(ShaderModule* shaderModule) override;
-        BindGroupLayout*       CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) override;
-        void                   DestroyBindGroupLayout(BindGroupLayout* handle) override;
-        BindGroup*             CreateBindGroup(const BindGroupCreateInfo& createInfo) override;
-        void                   DestroyBindGroup(BindGroup* handle) override;
-        void                   UpdateBindGroup(BindGroup* handle, const BindGroupUpdateInfo& updateInfo) override;
-        PipelineLayout*        CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo) override;
-        void                   DestroyPipelineLayout(PipelineLayout* handle) override;
-        GraphicsPipeline*      CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) override;
-        void                   DestroyGraphicsPipeline(GraphicsPipeline* handle) override;
-        ComputePipeline*       CreateComputePipeline(const ComputePipelineCreateInfo& createInfo) override;
-        void                   DestroyComputePipeline(ComputePipeline* handle) override;
-        RayTracingPipeline*    CreateRayTracingPipeline(const RayTracingPipelineCreateInfo& createInfo) override;
-        void                   DestroyRayTracingPipeline(RayTracingPipeline* handle) override;
-        void                   GetShaderBindingTableEntry(RayTracingPipeline* handle, uint32_t group, size_t size, void* dstHandle) override;
-        Buffer*                CreateBuffer(const BufferCreateInfo& createInfo) override;
-        void                   DestroyBuffer(Buffer* handle) override;
-        uint64_t               GetBufferDeviceAddress(Buffer* buffer) override;
-        DeviceMemoryPtr        MapBuffer(Buffer* buffer, uint64_t offset, uint64_t sizeBytes) override;
-        void                   UnmapBuffer(Buffer* buffer) override;
-        Image*                 CreateImage(const ImageCreateInfo& createInfo) override;
-        Image*                 CreateImageView(const ImageViewCreateInfo& createInfo) override;
-        void                   DestroyImage(Image* handle) override;
-        Sampler*               CreateSampler(const SamplerCreateInfo& createInfo) override;
-        void                   DestroySampler(Sampler* handle) override;
-        AccelerationStructure* CreateAccelerationStructure(const AccelerationStructureCreateInfo& createInfo) override;
-        void                   DestroyAccelerationStructure(AccelerationStructure* handle) override;
-        uint64_t               GetAccelerationStructureDeviceAddress(AccelerationStructure* handle) override;
+        uint64_t                       GarbageCollect(uint64_t graphicsTimeline) override;
+        uint64_t                       GetNativeHandle(NativeHandleType type, uint64_t handle) override;
+        Queue*                         GetQueue(QueueType queueType) override;
+        ShaderModule*                  CreateShaderModule(const ShaderModuleCreateInfo& createInfo) override;
+        void                           DestroyShaderModule(ShaderModule* shaderModule) override;
+        BindGroupLayout*               CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) override;
+        void                           DestroyBindGroupLayout(BindGroupLayout* handle) override;
+        BindGroup*                     CreateBindGroup(const BindGroupCreateInfo& createInfo) override;
+        void                           DestroyBindGroup(BindGroup* handle) override;
+        void                           UpdateBindGroup(BindGroup* handle, const BindGroupUpdateInfo& updateInfo) override;
+        PipelineLayout*                CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo) override;
+        void                           DestroyPipelineLayout(PipelineLayout* handle) override;
+        GraphicsPipeline*              CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo) override;
+        void                           DestroyGraphicsPipeline(GraphicsPipeline* handle) override;
+        ComputePipeline*               CreateComputePipeline(const ComputePipelineCreateInfo& createInfo) override;
+        void                           DestroyComputePipeline(ComputePipeline* handle) override;
+        RayTracingPipeline*            CreateRayTracingPipeline(const RayTracingPipelineCreateInfo& createInfo) override;
+        void                           DestroyRayTracingPipeline(RayTracingPipeline* handle) override;
+        void                           GetShaderBindingTableEntry(RayTracingPipeline* handle, uint32_t group, size_t size, void* dstHandle) override;
+        Buffer*                        CreateBuffer(const BufferCreateInfo& createInfo) override;
+        void                           DestroyBuffer(Buffer* handle) override;
+        uint64_t                       GetBufferDeviceAddress(Buffer* buffer) override;
+        DeviceMemoryPtr                MapBuffer(Buffer* buffer, uint64_t offset, uint64_t sizeBytes) override;
+        void                           UnmapBuffer(Buffer* buffer) override;
+        Image*                         CreateImage(const ImageCreateInfo& createInfo) override;
+        Image*                         CreateImageView(const ImageViewCreateInfo& createInfo) override;
+        void                           DestroyImage(Image* handle) override;
+        Sampler*                       CreateSampler(const SamplerCreateInfo& createInfo) override;
+        void                           DestroySampler(Sampler* handle) override;
+        AccelerationStructure*         CreateAccelerationStructure(const AccelerationStructureCreateInfo& createInfo) override;
+        void                           DestroyAccelerationStructure(AccelerationStructure* handle) override;
+        uint64_t                       GetAccelerationStructureDeviceAddress(AccelerationStructure* handle) override;
         AccelerationStructureSizesInfo GetAccelerationStructureSizesInfo(AccelerationStructure* handle) override;
-        Micromap*              CreateMicromap(const MicromapCreateInfo& createInfo) override;
-        void                   DestroyMicromap(Micromap* handle) override;
-        CommandPool*           CreateCommandPool(const CommandPoolCreateInfo& createInfo) override;
-        void                   DestroyCommandPool(CommandPool* handle) override;
-        Fence*                 CreateFence(const FenceCreateInfo& createInfo) override;
-        void                   DestroyFence(Fence* handle) override;
-        uint64_t               GetFenceValue(Fence* handle) override;
-        QueryPool*             CreateQueryPool(const QueryPoolCreateInfo& createInfo) override;
-        void                   DestroyQueryPool(QueryPool* handle) override;
-        Swapchain*             CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
-        void                   DestroySwapchain(Swapchain* swapchain) override;
+        Micromap*                      CreateMicromap(const MicromapCreateInfo& createInfo) override;
+        void                           DestroyMicromap(Micromap* handle) override;
+        CommandPool*                   CreateCommandPool(const CommandPoolCreateInfo& createInfo) override;
+        void                           DestroyCommandPool(CommandPool* handle) override;
+        Fence*                         CreateFence(const FenceCreateInfo& createInfo) override;
+        void                           DestroyFence(Fence* handle) override;
+        uint64_t                       GetFenceValue(Fence* handle) override;
+        QueryPool*                     CreateQueryPool(const QueryPoolCreateInfo& createInfo) override;
+        void                           DestroyQueryPool(QueryPool* handle) override;
+        Swapchain*                     CreateSwapchain(const SwapchainCreateInfo& createInfo) override;
+        void                           DestroySwapchain(Swapchain* swapchain) override;
+        uint32_t                       GetSwapchainImagesCount(Swapchain* swapchain) override;
+        SwapchainAcquireResult         AcquireSwapchainImage(Swapchain* swapchain) override;
+        SurfaceCapabilities            GetSwapchainSurfaceCapabilities(Swapchain* swapchain) override;
+        ResultCode                     ResizeSwapchain(Swapchain* swapchain, const ImageSize2D& size) override;
+        ResultCode                     ConfigureSwapchain(Swapchain* swapchain, const SwapchainConfigureInfo& configInfo) override;
 
     public:
         // Vulkan instance and core objects

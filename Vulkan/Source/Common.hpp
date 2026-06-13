@@ -158,14 +158,14 @@ namespace RHI::Vulkan
             return result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR;
         }
 
-        operator ResultCode() const
-        {
-            return ConvertResult(result);
-        }
-
         operator VkResult() const
         {
             return result;
+        }
+
+        operator ResultCode() const
+        {
+            return ConvertResult(result);
         }
 
         operator bool() const

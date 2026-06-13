@@ -1,5 +1,5 @@
 #pragma once
-#include <RHI/Device.hpp>
+#include <RHI/RHI.hpp>
 
 #include <TL/Ptr.hpp>
 

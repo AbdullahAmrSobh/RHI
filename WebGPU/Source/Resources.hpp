@@ -173,10 +173,10 @@ namespace RHI::WebGPU
 
         // Interface
         uint32_t               GetImagesCount() const override;
-        SwapchainAcquireResult AcquireImage() override;
+        SwapchainAcquireResult AcquireSwapchainImage() override;
         SurfaceCapabilities    GetSurfaceCapabilities() const override;
-        ResultCode             Resize(const ImageSize2D& size) override;
-        ResultCode             Configure(const SwapchainConfigureInfo& configInfo) override;
+        ResultCode             ResizeSwapchain(const ImageSize2D& size) override;
+        ResultCode             ConfigureSwapchain(const SwapchainConfigureInfo& configInfo) override;
 
         ResultCode Present();
 

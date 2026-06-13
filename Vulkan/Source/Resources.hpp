@@ -6,10 +6,7 @@
     #error "Current platfrom is not supported yet"
 #endif
 
-#include <RHI/Device.hpp>
-#include <RHI/Resources.hpp>
-#include <RHI/Result.hpp>
-#include <RHI/Swapchain.hpp>
+#include <RHI/RHI.hpp>
 
 #include <TL/Context.hpp>
 #include <TL/Stacktrace.hpp>
@@ -115,7 +112,7 @@ namespace RHI::Vulkan
         VkDescriptorSetLayout      handle = VK_NULL_HANDLE;
         // TODO: Figure out why TL::Vector causes leaks here
         std::vector<ShaderBinding> shaderBindings;
-        bool hasBindless = false;
+        bool                       hasBindless = false;
 
         ResultCode Init(IDevice* device, const BindGroupLayoutCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
@@ -318,29 +315,27 @@ namespace RHI::Vulkan
         void       Shutdown(IDevice* device);
     };
 
-    class ISwapchain final : public Swapchain
+    struct ISwapchain : Swapchain
     {
-    public:
-        ISwapchain(TL::StringView name = {});
-        ~ISwapchain();
+        ISwapchain(TL::StringView name = {})
+            : Swapchain(name)
+        {
+        }
 
         ResultCode Init(IDevice* device, const SwapchainCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
 
         // Interface
-        uint32_t               GetImagesCount() const override;
-        SwapchainAcquireResult AcquireImage() override;
-        SurfaceCapabilities    GetSurfaceCapabilities() const override;
-        ResultCode             Resize(const ImageSize2D& size) override;
-        ResultCode             Configure(const SwapchainConfigureInfo& configInfo) override;
-
-        VkResult AcquireNextImage();
-
-        VkResult Present(TL::Span<Fence* const> fences);
+        uint32_t               GetImagesCount() const;
+        SwapchainAcquireResult AcquireSwapchainImage();
+        SurfaceCapabilities    GetSurfaceCapabilities(IDevice* device) const;
+        ResultCode             ResizeSwapchain(IDevice* device, const ImageSize2D& size);
+        ResultCode             ConfigureSwapchain(IDevice* device, const SwapchainConfigureInfo& configInfo);
+        VkResult               AcquireNextImage(IDevice* device);
+        VkResult               Present(IDevice* device, TL::Span<Fence* const> fences);
 
         constexpr static auto MaxImageCount = 4;
 
-        IDevice*       m_device    = nullptr;
         VkSwapchainKHR m_swapchain = VK_NULL_HANDLE;
         VkSurfaceKHR   m_surface   = VK_NULL_HANDLE;
 

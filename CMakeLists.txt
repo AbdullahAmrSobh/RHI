@@ -146,5 +146,5 @@ if(RHI_BACKEND_VULKAN)
 endif()
 
 if(RHI_BACKEND_WEBGPU)
-    add_subdirectory(WebGPU)
+    # add_subdirectory(WebGPU)
 endif()

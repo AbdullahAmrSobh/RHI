@@ -1,6 +1,4 @@
-#include "RHI/Format.hpp"
-
-#include "RHI/Resources.hpp"
+#include "RHI/RHI.hpp"
 
 #include <TL/Assert.hpp>
 

@@ -747,7 +747,7 @@ namespace RHI::WebGPU
         return 0;
     }
 
-    SwapchainAcquireResult ISwapchain::AcquireImage()
+    SwapchainAcquireResult ISwapchain::AcquireSwapchainImage()
     {
         return {};
     }
@@ -757,13 +757,13 @@ namespace RHI::WebGPU
         return {};
     }
 
-    ResultCode ISwapchain::Resize(const ImageSize2D& size)
+    ResultCode ISwapchain::ResizeSwapchain(const ImageSize2D& size)
     {
         (void)size;
         return ResultCode::Success;
     }
 
-    ResultCode ISwapchain::Configure(const SwapchainConfigureInfo& configInfo)
+    ResultCode ISwapchain::ConfigureSwapchain(const SwapchainConfigureInfo& configInfo)
     {
         (void)configInfo;
         return ResultCode::Success;

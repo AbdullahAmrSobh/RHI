@@ -1716,18 +1716,9 @@ namespace RHI::Vulkan
     // ISwapchain
     ////////////////////////////////////////////////////////////////////////
 
-    ISwapchain::ISwapchain(TL::StringView name)
-        : m_name(name)
-    {
-    }
-
-    ISwapchain::~ISwapchain() = default;
-
     ResultCode ISwapchain::Init(IDevice* device, const SwapchainCreateInfo& createInfo)
     {
-        m_device = device;
-
-        VulkanResult result = CreateSurface(*m_device, createInfo, m_surface);
+        VulkanResult result = CreateSurface(*device, createInfo, m_surface);
         if (!result)
         {
             Shutdown(device);
@@ -1739,14 +1730,14 @@ namespace RHI::Vulkan
         for (uint32_t i = 0; i < MaxImageCount; ++i)
         {
             VkSemaphoreCreateInfo semaphoreCI{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
-            result = vkCreateSemaphore(m_device->m_device, &semaphoreCI, nullptr, &m_acquireSemaphore[i]);
+            result = vkCreateSemaphore(device->m_device, &semaphoreCI, nullptr, &m_acquireSemaphore[i]);
             TL_ASSERT(result, "Failed to create swapchain semaphore");
-            result = vkCreateSemaphore(m_device->m_device, &semaphoreCI, nullptr, &m_presentSemaphore[i]);
+            result = vkCreateSemaphore(device->m_device, &semaphoreCI, nullptr, &m_presentSemaphore[i]);
             TL_ASSERT(result, "Failed to create swapchain semaphore");
             if (!m_name.empty())
             {
-                m_device->SetDebugName(m_acquireSemaphore[i], "swapchain: {} - acquire[{}]", m_name, i);
-                m_device->SetDebugName(m_presentSemaphore[i], "swapchain: {} - present[{}]", m_name, i);
+                device->SetDebugName(m_acquireSemaphore[i], "swapchain: {} - acquire[{}]", m_name, i);
+                device->SetDebugName(m_presentSemaphore[i], "swapchain: {} - present[{}]", m_name, i);
             }
             // Wrap the binary acquire semaphore as a Fence handle so the render graph can
             // reference it without knowing Vulkan internals.
@@ -1763,12 +1754,12 @@ namespace RHI::Vulkan
         {
             if (m_acquireSemaphore[i])
             {
-                m_device->m_destroyQueue->Push(frame, m_acquireSemaphore[i]);
+                device->m_destroyQueue->Push(frame, m_acquireSemaphore[i]);
                 m_acquireSemaphore[i] = VK_NULL_HANDLE;
             }
             if (m_presentSemaphore[i])
             {
-                m_device->m_destroyQueue->Push(frame, m_presentSemaphore[i]);
+                device->m_destroyQueue->Push(frame, m_presentSemaphore[i]);
                 m_presentSemaphore[i] = VK_NULL_HANDLE;
             }
         }
@@ -1777,20 +1768,20 @@ namespace RHI::Vulkan
         {
             if (m_imageViews[i])
             {
-                m_device->m_destroyQueue->Push(frame, m_imageViews[i]);
+                device->m_destroyQueue->Push(frame, m_imageViews[i]);
                 m_imageViews[i] = VK_NULL_HANDLE;
             }
         }
 
         if (m_swapchain)
         {
-            m_device->m_destroyQueue->Push(frame, m_swapchain);
+            device->m_destroyQueue->Push(frame, m_swapchain);
             m_swapchain = VK_NULL_HANDLE;
         }
 
         if (m_surface)
         {
-            m_device->m_destroyQueue->Push(frame, m_surface);
+            device->m_destroyQueue->Push(frame, m_surface);
             m_surface = VK_NULL_HANDLE;
         }
 
@@ -1807,14 +1798,14 @@ namespace RHI::Vulkan
         return m_configuration.imageCount;
     }
 
-    SurfaceCapabilities ISwapchain::GetSurfaceCapabilities() const
+    SurfaceCapabilities ISwapchain::GetSurfaceCapabilities(IDevice* device) const
     {
         TL_ASSERT(m_surface);
 
         VulkanResult result;
 
         VkSurfaceCapabilitiesKHR capabilities;
-        result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_device->m_physicalDevice, m_surface, &capabilities);
+        result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device->m_physicalDevice, m_surface, &capabilities);
         TL_ASSERT(result);
 
         SurfaceCapabilities output{};
@@ -1838,10 +1829,10 @@ namespace RHI::Vulkan
         // Add formats
         {
             uint32_t formatCount{0};
-            result = vkGetPhysicalDeviceSurfaceFormatsKHR(m_device->m_physicalDevice, m_surface, &formatCount, nullptr);
+            result = vkGetPhysicalDeviceSurfaceFormatsKHR(device->m_physicalDevice, m_surface, &formatCount, nullptr);
             TL_ASSERT(result);
             TL::Vector<VkSurfaceFormatKHR> formats(formatCount);
-            result = vkGetPhysicalDeviceSurfaceFormatsKHR(m_device->m_physicalDevice, m_surface, &formatCount, formats.data());
+            result = vkGetPhysicalDeviceSurfaceFormatsKHR(device->m_physicalDevice, m_surface, &formatCount, formats.data());
             TL_ASSERT(result);
             for (const auto& surfaceFormat : formats)
             {
@@ -1860,10 +1851,10 @@ namespace RHI::Vulkan
         // Add present modes
         {
             uint32_t presentModeCount{0};
-            result = vkGetPhysicalDeviceSurfacePresentModesKHR(m_device->m_physicalDevice, m_surface, &presentModeCount, nullptr);
+            result = vkGetPhysicalDeviceSurfacePresentModesKHR(device->m_physicalDevice, m_surface, &presentModeCount, nullptr);
             TL_ASSERT(result);
             TL::Vector<VkPresentModeKHR> presentModes(presentModeCount);
-            result = vkGetPhysicalDeviceSurfacePresentModesKHR(m_device->m_physicalDevice, m_surface, &presentModeCount, presentModes.data());
+            result = vkGetPhysicalDeviceSurfacePresentModesKHR(device->m_physicalDevice, m_surface, &presentModeCount, presentModes.data());
             TL_ASSERT(result);
             for (VkPresentModeKHR mode : presentModes)
             {
@@ -1880,13 +1871,13 @@ namespace RHI::Vulkan
         return output;
     }
 
-    ResultCode ISwapchain::Resize(const ImageSize2D& size)
+    ResultCode ISwapchain::ResizeSwapchain(IDevice* device, const ImageSize2D& size)
     {
         m_configuration.size = size;
-        return Configure(m_configuration);
+        return ConfigureSwapchain(device, m_configuration);
     }
 
-    ResultCode ISwapchain::Configure(const SwapchainConfigureInfo& configInfo)
+    ResultCode ISwapchain::ConfigureSwapchain(IDevice* device, const SwapchainConfigureInfo& configInfo)
     {
         TL_ASSERT(configInfo.imageCount <= MaxImageCount, "Swapchain returned more images than supported.");
 
@@ -1896,7 +1887,7 @@ namespace RHI::Vulkan
 
         // Query surface capabilities
         VkSurfaceCapabilitiesKHR surfaceCaps;
-        result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_device->m_physicalDevice, m_surface, &surfaceCaps);
+        result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device->m_physicalDevice, m_surface, &surfaceCaps);
         if (!result) return ConvertResult(result);
 
         // Validate image usage flags
@@ -1937,11 +1928,11 @@ namespace RHI::Vulkan
         VkSurfaceFormatKHR surfaceFormat{};
         {
             uint32_t formatCount{0};
-            result = vkGetPhysicalDeviceSurfaceFormatsKHR(m_device->m_physicalDevice, m_surface, &formatCount, nullptr);
+            result = vkGetPhysicalDeviceSurfaceFormatsKHR(device->m_physicalDevice, m_surface, &formatCount, nullptr);
             TL_ASSERT(result);
 
             TL::Vector<VkSurfaceFormatKHR> surfaceFormats(formatCount);
-            result = vkGetPhysicalDeviceSurfaceFormatsKHR(m_device->m_physicalDevice, m_surface, &formatCount, surfaceFormats.data());
+            result = vkGetPhysicalDeviceSurfaceFormatsKHR(device->m_physicalDevice, m_surface, &formatCount, surfaceFormats.data());
             TL_ASSERT(result);
 
             VkFormat desiredFormat = ConvertFormat(m_configuration.format);
@@ -1978,11 +1969,11 @@ namespace RHI::Vulkan
             .clipped               = VK_TRUE,
             .oldSwapchain          = m_swapchain,
         };
-        result = vkCreateSwapchainKHR(m_device->m_device, &createInfo, nullptr, &m_swapchain);
+        result = vkCreateSwapchainKHR(device->m_device, &createInfo, nullptr, &m_swapchain);
         TL_ASSERT(result);
 
         if (m_name.empty() == false)
-            m_device->SetDebugName(m_swapchain, m_name.c_str());
+            device->SetDebugName(m_swapchain, m_name.c_str());
 
         // Destroy old image views and old swapchain if present
         {
@@ -1998,14 +1989,14 @@ namespace RHI::Vulkan
 
             if (createInfo.oldSwapchain)
             {
-                m_device->m_destroyQueue->Push(0, createInfo.oldSwapchain);
+                device->m_destroyQueue->Push(0, createInfo.oldSwapchain);
             }
         }
 
-        result = vkGetSwapchainImagesKHR(m_device->m_device, m_swapchain, &m_imageCount, nullptr);
+        result = vkGetSwapchainImagesKHR(device->m_device, m_swapchain, &m_imageCount, nullptr);
         TL_ASSERT(result, "Failed to get swapchain images count");
 
-        result = vkGetSwapchainImagesKHR(m_device->m_device, m_swapchain, &m_imageCount, m_images);
+        result = vkGetSwapchainImagesKHR(device->m_device, m_swapchain, &m_imageCount, m_images);
         TL_ASSERT(result, "Failed to get swapchain images count");
 
         for (uint32_t i = 0; i < m_imageCount; i++)
@@ -2020,26 +2011,26 @@ namespace RHI::Vulkan
                 .components       = {VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY},
                 .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS},
             };
-            result = vkCreateImageView(m_device->m_device, &imageViewCI, nullptr, &m_imageViews[i]);
+            result = vkCreateImageView(device->m_device, &imageViewCI, nullptr, &m_imageViews[i]);
             TL_ASSERT(result, "Failed to create swapchain image view");
             if (m_name.empty() == false)
             {
-                m_device->SetDebugName(m_images[i], "swapchain: {} - image [{}]", m_name, i);
-                m_device->SetDebugName(m_imageViews[i], "swapchain: {} - view [{}]", m_name, i);
+                device->SetDebugName(m_images[i], "swapchain: {} - image [{}]", m_name, i);
+                device->SetDebugName(m_imageViews[i], "swapchain: {} - view [{}]", m_name, i);
             }
         }
 
-        AcquireNextImage();
+        AcquireNextImage(device);
 
         return ConvertResult(result);
     }
 
-    SwapchainAcquireResult ISwapchain::AcquireImage()
+    SwapchainAcquireResult ISwapchain::AcquireSwapchainImage()
     {
         return {m_imageHandle, &m_acquireFences[m_currentAcquireIndex]};
     }
 
-    VkResult ISwapchain::AcquireNextImage()
+    VkResult ISwapchain::AcquireNextImage(IDevice* device)
     {
         m_currentAcquireIndex         = m_acquireSemaphoreIndex;
         VkSemaphore imageAcquireFence = m_acquireSemaphore[m_currentAcquireIndex];
@@ -2054,7 +2045,7 @@ namespace RHI::Vulkan
             .fence      = VK_NULL_HANDLE,
             .deviceMask = 0x00000001,
         };
-        result = vkAcquireNextImage2KHR(m_device->m_device, &acquireInfo, &m_imageIndex);
+        result = vkAcquireNextImage2KHR(device->m_device, &acquireInfo, &m_imageIndex);
 
         auto updateCurrentImage = [this]()
         {
@@ -2076,9 +2067,9 @@ namespace RHI::Vulkan
         else if (result == VK_ERROR_OUT_OF_DATE_KHR)
         {
             TL::LogWarn("Swapchain is out of date, attempting to reconfigure (result: {})", result.AsString());
-            // Configure() internally calls AcquireNextImage(), so the image is
+            // ConfigureSwapchain() internally calls AcquireNextImage(), so the image is
             // already acquired when it returns — do not acquire again.
-            if (Configure(m_configuration) == ResultCode::Success)
+            if (ConfigureSwapchain(device, m_configuration) == ResultCode::Success)
             {
                 result = VK_SUCCESS;
             }
@@ -2095,9 +2086,9 @@ namespace RHI::Vulkan
         return result;
     }
 
-    VkResult ISwapchain::Present(TL::Span<Fence* const> fences)
+    VkResult ISwapchain::Present(IDevice* device, TL::Span<Fence* const> fences)
     {
-        TL::Vector<VkSemaphore> waitSemaphores{m_device->m_arena};
+        TL::Vector<VkSemaphore> waitSemaphores{device->m_arena};
         for (auto& _fence : fences)
         {
             auto fence = (IFence*)_fence;
@@ -2107,7 +2098,7 @@ namespace RHI::Vulkan
 
         VkResult presentResult;
 
-        IQueue*          graphicsQueue = (IQueue*)m_device->GetQueue(QueueType::Graphics);
+        IQueue*          graphicsQueue = (IQueue*)device->GetQueue(QueueType::Graphics);
         VkPresentInfoKHR presentInfo{
             .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
             .pNext              = nullptr,
