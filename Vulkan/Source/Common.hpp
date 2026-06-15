@@ -8,64 +8,6 @@
 
 namespace RHI::Vulkan
 {
-    inline static ResultCode ConvertResult(VkResult result)
-    {
-        switch (result)
-        {
-        case VK_SUCCESS:                                            return ResultCode::Success;
-        case VK_NOT_READY:                                          return ResultCode::ErrorUnknown;
-        case VK_TIMEOUT:                                            return ResultCode::ErrorUnknown;
-        case VK_EVENT_SET:                                          return ResultCode::ErrorUnknown;
-        case VK_EVENT_RESET:                                        return ResultCode::ErrorUnknown;
-        case VK_INCOMPLETE:                                         return ResultCode::ErrorUnknown;
-        case VK_ERROR_OUT_OF_HOST_MEMORY:                           return ResultCode::ErrorOutOfMemory;
-        case VK_ERROR_OUT_OF_DEVICE_MEMORY:                         return ResultCode::ErrorDeviceOutOfMemory;
-        case VK_ERROR_INITIALIZATION_FAILED:                        return ResultCode::ErrorInvalidArguments;
-        case VK_ERROR_DEVICE_LOST:                                  return ResultCode::ErrorDeviceLost;
-        case VK_ERROR_MEMORY_MAP_FAILED:                            return ResultCode::ErrorUnknown;
-        case VK_ERROR_LAYER_NOT_PRESENT:                            return ResultCode::ErrorUnknown;
-        case VK_ERROR_EXTENSION_NOT_PRESENT:                        return ResultCode::ErrorUnknown;
-        case VK_ERROR_FEATURE_NOT_PRESENT:                          return ResultCode::ErrorUnknown;
-        case VK_ERROR_INCOMPATIBLE_DRIVER:                          return ResultCode::ErrorUnknown;
-        case VK_ERROR_TOO_MANY_OBJECTS:                             return ResultCode::ErrorUnknown;
-        case VK_ERROR_FORMAT_NOT_SUPPORTED:                         return ResultCode::ErrorUnknown;
-        case VK_ERROR_FRAGMENTED_POOL:                              return ResultCode::ErrorUnknown;
-        case VK_ERROR_UNKNOWN:                                      return ResultCode::ErrorUnknown;
-        case VK_ERROR_OUT_OF_POOL_MEMORY:                           return ResultCode::ErrorPoolOutOfMemory;
-        case VK_ERROR_INVALID_EXTERNAL_HANDLE:                      return ResultCode::ErrorUnknown;
-        case VK_ERROR_FRAGMENTATION:                                return ResultCode::ErrorUnknown;
-        case VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS:               return ResultCode::ErrorUnknown;
-        case VK_PIPELINE_COMPILE_REQUIRED:                          return ResultCode::ErrorUnknown;
-        case VK_ERROR_SURFACE_LOST_KHR:                             return ResultCode::ErrorSurfaceLost;
-        case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:                     return ResultCode::ErrorUnknown;
-        case VK_SUBOPTIMAL_KHR:                                     return ResultCode::SuccessSuboptimal;
-        case VK_ERROR_OUT_OF_DATE_KHR:                              return ResultCode::ErrorOutdated;
-        case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR:                     return ResultCode::ErrorUnknown;
-        case VK_ERROR_VALIDATION_FAILED_EXT:                        return ResultCode::ErrorUnknown;
-        case VK_ERROR_INVALID_SHADER_NV:                            return ResultCode::ErrorUnknown;
-        case VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR:                return ResultCode::ErrorUnknown;
-        case VK_ERROR_VIDEO_PICTURE_LAYOUT_NOT_SUPPORTED_KHR:       return ResultCode::ErrorUnknown;
-        case VK_ERROR_VIDEO_PROFILE_OPERATION_NOT_SUPPORTED_KHR:    return ResultCode::ErrorUnknown;
-        case VK_ERROR_VIDEO_PROFILE_FORMAT_NOT_SUPPORTED_KHR:       return ResultCode::ErrorUnknown;
-        case VK_ERROR_VIDEO_PROFILE_CODEC_NOT_SUPPORTED_KHR:        return ResultCode::ErrorUnknown;
-        case VK_ERROR_VIDEO_STD_VERSION_NOT_SUPPORTED_KHR:          return ResultCode::ErrorUnknown;
-        case VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT: return ResultCode::ErrorUnknown;
-        case VK_ERROR_NOT_PERMITTED_KHR:                            return ResultCode::ErrorUnknown;
-        case VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:          return ResultCode::ErrorUnknown;
-        case VK_THREAD_IDLE_KHR:                                    return ResultCode::ErrorUnknown;
-        case VK_THREAD_DONE_KHR:                                    return ResultCode::ErrorUnknown;
-        case VK_OPERATION_DEFERRED_KHR:                             return ResultCode::ErrorUnknown;
-        case VK_OPERATION_NOT_DEFERRED_KHR:                         return ResultCode::ErrorUnknown;
-        case VK_ERROR_INVALID_VIDEO_STD_PARAMETERS_KHR:             return ResultCode::ErrorUnknown;
-        case VK_ERROR_COMPRESSION_EXHAUSTED_EXT:                    return ResultCode::ErrorUnknown;
-        case VK_INCOMPATIBLE_SHADER_BINARY_EXT:                     return ResultCode::ErrorUnknown;
-        case VK_PIPELINE_BINARY_MISSING_KHR:                        return ResultCode::ErrorUnknown;
-        case VK_ERROR_NOT_ENOUGH_SPACE_KHR:                         return ResultCode::ErrorUnknown;
-        case VK_RESULT_MAX_ENUM:                                    return ResultCode::ErrorUnknown;
-        default:                                                    return ResultCode::ErrorUnknown;
-        }
-    }
-
     struct VulkanResult
     {
         VkResult result;
@@ -165,7 +107,60 @@ namespace RHI::Vulkan
 
         operator ResultCode() const
         {
-            return ConvertResult(result);
+            switch (result)
+            {
+            case VK_SUCCESS:                                            return ResultCode::Success;
+            case VK_NOT_READY:                                          return ResultCode::ErrorUnknown;
+            case VK_TIMEOUT:                                            return ResultCode::ErrorTimeout;
+            case VK_EVENT_SET:                                          return ResultCode::ErrorUnknown;
+            case VK_EVENT_RESET:                                        return ResultCode::ErrorUnknown;
+            case VK_INCOMPLETE:                                         return ResultCode::ErrorUnknown;
+            case VK_ERROR_OUT_OF_HOST_MEMORY:                           return ResultCode::ErrorOutOfMemory;
+            case VK_ERROR_OUT_OF_DEVICE_MEMORY:                         return ResultCode::ErrorDeviceOutOfMemory;
+            case VK_ERROR_INITIALIZATION_FAILED:                        return ResultCode::ErrorInvalidArguments;
+            case VK_ERROR_DEVICE_LOST:                                  return ResultCode::ErrorDeviceLost;
+            case VK_ERROR_MEMORY_MAP_FAILED:                            return ResultCode::ErrorUnknown;
+            case VK_ERROR_LAYER_NOT_PRESENT:                            return ResultCode::ErrorUnknown;
+            case VK_ERROR_EXTENSION_NOT_PRESENT:                        return ResultCode::ErrorInvalidArguments;
+            case VK_ERROR_FEATURE_NOT_PRESENT:                          return ResultCode::ErrorInvalidArguments;
+            case VK_ERROR_INCOMPATIBLE_DRIVER:                          return ResultCode::ErrorUnknown;
+            case VK_ERROR_TOO_MANY_OBJECTS:                             return ResultCode::ErrorUnknown;
+            case VK_ERROR_FORMAT_NOT_SUPPORTED:                         return ResultCode::ErrorUnknown;
+            case VK_ERROR_FRAGMENTED_POOL:                              return ResultCode::ErrorUnknown;
+            case VK_ERROR_UNKNOWN:                                      return ResultCode::ErrorUnknown;
+            case VK_ERROR_OUT_OF_POOL_MEMORY:                           return ResultCode::ErrorPoolOutOfMemory;
+            case VK_ERROR_INVALID_EXTERNAL_HANDLE:                      return ResultCode::ErrorUnknown;
+            case VK_ERROR_FRAGMENTATION:                                return ResultCode::ErrorUnknown;
+            case VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS:               return ResultCode::ErrorUnknown;
+            case VK_PIPELINE_COMPILE_REQUIRED:                          return ResultCode::ErrorUnknown;
+            case VK_ERROR_SURFACE_LOST_KHR:                             return ResultCode::ErrorSurfaceLost;
+            case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:                     return ResultCode::ErrorUnknown;
+            case VK_SUBOPTIMAL_KHR:                                     return ResultCode::SuccessSuboptimal;
+            case VK_ERROR_OUT_OF_DATE_KHR:                              return ResultCode::ErrorOutdated;
+            case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR:                     return ResultCode::ErrorUnknown;
+            case VK_ERROR_VALIDATION_FAILED_EXT:                        return ResultCode::ErrorUnknown;
+            case VK_ERROR_INVALID_SHADER_NV:                            return ResultCode::ErrorUnknown;
+            case VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR:                return ResultCode::ErrorUnknown;
+            case VK_ERROR_VIDEO_PICTURE_LAYOUT_NOT_SUPPORTED_KHR:       return ResultCode::ErrorUnknown;
+            case VK_ERROR_VIDEO_PROFILE_OPERATION_NOT_SUPPORTED_KHR:    return ResultCode::ErrorUnknown;
+            case VK_ERROR_VIDEO_PROFILE_FORMAT_NOT_SUPPORTED_KHR:       return ResultCode::ErrorUnknown;
+            case VK_ERROR_VIDEO_PROFILE_CODEC_NOT_SUPPORTED_KHR:        return ResultCode::ErrorUnknown;
+            case VK_ERROR_VIDEO_STD_VERSION_NOT_SUPPORTED_KHR:          return ResultCode::ErrorUnknown;
+            case VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT: return ResultCode::ErrorUnknown;
+            case VK_ERROR_NOT_PERMITTED_KHR:                            return ResultCode::ErrorUnknown;
+            case VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:          return ResultCode::ErrorUnknown;
+            case VK_THREAD_IDLE_KHR:                                    return ResultCode::ErrorUnknown;
+            case VK_THREAD_DONE_KHR:                                    return ResultCode::ErrorUnknown;
+            case VK_OPERATION_DEFERRED_KHR:                             return ResultCode::ErrorUnknown;
+            case VK_OPERATION_NOT_DEFERRED_KHR:                         return ResultCode::ErrorUnknown;
+            case VK_ERROR_INVALID_VIDEO_STD_PARAMETERS_KHR:             return ResultCode::ErrorUnknown;
+            case VK_ERROR_COMPRESSION_EXHAUSTED_EXT:                    return ResultCode::ErrorUnknown;
+            case VK_INCOMPATIBLE_SHADER_BINARY_EXT:                     return ResultCode::ErrorUnknown;
+            case VK_PIPELINE_BINARY_MISSING_KHR:                        return ResultCode::ErrorUnknown;
+            case VK_ERROR_NOT_ENOUGH_SPACE_KHR:                         return ResultCode::ErrorUnknown;
+            case VK_RESULT_MAX_ENUM:                                    return ResultCode::ErrorUnknown;
+            default:                                                    return ResultCode::ErrorUnknown;
+            }
         }
 
         operator bool() const
@@ -263,141 +258,61 @@ namespace RHI::Vulkan
         }
     }
 
-    inline static Format ConvertFormat(VkFormat format)
-    {
-        switch (format)
-        {
-        case VK_FORMAT_UNDEFINED:                return Format::Unknown;
-        case VK_FORMAT_R8_UINT:                  return Format::R8_UINT;
-        case VK_FORMAT_R8_SINT:                  return Format::R8_SINT;
-        case VK_FORMAT_R8_UNORM:                 return Format::R8_UNORM;
-        case VK_FORMAT_R8_SNORM:                 return Format::R8_SNORM;
-        case VK_FORMAT_R8G8_UINT:                return Format::RG8_UINT;
-        case VK_FORMAT_R8G8_SINT:                return Format::RG8_SINT;
-        case VK_FORMAT_R8G8_UNORM:               return Format::RG8_UNORM;
-        case VK_FORMAT_R8G8_SNORM:               return Format::RG8_SNORM;
-        case VK_FORMAT_R16_UINT:                 return Format::R16_UINT;
-        case VK_FORMAT_R16_SINT:                 return Format::R16_SINT;
-        case VK_FORMAT_R16_UNORM:                return Format::R16_UNORM;
-        case VK_FORMAT_R16_SNORM:                return Format::R16_SNORM;
-        case VK_FORMAT_R16_SFLOAT:               return Format::R16_FLOAT;
-        case VK_FORMAT_B4G4R4A4_UNORM_PACK16:    return Format::BGRA4_UNORM;
-        case VK_FORMAT_B5G6R5_UNORM_PACK16:      return Format::B5G6R5_UNORM;
-        case VK_FORMAT_B5G5R5A1_UNORM_PACK16:    return Format::B5G5R5A1_UNORM;
-        case VK_FORMAT_R8G8B8A8_UINT:            return Format::RGBA8_UINT;
-        case VK_FORMAT_R8G8B8A8_SINT:            return Format::RGBA8_SINT;
-        case VK_FORMAT_R8G8B8A8_UNORM:           return Format::RGBA8_UNORM;
-        case VK_FORMAT_R8G8B8A8_SNORM:           return Format::RGBA8_SNORM;
-        case VK_FORMAT_B8G8R8A8_UNORM:           return Format::BGRA8_UNORM;
-        case VK_FORMAT_R8G8B8A8_SRGB:            return Format::SRGBA8_UNORM;
-        case VK_FORMAT_B8G8R8A8_SRGB:            return Format::SBGRA8_UNORM;
-        case VK_FORMAT_A2B10G10R10_UNORM_PACK32: return Format::R10G10B10A2_UNORM;
-        case VK_FORMAT_B10G11R11_UFLOAT_PACK32:  return Format::R11G11B10_FLOAT;
-        case VK_FORMAT_R16G16_UINT:              return Format::RG16_UINT;
-        case VK_FORMAT_R16G16_SINT:              return Format::RG16_SINT;
-        case VK_FORMAT_R16G16_UNORM:             return Format::RG16_UNORM;
-        case VK_FORMAT_R16G16_SNORM:             return Format::RG16_SNORM;
-        case VK_FORMAT_R16G16_SFLOAT:            return Format::RG16_FLOAT;
-        case VK_FORMAT_R32_UINT:                 return Format::R32_UINT;
-        case VK_FORMAT_R32_SINT:                 return Format::R32_SINT;
-        case VK_FORMAT_R32_SFLOAT:               return Format::R32_FLOAT;
-        case VK_FORMAT_R16G16B16A16_UINT:        return Format::RGBA16_UINT;
-        case VK_FORMAT_R16G16B16A16_SINT:        return Format::RGBA16_SINT;
-        case VK_FORMAT_R16G16B16A16_SFLOAT:      return Format::RGBA16_FLOAT;
-        case VK_FORMAT_R16G16B16A16_UNORM:       return Format::RGBA16_UNORM;
-        case VK_FORMAT_R16G16B16A16_SNORM:       return Format::RGBA16_SNORM;
-        case VK_FORMAT_R32G32_UINT:              return Format::RG32_UINT;
-        case VK_FORMAT_R32G32_SINT:              return Format::RG32_SINT;
-        case VK_FORMAT_R32G32_SFLOAT:            return Format::RG32_FLOAT;
-        case VK_FORMAT_R32G32B32_UINT:           return Format::RGB32_UINT;
-        case VK_FORMAT_R32G32B32_SINT:           return Format::RGB32_SINT;
-        case VK_FORMAT_R32G32B32_SFLOAT:         return Format::RGB32_FLOAT;
-        case VK_FORMAT_R32G32B32A32_UINT:        return Format::RGBA32_UINT;
-        case VK_FORMAT_R32G32B32A32_SINT:        return Format::RGBA32_SINT;
-        case VK_FORMAT_R32G32B32A32_SFLOAT:      return Format::RGBA32_FLOAT;
-        case VK_FORMAT_D16_UNORM:                return Format::D16;
-        case VK_FORMAT_D24_UNORM_S8_UINT:        return Format::D24S8;
-        case VK_FORMAT_D32_SFLOAT:               return Format::D32;
-        case VK_FORMAT_D32_SFLOAT_S8_UINT:       return Format::D32S8;
-        case VK_FORMAT_BC1_RGBA_UNORM_BLOCK:     return Format::BC1_UNORM;
-        case VK_FORMAT_BC1_RGBA_SRGB_BLOCK:      return Format::BC1_UNORM_SRGB;
-        case VK_FORMAT_BC2_UNORM_BLOCK:          return Format::BC2_UNORM;
-        case VK_FORMAT_BC2_SRGB_BLOCK:           return Format::BC2_UNORM_SRGB;
-        case VK_FORMAT_BC3_UNORM_BLOCK:          return Format::BC3_UNORM;
-        case VK_FORMAT_BC3_SRGB_BLOCK:           return Format::BC3_UNORM_SRGB;
-        case VK_FORMAT_BC4_UNORM_BLOCK:          return Format::BC4_UNORM;
-        case VK_FORMAT_BC4_SNORM_BLOCK:          return Format::BC4_SNORM;
-        case VK_FORMAT_BC5_UNORM_BLOCK:          return Format::BC5_UNORM;
-        case VK_FORMAT_BC5_SNORM_BLOCK:          return Format::BC5_SNORM;
-        case VK_FORMAT_BC6H_UFLOAT_BLOCK:        return Format::BC6H_UFLOAT;
-        case VK_FORMAT_BC6H_SFLOAT_BLOCK:        return Format::BC6H_SFLOAT;
-        case VK_FORMAT_BC7_UNORM_BLOCK:          return Format::BC7_UNORM;
-        case VK_FORMAT_BC7_SRGB_BLOCK:           return Format::BC7_UNORM_SRGB;
-        default:                                 TL_UNREACHABLE(); return Format::Unknown;
-        }
-    }
-
-    inline static VkIndexType ConvertIndexType(IndexType indexType)
+    inline static VkIndexType convertIndexType(IndexType indexType)
     {
         switch (indexType)
         {
-        case IndexType::None:   return VK_INDEX_TYPE_NONE_KHR;
         case IndexType::uint8:  return VK_INDEX_TYPE_UINT8;
         case IndexType::uint16: return VK_INDEX_TYPE_UINT16;
         case IndexType::uint32: return VK_INDEX_TYPE_UINT32;
-        default:                TL_UNREACHABLE(); return VK_INDEX_TYPE_MAX_ENUM;
         }
+        TL_UNREACHABLE();
+        return VK_INDEX_TYPE_MAX_ENUM;
     }
 
-    inline static VkAttachmentLoadOp ConvertLoadOp(LoadOperation op)
+    inline static VkAccelerationStructureGeometryKHR
+    convertGeometryData(const AccelerationStructureGeometry& trianglesData)
     {
-        switch (op)
+        switch (trianglesData.geometryType)
         {
-        case LoadOperation::DontCare: return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        case LoadOperation::Load:     return VK_ATTACHMENT_LOAD_OP_LOAD;
-        case LoadOperation::Discard:  return VK_ATTACHMENT_LOAD_OP_CLEAR;
-        default:                      TL_UNREACHABLE(); return VK_ATTACHMENT_LOAD_OP_MAX_ENUM;
+        case GeometryType::Aabbs:
+            return VkAccelerationStructureGeometryKHR{
+                .sType        = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
+                .pNext        = nullptr,
+                .geometryType = VK_GEOMETRY_TYPE_AABBS_KHR,
+                .geometry     = {
+                        .aabbs = {
+                            .sType  = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR,
+                            .pNext  = nullptr,
+                            .data   = {.deviceAddress = trianglesData.data},
+                            .stride = trianglesData.stride,
+                    },
+                },
+                .flags = {},
+            };
+        case GeometryType::Triangles:
+            return VkAccelerationStructureGeometryKHR{
+                .sType        = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
+                .pNext        = nullptr,
+                .geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR,
+                .geometry     = {
+                        .triangles = {
+                            .sType         = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR,
+                            .pNext         = nullptr,
+                            .vertexFormat  = ConvertFormat(trianglesData.vertexFormat),
+                            .vertexData    = {.deviceAddress = trianglesData.data},
+                            .vertexStride  = trianglesData.stride,
+                            .maxVertex     = trianglesData.count,
+                            .indexType     = convertIndexType(trianglesData.indexType),
+                            .indexData     = {.deviceAddress = trianglesData.indexData},
+                            .transformData = {.deviceAddress = trianglesData.transformData},
+                    },
+                },
+                .flags = {},
+            };
         }
-    }
-
-    inline static VkAttachmentStoreOp ConvertStoreOp(StoreOperation op)
-    {
-        switch (op)
-        {
-        case StoreOperation::DontCare: return VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        case StoreOperation::Store:    return VK_ATTACHMENT_STORE_OP_STORE;
-        case StoreOperation::Discard:  return VK_ATTACHMENT_STORE_OP_NONE;
-        default:                       TL_UNREACHABLE(); return VK_ATTACHMENT_STORE_OP_MAX_ENUM;
-        }
-    }
-
-    inline static VkSampleCountFlagBits ConvertSampleCount(SampleCount sampleCount)
-    {
-        switch (sampleCount)
-        {
-        case SampleCount::None:      return VK_SAMPLE_COUNT_1_BIT;
-        case SampleCount::Samples1:  return VK_SAMPLE_COUNT_1_BIT;
-        case SampleCount::Samples2:  return VK_SAMPLE_COUNT_2_BIT;
-        case SampleCount::Samples4:  return VK_SAMPLE_COUNT_4_BIT;
-        case SampleCount::Samples8:  return VK_SAMPLE_COUNT_8_BIT;
-        case SampleCount::Samples16: return VK_SAMPLE_COUNT_16_BIT;
-        case SampleCount::Samples32: return VK_SAMPLE_COUNT_32_BIT;
-        case SampleCount::Samples64: return VK_SAMPLE_COUNT_64_BIT;
-        default:                     TL_UNREACHABLE(); return VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM;
-        }
-    }
-
-    inline static VkSampleCountFlags ConvertSampleCountFlags(TL::Flags<SampleCount> sampleCountFlags)
-    {
-        VkSampleCountFlags result = 0;
-        if (sampleCountFlags & SampleCount::Samples1) result |= VK_SAMPLE_COUNT_1_BIT;
-        if (sampleCountFlags & SampleCount::Samples2) result |= VK_SAMPLE_COUNT_2_BIT;
-        if (sampleCountFlags & SampleCount::Samples4) result |= VK_SAMPLE_COUNT_4_BIT;
-        if (sampleCountFlags & SampleCount::Samples8) result |= VK_SAMPLE_COUNT_8_BIT;
-        if (sampleCountFlags & SampleCount::Samples16) result |= VK_SAMPLE_COUNT_16_BIT;
-        if (sampleCountFlags & SampleCount::Samples32) result |= VK_SAMPLE_COUNT_32_BIT;
-        if (sampleCountFlags & SampleCount::Samples64) result |= VK_SAMPLE_COUNT_64_BIT;
-        return result;
+        TL_UNREACHABLE();
+        return {};
     }
 
     template<typename T>
@@ -440,8 +355,6 @@ namespace RHI::Vulkan
         else if constexpr (std::is_same_v<T, VkCuFunctionNVX>) return VK_OBJECT_TYPE_CU_FUNCTION_NVX;
         else if constexpr (std::is_same_v<T, VkAccelerationStructureKHR>) return VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR;
         else if constexpr (std::is_same_v<T, VkAccelerationStructureNV>) return VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_NV;
-        else if constexpr (std::is_same_v<T, VkDebugReportCallbackEXT>) return VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT;
-        else if constexpr (std::is_same_v<T, VkValidationCacheEXT>) return VK_OBJECT_TYPE_VALIDATION_CACHE_EXT;
         else if constexpr (std::is_same_v<T, VkDescriptorUpdateTemplateKHR>) return VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_KHR;
         else if constexpr (std::is_same_v<T, VkSamplerYcbcrConversionKHR>) return VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_KHR;
         else
@@ -449,65 +362,6 @@ namespace RHI::Vulkan
             return VK_OBJECT_TYPE_UNKNOWN;
         }
     }
-
-    inline static VkSemaphoreSubmitInfo CreateSemaphoreSubmitInfo(VkSemaphore semaphore, VkPipelineStageFlags2 stages, uint64_t value = 0)
-    {
-        return VkSemaphoreSubmitInfo{
-            .sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-            .pNext     = nullptr,
-            .semaphore = semaphore,
-            .value     = value,
-            .stageMask = stages,
-        };
-    }
-
-    inline static const char* ObjectTypeToName(VkObjectType type)
-    {
-        switch (type)
-        {
-        case VK_OBJECT_TYPE_UNKNOWN:                    return "UNKNOWN";
-        case VK_OBJECT_TYPE_INSTANCE:                   return "VkInstance";
-        case VK_OBJECT_TYPE_PHYSICAL_DEVICE:            return "VkPhysicalDevice";
-        case VK_OBJECT_TYPE_DEVICE:                     return "VkDevice";
-        case VK_OBJECT_TYPE_QUEUE:                      return "VkQueue";
-        case VK_OBJECT_TYPE_SEMAPHORE:                  return "VkSemaphore";
-        case VK_OBJECT_TYPE_COMMAND_BUFFER:             return "VkCommandBuffer";
-        case VK_OBJECT_TYPE_FENCE:                      return "VkFence";
-        case VK_OBJECT_TYPE_DEVICE_MEMORY:              return "VkDeviceMemory";
-        case VK_OBJECT_TYPE_BUFFER:                     return "VkBuffer";
-        case VK_OBJECT_TYPE_IMAGE:                      return "VkImage";
-        case VK_OBJECT_TYPE_EVENT:                      return "VkEvent";
-        case VK_OBJECT_TYPE_QUERY_POOL:                 return "VkQueryPool";
-        case VK_OBJECT_TYPE_BUFFER_VIEW:                return "VkBufferView";
-        case VK_OBJECT_TYPE_IMAGE_VIEW:                 return "VkImageView";
-        case VK_OBJECT_TYPE_SHADER_MODULE:              return "VkShaderModule";
-        case VK_OBJECT_TYPE_PIPELINE_CACHE:             return "VkPipelineCache";
-        case VK_OBJECT_TYPE_PIPELINE_LAYOUT:            return "VkPipelineLayout";
-        case VK_OBJECT_TYPE_RENDER_PASS:                return "VkRenderPass";
-        case VK_OBJECT_TYPE_PIPELINE:                   return "VkPipeline";
-        case VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT:      return "VkDescriptorSetLayout";
-        case VK_OBJECT_TYPE_SAMPLER:                    return "VkSampler";
-        case VK_OBJECT_TYPE_DESCRIPTOR_POOL:            return "VkDescriptorPool";
-        case VK_OBJECT_TYPE_DESCRIPTOR_SET:             return "VkDescriptorSet";
-        case VK_OBJECT_TYPE_FRAMEBUFFER:                return "VkFramebuffer";
-        case VK_OBJECT_TYPE_COMMAND_POOL:               return "VkCommandPool";
-        case VK_OBJECT_TYPE_SURFACE_KHR:                return "VkSurfaceKHR";
-        case VK_OBJECT_TYPE_SWAPCHAIN_KHR:              return "VkSwapchainKHR";
-        case VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT:  return "VkDebugReportCallbackEXT";
-        case VK_OBJECT_TYPE_DISPLAY_KHR:                return "VkDisplayKHR";
-        case VK_OBJECT_TYPE_DISPLAY_MODE_KHR:           return "VkDisplayModeKHR";
-        case VK_OBJECT_TYPE_VALIDATION_CACHE_EXT:       return "VkValidationCacheEXT";
-        case VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION:   return "VkSamplerYcbcrConversion";
-        case VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE: return "VkDescriptorUpdateTemplate";
-        case VK_OBJECT_TYPE_CU_MODULE_NVX:              return "VkCuModuleNVX";
-        case VK_OBJECT_TYPE_CU_FUNCTION_NVX:            return "VkCuFunctionNVX";
-        case VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR: return "VkAccelerationStructureKHR";
-        case VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_NV:  return "VkAccelerationStructureNV";
-        default:                                        return "Unknowen";
-        };
-    }
-
-    //
 
     inline static VkPipelineStageFlags2 ConvertPipelineStageFlags(TL::Flags<PipelineStage> pipelineStages)
     {
@@ -546,201 +400,4 @@ namespace RHI::Vulkan
         return stageFlags;
     }
 
-    inline static VkAccessFlags2 GetAccessFlags2(ImageUsage usage, TL::Flags<Access> access)
-    {
-        VkAccessFlags2 result = VK_ACCESS_2_NONE;
-        switch (usage)
-        {
-        case ImageUsage::ShaderResource:
-            if (access & Access::Read) result |= VK_ACCESS_2_SHADER_READ_BIT;
-            // TL_ASSERT((access & Access::Write) == Access::None, "ImageUsage::ShaderResource can't have write access");
-            break;
-        case ImageUsage::StorageResource:
-            if (access & Access::Read) result |= VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
-            if (access & Access::Write) result |= VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
-            break;
-        case ImageUsage::CopySrc:
-        case ImageUsage::CopyDst:
-            if (access & Access::Read) result |= VK_ACCESS_2_TRANSFER_READ_BIT;
-            if (access & Access::Write) result |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
-            break;
-        case ImageUsage::Color:
-            if (access & Access::Read) result |= VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
-            if (access & Access::Write) result |= VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-            break;
-        case ImageUsage::Depth:
-        case ImageUsage::Stencil:
-        case ImageUsage::DepthStencil:
-            if (access & Access::Read) result |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-            if (access & Access::Write) result |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-            break;
-        case ImageUsage::Present:
-            if (access & Access::Read) result |= VK_ACCESS_2_NONE;
-            if (access & Access::Write) result |= VK_ACCESS_2_NONE;
-            break;
-        default: break;
-        };
-        // TL_ASSERT(result != VK_ACCESS_2_NONE);
-        return result;
-    }
-
-    inline static VkAccessFlags2 GetAccessFlags2(BufferUsage usage, TL::Flags<Access> access)
-    {
-        VkAccessFlags2 result = VK_ACCESS_2_NONE;
-        switch (usage)
-        {
-        case BufferUsage::Vertex:
-            result |= VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
-            TL_ASSERT((access & Access::Write) == Access::None, "BufferUsage::Vertex can't have write access");
-            break;
-        case BufferUsage::Index:
-            result |= VK_ACCESS_2_INDEX_READ_BIT;
-            TL_ASSERT((access & Access::Write) == Access::None, "BufferUsage::Index can't have write access");
-            break;
-        case BufferUsage::Uniform:
-            if (access & Access::Read) result |= VK_ACCESS_2_UNIFORM_READ_BIT;
-            TL_ASSERT((access & Access::Write) == Access::None, "BufferUsage::Uniform can't have write access");
-            break;
-        case BufferUsage::Storage:
-            if (access & Access::Read) result |= VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
-            if (access & Access::Write) result |= VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
-            break;
-        case BufferUsage::CopySrc:
-        case BufferUsage::CopyDst:
-            if (access & Access::Read) result |= VK_ACCESS_2_TRANSFER_READ_BIT;
-            if (access & Access::Write) result |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
-            break;
-        case BufferUsage::Indirect:
-            result |= VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
-        default: break;
-        };
-        // TL_ASSERT(result != VK_ACCESS_2_NONE);
-        return result;
-    }
-
-    inline static VkImageLayout GetImageLayout(ImageUsage usage, TL::Flags<Access> access, TL::Flags<ImageAspect> aspect)
-    {
-        bool isReadOnly = access == Access::Read;
-        switch (usage)
-        {
-        case ImageUsage::None: return VK_IMAGE_LAYOUT_UNDEFINED;
-        case ImageUsage::ShaderResource:
-            {
-                if (aspect & ImageAspect::Color)
-                {
-                    return isReadOnly ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
-                }
-                else if (aspect & ImageAspect::DepthStencil)
-                {
-                    return isReadOnly ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-                }
-                else if (aspect & ImageAspect::Depth)
-                {
-                    return isReadOnly ? VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-                }
-                else if (aspect & ImageAspect::Stencil)
-                {
-                    return isReadOnly ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
-                }
-
-                TL_UNREACHABLE();
-                return VK_IMAGE_LAYOUT_GENERAL;
-            }
-        case ImageUsage::StorageResource: return VK_IMAGE_LAYOUT_GENERAL;
-        case ImageUsage::Color:           return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        // TODO: use <DEPTH/STENCIL>_READ_ONLY_OPTIMAL
-        case ImageUsage::Depth:           return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-        case ImageUsage::Stencil:         return VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
-        case ImageUsage::DepthStencil:    return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        case ImageUsage::CopySrc:         return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        case ImageUsage::CopyDst:         return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        case ImageUsage::Present:         return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-        default:                          TL_UNREACHABLE(); return VK_IMAGE_LAYOUT_UNDEFINED;
-        }
-    }
-
-    inline static VkBuildAccelerationStructureFlagsKHR
-    convertBuildFlags(TL::Flags<AccelerationStructureFlags> flags)
-    {
-        // TODO: PREFER_FAST_TRACE is always requested, is that nessecerry?
-        VkBuildAccelerationStructureFlagsKHR result = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
-        if (flags & AccelerationStructureFlags::AllowUpdate) result |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR;
-        if (flags & AccelerationStructureFlags::AllowCompaction) result |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR;
-        return result;
-    }
-
-    inline static VkGeometryFlagBitsKHR
-    convertGeometryFlags(TL::Flags<AccelerationStructureFlags> flags)
-    {
-        VkGeometryFlagBitsKHR result = {};
-        // if (flags & AccelerationStructureFlags::Opaque) result |= VK_GEOMETRY_OPAQUE_BIT_KHR;
-        // if (flags & AccelerationStructureFlags::NoDuplicateAnyHitInvocation) result |= VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR;
-        // if (flags & AccelerationStructureFlags::NoDuplicateIntersectionInvocation) result |= VK_GEOMETRY_NO_DUPLICATE_INTERSECTION_INVOCATION_BIT_KHR;
-        // if (flags & AccelerationStructureFlags::ForceOpaque) result |= VK_GEOMETRY_FORCE_OPAQUE_BIT_KHR;
-        // if (flags & AccelerationStructureFlags::ForceNoOpaque) result |= VK_GEOMETRY_FORCE_NO_OPAQUE_BIT_KHR;
-        return result;
-    }
-
-    inline static VkAccelerationStructureGeometryKHR
-    convertGeometryData(const AccelerationStructureGeometry& trianglesData)
-    {
-        switch (trianglesData.geometryType)
-        {
-        case GeometryType::Aabbs:
-            return VkAccelerationStructureGeometryKHR{
-                .sType        = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
-                .pNext        = nullptr,
-                .geometryType = VK_GEOMETRY_TYPE_AABBS_KHR,
-                .geometry     = {
-                    .aabbs = {
-                        .sType  = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR,
-                        .pNext  = nullptr,
-                        .data   = {.deviceAddress = trianglesData.data},
-                        .stride = trianglesData.stride,
-                    },
-                },
-                .flags = {},
-            };
-        case GeometryType::Triangles:
-            return VkAccelerationStructureGeometryKHR{
-                .sType        = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
-                .pNext        = nullptr,
-                .geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR,
-                .geometry     = {
-                    .triangles = {
-                        .sType         = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR,
-                        .pNext         = nullptr,
-                        .vertexFormat  = ConvertFormat(trianglesData.vertexFormat),
-                        .vertexData    = {.deviceAddress = trianglesData.data},
-                        .vertexStride  = trianglesData.stride,
-                        .maxVertex     = trianglesData.count,
-                        .indexType     = ConvertIndexType(trianglesData.indexType),
-                        .indexData     = {.deviceAddress = trianglesData.indexData},
-                        .transformData = {.deviceAddress = trianglesData.transformData},
-                    },
-                },
-                .flags = {},
-            };
-        }
-    }
-
-    // TODO: Delete
-    // inline static VkAccelerationStructureGeometryKHR
-    // convertInstanceGeometryData(const AccelerationStructureInstance& instanceData)
-    // {
-    //     return VkAccelerationStructureGeometryKHR{
-    //         .sType        = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
-    //         .pNext        = nullptr,
-    //         .geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR,
-    //         .geometry     = {
-    //             .instances = {
-    //                 .sType           = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR,
-    //                 .pNext           = nullptr,
-    //                 .arrayOfPointers = VK_FALSE, // TODO: support array of pointers for instances
-    //                 .data            = {.deviceAddress = instanceData.accelerationStructureReference},
-    //             },
-    //         },
-    //         .flags = {},
-    //     };
-    // }
 } // namespace RHI::Vulkan

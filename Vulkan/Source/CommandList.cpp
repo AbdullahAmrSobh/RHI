@@ -11,14 +11,141 @@
 
 namespace RHI::Vulkan
 {
-    inline static VkImageSubresourceLayers ConvertSubresourceLayers(const ImageCopyInfo& copyInfo, Format format)
+    inline static VkAccessFlags2 GetAccessFlags2(ImageUsage usage, TL::Flags<Access> access)
     {
-        return VkImageSubresourceLayers{
-            .aspectMask     = ConvertImageAspect(copyInfo.aspect, format),
-            .mipLevel       = copyInfo.mipLevel,
-            .baseArrayLayer = copyInfo.arrayLayer,
-            .layerCount     = 1,
+        VkAccessFlags2 result = VK_ACCESS_2_NONE;
+        switch (usage)
+        {
+        case ImageUsage::ShaderResource:
+            if (access & Access::Read) result |= VK_ACCESS_2_SHADER_READ_BIT;
+            // TL_ASSERT((access & Access::Write) == Access::None, "ImageUsage::ShaderResource can't have write access");
+            break;
+        case ImageUsage::StorageResource:
+            if (access & Access::Read) result |= VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+            if (access & Access::Write) result |= VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+            break;
+        case ImageUsage::CopySrc:
+        case ImageUsage::CopyDst:
+            if (access & Access::Read) result |= VK_ACCESS_2_TRANSFER_READ_BIT;
+            if (access & Access::Write) result |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
+            break;
+        case ImageUsage::Color:
+            if (access & Access::Read) result |= VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
+            if (access & Access::Write) result |= VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+            break;
+        case ImageUsage::Depth:
+        case ImageUsage::Stencil:
+        case ImageUsage::DepthStencil:
+            if (access & Access::Read) result |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+            if (access & Access::Write) result |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+            break;
+        case ImageUsage::Present:
+            if (access & Access::Read) result |= VK_ACCESS_2_NONE;
+            if (access & Access::Write) result |= VK_ACCESS_2_NONE;
+            break;
+        default: break;
         };
+        // TL_ASSERT(result != VK_ACCESS_2_NONE);
+        return result;
+    }
+
+    inline static VkAccessFlags2 GetAccessFlags2(BufferUsage usage, TL::Flags<Access> access)
+    {
+        VkAccessFlags2 result = VK_ACCESS_2_NONE;
+        switch (usage)
+        {
+        case BufferUsage::Vertex:
+            result |= VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
+            TL_ASSERT((access & Access::Write) == Access::None, "BufferUsage::Vertex can't have write access");
+            break;
+        case BufferUsage::Index:
+            result |= VK_ACCESS_2_INDEX_READ_BIT;
+            TL_ASSERT((access & Access::Write) == Access::None, "BufferUsage::Index can't have write access");
+            break;
+        case BufferUsage::Uniform:
+            if (access & Access::Read) result |= VK_ACCESS_2_UNIFORM_READ_BIT;
+            TL_ASSERT((access & Access::Write) == Access::None, "BufferUsage::Uniform can't have write access");
+            break;
+        case BufferUsage::Storage:
+            if (access & Access::Read) result |= VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+            if (access & Access::Write) result |= VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+            break;
+        case BufferUsage::CopySrc:
+        case BufferUsage::CopyDst:
+            if (access & Access::Read) result |= VK_ACCESS_2_TRANSFER_READ_BIT;
+            if (access & Access::Write) result |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
+            break;
+        case BufferUsage::Indirect:
+            result |= VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
+        default: break;
+        };
+        // TL_ASSERT(result != VK_ACCESS_2_NONE);
+        return result;
+    }
+
+    inline static VkImageLayout GetImageLayout(ImageUsage usage, TL::Flags<Access> access, TL::Flags<ImageAspect> aspect)
+    {
+        bool isReadOnly = access == Access::Read;
+        switch (usage)
+        {
+        case ImageUsage::None: return VK_IMAGE_LAYOUT_UNDEFINED;
+        case ImageUsage::ShaderResource:
+            {
+                if (aspect & ImageAspect::Color)
+                {
+                    return isReadOnly ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+                }
+                else if (aspect & ImageAspect::DepthStencil)
+                {
+                    return isReadOnly ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+                }
+                else if (aspect & ImageAspect::Depth)
+                {
+                    return isReadOnly ? VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+                }
+                else if (aspect & ImageAspect::Stencil)
+                {
+                    return isReadOnly ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
+                }
+
+                TL_UNREACHABLE();
+                return VK_IMAGE_LAYOUT_GENERAL;
+            }
+        case ImageUsage::StorageResource: return VK_IMAGE_LAYOUT_GENERAL;
+        case ImageUsage::Color:           return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        // TODO: use <DEPTH/STENCIL>_READ_ONLY_OPTIMAL
+        case ImageUsage::Depth:           return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+        case ImageUsage::Stencil:         return VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
+        case ImageUsage::DepthStencil:    return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        case ImageUsage::CopySrc:         return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        case ImageUsage::CopyDst:         return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        case ImageUsage::Present:         return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        }
+        TL_UNREACHABLE();
+        return VK_IMAGE_LAYOUT_UNDEFINED;
+    }
+
+    inline static VkAttachmentLoadOp ConvertLoadOp(LoadOperation op)
+    {
+        switch (op)
+        {
+        case LoadOperation::DontCare: return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        case LoadOperation::Load:     return VK_ATTACHMENT_LOAD_OP_LOAD;
+        case LoadOperation::Discard:  return VK_ATTACHMENT_LOAD_OP_CLEAR;
+        }
+        TL_UNREACHABLE();
+        return VK_ATTACHMENT_LOAD_OP_MAX_ENUM;
+    }
+
+    inline static VkAttachmentStoreOp ConvertStoreOp(StoreOperation op)
+    {
+        switch (op)
+        {
+        case StoreOperation::DontCare: return VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        case StoreOperation::Store:    return VK_ATTACHMENT_STORE_OP_STORE;
+        }
+        TL_UNREACHABLE();
+        return VK_ATTACHMENT_STORE_OP_MAX_ENUM;
     }
 
     inline static VkResolveModeFlagBits ConvertResolveMode(ResolveMode resolveMode)
@@ -30,7 +157,8 @@ namespace RHI::Vulkan
         case ResolveMode::Max:  return VK_RESOLVE_MODE_MAX_BIT;
         case ResolveMode::Avg:  return VK_RESOLVE_MODE_AVERAGE_BIT;
         }
-        return {};
+        TL_UNREACHABLE();
+        return VK_RESOLVE_MODE_FLAG_BITS_MAX_ENUM;
     }
 
     inline static VkPipelineBindPoint convertBindPoint(BindPoint bp)
@@ -41,6 +169,8 @@ namespace RHI::Vulkan
         case BindPoint::Compute:    return VK_PIPELINE_BIND_POINT_COMPUTE;
         case BindPoint::RayTracing: return VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR;
         }
+        TL_UNREACHABLE();
+        return VK_PIPELINE_BIND_POINT_MAX_ENUM;
     }
 
     struct BarrierStage
@@ -51,13 +181,28 @@ namespace RHI::Vulkan
         uint32_t              queueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     };
 
-    inline static BarrierStage ConvertBarrierState(TL_MAYBE_UNUSED const BarrierState& barrierState)
+    inline static VkImageSubresourceLayers ConvertSubresourceLayers(const ImageCopyInfo& copyInfo, Format format)
     {
+        return VkImageSubresourceLayers{
+            .aspectMask     = ConvertImageAspect(copyInfo.aspect, format),
+            .mipLevel       = copyInfo.mipLevel,
+            .baseArrayLayer = copyInfo.arrayLayer,
+            .layerCount     = 1,
+        };
+    }
+
+    inline static BarrierStage ConvertBarrierState(const BarrierState& barrierState)
+    {
+        // Global memory barrier: no resource usage is known here, so use the generic memory
+        // access flags, which are valid against any pipeline stage.
+        VkAccessFlags2 accessMask = VK_ACCESS_2_NONE;
+        if (barrierState.access & Access::Read) accessMask |= VK_ACCESS_2_MEMORY_READ_BIT;
+        if (barrierState.access & Access::Write) accessMask |= VK_ACCESS_2_MEMORY_WRITE_BIT;
         return {
-            // .stageMask        = ConvertPipelineStageFlags(barrierState.stage),
-            // .accessMask       = GetAccessFlags2(barrierState.usage, barrierState.access),
-            // .layout           = VK_IMAGE_LAYOUT_UNDEFINED,
-            // .queueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .stageMask        = ConvertPipelineStageFlags(barrierState.stage),
+            .accessMask       = accessMask,
+            .layout           = VK_IMAGE_LAYOUT_UNDEFINED,
+            .queueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         };
     }
 
@@ -83,6 +228,8 @@ namespace RHI::Vulkan
 
     inline static VkStridedDeviceAddressRegionKHR convertStridedDeviceAddressRegion(const StridedDeviceAddressRegion& r)
     {
+        // NOTE: DispatchRaysInfo carries no SBT buffer handle, so `offset` is the region's absolute
+        // device address (caller must add the SBT buffer's base address), not a buffer-relative offset.
         return VkStridedDeviceAddressRegionKHR{
             .deviceAddress = (VkDeviceAddress)r.offset,
             .stride        = r.stride,
@@ -241,8 +388,8 @@ namespace RHI::Vulkan
         TL::Vector<VkBufferMemoryBarrier2> vbufferBarriers{m_device->m_arena};
         TL::Vector<VkImageMemoryBarrier2>  vimageBarriers{m_device->m_arena};
         vmemoryBarriers.reserve(barriers.size());
-        vbufferBarriers.reserve(imageBarriers.size());
-        vimageBarriers.reserve(bufferBarriers.size());
+        vbufferBarriers.reserve(bufferBarriers.size());
+        vimageBarriers.reserve(imageBarriers.size());
 
         for (auto barrier : barriers)
         {
@@ -266,6 +413,12 @@ namespace RHI::Vulkan
             auto [srcStageMask, srcAccessMask, srcLayout, srcQueueFamilyIndex] = ConvertBarrierState(imageBarrier.srcState);
             auto [dstStageMask, dstAccessMask, dstLayout, dstQueueFamilyIndex] = ConvertBarrierState(imageBarrier.dstState);
 
+            // A default (All()) subresource means "the whole image"; resolve it to the image's
+            // actual range so the barrier carries real mip/array counts.
+            ImageSubresourceRange subresource = imageBarrier.subresource;
+            if (subresource == ImageSubresourceRange::All())
+                subresource = image->subresources;
+
             vimageBarriers.push_back({
                 .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
                 .pNext               = nullptr,
@@ -278,7 +431,7 @@ namespace RHI::Vulkan
                 .srcQueueFamilyIndex = srcQueueFamilyIndex,
                 .dstQueueFamilyIndex = dstQueueFamilyIndex,
                 .image               = image->handle,
-                .subresourceRange    = ConvertSubresourceRange(image->subresources, image->format),
+                .subresourceRange    = ConvertSubresourceRange(subresource, image->format),
             });
         }
 

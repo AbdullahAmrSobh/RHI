@@ -541,7 +541,6 @@ namespace RHI
     {
         DontCare,
         Store,
-        Discard,
     };
 
     enum class ResolveMode : uint8_t
@@ -1158,9 +1157,10 @@ namespace RHI
 
     struct ImageBarrierInfo
     {
-        Image*            image    = nullptr;
-        ImageBarrierState srcState = {};
-        ImageBarrierState dstState = {};
+        Image*                image       = nullptr;
+        ImageBarrierState     srcState    = {};
+        ImageBarrierState     dstState    = {};
+        ImageSubresourceRange subresource = ImageSubresourceRange::All();
     };
 
     struct BufferBarrierInfo
@@ -1529,14 +1529,5 @@ namespace RHI
         virtual void WriteMicromapsSizes(TL::Span<const Micromap*> micromaps, QueryPool* queryPool, uint32_t queryPoolOffset)                                        = 0;
     };
 
-    RHI_EXPORT const FormatInfo&      GetFormatInfo(Format format);
-
-    RHI_EXPORT uint32_t               GetFormatByteSize(Format format);
-
-    RHI_EXPORT uint32_t               GetFormatComponentByteSize(Format format);
-
-    RHI_EXPORT FormatType             GetFormatType(Format format);
-
-    RHI_EXPORT TL::Flags<ImageAspect> GetFormatAspects(Format format);
-
+    RHI_EXPORT const FormatInfo& GetFormatInfo(Format format);
 } // namespace RHI

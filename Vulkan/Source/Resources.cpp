@@ -11,16 +11,104 @@
 
 namespace RHI::Vulkan
 {
-    inline static VkIndexType convertIndexType(IndexType indexType)
+    inline static Format ConvertFormat(VkFormat format)
     {
-        switch (indexType)
+        switch (format)
         {
-        case IndexType::uint8:  return VK_INDEX_TYPE_UINT8;
-        case IndexType::uint16: return VK_INDEX_TYPE_UINT16;
-        case IndexType::uint32: return VK_INDEX_TYPE_UINT32;
+        case VK_FORMAT_UNDEFINED:                return Format::Unknown;
+        case VK_FORMAT_R8_UINT:                  return Format::R8_UINT;
+        case VK_FORMAT_R8_SINT:                  return Format::R8_SINT;
+        case VK_FORMAT_R8_UNORM:                 return Format::R8_UNORM;
+        case VK_FORMAT_R8_SNORM:                 return Format::R8_SNORM;
+        case VK_FORMAT_R8G8_UINT:                return Format::RG8_UINT;
+        case VK_FORMAT_R8G8_SINT:                return Format::RG8_SINT;
+        case VK_FORMAT_R8G8_UNORM:               return Format::RG8_UNORM;
+        case VK_FORMAT_R8G8_SNORM:               return Format::RG8_SNORM;
+        case VK_FORMAT_R16_UINT:                 return Format::R16_UINT;
+        case VK_FORMAT_R16_SINT:                 return Format::R16_SINT;
+        case VK_FORMAT_R16_UNORM:                return Format::R16_UNORM;
+        case VK_FORMAT_R16_SNORM:                return Format::R16_SNORM;
+        case VK_FORMAT_R16_SFLOAT:               return Format::R16_FLOAT;
+        case VK_FORMAT_B4G4R4A4_UNORM_PACK16:    return Format::BGRA4_UNORM;
+        case VK_FORMAT_B5G6R5_UNORM_PACK16:      return Format::B5G6R5_UNORM;
+        case VK_FORMAT_B5G5R5A1_UNORM_PACK16:    return Format::B5G5R5A1_UNORM;
+        case VK_FORMAT_R8G8B8A8_UINT:            return Format::RGBA8_UINT;
+        case VK_FORMAT_R8G8B8A8_SINT:            return Format::RGBA8_SINT;
+        case VK_FORMAT_R8G8B8A8_UNORM:           return Format::RGBA8_UNORM;
+        case VK_FORMAT_R8G8B8A8_SNORM:           return Format::RGBA8_SNORM;
+        case VK_FORMAT_B8G8R8A8_UNORM:           return Format::BGRA8_UNORM;
+        case VK_FORMAT_R8G8B8A8_SRGB:            return Format::SRGBA8_UNORM;
+        case VK_FORMAT_B8G8R8A8_SRGB:            return Format::SBGRA8_UNORM;
+        case VK_FORMAT_A2B10G10R10_UNORM_PACK32: return Format::R10G10B10A2_UNORM;
+        case VK_FORMAT_B10G11R11_UFLOAT_PACK32:  return Format::R11G11B10_FLOAT;
+        case VK_FORMAT_R16G16_UINT:              return Format::RG16_UINT;
+        case VK_FORMAT_R16G16_SINT:              return Format::RG16_SINT;
+        case VK_FORMAT_R16G16_UNORM:             return Format::RG16_UNORM;
+        case VK_FORMAT_R16G16_SNORM:             return Format::RG16_SNORM;
+        case VK_FORMAT_R16G16_SFLOAT:            return Format::RG16_FLOAT;
+        case VK_FORMAT_R32_UINT:                 return Format::R32_UINT;
+        case VK_FORMAT_R32_SINT:                 return Format::R32_SINT;
+        case VK_FORMAT_R32_SFLOAT:               return Format::R32_FLOAT;
+        case VK_FORMAT_R16G16B16A16_UINT:        return Format::RGBA16_UINT;
+        case VK_FORMAT_R16G16B16A16_SINT:        return Format::RGBA16_SINT;
+        case VK_FORMAT_R16G16B16A16_SFLOAT:      return Format::RGBA16_FLOAT;
+        case VK_FORMAT_R16G16B16A16_UNORM:       return Format::RGBA16_UNORM;
+        case VK_FORMAT_R16G16B16A16_SNORM:       return Format::RGBA16_SNORM;
+        case VK_FORMAT_R32G32_UINT:              return Format::RG32_UINT;
+        case VK_FORMAT_R32G32_SINT:              return Format::RG32_SINT;
+        case VK_FORMAT_R32G32_SFLOAT:            return Format::RG32_FLOAT;
+        case VK_FORMAT_R32G32B32_UINT:           return Format::RGB32_UINT;
+        case VK_FORMAT_R32G32B32_SINT:           return Format::RGB32_SINT;
+        case VK_FORMAT_R32G32B32_SFLOAT:         return Format::RGB32_FLOAT;
+        case VK_FORMAT_R32G32B32A32_UINT:        return Format::RGBA32_UINT;
+        case VK_FORMAT_R32G32B32A32_SINT:        return Format::RGBA32_SINT;
+        case VK_FORMAT_R32G32B32A32_SFLOAT:      return Format::RGBA32_FLOAT;
+        case VK_FORMAT_D16_UNORM:                return Format::D16;
+        case VK_FORMAT_D24_UNORM_S8_UINT:        return Format::D24S8;
+        case VK_FORMAT_D32_SFLOAT:               return Format::D32;
+        case VK_FORMAT_D32_SFLOAT_S8_UINT:       return Format::D32S8;
+        case VK_FORMAT_BC1_RGBA_UNORM_BLOCK:     return Format::BC1_UNORM;
+        case VK_FORMAT_BC1_RGBA_SRGB_BLOCK:      return Format::BC1_UNORM_SRGB;
+        case VK_FORMAT_BC2_UNORM_BLOCK:          return Format::BC2_UNORM;
+        case VK_FORMAT_BC2_SRGB_BLOCK:           return Format::BC2_UNORM_SRGB;
+        case VK_FORMAT_BC3_UNORM_BLOCK:          return Format::BC3_UNORM;
+        case VK_FORMAT_BC3_SRGB_BLOCK:           return Format::BC3_UNORM_SRGB;
+        case VK_FORMAT_BC4_UNORM_BLOCK:          return Format::BC4_UNORM;
+        case VK_FORMAT_BC4_SNORM_BLOCK:          return Format::BC4_SNORM;
+        case VK_FORMAT_BC5_UNORM_BLOCK:          return Format::BC5_UNORM;
+        case VK_FORMAT_BC5_SNORM_BLOCK:          return Format::BC5_SNORM;
+        case VK_FORMAT_BC6H_UFLOAT_BLOCK:        return Format::BC6H_UFLOAT;
+        case VK_FORMAT_BC6H_SFLOAT_BLOCK:        return Format::BC6H_SFLOAT;
+        case VK_FORMAT_BC7_UNORM_BLOCK:          return Format::BC7_UNORM;
+        case VK_FORMAT_BC7_SRGB_BLOCK:           return Format::BC7_UNORM_SRGB;
+        default:                                 TL_UNREACHABLE(); return Format::Unknown;
         }
-        TL_UNREACHABLE();
-        return VK_INDEX_TYPE_MAX_ENUM;
+    }
+
+    inline static VkSampleCountFlagBits ConvertSampleCount(SampleCount sampleCount)
+    {
+        switch (sampleCount)
+        {
+        case SampleCount::None:      return VK_SAMPLE_COUNT_1_BIT;
+        case SampleCount::Samples1:  return VK_SAMPLE_COUNT_1_BIT;
+        case SampleCount::Samples2:  return VK_SAMPLE_COUNT_2_BIT;
+        case SampleCount::Samples4:  return VK_SAMPLE_COUNT_4_BIT;
+        case SampleCount::Samples8:  return VK_SAMPLE_COUNT_8_BIT;
+        case SampleCount::Samples16: return VK_SAMPLE_COUNT_16_BIT;
+        case SampleCount::Samples32: return VK_SAMPLE_COUNT_32_BIT;
+        case SampleCount::Samples64: return VK_SAMPLE_COUNT_64_BIT;
+        default:                     TL_UNREACHABLE(); return VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM;
+        }
+    }
+
+    inline static VkBuildAccelerationStructureFlagsKHR
+    convertBuildFlags(TL::Flags<AccelerationStructureFlags> flags)
+    {
+        // TODO: PREFER_FAST_TRACE is always requested, is that nessecerry?
+        VkBuildAccelerationStructureFlagsKHR result = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
+        if (flags & AccelerationStructureFlags::AllowUpdate) result |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR;
+        if (flags & AccelerationStructureFlags::AllowCompaction) result |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR;
+        return result;
     }
 
     inline static VkQueryType ConvertQueryType(QueryType queryType)
@@ -100,23 +188,20 @@ namespace RHI::Vulkan
 
     VkImageAspectFlags ConvertImageAspect(TL::Flags<ImageAspect> imageAspect, Format format)
     {
-        auto formatInfo = GetFormatInfo(format);
-        imageAspect &= GetFormatAspects(format);
-
-        VkImageAspectFlags vkAspectFlags = 0;
-
+        FormatInfo         formatInfo = GetFormatInfo(format);
+        VkImageAspectFlags outFlags   = 0;
         if (formatInfo.hasDepth || formatInfo.hasStencil)
         {
-            if (imageAspect & ImageAspect::Depth) vkAspectFlags |= VK_IMAGE_ASPECT_DEPTH_BIT;
-            if (imageAspect & ImageAspect::Stencil) vkAspectFlags |= VK_IMAGE_ASPECT_STENCIL_BIT;
+            if (imageAspect & ImageAspect::Depth) outFlags |= VK_IMAGE_ASPECT_DEPTH_BIT;
+            if (imageAspect & ImageAspect::Stencil) outFlags |= VK_IMAGE_ASPECT_STENCIL_BIT;
         }
         else
         {
-            if (imageAspect & ImageAspect::Color) vkAspectFlags |= VK_IMAGE_ASPECT_COLOR_BIT;
+            if (imageAspect & ImageAspect::Color) outFlags |= VK_IMAGE_ASPECT_COLOR_BIT;
         }
 
-        TL_ASSERT(vkAspectFlags != 0);
-        return vkAspectFlags;
+        TL_ASSERT(outFlags != 0);
+        return outFlags;
     }
 
     inline static VkComponentSwizzle ConvertComponentSwizzle(ComponentSwizzle componentSwizzle)
@@ -819,10 +904,10 @@ namespace RHI::Vulkan
             .codeSize = createInfo.code.size_bytes(),
             .pCode    = createInfo.code.data(),
         };
-        auto result = vkCreateShaderModule(device->m_device, &shaderModuleCI, nullptr, &m_shaderModule);
+        VulkanResult result = vkCreateShaderModule(device->m_device, &shaderModuleCI, nullptr, &m_shaderModule);
         if (result == VK_SUCCESS && !getName().empty())
             device->SetDebugName(m_shaderModule, getName().c_str());
-        return ConvertResult(result);
+        return result;
     }
 
     void IShaderModule::Shutdown(IDevice* device)
@@ -867,12 +952,12 @@ namespace RHI::Vulkan
             .pushConstantRangeCount = uint32_t(pushConstantRanges.size()),
             .pPushConstantRanges    = pushConstantRanges.data(),
         };
-        auto result = vkCreatePipelineLayout(device->m_device, &pipelineLayouCI, nullptr, &handle);
+        VulkanResult result = vkCreatePipelineLayout(device->m_device, &pipelineLayouCI, nullptr, &handle);
         if (result == VK_SUCCESS && !getName().empty())
         {
             device->SetDebugName(handle, getName().c_str());
         }
-        return ConvertResult(result);
+        return result;
     }
 
     void IPipelineLayout::Shutdown(IDevice* device)
@@ -989,7 +1074,7 @@ namespace RHI::Vulkan
             .flags                 = 0,
             .rasterizationSamples  = ConvertSampleCount(createInfo.multisampleState.sampleCount),
             .sampleShadingEnable   = ConvertBool(createInfo.multisampleState.sampleShading),
-            .minSampleShading      = float(uint32_t(multisampleStateCI.rasterizationSamples)) / 2.0f,
+            .minSampleShading      = 1.0f,
             .pSampleMask           = nullptr,
             .alphaToCoverageEnable = VK_FALSE,
             .alphaToOneEnable      = VK_FALSE,
@@ -1132,10 +1217,10 @@ namespace RHI::Vulkan
             .basePipelineIndex  = 0,
         };
 
-        auto result = vkCreateComputePipelines(device->m_device, VK_NULL_HANDLE, 1, &computePipelineCI, nullptr, &handle);
+        VulkanResult result = vkCreateComputePipelines(device->m_device, VK_NULL_HANDLE, 1, &computePipelineCI, nullptr, &handle);
         if (result == VK_SUCCESS && !getName().empty())
             device->SetDebugName(handle, getName().c_str());
-        return ConvertResult(result);
+        return result;
     }
 
     void IComputePipeline::Shutdown(IDevice* device)
@@ -1264,7 +1349,7 @@ namespace RHI::Vulkan
         result = vkCreateQueryPool(device->m_device, &queryPoolCI, nullptr, &handle);
         if (result && !getName().empty())
             device->SetDebugName(handle, getName().c_str());
-        return ConvertResult(result);
+        return result;
     }
 
     void IQueryPool::Shutdown(IDevice* device)
@@ -1281,14 +1366,16 @@ namespace RHI::Vulkan
 
     ResultCode IBuffer::Init(IDevice* device, const BufferCreateInfo& createInfo)
     {
-        VkMemoryPropertyFlags requiredFlags = 0;
+        VmaAllocationCreateFlags allocationFlags = 0;
+        VkMemoryPropertyFlags    requiredFlags   = 0;
         if (createInfo.usageFlags & BufferUsage::HostMapped)
         {
-            requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+            allocationFlags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+            requiredFlags   = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
         }
 
         VmaAllocationCreateInfo allocationCI{
-            .flags          = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT,
+            .flags          = allocationFlags,
             .usage          = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
             .requiredFlags  = requiredFlags,
             .preferredFlags = 0,
@@ -1309,7 +1396,7 @@ namespace RHI::Vulkan
         };
         VulkanResult result = vmaCreateBuffer(device->m_deviceAllocator, &bufferCI, &allocationCI, &handle, &allocation, nullptr);
         if (result != VK_SUCCESS)
-            return ConvertResult(result);
+            return result;
 
         if (!getName().empty())
         {
@@ -1327,7 +1414,7 @@ namespace RHI::Vulkan
             this->address = vkGetBufferDeviceAddress(device->m_device, &info);
         }
 
-        return ConvertResult(result);
+        return result;
     }
 
     void IBuffer::Shutdown(IDevice* device)
@@ -1361,10 +1448,12 @@ namespace RHI::Vulkan
 
     ResultCode IImage::Init(IDevice* device, const ImageCreateInfo& createInfo)
     {
+        this->format = createInfo.format;
+
         VulkanResult result;
 
         VmaAllocationCreateInfo allocationInfo{
-            .flags          = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT,
+            .flags          = 0,
             .usage          = VMA_MEMORY_USAGE_GPU_ONLY,
             .requiredFlags  = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
             .preferredFlags = 0,
@@ -1404,6 +1493,12 @@ namespace RHI::Vulkan
             vmaSetAllocationName(device->m_deviceAllocator, allocation, getName().c_str());
         }
 
+        auto                   formatInfo = GetFormatInfo(format);
+        TL::Flags<ImageAspect> aspects    = ImageAspect::None;
+        if (formatInfo.hasDepth) aspects |= ImageAspect::Depth;
+        if (formatInfo.hasStencil) aspects |= ImageAspect::Stencil;
+        if (formatInfo.hasRed || formatInfo.hasGreen || formatInfo.hasBlue || formatInfo.hasAlpha) aspects |= ImageAspect::Color;
+
         VkImageViewCreateInfo imageViewCI{
             .sType      = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
             .pNext      = nullptr,
@@ -1418,7 +1513,7 @@ namespace RHI::Vulkan
                 VK_COMPONENT_SWIZZLE_IDENTITY,
             },
             .subresourceRange = {
-                .aspectMask     = ConvertImageAspect(GetFormatAspects(createInfo.format), createInfo.format),
+                .aspectMask     = ConvertImageAspect(aspects, createInfo.format),
                 .baseMipLevel   = 0,
                 .levelCount     = VK_REMAINING_MIP_LEVELS,
                 .baseArrayLayer = 0,
@@ -1443,14 +1538,14 @@ namespace RHI::Vulkan
         this->size         = createInfo.size;
         this->format       = createInfo.format;
         this->subresources = {
-            .imageAspects  = GetFormatAspects(format),
+            .imageAspects  = aspects,
             .mipBase       = 0,
             .mipLevelCount = (uint8_t)createInfo.mipLevels,
             .arrayBase     = 0,
             .arrayCount    = (uint8_t)createInfo.arrayCount,
         };
 
-        return ConvertResult(result);
+        return result;
     }
 
     ResultCode IImage::Init(IDevice* device, const ImageViewCreateInfo& createInfo)
@@ -1459,18 +1554,12 @@ namespace RHI::Vulkan
         return ResultCode::ErrorUnknown;
     }
 
-    ResultCode IImage::Init(TL_MAYBE_UNUSED IDevice* device, VkImage image, const VkSwapchainCreateInfoKHR& swapchainCI)
+    ResultCode IImage::Init(IDevice* device, VkImage image, const VkSwapchainCreateInfoKHR& swapchainCI)
     {
         this->handle       = image;
         this->size         = {swapchainCI.imageExtent.width, swapchainCI.imageExtent.height, 1};
         this->format       = ConvertFormat(swapchainCI.imageFormat);
-        this->subresources = {
-            .imageAspects  = GetFormatAspects(format),
-            .mipBase       = 0,
-            .mipLevelCount = 1,
-            .arrayBase     = 0,
-            .arrayCount    = 1,
-        };
+        this->subresources = {ImageAspect::Color, 0, 1, 0, 1};
 
         // VkImageViewCreateInfo imageViewCI{
         //     .sType      = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -1691,19 +1780,19 @@ namespace RHI::Vulkan
             .mipLodBias              = createInfo.mipLodBias,
             .anisotropyEnable        = VK_TRUE,
             .maxAnisotropy           = 1.0f,
-            .compareEnable           = VK_TRUE,
+            .compareEnable           = createInfo.compare != CompareOperator::Undefined ? VK_TRUE : VK_FALSE,
             .compareOp               = ConvertCompareOp(createInfo.compare),
             .minLod                  = createInfo.minLod,
             .maxLod                  = createInfo.maxLod,
             .borderColor             = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
             .unnormalizedCoordinates = VK_FALSE,
         };
-        auto result = vkCreateSampler(device->m_device, &samplerCI, nullptr, &handle);
+        VulkanResult result = vkCreateSampler(device->m_device, &samplerCI, nullptr, &handle);
         if (result == VK_SUCCESS && !getName().empty())
         {
             device->SetDebugName(handle, getName().c_str());
         }
-        return ConvertResult(result);
+        return result;
     }
 
     void ISampler::Shutdown(IDevice* device)
@@ -1888,7 +1977,7 @@ namespace RHI::Vulkan
         // Query surface capabilities
         VkSurfaceCapabilitiesKHR surfaceCaps;
         result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device->m_physicalDevice, m_surface, &surfaceCaps);
-        if (!result) return ConvertResult(result);
+        if (!result) return result;
 
         // Validate image usage flags
         VkImageUsageFlags imageUsage = ConvertImageUsageFlags(configInfo.imageUsage);
@@ -1977,19 +2066,19 @@ namespace RHI::Vulkan
 
         // Destroy old image views and old swapchain if present
         {
-            // auto frame = ((IQueue*)device->GetQueue(QueueType::Graphics))->m_lastSubmitValue.load();
+            auto frame = ((IQueue*)device->GetQueue(QueueType::Graphics))->m_lastSubmitValue.load();
             for (uint32_t i = 0; i < MaxImageCount; i++)
             {
                 if (m_imageViews[i] != VK_NULL_HANDLE)
                 {
-                    // m_device->m_destroyQueue->Push(frame, m_imageViews[i]);
+                    device->m_destroyQueue->Push(frame, m_imageViews[i]);
                     m_imageViews[i] = VK_NULL_HANDLE;
                 }
             }
 
             if (createInfo.oldSwapchain)
             {
-                device->m_destroyQueue->Push(0, createInfo.oldSwapchain);
+                device->m_destroyQueue->Push(frame, createInfo.oldSwapchain);
             }
         }
 
@@ -2022,7 +2111,7 @@ namespace RHI::Vulkan
 
         AcquireNextImage(device);
 
-        return ConvertResult(result);
+        return result;
     }
 
     SwapchainAcquireResult ISwapchain::AcquireSwapchainImage()

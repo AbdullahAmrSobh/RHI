@@ -40,12 +40,53 @@ namespace RHI
 
 namespace RHI::Vulkan
 {
-    inline static VkBool32
-    DebugMessengerCallbacks(
-        VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
-        VkDebugUtilsMessageTypeFlagsEXT             messageTypes,
-        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-        void*                                       pUserData)
+    inline static const char* ObjectTypeToName(VkObjectType type)
+    {
+        switch (type)
+        {
+        case VK_OBJECT_TYPE_UNKNOWN:                    return "UNKNOWN";
+        case VK_OBJECT_TYPE_INSTANCE:                   return "VkInstance";
+        case VK_OBJECT_TYPE_PHYSICAL_DEVICE:            return "VkPhysicalDevice";
+        case VK_OBJECT_TYPE_DEVICE:                     return "VkDevice";
+        case VK_OBJECT_TYPE_QUEUE:                      return "VkQueue";
+        case VK_OBJECT_TYPE_SEMAPHORE:                  return "VkSemaphore";
+        case VK_OBJECT_TYPE_COMMAND_BUFFER:             return "VkCommandBuffer";
+        case VK_OBJECT_TYPE_FENCE:                      return "VkFence";
+        case VK_OBJECT_TYPE_DEVICE_MEMORY:              return "VkDeviceMemory";
+        case VK_OBJECT_TYPE_BUFFER:                     return "VkBuffer";
+        case VK_OBJECT_TYPE_IMAGE:                      return "VkImage";
+        case VK_OBJECT_TYPE_EVENT:                      return "VkEvent";
+        case VK_OBJECT_TYPE_QUERY_POOL:                 return "VkQueryPool";
+        case VK_OBJECT_TYPE_BUFFER_VIEW:                return "VkBufferView";
+        case VK_OBJECT_TYPE_IMAGE_VIEW:                 return "VkImageView";
+        case VK_OBJECT_TYPE_SHADER_MODULE:              return "VkShaderModule";
+        case VK_OBJECT_TYPE_PIPELINE_CACHE:             return "VkPipelineCache";
+        case VK_OBJECT_TYPE_PIPELINE_LAYOUT:            return "VkPipelineLayout";
+        case VK_OBJECT_TYPE_RENDER_PASS:                return "VkRenderPass";
+        case VK_OBJECT_TYPE_PIPELINE:                   return "VkPipeline";
+        case VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT:      return "VkDescriptorSetLayout";
+        case VK_OBJECT_TYPE_SAMPLER:                    return "VkSampler";
+        case VK_OBJECT_TYPE_DESCRIPTOR_POOL:            return "VkDescriptorPool";
+        case VK_OBJECT_TYPE_DESCRIPTOR_SET:             return "VkDescriptorSet";
+        case VK_OBJECT_TYPE_FRAMEBUFFER:                return "VkFramebuffer";
+        case VK_OBJECT_TYPE_COMMAND_POOL:               return "VkCommandPool";
+        case VK_OBJECT_TYPE_SURFACE_KHR:                return "VkSurfaceKHR";
+        case VK_OBJECT_TYPE_SWAPCHAIN_KHR:              return "VkSwapchainKHR";
+        case VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT:  return "VkDebugReportCallbackEXT";
+        case VK_OBJECT_TYPE_DISPLAY_KHR:                return "VkDisplayKHR";
+        case VK_OBJECT_TYPE_DISPLAY_MODE_KHR:           return "VkDisplayModeKHR";
+        case VK_OBJECT_TYPE_VALIDATION_CACHE_EXT:       return "VkValidationCacheEXT";
+        case VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION:   return "VkSamplerYcbcrConversion";
+        case VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE: return "VkDescriptorUpdateTemplate";
+        case VK_OBJECT_TYPE_CU_MODULE_NVX:              return "VkCuModuleNVX";
+        case VK_OBJECT_TYPE_CU_FUNCTION_NVX:            return "VkCuFunctionNVX";
+        case VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR: return "VkAccelerationStructureKHR";
+        case VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_NV:  return "VkAccelerationStructureNV";
+        default:                                        return "UNKNOWN";
+        };
+    }
+
+    inline static VkBool32 DebugMessengerCallbacks(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
     {
         TL::String message = std::format("Vulkan Validation: {}\n", pCallbackData->pMessage);
 
@@ -227,7 +268,7 @@ namespace RHI::Vulkan
         if (submitInfo.presentSwapchains.empty() == false)
         {
             TL::Vector<VkSwapchainKHR> swapchains{m_device->m_arena};
-            TL::Vector<uint32_t>       imageIndcies{m_device->m_arena};
+            TL::Vector<uint32_t>       imageIndices{m_device->m_arena};
             TL::Vector<VkSemaphore>    presentWaitSemaphores{m_device->m_arena};
 
             for (auto _swapchain : submitInfo.presentSwapchains)
@@ -237,7 +278,7 @@ namespace RHI::Vulkan
                 swapchain->m_presentSemaphoreIndex += 1;
                 swapchain->m_presentSemaphoreIndex %= ISwapchain::MaxImageCount;
                 presentWaitSemaphores.push_back(semaphore);
-                imageIndcies.push_back(swapchain->m_imageIndex);
+                imageIndices.push_back(swapchain->m_imageIndex);
                 swapchains.push_back(swapchain->m_swapchain);
             }
 
@@ -248,7 +289,7 @@ namespace RHI::Vulkan
                 .pWaitSemaphores    = presentWaitSemaphores.data(),
                 .swapchainCount     = (uint32_t)swapchains.size(),
                 .pSwapchains        = swapchains.data(),
-                .pImageIndices      = imageIndcies.data(),
+                .pImageIndices      = imageIndices.data(),
                 .pResults           = nullptr,
             };
             vkQueuePresentKHR(m_queue, &presentInfos);
@@ -378,21 +419,19 @@ namespace RHI::Vulkan
 
         TL_ASSERT(result.IsSuccess());
         result = vkCreateInstance(&instanceCI, nullptr, &m_instance);
-        volkLoadInstanceOnly(m_instance);
-
         if (!result)
         {
             Shutdown();
             return result;
         }
 
+        volkLoadInstanceOnly(m_instance);
+
         // Select the physical device
 
         TL::Vector<const char*> requiredDeviceLayers;
         TL::Vector<const char*> requiredDeviceExtensions{
             VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-            VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
-            VK_EXT_MESH_SHADER_EXTENSION_NAME,
             // VK_KHR_CALIBRATED_TIMESTAMPS_EXTENSION_NAME,
         };
 
@@ -450,11 +489,11 @@ namespace RHI::Vulkan
                     uint32_t     extensionsCount;
                     result = vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, nullptr);
                     TL_ASSERT(result);
-                    TL::Vector<VkExtensionProperties> extnesions;
-                    extnesions.resize(extensionsCount);
-                    result = vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, extnesions.data());
+                    TL::Vector<VkExtensionProperties> extensions;
+                    extensions.resize(extensionsCount);
+                    result = vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, extensions.data());
                     TL_ASSERT(result);
-                    for (VkExtensionProperties extension : extnesions)
+                    for (VkExtensionProperties extension : extensions)
                         availableDeviceExtensions[extension.extensionName] = extension;
                 }
 
@@ -1296,7 +1335,6 @@ namespace RHI::Vulkan
         }
     }
 
-    // FlushQueue that works on ResourceDeleteQueueEntry<ResourceType>
     template<typename ResourceType>
     void DeleteQueue::FlushQueue(IDevice* device, TL::Vector<ResourceDeleteQueueEntry<ResourceType>>& queue, uint64_t timeline)
     {
