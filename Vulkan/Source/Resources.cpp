@@ -438,12 +438,12 @@ namespace RHI::Vulkan
         case BindingType::StorageImage:                    return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
         case BindingType::UniformBuffer:                   return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         case BindingType::StorageBuffer:                   return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        case BindingType::DynamicUniformBuffer:            return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-        case BindingType::DynamicStorageBuffer:            return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
-        case BindingType::BufferView:                      return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
-        case BindingType::StorageBufferView:               return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+        case BindingType::UniformBufferDynamic:            return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+        case BindingType::StorageBufferDynamic:            return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+        case BindingType::UniformTexelBuffer:              return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+        case BindingType::StorageTexelBuffer:              return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
         case BindingType::InputAttachment:                 return VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-        case BindingType::RayTracingAccelerationStructure: return VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+        case BindingType::AccelerationStructure:           return VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
         case BindingType::Count:                           break;
         }
         TL_UNREACHABLE();
@@ -485,6 +485,7 @@ namespace RHI::Vulkan
         , m_sampler(allocator)
         , m_buffers(allocator)
         , m_bufferViews(allocator)
+        , m_accelerationStructures(allocator)
         , m_writes(allocator)
     {
     }
@@ -821,6 +822,8 @@ namespace RHI::Vulkan
 
     void IBindGroup::Update(IDevice* device, const BindGroupUpdateInfo& updateInfo)
     {
+        ZoneScoped;
+
         DescriptorSetWriter writer(device, this->descriptorSet, this->bindGroupLayout, device->m_arena);
 
         for (auto [dstBindings, dstArrayelements, buffers] : updateInfo.buffers)
@@ -838,9 +841,9 @@ namespace RHI::Vulkan
             writer.BindSamplers(dstBindings, dstArrayelements, samplers);
         }
 
-        for (auto [dstBinding, dstArrayElement, accelerationStructure] : updateInfo.accelerationStructures)
+        for (auto [dstBinding, dstArrayElement, accelerationStructures] : updateInfo.accelerationStructures)
         {
-            writer.BindAccelerationStructures(dstBinding, dstArrayElement, {&accelerationStructure, 1});
+            writer.BindAccelerationStructures(dstBinding, dstArrayElement, accelerationStructures);
         }
 
         vkUpdateDescriptorSets(device->m_device, (uint32_t)writer.GetWrites().size(), writer.GetWrites().data(), 0, nullptr);
@@ -1105,8 +1108,8 @@ namespace RHI::Vulkan
         };
 
         TL::Vector<VkFormat> colorAttachmentFormats{device->m_arena};
-        colorAttachmentFormats.reserve(createInfo.renderTargetLayout.colorAttachmentsFormats.size());
-        for (auto format : createInfo.renderTargetLayout.colorAttachmentsFormats)
+        colorAttachmentFormats.reserve(createInfo.renderTargetLayout.colors.size());
+        for (auto format : createInfo.renderTargetLayout.colors)
         {
             colorAttachmentFormats.push_back(ConvertFormat(format));
         }
@@ -1152,8 +1155,8 @@ namespace RHI::Vulkan
             .viewMask                = 0,
             .colorAttachmentCount    = (uint32_t)colorAttachmentFormats.size(),
             .pColorAttachmentFormats = colorAttachmentFormats.data(),
-            .depthAttachmentFormat   = ConvertFormat(createInfo.renderTargetLayout.depthAttachmentFormat),
-            .stencilAttachmentFormat = ConvertFormat(createInfo.renderTargetLayout.stencilAttachmentFormat),
+            .depthAttachmentFormat   = ConvertFormat(createInfo.renderTargetLayout.depth),
+            .stencilAttachmentFormat = ConvertFormat(createInfo.renderTargetLayout.stencil),
         };
 
         this->layout = (IPipelineLayout*)createInfo.layout;

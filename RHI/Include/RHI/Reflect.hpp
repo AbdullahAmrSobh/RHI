@@ -110,10 +110,10 @@ namespace RHI::Debug
         case BindingType::StorageImage:         return "BindingType::StorageImage";
         case BindingType::UniformBuffer:        return "BindingType::UniformBuffer";
         case BindingType::StorageBuffer:        return "BindingType::StorageBuffer";
-        case BindingType::DynamicUniformBuffer: return "BindingType::DynamicUniformBuffer";
-        case BindingType::DynamicStorageBuffer: return "BindingType::DynamicStorageBuffer";
-        case BindingType::BufferView:           return "BindingType::BufferView";
-        case BindingType::StorageBufferView:    return "BindingType::StorageBufferView";
+        case BindingType::UniformBufferDynamic: return "BindingType::UniformBufferDynamic";
+        case BindingType::StorageBufferDynamic: return "BindingType::StorageBufferDynamic";
+        case BindingType::UniformTexelBuffer:   return "BindingType::UniformTexelBuffer";
+        case BindingType::StorageTexelBuffer:   return "BindingType::StorageTexelBuffer";
         // case BindingType::Count:                return "BindingType::Count";
         default:                                return "BindingType::Count";
         }
