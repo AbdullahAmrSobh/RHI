@@ -202,14 +202,14 @@ namespace RHI
         Sampler,
         SampledImage,
         StorageImage,
+        UniformTexelBuffer,
+        StorageTexelBuffer,
         UniformBuffer,
         StorageBuffer,
-        DynamicUniformBuffer,
-        DynamicStorageBuffer,
-        BufferView,
-        StorageBufferView,
+        UniformBufferDynamic,
+        StorageBufferDynamic,
         InputAttachment,
-        RayTracingAccelerationStructure,
+        AccelerationStructure,
         Count,
     };
 
@@ -1025,9 +1025,9 @@ namespace RHI
 
     struct PipelineRenderTargetLayout
     {
-        TL::Span<const Format> colorAttachmentsFormats = {};
-        Format                 depthAttachmentFormat   = Format::Unknown;
-        Format                 stencilAttachmentFormat = Format::Unknown;
+        TL::Span<const Format> colors  = {};
+        Format                 depth   = Format::Unknown;
+        Format                 stencil = Format::Unknown;
     };
 
     struct PipelineVertexAttributeDesc
