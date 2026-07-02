@@ -28,8 +28,8 @@ namespace RHI::WebGPU
     template<typename Resource, typename... Args>
     inline Resource* createImpl(IDevice* device, Args... args)
     {
-        Resource*  resource = TL::construct<Resource>();
-        ResultCode result   = resource->Init(device, args...);
+        Resource* resource = TL::construct<Resource>();
+        ResultCode result = resource->Init(device, args...);
         if (IsSuccess(result))
             return resource;
         resource->Shutdown(device);
@@ -50,9 +50,9 @@ namespace RHI::WebGPU
 
     ResultCode IQueue::Init(IDevice* device, QueueType queueType)
     {
-        m_device    = device;
+        m_device = device;
         m_queueType = queueType;
-        m_queue     = wgpuDeviceGetQueue(device->m_device);
+        m_queue = wgpuDeviceGetQueue(device->m_device);
         return m_queue ? ResultCode::Success : ResultCode::ErrorUnknown;
     }
 
@@ -127,7 +127,7 @@ namespace RHI::WebGPU
         m_backend = BackendType::WebGPU;
 
         WGPUInstanceDescriptor instanceDesc = {};
-        m_instance                          = wgpuCreateInstance(&instanceDesc);
+        m_instance = wgpuCreateInstance(&instanceDesc);
         if (!m_instance)
         {
             TL::LogError("WebGPU: wgpuCreateInstance failed");
@@ -138,11 +138,11 @@ namespace RHI::WebGPU
         struct AdapterRequest
         {
             WGPUAdapter adapter = nullptr;
-            bool        done    = false;
+            bool done = false;
         } adapterRequest;
 
         WGPURequestAdapterOptions adapterOptions = {};
-        adapterOptions.powerPreference           = WGPUPowerPreference_HighPerformance;
+        adapterOptions.powerPreference = WGPUPowerPreference_HighPerformance;
 
         wgpuInstanceRequestAdapter(
             m_instance,
@@ -166,8 +166,8 @@ namespace RHI::WebGPU
         m_adapter = adapterRequest.adapter;
 
         // Request device.
-        WGPUDeviceDescriptor deviceDesc            = {};
-        deviceDesc.label                           = "RHI WebGPU Device";
+        WGPUDeviceDescriptor deviceDesc = {};
+        deviceDesc.label = "RHI WebGPU Device";
         deviceDesc.uncapturedErrorCallbackInfo.callback =
             [](WGPUErrorType type, char const* message, void*)
         {
@@ -177,7 +177,7 @@ namespace RHI::WebGPU
         struct DeviceRequest
         {
             WGPUDevice device = nullptr;
-            bool       done   = false;
+            bool done = false;
         } deviceRequest;
 
         wgpuAdapterRequestDevice(
@@ -253,8 +253,8 @@ namespace RHI::WebGPU
         {
         case NativeHandleType::Device: return (uint64_t)m_device;
         case NativeHandleType::Buffer: return (uint64_t)((IBuffer*)handle)->buffer;
-        case NativeHandleType::Image:  return (uint64_t)((IImage*)handle)->texture;
-        default:                       return 0;
+        case NativeHandleType::Image: return (uint64_t)((IImage*)handle)->texture;
+        default: return 0;
         }
     }
 

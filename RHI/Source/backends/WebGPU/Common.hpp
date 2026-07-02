@@ -32,9 +32,9 @@ namespace RHI::WebGPU
     {
         switch (access)
         {
-        case Access::None:      return WGPUStorageTextureAccess_Undefined;
-        case Access::Read:      return WGPUStorageTextureAccess_ReadOnly;
-        case Access::Write:     return WGPUStorageTextureAccess_WriteOnly;
+        case Access::None: return WGPUStorageTextureAccess_Undefined;
+        case Access::Read: return WGPUStorageTextureAccess_ReadOnly;
+        case Access::Write: return WGPUStorageTextureAccess_WriteOnly;
         case Access::ReadWrite: return WGPUStorageTextureAccess_ReadWrite;
         }
         return WGPUStorageTextureAccess_Force32;

@@ -34,7 +34,7 @@ namespace RHI::WebGPU
     // ICommandList
     ///////////////////////////////////////////////////////////
 
-    ICommandList::ICommandList()  = default;
+    ICommandList::ICommandList() = default;
     ICommandList::~ICommandList() = default;
 
     ResultCode ICommandList::Init(IDevice* device, CommandPool* pool, const CommandListCreateInfo& createInfo)

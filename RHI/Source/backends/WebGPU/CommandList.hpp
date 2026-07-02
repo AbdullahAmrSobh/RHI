@@ -15,12 +15,12 @@ namespace RHI::WebGPU
     {
     public:
         ResultCode Init(IDevice* device, const CommandPoolCreateInfo& createInfo);
-        void       Shutdown(IDevice* device);
+        void Shutdown(IDevice* device);
 
-        void         Reset() override;
+        void Reset() override;
         CommandList* Allocate() override;
 
-        IDevice*                  m_device = nullptr;
+        IDevice* m_device = nullptr;
         TL::Vector<ICommandList*> m_commandLists;
     };
 
@@ -31,7 +31,7 @@ namespace RHI::WebGPU
         ~ICommandList();
 
         ResultCode Init(IDevice* device, CommandPool* pool, const CommandListCreateInfo& createInfo);
-        void       Shutdown();
+        void Shutdown();
 
         // Interface implementation
         void Begin() override;
@@ -81,11 +81,11 @@ namespace RHI::WebGPU
         void WriteMicromapsSizes(TL::Span<const Micromap*> micromaps, QueryPool* queryPool, uint32_t queryPoolOffset) override;
 
     public:
-        IDevice*               m_device             = nullptr;
-        ICommandPool*          m_pool               = nullptr;
-        WGPUCommandEncoder     m_commandEncoder     = nullptr;
-        WGPUCommandBuffer      m_commandBuffer      = nullptr;
-        WGPURenderPassEncoder  m_renderPassEncoder  = nullptr;
+        IDevice* m_device = nullptr;
+        ICommandPool* m_pool = nullptr;
+        WGPUCommandEncoder m_commandEncoder = nullptr;
+        WGPUCommandBuffer m_commandBuffer = nullptr;
+        WGPURenderPassEncoder m_renderPassEncoder = nullptr;
         WGPUComputePassEncoder m_computePassEncoder = nullptr;
     };
 } // namespace RHI::WebGPU

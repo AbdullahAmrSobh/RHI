@@ -1,32 +1,19 @@
 #include "RHI/RHI.h"
 
-#include <TL/Assert.hpp>
-
-// #if RHI_COMPILE_BACKEND_VULKAN
-//     #include "RHI/Backend/Vulkan.h"
-//     #define IMPL ::RHI::Vulkan::
-// #elif RHI_COMPILE_BACKEND_D3D12
-//     #include "RHI/Backend/D3D12.h"
-//     #define IMPL ::RHI::D3D12::
-// #elif RHI_COMPILE_BACKEND_WGPU
-//     #include "RHI/Backend/WGPU.h"
-//     #define IMPL ::RHI::WGPU::
-// #elif RHI_COMPILE_BACKEND_DYNAMIC
-//     #include "RHI/Backend/Dynamic.h"
-//     #define IMPL ::RHI::Dynamic
-// #elif RHI_COMPILE_BACKEND_EMPTY
-//     #include "RHI/Backend/EMPTY.h"
-//     #define IMPL ::RHI::Empty
-// #else
-//     #error "Invalid Backend"
-// #endif
+#if RHI_COMPILE_BACKEND_VULKAN
+    #include "backends/vulkan/device.h"
+namespace Impl = RHI::Vulkan;
+#else
+    #error "No RHI backend selected"
+#endif
 
 namespace RHI
 {
     // clang-format off
     // Copied from nvrhi
     // Format mapping table. The rows must be in the exactly same order as Format enum members are defined.
-    static const FormatInfo k_FormatInfoLUT[] = {
+    static const FormatInfo k_FormatInfoLUT[] =
+    {
         // format                    name              bytes blk         type               red   green   blue  alpha  depth  stencl signed  srgb
         {  "Unknown",          Format::Unknown,           0,  0, FormatType::Integer,      false, false, false, false, false, false, false, false },
         {  "R8_UINT",          Format::R8_UINT,           1,  1, FormatType::Integer,      true,  false, false, false, false, false, false, false },
@@ -118,119 +105,529 @@ namespace RHI
         return GetFormatInfo(format).bytesPerBlock;
     }
 
-    // IMPL
+    void Queue::BeginAnnotation(const char* name, uint32_t bgra)
+    {
+        ::Impl::queueBeginAnnotation((::Impl::IQueue*)m_impl, name, bgra);
+    }
 
-    // clang-format off
-#if 0
-struct Instance
-{
-    Impl                            m_impl;
-    // QUEUE
-    void                            (*BeginAnnotation)(IDevice& self, const char* name, uint32_t bgra) = nullptr;
-    void                            (*EndAnnotation)(IDevice& self, ) = nullptr;
-    void                            (*InsertAnnotation)(IDevice& self, const char* name, uint32_t bgra) = nullptr;
-    void                            (*Submit)(IDevice& self, const QueueSubmitInfo& submitInfo) = nullptr;
-    void                            (*WaitIdle)(IDevice& self, ) = nullptr;
-    void                            (*WaitFence)(IDevice& self, Fence* fence, uint64_t value) = nullptr;
-    // DEVICE
-    uint64_t                        (*GarbageCollect)(uint64_t graphicsTimeline) = nullptr;
-    uint64_t                        (*GetNativeHandle)(NativeHandleType type, uint64_t handle) = nullptr;
-    Queue*                          (*GetQueue)(QueueType queueType) = nullptr;
-    ShaderModule*                   (*CreateShaderModule)(const ShaderModuleCreateInfo& createInfo) = nullptr;
-    void                            (*DestroyShaderModule)(ShaderModule* shaderModule) = nullptr;
-    BindGroupLayout*                (*CreateBindGroupLayout)(const BindGroupLayoutCreateInfo& createInfo) = nullptr;
-    void                            (*DestroyBindGroupLayout)(BindGroupLayout* handle) = nullptr;
-    BindGroup*                      (*CreateBindGroup)(const BindGroupCreateInfo& createInfo) = nullptr;
-    void                            (*DestroyBindGroup)(BindGroup* handle) = nullptr;
-    void                            (*UpdateBindGroup)(BindGroup* handle, const BindGroupUpdateInfo& updateInfo) = nullptr;
-    PipelineLayout*                 (*CreatePipelineLayout)(const PipelineLayoutCreateInfo& createInfo) = nullptr;
-    void                            (*DestroyPipelineLayout)(PipelineLayout* handle) = nullptr;
-    GraphicsPipeline*               (*CreateGraphicsPipeline)(const GraphicsPipelineCreateInfo& createInfo) = nullptr;
-    void                            (*DestroyGraphicsPipeline)(GraphicsPipeline* handle) = nullptr;
-    ComputePipeline*                (*CreateComputePipeline)(const ComputePipelineCreateInfo& createInfo) = nullptr;
-    void                            (*DestroyComputePipeline)(ComputePipeline* handle) = nullptr;
-    RayTracingPipeline*             (*CreateRayTracingPipeline)(const RayTracingPipelineCreateInfo& createInfo) = nullptr;
-    void                            (*DestroyRayTracingPipeline)(RayTracingPipeline* handle) = nullptr;
-    void                            (*GetShaderBindingTableEntry)(RayTracingPipeline* handle, uint32_t group, size_t size, void* dstHandle) = nullptr;
-    Buffer*                         (*CreateBuffer)(const BufferCreateInfo& createInfo) = nullptr;
-    void                            (*DestroyBuffer)(Buffer* handle) = nullptr;
-    uint64_t                        (*GetBufferDeviceAddress)(Buffer* buffer) = nullptr;
-    DeviceMemoryPtr                 (*MapBuffer)(Buffer* buffer, uint64_t offset, uint64_t sizeBytes) = nullptr;
-    void                            (*UnmapBuffer)(Buffer* buffer) = nullptr;
-    Image*                          (*CreateImage)(const ImageCreateInfo& createInfo) = nullptr;
-    Image*                          (*CreateImageView)(const ImageViewCreateInfo& createInfo) = nullptr;
-    void                            (*DestroyImage)(Image* handle) = nullptr;
-    Sampler*                        (*CreateSampler)(const SamplerCreateInfo& createInfo) = nullptr;
-    void                            (*DestroySampler)(Sampler* handle) = nullptr;
-    AccelerationStructure*          (*CreateAccelerationStructure)(const AccelerationStructureCreateInfo& createInfo) = nullptr;
-    void                            (*DestroyAccelerationStructure)(AccelerationStructure* handle) = nullptr;
-    uint64_t                        (*GetAccelerationStructureDeviceAddress)(AccelerationStructure* handle) = nullptr;
-    AccelerationStructureSizesInfo  (*GetAccelerationStructureSizesInfo)(AccelerationStructure* as) = nullptr;
-    Micromap*                       (*CreateMicromap)(const MicromapCreateInfo& createInfo) = nullptr;
-    void                            (*DestroyMicromap)(Micromap* handle) = nullptr;
-    CommandPool*                    (*CreateCommandPool)(const CommandPoolCreateInfo& createInfo) = nullptr;
-    void                            (*DestroyCommandPool)(CommandPool* handle) = nullptr;
-    Fence*                          (*CreateFence)(const FenceCreateInfo& createInfo) = nullptr;
-    void                            (*DestroyFence)(Fence* handle) = nullptr;
-    uint64_t                        (*GetFenceValue)(Fence* handle) = nullptr;
-    QueryPool*                      (*CreateQueryPool)(const QueryPoolCreateInfo& createInfo) = nullptr;
-    void                            (*DestroyQueryPool)(QueryPool* handle) = nullptr;
-    Swapchain*                      (*CreateSwapchain)(const SwapchainCreateInfo& createInfo) = nullptr;
-    void                            (*DestroySwapchain)(Swapchain* swapchain) = nullptr;
-    uint32_t                        (*GetSwapchainImagesCount)(Swapchain* swapchain) = nullptr;
-    SwapchainAcquireResult          (*AcquireSwapchainImage)(Swapchain* swapchain) = nullptr;
-    SurfaceCapabilities             (*GetSwapchainSurfaceCapabilities)(Swapchain* swapchain) = nullptr;
-    ResultCode                      (*ResizeSwapchain)(Swapchain* swapchain, const ImageSize2D& size) = nullptr;
-    ResultCode                      (*ConfigureSwapchain)(Swapchain* swapchain, const SwapchainConfigureInfo& configInfo) = nullptr;
-    // COMMAND POOL
-    void                            (*Reset)() = nullptr;
-    CommandList*                    (*Allocate)() = nullptr;
-    // COMMAND LIST
-    void                            (*Begin)() = nullptr;
-    void                            (*End)() = nullptr;
-    void                            (*PushDebugMarker)(const char* name, uint32_t bgra) = nullptr;
-    void                            (*PopDebugMarker)() = nullptr;
-    void                            (*InsertDebugMarker)(const char* name, uint32_t bgra) = nullptr;
-    void                            (*AddPipelineBarrier)(TL::Span<const BarrierInfo> barriers, TL::Span<const ImageBarrierInfo> imageBarriers, TL::Span<const BufferBarrierInfo> bufferBarriers) = nullptr;
-    void                            (*BeginRenderPass)(const RenderPassBeginInfo& beginInfo) = nullptr;
-    void                            (*EndRenderPass)() = nullptr;
-    void                            (*BeginComputePass)(const ComputePassBeginInfo& beginInfo) = nullptr;
-    void                            (*EndComputePass)() = nullptr;
-    void                            (*BeginConditionalCommands)(const BufferBindingInfo& conditionBuffer, bool inverted) = nullptr;
-    void                            (*EndConditionalCommands)() = nullptr;
-    void                            (*Execute)(TL::Span<const CommandList*> commandLists) = nullptr;
-    void                            (*BindPipelineLayout)(BindPoint bindPoint, const PipelineLayout* pipelineLayout) = nullptr;
-    void                            (*SetPushConstants)(BindPoint bindPoint, uint32_t offset, TL::Block content) = nullptr;
-    void                            (*PushBindGroup)(BindPoint bindPoint, uint32_t firstGroup, TL::Span<const BindGroupUpdateInfo> updateInfos) = nullptr;
-    void                            (*SetBindGroups)(BindPoint bindPoint, TL::Span<const BindGroupBindingInfo> bindGroups) = nullptr;
-    void                            (*BindGraphicsPipeline)(const GraphicsPipeline* pipelineState) = nullptr;
-    void                            (*BindComputePipeline)(const ComputePipeline* pipelineState) = nullptr;
-    void                            (*BindRayTracingPipeline)(const RayTracingPipeline* pipelineState) = nullptr;
-    void                            (*SetViewport)(float offsetX, float offsetY, float width, float height, float minDepth, float maxDepth) = nullptr;
-    void                            (*SetScissor)(int32_t offsetX, int32_t offsetY, uint32_t width, uint32_t height) = nullptr;
-    void                            (*BindVertexBuffers)(uint32_t firstBinding, TL::Span<const BufferBindingInfo> vertexBuffers) = nullptr;
-    void                            (*BindIndexBuffer)(const BufferBindingInfo& indexBuffer, IndexType indexType) = nullptr;
-    void                            (*Draw)(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t firstVertex = 0, uint32_t firstInstance = 0) = nullptr;
-    void                            (*DrawIndexed)(uint32_t indexCount, uint32_t instanceCount = 1, uint32_t firstIndex = 0, int32_t vertexOffset = 0, uint32_t firstInstance = 0) = nullptr;
-    void                            (*DrawMeshTasks)(uint32_t x = 1, uint32_t y = 1, uint32_t z = 1) = nullptr;
-    void                            (*DrawIndirect)(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride) = nullptr;
-    void                            (*DrawIndexedIndirect)(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride) = nullptr;
-    void                            (*DrawMeshTasksIndirect)(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t drawNum, uint32_t stride) = nullptr;
-    void                            (*Dispatch)(uint32_t x = 1, uint32_t y = 1, uint32_t z = 1) = nullptr;
-    void                            (*DispatchIndirect)(const BufferBindingInfo& argumentBuffer) = nullptr;
-    void                            (*DispatchRays)(const DispatchRaysInfo& dispatchRaysDesc) = nullptr;
-    void                            (*DispatchRaysIndirect)(const BufferBindingInfo& argumentBuffer) = nullptr;
-    void                            (*CopyBuffer)(const Buffer* srcBuffer, uint64_t srcOffset, const Buffer* dstBuffer, uint64_t dstOffset, uint64_t size) = nullptr;
-    void                            (*CopyImage)(const ImageCopyInfo& srcImage, const ImageCopyInfo& dstImage, const ImageSize3D& size) = nullptr;
-    void                            (*CopyImageToBuffer)(const ImageCopyInfo& srcImage, const ImageMemoryLayout& layout, const Buffer* dstBuffer) = nullptr;
-    void                            (*CopyBufferToImage)(const Buffer* srcBuffer, const ImageCopyInfo& dstImage, const ImageMemoryLayout& layout) = nullptr;
-    void                            (*CopyAccelerationStructure)(AccelerationStructure* dst, const AccelerationStructure* src, CopyMode copyMode) = nullptr;
-    void                            (*CopyMicromap)(Micromap* dst, const Micromap* src, CopyMode copyMode) = nullptr;
-    void                            (*BuildTlas)(TL::Span<const TlasBuildInfo> buildInfos) = nullptr;
-    void                            (*BuildBlas)(TL::Span<const BlasBuildInfo> buildInfos) = nullptr;
-    void                            (*BuildMicromaps)(TL::Span<const MicromapBuildInfo> buildInfos) = nullptr;
-    void                            (*WriteAccelerationStructuresSizes)(TL::Span<const AccelerationStructure*> accelerationStructures, QueryPool* queryPool, uint32_t queryPoolOffset) = nullptr;
-    void                            (*WriteMicromapsSizes)(TL::Span<const Micromap*> micromaps, QueryPool* queryPool, uint32_t queryPoolOffset) = nullptr;
-};
-#endif
+    void Queue::EndAnnotation()
+    {
+        ::Impl::queueEndAnnotation((::Impl::IQueue*)m_impl);
+    }
+
+    void Queue::InsertAnnotation(const char* name, uint32_t bgra)
+    {
+        ::Impl::queueInsertAnnotation((::Impl::IQueue*)m_impl, name, bgra);
+    }
+
+    void Queue::Submit(const QueueSubmitInfo& submitInfo)
+    {
+        ::Impl::queueSubmit((::Impl::IQueue*)m_impl, submitInfo);
+    }
+
+    void Queue::WaitIdle()
+    {
+        ::Impl::queueWaitIdle((::Impl::IQueue*)m_impl);
+    }
+
+    void Queue::WaitFence(Fence* fence, uint64_t value)
+    {
+        ::Impl::queueWaitFence((::Impl::IQueue*)m_impl, fence, value);
+    }
+
+    BackendType Device::GetBackend() const
+    {
+        return ::Impl::deviceGetBackend((::Impl::IDevice*)m_impl);
+    }
+
+    DeviceFeatures Device::GetFeatures() const
+    {
+        return ::Impl::deviceGetFeatures((::Impl::IDevice*)m_impl);
+    }
+
+    DeviceLimits Device::GetLimits() const
+    {
+        return ::Impl::deviceGetLimits((::Impl::IDevice*)m_impl);
+    }
+
+    uint64_t Device::GarbageCollect(uint64_t graphicsTimeline)
+    {
+        return ::Impl::deviceGarbageCollect((::Impl::IDevice*)m_impl, graphicsTimeline);
+    }
+
+    uint64_t Device::GetNativeHandle(NativeHandleType type, uint64_t handle)
+    {
+        return ::Impl::deviceGetNativeHandle((::Impl::IDevice*)m_impl, type, handle);
+    }
+
+    Queue* Device::GetQueue(QueueType queueType)
+    {
+        return ::Impl::deviceGetQueue((::Impl::IDevice*)m_impl, queueType);
+    }
+
+    ShaderModule* Device::CreateShaderModule(const ShaderModuleCreateInfo& createInfo)
+    {
+        return ::Impl::createShaderModule((::Impl::IDevice*)m_impl, createInfo);
+    }
+
+    void Device::DestroyShaderModule(ShaderModule* shaderModule)
+    {
+        ::Impl::destroyShaderModule((::Impl::IDevice*)m_impl, shaderModule);
+    }
+
+    BindGroupLayout* Device::CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)
+    {
+        return ::Impl::createBindGroupLayout((::Impl::IDevice*)m_impl, createInfo);
+    }
+
+    void Device::DestroyBindGroupLayout(BindGroupLayout* handle)
+    {
+        ::Impl::destroyBindGroupLayout((::Impl::IDevice*)m_impl, handle);
+    }
+
+    BindGroup* Device::CreateBindGroup(const BindGroupCreateInfo& createInfo)
+    {
+        return ::Impl::createBindGroup((::Impl::IDevice*)m_impl, createInfo);
+    }
+
+    void Device::DestroyBindGroup(BindGroup* handle)
+    {
+        ::Impl::destroyBindGroup((::Impl::IDevice*)m_impl, handle);
+    }
+
+    void Device::UpdateBindGroup(BindGroup* handle, const BindGroupUpdateInfo& updateInfo)
+    {
+        ::Impl::bindGroupUpdate((::Impl::IDevice*)m_impl, handle, updateInfo);
+    }
+
+    PipelineLayout* Device::CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)
+    {
+        return ::Impl::createPipelineLayout((::Impl::IDevice*)m_impl, createInfo);
+    }
+
+    void Device::DestroyPipelineLayout(PipelineLayout* handle)
+    {
+        ::Impl::destroyPipelineLayout((::Impl::IDevice*)m_impl, handle);
+    }
+
+    GraphicsPipeline* Device::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)
+    {
+        return ::Impl::createGraphicsPipeline((::Impl::IDevice*)m_impl, createInfo);
+    }
+
+    void Device::DestroyGraphicsPipeline(GraphicsPipeline* handle)
+    {
+        ::Impl::destroyGraphicsPipeline((::Impl::IDevice*)m_impl, handle);
+    }
+
+    ComputePipeline* Device::CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
+    {
+        return ::Impl::createComputePipeline((::Impl::IDevice*)m_impl, createInfo);
+    }
+
+    void Device::DestroyComputePipeline(ComputePipeline* handle)
+    {
+        ::Impl::destroyComputePipeline((::Impl::IDevice*)m_impl, handle);
+    }
+
+    RayTracingPipeline* Device::CreateRayTracingPipeline(const RayTracingPipelineCreateInfo& createInfo)
+    {
+        return ::Impl::createRayTracingPipeline((::Impl::IDevice*)m_impl, createInfo);
+    }
+
+    void Device::DestroyRayTracingPipeline(RayTracingPipeline* handle)
+    {
+        ::Impl::destroyRayTracingPipeline((::Impl::IDevice*)m_impl, handle);
+    }
+
+    void Device::GetShaderBindingTableEntry(RayTracingPipeline* handle, uint32_t group, size_t size, void* dstHandle)
+    {
+        ::Impl::rayTracingPipelineGetShaderBindingTableEntry((::Impl::IDevice*)m_impl, handle, group, size, dstHandle);
+    }
+
+    Buffer* Device::CreateBuffer(const BufferCreateInfo& createInfo)
+    {
+        return ::Impl::createBuffer((::Impl::IDevice*)m_impl, createInfo);
+    }
+
+    void Device::DestroyBuffer(Buffer* handle)
+    {
+        ::Impl::destroyBuffer((::Impl::IDevice*)m_impl, handle);
+    }
+
+    uint64_t Device::GetBufferDeviceAddress(Buffer* buffer)
+    {
+        return ::Impl::bufferGetDeviceAddress((::Impl::IDevice*)m_impl, buffer);
+    }
+
+    DeviceMemoryPtr Device::MapBuffer(Buffer* buffer, uint64_t offset, uint64_t sizeBytes)
+    {
+        return ::Impl::bufferMap((::Impl::IDevice*)m_impl, buffer, offset, sizeBytes);
+    }
+
+    void Device::UnmapBuffer(Buffer* buffer)
+    {
+        ::Impl::bufferUnmap((::Impl::IDevice*)m_impl, buffer);
+    }
+
+    Image* Device::CreateImage(const ImageCreateInfo& createInfo)
+    {
+        return ::Impl::createImage((::Impl::IDevice*)m_impl, createInfo);
+    }
+
+    Image* Device::CreateImageView(const ImageViewCreateInfo& createInfo)
+    {
+        return ::Impl::createImageView((::Impl::IDevice*)m_impl, createInfo);
+    }
+
+    void Device::DestroyImage(Image* handle)
+    {
+        ::Impl::destroyImage((::Impl::IDevice*)m_impl, handle);
+    }
+
+    Sampler* Device::CreateSampler(const SamplerCreateInfo& createInfo)
+    {
+        return ::Impl::createSampler((::Impl::IDevice*)m_impl, createInfo);
+    }
+
+    void Device::DestroySampler(Sampler* handle)
+    {
+        ::Impl::destroySampler((::Impl::IDevice*)m_impl, handle);
+    }
+
+    AccelerationStructure* Device::CreateAccelerationStructure(const AccelerationStructureCreateInfo& createInfo)
+    {
+        return ::Impl::createAccelerationStructure((::Impl::IDevice*)m_impl, createInfo);
+    }
+
+    void Device::DestroyAccelerationStructure(AccelerationStructure* handle)
+    {
+        ::Impl::destroyAccelerationStructure((::Impl::IDevice*)m_impl, handle);
+    }
+
+    uint64_t Device::GetAccelerationStructureDeviceAddress(AccelerationStructure* handle)
+    {
+        return ::Impl::accelerationStructureGetDeviceAddress((::Impl::IDevice*)m_impl, handle);
+    }
+
+    AccelerationStructureSizesInfo Device::GetAccelerationStructureSizesInfo(AccelerationStructure* as)
+    {
+        return ::Impl::accelerationStructureGetSizesInfo((::Impl::IDevice*)m_impl, as);
+    }
+
+    Micromap* Device::CreateMicromap(const MicromapCreateInfo& createInfo)
+    {
+        return ::Impl::createMicromap((::Impl::IDevice*)m_impl, createInfo);
+    }
+
+    void Device::DestroyMicromap(Micromap* handle)
+    {
+        ::Impl::destroyMicromap((::Impl::IDevice*)m_impl, handle);
+    }
+
+    CommandPool* Device::CreateCommandPool(const CommandPoolCreateInfo& createInfo)
+    {
+        return ::Impl::createCommandPool((::Impl::IDevice*)m_impl, createInfo);
+    }
+
+    void Device::DestroyCommandPool(CommandPool* handle)
+    {
+        ::Impl::destroyCommandPool((::Impl::IDevice*)m_impl, handle);
+    }
+
+    Fence* Device::CreateFence(const FenceCreateInfo& createInfo)
+    {
+        return ::Impl::createFence((::Impl::IDevice*)m_impl, createInfo);
+    }
+
+    void Device::DestroyFence(Fence* handle)
+    {
+        ::Impl::destroyFence((::Impl::IDevice*)m_impl, handle);
+    }
+
+    uint64_t Device::GetFenceValue(Fence* handle)
+    {
+        return ::Impl::fenceGetValue((::Impl::IDevice*)m_impl, handle);
+    }
+
+    QueryPool* Device::CreateQueryPool(const QueryPoolCreateInfo& createInfo)
+    {
+        return ::Impl::createQueryPool((::Impl::IDevice*)m_impl, createInfo);
+    }
+
+    void Device::DestroyQueryPool(QueryPool* handle)
+    {
+        ::Impl::destroyQueryPool((::Impl::IDevice*)m_impl, handle);
+    }
+
+    Swapchain* Device::CreateSwapchain(const SwapchainCreateInfo& createInfo)
+    {
+        return ::Impl::createSwapchain((::Impl::IDevice*)m_impl, createInfo);
+    }
+
+    void Device::DestroySwapchain(Swapchain* swapchain)
+    {
+        ::Impl::destroySwapchain((::Impl::IDevice*)m_impl, swapchain);
+    }
+
+    uint32_t Device::GetSwapchainImagesCount(Swapchain* swapchain)
+    {
+        return ::Impl::swapchainGetImagesCount((::Impl::IDevice*)m_impl, swapchain);
+    }
+
+    SwapchainAcquireResult Device::AcquireSwapchainImage(Swapchain* swapchain)
+    {
+        return ::Impl::swapchainAcquireImage((::Impl::IDevice*)m_impl, swapchain);
+    }
+
+    SurfaceCapabilities Device::GetSwapchainSurfaceCapabilities(Swapchain* swapchain)
+    {
+        return ::Impl::swapchainGetSurfaceCapabilities((::Impl::IDevice*)m_impl, swapchain);
+    }
+
+    ResultCode Device::ResizeSwapchain(Swapchain* swapchain, const ImageSize2D& size)
+    {
+        return ::Impl::swapchainResize((::Impl::IDevice*)m_impl, swapchain, size);
+    }
+
+    ResultCode Device::ConfigureSwapchain(Swapchain* swapchain, const SwapchainConfigureInfo& configInfo)
+    {
+        return ::Impl::swapchainConfigure((::Impl::IDevice*)m_impl, swapchain, configInfo);
+    }
+
+    void CommandPool::Reset()
+    {
+        ::Impl::commandPoolReset((::Impl::ICommandPool*)m_impl);
+    }
+
+    CommandList* CommandPool::Allocate()
+    {
+        return ::Impl::commandPoolAllocate((::Impl::ICommandPool*)m_impl);
+    }
+
+    void CommandList::Begin()
+    {
+        ::Impl::cmdBegin((::Impl::ICommandList*)m_impl);
+    }
+
+    void CommandList::End()
+    {
+        ::Impl::cmdEnd((::Impl::ICommandList*)m_impl);
+    }
+
+    void CommandList::PushDebugMarker(const char* name, uint32_t bgra)
+    {
+        ::Impl::cmdPushDebugMarker((::Impl::ICommandList*)m_impl, name, bgra);
+    }
+
+    void CommandList::PopDebugMarker()
+    {
+        ::Impl::cmdPopDebugMarker((::Impl::ICommandList*)m_impl);
+    }
+
+    void CommandList::InsertDebugMarker(const char* name, uint32_t bgra)
+    {
+        ::Impl::cmdInsertDebugMarker((::Impl::ICommandList*)m_impl, name, bgra);
+    }
+
+    void CommandList::AddPipelineBarrier(TL::Span<const BarrierInfo> barriers, TL::Span<const ImageBarrierInfo> imageBarriers, TL::Span<const BufferBarrierInfo> bufferBarriers)
+    {
+        ::Impl::cmdAddPipelineBarrier((::Impl::ICommandList*)m_impl, barriers, imageBarriers, bufferBarriers);
+    }
+
+    void CommandList::BeginRenderPass(const RenderPassBeginInfo& beginInfo)
+    {
+        ::Impl::cmdBeginRenderPass((::Impl::ICommandList*)m_impl, beginInfo);
+    }
+
+    void CommandList::EndRenderPass()
+    {
+        ::Impl::cmdEndRenderPass((::Impl::ICommandList*)m_impl);
+    }
+
+    void CommandList::BeginComputePass(const ComputePassBeginInfo& beginInfo)
+    {
+        ::Impl::cmdBeginComputePass((::Impl::ICommandList*)m_impl, beginInfo);
+    }
+
+    void CommandList::EndComputePass()
+    {
+        ::Impl::cmdEndComputePass((::Impl::ICommandList*)m_impl);
+    }
+
+    void CommandList::BeginConditionalCommands(const BufferBindingInfo& conditionBuffer, bool inverted)
+    {
+        ::Impl::cmdBeginConditionalCommands((::Impl::ICommandList*)m_impl, conditionBuffer, inverted);
+    }
+
+    void CommandList::EndConditionalCommands()
+    {
+        ::Impl::cmdEndConditionalCommands((::Impl::ICommandList*)m_impl);
+    }
+
+    void CommandList::Execute(TL::Span<const CommandList*> commandLists)
+    {
+        ::Impl::cmdExecute((::Impl::ICommandList*)m_impl, commandLists);
+    }
+
+    void CommandList::BindPipelineLayout(BindPoint bindPoint, const PipelineLayout* pipelineLayout)
+    {
+        ::Impl::cmdBindPipelineLayout((::Impl::ICommandList*)m_impl, bindPoint, pipelineLayout);
+    }
+
+    void CommandList::SetPushConstants(BindPoint bindPoint, uint32_t offset, TL::Block content)
+    {
+        ::Impl::cmdSetPushConstants((::Impl::ICommandList*)m_impl, bindPoint, offset, content);
+    }
+
+    void CommandList::PushBindGroup(BindPoint bindPoint, uint32_t firstGroup, TL::Span<const BindGroupUpdateInfo> updateInfos)
+    {
+        ::Impl::cmdPushBindGroup((::Impl::ICommandList*)m_impl, bindPoint, firstGroup, updateInfos);
+    }
+
+    void CommandList::SetBindGroups(BindPoint bindPoint, TL::Span<const BindGroupBindingInfo> bindGroups)
+    {
+        ::Impl::cmdSetBindGroups((::Impl::ICommandList*)m_impl, bindPoint, bindGroups);
+    }
+
+    void CommandList::BindGraphicsPipeline(const GraphicsPipeline* pipelineState)
+    {
+        ::Impl::cmdBindGraphicsPipeline((::Impl::ICommandList*)m_impl, pipelineState);
+    }
+
+    void CommandList::BindComputePipeline(const ComputePipeline* pipelineState)
+    {
+        ::Impl::cmdBindComputePipeline((::Impl::ICommandList*)m_impl, pipelineState);
+    }
+
+    void CommandList::BindRayTracingPipeline(const RayTracingPipeline* pipelineState)
+    {
+        ::Impl::cmdBindRayTracingPipeline((::Impl::ICommandList*)m_impl, pipelineState);
+    }
+
+    void CommandList::SetViewport(float offsetX, float offsetY, float width, float height, float minDepth, float maxDepth)
+    {
+        ::Impl::cmdSetViewport((::Impl::ICommandList*)m_impl, offsetX, offsetY, width, height, minDepth, maxDepth);
+    }
+
+    void CommandList::SetScissor(int32_t offsetX, int32_t offsetY, uint32_t width, uint32_t height)
+    {
+        ::Impl::cmdSetScissor((::Impl::ICommandList*)m_impl, offsetX, offsetY, width, height);
+    }
+
+    void CommandList::BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> vertexBuffers)
+    {
+        ::Impl::cmdBindVertexBuffers((::Impl::ICommandList*)m_impl, firstBinding, vertexBuffers);
+    }
+
+    void CommandList::BindIndexBuffer(const BufferBindingInfo& indexBuffer, IndexType indexType)
+    {
+        ::Impl::cmdBindIndexBuffer((::Impl::ICommandList*)m_impl, indexBuffer, indexType);
+    }
+
+    void CommandList::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance)
+    {
+        ::Impl::cmdDraw((::Impl::ICommandList*)m_impl, vertexCount, instanceCount, firstVertex, firstInstance);
+    }
+
+    void CommandList::DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance)
+    {
+        ::Impl::cmdDrawIndexed((::Impl::ICommandList*)m_impl, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
+    }
+
+    void CommandList::DrawMeshTasks(uint32_t x, uint32_t y, uint32_t z)
+    {
+        ::Impl::cmdDrawMeshTasks((::Impl::ICommandList*)m_impl, x, y, z);
+    }
+
+    void CommandList::DrawIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride)
+    {
+        ::Impl::cmdDrawIndirect((::Impl::ICommandList*)m_impl, argumentBuffer, countBuffer, maxDrawCount, stride);
+    }
+
+    void CommandList::DrawIndexedIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride)
+    {
+        ::Impl::cmdDrawIndexedIndirect((::Impl::ICommandList*)m_impl, argumentBuffer, countBuffer, maxDrawCount, stride);
+    }
+
+    void CommandList::DrawMeshTasksIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t drawNum, uint32_t stride)
+    {
+        ::Impl::cmdDrawMeshTasksIndirect((::Impl::ICommandList*)m_impl, argumentBuffer, countBuffer, drawNum, stride);
+    }
+
+    void CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z)
+    {
+        ::Impl::cmdDispatch((::Impl::ICommandList*)m_impl, x, y, z);
+    }
+
+    void CommandList::DispatchIndirect(const BufferBindingInfo& argumentBuffer)
+    {
+        ::Impl::cmdDispatchIndirect((::Impl::ICommandList*)m_impl, argumentBuffer);
+    }
+
+    void CommandList::DispatchRays(const DispatchRaysInfo& dispatchRaysDesc)
+    {
+        ::Impl::cmdDispatchRays((::Impl::ICommandList*)m_impl, dispatchRaysDesc);
+    }
+
+    void CommandList::DispatchRaysIndirect(const BufferBindingInfo& argumentBuffer)
+    {
+        ::Impl::cmdDispatchRaysIndirect((::Impl::ICommandList*)m_impl, argumentBuffer);
+    }
+
+    void CommandList::CopyBuffer(const Buffer* srcBuffer, uint64_t srcOffset, const Buffer* dstBuffer, uint64_t dstOffset, uint64_t size)
+    {
+        ::Impl::cmdCopyBuffer((::Impl::ICommandList*)m_impl, srcBuffer, srcOffset, dstBuffer, dstOffset, size);
+    }
+
+    void CommandList::CopyImage(const ImageCopyInfo& srcImage, const ImageCopyInfo& dstImage, const ImageSize3D& size)
+    {
+        ::Impl::cmdCopyImage((::Impl::ICommandList*)m_impl, srcImage, dstImage, size);
+    }
+
+    void CommandList::CopyImageToBuffer(const ImageCopyInfo& srcImage, const ImageMemoryLayout& layout, const Buffer* dstBuffer)
+    {
+        ::Impl::cmdCopyImageToBuffer((::Impl::ICommandList*)m_impl, srcImage, layout, dstBuffer);
+    }
+
+    void CommandList::CopyBufferToImage(const Buffer* srcBuffer, const ImageCopyInfo& dstImage, const ImageMemoryLayout& layout)
+    {
+        ::Impl::cmdCopyBufferToImage((::Impl::ICommandList*)m_impl, srcBuffer, dstImage, layout);
+    }
+
+    void CommandList::CopyAccelerationStructure(AccelerationStructure* dst, const AccelerationStructure* src, CopyMode copyMode)
+    {
+        ::Impl::cmdCopyAccelerationStructure((::Impl::ICommandList*)m_impl, dst, src, copyMode);
+    }
+
+    void CommandList::CopyMicromap(Micromap* dst, const Micromap* src, CopyMode copyMode)
+    {
+        ::Impl::cmdCopyMicromap((::Impl::ICommandList*)m_impl, dst, src, copyMode);
+    }
+
+    void CommandList::BuildTlas(TL::Span<const TlasBuildInfo> buildInfos)
+    {
+        ::Impl::cmdBuildTlas((::Impl::ICommandList*)m_impl, buildInfos);
+    }
+
+    void CommandList::BuildBlas(TL::Span<const BlasBuildInfo> buildInfos)
+    {
+        ::Impl::cmdBuildBlas((::Impl::ICommandList*)m_impl, buildInfos);
+    }
+
+    void CommandList::BuildMicromaps(TL::Span<const MicromapBuildInfo> buildInfos)
+    {
+        ::Impl::cmdBuildMicromaps((::Impl::ICommandList*)m_impl, buildInfos);
+    }
+
+    void CommandList::WriteAccelerationStructuresSizes(TL::Span<const AccelerationStructure*> accelerationStructures, QueryPool* queryPool, uint32_t queryPoolOffset)
+    {
+        ::Impl::cmdWriteAccelerationStructuresSizes((::Impl::ICommandList*)m_impl, accelerationStructures, queryPool, queryPoolOffset);
+    }
+
+    void CommandList::WriteMicromapsSizes(TL::Span<const Micromap*> micromaps, QueryPool* queryPool, uint32_t queryPoolOffset)
+    {
+        ::Impl::cmdWriteMicromapsSizes((::Impl::ICommandList*)m_impl, micromaps, queryPool, queryPoolOffset);
+    }
+
 } // namespace RHI

@@ -8,15 +8,13 @@
 
 #include <RHI/RHI.h>
 
-#include <TL/Context.hpp>
-#include <TL/Stacktrace.hpp>
 #include <TL/Utils.hpp>
 
 #include <vk_mem_alloc.h>
 
 namespace RHI::Vulkan
 {
-    class IDevice;
+    struct IDevice;
     struct IBindGroup;
     struct IBindGroupLayout;
 

@@ -18,10 +18,6 @@ requires EMSDK 4.0+
 
 > cmake --build /build --config Debug --target all
 
-## Example Usage
-
-_TODO_
-
 ## Docs
 
 The API is self expainatory, read the code
@@ -36,5 +32,5 @@ The API is self expainatory, read the code
 | WebAssembly| ❌     | ✅     | ❌    |
 
 Features
-    Ray-Tracing: 🟨
-    Mesh-Shaders: 🟨
+    Ray-Tracing: ✅
+    Mesh-Shaders: ✅

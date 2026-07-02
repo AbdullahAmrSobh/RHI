@@ -1334,200 +1334,251 @@ namespace RHI
     class RHI_EXPORT Queue
     {
     public:
-        Queue()          = default;
-        virtual ~Queue() = default;
+        // Backends derive from this facade; m_impl is set to `this` so it always points at the
+        // most-derived (backend) object, which RHI.cpp casts back to the backend type.
+        Queue()
+        {
+            m_impl = (Impl*)this;
+        }
 
-        virtual void BeginAnnotation(const char* name, uint32_t bgra)  = 0;
-        virtual void EndAnnotation()                                   = 0;
-        virtual void InsertAnnotation(const char* name, uint32_t bgra) = 0;
+        ~Queue() = default;
 
-        virtual void Submit(const QueueSubmitInfo& submitInfo) = 0;
+        void BeginAnnotation(const char* name, uint32_t bgra);
+        void EndAnnotation();
+        void InsertAnnotation(const char* name, uint32_t bgra);
 
-        virtual void WaitIdle()                              = 0;
-        virtual void WaitFence(Fence* fence, uint64_t value) = 0;
+        void Submit(const QueueSubmitInfo& submitInfo);
+
+        void WaitIdle();
+        void WaitFence(Fence* fence, uint64_t value);
+
+    private:
+        struct Impl* m_impl = nullptr;
     };
 
     class RHI_EXPORT Device
     {
     public:
-        Device()          = default;
-        virtual ~Device() = default;
+        // Backends derive from this facade; m_impl is set to `this` so it always points at the
+        // most-derived (backend) object, which RHI.cpp casts back to the backend type.
+        Device()
+        {
+            m_impl = (Impl*)this;
+        }
 
-        BackendType                            GetBackend() const { return m_backend; }
+        ~Device() = default;
 
-        DeviceFeatures                         GetFeatures() const { return m_features; }
+        BackendType                    GetBackend() const;
 
-        DeviceLimits                           GetLimits() const { return m_limits; }
+        DeviceFeatures                 GetFeatures() const;
 
-        virtual uint64_t                       GarbageCollect(uint64_t graphicsTimeline)               = 0;
-        virtual uint64_t                       GetNativeHandle(NativeHandleType type, uint64_t handle) = 0;
+        DeviceLimits                   GetLimits() const;
 
-        virtual Queue*                         GetQueue(QueueType queueType) = 0;
+        uint64_t                       GarbageCollect(uint64_t graphicsTimeline);
+        uint64_t                       GetNativeHandle(NativeHandleType type, uint64_t handle);
+
+        Queue*                         GetQueue(QueueType queueType);
 
         // ShaderModule
-        virtual ShaderModule*                  CreateShaderModule(const ShaderModuleCreateInfo& createInfo) = 0;
-        virtual void                           DestroyShaderModule(ShaderModule* shaderModule)              = 0;
+        ShaderModule*                  CreateShaderModule(const ShaderModuleCreateInfo& createInfo);
+        void                           DestroyShaderModule(ShaderModule* shaderModule);
 
         // BindGroupLayout
-        virtual BindGroupLayout*               CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo) = 0;
-        virtual void                           DestroyBindGroupLayout(BindGroupLayout* handle)                    = 0;
+        BindGroupLayout*               CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo);
+        void                           DestroyBindGroupLayout(BindGroupLayout* handle);
 
         // BindGroup
-        virtual BindGroup*                     CreateBindGroup(const BindGroupCreateInfo& createInfo)                    = 0;
-        virtual void                           DestroyBindGroup(BindGroup* handle)                                       = 0;
-        virtual void                           UpdateBindGroup(BindGroup* handle, const BindGroupUpdateInfo& updateInfo) = 0;
+        BindGroup*                     CreateBindGroup(const BindGroupCreateInfo& createInfo);
+        void                           DestroyBindGroup(BindGroup* handle);
+        void                           UpdateBindGroup(BindGroup* handle, const BindGroupUpdateInfo& updateInfo);
 
         // PipelineLayout
-        virtual PipelineLayout*                CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo) = 0;
-        virtual void                           DestroyPipelineLayout(PipelineLayout* handle)                    = 0;
+        PipelineLayout*                CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo);
+        void                           DestroyPipelineLayout(PipelineLayout* handle);
 
         // Pipelines
-        virtual GraphicsPipeline*              CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)                                 = 0;
-        virtual void                           DestroyGraphicsPipeline(GraphicsPipeline* handle)                                                    = 0;
-        virtual ComputePipeline*               CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)                                   = 0;
-        virtual void                           DestroyComputePipeline(ComputePipeline* handle)                                                      = 0;
-        virtual RayTracingPipeline*            CreateRayTracingPipeline(const RayTracingPipelineCreateInfo& createInfo)                             = 0;
-        virtual void                           DestroyRayTracingPipeline(RayTracingPipeline* handle)                                                = 0;
-        virtual void                           GetShaderBindingTableEntry(RayTracingPipeline* handle, uint32_t group, size_t size, void* dstHandle) = 0;
+        GraphicsPipeline*              CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo);
+        void                           DestroyGraphicsPipeline(GraphicsPipeline* handle);
+        ComputePipeline*               CreateComputePipeline(const ComputePipelineCreateInfo& createInfo);
+        void                           DestroyComputePipeline(ComputePipeline* handle);
+        RayTracingPipeline*            CreateRayTracingPipeline(const RayTracingPipelineCreateInfo& createInfo);
+        void                           DestroyRayTracingPipeline(RayTracingPipeline* handle);
+        void                           GetShaderBindingTableEntry(RayTracingPipeline* handle, uint32_t group, size_t size, void* dstHandle);
 
         // Buffer
-        virtual Buffer*                        CreateBuffer(const BufferCreateInfo& createInfo)               = 0;
-        virtual void                           DestroyBuffer(Buffer* handle)                                  = 0;
-        virtual uint64_t                       GetBufferDeviceAddress(Buffer* buffer)                         = 0;
-        virtual DeviceMemoryPtr                MapBuffer(Buffer* buffer, uint64_t offset, uint64_t sizeBytes) = 0;
-        virtual void                           UnmapBuffer(Buffer* buffer)                                    = 0;
+        Buffer*                        CreateBuffer(const BufferCreateInfo& createInfo);
+        void                           DestroyBuffer(Buffer* handle);
+        uint64_t                       GetBufferDeviceAddress(Buffer* buffer);
+        DeviceMemoryPtr                MapBuffer(Buffer* buffer, uint64_t offset, uint64_t sizeBytes);
+        void                           UnmapBuffer(Buffer* buffer);
 
         // Image
-        virtual Image*                         CreateImage(const ImageCreateInfo& createInfo)         = 0;
-        virtual Image*                         CreateImageView(const ImageViewCreateInfo& createInfo) = 0;
-        virtual void                           DestroyImage(Image* handle)                            = 0;
+        Image*                         CreateImage(const ImageCreateInfo& createInfo);
+        Image*                         CreateImageView(const ImageViewCreateInfo& createInfo);
+        void                           DestroyImage(Image* handle);
 
         // Sampler
-        virtual Sampler*                       CreateSampler(const SamplerCreateInfo& createInfo) = 0;
-        virtual void                           DestroySampler(Sampler* handle)                    = 0;
+        Sampler*                       CreateSampler(const SamplerCreateInfo& createInfo);
+        void                           DestroySampler(Sampler* handle);
 
         // Acceleration structures
-        virtual AccelerationStructure*         CreateAccelerationStructure(const AccelerationStructureCreateInfo& createInfo) = 0;
-        virtual void                           DestroyAccelerationStructure(AccelerationStructure* handle)                    = 0;
-        virtual uint64_t                       GetAccelerationStructureDeviceAddress(AccelerationStructure* handle)           = 0;
-        virtual AccelerationStructureSizesInfo GetAccelerationStructureSizesInfo(AccelerationStructure* as)                   = 0;
-        virtual Micromap*                      CreateMicromap(const MicromapCreateInfo& createInfo)                           = 0;
-        virtual void                           DestroyMicromap(Micromap* handle)                                              = 0;
+        AccelerationStructure*         CreateAccelerationStructure(const AccelerationStructureCreateInfo& createInfo);
+        void                           DestroyAccelerationStructure(AccelerationStructure* handle);
+        uint64_t                       GetAccelerationStructureDeviceAddress(AccelerationStructure* handle);
+        AccelerationStructureSizesInfo GetAccelerationStructureSizesInfo(AccelerationStructure* as);
+        Micromap*                      CreateMicromap(const MicromapCreateInfo& createInfo);
+        void                           DestroyMicromap(Micromap* handle);
 
         // CommandPool
-        virtual CommandPool*                   CreateCommandPool(const CommandPoolCreateInfo& createInfo) = 0;
-        virtual void                           DestroyCommandPool(CommandPool* handle)                    = 0;
+        CommandPool*                   CreateCommandPool(const CommandPoolCreateInfo& createInfo);
+        void                           DestroyCommandPool(CommandPool* handle);
 
         // Fence
-        virtual Fence*                         CreateFence(const FenceCreateInfo& createInfo) = 0;
-        virtual void                           DestroyFence(Fence* handle)                    = 0;
-        virtual uint64_t                       GetFenceValue(Fence* handle)                   = 0;
+        Fence*                         CreateFence(const FenceCreateInfo& createInfo);
+        void                           DestroyFence(Fence* handle);
+        uint64_t                       GetFenceValue(Fence* handle);
 
         // QueryPool
-        virtual QueryPool*                     CreateQueryPool(const QueryPoolCreateInfo& createInfo) = 0;
-        virtual void                           DestroyQueryPool(QueryPool* handle)                    = 0;
+        QueryPool*                     CreateQueryPool(const QueryPoolCreateInfo& createInfo);
+        void                           DestroyQueryPool(QueryPool* handle);
 
         // Swapchain
-        virtual Swapchain*                     CreateSwapchain(const SwapchainCreateInfo& createInfo)                             = 0;
-        virtual void                           DestroySwapchain(Swapchain* swapchain)                                             = 0;
-        virtual uint32_t                       GetSwapchainImagesCount(Swapchain* swapchain)                                      = 0;
-        virtual SwapchainAcquireResult         AcquireSwapchainImage(Swapchain* swapchain)                                        = 0;
-        virtual SurfaceCapabilities            GetSwapchainSurfaceCapabilities(Swapchain* swapchain)                              = 0;
-        virtual ResultCode                     ResizeSwapchain(Swapchain* swapchain, const ImageSize2D& size)                     = 0;
-        virtual ResultCode                     ConfigureSwapchain(Swapchain* swapchain, const SwapchainConfigureInfo& configInfo) = 0;
+        Swapchain*                     CreateSwapchain(const SwapchainCreateInfo& createInfo);
+        void                           DestroySwapchain(Swapchain* swapchain);
+        uint32_t                       GetSwapchainImagesCount(Swapchain* swapchain);
+        SwapchainAcquireResult         AcquireSwapchainImage(Swapchain* swapchain);
+        SurfaceCapabilities            GetSwapchainSurfaceCapabilities(Swapchain* swapchain);
+        ResultCode                     ResizeSwapchain(Swapchain* swapchain, const ImageSize2D& size);
+        ResultCode                     ConfigureSwapchain(Swapchain* swapchain, const SwapchainConfigureInfo& configInfo);
 
-    protected:
-        BackendType    m_backend;
-        DeviceLimits   m_limits;
-        DeviceFeatures m_features;
+    private:
+        struct Impl* m_impl = nullptr;
     };
 
     class RHI_EXPORT CommandPool
     {
     public:
-        virtual void         Reset()    = 0;
-        virtual CommandList* Allocate() = 0;
+        // Backends derive from this facade; m_impl is set to `this` so it always points at the
+        // most-derived (backend) object, which RHI.cpp casts back to the backend type.
+        CommandPool()
+        {
+            m_impl = (Impl*)this;
+        }
+
+        void         Reset();
+        CommandList* Allocate();
+
+        // Backend-internal implementation pointer. Assigned and read by the active backend
+        // (see RHI/Backend/*). Not for consumer use.
+        struct Impl* m_impl = nullptr;
     };
 
     class RHI_EXPORT CommandList
     {
     public:
-        CommandList()          = default;
-        virtual ~CommandList() = default;
+        // Backends derive from this facade; m_impl is set to `this` so it always points at the
+        // most-derived (backend) object, which RHI.cpp casts back to the backend type.
+        CommandList()
+        {
+            m_impl = (Impl*)this;
+        }
+
+        ~CommandList() = default;
 
         // state
-        virtual void Begin() = 0;
-        virtual void End()   = 0;
+        void Begin();
+        void End();
 
         // Debug markers
-        virtual void PushDebugMarker(const char* name, uint32_t bgra)   = 0;
-        virtual void PopDebugMarker()                                   = 0;
-        virtual void InsertDebugMarker(const char* name, uint32_t bgra) = 0;
+        void PushDebugMarker(const char* name, uint32_t bgra);
+        void PopDebugMarker();
+        void InsertDebugMarker(const char* name, uint32_t bgra);
 
         // Synchronization
-        virtual void AddPipelineBarrier(TL::Span<const BarrierInfo> barriers, TL::Span<const ImageBarrierInfo> imageBarriers, TL::Span<const BufferBarrierInfo> bufferBarriers) = 0;
+        void AddPipelineBarrier(TL::Span<const BarrierInfo> barriers, TL::Span<const ImageBarrierInfo> imageBarriers, TL::Span<const BufferBarrierInfo> bufferBarriers);
 
         // Pass setup
-        virtual void BeginRenderPass(const RenderPassBeginInfo& beginInfo)   = 0;
-        virtual void EndRenderPass()                                         = 0;
-        virtual void BeginComputePass(const ComputePassBeginInfo& beginInfo) = 0;
-        virtual void EndComputePass()                                        = 0;
+        void BeginRenderPass(const RenderPassBeginInfo& beginInfo);
+        void EndRenderPass();
+        void BeginComputePass(const ComputePassBeginInfo& beginInfo);
+        void EndComputePass();
 
         // Conditional & device generated commands
-        virtual void BeginConditionalCommands(const BufferBindingInfo& conditionBuffer, bool inverted) = 0;
-        virtual void EndConditionalCommands()                                                          = 0;
-        virtual void Execute(TL::Span<const CommandList*> commandLists)                                = 0;
+        void BeginConditionalCommands(const BufferBindingInfo& conditionBuffer, bool inverted);
+        void EndConditionalCommands();
+        void Execute(TL::Span<const CommandList*> commandLists);
 
         // Pipeline state binding
-        virtual void BindPipelineLayout(BindPoint bindPoint, const PipelineLayout* pipelineLayout)                            = 0;
-        virtual void SetPushConstants(BindPoint bindPoint, uint32_t offset, TL::Block content)                                = 0;
-        virtual void PushBindGroup(BindPoint bindPoint, uint32_t firstGroup, TL::Span<const BindGroupUpdateInfo> updateInfos) = 0;
-        virtual void SetBindGroups(BindPoint bindPoint, TL::Span<const BindGroupBindingInfo> bindGroups)                      = 0;
-        virtual void BindGraphicsPipeline(const GraphicsPipeline* pipelineState)                                              = 0;
-        virtual void BindComputePipeline(const ComputePipeline* pipelineState)                                                = 0;
-        virtual void BindRayTracingPipeline(const RayTracingPipeline* pipelineState)                                          = 0;
+        void BindPipelineLayout(BindPoint bindPoint, const PipelineLayout* pipelineLayout);
+        void SetPushConstants(BindPoint bindPoint, uint32_t offset, TL::Block content);
+        void PushBindGroup(BindPoint bindPoint, uint32_t firstGroup, TL::Span<const BindGroupUpdateInfo> updateInfos);
+        void SetBindGroups(BindPoint bindPoint, TL::Span<const BindGroupBindingInfo> bindGroups);
+        void BindGraphicsPipeline(const GraphicsPipeline* pipelineState);
+        void BindComputePipeline(const ComputePipeline* pipelineState);
+        void BindRayTracingPipeline(const RayTracingPipeline* pipelineState);
 
         // Dynamic state
-        virtual void SetViewport(float offsetX, float offsetY, float width, float height, float minDepth, float maxDepth) = 0;
-        virtual void SetScissor(int32_t offsetX, int32_t offsetY, uint32_t width, uint32_t height)                        = 0;
+        void SetViewport(float offsetX, float offsetY, float width, float height, float minDepth, float maxDepth);
+        void SetScissor(int32_t offsetX, int32_t offsetY, uint32_t width, uint32_t height);
 
         // Vertex input
-        virtual void BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> vertexBuffers) = 0;
-        virtual void BindIndexBuffer(const BufferBindingInfo& indexBuffer, IndexType indexType)                = 0;
+        void BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> vertexBuffers);
+        void BindIndexBuffer(const BufferBindingInfo& indexBuffer, IndexType indexType);
 
         // Draw
-        virtual void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t firstVertex = 0, uint32_t firstInstance = 0)                                = 0;
-        virtual void DrawIndexed(uint32_t indexCount, uint32_t instanceCount = 1, uint32_t firstIndex = 0, int32_t vertexOffset = 0, uint32_t firstInstance = 0) = 0;
-        virtual void DrawMeshTasks(uint32_t x = 1, uint32_t y = 1, uint32_t z = 1)                                                                               = 0;
+        void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t firstVertex = 0, uint32_t firstInstance = 0);
+        void DrawIndexed(uint32_t indexCount, uint32_t instanceCount = 1, uint32_t firstIndex = 0, int32_t vertexOffset = 0, uint32_t firstInstance = 0);
+        void DrawMeshTasks(uint32_t x = 1, uint32_t y = 1, uint32_t z = 1);
 
         // Draw Indirect
-        virtual void DrawIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride)        = 0;
-        virtual void DrawIndexedIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride) = 0;
-        virtual void DrawMeshTasksIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t drawNum, uint32_t stride)    = 0;
+        void DrawIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride);
+        void DrawIndexedIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride);
+        void DrawMeshTasksIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t drawNum, uint32_t stride);
 
         // Dispatch
-        virtual void Dispatch(uint32_t x = 1, uint32_t y = 1, uint32_t z = 1)  = 0;
-        virtual void DispatchIndirect(const BufferBindingInfo& argumentBuffer) = 0;
+        void Dispatch(uint32_t x = 1, uint32_t y = 1, uint32_t z = 1);
+        void DispatchIndirect(const BufferBindingInfo& argumentBuffer);
 
         // Ray Tracing Dispatch
-        virtual void DispatchRays(const DispatchRaysInfo& dispatchRaysDesc)        = 0;
-        virtual void DispatchRaysIndirect(const BufferBindingInfo& argumentBuffer) = 0;
+        void DispatchRays(const DispatchRaysInfo& dispatchRaysDesc);
+        void DispatchRaysIndirect(const BufferBindingInfo& argumentBuffer);
 
         // Copy
-        virtual void CopyBuffer(const Buffer* srcBuffer, uint64_t srcOffset, const Buffer* dstBuffer, uint64_t dstOffset, uint64_t size) = 0;
-        virtual void CopyImage(const ImageCopyInfo& srcImage, const ImageCopyInfo& dstImage, const ImageSize3D& size)                    = 0;
-        virtual void CopyImageToBuffer(const ImageCopyInfo& srcImage, const ImageMemoryLayout& layout, const Buffer* dstBuffer)          = 0;
-        virtual void CopyBufferToImage(const Buffer* srcBuffer, const ImageCopyInfo& dstImage, const ImageMemoryLayout& layout)          = 0;
-        virtual void CopyAccelerationStructure(AccelerationStructure* dst, const AccelerationStructure* src, CopyMode copyMode)          = 0;
-        virtual void CopyMicromap(Micromap* dst, const Micromap* src, CopyMode copyMode)                                                 = 0;
+        void CopyBuffer(const Buffer* srcBuffer, uint64_t srcOffset, const Buffer* dstBuffer, uint64_t dstOffset, uint64_t size);
+        void CopyImage(const ImageCopyInfo& srcImage, const ImageCopyInfo& dstImage, const ImageSize3D& size);
+        void CopyImageToBuffer(const ImageCopyInfo& srcImage, const ImageMemoryLayout& layout, const Buffer* dstBuffer);
+        void CopyBufferToImage(const Buffer* srcBuffer, const ImageCopyInfo& dstImage, const ImageMemoryLayout& layout);
+        void CopyAccelerationStructure(AccelerationStructure* dst, const AccelerationStructure* src, CopyMode copyMode);
+        void CopyMicromap(Micromap* dst, const Micromap* src, CopyMode copyMode);
 
         // Acceleration structure & micromap builds
-        virtual void BuildTlas(TL::Span<const TlasBuildInfo> buildInfos)                                                                                             = 0;
-        virtual void BuildBlas(TL::Span<const BlasBuildInfo> buildInfos)                                                                                             = 0;
-        virtual void BuildMicromaps(TL::Span<const MicromapBuildInfo> buildInfos)                                                                                    = 0;
-        virtual void WriteAccelerationStructuresSizes(TL::Span<const AccelerationStructure*> accelerationStructures, QueryPool* queryPool, uint32_t queryPoolOffset) = 0;
-        virtual void WriteMicromapsSizes(TL::Span<const Micromap*> micromaps, QueryPool* queryPool, uint32_t queryPoolOffset)                                        = 0;
+        void BuildTlas(TL::Span<const TlasBuildInfo> buildInfos);
+        void BuildBlas(TL::Span<const BlasBuildInfo> buildInfos);
+        void BuildMicromaps(TL::Span<const MicromapBuildInfo> buildInfos);
+        void WriteAccelerationStructuresSizes(TL::Span<const AccelerationStructure*> accelerationStructures, QueryPool* queryPool, uint32_t queryPoolOffset);
+        void WriteMicromapsSizes(TL::Span<const Micromap*> micromaps, QueryPool* queryPool, uint32_t queryPoolOffset);
+
+    private:
+        struct Impl* m_impl = nullptr;
     };
 
     RHI_EXPORT const FormatInfo& GetFormatInfo(Format format);
+
+    struct Version
+    {
+        uint16_t major = 0;
+        uint16_t minor = 0;
+        uint32_t patch = 0;
+    };
+
+    struct ApplicationInfo
+    {
+        const char* applicationName    = nullptr;
+        Version     applicationVersion = {};
+        const char* engineName         = nullptr;
+        Version     engineVersion      = {};
+    };
+
+    RHI_EXPORT Device* CreateVulkanDevice(const ApplicationInfo& appInfo);
+    RHI_EXPORT void    DestroyVulkanDevice(Device* device);
 } // namespace RHI
