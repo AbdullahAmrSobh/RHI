@@ -1130,6 +1130,11 @@ namespace RHI::Vulkan
         TL_UNREACHABLE();
     }
 
+    void cmdClearBuffer(ICommandList* self, Buffer* dst, size_t offset, size_t size)
+    {
+        vkCmdFillBuffer(self->commandBuffer, ((IBuffer*)dst)->handle, offset, size, 0);
+    }
+
     void cmdWriteAccelerationStructuresSizes(ICommandList* self, TL::Span<const AccelerationStructure*> accelerationStructures, QueryPool* _queryPool, uint32_t queryPoolOffset)
     {
         IQueryPool* queryPool = (IQueryPool*)_queryPool;

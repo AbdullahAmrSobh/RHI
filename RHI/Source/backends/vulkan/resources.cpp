@@ -1702,6 +1702,7 @@ namespace RHI::Vulkan
 
             result = vmaCreateBuffer(device->m_deviceAllocator, &bufferCI, &allocationCI, &asBuffer, &allocation, &allocationInfo);
             if (result != VK_SUCCESS) return result;
+            buffer = asBuffer;
 
             VkBufferDeviceAddressInfo bufferAddressInfo{
                 .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,

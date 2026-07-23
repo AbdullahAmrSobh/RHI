@@ -2,10 +2,10 @@
 
 #include <RHI/RHI.h>
 
-#include <vulkan/vulkan.h>
-
 #include <TL/Allocator/Arena.hpp>
 #include <TL/Containers/Vector.hpp>
+
+#include <vulkan/vulkan.h>
 
 namespace RHI::Vulkan
 {
@@ -80,6 +80,7 @@ namespace RHI::Vulkan
     void cmdCopyBufferToImage(ICommandList* self, const Buffer* srcBuffer, const ImageCopyInfo& dstImage, const ImageMemoryLayout& layout);
     void cmdCopyAccelerationStructure(ICommandList* self, AccelerationStructure* dst, const AccelerationStructure* src, CopyMode copyMode);
     void cmdCopyMicromap(ICommandList* self, Micromap* dst, const Micromap* src, CopyMode copyMode);
+    void cmdClearBuffer(ICommandList* self, Buffer* dst, size_t offset, size_t size);
     void cmdBuildTlas(ICommandList* self, TL::Span<const TlasBuildInfo> buildInfos);
     void cmdBuildBlas(ICommandList* self, TL::Span<const BlasBuildInfo> buildInfos);
     void cmdBuildMicromaps(ICommandList* self, TL::Span<const MicromapBuildInfo> buildInfos);

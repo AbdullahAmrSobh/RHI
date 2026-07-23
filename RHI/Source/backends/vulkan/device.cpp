@@ -22,7 +22,7 @@ namespace RHI
     Device* CreateVulkanDevice(const ApplicationInfo& appInfo)
     {
         ZoneScoped;
-        auto device = TL::construct<Vulkan::IDevice>();
+        auto device = TL::constructFrom<Vulkan::IDevice>(TL::Context::getDefaultAllocator());
         auto result = device->Init(appInfo);
         TL_ASSERT(IsSuccess(result));
         return device;
@@ -32,7 +32,7 @@ namespace RHI
     {
         auto device = (Vulkan::IDevice*)_device;
         device->Shutdown();
-        TL::destruct(device);
+        TL::destructFrom(TL::Context::getDefaultAllocator(), device);
     }
 } // namespace RHI
 
@@ -326,7 +326,8 @@ namespace RHI::Vulkan
 
     IDevice::IDevice()
     {
-        m_destroyQueue = TL::CreatePtr<DeleteQueue>();
+        m_objectAllocator = TL::Context::getDefaultAllocator();
+        m_destroyQueue    = TL::CreatePtr<DeleteQueue>();
     }
 
     IDevice::~IDevice() = default;
@@ -898,6 +899,13 @@ namespace RHI::Vulkan
         return result;
     }
 
+    void IDevice::WaitIdle()
+    {
+        ZoneScoped;
+
+        vkDeviceWaitIdle(m_device);
+    }
+
     void IDevice::Shutdown()
     {
         ZoneScoped;
@@ -938,7 +946,7 @@ namespace RHI::Vulkan
     template<typename Resource, typename... Args>
     inline Resource* createImpl(IDevice* device, const char* debugName, Args... args)
     {
-        Resource* resource = TL ::construct<Resource>(debugName ? TL::StringView(debugName) : TL::StringView{});
+        Resource* resource = TL::constructFrom<Resource>(device->m_objectAllocator, debugName ? TL::StringView(debugName) : TL::StringView{});
         ResultCode result = resource->Init(device, args...);
         if (IsSuccess(result))
         {
@@ -952,7 +960,7 @@ namespace RHI::Vulkan
     inline void destroyImpl(IDevice* device, Resource* resource)
     {
         resource->Shutdown(device);
-        TL::destruct(resource);
+        TL::destructFrom(device->m_objectAllocator, resource);
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -1225,7 +1233,7 @@ namespace RHI::Vulkan
 
     CommandPool* createCommandPool(IDevice* self, const CommandPoolCreateInfo& createInfo)
     {
-        auto pool = TL::construct<ICommandPool>();
+        auto pool = TL::constructFrom<ICommandPool>(self->m_objectAllocator);
         pool->Init(self, createInfo);
         return pool;
     }
@@ -1234,7 +1242,7 @@ namespace RHI::Vulkan
     {
         auto pool = (ICommandPool*)resource;
         pool->Shutdown(self);
-        TL::destruct(pool);
+        TL::destructFrom(self->m_objectAllocator, pool);
     }
 
     Fence* createFence(IDevice* self, const FenceCreateInfo& createInfo)
@@ -1380,13 +1388,13 @@ namespace RHI::Vulkan
         FlushQueue(device, m_queryPool, timeline);
         FlushQueue(device, m_pipeline, timeline);
         FlushQueue(device, m_sampler, timeline);
+        FlushQueue(device, m_accelerationStructure, timeline);
+        FlushQueue(device, m_micromap, timeline);
         FlushQueue(device, m_buffer, timeline);
         FlushQueue(device, m_image, timeline);
         FlushQueue(device, m_swapchain, timeline);
         FlushQueue(device, m_surface, timeline);
         FlushQueue(device, m_semaphore, timeline);
-        FlushQueue(device, m_accelerationStructure, timeline);
-        FlushQueue(device, m_micromap, timeline);
         FlushQueue(device, m_allocation, timeline);
     }
 

@@ -1254,10 +1254,10 @@ namespace RHI
 
     struct ImageCopyInfo
     {
-        Image*        image      = nullptr; ///< Pointer to the source image.
-        uint32_t      mipLevel   = 0;       ///< Mipmap level of the source image.
-        uint32_t      arrayLayer = 0;       ///< Array layer of the source image
-        ImageOffset3D offset     = {};      ///< Offset in the source image.
+        Image*        image      = nullptr;
+        uint32_t      mipLevel   = 0;
+        uint32_t      arrayLayer = 0;
+        ImageOffset3D offset     = {};
         ImageAspect   aspect     = ImageAspect::All;
     };
 
@@ -1265,8 +1265,8 @@ namespace RHI
 
     struct CommandListCreateInfo
     {
-        const char* name      = nullptr;             ///< Name of the command list.
-        QueueType   queueType = QueueType::Graphics; ///< Type of queue for the command list.
+        const char* name      = nullptr;
+        QueueType   queueType = QueueType::Graphics;
     };
 
     struct CommandPoolCreateInfo
@@ -1334,13 +1334,7 @@ namespace RHI
     class RHI_EXPORT Queue
     {
     public:
-        // Backends derive from this facade; m_impl is set to `this` so it always points at the
-        // most-derived (backend) object, which RHI.cpp casts back to the backend type.
-        Queue()
-        {
-            m_impl = (Impl*)this;
-        }
-
+        Queue() = default;
         ~Queue() = default;
 
         void BeginAnnotation(const char* name, uint32_t bgra);
@@ -1351,21 +1345,12 @@ namespace RHI
 
         void WaitIdle();
         void WaitFence(Fence* fence, uint64_t value);
-
-    private:
-        struct Impl* m_impl = nullptr;
     };
 
     class RHI_EXPORT Device
     {
     public:
-        // Backends derive from this facade; m_impl is set to `this` so it always points at the
-        // most-derived (backend) object, which RHI.cpp casts back to the backend type.
-        Device()
-        {
-            m_impl = (Impl*)this;
-        }
-
+        Device()  = default;
         ~Device() = default;
 
         BackendType                    GetBackend() const;
@@ -1376,6 +1361,10 @@ namespace RHI
 
         uint64_t                       GarbageCollect(uint64_t graphicsTimeline);
         uint64_t                       GetNativeHandle(NativeHandleType type, uint64_t handle);
+
+        // Blocks until every queue is idle. Required before tearing down resources that
+        // in-flight submissions may still reference.
+        void                           WaitIdle();
 
         Queue*                         GetQueue(QueueType queueType);
 
@@ -1450,39 +1439,19 @@ namespace RHI
         SurfaceCapabilities            GetSwapchainSurfaceCapabilities(Swapchain* swapchain);
         ResultCode                     ResizeSwapchain(Swapchain* swapchain, const ImageSize2D& size);
         ResultCode                     ConfigureSwapchain(Swapchain* swapchain, const SwapchainConfigureInfo& configInfo);
-
-    private:
-        struct Impl* m_impl = nullptr;
     };
 
     class RHI_EXPORT CommandPool
     {
     public:
-        // Backends derive from this facade; m_impl is set to `this` so it always points at the
-        // most-derived (backend) object, which RHI.cpp casts back to the backend type.
-        CommandPool()
-        {
-            m_impl = (Impl*)this;
-        }
-
         void         Reset();
         CommandList* Allocate();
-
-        // Backend-internal implementation pointer. Assigned and read by the active backend
-        // (see RHI/Backend/*). Not for consumer use.
-        struct Impl* m_impl = nullptr;
     };
 
     class RHI_EXPORT CommandList
     {
     public:
-        // Backends derive from this facade; m_impl is set to `this` so it always points at the
-        // most-derived (backend) object, which RHI.cpp casts back to the backend type.
-        CommandList()
-        {
-            m_impl = (Impl*)this;
-        }
-
+        CommandList() = default;
         ~CommandList() = default;
 
         // state
@@ -1551,15 +1520,15 @@ namespace RHI
         void CopyAccelerationStructure(AccelerationStructure* dst, const AccelerationStructure* src, CopyMode copyMode);
         void CopyMicromap(Micromap* dst, const Micromap* src, CopyMode copyMode);
 
+        // Misc
+        void ClearBuffer(Buffer* dst, size_t offset, size_t size);
+
         // Acceleration structure & micromap builds
         void BuildTlas(TL::Span<const TlasBuildInfo> buildInfos);
         void BuildBlas(TL::Span<const BlasBuildInfo> buildInfos);
         void BuildMicromaps(TL::Span<const MicromapBuildInfo> buildInfos);
         void WriteAccelerationStructuresSizes(TL::Span<const AccelerationStructure*> accelerationStructures, QueryPool* queryPool, uint32_t queryPoolOffset);
         void WriteMicromapsSizes(TL::Span<const Micromap*> micromaps, QueryPool* queryPool, uint32_t queryPoolOffset);
-
-    private:
-        struct Impl* m_impl = nullptr;
     };
 
     RHI_EXPORT const FormatInfo& GetFormatInfo(Format format);

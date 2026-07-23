@@ -107,527 +107,537 @@ namespace RHI
 
     void Queue::BeginAnnotation(const char* name, uint32_t bgra)
     {
-        ::Impl::queueBeginAnnotation((::Impl::IQueue*)m_impl, name, bgra);
+        ::Impl::queueBeginAnnotation((::Impl::IQueue*)this, name, bgra);
     }
 
     void Queue::EndAnnotation()
     {
-        ::Impl::queueEndAnnotation((::Impl::IQueue*)m_impl);
+        ::Impl::queueEndAnnotation((::Impl::IQueue*)this);
     }
 
     void Queue::InsertAnnotation(const char* name, uint32_t bgra)
     {
-        ::Impl::queueInsertAnnotation((::Impl::IQueue*)m_impl, name, bgra);
+        ::Impl::queueInsertAnnotation((::Impl::IQueue*)this, name, bgra);
     }
 
     void Queue::Submit(const QueueSubmitInfo& submitInfo)
     {
-        ::Impl::queueSubmit((::Impl::IQueue*)m_impl, submitInfo);
+        ::Impl::queueSubmit((::Impl::IQueue*)this, submitInfo);
     }
 
     void Queue::WaitIdle()
     {
-        ::Impl::queueWaitIdle((::Impl::IQueue*)m_impl);
+        ::Impl::queueWaitIdle((::Impl::IQueue*)this);
     }
 
     void Queue::WaitFence(Fence* fence, uint64_t value)
     {
-        ::Impl::queueWaitFence((::Impl::IQueue*)m_impl, fence, value);
+        ::Impl::queueWaitFence((::Impl::IQueue*)this, fence, value);
     }
 
     BackendType Device::GetBackend() const
     {
-        return ::Impl::deviceGetBackend((::Impl::IDevice*)m_impl);
+        return ::Impl::deviceGetBackend((::Impl::IDevice*)this);
     }
 
     DeviceFeatures Device::GetFeatures() const
     {
-        return ::Impl::deviceGetFeatures((::Impl::IDevice*)m_impl);
+        return ::Impl::deviceGetFeatures((::Impl::IDevice*)this);
     }
 
     DeviceLimits Device::GetLimits() const
     {
-        return ::Impl::deviceGetLimits((::Impl::IDevice*)m_impl);
+        return ::Impl::deviceGetLimits((::Impl::IDevice*)this);
     }
 
     uint64_t Device::GarbageCollect(uint64_t graphicsTimeline)
     {
-        return ::Impl::deviceGarbageCollect((::Impl::IDevice*)m_impl, graphicsTimeline);
+        return ::Impl::deviceGarbageCollect((::Impl::IDevice*)this, graphicsTimeline);
     }
 
     uint64_t Device::GetNativeHandle(NativeHandleType type, uint64_t handle)
     {
-        return ::Impl::deviceGetNativeHandle((::Impl::IDevice*)m_impl, type, handle);
+        return ::Impl::deviceGetNativeHandle((::Impl::IDevice*)this, type, handle);
+    }
+
+    void Device::WaitIdle()
+    {
+        ((::Impl::IDevice*)this)->WaitIdle();
     }
 
     Queue* Device::GetQueue(QueueType queueType)
     {
-        return ::Impl::deviceGetQueue((::Impl::IDevice*)m_impl, queueType);
+        return ::Impl::deviceGetQueue((::Impl::IDevice*)this, queueType);
     }
 
     ShaderModule* Device::CreateShaderModule(const ShaderModuleCreateInfo& createInfo)
     {
-        return ::Impl::createShaderModule((::Impl::IDevice*)m_impl, createInfo);
+        return ::Impl::createShaderModule((::Impl::IDevice*)this, createInfo);
     }
 
     void Device::DestroyShaderModule(ShaderModule* shaderModule)
     {
-        ::Impl::destroyShaderModule((::Impl::IDevice*)m_impl, shaderModule);
+        ::Impl::destroyShaderModule((::Impl::IDevice*)this, shaderModule);
     }
 
     BindGroupLayout* Device::CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)
     {
-        return ::Impl::createBindGroupLayout((::Impl::IDevice*)m_impl, createInfo);
+        return ::Impl::createBindGroupLayout((::Impl::IDevice*)this, createInfo);
     }
 
     void Device::DestroyBindGroupLayout(BindGroupLayout* handle)
     {
-        ::Impl::destroyBindGroupLayout((::Impl::IDevice*)m_impl, handle);
+        ::Impl::destroyBindGroupLayout((::Impl::IDevice*)this, handle);
     }
 
     BindGroup* Device::CreateBindGroup(const BindGroupCreateInfo& createInfo)
     {
-        return ::Impl::createBindGroup((::Impl::IDevice*)m_impl, createInfo);
+        return ::Impl::createBindGroup((::Impl::IDevice*)this, createInfo);
     }
 
     void Device::DestroyBindGroup(BindGroup* handle)
     {
-        ::Impl::destroyBindGroup((::Impl::IDevice*)m_impl, handle);
+        ::Impl::destroyBindGroup((::Impl::IDevice*)this, handle);
     }
 
     void Device::UpdateBindGroup(BindGroup* handle, const BindGroupUpdateInfo& updateInfo)
     {
-        ::Impl::bindGroupUpdate((::Impl::IDevice*)m_impl, handle, updateInfo);
+        ::Impl::bindGroupUpdate((::Impl::IDevice*)this, handle, updateInfo);
     }
 
     PipelineLayout* Device::CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)
     {
-        return ::Impl::createPipelineLayout((::Impl::IDevice*)m_impl, createInfo);
+        return ::Impl::createPipelineLayout((::Impl::IDevice*)this, createInfo);
     }
 
     void Device::DestroyPipelineLayout(PipelineLayout* handle)
     {
-        ::Impl::destroyPipelineLayout((::Impl::IDevice*)m_impl, handle);
+        ::Impl::destroyPipelineLayout((::Impl::IDevice*)this, handle);
     }
 
     GraphicsPipeline* Device::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)
     {
-        return ::Impl::createGraphicsPipeline((::Impl::IDevice*)m_impl, createInfo);
+        return ::Impl::createGraphicsPipeline((::Impl::IDevice*)this, createInfo);
     }
 
     void Device::DestroyGraphicsPipeline(GraphicsPipeline* handle)
     {
-        ::Impl::destroyGraphicsPipeline((::Impl::IDevice*)m_impl, handle);
+        ::Impl::destroyGraphicsPipeline((::Impl::IDevice*)this, handle);
     }
 
     ComputePipeline* Device::CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
     {
-        return ::Impl::createComputePipeline((::Impl::IDevice*)m_impl, createInfo);
+        return ::Impl::createComputePipeline((::Impl::IDevice*)this, createInfo);
     }
 
     void Device::DestroyComputePipeline(ComputePipeline* handle)
     {
-        ::Impl::destroyComputePipeline((::Impl::IDevice*)m_impl, handle);
+        ::Impl::destroyComputePipeline((::Impl::IDevice*)this, handle);
     }
 
     RayTracingPipeline* Device::CreateRayTracingPipeline(const RayTracingPipelineCreateInfo& createInfo)
     {
-        return ::Impl::createRayTracingPipeline((::Impl::IDevice*)m_impl, createInfo);
+        return ::Impl::createRayTracingPipeline((::Impl::IDevice*)this, createInfo);
     }
 
     void Device::DestroyRayTracingPipeline(RayTracingPipeline* handle)
     {
-        ::Impl::destroyRayTracingPipeline((::Impl::IDevice*)m_impl, handle);
+        ::Impl::destroyRayTracingPipeline((::Impl::IDevice*)this, handle);
     }
 
     void Device::GetShaderBindingTableEntry(RayTracingPipeline* handle, uint32_t group, size_t size, void* dstHandle)
     {
-        ::Impl::rayTracingPipelineGetShaderBindingTableEntry((::Impl::IDevice*)m_impl, handle, group, size, dstHandle);
+        ::Impl::rayTracingPipelineGetShaderBindingTableEntry((::Impl::IDevice*)this, handle, group, size, dstHandle);
     }
 
     Buffer* Device::CreateBuffer(const BufferCreateInfo& createInfo)
     {
-        return ::Impl::createBuffer((::Impl::IDevice*)m_impl, createInfo);
+        return ::Impl::createBuffer((::Impl::IDevice*)this, createInfo);
     }
 
     void Device::DestroyBuffer(Buffer* handle)
     {
-        ::Impl::destroyBuffer((::Impl::IDevice*)m_impl, handle);
+        ::Impl::destroyBuffer((::Impl::IDevice*)this, handle);
     }
 
     uint64_t Device::GetBufferDeviceAddress(Buffer* buffer)
     {
-        return ::Impl::bufferGetDeviceAddress((::Impl::IDevice*)m_impl, buffer);
+        return ::Impl::bufferGetDeviceAddress((::Impl::IDevice*)this, buffer);
     }
 
     DeviceMemoryPtr Device::MapBuffer(Buffer* buffer, uint64_t offset, uint64_t sizeBytes)
     {
-        return ::Impl::bufferMap((::Impl::IDevice*)m_impl, buffer, offset, sizeBytes);
+        return ::Impl::bufferMap((::Impl::IDevice*)this, buffer, offset, sizeBytes);
     }
 
     void Device::UnmapBuffer(Buffer* buffer)
     {
-        ::Impl::bufferUnmap((::Impl::IDevice*)m_impl, buffer);
+        ::Impl::bufferUnmap((::Impl::IDevice*)this, buffer);
     }
 
     Image* Device::CreateImage(const ImageCreateInfo& createInfo)
     {
-        return ::Impl::createImage((::Impl::IDevice*)m_impl, createInfo);
+        return ::Impl::createImage((::Impl::IDevice*)this, createInfo);
     }
 
     Image* Device::CreateImageView(const ImageViewCreateInfo& createInfo)
     {
-        return ::Impl::createImageView((::Impl::IDevice*)m_impl, createInfo);
+        return ::Impl::createImageView((::Impl::IDevice*)this, createInfo);
     }
 
     void Device::DestroyImage(Image* handle)
     {
-        ::Impl::destroyImage((::Impl::IDevice*)m_impl, handle);
+        ::Impl::destroyImage((::Impl::IDevice*)this, handle);
     }
 
     Sampler* Device::CreateSampler(const SamplerCreateInfo& createInfo)
     {
-        return ::Impl::createSampler((::Impl::IDevice*)m_impl, createInfo);
+        return ::Impl::createSampler((::Impl::IDevice*)this, createInfo);
     }
 
     void Device::DestroySampler(Sampler* handle)
     {
-        ::Impl::destroySampler((::Impl::IDevice*)m_impl, handle);
+        ::Impl::destroySampler((::Impl::IDevice*)this, handle);
     }
 
     AccelerationStructure* Device::CreateAccelerationStructure(const AccelerationStructureCreateInfo& createInfo)
     {
-        return ::Impl::createAccelerationStructure((::Impl::IDevice*)m_impl, createInfo);
+        return ::Impl::createAccelerationStructure((::Impl::IDevice*)this, createInfo);
     }
 
     void Device::DestroyAccelerationStructure(AccelerationStructure* handle)
     {
-        ::Impl::destroyAccelerationStructure((::Impl::IDevice*)m_impl, handle);
+        ::Impl::destroyAccelerationStructure((::Impl::IDevice*)this, handle);
     }
 
     uint64_t Device::GetAccelerationStructureDeviceAddress(AccelerationStructure* handle)
     {
-        return ::Impl::accelerationStructureGetDeviceAddress((::Impl::IDevice*)m_impl, handle);
+        return ::Impl::accelerationStructureGetDeviceAddress((::Impl::IDevice*)this, handle);
     }
 
     AccelerationStructureSizesInfo Device::GetAccelerationStructureSizesInfo(AccelerationStructure* as)
     {
-        return ::Impl::accelerationStructureGetSizesInfo((::Impl::IDevice*)m_impl, as);
+        return ::Impl::accelerationStructureGetSizesInfo((::Impl::IDevice*)this, as);
     }
 
     Micromap* Device::CreateMicromap(const MicromapCreateInfo& createInfo)
     {
-        return ::Impl::createMicromap((::Impl::IDevice*)m_impl, createInfo);
+        return ::Impl::createMicromap((::Impl::IDevice*)this, createInfo);
     }
 
     void Device::DestroyMicromap(Micromap* handle)
     {
-        ::Impl::destroyMicromap((::Impl::IDevice*)m_impl, handle);
+        ::Impl::destroyMicromap((::Impl::IDevice*)this, handle);
     }
 
     CommandPool* Device::CreateCommandPool(const CommandPoolCreateInfo& createInfo)
     {
-        return ::Impl::createCommandPool((::Impl::IDevice*)m_impl, createInfo);
+        return ::Impl::createCommandPool((::Impl::IDevice*)this, createInfo);
     }
 
     void Device::DestroyCommandPool(CommandPool* handle)
     {
-        ::Impl::destroyCommandPool((::Impl::IDevice*)m_impl, handle);
+        ::Impl::destroyCommandPool((::Impl::IDevice*)this, handle);
     }
 
     Fence* Device::CreateFence(const FenceCreateInfo& createInfo)
     {
-        return ::Impl::createFence((::Impl::IDevice*)m_impl, createInfo);
+        return ::Impl::createFence((::Impl::IDevice*)this, createInfo);
     }
 
     void Device::DestroyFence(Fence* handle)
     {
-        ::Impl::destroyFence((::Impl::IDevice*)m_impl, handle);
+        ::Impl::destroyFence((::Impl::IDevice*)this, handle);
     }
 
     uint64_t Device::GetFenceValue(Fence* handle)
     {
-        return ::Impl::fenceGetValue((::Impl::IDevice*)m_impl, handle);
+        return ::Impl::fenceGetValue((::Impl::IDevice*)this, handle);
     }
 
     QueryPool* Device::CreateQueryPool(const QueryPoolCreateInfo& createInfo)
     {
-        return ::Impl::createQueryPool((::Impl::IDevice*)m_impl, createInfo);
+        return ::Impl::createQueryPool((::Impl::IDevice*)this, createInfo);
     }
 
     void Device::DestroyQueryPool(QueryPool* handle)
     {
-        ::Impl::destroyQueryPool((::Impl::IDevice*)m_impl, handle);
+        ::Impl::destroyQueryPool((::Impl::IDevice*)this, handle);
     }
 
     Swapchain* Device::CreateSwapchain(const SwapchainCreateInfo& createInfo)
     {
-        return ::Impl::createSwapchain((::Impl::IDevice*)m_impl, createInfo);
+        return ::Impl::createSwapchain((::Impl::IDevice*)this, createInfo);
     }
 
     void Device::DestroySwapchain(Swapchain* swapchain)
     {
-        ::Impl::destroySwapchain((::Impl::IDevice*)m_impl, swapchain);
+        ::Impl::destroySwapchain((::Impl::IDevice*)this, swapchain);
     }
 
     uint32_t Device::GetSwapchainImagesCount(Swapchain* swapchain)
     {
-        return ::Impl::swapchainGetImagesCount((::Impl::IDevice*)m_impl, swapchain);
+        return ::Impl::swapchainGetImagesCount((::Impl::IDevice*)this, swapchain);
     }
 
     SwapchainAcquireResult Device::AcquireSwapchainImage(Swapchain* swapchain)
     {
-        return ::Impl::swapchainAcquireImage((::Impl::IDevice*)m_impl, swapchain);
+        return ::Impl::swapchainAcquireImage((::Impl::IDevice*)this, swapchain);
     }
 
     SurfaceCapabilities Device::GetSwapchainSurfaceCapabilities(Swapchain* swapchain)
     {
-        return ::Impl::swapchainGetSurfaceCapabilities((::Impl::IDevice*)m_impl, swapchain);
+        return ::Impl::swapchainGetSurfaceCapabilities((::Impl::IDevice*)this, swapchain);
     }
 
     ResultCode Device::ResizeSwapchain(Swapchain* swapchain, const ImageSize2D& size)
     {
-        return ::Impl::swapchainResize((::Impl::IDevice*)m_impl, swapchain, size);
+        return ::Impl::swapchainResize((::Impl::IDevice*)this, swapchain, size);
     }
 
     ResultCode Device::ConfigureSwapchain(Swapchain* swapchain, const SwapchainConfigureInfo& configInfo)
     {
-        return ::Impl::swapchainConfigure((::Impl::IDevice*)m_impl, swapchain, configInfo);
+        return ::Impl::swapchainConfigure((::Impl::IDevice*)this, swapchain, configInfo);
     }
 
     void CommandPool::Reset()
     {
-        ::Impl::commandPoolReset((::Impl::ICommandPool*)m_impl);
+        ::Impl::commandPoolReset((::Impl::ICommandPool*)this);
     }
 
     CommandList* CommandPool::Allocate()
     {
-        return ::Impl::commandPoolAllocate((::Impl::ICommandPool*)m_impl);
+        return ::Impl::commandPoolAllocate((::Impl::ICommandPool*)this);
     }
 
     void CommandList::Begin()
     {
-        ::Impl::cmdBegin((::Impl::ICommandList*)m_impl);
+        ::Impl::cmdBegin((::Impl::ICommandList*)this);
     }
 
     void CommandList::End()
     {
-        ::Impl::cmdEnd((::Impl::ICommandList*)m_impl);
+        ::Impl::cmdEnd((::Impl::ICommandList*)this);
     }
 
     void CommandList::PushDebugMarker(const char* name, uint32_t bgra)
     {
-        ::Impl::cmdPushDebugMarker((::Impl::ICommandList*)m_impl, name, bgra);
+        ::Impl::cmdPushDebugMarker((::Impl::ICommandList*)this, name, bgra);
     }
 
     void CommandList::PopDebugMarker()
     {
-        ::Impl::cmdPopDebugMarker((::Impl::ICommandList*)m_impl);
+        ::Impl::cmdPopDebugMarker((::Impl::ICommandList*)this);
     }
 
     void CommandList::InsertDebugMarker(const char* name, uint32_t bgra)
     {
-        ::Impl::cmdInsertDebugMarker((::Impl::ICommandList*)m_impl, name, bgra);
+        ::Impl::cmdInsertDebugMarker((::Impl::ICommandList*)this, name, bgra);
     }
 
     void CommandList::AddPipelineBarrier(TL::Span<const BarrierInfo> barriers, TL::Span<const ImageBarrierInfo> imageBarriers, TL::Span<const BufferBarrierInfo> bufferBarriers)
     {
-        ::Impl::cmdAddPipelineBarrier((::Impl::ICommandList*)m_impl, barriers, imageBarriers, bufferBarriers);
+        ::Impl::cmdAddPipelineBarrier((::Impl::ICommandList*)this, barriers, imageBarriers, bufferBarriers);
     }
 
     void CommandList::BeginRenderPass(const RenderPassBeginInfo& beginInfo)
     {
-        ::Impl::cmdBeginRenderPass((::Impl::ICommandList*)m_impl, beginInfo);
+        ::Impl::cmdBeginRenderPass((::Impl::ICommandList*)this, beginInfo);
     }
 
     void CommandList::EndRenderPass()
     {
-        ::Impl::cmdEndRenderPass((::Impl::ICommandList*)m_impl);
+        ::Impl::cmdEndRenderPass((::Impl::ICommandList*)this);
     }
 
     void CommandList::BeginComputePass(const ComputePassBeginInfo& beginInfo)
     {
-        ::Impl::cmdBeginComputePass((::Impl::ICommandList*)m_impl, beginInfo);
+        ::Impl::cmdBeginComputePass((::Impl::ICommandList*)this, beginInfo);
     }
 
     void CommandList::EndComputePass()
     {
-        ::Impl::cmdEndComputePass((::Impl::ICommandList*)m_impl);
+        ::Impl::cmdEndComputePass((::Impl::ICommandList*)this);
     }
 
     void CommandList::BeginConditionalCommands(const BufferBindingInfo& conditionBuffer, bool inverted)
     {
-        ::Impl::cmdBeginConditionalCommands((::Impl::ICommandList*)m_impl, conditionBuffer, inverted);
+        ::Impl::cmdBeginConditionalCommands((::Impl::ICommandList*)this, conditionBuffer, inverted);
     }
 
     void CommandList::EndConditionalCommands()
     {
-        ::Impl::cmdEndConditionalCommands((::Impl::ICommandList*)m_impl);
+        ::Impl::cmdEndConditionalCommands((::Impl::ICommandList*)this);
     }
 
     void CommandList::Execute(TL::Span<const CommandList*> commandLists)
     {
-        ::Impl::cmdExecute((::Impl::ICommandList*)m_impl, commandLists);
+        ::Impl::cmdExecute((::Impl::ICommandList*)this, commandLists);
     }
 
     void CommandList::BindPipelineLayout(BindPoint bindPoint, const PipelineLayout* pipelineLayout)
     {
-        ::Impl::cmdBindPipelineLayout((::Impl::ICommandList*)m_impl, bindPoint, pipelineLayout);
+        ::Impl::cmdBindPipelineLayout((::Impl::ICommandList*)this, bindPoint, pipelineLayout);
     }
 
     void CommandList::SetPushConstants(BindPoint bindPoint, uint32_t offset, TL::Block content)
     {
-        ::Impl::cmdSetPushConstants((::Impl::ICommandList*)m_impl, bindPoint, offset, content);
+        ::Impl::cmdSetPushConstants((::Impl::ICommandList*)this, bindPoint, offset, content);
     }
 
     void CommandList::PushBindGroup(BindPoint bindPoint, uint32_t firstGroup, TL::Span<const BindGroupUpdateInfo> updateInfos)
     {
-        ::Impl::cmdPushBindGroup((::Impl::ICommandList*)m_impl, bindPoint, firstGroup, updateInfos);
+        ::Impl::cmdPushBindGroup((::Impl::ICommandList*)this, bindPoint, firstGroup, updateInfos);
     }
 
     void CommandList::SetBindGroups(BindPoint bindPoint, TL::Span<const BindGroupBindingInfo> bindGroups)
     {
-        ::Impl::cmdSetBindGroups((::Impl::ICommandList*)m_impl, bindPoint, bindGroups);
+        ::Impl::cmdSetBindGroups((::Impl::ICommandList*)this, bindPoint, bindGroups);
     }
 
     void CommandList::BindGraphicsPipeline(const GraphicsPipeline* pipelineState)
     {
-        ::Impl::cmdBindGraphicsPipeline((::Impl::ICommandList*)m_impl, pipelineState);
+        ::Impl::cmdBindGraphicsPipeline((::Impl::ICommandList*)this, pipelineState);
     }
 
     void CommandList::BindComputePipeline(const ComputePipeline* pipelineState)
     {
-        ::Impl::cmdBindComputePipeline((::Impl::ICommandList*)m_impl, pipelineState);
+        ::Impl::cmdBindComputePipeline((::Impl::ICommandList*)this, pipelineState);
     }
 
     void CommandList::BindRayTracingPipeline(const RayTracingPipeline* pipelineState)
     {
-        ::Impl::cmdBindRayTracingPipeline((::Impl::ICommandList*)m_impl, pipelineState);
+        ::Impl::cmdBindRayTracingPipeline((::Impl::ICommandList*)this, pipelineState);
     }
 
     void CommandList::SetViewport(float offsetX, float offsetY, float width, float height, float minDepth, float maxDepth)
     {
-        ::Impl::cmdSetViewport((::Impl::ICommandList*)m_impl, offsetX, offsetY, width, height, minDepth, maxDepth);
+        ::Impl::cmdSetViewport((::Impl::ICommandList*)this, offsetX, offsetY, width, height, minDepth, maxDepth);
     }
 
     void CommandList::SetScissor(int32_t offsetX, int32_t offsetY, uint32_t width, uint32_t height)
     {
-        ::Impl::cmdSetScissor((::Impl::ICommandList*)m_impl, offsetX, offsetY, width, height);
+        ::Impl::cmdSetScissor((::Impl::ICommandList*)this, offsetX, offsetY, width, height);
     }
 
     void CommandList::BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> vertexBuffers)
     {
-        ::Impl::cmdBindVertexBuffers((::Impl::ICommandList*)m_impl, firstBinding, vertexBuffers);
+        ::Impl::cmdBindVertexBuffers((::Impl::ICommandList*)this, firstBinding, vertexBuffers);
     }
 
     void CommandList::BindIndexBuffer(const BufferBindingInfo& indexBuffer, IndexType indexType)
     {
-        ::Impl::cmdBindIndexBuffer((::Impl::ICommandList*)m_impl, indexBuffer, indexType);
+        ::Impl::cmdBindIndexBuffer((::Impl::ICommandList*)this, indexBuffer, indexType);
     }
 
     void CommandList::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance)
     {
-        ::Impl::cmdDraw((::Impl::ICommandList*)m_impl, vertexCount, instanceCount, firstVertex, firstInstance);
+        ::Impl::cmdDraw((::Impl::ICommandList*)this, vertexCount, instanceCount, firstVertex, firstInstance);
     }
 
     void CommandList::DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance)
     {
-        ::Impl::cmdDrawIndexed((::Impl::ICommandList*)m_impl, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
+        ::Impl::cmdDrawIndexed((::Impl::ICommandList*)this, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
     }
 
     void CommandList::DrawMeshTasks(uint32_t x, uint32_t y, uint32_t z)
     {
-        ::Impl::cmdDrawMeshTasks((::Impl::ICommandList*)m_impl, x, y, z);
+        ::Impl::cmdDrawMeshTasks((::Impl::ICommandList*)this, x, y, z);
     }
 
     void CommandList::DrawIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride)
     {
-        ::Impl::cmdDrawIndirect((::Impl::ICommandList*)m_impl, argumentBuffer, countBuffer, maxDrawCount, stride);
+        ::Impl::cmdDrawIndirect((::Impl::ICommandList*)this, argumentBuffer, countBuffer, maxDrawCount, stride);
     }
 
     void CommandList::DrawIndexedIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride)
     {
-        ::Impl::cmdDrawIndexedIndirect((::Impl::ICommandList*)m_impl, argumentBuffer, countBuffer, maxDrawCount, stride);
+        ::Impl::cmdDrawIndexedIndirect((::Impl::ICommandList*)this, argumentBuffer, countBuffer, maxDrawCount, stride);
     }
 
     void CommandList::DrawMeshTasksIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t drawNum, uint32_t stride)
     {
-        ::Impl::cmdDrawMeshTasksIndirect((::Impl::ICommandList*)m_impl, argumentBuffer, countBuffer, drawNum, stride);
+        ::Impl::cmdDrawMeshTasksIndirect((::Impl::ICommandList*)this, argumentBuffer, countBuffer, drawNum, stride);
     }
 
     void CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z)
     {
-        ::Impl::cmdDispatch((::Impl::ICommandList*)m_impl, x, y, z);
+        ::Impl::cmdDispatch((::Impl::ICommandList*)this, x, y, z);
     }
 
     void CommandList::DispatchIndirect(const BufferBindingInfo& argumentBuffer)
     {
-        ::Impl::cmdDispatchIndirect((::Impl::ICommandList*)m_impl, argumentBuffer);
+        ::Impl::cmdDispatchIndirect((::Impl::ICommandList*)this, argumentBuffer);
     }
 
     void CommandList::DispatchRays(const DispatchRaysInfo& dispatchRaysDesc)
     {
-        ::Impl::cmdDispatchRays((::Impl::ICommandList*)m_impl, dispatchRaysDesc);
+        ::Impl::cmdDispatchRays((::Impl::ICommandList*)this, dispatchRaysDesc);
     }
 
     void CommandList::DispatchRaysIndirect(const BufferBindingInfo& argumentBuffer)
     {
-        ::Impl::cmdDispatchRaysIndirect((::Impl::ICommandList*)m_impl, argumentBuffer);
+        ::Impl::cmdDispatchRaysIndirect((::Impl::ICommandList*)this, argumentBuffer);
     }
 
     void CommandList::CopyBuffer(const Buffer* srcBuffer, uint64_t srcOffset, const Buffer* dstBuffer, uint64_t dstOffset, uint64_t size)
     {
-        ::Impl::cmdCopyBuffer((::Impl::ICommandList*)m_impl, srcBuffer, srcOffset, dstBuffer, dstOffset, size);
+        ::Impl::cmdCopyBuffer((::Impl::ICommandList*)this, srcBuffer, srcOffset, dstBuffer, dstOffset, size);
     }
 
     void CommandList::CopyImage(const ImageCopyInfo& srcImage, const ImageCopyInfo& dstImage, const ImageSize3D& size)
     {
-        ::Impl::cmdCopyImage((::Impl::ICommandList*)m_impl, srcImage, dstImage, size);
+        ::Impl::cmdCopyImage((::Impl::ICommandList*)this, srcImage, dstImage, size);
     }
 
     void CommandList::CopyImageToBuffer(const ImageCopyInfo& srcImage, const ImageMemoryLayout& layout, const Buffer* dstBuffer)
     {
-        ::Impl::cmdCopyImageToBuffer((::Impl::ICommandList*)m_impl, srcImage, layout, dstBuffer);
+        ::Impl::cmdCopyImageToBuffer((::Impl::ICommandList*)this, srcImage, layout, dstBuffer);
     }
 
     void CommandList::CopyBufferToImage(const Buffer* srcBuffer, const ImageCopyInfo& dstImage, const ImageMemoryLayout& layout)
     {
-        ::Impl::cmdCopyBufferToImage((::Impl::ICommandList*)m_impl, srcBuffer, dstImage, layout);
+        ::Impl::cmdCopyBufferToImage((::Impl::ICommandList*)this, srcBuffer, dstImage, layout);
     }
 
     void CommandList::CopyAccelerationStructure(AccelerationStructure* dst, const AccelerationStructure* src, CopyMode copyMode)
     {
-        ::Impl::cmdCopyAccelerationStructure((::Impl::ICommandList*)m_impl, dst, src, copyMode);
+        ::Impl::cmdCopyAccelerationStructure((::Impl::ICommandList*)this, dst, src, copyMode);
     }
 
     void CommandList::CopyMicromap(Micromap* dst, const Micromap* src, CopyMode copyMode)
     {
-        ::Impl::cmdCopyMicromap((::Impl::ICommandList*)m_impl, dst, src, copyMode);
+        ::Impl::cmdCopyMicromap((::Impl::ICommandList*)this, dst, src, copyMode);
+    }
+
+    void CommandList::ClearBuffer(Buffer* dst, size_t offset, size_t size)
+    {
+        ::Impl::cmdClearBuffer((::Impl::ICommandList*)this, dst, offset, size);
     }
 
     void CommandList::BuildTlas(TL::Span<const TlasBuildInfo> buildInfos)
     {
-        ::Impl::cmdBuildTlas((::Impl::ICommandList*)m_impl, buildInfos);
+        ::Impl::cmdBuildTlas((::Impl::ICommandList*)this, buildInfos);
     }
 
     void CommandList::BuildBlas(TL::Span<const BlasBuildInfo> buildInfos)
     {
-        ::Impl::cmdBuildBlas((::Impl::ICommandList*)m_impl, buildInfos);
+        ::Impl::cmdBuildBlas((::Impl::ICommandList*)this, buildInfos);
     }
 
     void CommandList::BuildMicromaps(TL::Span<const MicromapBuildInfo> buildInfos)
     {
-        ::Impl::cmdBuildMicromaps((::Impl::ICommandList*)m_impl, buildInfos);
+        ::Impl::cmdBuildMicromaps((::Impl::ICommandList*)this, buildInfos);
     }
 
     void CommandList::WriteAccelerationStructuresSizes(TL::Span<const AccelerationStructure*> accelerationStructures, QueryPool* queryPool, uint32_t queryPoolOffset)
     {
-        ::Impl::cmdWriteAccelerationStructuresSizes((::Impl::ICommandList*)m_impl, accelerationStructures, queryPool, queryPoolOffset);
+        ::Impl::cmdWriteAccelerationStructuresSizes((::Impl::ICommandList*)this, accelerationStructures, queryPool, queryPoolOffset);
     }
 
     void CommandList::WriteMicromapsSizes(TL::Span<const Micromap*> micromaps, QueryPool* queryPool, uint32_t queryPoolOffset)
     {
-        ::Impl::cmdWriteMicromapsSizes((::Impl::ICommandList*)m_impl, micromaps, queryPool, queryPoolOffset);
+        ::Impl::cmdWriteMicromapsSizes((::Impl::ICommandList*)this, micromaps, queryPool, queryPoolOffset);
     }
 
 } // namespace RHI

@@ -18,16 +18,25 @@ set(RHI_BACKEND_VULKAN_COMPILE_DEFINITIONS
     $<$<PLATFORM_ID:Windows>:VK_USE_PLATFORM_WIN32_KHR=1>
 )
 
-tl_add_target(
-    NAME RHI
-    NAMESPACE RHI
-    STATIC
-    HEADERS
-        ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RHI.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Reflect.hpp
-    SOURCES
-        ${CMAKE_CURRENT_SOURCE_DIR}/Source/RHI.cpp
-        $<IF:$<BOOL:${RHI_BACKEND_VULKAN}>,${RHI_BACKEND_VULKAN_SOURCES},>
+add_library(RHI STATIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RHI.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Reflect.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/RHI.cpp
+    $<IF:$<BOOL:${RHI_BACKEND_VULKAN}>,${RHI_BACKEND_VULKAN_SOURCES},>
+)
+add_library(RHI::RHI ALIAS RHI)
+
+target_include_directories(RHI
+    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/Include/"
+    PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/Export>"
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source"
+)
+
+include(GenerateExportHeader)
+generate_export_header(RHI
+    EXPORT_FILE_NAME ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Export.hpp
+    EXPORT_MACRO_NAME RHI_EXPORT
+    CUSTOM_CONTENT_FROM_VARIABLE pragma_suppress_c4251
 )
 
 target_compile_definitions(RHI

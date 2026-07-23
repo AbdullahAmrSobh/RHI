@@ -73,6 +73,12 @@ namespace RHI::Vulkan
         BindGroupAllocator m_bindGroupAllocator;
         TL::Ptr<class DeleteQueue> m_destroyQueue = nullptr;
         TL::Arena m_arena;
+
+        // Every RHI object is allocated from and returned to this allocator. It is captured once,
+        // at device creation, and must not be sourced from the ambient TL::Context: callers push
+        // scoped contexts (e.g. a per-frame arena) around code that creates RHI objects, and those
+        // objects outlive the scope.
+        TL::IAllocator* m_objectAllocator = nullptr;
     };
 
     // Queue interface functions

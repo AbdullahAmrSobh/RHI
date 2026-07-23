@@ -43,7 +43,6 @@ endif()
 
 # ---- Add dependencies ----
 
-include(cmake/add-target.cmake)
 include(cmake/CPM.cmake)
 
 CPMAddPackage(
