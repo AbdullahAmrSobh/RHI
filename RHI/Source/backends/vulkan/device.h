@@ -57,13 +57,10 @@ namespace RHI::Vulkan
         // Internal accessor returning backend queue state directly (facade-free).
         IQueue* getQueue(QueueType queueType) { return &m_queue[(uint32_t)queueType]; }
 
-        // Facade handed to consumers via CreateVulkanDevice.
-
         BackendType m_backend;
         DeviceLimits m_limits;
         DeviceFeatures m_features;
 
-        // Vulkan instance and core objects
         VkInstance m_instance = VK_NULL_HANDLE;
         VkDebugUtilsMessengerEXT m_debugUtilsMessenger = VK_NULL_HANDLE;
         VkPhysicalDevice m_physicalDevice = VK_NULL_HANDLE;
@@ -74,10 +71,6 @@ namespace RHI::Vulkan
         TL::Ptr<class DeleteQueue> m_destroyQueue = nullptr;
         TL::Arena m_arena;
 
-        // Every RHI object is allocated from and returned to this allocator. It is captured once,
-        // at device creation, and must not be sourced from the ambient TL::Context: callers push
-        // scoped contexts (e.g. a per-frame arena) around code that creates RHI objects, and those
-        // objects outlive the scope.
         TL::IAllocator* m_objectAllocator = nullptr;
     };
 
@@ -89,6 +82,10 @@ namespace RHI::Vulkan
     void queueSubmit(IQueue* self, const QueueSubmitInfo& submitInfo);
     void queueWaitIdle(IQueue* self);
     void queueWaitFence(IQueue* self, Fence* fence, uint64_t value);
+
+    // Device lifetime
+    Device* createDevice(const ApplicationInfo& appInfo);
+    void destroyDevice(Device* device);
 
     // Device interface functions
     BackendType deviceGetBackend(IDevice* self);

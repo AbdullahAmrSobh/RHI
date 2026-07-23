@@ -135,6 +135,16 @@ namespace RHI
         ::Impl::queueWaitFence((::Impl::IQueue*)this, fence, value);
     }
 
+    Device* CreateDevice(BackendType /*backend*/, const ApplicationInfo& appInfo)
+    {
+        return ::Impl::createDevice(appInfo);
+    }
+
+    void DestroyDevice(Device* device)
+    {
+        ::Impl::destroyDevice(device);
+    }
+
     BackendType Device::GetBackend() const
     {
         return ::Impl::deviceGetBackend((::Impl::IDevice*)this);

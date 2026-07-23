@@ -1548,6 +1548,6 @@ namespace RHI
         Version     engineVersion      = {};
     };
 
-    RHI_EXPORT Device* CreateVulkanDevice(const ApplicationInfo& appInfo);
-    RHI_EXPORT void    DestroyVulkanDevice(Device* device);
+    RHI_EXPORT Device* CreateDevice(BackendType backend, const ApplicationInfo& appInfo);
+    RHI_EXPORT void    DestroyDevice(Device* device);
 } // namespace RHI

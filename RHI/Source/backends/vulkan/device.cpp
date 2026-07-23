@@ -17,27 +17,24 @@
 
 #include <tracy/Tracy.hpp>
 
-namespace RHI
+namespace RHI::Vulkan
 {
-    Device* CreateVulkanDevice(const ApplicationInfo& appInfo)
+    Device* createDevice(const ApplicationInfo& appInfo)
     {
         ZoneScoped;
-        auto device = TL::constructFrom<Vulkan::IDevice>(TL::Context::getDefaultAllocator());
+        auto device = TL::constructFrom<IDevice>(TL::Context::getDefaultAllocator());
         auto result = device->Init(appInfo);
         TL_ASSERT(IsSuccess(result));
         return device;
     }
 
-    void DestroyVulkanDevice(Device* _device)
+    void destroyDevice(Device* _device)
     {
-        auto device = (Vulkan::IDevice*)_device;
+        auto device = (IDevice*)_device;
         device->Shutdown();
         TL::destructFrom(TL::Context::getDefaultAllocator(), device);
     }
-} // namespace RHI
 
-namespace RHI::Vulkan
-{
     inline static const char* ObjectTypeToName(VkObjectType type)
     {
         switch (type)
