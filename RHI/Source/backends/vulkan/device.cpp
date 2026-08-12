@@ -159,12 +159,7 @@ namespace RHI::Vulkan
     {
         if (vkQueueBeginDebugUtilsLabelEXT)
         {
-            VkDebugUtilsLabelEXT label{
-                .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
-                .pNext = nullptr,
-                .pLabelName = name,
-                .color = {},
-            };
+            VkDebugUtilsLabelEXT label = MakeDebugLabel(name, bgra);
             vkQueueBeginDebugUtilsLabelEXT(self->m_queue, &label);
         }
     }
@@ -179,14 +174,9 @@ namespace RHI::Vulkan
 
     void queueInsertAnnotation(IQueue* self, const char* name, uint32_t bgra)
     {
-        if (vkQueueBeginDebugUtilsLabelEXT)
+        if (vkQueueInsertDebugUtilsLabelEXT)
         {
-            VkDebugUtilsLabelEXT label{
-                .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
-                .pNext = nullptr,
-                .pLabelName = name,
-                .color = {},
-            };
+            VkDebugUtilsLabelEXT label = MakeDebugLabel(name, bgra);
             vkQueueInsertDebugUtilsLabelEXT(self->m_queue, &label);
         }
     }
@@ -204,8 +194,7 @@ namespace RHI::Vulkan
                 .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
                 .semaphore = fence->semaphore,
                 .value = _fence.value,
-                .stageMask = ConvertPipelineStageFlags(_fence.stage)
-                // .deviceMask    = 1,
+                .stageMask = ConvertPipelineStageFlags(_fence.stage),
             });
         }
 
@@ -226,7 +215,6 @@ namespace RHI::Vulkan
             commandBufferSubmitInfos.push_back({
                 .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
                 .commandBuffer = commandList->commandBuffer,
-                // .deviceMask    = 1,
             });
         }
 
@@ -241,7 +229,8 @@ namespace RHI::Vulkan
             });
         }
 
-        // m_lastSubmitValue++;
+        // TODO(cleanup): m_lastSubmitValue is never incremented, so the timeline-based DeleteQueue
+        // deferral is effectively inert. Left for a dedicated GPU-sync pass (needs runtime testing).
 
         VkSubmitInfo2 vksubmitInfo = {
             .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
@@ -254,12 +243,12 @@ namespace RHI::Vulkan
             .signalSemaphoreInfoCount = (uint32_t)signalSemaphores.size(),
             .pSignalSemaphoreInfos = signalSemaphores.data(),
         };
-        VulkanResult result = vkQueueSubmit2(self->m_queue, 1, &vksubmitInfo, VK_NULL_HANDLE);
-        TL_ASSERT(result.IsSuccess());
+        VK_CHECK(vkQueueSubmit2(self->m_queue, 1, &vksubmitInfo, VK_NULL_HANDLE));
 
+        // TODO(cleanup): these two vkQueueWaitIdle calls fully serialize the GPU every submit,
+        // defeating the timeline-semaphore design. Left for a dedicated GPU-sync pass.
         vkQueueWaitIdle(self->m_queue);
 
-        // assert queue is graphics
         if (submitInfo.presentSwapchains.empty() == false)
         {
             TL::Vector<VkSwapchainKHR> swapchains{self->m_device->m_arena};
@@ -315,8 +304,7 @@ namespace RHI::Vulkan
             .pSemaphores = &fence->semaphore,
             .pValues = &value,
         };
-        VulkanResult result = vkWaitSemaphores(self->m_device->m_device, &waitInfo, UINT64_MAX);
-        TL_ASSERT(result.IsSuccess());
+        VK_CHECK(vkWaitSemaphores(self->m_device->m_device, &waitInfo, UINT64_MAX));
     }
 
     ///
@@ -336,10 +324,8 @@ namespace RHI::Vulkan
         m_backend = BackendType::Vulkan1_3;
 
         VulkanResult result;
-        TL_ASSERT(result.IsSuccess());
 
-        result = volkInitialize();
-        TL_ASSERT(result.IsSuccess());
+        VK_CHECK(volkInitialize());
 
         constexpr bool EnableAsyncQueues = true;
 
@@ -347,25 +333,20 @@ namespace RHI::Vulkan
         TL::Map<TL::String, VkExtensionProperties> availableInstanceExtensions;
 
         uint32_t instanceLayerCount;
-        result = vkEnumerateInstanceLayerProperties(&instanceLayerCount, nullptr);
-        TL_ASSERT(result);
+        VK_CHECK(vkEnumerateInstanceLayerProperties(&instanceLayerCount, nullptr));
         TL::Vector<VkLayerProperties> instanceLayers;
         instanceLayers.resize(instanceLayerCount);
-        result = vkEnumerateInstanceLayerProperties(&instanceLayerCount, instanceLayers.data());
-        TL_ASSERT(result);
+        VK_CHECK(vkEnumerateInstanceLayerProperties(&instanceLayerCount, instanceLayers.data()));
 
         for (VkLayerProperties layer : instanceLayers)
             availableInstanceLayers[layer.layerName] = layer;
 
         {
-            VulkanResult result;
             uint32_t instanceExtensionsCount;
-            result = vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionsCount, nullptr);
-            TL_ASSERT(result);
+            VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionsCount, nullptr));
             TL::Vector<VkExtensionProperties> extensions;
             extensions.resize(instanceExtensionsCount);
-            result = vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionsCount, extensions.data());
-            TL_ASSERT(result);
+            VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionsCount, extensions.data()));
             for (VkExtensionProperties extension : extensions)
                 availableInstanceExtensions[extension.extensionName] = extension;
         }
@@ -412,13 +393,8 @@ namespace RHI::Vulkan
             .ppEnabledExtensionNames = requiredInstanceExtensions.data(),
         };
 
-        TL_ASSERT(result.IsSuccess());
         result = vkCreateInstance(&instanceCI, nullptr, &m_instance);
-        if (!result)
-        {
-            Shutdown();
-            return result;
-        }
+        VkResultTry(result);
 
         volkLoadInstanceOnly(m_instance);
 
@@ -433,8 +409,8 @@ namespace RHI::Vulkan
         bool enablePushDescriptors = true;
         bool enableMeshShaders = true;
         bool enableRayTracing = true;
-        bool enableDescriptorIndexing = true;
         bool enableDeviceGeneratedCommands = true;
+        bool enableRobustness = appInfo.enableVulkanRobustness;
 
         if (enablePushDescriptors)
         {
@@ -456,38 +432,37 @@ namespace RHI::Vulkan
             requiredDeviceExtensions.push_back(VK_KHR_RAY_TRACING_POSITION_FETCH_EXTENSION_NAME);
         }
 
+        if (enableRobustness)
         {
-            VulkanResult result;
+            requiredDeviceExtensions.push_back(VK_EXT_ROBUSTNESS_2_EXTENSION_NAME);
+            requiredDeviceExtensions.push_back(VK_EXT_PIPELINE_ROBUSTNESS_EXTENSION_NAME);
+        }
+
+        {
             uint32_t physicalDeviceCount;
-            result = vkEnumeratePhysicalDevices(m_instance, &physicalDeviceCount, nullptr);
+            VK_CHECK(vkEnumeratePhysicalDevices(m_instance, &physicalDeviceCount, nullptr));
             TL::Vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount, VK_NULL_HANDLE);
-            result = vkEnumeratePhysicalDevices(m_instance, &physicalDeviceCount, physicalDevices.data());
+            VK_CHECK(vkEnumeratePhysicalDevices(m_instance, &physicalDeviceCount, physicalDevices.data()));
             for (VkPhysicalDevice physicalDevice : physicalDevices)
             {
                 TL::Map<TL::String, VkLayerProperties> availableDeviceLayers;
                 {
-                    VulkanResult result;
-                    uint32_t instanceLayerCount;
-                    result = vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, nullptr);
-                    TL_ASSERT(result);
+                    uint32_t deviceLayerCount;
+                    VK_CHECK(vkEnumerateDeviceLayerProperties(physicalDevice, &deviceLayerCount, nullptr));
                     TL::Vector<VkLayerProperties> layers;
-                    layers.resize(instanceLayerCount);
-                    result = vkEnumerateDeviceLayerProperties(physicalDevice, &instanceLayerCount, layers.data());
-                    TL_ASSERT(result);
+                    layers.resize(deviceLayerCount);
+                    VK_CHECK(vkEnumerateDeviceLayerProperties(physicalDevice, &deviceLayerCount, layers.data()));
                     for (VkLayerProperties layer : layers)
                         availableDeviceLayers[layer.layerName] = layer;
                 }
 
                 TL::Map<TL::String, VkExtensionProperties> availableDeviceExtensions;
                 {
-                    VulkanResult result;
                     uint32_t extensionsCount;
-                    result = vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, nullptr);
-                    TL_ASSERT(result);
+                    VK_CHECK(vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, nullptr));
                     TL::Vector<VkExtensionProperties> extensions;
                     extensions.resize(extensionsCount);
-                    result = vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, extensions.data());
-                    TL_ASSERT(result);
+                    VK_CHECK(vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, extensions.data()));
                     for (VkExtensionProperties extension : extensions)
                         availableDeviceExtensions[extension.extensionName] = extension;
                 }
@@ -495,7 +470,7 @@ namespace RHI::Vulkan
                 // search for a suitable physical device if it contains the required extensions
                 bool containAllLayers = std::all_of(requiredDeviceLayers.begin(), requiredDeviceLayers.end(), [&](const char* layer)
                     {
-                        return availableDeviceExtensions.contains(layer);
+                        return availableDeviceLayers.contains(layer);
                     });
 
                 bool containAllExtensions = std::all_of(requiredDeviceExtensions.begin(), requiredDeviceExtensions.end(), [&](const char* ext)
@@ -633,10 +608,25 @@ namespace RHI::Vulkan
         };
 
         if (enableRayTracing) pNext = &rayTracingPositionFetchFeaturesKHR;
+
+        VkPhysicalDeviceRobustness2FeaturesEXT robustness2Features{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT,
+            .pNext = pNext,
+            .robustBufferAccess2 = VK_TRUE,
+            .robustImageAccess2  = VK_TRUE,
+            .nullDescriptor      = VK_TRUE,
+        };
+        VkPhysicalDevicePipelineRobustnessFeaturesEXT pipelineRobustnessFeatures{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_FEATURES_EXT,
+            .pNext = &robustness2Features,
+            .pipelineRobustness = VK_TRUE,
+        };
+        if (enableRobustness) pNext = &pipelineRobustnessFeatures;
+
         VkPhysicalDeviceVulkan13Features features13{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
             .pNext = pNext,
-            .robustImageAccess = VK_FALSE,
+            .robustImageAccess = enableRobustness ? VK_TRUE : VK_FALSE,
             .inlineUniformBlock = VK_FALSE,
             .descriptorBindingInlineUniformBlockUpdateAfterBind = VK_FALSE,
             .pipelineCreationCacheControl = VK_FALSE,
@@ -723,7 +713,7 @@ namespace RHI::Vulkan
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
             .pNext = &features11,
             .features = {
-                .robustBufferAccess = VK_FALSE,
+                .robustBufferAccess = enableRobustness ? VK_TRUE : VK_FALSE,
                 .fullDrawIndexUint32 = VK_FALSE,
                 .imageCubeArray = VK_FALSE,
                 .independentBlend = VK_TRUE,
@@ -794,11 +784,7 @@ namespace RHI::Vulkan
         };
 
         result = vkCreateDevice(m_physicalDevice, &deviceCI, nullptr, &m_device);
-        if (!result)
-        {
-            Shutdown();
-            return result;
-        }
+        VkResultTry(result);
 
         volkLoadDevice(m_device);
 
@@ -837,11 +823,7 @@ namespace RHI::Vulkan
             .vkGetDeviceBufferMemoryRequirements = vkGetDeviceBufferMemoryRequirements,
             .vkGetDeviceImageMemoryRequirements = vkGetDeviceImageMemoryRequirements,
 #endif
-#if VMA_EXTERNAL_MEMORY_WIN32
             .vkGetMemoryWin32HandleKHR = vkGetMemoryWin32HandleKHR,
-#else
-            .vkGetMemoryWin32HandleKHR = vkGetMemoryWin32HandleKHR,
-#endif
         };
 
         VmaAllocatorCreateInfo vmaCI{
@@ -879,13 +861,13 @@ namespace RHI::Vulkan
         result = m_queue[(uint32_t)QueueType::Graphics].Init(this, "Graphics", graphicsQueueFamilyIndex, 0);
         VkResultTry(result);
 
-        if (computeQueueFamilyIndex)
+        if (computeQueueFamilyIndex != UINT32_MAX)
         {
             result = m_queue[(uint32_t)QueueType::Compute].Init(this, "Compute", computeQueueFamilyIndex, 0);
             VkResultTry(result);
         }
 
-        if (transferQueueFamilyIndex)
+        if (transferQueueFamilyIndex != UINT32_MAX)
         {
             result = m_queue[(uint32_t)QueueType::Transfer].Init(this, "Transfer", transferQueueFamilyIndex, 0);
             VkResultTry(result);
@@ -1161,10 +1143,12 @@ namespace RHI::Vulkan
         return buffer->address;
     }
 
-    DeviceMemoryPtr bufferMap(IDevice* self, Buffer* _buffer, uint64_t offset, uint64_t sizeBytes)
+    DeviceMemoryPtr bufferMap(IDevice* self, Buffer* _buffer, uint64_t offset,  uint64_t sizeBytes)
     {
+        (void)sizeBytes;
         IBuffer* buffer = (IBuffer*)_buffer;
-        return buffer->Map(self);
+        auto* ptr = (char*)buffer->Map(self);
+        return ptr ? ptr + offset : nullptr;
     }
 
     void bufferUnmap(IDevice* self, Buffer* _buffer)
@@ -1257,7 +1241,7 @@ namespace RHI::Vulkan
         IFence* fence = (IFence*)_fence;
 
         uint64_t value;
-        vkGetSemaphoreCounterValue(self->m_device, fence->semaphore, &value);
+        VK_CHECK(vkGetSemaphoreCounterValue(self->m_device, fence->semaphore, &value));
         return value;
     }
 

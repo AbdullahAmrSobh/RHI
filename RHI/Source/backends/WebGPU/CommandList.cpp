@@ -1,321 +1,419 @@
 #include "CommandList.hpp"
-
+#include "Common.hpp"
 #include "Device.hpp"
 #include "Resources.hpp"
 
 namespace RHI::WebGPU
 {
-    ///////////////////////////////////////////////////////////
-    // ICommandPool
-    ///////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////
+    /// ICommandPool
+    //////////////////////////////////////////////////////////////////////////////////////////
 
     ResultCode ICommandPool::Init(IDevice* device, const CommandPoolCreateInfo& createInfo)
     {
         (void)device;
         (void)createInfo;
+        // TODO: implement WebGPU command pool
         return ResultCode::Success;
     }
 
     void ICommandPool::Shutdown(IDevice* device)
     {
         (void)device;
+        // TODO: implement WebGPU command pool teardown
     }
 
-    void ICommandPool::Reset()
+    void commandPoolReset(ICommandPool* self)
     {
+        (void)self;
+        // TODO: implement
     }
 
-    CommandList* ICommandPool::Allocate()
+    CommandList* commandPoolAllocate(ICommandPool* self)
     {
+        (void)self;
+        // TODO: implement
         return nullptr;
     }
 
-    ///////////////////////////////////////////////////////////
-    // ICommandList
-    ///////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////
+    /// ICommandList
+    //////////////////////////////////////////////////////////////////////////////////////////
 
-    ICommandList::ICommandList() = default;
-    ICommandList::~ICommandList() = default;
-
-    ResultCode ICommandList::Init(IDevice* device, CommandPool* pool, const CommandListCreateInfo& createInfo)
+    void cmdBegin(ICommandList* self)
     {
-        (void)device;
-        (void)pool;
-        (void)createInfo;
-        return ResultCode::Success;
+        (void)self;
+        // TODO: wgpuDeviceCreateCommandEncoder
     }
 
-    void ICommandList::Shutdown()
+    void cmdEnd(ICommandList* self)
     {
+        (void)self;
+        // TODO: wgpuCommandEncoderFinish
     }
 
-    void ICommandList::Begin()
+    void cmdPushDebugMarker(ICommandList* self, const char* name, uint32_t bgra)
     {
-    }
-
-    void ICommandList::End()
-    {
-    }
-
-    void ICommandList::PushDebugMarker(const char* name, uint32_t bgra)
-    {
+        (void)self;
         (void)name;
         (void)bgra;
+        // TODO: wgpuCommandEncoderPushDebugGroup
     }
 
-    void ICommandList::PopDebugMarker()
+    void cmdPopDebugMarker(ICommandList* self)
     {
+        (void)self;
+        // TODO: wgpuCommandEncoderPopDebugGroup
     }
 
-    void ICommandList::InsertDebugMarker(const char* name, uint32_t bgra)
+    void cmdInsertDebugMarker(ICommandList* self, const char* name, uint32_t bgra)
     {
+        (void)self;
         (void)name;
         (void)bgra;
+        // TODO: wgpuCommandEncoderInsertDebugMarker
     }
 
-    void ICommandList::AddPipelineBarrier(TL::Span<const BarrierInfo> barriers, TL::Span<const ImageBarrierInfo> imageBarriers, TL::Span<const BufferBarrierInfo> bufferBarriers)
+    void cmdAddPipelineBarrier(ICommandList* self, TL::Span<const BarrierInfo> barriers, TL::Span<const ImageBarrierInfo> imageBarriers, TL::Span<const BufferBarrierInfo> bufferBarriers)
     {
+        (void)self;
         (void)barriers;
         (void)imageBarriers;
         (void)bufferBarriers;
+        // TODO: WebGPU has no explicit barrier API; usage transitions are implicit.
     }
 
-    void ICommandList::BeginRenderPass(const RenderPassBeginInfo& beginInfo)
+    void cmdBeginRenderPass(ICommandList* self, const RenderPassBeginInfo& beginInfo)
     {
+        (void)self;
         (void)beginInfo;
+        // TODO: wgpuCommandEncoderBeginRenderPass
     }
 
-    void ICommandList::EndRenderPass()
+    void cmdEndRenderPass(ICommandList* self)
     {
+        (void)self;
+        // TODO: wgpuRenderPassEncoderEnd
     }
 
-    void ICommandList::BeginComputePass(const ComputePassBeginInfo& beginInfo)
+    void cmdBeginComputePass(ICommandList* self, const ComputePassBeginInfo& beginInfo)
     {
+        (void)self;
         (void)beginInfo;
+        // TODO: wgpuCommandEncoderBeginComputePass
     }
 
-    void ICommandList::EndComputePass()
+    void cmdEndComputePass(ICommandList* self)
     {
+        (void)self;
+        // TODO: wgpuComputePassEncoderEnd
     }
 
-    void ICommandList::BeginConditionalCommands(const BufferBindingInfo& conditionBuffer, bool inverted)
+    void cmdBeginConditionalCommands(ICommandList* self, const BufferBindingInfo& conditionBuffer, bool inverted)
     {
+        (void)self;
         (void)conditionBuffer;
         (void)inverted;
+        // TODO: WebGPU has no conditional rendering extension; unsupported.
     }
 
-    void ICommandList::EndConditionalCommands()
+    void cmdEndConditionalCommands(ICommandList* self)
     {
+        (void)self;
+        // TODO: unsupported on WebGPU
     }
 
-    void ICommandList::Execute(TL::Span<const CommandList*> commandLists)
+    void cmdExecute(ICommandList* self, TL::Span<const CommandList*> commandLists)
     {
+        (void)self;
         (void)commandLists;
+        // TODO: WebGPU has no secondary command buffers; unsupported.
     }
 
-    void ICommandList::BindPipelineLayout(BindPoint bindPoint, const PipelineLayout* pipelineLayout)
+    void cmdBindPipelineLayout(ICommandList* self, BindPoint bindPoint, const PipelineLayout* pipelineLayout)
     {
+        (void)self;
         (void)bindPoint;
         (void)pipelineLayout;
+        // TODO: implement
     }
 
-    void ICommandList::SetPushConstants(BindPoint bindPoint, uint32_t offset, TL::Block content)
+    void cmdSetPushConstants(ICommandList* self, BindPoint bindPoint, uint32_t offset, TL::Block content)
     {
+        (void)self;
         (void)bindPoint;
         (void)offset;
         (void)content;
+        // TODO: WebGPU has no push constants; emulate via a uniform buffer.
     }
 
-    void ICommandList::PushBindGroup(BindPoint bindPoint, uint32_t firstGroup, TL::Span<const BindGroupUpdateInfo> updateInfos)
+    void cmdPushBindGroup(ICommandList* self, BindPoint bindPoint, uint32_t firstGroup, TL::Span<const BindGroupUpdateInfo> updateInfos)
     {
+        (void)self;
         (void)bindPoint;
         (void)firstGroup;
         (void)updateInfos;
+        // TODO: WebGPU has no push-descriptor equivalent; requires a transient bind group.
     }
 
-    void ICommandList::SetBindGroups(BindPoint bindPoint, TL::Span<const BindGroupBindingInfo> bindGroups)
+    void cmdSetBindGroups(ICommandList* self, BindPoint bindPoint, TL::Span<const BindGroupBindingInfo> bindGroups)
     {
+        (void)self;
         (void)bindPoint;
         (void)bindGroups;
+        // TODO: wgpuRenderPassEncoderSetBindGroup / wgpuComputePassEncoderSetBindGroup
     }
 
-    void ICommandList::BindGraphicsPipeline(const GraphicsPipeline* pipelineState)
+    void cmdBindGraphicsPipeline(ICommandList* self, const GraphicsPipeline* pipelineState)
     {
+        (void)self;
         (void)pipelineState;
+        // TODO: wgpuRenderPassEncoderSetPipeline
     }
 
-    void ICommandList::BindComputePipeline(const ComputePipeline* pipelineState)
+    void cmdBindComputePipeline(ICommandList* self, const ComputePipeline* pipelineState)
     {
+        (void)self;
         (void)pipelineState;
+        // TODO: wgpuComputePassEncoderSetPipeline
     }
 
-    void ICommandList::BindRayTracingPipeline(const RayTracingPipeline* pipelineState)
+    void cmdBindRayTracingPipeline(ICommandList* self, const RayTracingPipeline* pipelineState)
     {
+        (void)self;
         (void)pipelineState;
+        // TODO: unsupported on WebGPU
     }
 
-    void ICommandList::SetViewport(const Viewport& viewport)
+    void cmdSetViewport(ICommandList* self, float offsetX, float offsetY, float width, float height, float minDepth, float maxDepth)
     {
-        (void)viewport;
+        (void)self;
+        (void)offsetX;
+        (void)offsetY;
+        (void)width;
+        (void)height;
+        (void)minDepth;
+        (void)maxDepth;
+        // TODO: wgpuRenderPassEncoderSetViewport
     }
 
-    void ICommandList::SetScissor(const Scissor& sicssor)
+    void cmdSetScissor(ICommandList* self, int32_t offsetX, int32_t offsetY, uint32_t width, uint32_t height)
     {
-        (void)sicssor;
+        (void)self;
+        (void)offsetX;
+        (void)offsetY;
+        (void)width;
+        (void)height;
+        // TODO: wgpuRenderPassEncoderSetScissorRect
     }
 
-    void ICommandList::BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> vertexBuffers)
+    void cmdBindVertexBuffers(ICommandList* self, uint32_t firstBinding, TL::Span<const BufferBindingInfo> vertexBuffers)
     {
+        (void)self;
         (void)firstBinding;
         (void)vertexBuffers;
+        // TODO: wgpuRenderPassEncoderSetVertexBuffer
     }
 
-    void ICommandList::BindIndexBuffer(const BufferBindingInfo& indexBuffer, IndexType indexType)
+    void cmdBindIndexBuffer(ICommandList* self, const BufferBindingInfo& indexBuffer, IndexType indexType)
     {
+        (void)self;
         (void)indexBuffer;
         (void)indexType;
+        // TODO: wgpuRenderPassEncoderSetIndexBuffer
     }
 
-    void ICommandList::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance)
+    void cmdDraw(ICommandList* self, uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance)
     {
+        (void)self;
         (void)vertexCount;
         (void)instanceCount;
         (void)firstVertex;
         (void)firstInstance;
+        // TODO: wgpuRenderPassEncoderDraw
     }
 
-    void ICommandList::DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance)
+    void cmdDrawIndexed(ICommandList* self, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance)
     {
+        (void)self;
         (void)indexCount;
         (void)instanceCount;
         (void)firstIndex;
         (void)vertexOffset;
         (void)firstInstance;
+        // TODO: wgpuRenderPassEncoderDrawIndexed
     }
 
-    void ICommandList::DrawMeshTasks(uint32_t x, uint32_t y, uint32_t z)
+    void cmdDrawMeshTasks(ICommandList* self, uint32_t x, uint32_t y, uint32_t z)
     {
+        (void)self;
         (void)x;
         (void)y;
         (void)z;
+        // TODO: unsupported on WebGPU
     }
 
-    void ICommandList::DrawIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride)
+    void cmdDrawIndirect(ICommandList* self, const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride)
     {
+        (void)self;
         (void)argumentBuffer;
         (void)countBuffer;
         (void)maxDrawCount;
         (void)stride;
+        // TODO: wgpuRenderPassEncoderDrawIndirect (no built-in count-buffer support)
     }
 
-    void ICommandList::DrawIndexedIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride)
+    void cmdDrawIndexedIndirect(ICommandList* self, const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride)
     {
+        (void)self;
         (void)argumentBuffer;
         (void)countBuffer;
         (void)maxDrawCount;
         (void)stride;
+        // TODO: wgpuRenderPassEncoderDrawIndexedIndirect (no built-in count-buffer support)
     }
 
-    void ICommandList::DrawMeshTasksIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t drawNum, uint32_t stride)
+    void cmdDrawMeshTasksIndirect(ICommandList* self, const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t drawNum, uint32_t stride)
     {
+        (void)self;
         (void)argumentBuffer;
         (void)countBuffer;
         (void)drawNum;
         (void)stride;
+        // TODO: unsupported on WebGPU
     }
 
-    void ICommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z)
+    void cmdDispatch(ICommandList* self, uint32_t x, uint32_t y, uint32_t z)
     {
+        (void)self;
         (void)x;
         (void)y;
         (void)z;
+        // TODO: wgpuComputePassEncoderDispatchWorkgroups
     }
 
-    void ICommandList::DispatchIndirect(const BufferBindingInfo& argumentBuffer)
+    void cmdDispatchIndirect(ICommandList* self, const BufferBindingInfo& argumentBuffer)
     {
+        (void)self;
         (void)argumentBuffer;
+        // TODO: wgpuComputePassEncoderDispatchWorkgroupsIndirect
     }
 
-    void ICommandList::DispatchRays(const DispatchRaysInfo& dispatchRaysDesc)
+    void cmdDispatchRays(ICommandList* self, const DispatchRaysInfo& dispatchRaysDesc)
     {
+        (void)self;
         (void)dispatchRaysDesc;
+        // TODO: unsupported on WebGPU
     }
 
-    void ICommandList::DispatchRaysIndirect(const BufferBindingInfo& argumentBuffer)
+    void cmdDispatchRaysIndirect(ICommandList* self, const BufferBindingInfo& argumentBuffer)
     {
+        (void)self;
         (void)argumentBuffer;
+        // TODO: unsupported on WebGPU
     }
 
-    void ICommandList::CopyBuffer(const Buffer* srcBuffer, uint64_t srcOffset, const Buffer* dstBuffer, uint64_t dstOffset, uint64_t size)
+    void cmdCopyBuffer(ICommandList* self, const Buffer* srcBuffer, uint64_t srcOffset, const Buffer* dstBuffer, uint64_t dstOffset, uint64_t size)
     {
+        (void)self;
         (void)srcBuffer;
         (void)srcOffset;
         (void)dstBuffer;
         (void)dstOffset;
         (void)size;
+        // TODO: wgpuCommandEncoderCopyBufferToBuffer
     }
 
-    void ICommandList::CopyImage(const ImageCopyInfo& srcImage, const ImageCopyInfo& dstImage, const ImageSize3D& size)
+    void cmdCopyImage(ICommandList* self, const ImageCopyInfo& srcImage, const ImageCopyInfo& dstImage, const ImageSize3D& size)
     {
+        (void)self;
         (void)srcImage;
         (void)dstImage;
         (void)size;
+        // TODO: wgpuCommandEncoderCopyTextureToTexture
     }
 
-    void ICommandList::CopyImageToBuffer(const ImageCopyInfo& srcImage, const ImageMemoryLayout& layout, const Buffer* dstBuffer)
+    void cmdCopyImageToBuffer(ICommandList* self, const ImageCopyInfo& srcImage, const ImageMemoryLayout& layout, const Buffer* dstBuffer)
     {
+        (void)self;
         (void)srcImage;
         (void)layout;
         (void)dstBuffer;
+        // TODO: wgpuCommandEncoderCopyTextureToBuffer
     }
 
-    void ICommandList::CopyBufferToImage(const Buffer* srcBuffer, const ImageCopyInfo& dstImage, const ImageMemoryLayout& layout)
+    void cmdCopyBufferToImage(ICommandList* self, const Buffer* srcBuffer, const ImageCopyInfo& dstImage, const ImageMemoryLayout& layout)
     {
+        (void)self;
         (void)srcBuffer;
         (void)dstImage;
         (void)layout;
+        // TODO: wgpuCommandEncoderCopyBufferToTexture
     }
 
-    void ICommandList::CopyAccelerationStructure(AccelerationStructure* dst, const AccelerationStructure* src, CopyMode copyMode)
+    void cmdCopyAccelerationStructure(ICommandList* self, AccelerationStructure* dst, const AccelerationStructure* src, CopyMode copyMode)
     {
+        (void)self;
         (void)dst;
         (void)src;
         (void)copyMode;
+        // TODO: unsupported on WebGPU
     }
 
-    void ICommandList::CopyMicromap(Micromap* dst, const Micromap* src, CopyMode copyMode)
+    void cmdCopyMicromap(ICommandList* self, Micromap* dst, const Micromap* src, CopyMode copyMode)
     {
+        (void)self;
         (void)dst;
         (void)src;
         (void)copyMode;
+        // TODO: unsupported on WebGPU
     }
 
-    void ICommandList::BuildTlas(TL::Span<const TlasBuildInfo> buildInfos)
+    void cmdClearBuffer(ICommandList* self, Buffer* dst, size_t offset, size_t size)
     {
+        (void)self;
+        (void)dst;
+        (void)offset;
+        (void)size;
+        // TODO: wgpuCommandEncoderClearBuffer
+    }
+
+    void cmdBuildTlas(ICommandList* self, TL::Span<const TlasBuildInfo> buildInfos)
+    {
+        (void)self;
         (void)buildInfos;
+        // TODO: unsupported on WebGPU
     }
 
-    void ICommandList::BuildBlas(TL::Span<const BlasBuildInfo> buildInfos)
+    void cmdBuildBlas(ICommandList* self, TL::Span<const BlasBuildInfo> buildInfos)
     {
+        (void)self;
         (void)buildInfos;
+        // TODO: unsupported on WebGPU
     }
 
-    void ICommandList::BuildMicromaps(TL::Span<const MicromapBuildInfo> buildInfos)
+    void cmdBuildMicromaps(ICommandList* self, TL::Span<const MicromapBuildInfo> buildInfos)
     {
+        (void)self;
         (void)buildInfos;
+        // TODO: unsupported on WebGPU
     }
 
-    void ICommandList::WriteAccelerationStructuresSizes(TL::Span<const AccelerationStructure*> accelerationStructures, QueryPool* queryPool, uint32_t queryPoolOffset)
+    void cmdWriteAccelerationStructuresSizes(ICommandList* self, TL::Span<const AccelerationStructure*> accelerationStructures, QueryPool* queryPool, uint32_t queryPoolOffset)
     {
+        (void)self;
         (void)accelerationStructures;
         (void)queryPool;
         (void)queryPoolOffset;
+        // TODO: unsupported on WebGPU
     }
 
-    void ICommandList::WriteMicromapsSizes(TL::Span<const Micromap*> micromaps, QueryPool* queryPool, uint32_t queryPoolOffset)
+    void cmdWriteMicromapsSizes(ICommandList* self, TL::Span<const Micromap*> micromaps, QueryPool* queryPool, uint32_t queryPoolOffset)
     {
+        (void)self;
         (void)micromaps;
         (void)queryPool;
         (void)queryPoolOffset;
+        // TODO: unsupported on WebGPU
     }
 } // namespace RHI::WebGPU

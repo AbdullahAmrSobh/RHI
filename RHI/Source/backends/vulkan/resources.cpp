@@ -102,7 +102,7 @@ namespace RHI::Vulkan
     }
 
     inline static VkBuildAccelerationStructureFlagsKHR
-    convertBuildFlags(TL::Flags<AccelerationStructureFlags> flags)
+    ConvertBuildFlags(TL::Flags<AccelerationStructureFlags> flags)
     {
         // TODO: PREFER_FAST_TRACE is always requested, is that nessecerry?
         VkBuildAccelerationStructureFlagsKHR result = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
@@ -153,7 +153,6 @@ namespace RHI::Vulkan
         if (imageUsageFlags & ImageUsage::Stencil) result |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
         if (imageUsageFlags & ImageUsage::CopySrc) result |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
         if (imageUsageFlags & ImageUsage::CopyDst) result |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-        // if (imageUsageFlags & ImageUsage::Present) TL_UNREACHABLE(); // TODO: Handle present usage;
         return result;
     }
 
@@ -717,21 +716,8 @@ namespace RHI::Vulkan
 
         vkGetPhysicalDeviceProperties2(device->m_physicalDevice, &properties);
 
-        // Example: retrieve max descriptor counts
-        TL_MAYBE_UNUSED uint32_t maxSampledImages = properties.properties.limits.maxPerStageDescriptorSampledImages;
-        TL_MAYBE_UNUSED uint32_t maxStorageImages = properties.properties.limits.maxPerStageDescriptorStorageImages;
-        TL_MAYBE_UNUSED uint32_t maxSamplers = properties.properties.limits.maxPerStageDescriptorSamplers;
-        TL_MAYBE_UNUSED uint32_t maxUniformBuffers = properties.properties.limits.maxPerStageDescriptorUniformBuffers;
-        TL_MAYBE_UNUSED uint32_t maxStorageBuffers = properties.properties.limits.maxPerStageDescriptorStorageBuffers;
-        TL_MAYBE_UNUSED uint32_t maxCombinedImageSamplers = properties.properties.limits.maxPerStageDescriptorSampledImages + properties.properties.limits.maxPerStageDescriptorSamplers;
-
         /// @todo: subtract 100 to reserve for pass inputs
         uint32_t maxBindlessSampledImages = descriptorIndexingProps.maxPerStageDescriptorUpdateAfterBindSampledImages - 100;
-        TL_MAYBE_UNUSED uint32_t maxBindlessStorageImages = descriptorIndexingProps.maxPerStageDescriptorUpdateAfterBindStorageImages;
-        TL_MAYBE_UNUSED uint32_t maxBindlessSamplers = descriptorIndexingProps.maxPerStageDescriptorUpdateAfterBindSamplers;
-        TL_MAYBE_UNUSED uint32_t maxBindlessUniformBuffers = descriptorIndexingProps.maxPerStageDescriptorUpdateAfterBindUniformBuffers;
-        TL_MAYBE_UNUSED uint32_t maxBindlessStorageBuffers = descriptorIndexingProps.maxPerStageDescriptorUpdateAfterBindStorageBuffers;
-        // Use these values as needed for validation or allocation
 
         for (uint32_t bindingIndex = 0; bindingIndex < createInfo.bindings.size(); bindingIndex++)
         {
@@ -889,8 +875,7 @@ namespace RHI::Vulkan
             .pSemaphores = &semaphore,
             .pValues = &value,
         };
-        VulkanResult result = vkWaitSemaphores(device->m_device, &semaphoreWaitInfo, UINT64_MAX);
-        TL_ASSERT(result.IsSuccess());
+        VK_CHECK(vkWaitSemaphores(device->m_device, &semaphoreWaitInfo, UINT64_MAX));
         return true;
     }
 
@@ -1137,6 +1122,26 @@ namespace RHI::Vulkan
             pipelineColorBlendAttachmentStates.push_back(state);
         }
 
+        // attachmentCount below is the color attachment count, so a caller that supplied
+        // fewer blend states than attachments would leave Vulkan reading uninitialized
+        // memory (silently zeroing colorWriteMask, so those attachments never get written).
+        // Pad with a sensible default instead.
+        //
+        // TODO: Replace this with an assertion.
+        while (pipelineColorBlendAttachmentStates.size() < colorAttachmentFormats.size())
+        {
+            pipelineColorBlendAttachmentStates.push_back(VkPipelineColorBlendAttachmentState{
+                .blendEnable = VK_FALSE,
+                .srcColorBlendFactor = VK_BLEND_FACTOR_ONE,
+                .dstColorBlendFactor = VK_BLEND_FACTOR_ZERO,
+                .colorBlendOp = VK_BLEND_OP_ADD,
+                .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
+                .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+                .alphaBlendOp = VK_BLEND_OP_ADD,
+                .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+            });
+        }
+
         auto [r, g, b, a] = createInfo.colorBlendState.blendConstants;
         VkPipelineColorBlendStateCreateInfo colorBlendStateCI{
             .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
@@ -1238,7 +1243,7 @@ namespace RHI::Vulkan
     // IRayTracingPipeline
     ////////////////////////////////////////////////////////////////////////
 
-    inline static VkRayTracingShaderGroupTypeKHR convertRayTracingShaderGroupType(RayTracingGroupType type)
+    inline static VkRayTracingShaderGroupTypeKHR ConvertRayTracingShaderGroupType(RayTracingGroupType type)
     {
         switch (type)
         {
@@ -1267,7 +1272,7 @@ namespace RHI::Vulkan
             shaderGroupsCI.push_back({
                 .sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR,
                 .pNext = nullptr,
-                .type = convertRayTracingShaderGroupType(groupInfo.type),
+                .type = ConvertRayTracingShaderGroupType(groupInfo.type),
                 .generalShader = groupInfo.generalShader,
                 .closestHitShader = groupInfo.closestHitShader,
                 .anyHitShader = groupInfo.anyHitShader,
@@ -1312,8 +1317,7 @@ namespace RHI::Vulkan
 
     void IRayTracingPipeline::GetShaderBindingTableEntry(IDevice* device, uint32_t group, size_t size, void* dstHandle)
     {
-        VulkanResult result = vkGetRayTracingShaderGroupHandlesKHR(device->m_device, handle, group, 1, size, dstHandle);
-        TL_ASSERT(result.IsSuccess());
+        VK_CHECK(vkGetRayTracingShaderGroupHandlesKHR(device->m_device, handle, group, 1, size, dstHandle));
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -1434,9 +1438,7 @@ namespace RHI::Vulkan
     DeviceMemoryPtr IBuffer::Map(IDevice* device)
     {
         DeviceMemoryPtr ptr = nullptr;
-        VulkanResult result;
-        result = vmaMapMemory(device->m_deviceAllocator, allocation, &ptr);
-        TL_ASSERT(result)
+        VK_CHECK(vmaMapMemory(device->m_deviceAllocator, allocation, &ptr));
         return ptr;
     }
 
@@ -1564,28 +1566,6 @@ namespace RHI::Vulkan
         this->format = ConvertFormat(swapchainCI.imageFormat);
         this->subresources = {ImageAspect::Color, 0, 1, 0, 1};
 
-        // VkImageViewCreateInfo imageViewCI{
-        //     .sType      = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        //     .pNext      = nullptr,
-        //     .flags      = 0,
-        //     .image      = handle,
-        //     .viewType   = VK_IMAGE_VIEW_TYPE_2D,
-        //     .format     = swapchainCI.imageFormat,
-        //     .components = {
-        //                    VK_COMPONENT_SWIZZLE_IDENTITY,
-        //                    VK_COMPONENT_SWIZZLE_IDENTITY,
-        //                    VK_COMPONENT_SWIZZLE_IDENTITY,
-        //                    VK_COMPONENT_SWIZZLE_IDENTITY,
-        //                    },
-        //     .subresourceRange = {
-        //                    .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
-        //                    .baseMipLevel   = 0,
-        //                    .levelCount     = VK_REMAINING_MIP_LEVELS,
-        //                    .baseArrayLayer = 0,
-        //                    .layerCount     = VK_REMAINING_ARRAY_LAYERS,
-        //                    },
-        // };
-        // VulkanResult result = vkCreateImageView(device->m_device, &imageViewCI, nullptr, &viewHandle);
         return ResultCode::Success;
     }
 
@@ -1620,7 +1600,7 @@ namespace RHI::Vulkan
         {
             for (const auto& geometry : createInfo.geometries)
             {
-                geometries.push_back(convertGeometryData(geometry));
+                geometries.push_back(ConvertGeometryData(geometry));
                 if (geometry.geometryType == GeometryType::Triangles)
                 {
                     uint32_t triangleNum = (geometry.indexCount ? geometry.indexCount : geometry.count) / 3;
@@ -1654,7 +1634,7 @@ namespace RHI::Vulkan
             primitiveCounts.push_back((uint32_t)createInfo.instances.size());
         }
 
-        buildFlags = convertBuildFlags(createInfo.flags);
+        buildFlags = ConvertBuildFlags(createInfo.flags);
 
         VkAccelerationStructureBuildGeometryInfoKHR buildInfo{
             .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR,
@@ -1895,11 +1875,8 @@ namespace RHI::Vulkan
     {
         TL_ASSERT(m_surface);
 
-        VulkanResult result;
-
         VkSurfaceCapabilitiesKHR capabilities;
-        result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device->m_physicalDevice, m_surface, &capabilities);
-        TL_ASSERT(result);
+        VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device->m_physicalDevice, m_surface, &capabilities));
 
         SurfaceCapabilities output{};
 
@@ -1922,11 +1899,9 @@ namespace RHI::Vulkan
         // Add formats
         {
             uint32_t formatCount{0};
-            result = vkGetPhysicalDeviceSurfaceFormatsKHR(device->m_physicalDevice, m_surface, &formatCount, nullptr);
-            TL_ASSERT(result);
+            VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(device->m_physicalDevice, m_surface, &formatCount, nullptr));
             TL::Vector<VkSurfaceFormatKHR> formats(formatCount);
-            result = vkGetPhysicalDeviceSurfaceFormatsKHR(device->m_physicalDevice, m_surface, &formatCount, formats.data());
-            TL_ASSERT(result);
+            VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(device->m_physicalDevice, m_surface, &formatCount, formats.data()));
             for (const auto& surfaceFormat : formats)
             {
                 output.formats.push_back(ConvertFormat(surfaceFormat.format));
@@ -1944,11 +1919,9 @@ namespace RHI::Vulkan
         // Add present modes
         {
             uint32_t presentModeCount{0};
-            result = vkGetPhysicalDeviceSurfacePresentModesKHR(device->m_physicalDevice, m_surface, &presentModeCount, nullptr);
-            TL_ASSERT(result);
+            VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(device->m_physicalDevice, m_surface, &presentModeCount, nullptr));
             TL::Vector<VkPresentModeKHR> presentModes(presentModeCount);
-            result = vkGetPhysicalDeviceSurfacePresentModesKHR(device->m_physicalDevice, m_surface, &presentModeCount, presentModes.data());
-            TL_ASSERT(result);
+            VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(device->m_physicalDevice, m_surface, &presentModeCount, presentModes.data()));
             for (VkPresentModeKHR mode : presentModes)
             {
                 switch (mode)
@@ -2225,18 +2198,24 @@ namespace RHI::Vulkan
         if (!result)
         {
             TL::LogError("Failed to create swapchain surface with error: {}", result.AsString());
+            return result;
         }
 
         IQueue* queue = device.getQueue(QueueType::Graphics);
-        VkBool32 surfaceSupportPresent;
+        VkBool32 surfaceSupportPresent = VK_FALSE;
         result = vkGetPhysicalDeviceSurfaceSupportKHR(device.m_physicalDevice, queue->m_familyIndex, outSurface, &surfaceSupportPresent);
-        TL_ASSERT(result);
+        if (!result)
+        {
+            TL::LogError("Failed to query surface present support with error: {}", result.AsString());
+            return result;
+        }
 
         if (surfaceSupportPresent != VK_TRUE)
         {
-            TL::LogError("surface does not support present: {}", result.AsString());
+            TL::LogError("Graphics queue family does not support present on this surface");
             vkDestroySurfaceKHR(device.m_instance, outSurface, nullptr);
             outSurface = VK_NULL_HANDLE;
+            return VK_ERROR_INITIALIZATION_FAILED;
         }
 
         return VK_SUCCESS;

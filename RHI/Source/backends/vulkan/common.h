@@ -181,6 +181,31 @@ namespace RHI::Vulkan
         return x;              \
     }
 
+// Evaluates a Vulkan call once, asserting success and logging the decoded VkResult on failure.
+#define VK_CHECK(expr)                                                                          \
+    do                                                                                          \
+    {                                                                                           \
+        ::RHI::Vulkan::VulkanResult vkCheckResult_ = (expr);                                    \
+        TL_ASSERT(vkCheckResult_.IsSuccess(), #expr " failed: {}", vkCheckResult_.AsString());  \
+    }                                                                                           \
+    while (0)
+
+    // Builds a debug-utils label, unpacking a 0xAARRGGBB-style BGRA color into the normalized color array.
+    inline static VkDebugUtilsLabelEXT MakeDebugLabel(const char* name, uint32_t bgra)
+    {
+        return VkDebugUtilsLabelEXT{
+            .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
+            .pNext = nullptr,
+            .pLabelName = name,
+            .color = {
+                ((bgra >> 16) & 0xFF) / 255.0f,
+                ((bgra >> 8) & 0xFF) / 255.0f,
+                (bgra & 0xFF) / 255.0f,
+                ((bgra >> 24) & 0xFF) / 255.0f,
+            },
+        };
+    }
+
     inline static VkFormat ConvertFormat(Format format)
     {
         TL_ASSERT(format < Format::COUNT);
@@ -258,7 +283,7 @@ namespace RHI::Vulkan
         }
     }
 
-    inline static VkIndexType convertIndexType(IndexType indexType)
+    inline static VkIndexType ConvertIndexType(IndexType indexType)
     {
         switch (indexType)
         {
@@ -271,7 +296,7 @@ namespace RHI::Vulkan
     }
 
     inline static VkAccelerationStructureGeometryKHR
-    convertGeometryData(const AccelerationStructureGeometry& trianglesData)
+    ConvertGeometryData(const AccelerationStructureGeometry& trianglesData)
     {
         switch (trianglesData.geometryType)
         {
@@ -303,7 +328,7 @@ namespace RHI::Vulkan
                             .vertexData    = {.deviceAddress = trianglesData.data},
                             .vertexStride  = trianglesData.stride,
                             .maxVertex     = trianglesData.count,
-                            .indexType     = convertIndexType(trianglesData.indexType),
+                            .indexType     = ConvertIndexType(trianglesData.indexType),
                             .indexData     = {.deviceAddress = trianglesData.indexData},
                             .transformData = {.deviceAddress = trianglesData.transformData},
                     },

@@ -173,8 +173,6 @@ namespace RHI::Vulkan
         void Push(uint64_t timeline, VkSemaphore h) { PushImpl(m_semaphore, timeline, h); }
         void Push(uint64_t timeline, VkAccelerationStructureKHR h) { PushImpl(m_accelerationStructure, timeline, h); }
         void Push(uint64_t timeline, VkMicromapEXT h) { PushImpl(m_micromap, timeline, h); }
-        // void Push(uint64_t timeline, VmaBufferAllocation h) { PushImpl(, timeline, h.first);  PushImpl(m_vmaBuffer, timeline, h.second);}
-        // void Push(uint64_t timeline, VmaImageAllocation h) { PushImpl(m_vmaImage, timeline, h.first);  PushImpl(m_vmaImage, timeline, h.second);}
         // clang-format on
 
         void Flush(IDevice* device, uint64_t timeline);

@@ -2,6 +2,8 @@
 
 #include "Device.hpp"
 
+#include <TL/Assert.hpp>
+
 namespace RHI::WebGPU
 {
     ///////////////////////////////////////////////////////////
@@ -31,16 +33,11 @@ namespace RHI::WebGPU
         case Format::RG16_SINT: return WGPUTextureFormat_RG16Sint;
         case Format::RG16_FLOAT: return WGPUTextureFormat_RG16Float;
         case Format::RGBA8_UNORM: return WGPUTextureFormat_RGBA8Unorm;
-        // case Format::RGBA8UnormSrgb:              return WGPUTextureFormat_RGBA8UnormSrgb;
         case Format::RGBA8_SNORM: return WGPUTextureFormat_RGBA8Snorm;
         case Format::RGBA8_UINT: return WGPUTextureFormat_RGBA8Uint;
         case Format::RGBA8_SINT: return WGPUTextureFormat_RGBA8Sint;
         case Format::BGRA8_UNORM: return WGPUTextureFormat_BGRA8Unorm;
-        // case Format::BGRA8UnormSrgb:              return WGPUTextureFormat_BGRA8UnormSrgb;
-        // case Format::RGB10A2Uint:                 return WGPUTextureFormat_RGB10A2Uint;
         case Format::R10G10B10A2_UNORM: return WGPUTextureFormat_RGB10A2Unorm;
-        // case Format::RG11B10Ufloat:               return WGPUTextureFormat_RG11B10Ufloat;
-        // case Format::RGB9E5Ufloat:                return WGPUTextureFormat_RGB9E5Ufloat;
         case Format::RG32_FLOAT: return WGPUTextureFormat_RG32Float;
         case Format::RG32_UINT: return WGPUTextureFormat_RG32Uint;
         case Format::RG32_SINT: return WGPUTextureFormat_RG32Sint;
@@ -50,12 +47,9 @@ namespace RHI::WebGPU
         case Format::RGBA32_FLOAT: return WGPUTextureFormat_RGBA32Float;
         case Format::RGBA32_UINT: return WGPUTextureFormat_RGBA32Uint;
         case Format::RGBA32_SINT: return WGPUTextureFormat_RGBA32Sint;
-        // case Format::Stencil8:                    return WGPUTextureFormat_Stencil8;
         case Format::D16: return WGPUTextureFormat_Depth16Unorm;
         case Format::D24S8: return WGPUTextureFormat_Depth24Plus;
-        // case Format::D24S8:             return WGPUTextureFormat_Depth24PlusStencil8;
         case Format::D32: return WGPUTextureFormat_Depth32Float;
-        // case Format::D24S8:             return WGPUTextureFormat_Depth32FloatStencil8;
         case Format::BC1_UNORM: return WGPUTextureFormat_BC1RGBAUnorm;
         case Format::BC1_UNORM_SRGB: return WGPUTextureFormat_BC1RGBAUnormSrgb;
         case Format::BC2_UNORM: return WGPUTextureFormat_BC2RGBAUnorm;
@@ -70,63 +64,14 @@ namespace RHI::WebGPU
         case Format::BC6H_UFLOAT: return WGPUTextureFormat_BC6HRGBFloat;
         case Format::BC7_UNORM: return WGPUTextureFormat_BC7RGBAUnorm;
         case Format::BC7_UNORM_SRGB: return WGPUTextureFormat_BC7RGBAUnormSrgb;
-        // case Format::ETC2RGB8Unorm:               return WGPUTextureFormat_ETC2RGB8Unorm;
-        // case Format::ETC2RGB8UnormSrgb:           return WGPUTextureFormat_ETC2RGB8UnormSrgb;
-        // case Format::ETC2RGB8A1Unorm:             return WGPUTextureFormat_ETC2RGB8A1Unorm;
-        // case Format::ETC2RGB8A1UnormSrgb:         return WGPUTextureFormat_ETC2RGB8A1UnormSrgb;
-        // case Format::ETC2RGBA8Unorm:              return WGPUTextureFormat_ETC2RGBA8Unorm;
-        // case Format::ETC2RGBA8UnormSrgb:          return WGPUTextureFormat_ETC2RGBA8UnormSrgb;
-        // case Format::EACR11Unorm:                 return WGPUTextureFormat_EACR11Unorm;
-        // case Format::EACR11Snorm:                 return WGPUTextureFormat_EACR11Snorm;
-        // case Format::EACRG11Unorm:                return WGPUTextureFormat_EACRG11Unorm;
-        // case Format::EACRG11Snorm:                return WGPUTextureFormat_EACRG11Snorm;
-        // case Format::ASTC4x4Unorm:                return WGPUTextureFormat_ASTC4x4Unorm;
-        // case Format::ASTC4x4UnormSrgb:            return WGPUTextureFormat_ASTC4x4UnormSrgb;
-        // case Format::ASTC5x4Unorm:                return WGPUTextureFormat_ASTC5x4Unorm;
-        // case Format::ASTC5x4UnormSrgb:            return WGPUTextureFormat_ASTC5x4UnormSrgb;
-        // case Format::ASTC5x5Unorm:                return WGPUTextureFormat_ASTC5x5Unorm;
-        // case Format::ASTC5x5UnormSrgb:            return WGPUTextureFormat_ASTC5x5UnormSrgb;
-        // case Format::ASTC6x5Unorm:                return WGPUTextureFormat_ASTC6x5Unorm;
-        // case Format::ASTC6x5UnormSrgb:            return WGPUTextureFormat_ASTC6x5UnormSrgb;
-        // case Format::ASTC6x6Unorm:                return WGPUTextureFormat_ASTC6x6Unorm;
-        // case Format::ASTC6x6UnormSrgb:            return WGPUTextureFormat_ASTC6x6UnormSrgb;
-        // case Format::ASTC8x5Unorm:                return WGPUTextureFormat_ASTC8x5Unorm;
-        // case Format::ASTC8x5UnormSrgb:            return WGPUTextureFormat_ASTC8x5UnormSrgb;
-        // case Format::ASTC8x6Unorm:                return WGPUTextureFormat_ASTC8x6Unorm;
-        // case Format::ASTC8x6UnormSrgb:            return WGPUTextureFormat_ASTC8x6UnormSrgb;
-        // case Format::ASTC8x8Unorm:                return WGPUTextureFormat_ASTC8x8Unorm;
-        // case Format::ASTC8x8UnormSrgb:            return WGPUTextureFormat_ASTC8x8UnormSrgb;
-        // case Format::ASTC10x5Unorm:               return WGPUTextureFormat_ASTC10x5Unorm;
-        // case Format::ASTC10x5UnormSrgb:           return WGPUTextureFormat_ASTC10x5UnormSrgb;
-        // case Format::ASTC10x6Unorm:               return WGPUTextureFormat_ASTC10x6Unorm;
-        // case Format::ASTC10x6UnormSrgb:           return WGPUTextureFormat_ASTC10x6UnormSrgb;
-        // case Format::ASTC10x8Unorm:               return WGPUTextureFormat_ASTC10x8Unorm;
-        // case Format::ASTC10x8UnormSrgb:           return WGPUTextureFormat_ASTC10x8UnormSrgb;
-        // case Format::ASTC10x10Unorm:              return WGPUTextureFormat_ASTC10x10Unorm;
-        // case Format::ASTC10x10UnormSrgb:          return WGPUTextureFormat_ASTC10x10UnormSrgb;
-        // case Format::ASTC12x10Unorm:              return WGPUTextureFormat_ASTC12x10Unorm;
-        // case Format::ASTC12x10UnormSrgb:          return WGPUTextureFormat_ASTC12x10UnormSrgb;
-        // case Format::ASTC12x12Unorm:              return WGPUTextureFormat_ASTC12x12Unorm;
-        // case Format::ASTC12x12UnormSrgb:          return WGPUTextureFormat_ASTC12x12UnormSrgb;
         case Format::R16_UNORM: return WGPUTextureFormat_R16Unorm;
         case Format::RG16_UNORM: return WGPUTextureFormat_RG16Unorm;
         case Format::RGBA16_UNORM: return WGPUTextureFormat_RGBA16Unorm;
         case Format::R16_SNORM: return WGPUTextureFormat_R16Snorm;
         case Format::RG16_SNORM: return WGPUTextureFormat_RG16Snorm;
-        case Format::RGBA16_SNORM:
-            return WGPUTextureFormat_RGBA16Snorm;
-            // case Format::R8BG8Biplanar420Unorm:       return WGPUTextureFormat_R8BG8Biplanar420Unorm;
-            // case Format::R10X6BG10X6Biplanar420Unorm: return WGPUTextureFormat_R10X6BG10X6Biplanar420Unorm;
-            // case Format::R8BG8A8Triplanar420Unorm:    return WGPUTextureFormat_R8BG8A8Triplanar420Unorm;
-            // case Format::R8BG8Biplanar422Unorm:       return WGPUTextureFormat_R8BG8Biplanar422Unorm;
-            // case Format::R8BG8Biplanar444Unorm:       return WGPUTextureFormat_R8BG8Biplanar444Unorm;
-            // case Format::R10X6BG10X6Biplanar422Unorm: return WGPUTextureFormat_R10X6BG10X6Biplanar422Unorm;
-            // case Format::R10X6BG10X6Biplanar444Unorm: return WGPUTextureFormat_R10X6BG10X6Biplanar444Unorm;
-            // case Format::External:                    return WGPUTextureFormat_External;
-            // case Format::Force32:                     return WGPUTextureFormat_Force32;
+        case Format::RGBA16_SNORM: return WGPUTextureFormat_RGBA16Snorm;
+        default: return WGPUTextureFormat_Undefined;
         }
-        TL_UNREACHABLE();
-        return WGPUTextureFormat_Undefined;
     }
 
     WGPUVertexFormat ConvertToVertexFormat(Format format)
@@ -173,7 +118,6 @@ namespace RHI::WebGPU
         case Format::RGB32_SINT: return WGPUVertexFormat_Sint32x3;
         case Format::RGBA32_SINT: return WGPUVertexFormat_Sint32x4;
         case Format::R10G10B10A2_UNORM: return WGPUVertexFormat_Unorm10_10_10_2;
-        // case Format::: return WGPUVertexFormat_Unorm8x4BGRA;
         default: TL_UNREACHABLE(); return WGPUVertexFormat_Force32;
         }
     }
@@ -260,11 +204,6 @@ namespace RHI::WebGPU
         return {size.width, size.height, size.depth};
     }
 
-    WGPUExtent2D ConvertToExtent2D(ImageSize3D size)
-    {
-        return {size.width, size.height};
-    }
-
     WGPUOrigin2D ConvertToOffset2D(ImageOffset2D offset)
     {
         return {(uint32_t)offset.x, (uint32_t)offset.y};
@@ -329,11 +268,10 @@ namespace RHI::WebGPU
     {
         switch (indexType)
         {
-        // case IndexType::uint8: return WGPUIndexFormat_Uint8;
         case IndexType::uint16: return WGPUIndexFormat_Uint16;
         case IndexType::uint32: return WGPUIndexFormat_Uint32;
+        default: return WGPUIndexFormat_Undefined;
         }
-        return WGPUIndexFormat_Undefined;
     }
 
     WGPUFrontFace ConvertToFrontFace(PipelineRasterizerStateFrontFace frontFace)
@@ -385,15 +323,15 @@ namespace RHI::WebGPU
         }
     }
 
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
     // IFence
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
 
     ResultCode IFence::Init(IDevice* device, const FenceCreateInfo& createInfo)
     {
-        // WebGPU has no fence object; fences are no-ops for now (single-queue ordering).
         (void)device;
         value = createInfo.initialValue;
+        // TODO: WebGPU has no fence object; implement via wgpuQueueOnSubmittedWorkDone / futures.
         return ResultCode::Success;
     }
 
@@ -402,117 +340,130 @@ namespace RHI::WebGPU
         (void)device;
     }
 
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
     // IBindGroupLayout
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
 
     ResultCode IBindGroupLayout::Init(IDevice* device, const BindGroupLayoutCreateInfo& createInfo)
     {
         (void)device;
         (void)createInfo;
+        // TODO: wgpuDeviceCreateBindGroupLayout
         return ResultCode::Success;
     }
 
     void IBindGroupLayout::Shutdown(IDevice* device)
     {
         (void)device;
+        // TODO: wgpuBindGroupLayoutRelease
     }
 
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
     // IBindGroup
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
 
     ResultCode IBindGroup::Init(IDevice* device, const BindGroupCreateInfo& createInfo)
     {
         (void)device;
         (void)createInfo;
+        // TODO: wgpuDeviceCreateBindGroup
         return ResultCode::Success;
     }
 
     void IBindGroup::Shutdown(IDevice* device)
     {
         (void)device;
+        // TODO: wgpuBindGroupRelease
     }
 
     void IBindGroup::Update(IDevice* device, const BindGroupUpdateInfo& updateInfo)
     {
         (void)device;
         (void)updateInfo;
+        // TODO: WebGPU bind groups are immutable; this requires recreating the bind group.
     }
 
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
     // IShaderModule
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
 
     ResultCode IShaderModule::Init(IDevice* device, const ShaderModuleCreateInfo& createInfo)
     {
         (void)device;
         (void)createInfo;
+        // TODO: wgpuDeviceCreateShaderModule
         return ResultCode::Success;
     }
 
     void IShaderModule::Shutdown(IDevice* device)
     {
         (void)device;
+        // TODO: wgpuShaderModuleRelease
     }
 
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
     // IPipelineLayout
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
 
     ResultCode IPipelineLayout::Init(IDevice* device, const PipelineLayoutCreateInfo& createInfo)
     {
         (void)device;
         (void)createInfo;
+        // TODO: wgpuDeviceCreatePipelineLayout
         return ResultCode::Success;
     }
 
     void IPipelineLayout::Shutdown(IDevice* device)
     {
         (void)device;
+        // TODO: wgpuPipelineLayoutRelease
     }
 
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
     // IGraphicsPipeline
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
 
     ResultCode IGraphicsPipeline::Init(IDevice* device, const GraphicsPipelineCreateInfo& createInfo)
     {
         (void)device;
         (void)createInfo;
+        // TODO: wgpuDeviceCreateRenderPipeline
         return ResultCode::Success;
     }
 
     void IGraphicsPipeline::Shutdown(IDevice* device)
     {
         (void)device;
+        // TODO: wgpuRenderPipelineRelease
     }
 
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
     // IComputePipeline
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
 
     ResultCode IComputePipeline::Init(IDevice* device, const ComputePipelineCreateInfo& createInfo)
     {
         (void)device;
         (void)createInfo;
+        // TODO: wgpuDeviceCreateComputePipeline
         return ResultCode::Success;
     }
 
     void IComputePipeline::Shutdown(IDevice* device)
     {
         (void)device;
+        // TODO: wgpuComputePipelineRelease
     }
 
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
     // IRayTracingPipeline (unsupported on WebGPU)
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
 
     ResultCode IRayTracingPipeline::Init(IDevice* device, const RayTracingPipelineCreateInfo& createInfo)
     {
         (void)device;
         (void)createInfo;
-        return ResultCode::Success;
+        return ResultCode::ErrorUnknown;
     }
 
     void IRayTracingPipeline::Shutdown(IDevice* device)
@@ -528,85 +479,65 @@ namespace RHI::WebGPU
         (void)dstHandle;
     }
 
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
     // IQueryPool
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
 
     ResultCode IQueryPool::Init(IDevice* device, const QueryPoolCreateInfo& createInfo)
     {
         (void)device;
         (void)createInfo;
+        // TODO: wgpuDeviceCreateQuerySet
         return ResultCode::Success;
     }
 
     void IQueryPool::Shutdown(IDevice* device)
     {
         (void)device;
+        // TODO: wgpuQuerySetRelease
     }
 
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
     // IBuffer
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
 
     ResultCode IBuffer::Init(IDevice* device, const BufferCreateInfo& createInfo)
     {
-        WGPUBufferDescriptor desc = {};
-        desc.label = createInfo.name;
-        desc.usage = ConvertToBufferUsage(createInfo.usageFlags);
-        desc.size = createInfo.byteSize;
-        // Host-mapped buffers are created already mapped so the initial upload can use Map().
-        desc.mappedAtCreation = (createInfo.usageFlags & BufferUsage::HostMapped) ? 1u : 0u;
-
-        buffer = wgpuDeviceCreateBuffer(device->m_device, &desc);
-        return buffer ? ResultCode::Success : ResultCode::ErrorUnknown;
+        (void)device;
+        (void)createInfo;
+        // TODO: wgpuDeviceCreateBuffer
+        return ResultCode::Success;
     }
 
     void IBuffer::Shutdown(IDevice* device)
     {
         (void)device;
-        if (buffer)
-        {
-            wgpuBufferRelease(buffer);
-            buffer = nullptr;
-        }
+        // TODO: wgpuBufferRelease
     }
 
     DeviceMemoryPtr IBuffer::Map(IDevice* device)
     {
         (void)device;
-        return wgpuBufferGetMappedRange(buffer, 0, WGPU_WHOLE_MAP_SIZE);
+        // TODO: wgpuBufferGetMappedRange
+        return nullptr;
     }
 
     void IBuffer::Unmap(IDevice* device)
     {
         (void)device;
-        wgpuBufferUnmap(buffer);
+        // TODO: wgpuBufferUnmap
     }
 
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
     // IImage
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
 
     ResultCode IImage::Init(IDevice* device, const ImageCreateInfo& createInfo)
     {
-        const uint32_t layers = (createInfo.type == ImageType::Image3D) ? createInfo.size.depth : createInfo.arrayCount;
-
-        WGPUTextureDescriptor desc = {};
-        desc.label = createInfo.name;
-        desc.usage = ConvertToTextureUsage(createInfo.usageFlags);
-        desc.dimension = ConvertToTextureDimension(createInfo.type);
-        desc.size = {createInfo.size.width, createInfo.size.height, layers};
-        desc.format = ConvertToTextureFormat(createInfo.format);
-        desc.mipLevelCount = createInfo.mipLevels;
-        desc.sampleCount = ConvertToSampleCount(createInfo.sampleCount);
-
-        texture = wgpuDeviceCreateTexture(device->m_device, &desc);
-        if (!texture)
-            return ResultCode::ErrorUnknown;
-
-        view = wgpuTextureCreateView(texture, nullptr);
+        (void)device;
         size = createInfo.size;
         format = createInfo.format;
+        // TODO: wgpuDeviceCreateTexture + wgpuTextureCreateView
         return ResultCode::Success;
     }
 
@@ -614,92 +545,54 @@ namespace RHI::WebGPU
     {
         (void)device;
         auto* source = (IImage*)createInfo.image;
-
-        const auto& sub = createInfo.subresource;
-        WGPUTextureViewDescriptor desc = {};
-        desc.label = createInfo.name;
-        desc.format = ConvertToTextureFormat(createInfo.format != Format::Unknown ? createInfo.format : source->format);
-        desc.dimension = ConvertToTextureViewDimension(createInfo.viewType, sub.arrayCount > 1);
-        desc.baseMipLevel = sub.mipBase;
-        desc.mipLevelCount = (sub.mipLevelCount == AllMipLevels) ? WGPU_MIP_LEVEL_COUNT_UNDEFINED : sub.mipLevelCount;
-        desc.baseArrayLayer = sub.arrayBase;
-        desc.arrayLayerCount = (sub.arrayCount == AllLayers) ? WGPU_ARRAY_LAYER_COUNT_UNDEFINED : sub.arrayCount;
-        desc.aspect = ConvertToTextureAspect(sub.imageAspects, source->format);
-
-        // View-only image: it references the source texture but does not own it.
-        view = wgpuTextureCreateView(source->texture, &desc);
-        texture = nullptr;
         size = source->size;
         format = (createInfo.format != Format::Unknown) ? createInfo.format : source->format;
-        return view ? ResultCode::Success : ResultCode::ErrorUnknown;
+        // TODO: wgpuTextureCreateView (view-only image, does not own the source texture)
+        return ResultCode::Success;
     }
 
     ResultCode IImage::Init(IDevice* device, WGPUTexture surfaceTexture, const WGPUSurfaceConfiguration& configuration)
     {
         (void)device;
-        texture = surfaceTexture;
-        view = wgpuTextureCreateView(surfaceTexture, nullptr);
+        handle = surfaceTexture;
         size = {configuration.width, configuration.height, 1};
-        return view ? ResultCode::Success : ResultCode::ErrorUnknown;
+        // TODO: wgpuTextureCreateView
+        return ResultCode::Success;
     }
 
     void IImage::Shutdown(IDevice* device)
     {
         (void)device;
-        if (view)
-        {
-            wgpuTextureViewRelease(view);
-            view = nullptr;
-        }
-        if (texture)
-        {
-            wgpuTextureRelease(texture);
-            texture = nullptr;
-        }
+        // TODO: wgpuTextureViewRelease / wgpuTextureRelease
     }
 
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
     // ISampler
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
 
     ResultCode ISampler::Init(IDevice* device, const SamplerCreateInfo& createInfo)
     {
-        WGPUSamplerDescriptor desc = {};
-        desc.label = createInfo.name;
-        desc.addressModeU = ConvertToAddressMode(createInfo.addressU);
-        desc.addressModeV = ConvertToAddressMode(createInfo.addressV);
-        desc.addressModeW = ConvertToAddressMode(createInfo.addressW);
-        desc.magFilter = ConvertToSamplerFilter(createInfo.filterMag);
-        desc.minFilter = ConvertToSamplerFilter(createInfo.filterMin);
-        desc.mipmapFilter = ConvertToMipmapFilter(createInfo.filterMip);
-        desc.lodMinClamp = createInfo.minLod;
-        desc.lodMaxClamp = createInfo.maxLod;
-        desc.compare = (createInfo.compare == CompareOperator::Undefined) ? WGPUCompareFunction_Undefined : ConvertToCompareFunction(createInfo.compare);
-        desc.maxAnisotropy = 1;
-
-        sampler = wgpuDeviceCreateSampler(device->m_device, &desc);
-        return sampler ? ResultCode::Success : ResultCode::ErrorUnknown;
+        (void)device;
+        (void)createInfo;
+        // TODO: wgpuDeviceCreateSampler
+        return ResultCode::Success;
     }
 
     void ISampler::Shutdown(IDevice* device)
     {
         (void)device;
-        if (sampler)
-        {
-            wgpuSamplerRelease(sampler);
-            sampler = nullptr;
-        }
+        // TODO: wgpuSamplerRelease
     }
 
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
     // IAccelerationStructure (unsupported on WebGPU)
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
 
     ResultCode IAccelerationStructure::Init(IDevice* device, const AccelerationStructureCreateInfo& createInfo)
     {
         (void)device;
         (void)createInfo;
-        return ResultCode::Success;
+        return ResultCode::ErrorUnknown;
     }
 
     void IAccelerationStructure::Shutdown(IDevice* device)
@@ -707,15 +600,15 @@ namespace RHI::WebGPU
         (void)device;
     }
 
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
     // IMicromap (unsupported on WebGPU)
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
 
     ResultCode IMicromap::Init(IDevice* device, const MicromapCreateInfo& createInfo)
     {
         (void)device;
         (void)createInfo;
-        return ResultCode::Success;
+        return ResultCode::ErrorUnknown;
     }
 
     void IMicromap::Shutdown(IDevice* device)
@@ -723,54 +616,62 @@ namespace RHI::WebGPU
         (void)device;
     }
 
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
     // ISwapchain
-    ///////////////////////////////////////////////////////////
-
-    ISwapchain::ISwapchain() = default;
-    ISwapchain::~ISwapchain() = default;
+    ////////////////////////////////////////////////////////////////////////
 
     ResultCode ISwapchain::Init(IDevice* device, const SwapchainCreateInfo& createInfo)
     {
         (void)device;
         (void)createInfo;
+        // TODO: wgpuInstanceCreateSurface + wgpuSurfaceConfigure
         return ResultCode::Success;
     }
 
     void ISwapchain::Shutdown(IDevice* device)
     {
         (void)device;
+        // TODO: wgpuSurfaceRelease
     }
 
     uint32_t ISwapchain::GetImagesCount() const
     {
-        return 0;
+        return m_imageCount;
     }
 
     SwapchainAcquireResult ISwapchain::AcquireSwapchainImage()
     {
+        // TODO: wgpuSurfaceGetCurrentTexture
         return {};
     }
 
-    SurfaceCapabilities ISwapchain::GetSurfaceCapabilities() const
+    SurfaceCapabilities ISwapchain::GetSurfaceCapabilities(IDevice* device) const
     {
+        (void)device;
+        // TODO: wgpuSurfaceGetCapabilities
         return {};
     }
 
-    ResultCode ISwapchain::ResizeSwapchain(const ImageSize2D& size)
+    ResultCode ISwapchain::ResizeSwapchain(IDevice* device, const ImageSize2D& size)
     {
+        (void)device;
         (void)size;
+        // TODO: wgpuSurfaceConfigure
         return ResultCode::Success;
     }
 
-    ResultCode ISwapchain::ConfigureSwapchain(const SwapchainConfigureInfo& configInfo)
+    ResultCode ISwapchain::ConfigureSwapchain(IDevice* device, const SwapchainConfigureInfo& configInfo)
     {
-        (void)configInfo;
+        (void)device;
+        m_configuration = configInfo;
+        // TODO: wgpuSurfaceConfigure
         return ResultCode::Success;
     }
 
-    ResultCode ISwapchain::Present()
+    ResultCode ISwapchain::Present(IDevice* device)
     {
+        (void)device;
+        // TODO: wgpuSurfacePresent
         return ResultCode::Success;
     }
 } // namespace RHI::WebGPU

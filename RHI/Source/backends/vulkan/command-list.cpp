@@ -18,7 +18,6 @@ namespace RHI::Vulkan
         {
         case ImageUsage::ShaderResource:
             if (access & Access::Read) result |= VK_ACCESS_2_SHADER_READ_BIT;
-            // TL_ASSERT((access & Access::Write) == Access::None, "ImageUsage::ShaderResource can't have write access");
             break;
         case ImageUsage::StorageResource:
             if (access & Access::Read) result |= VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
@@ -45,7 +44,6 @@ namespace RHI::Vulkan
             break;
         default: break;
         };
-        // TL_ASSERT(result != VK_ACCESS_2_NONE);
         return result;
     }
 
@@ -79,7 +77,6 @@ namespace RHI::Vulkan
             result |= VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
         default: break;
         };
-        // TL_ASSERT(result != VK_ACCESS_2_NONE);
         return result;
     }
 
@@ -97,7 +94,7 @@ namespace RHI::Vulkan
                 }
                 else if (aspect & ImageAspect::DepthStencil)
                 {
-                    return isReadOnly ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+                    return isReadOnly ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
                 }
                 else if (aspect & ImageAspect::Depth)
                 {
@@ -161,7 +158,7 @@ namespace RHI::Vulkan
         return VK_RESOLVE_MODE_FLAG_BITS_MAX_ENUM;
     }
 
-    inline static VkPipelineBindPoint convertBindPoint(BindPoint bp)
+    inline static VkPipelineBindPoint ConvertBindPoint(BindPoint bp)
     {
         switch (bp)
         {
@@ -226,7 +223,7 @@ namespace RHI::Vulkan
         };
     }
 
-    inline static VkStridedDeviceAddressRegionKHR convertStridedDeviceAddressRegion(const StridedDeviceAddressRegion& r)
+    inline static VkStridedDeviceAddressRegionKHR ConvertStridedDeviceAddressRegion(const StridedDeviceAddressRegion& r)
     {
         // NOTE: DispatchRaysInfo carries no SBT buffer handle, so `offset` is the region's absolute
         // device address (caller must add the SBT buffer's base address), not a buffer-relative offset.
@@ -281,8 +278,7 @@ namespace RHI::Vulkan
         };
         ICommandList* commandList = TL::constructFrom<ICommandList>(&self->arena);
         commandList->device = self->device;
-        VulkanResult result = vkAllocateCommandBuffers(self->device->m_device, &allocateInfo, &commandList->commandBuffer);
-        TL_ASSERT(result.IsSuccess());
+        VK_CHECK(vkAllocateCommandBuffers(self->device->m_device, &allocateInfo, &commandList->commandBuffer));
         return commandList;
     }
 
@@ -317,16 +313,7 @@ namespace RHI::Vulkan
 #if RHI_DEBUG
         if (auto fn = vkCmdBeginDebugUtilsLabelEXT)
         {
-            uint32_t r = (bgra >> 16) & 0xFF;
-            uint32_t g = (bgra >> 8) & 0xFF;
-            uint32_t b = bgra & 0xFF;
-            uint32_t a = (bgra >> 24) & 0xFF;
-            VkDebugUtilsLabelEXT info{
-                .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
-                .pNext = nullptr,
-                .pLabelName = name,
-                .color = {r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f},
-            };
+            VkDebugUtilsLabelEXT info = MakeDebugLabel(name, bgra);
             fn(self->commandBuffer, &info);
         }
 #endif
@@ -347,16 +334,7 @@ namespace RHI::Vulkan
 #if RHI_DEBUG
         if (auto fn = vkCmdInsertDebugUtilsLabelEXT)
         {
-            uint32_t r = (bgra >> 16) & 0xFF;
-            uint32_t g = (bgra >> 8) & 0xFF;
-            uint32_t b = bgra & 0xFF;
-            uint32_t a = (bgra >> 24) & 0xFF;
-            VkDebugUtilsLabelEXT info{
-                .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
-                .pNext = nullptr,
-                .pLabelName = name,
-                .color = {r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f},
-            };
+            VkDebugUtilsLabelEXT info = MakeDebugLabel(name, bgra);
             fn(self->commandBuffer, &info);
         }
 #endif
@@ -605,12 +583,11 @@ namespace RHI::Vulkan
         self->pipelineBindPoint = bindPoint == BindPoint::Graphics ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE;
     }
 
-    void cmdSetPushConstants(ICommandList* self, BindPoint bindPoint, uint32_t offset, TL::Block content)
+    void cmdSetPushConstants(ICommandList* self, TL_MAYBE_UNUSED BindPoint bindPoint, uint32_t offset, TL::Block content)
     {
         ZoneScoped;
 
         IPipelineLayout* pipelineLayout = (IPipelineLayout*)self->pipelineLayout;
-        VkPipelineBindPoint vkBindPoint = bindPoint == BindPoint::Graphics ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE;
 
         vkCmdPushConstants(self->commandBuffer, pipelineLayout->handle, pipelineLayout->pushConstantStages, offset, (uint32_t)content.size, content.ptr);
     }
@@ -661,7 +638,7 @@ namespace RHI::Vulkan
         ZoneScoped;
 
         IPipelineLayout* pipelineLayout = (IPipelineLayout*)self->pipelineLayout;
-        VkPipelineBindPoint vkBindPoint = convertBindPoint(bindPoint);
+        VkPipelineBindPoint vkBindPoint = ConvertBindPoint(bindPoint);
 
         TL::Vector<VkDescriptorSet> descriptorSets{self->device->m_arena};
         TL::Vector<uint32_t> dynamicOffsets{self->device->m_arena};
@@ -818,7 +795,7 @@ namespace RHI::Vulkan
     {
         ZoneScoped;
 
-        TL_ASSERT(self->isGraphicsPipelineBound && self->hasViewportSet && self->hasScissorSet && self->hasVertexBuffer);
+        TL_ASSERT(self->isGraphicsPipelineBound && self->hasViewportSet && self->hasScissorSet);
         auto cmdBuffer = (IBuffer*)(argumentBuffer.buffer);
 
         if (countBuffer.buffer != nullptr)
@@ -892,10 +869,10 @@ namespace RHI::Vulkan
 
     void cmdDispatchRays(ICommandList* self, const DispatchRaysInfo& dispatchRaysDesc)
     {
-        VkStridedDeviceAddressRegionKHR raygen = convertStridedDeviceAddressRegion(dispatchRaysDesc.raygenShader);
-        VkStridedDeviceAddressRegionKHR miss = convertStridedDeviceAddressRegion(dispatchRaysDesc.missShaders);
-        VkStridedDeviceAddressRegionKHR hit = convertStridedDeviceAddressRegion(dispatchRaysDesc.hitShaderGroups);
-        VkStridedDeviceAddressRegionKHR callable = convertStridedDeviceAddressRegion(dispatchRaysDesc.callableShaders);
+        VkStridedDeviceAddressRegionKHR raygen = ConvertStridedDeviceAddressRegion(dispatchRaysDesc.raygenShader);
+        VkStridedDeviceAddressRegionKHR miss = ConvertStridedDeviceAddressRegion(dispatchRaysDesc.missShaders);
+        VkStridedDeviceAddressRegionKHR hit = ConvertStridedDeviceAddressRegion(dispatchRaysDesc.hitShaderGroups);
+        VkStridedDeviceAddressRegionKHR callable = ConvertStridedDeviceAddressRegion(dispatchRaysDesc.callableShaders);
         vkCmdTraceRaysKHR(self->commandBuffer, &raygen, &miss, &hit, &callable, dispatchRaysDesc.x, dispatchRaysDesc.y, dispatchRaysDesc.z);
     }
 
@@ -1089,7 +1066,7 @@ namespace RHI::Vulkan
             for (uint32_t g = 0; g < (uint32_t)info.geometries.size(); ++g)
             {
                 const auto& geom = info.geometries[g];
-                geometries.push_back(convertGeometryData(geom));
+                geometries.push_back(ConvertGeometryData(geom));
 
                 uint32_t primitiveCount = 0;
                 if (geom.geometryType == GeometryType::Triangles)

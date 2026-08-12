@@ -1,39 +1,21 @@
 #include "Device.hpp"
+#include "Common.hpp"
 
-#include <TL/Assert.hpp>
+#include <TL/Context.hpp>
 #include <TL/Log.hpp>
-#include <TL/Memory.hpp>
-
-namespace RHI
-{
-    Device* CreateWebGPUDevice()
-    {
-        auto device = TL::construct<RHI::WebGPU::IDevice>();
-        auto result = device->Init();
-        TL_ASSERT(IsSuccess(result));
-        return device;
-    }
-
-    void DestroyWebGPUDevice(Device* _device)
-    {
-        auto device = (RHI::WebGPU::IDevice*)_device;
-        device->Shutdown();
-        TL::destruct(device);
-    }
-} // namespace RHI
 
 namespace RHI::WebGPU
 {
-    // Generic create/destroy mirroring Vulkan/Source/Device.cpp:902.
     template<typename Resource, typename... Args>
-    inline Resource* createImpl(IDevice* device, Args... args)
+    inline Resource* createImpl(IDevice* device, const char* debugName, Args... args)
     {
-        Resource* resource = TL::construct<Resource>();
+        Resource* resource = TL::constructFrom<Resource>(device->m_objectAllocator, debugName ? TL::StringView(debugName) : TL::StringView{});
         ResultCode result = resource->Init(device, args...);
         if (IsSuccess(result))
+        {
             return resource;
-        resource->Shutdown(device);
-        TL::destruct(resource);
+        }
+        TL_UNREACHABLE();
         return nullptr;
     }
 
@@ -41,178 +23,87 @@ namespace RHI::WebGPU
     inline void destroyImpl(IDevice* device, Resource* resource)
     {
         resource->Shutdown(device);
-        TL::destruct(resource);
+        TL::destructFrom(device->m_objectAllocator, resource);
     }
 
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // IQueue
-    ///////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    ResultCode IQueue::Init(IDevice* device, QueueType queueType)
+    ResultCode IQueue::Init(IDevice* device, const char* debugName, QueueType queueType)
     {
+        (void)debugName;
         m_device = device;
         m_queueType = queueType;
-        m_queue = wgpuDeviceGetQueue(device->m_device);
-        return m_queue ? ResultCode::Success : ResultCode::ErrorUnknown;
+        // TODO: wgpuDeviceGetQueue (WebGPU exposes a single queue shared across all RHI queue types)
+        return ResultCode::Success;
     }
 
     void IQueue::Shutdown()
     {
-        if (m_queue)
-        {
-            wgpuQueueRelease(m_queue);
-            m_queue = nullptr;
-        }
+        // TODO: wgpuQueueRelease
     }
 
-    void IQueue::BeginAnnotation(const char* name, uint32_t bgra)
+    void queueBeginAnnotation(IQueue* self, const char* name, uint32_t bgra)
     {
+        (void)self;
+        (void)name;
+        (void)bgra;
+        // TODO: WebGPU has no queue-level debug annotation API.
+    }
+
+    void queueEndAnnotation(IQueue* self)
+    {
+        (void)self;
+    }
+
+    void queueInsertAnnotation(IQueue* self, const char* name, uint32_t bgra)
+    {
+        (void)self;
         (void)name;
         (void)bgra;
     }
 
-    void IQueue::EndAnnotation()
+    void queueSubmit(IQueue* self, const QueueSubmitInfo& submitInfo)
     {
+        (void)self;
+        (void)submitInfo;
+        // TODO: wgpuQueueSubmit, then wgpuSurfacePresent for each presentSwapchains entry.
     }
 
-    void IQueue::InsertAnnotation(const char* name, uint32_t bgra)
+    void queueWaitIdle(IQueue* self)
     {
-        (void)name;
-        (void)bgra;
+        (void)self;
+        // TODO: no host-side fence/timeline tracking yet.
     }
 
-    void IQueue::Submit(const QueueSubmitInfo& submitInfo)
+    void queueWaitFence(IQueue* self, Fence* fence, uint64_t value)
     {
-        // Fences are no-ops for now; WebGPU's single queue orders submissions implicitly.
-        TL::Vector<WGPUCommandBuffer> commandBuffers;
-        commandBuffers.reserve(submitInfo.commandLists.size());
-        for (auto* commandList : submitInfo.commandLists)
-        {
-            auto* cl = (ICommandList*)commandList;
-            if (cl->m_commandBuffer)
-                commandBuffers.push_back(cl->m_commandBuffer);
-        }
-
-        if (!commandBuffers.empty())
-            wgpuQueueSubmit(m_queue, commandBuffers.size(), commandBuffers.data());
-
-        for (auto* swapchain : submitInfo.presentSwapchains)
-            ((ISwapchain*)swapchain)->Present();
-    }
-
-    void IQueue::WaitIdle()
-    {
-        // No-op: no host-side fence/timeline tracking yet.
-    }
-
-    void IQueue::WaitFence(Fence* fence, uint64_t value)
-    {
+        (void)self;
         (void)fence;
         (void)value;
     }
 
-    ///////////////////////////////////////////////////////////
-    // IDevice
-    ///////////////////////////////////////////////////////////
+    ///
 
     IDevice::IDevice()
     {
-        m_backend = BackendType::WebGPU;
+        m_objectAllocator = TL::Context::getDefaultAllocator();
     }
 
     IDevice::~IDevice() = default;
 
-    ResultCode IDevice::Init()
+    ResultCode IDevice::Init(const ApplicationInfo& appInfo)
     {
+        (void)appInfo;
+
         m_backend = BackendType::WebGPU;
 
-        WGPUInstanceDescriptor instanceDesc = {};
-        m_instance = wgpuCreateInstance(&instanceDesc);
-        if (!m_instance)
-        {
-            TL::LogError("WebGPU: wgpuCreateInstance failed");
-            return ResultCode::ErrorUnknown;
-        }
+        // TODO: wgpuCreateInstance, wgpuInstanceRequestAdapter, wgpuAdapterRequestDevice.
 
-        // Request adapter (block on the legacy callback by pumping events).
-        struct AdapterRequest
-        {
-            WGPUAdapter adapter = nullptr;
-            bool done = false;
-        } adapterRequest;
-
-        WGPURequestAdapterOptions adapterOptions = {};
-        adapterOptions.powerPreference = WGPUPowerPreference_HighPerformance;
-
-        wgpuInstanceRequestAdapter(
-            m_instance,
-            &adapterOptions,
-            [](WGPURequestAdapterStatus status, WGPUAdapter adapter, char const* message, void* userdata)
-            {
-                auto* request = (AdapterRequest*)userdata;
-                if (status == WGPURequestAdapterStatus_Success)
-                    request->adapter = adapter;
-                else
-                    TL::LogError("WebGPU: failed to acquire adapter: {}", message ? message : "");
-                request->done = true;
-            },
-            &adapterRequest);
-
-        while (!adapterRequest.done)
-            wgpuInstanceProcessEvents(m_instance);
-
-        if (!adapterRequest.adapter)
-            return ResultCode::ErrorUnknown;
-        m_adapter = adapterRequest.adapter;
-
-        // Request device.
-        WGPUDeviceDescriptor deviceDesc = {};
-        deviceDesc.label = "RHI WebGPU Device";
-        deviceDesc.uncapturedErrorCallbackInfo.callback =
-            [](WGPUErrorType type, char const* message, void*)
-        {
-            TL::LogError("WebGPU uncaptured error ({}): {}", (int)type, message ? message : "");
-        };
-
-        struct DeviceRequest
-        {
-            WGPUDevice device = nullptr;
-            bool done = false;
-        } deviceRequest;
-
-        wgpuAdapterRequestDevice(
-            m_adapter,
-            &deviceDesc,
-            [](WGPURequestDeviceStatus status, WGPUDevice device, char const* message, void* userdata)
-            {
-                auto* request = (DeviceRequest*)userdata;
-                if (status == WGPURequestDeviceStatus_Success)
-                    request->device = device;
-                else
-                    TL::LogError("WebGPU: failed to acquire device: {}", message ? message : "");
-                request->done = true;
-            },
-            &deviceRequest);
-
-        while (!deviceRequest.done)
-            wgpuInstanceProcessEvents(m_instance);
-
-        if (!deviceRequest.device)
-            return ResultCode::ErrorUnknown;
-        m_device = deviceRequest.device;
-
-        // Device limits (WebGPU exposes no mesh/ray-tracing limits).
-        WGPUSupportedLimits supportedLimits = {};
-        if (wgpuAdapterGetLimits(m_adapter, &supportedLimits) == WGPUStatus_Success)
-        {
-            m_limits.minUniformBufferOffsetAlignment = supportedLimits.limits.minUniformBufferOffsetAlignment;
-            m_limits.minStorageBufferOffsetAlignment = supportedLimits.limits.minStorageBufferOffsetAlignment;
-        }
-
-        // Single WebGPU queue shared across all RHI queue types.
         for (uint32_t i = 0; i < (uint32_t)QueueType::Count; i++)
         {
-            ResultCode result = m_queue[i].Init(this, (QueueType)i);
+            ResultCode result = m_queue[i].Init(this, nullptr, (QueueType)i);
             if (IsError(result))
                 return result;
         }
@@ -220,274 +111,344 @@ namespace RHI::WebGPU
         return ResultCode::Success;
     }
 
+    void IDevice::WaitIdle()
+    {
+        // TODO: no host-side fence/timeline tracking yet.
+    }
+
     void IDevice::Shutdown()
     {
         for (uint32_t i = 0; i < (uint32_t)QueueType::Count; i++)
             m_queue[i].Shutdown();
-        if (m_device)
-        {
-            wgpuDeviceRelease(m_device);
-            m_device = nullptr;
-        }
-        if (m_adapter)
-        {
-            wgpuAdapterRelease(m_adapter);
-            m_adapter = nullptr;
-        }
-        if (m_instance)
-        {
-            wgpuInstanceRelease(m_instance);
-            m_instance = nullptr;
-        }
+
+        // TODO: wgpuDeviceRelease, wgpuAdapterRelease, wgpuInstanceRelease
     }
 
-    uint64_t IDevice::GarbageCollect(uint64_t graphicsTimeline)
+    Device* createDevice(const ApplicationInfo& appInfo)
     {
-        // No deferred-deletion queue yet; resources are released immediately on Destroy*.
+        auto device = TL::constructFrom<IDevice>(TL::Context::getDefaultAllocator());
+        auto result = device->Init(appInfo);
+        TL_ASSERT(IsSuccess(result));
+        return device;
+    }
+
+    void destroyDevice(Device* _device)
+    {
+        auto device = (IDevice*)_device;
+        device->Shutdown();
+        TL::destructFrom(TL::Context::getDefaultAllocator(), device);
+    }
+
+    //////////////////////////////////////////////////////////////////////////////////////////
+    /// IDevice interface implementation
+    //////////////////////////////////////////////////////////////////////////////////////////
+
+    BackendType deviceGetBackend(IDevice* self)
+    {
+        return self->m_backend;
+    }
+
+    DeviceFeatures deviceGetFeatures(IDevice* self)
+    {
+        return self->m_features;
+    }
+
+    DeviceLimits deviceGetLimits(IDevice* self)
+    {
+        return self->m_limits;
+    }
+
+    uint64_t deviceGarbageCollect(IDevice* self, uint64_t graphicsTimeline)
+    {
+        self->m_arena.reset();
+        // TODO: no deferred-deletion queue yet; resources are released immediately on destroy.
         return graphicsTimeline;
     }
 
-    uint64_t IDevice::GetNativeHandle(NativeHandleType type, uint64_t handle)
+    uint64_t deviceGetNativeHandle(IDevice* self, NativeHandleType type, uint64_t handle)
     {
+        (void)self;
         switch (type)
         {
-        case NativeHandleType::Device: return (uint64_t)m_device;
-        case NativeHandleType::Buffer: return (uint64_t)((IBuffer*)handle)->buffer;
-        case NativeHandleType::Image: return (uint64_t)((IImage*)handle)->texture;
-        default: return 0;
+        case NativeHandleType::None: return 0;
+        case NativeHandleType::Device: return (uint64_t)self->m_device;
+        case NativeHandleType::Buffer: return (uint64_t)((IBuffer*)handle)->handle;
+        case NativeHandleType::Image: return (uint64_t)((IImage*)handle)->handle;
+        case NativeHandleType::ImageView: return (uint64_t)((IImage*)handle)->viewHandle;
+        case NativeHandleType::Sampler: return (uint64_t)((ISampler*)handle)->handle;
+        case NativeHandleType::ShaderModule: return (uint64_t)((IShaderModule*)handle)->handle;
+        case NativeHandleType::Pipeline: return (uint64_t)((IGraphicsPipeline*)handle)->handle;
+        case NativeHandleType::PipelineLayout: return (uint64_t)((IPipelineLayout*)handle)->handle;
+        case NativeHandleType::BindGroupLayout: return (uint64_t)((IBindGroupLayout*)handle)->handle;
+        case NativeHandleType::BindGroup: return (uint64_t)((IBindGroup*)handle)->handle;
+        case NativeHandleType::Swapchain: return (uint64_t)((ISwapchain*)handle)->m_surface;
+        default: TL_UNREACHABLE_MSG("Unknown NativeHandleType");
         }
+        return 0;
     }
 
-    Queue* IDevice::GetQueue(QueueType queueType)
+    Queue* deviceGetQueue(IDevice* self, QueueType queueType)
     {
-        return &m_queue[(uint32_t)queueType];
+        return &self->m_queue[(int)queueType];
     }
 
-    ShaderModule* IDevice::CreateShaderModule(const ShaderModuleCreateInfo& createInfo)
+    ShaderModule* createShaderModule(IDevice* self, const ShaderModuleCreateInfo& createInfo)
     {
+        return createImpl<IShaderModule>(self, createInfo.name, createInfo);
+    }
+
+    void destroyShaderModule(IDevice* self, ShaderModule* resource)
+    {
+        destroyImpl<IShaderModule>(self, (IShaderModule*)resource);
+    }
+
+    BindGroupLayout* createBindGroupLayout(IDevice* self, const BindGroupLayoutCreateInfo& createInfo)
+    {
+        return createImpl<IBindGroupLayout>(self, createInfo.name, createInfo);
+    }
+
+    void destroyBindGroupLayout(IDevice* self, BindGroupLayout* resource)
+    {
+        destroyImpl<IBindGroupLayout>(self, (IBindGroupLayout*)resource);
+    }
+
+    BindGroup* createBindGroup(IDevice* self, const BindGroupCreateInfo& createInfo)
+    {
+        return createImpl<IBindGroup>(self, createInfo.name, createInfo);
+    }
+
+    void destroyBindGroup(IDevice* self, BindGroup* resource)
+    {
+        destroyImpl<IBindGroup>(self, (IBindGroup*)resource);
+    }
+
+    void bindGroupUpdate(IDevice* self, BindGroup* handle, const BindGroupUpdateInfo& updateInfo)
+    {
+        auto bindGroup = (IBindGroup*)(handle);
+        bindGroup->Update(self, updateInfo);
+    }
+
+    PipelineLayout* createPipelineLayout(IDevice* self, const PipelineLayoutCreateInfo& createInfo)
+    {
+        return createImpl<IPipelineLayout>(self, createInfo.name, createInfo);
+    }
+
+    void destroyPipelineLayout(IDevice* self, PipelineLayout* resource)
+    {
+        destroyImpl<IPipelineLayout>(self, (IPipelineLayout*)resource);
+    }
+
+    GraphicsPipeline* createGraphicsPipeline(IDevice* self, const GraphicsPipelineCreateInfo& createInfo)
+    {
+        return createImpl<IGraphicsPipeline>(self, createInfo.name, createInfo);
+    }
+
+    void destroyGraphicsPipeline(IDevice* self, GraphicsPipeline* resource)
+    {
+        destroyImpl<IGraphicsPipeline>(self, (IGraphicsPipeline*)resource);
+    }
+
+    ComputePipeline* createComputePipeline(IDevice* self, const ComputePipelineCreateInfo& createInfo)
+    {
+        return createImpl<IComputePipeline>(self, createInfo.name, createInfo);
+    }
+
+    void destroyComputePipeline(IDevice* self, ComputePipeline* resource)
+    {
+        destroyImpl<IComputePipeline>(self, (IComputePipeline*)resource);
+    }
+
+    RayTracingPipeline* createRayTracingPipeline(IDevice* self, const RayTracingPipelineCreateInfo& createInfo)
+    {
+        (void)self;
         (void)createInfo;
+        // Unsupported on WebGPU.
         return nullptr;
     }
 
-    void IDevice::DestroyShaderModule(ShaderModule* shaderModule)
+    void destroyRayTracingPipeline(IDevice* self, RayTracingPipeline* handle)
     {
-        (void)shaderModule;
-    }
-
-    BindGroupLayout* IDevice::CreateBindGroupLayout(const BindGroupLayoutCreateInfo& createInfo)
-    {
-        (void)createInfo;
-        return nullptr;
-    }
-
-    void IDevice::DestroyBindGroupLayout(BindGroupLayout* handle)
-    {
+        (void)self;
         (void)handle;
     }
 
-    BindGroup* IDevice::CreateBindGroup(const BindGroupCreateInfo& createInfo)
+    void rayTracingPipelineGetShaderBindingTableEntry(IDevice* self, RayTracingPipeline* handle, uint32_t group, size_t size, void* dstHandle)
     {
-        (void)createInfo;
-        return nullptr;
-    }
-
-    void IDevice::DestroyBindGroup(BindGroup* handle)
-    {
-        (void)handle;
-    }
-
-    void IDevice::UpdateBindGroup(BindGroup* handle, const BindGroupUpdateInfo& updateInfo)
-    {
-        (void)handle;
-        (void)updateInfo;
-    }
-
-    PipelineLayout* IDevice::CreatePipelineLayout(const PipelineLayoutCreateInfo& createInfo)
-    {
-        (void)createInfo;
-        return nullptr;
-    }
-
-    void IDevice::DestroyPipelineLayout(PipelineLayout* handle)
-    {
-        (void)handle;
-    }
-
-    GraphicsPipeline* IDevice::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo& createInfo)
-    {
-        (void)createInfo;
-        return nullptr;
-    }
-
-    void IDevice::DestroyGraphicsPipeline(GraphicsPipeline* handle)
-    {
-        (void)handle;
-    }
-
-    ComputePipeline* IDevice::CreateComputePipeline(const ComputePipelineCreateInfo& createInfo)
-    {
-        (void)createInfo;
-        return nullptr;
-    }
-
-    void IDevice::DestroyComputePipeline(ComputePipeline* handle)
-    {
-        (void)handle;
-    }
-
-    RayTracingPipeline* IDevice::CreateRayTracingPipeline(const RayTracingPipelineCreateInfo& createInfo)
-    {
-        (void)createInfo;
-        return nullptr;
-    }
-
-    void IDevice::DestroyRayTracingPipeline(RayTracingPipeline* handle)
-    {
-        (void)handle;
-    }
-
-    void IDevice::GetShaderBindingTableEntry(RayTracingPipeline* handle, uint32_t group, size_t size, void* dstHandle)
-    {
+        (void)self;
         (void)handle;
         (void)group;
         (void)size;
         (void)dstHandle;
     }
 
-    Buffer* IDevice::CreateBuffer(const BufferCreateInfo& createInfo)
+    Buffer* createBuffer(IDevice* self, const BufferCreateInfo& createInfo)
     {
-        return createImpl<IBuffer>(this, createInfo);
+        return createImpl<IBuffer>(self, createInfo.name, createInfo);
     }
 
-    void IDevice::DestroyBuffer(Buffer* handle)
+    void destroyBuffer(IDevice* self, Buffer* handle)
     {
-        destroyImpl<IBuffer>(this, (IBuffer*)handle);
+        destroyImpl<IBuffer>(self, (IBuffer*)handle);
     }
 
-    uint64_t IDevice::GetBufferDeviceAddress(Buffer* buffer)
+    uint64_t bufferGetDeviceAddress(IDevice* self, Buffer* buffer)
     {
-        // WebGPU does not expose buffer device addresses.
+        (void)self;
         (void)buffer;
+        // WebGPU does not expose buffer device addresses.
         return 0;
     }
 
-    DeviceMemoryPtr IDevice::MapBuffer(Buffer* buffer, uint64_t offset, uint64_t sizeBytes)
+    DeviceMemoryPtr bufferMap(IDevice* self, Buffer* buffer, uint64_t offset, uint64_t sizeBytes)
     {
         (void)sizeBytes;
-        auto* ptr = (char*)((IBuffer*)buffer)->Map(this);
+        auto* ptr = (char*)((IBuffer*)buffer)->Map(self);
         return ptr ? ptr + offset : nullptr;
     }
 
-    void IDevice::UnmapBuffer(Buffer* buffer)
+    void bufferUnmap(IDevice* self, Buffer* buffer)
     {
-        ((IBuffer*)buffer)->Unmap(this);
+        ((IBuffer*)buffer)->Unmap(self);
     }
 
-    Image* IDevice::CreateImage(const ImageCreateInfo& createInfo)
+    Image* createImage(IDevice* self, const ImageCreateInfo& createInfo)
     {
-        return createImpl<IImage>(this, createInfo);
+        return createImpl<IImage>(self, createInfo.name, createInfo);
     }
 
-    Image* IDevice::CreateImageView(const ImageViewCreateInfo& createInfo)
+    Image* createImageView(IDevice* self, const ImageViewCreateInfo& createInfo)
     {
-        return createImpl<IImage>(this, createInfo);
+        return createImpl<IImage>(self, createInfo.name, createInfo);
     }
 
-    void IDevice::DestroyImage(Image* handle)
+    void destroyImage(IDevice* self, Image* handle)
     {
-        destroyImpl<IImage>(this, (IImage*)handle);
+        destroyImpl<IImage>(self, (IImage*)handle);
     }
 
-    Sampler* IDevice::CreateSampler(const SamplerCreateInfo& createInfo)
+    Sampler* createSampler(IDevice* self, const SamplerCreateInfo& createInfo)
     {
-        return createImpl<ISampler>(this, createInfo);
+        return createImpl<ISampler>(self, createInfo.name, createInfo);
     }
 
-    void IDevice::DestroySampler(Sampler* handle)
+    void destroySampler(IDevice* self, Sampler* handle)
     {
-        destroyImpl<ISampler>(this, (ISampler*)handle);
+        destroyImpl<ISampler>(self, (ISampler*)handle);
     }
 
-    AccelerationStructure* IDevice::CreateAccelerationStructure(const AccelerationStructureCreateInfo& createInfo)
+    AccelerationStructure* createAccelerationStructure(IDevice* self, const AccelerationStructureCreateInfo& createInfo)
     {
+        (void)self;
         (void)createInfo;
+        // Unsupported on WebGPU.
         return nullptr;
     }
 
-    void IDevice::DestroyAccelerationStructure(AccelerationStructure* handle)
+    void destroyAccelerationStructure(IDevice* self, AccelerationStructure* handle)
     {
+        (void)self;
         (void)handle;
     }
 
-    uint64_t IDevice::GetAccelerationStructureDeviceAddress(AccelerationStructure* handle)
+    uint64_t accelerationStructureGetDeviceAddress(IDevice* self, AccelerationStructure* handle)
     {
+        (void)self;
         (void)handle;
         return 0;
     }
 
-    AccelerationStructureSizesInfo IDevice::GetAccelerationStructureSizesInfo(AccelerationStructure* handle)
+    AccelerationStructureSizesInfo accelerationStructureGetSizesInfo(IDevice* self, AccelerationStructure* as)
     {
-        (void)handle;
+        (void)self;
+        (void)as;
         return {};
     }
 
-    Micromap* IDevice::CreateMicromap(const MicromapCreateInfo& createInfo)
+    Micromap* createMicromap(IDevice* self, const MicromapCreateInfo& createInfo)
     {
+        (void)self;
         (void)createInfo;
+        // Unsupported on WebGPU.
         return nullptr;
     }
 
-    void IDevice::DestroyMicromap(Micromap* handle)
+    void destroyMicromap(IDevice* self, Micromap* handle)
     {
+        (void)self;
         (void)handle;
     }
 
-    CommandPool* IDevice::CreateCommandPool(const CommandPoolCreateInfo& createInfo)
+    CommandPool* createCommandPool(IDevice* self, const CommandPoolCreateInfo& createInfo)
     {
-        (void)createInfo;
-        return nullptr;
+        return createImpl<ICommandPool>(self, createInfo.name, createInfo);
     }
 
-    void IDevice::DestroyCommandPool(CommandPool* handle)
+    void destroyCommandPool(IDevice* self, CommandPool* handle)
     {
-        (void)handle;
+        destroyImpl<ICommandPool>(self, (ICommandPool*)handle);
     }
 
-    Fence* IDevice::CreateFence(const FenceCreateInfo& createInfo)
+    Fence* createFence(IDevice* self, const FenceCreateInfo& createInfo)
     {
-        return createImpl<IFence>(this, createInfo);
+        return createImpl<IFence>(self, createInfo.name, createInfo);
     }
 
-    void IDevice::DestroyFence(Fence* handle)
+    void destroyFence(IDevice* self, Fence* handle)
     {
-        destroyImpl<IFence>(this, (IFence*)handle);
+        destroyImpl<IFence>(self, (IFence*)handle);
     }
 
-    uint64_t IDevice::GetFenceValue(Fence* handle)
+    uint64_t fenceGetValue(IDevice* self, Fence* handle)
     {
+        (void)self;
         // No timeline tracking; report the fence's stored value.
         return ((IFence*)handle)->value;
     }
 
-    QueryPool* IDevice::CreateQueryPool(const QueryPoolCreateInfo& createInfo)
+    QueryPool* createQueryPool(IDevice* self, const QueryPoolCreateInfo& createInfo)
     {
-        (void)createInfo;
-        return nullptr;
+        return createImpl<IQueryPool>(self, createInfo.name, createInfo);
     }
 
-    void IDevice::DestroyQueryPool(QueryPool* handle)
+    void destroyQueryPool(IDevice* self, QueryPool* handle)
     {
-        (void)handle;
+        destroyImpl<IQueryPool>(self, (IQueryPool*)handle);
     }
 
-    Swapchain* IDevice::CreateSwapchain(const SwapchainCreateInfo& createInfo)
+    Swapchain* createSwapchain(IDevice* self, const SwapchainCreateInfo& createInfo)
     {
-        (void)createInfo;
-        return nullptr;
+        return createImpl<ISwapchain>(self, createInfo.name, createInfo);
     }
 
-    void IDevice::DestroySwapchain(Swapchain* swapchain)
+    void destroySwapchain(IDevice* self, Swapchain* swapchain)
     {
-        (void)swapchain;
+        destroyImpl<ISwapchain>(self, (ISwapchain*)swapchain);
+    }
+
+    uint32_t swapchainGetImagesCount(IDevice* self, Swapchain* swapchain)
+    {
+        (void)self;
+        return ((ISwapchain*)swapchain)->GetImagesCount();
+    }
+
+    SwapchainAcquireResult swapchainAcquireImage(IDevice* self, Swapchain* swapchain)
+    {
+        (void)self;
+        return ((ISwapchain*)swapchain)->AcquireSwapchainImage();
+    }
+
+    SurfaceCapabilities swapchainGetSurfaceCapabilities(IDevice* self, Swapchain* swapchain)
+    {
+        return ((ISwapchain*)swapchain)->GetSurfaceCapabilities(self);
+    }
+
+    ResultCode swapchainResize(IDevice* self, Swapchain* swapchain, const ImageSize2D& size)
+    {
+        return ((ISwapchain*)swapchain)->ResizeSwapchain(self, size);
+    }
+
+    ResultCode swapchainConfigure(IDevice* self, Swapchain* swapchain, const SwapchainConfigureInfo& configInfo)
+    {
+        return ((ISwapchain*)swapchain)->ConfigureSwapchain(self, configInfo);
     }
 } // namespace RHI::WebGPU

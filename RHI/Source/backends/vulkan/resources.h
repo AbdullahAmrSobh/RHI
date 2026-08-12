@@ -1,7 +1,7 @@
 #pragma once
 
 #ifdef RHI_PLATFORM_WINDOWS
-    #define WINDOWS_LEAN_AND_MEAN
+    #define WIN32_LEAN_AND_MEAN
 #else
     #error "Current platfrom is not supported yet"
 #endif

@@ -1334,7 +1334,7 @@ namespace RHI
     class RHI_EXPORT Queue
     {
     public:
-        Queue() = default;
+        Queue()  = default;
         ~Queue() = default;
 
         void BeginAnnotation(const char* name, uint32_t bgra);
@@ -1362,8 +1362,6 @@ namespace RHI
         uint64_t                       GarbageCollect(uint64_t graphicsTimeline);
         uint64_t                       GetNativeHandle(NativeHandleType type, uint64_t handle);
 
-        // Blocks until every queue is idle. Required before tearing down resources that
-        // in-flight submissions may still reference.
         void                           WaitIdle();
 
         Queue*                         GetQueue(QueueType queueType);
@@ -1451,7 +1449,7 @@ namespace RHI
     class RHI_EXPORT CommandList
     {
     public:
-        CommandList() = default;
+        CommandList()  = default;
         ~CommandList() = default;
 
         // state
@@ -1542,10 +1540,11 @@ namespace RHI
 
     struct ApplicationInfo
     {
-        const char* applicationName    = nullptr;
-        Version     applicationVersion = {};
-        const char* engineName         = nullptr;
-        Version     engineVersion      = {};
+        const char* applicationName        = nullptr;
+        Version     applicationVersion     = {};
+        const char* engineName             = nullptr;
+        Version     engineVersion          = {};
+        bool        enableVulkanRobustness = false;
     };
 
     RHI_EXPORT Device* CreateDevice(BackendType backend, const ApplicationInfo& appInfo);

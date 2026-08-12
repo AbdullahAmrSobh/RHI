@@ -2,90 +2,90 @@
 
 #include <RHI/RHI.h>
 
+#include <TL/Allocator/Arena.hpp>
 #include <TL/Containers/Vector.hpp>
 
 #include <webgpu/webgpu.h>
 
 namespace RHI::WebGPU
 {
-    class IDevice;
-    class ICommandList;
+    struct IDevice;
+    struct ICommandList;
 
-    class ICommandPool final : public RHI::CommandPool
+    struct ICommandPool : RHI::CommandPool
     {
-    public:
+        TL::Arena arena;
+        IDevice* device = nullptr;
+        TL::Vector<ICommandList*> commandList;
+
         ResultCode Init(IDevice* device, const CommandPoolCreateInfo& createInfo);
         void Shutdown(IDevice* device);
-
-        void Reset() override;
-        CommandList* Allocate() override;
-
-        IDevice* m_device = nullptr;
-        TL::Vector<ICommandList*> m_commandLists;
     };
 
-    class ICommandList final : public RHI::CommandList
+    struct ICommandList : RHI::CommandList
     {
-    public:
-        ICommandList();
-        ~ICommandList();
-
-        ResultCode Init(IDevice* device, CommandPool* pool, const CommandListCreateInfo& createInfo);
-        void Shutdown();
-
-        // Interface implementation
-        void Begin() override;
-        void End() override;
-        void PushDebugMarker(const char* name, uint32_t bgra) override;
-        void PopDebugMarker() override;
-        void InsertDebugMarker(const char* name, uint32_t bgra) override;
-        void AddPipelineBarrier(TL::Span<const BarrierInfo> barriers, TL::Span<const ImageBarrierInfo> imageBarriers, TL::Span<const BufferBarrierInfo> bufferBarriers) override;
-        void BeginRenderPass(const RenderPassBeginInfo& beginInfo) override;
-        void EndRenderPass() override;
-        void BeginComputePass(const ComputePassBeginInfo& beginInfo) override;
-        void EndComputePass() override;
-        void BeginConditionalCommands(const BufferBindingInfo& conditionBuffer, bool inverted) override;
-        void EndConditionalCommands() override;
-        void Execute(TL::Span<const CommandList*> commandLists) override;
-        void BindPipelineLayout(BindPoint bindPoint, const PipelineLayout* pipelineLayout) override;
-        void SetPushConstants(BindPoint bindPoint, uint32_t offset, TL::Block content) override;
-        void PushBindGroup(BindPoint bindPoint, uint32_t firstGroup, TL::Span<const BindGroupUpdateInfo> updateInfos) override;
-        void SetBindGroups(BindPoint bindPoint, TL::Span<const BindGroupBindingInfo> bindGroups) override;
-        void BindGraphicsPipeline(const GraphicsPipeline* pipelineState) override;
-        void BindComputePipeline(const ComputePipeline* pipelineState) override;
-        void BindRayTracingPipeline(const RayTracingPipeline* pipelineState) override;
-        void SetViewport(const Viewport& viewport) override;
-        void SetScissor(const Scissor& sicssor) override;
-        void BindVertexBuffers(uint32_t firstBinding, TL::Span<const BufferBindingInfo> vertexBuffers) override;
-        void BindIndexBuffer(const BufferBindingInfo& indexBuffer, IndexType indexType) override;
-        void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t firstVertex = 0, uint32_t firstInstance = 0) override;
-        void DrawIndexed(uint32_t indexCount, uint32_t instanceCount = 1, uint32_t firstIndex = 0, int32_t vertexOffset = 0, uint32_t firstInstance = 0) override;
-        void DrawMeshTasks(uint32_t x = 1, uint32_t y = 1, uint32_t z = 1) override;
-        void DrawIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride) override;
-        void DrawIndexedIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride) override;
-        void DrawMeshTasksIndirect(const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t drawNum, uint32_t stride) override;
-        void Dispatch(uint32_t x = 1, uint32_t y = 1, uint32_t z = 1) override;
-        void DispatchIndirect(const BufferBindingInfo& argumentBuffer) override;
-        void DispatchRays(const DispatchRaysInfo& dispatchRaysDesc) override;
-        void DispatchRaysIndirect(const BufferBindingInfo& argumentBuffer) override;
-        void CopyBuffer(const Buffer* srcBuffer, uint64_t srcOffset, const Buffer* dstBuffer, uint64_t dstOffset, uint64_t size) override;
-        void CopyImage(const ImageCopyInfo& srcImage, const ImageCopyInfo& dstImage, const ImageSize3D& size) override;
-        void CopyImageToBuffer(const ImageCopyInfo& srcImage, const ImageMemoryLayout& layout, const Buffer* dstBuffer) override;
-        void CopyBufferToImage(const Buffer* srcBuffer, const ImageCopyInfo& dstImage, const ImageMemoryLayout& layout) override;
-        void CopyAccelerationStructure(AccelerationStructure* dst, const AccelerationStructure* src, CopyMode copyMode) override;
-        void CopyMicromap(Micromap* dst, const Micromap* src, CopyMode copyMode) override;
-        void BuildTlas(TL::Span<const TlasBuildInfo> buildInfos) override;
-        void BuildBlas(TL::Span<const BlasBuildInfo> buildInfos) override;
-        void BuildMicromaps(TL::Span<const MicromapBuildInfo> buildInfos) override;
-        void WriteAccelerationStructuresSizes(TL::Span<const AccelerationStructure*> accelerationStructures, QueryPool* queryPool, uint32_t queryPoolOffset) override;
-        void WriteMicromapsSizes(TL::Span<const Micromap*> micromaps, QueryPool* queryPool, uint32_t queryPoolOffset) override;
-
-    public:
-        IDevice* m_device = nullptr;
-        ICommandPool* m_pool = nullptr;
-        WGPUCommandEncoder m_commandEncoder = nullptr;
-        WGPUCommandBuffer m_commandBuffer = nullptr;
-        WGPURenderPassEncoder m_renderPassEncoder = nullptr;
-        WGPUComputePassEncoder m_computePassEncoder = nullptr;
+        IDevice* device = nullptr;
+        WGPUCommandEncoder commandEncoder = nullptr;
+        WGPUCommandBuffer commandBuffer = nullptr;
+        WGPURenderPassEncoder renderPassEncoder = nullptr;
+        WGPUComputePassEncoder computePassEncoder = nullptr;
+        PipelineLayout* pipelineLayout = nullptr;
+        BindPoint pipelineBindPoint = BindPoint::Graphics;
+        bool hasVertexBuffer         : 1;
+        bool hasIndexBuffer          : 1;
+        bool isGraphicsPipelineBound : 1;
+        bool isComputePipelineBound  : 1;
+        bool hasViewportSet          : 1;
+        bool hasScissorSet           : 1;
     };
+
+    void commandPoolReset(ICommandPool* self);
+    CommandList* commandPoolAllocate(ICommandPool* self);
+
+    void cmdBegin(ICommandList* self);
+    void cmdEnd(ICommandList* self);
+    void cmdPushDebugMarker(ICommandList* self, const char* name, uint32_t bgra);
+    void cmdPopDebugMarker(ICommandList* self);
+    void cmdInsertDebugMarker(ICommandList* self, const char* name, uint32_t bgra);
+    void cmdAddPipelineBarrier(ICommandList* self, TL::Span<const BarrierInfo> barriers, TL::Span<const ImageBarrierInfo> imageBarriers, TL::Span<const BufferBarrierInfo> bufferBarriers);
+    void cmdBeginRenderPass(ICommandList* self, const RenderPassBeginInfo& beginInfo);
+    void cmdEndRenderPass(ICommandList* self);
+    void cmdBeginComputePass(ICommandList* self, const ComputePassBeginInfo& beginInfo);
+    void cmdEndComputePass(ICommandList* self);
+    void cmdBeginConditionalCommands(ICommandList* self, const BufferBindingInfo& conditionBuffer, bool inverted);
+    void cmdEndConditionalCommands(ICommandList* self);
+    void cmdExecute(ICommandList* self, TL::Span<const CommandList*> commandLists);
+    void cmdBindPipelineLayout(ICommandList* self, BindPoint bindPoint, const PipelineLayout* pipelineLayout);
+    void cmdSetPushConstants(ICommandList* self, BindPoint bindPoint, uint32_t offset, TL::Block content);
+    void cmdPushBindGroup(ICommandList* self, BindPoint bindPoint, uint32_t firstGroup, TL::Span<const BindGroupUpdateInfo> updateInfos);
+    void cmdSetBindGroups(ICommandList* self, BindPoint bindPoint, TL::Span<const BindGroupBindingInfo> bindGroups);
+    void cmdBindGraphicsPipeline(ICommandList* self, const GraphicsPipeline* pipelineState);
+    void cmdBindComputePipeline(ICommandList* self, const ComputePipeline* pipelineState);
+    void cmdBindRayTracingPipeline(ICommandList* self, const RayTracingPipeline* pipelineState);
+    void cmdSetViewport(ICommandList* self, float offsetX, float offsetY, float width, float height, float minDepth, float maxDepth);
+    void cmdSetScissor(ICommandList* self, int32_t offsetX, int32_t offsetY, uint32_t width, uint32_t height);
+    void cmdBindVertexBuffers(ICommandList* self, uint32_t firstBinding, TL::Span<const BufferBindingInfo> vertexBuffers);
+    void cmdBindIndexBuffer(ICommandList* self, const BufferBindingInfo& indexBuffer, IndexType indexType);
+    void cmdDraw(ICommandList* self, uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance);
+    void cmdDrawIndexed(ICommandList* self, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance);
+    void cmdDrawMeshTasks(ICommandList* self, uint32_t x, uint32_t y, uint32_t z);
+    void cmdDrawIndirect(ICommandList* self, const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride);
+    void cmdDrawIndexedIndirect(ICommandList* self, const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride);
+    void cmdDrawMeshTasksIndirect(ICommandList* self, const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t drawNum, uint32_t stride);
+    void cmdDispatch(ICommandList* self, uint32_t x, uint32_t y, uint32_t z);
+    void cmdDispatchIndirect(ICommandList* self, const BufferBindingInfo& argumentBuffer);
+    void cmdDispatchRays(ICommandList* self, const DispatchRaysInfo& dispatchRaysDesc);
+    void cmdDispatchRaysIndirect(ICommandList* self, const BufferBindingInfo& argumentBuffer);
+    void cmdCopyBuffer(ICommandList* self, const Buffer* srcBuffer, uint64_t srcOffset, const Buffer* dstBuffer, uint64_t dstOffset, uint64_t size);
+    void cmdCopyImage(ICommandList* self, const ImageCopyInfo& srcImage, const ImageCopyInfo& dstImage, const ImageSize3D& size);
+    void cmdCopyImageToBuffer(ICommandList* self, const ImageCopyInfo& srcImage, const ImageMemoryLayout& layout, const Buffer* dstBuffer);
+    void cmdCopyBufferToImage(ICommandList* self, const Buffer* srcBuffer, const ImageCopyInfo& dstImage, const ImageMemoryLayout& layout);
+    void cmdCopyAccelerationStructure(ICommandList* self, AccelerationStructure* dst, const AccelerationStructure* src, CopyMode copyMode);
+    void cmdCopyMicromap(ICommandList* self, Micromap* dst, const Micromap* src, CopyMode copyMode);
+    void cmdClearBuffer(ICommandList* self, Buffer* dst, size_t offset, size_t size);
+    void cmdBuildTlas(ICommandList* self, TL::Span<const TlasBuildInfo> buildInfos);
+    void cmdBuildBlas(ICommandList* self, TL::Span<const BlasBuildInfo> buildInfos);
+    void cmdBuildMicromaps(ICommandList* self, TL::Span<const MicromapBuildInfo> buildInfos);
+    void cmdWriteAccelerationStructuresSizes(ICommandList* self, TL::Span<const AccelerationStructure*> accelerationStructures, QueryPool* queryPool, uint32_t queryPoolOffset);
+    void cmdWriteMicromapsSizes(ICommandList* self, TL::Span<const Micromap*> micromaps, QueryPool* queryPool, uint32_t queryPoolOffset);
 } // namespace RHI::WebGPU

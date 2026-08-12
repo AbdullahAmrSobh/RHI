@@ -18,11 +18,32 @@ set(RHI_BACKEND_VULKAN_COMPILE_DEFINITIONS
     $<$<PLATFORM_ID:Windows>:VK_USE_PLATFORM_WIN32_KHR=1>
 )
 
+set(RHI_BACKEND_WEBGPU_SOURCES
+    # Headers
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/backends/WebGPU/Common.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/backends/WebGPU/Device.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/backends/WebGPU/Resources.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/backends/WebGPU/CommandList.hpp
+    # Sources
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/backends/WebGPU/Device.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/backends/WebGPU/Resources.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/backends/WebGPU/CommandList.cpp
+)
+
+# Only one backend may be compiled into RHI.cpp's dispatch table at a time.
+# WebGPU takes precedence when Vulkan is disabled (e.g. Emscripten builds).
+if(RHI_BACKEND_WEBGPU AND NOT RHI_BACKEND_VULKAN)
+    set(RHI_COMPILE_BACKEND_DEFINE RHI_COMPILE_BACKEND_WEBGPU=1)
+else()
+    set(RHI_COMPILE_BACKEND_DEFINE RHI_COMPILE_BACKEND_VULKAN=1)
+endif()
+
 add_library(RHI STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/RHI.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Reflect.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/RHI.cpp
     $<IF:$<BOOL:${RHI_BACKEND_VULKAN}>,${RHI_BACKEND_VULKAN_SOURCES},>
+    $<IF:$<BOOL:${RHI_BACKEND_WEBGPU}>,${RHI_BACKEND_WEBGPU_SOURCES},>
 )
 add_library(RHI::RHI ALIAS RHI)
 
@@ -52,8 +73,7 @@ target_compile_definitions(RHI
         TRACY_ENABLE=$<IF:$<BOOL:${TRACY_ENABLE}>,1,0>
         $<IF:$<BOOL:${RHI_BACKEND_VULKAN}>,${RHI_BACKEND_VULKAN_COMPILE_DEFINITIONS},>
 
-        # TODO: hardcoded for now
-        RHI_COMPILE_BACKEND_VULKAN=1
+        ${RHI_COMPILE_BACKEND_DEFINE}
 )
 
 target_link_libraries(RHI
