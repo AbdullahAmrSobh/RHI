@@ -2,24 +2,16 @@
 
 #include <RHI/RHI.h>
 
-#include <TL/Allocator/Arena.hpp>
-#include <TL/Containers/Vector.hpp>
-
-#include <webgpu/webgpu.h>
-
-#include "CommandList.hpp"
-#include "Common.hpp"
-#include "Resources.hpp"
+#include "command-list.h"
+#include "common.h"
+#include "resources.h"
 
 namespace RHI::WebGPU
 {
+    struct IDevice;
+
     struct IQueue : RHI::Queue
     {
-        IDevice* m_device = nullptr;
-        WGPUQueue m_queue = nullptr;
-        QueueType m_queueType = QueueType::Graphics;
-        std::atomic_uint64_t m_lastSubmitValue = 0;
-
         ResultCode Init(IDevice* device, const char* debugName, QueueType queueType);
         void Shutdown();
     };
@@ -31,28 +23,8 @@ namespace RHI::WebGPU
 
         ResultCode Init(const ApplicationInfo& appInfo);
         void Shutdown();
-
         void WaitIdle();
-
-        // Internal accessor returning backend queue state directly (facade-free).
-        IQueue* getQueue(QueueType queueType) { return &m_queue[(uint32_t)queueType]; }
-
-        BackendType m_backend = BackendType::WebGPU;
-        DeviceLimits m_limits = {};
-        DeviceFeatures m_features = {};
-
-        // WebGPU instance and core objects
-        WGPUInstance m_instance = nullptr; ///< WGPU instance handle.
-        WGPUAdapter m_adapter = nullptr;   ///< Physical device selected for use.
-        WGPUDevice m_device = nullptr;     ///< Logical device handle.
-
-        IQueue m_queue[(uint32_t)QueueType::Count] = {};
-
-        TL::Arena m_arena;
-        TL::IAllocator* m_objectAllocator = nullptr;
     };
-
-    // Queue interface functions
 
     void queueBeginAnnotation(IQueue* self, const char* name, uint32_t bgra);
     void queueEndAnnotation(IQueue* self);
@@ -61,11 +33,9 @@ namespace RHI::WebGPU
     void queueWaitIdle(IQueue* self);
     void queueWaitFence(IQueue* self, Fence* fence, uint64_t value);
 
-    // Device lifetime
     Device* createDevice(const ApplicationInfo& appInfo);
     void destroyDevice(Device* device);
 
-    // Device interface functions
     BackendType deviceGetBackend(IDevice* self);
     DeviceFeatures deviceGetFeatures(IDevice* self);
     DeviceLimits deviceGetLimits(IDevice* self);
@@ -101,7 +71,7 @@ namespace RHI::WebGPU
     AccelerationStructure* createAccelerationStructure(IDevice* self, const AccelerationStructureCreateInfo& createInfo);
     void destroyAccelerationStructure(IDevice* self, AccelerationStructure* handle);
     uint64_t accelerationStructureGetDeviceAddress(IDevice* self, AccelerationStructure* handle);
-    AccelerationStructureSizesInfo accelerationStructureGetSizesInfo(IDevice* self, AccelerationStructure* as);
+    AccelerationStructureSizesInfo accelerationStructureGetSizesInfo(IDevice* self, AccelerationStructure* accelerationStructure);
     Micromap* createMicromap(IDevice* self, const MicromapCreateInfo& createInfo);
     void destroyMicromap(IDevice* self, Micromap* handle);
     CommandPool* createCommandPool(IDevice* self, const CommandPoolCreateInfo& createInfo);

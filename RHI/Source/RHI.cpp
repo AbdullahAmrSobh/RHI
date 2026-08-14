@@ -4,7 +4,7 @@
     #include "backends/vulkan/device.h"
 namespace Impl = RHI::Vulkan;
 #elif RHI_COMPILE_BACKEND_WEBGPU
-    #include "backends/WebGPU/Device.hpp"
+    #include "backends/webgpu/device.h"
 namespace Impl = RHI::WebGPU;
 #else
     #error "No RHI backend selected"

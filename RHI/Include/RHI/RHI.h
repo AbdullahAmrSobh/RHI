@@ -9,6 +9,8 @@
 #include <TL/Containers/String.hpp>
 #include <TL/Containers/StringView.hpp>
 
+#include <atomic>
+
 namespace RHI
 {
     class Queue;
@@ -801,7 +803,7 @@ namespace RHI
     struct BufferSubregion
     {
         size_t offset = 0;
-        size_t size   = RemainingSize;
+        size_t size   = static_cast<size_t>(RemainingSize);
 
         bool   operator==(const BufferSubregion& other) const = default;
     };

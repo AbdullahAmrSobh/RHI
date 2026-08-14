@@ -17,6 +17,13 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+if(EMSCRIPTEN)
+    add_compile_options(
+        "$<$<COMPILE_LANGUAGE:CXX>:-include>"
+        "$<$<COMPILE_LANGUAGE:CXX>:cstdlib>"
+    )
+endif()
+
 option(TRACY_ENABLE "Enable Tracy profiler" ${PROJECT_IS_TOP_LEVEL})
 option(RHI_DEBUG "Enable RHI debug mode" ${PROJECT_IS_TOP_LEVEL})
 if(NOT EMSCRIPTEN)

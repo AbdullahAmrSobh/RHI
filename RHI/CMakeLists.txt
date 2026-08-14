@@ -20,14 +20,14 @@ set(RHI_BACKEND_VULKAN_COMPILE_DEFINITIONS
 
 set(RHI_BACKEND_WEBGPU_SOURCES
     # Headers
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/backends/WebGPU/Common.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/backends/WebGPU/Device.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/backends/WebGPU/Resources.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/backends/WebGPU/CommandList.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/backends/webgpu/common.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/backends/webgpu/device.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/backends/webgpu/resources.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/backends/webgpu/command-list.h
     # Sources
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/backends/WebGPU/Device.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/backends/WebGPU/Resources.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/backends/WebGPU/CommandList.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/backends/webgpu/device.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/backends/webgpu/resources.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/backends/webgpu/command-list.cpp
 )
 
 # Only one backend may be compiled into RHI.cpp's dispatch table at a time.

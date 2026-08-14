@@ -2,41 +2,18 @@
 
 #include <RHI/RHI.h>
 
-#include <TL/Allocator/Arena.hpp>
-#include <TL/Containers/Vector.hpp>
-
-#include <webgpu/webgpu.h>
-
 namespace RHI::WebGPU
 {
     struct IDevice;
-    struct ICommandList;
 
     struct ICommandPool : RHI::CommandPool
     {
-        TL::Arena arena;
-        IDevice* device = nullptr;
-        TL::Vector<ICommandList*> commandList;
-
         ResultCode Init(IDevice* device, const CommandPoolCreateInfo& createInfo);
         void Shutdown(IDevice* device);
     };
 
     struct ICommandList : RHI::CommandList
     {
-        IDevice* device = nullptr;
-        WGPUCommandEncoder commandEncoder = nullptr;
-        WGPUCommandBuffer commandBuffer = nullptr;
-        WGPURenderPassEncoder renderPassEncoder = nullptr;
-        WGPUComputePassEncoder computePassEncoder = nullptr;
-        PipelineLayout* pipelineLayout = nullptr;
-        BindPoint pipelineBindPoint = BindPoint::Graphics;
-        bool hasVertexBuffer         : 1;
-        bool hasIndexBuffer          : 1;
-        bool isGraphicsPipelineBound : 1;
-        bool isComputePipelineBound  : 1;
-        bool hasViewportSet          : 1;
-        bool hasScissorSet           : 1;
     };
 
     void commandPoolReset(ICommandPool* self);
